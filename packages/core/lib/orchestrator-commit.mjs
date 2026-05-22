@@ -330,6 +330,14 @@ export async function commitLeadSupportChange({
   const dirtyOrchestrationAudit = await auditDirtyDurableOrchestrationState({
     repoRoot,
     allowedFiles: normalized.files,
+    // Audit §4 E2.2e.6 dogfood port surfaced this gap: `commitLeadSupportChange`
+    // is bounded by design — it commits only the explicitly-allowed `files`.
+    // Unrelated *unstaged* dirty work elsewhere in the durable-orchestration
+    // surface (e.g., the founder editing PRIORITIES.md mid-session) must not
+    // block a bounded support commit. The peer function `commitAcceptedResult`
+    // above (line 213) already passes `blockUnstaged: false` for the same
+    // reason. Staged conflicts (`preexistingStaged` check below) still block.
+    blockUnstaged: false,
     git
   });
   if (!dirtyOrchestrationAudit.ok) return fail(attempt, dirtyOrchestrationAudit.issues, now);
