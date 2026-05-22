@@ -1,0 +1,5 @@
+{
+  "$schema": "../packages/schemas/dist/workspaces-registry.schema.json",
+  "version": "0.1",
+  "workspaces": []
+}

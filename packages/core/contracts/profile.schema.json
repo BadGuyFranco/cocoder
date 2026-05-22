@@ -1,0 +1,58 @@
+{
+  "contract": "profile-roster",
+  "version": 1,
+  "status": "phase-2-draft",
+  "description": "One editable pre-launch roster assigning personas and helper/verifier lanes to adapters.",
+  "required": [
+    "id",
+    "label",
+    "createdFor",
+    "lanes",
+    "defaults"
+  ],
+  "fields": {
+    "id": { "type": "string" },
+    "label": { "type": "string" },
+    "createdFor": { "type": "string", "description": "Priority slug, route family, or local purpose." },
+    "lanes": {
+      "type": "object",
+      "required": [
+        "oscar",
+        "bob",
+        "ian",
+        "phil",
+        "talia",
+        "quinn",
+        "verifiers",
+        "bobHelpers"
+      ]
+    },
+    "defaults": {
+      "type": "object",
+      "required": ["evidenceClass", "maxParallelHelpers", "missingAdapterPolicy"]
+    },
+    "modelRoles": {
+      "type": "object",
+      "optional": true,
+      "description": "Role-to-model policy for orchestration, planning, building, builder subagents, research, synthesis, fallback, and substitution rules. Role references may name a profile lane or a direct adapter/adapterProfile."
+    }
+  },
+  "laneFields": {
+    "persona": { "type": "string" },
+    "adapter": { "type": "string" },
+    "adapterProfile": { "type": "string", "optional": true },
+    "canWrite": { "type": "boolean" },
+    "writeBoundary": { "type": "array", "items": "string" },
+    "excludedWriteBoundary": { "type": "array", "items": "string" },
+    "resultContract": { "type": "string" },
+    "evidenceClassDefault": { "enum": ["A", "B"] },
+    "maxParallel": { "type": "number", "optional": true }
+  },
+  "rules": [
+    "The active profile is read once before launch and snapshotted into the run ledger.",
+    "Profiles are not hot-swapped during a run.",
+    "Every required route lane must resolve to an available adapter before launch.",
+    "Missing required verifier adapters produce NEEDS_FOUNDER or degraded non-PASS state, never PASS.",
+    "Model roles are dispatch contracts. A lane may not silently substitute one configured role for another; degraded modes must follow modelRoles.fallbackPolicy and modelRoles.substitutionPolicy."
+  ]
+}

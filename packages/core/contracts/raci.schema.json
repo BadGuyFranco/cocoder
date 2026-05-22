@@ -1,0 +1,43 @@
+{
+  "contract": "raci",
+  "version": 1,
+  "status": "phase-13-draft",
+  "description": "Machine-readable orchestration RACI mirror for shared write-authority surfaces.",
+  "required": [
+    "version",
+    "source",
+    "mirroredAt",
+    "surfaces"
+  ],
+  "fields": {
+    "version": { "type": "number" },
+    "source": { "type": "string" },
+    "mirroredAt": { "type": "string" },
+    "surfaces": { "type": "array" },
+    "approvedExceptions": {
+      "type": "array",
+      "optional": true,
+      "items": {
+        "type": "object",
+        "required": [
+          "persona",
+          "surface",
+          "scope",
+          "reason",
+          "authorizedDate",
+          "authorizedBy"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "rules": [
+    "surfaces entries require surface, primaryOwner, consults, and rawOwnerCell.",
+    "primaryOwner is a canonical lowercase token or sanctioned role token.",
+    "rawOwnerCell preserves the exact owner cell from the Markdown RACI table.",
+    "approvedExceptions entries require persona, surface, scope, reason, authorizedDate, and authorizedBy.",
+    "approvedExceptions authorizedDate uses YYYY-MM-DD.",
+    "approvedExceptions surface must match a surfaces[].surface value verbatim.",
+    "approvedExceptions scope is an explicit sub-path, not a wildcard."
+  ]
+}

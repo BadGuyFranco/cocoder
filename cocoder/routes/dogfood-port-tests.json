@@ -1,0 +1,20 @@
+{
+  "id": "dogfood-port-tests",
+  "label": "CoCoder Dogfood — port CoBuilder test files into packages/core/tests/",
+  "lead": "bob",
+  "teammates": ["talia"],
+  "lanes": ["bob", "talia"],
+  "supportedPriorityOwners": ["v0.1-foundation"],
+  "gates": ["startup-packet", "profile-preflight", "write-boundary"],
+  "writePolicy": "one-writer",
+  "laneRequirements": {
+    "bob": {
+      "requiredCapabilities": ["interactive"],
+      "allowedAdapters": ["codex"]
+    },
+    "talia": {
+      "requiredCapabilities": ["fileEdit", "interactive"],
+      "allowedAdapters": ["codex"]
+    }
+  }
+}

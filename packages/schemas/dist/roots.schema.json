@@ -1,0 +1,27 @@
+{
+  "$ref": "#/definitions/cocoder-roots",
+  "definitions": {
+    "cocoder-roots": {
+      "type": "object",
+      "properties": {
+        "$schema": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string",
+          "default": "0.1"
+        },
+        "roots": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": {}
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

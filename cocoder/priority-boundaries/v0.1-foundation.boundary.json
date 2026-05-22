@@ -1,0 +1,38 @@
+{
+  "id": "v0.1-foundation-dogfood-port-tests",
+  "prioritySlug": "v0.1-foundation",
+  "label": "v0.1-foundation dogfood test-port writer boundary",
+  "routeIds": ["dogfood-port-tests"],
+  "writerLanes": {
+    "talia": {
+      "allowed": [
+        "packages/core/tests/"
+      ],
+      "excluded": [
+        "packages/core/lib/",
+        "packages/core/adapters/",
+        "packages/core/contracts/",
+        "packages/core/checks/",
+        "packages/core/quinn/",
+        "packages/core/scripts/",
+        "packages/core/cli.mjs",
+        "packages/cocoder-cli/",
+        "packages/schemas/",
+        "packages/oz-daemon/",
+        "packages/oz-dashboard/",
+        "docs/",
+        "templates/",
+        ".github/",
+        "cocoder/",
+        "ARCHITECTURE.md",
+        "README.md",
+        "LICENSE",
+        "package.json",
+        "pnpm-workspace.yaml",
+        "pnpm-lock.yaml",
+        ".nvmrc",
+        ".gitignore"
+      ]
+    }
+  }
+}

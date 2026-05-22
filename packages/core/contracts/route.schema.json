@@ -1,0 +1,98 @@
+{
+  "contract": "route-declaration",
+  "version": 1,
+  "status": "phase-2-draft",
+  "description": "Declares collaboration topology and launch/dispatch gates.",
+  "required": [
+    "id",
+    "label",
+    "lead",
+    "teammates",
+    "lanes",
+    "gates",
+    "writePolicy"
+  ],
+  "fields": {
+    "id": { "type": "string" },
+    "label": { "type": "string" },
+    "lead": { "type": "string", "description": "Persona id." },
+    "teammates": { "type": "array", "items": "persona id" },
+    "lanes": { "type": "array", "items": "profile lane id" },
+    "supportedPriorityOwners": {
+      "type": "array",
+      "items": "string",
+      "optional": true,
+      "description": "Legacy priority slug allow-list. Omitted, empty, or [\"*\"] means the route may launch any active priority."
+    },
+    "gates": { "type": "array", "items": "startup-packet|profile-preflight|write-boundary|verifier|qa|founder-decision" },
+    "writePolicy": { "enum": ["one-writer", "bounded-writers", "read-only"] },
+    "allowAutonomousTeammateStart": { "type": "boolean", "optional": true },
+    "initialLanes": {
+      "type": "array",
+      "items": "profile lane id",
+      "optional": true,
+      "description": "Optional bootstrap lane set. When present, live launch starts only these lanes; additional lanes must be added through a validated topology option."
+    },
+    "topologyOptions": {
+      "type": "array",
+      "items": "topology option",
+      "optional": true,
+      "description": "Validated lane-group options Oscar may request after bootstrap. Options constrain add-lane requests; they are not free-form topology invention."
+    },
+    "orchestratorCommit": {
+      "type": "object",
+      "optional": true,
+      "description": "Route-owned commit policy. When enabled, the route stages exact files from the accepted writer result and commits on the writer lane's behalf. Optional laneWriteScopes entries may narrow a named writer lane to explicit allowed/excluded repo-relative path patterns."
+    },
+    "gitCommitPolicy": {
+      "type": "object",
+      "optional": true,
+      "description": "Explicit writer-lane git commit requirement for routes that still expect a lane to run git commits itself. Launch preflight blocks when the lane lacks git-commit capability."
+    },
+    "leadRescue": {
+      "type": "object",
+      "optional": true,
+      "description": "Route-owned result supersession policy. When allowed, named lead lanes may supersede named non-PASS teammate lanes through immutable supersession records."
+    },
+    "leadSupportCommit": {
+      "type": "object",
+      "optional": true,
+      "description": "Guarded lead-lane support commit policy. When enabled, a declared lead may commit exact files inside explicit support scopes to clear mechanical orchestration blockers without a teammate result artifact."
+    },
+    "implementationOwnership": {
+      "type": "object",
+      "optional": true,
+      "description": "Implementation provenance policy. When enabled or omitted, implementation-surface commits require the configured owner lane result artifact, normally Bob through the route/profile snapshot adapter."
+    },
+    "modelRoles": {
+      "type": "object",
+      "optional": true,
+      "description": "Optional route-level overrides for profile modelRoles. Used when a route needs a different planning, research, build, or synthesis model assignment without rewriting the base profile."
+    }
+  },
+  "rules": [
+    "Routes declare topology; profiles assign models.",
+    "Priority slug allow-lists are optional route constraints, not a priority validity source.",
+    "Launch fails if route lanes are absent from the selected profile.",
+    "One-writer routes allow only the configured writer lane to modify repo files.",
+    "Orchestrator-owned commits must be declared per route and use exact-file staging from accepted result artifacts.",
+    "When orchestratorCommit.laneWriteScopes is present, each lane scope narrows that lane's commit authority to explicit allowed/excluded repo-relative paths; lanes without a scope continue to use the resolved priority write boundary.",
+    "Routes that require writer-lane git commits must declare gitCommitPolicy.mode=writer-lane with writerLanes; launch preflight checks git-commit capability before starting lanes.",
+    "Lead-rescue supersession must be route-declared with leadRescue.allowed=true, lead lanes, and superseded lanes, unless an immutable supersession record cites founder authorization.",
+    "Lead support commits are for bounded orchestration support only: exact files, declared lead lanes, declared allowed/excluded scopes, no run-local artifacts, no unrelated staged files.",
+    "Implementation-surface commits must trace to the configured implementation owner lane result artifact unless route policy explicitly disables or exempts that surface.",
+    "Lead-driven teammate lanes wait for a concrete lead dispatch unless the route explicitly sets allowAutonomousTeammateStart.",
+    "Bootstrap routes may declare initialLanes to start Oscar first; every later counterpart lane must be covered by a topologyOptions entry and pass profile, adapter, boundary, git-state, helper, watcher, and result-contract checks.",
+    "No-priority routes must start idle and wait for a concrete task.",
+    "Route modelRoles override profile modelRoles but do not authorize silent role substitution; fallback and degraded-mode behavior remains explicit."
+  ],
+  "initialRoutes": [
+    "oscar-bob-default",
+    "ian-bob-backoffice",
+    "oscar-phil-primitive",
+    "talia-acceptance",
+    "quinn-ide-qa",
+    "external-verifier",
+    "bob-helper"
+  ]
+}

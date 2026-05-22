@@ -1,0 +1,47 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.3
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -F schemas build
+      - run: git diff --exit-code -- packages/schemas/dist/
+      - run: pnpm typecheck
+      - run: pnpm -r test
+      - run: pnpm -F core test config-resolver
+      - run: node packages/core/cli.mjs validate-contracts
+      - name: Stale-reference gate (audit §M12 / M4.15)
+        run: |
+          set -e
+          # The leakage scanner in composition.mjs INTENTIONALLY names upstream
+          # CoBuilder paths (it exists to detect them in shipped prompts). Its
+          # accompanying regression test obviously also mentions those paths.
+          # Both files must be exempt from this gate; everywhere else, 0 hits.
+          if rg --no-messages 'cobuilder|COB_ORCH_' packages/ docs/ templates/ \
+               --glob '!**/*.example.*' \
+               --glob '!packages/core/lib/composition.mjs' \
+               --glob '!packages/core/tests/composition-dogfood-bugfixes.test.mjs'; then
+            echo "::error::Stale upstream identifiers (cobuilder / COB_ORCH_) found in shipped packages/docs/templates. Move CoBuilder-specific content into *.example.* files or scrub the references."
+            exit 1
+          fi
+          if rg --no-messages '/Volumes/' packages/ docs/ templates/ --glob '!**/*.example.*'; then
+            echo "::error::Hardcoded /Volumes/ absolute paths found outside *.example.* files. Move machine-specific paths into example files or tokenize via \${COCODER_HOME} / \${root:name}."
+            exit 1
+          fi
+      - name: Public readiness placeholder
+        run: |
+          test -f LICENSE
+          test -f NOTICE
