@@ -15,6 +15,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.19.0",
+    "cocoder-cli": "workspace:*",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vitest": "^3.1.4"
