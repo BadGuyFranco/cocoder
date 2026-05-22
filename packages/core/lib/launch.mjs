@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { access, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -81,6 +81,33 @@ export async function launchRun(options) {
     };
   }
 
+  // Active-priority-run preflight (audit §4 E2.2e.5 dogfood port surfaced
+  // the gap): launch blocks a second non-terminal run for the same priority
+  // + route unless the caller passes --allow-concurrent-priority-run true.
+  // Ported from CoBuilder per ADR-0004.
+  const activeRunPreflight = options.allowConcurrentPriorityRun === true || options.allowConcurrentPriorityRun === 'true'
+    ? { ok: true, status: 'skipped', activeRuns: [], issues: [], override: true }
+    : await findActiveRunsForPriority({
+        runsDir: options.runsDir,
+        prioritySlug: options.prioritySlug,
+        routeId: compatibility.route.id,
+        excludeRunId: options.runId
+      });
+  if (!activeRunPreflight.ok) {
+    return {
+      ok: false,
+      status: 'blocked',
+      executed: false,
+      profile: compatibility.profile.id,
+      route: compatibility.route.id,
+      lanes: launchLanes,
+      priorityBoundary: priorityBoundary.ok ? priorityBoundary.priorityBoundary.id : null,
+      gitCapabilityPreflight,
+      activeRunPreflight,
+      issues: activeRunPreflight.issues
+    };
+  }
+
   const created = await createRun({
     contractsDir: options.contractsDir,
     runsDir: options.runsDir,
@@ -150,6 +177,7 @@ export async function launchRun(options) {
       sessions: launchPlan.sessions.map(publicSession),
       priorityBoundary: priorityBoundary.ok ? priorityBoundary.priorityBoundary.id : null,
       gitCapabilityPreflight,
+      activeRunPreflight,
       helperScripts: launchPlan.helperScripts,
       completionWatchScripts: launchPlan.completionWatchScripts,
       startWatchersScript: launchPlan.startWatchersScript,
@@ -392,10 +420,12 @@ export async function addLanesToRun({
     .filter((session) => requestedLanes.includes(session.lane))
     .map((session) => ({ ...session, attachCommand: nextLaunchPlan.attachCommands?.[session.lane] || '' }));
   const attachAddedLanesScript = path.join(runDir, 'attach-added-lanes.sh');
+  const leadSession = nextLaunchPlan.sessions.find((session) => session.lane === nextLaunchPlan.route.lead);
   await writeFile(attachAddedLanesScript, renderAttachAddedLanesScript(addedSessions, {
     tmuxBin: nextLaunchPlan.tmuxBin || tmuxBin,
     socketName: nextLaunchPlan.socketName,
-    socketPath: nextLaunchPlan.socketPath
+    socketPath: nextLaunchPlan.socketPath,
+    targetSession: leadSession
   }), { mode: 0o755 });
   decision.checks.laneArtifacts = 'written';
   decision.attachAddedLanesScript = attachAddedLanesScript;
@@ -1210,7 +1240,15 @@ function renderStartAllScript(launchPlan) {
   ].join('\n');
 }
 
-function renderAttachAddedLanesScript(sessions, { tmuxBin = DEFAULT_TMUX_BIN, socketName = DEFAULT_SOCKET, socketPath = '' } = {}) {
+// Hardened by porting CoBuilder's `renderAttachAddedLanesScript` (audit §4
+// E2.2e.5 dogfood port surfaced two failing tests that pin the safer
+// selection semantics). Instead of grabbing `current window`, the script
+// asks tmux which TTY is attached to the lead session, then iterates iTerm
+// sessions looking for the matching candidate (with a session-name /
+// display-label fallback). If no candidate is found, it creates a fresh
+// window from scratch instead of hijacking whatever iTerm window happens to
+// be focused.
+function renderAttachAddedLanesScript(sessions, { tmuxBin = DEFAULT_TMUX_BIN, socketName = DEFAULT_SOCKET, socketPath = '', targetSession = null } = {}) {
   const first = sessions[0];
   const attachLines = sessions.map((session) => `echo "  ${session.lane}: ${session.attachCommand || ''}"`);
   const socketArgs = tmuxSocketArgs({ socketName, socketPath });
@@ -1223,36 +1261,93 @@ function renderAttachAddedLanesScript(sessions, { tmuxBin = DEFAULT_TMUX_BIN, so
       ''
     ].join('\n');
   }
-  return [
-    '#!/usr/bin/env bash',
-    'set -euo pipefail',
-    `TMUX_BIN=${shellQuote(tmuxBin)}`,
-    `SOCKET_ARGS=(${shellSocketArgs})`,
-    'echo "Attaching added lanes:"',
-    ...attachLines,
-    'if osascript -e \'id of application "iTerm"\' >/dev/null 2>&1; then',
-    '  osascript <<\'ITERM_EOF\'',
-    'tell application "iTerm"',
-    '  activate',
-    '  if (count of windows) is 0 then',
-    `    set baseWindow to (create window with default profile command ${appleScriptString(first.attachCommand)})`,
-    '    set baseSession to current session of current tab of baseWindow',
-    '  else',
-    '    set baseWindow to current window',
-    '    set baseSession to current session of current tab of baseWindow',
-    '  end if',
-    ...sessions.flatMap((session, index) => [
+  const splitAddedSessionLines = sessions.flatMap((session, index) => [
+    '  tell baseSession',
+    `    set addedSession${index} to (split vertically with default profile command ${appleScriptString(session.attachCommand)})`,
+    '  end tell',
+    `  tell addedSession${index}`,
+    `    set name to ${appleScriptString(session.displayLabel)}`,
+    `    try`,
+    `      set columns to ${Math.min(session.width, DEFAULT_ADDED_SPLIT_PANE_WIDTH)}`,
+    `      set rows to ${session.height}`,
+    `    end try`,
+    '  end tell'
+  ]);
+  const fallbackSplitLines = sessions.slice(1).flatMap((session, index) => {
+    const sessionIndex = index + 1;
+    return [
       '  tell baseSession',
-      `    set addedSession${index} to (split vertically with default profile command ${appleScriptString(session.attachCommand)})`,
+      `    set addedSession${sessionIndex} to (split vertically with default profile command ${appleScriptString(session.attachCommand)})`,
       '  end tell',
-      `  tell addedSession${index}`,
+      `  tell addedSession${sessionIndex}`,
       `    set name to ${appleScriptString(session.displayLabel)}`,
       `    try`,
       `      set columns to ${Math.min(session.width, DEFAULT_ADDED_SPLIT_PANE_WIDTH)}`,
       `      set rows to ${session.height}`,
       `    end try`,
       '  end tell'
-    ]),
+    ];
+  });
+  const targetSessionName = targetSession?.sessionName || '';
+  const targetDisplayLabel = targetSession?.displayLabel || '';
+  return [
+    '#!/usr/bin/env bash',
+    'set -euo pipefail',
+    `TMUX_BIN=${shellQuote(tmuxBin)}`,
+    `SOCKET_ARGS=(${shellSocketArgs})`,
+    `TARGET_SESSION=${shellQuote(targetSessionName)}`,
+    'TARGET_TTY=""',
+    'if [ -n "$TARGET_SESSION" ]; then',
+    '  TARGET_TTY="$("$TMUX_BIN" "${SOCKET_ARGS[@]}" list-clients -t "$TARGET_SESSION" -F "#{client_tty}" 2>/dev/null | head -n 1 || true)"',
+    'fi',
+    'export COCODER_ORCH_TARGET_TTY="$TARGET_TTY"',
+    'echo "Attaching added lanes:"',
+    ...attachLines,
+    'if osascript -e \'id of application "iTerm"\' >/dev/null 2>&1; then',
+    '  osascript <<\'ITERM_EOF\'',
+    'tell application "iTerm"',
+    '  activate',
+    `  set targetSessionName to ${appleScriptString(targetSessionName)}`,
+    `  set targetDisplayLabel to ${appleScriptString(targetDisplayLabel)}`,
+    '  set targetTty to system attribute "COCODER_ORCH_TARGET_TTY"',
+    '  set baseWindow to missing value',
+    '  set baseSession to missing value',
+    '  repeat with candidateWindow in windows',
+    '    repeat with candidateTab in tabs of candidateWindow',
+    '      repeat with candidateSession in sessions of candidateTab',
+    '        set candidateTty to ""',
+    '        try',
+    '          set candidateTty to tty of candidateSession',
+    '        end try',
+    '        set candidateName to ""',
+    '        try',
+    '          set candidateName to name of candidateSession',
+    '        end try',
+    '        set candidateContents to ""',
+    '        try',
+    '          set candidateContents to contents of candidateSession',
+    '        end try',
+    '        if (targetTty is not "" and candidateTty is targetTty) or (targetTty is "" and ((targetSessionName is not "" and candidateContents contains targetSessionName) or (targetDisplayLabel is not "" and (candidateName contains targetDisplayLabel or candidateContents contains targetDisplayLabel)))) then',
+    '          set baseWindow to candidateWindow',
+    '          set baseSession to candidateSession',
+    '          exit repeat',
+    '        end if',
+    '      end repeat',
+    '      if baseSession is not missing value then exit repeat',
+    '    end repeat',
+    '    if baseSession is not missing value then exit repeat',
+    '  end repeat',
+    '  if baseSession is not missing value then',
+    '    try',
+    '      tell baseWindow to select',
+    '    end try',
+    ...splitAddedSessionLines,
+    '  else',
+    `    set baseWindow to (create window with default profile command ${appleScriptString(first.attachCommand)})`,
+    '    set baseSession to current session of current tab of baseWindow',
+    `    set name of baseSession to ${appleScriptString(first.displayLabel)}`,
+    ...fallbackSplitLines,
+    '  end if',
     'end tell',
     'ITERM_EOF',
     'elif osascript -e \'id of application "Terminal"\' >/dev/null 2>&1; then',
@@ -1693,4 +1788,68 @@ function shellQuote(value) {
 
 function shellQuoteIfNeeded(value) {
   return /[^A-Za-z0-9_./:@%+=,-]/.test(String(value)) ? shellQuote(value) : String(value);
+}
+
+// Audit §4 E2.2e.5 dogfood port surfaced this gap: launchRun never checked
+// whether the requested priority + route already had a non-terminal run in
+// flight. The hardened preflight (ported from CoBuilder) prevents accidental
+// duplicate launches; `--allow-concurrent-priority-run true` is the explicit
+// override.
+async function findActiveRunsForPriority({ runsDir, prioritySlug, routeId, excludeRunId } = {}) {
+  if (!runsDir || !prioritySlug || !routeId) {
+    return { ok: true, status: 'skipped', activeRuns: [], issues: [] };
+  }
+  let entries = [];
+  try {
+    entries = await readdir(runsDir, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === 'ENOENT') return { ok: true, status: 'no-runs-dir', activeRuns: [], issues: [] };
+    throw error;
+  }
+
+  const activeRuns = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const runId = entry.name;
+    if (excludeRunId && runId === excludeRunId) continue;
+    const runDir = path.join(runsDir, runId);
+    const status = await readJsonIfExists(path.join(runDir, 'status.json'));
+    if (!status || isTerminalRunStatusRecord(status)) continue;
+    const startupPacket = await readJsonIfExists(path.join(runDir, 'startup-packet.json'));
+    const runPrioritySlug = startupPacket?.selectedPriority?.slug || status.prioritySlug || null;
+    const runRouteId = status.routeId || startupPacket?.route?.id || null;
+    if (runPrioritySlug !== prioritySlug || runRouteId !== routeId) continue;
+    activeRuns.push({
+      runId,
+      runDir,
+      status: status.status || 'unknown',
+      updatedAt: status.updatedAt || null,
+      routeId: runRouteId,
+      prioritySlug: runPrioritySlug
+    });
+  }
+
+  if (activeRuns.length === 0) return { ok: true, status: 'clear', activeRuns, issues: [] };
+  const activeSummary = activeRuns.map((run) => `${run.runId} (${run.status})`).join(', ');
+  return {
+    ok: false,
+    status: 'blocked',
+    activeRuns,
+    issues: [{
+      code: 'active-priority-run-exists',
+      severity: 'block',
+      lane: 'run',
+      detail: `Launch blocked because ${prioritySlug} already has non-terminal run(s) on route ${routeId}: ${activeSummary}. Close, adopt, or explicitly relaunch with --allow-concurrent-priority-run true.`
+    }]
+  };
+}
+
+async function readJsonIfExists(filePath) {
+  try {
+    return await readJson(filePath);
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    if (/^Invalid JSON\b/.test(error.message || '')) return null;
+    throw error;
+  }
 }

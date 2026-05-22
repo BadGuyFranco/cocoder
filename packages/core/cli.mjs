@@ -523,7 +523,8 @@ async function main() {
       socketPath: args.socketPath,
       tmuxBin: args.tmuxBin,
       deferStart: args.deferStart === 'true',
-      execute: args.execute === 'true'
+      execute: args.execute === 'true',
+      allowConcurrentPriorityRun: args.allowConcurrentPriorityRun === 'true'
     });
     console.log(JSON.stringify(result, null, 2));
     if (!result.ok) process.exitCode = 1;
@@ -993,7 +994,7 @@ function parseArgs(tokens) {
     if (!next || next.startsWith('--')) args[key] = 'true';
     else {
       args[key] = path.resolve(next);
-      if (['contract', 'prioritySlug', 'status', 'reason', 'summary', 'runId', 'jobId', 'sessionId', 'confirmRunId', 'mode', 'followIntervalSeconds', 'maxCycles', 'execute', 'deferStart', 'stopTerminalSessions', 'founderApprovedTeardown', 'sessionLineLimit', 'owner', 'nonce', 'now', 'ttlMs', 'staleMs', 'timeoutMs', 'thresholdDays', 'maxChars', 'maxEntries', 'maxEntryLines', 'maxEntryChars', 'allowLive', 'cdpUrl', 'socketName', 'socketPath', 'lane', 'lanes', 'message', 'command', 'tmuxBin', 'noSession', 'supersededLane', 'resolvingLane', 'basis', 'findings', 'evidence', 'id', 'createdBy', 'personaPaths', 'sessionLog', 'topologyOption', 'requiredPersonas', 'autoAttachAddedLanes', 'workspaceSlug', 'developerMode'].includes(key)) args[key] = next;
+      if (['contract', 'prioritySlug', 'status', 'reason', 'summary', 'runId', 'jobId', 'sessionId', 'confirmRunId', 'mode', 'followIntervalSeconds', 'maxCycles', 'execute', 'deferStart', 'stopTerminalSessions', 'founderApprovedTeardown', 'sessionLineLimit', 'owner', 'nonce', 'now', 'ttlMs', 'staleMs', 'timeoutMs', 'thresholdDays', 'maxChars', 'maxEntries', 'maxEntryLines', 'maxEntryChars', 'allowLive', 'cdpUrl', 'socketName', 'socketPath', 'lane', 'lanes', 'message', 'command', 'tmuxBin', 'noSession', 'supersededLane', 'resolvingLane', 'basis', 'findings', 'evidence', 'id', 'createdBy', 'personaPaths', 'sessionLog', 'topologyOption', 'requiredPersonas', 'autoAttachAddedLanes', 'workspaceSlug', 'developerMode', 'allowConcurrentPriorityRun'].includes(key)) args[key] = next;
       index += 1;
     }
   }
