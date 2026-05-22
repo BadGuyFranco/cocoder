@@ -1,0 +1,504 @@
+import assert from 'node:assert/strict';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import test from 'node:test';
+import { collectDebugEvidence, followDebuggerEvidence, prepareDebuggerSession, resolveRunDir } from '../lib/debugger.mjs';
+
+const repoRoot = path.resolve(process.cwd(), '../..');
+const testScratchPrefix = path.join(repoRoot, 'packages/core/tests/.tmp-debugger-');
+
+test('debugger resolves run suffixes and writes a Codex audit prompt', async () => {
+  const fixture = await createDebugFixture();
+  try {
+    const result = await prepareDebuggerSession({
+      repoRoot: fixture.repoRoot,
+      runsDir: fixture.runsDir,
+      debuggerRunsDir: fixture.debuggerRunsDir,
+      sessionId: 'abc123',
+      mode: 'follow',
+      followIntervalSeconds: 15
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.runDir, fixture.runDir);
+    assert.ok(result.promptPath.startsWith(fixture.debuggerRunsDir));
+    assert.ok(result.evidenceBundlePath.startsWith(fixture.debuggerRunsDir));
+
+    const prompt = await readFile(result.promptPath, 'utf8');
+    assert.match(prompt, /CoCoder Orchestrator Debugger/);
+    assert.match(prompt, /review_mode: follow/);
+    assert.match(prompt, /Follow Mode/);
+    assert.match(prompt, /offer the concrete fix path for every confirmed orchestration issue/);
+    assert.match(prompt, /state the exact source\/test\/operational repair/);
+    assert.match(prompt, /Do you want me to apply the recommended orchestration fixes/);
+    assert.match(prompt, /edit only `cocoder\/\*\*`/);
+    assert.match(prompt, /Debugger Git Authority/);
+    assert.match(prompt, /COCODER_ORCH_DEBUGGER_GIT_WRITE=true/);
+    assert.match(prompt, /ORCH DEBUGGER\.command` always launches Codex with git authority enabled/);
+    assert.match(prompt, /exports `COCODER_ORCH_DEBUGGER_GIT_WRITE=true`/);
+    assert.match(prompt, /Stage exact paths only/);
+    assert.match(prompt, /Target Run Binding/);
+    assert.match(prompt, /bound only to `session_id: abc123`/);
+    assert.match(prompt, /target_run_id: run-20260517T193221Z-abc123/);
+    assert.match(prompt, /Do not switch target runs/);
+    assert.match(prompt, /concurrency\.otherSessions/);
+    assert.match(prompt, /Target: abc123/);
+    assert.match(prompt, /targetSessionId/);
+    assert.match(prompt, /targetRunDir/);
+    assert.match(prompt, /evidence_bundle:/);
+    assert.match(prompt, /visible pane composer text as ambiguous/);
+    assert.match(prompt, /send-message` helper clears the target input line with `tmux send-keys C-u`/);
+    assert.match(prompt, /Oscar-bootstrap routes/);
+    assert.match(prompt, /topology-decision\.json/);
+    assert.match(prompt, /debugger tmux send\/intervention attempt fails/);
+    assert.match(prompt, /observe-only/);
+
+    const wrapper = await readFile(result.wrapperPath, 'utf8');
+    assert.match(wrapper, /COCODER_ORCH_DEBUGGER_GIT_WRITE/);
+    assert.match(wrapper, /CODEX_SANDBOX="workspace-write"/);
+    assert.match(wrapper, /CODEX_SANDBOX="danger-full-access"/);
+    assert.match(wrapper, /--sandbox "\$CODEX_SANDBOX"/);
+    assert.match(wrapper, /watch-debugger-evidence/);
+    assert.match(wrapper, /COCODER_ORCH_DEBUGGER_FOLLOW_COLLECTOR/);
+
+    const bundle = JSON.parse(await readFile(result.evidenceBundlePath, 'utf8'));
+    assert.equal(bundle.mode, 'follow');
+    assert.equal(bundle.followIntervalSeconds, 15);
+    assert.equal(bundle.debuggerRuntime.sendMessage.clearsInputBeforePaste, true);
+    assert.match(bundle.debuggerRuntime.sendMessage.clearCommand, /C-u/);
+    assert.match(bundle.debuggerRuntime.sendMessage.paneTextGuidance, /ambiguous evidence/);
+    assert.match(bundle.debuggerRuntime.intervention.blockedSendGuidance, /observe-only/);
+    assert.equal(bundle.debug.followCollector.enabled, true);
+    assert.match(bundle.debug.followCollector.latestPath, /latest-evidence-bundle\.json$/);
+    assert.equal(bundle.run.launch.runId, 'run-20260517T193221Z-abc123');
+    assert.equal(bundle.run.topologyDecisionPath.endsWith('topology-decision.json'), true);
+    assert.equal(bundle.targetRun.sessionId, 'abc123');
+    assert.equal(bundle.targetRun.runId, 'run-20260517T193221Z-abc123');
+    assert.equal(bundle.targetRun.priority, 'DOCS-REBUILD');
+    assert.equal(bundle.targetRun.status, 'running');
+    assert.deepEqual(bundle.targetPanes, bundle.panes);
+    assert.ok(Array.isArray(bundle.concurrency.otherSessions));
+    assert.equal(bundle.jobs[0].lane, 'oscar');
+    assert.equal(bundle.noSession, undefined);
+    assert.ok(bundle.resultConsistency);
+    assert.ok(bundle.launchPreflight);
+    assert.ok(bundle.adapterProbes);
+    assert.ok(bundle.concurrency);
+    assert.equal(bundle.issues.some((issue) => issue.code === 'invalid-result-status'), true);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test('debugger collects topology decisions for bootstrap add-lane runs', async () => {
+  const topologyDecision = {
+    version: 1,
+    status: 'accepted',
+    topologyOptionId: 'primitive-authoring',
+    requestedLanes: ['phil'],
+    checks: {
+      routePolicy: 'pass',
+      profileAndAdapter: 'pass',
+      priorityBoundary: 'pass',
+      gitCapability: 'pass',
+      gitState: 'pass',
+      laneArtifacts: 'written'
+    }
+  };
+  const fixture = await createDebugFixture({
+    sessions: [{
+      lane: 'oscar',
+      persona: 'oscar',
+      adapter: 'claude',
+      sessionName: 'fixture-oscar',
+      displayLabel: '[Oscar] [claude] [fixture-oscar]'
+    }],
+    launchExtra: {
+      route: {
+        id: 'claude-oscar-dynamic',
+        lead: 'oscar',
+        initialLanes: ['oscar'],
+        topologyOptions: [{
+          id: 'primitive-authoring',
+          lanes: ['oscar', 'phil'],
+          requiredPersonas: ['phil']
+        }]
+      }
+    },
+    topologyDecision
+  });
+  try {
+    const bundle = await collectDebugEvidence({
+      repoRoot: fixture.repoRoot,
+      runDir: fixture.runDir,
+      sessionId: 'run-20260517T193221Z-abc123',
+      tmuxBin: '/bin/false'
+    });
+
+    assert.equal(bundle.run.topologyDecision.status, 'accepted');
+    assert.equal(bundle.run.topologyDecision.topologyOptionId, 'primitive-authoring');
+    assert.deepEqual(bundle.run.topologyDecision.requestedLanes, ['phil']);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test('follow collector writes latest evidence and stops for terminal runs', async () => {
+  const fixture = await createDebugFixture({
+    status: {
+      status: 'complete',
+      terminal: true,
+      reason: 'fixture terminal'
+    },
+    sessions: [{
+      lane: 'oscar',
+      persona: 'oscar',
+      adapter: 'codex',
+      sessionName: 'fixture-oscar',
+      displayLabel: '[Oscar] [codex] [fixture-oscar]'
+    }]
+  });
+  try {
+    const fakeTmux = path.join(fixture.tmp, 'fake-tmux.sh');
+    await writeFile(fakeTmux, [
+      '#!/usr/bin/env bash',
+      'if [ "$1" = "-L" ] && [ "$3" = "capture-pane" ]; then',
+      '  printf "fixture pane for $8\\n"',
+      'elif [ "$1" = "-L" ] && [ "$3" = "list-sessions" ]; then',
+      '  printf "fixture-oscar\\t1\\t0\\n"',
+      'elif [ "$1" = "-L" ] && [ "$3" = "list-panes" ]; then',
+      '  printf "fixture-oscar\\tnode\\t%s\\t0\\n" "$PWD"',
+      'else',
+      '  exit 0',
+      'fi',
+      ''
+    ].join('\n'), { mode: 0o755 });
+
+    const debugDir = path.join(fixture.tmp, 'debugger');
+    const result = await followDebuggerEvidence({
+      repoRoot: fixture.repoRoot,
+      runDir: fixture.runDir,
+      sessionId: 'run-20260517T193221Z-abc123',
+      debugDir,
+      tmuxBin: fakeTmux,
+      followIntervalSeconds: 1,
+      maxCycles: 3
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.reason, 'run reached terminal status');
+    assert.equal(result.cycles, 1);
+
+    const latest = JSON.parse(await readFile(path.join(debugDir, 'follow', 'latest-evidence-bundle.json'), 'utf8'));
+    assert.equal(latest.run.status.status, 'complete');
+    assert.equal(latest.targetRun.sessionId, 'run-20260517T193221Z-abc123');
+    assert.equal(latest.targetRun.terminal, true);
+    assert.equal(latest.panes[0].ok, true);
+    assert.equal(latest.followCollector.cycle, 1);
+
+    const status = JSON.parse(await readFile(path.join(debugDir, 'follow', 'collector-status.json'), 'utf8'));
+    assert.equal(status.status, 'stopped');
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test('follow collector publishes latest before exposing each snapshot', async () => {
+  const fixture = await createDebugFixture({
+    sessions: [{
+      lane: 'oscar',
+      persona: 'oscar',
+      adapter: 'codex',
+      sessionName: 'fixture-oscar',
+      displayLabel: '[Oscar] [codex] [fixture-oscar]'
+    }]
+  });
+  try {
+    const fakeTmux = path.join(fixture.tmp, 'fake-tmux.sh');
+    await writeFile(fakeTmux, [
+      '#!/usr/bin/env bash',
+      'if [ "$1" = "-L" ] && [ "$3" = "capture-pane" ]; then',
+      '  printf "fixture pane for $8\\n"',
+      'elif [ "$1" = "-L" ] && [ "$3" = "list-sessions" ]; then',
+      '  printf "fixture-oscar\\t1\\t0\\n"',
+      'elif [ "$1" = "-L" ] && [ "$3" = "list-panes" ]; then',
+      '  printf "fixture-oscar\\tnode\\t%s\\t0\\n" "$PWD"',
+      'else',
+      '  exit 0',
+      'fi',
+      ''
+    ].join('\n'), { mode: 0o755 });
+
+    const debugDir = path.join(fixture.tmp, 'debugger');
+    const result = await followDebuggerEvidence({
+      repoRoot: fixture.repoRoot,
+      runDir: fixture.runDir,
+      sessionId: 'run-20260517T193221Z-abc123',
+      debugDir,
+      tmuxBin: fakeTmux,
+      followIntervalSeconds: 1,
+      maxCycles: 2
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.reason, 'max cycles reached');
+    assert.equal(result.cycles, 2);
+
+    const latestPath = path.join(debugDir, 'follow', 'latest-evidence-bundle.json');
+    const latest = JSON.parse(await readFile(latestPath, 'utf8'));
+    const latestSnapshot = JSON.parse(await readFile(latest.followCollector.lastSnapshotPath, 'utf8'));
+
+    assert.equal(latest.followCollector.cycle, 2);
+    assert.equal(latestSnapshot.followCollector.cycle, 2);
+    assert.equal(latest.collectedAt, latestSnapshot.collectedAt);
+    assert.equal(latest.followCollector.latestPath, latestPath);
+    assert.match(latest.followCollector.lastSnapshotPath, /follow\/snapshots\/evidence-\d+T\d+Z\.json$/);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test('debugger can prepare a no-session launch-failure prompt', async () => {
+  const tmp = await mkdtemp(testScratchPrefix);
+  try {
+    const noSessionRepo = path.join(tmp, 'repo');
+    const runsDir = path.join(noSessionRepo, 'cocoder', 'runs');
+    const debuggerRunsDir = path.join(noSessionRepo, 'cocoder', 'debug-runs');
+    await mkdir(path.join(noSessionRepo, '.git'), { recursive: true });
+    await mkdir(runsDir, { recursive: true });
+
+    const result = await prepareDebuggerSession({
+      repoRoot: noSessionRepo,
+      runsDir,
+      debuggerRunsDir,
+      noSession: true,
+      mode: 'launch-failure',
+      tmuxBin: '/bin/false'
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.noSession, true);
+    assert.equal(result.sessionId, 'NO-SESSION');
+    assert.equal(result.runDir, null);
+
+    const prompt = await readFile(result.promptPath, 'utf8');
+    assert.match(prompt, /no_session: true/);
+    assert.match(prompt, /no-session debugger is bound to `session_id: NO-SESSION`/);
+    assert.match(prompt, /No-Session Mode/);
+    assert.match(prompt, /launchPreflight/);
+
+    const bundle = JSON.parse(await readFile(result.evidenceBundlePath, 'utf8'));
+    assert.equal(bundle.noSession, true);
+    assert.equal(bundle.runDir, null);
+    assert.equal(bundle.targetRun.sessionId, 'NO-SESSION');
+    assert.equal(bundle.targetRun.runDir, null);
+    assert.deepEqual(bundle.targetPanes, []);
+    assert.ok(bundle.launchPreflight);
+    assert.ok(bundle.adapterProbes);
+    assert.ok(bundle.concurrency);
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('debugger run resolver rejects ambiguous partial ids', async () => {
+  const tmp = await mkdtemp(testScratchPrefix);
+  try {
+    const runsDir = path.join(tmp, 'runs');
+    await mkdir(path.join(runsDir, 'run-one-shared'), { recursive: true });
+    await mkdir(path.join(runsDir, 'run-two-shared'), { recursive: true });
+    await assert.rejects(() => resolveRunDir({ runsDir, sessionId: 'shared' }), /Multiple orchestration runs match/);
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('debugger root check ignores ellipsized pane display paths', async () => {
+  const fixture = await createDebugFixture({
+    sessions: [{
+      lane: 'bob',
+      persona: 'bob',
+      adapter: 'codex',
+      sessionName: 'missing-session',
+      displayLabel: '[Bob] [codex] [missing-session]'
+    }]
+  });
+  try {
+    const fakeTmux = path.join(fixture.tmp, 'fake-tmux.sh');
+    await writeFile(fakeTmux, [
+      '#!/usr/bin/env bash',
+      'printf "directory: /Volumes/.../CoCoder │\\n"',
+      ''
+    ].join('\n'), { mode: 0o755 });
+
+    const bundle = await collectDebugEvidence({
+      repoRoot: fixture.repoRoot,
+      runDir: fixture.runDir,
+      sessionId: 'run-20260517T193221Z-abc123',
+      tmuxBin: fakeTmux
+    });
+
+    assert.equal(bundle.rootCheck.ok, true);
+    assert.equal(bundle.issues.some((issue) => issue.code === 'root-mismatch'), false);
+    assert.equal(bundle.rootCheck.roots.some((entry) => entry.source === 'pane.bob'), false);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test('debugger root check normalizes shell-escaped pane display paths', async () => {
+  const fixtureRoot = path.join(repoRoot, 'packages/core/tests/.tmp-debugger-root with space/infrastructure');
+  const fixture = await createDebugFixture({
+    repoRoot: fixtureRoot,
+    sessions: [{
+      lane: 'oscar',
+      persona: 'oscar',
+      adapter: 'claude',
+      sessionName: 'escaped-session',
+      displayLabel: '[Oscar] [claude] [escaped-session]'
+    }]
+  });
+  try {
+    const fakeTmux = path.join(fixture.tmp, 'fake-tmux.sh');
+    await writeFile(fakeTmux, [
+      '#!/usr/bin/env bash',
+      `printf "directory: ${fixtureRoot.replaceAll(' ', '\\\\ ')}\\n"`,
+      ''
+    ].join('\n'), { mode: 0o755 });
+
+    const bundle = await collectDebugEvidence({
+      repoRoot: fixtureRoot,
+      runDir: fixture.runDir,
+      sessionId: 'run-20260517T193221Z-abc123',
+      tmuxBin: fakeTmux
+    });
+
+    assert.equal(bundle.rootCheck.ok, true);
+    assert.equal(bundle.issues.some((issue) => issue.code === 'root-mismatch'), false);
+    assert.equal(bundle.rootCheck.roots.some((entry) => entry.source === 'pane.oscar'), true);
+  } finally {
+    await fixture.cleanup();
+    await rm(path.join(repoRoot, 'packages/core/tests/.tmp-debugger-root with space'), { recursive: true, force: true });
+  }
+});
+
+test('debugger flags run/result/markdown status mismatches', async () => {
+  const fixture = await createDebugFixture({
+    sessions: [{
+      lane: 'oscar',
+      persona: 'oscar',
+      adapter: 'codex',
+      sessionName: 'missing-session',
+      displayLabel: '[Oscar] [codex] [missing-session]'
+    }],
+    status: {
+      status: 'needs_founder',
+      reason: 'fixture mismatch',
+      jobs: {
+        oscar: { status: 'PASS' }
+      }
+    },
+    resultStatus: 'NEEDS_FOUNDER',
+    resultMarkdown: '**Status:** PASS\n'
+  });
+  try {
+    const bundle = await collectDebugEvidence({
+      repoRoot: fixture.repoRoot,
+      runDir: fixture.runDir,
+      sessionId: 'run-20260517T193221Z-abc123',
+      tmuxBin: '/bin/false'
+    });
+
+    const issueCodes = bundle.issues.map((issue) => issue.code);
+    assert.equal(issueCodes.includes('run-status-job-result-mismatch'), true);
+    assert.equal(issueCodes.includes('markdown-result-status-mismatch'), true);
+    assert.equal(issueCodes.includes('mixed-pass-needs-founder-results'), true);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test('debugger flags panes blocked on interactive picker UI', async () => {
+  const fixture = await createDebugFixture({
+    sessions: [{
+      lane: 'oscar',
+      persona: 'oscar',
+      adapter: 'claude',
+      sessionName: 'fixture-oscar',
+      displayLabel: '[Oscar] [claude] [fixture-oscar]'
+    }],
+    resultStatus: 'PASS'
+  });
+  try {
+    const fakeTmux = path.join(fixture.tmp, 'fake-tmux.sh');
+    await writeFile(fakeTmux, [
+      '#!/usr/bin/env bash',
+      'if [ "$1" = "-L" ] && [ "$3" = "capture-pane" ]; then',
+      '  printf "Which sub-atom should Oscar dispatch next?\\n"',
+      '  printf "1. talia-F2b harness mirror\\n"',
+      '  printf "2. a4-m1 packet\\n"',
+      '  printf "4. Type something.\\n"',
+      '  printf "5. Chat about this\\n"',
+      '  printf "Enter to select . up/down to navigate . Esc to cancel\\n"',
+      'elif [ "$1" = "-L" ] && [ "$3" = "list-sessions" ]; then',
+      '  printf "fixture-oscar\\t1\\t0\\n"',
+      'elif [ "$1" = "-L" ] && [ "$3" = "list-panes" ]; then',
+      '  printf "fixture-oscar\\tnode\\t%s\\t0\\n" "$PWD"',
+      'else',
+      '  exit 0',
+      'fi',
+      ''
+    ].join('\n'), { mode: 0o755 });
+
+    const bundle = await collectDebugEvidence({
+      repoRoot: fixture.repoRoot,
+      runDir: fixture.runDir,
+      sessionId: 'run-20260517T193221Z-abc123',
+      tmuxBin: fakeTmux
+    });
+
+    const pickerIssue = bundle.issues.find((issue) => issue.code === 'pane-interactive-picker');
+    assert.equal(pickerIssue?.severity, 'block');
+    assert.match(pickerIssue.detail, /forbidden interactive question UI/);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+async function createDebugFixture(options = {}) {
+  const tmp = await mkdtemp(testScratchPrefix);
+  const fixtureRepoRoot = options.repoRoot || path.join(tmp, 'repo');
+  const runsDir = path.join(tmp, 'runs');
+  const debuggerRunsDir = path.join(tmp, 'debug-runs');
+  const runDir = path.join(runsDir, 'run-20260517T193221Z-abc123');
+  const oscarJob = path.join(runDir, 'jobs', 'oscar');
+  await mkdir(path.join(fixtureRepoRoot, '.git'), { recursive: true });
+  await mkdir(oscarJob, { recursive: true });
+  await writeFile(path.join(runDir, 'launch.json'), `${JSON.stringify({
+    runId: 'run-20260517T193221Z-abc123',
+    runDir,
+    cwd: fixtureRepoRoot,
+    socketName: 'cocoder-orchestration',
+    sessions: options.sessions || [],
+    ...(options.launchExtra || {})
+  }, null, 2)}\n`);
+  if (options.topologyDecision) {
+    await writeFile(path.join(runDir, 'topology-decision.json'), `${JSON.stringify(options.topologyDecision, null, 2)}\n`);
+  }
+  await writeFile(path.join(runDir, 'startup-packet.json'), `${JSON.stringify({ repoRoot: fixtureRepoRoot, selectedPriority: { slug: 'DOCS-REBUILD' } }, null, 2)}\n`);
+  await writeFile(path.join(runDir, 'status.json'), `${JSON.stringify(options.status || { status: 'running', reason: 'fixture' }, null, 2)}\n`);
+  await writeFile(path.join(oscarJob, 'prompt.md'), 'fixture prompt\n');
+  await writeFile(path.join(oscarJob, 'result.json'), `${JSON.stringify({ status: options.resultStatus || 'PAUSED', persona: 'oscar' }, null, 2)}\n`);
+  if (options.resultMarkdown !== undefined) {
+    await writeFile(path.join(oscarJob, 'result.md'), options.resultMarkdown);
+  }
+
+  return {
+    repoRoot: fixtureRepoRoot,
+    runsDir,
+    debuggerRunsDir,
+    runDir,
+    tmp,
+    cleanup: () => rm(tmp, { recursive: true, force: true })
+  };
+}
