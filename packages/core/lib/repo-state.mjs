@@ -3,7 +3,23 @@ import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 
-const DURABLE_ORCHESTRATION_PREFIX = 'cocoder/';
+// Durable orchestration surfaces. A staged change to any of these mid-run is
+// a signal to the finalizer that the runtime state is in flux and the run
+// should not auto-close.
+//
+// `cocoder/` covers the workspace meta-project (priorities, ADRs, plans,
+// session log, tickets, memory, standards, custom personas).
+//
+// `packages/core/` covers the extracted orchestration runtime itself (lib,
+// adapters, contracts, checks, scripts, tests, cli.mjs). Audit §4 E2.2e.5
+// surfaced the gap: a staged change to `packages/core/cli.mjs` was not
+// detected as durable-orchestration dirt because the runtime extraction
+// from upstream kept only the workspace-meta prefix (`cocoder/`) here. The
+// upstream analog's prefix covers the equivalent runtime surface.
+const DURABLE_ORCHESTRATION_PREFIXES = [
+  'cocoder/',
+  'packages/core/'
+];
 const RUN_LOCAL_ARTIFACT_PREFIXES = [
   'cocoder/runs/',
   'cocoder/debug-runs/',
@@ -24,7 +40,7 @@ export async function auditDirtyDurableOrchestrationState({
       '--porcelain=v1',
       '--untracked-files=all',
       '--',
-      DURABLE_ORCHESTRATION_PREFIX
+      ...DURABLE_ORCHESTRATION_PREFIXES
     ]);
   } catch (error) {
     return {
@@ -95,8 +111,9 @@ export async function auditAddLaneOrchestrationState({
 
 export function isDurableOrchestrationPath(filePath) {
   const normalized = normalizeRepoPath(filePath);
-  return normalized.startsWith(DURABLE_ORCHESTRATION_PREFIX)
-    && !RUN_LOCAL_ARTIFACT_PREFIXES.some((prefix) => normalized.startsWith(prefix));
+  const matchesDurable = DURABLE_ORCHESTRATION_PREFIXES.some((prefix) => normalized.startsWith(prefix));
+  if (!matchesDurable) return false;
+  return !RUN_LOCAL_ARTIFACT_PREFIXES.some((prefix) => normalized.startsWith(prefix));
 }
 
 export function parsePorcelainStatus(raw) {
