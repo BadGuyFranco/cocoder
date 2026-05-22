@@ -1,5 +1,7 @@
 # CoCoder
 
+> **Status:** v0.1 in progress — **not yet usable by adopters.** Foundation, dogfood orchestration, and audit-finding remediation are landing first; full personas, workspace template, Oz dashboard, and onboarding docs follow in Sub-Playbooks B, C, and D. See [`cocoder/PRIORITIES.md`](./cocoder/PRIORITIES.md) for the live state.
+
 CoCoder is an open, local-first AI coding orchestration framework for solo builders and small teams. It extracts the proven CoBuilder orchestration runtime into a reusable CLI, workspace structure, and local control plane.
 
 ## Mental Model
@@ -41,6 +43,12 @@ pnpm -F cocoder-cli build
 packages/cocoder-cli/bin/cocoder config get
 ```
 
+## Contributing
+
+CoCoder is solo-maintained early-stage OSS. Outside contributions are welcome on the terms documented in [`CONTRIBUTING.md`](./CONTRIBUTING.md). For open-ended questions and design discussions use [Discussions](https://github.com/BadGuyFranco/cocoder/discussions); for bugs and concrete proposals use [Issues](https://github.com/BadGuyFranco/cocoder/issues). For security reports see [`SECURITY.md`](./SECURITY.md) — never file a public issue for a vulnerability.
+
+Behavior expectations: [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md).
+
 ## License
 
-Apache-2.0. See [LICENSE](./LICENSE) and [NOTICE](./NOTICE).
+Apache-2.0. See [`LICENSE`](./LICENSE) and [`NOTICE`](./NOTICE). The orchestration core under `packages/core/` is mechanically extracted from upstream CoBuilder (independent OSS); attribution requirements live in `NOTICE`.

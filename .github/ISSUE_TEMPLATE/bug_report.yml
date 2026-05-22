@@ -1,0 +1,58 @@
+name: Bug report
+description: Something in CoCoder behaves differently than the docs/ADRs/Playbooks say it should.
+title: "[bug] "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. Before filing, please check the [open issues](https://github.com/BadGuyFranco/cocoder/issues) and [the active Playbook](https://github.com/BadGuyFranco/cocoder/blob/main/cocoder/PRIORITIES.md) — the bug may already be known.
+
+        **Do not file security issues here.** Use [the security advisory form](https://github.com/BadGuyFranco/cocoder/security/advisories/new) or email security@francoinc.com.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear, concrete description of the unexpected behavior.
+      placeholder: "When I ran `cocoder ...`, I expected X, but got Y."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: The exact commands and environment that surface the bug. Include the `cocoder` invocation, working directory shape, and any relevant `cocoder/profiles` or `cocoder/routes` contents.
+      placeholder: |
+        1. `cd /path/to/my/repo`
+        2. `cocoder ...`
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What the docs, ADRs, or your own mental model said should happen instead.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Output of `node --version`, `pnpm --version`, your macOS version, and the CoCoder commit SHA (`git rev-parse --short HEAD`).
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Run evidence
+      description: If the bug is in an orchestrated run, paste the relevant `local/workspaces/<slug>/runs/<run-id>/jobs/<lane>/result.json` (redact anything sensitive). For CLI bugs, paste the full stderr/stdout.
+      render: shell
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      options:
+        - label: I have read and agree to follow the [Code of Conduct](https://github.com/BadGuyFranco/cocoder/blob/main/CODE_OF_CONDUCT.md).
+          required: true
