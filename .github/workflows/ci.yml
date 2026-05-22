@@ -23,6 +23,16 @@ jobs:
       - run: pnpm -r test
       - run: pnpm -F core test config-resolver
       - run: node packages/core/cli.mjs validate-contracts
+      # Documented-invocation parity smoke test. The 2026-05-22 cocoder-cli
+      # bin-symlink miss surfaced post-merge because the documented
+      # `pnpm exec cocoder ...` form was never CI-tested — the previous
+      # validate-contracts line above bypasses the wrapper by invoking core
+      # directly. Build the TS wrapper, then verify the documented
+      # invocation form actually resolves through the bin symlink + dist.
+      - name: Build TS CLI wrapper
+        run: pnpm -F cocoder-cli build
+      - name: Documented invocation parity (pnpm exec cocoder)
+        run: pnpm exec cocoder validate-contracts
       - name: Stale-reference gate (audit §M12 / M4.15)
         run: |
           set -e
