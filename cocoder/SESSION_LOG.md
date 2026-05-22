@@ -14,6 +14,22 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-22 (Late Morning) — **Git initialized + pushed to GitHub**
+
+**Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** N/A (operational)
+
+**Outcomes:**
+- **GitHub repo live:** [`BadGuyFranco/cocoder`](https://github.com/BadGuyFranco/cocoder) — **private**, default branch `main`, single initial commit `af107a3` covering everything tracked-by-design through 2026-05-22 (Sub-Playbook A foundation + M4 work, Sub-Playbook E Solve + E3.3 + Refine + 4 audit §4 ports, 5 core bug fixes + regression tests, ADRs 0001-0006, dogfood config). 169 files / 23,740 insertions.
+- **Root `.gitignore` shadowing bug found + fixed during the init**: the line `local/` was matching `cocoder/local/` at any depth, hiding the tracked inner `README.md` + `.gitignore` per ARCHITECTURE.md ignore matrix. Anchored to `/local/` so root install-private state stays ignored while the workspace-zone narrow-private dir's tracked files remain visible. The comment in the .gitignore had been warning about this exact failure mode but the fix wasn't applied; it is now.
+- **Local git identity** set on the repo only (not global, per safety protocol): `Anthony Franco <anthony@francoinc.com>`.
+- **Sensitive-file safety check** ran twice (pre- and post-`git add .`); zero hits on `*.env`, `secrets/`, `local/`, credential paths. The one path that triggered the substring filter, `packages/core/quinn/credentials.mjs`, is a credentials LOADER (reads at runtime from an untracked JSON file), not a credentials file. Safe.
+- **gh CLI was already authenticated** as `BadGuyFranco` with `repo` + `workflow` scopes via keyring; no new auth required.
+- **Future commits per founder's option-1 preference** (audit-finding closures separate from dogfood ramp deliverables) start with the NEXT change set — the initial commit is one consolidated baseline since nothing before this point was version-controlled.
+
+**Resume cue / Next:** All session work is now in git and pushed. The next session can pick any of: (a) continue audit §4 ports with founder supervision on `launch.test.mjs` (E2.2e.5, "largest single port", 52 tests); (b) start Sub-Playbook B (full persona library + workspace template — now unblocked); (c) finish Sub-Playbook A M4 free-wins (M4.5-M4.14, M4.16-M4.21). Each future change set should land as its own commit. CI workflow at `.github/workflows/ci.yml` will run on the first PR opened against this remote.
+
+---
+
 ## 2026-05-22 (Late Morning, autonomous extension) — **Two more audit §4 ports closed via proven orchestration loop**
 
 **Persona:** AI (Bob orchestrating Talia, autonomous chained batch while founder elsewhere) | **Priority:** v0.1-foundation | **Plan:** Sub-Playbook A audit §4 port-first list (executing via the proven Sub-Playbook E orchestration loop)
