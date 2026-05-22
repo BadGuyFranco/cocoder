@@ -1,6 +1,6 @@
 # Sub-Playbook A — CoCoder Foundation: skeleton, config survival, install prefs, core extraction
 
-**Created:** 2026-05-21 | **Updated:** 2026-05-22 (audit-driven Refine; Milestone M4 added)
+**Created:** 2026-05-21 | **Updated:** 2026-05-22 (audit-driven Refine; Milestone M4 added; 4 of 12 E2.2e port-first files closed via Sub-Playbook E orchestration; repo published)
 **Type:** One-time
 **Collaboration:** Collaborative
 **Status:** Active (Refine — audit remediation in progress)
