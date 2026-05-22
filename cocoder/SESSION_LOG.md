@@ -14,6 +14,53 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-22 (Afternoon) — **Session close — launch.test.mjs landed; v0.2 adapter-extensibility priority drafted**
+
+**Persona:** AI (Bob) + Founder | **Priority:** v0.1-foundation + v0.2-adapter-extensibility (Draft) | **Plan:** N/A (session close)
+
+**Outcomes:**
+- **PR #3 merged** (`feat(launch): port audit §4 E2.2e.5 launch.test.mjs + close 4 product bugs`). Talia ported the 2,597-line CoBuilder source 1:1 (55 test names preserved); the port immediately surfaced 5 failing assertions = 4 distinct product-code gaps (audit §B4 prediction realized). All 4 fixes landed in the same PR + are now on `main`:
+  - `renderAttachAddedLanesScript` hardened to use `tmux list-clients` TTY targeting + iTerm session iteration instead of `set baseWindow to current window` (which hijacked whatever iTerm window was focused).
+  - `DURABLE_ORCHESTRATION_PREFIXES` extended from `['cocoder/']` to `['cocoder/', 'packages/core/']` so finalize-with-dirty correctly detects staged changes to the runtime, not just to the workspace meta-project.
+  - `activeRunPreflight` + `findActiveRunsForPriority` ported from upstream — launch now refuses a second non-terminal run for the same priority+route with code `active-priority-run-exists`.
+  - `--allow-concurrent-priority-run true` CLI flag threaded through `parseArgs` allow-list + the `launch` handler; sets `activeRunPreflight.override: true`.
+- **Test count: 110 → 165** (+55 from `launch.test.mjs`). Audit §4 port-first list progress: **5 of 12 closed** (E2.2e.1 `core.test.mjs`, E2.2e.2 `dispatch.test.mjs`, E2.2e.3 `adapters.test.mjs`, E2.2e.4 `composition.test.mjs`, E2.2e.5 `launch.test.mjs`).
+- **New priority drafted: `v0.2-adapter-extensibility`** at [`cocoder/priorities/v0.2-adapter-extensibility/README.md`](./priorities/v0.2-adapter-extensibility/README.md). Founder asked mid-session about Cursor SDK + cloud Kimi K2.6 — the adapter system today assumes `kind: llm-cli` (local tmux-driven CLI), which works for 5 existing CLIs (Claude Code, Codex, Grok, Gemini, Kimi-CLI) but doesn't fit cloud APIs or managed remote sessions. The new priority stakes out the design space: enum `llm-cli` / `llm-api` / `llm-managed-session` / `script` with per-kind runner contracts. Sequenced **after v0.1-foundation ships** (depends on Sub-Playbook C Oz dashboard for non-pane lane visibility). Status: Draft.
+- **First successful exercise of the auto-merge protocol on real code**: PR #3 was on the manual-merge hold list (`launch.test.mjs` specifically); founder approved + I merged via `gh pr merge 3 --admin --squash --delete-branch`.
+- **In-flight orchestrator-commit.test.mjs port paused before launch**: the new `active-priority-run-exists` preflight (from this same PR) caught 2 stale non-terminal runs in `local/workspaces/cocoder-dogfood/runs/` (`run-20260522T135114Z-2a946tah` — the Refine dry-render; `run-20260522T160453Z-nsluixnb` — the adapters port NEEDS_FOUNDER). This is the feature working as designed — the next session can either clean those run dirs (gitignored, no loss) or pass `--allow-concurrent-priority-run true`.
+
+**Resume cue / Next session (start cold):**
+
+1. **State of the world.** Branch: `main` (clean after this session-close PR merges). Test count: 165/165 pass. 5 of 12 audit §4 ports closed. Auto-merge protocol active (see memory: `cocoder-auto-merge-protocol`).
+2. **Recommended next action: continue chaining audit §4 ports.** The orchestration loop is now battle-tested across 5 distinct runs; the founder approved auto-merge for the remaining 7 ports (E2.2e.6–E2.2e.12). To kick off port #6 (`orchestrator-commit.test.mjs`):
+   ```sh
+   cd "/Volumes/NAS LOCAL/CoCoder"
+   # Option A: clean stale runs first (recommended; gitignored zone)
+   rm -rf local/workspaces/cocoder-dogfood/runs/run-20260522T135114Z-2a946tah \
+          local/workspaces/cocoder-dogfood/runs/run-20260522T160453Z-nsluixnb
+   git checkout -b feat/port-orchestrator-commit-test
+   # PRIORITIES.md "Active task" already points at orchestrator-commit (set in this session-close PR).
+   pnpm exec cocoder launch \
+     --profile cocoder/profiles/cocoder-dogfood.profile.json \
+     --route cocoder/routes/dogfood-port-tests.json \
+     --priority-slug v0.1-foundation \
+     --workspace-root "/Volumes/NAS LOCAL/CoCoder" \
+     --workspace-slug cocoder-dogfood \
+     --developer-mode \
+     --execute true
+   # Then: watch the background watcher fire, validate Talia + Bob results, open PR, auto-merge.
+   ```
+   (Option B if you don't want to clean: add `--allow-concurrent-priority-run true` to the launch command. Less clean.)
+3. **Alternative routes** if the audit §4 ports feel done enough for now:
+   - **Sub-Playbook B (adopter onboarding):** workspace template + `cocoder init` + getting-started docs. Highest-leverage move for actual adopters.
+   - **Sub-Playbook A free-wins:** M4.5–M4.14, M4.16–M4.21 in [`priorities/v0.1-foundation/plans/2026-05-21-foundation.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-foundation.plan.md). Mostly small remediations.
+   - **Sub-Playbook C (Oz):** still gated on Sub-Playbook A close + B Solve, but the architectural scaffolding is in place.
+4. **What's NOT next:** the new `v0.2-adapter-extensibility` priority. That's deliberately deferred — see its README §Preconditions.
+
+**Founder bandwidth context:** founder is shifting from "build cocoder" mode to "use cocoder" mode — they want to start running the orchestration loop on real work, not just on test ports. The next-session pickup should treat that as the operating model: each port (or other task) is a normal PR-flow workstream, not a high-touch setup project.
+
+---
+
 ## 2026-05-22 (Late Morning) — **Git initialized + pushed to GitHub**
 
 **Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** N/A (operational)
