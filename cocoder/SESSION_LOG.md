@@ -14,6 +14,40 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-22 (Late Morning) — **Repo flipped to public + community machinery added**
+
+**Persona:** AI (Bob) + Founder | **Priority:** v0.1-foundation | **Plan:** N/A (operational; pulls a thin slice of Sub-Playbook D public-readiness forward)
+
+**Outcomes:**
+- **Repo is now PUBLIC** at https://github.com/BadGuyFranco/cocoder. Community health score 100% per `gh api /community/profile`. This pulls a small slice of Sub-Playbook D's public-readiness work forward (the rest — stranger test, full getting-started doc, dependency check — stays in D).
+- **Pre-flight gitleaks scan** ran clean against the full git history (no leaks found, 1.11 MB scanned). No secrets in any commit.
+- **Community files added** in commit `fa3ac88` (`docs: add community files for public-OSS readiness`):
+  - `.github/ISSUE_TEMPLATE/config.yml` — disables blank issues, routes Q&A to Discussions, routes security to the advisory form / `security@francoinc.com`.
+  - `.github/ISSUE_TEMPLATE/bug_report.yml` — structured bug-report form matching CoCoder's evidence-class conventions.
+  - `.github/ISSUE_TEMPLATE/feature_request.yml` — concrete-proposal form mirroring ADR Alternatives-Considered.
+  - `.github/pull_request_template.md` — review checklist (tests, doc updates, write-boundary integrity, CoBuilder leakage gates).
+  - `SECURITY.md` — private vulnerability reporting policy, scope/out-of-scope, expectations, user hardening notes for the Oz daemon's local-only threat model.
+  - README.md polished with an explicit "v0.1 — not yet usable by adopters" status banner and Contributing / Issues / Discussions links.
+  - CONTRIBUTING.md expanded from 12-line stub to a full contributor flow (orientation chain, change workflow, commit conventions, boundaries, review timing).
+  - NOTICE extended with the CoBuilder upstream attribution required by ADR-0001 §8 + ADR-0004's mechanical-extraction strategy.
+- **Repo settings configured via `gh api`:**
+  - **Topics:** ai, ai-agents, ai-coding, apache-2, developer-tools, nodejs, orchestration, typescript.
+  - **Merge defaults:** squash-only merges; merge commits + rebase merges disabled; auto-delete branches on merge.
+  - **Discussions:** enabled.
+  - **Private vulnerability reporting:** enabled (works alongside `SECURITY.md`).
+- **Branch protection on `main` (required after going public — wasn't available on private free-tier):**
+  - Require PR before merge; no direct pushes to main (even admins).
+  - Require CI status check `test` green (verified the check name from `gh api .../commits/main/check-runs`).
+  - Require 1 approving review (founder self-approves via GitHub UI for solo workflow).
+  - Dismiss stale reviews on new pushes; require conversation resolution before merge.
+  - Require linear history; disallow force pushes; disallow branch deletion.
+  - `enforce_admins: false` — admin can override in true emergencies; this matches the "Standard solo OSS" model the founder chose.
+- **Future workflow:** all changes (including the founder's own work) go through PR → CI → 1-approval → squash-merge. Direct pushes to `main` are now blocked at the GitHub side.
+
+**Resume cue / Next:** Repo is publicly viewable; contribution machinery is live. From here the natural next moves are: (a) continue audit §4 ports under the new PR workflow (the orchestration loop still works locally; it just writes to a feature branch + opens a PR); (b) start Sub-Playbook B (full persona library + workspace template — now unblocked + must follow the PR flow); (c) close Sub-Playbook E Final Check formally; (d) any follow-ups from the audit findings list. Sub-Playbook D's stranger test + full getting-started + dependency check remain its own scope.
+
+---
+
 ## 2026-05-22 (Late Morning) — **Git initialized + pushed to GitHub**
 
 **Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** N/A (operational)
