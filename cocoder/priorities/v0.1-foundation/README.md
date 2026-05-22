@@ -66,7 +66,7 @@ CoCoder v0.1 extracts CoBuilder's orchestration stack into a public, documented,
 | Sub-Playbook source documents | V1 (61 tasks, one document) violated WISER 3–5-task milestone ceiling and bundled four unrelated risks | Split into four sub-Playbooks; V1 archived |
 | CoBuilder orchestration core | Mature `.mjs` runtime with JSON contracts; ready for mechanical port (ADR-0004) | Sub-Playbook A handles extraction; no rewrite during port |
 | Decision records | ADRs 0001–0004 accepted; `decisions/README.md` index live | Sub-Playbooks reference ADRs by number, do not re-decide |
-| CoCoder repo current state (refreshed 2026-05-22 per audit §H10) | `packages/core`, `packages/cocoder-cli`, `packages/schemas` exist with extracted `.mjs` runtime + TS schemas; `docs/configuration.md` + `docs/oz-improvement-routing.md` exist; ADR-0005 accepted; Sub-Playbooks B/C/D not started | Sub-Playbook A is mid-Refine (audit remediation); B/C/D still gated on A close |
+| CoCoder repo current state (refreshed 2026-05-22 evening) | `packages/core`, `packages/cocoder-cli`, `packages/schemas` exist with extracted `.mjs` runtime + TS schemas; `docs/configuration.md` + `docs/oz-improvement-routing.md` exist; ADRs 0001–0006 accepted; Sub-Playbook E (Dogfood ramp) ran end-to-end with 4 autonomous orchestrated test ports closed (E2.2e.1–E2.2e.4); 110/110 tests pass; 5 core bugs surfaced + fixed by dogfooding; repo published to `BadGuyFranco/cocoder` (public, Apache-2.0) with branch protection + community machinery; Sub-Playbooks B/C/D not started | Sub-Playbook A is mid-Refine (audit remediation); Sub-Playbook E is Final-Check-ready; B/C/D still gated on A close |
 | Dogfood circularity | M8 (dogfood) requires `cocoder` binary to exist; tasks must order accordingly | Sub-Playbook D owns dogfood; depends on A, B, C |
 | Dogfood structure | `cocoder/` meta-project established before code lands; priority README = master Playbook | Validates the workspace template by building it for ourselves first |
 
@@ -84,7 +84,7 @@ Ship **CoCoder v0.1**: installable OSS framework with `cocoder` CLI, Oz dashboar
 
 ### Current State
 
-ADRs 0001–0004 accepted. ARCHITECTURE.md complete and consistent with ADRs. V1 of the all-in-one Playbook archived. Dogfood meta-project (`cocoder/`) operational. Sub-Playbook A in draft. Sub-Playbooks B, C, D pending stubs.
+ADRs 0001–0006 accepted (added 0005 Oz improvement routing, 0006 no-nested-workspaces). ARCHITECTURE.md complete and consistent. V1 of the all-in-one Playbook archived. Dogfood meta-project (`cocoder/`) operational and proven by Sub-Playbook E running multi-lane orchestration on itself across 4 autonomous test ports. Repo published at `BadGuyFranco/cocoder` (public, branch-protected, community-standards 100%). 110/110 tests pass; 5 core bugs found + fixed during the dogfood ramp (regression coverage in `packages/core/tests/composition-dogfood-bugfixes.test.mjs`). Sub-Playbook A still mid-Refine (M4 free-wins M4.5–M4.14, M4.16–M4.21 remain; M4.22–M4.27 founder-gated tasks complete). Sub-Playbook E effectively complete (Final Check 5/6 with one deferral to Sub-Playbook B). Sub-Playbooks B, C, D pending stubs.
 
 ### Deliverable
 
@@ -113,6 +113,8 @@ A public git repository (`CoCoder`) with: working `cocoder` CLI, Oz dashboard, w
 | 11 | Extracted `packages/core` stays `.mjs`; new packages TS | 0004 |
 | 12 | Schemas authored in Zod, published as JSON Schema, consumed by AJV in core | 0004 |
 | 13 | pnpm workspaces; Node 20 LTS | 0004 |
+| 14 | Oz improvement-target routing (`cocoder-product` / `workspace-shared` / `workspace-local` / `install-local` / `upstream-candidate`) | 0005 |
+| 15 | No workspaces nested inside the install repo; dogfood is the one legitimate "workspace inside install" instance, addressed via explicit `--workspace-root=<install>` + `--workspace-slug=cocoder-dogfood` | 0006 |
 
 ### Program-level risks
 
@@ -130,9 +132,10 @@ A public git repository (`CoCoder`) with: working `cocoder` CLI, Oz dashboard, w
 
 ### Reuse check
 
-- [x] CoBuilder `orchestration/core/lib`, `adapters`, `contracts` — extracted, not rewritten (ADR-0004). *Note: `tests/` port is in flight under E2.2e per audit §B4.*
+- [x] CoBuilder `orchestration/core/lib`, `adapters`, `contracts` — extracted, not rewritten (ADR-0004). 4 of 12 audit §4 test ports closed via Sub-Playbook E orchestration (E2.2e.1 `core.test.mjs`, E2.2e.2 `dispatch.test.mjs`, E2.2e.3 `adapters.test.mjs`, E2.2e.4 `composition.test.mjs`); 8 remaining (E2.2e.5–E2.2e.12).
 - [ ] CoBuilder `ORCH DEBUGGER.command` evidence patterns — to be reused by Oz Run Inspector in Sub-Playbook C *(un-checked per audit §H10: Sub-Playbook C not started; previously marked done in error)*
 - [x] Cofounder WISER Playbook Author — execution discipline for every sub-Playbook
+- [x] Sub-Playbook E (Dogfood ramp) borrowed Bob + Talia personas + 6 shared prompt fragments from CoBuilder; Sub-Playbook B will extend (not redo) per Sub-Playbook E Final Check item
 
 **Checkpoint:** [x] Cross-cutting decisions locked in ADRs. Program-level risks have named mitigations. Sub-Playbook boundaries justified by risk topology, not arbitrary slicing.
 

@@ -1,7 +1,7 @@
 # CoCoder Architecture (Draft)
 
-**Status:** Draft — Solve active (gated by Sub-Playbook A)  
-**Last verified:** 2026-05-21 (post-restructure cleanup; pre-Sub-Playbook-A execution)
+**Status:** Draft — Refine (Sub-Playbook A audit remediation in flight; Sub-Playbook E dogfood ramp proven end-to-end)  
+**Last verified:** 2026-05-22 (Sub-Playbook E exercised the four-zone storage model, multi-workspace concurrency, and config-resolver semantics across 4 autonomous orchestrated runs; 110/110 tests pass; repo published to `BadGuyFranco/cocoder`)
 
 ## Mental Model
 

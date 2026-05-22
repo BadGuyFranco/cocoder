@@ -14,6 +14,17 @@
 3. If you need to know **why** something is a blocker, jump to the relevant section here.
 4. If you need the **raw subagent output** that backs a finding, see Appendices A–D at the bottom.
 
+## Resolution status (updated 2026-05-22 evening)
+
+> This audit is the canonical evidence record (frozen at the 2026-05-22 audit pass). For current per-finding resolution status, see `cocoder/priorities/v0.1-foundation/plans/2026-05-21-foundation.plan.md` Milestone M4 task rows and `cocoder/SESSION_LOG.md` entries. Summary of major closures since the audit ran:
+>
+> - **B1, B3, B4 partial, B7, B8, B9** — closed by M4 free-wins (M4.1–M4.4, M4.15) and M4.22–M4.27 founder-gated tasks; see SESSION_LOG 2026-05-22 (Evening) + (Night).
+> - **B4 (test ports)** — 4 of 12 audit §4 port-first files closed (E2.2e.1 `core.test.mjs`, E2.2e.2 `dispatch.test.mjs`, E2.2e.3 `adapters.test.mjs`, E2.2e.4 `composition.test.mjs`); 8 remaining. Closed via the Sub-Playbook E orchestration loop.
+> - **B5, B6, H3, H4, H5, H6, H7** — closed by M4.22–M4.27 founder-gated tasks (`--developer-mode` belt, `findCocoderHome` fail-closed, workspace detection + ADR-0006 refusal path, ephemeral runs to `local/workspaces/<slug>/runs/`, verification-artifact guard SSOT inline, friendly cwd error).
+> - **H9, M3, M10** — partially closed (CLI rename + path-fix work landed; some medium items remain).
+> - **Sub-Playbook E dogfood ramp** surfaced **5 additional core bugs** not in this audit (modelRoles null-vs-undefined, iso-datetime typecheck, PRIVATE_LEGACY false positives, parseArgs path-resolves slug, codex sandbox vs lane role); all fixed in flight with regression coverage at `packages/core/tests/composition-dogfood-bugfixes.test.mjs`. See PORT-NOTES.md §"Source-of-truth conflicts".
+> - **Q1–Q7 founder decisions** all answered 2026-05-22 (Late Evening); ADR-0006 graduated from Q4. See README.md Pending Decisions.
+
 ## Audit context / caveats
 
 - **Sub-Playbook A status when audit ran:** Expand active, 23/31 tasks marked done; E2.2e (test port) explicitly open.

@@ -1,7 +1,7 @@
 # CoCoder Configuration
 
 **Status:** Draft, implemented by Sub-Playbook A Solve  
-**Last verified:** 2026-05-21
+**Last verified:** 2026-05-22 (Sub-Playbook E dogfood exercised the workspace-root path end-to-end across 4 autonomous runs)
 
 CoCoder configuration is split across tracked defaults and private `local/` overrides. Git can update the engine and templates without overwriting user preferences because real preferences live only in ignored `local/` paths.
 
@@ -34,7 +34,21 @@ The install repo already contains exactly one workspace — the dogfood meta-pro
 
 Why: `findCocoderHome()` resolves the install root via an ancestor walk, and a nested workspace would cause CLI defaults, run paths, and orchestrator-commit surfaces to silently bind to install state. The constraint is enforced at `cocoder init` and at every workspace-scoped command in v0.1. The v0.2 plan is to lift this restriction via a workspaces registry; see ADR-0005 + Sub-Playbook C.
 
-If you need to run CoCoder against its own dogfood (the one legitimate "workspace inside install" instance), pass `--workspace-root="<CoCoder>/cocoder"` explicitly — never rely on cwd resolution.
+If you need to run CoCoder against its own dogfood (the one legitimate "workspace inside install" instance), pass `--workspace-root="<CoCoder>"` AND `--workspace-slug=cocoder-dogfood` explicitly — never rely on cwd resolution.
+
+**Important:** the workspace-root for the dogfood case is the **install root itself**, not `<CoCoder>/cocoder/`. The config resolver expects `<workspaceRoot>/cocoder/<file>`, so passing `<CoCoder>/cocoder` would make every workspace-tracked lookup miss. The install's own `cocoder/` subdirectory IS the meta-project workspace per ADR-0006; the workspace root is therefore one level up. The Sub-Playbook E dogfood invocations confirm the working shape:
+
+```sh
+cd <CoCoder>
+pnpm exec cocoder launch \
+  --profile cocoder/profiles/cocoder-dogfood.profile.json \
+  --route cocoder/routes/dogfood-port-tests.json \
+  --priority-slug v0.1-foundation \
+  --workspace-root "<CoCoder>" \
+  --workspace-slug cocoder-dogfood \
+  --developer-mode \
+  --execute true
+```
 
 ## File Formats
 
