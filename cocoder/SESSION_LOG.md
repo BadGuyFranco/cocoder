@@ -14,7 +14,21 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
-## 2026-05-23 — **Sub-Playbook C activated (Oz MVP Witness/Interrogate/Solve-target); PC-Q1..PC-Q9; Status Draft → Active**
+## 2026-05-23 — **Sub-Playbook C Solve Batch 1 (oz-daemon scaffold, C-S1/C-S2, port 7878); PR pending**
+
+**Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
+
+**Outcomes:**
+- `packages/oz-daemon` Fastify TS scaffold with `createOzServer()` / `startOzDaemon()`; core depends on workspace package.
+- C-S1 + C-S2 regression tests in `packages/core/tests/oz-security-{bind,auth}.test.mjs` (inject for auth; real socket for bind).
+- `cocoder oz start|stop|status` in `cli/oz.mjs` + registry `oz` entry; help baseline regenerated.
+- Default Oz port aligned PC-Q9=A: 47321 → 7878 (schemas, config.mjs, template, test fixture).
+- Plan Decision Log: Bearer scoping, CSRF bootstrap, port default.
+
+**Next:** Merge Batch 1 PR → Batch 2 (C-S3/C-S4 Origin/Host + CSRF).
+
+---
+
 
 **Persona:** AI (Bob) + Founder | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
 

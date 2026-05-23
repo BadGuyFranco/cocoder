@@ -50,6 +50,7 @@ import {
 import { followDebuggerEvidence, prepareDebuggerSession } from '../lib/debugger.mjs';
 import { applyWorkspaceInit } from '../lib/init-merge.mjs';
 import { auditWorkspace, refreshWorkspaceMemory } from '../lib/workspace-audit.mjs';
+import { ozSubcommandHandlers } from './oz.mjs';
 import { assertExplicitWorkspaceContextWhenInsideInstall, resolveInstallRoot } from '../lib/paths.mjs';
 import {
   DEFAULT_ADAPTERS_DIR,
@@ -910,6 +911,12 @@ async function handle_watch_debugger_evidence(args) {
     return;
 }
 
+async function handle_oz() {
+  throw new Error('Use: cocoder oz start|stop|status [--cocoder-home PATH]');
+}
+
+export { ozSubcommandHandlers };
+
 export const commandRegistry = new Map([
   ['validate-contracts', handle_validate_contracts],
   ['validate-file', handle_validate_file],
@@ -954,6 +961,7 @@ export const commandRegistry = new Map([
   ['add-evidence', handle_add_evidence],
   ['ingest-result', handle_ingest_result],
   ['init', handle_init],
+  ['oz', handle_oz],
   ['audit-workspace', handle_audit_workspace],
   ['refresh-memory', handle_refresh_memory],
   ['closeout', handle_closeout],
