@@ -32,8 +32,8 @@ function bearerHeaders(token, port, csrfToken) {
   };
 }
 
-test('C-S4: GET /auth/session returns csrfToken', async () => {
-  const { app, port, csrfToken } = await fixtureInstall();
+test('C-S4: GET /auth/session returns csrfToken and bearerToken', async () => {
+  const { app, port, csrfToken, token } = await fixtureInstall();
   const response = await app.inject({
     method: 'GET',
     url: '/auth/session',
@@ -41,6 +41,7 @@ test('C-S4: GET /auth/session returns csrfToken', async () => {
   });
   assert.equal(response.statusCode, 200);
   assert.equal(response.json().csrfToken, csrfToken);
+  assert.equal(response.json().bearerToken, token);
   await app.close();
 });
 
