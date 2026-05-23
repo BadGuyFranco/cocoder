@@ -46,6 +46,7 @@ Commands:
   set-status --run-dir PATH --status STATUS [--reason TEXT]
   add-evidence --run-dir PATH --evidence PATH
   ingest-result --run-dir PATH --job-id ID --result PATH [--prompt PATH] [--transcript PATH]
+  init --workspace-root PATH [--template-dir PATH] [--cocoder-home PATH] [--merge true]
   closeout --run-dir PATH [--summary TEXT]
   finalize-run-status --run-dir PATH [--summary TEXT] [--contracts-dir PATH] [--process-continuation true] [--stop-terminal-sessions true --founder-approved-teardown true]
   orchestrator-commit --run-dir PATH --lane LANE --message TEXT [--result PATH] [--repo-root PATH] [--contracts-dir PATH]

@@ -14,6 +14,24 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-23 — **Sub-Playbook B Solve complete (PB-Q1=A, PB-Q2=B, PB-Q3=B, PB-Q4=A); suite 256/256**
+
+**Persona:** AI (Bob) + Founder | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-personas-template.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-personas-template.plan.md)
+
+**Founder gates:** PB-Q1=A (static template), PB-Q2=B (minimum persona subset), PB-Q3=B (full Phil example in Expand), PB-Q4=A (getting-started stub in Expand).
+
+**Outcomes:**
+- **B-S1:** Persona-identity fixture from E run `run-20260522T233422Z-pqk1t3w0` → `packages/core/tests/fixtures/persona-identity/` (+ PORT-NOTES row).
+- **B-S2:** `persona-identity.test.mjs` — byte-identical `launchRun` bob prompt; negative control on mutated slug.
+- **B-S3:** `applyWorkspaceInit` + `cocoder init` CLI; minimal `templates/workspace-cocoder/` skeleton (14 tracked files).
+- **B-S4:** `init-idempotency.test.mjs` — idempotent apply, merge conflict preservation, nested-workspace refusal.
+- **B-S5:** Out-of-tree init smoke — zero diff vs template.
+- **Launch fix:** `resolvePromptsRootForSession` picks manifest from `launchPlan.cwd` when persona fragments exist there (CI-safe persona rendering).
+
+**Next:** B Expand (B-M1..B-M3) in a separate session. Do not start Expand in this session.
+
+---
+
 ## 2026-05-23 — **Sub-Playbook F Complete (Final Check); PR #28 merged; compose-launch behavior preserved**
 
 **Persona:** AI (Bob) + Founder | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-23-structural-cleanup.plan.md`](./priorities/v0.1-foundation/plans/2026-05-23-structural-cleanup.plan.md)

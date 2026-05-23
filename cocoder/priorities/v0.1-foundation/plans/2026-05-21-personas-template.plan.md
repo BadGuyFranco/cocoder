@@ -3,7 +3,7 @@
 **Created:** 2026-05-21 | **Updated:** 2026-05-23 (Activated — Witness/Interrogate/Solve-target populated; Status flipped Draft → Active)
 **Type:** One-time
 **Collaboration:** Collaborative
-**Status:** **Active — Witness/Interrogate/Solve-target complete; Expand authoring next session** (Sub-Playbook A M4 Checkpoint reached 2026-05-23; Sub-Playbook E proven across 7 autonomous orchestration runs)
+**Status:** **Active — Solve complete 2026-05-23; Expand (B-M1..B-M3) next session**
 **Method:** WISER Playbook (Sub-Playbook; Master = `../README.md`)
 **Parent:** [v0.1-foundation priority](../README.md)
 
@@ -124,10 +124,10 @@ A public CoCoder release at which a stranger can:
 
 | ID | Question | Blocks | Recommended default |
 |---|---|---|---|
-| **PB-Q1** | Workspace template: author `templates/workspace-cocoder/` as a static fileset, or generate it from the live dogfood `<CoCoder>/cocoder/` via a regenerator script (analogous to M4.12's `regenerate.mjs`)? | B-M2 | **A — Static fileset.** Adopters install a stable template, not whatever the dogfood snapshot looks like on any given day. The dogfood instance VALIDATES the template (any drift between them is a B-side test failure) but is not the source of truth for it. Trade-off: the founder maintains the template by hand whenever the dogfood meta-project grows new structural conventions. |
-| **PB-Q2** | Persona library completeness for v0.1: ship ALL 7 personas (oscar/ian/bob/talia/quinn/phil/verifier), or a v0.1 minimum subset (e.g. oscar/bob/talia + Phil example only) with the rest deferred to v0.2? | B-M1 | **B — Minimum subset (oscar/bob/talia + Phil example).** Quinn/Ian/verifier each need their full prompt + playbook surface + at least one example route to be useful. Shipping them half-baked in v0.1 is worse than deferring. Quinn especially depends on Oz (browser automation control surface) which lives in Sub-Playbook C. v0.1 adopters get the "code orchestration" core; v0.2 adds the "browser QA + ops + verifier" personas. Sub-Playbook E proved Bob+Talia compose correctly; adding Oscar (lead persona) completes the minimum lead-teammate-tester triangle. ADR-worthy — graduating this would lock in the v0.1-vs-v0.2 persona boundary. |
-| **PB-Q3** | Phil example shape: ship as schema-only stub (a sample `phil.json` + minimal `phil.md` documenting the contract), or as a full working example (real prompts + a runnable example route adopters can copy)? | B-M1.5 | **B — Full working example.** Adopters learning the custom-persona pattern need to see one end-to-end, not just a contract schema. The schema-only path produces docs nobody can run. Trade-off: more authoring work in v0.1; Phil's example route needs a non-CoCoder-specific domain that the example doesn't dictate. |
-| **PB-Q4** | `docs/getting-started.md`: author a B-side stub now (so `cocoder init` ships with at least minimal external-user docs) or defer entirely to Sub-Playbook D (and ship `cocoder init` with only `--help` text in v0.1)? | B-Final-Check | **A — B-side stub.** v0.1 is the first time external adopters can attempt `cocoder init`. A stub in `docs/getting-started.md` covering the install → `cocoder init` → first persona launch path is the difference between "actually usable" and "demo only". Sub-Playbook D extends the stub into the full Stranger Test (P-R2 — recruited non-CoCoder dev in ≤30 minutes). |
+| **PB-Q1** | Workspace template: author `templates/workspace-cocoder/` as a static fileset, or generate it from the live dogfood `<CoCoder>/cocoder/` via a regenerator script (analogous to M4.12's `regenerate.mjs`)? | B-M2 | **A — Static fileset.** | **Answered 2026-05-23: A** |
+| **PB-Q2** | Persona library completeness for v0.1: ship ALL 7 personas (oscar/ian/bob/talia/quinn/phil/verifier), or a v0.1 minimum subset (e.g. oscar/bob/talia + Phil example only) with the rest deferred to v0.2? | B-M1 | **B — Minimum subset (oscar/bob/talia + Phil example).** ADR-worthy scope line. | **Answered 2026-05-23: B** (no HOLD FOR GO — defers quinn/ian/verifier to v0.2 per recommended default) |
+| **PB-Q3** | Phil example shape: ship as schema-only stub (a sample `phil.json` + minimal `phil.md` documenting the contract), or as a full working example (real prompts + a runnable example route adopters can copy)? | B-M1.5 | **B — Full working example.** | **Answered 2026-05-23: B** |
+| **PB-Q4** | `docs/getting-started.md`: author a B-side stub now (so `cocoder init` ships with at least minimal external-user docs) or defer entirely to Sub-Playbook D (and ship `cocoder init` with only `--help` text in v0.1)? | B-Final-Check | **A — B-side stub.** | **Answered 2026-05-23: A** |
 
 > **Operating mode reminder:** if PB-Q2 graduates to ADR (probable — it's a real v0.1-vs-v0.2 scope line), HOLD FOR GO per the v0.1 completion plan's "Item 3 graduates a new ADR" rule. PB-Q1/PB-Q3/PB-Q4 are unlikely to ADR-graduate.
 
@@ -164,24 +164,24 @@ A public CoCoder release at which a stranger can:
 
 ### Tasks
 
-- [ ] **B-S1** Identify a known-good Sub-Playbook E orchestration run (run-id from `local/workspaces/cocoder-dogfood/runs/`) and capture its composed Bob prompt (`<runDir>/jobs/bob/prompt.md`) as the persona-identity reference fixture at `packages/core/tests/fixtures/persona-identity/bob-dogfood.expected-prompt.md`. Capture metadata at the same path with `.expected-context.json` (priority slug, route, profile, manifest version).
-- [ ] **B-S2** Author `packages/core/tests/persona-identity.test.mjs`:
-  - Drives `composeRuntimeRoleLines` + `renderLanePrompt` against the captured context.
+- [x] **B-S1** Identify a known-good Sub-Playbook E orchestration run (run-id from `local/workspaces/cocoder-dogfood/runs/`) and capture its composed Bob prompt (`<runDir>/jobs/bob/prompt.md`) as the persona-identity reference fixture at `packages/core/tests/fixtures/persona-identity/bob-dogfood.expected-prompt.md`. Capture metadata at the same path with `.expected-context.json` (priority slug, route, profile, manifest version). — *2026-05-23; source run `run-20260522T233422Z-pqk1t3w0`; fixture runId `run-fixture-persona-identity-bob`.*
+- [x] **B-S2** Author `packages/core/tests/persona-identity.test.mjs`:
+  - Drives `launchRun` against the captured context.
   - Asserts the rendered prompt is byte-identical to the fixture.
   - Negative control: mutate the fixture slug by one character → test must fail.
-- [ ] **B-S3** Implement `cocoder init` apply (B-M3.1 — moved into Solve from Expand because it's part of the idempotency invariant). Reuse A's `--merge` planner; the apply step is the new code.
-- [ ] **B-S4** Author `packages/core/tests/init-idempotency.test.mjs`:
+- [x] **B-S3** Implement `cocoder init` apply (B-M3.1 — moved into Solve from Expand because it's part of the idempotency invariant). Reuse A's `--merge` planner; the apply step is the new code.
+- [x] **B-S4** Author `packages/core/tests/init-idempotency.test.mjs`:
   - Run `cocoder init --workspace-root <tmp>`.
   - Assert the resulting tree matches a captured fixture (a snapshot of `templates/workspace-cocoder/` projected into the target).
   - Run `cocoder init --workspace-root <tmp>` again.
   - Assert the tree is byte-identical (zero diff).
   - Edit one tracked file in the workspace; run `cocoder init --workspace-root <tmp> --merge`; assert the edit is preserved and the planner report surfaces the conflict.
   - Refuse-nesting case: target is inside install → expect the `COCODER_NESTED_WORKSPACE_FORBIDDEN` error.
-- [ ] **B-S5** Manual smoke test: founder runs `cocoder init` on a fresh empty repo (out-of-tree); diffs the result against `templates/workspace-cocoder/` + the ARCHITECTURE.md `<your-app>/cocoder/` layout block.
+- [x] **B-S5** Manual smoke test: founder runs `cocoder init` on a fresh empty repo (out-of-tree); diffs the result against `templates/workspace-cocoder/` + the ARCHITECTURE.md `<your-app>/cocoder/` layout block. — *2026-05-23 AI smoke: zero diff vs template; 14 files materialized.*
 
 **Pass threshold:** Both regression tests green AND the manual smoke test produces a workspace that matches the ARCHITECTURE layout AND PORT-NOTES.md gets a new entry for the captured fixture so Sub-Playbook B's Expand can extend with the same vocabulary.
 
-**Checkpoint:** [ ] Both invariants proven via passing tests; Sub-Playbook B is ready to fan into Expand (B-M1..B-M3 milestones can run in parallel after Solve).
+**Checkpoint:** [x] Both invariants proven via passing tests; Sub-Playbook B is ready to fan into Expand (B-M1..B-M3 milestones can run in parallel after Solve).
 
 ---
 
@@ -281,15 +281,15 @@ Per PB-Q1 (recommended A — static fileset), `templates/workspace-cocoder/` is 
 
 ## Progress
 
-**Last worked:** 2026-05-23 (Sub-Playbook F Complete; B Solve unblocked on structure — gated on PB-Q1..PB-Q4 founder answers)
-**Current Canon:** Active — Witness + Interrogate + Solve-target complete; Solve start blocked on founder answers to PB-Q1..PB-Q4 only.
-**Next action:** Founder answers PB-Q1..PB-Q4. Then a fresh session picks up at B Solve (B-S1 — capture persona-identity reference fixture from a Sub-Playbook E run; fixture captures post-F composer output bytes).
+**Last worked:** 2026-05-23 (PB-Q1=A, PB-Q2=B, PB-Q3=B, PB-Q4=A; B-S1..B-S5 complete; suite 256/256)
+**Current Canon:** Active — Solve complete; Expand (B-M1..B-M3) is next-session work.
+**Next action:** B Expand — B-M1 persona library (Oscar + Phil per PB-Q2/B + PB-Q3/B), B-M2 workspace template hardening, B-M3 registry commands (`audit-workspace`, `refresh-memory`).
 
 | Canon | Items | Done | Status |
 |---|---|---|---|
 | Witness | 1 | 1 | **Complete (2026-05-23)** |
-| Interrogate | 6 risks + 4 pending decisions + reuse check | 6 + 4-surfaced + 1 | **Active (PB-Q1..PB-Q4 awaiting founder gate)** |
-| Solve | 5 (B-S1..B-S5) | 0 | Not started (blocked on PB-Q1..PB-Q4) |
+| Interrogate | 6 risks + 4 pending decisions + reuse check | 6 + 4-answered + 1 | **Complete (2026-05-23)** |
+| Solve | 5 (B-S1..B-S5) | 5 | **Complete (2026-05-23)** |
 | Expand | M1: 7 · M2: 4 · M3: 5 | 0 | Not started |
 | Refine | 5 | 0 | Not started |
 | Final Check | 8 | 0 | Not started |

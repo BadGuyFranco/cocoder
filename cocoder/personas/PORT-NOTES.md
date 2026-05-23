@@ -70,3 +70,16 @@ The Sub-Playbook E plan (`cocoder/priorities/v0.1-foundation/plans/2026-05-22-do
 - **A `priority-boundary` file is required for every route lane that can write.** The plan didn't mention this; authored at `cocoder/priority-boundaries/v0.1-foundation.boundary.json`.
 - **`extractPriorityEntry` reads `## [slug]` headings, not table rows.** The dogfood `PRIORITIES.md` was a slim table-only mirror; added a "Parser-readable priority entries" section below the table that contains the heading-style block the extractor needs. The slim table mirror is preserved (per the SSOT rule in `cocoder/AGENTS.md`).
 - **`compose-launch` only emits JSON.** The actual composed launch-time prompt (`<runDir>/jobs/<lane>/prompt.md`) is rendered by `launch` (default `--execute=false`). E-S1's Solve evidence is both: the compose-launch JSON proves readiness; the prompt.md proves composition. Both are captured at `local/workspaces/cocoder-dogfood/solve-evidence/`.
+
+## Sub-Playbook B Solve — persona-identity regression fixture (2026-05-23)
+
+| Field | Value |
+|---|---|
+| Source E run | `run-20260522T233422Z-pqk1t3w0` (dogfood port-tests; successful autonomous run) |
+| Fixture runId | `run-fixture-persona-identity-bob` (deterministic re-render target) |
+| Fixture paths | `packages/core/tests/fixtures/persona-identity/bob-dogfood.{expected-prompt.md,expected-context.json,launch-plan.json}` |
+| Route / profile / priority | `dogfood-port-tests` / `cocoder-dogfood` / `v0.1-foundation` |
+| Manifest version | `1` (bob + talia entries) |
+| Test | `packages/core/tests/persona-identity.test.mjs` — byte-identical `launchRun` bob prompt vs fixture; negative control mutates priority slug |
+
+Paths in committed fixtures use `__REPO_ROOT__` token; tests hydrate with the checkout root so CI and local NAS paths both work.
