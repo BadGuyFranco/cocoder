@@ -321,9 +321,9 @@ Mergeable `main` branch with:
 
 ## Progress
 
-**Last worked:** 2026-05-23 (v0.1 completion plan Item 1 closed — ticket 0001 Path B retire — and Item 2 checkbox-refresh batch landed; foundation plan now reflects reality after the 8 audit §4 port-row + 5 M4 free-win drifts were ticked)
-**Current Canon:** Refine (audit remediation; all founder-gated tasks done; audit §4 port-first list CLOSED 12 of 12; remaining free-wins M4.5–M4.14, M4.16–M4.21 still open and tracked under [v0.1 Completion Plan Item 2](./2026-05-23-v0.1-completion.plan.md#item-2--sub-playbook-a-m4-free-wins-cleanup))
-**Next action:** Continue Item 2 — group remaining M4 items (M4.5–M4.14, M4.16–M4.21) by file and land each as its own auto-merge PR. After M4 Checkpoint, Sub-Playbook B (Item 3 — adopter onboarding) activates.
+**Last worked:** 2026-05-23 (M4 Checkpoint REACHED — all 27 M4 rows closed; Sub-Playbook A is now Refine-complete and ready for Final Check ceremony.)
+**Current Canon:** Refine (audit remediation COMPLETE 2026-05-23; awaiting Final Check ceremony — manual smoke tests on a clean clone listed in the Refine section below).
+**Next action:** Sub-Playbook B activates (Item 3 of v0.1 completion plan — adopter onboarding) in parallel with the Sub-Playbook A Final Check ceremony. After Sub-Playbook B reaches its own Solve checkpoint AND Sub-Playbook A Final Check closes, Sub-Playbook A flips to Complete.
 
 | Canon | Items | Done | Status |
 |---|---|---|---|
