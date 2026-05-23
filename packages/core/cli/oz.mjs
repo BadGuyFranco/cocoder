@@ -3,8 +3,13 @@ import { access, readFile, unlink, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { resolveInstallRoot } from '../lib/paths.mjs';
-import { parseArgsAllowPositionals } from './shared.mjs';
+import { resolveInstallRoot, tokenizePath } from '../lib/paths.mjs';
+import { parseArgsAllowPositionals, requireArgs } from './shared.mjs';
+import {
+  assertRegistryPathToken,
+  readWorkspacesRegistry,
+  writeWorkspacesRegistry
+} from 'oz-daemon';
 
 const require = createRequire(import.meta.url);
 
@@ -102,10 +107,39 @@ export async function handleOzStatus(args) {
   }, null, 2));
 }
 
+export async function handleOzRegister(args) {
+  requireArgs(args, ['id', 'workspaceRoot']);
+  const cocoderHome = args.cocoderHome
+    ? path.resolve(args.cocoderHome)
+    : await resolveInstallRoot(process.cwd());
+  const { path: tokenizedPath, warning } = await tokenizePath(args.workspaceRoot, { cocoderHome });
+  assertRegistryPathToken(tokenizedPath);
+
+  const registry = await readWorkspacesRegistry(cocoderHome);
+  const index = registry.workspaces.findIndex((entry) => entry.id === args.id);
+  const workspace = {
+    id: args.id,
+    name: args.name || args.id,
+    path: tokenizedPath,
+    tmuxSocket: args.tmuxSocket || `cocoder-${args.id}`,
+    lastSeenAt: new Date().toISOString()
+  };
+
+  if (index >= 0) {
+    registry.workspaces[index] = { ...registry.workspaces[index], ...workspace };
+  } else {
+    registry.workspaces.push(workspace);
+  }
+
+  await writeWorkspacesRegistry(cocoderHome, registry);
+  console.log(JSON.stringify({ ok: true, cocoderHome, workspace, warning }, null, 2));
+}
+
 const ozSubcommandHandlers = new Map([
   ['start', handleOzStart],
   ['stop', handleOzStop],
-  ['status', handleOzStatus]
+  ['status', handleOzStatus],
+  ['register', handleOzRegister]
 ]);
 
 export { ozSubcommandHandlers };
@@ -113,7 +147,7 @@ export { ozSubcommandHandlers };
 export async function handleOz(tokens) {
   const [subcommand, ...rest] = tokens;
   if (!subcommand) {
-    throw new Error('Usage: cocoder oz start|stop|status [--cocoder-home PATH]');
+    throw new Error('Usage: cocoder oz start|stop|status|register [--cocoder-home PATH]');
   }
   const handler = ozSubcommandHandlers.get(subcommand);
   if (!handler) {

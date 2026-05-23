@@ -50,6 +50,7 @@ Commands:
   oz start [--cocoder-home PATH]
   oz stop [--cocoder-home PATH]
   oz status [--cocoder-home PATH]
+  oz register --id ID --workspace-root PATH [--name NAME] [--tmux-socket SOCKET] [--cocoder-home PATH]
   audit-workspace --workspace-root PATH
   refresh-memory --workspace-root PATH
   closeout --run-dir PATH [--summary TEXT]

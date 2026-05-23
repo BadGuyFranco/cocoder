@@ -1,0 +1,24 @@
+{
+  "$ref": "#/definitions/cocoder-oz-auth-session",
+  "definitions": {
+    "cocoder-oz-auth-session": {
+      "type": "object",
+      "properties": {
+        "csrfToken": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bearerToken": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "csrfToken",
+        "bearerToken"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

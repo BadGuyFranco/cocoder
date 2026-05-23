@@ -49,3 +49,25 @@ export function validateOriginHost(options: {
 
   return { ok: true };
 }
+
+/** Stricter loopback gate for GET /auth/session (C-D1): Host required; Origin absent or loopback. */
+export function validateAuthSessionOriginHost(options: {
+  hostHeader?: string;
+  originHeader?: string;
+  port: number;
+}): OriginHostValidation {
+  const allowedHosts = allowedHostValues(options.port);
+  const allowedOrigins = allowedOriginValues(options.port);
+  const host = normalizeHostHeader(options.hostHeader);
+  const origin = options.originHeader?.trim();
+
+  if (!host || !allowedHosts.has(host)) {
+    return { ok: false, error: "invalid host" };
+  }
+
+  if (origin && !allowedOrigins.has(origin)) {
+    return { ok: false, error: "invalid origin" };
+  }
+
+  return { ok: true };
+}

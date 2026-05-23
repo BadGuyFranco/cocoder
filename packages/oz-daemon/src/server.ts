@@ -1,7 +1,8 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import { assertLoopbackHost } from "./bind.js";
 import { createCsrfToken, OZ_CSRF_HEADER, validateCsrfToken } from "./csrf.js";
-import { STATE_CHANGING_METHODS, validateOriginHost } from "./origin-host.js";
+import { STATE_CHANGING_METHODS, validateAuthSessionOriginHost, validateOriginHost } from "./origin-host.js";
+import { registerWorkspacesRoutes } from "./workspaces.js";
 import { DEFAULT_OZ_PORT, resolveOzPort } from "./port.js";
 import { registerRunsRoutes } from "./runs.js";
 import { registerSettingsRoutes } from "./settings.js";
@@ -40,7 +41,18 @@ export async function createOzServer(options: OzServerOptions): Promise<OzServer
 
   app.get("/health", async () => ({ ok: true }));
 
-  app.get("/auth/session", async () => ({ csrfToken }));
+  app.get("/auth/session", async (request, reply) => {
+    const authSessionOrigin = validateAuthSessionOriginHost({
+      hostHeader: request.headers.host,
+      originHeader: request.headers.origin,
+      port
+    });
+    if (!authSessionOrigin.ok) {
+      await reply.code(403).send({ error: authSessionOrigin.error });
+      return;
+    }
+    return { csrfToken, bearerToken: token };
+  });
 
   app.addHook("onRequest", async (request, reply) => {
     const originHost = validateOriginHost({
@@ -82,6 +94,7 @@ export async function createOzServer(options: OzServerOptions): Promise<OzServer
   });
 
   await registerSettingsRoutes(app, options.cocoderHome);
+  await registerWorkspacesRoutes(app, { cocoderHome: options.cocoderHome });
   await registerRunsRoutes(app, {
     cocoderHome: options.cocoderHome,
     launchExecutable: options.launchExecutable,

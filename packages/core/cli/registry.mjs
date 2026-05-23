@@ -912,7 +912,7 @@ async function handle_watch_debugger_evidence(args) {
 }
 
 async function handle_oz() {
-  throw new Error('Use: cocoder oz start|stop|status [--cocoder-home PATH]');
+  throw new Error('Use: cocoder oz start|stop|status|register [--cocoder-home PATH]');
 }
 
 export { ozSubcommandHandlers };
