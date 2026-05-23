@@ -48,7 +48,8 @@ import {
   validateImprovementDirectory
 } from '../lib/self-healing.mjs';
 import { followDebuggerEvidence, prepareDebuggerSession } from '../lib/debugger.mjs';
-import { assertExplicitWorkspaceContextWhenInsideInstall } from '../lib/paths.mjs';
+import { applyWorkspaceInit } from '../lib/init-merge.mjs';
+import { assertExplicitWorkspaceContextWhenInsideInstall, resolveInstallRoot } from '../lib/paths.mjs';
 import {
   DEFAULT_ADAPTERS_DIR,
   DEFAULT_BASELINE,
@@ -857,6 +858,26 @@ async function handle_prepare_debugger(args) {
     return;
 }
 
+async function handle_init(args) {
+    requireArgs(args, ['workspaceRoot']);
+    const cocoderHome = args.cocoderHome
+      ? path.resolve(args.cocoderHome)
+      : await resolveInstallRoot(process.cwd());
+    const templateDir = path.resolve(args.templateDir || path.join(cocoderHome, 'templates/workspace-cocoder'));
+    const workspaceRoot = path.resolve(args.workspaceRoot);
+    const merge = args.merge === 'true';
+    const result = await applyWorkspaceInit({ templateDir, workspaceRoot, merge });
+    console.log(JSON.stringify({
+      ok: true,
+      cocoderHome,
+      templateDir,
+      workspaceRoot,
+      merge,
+      ...result
+    }, null, 2));
+    return;
+}
+
 async function handle_watch_debugger_evidence(args) {
     requireArgs(args, ['runDir', 'sessionId', 'debugDir']);
     const result = await followDebuggerEvidence({
@@ -915,6 +936,7 @@ export const commandRegistry = new Map([
   ['set-status', handle_set_status],
   ['add-evidence', handle_add_evidence],
   ['ingest-result', handle_ingest_result],
+  ['init', handle_init],
   ['closeout', handle_closeout],
   ['finalize-run-status', handle_finalize_run_status],
   ['orchestrator-commit', handle_orchestrator_commit],

@@ -1,4 +1,4 @@
-import { readFile, stat } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { assertWorkspaceNotNestedInsideInstall } from './paths.mjs';
 
@@ -30,7 +30,43 @@ export async function planWorkspaceMerge({ templateDir, workspaceRoot }) {
     ok: true,
     actions,
     add: actions.filter((item) => item.action === 'add').map((item) => item.relativePath),
-    preserve: actions.filter((item) => item.action === 'preserve-user-edit').map((item) => item.relativePath)
+    preserve: actions.filter((item) => item.action === 'preserve-user-edit').map((item) => item.relativePath),
+    unchanged: actions.filter((item) => item.action === 'unchanged').map((item) => item.relativePath)
+  };
+}
+
+export async function applyWorkspaceInit({ templateDir, workspaceRoot, merge = false }) {
+  const plan = await planWorkspaceMerge({ templateDir, workspaceRoot });
+  const applied = [];
+  const skipped = [];
+  const conflicts = [];
+
+  for (const action of plan.actions) {
+    if (action.action === 'add') {
+      await mkdir(path.dirname(action.targetPath), { recursive: true });
+      await copyFile(action.sourcePath, action.targetPath);
+      applied.push(action.relativePath);
+      continue;
+    }
+    if (action.action === 'unchanged') {
+      skipped.push(action.relativePath);
+      continue;
+    }
+    if (action.action === 'preserve-user-edit') {
+      conflicts.push(action.relativePath);
+      if (!merge) {
+        continue;
+      }
+    }
+  }
+
+  return {
+    ok: true,
+    merge,
+    plan,
+    applied,
+    skipped,
+    conflicts
   };
 }
 
@@ -64,5 +100,8 @@ async function exists(filePath) {
 }
 
 function isPrivatePath(relativePath) {
+  if (relativePath === 'cocoder/local/README.md' || relativePath === 'cocoder/local/.gitignore') {
+    return false;
+  }
   return relativePath === 'cocoder/local' || relativePath.startsWith('cocoder/local/');
 }

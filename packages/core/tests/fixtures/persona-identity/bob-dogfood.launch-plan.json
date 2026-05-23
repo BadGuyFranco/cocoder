@@ -1,0 +1,146 @@
+{
+  "version": 1,
+  "runId": "run-fixture-persona-identity-bob",
+  "runDir": "__REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob",
+  "cwd": "__REPO_ROOT__",
+  "socketName": "cocoder-orchestration",
+  "socketPath": "",
+  "tmuxBin": "/opt/homebrew/bin/tmux",
+  "deferStart": false,
+  "route": {
+    "id": "dogfood-port-tests",
+    "lead": "bob",
+    "teammates": [
+      "talia"
+    ],
+    "initialLanes": null,
+    "topologyOptions": [],
+    "leadSupportCommit": null
+  },
+  "profile": {
+    "id": "cocoder-dogfood",
+    "label": "CoCoder Dogfood (Bob-only Solve)"
+  },
+  "sourcePaths": {
+    "profilePath": "__REPO_ROOT__/cocoder/profiles/cocoder-dogfood.profile.json",
+    "routePath": "__REPO_ROOT__/cocoder/routes/dogfood-port-tests.json"
+  },
+  "modelRoles": {
+    "orchestrator": {
+      "lane": "bob"
+    },
+    "builder": {
+      "lane": "talia"
+    },
+    "fallbackPolicy": "ask-founder",
+    "substitutionPolicy": "strict"
+  },
+  "startupWarnings": [],
+  "personaRouteAudit": {
+    "ok": true,
+    "routeId": "dogfood-port-tests",
+    "availablePersonas": [
+      "bob",
+      "talia"
+    ],
+    "requiredPersonas": [],
+    "missingPersonas": [],
+    "packetOnlyPersonas": [],
+    "evidence": [],
+    "warnings": []
+  },
+  "startupPacketPath": "__REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob/startup-packet.json",
+  "sessions": [
+    {
+      "lane": "bob",
+      "persona": "bob",
+      "adapter": "codex",
+      "adapterProfile": "gpt-5.5",
+      "canWrite": false,
+      "profileCanWrite": false,
+      "routeOwnedCommit": false,
+      "routeWriteScope": null,
+      "adapterKind": "llm-cli",
+      "adapterCapabilities": {
+        "interactive": true,
+        "initialPrompt": true,
+        "stdinDispatch": true,
+        "resultFile": true,
+        "transcriptCapture": true,
+        "streamingDetection": true,
+        "screenshots": false,
+        "dom": false,
+        "console": false,
+        "shell": true,
+        "fileEdit": true
+      },
+      "command": "codex",
+      "sessionName": "orch-bob-rsona-identity-bob",
+      "displayLabel": "Bob | Codex GPT-5.5 | v0.1-foundation | bob",
+      "promptPath": "__REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob/jobs/bob/prompt.md",
+      "resultPath": "__REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob/jobs/bob/result.json",
+      "markdownResultPath": "__REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob/jobs/bob/result.md",
+      "wrapperPath": "__REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob/jobs/bob/launch.sh",
+      "deferWrapperPath": "__REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob/jobs/bob/launch-deferred.sh",
+      "startSignalPath": "__REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob/jobs/bob/start.signal",
+      "startupMode": "lead",
+      "width": 120,
+      "height": 40,
+      "bootstrapMessage": "Read and follow this CoCoder orchestration launch prompt exactly: __REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob/jobs/bob/prompt.md",
+      "entryPath": "__REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob/jobs/bob/launch.sh"
+    },
+    {
+      "lane": "talia",
+      "persona": "talia",
+      "adapter": "codex",
+      "adapterProfile": "gpt-5.5",
+      "canWrite": true,
+      "profileCanWrite": true,
+      "routeOwnedCommit": false,
+      "routeWriteScope": null,
+      "adapterKind": "llm-cli",
+      "adapterCapabilities": {
+        "interactive": true,
+        "initialPrompt": true,
+        "stdinDispatch": true,
+        "resultFile": true,
+        "transcriptCapture": true,
+        "streamingDetection": true,
+        "screenshots": false,
+        "dom": false,
+        "console": false,
+        "shell": true,
+        "fileEdit": true
+      },
+      "command": "codex",
+      "sessionName": "orch-talia-rsona-identity-bob",
+      "displayLabel": "Talia | Codex GPT-5.5 | v0.1-foundation | bob",
+      "promptPath": "__REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob/jobs/talia/prompt.md",
+      "resultPath": "__REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob/jobs/talia/result.json",
+      "markdownResultPath": "__REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob/jobs/talia/result.md",
+      "wrapperPath": "__REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob/jobs/talia/launch.sh",
+      "deferWrapperPath": "__REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob/jobs/talia/launch-deferred.sh",
+      "startSignalPath": "__REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob/jobs/talia/start.signal",
+      "startupMode": "wait-for-lead-dispatch",
+      "width": 120,
+      "height": 40,
+      "bootstrapMessage": "Read and follow this CoCoder orchestration launch prompt exactly: __REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob/jobs/talia/prompt.md",
+      "entryPath": "__REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob/jobs/talia/launch.sh"
+    }
+  ],
+  "helperScripts": {
+    "bob": "__REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob/send-to-bob.sh",
+    "talia": "__REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob/send-to-talia.sh"
+  },
+  "completionWatchScripts": {
+    "bob": "__REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob/watch-bob-completion.sh",
+    "talia": "__REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob/watch-talia-completion.sh"
+  },
+  "startAllScript": "__REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob/start-lanes.sh",
+  "startWatchersScript": "__REPO_ROOT__/local/workspaces/cocoder-dogfood-fixture/runs/run-fixture-persona-identity-bob/start-watchers.sh",
+  "attachCommands": {
+    "bob": "/opt/homebrew/bin/tmux -L cocoder-orchestration attach -t orch-bob-rsona-identity-bob",
+    "talia": "/opt/homebrew/bin/tmux -L cocoder-orchestration attach -t orch-talia-rsona-identity-bob"
+  },
+  "createdAt": "2026-05-23T10:16:40.474Z"
+}

@@ -6,7 +6,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { loadAdapterDeclarations, preflightAdapterRegistry } from './adapters.mjs';
-import { checkRouteProfileCompatibility, composeCompatibility, composePersonaPrompt } from './composition.mjs';
+import { checkRouteProfileCompatibility, composeCompatibility, composePersonaPrompt, loadPromptManifest } from './composition.mjs';
 import { readJson, writeJson } from './fs-utils.mjs';
 import { appendEvent, createRun, setRunStatus } from './ledger.mjs';
 import { resolveModelRoles, summarizeModelRoles } from './model-roles.mjs';
@@ -998,7 +998,25 @@ async function writeLaunchArtifacts(launchPlan) {
   await writeFile(launchPlan.startWatchersScript, renderStartWatchersScript(launchPlan), { mode: 0o755 });
 }
 
-async function renderLanePrompt(launchPlan, session) {
+async function resolvePromptsRootForSession(launchPlan, persona) {
+  const candidates = [
+    path.join(launchPlan.cwd || process.cwd(), 'cocoder/personas/prompts'),
+    path.join(process.cwd(), 'cocoder/personas/prompts')
+  ];
+  for (const promptsRoot of candidates) {
+    const manifestPath = path.join(promptsRoot, 'manifest.json');
+    if (!(await pathExists(manifestPath))) continue;
+    try {
+      const manifest = await loadPromptManifest({ manifestPath });
+      if (manifest.personas?.[persona]) return promptsRoot;
+    } catch {
+      // try the next candidate
+    }
+  }
+  return path.join(process.cwd(), 'cocoder/personas/prompts');
+}
+
+export async function renderLanePrompt(launchPlan, session) {
   const teammateSessions = launchPlan.sessions
     .filter((candidate) => candidate.lane !== session.lane)
     .map((candidate) => `${candidate.lane}: ${candidate.sessionName}`)
@@ -1009,7 +1027,10 @@ async function renderLanePrompt(launchPlan, session) {
   const completionWatchers = Object.entries(launchPlan.completionWatchScripts)
     .map(([lane, script]) => `${lane}: ${script}`)
     .join('\n');
-  const composed = await composePersonaPrompt({ persona: session.persona });
+  const composed = await composePersonaPrompt({
+    persona: session.persona,
+    promptsRoot: await resolvePromptsRootForSession(launchPlan, session.persona)
+  });
   const modelRoleLines = summarizeModelRoles(launchPlan.modelRoles);
   const startupWarningLines = (launchPlan.startupWarnings || []).map((warning) => `- ${warning}`);
   const personaRouteAuditLines = renderPersonaRouteAuditLines(launchPlan.personaRouteAudit);
