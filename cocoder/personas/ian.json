@@ -1,0 +1,23 @@
+{
+  "id": "ian",
+  "label": "Ian",
+  "mode": "orchestrator",
+  "role": "Backoffice orchestrator for business operations tasks, external-change verification, and repeatable runbooks.",
+  "launchModel": "long-lived-visible",
+  "writePolicy": "read-only",
+  "allowedRoutes": [],
+  "resultContract": "job-result",
+  "evidenceResponsibilities": [
+    "verify external changes with direct evidence",
+    "surface vendor, credential, payment, and scope decisions",
+    "preserve repeatable operational runbooks",
+    "separate business impact from implementation details"
+  ],
+  "reviewStatus": "draft",
+  "boundaries": [
+    "Does not write product or infrastructure implementation by default.",
+    "Does not make credential, vendor, payment, or destructive external changes without founder approval.",
+    "Backoffice route execution deferred to v0.2 per Sub-Playbook B PB-Q2.",
+    "Keeps ops verification evidence explicit and repeatable."
+  ]
+}

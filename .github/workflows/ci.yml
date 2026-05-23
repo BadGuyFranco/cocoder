@@ -59,6 +59,15 @@ jobs:
             echo "::error::Hardcoded /Volumes/ absolute paths found outside *.example.* files. Move machine-specific paths into example files or tokenize via \${COCODER_HOME} / \${root:name}."
             exit 1
           fi
+          if rg --no-messages 'build-personas/|cobuilder-build/orchestration/personas/playbooks/' \
+               packages/ docs/ templates/ cocoder/personas/playbooks/ \
+               --glob '!**/*.example.*' \
+               --glob '!packages/core/lib/composition.mjs' \
+               --glob '!packages/core/tests/composition-dogfood-bugfixes.test.mjs' \
+               --glob '!cocoder/personas/PORT-NOTES.md'; then
+            echo "::error::Private CoBuilder playbook path literals found in public surfaces. Scrub or move to private/local playbooks."
+            exit 1
+          fi
       - name: Public readiness placeholder
         run: |
           test -f LICENSE

@@ -1,0 +1,145 @@
+{
+  "id": "phil-workshop-toolsmith",
+  "label": "Workshop Toolsmith (Phil example profile)",
+  "createdFor": "workshop-extensions",
+  "lanes": {
+    "oscar": {
+      "persona": "oscar",
+      "adapter": "codex",
+      "adapterProfile": "gpt-5.5",
+      "canWrite": false,
+      "writeBoundary": [],
+      "excludedWriteBoundary": [],
+      "resultContract": "job-result",
+      "evidenceClassDefault": "B"
+    },
+    "phil-workshop-toolsmith": {
+      "persona": "phil-workshop-toolsmith",
+      "adapter": "codex",
+      "adapterProfile": "gpt-5.5",
+      "canWrite": true,
+      "writeBoundary": ["workshop/extensions/"],
+      "excludedWriteBoundary": [],
+      "resultContract": "job-result",
+      "evidenceClassDefault": "B"
+    },
+    "bob": {
+      "persona": "bob",
+      "adapter": "codex",
+      "adapterProfile": "gpt-5.5",
+      "canWrite": false,
+      "writeBoundary": [],
+      "excludedWriteBoundary": [],
+      "resultContract": "job-result",
+      "evidenceClassDefault": "B"
+    },
+    "ian": {
+      "persona": "bob",
+      "adapter": "codex",
+      "adapterProfile": "gpt-5.5",
+      "canWrite": false,
+      "writeBoundary": [],
+      "excludedWriteBoundary": [],
+      "resultContract": "job-result",
+      "evidenceClassDefault": "B"
+    },
+    "phil": {
+      "persona": "bob",
+      "adapter": "codex",
+      "adapterProfile": "gpt-5.5",
+      "canWrite": false,
+      "writeBoundary": [],
+      "excludedWriteBoundary": [],
+      "resultContract": "job-result",
+      "evidenceClassDefault": "B"
+    },
+    "talia": {
+      "persona": "bob",
+      "adapter": "codex",
+      "adapterProfile": "gpt-5.5",
+      "canWrite": false,
+      "writeBoundary": [],
+      "excludedWriteBoundary": [],
+      "resultContract": "job-result",
+      "evidenceClassDefault": "B"
+    },
+    "quinn": {
+      "persona": "bob",
+      "adapter": "codex",
+      "adapterProfile": "gpt-5.5",
+      "canWrite": false,
+      "writeBoundary": [],
+      "excludedWriteBoundary": [],
+      "resultContract": "job-result",
+      "evidenceClassDefault": "A"
+    },
+    "verifiers": {
+      "primary": {
+        "persona": "bob",
+        "adapter": "codex",
+        "adapterProfile": "gpt-5.5",
+        "canWrite": false,
+        "writeBoundary": [],
+        "excludedWriteBoundary": [],
+        "resultContract": "job-result",
+        "evidenceClassDefault": "A"
+      },
+      "adversarial": {
+        "persona": "bob",
+        "adapter": "codex",
+        "adapterProfile": "gpt-5.5",
+        "canWrite": false,
+        "writeBoundary": [],
+        "excludedWriteBoundary": [],
+        "resultContract": "job-result",
+        "evidenceClassDefault": "A"
+      }
+    },
+    "bobHelpers": {
+      "default": {
+        "persona": "bob",
+        "adapter": "codex",
+        "adapterProfile": "gpt-5.5",
+        "canWrite": false,
+        "writeBoundary": [],
+        "excludedWriteBoundary": [],
+        "resultContract": "job-result",
+        "evidenceClassDefault": "B",
+        "maxParallel": 1
+      },
+      "readonlyResearch": {
+        "persona": "bob",
+        "adapter": "codex",
+        "adapterProfile": "gpt-5.5",
+        "canWrite": false,
+        "writeBoundary": [],
+        "excludedWriteBoundary": [],
+        "resultContract": "job-result",
+        "evidenceClassDefault": "B",
+        "maxParallel": 1
+      },
+      "implementation": {
+        "persona": "bob",
+        "adapter": "codex",
+        "adapterProfile": "gpt-5.5",
+        "canWrite": false,
+        "writeBoundary": [],
+        "excludedWriteBoundary": [],
+        "resultContract": "job-result",
+        "evidenceClassDefault": "B",
+        "maxParallel": 1
+      }
+    }
+  },
+  "defaults": {
+    "evidenceClass": "B",
+    "maxParallelHelpers": 1,
+    "missingAdapterPolicy": "block"
+  },
+  "modelRoles": {
+    "orchestrator": { "lane": "oscar" },
+    "builder": { "lane": "phil-workshop-toolsmith" },
+    "fallbackPolicy": "ask-founder",
+    "substitutionPolicy": "strict"
+  }
+}

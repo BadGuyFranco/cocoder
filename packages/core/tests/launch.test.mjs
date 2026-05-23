@@ -2142,7 +2142,7 @@ async function createLaunchFixture(options = {}) {
       transport: overrides.transport,
       socketName: overrides.socketName,
       tmuxBin: overrides.tmuxBin,
-      cwd: overrides.cwd || repoRoot,
+      cwd: overrides.cwd || promptFixtureRoot,
       probeGitCommitCapability: overrides.probeGitCommitCapability,
       allowConcurrentPriorityRun: overrides.allowConcurrentPriorityRun,
       env: { PATH: process.env.PATH || '' }

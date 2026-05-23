@@ -83,3 +83,17 @@ The Sub-Playbook E plan (`cocoder/priorities/v0.1-foundation/plans/2026-05-22-do
 | Test | `packages/core/tests/persona-identity.test.mjs` — byte-identical `launchRun` bob prompt vs fixture; negative control mutates priority slug |
 
 Paths in committed fixtures use `__REPO_ROOT__` token; tests hydrate with the checkout root so CI and local NAS paths both work.
+
+## Sub-Playbook B Expand — Oscar, Phil, session-wrap, stubs (2026-05-23)
+
+| Borrowed / authored | Target in CoCoder | Scrub / divergence |
+|---|---|---|
+| `oscar.json` | `cocoder/personas/oscar.json` | `allowedRoutes` narrowed to `dogfood-port-tests` + `phil-workshop-toolsmith`. Everything else verbatim from CoBuilder orchestration personas. |
+| `prompts/personas/oscar.md` (CoBuilder) | `cocoder/personas/prompts/personas/oscar.md` | **Major divergence:** upstream CoBuilder file is ~25KB (private playbook prose embedded in the runtime fragment). CoCoder ships a concise public fragment (~15 lines) matching Bob/Talia fragment shape. Identity constraints preserved; CoBuilder-specific paths and checklists omitted. |
+| `prompts/shared/session-wrap.md` | `cocoder/personas/prompts/shared/session-wrap.md` | Scrubbed CoBuilder launcher paths (`Launch-Orchestrator.command`, `cobuilder-build/orchestration/...`) to CoCoder-neutral wrap language. |
+| `phil.json` + `prompts/personas/phil.md` | `cocoder/personas/phil.json` + `prompts/personas/phil.md` | Role reframed from CoBuilder "primitive builder" to CoCoder-neutral "extension builder". CoBuilder primitive-boundary references removed. |
+| `quinn.json`, `ian.json`, `verifier.json` | matching files in `cocoder/personas/` | Contract stubs only (PB-Q2=B deferral). `allowedRoutes` emptied; boundaries note v0.2 deferral. No manifest entries or public playbooks. |
+| `manifest.json` | `cocoder/personas/prompts/manifest.json` | Extended with `oscar` (includes `session-wrap.md`) and `phil`. Bob + Talia unchanged. |
+| Phil working example | `examples/personas/phil-primitive-builder/` | CoCoder-neutral "Workshop Toolsmith" domain; not CoBuilder primitives. |
+| Public playbooks | `cocoder/personas/playbooks/{bob,talia,oscar,phil}.md` | Authored fresh; not copied from CoBuilder private playbooks. |
+| Private operator pattern | `cocoder/personas/playbooks/README-private-operator-pattern.md` + template `local/README.md` | Documents `<workspace>/cocoder/local/playbooks/`. |

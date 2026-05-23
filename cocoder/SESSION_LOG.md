@@ -14,6 +14,20 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-23 — **Sub-Playbook B Expand complete (B-M1..B-M3); suite 265/265; paused before B Refine**
+
+**Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-personas-template.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-personas-template.plan.md)
+
+**Outcomes:**
+- **B-M1:** Oscar + Phil personas, `session-wrap.md`, manifest (oscar+phil), contract stubs (quinn/ian/verifier), public playbooks, Phil Workshop example, CI private-string gate, baseline regen.
+- **B-M2:** Template hardening (standards/tickets/decisions/memory), `.gitignore` matrix, `new-workspace-setup.md`, `template-dogfood-drift.test.mjs`.
+- **B-M3:** `audit-workspace` + `refresh-memory` stubs in registry; `docs/custom-personas.md` + `docs/getting-started.md`.
+- **Tests:** 256 → **265** (+9: workspace-audit ×5, template-drift ×4). `validate-personas` ok for all 7 contracts.
+
+**Next:** B Refine (founder-only): init on empty repo, Phil E2E, persona-identity negative control. Agent stops here.
+
+---
+
 ## 2026-05-23 — **Sub-Playbook B Solve complete (PB-Q1=A, PB-Q2=B, PB-Q3=B, PB-Q4=A); suite 256/256**
 
 **Persona:** AI (Bob) + Founder | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-personas-template.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-personas-template.plan.md)

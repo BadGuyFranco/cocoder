@@ -3,7 +3,7 @@
 **Created:** 2026-05-21 | **Updated:** 2026-05-23 (Activated — Witness/Interrogate/Solve-target populated; Status flipped Draft → Active)
 **Type:** One-time
 **Collaboration:** Collaborative
-**Status:** **Active — Solve complete 2026-05-23; Expand (B-M1..B-M3) next session**
+**Status:** **Active — Expand complete 2026-05-23; Refine (founder-driven) next**
 **Method:** WISER Playbook (Sub-Playbook; Master = `../README.md`)
 **Parent:** [v0.1-foundation priority](../README.md)
 
@@ -191,30 +191,30 @@ A public CoCoder release at which a stranger can:
 
 Per PB-Q2 (recommended B — minimum subset), the v0.1 scope is **add Oscar; defer Quinn/Ian/verifier to v0.2; ship Phil per PB-Q3**.
 
-- [ ] B-M1.1 Borrow `oscar.json` + `prompts/personas/oscar.md` from CoBuilder. Scrub per PORT-NOTES vocabulary (priority-slug, `allowedRoutes`). Log in PORT-NOTES.
-- [ ] B-M1.2 Borrow `session-wrap.md` shared fragment if Oscar's manifest entry requires it (per Sub-Playbook E PORT-NOTES note on opportunistic borrow).
-- [ ] B-M1.3 Extend `cocoder/personas/prompts/manifest.json` with the Oscar entry.
-- [ ] B-M1.4 Phil example (per PB-Q3 = B): full working custom persona + minimal example route under `examples/personas/phil-primitive-builder/`. CoCoder-neutral domain.
-- [ ] B-M1.5 Public playbook summaries in `cocoder/personas/playbooks/` for Bob, Talia, Oscar, Phil. Authored fresh (NOT copy-pasted from CoBuilder private playbooks).
-- [ ] B-M1.6 Document operator pattern for private `<workspace>/cocoder/local/playbooks/`.
-- [ ] B-M1.7 CI grep for known private CoBuilder strings — extends M4.15 stale-reference gate with a new pattern list.
+- [x] B-M1.1 Borrow `oscar.json` + `prompts/personas/oscar.md` from CoBuilder. Scrub per PORT-NOTES vocabulary (priority-slug, `allowedRoutes`). Log in PORT-NOTES.
+- [x] B-M1.2 Borrow `session-wrap.md` shared fragment if Oscar's manifest entry requires it (per Sub-Playbook E PORT-NOTES note on opportunistic borrow).
+- [x] B-M1.3 Extend `cocoder/personas/prompts/manifest.json` with the Oscar entry.
+- [x] B-M1.4 Phil example (per PB-Q3 = B): full working custom persona + minimal example route under `examples/personas/phil-primitive-builder/`. CoCoder-neutral domain.
+- [x] B-M1.5 Public playbook summaries in `cocoder/personas/playbooks/` for Bob, Talia, Oscar, Phil. Authored fresh (NOT copy-pasted from CoBuilder private playbooks).
+- [x] B-M1.6 Document operator pattern for private `<workspace>/cocoder/local/playbooks/`.
+- [x] B-M1.7 CI grep for known private CoBuilder strings — extends M4.15 stale-reference gate with a new pattern list.
 
 ### Milestone B-M2 — Workspace template
 
 Per PB-Q1 (recommended A — static fileset), `templates/workspace-cocoder/` is authored as static files, validated by a B-Refine drift check.
 
-- [ ] B-M2.1 Author `templates/workspace-cocoder/cocoder/` with: `AGENTS.md`, `PRIORITIES.md` (empty stub), `SESSION_LOG.md` (empty stub), `priorities/.gitkeep`, `tickets/INDEX.md` (empty stub), `decisions/README.md` (stub explaining workspace-zone ADRs), `memory/` (stubs for `codebase-map.md`, `tech-stack.md`, `onboarding-questions.md`), `personas/custom/.gitkeep`, `standards/AGENTS.md` (stub), `local/.gitignore` (the `*` + `!.gitignore` + `!README.md` pattern), `local/README.md` (explains the zone).
-- [ ] B-M2.2 Author `templates/workspace-cocoder/cocoder/.gitignore` per ARCHITECTURE.md ignore matrix (the workspace-zone version, NOT the install-zone one).
-- [ ] B-M2.3 Author `templates/playbooks/new-workspace-setup.md` — first-week-of-CoCoder operator onboarding playbook.
-- [ ] B-M2.4 Drift check (B-Refine): every file/dir in `templates/workspace-cocoder/` exists in `<CoCoder>/cocoder/` (modulo legitimate dogfood-only additions enumerated in a known-divergences allowlist).
+- [x] B-M2.1 Author `templates/workspace-cocoder/cocoder/` with: `AGENTS.md`, `PRIORITIES.md` (empty stub), `SESSION_LOG.md` (empty stub), `priorities/.gitkeep`, `tickets/INDEX.md` (empty stub), `decisions/README.md` (stub explaining workspace-zone ADRs), `memory/` (stubs for `codebase-map.md`, `tech-stack.md`, `onboarding-questions.md`), `personas/custom/.gitkeep`, `standards/AGENTS.md` (stub), `local/.gitignore` (the `*` + `!.gitignore` + `!README.md` pattern), `local/README.md` (explains the zone).
+- [x] B-M2.2 Author `templates/workspace-cocoder/cocoder/.gitignore` per ARCHITECTURE.md ignore matrix (the workspace-zone version, NOT the install-zone one).
+- [x] B-M2.3 Author `templates/playbooks/new-workspace-setup.md` — first-week-of-CoCoder operator onboarding playbook.
+- [x] B-M2.4 Drift check (B-Refine): every file/dir in `templates/workspace-cocoder/` exists in `<CoCoder>/cocoder/` (modulo legitimate dogfood-only additions enumerated in a known-divergences allowlist).
 
 ### Milestone B-M3 — CLI surface (`init`, `audit-workspace`, `refresh-memory`)
 
 - [x] B-M3.1 `cocoder init` (planner + apply) — **moved to Solve as B-S3** because it's part of the idempotency invariant.
-- [ ] B-M3.2 `cocoder audit-workspace` STUB — walks AGENTS.md chain from `<workspace>/cocoder/AGENTS.md`, emits `<workspace>/cocoder/memory/onboarding-questions.md`. Full stack detection deferred to v0.2 per Decision Log.
-- [ ] B-M3.3 `cocoder refresh-memory` STUB — re-runs `audit-workspace`, updates `<workspace>/cocoder/memory/codebase-map.md` from results only (LLM-assisted refinement deferred to v0.2).
-- [ ] B-M3.4 `docs/custom-personas.md` — schema, checklist dir convention, route eligibility, Oz registration hook (Oz integration lands in Sub-Playbook C).
-- [ ] B-M3.5 `docs/getting-started.md` STUB (per PB-Q4 = A) — install → `cocoder init` → first persona launch. Sub-Playbook D extends.
+- [x] B-M3.2 `cocoder audit-workspace` STUB — walks AGENTS.md chain from `<workspace>/cocoder/AGENTS.md`, emits `<workspace>/cocoder/memory/onboarding-questions.md`. Full stack detection deferred to v0.2 per Decision Log.
+- [x] B-M3.3 `cocoder refresh-memory` STUB — re-runs `audit-workspace`, updates `<workspace>/cocoder/memory/codebase-map.md` from results only (LLM-assisted refinement deferred to v0.2).
+- [x] B-M3.4 `docs/custom-personas.md` — schema, checklist dir convention, route eligibility, Oz registration hook (Oz integration lands in Sub-Playbook C).
+- [x] B-M3.5 `docs/getting-started.md` STUB (per PB-Q4 = A) — install → `cocoder init` → first persona launch. Sub-Playbook D extends.
 
 ### Documentation Updates
 
@@ -222,7 +222,7 @@ Per PB-Q1 (recommended A — static fileset), `templates/workspace-cocoder/` is 
 - [ ] Master README "Key files" cross-reference Sub-Playbook B Witness back-reference to Sub-Playbook E PORT-NOTES
 - [ ] PRIORITIES.md slim-table row + parser-readable entry refreshed when B status flips Active → Final Check → Complete
 
-**Checkpoint:** [ ] All B-M tasks complete; persona regression test green; workspace template instantiates cleanly via `cocoder init` on a fresh test repo; PB-Q2 / PB-Q3 deferrals (Quinn/Ian/verifier/full-Phil) documented in `plans/v0.2-backlog.md` with rationale.
+**Checkpoint:** [x] All B-M tasks complete; persona regression test green; workspace template instantiates cleanly via `cocoder init` on a fresh test repo; PB-Q2 / PB-Q3 deferrals (Quinn/Ian/verifier full routes) documented in `plans/v0.2-backlog.md` with rationale.
 
 ---
 
@@ -281,17 +281,17 @@ Per PB-Q1 (recommended A — static fileset), `templates/workspace-cocoder/` is 
 
 ## Progress
 
-**Last worked:** 2026-05-23 (PB-Q1=A, PB-Q2=B, PB-Q3=B, PB-Q4=A; B-S1..B-S5 complete; suite 256/256)
-**Current Canon:** Active — Solve complete; Expand (B-M1..B-M3) is next-session work.
-**Next action:** B Expand — B-M1 persona library (Oscar + Phil per PB-Q2/B + PB-Q3/B), B-M2 workspace template hardening, B-M3 registry commands (`audit-workspace`, `refresh-memory`).
+**Last worked:** 2026-05-23 (B Expand B-M1..B-M3 complete; suite **265/265**)
+**Current Canon:** Active — Expand complete; Refine (founder-driven) next.
+**Next action:** B Refine — founder ceremony only (`cocoder init` on empty repo, Phil example E2E, persona-identity negative control).
 
 | Canon | Items | Done | Status |
 |---|---|---|---|
 | Witness | 1 | 1 | **Complete (2026-05-23)** |
 | Interrogate | 6 risks + 4 pending decisions + reuse check | 6 + 4-answered + 1 | **Complete (2026-05-23)** |
 | Solve | 5 (B-S1..B-S5) | 5 | **Complete (2026-05-23)** |
-| Expand | M1: 7 · M2: 4 · M3: 5 | 0 | Not started |
-| Refine | 5 | 0 | Not started |
+| Expand | M1: 7 · M2: 4 · M3: 5 | 16 | **Complete (2026-05-23)** |
+| Refine | 5 | 0 | Not started (founder-driven) |
 | Final Check | 8 | 0 | Not started |
 
 ---
