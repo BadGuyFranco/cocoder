@@ -304,19 +304,20 @@ Tracked in [`pending-decisions.md`](./pending-decisions.md). **All resolved 2026
 
 ## Progress
 
-**Last worked:** 2026-05-22 (very late night — **Sub-Playbook E E3.3 + Refine BOTH PASSED autonomously**: Talia ported `core.test.mjs` + `dispatch.test.mjs` under multi-lane orchestration; 86/86 tests green; 5 core bugs surfaced + fixed; reproducibility proven across two distinct runs; Sub-Playbook A E2.2e.1 + E2.2e.2 both closed)
-**Current Canon:** Sub-Playbook E Final Check (effectively complete; only Sub-Playbook B Witness back-reference + Sub-Playbook C audit-log deferrals remain). Sub-Playbook A still mid-Refine (M4 free-wins M4.5–M4.14, M4.16–M4.21 remain). Sub-Playbook B unblocked.
-**Next action:** **Founder decision on git:** `git init` here, or link this workspace to an existing CoCoder clone, so the session's uncommitted edits (5 product-code bug fixes + 2 dogfood-ported tests + dogfood config + state mirrors) can land. Then either (a) continue audit §4 port list (E2.2e.3 `adapters.test.mjs` next), (b) start Sub-Playbook B (full persona library + workspace template), or (c) finish Sub-Playbook A M4 free-wins.
+**Last worked:** 2026-05-23 (v0.1 completion plan authored — bundles three remaining items: ticket 0001 decision, Sub-Playbook A M4 free-wins, Sub-Playbook B activation)
+**Current Canon:** v0.1 completion phase. Audit §4 port-first list CLOSED 2026-05-22 (12 of 12 ports landed across 7 autonomous orchestration runs; 9 product-code bugs surfaced + fixed end-to-end; 235 tests, 229 pass, 6 skipped). Repo public at `BadGuyFranco/cocoder`. See [`plans/2026-05-23-v0.1-completion.plan.md`](./plans/2026-05-23-v0.1-completion.plan.md).
+**Next action:** Fresh session picks up the completion plan via the verbatim pickup prompt in its Appendix. Recommended order: Item 1 (ticket 0001) → Item 2 (M4 free-wins) → Item 3 (Sub-Playbook B Witness/Interrogate).
 
 ### Sub-Playbook status
 
 | Sub-Playbook | Status | Current Canon | Next action | File |
 |---|---|---|---|---|
-| A. Foundation + config survival | Active — Refine | Refine (audit remediation) | Execute M4.22–M4.27 per resolved Q1–Q7 (see M4 in foundation plan). | [`2026-05-21-foundation.plan.md`](./plans/2026-05-21-foundation.plan.md) |
-| **E. Dogfood ramp** (new 2026-05-22; pulls thin slice of B forward) | Active — Final Check | **E3.3 + Refine BOTH PASSED 2026-05-22** (Talia autonomously ported `core.test.mjs` + `dispatch.test.mjs` in two distinct runs; Bob audited + accepted both; 86/86 tests; 5 core bugs surfaced + fixed end-to-end; no out-of-zone writes across both runs) | Founder initializes git (or links to canonical clone) so the session's edits can land as commits; then continue audit §4 port list at E2.2e.3 `adapters.test.mjs` OR start Sub-Playbook B | [`2026-05-22-dogfood-ramp.plan.md`](./plans/2026-05-22-dogfood-ramp.plan.md) |
-| B. Personas + workspace template | Draft | — | Awaits A + E Complete | [`2026-05-21-personas-template.plan.md`](./plans/2026-05-21-personas-template.plan.md) |
+| A. Foundation + config survival | Active — Refine | M4 free-wins remain (M4.5–M4.14, M4.16–M4.21); audit §4 port-first list CLOSED 2026-05-22 (12/12) | Land M4 free-wins per completion plan Item 2 | [`2026-05-21-foundation.plan.md`](./plans/2026-05-21-foundation.plan.md) |
+| **E. Dogfood ramp** | **Complete (effectively)** | All milestones green: Solve + Expand + Refine + 5/6 Final Check. 12 audit §4 ports closed across 7 autonomous runs; 9 product-code bugs surfaced + fixed end-to-end. | Final-Check item 6 (Sub-Playbook B Witness back-reference) lands when B activates | [`2026-05-22-dogfood-ramp.plan.md`](./plans/2026-05-22-dogfood-ramp.plan.md) |
+| B. Personas + workspace template | Draft → activates next | — | Activate per completion plan Item 3 (Witness/Interrogate/Solve-target this session; Expand subsequent sessions) | [`2026-05-21-personas-template.plan.md`](./plans/2026-05-21-personas-template.plan.md) |
 | C. Oz MVP | Draft | — | Awaits A Complete + B Solve | [`2026-05-21-oz-mvp.plan.md`](./plans/2026-05-21-oz-mvp.plan.md) |
 | D. Docs + dogfood + publish | Draft | — | Awaits A, B, C Complete | [`2026-05-21-docs-publish.plan.md`](./plans/2026-05-21-docs-publish.plan.md) |
+| **v0.1 Completion Plan** (cross-cuts A, B, ticket 0001) | **Draft → Active next session** | New 2026-05-23: bundles the three remaining v0.1 items in dependency order | Fresh session picks up via plan's Appendix prompt | [`2026-05-23-v0.1-completion.plan.md`](./plans/2026-05-23-v0.1-completion.plan.md) |
 
 ### Canon roll-up (Master only)
 
