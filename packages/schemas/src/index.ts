@@ -19,9 +19,14 @@ export type {
   OzWorkspaceResponse,
   OzWorkspaceUpdateRequest
 } from "./oz/workspace-http.js";
+export type { OzRunEvidenceSummary, OzRunListEntry } from "./oz/runs-http.js";
 export {
   ozRunEvidenceSummarySchema,
   ozRunListEntrySchema,
   ozRunListResponseSchema
 } from "./oz/runs-http.js";
-export type { OzRunEvidenceSummary, OzRunListEntry } from "./oz/runs-http.js";
+export {
+  ozWorkspacePriorityListResponseSchema,
+  ozWorkspacePrioritySchema
+} from "./oz/priorities-http.js";
+export type { OzWorkspacePriority } from "./oz/priorities-http.js";

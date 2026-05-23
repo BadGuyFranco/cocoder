@@ -9,13 +9,16 @@ export function AppLayout() {
           <NavLink to="/workspaces" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
             Workspaces
           </NavLink>
+          <NavLink to="/priorities" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+            Priorities
+          </NavLink>
+          <NavLink to="/runs" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+            Runs
+          </NavLink>
           <NavLink to="/settings" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
             Settings
           </NavLink>
         </nav>
-        <p className="muted" style={{ marginTop: "2rem" }}>
-          Runs and Priorities land in Batch 4.
-        </p>
       </aside>
       <main className="main-pane">
         <Outlet />

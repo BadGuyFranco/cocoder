@@ -11,6 +11,7 @@ import {
   resolveWorkspaceRegistry,
   writeWorkspacesRegistry
 } from "./registry.js";
+import { listWorkspacePriorities, workspacePrioritiesPath } from "./priorities.js";
 
 export type RegisterWorkspacesRoutesOptions = {
   cocoderHome: string;
@@ -39,6 +40,31 @@ export async function registerWorkspacesRoutes(
     }
     const resolved = await resolveWorkspaceEntry(entry, { cocoderHome: options.cocoderHome });
     return resolved;
+  });
+
+  app.get("/workspaces/:id/priorities", async (request, reply) => {
+    const id = (request.params as { id: string }).id;
+    const registry = await readWorkspacesRegistry(options.cocoderHome);
+    const entry = registry.workspaces.find((candidate) => candidate.id === id);
+    if (!entry) {
+      await reply.code(404).send({ error: `workspace not found: ${id}` });
+      return;
+    }
+    const resolved = await resolveWorkspaceEntry(entry, { cocoderHome: options.cocoderHome });
+    try {
+      const priorities = await listWorkspacePriorities(resolved.resolvedPath);
+      return {
+        workspaceId: id,
+        prioritiesPath: workspacePrioritiesPath(resolved.resolvedPath),
+        priorities
+      };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code === "ENOENT") {
+        await reply.code(404).send({ error: `priorities file not found for workspace: ${id}` });
+        return;
+      }
+      throw error;
+    }
   });
 
   app.post("/workspaces", async (request, reply) => {

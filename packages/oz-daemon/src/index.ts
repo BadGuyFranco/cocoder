@@ -47,6 +47,7 @@ export { listAllRuns, resolveRunLocation, type RunListEntry, type ResolvedRunLoc
 export { collectRunEvidenceSummary, type RunEvidenceSummary } from "./run-evidence.js";
 export { registerRunsRoutes, type LaunchRunsBody, type StopRunsBody, type RegisterRunsRoutesOptions } from "./runs.js";
 export { registerWorkspacesRoutes, type RegisterWorkspacesRoutesOptions } from "./workspaces.js";
+export { listWorkspacePriorities, workspacePrioritiesPath, type WorkspacePriorityEntry } from "./priorities.js";
 export { ensureOzToken, ozTokenPath } from "./token.js";
 export { registerDashboardStatic, resolveDashboardDistRoot } from "./dashboard-static.js";
 export { createOzServer, startOzDaemon, type OzServer, type OzServerOptions } from "./server.js";

@@ -55,3 +55,13 @@ pnpm exec cocoder compose-launch \
 4. Inspect the JSON output; fix validation errors before `launch --execute true`.
 
 See `docs/custom-personas.md` for custom persona authoring and `templates/playbooks/new-workspace-setup.md` for a first-week operator playbook.
+
+## 5. Oz dashboard (optional)
+
+For a browser UI to register workspaces, scan priorities, launch runs, and inspect evidence:
+
+```bash
+pnpm exec cocoder oz start
+```
+
+Open `http://127.0.0.1:7878/`. See [`docs/oz-launch.md`](./oz-launch.md) for the full Oz operator flow (replaces retired `.command` double-click wrappers).
