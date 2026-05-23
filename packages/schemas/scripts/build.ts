@@ -6,6 +6,7 @@ import { installConfigSchema } from "../src/install-config.js";
 import { rootsSchema } from "../src/roots.js";
 import { workspacesRegistrySchema } from "../src/workspaces-registry.js";
 import { ozImprovementRoutingSchema } from "../src/oz/improvement-target.js";
+import { ozAuditRecordSchema } from "../src/oz/audit-record.js";
 
 const outDir = path.resolve("dist");
 
@@ -14,7 +15,8 @@ const schemas = [
   ["install-config.schema.json", "cocoder-install-config", installConfigSchema],
   ["roots.schema.json", "cocoder-roots", rootsSchema],
   ["workspaces-registry.schema.json", "cocoder-workspaces-registry", workspacesRegistrySchema],
-  ["oz-improvement-routing.schema.json", "cocoder-oz-improvement-routing", ozImprovementRoutingSchema]
+  ["oz-improvement-routing.schema.json", "cocoder-oz-improvement-routing", ozImprovementRoutingSchema],
+  ["oz-audit-record.schema.json", "cocoder-oz-audit-record", ozAuditRecordSchema]
 ] as const;
 
 await mkdir(outDir, { recursive: true });

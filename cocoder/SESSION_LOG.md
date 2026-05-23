@@ -14,15 +14,28 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
-## 2026-05-23 — **Sub-Playbook C Solve Batch 3 (C-S5/C-S7); PR pending**
+## 2026-05-23 — **Sub-Playbook C Solve Batch 4 (C-S6/C-S8/C-S9); PR pending**
 
 **Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
 
 **Outcomes:**
-- C-S5 `GET/PUT /settings` with `resolveSecrets: false` on read; PUT stores literals verbatim (matches `config set`).
-- C-S7 `spawn-launcher.ts` + static grep + argv integration probe in `oz-security-spawn.test.mjs`.
+- `audit-record.ts` schema + fail-closed append path; `GET/POST/DELETE /runs` audit integration.
+- Registry module with multi-machine token resolution tests.
+- C-S6/C-S8/C-S9 regression tests (inject + registry unit probes).
 
-**Next:** Merge Batch 3 PR → Batch 4 (C-S6/C-S8/C-S9 closes Solve).
+**Next:** Merge Batch 4 → closure PR (metadata only) → C Expand (separate session).
+
+---
+
+## 2026-05-23 — **Sub-Playbook C Solve Batch 3 merged (PR #38 → `1e5fc6f`); C-S5/C-S7 green; suite 291/291**
+
+**Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
+
+**Outcomes:**
+- PR #38 squash-merged to `main` @ **`1e5fc6f`**; CI green; suite **291/291** (+5 from 286).
+- C-S5 settings redaction + C-S7 spawn argv.
+
+**Next:** Batch 4 — C-S6 audit + C-S8 registry + C-S9 (closes Solve).
 
 ---
 

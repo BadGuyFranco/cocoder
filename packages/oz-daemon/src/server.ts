@@ -3,6 +3,7 @@ import { assertLoopbackHost } from "./bind.js";
 import { createCsrfToken, OZ_CSRF_HEADER, validateCsrfToken } from "./csrf.js";
 import { STATE_CHANGING_METHODS, validateOriginHost } from "./origin-host.js";
 import { DEFAULT_OZ_PORT, resolveOzPort } from "./port.js";
+import { registerRunsRoutes } from "./runs.js";
 import { registerSettingsRoutes } from "./settings.js";
 import { ensureOzToken } from "./token.js";
 
@@ -13,6 +14,8 @@ export type OzServerOptions = {
   token?: string;
   csrfToken?: string;
   env?: NodeJS.ProcessEnv;
+  launchExecutable?: string;
+  launchArgvPrefix?: string[];
 };
 
 export type OzServer = {
@@ -73,11 +76,17 @@ export async function createOzServer(options: OzServerOptions): Promise<OzServer
     }
   });
 
-  await registerSettingsRoutes(app, options.cocoderHome);
+  app.setErrorHandler(async (error, _request, reply) => {
+    const message = error instanceof Error ? error.message : String(error);
+    await reply.code(400).send({ error: message });
+  });
 
-  // Solve-phase stubs for state-changing auth probes (Expand replaces with real handlers).
-  app.post("/runs", async () => ({ ok: true, stub: true }));
-  app.delete("/runs/:runId", async () => ({ ok: true, stub: true }));
+  await registerSettingsRoutes(app, options.cocoderHome);
+  await registerRunsRoutes(app, {
+    cocoderHome: options.cocoderHome,
+    launchExecutable: options.launchExecutable,
+    launchArgvPrefix: options.launchArgvPrefix
+  });
 
   await app.ready();
   return { app, host, port, token, csrfToken };

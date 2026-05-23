@@ -77,10 +77,15 @@ test('C-S4: valid Bearer and valid CSRF succeed on POST /runs stub', async () =>
   const response = await app.inject({
     method: 'POST',
     url: '/runs',
-    headers: bearerHeaders(token, port, csrfToken)
+    headers: bearerHeaders(token, port, csrfToken),
+    payload: {
+      workspaceId: 'sample-app',
+      runId: 'run-csrf-stub',
+      outcome: 'accepted'
+    }
   });
   assert.equal(response.statusCode, 200);
-  assert.deepEqual(response.json(), { ok: true, stub: true });
+  assert.equal(response.json().stub, true);
   await app.close();
 });
 
