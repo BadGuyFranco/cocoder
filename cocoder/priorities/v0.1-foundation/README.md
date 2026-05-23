@@ -204,7 +204,7 @@ A public git repository (`CoCoder`) with: working `cocoder` CLI, Oz dashboard, w
 
 ### Sub-Playbook F — Structural cleanup (god-module debt + shared-helper extraction)
 
-- [ ] **PF** Surgical decomposition unblocking Sub-Playbook B Expand: shared-helper extraction (FB-1), `cli.mjs` command registry (FB-2), `contracts.mjs` `enum` honoring (FB-3). NOT a comprehensive god-module decomposition — `launch.mjs` / `ledger.mjs` / `launch.test.mjs` split + TS-wrapper identity + inline-prompt-prose extraction + AppleScript-attach strategy split + full Zod migration of orchestration contracts are explicitly deferred to a v0.2 architectural priority.
+- [x] **PF** Surgical decomposition unblocking Sub-Playbook B Expand: shared-helper extraction (FB-1), `cli.mjs` command registry (FB-2), `contracts.mjs` `enum` honoring (FB-3). NOT a comprehensive god-module decomposition — `launch.mjs` / `ledger.mjs` / `launch.test.mjs` split + TS-wrapper identity + inline-prompt-prose extraction + AppleScript-attach strategy split + full Zod migration of orchestration contracts are explicitly deferred to a v0.2 architectural priority. — *Complete 2026-05-23 (PR #28).*
 - File: [`./plans/2026-05-23-structural-cleanup.plan.md`](./plans/2026-05-23-structural-cleanup.plan.md)
 - Depends on: Sub-Playbook A Refine-complete (✅), Sub-Playbook B Witness/Interrogate/Solve-target landed (✅)
 - Unblocks: Sub-Playbook B Solve (B-S2 persona-identity regression test consumes the post-helper-extraction composer output bytes; sequencing F before B-S1 fixture capture avoids regen)
@@ -317,9 +317,9 @@ Tracked in [`pending-decisions.md`](./pending-decisions.md). **All resolved 2026
 
 ## Progress
 
-**Last worked:** 2026-05-23 (Sub-Playbook F FB-1/FB-2/FB-3 executed; PR #28; suite 249/249)
-**Current Canon:** v0.1 completion phase. Audit §4 port-first list CLOSED (12 of 12). Sub-Playbook A Refine-complete. Sub-Playbook E Complete. Sub-Playbook F Expand complete (F Refine ceremony pending). Sub-Playbook B Witness/Interrogate/Solve-target complete; B Solve unblocked pending F Refine. Test count: **249 / 249 / 0 fail / 0 skipped**. Repo public at `BadGuyFranco/cocoder`. See [`plans/2026-05-23-v0.1-completion.plan.md`](./plans/2026-05-23-v0.1-completion.plan.md).
-**Next action:** F Refine ceremony (founder spot-check composer byte-equivalence + 3 CLI commands). Then founder answers Sub-Playbook B's PB-Q1..PB-Q4. Then B Solve (B-S1..B-S5). Sub-Playbook A Final Check ceremony parallel-tracks throughout.
+**Last worked:** 2026-05-23 (Sub-Playbook F Complete; PR #28 merged; compose-launch diff clean)
+**Current Canon:** v0.1 completion phase. Audit §4 port-first list CLOSED (12 of 12). Sub-Playbook A Refine-complete. Sub-Playbook E Complete. **Sub-Playbook F Complete (2026-05-23).** Sub-Playbook B Witness/Interrogate/Solve-target complete; B Solve gated on PB-Q1..PB-Q4 founder answers only. Test count: **249 / 249 / 0 fail / 0 skipped**. Repo public at `BadGuyFranco/cocoder`. See [`plans/2026-05-23-v0.1-completion.plan.md`](./plans/2026-05-23-v0.1-completion.plan.md).
+**Next action:** Founder answers Sub-Playbook B's PB-Q1..PB-Q4. Then B Solve (B-S1..B-S5). Sub-Playbook A Final Check ceremony parallel-tracks throughout.
 
 ### Sub-Playbook status
 
@@ -327,11 +327,11 @@ Tracked in [`pending-decisions.md`](./pending-decisions.md). **All resolved 2026
 |---|---|---|---|---|
 | A. Foundation + config survival | Active — Refine (M4 Checkpoint reached 2026-05-23; awaiting Final Check ceremony) | All 27 M4 rows done; audit §4 port-first list CLOSED 12/12; suite 249/249 all-passing | Final Check ceremony (manual smoke tests on a clean clone — see Refine section) | [`2026-05-21-foundation.plan.md`](./plans/2026-05-21-foundation.plan.md) |
 | **E. Dogfood ramp** | **Complete (2026-05-23)** | Solve + Expand + Refine + Final Check 6/6 all green. 12 audit §4 ports closed across 7 autonomous runs; 9 product-code bugs surfaced + fixed end-to-end; B Witness back-reference closed by Sub-Playbook B activation. | — | [`2026-05-22-dogfood-ramp.plan.md`](./plans/2026-05-22-dogfood-ramp.plan.md) |
-| B. Personas + workspace template | **Active — Witness/Interrogate/Solve-target complete 2026-05-23; B Solve unblocked pending F Refine** | PB-Q1..PB-Q4 awaiting founder gate; Solve (B-S1..B-S5) starts after F Refine | F Refine ceremony; then founder answers PB-Q1..PB-Q4; then B Solve | [`2026-05-21-personas-template.plan.md`](./plans/2026-05-21-personas-template.plan.md) |
-| **F. Structural cleanup** | **Active — Expand complete 2026-05-23; F Refine ceremony pending** | FP-Q1=A + FP-Q2=B answered; FB-1/FB-2/FB-3 landed (PR #28); suite 249/249 | Founder F Refine ceremony (composer byte-equivalence + 3 CLI spot-checks) | [`2026-05-23-structural-cleanup.plan.md`](./plans/2026-05-23-structural-cleanup.plan.md) |
+| B. Personas + workspace template | **Active — Witness/Interrogate/Solve-target complete 2026-05-23; B Solve gated on PB-Q1..PB-Q4** | PB-Q1..PB-Q4 awaiting founder gate; Solve (B-S1..B-S5) ready after founder answers | Founder answers PB-Q1..PB-Q4; then B Solve | [`2026-05-21-personas-template.plan.md`](./plans/2026-05-21-personas-template.plan.md) |
+| **F. Structural cleanup** | **Complete (2026-05-23)** | Final Check closed; PR #28 merged `58e1fe2`; suite 249/249; compose-launch diff clean | — | [`2026-05-23-structural-cleanup.plan.md`](./plans/2026-05-23-structural-cleanup.plan.md) |
 | C. Oz MVP | Draft | — | Awaits A Complete + B Solve | [`2026-05-21-oz-mvp.plan.md`](./plans/2026-05-21-oz-mvp.plan.md) |
 | D. Docs + dogfood + publish | Draft | — | Awaits A, B, C Complete | [`2026-05-21-docs-publish.plan.md`](./plans/2026-05-21-docs-publish.plan.md) |
-| **v0.1 Completion Plan** (cross-cuts A, B, ticket 0001) | **Active** | Items 1 + 2 CLOSED; Item 2.5 F Expand complete; Item 3 W/I/S authored | F Refine; then PB-Q1..PB-Q4 + B Solve | [`2026-05-23-v0.1-completion.plan.md`](./plans/2026-05-23-v0.1-completion.plan.md) |
+| **v0.1 Completion Plan** (cross-cuts A, B, ticket 0001) | **Active** | Items 1 + 2 CLOSED; Item 2.5 F Complete; Item 3 W/I/S authored | PB-Q1..PB-Q4 + B Solve | [`2026-05-23-v0.1-completion.plan.md`](./plans/2026-05-23-v0.1-completion.plan.md) |
 
 ### Canon roll-up (Master only)
 

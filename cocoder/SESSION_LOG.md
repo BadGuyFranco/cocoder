@@ -14,6 +14,45 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-23 — **Sub-Playbook F Complete (Final Check); PR #28 merged; compose-launch behavior preserved**
+
+**Persona:** AI (Bob) + Founder | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-23-structural-cleanup.plan.md`](./priorities/v0.1-foundation/plans/2026-05-23-structural-cleanup.plan.md)
+
+**Outcomes:**
+- **PR #28 merged** (`58e1fe2` squash on `main`). CI green (249/249). CI fixture fix (`packages/core/tests/fixtures/cli-help-baseline.txt`) landed in follow-up commit before merge.
+- **F Refine re-check passed** (founder): suite + validate-contracts + check-immutable-baseline green; 3 CLI spot-checks ok; v0.2-backlog deferred items confirmed.
+- **Compose-launch diff (pre-F @ bb0c308 vs post-F @ 58e1fe2):** dogfood dry-render bob `prompt.md`; normalized diff identical except runId, timestamp, and run-dir paths.
+
+```
+--- composed-prompt-pre-F.txt (main @ bb0c308)
++++ post-F bob/prompt.md (main @ 58e1fe2)
+@@ -2,17 +2,17 @@
+-run_id: run-20260523T101149Z-d8f1sqcl
++run_id: run-20260523T101200Z-ap165flu
+-display_label: Bob | Codex GPT-5.5 | v0.1-foundation | d8f1sqcl
++display_label: Bob | Codex GPT-5.5 | v0.1-foundation | ap165flu
+-startup_packet: .../run-20260523T101149Z-d8f1sqcl/startup-packet.json
++startup_packet: .../run-20260523T101200Z-ap165flu/startup-packet.json
+-result_file: .../run-20260523T101149Z-d8f1sqcl/jobs/bob/result.json
++result_file: .../run-20260523T101200Z-ap165flu/jobs/bob/result.json
+-markdown_result_file: .../run-20260523T101149Z-d8f1sqcl/jobs/bob/result.md
++markdown_result_file: .../run-20260523T101200Z-ap165flu/jobs/bob/result.md
+-talia: orch-talia-3T101149Z-d8f1sqcl
++talia: orch-talia-3T101200Z-ap165flu
+-bob: .../run-20260523T101149Z-d8f1sqcl/send-to-bob.sh
++bob: .../run-20260523T101200Z-ap165flu/send-to-bob.sh
+-talia: .../run-20260523T101149Z-d8f1sqcl/send-to-talia.sh
++talia: .../run-20260523T101200Z-ap165flu/send-to-talia.sh
+-bob: .../run-20260523T101149Z-d8f1sqcl/watch-bob-completion.sh
++bob: .../run-20260523T101200Z-ap165flu/watch-bob-completion.sh
+-talia: .../run-20260523T101149Z-d8f1sqcl/watch-talia-completion.sh
++talia: .../run-20260523T101200Z-ap165flu/watch-talia-completion.sh
+```
+
+**Next:** Sub-Playbook B Solve awaits PB-Q1..PB-Q4 founder answers (separate session). Do not start B Solve until answered.
+
+---
+
 ## 2026-05-23 — **Sub-Playbook F Solve complete (FB-1/FB-2/FB-3); suite 249/249; B Solve unblocked pending F Refine**
 
 **Persona:** AI (Bob) + Founder | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-23-structural-cleanup.plan.md`](./priorities/v0.1-foundation/plans/2026-05-23-structural-cleanup.plan.md)
