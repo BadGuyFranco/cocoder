@@ -14,6 +14,25 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-23 — **v0.1 Completion Plan Item 1 closed — ticket 0001 resolved Path B (Retire); CoCoder is terminal-only**
+
+**Persona:** AI (Bob) + Founder | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-23-v0.1-completion.plan.md`](./priorities/v0.1-foundation/plans/2026-05-23-v0.1-completion.plan.md) Item 1
+
+**Outcomes:**
+- **Founder picked Path B (Retire)** for ticket 0001 (`.command` wrapper restore/retire decision). CoCoder v0.1 ships terminal-only — `pnpm exec cocoder launch …` is the only invocation surface. Adopters wanting a one-click entry point can wrap it in a personal alias / Raycast script / Automator action.
+- **`packages/core/tests/launch-command.test.mjs` deleted** (the 6 skipped tests asserted behavior of absent wrappers; no value remaining). Test totals: **235 → 229 (all passing)**, 0 skipped, 0 fail. `pnpm exec cocoder validate-contracts` ok.
+- **Ticket 0001 moved** `cocoder/tickets/open/0001-...md` → `cocoder/tickets/closed/`; front matter updated (`status: Closed`, `closed: 2026-05-23`, `resolution: Path B — Retire`); History line appended; `cocoder/tickets/INDEX.md` mirror refreshed per SSOT rule (open table now empty; new "Recently Closed" row with resolution).
+- **Sub-Playbook A foundation plan** E2.2e.12 row flipped `[ ]` → `[x]` with "Retired 2026-05-23 (Path B per ticket 0001)" note + cross-ref to closed ticket. Success Criteria port range updated to E2.2e.1–E2.2e.11 (E2.2e.12 explicitly retired). Sub-Playbook B (Item 3) inherits the terminal-only stance — no wrapper files in the workspace template.
+- **`docs/configuration.md`** gained an "Invocation" section codifying terminal-only as the v0.1 product stance, with a pointer at the resolved ticket for the reasoning. Last-verified date refreshed to 2026-05-23 (and run count updated from 4 → 7 autonomous Sub-Playbook E runs, matching reality).
+- **Drift surfaced (NOT fixed in this PR — Item 2 territory):** the foundation plan's E2.2e.1, E2.2e.5–E2.2e.11 rows are still `[ ]` even though SESSION_LOG + completion plan say all 12 ports landed across 7 autonomous runs. This is "lying checkboxes" of the same class M4.1 fixed back in May. Recommended: roll into the Item 2 (M4 free-wins) batch as a checkbox-refresh task — should take ~15 min.
+- **Investigation note (not a product bug, but worth recording):** While verifying the suite, `launch.test.mjs:918` (`finalize-run-status refuses terminal teardown without founder approval`) failed reproducibly while the working tree had uncommitted edits in `cocoder/` or `packages/core/`. Root cause: `finalizeRunStatusFromResults` calls `auditDirtyBeforeTerminalize({ repoRoot })`, which is the post-2026-05-22 hardening that extended `DURABLE_ORCHESTRATION_PREFIXES` to include `packages/core/`. The test assumes a clean tree; it passes once changes are committed. Not blocking, but a future M4 free-win could either (a) make the test set up an isolated git repo per-fixture, or (b) skip-with-reason when run against a dirty repo so the failure mode is clearer than `expected: 'complete' actual: 'ready'`.
+
+**PR + auto-merge:** opening PR for branch `feat/retire-launch-command-wrappers` now (2 commits — the docs/metadata changes + a follow-up that stages the test-file deletion that got unstaged mid-investigation; they collapse cleanly under squash-merge). Not on the hold-for-go list; auto-merges per protocol once CI green.
+
+**Resume cue / Next:** Item 2 (Sub-Playbook A M4 free-wins cleanup — M4.5–M4.14, M4.16–M4.21). Recommended kick-off: re-read the foundation plan §"Milestone M4" task rows to enumerate exact open items, group by file, then land each as its own auto-merge PR. The checkbox-refresh task noted above is a natural first batch (low risk, ~15 min, cleans the SSOT picture before tackling the actual H1–M12 audit findings).
+
+---
+
 ## 2026-05-22 (Afternoon) — **Session close — launch.test.mjs landed; v0.2 adapter-extensibility priority drafted**
 
 **Persona:** AI (Bob) + Founder | **Priority:** v0.1-foundation + v0.2-adapter-extensibility (Draft) | **Plan:** N/A (session close)

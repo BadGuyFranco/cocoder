@@ -1,10 +1,12 @@
 ---
 id: 0001
-status: Open
+status: Closed
 type: question
 priority: v0.1-foundation
 owner: founder
 created: 2026-05-22
+closed: 2026-05-23
+resolution: Path B — Retire (terminal-only)
 ---
 
 # 0001 — Restore or retire CoCoder `.command` double-click wrappers
@@ -61,3 +63,4 @@ The founder picks one of three paths, applies it, and removes the skip markers (
 ## History
 
 - 2026-05-22 — Ticket filed when Sub-Playbook E orchestration loop ported `launch-command.test.mjs` and surfaced the wrapper-absence as a strategic question (run `run-20260522T234016Z-febpfcrd`; Talia BLOCK + Bob PASS-accepting-the-block).
+- 2026-05-23 — **Resolved: Path B (Retire).** Founder chose terminal-only as the v0.1 product stance. `packages/core/tests/launch-command.test.mjs` deleted; the 6 skipped tests are now gone (suite drops from 235 → 229 total, all passing). Sub-Playbook A foundation plan E2.2e.12 row updated to "Retired 2026-05-23". `docs/configuration.md` gains an explicit "Invocation" note clarifying CoCoder ships no double-click wrappers. Sub-Playbook B workspace template work (Item 3 of the v0.1 completion plan) inherits the terminal-only stance — no wrapper files in the template.
