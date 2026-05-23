@@ -4,6 +4,7 @@ import { createCsrfToken, OZ_CSRF_HEADER, validateCsrfToken } from "./csrf.js";
 import { STATE_CHANGING_METHODS, validateAuthSessionOriginHost, validateOriginHost } from "./origin-host.js";
 import { registerWorkspacesRoutes } from "./workspaces.js";
 import { DEFAULT_OZ_PORT, resolveOzPort } from "./port.js";
+import { registerDashboardStatic } from "./dashboard-static.js";
 import { registerRunsRoutes } from "./runs.js";
 import { registerSettingsRoutes } from "./settings.js";
 import { ensureOzToken } from "./token.js";
@@ -104,6 +105,8 @@ export async function createOzServer(options: OzServerOptions): Promise<OzServer
     stopExecutable: options.stopExecutable,
     stopArgvPrefix: options.stopArgvPrefix
   });
+
+  await registerDashboardStatic(app);
 
   await app.ready();
   return { app, host, port, token, csrfToken };

@@ -48,4 +48,5 @@ export { collectRunEvidenceSummary, type RunEvidenceSummary } from "./run-eviden
 export { registerRunsRoutes, type LaunchRunsBody, type StopRunsBody, type RegisterRunsRoutesOptions } from "./runs.js";
 export { registerWorkspacesRoutes, type RegisterWorkspacesRoutesOptions } from "./workspaces.js";
 export { ensureOzToken, ozTokenPath } from "./token.js";
+export { registerDashboardStatic, resolveDashboardDistRoot } from "./dashboard-static.js";
 export { createOzServer, startOzDaemon, type OzServer, type OzServerOptions } from "./server.js";

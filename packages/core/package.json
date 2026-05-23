@@ -4,7 +4,7 @@
   "type": "module",
   "main": "cli.mjs",
   "scripts": {
-    "pretest": "pnpm --filter schemas build && pnpm --filter oz-daemon build",
+    "pretest": "pnpm --filter schemas build && pnpm --filter oz-dashboard build && pnpm --filter oz-daemon build",
     "build": "pnpm --filter schemas build && node cli.mjs validate-contracts",
     "lint": "node scripts/check-mjs.mjs",
     "test": "node scripts/test.mjs",
