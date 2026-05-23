@@ -202,6 +202,13 @@ A public git repository (`CoCoder`) with: working `cocoder` CLI, Oz dashboard, w
 - Depends on: Sub-Playbook A Milestone M4 Checkpoint reached (M4 free-wins + Q1/Q2/Q4 Answered + M4.22/23/24 implemented)
 - Forward-compat: borrowed persona artifacts are designed to be extended by Sub-Playbook B's full persona library; Sub-Playbook B's Witness must reference E as upstream reuse
 
+### Sub-Playbook F — Structural cleanup (god-module debt + shared-helper extraction)
+
+- [ ] **PF** Surgical decomposition unblocking Sub-Playbook B Expand: shared-helper extraction (FB-1), `cli.mjs` command registry (FB-2), `contracts.mjs` `enum` honoring (FB-3). NOT a comprehensive god-module decomposition — `launch.mjs` / `ledger.mjs` / `launch.test.mjs` split + TS-wrapper identity + inline-prompt-prose extraction + AppleScript-attach strategy split + full Zod migration of orchestration contracts are explicitly deferred to a v0.2 architectural priority.
+- File: [`./plans/2026-05-23-structural-cleanup.plan.md`](./plans/2026-05-23-structural-cleanup.plan.md)
+- Depends on: Sub-Playbook A Refine-complete (✅), Sub-Playbook B Witness/Interrogate/Solve-target landed (✅)
+- Unblocks: Sub-Playbook B Solve (B-S2 persona-identity regression test consumes the post-helper-extraction composer output bytes; sequencing F before B-S1 fixture capture avoids regen)
+
 ### Documentation Updates (program-level)
 
 - [ ] `../../../ARCHITECTURE.md` amended for any decision changes during execution
@@ -310,9 +317,9 @@ Tracked in [`pending-decisions.md`](./pending-decisions.md). **All resolved 2026
 
 ## Progress
 
-**Last worked:** 2026-05-23 (v0.1 completion plan **Items 1 + 2 BOTH CLOSED** — ticket 0001 resolved Path B, CoCoder is terminal-only; full M4 free-wins batch (M4.5–M4.14, M4.16–M4.21) landed across 7 batched PRs (Groups A–G; PRs #17–#24). **M4 Checkpoint reached** — all 27 M4 rows ticked. Sub-Playbook A is now ready for Final Check.)
-**Current Canon:** v0.1 completion phase. Audit §4 port-first list CLOSED (12 of 12; E2.2e.12 retired Path B per ticket 0001). Sub-Playbook A audit remediation COMPLETE (M4 Checkpoint 2026-05-23). Test count: **236 / 236 / 0 fail / 0 skipped**. Repo public at `BadGuyFranco/cocoder`. See [`plans/2026-05-23-v0.1-completion.plan.md`](./plans/2026-05-23-v0.1-completion.plan.md).
-**Next action:** Founder reviews + answers Sub-Playbook B's PB-Q1..PB-Q4 (see [`plans/2026-05-21-personas-template.plan.md`](./plans/2026-05-21-personas-template.plan.md) Interrogate / Pending decisions). PB-Q2 (persona library v0.1 scope: minimum subset vs all 7) is the most likely ADR-graduation candidate; HOLD FOR GO if it does. Then a fresh session executes B Solve (B-S1..B-S5). Sub-Playbook A Final Check ceremony parallel-tracks.
+**Last worked:** 2026-05-23 (v0.1 completion plan **Items 1 + 2 BOTH CLOSED** + Item 3 W/I/S authored; **Sub-Playbook F (structural cleanup) authored to slot between Items 2 and 3** per a code-quality review that identified 3 real Sub-Playbook B blockers; Master + completion plan + Sub-Playbook B Preconditions updated to reflect F as a prerequisite for B Solve)
+**Current Canon:** v0.1 completion phase. Audit §4 port-first list CLOSED (12 of 12). Sub-Playbook A Refine-complete. Sub-Playbook E Complete. Sub-Playbook B Witness/Interrogate/Solve-target complete; Sub-Playbook F Witness/Interrogate/Solve-target complete. Test count: **236 / 236 / 0 fail / 0 skipped**. Repo public at `BadGuyFranco/cocoder`. See [`plans/2026-05-23-v0.1-completion.plan.md`](./plans/2026-05-23-v0.1-completion.plan.md).
+**Next action:** Founder answers **Sub-Playbook F FP-Q1 + FP-Q2** (see [`plans/2026-05-23-structural-cleanup.plan.md`](./plans/2026-05-23-structural-cleanup.plan.md) Interrogate). Then a fresh session executes F Solve + Expand (FB-1, FB-2, FB-3). After F Refine: founder answers Sub-Playbook B's PB-Q1..PB-Q4 (PB-Q2 is the most likely ADR-graduation candidate — HOLD FOR GO if it does). Then B Solve (B-S1..B-S5). Sub-Playbook A Final Check ceremony parallel-tracks throughout.
 
 ### Sub-Playbook status
 
@@ -320,10 +327,11 @@ Tracked in [`pending-decisions.md`](./pending-decisions.md). **All resolved 2026
 |---|---|---|---|---|
 | A. Foundation + config survival | Active — Refine (M4 Checkpoint reached 2026-05-23; awaiting Final Check ceremony) | All 27 M4 rows done; audit §4 port-first list CLOSED 12/12; suite 236/236 all-passing | Final Check ceremony (manual smoke tests on a clean clone — see Refine section) | [`2026-05-21-foundation.plan.md`](./plans/2026-05-21-foundation.plan.md) |
 | **E. Dogfood ramp** | **Complete (2026-05-23)** | Solve + Expand + Refine + Final Check 6/6 all green. 12 audit §4 ports closed across 7 autonomous runs; 9 product-code bugs surfaced + fixed end-to-end; B Witness back-reference closed by Sub-Playbook B activation. | — | [`2026-05-22-dogfood-ramp.plan.md`](./plans/2026-05-22-dogfood-ramp.plan.md) |
-| B. Personas + workspace template | **Active — Witness/Interrogate/Solve-target complete 2026-05-23** | PB-Q1..PB-Q4 awaiting founder gate; Solve (B-S1..B-S5) starts after | Founder answers PB-Q1..PB-Q4; then Solve | [`2026-05-21-personas-template.plan.md`](./plans/2026-05-21-personas-template.plan.md) |
+| B. Personas + workspace template | **Active — Witness/Interrogate/Solve-target complete 2026-05-23; B Solve gated on F Refine** | PB-Q1..PB-Q4 awaiting founder gate; Solve (B-S1..B-S5) starts after Sub-Playbook F lands (B-S2 persona-identity fixture should capture post-F composer bytes) | Sub-Playbook F first; then founder answers PB-Q1..PB-Q4; then B Solve | [`2026-05-21-personas-template.plan.md`](./plans/2026-05-21-personas-template.plan.md) |
+| **F. Structural cleanup** | **Active — Witness/Interrogate/Solve-target complete 2026-05-23** | FP-Q1 + FP-Q2 awaiting founder gate; Solve (F-S1..F-S3) starts after; three batches FB-1/FB-2/FB-3 | Founder answers FP-Q1 + FP-Q2; then a fresh session captures F-S1 baselines and executes FB-1 | [`2026-05-23-structural-cleanup.plan.md`](./plans/2026-05-23-structural-cleanup.plan.md) |
 | C. Oz MVP | Draft | — | Awaits A Complete + B Solve | [`2026-05-21-oz-mvp.plan.md`](./plans/2026-05-21-oz-mvp.plan.md) |
 | D. Docs + dogfood + publish | Draft | — | Awaits A, B, C Complete | [`2026-05-21-docs-publish.plan.md`](./plans/2026-05-21-docs-publish.plan.md) |
-| **v0.1 Completion Plan** (cross-cuts A, B, ticket 0001) | **Draft → Active next session** | New 2026-05-23: bundles the three remaining v0.1 items in dependency order | Fresh session picks up via plan's Appendix prompt | [`2026-05-23-v0.1-completion.plan.md`](./plans/2026-05-23-v0.1-completion.plan.md) |
+| **v0.1 Completion Plan** (cross-cuts A, B, ticket 0001) | **Active** | Items 1 + 2 CLOSED; Item 3 W/I/S authored; Sub-Playbook F inserted between Items 2 + 3 per the 2026-05-23 code-quality review | Founder answers F's FP-Q1 + FP-Q2; new session executes F | [`2026-05-23-v0.1-completion.plan.md`](./plans/2026-05-23-v0.1-completion.plan.md) |
 
 ### Canon roll-up (Master only)
 
@@ -332,7 +340,7 @@ Tracked in [`pending-decisions.md`](./pending-decisions.md). **All resolved 2026
 | Witness | 1 | 1 | Complete |
 | Interrogate | 13 decisions + 9 risks | 13 + 0 | Complete (decisions locked; risks active) |
 | Solve | 2 | 2 | Complete |
-| Expand | 5 sub-Playbooks (A, **E**, B, C, D) | 0 (A still in flight) | Active |
+| Expand | 6 sub-Playbooks (A, **E**, B, **F**, C, D) | 1 (E Complete 2026-05-23; A Refine-complete; B + F Witness-complete) | Active |
 | Refine | 4 | 0 | Not started (gated on A Complete) |
 | Final Check | 13 | 0 | Not started |
 

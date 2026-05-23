@@ -14,6 +14,28 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-23 (post-review) — **Sub-Playbook F (structural cleanup) inserted between Items 2 and 3 of v0.1 completion plan; founder review-driven decomposition scoping**
+
+**Persona:** AI (Bob) + Founder | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-23-structural-cleanup.plan.md`](./priorities/v0.1-foundation/plans/2026-05-23-structural-cleanup.plan.md) (new) + [`./priorities/v0.1-foundation/plans/2026-05-23-v0.1-completion.plan.md`](./priorities/v0.1-foundation/plans/2026-05-23-v0.1-completion.plan.md) Item 2.5
+
+**Outcomes:**
+- **Founder ran a "Thermo-Nuclear Code Quality Review" against `main`** (post-PR #26, suite 236/236) and shared the findings. Diagnoses verified with `wc -l` + `grep -c` + source inspection: file sizes exact (`launch.mjs` 1,882 / `ledger.mjs` 1,010 / `cli.mjs` 1,135 with 62 `if (command ===` branches / `launch.test.mjs` 2,722 / TS wrapper 22 lines); `routePriorityIssue` confirmed 3 definitions with 3 different shapes (worse than the review described — `composition.mjs` uses an `issue()` helper that adds a `lane: 'startup'` key); `matchesType` confirmed to ignore `enum` (the Sub-Playbook E Bug B `iso-datetime` class). 12+ ad-hoc `=== true || === 'true'` patterns confirmed.
+- **Three review findings are real Sub-Playbook B blockers; six are real debt but NOT B blockers.** The 3 blockers became Sub-Playbook F's three Expand batches (FB-1 shared helpers / FB-2 cli.mjs registry / FB-3 contracts.mjs enum patch). The 6 non-blockers (launch.mjs decomposition / ledger.mjs split / launch.test.mjs split / TS-wrapper identity / inline prompt prose / AppleScript-attach strategy / full Zod migration of orchestration contracts) were queued in `cocoder/plans/v0.2-backlog.md` under a new "From Sub-Playbook F" section with rationale for each.
+- **Sub-Playbook F authored** at `cocoder/priorities/v0.1-foundation/plans/2026-05-23-structural-cleanup.plan.md`. Full WISER plan with Witness (verified review findings + scope-vs-out split), Interrogate (FP-Q1 contracts scope + FP-Q2 helpers module organization + 5 risks + reuse check), Solve target (single invariant = behavior preservation; suite stays 236/236 with zero observable behavior change), three Expand batches FB-1/FB-2/FB-3 with task-level detail, Refine + Final Check. Decision Log captures the "insert F between Items 2+3 vs roll into B Expand vs defer entirely" trade-off.
+- **Sub-Playbook B Preconditions updated** to add "Sub-Playbook F Refine reached" as a Solve blocker. Two reasons: (1) B-M3 adds 3 new subcommands and should land them in F's registry, not the old monolith; (2) B-S2 persona-identity regression test should capture its fixture against post-F composer output bytes (otherwise the fixture has to be regenerated when F lands later). B's W/I/S itself is unchanged; only its Solve start is gated on F.
+- **Master README** updated: Sub-Playbook F row added to Expand section; Sub-Playbook status table extended (F = Active, Witness/Interrogate/Solve-target complete); Canon roll-up Expand updated from "5 sub-Playbooks" to "6 sub-Playbooks (A, E, B, F, C, D)" with E marked Complete; Last worked + Current Canon + Next action all refresh to point at F's founder gate first.
+- **v0.1 Completion Plan** updated: new Item 2.5 inserted between Items 2 and 3 with its own scope/sequencing/tasks block. Dependency-ordering diagram refreshed to show the new flow (Item 1 → 2 → 2.5 → 3, with Sub-Playbook A Final Check parallel-tracking throughout).
+- **PRIORITIES.md slim-table row** refreshed: Canon + Next column reflects F as the immediate gate.
+- **No code changes; no test changes.** Suite remains 236/236. Pure planning + state-mirror updates.
+
+**Founder gates surfaced (need answers before any execution):**
+- **FP-Q1** — `contracts.mjs` validation scope. (A) MINIMUM: extend `matchesType` to honor `field.enum` (~half-day, closes the active correctness gap). (B) FULL: migrate orchestration contracts to Zod in `packages/schemas/src/contracts/` per ADR-0004 (~2-3 days). **Recommended: A** (preserves ADR-0004's eventual end-state on a v0.2 timeline). **FP-Q1=B is ADR-graduating** — HOLD FOR GO.
+- **FP-Q2** — helpers module organization. (A) one file `lib-utils.mjs`. (B) two files `lib/orchestration-issues.mjs` + `lib/lib-utils.mjs`. **Recommended: B** (issue builders are a distinct domain from lane/path helpers; matches how `paths.mjs` / `composition.mjs` are already organized).
+
+**Resume cue / Next:** Founder answers FP-Q1 + FP-Q2 in `2026-05-23-structural-cleanup.plan.md` Interrogate / Pending decisions table. Then a fresh session (a) captures F-S1 baselines, (b) executes FB-1 (shared helpers) with F-S2 re-validation, (c) FB-2 (cli.mjs registry) with F-S2 re-validation, (d) FB-3 (contracts.mjs enum patch + audit fixtures + v0.2-backlog update) with F-S2 re-validation, (e) F Refine ceremony (founder spot-checks composer byte-equivalence). After F Refine: founder answers PB-Q1..PB-Q4 + B Solve unblocks.
+
+---
+
 ## 2026-05-23 (continuation) — **v0.1 Completion Plan Item 3 — Sub-Playbook B Activated (Witness/Interrogate/Solve-target authored); Sub-Playbook E formally Complete**
 
 **Persona:** AI (Bob) + Founder | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-personas-template.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-personas-template.plan.md) (activated) + [`priorities/v0.1-foundation/plans/2026-05-23-v0.1-completion.plan.md`](./priorities/v0.1-foundation/plans/2026-05-23-v0.1-completion.plan.md) Item 3
