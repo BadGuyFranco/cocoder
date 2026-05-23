@@ -14,6 +14,20 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-23 — **Sub-Playbook C Expand Batch 2 merged (PR #43 → `e3b9776`); runs API + multiplexer-observer; suite 328/328**
+
+**Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
+
+**Outcomes:**
+- PR #43 squash-merged to `main` @ **`e3b9776`**; CI green; suite **328/328** (+6 from 322).
+- `multiplexer-observer.ts` wraps exported `collectConcurrencyMap`; tmux argv grep discipline test.
+- `GET /runs`, `GET /runs/:id/evidence`; real POST/DELETE subprocess spawns with post-spawn audit outcomes.
+- `runs-http.ts` schemas; oz-daemon README Testing notes section.
+
+**Next:** C Expand Batch 3 — `packages/oz-dashboard` scaffold + Workspaces + Settings pages.
+
+---
+
 ## 2026-05-23 — **Sub-Playbook C Expand Batch 1 merged (PR #42 → `2789bee`); registry CRUD + C-D1 auth bootstrap; suite 322/322**
 
 **Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
