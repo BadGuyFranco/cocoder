@@ -14,6 +14,7 @@ import {
   ozWorkspaceResponseSchema,
   ozWorkspaceUpdateRequestSchema
 } from "../src/oz/workspace-http.js";
+import { ozWorkspacePriorityListResponseSchema } from "../src/oz/priorities-http.js";
 import { ozRunEvidenceSummarySchema, ozRunListResponseSchema } from "../src/oz/runs-http.js";
 
 const outDir = path.resolve("dist");
@@ -31,7 +32,8 @@ const schemas = [
   ["oz-workspace-create.schema.json", "cocoder-oz-workspace-create", ozWorkspaceCreateRequestSchema],
   ["oz-workspace-update.schema.json", "cocoder-oz-workspace-update", ozWorkspaceUpdateRequestSchema],
   ["oz-run-list.schema.json", "cocoder-oz-run-list", ozRunListResponseSchema],
-  ["oz-run-evidence.schema.json", "cocoder-oz-run-evidence", ozRunEvidenceSummarySchema]
+  ["oz-run-evidence.schema.json", "cocoder-oz-run-evidence", ozRunEvidenceSummarySchema],
+  ["oz-workspace-priority-list.schema.json", "cocoder-oz-workspace-priority-list", ozWorkspacePriorityListResponseSchema]
 ] as const;
 
 await mkdir(outDir, { recursive: true });

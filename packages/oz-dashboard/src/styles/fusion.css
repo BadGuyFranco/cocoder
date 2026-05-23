@@ -181,3 +181,95 @@ button.danger {
   font-family: var(--fusion-font-mono);
   font-size: 0.85rem;
 }
+
+.page-header {
+  margin-bottom: 1.25rem;
+}
+
+.page-header h1 {
+  margin: 0.25rem 0 0;
+}
+
+.field {
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.field span {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--fusion-text-secondary);
+  font-size: 0.85rem;
+}
+
+.card {
+  backdrop-filter: blur(22px);
+  background: var(--fusion-panel);
+  border: 1px solid var(--fusion-border);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+}
+
+.card h2 {
+  margin-top: 0;
+  font-size: 1rem;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.data-table th,
+.data-table td {
+  border-bottom: 1px solid var(--fusion-border);
+  padding: 0.55rem 0.35rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.data-table a {
+  color: var(--fusion-accent);
+}
+
+.btn.secondary {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.kv-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.kv-list dt {
+  color: var(--fusion-text-secondary);
+  font-size: 0.8rem;
+}
+
+.kv-list dd {
+  margin: 0.15rem 0 0;
+}
+
+.plain-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+
+.plain-list li {
+  margin-bottom: 0.35rem;
+}
+
+select {
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid var(--fusion-border);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--fusion-text);
+  margin-bottom: 0.75rem;
+  font: inherit;
+}
