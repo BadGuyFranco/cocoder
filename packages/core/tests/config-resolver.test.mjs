@@ -16,7 +16,7 @@ test('config resolver honors documented load order with workspace-private overri
     '  adapter: codex',
     '  profile: base',
     'oz:',
-    '  port: 47321'
+    '  port: 7878'
   ].join('\n'));
   await writeStructured(path.join(root, 'local/config.yaml'), [
     'defaults:',

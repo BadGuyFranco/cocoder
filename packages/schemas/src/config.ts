@@ -29,7 +29,7 @@ export const cocoderConfigSchema = z.object({
   modelRoles: z.record(z.string().min(1)).optional(),
   oz: z.object({
     host: z.literal("127.0.0.1").default("127.0.0.1").optional(),
-    port: z.number().int().min(1024).max(65535).default(47321).optional()
+    port: z.number().int().min(1024).max(65535).default(7878).optional()
   }).passthrough().optional(),
   theme: z.object({
     mode: z.enum(["system", "light", "dark"]).default("system").optional(),

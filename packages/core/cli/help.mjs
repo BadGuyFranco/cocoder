@@ -47,6 +47,9 @@ Commands:
   add-evidence --run-dir PATH --evidence PATH
   ingest-result --run-dir PATH --job-id ID --result PATH [--prompt PATH] [--transcript PATH]
   init --workspace-root PATH [--template-dir PATH] [--cocoder-home PATH] [--merge true]
+  oz start [--cocoder-home PATH]
+  oz stop [--cocoder-home PATH]
+  oz status [--cocoder-home PATH]
   audit-workspace --workspace-root PATH
   refresh-memory --workspace-root PATH
   closeout --run-dir PATH [--summary TEXT]

@@ -75,7 +75,7 @@
               "type": "integer",
               "minimum": 1024,
               "maximum": 65535,
-              "default": 47321
+              "default": 7878
             }
           },
           "additionalProperties": true

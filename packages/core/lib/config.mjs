@@ -13,7 +13,7 @@ export const DEFAULT_CONFIG = {
   },
   oz: {
     host: '127.0.0.1',
-    port: 47321
+    port: 7878
   },
   theme: {
     mode: 'system'
