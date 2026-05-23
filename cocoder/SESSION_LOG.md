@@ -14,6 +14,19 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-23 — **Sub-Playbook C Expand Batch 3 merged (PR #45 → squash); oz-dashboard + Workspaces/Settings; suite 330/330 + dashboard 5/5**
+
+**Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
+
+**Outcomes:**
+- PR #45 squash-merged to `main` @ **`8abb135`**; CI green; core **330/330** (+2); oz-dashboard **5/5** unit tests.
+- `packages/oz-dashboard` Vite/React/Fusion palette; Workspaces CRUD + Settings GET/PUT; daemon `@fastify/static`.
+- Decision Log **C-D5** (Batch 2 deviation post-hoc) + **C-D6** (HashRouter).
+
+**Next:** C Expand Batch 4 — Priorities + Runs + Run Inspector + oz-e2e.test.mjs.
+
+---
+
 ## 2026-05-23 — **Sub-Playbook C Expand Batch 2 merged (PR #43 → `e3b9776`); runs API + multiplexer-observer; suite 328/328**
 
 **Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
