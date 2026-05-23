@@ -34,6 +34,12 @@ packages/schemas/dist/js/
 # NOTE: cocoder/local/ has its own .gitignore that keeps README.md + .gitignore tracked.
 # Do NOT add `cocoder/local/` here — that would shadow the inner rule and hide the README.
 
+# Test fixture artifacts — created via mkdtemp by packages/core/tests/launch.test.mjs
+# and friends; cleanup is best-effort and skipped when a test run aborts before
+# the fixture.cleanup() finally block runs. Without this rule any aborted run
+# leaves a tracked-looking tree behind.
+packages/core/tests/.tmp-*/
+
 # OS / editor
 .DS_Store
 .stfolder/
