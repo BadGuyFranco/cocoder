@@ -15,7 +15,7 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 
 | Slug | Description | Status | Canon | Owner | Blocked on |
 |---|---|---|---|---|---|
-| [`v0.1-foundation`](./priorities/v0.1-foundation/README.md) | Ship CoCoder v0.1 — extraction, Oz MVP, docs, public publish | Active | Refine — Sub-Playbook F **Complete** 2026-05-23; **Sub-Playbook B Solve complete 2026-05-23** (PB-Q1=A, PB-Q2=B, PB-Q3=B, PB-Q4=A; B Expand next). Test suite **256/256**. | Bob + founder | **Next:** B Expand (B-M1..B-M3). |
+| [`v0.1-foundation`](./priorities/v0.1-foundation/README.md) | Ship CoCoder v0.1 — extraction, Oz MVP, docs, public publish | Active | Refine — Sub-Playbook F **Complete** 2026-05-23; **Sub-Playbook B Expand complete 2026-05-23** (suite **265/265**). | Bob + founder | **Next:** B Refine (founder-driven). |
 
 ## Draft
 

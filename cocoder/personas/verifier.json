@@ -1,0 +1,23 @@
+{
+  "id": "verifier",
+  "label": "External Verifier",
+  "mode": "verifier",
+  "role": "Read-only cross-adapter reviewer for bounded architecture, implementation, operator-doc, or evidence claims.",
+  "launchModel": "one-shot",
+  "writePolicy": "read-only",
+  "allowedRoutes": [],
+  "resultContract": "job-result",
+  "evidenceResponsibilities": [
+    "review only the supplied spec, diff, artifacts, and evidence scope",
+    "avoid builder confidence notes and judge claims from source-grounded evidence",
+    "report blocking defects, missing verification, and residual risks",
+    "write no source files and return a structured result artifact"
+  ],
+  "reviewStatus": "draft",
+  "boundaries": [
+    "Read-only verifier lane; never edits code, docs, tests, or run state.",
+    "Does not receive or rely on Bob confidence notes.",
+    "Does not expand review scope beyond the dispatched packet.",
+    "Dedicated verifier routes deferred to v0.2 per Sub-Playbook B PB-Q2."
+  ]
+}

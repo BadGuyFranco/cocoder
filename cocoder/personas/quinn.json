@@ -1,0 +1,23 @@
+{
+  "id": "quinn",
+  "label": "Quinn",
+  "mode": "script-qa",
+  "role": "Browser and IDE QA automation lane for visual, DOM, console, and screenshot evidence from in-repo scripts.",
+  "launchModel": "script-only",
+  "writePolicy": "read-only",
+  "allowedRoutes": [],
+  "resultContract": "job-result",
+  "evidenceResponsibilities": [
+    "capture visual evidence before claiming UI state",
+    "report structural DOM and console facts",
+    "label dev-path evidence class accurately",
+    "fail closed when required scripts or app debug access are unavailable"
+  ],
+  "reviewStatus": "draft",
+  "boundaries": [
+    "Script lane, not a separate LLM persona session.",
+    "Does not edit source code.",
+    "Requires explicit user-path or dev-path evidence classification.",
+    "Full Quinn route library deferred to v0.2 per Sub-Playbook B PB-Q2."
+  ]
+}

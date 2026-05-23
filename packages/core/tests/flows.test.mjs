@@ -177,7 +177,7 @@ test('closeout flow blocks stale docs missing verification old drift and unmet C
       docsFresh: false,
       verification: [{ name: 'tests', status: 'PASS' }, { name: 'qa', status: 'BLOCK' }],
       resultPaths: [resultPath],
-      oldReferenceDiffs: ['packages/core/build-personas/example'],
+      oldReferenceDiffs: ['packages/core/legacy-persona-playbooks/example'],
       classAGates: [{ name: 'acceptance', met: false }],
       writeBoundary: { mode: 'task-scoped', allowed: ['packages/core/'], excluded: [] },
       filesChanged: ['cocoder/SESSION_LOG.md']

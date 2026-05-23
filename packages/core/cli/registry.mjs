@@ -49,6 +49,7 @@ import {
 } from '../lib/self-healing.mjs';
 import { followDebuggerEvidence, prepareDebuggerSession } from '../lib/debugger.mjs';
 import { applyWorkspaceInit } from '../lib/init-merge.mjs';
+import { auditWorkspace, refreshWorkspaceMemory } from '../lib/workspace-audit.mjs';
 import { assertExplicitWorkspaceContextWhenInsideInstall, resolveInstallRoot } from '../lib/paths.mjs';
 import {
   DEFAULT_ADAPTERS_DIR,
@@ -878,6 +879,22 @@ async function handle_init(args) {
     return;
 }
 
+async function handle_audit_workspace(args) {
+    requireArgs(args, ['workspaceRoot']);
+    const result = await auditWorkspace({ workspaceRoot: path.resolve(args.workspaceRoot) });
+    console.log(JSON.stringify(result, null, 2));
+    if (!result.ok) process.exitCode = 1;
+    return;
+}
+
+async function handle_refresh_memory(args) {
+    requireArgs(args, ['workspaceRoot']);
+    const result = await refreshWorkspaceMemory({ workspaceRoot: path.resolve(args.workspaceRoot) });
+    console.log(JSON.stringify(result, null, 2));
+    if (!result.ok) process.exitCode = 1;
+    return;
+}
+
 async function handle_watch_debugger_evidence(args) {
     requireArgs(args, ['runDir', 'sessionId', 'debugDir']);
     const result = await followDebuggerEvidence({
@@ -937,6 +954,8 @@ export const commandRegistry = new Map([
   ['add-evidence', handle_add_evidence],
   ['ingest-result', handle_ingest_result],
   ['init', handle_init],
+  ['audit-workspace', handle_audit_workspace],
+  ['refresh-memory', handle_refresh_memory],
   ['closeout', handle_closeout],
   ['finalize-run-status', handle_finalize_run_status],
   ['orchestrator-commit', handle_orchestrator_commit],

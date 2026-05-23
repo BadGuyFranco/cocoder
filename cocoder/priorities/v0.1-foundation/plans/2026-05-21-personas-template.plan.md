@@ -3,7 +3,7 @@
 **Created:** 2026-05-21 | **Updated:** 2026-05-23 (Activated — Witness/Interrogate/Solve-target populated; Status flipped Draft → Active)
 **Type:** One-time
 **Collaboration:** Collaborative
-**Status:** **Active — Solve complete 2026-05-23; Expand (B-M1..B-M3) next session**
+**Status:** **Active — Expand complete 2026-05-23; Refine (founder-driven) next**
 **Method:** WISER Playbook (Sub-Playbook; Master = `../README.md`)
 **Parent:** [v0.1-foundation priority](../README.md)
 
@@ -125,7 +125,7 @@ A public CoCoder release at which a stranger can:
 | ID | Question | Blocks | Recommended default |
 |---|---|---|---|
 | **PB-Q1** | Workspace template: author `templates/workspace-cocoder/` as a static fileset, or generate it from the live dogfood `<CoCoder>/cocoder/` via a regenerator script (analogous to M4.12's `regenerate.mjs`)? | B-M2 | **A — Static fileset.** | **Answered 2026-05-23: A** |
-| **PB-Q2** | Persona library completeness for v0.1: ship ALL 7 personas (oscar/ian/bob/talia/quinn/phil/verifier), or a v0.1 minimum subset (e.g. oscar/bob/talia + Phil example only) with the rest deferred to v0.2? | B-M1 | **B — Minimum subset (oscar/bob/talia + Phil example).** ADR-worthy scope line. | **Answered 2026-05-23: B** (no HOLD FOR GO — defers quinn/ian/verifier to v0.2 per recommended default) |
+| **PB-Q2** | Persona library completeness for v0.1: ship ALL 7 personas (oscar/ian/bob/talia/quinn/phil/verifier), or a v0.1 minimum subset (e.g. oscar/bob/talia + Phil example only) with the rest deferred to v0.2? | B-M1 | **B — Minimum subset (oscar/bob/talia + Phil example).** ADR-worthy scope line. | **Answered 2026-05-23: B.** **Chosen interpretation (founder accepted 2026-05-23 post-Expand):** ship Oscar, Bob, Talia, and Phil as the active v0.1 library (manifest + playbooks + routes where applicable); ship Quinn, Ian, and Verifier as **inert schema-conformant stubs only** (`reviewStatus: draft`, `allowedRoutes: []`, explicit v0.2 deferral in boundaries) so `validate-personas` passes without implying adopters get runnable routes. Stubs live in the install repo only; excluded from `templates/workspace-cocoder/` so `cocoder init` does not materialize them. |
 | **PB-Q3** | Phil example shape: ship as schema-only stub (a sample `phil.json` + minimal `phil.md` documenting the contract), or as a full working example (real prompts + a runnable example route adopters can copy)? | B-M1.5 | **B — Full working example.** | **Answered 2026-05-23: B** |
 | **PB-Q4** | `docs/getting-started.md`: author a B-side stub now (so `cocoder init` ships with at least minimal external-user docs) or defer entirely to Sub-Playbook D (and ship `cocoder init` with only `--help` text in v0.1)? | B-Final-Check | **A — B-side stub.** | **Answered 2026-05-23: A** |
 
@@ -189,40 +189,40 @@ A public CoCoder release at which a stranger can:
 
 ### Milestone B-M1 — Persona library expansion
 
-Per PB-Q2 (recommended B — minimum subset), the v0.1 scope is **add Oscar; defer Quinn/Ian/verifier to v0.2; ship Phil per PB-Q3**.
+Per PB-Q2 (B — minimum subset), the v0.1 scope is **Oscar + Bob + Talia + Phil (active library)**; **Quinn/Ian/Verifier ship as inert install-repo contract stubs only** (no manifest entries, no public playbooks, no template materialization; full routes deferred to v0.2).
 
-- [ ] B-M1.1 Borrow `oscar.json` + `prompts/personas/oscar.md` from CoBuilder. Scrub per PORT-NOTES vocabulary (priority-slug, `allowedRoutes`). Log in PORT-NOTES.
-- [ ] B-M1.2 Borrow `session-wrap.md` shared fragment if Oscar's manifest entry requires it (per Sub-Playbook E PORT-NOTES note on opportunistic borrow).
-- [ ] B-M1.3 Extend `cocoder/personas/prompts/manifest.json` with the Oscar entry.
-- [ ] B-M1.4 Phil example (per PB-Q3 = B): full working custom persona + minimal example route under `examples/personas/phil-primitive-builder/`. CoCoder-neutral domain.
-- [ ] B-M1.5 Public playbook summaries in `cocoder/personas/playbooks/` for Bob, Talia, Oscar, Phil. Authored fresh (NOT copy-pasted from CoBuilder private playbooks).
-- [ ] B-M1.6 Document operator pattern for private `<workspace>/cocoder/local/playbooks/`.
-- [ ] B-M1.7 CI grep for known private CoBuilder strings — extends M4.15 stale-reference gate with a new pattern list.
+- [x] B-M1.1 Borrow `oscar.json` + `prompts/personas/oscar.md` from CoBuilder. Scrub per PORT-NOTES vocabulary (priority-slug, `allowedRoutes`). Log in PORT-NOTES.
+- [x] B-M1.2 Borrow `session-wrap.md` shared fragment if Oscar's manifest entry requires it (per Sub-Playbook E PORT-NOTES note on opportunistic borrow).
+- [x] B-M1.3 Extend `cocoder/personas/prompts/manifest.json` with the Oscar entry.
+- [x] B-M1.4 Phil example (per PB-Q3 = B): full working custom persona + minimal example route under `examples/personas/phil-primitive-builder/`. CoCoder-neutral domain.
+- [x] B-M1.5 Public playbook summaries in `cocoder/personas/playbooks/` for Bob, Talia, Oscar, Phil. Authored fresh (NOT copy-pasted from CoBuilder private playbooks).
+- [x] B-M1.6 Document operator pattern for private `<workspace>/cocoder/local/playbooks/`.
+- [x] B-M1.7 CI grep for known private CoBuilder strings — extends M4.15 stale-reference gate with a new pattern list.
 
 ### Milestone B-M2 — Workspace template
 
 Per PB-Q1 (recommended A — static fileset), `templates/workspace-cocoder/` is authored as static files, validated by a B-Refine drift check.
 
-- [ ] B-M2.1 Author `templates/workspace-cocoder/cocoder/` with: `AGENTS.md`, `PRIORITIES.md` (empty stub), `SESSION_LOG.md` (empty stub), `priorities/.gitkeep`, `tickets/INDEX.md` (empty stub), `decisions/README.md` (stub explaining workspace-zone ADRs), `memory/` (stubs for `codebase-map.md`, `tech-stack.md`, `onboarding-questions.md`), `personas/custom/.gitkeep`, `standards/AGENTS.md` (stub), `local/.gitignore` (the `*` + `!.gitignore` + `!README.md` pattern), `local/README.md` (explains the zone).
-- [ ] B-M2.2 Author `templates/workspace-cocoder/cocoder/.gitignore` per ARCHITECTURE.md ignore matrix (the workspace-zone version, NOT the install-zone one).
-- [ ] B-M2.3 Author `templates/playbooks/new-workspace-setup.md` — first-week-of-CoCoder operator onboarding playbook.
-- [ ] B-M2.4 Drift check (B-Refine): every file/dir in `templates/workspace-cocoder/` exists in `<CoCoder>/cocoder/` (modulo legitimate dogfood-only additions enumerated in a known-divergences allowlist).
+- [x] B-M2.1 Author `templates/workspace-cocoder/cocoder/` with: `AGENTS.md`, `PRIORITIES.md` (empty stub), `SESSION_LOG.md` (empty stub), `priorities/.gitkeep`, `tickets/INDEX.md` (empty stub), `decisions/README.md` (stub explaining workspace-zone ADRs), `memory/` (stubs for `codebase-map.md`, `tech-stack.md`, `onboarding-questions.md`), `personas/custom/.gitkeep`, `standards/AGENTS.md` (stub), `local/.gitignore` (the `*` + `!.gitignore` + `!README.md` pattern), `local/README.md` (explains the zone).
+- [x] B-M2.2 Author `templates/workspace-cocoder/cocoder/.gitignore` per ARCHITECTURE.md ignore matrix (the workspace-zone version, NOT the install-zone one).
+- [x] B-M2.3 Author `templates/playbooks/new-workspace-setup.md` — first-week-of-CoCoder operator onboarding playbook.
+- [x] B-M2.4 Drift check (B-Refine): every file/dir in `templates/workspace-cocoder/` exists in `<CoCoder>/cocoder/` (modulo legitimate dogfood-only additions enumerated in a known-divergences allowlist).
 
 ### Milestone B-M3 — CLI surface (`init`, `audit-workspace`, `refresh-memory`)
 
 - [x] B-M3.1 `cocoder init` (planner + apply) — **moved to Solve as B-S3** because it's part of the idempotency invariant.
-- [ ] B-M3.2 `cocoder audit-workspace` STUB — walks AGENTS.md chain from `<workspace>/cocoder/AGENTS.md`, emits `<workspace>/cocoder/memory/onboarding-questions.md`. Full stack detection deferred to v0.2 per Decision Log.
-- [ ] B-M3.3 `cocoder refresh-memory` STUB — re-runs `audit-workspace`, updates `<workspace>/cocoder/memory/codebase-map.md` from results only (LLM-assisted refinement deferred to v0.2).
-- [ ] B-M3.4 `docs/custom-personas.md` — schema, checklist dir convention, route eligibility, Oz registration hook (Oz integration lands in Sub-Playbook C).
-- [ ] B-M3.5 `docs/getting-started.md` STUB (per PB-Q4 = A) — install → `cocoder init` → first persona launch. Sub-Playbook D extends.
+- [x] B-M3.2 `cocoder audit-workspace` STUB — walks AGENTS.md chain from `<workspace>/cocoder/AGENTS.md`, emits `<workspace>/cocoder/memory/onboarding-questions.md`. Full stack detection deferred to v0.2 per Decision Log.
+- [x] B-M3.3 `cocoder refresh-memory` STUB — re-runs `audit-workspace`, updates `<workspace>/cocoder/memory/codebase-map.md` from results only (LLM-assisted refinement deferred to v0.2).
+- [x] B-M3.4 `docs/custom-personas.md` — schema, checklist dir convention, route eligibility, Oz registration hook (Oz integration lands in Sub-Playbook C).
+- [x] B-M3.5 `docs/getting-started.md` STUB (per PB-Q4 = A) — install → `cocoder init` → first persona launch. Sub-Playbook D extends.
 
 ### Documentation Updates
 
 - [ ] ARCHITECTURE.md persona table cross-referenced from `cocoder/personas/AGENTS.md`
 - [ ] Master README "Key files" cross-reference Sub-Playbook B Witness back-reference to Sub-Playbook E PORT-NOTES
-- [ ] PRIORITIES.md slim-table row + parser-readable entry refreshed when B status flips Active → Final Check → Complete
+- [x] PRIORITIES.md slim-table row + parser-readable entry refreshed when B status flips Active → Final Check → Complete — *Expand merge 2026-05-23; Final Check flip pending Refine.*
 
-**Checkpoint:** [ ] All B-M tasks complete; persona regression test green; workspace template instantiates cleanly via `cocoder init` on a fresh test repo; PB-Q2 / PB-Q3 deferrals (Quinn/Ian/verifier/full-Phil) documented in `plans/v0.2-backlog.md` with rationale.
+**Checkpoint:** [x] All B-M tasks complete; persona regression test green; workspace template instantiates cleanly via `cocoder init` on a fresh test repo; PB-Q2 / PB-Q3 deferrals (Quinn/Ian/verifier full routes) documented in `plans/v0.2-backlog.md` with rationale.
 
 ---
 
@@ -259,6 +259,7 @@ Per PB-Q1 (recommended A — static fileset), `templates/workspace-cocoder/` is 
 | 2026-05-21 | Persona identity preservation is Sub-Playbook B's riskiest piece (not extraction mechanics) | A already proves extraction mechanics for non-prompt files; persona prompts have a distinct failure mode (drift) | Treat prompts as just-another-file (rejected — V1 had this as an orphan mitigation) |
 | 2026-05-23 | `cocoder init` idempotency added as a second Solve invariant | Sub-Playbook A proved the `--merge` PLANNER but not the apply step; running `init` twice without a regression net is exactly the class of bug that bites first-time adopters. The two invariants are complementary: persona-identity protects what we ship, idempotency protects how we install it. | Treat init as just-another-Expand-task (rejected — Solve is where the riskiest invariants live, and the apply step has no prior proof) |
 | 2026-05-23 | Witness audit + Interrogate + Solve target authored together at Activation (this commit), Expand deferred to next session | The W/I/S triad is decision-dense; doing it as one piece lets the founder evaluate PB-Q1..PB-Q4 against a coherent picture rather than four detached questions. Expand is execution-dense and parallelizable; better in its own session(s) | Single-session Witness only (rejected — wastes round trips); land everything in one giant PR (rejected — Expand needs founder gate on PB-Q1..PB-Q4 first) |
+| 2026-05-23 | PB-Q2=B interpreted as inert schema stubs for Quinn/Ian/Verifier (not zero files) | `validate-personas` requires all seven persona contract files (`REQUIRED_PERSONAS` in `packages/core/lib/personas.mjs`). Omitting the three deferred personas would leave CI red on every `validate-personas` run. Inert stubs (`allowedRoutes: []`, `reviewStatus: draft`, boundary text citing v0.2 deferral) satisfy the validator without shipping manifest entries, public playbooks, routes, or template copies — so external adopters via `cocoder init` never see them. | Omit files entirely and narrow `REQUIRED_PERSONAS` to the v0.1 subset (rejected — changes core validation surface for a scope shortcut); ship full Quinn/Ian/Verifier library in v0.1 (rejected — PB-Q2 scope line) |
 
 ---
 
@@ -281,17 +282,17 @@ Per PB-Q1 (recommended A — static fileset), `templates/workspace-cocoder/` is 
 
 ## Progress
 
-**Last worked:** 2026-05-23 (PB-Q1=A, PB-Q2=B, PB-Q3=B, PB-Q4=A; B-S1..B-S5 complete; suite 256/256)
-**Current Canon:** Active — Solve complete; Expand (B-M1..B-M3) is next-session work.
-**Next action:** B Expand — B-M1 persona library (Oscar + Phil per PB-Q2/B + PB-Q3/B), B-M2 workspace template hardening, B-M3 registry commands (`audit-workspace`, `refresh-memory`).
+**Last worked:** 2026-05-23 (B Expand B-M1..B-M3 complete; suite **265/265**)
+**Current Canon:** Active — Expand complete; Refine (founder-driven) next.
+**Next action:** B Refine — founder ceremony only (`cocoder init` on empty repo, Phil example E2E, persona-identity negative control).
 
 | Canon | Items | Done | Status |
 |---|---|---|---|
 | Witness | 1 | 1 | **Complete (2026-05-23)** |
 | Interrogate | 6 risks + 4 pending decisions + reuse check | 6 + 4-answered + 1 | **Complete (2026-05-23)** |
 | Solve | 5 (B-S1..B-S5) | 5 | **Complete (2026-05-23)** |
-| Expand | M1: 7 · M2: 4 · M3: 5 | 0 | Not started |
-| Refine | 5 | 0 | Not started |
+| Expand | M1: 7 · M2: 4 · M3: 5 | 16 | **Complete (2026-05-23)** |
+| Refine | 5 | 0 | Not started (founder-driven) |
 | Final Check | 8 | 0 | Not started |
 
 ---
