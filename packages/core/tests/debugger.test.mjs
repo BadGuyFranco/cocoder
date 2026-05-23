@@ -327,7 +327,7 @@ test('debugger root check ignores ellipsized pane display paths', async () => {
     const fakeTmux = path.join(fixture.tmp, 'fake-tmux.sh');
     await writeFile(fakeTmux, [
       '#!/usr/bin/env bash',
-      'printf "directory: /Volumes/.../CoCoder │\\n"',
+      'printf "directory: /tmp/cocoder-fixture │\\n"',
       ''
     ].join('\n'), { mode: 0o755 });
 
