@@ -282,9 +282,9 @@ Per PB-Q1 (recommended A — static fileset), `templates/workspace-cocoder/` is 
 
 ## Progress
 
-**Last worked:** 2026-05-23 (B Expand B-M1..B-M3 complete; suite **265/265**)
-**Current Canon:** Active — Expand complete; Refine (founder-driven) next.
-**Next action:** B Refine — founder ceremony only (`cocoder init` on empty repo, Phil example E2E, persona-identity negative control).
+**Last worked:** 2026-05-23 (B Expand merged PR #33 → **`9bf2433`**; suite **265/265**)
+**Current Canon:** Active — Expand complete (merged); Refine pending (founder-driven).
+**Next action:** B Refine — founder ceremony only. Agent must not run Refine.
 
 | Canon | Items | Done | Status |
 |---|---|---|---|

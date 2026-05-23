@@ -14,6 +14,19 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-23 — **Sub-Playbook B Expand merged (PR #33 → `9bf2433`); B Refine pending (founder)**
+
+**Persona:** AI (Bob) + Founder | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-personas-template.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-personas-template.plan.md)
+
+**Outcomes:**
+- PR #33 squash-merged to `main` @ **`9bf2433`**; CI green; suite **265/265**.
+- PB-Q2=B interpretation recorded: Quinn/Ian/Verifier as inert install-repo schema stubs (not template materialization); Decision Log row added.
+- Sub-Playbook B canon: Expand **complete**; Refine **not started** (founder-only).
+
+**Next:** Founder B Refine — (a) `cocoder init` on empty out-of-tree repo, (b) Phil example E2E, (c) persona-identity negative control. After Refine: B Final Check + Sub-Playbook A Final Check ceremony in parallel.
+
+---
+
 ## 2026-05-23 — **Sub-Playbook B Expand complete (B-M1..B-M3); suite 265/265; paused before B Refine**
 
 **Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-personas-template.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-personas-template.plan.md)

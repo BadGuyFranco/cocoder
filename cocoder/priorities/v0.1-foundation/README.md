@@ -317,9 +317,9 @@ Tracked in [`pending-decisions.md`](./pending-decisions.md). **All resolved 2026
 
 ## Progress
 
-**Last worked:** 2026-05-23 (Sub-Playbook B Expand complete; suite **265/265**)
-**Current Canon:** v0.1 completion phase. Sub-Playbook F Complete. **Sub-Playbook B Expand complete** — Refine (founder-driven) next. Test count: **265 / 265 / 0 fail / 0 skipped**.
-**Next action:** B Refine — founder runs init on empty repo, Phil example E2E, persona-identity negative control.
+**Last worked:** 2026-05-23 (Sub-Playbook B Expand merged PR #33 → **`9bf2433`**; suite **265/265**)
+**Current Canon:** v0.1 completion phase. Sub-Playbook F Complete. **Sub-Playbook B Expand merged** — **B Refine pending (founder)**. Test count: **265 / 265 / 0 fail / 0 skipped**.
+**Next action:** B Refine (founder-only): init on empty repo, Phil E2E, persona-identity negative control. Do not agent-run Refine.
 
 ### Sub-Playbook status
 
@@ -327,7 +327,7 @@ Tracked in [`pending-decisions.md`](./pending-decisions.md). **All resolved 2026
 |---|---|---|---|---|
 | A. Foundation + config survival | Active — Refine (M4 Checkpoint reached 2026-05-23; awaiting Final Check ceremony) | All 27 M4 rows done; audit §4 port-first list CLOSED 12/12; suite 249/249 all-passing | Final Check ceremony (manual smoke tests on a clean clone — see Refine section) | [`2026-05-21-foundation.plan.md`](./plans/2026-05-21-foundation.plan.md) |
 | **E. Dogfood ramp** | **Complete (2026-05-23)** | Solve + Expand + Refine + Final Check 6/6 all green. 12 audit §4 ports closed across 7 autonomous runs; 9 product-code bugs surfaced + fixed end-to-end; B Witness back-reference closed by Sub-Playbook B activation. | — | [`2026-05-22-dogfood-ramp.plan.md`](./plans/2026-05-22-dogfood-ramp.plan.md) |
-| B. Personas + workspace template | **Active — Expand complete 2026-05-23; Refine next** | PB-Q1..PB-Q4 answered; B-S1..B-S5 + B-M1..B-M3 green; suite 265/265 | B Refine (founder) | [`2026-05-21-personas-template.plan.md`](./plans/2026-05-21-personas-template.plan.md) |
+| B. Personas + workspace template | **Active — Expand merged (`9bf2433`); Refine pending (founder)** | PR #33 merged; PB-Q1..PB-Q4 answered; B-S1..B-M3 green; suite 265/265 | B Refine (founder) | [`2026-05-21-personas-template.plan.md`](./plans/2026-05-21-personas-template.plan.md) |
 | **F. Structural cleanup** | **Complete (2026-05-23)** | Final Check closed; PR #28 merged `58e1fe2`; suite 249/249; compose-launch diff clean | — | [`2026-05-23-structural-cleanup.plan.md`](./plans/2026-05-23-structural-cleanup.plan.md) |
 | C. Oz MVP | Draft | — | Awaits A Complete + B Solve | [`2026-05-21-oz-mvp.plan.md`](./plans/2026-05-21-oz-mvp.plan.md) |
 | D. Docs + dogfood + publish | Draft | — | Awaits A, B, C Complete | [`2026-05-21-docs-publish.plan.md`](./plans/2026-05-21-docs-publish.plan.md) |

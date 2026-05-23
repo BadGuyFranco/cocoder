@@ -15,7 +15,7 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 
 | Slug | Description | Status | Canon | Owner | Blocked on |
 |---|---|---|---|---|---|
-| [`v0.1-foundation`](./priorities/v0.1-foundation/README.md) | Ship CoCoder v0.1 — extraction, Oz MVP, docs, public publish | Active | Refine — Sub-Playbook F **Complete** 2026-05-23; **Sub-Playbook B Expand complete 2026-05-23** (suite **265/265**). | Bob + founder | **Next:** B Refine (founder-driven). |
+| [`v0.1-foundation`](./priorities/v0.1-foundation/README.md) | Ship CoCoder v0.1 — extraction, Oz MVP, docs, public publish | Active | Refine — Sub-Playbook B **Expand merged** (PR #33 → `9bf2433`); **B Refine pending** (founder). Suite **265/265**. | Bob + founder | **Next:** B Refine (founder-driven). |
 
 ## Draft
 
@@ -44,7 +44,7 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 3. **Sub-Playbook B activation** — Witness/Interrogate/Solve-target for adopter onboarding (workspace template + `cocoder init` + getting-started doc). Multi-session work; the marquee remaining v0.1 deliverable.
 
 **Recommended next-session ordering:** Item 1 → Item 2 (in batches) → Item 3 (Witness/Interrogate only). The completion plan has an appendix with a verbatim resume prompt for fresh-session pickup. **Done = ticket 0001 closed, M4 free-wins all `[x]` or marked deferred-to-v0.2, Sub-Playbook B Witness populated + Status flipped to Active.**
-**Status:** Active — Refine. Sub-Playbook F Complete 2026-05-23. **Sub-Playbook B Solve complete 2026-05-23** (PB-Q1=A, PB-Q2=B, PB-Q3=B, PB-Q4=A; suite **256/256**; B Expand next). See [`priorities/v0.1-foundation/README.md`](./priorities/v0.1-foundation/README.md).
+**Status:** Active — Refine. Sub-Playbook F Complete 2026-05-23. **Sub-Playbook B Expand merged 2026-05-23** (PR #33 → `9bf2433`; suite **265/265**; B Refine pending — founder). See [`priorities/v0.1-foundation/README.md`](./priorities/v0.1-foundation/README.md).
 
 ### [v0.2-adapter-extensibility](./priorities/v0.2-adapter-extensibility/README.md)
 **Owner:** Bob + founder
