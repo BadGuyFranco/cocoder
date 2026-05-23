@@ -14,26 +14,38 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
-## 2026-05-23 — **Sub-Playbook C Solve Batch 1 (oz-daemon scaffold, C-S1/C-S2, port 7878); PR pending**
+## 2026-05-23 — **Sub-Playbook C Solve Batch 2 (C-S3/C-S4); PR pending**
 
 **Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
 
 **Outcomes:**
-- `packages/oz-daemon` Fastify TS scaffold with `createOzServer()` / `startOzDaemon()`; core depends on workspace package.
-- C-S1 + C-S2 regression tests in `packages/core/tests/oz-security-{bind,auth}.test.mjs` (inject for auth; real socket for bind).
-- `cocoder oz start|stop|status` in `cli/oz.mjs` + registry `oz` entry; help baseline regenerated.
-- Default Oz port aligned PC-Q9=A: 47321 → 7878 (schemas, config.mjs, template, test fixture).
-- Plan Decision Log: Bearer scoping, CSRF bootstrap, port default.
+- C-S3 Origin/Host allowlist middleware + `oz-security-origin-host.test.mjs` (inject).
+- C-S4 CSRF via `GET /auth/session` + `x-oz-csrf-token` on POST/PUT/DELETE + `oz-security-csrf.test.mjs`.
+- C-S2 auth tests updated: valid Host on POST Bearer probes; POST success moved to C-S4.
 
-**Next:** Merge Batch 1 PR → Batch 2 (C-S3/C-S4 Origin/Host + CSRF).
+**Next:** Merge Batch 2 PR → Batch 3 (C-S5/C-S7).
 
 ---
 
+## 2026-05-23 — **Sub-Playbook C Solve Batch 1 merged (PR #36 → `7b5cb60`); C-S1/C-S2 green; suite 274/274**
+
+**Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
+
+**Outcomes:**
+- PR #36 squash-merged to `main` @ **`7b5cb60`**; CI green; suite **274/274** (+9 from 265).
+- `packages/oz-daemon` Fastify TS scaffold; `createOzServer()` + `cocoder oz start|stop|status`.
+- C-S1 (`oz-security-bind.test.mjs`) + C-S2 (`oz-security-auth.test.mjs`).
+- Port default PC-Q9=A: 47321 → 7878.
+
+**Next:** Batch 2 — C-S3 (Origin/Host) + C-S4 (CSRF).
+
+---
+
+## 2026-05-23 — **Sub-Playbook C activated (Oz MVP Witness/Interrogate/Solve-target); PC-Q1..PC-Q9; Status Draft → Active**
 
 **Persona:** AI (Bob) + Founder | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
 
 **Outcomes:**
-- Full Witness audit table (schemas, empty Oz surface, E4.4 audit deferral, multiplexer-observer forward-compat from v0.2-backlog PR #34).
 - Interrogate: PC-Q1..PC-Q9 with recommended defaults; PC-Q10 (Fastify vs Express) dropped → implementer default Fastify.
 - Solve target: C-S1..C-S7 (one regression test per ARCHITECTURE security invariant), C-S8 (registry multi-machine survival), C-S9 (audit-record schema + E4.4 first-launch write).
 - Two-invariant + carry-forward pattern mirrors Sub-Playbook B. Expand left stubbed; no daemon/dashboard code this session.

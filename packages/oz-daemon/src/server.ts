@@ -1,5 +1,7 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import { assertLoopbackHost } from "./bind.js";
+import { createCsrfToken, OZ_CSRF_HEADER, validateCsrfToken } from "./csrf.js";
+import { STATE_CHANGING_METHODS, validateOriginHost } from "./origin-host.js";
 import { DEFAULT_OZ_PORT, resolveOzPort } from "./port.js";
 import { ensureOzToken } from "./token.js";
 
@@ -8,6 +10,7 @@ export type OzServerOptions = {
   host?: string;
   port?: number;
   token?: string;
+  csrfToken?: string;
   env?: NodeJS.ProcessEnv;
 };
 
@@ -16,9 +19,10 @@ export type OzServer = {
   host: string;
   port: number;
   token: string;
+  csrfToken: string;
 };
 
-const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "DELETE"]);
+export { OZ_CSRF_HEADER } from "./csrf.js";
 
 export async function createOzServer(options: OzServerOptions): Promise<OzServer> {
   const host = options.host ?? "127.0.0.1";
@@ -26,12 +30,26 @@ export async function createOzServer(options: OzServerOptions): Promise<OzServer
 
   const port = options.port ?? resolveOzPort({ env: options.env, configPort: DEFAULT_OZ_PORT });
   const token = options.token ?? await ensureOzToken(options.cocoderHome);
+  const csrfToken = options.csrfToken ?? createCsrfToken();
 
   const app = Fastify({ logger: false });
 
   app.get("/health", async () => ({ ok: true }));
 
+  app.get("/auth/session", async () => ({ csrfToken }));
+
   app.addHook("onRequest", async (request, reply) => {
+    const originHost = validateOriginHost({
+      method: request.method,
+      hostHeader: request.headers.host,
+      originHeader: request.headers.origin,
+      port
+    });
+    if (!originHost.ok) {
+      await reply.code(403).send({ error: originHost.error });
+      return;
+    }
+
     if (!STATE_CHANGING_METHODS.has(request.method.toUpperCase())) return;
 
     const authHeader = request.headers.authorization;
@@ -40,18 +58,26 @@ export async function createOzServer(options: OzServerOptions): Promise<OzServer
       return;
     }
 
-    const provided = authHeader.slice("Bearer ".length).trim();
-    if (provided !== token) {
+    const providedBearer = authHeader.slice("Bearer ".length).trim();
+    if (providedBearer !== token) {
       await reply.code(401).send({ error: "invalid bearer token" });
+      return;
+    }
+
+    const providedCsrf = request.headers[OZ_CSRF_HEADER];
+    const csrfValue = Array.isArray(providedCsrf) ? providedCsrf[0] : providedCsrf;
+    if (!validateCsrfToken(csrfValue, csrfToken)) {
+      await reply.code(403).send({ error: "missing or invalid csrf token" });
       return;
     }
   });
 
-  // Solve-phase stub for state-changing auth probes (Expand replaces with real launch).
+  // Solve-phase stubs for state-changing auth probes (Expand replaces with real handlers).
   app.post("/runs", async () => ({ ok: true, stub: true }));
+  app.delete("/runs/:runId", async () => ({ ok: true, stub: true }));
 
   await app.ready();
-  return { app, host, port, token };
+  return { app, host, port, token, csrfToken };
 }
 
 export async function startOzDaemon(options: OzServerOptions): Promise<FastifyInstance> {
