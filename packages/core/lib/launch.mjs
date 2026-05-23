@@ -945,13 +945,26 @@ async function probeRepoGitCommitCapability({ repoRoot }) {
     };
   }
 
-  const probePath = path.join(gitDir, `.cocoder-git-commit-capability-${process.pid}-${Date.now()}.lock`);
+  // M4.14 (audit §H15): the probe MUST stay inside `.git/` to actually test
+  // git-write capability — workspace-write sandboxes (codex `--sandbox
+  // workspace-write` and similar) can write under the workspace tree but
+  // not under `.git/`, so moving the probe to a run-evidence dir would
+  // produce a false positive. Pollution concern is addressed by isolating
+  // the probe into a dedicated subdirectory (`.git/cocoder-capability-probes/`)
+  // instead of writing directly at the top of `.git/` where the filename
+  // could be mistaken for git's own `.lock` files. The subdir + file are
+  // both removed in both the success and failure paths.
+  const probeDir = path.join(gitDir, 'cocoder-capability-probes');
+  const probePath = path.join(probeDir, `probe-${process.pid}-${Date.now()}.tmp`);
   try {
+    await mkdir(probeDir, { recursive: true });
     await writeFile(probePath, 'cocoder git capability probe\n', { flag: 'wx' });
     await rm(probePath, { force: true });
+    await rm(probeDir, { recursive: true, force: true });
     return { ok: true, status: 'available', gitDir };
   } catch (error) {
     await rm(probePath, { force: true }).catch(() => {});
+    await rm(probeDir, { recursive: true, force: true }).catch(() => {});
     return {
       ok: false,
       status: 'git-dir-write-denied',
@@ -1195,7 +1208,13 @@ export function renderSessionWrapper(launchPlan, session) {
     `    exec codex --ask-for-approval never --sandbox ${codexSandbox} "$BOOTSTRAP"`,
     '    ;;',
     '  *)',
-    `    exec ${session.command} "$BOOTSTRAP"`,
+    // M4.11 (audit §H9): shellQuote the fall-through `session.command` so
+    // future adapter declarations (currently only codex/claude land here
+    // since both have explicit branches above) can't shell-inject through
+    // command names with spaces or metacharacters. v0.2 adapter-extensibility
+    // work that adds non-CLI runners may want to migrate this branch off
+    // raw `exec` entirely.
+    `    exec ${shellQuote(session.command)} "$BOOTSTRAP"`,
     '    ;;',
     'esac',
     ''
@@ -1500,6 +1519,14 @@ function renderStartWatchersScript(launchPlan) {
 }
 
 function renderSendScript(runDir, lane) {
+  // M4.11 (audit §H9): the `--message "$*"` on the `else` branch below is
+  // deliberate. With "$*" (quoted), every arg the caller passes becomes a
+  // single IFS-joined --message value, so both `send-to-lane hello world`
+  // and `send-to-lane "phrase one"` route through as one --message value.
+  // "$@" (quoted) would expand to multiple separate args, and --message
+  // only takes one, so the second arg would land as an unexpected positional.
+  // The audit's "$@" recommendation was inverted for this dispatcher's
+  // "all args → one message" contract.
   const cliPath = CORE_CLI_PATH;
   return [
     '#!/usr/bin/env bash',

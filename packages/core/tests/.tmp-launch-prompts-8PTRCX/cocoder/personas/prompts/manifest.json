@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "personas": {
+    "oscar": [
+      "shared/startup-packet.md",
+      "shared/write-boundaries.md",
+      "shared/result-contract.md",
+      "shared/closeout.md",
+      "shared/private-playbook-boundary.md",
+      "shared/evidence-classes.md",
+      "shared/session-wrap.md",
+      "personas/oscar.md"
+    ],
+    "bob": [
+      "shared/startup-packet.md",
+      "shared/write-boundaries.md",
+      "shared/result-contract.md",
+      "shared/closeout.md",
+      "shared/private-playbook-boundary.md",
+      "shared/evidence-classes.md",
+      "personas/bob.md"
+    ],
+    "phil": [
+      "shared/startup-packet.md",
+      "shared/write-boundaries.md",
+      "shared/result-contract.md",
+      "shared/closeout.md",
+      "shared/private-playbook-boundary.md",
+      "shared/evidence-classes.md",
+      "personas/phil.md"
+    ],
+    "talia": [
+      "shared/startup-packet.md",
+      "shared/write-boundaries.md",
+      "shared/result-contract.md",
+      "shared/closeout.md",
+      "shared/private-playbook-boundary.md",
+      "shared/evidence-classes.md",
+      "personas/talia.md"
+    ],
+    "quinn": [
+      "shared/startup-packet.md",
+      "shared/write-boundaries.md",
+      "shared/result-contract.md",
+      "shared/closeout.md",
+      "shared/private-playbook-boundary.md",
+      "shared/evidence-classes.md",
+      "personas/quinn.md"
+    ]
+  }
+}
