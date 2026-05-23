@@ -304,15 +304,15 @@ Tracked in [`pending-decisions.md`](./pending-decisions.md). **All resolved 2026
 
 ## Progress
 
-**Last worked:** 2026-05-23 (v0.1 completion plan authored — bundles three remaining items: ticket 0001 decision, Sub-Playbook A M4 free-wins, Sub-Playbook B activation)
-**Current Canon:** v0.1 completion phase. Audit §4 port-first list CLOSED 2026-05-22 (12 of 12 ports landed across 7 autonomous orchestration runs; 9 product-code bugs surfaced + fixed end-to-end; 235 tests, 229 pass, 6 skipped). Repo public at `BadGuyFranco/cocoder`. See [`plans/2026-05-23-v0.1-completion.plan.md`](./plans/2026-05-23-v0.1-completion.plan.md).
-**Next action:** Fresh session picks up the completion plan via the verbatim pickup prompt in its Appendix. Recommended order: Item 1 (ticket 0001) → Item 2 (M4 free-wins) → Item 3 (Sub-Playbook B Witness/Interrogate).
+**Last worked:** 2026-05-23 (v0.1 completion plan **Item 1 closed** — ticket 0001 resolved Path B (retire); CoCoder ships terminal-only. Then **Item 2 checkbox-refresh batch landed** — foundation plan E2.2e.* port rows + M4.1–M4.4/M4.15 free-win rows ticked to match reality. Drilling into M4.5–M4.14, M4.16–M4.21 next.)
+**Current Canon:** v0.1 completion phase. Audit §4 port-first list CLOSED (12 of 12; E2.2e.12 retired Path B per ticket 0001). Test count: **229 / 229 / 0 fail / 0 skipped**. Repo public at `BadGuyFranco/cocoder`. See [`plans/2026-05-23-v0.1-completion.plan.md`](./plans/2026-05-23-v0.1-completion.plan.md).
+**Next action:** Continue Item 2 — group remaining M4 items by file and land each as its own auto-merge PR. After M4 Checkpoint reached, activate Sub-Playbook B (Item 3 — adopter onboarding) via Witness/Interrogate/Solve-target.
 
 ### Sub-Playbook status
 
 | Sub-Playbook | Status | Current Canon | Next action | File |
 |---|---|---|---|---|
-| A. Foundation + config survival | Active — Refine | M4 free-wins remain (M4.5–M4.14, M4.16–M4.21); audit §4 port-first list CLOSED 2026-05-22 (12/12) | Land M4 free-wins per completion plan Item 2 | [`2026-05-21-foundation.plan.md`](./plans/2026-05-21-foundation.plan.md) |
+| A. Foundation + config survival | Active — Refine | M4 free-wins remain (M4.5–M4.14, M4.16–M4.21); audit §4 port-first list CLOSED 2026-05-23 (12/12; E2.2e.12 retired Path B); M4.1/M4.2/M4.3/M4.4/M4.15 + M4.22–M4.27 done | Land M4 free-wins per completion plan Item 2 | [`2026-05-21-foundation.plan.md`](./plans/2026-05-21-foundation.plan.md) |
 | **E. Dogfood ramp** | **Complete (effectively)** | All milestones green: Solve + Expand + Refine + 5/6 Final Check. 12 audit §4 ports closed across 7 autonomous runs; 9 product-code bugs surfaced + fixed end-to-end. | Final-Check item 6 (Sub-Playbook B Witness back-reference) lands when B activates | [`2026-05-22-dogfood-ramp.plan.md`](./plans/2026-05-22-dogfood-ramp.plan.md) |
 | B. Personas + workspace template | Draft → activates next | — | Activate per completion plan Item 3 (Witness/Interrogate/Solve-target this session; Expand subsequent sessions) | [`2026-05-21-personas-template.plan.md`](./plans/2026-05-21-personas-template.plan.md) |
 | C. Oz MVP | Draft | — | Awaits A Complete + B Solve | [`2026-05-21-oz-mvp.plan.md`](./plans/2026-05-21-oz-mvp.plan.md) |

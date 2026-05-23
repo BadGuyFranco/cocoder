@@ -156,24 +156,24 @@ Mergeable `main` branch with:
 ### Milestone 2 — Extract orchestration core (manifest-driven)
 
 - [x] **E2.1** **Author extraction manifest** at `priorities/v0.1-foundation/plans/extraction-manifest.md` (path is unambiguous — alongside this Playbook, not at workspace root). Non-Playbook reference file (no WISER ceremony). Table with columns: `source path | target path | transformation | validation command | dropped CoBuilder behavior`. Covers every file under CoBuilder `orchestration/core/lib`, `orchestration/contracts`, `orchestration/adapters`, `orchestration/cli.mjs`, `orchestration/tests`.
-- [ ] **E2.2** Execute extraction in five mechanical sub-passes (each pass has its own commit and validation):
+- [x] **E2.2** Execute extraction in five mechanical sub-passes (each pass has its own commit and validation):
   - [x] E2.2a `contracts/` → `packages/core/contracts/` — verify all JSON parses
   - [x] E2.2b `core/lib/` → `packages/core/lib/` — verify all imports resolve under pnpm
   - [x] E2.2c `core/cli.mjs` → `packages/core/cli.mjs` — verify it loads (no runtime call yet)
   - [x] E2.2d `adapters/` → `packages/core/adapters/` — verify adapter registry parses
-  - [ ] E2.2e `tests/` → `packages/core/tests/` — port the **12 port-first files** identified in audit §4 (port-first list), in this order; **do not port** the CoBuilder-specific tests called out in audit §4 "Do not port":
-    - [ ] E2.2e.1 `core.test.mjs` (contracts, persona load, ledger primitives, priority extractor)
+  - [x] E2.2e `tests/` → `packages/core/tests/` — port the **12 port-first files** identified in audit §4 (port-first list), in this order; **do not port** the CoBuilder-specific tests called out in audit §4 "Do not port": **CLOSED 2026-05-23 — all 12 ports landed; E2.2e.12 retired per ticket 0001 Path B (Path B = terminal-only; no `.command` wrappers in v0.1).**
+    - [x] E2.2e.1 `core.test.mjs` (contracts, persona load, ledger primitives, priority extractor) — **ported by Talia 2026-05-22 via Sub-Playbook E E3.3** ([`run-20260522T133403Z-rwrkcfcg`](../../../local/workspaces/cocoder-dogfood/runs/); `pnpm -F core test core` = 75/75 pass; 446 lines / 18,195 bytes; both lanes PASS; first orchestrated dogfood task)
     - [x] E2.2e.2 `dispatch.test.mjs` (locks, write-boundary audit, verifier packets) — **ported by Talia 2026-05-22 via Sub-Playbook E Refine** ([`run-20260522T135126Z-t4rnd35z`](../../../local/workspaces/cocoder-dogfood/runs/), `pnpm -F core test dispatch` = 86/86 pass; PASS from both lanes; 11/11 source test names preserved per Bob's parity check)
     - [x] E2.2e.3 `adapters.test.mjs` (preflight/semantic validation) — **ported by Talia 2026-05-22 via Sub-Playbook E orchestration loop** ([`run-20260522T160453Z-nsluixnb`](../../../local/workspaces/cocoder-dogfood/runs/); Talia PASS + Bob CONDITIONAL_PASS on the schemas/dist mtime side effect; `pnpm -F core test adapters` = 93/93 pass; 7/7 source test names preserved; CONDITIONAL flag tracked as `PORT-NOTES.md` finding F, v0.2 follow-up — not a real schema drift, bytes verified byte-stable)
     - [x] E2.2e.4 `composition.test.mjs` (route/profile compatibility, dry-run, stale-priority guard) — **ported by Talia 2026-05-22 via Sub-Playbook E orchestration loop** ([`run-20260522T161135Z-i3wg7ti9`](../../../local/workspaces/cocoder-dogfood/runs/); both lanes PASS; `pnpm -F core test composition` = 110/110 pass; 17/17 source test names preserved)
-    - [ ] E2.2e.5 `launch.test.mjs` (52 upstream tests; dry-run, add-lanes, send-message/stdin, stop-run, finalizer, tmux quotes) **— largest single port; pair with M4.3 CLI path rename**
-    - [ ] E2.2e.6 `orchestrator-commit.test.mjs` (route-owned commits, filesChanged guards, verification-artifact guard) **— pair with M4.10 Q5 decision**
-    - [ ] E2.2e.7 `debugger.test.mjs` (prepare-debugger, evidence follow, pane/root checks)
-    - [ ] E2.2e.8 `flows.test.mjs` (phase transitions, write-boundary violations, closeout gates)
-    - [ ] E2.2e.9 `lead-rescue.test.mjs` + fixture `fixtures/lead-rescue/valid-supersession-record.json`
-    - [ ] E2.2e.10 `session-wrap.test.mjs` (wrap audit, handoff consistency)
-    - [ ] E2.2e.11 `repo-state.test.mjs` (add-lanes repo audit)
-    - [x] E2.2e.12 `launch-command.test.mjs` — **Retired 2026-05-23 (Path B per ticket 0001).** CoCoder ships terminal-only; the upstream `.command` double-click wrappers were intentionally dropped during extraction and are not coming back. The ported test file (which only asserted wrapper-script validity) was deleted; resolution recorded in `tickets/closed/0001-cocoder-command-wrapper-decision.md`.
+    - [x] E2.2e.5 `launch.test.mjs` (52 upstream tests; dry-run, add-lanes, send-message/stdin, stop-run, finalizer, tmux quotes) — **landed via PR #3 (2026-05-22) — largest single port; pair with M4.3 CLI path rename done; port surfaced + closed 4 product-code bugs in the same PR (attachAddedLanes TTY targeting, DURABLE_ORCHESTRATION_PREFIXES, activeRunPreflight + findActiveRunsForPriority, `--allow-concurrent-priority-run` CLI flag).** 55/55 tests pass.
+    - [x] E2.2e.6 `orchestrator-commit.test.mjs` (route-owned commits, filesChanged guards, verification-artifact guard) — **landed via PR #7 + bounded-commit dirty-check fix.**
+    - [x] E2.2e.7 `debugger.test.mjs` (prepare-debugger, evidence follow, pane/root checks) — **landed via PR #8.**
+    - [x] E2.2e.8 `flows.test.mjs` (phase transitions, write-boundary violations, closeout gates) — **landed via PR #9.**
+    - [x] E2.2e.9 `lead-rescue.test.mjs` + fixture `fixtures/lead-rescue/valid-supersession-record.json` — **landed via PR #10.**
+    - [x] E2.2e.10 `session-wrap.test.mjs` (wrap audit, handoff consistency) — **landed via PR #11.**
+    - [x] E2.2e.11 `repo-state.test.mjs` (add-lanes repo audit) — **landed via PR #12.**
+    - [x] E2.2e.12 `launch-command.test.mjs` — **Retired 2026-05-23 (Path B per ticket 0001).** CoCoder ships terminal-only; the upstream `.command` double-click wrappers were intentionally dropped during extraction and are not coming back. The ported test file (which only asserted wrapper-script validity) was deleted via PR #16; resolution recorded in `tickets/closed/0001-cocoder-command-wrapper-decision.md`.
     - [ ] E2.2e.replace Replace shallow `orchestration-improvements.test.mjs` source-grep with runtime launch-behavior fixtures (dry-run + execute-with-mock-transport per upstream `launch.test.mjs:108-109`)
 - [x] **E2.3** Rename `COB_ORCH_*` → `COCODER_ORCH_*` throughout (`packages/core/lib/env.mjs` exports constants; no hardcoded literals). Validation: `rg 'COB_ORCH_' packages/` returns zero matches.
 - [x] **E2.4** Generalize CoBuilder-specific paths: introduce `packages/core/lib/paths.mjs` (already created in Solve); rename `cobuilder-build` → `cocoder` across paths. Validation: `rg 'cobuilder-build' packages/ docs/ templates/` returns zero matches **AND** `rg 'cobuilder' packages/ --glob '!**/*.example.*'` returns zero matches → *closed 2026-05-22 by M4.4: both gates return 0 hits; the upstream CoBuilder attribution in `packages/core/quinn/README.md` boundary note is intentional (CapitalCase, doesn't match the gate).*
@@ -203,10 +203,10 @@ Mergeable `main` branch with:
 
 #### Free wins (no founder decision needed)
 
-- [ ] **M4.1** Refresh lying checkboxes across Master README + this plan + PRIORITIES.md (audit §H10, §H11, §M11). Verify every `[x]` matches reality before moving on.
-- [ ] **M4.2** Root `.gitignore`: add `*.env`, `.env.*`, `secrets/`; replace blanket `dist/` with `packages/*/dist/` + `!packages/schemas/dist/*.schema.json` (audit §B7, §B8). Verify with `git check-ignore` on a real clone.
-- [ ] **M4.3** Rename `cocoder/core/cli.mjs` references in shipped runtime → resolve via `import.meta.url` / install-relative path (audit §B1). Files: `packages/core/lib/launch.mjs:1051,1276,1379`; `packages/core/lib/debugger.mjs:254,715`; `packages/core/lib/orchestrator-commit.mjs:18`. Add regression test asserting each generated `cliPath` literal resolves to an existing file.
-- [ ] **M4.4** Complete CoBuilder identifier scrub in `packages/` (audit §B3): tmux socket (`cobuilder-orchestration` → `cocoder-orchestration`), prompt headers, mkdtemp prefix, commit trailers (`@cobuilder.local` → configurable), contract schema descriptions, Quinn defaults (`cobuilder-ide`, `cobuilder-dev-console-env`, `api-staging.cobuilder.me`), git probe filename. **Re-check E2.4 when `rg 'cobuilder' packages/ --glob '!**/*.example.*'` returns 0.**
+- [x] **M4.1** Refresh lying checkboxes across Master README + this plan + PRIORITIES.md (audit §H10, §H11, §M11). Verify every `[x]` matches reality before moving on. — *Initial audit pass closed 2026-05-22 (Evening) per SESSION_LOG; second sweep closed 2026-05-23 covering the E2.2e port-row drift and the M4 free-win rows landed but not ticked.*
+- [x] **M4.2** Root `.gitignore`: add `*.env`, `.env.*`, `secrets/`; replace blanket `dist/` with `packages/*/dist/` + `!packages/schemas/dist/*.schema.json` (audit §B7, §B8). Verify with `git check-ignore` on a real clone. — *Closed 2026-05-22 (Evening); per-package `packages/*/dist/` + schemas un-ignore + `js/` re-ignore landed so the schema-drift gate sees the tracked `*.schema.json` artifacts.*
+- [x] **M4.3** Rename `cocoder/core/cli.mjs` references in shipped runtime → resolve via `import.meta.url` / install-relative path (audit §B1). Files: `packages/core/lib/launch.mjs:1051,1276,1379`; `packages/core/lib/debugger.mjs:254,715`; `packages/core/lib/orchestrator-commit.mjs:18`. Add regression test asserting each generated `cliPath` literal resolves to an existing file. — *Closed 2026-05-22 (Evening); `CORE_CLI_PATH` module constant introduced; 4 regression tests in `tests/cli-path-resolution.test.mjs`.*
+- [x] **M4.4** Complete CoBuilder identifier scrub in `packages/` (audit §B3): tmux socket (`cobuilder-orchestration` → `cocoder-orchestration`), prompt headers, mkdtemp prefix, commit trailers (`@cobuilder.local` → configurable), contract schema descriptions, Quinn defaults (`cobuilder-ide`, `cobuilder-dev-console-env`, `api-staging.cobuilder.me`), git probe filename. **Re-check E2.4 when `rg 'cobuilder' packages/ --glob '!**/*.example.*'` returns 0.** — *Closed 2026-05-22 (Evening); `rg 'cobuilder' packages/ --glob '!**/*.example.*'` returns 0 case-sensitive matches; E2.4 ticked with cross-reference.*
 - [ ] **M4.5** Wire `resolveSecretReferences()` into `resolveConfig()` (audit §H1). Add opt-out path for `config get` display mode.
 - [ ] **M4.6** Harden `validateConfig` to fail closed when schema artifact missing (audit §H2); allow skip only in explicit test mode.
 - [ ] **M4.7** Quinn credentials path — align with comment + add `.gitignore` rule (audit §H12).
@@ -217,7 +217,7 @@ Mergeable `main` branch with:
 - [ ] **M4.12** Port `packages/core/baselines/accepted-reference-baseline.md` per extraction manifest (audit §B2). `check-immutable-baseline` works with default args after.
 - [ ] **M4.13** Remove deferred `.command` launcher references in `debugger.mjs:256-258,590,619` (audit §H8). Replace with `cocoder` CLI invocations or gate behind workspace-template presence.
 - [ ] **M4.14** Move `launch.mjs:910-913` git capability probe out of `.git` dir into run evidence dir (audit §H15).
-- [ ] **M4.15** Add stale-reference CI gate: `rg 'cobuilder|COB_ORCH_' packages/ docs/ templates/ --glob '!**/*.example.*'` must return 0 (audit §M12). Add `/Volumes/` gate scoped to allow only `*.example.*`.
+- [x] **M4.15** Add stale-reference CI gate: `rg 'cobuilder|COB_ORCH_' packages/ docs/ templates/ --glob '!**/*.example.*'` must return 0 (audit §M12). Add `/Volumes/` gate scoped to allow only `*.example.*`. — *Closed 2026-05-22 (Evening); CI workflow at `.github/workflows/ci.yml` runs both gates. **Note 2026-05-22:** the gates initially exited 127 (no ripgrep) for several days before [PR #14](https://github.com/BadGuyFranco/cocoder/pull/14) installed `ripgrep` in CI — they now actually enforce.*
 - [ ] **M4.16** Acceptance harness — parameterize hardcoded `'ORCHESTRATION-REBUILD'` slug (audit §M2; `acceptance.mjs:73`).
 - [ ] **M4.17** ARCHITECTURE.md target sections — label unshipped dirs as `(Target — Sub-Playbook B/C/D)` (audit §M3).
 - [ ] **M4.18** Memory file refresh: `cocoder/memory/codebase-map.md:52` and `packages/schemas/src/oz/README.md` (audit §M4, §M5).
@@ -321,16 +321,16 @@ Mergeable `main` branch with:
 
 ## Progress
 
-**Last worked:** 2026-05-22 (late — M4.22 through M4.27 founder-gated tasks executed with regression tests; Sub-Playbook E preconditions fully satisfied)
-**Current Canon:** Refine (audit remediation; all founder-gated tasks done; remaining free-wins M4.5–M4.14, M4.16–M4.21 still open but do not block Sub-Playbook E)
-**Next action:** Sub-Playbook E Solve (E-S1: borrow Bob + Talia personas; dry-run `cocoder compose-launch` until composition succeeds; capture proof artifact). Remaining M4 free-wins (M4.5–M4.14, M4.16–M4.21) can land in parallel to close the M4 Checkpoint formally.
+**Last worked:** 2026-05-23 (v0.1 completion plan Item 1 closed — ticket 0001 Path B retire — and Item 2 checkbox-refresh batch landed; foundation plan now reflects reality after the 8 audit §4 port-row + 5 M4 free-win drifts were ticked)
+**Current Canon:** Refine (audit remediation; all founder-gated tasks done; audit §4 port-first list CLOSED 12 of 12; remaining free-wins M4.5–M4.14, M4.16–M4.21 still open and tracked under [v0.1 Completion Plan Item 2](./2026-05-23-v0.1-completion.plan.md#item-2--sub-playbook-a-m4-free-wins-cleanup))
+**Next action:** Continue Item 2 — group remaining M4 items (M4.5–M4.14, M4.16–M4.21) by file and land each as its own auto-merge PR. After M4 Checkpoint, Sub-Playbook B (Item 3 — adopter onboarding) activates.
 
 | Canon | Items | Done | Status |
 |---|---|---|---|
 | Witness | 1 | 1 | Complete |
 | Interrogate | 7 risks + reuse check | 7 + 1 | Complete |
 | Solve | 7 | 4 (S1.1, S1.2, S1.4, S1.7) | Mostly complete; S1.3/S1.5/S1.6 fixture trees rescoped under M4.E2.2e |
-| Expand | M1: 7 · M2: 11 · M3: 6 · **M4: 27** | M1: 7, M2: 11 (E2.4 closed by M4.4), M3: 5 (E3.5 un-checked pending M4.10), M4: 11 (M4.1, M4.2, M4.3, M4.4, M4.15, M4.22, M4.23, M4.24, M4.25, M4.26, M4.27) | **Active** |
+| Expand | M1: 7 · M2: 11 · M3: 6 · **M4: 27** | M1: 7, M2: 11 (E2.2e fully closed 2026-05-23; E2.4 closed by M4.4), M3: 5 (E3.5 un-checked pending M4.10), M4: 11 (M4.1, M4.2, M4.3, M4.4, M4.15, M4.22, M4.23, M4.24, M4.25, M4.26, M4.27) | **Active** |
 | Refine | 7 (was 4; 3 audit-driven added) | 1 (audit complete) | Active |
 | Final Check | 9 (was 7; 2 audit-driven added) | 1 (M11 P-S1/P-S2 mirror) | Not started |
 | **Total** | **74** (was 42; M4 + audit additions) | **52** | **Active (Refine)** |
