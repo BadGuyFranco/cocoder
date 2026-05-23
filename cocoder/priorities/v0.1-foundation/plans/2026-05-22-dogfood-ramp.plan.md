@@ -3,7 +3,7 @@
 **Created:** 2026-05-22 | **Updated:** 2026-05-22
 **Type:** One-time
 **Collaboration:** Collaborative
-**Status:** Active — Final Check (E3.3 PASSED + Refine PASSED 2026-05-22; both `core.test.mjs` and `dispatch.test.mjs` ported under autonomous orchestration)
+**Status:** **Complete (2026-05-23)** — Solve + Expand + Refine + Final Check all green. 12 audit §4 ports landed across 7 autonomous orchestration runs; 9 product-code bugs surfaced + fixed end-to-end; Sub-Playbook B Witness back-reference closed when B activated 2026-05-23.
 **Method:** WISER Playbook (Sub-Playbook; Master = `../README.md`)
 **Parent:** [v0.1-foundation priority](../README.md)
 **Audit evidence:** [`2026-05-22-foundation-audit.md`](./2026-05-22-foundation-audit.md)
@@ -269,7 +269,7 @@ End-to-end proof that `cocoder compose-launch --profile cocoder-dogfood --route 
 - [x] No `packages/` mutation outside `packages/core/tests/` across both runs (Talia self-attest + Bob audit + mtime boundary check)
 - [x] No install-zone (`<install>/local/`) mutation outside `local/workspaces/cocoder-dogfood/` and the gitignored `local/audit/` (which Sub-Playbook C will own)
 - [x] `cocoder/personas/PORT-NOTES.md` documents every CoBuilder→CoCoder divergence + the 5 core bugs surfaced by the dogfood ramp + v0.2 follow-ups for Sub-Playbook B
-- [ ] Sub-Playbook B Witness section updated with reuse-check entry: "Sub-Playbook E borrowed Bob, Talia, and shared fragments; B re-ports the remaining personas (oscar, ian, phil, quinn, verifier) and full workspace template" — **deferred to Sub-Playbook B start** (its Witness is the natural place to record the inheritance)
+- [x] Sub-Playbook B Witness section updated with reuse-check entry: "Sub-Playbook E borrowed Bob, Talia, and shared fragments; B re-ports the remaining personas (oscar, ian, phil, quinn, verifier) and full workspace template" — *closed 2026-05-23: Sub-Playbook B activated with full Witness/Interrogate/Solve-target authored; the Witness audit table + Reuse Check both reference this Sub-Playbook E borrow explicitly; PB-Q2 narrows the scope (recommended default = oscar + bob + talia + phil only in v0.1, defer quinn/ian/verifier to v0.2).*
 - [x] PRIORITIES.md and Master README updated to reflect Sub-Playbook E E3.3 PASSED + Refine PASSED
 
 ---
@@ -327,8 +327,8 @@ End-to-end proof that `cocoder compose-launch --profile cocoder-dogfood --route 
 | Solve | 2 | 2 | **Complete 2026-05-22** (compose-launch + launch dry-render both green; 4 core bugs fixed; 7/7 E-S2 rg checks green by E3.1) |
 | Expand | E1: 7 · E2: 4 · E3: 4 · E4: 5 · E5: 4 | 22 of 24 (E1.1–E1.7 ✓; E2.1–E2.4 ✓; E3.1, E3.2, E3.3 ✓; E3.4 deferred to Refine for founder shadow; E4.1, E4.2, E4.3, E4.5 ✓; E4.4 deferred to Sub-Playbook C; E5.1, E5.3, E5.4 ✓; E5.2 deferred to follow-up) | **Complete 2026-05-22** (first orchestrated dogfood task PASSED; Bug E surfaced + fixed in flight; 5 core bugs total) |
 | Refine | 4 | 3 (repeat run ✓; two distinct run dirs ✓; no out-of-zone mutation ✓; audit log deferred to C) | **Complete 2026-05-22** (`dispatch.test.mjs` ported autonomously in ~7 min, 86/86 tests post-port, Bob+Talia both PASS, no out-of-zone writes) |
-| Final Check | 6 | 5 (Sub-Playbook A E2.2e.1+E2.2e.2 ✓; no out-of-zone mutation ✓; PORT-NOTES ✓; state mirrors ✓; Sub-Playbook B Witness update deferred to B start) | Effectively complete; only deferred items remain (Sub-Playbook B Witness backref) |
-| **Total** | **52** | **35** | E3.3 PASSED + Refine PASSED; only deferred items (Sub-Playbook C audit log, Sub-Playbook B Witness backref, follow-up memory updates) remain |
+| Final Check | 6 | 6 (Sub-Playbook A E2.2e.1+E2.2e.2 ✓; no out-of-zone mutation ✓; PORT-NOTES ✓; state mirrors ✓; Sub-Playbook B Witness back-reference closed 2026-05-23 by B activation) | **Complete 2026-05-23** |
+| **Total** | **52** | **36** | **Sub-Playbook E COMPLETE 2026-05-23.** Audit-log deferral (E4.4) and memory-file refresh remain owned by Sub-Playbook C (Oz daemon) per ARCHITECTURE.md — not Sub-Playbook E scope. |
 
 ---
 

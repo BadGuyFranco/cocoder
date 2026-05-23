@@ -14,6 +14,29 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-23 (continuation) — **v0.1 Completion Plan Item 3 — Sub-Playbook B Activated (Witness/Interrogate/Solve-target authored); Sub-Playbook E formally Complete**
+
+**Persona:** AI (Bob) + Founder | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-personas-template.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-personas-template.plan.md) (activated) + [`priorities/v0.1-foundation/plans/2026-05-23-v0.1-completion.plan.md`](./priorities/v0.1-foundation/plans/2026-05-23-v0.1-completion.plan.md) Item 3
+
+**Outcomes:**
+- **Sub-Playbook B Status flipped Draft → Active.** Full Witness audit, Interrogate (6 risks + 4 pending decisions PB-Q1..PB-Q4 + reuse check), and Solve target (TWO invariants — persona identity preservation AND `cocoder init` idempotency — with B-S1..B-S5 task list) all authored in one pass. Replaces the 2026-05-21 placeholder Witness.
+- **Four pending decisions surfaced for founder gate (PB-Q1..PB-Q4):**
+  - PB-Q1 — workspace template: static fileset vs generated-from-dogfood (recommended A — static, dogfood validates rather than sources).
+  - PB-Q2 — persona library scope in v0.1: all 7 vs minimum subset of oscar+bob+talia+phil (recommended B — minimum subset; **ADR-graduation candidate**; HOLD FOR GO if it ADR-graduates).
+  - PB-Q3 — Phil custom-persona example: schema-only vs full working example (recommended B — full).
+  - PB-Q4 — `docs/getting-started.md`: B-side stub now vs full Sub-Playbook D ownership (recommended A — B-side stub).
+- **Solve invariants** (one new, one extending the existing stub):
+  - B-S2: persona-identity regression test — composed prompt for a known Sub-Playbook E orchestration run is byte-identical to a captured reference fixture. Negative control: mutate slug → test fails.
+  - B-S4: `cocoder init` idempotency regression test — re-run on the same target produces zero diff; user-edited tracked file is preserved on `--merge`; nesting attempt hits the ADR-0006 `COCODER_NESTED_WORKSPACE_FORBIDDEN` error.
+- **Sub-Playbook E formally flipped Complete (2026-05-23).** Its Final Check item 6 (Sub-Playbook B Witness back-reference) was the sole remaining item; landed automatically when B activated. Status header + Progress table + Final Check checkbox all refreshed.
+- **State mirrors refreshed:** Master README (Sub-Playbook A + E + B rows + Last worked + Next action), PRIORITIES.md slim-table row, v0.1 completion plan (Item 3 task list ticked through 3.6; 3.7 deferred to Expand).
+- **Reuse check explicit:** Sub-Playbook B's Witness audit table directly references Sub-Playbook E's borrowed artifacts (Bob + Talia + 6 shared fragments) and inherits A's `--merge` planner + `assertWorkspaceNotNestedInsideInstall` + `setWorkspaceConfigValue` without modification. Closes the "B re-does E" risk explicitly.
+- **No code changes; no test changes.** Suite remains 236/236 all-passing.
+
+**Resume cue / Next:** **Founder reviews + answers PB-Q1..PB-Q4 in `2026-05-21-personas-template.plan.md` Interrogate section.** If PB-Q2 graduates to an ADR (v0.1-vs-v0.2 persona scope), HOLD FOR GO. Then a fresh session executes B Solve (B-S1..B-S5 — capture persona-identity reference fixture from a Sub-Playbook E run, author persona-identity + `cocoder init` idempotency regression tests, implement `cocoder init` apply step, manual smoke-test on a fresh out-of-tree repo). Sub-Playbook A Final Check ceremony (founder-driven manual smoke tests on a clean clone per Refine section) can parallel-track and does not block B.
+
+---
+
 ## 2026-05-23 (continuation) — **v0.1 Completion Plan Item 2 CLOSED — Sub-Playbook A M4 Checkpoint reached (all 27 audit-remediation rows)**
 
 **Persona:** AI (Bob) + Founder | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-23-v0.1-completion.plan.md`](./priorities/v0.1-foundation/plans/2026-05-23-v0.1-completion.plan.md) Item 2
