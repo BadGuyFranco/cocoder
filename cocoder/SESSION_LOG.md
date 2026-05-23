@@ -14,6 +14,21 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-23 — **Sub-Playbook C activated (Oz MVP Witness/Interrogate/Solve-target); PC-Q1..PC-Q9; Status Draft → Active**
+
+**Persona:** AI (Bob) + Founder | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
+
+**Outcomes:**
+- Full Witness audit table (schemas, empty Oz surface, E4.4 audit deferral, multiplexer-observer forward-compat from v0.2-backlog PR #34).
+- Interrogate: PC-Q1..PC-Q9 with recommended defaults; PC-Q10 (Fastify vs Express) dropped → implementer default Fastify.
+- Solve target: C-S1..C-S7 (one regression test per ARCHITECTURE security invariant), C-S8 (registry multi-machine survival), C-S9 (audit-record schema + E4.4 first-launch write).
+- Two-invariant + carry-forward pattern mirrors Sub-Playbook B. Expand left stubbed; no daemon/dashboard code this session.
+- State mirrors: PRIORITIES.md + Master Progress table updated.
+
+**Next:** Founder confirms PC-Q1/PC-Q5/PC-Q9 (ADR-graduating gates) or accepts defaults → C Solve execution in a subsequent session.
+
+---
+
 ## 2026-05-23 — **Sub-Playbook B Expand merged (PR #33 → `9bf2433`); B Refine pending (founder)**
 
 **Persona:** AI (Bob) + Founder | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-personas-template.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-personas-template.plan.md)
