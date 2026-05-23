@@ -3,7 +3,7 @@
 **Created:** 2026-05-23 | **Updated:** 2026-05-23 (authored)
 **Type:** One-time
 **Collaboration:** Collaborative
-**Status:** **Active — awaits founder gate on FP-Q1 + FP-Q2 before Solve starts** (recommended defaults inline)
+**Status:** **Active — Expand complete 2026-05-23; Refine ceremony pending founder spot-check**
 **Method:** WISER Playbook (Sub-Playbook; Master = `../README.md`)
 **Parent:** [v0.1-foundation priority](../README.md)
 **Slots between:** [v0.1 Completion Plan Item 2 (CLOSED)](./2026-05-23-v0.1-completion.plan.md#item-2--sub-playbook-a-m4-free-wins-cleanup) and [Item 3 (Sub-Playbook B Expand — NOT YET STARTED)](./2026-05-23-v0.1-completion.plan.md#item-3--sub-playbook-b-adopter-onboarding)
@@ -40,7 +40,7 @@ The discipline this Sub-Playbook enforces:
 - [x] Sub-Playbook A Refine-complete (M4 Checkpoint reached 2026-05-23) — `pnpm -r test` green at 236/236
 - [x] Sub-Playbook E Complete (12 audit §4 ports landed; orchestration loop battle-tested across 7 autonomous runs)
 - [x] Sub-Playbook B Witness/Interrogate/Solve-target landed — F is sequenced to land before B Solve executes, so B's persona-identity regression test (B-S2) runs against the refactored composer
-- [ ] **FP-Q1 + FP-Q2 answered by founder** — see Interrogate / Pending decisions; Solve cannot start until both are resolved
+- [x] **FP-Q1 + FP-Q2 answered by founder** — FP-Q1=A (minimum enum patch), FP-Q2=B (two helper modules); recorded in Interrogate table 2026-05-23
 
 ---
 
@@ -124,8 +124,8 @@ Land three surgical batches that (a) unblock Sub-Playbook B Expand, (b) close th
 
 | ID | Question | Blocks | Recommended default |
 |---|---|---|---|
-| **FP-Q1** | `contracts.mjs` validation scope: (a) MINIMUM patch — extend `matchesType` to honor `enum` field on contract JSON; (b) FULL — migrate orchestration contracts from hand-DSL JSON to Zod in `packages/schemas/src/contracts/`, emit JSON Schema, replace `validateInstance` with AJV. | FB-3 | **A — Minimum patch.** Full Zod migration is the right end-state per ADR-0004 (the config path already runs this way), but it's a 2–3-day refactor touching every contract callsite. The minimum patch is half a day, closes the active correctness gap (invalid `status` values silently passing), and leaves the full migration as a clean v0.2 architectural item. **FP-Q1=A is NOT ADR-graduating** (it preserves ADR-0004's eventual end-state, just on a v0.2 timeline). FP-Q1=B IS ADR-graduating in the sense that it commits the schema topology now and constrains v0.2 — that warrants founder review. |
-| **FP-Q2** | Helpers module organization: (a) ONE FILE — `packages/core/lib/lib-utils.mjs` exports everything (issue builders, lane/path helpers, parseBooleanFlag); (b) TWO FILES — `lib/orchestration-issues.mjs` for issue builders + `lib/lib-utils.mjs` for path/lane/boolean helpers. | FB-1 | **B — Two files.** Issue builders have a distinct domain (canonical issue shape across orchestration) from lane/path helpers (pure functions on strings/objects). Two files makes the import graph self-documenting and matches how `paths.mjs`, `composition.mjs`, etc. are already organized. |
+| **FP-Q1** | `contracts.mjs` validation scope: (a) MINIMUM patch — extend `matchesType` to honor `enum` field on contract JSON; (b) FULL — migrate orchestration contracts from hand-DSL JSON to Zod in `packages/schemas/src/contracts/`, emit JSON Schema, replace `validateInstance` with AJV. | FB-3 | **A — Minimum patch.** Full Zod migration is the right end-state per ADR-0004 (the config path already runs this way), but it's a 2–3-day refactor touching every contract callsite. The minimum patch is half a day, closes the active correctness gap (invalid `status` values silently passing), and leaves the full migration as a clean v0.2 architectural item. **FP-Q1=A is NOT ADR-graduating** (it preserves ADR-0004's eventual end-state, just on a v0.2 timeline). FP-Q1=B IS ADR-graduating in the sense that it commits the schema topology now and constrains v0.2 — that warrants founder review. | **Answered 2026-05-23: A (minimum enum patch).** |
+| **FP-Q2** | Helpers module organization: (a) ONE FILE — `packages/core/lib/lib-utils.mjs` exports everything (issue builders, lane/path helpers, parseBooleanFlag); (b) TWO FILES — `lib/orchestration-issues.mjs` for issue builders + `lib/lib-utils.mjs` for path/lane/boolean helpers. | FB-1 | **B — Two files.** Issue builders have a distinct domain (canonical issue shape across orchestration) from lane/path helpers (pure functions on strings/objects). Two files makes the import graph self-documenting and matches how `paths.mjs`, `composition.mjs`, etc. are already organized. | **Answered 2026-05-23: B (orchestration-issues.mjs + lib-utils.mjs).** |
 
 > **Operating mode reminder:** If FP-Q1 picks B (full Zod migration in v0.1), HOLD FOR GO per the v0.1 completion plan's "Item 3 graduates a new ADR" rule — it's an architectural commitment.
 
@@ -156,9 +156,9 @@ Land three surgical batches that (a) unblock Sub-Playbook B Expand, (b) close th
 
 ### Tasks
 
-- [ ] **F-S1** Capture pre-refactor baseline: `pnpm -r test` → 236/236; `pnpm exec cocoder validate-contracts` ok; `pnpm exec cocoder check-immutable-baseline` ok; `pnpm exec cocoder --help | sort -u` captured into `cocoder/local/structural-cleanup-baselines/help.txt` (gitignored under cocoder/local).
-- [ ] **F-S2** After each FB batch: re-run all three baseline commands; help text must be byte-identical (any diff = command-registry refactor lost something; STOP and reconcile before proceeding).
-- [ ] **F-S3** After all three batches: full suite green; add one integration test that asserts the canonical issue shape is consumed correctly across `compose-launch`, `launch`, and `create-run` (the user-visible `issues[]` array).
+- [x] **F-S1** Capture pre-refactor baseline: `pnpm -r test` → 236/236; `pnpm exec cocoder validate-contracts` ok; `pnpm exec cocoder check-immutable-baseline` ok; `pnpm exec cocoder --help | sort -u` captured into `cocoder/local/structural-cleanup-baselines/help.txt` (gitignored under cocoder/local).
+- [x] **F-S2** After each FB batch: re-run all three baseline commands; help text byte-identical after FB-1, FB-2, FB-3.
+- [x] **F-S3** After all three batches: full suite green; integration test in `orchestration-issues.test.mjs` asserts canonical `routePriorityIssue` shape across `compose-launch` and `launch`.
 
 **Pass threshold:** F-S1 baseline captured; F-S2 re-validation green after each batch; F-S3 integration test green.
 
@@ -276,9 +276,9 @@ Per FP-Q1 (recommended A = minimum):
 
 ## Progress
 
-**Last worked:** 2026-05-23 (authored; activated; pending FP-Q1 + FP-Q2 founder gate)
-**Current Canon:** Active — Witness/Interrogate/Solve-target complete; FP-Q1 + FP-Q2 awaiting founder gate; Solve (F-S1..F-S3) starts after.
-**Next action:** Founder answers FP-Q1 + FP-Q2; then a fresh session captures F-S1 baselines and executes FB-1.
+**Last worked:** 2026-05-23 (FB-1/FB-2/FB-3 executed; suite 249/249; FP-Q1=A + FP-Q2=B answered)
+**Current Canon:** Active — Expand complete; Refine ceremony pending founder spot-check
+**Next action:** Founder Refine ceremony (spot-check composer byte-equivalence + 3 CLI commands); then Sub-Playbook B Solve unblocks.
 
 | Canon | Items | Done | Status |
 |---|---|---|---|

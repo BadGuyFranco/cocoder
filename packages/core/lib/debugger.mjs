@@ -3,6 +3,7 @@ import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+import { compactTimestamp, parseBooleanFlag, safeName } from './lib-utils.mjs';
 import { pathExists, readJson, writeJson } from './fs-utils.mjs';
 
 const execFileAsync = promisify(execFile);
@@ -31,7 +32,7 @@ export async function prepareDebuggerSession(options) {
   const repoRoot = options.repoRoot || process.cwd();
   const runsDir = path.resolve(repoRoot, options.runsDir || 'cocoder/runs');
   const debuggerRunsDir = path.resolve(repoRoot, options.debuggerRunsDir || 'cocoder/debug-runs');
-  const noSession = options.noSession === true || options.noSession === 'true';
+  const noSession = parseBooleanFlag(options.noSession);
   const sessionId = noSession ? (options.sessionId || 'NO-SESSION') : options.sessionId;
   if (!sessionId) throw new Error('Missing required sessionId');
 
@@ -771,10 +772,6 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function compactTimestamp(iso) {
-  return iso.replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
-}
-
 async function collectTextFiles(dir, maxChars) {
   if (!(await pathExists(dir))) return {};
   const entries = await readdir(dir, { withFileTypes: true });
@@ -858,10 +855,6 @@ function cleanPanePath(value) {
 
 function unescapeDisplayedPath(value) {
   return String(value || '').replace(/\\([ \t])/g, '$1');
-}
-
-function safeName(value) {
-  return String(value).replace(/[^a-zA-Z0-9._-]/g, '-');
 }
 
 function shellWord(value) {

@@ -9,6 +9,7 @@ import { pathExists, readJson, writeJson } from './fs-utils.mjs';
 import { appendRunEvent } from './ledger.mjs';
 import { evaluateSupersessionsForRun } from './lead-rescue.mjs';
 import { auditDirtyDurableOrchestrationState } from './repo-state.mjs';
+import { compactTimestamp, getLane, parseBooleanFlag, safeName } from './lib-utils.mjs';
 import { isTerminalRunStatusRecord } from './run-status.mjs';
 
 const execFileAsync = promisify(execFile);
@@ -55,11 +56,9 @@ export const COCODER_PRODUCT_WRITE_PREFIXES = Object.freeze([
 ]);
 
 export function developerModeEnabled(explicit, env = process.env) {
-  if (explicit === true) return true;
-  if (explicit === 'true' || explicit === '1') return true;
   if (explicit === false || explicit === 'false' || explicit === '0') return false;
-  const raw = env && env.COCODER_DEVELOPER_MODE;
-  return raw === '1' || raw === 'true';
+  if (parseBooleanFlag(explicit)) return true;
+  return parseBooleanFlag(env?.COCODER_DEVELOPER_MODE);
 }
 
 export function auditCocoderProductWriteBelt({ filesChanged = [], developerMode = false } = {}) {
@@ -717,10 +716,6 @@ function normalizeScope(value) {
   return String(value).split(path.sep).join('/').replace(/\/+$/g, '');
 }
 
-function getLane(root, lanePath) {
-  return String(lanePath).split('.').reduce((current, part) => current?.[part], root);
-}
-
 async function auditSessionLogIfChanged({ repoRoot, filesChanged, now }) {
   const touchesSessionLog = filesChanged.some((filePath) => filePath === 'cocoder/SESSION_LOG.md');
   if (!touchesSessionLog) return { ok: true, issues: [] };
@@ -756,15 +751,7 @@ function issue(code, detail, extra = {}) {
   return { code, severity: 'block', detail, ...extra };
 }
 
-function safeName(value) {
-  return String(value).replace(/[^a-zA-Z0-9._-]/g, '-');
-}
-
 function titleCase(value) {
   const text = String(value || '');
   return text ? text[0].toUpperCase() + text.slice(1) : text;
-}
-
-function compactTimestamp(iso) {
-  return iso.replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
 }

@@ -37,6 +37,12 @@ export function validateInstance(contract, instance) {
   for (const [fieldPath, field] of Object.entries(contract.fields || {})) {
     if (!hasPath(instance, fieldPath)) continue;
     const value = getPath(instance, fieldPath);
+    if (Array.isArray(field.enum) && field.enum.length > 0) {
+      if (!field.enum.includes(value)) {
+        errors.push(`${fieldPath} expected one of ${field.enum.join(', ')}`);
+      }
+      continue;
+    }
     if (field.type && !matchesType(value, field.type)) {
       errors.push(`${fieldPath} expected ${field.type}`);
     }
