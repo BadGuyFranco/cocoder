@@ -142,5 +142,5 @@
     "bob": "/opt/homebrew/bin/tmux -L cocoder-orchestration attach -t orch-bob-rsona-identity-bob",
     "talia": "/opt/homebrew/bin/tmux -L cocoder-orchestration attach -t orch-talia-rsona-identity-bob"
   },
-  "createdAt": "2026-05-23T10:16:40.474Z"
+  "createdAt": "2026-05-23T10:20:29.532Z"
 }
