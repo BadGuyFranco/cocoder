@@ -13,7 +13,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Owner |
 |---|---|---|---|---|
-| *(none yet)* | | | | |
+| [0001](./open/0001-cocoder-command-wrapper-decision.md) | Restore or retire CoCoder `.command` double-click wrappers | question | v0.1-foundation | founder |
 
 ## Recently Closed
 
