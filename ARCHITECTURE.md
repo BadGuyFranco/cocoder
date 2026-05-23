@@ -113,10 +113,11 @@ CoCoder/                          # public repository (git tracked)
 │   ├── core/                     # extracted .mjs orchestration core
 │   ├── cocoder-cli/              # TS wrapper exposing `cocoder` binary (ADR-0003)
 │   ├── schemas/                  # TS (Zod) → published .schema.json
-│   ├── oz-daemon/                # TS HTTP daemon
-│   └── oz-dashboard/             # TS + React, Fusion palette
-├── templates/workspace-cocoder/  # the workspace template users get from `cocoder init`
-├── examples/personas/phil-primitive-builder/
+│   ├── oz-daemon/                # TS HTTP daemon                          (Target — Sub-Playbook C)
+│   └── oz-dashboard/             # TS + React, Fusion palette              (Target — Sub-Playbook C)
+├── templates/install-local/      # install-zone config + secrets examples
+├── templates/workspace-cocoder/  # the workspace template users get from `cocoder init`  (Target — Sub-Playbook B)
+├── examples/personas/phil-primitive-builder/                               # (Target — Sub-Playbook B; example custom persona)
 ├── cocoder/                      # ← dogfood meta-project (TRACKED, community-visible)
 │   ├── AGENTS.md
 │   ├── PRIORITIES.md             # slim index
