@@ -194,7 +194,7 @@ Mergeable `main` branch with:
 - [x] **E3.2** `packages/schemas/src/install-config.ts` — Zod schema for `<CoCoder>/local/config.yaml`; build emits `install-config.schema.json` for `$schema` autocomplete
 - [x] **E3.3** `packages/schemas/src/roots.ts` — Zod schema for `<CoCoder>/local/roots.yaml` (multi-machine token resolution); document in `docs/configuration.md`
 - [x] **E3.4** `cocoder config get <key>` / `cocoder config set <key> <value>` — round-trips through resolver, writes to `<CoCoder>/local/config.yaml` only
-- [ ] **E3.5** `local/secrets/.gitignore` shipped via template copy so the directory always exists with the right ignore rule; document keychain integration as v0.2 in `docs/configuration.md` → *audit §M1: keychain doc note exists; `templates/install-local/secrets/.gitignore` not yet shipped*
+- [x] **E3.5** `local/secrets/.gitignore` shipped via template copy so the directory always exists with the right ignore rule; document keychain integration as v0.2 in `docs/configuration.md` → *closed 2026-05-23 by M4.10 (Group B): `templates/install-local/secrets/.gitignore` shipped (ignore-everything-except-self pattern); keychain doc note already present.*
 - [x] **E3.6** `packages/schemas/src/workspaces-registry.ts` — Zod schema for `<CoCoder>/local/workspaces.json` (the Oz workspace registry — data Oz reads/writes; HTTP API for Oz lands in Sub-Playbook C). Also reserve namespace `packages/schemas/src/oz/` (empty placeholder + README) so Sub-Playbook C can extend without restructuring the schemas package.
 
 ### Milestone 4 — Audit remediation (added 2026-05-22 from foundation audit)
@@ -211,8 +211,8 @@ Mergeable `main` branch with:
 - [ ] **M4.6** Harden `validateConfig` to fail closed when schema artifact missing (audit §H2); allow skip only in explicit test mode.
 - [ ] **M4.7** Quinn credentials path — align with comment + add `.gitignore` rule (audit §H12).
 - [ ] **M4.8** `composition.mjs:13` default → `cocoder/decisions` (audit §H13).
-- [ ] **M4.9** Template `$schema` reference path fix: `templates/install-local/config.example.yaml:1` → `../../packages/schemas/dist/install-config.schema.json` (audit §H14).
-- [ ] **M4.10** Ship `templates/install-local/secrets/.gitignore` (audit §M1). Re-check E3.5.
+- [x] **M4.9** Template `$schema` reference path fix: `templates/install-local/config.example.yaml:1` → `../../packages/schemas/dist/install-config.schema.json` (audit §H14). — *Closed 2026-05-23 (Group B): one `../` was missing; from `templates/install-local/`, `../` is `templates/`, not the repo root. Fixed.*
+- [x] **M4.10** Ship `templates/install-local/secrets/.gitignore` (audit §M1). Re-check E3.5. — *Closed 2026-05-23 (Group B): shipped with the standard "ignore everything except self" pattern + a comment block explaining the directory's role. E3.5 re-ticked.*
 - [ ] **M4.11** Generated bash safety: quote `session.command` in `launch.mjs:1156`; replace `$*` with `"$@"` in `launch.mjs:1394`; switch `debugger.mjs:296-297` `commandProbe` from `bash -lc` to `execFile('command', ['-v', cmd])` (audit §H9).
 - [ ] **M4.12** Port `packages/core/baselines/accepted-reference-baseline.md` per extraction manifest (audit §B2). `check-immutable-baseline` works with default args after.
 - [ ] **M4.13** Remove deferred `.command` launcher references in `debugger.mjs:256-258,590,619` (audit §H8). Replace with `cocoder` CLI invocations or gate behind workspace-template presence.
@@ -223,7 +223,7 @@ Mergeable `main` branch with:
 - [x] **M4.18** Memory file refresh: `cocoder/memory/codebase-map.md:52` and `packages/schemas/src/oz/README.md` (audit §M4, §M5). — *Closed 2026-05-23: codebase-map.md regenerated end-to-end to reflect current reality (Sub-Playbook A mid-Refine, Sub-Playbook E effectively Complete, 229 tests pass, 12/12 ports landed); the Key modules table extended to cover launch / orchestrator-commit / composition / dispatch / debugger / ledger and the ADR-0005 schema. `packages/schemas/src/oz/README.md` rewritten with separate "Landed" + "Target (Sub-Playbook C)" sections — improvement-target.ts is now documented.*
 - [x] **M4.19** Master README "Key files" — add ADR-0005 row (audit §M6). — *Closed 2026-05-23: ADR-0001..0006 are now listed individually with one-line summaries rather than the implicit "0001 through 0006" sweep.*
 - [x] **M4.20** Cross-doc P-S1/P-S2 mismatch resolution (audit §M11): pick Master `[x]` as canonical, mirror in foundation Final Check. — *Closed 2026-05-22 (Late Evening): foundation Final Check line 280 already reads "Master Playbook's P-S1 and P-S2 checked (audit §M11: Master [x] is canonical; mirrored here 2026-05-22)". This M4 row was simply un-ticked while its actual content closed back in May; ticking now to reflect reality (same class of drift M4.1 was supposed to catch).*
-- [ ] **M4.21** `configFileOrder` either drop tracked `cocoder/config.yaml` from precedence or document it in ARCHITECTURE (audit §M8).
+- [x] **M4.21** `configFileOrder` either drop tracked `cocoder/config.yaml` from precedence or document it in ARCHITECTURE (audit §M8). — *Closed 2026-05-23 (Group B): document path chosen. ARCHITECTURE.md `<your-app>/cocoder/` directory-layout block now shows `config.yaml` (optional team-shared tracked defaults) alongside `local/config.yaml` (per-machine overrides). Matches `docs/configuration.md` Load Order step 4 + `packages/core/lib/config.mjs:164` `configFileOrder()`. Adopters get a tracked layer for team defaults that doesn't require Syncthing or per-machine overrides; most workspaces leave the file absent.*
 
 #### Founder-gated tasks (cannot start until pending-decisions.md Q# is answered)
 
@@ -330,10 +330,10 @@ Mergeable `main` branch with:
 | Witness | 1 | 1 | Complete |
 | Interrogate | 7 risks + reuse check | 7 + 1 | Complete |
 | Solve | 7 | 4 (S1.1, S1.2, S1.4, S1.7) | Mostly complete; S1.3/S1.5/S1.6 fixture trees rescoped under M4.E2.2e |
-| Expand | M1: 7 · M2: 11 · M3: 6 · **M4: 27** | M1: 7, M2: 11 (E2.2e fully closed 2026-05-23; E2.4 closed by M4.4), M3: 5 (E3.5 un-checked pending M4.10), M4: 15 (M4.1, M4.2, M4.3, M4.4, M4.15, M4.17, M4.18, M4.19, M4.20, M4.22, M4.23, M4.24, M4.25, M4.26, M4.27) | **Active** |
+| Expand | M1: 7 · M2: 11 · M3: 6 · **M4: 27** | M1: 7, M2: 11 (E2.2e fully closed 2026-05-23; E2.4 closed by M4.4), M3: 6 (E3.5 re-ticked 2026-05-23 by M4.10), M4: 18 (M4.1–M4.4, M4.9, M4.10, M4.15, M4.17–M4.21, M4.22–M4.27) | **Active** |
 | Refine | 7 (was 4; 3 audit-driven added) | 1 (audit complete) | Active |
 | Final Check | 9 (was 7; 2 audit-driven added) | 1 (M11 P-S1/P-S2 mirror) | Not started |
-| **Total** | **74** (was 42; M4 + audit additions) | **56** | **Active (Refine)** |
+| **Total** | **74** (was 42; M4 + audit additions) | **60** | **Active (Refine)** |
 
 ---
 

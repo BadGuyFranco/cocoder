@@ -1,4 +1,4 @@
-$schema: ../packages/schemas/dist/install-config.schema.json
+$schema: ../../packages/schemas/dist/install-config.schema.json
 version: "0.1"
 defaults:
   adapter: codex

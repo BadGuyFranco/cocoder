@@ -8,6 +8,11 @@
 *.env
 .env.*
 secrets/
+# Exception: the install-template ships an empty secrets/ directory with its own
+# .gitignore so `cocoder init` lays down the correct ignore rule for adopters.
+# Without this negation, the `secrets/` rule above would hide that template file.
+!templates/install-local/secrets/
+!templates/install-local/secrets/.gitignore
 
 # Dependencies and build output
 node_modules/

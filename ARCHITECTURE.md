@@ -143,6 +143,7 @@ CoCoder/                          # public repository (git tracked)
 ├── AGENTS.md
 ├── PRIORITIES.md                 # slim index
 ├── SESSION_LOG.md
+├── config.yaml                   # OPTIONAL team-shared defaults (tracked); empty/absent for most adopters
 ├── priorities/[slug]/
 ├── plans/
 ├── tickets/
@@ -151,7 +152,7 @@ CoCoder/                          # public repository (git tracked)
 ├── personas/custom/
 ├── standards/
 └── local/                        # GITIGNORED (except README.md + .gitignore)
-    ├── config.yaml
+    ├── config.yaml               # per-machine overrides on top of the tracked defaults above
     └── persona-overrides.json
 ```
 
