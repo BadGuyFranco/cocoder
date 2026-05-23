@@ -40,10 +40,11 @@ proved that a CDP endpoint was reachable.
 The repo ships an example file:
 
 ```
-cocoder/.quinn-credentials.example.json
+cocoder/.quinn-credentials.example.json   (tracked template)
 ```
 
-Copy it to `.quinn-credentials.json` (same directory; gitignored) and fill in
+Copy it to `cocoder/local/.quinn-credentials.json` (the workspace-private zone,
+gitignored automatically by the inner `cocoder/local/.gitignore`) and fill in
 real values. Schema:
 
 ```json

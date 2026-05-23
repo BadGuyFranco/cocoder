@@ -741,7 +741,7 @@ async function main() {
       root: args.root,
       reportPath,
       personaPaths: args.personaPaths ? args.personaPaths.split(',').map((item) => path.resolve(item.trim())).filter(Boolean) : undefined,
-      decisionsDir: args.decisionsDir || repoPath('decisions')
+      decisionsDir: args.decisionsDir || repoPath('cocoder/decisions')
     });
     console.log(`${summarizeDocRefReport(result)} report=${reportPath}`);
     return;
@@ -754,7 +754,7 @@ async function main() {
     const result = await checkAdrStatusConsistency({
       root: args.root,
       reportPath,
-      decisionsDirs: [args.decisionsDir || repoPath('decisions')]
+      decisionsDirs: [args.decisionsDir || repoPath('cocoder/decisions')]
     });
     console.log(`${summarizeAdrStatusReport(result)} report=${reportPath}`);
     return;
@@ -767,7 +767,7 @@ async function main() {
     const result = await checkDocFreshness({
       root: args.root,
       reportPath,
-      decisionsDirs: [args.decisionsDir || repoPath('decisions')],
+      decisionsDirs: [args.decisionsDir || repoPath('cocoder/decisions')],
       thresholdDays: Number(args.thresholdDays || 30),
       now: args.now || new Date().toISOString()
     });

@@ -45,16 +45,25 @@ export async function runAcceptanceHarness(options) {
   return summary;
 }
 
+// M4.16 (audit §M2): parameterized so the fixture slug isn't tied to the
+// CoBuilder `ORCHESTRATION-REBUILD` priority name. Adopters running the
+// harness against their own workspace can pass `acceptanceFixtureSlug` (or
+// rely on the generic default). The slug appears verbatim in the fixture
+// PRIORITIES.md heading + the trailing assertion, so a single override
+// keeps both ends consistent.
+const DEFAULT_ACCEPTANCE_FIXTURE_SLUG = 'ACCEPTANCE-STARTUP-PROOF';
+
 async function startupPacketProof(options) {
+  const fixtureSlug = options.acceptanceFixtureSlug || DEFAULT_ACCEPTANCE_FIXTURE_SLUG;
   const fixtureDir = path.join(options.outputDir, 'fixtures', 'startup');
   await mkdir(fixtureDir, { recursive: true });
   const priorityFile = path.join(fixtureDir, 'PRIORITIES.md');
   const sessionLogFile = path.join(fixtureDir, 'SESSION_LOG.md');
   await writeFile(priorityFile, [
     '# Priorities',
-    'Last updated note mentioning ORCHESTRATION-REBUILD before the real heading.',
+    `Last updated note mentioning ${fixtureSlug} before the real heading.`,
     '',
-    '### [ORCHESTRATION-REBUILD] Orchestration Rebuild',
+    `### [${fixtureSlug}] Acceptance startup proof`,
     '**Status:** In progress',
     'Phase 10 startup proof fixture.',
     '',
@@ -70,14 +79,14 @@ async function startupPacketProof(options) {
     routePath: options.routePath,
     priorityBoundariesDir: options.priorityBoundariesDir,
     priorityFile,
-    prioritySlug: 'ORCHESTRATION-REBUILD',
+    prioritySlug: fixtureSlug,
     sessionLogFile,
     sessionLineLimit: 5
   });
   const startupPacketPath = path.join(created.runDir, 'startup-packet.json');
   const startupPacket = await readJson(startupPacketPath);
   const pass = created.status === 'ready'
-    && startupPacket.selectedPriority.slug === 'ORCHESTRATION-REBUILD'
+    && startupPacket.selectedPriority.slug === fixtureSlug
     && startupPacket.selectedPriority.excerpt.includes('Phase 10 startup proof fixture.')
     && !startupPacket.selectedPriority.excerpt.includes('Last updated note')
     && startupPacket.recentSessionContext.lineLimit === 5
