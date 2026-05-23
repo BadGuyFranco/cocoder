@@ -14,6 +14,20 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-23 — **Sub-Playbook C Expand Batch 1 merged (PR #42 → `2789bee`); registry CRUD + C-D1 auth bootstrap; suite 322/322**
+
+**Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
+
+**Outcomes:**
+- PR #42 squash-merged to `main` @ **`2789bee`**; CI green; suite **322/322** (+20 from 302).
+- Workspace registry HTTP CRUD (`GET/POST/PUT/DELETE /workspaces`) + `cocoder oz register` CLI.
+- C-D1 founder-ratified: `GET /auth/session` returns Bearer + CSRF with strict loopback Host/Origin gate.
+- C-D2..C-D4 Decision Log rows; oz HTTP schemas (`workspace-http.ts`, auth session).
+
+**Next:** C Expand Batch 2 — multiplexer-observer + GET /runs + evidence + real launch/stop subprocess.
+
+---
+
 ## 2026-05-23 — **Sub-Playbook C Solve complete (4 batches, PRs #36–#40 → `9a09575`); suite 302/302; Expand unblocked**
 
 **Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
