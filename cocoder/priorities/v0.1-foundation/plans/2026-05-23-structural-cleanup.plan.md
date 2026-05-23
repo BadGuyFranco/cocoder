@@ -156,8 +156,18 @@ Land three surgical batches that (a) unblock Sub-Playbook B Expand, (b) close th
 
 ### Tasks
 
-- [x] **F-S1** Capture pre-refactor baseline: `pnpm -r test` → 236/236; `pnpm exec cocoder validate-contracts` ok; `pnpm exec cocoder check-immutable-baseline` ok; `pnpm exec cocoder --help | sort -u` captured into `cocoder/local/structural-cleanup-baselines/help.txt` (gitignored under cocoder/local).
+- [x] **F-S1** Capture pre-refactor baseline: `pnpm -r test` → 236/236; `pnpm exec cocoder validate-contracts` ok; `pnpm exec cocoder check-immutable-baseline` ok; operator snapshot of `--help` into `cocoder/local/structural-cleanup-baselines/help.txt` (gitignored; founder F-S2/F Refine manual re-validation only).
 - [x] **F-S2** After each FB batch: re-run all three baseline commands; help text byte-identical after FB-1, FB-2, FB-3.
+
+**Baseline paths (do not conflate):**
+
+| Purpose | Path | Tracked? | Consumer |
+|---|---|---|---|
+| **CI test fixture** | `packages/core/tests/fixtures/cli-help-baseline.txt` | Yes | `cli-registry.test.mjs` — must exist in CI |
+| **Operator F-S2 / F Refine snapshot** | `cocoder/local/structural-cleanup-baselines/help.txt` | No (gitignored) | Founder manual spot-check during Refine |
+| **Operator composed-prompt snapshot** | `cocoder/local/structural-cleanup-baselines/composed-prompt-pre-F.txt` | No (gitignored) | Founder Refine item 2 (byte-equivalence vs post-F output) |
+
+Regenerate the tracked fixture when `--help` output intentionally changes: `node packages/core/cli.mjs --help > packages/core/tests/fixtures/cli-help-baseline.txt`.
 - [x] **F-S3** After all three batches: full suite green; integration test in `orchestration-issues.test.mjs` asserts canonical `routePriorityIssue` shape across `compose-launch` and `launch`.
 
 **Pass threshold:** F-S1 baseline captured; F-S2 re-validation green after each batch; F-S3 integration test green.
@@ -192,7 +202,7 @@ The 62-branch monolith. Sub-Playbook B-M3 will add 3 more (`init`, `audit-worksp
 - [x] **FB-2.2** Author `packages/core/cli/registry.mjs` exporting a `Map<string, CommandSpec>`. `CommandSpec` = `{handler, requireArgs: string[], parseArgsAllowList: string[]}`.
 - [x] **FB-2.3** Refactor `cli.mjs main()` to use the registry: parse argv, look up command, run handler. Help text generation reads from the registry too (`Object.keys(registry).sort()`).
 - [x] **FB-2.4** Move the parseArgs allow-list into per-command `CommandSpec.parseArgsAllowList`. The single 50-key allow-list in `parseArgs` becomes either (a) a union of all per-command lists, or (b) per-command parseArgs invocation (cleaner). Pick (b) if it doesn't require touching `parseArgsAllowPositionals`.
-- [x] **FB-2.5** Add `packages/core/tests/cli-registry.test.mjs`: (a) every command emitted by `printHelp()` is in the registry; (b) every command in the registry is emitted by `printHelp()`; (c) help-text byte-identical to F-S1 capture.
+- [x] **FB-2.5** Add `packages/core/tests/cli-registry.test.mjs`: (a) every command emitted by `printHelp()` is in the registry; (b) every command in the registry is emitted by `printHelp()`; (c) help-text byte-identical to tracked fixture at `packages/core/tests/fixtures/cli-help-baseline.txt` (not the gitignored operator path under `cocoder/local/`).
 - [x] **FB-2.6** Run F-S2 baseline re-validation.
 
 **Pass threshold:** `cli.mjs` no longer contains an `if (command === ...)` chain (`grep -c "if (command ===" packages/core/cli.mjs` returns `0`); all 62 commands work; suite + FB-2 test green; help byte-identical.
@@ -224,7 +234,7 @@ Per FP-Q1 (recommended A = minimum):
 
 - [ ] Founder runs `pnpm -r test` + `pnpm exec cocoder validate-contracts` + `pnpm exec cocoder check-immutable-baseline` on a clean clone post-FB-3; all three green
 - [ ] Founder skims a Sub-Playbook E orchestration run output (`compose-launch` JSON + `launch` prompt.md) to confirm composed prompts are byte-identical to a pre-F snapshot stored at `cocoder/local/structural-cleanup-baselines/composed-prompt-pre-F.txt` (gitignored)
-- [ ] Founder spot-checks 3 random commands from the new registry (`cocoder validate-contracts`, `cocoder config get version`, `cocoder check-immutable-baseline`) — all produce byte-identical output to the F-S1 capture
+- [ ] Founder spot-checks 3 random commands from the new registry (`cocoder validate-contracts`, `cocoder config get version`, `cocoder check-immutable-baseline`) — all produce byte-identical output to the operator snapshot at `cocoder/local/structural-cleanup-baselines/help.txt` (or re-capture there first; distinct from the tracked CI fixture)
 - [ ] Founder reads `cocoder/plans/v0.2-backlog.md` and confirms the deferred items match the §Witness "Out" list
 
 **Checkpoint:** [ ] Sub-Playbook F locally validated; no behavior drift detected; Sub-Playbook B Solve safe to execute.
