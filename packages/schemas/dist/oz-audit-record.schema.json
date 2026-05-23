@@ -1,0 +1,75 @@
+{
+  "$ref": "#/definitions/cocoder-oz-audit-record",
+  "definitions": {
+    "cocoder-oz-audit-record": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "launch",
+            "stop"
+          ]
+        },
+        "workspaceId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outcome": {
+          "type": "string",
+          "minLength": 1
+        },
+        "persona": {
+          "type": "string",
+          "minLength": 1
+        },
+        "routing": {
+          "type": "object",
+          "properties": {
+            "target": {
+              "type": "string",
+              "enum": [
+                "cocoder-product",
+                "workspace-shared",
+                "workspace-local",
+                "install-local",
+                "upstream-candidate"
+              ]
+            },
+            "generality": {
+              "type": "string",
+              "enum": [
+                "local-only",
+                "workspace-specific",
+                "generalizable"
+              ]
+            }
+          },
+          "required": [
+            "target",
+            "generality"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "timestamp",
+        "action",
+        "workspaceId",
+        "runId",
+        "outcome",
+        "routing"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

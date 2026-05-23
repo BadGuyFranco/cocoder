@@ -45,6 +45,9 @@ importers:
       oz-daemon:
         specifier: workspace:*
         version: link:../oz-daemon
+      schemas:
+        specifier: workspace:*
+        version: link:../schemas
       yaml:
         specifier: ^2.7.1
         version: 2.9.0
@@ -54,6 +57,12 @@ importers:
       fastify:
         specifier: ^5.3.3
         version: 5.8.5
+      schemas:
+        specifier: workspace:*
+        version: link:../schemas
+      zod:
+        specifier: ^3.25.28
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: ^20.19.0
