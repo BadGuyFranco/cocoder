@@ -327,9 +327,9 @@ async function commandProbe(command) {
   return runCommand('/usr/bin/which', [shellWord(command)], { maxBuffer: 64 * 1024 });
 }
 
-async function collectConcurrencyMap({ repoRoot, runsDir, tmuxBin, currentRunDir }) {
-  const listSessions = await runCommand(tmuxBin, ['-L', 'cocoder-orchestration', 'list-sessions', '-F', '#{session_name}\t#{session_created}\t#{session_attached}'], { maxBuffer: 512 * 1024 });
-  const listPanes = await runCommand(tmuxBin, ['-L', 'cocoder-orchestration', 'list-panes', '-a', '-F', '#{session_name}\t#{pane_current_command}\t#{pane_current_path}\t#{pane_dead}'], { maxBuffer: 512 * 1024 });
+async function collectConcurrencyMap({ repoRoot, runsDir, tmuxBin, currentRunDir, tmuxSocket = 'cocoder-orchestration' }) {
+  const listSessions = await runCommand(tmuxBin, ['-L', tmuxSocket, 'list-sessions', '-F', '#{session_name}\t#{session_created}\t#{session_attached}'], { maxBuffer: 512 * 1024 });
+  const listPanes = await runCommand(tmuxBin, ['-L', tmuxSocket, 'list-panes', '-a', '-F', '#{session_name}\t#{pane_current_command}\t#{pane_current_path}\t#{pane_dead}'], { maxBuffer: 512 * 1024 });
   const runMap = await mapRunsToSessions(runsDir);
   const sessions = listSessions.ok
     ? listSessions.stdout.split(/\r?\n/).filter(Boolean).map((line) => {
@@ -884,3 +884,5 @@ function firstLine(value) {
 function shellQuote(value) {
   return `'${String(value).replace(/'/g, `'\\''`)}'`;
 }
+
+export { collectConcurrencyMap };

@@ -17,6 +17,8 @@ export type OzServerOptions = {
   env?: NodeJS.ProcessEnv;
   launchExecutable?: string;
   launchArgvPrefix?: string[];
+  stopExecutable?: string;
+  stopArgvPrefix?: string[];
 };
 
 export type OzServer = {
@@ -98,7 +100,9 @@ export async function createOzServer(options: OzServerOptions): Promise<OzServer
   await registerRunsRoutes(app, {
     cocoderHome: options.cocoderHome,
     launchExecutable: options.launchExecutable,
-    launchArgvPrefix: options.launchArgvPrefix
+    launchArgvPrefix: options.launchArgvPrefix,
+    stopExecutable: options.stopExecutable,
+    stopArgvPrefix: options.stopArgvPrefix
   });
 
   await app.ready();

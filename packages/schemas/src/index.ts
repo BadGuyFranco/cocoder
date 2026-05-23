@@ -19,3 +19,9 @@ export type {
   OzWorkspaceResponse,
   OzWorkspaceUpdateRequest
 } from "./oz/workspace-http.js";
+export {
+  ozRunEvidenceSummarySchema,
+  ozRunListEntrySchema,
+  ozRunListResponseSchema
+} from "./oz/runs-http.js";
+export type { OzRunEvidenceSummary, OzRunListEntry } from "./oz/runs-http.js";
