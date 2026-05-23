@@ -14,6 +14,33 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-23 — **Sub-Playbook C Solve complete (4 batches, PRs #36–#40 → `9a09575`); suite 302/302; Expand unblocked**
+
+**Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
+
+**Outcomes:**
+- **Batch 1** PR #36 (`7b5cb60`): oz-daemon scaffold, C-S1/C-S2, port 7878, `cocoder oz` CLI.
+- **Batch 2** PR #37 (`0df3cf8`): C-S3 Origin/Host + C-S4 CSRF + `GET /auth/session`.
+- **Batch 3** PR #38 (`1e5fc6f`): C-S5 settings redaction + C-S7 spawn argv.
+- **Batch 4** PR #40 (`9a09575`): C-S6 audit append + C-S8 registry + C-S9 audit-record schema (E4.4 closed).
+- Suite **265 → 302** (+37). All 9 ARCHITECTURE security invariants + registry survival + audit schema proven.
+- PC-Q1..PC-Q9 accepted all-A defaults; no HOLD FOR GO triggers.
+
+**Next:** C Expand (C-M1..C-M3) — dashboard + real endpoints; separate multi-session unit. Do not start Expand in metadata-only PRs.
+
+---
+
+## 2026-05-23 — **Sub-Playbook C Solve Batch 4 merged (PR #40 → `9a09575`); C-S6/C-S8/C-S9 green; suite 302/302**
+
+**Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
+
+**Outcomes:**
+- PR #40 squash-merged; audit-record schema, fail-closed append, registry module, 11 new tests.
+
+**Next:** Solve closure PR (metadata) → C Expand.
+
+---
+
 ## 2026-05-23 — **Sub-Playbook C Solve Batch 4 (C-S6/C-S8/C-S9); PR pending**
 
 **Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
