@@ -16,8 +16,8 @@
 // the same PR. The PR description should call out the persona additions /
 // removals so the baseline delta is auditable.
 //
-// Originally ported 2026-05-23 (M4.12 / audit §B2) — the upstream CoBuilder
-// baseline shipped a pre-generated table for `cobuilder-build/build-personas/`;
+// Originally ported 2026-05-23 (M4.12 / audit §B2) — the upstream extraction
+// source shipped a pre-generated table for a different persona-library path;
 // CoCoder regenerates against its own `cocoder/personas/` surface instead.
 
 import {
