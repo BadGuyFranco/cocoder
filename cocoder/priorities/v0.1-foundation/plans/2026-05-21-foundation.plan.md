@@ -219,10 +219,10 @@ Mergeable `main` branch with:
 - [ ] **M4.14** Move `launch.mjs:910-913` git capability probe out of `.git` dir into run evidence dir (audit §H15).
 - [x] **M4.15** Add stale-reference CI gate: `rg 'cobuilder|COB_ORCH_' packages/ docs/ templates/ --glob '!**/*.example.*'` must return 0 (audit §M12). Add `/Volumes/` gate scoped to allow only `*.example.*`. — *Closed 2026-05-22 (Evening); CI workflow at `.github/workflows/ci.yml` runs both gates. **Note 2026-05-22:** the gates initially exited 127 (no ripgrep) for several days before [PR #14](https://github.com/BadGuyFranco/cocoder/pull/14) installed `ripgrep` in CI — they now actually enforce.*
 - [ ] **M4.16** Acceptance harness — parameterize hardcoded `'ORCHESTRATION-REBUILD'` slug (audit §M2; `acceptance.mjs:73`).
-- [ ] **M4.17** ARCHITECTURE.md target sections — label unshipped dirs as `(Target — Sub-Playbook B/C/D)` (audit §M3).
-- [ ] **M4.18** Memory file refresh: `cocoder/memory/codebase-map.md:52` and `packages/schemas/src/oz/README.md` (audit §M4, §M5).
-- [ ] **M4.19** Master README "Key files" — add ADR-0005 row (audit §M6).
-- [ ] **M4.20** Cross-doc P-S1/P-S2 mismatch resolution (audit §M11): pick Master `[x]` as canonical, mirror in foundation Final Check.
+- [x] **M4.17** ARCHITECTURE.md target sections — label unshipped dirs as `(Target — Sub-Playbook B/C/D)` (audit §M3). — *Closed 2026-05-23 via this batch (Group A): `packages/oz-daemon/`, `packages/oz-dashboard/` → "(Target — Sub-Playbook C)"; `templates/workspace-cocoder/` → "(Target — Sub-Playbook B)"; `examples/personas/phil-primitive-builder/` → "(Target — Sub-Playbook B)". `templates/install-local/` added to the layout block since it has shipped.*
+- [x] **M4.18** Memory file refresh: `cocoder/memory/codebase-map.md:52` and `packages/schemas/src/oz/README.md` (audit §M4, §M5). — *Closed 2026-05-23: codebase-map.md regenerated end-to-end to reflect current reality (Sub-Playbook A mid-Refine, Sub-Playbook E effectively Complete, 229 tests pass, 12/12 ports landed); the Key modules table extended to cover launch / orchestrator-commit / composition / dispatch / debugger / ledger and the ADR-0005 schema. `packages/schemas/src/oz/README.md` rewritten with separate "Landed" + "Target (Sub-Playbook C)" sections — improvement-target.ts is now documented.*
+- [x] **M4.19** Master README "Key files" — add ADR-0005 row (audit §M6). — *Closed 2026-05-23: ADR-0001..0006 are now listed individually with one-line summaries rather than the implicit "0001 through 0006" sweep.*
+- [x] **M4.20** Cross-doc P-S1/P-S2 mismatch resolution (audit §M11): pick Master `[x]` as canonical, mirror in foundation Final Check. — *Closed 2026-05-22 (Late Evening): foundation Final Check line 280 already reads "Master Playbook's P-S1 and P-S2 checked (audit §M11: Master [x] is canonical; mirrored here 2026-05-22)". This M4 row was simply un-ticked while its actual content closed back in May; ticking now to reflect reality (same class of drift M4.1 was supposed to catch).*
 - [ ] **M4.21** `configFileOrder` either drop tracked `cocoder/config.yaml` from precedence or document it in ARCHITECTURE (audit §M8).
 
 #### Founder-gated tasks (cannot start until pending-decisions.md Q# is answered)
@@ -330,10 +330,10 @@ Mergeable `main` branch with:
 | Witness | 1 | 1 | Complete |
 | Interrogate | 7 risks + reuse check | 7 + 1 | Complete |
 | Solve | 7 | 4 (S1.1, S1.2, S1.4, S1.7) | Mostly complete; S1.3/S1.5/S1.6 fixture trees rescoped under M4.E2.2e |
-| Expand | M1: 7 · M2: 11 · M3: 6 · **M4: 27** | M1: 7, M2: 11 (E2.2e fully closed 2026-05-23; E2.4 closed by M4.4), M3: 5 (E3.5 un-checked pending M4.10), M4: 11 (M4.1, M4.2, M4.3, M4.4, M4.15, M4.22, M4.23, M4.24, M4.25, M4.26, M4.27) | **Active** |
+| Expand | M1: 7 · M2: 11 · M3: 6 · **M4: 27** | M1: 7, M2: 11 (E2.2e fully closed 2026-05-23; E2.4 closed by M4.4), M3: 5 (E3.5 un-checked pending M4.10), M4: 15 (M4.1, M4.2, M4.3, M4.4, M4.15, M4.17, M4.18, M4.19, M4.20, M4.22, M4.23, M4.24, M4.25, M4.26, M4.27) | **Active** |
 | Refine | 7 (was 4; 3 audit-driven added) | 1 (audit complete) | Active |
 | Final Check | 9 (was 7; 2 audit-driven added) | 1 (M11 P-S1/P-S2 mirror) | Not started |
-| **Total** | **74** (was 42; M4 + audit additions) | **52** | **Active (Refine)** |
+| **Total** | **74** (was 42; M4 + audit additions) | **56** | **Active (Refine)** |
 
 ---
 

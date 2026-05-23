@@ -20,7 +20,13 @@ CoCoder v0.1 extracts CoBuilder's orchestration stack into a public, documented,
 
 - [`../../../ARCHITECTURE.md`](../../../ARCHITECTURE.md) — four-zone storage model, ignore matrix, daemon security, Oz improvement routing
 - [`../../decisions/README.md`](../../decisions/README.md) — ADR index
-- [`../../decisions/`](../../decisions/) ADR-0001 through **ADR-0006** — accepted program decisions
+- [`../../decisions/`](../../decisions/) ADR-0001 through **ADR-0006** — accepted program decisions:
+  - **ADR-0001** — Storage zones, license (Apache-2.0), CoBuilder relationship
+  - **ADR-0002** — Talia and Quinn — test layer vs experience layer
+  - **ADR-0003** — CLI binary name (`cocoder`) + env prefix (`COCODER_*`)
+  - **ADR-0004** — TypeScript, validation toolchain (Zod-as-SSOT), monorepo policy
+  - **ADR-0005** — Oz improvement-target routing taxonomy (`cocoder-product` / `workspace-shared` / `workspace-local` / `install-local` / `upstream-candidate`)
+  - **ADR-0006** — No workspaces nested inside the install repository (dogfood exception via explicit `--workspace-root` + `--workspace-slug`)
 - [`./pending-decisions.md`](./pending-decisions.md) — Q1–Q7 founder gates from the 2026-05-22 audit
 - [`./plans/2026-05-22-foundation-audit.md`](./plans/2026-05-22-foundation-audit.md) — audit evidence for Milestone M4
 - `/Volumes/NAS LOCAL/CoBuilder/infrastructure/cobuilder-build/orchestration/ARCHITECTURE.md` — extraction source
