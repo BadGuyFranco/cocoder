@@ -15,7 +15,7 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 
 | Slug | Description | Status | Canon | Owner | Blocked on |
 |---|---|---|---|---|---|
-| [`v0.1-foundation`](./priorities/v0.1-foundation/README.md) | Ship CoCoder v0.1 — extraction, Oz MVP, docs, public publish | Active | Refine — Sub-Playbook E proven (5 of 12 audit §4 ports closed; `launch.test.mjs` landed PR #3 with 4 product-code fixes; 165/165 tests; 5 core bugs fixed end-to-end); repo published at `BadGuyFranco/cocoder` (public, branch-protected, community-standards 100%). Sub-Playbook A audit-remediation still mid-Refine. | Bob | **Next:** E2.2e.6 `orchestrator-commit.test.mjs` (next audit §4 port; 708 source lines; auto-merge eligible since `launch.test.mjs` proved the loop). Then chain E2.2e.7–E2.2e.12. Sub-Playbook B (workspace template + `cocoder init`) unblocks once the port set is closed. |
+| [`v0.1-foundation`](./priorities/v0.1-foundation/README.md) | Ship CoCoder v0.1 — extraction, Oz MVP, docs, public publish | Active | Refine — audit §4 port-first list CLOSED 2026-05-23 (12/12; E2.2e.12 retired Path B per ticket 0001 — CoCoder is terminal-only); test suite **229/229 all-passing**; 9 product-code bugs surfaced + fixed via the dogfood loop; repo public at `BadGuyFranco/cocoder` (Apache-2.0, branch-protected, community-standards 100%). Sub-Playbook A audit-remediation still mid-Refine. | Bob | **Next:** v0.1 Completion Plan Item 2 — M4 free-wins (M4.5–M4.14, M4.16–M4.21). Then Item 3 — Sub-Playbook B Witness/Interrogate (adopter onboarding). See [`priorities/v0.1-foundation/plans/2026-05-23-v0.1-completion.plan.md`](./priorities/v0.1-foundation/plans/2026-05-23-v0.1-completion.plan.md). |
 
 ## Draft
 
