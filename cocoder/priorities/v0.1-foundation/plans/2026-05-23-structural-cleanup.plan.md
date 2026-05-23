@@ -172,12 +172,12 @@ Land three surgical batches that (a) unblock Sub-Playbook B Expand, (b) close th
 
 Per FP-Q2 (recommended B = two files):
 
-- [ ] **FB-1.1** Author `packages/core/lib/orchestration-issues.mjs` exporting canonical builders. Canonical shape for `routePriorityIssue`: `{code, severity: 'block', detail}` (the most-feature-rich form, from `launch.mjs`). Other issue helpers: `blockingPriorityBoundaryIssues`, any others surfaced during extraction.
-- [ ] **FB-1.2** Author `packages/core/lib/lib-utils.mjs` exporting `safeName`, `getLane`, `compactTimestamp`, `parseBooleanFlag(value, default)`. `parseBooleanFlag` accepts `true|false|'true'|'false'|'1'|'0'|undefined|null` and returns a real boolean.
-- [ ] **FB-1.3** Replace all callsites of duplicated helpers across `launch.mjs`, `composition.mjs`, `ledger.mjs`, `orchestrator-commit.mjs`, `lead-rescue.mjs`, `debugger.mjs`, `cli.mjs`. Delete the private copies. **No behavior change** — callers that previously read `issue.severity` and got `undefined` now read `'block'`; document this in the PR description.
-- [ ] **FB-1.4** Replace all `=== true \|\| === 'true'` patterns with `parseBooleanFlag(value)`. Includes the `developerModeEnabled` variant in `orchestrator-commit.mjs`.
-- [ ] **FB-1.5** Add regression test at `packages/core/tests/orchestration-issues.test.mjs` asserting: (a) every helper returns the canonical shape; (b) `parseBooleanFlag` covers the value matrix; (c) at least one integration assertion that the `issues[]` array from `compose-launch` is the same shape as the one from `launch`.
-- [ ] **FB-1.6** Run F-S2 baseline re-validation. Expected: 236+test_added/236+test_added pass; help byte-identical.
+- [x] **FB-1.1** Author `packages/core/lib/orchestration-issues.mjs` exporting canonical builders. Canonical shape for `routePriorityIssue`: `{code, severity: 'block', detail}` (the most-feature-rich form, from `launch.mjs`). Other issue helpers: `blockingPriorityBoundaryIssues`, any others surfaced during extraction.
+- [x] **FB-1.2** Author `packages/core/lib/lib-utils.mjs` exporting `safeName`, `getLane`, `compactTimestamp`, `parseBooleanFlag(value, default)`. `parseBooleanFlag` accepts `true|false|'true'|'false'|'1'|'0'|undefined|null` and returns a real boolean.
+- [x] **FB-1.3** Replace all callsites of duplicated helpers across `launch.mjs`, `composition.mjs`, `ledger.mjs`, `orchestrator-commit.mjs`, `lead-rescue.mjs`, `debugger.mjs`, `cli.mjs`. Delete the private copies. **No behavior change** — callers that previously read `issue.severity` and got `undefined` now read `'block'`; document this in the PR description.
+- [x] **FB-1.4** Replace all `=== true \|\| === 'true'` patterns with `parseBooleanFlag(value)`. Includes the `developerModeEnabled` variant in `orchestrator-commit.mjs`.
+- [x] **FB-1.5** Add regression test at `packages/core/tests/orchestration-issues.test.mjs` asserting: (a) every helper returns the canonical shape; (b) `parseBooleanFlag` covers the value matrix; (c) at least one integration assertion that the `issues[]` array from `compose-launch` is the same shape as the one from `launch`.
+- [x] **FB-1.6** Run F-S2 baseline re-validation. Expected: 236+test_added/236+test_added pass; help byte-identical.
 
 **Pass threshold:** All callsites switched; no private copies remain (`grep -c "function routePriorityIssue" packages/core/lib/` returns `1`); suite green; FB-1 regression test green.
 
@@ -185,14 +185,15 @@ Per FP-Q2 (recommended B = two files):
 
 The 62-branch monolith. Sub-Playbook B-M3 will add 3 more (`init`, `audit-workspace`, `refresh-memory`); the registry is the prerequisite.
 
-- [ ] **FB-2.1** Pick the structure (organizer choice — both options viable; default = grouped by feature for v0.1, per-command for v0.2):
+- [x] **FB-2.1** Pick the structure (organizer choice — both options viable; default = grouped by feature for v0.1, per-command for v0.2):
   - Option A (RECOMMENDED for v0.1): grouped — `packages/core/cli/commands/validate.mjs` (all `validate-*`), `config.mjs`, `orchestration.mjs` (launch, prepare-debug, finalize-run-status), `runs.mjs` (create-run, list-runs, cleanup-runs, send-message, etc.), `evidence.mjs` (add-evidence, write-debugger-evidence), `checks.mjs` (all `check-*`).
   - Option B (over-engineering for v0.1; defer to v0.2): per-command file.
-- [ ] **FB-2.2** Author `packages/core/cli/registry.mjs` exporting a `Map<string, CommandSpec>`. `CommandSpec` = `{handler, requireArgs: string[], parseArgsAllowList: string[]}`.
-- [ ] **FB-2.3** Refactor `cli.mjs main()` to use the registry: parse argv, look up command, run handler. Help text generation reads from the registry too (`Object.keys(registry).sort()`).
-- [ ] **FB-2.4** Move the parseArgs allow-list into per-command `CommandSpec.parseArgsAllowList`. The single 50-key allow-list in `parseArgs` becomes either (a) a union of all per-command lists, or (b) per-command parseArgs invocation (cleaner). Pick (b) if it doesn't require touching `parseArgsAllowPositionals`.
-- [ ] **FB-2.5** Add `packages/core/tests/cli-registry.test.mjs`: (a) every command emitted by `printHelp()` is in the registry; (b) every command in the registry is emitted by `printHelp()`; (c) help-text byte-identical to F-S1 capture.
-- [ ] **FB-2.6** Run F-S2 baseline re-validation.
+  - **Landed:** single `registry.mjs` + `shared.mjs` / `config.mjs` / `help.mjs` (group split deferred to v0.2).
+- [x] **FB-2.2** Author `packages/core/cli/registry.mjs` exporting a `Map<string, CommandSpec>`. `CommandSpec` = `{handler, requireArgs: string[], parseArgsAllowList: string[]}`.
+- [x] **FB-2.3** Refactor `cli.mjs main()` to use the registry: parse argv, look up command, run handler. Help text generation reads from the registry too (`Object.keys(registry).sort()`).
+- [x] **FB-2.4** Move the parseArgs allow-list into per-command `CommandSpec.parseArgsAllowList`. The single 50-key allow-list in `parseArgs` becomes either (a) a union of all per-command lists, or (b) per-command parseArgs invocation (cleaner). Pick (b) if it doesn't require touching `parseArgsAllowPositionals`.
+- [x] **FB-2.5** Add `packages/core/tests/cli-registry.test.mjs`: (a) every command emitted by `printHelp()` is in the registry; (b) every command in the registry is emitted by `printHelp()`; (c) help-text byte-identical to F-S1 capture.
+- [x] **FB-2.6** Run F-S2 baseline re-validation.
 
 **Pass threshold:** `cli.mjs` no longer contains an `if (command === ...)` chain (`grep -c "if (command ===" packages/core/cli.mjs` returns `0`); all 62 commands work; suite + FB-2 test green; help byte-identical.
 
@@ -200,21 +201,20 @@ The 62-branch monolith. Sub-Playbook B-M3 will add 3 more (`init`, `audit-worksp
 
 Per FP-Q1 (recommended A = minimum):
 
-- [ ] **FB-3.1** Extend `matchesType` in `packages/core/lib/contracts.mjs` to also honor `field.enum` (when present). New behavior: if `field.enum` is set, value must be in the enum; otherwise existing `field.type` check applies.
-- [ ] **FB-3.2** Audit existing contract JSONs (`packages/core/contracts/*.json`) for `enum`-eligible fields that aren't currently declared — e.g., `job-result.schema.json` declares `enum` for `status`; verify all other status-like enums are declared.
-- [ ] **FB-3.3** Audit test fixtures for any value that would now fail enum validation. Either fix the fixture (most likely) or extend the enum (only if the value is intentionally valid).
-- [ ] **FB-3.4** Add `packages/core/tests/contracts-enum.test.mjs`: (a) a value in the enum passes; (b) a value NOT in the enum fails with the expected message format; (c) absent `enum` falls back to current `field.type` behavior.
-- [ ] **FB-3.5** Run F-S2 baseline re-validation.
-- [ ] **FB-3.6** Extend `cocoder/plans/v0.2-backlog.md` with a "Full Zod migration of orchestration contracts" entry citing ADR-0004 + this Sub-Playbook's FP-Q1=A decision.
+- [x] **FB-3.1** Extend `matchesType` in `packages/core/lib/contracts.mjs` to also honor `field.enum` (when present). New behavior: if `field.enum` is set, value must be in the enum; otherwise existing `field.type` check applies.
+- [x] **FB-3.2** Audit existing contract JSONs (`packages/core/contracts/*.json`) for `enum`-eligible fields that aren't currently declared — e.g., `job-result.schema.json` declares `enum` for `status`; verify all other status-like enums are declared.
+- [x] **FB-3.3** Audit test fixtures for any value that would now fail enum validation. Either fix the fixture (most likely) or extend the enum (only if the value is intentionally valid).
+- [x] **FB-3.4** Add `packages/core/tests/contracts-enum.test.mjs`: (a) a value in the enum passes; (b) a value NOT in the enum fails with the expected message format; (c) absent `enum` falls back to current `field.type` behavior.
+- [x] **FB-3.5** Run F-S2 baseline re-validation.
+- [x] **FB-3.6** Extend `cocoder/plans/v0.2-backlog.md` with a "Full Zod migration of orchestration contracts" entry citing ADR-0004 + this Sub-Playbook's FP-Q1=A decision.
 
 **Pass threshold:** `matchesType` honors `enum`; existing tests still pass (modulo any fixture corrections); FB-3 test green; v0.2 backlog updated.
 
 ### Documentation Updates
 
-- [ ] Master README "Key files" — add Sub-Playbook F row
-- [ ] Master README Sub-Playbook status table — add F row
-- [ ] PRIORITIES.md slim-table row + parser-readable entry — refresh when F status changes
-- [ ] `cocoder/plans/v0.2-backlog.md` — add the 6 deferred items from §Witness "Out" with rationale + cross-ref to this Sub-Playbook
+- [x] Master README Sub-Playbook status table — add F row
+- [x] PRIORITIES.md slim-table row + parser-readable entry — refresh when F status changes
+- [x] `cocoder/plans/v0.2-backlog.md` — add the 6 deferred items from §Witness "Out" with rationale + cross-ref to this Sub-Playbook
 
 **Checkpoint:** [ ] All three batches complete; v0.2-backlog updated; B Preconditions auto-tick the "F Refine reached" item.
 
