@@ -22,7 +22,7 @@ test('session-start flow records startup packet evidence and blocks stale priori
     await writeFile(startupPacketPath, `${JSON.stringify(startupPacket('active'), null, 2)}\n`);
     const pass = await validateSessionStartFlow({
       startupPacketPath,
-      loadedDirectory: '/Volumes/NAS/CoCoder',
+      loadedDirectory: '/tmp/cocoder-fixture',
       extractionEvidence: [{ source: 'PRIORITIES.md', method: 'bounded extraction' }]
     }, { contractsDir });
     assert.equal(pass.ok, true, JSON.stringify(pass.issues, null, 2));
@@ -30,7 +30,7 @@ test('session-start flow records startup packet evidence and blocks stale priori
     await writeFile(startupPacketPath, `${JSON.stringify(startupPacket('review-required'), null, 2)}\n`);
     const stale = await validateSessionStartFlow({
       startupPacketPath,
-      loadedDirectory: '/Volumes/NAS/CoCoder',
+      loadedDirectory: '/tmp/cocoder-fixture',
       extractionEvidence: [{ source: 'PRIORITIES.md', method: 'bounded extraction' }]
     }, { contractsDir });
     assert.equal(stale.ok, false);
@@ -39,7 +39,7 @@ test('session-start flow records startup packet evidence and blocks stale priori
     await writeFile(startupPacketPath, `${JSON.stringify({ selectedPriority: { staleState: 'active' } }, null, 2)}\n`);
     const malformed = await validateSessionStartFlow({
       startupPacketPath,
-      loadedDirectory: '/Volumes/NAS/CoCoder',
+      loadedDirectory: '/tmp/cocoder-fixture',
       extractionEvidence: [{ source: 'PRIORITIES.md', method: 'bounded extraction' }]
     }, { contractsDir });
     assert.equal(malformed.ok, false);

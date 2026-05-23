@@ -17,6 +17,14 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # ripgrep (rg) is used by the stale-reference gate below. macos-14 runners
+      # don't ship rg by default; without this install the `if rg ...` lines
+      # exit 127 (command not found) and bash's `if` treats that as "no match,"
+      # silently turning the gate into a no-op. Verified via PR #13 follow-up
+      # finding: 4 `/Volumes/` leaks in `packages/core/tests/{flows,debugger}.test.mjs`
+      # had landed undetected through PRs #8 and #9.
+      - name: Install ripgrep (for stale-reference gate)
+        run: brew install ripgrep
       - run: pnpm -F schemas build
       - run: git diff --exit-code -- packages/schemas/dist/
       - run: pnpm typecheck
