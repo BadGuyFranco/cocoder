@@ -34,7 +34,20 @@ export async function resolveConfig(options = {}) {
     loaded.push(filePath);
   }
 
-  await validateConfig(value, { schemaPath: options.schemaPath });
+  await validateConfig(value, {
+    schemaPath: options.schemaPath,
+    allowMissingSchema: options.allowMissingSchema
+  });
+
+  // M4.5 (audit §H1): resolve secret references after merge + validate.
+  // Default ON for runtime callers (orchestration/launch needs real env values);
+  // `config get` opts out by passing `resolveSecrets: false` so the displayed
+  // config shows `${env:OPENAI_API_KEY}` instead of leaking the real key into
+  // stdout / `JSON.stringify` output.
+  if (options.resolveSecrets !== false) {
+    value = await resolveSecretReferences(value, { baseDir: cocoderHome, env: options.env });
+  }
+
   return {
     config: value,
     loaded,
@@ -147,9 +160,21 @@ export function deepMerge(base, overlay, { source = 'overlay' } = {}) {
   return next;
 }
 
-export async function validateConfig(value, { schemaPath } = {}) {
+export async function validateConfig(value, { schemaPath, allowMissingSchema = false } = {}) {
   const resolvedSchemaPath = schemaPath || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../schemas/dist/config.schema.json');
-  if (!(await pathExists(resolvedSchemaPath))) return { ok: true, skipped: true, schemaPath: resolvedSchemaPath };
+  if (!(await pathExists(resolvedSchemaPath))) {
+    // M4.6 (audit §H2): fail closed by default. Pre-2026-05-23 this silently
+    // returned `{ ok: true, skipped: true }` whenever the schema artifact was
+    // absent, so a config that should have failed validation passed it
+    // unnoticed on any clone where `pnpm -F schemas build` hadn't run yet.
+    // Explicit opt-out (`allowMissingSchema: true`) preserves the old shape
+    // for test fixtures that intentionally exercise the validate path
+    // without depending on the built schema.
+    if (allowMissingSchema) {
+      return { ok: true, skipped: true, schemaPath: resolvedSchemaPath };
+    }
+    throw new Error(`Config schema artifact missing at ${resolvedSchemaPath}. Run \`pnpm -F schemas build\` before invoking cocoder, or pass { allowMissingSchema: true } for test scenarios that intentionally skip validation.`);
+  }
   const schema = JSON.parse(await readFile(resolvedSchemaPath, 'utf8'));
   const ajv = new Ajv({ allErrors: true, strict: false });
   const validate = ajv.compile(schema);

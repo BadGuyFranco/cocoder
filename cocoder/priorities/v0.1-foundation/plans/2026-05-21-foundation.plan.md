@@ -207,8 +207,8 @@ Mergeable `main` branch with:
 - [x] **M4.2** Root `.gitignore`: add `*.env`, `.env.*`, `secrets/`; replace blanket `dist/` with `packages/*/dist/` + `!packages/schemas/dist/*.schema.json` (audit §B7, §B8). Verify with `git check-ignore` on a real clone. — *Closed 2026-05-22 (Evening); per-package `packages/*/dist/` + schemas un-ignore + `js/` re-ignore landed so the schema-drift gate sees the tracked `*.schema.json` artifacts.*
 - [x] **M4.3** Rename `cocoder/core/cli.mjs` references in shipped runtime → resolve via `import.meta.url` / install-relative path (audit §B1). Files: `packages/core/lib/launch.mjs:1051,1276,1379`; `packages/core/lib/debugger.mjs:254,715`; `packages/core/lib/orchestrator-commit.mjs:18`. Add regression test asserting each generated `cliPath` literal resolves to an existing file. — *Closed 2026-05-22 (Evening); `CORE_CLI_PATH` module constant introduced; 4 regression tests in `tests/cli-path-resolution.test.mjs`.*
 - [x] **M4.4** Complete CoBuilder identifier scrub in `packages/` (audit §B3): tmux socket (`cobuilder-orchestration` → `cocoder-orchestration`), prompt headers, mkdtemp prefix, commit trailers (`@cobuilder.local` → configurable), contract schema descriptions, Quinn defaults (`cobuilder-ide`, `cobuilder-dev-console-env`, `api-staging.cobuilder.me`), git probe filename. **Re-check E2.4 when `rg 'cobuilder' packages/ --glob '!**/*.example.*'` returns 0.** — *Closed 2026-05-22 (Evening); `rg 'cobuilder' packages/ --glob '!**/*.example.*'` returns 0 case-sensitive matches; E2.4 ticked with cross-reference.*
-- [ ] **M4.5** Wire `resolveSecretReferences()` into `resolveConfig()` (audit §H1). Add opt-out path for `config get` display mode.
-- [ ] **M4.6** Harden `validateConfig` to fail closed when schema artifact missing (audit §H2); allow skip only in explicit test mode.
+- [x] **M4.5** Wire `resolveSecretReferences()` into `resolveConfig()` (audit §H1). Add opt-out path for `config get` display mode. — *Closed 2026-05-23 (Group C): `resolveConfig` now resolves secrets after merge + validate (gated by `options.resolveSecrets`, default `true`). `config get` CLI defaults to UNRESOLVED display so `${env:OPENAI_API_KEY}` doesn't leak to stdout/JSON; new `--reveal-secrets true` flag opts back in for debugging. 4 regression tests in `tests/config-secret-resolution.test.mjs`.*
+- [x] **M4.6** Harden `validateConfig` to fail closed when schema artifact missing (audit §H2); allow skip only in explicit test mode. — *Closed 2026-05-23 (Group C): `validateConfig` throws with a friendly "run pnpm -F schemas build" message when the schema is missing; preserved skip behavior gated behind `allowMissingSchema: true`. 3 regression tests in `tests/config-secret-resolution.test.mjs` covering fail-closed, opt-out, and the real-schema path.*
 - [ ] **M4.7** Quinn credentials path — align with comment + add `.gitignore` rule (audit §H12).
 - [ ] **M4.8** `composition.mjs:13` default → `cocoder/decisions` (audit §H13).
 - [x] **M4.9** Template `$schema` reference path fix: `templates/install-local/config.example.yaml:1` → `../../packages/schemas/dist/install-config.schema.json` (audit §H14). — *Closed 2026-05-23 (Group B): one `../` was missing; from `templates/install-local/`, `../` is `templates/`, not the repo root. Fixed.*
@@ -330,10 +330,10 @@ Mergeable `main` branch with:
 | Witness | 1 | 1 | Complete |
 | Interrogate | 7 risks + reuse check | 7 + 1 | Complete |
 | Solve | 7 | 4 (S1.1, S1.2, S1.4, S1.7) | Mostly complete; S1.3/S1.5/S1.6 fixture trees rescoped under M4.E2.2e |
-| Expand | M1: 7 · M2: 11 · M3: 6 · **M4: 27** | M1: 7, M2: 11 (E2.2e fully closed 2026-05-23; E2.4 closed by M4.4), M3: 6 (E3.5 re-ticked 2026-05-23 by M4.10), M4: 18 (M4.1–M4.4, M4.9, M4.10, M4.15, M4.17–M4.21, M4.22–M4.27) | **Active** |
+| Expand | M1: 7 · M2: 11 · M3: 6 · **M4: 27** | M1: 7, M2: 11 (E2.2e fully closed 2026-05-23; E2.4 closed by M4.4), M3: 6 (E3.5 re-ticked 2026-05-23 by M4.10), M4: 20 (M4.1–M4.6, M4.9, M4.10, M4.15, M4.17–M4.21, M4.22–M4.27) | **Active** |
 | Refine | 7 (was 4; 3 audit-driven added) | 1 (audit complete) | Active |
 | Final Check | 9 (was 7; 2 audit-driven added) | 1 (M11 P-S1/P-S2 mirror) | Not started |
-| **Total** | **74** (was 42; M4 + audit additions) | **60** | **Active (Refine)** |
+| **Total** | **74** (was 42; M4 + audit additions) | **62** | **Active (Refine)** |
 
 ---
 
