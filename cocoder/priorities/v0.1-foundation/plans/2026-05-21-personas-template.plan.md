@@ -35,7 +35,7 @@ The riskiest piece here is twofold: (1) **persona identity drift during the port
 - [x] `packages/core`, `packages/cocoder-cli`, `packages/schemas` operational — *236/236 tests passing as of 2026-05-23.*
 - [x] Config resolver proven (A Solve) — *Closed 2026-05-22 with multi-machine portability tests + workspace-private writer (M4.23/Q2=A); secret resolution wired in (M4.5).*
 - [x] [Sub-Playbook E (Dogfood Ramp)](./2026-05-22-dogfood-ramp.plan.md) reaches Final Check — provides upstream reuse: Bob + Talia personas (borrowed from CoBuilder, scrubbed), minimal prompt fragments, one profile (`cocoder-dogfood`), one route (`dogfood-port-tests`), and PORT-NOTES documenting divergences. Sub-Playbook B extends, does not redo, this work. — *Complete 2026-05-23.*
-- [ ] **[Sub-Playbook F (Structural cleanup)](./2026-05-23-structural-cleanup.plan.md) reaches Refine** — provides upstream reuse: canonical `routePriorityIssue` + lane/path helpers + boolean-flag parser + `cli.mjs` command registry + `contracts.mjs` `enum` honoring. Sub-Playbook B Solve specifically depends on F for two reasons: (1) B-M3 adds `init`/`audit-workspace`/`refresh-memory` to the new registry instead of growing the old monolith; (2) B-S2 persona-identity regression test should capture its reference fixture against the post-F composer output bytes (otherwise the fixture has to be regenerated after F lands later). — *Activated 2026-05-23; FP-Q1 + FP-Q2 awaiting founder gate; F Solve + Expand + Refine pending.*
+- [x] **[Sub-Playbook F (Structural cleanup)](./2026-05-23-structural-cleanup.plan.md) reaches Refine** — provides upstream reuse: canonical `routePriorityIssue` + lane/path helpers + boolean-flag parser + `cli.mjs` command registry + `contracts.mjs` `enum` honoring. Sub-Playbook B Solve specifically depends on F for two reasons: (1) B-M3 adds `init`/`audit-workspace`/`refresh-memory` to the new registry instead of growing the old monolith; (2) B-S2 persona-identity regression test should capture its reference fixture against the post-F composer output bytes (otherwise the fixture has to be regenerated after F lands later). — *Complete 2026-05-23 (Final Check; PR #28 merged `58e1fe2`).*
 
 ---
 
@@ -281,9 +281,9 @@ Per PB-Q1 (recommended A — static fileset), `templates/workspace-cocoder/` is 
 
 ## Progress
 
-**Last worked:** 2026-05-23 (Activated; Witness/Interrogate/Solve-target authored; PB-Q1..PB-Q4 surfaced for founder gate. **Sub-Playbook F inserted same day** as a Solve-blocker — B-S1 fixture capture should land AFTER F Refine.)
-**Current Canon:** Active — Witness + Interrogate + Solve-target complete; Solve start blocked on (a) Sub-Playbook F Refine reaching, then (b) founder answers to PB-Q1..PB-Q4.
-**Next action:** Sub-Playbook F executes first (FB-1 → FB-2 → FB-3). After F Refine: founder answers PB-Q1..PB-Q4. Then a fresh session picks up at B Solve (B-S1 — capture persona-identity reference fixture from a Sub-Playbook E run; fixture captures post-F composer output bytes).
+**Last worked:** 2026-05-23 (Sub-Playbook F Complete; B Solve unblocked on structure — gated on PB-Q1..PB-Q4 founder answers)
+**Current Canon:** Active — Witness + Interrogate + Solve-target complete; Solve start blocked on founder answers to PB-Q1..PB-Q4 only.
+**Next action:** Founder answers PB-Q1..PB-Q4. Then a fresh session picks up at B Solve (B-S1 — capture persona-identity reference fixture from a Sub-Playbook E run; fixture captures post-F composer output bytes).
 
 | Canon | Items | Done | Status |
 |---|---|---|---|

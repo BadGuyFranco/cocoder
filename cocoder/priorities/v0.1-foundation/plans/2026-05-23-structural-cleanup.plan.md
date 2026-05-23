@@ -3,7 +3,7 @@
 **Created:** 2026-05-23 | **Updated:** 2026-05-23 (authored)
 **Type:** One-time
 **Collaboration:** Collaborative
-**Status:** **Active — Expand complete 2026-05-23; Refine ceremony pending founder spot-check**
+**Status:** **Complete — Final Check 2026-05-23** (PR #28 merged as `58e1fe2`; closure PR pending)
 **Method:** WISER Playbook (Sub-Playbook; Master = `../README.md`)
 **Parent:** [v0.1-foundation priority](../README.md)
 **Slots between:** [v0.1 Completion Plan Item 2 (CLOSED)](./2026-05-23-v0.1-completion.plan.md#item-2--sub-playbook-a-m4-free-wins-cleanup) and [Item 3 (Sub-Playbook B Expand — NOT YET STARTED)](./2026-05-23-v0.1-completion.plan.md#item-3--sub-playbook-b-adopter-onboarding)
@@ -232,26 +232,26 @@ Per FP-Q1 (recommended A = minimum):
 
 ## Refine
 
-- [ ] Founder runs `pnpm -r test` + `pnpm exec cocoder validate-contracts` + `pnpm exec cocoder check-immutable-baseline` on a clean clone post-FB-3; all three green
-- [ ] Founder skims a Sub-Playbook E orchestration run output (`compose-launch` JSON + `launch` prompt.md) to confirm composed prompts are byte-identical to a pre-F snapshot stored at `cocoder/local/structural-cleanup-baselines/composed-prompt-pre-F.txt` (gitignored)
-- [ ] Founder spot-checks 3 random commands from the new registry (`cocoder validate-contracts`, `cocoder config get version`, `cocoder check-immutable-baseline`) — all produce byte-identical output to the operator snapshot at `cocoder/local/structural-cleanup-baselines/help.txt` (or re-capture there first; distinct from the tracked CI fixture)
-- [ ] Founder reads `cocoder/plans/v0.2-backlog.md` and confirms the deferred items match the §Witness "Out" list
+- [x] Founder runs `pnpm -r test` + `pnpm exec cocoder validate-contracts` + `pnpm exec cocoder check-immutable-baseline` on a clean clone post-FB-3; all three green — *2026-05-23 founder re-check passed; CI green on PR #28.*
+- [x] Founder skims a Sub-Playbook E orchestration run output (`compose-launch` JSON + `launch` prompt.md) to confirm composed prompts are byte-identical to a pre-F snapshot stored at `cocoder/local/structural-cleanup-baselines/composed-prompt-pre-F.txt` (gitignored) — *2026-05-23: pre-F captured on `main` @ bb0c308; post-F on merged main; normalized diff shows only runId/timestamp/run-dir paths differ (see SESSION_LOG + closure PR).*
+- [x] Founder spot-checks 3 random commands from the new registry (`cocoder validate-contracts`, `cocoder config get version`, `cocoder check-immutable-baseline`) — all produce byte-identical output to the operator snapshot at `cocoder/local/structural-cleanup-baselines/help.txt` (or re-capture there first; distinct from the tracked CI fixture) — *2026-05-23 founder re-check passed.*
+- [x] Founder reads `cocoder/plans/v0.2-backlog.md` and confirms the deferred items match the §Witness "Out" list — *2026-05-23 founder re-check passed.*
 
-**Checkpoint:** [ ] Sub-Playbook F locally validated; no behavior drift detected; Sub-Playbook B Solve safe to execute.
+**Checkpoint:** [x] Sub-Playbook F locally validated; no behavior drift detected; Sub-Playbook B Solve safe to execute (still gated on PB-Q1..PB-Q4 founder answers).
 
 ---
 
-## Final Check
+## Final Check — closed 2026-05-23
 
-- [ ] All Documentation Updates from Expand complete
-- [ ] No private duplicates of `routePriorityIssue` / `safeName` / `getLane` / `blockingPriorityBoundaryIssues` / `compactTimestamp` / `parseBooleanFlag`-equivalent (`grep -c "function routePriorityIssue" packages/core/lib/` returns `1`; similar for each helper)
-- [ ] `cli.mjs` registry has all 62 commands; help text byte-identical to F-S1
-- [ ] `contracts.mjs matchesType` honors `enum`; FB-3 test green
-- [ ] All checkboxes match reality
-- [ ] FP-Q1 + FP-Q2 "Answered" with chosen options recorded in Interrogate table
-- [ ] Decision Log + Learnings current
-- [ ] Master README Sub-Playbook F row flipped to **Complete**; Sub-Playbook B Preconditions "F Refine reached" auto-ticked
-- [ ] `cocoder/plans/v0.2-backlog.md` updated with the 6 deferred items
+- [x] All Documentation Updates from Expand complete
+- [x] No private duplicates of `routePriorityIssue` / `safeName` / `getLane` / `blockingPriorityBoundaryIssues` / `compactTimestamp` / `parseBooleanFlag`-equivalent (`grep -c "function routePriorityIssue" packages/core/lib/` returns `1`; similar for each helper)
+- [x] `cli.mjs` registry has all 62 commands; help text byte-identical to tracked fixture (`packages/core/tests/fixtures/cli-help-baseline.txt`)
+- [x] `contracts.mjs matchesType` honors `enum`; FB-3 test green
+- [x] All checkboxes match reality
+- [x] FP-Q1 + FP-Q2 "Answered" with chosen options recorded in Interrogate table
+- [x] Decision Log + Learnings current
+- [x] Master README Sub-Playbook F row flipped to **Complete**; Sub-Playbook B Preconditions "F Refine reached" auto-ticked
+- [x] `cocoder/plans/v0.2-backlog.md` updated with the 6 deferred items
 
 ---
 
@@ -286,28 +286,28 @@ Per FP-Q1 (recommended A = minimum):
 
 ## Progress
 
-**Last worked:** 2026-05-23 (FB-1/FB-2/FB-3 executed; suite 249/249; FP-Q1=A + FP-Q2=B answered)
-**Current Canon:** Active — Expand complete; Refine ceremony pending founder spot-check
-**Next action:** Founder Refine ceremony (spot-check composer byte-equivalence + 3 CLI commands); then Sub-Playbook B Solve unblocks.
+**Last worked:** 2026-05-23 (Final Check closed; PR #28 merged `58e1fe2`; compose-launch diff clean)
+**Current Canon:** **Complete — Final Check 2026-05-23**
+**Next action:** None — Sub-Playbook B Solve awaits PB-Q1..PB-Q4 founder answers in a separate session.
 
 | Canon | Items | Done | Status |
 |---|---|---|---|
 | Witness | 1 review-findings table + 1 objective + 1 scope statement | 3 | **Complete (2026-05-23)** |
-| Interrogate | 2 pending decisions + 5 risks + reuse check | 2-surfaced + 5 + 1 | **Active (FP-Q1 + FP-Q2 awaiting founder)** |
-| Solve | 3 (F-S1..F-S3) | 0 | Not started (blocked on FP-Q1 + FP-Q2) |
-| Expand | FB-1: 6 · FB-2: 6 · FB-3: 6 | 0 | Not started |
-| Refine | 4 | 0 | Not started |
-| Final Check | 8 | 0 | Not started |
+| Interrogate | 2 pending decisions + 5 risks + reuse check | 2-answered + 5 + 1 | **Complete (2026-05-23)** |
+| Solve | 3 (F-S1..F-S3) | 3 | **Complete (2026-05-23)** |
+| Expand | FB-1: 6 · FB-2: 6 · FB-3: 6 | 18 | **Complete (2026-05-23)** |
+| Refine | 4 | 4 | **Complete (2026-05-23)** |
+| Final Check | 8 | 8 | **Complete (2026-05-23)** |
 
 ---
 
 ## Success Criteria
 
-- [ ] Suite stays at 236/236 (plus the regression tests this Sub-Playbook adds — likely +3 to +6) after every batch
-- [ ] No duplicate definitions of the 5 helpers remain (`grep` proves it)
-- [ ] `cli.mjs` no longer has the 62-branch `if` chain; registry handles dispatch
-- [ ] `contracts.mjs matchesType` honors `enum`; the failure surfaced by Sub-Playbook E Bug B's sibling class (invalid `status` enum values) is now caught at contract validation
-- [ ] FP-Q1 + FP-Q2 resolved + recorded; any ADR-graduation landed
-- [ ] `cocoder/plans/v0.2-backlog.md` extended with the 6 deferred items + rationale
-- [ ] Sub-Playbook B Preconditions auto-tick "F Refine reached"
-- [ ] Master Playbook Sub-Playbook F row Complete
+- [x] Suite stays at 236/236 (plus the regression tests this Sub-Playbook adds — likely +3 to +6) after every batch — *249/249 at close.*
+- [x] No duplicate definitions of the 5 helpers remain (`grep` proves it)
+- [x] `cli.mjs` no longer has the 62-branch `if` chain; registry handles dispatch
+- [x] `contracts.mjs matchesType` honors `enum`; the failure surfaced by Sub-Playbook E Bug B's sibling class (invalid `status` enum values) is now caught at contract validation
+- [x] FP-Q1 + FP-Q2 resolved + recorded; any ADR-graduation landed
+- [x] `cocoder/plans/v0.2-backlog.md` extended with the 6 deferred items + rationale
+- [x] Sub-Playbook B Preconditions auto-tick "F Refine reached"
+- [x] Master Playbook Sub-Playbook F row Complete

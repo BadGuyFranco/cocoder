@@ -15,7 +15,7 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 
 | Slug | Description | Status | Canon | Owner | Blocked on |
 |---|---|---|---|---|---|
-| [`v0.1-foundation`](./priorities/v0.1-foundation/README.md) | Ship CoCoder v0.1 — extraction, Oz MVP, docs, public publish | Active | Refine — Sub-Playbook A M4 Checkpoint REACHED 2026-05-23; Sub-Playbook E **Complete** 2026-05-23; **Sub-Playbook F Expand complete 2026-05-23** (FP-Q1=A, FP-Q2=B; FB-1/FB-2/FB-3 landed PR #28; F Refine ceremony pending); Sub-Playbook B Activated 2026-05-23 (W/I/S authored, PB-Q1..PB-Q4 awaiting founder; B Solve unblocked pending F Refine). Test suite **249/249 all-passing**; repo public at `BadGuyFranco/cocoder`. | Bob + founder | **Next:** F Refine ceremony (founder spot-check composer + 3 CLI commands). Then PB-Q1..PB-Q4 + B Solve. See [`priorities/v0.1-foundation/plans/2026-05-23-structural-cleanup.plan.md`](./priorities/v0.1-foundation/plans/2026-05-23-structural-cleanup.plan.md). |
+| [`v0.1-foundation`](./priorities/v0.1-foundation/README.md) | Ship CoCoder v0.1 — extraction, Oz MVP, docs, public publish | Active | Refine — Sub-Playbook A M4 Checkpoint REACHED 2026-05-23; Sub-Playbook E **Complete** 2026-05-23; **Sub-Playbook F Complete 2026-05-23** (PR #28 `58e1fe2`); Sub-Playbook B Activated (W/I/S authored; **B Solve gated on PB-Q1..PB-Q4**). Test suite **249/249 all-passing**; repo public at `BadGuyFranco/cocoder`. | Bob + founder | **Next:** PB-Q1..PB-Q4 founder answers, then B Solve. |
 
 ## Draft
 
@@ -44,7 +44,7 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 3. **Sub-Playbook B activation** — Witness/Interrogate/Solve-target for adopter onboarding (workspace template + `cocoder init` + getting-started doc). Multi-session work; the marquee remaining v0.1 deliverable.
 
 **Recommended next-session ordering:** Item 1 → Item 2 (in batches) → Item 3 (Witness/Interrogate only). The completion plan has an appendix with a verbatim resume prompt for fresh-session pickup. **Done = ticket 0001 closed, M4 free-wins all `[x]` or marked deferred-to-v0.2, Sub-Playbook B Witness populated + Status flipped to Active.**
-**Status:** Active — Refine. Sub-Playbook F **Expand complete 2026-05-23** (FP-Q1=A, FP-Q2=B; FB-1/FB-2/FB-3; PR #28; suite **249/249**; F Refine ceremony pending). Sub-Playbook B Solve unblocked pending F Refine. Sub-Playbook A Milestone M4 founder-gated tasks (M4.22–M4.27) complete 2026-05-22. **Sub-Playbook E proven end-to-end 2026-05-22** … Repo published at `BadGuyFranco/cocoder` (public, Apache-2.0, branch-protected). See [`priorities/v0.1-foundation/README.md`](./priorities/v0.1-foundation/README.md).
+**Status:** Active — Refine. **Sub-Playbook F Complete 2026-05-23** (PR #28 merged `58e1fe2`; compose-launch diff clean). Sub-Playbook B Solve gated on PB-Q1..PB-Q4 founder answers only. Sub-Playbook A Milestone M4 founder-gated tasks (M4.22–M4.27) complete 2026-05-22. **Sub-Playbook E proven end-to-end 2026-05-22** … Repo published at `BadGuyFranco/cocoder` (public, Apache-2.0, branch-protected). See [`priorities/v0.1-foundation/README.md`](./priorities/v0.1-foundation/README.md).
 
 ### [v0.2-adapter-extensibility](./priorities/v0.2-adapter-extensibility/README.md)
 **Owner:** Bob + founder
