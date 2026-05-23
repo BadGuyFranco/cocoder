@@ -5,6 +5,8 @@ import { loadProfile, loadRoute } from './config.mjs';
 import { extractPriorityEntry, pathExists, readJson, readSessionLogBrief, repoPath, sha256String } from './fs-utils.mjs';
 import { resolveModelRoles, validateModelRolesSemantics } from './model-roles.mjs';
 import { resolvePriorityBoundary } from './priority-boundaries.mjs';
+import { getLane } from './lib-utils.mjs';
+import { blockingPriorityBoundaryIssues, routePriorityIssue } from './orchestration-issues.mjs';
 import { auditPersonaRouteFit } from './persona-route-audit.mjs';
 
 const READY = 'ready';
@@ -606,21 +608,6 @@ function priorityStaleIssue(selectedPriority) {
     lane: 'startup',
     detail: `selected priority ${selectedPriority.slug} staleState=${selectedPriority.staleState} matched=${selectedPriority.matched}`
   };
-}
-
-function routePriorityIssue(route, prioritySlug) {
-  if (!Array.isArray(route.supportedPriorityOwners) || route.supportedPriorityOwners.length === 0) return null;
-  if (route.supportedPriorityOwners.includes('*') || route.supportedPriorityOwners.includes(prioritySlug)) return null;
-  return issue('priority-owner-not-supported', 'startup', `route ${route.id} does not list ${prioritySlug} in supportedPriorityOwners`);
-}
-
-function blockingPriorityBoundaryIssues(priorityBoundary) {
-  if (!priorityBoundary || priorityBoundary.ok) return [];
-  return priorityBoundary.issues.filter((issue) => issue.code !== 'priority-boundary-missing');
-}
-
-function getLane(lanes, lanePath) {
-  return lanePath.split('.').reduce((value, key) => value?.[key], lanes);
 }
 
 function issue(code, lane, detail) {

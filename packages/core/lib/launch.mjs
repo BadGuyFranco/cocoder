@@ -12,6 +12,8 @@ import { appendEvent, createRun, setRunStatus } from './ledger.mjs';
 import { resolveModelRoles, summarizeModelRoles } from './model-roles.mjs';
 import { evaluateLaneGitPolicy, getOrchestratorCommitPolicy } from './orchestrator-commit.mjs';
 import { resolvePriorityBoundary } from './priority-boundaries.mjs';
+import { compactTimestamp, getLane, parseBooleanFlag, safeName } from './lib-utils.mjs';
+import { blockingPriorityBoundaryIssues, routePriorityIssue } from './orchestration-issues.mjs';
 import { auditAddLaneOrchestrationState } from './repo-state.mjs';
 import { isTerminalRunStatusRecord } from './run-status.mjs';
 
@@ -31,7 +33,7 @@ const DEFAULT_ADDED_SPLIT_PANE_WIDTH = 120;
 const LEGACY_SKILL_BOOTSTRAP_GUARD = 'Do not invoke Skill(...) commands or slash skills during orchestration launch unless the loaded launch prompt explicitly instructs you to do so.';
 
 export async function launchRun(options) {
-  const execute = options.execute === true || options.execute === 'true';
+  const execute = parseBooleanFlag(options.execute);
   const socketName = options.socketName || DEFAULT_SOCKET;
   const socketPath = options.socketPath || '';
   const tmuxBin = options.tmuxBin || DEFAULT_TMUX_BIN;
@@ -85,7 +87,7 @@ export async function launchRun(options) {
   // the gap): launch blocks a second non-terminal run for the same priority
   // + route unless the caller passes --allow-concurrent-priority-run true.
   // Ported from CoBuilder per ADR-0004.
-  const activeRunPreflight = options.allowConcurrentPriorityRun === true || options.allowConcurrentPriorityRun === 'true'
+  const activeRunPreflight = parseBooleanFlag(options.allowConcurrentPriorityRun)
     ? { ok: true, status: 'skipped', activeRuns: [], issues: [], override: true }
     : await findActiveRunsForPriority({
         runsDir: options.runsDir,
@@ -123,7 +125,7 @@ export async function launchRun(options) {
     creationContext: {
       command: 'launch',
       execute,
-      deferStart: options.deferStart === true || options.deferStart === 'true',
+      deferStart: parseBooleanFlag(options.deferStart),
       socketName,
       socketPath,
       tmuxBin
@@ -153,7 +155,7 @@ export async function launchRun(options) {
     socketName,
     socketPath,
     tmuxBin,
-    deferStart: options.deferStart === true || options.deferStart === 'true',
+    deferStart: parseBooleanFlag(options.deferStart),
     route: compatibility.route,
     profile: compatibility.profile,
     sourcePaths: {
@@ -1672,21 +1674,6 @@ function publicSession(session) {
   };
 }
 
-function routePriorityIssue(route, prioritySlug) {
-  if (!Array.isArray(route.supportedPriorityOwners) || route.supportedPriorityOwners.length === 0) return null;
-  if (route.supportedPriorityOwners.includes('*') || route.supportedPriorityOwners.includes(prioritySlug)) return null;
-  return {
-    code: 'priority-owner-not-supported',
-    severity: 'block',
-    detail: `route ${route.id} does not list ${prioritySlug} in supportedPriorityOwners`
-  };
-}
-
-function blockingPriorityBoundaryIssues(priorityBoundary) {
-  if (!priorityBoundary || priorityBoundary.ok) return [];
-  return priorityBoundary.issues.filter((issue) => issue.code !== 'priority-boundary-missing');
-}
-
 function validateTopologyOption({ route, topologyOptionId, requestedLanes, existingLanes, issues }) {
   const options = Array.isArray(route.topologyOptions) ? route.topologyOptions : [];
   if (options.length === 0) {
@@ -1769,14 +1756,6 @@ function startupModeInstructions(launchPlan, session) {
   return [
     '- startup_mode is autonomous: this route allows this lane to proceed from the generated launch prompt and startup packet.'
   ];
-}
-
-function safeName(value) {
-  return String(value).replace(/[^a-zA-Z0-9._-]/g, '-');
-}
-
-function getLane(root, lanePath) {
-  return String(lanePath).split('.').reduce((current, part) => current?.[part], root);
 }
 
 function titleCase(value) {

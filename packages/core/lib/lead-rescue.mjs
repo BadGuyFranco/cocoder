@@ -1,5 +1,6 @@
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { compactTimestamp, safeName } from './lib-utils.mjs';
 import { pathExists, readJson } from './fs-utils.mjs';
 
 const AUTHORIZATION_BASES = new Set(['route-policy', 'founder-authorization']);
@@ -337,12 +338,4 @@ function samePath(candidate, expected, runDir) {
 
 function issue(code, detail, extra = {}) {
   return { code, severity: 'block', detail, ...extra };
-}
-
-function safeName(value) {
-  return String(value).replace(/[^a-zA-Z0-9._-]/g, '-');
-}
-
-function compactTimestamp(iso) {
-  return iso.replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
 }

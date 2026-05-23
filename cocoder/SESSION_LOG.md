@@ -14,6 +14,23 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-23 — **Sub-Playbook F Solve complete (FB-1/FB-2/FB-3); suite 249/249; B Solve unblocked pending F Refine**
+
+**Persona:** AI (Bob) + Founder | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-23-structural-cleanup.plan.md`](./priorities/v0.1-foundation/plans/2026-05-23-structural-cleanup.plan.md)
+
+**Outcomes:**
+- **Founder gates closed:** FP-Q1=A (minimum `enum` patch in `contracts.mjs`), FP-Q2=B (`orchestration-issues.mjs` + `lib-utils.mjs`).
+- **FB-1 — shared helpers:** canonical `routePriorityIssue` → `{code, severity: 'block', detail}`; deduped `safeName`, `getLane`, `compactTimestamp`, `blockingPriorityBoundaryIssues`, `parseBooleanFlag` across launch/composition/ledger/orchestrator-commit/lead-rescue/debugger/cli. +5 tests in `orchestration-issues.test.mjs`.
+- **FB-2 — CLI registry:** `packages/core/cli/registry.mjs` + `shared.mjs` / `config.mjs` / `help.mjs`; `cli.mjs` thinned to config + dispatch (one `if (command === 'config')` only). Help text byte-identical to F-S1 baseline. +5 tests in `cli-registry.test.mjs`.
+- **FB-3 — contracts enum:** `validateInstance` honors `field.enum` before type checks. +3 tests in `contracts-enum.test.mjs`. Full Zod migration remains on v0.2-backlog (FP-Q1=A).
+- **Suite:** 236 → **249/249 pass** (+13 regression tests). `validate-contracts` + `check-immutable-baseline` green; help unchanged.
+
+**Surface note (documented):** `routePriorityIssue` paths that previously omitted `severity` now return `severity: 'block'` (strict improvement; no test failures).
+
+**Next:** F Refine ceremony (founder spot-check); then PB-Q1..PB-Q4 + Sub-Playbook B Solve (B-S1 fixture capture should land post-F Refine).
+
+---
+
 ## 2026-05-23 (post-review) — **Sub-Playbook F (structural cleanup) inserted between Items 2 and 3 of v0.1 completion plan; founder review-driven decomposition scoping**
 
 **Persona:** AI (Bob) + Founder | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-23-structural-cleanup.plan.md`](./priorities/v0.1-foundation/plans/2026-05-23-structural-cleanup.plan.md) (new) + [`./priorities/v0.1-foundation/plans/2026-05-23-v0.1-completion.plan.md`](./priorities/v0.1-foundation/plans/2026-05-23-v0.1-completion.plan.md) Item 2.5

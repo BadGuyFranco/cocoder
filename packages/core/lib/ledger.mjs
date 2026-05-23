@@ -8,6 +8,8 @@ import { resolvePriorityBoundary } from './priority-boundaries.mjs';
 import { ensureSupersessionLedgerEvents, evaluateSupersessionsForRun } from './lead-rescue.mjs';
 import { auditDirtyDurableOrchestrationState } from './repo-state.mjs';
 import { isTerminalRunStatus, isTerminalRunStatusRecord } from './run-status.mjs';
+import { compactTimestamp, getLane, safeName } from './lib-utils.mjs';
+import { blockingPriorityBoundaryIssues, routePriorityIssue } from './orchestration-issues.mjs';
 import { auditPersonaRouteFit } from './persona-route-audit.mjs';
 
 const ALLOWED_STATUSES = new Set(['created', 'ready', 'running', 'blocked', 'needs_founder', 'failed', 'complete', 'aborted', 'stale']);
@@ -892,10 +894,6 @@ function collectWriteBoundaries(profile, routeLanes) {
   return [...new Set(boundaries)];
 }
 
-function getLane(root, lanePath) {
-  return String(lanePath).split('.').reduce((current, part) => current?.[part], root);
-}
-
 function collectRouteLaneRecords(profile, routeLanes) {
   return routeLanes.map((lanePath) => {
     const lane = getLane(profile.lanes, lanePath) || {};
@@ -906,15 +904,6 @@ function collectRouteLaneRecords(profile, routeLanes) {
       canWrite: lane.canWrite === true
     };
   });
-}
-
-function routePriorityIssue(route, prioritySlug) {
-  if (!Array.isArray(route.supportedPriorityOwners) || route.supportedPriorityOwners.length === 0) return null;
-  if (route.supportedPriorityOwners.includes('*') || route.supportedPriorityOwners.includes(prioritySlug)) return null;
-  return {
-    code: 'priority-owner-not-supported',
-    detail: `route ${route.id} does not list ${prioritySlug} in supportedPriorityOwners`
-  };
 }
 
 function priorityNextAtomDriftIssue(selectedPriority) {
@@ -955,11 +944,6 @@ function nextAtomCandidates(text) {
   return atoms;
 }
 
-function blockingPriorityBoundaryIssues(priorityBoundary) {
-  if (!priorityBoundary || priorityBoundary.ok) return [];
-  return priorityBoundary.issues.filter((issue) => issue.code !== 'priority-boundary-missing');
-}
-
 function renderResultMarkdown(result) {
   return [
     `# ${result.status}`,
@@ -987,16 +971,8 @@ function normalizeRunCreationContext(context = {}) {
   };
 }
 
-function safeName(value) {
-  return String(value).replace(/[^a-zA-Z0-9._-]/g, '-');
-}
-
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function compactTimestamp(iso) {
-  return iso.replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
 }
 
 function randomSuffix() {
