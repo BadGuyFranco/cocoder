@@ -317,9 +317,9 @@ Tracked in [`pending-decisions.md`](./pending-decisions.md). **All resolved 2026
 
 ## Progress
 
-**Last worked:** 2026-05-23 (Sub-Playbook C activated — Witness/Interrogate/Solve-target authored)
-**Current Canon:** v0.1 completion phase. Sub-Playbook F Complete. Sub-Playbook B Expand merged — B Refine pending (founder). **Sub-Playbook C Active** — W/I/S authored; Expand gated on Solve + PC-Q1/PC-Q5/PC-Q9. Test count: **265 / 265 / 0 fail / 0 skipped**.
-**Next action:** Founder confirms PC-Q1/PC-Q5/PC-Q9 (or accepts defaults); then C Solve (C-S1..C-S9). B Refine remains founder-only parallel track.
+**Last worked:** 2026-05-23 (Sub-Playbook C Solve complete — PRs #36–#40; suite 302/302)
+**Current Canon:** v0.1 completion phase. Sub-Playbook F Complete. Sub-Playbook B Expand merged — B Refine pending (founder). **Sub-Playbook C Active — Solve complete; Expand pending.** Test count: **302 / 302 / 0 fail / 0 skipped**.
+**Next action:** C Expand (C-M1..C-M3) in a separate session. B Refine remains founder-only parallel track.
 
 ### Sub-Playbook status
 
@@ -329,7 +329,7 @@ Tracked in [`pending-decisions.md`](./pending-decisions.md). **All resolved 2026
 | **E. Dogfood ramp** | **Complete (2026-05-23)** | Solve + Expand + Refine + Final Check 6/6 all green. 12 audit §4 ports closed across 7 autonomous runs; 9 product-code bugs surfaced + fixed end-to-end; B Witness back-reference closed by Sub-Playbook B activation. | — | [`2026-05-22-dogfood-ramp.plan.md`](./plans/2026-05-22-dogfood-ramp.plan.md) |
 | B. Personas + workspace template | **Active — Expand merged (`9bf2433`); Refine pending (founder)** | PR #33 merged; PB-Q1..PB-Q4 answered; B-S1..B-M3 green; suite 265/265 | B Refine (founder) | [`2026-05-21-personas-template.plan.md`](./plans/2026-05-21-personas-template.plan.md) |
 | **F. Structural cleanup** | **Complete (2026-05-23)** | Final Check closed; PR #28 merged `58e1fe2`; suite 249/249; compose-launch diff clean | — | [`2026-05-23-structural-cleanup.plan.md`](./plans/2026-05-23-structural-cleanup.plan.md) |
-| **C. Oz MVP** | **Active — Witness/Interrogate/Solve-target authored (2026-05-23)** | PC-Q1..PC-Q9 surfaced; C-S1..C-S9 Solve target; Expand not started | Founder PC-Q1/PC-Q5/PC-Q9 → C Solve | [`2026-05-21-oz-mvp.plan.md`](./plans/2026-05-21-oz-mvp.plan.md) |
+| **C. Oz MVP** | **Active — Solve complete (2026-05-23); Expand pending** | C-S1..C-S9 proven (PRs #36–#40); suite 302/302 | C Expand (C-M1..C-M3) | [`2026-05-21-oz-mvp.plan.md`](./plans/2026-05-21-oz-mvp.plan.md) |
 | D. Docs + dogfood + publish | Draft | — | Awaits A, B, C Complete | [`2026-05-21-docs-publish.plan.md`](./plans/2026-05-21-docs-publish.plan.md) |
 | **v0.1 Completion Plan** (cross-cuts A, B, ticket 0001) | **Active** | Items 1 + 2 CLOSED; Item 2.5 F Complete; Item 3 W/I/S authored | PB-Q1..PB-Q4 + B Solve | [`2026-05-23-v0.1-completion.plan.md`](./plans/2026-05-23-v0.1-completion.plan.md) |
 

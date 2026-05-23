@@ -15,7 +15,7 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 
 | Slug | Description | Status | Canon | Owner | Blocked on |
 |---|---|---|---|---|---|
-| [`v0.1-foundation`](./priorities/v0.1-foundation/README.md) | Ship CoCoder v0.1 — extraction, Oz MVP, docs, public publish | Active | Refine — **Sub-Playbook C activated** (W/I/S); B Refine pending (founder). Suite **265/265**. | Bob + founder | **Next:** PC-Q1/PC-Q5/PC-Q9 + C Solve. |
+| [`v0.1-foundation`](./priorities/v0.1-foundation/README.md) | Ship CoCoder v0.1 — extraction, Oz MVP, docs, public publish | Active | Expand — **Sub-Playbook C Solve complete**; C Expand next. Suite **302/302**. | Bob + founder | **Next:** C Expand (C-M1..C-M3). B Refine pending (founder). |
 
 ## Draft
 
@@ -44,7 +44,7 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 3. **Sub-Playbook B activation** — Witness/Interrogate/Solve-target for adopter onboarding (workspace template + `cocoder init` + getting-started doc). Multi-session work; the marquee remaining v0.1 deliverable.
 
 **Recommended next-session ordering:** Item 1 → Item 2 (in batches) → Item 3 (Witness/Interrogate only). The completion plan has an appendix with a verbatim resume prompt for fresh-session pickup. **Done = ticket 0001 closed, M4 free-wins all `[x]` or marked deferred-to-v0.2, Sub-Playbook B Witness populated + Status flipped to Active.**
-**Status:** Active — Refine. Sub-Playbook F Complete 2026-05-23. Sub-Playbook B Expand merged (PR #33 → `9bf2433`). **Sub-Playbook C activated 2026-05-23** (Witness/Interrogate/Solve-target; PC-Q1..PC-Q9). B Refine pending (founder). Suite **265/265**. See [`priorities/v0.1-foundation/README.md`](./priorities/v0.1-foundation/README.md).
+**Status:** Active — Refine. Sub-Playbook F Complete 2026-05-23. Sub-Playbook B Expand merged (PR #33 → `9bf2433`). **Sub-Playbook C Solve complete 2026-05-23** (PRs #36–#40 → `9a09575`; C-S1..C-S9). B Refine pending (founder). Suite **302/302**. See [`priorities/v0.1-foundation/README.md`](./priorities/v0.1-foundation/README.md).
 
 ### [v0.2-adapter-extensibility](./priorities/v0.2-adapter-extensibility/README.md)
 **Owner:** Bob + founder
