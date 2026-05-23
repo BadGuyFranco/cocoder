@@ -27,11 +27,25 @@ export {
 export { registerSettingsRoutes, type SettingsPutBody } from "./settings.js";
 export {
   launchCocoderSubprocess,
+  runCocoderSubprocess,
   spawnCocoderArgv,
   spawnCocoderArgvCaptured,
+  type CocoderSubprocessResult,
   type LaunchCocoderSubprocessOptions,
   type SpawnCocoderArgvOptions
 } from "./spawn-launcher.js";
+export {
+  observeWorkspaceMultiplexer,
+  listSessions,
+  listPanes,
+  getRunState,
+  type MultiplexerObservation,
+  type MultiplexerObserverOptions,
+  type RunStateSummary
+} from "./multiplexer-observer.js";
+export { listAllRuns, resolveRunLocation, type RunListEntry, type ResolvedRunLocation } from "./run-catalog.js";
+export { collectRunEvidenceSummary, type RunEvidenceSummary } from "./run-evidence.js";
+export { registerRunsRoutes, type LaunchRunsBody, type StopRunsBody, type RegisterRunsRoutesOptions } from "./runs.js";
 export { registerWorkspacesRoutes, type RegisterWorkspacesRoutesOptions } from "./workspaces.js";
 export { ensureOzToken, ozTokenPath } from "./token.js";
 export { createOzServer, startOzDaemon, type OzServer, type OzServerOptions } from "./server.js";

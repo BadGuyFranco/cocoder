@@ -1,0 +1,188 @@
+{
+  "$ref": "#/definitions/cocoder-oz-run-evidence",
+  "definitions": {
+    "cocoder-oz-run-evidence": {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "workspaceId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "topology": {
+          "type": "object",
+          "properties": {
+            "laneCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "lanes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "lane": {
+                    "type": "string"
+                  },
+                  "sessionName": {
+                    "type": "string"
+                  },
+                  "displayLabel": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "lane"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "socketName": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "laneCount",
+            "lanes",
+            "socketName"
+          ],
+          "additionalProperties": false
+        },
+        "flags": {
+          "type": "object",
+          "properties": {
+            "statusMismatches": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "lane": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "detail": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "code",
+                  "detail"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "blockedPicker": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "lane": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "detail": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "code",
+                  "detail"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "rootCheck": {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "type": "boolean"
+                },
+                "uniqueRoots": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "ok",
+                "uniqueRoots"
+              ],
+              "additionalProperties": false
+            },
+            "issueCount": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "statusMismatches",
+            "blockedPicker",
+            "rootCheck",
+            "issueCount"
+          ],
+          "additionalProperties": false
+        },
+        "evidencePaths": {
+          "type": "object",
+          "properties": {
+            "runDir": {
+              "type": "string"
+            },
+            "launchJson": {
+              "type": "string"
+            },
+            "statusJson": {
+              "type": "string"
+            },
+            "startupPacketJson": {
+              "type": "string"
+            },
+            "jobsDir": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "runDir",
+            "launchJson",
+            "statusJson",
+            "startupPacketJson",
+            "jobsDir"
+          ],
+          "additionalProperties": false
+        },
+        "collectedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "runId",
+        "workspaceId",
+        "status",
+        "topology",
+        "flags",
+        "evidencePaths",
+        "collectedAt"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

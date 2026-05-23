@@ -47,6 +47,13 @@ export type LaunchCocoderSubprocessOptions = {
   env?: NodeJS.ProcessEnv;
 };
 
+export type CocoderSubprocessResult = {
+  ok: boolean;
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+};
+
 /** Spawn `cocoderBin` with argv array only — never shell-string interpolation (PC-Q4=A). */
 export async function launchCocoderSubprocess(options: LaunchCocoderSubprocessOptions): Promise<string[]> {
   return spawnCocoderArgvCaptured({
@@ -54,4 +61,30 @@ export async function launchCocoderSubprocess(options: LaunchCocoderSubprocessOp
     args: options.args,
     env: options.env
   });
+}
+
+/** Launch/stop helper: capture exit status without requiring JSON stdout (real cocoder CLI). */
+export async function runCocoderSubprocess(options: LaunchCocoderSubprocessOptions): Promise<CocoderSubprocessResult> {
+  const child = spawnCocoderArgv({ ...options, stdio: ["ignore", "pipe", "pipe"] });
+  let stdout = "";
+  let stderr = "";
+
+  child.stdout?.on("data", (chunk) => {
+    stdout += String(chunk);
+  });
+  child.stderr?.on("data", (chunk) => {
+    stderr += String(chunk);
+  });
+
+  const exitCode = await new Promise<number>((resolve, reject) => {
+    child.once("error", reject);
+    child.once("close", (code) => resolve(code ?? 1));
+  });
+
+  return {
+    ok: exitCode === 0,
+    exitCode,
+    stdout,
+    stderr
+  };
 }

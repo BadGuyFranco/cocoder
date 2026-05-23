@@ -123,6 +123,8 @@ test('C-S9: POST /runs may invoke mock launch subprocess when launchExecutable i
       workspaceId: 'sample-app',
       workspaceRoot,
       prioritySlug: 'v0.1-foundation',
+      profile: 'cocoder/profiles/default.json',
+      route: 'cocoder/routes/default.json',
       runId: 'run-mock-launch',
       outcome: 'accepted'
     }
