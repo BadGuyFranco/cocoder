@@ -8,6 +8,12 @@
 *.env
 .env.*
 secrets/
+# Quinn credentials — belt-and-braces against accidental tracking outside
+# the workspace-private zone. The canonical home is
+# `cocoder/local/.quinn-credentials.json`, already covered by
+# cocoder/local/.gitignore; this catches mis-placed copies elsewhere in the
+# tree. The `*.example.json` template stays tracked (no leading `.`).
+.quinn-credentials.json
 # Exception: the install-template ships an empty secrets/ directory with its own
 # .gitignore so `cocoder init` lays down the correct ignore rule for adopters.
 # Without this negation, the `secrets/` rule above would hide that template file.

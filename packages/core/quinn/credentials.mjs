@@ -2,8 +2,12 @@
 //
 // Looks up email/password by (environment, email). Credentials live in an
 // untracked JSON file. Default location is
-//   cocoder/.quinn-credentials.json
-// which is added to .gitignore. An explicit --credentials path can override.
+//   cocoder/local/.quinn-credentials.json
+// which sits in the workspace-private zone (`cocoder/local/` is gitignored
+// except for its own `.gitignore` + `README.md`, so the credentials file is
+// hidden from git without any additional rule). An explicit `--credentials`
+// path can override. A tracked example template ships at
+// `cocoder/.quinn-credentials.example.json` so adopters can copy + fill.
 //
 // File schema:
 // {
@@ -19,8 +23,13 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
+// M4.7 (audit §H12) — single canonical path. Previously the constant said
+// `cocoder/orchestration/.quinn-credentials.json` while the comment + README
+// pointed at `cocoder/.quinn-credentials.json` (neither path was gitignored
+// for credentials). The path now lives in the workspace-private zone, which
+// the inner `cocoder/local/.gitignore` keeps out of git automatically.
 export const DEFAULT_CREDENTIALS_PATH = path.join(
-  'cocoder', 'orchestration', '.quinn-credentials.json'
+  'cocoder', 'local', '.quinn-credentials.json'
 );
 
 export class CredentialsStore {
