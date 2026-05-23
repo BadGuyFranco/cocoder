@@ -275,10 +275,23 @@ async function collectLaunchPreflight(repoRoot) {
 async function collectAdapterProbes(repoRoot) {
   const probeDir = path.join(repoRoot, 'cocoder/debug-runs/.adapter-probe');
   const workspaceProbePath = path.join(probeDir, `workspace-${process.pid}.tmp`);
-  const gitProbePath = path.join(repoRoot, '.git', `cocoder-debugger-git-probe-${process.pid}.tmp`);
+  // M4.14 (audit §H15): the git-write probe MUST stay inside `.git/` so
+  // sandboxes that can write to the workspace but not to git metadata are
+  // correctly detected. Pollution concern is addressed by isolating the
+  // probe into a dedicated `.git/cocoder-capability-probes/` subdirectory
+  // (mirrors the same scheme `launch.mjs probeRepoGitCommitCapability` uses)
+  // rather than dropping a file directly at the top of `.git/` where the
+  // name could be mistaken for git's own internals.
+  const gitProbeDir = path.join(repoRoot, '.git', 'cocoder-capability-probes');
+  const gitProbePath = path.join(gitProbeDir, `debugger-${process.pid}.tmp`);
   await mkdir(probeDir, { recursive: true });
   const workspaceWrite = await writeProbe(workspaceProbePath);
   const gitWrite = await writeProbe(gitProbePath);
+  // Best-effort cleanup of the probe subdir if the probe itself succeeded
+  // and removed the file (writeProbe rms on success). Failure-path leftovers
+  // are intentionally left for the next debugger invocation to retry — the
+  // dir is gitignored by git's own tracking semantics.
+  await rm(gitProbeDir, { recursive: true, force: true }).catch(() => {});
   return {
     codexCommand: await commandProbe('codex'),
     claudeCommand: await commandProbe('claude'),
@@ -301,7 +314,16 @@ async function writeProbe(filePath) {
 }
 
 async function commandProbe(command) {
-  return runCommand('/usr/bin/env', ['bash', '-lc', `command -v ${shellWord(command)}`], { maxBuffer: 64 * 1024 });
+  // M4.11 (audit §H9): previously `bash -lc "command -v <cmd>"`. The `bash
+  // -lc` form sources login files (`/etc/profile`, `~/.bash_profile`, …),
+  // which means an unrelated shell-config bug can corrupt the probe result,
+  // and (more pointedly) it violates the Oz "no shell-string interpolation
+  // of workspace paths" invariant in spirit. `/usr/bin/which` is a real
+  // binary on macOS + Linux that does the same job — exits 0 with the path
+  // when found, exits non-zero otherwise — without spawning a shell. The
+  // input `command` was already sanitised through `shellWord(...)`; passing
+  // it via argv to `which` removes shell parsing from the picture entirely.
+  return runCommand('/usr/bin/which', [shellWord(command)], { maxBuffer: 64 * 1024 });
 }
 
 async function collectConcurrencyMap({ repoRoot, runsDir, tmuxBin, currentRunDir }) {
