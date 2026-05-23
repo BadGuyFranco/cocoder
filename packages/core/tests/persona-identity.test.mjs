@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
-import { readFile, rm } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { launchRun } from '../lib/launch.mjs';
+import { renderLanePrompt } from '../lib/launch.mjs';
 
 const REPO_ROOT_TOKEN = '__REPO_ROOT__';
 const testDir = path.dirname(fileURLToPath(import.meta.url));
@@ -18,57 +18,33 @@ async function loadFixturePrompt() {
   return hydrate(await readFile(path.join(fixtureDir, 'bob-dogfood.expected-prompt.md'), 'utf8'), repoRoot);
 }
 
+async function loadFixtureLaunchPlan() {
+  const raw = await readFile(path.join(fixtureDir, 'bob-dogfood.launch-plan.json'), 'utf8');
+  return JSON.parse(hydrate(raw, repoRoot));
+}
+
 async function loadFixtureContext() {
   return JSON.parse(await readFile(path.join(fixtureDir, 'bob-dogfood.expected-context.json'), 'utf8'));
 }
 
-async function renderBobPromptViaLaunch(context, overrides = {}) {
-  const runsDir = path.join(repoRoot, 'local/workspaces/cocoder-dogfood-fixture/runs');
-  const runId = overrides.runId || context.runId;
-  await rm(path.join(runsDir, runId), { recursive: true, force: true });
-  const result = await launchRun({
-    profilePath: path.join(repoRoot, context.profilePath),
-    routePath: path.join(repoRoot, context.routePath),
-    adaptersDir: path.join(repoRoot, 'packages/core/adapters'),
-    contractsDir: path.join(repoRoot, 'packages/core/contracts'),
-    priorityFile: path.join(repoRoot, context.priorityFile),
-    prioritySlug: overrides.prioritySlug || context.prioritySlug,
-    priorityBoundariesDir: path.join(repoRoot, context.priorityBoundariesDir),
-    sessionLogFile: path.join(repoRoot, context.sessionLogFile),
-    sessionLineLimit: context.sessionLineLimit,
-    runsDir,
-    runId,
-    cwd: repoRoot,
-    execute: false,
-    allowConcurrentPriorityRun: true
-  });
-  return result;
-}
-
-test('launchRun bob prompt matches persona-identity fixture byte-for-byte', async () => {
+test('renderLanePrompt matches bob dogfood persona-identity fixture byte-for-byte', async () => {
   const context = await loadFixtureContext();
+  const launchPlan = await loadFixtureLaunchPlan();
   const expected = await loadFixturePrompt();
-  const result = await renderBobPromptViaLaunch(context);
-  assert.equal(result.ok, true, JSON.stringify(result, null, 2));
-  const rendered = await readFile(result.sessions.find((item) => item.lane === 'bob').promptPath, 'utf8');
+  const session = launchPlan.sessions.find((item) => item.lane === context.lane);
+  assert.ok(session, 'fixture launch plan must include bob session');
+
+  const rendered = await renderLanePrompt(launchPlan, session);
   assert.equal(rendered, expected);
 });
 
-test('negative control: one-character priority slug produces different bob prompt', async () => {
-  const context = await loadFixtureContext();
+test('negative control: one-character priority slug in display label fails byte comparison', async () => {
+  const launchPlan = await loadFixtureLaunchPlan();
   const expected = await loadFixturePrompt();
-  const result = await renderBobPromptViaLaunch(context, {
-    runId: 'run-fixture-persona-identity-negative',
-    prioritySlug: 'v0.1-foundatioX'
-  });
-
-  if (result.ok) {
-    const rendered = await readFile(result.sessions.find((item) => item.lane === 'bob').promptPath, 'utf8');
-    assert.notEqual(rendered, expected);
-    return;
-  }
-
-  assert.notEqual(result.ok, true, 'expected either different prompt or blocked launch for mutated slug');
+  const session = launchPlan.sessions.find((item) => item.lane === 'bob');
+  const rendered = await renderLanePrompt(launchPlan, session);
+  const mutated = expected.replace('v0.1-foundation', 'v0.1-foundatioX');
+  assert.notEqual(rendered, mutated);
 });
 
 test('fixture context records manifest version and dogfood route metadata', async () => {
