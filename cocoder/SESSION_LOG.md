@@ -14,6 +14,31 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-23 — **Sub-Playbook C Expand closure (metadata); C-M1..C-M3 + Expand Checkpoint ticked**
+
+**Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
+
+**Outcomes:**
+- Closure PR flips all C-M checkboxes + Expand Checkpoint; Master README + PRIORITIES.md mirrors updated.
+- Sub-Playbook C status: **Expand complete; Refine pending (founder)**. Do not start C Refine autonomously.
+
+**Next:** Founder C Refine (P-R1 two-workspace daily use, P-R4 UX restraint, pen-test checklist sign-off).
+
+---
+
+## 2026-05-23 — **Sub-Playbook C Expand Batch 4 merged (PR #47 → `f46dcff`); Priorities/Runs/Inspector + e2e; suite 335/335 + dashboard 8/8**
+
+**Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
+
+**Outcomes:**
+- PR #47 squash-merged to `main` @ **`f46dcff`**; CI green × 2; core **335/335** (+5); oz-dashboard **8/8** (+3).
+- `GET /workspaces/:id/priorities`; Priorities + Runs (7s polling, visibility pause) + Run Inspector pages.
+- `oz-e2e.test.mjs`; `docs/oz-security-checklist.md` (C-D1 amendment verbatim); `docs/oz-launch.md` (C-M3.1).
+
+**Next:** C Expand closure PR (metadata only).
+
+---
+
 ## 2026-05-23 — **Sub-Playbook C Expand Batch 3 merged (PR #45 → squash); oz-dashboard + Workspaces/Settings; suite 330/330 + dashboard 5/5**
 
 **Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
