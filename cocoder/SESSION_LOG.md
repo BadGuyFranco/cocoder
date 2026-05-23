@@ -14,16 +14,27 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
-## 2026-05-23 — **Sub-Playbook C Solve Batch 2 (C-S3/C-S4); PR pending**
+## 2026-05-23 — **Sub-Playbook C Solve Batch 3 (C-S5/C-S7); PR pending**
 
 **Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
 
 **Outcomes:**
-- C-S3 Origin/Host allowlist middleware + `oz-security-origin-host.test.mjs` (inject).
-- C-S4 CSRF via `GET /auth/session` + `x-oz-csrf-token` on POST/PUT/DELETE + `oz-security-csrf.test.mjs`.
-- C-S2 auth tests updated: valid Host on POST Bearer probes; POST success moved to C-S4.
+- C-S5 `GET/PUT /settings` with `resolveSecrets: false` on read; PUT stores literals verbatim (matches `config set`).
+- C-S7 `spawn-launcher.ts` + static grep + argv integration probe in `oz-security-spawn.test.mjs`.
 
-**Next:** Merge Batch 2 PR → Batch 3 (C-S5/C-S7).
+**Next:** Merge Batch 3 PR → Batch 4 (C-S6/C-S8/C-S9 closes Solve).
+
+---
+
+## 2026-05-23 — **Sub-Playbook C Solve Batch 2 merged (PR #37 → `0df3cf8`); C-S3/C-S4 green; suite 286/286**
+
+**Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
+
+**Outcomes:**
+- PR #37 squash-merged to `main` @ **`0df3cf8`**; CI green; suite **286/286** (+12 from 274).
+- C-S3 Origin/Host + C-S4 CSRF; `GET /auth/session` bootstrap.
+
+**Next:** Batch 3 — C-S5 settings redaction + C-S7 spawn argv.
 
 ---
 

@@ -3,6 +3,7 @@ import { assertLoopbackHost } from "./bind.js";
 import { createCsrfToken, OZ_CSRF_HEADER, validateCsrfToken } from "./csrf.js";
 import { STATE_CHANGING_METHODS, validateOriginHost } from "./origin-host.js";
 import { DEFAULT_OZ_PORT, resolveOzPort } from "./port.js";
+import { registerSettingsRoutes } from "./settings.js";
 import { ensureOzToken } from "./token.js";
 
 export type OzServerOptions = {
@@ -71,6 +72,8 @@ export async function createOzServer(options: OzServerOptions): Promise<OzServer
       return;
     }
   });
+
+  await registerSettingsRoutes(app, options.cocoderHome);
 
   // Solve-phase stubs for state-changing auth probes (Expand replaces with real handlers).
   app.post("/runs", async () => ({ ok: true, stub: true }));
