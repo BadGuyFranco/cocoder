@@ -946,9 +946,19 @@ async function handleConfig(tokens) {
     ? path.resolve(args.cocoderHome)
     : await resolveInstallRoot(process.cwd());
   if (subcommand === 'get') {
+    // M4.5 (audit §H1): `config get` defaults to UNRESOLVED secret references so
+    // `${env:OPENAI_API_KEY}` does not leak to stdout / JSON output. Pass
+    // `--reveal-secrets true` to materialize values (useful when diagnosing
+    // resolver issues).
+    const revealSecrets = args.revealSecrets === 'true' || args.revealSecrets === true;
+    const resolveOptions = {
+      cocoderHome,
+      workspaceRoot: args.workspaceRoot,
+      resolveSecrets: revealSecrets
+    };
     const result = key
-      ? await getConfigValue(key, { cocoderHome, workspaceRoot: args.workspaceRoot })
-      : (await resolveConfig({ cocoderHome, workspaceRoot: args.workspaceRoot })).config;
+      ? await getConfigValue(key, resolveOptions)
+      : (await resolveConfig(resolveOptions)).config;
     console.log(JSON.stringify(result, null, 2));
     return;
   }
@@ -994,7 +1004,7 @@ function parseArgs(tokens) {
     if (!next || next.startsWith('--')) args[key] = 'true';
     else {
       args[key] = path.resolve(next);
-      if (['contract', 'prioritySlug', 'status', 'reason', 'summary', 'runId', 'jobId', 'sessionId', 'confirmRunId', 'mode', 'followIntervalSeconds', 'maxCycles', 'execute', 'deferStart', 'stopTerminalSessions', 'founderApprovedTeardown', 'sessionLineLimit', 'owner', 'nonce', 'now', 'ttlMs', 'staleMs', 'timeoutMs', 'thresholdDays', 'maxChars', 'maxEntries', 'maxEntryLines', 'maxEntryChars', 'allowLive', 'cdpUrl', 'socketName', 'socketPath', 'lane', 'lanes', 'message', 'command', 'tmuxBin', 'noSession', 'supersededLane', 'resolvingLane', 'basis', 'findings', 'evidence', 'id', 'createdBy', 'personaPaths', 'sessionLog', 'topologyOption', 'requiredPersonas', 'autoAttachAddedLanes', 'workspaceSlug', 'developerMode', 'allowConcurrentPriorityRun'].includes(key)) args[key] = next;
+      if (['contract', 'prioritySlug', 'status', 'reason', 'summary', 'runId', 'jobId', 'sessionId', 'confirmRunId', 'mode', 'followIntervalSeconds', 'maxCycles', 'execute', 'deferStart', 'stopTerminalSessions', 'founderApprovedTeardown', 'sessionLineLimit', 'owner', 'nonce', 'now', 'ttlMs', 'staleMs', 'timeoutMs', 'thresholdDays', 'maxChars', 'maxEntries', 'maxEntryLines', 'maxEntryChars', 'allowLive', 'cdpUrl', 'socketName', 'socketPath', 'lane', 'lanes', 'message', 'command', 'tmuxBin', 'noSession', 'supersededLane', 'resolvingLane', 'basis', 'findings', 'evidence', 'id', 'createdBy', 'personaPaths', 'sessionLog', 'topologyOption', 'requiredPersonas', 'autoAttachAddedLanes', 'workspaceSlug', 'developerMode', 'allowConcurrentPriorityRun', 'revealSecrets'].includes(key)) args[key] = next;
       index += 1;
     }
   }
@@ -1056,7 +1066,7 @@ function printHelp() {
   console.log(`CoCoder orchestration core CLI
 
 Commands:
-  config get [key] [--workspace-root PATH] [--cocoder-home PATH]
+  config get [key] [--workspace-root PATH] [--cocoder-home PATH] [--reveal-secrets true]
   config set <key> <value> [--cocoder-home PATH]
   validate-contracts [--contracts-dir PATH]
   validate-file --contract ID --file PATH [--contracts-dir PATH]
