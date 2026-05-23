@@ -1,9 +1,13 @@
 # CoCoder Configuration
 
 **Status:** Draft, implemented by Sub-Playbook A Solve  
-**Last verified:** 2026-05-22 (Sub-Playbook E dogfood exercised the workspace-root path end-to-end across 4 autonomous runs)
+**Last verified:** 2026-05-23 (Sub-Playbook E dogfood exercised the workspace-root path end-to-end across 7 autonomous runs)
 
 CoCoder configuration is split across tracked defaults and private `local/` overrides. Git can update the engine and templates without overwriting user preferences because real preferences live only in ignored `local/` paths.
+
+## Invocation
+
+CoCoder v0.1 is **terminal-only**. Every CLI flow runs through `pnpm exec cocoder <subcommand> [...]` from a shell — there are no double-click `.command` wrappers, Finder shortcuts, or GUI launchers in this release. The decision to ship terminal-only (rather than restoring CoBuilder's `.command` wrappers) is recorded in [ticket 0001](../cocoder/tickets/closed/0001-cocoder-command-wrapper-decision.md). If your workflow needs a one-click entry point, wrap the relevant `pnpm exec cocoder ...` invocation in a personal shell alias, Raycast script, or Automator action.
 
 ## Load Order
 

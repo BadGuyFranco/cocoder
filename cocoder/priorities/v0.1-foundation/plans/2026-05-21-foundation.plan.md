@@ -173,7 +173,7 @@ Mergeable `main` branch with:
     - [ ] E2.2e.9 `lead-rescue.test.mjs` + fixture `fixtures/lead-rescue/valid-supersession-record.json`
     - [ ] E2.2e.10 `session-wrap.test.mjs` (wrap audit, handoff consistency)
     - [ ] E2.2e.11 `repo-state.test.mjs` (add-lanes repo audit)
-    - [ ] E2.2e.12 `launch-command.test.mjs` (wrapper validity — port AFTER M4.3 path rename)
+    - [x] E2.2e.12 `launch-command.test.mjs` — **Retired 2026-05-23 (Path B per ticket 0001).** CoCoder ships terminal-only; the upstream `.command` double-click wrappers were intentionally dropped during extraction and are not coming back. The ported test file (which only asserted wrapper-script validity) was deleted; resolution recorded in `tickets/closed/0001-cocoder-command-wrapper-decision.md`.
     - [ ] E2.2e.replace Replace shallow `orchestration-improvements.test.mjs` source-grep with runtime launch-behavior fixtures (dry-run + execute-with-mock-transport per upstream `launch.test.mjs:108-109`)
 - [x] **E2.3** Rename `COB_ORCH_*` → `COCODER_ORCH_*` throughout (`packages/core/lib/env.mjs` exports constants; no hardcoded literals). Validation: `rg 'COB_ORCH_' packages/` returns zero matches.
 - [x] **E2.4** Generalize CoBuilder-specific paths: introduce `packages/core/lib/paths.mjs` (already created in Solve); rename `cobuilder-build` → `cocoder` across paths. Validation: `rg 'cobuilder-build' packages/ docs/ templates/` returns zero matches **AND** `rg 'cobuilder' packages/ --glob '!**/*.example.*'` returns zero matches → *closed 2026-05-22 by M4.4: both gates return 0 hits; the upstream CoBuilder attribution in `packages/core/quinn/README.md` boundary note is intentional (CapitalCase, doesn't match the gate).*
@@ -340,7 +340,7 @@ Mergeable `main` branch with:
 ## Success Criteria
 
 - [x] `pnpm install` succeeds on a clean clone of CoCoder
-- [ ] `pnpm -r test` green on macOS-14 Node 20 (CI) — includes ported tests E2.2e.1–E2.2e.12
+- [ ] `pnpm -r test` green on macOS-14 Node 20 (CI) — includes ported tests E2.2e.1–E2.2e.11 (E2.2e.12 retired 2026-05-23 per ticket 0001 Path B)
 - [x] `pnpm -F core test config-resolver` green (Solve fixtures — inline; fixture trees pending M4 if Q7-Standard chosen)
 - [x] `cocoder validate-contracts` exits 0
 - [x] `cocoder config get/set` round-trips successfully
