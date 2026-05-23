@@ -125,7 +125,7 @@ A public CoCoder release at which a stranger can:
 | ID | Question | Blocks | Recommended default |
 |---|---|---|---|
 | **PB-Q1** | Workspace template: author `templates/workspace-cocoder/` as a static fileset, or generate it from the live dogfood `<CoCoder>/cocoder/` via a regenerator script (analogous to M4.12's `regenerate.mjs`)? | B-M2 | **A — Static fileset.** | **Answered 2026-05-23: A** |
-| **PB-Q2** | Persona library completeness for v0.1: ship ALL 7 personas (oscar/ian/bob/talia/quinn/phil/verifier), or a v0.1 minimum subset (e.g. oscar/bob/talia + Phil example only) with the rest deferred to v0.2? | B-M1 | **B — Minimum subset (oscar/bob/talia + Phil example).** ADR-worthy scope line. | **Answered 2026-05-23: B** (no HOLD FOR GO — defers quinn/ian/verifier to v0.2 per recommended default) |
+| **PB-Q2** | Persona library completeness for v0.1: ship ALL 7 personas (oscar/ian/bob/talia/quinn/phil/verifier), or a v0.1 minimum subset (e.g. oscar/bob/talia + Phil example only) with the rest deferred to v0.2? | B-M1 | **B — Minimum subset (oscar/bob/talia + Phil example).** ADR-worthy scope line. | **Answered 2026-05-23: B.** **Chosen interpretation (founder accepted 2026-05-23 post-Expand):** ship Oscar, Bob, Talia, and Phil as the active v0.1 library (manifest + playbooks + routes where applicable); ship Quinn, Ian, and Verifier as **inert schema-conformant stubs only** (`reviewStatus: draft`, `allowedRoutes: []`, explicit v0.2 deferral in boundaries) so `validate-personas` passes without implying adopters get runnable routes. Stubs live in the install repo only; excluded from `templates/workspace-cocoder/` so `cocoder init` does not materialize them. |
 | **PB-Q3** | Phil example shape: ship as schema-only stub (a sample `phil.json` + minimal `phil.md` documenting the contract), or as a full working example (real prompts + a runnable example route adopters can copy)? | B-M1.5 | **B — Full working example.** | **Answered 2026-05-23: B** |
 | **PB-Q4** | `docs/getting-started.md`: author a B-side stub now (so `cocoder init` ships with at least minimal external-user docs) or defer entirely to Sub-Playbook D (and ship `cocoder init` with only `--help` text in v0.1)? | B-Final-Check | **A — B-side stub.** | **Answered 2026-05-23: A** |
 
@@ -189,7 +189,7 @@ A public CoCoder release at which a stranger can:
 
 ### Milestone B-M1 — Persona library expansion
 
-Per PB-Q2 (recommended B — minimum subset), the v0.1 scope is **add Oscar; defer Quinn/Ian/verifier to v0.2; ship Phil per PB-Q3**.
+Per PB-Q2 (B — minimum subset), the v0.1 scope is **Oscar + Bob + Talia + Phil (active library)**; **Quinn/Ian/Verifier ship as inert install-repo contract stubs only** (no manifest entries, no public playbooks, no template materialization; full routes deferred to v0.2).
 
 - [x] B-M1.1 Borrow `oscar.json` + `prompts/personas/oscar.md` from CoBuilder. Scrub per PORT-NOTES vocabulary (priority-slug, `allowedRoutes`). Log in PORT-NOTES.
 - [x] B-M1.2 Borrow `session-wrap.md` shared fragment if Oscar's manifest entry requires it (per Sub-Playbook E PORT-NOTES note on opportunistic borrow).
@@ -220,7 +220,7 @@ Per PB-Q1 (recommended A — static fileset), `templates/workspace-cocoder/` is 
 
 - [ ] ARCHITECTURE.md persona table cross-referenced from `cocoder/personas/AGENTS.md`
 - [ ] Master README "Key files" cross-reference Sub-Playbook B Witness back-reference to Sub-Playbook E PORT-NOTES
-- [ ] PRIORITIES.md slim-table row + parser-readable entry refreshed when B status flips Active → Final Check → Complete
+- [x] PRIORITIES.md slim-table row + parser-readable entry refreshed when B status flips Active → Final Check → Complete — *Expand merge 2026-05-23; Final Check flip pending Refine.*
 
 **Checkpoint:** [x] All B-M tasks complete; persona regression test green; workspace template instantiates cleanly via `cocoder init` on a fresh test repo; PB-Q2 / PB-Q3 deferrals (Quinn/Ian/verifier full routes) documented in `plans/v0.2-backlog.md` with rationale.
 
@@ -259,6 +259,7 @@ Per PB-Q1 (recommended A — static fileset), `templates/workspace-cocoder/` is 
 | 2026-05-21 | Persona identity preservation is Sub-Playbook B's riskiest piece (not extraction mechanics) | A already proves extraction mechanics for non-prompt files; persona prompts have a distinct failure mode (drift) | Treat prompts as just-another-file (rejected — V1 had this as an orphan mitigation) |
 | 2026-05-23 | `cocoder init` idempotency added as a second Solve invariant | Sub-Playbook A proved the `--merge` PLANNER but not the apply step; running `init` twice without a regression net is exactly the class of bug that bites first-time adopters. The two invariants are complementary: persona-identity protects what we ship, idempotency protects how we install it. | Treat init as just-another-Expand-task (rejected — Solve is where the riskiest invariants live, and the apply step has no prior proof) |
 | 2026-05-23 | Witness audit + Interrogate + Solve target authored together at Activation (this commit), Expand deferred to next session | The W/I/S triad is decision-dense; doing it as one piece lets the founder evaluate PB-Q1..PB-Q4 against a coherent picture rather than four detached questions. Expand is execution-dense and parallelizable; better in its own session(s) | Single-session Witness only (rejected — wastes round trips); land everything in one giant PR (rejected — Expand needs founder gate on PB-Q1..PB-Q4 first) |
+| 2026-05-23 | PB-Q2=B interpreted as inert schema stubs for Quinn/Ian/Verifier (not zero files) | `validate-personas` requires all seven persona contract files (`REQUIRED_PERSONAS` in `packages/core/lib/personas.mjs`). Omitting the three deferred personas would leave CI red on every `validate-personas` run. Inert stubs (`allowedRoutes: []`, `reviewStatus: draft`, boundary text citing v0.2 deferral) satisfy the validator without shipping manifest entries, public playbooks, routes, or template copies — so external adopters via `cocoder init` never see them. | Omit files entirely and narrow `REQUIRED_PERSONAS` to the v0.1 subset (rejected — changes core validation surface for a scope shortcut); ship full Quinn/Ian/Verifier library in v0.1 (rejected — PB-Q2 scope line) |
 
 ---
 
