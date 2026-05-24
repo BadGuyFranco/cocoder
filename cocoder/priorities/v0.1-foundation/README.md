@@ -130,7 +130,7 @@ A public git repository (`CoCoder`) with: working `cocoder` CLI, Oz dashboard, w
 | Multi-machine path portability breaks Oz workspace registry | Active | Token-based path resolution (`${COCODER_HOME}`, `${root:name}`) — proven in Sub-Playbook A Solve | See ARCHITECTURE.md "Multi-machine path portability" |
 | Oz daemon = local attack surface | Active | Security model in ARCHITECTURE.md "Oz daemon security model"; implemented in Sub-Playbook C Solve | Localhost bind, session token, CSRF, Origin check, audit log, no shell interpolation |
 | Persona identity drift during port (CoBuilder "session 583" class) | Active | Regression test in Sub-Playbook B: composed prompts contain persona-identity argv + playbook excerpt verbatim | Mitigation now has an owner task |
-| Dogfood circularity (Sub-Playbook D needs A+B+C done) | Mitigated | Master Progress table enforces sequencing; D cannot Activate until C Complete | |
+| Dogfood circularity (Sub-Playbook D needs A+B+C done) | Mitigated | D activated 2026-05-24 with parallel-tracked Refines; Witness audits publish-readiness against final B/C Expand artifacts | |
 | Public-readiness gate failures at the last minute (secrets in history, `/Volumes/...` paths in templates, CoBuilder runtime path refs in prompts) | Active | Automated gates in Sub-Playbook D Solve: `gitleaks`, path-scrubber, prompt-scrubber, dependency check — runs in CI on every push | |
 | API key sprawl across Syncthing-replicated machines | Active | `local/secrets/` documented as encrypted-at-rest manual today; keychain integration deferred to v0.2; warning in `docs/faq.md` | |
 | External adoption fails the "stranger test" | Active | Sub-Playbook D Refine = recruited non-CoCoder dev follows getting-started in ≤30 min without founder help | |
@@ -139,7 +139,7 @@ A public git repository (`CoCoder`) with: working `cocoder` CLI, Oz dashboard, w
 ### Reuse check
 
 - [x] CoBuilder `orchestration/core/lib`, `adapters`, `contracts` — extracted, not rewritten (ADR-0004). 4 of 12 audit §4 test ports closed via Sub-Playbook E orchestration (E2.2e.1 `core.test.mjs`, E2.2e.2 `dispatch.test.mjs`, E2.2e.3 `adapters.test.mjs`, E2.2e.4 `composition.test.mjs`); 8 remaining (E2.2e.5–E2.2e.12).
-- [ ] CoBuilder `ORCH DEBUGGER.command` evidence patterns — to be reused by Oz Run Inspector in Sub-Playbook C *(un-checked per audit §H10: Sub-Playbook C not started; previously marked done in error)*
+- [x] CoBuilder `ORCH DEBUGGER.command` evidence patterns — reused by Oz Run Inspector (Sub-Playbook C Expand, C-M2.6 / PR #47 → `f46dcff`)
 - [x] Cofounder WISER Playbook Author — execution discipline for every sub-Playbook
 - [x] Sub-Playbook E (Dogfood ramp) borrowed Bob + Talia personas + 6 shared prompt fragments from CoBuilder; Sub-Playbook B will extend (not redo) per Sub-Playbook E Final Check item
 
@@ -317,9 +317,9 @@ Tracked in [`pending-decisions.md`](./pending-decisions.md). **All resolved 2026
 
 ## Progress
 
-**Last worked:** 2026-05-23 (Sub-Playbook C Expand complete — PRs #42–#47; suite 335/335 + dashboard 8/8)
-**Current Canon:** v0.1 completion phase. Sub-Playbook F Complete. Sub-Playbook B Expand merged — B Refine pending (founder). **Sub-Playbook C Active — Expand complete; C Refine pending (founder).** Test count: **335 / 335 / 0 fail / 0 skipped** (+ oz-dashboard **8/8**).
-**Next action:** C Refine (founder-only). B Refine remains founder-only parallel track.
+**Last worked:** 2026-05-24 (Sub-Playbook D activated — Witness/Interrogate/Solve-target authored)
+**Current Canon:** v0.1 completion phase. Sub-Playbook F Complete. B/C Expand merged — Refines parallel-tracked (founder). **Sub-Playbook D Active — Solve pending.** Test count: **335 / 335 / 0 fail / 0 skipped** (+ oz-dashboard **8/8**).
+**Next action:** D Solve (D-S2 CI gates, then Expand doc batches, then D-S1 internal proxy). B/C Refines remain founder-only parallel tracks.
 
 ### Sub-Playbook status
 
@@ -330,7 +330,7 @@ Tracked in [`pending-decisions.md`](./pending-decisions.md). **All resolved 2026
 | B. Personas + workspace template | **Active — Expand merged (`9bf2433`); Refine pending (founder)** | PR #33 merged; PB-Q1..PB-Q4 answered; B-S1..B-M3 green; suite 265/265 | B Refine (founder) | [`2026-05-21-personas-template.plan.md`](./plans/2026-05-21-personas-template.plan.md) |
 | **F. Structural cleanup** | **Complete (2026-05-23)** | Final Check closed; PR #28 merged `58e1fe2`; suite 249/249; compose-launch diff clean | — | [`2026-05-23-structural-cleanup.plan.md`](./plans/2026-05-23-structural-cleanup.plan.md) |
 | **C. Oz MVP** | **Active — Expand complete (2026-05-23); Refine pending (founder)** | C-M1..C-M3 green (PRs #42–#47 → `f46dcff`); suite 335/335 + dashboard 8/8 | C Refine (founder) | [`2026-05-21-oz-mvp.plan.md`](./plans/2026-05-21-oz-mvp.plan.md) |
-| D. Docs + dogfood + publish | Draft | — | Awaits A, B, C Complete | [`2026-05-21-docs-publish.plan.md`](./plans/2026-05-21-docs-publish.plan.md) |
+| **D. Docs + dogfood + publish** | **Active — Witness/Interrogate/Solve-target authored (2026-05-24); Solve pending** | PD-Q1..PD-Q7 answered; suite 335/335 + dashboard 8/8 | D Solve (D-S2 gates → Expand docs → D-S1 proxy) | [`2026-05-21-docs-publish.plan.md`](./plans/2026-05-21-docs-publish.plan.md) |
 | **v0.1 Completion Plan** (cross-cuts A, B, ticket 0001) | **Active** | Items 1 + 2 CLOSED; Item 2.5 F Complete; Item 3 W/I/S authored | PB-Q1..PB-Q4 + B Solve | [`2026-05-23-v0.1-completion.plan.md`](./plans/2026-05-23-v0.1-completion.plan.md) |
 
 ### Canon roll-up (Master only)
@@ -340,7 +340,7 @@ Tracked in [`pending-decisions.md`](./pending-decisions.md). **All resolved 2026
 | Witness | 1 | 1 | Complete |
 | Interrogate | 13 decisions + 9 risks | 13 + 0 | Complete (decisions locked; risks active) |
 | Solve | 2 | 2 | Complete |
-| Expand | 6 sub-Playbooks (A, **E**, B, **F**, C, D) | 2 (E Complete 2026-05-23; A Refine-complete; B Expand merged; F Complete; **C Expand complete**) | Active |
+| Expand | 6 sub-Playbooks (A, **E**, B, **F**, C, D) | 2 (E + F Complete; A Refine-complete; B + C Expand merged; **D activated**) | Active |
 | Refine | 4 | 0 | Not started (gated on A Complete) |
 | Final Check | 13 | 0 | Not started |
 

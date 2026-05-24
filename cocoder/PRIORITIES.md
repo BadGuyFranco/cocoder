@@ -15,7 +15,7 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 
 | Slug | Description | Status | Canon | Owner | Blocked on |
 |---|---|---|---|---|---|
-| [`v0.1-foundation`](./priorities/v0.1-foundation/README.md) | Ship CoCoder v0.1 — extraction, Oz MVP, docs, public publish | Active | Expand — **Sub-Playbook C Expand complete**; C Refine next (founder). Suite **335/335** (+ dashboard 8/8). | Bob + founder | **Next:** C Refine (founder). B Refine pending (founder). |
+| [`v0.1-foundation`](./priorities/v0.1-foundation/README.md) | Ship CoCoder v0.1 — extraction, Oz MVP, docs, public publish | Active | Expand — **Sub-Playbook D activated**; D Solve next. Suite **335/335** (+ dashboard 8/8). | Bob + founder | **Next:** D Solve. B/C Refines parallel (founder). |
 
 ## Draft
 
@@ -44,7 +44,7 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 3. **Sub-Playbook B activation** — Witness/Interrogate/Solve-target for adopter onboarding (workspace template + `cocoder init` + getting-started doc). Multi-session work; the marquee remaining v0.1 deliverable.
 
 **Recommended next-session ordering:** Item 1 → Item 2 (in batches) → Item 3 (Witness/Interrogate only). The completion plan has an appendix with a verbatim resume prompt for fresh-session pickup. **Done = ticket 0001 closed, M4 free-wins all `[x]` or marked deferred-to-v0.2, Sub-Playbook B Witness populated + Status flipped to Active.**
-**Status:** Active — Refine. Sub-Playbook F Complete 2026-05-23. Sub-Playbook B Expand merged (PR #33 → `9bf2433`). **Sub-Playbook C Expand complete 2026-05-23** (PRs #42–#47 → `f46dcff`; C-M1..C-M3). B Refine pending (founder). C Refine pending (founder). Suite **335/335** (+ oz-dashboard **8/8**). See [`priorities/v0.1-foundation/README.md`](./priorities/v0.1-foundation/README.md).
+**Status:** Active — Refine. Sub-Playbook F Complete 2026-05-23. Sub-Playbook B Expand merged (PR #33 → `9bf2433`). Sub-Playbook C Expand complete 2026-05-23 (PRs #42–#47 → `f46dcff`). **Sub-Playbook D activated 2026-05-24** (Witness/Interrogate/Solve-target). B/C Refines parallel-tracked (founder). Suite **335/335** (+ oz-dashboard **8/8**). See [`priorities/v0.1-foundation/README.md`](./priorities/v0.1-foundation/README.md).
 
 ### [v0.2-adapter-extensibility](./priorities/v0.2-adapter-extensibility/README.md)
 **Owner:** Bob + founder
