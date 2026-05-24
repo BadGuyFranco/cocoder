@@ -14,6 +14,20 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-24 — **Sub-Playbook D activated (Witness/Interrogate/Solve-target); PD-Q1..PD-Q7 answered**
+
+**Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-docs-publish.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-docs-publish.plan.md)
+
+**Outcomes:**
+- Full Witness audit table against `dbeb740` (335/335 + dashboard 8/8); PD-Q1..PD-Q7 answered (PD-Q1=B; all others A).
+- Solve target: D-S1 internal-proxy stranger readiness + D-S2 public-readiness CI gates.
+- Plan-vs-reality reconciliations: preconditions, M4 publish scope, doc inventory, ci.yml-not-scripts/gates/.
+- Master README reuse-check row 142 flipped (C Run Inspector); D row Active in Progress + PRIORITIES.md.
+
+**Next:** D Solve — wire gitleaks + FAQ/LICENSE gates (D-S2); Expand doc batches; D-S1 internal proxy. Do not start external stranger test until D-S1 green.
+
+---
+
 ## 2026-05-23 — **Sub-Playbook C Expand closure (metadata); C-M1..C-M3 + Expand Checkpoint ticked**
 
 **Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
