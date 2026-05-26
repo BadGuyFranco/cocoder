@@ -7,7 +7,8 @@
   "writePolicy": "read-only",
   "allowedRoutes": [
     "dogfood-port-tests",
-    "phil-workshop-toolsmith"
+    "phil-workshop-toolsmith",
+    "oscar-lead"
   ],
   "resultContract": "job-result",
   "evidenceResponsibilities": [

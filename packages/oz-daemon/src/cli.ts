@@ -2,6 +2,7 @@
 import path from "node:path";
 import { startOzDaemon } from "./server.js";
 import { resolveOzPort } from "./port.js";
+import { resolveLaunchBin } from "./launch-bin.js";
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
@@ -16,8 +17,20 @@ async function main(): Promise<void> {
   }
 
   const port = resolveOzPort({ env: process.env });
-  const app = await startOzDaemon({ cocoderHome, port, env: process.env });
-  process.stdout.write(`${JSON.stringify({ ok: true, host: "127.0.0.1", port, cocoderHome })}\n`);
+  const launchBin = resolveLaunchBin(cocoderHome);
+  const app = await startOzDaemon({
+    cocoderHome,
+    port,
+    env: process.env,
+    // Real launch/stop: spawn the directly-executable cocoder bin with an argv
+    // array (no shell). launchArgvPrefix stays empty so runs.ts uses the
+    // exit-status path (runCocoderSubprocess), not the argv-capture path.
+    launchExecutable: launchBin,
+    stopExecutable: launchBin
+  });
+  process.stdout.write(
+    `${JSON.stringify({ ok: true, host: "127.0.0.1", port, cocoderHome, launchWired: Boolean(launchBin) })}\n`
+  );
 
   const shutdown = async () => {
     await app.close();

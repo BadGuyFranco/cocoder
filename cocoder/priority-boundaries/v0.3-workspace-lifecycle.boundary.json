@@ -1,0 +1,24 @@
+{
+  "id": "v0.3-workspace-lifecycle-oscar-lead",
+  "prioritySlug": "v0.3-workspace-lifecycle",
+  "label": "v0.3-workspace-lifecycle oscar-lead boundary (read-only proof-of-life; Bob writer boundary ready for build mode)",
+  "routeIds": ["oscar-lead"],
+  "writerLanes": {
+    "bob": {
+      "allowed": [
+        "cocoder/local/scratch/"
+      ],
+      "excluded": [
+        "packages/",
+        "cocoder/decisions/",
+        "cocoder/priorities/",
+        "docs/",
+        "templates/",
+        ".github/",
+        "ARCHITECTURE.md",
+        "package.json",
+        "pnpm-lock.yaml"
+      ]
+    }
+  }
+}
