@@ -17,9 +17,9 @@
       "persona": "bob",
       "adapter": "codex",
       "adapterProfile": "gpt-5.5",
-      "canWrite": false,
-      "writeBoundary": [],
-      "excludedWriteBoundary": [],
+      "canWrite": true,
+      "writeBoundary": ["cocoder/local/scratch/"],
+      "excludedWriteBoundary": ["packages/", "cocoder/decisions/", "cocoder/priorities/", "docs/", "templates/", ".github/", "ARCHITECTURE.md", "package.json", "pnpm-lock.yaml"],
       "resultContract": "job-result",
       "evidenceClassDefault": "B"
     },
