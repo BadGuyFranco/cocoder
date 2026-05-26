@@ -9,8 +9,11 @@ type LaunchForm = {
 };
 
 const defaultLaunchForm = (): LaunchForm => ({
-  profile: "cocoder/profiles/cocoder-dogfood.profile.json",
-  route: "cocoder/routes/dogfood-port-tests.json"
+  // Default to the Oscar-led pair so "pick a priority -> Launch" spawns an
+  // Oscar/Bob orchestration session. Editable per launch; the bob-lead
+  // dogfood-port-tests route remains available by typing it here.
+  profile: "cocoder/profiles/cocoder-oscar.profile.json",
+  route: "cocoder/routes/oscar-lead.json"
 });
 
 export function PrioritiesPage() {
