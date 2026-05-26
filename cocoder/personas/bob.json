@@ -6,7 +6,8 @@
   "launchModel": "long-lived-visible",
   "writePolicy": "task-scoped",
   "allowedRoutes": [
-    "dogfood-port-tests"
+    "dogfood-port-tests",
+    "oscar-lead"
   ],
   "resultContract": "job-result",
   "evidenceResponsibilities": [

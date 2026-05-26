@@ -1,4 +1,7 @@
 import { randomBytes } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { createRequire } from "node:module";
 import type { FastifyInstance } from "fastify";
 import type { OzAuditRecord } from "schemas";
 import {
@@ -13,6 +16,36 @@ import {
   resolveWorkspaceEntry
 } from "./registry.js";
 import { launchCocoderSubprocess, runCocoderSubprocess } from "./spawn-launcher.js";
+
+const require = createRequire(import.meta.url);
+const { isTerminalRunStatus } = require("../../core/lib/run-status.mjs") as {
+  isTerminalRunStatus: (status: unknown) => boolean;
+};
+
+/**
+ * Terminal-state command guard (improvement `debugger-terminalized-pane-mutation`,
+ * 2026-05-26). The core CLI already refuses run-bound mutating actions on a
+ * terminal run (commit, lead-support-commit, send-message, add-lanes,
+ * continuation). This is the daemon-side mirror: a `POST /runs` that explicitly
+ * targets an existing terminal run is refused so new atom work cannot be bound
+ * to a closed run over HTTP. Stop (`DELETE`) and observation (`GET .../evidence`)
+ * stay available — teardown and read-only audit are allowed on terminal runs.
+ */
+async function resolveTerminalRunStatus(
+  cocoderHome: string,
+  runId: string
+): Promise<{ terminal: boolean; status: string | null } | null> {
+  const location = await resolveRunLocation(cocoderHome, runId);
+  if (!location) return null;
+  try {
+    const raw = await readFile(path.join(location.runDir, "status.json"), "utf8");
+    const parsed = JSON.parse(raw) as { status?: string };
+    const status = parsed.status ?? null;
+    return { terminal: isTerminalRunStatus(status), status };
+  } catch {
+    return { terminal: false, status: null };
+  }
+}
 
 export type LaunchRunsBody = {
   workspaceId: string;
@@ -137,6 +170,24 @@ export async function registerRunsRoutes(app: FastifyInstance, options: Register
     const body = request.body as LaunchRunsBody | undefined;
     if (!body?.workspaceId) {
       throw new Error("workspaceId is required");
+    }
+
+    // Terminal-state command guard: refuse new atom work bound to an existing
+    // terminal run. A fresh run (no runId, or a runId that resolves to nothing
+    // yet) is allowed; stop/observe remain on their own endpoints.
+    if (body.runId) {
+      const existing = await resolveTerminalRunStatus(options.cocoderHome, body.runId);
+      if (existing?.terminal) {
+        await reply.code(409).send({
+          ok: false,
+          error: "terminal-run-locked",
+          runId: body.runId,
+          status: existing.status,
+          detail:
+            "Run is terminal; new atom work must launch a fresh run. Stop and evidence endpoints remain available."
+        });
+        return;
+      }
     }
 
     const runId = body.runId ?? makeRunId();

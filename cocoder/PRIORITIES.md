@@ -21,7 +21,8 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 
 | Slug | Description | Status | Canon | Owner | Sequenced |
 |---|---|---|---|---|---|
-| [`v0.2-adapter-extensibility`](./priorities/v0.2-adapter-extensibility/README.md) | Beyond local CLI models — cloud APIs (Anthropic Messages, Kimi K2.6), managed sessions (Cursor SDK), etc. | Draft | — | Bob + founder | After v0.1-foundation Complete (depends on Sub-Playbook C Oz dashboard for non-pane lane visibility). Authored 2026-05-22 mid-session per founder ask about adding new model adapters. |
+| [`v0.2-adapter-extensibility`](./priorities/v0.2-adapter-extensibility/README.md) | Beyond local CLI models — cloud APIs (Anthropic Messages, Kimi K2.6), managed sessions (Cursor SDK), etc. | Draft | — | Bob + founder | After v0.1-foundation Complete **and now after v0.3-workspace-lifecycle** (2026-05-26 resequence). Depends on Sub-Playbook C Oz dashboard. Authored 2026-05-22 per founder ask. |
+| [`v0.3-workspace-lifecycle`](./priorities/v0.3-workspace-lifecycle/README.md) | Onboard into new/existing projects, manage multi-root workspaces, secure project secrets — via Oz | Draft | — | Bob + founder | **Sequenced before v0.2** (2026-05-26). Near-term "Dogfood Loop Enablement" slice first. Depends on Oz dashboard (Sub-Playbook C). ADR-0007 accepted. |
 
 ## Recently Archived
 
@@ -51,3 +52,9 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 **Summary:** Beyond local CLI models — add adapter kinds for cloud APIs and managed remote sessions.
 **What:** Extend the adapter system from a single `kind: llm-cli` shape (local tmux-driven CLI) to a richer enum (`llm-cli`, `llm-api`, `llm-managed-session`, `script`) with per-kind runner contracts. Motivating examples: Cursor SDK Background Agents, cloud Kimi K2.6 over HTTP, Anthropic Messages API. Personas, routes, write boundaries, and the `job-result` contract stay unchanged.
 **Status:** Draft. Sequenced after v0.1-foundation Complete (depends on Sub-Playbook C Oz dashboard for non-pane lane visibility). Authored 2026-05-22 mid-session per founder ask. See [`priorities/v0.2-adapter-extensibility/README.md`](./priorities/v0.2-adapter-extensibility/README.md).
+
+### [v0.3-workspace-lifecycle](./priorities/v0.3-workspace-lifecycle/README.md)
+**Owner:** Bob + founder
+**Summary:** Onboard CoCoder into new/existing projects, manage multi-root workspaces, and secure per-project secrets — all through Oz.
+**What:** Six work items: (1) secure per-project API tokens **inside** the project's `cocoder/` repo folder (open ADR); (2) brownfield onboarding — build the `cocoder/` folder inside an existing repo and audit its architecture/process/env using multiple CLIs + sub-agents; (3) greenfield — scaffold a new product from scratch; (4) add/edit multi-root workspaces with a `description` (`Primary:`/`Helper:`) per folder so Oz picks the primary root vs helpers; (5) store `.code-workspace` files in `cocoder/local/` (decided, ADR-0007); (6) Oz as the control plane surfacing all of the above. CoCoder is always a root in every workspace.
+**Status:** Draft. Founder decision on sequencing — may precede v0.2. Depends on Sub-Playbook C Oz dashboard. First artifact landed: `cocoder/local/CoCoder.code-workspace` + [ADR-0007](./decisions/0007-workspace-files-and-multiroot-description.md). Authored 2026-05-26 per founder ask. See [`priorities/v0.3-workspace-lifecycle/README.md`](./priorities/v0.3-workspace-lifecycle/README.md).

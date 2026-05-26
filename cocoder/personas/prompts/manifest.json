@@ -37,6 +37,15 @@
       "shared/private-playbook-boundary.md",
       "shared/evidence-classes.md",
       "personas/phil.md"
+    ],
+    "quinn": [
+      "shared/startup-packet.md",
+      "shared/write-boundaries.md",
+      "shared/result-contract.md",
+      "shared/closeout.md",
+      "shared/private-playbook-boundary.md",
+      "shared/evidence-classes.md",
+      "personas/quinn.md"
     ]
   }
 }

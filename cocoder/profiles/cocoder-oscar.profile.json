@@ -1,0 +1,135 @@
+{
+  "id": "cocoder-oscar",
+  "label": "CoCoder Oscar-led (Oscar orchestrates Bob)",
+  "createdFor": "v0.3-workspace-lifecycle",
+  "lanes": {
+    "oscar": {
+      "persona": "oscar",
+      "adapter": "codex",
+      "adapterProfile": "gpt-5.5",
+      "canWrite": false,
+      "writeBoundary": [],
+      "excludedWriteBoundary": [],
+      "resultContract": "job-result",
+      "evidenceClassDefault": "B"
+    },
+    "bob": {
+      "persona": "bob",
+      "adapter": "codex",
+      "adapterProfile": "gpt-5.5",
+      "canWrite": true,
+      "writeBoundary": ["cocoder/local/scratch/"],
+      "excludedWriteBoundary": ["packages/", "cocoder/decisions/", "cocoder/priorities/", "docs/", "templates/", ".github/", "ARCHITECTURE.md", "package.json", "pnpm-lock.yaml"],
+      "resultContract": "job-result",
+      "evidenceClassDefault": "B"
+    },
+    "ian": {
+      "persona": "bob",
+      "adapter": "codex",
+      "adapterProfile": "gpt-5.5",
+      "canWrite": false,
+      "writeBoundary": [],
+      "excludedWriteBoundary": [],
+      "resultContract": "job-result",
+      "evidenceClassDefault": "B"
+    },
+    "phil": {
+      "persona": "bob",
+      "adapter": "codex",
+      "adapterProfile": "gpt-5.5",
+      "canWrite": false,
+      "writeBoundary": [],
+      "excludedWriteBoundary": [],
+      "resultContract": "job-result",
+      "evidenceClassDefault": "B"
+    },
+    "talia": {
+      "persona": "talia",
+      "adapter": "codex",
+      "adapterProfile": "gpt-5.5",
+      "canWrite": false,
+      "writeBoundary": [],
+      "excludedWriteBoundary": [],
+      "resultContract": "job-result",
+      "evidenceClassDefault": "A"
+    },
+    "quinn": {
+      "persona": "bob",
+      "adapter": "codex",
+      "adapterProfile": "gpt-5.5",
+      "canWrite": false,
+      "writeBoundary": [],
+      "excludedWriteBoundary": [],
+      "resultContract": "job-result",
+      "evidenceClassDefault": "A"
+    },
+    "verifiers": {
+      "primary": {
+        "persona": "bob",
+        "adapter": "codex",
+        "adapterProfile": "gpt-5.5",
+        "canWrite": false,
+        "writeBoundary": [],
+        "excludedWriteBoundary": [],
+        "resultContract": "job-result",
+        "evidenceClassDefault": "A"
+      },
+      "adversarial": {
+        "persona": "bob",
+        "adapter": "codex",
+        "adapterProfile": "gpt-5.5",
+        "canWrite": false,
+        "writeBoundary": [],
+        "excludedWriteBoundary": [],
+        "resultContract": "job-result",
+        "evidenceClassDefault": "A"
+      }
+    },
+    "bobHelpers": {
+      "default": {
+        "persona": "bob",
+        "adapter": "codex",
+        "adapterProfile": "gpt-5.5",
+        "canWrite": false,
+        "writeBoundary": [],
+        "excludedWriteBoundary": [],
+        "resultContract": "job-result",
+        "evidenceClassDefault": "B",
+        "maxParallel": 1
+      },
+      "readonlyResearch": {
+        "persona": "bob",
+        "adapter": "codex",
+        "adapterProfile": "gpt-5.5",
+        "canWrite": false,
+        "writeBoundary": [],
+        "excludedWriteBoundary": [],
+        "resultContract": "job-result",
+        "evidenceClassDefault": "B",
+        "maxParallel": 1
+      },
+      "implementation": {
+        "persona": "bob",
+        "adapter": "codex",
+        "adapterProfile": "gpt-5.5",
+        "canWrite": false,
+        "writeBoundary": [],
+        "excludedWriteBoundary": [],
+        "resultContract": "job-result",
+        "evidenceClassDefault": "B",
+        "maxParallel": 1
+      }
+    }
+  },
+  "defaults": {
+    "evidenceClass": "B",
+    "maxParallelHelpers": 1,
+    "missingAdapterPolicy": "block"
+  },
+  "modelRoles": {
+    "orchestrator": { "lane": "oscar" },
+    "builder": { "lane": "bob" },
+    "fallbackPolicy": "ask-founder",
+    "substitutionPolicy": "strict"
+  }
+}

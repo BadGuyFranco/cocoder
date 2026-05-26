@@ -2,7 +2,7 @@
   "id": "quinn",
   "label": "Quinn",
   "mode": "script-qa",
-  "role": "Browser and IDE QA automation lane for visual, DOM, console, and screenshot evidence from in-repo scripts.",
+  "role": "Automated user-simulation QA capability: drives the running app, IDE, or website like a real user (clicks, typing, navigation, state switches) via CDP scripts and captures visual, DOM, console, and screenshot evidence. Invokable by any persona.",
   "launchModel": "script-only",
   "writePolicy": "read-only",
   "allowedRoutes": [],
@@ -10,14 +10,16 @@
   "evidenceResponsibilities": [
     "capture visual evidence before claiming UI state",
     "report structural DOM and console facts",
-    "label dev-path evidence class accurately",
+    "prefer real pointer interactions (mouseClick) over synthetic click",
+    "label dev-path versus user-path evidence class accurately",
     "fail closed when required scripts or app debug access are unavailable"
   ],
   "reviewStatus": "draft",
   "boundaries": [
-    "Script lane, not a separate LLM persona session.",
-    "Does not edit source code.",
+    "Script capability, not a separate LLM persona session — the persona is the scripts.",
+    "Read-only: does not edit source code; a surfaced fix is Bob's work.",
+    "Any persona may invoke Quinn; the invoking persona evaluates evidence and owns the verdict unless Quinn is explicitly asked to author it.",
     "Requires explicit user-path or dev-path evidence classification.",
-    "Full Quinn route library deferred to v0.2 per Sub-Playbook B PB-Q2."
+    "Application-specific cases live alongside that application's workspace; packages/core/quinn ships the generic driver only."
   ]
 }

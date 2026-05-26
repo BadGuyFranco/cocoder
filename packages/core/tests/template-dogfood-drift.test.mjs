@@ -24,6 +24,7 @@ const DOGFOOD_ONLY_ALLOWLIST = new Set([
   'personas/prompts/personas/talia.md',
   'personas/prompts/personas/oscar.md',
   'personas/prompts/personas/phil.md',
+  'personas/prompts/personas/quinn.md',
   'personas/prompts/shared/startup-packet.md',
   'personas/prompts/shared/write-boundaries.md',
   'personas/prompts/shared/result-contract.md',
@@ -35,12 +36,14 @@ const DOGFOOD_ONLY_ALLOWLIST = new Set([
   'personas/playbooks/talia.md',
   'personas/playbooks/oscar.md',
   'personas/playbooks/phil.md',
+  'personas/playbooks/quinn.md',
   'personas/playbooks/README-private-operator-pattern.md',
   'profiles',
   'routes',
   'priority-boundaries',
   'priorities/v0.1-foundation',
   'priorities/v0.2-adapter-extensibility',
+  'priorities/v0.3-workspace-lifecycle',
   'priorities/AGENTS.md',
   'priorities/v0.1-foundation/README.md',
   'plans/AGENTS.md',
@@ -55,6 +58,7 @@ const DOGFOOD_ONLY_ALLOWLIST = new Set([
   'decisions/0004-typescript-validation-toolchain.md',
   'decisions/0005-oz-improvement-target-routing.md',
   'decisions/0006-no-nested-workspaces-inside-install.md',
+  'decisions/0007-workspace-files-and-multiroot-description.md',
   '.quinn-credentials.example.json'
 ]);
 
