@@ -4,13 +4,24 @@
 **Owner:** Bob + founder
 **Sequencing:** DECIDED (2026-05-26) — **v0.3 runs before `v0.2-adapter-extensibility`.** Rationale: the dogfood loop (Oz actually driving an Oscar/Bob session) is the proof-of-life the whole product rests on; cloud/managed adapters are additive and non-blocking, and the near-term adapter want (cursor-agent) already shipped. Depends on the Sub-Playbook C Oz dashboard as the surface for this work.
 
-## Near-term: Dogfood Loop Enablement (do FIRST)
+## Near-term: Dogfood Loop Enablement — ✅ COMPLETE (2026-05-26)
 
-Smallest slice that makes "CoCoder on itself" real — launch Oz → pick the CoCoder workspace → pick a priority → spawn an Oscar/Bob session. Three concrete gaps (see also the Oz MVP finish in v0.1 Sub-Playbook C):
+The slice that made "CoCoder on itself" real is done and verified live (launch Oz → pick the CoCoder workspace → pick a priority → spawn an Oscar/Bob session):
 
-1. **Wire the daemon launch path (stub → real).** `packages/oz-daemon/src/cli.ts` starts `startOzDaemon` without `launchExecutable`/`stopExecutable`, so `POST /runs` is a stub. Pass the resolved `cocoder` bin + argv prefix + stop executable so the dashboard Launch button actually spawns `cocoder launch`. (Plumbing already exists in `server.ts`; only the entrypoint is unwired.)
-2. **Author an Oscar-led route + profile + priority-boundary.** Today only `dogfood-port-tests` (lead=bob) exists. Add an `oscar-lead` route (lead=oscar, teammates=[bob]) + matching profile (the dogfood profile already stubs all 11 lanes) + a priority boundary so the loop produces a real Oscar→Bob dispatch session.
-3. **Register the CoCoder dogfood workspace.** `local/workspaces.json` is empty; `cocoder oz register --id cocoder --workspace-root <CoCoder>` (the ADR-0006-allowed install-as-its-own-workspace dogfood case).
+1. ✅ **Daemon launch path wired** — `packages/oz-daemon/src/cli.ts` resolves the `cocoder` bin and passes `launchExecutable`/`stopExecutable`; `POST /runs` spawns a real launch (`launchWired:true`). Regression-guarded by `launch-bin.test.ts`.
+2. ✅ **Oscar-led route + profile + boundary** — `routes/oscar-lead.json`, `profiles/cocoder-oscar.profile.json`, `priority-boundaries/v0.3-workspace-lifecycle.boundary.json`; added to Oscar/Bob allowlists.
+3. ✅ **CoCoder dogfood workspace registered** (`id: cocoder`, socket `cocoder-cocoder`).
+
+Verified live: a real Oscar/Bob session ran, returned a correct `NEEDS_FOUNDER`, and the dogfood caught a real PRIORITIES.md drift (since fixed). Bob's writer boundary has since been widened to the v0.3 implementation surfaces.
+
+## Next atom
+
+**Recommended next atom:** `WS-DESC-1` — add an optional `description` field to the workspace **registry** entry schema (ADR-0007), so Oz can persist the Primary/Helper role for each root.
+
+- **Scope (Bob, in-boundary):** In `packages/schemas/src/workspaces-registry.ts`, add `description: z.string().optional()` to `workspaceRegistryEntrySchema` with a comment citing ADR-0007. Add/extend a schema unit test proving (a) an entry with a `description` parses, (b) an entry without it still parses (backward-compatible). Rebuild schemas.
+- **Out of scope (later atoms):** surfacing `description` in the Oz workspace-list API (`WS-DESC-2`) and the dashboard Workspaces page (`WS-DESC-3`).
+- **Acceptance:** `pnpm --filter schemas test` (or the schemas test command) passes with the new test; no other schema changes; backward-compatible (the field is optional).
+- **Boundary:** `packages/` only for this atom. Governance docs (priorities/decisions/PRIORITIES.md) stay founder/Oscar-owned.
 
 ## Summary
 
