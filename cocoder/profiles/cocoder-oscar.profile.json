@@ -18,8 +18,8 @@
       "adapter": "codex",
       "adapterProfile": "gpt-5.5",
       "canWrite": true,
-      "writeBoundary": ["cocoder/local/scratch/"],
-      "excludedWriteBoundary": ["packages/", "cocoder/decisions/", "cocoder/priorities/", "docs/", "templates/", ".github/", "ARCHITECTURE.md", "package.json", "pnpm-lock.yaml"],
+      "writeBoundary": ["packages/", "docs/", "templates/", "cocoder/routes/", "cocoder/profiles/", "cocoder/priority-boundaries/", "cocoder/personas/", "cocoder/local/scratch/"],
+      "excludedWriteBoundary": ["cocoder/priorities/", "cocoder/decisions/", "cocoder/PRIORITIES.md", "cocoder/SESSION_LOG.md", "cocoder/memory/", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", ".github/"],
       "resultContract": "job-result",
       "evidenceClassDefault": "B"
     },
