@@ -1218,6 +1218,15 @@ export function renderSessionWrapper(launchPlan, session) {
   // Teammate / writer lanes keep `workspace-write` — they receive dispatches
   // through stdin/file, never drive tmux themselves.
   const codexSandbox = session.startupMode === 'lead' ? 'danger-full-access' : 'workspace-write';
+  // Cursor CLI (`cursor-agent`) mirrors the codex lead/teammate sandbox split.
+  // `-f/--force` bypasses per-command approval prompts so an unattended pane
+  // does not stall (the codex `--ask-for-approval never` analog). `--sandbox`
+  // takes `disabled|enabled`: lead lanes drive teammate dispatch via tmux IPC
+  // and need full access (`disabled`, matching codex `danger-full-access`);
+  // teammate/writer lanes stay sandboxed (`enabled`). Workspace trust: cursor's
+  // `--trust` flag is print/headless-only, so an interactive lane prompts the
+  // founder for trust once on first launch in an untrusted repo.
+  const cursorSandbox = session.startupMode === 'lead' ? 'disabled' : 'enabled';
   return [
     '#!/usr/bin/env bash',
     'set -euo pipefail',
@@ -1229,6 +1238,9 @@ export function renderSessionWrapper(launchPlan, session) {
     '    ;;',
     '  codex)',
     `    exec codex --ask-for-approval never --sandbox ${codexSandbox} "$BOOTSTRAP"`,
+    '    ;;',
+    '  cursor-agent)',
+    `    exec cursor-agent --force --sandbox ${cursorSandbox} "$BOOTSTRAP"`,
     '    ;;',
     '  *)',
     // M4.11 (audit §H9): shellQuote the fall-through `session.command` so

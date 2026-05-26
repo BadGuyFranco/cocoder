@@ -14,7 +14,7 @@ test('committed adapter declarations validate against adapter-declaration contra
   assert.equal(loaded.failures.length, 0);
   assert.deepEqual(
     loaded.adapters.map((adapter) => adapter.id).sort(),
-    ['claude', 'codex', 'future-cli-template', 'gemini', 'grok', 'kimi', 'quinn-scripts']
+    ['claude', 'codex', 'cursor-agent', 'future-cli-template', 'gemini', 'grok', 'kimi', 'quinn-scripts']
   );
 });
 

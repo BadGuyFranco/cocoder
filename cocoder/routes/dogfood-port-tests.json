@@ -10,11 +10,11 @@
   "laneRequirements": {
     "bob": {
       "requiredCapabilities": ["interactive"],
-      "allowedAdapters": ["codex"]
+      "allowedAdapters": ["codex", "cursor-agent"]
     },
     "talia": {
       "requiredCapabilities": ["fileEdit", "interactive"],
-      "allowedAdapters": ["codex"]
+      "allowedAdapters": ["codex", "cursor-agent"]
     }
   }
 }

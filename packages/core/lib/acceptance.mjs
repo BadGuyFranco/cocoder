@@ -302,7 +302,7 @@ async function liveCliEligibilitySmoke(options) {
     adaptersDir: options.adaptersDir,
     contractsDir: options.contractsDir
   });
-  const relevant = preflight.results.filter((result) => ['codex', 'claude', 'grok'].includes(result.adapter));
+  const relevant = preflight.results.filter((result) => ['codex', 'claude', 'cursor-agent', 'grok'].includes(result.adapter));
   const artifact = path.join(options.outputDir, 'evidence', 'live-cli-eligibility.json');
   await writeJson(artifact, {
     status: 'NOT_RUN',

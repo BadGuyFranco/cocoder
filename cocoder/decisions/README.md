@@ -14,15 +14,16 @@ Numbered, dated, single-purpose decisions. Each ADR captures **context → decis
 | ID | Title | Status | Date |
 |---|---|---|---|
 | [ADR-0001](./0001-storage-and-license.md) | Storage zones, license, and CoBuilder relationship | accepted | 2026-05-21 |
-| [ADR-0002](./0002-talia-quinn-boundary.md) | Talia and Quinn — test layer vs experience layer | accepted | 2026-05-21 |
+| [ADR-0002](./0002-talia-quinn-boundary.md) | Talia and Quinn — automated test layer vs automated user-simulation layer | accepted (revised 2026-05-26) | 2026-05-21 |
 | [ADR-0003](./0003-binary-name-and-env-prefix.md) | CLI binary name and environment variable prefix | accepted | 2026-05-21 |
 | [ADR-0004](./0004-typescript-validation-toolchain.md) | TypeScript, validation toolchain, and monorepo policy | accepted | 2026-05-21 |
 | [ADR-0005](./0005-oz-improvement-target-routing.md) | Oz improvement target routing | accepted | 2026-05-22 |
 | [ADR-0006](./0006-no-nested-workspaces-inside-install.md) | No workspaces nested inside the CoCoder install repository | accepted | 2026-05-22 |
+| [ADR-0007](./0007-workspace-files-and-multiroot-description.md) | Workspace files — storage location and the multi-root description convention | accepted | 2026-05-26 |
 
 ## Pending / proposed
 
-(None — next ADR number is 0007.)
+(None — next ADR number is 0008.)
 
 ## Authoring guide
 
