@@ -14,6 +14,20 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-27 — **Imported CoBuilder orchestration-services pattern (ADR-0009)**
+
+**Persona:** AI (Bob) | **Priority:** v0.5-orchestration-services | **Plan:** [`decisions/0009-orchestration-services.md`](./decisions/0009-orchestration-services.md)
+
+**Outcomes:**
+- Confirmed CoCoder had no cheap-model admin-delegation path (model-roles covers only build side); imported the pattern Oscar uses to offload wrap/compaction/teardown to faster/cheaper models.
+- Landed engine: 2 contracts + `lib/services.mjs` (build/validate/execute packet + deterministic git write-audit), 11 path-scrubbed service declarations, 5 CLI commands, new headless `cursor-agent-service` adapter, debugger guidance + session-wrap bullet.
+- Oz untouched (ADR-0008 preserved): services run externally, land under `<runDir>/services/<packetId>/` as ordinary run artifacts. Scrubs logged in `personas/PORT-NOTES.md`.
+- Tests green: core **346/346**, oz-daemon 8/8, oz-dashboard 10/10. Branch `orchestration-services-import` (not yet committed/pushed).
+
+**Next:** Founder confirms commit/push (3 unrelated pre-existing Oz-design edits in the working tree must be excluded). Then adoption: wire services into Oscar's live wrap flow + prove real `cursor-agent` execution.
+
+---
+
 ## 2026-05-24 — **Sub-Playbook D activated (Witness/Interrogate/Solve-target); PD-Q1..PD-Q7 answered**
 
 **Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-docs-publish.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-docs-publish.plan.md)

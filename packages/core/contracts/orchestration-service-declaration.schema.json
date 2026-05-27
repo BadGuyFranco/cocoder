@@ -1,0 +1,33 @@
+{
+  "contract": "orchestration-service-declaration",
+  "version": 1,
+  "status": "draft",
+  "description": "Declarative registry entry for a non-persona orchestration service that Oscar may use for bounded administrative work.",
+  "required": [
+    "version",
+    "id",
+    "label",
+    "mode",
+    "purpose",
+    "execution",
+    "allowedWriteScopes",
+    "requiredChecks"
+  ],
+  "fields": {
+    "version": { "type": "number" },
+    "id": { "type": "string", "pattern": "kebab-case stable identifier" },
+    "label": { "type": "string" },
+    "mode": { "enum": ["read-only", "bounded-write", "control-plane"] },
+    "purpose": { "type": "string" },
+    "execution": { "type": "object", "required": ["style", "preferredModelClass", "fallback"] },
+    "allowedWriteScopes": { "type": "array", "items": "repo-relative file path or glob" },
+    "requiredChecks": { "type": "array", "items": "command or gate name" }
+  },
+  "rules": [
+    "Service declarations are registry metadata, not personas.",
+    "Read-only service declarations must have an empty allowedWriteScopes list.",
+    "Bounded-write service declarations must name the broadest service-owned scopes; service packets narrow those scopes to exact allowedWrites for each execution.",
+    "The declaration file name must be <id>.json.",
+    "Execution guidance may name a model class, but Oscar retains decision authority and packets retain exact write authority."
+  ]
+}

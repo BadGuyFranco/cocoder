@@ -73,4 +73,9 @@ Commands:
   prepare-debugger --no-session true [--mode launch-failure|preflight|repo-audit] [--runs-dir PATH] [--debugger-runs-dir PATH] [--tmux-bin PATH]
   prepare-debug (alias for prepare-debugger)
   watch-debugger-evidence --run-dir PATH --session-id ID --debug-dir PATH [--follow-interval-seconds N] [--tmux-bin PATH] [--max-cycles N]
+  list-orchestration-services [--services-dir PATH] [--contracts-dir PATH]
+  validate-orchestration-services [--services-dir PATH] [--contracts-dir PATH]
+  build-service-packet --service ID --run-dir PATH --request PATH [--output PATH] [--services-dir PATH] [--contracts-dir PATH] [--now ISO]
+  validate-service-packet --packet PATH [--services-dir PATH] [--contracts-dir PATH]
+  execute-service-packet --packet PATH [--repo-root PATH] [--executor-command CMD] [--model ID] [--result PATH] [--transcript PATH] [--services-dir PATH] [--contracts-dir PATH] [--now ISO]
 

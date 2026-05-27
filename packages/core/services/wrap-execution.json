@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "wrap-execution",
+  "label": "Wrap Execution",
+  "mode": "bounded-write",
+  "purpose": "Apply Oscar-approved closeout intent to handoff/status docs, then prepare route-owned commit/finalization checks.",
+  "execution": { "style": "cheap-model-or-deterministic", "preferredModelClass": "fast-low-cost-editor", "fallback": "ask-oscar" },
+  "allowedWriteScopes": [
+    "cocoder/PRIORITIES.md",
+    "cocoder/priorities/zArchive/INDEX.md",
+    "cocoder/SESSION_LOG.md",
+    "cocoder/SESSION_LOG_ARCHIVE.md",
+    "cocoder/plans/*.md",
+    "cocoder/priorities/*/plans/*.md"
+  ],
+  "requiredChecks": [
+    "check-handoff-consistency",
+    "check-session-log-hygiene",
+    "git diff --check",
+    "orchestrator-commit",
+    "finalize-run-status"
+  ]
+}

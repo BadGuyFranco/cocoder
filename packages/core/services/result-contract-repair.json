@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "id": "result-contract-repair",
+  "label": "Result Contract Repair",
+  "mode": "bounded-write",
+  "purpose": "Repair malformed run-local result JSON/Markdown against the launch result contract without changing the substantive verdict.",
+  "execution": { "style": "cheap-model-or-deterministic", "preferredModelClass": "fast-low-cost-editor", "fallback": "ask-oscar" },
+  "allowedWriteScopes": [
+    "local/workspaces/*/runs/*/jobs/*/result.json",
+    "local/workspaces/*/runs/*/jobs/*/result.md"
+  ],
+  "requiredChecks": ["gate-result", "founder completion brief validation"]
+}

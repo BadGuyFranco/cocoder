@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "id": "doc-hygiene",
+  "label": "Doc Hygiene",
+  "mode": "read-only",
+  "purpose": "Run stale-doc, ADR, reference, write-authority, and handoff-budget checks and summarize exact blockers.",
+  "execution": { "style": "deterministic", "preferredModelClass": "none", "fallback": "ask-oscar" },
+  "allowedWriteScopes": [],
+  "requiredChecks": ["check-doc-refs", "check-adr-status-consistency", "check-doc-freshness", "check-write-authority"]
+}

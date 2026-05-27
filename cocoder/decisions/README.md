@@ -21,10 +21,11 @@ Numbered, dated, single-purpose decisions. Each ADR captures **context → decis
 | [ADR-0006](./0006-no-nested-workspaces-inside-install.md) | No workspaces nested inside the CoCoder install repository | accepted | 2026-05-22 |
 | [ADR-0007](./0007-workspace-files-and-multiroot-description.md) | Workspace files — storage location and the multi-root description convention | accepted (revised 2026-05-27) | 2026-05-26 |
 | [ADR-0008](./0008-oz-control-plane-architecture.md) | Oz control-plane architecture | accepted | 2026-05-27 |
+| [ADR-0009](./0009-orchestration-services.md) | Non-persona orchestration services (cheap-model admin delegation) | accepted | 2026-05-27 |
 
 ## Pending / proposed
 
-(None — next ADR number is 0009.)
+(None — next ADR number is 0010.)
 
 ## Authoring guide
 

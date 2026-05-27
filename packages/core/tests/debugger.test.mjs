@@ -60,6 +60,10 @@ test('debugger resolves run suffixes and writes a Codex audit prompt', async () 
     assert.match(prompt, /topology-decision\.json/);
     assert.match(prompt, /debugger tmux send\/intervention attempt fails/);
     assert.match(prompt, /observe-only/);
+    assert.match(prompt, /Orchestration Service Pattern/);
+    assert.match(prompt, /recurring, mechanical, and bounded/);
+    assert.match(prompt, /packages\/core\/services\/<service-id>\.json/);
+    assert.match(prompt, /validate-orchestration-services/);
 
     const wrapper = await readFile(result.wrapperPath, 'utf8');
     assert.match(wrapper, /COCODER_ORCH_DEBUGGER_GIT_WRITE/);
