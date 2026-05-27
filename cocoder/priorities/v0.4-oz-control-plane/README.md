@@ -32,7 +32,9 @@ The claude.ai/design output landed as a high-fidelity, working React prototype (
 6. **In-app update channels** — founder-confirmed in scope (packaged app self-update). Auth/identity, billing, telemetry/crash reporting are **deferred**.
 7. Build-target: a fresh **`packages/cocoder-ide`** (or extend `packages/oz-dashboard`) using dnd-kit (not native HTML5 DnD), Electron native folder picker + min-window clamp; **strip** the Tweaks panel + dev annotations (keep the registry as design docs).
 
-> The embedded **Electron terminal harness** is explicitly the brief's **"v2"** — tracked separately as [`v0.6-cocoder-ide`](../v0.6-cocoder-ide/README.md). v0.4 keeps orchestration sessions external (iTerm) per ADR-0008 decision 5; the Run Detail transcript is Oz's read-only window into them.
+> **Scope notes (2026-05-27):**
+> - **Embedded Electron terminal harness = a later phase of v0.4, not a separate priority.** The brief's "v2" (replacing external iTerm sessions with an in-app terminal) is folded into v0.4 as future work; the standalone `v0.6-cocoder-ide` stub was **archived** ([`zArchive`](../zArchive/v0.6-cocoder-ide/README.md)). For now v0.4 keeps orchestration sessions external (iTerm) per ADR-0008 decision 5 — the Run Detail transcript is Oz's read-only window into them.
+> - **`v0.3-workspace-lifecycle` is v0.4's follow-on priority.** It engages **when v0.4 starts wiring the Workspaces screen / workspace management**: v0.4 builds the screens; v0.3 provides the under-the-hood capabilities those screens drive (greenfield/brownfield onboarding, per-project secrets, multi-root management). Don't rebuild that scope inside v0.4 — surface it, and route the capability work to v0.3.
 
 ## Work items (provisional — refine after design output lands)
 
