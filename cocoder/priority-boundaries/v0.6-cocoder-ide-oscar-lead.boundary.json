@@ -1,0 +1,31 @@
+{
+  "id": "v0.6-cocoder-ide-oscar-lead",
+  "prioritySlug": "v0.6-cocoder-ide",
+  "label": "v0.6-cocoder-ide oscar-lead boundary (default — tighten as needed; Bob builds implementation surfaces, governance + root deps excluded)",
+  "routeIds": ["oscar-lead"],
+  "writerLanes": {
+    "bob": {
+      "allowed": [
+        "packages/",
+        "docs/",
+        "templates/",
+        "cocoder/routes/",
+        "cocoder/profiles/",
+        "cocoder/priority-boundaries/",
+        "cocoder/personas/",
+        "cocoder/local/scratch/"
+      ],
+      "excluded": [
+        "cocoder/priorities/",
+        "cocoder/decisions/",
+        "cocoder/PRIORITIES.md",
+        "cocoder/SESSION_LOG.md",
+        "cocoder/memory/",
+        "package.json",
+        "pnpm-lock.yaml",
+        "pnpm-workspace.yaml",
+        ".github/"
+      ]
+    }
+  }
+}
