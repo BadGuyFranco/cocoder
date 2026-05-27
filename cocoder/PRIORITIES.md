@@ -16,6 +16,7 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 | Slug | Description | Status | Canon | Owner | Blocked on |
 |---|---|---|---|---|---|
 | [`v0.1-foundation`](./priorities/v0.1-foundation/README.md) | Ship CoCoder v0.1 — extraction, Oz MVP, docs, public publish | Active | Expand — **Sub-Playbook D activated**; D Solve next. Suite **335/335** (+ dashboard 8/8). | Bob + founder | **Next:** D Solve. B/C Refines parallel (founder). |
+| [`v0.4-oz-control-plane`](./priorities/v0.4-oz-control-plane/README.md) | Oz control plane — chat command interface + run oversight; 5-nav UI per ADR-0008 | Active | **Design spec landed 2026-05-27** (`docs/oz-control-plane-design/`); ADR-0010 + build plan next. | Bob + founder | Sequencing vs v0.2/v0.3 — founder. |
 
 ## Draft
 
@@ -23,7 +24,7 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 |---|---|---|---|---|---|
 | [`v0.2-adapter-extensibility`](./priorities/v0.2-adapter-extensibility/README.md) | Beyond local CLI models — cloud APIs (Anthropic Messages, Kimi K2.6), managed sessions (Cursor SDK), etc. | Draft | — | Bob + founder | After v0.1-foundation Complete **and now after v0.3-workspace-lifecycle** (2026-05-26 resequence). Depends on Sub-Playbook C Oz dashboard. Authored 2026-05-22 per founder ask. |
 | [`v0.3-workspace-lifecycle`](./priorities/v0.3-workspace-lifecycle/README.md) | Onboard into new/existing projects, manage multi-root workspaces, secure project secrets — via Oz | Draft | — | Bob + founder | **Sequenced before v0.2** (2026-05-26). Near-term "Dogfood Loop Enablement" slice first. Depends on Oz dashboard (Sub-Playbook C). ADR-0007 accepted. |
-| [`v0.4-oz-control-plane`](./priorities/v0.4-oz-control-plane/README.md) | Oz as a real control plane — in-app chat command interface + run oversight/debugger; UI per ADR-0008 | Draft | — | Bob + founder | Founder decision. Depends on the claude.ai/design output + ADR-0008. Stub authored 2026-05-27. |
+| [`v0.6-cocoder-ide`](./priorities/v0.6-cocoder-ide/README.md) | CoCoder IDE — embedded Electron terminal harness ("v2"): in-app live sessions + editor surfaces, extending the v0.4 control plane | Draft | — | Bob + founder | Reserved; after v0.4 ships. The design spec's deferred "v2". Authored 2026-05-27 per founder ask. |
 
 ## Recently Archived
 
@@ -64,4 +65,10 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 **Owner:** Bob + founder
 **Summary:** Turn Oz into a real operator control plane — a per-workspace, in-dashboard headless chatbot that is the primary command interface and the primary watcher/debugger for every run.
 **What:** Build the Oz UI per [ADR-0008](./decisions/0008-oz-control-plane-architecture.md) (Dashboard with Oz chat + drag-reorder priorities + ad-hoc run launcher; Workspaces with primary/writable/read-only roots; CLIs with Test; Personas with CLI/model + sub-agent hierarchy + visible/headless; Runs list+detail; Settings) plus the Oz oversight/debugger mechanism. Screen/flow brief + design prompt in `docs/oz-design-brief.md`. Root roles per ADR-0007 (revised 2026-05-27).
-**Status:** Draft (stub). Founder decision on sequencing. Depends on the claude.ai/design output + ADR-0008. Authored 2026-05-27 per founder ask. See [`priorities/v0.4-oz-control-plane/README.md`](./priorities/v0.4-oz-control-plane/README.md).
+**Status:** Active — **design spec landed 2026-05-27** at `docs/oz-control-plane-design/` (high-fidelity React prototype = source of truth for *what*; reference, not production). Next: ADR-0010 (pause/resume run primitive, `cocoder attach`, transcript streaming, persona-roster reconciliation incl. new "Doc", in-app update channels) → build plan → implement. Designer notes at [`priorities/v0.4-oz-control-plane/designer-notes.md`](./priorities/v0.4-oz-control-plane/designer-notes.md). Embedded Electron terminal harness is the spec's deferred "v2" → v0.6. Authored 2026-05-27 per founder ask. See [`priorities/v0.4-oz-control-plane/README.md`](./priorities/v0.4-oz-control-plane/README.md).
+
+### [v0.6-cocoder-ide](./priorities/v0.6-cocoder-ide/README.md)
+**Owner:** Bob + founder
+**Summary:** The CoCoder IDE proper — the design spec's deferred "v2": an embedded Electron terminal harness (in-app live orchestration sessions) + editor surfaces, extending the v0.4 control plane.
+**What:** Replace external iTerm orchestration sessions with an in-app embedded terminal harness; keep the v0.4 Run Detail contract stable so transcript/evidence/stop/attach work for both external (v0.4) and embedded (v0.6) sessions. Builds on the `cocoder attach` CLI + pause/resume primitive landed in v0.4.
+**Status:** Draft — reserved; after v0.4 (the control plane) ships. Slug/sequencing provisional (founder). Authored 2026-05-27 per founder ask. See [`priorities/v0.6-cocoder-ide/README.md`](./priorities/v0.6-cocoder-ide/README.md).
