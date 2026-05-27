@@ -186,6 +186,53 @@ test('launch writes run prompts and helper scripts without tmux unless execute i
   }
 });
 
+test('launch --attach iterm writes a visible split-pane attach script for all lanes', async () => {
+  const fixture = await createLaunchFixture();
+  try {
+    const transport = recordingTransport();
+    const result = await launchRun(await fixture.options({
+      execute: true,
+      attach: 'iterm',
+      runId: 'run-launch-attach-iterm',
+      transport,
+      socketName: 'cocoder-test',
+      tmuxBin: '/bin/tmux'
+    }));
+    assert.equal(result.ok, true, JSON.stringify(result.issues, null, 2));
+    assert.equal(result.executed, true);
+    assert.ok(result.attachLaunchScript && result.attachLaunchScript.endsWith('attach-launch.sh'), 'attachLaunchScript path returned');
+    const script = await readFile(result.attachLaunchScript, 'utf8');
+    // Opens a fresh terminal window (null target → create-window branch) and
+    // attaches one pane per lane to its tmux session on the configured socket.
+    assert.match(script, /tell application "iTerm"/);
+    assert.match(script, /create window with default profile command/);
+    assert.match(script, /SOCKET_ARGS=\('-L' 'cocoder-test'\)/);
+    // session names truncate the runId tail, so match the stable orch-<lane>- prefix
+    assert.match(script, /attach -t orch-oscar-/);
+    assert.match(script, /attach -t orch-bob-/);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test('launch without --attach writes no attach-launch script', async () => {
+  const fixture = await createLaunchFixture();
+  try {
+    const transport = recordingTransport();
+    const result = await launchRun(await fixture.options({
+      execute: true,
+      runId: 'run-launch-no-attach',
+      transport,
+      socketName: 'cocoder-test',
+      tmuxBin: '/bin/tmux'
+    }));
+    assert.equal(result.ok, true, JSON.stringify(result.issues, null, 2));
+    assert.equal(result.attachLaunchScript ?? null, null);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
 test('launch can explicitly allow teammate lanes to start autonomously', async () => {
   const fixture = await createLaunchFixture({ allowAutonomousTeammateStart: true });
   try {
@@ -2144,6 +2191,7 @@ async function createLaunchFixture(options = {}) {
       runId: overrides.runId,
       execute: overrides.execute,
       deferStart: overrides.deferStart,
+      attach: overrides.attach,
       transport: overrides.transport,
       socketName: overrides.socketName,
       tmuxBin: overrides.tmuxBin,

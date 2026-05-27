@@ -95,6 +95,11 @@ function buildLaunchArgv(
   launchArgs.push("--workspace-root", workspaceRoot);
   launchArgs.push("--workspace-slug", workspaceSlug);
   launchArgs.push("--execute", "true");
+  // For-now visible-launch: open the run in an iTerm2/Terminal split pane on the
+  // operator's desktop. Best-effort in the CLI layer; if no GUI terminal is
+  // available the sessions still run headless. To be superseded by the planned
+  // Electron terminal harness + Oz window.
+  launchArgs.push("--attach", "iterm");
   if (tmuxSocket) launchArgs.push("--socket-name", tmuxSocket);
   return launchArgs;
 }

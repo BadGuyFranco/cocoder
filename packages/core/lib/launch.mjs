@@ -256,6 +256,28 @@ export async function launchRun(options) {
     };
   }
 
+  // Visible-attach launcher (for-now iTerm2/Terminal split-pane; to be replaced
+  // by the planned Electron terminal harness). `--attach iterm` writes a
+  // best-effort opener that creates one terminal window split into a pane per
+  // lane, each running the lane's `tmux attach`. It reuses the proven add-lanes
+  // AppleScript with a null target (no existing window to match → it takes the
+  // "create a fresh split window" branch). The CLI layer runs it; sessions are
+  // already live (not deferred), so a failed/absent terminal never blocks the
+  // run — the operator can still attach manually via `attachCommands`.
+  let attachLaunchScript = null;
+  if (options.attach === 'iterm') {
+    attachLaunchScript = path.join(runDir, 'attach-launch.sh');
+    const attachSessions = launchPlan.sessions.map((session) => ({
+      ...session,
+      attachCommand: launchPlan.attachCommands?.[session.lane] || ''
+    }));
+    await writeFile(
+      attachLaunchScript,
+      renderAttachAddedLanesScript(attachSessions, { tmuxBin, socketName, socketPath, targetSession: null }),
+      { mode: 0o755 }
+    );
+  }
+
   const running = await setRunStatus(runDir, 'running', `launched tmux sessions on ${tmuxSocketLabel({ socketName, socketPath })}`);
   await writeJson(path.join(runDir, 'launch-evidence.json'), {
     id: 'live-launch-started',
@@ -286,6 +308,7 @@ export async function launchRun(options) {
     startWatchersScript: launchPlan.startWatchersScript,
     startAllScript: launchPlan.startAllScript,
     attachCommands: launchPlan.attachCommands,
+    attachLaunchScript,
     warnings: startupPacket.warnings || [],
     issues: []
   };

@@ -477,9 +477,23 @@ async function handle_launch(args) {
       tmuxBin: args.tmuxBin,
       deferStart: args.deferStart === 'true',
       execute: args.execute === 'true',
+      attach: args.attach === 'iterm' ? 'iterm' : 'none',
       allowConcurrentPriorityRun: args.allowConcurrentPriorityRun === 'true'
     });
     console.log(JSON.stringify(result, null, 2));
+    // Best-effort visible attach: open the iTerm2/Terminal split-pane window for
+    // this run. Detached so it never blocks; the tmux sessions are already live,
+    // so if no GUI terminal is available the run still proceeds (attach manually
+    // via result.attachCommands). Edge-layer side effect kept out of core.
+    if (result.ok && result.attachLaunchScript) {
+      try {
+        const { spawn } = await import('node:child_process');
+        const child = spawn('bash', [result.attachLaunchScript], { detached: true, stdio: 'ignore' });
+        child.unref();
+      } catch {
+        // ignore — sessions are up; operator can attach manually.
+      }
+    }
     if (!result.ok) process.exitCode = 1;
     return;
 }

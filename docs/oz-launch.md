@@ -38,7 +38,17 @@ Or use the **Workspaces** page in the dashboard (`#/workspaces`).
 2. Confirm profile and route paths (relative to workspace root).
 3. Click **Launch** on a priority row. Oz calls `POST /runs`, which spawns `cocoder launch` as an argv subprocess (PC-Q4=A).
 
-Alternatively from the terminal (unchanged CLI path):
+### Visible launch (iTerm2/Terminal split pane)
+
+By default a launched run's tmux sessions are **detached** — nothing pops open. Pass `--attach iterm` (the dashboard does this automatically) to open one terminal window split into a pane per lane, each attached to its lane's tmux session:
+
+```bash
+pnpm exec cocoder launch ... --execute true --attach iterm
+```
+
+This is **best-effort**: it opens iTerm2 if present (else Terminal.app), and the run still proceeds headless if no GUI terminal is available — attach manually with the `attachCommands` from the launch output. macOS may show a one-time Automation permission prompt the first time. *(For-now behavior; to be superseded by the planned Electron terminal harness + Oz window.)*
+
+Alternatively from the terminal (CLI path):
 
 ```bash
 pnpm exec cocoder launch \
@@ -46,7 +56,8 @@ pnpm exec cocoder launch \
   --route cocoder/routes/your.route.json \
   --priority-slug your-slug \
   --workspace-root /path/to/my-app \
-  --execute true
+  --execute true \
+  --attach iterm
 ```
 
 ## Stop a run
