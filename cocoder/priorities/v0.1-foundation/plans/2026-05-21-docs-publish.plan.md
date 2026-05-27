@@ -198,11 +198,11 @@ A public CoCoder release at which:
 
 ### Milestone 1 — Documentation
 
-- [ ] **D-M1.1** Extend `docs/getting-started.md` to full ≤30 min stranger-test path: install → init out-of-tree workspace → first launch (CLI or Oz). Include labeled diagram: install-level `<CoCoder>/local/` vs workspace-level `<app>/cocoder/local/`.
+- [x] **D-M1.1** Extend `docs/getting-started.md` to full ≤30 min stranger-test path: install → init out-of-tree workspace → first launch (CLI or Oz). Include labeled diagram: install-level `<CoCoder>/local/` vs workspace-level `<app>/cocoder/local/`. **(Authored 2026-05-27, run suesc2sq — clean-clone→init→compose-launch→CLI launch + Oz launch path, storage-zone diagram, cross-links to `oz-launch.md`/`oz-security-checklist.md`. The ≤30-min readiness *proof* is D-S1 internal-proxy, still deferred — authoring done, not yet stranger-validated.)**
 - [ ] **D-M1.2** `docs/orchestration.md` — tmux model, runs, evidence, session wrap (cross-link configuration + custom-personas).
 - [ ] **D-M1.3** `docs/personas.md` — who does what, dispatch rules, custom persona ergonomics (cross-link `docs/custom-personas.md`).
 - [ ] **D-M1.4** `docs/oz.md` — Oz overview, security model summary, troubleshooting; **cross-link** `docs/oz-launch.md` and `docs/oz-security-checklist.md` (do not duplicate C Expand content).
-- [ ] **D-M1.5** `docs/faq.md` — minimal commercial use (PD-Q4=A), what to commit vs not, trademark/name note, zero telemetry (PD-Q5=A), Syncthing secrets warning.
+- [x] **D-M1.5** `docs/faq.md` — minimal commercial use (PD-Q4=A), what to commit vs not, trademark/name note, zero telemetry (PD-Q5=A), Syncthing secrets warning. **(Authored 2026-05-27, run suesc2sq — minimal PD-Q4=A scope; all five required topics present; link-checked via `check-doc-refs` 0 missing refs.)**
 - [ ] **D-M1.6** `docs/freshness-policy.md` — ADR/ARCHITECTURE verification stamps + doc audit cadence; Oz freshness panel deferred v0.2.
 - [ ] **D-M1.7** Mermaid diagram(s) in `ARCHITECTURE.md` verified for clarity (update stamps if edited).
 - [ ] **D-M1.8** **`README.md` adopter-ready rewrite (PD-Q2=A).** Remove "not yet usable by adopters" banner; replace stale Sub-Playbook A progress text with v0.1 pitch + quick-start pointer to `docs/getting-started.md`.

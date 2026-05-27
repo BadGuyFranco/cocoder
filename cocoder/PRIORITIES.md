@@ -15,7 +15,7 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 
 | Slug | Description | Status | Canon | Owner | Blocked on |
 |---|---|---|---|---|---|
-| [`v0.1-foundation`](./priorities/v0.1-foundation/README.md) | Ship CoCoder v0.1 — extraction, Oz MVP, docs, public publish | Active | Expand — **Sub-Playbook D activated**; D Solve next. Suite **335/335** (+ dashboard 8/8). | Bob + founder | **Next:** D Solve. B/C Refines parallel (founder). |
+| [`v0.1-foundation`](./priorities/v0.1-foundation/README.md) | Ship CoCoder v0.1 — extraction, Oz MVP, docs, public publish | Active | Expand — **D doc prereqs landed 2026-05-27** (`faq.md` D-M1.5 + `getting-started.md` D-M1.1, run suesc2sq). Suite **335/335** (+ dashboard 8/8). | Bob + founder | **Next:** D-S2 CI gates (needs `.github/`-enabled boundary) + D-S1 proxy. B/C Refines parallel (founder). |
 | [`v0.4-oz-control-plane`](./priorities/v0.4-oz-control-plane/README.md) | Oz control plane — chat command interface + run oversight; 5-nav UI per ADR-0008 | Active | **Design spec landed 2026-05-27** (`docs/oz-control-plane-design/`); ADR-0010 + build plan next. | Bob + founder | Sequencing vs v0.2/v0.3 — founder. |
 
 ## Draft
@@ -50,7 +50,7 @@ See [`priorities/zArchive/INDEX.md`](./priorities/zArchive/INDEX.md).
 3. **Sub-Playbook B activation** — Witness/Interrogate/Solve-target for adopter onboarding (workspace template + `cocoder init` + getting-started doc). Multi-session work; the marquee remaining v0.1 deliverable.
 
 **Recommended next-session ordering:** Item 1 → Item 2 (in batches) → Item 3 (Witness/Interrogate only). The completion plan has an appendix with a verbatim resume prompt for fresh-session pickup. **Done = ticket 0001 closed, M4 free-wins all `[x]` or marked deferred-to-v0.2, Sub-Playbook B Witness populated + Status flipped to Active.**
-**Status:** Active — Refine. Sub-Playbook F Complete 2026-05-23. Sub-Playbook B Expand merged (PR #33 → `9bf2433`). Sub-Playbook C Expand complete 2026-05-23 (PRs #42–#47 → `f46dcff`). **Sub-Playbook D activated 2026-05-24** (Witness/Interrogate/Solve-target). B/C Refines parallel-tracked (founder). Suite **335/335** (+ oz-dashboard **8/8**). See [`priorities/v0.1-foundation/README.md`](./priorities/v0.1-foundation/README.md).
+**Status:** Active — Refine. Sub-Playbook F Complete 2026-05-23. Sub-Playbook B Expand merged (PR #33 → `9bf2433`). Sub-Playbook C Expand complete 2026-05-23 (PRs #42–#47 → `f46dcff`). **Sub-Playbook D activated 2026-05-24** (Witness/Interrogate/Solve-target). **D doc prereqs landed 2026-05-27 (run suesc2sq):** `docs/faq.md` (D-M1.5) authored + `docs/getting-started.md` (D-M1.1) extended to the clean-clone→first-launch path. **Deferred:** D-S2 CI gate wiring (gitleaks + LICENSE/NOTICE/faq checks) needs a run whose write boundary includes `.github/`; D-S1 internal-proxy readiness run still pending. B/C Refines parallel-tracked (founder). Suite **335/335** (+ oz-dashboard **8/8**). See [`priorities/v0.1-foundation/README.md`](./priorities/v0.1-foundation/README.md).
 
 ### [v0.3-workspace-lifecycle](./priorities/v0.3-workspace-lifecycle/README.md)
 **Owner:** Bob + founder
