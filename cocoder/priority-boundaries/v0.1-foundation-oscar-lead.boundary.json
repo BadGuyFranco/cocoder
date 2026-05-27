@@ -2,8 +2,22 @@
   "id": "v0.1-foundation-oscar-lead",
   "prioritySlug": "v0.1-foundation",
   "label": "v0.1-foundation oscar-lead boundary (Bob builds implementation surfaces; governance + root deps excluded)",
-  "routeIds": ["oscar-lead"],
+  "routeIds": [
+    "oscar-lead"
+  ],
   "writerLanes": {
+    "oscar": {
+      "allowed": [
+        "cocoder/PRIORITIES.md",
+        "cocoder/SESSION_LOG.md",
+        "cocoder/SESSION_LOG_ARCHIVE.md",
+        "cocoder/priorities/",
+        "cocoder/plans/",
+        "cocoder/tickets/",
+        "cocoder/decisions/"
+      ],
+      "excluded": []
+    },
     "bob": {
       "allowed": [
         "packages/",

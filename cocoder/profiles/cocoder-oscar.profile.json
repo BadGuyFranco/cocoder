@@ -5,10 +5,10 @@
   "lanes": {
     "oscar": {
       "persona": "oscar",
-      "adapter": "codex",
-      "adapterProfile": "gpt-5.5",
-      "canWrite": false,
-      "writeBoundary": [],
+      "adapter": "claude",
+      "adapterProfile": "",
+      "canWrite": true,
+      "writeBoundary": ["cocoder/PRIORITIES.md", "cocoder/SESSION_LOG.md", "cocoder/SESSION_LOG_ARCHIVE.md", "cocoder/priorities/", "cocoder/plans/", "cocoder/tickets/", "cocoder/decisions/"],
       "excludedWriteBoundary": [],
       "resultContract": "job-result",
       "evidenceClassDefault": "B"
