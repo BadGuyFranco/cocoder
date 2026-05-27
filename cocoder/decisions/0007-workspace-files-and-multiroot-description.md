@@ -3,10 +3,13 @@ id: ADR-0007
 title: "Workspace files — storage location and the multi-root description convention"
 status: accepted
 date: 2026-05-26
-relates-to: ADR-0006
+revised: 2026-05-27
+relates-to: ADR-0006, ADR-0008
 ---
 
 # ADR-0007: Workspace files — storage location and the multi-root `description` convention
+
+> **2026-05-27 revision (per [ADR-0008](./0008-oz-control-plane-architecture.md)):** root classification evolved from the original two-value Primary/Helper `description` convention to a first-class **three-role taxonomy** used by Oz and the workspace registry: **`primary`** (the main working repo; exactly one per workspace), **`writable`** (the orchestrator may write to it only with explicit human permission), and **`read-only`** (reference repo, never written). The role becomes a structured field on each root (the registry entry schema already `.passthrough()`es unknown keys); the `.code-workspace` `description` remains a free-text human label. The storage-location and "CoCoder is always a root" decisions below are unchanged.
 
 ## Context
 

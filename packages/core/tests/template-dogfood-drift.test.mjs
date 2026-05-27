@@ -44,6 +44,7 @@ const DOGFOOD_ONLY_ALLOWLIST = new Set([
   'priorities/v0.1-foundation',
   'priorities/v0.2-adapter-extensibility',
   'priorities/v0.3-workspace-lifecycle',
+  'priorities/v0.4-oz-control-plane',
   'priorities/AGENTS.md',
   'priorities/v0.1-foundation/README.md',
   'plans/AGENTS.md',
@@ -59,6 +60,7 @@ const DOGFOOD_ONLY_ALLOWLIST = new Set([
   'decisions/0005-oz-improvement-target-routing.md',
   'decisions/0006-no-nested-workspaces-inside-install.md',
   'decisions/0007-workspace-files-and-multiroot-description.md',
+  'decisions/0008-oz-control-plane-architecture.md',
   '.quinn-credentials.example.json'
 ]);
 
