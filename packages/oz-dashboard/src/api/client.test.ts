@@ -54,6 +54,42 @@ describe("ozFetch mutating headers", () => {
     expect(headers[OZ_CSRF_HEADER]).toBe("csrf");
   });
 
+  it("re-bootstraps and retries once on a stale-CSRF 403 (daemon-restart self-heal)", async () => {
+    storeSession({ bearerToken: "old", csrfToken: "stale" });
+    const calls: Array<{ url: string; headers: Record<string, string> }> = [];
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const headers = (init?.headers ?? {}) as Record<string, string>;
+      calls.push({ url: String(url), headers });
+      if (String(url) === "/auth/session") {
+        return new Response(JSON.stringify({ bearerToken: "fresh-b", csrfToken: "fresh-c" }), { status: 200 });
+      }
+      if (headers[OZ_CSRF_HEADER] === "stale") {
+        return new Response("missing or invalid csrf token", { status: 403 });
+      }
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    const result = await ozFetch<{ ok: boolean }>("/runs", { method: "POST", body: { x: 1 }, fetchImpl });
+    expect(result).toEqual({ ok: true });
+    expect(calls.some((c) => c.url === "/auth/session")).toBe(true);
+    const finalRun = calls.filter((c) => c.url === "/runs").pop()!;
+    expect(finalRun.headers[OZ_CSRF_HEADER]).toBe("fresh-c");
+    // fresh token persisted for subsequent requests
+    expect(sessionStorage.getItem(SESSION_CSRF_KEY)).toBe("fresh-c");
+  });
+
+  it("does not retry indefinitely if the 403 persists", async () => {
+    storeSession({ bearerToken: "old", csrfToken: "stale" });
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL) => {
+      if (String(url) === "/auth/session") {
+        return new Response(JSON.stringify({ bearerToken: "b", csrfToken: "still-bad" }), { status: 200 });
+      }
+      return new Response("missing or invalid csrf token", { status: 403 });
+    });
+    await expect(ozFetch("/runs", { method: "POST", body: {}, fetchImpl })).rejects.toThrow(/csrf/i);
+    // one original + one bootstrap + one retry = at most 3 calls (no infinite loop)
+    expect(fetchImpl.mock.calls.length).toBeLessThanOrEqual(3);
+  });
+
   it("buildMutatingHeaders exposes the same auth surface", () => {
     const headers = buildMutatingHeaders({ bearerToken: "b", csrfToken: "c" });
     expect(headers.Authorization).toBe("Bearer b");

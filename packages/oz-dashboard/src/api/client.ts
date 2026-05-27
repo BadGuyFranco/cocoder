@@ -1,4 +1,4 @@
-import { OZ_CSRF_HEADER, getOrBootstrapSession, type OzSession } from "./auth.js";
+import { OZ_CSRF_HEADER, bootstrapSession, clearSession, getOrBootstrapSession, type OzSession } from "./auth.js";
 
 export class OzApiError extends Error {
   constructor(message: string, readonly status: number) {
@@ -12,6 +12,8 @@ type RequestOptions = {
   body?: unknown;
   session?: OzSession;
   fetchImpl?: typeof fetch;
+  /** Internal: set once we've already re-bootstrapped after a stale-CSRF 403. */
+  _csrfRetry?: boolean;
 };
 
 async function resolveSession(fetchImpl: typeof fetch, session?: OzSession): Promise<OzSession> {
@@ -43,6 +45,22 @@ export async function ozFetch<T>(
 
   if (!response.ok) {
     const text = await response.text();
+    // CSRF auto-recovery: the daemon mints a fresh in-memory CSRF token on every
+    // restart, which 403s any tab replaying a sessionStorage-cached token (a hard
+    // refresh does NOT clear sessionStorage). Drop the stale session, re-bootstrap
+    // a fresh one from /auth/session, and retry the request once — so daemon
+    // restarts self-heal instead of stranding the operator on "invalid csrf token".
+    if (
+      response.status === 403 &&
+      method !== "GET" &&
+      method !== "HEAD" &&
+      !options._csrfRetry &&
+      /csrf/i.test(text)
+    ) {
+      clearSession();
+      const fresh = await bootstrapSession(fetchImpl);
+      return ozFetch<T>(path, { ...options, session: fresh, _csrfRetry: true });
+    }
     throw new OzApiError(text || `request failed (${response.status})`, response.status);
   }
 
