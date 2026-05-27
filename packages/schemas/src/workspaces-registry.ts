@@ -8,6 +8,8 @@ export const workspaceRegistryEntrySchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1).optional(),
   path: tokenizedPathSchema,
+  // ADR-0007: multi-root workspace entries may describe Primary/Helper roots.
+  description: z.string().min(1).optional(),
   tmuxSocket: z.string().min(1).optional(),
   lastSeenAt: z.string().datetime().optional()
 }).passthrough();
