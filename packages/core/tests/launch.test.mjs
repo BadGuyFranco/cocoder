@@ -64,6 +64,11 @@ test('launch writes run prompts and helper scripts without tmux unless execute i
     assert.match(bobHelper, /if \[ "\$1" = "--stdin" \]; then/);
     assert.match(bobHelper, /send-message --run-dir .* --lane 'bob' --stdin/);
     assert.match(bobHelper, /send-message --run-dir .* --lane 'bob' --message "\$\*"/);
+    // 2026-05-27: a no-arg invocation with piped/heredoc stdin (not a TTY) must
+    // route to --stdin without the explicit flag (dogfood-surfaced dispatch
+    // friction). The `$# -lt 1` block guards the TTY case with usage, otherwise
+    // dispatches stdin.
+    assert.match(bobHelper, /if \[ "\$#" -lt 1 \]; then\n {2}if \[ -t 0 \]; then[\s\S]*--lane 'bob' --stdin\n {2}exit 0/);
     assert.equal(events[0].type, 'run.created');
     assert.equal(events[0].creationContext.command, 'launch');
     assert.equal(events[0].creationContext.execute, false);

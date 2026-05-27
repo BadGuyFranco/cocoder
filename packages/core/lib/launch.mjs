@@ -1562,13 +1562,24 @@ function renderSendScript(runDir, lane) {
   // only takes one, so the second arg would land as an unexpected positional.
   // The audit's "$@" recommendation was inverted for this dispatcher's
   // "all args → one message" contract.
+  //
+  // 2026-05-27 (dogfood-surfaced): also accept a piped/heredoc body on stdin
+  // with NO args, e.g. `send-to-<lane>.sh <<'EOF' ... EOF`. A live Oscar/Bob
+  // run showed orchestrators naturally dispatch via heredoc without the explicit
+  // `--stdin` flag; the old script saw `$# -lt 1`, printed usage, and forced a
+  // retry. When fd 0 is not a TTY (piped/heredoc/redirected), the no-arg case is
+  // now treated as stdin input. A no-arg interactive (TTY) call still prints usage.
   const cliPath = CORE_CLI_PATH;
   return [
     '#!/usr/bin/env bash',
     'set -euo pipefail',
     'if [ "$#" -lt 1 ]; then',
-    `  echo "Usage: $(basename "$0") \\"message\\" | --stdin" >&2`,
-    '  exit 2',
+    '  if [ -t 0 ]; then',
+    `    echo "Usage: $(basename "$0") \\"message\\" | --stdin" >&2`,
+    '    exit 2',
+    '  fi',
+    `  node ${shellQuote(cliPath)} send-message --run-dir ${shellQuote(runDir)} --lane ${shellQuote(lane)} --stdin`,
+    '  exit 0',
     'fi',
     'if [ "$1" = "--stdin" ]; then',
     '  if [ "$#" -ne 1 ]; then',
