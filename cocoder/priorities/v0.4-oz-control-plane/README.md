@@ -24,6 +24,8 @@ The claude.ai/design output landed as a high-fidelity, working React prototype (
 
 ### New decisions this spec forces (→ ADR-0010)
 
+> **[ADR-0010](../../decisions/0010-run-lifecycle-wrap-teardown.md) written 2026-05-27** specifies the **run-lifecycle slice**: wrap-up delegated to cheap `cursor-agent` services (ADR-0009), **daemon-driven teardown** (a run never stops itself — self-pane-kill hazard; the operator/Oz executes `stop-run` from outside), and **orphaned-run recovery** (a dead-session run must not wedge launches; surface the real reason, not `spawn-failed`). The remaining items below stay for the build plan / sibling ADRs (pause/resume is run-lifecycle-adjacent and references ADR-0010).
+
 1. **Pause/resume decision primitive** (largest core touch) — a run reaches a decision point → **pauses** (Oscar blocks for a founder answer) → Oz surfaces a callout → founder answers → run **resumes**, routed through Oscar. Real run-lifecycle state in `packages/core`.
 2. **`cocoder attach <run-id>`** — new CLI; connects to the cmux/tmux session owning that run's iTerm.
 3. **Per-run transcript streaming** (websocket/SSE) + **disk persistence** + replay-on-reconnect (`packages/oz-daemon`); real **`run.progress`** from Oscar's step counter.
