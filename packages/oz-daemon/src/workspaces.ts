@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import {
   ozWorkspaceCreateRequestSchema,
+  ozWorkspaceListResponseSchema,
   ozWorkspaceUpdateRequestSchema,
   type WorkspacesRegistry
 } from "schemas";
@@ -27,7 +28,7 @@ export async function registerWorkspacesRoutes(
 ): Promise<void> {
   app.get("/workspaces", async () => {
     const workspaces = await resolveWorkspaceRegistry(options.cocoderHome);
-    return { workspaces };
+    return ozWorkspaceListResponseSchema.parse({ workspaces });
   });
 
   app.get("/workspaces/:id", async (request, reply) => {
