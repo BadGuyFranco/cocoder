@@ -14,13 +14,17 @@ The slice that made "CoCoder on itself" real is done and verified live (launch O
 
 Verified live: a real Oscar/Bob session ran, returned a correct `NEEDS_FOUNDER`, and the dogfood caught a real PRIORITIES.md drift (since fixed). Bob's writer boundary has since been widened to the v0.3 implementation surfaces.
 
+## Completed atoms
+
+- ✅ **WS-DESC-1** — optional `description` on the workspace **registry** entry schema (ADR-0007), with tests. Built autonomously by the dogfood (run-20260526T234112Z) and merged.
+
 ## Next atom
 
-**Recommended next atom:** `WS-DESC-1` — add an optional `description` field to the workspace **registry** entry schema (ADR-0007), so Oz can persist the Primary/Helper role for each root.
+**Recommended next atom:** `WS-DESC-2` — surface the `description` field in the Oz **workspace-list API** so clients (and the dashboard) can read each root's Primary/Helper role.
 
-- **Scope (Bob, in-boundary):** In `packages/schemas/src/workspaces-registry.ts`, add `description: z.string().optional()` to `workspaceRegistryEntrySchema` with a comment citing ADR-0007. Add/extend a schema unit test proving (a) an entry with a `description` parses, (b) an entry without it still parses (backward-compatible). Rebuild schemas.
-- **Out of scope (later atoms):** surfacing `description` in the Oz workspace-list API (`WS-DESC-2`) and the dashboard Workspaces page (`WS-DESC-3`).
-- **Acceptance:** `pnpm --filter schemas test` (or the schemas test command) passes with the new test; no other schema changes; backward-compatible (the field is optional).
+- **Scope (Bob, in-boundary):** carry `description` from the registry entry through to the workspace response. Add `description` (optional) to the workspace response/list schema in `packages/schemas/src/`, and include it in the daemon's `GET /workspaces` payload in `packages/oz-daemon/src/workspaces.ts` (read from the registry entry). Add/extend tests covering an entry with and without a description.
+- **Out of scope (later atom):** rendering `description` on the dashboard Workspaces page (`WS-DESC-3`).
+- **Acceptance:** schemas + oz-daemon test suites pass; `GET /workspaces` returns `description` when the registry entry has one and omits/undefined when it doesn't; backward-compatible.
 - **Boundary:** `packages/` only for this atom. Governance docs (priorities/decisions/PRIORITIES.md) stay founder/Oscar-owned.
 
 ## Summary
