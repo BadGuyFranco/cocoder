@@ -822,6 +822,35 @@ test('send-message refuses a lane after result artifacts exist', async () => {
   }
 });
 
+test('route laneRequirements adapterSandbox overrides teammate codex sandbox', async () => {
+  const fixture = await createLaunchFixture({ bobAdapterSandbox: { codex: 'danger-full-access' } });
+  try {
+    const result = await launchRun({
+      profilePath: fixture.profilePath,
+      routePath: fixture.routePath,
+      priorityFile: fixture.priorityPath,
+      sessionLogFile: fixture.sessionLogPath,
+      priorityBoundariesDir: fixture.boundariesDir,
+      adaptersDir: fixture.adaptersDir,
+      contractsDir,
+      runsDir: fixture.runsDir,
+      prioritySlug: 'DOCS-REBUILD',
+      execute: false,
+      cwd: fixture.tmp,
+      probeGitCommitCapability: async () => ({ ok: true })
+    });
+
+    assert.equal(result.ok, true, JSON.stringify(result.issues, null, 2));
+    assert.equal(result.sessions.find((session) => session.lane === 'bob').adapterSandbox, 'danger-full-access');
+    const bobWrapper = await readFile(path.join(result.runDir, 'jobs', 'bob', 'launch.sh'), 'utf8');
+    assert.match(bobWrapper, /exec codex --ask-for-approval never --sandbox danger-full-access "\$BOOTSTRAP"/);
+    const launchPlan = JSON.parse(await readFile(path.join(result.runDir, 'launch.json'), 'utf8'));
+    assert.equal(launchPlan.sessions.find((session) => session.lane === 'bob').adapterSandbox, 'danger-full-access');
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
 test('send-message refuses a lane after a partial result artifact exists', async () => {
   const fixture = await createLaunchFixture();
   try {
@@ -2129,7 +2158,8 @@ async function createLaunchFixture(options = {}) {
     routeDeclaresOscarWrapCommit: options.routeDeclaresOscarWrapCommit,
     requiresBobSideCommits: options.requiresBobSideCommits,
     dynamicTopology: options.dynamicTopology,
-    scriptQuinn: options.scriptQuinn
+    scriptQuinn: options.scriptQuinn,
+    bobAdapterSandbox: options.bobAdapterSandbox
   }), null, 2)}\n`);
   await writeFile(priorityPath, [
     ...(options.priorityNextAtomDrift ? [
@@ -2619,7 +2649,7 @@ function priorityBoundary({ routeId = 'fixture-claude-oscar-codex-bob', includeP
   };
 }
 
-function route({ supportedPriorityOwners = ['*'], allowAutonomousTeammateStart = false, routeDeclaresCommit = false, routeDeclaresOscarWrapCommit = false, requiresBobSideCommits = false, dynamicTopology = false, scriptQuinn = false } = {}) {
+function route({ supportedPriorityOwners = ['*'], allowAutonomousTeammateStart = false, routeDeclaresCommit = false, routeDeclaresOscarWrapCommit = false, requiresBobSideCommits = false, dynamicTopology = false, scriptQuinn = false, bobAdapterSandbox = null } = {}) {
   if (dynamicTopology) {
     return {
       id: 'fixture-claude-oscar-dynamic',
@@ -2688,7 +2718,8 @@ function route({ supportedPriorityOwners = ['*'], allowAutonomousTeammateStart =
           allowedAdapters: ['codex'],
           requiresInteractive: true,
           requiredCapabilities: ['initialPrompt', 'stdinDispatch', 'fileEdit', 'shell'],
-          requiredEvidenceCapabilities: ['transcript', 'diff', 'test-result']
+          requiredEvidenceCapabilities: ['transcript', 'diff', 'test-result'],
+          ...(bobAdapterSandbox ? { adapterSandbox: bobAdapterSandbox } : {})
         },
         phil: {
           allowedAdapters: ['codex'],
@@ -2768,7 +2799,8 @@ function route({ supportedPriorityOwners = ['*'], allowAutonomousTeammateStart =
         allowedAdapters: ['codex'],
         requiresInteractive: true,
         requiredCapabilities: ['initialPrompt', 'stdinDispatch', 'fileEdit', 'shell'],
-        requiredEvidenceCapabilities: ['transcript', 'diff', 'test-result']
+        requiredEvidenceCapabilities: ['transcript', 'diff', 'test-result'],
+        ...(bobAdapterSandbox ? { adapterSandbox: bobAdapterSandbox } : {})
       }
     }
   };

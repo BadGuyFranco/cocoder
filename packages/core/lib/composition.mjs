@@ -207,6 +207,25 @@ export function validateRouteSemantics(route) {
         errors.push(`${lanePath}.laneRequirements.${field} must be a boolean when present`);
       }
     }
+    if ('adapterSandbox' in requirements) {
+      const sandbox = requirements.adapterSandbox;
+      if (!sandbox || typeof sandbox !== 'object' || Array.isArray(sandbox)) {
+        errors.push(`${lanePath}.laneRequirements.adapterSandbox must be an object when present`);
+      } else {
+        for (const [adapterId, mode] of Object.entries(sandbox)) {
+          if (typeof mode !== 'string' || mode.trim() === '') {
+            errors.push(`${lanePath}.laneRequirements.adapterSandbox.${adapterId} must be a non-empty string`);
+            continue;
+          }
+          if (adapterId === 'codex' && !['read-only', 'workspace-write', 'danger-full-access'].includes(mode)) {
+            errors.push(`${lanePath}.laneRequirements.adapterSandbox.codex must be one of read-only, workspace-write, danger-full-access`);
+          }
+          if (adapterId === 'cursor-agent' && !['enabled', 'disabled'].includes(mode)) {
+            errors.push(`${lanePath}.laneRequirements.adapterSandbox.cursor-agent must be one of enabled, disabled`);
+          }
+        }
+      }
+    }
   }
   if ('allowAutonomousTeammateStart' in route && typeof route.allowAutonomousTeammateStart !== 'boolean') {
     errors.push('route.allowAutonomousTeammateStart must be a boolean when present');

@@ -117,6 +117,7 @@ test('route directory validation rejects malformed laneRequirements shape', asyn
     delete route.laneRequirements.bob;
     route.laneRequirements.oscar.requiredCapabilities = 'initialPrompt';
     route.laneRequirements.oscar.requiresInteractive = 'true';
+    route.laneRequirements.oscar.adapterSandbox = 'danger-full-access';
     await writeFile(path.join(routesDir, 'bad-route.json'), `${JSON.stringify(route, null, 2)}\n`);
 
     const result = await validateRouteDirectory({ routesDir, contractsDir });
@@ -125,6 +126,7 @@ test('route directory validation rejects malformed laneRequirements shape', asyn
     assert.ok(errors.includes('missing laneRequirements entry for bob'));
     assert.ok(errors.includes('oscar.laneRequirements.requiredCapabilities must be an array when present'));
     assert.ok(errors.includes('oscar.laneRequirements.requiresInteractive must be a boolean when present'));
+    assert.ok(errors.includes('oscar.laneRequirements.adapterSandbox must be an object when present'));
   } finally {
     await rm(tmp, { recursive: true, force: true });
   }

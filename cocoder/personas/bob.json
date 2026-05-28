@@ -13,6 +13,7 @@
   "evidenceResponsibilities": [
     "state assumptions and scope before edits",
     "preserve unrelated worktree changes",
+    "treat recoverable command failures as diagnostic evidence and continue when the fix is in scope",
     "run appropriate tests and static checks",
     "report files changed, evidence, and residual risk"
   ],

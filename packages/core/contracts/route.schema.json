@@ -82,6 +82,7 @@
     "Lead support commits are for bounded orchestration support only: exact files, declared lead lanes, declared allowed/excluded scopes, no run-local artifacts, no unrelated staged files.",
     "Implementation-surface commits must trace to the configured implementation owner lane result artifact unless route policy explicitly disables or exempts that surface.",
     "Lead-driven teammate lanes wait for a concrete lead dispatch unless the route explicitly sets allowAutonomousTeammateStart.",
+    "laneRequirements.<lane>.adapterSandbox may explicitly override adapter sandbox launch mode for a lane; use it only when the lane's authorized work needs OS resources a workspace sandbox blocks, and keep write boundaries/result evidence intact.",
     "Bootstrap routes may declare initialLanes to start Oscar first; every later counterpart lane must be covered by a topologyOptions entry and pass profile, adapter, boundary, git-state, helper, watcher, and result-contract checks.",
     "No-priority routes must start idle and wait for a concrete task.",
     "Route modelRoles override profile modelRoles but do not authorize silent role substitution; fallback and degraded-mode behavior remains explicit."

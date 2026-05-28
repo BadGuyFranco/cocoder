@@ -45,7 +45,11 @@
     },
     "bob": {
       "requiredCapabilities": ["interactive"],
-      "allowedAdapters": ["codex", "cursor-agent", "claude"]
+      "allowedAdapters": ["codex", "cursor-agent", "claude"],
+      "adapterSandbox": {
+        "codex": "danger-full-access",
+        "cursor-agent": "disabled"
+      }
     }
   }
 }

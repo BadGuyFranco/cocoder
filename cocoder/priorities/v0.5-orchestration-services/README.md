@@ -1,6 +1,6 @@
 # v0.5 — Orchestration Services (cheap-model admin delegation)
 
-**Status:** **Active — Phase 1 COMPLETE and Phase 3 service runtime adoption slice COMMITTED. Current blocker: real headless `cursor-agent` service execution fails local auth/keychain (`SecItemCopyMatching failed -50`). Next = prove/fix real service execution, then Phase 2 PR #51 governance reconciliation.** **Sequenced BEFORE v0.4-oz-control-plane** (founder, 2026-05-27). **Owner:** Bob + founder (Oscar orchestrates).
+**Status:** **Active — Phase 1 COMPLETE and Phase 3 service runtime adoption slice COMMITTED. Current fix slice addresses the real service proof blocker: `cursor-agent` was authenticated in the founder shell, but Bob's Codex `workspace-write` parent sandbox blocked macOS Keychain access (`SecItemCopyMatching failed -50`). Next = rerun the real service execution proof from a fresh Oscar/Bob run, then Phase 2 PR #51 governance reconciliation.** **Sequenced BEFORE v0.4-oz-control-plane** (founder, 2026-05-27). **Owner:** Bob + founder (Oscar orchestrates).
 **Decision:** [ADR-0009](../../decisions/0009-orchestration-services.md). **Relates to:** [ADR-0008](../../decisions/0008-oz-control-plane-architecture.md) (Oz unchanged).
 **Launchable from Oz / `main`** — `oscar-lead` route now lists this priority (`bounded-writers`) and the v0.5 boundary is in place.
 
@@ -19,12 +19,13 @@ Oscar (the lead orchestrator) was spending expensive lead-model context on repea
 
 - Phase 3 package/runtime adoption slice is committed: `run-orchestration-service` writes packet/result/transcript artifacts under `<runDir>/services/<packetId>/`; Oz run evidence and Run Inspector surface service artifacts; route-supported ghost priority guard is in place.
 - Oscar wrap now requires commit/finalize or an explicit blocker, and `oscar-lead` declares route-owned implementation commit, lead-rescue supersession, and guarded lead support commit authority for future clean closeout.
-- Real `cursor-agent` service execution reached installed `cursor-agent 2026.05.27-fe9a6e2` but failed before result JSON with `ERROR: SecItemCopyMatching failed -50`.
+- Real `cursor-agent` service execution reached installed `cursor-agent 2026.05.27-fe9a6e2` but failed before result JSON with `ERROR: SecItemCopyMatching failed -50` when invoked from Bob's Codex `workspace-write` lane. The same `cursor-agent status` command succeeds from the founder/Oscar shell, so this is a lane sandbox/context bug, not a Cursor Agent login failure.
+- Runtime fix in progress: `oscar-lead` now declares Bob adapter sandbox overrides (`codex: danger-full-access`, `cursor-agent: disabled`) and Bob's prompt now forbids first-failed-command closeout when the next fix is inside scope.
 - `composer-agent` is not currently on PATH in this install; service execution defaults to `cursor-agent` unless a configured run passes another executor command.
 
 ## Next Session Start Here
 
-**Recommended next atom:** Real service execution proof. Fix or explicitly defer local `cursor-agent` auth/keychain access, then run a read-only `run-orchestration-service --execute-service true` packet and verify packet/result/transcript artifacts plus Oz Run Inspector surfacing. Do not redo the committed package/runtime adoption slice.
+**Recommended next atom:** Real service execution proof after the sandbox/multi-turn fixes. Launch a fresh `oscar-lead` run, confirm Bob's generated wrapper uses `codex --sandbox danger-full-access`, then run a read-only `run-orchestration-service --execute-service true` packet with the real `cursor-agent` executor and verify packet/result/transcript artifacts plus Oz Run Inspector surfacing. Do not redo the committed package/runtime adoption slice.
 
 **Route / topology:** `oscar-lead` (Oscar lead + Bob builder), `bounded-writers`. Strict substitution.
 **Write boundary:** broadened-Bob — `packages/`, `docs/`, `.github/`, `README.md`, `ARCHITECTURE.md`, `templates/`, `examples/`, `LICENSE`/`NOTICE`; + Oscar governance (`cocoder/PRIORITIES.md`, `priorities/`, `decisions/`, `SESSION_LOG.md`, `plans/`, `tickets/`); exclude `secrets/`, `local/`. (v0.5 priority-boundary now on `main`.)
@@ -35,7 +36,7 @@ Oscar (the lead orchestrator) was spending expensive lead-model context on repea
 
 **Phase 3 — adoption + v0.1 close-out:**
 - Package/runtime adoption slice: ✅ DONE and committed 2026-05-28.
-- Remaining adoption proof: real headless `cursor-agent` execution end-to-end once local auth/keychain works or is replaced by the configured service executor.
+- Remaining adoption proof: real headless `cursor-agent` execution end-to-end from a fresh run after the Bob lane sandbox override is active. If it still fails, treat that as a new executor/runtime bug to fix in the same Bob packet when in scope, not as an immediate closeout unless founder credentials or external state are required.
 - **v0.1 carryover: ✅ DONE (2026-05-27).** v0.1-foundation archived to `priorities/zArchive/` with the Refine validations (P-R1/P-R3/P-R4, B/C Refines) waived per **[ADR-0011](../../decisions/0011-v0.1-closeout.md)**. No longer part of this priority.
 - **Preventive guard:** add a check that flags ghost priorities (in a route but absent from `PRIORITIES.md`) and dangling ADRs (indexed but file-absent), so this fragmentation can't silently recur.
 

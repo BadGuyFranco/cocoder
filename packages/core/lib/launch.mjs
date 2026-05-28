@@ -775,10 +775,12 @@ export function buildLaunchPlan({ runId, runDir, cwd, socketName, socketPath = '
       priorityLabel,
       visibleRunId
     ].join(' | ');
+    const startupMode = laneStartupMode(route, lane);
     const routeCommitPolicy = getOrchestratorCommitPolicy(route, lane.lane);
     const routeOwnedCommit = routeCommitPolicy.ok;
     const routeWriteScope = routeOwnedCommit ? route.orchestratorCommit?.laneWriteScopes?.[lane.lane] || null : null;
     const canWrite = lane.canWrite === true || routeOwnedCommit;
+    const adapterSandbox = laneAdapterSandbox(route, lane.lane, lane.adapter);
     return {
       lane: lane.lane,
       persona: lane.persona,
@@ -788,6 +790,7 @@ export function buildLaunchPlan({ runId, runDir, cwd, socketName, socketPath = '
       profileCanWrite: lane.canWrite === true,
       routeOwnedCommit,
       routeWriteScope,
+      adapterSandbox,
       adapterKind: lane.adapterKind || '',
       adapterCapabilities: lane.capabilities || {},
       command: adapterCommands.get(lane.adapter),
@@ -799,7 +802,7 @@ export function buildLaunchPlan({ runId, runDir, cwd, socketName, socketPath = '
       wrapperPath: path.join(jobDir, 'launch.sh'),
       deferWrapperPath: path.join(jobDir, 'launch-deferred.sh'),
       startSignalPath: path.join(jobDir, 'start.signal'),
-      startupMode: laneStartupMode(route, lane),
+      startupMode,
       width: DEFAULT_SESSION_WIDTH,
       height: DEFAULT_SESSION_HEIGHT,
       bootstrapMessage: `Read and follow this CoCoder orchestration launch prompt exactly: ${promptPath}`
@@ -1238,18 +1241,20 @@ export function renderSessionWrapper(launchPlan, session) {
   // the whole route. Sub-Playbook E E3.3 surfaced this; until dispatch moves
   // outside the codex sandbox (a v0.2 architectural item), grant lead lanes
   // `danger-full-access` so multi-lane orchestration actually completes.
-  // Teammate / writer lanes keep `workspace-write` — they receive dispatches
-  // through stdin/file, never drive tmux themselves.
-  const codexSandbox = session.startupMode === 'lead' ? 'danger-full-access' : 'workspace-write';
+  // Teammate / writer lanes default to `workspace-write`, but routes may
+  // explicitly override this when authorized work needs OS resources that the
+  // workspace sandbox blocks, such as macOS Keychain-backed headless tools.
+  const codexSandbox = session.adapterSandbox || (session.startupMode === 'lead' ? 'danger-full-access' : 'workspace-write');
   // Cursor CLI (`cursor-agent`) mirrors the codex lead/teammate sandbox split.
   // `-f/--force` bypasses per-command approval prompts so an unattended pane
   // does not stall (the codex `--ask-for-approval never` analog). `--sandbox`
   // takes `disabled|enabled`: lead lanes drive teammate dispatch via tmux IPC
   // and need full access (`disabled`, matching codex `danger-full-access`);
-  // teammate/writer lanes stay sandboxed (`enabled`). Workspace trust: cursor's
-  // `--trust` flag is print/headless-only, so an interactive lane prompts the
-  // founder for trust once on first launch in an untrusted repo.
-  const cursorSandbox = session.startupMode === 'lead' ? 'disabled' : 'enabled';
+  // teammate/writer lanes default to sandboxed (`enabled`) unless the route
+  // explicitly overrides them. Workspace trust: cursor's `--trust` flag is
+  // print/headless-only, so an interactive lane prompts the founder for trust
+  // once on first launch in an untrusted repo.
+  const cursorSandbox = session.adapterSandbox || (session.startupMode === 'lead' ? 'disabled' : 'enabled');
   return [
     '#!/usr/bin/env bash',
     'set -euo pipefail',
@@ -1277,6 +1282,11 @@ export function renderSessionWrapper(launchPlan, session) {
     'esac',
     ''
   ].join('\n');
+}
+
+function laneAdapterSandbox(route, lanePath, adapter) {
+  const value = route?.laneRequirements?.[lanePath]?.adapterSandbox?.[adapter];
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
 function renderNoninteractiveSessionHolder(launchPlan, session) {
@@ -1730,6 +1740,7 @@ function publicSession(session) {
     persona: session.persona,
     adapter: session.adapter,
     adapterProfile: session.adapterProfile,
+    adapterSandbox: session.adapterSandbox,
     adapterKind: session.adapterKind,
     adapterCapabilities: session.adapterCapabilities,
     startupMode: session.startupMode,

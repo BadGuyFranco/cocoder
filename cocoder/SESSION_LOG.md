@@ -14,6 +14,20 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-28 — **v0.5 Bob sandbox + multi-turn closeout fix slice in progress**
+
+**Persona:** Founder + Codex direct fix | **Priority:** v0.5-orchestration-services | **Run:** post-terminal correction after wwa3kd6o
+
+**Outcomes:**
+- Diagnosed the failed real-service proof correctly: `cursor-agent` is authenticated in the founder/Oscar shell, but Bob's Codex `workspace-write` lane blocked macOS Keychain access and produced `SecItemCopyMatching failed -50`.
+- Added route-declared adapter sandbox overrides so `oscar-lead` Bob launches with `codex: danger-full-access` and `cursor-agent: disabled`; this keeps the authority explicit in route config instead of hidden in dispatch text.
+- Tightened Bob's prompt/playbook/persona contract: a recoverable failed command is diagnostic evidence, not an automatic result closeout, when the next fix is inside the authorized boundary.
+- Updated the v0.5 handoff so the next run picks up from the sandbox-context fix and reruns the real service proof rather than asking the founder to re-login Cursor Agent.
+
+**Next:** Run focused core validation, commit the fix slice, then launch a fresh v0.5 Oscar/Bob run to prove `run-orchestration-service --service run-summary --executor-command cursor-agent --execute-service true` end to end and then verify Oz service artifact surfacing.
+
+---
+
 ## 2026-05-28 — **v0.5 service adoption slice committed; current run closed with founder-authorized supersession**
 
 **Persona:** Oscar + Bob + founder closeout | **Priority:** v0.5-orchestration-services | **Run:** hlm72yhx
