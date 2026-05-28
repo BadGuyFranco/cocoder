@@ -16,7 +16,7 @@ describe("workspaceRegistryEntrySchema", () => {
   it("accepts entries without a description for backward compatibility", () => {
     const parsed = workspaceRegistryEntrySchema.parse({
       id: "cocoder",
-      path: "/Volumes/NAS LOCAL/CoCoder"
+      path: "/Users/example/CoCoder"
     });
 
     expect(parsed.description).toBeUndefined();

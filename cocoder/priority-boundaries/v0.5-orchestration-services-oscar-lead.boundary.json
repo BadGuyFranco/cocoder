@@ -1,0 +1,53 @@
+{
+  "id": "v0.5-orchestration-services-oscar-lead",
+  "prioritySlug": "v0.5-orchestration-services",
+  "label": "v0.5-orchestration-services oscar-lead boundary (default — tighten as needed; Bob builds implementation surfaces, governance + root deps excluded)",
+  "routeIds": [
+    "oscar-lead"
+  ],
+  "writerLanes": {
+    "oscar": {
+      "allowed": [
+        "cocoder/PRIORITIES.md",
+        "cocoder/SESSION_LOG.md",
+        "cocoder/SESSION_LOG_ARCHIVE.md",
+        "cocoder/priorities/",
+        "cocoder/plans/",
+        "cocoder/tickets/",
+        "cocoder/decisions/"
+      ],
+      "excluded": []
+    },
+    "bob": {
+      "allowed": [
+        "packages/",
+        "docs/",
+        "templates/",
+        "examples/",
+        ".github/",
+        "cocoder/",
+        "README.md",
+        "ARCHITECTURE.md",
+        "LICENSE",
+        "NOTICE",
+        "CONTRIBUTING.md",
+        "package.json",
+        "pnpm-lock.yaml",
+        "pnpm-workspace.yaml",
+        ".nvmrc",
+        ".gitignore"
+      ],
+      "excluded": [
+        "cocoder/priorities/",
+        "cocoder/decisions/",
+        "cocoder/PRIORITIES.md",
+        "cocoder/SESSION_LOG.md",
+        "cocoder/SESSION_LOG_ARCHIVE.md",
+        "cocoder/tickets/",
+        "cocoder/local/",
+        "local/",
+        "secrets/"
+      ]
+    }
+  }
+}

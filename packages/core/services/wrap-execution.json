@@ -3,7 +3,7 @@
   "id": "wrap-execution",
   "label": "Wrap Execution",
   "mode": "bounded-write",
-  "purpose": "Apply Oscar-approved closeout intent to handoff/status docs, then prepare route-owned commit/finalization checks.",
+  "purpose": "Apply Oscar-approved closeout intent to handoff/status docs only. Oscar performs the route-owned commit and finalization separately; this service must not commit, finalize a run, or record supersession.",
   "execution": { "style": "cheap-model-or-deterministic", "preferredModelClass": "fast-low-cost-editor", "fallback": "ask-oscar" },
   "allowedWriteScopes": [
     "cocoder/PRIORITIES.md",
@@ -16,8 +16,6 @@
   "requiredChecks": [
     "check-handoff-consistency",
     "check-session-log-hygiene",
-    "git diff --check",
-    "orchestrator-commit",
-    "finalize-run-status"
+    "git diff --check"
   ]
 }
