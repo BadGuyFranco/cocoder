@@ -483,6 +483,45 @@ test('lead support commit lets Oscar commit bounded orchestration files without 
   }
 });
 
+test('lead-support-commit CLI preserves repo-relative --files CSV and commits exact files', async () => {
+  const fixture = await createCommitFixture({ includeLeadSupportCommit: true });
+  try {
+    const requestedFiles = ['packages/core/cli.mjs', 'packages/core/extra.mjs'];
+    await fixture.modify(requestedFiles[0], 'support cli change\n');
+    await fixture.modify(requestedFiles[1], 'support extra change\n');
+    const cliPath = path.join(repoRoot, 'packages/core/cli.mjs');
+    const { stdout } = await execFileAsync(process.execPath, [
+      cliPath,
+      'lead-support-commit',
+      '--run-dir',
+      fixture.runDir,
+      '--lane',
+      'oscar',
+      '--repo-root',
+      fixture.repo,
+      '--files',
+      requestedFiles.join(','),
+      '--message',
+      '[TEST] Lead support CLI commit',
+      '--reason',
+      'clear a launch-control blocker',
+      '--developer-mode',
+      'true'
+    ], {
+      cwd: fixture.repo,
+      maxBuffer: 1024 * 1024
+    });
+    const result = JSON.parse(stdout);
+
+    assert.equal(result.ok, true, JSON.stringify(result.issues, null, 2));
+    assert.deepEqual(result.stagedPaths, requestedFiles);
+    const committed = await fixture.git(['diff-tree', '--no-commit-id', '--name-only', '-r', result.sha]);
+    assert.deepEqual(lines(committed), requestedFiles);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
 test('lead support commit blocks product files and undeclared routes', async () => {
   const fixture = await createCommitFixture();
   try {

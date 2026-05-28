@@ -40,6 +40,13 @@ test('teardown initiator lane is parsed as a literal lane name', () => {
   assert.equal(parseArgs(['--initiator-lane', 'oscar']).initiatorLane, 'oscar');
 });
 
+test('lead support commit files CSV is parsed as a repo-relative literal', () => {
+  assert.equal(
+    parseArgs(['--files', 'cocoder/PRIORITIES.md,cocoder/SESSION_LOG.md']).files,
+    'cocoder/PRIORITIES.md,cocoder/SESSION_LOG.md'
+  );
+});
+
 test('help text matches tracked CLI help baseline byte-for-byte', async () => {
   const baseline = await readFile(baselineHelpPath, 'utf8');
   assert.equal(`${HELP_TEXT}\n`, baseline);
