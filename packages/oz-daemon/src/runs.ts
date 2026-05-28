@@ -31,6 +31,7 @@ const { prepareDebuggerSession } = require("../../core/lib/debugger.mjs") as {
     tmuxBin?: string;
     repoRoot: string;
     mode?: string;
+    gitWrite?: boolean;
   }) => Promise<{
     ok: boolean;
     status: string;
@@ -42,6 +43,7 @@ const { prepareDebuggerSession } = require("../../core/lib/debugger.mjs") as {
     wrapperPath: string;
     reportPath: string;
     resultPath: string;
+    gitWrite: boolean;
     issues: Array<{ severity?: string; code?: string; detail?: string }>;
   }>;
 };
@@ -96,6 +98,7 @@ export type LaunchDebuggerBody = {
   workspaceId?: string;
   mode?: "repo-audit" | "launch-failure" | "preflight";
   openTerminal?: boolean;
+  gitWrite?: boolean;
 };
 
 export type RegisterRunsRoutesOptions = {
@@ -253,7 +256,8 @@ export async function registerRunsRoutes(app: FastifyInstance, options: Register
       debuggerRunsDir: workspace.debuggerRunsDir,
       tmuxBin: process.env.TMUX_BIN || "/opt/homebrew/bin/tmux",
       repoRoot: workspace.workspaceRoot,
-      mode: body?.mode ?? "repo-audit"
+      mode: body?.mode ?? "repo-audit",
+      gitWrite: body?.gitWrite === true
     });
     const terminalOpened = body?.openTerminal === false
       ? false
@@ -273,6 +277,7 @@ export async function registerRunsRoutes(app: FastifyInstance, options: Register
       wrapperPath: debugResult.wrapperPath,
       reportPath: debugResult.reportPath,
       resultPath: debugResult.resultPath,
+      gitWrite: debugResult.gitWrite,
       terminalOpened,
       issues: debugResult.issues
     };

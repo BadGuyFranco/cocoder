@@ -889,7 +889,8 @@ async function handle_prepare_debugger(args) {
       tmuxBin: args.tmuxBin,
       repoRoot: process.cwd(),
       mode: args.mode || 'snapshot',
-      followIntervalSeconds: args.followIntervalSeconds || 60
+      followIntervalSeconds: args.followIntervalSeconds || 60,
+      gitWrite: args.gitWrite
     });
     console.log(JSON.stringify(result, null, 2));
     return;

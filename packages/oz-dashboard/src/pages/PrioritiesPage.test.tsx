@@ -43,6 +43,7 @@ describe("PrioritiesPage", () => {
               wrapperPath: "/tmp/debug/launch-debugger.sh",
               reportPath: "/tmp/debug/debug-report.md",
               resultPath: "/tmp/debug/debug-result.json",
+              gitWrite: true,
               terminalOpened: true,
               issues: []
             }),

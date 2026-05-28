@@ -89,11 +89,11 @@ export function PrioritiesPage() {
     setMessage(null);
     setDebuggerLaunching(true);
     try {
-      const result = await launchDebugger({ workspaceId, mode: "repo-audit", openTerminal: true });
+      const result = await launchDebugger({ workspaceId, mode: "repo-audit", openTerminal: true, gitWrite: true });
       setMessage(
         result.terminalOpened
-          ? `Clean debugger launched for ${result.workspaceId} (${result.sessionId}).`
-          : `Clean debugger prepared for ${result.workspaceId} at ${result.wrapperPath}; Terminal did not open.`
+          ? `Clean debugger launched for ${result.workspaceId} (${result.sessionId}) with git authority.`
+          : `Clean debugger prepared for ${result.workspaceId} at ${result.wrapperPath} with git authority; Terminal did not open.`
       );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));

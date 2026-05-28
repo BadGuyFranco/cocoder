@@ -18,6 +18,7 @@ export type LaunchDebuggerRequest = {
   workspaceId?: string;
   mode?: "repo-audit" | "launch-failure" | "preflight";
   openTerminal?: boolean;
+  gitWrite?: boolean;
 };
 
 export type LaunchDebuggerResponse = {
@@ -31,6 +32,7 @@ export type LaunchDebuggerResponse = {
   wrapperPath: string;
   reportPath: string;
   resultPath: string;
+  gitWrite: boolean;
   terminalOpened: boolean;
   issues: Array<{ severity?: string; code?: string; detail?: string }>;
 };
