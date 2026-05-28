@@ -1,7 +1,7 @@
-# CoCoder Architecture (Draft)
+# CoCoder Architecture
 
-**Status:** Draft — Refine (Sub-Playbook A audit remediation in flight; Sub-Playbook E dogfood ramp proven end-to-end)  
-**Last verified:** 2026-05-22 (Sub-Playbook E exercised the four-zone storage model, multi-workspace concurrency, and config-resolver semantics across 4 autonomous orchestrated runs; 110/110 tests pass; repo published to `BadGuyFranco/cocoder`)
+**Status:** v0.1 release candidate  
+**Last verified:** 2026-05-28 (Mermaid storage-zone diagram reviewed for render clarity; public doc references rechecked in Sub-Playbook D publish pass)
 
 ## Mental Model
 
@@ -9,33 +9,37 @@ CoCoder has **four storage zones** that must never be conflated. Two live in the
 
 ```mermaid
 flowchart TB
-  subgraph install ["CoCoder install (git repo — tracked)"]
+  subgraph install ["CoCoder install repo (tracked)"]
     Core[packages/core — CLI, contracts, launch]
     Dash[packages/oz-dashboard]
+    Docs[docs/]
     Tpl[templates/workspace-cocoder]
   end
 
-  subgraph installLocal ["CoCoder/local/ — GITIGNORED"]
+  subgraph installLocal ["CoCoder/local/ (gitignored)"]
     Oz[Oz state + workspaces registry]
     Wsps[workspaces/ — per-ws install-side state]
     Prefs[Models, accounts, secrets, audit, roots]
   end
 
-  subgraph wsA ["Workspace A repo"]
-    CA[cocoder/ — priorities, memory, ADRs]
-    CALA[cocoder/local/ — GITIGNORED]
+  subgraph wsA ["Application workspace A"]
+    CA[cocoder/ — tracked governance]
+    CALA[cocoder/local/ — gitignored overrides]
   end
 
-  subgraph wsB ["Workspace B repo"]
-    CB[cocoder/]
-    CBLB[cocoder/local/]
+  subgraph wsB ["Application workspace B"]
+    CB[cocoder/ — tracked governance]
+    CBLB[cocoder/local/ — gitignored overrides]
   end
 
+  Dash --> Oz
   Oz --> Core
   Core --> CA
   Core --> CB
   Prefs --> Oz
   Prefs --> Core
+  Tpl --> CA
+  Tpl --> CB
 ```
 
 | Zone | Location | Tracked in git? | Purpose |
@@ -243,8 +247,8 @@ Normal adopters get workspace customization by default. CoCoder product improvem
 
 ## References
 
-- CoBuilder orchestration: `infrastructure/cobuilder-build/orchestration/ARCHITECTURE.md`
-- Design language: `marketing/brand/design-brief.md` (Fusion palette — adapt for CoCoder branding)
+- CoBuilder orchestration: historical upstream extraction reference retained in `NOTICE`
+- Design language: [`docs/oz-design-brief.md`](./docs/oz-design-brief.md)
 - ADR index: `cocoder/decisions/README.md`
 - Dogfood meta-project: `cocoder/AGENTS.md`
 - Active priorities: `cocoder/PRIORITIES.md`

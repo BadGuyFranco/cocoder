@@ -25,12 +25,16 @@ jobs:
       # had landed undetected through PRs #8 and #9.
       - name: Install ripgrep (for stale-reference gate)
         run: brew install ripgrep
+      - name: Install gitleaks (for public-readiness gate)
+        run: brew install gitleaks
       - run: pnpm -F schemas build
       - run: git diff --exit-code -- packages/schemas/dist/
       - run: pnpm typecheck
       - run: pnpm -r test
       - run: pnpm -F core test config-resolver
       - run: node packages/core/cli.mjs validate-contracts
+      - name: Secret scan (gitleaks full history)
+        run: gitleaks detect --no-banner --source . --log-opts="--all"
       # Documented-invocation parity smoke test. The 2026-05-22 cocoder-cli
       # bin-symlink miss surfaced post-merge because the documented
       # `pnpm exec cocoder ...` form was never CI-tested — the previous
@@ -70,5 +74,11 @@ jobs:
           fi
       - name: Public readiness placeholder
         run: |
-          test -f LICENSE
-          test -f NOTICE
+          set -e
+          test -s LICENSE
+          test -s NOTICE
+          grep -qi 'CoBuilder' NOTICE
+          grep -qi 'extract' NOTICE
+          test -s docs/faq.md
+          grep -qi 'commercial use' docs/faq.md
+          grep -Eqi 'zero (analytics|telemetry)|no telemetry' docs/faq.md

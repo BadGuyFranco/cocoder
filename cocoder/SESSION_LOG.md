@@ -14,6 +14,20 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-27 — **v0.1 publish surfaces complete on clean branch `v0.1-publish` (Option A disentangle); D-S1 removed; ready for founder release**
+
+**Persona:** Oscar (lead) + Bob (builder, codex) | **Priority:** v0.1-foundation | **Plan:** [`plans/2026-05-21-docs-publish.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-docs-publish.plan.md) | **Run:** 1wna3uxq
+
+**Outcomes:**
+- **Founder chose Option A (disentangle):** ship v0.1 from a clean branch off `main` so the `v0.1.0` tag contains only v0.1, not the v0.4 control-plane work entangled on `oz-control-plane-design`. Verified the split is clean — `main` already holds the full v0.1 product baseline (A/B/C/E/F + cross-link docs + README/ARCHITECTURE/ci.yml/LICENSE/NOTICE); the only delta was the 6 D-M1 docs + ADR-0001 §6 fix + remaining D work.
+- Created **`v0.1-publish`** off `main`. Oscar carried governance + the ADR-0001 §6 fix (`f83110a`); Bob brought the 6 authored D-M1 docs over (byte-identical to source, verified) and landed **D-M1.7** (ARCHITECTURE verify), **D-M1.8** (README adopter rewrite, banner removed), **D-M2.1** (`docs/dogfood-evidence.md`), **D-S2** (ci.yml gitleaks + LICENSE/NOTICE + faq gates) as `68feb24`. Also scrubbed one machine-specific `/Volumes/...` literal from a schemas test fixture to keep the stale-ref gate green.
+- **Founder scope decisions this run:** D-S1 internal-proxy readiness **removed** from v0.1 ("I'll dogfood on my own projects — not a v0.1 concern"); `v0.1.0` tag stays a founder release action. D-S2 green-on-main is Class A only after CI runs; local Class B (gitleaks 104-commit clean, `check-doc-refs` 0 missing, public-readiness-ok) all pass. One sandbox socket-bind `EPERM` blocks full-suite Class A locally.
+- Unrelated dirty `packages/oz-dashboard/src/pages/PrioritiesPage.tsx` preserved untouched/unstaged throughout.
+
+**Next:** **Founder release sequence** — review `v0.1-publish`, merge to `main` (triggers CI = D-S2 Class A proof), then tag `v0.1.0` + release notes (PD-Q6=A). Merging `v0.1-publish` then later `oz-control-plane-design` to `main` will need governance-file (PRIORITIES.md/SESSION_LOG) conflict resolution — expected cost of the disentangle.
+
+---
+
 ## 2026-05-24 — **Sub-Playbook D activated (Witness/Interrogate/Solve-target); PD-Q1..PD-Q7 answered**
 
 **Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-docs-publish.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-docs-publish.plan.md)
