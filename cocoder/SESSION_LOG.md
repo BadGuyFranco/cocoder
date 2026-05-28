@@ -12,6 +12,20 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-05-28 — **v0.5 Phase 3 preventive guard shipped; surfaced a real ghost (founder-approved retirement is next)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [v0.5-orchestration-services](./priorities/v0.5-orchestration-services/README.md) | **Run:** jr9lw470 (oscar-lead)
+
+**Outcomes:**
+- Shipped `check-orchestration-fragmentation` (`packages/core/checks/`, commit `8dda13e`): a proactive CLI guard that flags ghost priorities (route `supportedPriorityOwners` absent from `PRIORITIES.md`) and dangling ADRs (decisions-index rows whose files are absent), excluding the Pending/proposed section. Reuses `routeGhostPriorityIssues` + `extractPrioritySlugs` (no rule duplication).
+- Verified (Class B): full core suite **369/369**, new unit test **5/5**, `validate-orchestration-services` ok (0 issues). Guard is advisory and not wired into pretest/CI.
+- The guard immediately caught a real ghost: `cocoder/routes/dogfood-port-tests.json` still owns the archived `v0.1-foundation` (ADR side clean — ADR-0010 correctly treated as pending). Founder approved **option A**: retire the orphaned v0.1 dogfood scaffolding.
+- Bob's packet was CONDITIONAL_PASS (the live ghost, not a defect); Oscar verified, accepted via `record-supersession` (route-policy), and committed through the route-owned path.
+
+**Next:** Fresh `oscar-lead` run for `retire-orphaned-v0.1-dogfood-scaffolding` — Bob retires the `dogfood-port-tests` route + its `v0.1-foundation` boundary + the `dogfood-port-tests` persona `allowedRoutes` entries (together), reruns the guard to confirm clean. Then v0.5 is archive-candidate (founder confirms). (Lane-packet mechanics: Bob's CONDITIONAL_PASS packet can't reopen in this run, so the retirement is a fresh run.)
+
+---
+
 ## 2026-05-28 — **v0.5 Phase 2 PR #51 reconciliation complete; lead-support-commit + multi-packet finalize bugs fixed**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [v0.5-orchestration-services](./priorities/v0.5-orchestration-services/README.md) | **Run:** 3xcelgzi (oscar-lead)

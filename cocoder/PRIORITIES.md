@@ -1,6 +1,6 @@
 # Priorities — CoCoder Meta-Project
 
-Last updated: 2026-05-28 — v0.5 Phases 1 & 2 complete: `lead-support-commit` fixed, PR #51 general infra (incl. ADR-0012) reconciled to `main`, PR #51 parked for the v0.4 run; next is the Phase 3 preventive guard (ghost-priority + dangling-ADR check), then archive-candidate.
+Last updated: 2026-05-28 — v0.5 Phase 3 preventive guard SHIPPED (`check-orchestration-fragmentation`, committed `8dda13e`); it immediately surfaced a real ghost (the `dogfood-port-tests` route still owns the archived `v0.1-foundation`). Founder approved retiring the orphaned v0.1 dogfood scaffolding (option A) as the next atom; after that lands clean, v0.5 is archive-candidate.
 
 Slim index of active and archived priorities. Open a priority's folder for detail.
 
@@ -17,7 +17,7 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 
 | Slug | Description | Status | Canon | Owner | Blocked on |
 |---|---|---|---|---|---|
-| [`v0.5-orchestration-services`](./priorities/v0.5-orchestration-services/README.md) | Cheap/fast-model admin delegation — Oscar offloads wrap/compaction/teardown to bounded services | **Active** | Phases 1 & 2 complete; PR #51 reconciled | Bob + founder | **Sequenced before v0.4** (founder 2026-05-27). Next: Phase 3 preventive guard (ghost-priority + dangling-ADR check); then archive-candidate. |
+| [`v0.5-orchestration-services`](./priorities/v0.5-orchestration-services/README.md) | Cheap/fast-model admin delegation — Oscar offloads wrap/compaction/teardown to bounded services | **Active** | Phases 1–3 complete; guard shipped | Bob + founder | **Sequenced before v0.4** (founder 2026-05-27). Phase 3 guard `check-orchestration-fragmentation` shipped (`8dda13e`). Next: retire orphaned v0.1 dogfood scaffolding (founder-approved option A); then archive-candidate. |
 
 ## Draft
 
@@ -61,4 +61,4 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 **Owner:** Bob + founder
 **Summary:** Let Oscar run faster/cheaper models for repeatable admin work (priority/handoff editing, run wrap-up, teardown) via bounded non-persona orchestration services, instead of spending lead-model context.
 **What:** Declarative services (`packages/core/services/*.json`) + two contracts + `lib/services.mjs` (build/validate/execute packet with deterministic git write-audit) + 5 CLI commands + a headless `cursor-agent-service` adapter. 11 services shipped. Services never commit/finalize/supersede (Oscar-only route control); adapter+model configurable per service (`cursor-agent` default). Oz unchanged (ADR-0008 preserved).
-**Status:** **Active — Phases 1 & 2 complete. Engine + launch config on `main`; real headless `cursor-agent` execution proven; multi-packet lanes, founder-approved Oscar teardown, the archived-v0.1 route ghost blocker, `lead-support-commit`, and the multi-packet finalize commit-linkage all fixed; PR #51 general infra (incl. ADR-0012) reconciled to `main`, with the v0.4-specific design parked on PR #51.** Next: Phase 3 preventive guard (ghost-priority + dangling-ADR check); then archive-candidate. (v0.1-foundation already archived 2026-05-27 — ADR-0011.) Full brief in [`priorities/v0.5-orchestration-services/README.md`](./priorities/v0.5-orchestration-services/README.md).
+**Status:** **Active — Phases 1–3 complete. Engine + launch config on `main`; real headless `cursor-agent` execution proven; multi-packet lanes, founder-approved Oscar teardown, the archived-v0.1 route ghost blocker, `lead-support-commit`, and the multi-packet finalize commit-linkage all fixed; PR #51 general infra (incl. ADR-0012) reconciled to `main`. Phase 3 preventive guard `check-orchestration-fragmentation` SHIPPED (`8dda13e`): flags ghost priorities (route `supportedPriorityOwners` absent from `PRIORITIES.md`) and dangling ADRs (indexed but file-absent), excluding the Pending/proposed section.** The guard immediately surfaced a real ghost: the `dogfood-port-tests` route still owns the archived `v0.1-foundation`. **Next:** retire the orphaned v0.1 dogfood scaffolding (route + `v0.1-foundation` priority-boundary + `dogfood-port-tests` entries in bob/talia/oscar `allowedRoutes`) — founder-approved option A; then archive-candidate. (v0.1-foundation already archived 2026-05-27 — ADR-0011.) Full brief in [`priorities/v0.5-orchestration-services/README.md`](./priorities/v0.5-orchestration-services/README.md).
