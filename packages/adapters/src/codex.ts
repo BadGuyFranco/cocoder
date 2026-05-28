@@ -38,11 +38,13 @@ export class CodexAdapter implements Adapter {
 
     if (installed) {
       const auth = await this.#exec('codex', ['login', 'status'])
-      const loggedIn = auth.code === 0 && /logged in/i.test(auth.stdout)
+      // `codex login status` prints "Logged in ..." to STDERR (stdout is empty), so check both.
+      const out = `${auth.stdout}${auth.stderr}`
+      const loggedIn = auth.code === 0 && /logged in/i.test(out)
       checks.push({
         name: 'authenticated',
         ok: loggedIn,
-        detail: loggedIn ? auth.stdout.trim() : 'not logged in — run `codex login`',
+        detail: loggedIn ? out.trim() : 'not logged in — run `codex login`',
       })
     } else {
       checks.push({ name: 'authenticated', ok: false, detail: 'skipped (codex not installed)' })

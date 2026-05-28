@@ -76,10 +76,11 @@ describe('preflight() (injected exec)', () => {
     expect(r.checks.find((c) => c.name === 'authenticated')?.detail).toMatch(/skipped/)
   })
 
-  test('codex: installed + logged in → ok', async () => {
+  test('codex: installed + logged in (status on STDERR) → ok', async () => {
+    // codex login status prints to stderr with an empty stdout — preflight must check both.
     const exec = fakeExec({
       'codex --version': { code: 0, stdout: 'codex-cli 0.134.0', stderr: '' },
-      'codex login status': { code: 0, stdout: 'Logged in using ChatGPT', stderr: '' },
+      'codex login status': { code: 0, stdout: '', stderr: 'Logged in using ChatGPT' },
     })
     expect((await new CodexAdapter(exec).preflight('')).ok).toBe(true)
   })
