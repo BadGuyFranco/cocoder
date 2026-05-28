@@ -729,10 +729,13 @@ function validateFounderCompletionBrief({ lane, result, markdown }) {
 
   for (const label of [
     'Atom Complete',
+    'Run Status',
     'What Changed',
     'What Remains',
     'Recommended Next Step',
-    'Founder Decision Needed'
+    'Founder Decision Needed',
+    'Commit State',
+    'Teardown Readiness'
   ]) {
     const pattern = new RegExp(`^\\s*(?:[-*]\\s*)?(?:\\*\\*)?${escapeRegExp(label)}(?:\\*\\*)?\\s*:`, 'im');
     if (!pattern.test(brief)) issues.push(`${lane} founder brief missing "${label}:"`);
@@ -741,6 +744,14 @@ function validateFounderCompletionBrief({ lane, result, markdown }) {
   const atomCompleteValue = founderBriefLabelValue(brief, 'Atom Complete');
   if (atomCompleteValue && !/^yes\b/i.test(atomCompleteValue)) {
     issues.push(`${lane} PASS result founder brief must say "Atom Complete: Yes"; got "${atomCompleteValue}"`);
+  }
+  const runStatusValue = founderBriefLabelValue(brief, 'Run Status');
+  if (runStatusValue && !/\b(?:complete|terminal|finalized|wrapped)\b/i.test(runStatusValue)) {
+    issues.push(`${lane} PASS result founder brief must state terminal run status; got "${runStatusValue}"`);
+  }
+  const teardownReadinessValue = founderBriefLabelValue(brief, 'Teardown Readiness');
+  if (teardownReadinessValue && !/\b(?:yes|ready)\b/i.test(teardownReadinessValue)) {
+    issues.push(`${lane} PASS result founder brief must state teardown readiness; got "${teardownReadinessValue}"`);
   }
   return issues;
 }

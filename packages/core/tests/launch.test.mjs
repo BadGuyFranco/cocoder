@@ -1633,6 +1633,44 @@ test('run finalizer refuses Oscar PASS result whose founder brief says atom is i
   }
 });
 
+test('run finalizer refuses Oscar PASS result without teardown readiness in founder brief', async () => {
+  const fixture = await createLaunchFixture();
+  try {
+    const transport = recordingTransport();
+    const launch = await launchRun(await fixture.options({
+      execute: true,
+      runId: 'run-finalize-missing-teardown-readiness',
+      transport,
+      socketName: 'test-socket'
+    }));
+
+    await writeResultPair(path.join(launch.runDir, 'jobs', 'bob'), jobResult({
+      persona: 'bob',
+      adapter: 'codex',
+      canWrite: true
+    }));
+    await writeResultPair(path.join(launch.runDir, 'jobs', 'oscar'), jobResult({
+      persona: 'oscar',
+      adapter: 'claude',
+      canWrite: false
+    }), { founderBrief: 'missing-teardown' });
+
+    const checked = await finalizeRunStatusFromResults({
+      runDir: launch.runDir,
+      contractsDir,
+      summary: 'fixture should reject missing teardown readiness'
+    });
+
+    assert.equal(checked.finalized, false);
+    assert.equal(checked.terminal, false);
+    assert.equal(checked.status, 'running');
+    assert.equal(checked.invalid[0].lane, 'oscar');
+    assert.match(checked.invalid[0].reason, /Teardown Readiness/);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
 test('run finalizer refuses Oscar PASS result with packet-only persona dispatch plan', async () => {
   const fixture = await createLaunchFixture();
   try {
@@ -2418,10 +2456,13 @@ async function writeResultPair(jobDir, result, { founderBrief = result.persona =
       '## Founder Completion Brief',
       '',
       'Atom Complete: Yes.',
+      'Run Status: Complete and terminal.',
       'What Changed: Fixture atom closed.',
       'What Remains: Continue the fixture priority.',
       'Recommended Next Step: Continue with the next fixture atom.',
       'Founder Decision Needed: No.',
+      'Commit State: No source commit required.',
+      'Teardown Readiness: Yes, ready for founder-approved teardown.',
       ''
     );
     if (founderBrief === 'verbose') {
@@ -2443,6 +2484,10 @@ async function writeResultPair(jobDir, result, { founderBrief = result.persona =
     if (founderBrief === 'incomplete') {
       const index = lines.findIndex((line) => line.startsWith('Atom Complete:'));
       lines[index] = 'Atom Complete: No -- C0 partial.';
+    }
+    if (founderBrief === 'missing-teardown') {
+      const index = lines.findIndex((line) => line.startsWith('Teardown Readiness:'));
+      lines.splice(index, 1);
     }
     lines.push(
       '## Persona Dispatch Plan',
