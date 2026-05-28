@@ -22,6 +22,7 @@ Numbered, dated, single-purpose decisions. Each ADR captures **context → decis
 | [ADR-0007](./0007-workspace-files-and-multiroot-description.md) | Workspace files — storage location and the multi-root description convention | accepted (revised 2026-05-27) | 2026-05-26 |
 | [ADR-0008](./0008-oz-control-plane-architecture.md) | Oz control-plane architecture | accepted | 2026-05-27 |
 | [ADR-0009](./0009-orchestration-services.md) | Non-persona orchestration services (cheap-model admin delegation) | accepted | 2026-05-27 |
+| [ADR-0011](./0011-v0.1-closeout.md) | v0.1-foundation closeout — ship criteria met; Refine validations waived | accepted | 2026-05-27 |
 
 ## Pending / proposed
 

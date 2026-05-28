@@ -1,6 +1,6 @@
 # v0.5 — Orchestration Services (cheap-model admin delegation)
 
-**Status:** **Active — Phase 1 COMPLETE: engine + launch config (route entry + boundary) + `wrap-execution` fix landed on `main` (convergence 2026-05-27). Next = Phase 2 (reconcile PR #51) + Phase 3 (adoption + v0.1 carryover/archive).** **Sequenced BEFORE v0.4-oz-control-plane** (founder, 2026-05-27). **Owner:** Bob + founder (Oscar orchestrates).
+**Status:** **Active — Phase 1 COMPLETE: engine + launch config (route entry + boundary) + `wrap-execution` fix landed on `main` (convergence 2026-05-27). Next = Phase 2 (reconcile PR #51) + Phase 3 (adoption).** **Sequenced BEFORE v0.4-oz-control-plane** (founder, 2026-05-27). **Owner:** Bob + founder (Oscar orchestrates).
 **Decision:** [ADR-0009](../../decisions/0009-orchestration-services.md). **Relates to:** [ADR-0008](../../decisions/0008-oz-control-plane-architecture.md) (Oz unchanged).
 **Launchable from Oz / `main`** — `oscar-lead` route now lists this priority (`bounded-writers`) and the v0.5 boundary is in place.
 
@@ -38,7 +38,7 @@ Oscar (the lead orchestrator) was spending expensive lead-model context on repea
 
 **Phase 3 — adoption + v0.1 close-out:**
 - Adoption items 1–3 above (wire into live wrap/teardown flow; prove real `cursor-agent` end-to-end; verify Oz run-detail surfacing).
-- **v0.1 carryover:** write **ADR-0011 (v0.1 closeout)** (reserved); run Master **P-R1** (two-workspace concurrency) + **P-R3** (recovery test), or **waive the B/C founder Refines** with rationale; then **archive `v0.1-foundation`** (move to `priorities/zArchive/`, update `PRIORITIES.md` + `zArchive/INDEX.md`) — **founder confirms archival; do not self-archive.**
+- **v0.1 carryover: ✅ DONE (2026-05-27).** v0.1-foundation archived to `priorities/zArchive/` with the Refine validations (P-R1/P-R3/P-R4, B/C Refines) waived per **[ADR-0011](../../decisions/0011-v0.1-closeout.md)**. No longer part of this priority.
 - **Preventive guard:** add a check that flags ghost priorities (in a route but absent from `PRIORITIES.md`) and dangling ADRs (indexed but file-absent), so this fragmentation can't silently recur.
 
 **Stop conditions:** a service must NEVER commit, finalize a run, or record supersession; do not merge v0.4 wholesale; do not self-archive v0.1 without founder confirmation.
