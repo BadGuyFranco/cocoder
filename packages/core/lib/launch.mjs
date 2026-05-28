@@ -663,7 +663,7 @@ async function assessSessionReadiness({ launchPlan, session }) {
   };
 }
 
-export async function stopRunSessions({ runDir, confirmRunId, execute = false, transport, tmuxBin = DEFAULT_TMUX_BIN }) {
+export async function stopRunSessions({ runDir, confirmRunId, execute = false, transport, tmuxBin = DEFAULT_TMUX_BIN, initiatorLane }) {
   const launchPlan = await readJson(path.join(runDir, 'launch.json'));
   if (!confirmRunId || confirmRunId !== launchPlan.runId) {
     return {
@@ -685,8 +685,12 @@ export async function stopRunSessions({ runDir, confirmRunId, execute = false, t
   const socketName = launchPlan.socketName || DEFAULT_SOCKET;
   const socketPath = launchPlan.socketPath || '';
   const sessionStates = [];
+  const probeFailures = [];
   for (const session of launchPlan.sessions) {
     const probe = await safeTransportRun(tmux, [...tmuxSocketArgs({ socketName, socketPath }), 'has-session', '-t', session.sessionName]);
+    if (!probe.ok && !isMissingTmuxSessionError(probe.error)) {
+      probeFailures.push({ sessionName: session.sessionName, error: probe.error });
+    }
     sessionStates.push({
       lane: session.lane,
       sessionName: session.sessionName,
@@ -694,6 +698,23 @@ export async function stopRunSessions({ runDir, confirmRunId, execute = false, t
       exists: probe.ok,
       probeError: probe.ok ? '' : probe.error
     });
+  }
+  if (probeFailures.length > 0) {
+    return {
+      ok: false,
+      status: 'blocked',
+      executed: false,
+      runId: launchPlan.runId,
+      runDir,
+      socketName,
+      socketPath,
+      sessions: sessionStates,
+      issues: probeFailures.map((failure) => ({
+        code: 'tmux-session-probe-failed',
+        severity: 'block',
+        detail: `${failure.sessionName}: ${failure.error}`
+      }))
+    };
   }
 
   if (!execute) {
@@ -709,9 +730,10 @@ export async function stopRunSessions({ runDir, confirmRunId, execute = false, t
     };
   }
 
+  const killOrder = orderSessionsForTeardown(sessionStates, initiatorLane);
   const killed = [];
   const failures = [];
-  for (const session of sessionStates.filter((candidate) => candidate.exists)) {
+  for (const session of killOrder.filter((candidate) => candidate.exists)) {
     const result = await safeTransportRun(tmux, [...tmuxSocketArgs({ socketName, socketPath }), 'kill-session', '-t', session.sessionName]);
     if (result.ok) killed.push(session.sessionName);
     else failures.push({ sessionName: session.sessionName, error: result.error });
@@ -757,6 +779,19 @@ export async function stopRunSessions({ runDir, confirmRunId, execute = false, t
     terminalStatusPreserved,
     issues: []
   };
+}
+
+function orderSessionsForTeardown(sessionStates, initiatorLane) {
+  if (!initiatorLane) return sessionStates;
+  const normalized = String(initiatorLane).trim();
+  if (!normalized) return sessionStates;
+  const nonInitiators = sessionStates.filter((session) => session.lane !== normalized);
+  const initiators = sessionStates.filter((session) => session.lane === normalized);
+  return [...nonInitiators, ...initiators];
+}
+
+function isMissingTmuxSessionError(error) {
+  return /can't find session|can't find window|no such session/i.test(String(error || ''));
 }
 
 export function buildLaunchPlan({ runId, runDir, cwd, socketName, socketPath = '', tmuxBin, deferStart = false, route, profile, sourcePaths = {}, lanes, startupPacket, adapterCommands }) {

@@ -40,6 +40,7 @@ import { compactTimestamp, parseBooleanFlag } from '../lib/lib-utils.mjs';
 import { commitAcceptedResult, commitLeadSupportChange, evaluateLaneGitPolicy } from '../lib/orchestrator-commit.mjs';
 import { checkPersonaRouteCoverage, scanPersonaPrivateReferenceLeakage, validatePersonaDirectory } from '../lib/personas.mjs';
 import { validatePriorityBoundaryDirectory } from '../lib/priority-boundaries.mjs';
+import { auditDirtyDurableOrchestrationState } from '../lib/repo-state.mjs';
 import { checkHandoffConsistencyFromFiles } from '../lib/session-wrap.mjs';
 import {
   buildAutonomyReport,
@@ -562,7 +563,8 @@ async function handle_stop_run(args) {
       runDir: args.runDir,
       confirmRunId: args.confirmRunId,
       execute: args.execute === 'true',
-      tmuxBin: args.tmuxBin
+      tmuxBin: args.tmuxBin,
+      initiatorLane: args.initiatorLane
     });
     console.log(JSON.stringify(result, null, 2));
     if (!result.ok) process.exitCode = 1;
@@ -658,12 +660,28 @@ async function handle_finalize_run_status(args) {
       )
     ) {
       if (args.founderApprovedTeardown === true || args.founderApprovedTeardown === 'true') {
-        result.sessionStop = await stopRunSessions({
-          runDir: args.runDir,
-          confirmRunId: result.runId || path.basename(args.runDir),
-          execute: true,
-          tmuxBin: args.tmuxBin
+        const teardownState = await auditDirtyDurableOrchestrationState({
+          repoRoot: args.repoRoot || process.cwd(),
+          blockUnstaged: false
         });
+        if (!teardownState.ok) {
+          result.sessionStop = {
+            ok: false,
+            executed: false,
+            status: 'blocked',
+            reason: 'terminal session teardown requires clean staged durable orchestration state',
+            teardownState
+          };
+        } else {
+          result.sessionStop = await stopRunSessions({
+            runDir: args.runDir,
+            confirmRunId: result.runId || path.basename(args.runDir),
+            execute: true,
+            tmuxBin: args.tmuxBin,
+            initiatorLane: args.initiatorLane
+          });
+          result.sessionStop.teardownState = teardownState;
+        }
       } else {
         result.sessionStop = {
           ok: false,

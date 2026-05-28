@@ -42,7 +42,7 @@ Commands:
   send-message --run-dir PATH --lane LANE (--message TEXT | --stdin) [--tmux-bin PATH]
   advance-lane-packet --run-dir PATH --lane LANE [--reason TEXT]
   add-lanes --run-dir PATH --lanes LANE[,LANE] [--topology-option ID] [--required-personas Persona[,Persona]] [--reason TEXT] [--execute true] [--auto-attach-added-lanes false] [--tmux-bin PATH]
-  stop-run --run-dir PATH --confirm-run-id RUN_ID [--execute true] [--tmux-bin PATH]
+  stop-run --run-dir PATH --confirm-run-id RUN_ID [--execute true] [--initiator-lane LANE] [--tmux-bin PATH]
   create-run --profile PATH --route PATH --priority-slug SLUG [--priority-boundaries-dir PATH] [--runs-dir PATH] [--priority-file PATH] [--session-log PATH]
   set-status --run-dir PATH --status STATUS [--reason TEXT]
   add-evidence --run-dir PATH --evidence PATH
@@ -55,7 +55,7 @@ Commands:
   audit-workspace --workspace-root PATH
   refresh-memory --workspace-root PATH
   closeout --run-dir PATH [--summary TEXT]
-  finalize-run-status --run-dir PATH [--summary TEXT] [--contracts-dir PATH] [--process-continuation true] [--stop-terminal-sessions true --founder-approved-teardown true]
+  finalize-run-status --run-dir PATH [--summary TEXT] [--contracts-dir PATH] [--process-continuation true] [--stop-terminal-sessions true --founder-approved-teardown true --initiator-lane LANE]
   orchestrator-commit --run-dir PATH --lane LANE --message TEXT [--result PATH] [--repo-root PATH] [--contracts-dir PATH]
   lead-support-commit --run-dir PATH --lane LANE --files PATH[,PATH...] --message TEXT [--reason TEXT] [--repo-root PATH]
   check-lane-git-policy --route PATH --lane LANE --command TEXT

@@ -1095,6 +1095,68 @@ test('finalize-run-status refuses terminal teardown without founder approval', a
   }
 });
 
+test('finalize-run-status refuses teardown with staged durable orchestration state', async () => {
+  const fixture = await createLaunchFixture();
+  const repo = await mkdtemp(path.join(os.tmpdir(), 'cocoder-teardown-dirty-'));
+  try {
+    const launch = await launchRun(await fixture.options({
+      execute: false,
+      runId: 'run-finalize-teardown-staged'
+    }));
+    await writeResultPair(path.join(launch.runDir, 'jobs', 'bob'), jobResult({
+      persona: 'bob',
+      adapter: 'codex',
+      canWrite: true
+    }));
+    await writeResultPair(path.join(launch.runDir, 'jobs', 'oscar'), jobResult({
+      persona: 'oscar',
+      adapter: 'claude',
+      canWrite: false
+    }));
+    const finalized = await finalizeRunStatusFromResults({
+      runDir: launch.runDir,
+      contractsDir,
+      summary: 'fixture complete before teardown request'
+    });
+    assert.equal(finalized.status, 'complete');
+
+    await execFileAsync('git', ['init'], { cwd: repo });
+    await mkdir(path.join(repo, 'cocoder'), { recursive: true });
+    await writeFile(path.join(repo, 'cocoder', 'dirty.md'), 'staged durable state\n');
+    await execFileAsync('git', ['add', 'cocoder/dirty.md'], { cwd: repo });
+
+    const cliPath = path.join(repoRoot, 'packages/core/cli.mjs');
+    const { stdout } = await execFileAsync(process.execPath, [
+      cliPath,
+      'finalize-run-status',
+      '--run-dir',
+      launch.runDir,
+      '--contracts-dir',
+      contractsDir,
+      '--repo-root',
+      repo,
+      '--summary',
+      'fixture complete but teardown should wait',
+      '--stop-terminal-sessions',
+      'true',
+      '--founder-approved-teardown',
+      'true',
+      '--initiator-lane',
+      'oscar'
+    ], { cwd: repoRoot });
+    const result = JSON.parse(stdout);
+    assert.equal(result.status, 'complete');
+    assert.equal(result.terminal, true);
+    assert.equal(result.sessionStop.executed, false);
+    assert.equal(result.sessionStop.status, 'blocked');
+    assert.match(result.sessionStop.reason, /clean staged durable orchestration state/);
+    assert.deepEqual(result.sessionStop.teardownState.stagedFiles, ['cocoder/dirty.md']);
+  } finally {
+    await fixture.cleanup();
+    await rm(repo, { recursive: true, force: true });
+  }
+});
+
 test('run continuation launches one fresh run after terminal PASS request', async () => {
   const fixture = await createLaunchFixture();
   try {
@@ -1598,6 +1660,61 @@ test('stop-run kills only sessions declared by the selected run launch plan', as
     const killCalls = transport.calls.filter((call) => call.includes('kill-session'));
     assert.equal(killCalls.length, 2);
     assert.equal(killCalls.every((call) => call.includes('orch-oscar-run-stop-exact') || call.includes('orch-bob-run-stop-exact')), true);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test('stop-run kills the initiating lane last for self-teardown', async () => {
+  const fixture = await createLaunchFixture();
+  try {
+    const transport = recordingTransport();
+    const launch = await launchRun(await fixture.options({
+      execute: true,
+      runId: 'run-stop-initiator-last',
+      transport,
+      socketName: 'test-socket'
+    }));
+    const result = await stopRunSessions({
+      runDir: launch.runDir,
+      confirmRunId: 'run-stop-initiator-last',
+      execute: true,
+      transport,
+      initiatorLane: 'oscar'
+    });
+    assert.equal(result.ok, true, JSON.stringify(result.issues, null, 2));
+    const bobSessionName = launch.sessions.find((session) => session.lane === 'bob').sessionName;
+    const oscarSessionName = launch.sessions.find((session) => session.lane === 'oscar').sessionName;
+    assert.deepEqual(result.killed, [bobSessionName, oscarSessionName]);
+    const killCalls = transport.calls.filter((call) => call.includes('kill-session'));
+    assert.equal(killCalls[0].includes(bobSessionName), true);
+    assert.equal(killCalls[1].includes(oscarSessionName), true);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test('stop-run blocks when tmux session probes fail for reasons other than missing sessions', async () => {
+  const fixture = await createLaunchFixture();
+  try {
+    const transport = failProbeTransport();
+    const launch = await launchRun(await fixture.options({
+      execute: true,
+      runId: 'run-stop-probe-failure',
+      transport,
+      socketName: 'test-socket'
+    }));
+    const result = await stopRunSessions({
+      runDir: launch.runDir,
+      confirmRunId: 'run-stop-probe-failure',
+      execute: true,
+      transport,
+      initiatorLane: 'oscar'
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.executed, false);
+    assert.equal(result.issues[0].code, 'tmux-session-probe-failed');
+    assert.equal(transport.calls.some((call) => call.includes('kill-session')), false);
   } finally {
     await fixture.cleanup();
   }
@@ -2529,6 +2646,17 @@ function failKillTransport() {
     async run(args) {
       this.calls.push(args.join(' '));
       if (args.includes('kill-session')) throw new Error('kill failed');
+      return { stdout: '', stderr: '' };
+    }
+  };
+}
+
+function failProbeTransport() {
+  return {
+    calls: [],
+    async run(args) {
+      this.calls.push(args.join(' '));
+      if (args.includes('has-session')) throw new Error('error connecting to socket (Operation not permitted)');
       return { stdout: '', stderr: '' };
     }
   };

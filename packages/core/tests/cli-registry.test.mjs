@@ -36,6 +36,10 @@ test('prepare-debugger git-write flag is parsed as a boolean literal', () => {
   assert.equal(parseArgs(['--git-write', 'false']).gitWrite, 'false');
 });
 
+test('teardown initiator lane is parsed as a literal lane name', () => {
+  assert.equal(parseArgs(['--initiator-lane', 'oscar']).initiatorLane, 'oscar');
+});
+
 test('help text matches tracked CLI help baseline byte-for-byte', async () => {
   const baseline = await readFile(baselineHelpPath, 'utf8');
   assert.equal(`${HELP_TEXT}\n`, baseline);
