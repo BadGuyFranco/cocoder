@@ -10,3 +10,10 @@
 //   - the runner / launch composition (Step 6)
 
 export const CORE_VERSION = '0.0.0'
+
+export type {
+  SessionRef,
+  SpawnOptions,
+  SessionStatus,
+  SessionHost,
+} from './session-host/index.js'
