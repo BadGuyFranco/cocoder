@@ -1,8 +1,14 @@
 # Priority: v0.1-foundation — Program Master Playbook
 
-**Slug:** `v0.1-foundation` | **Created:** 2026-05-21 | **Updated:** 2026-05-22 (audit-driven Refine; pending decisions opened)
+> # ✅ ARCHIVED — COMPLETE (2026-05-27)
+> **CoCoder `v0.1.0` shipped + tagged + released** (public `BadGuyFranco/cocoder`, CI green). All sub-Playbooks A–F landed: `cocoder` CLI, Oz MVP, persona orchestration, workspace template, adopter docs, Apache-2.0, recursive dogfood.
+> **Closeout: [ADR-0011](../../../decisions/0011-v0.1-closeout.md).** The Master Refine validations — **P-R1** (two-workspace concurrency), **P-R3** (recovery/Syncthing restore), **P-R4** (dashboard-UX review), and the **Sub-Playbook B & C founder Refines** — were **waived** (recorded as *not run*), validated instead by ship + founder real-use. (P-R2 external stranger + D-S1 internal proxy were removed from scope earlier.)
+> Successor active priority: **v0.5-orchestration-services**. Any defect in a waived area is handled as a v0.1.x patch priority, not by reopening this one.
+> *The historical content below is preserved as-is from the active period; relative links may point one level shallower than this archived location.*
+
+**Slug:** `v0.1-foundation` | **Created:** 2026-05-21 | **Updated:** 2026-05-27 (**Complete — archived**; ADR-0011)
 **Type:** One-time | **Collaboration:** Collaborative
-**Status:** Active — Refine (Sub-Playbook A audit remediation; pending decisions Q1–Q7 **Resolved 2026-05-22**)
+**Status:** **Complete — Archived 2026-05-27 (v0.1.0 shipped; Refine validations waived per ADR-0011)**
 **Method:** WISER Playbook (Program-level)
 **Owner:** Bob + founder
 

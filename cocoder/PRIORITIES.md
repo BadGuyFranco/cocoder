@@ -15,8 +15,7 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 
 | Slug | Description | Status | Canon | Owner | Blocked on |
 |---|---|---|---|---|---|
-| [`v0.1-foundation`](./priorities/v0.1-foundation/README.md) | Ship CoCoder v0.1 — extraction, Oz MVP, docs, public publish | Shipped | **`v0.1.0` tagged + released 2026-05-27** (merged to `main`, CI green). | Bob + founder | **Archival ceremony folded into v0.5 Phase 3** (carryover: ADR-0011 + P-R1/P-R3, then archive). |
-| [`v0.5-orchestration-services`](./priorities/v0.5-orchestration-services/README.md) | Cheap/fast-model admin delegation — Oscar offloads wrap/compaction/teardown to bounded services | **Active** | Adoption — engine + launch config (route + boundary) now on `main` (ADR-0009) | Bob + founder | **Sequenced before v0.4** (founder 2026-05-27). **Now launchable from Oz.** Next: Phase 2 (reconcile PR #51) + Phase 3 (adoption + v0.1 carryover/archive). |
+| [`v0.5-orchestration-services`](./priorities/v0.5-orchestration-services/README.md) | Cheap/fast-model admin delegation — Oscar offloads wrap/compaction/teardown to bounded services | **Active** | Adoption — engine + launch config (route + boundary) on `main` (ADR-0009) | Bob + founder | **Sequenced before v0.4** (founder 2026-05-27). **Launchable from Oz.** Next: Phase 2 (reconcile PR #51) + Phase 3 (adoption). |
 
 ## Draft
 
@@ -28,26 +27,15 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 
 ## Recently Archived
 
-*(none yet — see `priorities/zArchive/INDEX.md` once populated)*
+| Slug | Disposition | Archived | Closeout |
+|---|---|---|---|
+| [`v0.1-foundation`](./priorities/zArchive/v0.1-foundation/README.md) | Complete — **`v0.1.0` shipped + tagged** | 2026-05-27 | [ADR-0011](./decisions/0011-v0.1-closeout.md) (Refine validations waived; validated by ship + founder real-use). Full list in [`priorities/zArchive/INDEX.md`](./priorities/zArchive/INDEX.md). |
 
 ---
 
 ## Parser-readable priority entries
 
 > The slim table above is the human-readable index. The headings below feed `extractPriorityEntry()` (the orchestration launch-time priority scanner in `packages/core/lib/fs-utils.mjs`), which matches `## [slug]` headings, not table rows. Update both this section and the table together (per the SSOT rule in `AGENTS.md`).
-
-### [v0.1-foundation](./priorities/v0.1-foundation/README.md)
-**Owner:** Bob
-**Summary:** Ship CoCoder v0.1 — extraction, Oz MVP, docs, public publish.
-**What:** Master priority covering Sub-Playbooks A (foundation + config survival), E (dogfood ramp), B (personas + workspace template), C (Oz MVP), D (docs + dogfood + publish). Currently mid-Refine on A (Milestone M4 audit remediation) with E mid-Expand (Talia orchestration ramp).
-**Active task (v0.1 Completion Plan — three remaining items to ship v0.1):** Audit §4 port-first list is CLOSED (12 of 12 ports landed 2026-05-22). Three remaining work items, bundled in [`plans/2026-05-23-v0.1-completion.plan.md`](./priorities/v0.1-foundation/plans/2026-05-23-v0.1-completion.plan.md):
-
-1. **Resolve ticket 0001** — `.command` wrapper restore/retire decision. Cheapest: 10min (retire) or 1-2h (restore). Unblocks 6 skipped tests in `launch-command.test.mjs`.
-2. **Sub-Playbook A M4 free-wins cleanup** — M4.5–M4.14 + M4.16–M4.21 (medium-priority audit findings; ~3-5h total). Clean v0.1 audit close.
-3. **Sub-Playbook B activation** — Witness/Interrogate/Solve-target for adopter onboarding (workspace template + `cocoder init` + getting-started doc). Multi-session work; the marquee remaining v0.1 deliverable.
-
-**Recommended next-session ordering:** Item 1 → Item 2 (in batches) → Item 3 (Witness/Interrogate only). The completion plan has an appendix with a verbatim resume prompt for fresh-session pickup. **Done = ticket 0001 closed, M4 free-wins all `[x]` or marked deferred-to-v0.2, Sub-Playbook B Witness populated + Status flipped to Active.**
-**Status:** Active — Refine. Sub-Playbook F Complete 2026-05-23. Sub-Playbook B Expand merged (PR #33 → `9bf2433`). Sub-Playbook C Expand complete 2026-05-23 (PRs #42–#47 → `f46dcff`). **Sub-Playbook D doc + CI-gate authoring COMPLETE 2026-05-27 (run 1wna3uxq) on branch `v0.1-publish`** (off `main`, Option A disentangle): D-M1.7 ARCHITECTURE verify, D-M1.8 README adopter rewrite, D-M2.1 dogfood-evidence, D-S2 CI gates (gitleaks + LICENSE/NOTICE + faq) all landed; D-S1 internal-proxy + external stranger test both removed from v0.1 scope (founder). **Only the founder release remains:** review `v0.1-publish` → merge to `main` (triggers CI = D-S2 Class A) → tag `v0.1.0` + release notes (PD-Q6=A). v0.4 control-plane work stays on `oz-control-plane-design`. Local Class B checks green; Class A pending CI on `main`. B/C Refines parallel-tracked (founder). See [`priorities/v0.1-foundation/README.md`](./priorities/v0.1-foundation/README.md).
 
 ### [v0.2-adapter-extensibility](./priorities/v0.2-adapter-extensibility/README.md)
 **Owner:** Bob + founder
@@ -71,4 +59,4 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 **Owner:** Bob + founder
 **Summary:** Let Oscar run faster/cheaper models for repeatable admin work (priority/handoff editing, run wrap-up, teardown) via bounded non-persona orchestration services, instead of spending lead-model context.
 **What:** Declarative services (`packages/core/services/*.json`) + two contracts + `lib/services.mjs` (build/validate/execute packet with deterministic git write-audit) + 5 CLI commands + a headless `cursor-agent-service` adapter. 11 services shipped. Services never commit/finalize/supersede (Oscar-only route control); adapter+model configurable per service (`cursor-agent` default). Oz unchanged (ADR-0008 preserved).
-**Status:** **Active — engine + launch config (route entry + boundary) landed on `main` (ADR-0009; convergence 2026-05-27). Sequenced BEFORE v0.4 (founder). Launchable from Oz now.** Next: Phase 2 (reconcile PR #51 onto main — general orchestration infra; leave v0.4 design for the v0.4 run) + Phase 3 (adoption: wire services into Oscar's live wrap/teardown flow, prove headless `cursor-agent` end-to-end, verify Oz run-detail surfacing; v0.1 carryover: ADR-0011 + P-R1/P-R3 or waive B/C refines, then archive v0.1-foundation; add ghost-priority/dangling-ADR guard). Full brief in [`priorities/v0.5-orchestration-services/README.md`](./priorities/v0.5-orchestration-services/README.md).
+**Status:** **Active — engine + launch config (route entry + boundary) landed on `main` (ADR-0009; convergence 2026-05-27). Sequenced BEFORE v0.4 (founder). Launchable from Oz now.** Next: Phase 2 (reconcile PR #51 onto main — general orchestration infra; leave v0.4 design for the v0.4 run) + Phase 3 (adoption: wire services into Oscar's live wrap/teardown flow, prove headless `cursor-agent` end-to-end, verify Oz run-detail surfacing; add ghost-priority/dangling-ADR guard). (v0.1-foundation already archived 2026-05-27 — ADR-0011.) Full brief in [`priorities/v0.5-orchestration-services/README.md`](./priorities/v0.5-orchestration-services/README.md).
