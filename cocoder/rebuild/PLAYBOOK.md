@@ -29,8 +29,14 @@ reviewed together. Surface the eventual vision *only* to locate seams (G1). No v
 - **Design implication discovered:** v2 needs a **shared-standards layer** — ~10 cross-persona
   global rules (root-cause-fix, verify-don't-assert, decision-classifier, the "you ARE the
   developer" premise) that personas *reference* rather than duplicate. Author alongside personas.
-- **Remaining Phase-0 exit gate:** the **cmux socket-API spike** (ADR-0002) — verify headless
-  spawn + screen capture + exit detection before any Phase-1 code depends on it.
+- **cmux socket-API spike — ✅ PASSED** ([`spikes/2026-05-28-cmux-socket-api.md`](./spikes/2026-05-28-cmux-socket-api.md)).
+  SessionHost is satisfiable; needs `password` socket mode + `cd`-prepend for cwd. **Phase 0 is
+  fully complete — Phase 1 (the spine) is unblocked.**
+- **Follow-up surfaced:** cmux offers far more out-of-the-box than a pane host (workspaces, split
+  panes, git-status sidebar, notifications, an embedded scriptable **browser**, agent
+  teams/hooks). Map which features CoCoder *rides* vs *builds* — esp. the browser automation as
+  Quinn's instrument. Tracked as a Phase-1 scoping task; keep leverage behind the `SessionHost`
+  port so it doesn't become lock-in.
 
 ### Phase 1 — The spine (thin runner)
 The thinnest thing that runs a real task end to end: launch an orchestrator CLI in a workspace

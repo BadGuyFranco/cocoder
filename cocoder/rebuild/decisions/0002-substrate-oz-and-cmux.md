@@ -52,12 +52,21 @@ structurally contained, and the rejected S1 options remain reachable.
 CoCoder *launches* and *talks to* cmux over its socket/CLI only. It does **not** fork, embed,
 vendor, or link cmux's code. CoCoder remains cleanly Apache-2.0.
 
-## Verification gate (Phase-0 exit, before any Phase-1 code)
+## Verification gate (Phase-0 exit) — ✅ PASSED 2026-05-28
 
-Spike cmux's socket API to confirm it supports what the `SessionHost` port needs:
-**headless spawn of a pane with a command in a chosen cwd, output/screen capture, and
-exit/completion detection.** If the API cannot do headless spawn + read, the driver design (or
-this decision) is revisited before code depends on it.
+Spiked cmux's socket API against the `SessionHost` port: **headless spawn, command run, screen
+capture, and exit/completion detection all confirmed.** See
+[`../spikes/2026-05-28-cmux-socket-api.md`](../spikes/2026-05-28-cmux-socket-api.md). Two
+findings folded into the driver design:
+
+1. **External control is gated** — default `socketControlMode: "cmuxOnly"` blocks external CLI
+   control; CoCoder must set `password` mode + a `socketPassword` (store in install-private
+   `local/secrets`, pass via `CMUX_SOCKET_PASSWORD`). Mirrors the Oz token model.
+2. **`open <dir>` does not set the shell cwd** — the cmux driver's `spawn({cwd})` must prepend
+   `cd '<cwd>'`.
+
+Verb mapping: `open` (spawn) · `send`/`send-key` (run) · `read-screen`/`capture-pane` (output) ·
+`wait-for --signal` + `events` (completion) · `close-workspace` (kill). The decision stands.
 
 ## Consequences
 
