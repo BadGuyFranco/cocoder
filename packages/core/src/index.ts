@@ -43,3 +43,13 @@ export type {
   PreflightCheck,
   PreflightResult,
 } from './adapter/index.js'
+
+export { globToRegExp, matchesAny, partitionByScope, effectiveScope, type ScopePartition } from './write-scope/index.js'
+export {
+  makeGit,
+  parsePorcelain,
+  type Git,
+  runCommitGate,
+  type CommitGateInput,
+  type CommitGateResult,
+} from './commit-gate/index.js'

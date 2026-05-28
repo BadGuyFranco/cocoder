@@ -1,0 +1,131 @@
+import { describe, expect, test } from 'vitest'
+import {
+  effectiveScope,
+  type Git,
+  matchesAny,
+  openRunStore,
+  parsePorcelain,
+  partitionByScope,
+  runCommitGate,
+} from '../src/index.js'
+
+describe('glob matcher', () => {
+  test('** crosses segments, * stays within one, literals are exact', () => {
+    expect(matchesAny('packages/cli/src/run.ts', ['packages/**'])).toBe(true)
+    expect(matchesAny('packages/foo.ts', ['packages/**'])).toBe(true)
+    expect(matchesAny('docs/x.md', ['packages/**'])).toBe(false)
+    expect(matchesAny('packagesX/foo', ['packages/**'])).toBe(false) // needs the slash
+    expect(matchesAny('a/b/c.ts', ['a/*/c.ts'])).toBe(true)
+    expect(matchesAny('a/b/d/c.ts', ['a/*/c.ts'])).toBe(false) // * doesn't cross /
+    expect(matchesAny('README.md', ['README.md'])).toBe(true)
+  })
+  test('empty scope is default-deny', () => {
+    expect(matchesAny('anything', [])).toBe(false)
+  })
+})
+
+describe('scope partition + effective scope', () => {
+  test('partition splits in/out by the allow-list', () => {
+    const p = partitionByScope(['packages/a.ts', 'docs/b.md', 'packages/c/d.ts'], ['packages/**'])
+    expect(p.inScope).toEqual(['packages/a.ts', 'packages/c/d.ts'])
+    expect(p.outOfScope).toEqual(['docs/b.md'])
+  })
+  test('priority narrowing replaces the persona default when present', () => {
+    expect(effectiveScope(['packages/**'], ['packages/cli/**'])).toEqual(['packages/cli/**'])
+    expect(effectiveScope(['packages/**'], null)).toEqual(['packages/**'])
+    expect(effectiveScope(['packages/**'], [])).toEqual(['packages/**'])
+  })
+})
+
+test('parsePorcelain extracts paths incl. renames and untracked', () => {
+  expect(parsePorcelain(' M packages/a.ts\n?? new.ts\nR  old.ts -> packages/new.ts\n')).toEqual([
+    'packages/a.ts',
+    'new.ts',
+    'packages/new.ts',
+  ])
+})
+
+/** Fake Git recording commits, with a programmable changed-file set + HEAD movement. */
+function makeFakeGit(opts: { changed: string[]; headBefore: string; headNow?: string }): {
+  git: Git
+  commits: { files: string[]; message: string }[]
+} {
+  const commits: { files: string[]; message: string }[] = []
+  let head = opts.headNow ?? opts.headBefore
+  const git: Git = {
+    async headSha() {
+      return head
+    },
+    async changedFiles() {
+      return opts.changed
+    },
+    async addAndCommit(_cwd, files, message) {
+      commits.push({ files: [...files], message })
+      head = `sha-after-${commits.length}`
+      return head
+    },
+  }
+  return { git, commits }
+}
+
+describe('runCommitGate', () => {
+  test('commits in-scope (explicit commit_link), surfaces out-of-scope, never silent', async () => {
+    const store = openRunStore(':memory:')
+    store.upsertWorkspace({ id: 'cocoder', path: '/repo', name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'p' })
+    const { git, commits } = makeFakeGit({
+      changed: ['packages/cli/src/run.ts', 'docs/leak.md'],
+      headBefore: 'h0',
+    })
+
+    const res = await runCommitGate({
+      git,
+      store,
+      cwd: '/repo',
+      runId: run.id,
+      workItemId: null,
+      scope: ['packages/**'],
+      message: 'feat: x',
+      headBefore: 'h0',
+    })
+
+    expect(res.committedFiles).toEqual(['packages/cli/src/run.ts'])
+    expect(res.outOfScope).toEqual(['docs/leak.md'])
+    expect(res.selfCommitted).toBe(false)
+    expect(commits).toHaveLength(1)
+
+    // Explicit commit_link recorded (F6); out-of-scope surfaced as an event (never silent).
+    const links = store.listCommitLinks(run.id)
+    expect(links[0]?.files).toEqual(['packages/cli/src/run.ts'])
+    expect(store.listEvents(run.id).map((e) => e.type)).toEqual(expect.arrayContaining(['commit', 'out-of-scope']))
+  })
+
+  test('read-only persona (empty scope) commits nothing; all changes surfaced', async () => {
+    const store = openRunStore(':memory:')
+    store.upsertWorkspace({ id: 'cocoder', path: '/repo', name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'p' })
+    const { git, commits } = makeFakeGit({ changed: ['packages/a.ts'], headBefore: 'h0' })
+
+    const res = await runCommitGate({
+      git, store, cwd: '/repo', runId: run.id, workItemId: null,
+      scope: [], message: 'x', headBefore: 'h0',
+    })
+    expect(res.committedSha).toBeNull()
+    expect(res.outOfScope).toEqual(['packages/a.ts'])
+    expect(commits).toHaveLength(0)
+  })
+
+  test('detects an agent self-commit (HEAD moved outside the gate)', async () => {
+    const store = openRunStore(':memory:')
+    store.upsertWorkspace({ id: 'cocoder', path: '/repo', name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'p' })
+    const { git } = makeFakeGit({ changed: [], headBefore: 'h0', headNow: 'h1-agent' })
+
+    const res = await runCommitGate({
+      git, store, cwd: '/repo', runId: run.id, workItemId: null,
+      scope: ['packages/**'], message: 'x', headBefore: 'h0',
+    })
+    expect(res.selfCommitted).toBe(true)
+    expect(store.listEvents(run.id).some((e) => e.type === 'agent-self-commit')).toBe(true)
+  })
+})
