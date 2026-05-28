@@ -5,6 +5,7 @@ import { compareImmutableBaseline } from '../lib/baseline.mjs';
 import { checkAdrStatusConsistency, summarizeAdrStatusReport } from '../checks/check-adr-status-consistency.mjs';
 import { checkDocFreshness, summarizeDocFreshnessReport } from '../checks/check-doc-freshness.mjs';
 import { checkDocRefs, summarizeDocRefReport } from '../checks/check-doc-refs.mjs';
+import { checkOrchestrationFragmentation, summarizeOrchestrationFragmentationReport } from '../checks/check-orchestration-fragmentation.mjs';
 import { checkPersonaSourceBoundaries, summarizePersonaSourceBoundaryReport } from '../checks/check-persona-source-boundaries.mjs';
 import { checkPrioritiesLastUpdated, summarizePrioritiesLastUpdatedReport } from '../checks/check-priorities-last-updated.mjs';
 import { checkSessionLogHygiene, summarizeSessionLogHygieneReport } from '../checks/check-session-log-hygiene.mjs';
@@ -766,6 +767,23 @@ async function handle_check_adr_status_consistency(args) {
     return;
 }
 
+async function handle_check_orchestration_fragmentation(args) {
+    requireArgs(args, ['root']);
+    const runPaths = await resolveDefaultRunPaths(args);
+    const reportPath = args.report || runPaths.checkReportFor('check-orchestration-fragmentation', compactTimestamp(new Date().toISOString()));
+    const result = await checkOrchestrationFragmentation({
+      root: args.root,
+      reportPath,
+      priorityFile: args.priorityFile || repoPath('cocoder/PRIORITIES.md'),
+      routesDir: args.routesDir || repoPath('cocoder/routes'),
+      decisionsDir: args.decisionsDir || repoPath('cocoder/decisions'),
+      decisionsIndex: args.decisionsIndex
+    });
+    console.log(`${summarizeOrchestrationFragmentationReport(result)} report=${reportPath}`);
+    if (!result.ok) process.exitCode = 1;
+    return;
+}
+
 async function handle_check_doc_freshness(args) {
     requireArgs(args, ['root']);
     const runPaths = await resolveDefaultRunPaths(args);
@@ -1110,6 +1128,7 @@ export const commandRegistry = new Map([
   ['check-lane-git-policy', handle_check_lane_git_policy],
   ['check-doc-refs', handle_check_doc_refs],
   ['check-adr-status-consistency', handle_check_adr_status_consistency],
+  ['check-orchestration-fragmentation', handle_check_orchestration_fragmentation],
   ['check-doc-freshness', handle_check_doc_freshness],
   ['check-write-authority', handle_check_write_authority],
   ['check-priorities-last-updated', handle_check_priorities_last_updated],

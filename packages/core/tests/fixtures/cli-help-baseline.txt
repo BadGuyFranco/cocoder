@@ -61,6 +61,7 @@ Commands:
   check-lane-git-policy --route PATH --lane LANE --command TEXT
   check-doc-refs --root PATH [--report PATH] [--persona-paths PATH[,PATH...]] [--decisions-dir PATH]
   check-adr-status-consistency --root PATH [--report PATH] [--decisions-dir PATH]
+  check-orchestration-fragmentation --root PATH [--report PATH] [--priority-file PATH] [--routes-dir PATH] [--decisions-dir PATH] [--decisions-index PATH]
   check-doc-freshness --root PATH [--report PATH] [--decisions-dir PATH] [--threshold-days N] [--now ISO]
   check-write-authority --root PATH [--report PATH] [--raci PATH] [--boundaries-dir PATH] [--routes-dir PATH] [--personas-dir PATH]
   check-priorities-last-updated --root PATH [--report PATH] [--priority-file PATH] [--max-chars N] [--now ISO]
