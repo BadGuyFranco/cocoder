@@ -23,10 +23,11 @@ Numbered, dated, single-purpose decisions. Each ADR captures **context → decis
 | [ADR-0008](./0008-oz-control-plane-architecture.md) | Oz control-plane architecture | accepted | 2026-05-27 |
 | [ADR-0009](./0009-orchestration-services.md) | Non-persona orchestration services (cheap-model admin delegation) | accepted | 2026-05-27 |
 | [ADR-0011](./0011-v0.1-closeout.md) | v0.1-foundation closeout — ship criteria met; Refine validations waived | accepted | 2026-05-27 |
+| [ADR-0012](./0012-persona-write-authority.md) | Persona write authority — Oscar owns governance/orchestration state | accepted | 2026-05-27 |
 
 ## Pending / proposed
 
-(None — next ADR number is 0010.)
+ADR-0010 (run-lifecycle / Oz control-plane build) is reserved on the `oz-control-plane-design` branch (PR #51), pending the v0.4 run. Next new ADR number is 0013.
 
 ## Authoring guide
 
