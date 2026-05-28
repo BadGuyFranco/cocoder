@@ -23,15 +23,15 @@ and **exit code** off the screen, and `wait-for --signal` gives a cleaner barrie
 
 ## Two findings that shape the driver
 
-1. **External control is gated — by design.** Default `automation.socketControlMode: "cmuxOnly"`
-   rejects external CLI connections (every command → `broken pipe`). Modes:
-   `off · cmuxOnly · automation · password · allowAll · openAccess · …`. Setting
-   **`socketControlMode: "password"` + a `socketPassword`** (in `~/.config/cmux/cmux.json`, then
-   restart) unlocked it — `ping → PONG`, `capabilities.access_mode: "password"`.
-   → **Implication:** CoCoder onboarding must set cmux to `password` mode and store the secret in
-   install-private `local/secrets` (passed via `CMUX_SOCKET_PASSWORD`). This mirrors the Oz token
-   security model nicely — and the "Test CLI permissions" setup flow (ADR-0006) is the natural
-   place to walk the operator through it.
+1. **External control needs a non-default socket mode.** Default
+   `automation.socketControlMode: "cmuxOnly"` rejects external CLI connections (every command →
+   `broken pipe`). Modes: `off · cmuxOnly · automation · password · allowAll · openAccess · …`.
+   **`automation` mode works with NO password** (verified: `ping → PONG`,
+   `access_mode: "automation"`). The socket is owner-only (`0600`), so `automation` relies on
+   filesystem perms — sufficient for a solo builder.
+   → **Implication:** CoCoder onboarding sets cmux to **`automation`** mode (no secret to manage).
+   `password` mode is optional defense-in-depth against other same-user processes — adopt only if
+   earned. The "Test CLI permissions" setup flow (ADR-0006) is the place to set the mode.
 
 2. **`open <dir>` does NOT set the shell cwd** — it opens the workspace but the shell starts in
    `~` (verified: a relative file landed in HOME, not the target dir). The `cd '<cwd>' && …`

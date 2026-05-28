@@ -59,9 +59,12 @@ capture, and exit/completion detection all confirmed.** See
 [`../spikes/2026-05-28-cmux-socket-api.md`](../spikes/2026-05-28-cmux-socket-api.md). Two
 findings folded into the driver design:
 
-1. **External control is gated** — default `socketControlMode: "cmuxOnly"` blocks external CLI
-   control; CoCoder must set `password` mode + a `socketPassword` (store in install-private
-   `local/secrets`, pass via `CMUX_SOCKET_PASSWORD`). Mirrors the Oz token model.
+1. **External control needs a non-default socket mode** — default `socketControlMode: "cmuxOnly"`
+   blocks external processes. CoCoder sets **`automation`** mode (verified: external control with
+   **no password**). The socket is already owner-only (`srw-------`, 0600), so `automation` relies
+   on filesystem perms — sufficient for a solo builder. `password` mode (a `socketPassword` in
+   `local/secrets`) is **optional defense-in-depth** against other same-user processes; adopt only
+   if earned, not by default (avoid speculative ceremony).
 2. **`open <dir>` does not set the shell cwd** — the cmux driver's `spawn({cwd})` must prepend
    `cd '<cwd>'`.
 
