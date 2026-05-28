@@ -1,0 +1,38 @@
+{
+  "contract": "self-healing-artifact",
+  "version": 1,
+  "status": "phase-9-draft",
+  "description": "Structured artifact produced when gates fail, verification is missing, docs are stale, adapters fail, or process failures recur.",
+  "required": [
+    "id",
+    "createdAt",
+    "trigger",
+    "defectType",
+    "classification",
+    "evidence",
+    "immediateRecovery",
+    "permanentHomeRecommendation",
+    "founderDecisionNeeded",
+    "owner",
+    "backlogCandidate"
+  ],
+  "fields": {
+    "id": { "type": "string" },
+    "createdAt": { "type": "iso-datetime" },
+    "trigger": { "enum": ["failed-gate", "stale-doc", "missing-verification", "adapter-failure", "process-failure", "manual-intervention"] },
+    "defectType": { "enum": ["gate-failure", "stale-doc", "missing-verification", "adapter-failure", "process-failure", "manual-intervention", "evidence-gap", "deferred-live-enforcement"] },
+    "classification": { "type": "string" },
+    "evidence": { "type": "array", "items": "evidence id or artifact path" },
+    "immediateRecovery": { "type": "string" },
+    "permanentHomeRecommendation": { "type": "string" },
+    "founderDecisionNeeded": { "type": "boolean" },
+    "owner": { "type": "string" },
+    "backlogCandidate": { "type": "boolean" }
+  },
+  "rules": [
+    "Failed gates produce artifacts even if fixed immediately.",
+    "Process-rule changes require founder approval.",
+    "Self-healing stays inside the active priority scope unless founder expands it.",
+    "Artifacts are evidence, not permission to edit old reference folders."
+  ]
+}

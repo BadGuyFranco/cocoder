@@ -1,0 +1,64 @@
+# ADR-0008 — Repository topology + one-home enforcement (seam S3)
+
+**Status:** Accepted (founder + Claude, 2026-05-28)
+**Seam:** S3 — topology / one concept, one home
+**Charter:** [0001](./0001-rebuild-charter.md) · **Builds on:** all prior ADRs · **Amends:** [0005](./0005-personas-and-subtasks.md) (persona home) · **Largely resolves:** S8
+
+## Context
+
+The founder values "every concern has exactly one home"; v1's F1/F4 were home/topology
+failures. All components are now named by ADRs 0002–0007, so the topology is derivable.
+
+## Decision
+
+### Storage zones — retained from v1 (a good part)
+- **Install-public** (this repo): `packages/`, `templates/`, `docs/`, root docs.
+- **Install-private** (`local/`, gitignored): SQLite operational DB, secrets, workspace registry.
+- **Workspace-shared** (each app's tracked `cocoder/`): governance — priorities, personas,
+  decisions, scopes, standards.
+- **Workspace-private** (`cocoder/local/`): per-machine overrides + secrets.
+
+### Code topology — six packages, all stood up now
+```
+packages/
+├── core/            I/O-agnostic (pure, testable): runner · composition · data-model schema ·
+│                      SessionHost port · Adapter interface · persona/sub-task loader ·
+│                      write-scope + commit-gate · preflight
+├── adapters/        per-CLI drivers + probe specs (claude, codex, cursor-agent)      [I/O]
+├── session-hosts/   SessionHost drivers (cmux now; tmux later)                       [I/O]
+├── daemon/          Oz: owns DB write-conn + cmux connection + live runs; serves clients
+├── cli/             `cocoder` binary (standalone + client modes)
+└── ui/              Oz dashboard
+```
+
+### Inward dependency rule (makes "one home" enforceable)
+`core` depends on nothing; `adapters`, `session-hosts`, `daemon`, `cli`, `ui` depend on `core`;
+the daemon/cli wire drivers in. **No cycles, no lateral deps, nothing imports outward.** This is
+the hexagonal shape S4 committed us to, made explicit at the folder level.
+
+### Enforced invariant (earned guardrail — D3/D4, not F5)
+A deterministic check asserts: (a) every source file lives under exactly one concern, and (b) the
+dependency direction holds (`core` imports no driver; nothing imports outward). It **fails CI**.
+This points at *structure*, never at governance docs — so it is not the F5 governance-of-
+governance trap.
+
+### Personas live as flat governance files (amends ADR-0005)
+- **Persona definition = flat markdown (+ optional scripts)** in `cocoder/personas/` — human-
+  readable and auditable (role, mental model, rules). **Not** code built-ins.
+- The **default persona set ships in `templates/`** (copied on `cocoder init`); the **loader/
+  validator lives in `core`**; the **definitions are files** the operator owns.
+- **CLI+model assignment** (per persona / per sub-task) stays an Oz-edited setting referencing the
+  persona by ID (ADR-0005). **Write-scope default** can live in the persona file's frontmatter —
+  co-located, one home.
+- Sub-task registry + default scopes are likewise flat/readable governance files.
+
+### Carry-forward action
+**Audit CoBuilder's persona definitions** (e.g. Bob's componentization/elegance coding rules,
+Oscar's governance mental model) and bring the good rules into v2 personas. Tracked as a rebuild
+task (see [`../PLAYBOOK.md`](../PLAYBOOK.md)).
+
+## Consequences
+
+- Personas-as-files makes **extensibility (S8) mostly "add a file"** — see the S8 note.
+- The topology check is the deterministic enforcement of the founder's core value.
+- The persona-rule audit becomes a Phase-1 persona-authoring task, fed by CoBuilder.

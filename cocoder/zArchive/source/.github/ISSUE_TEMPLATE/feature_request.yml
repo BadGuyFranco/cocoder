@@ -1,0 +1,43 @@
+name: Feature request
+description: Propose a concrete new capability or behavior change.
+title: "[feature] "
+labels: ["feature", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For open-ended exploration ("what could we do about X?"), please use [Discussions](https://github.com/BadGuyFranco/cocoder/discussions) instead. Feature requests are for concrete, scoped proposals that are ready to be evaluated for inclusion in the active Playbook.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user need or product gap does this address? What does the user have to work around today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: The specific behavior change you're proposing. If you can sketch the CLI surface, schema change, or persona contract delta, include it.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you considered and why this one is preferable. (Mirrors the ADR "Alternatives considered" section.)
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: |
+        - In scope (what this proposal covers)
+        - Out of scope (related but deliberately deferred)
+        - Affected Sub-Playbook(s) if you've mapped it to the active master plan
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      options:
+        - label: I have read and agree to follow the [Code of Conduct](https://github.com/BadGuyFranco/cocoder/blob/main/CODE_OF_CONDUCT.md).
+          required: true

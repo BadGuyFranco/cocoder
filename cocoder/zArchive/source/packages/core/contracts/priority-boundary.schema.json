@@ -1,0 +1,25 @@
+{
+  "contract": "priority-boundary",
+  "version": 1,
+  "status": "phase-11-draft",
+  "description": "Priority-owned write-boundary overlay resolved at launch after route and roster selection.",
+  "required": [
+    "id",
+    "prioritySlug",
+    "label",
+    "writerLanes"
+  ],
+  "fields": {
+    "id": { "type": "string" },
+    "prioritySlug": { "type": "string" },
+    "label": { "type": "string" },
+    "routeIds": { "type": "array", "items": "route id" },
+    "writerLanes": { "type": "object" }
+  },
+  "rules": [
+    "Profiles assign adapters and models; priority boundaries assign allowed and excluded write scopes.",
+    "Launch must resolve a boundary for the selected priority before starting tmux sessions.",
+    "Each active writer lane in the route must have a non-empty allowed path list.",
+    "Boundary routeIds restrict which collaboration routes may use the priority boundary."
+  ]
+}

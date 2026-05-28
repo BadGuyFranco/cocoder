@@ -1,0 +1,31 @@
+{
+  "id": "claude",
+  "label": "Claude CLI",
+  "kind": "llm-cli",
+  "command": "claude",
+  "commandEnv": "inherit",
+  "availabilityCheck": {
+    "commandExists": "claude",
+    "versionCommand": "claude --version",
+    "authHint": "Run `claude` interactively and complete local authentication if preflight reports auth/config unavailable."
+  },
+  "capabilities": {
+    "interactive": true,
+    "initialPrompt": true,
+    "stdinDispatch": true,
+    "resultFile": true,
+    "transcriptCapture": true,
+    "streamingDetection": true,
+    "screenshots": false,
+    "dom": false,
+    "console": false,
+    "shell": true,
+    "fileEdit": true
+  },
+  "writeCapability": "repo",
+  "sandboxModes": ["read-only", "workspace-write"],
+  "approvalModes": ["never", "on-request"],
+  "resultContract": "job-result",
+  "evidenceCapabilities": ["transcript", "command-output", "diff", "test-result"],
+  "failureModes": ["missing-cli", "auth-expired", "stalled-tui", "refusal", "no-result-file", "permission-prompt", "rate-limit", "unknown"]
+}

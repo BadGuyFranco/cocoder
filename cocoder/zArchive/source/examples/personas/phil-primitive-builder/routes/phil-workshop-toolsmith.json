@@ -1,0 +1,29 @@
+{
+  "id": "phil-workshop-toolsmith",
+  "label": "Workshop — Oscar orchestrates Phil extension build",
+  "lead": "oscar",
+  "teammates": ["phil-workshop-toolsmith"],
+  "lanes": ["oscar", "phil-workshop-toolsmith"],
+  "supportedPriorityOwners": ["workshop-extensions"],
+  "gates": ["startup-packet", "profile-preflight", "write-boundary"],
+  "writePolicy": "bounded-writers",
+  "laneRequirements": {
+    "oscar": {
+      "requiredCapabilities": ["interactive"],
+      "allowedAdapters": ["codex"]
+    },
+    "phil-workshop-toolsmith": {
+      "requiredCapabilities": ["fileEdit", "interactive"],
+      "allowedAdapters": ["codex"]
+    }
+  },
+  "topologyOptions": [
+    {
+      "id": "extension-authoring",
+      "label": "Oscar + Phil extension authoring",
+      "lanes": ["oscar", "phil-workshop-toolsmith"],
+      "requiredPersonas": ["oscar", "phil-workshop-toolsmith"]
+    }
+  ],
+  "initialLanes": ["oscar"]
+}

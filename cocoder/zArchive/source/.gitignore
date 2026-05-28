@@ -1,0 +1,49 @@
+# Install-private preferences (survives git pull; sync across machines via Syncthing/iCloud/etc.)
+# Leading slash anchors to repo root — without it, this pattern would also match
+# `cocoder/local/` and shadow its inner `.gitignore` + tracked README.md per
+# ARCHITECTURE.md ignore matrix.
+/local/
+
+# Secrets — never tracked at any depth (ARCHITECTURE.md ignore matrix; audit §B7)
+*.env
+.env.*
+secrets/
+# Quinn credentials — belt-and-braces against accidental tracking outside
+# the workspace-private zone. The canonical home is
+# `cocoder/local/.quinn-credentials.json`, already covered by
+# cocoder/local/.gitignore; this catches mis-placed copies elsewhere in the
+# tree. The `*.example.json` template stays tracked (no leading `.`).
+.quinn-credentials.json
+# Exception: the install-template ships an empty secrets/ directory with its own
+# .gitignore so `cocoder init` lays down the correct ignore rule for adopters.
+# Without this negation, the `secrets/` rule above would hide that template file.
+!templates/install-local/secrets/
+!templates/install-local/secrets/.gitignore
+
+# Dependencies and build output
+node_modules/
+.turbo/
+*.tsbuildinfo
+# Per-package dist (audit §B8 — replaces blanket dist/ so the CI schema-drift gate sees committed JSON Schemas)
+packages/*/dist/
+# Un-ignore the schemas dist directory so the tracked *.schema.json artifacts are visible to git;
+# the JS subdir below stays ignored.
+!packages/schemas/dist/
+packages/schemas/dist/js/
+
+# NOTE: cocoder/local/ has its own .gitignore that keeps README.md + .gitignore tracked.
+# Do NOT add `cocoder/local/` here — that would shadow the inner rule and hide the README.
+
+# Test fixture artifacts — created via mkdtemp by packages/core/tests/launch.test.mjs
+# and friends; cleanup is best-effort and skipped when a test run aborts before
+# the fixture.cleanup() finally block runs. Without this rule any aborted run
+# leaves a tracked-looking tree behind.
+packages/core/tests/.tmp-*/
+
+# OS / editor
+.DS_Store
+.stfolder/
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example

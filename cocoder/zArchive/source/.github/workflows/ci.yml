@@ -1,0 +1,84 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.3
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # ripgrep (rg) is used by the stale-reference gate below. macos-14 runners
+      # don't ship rg by default; without this install the `if rg ...` lines
+      # exit 127 (command not found) and bash's `if` treats that as "no match,"
+      # silently turning the gate into a no-op. Verified via PR #13 follow-up
+      # finding: 4 `/Volumes/` leaks in `packages/core/tests/{flows,debugger}.test.mjs`
+      # had landed undetected through PRs #8 and #9.
+      - name: Install ripgrep (for stale-reference gate)
+        run: brew install ripgrep
+      - name: Install gitleaks (for public-readiness gate)
+        run: brew install gitleaks
+      - run: pnpm -F schemas build
+      - run: git diff --exit-code -- packages/schemas/dist/
+      - run: pnpm typecheck
+      - run: pnpm -r test
+      - run: pnpm -F core test config-resolver
+      - run: node packages/core/cli.mjs validate-contracts
+      - name: Secret scan (gitleaks full history)
+        run: gitleaks detect --no-banner --source . --log-opts="--all"
+      # Documented-invocation parity smoke test. The 2026-05-22 cocoder-cli
+      # bin-symlink miss surfaced post-merge because the documented
+      # `pnpm exec cocoder ...` form was never CI-tested — the previous
+      # validate-contracts line above bypasses the wrapper by invoking core
+      # directly. Build the TS wrapper, then verify the documented
+      # invocation form actually resolves through the bin symlink + dist.
+      - name: Build TS CLI wrapper
+        run: pnpm -F cocoder-cli build
+      - name: Documented invocation parity (pnpm exec cocoder)
+        run: pnpm exec cocoder validate-contracts
+      - name: Stale-reference gate (audit §M12 / M4.15)
+        run: |
+          set -e
+          # The leakage scanner in composition.mjs INTENTIONALLY names upstream
+          # CoBuilder paths (it exists to detect them in shipped prompts). Its
+          # accompanying regression test obviously also mentions those paths.
+          # Both files must be exempt from this gate; everywhere else, 0 hits.
+          if rg --no-messages 'cobuilder|COB_ORCH_' packages/ docs/ templates/ \
+               --glob '!**/*.example.*' \
+               --glob '!packages/core/lib/composition.mjs' \
+               --glob '!packages/core/tests/composition-dogfood-bugfixes.test.mjs'; then
+            echo "::error::Stale upstream identifiers (cobuilder / COB_ORCH_) found in shipped packages/docs/templates. Move CoBuilder-specific content into *.example.* files or scrub the references."
+            exit 1
+          fi
+          if rg --no-messages '/Volumes/' packages/ docs/ templates/ --glob '!**/*.example.*'; then
+            echo "::error::Hardcoded /Volumes/ absolute paths found outside *.example.* files. Move machine-specific paths into example files or tokenize via \${COCODER_HOME} / \${root:name}."
+            exit 1
+          fi
+          if rg --no-messages 'build-personas/|cobuilder-build/orchestration/personas/playbooks/' \
+               packages/ docs/ templates/ cocoder/personas/playbooks/ \
+               --glob '!**/*.example.*' \
+               --glob '!packages/core/lib/composition.mjs' \
+               --glob '!packages/core/tests/composition-dogfood-bugfixes.test.mjs' \
+               --glob '!cocoder/personas/PORT-NOTES.md'; then
+            echo "::error::Private CoBuilder playbook path literals found in public surfaces. Scrub or move to private/local playbooks."
+            exit 1
+          fi
+      - name: Public readiness placeholder
+        run: |
+          set -e
+          test -s LICENSE
+          test -s NOTICE
+          grep -qi 'CoBuilder' NOTICE
+          grep -qi 'extract' NOTICE
+          test -s docs/faq.md
+          grep -qi 'commercial use' docs/faq.md
+          grep -Eqi 'zero (analytics|telemetry)|no telemetry' docs/faq.md

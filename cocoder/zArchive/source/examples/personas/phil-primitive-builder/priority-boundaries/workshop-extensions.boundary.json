@@ -1,0 +1,19 @@
+{
+  "id": "workshop-extensions-phil",
+  "prioritySlug": "workshop-extensions",
+  "label": "Workshop extension writer boundary (Phil example)",
+  "routeIds": ["phil-workshop-toolsmith"],
+  "writerLanes": {
+    "phil-workshop-toolsmith": {
+      "allowed": [
+        "workshop/extensions/"
+      ],
+      "excluded": [
+        "workshop/src/",
+        "workshop/tests/",
+        "cocoder/",
+        "packages/"
+      ]
+    }
+  }
+}

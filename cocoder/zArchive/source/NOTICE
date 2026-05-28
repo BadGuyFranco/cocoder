@@ -1,0 +1,14 @@
+CoCoder
+Copyright 2026 Anthony Franco
+
+This product includes software developed for the CoCoder project.
+
+The orchestration runtime under packages/core/ is mechanically extracted from
+the CoBuilder project (independent OSS, also authored by Anthony Franco) per
+the strategy documented in cocoder/decisions/0004-typescript-validation-toolchain.md.
+CoBuilder is the canonical upstream reference until a future ADR cuts the
+dependency the other direction.
+
+Attribution requirements imposed by Apache-2.0 §4(b) (retaining notices) apply
+to all redistributions of this product, including binaries built from
+packages/cocoder-cli/.

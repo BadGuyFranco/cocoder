@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "id": "run-summary",
+  "label": "Run Summary",
+  "mode": "read-only",
+  "purpose": "Summarize run status, lane results, watchers, events, and next action from run artifacts.",
+  "execution": { "style": "deterministic", "preferredModelClass": "none", "fallback": "cheap-model-summary" },
+  "allowedWriteScopes": [],
+  "requiredChecks": ["status/result consistency"]
+}

@@ -1,0 +1,6 @@
+local/*
+!local/README.md
+!local/.gitignore
+secrets/
+*.env
+.env.*

@@ -1,0 +1,31 @@
+{
+  "id": "gemini",
+  "label": "Gemini CLI",
+  "kind": "future-cli",
+  "command": "gemini",
+  "commandEnv": "inherit",
+  "availabilityCheck": {
+    "commandExists": "gemini",
+    "supported": false,
+    "authHint": "Capability declaration only. Mark supported true after local command, auth, and result ingestion are proven."
+  },
+  "capabilities": {
+    "interactive": false,
+    "initialPrompt": false,
+    "stdinDispatch": false,
+    "resultFile": false,
+    "transcriptCapture": false,
+    "streamingDetection": false,
+    "screenshots": false,
+    "dom": false,
+    "console": false,
+    "shell": false,
+    "fileEdit": false
+  },
+  "writeCapability": "none",
+  "sandboxModes": ["read-only"],
+  "approvalModes": ["never"],
+  "resultContract": "job-result",
+  "evidenceCapabilities": ["command-output"],
+  "failureModes": ["missing-cli", "auth-expired", "no-result-file", "rate-limit", "unknown"]
+}

@@ -1,0 +1,19 @@
+{
+  "name": "core",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "cli.mjs",
+  "scripts": {
+    "pretest": "pnpm --filter schemas build && pnpm --filter oz-dashboard build && pnpm --filter oz-daemon build",
+    "build": "pnpm --filter schemas build && node cli.mjs validate-contracts",
+    "lint": "node scripts/check-mjs.mjs",
+    "test": "node scripts/test.mjs",
+    "typecheck": "node --check cli.mjs"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "oz-daemon": "workspace:*",
+    "schemas": "workspace:*",
+    "yaml": "^2.7.1"
+  }
+}

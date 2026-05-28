@@ -1,0 +1,54 @@
+{
+  "contract": "startup-packet",
+  "version": 1,
+  "status": "phase-2-draft",
+  "description": "Bounded launch input passed to the lead instead of full state files.",
+  "required": [
+    "runId",
+    "createdAt",
+    "route",
+    "profileDigest",
+    "selectedPriority",
+    "recentSessionContext",
+    "writeBoundaries",
+    "safetyFlags",
+    "extractionEvidence"
+  ],
+  "fields": {
+    "runId": { "type": "string" },
+    "createdAt": { "type": "iso-datetime" },
+    "route": { "type": "object", "required": ["id", "lead", "teammates"] },
+    "profileDigest": { "type": "string", "description": "Hash of resolved profile snapshot." },
+    "selectedPriority": { "type": "object", "required": ["slug", "title", "status", "excerpt", "staleState"] },
+    "recentSessionContext": { "type": "object", "required": ["excerpt", "lineLimit", "source"] },
+    "personaRouteAudit": {
+      "type": "object",
+      "optional": true,
+      "description": "Bounded audit of next/dispatch-context persona requirements against the launched route lanes."
+    },
+    "writeBoundaries": { "type": "array", "items": "write-boundary reference" },
+    "resolvedWriteBoundary": { "type": "object", "required": ["source", "laneBoundaries", "excludedWriteBoundaries"] },
+    "modelRoles": {
+      "type": "object",
+      "optional": true,
+      "description": "Resolved profile+route model-role dispatch policy snapshotted at launch."
+    },
+    "safetyFlags": { "type": "object", "required": ["oldReferencesReadOnly", "noFullPriorityRead", "noFullSessionLogRead"] },
+    "extractionEvidence": { "type": "array", "items": "command and output artifact reference" },
+    "gaps": { "type": "array", "items": "string" },
+    "warnings": {
+      "type": "array",
+      "items": "string",
+      "description": "Advisory launch issues that should be shown in prompts but do not block run creation."
+    }
+  },
+  "rules": [
+    "Startup packet generation must use bounded extraction for large state files.",
+    "Stale, closed, superseded, archived, missing priorities, route incompatibility, and blocking write-boundary issues stop launch before implementation dispatch.",
+    "Priority handoff drift is advisory: preserve it in warnings and launch the run so the lead can reconcile it before dispatching implementation.",
+    "The lead receives the packet, not full PRIORITIES.md or SESSION_LOG.md content.",
+    "Extraction commands and byte/line caps must be recorded.",
+    "Resolved model roles are launch facts; launched lanes and subagents must not silently substitute configured planning, builder, research, audit, or synthesis roles.",
+    "If personaRouteAudit reports missing required personas or packetized/not-executed persona work, the lead must reconcile route fit before dispatching implementation."
+  ]
+}

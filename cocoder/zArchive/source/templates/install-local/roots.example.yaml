@@ -1,0 +1,5 @@
+$schema: ../packages/schemas/dist/roots.schema.json
+version: "0.1"
+roots:
+  nas: "/Volumes/NAS LOCAL"
+  dev: "~/dev"
