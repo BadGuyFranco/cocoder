@@ -1,6 +1,6 @@
 # v0.5 — Orchestration Services (cheap-model admin delegation)
 
-**Status:** **Active — Phases 1 & 2 COMPLETE; Phase 3 adoption proof COMPLETE. Real headless `cursor-agent` execution proven (run `vhz1odiz`); multi-packet lanes, founder-approved Oscar teardown, the archived-v0.1 launch blocker, and `lead-support-commit` (Oscar's governance-commit path) are all fixed; PR #51 general infra — including ADR-0012 — is reconciled to `main`, with the v0.4-specific design parked on PR #51. Next = Phase 3 preventive guard (ghost-priority + dangling-ADR check); after that, archive-candidate.** **Sequenced BEFORE v0.4-oz-control-plane** (founder, 2026-05-27). **Owner:** Bob + founder (Oscar orchestrates).
+**Status:** **Active — Phases 1 & 2 COMPLETE; Phase 3 adoption proof COMPLETE. Real headless `cursor-agent` execution proven (run `vhz1odiz`); multi-packet lanes, founder-approved Oscar teardown, the archived-v0.1 launch blocker, `lead-support-commit`, and the multi-packet finalize commit-linkage are all fixed; PR #51 general infra — including ADR-0012 — is reconciled to `main`, with the v0.4-specific design parked on PR #51. Next = Phase 3 preventive guard (ghost-priority + dangling-ADR check); after that, archive-candidate.** **Sequenced BEFORE v0.4-oz-control-plane** (founder, 2026-05-27). **Owner:** Bob + founder (Oscar orchestrates).
 **Decision:** [ADR-0009](../../decisions/0009-orchestration-services.md). **Relates to:** [ADR-0008](../../decisions/0008-oz-control-plane-architecture.md) (Oz unchanged).
 **Launchable from Oz / `main`** — `oscar-lead` route now lists this priority (`bounded-writers`) and the v0.5 boundary is in place.
 
@@ -25,6 +25,7 @@ Oscar (the lead orchestrator) was spending expensive lead-model context on repea
 - `oscar-lead` no longer lists archived `v0.1-foundation` in `supportedPriorityOwners`, so the route-supported ghost-priority guard no longer blocks fresh v0.5 launches.
 - `composer-agent` is not currently on PATH in this install; service execution defaults to `cursor-agent` unless a configured run passes another executor command.
 - **`lead-support-commit` is fixed (run `3xcelgzi`):** its `--files` repo-relative paths were absolutized by the CLI arg parser (`files` missing from the `parseArgs` literal-preserve list), so the path had never succeeded; Oscar's governance-doc commit authority now works, with parser-level and end-to-end coverage.
+- **Multi-packet finalize is fixed (run `3xcelgzi`):** `finalize-run-status` did not recognize route-owned commits for committed-then-archived packets (it matched only the live result path, not the archived packet's `sourceResultPath` in `collectPendingRouteOwnedCommits`), so a multi-packet lane could never reach terminal status. Fixed in `ledger.mjs` with a commit→advance→finalize regression test.
 - **PR #51 reconciled (run `3xcelgzi`):** general infra was already on `main`; ADR-0012 (the one gap) brought to `main` (`ec1c4e2`), decisions index fixed, PR #51 parked open + relabeled "v0.4 design only". `main` pushed to origin (direct push bypassed branch protection — no CI ran).
 
 ## Next Session Start Here

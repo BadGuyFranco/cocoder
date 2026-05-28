@@ -12,13 +12,14 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
-## 2026-05-28 — **v0.5 Phase 2 PR #51 reconciliation complete; lead-support-commit fixed**
+## 2026-05-28 — **v0.5 Phase 2 PR #51 reconciliation complete; lead-support-commit + multi-packet finalize bugs fixed**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [v0.5-orchestration-services](./priorities/v0.5-orchestration-services/README.md) | **Run:** 3xcelgzi (oscar-lead)
 
 **Outcomes:**
 - Landed the orphaned, already-verified teardown + relaunch-blocker slice that was sitting uncommitted in the worktree (Bob verified green; committed via the route path using the product-path `--developer-mode` opt-in).
 - Fixed `lead-support-commit`: its `--files` repo-relative paths were being absolutized by the CLI arg parser, so Oscar's governance-commit path had never succeeded in any run. Added the parser fix plus parser-level and end-to-end coverage; the path now works.
+- Fixed a second wrap-machinery bug: `finalize-run-status` did not recognize route-owned commits for committed-then-archived multi-packet lane packets (it matched the live result path but not the archived packet's `sourceResultPath`), so a multi-packet run could never reach terminal; fixed in `ledger.mjs` with a regression test.
 - Phase 2 PR #51 reconciliation done: confirmed the general orchestration infra (routes/profiles/priority-boundaries/session-wrap) was already on `main`; brought the one genuine gap — **ADR-0012** (Oscar governance write authority) — to `main`, resolving a dangling reference, and fixed the decisions index drift.
 - Parked PR #51 open and relabeled it "v0.4 design only" for the future v0.4 run; did not merge v0.4 wholesale. Pushed `main` to origin (direct push **bypassed branch protection** — PR + `test` CI gate did not run).
 
