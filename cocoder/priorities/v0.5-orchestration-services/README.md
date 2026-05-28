@@ -1,7 +1,8 @@
 # v0.5 — Orchestration Services (cheap-model admin delegation)
 
-**Status:** Draft — engine landed 2026-05-27; adoption pending. **Owner:** Bob + founder.
+**Status:** **Active — engine landed (PR #50, this branch); next = land PR #50 + reconcile + adopt.** **Sequenced BEFORE v0.4-oz-control-plane** (founder, 2026-05-27). **Owner:** Bob + founder (Oscar orchestrates).
 **Decision:** [ADR-0009](../../decisions/0009-orchestration-services.md). **Relates to:** [ADR-0008](../../decisions/0008-oz-control-plane-architecture.md) (Oz unchanged).
+**Launch this priority from branch `orchestration-services-import` (PR #50).** The engine + this priority live here, not yet on `main`; Phase 1 lands them.
 
 ## Why
 
@@ -19,7 +20,32 @@ Oscar (the lead orchestrator) was spending expensive lead-model context on repea
 1. **Wire services into Oscar's live wrap/teardown flow** — Oscar builds + runs packets during real runs (currently the engine + prompt guidance exist; the runtime wrap path does not yet invoke them automatically).
 2. **Prove headless `cursor-agent` execution end-to-end** against a real run (the suite exercises a fake executor; validate the real `cursor-agent --print --trust --force --sandbox disabled` path + a cheap model).
 3. **Surface service results in Oz run detail** — service artifacts already land under `<runDir>/services/<packetId>/`; confirm the Oz run watcher enumerates/labels them (no Oz code change expected; verify only).
-4. **Sequencing** — founder to place this relative to v0.2 / v0.3 / v0.4. The `v0.5` slug is provisional (engine is already in `main`-line core).
+4. **Sequencing** — **DECIDED 2026-05-27 (founder): runs BEFORE v0.4-oz-control-plane.** The `v0.5` slug is kept (it's the natural home for "orchestration services"); work order is ahead of v0.4 because a hardened, bounded service layer de-risks the v0.4 control-plane build.
+5. **Close out v0.1** as a carryover track here (so v0.1-foundation can be archived) — see Next Session Start Here.
+
+## Next Session Start Here
+
+> **Why this priority isn't on `main` yet:** the engine + ADR-0009 + this README were imported on PR #50 (`orchestration-services-import`) and **never merged** — that orphaned PR (plus a ghost v0.5 row in the route and a dangling ADR-0009 reference) was an orchestration failure surfaced 2026-05-27. Phase 1 fixes it by landing PR #50.
+
+**Recommended next atom:** Phase 1 — land PR #50.
+
+**Route / topology:** `oscar-lead` (Oscar lead + Bob builder). Strict substitution.
+**Write boundary:** broadened-Bob — `packages/`, `docs/`, `.github/`, `README.md`, `ARCHITECTURE.md`, `templates/`, `examples/`, `LICENSE`/`NOTICE`; + Oscar governance (`cocoder/PRIORITIES.md`, `priorities/`, `decisions/`, `SESSION_LOG.md`, `plans/`, `tickets/`); exclude `secrets/`, `local/`.
+
+**Phase 1 — land PR #50 (this branch) → `main`:**
+1. **Bob:** fix `packages/core/services/wrap-execution.json` — remove `orchestrator-commit` and `finalize-run-status` from `requiredChecks` (they are Oscar route-control steps, per the CoBuilder prior-fix). *Optional hardening:* add an explicit "do not commit / finalize a run / record supersession" line to `FORBIDDEN_DECISIONS` in `packages/core/lib/services.mjs`.
+2. **Oscar:** rebase this branch onto current `main` (it branched off pre-v0.1-ship main), resolve the `PRIORITIES.md` / `SESSION_LOG.md` / `decisions/README.md` conflicts against `main`'s shipped-v0.1 versions (registering the v0.5 row + ADR-0009 so the **ghost priority + dangling ADR resolve**), get CI green, then **squash-merge** PR #50 (required-linear-history; rebase/merge-commit are disabled on `main`).
+
+**Phase 2 — reconcile `oz-control-plane-design` (PR #51):** rebase it onto the new `main` (its ADR-0009 citation resolves); bring the **general** orchestration infra (routes / profiles / priority-boundaries / ADR-0012 / `session-wrap.md`) to `main`; **leave the v0.4-specific design** (design tree, ADR-0008/0010, v0.4 spec) on the branch for the v0.4 run. **Do not merge v0.4 wholesale yet.**
+
+**Phase 3 — adoption + v0.1 close-out:**
+- Adoption items 1–3 above (wire into live wrap/teardown flow; prove real `cursor-agent` end-to-end; verify Oz run-detail surfacing).
+- **v0.1 carryover:** write **ADR-0011 (v0.1 closeout)** (reserved); run Master **P-R1** (two-workspace concurrency) + **P-R3** (recovery test), or **waive the B/C founder Refines** with rationale; then **archive `v0.1-foundation`** (move to `priorities/zArchive/`, update `PRIORITIES.md` + `zArchive/INDEX.md`) — **founder confirms archival; do not self-archive.**
+- **Preventive guard:** add a check that flags ghost priorities (in a route but absent from `PRIORITIES.md`) and dangling ADRs (indexed but file-absent), so this fragmentation can't silently recur.
+
+**Stop conditions:** a service must NEVER commit, finalize a run, or record supersession; do not merge v0.4 wholesale; do not self-archive v0.1 without founder confirmation.
+**Required tests:** core suite stays green (346/346-class on this branch; reconciles with main's count at rebase); `validate-orchestration-services` green; PR #50 CI green before squash-merge.
+**Founder decisions on record:** sequenced before v0.4 (2026-05-27); `v0.1.0` already tagged + released; D-S1 + external stranger test removed from v0.1 scope.
 
 ## Notes
 
