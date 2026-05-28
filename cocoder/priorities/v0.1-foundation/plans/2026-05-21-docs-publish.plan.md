@@ -126,7 +126,7 @@ A public CoCoder release at which:
 
 | ID | Question | Blocks | Recommended default | Answer (2026-05-24) | ADR / HOLD FOR GO |
 |---|---|---|---|---|---|
-| **PD-Q1** | Stranger test (P-R2) execution model: **(A)** recruited external dev only; **(B)** internal proxy dry-run in **Solve** proves doc readiness; external recruit mandatory in **Refine/Final Check**; **(C)** founder-as-stranger after time gap counts as P-R2. | D-S1, D Refine M3 | **B — Internal proxy in Solve; external recruit in Refine.** | **B (founder-approved 2026-05-24)** | No |
+| **PD-Q1** | Stranger test (P-R2) execution model: **(A)** recruited external dev only; **(B)** internal proxy dry-run in **Solve** proves doc readiness; external recruit mandatory in **Refine/Final Check**; **(C)** founder-as-stranger after time gap counts as P-R2. | D-S1, D Refine M3 | **B — Internal proxy in Solve; external recruit in Refine.** | ~~B (2026-05-24)~~ **REVISED 2026-05-27 (run zx0s33ag): external recruit is NOT a v0.1 requirement (founder: "no external stranger test — never should have been a requirement"). Internal-proxy dry-run (D-S1) retained as the readiness check; Milestone 3 external recruit (D-M3.1–D-M3.3) removed from v0.1 scope.** | No |
 | **PD-Q2** | `README.md` depth at `v0.1.0`: **(A)** full pitch + quick-start (remove "not yet usable" banner); **(B)** minimal pointer to `docs/getting-started.md` only. | D-M1.8, tag | **A — Full pitch + quick-start.** | **A (founder-approved 2026-05-24)** | No |
 | **PD-Q3** | `NOTICE` maintenance: **(A)** hand-authored (current); **(B)** auto-generated from dependency license scan each release. | D-M4.3 | **A — Hand-authored for v0.1.** | **A (founder-approved 2026-05-24)** | No |
 | **PD-Q4** | `faq.md` commercial-use scope: **(A)** minimal — Apache-2.0 commercial use, tool vs name/trademark note, commit guidance; **(B)** extended legal FAQ (CoBuilder relationship, redistribution essay). | D-M1.5 | **A — Minimal FAQ.** | **A (founder-approved 2026-05-24)** | **ADR-graduating if B** |
@@ -198,25 +198,27 @@ A public CoCoder release at which:
 
 ### Milestone 1 — Documentation
 
-- [ ] **D-M1.1** Extend `docs/getting-started.md` to full ≤30 min stranger-test path: install → init out-of-tree workspace → first launch (CLI or Oz). Include labeled diagram: install-level `<CoCoder>/local/` vs workspace-level `<app>/cocoder/local/`.
-- [ ] **D-M1.2** `docs/orchestration.md` — tmux model, runs, evidence, session wrap (cross-link configuration + custom-personas).
-- [ ] **D-M1.3** `docs/personas.md` — who does what, dispatch rules, custom persona ergonomics (cross-link `docs/custom-personas.md`).
-- [ ] **D-M1.4** `docs/oz.md` — Oz overview, security model summary, troubleshooting; **cross-link** `docs/oz-launch.md` and `docs/oz-security-checklist.md` (do not duplicate C Expand content).
-- [ ] **D-M1.5** `docs/faq.md` — minimal commercial use (PD-Q4=A), what to commit vs not, trademark/name note, zero telemetry (PD-Q5=A), Syncthing secrets warning.
-- [ ] **D-M1.6** `docs/freshness-policy.md` — ADR/ARCHITECTURE verification stamps + doc audit cadence; Oz freshness panel deferred v0.2.
+- [x] **D-M1.1** Extend `docs/getting-started.md` to full ≤30 min stranger-test path: install → init out-of-tree workspace → first launch (CLI or Oz). Include labeled diagram: install-level `<CoCoder>/local/` vs workspace-level `<app>/cocoder/local/`. **(Authored 2026-05-27, run suesc2sq — clean-clone→init→compose-launch→CLI launch + Oz launch path, storage-zone diagram, cross-links to `oz-launch.md`/`oz-security-checklist.md`. The ≤30-min readiness *proof* is D-S1 internal-proxy, still deferred — authoring done, not yet stranger-validated.)**
+- [x] **D-M1.2** `docs/orchestration.md` — tmux model, runs, evidence, session wrap (cross-link configuration + custom-personas). **(Authored 2026-05-27, run zx0s33ag — Bob; `check-doc-refs` 0 missing refs.)**
+- [x] **D-M1.3** `docs/personas.md` — who does what, dispatch rules, custom persona ergonomics (cross-link `docs/custom-personas.md`). **(Authored 2026-05-27, run zx0s33ag — Bob; `check-doc-refs` 0 missing refs.)**
+- [x] **D-M1.4** `docs/oz.md` — Oz overview, security model summary, troubleshooting; **cross-link** `docs/oz-launch.md` and `docs/oz-security-checklist.md` (do not duplicate C Expand content). **(Authored 2026-05-27, run zx0s33ag — Bob; summary-plus-pointers, no C-Expand duplication; `check-doc-refs` 0 missing refs.)**
+- [x] **D-M1.5** `docs/faq.md` — minimal commercial use (PD-Q4=A), what to commit vs not, trademark/name note, zero telemetry (PD-Q5=A), Syncthing secrets warning. **(Authored 2026-05-27, run suesc2sq — minimal PD-Q4=A scope; all five required topics present; link-checked via `check-doc-refs` 0 missing refs.)**
+- [x] **D-M1.6** `docs/freshness-policy.md` — ADR/ARCHITECTURE verification stamps + doc audit cadence; Oz freshness panel deferred v0.2. **(Authored 2026-05-27, run zx0s33ag — Bob; Oz freshness panel explicitly marked deferred-to-v0.2; `check-doc-refs` 0 missing refs.)**
 - [ ] **D-M1.7** Mermaid diagram(s) in `ARCHITECTURE.md` verified for clarity (update stamps if edited).
 - [ ] **D-M1.8** **`README.md` adopter-ready rewrite (PD-Q2=A).** Remove "not yet usable by adopters" banner; replace stale Sub-Playbook A progress text with v0.1 pitch + quick-start pointer to `docs/getting-started.md`.
-- [ ] **D-M1.9** **ADR-0001 §6 stale `.command` reference — founder process gate.** Line 26 still says "iTerm2 + `.command` wrappers"; retired per ticket 0001 Path B. **Blocked until founder picks:** **(i)** inline "Updated 2026-05-24" footnote in ADR-0001 noting terminal-only + Oz launch surface, or **(ii)** graduate new ADR amending §6. Do not silently edit accepted decision text without recording which option was chosen.
+- [x] **D-M1.9** **ADR-0001 §6 stale `.command` reference — founder process gate.** ~~Line 26 still says "iTerm2 + `.command` wrappers"; retired per ticket 0001 Path B.~~ **Resolved 2026-05-27, run zx0s33ag (Oscar): founder chose option (i) — inline footnote.** ADR-0001 decision 6 now carries a dated `[^platform-v01-update]` footnote noting the `.command` retirement (ticket 0001 Path B) and terminal-only CLI + Oz launch surfaces; accepted decision text preserved, no new ADR graduated.
 
 ### Milestone 2 — Dogfood evidence (PD-Q7=A)
 
 - [ ] **D-M2.1** Author `docs/dogfood-evidence.md` summarizing Sub-Playbook E orchestrated runs + Oz observability (C Expand). No mandatory new Oscar polish session.
 
-### Milestone 3 — Refine: stranger test (external recruit)
+### Milestone 3 — Refine: stranger test (external recruit) — ❌ REMOVED FROM v0.1 SCOPE (2026-05-27, run zx0s33ag)
 
-- [ ] **D-M3.1** Recruit external developer (not familiar with CoCoder or CoBuilder; not the internal proxy from D-S1).
-- [ ] **D-M3.2** Time the run from `git clone` to first `cocoder launch` (target: ≤30 min; hard cap: 60 min before pause for diagnosis).
-- [ ] **D-M3.3** Capture every clarifying question as a doc task; iterate until run completes cleanly (binary green/red for Final Check).
+> **Founder decision 2026-05-27:** the external stranger-test recruit is not a v0.1 requirement and never should have been (PD-Q1 revised). v0.1 doc-readiness is proven by the **internal-proxy dry-run (D-S1)** only. The items below are retained struck-through for history; they do not gate v0.1.
+
+- [~] ~~**D-M3.1** Recruit external developer (not familiar with CoCoder or CoBuilder; not the internal proxy from D-S1).~~ **Removed from v0.1 scope.**
+- [~] ~~**D-M3.2** Time the run from `git clone` to first `cocoder launch` (target: ≤30 min; hard cap: 60 min before pause for diagnosis).~~ **Removed from v0.1 scope.**
+- [~] ~~**D-M3.3** Capture every clarifying question as a doc task; iterate until run completes cleanly (binary green/red for Final Check).~~ **Removed from v0.1 scope.**
 
 ### Milestone 4 — Publish
 
@@ -281,26 +283,43 @@ A public CoCoder release at which:
 
 ## Resume Instructions
 
-1. Confirm PD-Q1..PD-Q7 answers recorded above (all approved 2026-05-24).
-2. Read Master Playbook Final Check §public-readiness gates + this Sub-Playbook Witness inventory.
-3. Execute **D Solve** (D-S2 gates first if doc Expand not ready; D-S1 after getting-started extension lands).
-4. Do not schedule external stranger test until D-S1 internal proxy is green.
-5. Do not tag `v0.1.0` until D Refine + Final Check complete.
+### Next Session Start Here
+
+**Recommended next atom:** D-M1.7+D-M1.8 -- ARCHITECTURE.md verification + README.md adopter-ready rewrite (the repo-root publish surfaces that gate the `v0.1.0` tag).
+
+- **Route / topology:** `oscar-lead` (Oscar lead + Bob builder), same as run zx0s33ag.
+- **Required personas:** Oscar (orchestrator), Bob (builder). Strict substitution.
+- **Required write boundary (MUST widen vs zx0s33ag):** repo-root `README.md` + `ARCHITECTURE.md` (for D-M1.7/D-M1.8), `.github/workflows/ci.yml` (for D-S2 gates), and `docs/` (for D-M2.1). The zx0s33ag run could not touch any of these — that is the only reason these items are still open.
+- **Stop conditions:** do NOT tag `v0.1.0` until D-S1 internal-proxy is green AND README/ARCHITECTURE landed AND D-S2 CI gates exit 0. Do NOT self-archive — archival is a founder confirmation.
+- **Required tests/checks:** full suite stays **335/335** + oz-dashboard **8/8**; `check-doc-refs` 0 missing on any new/edited doc; D-S2 CI gate steps exit 0 on `main`; D-S1 internal-proxy completes clean-clone → `cocoder init` → first launch without doc-clarifying questions.
+- **Explicit founder decisions:** external stranger test is REMOVED from v0.1 (PD-Q1 revised 2026-05-27). The `v0.1.0` tag + release notes (PD-Q6=A, semver) remain a founder release action.
+
+### Remaining v0.1 work items
+1. **D-M1.7** ARCHITECTURE.md Mermaid verification (repo-root).
+2. **D-M1.8** README.md adopter rewrite — remove "not yet usable by adopters" banner + stale Sub-Playbook A text (PD-Q2=A; repo-root).
+3. **D-M2.1** `docs/dogfood-evidence.md` (Bob, `docs/`).
+4. **D-S1** internal-proxy stranger readiness (the retained doc-readiness proof).
+5. **D-S2** public-readiness CI gates — gitleaks + LICENSE/NOTICE + faq (`.github/workflows/ci.yml`).
+6. **`v0.1.0` tag** + release notes (founder action).
+
+### History
+- D-M1.1–D-M1.6 + D-M1.9 complete (getting-started, faq in run suesc2sq; orchestration, personas, oz, freshness-policy + ADR-0001 footnote in run zx0s33ag).
+- Do not tag `v0.1.0` until the stop conditions above are met.
 
 ---
 
 ## Progress
 
-**Last worked:** 2026-05-24 (Activated — Witness/Interrogate/Solve-target authored)
-**Current Canon:** Active — Witness/Interrogate complete; Solve not started
-**Next action:** D Solve — wire `gitleaks` + FAQ/LICENSE gates in CI (D-S2); then Expand doc batches; then D-S1 internal proxy.
+**Last worked:** 2026-05-27 (run zx0s33ag — D-M1.2/1.3/1.4/1.6 docs + D-M1.9 ADR fix; external stranger test removed from scope)
+**Current Canon:** Active — Expand. D Milestone 1 docs COMPLETE; remaining = repo-root publish surfaces + CI gates + internal proxy + tag.
+**Next action:** D-M1.7 ARCHITECTURE verify + D-M1.8 README rewrite (repo-root — needs wider write boundary), then D-M2.1 dogfood-evidence, D-S2 CI gates (`.github/`), D-S1 internal proxy, then `v0.1.0` tag. See "Next Session Start Here" above.
 
 | Canon | Items | Done | Status |
 |---|---|---|---|
 | Witness | 1 audit table + objective + scope + current state | 4 | **Complete (2026-05-24)** |
-| Interrogate | 7 PD-Q + 9 risks + reuse check | 7 + 9 + 5 | **Complete (2026-05-24)** — PD-Q1..PD-Q7 all-A/B per table |
-| Solve | 2 (D-S1, D-S2) | 0 | Not started |
-| Expand | M1: 9 · M2: 1 · M3: 3 · M4: 3 | 0 | Not started (gated on Solve checkpoint for sequencing; doc batches may overlap) |
+| Interrogate | 7 PD-Q + 9 risks + reuse check | 7 + 9 + 5 | **Complete (2026-05-24)** — PD-Q1 revised 2026-05-27 (external stranger test removed) |
+| Solve | 2 (D-S1, D-S2) | 0 | Not started (D-S2 needs `.github/` boundary; D-S1 needs proxy actor) |
+| Expand | M1: 9 (incl. D-M1.9) · M2: 1 · ~~M3: 3~~ removed · M4: 3 | M1: 7 of 9 | **M1 docs done** (D-M1.1–1.6, 1.9); open: D-M1.7/1.8 (repo-root). M3 external recruit removed from scope. |
 | Refine | 4 | 0 | Not started |
 | Final Check | 8 | 0 | Not started |
 
