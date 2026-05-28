@@ -7,6 +7,7 @@ import test from 'node:test';
 import { promisify } from 'node:util';
 import { HELP_TEXT, helpListedCommands } from '../cli/help.mjs';
 import { commandRegistry, registeredCommandNames } from '../cli/registry.mjs';
+import { parseArgs } from '../cli/shared.mjs';
 
 const execFileAsync = promisify(execFile);
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -28,6 +29,11 @@ test('registeredCommandNames covers every registry handler key', () => {
 
 test('prepare-debug alias resolves to prepare-debugger handler', () => {
   assert.equal(commandRegistry.get('prepare-debug'), commandRegistry.get('prepare-debugger'));
+});
+
+test('prepare-debugger git-write flag is parsed as a boolean literal', () => {
+  assert.equal(parseArgs(['--git-write', 'true']).gitWrite, 'true');
+  assert.equal(parseArgs(['--git-write', 'false']).gitWrite, 'false');
 });
 
 test('help text matches tracked CLI help baseline byte-for-byte', async () => {

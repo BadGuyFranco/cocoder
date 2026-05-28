@@ -33,6 +33,7 @@ export async function prepareDebuggerSession(options) {
   const runsDir = path.resolve(repoRoot, options.runsDir || 'cocoder/runs');
   const debuggerRunsDir = path.resolve(repoRoot, options.debuggerRunsDir || 'cocoder/debug-runs');
   const noSession = parseBooleanFlag(options.noSession);
+  const gitWrite = options.gitWrite === undefined ? true : parseBooleanFlag(options.gitWrite);
   const sessionId = noSession ? (options.sessionId || 'NO-SESSION') : options.sessionId;
   if (!sessionId) throw new Error('Missing required sessionId');
 
@@ -62,6 +63,7 @@ export async function prepareDebuggerSession(options) {
     promptPath: path.join(debugDir, 'prompt.md'),
     reportPath: path.join(debugDir, 'debug-report.md'),
     resultPath: path.join(debugDir, 'debug-result.json'),
+    gitWrite,
     followCollector: noSession || bundle.mode !== 'follow'
       ? { enabled: false }
       : {
@@ -93,6 +95,7 @@ export async function prepareDebuggerSession(options) {
     resultPath: bundle.debug.resultPath,
     mode: bundle.mode,
     followIntervalSeconds: bundle.followIntervalSeconds,
+    gitWrite,
     issues: bundle.issues
   };
 }
@@ -617,17 +620,17 @@ function renderDebuggerPrompt(bundle) {
     `debug_result: ${bundle.debug.resultPath}`,
     `review_mode: ${bundle.mode}`,
     `follow_interval_seconds: ${bundle.followIntervalSeconds}`,
-    'debugger_git_authority: enabled when `COCODER_ORCH_DEBUGGER_GIT_WRITE=true` is set in the debugger\'s environment; the generated debugger wrapper script reads that env var at exec time and upgrades Codex from `--sandbox workspace-write` to `--sandbox danger-full-access` for founder-approved orchestration fixes and commits',
+    `debugger_git_authority: ${bundle.debug?.gitWrite ? 'enabled by default for this launch' : 'explicitly disabled for this launch'}; the generated debugger wrapper script reads \`COCODER_ORCH_DEBUGGER_GIT_WRITE\` at exec time and otherwise uses its generated \`COCODER_ORCH_DEBUGGER_GIT_WRITE_DEFAULT\` value to decide whether to upgrade Codex from \`--sandbox workspace-write\` to \`--sandbox danger-full-access\` for founder-approved orchestration fixes and commits`,
     '',
     '## Target Run Binding',
     '',
     bundle.noSession
-      ? `- This no-session debugger is bound to \`session_id: ${bundle.sessionId}\` and has no run-backed target. Do not switch into any run-backed session unless the founder explicitly relaunches the debugger for that run.`
-      : `- This debugger is bound only to \`session_id: ${bundle.sessionId}\`, \`target_run_id: ${targetRunId}\`, and \`run_dir: ${boundRunDir}\`.`,
+      ? `- This no-session debugger starts at \`session_id: ${bundle.sessionId}\` with no run-backed target. If the founder explicitly names a session/run to follow, retarget to that session/run and record the retarget in \`debug_report\` and \`debug_result\`.`
+      : `- This debugger starts bound to \`session_id: ${bundle.sessionId}\`, \`target_run_id: ${targetRunId}\`, and \`run_dir: ${boundRunDir}\`. If the founder explicitly names a different session/run to follow, retarget to that session/run and record the retarget in \`debug_report\` and \`debug_result\`.`,
     `- Target priority: \`${targetPriority}\`; target route: \`${targetRoute}\`; target status: \`${targetStatus}\`.`,
-    '- Do not switch target runs, attach to a newer/live run, or treat another visible session as the subject of this audit.',
-    '- Other sessions may be inspected only as background concurrency evidence under `concurrency.otherSessions`.',
-    `- Every follow-cycle note appended to \`debug_report\` must begin with \`Target: ${bundle.sessionId}\`.`,
+    '- Do not switch target runs on inference alone. A plain-English founder request naming another session/run is sufficient authority to retarget.',
+    '- Other sessions may be inspected as background concurrency evidence under `concurrency.otherSessions`, or as the new target when the founder explicitly names one.',
+    `- Every follow-cycle note appended to \`debug_report\` must begin with the current target, initially \`Target: ${bundle.sessionId}\`.`,
     '',
     '## Role',
     '',
@@ -637,18 +640,18 @@ function renderDebuggerPrompt(bundle) {
     '## Hard Boundaries',
     '',
     '- Read any repo file needed to diagnose orchestration.',
-    '- You may write debugger artifacts under `cocoder/debug-runs/**`.',
-    '- Do not edit source/config/test files until after you present findings and the founder explicitly says to fix them.',
-    '- If the founder says yes, edit only `cocoder/**`.',
-    '- Do not edit product code, DOCS-REBUILD target docs, legacy reference orchestrators, legacy persona files, active run result files, or `.git` state unless the founder explicitly overrides this boundary.',
-    '- Do not commit another priority\'s staged work. If staged work exists, treat it as a blocker and recommend a recovery path.',
-    '- Never coordinate with unrelated sessions. Inspect their artifacts only when they belong to the requested run.',
+    '- By default, write only debugger artifacts under `cocoder/debug-runs/**` or the configured debugger run directory.',
+    '- Founder instructions are authoritative for debugger scope. If the founder explicitly asks you to follow a session, edit a repo path, update a CoCoder doc, commit files, or inspect another run, treat that as an approved scope change.',
+    '- When founder-approved scope includes source/config/test/docs/product files, edit only the paths needed for the requested orchestration fix or audit outcome.',
+    '- Do not mutate active run result files, legacy reference orchestrators, legacy persona files, or `.git` state unless the founder explicitly names that action.',
+    '- Do not commit unrelated staged work. If staged work exists, report it and commit only exact founder-approved paths, or stop if exact-path staging cannot avoid contamination.',
+    '- Never coordinate with unrelated sessions. Inspect their artifacts only as evidence or when the founder names them as the requested target.',
     '',
     '## Debugger Git Authority',
     '',
     '- The debugger wrapper script generated by `cocoder prepare-debug` reads `COCODER_ORCH_DEBUGGER_GIT_WRITE` from its environment at exec time. When that env var is `true`, the wrapper invokes Codex with `--sandbox danger-full-access` so founder-approved orchestration fixes and commits can land.',
-    '- The wrapper defaults to `--sandbox workspace-write`. Set `COCODER_ORCH_DEBUGGER_GIT_WRITE=true` in the founder shell before exec\'ing the wrapper when git authority is intended; otherwise the debugger runs read/write inside the workspace but cannot mutate git state.',
-    '- Even in git-authority mode, commit only after the founder explicitly approves the fix and the commit.',
+    '- The wrapper defaults to `--sandbox danger-full-access` for debugger launches unless the launch explicitly disables git authority (`--git-write false`, the Oz debugger `gitWrite` setting false, or `COCODER_ORCH_DEBUGGER_GIT_WRITE=false`).',
+    '- In git-authority mode, a founder-approved fix or explicit founder action request includes commit authority for the files you implement; commit those exact paths after verification without asking for a second prompt.',
     '- Before committing, run `git status --short`; if unrelated staged files exist, stop and report the blocker.',
     '- Stage exact paths only. Never use `git add .`, `git add -A`, wildcard staging, or interactive staging.',
     '- Commit only files you edited for the founder-approved debugger fix plus debugger artifacts under `cocoder/debug-runs/**` when needed.',
@@ -664,8 +667,8 @@ function renderDebuggerPrompt(bundle) {
     '5. Present a concise recommendation list: Must fix, Should fix, Monitor only.',
     '6. For every Must fix or Should fix, state the exact source/test/operational repair you would make; if no fix is warranted, say why.',
     '7. Say plainly whether each fix is worth doing now.',
-    '8. Ask the founder: "Do you want me to apply the recommended orchestration fixes?"',
-    '9. Only after explicit yes, patch orchestration files, add/update tests, run the relevant tests, and write `debug_report` plus `debug_result`.',
+    '8. Ask the founder: "Do you want me to apply the recommended orchestration fixes?" unless the founder has already given an explicit action request in plain English.',
+    '9. After explicit founder approval or an explicit founder action request, patch the approved files, add/update focused tests when warranted, run the relevant tests, and write `debug_report` plus `debug_result`.',
     '',
     '## Orchestration Service Pattern',
     '',
@@ -692,8 +695,8 @@ function renderDebuggerPrompt(bundle) {
     bundle.debug.followCollector?.enabled
       ? `- A launcher-side follow collector is enabled. Prefer its latest refreshed bundle at \`${bundle.debug.followCollector.latestPath}\` for each cycle; it is collected before Codex sandbox restrictions apply. If it is stale or missing, fall back to local artifact reads and record the collector failure.`
       : '- Each cycle should refresh pane captures, result files, watcher logs, and git status using local commands; do not rely only on the initial evidence bundle.',
-    `- Before using each refreshed bundle, verify \`latest.targetRun.sessionId\` or \`latest.sessionId\` still equals \`${bundle.sessionId}\`; if it does not, classify that bundle as stale/wrong-target and fall back to local reads for the bound run directory.`,
-    `- Append concise timestamped observations to \`debug_report\` after each meaningful change. Every appended follow observation must start with \`Target: ${bundle.sessionId}\`.`,
+    `- Before using each refreshed bundle, verify \`latest.targetRun.sessionId\` or \`latest.sessionId\` equals the current target. The initial target is \`${bundle.sessionId}\`; a founder-requested retarget changes the current target.`,
+    `- Append concise timestamped observations to \`debug_report\` after each meaningful change. Every appended follow observation must start with the current target, initially \`Target: ${bundle.sessionId}\`.`,
     '- Flag process issues early: invalid statuses, stalled result files, missing watcher notifications, prompt loops, boundary drift, staged-work contamination risk, adapter permission failures, or lead/writer role violations.',
     '- Treat visible pane composer text as ambiguous unless it is confirmed by post-dispatch behavior. The run-local `send-message` helper clears the target input line with `tmux send-keys C-u` before pasting and submitting a dispatch, so stale or visible composer-like text alone is not a hard dispatch-contamination blocker.',
     '- For Oscar-bootstrap routes, an initial run with only the Oscar lane is expected when `launch.route.initialLanes` contains only Oscar. Do not classify missing Phil/Bob/Talia/Quinn panes as broken until Oscar has requested them through a validated `add-lanes` topology decision.',
@@ -701,7 +704,7 @@ function renderDebuggerPrompt(bundle) {
     '- If Oscar requested lanes through `add-lanes`, verify the requested lanes appear in `launch.sessions`, have prompt/helper/watcher/result paths, and are included in result finalization expectations. If no topology decision exists yet, evaluate Oscar\'s bootstrap reasoning and startup warnings, not missing counterpart panes.',
     '- If a debugger tmux send/intervention attempt fails, classify the debugger as observe-only for that action and ask for founder/manual intervention when needed. Do not report the active run as broken solely because the debugger sandbox cannot send keys.',
     '- Do not interrupt the active run unless there is an immediate safety issue. If you need to intervene, state the exact concern and ask the founder first unless the requested run is about to contaminate the repo state.',
-    '- Follow mode still cannot edit source/config/test files without explicit founder approval after recommendations are presented.',
+    '- Follow mode can edit source/config/test/docs files only when the founder explicitly asks for that action or approves the recommended fix.',
     '',
     '## Initial Signals From Evidence Collection',
     '',
@@ -762,8 +765,9 @@ function renderDebuggerWrapper(repoRoot, bundle) {
     'set -euo pipefail',
     `cd ${shellQuote(repoRoot)}`,
     ...collectorLines,
+    `COCODER_ORCH_DEBUGGER_GIT_WRITE_DEFAULT="${bundle.debug?.gitWrite ? 'true' : 'false'}"`,
     'CODEX_SANDBOX="workspace-write"',
-    'if [ "${COCODER_ORCH_DEBUGGER_GIT_WRITE:-false}" = "true" ]; then',
+    'if [ "${COCODER_ORCH_DEBUGGER_GIT_WRITE:-$COCODER_ORCH_DEBUGGER_GIT_WRITE_DEFAULT}" = "true" ]; then',
     '  CODEX_SANDBOX="danger-full-access"',
     'fi',
     `exec codex --ask-for-approval never --sandbox "$CODEX_SANDBOX" ${shellQuote(bootstrap)}`,

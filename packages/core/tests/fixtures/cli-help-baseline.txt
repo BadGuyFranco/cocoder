@@ -70,8 +70,8 @@ Commands:
   record-supersession --run-dir PATH --superseded-lane LANE --resolving-lane LANE --basis route-policy|founder-authorization --findings "TEXT;TEXT" --evidence "TEXT;TEXT" [--id ID] [--created-by LANE]
   abort --run-dir PATH [--reason TEXT]
   cleanup [--runs-dir PATH] [--execute true]
-  prepare-debugger --session-id ID [--mode snapshot|follow] [--follow-interval-seconds N] [--runs-dir PATH] [--debugger-runs-dir PATH] [--tmux-bin PATH]
-  prepare-debugger --no-session true [--mode launch-failure|preflight|repo-audit] [--runs-dir PATH] [--debugger-runs-dir PATH] [--tmux-bin PATH]
+  prepare-debugger --session-id ID [--mode snapshot|follow] [--follow-interval-seconds N] [--runs-dir PATH] [--debugger-runs-dir PATH] [--tmux-bin PATH] [--git-write false]
+  prepare-debugger --no-session true [--mode launch-failure|preflight|repo-audit] [--runs-dir PATH] [--debugger-runs-dir PATH] [--tmux-bin PATH] [--git-write false]
   prepare-debug (alias for prepare-debugger)
   watch-debugger-evidence --run-dir PATH --session-id ID --debug-dir PATH [--follow-interval-seconds N] [--tmux-bin PATH] [--max-cycles N]
   list-orchestration-services [--services-dir PATH] [--contracts-dir PATH]
