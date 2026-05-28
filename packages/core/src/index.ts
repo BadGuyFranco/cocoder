@@ -15,6 +15,7 @@ export type {
   SessionRef,
   SpawnOptions,
   SessionStatus,
+  SessionExited,
   SessionHost,
 } from './session-host/index.js'
 
@@ -53,3 +54,19 @@ export {
   type CommitGateInput,
   type CommitGateResult,
 } from './commit-gate/index.js'
+
+export {
+  runRun,
+  PreflightError,
+  type RunnerDeps,
+  type RunInput,
+  type RunResult,
+  makeRunnerIO,
+  type RunnerIO,
+  type Delegation,
+  parseDelegation,
+  renderRunRecord,
+  buildOrchestratorPrompt,
+  buildBuilderPrompt,
+  commitMessage,
+} from './runner/index.js'

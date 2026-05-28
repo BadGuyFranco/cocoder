@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { SessionHost, SessionRef, SessionStatus, SpawnOptions } from '@cocoder/core'
+import type { SessionExited, SessionHost, SessionRef, SessionStatus, SpawnOptions } from '@cocoder/core'
 import { type CmuxCli, makeCmuxCli, parseSurface, parseWorkspaceRefs } from './cmux-cli.js'
 import { buildLaunchScript, diffNewWorkspace, parseExitFromScreen, shquote } from './launch.js'
 
@@ -79,7 +79,7 @@ export class CmuxSessionHost implements SessionHost {
     return { state: 'exited', code }
   }
 
-  async waitForExit(ref: SessionRef, opts: { timeoutMs?: number } = {}): Promise<SessionStatus> {
+  async waitForExit(ref: SessionRef, opts: { timeoutMs?: number } = {}): Promise<SessionExited> {
     const timeoutMs = opts.timeoutMs ?? 600_000
     const deadline = Date.now() + timeoutMs
     for (;;) {

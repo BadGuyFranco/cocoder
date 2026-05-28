@@ -29,10 +29,14 @@ export interface SpawnOptions {
   readonly stderrPath?: string
 }
 
+/** A session that has finished, with its exit code. */
+export interface SessionExited {
+  readonly state: 'exited'
+  readonly code: number
+}
+
 /** Result of polling a session's lifecycle. */
-export type SessionStatus =
-  | { readonly state: 'running' }
-  | { readonly state: 'exited'; readonly code: number }
+export type SessionStatus = { readonly state: 'running' } | SessionExited
 
 export interface SessionHost {
   /** Launch a session and return a handle. Implementations must: (1) ensure the command
@@ -45,7 +49,7 @@ export interface SessionHost {
   /** Whether the session is still running, or its exit code. */
   status(ref: SessionRef): Promise<SessionStatus>
   /** Resolve when the session exits (or reject on timeout). Convenience over polling status(). */
-  waitForExit(ref: SessionRef, opts?: { readonly timeoutMs?: number }): Promise<SessionStatus>
+  waitForExit(ref: SessionRef, opts?: { readonly timeoutMs?: number }): Promise<SessionExited>
   /** Surface/focus the session in the UI for the founder to watch. */
   show(ref: SessionRef): Promise<void>
   /** Tear down the session. */
