@@ -21,10 +21,12 @@ Numbered, dated, single-purpose decisions. Each ADR captures **context → decis
 | [ADR-0006](./0006-no-nested-workspaces-inside-install.md) | No workspaces nested inside the CoCoder install repository | accepted | 2026-05-22 |
 | [ADR-0007](./0007-workspace-files-and-multiroot-description.md) | Workspace files — storage location and the multi-root description convention | accepted (revised 2026-05-27) | 2026-05-26 |
 | [ADR-0008](./0008-oz-control-plane-architecture.md) | Oz control-plane architecture | accepted | 2026-05-27 |
+| [ADR-0010](./0010-run-lifecycle-wrap-teardown.md) | Run lifecycle — wrap via cheap services, daemon-driven teardown, orphaned-run recovery | accepted | 2026-05-27 |
+| [ADR-0012](./0012-persona-write-authority.md) | Persona write authority — Oscar owns governance/orchestration state | accepted | 2026-05-27 |
 
 ## Pending / proposed
 
-(None — next ADR number is 0009.)
+Numbering note (parallel branches, 2026-05-27): **ADR-0009** (orchestration services) lives on the `orchestration-services-import` branch / PR #50; **ADR-0010** (Oz control-plane build) and **ADR-0011** (v0.1 closeout) are reserved/pending (see the v0.4 priority README + the `m2ivp19j` run). ADR-0012 took the next free number here to avoid colliding with those; the index reconciles at merge.
 
 ## Authoring guide
 

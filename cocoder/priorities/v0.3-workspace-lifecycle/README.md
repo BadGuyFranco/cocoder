@@ -2,7 +2,7 @@
 
 **Status:** Draft
 **Owner:** Bob + founder
-**Sequencing:** DECIDED (2026-05-26) — **v0.3 runs before `v0.2-adapter-extensibility`.** Rationale: the dogfood loop (Oz actually driving an Oscar/Bob session) is the proof-of-life the whole product rests on; cloud/managed adapters are additive and non-blocking, and the near-term adapter want (cursor-agent) already shipped. Depends on the Sub-Playbook C Oz dashboard as the surface for this work.
+**Sequencing:** **Follow-on to `v0.4-oz-control-plane`** (updated 2026-05-27) — v0.3 engages when v0.4 begins wiring the **Workspaces** screen / workspace management. The Workspaces *UI* is designed under v0.4 (the Oz control-plane spec); v0.3 owns the capabilities behind it (onboarding, per-project secrets, multi-root management). (`v0.2-adapter-extensibility` was archived 2026-05-27, so the earlier "before v0.2" ordering no longer applies.) Depends on the Oz dashboard as the surface for this work.
 
 ## Near-term: Dogfood Loop Enablement — ✅ COMPLETE (2026-05-26)
 
