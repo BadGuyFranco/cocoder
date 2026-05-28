@@ -164,31 +164,28 @@ A public CoCoder release at which:
 
 ## Solve
 
-*Sub-Playbook D has **two** Solve invariants — stranger-test readiness (internal proxy) and public-readiness gates green. Refine executes the external recruit; Final Check is the binary ship gate.*
+*Sub-Playbook D Solve is now a **single** invariant — public-readiness gates green (D-S2). The stranger-test readiness invariant (D-S1) was removed from v0.1 scope by the founder on 2026-05-27 (run 1wna3uxq); founder real-project dogfooding validates readiness post-ship. Final Check is the binary ship gate.*
 
 **Riskiest piece (D-side):**
 
-1. **Stranger-test readiness (D-S1)** — internal proxy (not the founder, not yet the external recruit) completes the `docs/getting-started.md` path from clean clone → `cocoder init` → first `cocoder launch` (or documented Oz equivalent) in **≤30 minutes** without doc-clarifying questions. Proves the doc set *can* pass P-R2 before scheduling a real person's time.
+1. ~~**Stranger-test readiness (D-S1)**~~ — **removed from v0.1 scope** (founder, 2026-05-27).
 2. **Public-readiness gates green (D-S2)** — all Master Final Check §5 items enforced via CI on every push to `main`.
 
 ### Tasks
 
-- [ ] **D-S1** **Stranger-test readiness (internal proxy).**
-  - **Implementation shape:** after Expand doc authoring lands (or against interim getting-started if run incrementally), a person other than the founder (internal proxy — e.g., team member, contractor) executes the getting-started path from a clean clone on a machine without CoCoder context. Founder observes without intervening except to note confusion points.
-  - **Test shape:** timed run ≤30 min; zero doc-clarifying questions required to complete init + first launch; gaps captured as doc fix tasks before external recruit is scheduled.
-  - **Phase:** Solve proves readiness; Refine (D-M3) runs recruited external dev per Master P-R2.
+- [~] ~~**D-S1** **Stranger-test readiness (internal proxy).**~~ **❌ REMOVED FROM v0.1 SCOPE (founder, 2026-05-27, run 1wna3uxq):** "I have projects I will use CoCoder on myself — this is not a v0.1 concern." The founder's own real-project dogfooding is the readiness validation and it happens *after* ship, not as a pre-tag gate. Mirrors the 2026-05-27 removal of the external stranger recruit (D-M3). v0.1 doc-readiness is no longer gated by a proxy dry-run; the docs ship on their authored + `check-doc-refs`-clean state. Retained struck-through for history.
 
-- [ ] **D-S2** **Public-readiness gates green in CI.**
+- [x] **D-S2** **Public-readiness gates green in CI.** **(Authored 2026-05-27, run 1wna3uxq — Bob, on branch `v0.1-publish`. All four sub-gates wired into `.github/workflows/ci.yml` in place. Local Class B equivalents pass; the "exit 0 on `main`" bar is Class A and only provable once CI runs at/after merge.)**
   - **Implementation shape:** extend `.github/workflows/ci.yml` (no parallel `scripts/gates/` directory):
-    - **D-S2a** `gitleaks detect --no-banner` on full history (install `gitleaks` on macOS runner same as `rg`).
-    - **D-S2b** Retain existing stale-reference gate block ( `/Volumes/`, `cobuilder`, private playbook paths ) — verify still green after doc Expand.
-    - **D-S2c** LICENSE + NOTICE presence **and** minimal content checks (non-empty; NOTICE mentions CoBuilder extraction attribution).
-    - **D-S2d** `docs/faq.md` exists and contains commercial-use + telemetry-zero statements (PD-Q4=A, PD-Q5=A).
+    - [x] **D-S2a** `gitleaks detect --no-banner` on full history (install `gitleaks` on macOS runner same as `rg`). *(Local: `gitleaks detect --no-banner --source . --log-opts="--all"` → 104 commits scanned, no leaks. Class B.)*
+    - [x] **D-S2b** Retain existing stale-reference gate block ( `/Volumes/`, `cobuilder`, private playbook paths ) — verify still green after doc Expand. *(Green; required removing one machine-specific `/Volumes/...` literal from `packages/schemas/test/workspaces-registry.test.ts` fixture → `/Users/example/CoCoder`, assertion unchanged.)*
+    - [x] **D-S2c** LICENSE + NOTICE presence **and** minimal content checks (non-empty; NOTICE mentions CoBuilder extraction attribution). *(Local checks → `public-readiness-ok`. Class B.)*
+    - [x] **D-S2d** `docs/faq.md` exists and contains commercial-use + telemetry-zero statements (PD-Q4=A, PD-Q5=A). *(Local grep passes. Class B.)*
   - **Test shape:** CI job fails if any gate fails; local reproduction documented in D plan Progress when landed.
 
-**Pass threshold:** D-S1 internal proxy completes without doc-clarifying questions; D-S2 all CI gate steps exit 0 on `main`.
+**Pass threshold (revised 2026-05-27):** D-S2 all CI gate steps exit 0 on `main` (Class A — proven when CI runs after merge of `v0.1-publish`). ~~D-S1 internal proxy~~ removed from v0.1 scope.
 
-**Checkpoint:** [ ] Stranger-test readiness proven; public-readiness gates green. External stranger test can be scheduled for Refine.
+**Checkpoint:** [ ] Public-readiness gates green on `main` (D-S2 Class A). ~~Stranger-test readiness~~ no longer a v0.1 gate.
 
 ---
 
@@ -204,13 +201,13 @@ A public CoCoder release at which:
 - [x] **D-M1.4** `docs/oz.md` — Oz overview, security model summary, troubleshooting; **cross-link** `docs/oz-launch.md` and `docs/oz-security-checklist.md` (do not duplicate C Expand content). **(Authored 2026-05-27, run zx0s33ag — Bob; summary-plus-pointers, no C-Expand duplication; `check-doc-refs` 0 missing refs.)**
 - [x] **D-M1.5** `docs/faq.md` — minimal commercial use (PD-Q4=A), what to commit vs not, trademark/name note, zero telemetry (PD-Q5=A), Syncthing secrets warning. **(Authored 2026-05-27, run suesc2sq — minimal PD-Q4=A scope; all five required topics present; link-checked via `check-doc-refs` 0 missing refs.)**
 - [x] **D-M1.6** `docs/freshness-policy.md` — ADR/ARCHITECTURE verification stamps + doc audit cadence; Oz freshness panel deferred v0.2. **(Authored 2026-05-27, run zx0s33ag — Bob; Oz freshness panel explicitly marked deferred-to-v0.2; `check-doc-refs` 0 missing refs.)**
-- [ ] **D-M1.7** Mermaid diagram(s) in `ARCHITECTURE.md` verified for clarity (update stamps if edited).
-- [ ] **D-M1.8** **`README.md` adopter-ready rewrite (PD-Q2=A).** Remove "not yet usable by adopters" banner; replace stale Sub-Playbook A progress text with v0.1 pitch + quick-start pointer to `docs/getting-started.md`.
+- [x] **D-M1.7** Mermaid diagram(s) in `ARCHITECTURE.md` verified for clarity (update stamps if edited). **(Done 2026-05-27, run 1wna3uxq — Bob, on branch `v0.1-publish`; verification stamp refreshed + storage-zone Mermaid clarified. Static/manual clarity review — `mmdc` not installed locally, so render-verification is Class B.)**
+- [x] **D-M1.8** **`README.md` adopter-ready rewrite (PD-Q2=A).** Remove "not yet usable by adopters" banner; replace stale Sub-Playbook A progress text with v0.1 pitch + quick-start pointer to `docs/getting-started.md`. **(Done 2026-05-27, run 1wna3uxq — Bob; "not yet usable" banner removed, "What v0.1 includes" + "Quick Start" → `docs/getting-started.md` added.)**
 - [x] **D-M1.9** **ADR-0001 §6 stale `.command` reference — founder process gate.** ~~Line 26 still says "iTerm2 + `.command` wrappers"; retired per ticket 0001 Path B.~~ **Resolved 2026-05-27, run zx0s33ag (Oscar): founder chose option (i) — inline footnote.** ADR-0001 decision 6 now carries a dated `[^platform-v01-update]` footnote noting the `.command` retirement (ticket 0001 Path B) and terminal-only CLI + Oz launch surfaces; accepted decision text preserved, no new ADR graduated.
 
 ### Milestone 2 — Dogfood evidence (PD-Q7=A)
 
-- [ ] **D-M2.1** Author `docs/dogfood-evidence.md` summarizing Sub-Playbook E orchestrated runs + Oz observability (C Expand). No mandatory new Oscar polish session.
+- [x] **D-M2.1** Author `docs/dogfood-evidence.md` summarizing Sub-Playbook E orchestrated runs + Oz observability (C Expand). No mandatory new Oscar polish session. **(Done 2026-05-27, run 1wna3uxq — Bob, on branch `v0.1-publish`; `check-doc-refs` 0 missing refs.)**
 
 ### Milestone 3 — Refine: stranger test (external recruit) — ❌ REMOVED FROM v0.1 SCOPE (2026-05-27, run zx0s33ag)
 
@@ -285,43 +282,45 @@ A public CoCoder release at which:
 
 ### Next Session Start Here
 
-**Recommended next atom:** D-M1.7+D-M1.8 -- ARCHITECTURE.md verification + README.md adopter-ready rewrite (the repo-root publish surfaces that gate the `v0.1.0` tag).
+**All D authoring atoms are complete. The next step is a FOUNDER RELEASE sequence, not a fresh Oscar/Bob build run.**
 
-- **Route / topology:** `oscar-lead` (Oscar lead + Bob builder), same as run zx0s33ag.
-- **Required personas:** Oscar (orchestrator), Bob (builder). Strict substitution.
-- **Required write boundary (MUST widen vs zx0s33ag):** repo-root `README.md` + `ARCHITECTURE.md` (for D-M1.7/D-M1.8), `.github/workflows/ci.yml` (for D-S2 gates), and `docs/` (for D-M2.1). The zx0s33ag run could not touch any of these — that is the only reason these items are still open.
-- **Stop conditions:** do NOT tag `v0.1.0` until D-S1 internal-proxy is green AND README/ARCHITECTURE landed AND D-S2 CI gates exit 0. Do NOT self-archive — archival is a founder confirmation.
-- **Required tests/checks:** full suite stays **335/335** + oz-dashboard **8/8**; `check-doc-refs` 0 missing on any new/edited doc; D-S2 CI gate steps exit 0 on `main`; D-S1 internal-proxy completes clean-clone → `cocoder init` → first launch without doc-clarifying questions.
-- **Explicit founder decisions:** external stranger test is REMOVED from v0.1 (PD-Q1 revised 2026-05-27). The `v0.1.0` tag + release notes (PD-Q6=A, semver) remain a founder release action.
+**Recommended next atom:** D-RELEASE -- founder reviews branch `v0.1-publish`, merges it to `main` (PR), confirms CI is green (closes D-S2 Class A), then tags `v0.1.0`.
+
+- **Branch state:** all v0.1 publish surfaces live on **`v0.1-publish`** (off `main`; commits `f83110a` Oscar governance + ADR-0001 §6 fix, `68feb24` Bob docs/README/ARCHITECTURE/ci.yml). The v0.4 control-plane work stays on `oz-control-plane-design`. This split was the founder's Option A (disentangle so `v0.1.0` contains only v0.1).
+- **Release sequence (founder-gated):**
+  1. Review `v0.1-publish` (diff vs `main`: 6 D docs + README rewrite + ARCHITECTURE verify + `docs/dogfood-evidence.md` + ci.yml gates + ADR-0001 §6 footnote + governance).
+  2. Merge `v0.1-publish` → `main` (PR or fast-forward). **This triggers CI**, which runs the D-S2 gates and is the **Class A** proof that the gates exit 0 on `main`.
+  3. If CI green → tag `v0.1.0` + semver release notes (PD-Q6=A). **Tag/publish is a human action (Master Authority).**
+- **Stop conditions:** do NOT tag `v0.1.0` until D-S2 CI gates are green on `main`. Do NOT self-archive — archival is a founder confirmation.
+- **Required checks already done (Class B):** `check-doc-refs` 0 missing on every edited doc; gitleaks full-history clean (104 commits); stale-ref gate green; LICENSE/NOTICE/FAQ public-readiness checks `ok`; core/schemas/oz-dashboard/oz-daemon tests pass except one socket-bind `EPERM` that is a sandbox limitation (re-run in a socket-capable env / CI for full-suite Class A).
+- **Explicit founder decisions on record:** external stranger test REMOVED (PD-Q1, 2026-05-27); **D-S1 internal-proxy REMOVED** from v0.1 scope (2026-05-27, run 1wna3uxq — founder dogfoods own projects post-ship); README depth = full pitch + quick-start (PD-Q2=A); `v0.1.0` tag + release notes remain a founder release action.
+- **Awareness (not a blocker):** `main` already carries forward-looking design that predates the branch — ADR-0008 (Oz architecture) + a v0.4 roadmap stub. These ship inside `v0.1.0` as roadmap/design, which is normal. The heavy v0.4 prototype tree (`docs/oz-control-plane-design/`), ADR-0010/0012, and designer-notes are correctly excluded.
 
 ### Remaining v0.1 work items
-1. **D-M1.7** ARCHITECTURE.md Mermaid verification (repo-root).
-2. **D-M1.8** README.md adopter rewrite — remove "not yet usable by adopters" banner + stale Sub-Playbook A text (PD-Q2=A; repo-root).
-3. **D-M2.1** `docs/dogfood-evidence.md` (Bob, `docs/`).
-4. **D-S1** internal-proxy stranger readiness (the retained doc-readiness proof).
-5. **D-S2** public-readiness CI gates — gitleaks + LICENSE/NOTICE + faq (`.github/workflows/ci.yml`).
-6. **`v0.1.0` tag** + release notes (founder action).
+1. ~~D-M1.7 / D-M1.8 / D-M2.1 / D-S2 authoring~~ — **DONE (run 1wna3uxq, on `v0.1-publish`).**
+2. **D-RELEASE (founder):** review `v0.1-publish` → merge to `main` → confirm CI green (D-S2 Class A) → tag `v0.1.0` + release notes.
 
 ### History
 - D-M1.1–D-M1.6 + D-M1.9 complete (getting-started, faq in run suesc2sq; orchestration, personas, oz, freshness-policy + ADR-0001 footnote in run zx0s33ag).
-- Do not tag `v0.1.0` until the stop conditions above are met.
+- D-M1.7, D-M1.8, D-M2.1, D-S2 complete on branch `v0.1-publish` (run 1wna3uxq).
+- Do not tag `v0.1.0` until D-S2 CI gates are green on `main`.
 
 ---
 
 ## Progress
 
-**Last worked:** 2026-05-27 (run zx0s33ag — D-M1.2/1.3/1.4/1.6 docs + D-M1.9 ADR fix; external stranger test removed from scope)
-**Current Canon:** Active — Expand. D Milestone 1 docs COMPLETE; remaining = repo-root publish surfaces + CI gates + internal proxy + tag.
-**Next action:** D-M1.7 ARCHITECTURE verify + D-M1.8 README rewrite (repo-root — needs wider write boundary), then D-M2.1 dogfood-evidence, D-S2 CI gates (`.github/`), D-S1 internal proxy, then `v0.1.0` tag. See "Next Session Start Here" above.
+**Last worked:** 2026-05-27 (run 1wna3uxq — D-M1.7/1.8/2.1 + D-S2 authored on branch `v0.1-publish`; D-S1 removed from v0.1 scope)
+**Current Canon:** Active — Expand + Solve authoring COMPLETE on branch `v0.1-publish`. All D doc/gate atoms done; only the founder release sequence (merge → CI-green → `v0.1.0` tag) remains.
+**Next action:** **D-RELEASE (founder):** review `v0.1-publish`, merge to `main` (triggers CI = D-S2 Class A proof), tag `v0.1.0` + release notes. See "Next Session Start Here" above.
 
 | Canon | Items | Done | Status |
 |---|---|---|---|
 | Witness | 1 audit table + objective + scope + current state | 4 | **Complete (2026-05-24)** |
 | Interrogate | 7 PD-Q + 9 risks + reuse check | 7 + 9 + 5 | **Complete (2026-05-24)** — PD-Q1 revised 2026-05-27 (external stranger test removed) |
-| Solve | 2 (D-S1, D-S2) | 0 | Not started (D-S2 needs `.github/` boundary; D-S1 needs proxy actor) |
-| Expand | M1: 9 (incl. D-M1.9) · M2: 1 · ~~M3: 3~~ removed · M4: 3 | M1: 7 of 9 | **M1 docs done** (D-M1.1–1.6, 1.9); open: D-M1.7/1.8 (repo-root). M3 external recruit removed from scope. |
-| Refine | 4 | 0 | Not started |
-| Final Check | 8 | 0 | Not started |
+| Solve | ~~2~~ → **1 (D-S2)** | D-S2 authored | **Authored (run 1wna3uxq)** — local Class B passes; Class A (CI green on `main`) pending merge. **D-S1 removed from v0.1 scope (founder 2026-05-27).** |
+| Expand | M1: 9 (incl. D-M1.9) · M2: 1 · ~~M3: 3~~ removed · M4: 3 | M1: 9 of 9 · M2: 1 of 1 | **M1 + M2 COMPLETE** (D-M1.1–1.9, D-M2.1 — run 1wna3uxq closed D-M1.7/1.8/2.1). M3 external recruit removed. M4 = founder release. |
+| Refine | 4 | 0 | Not started (Master-level; founder) |
+| Final Check | 8 | 0 | Founder release sequence (merge → CI green → tag) |
 
 ---
 
