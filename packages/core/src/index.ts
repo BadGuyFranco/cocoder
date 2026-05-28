@@ -17,3 +17,16 @@ export type {
   SessionStatus,
   SessionHost,
 } from './session-host/index.js'
+
+export type {
+  RunStore,
+  Workspace,
+  Run,
+  RunStatus,
+  Session,
+  WorkItem,
+  WorkItemStatus,
+  CommitLink,
+  RunEvent,
+} from './store/index.js'
+export { openRunStore, type OpenRunStoreOptions, SCHEMA_SQL } from './store/index.js'
