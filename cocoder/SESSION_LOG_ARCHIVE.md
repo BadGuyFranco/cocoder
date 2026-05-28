@@ -4,6 +4,58 @@ Older entries rotated out of `SESSION_LOG.md`. Newest archived entries first.
 
 ---
 
+## 2026-05-23 — **Sub-Playbook C Expand closure (metadata); C-M1..C-M3 + Expand Checkpoint ticked**
+
+**Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
+
+**Outcomes:**
+- Closure PR flips all C-M checkboxes + Expand Checkpoint; Master README + PRIORITIES.md mirrors updated.
+- Sub-Playbook C status: **Expand complete; Refine pending (founder)**. Do not start C Refine autonomously.
+
+**Next:** Founder C Refine (P-R1 two-workspace daily use, P-R4 UX restraint, pen-test checklist sign-off).
+
+---
+
+## 2026-05-23 — **Sub-Playbook C Expand Batch 4 merged (PR #47 → `f46dcff`); Priorities/Runs/Inspector + e2e; suite 335/335 + dashboard 8/8**
+
+**Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
+
+**Outcomes:**
+- PR #47 squash-merged to `main` @ **`f46dcff`**; CI green × 2; core **335/335** (+5); oz-dashboard **8/8** (+3).
+- `GET /workspaces/:id/priorities`; Priorities + Runs (7s polling, visibility pause) + Run Inspector pages.
+- `oz-e2e.test.mjs`; `docs/oz-security-checklist.md` (C-D1 amendment verbatim); `docs/oz-launch.md` (C-M3.1).
+
+**Next:** C Expand closure PR (metadata only).
+
+---
+
+## 2026-05-23 — **Sub-Playbook C Expand Batch 3 merged (PR #45 → squash); oz-dashboard + Workspaces/Settings; suite 330/330 + dashboard 5/5**
+
+**Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
+
+**Outcomes:**
+- PR #45 squash-merged to `main` @ **`8abb135`**; CI green; core **330/330** (+2); oz-dashboard **5/5** unit tests.
+- `packages/oz-dashboard` Vite/React/Fusion palette; Workspaces CRUD + Settings GET/PUT; daemon `@fastify/static`.
+- Decision Log **C-D5** (Batch 2 deviation post-hoc) + **C-D6** (HashRouter).
+
+**Next:** C Expand Batch 4 — Priorities + Runs + Run Inspector + oz-e2e.test.mjs.
+
+---
+
+## 2026-05-23 — **Sub-Playbook C Expand Batch 2 merged (PR #43 → `e3b9776`); runs API + multiplexer-observer; suite 328/328**
+
+**Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
+
+**Outcomes:**
+- PR #43 squash-merged to `main` @ **`e3b9776`**; CI green; suite **328/328** (+6 from 322).
+- `multiplexer-observer.ts` wraps exported `collectConcurrencyMap`; tmux argv grep discipline test.
+- `GET /runs`, `GET /runs/:id/evidence`; real POST/DELETE subprocess spawns with post-spawn audit outcomes.
+- `runs-http.ts` schemas; oz-daemon README Testing notes section.
+
+**Next:** C Expand Batch 3 — `packages/oz-dashboard` scaffold + Workspaces + Settings pages.
+
+---
+
 ## 2026-05-23 — **Sub-Playbook C Expand Batch 1 merged (PR #42 → `2789bee`); registry CRUD + C-D1 auth bootstrap; suite 322/322**
 
 **Persona:** AI (Bob) | **Priority:** v0.1-foundation | **Plan:** [`priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-oz-mvp.plan.md)
