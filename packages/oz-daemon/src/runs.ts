@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
@@ -20,6 +21,29 @@ import { launchCocoderSubprocess, runCocoderSubprocess } from "./spawn-launcher.
 const require = createRequire(import.meta.url);
 const { isTerminalRunStatus } = require("../../core/lib/run-status.mjs") as {
   isTerminalRunStatus: (status: unknown) => boolean;
+};
+const { prepareDebuggerSession } = require("../../core/lib/debugger.mjs") as {
+  prepareDebuggerSession: (options: {
+    sessionId: string;
+    noSession?: boolean;
+    runsDir: string;
+    debuggerRunsDir: string;
+    tmuxBin?: string;
+    repoRoot: string;
+    mode?: string;
+  }) => Promise<{
+    ok: boolean;
+    status: string;
+    sessionId: string;
+    noSession?: boolean;
+    runDir: string | null;
+    debugDir: string;
+    promptPath: string;
+    wrapperPath: string;
+    reportPath: string;
+    resultPath: string;
+    issues: Array<{ severity?: string; code?: string; detail?: string }>;
+  }>;
 };
 
 /**
@@ -66,6 +90,12 @@ export type StopRunsBody = {
   outcome?: string;
   routing?: OzAuditRecord["routing"];
   runDir?: string;
+};
+
+export type LaunchDebuggerBody = {
+  workspaceId?: string;
+  mode?: "repo-audit" | "launch-failure" | "preflight";
+  openTerminal?: boolean;
 };
 
 export type RegisterRunsRoutesOptions = {
@@ -121,6 +151,44 @@ function buildStopArgv(
   ];
 }
 
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+function appleScriptString(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
+}
+
+async function runCommand(command: string, args: string[]): Promise<void> {
+  const child = spawn(command, args, { shell: false, stdio: "ignore" });
+  const exitCode = await new Promise<number>((resolve, reject) => {
+    child.once("error", reject);
+    child.once("close", (code) => resolve(code ?? 1));
+  });
+  if (exitCode !== 0) {
+    throw new Error(`${command} exited ${exitCode}`);
+  }
+}
+
+async function openDebuggerWrapperTerminal(input: { wrapperPath: string; repoRoot: string }): Promise<boolean> {
+  try {
+    const command = `cd ${shellQuote(input.repoRoot)} && ${shellQuote(input.wrapperPath)}`;
+    await runCommand("osascript", [
+      "-e",
+      "tell application \"Terminal\"",
+      "-e",
+      "activate",
+      "-e",
+      `do script "${appleScriptString(command)}"`,
+      "-e",
+      "end tell"
+    ]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function resolveWorkspaceForLaunch(
   cocoderHome: string,
   body: LaunchRunsBody
@@ -145,10 +213,69 @@ async function resolveWorkspaceForLaunch(
   };
 }
 
+async function resolveWorkspaceForDebugger(cocoderHome: string, workspaceId?: string): Promise<{
+  workspaceId: string;
+  workspaceRoot: string;
+  runsDir: string;
+  debuggerRunsDir: string;
+}> {
+  const registry = await readWorkspacesRegistry(cocoderHome);
+  const entry = workspaceId
+    ? registry.workspaces.find((candidate) => candidate.id === workspaceId)
+    : registry.workspaces[0];
+  if (!entry) {
+    throw new Error(workspaceId ? `workspace not found: ${workspaceId}` : "no registered workspace found");
+  }
+  const resolved = await resolveWorkspaceEntry(entry, { cocoderHome });
+  const workspaceLocalRoot = path.join(cocoderHome, "local", "workspaces", resolved.id);
+  return {
+    workspaceId: resolved.id,
+    workspaceRoot: resolved.resolvedPath,
+    runsDir: path.join(workspaceLocalRoot, "runs"),
+    debuggerRunsDir: path.join(workspaceLocalRoot, "debug-runs")
+  };
+}
+
 export async function registerRunsRoutes(app: FastifyInstance, options: RegisterRunsRoutesOptions): Promise<void> {
   app.get("/runs", async () => {
     const runs = await listAllRuns(options.cocoderHome);
     return { runs };
+  });
+
+  app.post("/runs/debugger", async (request, reply) => {
+    const body = request.body as LaunchDebuggerBody | undefined;
+    const workspace = await resolveWorkspaceForDebugger(options.cocoderHome, body?.workspaceId);
+
+    const debugResult = await prepareDebuggerSession({
+      sessionId: "NO-SESSION",
+      noSession: true,
+      runsDir: workspace.runsDir,
+      debuggerRunsDir: workspace.debuggerRunsDir,
+      tmuxBin: process.env.TMUX_BIN || "/opt/homebrew/bin/tmux",
+      repoRoot: workspace.workspaceRoot,
+      mode: body?.mode ?? "repo-audit"
+    });
+    const terminalOpened = body?.openTerminal === false
+      ? false
+      : await openDebuggerWrapperTerminal({
+        wrapperPath: debugResult.wrapperPath,
+        repoRoot: workspace.workspaceRoot
+      });
+
+    return {
+      ok: true,
+      workspaceId: workspace.workspaceId,
+      sessionId: debugResult.sessionId,
+      noSession: true,
+      runDir: debugResult.runDir,
+      debugDir: debugResult.debugDir,
+      promptPath: debugResult.promptPath,
+      wrapperPath: debugResult.wrapperPath,
+      reportPath: debugResult.reportPath,
+      resultPath: debugResult.resultPath,
+      terminalOpened,
+      issues: debugResult.issues
+    };
   });
 
   app.get("/runs/:id/evidence", async (request, reply) => {

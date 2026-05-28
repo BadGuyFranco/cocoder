@@ -14,6 +14,31 @@ export async function getRunEvidence(runId: string): Promise<OzRunEvidenceSummar
   return ozFetch<OzRunEvidenceSummary>(`/runs/${encodeURIComponent(runId)}/evidence`);
 }
 
+export type LaunchDebuggerRequest = {
+  workspaceId?: string;
+  mode?: "repo-audit" | "launch-failure" | "preflight";
+  openTerminal?: boolean;
+};
+
+export type LaunchDebuggerResponse = {
+  ok: boolean;
+  workspaceId: string;
+  sessionId: string;
+  noSession: boolean;
+  runDir: string | null;
+  debugDir: string;
+  promptPath: string;
+  wrapperPath: string;
+  reportPath: string;
+  resultPath: string;
+  terminalOpened: boolean;
+  issues: Array<{ severity?: string; code?: string; detail?: string }>;
+};
+
+export async function launchDebugger(input: LaunchDebuggerRequest): Promise<LaunchDebuggerResponse> {
+  return ozFetch<LaunchDebuggerResponse>("/runs/debugger", { method: "POST", body: input });
+}
+
 export type StopRunRequest = {
   workspaceId: string;
   runDir?: string;

@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import type { OzWorkspacePriority, OzWorkspaceResponse } from "schemas";
 import { launchRun, listWorkspacePriorities } from "../api/priorities.js";
+import { launchDebugger } from "../api/runs.js";
 import { listWorkspaces } from "../api/workspaces.js";
 
 type LaunchForm = {
@@ -25,6 +26,7 @@ export function PrioritiesPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [debuggerLaunching, setDebuggerLaunching] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -81,6 +83,25 @@ export function PrioritiesPage() {
     }
   }
 
+  async function onLaunchDebugger() {
+    if (!workspaceId || debuggerLaunching) return;
+    setError(null);
+    setMessage(null);
+    setDebuggerLaunching(true);
+    try {
+      const result = await launchDebugger({ workspaceId, mode: "repo-audit", openTerminal: true });
+      setMessage(
+        result.terminalOpened
+          ? `Clean debugger launched for ${result.workspaceId} (${result.sessionId}).`
+          : `Clean debugger prepared for ${result.workspaceId} at ${result.wrapperPath}; Terminal did not open.`
+      );
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setDebuggerLaunching(false);
+    }
+  }
+
   function onLaunchDefaultsSubmit(event: FormEvent) {
     event.preventDefault();
   }
@@ -108,9 +129,19 @@ export function PrioritiesPage() {
       </label>
 
       {prioritiesPath ? (
-        <p className="muted" style={{ marginTop: "0.75rem" }}>
-          Source: {prioritiesPath}
-        </p>
+        <div style={{ alignItems: "center", display: "flex", gap: "0.75rem", marginTop: "0.75rem" }}>
+          <p className="muted" style={{ margin: 0 }}>
+            Source: {prioritiesPath}
+          </p>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => void onLaunchDebugger()}
+            disabled={!workspaceId || debuggerLaunching}
+          >
+            {debuggerLaunching ? "Launching debugger" : "Launch debugger"}
+          </button>
+        </div>
       ) : null}
 
       <form className="card" onSubmit={onLaunchDefaultsSubmit} style={{ marginTop: "1rem" }}>
@@ -134,20 +165,23 @@ export function PrioritiesPage() {
       <table className="data-table" style={{ marginTop: "1.5rem" }}>
         <thead>
           <tr>
-            <th>Slug</th>
+            <th>Priority</th>
             <th>Section</th>
             <th>Status</th>
-            <th>Description</th>
             <th />
           </tr>
         </thead>
         <tbody>
           {priorities.map((priority) => (
             <tr key={priority.slug}>
-              <td>{priority.slug}</td>
+              <td>
+                <div>{priority.description || priority.slug}</div>
+                <code className="muted" style={{ fontSize: "0.8em" }}>
+                  {priority.slug}
+                </code>
+              </td>
               <td>{priority.section}</td>
               <td>{priority.status}</td>
-              <td>{priority.description}</td>
               <td>
                 <button type="button" className="btn" onClick={() => void onLaunch(priority.slug)}>
                   Launch

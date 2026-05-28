@@ -30,6 +30,25 @@ describe("PrioritiesPage", () => {
             { status: 200 }
           );
         }
+        if (url.includes("/runs/debugger")) {
+          return new Response(
+            JSON.stringify({
+              ok: true,
+              workspaceId: "demo",
+              sessionId: "NO-SESSION",
+              noSession: true,
+              runDir: null,
+              debugDir: "/tmp/debug",
+              promptPath: "/tmp/debug/prompt.md",
+              wrapperPath: "/tmp/debug/launch-debugger.sh",
+              reportPath: "/tmp/debug/debug-report.md",
+              resultPath: "/tmp/debug/debug-result.json",
+              terminalOpened: true,
+              issues: []
+            }),
+            { status: 200 }
+          );
+        }
         if (url.includes("/workspaces")) {
           return new Response(
             JSON.stringify({
@@ -51,6 +70,7 @@ describe("PrioritiesPage", () => {
     await waitFor(() => {
       expect(screen.getByText("alpha")).toBeTruthy();
       expect(screen.getByRole("button", { name: "Launch" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Launch debugger" })).toBeTruthy();
     });
   });
 });
