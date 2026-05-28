@@ -283,26 +283,43 @@ A public CoCoder release at which:
 
 ## Resume Instructions
 
-1. Confirm PD-Q1..PD-Q7 answers recorded above (all approved 2026-05-24).
-2. Read Master Playbook Final Check §public-readiness gates + this Sub-Playbook Witness inventory.
-3. Execute **D Solve** (D-S2 gates first if doc Expand not ready; D-S1 after getting-started extension lands).
-4. Do not schedule external stranger test until D-S1 internal proxy is green.
-5. Do not tag `v0.1.0` until D Refine + Final Check complete.
+### Next Session Start Here
+
+**Recommended next atom:** D-M1.7+D-M1.8 -- ARCHITECTURE.md verification + README.md adopter-ready rewrite (the repo-root publish surfaces that gate the `v0.1.0` tag).
+
+- **Route / topology:** `oscar-lead` (Oscar lead + Bob builder), same as run zx0s33ag.
+- **Required personas:** Oscar (orchestrator), Bob (builder). Strict substitution.
+- **Required write boundary (MUST widen vs zx0s33ag):** repo-root `README.md` + `ARCHITECTURE.md` (for D-M1.7/D-M1.8), `.github/workflows/ci.yml` (for D-S2 gates), and `docs/` (for D-M2.1). The zx0s33ag run could not touch any of these — that is the only reason these items are still open.
+- **Stop conditions:** do NOT tag `v0.1.0` until D-S1 internal-proxy is green AND README/ARCHITECTURE landed AND D-S2 CI gates exit 0. Do NOT self-archive — archival is a founder confirmation.
+- **Required tests/checks:** full suite stays **335/335** + oz-dashboard **8/8**; `check-doc-refs` 0 missing on any new/edited doc; D-S2 CI gate steps exit 0 on `main`; D-S1 internal-proxy completes clean-clone → `cocoder init` → first launch without doc-clarifying questions.
+- **Explicit founder decisions:** external stranger test is REMOVED from v0.1 (PD-Q1 revised 2026-05-27). The `v0.1.0` tag + release notes (PD-Q6=A, semver) remain a founder release action.
+
+### Remaining v0.1 work items
+1. **D-M1.7** ARCHITECTURE.md Mermaid verification (repo-root).
+2. **D-M1.8** README.md adopter rewrite — remove "not yet usable by adopters" banner + stale Sub-Playbook A text (PD-Q2=A; repo-root).
+3. **D-M2.1** `docs/dogfood-evidence.md` (Bob, `docs/`).
+4. **D-S1** internal-proxy stranger readiness (the retained doc-readiness proof).
+5. **D-S2** public-readiness CI gates — gitleaks + LICENSE/NOTICE + faq (`.github/workflows/ci.yml`).
+6. **`v0.1.0` tag** + release notes (founder action).
+
+### History
+- D-M1.1–D-M1.6 + D-M1.9 complete (getting-started, faq in run suesc2sq; orchestration, personas, oz, freshness-policy + ADR-0001 footnote in run zx0s33ag).
+- Do not tag `v0.1.0` until the stop conditions above are met.
 
 ---
 
 ## Progress
 
-**Last worked:** 2026-05-24 (Activated — Witness/Interrogate/Solve-target authored)
-**Current Canon:** Active — Witness/Interrogate complete; Solve not started
-**Next action:** D Solve — wire `gitleaks` + FAQ/LICENSE gates in CI (D-S2); then Expand doc batches; then D-S1 internal proxy.
+**Last worked:** 2026-05-27 (run zx0s33ag — D-M1.2/1.3/1.4/1.6 docs + D-M1.9 ADR fix; external stranger test removed from scope)
+**Current Canon:** Active — Expand. D Milestone 1 docs COMPLETE; remaining = repo-root publish surfaces + CI gates + internal proxy + tag.
+**Next action:** D-M1.7 ARCHITECTURE verify + D-M1.8 README rewrite (repo-root — needs wider write boundary), then D-M2.1 dogfood-evidence, D-S2 CI gates (`.github/`), D-S1 internal proxy, then `v0.1.0` tag. See "Next Session Start Here" above.
 
 | Canon | Items | Done | Status |
 |---|---|---|---|
 | Witness | 1 audit table + objective + scope + current state | 4 | **Complete (2026-05-24)** |
-| Interrogate | 7 PD-Q + 9 risks + reuse check | 7 + 9 + 5 | **Complete (2026-05-24)** — PD-Q1..PD-Q7 all-A/B per table |
-| Solve | 2 (D-S1, D-S2) | 0 | Not started |
-| Expand | M1: 9 · M2: 1 · M3: 3 · M4: 3 | 0 | Not started (gated on Solve checkpoint for sequencing; doc batches may overlap) |
+| Interrogate | 7 PD-Q + 9 risks + reuse check | 7 + 9 + 5 | **Complete (2026-05-24)** — PD-Q1 revised 2026-05-27 (external stranger test removed) |
+| Solve | 2 (D-S1, D-S2) | 0 | Not started (D-S2 needs `.github/` boundary; D-S1 needs proxy actor) |
+| Expand | M1: 9 (incl. D-M1.9) · M2: 1 · ~~M3: 3~~ removed · M4: 3 | M1: 7 of 9 | **M1 docs done** (D-M1.1–1.6, 1.9); open: D-M1.7/1.8 (repo-root). M3 external recruit removed from scope. |
 | Refine | 4 | 0 | Not started |
 | Final Check | 8 | 0 | Not started |
 

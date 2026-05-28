@@ -317,9 +317,9 @@ Tracked in [`pending-decisions.md`](./pending-decisions.md). **All resolved 2026
 
 ## Progress
 
-**Last worked:** 2026-05-24 (Sub-Playbook D activated — Witness/Interrogate/Solve-target authored)
-**Current Canon:** v0.1 completion phase. Sub-Playbook F Complete. B/C Expand merged — Refines parallel-tracked (founder). **Sub-Playbook D Active — Solve pending.** Test count: **335 / 335 / 0 fail / 0 skipped** (+ oz-dashboard **8/8**).
-**Next action:** D Solve (D-S2 CI gates, then Expand doc batches, then D-S1 internal proxy). B/C Refines remain founder-only parallel tracks.
+**Last worked:** 2026-05-27 (run zx0s33ag — Sub-Playbook D Milestone 1 docs completed; external stranger test removed from scope)
+**Current Canon:** v0.1 completion phase. Sub-Playbook F + E Complete. B/C Expand merged — Refines parallel-tracked (founder). **Sub-Playbook D Active — Milestone 1 docs COMPLETE; remaining = repo-root README/ARCHITECTURE + CI gates + internal proxy + tag.** Test count: **335 / 335 / 0 fail / 0 skipped** (+ oz-dashboard **8/8**).
+**Next action (needs a wider write boundary):** D-M1.7 ARCHITECTURE verify + D-M1.8 README adopter rewrite (repo-root), then D-M2.1 dogfood-evidence, D-S2 CI gates (`.github/`), D-S1 internal proxy, then `v0.1.0` tag. External stranger test removed (PD-Q1 revised). B/C Refines remain founder-only parallel tracks.
 
 ### Sub-Playbook status
 
@@ -330,7 +330,7 @@ Tracked in [`pending-decisions.md`](./pending-decisions.md). **All resolved 2026
 | B. Personas + workspace template | **Active — Expand merged (`9bf2433`); Refine pending (founder)** | PR #33 merged; PB-Q1..PB-Q4 answered; B-S1..B-M3 green; suite 265/265 | B Refine (founder) | [`2026-05-21-personas-template.plan.md`](./plans/2026-05-21-personas-template.plan.md) |
 | **F. Structural cleanup** | **Complete (2026-05-23)** | Final Check closed; PR #28 merged `58e1fe2`; suite 249/249; compose-launch diff clean | — | [`2026-05-23-structural-cleanup.plan.md`](./plans/2026-05-23-structural-cleanup.plan.md) |
 | **C. Oz MVP** | **Active — Expand complete (2026-05-23); Refine pending (founder)** | C-M1..C-M3 green (PRs #42–#47 → `f46dcff`); suite 335/335 + dashboard 8/8 | C Refine (founder) | [`2026-05-21-oz-mvp.plan.md`](./plans/2026-05-21-oz-mvp.plan.md) |
-| **D. Docs + dogfood + publish** | **Active — Witness/Interrogate/Solve-target authored (2026-05-24); Solve pending** | PD-Q1..PD-Q7 answered; suite 335/335 + dashboard 8/8 | D Solve (D-S2 gates → Expand docs → D-S1 proxy) | [`2026-05-21-docs-publish.plan.md`](./plans/2026-05-21-docs-publish.plan.md) |
+| **D. Docs + dogfood + publish** | **Active — Milestone 1 docs COMPLETE (2026-05-27, run zx0s33ag); repo-root surfaces + gates + tag remain** | All 6 D-M1 docs authored + ADR-0001 §6 fixed (D-M1.9); external stranger test removed (PD-Q1 revised); suite 335/335 + dashboard 8/8 | D-M1.7/1.8 (repo-root, needs wider boundary) → D-M2.1 → D-S2 (`.github/`) → D-S1 → `v0.1.0` tag | [`2026-05-21-docs-publish.plan.md`](./plans/2026-05-21-docs-publish.plan.md) |
 | **v0.1 Completion Plan** (cross-cuts A, B, ticket 0001) | **Active** | Items 1 + 2 CLOSED; Item 2.5 F Complete; Item 3 W/I/S authored | PB-Q1..PB-Q4 + B Solve | [`2026-05-23-v0.1-completion.plan.md`](./plans/2026-05-23-v0.1-completion.plan.md) |
 
 ### Canon roll-up (Master only)
@@ -349,7 +349,7 @@ Tracked in [`pending-decisions.md`](./pending-decisions.md). **All resolved 2026
 ## Success Criteria
 
 - [ ] All four sub-Playbooks reach Status: Complete
-- [ ] Stranger test (P-R2) passes: external dev clones, inits, launches in ≤30 minutes without founder help
+- [ ] Stranger test (P-R2) passes: **internal proxy** (PD-Q1 revised 2026-05-27 — external recruit removed from v0.1) clones, inits, launches in ≤30 minutes without doc-clarifying questions
 - [ ] Two-workspace concurrency test (P-R1) passes without tmux collision
 - [ ] Recovery test (P-R3) passes after `local/` deletion and Syncthing restore
 - [ ] All public-readiness gates green on the commit tagged `v0.1.0`
