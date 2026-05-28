@@ -365,6 +365,9 @@ export async function finalizeRunStatusFromResults({ runDir, contractsDir, summa
     resultRecords.set(`${lane}:${archived.resultPath}`, {
       lane,
       resultPath: path.resolve(archived.resultPath),
+      sourceResultPath: archived.record?.sourceResultPath
+        ? resolveRunPath(runDir, archived.record.sourceResultPath)
+        : '',
       result: archived.result,
       packetId: archived.packetId
     });
@@ -690,7 +693,7 @@ async function collectPendingRouteOwnedCommits(runDir, resultRecords, { superses
     if (filesChanged.length === 0) continue;
     const committed = commitEvents.some((event) =>
       event.lane === record.lane
-      && resolveRunPath(runDir, event.acceptedResultPath) === record.resultPath
+      && [record.resultPath, record.sourceResultPath].filter(Boolean).includes(resolveRunPath(runDir, event.acceptedResultPath))
     );
     if (!committed) {
       pending.push({

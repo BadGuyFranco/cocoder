@@ -1521,6 +1521,61 @@ test('run finalizer includes archived lane packet results in route-owned commit 
   }
 });
 
+test('run finalizer accepts committed-then-archived lane packet results', async () => {
+  const fixture = await createLaunchFixture({ routeDeclaresCommit: true });
+  try {
+    const transport = recordingTransport();
+    const launch = await launchRun(await fixture.options({
+      execute: true,
+      runId: 'run-finalize-committed-then-archived-packet',
+      transport,
+      socketName: 'test-socket'
+    }));
+
+    const bobJobDir = path.join(launch.runDir, 'jobs', 'bob');
+    const bobResultPath = path.join(bobJobDir, 'result.json');
+    await writeResultPair(bobJobDir, jobResult({
+      persona: 'bob',
+      adapter: 'codex',
+      canWrite: true,
+      filesChanged: ['docs/packet-one.md']
+    }));
+    await appendCommitEvent(launch.runDir, {
+      lane: 'bob',
+      acceptedResultPath: bobResultPath,
+      sha: 'bob-live-packet-sha'
+    });
+    const advanced = await advanceLanePacket({
+      runDir: launch.runDir,
+      lane: 'bob',
+      reason: 'fixture accepted packet one after commit'
+    });
+    assert.equal(advanced.ok, true);
+
+    await writeResultPair(bobJobDir, jobResult({
+      persona: 'bob',
+      adapter: 'codex',
+      canWrite: true,
+      filesChanged: ['none']
+    }));
+    await writeResultPair(path.join(launch.runDir, 'jobs', 'oscar'), jobResult({
+      persona: 'oscar',
+      adapter: 'claude',
+      canWrite: false
+    }));
+
+    const complete = await finalizeRunStatusFromResults({
+      runDir: launch.runDir,
+      contractsDir,
+      summary: 'fixture complete after committed packet is archived'
+    });
+    assert.equal(complete.finalized, true, JSON.stringify(complete, null, 2));
+    assert.equal(complete.status, 'complete');
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
 test('run finalizer ignores unrelated unstaged durable orchestration state', async () => {
   const fixture = await createLaunchFixture();
   const repo = await mkdtemp(path.join(os.tmpdir(), 'cocoder-finalize-repo-'));
