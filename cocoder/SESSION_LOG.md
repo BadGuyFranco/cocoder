@@ -12,6 +12,20 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-05-28 — **Oscar-initiated teardown and v0.5 relaunch blocker fixed**
+
+**Persona:** Founder + Codex direct fix | **Priority:** [v0.5-orchestration-services](./priorities/v0.5-orchestration-services/README.md) | **Run:** direct post-debugger hardening
+
+**Outcomes:**
+- Added guarded self-teardown support: `stop-run` and `finalize-run-status --stop-terminal-sessions` accept `--initiator-lane oscar`, so teammate panes are killed first and Oscar's own pane is killed last.
+- Updated Oscar wrap guidance: after an explicit founder teardown request, Oscar does the final readiness check, runs the guarded finalizer/stop command, and no longer has to send the founder to Oz for teardown.
+- Removed archived `v0.1-foundation` from `oscar-lead.supportedPriorityOwners`; it was tripping the route-supported ghost-priority guard and causing fresh v0.5 launches to become terminal `stale`.
+- Verified focused core coverage: CLI help/parsing, launch stop/finalize behavior, and persona prompt fixture all pass.
+
+**Next:** Launch a fresh v0.5 `oscar-lead` run for Phase 2 PR #51 governance reconciliation; Oscar can now tear down that run after founder approval and wrap readiness.
+
+---
+
 ## 2026-05-28 — **DONE — v0.5 real-service proof closed; multi-packet lane continuation fixed**
 
 **Persona:** Oscar + Bob + founder/Codex wrap | **Priority:** [v0.5-orchestration-services](./priorities/v0.5-orchestration-services/README.md) | **Run:** vhz1odiz + post-run hardening

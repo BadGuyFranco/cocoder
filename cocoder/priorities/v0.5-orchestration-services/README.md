@@ -1,6 +1,6 @@
 # v0.5 — Orchestration Services (cheap-model admin delegation)
 
-**Status:** **Active — Phase 1 COMPLETE and Phase 3 service runtime adoption proof COMPLETE. Real headless `cursor-agent` service execution passed in run `vhz1odiz`, and the follow-up multi-packet lane fix is committed so Bob can continue with additional packets inside one live run after accepted PASS packets are archived. Next = Phase 2 PR #51 governance reconciliation.** **Sequenced BEFORE v0.4-oz-control-plane** (founder, 2026-05-27). **Owner:** Bob + founder (Oscar orchestrates).
+**Status:** **Active — Phase 1 COMPLETE and Phase 3 service runtime adoption proof COMPLETE. Real headless `cursor-agent` service execution passed in run `vhz1odiz`; multi-packet lane continuation is fixed; Oscar can perform founder-approved teardown after final wrap/readiness checks; and the `oscar-lead` archived-v0.1 ghost-priority launch blocker is fixed. Next = Phase 2 PR #51 governance reconciliation.** **Sequenced BEFORE v0.4-oz-control-plane** (founder, 2026-05-27). **Owner:** Bob + founder (Oscar orchestrates).
 **Decision:** [ADR-0009](../../decisions/0009-orchestration-services.md). **Relates to:** [ADR-0008](../../decisions/0008-oz-control-plane-architecture.md) (Oz unchanged).
 **Launchable from Oz / `main`** — `oscar-lead` route now lists this priority (`bounded-writers`) and the v0.5 boundary is in place.
 
@@ -21,6 +21,8 @@ Oscar (the lead orchestrator) was spending expensive lead-model context on repea
 - Oscar wrap now requires commit/finalize or an explicit blocker, and `oscar-lead` declares route-owned implementation commit, lead-rescue supersession, and guarded lead support commit authority for future clean closeout.
 - Real `cursor-agent` service execution proof is complete: run `run-20260528T122513Z-vhz1odiz` closed terminal `complete` with Bob PASS and Oscar PASS after `run-orchestration-service --service run-summary --executor-command cursor-agent --execute-service true` wrote packet/result/transcript artifacts and Oz evidence collection surfaced them.
 - Runtime fixes are committed: `oscar-lead` declares Bob adapter sandbox overrides (`codex: danger-full-access`, `cursor-agent: disabled`), Bob's prompt forbids first-failed-command closeout when the next fix is inside scope, and `advance-lane-packet` records accepted PASS packets under `jobs/<lane>/packets/` so Bob can receive additional packets in the same non-terminal run.
+- Founder-approved teardown is no longer Oz-only: Oscar's wrap prompt now allows teardown after an explicit founder request and final readiness check, and `stop-run` / `finalize-run-status --stop-terminal-sessions` can kill the initiating lane last via `--initiator-lane oscar`.
+- `oscar-lead` no longer lists archived `v0.1-foundation` in `supportedPriorityOwners`, so the route-supported ghost-priority guard no longer blocks fresh v0.5 launches.
 - `composer-agent` is not currently on PATH in this install; service execution defaults to `cursor-agent` unless a configured run passes another executor command.
 
 ## Next Session Start Here

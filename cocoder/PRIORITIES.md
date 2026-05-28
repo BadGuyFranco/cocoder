@@ -1,6 +1,6 @@
 # Priorities — CoCoder Meta-Project
 
-Last updated: 2026-05-28 — v0.5 real-service proof is complete and multi-packet lane continuation is fixed; next is Phase 2 PR #51 governance reconciliation.
+Last updated: 2026-05-28 — v0.5 real-service proof, multi-packet lane continuation, Oscar-initiated teardown, and the oscar-lead archived-priority launch blocker are fixed; next is Phase 2 PR #51 governance reconciliation.
 
 Slim index of active and archived priorities. Open a priority's folder for detail.
 
@@ -17,7 +17,7 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 
 | Slug | Description | Status | Canon | Owner | Blocked on |
 |---|---|---|---|---|---|
-| [`v0.5-orchestration-services`](./priorities/v0.5-orchestration-services/README.md) | Cheap/fast-model admin delegation — Oscar offloads wrap/compaction/teardown to bounded services | **Active** | Adoption proof complete; multi-packet sessions fixed | Bob + founder | **Sequenced before v0.4** (founder 2026-05-27). Next: Phase 2 PR #51 governance reconciliation. |
+| [`v0.5-orchestration-services`](./priorities/v0.5-orchestration-services/README.md) | Cheap/fast-model admin delegation — Oscar offloads wrap/compaction/teardown to bounded services | **Active** | Adoption proof complete; launch blocker fixed | Bob + founder | **Sequenced before v0.4** (founder 2026-05-27). Next: Phase 2 PR #51 governance reconciliation. |
 
 ## Draft
 
@@ -61,4 +61,4 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 **Owner:** Bob + founder
 **Summary:** Let Oscar run faster/cheaper models for repeatable admin work (priority/handoff editing, run wrap-up, teardown) via bounded non-persona orchestration services, instead of spending lead-model context.
 **What:** Declarative services (`packages/core/services/*.json`) + two contracts + `lib/services.mjs` (build/validate/execute packet with deterministic git write-audit) + 5 CLI commands + a headless `cursor-agent-service` adapter. 11 services shipped. Services never commit/finalize/supersede (Oscar-only route control); adapter+model configurable per service (`cursor-agent` default). Oz unchanged (ADR-0008 preserved).
-**Status:** **Active — engine + launch config landed on `main`; Phase 3 service runtime adoption slice is committed; real headless `cursor-agent` service execution is proven; Oscar closeout/commit authority and multi-packet lane continuation are fixed.** Next: Phase 2 PR #51 governance reconciliation. (v0.1-foundation already archived 2026-05-27 — ADR-0011.) Full brief in [`priorities/v0.5-orchestration-services/README.md`](./priorities/v0.5-orchestration-services/README.md).
+**Status:** **Active — engine + launch config landed on `main`; Phase 3 service runtime adoption slice is committed; real headless `cursor-agent` service execution is proven; Oscar closeout/commit authority, multi-packet lane continuation, founder-approved Oscar teardown, and the archived-v0.1 route ghost blocker are fixed.** Next: Phase 2 PR #51 governance reconciliation. (v0.1-foundation already archived 2026-05-27 — ADR-0011.) Full brief in [`priorities/v0.5-orchestration-services/README.md`](./priorities/v0.5-orchestration-services/README.md).
