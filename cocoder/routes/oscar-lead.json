@@ -4,7 +4,7 @@
   "lead": "oscar",
   "teammates": ["bob"],
   "lanes": ["oscar", "bob"],
-  "supportedPriorityOwners": ["v0.3-workspace-lifecycle", "v0.4-oz-control-plane", "v0.5-orchestration-services"],
+  "supportedPriorityOwners": ["v0.1-foundation", "v0.3-workspace-lifecycle", "v0.4-oz-control-plane", "v0.5-orchestration-services"],
   "gates": ["startup-packet", "profile-preflight", "write-boundary"],
   "writePolicy": "bounded-writers",
   "orchestratorCommit": {

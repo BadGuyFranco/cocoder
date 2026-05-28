@@ -1,7 +1,7 @@
 {
-  "id": "v0.3-workspace-lifecycle-oscar-lead",
-  "prioritySlug": "v0.3-workspace-lifecycle",
-  "label": "v0.3-workspace-lifecycle oscar-lead boundary (Bob builds implementation surfaces; governance + root deps excluded)",
+  "id": "v0.1-foundation-oscar-lead",
+  "prioritySlug": "v0.1-foundation",
+  "label": "v0.1-foundation oscar-lead boundary (Bob builds implementation surfaces; governance + root deps excluded)",
   "routeIds": [
     "oscar-lead"
   ],
