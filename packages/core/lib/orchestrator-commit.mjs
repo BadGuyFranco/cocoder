@@ -7,6 +7,7 @@ import { checkSessionLogHygiene } from '../checks/check-session-log-hygiene.mjs'
 import { auditWriteBoundary } from './dispatch.mjs';
 import { pathExists, readJson, writeJson } from './fs-utils.mjs';
 import { appendRunEvent } from './ledger.mjs';
+import { isArchivedLanePacketResultPath } from './lane-packets.mjs';
 import { evaluateSupersessionsForRun } from './lead-rescue.mjs';
 import { auditDirtyDurableOrchestrationState } from './repo-state.mjs';
 import { compactTimestamp, getLane, parseBooleanFlag, safeName } from './lib-utils.mjs';
@@ -670,8 +671,9 @@ function auditImplementationProvenance({ route, profile, launchPlan, runDir, lan
   }
 
   const canonicalResultPath = path.resolve(runDir, 'jobs', safeName(ownerLane), 'result.json');
-  if (path.resolve(acceptedResultPath) !== canonicalResultPath) {
-    issues.push(issue('implementation-result-artifact-mismatch', `implementation commits must use the configured ${ownerLane} result artifact at ${canonicalResultPath}`));
+  const archivedPacketResult = isArchivedLanePacketResultPath(runDir, ownerLane, acceptedResultPath);
+  if (path.resolve(acceptedResultPath) !== canonicalResultPath && !archivedPacketResult) {
+    issues.push(issue('implementation-result-artifact-mismatch', `implementation commits must use the configured ${ownerLane} result artifact at ${canonicalResultPath} or an archived ${ownerLane} packet result under jobs/${safeName(ownerLane)}/packets/`));
   }
   if (FORBIDDEN_IMPLEMENTATION_COAUTHOR_PATTERN.test(String(message || ''))) {
     issues.push(issue('implementation-forbidden-coauthor', 'implementation commit message contains a Claude/Sonnet/Opus/Anthropic Co-Authored-By line'));

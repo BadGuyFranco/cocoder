@@ -584,8 +584,8 @@ export async function sendMessageToLane({ runDir, lane, message, transport, tmux
   if (resultState.hasResultArtifact) {
     throw new Error([
       `send-message blocked by lane-result-already-exists for ${lane}`,
-      `result artifacts are close-out artifacts for a lane in this run: ${resultState.existingPaths.join(', ')}`,
-      'start a fresh run for another packet or implement a first-class packet ledger; do not move, rename, or archive jobs/<lane>/result.* as a workaround'
+      `result artifacts are close-out artifacts for the current lane packet: ${resultState.existingPaths.join(', ')}`,
+      'run advance-lane-packet for a completed PASS packet before sending another packet; do not manually move, rename, or archive jobs/<lane>/result.* as a workaround'
     ].join('. '));
   }
   const readiness = await assessSessionReadiness({ launchPlan, session });
@@ -1082,9 +1082,9 @@ export async function renderLanePrompt(launchPlan, session) {
     '',
     '## Lane Result Artifact Contract',
     '',
-    '- `result_file` and `markdown_result_file` are close-out artifacts for this lane in this run.',
-    '- Write them only when this lane is done for the current packet; after either file exists, the runtime refuses further `send-message` dispatches to this lane.',
-    '- Do not move, rename, archive, overwrite, or clear `jobs/<lane>/result.*` to make room for another packet. Start a fresh run for additional lane packets until a first-class packet ledger exists.',
+    '- `result_file` and `markdown_result_file` are close-out artifacts for the current lane packet.',
+    '- Write them only when this lane is done for the current packet; after either file exists, the runtime refuses further `send-message` dispatches to this lane until the lead explicitly advances the lane packet.',
+    '- Do not manually move, rename, archive, overwrite, or clear `jobs/<lane>/result.*` to make room for another packet. Use `advance-lane-packet` after a PASS packet so the runtime records the completed packet in `jobs/<lane>/packets/` before reopening the lane.',
     '',
     ...composeRuntimeRoleLines(session),
     ...startupModeInstructions(launchPlan, session),
@@ -1470,7 +1470,7 @@ function renderCompletionWatchScript(launchPlan, session) {
   const message = [
     `Completion watcher: lane ${session.lane} wrote result file at ${session.resultPath}.`,
     `Capture fresh pane evidence, inspect ${session.resultPath} and ${session.markdownResultPath}, changed files, diffs, and tests, then make an accept/fresh-run-continuation/founder-decision phase-transition call before reporting completion.`,
-    `Treat jobs/${session.lane}/result.json and jobs/${session.lane}/result.md as close-out artifacts for this lane in this run; do not move, rename, archive, overwrite, or clear them to send another packet.`,
+    `Treat jobs/${session.lane}/result.json and jobs/${session.lane}/result.md as close-out artifacts for the current lane packet; do not manually move, rename, archive, overwrite, or clear them to send another packet. If this run should continue with lane ${session.lane} after a PASS packet, use advance-lane-packet so the runtime records the completed packet before reopening the lane.`,
     `If lane ${session.lane} is non-PASS and the lead accepts it, first write the lead PASS result JSON and Markdown pair, then run: node ${cliPath} record-supersession --run-dir ${launchPlan.runDir} --superseded-lane ${session.lane} --resolving-lane ${launchPlan.route.lead} --basis route-policy --findings "<exact finding from superseded result>" --evidence "<specific resolving evidence>".`,
     'Only after the supersession record exists should finalize-run-status be called.'
   ].join(' ');
@@ -1510,10 +1510,12 @@ function renderCompletionWatchScript(launchPlan, session) {
       '      if printf "%s\\n" "$finalize_output" | is_terminal_finalize; then',
       '        exit 0',
       '      fi',
-      '      if printf "%s\\n" "$finalize_output" | is_non_running_finalize; then',
-      '        exit 0',
-      '      fi',
+    '      if printf "%s\\n" "$finalize_output" | is_non_running_finalize; then',
+    '        exit 0',
+    '      fi',
     '    fi',
+    '  else',
+    '    notified_lead=0',
     '  fi',
     '  sleep "$INTERVAL_SECONDS"',
     '  elapsed=$((elapsed + INTERVAL_SECONDS))',

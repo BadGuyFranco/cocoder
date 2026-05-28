@@ -32,6 +32,7 @@ import {
   validateTaliaAcceptancePacket
 } from '../lib/flows.mjs';
 import { readJson, repoPath } from '../lib/fs-utils.mjs';
+import { advanceLanePacket } from '../lib/lane-packets.mjs';
 import { addLanesToRun, launchRun, sendMessageToLane, stopRunSessions } from '../lib/launch.mjs';
 import { recordSupersession } from '../lib/lead-rescue.mjs';
 import { abortRun, addEvidence, cleanupRuns, closeoutRun, createRun, finalizeRunStatusFromResults, ingestResult, setRunStatus } from '../lib/ledger.mjs';
@@ -520,6 +521,18 @@ async function handle_send_message(args) {
       tmuxBin: args.tmuxBin
     });
     console.log(JSON.stringify(result, null, 2));
+    return;
+}
+
+async function handle_advance_lane_packet(args) {
+    requireArgs(args, ['runDir', 'lane']);
+    const result = await advanceLanePacket({
+      runDir: args.runDir,
+      lane: args.lane,
+      reason: args.reason || ''
+    });
+    console.log(JSON.stringify(result, null, 2));
+    if (!result.ok) process.exitCode = 1;
     return;
 }
 
@@ -1060,6 +1073,7 @@ export const commandRegistry = new Map([
   ['run-acceptance-harness', handle_run_acceptance_harness],
   ['launch', handle_launch],
   ['send-message', handle_send_message],
+  ['advance-lane-packet', handle_advance_lane_packet],
   ['add-lanes', handle_add_lanes],
   ['stop-run', handle_stop_run],
   ['create-run', handle_create_run],

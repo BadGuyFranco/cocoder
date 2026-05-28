@@ -9,6 +9,7 @@ import { ensureSupersessionLedgerEvents, evaluateSupersessionsForRun } from './l
 import { auditDirtyDurableOrchestrationState } from './repo-state.mjs';
 import { isTerminalRunStatus, isTerminalRunStatusRecord } from './run-status.mjs';
 import { compactTimestamp, getLane, safeName } from './lib-utils.mjs';
+import { collectArchivedLanePacketResults } from './lane-packets.mjs';
 import { blockingPriorityBoundaryIssues, routeGhostPriorityIssues, routePriorityIssue } from './orchestration-issues.mjs';
 import { auditPersonaRouteFit } from './persona-route-audit.mjs';
 
@@ -315,7 +316,7 @@ export async function finalizeRunStatusFromResults({ runDir, contractsDir, summa
       adapter: result.adapter,
       updatedAt: result.createdAt || resultStat.mtime.toISOString()
     };
-    resultRecords.set(lane, {
+    resultRecords.set(`${lane}:current`, {
       lane,
       resultPath: path.resolve(resultPath),
       result
@@ -323,6 +324,50 @@ export async function finalizeRunStatusFromResults({ runDir, contractsDir, summa
     if (result.status !== 'PASS') {
       nonPassing.push({ lane, status: result.status, resultPath });
     }
+  }
+
+  const archivedPacketRecords = await collectArchivedLanePacketResults({ runDir, launchPlan });
+  for (const archived of archivedPacketRecords) {
+    const lane = archived.lane;
+    if (archived.issues.length > 0) {
+      invalid.push({
+        lane,
+        resultPath: archived.resultPath,
+        reason: `invalid archived packet ${archived.packetId || '<unknown>'}: ${archived.issues.join('; ')}`
+      });
+      continue;
+    }
+    const session = (launchPlan.sessions || []).find((candidate) => candidate.lane === lane);
+    const errors = validateInstance(contract, archived.result);
+    if (errors.length > 0) {
+      invalid.push({ lane, resultPath: archived.resultPath, reason: `invalid archived packet ${archived.packetId || '<unknown>'}: ${errors.join('; ')}` });
+      continue;
+    }
+    const identityIssues = validateLaneResultIdentity({ lane, session, result: archived.result });
+    if (identityIssues.length > 0) {
+      invalid.push({ lane, resultPath: archived.resultPath, reason: `archived packet identity mismatch: ${identityIssues.join('; ')}` });
+      continue;
+    }
+    if (archived.result.status !== 'PASS') {
+      invalid.push({ lane, resultPath: archived.resultPath, reason: `archived packet ${archived.packetId || '<unknown>'} must be PASS, got ${archived.result.status}` });
+      continue;
+    }
+    const markdown = await readFile(archived.markdownResultPath, 'utf8');
+    const founderBriefIssues = validateOscarPassResultArtifacts({ lane, result: archived.result, markdown });
+    if (founderBriefIssues.length > 0) {
+      invalid.push({
+        lane,
+        resultPath: archived.markdownResultPath,
+        reason: `invalid archived packet ${archived.packetId || '<unknown>'}: ${founderBriefIssues.join('; ')}`
+      });
+      continue;
+    }
+    resultRecords.set(`${lane}:${archived.resultPath}`, {
+      lane,
+      resultPath: path.resolve(archived.resultPath),
+      result: archived.result,
+      packetId: archived.packetId
+    });
   }
 
   if (missing.length > 0 || invalid.length > 0) {

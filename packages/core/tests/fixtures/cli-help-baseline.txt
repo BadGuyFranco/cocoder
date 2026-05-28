@@ -40,6 +40,7 @@ Commands:
   launch --profile PATH --route PATH --priority-slug SLUG [--priority-boundaries-dir PATH] [--execute true] [--defer-start true] [--runs-dir PATH] [--socket-name NAME] [--socket-path PATH] [--tmux-bin PATH]
   list-runs [--runs-dir PATH]
   send-message --run-dir PATH --lane LANE (--message TEXT | --stdin) [--tmux-bin PATH]
+  advance-lane-packet --run-dir PATH --lane LANE [--reason TEXT]
   add-lanes --run-dir PATH --lanes LANE[,LANE] [--topology-option ID] [--required-personas Persona[,Persona]] [--reason TEXT] [--execute true] [--auto-attach-added-lanes false] [--tmux-bin PATH]
   stop-run --run-dir PATH --confirm-run-id RUN_ID [--execute true] [--tmux-bin PATH]
   create-run --profile PATH --route PATH --priority-slug SLUG [--priority-boundaries-dir PATH] [--runs-dir PATH] [--priority-file PATH] [--session-log PATH]
@@ -79,4 +80,3 @@ Commands:
   validate-service-packet --packet PATH [--services-dir PATH] [--contracts-dir PATH]
   execute-service-packet --packet PATH [--repo-root PATH] [--executor-command CMD] [--model ID] [--result PATH] [--transcript PATH] [--services-dir PATH] [--contracts-dir PATH] [--now ISO]
   run-orchestration-service --service ID --run-dir PATH --request PATH [--execute-service true] [--repo-root PATH] [--executor-command CMD] [--model ID] [--services-dir PATH] [--contracts-dir PATH] [--now ISO]
-

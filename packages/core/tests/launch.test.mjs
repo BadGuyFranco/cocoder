@@ -17,6 +17,7 @@ test.after(async () => {
 const contractsDir = path.join(repoRoot, 'packages/core/contracts');
 const execFileAsync = promisify(execFile);
 const { processRunContinuation } = await import('../lib/continuation.mjs');
+const { advanceLanePacket } = await import('../lib/lane-packets.mjs');
 const { finalizeRunStatusFromResults } = await import('../lib/ledger.mjs');
 const { addLanesToRun, launchRun, sendMessageToLane, stopRunSessions } = await import('../lib/launch.mjs');
 
@@ -40,6 +41,16 @@ function spawnWithInput(command, args, { cwd, input }) {
     });
     child.stdin.end(input);
   });
+}
+
+async function fileExists(filePath) {
+  try {
+    await readFile(filePath);
+    return true;
+  } catch (error) {
+    if (error.code === 'ENOENT') return false;
+    throw error;
+  }
 }
 
 test('launch writes run prompts and helper scripts without tmux unless execute is true', async () => {
@@ -163,13 +174,14 @@ test('launch writes run prompts and helper scripts without tmux unless execute i
     assert.match(watcher, /MARKDOWN_RESULT=/);
     assert.match(watcher, /STABLE_SECONDS=/);
     assert.match(watcher, /notified_lead=0/);
+    assert.match(watcher, /else\n    notified_lead=0/);
     assert.match(watcher, /--repo-root/);
     assert.doesNotMatch(watcher, /--process-continuation true/);
     assert.doesNotMatch(watcher, /--stop-terminal-sessions true/);
     assert.match(watcher, /is_terminal_finalize/);
     assert.match(watcher, /is_non_running_finalize/);
     assert.match(watcher, /accept\/fresh-run-continuation\/founder-decision/);
-    assert.match(watcher, /do not move, rename, archive, overwrite, or clear them to send another packet/);
+    assert.match(watcher, /use advance-lane-packet so the runtime records the completed packet/);
     assert.match(watcher, /\[ -s "\$RESULT" \] && \[ -s "\$MARKDOWN_RESULT" \]/);
     const leadWatcher = await readFile(path.join(result.runDir, 'watch-oscar-completion.sh'), 'utf8');
     assert.doesNotMatch(leadWatcher, /send-message --run-dir/);
@@ -814,9 +826,54 @@ test('send-message refuses a lane after result artifacts exist', async () => {
         message: 'start another packet',
         transport
       }),
-      /lane-result-already-exists.*do not move, rename, or archive jobs\/<lane>\/result\.\*/
+      /lane-result-already-exists.*run advance-lane-packet/
     );
     assert.equal(transport.calls.some((call) => call.includes('paste-buffer')), false);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test('advance-lane-packet archives a PASS result and reopens the lane for another dispatch', async () => {
+  const fixture = await createLaunchFixture();
+  try {
+    const transport = recordingTransport();
+    const launch = await launchRun(await fixture.options({
+      execute: true,
+      runId: 'run-advance-lane-packet',
+      transport,
+      socketName: 'test-socket'
+    }));
+    const bobJobDir = path.join(launch.runDir, 'jobs', 'bob');
+    await writeJson(path.join(bobJobDir, 'result.json'), jobResult({
+      persona: 'bob',
+      adapter: 'codex',
+      canWrite: true
+    }));
+    await writeFile(path.join(bobJobDir, 'result.md'), 'Status: PASS\n');
+
+    const advanced = await advanceLanePacket({
+      runDir: launch.runDir,
+      lane: 'bob',
+      reason: 'fixture accepted packet one'
+    });
+    assert.equal(advanced.ok, true);
+    assert.equal(advanced.packetId, 'packet-0001');
+    assert.equal(await fileExists(path.join(bobJobDir, 'result.json')), false);
+    assert.equal(await fileExists(path.join(bobJobDir, 'result.md')), false);
+    assert.equal(await fileExists(path.join(bobJobDir, 'packets', 'packet-0001', 'result.json')), true);
+    assert.equal(await fileExists(path.join(bobJobDir, 'packets', 'packet-0001', 'result.md')), true);
+    const ledger = await readFile(path.join(bobJobDir, 'packets.jsonl'), 'utf8');
+    assert.match(ledger, /packet-0001/);
+
+    const sent = await sendMessageToLane({
+      runDir: launch.runDir,
+      lane: 'bob',
+      message: 'start packet two',
+      transport
+    });
+    assert.equal(sent.ok, true);
+    assert.equal(transport.calls.some((call) => call.includes('paste-buffer')), true);
   } finally {
     await fixture.cleanup();
   }
@@ -1331,6 +1388,72 @@ test('route-owned run finalizer waits for accepted PASS commits before terminal 
     status = JSON.parse(await readFile(path.join(launch.runDir, 'status.json'), 'utf8'));
     assert.equal(status.status, 'complete');
     assert.equal(status.terminal, true);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test('run finalizer includes archived lane packet results in route-owned commit checks', async () => {
+  const fixture = await createLaunchFixture({ routeDeclaresCommit: true });
+  try {
+    const transport = recordingTransport();
+    const launch = await launchRun(await fixture.options({
+      execute: true,
+      runId: 'run-finalize-archived-packet-commits',
+      transport,
+      socketName: 'test-socket'
+    }));
+
+    const bobJobDir = path.join(launch.runDir, 'jobs', 'bob');
+    await writeResultPair(bobJobDir, jobResult({
+      persona: 'bob',
+      adapter: 'codex',
+      canWrite: true,
+      filesChanged: ['docs/packet-one.md']
+    }));
+    const advanced = await advanceLanePacket({
+      runDir: launch.runDir,
+      lane: 'bob',
+      reason: 'fixture accepted packet one'
+    });
+    assert.equal(advanced.ok, true);
+
+    await writeResultPair(bobJobDir, jobResult({
+      persona: 'bob',
+      adapter: 'codex',
+      canWrite: true,
+      filesChanged: ['none']
+    }));
+    await writeResultPair(path.join(launch.runDir, 'jobs', 'oscar'), jobResult({
+      persona: 'oscar',
+      adapter: 'claude',
+      canWrite: false
+    }));
+
+    const waiting = await finalizeRunStatusFromResults({
+      runDir: launch.runDir,
+      contractsDir,
+      summary: 'fixture must wait for archived packet commit'
+    });
+    assert.equal(waiting.finalized, false);
+    assert.equal(waiting.status, 'running');
+    assert.equal(waiting.pendingOrchestratorCommits.length, 1);
+    assert.equal(waiting.pendingOrchestratorCommits[0].lane, 'bob');
+    assert.equal(waiting.pendingOrchestratorCommits[0].resultPath, path.resolve(advanced.archivedResultPath));
+
+    await appendCommitEvent(launch.runDir, {
+      lane: 'bob',
+      acceptedResultPath: advanced.archivedResultPath,
+      sha: 'bob-packet-one-sha'
+    });
+
+    const complete = await finalizeRunStatusFromResults({
+      runDir: launch.runDir,
+      contractsDir,
+      summary: 'fixture complete after archived packet commit'
+    });
+    assert.equal(complete.finalized, true);
+    assert.equal(complete.status, 'complete');
   } finally {
     await fixture.cleanup();
   }

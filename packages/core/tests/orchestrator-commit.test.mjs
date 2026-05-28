@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { promisify } from 'node:util';
+import { advanceLanePacket } from '../lib/lane-packets.mjs';
 import { commitAcceptedResult, commitLeadSupportChange, evaluateLaneGitPolicy } from '../lib/orchestrator-commit.mjs';
 import { recordSupersession } from '../lib/lead-rescue.mjs';
 
@@ -23,6 +24,38 @@ test('orchestrator commit stages only result filesChanged paths and commits clea
     assert.deepEqual(lines(committed), ['docs/accepted.md']);
     const message = await fixture.git(['log', '-1', '--pretty=%B']);
     assert.match(message, /Co-Authored-By: Bob \(codex\) <bob-codex@cocoder.local>/);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test('orchestrator commit accepts archived lane packet result paths', async () => {
+  const fixture = await createCommitFixture();
+  try {
+    await fixture.modify('docs/accepted.md', 'accepted archived packet change\n');
+    await writeResultPair(path.join(fixture.runDir, 'jobs', 'bob'), jobResult({
+      filesChanged: ['docs/accepted.md']
+    }));
+    const advanced = await advanceLanePacket({
+      runDir: fixture.runDir,
+      lane: 'bob',
+      reason: 'fixture accepted packet one'
+    });
+    assert.equal(advanced.ok, true);
+
+    const result = await commitAcceptedResult({
+      runDir: fixture.runDir,
+      lane: 'bob',
+      repoRoot: fixture.repo,
+      contractsDir,
+      resultPath: advanced.archivedResultPath,
+      message: '[TEST] Archived packet commit',
+      developerMode: true,
+      now: '2026-05-18T18:30:00.000Z'
+    });
+    assert.equal(result.ok, true, JSON.stringify(result.issues, null, 2));
+    assert.equal(path.resolve(result.acceptedResultPath), path.resolve(advanced.archivedResultPath));
+    assert.deepEqual(result.stagedPaths, ['docs/accepted.md']);
   } finally {
     await fixture.cleanup();
   }
