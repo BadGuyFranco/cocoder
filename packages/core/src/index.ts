@@ -1,0 +1,12 @@
+// @cocoder/core — the I/O-agnostic heart of CoCoder v2 (ADR-0004/0008).
+// Depends on nothing in the workspace; everything inward points here.
+//
+// As Phase 1 builds out, this barrel re-exports the real modules:
+//   - data-model schema + RunStore port (Step 3)
+//   - SessionHost port (Step 2)
+//   - Adapter interface + preflight (Step 4)
+//   - persona/priority loader (Step 4)
+//   - write-scope + commit-gate (Step 5)
+//   - the runner / launch composition (Step 6)
+
+export const CORE_VERSION = '0.0.0'

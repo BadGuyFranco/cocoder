@@ -95,7 +95,10 @@ const knownSrcDirs = dirs.map((d) => join(d.dir, 'src'))
 for (const { dir } of dirs) {
   for (const file of listSourceFiles(dir)) {
     const inSrc = knownSrcDirs.some((s) => file.startsWith(s + '/'))
-    const isConfig = /\.(config|test|spec)\.(ts|mts|js|mjs)$/.test(file) || /\/(vitest|tsconfig)/.test(file)
+    const isConfig =
+      /\.(config|test|spec)\.(ts|mts|js|mjs)$/.test(file) ||
+      /\/(vitest|tsconfig)/.test(file) ||
+      /\/bin\//.test(file) // executable entrypoint shims live outside src by design
     if (!inSrc && !isConfig && SRC_EXT.test(file)) {
       warnings.push(`${file.slice(ROOT.length + 1)}: source file outside packages/<pkg>/src (assertion a, warning).`)
     }
