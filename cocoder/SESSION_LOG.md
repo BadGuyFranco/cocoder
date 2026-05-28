@@ -14,6 +14,19 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-28 — **v0.5 service adoption slice committed; current run closed with founder-authorized supersession**
+
+**Persona:** Oscar + Bob + founder closeout | **Priority:** v0.5-orchestration-services | **Run:** hlm72yhx
+
+**Outcomes:**
+- Committed Bob's v0.5 package/runtime adoption slice: `run-orchestration-service`, service packet/result/transcript artifacts under run-local `services/`, Oz Run Inspector service surfacing, and ghost-priority guard.
+- Committed the Oz clean debugger launcher and Oscar wrap closeout authority fix: future `oscar-lead` runs have route-owned implementation commits, lead-rescue supersession, and guarded lead support commits.
+- Closed run `run-20260528T031737Z-hlm72yhx` as `complete` via founder-authorized supersession for Bob's `CONDITIONAL_PASS`; residual risk remains real `cursor-agent` execution failing local keychain/auth with `SecItemCopyMatching failed -50`.
+
+**Next:** Launch a clean v0.5 run to prove real headless service execution after fixing or deferring `cursor-agent` auth/keychain access. Do not redo the committed package/runtime adoption slice; PR #51 governance reconciliation remains after the service-execution proof.
+
+---
+
 ## 2026-05-27 — **Orchestration-services convergence: landed orphaned PR #50 onto `main` (ADR-0009 engine + v0.5 priority + route/boundary); v0.5 now launchable**
 
 **Persona:** Oscar (lead, founder-authorized one-time config scope) | **Priority:** v0.5-orchestration-services | **Run:** 1wna3uxq

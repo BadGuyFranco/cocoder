@@ -1,6 +1,6 @@
 # v0.5 — Orchestration Services (cheap-model admin delegation)
 
-**Status:** **Active — Phase 1 COMPLETE: engine + launch config (route entry + boundary) + `wrap-execution` fix landed on `main` (convergence 2026-05-27). Next = Phase 2 (reconcile PR #51) + Phase 3 (adoption).** **Sequenced BEFORE v0.4-oz-control-plane** (founder, 2026-05-27). **Owner:** Bob + founder (Oscar orchestrates).
+**Status:** **Active — Phase 1 COMPLETE and Phase 3 service runtime adoption slice COMMITTED. Current blocker: real headless `cursor-agent` service execution fails local auth/keychain (`SecItemCopyMatching failed -50`). Next = prove/fix real service execution, then Phase 2 PR #51 governance reconciliation.** **Sequenced BEFORE v0.4-oz-control-plane** (founder, 2026-05-27). **Owner:** Bob + founder (Oscar orchestrates).
 **Decision:** [ADR-0009](../../decisions/0009-orchestration-services.md). **Relates to:** [ADR-0008](../../decisions/0008-oz-control-plane-architecture.md) (Oz unchanged).
 **Launchable from Oz / `main`** — `oscar-lead` route now lists this priority (`bounded-writers`) and the v0.5 boundary is in place.
 
@@ -15,19 +15,16 @@ Oscar (the lead orchestrator) was spending expensive lead-model context on repea
 - 5 CLI commands; new `cursor-agent-service` headless executor adapter; debugger guidance; session-wrap fragment bullet.
 - Tests: core 346/346, oz-daemon 8/8, oz-dashboard 10/10. `validate-orchestration-services` green against shipped declarations.
 
-## Remaining (adoption)
+## Current state (2026-05-28)
 
-1. **Wire services into Oscar's live wrap/teardown flow** — Oscar builds + runs packets during real runs (currently the engine + prompt guidance exist; the runtime wrap path does not yet invoke them automatically).
-2. **Prove headless `cursor-agent` execution end-to-end** against a real run (the suite exercises a fake executor; validate the real `cursor-agent --print --trust --force --sandbox disabled` path + a cheap model).
-3. **Surface service results in Oz run detail** — service artifacts already land under `<runDir>/services/<packetId>/`; confirm the Oz run watcher enumerates/labels them (no Oz code change expected; verify only).
-4. **Sequencing** — **DECIDED 2026-05-27 (founder): runs BEFORE v0.4-oz-control-plane.** The `v0.5` slug is kept (it's the natural home for "orchestration services"); work order is ahead of v0.4 because a hardened, bounded service layer de-risks the v0.4 control-plane build.
-5. **Close out v0.1** as a carryover track here (so v0.1-foundation can be archived) — see Next Session Start Here.
+- Phase 3 package/runtime adoption slice is committed: `run-orchestration-service` writes packet/result/transcript artifacts under `<runDir>/services/<packetId>/`; Oz run evidence and Run Inspector surface service artifacts; route-supported ghost priority guard is in place.
+- Oscar wrap now requires commit/finalize or an explicit blocker, and `oscar-lead` declares route-owned implementation commit, lead-rescue supersession, and guarded lead support commit authority for future clean closeout.
+- Real `cursor-agent` service execution reached installed `cursor-agent 2026.05.27-fe9a6e2` but failed before result JSON with `ERROR: SecItemCopyMatching failed -50`.
+- `composer-agent` is not currently on PATH in this install; service execution defaults to `cursor-agent` unless a configured run passes another executor command.
 
 ## Next Session Start Here
 
-> **Why this priority isn't on `main` yet:** the engine + ADR-0009 + this README were imported on PR #50 (`orchestration-services-import`) and **never merged** — that orphaned PR (plus a ghost v0.5 row in the route and a dangling ADR-0009 reference) was an orchestration failure surfaced 2026-05-27. Phase 1 fixes it by landing PR #50.
-
-**Recommended next atom:** Phase 3 — adoption (Phase 1 done; Phase 2 next/parallel).
+**Recommended next atom:** Real service execution proof. Fix or explicitly defer local `cursor-agent` auth/keychain access, then run a read-only `run-orchestration-service --execute-service true` packet and verify packet/result/transcript artifacts plus Oz Run Inspector surfacing. Do not redo the committed package/runtime adoption slice.
 
 **Route / topology:** `oscar-lead` (Oscar lead + Bob builder), `bounded-writers`. Strict substitution.
 **Write boundary:** broadened-Bob — `packages/`, `docs/`, `.github/`, `README.md`, `ARCHITECTURE.md`, `templates/`, `examples/`, `LICENSE`/`NOTICE`; + Oscar governance (`cocoder/PRIORITIES.md`, `priorities/`, `decisions/`, `SESSION_LOG.md`, `plans/`, `tickets/`); exclude `secrets/`, `local/`. (v0.5 priority-boundary now on `main`.)
@@ -37,7 +34,8 @@ Oscar (the lead orchestrator) was spending expensive lead-model context on repea
 **Phase 2 — reconcile `oz-control-plane-design` (PR #51):** rebase it onto the new `main` (its ADR-0009 citation resolves); bring the **general** orchestration infra (routes / profiles / priority-boundaries / ADR-0012 / `session-wrap.md`) to `main`; **leave the v0.4-specific design** (design tree, ADR-0008/0010, v0.4 spec) on the branch for the v0.4 run. **Do not merge v0.4 wholesale yet.**
 
 **Phase 3 — adoption + v0.1 close-out:**
-- Adoption items 1–3 above (wire into live wrap/teardown flow; prove real `cursor-agent` end-to-end; verify Oz run-detail surfacing).
+- Package/runtime adoption slice: ✅ DONE and committed 2026-05-28.
+- Remaining adoption proof: real headless `cursor-agent` execution end-to-end once local auth/keychain works or is replaced by the configured service executor.
 - **v0.1 carryover: ✅ DONE (2026-05-27).** v0.1-foundation archived to `priorities/zArchive/` with the Refine validations (P-R1/P-R3/P-R4, B/C Refines) waived per **[ADR-0011](../../decisions/0011-v0.1-closeout.md)**. No longer part of this priority.
 - **Preventive guard:** add a check that flags ghost priorities (in a route but absent from `PRIORITIES.md`) and dangling ADRs (indexed but file-absent), so this fragmentation can't silently recur.
 

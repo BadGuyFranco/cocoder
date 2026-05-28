@@ -15,7 +15,7 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 
 | Slug | Description | Status | Canon | Owner | Blocked on |
 |---|---|---|---|---|---|
-| [`v0.5-orchestration-services`](./priorities/v0.5-orchestration-services/README.md) | Cheap/fast-model admin delegation — Oscar offloads wrap/compaction/teardown to bounded services | **Active** | Adoption — engine + launch config (route + boundary) on `main` (ADR-0009) | Bob + founder | **Sequenced before v0.4** (founder 2026-05-27). **Launchable from Oz.** Next: Phase 2 (reconcile PR #51) + Phase 3 (adoption). |
+| [`v0.5-orchestration-services`](./priorities/v0.5-orchestration-services/README.md) | Cheap/fast-model admin delegation — Oscar offloads wrap/compaction/teardown to bounded services | **Active** | Adoption — service runtime slice committed; closeout authority fixed | Bob + founder | **Sequenced before v0.4** (founder 2026-05-27). Next: prove real `cursor-agent` service execution or fix auth; then Phase 2 PR #51 governance reconciliation. |
 
 ## Draft
 
@@ -59,4 +59,4 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 **Owner:** Bob + founder
 **Summary:** Let Oscar run faster/cheaper models for repeatable admin work (priority/handoff editing, run wrap-up, teardown) via bounded non-persona orchestration services, instead of spending lead-model context.
 **What:** Declarative services (`packages/core/services/*.json`) + two contracts + `lib/services.mjs` (build/validate/execute packet with deterministic git write-audit) + 5 CLI commands + a headless `cursor-agent-service` adapter. 11 services shipped. Services never commit/finalize/supersede (Oscar-only route control); adapter+model configurable per service (`cursor-agent` default). Oz unchanged (ADR-0008 preserved).
-**Status:** **Active — engine + launch config (route entry + boundary) landed on `main` (ADR-0009; convergence 2026-05-27). Sequenced BEFORE v0.4 (founder). Launchable from Oz now.** Next: Phase 2 (reconcile PR #51 onto main — general orchestration infra; leave v0.4 design for the v0.4 run) + Phase 3 (adoption: wire services into Oscar's live wrap/teardown flow, prove headless `cursor-agent` end-to-end, verify Oz run-detail surfacing; add ghost-priority/dangling-ADR guard). (v0.1-foundation already archived 2026-05-27 — ADR-0011.) Full brief in [`priorities/v0.5-orchestration-services/README.md`](./priorities/v0.5-orchestration-services/README.md).
+**Status:** **Active — engine + launch config landed on `main`; Phase 3 service runtime adoption slice is committed; Oscar closeout/commit authority is fixed.** Next: prove real headless `cursor-agent` service execution once local auth/keychain access works, then handle Phase 2 PR #51 governance reconciliation. (v0.1-foundation already archived 2026-05-27 — ADR-0011.) Full brief in [`priorities/v0.5-orchestration-services/README.md`](./priorities/v0.5-orchestration-services/README.md).
