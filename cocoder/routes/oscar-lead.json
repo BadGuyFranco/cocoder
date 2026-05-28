@@ -7,6 +7,37 @@
   "supportedPriorityOwners": ["v0.1-foundation", "v0.3-workspace-lifecycle", "v0.4-oz-control-plane", "v0.5-orchestration-services"],
   "gates": ["startup-packet", "profile-preflight", "write-boundary"],
   "writePolicy": "bounded-writers",
+  "orchestratorCommit": {
+    "enabled": true,
+    "owner": "route",
+    "stageMode": "exact-files",
+    "writerLanes": ["bob"]
+  },
+  "leadRescue": {
+    "allowed": true,
+    "leads": ["oscar"],
+    "superseded": ["bob"]
+  },
+  "leadSupportCommit": {
+    "enabled": true,
+    "stageMode": "exact-files",
+    "leads": ["oscar"],
+    "allowed": [
+      "cocoder/PRIORITIES.md",
+      "cocoder/SESSION_LOG.md",
+      "cocoder/SESSION_LOG_ARCHIVE.md",
+      "cocoder/priorities/",
+      "cocoder/plans/",
+      "cocoder/decisions/",
+      "cocoder/tickets/"
+    ],
+    "excluded": [
+      "local/",
+      "cocoder/local/",
+      "secrets/",
+      "node_modules/"
+    ]
+  },
   "laneRequirements": {
     "oscar": {
       "requiredCapabilities": ["interactive"],
