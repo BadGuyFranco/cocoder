@@ -14,6 +14,19 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-27 — **Orchestration-services convergence: landed orphaned PR #50 onto `main` (ADR-0009 engine + v0.5 priority + route/boundary); v0.5 now launchable**
+
+**Persona:** Oscar (lead, founder-authorized one-time config scope) | **Priority:** v0.5-orchestration-services | **Run:** 1wna3uxq
+
+**Outcomes:**
+- **Diagnosed an orchestration failure:** parallel branches minted governance on a "reconcile at merge" plan that never merged — PR #50 (orchestration-services engine + ADR-0009 + v0.5 priority) sat orphaned off pre-v0.1 `main`; `v0.5` was a ghost (in the route's `supportedPriorityOwners` but not `PRIORITIES.md`); ADR-0009 was a dangling reference; and the launch config (route/boundary) was split from the priority. v0.5 was hard-blocked from launching on every branch.
+- **Founder authorized (A): one-time config convergence onto `main`.** Merged `main` into the PR #50 branch (resolved `PRIORITIES.md`/`SESSION_LOG` to main + re-added v0.5), fixed `wrap-execution.json` (dropped `orchestrator-commit`/`finalize-run-status` from `requiredChecks` per the CoBuilder prior-fix), set `oscar-lead` route to `bounded-writers` + added v0.4/v0.5 owners, and brought the v0.5 priority-boundary. Verified `main` and `oz-control-plane-design` launcher code are **identical** — convergence stays config-only.
+- **Reviewed PR #50:** engine enforces `decisionAuthority: oscar-only` + `forbiddenDecisions` + a blocking before/after git write-audit + headless argv; adapter+model configurable per service (`cursor-agent` default) — implements ADR-0008's per-call CLI+model clause (v0.4 builds the UI on top).
+
+**Next:** Phase 2 — reconcile PR #51 (`oz-control-plane-design`) onto `main` (general infra; leave v0.4 design for the v0.4 run). Phase 3 — v0.5 adoption (wire services into live wrap/teardown, prove headless `cursor-agent` e2e, verify Oz surfacing) + v0.1 carryover (ADR-0011 + P-R1/P-R3 or waive B/C refines) + **archive v0.1-foundation** + add a ghost-priority/dangling-ADR guard. v0.5 is now launchable from Oz once PR #50 squash-merges.
+
+---
+
 ## 2026-05-27 — **v0.1 publish surfaces complete on clean branch `v0.1-publish` (Option A disentangle); D-S1 removed; ready for founder release**
 
 **Persona:** Oscar (lead) + Bob (builder, codex) | **Priority:** v0.1-foundation | **Plan:** [`plans/2026-05-21-docs-publish.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-docs-publish.plan.md) | **Run:** 1wna3uxq

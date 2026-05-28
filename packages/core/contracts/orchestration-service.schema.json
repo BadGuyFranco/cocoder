@@ -1,0 +1,51 @@
+{
+  "contract": "orchestration-service-packet",
+  "version": 1,
+  "status": "draft",
+  "description": "Bounded administrative service request packet used by Oscar to delegate mechanical orchestration work without delegating judgment.",
+  "required": [
+    "version",
+    "id",
+    "createdAt",
+    "serviceId",
+    "mode",
+    "decisionAuthority",
+    "executionAuthority",
+    "execution",
+    "run",
+    "objective",
+    "allowedWrites",
+    "forbiddenDecisions",
+    "requiredChecks",
+    "resultContract"
+  ],
+  "fields": {
+    "version": { "type": "number" },
+    "id": { "type": "string" },
+    "createdAt": { "type": "iso-datetime" },
+    "serviceId": { "type": "string" },
+    "serviceLabel": { "type": "string" },
+    "mode": { "enum": ["read-only", "bounded-write", "control-plane"] },
+    "requestedBy": { "type": "string" },
+    "decisionAuthority": { "enum": ["oscar-only"] },
+    "executionAuthority": { "enum": ["orchestration-service"] },
+    "execution": { "type": "object", "required": ["style", "preferredModelClass", "fallback"] },
+    "run": { "type": "object", "required": ["runId", "runDir", "status"] },
+    "objective": { "type": "string" },
+    "oscarDecision": { "type": "object" },
+    "allowedWrites": { "type": "array", "items": "repo-relative file path" },
+    "forbiddenDecisions": { "type": "array", "items": "string" },
+    "requiredChecks": { "type": "array", "items": "command or gate name" },
+    "evidence": { "type": "array", "items": "artifact path or evidence summary" },
+    "constraints": { "type": "array", "items": "string" },
+    "resultContract": { "type": "object", "required": ["statusValues", "mustReport", "mayEditOnlyAllowedWrites"] }
+  },
+  "rules": [
+    "Service packets delegate administrative execution only; Oscar retains phase, priority, architecture, scope, and founder-decision judgment.",
+    "Read-only services must have an empty allowedWrites list.",
+    "Bounded-write services may edit only paths listed in allowedWrites and must satisfy requiredChecks before reporting PASS.",
+    "Service packets are not persona contracts and do not create new durable personas.",
+    "Any cheap-model execution behind a service must consume this packet and return a result against its resultContract.",
+    "Headless service execution must return diagnosis and proposedFix to Oscar on BLOCK, FAILED, or deterministic validation failure."
+  ]
+}

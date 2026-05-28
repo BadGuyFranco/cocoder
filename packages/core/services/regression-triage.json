@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "id": "regression-triage",
+  "label": "Regression Triage",
+  "mode": "read-only",
+  "purpose": "Summarize failing checks, likely ownership, candidate files, and reproduction commands without editing code.",
+  "execution": { "style": "cheap-model", "preferredModelClass": "fast-low-cost-triage", "fallback": "ask-oscar" },
+  "allowedWriteScopes": [],
+  "requiredChecks": ["failing command capture", "owner/boundary classification"]
+}

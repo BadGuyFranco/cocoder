@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "id": "startup-context-audit",
+  "label": "Startup Context Audit",
+  "mode": "read-only",
+  "purpose": "Audit selected priority, startup packet, prompt, plan, and session-log context budgets before launch or wrap so Oscar gets exact compaction targets instead of absorbing oversized history.",
+  "execution": { "style": "deterministic-or-cheap-model", "preferredModelClass": "fast-low-cost-audit", "fallback": "ask-oscar" },
+  "allowedWriteScopes": [],
+  "requiredChecks": ["startup packet budget review", "priority/session excerpt budget review", "prompt source size summary", "compaction target list"]
+}

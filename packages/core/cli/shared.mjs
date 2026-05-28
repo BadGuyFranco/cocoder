@@ -16,6 +16,7 @@ export const CORE_DIR = path.join(CLI_DIR, '..');
 export const DEFAULT_CONTRACTS_DIR = path.join(CORE_DIR, 'contracts');
 export const DEFAULT_BASELINE = path.join(CORE_DIR, 'baselines', 'accepted-reference-baseline.md');
 export const DEFAULT_ADAPTERS_DIR = path.join(CORE_DIR, 'adapters');
+export const DEFAULT_SERVICES_DIR = path.join(CORE_DIR, 'services');
 export const DEFAULT_PROFILES_DIR = repoPath('cocoder/profiles');
 export const DEFAULT_ROUTES_DIR = repoPath('cocoder/routes');
 export const DEFAULT_PERSONAS_DIR = repoPath('cocoder/personas');
@@ -75,7 +76,7 @@ export function parseArgs(tokens) {
     if (!next || next.startsWith('--')) args[key] = 'true';
     else {
       args[key] = path.resolve(next);
-      if (['contract', 'prioritySlug', 'status', 'reason', 'summary', 'runId', 'jobId', 'sessionId', 'confirmRunId', 'mode', 'followIntervalSeconds', 'maxCycles', 'execute', 'deferStart', 'attach', 'stopTerminalSessions', 'founderApprovedTeardown', 'sessionLineLimit', 'owner', 'nonce', 'now', 'ttlMs', 'staleMs', 'timeoutMs', 'thresholdDays', 'maxChars', 'maxEntries', 'maxEntryLines', 'maxEntryChars', 'allowLive', 'cdpUrl', 'socketName', 'socketPath', 'lane', 'lanes', 'message', 'command', 'tmuxBin', 'noSession', 'supersededLane', 'resolvingLane', 'basis', 'findings', 'evidence', 'id', 'name', 'tmuxSocket', 'createdBy', 'personaPaths', 'sessionLog', 'topologyOption', 'requiredPersonas', 'autoAttachAddedLanes', 'workspaceSlug', 'developerMode', 'allowConcurrentPriorityRun', 'revealSecrets'].includes(key)) args[key] = next;
+      if (['contract', 'prioritySlug', 'status', 'reason', 'summary', 'runId', 'jobId', 'sessionId', 'confirmRunId', 'mode', 'followIntervalSeconds', 'maxCycles', 'execute', 'deferStart', 'attach', 'stopTerminalSessions', 'founderApprovedTeardown', 'sessionLineLimit', 'owner', 'nonce', 'now', 'ttlMs', 'staleMs', 'timeoutMs', 'thresholdDays', 'maxChars', 'maxEntries', 'maxEntryLines', 'maxEntryChars', 'allowLive', 'cdpUrl', 'socketName', 'socketPath', 'lane', 'lanes', 'message', 'command', 'tmuxBin', 'noSession', 'supersededLane', 'resolvingLane', 'basis', 'findings', 'evidence', 'id', 'name', 'tmuxSocket', 'createdBy', 'personaPaths', 'sessionLog', 'topologyOption', 'requiredPersonas', 'autoAttachAddedLanes', 'workspaceSlug', 'developerMode', 'allowConcurrentPriorityRun', 'revealSecrets', 'service', 'executorCommand', 'model'].includes(key)) args[key] = next;
       index += 1;
     }
   }

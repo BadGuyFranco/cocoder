@@ -48,6 +48,12 @@ import {
   validateImprovementDirectory
 } from '../lib/self-healing.mjs';
 import { followDebuggerEvidence, prepareDebuggerSession } from '../lib/debugger.mjs';
+import {
+  buildOrchestrationServicePacket,
+  executeOrchestrationServicePacket,
+  listOrchestrationServices,
+  validateOrchestrationServicePacket
+} from '../lib/services.mjs';
 import { applyWorkspaceInit } from '../lib/init-merge.mjs';
 import { auditWorkspace, refreshWorkspaceMemory } from '../lib/workspace-audit.mjs';
 import { ozSubcommandHandlers } from './oz.mjs';
@@ -56,6 +62,7 @@ import {
   DEFAULT_ADAPTERS_DIR,
   DEFAULT_BASELINE,
   DEFAULT_CONTRACTS_DIR,
+  DEFAULT_SERVICES_DIR,
   DEFAULT_IMPROVEMENTS_DIR,
   DEFAULT_PERSONAS_DIR,
   DEFAULT_PRIORITY_BOUNDARIES_DIR,
@@ -929,6 +936,71 @@ async function handle_oz() {
   throw new Error('Use: cocoder oz start|stop|status|register [--cocoder-home PATH]');
 }
 
+async function handle_list_orchestration_services(args) {
+    const result = await listOrchestrationServices({
+      servicesDir: args.servicesDir || DEFAULT_SERVICES_DIR,
+      contractsDir: args.contractsDir || DEFAULT_CONTRACTS_DIR
+    });
+    console.log(JSON.stringify(result, null, 2));
+    if (!result.ok) process.exitCode = 1;
+    return;
+}
+
+async function handle_validate_orchestration_services(args) {
+    const result = await listOrchestrationServices({
+      servicesDir: args.servicesDir || DEFAULT_SERVICES_DIR,
+      contractsDir: args.contractsDir || DEFAULT_CONTRACTS_DIR
+    });
+    console.log(JSON.stringify({ ok: result.ok, services: result.services.map((service) => service.id), issues: result.issues }, null, 2));
+    if (!result.ok) process.exitCode = 1;
+    return;
+}
+
+async function handle_build_service_packet(args) {
+    requireArgs(args, ['service', 'runDir', 'request']);
+    const result = await buildOrchestrationServicePacket({
+      serviceId: args.service,
+      runDir: args.runDir,
+      request: args.request,
+      outputPath: args.output,
+      contractsDir: args.contractsDir || DEFAULT_CONTRACTS_DIR,
+      servicesDir: args.servicesDir || DEFAULT_SERVICES_DIR,
+      now: args.now || new Date().toISOString()
+    });
+    console.log(JSON.stringify(result, null, 2));
+    if (!result.ok) process.exitCode = 1;
+    return;
+}
+
+async function handle_validate_service_packet(args) {
+    requireArgs(args, ['packet']);
+    const result = await validateOrchestrationServicePacket(args.packet, {
+      contractsDir: args.contractsDir || DEFAULT_CONTRACTS_DIR,
+      servicesDir: args.servicesDir || DEFAULT_SERVICES_DIR
+    });
+    console.log(JSON.stringify(result, null, 2));
+    if (!result.ok) process.exitCode = 1;
+    return;
+}
+
+async function handle_execute_service_packet(args) {
+    requireArgs(args, ['packet']);
+    const result = await executeOrchestrationServicePacket({
+      packetPath: args.packet,
+      repoRoot: args.repoRoot || process.cwd(),
+      contractsDir: args.contractsDir || DEFAULT_CONTRACTS_DIR,
+      servicesDir: args.servicesDir || DEFAULT_SERVICES_DIR,
+      executorCommand: args.executorCommand || 'cursor-agent',
+      model: args.model,
+      resultPath: args.result,
+      transcriptPath: args.transcript,
+      now: args.now || new Date().toISOString()
+    });
+    console.log(JSON.stringify(result, null, 2));
+    if (!result.ok) process.exitCode = 1;
+    return;
+}
+
 export { ozSubcommandHandlers };
 
 export const commandRegistry = new Map([
@@ -998,6 +1070,11 @@ export const commandRegistry = new Map([
   ['prepare-debugger', handle_prepare_debugger],
   ['prepare-debug', handle_prepare_debugger],
   ['watch-debugger-evidence', handle_watch_debugger_evidence],
+  ['list-orchestration-services', handle_list_orchestration_services],
+  ['validate-orchestration-services', handle_validate_orchestration_services],
+  ['build-service-packet', handle_build_service_packet],
+  ['validate-service-packet', handle_validate_service_packet],
+  ['execute-service-packet', handle_execute_service_packet],
 ]);
 
 export const registeredCommandNames = [...commandRegistry.keys()].sort((a, b) => a.localeCompare(b));

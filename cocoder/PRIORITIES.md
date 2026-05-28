@@ -15,7 +15,8 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 
 | Slug | Description | Status | Canon | Owner | Blocked on |
 |---|---|---|---|---|---|
-| [`v0.1-foundation`](./priorities/v0.1-foundation/README.md) | Ship CoCoder v0.1 — extraction, Oz MVP, docs, public publish | Active | Expand — **Sub-Playbook D doc + CI-gate authoring COMPLETE on branch `v0.1-publish`** (run 1wna3uxq). Only founder release (merge → CI → `v0.1.0` tag) remains. | Bob + founder | **Next (founder):** review `v0.1-publish` → merge to `main` (CI = D-S2 Class A) → tag `v0.1.0`. B/C Refines parallel (founder). |
+| [`v0.1-foundation`](./priorities/v0.1-foundation/README.md) | Ship CoCoder v0.1 — extraction, Oz MVP, docs, public publish | Shipped | **`v0.1.0` tagged + released 2026-05-27** (merged to `main`, CI green). | Bob + founder | **Archival ceremony folded into v0.5 Phase 3** (carryover: ADR-0011 + P-R1/P-R3, then archive). |
+| [`v0.5-orchestration-services`](./priorities/v0.5-orchestration-services/README.md) | Cheap/fast-model admin delegation — Oscar offloads wrap/compaction/teardown to bounded services | **Active** | Adoption — engine + launch config (route + boundary) now on `main` (ADR-0009) | Bob + founder | **Sequenced before v0.4** (founder 2026-05-27). **Now launchable from Oz.** Next: Phase 2 (reconcile PR #51) + Phase 3 (adoption + v0.1 carryover/archive). |
 
 ## Draft
 
@@ -65,3 +66,9 @@ Slim index of active and archived priorities. Open a priority's folder for detai
 **Summary:** Turn Oz into a real operator control plane — a per-workspace, in-dashboard headless chatbot that is the primary command interface and the primary watcher/debugger for every run.
 **What:** Build the Oz UI per [ADR-0008](./decisions/0008-oz-control-plane-architecture.md) (Dashboard with Oz chat + drag-reorder priorities + ad-hoc run launcher; Workspaces with primary/writable/read-only roots; CLIs with Test; Personas with CLI/model + sub-agent hierarchy + visible/headless; Runs list+detail; Settings) plus the Oz oversight/debugger mechanism. Screen/flow brief + design prompt in `docs/oz-design-brief.md`. Root roles per ADR-0007 (revised 2026-05-27).
 **Status:** Draft (stub). Founder decision on sequencing. Depends on the claude.ai/design output + ADR-0008. Authored 2026-05-27 per founder ask. See [`priorities/v0.4-oz-control-plane/README.md`](./priorities/v0.4-oz-control-plane/README.md).
+
+### [v0.5-orchestration-services](./priorities/v0.5-orchestration-services/README.md)
+**Owner:** Bob + founder
+**Summary:** Let Oscar run faster/cheaper models for repeatable admin work (priority/handoff editing, run wrap-up, teardown) via bounded non-persona orchestration services, instead of spending lead-model context.
+**What:** Declarative services (`packages/core/services/*.json`) + two contracts + `lib/services.mjs` (build/validate/execute packet with deterministic git write-audit) + 5 CLI commands + a headless `cursor-agent-service` adapter. 11 services shipped. Services never commit/finalize/supersede (Oscar-only route control); adapter+model configurable per service (`cursor-agent` default). Oz unchanged (ADR-0008 preserved).
+**Status:** **Active — engine + launch config (route entry + boundary) landed on `main` (ADR-0009; convergence 2026-05-27). Sequenced BEFORE v0.4 (founder). Launchable from Oz now.** Next: Phase 2 (reconcile PR #51 onto main — general orchestration infra; leave v0.4 design for the v0.4 run) + Phase 3 (adoption: wire services into Oscar's live wrap/teardown flow, prove headless `cursor-agent` end-to-end, verify Oz run-detail surfacing; v0.1 carryover: ADR-0011 + P-R1/P-R3 or waive B/C refines, then archive v0.1-foundation; add ghost-priority/dangling-ADR guard). Full brief in [`priorities/v0.5-orchestration-services/README.md`](./priorities/v0.5-orchestration-services/README.md).
