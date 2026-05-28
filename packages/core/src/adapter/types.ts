@@ -1,0 +1,44 @@
+// Adapter contract (ADR-0006). A per-CLI driver: build a headless invocation + preflight it.
+// The interface lives in core; the concrete claude/codex adapters live in packages/adapters
+// and are wired in by the cli (composition root).
+
+export interface BuildInput {
+  /** Full prompt to pass to the CLI (shared standards + persona role + task). */
+  readonly prompt: string
+  /** Model name; empty string means the CLI's default. */
+  readonly model: string
+  /** Working directory the CLI should operate in. */
+  readonly cwd: string
+  /** Path where the CLI's structured completion artifact should land (claude JSON via
+   *  stdout redirect; codex last-message via `-o`). The runner reads it after exit. */
+  readonly outPath: string
+}
+
+export interface BuiltCommand {
+  readonly command: string
+  readonly args: readonly string[]
+  /** If set, the SessionHost should redirect the command's stdout here (claude's JSON). */
+  readonly stdoutPath?: string
+}
+
+export interface PreflightCheck {
+  readonly name: string
+  readonly ok: boolean
+  readonly detail: string
+}
+
+/** Result of the deterministic preflight (ADR-0006 §3: installed · authenticated · model).
+ *  The deeper "Test CLI permissions" capability probe (§4) is a Phase-2 Oz feature. */
+export interface PreflightResult {
+  readonly ok: boolean
+  readonly checks: readonly PreflightCheck[]
+}
+
+export interface Adapter {
+  /** Adapter id, matching a persona assignment's `cli` (e.g. "claude", "codex"). */
+  readonly id: string
+  /** Build the pinned headless invocation. The driver adds `< /dev/null` + cd-prepend. */
+  build(input: BuildInput): BuiltCommand
+  /** Deterministic preflight; blocks launch on failure with a clear per-check reason. */
+  preflight(model: string): Promise<PreflightResult>
+}

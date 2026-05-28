@@ -30,3 +30,16 @@ export type {
   RunEvent,
 } from './store/index.js'
 export { openRunStore, type OpenRunStoreOptions, SCHEMA_SQL } from './store/index.js'
+
+export type { Persona, PersonaAssignment, Assignments, ResolvedPersona } from './personas/index.js'
+export { parseFrontmatter, type Frontmatter, loadPersona, loadAssignments, resolvePersona } from './personas/index.js'
+
+export { loadPriority, type Priority } from './priorities/index.js'
+
+export type {
+  Adapter,
+  BuildInput,
+  BuiltCommand,
+  PreflightCheck,
+  PreflightResult,
+} from './adapter/index.js'
