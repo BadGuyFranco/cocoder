@@ -163,6 +163,26 @@ export async function extractPriorityEntry(filePath, slug) {
   return result;
 }
 
+export async function extractPrioritySlugs(filePath) {
+  const slugs = new Set();
+  if (!(await pathExists(filePath))) return slugs;
+  const linkedPriorityHeadingPattern = /^#{2,4}\s+.*\[[^\]]+\]\(([^)]+)\).*$/;
+  const bracketPriorityHeadingPattern = /^#{2,4}\s+\[([^\]]+)\]/;
+  const slugPattern = /(?:^|\/)priorities\/([^/#)]+)(?:\/README\.md)?/;
+  const rl = readline.createInterface({
+    input: createReadStream(filePath, { encoding: 'utf8' }),
+    crlfDelay: Infinity
+  });
+
+  for await (const line of rl) {
+    const linkMatch = line.match(linkedPriorityHeadingPattern);
+    const bracketMatch = line.match(bracketPriorityHeadingPattern);
+    const slug = linkMatch?.[1].match(slugPattern)?.[1] || bracketMatch?.[1];
+    if (slug) slugs.add(slug);
+  }
+  return slugs;
+}
+
 function declaresPriorityInactive(text) {
   return /^\s*(stale|superseded|archived|closed)\b/i.test(text);
 }

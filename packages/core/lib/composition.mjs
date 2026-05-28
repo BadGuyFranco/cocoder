@@ -2,11 +2,11 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { loadAdapterDeclarations, preflightAdapterRegistry, ADAPTER_PREFLIGHT_STATUSES } from './adapters.mjs';
 import { loadProfile, loadRoute } from './config.mjs';
-import { extractPriorityEntry, pathExists, readJson, readSessionLogBrief, repoPath, sha256String } from './fs-utils.mjs';
+import { extractPriorityEntry, extractPrioritySlugs, pathExists, readJson, readSessionLogBrief, repoPath, sha256String } from './fs-utils.mjs';
 import { resolveModelRoles, validateModelRolesSemantics } from './model-roles.mjs';
 import { resolvePriorityBoundary } from './priority-boundaries.mjs';
 import { getLane } from './lib-utils.mjs';
-import { blockingPriorityBoundaryIssues, routePriorityIssue } from './orchestration-issues.mjs';
+import { blockingPriorityBoundaryIssues, routeGhostPriorityIssues, routePriorityIssue } from './orchestration-issues.mjs';
 import { auditPersonaRouteFit } from './persona-route-audit.mjs';
 
 const READY = 'ready';
@@ -405,9 +405,11 @@ export async function composeLaunchDryRun({
     pathValue
   });
   const selectedPriority = await extractPriorityEntry(priorityFile, prioritySlug);
+  const prioritySlugs = await extractPrioritySlugs(priorityFile);
   const recentSessionContext = await readSessionLogBrief(sessionLogFile, sessionLineLimit);
   const staleIssue = priorityStaleIssue(selectedPriority);
   const ownerIssue = routePriorityIssue(compatibility.route, prioritySlug);
+  const ghostPriorityIssues = routeGhostPriorityIssues(compatibility.route, prioritySlugs);
   const personaRouteAudit = auditPersonaRouteFit({
     selectedPriority,
     recentSessionContext,
@@ -427,9 +429,10 @@ export async function composeLaunchDryRun({
     ...compatibility.issues,
     ...(staleIssue ? [staleIssue] : []),
     ...(ownerIssue ? [ownerIssue] : []),
+    ...ghostPriorityIssues,
     ...boundaryIssues
   ];
-  const ready = compatibility.ok && !staleIssue && !ownerIssue && boundaryIssues.length === 0;
+  const ready = compatibility.ok && !staleIssue && !ownerIssue && ghostPriorityIssues.length === 0 && boundaryIssues.length === 0;
   const status = ready ? READY : staleIssue ? STALE : NON_READY;
   const resolvedProfile = compatibility.profile;
   const resolvedRoute = compatibility.route;

@@ -1,4 +1,6 @@
 import { createRequire } from "node:module";
+import { readdir, readFile } from "node:fs/promises";
+import path from "node:path";
 import type { ResolvedRunLocation } from "./run-catalog.js";
 
 const require = createRequire(import.meta.url);
@@ -30,7 +32,19 @@ export type RunEvidenceSummary = {
     statusJson: string;
     startupPacketJson: string;
     jobsDir: string;
+    servicesDir: string;
   };
+  services: Array<{
+    packetId: string;
+    serviceId: string | null;
+    mode: string | null;
+    status: string | null;
+    paths: {
+      packetJson: string;
+      resultJson: string | null;
+      transcriptTxt: string | null;
+    };
+  }>;
   collectedAt: string;
 };
 
@@ -54,6 +68,8 @@ export async function collectRunEvidenceSummary(
     : [];
   const issues = Array.isArray(bundle.issues) ? bundle.issues : [];
   const blockedPicker = issues.filter((issue: { code?: string }) => issue.code === "pane-interactive-picker");
+  const servicesDir = path.join(location.runDir, "services");
+  const services = await collectServiceArtifacts(servicesDir);
 
   return {
     runId: location.runId,
@@ -82,8 +98,66 @@ export async function collectRunEvidenceSummary(
       launchJson: bundle.run?.launchPath ?? `${location.runDir}/launch.json`,
       statusJson: bundle.run?.statusPath ?? `${location.runDir}/status.json`,
       startupPacketJson: bundle.run?.startupPacketPath ?? `${location.runDir}/startup-packet.json`,
-      jobsDir: `${location.runDir}/jobs`
+      jobsDir: `${location.runDir}/jobs`,
+      servicesDir
     },
+    services,
     collectedAt: bundle.collectedAt
   };
+}
+
+async function collectServiceArtifacts(servicesDir: string): Promise<RunEvidenceSummary["services"]> {
+  let entries;
+  try {
+    entries = await readdir(servicesDir, { withFileTypes: true });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
+
+  const artifacts: RunEvidenceSummary["services"] = [];
+  for (const entry of entries.filter((candidate) => candidate.isDirectory()).sort((a, b) => a.name.localeCompare(b.name))) {
+    const packetId = entry.name;
+    const dir = path.join(servicesDir, packetId);
+    const packetPath = path.join(dir, "packet.json");
+    const resultPath = path.join(dir, "result.json");
+    const transcriptPath = path.join(dir, "transcript.txt");
+    const packet = await readJsonIfExists(packetPath);
+    const result = await readJsonIfExists(resultPath);
+    artifacts.push({
+      packetId,
+      serviceId: stringOrNull(result?.serviceId) ?? stringOrNull(packet?.serviceId),
+      mode: stringOrNull(packet?.mode),
+      status: stringOrNull(result?.status),
+      paths: {
+        packetJson: packetPath,
+        resultJson: result ? resultPath : null,
+        transcriptTxt: await fileExists(transcriptPath) ? transcriptPath : null
+      }
+    });
+  }
+  return artifacts;
+}
+
+async function readJsonIfExists(filePath: string): Promise<Record<string, unknown> | null> {
+  try {
+    return JSON.parse(await readFile(filePath, "utf8")) as Record<string, unknown>;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    return null;
+  }
+}
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await readFile(filePath, "utf8");
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
+}
+
+function stringOrNull(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
 }

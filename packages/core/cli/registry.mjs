@@ -52,6 +52,7 @@ import {
   buildOrchestrationServicePacket,
   executeOrchestrationServicePacket,
   listOrchestrationServices,
+  runOrchestrationServiceForRun,
   validateOrchestrationServicePacket
 } from '../lib/services.mjs';
 import { applyWorkspaceInit } from '../lib/init-merge.mjs';
@@ -1001,6 +1002,25 @@ async function handle_execute_service_packet(args) {
     return;
 }
 
+async function handle_run_orchestration_service(args) {
+    requireArgs(args, ['service', 'runDir', 'request']);
+    const result = await runOrchestrationServiceForRun({
+      serviceId: args.service,
+      runDir: args.runDir,
+      request: args.request,
+      repoRoot: args.repoRoot || process.cwd(),
+      contractsDir: args.contractsDir || DEFAULT_CONTRACTS_DIR,
+      servicesDir: args.servicesDir || DEFAULT_SERVICES_DIR,
+      executorCommand: args.executorCommand || 'cursor-agent',
+      model: args.model,
+      execute: args.executeService === true || args.executeService === 'true',
+      now: args.now || new Date().toISOString()
+    });
+    console.log(JSON.stringify(result, null, 2));
+    if (!result.ok) process.exitCode = 1;
+    return;
+}
+
 export { ozSubcommandHandlers };
 
 export const commandRegistry = new Map([
@@ -1075,6 +1095,7 @@ export const commandRegistry = new Map([
   ['build-service-packet', handle_build_service_packet],
   ['validate-service-packet', handle_validate_service_packet],
   ['execute-service-packet', handle_execute_service_packet],
+  ['run-orchestration-service', handle_run_orchestration_service],
 ]);
 
 export const registeredCommandNames = [...commandRegistry.keys()].sort((a, b) => a.localeCompare(b));

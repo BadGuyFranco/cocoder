@@ -10,6 +10,7 @@ import {
   buildOrchestrationServicePacket,
   executeOrchestrationServicePacket,
   listOrchestrationServices,
+  runOrchestrationServiceForRun,
   validateOrchestrationServicePacket
 } from '../lib/services.mjs';
 
@@ -290,6 +291,76 @@ test('execute-service-packet CLI invokes configured headless executor', async ()
     assert.equal(result.ok, true, JSON.stringify(result.issues, null, 2));
     assert.equal(result.status, 'PASS');
     assert.equal(result.serviceId, 'handoff-compaction');
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test('run-orchestration-service builds packet artifacts under the run services directory', async () => {
+  const fixture = await createRunFixture();
+  try {
+    const requestPath = path.join(fixture.tmp, 'request.json');
+    await writeFile(requestPath, `${JSON.stringify({
+      objective: 'Summarize run artifacts without editing files.',
+      evidence: ['status.json', 'jobs/oscar/result.json']
+    }, null, 2)}\n`);
+
+    const result = await runOrchestrationServiceForRun({
+      serviceId: 'run-summary',
+      runDir: fixture.runDir,
+      request: requestPath,
+      contractsDir,
+      servicesDir,
+      execute: false,
+      now: '2026-05-27T12:00:00.000Z'
+    });
+
+    assert.equal(result.ok, true, JSON.stringify(result.issues, null, 2));
+    assert.equal(result.status, 'READY');
+    assert.equal(result.packetPath.endsWith('/services/run-summary-run-fixture-20260527T120000Z/packet.json'), true);
+    const packet = JSON.parse(await readFile(result.packetPath, 'utf8'));
+    assert.equal(packet.serviceId, 'run-summary');
+    assert.equal(packet.decisionAuthority, 'oscar-only');
+    const events = await readFile(path.join(fixture.runDir, 'events.jsonl'), 'utf8');
+    assert.match(events, /orchestration\.service\.packet\.built/);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test('run-orchestration-service CLI can execute through the configured fake executor', async () => {
+  const fixture = await createGitRunFixture();
+  try {
+    const executorPath = await createFakeExecutor(fixture.tmp, {
+      changedFile: 'cocoder/PRIORITIES.md',
+      status: 'PASS'
+    });
+    const requestPath = path.join(fixture.tmp, 'request.json');
+    await writeFile(requestPath, `${JSON.stringify({
+      objective: 'Compact the handoff without changing Oscar decisions.',
+      oscarDecision: { nextAtom: 'P3.1' },
+      allowedWrites: ['cocoder/PRIORITIES.md']
+    }, null, 2)}\n`);
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      cliPath,
+      'run-orchestration-service',
+      '--service', 'handoff-compaction',
+      '--run-dir', fixture.runDir,
+      '--request', requestPath,
+      '--repo-root', fixture.tmp,
+      '--executor-command', executorPath,
+      '--execute-service', 'true',
+      '--services-dir', servicesDir,
+      '--contracts-dir', contractsDir,
+      '--now', '2026-05-27T12:00:00.000Z'
+    ]);
+    const result = JSON.parse(stdout);
+    assert.equal(result.ok, true, JSON.stringify(result.issues, null, 2));
+    assert.equal(result.status, 'PASS');
+    assert.match(result.packetPath, /services\/handoff-compaction-run-fixture-20260527T120000Z\/packet\.json$/);
+    const events = await readFile(path.join(fixture.runDir, 'events.jsonl'), 'utf8');
+    assert.match(events, /orchestration\.service\.execution\.completed/);
   } finally {
     await fixture.cleanup();
   }

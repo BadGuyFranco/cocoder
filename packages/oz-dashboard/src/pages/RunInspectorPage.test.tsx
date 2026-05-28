@@ -34,8 +34,22 @@ describe("RunInspectorPage", () => {
                 launchJson: "/tmp/run-001/launch.json",
                 statusJson: "/tmp/run-001/status.json",
                 startupPacketJson: "/tmp/run-001/startup-packet.json",
-                jobsDir: "/tmp/run-001/jobs"
+                jobsDir: "/tmp/run-001/jobs",
+                servicesDir: "/tmp/run-001/services"
               },
+              services: [
+                {
+                  packetId: "run-summary-run-001",
+                  serviceId: "run-summary",
+                  mode: "read-only",
+                  status: "PASS",
+                  paths: {
+                    packetJson: "/tmp/run-001/services/run-summary-run-001/packet.json",
+                    resultJson: "/tmp/run-001/services/run-summary-run-001/result.json",
+                    transcriptTxt: "/tmp/run-001/services/run-summary-run-001/transcript.txt"
+                  }
+                }
+              ],
               collectedAt: "2026-05-23T12:00:00.000Z"
             }),
             { status: 200 }
@@ -57,6 +71,7 @@ describe("RunInspectorPage", () => {
       expect(screen.getByText("Run Inspector")).toBeTruthy();
       expect(screen.getByText("running")).toBeTruthy();
       expect(screen.getByText("bob-1")).toBeTruthy();
+      expect(screen.getByText("run-summary")).toBeTruthy();
       expect(screen.getByText(/\/tmp\/run-001\/launch.json/)).toBeTruthy();
     });
   });

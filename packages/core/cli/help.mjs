@@ -78,6 +78,7 @@ Commands:
   build-service-packet --service ID --run-dir PATH --request PATH [--output PATH] [--services-dir PATH] [--contracts-dir PATH] [--now ISO]
   validate-service-packet --packet PATH [--services-dir PATH] [--contracts-dir PATH]
   execute-service-packet --packet PATH [--repo-root PATH] [--executor-command CMD] [--model ID] [--result PATH] [--transcript PATH] [--services-dir PATH] [--contracts-dir PATH] [--now ISO]
+  run-orchestration-service --service ID --run-dir PATH --request PATH [--execute-service true] [--repo-root PATH] [--executor-command CMD] [--model ID] [--services-dir PATH] [--contracts-dir PATH] [--now ISO]
 `;
 
 export { HELP_TEXT };

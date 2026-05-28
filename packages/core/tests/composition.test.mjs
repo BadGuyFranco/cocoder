@@ -335,6 +335,30 @@ test('dry-run launch composition blocks matched-but-stale priorities', async () 
   }
 });
 
+test('dry-run launch composition blocks route-supported ghost priorities', async () => {
+  const fixture = await createCompositionFixture();
+  try {
+    const route = buildRoute();
+    route.supportedPriorityOwners = ['ORCHESTRATION-REBUILD', 'GHOST-PRIORITY'];
+    const result = await composeLaunchDryRun({
+      ...(await fixture.options({ profile: happyProfile(), route })),
+      priorityFile: fixture.priorityPath,
+      prioritySlug: 'ORCHESTRATION-REBUILD',
+      priorityBoundariesDir: fixture.boundariesDir,
+      sessionLogFile: fixture.sessionLogPath,
+      sessionLineLimit: 2
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.issues.some((issue) => issue.code === 'route-supported-priority-missing'), true);
+    assert.match(
+      result.issues.find((issue) => issue.code === 'route-supported-priority-missing').detail,
+      /GHOST-PRIORITY/
+    );
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
 async function createCompositionFixture(options = {}) {
   const tmp = await mkdtemp(path.join(os.tmpdir(), 'cocoder-composition-'));
   const adaptersDir = path.join(tmp, 'adapters');

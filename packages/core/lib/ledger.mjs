@@ -1,6 +1,6 @@
 import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { extractPriorityEntry, pathExists, readJson, readSessionLogBrief, sha256String, writeJson } from './fs-utils.mjs';
+import { extractPriorityEntry, extractPrioritySlugs, pathExists, readJson, readSessionLogBrief, sha256String, writeJson } from './fs-utils.mjs';
 import { loadContracts, validateInstance } from './contracts.mjs';
 import { loadProfile, loadRoute } from './config.mjs';
 import { resolveModelRoles } from './model-roles.mjs';
@@ -9,7 +9,7 @@ import { ensureSupersessionLedgerEvents, evaluateSupersessionsForRun } from './l
 import { auditDirtyDurableOrchestrationState } from './repo-state.mjs';
 import { isTerminalRunStatus, isTerminalRunStatusRecord } from './run-status.mjs';
 import { compactTimestamp, getLane, safeName } from './lib-utils.mjs';
-import { blockingPriorityBoundaryIssues, routePriorityIssue } from './orchestration-issues.mjs';
+import { blockingPriorityBoundaryIssues, routeGhostPriorityIssues, routePriorityIssue } from './orchestration-issues.mjs';
 import { auditPersonaRouteFit } from './persona-route-audit.mjs';
 
 const ALLOWED_STATUSES = new Set(['created', 'ready', 'running', 'blocked', 'needs_founder', 'failed', 'complete', 'aborted', 'stale']);
@@ -33,8 +33,10 @@ export async function createRun(options) {
   const profileRaw = await readFile(options.profilePath, 'utf8');
   const profileDigest = sha256String(profileRaw);
   const selectedPriority = await extractPriorityEntry(options.priorityFile, options.prioritySlug);
+  const prioritySlugs = await extractPrioritySlugs(options.priorityFile);
   const recentSessionContext = await readSessionLogBrief(options.sessionLogFile, options.sessionLineLimit);
   const routeIssue = routePriorityIssue(route, options.prioritySlug);
+  const ghostPriorityIssues = routeGhostPriorityIssues(route, prioritySlugs);
   const priorityContextIssue = priorityNextAtomDriftIssue(selectedPriority);
   const routeLaneRecords = collectRouteLaneRecords(profile, route.lanes || []);
   const personaRouteAudit = auditPersonaRouteFit({
@@ -54,6 +56,7 @@ export async function createRun(options) {
   const boundaryGaps = blockingPriorityBoundaryIssues(priorityBoundary)
     .map((issue) => `${issue.code}: ${issue.detail}`);
   const routeGaps = routeIssue ? [`${routeIssue.code}: ${routeIssue.detail}`] : [];
+  const ghostPriorityGaps = ghostPriorityIssues.map((issue) => `${issue.code}: ${issue.detail}`);
   const startupWarnings = [
     ...(priorityContextIssue ? [`${priorityContextIssue.code}: ${priorityContextIssue.detail}`] : []),
     ...personaRouteAudit.warnings.map((warning) => `persona-route-audit: ${warning}`)
@@ -61,11 +64,13 @@ export async function createRun(options) {
   const startupGaps = [
     ...(selectedPriority.matched ? [] : [`priority ${options.prioritySlug} was not found`]),
     ...routeGaps,
+    ...ghostPriorityGaps,
     ...boundaryGaps
   ];
   const isReady = selectedPriority.matched
     && selectedPriority.staleState === 'active'
     && routeGaps.length === 0
+    && ghostPriorityGaps.length === 0
     && boundaryGaps.length === 0;
   const resolvedWriteBoundaries = priorityBoundary?.ok
     ? priorityBoundary.writeBoundaries

@@ -52,8 +52,20 @@ export const ozRunEvidenceSummarySchema = z.object({
     launchJson: z.string(),
     statusJson: z.string(),
     startupPacketJson: z.string(),
-    jobsDir: z.string()
+    jobsDir: z.string(),
+    servicesDir: z.string()
   }),
+  services: z.array(z.object({
+    packetId: z.string(),
+    serviceId: z.string().nullable(),
+    mode: z.string().nullable(),
+    status: z.string().nullable(),
+    paths: z.object({
+      packetJson: z.string(),
+      resultJson: z.string().nullable(),
+      transcriptTxt: z.string().nullable()
+    })
+  })),
   collectedAt: z.string().datetime()
 });
 

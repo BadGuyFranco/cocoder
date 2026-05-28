@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { loadContracts, validateInstance } from './contracts.mjs';
 import { pathExists, readJson, writeJson } from './fs-utils.mjs';
+import { appendEvent } from './ledger.mjs';
 
 const execFileAsync = promisify(execFile);
 const DEFAULT_SERVICES_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../services');
@@ -121,6 +122,95 @@ export async function validateOrchestrationServicePacket(packetOrPath, { contrac
   }
   if (contractsDir) issues.push(...await validatePacketContract(packet, contractsDir));
   return { ok: issues.length === 0, packet, issues };
+}
+
+export async function runOrchestrationServiceForRun({
+  serviceId,
+  runDir,
+  request,
+  repoRoot = process.cwd(),
+  contractsDir,
+  servicesDir = DEFAULT_SERVICES_DIR,
+  executorCommand = 'cursor-agent',
+  model,
+  execute = false,
+  now = new Date().toISOString()
+} = {}) {
+  const built = await buildOrchestrationServicePacket({
+    serviceId,
+    runDir,
+    request,
+    contractsDir,
+    servicesDir,
+    now
+  });
+  if (!built.ok) {
+    return {
+      ok: false,
+      status: 'BLOCK',
+      serviceId: serviceId || null,
+      packetId: null,
+      packetPath: '',
+      resultPath: '',
+      transcriptPath: '',
+      issues: built.issues,
+      diagnosis: 'Service packet build failed.',
+      proposedFix: 'Ask Oscar to revise the service request before execution.',
+      nextAction: 'Return build blocker to Oscar.'
+    };
+  }
+
+  const packet = built.packet;
+  const outputDir = path.join(packet.run.runDir, 'services', packet.id);
+  const packetPath = path.join(outputDir, 'packet.json');
+  await writeJson(packetPath, packet);
+  await appendEvent(packet.run.runDir, {
+    type: 'orchestration.service.packet.built',
+    serviceId: packet.serviceId,
+    packetId: packet.id,
+    packetPath: path.relative(packet.run.runDir, packetPath),
+    execute
+  });
+
+  if (!execute) {
+    return {
+      ok: true,
+      status: 'READY',
+      serviceId: packet.serviceId,
+      packetId: packet.id,
+      packetPath,
+      resultPath: path.join(outputDir, 'result.json'),
+      transcriptPath: path.join(outputDir, 'transcript.txt'),
+      packet,
+      issues: [],
+      diagnosis: 'Service packet built and validated; execution was not requested.',
+      proposedFix: 'None.',
+      nextAction: 'Oscar may execute this packet with execute-service-packet or rerun with --execute-service true.'
+    };
+  }
+
+  const execution = await executeOrchestrationServicePacket({
+    packetPath,
+    repoRoot,
+    contractsDir,
+    servicesDir,
+    executorCommand,
+    model,
+    now
+  });
+  await appendEvent(packet.run.runDir, {
+    type: 'orchestration.service.execution.completed',
+    serviceId: packet.serviceId,
+    packetId: packet.id,
+    status: execution.status,
+    ok: execution.ok,
+    resultPath: path.relative(packet.run.runDir, execution.resultPath || path.join(outputDir, 'result.json')),
+    transcriptPath: path.relative(packet.run.runDir, execution.transcriptPath || path.join(outputDir, 'transcript.txt'))
+  });
+  return {
+    ...execution,
+    packetPath
+  };
 }
 
 export async function executeOrchestrationServicePacket({

@@ -3,9 +3,26 @@ import { Link, useParams } from "react-router-dom";
 import type { OzRunEvidenceSummary } from "schemas";
 import { getRunEvidence } from "../api/runs.js";
 
+type ServiceArtifact = {
+  packetId: string;
+  serviceId: string | null;
+  mode: string | null;
+  status: string | null;
+  paths: {
+    packetJson: string;
+    resultJson: string | null;
+    transcriptTxt: string | null;
+  };
+};
+
+type RunEvidenceWithServices = OzRunEvidenceSummary & {
+  evidencePaths: OzRunEvidenceSummary["evidencePaths"] & { servicesDir?: string };
+  services?: ServiceArtifact[];
+};
+
 export function RunInspectorPage() {
   const { runId = "" } = useParams();
-  const [evidence, setEvidence] = useState<OzRunEvidenceSummary | null>(null);
+  const [evidence, setEvidence] = useState<RunEvidenceWithServices | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -28,6 +45,8 @@ export function RunInspectorPage() {
   if (!runId) {
     return <p className="error">Run ID is required.</p>;
   }
+
+  const services = evidence?.services ?? [];
 
   return (
     <section>
@@ -72,6 +91,10 @@ export function RunInspectorPage() {
               <dt>Root check</dt>
               <dd>{evidence.flags.rootCheck.ok ? "ok" : "failed"}</dd>
             </div>
+            <div>
+              <dt>Service packets</dt>
+              <dd>{services.length}</dd>
+            </div>
           </dl>
 
           <h2>Topology</h2>
@@ -111,6 +134,32 @@ export function RunInspectorPage() {
             </p>
           ))}
 
+          <h2>Services</h2>
+          {services.length > 0 ? (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Packet</th>
+                  <th>Service</th>
+                  <th>Status</th>
+                  <th>Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                {services.map((service) => (
+                  <tr key={service.packetId}>
+                    <td>{service.packetId}</td>
+                    <td>{service.serviceId ?? "—"}</td>
+                    <td>{service.status ?? "pending"}</td>
+                    <td>{service.paths.resultJson ?? service.paths.packetJson}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="muted">No service artifacts.</p>
+          )}
+
           <h2>Evidence paths</h2>
           <ul className="plain-list">
             <li>Run dir: {evidence.evidencePaths.runDir}</li>
@@ -118,6 +167,7 @@ export function RunInspectorPage() {
             <li>status.json: {evidence.evidencePaths.statusJson}</li>
             <li>startup-packet.json: {evidence.evidencePaths.startupPacketJson}</li>
             <li>jobs/: {evidence.evidencePaths.jobsDir}</li>
+            <li>services/: {evidence.evidencePaths.servicesDir ?? `${evidence.evidencePaths.runDir}/services`}</li>
           </ul>
         </>
       ) : null}

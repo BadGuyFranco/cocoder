@@ -156,6 +156,9 @@
             },
             "jobsDir": {
               "type": "string"
+            },
+            "servicesDir": {
+              "type": "string"
             }
           },
           "required": [
@@ -163,9 +166,73 @@
             "launchJson",
             "statusJson",
             "startupPacketJson",
-            "jobsDir"
+            "jobsDir",
+            "servicesDir"
           ],
           "additionalProperties": false
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "packetId": {
+                "type": "string"
+              },
+              "serviceId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "mode": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "paths": {
+                "type": "object",
+                "properties": {
+                  "packetJson": {
+                    "type": "string"
+                  },
+                  "resultJson": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "transcriptTxt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "packetJson",
+                  "resultJson",
+                  "transcriptTxt"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "packetId",
+              "serviceId",
+              "mode",
+              "status",
+              "paths"
+            ],
+            "additionalProperties": false
+          }
         },
         "collectedAt": {
           "type": "string",
@@ -179,6 +246,7 @@
         "topology",
         "flags",
         "evidencePaths",
+        "services",
         "collectedAt"
       ],
       "additionalProperties": false
