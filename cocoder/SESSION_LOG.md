@@ -14,6 +14,20 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ---
 
+## 2026-05-27 — **D Milestone 1 docs complete (4 docs + ADR-0001 fix); external stranger test removed from v0.1 scope**
+
+**Persona:** Oscar (lead) + Bob (builder, codex) | **Priority:** v0.1-foundation | **Plan:** [`plans/2026-05-21-docs-publish.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-docs-publish.plan.md) | **Run:** zx0s33ag
+
+**Outcomes:**
+- Bob authored the 4 remaining D-M1 docs: `docs/orchestration.md` (D-M1.2), `docs/personas.md` (D-M1.3), `docs/oz.md` (D-M1.4), `docs/freshness-policy.md` (D-M1.6). Oscar verified: correct topics + cross-links, `oz.md` summarizes rather than duplicates the C-Expand security/launch docs, freshness panel marked deferred-to-v0.2; `check-doc-refs` **0 missing refs** across 34 in-scope refs (Class B).
+- Oscar fixed **D-M1.9**: ADR-0001 decision 6 `.command` reference now carries a dated inline footnote (founder chose option (i), not a new ADR), pointing at ticket 0001 Path B + terminal-only CLI/Oz launch surfaces.
+- **Scope decision (founder):** external stranger-test recruit **removed** from v0.1 — "never should have been a requirement." PD-Q1 revised; Milestone 3 (D-M3.1–D-M3.3) struck. Internal-proxy dry-run (D-S1) retained as the doc-readiness check.
+- Found the prior run's (suesc2sq) D-doc work had been committed as `3cbadd4` mid-session by a concurrent actor; did **not** duplicate it. Unrelated dirty `PrioritiesPage.tsx` left untouched.
+
+**Next:** Remaining v0.1 items need a **wider write boundary** than this run had: D-M1.7 `ARCHITECTURE.md` verify + D-M1.8 `README.md` adopter rewrite (repo-root), D-S2 CI gates (`.github/`), D-S1 internal-proxy readiness, then `v0.1.0` tag. **Still entangled:** v0.1 docs + v0.4 control-plane work share governance files on branch `oz-control-plane-design` — main-merge strategy is a founder call (see result).
+
+---
+
 ## 2026-05-27 — **D doc prereqs landed (faq.md + getting-started.md); D-S2 CI gates deferred (write boundary)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** v0.1-foundation | **Plan:** [`plans/2026-05-21-docs-publish.plan.md`](./priorities/v0.1-foundation/plans/2026-05-21-docs-publish.plan.md) | **Run:** suesc2sq
