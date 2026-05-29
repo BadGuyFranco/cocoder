@@ -43,9 +43,15 @@ importers:
 
   packages/daemon:
     dependencies:
+      '@cocoder/adapters':
+        specifier: workspace:*
+        version: link:../adapters
       '@cocoder/core':
         specifier: workspace:*
         version: link:../core
+      '@cocoder/session-hosts':
+        specifier: workspace:*
+        version: link:../session-hosts
 
   packages/session-hosts:
     dependencies:
