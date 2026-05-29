@@ -156,6 +156,15 @@ class SqliteRunStore implements RunStore {
     return row ? toRun(row) : null
   }
 
+  listRuns(filter: { workspaceId?: string; limit?: number } = {}): Run[] {
+    const where = filter.workspaceId ? `WHERE workspace_id = ?` : ''
+    const limit = filter.limit ? `LIMIT ${Number(filter.limit) | 0}` : ''
+    const sql = `SELECT * FROM run ${where} ORDER BY created_at DESC ${limit}`
+    const stmt = this.#db.prepare(sql)
+    const rows = (filter.workspaceId ? stmt.all(filter.workspaceId) : stmt.all()) as unknown as RunRow[]
+    return rows.map(toRun)
+  }
+
   createSession(input: { runId: string; persona: string; sessionRef: string }): Session {
     const session: Session = {
       id: genId('ses'),

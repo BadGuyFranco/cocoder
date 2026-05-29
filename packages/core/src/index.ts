@@ -32,6 +32,8 @@ export type {
 } from './store/index.js'
 export { openRunStore, type OpenRunStoreOptions, SCHEMA_SQL } from './store/index.js'
 
+export { probeDaemon, DEFAULT_OZ_PORT, type ProbeResult, type ProbeOptions } from './liveness/index.js'
+
 export type { Persona, PersonaAssignment, Assignments, ResolvedPersona } from './personas/index.js'
 export { parseFrontmatter, type Frontmatter, loadPersona, loadAssignments, resolvePersona } from './personas/index.js'
 

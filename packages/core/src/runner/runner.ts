@@ -7,7 +7,7 @@ import { runCommitGate } from '../commit-gate/index.js'
 import type { Git } from '../commit-gate/index.js'
 import type { Priority } from '../priorities/index.js'
 import type { ResolvedPersona } from '../personas/index.js'
-import type { RunStatus, RunStore, Workspace } from '../store/index.js'
+import type { Run, RunStatus, RunStore, Workspace } from '../store/index.js'
 import { effectiveScope } from '../write-scope/index.js'
 import type { SessionHost } from '../session-host/index.js'
 import { join } from 'node:path'
@@ -23,6 +23,10 @@ export interface RunnerDeps {
   readonly io: RunnerIO
   readonly timeouts?: { orchestrationMs?: number; buildMs?: number; pollMs?: number }
   readonly log?: (msg: string) => void
+  /** Fired synchronously the instant the run row is created (before any await), so a fire-and-forget
+   *  caller (the Oz daemon) learns the runId for its 202 response WITHOUT pre-creating a second row —
+   *  runRun stays the single home of the createRun write (ADR-0003 / F6). */
+  readonly onRunCreated?: (run: Run) => void
 }
 
 export interface RunInput {
@@ -62,6 +66,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
   store.upsertWorkspace(workspace)
   const run = store.createRun({ workspaceId: workspace.id, priorityId: priority.id })
+  deps.onRunCreated?.(run) // synchronous, before the first await — the daemon captures runId here
   const runDir = join(runsRoot, run.id)
   await io.ensureRunDir(runDir)
   store.recordEvent({ runId: run.id, type: 'run-start', data: { priority: priority.id, runDir } })

@@ -66,6 +66,9 @@ export interface RunStore {
   createRun(input: { workspaceId: string; priorityId: string }): Run
   setRunStatus(runId: string, status: RunStatus): void
   getRun(runId: string): Run | null
+  /** Cross-run read (newest-first), optionally scoped to a workspace (ADR-0003: one WHERE).
+   *  Powers Oz's run-list surface and the daemon's startup orphan reconciliation. */
+  listRuns(filter?: { workspaceId?: string; limit?: number }): Run[]
 
   createSession(input: { runId: string; persona: string; sessionRef: string }): Session
   setSessionExit(sessionId: string, exitCode: number): void

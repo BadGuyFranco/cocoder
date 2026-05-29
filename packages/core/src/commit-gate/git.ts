@@ -12,6 +12,8 @@ export interface Git {
   changedFiles(cwd: string): Promise<string[]>
   /** Stage + commit exactly `files` (pathspec --only semantics); return the new HEAD sha. */
   addAndCommit(cwd: string, files: readonly string[], message: string): Promise<string>
+  /** `git show <sha>` — the committed diff for a run's commit_link (read-only; Oz run detail). */
+  show(cwd: string, sha: string): Promise<string>
 }
 
 const git = async (cwd: string, args: string[]): Promise<string> => {
@@ -48,6 +50,9 @@ export function makeGit(): Git {
       await git(cwd, ['add', '--', ...files])
       await git(cwd, ['commit', '-m', message, '--', ...files])
       return (await git(cwd, ['rev-parse', 'HEAD'])).trim()
+    },
+    async show(cwd, sha) {
+      return git(cwd, ['show', sha])
     },
   }
 }

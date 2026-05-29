@@ -58,6 +58,9 @@ function fakeGit(changed: string[]): Git {
     async addAndCommit() {
       return 'sha-committed'
     },
+    async show() {
+      return ''
+    },
   }
 }
 
@@ -114,6 +117,14 @@ describe('runRun', () => {
     expect(result.status).toBe('pending-scope-decision')
     expect(result.outOfScope).toEqual(['docs/leak.md'])
     expect(store.listEvents(result.runId).some((e) => e.type === 'out-of-scope')).toBe(true)
+  })
+
+  test('onRunCreated fires synchronously with the created run (daemon learns runId for its 202)', async () => {
+    const store = openRunStore(':memory:')
+    const seen: string[] = []
+    const result = await runRun(baseDeps({ store, onRunCreated: (r) => seen.push(r.id) }), input)
+    expect(seen).toEqual([result.runId])
+    expect(store.getRun(result.runId)?.status).toBeDefined() // the row exists from the hook onward
   })
 
   test('preflight failure aborts before spawning and marks the run failed', async () => {

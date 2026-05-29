@@ -61,6 +61,21 @@ describe('RunStore (:memory:)', () => {
     expect(links[0]).toMatchObject({ commitSha: 'abc1234', files: ['packages/cli/src/run.ts'] })
   })
 
+  test('listRuns: newest-first, workspace filter, and limit', () => {
+    store.upsertWorkspace({ id: 'other', path: '/other', name: 'Other' })
+    const a = store.createRun({ workspaceId: 'cocoder', priorityId: 'p-1' })
+    const b = store.createRun({ workspaceId: 'cocoder', priorityId: 'p-2' })
+    const c = store.createRun({ workspaceId: 'other', priorityId: 'p-3' })
+
+    // Newest-first across all workspaces (clock is monotonic, so c > b > a).
+    expect(store.listRuns().map((r) => r.id)).toEqual([c.id, b.id, a.id])
+    // Scoped to a workspace (ADR-0003: one WHERE).
+    expect(store.listRuns({ workspaceId: 'cocoder' }).map((r) => r.id)).toEqual([b.id, a.id])
+    expect(store.listRuns({ workspaceId: 'other' }).map((r) => r.id)).toEqual([c.id])
+    // Limit.
+    expect(store.listRuns({ limit: 1 }).map((r) => r.id)).toEqual([c.id])
+  })
+
   test('events store JSON data and read back in order', () => {
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'p-1' })
     store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: 'oscar' } })
