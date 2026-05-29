@@ -111,13 +111,15 @@ describe('Oz server security (wired, ephemeral port)', () => {
     expect(r).toMatchObject({ status: 403, json: { error: 'missing or invalid csrf token' } })
   })
 
-  test('C-S4: valid Bearer + valid CSRF passes the gate (reaches routing — 404, not 401/403)', async () => {
+  test('C-S4: valid Bearer + valid CSRF passes the gate (reaches the handler — 400 on empty body, not 401/403)', async () => {
     const { port, token, csrfToken } = await start()
     const r = await http(port, {
       method: 'POST',
       path: '/runs',
       headers: { authorization: `Bearer ${token}`, [OZ_CSRF_HEADER]: csrfToken },
     })
-    expect(r.status).toBe(404) // gates passed; the /runs route lands in stage 4
+    // The gate passed (not 401/403); POST /runs now exists and rejects the missing workspaceId/priorityId.
+    expect(r.status).toBe(400)
+    expect([401, 403]).not.toContain(r.status)
   })
 })

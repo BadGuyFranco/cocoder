@@ -1,42 +1,45 @@
 // Route dispatch for the Oz daemon. The security gate (server.ts) has already run; these handlers
 // read/serve the four surfaces. Stage 3 = the read surfaces; stage 4 adds the mutations (launch,
 // deep-link, assignments write) to the same dispatch. All handlers close over the shared OzContext.
-import { readdir } from 'node:fs/promises'
-import type { ServerResponse } from 'node:http'
+import { readdir, rename, rm, writeFile } from 'node:fs/promises'
+import type { IncomingMessage, ServerResponse } from 'node:http'
 import { join } from 'node:path'
-import {
-  loadAssignments,
-  loadPersona,
-  loadPriority,
-  truncate,
-  type Adapter,
-  type Git,
-  type RunnerIO,
-  type RunStore,
-  type SessionHost,
-} from '@cocoder/core'
+import { loadAssignments, loadPersona, loadPriority, truncate } from '@cocoder/core'
+import type { OzContext } from './context.js'
 import { sendJson } from './server.js'
 import { findWorkspace, readWorkspaces } from './registry.js'
 import { readRunDir } from './rundir.js'
+import { appendAudit } from './audit.js'
+import { launchRun, showRun } from './launcher.js'
 
-/** Everything the route handlers need — built once in createOzServer, shared for the daemon's life. */
-export interface OzContext {
-  readonly cocoderHome: string
-  readonly runsRoot: string
-  readonly store: RunStore
-  readonly git: Git
-  readonly sessionHost: SessionHost
-  readonly getAdapter: (cli: string) => Adapter
-  readonly io: RunnerIO
-  readonly token: string
-  readonly csrfToken: string
-  /** surfaceRefs this daemon process spawned — powers live deep-links (stage 4 populates). */
-  readonly liveRefs: Set<string>
-  /** workspaceId → runId for the single in-flight run per workspace (stage 4 populates). */
-  readonly inFlight: Map<string, string>
-}
+export type { OzContext } from './context.js'
 
 const CAP = 50_000
+
+/** Read + JSON-parse a request body with a hard size cap (mutation handlers). */
+function readJsonBody(req: IncomingMessage): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    let data = ''
+    let size = 0
+    req.on('data', (chunk: Buffer) => {
+      size += chunk.length
+      if (size > 1_000_000) {
+        reject(new Error('request body too large'))
+        req.destroy()
+        return
+      }
+      data += chunk
+    })
+    req.on('end', () => {
+      try {
+        resolve(data ? JSON.parse(data) : {})
+      } catch (err) {
+        reject(err)
+      }
+    })
+    req.on('error', reject)
+  })
+}
 
 /** Personas dir / priorities dir for a workspace's tracked governance zone. */
 const personasDir = (workspacePath: string): string => join(workspacePath, 'cocoder', 'personas')
@@ -159,6 +162,59 @@ export async function dispatchReads(ctx: OzContext, method: string, pathname: st
   }
   if (method === 'GET' && seg[0] === 'runs' && seg.length === 2) {
     await runDetail(ctx, res, decodeURIComponent(seg[1]!))
+    return true
+  }
+  return false
+}
+
+/** PUT /workspaces/:id/personas/assignments — surface 3 (write). Validates via loadAssignments
+ *  (one home for the rule) then writes atomically (temp + rename). Founder settings write — NOT an
+ *  agent write, so no commit-gate. */
+async function writeAssignments(ctx: OzContext, res: ServerResponse, workspaceId: string, body: unknown): Promise<void> {
+  const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
+  if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
+  const dir = personasDir(ws.path)
+  const target = join(dir, 'assignments.json')
+  const tmp = join(dir, '.assignments.json.tmp')
+  await writeFile(tmp, `${JSON.stringify(body, null, 2)}\n`)
+  try {
+    loadAssignments(tmp) // reuse the validator (rejects missing/!string cli|model) — one home
+  } catch (err) {
+    await rm(tmp, { force: true })
+    return sendJson(res, 400, { error: err instanceof Error ? err.message : String(err) })
+  }
+  await rename(tmp, target) // atomic on the same filesystem
+  void appendAudit(ctx.cocoderHome, { action: 'assignments-write', workspaceId })
+  sendJson(res, 200, { ok: true, assignments: loadAssignments(target).personas })
+}
+
+/** Mutation dispatch (stage 4). Returns true if handled. The security gate already required CSRF. */
+export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pathname: string, res: ServerResponse): Promise<boolean> {
+  const method = req.method ?? 'GET'
+  const seg = pathname.split('/').filter(Boolean)
+
+  if (method === 'POST' && pathname === '/runs') {
+    let body: any
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      return sendJson(res, 400, { error: 'invalid JSON body' }), true
+    }
+    const { status, body: out } = await launchRun(ctx, body?.workspaceId, body?.priorityId)
+    return sendJson(res, status, out), true
+  }
+  if (method === 'POST' && seg[0] === 'runs' && seg.length === 3 && seg[2] === 'show') {
+    const { status, body: out } = await showRun(ctx, decodeURIComponent(seg[1]!))
+    return sendJson(res, status, out), true
+  }
+  if (method === 'PUT' && seg[0] === 'workspaces' && seg.length === 4 && seg[2] === 'personas' && seg[3] === 'assignments') {
+    let body: unknown
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      return sendJson(res, 400, { error: 'invalid JSON body' }), true
+    }
+    await writeAssignments(ctx, res, decodeURIComponent(seg[1]!), body)
     return true
   }
   return false

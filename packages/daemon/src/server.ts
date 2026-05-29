@@ -20,7 +20,9 @@ import { getAdapter as resolveAdapter, makeAdapterRegistry } from '@cocoder/adap
 import { CmuxSessionHost } from '@cocoder/session-hosts'
 import { checkBearer, checkCsrf, checkHost, checkOrigin, isMutation } from './security.js'
 import { readOrCreateToken } from './secrets.js'
-import { dispatchReads, type OzContext } from './routes.js'
+import { dispatchMutations, dispatchReads } from './routes.js'
+import type { OzContext } from './context.js'
+import { reconcileOrphans } from './launcher.js'
 
 export interface OzServerOptions {
   /** Install root (holds local/secrets, local/cocoder.db, local/runs, the workspace registry). */
@@ -108,8 +110,13 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
 
     // --- surfaces ---
     if (await dispatchReads(ctx, req.method ?? 'GET', pathname, url.searchParams, res)) return
+    if (await dispatchMutations(ctx, req, pathname, res)) return
     return sendJson(res, 404, { error: 'not found' })
   }
+
+  // Startup orphan reconciliation: any run still 'running' at boot was stranded by a prior daemon
+  // crash/restart (the live set is empty here) — mark it failed so surface 4 stays honest (F6).
+  reconcileOrphans(ctx)
 
   const server = createServer(handler)
   const port = await new Promise<number>((resolve) => {
