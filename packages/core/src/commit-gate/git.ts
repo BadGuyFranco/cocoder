@@ -67,14 +67,17 @@ export function makeGit(): Git {
       return (await git(cwd, ['rev-parse', 'HEAD'])).trim()
     },
     async restoreToHead(cwd, files) {
-      // Per file so a mix of tracked + untracked works: restore tracked from HEAD; if that fails the
-      // path is untracked (no HEAD entry) → remove it. Pathspec-scoped, so only these files are touched.
+      // Per file, decided by tracked-ness FIRST (never a blind checkout→clean fallback — that could
+      // delete a file a transient checkout error left behind). Tracked → restore from HEAD (a real
+      // failure SURFACES, so the caller can record a failed quarantine instead of a bogus success).
+      // Untracked → remove. Pathspec-scoped, so only these files are touched.
       for (const f of files) {
-        try {
-          await git(cwd, ['checkout', 'HEAD', '--', f])
-        } catch {
-          await git(cwd, ['clean', '-f', '--', f]).catch(() => {})
-        }
+        const tracked = await git(cwd, ['ls-files', '--error-unmatch', '--', f]).then(
+          () => true,
+          () => false,
+        )
+        if (tracked) await git(cwd, ['checkout', 'HEAD', '--', f])
+        else await git(cwd, ['clean', '-f', '--', f])
       }
     },
     async show(cwd, sha) {

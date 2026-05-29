@@ -13,7 +13,7 @@ const okAdapter: Adapter = {
   build: () => ({ command: 'x', args: [] }),
   preflight: async () => ({ ok: true, checks: [{ name: 'installed', ok: true, detail: 'ok' }] }),
 }
-const fakeGit = (changed: string[] = ['packages/x.ts'], shas: readonly string[] = ['h0']): Git => {
+const fakeGit = (changed: string[] = [], shas: readonly string[] = ['h0']): Git => {
   let headCalls = 0
   return {
     async headSha() {
@@ -194,7 +194,7 @@ describe('Oz mutations + lifecycle', () => {
   test('POST /runs records daemon-stale once when the daemon boot sha differs from current HEAD', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     try {
-      await startServer(fakeGit(['packages/x.ts'], ['boot-sha', 'head-sha']))
+      await startServer(fakeGit([], ['boot-sha', 'head-sha']))
       const r = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
       expect(r.status).toBe(202)
       expect(r.json.runId).toMatch(/^run_/)
@@ -211,7 +211,7 @@ describe('Oz mutations + lifecycle', () => {
   })
 
   test('POST /runs skips daemon-stale when the daemon boot sha matches current HEAD', async () => {
-    await startServer(fakeGit(['packages/x.ts'], ['same-sha']))
+    await startServer(fakeGit([], ['same-sha']))
     const r = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
     expect(r.status).toBe(202)
     expect(r.json.runId).toMatch(/^run_/)

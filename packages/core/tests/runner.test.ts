@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import {
   type Adapter,
   type Directive,
+  DirtyWorkingTreeError,
   type Git,
   type MakeJudge,
   MissingObjectiveError,
@@ -63,7 +64,9 @@ function scriptedGit(changedPerAtom: string[][]): Git {
       return head
     },
     async changedFiles() {
-      return changedPerAtom[call++] ?? []
+      // First call is the runner's clean-tree precondition → report a clean tree; then per-atom sets.
+      const i = call++
+      return i === 0 ? [] : (changedPerAtom[i - 1] ?? [])
     },
     async addAndCommit() {
       head = `sha-${call}`
@@ -200,7 +203,7 @@ describe('runRun (multi-atom loop)', () => {
     const store = openRunStore(':memory:')
     const restored: string[][] = []
     let call = 0
-    const changedPerCall = [['packages/bad.ts'], ['packages/good.ts']] // atom0 rejected leftovers, then atom1's work
+    const changedPerCall = [[], ['packages/bad.ts'], ['packages/good.ts']] // [precondition: clean], atom0 rejected, atom1's work
     const git: Git = {
       async headSha() {
         return 'h0'
@@ -442,6 +445,83 @@ describe('runRun (multi-atom loop)', () => {
     ).rejects.toThrow(/no valid directive/)
     expect(killed.length).toBeGreaterThan(0) // the standby Bob was torn down
     expect(store.getRun(store.listRuns()[0]!.id)?.status).toBe('failed')
+  })
+
+  test('refuses to launch on a dirty in-scope working tree (no data-loss from a later quarantine)', async () => {
+    const store = openRunStore(':memory:')
+    const spawns: string[] = []
+    // changedFiles returns a pre-existing IN-SCOPE change at the launch precondition check.
+    const dirtyGit: Git = { ...scriptedGit([]), async changedFiles() {
+      return ['packages/already-here.ts']
+    } }
+    await expect(
+      runRun(baseDeps({ store, git: dirtyGit, sessionHost: fakeSessionHost({ async spawn(o) {
+        spawns.push(o.persona)
+        return { id: 's', driver: 'fake' }
+      } }) }), input),
+    ).rejects.toBeInstanceOf(DirtyWorkingTreeError)
+    expect(spawns).toEqual([]) // failed BEFORE spawning any agent
+    expect(store.getRun(store.listRuns()[0]!.id)?.status).toBe('failed')
+  })
+
+  test('out-of-scope dirt at launch is allowed (held back, never touched)', async () => {
+    const store = openRunStore(':memory:')
+    // launch precondition sees only an out-of-scope change → proceeds normally
+    let cf = 0
+    const git: Git = { ...scriptedGit([['packages/x.ts']]), async changedFiles() {
+      return cf++ === 0 ? ['docs/notes.md'] : ['packages/x.ts'] // precondition sees out-of-scope only → proceeds
+    } }
+    const result = await runRun(baseDeps({ store, git }), input)
+    expect(result.status).toBe('completed')
+  })
+
+  test('a self-committed rejected atom is surfaced (working-tree quarantine cannot undo it)', async () => {
+    const store = openRunStore(':memory:')
+    let n = 0
+    // clean at launch; HEAD moves between the atom's headBefore snapshot and the post-reject check.
+    const git: Git = {
+      async headSha() {
+        return n++ === 0 ? 'h0' : 'h-self' // headBefore = h0; the post-reject check sees HEAD moved (self-commit)
+      },
+      async changedFiles() {
+        return []
+      },
+      async addAndCommit() {
+        return 'x'
+      },
+      async restoreToHead() {},
+      async show() {
+        return ''
+      },
+    }
+    await runRun(
+      baseDeps({ store, git, io: fakeIO({ directives: [delegate('a'), wrapup('done')], verdicts: [{ verdict: 'fail', reason: 'no' }] }) }),
+      input,
+    )
+    expect(store.listEvents(store.listRuns()[0]!.id).some((e) => e.type === 'atom-self-committed-rejected')).toBe(true)
+  })
+
+  test('triage is skipped (not falsely recorded) when Deb\'s pane is dead', async () => {
+    const store = openRunStore(':memory:')
+    const debDead: RunnerIO = { ...fakeIO({ directives: [delegate('do it')] }), async awaitTriage() {
+      throw new Error('session exited before a triage verdict')
+    } }
+    await expect(
+      runRun(
+        baseDeps({
+          store,
+          io: debDead,
+          makeJudge: () => async () => ({ state: 'progressing' }),
+          sessionHost: fakeSessionHost({ async status() {
+            return { state: 'exited', code: 1 }
+          } }),
+        }),
+        { ...input, deb },
+      ),
+    ).rejects.toThrow(/builder dead/)
+    const types = store.listEvents(store.listRuns()[0]!.id).map((e) => e.type)
+    expect(types).toContain('triage-skipped')
+    expect(types).not.toContain('fault-triaged') // never claim a verdict we didn't get
   })
 
   test('preflight failure aborts before spawning and marks the run failed', async () => {

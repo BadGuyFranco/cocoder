@@ -110,6 +110,16 @@ export class MissingObjectiveError extends Error {
   }
 }
 
+export class DirtyWorkingTreeError extends Error {
+  constructor(files: readonly string[]) {
+    super(
+      `working tree has ${files.length} uncommitted in-scope change(s) — commit or stash before launching ` +
+        `(a run commits and, on a rejected atom, discards in-scope files on your behalf): ${files.join(', ')}`,
+    )
+    this.name = 'DirtyWorkingTreeError'
+  }
+}
+
 // Interactive sessions are human-watched, so an atom may take many minutes — these are generous
 // BACKSTOPS, not tight headless budgets. A dead pane is caught immediately by the monitor's liveness
 // check; a timeout only guards a run abandoned with a still-alive pane. Default 4h, matching CoBuilder.
@@ -161,6 +171,18 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   }
 
   const scope = effectiveScope(bob.writeScope, priority.scopeNarrowing) // known at launch (constant per run)
+
+  // Clean-tree precondition (fail fast, before spawning): a run commits in-scope files on the founder's
+  // behalf and, on a rejected atom, DISCARDS in-scope working-tree changes — so pre-existing uncommitted
+  // in-scope work would be swept into the run's commit or destroyed by the quarantine. Refuse rather than
+  // risk it. Out-of-scope dirt is fine (always held back, never touched). This also makes the per-atom
+  // quarantine sound: with a clean in-scope start, every in-scope change during the run is the run's own.
+  const preExistingInScope = partitionByScope(await git.changedFiles(workspace.path), scope).inScope
+  if (preExistingInScope.length > 0) {
+    store.recordEvent({ runId: run.id, type: 'dirty-working-tree', data: { files: preExistingInScope } })
+    store.setRunStatus(run.id, 'failed')
+    throw new DirtyWorkingTreeError(preExistingInScope)
+  }
   // The run's cmux workspace is named for the run: "<priority> #<session number>" (the numeric part of
   // the sequential run id), so the founder identifies it by priority + session, not by a persona.
   const groupLabel = `${priority.id} #${run.id.replace(/^run_/, '')}`
@@ -330,13 +352,23 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     if (verdict.verdict === 'fail') {
       store.recordEvent({ runId: run.id, type: 'verify-rejected', data: { atom: atomIndex, reason: verdict.reason } })
       store.setWorkItemStatus(workItem.id, 'abandoned')
+      // If the rejected atom SELF-committed (HEAD moved under trust-the-CLI), the working-tree quarantine
+      // can't undo it — surface that so it isn't silently carried in history.
+      if ((await git.headSha(workspace.path)) !== headBefore) {
+        store.recordEvent({ runId: run.id, type: 'atom-self-committed-rejected', data: { atom: atomIndex, headBefore } })
+      }
       // QUARANTINE (atom isolation): discard this rejected atom's IN-SCOPE working-tree changes so they
-      // can't ride into a LATER passing atom's commit. Prior atoms' in-scope work is already committed
-      // (untouched); held-back out-of-scope files are left alone (they never commit anyway).
+      // can't ride into a LATER passing atom's commit. The clean-tree precondition + per-atom commit
+      // guarantee every in-scope change now in the tree is THIS atom's; prior work is committed (untouched),
+      // out-of-scope files are left alone. If the restore fails, record it honestly (don't claim success).
       const { inScope: rejectedInScope } = partitionByScope(await git.changedFiles(workspace.path), scope)
       if (rejectedInScope.length > 0) {
-        await git.restoreToHead(workspace.path, rejectedInScope)
-        store.recordEvent({ runId: run.id, type: 'atom-quarantined', data: { atom: atomIndex, files: rejectedInScope } })
+        try {
+          await git.restoreToHead(workspace.path, rejectedInScope)
+          store.recordEvent({ runId: run.id, type: 'atom-quarantined', data: { atom: atomIndex, files: rejectedInScope } })
+        } catch (err) {
+          store.recordEvent({ runId: run.id, type: 'atom-quarantine-failed', data: { atom: atomIndex, files: rejectedInScope, reason: String(err) } })
+        }
       }
       consecutiveRejects += 1
       outcomeLine = `atom ${atomIndex} was REJECTED (${verdict.reason ?? 'no reason'}) — nothing committed`
