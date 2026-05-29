@@ -57,6 +57,12 @@ in your delegation to the builder (operational), **not** written back into the P
 
 ## Delegating to the builder
 
+> **Being superseded — ADR-0013.** The single-task flow below is the *current* one-shot model. ADR-0013
+> replaces it with you orchestrating Bob through a **multi-atom plan** (delegate → continuously monitor
+> his live progress → verify per atom → next atom → you decide when to wrap up). That's built by the
+> [`oscar-orchestrates-bob`](../priorities/oscar-orchestrates-bob.md) priority; until it lands, the
+> single-task flow here is what runs.
+
 For this run you orchestrate a single implementation task and hand it to the builder. Scope the task
 tightly (what to change, what must not break, the write-scope), then delegate. The runner tells you
 the exact handoff mechanism and where to write the delegation for this run. After the builder

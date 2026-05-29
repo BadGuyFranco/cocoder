@@ -113,17 +113,17 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
 4. `base-and-extension-personas` — ADR-0012 living base + repo deltas merged at load. Foundational
    (persona loader/storage) and the thing that makes Deb's "fix the base for everyone" path real —
    reconcile with the in-flight `deb` run.
-4. `plays-mechanism` — ADR-0005 Plays mechanism, proven by extracting **wrap-up** as the first Play
+5. `plays-mechanism` — ADR-0005 Plays mechanism, proven by extracting **wrap-up** as the first Play
    (cheap-model tiering); `documentation` is the fast-follow. Foundation for the deferred two.
-5. `full-oz-dashboard` — the v1-designed control plane, earned in slices; the road to feature-complete
+6. `full-oz-dashboard` — the v1-designed control plane, earned in slices; the road to feature-complete
    (and where priority ordering eventually lands).
 
 Plus two always-available meta-priorities: `build-priorities-from-plan` (Oscar drafts priorities from
 the plan/ADRs) and `adhoc-session` (no named priority — draft one, or run a read-only review/research).
 
 **Deferred — `backlog/` (blocked on the Plays mechanism + Phase 5, an external app/deploy target):**
-5. `quinn-app-testing` — Quinn persona + browser/Electron test Plays.
-6. `deployment-plays` — human-gated deploys (Vercel/GCloud/signed-Electron/GitHub) + `local/secrets`.
+- `quinn-app-testing` — Quinn persona + browser/Electron test Plays.
+- `deployment-plays` — human-gated deploys (Vercel/GCloud/signed-Electron/GitHub) + `local/secrets`.
 
 **Vision backlog (re-author from frozen v1 reference when earned):** cloud/managed adapters (v1
 `v0.2`, cf. ADR-0006/0009) · onboarding/workspace lifecycle (v1 `v0.3`, Phase 5) · the deferred Oz G1

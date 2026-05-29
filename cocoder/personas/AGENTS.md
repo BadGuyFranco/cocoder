@@ -1,22 +1,32 @@
-# Personas — Workspace-Custom
+# `cocoder/personas/` — Personas (v2)
 
-Workspace-specific persona overrides and additions. Distinct from the OSS persona contracts shipped in the CoCoder install (`<CoCoder>/cocoder/personas/*.json`) and the public playbook summaries in [`playbooks/`](./playbooks/).
+A persona is a flat markdown file (`oscar.md`, `bob.md`, `deb.md`, …) — role, mental model, rules —
+plus `shared-standards.md` (the cross-persona globals) and `assignments.json` (CLI + model per persona).
+Governed by [ADR-0008](../rebuild/decisions/0008-repository-topology.md) (personas-as-files),
+[ADR-0005](../rebuild/decisions/0005-personas-and-subtasks.md) (persona/Play tiers + model assignment),
+and [ADR-0012](../rebuild/decisions/0012-living-base-personas.md) (base + extension model).
 
-## Structure
+## Base vs extension (ADR-0012)
 
-| Folder | Purpose |
-|---|---|
-| `custom/` | Custom personas defined for this workspace only (e.g., a domain-specific extension via the Phil pattern) |
-| `playbooks/` (install repo) | Public persona summaries shipped with CoCoder |
-| `local/playbooks/` (workspace private) | Operator-authored private depth; see [`playbooks/README-private-operator-pattern.md`](./playbooks/README-private-operator-pattern.md) |
+- **Base personas** — the product's orchestration set (Oscar, Bob, Deb, Talia, Quinn, …) ship with the
+  CoCoder **install**, are the single source, and improve for *every* install (Deb proposes base fixes
+  as reviewed PRs; they propagate on update). Referenced, never copied-and-frozen.
+- **Repo extensions** — a repo layers a **delta** onto a base persona (carrying only its delta, merged
+  at load, so base improvements still reach it) or adds **new repo-only personas** (e.g. Ian, Phil).
+- **Today this isn't split yet:** base + CoCoder's-own deltas are merged in this one folder. Splitting
+  them (base in the install, this folder = CoCoder's deltas) is tracked as the
+  [`base-and-extension-personas`](../priorities/base-and-extension-personas.md) priority. The
+  install-side base templates are currently empty — known, not-yet-done.
 
-## CoCoder's own dogfood
+## How personas compose at launch
 
-For CoCoder itself, `custom/` remains empty in v0.1. Core personas (Oscar, Bob, Talia, Phil contract + Quinn/Ian/Verifier stubs) ship in the install repo. The directory exists as documentation of the pattern.
+- `shared-standards.md` is **prepended to every persona's launch prompt** (one home; not duplicated per
+  persona). Note #8 (plain-English founder comms) is **human-facing only** — peer/machine comms stay
+  technical.
+- `assignments.json` is the sole source of which personas are live + their CLI/model (per-persona, and
+  per-(persona, Play) once the Plays mechanism lands). Edited by hand / by Oz, never the DB.
 
-## Routing
+## v1 leftovers (frozen reference)
 
-- **Public playbook summaries?** → `playbooks/{bob,talia,oscar,phil}.md`
-- **Private operator playbooks?** → `<workspace>/cocoder/local/playbooks/` (gitignored)
-- **Custom persona example?** → `<CoCoder>/examples/personas/phil-primitive-builder/`
-- **Authoring guide?** → `<CoCoder>/docs/custom-personas.md`
+`_archived-v1/`, `custom/`, `playbooks/`, `prompts/`, and `PORT-NOTES.md` are pre-rebuild v1 artifacts
+(the old `.json`-persona / playbook-summary model). Not read by v2; kept as reference pending cleanup.
