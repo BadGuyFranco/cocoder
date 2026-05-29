@@ -1,17 +1,31 @@
-// Launch-prompt composition (ADR-0005). Each prompt = shared-standards layer + the persona's
-// own rules + the run-specific instructions. The shared layer is prepended once, not duplicated.
+// Launch-prompt composition (ADR-0005). Each prompt = shared-standards layer + the persona's own
+// rules + the run-specific instructions. The shared layer is prepended once, not duplicated.
+//
+// ADR-0013: the run is a multi-atom loop. Oscar drives Bob through a SEQUENCE of atoms, the runner
+// watches Bob live (the monitor), and Oscar ends the run on his own wrap-up decision.
+
+/** The per-atom completion sentinel Bob prints when an atom is done. Per-atom-unique so a prior atom's
+ *  sentinel still on screen cannot falsely complete the next one (the monitor matches it deterministically). */
+export function atomSentinel(atomIndex: number): string {
+  return `<<<COCODER-ATOM-${atomIndex}-DONE>>>`
+}
 
 export function buildOrchestratorPrompt(input: {
   sharedStandards: string
   oscarBody: string
   priorityTitle: string
   priorityGoal: string
-  delegationPath: string
-  verifyPath: string
+  firstDirectivePath: string
   builderLabel: string
   builderCli: string
   runId: string
+  /** A prior run's pickup brief to resume from (ADR-0002 C1 / F8), or null for a fresh start. */
+  pickup?: string | null
 }): string {
+  const resume =
+    input.pickup && input.pickup.trim() !== ''
+      ? `\n# Resuming from a prior session\n\nThis run CONTINUES earlier work. Pick up from this brief — do not redo what it says is done:\n\n${input.pickup}\n`
+      : ''
   return `${input.sharedStandards}
 
 ---
@@ -25,46 +39,59 @@ ${input.oscarBody}
 Priority: **${input.priorityTitle}**
 
 ${input.priorityGoal}
+${resume}
+# How this run works — you orchestrate the builder through a LOOP
 
-# What to do right now
+You drive the builder (${input.builderLabel}, a \`${input.builderCli}\` CLI) through a SEQUENCE of small
+atoms. One atom at a time:
 
-You are orchestrating — do NOT implement anything yourself. Scope exactly ONE focused,
-self-contained implementation task for the builder (${input.builderLabel}, a \`${input.builderCli}\` CLI).
+1. **Scope the next atom.** Write it as JSON to the exact path the runner gives you (the FIRST is
+   \`${input.firstDirectivePath}\`):
 
-When the task is fully scoped, write it as JSON to this exact path:
+       {"kind": "delegate", "task": "<clear instructions: what to change, acceptance criteria, what must not break>"}
 
-    ${input.delegationPath}
+   Then stop and wait for the builder rather than implementing the atom yourself. Delegating the build
+   is your DEFAULT working mode for the loop — it is how you run, not a limit on what you may touch.
+2. **Verify** when the runner prompts you (see below) — per atom, the commit will NOT happen without your pass.
+3. **Decide: another atom, or enough?** After each atom the runner asks you to write the NEXT directive
+   (it gives you the exact path). Either delegate another atom (same shape as above), or **WRAP UP**:
 
-with this shape (and nothing else):
+       {"kind": "wrapup", "pickup": "<a brief a FRESH session can resume from: what is done, what remains, where to start>"}
 
-    {"task": "<clear instructions: what to change, acceptance criteria, and what must not break>"}
+   End the run when the builder has had enough for one session (context filling, a natural breakpoint) —
+   not because one small thing finished. The wrap-up's pickup is how the next session continues this work.
 
-After you write that file, stop and wait — do NOT edit repository files. The builder will be
-dispatched automatically.
+# Verifying an atom (the gate — no human backstop)
 
-# Then: verify the builder's work (the commit will NOT happen without your pass)
-
-You are the quality gate — there is no human backstop. After the builder signals done, the runner
-prompts you (in this pane) to verify. When prompted: read the actual diff and check it against the
-task you delegated (run the tests/typecheck yourself — evidence, not the builder's claim). Then write
-your verdict as JSON to this exact path:
-
-    ${input.verifyPath}
-
-with this shape (and nothing else):
+When the runner prompts you to VERIFY, read the ACTUAL diff and check it against the atom you delegated;
+run the tests/typecheck yourself (evidence, not the builder's claim). Write your verdict to the exact
+verify path the runner names, with this shape and nothing else:
 
     {"verdict": "pass", "reason": "<one line: what you verified>"}
 
-or, if the work does not meet the task:
+or
 
     {"verdict": "fail", "reason": "<one line: what is wrong>"}
 
-The commit-gate runs ONLY on \`pass\`. A \`fail\` aborts the run with nothing committed.
+The atom's commit runs ONLY on \`pass\`. On a \`fail\` nothing is committed for that atom; the runner will
+ask you for the next directive — re-scope the atom (delegate again) or wrap up.
+
+# Documentation, and founder-directed edits — never refuse these
+
+Keeping documentation correct for the work you orchestrate is part of your job — usually by delegating a
+doc-update (to the builder or a documentation sub-agent), the same way you delegate code; don't skip it.
+
+And "delegate, don't implement" is the loop's DEFAULT, not a cage: a direct founder instruction always
+overrides it. If the founder hands you a change — a documentation update OR an orchestration fix — DO IT;
+never refuse on the grounds that you "only orchestrate" or are "read-only." This holds AFTER you wrap up
+too: your pane stays open, and the founder may ask clarifying questions and request edits — make them.
+(Anything outside the builder's write-scope is simply surfaced for an expand-or-discard decision at the
+commit-gate; it is never forbidden to edit.)
 
 # Teardown mechanism (for this run)
 
-If you are asked to tear down this run, invoke the provided mechanism — do NOT kill processes or
-windows by hand, and never touch the Oz daemon:
+If you are asked to tear down this run, invoke the provided mechanism — do NOT kill processes or windows
+by hand, and never touch the Oz daemon:
 
     cocoder oz teardown ${input.runId}
 
@@ -94,28 +121,27 @@ ${input.priorityGoal}
 
 # What to do right now
 
-You are observing this run only. In this build slice, observation and triage tooling is not wired
-yet: stay read-only, watch the live run, and do not write delegation files, builder-done files,
-verify files, repository changes, or commits.
+You are observing this run only. In this build slice, observation and triage tooling is not wired yet:
+stay read-only, watch the live run, and do not write directive files, verify files, repository changes,
+or commits.
 
 # Teardown mechanism (for this run)
 
-If you are asked to tear down this run, invoke the provided mechanism — do NOT kill processes or
-windows by hand, and never touch the Oz daemon:
+If you are asked to tear down this run, invoke the provided mechanism — do NOT kill processes or windows
+by hand, and never touch the Oz daemon:
 
     cocoder oz teardown ${input.runId}
 
 That safely closes only this run's panes (the same operation Oz's teardown button uses).`
 }
 
-/** The builder's LAUNCH prompt (concurrent-spawn model): Bob is spawned up front, on standby, and
- *  must NOT act until the runner dispatches "PROCEED". The task itself arrives in delegationPath. */
+/** The builder's LAUNCH prompt: Bob is spawned up front, on standby, and must NOT act until the runner
+ *  dispatches an atom. Each atom's task arrives via a directive file; Bob signals completion by printing
+ *  a sentinel line the runner's monitor watches for (NOT a done-file — the monitor is the live signal). */
 export function buildBuilderStandbyPrompt(input: {
   sharedStandards: string
   bobBody: string
   scope: readonly string[]
-  delegationPath: string
-  donePath: string
 }): string {
   const scope = input.scope.length > 0 ? input.scope.map((s) => `  - ${s}`).join('\n') : '  (none — read-only)'
   return `${input.sharedStandards}
@@ -129,31 +155,37 @@ ${input.bobBody}
 # Standby — do NOT act yet
 
 You have been launched early so your session is warm. **Do nothing yet** — do not inspect files, plan,
-run commands, or edit. Wait for a dispatch message that says **PROCEED**.
+run commands, or edit. Wait for a dispatch message that gives you an atom to implement.
 
-When you receive PROCEED:
-1. Read the JSON at \`${input.delegationPath}\` — its \`task\` field is your task.
+This run runs MULTIPLE atoms through this same pane, one at a time. For EACH atom the runner sends you:
+1. Read the JSON at the directive path it names — its \`task\` field is your atom.
 2. Implement it. Your write-scope (enforced at CoCoder's commit-gate; anything outside is held back):
 ${scope}
 3. Run the relevant checks (tests, typecheck).
-4. As your FINAL action, write \`${input.donePath}\` with exactly:
+4. As your FINAL action, print the exact sentinel line the dispatch gives you, on its own line. That is
+   how CoCoder knows the atom is done — your session stays open for the next atom; it does not exit.
 
-       {"done": true, "summary": "<one line: what you changed, or why nothing was needed>"}
-
-   This is how CoCoder knows you are done — your session stays open, it does not exit.`
+The orchestrator watches your pane live and may nudge you if you stall; keep working visibly.`
 }
 
-/** The short dispatch line the runner sends into Bob's warm pane once Oscar has delegated. */
-export function buildBuilderDispatch(delegationPath: string): string {
-  return `PROCEED — your task is ready. Read it from ${delegationPath} and implement it now within your write-scope; write your builder-done file when finished.`
+/** Dispatch an atom into Bob's warm pane (sent once Oscar has delegated it). Names the directive path to
+ *  read and the exact sentinel to print on completion. */
+export function buildBuilderDispatch(directivePath: string, sentinel: string): string {
+  return `PROCEED — your next atom is ready. Read it from ${directivePath} and implement it now within your write-scope. When you are fully done (tests/typecheck run), print this exact line on its own: ${sentinel}`
 }
 
-/** The dispatch the runner sends into Oscar's pane once the builder signals done — the verify gate
- *  (ADR-0011). The commit-gate does not run until Oscar writes a `pass` verdict to verifyPath. */
-export function buildVerifyDispatch(delegationPath: string, verifyPath: string): string {
-  return `VERIFY — the builder signalled done. Verify the diff against the task you delegated in ${delegationPath}: read the actual changes and run the tests/typecheck yourself (evidence, not the builder's word). Then write your verdict to ${verifyPath} as {"verdict":"pass"|"fail","reason":"<one line>"}. The commit happens ONLY on pass.`
+/** The verify dispatch into Oscar's pane once the monitor reports the atom done — the gate (ADR-0011),
+ *  per atom. The atom's commit does not run until Oscar writes a `pass` verdict to verifyPath. */
+export function buildVerifyDispatch(directivePath: string, verifyPath: string): string {
+  return `VERIFY — the builder finished this atom. Verify the diff against the task you delegated in ${directivePath}: read the actual changes and run the tests/typecheck yourself (evidence, not the builder's word). Then write your verdict to ${verifyPath} as {"verdict":"pass"|"fail","reason":"<one line>"}. The commit happens ONLY on pass.`
 }
 
-export function commitMessage(priorityId: string, runId: string): string {
-  return `${priorityId}: implemented via CoCoder run ${runId}`
+/** Prompt Oscar for the next turn after an atom resolved: delegate another atom, or wrap up. Names the
+ *  exact directive path so the numbered handshake is unambiguous (a re-delegation is simply the next n). */
+export function buildNextOrWrapDispatch(nextDirectivePath: string, outcome: string): string {
+  return `NEXT — ${outcome}. Write your next directive to ${nextDirectivePath}: either {"kind":"delegate","task":"…"} for the next atom, or {"kind":"wrapup","pickup":"…"} to end the run with a resumable pickup brief. Decide whether the builder has had enough for one session.`
+}
+
+export function commitMessage(priorityId: string, runId: string, atomIndex: number): string {
+  return `${priorityId}: atom ${atomIndex} via CoCoder run ${runId}`
 }

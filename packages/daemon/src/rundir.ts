@@ -21,20 +21,21 @@ export interface RunDirContents {
   readonly oscarErr: string | null
   readonly bobOut: string | null
   readonly bobErr: string | null
-  readonly delegation: string | null
+  /** The resumable pickup brief from the run's wrap-up (ADR-0013 continuation; F8), if any. */
+  readonly pickup: string | null
   readonly record: string | null
 }
 
 /** Read the per-run artifacts; every field is best-effort (null when the file isn't present). */
 export async function readRunDir(runsRoot: string, runId: string): Promise<RunDirContents> {
   const dir = join(runsRoot, runId)
-  const [oscarOut, oscarErr, bobOut, bobErr, delegation, record] = await Promise.all([
+  const [oscarOut, oscarErr, bobOut, bobErr, pickup, record] = await Promise.all([
     readCapped(join(dir, 'oscar.out')),
     readCapped(join(dir, 'oscar.err')),
     readCapped(join(dir, 'bob.out')),
     readCapped(join(dir, 'bob.err')),
-    readCapped(join(dir, 'delegation.json')),
+    readCapped(join(dir, 'pickup.md')),
     readCapped(join(dir, 'record.md')),
   ])
-  return { oscarOut, oscarErr, bobOut, bobErr, delegation, record }
+  return { oscarOut, oscarErr, bobOut, bobErr, pickup, record }
 }

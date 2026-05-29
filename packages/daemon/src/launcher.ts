@@ -34,8 +34,9 @@ function trackingHost(ctx: OzContext): SessionHost {
   }
 }
 
-/** Assemble RunInput from governance on disk (mirrors cli/src/run.ts). Throws on unknown ids. */
-async function buildRunInput(ctx: OzContext, workspaceId: string, priorityId: string): Promise<RunInput> {
+/** Assemble RunInput from governance on disk (mirrors cli/src/run.ts). Throws on unknown ids. When
+ *  resuming, reads the prior run's pickup brief so a fresh session continues it (ADR-0013 / F8). */
+async function buildRunInput(ctx: OzContext, workspaceId: string, priorityId: string, resumeFromRunId?: string): Promise<RunInput> {
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
   if (!ws) throw new Error(`unknown workspace "${workspaceId}"`)
   const personasDir = join(ws.path, 'cocoder', 'personas')
@@ -43,6 +44,14 @@ async function buildRunInput(ctx: OzContext, workspaceId: string, priorityId: st
   const sharedStandards = await readFile(join(personasDir, 'shared-standards.md'), 'utf8')
   const assignments = loadAssignments(join(personasDir, 'assignments.json'))
   const workspace: Workspace = { id: ws.id, path: ws.path, name: ws.name }
+  let pickup: string | null = null
+  if (resumeFromRunId) {
+    try {
+      pickup = await readFile(join(ctx.runsRoot, resumeFromRunId, 'pickup.md'), 'utf8')
+    } catch {
+      throw new Error(`cannot resume: no pickup brief for run "${resumeFromRunId}"`)
+    }
+  }
   return {
     workspace,
     priority: loadPriority(prioritiesDir, priorityId),
@@ -51,6 +60,7 @@ async function buildRunInput(ctx: OzContext, workspaceId: string, priorityId: st
     deb: isPersonaEnabled(assignments, 'deb') ? resolvePersona(personasDir, assignments, 'deb') : undefined,
     sharedStandards,
     runsRoot: ctx.runsRoot,
+    pickup,
   }
 }
 
@@ -82,7 +92,7 @@ export interface LaunchResult {
 
 /** Launch a run for {workspaceId, priorityId}. Async (fire-and-forget); returns 202 with the runId,
  *  409 if a run is already in flight for the workspace, or 400 if the request can't be assembled. */
-export async function launchRun(ctx: OzContext, workspaceId: string, priorityId: string): Promise<LaunchResult> {
+export async function launchRun(ctx: OzContext, workspaceId: string, priorityId: string, opts: { resumeFromRunId?: string } = {}): Promise<LaunchResult> {
   if (!workspaceId || !priorityId) return { status: 400, body: { error: 'workspaceId and priorityId are required' } }
   if (ctx.inFlight.has(workspaceId)) {
     return { status: 409, body: { error: `a run is already in flight for workspace "${workspaceId}"` } }
@@ -91,7 +101,7 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
 
   let input: RunInput
   try {
-    input = await buildRunInput(ctx, workspaceId, priorityId)
+    input = await buildRunInput(ctx, workspaceId, priorityId, opts.resumeFromRunId)
   } catch (err) {
     ctx.inFlight.delete(workspaceId)
     return { status: 400, body: { error: err instanceof Error ? err.message : String(err) } }

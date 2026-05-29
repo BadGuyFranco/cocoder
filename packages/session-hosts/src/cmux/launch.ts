@@ -8,9 +8,9 @@ export const shquote = (s: string): string => `'${s.replace(/'/g, "'\\''")}'`
  * Build the bash script that runs the agent as a real INTERACTIVE session in its cmux pane (the
  * founder watches the native TUI). `cd '<cwd>'` first (cmux `open` doesn't set the shell cwd), then
  * `exec` the agent so it takes over the pane's PTY (stdin = the live terminal, so no `< /dev/null`).
- * No output redirect/tee and no exit sentinel: completion is ARTIFACT-based (the runner polls for
- * delegation.json / builder-done.json), not scraped from the screen. Sending `bash <scriptPath>`
- * (rather than the raw command) sidesteps cmux send quoting of the long prompt arg.
+ * No output redirect/tee and no exit sentinel: the runner observes the session live (readScreen) and
+ * via run-dir artifacts (directive-<n>.json / verify-<n>.json), not by scraping for an exit. Sending
+ * `bash <scriptPath>` (rather than the raw command) sidesteps cmux send quoting of the long prompt arg.
  */
 export function buildLaunchScript(opts: SpawnOptions): string {
   const cmd = [shquote(opts.command), ...opts.args.map(shquote)].join(' ')

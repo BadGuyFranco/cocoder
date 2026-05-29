@@ -41,6 +41,8 @@ export interface ClientRunResult {
 export interface RunViaDaemonOptions {
   readonly log?: (msg: string) => void
   readonly pollMs?: number
+  /** Resume from a prior run's pickup brief (ADR-0013 continuation / F8). */
+  readonly resumeFromRunId?: string
 }
 
 /** Submit a launch to a live daemon and poll the run to terminal. Never opens the DB. */
@@ -59,7 +61,7 @@ export async function runViaDaemon(
   const res = await fetch(`${baseUrl}/runs`, {
     method: 'POST',
     headers: { ...authGet, 'content-type': 'application/json', [CSRF_HEADER]: session.csrfToken },
-    body: JSON.stringify({ workspaceId, priorityId }),
+    body: JSON.stringify({ workspaceId, priorityId, resumeFromRunId: opts.resumeFromRunId }),
   })
   if (!res.ok) throw new Error(`daemon launch failed (${res.status}): ${await res.text()}`)
   const { runId } = (await res.json()) as { runId: string }

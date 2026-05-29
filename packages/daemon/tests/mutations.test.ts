@@ -77,17 +77,18 @@ function call(oz: OzServer, method: string, path: string, opts: { body?: unknown
 }
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
-// Fake RunnerIO so runRun completes against fakes (no real delegation file to poll for).
-const fakeIO = (task = 'do the thing'): RunnerIO => ({
+// Fake RunnerIO so runRun completes against fakes (no real directive file to poll for). Oscar
+// immediately wraps up (zero atoms) — enough to exercise the launch→terminal lifecycle this suite tests.
+const fakeIO = (): RunnerIO => ({
   async ensureRunDir() {},
-  async awaitDelegation() {
-    return { task }
-  },
-  async awaitBuilderDone() {
-    return { summary: 'done' }
+  async awaitDirective() {
+    return { kind: 'wrapup' as const, pickup: 'nothing further this run' }
   },
   async awaitVerification() {
     return { verdict: 'pass' as const, reason: 'verified' }
+  },
+  async writePickup(runDir) {
+    return `${runDir}/pickup.md`
   },
   async writeRunRecord(runDir) {
     return `${runDir}/record.md`
@@ -165,6 +166,21 @@ describe('Oz mutations + lifecycle', () => {
     // C-S6 audit: a launch line was appended.
     const audit = await readFile(join(home, 'local', 'oz-audit.log'), 'utf8')
     expect(audit).toContain('"action":"launch"')
+  })
+
+  test('POST /runs --resume reads a prior run pickup (200/202); a missing pickup is a 400', async () => {
+    await startServer()
+    // Resuming a run with no pickup brief fails cleanly (400, not a 500) and releases the reservation.
+    const bad = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo', resumeFromRunId: 'run_missing' } })
+    expect(bad.status).toBe(400)
+    expect(bad.json.error).toMatch(/cannot resume/)
+
+    // A prior run left a pickup brief on disk (the continuation artifact; F8) → resume launches.
+    await mkdir(join(home, 'local', 'runs', 'run_prior'), { recursive: true })
+    await writeFile(join(home, 'local', 'runs', 'run_prior', 'pickup.md'), '# Pickup\nstart at the parser')
+    const ok = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo', resumeFromRunId: 'run_prior' } })
+    expect(ok.status).toBe(202)
+    expect(ok.json.runId).toMatch(/^run_/)
   })
 
   test('POST /runs records daemon-stale once when the daemon boot sha differs from current HEAD', async () => {

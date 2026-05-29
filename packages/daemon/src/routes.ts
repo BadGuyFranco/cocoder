@@ -200,7 +200,7 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
     } catch {
       return sendJson(res, 400, { error: 'invalid JSON body' }), true
     }
-    const { status, body: out } = await launchRun(ctx, body?.workspaceId, body?.priorityId)
+    const { status, body: out } = await launchRun(ctx, body?.workspaceId, body?.priorityId, { resumeFromRunId: body?.resumeFromRunId })
     return sendJson(res, status, out), true
   }
   if (method === 'POST' && seg[0] === 'runs' && seg.length === 3 && seg[2] === 'show') {

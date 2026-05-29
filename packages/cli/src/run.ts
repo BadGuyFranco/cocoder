@@ -45,30 +45,38 @@ async function main(): Promise<void> {
     return
   }
   if (cmd !== 'run' || !arg1) {
-    console.error('usage: cocoder run <priorityId>   |   cocoder oz start   |   cocoder oz teardown <runId>')
+    console.error('usage: cocoder run <priorityId> [--resume <runId>]   |   cocoder oz start   |   cocoder oz teardown <runId>')
     process.exit(2)
   }
   const priorityId = arg1
+  // Optional `--resume <runId>`: continue from that run's pickup brief (ADR-0013 / F8).
+  const resumeIdx = process.argv.indexOf('--resume')
+  const resumeFromRunId = resumeIdx >= 0 ? process.argv[resumeIdx + 1] : undefined
+  if (resumeIdx >= 0 && !resumeFromRunId) {
+    console.error('usage: cocoder run <priorityId> --resume <runId>')
+    process.exit(2)
+  }
 
   const live = await probeDaemon({ port: DEFAULT_OZ_PORT })
   if (live.alive) {
     log(`daemon live on :${live.port} → client mode (daemon owns the DB writer + cmux)`)
-    const result = await runViaDaemon(`http://127.0.0.1:${live.port}`, 'cocoder', priorityId, { log })
+    const result = await runViaDaemon(`http://127.0.0.1:${live.port}`, 'cocoder', priorityId, { log, resumeFromRunId })
     console.log(`\nRun ${result.runId}: ${result.status}`)
     if (result.commits.length) console.log(`  committed: ${result.commits.join(', ')}`)
     process.exitCode = result.status === 'completed' ? 0 : 1
     return
   }
   log('no daemon → standalone mode (cli takes the SQLite write-lock)')
-  await runStandalone(priorityId)
+  await runStandalone(priorityId, resumeFromRunId)
 }
 
 // Standalone: the cli is the composition root — opens the operational DB (acquiring the
 // single-writer lock), wires the concrete drivers into core's ports, loads governance, runs.
-async function runStandalone(priorityId: string): Promise<void> {
+async function runStandalone(priorityId: string, resumeFromRunId?: string): Promise<void> {
   const root = process.cwd() // dogfood: run from the CoCoder repo root
   const personasDir = join(root, 'cocoder', 'personas')
   const prioritiesDir = join(root, 'cocoder', 'priorities')
+  const runsRoot = join(root, 'local', 'runs')
   const sharedStandards = readFileSync(join(personasDir, 'shared-standards.md'), 'utf8')
   const assignments = loadAssignments(join(personasDir, 'assignments.json'))
 
@@ -77,6 +85,17 @@ async function runStandalone(priorityId: string): Promise<void> {
   const bob = resolvePersona(personasDir, assignments, 'bob')
   const deb = isPersonaEnabled(assignments, 'deb') ? resolvePersona(personasDir, assignments, 'deb') : undefined
   const priority = loadPriority(prioritiesDir, priorityId)
+
+  // Resume: continue from a prior run's pickup brief (ADR-0013 / F8).
+  let pickup: string | null = null
+  if (resumeFromRunId) {
+    try {
+      pickup = readFileSync(join(runsRoot, resumeFromRunId, 'pickup.md'), 'utf8')
+    } catch {
+      console.error(`cocoder: cannot resume — no pickup brief for run "${resumeFromRunId}"`)
+      process.exit(1)
+    }
+  }
 
   const store = openRunStore(join(root, 'local', 'cocoder.db'))
   const registry = makeAdapterRegistry()
@@ -97,7 +116,8 @@ async function runStandalone(priorityId: string): Promise<void> {
       bob,
       deb,
       sharedStandards,
-      runsRoot: join(root, 'local', 'runs'),
+      runsRoot,
+      pickup,
     })
     console.log(`\nRun ${result.runId}: ${result.status}`)
     if (result.committedSha) console.log(`  committed ${result.committedSha} (${result.committedFiles.length} file(s))`)
