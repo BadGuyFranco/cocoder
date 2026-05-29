@@ -56,12 +56,25 @@ packages with an inward-only topology check (with teeth); cmux `SessionHost` dri
 preflight; the commit-gate. Build notes in `decisions/` + spikes; the headless-CLI spike caught
 two F10-class traps (codex stdin hang; codex auth on stderr).
 
-### Phase 2 — Oz thin (the feedback instrument)
+### Phase 2 — Oz thin (the feedback instrument)  ✅ built (2026-05-28)
 Keep the v1 daemon security posture (loopback, token, Origin/Host, CSRF, argv-only) if/where
 S4 retains a daemon. Four surfaces only: workspace list · priority list + launch ·
 **persona→CLI+model editor** · run list/detail (diff, output, result, deep-link to the live
 session). Defer any chat-command control plane (feature, not seam — G1).
 **Exit:** the founder launches every run from Oz and can see what each did.
+
+**Built (2026-05-28):** loopback `node:http` daemon (`@cocoder/daemon`, always-on owner) + a vanilla
+static dashboard (`@cocoder/ui`, no build step) over the existing ports — see
+[`oz-thin.md`](./oz-thin.md). Transport decided as loopback-HTTP-browser; the v1 security checklist
+ported to node:http (C-S1/2/3/4/6/7), **C-S5 dropped as unearned** (no secret endpoint in the thin
+route set — G2/F5). ADR-0004's deferred liveness probe implemented: `cocoder run` probes → client
+vs standalone, two writers never coexist. ADR-0002-C1 crash-relaunch stays deferred (orphan rows are
+reconciled to `failed` on daemon boot, not resumed). Preceded by a 5-lens **adversarial plan review**
+(ADRs + F1–F11 + gates): 11 confirmed findings folded in before building — 3 blockers (double-created
+run row → `onRunCreated` hook; cross-run working-tree commit contamination → one-in-flight-per-workspace
+409; fire-and-forget zombie `running` rows → launcher `.catch` + boot reconciliation). 78 tests; six
+incremental commits on `rebuild/phase-2-oz`. **Exit (founder's first real launch from Oz) pending** —
+stop any stale v1 daemon on :7878 first.
 
 ### Phase 3 — Dogfood + earn guardrails
 Run real CoCoder v2 work through the thin system. Each guardrail added only in response to a

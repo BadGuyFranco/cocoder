@@ -24,6 +24,14 @@ sound; the foundation is over-engineered. See [`decisions/0001-rebuild-charter.m
 
 ## Where we are
 
+**Phase 2 — Oz thin: ✅ built (2026-05-28), exit pending the founder's first real launch.**
+A loopback-HTTP daemon (`@cocoder/daemon`, always-on owner) + a vanilla static dashboard
+(`@cocoder/ui`) over the spine: workspace list · priority list + launch · persona→CLI/model editor ·
+run list/detail with a live cmux deep-link. `cocoder run` now probes for the daemon (client vs
+standalone). Built on `rebuild/phase-2-oz` after a 5-lens adversarial plan review (11 findings folded
+in). See [`oz-thin.md`](./oz-thin.md) + [`PLAYBOOK.md`](./PLAYBOOK.md). **To finish the exit:** stop
+any stale v1 daemon on :7878, `cocoder oz start`, launch a priority from the dashboard.
+
 **Phase 1 — The spine: ✅ complete (2026-05-28).** `cocoder run <priority>` drives a real
 Oscar(claude)→Bob(codex) orchestration in cmux on the CoCoder repo, gated by the write-scope
 commit-gate, with a durable run record. Evidence: commit `57c0781` produced via the flow; build
@@ -34,9 +42,8 @@ notes in [`PLAYBOOK.md`](./PLAYBOOK.md) (Phase 1 section) + the spikes.
   inward-only topology check, cmux `SessionHost` driver, node:sqlite `RunStore`, flat-file personas
   + shared standards, claude/codex adapters w/ preflight, the commit-gate, the thin runner.
 
-**👉 Pick up next: Phase 2 — "Oz thin"** (the feedback instrument). See [`PLAYBOOK.md`](./PLAYBOOK.md).
-The `daemon` and `ui` packages are stubs ready for it; it plugs into the existing
-`RunStore` / `SessionHost` / adapter ports in `core`.
+**👉 Pick up next: Phase 3 — dogfood + earn guardrails.** Run real work through Oz; add a guardrail
+only in response to a repeated observed failure. The `daemon`/`ui` packages are now built (Phase 2).
 
 | File | What it is |
 |---|---|
