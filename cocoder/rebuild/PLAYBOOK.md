@@ -104,8 +104,13 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
 
 **Active (launchable; recommended sequence — the `priorities/` directory is the live index):**
 1. `objective-presence-gate` — ADR-0010 minimal-slice gate. ✅ done (`bc6c3e8`), archived to `zArchive/v2/`.
-2. `deb` — orchestration/session debugger persona; the automated feedback loop (Phase 3 instrument). In flight.
-3. `base-and-extension-personas` — ADR-0012 living base + repo deltas merged at load. Foundational
+2. `oscar-orchestrates-bob` — ADR-0013 tier 1: Oscar drives Bob through a multi-atom plan with
+   continuous observation + an Oscar-decided wrap-up. **Foundational** — the run-lifecycle redesign and
+   the reusable monitor primitive Deb (tier 2) and Oz (tier 3) build on. Large build → plan + adversarial
+   review first. (Being handed to a fresh Claude Code session.)
+3. `deb` — debugger persona; **tier 2** of the observation hierarchy (watch + nudge Oscar; observe-only
+   on Bob), built on `oscar-orchestrates-bob`. In flight (slice 1 done; held-back commit pending).
+4. `base-and-extension-personas` — ADR-0012 living base + repo deltas merged at load. Foundational
    (persona loader/storage) and the thing that makes Deb's "fix the base for everyone" path real —
    reconcile with the in-flight `deb` run.
 4. `plays-mechanism` — ADR-0005 Plays mechanism, proven by extracting **wrap-up** as the first Play

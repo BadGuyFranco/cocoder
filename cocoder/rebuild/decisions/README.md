@@ -19,6 +19,7 @@ Clean ADR set for the v2 rebuild. Authoritative for v2; the v1 ADRs under
 | [0010](./0010-taxonomy-and-authoring.md) | Taxonomy & authoring lifecycle: Playbooks, Plays, Objectives (amends 0005) | Accepted |
 | [0011](./0011-orchestrator-verify-gate.md) | Orchestrator verify-gate: the commit runs only on Oscar's pass (refines 0004) | Accepted |
 | [0012](./0012-living-base-personas.md) | Living base personas + repo extensions — base ships with the install & propagates; repos layer deltas (amends 0008/0009) | Accepted |
+| [0013](./0013-orchestration-observation.md) | Orchestration + observation: Oscar drives Bob through a multi-atom plan; tiered continuous monitoring (Oscar→Bob, Deb→Oscar, Oz→sessions) with the direct-your-primary rule (refines 0004) | Accepted |
 
 **Phase-0 architecture Q&A complete — all seams resolved (ADRs 0001–0009).** ADR-0010 (taxonomy &
 authoring) accepted 2026-05-29 after a 6-lens adversarial review. ADR-0011 (orchestrator verify-gate)

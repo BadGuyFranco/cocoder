@@ -3,6 +3,7 @@
 **Status:** Accepted (founder + Claude, 2026-05-28)
 **Seam:** S4 — Oz ↔ runner boundary
 **Charter:** [0001](./0001-rebuild-charter.md) · **Builds on:** [0002](./0002-substrate-oz-and-cmux.md), [0003](./0003-data-model-hybrid.md) · **Refines:** ADR-0003 "sole writer" → "single-writer-at-a-time" · **Touches seams:** S3 (topology)
+**Refined by:** [0013](./0013-orchestration-observation.md) — the runner's one-shot composition becomes an Oscar-orchestrated **multi-atom loop** with continuous observation and an Oscar-decided wrap-up.
 
 ## Context
 
