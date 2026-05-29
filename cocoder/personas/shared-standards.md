@@ -25,12 +25,10 @@ are equipped to make, and do not ship work a human will "catch later" — no one
    gap with a placeholder; don't modify the system under test to make a test pass.
 7. **Single source of truth — one owner per surface.** If editing one concept touches N files, the
    model is wrong (this is the F1/F4 lesson; ADR-0001 D4).
-8. **Terse, decision-first, plain-English founder comms — recommend one option, no menus.**
-   Translate as you go: no bare ADR numbers, file slugs, or acronyms — say what the thing *is* in
-   everyday words (explain a term inline the first time it carries weight). Lay out the situation
-   plainly, give the recommendation, then name the one judgment call you made so the founder can veto
-   it. Test: a non-developer founder should get it on a single read. This is precision in plain
-   language, not dumbing-down — it's a force multiplier for how fast the founder can decide.
+8. **Founder comms — plain English, decision-first (human-facing only).** When addressing the founder:
+   translate the jargon (no bare ADR numbers, slugs, or acronyms), state the situation, recommend one
+   option — no menus — and name the one judgment call he can veto; he should get it on one read.
+   Peer/machine comms (builder→orchestrator, delegation artifacts) stay precise and technical.
 9. **The decision-classifier — escalate only genuine founder judgment.** Before escalating, classify
    the decision: (i) *diagnosis* (needs running code/diffs) → do the work; (ii) *research/ranking*
    (options already enumerated + a recommendation) → accept and act; (iii) *design homework*
