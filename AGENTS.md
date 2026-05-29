@@ -8,9 +8,9 @@ Open, self-improving AI coding orchestration for solo builders and small teams.
 |----------|-------|
 | What are we building? | [`ARCHITECTURE.md`](./ARCHITECTURE.md) |
 | What's actively in flight? | [`cocoder/PRIORITIES.md`](./cocoder/PRIORITIES.md) |
-| How do we execute the build? | [`cocoder/priorities/v0.1-foundation/README.md`](./cocoder/priorities/v0.1-foundation/README.md) |
-| Why was a decision made? | [`cocoder/decisions/README.md`](./cocoder/decisions/README.md) |
-| How do I use CoCoder on my repo? | `docs/getting-started.md` *(scaffolded in Sub-Playbook D)* |
+| How do we execute the build? | [`cocoder/rebuild/PLAYBOOK.md`](./cocoder/rebuild/PLAYBOOK.md) |
+| Why was a decision made? | [`cocoder/rebuild/decisions/README.md`](./cocoder/rebuild/decisions/README.md) |
+| How do I use CoCoder on my repo? | `docs/getting-started.md` |
 | Codebase map / tech stack | [`cocoder/memory/`](./cocoder/memory/) |
 | Recent session activity | [`cocoder/SESSION_LOG.md`](./cocoder/SESSION_LOG.md) |
 
@@ -22,19 +22,19 @@ Open, self-improving AI coding orchestration for solo builders and small teams.
 | **Oscar** | Product/code orchestrator per workspace priority |
 | **Ian** | Operations orchestrator (CRM, copy, integrations — not product code) |
 | **Bob** | Primary builder and chief architect |
-| **Talia** | Automated test builder/runner (unit + integration) — see [ADR-0002](./cocoder/decisions/0002-talia-quinn-boundary.md) |
-| **Quinn** | User-interaction QA (browser/IDE automation scripts) — see [ADR-0002](./cocoder/decisions/0002-talia-quinn-boundary.md) |
+| **Talia** | Automated test builder/runner (unit + integration) — see [ADR-0005](./cocoder/rebuild/decisions/0005-personas-and-subtasks.md) and [ADR-0012](./cocoder/rebuild/decisions/0012-living-base-personas.md) |
+| **Quinn** | User-interaction QA (browser/IDE automation scripts) — see [ADR-0005](./cocoder/rebuild/decisions/0005-personas-and-subtasks.md) and [ADR-0012](./cocoder/rebuild/decisions/0012-living-base-personas.md) |
 | **Phil** | Example custom persona (primitive/domain extension builder) |
 
 Runtime contracts and prompts live in-repo. Public prompt fragments + optional private playbooks in workspace `local/`.
 
 ## Routing
 
-- **Working on the v0.1 build?** → [`cocoder/priorities/v0.1-foundation/README.md`](./cocoder/priorities/v0.1-foundation/README.md)
-- **Orchestration implementation?** → `packages/core/` *(created in Sub-Playbook A)*
-- **Oz dashboard?** → `packages/oz-dashboard/` *(created in Sub-Playbook C)*
-- **Workspace template?** → `templates/workspace-cocoder/` *(created in Sub-Playbook B)*
-- **Public docs?** → `docs/` *(created in Sub-Playbook D)*
+- **Working on the rebuild?** → [`cocoder/rebuild/PLAYBOOK.md`](./cocoder/rebuild/PLAYBOOK.md)
+- **Orchestration implementation?** → `packages/core/`
+- **Oz daemon / dashboard?** → `packages/daemon/` and `packages/ui/`
+- **Workspace template?** → `templates/workspace-cocoder/`
+- **Public docs?** → `docs/`
 
 ## Storage zones (quick reference)
 

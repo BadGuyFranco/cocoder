@@ -29,8 +29,8 @@ Install CoCoder:
 git clone <CoCoder-repo-url> ~/dev/CoCoder
 cd ~/dev/CoCoder
 pnpm install
-pnpm -F cocoder-cli build
-pnpm exec cocoder validate-contracts
+pnpm -F @cocoder/cli build
+node scripts/check-topology.mjs
 export COCODER_HOME="$PWD"
 ```
 
@@ -51,7 +51,7 @@ Then follow [`docs/getting-started.md`](./docs/getting-started.md) for the full 
 
 CoCoder has two public surfaces and two private surfaces:
 
-- The CoCoder install repo contains the engine, schemas, templates, docs, and dashboard source.
+- The CoCoder install repo contains six TypeScript packages (`@cocoder/core`, `@cocoder/adapters`, `@cocoder/session-hosts`, `@cocoder/daemon`, `@cocoder/cli`, `@cocoder/ui`), plus templates and docs.
 - `<CoCoder>/local/` stores install-private preferences, workspace registry data, audit logs, and secrets.
 - Each application repo gets a tracked `cocoder/` workspace folder for priorities, ADRs, tickets, memory, standards, and persona contracts.
 - Each application repo also gets ignored `cocoder/local/` overrides for machine-local settings and secrets.
@@ -75,16 +75,15 @@ For the full storage-zone model, see [`ARCHITECTURE.md`](./ARCHITECTURE.md). For
 
 ```sh
 pnpm install
-pnpm -F schemas build
-pnpm -F core test
-pnpm -F oz-dashboard test
-pnpm exec cocoder validate-contracts
+pnpm -F @cocoder/core test
+pnpm -F @cocoder/ui test
+node scripts/check-topology.mjs
 ```
 
 The public CLI package builds a `cocoder` binary:
 
 ```sh
-pnpm -F cocoder-cli build
+pnpm -F @cocoder/cli build
 pnpm exec cocoder config get
 ```
 

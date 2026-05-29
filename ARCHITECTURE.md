@@ -1,7 +1,7 @@
 # CoCoder Architecture
 
 **Status:** v0.1 release candidate  
-**Last verified:** 2026-05-28 (Mermaid storage-zone diagram reviewed for render clarity; public doc references rechecked in Sub-Playbook D publish pass)
+**Last verified:** 2026-05-29 (package topology, language/validation policy, and ADR citations reconciled against the v2 rebuild codebase and `cocoder/rebuild/decisions/`)
 
 ## Mental Model
 
@@ -10,8 +10,9 @@ CoCoder has **four storage zones** that must never be conflated. Two live in the
 ```mermaid
 flowchart TB
   subgraph install ["CoCoder install repo (tracked)"]
-    Core[packages/core — CLI, contracts, launch]
-    Dash[packages/oz-dashboard]
+    Core[packages/core — I/O-agnostic engine]
+    Cli[packages/cli — cocoder binary]
+    Dash[packages/ui — Oz dashboard]
     Docs[docs/]
     Tpl[templates/workspace-cocoder]
   end
@@ -34,6 +35,7 @@ flowchart TB
 
   Dash --> Oz
   Oz --> Core
+  Cli --> Core
   Core --> CA
   Core --> CB
   Prefs --> Oz
@@ -44,7 +46,7 @@ flowchart TB
 
 | Zone | Location | Tracked in git? | Purpose |
 |------|----------|-----------------|---------|
-| **Install (public)** | CoCoder clone — `packages/`, `docs/`, `templates/`, `ARCHITECTURE.md`, `README.md`, `LICENSE` | Yes | Engine, Oz UI source, public docs |
+| **Install (public)** | CoCoder clone — `packages/`, `docs/`, `templates/`, `ARCHITECTURE.md`, `README.md`, `LICENSE` | Yes | Engine (`packages/core`), CLI (`packages/cli`), Oz dashboard source (`packages/ui`), public docs |
 | **Install (private)** | `<CoCoder>/local/` | **Never** (entire directory ignored) | Oz settings, workspace registry, per-workspace install-side state, models, secrets, audit logs — survives `git pull` |
 | **Workspace (shared)** | `<app>/cocoder/` | Yes (committed to your app repo) | Priorities, plans, tickets, decisions, memory, standards, custom personas — community-visible |
 | **Workspace (private)** | `<app>/cocoder/local/` | **Never** (entire directory ignored except `README.md` and `.gitignore`) | Per-workspace, per-machine overrides and secrets |
@@ -110,18 +112,19 @@ CoCoder/                          # public repository (git tracked)
 ├── ARCHITECTURE.md               # this file (product synthesis)
 ├── LICENSE                       # Apache-2.0
 ├── README.md
-├── pnpm-workspace.yaml           # ADR-0004
-├── .nvmrc                        # Node 20 LTS
+├── pnpm-workspace.yaml           # pnpm workspaces
+├── .nvmrc                        # Node version (see .nvmrc)
 ├── docs/                         # public docs
-├── packages/
-│   ├── core/                     # extracted .mjs orchestration core
-│   ├── cocoder-cli/              # TS wrapper exposing `cocoder` binary (ADR-0003)
-│   ├── schemas/                  # TS (Zod) → published .schema.json
-│   ├── oz-daemon/                # TS HTTP daemon                          (Target — Sub-Playbook C)
-│   └── oz-dashboard/             # TS + React, Fusion palette              (Target — Sub-Playbook C)
+├── packages/                     # six TypeScript packages, inward-only deps (rebuild ADR-0008)
+│   ├── core/                     # I/O-agnostic library: runner, composition, ports, loaders, write-scope/commit-gate, preflight (depends on nothing in the workspace)
+│   ├── adapters/                 # per-CLI drivers + preflight (depends on core)
+│   ├── session-hosts/            # SessionHost drivers (cmux) (depends on core)
+│   ├── daemon/                   # Oz: DB write-conn + cmux + live runs (depends on core + adapters + session-hosts)
+│   ├── cli/                      # `cocoder` binary, standalone + client modes (depends on core + adapters + session-hosts)
+│   └── ui/                       # Oz dashboard (depends on core)
 ├── templates/install-local/      # install-zone config + secrets examples
-├── templates/workspace-cocoder/  # the workspace template users get from `cocoder init`  (Target — Sub-Playbook B)
-├── examples/personas/phil-primitive-builder/                               # (Target — Sub-Playbook B; example custom persona)
+├── templates/workspace-cocoder/  # the workspace template users get from `cocoder init`
+├── examples/personas/phil-primitive-builder/                               # example custom persona
 ├── cocoder/                      # ← dogfood meta-project (TRACKED, community-visible)
 │   ├── AGENTS.md
 │   ├── PRIORITIES.md             # slim index
@@ -181,26 +184,23 @@ CoBuilder's **ORCH DEBUGGER** binds to one run, collects evidence, launches Code
 - Run Inspector (debugger evidence views)
 - Settings editor for global + per-workspace overrides
 
-Oz daemon reuses `debugger.mjs` evidence patterns; does not fork business logic.
+The Oz daemon owns run state and evidence without forking the engine's business logic — it drives `packages/core` through the `SessionHost`/adapter ports rather than reimplementing orchestration.
 
-## Extraction Strategy
+## Package topology and dependency rule
 
-1. **Copy-first** into `packages/core` — no big-bang CoBuilder deletion.
-2. Path resolver replaces hardcoded `cobuilder-build/orchestration`.
-3. Environment variables are renamed `COB_ORCH_*` → `COCODER_ORCH_*` per ADR-0003.
-4. CoBuilder remains upstream reference until ADR cutover.
-5. CoCoder dogfoods `cocoder/` before v0.1 tag.
-6. CoBuilder migrates onto CoCoder after v0.1; until then CoBuilder remains the extraction reference.
-7. Extraction is governed by a **source-to-target manifest** (CSV/table) maintained in Sub-Playbook A — every file: source path, target path, transformation, validation command, dropped behavior.
+The v2 rebuild is a clean build (not an extraction): the six packages already exist under `packages/`. Per [`cocoder/rebuild/decisions/0008-repository-topology.md`](./cocoder/rebuild/decisions/0008-repository-topology.md), dependencies flow inward only:
 
-## Validation and language policy
+- `core` depends on nothing else in the workspace.
+- `adapters`, `session-hosts`, and `ui` depend only on `core`.
+- `daemon` and `cli` depend on `core` + `adapters` + `session-hosts`.
 
-Per ADR-0004:
+The rule is enforced by a deterministic guardrail: `node scripts/check-topology.mjs`.
 
-- Extracted `packages/core` stays as `.mjs` through v0.1 (behavior preservation during the port).
-- New packages (CLI, Oz daemon, Oz dashboard, schemas) are TypeScript.
-- All config and contract schemas are authored in Zod under `packages/schemas`; published as JSON Schema artifacts for editor autocomplete and for AJV consumption inside the `.mjs` core.
-- pnpm workspaces, Node 20 LTS.
+## Language and validation policy
+
+- **TypeScript across all packages.** Each package exports `./src/index.ts`; there is no `.mjs` orchestration core (the historical v1 `.mjs` plan does not apply to the rebuild).
+- **No external validation library** (zod/yup/joi/ajv/valibot) is currently a dependency or imported anywhere; validation is hand-written TypeScript where needed.
+- **pnpm workspaces**, Node per `.nvmrc`.
 
 ## Multi-workspace concurrency (plain language)
 
@@ -237,18 +237,18 @@ Oz runs an HTTP daemon that can launch and stop processes. It is **not** interne
 
 Oz classifies every proposed improvement by target zone before making or recommending a change:
 
-- `cocoder-product` — CoCoder source itself (`packages/`, `templates/`, public docs, schemas, shipped prompts). This is contributor-only developer-mode work.
+- `cocoder-product` — CoCoder source itself (`packages/`, `templates/`, public docs, shipped prompts). This is contributor-only developer-mode work.
 - `workspace-shared` — the active repo's tracked `cocoder/` folder.
 - `workspace-local` — the active repo's ignored `cocoder/local/` folder.
 - `install-local` — the ignored `<CoCoder>/local/` install preference zone.
 - `upstream-candidate` — a workspace finding that may belong upstream, but should be drafted for contributor review instead of edited into the install.
 
-Normal adopters get workspace customization by default. CoCoder product improvements are only routed to `cocoder-product` when the active workspace is the CoCoder repo dogfood workspace and developer mode is enabled. See ADR-0005.
+Normal adopters get workspace customization by default. CoCoder product improvements are only routed to `cocoder-product` when the active workspace is the CoCoder repo dogfood workspace and developer mode is enabled. See [`cocoder/rebuild/decisions/0008-repository-topology.md`](./cocoder/rebuild/decisions/0008-repository-topology.md) (one-home enforcement) and [`0009-extensibility.md`](./cocoder/rebuild/decisions/0009-extensibility.md).
 
 ## References
 
-- CoBuilder orchestration: historical upstream extraction reference retained in `NOTICE`
 - Design language: [`docs/oz-design-brief.md`](./docs/oz-design-brief.md)
-- ADR index: `cocoder/decisions/README.md`
+- ADR index (authoritative for v2): [`cocoder/rebuild/decisions/README.md`](./cocoder/rebuild/decisions/README.md)
+- Attribution / prior art: `NOTICE`
 - Dogfood meta-project: `cocoder/AGENTS.md`
 - Active priorities: `cocoder/PRIORITIES.md`
