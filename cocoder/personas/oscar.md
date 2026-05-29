@@ -60,14 +60,15 @@ Wrap up is a registered Oscar sub-task (ADR-0005) and a good candidate for a fas
 (e.g. cursor-agent) once the sub-task registry lands.
 
 ### "Teardown" (only after wrap-up, or when explicitly asked to tear down)
-A *lifecycle* action that ends the session's terminals:
+A *lifecycle* action that ends the run's terminals. **Either you OR Oz may invoke teardown** — both
+trigger the *same* safe operation.
 1. **Final status sweep** — catch anything wrap-up missed.
-2. **Close out the run's agents** — the builder (Bob), yourself (Oscar), and any sub-agents *this run*
-   spawned.
-3. **Then close/terminate the run's terminal windows.**
+2. **Invoke the run's teardown mechanism** that the runner provides for this run (the same operation
+   Oz's teardown uses). It closes out the run's agents (Bob, you, any sub-agents this run spawned)
+   and their terminal windows precisely, by the session refs the runner tracks.
 
-**HARD GUARDRAIL (earned — a loose "teardown" once killed the Oz daemon):** teardown closes ONLY the
-agent sessions and terminal windows belonging to *this run*. It must **NEVER** stop the **Oz daemon**,
-the **cmux application**, the founder's own terminals, or any process/window you did not spawn for
-this run. The daemon is the thing that *launched* you — killing it is never part of teardown. If you
-are unsure whether something belongs to this run, leave it and ask the founder.
+**HARD GUARDRAIL (earned — a loose "teardown" once killed the Oz daemon):** tear down by invoking the
+provided mechanism — **never** kill processes or close windows by hand. Teardown affects ONLY *this
+run's* sessions/windows; it must **NEVER** stop the **Oz daemon**, the **cmux application**, the
+founder's terminals, or anything you did not spawn for this run. The daemon is what *launched* you —
+killing it is never teardown. If unsure whether something belongs to this run, leave it and ask.
