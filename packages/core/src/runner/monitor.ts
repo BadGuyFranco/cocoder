@@ -135,18 +135,14 @@ export interface HeuristicJudgeOptions {
  *  done-sentinel — the one thing Oscar's per-atom verify-gate cannot see mid-atom. Semantic "thin /
  *  drifting" judgment stays with the verify-gate (ADR-0011); a model-backed Judge is a later drop-in. */
 export function makeHeuristicJudge(opts: HeuristicJudgeOptions): Judge {
-  // Two guards make the done-detection echo-proof (real bug found in dogfood run_149752fa5f90482a:
-  // the marker was matched from the dispatch's own instruction at sample 1, before the builder acted):
-  //   1. the marker must be a line BY ITSELF (the builder prints it alone) — not a substring of an
-  //      instruction or narration that merely mentions it;
-  //   2. it only counts once the marker has been seen ABSENT at least once — so any stray echo present
-  //      from the very first frame cannot instantly "complete" the atom.
-  let seenAbsent = false
+  // Done-detection is echo-proof via a single rule: the marker must appear as a line BY ITSELF (the
+  // builder prints it alone), so a substring — an instruction or narration that merely mentions it —
+  // never counts. Combined with the dispatch never echoing the literal marker, that fully prevents the
+  // run_149752fa5f90482a echo bug WITHOUT a "seen-absent" guard. (That guard was removed: it could
+  // strand a genuine first-frame completion forever — Oscar's run_15 review, finding #1.)
   const markerPrinted = (frame: string): boolean => frame.split('\n').some((line) => line.trim() === opts.doneSentinel)
   return async (sample) => {
-    const printed = markerPrinted(sample.frame)
-    if (!printed) seenAbsent = true
-    if (printed && seenAbsent) return { state: 'done', note: 'completion marker printed' }
+    if (markerPrinted(sample.frame)) return { state: 'done', note: 'completion marker printed' }
     if (sample.idleStreak >= opts.stuckAfter) {
       return { state: 'stuck', note: `no screen change for ${sample.idleStreak} sample(s)`, nudge: opts.nudge }
     }

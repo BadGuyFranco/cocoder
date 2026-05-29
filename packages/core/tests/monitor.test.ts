@@ -106,20 +106,21 @@ describe('makeHeuristicJudge', () => {
   const SENTINEL = '<<<COCODER-ATOM-0-DONE>>>'
   const newJudge = (): Judge => makeHeuristicJudge({ doneSentinel: SENTINEL, stuckAfter: 3, nudge: 'still there?' })
 
-  test('completes once the builder prints the marker on its OWN line (after it was absent)', async () => {
+  test('completes when the builder prints the marker on its OWN line', async () => {
     const judge = newJudge()
     expect(await judge({ frame: 'building...', prevFrame: null, idleStreak: 0, task: 't' })).toEqual({ state: 'progressing' })
     expect(await judge({ frame: `did the work\n${SENTINEL}`, prevFrame: 'building...', idleStreak: 0, task: 't' })).toMatchObject({ state: 'done' })
   })
 
+  test('completes even on the FIRST frame (no seen-absent trap) — Oscar review finding #1', async () => {
+    // A genuine standalone marker in the very first sampled frame must complete, not stall to timeout.
+    expect(await newJudge()({ frame: `done\n${SENTINEL}`, prevFrame: null, idleStreak: 0, task: 't' })).toMatchObject({ state: 'done' })
+  })
+
   test('regression: a stray marker echo does NOT complete the atom (the dogfood bug)', async () => {
-    const judge = newJudge()
-    // The marker present from the very first frame (e.g. the dispatch instruction echoing it) → NOT done.
-    expect(await judge({ frame: `PROCEED... print this exact line: ${SENTINEL}`, prevFrame: null, idleStreak: 0, task: 't' })).not.toMatchObject({ state: 'done' })
-    // The marker as a substring of a narration line (not on its own line) → NOT done either.
-    const judge2 = newJudge()
-    await judge2({ frame: 'building', prevFrame: null, idleStreak: 0, task: 't' }) // seen absent
-    expect(await judge2({ frame: `about to print ${SENTINEL} now`, prevFrame: 'building', idleStreak: 0, task: 't' })).toEqual({ state: 'progressing' })
+    // The marker as a SUBSTRING of an instruction/narration (not on its own line) → NOT done.
+    expect(await newJudge()({ frame: `PROCEED... print this exact line: ${SENTINEL}`, prevFrame: null, idleStreak: 0, task: 't' })).not.toMatchObject({ state: 'done' })
+    expect(await newJudge()({ frame: `about to print ${SENTINEL} now`, prevFrame: 'building', idleStreak: 0, task: 't' })).toEqual({ state: 'progressing' })
   })
 
   test('stuck (with a nudge) once the idle streak hits the threshold', async () => {
