@@ -218,8 +218,10 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   log(`oscar + bob spawned (${oscarRef.id}, ${bobRef.id}); awaiting first directive, bob on standby`)
 
   const oscarAlive = async (): Promise<boolean> => (await sessionHost.status(oscarRef)).state === 'running'
-  const fail = (type: string, message: string): never => {
-    store.recordEvent({ runId: run.id, type, data: { message } })
+  // Every terminal fault funnels through here: record it, let Deb triage it (if present), then fail.
+  const fail = async (type: string, message: string, atomIndex: number | null = null): Promise<never> => {
+    store.recordEvent({ runId: run.id, type, data: atomIndex !== null ? { message, atom: atomIndex } : { message } })
+    await triageFault(type, atomIndex, message)
     store.setRunStatus(run.id, 'failed')
     throw new Error(message)
   }
@@ -267,12 +269,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     try {
       directive = await io.awaitDirective(directivePath, { timeoutMs: t.orchestrationMs, pollMs: t.pollMs, isAlive: oscarAlive })
     } catch (err) {
-      // First directive failed → tear down the idle standby panes; later ones leave teardown to Oz.
-      if (n === 0) {
-        await sessionHost.kill(bobRef).catch(() => {})
-        if (debRef) await sessionHost.kill(debRef).catch(() => {})
-      }
-      return fail('directive-timeout', String(err))
+      // First directive failed → tear down the idle standby builder; KEEP Deb alive so she can triage.
+      if (n === 0) await sessionHost.kill(bobRef).catch(() => {})
+      return await fail('directive-timeout', String(err), n)
     }
 
     if (directive.kind === 'wrapup') {
@@ -310,10 +309,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     )
     if (outcome.reason !== 'done') {
       store.setWorkItemStatus(workItem.id, 'abandoned')
-      store.recordEvent({ runId: run.id, type: 'builder-failed', data: { atom: atomIndex, reason: outcome.reason } })
-      await triageFault('builder-failed', atomIndex, `builder ${outcome.reason} on atom ${atomIndex}`) // Deb triages before the run unwinds
-      store.setRunStatus(run.id, 'failed')
-      throw new Error(`builder ${outcome.reason} on atom ${atomIndex}`)
+      return await fail('builder-failed', `builder ${outcome.reason} on atom ${atomIndex}`, atomIndex)
     }
     store.recordEvent({ runId: run.id, type: 'builder-done', data: { atom: atomIndex, samples: outcome.samples } })
 
@@ -327,7 +323,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       verdict = await io.awaitVerification(verifyPath, { timeoutMs: t.orchestrationMs, pollMs: t.pollMs, isAlive: oscarAlive })
     } catch (err) {
       store.setWorkItemStatus(workItem.id, 'abandoned')
-      return fail('verify-failed', String(err))
+      return await fail('verify-failed', String(err), atomIndex)
     }
 
     let outcomeLine: string
@@ -362,6 +358,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
     // Deterministic backstops — the bound is the spine's; the "enough" judgment stays Oscar's.
     if (consecutiveRejects >= limits.maxConsecutiveRejects) {
+      await triageFault('max-consecutive-rejects', atomIndex, verdict.reason ?? 'repeated rejections') // Deb triages the stuck-loop
       pickup = `Run stopped: ${consecutiveRejects} atoms rejected in a row (last: ${verdict.reason ?? 'no reason'}). Re-scope the work and start fresh.`
       store.recordEvent({ runId: run.id, type: 'wrapup', data: { atoms: n, forced: true, reason: 'max-consecutive-rejects' } })
       break

@@ -287,6 +287,31 @@ describe('runRun (multi-atom loop)', () => {
     expect(store.getRun(runId)?.status).toBe('failed') // Deb proposes/logs; she does not rescue the run
   })
 
+  test('Deb triages a directive-timeout (orchestration fault), and is NOT killed before triaging', async () => {
+    const store = openRunStore(':memory:')
+    const killed: string[] = []
+    const failingIO: RunnerIO = { ...fakeIO({ directives: [], triage: { disposition: 'cocoder-bug', summary: 'oscar never delegated', proposal: 'd' } }), async awaitDirective() {
+      throw new Error('no valid directive within 1ms')
+    } }
+    await expect(
+      runRun(baseDeps({ store, io: failingIO, sessionHost: fakeSessionHost({ async kill(ref) {
+        killed.push(ref.id)
+      } }) }), { ...input, deb }),
+    ).rejects.toThrow(/no valid directive/)
+    const types = store.listEvents(store.listRuns()[0]!.id).map((e) => e.type)
+    expect(types).toEqual(expect.arrayContaining(['directive-timeout', 'triage-dispatch', 'fault-triaged']))
+  })
+
+  test('Deb triages a verify-failed fault (Oscar verify died)', async () => {
+    const store = openRunStore(':memory:')
+    const verifyDies: RunnerIO = { ...fakeIO({ directives: [delegate('do it')], triage: { disposition: 'cocoder-bug', summary: 'verify pane died', proposal: 'd' } }), async awaitVerification() {
+      throw new Error('orchestrator session exited before a verdict')
+    } }
+    await expect(runRun(baseDeps({ store, io: verifyDies }), { ...input, deb })).rejects.toThrow(/exited before a verdict/)
+    const types = store.listEvents(store.listRuns()[0]!.id).map((e) => e.type)
+    expect(types).toEqual(expect.arrayContaining(['verify-failed', 'triage-dispatch', 'fault-triaged']))
+  })
+
   test('without Deb, a builder failure just fails the run (no triage)', async () => {
     const store = openRunStore(':memory:')
     await expect(
