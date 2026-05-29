@@ -99,6 +99,18 @@ describe('CmuxSessionHost driver (fake cli)', () => {
     expect(calls.some((c) => c[0] === 'send-key' && c.includes('Enter'))).toBe(true)
   })
 
+  test('groupLabel names the workspace (priority + session), while the pane keeps the persona label', async () => {
+    const { cli, calls } = makeFakeCli()
+    const scriptDir = await mkdtemp(join(tmpdir(), 'cmux-test-'))
+    const host = new CmuxSessionHost({ cli, scriptDir, pollMs: 1 })
+
+    await host.spawn({ persona: 'oscar', label: 'Oscar', groupLabel: 'adhoc-session #14', command: 'claude', args: [], cwd: '/repo', group: 'run_14' })
+
+    const newWs = calls.find((c) => c[0] === 'new-workspace')
+    expect(newWs?.[newWs.indexOf('--name') + 1]).toBe('adhoc-session #14') // workspace = the run, not "Oscar"
+    expect(calls.some((c) => c[0] === 'rename-tab' && c.includes('Oscar'))).toBe(true) // pane still labelled Oscar
+  })
+
   test('two personas of the same run share a workspace as split panes', async () => {
     const { cli, calls } = makeFakeCli()
     const scriptDir = await mkdtemp(join(tmpdir(), 'cmux-test-'))

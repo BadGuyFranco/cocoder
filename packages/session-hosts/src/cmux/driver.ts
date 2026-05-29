@@ -73,8 +73,9 @@ export class CmuxSessionHost implements SessionHost {
       const panesAfter = parsePaneRefs(await this.#cli.run(['list-panes', '--workspace', existing]))
       paneRef = diffNewWorkspace(panesBefore, panesAfter) // reuse the single-new-ref differ
     } else {
-      // First persona of the run → a fresh workspace named for the run, cwd set, brought to front.
-      const name = opts.label ?? opts.group ?? 'cocoder'
+      // First persona of the run → a fresh workspace named for the RUN (priority + session number via
+      // groupLabel), not for whichever persona spawned first; cwd set, brought to front.
+      const name = opts.groupLabel ?? opts.label ?? opts.group ?? 'cocoder'
       const out = await this.#cli.run(['new-workspace', '--name', name, '--cwd', opts.cwd, '--focus', 'true'])
       workspaceRef = parseOkRef(out, 'workspace')
       ;({ paneRef, surfaceRef } = parseSurface(await this.#cli.run(['list-pane-surfaces', '--workspace', workspaceRef, '--json'])))

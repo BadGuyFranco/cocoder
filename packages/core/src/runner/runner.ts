@@ -158,6 +158,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   }
 
   const scope = effectiveScope(bob.writeScope, priority.scopeNarrowing) // known at launch (constant per run)
+  // The run's cmux workspace is named for the run: "<priority> #<session number>" (the numeric part of
+  // the sequential run id), so the founder identifies it by priority + session, not by a persona.
+  const groupLabel = `${priority.id} #${run.id.replace(/^run_/, '')}`
 
   // Spawn Oscar (full loop prompt → writes the first directive), Bob on standby beside it, optional Deb.
   const oscarCmd = getAdapter(oscar.cli).build({
@@ -182,6 +185,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     args: oscarCmd.args,
     cwd: workspace.path,
     group: run.id,
+    groupLabel,
     label: oscar.label,
   })
   store.createSession({ runId: run.id, persona: oscar.id, sessionRef: oscarRef.id })
@@ -199,12 +203,13 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     args: bobCmd.args,
     cwd: workspace.path,
     group: run.id, // same workspace as Oscar → splits in beside it (warm, on standby)
+    groupLabel,
     label: bob.label,
   })
   store.createSession({ runId: run.id, persona: bob.id, sessionRef: bobRef.id })
   store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: bob.id, ref: bobRef.id } })
   const debRef = deb
-    ? await spawnObserver({ store, sessionHost, getAdapter, run, workspace, priority, deb, sharedStandards, runDir })
+    ? await spawnObserver({ store, sessionHost, getAdapter, run, workspace, priority, deb, sharedStandards, runDir, groupLabel })
     : null
   await sessionHost.show(oscarRef)
   log(`oscar + bob spawned (${oscarRef.id}, ${bobRef.id}); awaiting first directive, bob on standby`)

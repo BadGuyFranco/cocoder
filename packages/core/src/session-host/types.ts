@@ -25,6 +25,10 @@ export interface SpawnOptions {
    *  them in one workspace as split panes, so the founder watches a run's personas side-by-side).
    *  Drivers may ignore it. The runner passes the run id. */
   readonly group?: string
+  /** Optional human NAME for the shared group/workspace (e.g. "<priority> #<n>"), used when the
+   *  group's surface is first created — so the workspace is identified by the run, not by whichever
+   *  persona happened to spawn first. Distinct from `label` (the per-pane name). Drivers may ignore it. */
+  readonly groupLabel?: string
   /** Optional human label for the pane/tab (e.g. the persona's display name). */
   readonly label?: string
   /** If set, the driver redirects the command's stdout to this file. Used to capture a

@@ -30,6 +30,13 @@ describe('RunStore (:memory:)', () => {
     expect(store.getRun('nope')).toBeNull()
   })
 
+  test('run ids are sequential + human-typeable (run_1, run_2, …) — the running session count', () => {
+    store.upsertWorkspace({ id: 'other', path: '/other', name: 'Other' })
+    expect(store.createRun({ workspaceId: 'cocoder', priorityId: 'p-1' }).id).toBe('run_1')
+    expect(store.createRun({ workspaceId: 'cocoder', priorityId: 'p-1' }).id).toBe('run_2')
+    expect(store.createRun({ workspaceId: 'other', priorityId: 'p-2' }).id).toBe('run_3') // global, not per-workspace
+  })
+
   test('sessions, work items, and the explicit commit_link (F6 fix) round-trip', () => {
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'p-1' })
 

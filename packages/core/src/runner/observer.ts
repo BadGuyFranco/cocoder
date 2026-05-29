@@ -16,8 +16,9 @@ export async function spawnObserver(input: {
   readonly deb: ResolvedPersona
   readonly sharedStandards: string
   readonly runDir: string
+  readonly groupLabel: string
 }): Promise<SessionRef | null> {
-  const { store, sessionHost, getAdapter, run, workspace, priority, deb, sharedStandards, runDir } = input
+  const { store, sessionHost, getAdapter, run, workspace, priority, deb, sharedStandards, runDir, groupLabel } = input
   try {
     const adapter = getAdapter(deb.cli)
     const pf = await adapter.preflight(deb.model)
@@ -45,6 +46,7 @@ export async function spawnObserver(input: {
       args: cmd.args,
       cwd: workspace.path,
       group: run.id,
+      groupLabel,
       label: deb.label,
     })
     store.createSession({ runId: run.id, persona: deb.id, sessionRef: ref.id })

@@ -132,8 +132,13 @@ class SqliteRunStore implements RunStore {
   }
 
   createRun(input: { workspaceId: string; priorityId: string }): Run {
+    // Sequential, human-typeable session ids (run_1, run_2, …) instead of random hex — easy to type
+    // for teardown/deep-links, and the number IS the running total of sessions ever launched. Runs are
+    // never deleted (orphans are marked failed), and writes are single-writer-at-a-time (ADR-0004), so
+    // count+1 stays monotonic + unique. (Random-id legacy runs still count toward the total.)
+    const { c } = this.#db.prepare(`SELECT COUNT(*) AS c FROM run`).get() as { c: number }
     const run: Run = {
-      id: genId('run'),
+      id: `run_${c + 1}`,
       workspaceId: input.workspaceId,
       priorityId: input.priorityId,
       status: 'running',
