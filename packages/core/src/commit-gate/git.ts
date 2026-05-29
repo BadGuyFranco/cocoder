@@ -12,6 +12,10 @@ export interface Git {
   changedFiles(cwd: string): Promise<string[]>
   /** Stage + commit exactly `files` (pathspec --only semantics); return the new HEAD sha. */
   addAndCommit(cwd: string, files: readonly string[], message: string): Promise<string>
+  /** Discard `files`' working-tree changes back to HEAD: tracked files are restored, untracked
+   *  additions removed. Used to QUARANTINE a verify-rejected atom's changes so they cannot ride into
+   *  a later passing atom's commit (ADR-0013 atom isolation). */
+  restoreToHead(cwd: string, files: readonly string[]): Promise<void>
   /** `git show <sha>` — the committed diff for a run's commit_link (read-only; Oz run detail). */
   show(cwd: string, sha: string): Promise<string>
 }
@@ -61,6 +65,17 @@ export function makeGit(): Git {
       await git(cwd, ['add', '--', ...files])
       await git(cwd, ['commit', '-m', message, '--', ...files])
       return (await git(cwd, ['rev-parse', 'HEAD'])).trim()
+    },
+    async restoreToHead(cwd, files) {
+      // Per file so a mix of tracked + untracked works: restore tracked from HEAD; if that fails the
+      // path is untracked (no HEAD entry) → remove it. Pathspec-scoped, so only these files are touched.
+      for (const f of files) {
+        try {
+          await git(cwd, ['checkout', 'HEAD', '--', f])
+        } catch {
+          await git(cwd, ['clean', '-f', '--', f]).catch(() => {})
+        }
+      }
     },
     async show(cwd, sha) {
       return git(cwd, ['show', sha])

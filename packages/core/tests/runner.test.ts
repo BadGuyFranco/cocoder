@@ -69,6 +69,7 @@ function scriptedGit(changedPerAtom: string[][]): Git {
       head = `sha-${call}`
       return head
     },
+    async restoreToHead() {},
     async show() {
       return ''
     },
@@ -193,6 +194,44 @@ describe('runRun (multi-atom loop)', () => {
     expect(store.listCommitLinks(result.runId).map((c) => c.files)).toEqual([['packages/a.ts'], ['packages/b.ts']])
     expect(result.outOfScope).toEqual(['docs/leak.md', 'docs/leak.md']) // held back both atoms, never committed
     expect(result.status).toBe('pending-scope-decision')
+  })
+
+  test('atom isolation: a rejected atom\'s in-scope changes are quarantined, not committed by a later atom', async () => {
+    const store = openRunStore(':memory:')
+    const restored: string[][] = []
+    let call = 0
+    const changedPerCall = [['packages/bad.ts'], ['packages/good.ts']] // atom0 rejected leftovers, then atom1's work
+    const git: Git = {
+      async headSha() {
+        return 'h0'
+      },
+      async changedFiles() {
+        return changedPerCall[call++] ?? []
+      },
+      async addAndCommit() {
+        return `sha-${call}`
+      },
+      async restoreToHead(_cwd, files) {
+        restored.push([...files])
+      },
+      async show() {
+        return ''
+      },
+    }
+    const result = await runRun(
+      baseDeps({
+        store,
+        git,
+        io: fakeIO({
+          directives: [delegate('thin'), delegate('good'), wrapup('done')],
+          verdicts: [{ verdict: 'fail', reason: 'thin' }, { verdict: 'pass', reason: 'good' }],
+        }),
+      }),
+      input,
+    )
+    expect(restored).toEqual([['packages/bad.ts']]) // the rejected atom's in-scope work was discarded
+    expect(store.listCommitLinks(result.runId).map((c) => c.files)).toEqual([['packages/good.ts']]) // only the passing atom committed
+    expect(store.listEvents(result.runId).some((e) => e.type === 'atom-quarantined')).toBe(true)
   })
 
   test('a rejected atom commits nothing, then Oscar can delegate the next atom', async () => {

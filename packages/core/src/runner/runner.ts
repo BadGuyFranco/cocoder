@@ -17,7 +17,7 @@ import type { Git } from '../commit-gate/index.js'
 import type { Priority } from '../priorities/index.js'
 import type { ResolvedPersona } from '../personas/index.js'
 import type { Run, RunStatus, RunStore, Workspace } from '../store/index.js'
-import { effectiveScope } from '../write-scope/index.js'
+import { effectiveScope, partitionByScope } from '../write-scope/index.js'
 import type { SessionHost, SessionRef } from '../session-host/index.js'
 import { join } from 'node:path'
 import type { RunnerIO } from './io.js'
@@ -330,6 +330,14 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     if (verdict.verdict === 'fail') {
       store.recordEvent({ runId: run.id, type: 'verify-rejected', data: { atom: atomIndex, reason: verdict.reason } })
       store.setWorkItemStatus(workItem.id, 'abandoned')
+      // QUARANTINE (atom isolation): discard this rejected atom's IN-SCOPE working-tree changes so they
+      // can't ride into a LATER passing atom's commit. Prior atoms' in-scope work is already committed
+      // (untouched); held-back out-of-scope files are left alone (they never commit anyway).
+      const { inScope: rejectedInScope } = partitionByScope(await git.changedFiles(workspace.path), scope)
+      if (rejectedInScope.length > 0) {
+        await git.restoreToHead(workspace.path, rejectedInScope)
+        store.recordEvent({ runId: run.id, type: 'atom-quarantined', data: { atom: atomIndex, files: rejectedInScope } })
+      }
       consecutiveRejects += 1
       outcomeLine = `atom ${atomIndex} was REJECTED (${verdict.reason ?? 'no reason'}) — nothing committed`
       log(outcomeLine)

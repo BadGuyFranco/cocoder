@@ -72,6 +72,7 @@ function makeFakeGit(opts: { changed: string[]; headBefore: string; headNow?: st
       head = `sha-after-${commits.length}`
       return head
     },
+    async restoreToHead() {},
     async show() {
       return ''
     },

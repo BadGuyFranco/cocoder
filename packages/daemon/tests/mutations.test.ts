@@ -27,6 +27,7 @@ const fakeGit = (changed: string[] = ['packages/x.ts'], shas: readonly string[] 
     async addAndCommit() {
       return 'sha-committed'
     },
+    async restoreToHead() {},
     async show() {
       return 'diff'
     },
