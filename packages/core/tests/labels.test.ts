@@ -15,6 +15,9 @@ const persona = (over: Partial<ResolvedPersona> & { id: string }): ResolvedPerso
 describe('paneLabel', () => {
   test('formats as "<Persona> | <LLM> | <Model>"', () => {
     expect(paneLabel(persona({ id: 'oscar', label: 'Oscar', cli: 'claude', model: 'claude-opus-4-8' }))).toBe('Oscar | Claude | Opus 4.8')
+    // claude with an unpinned model shows its default display name (not "default")
+    expect(paneLabel(persona({ id: 'oscar', label: 'Oscar', cli: 'claude', model: '' }))).toBe('Oscar | Claude | Opus 4.8')
+    // a CLI with no default mapping (codex) shows "default" rather than a guess
     expect(paneLabel(persona({ id: 'bob', label: 'Bob', cli: 'codex', model: '' }))).toBe('Bob | Codex | default')
   })
 
@@ -25,9 +28,10 @@ describe('paneLabel', () => {
     expect(llmName('mystery')).toBe('mystery')
   })
 
-  test('modelName: pretty name for known ids, raw for unknown, "default" when unpinned', () => {
-    expect(modelName('claude-sonnet-4-6')).toBe('Sonnet 4.6')
-    expect(modelName('gpt-x')).toBe('gpt-x')
-    expect(modelName('')).toBe('default')
+  test('modelName: pinned id → pretty/raw; unpinned → CLI default display or "default"', () => {
+    expect(modelName('claude', 'claude-sonnet-4-6')).toBe('Sonnet 4.6')
+    expect(modelName('claude', 'gpt-x')).toBe('gpt-x')
+    expect(modelName('claude', '')).toBe('Opus 4.8') // claude's default display
+    expect(modelName('codex', '')).toBe('default') // no default mapping → truthful "default"
   })
 })

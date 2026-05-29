@@ -151,11 +151,11 @@ export async function teardownRun(ctx: OzContext, runId: string): Promise<Launch
     if (!ctx.liveRefs.has(s.sessionRef)) continue // not live in this process → nothing to close
     try {
       await ctx.sessionHost.kill({ id: s.sessionRef, driver: 'cmux' })
-      ctx.liveRefs.delete(s.sessionRef)
       closed.push(s.sessionRef)
     } catch {
-      /* pane already gone — fine, keep going */
+      /* pane already gone (e.g. closed by hand) — nothing to close */
     }
+    ctx.liveRefs.delete(s.sessionRef) // prune regardless: a failed kill means it's no longer live, so don't leave a stale deep-link
   }
   ctx.store.recordEvent({ runId, type: 'teardown', data: { closed } })
   void appendAudit(ctx.cocoderHome, { action: 'teardown', runId, closed })

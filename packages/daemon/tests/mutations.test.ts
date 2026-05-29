@@ -270,6 +270,28 @@ describe('Oz mutations + lifecycle', () => {
     expect(store.listEvents(run.id).some((e) => e.type === 'teardown')).toBe(true)
   })
 
+  test('teardown prunes a stale ref even when kill fails (pane closed by hand)', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.createSession({ runId: run.id, persona: 'oscar', sessionRef: 'surface:gone' })
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit(),
+      sessionHost: { ...fakeHost(), async kill() {
+        throw new Error('pane already gone')
+      } },
+      getAdapter: () => okAdapter,
+      io: fakeIO(),
+    })
+    oz.ctx.liveRefs.add('surface:gone')
+    const r = await call(oz, 'POST', `/runs/${run.id}/teardown`)
+    expect(r.status).toBe(200)
+    expect(r.json.closed).toEqual([]) // kill failed → nothing reported as closed
+    expect(oz.ctx.liveRefs.has('surface:gone')).toBe(false) // …but the stale ref is pruned, so no lingering deep-link
+  })
+
   test('POST /runs/:id/teardown → 404 for an unknown run', async () => {
     await startServer()
     expect((await call(oz!, 'POST', '/runs/nope/teardown')).status).toBe(404)
