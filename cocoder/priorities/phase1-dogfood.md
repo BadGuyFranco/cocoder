@@ -3,6 +3,12 @@ id: phase1-dogfood
 title: Phase 1 dogfood — add a small pure helper to core
 ---
 
+## Objective
+The orchestration spine is proven end to end (Oscar → Bob → commit-gate → run record) by producing a
+real committed diff: `@cocoder/core` exports a pure `truncate(text, max)` with tests — **verified**
+when `pnpm --filter @cocoder/core test` and `pnpm typecheck` pass and the run record links the commit.
+Boundary: one small `core` util; the *point* is the spine, not the helper.
+
 This is the first CoCoder v2 dogfood run. Its purpose is to prove the orchestration spine end to
 end (Oscar → Bob → commit-gate → run record) by producing a real, committed diff on the CoCoder
 repo. Keep the change small, elegant, and self-contained.

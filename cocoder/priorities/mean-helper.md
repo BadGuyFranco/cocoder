@@ -2,6 +2,13 @@
 id: mean-helper
 title: Add a mean() pure helper to core
 ---
+
+## Objective
+`@cocoder/core` exports a pure `mean(values: number[]): number` (arithmetic mean; `0` for empty; no
+rounding), re-exported from the core barrel and covered by tests — **verified** when
+`pnpm --filter @cocoder/core test` and `pnpm typecheck` pass. Boundary: a single `core` util; no
+consumers are wired to it.
+
 Add a pure helper that returns the arithmetic mean of a list of numbers, so Oscar has a concrete,
 not-yet-done task to delegate (and the founder can watch a real Oscar→Bob→commit run end to end).
 

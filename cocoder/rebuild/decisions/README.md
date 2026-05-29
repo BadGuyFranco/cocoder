@@ -16,8 +16,10 @@ Clean ADR set for the v2 rebuild. Authoritative for v2; the v1 ADRs under
 | [0007](./0007-write-scope-enforcement.md) | Write-scope: allow-list + commit-gate enforcement (S7) | Accepted |
 | [0008](./0008-repository-topology.md) | Repository topology + one-home enforcement (S3; amends 0005; ~resolves S8) | Accepted |
 | [0009](./0009-extensibility.md) | Extensibility: extend by files; new CLIs need a driver (S8) | Accepted |
+| [0010](./0010-taxonomy-and-authoring.md) | Taxonomy & authoring lifecycle: Playbooks, Plays, Objectives (amends 0005) | Accepted |
 
-**Phase-0 architecture Q&A complete — all seams resolved (ADRs 0001–0009).**
+**Phase-0 architecture Q&A complete — all seams resolved (ADRs 0001–0009).** ADR-0010 (taxonomy &
+authoring) accepted 2026-05-29 after a 6-lens adversarial review.
 
 ## Candidate irreversible seams (the Phase-0 Q&A agenda)
 

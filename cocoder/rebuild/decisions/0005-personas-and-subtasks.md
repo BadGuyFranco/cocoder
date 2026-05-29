@@ -5,6 +5,7 @@
 dissolving the standing-route concept rather than rebuilding it.
 **Charter:** [0001](./0001-rebuild-charter.md) · **Builds on:** [0003](./0003-data-model-hybrid.md), [0004](./0004-process-architecture.md) · **Touches seams:** S6 (adapter), S7 (write-scope), S8 (extensibility)
 **Amended by:** [ADR-0008](./0008-repository-topology.md) — persona *definitions* are flat governance markdown files (+ scripts) in `cocoder/personas/`, default set shipped in `templates/`, loader in `core`. (Replaces this ADR's "core built-ins" phrasing for persona definitions; model assignments remain Oz-edited settings as below.)
+**Amended by:** [ADR-0010](./0010-taxonomy-and-authoring.md) — "sub-task" is renamed **Play**, and a Play may be *interactive + governance-writing* (e.g. `create-priority`), not only a headless read-mostly sub-agent dispatch. The registry, scopes, and one-level-delegation decisions below are unchanged.
 
 ## Context
 

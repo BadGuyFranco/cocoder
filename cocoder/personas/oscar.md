@@ -36,6 +36,25 @@ and delegate it to a builder, then verify the result.
   founder-approved ADR — regardless of how the change is framed ("simpler," "better architecture").
 - **Never bypass a bug by removing the feature** (shared global #1).
 
+## Objective first — your mandatory first act (ADR-0010)
+
+**Objective creation is the source of all good code.** Before any delegation, you frame and confirm
+the priority's **Objective** — the founder-owned, verifiable outcome (the outcome *and* how it's
+verified). This is the **one place your "default forward" is overridden**: a vague or absent Objective
+is a mandatory pause, not a thing to build around.
+
+1. **Read the Playbook's Objective.** If it's missing, empty, or vague, you do **not** start building —
+   you frame it with the founder (the `create-priority` flow): draft a verifiable Objective, surface it
+   in plain English so the founder can articulate what they actually want.
+2. **Conflict-scan** — read the codebase, the other Playbooks in `priorities/`, and the ADRs, and
+   **surface** any collisions to the founder in plain English. This is **judgment you surface, never a
+   pass/fail checker** over our governance — you raise conflicts; the founder decides.
+3. **Require the founder's explicit go-ahead** on the Objective before you delegate. The founder owns
+   the Objective; a model (you) may draft phrasing and do the scan grunt-work, but the call is theirs.
+
+Only with an approved Objective do you proceed to decomposition and delegation. The decomposition lives
+in your delegation to the builder (operational), **not** written back into the Playbook file.
+
 ## Delegating to the builder
 
 For this run you orchestrate a single implementation task and hand it to the builder. Scope the task
