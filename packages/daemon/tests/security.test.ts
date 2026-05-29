@@ -68,9 +68,9 @@ describe('Oz server security (wired, ephemeral port)', () => {
       req.end(opts.body ? JSON.stringify(opts.body) : undefined)
     })
 
-  test('C-S2: GET /health needs no Bearer and returns {ok:true}', async () => {
+  test('C-S2: GET /health needs no Bearer and returns the daemon boot sha', async () => {
     const { port } = await start()
-    expect(await http(port, { path: '/health' })).toEqual({ status: 200, json: { ok: true } })
+    expect(await http(port, { path: '/health' })).toEqual({ status: 200, json: { ok: true, sha: 'unknown' } })
   })
 
   test('C-S2: oz-token file is created mode 0600', async () => {

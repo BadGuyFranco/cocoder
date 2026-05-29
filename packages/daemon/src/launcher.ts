@@ -54,6 +54,27 @@ async function buildRunInput(ctx: OzContext, workspaceId: string, priorityId: st
   }
 }
 
+async function headShaOrUnknown(ctx: OzContext, cwd: string): Promise<string> {
+  try {
+    return await ctx.git.headSha(cwd)
+  } catch {
+    return 'unknown'
+  }
+}
+
+function warnIfDaemonStale(ctx: OzContext, runId: string, headSha: string): void {
+  if (ctx.bootSha === 'unknown' || headSha === 'unknown' || headSha === ctx.bootSha) return
+  try {
+    ctx.store.recordEvent({ runId, type: 'daemon-stale', data: { bootSha: ctx.bootSha, headSha } })
+    console.warn(
+      `[oz] STALE DAEMON: running code from ${ctx.bootSha} but repo HEAD is ${headSha} — restart (scripts/oz.sh restart) to pick up changes`,
+    )
+    void appendAudit(ctx.cocoderHome, { action: 'daemon-stale', runId, bootSha: ctx.bootSha, headSha })
+  } catch {
+    /* loud if possible, but never block a launch */
+  }
+}
+
 export interface LaunchResult {
   readonly status: number
   readonly body: Record<string, unknown>
@@ -75,6 +96,7 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
     ctx.inFlight.delete(workspaceId)
     return { status: 400, body: { error: err instanceof Error ? err.message : String(err) } }
   }
+  const headNow = await headShaOrUnknown(ctx, input.workspace.path)
 
   let runId: string | null = null
   const deps: RunnerDeps = {
@@ -86,6 +108,7 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
     onRunCreated: (run) => {
       runId = run.id
       ctx.inFlight.set(workspaceId, run.id)
+      warnIfDaemonStale(ctx, run.id, headNow)
     },
   }
 

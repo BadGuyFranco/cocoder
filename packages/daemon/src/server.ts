@@ -62,11 +62,19 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
   const csrfToken = randomBytes(32).toString('base64url')
 
   const registry = makeAdapterRegistry()
+  const git = opts.git ?? makeGit()
+  let bootSha = 'unknown'
+  try {
+    bootSha = await git.headSha(opts.cocoderHome)
+  } catch {
+    /* non-git install roots still boot; stale-daemon signaling is observability only */
+  }
   const ctx: OzContext = {
     cocoderHome: opts.cocoderHome,
     runsRoot: join(opts.cocoderHome, 'local', 'runs'),
     store: opts.store ?? openRunStore(join(opts.cocoderHome, 'local', 'cocoder.db')),
-    git: opts.git ?? makeGit(),
+    git,
+    bootSha,
     sessionHost: opts.sessionHost ?? new CmuxSessionHost(),
     getAdapter: opts.getAdapter ?? ((cli) => resolveAdapter(cli, registry)),
     io: opts.io ?? makeRunnerIO(),
@@ -95,7 +103,7 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
     // --- open GET routes (no Bearer): probe target, loopback bootstrap, dashboard assets.
     // The browser must load the page + bootstrap a token before it can authenticate. ---
     if (req.method === 'GET') {
-      if (pathname === '/health') return sendJson(res, 200, { ok: true })
+      if (pathname === '/health') return sendJson(res, 200, { ok: true, sha: ctx.bootSha })
       if (pathname === '/auth/session') return sendJson(res, 200, { bearerToken: token, csrfToken })
       if (await serveStatic(pathname, res)) return
     }

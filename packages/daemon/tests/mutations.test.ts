@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { openRunStore, type Adapter, type Git, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
 import { createOzServer, OZ_CSRF_HEADER, type OzServer } from '../src/index.js'
 
@@ -13,20 +13,25 @@ const okAdapter: Adapter = {
   build: () => ({ command: 'x', args: [] }),
   preflight: async () => ({ ok: true, checks: [{ name: 'installed', ok: true, detail: 'ok' }] }),
 }
-const fakeGit = (changed: string[] = ['packages/x.ts']): Git => ({
-  async headSha() {
-    return 'h0'
-  },
-  async changedFiles() {
-    return changed
-  },
-  async addAndCommit() {
-    return 'sha-committed'
-  },
-  async show() {
-    return 'diff'
-  },
-})
+const fakeGit = (changed: string[] = ['packages/x.ts'], shas: readonly string[] = ['h0']): Git => {
+  let headCalls = 0
+  return {
+    async headSha() {
+      const sha = shas[Math.min(headCalls, shas.length - 1)] ?? shas[0] ?? 'h0'
+      headCalls += 1
+      return sha
+    },
+    async changedFiles() {
+      return changed
+    },
+    async addAndCommit() {
+      return 'sha-committed'
+    },
+    async show() {
+      return 'diff'
+    },
+  }
+}
 const fakeHost = (onShow?: (ref: SessionRef) => void, onKill?: (ref: SessionRef) => void): SessionHost => {
   let n = 0
   return {
@@ -114,14 +119,14 @@ describe('Oz mutations + lifecycle', () => {
   let shown: SessionRef[]
   let killed: SessionRef[]
 
-  const startServer = async (): Promise<OzServer> => {
+  const startServer = async (git: Git = fakeGit()): Promise<OzServer> => {
     shown = []
     killed = []
     oz = await createOzServer({
       cocoderHome: home,
       port: 0,
       store,
-      git: fakeGit(),
+      git,
       sessionHost: fakeHost(
         (ref) => shown.push(ref),
         (ref) => killed.push(ref),
@@ -160,6 +165,33 @@ describe('Oz mutations + lifecycle', () => {
     // C-S6 audit: a launch line was appended.
     const audit = await readFile(join(home, 'local', 'oz-audit.log'), 'utf8')
     expect(audit).toContain('"action":"launch"')
+  })
+
+  test('POST /runs records daemon-stale once when the daemon boot sha differs from current HEAD', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      await startServer(fakeGit(['packages/x.ts'], ['boot-sha', 'head-sha']))
+      const r = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
+      expect(r.status).toBe(202)
+      expect(r.json.runId).toMatch(/^run_/)
+
+      const events = store.listEvents(r.json.runId).filter((e) => e.type === 'daemon-stale')
+      expect(events).toHaveLength(1)
+      expect(events[0]?.data).toEqual({ bootSha: 'boot-sha', headSha: 'head-sha' })
+      expect(warn).toHaveBeenCalledWith(
+        '[oz] STALE DAEMON: running code from boot-sha but repo HEAD is head-sha — restart (scripts/oz.sh restart) to pick up changes',
+      )
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  test('POST /runs skips daemon-stale when the daemon boot sha matches current HEAD', async () => {
+    await startServer(fakeGit(['packages/x.ts'], ['same-sha']))
+    const r = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
+    expect(r.status).toBe(202)
+    expect(r.json.runId).toMatch(/^run_/)
+    expect(store.listEvents(r.json.runId).filter((e) => e.type === 'daemon-stale')).toEqual([])
   })
 
   test('POST /runs → 409 when a run is already in flight for the workspace', async () => {

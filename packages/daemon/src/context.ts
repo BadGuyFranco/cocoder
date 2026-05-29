@@ -8,6 +8,7 @@ export interface OzContext {
   readonly runsRoot: string
   readonly store: RunStore
   readonly git: Git
+  readonly bootSha: string
   readonly sessionHost: SessionHost
   readonly getAdapter: (cli: string) => Adapter
   readonly io: RunnerIO
