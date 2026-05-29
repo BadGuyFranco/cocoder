@@ -23,6 +23,7 @@ import { readOrCreateToken } from './secrets.js'
 import { dispatchMutations, dispatchReads } from './routes.js'
 import type { OzContext } from './context.js'
 import { reconcileOrphans } from './launcher.js'
+import { serveStatic } from './static.js'
 
 export interface OzServerOptions {
   /** Install root (holds local/secrets, local/cocoder.db, local/runs, the workspace registry). */
@@ -55,9 +56,6 @@ export function sendJson(res: ServerResponse, status: number, body: unknown): vo
   res.writeHead(status, { 'content-type': 'application/json' })
   res.end(JSON.stringify(body))
 }
-
-/** Open routes (no Bearer required): the probe target and the loopback auth bootstrap. */
-const isOpenRoute = (pathname: string): boolean => pathname === '/health' || pathname === '/auth/session'
 
 export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
   const token = await readOrCreateToken(opts.cocoderHome)
@@ -93,19 +91,21 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
 
     const url = new URL(req.url ?? '/', 'http://127.0.0.1')
     const pathname = url.pathname
-    if (!isOpenRoute(pathname)) {
-      const bearer = checkBearer(req, token)
-      if (!bearer.ok) return sendJson(res, bearer.status!, { error: bearer.error })
+
+    // --- open GET routes (no Bearer): probe target, loopback bootstrap, dashboard assets.
+    // The browser must load the page + bootstrap a token before it can authenticate. ---
+    if (req.method === 'GET') {
+      if (pathname === '/health') return sendJson(res, 200, { ok: true })
+      if (pathname === '/auth/session') return sendJson(res, 200, { bearerToken: token, csrfToken })
+      if (await serveStatic(pathname, res)) return
     }
+
+    // --- Bearer required for everything else; CSRF on mutations ---
+    const bearer = checkBearer(req, token)
+    if (!bearer.ok) return sendJson(res, bearer.status!, { error: bearer.error })
     if (isMutation(req.method)) {
       const csrf = checkCsrf(req, csrfToken)
       if (!csrf.ok) return sendJson(res, csrf.status!, { error: csrf.error })
-    }
-
-    // --- open routes ---
-    if (pathname === '/health' && req.method === 'GET') return sendJson(res, 200, { ok: true })
-    if (pathname === '/auth/session' && req.method === 'GET') {
-      return sendJson(res, 200, { bearerToken: token, csrfToken })
     }
 
     // --- surfaces ---

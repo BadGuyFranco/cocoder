@@ -39,7 +39,7 @@ function listSourceFiles(dir) {
   const out = []
   if (!existsSync(dir)) return out
   for (const entry of readdirSync(dir)) {
-    if (entry === 'node_modules' || entry === 'dist') continue
+    if (entry === 'node_modules' || entry === 'dist' || entry === 'public') continue
     const full = join(dir, entry)
     const st = statSync(full)
     if (st.isDirectory()) out.push(...listSourceFiles(full))
