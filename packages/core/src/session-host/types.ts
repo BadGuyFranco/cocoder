@@ -21,6 +21,12 @@ export interface SpawnOptions {
   /** Working directory. The driver is responsible for actually entering it
    *  (cmux's `open` does NOT set the shell cwd — the driver prepends `cd`). */
   readonly cwd: string
+  /** Optional layout hint: sessions sharing a `group` are placed together (the cmux driver puts
+   *  them in one workspace as split panes, so the founder watches a run's personas side-by-side).
+   *  Drivers may ignore it. The runner passes the run id. */
+  readonly group?: string
+  /** Optional human label for the pane/tab (e.g. the persona's display name). */
+  readonly label?: string
   /** If set, the driver redirects the command's stdout to this file. Used to capture a
    *  CLI's structured output (e.g. claude `--output-format json`) reliably, instead of
    *  scraping the wrapped terminal screen (the F6 fragility). */

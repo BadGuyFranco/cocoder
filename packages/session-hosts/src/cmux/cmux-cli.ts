@@ -27,6 +27,19 @@ export function parseWorkspaceRefs(json: string): string[] {
   return (data.workspaces ?? []).map((w) => w.ref).filter((r): r is string => typeof r === 'string')
 }
 
+/** Extract the first `<kind>:<n>` ref from a command's text output (e.g. `OK workspace:4` →
+ *  workspace; `OK surface:5 workspace:4` → surface). Throws if absent. */
+export function parseOkRef(output: string, kind: 'workspace' | 'surface' | 'pane'): string {
+  const m = output.match(new RegExp(`\\b${kind}:\\d+\\b`))
+  if (!m) throw new Error(`cmux: expected a ${kind} ref in output: ${output.slice(0, 120)}`)
+  return m[0]
+}
+
+/** All `pane:<n>` refs in `list-panes` output (used to diff the new pane after a split). */
+export function parsePaneRefs(text: string): string[] {
+  return [...text.matchAll(/\bpane:\d+\b/g)].map((m) => m[0])
+}
+
 /** Parse `list-pane-surfaces --workspace <ws> --json` → { paneRef, surfaceRef }. */
 export function parseSurface(json: string): { paneRef: string; surfaceRef: string } {
   const data = JSON.parse(json) as {

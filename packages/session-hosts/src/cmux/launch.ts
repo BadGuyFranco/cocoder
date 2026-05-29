@@ -5,20 +5,24 @@ import type { SpawnOptions } from '@cocoder/core'
 export const shquote = (s: string): string => `'${s.replace(/'/g, "'\\''")}'`
 
 /**
- * Build the bash script that runs inside a cmux pane. Bakes in the three spike findings:
+ * Build the bash script that runs inside a cmux pane. Bakes in the spike findings AND keeps the
+ * agent's output VISIBLE in the pane (the founder watches it work) while still capturing it:
  *  - `cd '<cwd>'` first (cmux `open` does NOT set the shell cwd);
  *  - `< /dev/null` (codex `exec` hangs forever waiting on stdin otherwise; claude warns);
- *  - a trailing `echo "<token>:EXIT=$?"` sentinel so completion + exit code are readable
- *    off the screen even though the structured artifact is the source of truth.
+ *  - `2>&1 | tee '<log>'` so stdout+stderr render in the pane AND land in the log file — orchestration
+ *    relies on delegation.json + the exit sentinel, NOT on parsing this output, so teeing is safe;
+ *  - a trailing `echo "<token>:EXIT=<code>"` sentinel (using PIPESTATUS through the tee) so completion
+ *    + exit code stay readable off the screen.
  * Sending `bash <scriptPath>` (rather than the raw command) sidesteps cmux send quoting.
  */
 export function buildLaunchScript(opts: SpawnOptions, token: string): string {
   const cmd = [shquote(opts.command), ...opts.args.map(shquote)].join(' ')
-  let line = `cd ${shquote(opts.cwd)} && ${cmd}`
-  if (opts.stdoutPath) line += ` > ${shquote(opts.stdoutPath)}`
-  if (opts.stderrPath) line += ` 2> ${shquote(opts.stderrPath)}`
-  line += ' < /dev/null'
-  return `${line}\necho "${token}:EXIT=$?"\n`
+  const base = `cd ${shquote(opts.cwd)} && ${cmd} < /dev/null`
+  if (opts.stdoutPath) {
+    // Visible (pane) + captured (log); PIPESTATUS[0] is the agent's exit, not tee's.
+    return `${base} 2>&1 | tee ${shquote(opts.stdoutPath)}\necho "${token}:EXIT=\${PIPESTATUS[0]}"\n`
+  }
+  return `${base}\necho "${token}:EXIT=$?"\n`
 }
 
 /** Parse the exit code from a screen capture containing the sentinel, or null if absent. */

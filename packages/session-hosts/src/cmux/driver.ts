@@ -9,7 +9,7 @@ import { promisify } from 'node:util'
 import type { SessionExited, SessionHost, SessionRef, SessionStatus, SpawnOptions } from '@cocoder/core'
 
 const execFileAsync = promisify(execFile)
-import { type CmuxCli, makeCmuxCli, parseSurface, parseWorkspaceRefs } from './cmux-cli.js'
+import { type CmuxCli, makeCmuxCli, parseOkRef, parsePaneRefs, parseSurface } from './cmux-cli.js'
 import { buildLaunchScript, diffNewWorkspace, parseExitFromScreen, shquote } from './launch.js'
 
 interface Session {
@@ -52,6 +52,8 @@ export class CmuxSessionHost implements SessionHost {
   readonly #launchApp: () => Promise<void>
   readonly #hostReadyTimeoutMs: number
   readonly #sessions = new Map<string, Session>()
+  /** group (run id) → the run's cmux workspace, so a run's personas share one workspace as splits. */
+  readonly #groups = new Map<string, string>()
 
   constructor(opts: CmuxDriverOptions = {}) {
     this.#cli = opts.cli ?? makeCmuxCli()
@@ -64,14 +66,36 @@ export class CmuxSessionHost implements SessionHost {
 
   async spawn(opts: SpawnOptions): Promise<SessionRef> {
     await this.#ensureHost()
-    const before = parseWorkspaceRefs(await this.#cli.run(['list-workspaces', '--json']))
-    await this.#cli.run(['open', opts.cwd, '--no-focus'])
-    const after = parseWorkspaceRefs(await this.#cli.run(['list-workspaces', '--json']))
-    const workspaceRef = diffNewWorkspace(before, after)
+    const existing = opts.group ? this.#groups.get(opts.group) : undefined
 
-    const { paneRef, surfaceRef } = parseSurface(
-      await this.#cli.run(['list-pane-surfaces', '--workspace', workspaceRef, '--json']),
-    )
+    let workspaceRef: string
+    let paneRef: string
+    let surfaceRef: string
+    if (existing) {
+      // A later persona of the same run → split a new pane beside the others (watch side-by-side).
+      const panesBefore = parsePaneRefs(await this.#cli.run(['list-panes', '--workspace', existing]))
+      const out = await this.#cli.run(['new-split', 'right', '--workspace', existing, '--focus', 'true'])
+      workspaceRef = existing
+      surfaceRef = parseOkRef(out, 'surface')
+      const panesAfter = parsePaneRefs(await this.#cli.run(['list-panes', '--workspace', existing]))
+      paneRef = diffNewWorkspace(panesBefore, panesAfter) // reuse the single-new-ref differ
+    } else {
+      // First persona of the run → a fresh workspace named for the run, cwd set, brought to front.
+      const name = opts.label ?? opts.group ?? 'cocoder'
+      const out = await this.#cli.run(['new-workspace', '--name', name, '--cwd', opts.cwd, '--focus', 'true'])
+      workspaceRef = parseOkRef(out, 'workspace')
+      ;({ paneRef, surfaceRef } = parseSurface(await this.#cli.run(['list-pane-surfaces', '--workspace', workspaceRef, '--json'])))
+      if (opts.group) this.#groups.set(opts.group, workspaceRef)
+    }
+
+    // Label the pane/tab with the persona so Oscar vs Bob is obvious.
+    if (opts.label) {
+      try {
+        await this.#cli.run(['rename-tab', '--surface', surfaceRef, opts.label])
+      } catch {
+        /* labelling is cosmetic — never fail a spawn over it */
+      }
+    }
 
     const token = this.#tokenFactory()
     const scriptPath = join(this.#scriptDir, `cocoder-cmux-${randomUUID()}.sh`)
@@ -81,6 +105,7 @@ export class CmuxSessionHost implements SessionHost {
     await this.#cli.run(['send-key', '--surface', surfaceRef, 'Enter'])
 
     this.#sessions.set(surfaceRef, { workspaceRef, paneRef, surfaceRef, token, exitCode: null })
+    await this.show({ id: surfaceRef, driver: 'cmux' }) // bring the active agent to the front
     return { id: surfaceRef, driver: 'cmux' }
   }
 
@@ -122,7 +147,9 @@ export class CmuxSessionHost implements SessionHost {
 
   async kill(ref: SessionRef): Promise<void> {
     const s = this.#session(ref)
-    await this.#cli.run(['close-workspace', '--workspace', s.workspaceRef])
+    // Close just this pane's surface — runs now SHARE a workspace (split panes), so closing the
+    // whole workspace would take out a sibling persona.
+    await this.#cli.run(['close-surface', '--surface', s.surfaceRef])
     this.#sessions.delete(ref.id)
   }
 

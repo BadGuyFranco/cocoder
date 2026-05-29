@@ -109,6 +109,8 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     cwd: workspace.path,
     stdoutPath: oscarCmd.stdoutPath,
     stderrPath: join(runDir, 'oscar.err'),
+    group: run.id, // a run's personas share one cmux workspace (split panes) — watch side-by-side
+    label: oscar.label,
   })
   const oscarSession = store.createSession({ runId: run.id, persona: oscar.id, sessionRef: oscarRef.id })
   store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: oscar.id, ref: oscarRef.id } })
@@ -158,6 +160,8 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     cwd: workspace.path,
     stdoutPath: bobCmd.stdoutPath,
     stderrPath: join(runDir, 'bob.err'),
+    group: run.id, // same workspace as Oscar → Bob opens as a split pane next to it
+    label: bob.label,
   })
   const bobSession = store.createSession({ runId: run.id, persona: bob.id, sessionRef: bobRef.id })
   store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: bob.id, ref: bobRef.id } })
