@@ -39,6 +39,7 @@ export { parseFrontmatter, type Frontmatter, loadPersona, loadAssignments, resol
 
 export { loadPriority, type Priority } from './priorities/index.js'
 
+export { clamp } from './util/clamp.js'
 export { truncate } from './util/truncate.js'
 
 export type {
