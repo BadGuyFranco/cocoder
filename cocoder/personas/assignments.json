@@ -3,6 +3,6 @@
   "personas": {
     "oscar": { "cli": "claude", "model": "" },
     "bob": { "cli": "codex", "model": "" },
-    "deb": { "cli": "claude", "model": "", "enabled": true }
+    "deb": { "cli": "codex", "model": "", "enabled": true }
   }
 }

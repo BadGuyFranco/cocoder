@@ -21,6 +21,7 @@ import { effectiveScope } from '../write-scope/index.js'
 import type { SessionHost, SessionRef } from '../session-host/index.js'
 import { join } from 'node:path'
 import type { RunnerIO } from './io.js'
+import { paneLabel } from './labels.js'
 import { type Judge, makeHeuristicJudge, runMonitor } from './monitor.js'
 import { spawnObserver } from './observer.js'
 import {
@@ -186,7 +187,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     cwd: workspace.path,
     group: run.id,
     groupLabel,
-    label: oscar.label,
+    label: paneLabel(oscar),
   })
   store.createSession({ runId: run.id, persona: oscar.id, sessionRef: oscarRef.id })
   store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: oscar.id, ref: oscarRef.id } })
@@ -204,7 +205,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     cwd: workspace.path,
     group: run.id, // same workspace as Oscar → splits in beside it (warm, on standby)
     groupLabel,
-    label: bob.label,
+    label: paneLabel(bob),
   })
   store.createSession({ runId: run.id, persona: bob.id, sessionRef: bobRef.id })
   store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: bob.id, ref: bobRef.id } })

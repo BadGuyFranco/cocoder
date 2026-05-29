@@ -4,6 +4,7 @@ import type { ResolvedPersona } from '../personas/index.js'
 import type { Run, RunStore, Workspace } from '../store/index.js'
 import type { SessionHost, SessionRef } from '../session-host/index.js'
 import { join } from 'node:path'
+import { paneLabel } from './labels.js'
 import { buildObserverPrompt } from './prompts.js'
 
 export async function spawnObserver(input: {
@@ -47,7 +48,7 @@ export async function spawnObserver(input: {
       cwd: workspace.path,
       group: run.id,
       groupLabel,
-      label: deb.label,
+      label: paneLabel(deb),
     })
     store.createSession({ runId: run.id, persona: deb.id, sessionRef: ref.id })
     store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: deb.id, ref: ref.id } })
