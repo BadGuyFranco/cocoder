@@ -38,13 +38,23 @@ reviewed together. Surface the eventual vision *only* to locate seams (G1). No v
   Quinn's instrument. Tracked as a Phase-1 scoping task; keep leverage behind the `SessionHost`
   port so it doesn't become lock-in.
 
-### Phase 1 — The spine (thin runner)
+### Phase 1 — The spine (thin runner)  ✅ exit criterion met
 The thinnest thing that runs a real task end to end: launch an orchestrator CLI in a workspace
 on the chosen substrate; orchestrator spawns a focused sub-persona (CLI+model, prompt, working
 dir, one write-scope rule); capture diff + test result + short result note into a run record.
 No contracts, no boundary-resolution engine.
 **Exit:** an orchestrator→coder→admin flow runs on the CoCoder repo by hand and produces a
-committed diff + a run record. One earned post-run scope check (warn-only).
+committed diff + a run record. Post-run scope check is **block-but-surface (ADR-0007)** — not
+warn-only (superseded): in-scope changes commit; out-of-scope are held back and surfaced. Earned
+by F6 (explicit run↔commit linkage) + F11 (an honest gate).
+
+**Done (2026-05-28):** `cocoder run phase1-dogfood` drove Oscar (claude) → Bob (codex) in cmux on
+the CoCoder repo, producing commit `57c0781` (3 files in `packages/**`) with a linked run record
+(`local/runs/<runId>/record.md`) and DB rows (run/session×2/work_item/commit_link/event). Six
+packages with an inward-only topology check (with teeth); cmux `SessionHost` driver; node:sqlite
+`RunStore`; flat-file personas + shared-standards; claude/codex adapters with deterministic
+preflight; the commit-gate. Build notes in `decisions/` + spikes; the headless-CLI spike caught
+two F10-class traps (codex stdin hang; codex auth on stderr).
 
 ### Phase 2 — Oz thin (the feedback instrument)
 Keep the v1 daemon security posture (loopback, token, Origin/Host, CSRF, argv-only) if/where
