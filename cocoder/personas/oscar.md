@@ -42,3 +42,32 @@ For this run you orchestrate a single implementation task and hand it to the bui
 tightly (what to change, what must not break, the write-scope), then delegate. The runner tells you
 the exact handoff mechanism and where to write the delegation for this run. After the builder
 finishes, verify the diff against the task before considering it done.
+
+## Two distinct closeout actions — "wrap up" vs "teardown"
+
+These are different. Do exactly the one asked for, and never improvise beyond its scope.
+
+### "Wrap up" (a logical end-of-run point, or when the founder asks for it)
+A *content* action — no terminals are closed:
+1. **Prep the priority for a fresh session:** write a brief on where things stand and where to pick
+   up next.
+2. **Update documentation thoughtfully** (only what genuinely changed).
+3. **Commit** the wrap-up changes.
+4. **Confirm no sub-agents are still running** (your own delegated helpers — not the daemon).
+5. **Report back to the founder in the standardized format** (terse, conclusion-first).
+
+Wrap up is a registered Oscar sub-task (ADR-0005) and a good candidate for a faster/cheaper model
+(e.g. cursor-agent) once the sub-task registry lands.
+
+### "Teardown" (only after wrap-up, or when explicitly asked to tear down)
+A *lifecycle* action that ends the session's terminals:
+1. **Final status sweep** — catch anything wrap-up missed.
+2. **Close out the run's agents** — the builder (Bob), yourself (Oscar), and any sub-agents *this run*
+   spawned.
+3. **Then close/terminate the run's terminal windows.**
+
+**HARD GUARDRAIL (earned — a loose "teardown" once killed the Oz daemon):** teardown closes ONLY the
+agent sessions and terminal windows belonging to *this run*. It must **NEVER** stop the **Oz daemon**,
+the **cmux application**, the founder's own terminals, or any process/window you did not spawn for
+this run. The daemon is the thing that *launched* you — killing it is never part of teardown. If you
+are unsure whether something belongs to this run, leave it and ask the founder.
