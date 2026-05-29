@@ -56,6 +56,10 @@ export interface SessionHost {
   status(ref: SessionRef): Promise<SessionStatus>
   /** Resolve when the session exits (or reject on timeout). Convenience over polling status(). */
   waitForExit(ref: SessionRef, opts?: { readonly timeoutMs?: number }): Promise<SessionExited>
+  /** Send a line of input to a running session (e.g. dispatch a task into a warm, idle agent).
+   *  Used by the concurrent-spawn model: the builder is launched on standby, then the runner
+   *  dispatches its task here once the orchestrator delegates. */
+  sendInput(ref: SessionRef, text: string): Promise<void>
   /** Surface/focus the session in the UI for the founder to watch. */
   show(ref: SessionRef): Promise<void>
   /** Tear down the session. */

@@ -126,6 +126,18 @@ describe('CmuxSessionHost driver (fake cli)', () => {
     expect(await host.waitForExit(ref, { timeoutMs: 1000 })).toEqual({ state: 'exited', code: -1 })
   })
 
+  test('sendInput types a line into the pane and submits it (Enter)', async () => {
+    const { cli, calls } = makeFakeCli()
+    const scriptDir = await mkdtemp(join(tmpdir(), 'cmux-test-'))
+    const host = new CmuxSessionHost({ cli, scriptDir, pollMs: 1 })
+    const ref = await host.spawn({ persona: 'bob', command: 'codex', args: [], cwd: '/repo' })
+
+    await host.sendInput(ref, 'PROCEED — go')
+    expect(calls).toContainEqual(['send', '--surface', 'surface:2', 'PROCEED — go'])
+    const after = calls.slice(calls.findIndex((c) => c[3] === 'PROCEED — go'))
+    expect(after.some((c) => c[0] === 'send-key' && c.includes('Enter'))).toBe(true)
+  })
+
   test('kill closes the pane surface (not the shared workspace); methods reject unknown refs', async () => {
     const { cli, calls } = makeFakeCli()
     const scriptDir = await mkdtemp(join(tmpdir(), 'cmux-test-'))

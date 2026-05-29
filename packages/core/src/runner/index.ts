@@ -2,4 +2,4 @@ export { runRun, PreflightError, type RunnerDeps, type RunInput, type RunResult 
 export { makeRunnerIO, type RunnerIO } from './io.js'
 export { type Delegation, parseDelegation } from './delegation.js'
 export { renderRunRecord } from './record.js'
-export { buildOrchestratorPrompt, buildBuilderPrompt, commitMessage } from './prompts.js'
+export { buildOrchestratorPrompt, buildBuilderStandbyPrompt, buildBuilderDispatch, commitMessage } from './prompts.js'

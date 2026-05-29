@@ -25,6 +25,7 @@ function trackingHost(ctx: OzContext): SessionHost {
     readScreen: (ref) => h.readScreen(ref),
     status: (ref) => h.status(ref),
     waitForExit: (ref, opts) => h.waitForExit(ref, opts),
+    sendInput: (ref, text) => h.sendInput(ref, text),
     show: (ref) => h.show(ref),
     kill: async (ref) => {
       ctx.liveRefs.delete(ref.id)

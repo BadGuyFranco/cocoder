@@ -40,11 +40,13 @@ with this shape (and nothing else):
 Writing that file is your FINAL action — then stop. Do not edit repository files.`
 }
 
-export function buildBuilderPrompt(input: {
+/** The builder's LAUNCH prompt (concurrent-spawn model): Bob is spawned up front, on standby, and
+ *  must NOT act until the runner dispatches "PROCEED". The task itself arrives in delegationPath. */
+export function buildBuilderStandbyPrompt(input: {
   sharedStandards: string
   bobBody: string
-  task: string
   scope: readonly string[]
+  delegationPath: string
   donePath: string
 }): string {
   const scope = input.scope.length > 0 ? input.scope.map((s) => `  - ${s}`).join('\n') : '  (none — read-only)'
@@ -56,27 +58,26 @@ export function buildBuilderPrompt(input: {
 ${input.bobBody}
 
 ---
-# Your task
+# Standby — do NOT act yet
 
-${input.task}
+You have been launched early so your session is warm. **Do nothing yet** — do not inspect files, plan,
+run commands, or edit. Wait for a dispatch message that says **PROCEED**.
 
-# Write-scope (enforced at commit)
-
-Only changes to these paths will be committed by CoCoder; anything outside is held back for review:
+When you receive PROCEED:
+1. Read the JSON at \`${input.delegationPath}\` — its \`task\` field is your task.
+2. Implement it. Your write-scope (enforced at CoCoder's commit-gate; anything outside is held back):
 ${scope}
+3. Run the relevant checks (tests, typecheck).
+4. As your FINAL action, write \`${input.donePath}\` with exactly:
 
-Make the change within scope, then run any relevant checks (tests, typecheck).
+       {"done": true, "summary": "<one line: what you changed, or why nothing was needed>"}
 
-# Signal completion (required)
+   This is how CoCoder knows you are done — your session stays open, it does not exit.`
+}
 
-When you are finished (including if you determine no change is needed), write this exact file as
-your FINAL action — it is how CoCoder knows you are done (your session stays open, it does not exit):
-
-    ${input.donePath}
-
-with this shape (and nothing else):
-
-    {"done": true, "summary": "<one line: what you changed, or why nothing was needed>"}`
+/** The short dispatch line the runner sends into Bob's warm pane once Oscar has delegated. */
+export function buildBuilderDispatch(delegationPath: string): string {
+  return `PROCEED — your task is ready. Read it from ${delegationPath} and implement it now within your write-scope; write your builder-done file when finished.`
 }
 
 export function commitMessage(priorityId: string, runId: string): string {

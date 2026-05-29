@@ -42,6 +42,7 @@ const fakeHost = (onShow?: (ref: SessionRef) => void): SessionHost => {
     async waitForExit() {
       return { state: 'exited', code: 0 }
     },
+    async sendInput() {},
     async show(ref) {
       onShow?.(ref)
     },

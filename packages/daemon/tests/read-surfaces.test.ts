@@ -37,6 +37,7 @@ const fakeHost = (): SessionHost =>
     async waitForExit() {
       return { state: 'exited', code: 0 }
     },
+    async sendInput() {},
     async show() {},
     async kill() {},
   }) as SessionHost

@@ -12,7 +12,7 @@ import { effectiveScope } from '../write-scope/index.js'
 import type { SessionHost } from '../session-host/index.js'
 import { join } from 'node:path'
 import type { RunnerIO } from './io.js'
-import { buildBuilderPrompt, buildOrchestratorPrompt, commitMessage } from './prompts.js'
+import { buildBuilderStandbyPrompt, buildBuilderDispatch, buildOrchestratorPrompt, commitMessage } from './prompts.js'
 import { renderRunRecord } from './record.js'
 
 export interface RunnerDeps {
@@ -89,10 +89,14 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
   const headBefore = await git.headSha(workspace.path)
 
-  // 1) Spawn Oscar (orchestrator). Read-only; produces delegation.json.
   const delegationPath = join(runDir, 'delegation.json')
-  const oscarAdapter = getAdapter(oscar.cli)
-  const oscarCmd = oscarAdapter.build({
+  const builderDonePath = join(runDir, 'builder-done.json')
+  const scope = effectiveScope(bob.writeScope, priority.scopeNarrowing) // known at launch (no delegation needed)
+
+  // 1) Spawn BOTH personas up front (v1-style concurrent spawn): Oscar with its full prompt, Bob on
+  //    standby in a split pane beside it. Bob's CLI cold-start overlaps Oscar's work, and the founder
+  //    sees the run fully staffed immediately.
+  const oscarCmd = getAdapter(oscar.cli).build({
     prompt: buildOrchestratorPrompt({
       sharedStandards,
       oscarBody: oscar.body,
@@ -111,48 +115,14 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     command: oscarCmd.command,
     args: oscarCmd.args,
     cwd: workspace.path,
-    group: run.id, // a run's personas share one cmux workspace (split panes) — watch side-by-side
+    group: run.id,
     label: oscar.label,
   })
   store.createSession({ runId: run.id, persona: oscar.id, sessionRef: oscarRef.id })
   store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: oscar.id, ref: oscarRef.id } })
-  await sessionHost.show(oscarRef)
-  log(`oscar spawned (${oscarRef.id}); awaiting delegation`)
 
-  // 2) Await Oscar's delegation (timeout → terminal failure, not a hang).
-  let delegation
-  try {
-    delegation = await io.awaitDelegation(delegationPath, {
-      timeoutMs: t.orchestrationMs,
-      pollMs: t.pollMs,
-      // Fail fast if Oscar's session dies without delegating (e.g. cmux died) — don't hang the
-      // full orchestration timeout (earned by an observed cmux-death dogfood failure).
-      isAlive: async () => (await sessionHost.status(oscarRef)).state === 'running',
-    })
-  } catch (err) {
-    store.recordEvent({ runId: run.id, type: 'delegation-timeout', data: { message: String(err) } })
-    store.setRunStatus(run.id, 'failed')
-    throw err
-  }
-  // Oscar's job is done the moment delegation.json exists. Its interactive session stays open in
-  // its pane (the founder can read what it did) — we do NOT wait for it to exit; we proceed.
-
-  const scope = effectiveScope(bob.writeScope, priority.scopeNarrowing)
-  const workItem = store.createWorkItem({
-    runId: run.id,
-    sourcePersona: oscar.id,
-    targetPersona: bob.id,
-    task: delegation.task,
-    writeScope: scope,
-  })
-  store.recordEvent({ runId: run.id, type: 'delegation', data: { workItemId: workItem.id, task: delegation.task } })
-  log(`delegation received → work item ${workItem.id}`)
-
-  // 3) Spawn Bob (builder) with the task + injected write-scope.
-  const builderDonePath = join(runDir, 'builder-done.json')
-  const bobAdapter = getAdapter(bob.cli)
-  const bobCmd = bobAdapter.build({
-    prompt: buildBuilderPrompt({ sharedStandards, bobBody: bob.body, task: delegation.task, scope, donePath: builderDonePath }),
+  const bobCmd = getAdapter(bob.cli).build({
+    prompt: buildBuilderStandbyPrompt({ sharedStandards, bobBody: bob.body, scope, delegationPath, donePath: builderDonePath }),
     model: bob.model,
     cwd: workspace.path,
     outPath: join(runDir, 'bob.out'),
@@ -162,16 +132,45 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     command: bobCmd.command,
     args: bobCmd.args,
     cwd: workspace.path,
-    group: run.id, // same workspace as Oscar → Bob opens as a split pane next to it
+    group: run.id, // same workspace as Oscar → splits in beside it (warm, on standby)
     label: bob.label,
   })
   store.createSession({ runId: run.id, persona: bob.id, sessionRef: bobRef.id })
   store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: bob.id, ref: bobRef.id } })
-  await sessionHost.show(bobRef)
-  log(`bob spawned (${bobRef.id}); building — awaiting builder-done`)
+  await sessionHost.show(oscarRef) // focus Oscar — it's the one working first
+  log(`oscar + bob spawned (${oscarRef.id}, ${bobRef.id}); awaiting delegation, bob on standby`)
 
-  // Bob's interactive session signals completion by writing builder-done.json (it does not exit).
-  // Fast-fail if its session dies first (cmux closed / pane gone).
+  // 2) Await Oscar's delegation. Fail fast if its session dies (cmux died); on failure, tear down
+  //    the idle standby Bob so it isn't left orphaned.
+  let delegation
+  try {
+    delegation = await io.awaitDelegation(delegationPath, {
+      timeoutMs: t.orchestrationMs,
+      pollMs: t.pollMs,
+      isAlive: async () => (await sessionHost.status(oscarRef)).state === 'running',
+    })
+  } catch (err) {
+    await sessionHost.kill(bobRef).catch(() => {})
+    store.recordEvent({ runId: run.id, type: 'delegation-timeout', data: { message: String(err) } })
+    store.setRunStatus(run.id, 'failed')
+    throw err
+  }
+
+  const workItem = store.createWorkItem({
+    runId: run.id,
+    sourcePersona: oscar.id,
+    targetPersona: bob.id,
+    task: delegation.task,
+    writeScope: scope,
+  })
+  store.recordEvent({ runId: run.id, type: 'delegation', data: { workItemId: workItem.id, task: delegation.task } })
+  log(`delegation received → work item ${workItem.id}; dispatching to bob`)
+
+  // 3) Dispatch the task into Bob's warm standby pane (v1 send-keys model), then watch for done.
+  await sessionHost.show(bobRef)
+  await sessionHost.sendInput(bobRef, buildBuilderDispatch(delegationPath))
+  store.recordEvent({ runId: run.id, type: 'builder-dispatch', data: { ref: bobRef.id } })
+
   try {
     const done = await io.awaitBuilderDone(builderDonePath, {
       timeoutMs: t.buildMs,

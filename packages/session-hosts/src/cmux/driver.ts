@@ -132,6 +132,15 @@ export class CmuxSessionHost implements SessionHost {
     }
   }
 
+  async sendInput(ref: SessionRef, text: string): Promise<void> {
+    this.#session(ref) // assert it's ours
+    // Type the line into the agent's pane, then submit. Used to dispatch a task into a warm,
+    // standby builder (the concurrent-spawn model). Keep dispatch text SHORT (a pointer to a task
+    // file) — long multi-line sends are quoting-fragile.
+    await this.#cli.run(['send', '--surface', ref.id, text])
+    await this.#cli.run(['send-key', '--surface', ref.id, 'Enter'])
+  }
+
   async show(ref: SessionRef): Promise<void> {
     const s = this.#session(ref)
     // Best-effort: bring the session's pane to the foreground for the founder to watch.

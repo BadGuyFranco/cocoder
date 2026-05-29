@@ -42,6 +42,7 @@ function fakeSessionHost(): SessionHost {
     async waitForExit() {
       return { state: 'exited', code: 0 }
     },
+    async sendInput() {},
     async show() {},
     async kill() {},
   }
@@ -120,6 +121,30 @@ describe('runRun', () => {
     expect(result.status).toBe('pending-scope-decision')
     expect(result.outOfScope).toEqual(['docs/leak.md'])
     expect(store.listEvents(result.runId).some((e) => e.type === 'out-of-scope')).toBe(true)
+  })
+
+  test('spawns Oscar AND Bob up front, then dispatches the task into Bob via sendInput', async () => {
+    const spawns: string[] = []
+    const dispatches: string[] = []
+    const recordingHost = (): SessionHost => {
+      const base = fakeSessionHost()
+      return {
+        ...base,
+        async spawn(opts) {
+          spawns.push(opts.persona)
+          return base.spawn(opts)
+        },
+        async sendInput(ref, text) {
+          dispatches.push(text)
+        },
+      }
+    }
+    const store = openRunStore(':memory:')
+    await runRun(baseDeps({ store, sessionHost: recordingHost() }), input)
+
+    expect(spawns).toEqual(['oscar', 'bob']) // both spawned (Bob concurrently, on standby)
+    expect(dispatches).toHaveLength(1)
+    expect(dispatches[0]).toMatch(/PROCEED/) // task dispatched into Bob's warm pane
   })
 
   test('onRunCreated fires synchronously with the created run (daemon learns runId for its 202)', async () => {

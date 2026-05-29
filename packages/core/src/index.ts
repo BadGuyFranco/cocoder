@@ -74,6 +74,7 @@ export {
   parseDelegation,
   renderRunRecord,
   buildOrchestratorPrompt,
-  buildBuilderPrompt,
+  buildBuilderStandbyPrompt,
+  buildBuilderDispatch,
   commitMessage,
 } from './runner/index.js'
