@@ -95,6 +95,29 @@ real product change, founder-reviewed.
 **Exit:** a real change shipped through CoCoder v2 in a repo that is **not** CoCoder. This is
 the only test that validates the whole bet.
 
+## Priority roadmap (interim — migrates to Oz/DB)
+
+The ordered view of v2 priorities. **Interim home** until full-Oz's drag-reorder owns sequencing in
+Oz/the DB; one line each, derived from each Playbook (not restated), no owner/route pointer (so no
+F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones in
+`cocoder/priorities/backlog/`. See [`../priorities/AGENTS.md`](../priorities/AGENTS.md).
+
+**Active (launchable, in order):**
+1. `objective-presence-gate` — the ADR-0010 minimal-slice gate; the in-flight dogfood.
+2. `deb` — orchestration/session debugger persona; the automated feedback loop (Phase 3 instrument).
+3. `plays-documentation` — ADR-0005 Plays mechanism, proven with the `documentation` Play; foundation
+   for the deferred two.
+4. `full-oz-dashboard` — the v1-designed control plane, earned in slices; the road to feature-complete
+   (and where priority ordering eventually lands).
+
+**Deferred — `backlog/` (blocked on the Plays mechanism + Phase 5, an external app/deploy target):**
+5. `quinn-app-testing` — Quinn persona + browser/Electron test Plays.
+6. `deployment-plays` — human-gated deploys (Vercel/GCloud/signed-Electron/GitHub) + `local/secrets`.
+
+**Vision backlog (re-author from frozen v1 reference when earned):** cloud/managed adapters (v1
+`v0.2`, cf. ADR-0006/0009) · onboarding/workspace lifecycle (v1 `v0.3`, Phase 5) · the deferred Oz G1
+items folded into `full-oz-dashboard`. Sources in `cocoder/priorities/zArchive/`.
+
 ## Earned guardrails log
 
 Appended during Phase 3+. Each entry: the observed failure → the guardrail added → why it's at

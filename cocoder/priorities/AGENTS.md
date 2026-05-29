@@ -34,6 +34,19 @@ scopeNarrowing: <glob>     # optional — narrows the builder's persona write-sc
   orchestrator (ADR-0005), never written into the Playbook — "who owns/executes this priority" in the
   file is the F1 reverse-pointer that caused ghost priorities. The directory listing *is* the index.
 
+## Active vs backlog, and ordering
+
+- **Active priorities** are flat `*.md` files at this top level — the launchable set (the runner/Oz
+  scan `priorities/*.md`, non-recursive). **The directory listing is the index of what's active.**
+- **Deferred priorities** live in [`backlog/`](./backlog/) — authored so the intent isn't lost, but
+  outside the launch glob (no gating code needed). Promote one with a `git mv` up to this level when it
+  unblocks; its `## Objective` names what it's blocked on.
+- **Ordering is operational, not a file field.** Priorities are resequenced often, and full-Oz's design
+  owns *drag-reorder*, so sequencing's real home is Oz/the DB. **Interim** until that ships: the ordered
+  roadmap lives in one place — the rebuild [`PLAYBOOK.md`](../rebuild/PLAYBOOK.md) "Priority roadmap"
+  section (one line each, derived not restated, no owner pointer — so no F1/F4). Playbook files carry
+  **no rank** — identity stays stable (the F1 surface).
+
 ## v1 history (frozen)
 
 The folder-priorities (`v0.2-…`/`v0.3-…`/`v0.4-…`/`v0.5-…`), `../PRIORITIES.md`, and `zArchive/` are
