@@ -87,6 +87,13 @@ const fakeIO = (): RunnerIO => ({
   async awaitVerification() {
     return { verdict: 'pass' as const, reason: 'verified' }
   },
+  async awaitTriage() {
+    return { disposition: 'one-off' as const, summary: 'n/a' }
+  },
+  async writeFaultContext() {},
+  async writeDisposition(runDir, index) {
+    return `${runDir}/disposition-${index}.md`
+  },
   async writePickup(runDir) {
     return `${runDir}/pickup.md`
   },

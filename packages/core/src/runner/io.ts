@@ -4,6 +4,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { type Directive, parseDirective } from './directive.js'
+import { type Triage, parseTriage } from './triage.js'
 
 export interface RunnerIO {
   ensureRunDir(runDir: string): Promise<void>
@@ -24,6 +25,16 @@ export interface RunnerIO {
   /** Write the run's pickup brief (the resumable continuation artifact; ADR-0002 C1 / F8). */
   writePickup(runDir: string, markdown: string): Promise<string>
   writeRunRecord(runDir: string, markdown: string): Promise<string>
+  /** Write the fault context the runner hands Deb to triage (ADR-0013 tier 2). */
+  writeFaultContext(faultPath: string, ctx: unknown): Promise<void>
+  /** Poll `triagePath` until Deb writes her verdict (`{disposition, summary, proposal?}`), or throw on
+   *  timeout / if her session dies first. Deb only READS the fault + emits this; the runner records it. */
+  awaitTriage(
+    triagePath: string,
+    opts: { timeoutMs: number; pollMs: number; now?: () => number; isAlive?: () => Promise<boolean> },
+  ): Promise<Triage>
+  /** Write Deb's disposition for the founder (the proposed patch / escalation / log note). */
+  writeDisposition(runDir: string, index: number, markdown: string): Promise<string>
 }
 
 interface Verification {
@@ -77,6 +88,17 @@ export function makeRunnerIO(): RunnerIO {
     },
     awaitVerification(verifyPath, opts) {
       return pollFile(verifyPath, parseVerification, 'a verdict', opts)
+    },
+    awaitTriage(triagePath, opts) {
+      return pollFile(triagePath, parseTriage, 'a triage verdict', opts)
+    },
+    async writeFaultContext(faultPath, ctx) {
+      await writeFile(faultPath, JSON.stringify(ctx, null, 2), 'utf8')
+    },
+    async writeDisposition(runDir, index, markdown) {
+      const path = join(runDir, `disposition-${index}.md`)
+      await writeFile(path, markdown, 'utf8')
+      return path
     },
     async writePickup(runDir, markdown) {
       const path = join(runDir, 'pickup.md')

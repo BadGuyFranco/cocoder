@@ -82,7 +82,11 @@ const okAdapter: Adapter = {
 }
 
 // IO that scripts Oscar's directive sequence + per-atom verdicts (default: every atom passes).
-const fakeIO = (opts: { directives: Directive[]; verdicts?: { verdict: 'pass' | 'fail'; reason: string | null }[] }): RunnerIO => {
+const fakeIO = (opts: {
+  directives: Directive[]
+  verdicts?: { verdict: 'pass' | 'fail'; reason: string | null }[]
+  triage?: { disposition: 'cocoder-bug' | 'repo-bug' | 'one-off'; summary: string; proposal?: string }
+}): RunnerIO => {
   let di = 0
   let vi = 0
   return {
@@ -94,6 +98,13 @@ const fakeIO = (opts: { directives: Directive[]; verdicts?: { verdict: 'pass' | 
     },
     async awaitVerification() {
       return opts.verdicts?.[vi++] ?? { verdict: 'pass' as const, reason: 'looks good' }
+    },
+    async awaitTriage() {
+      return opts.triage ?? { disposition: 'cocoder-bug' as const, summary: 'machinery fault', proposal: '--- a\n+++ b' }
+    },
+    async writeFaultContext() {},
+    async writeDisposition(runDir, index) {
+      return `${runDir}/disposition-${index}.md`
     },
     async writePickup(runDir) {
       return `${runDir}/pickup.md`
@@ -251,6 +262,49 @@ describe('runRun (multi-atom loop)', () => {
     )
     expect(nudges).toEqual(['are you blocked?'])
     expect(store.listEvents(store.listRuns()[0]!.id).some((e) => e.type === 'nudge')).toBe(true)
+  })
+
+  test('Deb triages a builder failure before the run unwinds (tier 2 disposition)', async () => {
+    const store = openRunStore(':memory:')
+    await expect(
+      runRun(
+        baseDeps({
+          store,
+          makeJudge: () => async () => ({ state: 'progressing' }), // never completes
+          sessionHost: fakeSessionHost({ async status() {
+            return { state: 'exited', code: 1 } // builder (and panes) dead → monitor returns 'dead'
+          } }),
+          io: fakeIO({ directives: [delegate('do it')], triage: { disposition: 'repo-bug', summary: 'the target persona is misconfigured' } }),
+        }),
+        { ...input, deb }, // Deb present → triage runs
+      ),
+    ).rejects.toThrow(/builder dead/)
+    const runId = store.listRuns()[0]!.id
+    const types = store.listEvents(runId).map((e) => e.type)
+    expect(types).toEqual(expect.arrayContaining(['builder-failed', 'triage-dispatch', 'fault-triaged']))
+    const triaged = store.listEvents(runId).find((e) => e.type === 'fault-triaged')
+    expect((triaged?.data as { disposition: string }).disposition).toBe('repo-bug')
+    expect(store.getRun(runId)?.status).toBe('failed') // Deb proposes/logs; she does not rescue the run
+  })
+
+  test('without Deb, a builder failure just fails the run (no triage)', async () => {
+    const store = openRunStore(':memory:')
+    await expect(
+      runRun(
+        baseDeps({
+          store,
+          makeJudge: () => async () => ({ state: 'progressing' }),
+          sessionHost: fakeSessionHost({ async status() {
+            return { state: 'exited', code: 1 }
+          } }),
+          io: fakeIO({ directives: [delegate('do it')] }),
+        }),
+        input, // no deb
+      ),
+    ).rejects.toThrow(/builder dead/)
+    const types = store.listEvents(store.listRuns()[0]!.id).map((e) => e.type)
+    expect(types).toContain('builder-failed')
+    expect(types).not.toContain('triage-dispatch')
   })
 
   test('builder pane dying mid-atom fails the run', async () => {

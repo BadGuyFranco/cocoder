@@ -61,6 +61,24 @@ describe('awaitVerification', () => {
   })
 })
 
+describe('awaitTriage', () => {
+  test('returns Deb\'s verdict once triage.json holds a valid disposition', async () => {
+    const path = await tmpPath('triage-0.json', JSON.stringify({ disposition: 'cocoder-bug', summary: 'monitor mis-timed', proposal: 'diff' }))
+    expect(await io.awaitTriage(path, { timeoutMs: 1000, pollMs: 1 })).toEqual({ disposition: 'cocoder-bug', summary: 'monitor mis-timed', proposal: 'diff' })
+  })
+
+  test('treats an unknown disposition as not-ready (keeps polling)', async () => {
+    const path = await tmpPath('triage-0.json', JSON.stringify({ disposition: 'maybe', summary: 'x' }))
+    let t = 0
+    await expect(io.awaitTriage(path, { timeoutMs: 30, pollMs: 1, now: () => (t += 20) })).rejects.toThrow(/within 30ms/)
+  })
+
+  test('fails fast when Deb\'s session exits before triaging', async () => {
+    const path = await tmpPath('triage-0.json')
+    await expect(io.awaitTriage(path, { timeoutMs: 60_000, pollMs: 1, isAlive: async () => false })).rejects.toThrow(/session exited before/)
+  })
+})
+
 describe('writePickup', () => {
   test('writes the pickup brief into the run dir and returns its path', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'cocoder-io-'))

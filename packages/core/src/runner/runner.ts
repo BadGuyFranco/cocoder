@@ -28,12 +28,14 @@ import {
   atomSentinel,
   buildBuilderDispatch,
   buildBuilderStandbyPrompt,
+  buildDebTriageDispatch,
   buildNextOrWrapDispatch,
   buildOrchestratorPrompt,
   buildVerifyDispatch,
   commitMessage,
 } from './prompts.js'
 import { renderRunRecord } from './record.js'
+import type { Triage } from './triage.js'
 
 /** Build the per-atom Judge (ADR-0013). Injected so tests use a scripted fake and cli/daemon get the
  *  real heuristic. Tier 1 = a cheap idle/sentinel heuristic; semantic judgment stays at the verify-gate. */
@@ -222,6 +224,34 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     throw new Error(message)
   }
 
+  // Deb (tier 2): when present, the runner hands her each fault to triage. She READS the fault context +
+  // emits a verdict (she never writes the store or applies a fix); the runner — the single writer
+  // (ADR-0003) — records it and surfaces her disposition. Absent Deb → unchanged behavior.
+  const debAlive = async (): Promise<boolean> => (debRef ? (await sessionHost.status(debRef)).state === 'running' : false)
+  let faultSeq = 0
+  const renderDisposition = (faultType: string, atomIndex: number | null, v: Triage): string => {
+    const where = atomIndex !== null ? ` (atom ${atomIndex})` : ''
+    const lines = [`# Deb disposition: ${v.disposition}`, '', `- **Fault:** ${faultType}${where}`, `- **Summary:** ${v.summary}`, '']
+    if (v.disposition === 'cocoder-bug') lines.push('## Proposed fix — NOT applied; for founder review', '', '```diff', v.proposal ?? '(no diff provided)', '```', '')
+    if (v.disposition === 'repo-bug') lines.push('## For the founder', '', v.summary, '')
+    return lines.join('\n')
+  }
+  const triageFault = async (faultType: string, atomIndex: number | null, message: string): Promise<void> => {
+    if (!debRef) return // no Deb on this run → no triage
+    const i = faultSeq++
+    try {
+      await io.writeFaultContext(join(runDir, `fault-${i}.json`), { fault: faultType, atom: atomIndex, message })
+      await sessionHost.show(debRef)
+      await sessionHost.sendInput(debRef, buildDebTriageDispatch(join(runDir, `fault-${i}.json`), join(runDir, `triage-${i}.json`)))
+      store.recordEvent({ runId: run.id, type: 'triage-dispatch', data: { fault: faultType, atom: atomIndex } })
+      const verdict = await io.awaitTriage(join(runDir, `triage-${i}.json`), { timeoutMs: t.orchestrationMs, pollMs: t.pollMs, isAlive: debAlive })
+      store.recordEvent({ runId: run.id, type: 'fault-triaged', data: { fault: faultType, atom: atomIndex, disposition: verdict.disposition, summary: verdict.summary } })
+      await io.writeDisposition(runDir, i, renderDisposition(faultType, atomIndex, verdict))
+    } catch (err) {
+      store.recordEvent({ runId: run.id, type: 'triage-skipped', data: { fault: faultType, reason: err instanceof Error ? err.message : String(err) } })
+    }
+  }
+
   // ── The multi-atom loop ───────────────────────────────────────────────────────────────────────
   const committedShas: string[] = []
   const committedFiles: string[] = []
@@ -280,7 +310,10 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     )
     if (outcome.reason !== 'done') {
       store.setWorkItemStatus(workItem.id, 'abandoned')
-      return fail('builder-failed', `builder ${outcome.reason} on atom ${atomIndex}`)
+      store.recordEvent({ runId: run.id, type: 'builder-failed', data: { atom: atomIndex, reason: outcome.reason } })
+      await triageFault('builder-failed', atomIndex, `builder ${outcome.reason} on atom ${atomIndex}`) // Deb triages before the run unwinds
+      store.setRunStatus(run.id, 'failed')
+      throw new Error(`builder ${outcome.reason} on atom ${atomIndex}`)
     }
     store.recordEvent({ runId: run.id, type: 'builder-done', data: { atom: atomIndex, samples: outcome.samples } })
 

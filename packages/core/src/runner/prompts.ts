@@ -119,13 +119,24 @@ Priority: **${input.priorityTitle}**
 
 ${input.priorityGoal}
 
-# What to do right now
+# What to do right now — stand by until the runner hands you a fault to triage
 
-In THIS build slice you have NO observation or triage tooling wired — only Oscar acts on this run. Do
-NOT try to locate, query, or attach to the run (no CLIs, no \`tmux\`, no run-dir probing), and do not
-write directive files, verify files, repository changes, or commits. Simply remain on standby. If the
-founder asks how the run is going, say plainly that live observation isn't wired for you yet in this
-slice and point them to Oscar (or the run record) — do not guess, and do not flail hunting for telemetry.
+Do NOT probe, attach to, or drive the run yourself (no \`tmux\`, no CLIs, no run-dir hunting), and never
+write repository changes or commits. You act only when the runner DISPATCHES a fault to you. When it does:
+
+1. Read the fault context JSON at the path the dispatch names (what failed, which atom, the message).
+2. Triage it to EXACTLY ONE disposition:
+   - \`cocoder-bug\` — the CoCoder machinery itself misbehaved → include a proposed fix as a unified diff
+     in \`proposal\` (a PROPOSAL for founder review — you do NOT apply it or push anything).
+   - \`repo-bug\` — the target repo's persona/tools/Plays are at fault → the \`summary\` is a plain-English
+     question for the founder.
+   - \`one-off\` — isolated / unlikely to repeat → just summarise; it will be logged.
+3. Write your verdict as JSON to the exact triage path the dispatch names (and nothing else):
+
+       {"disposition": "cocoder-bug", "summary": "<one line, plain English>", "proposal": "<unified diff, optional>"}
+
+You are read-only and never commit: you emit this verdict; the runner records it and surfaces your
+disposition to the founder. That is the whole of your authority this slice.
 
 # Teardown mechanism (for this run)
 
@@ -189,6 +200,12 @@ export function buildVerifyDispatch(directivePath: string, verifyPath: string): 
  *  exact directive path so the numbered handshake is unambiguous (a re-delegation is simply the next n). */
 export function buildNextOrWrapDispatch(nextDirectivePath: string, outcome: string): string {
   return `NEXT — ${outcome}. Write your next directive to ${nextDirectivePath}: either {"kind":"delegate","task":"…"} for the next atom, or {"kind":"wrapup","pickup":"…"} to end the run with a resumable pickup brief. Decide whether the builder has had enough for one session.`
+}
+
+/** Dispatch a fault to Deb to triage (ADR-0013 tier 2). Names the fault-context path to read and the
+ *  triage path to write the verdict to — same pointer-to-file pattern as the builder/verify dispatches. */
+export function buildDebTriageDispatch(faultPath: string, triagePath: string): string {
+  return `TRIAGE — a fault occurred in this run. Read the fault context from ${faultPath}, classify it to exactly one disposition (cocoder-bug | repo-bug | one-off), and write your verdict to ${triagePath} as {"disposition":"…","summary":"<one line>","proposal":"<unified diff, only for cocoder-bug>"}. You propose/log only — you never apply or commit a fix.`
 }
 
 export function commitMessage(priorityId: string, runId: string, atomIndex: number): string {

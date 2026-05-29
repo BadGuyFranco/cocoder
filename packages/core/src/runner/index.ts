@@ -22,6 +22,7 @@ export {
   type HeuristicJudgeOptions,
 } from './monitor.js'
 export { type Directive, parseDirective } from './directive.js'
+export { type Triage, type Disposition, parseTriage } from './triage.js'
 export { renderRunRecord } from './record.js'
 export {
   atomSentinel,
@@ -31,5 +32,6 @@ export {
   buildBuilderDispatch,
   buildVerifyDispatch,
   buildNextOrWrapDispatch,
+  buildDebTriageDispatch,
   commitMessage,
 } from './prompts.js'

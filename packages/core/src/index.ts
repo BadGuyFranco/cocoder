@@ -85,6 +85,9 @@ export {
   type HeuristicJudgeOptions,
   type Directive,
   parseDirective,
+  type Triage,
+  type Disposition,
+  parseTriage,
   renderRunRecord,
   atomSentinel,
   buildOrchestratorPrompt,
@@ -93,5 +96,6 @@ export {
   buildBuilderDispatch,
   buildVerifyDispatch,
   buildNextOrWrapDispatch,
+  buildDebTriageDispatch,
   commitMessage,
 } from './runner/index.js'
