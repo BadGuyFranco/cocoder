@@ -1,7 +1,10 @@
-// claude (Claude Code) adapter — the orchestrator CLI. Invocation pinned by the Step 0.5
-// spike: `claude -p '<prompt>' --permission-mode acceptEdits --add-dir '<cwd>'
-// --output-format json` (the driver adds `< /dev/null`). Completion = exit 0 + the JSON
-// (subtype:success / is_error:false) captured to outPath via stdout redirect.
+// claude (Claude Code) adapter — the orchestrator CLI. Headless print mode so it runs to
+// completion autonomously and writes delegation.json via its Write tool. Uses
+// `--output-format stream-json --verbose` (NOT json): of claude's print formats only stream-json
+// emits in REALTIME, so the agent's work renders live in its cmux pane (the founder watches it).
+// `text`/`json` buffer until the end (a blank pane). The runner keys completion off the exit
+// sentinel + delegation.json — it never parses this output — so the streaming format is free to
+// optimise for visibility. (Supersedes the Step 0.5 spike's `--output-format json`.)
 import type { Adapter, BuildInput, BuiltCommand, PreflightResult } from '@cocoder/core'
 import { defaultExec, type Exec } from './exec.js'
 
@@ -21,10 +24,11 @@ export class ClaudeAdapter implements Adapter {
       '--add-dir',
       input.cwd,
       '--output-format',
-      'json',
+      'stream-json', // realtime → visible in the cmux pane (text/json buffer until the end)
+      '--verbose', // required by print mode for stream-json
     ]
     if (input.model) args.push('--model', input.model)
-    // claude writes its JSON result to stdout → capture it to the artifact file.
+    // The driver tees stdout+stderr to the pane AND this log file (visible + captured).
     return { command: 'claude', args, stdoutPath: input.outPath }
   }
 

@@ -43,7 +43,16 @@ start() {
   exit 1
 }
 
+# Count runs currently in flight (status='running') — stopping the daemon would orphan them.
+running_runs() {
+  node --input-type=module -e "import {DatabaseSync} from 'node:sqlite';try{const db=new DatabaseSync('${ROOT}/local/cocoder.db');console.log(db.prepare(\"SELECT count(*) c FROM run WHERE status='running'\").get().c)}catch{console.log(0)}" 2>/dev/null | tail -1
+}
+
 stop() {
+  if [ "${FORCE:-}" != "1" ] && [ "$(running_runs)" -gt 0 ] 2>/dev/null; then
+    echo "Refusing to stop: a run is in flight (would be orphaned). Wait for it, or FORCE=1 scripts/oz.sh stop." >&2
+    exit 3
+  fi
   if [ -f "${PIDFILE}" ]; then kill "$(cat "${PIDFILE}")" 2>/dev/null || true; rm -f "${PIDFILE}"; fi
   lsof -ti ":${PORT}" -sTCP:LISTEN | xargs kill 2>/dev/null || true
   echo "Oz stopped."

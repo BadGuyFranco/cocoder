@@ -8,7 +8,7 @@ const fakeExec =
     responses[[command, ...args].join(' ')] ?? { code: 127, stdout: '', stderr: 'not found' }
 
 describe('build() pins the spike invocations', () => {
-  test('claude: -p, acceptEdits, add-dir, json; stdout captured to outPath; model optional', () => {
+  test('claude: -p, acceptEdits, add-dir, stream-json+verbose (realtime/visible); model optional', () => {
     const built = new ClaudeAdapter().build({ prompt: 'hi', model: 'opus', cwd: '/repo', outPath: '/run/o.json' })
     expect(built.command).toBe('claude')
     expect(built.args).toEqual([
@@ -19,7 +19,8 @@ describe('build() pins the spike invocations', () => {
       '--add-dir',
       '/repo',
       '--output-format',
-      'json',
+      'stream-json',
+      '--verbose',
       '--model',
       'opus',
     ])
