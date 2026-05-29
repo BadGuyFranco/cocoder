@@ -5,32 +5,16 @@ import type { SpawnOptions } from '@cocoder/core'
 export const shquote = (s: string): string => `'${s.replace(/'/g, "'\\''")}'`
 
 /**
- * Build the bash script that runs inside a cmux pane. Bakes in the spike findings AND keeps the
- * agent's output VISIBLE in the pane (the founder watches it work) while still capturing it:
- *  - `cd '<cwd>'` first (cmux `open` does NOT set the shell cwd);
- *  - `< /dev/null` (codex `exec` hangs forever waiting on stdin otherwise; claude warns);
- *  - `2>&1 | tee '<log>'` so stdout+stderr render in the pane AND land in the log file — orchestration
- *    relies on delegation.json + the exit sentinel, NOT on parsing this output, so teeing is safe;
- *  - a trailing `echo "<token>:EXIT=<code>"` sentinel (using PIPESTATUS through the tee) so completion
- *    + exit code stay readable off the screen.
- * Sending `bash <scriptPath>` (rather than the raw command) sidesteps cmux send quoting.
+ * Build the bash script that runs the agent as a real INTERACTIVE session in its cmux pane (the
+ * founder watches the native TUI). `cd '<cwd>'` first (cmux `open` doesn't set the shell cwd), then
+ * `exec` the agent so it takes over the pane's PTY (stdin = the live terminal, so no `< /dev/null`).
+ * No output redirect/tee and no exit sentinel: completion is ARTIFACT-based (the runner polls for
+ * delegation.json / builder-done.json), not scraped from the screen. Sending `bash <scriptPath>`
+ * (rather than the raw command) sidesteps cmux send quoting of the long prompt arg.
  */
-export function buildLaunchScript(opts: SpawnOptions, token: string): string {
+export function buildLaunchScript(opts: SpawnOptions): string {
   const cmd = [shquote(opts.command), ...opts.args.map(shquote)].join(' ')
-  const base = `cd ${shquote(opts.cwd)} && ${cmd} < /dev/null`
-  if (opts.stdoutPath) {
-    // Visible (pane) + captured (log); PIPESTATUS[0] is the agent's exit, not tee's.
-    return `${base} 2>&1 | tee ${shquote(opts.stdoutPath)}\necho "${token}:EXIT=\${PIPESTATUS[0]}"\n`
-  }
-  return `${base}\necho "${token}:EXIT=$?"\n`
-}
-
-/** Parse the exit code from a screen capture containing the sentinel, or null if absent. */
-export function parseExitFromScreen(screen: string, token: string): number | null {
-  // Escape regex metachars in the token, then look for "<token>:EXIT=<digits>".
-  const safe = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const m = screen.match(new RegExp(`${safe}:EXIT=(\\d+)`))
-  return m ? Number(m[1]) : null
+  return `cd ${shquote(opts.cwd)}\nexec ${cmd}\n`
 }
 
 /**

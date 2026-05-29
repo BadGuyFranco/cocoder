@@ -1,10 +1,10 @@
-// claude (Claude Code) adapter — the orchestrator CLI. Headless print mode so it runs to
-// completion autonomously and writes delegation.json via its Write tool. Uses
-// `--output-format stream-json --verbose` (NOT json): of claude's print formats only stream-json
-// emits in REALTIME, so the agent's work renders live in its cmux pane (the founder watches it).
-// `text`/`json` buffer until the end (a blank pane). The runner keys completion off the exit
-// sentinel + delegation.json — it never parses this output — so the streaming format is free to
-// optimise for visibility. (Supersedes the Step 0.5 spike's `--output-format json`.)
+// claude (Claude Code) adapter — the orchestrator CLI, launched as a real INTERACTIVE session in
+// its cmux pane (the founder watches the native TUI), mirroring CoBuilder's proven pattern:
+// `claude --disable-slash-commands --permission-mode acceptEdits -- "<prompt>"`. The prompt is the
+// positional arg after `--`. acceptEdits lets it write its delegation file without prompting;
+// --disable-slash-commands keeps launch deterministic. Completion is ARTIFACT-based — the runner
+// polls for the delegation file the prompt tells it to write — NOT process exit (a TUI doesn't
+// exit). (Supersedes the Step 0.5 spike's headless `-p --output-format json`.)
 import type { Adapter, BuildInput, BuiltCommand, PreflightResult } from '@cocoder/core'
 import { defaultExec, type Exec } from './exec.js'
 
@@ -16,20 +16,10 @@ export class ClaudeAdapter implements Adapter {
   }
 
   build(input: BuildInput): BuiltCommand {
-    const args = [
-      '-p',
-      input.prompt,
-      '--permission-mode',
-      'acceptEdits',
-      '--add-dir',
-      input.cwd,
-      '--output-format',
-      'stream-json', // realtime → visible in the cmux pane (text/json buffer until the end)
-      '--verbose', // required by print mode for stream-json
-    ]
+    const args = ['--disable-slash-commands', '--permission-mode', 'acceptEdits']
     if (input.model) args.push('--model', input.model)
-    // The driver tees stdout+stderr to the pane AND this log file (visible + captured).
-    return { command: 'claude', args, stdoutPath: input.outPath }
+    args.push('--', input.prompt) // positional initial prompt; runs agentically in the TUI
+    return { command: 'claude', args }
   }
 
   async preflight(model: string): Promise<PreflightResult> {

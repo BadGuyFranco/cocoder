@@ -8,44 +8,24 @@ const fakeExec =
     responses[[command, ...args].join(' ')] ?? { code: 127, stdout: '', stderr: 'not found' }
 
 describe('build() pins the spike invocations', () => {
-  test('claude: -p, acceptEdits, add-dir, stream-json+verbose (realtime/visible); model optional', () => {
+  test('claude: interactive — disable-slash, acceptEdits, prompt after --; model optional', () => {
     const built = new ClaudeAdapter().build({ prompt: 'hi', model: 'opus', cwd: '/repo', outPath: '/run/o.json' })
     expect(built.command).toBe('claude')
-    expect(built.args).toEqual([
-      '-p',
-      'hi',
-      '--permission-mode',
-      'acceptEdits',
-      '--add-dir',
-      '/repo',
-      '--output-format',
-      'stream-json',
-      '--verbose',
-      '--model',
-      'opus',
-    ])
-    expect(built.stdoutPath).toBe('/run/o.json')
+    expect(built.args).toEqual(['--disable-slash-commands', '--permission-mode', 'acceptEdits', '--model', 'opus', '--', 'hi'])
+    expect(built.stdoutPath).toBeUndefined() // interactive — no redirect
 
     const noModel = new ClaudeAdapter().build({ prompt: 'hi', model: '', cwd: '/repo', outPath: '/run/o.json' })
-    expect(noModel.args).not.toContain('--model')
+    expect(noModel.args).toEqual(['--disable-slash-commands', '--permission-mode', 'acceptEdits', '--', 'hi'])
   })
 
-  test('codex: exec, -C cwd, bypass sandbox, -o outPath; no stdout redirect; model optional', () => {
+  test('codex: interactive — bypass approvals+sandbox, positional prompt; model optional', () => {
     const built = new CodexAdapter().build({ prompt: 'do it', model: 'gpt', cwd: '/repo', outPath: '/run/last.txt' })
     expect(built.command).toBe('codex')
-    expect(built.args).toEqual([
-      'exec',
-      'do it',
-      '-C',
-      '/repo',
-      '--dangerously-bypass-approvals-and-sandbox',
-      '--skip-git-repo-check',
-      '-o',
-      '/run/last.txt',
-      '-m',
-      'gpt',
-    ])
+    expect(built.args).toEqual(['--dangerously-bypass-approvals-and-sandbox', '-m', 'gpt', 'do it'])
     expect(built.stdoutPath).toBeUndefined()
+
+    const noModel = new CodexAdapter().build({ prompt: 'do it', model: '', cwd: '/repo', outPath: '/run/last.txt' })
+    expect(noModel.args).toEqual(['--dangerously-bypass-approvals-and-sandbox', 'do it'])
   })
 })
 

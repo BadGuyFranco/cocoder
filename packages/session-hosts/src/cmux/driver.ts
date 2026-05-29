@@ -10,13 +10,12 @@ import type { SessionExited, SessionHost, SessionRef, SessionStatus, SpawnOption
 
 const execFileAsync = promisify(execFile)
 import { type CmuxCli, makeCmuxCli, parseOkRef, parsePaneRefs, parseSurface } from './cmux-cli.js'
-import { buildLaunchScript, diffNewWorkspace, parseExitFromScreen, shquote } from './launch.js'
+import { buildLaunchScript, diffNewWorkspace, shquote } from './launch.js'
 
 interface Session {
   readonly workspaceRef: string
   readonly paneRef: string
   readonly surfaceRef: string
-  readonly token: string
   exitCode: number | null
 }
 
@@ -27,8 +26,6 @@ export interface CmuxDriverOptions {
   readonly scriptDir?: string
   /** Poll interval for waitForExit/status, ms. */
   readonly pollMs?: number
-  /** Completion-sentinel token generator (injectable for deterministic tests). */
-  readonly tokenFactory?: () => string
   /** Launch the cmux app when its socket isn't reachable (default: `open -a cmux`, macOS).
    *  Injectable so unit tests never actually open an app. */
   readonly launchApp?: () => Promise<void>
@@ -42,13 +39,10 @@ const openCmuxApp = async (): Promise<void> => {
   await execFileAsync('open', ['-a', 'cmux'])
 }
 
-const defaultToken = (): string => `COCODER_${randomUUID().replace(/-/g, '').slice(0, 12)}`
-
 export class CmuxSessionHost implements SessionHost {
   readonly #cli: CmuxCli
   readonly #scriptDir: string
   readonly #pollMs: number
-  readonly #tokenFactory: () => string
   readonly #launchApp: () => Promise<void>
   readonly #hostReadyTimeoutMs: number
   readonly #sessions = new Map<string, Session>()
@@ -59,7 +53,6 @@ export class CmuxSessionHost implements SessionHost {
     this.#cli = opts.cli ?? makeCmuxCli()
     this.#scriptDir = opts.scriptDir ?? tmpdir()
     this.#pollMs = opts.pollMs ?? 1000
-    this.#tokenFactory = opts.tokenFactory ?? defaultToken
     this.#launchApp = opts.launchApp ?? openCmuxApp
     this.#hostReadyTimeoutMs = opts.hostReadyTimeoutMs ?? 15_000
   }
@@ -97,14 +90,13 @@ export class CmuxSessionHost implements SessionHost {
       }
     }
 
-    const token = this.#tokenFactory()
     const scriptPath = join(this.#scriptDir, `cocoder-cmux-${randomUUID()}.sh`)
-    await writeFile(scriptPath, buildLaunchScript(opts, token), 'utf8')
+    await writeFile(scriptPath, buildLaunchScript(opts), 'utf8')
 
     await this.#cli.run(['send', '--surface', surfaceRef, `bash ${shquote(scriptPath)}`])
     await this.#cli.run(['send-key', '--surface', surfaceRef, 'Enter'])
 
-    this.#sessions.set(surfaceRef, { workspaceRef, paneRef, surfaceRef, token, exitCode: null })
+    this.#sessions.set(surfaceRef, { workspaceRef, paneRef, surfaceRef, exitCode: null })
     await this.show({ id: surfaceRef, driver: 'cmux' }) // bring the active agent to the front
     return { id: surfaceRef, driver: 'cmux' }
   }
@@ -116,10 +108,15 @@ export class CmuxSessionHost implements SessionHost {
   async status(ref: SessionRef): Promise<SessionStatus> {
     const s = this.#session(ref)
     if (s.exitCode !== null) return { state: 'exited', code: s.exitCode }
-    const code = parseExitFromScreen(await this.readScreen(ref), s.token)
-    if (code === null) return { state: 'running' }
-    s.exitCode = code
-    return { state: 'exited', code }
+    // Interactive sessions don't print an exit sentinel — "running" means the pane is still alive.
+    // Liveness = the surface is still readable; if cmux/the pane is gone, read-screen throws.
+    try {
+      await this.#cli.run(['read-screen', '--surface', ref.id, '--lines', '1'])
+      return { state: 'running' }
+    } catch {
+      s.exitCode = -1
+      return { state: 'exited', code: -1 }
+    }
   }
 
   async waitForExit(ref: SessionRef, opts: { timeoutMs?: number } = {}): Promise<SessionExited> {

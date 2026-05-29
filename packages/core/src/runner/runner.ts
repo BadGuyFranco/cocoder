@@ -107,12 +107,10 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     command: oscarCmd.command,
     args: oscarCmd.args,
     cwd: workspace.path,
-    stdoutPath: oscarCmd.stdoutPath,
-    stderrPath: join(runDir, 'oscar.err'),
     group: run.id, // a run's personas share one cmux workspace (split panes) — watch side-by-side
     label: oscar.label,
   })
-  const oscarSession = store.createSession({ runId: run.id, persona: oscar.id, sessionRef: oscarRef.id })
+  store.createSession({ runId: run.id, persona: oscar.id, sessionRef: oscarRef.id })
   store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: oscar.id, ref: oscarRef.id } })
   await sessionHost.show(oscarRef)
   log(`oscar spawned (${oscarRef.id}); awaiting delegation`)
@@ -132,13 +130,8 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     store.setRunStatus(run.id, 'failed')
     throw err
   }
-  // Oscar's job is done once it produced the file; let it finish (non-fatal if it lingers).
-  try {
-    const ex = await sessionHost.waitForExit(oscarRef, { timeoutMs: 60_000 })
-    store.setSessionExit(oscarSession.id, ex.code)
-  } catch {
-    /* Oscar didn't exit promptly; the delegation is in hand, proceed. */
-  }
+  // Oscar's job is done the moment delegation.json exists. Its interactive session stays open in
+  // its pane (the founder can read what it did) — we do NOT wait for it to exit; we proceed.
 
   const scope = effectiveScope(bob.writeScope, priority.scopeNarrowing)
   const workItem = store.createWorkItem({
@@ -152,9 +145,10 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   log(`delegation received → work item ${workItem.id}`)
 
   // 3) Spawn Bob (builder) with the task + injected write-scope.
+  const builderDonePath = join(runDir, 'builder-done.json')
   const bobAdapter = getAdapter(bob.cli)
   const bobCmd = bobAdapter.build({
-    prompt: buildBuilderPrompt({ sharedStandards, bobBody: bob.body, task: delegation.task, scope }),
+    prompt: buildBuilderPrompt({ sharedStandards, bobBody: bob.body, task: delegation.task, scope, donePath: builderDonePath }),
     model: bob.model,
     cwd: workspace.path,
     outPath: join(runDir, 'bob.out'),
@@ -164,21 +158,30 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     command: bobCmd.command,
     args: bobCmd.args,
     cwd: workspace.path,
-    stdoutPath: bobCmd.stdoutPath,
-    stderrPath: join(runDir, 'bob.err'),
     group: run.id, // same workspace as Oscar → Bob opens as a split pane next to it
     label: bob.label,
   })
-  const bobSession = store.createSession({ runId: run.id, persona: bob.id, sessionRef: bobRef.id })
+  store.createSession({ runId: run.id, persona: bob.id, sessionRef: bobRef.id })
   store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: bob.id, ref: bobRef.id } })
   await sessionHost.show(bobRef)
-  log(`bob spawned (${bobRef.id}); building`)
+  log(`bob spawned (${bobRef.id}); building — awaiting builder-done`)
 
-  const bobExit = await sessionHost.waitForExit(bobRef, { timeoutMs: t.buildMs })
-  store.setSessionExit(bobSession.id, bobExit.code)
+  // Bob's interactive session signals completion by writing builder-done.json (it does not exit).
+  // Fast-fail if its session dies first (cmux closed / pane gone).
+  try {
+    const done = await io.awaitBuilderDone(builderDonePath, {
+      timeoutMs: t.buildMs,
+      pollMs: t.pollMs,
+      isAlive: async () => (await sessionHost.status(bobRef)).state === 'running',
+    })
+    store.recordEvent({ runId: run.id, type: 'builder-done', data: { summary: done.summary } })
+  } catch (err) {
+    store.recordEvent({ runId: run.id, type: 'builder-failed', data: { message: String(err) } })
+    store.setRunStatus(run.id, 'failed')
+    throw err
+  }
   store.setWorkItemStatus(workItem.id, 'done')
-  store.recordEvent({ runId: run.id, type: 'builder-exit', data: { code: bobExit.code } })
-  log(`bob finished (exit ${bobExit.code}); running commit-gate`)
+  log('bob signalled done; running commit-gate')
 
   // 4) Commit-gate (ADR-0007): commit in-scope, surface out-of-scope, record commit_link.
   const gate = await runCommitGate({

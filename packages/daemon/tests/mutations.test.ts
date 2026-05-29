@@ -75,6 +75,9 @@ const fakeIO = (task = 'do the thing'): RunnerIO => ({
   async awaitDelegation() {
     return { task }
   },
+  async awaitBuilderDone() {
+    return { summary: 'done' }
+  },
   async writeRunRecord(runDir) {
     return `${runDir}/record.md`
   },

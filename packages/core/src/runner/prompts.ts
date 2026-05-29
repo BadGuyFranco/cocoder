@@ -45,6 +45,7 @@ export function buildBuilderPrompt(input: {
   bobBody: string
   task: string
   scope: readonly string[]
+  donePath: string
 }): string {
   const scope = input.scope.length > 0 ? input.scope.map((s) => `  - ${s}`).join('\n') : '  (none — read-only)'
   return `${input.sharedStandards}
@@ -64,7 +65,18 @@ ${input.task}
 Only changes to these paths will be committed by CoCoder; anything outside is held back for review:
 ${scope}
 
-Make the change within scope, then run any relevant checks (tests, typecheck) and report what you did.`
+Make the change within scope, then run any relevant checks (tests, typecheck).
+
+# Signal completion (required)
+
+When you are finished (including if you determine no change is needed), write this exact file as
+your FINAL action — it is how CoCoder knows you are done (your session stays open, it does not exit):
+
+    ${input.donePath}
+
+with this shape (and nothing else):
+
+    {"done": true, "summary": "<one line: what you changed, or why nothing was needed>"}`
 }
 
 export function commitMessage(priorityId: string, runId: string): string {

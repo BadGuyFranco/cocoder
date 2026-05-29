@@ -40,3 +40,25 @@ describe('awaitDelegation', () => {
     ).rejects.toThrow(/within 100ms/)
   })
 })
+
+describe('awaitBuilderDone', () => {
+  test('returns once builder-done.json holds {done:true}, exposing the summary', async () => {
+    const path = await tmpDelegationPath(JSON.stringify({ done: true, summary: 'added clamp' }))
+    expect(await io.awaitBuilderDone(path, { timeoutMs: 1000, pollMs: 1 })).toEqual({ summary: 'added clamp' })
+  })
+
+  test('treats {done:false}/absent as not-ready (keeps polling)', async () => {
+    const path = await tmpDelegationPath(JSON.stringify({ done: false }))
+    let t = 0
+    await expect(
+      io.awaitBuilderDone(path, { timeoutMs: 30, pollMs: 1, now: () => (t += 20) }),
+    ).rejects.toThrow(/within 30ms/)
+  })
+
+  test('fails fast when the builder session exits before signalling', async () => {
+    const path = await tmpDelegationPath()
+    await expect(
+      io.awaitBuilderDone(path, { timeoutMs: 60_000, pollMs: 1, isAlive: async () => false }),
+    ).rejects.toThrow(/exited before signalling/)
+  })
+})

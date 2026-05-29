@@ -14,7 +14,23 @@ export interface RunnerIO {
     delegationPath: string,
     opts: { timeoutMs: number; pollMs: number; now?: () => number; isAlive?: () => Promise<boolean> },
   ): Promise<Delegation>
+  /** Poll `donePath` until the builder writes its completion artifact (`{done, summary?}`), or
+   *  throw on timeout / if the builder's session dies first (same fast-fail as awaitDelegation).
+   *  The interactive builder signals "finished" by writing this file — it does not exit. */
+  awaitBuilderDone(
+    donePath: string,
+    opts: { timeoutMs: number; pollMs: number; now?: () => number; isAlive?: () => Promise<boolean> },
+  ): Promise<{ summary: string | null }>
   writeRunRecord(runDir: string, markdown: string): Promise<string>
+}
+
+interface BuilderDone {
+  readonly summary: string | null
+}
+function parseBuilderDone(raw: string): BuilderDone {
+  const data = JSON.parse(raw) as { done?: unknown; summary?: unknown }
+  if (data.done !== true) throw new Error('builder-done: "done" is not true yet')
+  return { summary: typeof data.summary === 'string' ? data.summary : null }
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
@@ -45,6 +61,29 @@ export function makeRunnerIO(): RunnerIO {
         }
         if (now() >= deadline) {
           throw new Error(`no valid delegation at ${delegationPath} within ${timeoutMs}ms`)
+        }
+        await sleep(pollMs)
+      }
+    },
+    async awaitBuilderDone(donePath, { timeoutMs, pollMs, now = Date.now, isAlive }) {
+      const deadline = now() + timeoutMs
+      const read = async (): Promise<BuilderDone | null> => {
+        try {
+          return parseBuilderDone(await readFile(donePath, 'utf8'))
+        } catch {
+          return null // missing, partial, or not-yet-done
+        }
+      }
+      for (;;) {
+        const done = await read()
+        if (done) return done
+        if (isAlive && !(await isAlive())) {
+          const last = await read()
+          if (last) return last
+          throw new Error(`builder session exited before signalling completion at ${donePath}`)
+        }
+        if (now() >= deadline) {
+          throw new Error(`builder did not signal completion at ${donePath} within ${timeoutMs}ms`)
         }
         await sleep(pollMs)
       }

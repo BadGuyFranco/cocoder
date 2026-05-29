@@ -70,3 +70,19 @@ in cmux" + ADR-0006 "invoke headlessly"). Verified end-to-end with the claude in
 Both headless invocations are viable and pinned; the stdin redirect is the one finding that would
 otherwise have hung the first real run. Step 1 (six packages + topology) and the runner are
 unblocked.
+
+## ⚠ Superseded (2026-05-29) — agents now launch INTERACTIVELY
+
+Phase-2 dogfooding showed the headless invocations (`claude -p`, `codex exec`, output redirected to
+files) defeat the whole point of running in cmux: the panes look idle / spill raw stream-json, and
+the founder can't watch the agents work. We pivoted to the **CoBuilder pattern**: launch the real
+interactive TUIs in cmux split panes with the prompt injected, and detect completion via an
+**artifact the agent writes** (Oscar→`delegation.json`, Bob→`builder-done.json`) rather than process
+exit. New invocations:
+
+- claude: `claude --disable-slash-commands --permission-mode acceptEdits -- "<prompt>"`
+- codex: `codex --dangerously-bypass-approvals-and-sandbox [-m <model>] "<prompt>"`
+
+The two findings above still matter in spirit (the trust-the-CLI no-sandbox posture for codex is
+retained; the stdin-hang is moot because an interactive PTY has a real stdin). See
+[`../oz-thin.md`](../oz-thin.md).

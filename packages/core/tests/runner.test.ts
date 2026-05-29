@@ -75,6 +75,9 @@ const fakeIO = (task = 'implement the thing'): RunnerIO => ({
   async awaitDelegation() {
     return { task }
   },
+  async awaitBuilderDone() {
+    return { summary: 'did the thing' }
+  },
   async writeRunRecord(runDir) {
     return `${runDir}/record.md`
   },
@@ -108,7 +111,7 @@ describe('runRun', () => {
     expect(store.listCommitLinks(result.runId)[0]?.files).toEqual(['packages/x.ts'])
     expect(store.listSessions(result.runId).map((s) => s.persona)).toEqual(['oscar', 'bob'])
     const types = store.listEvents(result.runId).map((e) => e.type)
-    expect(types).toEqual(expect.arrayContaining(['run-start', 'preflight', 'spawn', 'delegation', 'builder-exit', 'commit', 'run-end']))
+    expect(types).toEqual(expect.arrayContaining(['run-start', 'preflight', 'spawn', 'delegation', 'builder-done', 'commit', 'run-end']))
   })
 
   test('out-of-scope change → run is pending-scope-decision and surfaced', async () => {

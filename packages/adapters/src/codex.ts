@@ -1,8 +1,11 @@
-// codex adapter — the builder CLI. Invocation pinned by the Step 0.5 spike:
-// `codex exec '<prompt>' -C '<cwd>' --dangerously-bypass-approvals-and-sandbox
-// --skip-git-repo-check -o '<outPath>'` (the driver adds `< /dev/null` — codex hangs forever
-// on stdin otherwise). The bypass flag is the ADR-0006 trust-the-CLI posture (no OS sandbox,
-// no F10 Keychain block); the write boundary is enforced at CoCoder's commit-gate (S7).
+// codex adapter — the builder CLI, launched as a real INTERACTIVE session in its cmux pane (the
+// founder watches the native TUI), mirroring CoBuilder: `codex
+// --dangerously-bypass-approvals-and-sandbox [-m <model>] "<prompt>"` (positional prompt starts
+// the session). The bypass flag is the ADR-0006 trust-the-CLI posture (no OS sandbox → no F10
+// Keychain block) AND it auto-approves tools so the builder runs unattended; the write boundary is
+// enforced at CoCoder's commit-gate (S7). Completion is ARTIFACT-based — the runner polls for the
+// builder-done file the prompt tells it to write — NOT process exit. (Supersedes the spike's
+// headless `codex exec`.)
 import type { Adapter, BuildInput, BuiltCommand, PreflightResult } from '@cocoder/core'
 import { defaultExec, type Exec } from './exec.js'
 
@@ -14,18 +17,9 @@ export class CodexAdapter implements Adapter {
   }
 
   build(input: BuildInput): BuiltCommand {
-    const args = [
-      'exec',
-      input.prompt,
-      '-C',
-      input.cwd,
-      '--dangerously-bypass-approvals-and-sandbox',
-      '--skip-git-repo-check',
-      '-o',
-      input.outPath,
-    ]
+    const args = ['--dangerously-bypass-approvals-and-sandbox']
     if (input.model) args.push('-m', input.model)
-    // codex writes the agent's last message to outPath via -o (not stdout).
+    args.push(input.prompt) // positional initial prompt starts the interactive session
     return { command: 'codex', args }
   }
 
