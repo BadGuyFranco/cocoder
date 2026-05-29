@@ -102,13 +102,19 @@ Oz/the DB; one line each, derived from each Playbook (not restated), no owner/ro
 F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones in
 `cocoder/priorities/backlog/`. See [`../priorities/AGENTS.md`](../priorities/AGENTS.md).
 
-**Active (launchable, in order):**
-1. `objective-presence-gate` — the ADR-0010 minimal-slice gate; the in-flight dogfood.
-2. `deb` — orchestration/session debugger persona; the automated feedback loop (Phase 3 instrument).
-3. `plays-mechanism` — ADR-0005 Plays mechanism, proven by extracting **wrap-up** as the first Play
+**Active (launchable; recommended sequence — the `priorities/` directory is the live index):**
+1. `objective-presence-gate` — ADR-0010 minimal-slice gate. ✅ done (`bc6c3e8`), archived to `zArchive/v2/`.
+2. `deb` — orchestration/session debugger persona; the automated feedback loop (Phase 3 instrument). In flight.
+3. `base-and-extension-personas` — ADR-0012 living base + repo deltas merged at load. Foundational
+   (persona loader/storage) and the thing that makes Deb's "fix the base for everyone" path real —
+   reconcile with the in-flight `deb` run.
+4. `plays-mechanism` — ADR-0005 Plays mechanism, proven by extracting **wrap-up** as the first Play
    (cheap-model tiering); `documentation` is the fast-follow. Foundation for the deferred two.
-4. `full-oz-dashboard` — the v1-designed control plane, earned in slices; the road to feature-complete
+5. `full-oz-dashboard` — the v1-designed control plane, earned in slices; the road to feature-complete
    (and where priority ordering eventually lands).
+
+Plus two always-available meta-priorities: `build-priorities-from-plan` (Oscar drafts priorities from
+the plan/ADRs) and `adhoc-session` (no named priority — draft one, or run a read-only review/research).
 
 **Deferred — `backlog/` (blocked on the Plays mechanism + Phase 5, an external app/deploy target):**
 5. `quinn-app-testing` — Quinn persona + browser/Electron test Plays.

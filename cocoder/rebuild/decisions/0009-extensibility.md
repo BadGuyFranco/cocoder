@@ -3,6 +3,7 @@
 **Status:** Accepted (founder + Claude, 2026-05-28)
 **Seam:** S8 — persona / sub-task / domain extensibility
 **Charter:** [0001](./0001-rebuild-charter.md) · **Builds on:** [0005](./0005-personas-and-subtasks.md), [0006](./0006-adapter-contract.md), [0008](./0008-repository-topology.md)
+**Amended by:** [0012](./0012-living-base-personas.md) — extend-by-files becomes *additive layering against a living base* (base improvements propagate to all installs); replaces copy-on-init for personas. New repo-only personas (e.g. Ian, Phil) are unchanged.
 
 ## Context
 

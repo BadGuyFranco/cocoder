@@ -3,6 +3,7 @@
 **Status:** Accepted (founder + Claude, 2026-05-28)
 **Seam:** S3 — topology / one concept, one home
 **Charter:** [0001](./0001-rebuild-charter.md) · **Builds on:** all prior ADRs · **Amends:** [0005](./0005-personas-and-subtasks.md) (persona home) · **Largely resolves:** S8
+**Amended by:** [0012](./0012-living-base-personas.md) — the default persona set is no longer *copied* on `cocoder init`; it is a **living base** referenced from the install (improvements propagate to all installs), with repos layering deltas merged at load.
 
 ## Context
 
