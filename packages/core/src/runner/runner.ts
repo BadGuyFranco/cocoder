@@ -56,6 +56,13 @@ export class PreflightError extends Error {
   }
 }
 
+export class MissingObjectiveError extends Error {
+  constructor(priorityId: string) {
+    super(`priority "${priorityId}" has no Objective — refusing to launch`)
+    this.name = 'MissingObjectiveError'
+  }
+}
+
 // Interactive sessions are human-steered (the founder reads/answers the agent in its pane), so the
 // artifact may take many minutes — these are generous BACKSTOPS, not tight headless budgets. A dead
 // pane is caught immediately by the isAlive fast-fail, so the only thing a timeout guards against is
@@ -63,6 +70,8 @@ export class PreflightError extends Error {
 const DEFAULTS = { orchestrationMs: 14_400_000, buildMs: 14_400_000, pollMs: 1500 }
 
 export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResult> {
+  if (input.priority.objective === null) throw new MissingObjectiveError(input.priority.id)
+
   const { store, sessionHost, git, getAdapter, io } = deps
   const t = { ...DEFAULTS, ...deps.timeouts }
   const log = deps.log ?? (() => {})

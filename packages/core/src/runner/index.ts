@@ -1,4 +1,4 @@
-export { runRun, PreflightError, type RunnerDeps, type RunInput, type RunResult } from './runner.js'
+export { runRun, PreflightError, MissingObjectiveError, type RunnerDeps, type RunInput, type RunResult } from './runner.js'
 export { makeRunnerIO, type RunnerIO } from './io.js'
 export { type Delegation, parseDelegation } from './delegation.js'
 export { renderRunRecord } from './record.js'

@@ -13,6 +13,17 @@ export interface Priority {
   readonly scopeNarrowing: readonly string[] | null
   /** The goal/brief the orchestrator works from. */
   readonly goal: string
+  /** The structural Objective section required before launch. */
+  readonly objective: string | null
+}
+
+function parseObjective(body: string): string | null {
+  const heading = /^##\s+Objective\s*$/im.exec(body)
+  if (!heading) return null
+  const rest = body.slice(heading.index + heading[0].length)
+  const nextHeading = /^#{1,2}\s+/m.exec(rest)
+  const objective = (nextHeading ? rest.slice(0, nextHeading.index) : rest).trim()
+  return objective === '' ? null : objective
 }
 
 export function loadPriority(prioritiesDir: string, id: string): Priority {
@@ -27,5 +38,5 @@ export function loadPriority(prioritiesDir: string, id: string): Priority {
     : typeof data.scopeNarrowing === 'string'
       ? [data.scopeNarrowing]
       : null
-  return { id, title: data.title, scopeNarrowing, goal: body }
+  return { id, title: data.title, scopeNarrowing, goal: body, objective: parseObjective(body) }
 }

@@ -65,6 +65,7 @@ export {
 export {
   runRun,
   PreflightError,
+  MissingObjectiveError,
   type RunnerDeps,
   type RunInput,
   type RunResult,

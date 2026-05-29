@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import {
   type Adapter,
   type Git,
+  MissingObjectiveError,
   PreflightError,
   type ResolvedPersona,
   type RunnerDeps,
@@ -23,7 +24,7 @@ const persona = (over: Partial<ResolvedPersona> & { id: string; cli: string }): 
 
 const oscar = persona({ id: 'oscar', cli: 'claude', writeScope: [] })
 const bob = persona({ id: 'bob', cli: 'codex', writeScope: ['packages/**'] })
-const priority = { id: 'demo', title: 'Demo', scopeNarrowing: null, goal: 'do the small thing' }
+const priority = { id: 'demo', title: 'Demo', scopeNarrowing: null, goal: 'do the small thing', objective: 'do the small thing' }
 const workspace = { id: 'cocoder', path: '/repo', name: 'CoCoder' }
 
 function fakeSessionHost(): SessionHost {
@@ -97,6 +98,15 @@ const baseDeps = (over: Partial<RunnerDeps>): RunnerDeps => ({
 const input = { workspace, priority, oscar, bob, sharedStandards: 'STANDARDS', runsRoot: '/runs' }
 
 describe('runRun', () => {
+  test('missing Objective rejects before any store writes', async () => {
+    const store = openRunStore(':memory:')
+    await expect(
+      runRun(baseDeps({ store }), { ...input, priority: { ...priority, objective: null } }),
+    ).rejects.toBeInstanceOf(MissingObjectiveError)
+
+    expect(store.listRuns()).toEqual([])
+  })
+
   test('happy path: oscar→bob, in-scope committed, run completed, record written', async () => {
     const store = openRunStore(':memory:')
     const result = await runRun(baseDeps({ store }), input)
