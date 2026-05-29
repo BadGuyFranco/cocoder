@@ -33,12 +33,20 @@ export function loadAssignments(path: string): Assignments {
     throw new Error(`assignments ${path}: missing "personas" object`)
   }
   for (const [id, a] of Object.entries(parsed.personas)) {
-    const asn = a as Partial<PersonaAssignment>
+    const asn = a as Partial<PersonaAssignment> | null
     if (typeof asn?.cli !== 'string' || typeof asn?.model !== 'string') {
       throw new Error(`assignments ${path}: persona "${id}" needs string "cli" and "model" (model may be "")`)
     }
+    if (asn.enabled !== undefined && typeof asn.enabled !== 'boolean') {
+      throw new Error(`assignments ${path}: persona "${id}" optional "enabled" must be a boolean`)
+    }
   }
   return parsed as Assignments
+}
+
+export function isPersonaEnabled(assignments: Assignments, id: string): boolean {
+  const assignment = assignments.personas[id]
+  return assignment ? assignment.enabled !== false : false
 }
 
 /** Load a persona's definition and merge its CLI/model assignment. Throws if either is missing. */

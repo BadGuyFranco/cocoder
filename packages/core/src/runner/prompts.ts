@@ -71,6 +71,43 @@ windows by hand, and never touch the Oz daemon:
 That safely closes only this run's panes (the same operation Oz's teardown button uses).`
 }
 
+export function buildObserverPrompt(input: {
+  sharedStandards: string
+  debBody: string
+  priorityTitle: string
+  priorityGoal: string
+  runId: string
+}): string {
+  return `${input.sharedStandards}
+
+---
+# Your role
+
+${input.debBody}
+
+---
+# This run
+
+Priority: **${input.priorityTitle}**
+
+${input.priorityGoal}
+
+# What to do right now
+
+You are observing this run only. In this build slice, observation and triage tooling is not wired
+yet: stay read-only, watch the live run, and do not write delegation files, builder-done files,
+verify files, repository changes, or commits.
+
+# Teardown mechanism (for this run)
+
+If you are asked to tear down this run, invoke the provided mechanism — do NOT kill processes or
+windows by hand, and never touch the Oz daemon:
+
+    cocoder oz teardown ${input.runId}
+
+That safely closes only this run's panes (the same operation Oz's teardown button uses).`
+}
+
 /** The builder's LAUNCH prompt (concurrent-spawn model): Bob is spawned up front, on standby, and
  *  must NOT act until the runner dispatches "PROCEED". The task itself arrives in delegationPath. */
 export function buildBuilderStandbyPrompt(input: {

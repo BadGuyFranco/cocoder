@@ -9,6 +9,7 @@ import {
   type RunnerIO,
   type SessionHost,
   type SessionRef,
+  type SpawnOptions,
   VerificationFailedError,
   openRunStore,
   runRun,
@@ -25,6 +26,7 @@ const persona = (over: Partial<ResolvedPersona> & { id: string; cli: string }): 
 
 const oscar = persona({ id: 'oscar', cli: 'claude', writeScope: [] })
 const bob = persona({ id: 'bob', cli: 'codex', writeScope: ['packages/**'] })
+const deb = persona({ id: 'deb', cli: 'claude', writeScope: [] })
 const priority = { id: 'demo', title: 'Demo', scopeNarrowing: null, goal: 'do the small thing', objective: 'do the small thing' }
 const workspace = { id: 'cocoder', path: '/repo', name: 'CoCoder' }
 
@@ -190,6 +192,58 @@ describe('runRun', () => {
     expect(dispatches).toHaveLength(2) // PROCEED into Bob, then VERIFY back into Oscar
     expect(dispatches.some((d) => /PROCEED/.test(d))).toBe(true) // task dispatched into Bob's warm pane
     expect(dispatches.some((d) => /VERIFY/.test(d))).toBe(true) // verify dispatched back into Oscar's pane
+  })
+
+  test('when Deb is provided, she spawns in the run group without changing the commit flow', async () => {
+    const spawns: SpawnOptions[] = []
+    const recordingHost = (): SessionHost => {
+      const base = fakeSessionHost()
+      return {
+        ...base,
+        async spawn(opts) {
+          spawns.push(opts)
+          return base.spawn(opts)
+        },
+      }
+    }
+    const store = openRunStore(':memory:')
+    const result = await runRun(baseDeps({ store, sessionHost: recordingHost() }), { ...input, deb })
+
+    expect(result.status).toBe('completed')
+    expect(result.committedSha).toBe('sha-committed')
+    expect(spawns.map((s) => s.persona)).toEqual(['oscar', 'bob', 'deb'])
+    expect(spawns[2]).toMatchObject({ persona: 'deb', group: result.runId, label: 'deb' })
+    expect(store.listSessions(result.runId).map((s) => s.persona)).toEqual(['oscar', 'bob', 'deb'])
+    expect(store.listEvents(result.runId).filter((e) => e.type === 'spawn').map((e) => (e.data as { persona: string }).persona)).toEqual([
+      'oscar',
+      'bob',
+      'deb',
+    ])
+    expect(store.listWorkItems(result.runId)).toHaveLength(1)
+    expect(store.listCommitLinks(result.runId)[0]?.files).toEqual(['packages/x.ts'])
+  })
+
+  test('Deb spawn failure is non-blocking and records a skip event', async () => {
+    const spawns: string[] = []
+    const recordingHost = (): SessionHost => {
+      const base = fakeSessionHost()
+      return {
+        ...base,
+        async spawn(opts) {
+          spawns.push(opts.persona)
+          if (opts.persona === 'deb') throw new Error('pane unavailable')
+          return base.spawn(opts)
+        },
+      }
+    }
+    const store = openRunStore(':memory:')
+    const result = await runRun(baseDeps({ store, sessionHost: recordingHost() }), { ...input, deb })
+
+    expect(result.status).toBe('completed')
+    expect(result.committedSha).toBe('sha-committed')
+    expect(spawns).toEqual(['oscar', 'bob', 'deb'])
+    expect(store.listSessions(result.runId).map((s) => s.persona)).toEqual(['oscar', 'bob'])
+    expect(store.listEvents(result.runId).some((e) => e.type === 'deb-skipped' && JSON.stringify(e.data).includes('pane unavailable'))).toBe(true)
   })
 
   test('onRunCreated fires synchronously with the created run (daemon learns runId for its 202)', async () => {

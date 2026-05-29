@@ -18,6 +18,8 @@ export interface PersonaAssignment {
   readonly cli: string
   /** Model name; empty string means "the CLI's default model". */
   readonly model: string
+  /** Default-on launch toggle. Absent means enabled for backward compatibility. */
+  readonly enabled?: boolean
 }
 
 /** assignments.json — the SOLE source of which personas are live and on what CLI/model. */

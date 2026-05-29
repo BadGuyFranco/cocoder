@@ -8,7 +8,7 @@
 //   - track spawned surfaceRefs in ctx.liveRefs so deep-links are decidable without throwing.
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { resolvePersona, loadAssignments, loadPriority, runRun, type RunInput, type RunnerDeps, type SessionHost, type Workspace } from '@cocoder/core'
+import { isPersonaEnabled, resolvePersona, loadAssignments, loadPriority, runRun, type RunInput, type RunnerDeps, type SessionHost, type Workspace } from '@cocoder/core'
 import type { OzContext } from './context.js'
 import { findWorkspace } from './registry.js'
 import { appendAudit } from './audit.js'
@@ -48,6 +48,7 @@ async function buildRunInput(ctx: OzContext, workspaceId: string, priorityId: st
     priority: loadPriority(prioritiesDir, priorityId),
     oscar: resolvePersona(personasDir, assignments, 'oscar'),
     bob: resolvePersona(personasDir, assignments, 'bob'),
+    deb: isPersonaEnabled(assignments, 'deb') ? resolvePersona(personasDir, assignments, 'deb') : undefined,
     sharedStandards,
     runsRoot: ctx.runsRoot,
   }

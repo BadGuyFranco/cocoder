@@ -80,9 +80,9 @@ async function listPersonas(ctx: OzContext, res: ServerResponse, workspaceId: st
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
   if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
   const dir = personasDir(ws.path)
-  let assignments: Record<string, { cli: string; model: string }> = {}
+  let assignments: Record<string, { cli: string; model: string; enabled?: boolean }> = {}
   try {
-    assignments = loadAssignments(join(dir, 'assignments.json')).personas as Record<string, { cli: string; model: string }>
+    assignments = loadAssignments(join(dir, 'assignments.json')).personas as Record<string, { cli: string; model: string; enabled?: boolean }>
   } catch {
     /* no assignments yet — personas list still renders with unassigned entries */
   }

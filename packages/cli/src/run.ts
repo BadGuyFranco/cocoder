@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   DEFAULT_OZ_PORT,
+  isPersonaEnabled,
   loadAssignments,
   loadPriority,
   makeGit,
@@ -74,6 +75,7 @@ async function runStandalone(priorityId: string): Promise<void> {
   const workspace = { id: 'cocoder', path: root, name: 'CoCoder' }
   const oscar = resolvePersona(personasDir, assignments, 'oscar')
   const bob = resolvePersona(personasDir, assignments, 'bob')
+  const deb = isPersonaEnabled(assignments, 'deb') ? resolvePersona(personasDir, assignments, 'deb') : undefined
   const priority = loadPriority(prioritiesDir, priorityId)
 
   const store = openRunStore(join(root, 'local', 'cocoder.db'))
@@ -93,6 +95,7 @@ async function runStandalone(priorityId: string): Promise<void> {
       priority,
       oscar,
       bob,
+      deb,
       sharedStandards,
       runsRoot: join(root, 'local', 'runs'),
     })

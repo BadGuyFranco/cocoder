@@ -15,6 +15,7 @@ import { effectiveScope } from '../write-scope/index.js'
 import type { SessionHost } from '../session-host/index.js'
 import { join } from 'node:path'
 import type { RunnerIO } from './io.js'
+import { spawnObserver } from './observer.js'
 import { buildBuilderStandbyPrompt, buildBuilderDispatch, buildOrchestratorPrompt, buildVerifyDispatch, commitMessage } from './prompts.js'
 import { renderRunRecord } from './record.js'
 
@@ -37,6 +38,7 @@ export interface RunInput {
   readonly priority: Priority
   readonly oscar: ResolvedPersona
   readonly bob: ResolvedPersona
+  readonly deb?: ResolvedPersona
   readonly sharedStandards: string
   /** runs root; the run dir is <runsRoot>/<runId>. */
   readonly runsRoot: string
@@ -85,7 +87,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const { store, sessionHost, git, getAdapter, io } = deps
   const t = { ...DEFAULTS, ...deps.timeouts }
   const log = deps.log ?? (() => {})
-  const { workspace, priority, oscar, bob, sharedStandards, runsRoot } = input
+  const { workspace, priority, oscar, bob, deb, sharedStandards, runsRoot } = input
 
   store.upsertWorkspace(workspace)
   const run = store.createRun({ workspaceId: workspace.id, priorityId: priority.id })
@@ -113,9 +115,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const verifyPath = join(runDir, 'verify.json')
   const scope = effectiveScope(bob.writeScope, priority.scopeNarrowing) // known at launch (no delegation needed)
 
-  // 1) Spawn BOTH personas up front (v1-style concurrent spawn): Oscar with its full prompt, Bob on
-  //    standby in a split pane beside it. Bob's CLI cold-start overlaps Oscar's work, and the founder
-  //    sees the run fully staffed immediately.
+  // 1) Spawn the load-bearing personas up front (v1-style concurrent spawn): Oscar with its full
+  //    prompt, Bob on standby in a split pane beside it. Bob's CLI cold-start overlaps Oscar's work,
+  //    and the founder sees the run staffed immediately. Optional observers join best-effort below.
   const oscarCmd = getAdapter(oscar.cli).build({
     prompt: buildOrchestratorPrompt({
       sharedStandards,
@@ -159,6 +161,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   })
   store.createSession({ runId: run.id, persona: bob.id, sessionRef: bobRef.id })
   store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: bob.id, ref: bobRef.id } })
+  const debRef = deb
+    ? await spawnObserver({ store, sessionHost, getAdapter, run, workspace, priority, deb, sharedStandards, runDir })
+    : null
   await sessionHost.show(oscarRef) // focus Oscar — it's the one working first
   log(`oscar + bob spawned (${oscarRef.id}, ${bobRef.id}); awaiting delegation, bob on standby`)
 
@@ -173,6 +178,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     })
   } catch (err) {
     await sessionHost.kill(bobRef).catch(() => {})
+    if (debRef) await sessionHost.kill(debRef).catch(() => {})
     store.recordEvent({ runId: run.id, type: 'delegation-timeout', data: { message: String(err) } })
     store.setRunStatus(run.id, 'failed')
     throw err
