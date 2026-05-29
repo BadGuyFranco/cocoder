@@ -12,6 +12,9 @@
       "default": "./src/index.ts"
     }
   },
+  "scripts": {
+    "test": "vitest run"
+  },
   "dependencies": {
     "@cocoder/core": "workspace:*",
     "@cocoder/adapters": "workspace:*",
