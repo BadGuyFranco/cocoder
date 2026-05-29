@@ -20,6 +20,18 @@ export function startOzDaemon(port?: number): Promise<number> {
   return new Promise((resolve) => child.on('exit', (code) => resolve(code ?? 0)))
 }
 
+/** Trigger the daemon's safe teardown for a run (close its cmux panes). Bootstraps loopback auth,
+ *  then POSTs — the same op Oz's teardown button uses. Used by `cocoder oz teardown <runId>`. */
+export async function teardownViaDaemon(baseUrl: string, runId: string): Promise<{ closed: string[] }> {
+  const session = (await (await fetch(`${baseUrl}/auth/session`)).json()) as { bearerToken: string; csrfToken: string }
+  const res = await fetch(`${baseUrl}/runs/${encodeURIComponent(runId)}/teardown`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${session.bearerToken}`, [CSRF_HEADER]: session.csrfToken },
+  })
+  if (!res.ok) throw new Error(`teardown failed (${res.status}): ${await res.text()}`)
+  return (await res.json()) as { closed: string[] }
+}
+
 export interface ClientRunResult {
   readonly runId: string
   readonly status: string

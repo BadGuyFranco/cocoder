@@ -105,6 +105,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       delegationPath,
       builderLabel: bob.label,
       builderCli: bob.cli,
+      runId: run.id,
     }),
     model: oscar.model,
     cwd: workspace.path,

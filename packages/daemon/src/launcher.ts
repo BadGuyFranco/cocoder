@@ -105,6 +105,29 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
   return { status: 202, body: { runId } }
 }
 
+/** Teardown (safe, daemon-mediated): close ONLY this run's tracked cmux surfaces — the sessions the
+ *  daemon spawned and still has live. It physically cannot touch the Oz daemon, the cmux app, or any
+ *  window it didn't spawn (it only ever kills refs in its own liveRefs set). Invoked by Oz (button →
+ *  POST /runs/:id/teardown) AND by Oscar (the run-local helper / `cocoder oz teardown`) — same op. */
+export async function teardownRun(ctx: OzContext, runId: string): Promise<LaunchResult> {
+  const run = ctx.store.getRun(runId)
+  if (!run) return { status: 404, body: { error: 'unknown run' } }
+  const closed: string[] = []
+  for (const s of ctx.store.listSessions(runId)) {
+    if (!ctx.liveRefs.has(s.sessionRef)) continue // not live in this process → nothing to close
+    try {
+      await ctx.sessionHost.kill({ id: s.sessionRef, driver: 'cmux' })
+      ctx.liveRefs.delete(s.sessionRef)
+      closed.push(s.sessionRef)
+    } catch {
+      /* pane already gone — fine, keep going */
+    }
+  }
+  ctx.store.recordEvent({ runId, type: 'teardown', data: { closed } })
+  void appendAudit(ctx.cocoderHome, { action: 'teardown', runId, closed })
+  return { status: 200, body: { closed } }
+}
+
 /** Bring a run's live cmux pane to the foreground. 409 if no session is live in THIS daemon process
  *  (completed run, or daemon restarted — ADR-0002-C1) — never a 500 from show() throwing. */
 export async function showRun(ctx: OzContext, runId: string): Promise<LaunchResult> {

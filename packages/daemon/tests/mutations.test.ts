@@ -27,7 +27,7 @@ const fakeGit = (changed: string[] = ['packages/x.ts']): Git => ({
     return 'diff'
   },
 })
-const fakeHost = (onShow?: (ref: SessionRef) => void): SessionHost => {
+const fakeHost = (onShow?: (ref: SessionRef) => void, onKill?: (ref: SessionRef) => void): SessionHost => {
   let n = 0
   return {
     async spawn() {
@@ -46,7 +46,9 @@ const fakeHost = (onShow?: (ref: SessionRef) => void): SessionHost => {
     async show(ref) {
       onShow?.(ref)
     },
-    async kill() {},
+    async kill(ref) {
+      onKill?.(ref)
+    },
   }
 }
 
@@ -107,15 +109,20 @@ describe('Oz mutations + lifecycle', () => {
   let store: RunStore
   let oz: OzServer | undefined
   let shown: SessionRef[]
+  let killed: SessionRef[]
 
   const startServer = async (): Promise<OzServer> => {
     shown = []
+    killed = []
     oz = await createOzServer({
       cocoderHome: home,
       port: 0,
       store,
       git: fakeGit(),
-      sessionHost: fakeHost((ref) => shown.push(ref)),
+      sessionHost: fakeHost(
+        (ref) => shown.push(ref),
+        (ref) => killed.push(ref),
+      ),
       getAdapter: () => okAdapter,
       io: fakeIO(),
     })
@@ -184,6 +191,29 @@ describe('Oz mutations + lifecycle', () => {
     const r = await call(oz!, 'POST', `/runs/${run.id}/show`)
     expect(r.status).toBe(200)
     expect(shown.map((s) => s.id)).toEqual(['surface:9'])
+  })
+
+  test('POST /runs/:id/teardown closes ONLY the run\'s live tracked surfaces', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.createSession({ runId: run.id, persona: 'oscar', sessionRef: 'surface:1' })
+    store.createSession({ runId: run.id, persona: 'bob', sessionRef: 'surface:2' })
+    store.createSession({ runId: run.id, persona: 'ghost', sessionRef: 'surface:stale' }) // not live
+    await startServer()
+    oz!.ctx.liveRefs.add('surface:1')
+    oz!.ctx.liveRefs.add('surface:2') // surface:stale intentionally NOT live
+
+    const r = await call(oz!, 'POST', `/runs/${run.id}/teardown`)
+    expect(r.status).toBe(200)
+    expect(r.json.closed.sort()).toEqual(['surface:1', 'surface:2'])
+    expect(killed.map((k) => k.id).sort()).toEqual(['surface:1', 'surface:2']) // never the stale one
+    expect(oz!.ctx.liveRefs.has('surface:1')).toBe(false) // cleared from the live set
+    expect(store.listEvents(run.id).some((e) => e.type === 'teardown')).toBe(true)
+  })
+
+  test('POST /runs/:id/teardown → 404 for an unknown run', async () => {
+    await startServer()
+    expect((await call(oz!, 'POST', '/runs/nope/teardown')).status).toBe(404)
   })
 
   test('PUT assignments: validates (400 on bad payload), writes atomically (200 + round-trips)', async () => {

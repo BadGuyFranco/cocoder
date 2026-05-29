@@ -15,7 +15,7 @@ import {
 } from '@cocoder/core'
 import { getAdapter, makeAdapterRegistry } from '@cocoder/adapters'
 import { CmuxSessionHost } from '@cocoder/session-hosts'
-import { runViaDaemon, startOzDaemon } from './client.js'
+import { runViaDaemon, startOzDaemon, teardownViaDaemon } from './client.js'
 
 const log = (m: string): void => console.error(`[cocoder] ${m}`)
 
@@ -28,8 +28,23 @@ async function main(): Promise<void> {
   if (cmd === 'oz' && arg1 === 'start') {
     process.exit(await startOzDaemon(DEFAULT_OZ_PORT))
   }
+  if (cmd === 'oz' && arg1 === 'teardown') {
+    const runId = process.argv[4]
+    if (!runId) {
+      console.error('usage: cocoder oz teardown <runId>')
+      process.exit(2)
+    }
+    const live = await probeDaemon({ port: DEFAULT_OZ_PORT })
+    if (!live.alive) {
+      console.error('cocoder: no Oz daemon running — nothing to tear down')
+      process.exit(1)
+    }
+    const { closed } = await teardownViaDaemon(`http://127.0.0.1:${live.port}`, runId)
+    console.log(`torn down ${runId}: closed ${closed.length} pane(s)`)
+    return
+  }
   if (cmd !== 'run' || !arg1) {
-    console.error('usage: cocoder run <priorityId>   |   cocoder oz start')
+    console.error('usage: cocoder run <priorityId>   |   cocoder oz start   |   cocoder oz teardown <runId>')
     process.exit(2)
   }
   const priorityId = arg1

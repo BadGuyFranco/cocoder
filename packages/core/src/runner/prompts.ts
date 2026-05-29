@@ -9,6 +9,7 @@ export function buildOrchestratorPrompt(input: {
   delegationPath: string
   builderLabel: string
   builderCli: string
+  runId: string
 }): string {
   return `${input.sharedStandards}
 
@@ -37,7 +38,16 @@ with this shape (and nothing else):
 
     {"task": "<clear instructions: what to change, acceptance criteria, and what must not break>"}
 
-Writing that file is your FINAL action — then stop. Do not edit repository files.`
+Writing that file is your FINAL action for delegation — then stop. Do not edit repository files.
+
+# Teardown mechanism (for this run)
+
+If you are asked to tear down this run, invoke the provided mechanism — do NOT kill processes or
+windows by hand, and never touch the Oz daemon:
+
+    cocoder oz teardown ${input.runId}
+
+That safely closes only this run's panes (the same operation Oz's teardown button uses).`
 }
 
 /** The builder's LAUNCH prompt (concurrent-spawn model): Bob is spawned up front, on standby, and

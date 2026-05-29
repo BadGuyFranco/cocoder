@@ -137,7 +137,8 @@ async function viewRun(runId) {
   const out = [d.files.oscarOut && `# oscar.out\n${d.files.oscarOut}`, d.files.bobOut && `# bob.out\n${d.files.bobOut}`]
     .filter(Boolean)
     .join('\n\n')
-  app.innerHTML = `<h2>Run ${esc(runId)} ${statusBadge(d.run.status)}</h2>
+  app.innerHTML = `<h2>Run ${esc(runId)} ${statusBadge(d.run.status)}
+      <button class="secondary" id="teardown" title="Close this run's cmux panes (safe — never the daemon)">Teardown</button></h2>
     <p class="muted mono">${esc(d.run.workspaceId)} / ${esc(d.run.priorityId)}</p>
     <div class="card"><strong>Sessions</strong>${d.sessions
       .map(
@@ -168,6 +169,18 @@ async function viewRun(runId) {
         }
       }),
   )
+  const td = document.getElementById('teardown')
+  if (td)
+    td.onclick = async () => {
+      td.disabled = true
+      try {
+        const r = await api('POST', `/runs/${encodeURIComponent(runId)}/teardown`)
+        td.textContent = `closed ${r.closed.length} pane(s)`
+      } catch (e) {
+        banner(e.message)
+        td.disabled = false
+      }
+    }
 }
 
 // --- router + polling ---
