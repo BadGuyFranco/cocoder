@@ -254,7 +254,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     const headBefore = await git.headSha(workspace.path) // re-snapshot per atom (self-commit detection)
     const sentinel = atomSentinel(atomIndex)
     await sessionHost.show(bobRef)
-    await sessionHost.sendInput(bobRef, buildBuilderDispatch(directivePath, sentinel))
+    await sessionHost.sendInput(bobRef, buildBuilderDispatch(directivePath, atomIndex))
     store.recordEvent({ runId: run.id, type: 'builder-dispatch', data: { ref: bobRef.id, atom: atomIndex } })
     log(`atom ${atomIndex} dispatched to bob (work item ${workItem.id}); monitoring live progress`)
 

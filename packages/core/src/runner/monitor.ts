@@ -135,10 +135,18 @@ export interface HeuristicJudgeOptions {
  *  done-sentinel — the one thing Oscar's per-atom verify-gate cannot see mid-atom. Semantic "thin /
  *  drifting" judgment stays with the verify-gate (ADR-0011); a model-backed Judge is a later drop-in. */
 export function makeHeuristicJudge(opts: HeuristicJudgeOptions): Judge {
+  // Two guards make the done-detection echo-proof (real bug found in dogfood run_149752fa5f90482a:
+  // the marker was matched from the dispatch's own instruction at sample 1, before the builder acted):
+  //   1. the marker must be a line BY ITSELF (the builder prints it alone) — not a substring of an
+  //      instruction or narration that merely mentions it;
+  //   2. it only counts once the marker has been seen ABSENT at least once — so any stray echo present
+  //      from the very first frame cannot instantly "complete" the atom.
+  let seenAbsent = false
+  const markerPrinted = (frame: string): boolean => frame.split('\n').some((line) => line.trim() === opts.doneSentinel)
   return async (sample) => {
-    if (sample.frame.includes(opts.doneSentinel)) {
-      return { state: 'done', note: 'completion sentinel present' }
-    }
+    const printed = markerPrinted(sample.frame)
+    if (!printed) seenAbsent = true
+    if (printed && seenAbsent) return { state: 'done', note: 'completion marker printed' }
     if (sample.idleStreak >= opts.stuckAfter) {
       return { state: 'stuck', note: `no screen change for ${sample.idleStreak} sample(s)`, nudge: opts.nudge }
     }

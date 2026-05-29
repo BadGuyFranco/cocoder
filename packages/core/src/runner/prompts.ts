@@ -162,16 +162,19 @@ This run runs MULTIPLE atoms through this same pane, one at a time. For EACH ato
 2. Implement it. Your write-scope (enforced at CoCoder's commit-gate; anything outside is held back):
 ${scope}
 3. Run the relevant checks (tests, typecheck).
-4. As your FINAL action, print the exact sentinel line the dispatch gives you, on its own line. That is
-   how CoCoder knows the atom is done — your session stays open for the next atom; it does not exit.
+4. As your FINAL action, print your completion marker for the atom on its OWN line, with nothing else on
+   that line: the literal text \`<<<COCODER-ATOM-#-DONE>>>\` with \`#\` replaced by the atom number the
+   dispatch names. That standalone line is how CoCoder knows the atom is done — your session stays open
+   for the next atom; it does not exit. (Do not print the marker until the work is actually finished.)
 
 The orchestrator watches your pane live and may nudge you if you stall; keep working visibly.`
 }
 
 /** Dispatch an atom into Bob's warm pane (sent once Oscar has delegated it). Names the directive path to
- *  read and the exact sentinel to print on completion. */
-export function buildBuilderDispatch(directivePath: string, sentinel: string): string {
-  return `PROCEED — your next atom is ready. Read it from ${directivePath} and implement it now within your write-scope. When you are fully done (tests/typecheck run), print this exact line on its own: ${sentinel}`
+ *  read and the atom NUMBER — never the literal completion marker, so the monitor cannot match the
+ *  marker from this instruction's own echo (dogfood bug). Bob forms the marker per the standby prompt. */
+export function buildBuilderDispatch(directivePath: string, atomIndex: number): string {
+  return `PROCEED — this is atom ${atomIndex}. Read your task from ${directivePath} and implement it now within your write-scope. When you are fully done (tests/typecheck run), print your completion marker for atom ${atomIndex} on its own line, exactly as your standby instructions describe.`
 }
 
 /** The verify dispatch into Oscar's pane once the monitor reports the atom done — the gate (ADR-0011),
