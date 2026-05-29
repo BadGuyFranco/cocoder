@@ -120,7 +120,13 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   // 2) Await Oscar's delegation (timeout → terminal failure, not a hang).
   let delegation
   try {
-    delegation = await io.awaitDelegation(delegationPath, { timeoutMs: t.orchestrationMs, pollMs: t.pollMs })
+    delegation = await io.awaitDelegation(delegationPath, {
+      timeoutMs: t.orchestrationMs,
+      pollMs: t.pollMs,
+      // Fail fast if Oscar's session dies without delegating (e.g. cmux died) — don't hang the
+      // full orchestration timeout (earned by an observed cmux-death dogfood failure).
+      isAlive: async () => (await sessionHost.status(oscarRef)).state === 'running',
+    })
   } catch (err) {
     store.recordEvent({ runId: run.id, type: 'delegation-timeout', data: { message: String(err) } })
     store.setRunStatus(run.id, 'failed')

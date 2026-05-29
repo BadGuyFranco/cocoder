@@ -7,8 +7,13 @@ import { type Delegation, parseDelegation } from './delegation.js'
 export interface RunnerIO {
   ensureRunDir(runDir: string): Promise<void>
   /** Poll `delegationPath` until it holds a valid delegation, or throw on timeout. A parse
-   *  failure is treated as "not ready yet" (tolerates a partial/in-progress write). */
-  awaitDelegation(delegationPath: string, opts: { timeoutMs: number; pollMs: number; now?: () => number }): Promise<Delegation>
+   *  failure is treated as "not ready yet" (tolerates a partial/in-progress write). If `isAlive`
+   *  is given and the orchestrator session exits before producing a delegation, fail FAST (don't
+   *  wait out the timeout) — e.g. cmux died, so Oscar's pane is gone. */
+  awaitDelegation(
+    delegationPath: string,
+    opts: { timeoutMs: number; pollMs: number; now?: () => number; isAlive?: () => Promise<boolean> },
+  ): Promise<Delegation>
   writeRunRecord(runDir: string, markdown: string): Promise<string>
 }
 
@@ -19,13 +24,24 @@ export function makeRunnerIO(): RunnerIO {
     async ensureRunDir(runDir) {
       await mkdir(runDir, { recursive: true })
     },
-    async awaitDelegation(delegationPath, { timeoutMs, pollMs, now = Date.now }) {
+    async awaitDelegation(delegationPath, { timeoutMs, pollMs, now = Date.now, isAlive }) {
       const deadline = now() + timeoutMs
-      for (;;) {
+      const readDelegation = async (): Promise<Delegation | null> => {
         try {
           return parseDelegation(await readFile(delegationPath, 'utf8'))
         } catch {
-          /* missing, partial, or invalid — keep polling */
+          return null // missing, partial, or invalid — not ready
+        }
+      }
+      for (;;) {
+        const found = await readDelegation()
+        if (found) return found
+        // Fail fast if the orchestrator session died without delegating (re-check the file once to
+        // tolerate the write-then-exit race).
+        if (isAlive && !(await isAlive())) {
+          const last = await readDelegation()
+          if (last) return last
+          throw new Error(`orchestrator session exited before producing a delegation at ${delegationPath}`)
         }
         if (now() >= deadline) {
           throw new Error(`no valid delegation at ${delegationPath} within ${timeoutMs}ms`)
