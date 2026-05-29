@@ -121,9 +121,11 @@ ${input.priorityGoal}
 
 # What to do right now
 
-You are observing this run only. In this build slice, observation and triage tooling is not wired yet:
-stay read-only, watch the live run, and do not write directive files, verify files, repository changes,
-or commits.
+In THIS build slice you have NO observation or triage tooling wired — only Oscar acts on this run. Do
+NOT try to locate, query, or attach to the run (no CLIs, no \`tmux\`, no run-dir probing), and do not
+write directive files, verify files, repository changes, or commits. Simply remain on standby. If the
+founder asks how the run is going, say plainly that live observation isn't wired for you yet in this
+slice and point them to Oscar (or the run record) — do not guess, and do not flail hunting for telemetry.
 
 # Teardown mechanism (for this run)
 
