@@ -24,9 +24,19 @@ sound; the foundation is over-engineered. See [`decisions/0001-rebuild-charter.m
 
 ## Where we are
 
-**Phase 0 — Architecture Q&A: seams resolved.** ADRs 0001–0009 accepted (all nine seams; S9
-dissolved). CoBuilder persona rules audited into [`persona-rules-to-carry.md`](./persona-rules-to-carry.md).
-**Remaining Phase-0 exit gate:** the cmux socket-API spike (ADR-0002). Then Phase 1 (the spine).
+**Phase 1 — The spine: ✅ complete (2026-05-28).** `cocoder run <priority>` drives a real
+Oscar(claude)→Bob(codex) orchestration in cmux on the CoCoder repo, gated by the write-scope
+commit-gate, with a durable run record. Evidence: commit `57c0781` produced via the flow; build
+notes in [`PLAYBOOK.md`](./PLAYBOOK.md) (Phase 1 section) + the spikes.
+
+- Phase 0 (architecture): ADRs 0001–0009 accepted; cmux spike passed.
+- Phase 1 (spine): six packages (core/adapters/session-hosts/daemon/cli/ui) on `rebuild/phase-1-spine`,
+  inward-only topology check, cmux `SessionHost` driver, node:sqlite `RunStore`, flat-file personas
+  + shared standards, claude/codex adapters w/ preflight, the commit-gate, the thin runner.
+
+**👉 Pick up next: Phase 2 — "Oz thin"** (the feedback instrument). See [`PLAYBOOK.md`](./PLAYBOOK.md).
+The `daemon` and `ui` packages are stubs ready for it; it plugs into the existing
+`RunStore` / `SessionHost` / adapter ports in `core`.
 
 | File | What it is |
 |---|---|
