@@ -126,6 +126,46 @@ describe('CmuxSessionHost driver (fake cli)', () => {
     expect(await host.waitForExit(ref, { timeoutMs: 1000 })).toEqual({ state: 'exited', code: 0 })
   })
 
+  test('spawn auto-launches cmux when the socket is down, then proceeds', async () => {
+    let up = false // socket starts unreachable (cmux app closed)
+    let launched = 0
+    let opened = false
+    const cli: CmuxCli = {
+      async run(args) {
+        const a = args.join(' ')
+        if (a === 'ping') {
+          if (!up) throw new Error('Socket not found at …/cmux.sock')
+          return 'PONG'
+        }
+        if (a === 'list-workspaces --json') {
+          return opened ? '{"workspaces":[{"ref":"workspace:1"},{"ref":"workspace:2"}]}' : '{"workspaces":[{"ref":"workspace:1"}]}'
+        }
+        if (args[0] === 'open') {
+          opened = true
+          return 'OK'
+        }
+        if (args[0] === 'list-pane-surfaces') return '{"pane_ref":"pane:2","surfaces":[{"ref":"surface:2","selected":true}]}'
+        return ''
+      },
+    }
+    const scriptDir = await mkdtemp(join(tmpdir(), 'cmux-test-'))
+    const host = new CmuxSessionHost({
+      cli,
+      scriptDir,
+      pollMs: 1,
+      tokenFactory,
+      hostReadyTimeoutMs: 1000,
+      launchApp: async () => {
+        launched += 1
+        up = true // launching the app makes the socket reachable
+      },
+    })
+
+    const ref = await host.spawn({ persona: 'oscar', command: 'claude', args: ['-p', 'hi'], cwd: '/repo' })
+    expect(launched).toBe(1) // the app was auto-launched exactly once
+    expect(ref).toEqual({ id: 'surface:2', driver: 'cmux' })
+  })
+
   test('kill closes the workspace; methods reject unknown refs', async () => {
     const { cli, calls } = makeFakeCli()
     const scriptDir = await mkdtemp(join(tmpdir(), 'cmux-test-'))

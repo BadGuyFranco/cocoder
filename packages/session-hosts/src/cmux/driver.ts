@@ -1,10 +1,14 @@
 // cmux driver — implements core's SessionHost port (ADR-0002 C2) over the cmux CLI.
 // The terminal is a disposable view; run-state durability lives in the DB (C1).
+import { execFile } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { promisify } from 'node:util'
 import type { SessionExited, SessionHost, SessionRef, SessionStatus, SpawnOptions } from '@cocoder/core'
+
+const execFileAsync = promisify(execFile)
 import { type CmuxCli, makeCmuxCli, parseSurface, parseWorkspaceRefs } from './cmux-cli.js'
 import { buildLaunchScript, diffNewWorkspace, parseExitFromScreen, shquote } from './launch.js'
 
@@ -25,9 +29,18 @@ export interface CmuxDriverOptions {
   readonly pollMs?: number
   /** Completion-sentinel token generator (injectable for deterministic tests). */
   readonly tokenFactory?: () => string
+  /** Launch the cmux app when its socket isn't reachable (default: `open -a cmux`, macOS).
+   *  Injectable so unit tests never actually open an app. */
+  readonly launchApp?: () => Promise<void>
+  /** How long to wait for the socket after launching the app, ms. */
+  readonly hostReadyTimeoutMs?: number
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
+
+const openCmuxApp = async (): Promise<void> => {
+  await execFileAsync('open', ['-a', 'cmux'])
+}
 
 const defaultToken = (): string => `COCODER_${randomUUID().replace(/-/g, '').slice(0, 12)}`
 
@@ -36,6 +49,8 @@ export class CmuxSessionHost implements SessionHost {
   readonly #scriptDir: string
   readonly #pollMs: number
   readonly #tokenFactory: () => string
+  readonly #launchApp: () => Promise<void>
+  readonly #hostReadyTimeoutMs: number
   readonly #sessions = new Map<string, Session>()
 
   constructor(opts: CmuxDriverOptions = {}) {
@@ -43,9 +58,12 @@ export class CmuxSessionHost implements SessionHost {
     this.#scriptDir = opts.scriptDir ?? tmpdir()
     this.#pollMs = opts.pollMs ?? 1000
     this.#tokenFactory = opts.tokenFactory ?? defaultToken
+    this.#launchApp = opts.launchApp ?? openCmuxApp
+    this.#hostReadyTimeoutMs = opts.hostReadyTimeoutMs ?? 15_000
   }
 
   async spawn(opts: SpawnOptions): Promise<SessionRef> {
+    await this.#ensureHost()
     const before = parseWorkspaceRefs(await this.#cli.run(['list-workspaces', '--json']))
     await this.#cli.run(['open', opts.cwd, '--no-focus'])
     const after = parseWorkspaceRefs(await this.#cli.run(['list-workspaces', '--json']))
@@ -112,5 +130,34 @@ export class CmuxSessionHost implements SessionHost {
     const s = this.#sessions.get(ref.id)
     if (!s) throw new Error(`cmux: unknown session ref "${ref.id}" (not spawned by this driver)`)
     return s
+  }
+
+  /** Is cmux's control socket reachable right now? (`cmux ping` rejects when the socket is absent.) */
+  async #hostUp(): Promise<boolean> {
+    try {
+      await this.#cli.run(['ping'])
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  /** Ensure the cmux app is running before driving it. If its socket isn't reachable, launch the
+   *  app and poll until it is — so a closed cmux app no longer fails a step INTO the run (the
+   *  dogfood failure that earned this). Throws a clear, actionable error if it never comes up. */
+  async #ensureHost(): Promise<void> {
+    if (await this.#hostUp()) return
+    await this.#launchApp()
+    const deadline = Date.now() + this.#hostReadyTimeoutMs
+    for (;;) {
+      if (await this.#hostUp()) return
+      if (Date.now() >= deadline) {
+        throw new Error(
+          `cmux control socket did not become reachable within ${this.#hostReadyTimeoutMs}ms after launching the app. ` +
+            `Open cmux manually and ensure socket control is enabled (automation mode) — ADR-0002.`,
+        )
+      }
+      await sleep(this.#pollMs)
+    }
   }
 }
