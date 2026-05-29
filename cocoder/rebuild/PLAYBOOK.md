@@ -105,8 +105,8 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
 **Active (launchable, in order):**
 1. `objective-presence-gate` — the ADR-0010 minimal-slice gate; the in-flight dogfood.
 2. `deb` — orchestration/session debugger persona; the automated feedback loop (Phase 3 instrument).
-3. `plays-documentation` — ADR-0005 Plays mechanism, proven with the `documentation` Play; foundation
-   for the deferred two.
+3. `plays-mechanism` — ADR-0005 Plays mechanism, proven by extracting **wrap-up** as the first Play
+   (cheap-model tiering); `documentation` is the fast-follow. Foundation for the deferred two.
 4. `full-oz-dashboard` — the v1-designed control plane, earned in slices; the road to feature-complete
    (and where priority ordering eventually lands).
 
