@@ -21,16 +21,26 @@ const git = async (cwd: string, args: string[]): Promise<string> => {
   return stdout
 }
 
-/** Parse `git status --porcelain` output into a list of changed paths (rename → new path).
- *  Note: assumes paths without embedded spaces/quoting (true for this repo); revisit with -z
- *  if that stops holding. */
-export function parsePorcelain(porcelain: string): string[] {
+/** Parse `git status --porcelain -z` output into a list of changed paths. The `-z` form is the sound
+ *  one for an integrity boundary: paths are emitted VERBATIM (no quoting/escaping), so spaces and other
+ *  special characters can't corrupt the partition. Records are NUL-separated; each is `XY␠PATH`. A
+ *  rename (`R`) carries its ORIGINAL path as the next NUL field — that path is also a change (the source
+ *  is deleted), so both ends are recorded and governed by scope; a copy (`C`) leaves its source
+ *  unchanged, so only the new path is recorded (the original field is consumed). */
+export function parsePorcelain(porcelainZ: string): string[] {
   const files: string[] = []
-  for (const line of porcelain.split('\n')) {
-    if (line.trim() === '') continue
-    const path = line.slice(3) // strip 2-char status + 1 space
-    const arrow = path.indexOf(' -> ')
-    files.push(arrow >= 0 ? path.slice(arrow + 4) : path)
+  const records = porcelainZ.split('\0')
+  for (let i = 0; i < records.length; i++) {
+    const rec = records[i]
+    if (!rec || rec.length < 4) continue // trailing empty field after the final NUL, or malformed
+    const xy = rec.slice(0, 2)
+    files.push(rec.slice(3)) // 2-char status + 1 space, then the verbatim path
+    if (xy.includes('R')) {
+      const orig = records[++i] // the source path follows; it is deleted → also a change
+      if (orig) files.push(orig)
+    } else if (xy.includes('C')) {
+      i += 1 // consume the (unchanged) copy-source field without recording it
+    }
   }
   return files
 }
@@ -41,10 +51,11 @@ export function makeGit(): Git {
       return (await git(cwd, ['rev-parse', 'HEAD'])).trim()
     },
     async changedFiles(cwd) {
-      // --untracked-files=all lists untracked FILES individually; without it git collapses
-      // an untracked dir to "packages/", which would record an imprecise commit_link + match
-      // scope too coarsely. (Caught by the live gate test, not the fake-git unit tests.)
-      return parsePorcelain(await git(cwd, ['status', '--porcelain', '--untracked-files=all']))
+      // -z → NUL-separated, paths VERBATIM (no quoting) so spaces/special chars can't corrupt the
+      // scope partition (integrity boundary). --untracked-files=all lists untracked FILES individually;
+      // without it git collapses an untracked dir to "packages/", recording an imprecise commit_link +
+      // matching scope too coarsely. (Caught by the live gate test, not the fake-git unit tests.)
+      return parsePorcelain(await git(cwd, ['status', '--porcelain', '-z', '--untracked-files=all']))
     },
     async addAndCommit(cwd, files, message) {
       await git(cwd, ['add', '--', ...files])

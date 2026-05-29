@@ -63,4 +63,14 @@ CREATE TABLE IF NOT EXISTS event (
   at      INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_event_run ON event(run_id);
+
+-- Monotonic session counter for run ids (run_1, run_2, …). A dedicated counter — NOT COUNT(*) — so an
+-- id is never reused even if a run row is later deleted, and a single atomic UPDATE allocates it (no
+-- read-then-write race). Seeded ONCE to continue from any pre-existing runs, so the number stays the
+-- running total of sessions ever launched.
+CREATE TABLE IF NOT EXISTS run_counter (
+  id   INTEGER PRIMARY KEY CHECK (id = 0),
+  next INTEGER NOT NULL
+);
+INSERT OR IGNORE INTO run_counter (id, next) VALUES (0, (SELECT COUNT(*) + 1 FROM run));
 `

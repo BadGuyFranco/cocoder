@@ -37,12 +37,20 @@ describe('scope partition + effective scope', () => {
   })
 })
 
-test('parsePorcelain extracts paths incl. renames and untracked', () => {
-  expect(parsePorcelain(' M packages/a.ts\n?? new.ts\nR  old.ts -> packages/new.ts\n')).toEqual([
+test('parsePorcelain (-z) extracts verbatim paths incl. spaces, renames (both ends), untracked', () => {
+  // -z records are NUL-separated; a rename's original path is the next NUL field.
+  const z = [' M packages/a.ts', '?? new file.ts', 'R  packages/new.ts', 'packages/old name.ts'].join('\0') + '\0'
+  expect(parsePorcelain(z)).toEqual([
     'packages/a.ts',
-    'new.ts',
-    'packages/new.ts',
+    'new file.ts', // spaces preserved verbatim — no quoting to corrupt the scope match
+    'packages/new.ts', // rename destination
+    'packages/old name.ts', // rename source (deleted) — also governed by scope
   ])
+})
+
+test('parsePorcelain (-z): a copy records only the new path, consuming the unchanged source', () => {
+  const z = ['C  packages/copy.ts', 'packages/src.ts', ' M packages/b.ts'].join('\0') + '\0'
+  expect(parsePorcelain(z)).toEqual(['packages/copy.ts', 'packages/b.ts'])
 })
 
 /** Fake Git recording commits, with a programmable changed-file set + HEAD movement. */

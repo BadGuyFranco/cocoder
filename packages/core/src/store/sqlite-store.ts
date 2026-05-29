@@ -132,13 +132,13 @@ class SqliteRunStore implements RunStore {
   }
 
   createRun(input: { workspaceId: string; priorityId: string }): Run {
-    // Sequential, human-typeable session ids (run_1, run_2, …) instead of random hex — easy to type
-    // for teardown/deep-links, and the number IS the running total of sessions ever launched. Runs are
-    // never deleted (orphans are marked failed), and writes are single-writer-at-a-time (ADR-0004), so
-    // count+1 stays monotonic + unique. (Random-id legacy runs still count toward the total.)
-    const { c } = this.#db.prepare(`SELECT COUNT(*) AS c FROM run`).get() as { c: number }
+    // Sequential, human-typeable session ids (run_1, run_2, …) from a monotonic counter — easy to type
+    // for teardown/deep-links, and the number is the running total of sessions launched. One atomic
+    // UPDATE allocates the next value (no read-then-write race), and it never reuses a number even if a
+    // run row is later deleted — unlike COUNT(*), which would collide on the next create after a delete.
+    const { seq } = this.#db.prepare(`UPDATE run_counter SET next = next + 1 WHERE id = 0 RETURNING next - 1 AS seq`).get() as { seq: number }
     const run: Run = {
-      id: `run_${c + 1}`,
+      id: `run_${seq}`,
       workspaceId: input.workspaceId,
       priorityId: input.priorityId,
       status: 'running',
