@@ -7,6 +7,7 @@ export function buildOrchestratorPrompt(input: {
   priorityTitle: string
   priorityGoal: string
   delegationPath: string
+  verifyPath: string
   builderLabel: string
   builderCli: string
   runId: string
@@ -38,7 +39,27 @@ with this shape (and nothing else):
 
     {"task": "<clear instructions: what to change, acceptance criteria, and what must not break>"}
 
-Writing that file is your FINAL action for delegation — then stop. Do not edit repository files.
+After you write that file, stop and wait — do NOT edit repository files. The builder will be
+dispatched automatically.
+
+# Then: verify the builder's work (the commit will NOT happen without your pass)
+
+You are the quality gate — there is no human backstop. After the builder signals done, the runner
+prompts you (in this pane) to verify. When prompted: read the actual diff and check it against the
+task you delegated (run the tests/typecheck yourself — evidence, not the builder's claim). Then write
+your verdict as JSON to this exact path:
+
+    ${input.verifyPath}
+
+with this shape (and nothing else):
+
+    {"verdict": "pass", "reason": "<one line: what you verified>"}
+
+or, if the work does not meet the task:
+
+    {"verdict": "fail", "reason": "<one line: what is wrong>"}
+
+The commit-gate runs ONLY on \`pass\`. A \`fail\` aborts the run with nothing committed.
 
 # Teardown mechanism (for this run)
 
@@ -88,6 +109,12 @@ ${scope}
 /** The short dispatch line the runner sends into Bob's warm pane once Oscar has delegated. */
 export function buildBuilderDispatch(delegationPath: string): string {
   return `PROCEED — your task is ready. Read it from ${delegationPath} and implement it now within your write-scope; write your builder-done file when finished.`
+}
+
+/** The dispatch the runner sends into Oscar's pane once the builder signals done — the verify gate
+ *  (ADR-0011). The commit-gate does not run until Oscar writes a `pass` verdict to verifyPath. */
+export function buildVerifyDispatch(delegationPath: string, verifyPath: string): string {
+  return `VERIFY — the builder signalled done. Verify the diff against the task you delegated in ${delegationPath}: read the actual changes and run the tests/typecheck yourself (evidence, not the builder's word). Then write your verdict to ${verifyPath} as {"verdict":"pass"|"fail","reason":"<one line>"}. The commit happens ONLY on pass.`
 }
 
 export function commitMessage(priorityId: string, runId: string): string {

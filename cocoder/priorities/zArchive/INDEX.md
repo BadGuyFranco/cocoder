@@ -12,6 +12,7 @@ not-yet-complete v2 Playbooks (the directory listing is the index — ADR-0010).
 |---|---|---|
 | [`v2/mean-helper`](./v2/mean-helper.md) | Complete | `mean()` core helper — committed `0961a79` via a real Oscar→Bob run. |
 | [`v2/phase1-dogfood`](./v2/phase1-dogfood.md) | Complete | `truncate()` core helper — committed `57c0781`; proved the Phase-1 spine end to end. |
+| [`v2/objective-presence-gate`](./v2/objective-presence-gate.md) | Complete | Structural Objective presence-gate (ADR-0010 D3): `Priority.objective` parsed; `runRun` refuses a null Objective before any store write — committed `bc6c3e8`. Dogfood-caught: the run auto-committed without Oscar verifying, and the builder's diff had broken `@cocoder/daemon` tests; both fixed and the gap closed by the **Oscar verify-gate** ([ADR-0011](../../rebuild/decisions/0011-orchestrator-verify-gate.md)). |
 
 ## v1 — frozen reference (rebuild-superseded)
 

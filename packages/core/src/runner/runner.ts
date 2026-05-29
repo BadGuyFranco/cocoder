@@ -1,5 +1,8 @@
 // The thin runner (ADR-0004 "runner · launch composition"). Composes the Phase-1 spine:
-// load → preflight → spawn Oscar → await delegation → spawn Bob → commit-gate → run record.
+// load → preflight → spawn Oscar → await delegation → spawn Bob → await builder-done →
+// Oscar verify-gate (ADR-0011) → commit-gate → run record.
+// The verify-gate is the load-bearing one: the commit runs ONLY on Oscar's `pass`, because the
+// orchestrator is the quality gate and there is no human backstop.
 // All collaborators are injected (SessionHost, Git, RunStore, adapters, IO) so the
 // orchestration is unit-testable without real cmux/CLIs.
 import type { Adapter } from '../adapter/index.js'
@@ -12,7 +15,7 @@ import { effectiveScope } from '../write-scope/index.js'
 import type { SessionHost } from '../session-host/index.js'
 import { join } from 'node:path'
 import type { RunnerIO } from './io.js'
-import { buildBuilderStandbyPrompt, buildBuilderDispatch, buildOrchestratorPrompt, commitMessage } from './prompts.js'
+import { buildBuilderStandbyPrompt, buildBuilderDispatch, buildOrchestratorPrompt, buildVerifyDispatch, commitMessage } from './prompts.js'
 import { renderRunRecord } from './record.js'
 
 export interface RunnerDeps {
@@ -63,6 +66,13 @@ export class MissingObjectiveError extends Error {
   }
 }
 
+export class VerificationFailedError extends Error {
+  constructor(reason: string | null) {
+    super(`orchestrator rejected the builder's work: ${reason ?? 'no reason given'}`)
+    this.name = 'VerificationFailedError'
+  }
+}
+
 // Interactive sessions are human-steered (the founder reads/answers the agent in its pane), so the
 // artifact may take many minutes — these are generous BACKSTOPS, not tight headless budgets. A dead
 // pane is caught immediately by the isAlive fast-fail, so the only thing a timeout guards against is
@@ -100,6 +110,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
   const delegationPath = join(runDir, 'delegation.json')
   const builderDonePath = join(runDir, 'builder-done.json')
+  const verifyPath = join(runDir, 'verify.json')
   const scope = effectiveScope(bob.writeScope, priority.scopeNarrowing) // known at launch (no delegation needed)
 
   // 1) Spawn BOTH personas up front (v1-style concurrent spawn): Oscar with its full prompt, Bob on
@@ -112,6 +123,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       priorityTitle: priority.title,
       priorityGoal: priority.goal,
       delegationPath,
+      verifyPath,
       builderLabel: bob.label,
       builderCli: bob.cli,
       runId: run.id,
@@ -194,9 +206,35 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     throw err
   }
   store.setWorkItemStatus(workItem.id, 'done')
-  log('bob signalled done; running commit-gate')
+  log('bob signalled done; dispatching to oscar for verification')
 
-  // 4) Commit-gate (ADR-0007): commit in-scope, surface out-of-scope, record commit_link.
+  // 4) Oscar verification gate (ADR-0011): the orchestrator is the quality gate — there is no human
+  //    backstop. Dispatch the verify request into Oscar's still-alive pane and block on its verdict.
+  //    The commit-gate runs ONLY on `pass`; a `fail` aborts with nothing committed.
+  await sessionHost.show(oscarRef)
+  await sessionHost.sendInput(oscarRef, buildVerifyDispatch(delegationPath, verifyPath))
+  store.recordEvent({ runId: run.id, type: 'verify-dispatch', data: { ref: oscarRef.id } })
+  let verdict
+  try {
+    verdict = await io.awaitVerification(verifyPath, {
+      timeoutMs: t.orchestrationMs,
+      pollMs: t.pollMs,
+      isAlive: async () => (await sessionHost.status(oscarRef)).state === 'running',
+    })
+  } catch (err) {
+    store.recordEvent({ runId: run.id, type: 'verify-failed', data: { message: String(err) } })
+    store.setRunStatus(run.id, 'failed')
+    throw err
+  }
+  if (verdict.verdict === 'fail') {
+    store.recordEvent({ runId: run.id, type: 'verify-rejected', data: { reason: verdict.reason } })
+    store.setRunStatus(run.id, 'failed')
+    throw new VerificationFailedError(verdict.reason)
+  }
+  store.recordEvent({ runId: run.id, type: 'verify-pass', data: { reason: verdict.reason } })
+  log('oscar verified the diff; running commit-gate')
+
+  // 5) Commit-gate (ADR-0007): commit in-scope, surface out-of-scope, record commit_link.
   const gate = await runCommitGate({
     git,
     store,
@@ -208,7 +246,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     headBefore,
   })
 
-  // 5) Finalize + write the run record (write-once projection).
+  // 6) Finalize + write the run record (write-once projection).
   const status: RunStatus = gate.outOfScope.length > 0 ? 'pending-scope-decision' : 'completed'
   store.setRunStatus(run.id, status)
   store.recordEvent({

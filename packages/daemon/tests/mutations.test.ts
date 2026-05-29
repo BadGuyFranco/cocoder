@@ -81,6 +81,9 @@ const fakeIO = (task = 'do the thing'): RunnerIO => ({
   async awaitBuilderDone() {
     return { summary: 'done' }
   },
+  async awaitVerification() {
+    return { verdict: 'pass' as const, reason: 'verified' }
+  },
   async writeRunRecord(runDir) {
     return `${runDir}/record.md`
   },
@@ -94,7 +97,7 @@ async function fixtures(home: string): Promise<void> {
     join(home, 'local', 'workspaces.json'),
     JSON.stringify({ workspaces: [{ id: 'cocoder', name: 'CoCoder', path: '${COCODER_HOME}' }] }),
   )
-  await writeFile(join(home, 'cocoder', 'priorities', 'demo.md'), `---\nid: demo\ntitle: Demo\n---\nDo the thing.`)
+  await writeFile(join(home, 'cocoder', 'priorities', 'demo.md'), `---\nid: demo\ntitle: Demo\n---\n## Objective\nDo the thing.`)
   await writeFile(join(home, 'cocoder', 'personas', 'shared-standards.md'), `# standards`)
   await writeFile(join(home, 'cocoder', 'personas', 'oscar.md'), `---\nid: oscar\nlabel: Orchestrator\nrole: orchestrator\nwriteScope: []\n---\nOscar`)
   await writeFile(join(home, 'cocoder', 'personas', 'bob.md'), `---\nid: bob\nlabel: Builder\nrole: builder\nwriteScope:\n  - packages/**\n---\nBob`)

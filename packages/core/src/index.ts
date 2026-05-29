@@ -66,6 +66,7 @@ export {
   runRun,
   PreflightError,
   MissingObjectiveError,
+  VerificationFailedError,
   type RunnerDeps,
   type RunInput,
   type RunResult,
@@ -77,5 +78,6 @@ export {
   buildOrchestratorPrompt,
   buildBuilderStandbyPrompt,
   buildBuilderDispatch,
+  buildVerifyDispatch,
   commitMessage,
 } from './runner/index.js'

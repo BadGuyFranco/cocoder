@@ -9,6 +9,7 @@ import {
   type RunnerIO,
   type SessionHost,
   type SessionRef,
+  VerificationFailedError,
   openRunStore,
   runRun,
 } from '../src/index.js'
@@ -80,6 +81,9 @@ const fakeIO = (task = 'implement the thing'): RunnerIO => ({
   async awaitBuilderDone() {
     return { summary: 'did the thing' }
   },
+  async awaitVerification() {
+    return { verdict: 'pass' as const, reason: 'diff matches the task; tests green' }
+  },
   async writeRunRecord(runDir) {
     return `${runDir}/record.md`
   },
@@ -122,7 +126,37 @@ describe('runRun', () => {
     expect(store.listCommitLinks(result.runId)[0]?.files).toEqual(['packages/x.ts'])
     expect(store.listSessions(result.runId).map((s) => s.persona)).toEqual(['oscar', 'bob'])
     const types = store.listEvents(result.runId).map((e) => e.type)
-    expect(types).toEqual(expect.arrayContaining(['run-start', 'preflight', 'spawn', 'delegation', 'builder-done', 'commit', 'run-end']))
+    expect(types).toEqual(
+      expect.arrayContaining(['run-start', 'preflight', 'spawn', 'delegation', 'builder-done', 'verify-dispatch', 'verify-pass', 'commit', 'run-end']),
+    )
+  })
+
+  test('verification gate: a fail verdict aborts before the commit-gate — nothing committed, run failed', async () => {
+    const store = openRunStore(':memory:')
+    const committed: string[] = []
+    const recordingGit: Git = {
+      ...fakeGit(['packages/x.ts']),
+      async addAndCommit() {
+        committed.push('called')
+        return 'sha-committed'
+      },
+    }
+    const failingVerify: RunnerIO = {
+      ...fakeIO(),
+      async awaitVerification() {
+        return { verdict: 'fail' as const, reason: 'the new test does not actually cover the empty case' }
+      },
+    }
+    let runId = ''
+    await expect(
+      runRun(baseDeps({ store, git: recordingGit, io: failingVerify, onRunCreated: (r) => (runId = r.id) }), input),
+    ).rejects.toBeInstanceOf(VerificationFailedError)
+
+    expect(committed).toEqual([]) // commit-gate never ran — Oscar's verdict gates the commit
+    expect(store.getRun(runId)?.status).toBe('failed')
+    const types = store.listEvents(runId).map((e) => e.type)
+    expect(types).toContain('verify-rejected')
+    expect(types).not.toContain('commit')
   })
 
   test('out-of-scope change → run is pending-scope-decision and surfaced', async () => {
@@ -153,8 +187,9 @@ describe('runRun', () => {
     await runRun(baseDeps({ store, sessionHost: recordingHost() }), input)
 
     expect(spawns).toEqual(['oscar', 'bob']) // both spawned (Bob concurrently, on standby)
-    expect(dispatches).toHaveLength(1)
-    expect(dispatches[0]).toMatch(/PROCEED/) // task dispatched into Bob's warm pane
+    expect(dispatches).toHaveLength(2) // PROCEED into Bob, then VERIFY back into Oscar
+    expect(dispatches.some((d) => /PROCEED/.test(d))).toBe(true) // task dispatched into Bob's warm pane
+    expect(dispatches.some((d) => /VERIFY/.test(d))).toBe(true) // verify dispatched back into Oscar's pane
   })
 
   test('onRunCreated fires synchronously with the created run (daemon learns runId for its 202)', async () => {
