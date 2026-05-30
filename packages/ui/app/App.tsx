@@ -12,7 +12,7 @@ import { CLIsScreen } from './sections/CLIs.tsx'
 import { PersonasScreen } from './sections/Personas.tsx'
 import { SettingsScreen } from './sections/Settings.tsx'
 import { NewWorkspaceModal, CraftPersonaModal } from './sections/modals.tsx'
-import { seed, DEFAULT_SETTINGS, type ChatMessage, type Cli, type Persona, type Priority, type Settings, type SubAgent, type Workspace } from './model.ts'
+import { seed, DEFAULT_SETTINGS, type ChatMessage, type Cli, type Dependency, type Persona, type Priority, type Settings, type SubAgent, type Workspace } from './model.ts'
 
 const USER = seed.workspaces.length ? { initials: 'AF', name: 'Anthony Franco', role: 'founder' } : { initials: 'AF', name: 'Anthony Franco', role: 'founder' }
 const ROUTE_TITLE: Record<Route, string> = { dashboard: 'Dashboard', workspaces: 'Workspaces', clis: 'CLIs', personas: 'Personas', settings: 'Settings' }
@@ -92,8 +92,8 @@ export function App() {
   // persona editing
   const setPersona = (id: string, next: Persona) => setPersonas((ps) => ps.map((p) => (p.id === id ? next : p)))
   const addSub = (pid: string) => setPersonas((ps) => ps.map((p) => (p.id === pid ? { ...p, subAgents: [...p.subAgents, { id: `sa${Date.now()}`, name: 'new sub', cli: 'claude-code', model: 'Default' }] } : p)))
-  const removeSub = (pid: string, sid: string) => setPersonas((ps) => ps.map((p) => (p.id === pid ? { ...p, subAgents: p.subAgents.filter((s) => s.id !== sid) } : p)))
-  const updateSub = (pid: string, sid: string, sa: SubAgent) => setPersonas((ps) => ps.map((p) => (p.id === pid ? { ...p, subAgents: p.subAgents.map((s) => (s.id === sid ? sa : s)) } : p)))
+  const removeSub = (pid: string, sid: string) => setPersonas((ps) => ps.map((p) => (p.id === pid ? { ...p, subAgents: p.subAgents.filter((s: SubAgent) => s.id !== sid) } : p)))
+  const updateSub = (pid: string, sid: string, sa: SubAgent) => setPersonas((ps) => ps.map((p) => (p.id === pid ? { ...p, subAgents: p.subAgents.map((s: SubAgent) => (s.id === sid ? sa : s)) } : p)))
 
   return (
     <div className="oz-app">
@@ -105,8 +105,8 @@ export function App() {
             <Dashboard
               workspace={workspace} priorities={priorities} runs={runs} ozMessages={messages}
               selectedRunId={selectedRunId} setSelectedRunId={setSelectedRunId}
-              onReorder={reorder} onLaunch={(p) => onSend(`Launch the priority “${p.name}”.`)} onAdhoc={() => onSend('Run an ad-hoc task: ')}
-              onAddPriority={() => onSend('Draft a new priority.')} onSend={onSend} onDecision={(c) => onSend(`Decision: replay ${c} plan.`)} onRunAction={(a, id) => onSend(`${a} ${id}`)}
+              onReorder={reorder} onLaunch={(p: Priority) => onSend(`Launch the priority “${p.name}”.`)} onAdhoc={() => onSend('Run an ad-hoc task: ')}
+              onAddPriority={() => onSend('Draft a new priority.')} onSend={onSend} onDecision={(c: string) => onSend(`Decision: replay ${c} plan.`)} onRunAction={(a: string, id: string) => onSend(`${a} ${id}`)}
               ozTyping={ozTyping} runHistoryOpen={runHistoryOpen} setRunHistoryOpen={setRunHistoryOpen}
             />
           )}
@@ -115,7 +115,7 @@ export function App() {
           )}
           {route === 'clis' && <CLIsScreen clis={clis} onTest={(id) => setClis((cs) => cs.map((c) => (c.id === id ? { ...c, lastTested: 'just now' } : c)))} onAdd={() => onSend('Register a new CLI.')} />}
           {route === 'personas' && <PersonasScreen personas={personas} clis={clis} onChange={setPersona} onAddSub={addSub} onRemoveSub={removeSub} onUpdateSub={updateSub} onNewPersonaAsPriority={() => setCraftOpen(true)} />}
-          {route === 'settings' && <SettingsScreen settings={settings} dependencies={dependencies} onRecheckDep={(id) => setDependencies((ds) => ds.map((d) => (d.id === id ? { ...d, lastChecked: 'just now' } : d)))} onChange={setSettings} />}
+          {route === 'settings' && <SettingsScreen settings={settings} dependencies={dependencies} onRecheckDep={(id: string) => setDependencies((ds: Dependency[]) => ds.map((d: Dependency) => (d.id === id ? { ...d, lastChecked: 'just now' } : d)))} onChange={setSettings} />}
         </div>
       </div>
 
