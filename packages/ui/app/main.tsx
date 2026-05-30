@@ -8,8 +8,9 @@ import '@fontsource/inter/600.css'
 import '@fontsource/inter/700.css'
 import '@fontsource/jetbrains-mono/400.css'
 import '@fontsource/jetbrains-mono/500.css'
-// Phosphor thin icon webfont (bundled — the design uses ph-thin exclusively).
-import '@phosphor-icons/web/src/thin/style.css'
+// Phosphor thin icon webfont — vendored locally into app/assets/phosphor (the package's exports map
+// blocks the deep src/thin/style.css path under Rollup, so we ship the thin weight ourselves).
+import './assets/phosphor/style.css'
 import './styles/fusion.css'
 import './styles/oz.css'
 import { App } from './App.tsx'

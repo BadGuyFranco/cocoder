@@ -41,13 +41,13 @@ export function WorkspacesScreen({ workspaces, activeId, onChange, onSetActive, 
   const editing = workspaces.find((w) => w.id === editId)
   const hasPrimary = !!editing?.roots.some((r) => r.role === 'primary')
 
-  const updateRoot = (id: string, next: Root) => editing && onChange({ ...editing, roots: editing.roots.map((r) => (r.id === id ? next : r)) })
+  const updateRoot = (id: string, next: Root) => editing && onChange({ ...editing, roots: editing.roots.map((r: Root) => (r.id === id ? next : r)) })
   const addRoot = () => {
     if (!editing) return
     const newId = 'r-' + Math.random().toString(36).slice(2, 8)
     onChange({ ...editing, roots: [...editing.roots, { id: newId, name: 'new-root', path: '~/dev/', role: hasPrimary ? 'writable' : 'primary' }] })
   }
-  const removeRoot = (id: string) => editing && onChange({ ...editing, roots: editing.roots.filter((r) => r.id !== id) })
+  const removeRoot = (id: string) => editing && onChange({ ...editing, roots: editing.roots.filter((r: Root) => r.id !== id) })
 
   return (
     <div style={{ height: '100%', overflow: 'hidden', display: 'grid', gridTemplateRows: 'auto 1fr' }}>
