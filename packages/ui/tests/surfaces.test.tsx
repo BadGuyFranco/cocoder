@@ -63,6 +63,32 @@ describe('Oz shell', () => {
     await waitFor(() => expect(screen.getByText(/already in flight \(409\)/)).toBeDefined())
   })
 
+  it('Runs panel lists runs and opens a run-detail drawer with a human timeline (no raw JSON)', async () => {
+    render(<App />)
+    await waitFor(() => screen.getByText('Fixture replay'))
+    // the runs list shows a run id from fixtures
+    await waitFor(() => expect(screen.getByText('run_17')).toBeDefined())
+    fireEvent.click(screen.getByText('run_17'))
+    // drawer opens with the transcript timeline + evidence, rendered human-friendly
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeDefined())
+    await waitFor(() => expect(screen.getByText('Transcript')).toBeDefined())
+    expect(screen.getByText('Run started')).toBeDefined()
+    expect(screen.getByText('Sessions')).toBeDefined()
+    // no raw JSON leaked into the transcript
+    const dialog = screen.getByRole('dialog')
+    expect(dialog.textContent).not.toMatch(/\{"/)
+  })
+
+  it('drawer Resume reports its outcome', async () => {
+    render(<App />)
+    await waitFor(() => screen.getByText('Fixture replay'))
+    await waitFor(() => screen.getByText('run_17'))
+    fireEvent.click(screen.getByText('run_17'))
+    await waitFor(() => screen.getByRole('button', { name: 'Resume' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }))
+    await waitFor(() => expect(screen.getByText(/Resumed as run_fixture/)).toBeDefined())
+  })
+
   it('shows pending markers on stub sections', async () => {
     render(<App />)
     await waitFor(() => screen.getByText('Fixture replay'))

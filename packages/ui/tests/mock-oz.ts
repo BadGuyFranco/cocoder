@@ -23,7 +23,14 @@ export function installMockOz(overrides: Partial<OzApi> = {}): OzApi {
   const api: OzApi = {
     health: async () => ({ state: 'fixtures', sha: 'fixtures' }),
     daemonGet: async (path) => get(path) as never,
-    daemonPost: async (path) => (path === '/runs' ? ok({ runId: 'run_fixture' }) : ok({})) as never,
+    daemonPost: async (path) =>
+      (path === '/runs'
+        ? ok({ runId: 'run_fixture' })
+        : /\/show$/.test(path)
+          ? ok({ shown: true, sessionRef: 'surface:2' })
+          : /\/teardown$/.test(path)
+            ? ok({ closed: ['surface:2'] })
+            : ok({})) as never,
     daemonPut: async () => ok({}) as never,
     chatSend: async (_ws, text) => ({ role: 'oz', text: `echo: ${text}`, at: 0 }),
     prioritiesReorder: async (_ws, order) => order,
