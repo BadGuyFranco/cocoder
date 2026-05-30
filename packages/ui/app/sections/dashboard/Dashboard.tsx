@@ -6,6 +6,7 @@ import { Icon, Modal, StatusChip } from '../../ui/primitives.tsx'
 import { PrioritiesPanel } from './Priorities.tsx'
 import { OzChatPanel } from './OzChat.tsx'
 import { RunDetail } from './RunDetail.tsx'
+import { FirstRun } from './FirstRun.tsx'
 import type { ChatMessage, Priority, Run, Workspace } from '../../model.ts'
 
 function RunHistoryModal({ open, onClose, runs, onSelectRun, priorities }: { open: boolean; onClose: () => void; runs: Run[]; onSelectRun: (id: string) => void; priorities: Priority[] }) {
@@ -67,6 +68,10 @@ export function Dashboard({ workspace, priorities, runs, ozMessages, selectedRun
   ozTyping: boolean; runHistoryOpen: boolean; setRunHistoryOpen: (b: boolean) => void
 }) {
   const selectedRun = selectedRunId ? runs.find((r) => r.id === selectedRunId) : null
+  // Fresh workspace (nothing queued, nothing run yet) → the first-run setup ladder, not a blank grid.
+  if (priorities.length === 0 && runs.length === 0) {
+    return <FirstRun wsName={workspace.name} onBegin={() => onSend('Walk me through setting up this workspace.')} />
+  }
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: selectedRun ? '380px 460px 1fr' : '380px 1fr', gap: 16, padding: 16, height: '100%', overflow: 'hidden', transition: 'grid-template-columns 250ms ease-out' }}>
