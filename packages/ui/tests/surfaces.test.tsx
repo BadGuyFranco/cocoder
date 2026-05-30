@@ -34,6 +34,16 @@ describe('Oz shell', () => {
     expect(screen.getAllByText('/Volumes/NAS LOCAL/CoCoder').length).toBeGreaterThan(0)
   })
 
+  it('Oz chat is the dashboard command center and round-trips a message', async () => {
+    render(<App />)
+    await waitFor(() => screen.getByText('Fixture replay'))
+    expect(screen.getByText('Oz — command center')).toBeDefined()
+    const box = screen.getByLabelText('Message Oz') as HTMLInputElement
+    fireEvent.change(box, { target: { value: 'launch base personas' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await waitFor(() => expect(screen.getByText('echo: launch base personas')).toBeDefined())
+  })
+
   it('shows pending markers on stub sections', async () => {
     render(<App />)
     await waitFor(() => screen.getByText('Fixture replay'))

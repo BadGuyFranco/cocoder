@@ -2,6 +2,7 @@
 // supporting PANELS here, never their own nav pages. Slice 0 lays out the three regions; later slices
 // fill the chat (1), priorities panel (2), and runs panel + drawer (3).
 import { Card, Pending } from '../components.tsx'
+import { OzChat } from './OzChat.tsx'
 
 export function Dashboard({ wsId, wsName }: { wsId: string; wsName: string }): JSX.Element {
   return (
@@ -9,8 +10,8 @@ export function Dashboard({ wsId, wsName }: { wsId: string; wsName: string }): J
       <h2>Dashboard — {wsName}</h2>
       <div className="dash-grid">
         <div className="dash-chat">
-          <Card title="Oz">
-            <Pending label="Oz chat — the command center" note="The conversation that drives everything (launch runs, reorder priorities, ad-hoc tasks, status). Arrives in slice 1; full GUI⇄Oz parity needs POST /oz/messages + GET /oz/stream." />
+          <Card title="Oz — command center">
+            <OzChat wsId={wsId} wsName={wsName} />
           </Card>
         </div>
         <div className="dash-side">
