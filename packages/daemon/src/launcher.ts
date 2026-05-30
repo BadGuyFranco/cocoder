@@ -125,6 +125,10 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
     return { status: 400, body: { error: err instanceof Error ? err.message : String(err) } }
   }
   const headNow = await headShaOrUnknown(ctx, input.workspace.path)
+  input = {
+    ...input,
+    daemonStale: ctx.bootSha !== 'unknown' && headNow !== 'unknown' && headNow !== ctx.bootSha,
+  }
 
   let runId: string | null = null
   const deps: RunnerDeps = {
