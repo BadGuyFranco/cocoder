@@ -73,7 +73,7 @@ async function runSmoke(win: BrowserWindow): Promise<void> {
     for (const label of SECTIONS) {
       try {
         await win.webContents.executeJavaScript(
-          `(() => { const b=[...document.querySelectorAll('.nav-item')].find(x=>x.textContent.trim()===${JSON.stringify(label)}); if(b) b.click(); return !!b })()`,
+          `(() => { const b=[...document.querySelectorAll('.oz-nav-item')].find(x=>x.textContent.trim()===${JSON.stringify(label)}); if(b) b.click(); return !!b })()`,
         )
         await wait(400)
         const img = await win.webContents.capturePage()
