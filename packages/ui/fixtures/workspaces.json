@@ -1,9 +1,1 @@
-{
-    "workspaces": [
-        {
-            "id": "cocoder",
-            "name": "CoCoder (dogfood)",
-            "path": "/Volumes/NAS LOCAL/CoCoder"
-        }
-    ]
-}
+{"workspaces":[{"id":"cocoder","name":"CoCoder (dogfood)","path":"/Volumes/NAS LOCAL/CoCoder"}]}
