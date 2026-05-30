@@ -1,9 +1,10 @@
 // Live-path component test: inject a MOCK window.oz that returns the daemon-shaped fixtures captured
-// from the real daemon, render <App/>, and prove the renderer switches off seed onto adapted live data
-// (the connection indicator flips to "Live" and real daemon priority titles render). This exercises the
-// whole live chain — health switch → loadWsData → adapter → renderer — without touching a real daemon.
+// from the real daemon, render <App/>, and prove the renderer (a) switches off seed onto adapted live
+// data and (b) routes mutations through the main client with 202/409 handled as first-class states.
+// This exercises the whole live chain — health switch → loadWsData → adapter → renderer, and the
+// launch/attach mutation path — without ever touching a real daemon.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor, cleanup } from '@testing-library/react'
+import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react'
 import { App } from '../app/App.tsx'
 import workspacesFx from '../fixtures/workspaces.json'
 import prioritiesFx from '../fixtures/priorities.json'
@@ -14,7 +15,9 @@ import runDetailFx from '../fixtures/run-detail.json'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ok = (data: any) => ({ ok: true, status: 200, data })
 
-function mockOz() {
+interface PostCall { path: string; body?: unknown }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mockOz(opts: { posts?: PostCall[]; postResult?: any } = {}) {
   return {
     health: async () => ({ state: 'connected', sha: 'deadbeef' }),
     settingsGet: async () => ({ pollIntervalMs: 2500, defaultWorkspaceId: null }),
@@ -28,7 +31,11 @@ function mockOz() {
       if (/^\/runs\/[^/]+$/.test(path)) return ok(runDetailFx)
       return { ok: false, status: 404, error: `no mock for ${path}` }
     },
-    daemonPost: async () => ok({}),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    daemonPost: async (path: string, body?: unknown): Promise<any> => {
+      opts.posts?.push({ path, body })
+      return opts.postResult ?? { ok: true, status: 202, data: { runId: 'run_new' } }
+    },
     daemonPut: async () => ok({}),
     chatSend: async () => ({ role: 'oz', text: '', at: 0 }),
     prioritiesReorder: async (_ws: string, order: readonly string[]) => order,
@@ -36,19 +43,53 @@ function mockOz() {
   }
 }
 
+const setOz = (m: unknown) => { (window as unknown as { oz: unknown }).oz = m }
+
 describe('Oz renderer — live daemon path', () => {
-  beforeEach(() => { (window as unknown as { oz: unknown }).oz = mockOz() })
   afterEach(() => { cleanup(); delete (window as unknown as { oz?: unknown }).oz })
 
   it('switches off seed onto live data: shows "Live" and a real daemon priority title', async () => {
+    setOz(mockOz())
     render(<App />)
-    // The connection indicator flips to Live once health resolves.
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
-    // A non-ad-hoc daemon priority title renders in the queue (adapted title→name).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const realTitle = (prioritiesFx as any).priorities.find((p: any) => p.id !== 'adhoc-session').title as string
     await waitFor(() => expect(screen.getByText(realTitle)).toBeDefined())
-    // The Ad-hoc pinned row is still present (its runs route off-priority).
     expect(screen.getByText('Ad-hoc')).toBeDefined()
+  })
+
+  it('Launch posts to /runs with the workspace + priority (202 → "Launching")', async () => {
+    const posts: PostCall[] = []
+    setOz(mockOz({ posts }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+    const launch = await waitFor(() => screen.getAllByText('Launch')[0])
+    fireEvent.click(launch)
+    await waitFor(() => expect(posts.length).toBeGreaterThan(0))
+    const call = posts.find((p) => p.path === '/runs')!
+    expect(call).toBeDefined()
+    const body = call.body as { workspaceId: string; priorityId: string }
+    expect(body.workspaceId).toBe('cocoder')
+    expect(typeof body.priorityId).toBe('string')
+    expect(body.priorityId).not.toBe('adhoc-session')
+    await waitFor(() => expect(screen.getByText(/Launching/i)).toBeDefined())
+  })
+
+  it('the Ad-hoc row launches the adhoc-session priority', async () => {
+    const posts: PostCall[] = []
+    setOz(mockOz({ posts }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+    fireEvent.click(screen.getByText('Launch run'))
+    await waitFor(() => expect(posts.find((p) => p.path === '/runs')).toBeDefined())
+    expect((posts.find((p) => p.path === '/runs')!.body as { priorityId: string }).priorityId).toBe('adhoc-session')
+  })
+
+  it('a 409 from /runs surfaces an honest "already in flight" banner (not an error)', async () => {
+    setOz(mockOz({ postResult: { ok: false, status: 409, error: 'in flight' } }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+    fireEvent.click(screen.getAllByText('Launch')[0])
+    await waitFor(() => expect(screen.getByText(/already in flight/i)).toBeDefined())
   })
 })

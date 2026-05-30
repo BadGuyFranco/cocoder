@@ -4,7 +4,8 @@
 // the design-faithful view-model from the ported seed (fixture parity, fully interactive); the daemon
 // adapter is wired in the next slice (the existing electron/ plumbing is untouched).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ozApi, loadWorkspaces, loadWsData, loadRunDetail, type ConnectionState } from './live.ts'
+import { ozApi, loadWorkspaces, loadWsData, loadRunDetail, launchRun, attachRun, teardownRun, type ConnectionState } from './live.ts'
+import { ADHOC_PRIORITY_ID } from './adapter.ts'
 import { Sidebar, type Route } from './ui/Sidebar.tsx'
 import { TopBar } from './ui/TopBar.tsx'
 import { Dashboard } from './sections/dashboard/Dashboard.tsx'
@@ -187,6 +188,60 @@ export function App() {
     setPrioritiesByWs((cur) => ({ ...cur, [activeId]: placeAtTop ? [p, ...(cur[activeId] ?? [])] : [...(cur[activeId] ?? []), p] }))
   }
 
+  // ── Live mutations ── all routed through the auth-correct main client (window.oz). In fixtures/seed/
+  // test mode (`!live`) the actions keep the design's chat-stub behavior so the demo stays interactive.
+  const [actionMsg, setActionMsg] = useState<{ kind: 'ok' | 'info' | 'err'; text: string } | null>(null)
+  const notify = (kind: 'ok' | 'info' | 'err', text: string) => { setActionMsg({ kind, text }); window.setTimeout(() => setActionMsg(null), 6000) }
+  async function refreshActiveWs() {
+    const oz = ozApi()
+    if (!oz) return
+    const data = await loadWsData(oz, activeId)
+    namesRef.current[activeId] = data.names
+    setPrioritiesByWs((cur) => ({ ...cur, [activeId]: data.priorities }))
+    setRunsByWs((cur) => ({ ...cur, [activeId]: data.runs }))
+  }
+  // POST /runs launches a REAL run — only ever reached from a live user click, never in tests/CI.
+  async function doLaunch(priorityId: string, label: string, resumeFromRunId?: string) {
+    const oz = ozApi()
+    if (!oz) return
+    const res = await launchRun(oz, activeId, priorityId, resumeFromRunId)
+    if (res.ok) { notify('ok', `${label}…`); await refreshActiveWs() }
+    else if (res.status === 409) notify('info', 'A run is already in flight for this workspace.')
+    else notify('err', res.error || `Launch failed (${res.status}).`)
+  }
+  function handleLaunch(p: Priority) {
+    if (!live) { onSend(`Launch the priority “${p.name}”.`); return }
+    void doLaunch(p.id, `Launching “${p.name}”`)
+  }
+  function handleAdhoc() {
+    if (!live) { onSend('Run an ad-hoc task: '); return }
+    void doLaunch(ADHOC_PRIORITY_ID, 'Starting an ad-hoc run')
+  }
+  function handleRunAction(action: string, id: string) {
+    if (!live) { onSend(`${action} ${id}`); return }
+    const oz = ozApi()
+    if (!oz) return
+    void (async () => {
+      if (action === 'attach') {
+        const res = await attachRun(oz, id)
+        if (res.ok) notify('ok', 'Focused the run’s cmux pane.')
+        else if (res.status === 409) notify('info', 'That run isn’t live — nothing to attach.')
+        else notify('err', res.error || `Attach failed (${res.status}).`)
+      } else if (action === 'retry') {
+        const run = (runsByWs[activeId] ?? []).find((r) => r.id === id)
+        await doLaunch(run?.priorityId ?? ADHOC_PRIORITY_ID, 'Resuming from this run', id)
+      } else if (action === 'teardown') {
+        const res = await teardownRun(oz, id)
+        if (res.ok) { notify('ok', 'Closed the run’s panes.'); await refreshActiveWs() }
+        else notify('err', res.error || `Teardown failed (${res.status}).`)
+      } else if (action === 'stop') {
+        notify('info', 'Stopping a run isn’t wired yet (POST /runs/:id/stop — pending endpoint).')
+      } else {
+        notify('info', 'The Oz chat command interface is a pending endpoint.')
+      }
+    })()
+  }
+
   // persona editing
   const setPersona = (id: string, next: Persona) => setPersonas((ps) => ps.map((p) => (p.id === id ? next : p)))
   const addSub = (pid: string) => setPersonas((ps) => ps.map((p) => (p.id === pid ? { ...p, subAgents: [...p.subAgents, { id: `sa${Date.now()}`, name: 'new sub', cli: 'claude-code', model: 'Default' }] } : p)))
@@ -199,6 +254,12 @@ export function App() {
       <div className="oz-main">
         <TopBar title={ROUTE_TITLE[route]} route={route} workspaces={workspaces} activeId={activeId} loadedIds={loadedIds} runsMap={runsByWs} onSelectWs={selectWs} onCloseWs={closeWs} onLoadWs={loadWs} onCreateWs={() => setNewWsOpen(true)} theme={theme} setTheme={setTheme} conn={conn} />
         <div className="oz-content">
+          {actionMsg && (
+            <div role="status" style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 80, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 'var(--cb-radius-md)', fontSize: 12, color: 'var(--cb-text)', background: 'var(--cb-surface-raised)', border: `1px solid ${actionMsg.kind === 'err' ? 'var(--cb-highlight)' : actionMsg.kind === 'ok' ? 'var(--cb-success)' : 'var(--cb-border-strong)'}`, boxShadow: '0 8px 24px rgba(0,0,0,0.45)' }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: actionMsg.kind === 'err' ? 'var(--cb-highlight)' : actionMsg.kind === 'ok' ? 'var(--cb-success)' : 'var(--cb-accent)' }} />
+              {actionMsg.text}
+            </div>
+          )}
           {(conn === 'offline' || (conn === 'connecting' && !workspace)) ? (
             <ConnectionPanel conn={conn} onRetry={() => setReloadNonce((n) => n + 1)} />
           ) : (<>
@@ -206,8 +267,8 @@ export function App() {
             <Dashboard
               workspace={workspace} priorities={priorities} runs={runs} ozMessages={messages}
               selectedRunId={selectedRunId} setSelectedRunId={setSelectedRunId}
-              onReorder={reorder} onLaunch={(p: Priority) => onSend(`Launch the priority “${p.name}”.`)} onAdhoc={() => onSend('Run an ad-hoc task: ')}
-              onAddPriority={() => onSend('Draft a new priority.')} onSend={onSend} onDecision={(c: string) => onSend(`Decision: replay ${c} plan.`)} onRunAction={(a: string, id: string) => onSend(`${a} ${id}`)}
+              onReorder={reorder} onLaunch={handleLaunch} onAdhoc={handleAdhoc}
+              onAddPriority={() => onSend('Draft a new priority.')} onSend={onSend} onDecision={(c: string) => onSend(`Decision: replay ${c} plan.`)} onRunAction={handleRunAction}
               ozTyping={ozTyping} runHistoryOpen={runHistoryOpen} setRunHistoryOpen={setRunHistoryOpen}
             />
           )}

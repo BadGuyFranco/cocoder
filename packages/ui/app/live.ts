@@ -55,3 +55,28 @@ export async function loadRunDetail(oz: OzApi, runId: string, names: Record<stri
   const r = await oz.daemonGet<RunDetail>(`/runs/${runId}`)
   return r.ok ? adaptRunDetail(r.data, names) : null
 }
+
+// ── Mutations ── all return the DaemonResult envelope so the UI renders 202/409/400 as first-class
+// states (errors are DATA, not thrown). The main client attaches Bearer + CSRF; nothing here touches
+// auth. POST /runs LAUNCHES A REAL RUN — only ever called from a live user action, never in tests/CI.
+export type MutationResult = { ok: true; status: number; data: unknown } | { ok: false; status: number; error: string }
+
+export async function launchRun(oz: OzApi, workspaceId: string, priorityId: string, resumeFromRunId?: string): Promise<MutationResult> {
+  const body: Record<string, string> = { workspaceId, priorityId }
+  if (resumeFromRunId) body.resumeFromRunId = resumeFromRunId
+  return oz.daemonPost('/runs', body)
+}
+
+export async function attachRun(oz: OzApi, runId: string): Promise<MutationResult> {
+  return oz.daemonPost(`/runs/${runId}/show`)
+}
+
+export async function teardownRun(oz: OzApi, runId: string): Promise<MutationResult> {
+  return oz.daemonPost(`/runs/${runId}/teardown`)
+}
+
+// PUT replaces the WHOLE assignments map — the caller must hand a full, merged map (preserving fields
+// like plays/enabled it didn't edit), never a partial patch.
+export async function saveAssignments(oz: OzApi, wsId: string, assignments: Record<string, unknown>): Promise<MutationResult> {
+  return oz.daemonPut(`/workspaces/${wsId}/personas/assignments`, assignments)
+}
