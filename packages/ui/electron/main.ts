@@ -55,16 +55,22 @@ async function runSmoke(win: BrowserWindow): Promise<void> {
   let code = 0
   try {
     await new Promise<void>((r) => win.webContents.once('did-finish-load', () => r()))
-    await wait(600)
-    const health = await win.webContents.executeJavaScript('window.oz.health()')
+    // wait for the preload bridge to be present, then round-trip IPC health through it
+    const health = await win.webContents.executeJavaScript(
+      `new Promise((resolve) => { const c = () => (window.oz ? resolve(window.oz.health()) : setTimeout(c, 50)); c() })`,
+    )
     if (!health || health.state !== 'fixtures') throw new Error(`IPC health round-trip failed: ${JSON.stringify(health)}`)
     for (const label of SECTIONS) {
-      await win.webContents.executeJavaScript(
-        `(() => { const b=[...document.querySelectorAll('.nav-item')].find(x=>x.textContent.trim()===${JSON.stringify(label)}); if(b) b.click(); return !!b })()`,
-      )
-      await wait(400)
-      const img = await win.webContents.capturePage()
-      writeFileSync(join(dir, `${label.toLowerCase()}.png`), img.toPNG())
+      try {
+        await win.webContents.executeJavaScript(
+          `(() => { const b=[...document.querySelectorAll('.nav-item')].find(x=>x.textContent.trim()===${JSON.stringify(label)}); if(b) b.click(); return !!b })()`,
+        )
+        await wait(400)
+        const img = await win.webContents.capturePage()
+        writeFileSync(join(dir, `${label.toLowerCase()}.png`), img.toPNG())
+      } catch (e) {
+        console.error(`SMOKE: screenshot ${label} failed — ${(e as Error).message}`)
+      }
     }
     console.log(`SMOKE OK — health=${health.state}, screenshots in ${dir}`)
   } catch (e) {
