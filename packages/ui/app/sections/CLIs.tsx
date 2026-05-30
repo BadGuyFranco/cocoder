@@ -5,8 +5,11 @@ import { Icon, StatusChip, Button, Card, ScreenHeader } from '../ui/primitives.t
 import type { Cli } from '../model.ts'
 
 function CliRow({ cli, onTest, testing, expanded, onToggle }: { cli: Cli; onTest: (id: string) => void; testing: boolean; expanded: boolean; onToggle: (id: string) => void }) {
+  // Status-colored left accent + a solid raised surface + stronger border, so cards read as distinct
+  // panels (the glassy default was too low-contrast against the espresso background).
+  const accent = cli.status === 'ok' ? 'var(--cb-success)' : cli.status === 'auth-failed' ? 'var(--cb-highlight)' : 'var(--cb-text-muted)'
   return (
-    <Card style={{ marginBottom: 10, position: 'relative' }}>
+    <Card style={{ marginBottom: 12, position: 'relative', overflow: 'hidden', background: 'var(--cb-surface-raised)', borderColor: 'var(--cb-border-strong)', borderLeft: `3px solid ${accent}` }}>
       <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
         <div style={{ width: 40, height: 40, background: cli.status === 'ok' ? 'var(--cb-accent-muted)' : cli.status === 'not-installed' ? 'var(--cb-bg-soft)' : 'var(--cb-highlight-muted)', border: `1px solid ${cli.status === 'ok' ? 'var(--cb-accent-15)' : 'var(--cb-border)'}`, borderRadius: 'var(--cb-radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: cli.status === 'ok' ? 'var(--cb-accent)' : 'var(--cb-text-muted)', flexShrink: 0 }}>
           <Icon name="terminal-window" size={18} />

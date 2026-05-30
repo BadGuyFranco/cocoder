@@ -54,6 +54,38 @@ button { font-family: inherit; }
   padding: 20px 18px 16px;
   border-bottom: 1px solid var(--cb-border);
 }
+/* Collapse toggle + collapsed (icon-rail) state */
+.oz-collapse-btn {
+  margin-left: auto; width: 24px; height: 24px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid var(--cb-border);
+  border-radius: var(--cb-radius-md); color: var(--cb-text-muted); cursor: pointer;
+  transition: all var(--cb-duration-fast) var(--cb-ease-default);
+}
+.oz-collapse-btn:hover { color: var(--cb-accent); border-color: var(--cb-accent-30); background: var(--cb-accent-muted); }
+.oz-sidebar.collapsed .oz-brand { padding: 20px 0 16px; justify-content: center; flex-direction: column; gap: 8px; }
+.oz-sidebar.collapsed .oz-nav { padding: 14px 8px; }
+.oz-sidebar.collapsed .oz-nav-item { justify-content: center; gap: 0; padding: 10px 0; }
+.oz-sidebar.collapsed .oz-nav-label { display: none; }
+.oz-sidebar.collapsed .oz-nav-badge { position: absolute; top: 2px; right: 4px; margin: 0; padding: 0 4px; }
+.oz-sidebar.collapsed .oz-sidebar-footer { justify-content: center; padding: 12px 0; }
+/* Hover tooltip shown only in collapsed mode */
+.oz-nav-tip {
+  position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%);
+  white-space: nowrap; background: #332D27; color: var(--cb-text);
+  border: 1px solid var(--cb-border-strong); border-radius: var(--cb-radius-md);
+  padding: 5px 10px; font-size: 12px; pointer-events: none;
+  opacity: 0; z-index: 60; box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  transition: opacity var(--cb-duration-fast) var(--cb-ease-default);
+}
+.oz-nav-item:hover .oz-nav-tip { opacity: 1; }
+
+/* Resizable Priorities column — thin drag handle with a gold hover cue */
+.oz-resize-handle {
+  cursor: col-resize; align-self: stretch; border-radius: 3px;
+  background: transparent; transition: background var(--cb-duration-fast) var(--cb-ease-default);
+}
+.oz-resize-handle:hover, .oz-resize-handle:active { background: var(--cb-accent-30); }
 .oz-brand-mark {
   font-family: var(--cb-font-display);
   font-weight: 700; font-size: 18px;

@@ -80,7 +80,15 @@ describe('Oz — rebuilt Fusion renderer', () => {
     expect(screen.getByText('Theme')).toBeDefined()
     // switch to System dependencies (the nav-tab entry, the first match) → probed tools
     fireEvent.click(screen.getAllByText('System dependencies')[0])
-    expect(screen.getByText('iTerm2')).toBeDefined()
+    // cmux is the only system dependency; iTerm2 was dropped (cmux is the sole terminal host, ADR-0002)
     expect(screen.getByText('cmux')).toBeDefined()
+    expect(screen.queryByText('iTerm2')).toBeNull()
+  })
+
+  it('CoCoder is a root in every workspace (writable elsewhere, primary in the cocoder workspace)', () => {
+    render(<App />)
+    fireEvent.click(screen.getByText('Workspaces'))
+    // the cocoder workspace's working repo is its Primary; load Vault to see cocoder as a writable root
+    expect(screen.getByDisplayValue('cocoder-orchestrator')).toBeDefined()
   })
 })

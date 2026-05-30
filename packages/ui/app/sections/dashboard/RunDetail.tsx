@@ -66,7 +66,7 @@ export function RunDetail({ run, parentPriority, parentPriorityIndex, onClose, o
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         {tab === 'transcript' && (
           <div style={{ padding: '8px 20px 16px', fontFamily: 'var(--cb-font-mono)', fontSize: 11.5, lineHeight: 1.7 }}>
-            <div style={{ color: 'var(--cb-text-muted)', padding: '8px 0' }}><Icon name="info" size={12} /> read-only window — session runs externally in iterm</div>
+            <div style={{ color: 'var(--cb-text-muted)', padding: '8px 0' }}><Icon name="info" size={12} /> read-only window — the session runs in cmux</div>
             {(run.transcript || []).map((line, i) => {
               const isSystem = line.role === 'system'
               const roleColor = isSystem ? 'var(--cb-text-muted)' : line.role === 'Oz' ? 'var(--cb-accent)' : line.role === 'Builder' ? 'var(--cb-success)' : line.role === 'Reviewer' ? 'var(--cb-highlight)' : 'var(--cb-text-secondary)'
@@ -100,13 +100,13 @@ export function RunDetail({ run, parentPriority, parentPriorityIndex, onClose, o
         )}
         {tab === 'session' && (
           <div style={{ padding: '16px 20px' }}>
-            <div style={{ fontSize: 12, color: 'var(--cb-text-secondary)', marginBottom: 12, lineHeight: 1.6 }}>The orchestration session runs in iTerm. Copy the attach command to drop into the live shell. <span style={{ color: 'var(--cb-text-muted)' }}>Embedded terminal coming in v2.</span></div>
+            <div style={{ fontSize: 12, color: 'var(--cb-text-secondary)', marginBottom: 12, lineHeight: 1.6 }}>The orchestration session runs in cmux. Deep-link to focus its pane, or copy the attach command to drop into the live shell.</div>
             <div style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 12, background: 'var(--cb-bg)', border: '1px solid var(--cb-border)', padding: '12px 14px', borderRadius: 'var(--cb-radius-md)', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
               <span style={{ color: 'var(--cb-accent)' }}>$</span><span style={{ flex: 1, color: 'var(--cb-text)' }}>{run.attachCmd || `cocoder attach ${run.id}`}</span>
               <button className="oz-iconbtn" style={{ width: 28, height: 28 }} title="Copy"><Icon name="copy" size={13} /></button>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <Button variant="secondary" size="sm" icon="terminal-window" onClick={() => onAction('attach', run.id)}>Open in iTerm</Button>
+              <Button variant="secondary" size="sm" icon="terminal-window" onClick={() => onAction('attach', run.id)}>Open in cmux</Button>
               <Button variant="ghost" size="sm" icon="copy">Copy command</Button>
             </div>
           </div>

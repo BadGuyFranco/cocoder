@@ -62,6 +62,7 @@ export function App() {
   const [settings, setSettings] = useState<Settings>(seedSettings)
   const [newWsOpen, setNewWsOpen] = useState(false)
   const [craftOpen, setCraftOpen] = useState(false)
+  const [navCollapsed, setNavCollapsed] = useState(false)
 
   useEffect(() => { document.documentElement.setAttribute('data-theme', theme) }, [theme])
   useEffect(() => { setTheme(settings.preferences.theme) }, [settings.preferences.theme])
@@ -96,8 +97,8 @@ export function App() {
   const updateSub = (pid: string, sid: string, sa: SubAgent) => setPersonas((ps) => ps.map((p) => (p.id === pid ? { ...p, subAgents: p.subAgents.map((s: SubAgent) => (s.id === sid ? sa : s)) } : p)))
 
   return (
-    <div className="oz-app">
-      <Sidebar route={route} setRoute={setRoute} runs={runs} user={USER} />
+    <div className="oz-app" style={{ gridTemplateColumns: `${navCollapsed ? 64 : 220}px 1fr` }}>
+      <Sidebar route={route} setRoute={setRoute} runs={runs} user={USER} collapsed={navCollapsed} onToggleCollapsed={() => setNavCollapsed((c) => !c)} />
       <div className="oz-main">
         <TopBar title={ROUTE_TITLE[route]} route={route} workspaces={workspaces} activeId={activeId} loadedIds={loadedIds} runsMap={runsByWs} onSelectWs={selectWs} onCloseWs={closeWs} onLoadWs={loadWs} onCreateWs={() => setNewWsOpen(true)} theme={theme} setTheme={setTheme} />
         <div className="oz-content">

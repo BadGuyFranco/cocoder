@@ -4,7 +4,7 @@
 import { Icon, Button, Card } from '../../ui/primitives.tsx'
 
 const STEPS = [
-  { n: 1, t: 'Install system dependencies', body: 'iTerm2 and cmux. CoCoder runs orchestration sessions inside these.', current: true },
+  { n: 1, t: 'Install system dependencies', body: 'cmux — the terminal host CoCoder runs orchestration sessions inside (ADR-0002).', current: true },
   { n: 2, t: 'Register a CLI', body: 'Add at least one coding CLI (Claude Code, Codex, Cursor-agent) and authenticate it.' },
   { n: 3, t: 'Create your workspace', body: 'Name it. Describe it. This becomes the context Oz holds.' },
   { n: 4, t: 'Add root folders', body: 'One primary repo, plus any reference roots.' },

@@ -60,7 +60,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   preferences: { theme: 'dark', compactMode: false, reduceMotion: false, sound: false, sendOnEnter: true },
   watching: { notifyOnDecisionNeeded: true, notifyOnRunFailed: true, notifyOnRunComplete: false, desktopNotifications: true, slackWebhook: '' },
-  advanced: { transcriptRetention: 30, autoAttach: true },
+  advanced: { transcriptRetention: 7, autoAttach: true },
 }
 
 // ── Seed (the prototype's demo content; powers fixture mode + visual parity) ──

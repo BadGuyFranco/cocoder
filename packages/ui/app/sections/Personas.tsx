@@ -37,6 +37,9 @@ function PersonaRow({ persona, clis, onChange, onAddSub, onRemoveSub, onUpdateSu
           </div>
           <div>
             <label className="oz-field-label">Model</label>
+            {/* Model list comes from the selected CLI's reported models (cliEntry.models). Today those
+                are seed values; the daemon will populate them via deterministic per-CLI model discovery
+                — see priority cli-config-and-model-discovery. "Default" = the CLI's own default. */}
             <select className="oz-select" value={persona.model} onChange={(e) => onChange({ ...persona, model: e.target.value })}>
               {(cliEntry?.models || ['Default']).map((m) => <option key={m} value={m}>{m}</option>)}
             </select>

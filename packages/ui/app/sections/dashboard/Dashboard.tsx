@@ -1,8 +1,27 @@
 // Dashboard root — built AROUND the Oz conversation; priorities + runs are panels, never pages. The
 // run-detail drawer opens BETWEEN the priorities column and the chat (3-col when a run is selected).
 // Includes the Run History modal. Ported from design-ref/dashboard.jsx.
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Icon, Modal, StatusChip } from '../../ui/primitives.tsx'
+
+const PRIO_MIN = 300
+const PRIO_MAX = 640
+const PRIO_DEFAULT = 380
+
+// Thin draggable divider that resizes the Priorities column. Width is owned by the Dashboard and
+// clamped; dragging attaches window listeners so the cursor can leave the 6px handle without dropping.
+function ResizeHandle({ onResize }: { onResize: (deltaX: number) => void }) {
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    const startX = e.clientX
+    const move = (ev: MouseEvent) => onResize(ev.clientX - startX)
+    const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); document.body.style.cursor = '' }
+    document.addEventListener('mousemove', move)
+    document.addEventListener('mouseup', up)
+    document.body.style.cursor = 'col-resize'
+  }, [onResize])
+  return <div className="oz-resize-handle" onMouseDown={onMouseDown} title="Drag to resize" />
+}
 import { PrioritiesPanel } from './Priorities.tsx'
 import { OzChatPanel } from './OzChat.tsx'
 import { RunDetail } from './RunDetail.tsx'
@@ -67,15 +86,19 @@ export function Dashboard({ workspace, priorities, runs, ozMessages, selectedRun
   onSend: (text: string) => void; onDecision: (choice: string) => void; onRunAction: (action: string, id: string) => void
   ozTyping: boolean; runHistoryOpen: boolean; setRunHistoryOpen: (b: boolean) => void
 }) {
+  const [prioWidth, setPrioWidth] = useState(PRIO_DEFAULT)
   const selectedRun = selectedRunId ? runs.find((r) => r.id === selectedRunId) : null
   // Fresh workspace (nothing queued, nothing run yet) → the first-run setup ladder, not a blank grid.
   if (priorities.length === 0 && runs.length === 0) {
     return <FirstRun wsName={workspace.name} onBegin={() => onSend('Walk me through setting up this workspace.')} />
   }
+  // The Priorities column is user-resizable via the drag handle; clamp to keep both sides usable.
+  const onResize = (dx: number) => setPrioWidth((w) => Math.max(PRIO_MIN, Math.min(PRIO_MAX, w + dx)))
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: selectedRun ? '380px 460px 1fr' : '380px 1fr', gap: 16, padding: 16, height: '100%', overflow: 'hidden', transition: 'grid-template-columns 250ms ease-out' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: selectedRun ? `${prioWidth}px 6px 460px 1fr` : `${prioWidth}px 6px 1fr`, gap: 16, padding: 16, height: '100%', overflow: 'hidden' }}>
         <PrioritiesPanel priorities={priorities} runs={runs} onReorder={onReorder} onLaunch={onLaunch} onAdhoc={onAdhoc} onAddPriority={onAddPriority} onSelectRun={setSelectedRunId} onOpenRunHistory={() => setRunHistoryOpen(true)} selectedRunId={selectedRunId} />
+        <ResizeHandle onResize={onResize} />
         {selectedRun && <RunDetail run={selectedRun} parentPriority={selectedRun.priorityId ? priorities.find((p) => p.id === selectedRun.priorityId) || null : null} parentPriorityIndex={selectedRun.priorityId ? priorities.findIndex((p) => p.id === selectedRun.priorityId) : -1} onClose={() => setSelectedRunId(null)} onAction={onRunAction} />}
         <OzChatPanel messages={ozMessages} runs={runs} workspaceName={workspace.name} onSend={onSend} onSelectRun={setSelectedRunId} onDecision={onDecision} ozTyping={ozTyping} />
       </div>

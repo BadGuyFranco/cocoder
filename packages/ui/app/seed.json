@@ -55,6 +55,12 @@
           "name": "vault-mobile",
           "path": "~/dev/vault/mobile",
           "role": "writable"
+        },
+        {
+          "id": "r-cocoder-ws-vault",
+          "name": "cocoder",
+          "path": "/Volumes/NAS LOCAL/CoCoder",
+          "role": "writable"
         }
       ],
       "created": "Jan 02, 2026"
@@ -70,6 +76,12 @@
           "name": "lumen-site",
           "path": "~/dev/clients/lumen/site",
           "role": "primary"
+        },
+        {
+          "id": "r-cocoder-ws-lumen",
+          "name": "cocoder",
+          "path": "/Volumes/NAS LOCAL/CoCoder",
+          "role": "writable"
         }
       ],
       "created": "May 11, 2026"
@@ -504,28 +516,16 @@
   ],
   "dependencies": [
     {
-      "id": "iterm2",
-      "name": "iTerm2",
-      "vendor": "iterm2.com",
-      "purpose": "Terminal emulator. Orchestration sessions run here today (until v2's embedded Electron terminal lands).",
-      "status": "ok",
-      "version": "3.4.21",
-      "minVersion": "3.4.0",
-      "lastChecked": "5 min ago",
-      "installCmd": "brew install --cask iterm2",
-      "icon": "terminal-window"
-    },
-    {
       "id": "cmux",
       "name": "cmux",
       "vendor": "github.com/aaronjanse/cmux",
       "purpose": "Session multiplexer. Lets the founder attach to a run from anywhere and resume after disconnects.",
-      "status": "not-installed",
-      "version": null,
+      "status": "ok",
+      "version": "0.4.2",
       "lastChecked": "5 min ago",
       "installCmd": "brew install cmux",
       "icon": "tree-structure",
-      "note": "tmux still works (legacy). cmux is preferred going forward — better attach UX and better session persistence."
+      "note": "The terminal host CoCoder drives over its Unix socket (ADR-0002). The only system dependency."
     }
   ],
   "ozChat": {
@@ -607,7 +607,7 @@
     },
     "advanced": {
       "ozModel": "Claude Opus 4.5",
-      "transcriptRetention": 30,
+      "transcriptRetention": 7,
       "autoAttach": true
     }
   },
