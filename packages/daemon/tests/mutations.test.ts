@@ -313,6 +313,59 @@ describe('Oz mutations + lifecycle', () => {
     expect(after.personas.oscar.model).toBe('opus')
   })
 
+  test('POST /daemon/restart → 202 and triggers the (injected) restart action when idle', async () => {
+    let restarts = 0
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit(),
+      sessionHost: fakeHost(),
+      getAdapter: () => okAdapter,
+      io: fakeIO(),
+      restartDaemon: () => {
+        restarts += 1
+      }, // never spawn the real oz.sh restart in tests
+    })
+    const r = await call(oz, 'POST', '/daemon/restart')
+    expect(r.status).toBe(202)
+    expect(r.json.restarting).toBe(true)
+    expect(restarts).toBe(1)
+    // appendAudit is fire-and-forget — poll briefly for the flushed line.
+    let audit = ''
+    for (let i = 0; i < 20 && !audit.includes('daemon-restart'); i++) {
+      audit = await readFile(join(home, 'local', 'oz-audit.log'), 'utf8').catch(() => '')
+      if (!audit.includes('daemon-restart')) await sleep(10)
+    }
+    expect(audit).toContain('"action":"daemon-restart"')
+  })
+
+  test('POST /daemon/restart → 409 and does NOT restart when a run is in flight (never orphan)', async () => {
+    let restarts = 0
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit(),
+      sessionHost: fakeHost(),
+      getAdapter: () => okAdapter,
+      io: fakeIO(),
+      restartDaemon: () => {
+        restarts += 1
+      },
+    })
+    oz.ctx.inFlight.set('cocoder', 'run_busy')
+    const r = await call(oz, 'POST', '/daemon/restart')
+    expect(r.status).toBe(409)
+    expect(restarts).toBe(0)
+  })
+
+  test('POST /daemon/restart → 403 without a CSRF token (mutation gate)', async () => {
+    await startServer()
+    const r = await call(oz!, 'POST', '/daemon/restart', { csrf: false })
+    expect(r.status).toBe(403)
+  })
+
   test('PUT assignments → 403 without a CSRF token (mutation gate)', async () => {
     await startServer()
     const r = await call(oz!, 'PUT', '/workspaces/cocoder/personas/assignments', { csrf: false, body: { personas: {} } })

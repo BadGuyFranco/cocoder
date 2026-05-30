@@ -184,6 +184,21 @@ export async function teardownRun(ctx: OzContext, runId: string): Promise<Launch
   return { status: 200, body: { closed } }
 }
 
+/** Refresh the daemon onto current code (the dashboard's "Restart daemon" button → POST
+ *  /daemon/restart). REFUSES (409) when any run is in flight — restarting would orphan it — matching
+ *  `oz.sh stop`'s own guard. Otherwise triggers the (injectable) restart action and returns 202; the
+ *  detached `oz.sh restart` then bounces this process. Honors the headless-substrate decision: the UI
+ *  only TRIGGERS the restart (daemon-side); it is never required, and the daemon never dies with the
+ *  app. The daemon does NOT restart itself in-process — `ctx.restartDaemon` spawns a detached child. */
+export async function requestDaemonRestart(ctx: OzContext): Promise<LaunchResult> {
+  if (ctx.inFlight.size > 0) {
+    return { status: 409, body: { error: 'refusing to restart: a run is in flight (would orphan it) — wait for it to finish' } }
+  }
+  void appendAudit(ctx.cocoderHome, { action: 'daemon-restart', bootSha: ctx.bootSha })
+  ctx.restartDaemon()
+  return { status: 202, body: { restarting: true, bootSha: ctx.bootSha } }
+}
+
 /** Bring a run's live cmux pane to the foreground. 409 if no session is live in THIS daemon process
  *  (completed run, or daemon restarted — ADR-0002-C1) — never a 500 from show() throwing. */
 export async function showRun(ctx: OzContext, runId: string): Promise<LaunchResult> {

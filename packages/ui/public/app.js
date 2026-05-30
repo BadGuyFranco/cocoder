@@ -212,6 +212,35 @@ setInterval(() => {
   if (current.view === 'runs' || current.view === 'run') render()
 }, 2500)
 
+// --- Restart-daemon button (global) ---
+// Triggers a daemon-side restart onto current code; the daemon refuses (409) while a run is in flight.
+// On success the daemon bounces, so we poll /health until it answers again, then reload.
+const restartBtn = document.getElementById('restart-daemon')
+if (restartBtn)
+  restartBtn.onclick = async () => {
+    if (!confirm('Restart the Oz daemon onto current code? (Refused if a run is in flight.)')) return
+    restartBtn.disabled = true
+    restartBtn.textContent = 'restarting…'
+    try {
+      await api('POST', '/daemon/restart')
+    } catch (e) {
+      banner(e.message) // e.g. 409 — a run is in flight
+      restartBtn.disabled = false
+      restartBtn.textContent = 'Restart daemon'
+      return
+    }
+    // Daemon is going down; wait for the fresh one to answer /health, then reload to re-bootstrap auth.
+    for (let i = 0; i < 40; i++) {
+      await new Promise((r) => setTimeout(r, 500))
+      try {
+        if ((await fetch('/health')).ok) return location.reload()
+      } catch {}
+    }
+    banner('Daemon did not come back up — check local/oz.log')
+    restartBtn.disabled = false
+    restartBtn.textContent = 'Restart daemon'
+  }
+
 window.addEventListener('hashchange', render)
 bootstrap()
   .then(render)

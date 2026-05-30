@@ -2,6 +2,7 @@
 // createOzServer builds the shared OzContext (DB write-conn + cmux host + registry, all reusing
 // core's helpers — one home, two callers vs the cli) and wires the security gates ahead of route
 // dispatch, so every request passes Host→Origin→Bearer→CSRF before any handler runs.
+import { spawn } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { join } from 'node:path'
@@ -36,6 +37,24 @@ export interface OzServerOptions {
   readonly sessionHost?: SessionHost
   readonly getAdapter?: (cli: string) => Adapter
   readonly io?: RunnerIO
+  /** Override the daemon-restart action (tests inject a no-op/spy so they never restart the real
+   *  daemon). Default spawns a detached, delayed `scripts/oz.sh restart`. */
+  readonly restartDaemon?: () => void
+}
+
+/** Default restart action: spawn a DETACHED `scripts/oz.sh restart` after a short delay, so the HTTP
+ *  202 flushes to the browser before `oz.sh stop` kills this daemon. Detached + unref'd so the child
+ *  outlives the daemon it is restarting. */
+function defaultRestartDaemon(cocoderHome: string): () => void {
+  return () => {
+    const script = join(cocoderHome, 'scripts', 'oz.sh')
+    const child = spawn('bash', ['-c', 'sleep 1; exec "$0" restart', script], {
+      detached: true,
+      stdio: 'ignore',
+      cwd: cocoderHome,
+    })
+    child.unref()
+  }
 }
 
 export interface OzServer {
@@ -82,6 +101,7 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
     csrfToken,
     liveRefs: new Set<string>(),
     inFlight: new Map<string, string>(),
+    restartDaemon: opts.restartDaemon ?? defaultRestartDaemon(opts.cocoderHome),
   }
 
   const handler = (req: IncomingMessage, res: ServerResponse): void => {

@@ -11,7 +11,7 @@ import { sendJson } from './server.js'
 import { findWorkspace, readWorkspaces } from './registry.js'
 import { readRunDir } from './rundir.js'
 import { appendAudit } from './audit.js'
-import { launchRun, showRun, teardownRun } from './launcher.js'
+import { launchRun, requestDaemonRestart, showRun, teardownRun } from './launcher.js'
 
 export type { OzContext } from './context.js'
 
@@ -204,6 +204,10 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
   }
   if (method === 'POST' && seg[0] === 'runs' && seg.length === 3 && seg[2] === 'teardown') {
     const { status, body: out } = await teardownRun(ctx, decodeURIComponent(seg[1]!))
+    return sendJson(res, status, out), true
+  }
+  if (method === 'POST' && pathname === '/daemon/restart') {
+    const { status, body: out } = await requestDaemonRestart(ctx)
     return sendJson(res, status, out), true
   }
   if (method === 'PUT' && seg[0] === 'workspaces' && seg.length === 4 && seg[2] === 'personas' && seg[3] === 'assignments') {
