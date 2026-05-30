@@ -28,6 +28,24 @@ package's tests and was auto-committed. ADR-0012 (living base personas) accepted
 set is referenced & propagates to all installs (replaces copy-on-init); required for Deb to improve the
 base for everyone.
 
+## Reading order (foundational-first) & consolidation
+
+The files are numbered chronologically (the order seams were resolved), **not** by importance. To
+assemble the current model, read in this order:
+
+1. **0001** charter (disciplines D1–D6) · **0014** living-ADR policy (how to read & change these)
+2. **0002** substrate · **0003** data model · **0004** process architecture
+3. **0005** personas + Plays · **0008** topology + one-home · **0012** living base personas
+4. **0006** adapter contract · **0007** write-scope · **0013** run lifecycle (multi-atom loop + the
+   0011 verify-gate + observation)
+
+**Consolidation (2026-05-30, per ADR-0014):** the set is leaned out by *content*, not by renumbering —
+ADR numbers are stable handles cited in ~70 places (code, personas, priorities), so a physical renumber
+is deliberately avoided (cosmetic gain, large breakage). Done so far: stale bodies brought to current
+truth (0005), 0012 slimmed (implementation log → its priority). **Pending founder confirm:** fold the
+extensibility corollary **0009 → 0008**, and the verify-gate **0011 → 0013**, each leaving a redirect
+signpost so existing citations resolve. **0010** (taxonomy) stays standalone — too substantial to fold.
+
 ## Candidate irreversible seams (the Phase-0 Q&A agenda)
 
 These are the decisions that are **expensive to reverse** (per discipline D1). Each becomes an

@@ -70,21 +70,15 @@ proven general. Deb proposes the classification; the founder arbitrates ambiguit
 - **One-home preserved:** the base is the single source; a repo restates nothing, carrying only deltas
   (consistent with the project's reference-not-restate rule).
 
-## Implemented
+## Design homework resolved
 
-Resolved in run_17 (2026-05-29 — the `base-and-extension-personas` priority):
-- **Base lives in a shipped package:** `packages/personas/` (`@cocoder/personas`), a leaf content
-  package; `basePersonasDir()` resolves it module-relative (correct for any install). Deliberately
-  **not** `templates/` — that is the init-time *scaffold* (a copy lifecycle), whereas the base is
-  *referenced at every load*.
 - **Delta format = additive append:** a repo delta is a frontmatter+body file at
   `cocoder/personas/deltas/<id>.md`; the loader appends its body to the base body and unions its
-  `writeScope` (scalar fields override). Section-merge was rejected (a base heading rename would
-  silently orphan a repo override). Primitive `mergePersona`; on-disk compose `loadEffectivePersona` /
-  `resolveEffectivePersona` / `listEffectivePersonas` (all in `core`). A repo-only new persona is a
-  full file with no base counterpart.
-- **CoCoder split + cutover:** launcher, CLI, and the Oz personas route all resolve base+delta. The
-  base personas are *rich* (they carry CoCoder's full orchestration runtime); CoCoder's deltas in
-  `cocoder/personas/deltas/` are *thin* repo-specifics — Bob's TypeScript/tooling rules + `packages/**`
-  scope, and Deb's current-slice status note. Oscar is entirely product runtime, so it has no delta.
-  Base→extended-repo propagation is proven by `packages/core/tests/personas-propagation.test.ts`.
+  `writeScope` (scalars override). Section-merge was rejected — a base heading rename would silently
+  orphan a repo override. A repo-only new persona is a full file with no base counterpart.
+- **Base location = a referenced package** (`@cocoder/personas`), resolved module-relative; *not*
+  `templates/` (the init-time copy scaffold) — the base is referenced at every load.
+
+Implemented in run_17 (the [`base-and-extension-personas`](../../priorities/base-and-extension-personas.md)
+priority holds the full record): base+delta merge in `core`, all consumers cut over, CoCoder's personas
+split (base rich with the runtime; deltas thin), propagation proven by a test.

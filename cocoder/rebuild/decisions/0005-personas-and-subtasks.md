@@ -40,8 +40,9 @@ delegate further. Keeps fan-out bounded.
 
 ### Homes (charter D4 — one concept, one home)
 
-- **Persona definitions + sub-task catalog** (types + default prompts): `core` built-ins +
-  workspace-custom (seam S8).
+- **Persona definitions + Play catalog** (types + default prompts): the **base set is a referenced
+  package** (`@cocoder/personas`), improved centrally; a repo layers deltas + repo-only personas as
+  flat files in its `cocoder/personas/` zone (ADR-0008/0012). *Not* `core` built-ins.
 - **Model assignments** (per-persona, per-(persona, sub-task)): **workspace governance config** —
   a tracked default + a `cocoder/local/` per-machine override (which CLIs are installed varies
   by machine). Edited via Oz: **Oz writes config *files*; the SQLite DB stays operational-state
