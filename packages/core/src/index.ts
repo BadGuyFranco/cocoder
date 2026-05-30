@@ -60,8 +60,8 @@ export {
   PersonaDeltaLoadError,
 } from './personas/index.js'
 
-export type { Play } from './plays/index.js'
-export { loadPlay } from './plays/index.js'
+export type { Play, DispatchPlayDeps, DispatchPlayInput, DispatchPlayResult } from './plays/index.js'
+export { loadPlay, dispatchPlay } from './plays/index.js'
 
 export { loadPriority, type Priority } from './priorities/index.js'
 
