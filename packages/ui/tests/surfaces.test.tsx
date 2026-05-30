@@ -104,7 +104,7 @@ describe('Oz shell', () => {
     render(<App />)
     await waitFor(() => screen.getByText('Fixture replay'))
     fireEvent.click(screen.getByRole('button', { name: 'CLIs' }))
-    await waitFor(() => expect(screen.getByText(/CLI registry/i)).toBeDefined())
+    await waitFor(() => expect(screen.getByText(/per-CLI Test/i)).toBeDefined())
     expect(screen.getAllByText('pending endpoint').length).toBeGreaterThan(0)
   })
 })
