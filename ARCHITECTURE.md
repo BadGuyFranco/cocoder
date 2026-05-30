@@ -115,8 +115,9 @@ CoCoder/                          # public repository (git tracked)
 ├── pnpm-workspace.yaml           # pnpm workspaces
 ├── .nvmrc                        # Node version (see .nvmrc)
 ├── docs/                         # public docs
-├── packages/                     # six TypeScript packages, inward-only deps (rebuild ADR-0008)
+├── packages/                     # seven TypeScript packages, inward-only deps (rebuild ADR-0008)
 │   ├── core/                     # I/O-agnostic library: runner, composition, ports, loaders, write-scope/commit-gate, preflight (depends on nothing in the workspace)
+│   ├── personas/                 # shipped BASE persona set — the single source, improved centrally (ADR-0012); leaf content pkg (depends on nothing)
 │   ├── adapters/                 # per-CLI drivers + preflight (depends on core)
 │   ├── session-hosts/            # SessionHost drivers (cmux) (depends on core)
 │   ├── daemon/                   # Oz: DB write-conn + cmux + live runs (depends on core + adapters + session-hosts)

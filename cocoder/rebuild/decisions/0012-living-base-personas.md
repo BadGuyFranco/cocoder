@@ -55,3 +55,20 @@ bad base change would otherwise break everyone, so the gate is explicit, not imp
   frozen copy.
 - **One-home preserved:** the base is the single source; a repo restates nothing, carrying only deltas
   (consistent with the project's reference-not-restate rule).
+
+## Implemented
+
+Resolved in run_17 (2026-05-29 — the `base-and-extension-personas` priority):
+- **Base lives in a shipped package:** `packages/personas/` (`@cocoder/personas`), a leaf content
+  package; `basePersonasDir()` resolves it module-relative (correct for any install). Deliberately
+  **not** `templates/` — that is the init-time *scaffold* (a copy lifecycle), whereas the base is
+  *referenced at every load*.
+- **Delta format = additive append:** a repo delta is a frontmatter+body file at
+  `cocoder/personas/deltas/<id>.md`; the loader appends its body to the base body and unions its
+  `writeScope` (scalar fields override). Section-merge was rejected (a base heading rename would
+  silently orphan a repo override). Primitive `mergePersona`; on-disk compose `loadEffectivePersona` /
+  `resolveEffectivePersona` / `listEffectivePersonas` (all in `core`). A repo-only new persona is a
+  full file with no base counterpart.
+- **CoCoder split + cutover:** launcher, CLI, and the Oz personas route all resolve base+delta; CoCoder
+  carries only its delta (oscar/deb; bob is fully generic). Base→extended-repo propagation is proven by
+  `packages/core/tests/personas-propagation.test.ts`.
