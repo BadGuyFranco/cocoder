@@ -82,6 +82,35 @@ async function runSmoke(win: BrowserWindow): Promise<void> {
         console.error(`SMOKE: screenshot ${label} failed — ${(e as Error).message}`)
       }
     }
+    // Modal stacking proof: open the New Workspace modal and screenshot it — verifies it paints OVER
+    // the glass panels (the backdrop-filter stacking-context bug), not behind them.
+    try {
+      await win.webContents.executeJavaScript(
+        `(() => { const d=[...document.querySelectorAll('.oz-nav-item')].find(x=>x.textContent.trim()==='Dashboard'); if(d) d.click(); return true })()`,
+      )
+      await wait(300)
+      await win.webContents.executeJavaScript(`(() => { const b=document.querySelector('.oz-ws-tab-add'); if(b) b.click(); return !!b })()`)
+      await wait(250)
+      // Probe the adder dropdown paints on top of the content panels (not just that it's clickable).
+      const dd = await win.webContents.executeJavaScript(
+        `(() => { const n=[...document.querySelectorAll('*')].find(x=>x.children.length===0 && /New workspace/.test(x.textContent||'')); if(!n) return {open:false}; const r=n.getBoundingClientRect(); const t=document.elementFromPoint(r.left+r.width/2, r.top+r.height/2); return {open:true, onTop: n.contains(t)||t===n} })()`,
+      )
+      console.log(`SMOKE: adder-dropdown open=${dd.open} paintsOnTop=${dd.onTop}`)
+      if (dd.open && !dd.onTop) throw new Error('adder dropdown is OPEN but NOT on top — topbar stacking bug')
+      await win.webContents.executeJavaScript(
+        `(() => { const n=[...document.querySelectorAll('*')].find(x=>x.children.length===0 && /New workspace/.test(x.textContent||'')); if(n) n.click(); return !!n })()`,
+      )
+      await wait(350)
+      const probe = await win.webContents.executeJavaScript(
+        `(() => { const h=[...document.querySelectorAll('h2')].find(x=>x.textContent.trim()==='New workspace'); if(!h) return {open:false}; const r=h.getBoundingClientRect(); const cx=r.left+r.width/2, cy=r.top+r.height/2; const top=document.elementFromPoint(cx,cy); return {open:true, onTop: h.contains(top)||top===h} })()`,
+      )
+      const img = await win.webContents.capturePage()
+      writeFileSync(join(dir, 'modal.png'), img.toPNG())
+      console.log(`SMOKE: modal open=${probe.open} paintsOnTop=${probe.onTop}`)
+      if (probe.open && !probe.onTop) throw new Error('modal is OPEN but NOT on top — stacking bug not fixed')
+    } catch (e) {
+      console.error(`SMOKE: modal check — ${(e as Error).message}`)
+    }
     console.log(`SMOKE OK — health=${health.state}, screenshots in ${dir}`)
   } catch (e) {
     code = 1

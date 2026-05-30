@@ -139,6 +139,10 @@ button { font-family: inherit; }
   backdrop-filter: blur(var(--cb-glass-blur));
   -webkit-backdrop-filter: blur(var(--cb-glass-blur));
   border-bottom: 1px solid var(--cb-border);
+  /* Lift the topbar's stacking context above .oz-content so its workspace-tab "+" dropdown popover
+     paints OVER the content panels (which also create backdrop-filter stacking contexts). */
+  position: relative;
+  z-index: 20;
 }
 .oz-topbar-title {
   font-family: var(--cb-font-display);
@@ -252,7 +256,7 @@ button { font-family: inherit; }
 .oz-iconbtn i { font-size: 16px; }
 
 /* ───────── Content area ───────── */
-.oz-content { overflow: hidden; min-height: 0; }
+.oz-content { overflow: hidden; min-height: 0; position: relative; z-index: 0; }
 
 /* ───────── Cards / glass panels ───────── */
 .oz-panel {
