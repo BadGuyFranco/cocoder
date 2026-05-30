@@ -8,7 +8,19 @@
 //   - track spawned surfaceRefs in ctx.liveRefs so deep-links are decidable without throwing.
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { isPersonaEnabled, resolvePersona, loadAssignments, loadPriority, runRun, type RunInput, type RunnerDeps, type SessionHost, type Workspace } from '@cocoder/core'
+import {
+  isPersonaEnabled,
+  loadAssignments,
+  loadPriority,
+  resolveEffectivePersona,
+  runRun,
+  type PersonaSources,
+  type RunInput,
+  type RunnerDeps,
+  type SessionHost,
+  type Workspace,
+} from '@cocoder/core'
+import { basePersonasDir } from '@cocoder/personas'
 import type { OzContext } from './context.js'
 import { findWorkspace } from './registry.js'
 import { appendAudit } from './audit.js'
@@ -41,7 +53,9 @@ async function buildRunInput(ctx: OzContext, workspaceId: string, priorityId: st
   if (!ws) throw new Error(`unknown workspace "${workspaceId}"`)
   const personasDir = join(ws.path, 'cocoder', 'personas')
   const prioritiesDir = join(ws.path, 'cocoder', 'priorities')
-  const sharedStandards = await readFile(join(personasDir, 'shared-standards.md'), 'utf8')
+  const baseDir = basePersonasDir()
+  const sources: PersonaSources = { baseDir, deltaDir: join(personasDir, 'deltas'), repoPersonaDir: personasDir }
+  const sharedStandards = await readFile(join(baseDir, 'shared-standards.md'), 'utf8')
   const assignments = loadAssignments(join(personasDir, 'assignments.json'))
   const workspace: Workspace = { id: ws.id, path: ws.path, name: ws.name }
   let pickup: string | null = null
@@ -55,9 +69,9 @@ async function buildRunInput(ctx: OzContext, workspaceId: string, priorityId: st
   return {
     workspace,
     priority: loadPriority(prioritiesDir, priorityId),
-    oscar: resolvePersona(personasDir, assignments, 'oscar'),
-    bob: resolvePersona(personasDir, assignments, 'bob'),
-    deb: isPersonaEnabled(assignments, 'deb') ? resolvePersona(personasDir, assignments, 'deb') : undefined,
+    oscar: resolveEffectivePersona(sources, assignments, 'oscar'),
+    bob: resolveEffectivePersona(sources, assignments, 'bob'),
+    deb: isPersonaEnabled(assignments, 'deb') ? resolveEffectivePersona(sources, assignments, 'deb') : undefined,
     sharedStandards,
     runsRoot: ctx.runsRoot,
     pickup,
