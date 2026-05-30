@@ -23,7 +23,9 @@ export function OzChat({ wsId, wsName }: { wsId: string; wsName: string }): JSX.
   }, [wsId, wsName])
 
   useEffect(() => {
-    logRef.current?.scrollTo({ top: logRef.current.scrollHeight })
+    // jsdom (tests) has no scrollTo; guard so a missing method never throws in the render commit phase
+    const el = logRef.current
+    if (el && typeof el.scrollTo === 'function') el.scrollTo({ top: el.scrollHeight })
   }, [messages])
 
   async function send(): Promise<void> {

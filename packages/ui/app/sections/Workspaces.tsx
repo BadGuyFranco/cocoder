@@ -1,8 +1,11 @@
 // Workspaces section — list of workspaces (name · path), active one marked. The daemon's /workspaces
-// is thin today (no description / roots / role), so the roots+roles editor is a clearly-marked pending
-// surface (fleshed as a disabled editor in slice 7) — see ENDPOINTS OWED (workspace CRUD + roots model).
+// is thin today (no description / roots / role), so the roots+roles editor is a clearly-DISABLED
+// preview of the real shape (Name · Path · Role with exactly one Primary). See ENDPOINTS OWED
+// (workspace CRUD + a roots[]/role model).
 import type { Workspace } from '../../electron/ipc-contract.ts'
-import { Card, Empty, Pending } from '../components.tsx'
+import { Card, Empty } from '../components.tsx'
+
+const ROLES = ['Primary', 'Writable', 'Read-only']
 
 export function Workspaces({ workspaces, activeId }: { workspaces: Workspace[]; activeId: string }): JSX.Element {
   return (
@@ -23,10 +26,21 @@ export function Workspaces({ workspaces, activeId }: { workspaces: Workspace[]; 
           </Card>
         ))}
       </div>
-      <Pending
-        label="Roots & roles editor"
-        note="Add/remove root folders and set each to Primary / Writable / Read-only (exactly one Primary). Needs workspace CRUD + a roots[] model on the daemon."
-      />
+
+      <Card title={<>Roots &amp; roles editor <span className="pending-tag">pending endpoint</span></>}>
+        <p className="muted">Each root has a Name, Path, and Role — exactly one Primary per workspace. Disabled preview until workspace CRUD + a roots[] model land.</p>
+        <div className="root-row">
+          <input className="root-in" placeholder="Name" disabled />
+          <input className="root-in grow" placeholder="/path/to/repo" disabled />
+          <select disabled value="Primary">
+            {ROLES.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+          <button className="btn btn-ghost" disabled>Remove</button>
+        </div>
+        <button className="btn btn-ghost" disabled>+ Add root</button>
+      </Card>
     </div>
   )
 }

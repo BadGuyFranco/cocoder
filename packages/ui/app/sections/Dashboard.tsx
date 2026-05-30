@@ -8,10 +8,9 @@ import { Priorities } from './Priorities.tsx'
 import { Runs } from './Runs.tsx'
 import { RunDrawer } from './RunDrawer.tsx'
 
-const POLL_MS = 2500 // slice 7 threads this from local settings
-
-export function Dashboard({ wsId, wsName }: { wsId: string; wsName: string }): JSX.Element {
+export function Dashboard({ wsId, wsName, pollMs }: { wsId: string; wsName: string; pollMs: number }): JSX.Element {
   const [runId, setRunId] = useState<string | null>(null)
+  const POLL_MS = pollMs
 
   return (
     <div className="section dashboard">

@@ -2,7 +2,8 @@
 // Settings — Runs and Priorities are PANELS inside Dashboard, never nav items), a workspace picker
 // that switches the whole context, and a live connection indicator. Renders the active section.
 import { useEffect, useState } from 'react'
-import type { ConnectionState, Workspace } from '../electron/ipc-contract.ts'
+import type { ConnectionState, Settings as Prefs, Workspace } from '../electron/ipc-contract.ts'
+import { DEFAULT_SETTINGS } from '../electron/ipc-contract.ts'
 import { getHealth, listWorkspaces } from './client.ts'
 import { Loading, ErrorNote } from './components.tsx'
 import { Dashboard } from './sections/Dashboard.tsx'
@@ -33,26 +34,32 @@ export function App(): JSX.Element {
   const [sha, setSha] = useState<string>('')
   const [workspaces, setWorkspaces] = useState<Workspace[] | null>(null)
   const [wsId, setWsId] = useState<string>('')
+  const [prefs, setPrefs] = useState<Prefs>(DEFAULT_SETTINGS)
   const [loadErr, setLoadErr] = useState<string>('')
 
   useEffect(() => {
     let live = true
-    getHealth().then((h) => {
+    void getHealth().then((h) => {
       if (!live) return
       setConn(h.state)
       setSha(h.sha ?? '')
     })
-    listWorkspaces().then((r) => {
+    void Promise.all([listWorkspaces(), window.oz.settingsGet()]).then(([r, s]) => {
       if (!live) return
-      if (r.ok) {
-        setWorkspaces(r.data.workspaces)
-        setWsId((cur) => cur || r.data.workspaces[0]?.id || '')
-      } else setLoadErr(r.error)
+      setPrefs(s)
+      if (!r.ok) return setLoadErr(r.error)
+      setWorkspaces(r.data.workspaces)
+      const def = s.defaultWorkspaceId && r.data.workspaces.some((w) => w.id === s.defaultWorkspaceId) ? s.defaultWorkspaceId : ''
+      setWsId((cur) => cur || def || r.data.workspaces[0]?.id || '')
     })
     return () => {
       live = false
     }
   }, [])
+
+  function changePrefs(patch: Partial<Prefs>): void {
+    void window.oz.settingsSet(patch).then(setPrefs)
+  }
 
   const ws = workspaces?.find((w) => w.id === wsId)
 
@@ -70,7 +77,7 @@ export function App(): JSX.Element {
             </button>
           ))}
         </nav>
-        <div className={`conn conn-${conn}`} title={sha && `daemon @ ${sha.slice(0, 7)}`}>
+        <div className={`conn conn-${conn}`} title={sha ? `daemon @ ${sha.slice(0, 7)}` : undefined}>
           <span className="dot" />
           {CONN_LABEL[conn]}
         </div>
@@ -97,11 +104,11 @@ export function App(): JSX.Element {
           {!workspaces && !loadErr && <Loading what="Connecting to daemon" />}
           {workspaces && (
             <>
-              {section === 'dashboard' && <Dashboard wsId={wsId} wsName={ws?.name ?? wsId} />}
+              {section === 'dashboard' && <Dashboard wsId={wsId} wsName={ws?.name ?? wsId} pollMs={prefs.pollIntervalMs} />}
               {section === 'workspaces' && <Workspaces workspaces={workspaces} activeId={wsId} />}
               {section === 'clis' && <CLIs />}
               {section === 'personas' && <Personas wsId={wsId} wsName={ws?.name ?? wsId} />}
-              {section === 'settings' && <Settings />}
+              {section === 'settings' && <Settings settings={prefs} workspaces={workspaces} onChange={changePrefs} />}
             </>
           )}
         </div>

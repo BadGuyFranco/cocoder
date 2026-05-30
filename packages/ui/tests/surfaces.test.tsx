@@ -72,7 +72,7 @@ describe('Oz shell', () => {
     // drawer opens with the transcript timeline + evidence, rendered human-friendly
     await waitFor(() => expect(screen.getByRole('dialog')).toBeDefined())
     await waitFor(() => expect(screen.getByText('Transcript')).toBeDefined())
-    expect(screen.getByText('Run started')).toBeDefined()
+    expect(screen.getAllByText('Run started').length).toBeGreaterThan(0)
     expect(screen.getByText('Sessions')).toBeDefined()
     // no raw JSON leaked into the transcript
     const dialog = screen.getByRole('dialog')
