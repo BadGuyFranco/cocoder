@@ -7,7 +7,7 @@ import type { RunDetail } from '../../electron/ipc-contract.ts'
 import { getRun, showRun, teardownRun, launchRun } from '../client.ts'
 import { usePoll } from '../usePoll.ts'
 import { StatusChip, Loading, ErrorNote } from '../components.tsx'
-import { formatEvent, formatTime } from '../runevents.ts'
+import { formatEvent, formatTime, isOversightEvent } from '../runevents.ts'
 
 function Evidence({ d }: { d: RunDetail }): JSX.Element {
   return (
@@ -44,6 +44,35 @@ function Evidence({ d }: { d: RunDetail }): JSX.Element {
         </details>
       )}
     </>
+  )
+}
+
+// Oversight / Debugger — a read-only PROJECTION of Deb's outputs + the monitor's signals (one
+// debugger: Deb writes faults, Oz reads them). TIER-3: this renders only; it never triages, nudges, or
+// sends input. It surfaces the oversight-relevant events from the same transcript, called out distinctly.
+function Oversight({ d }: { d: RunDetail }): JSX.Element {
+  const signals = d.events.filter((e) => isOversightEvent(e.type))
+  return (
+    <section className="ev oversight">
+      <h4>Oversight · Deb (read-only)</h4>
+      {signals.length === 0 ? (
+        <p className="muted">No oversight signals — no faults, out-of-scope changes, or monitor flags recorded.</p>
+      ) : (
+        <ol className="timeline">
+          {signals.map((e) => {
+            const line = formatEvent(e)
+            return (
+              <li key={e.id} className={`tl tl-${line.tone}`}>
+                <span className="tl-time mono">{formatTime(line.at)}</span>
+                <span className="tl-title">{line.title}</span>
+                {line.detail && <span className="tl-detail muted">{line.detail}</span>}
+              </li>
+            )
+          })}
+        </ol>
+      )}
+      <p className="muted oversight-note">Projection only — Deb writes faults/triage/dispositions; Oz reads them. No orchestration from here.</p>
+    </section>
   )
 }
 
@@ -100,6 +129,8 @@ export function RunDrawer({ wsId, runId, pollMs, onClose }: { wsId: string; runI
               </div>
             ))}
           </section>
+
+          <Oversight d={data.data} />
 
           <section className="ev">
             <h4>Transcript</h4>

@@ -79,6 +79,17 @@ describe('Oz shell', () => {
     expect(dialog.textContent).not.toMatch(/\{"/)
   })
 
+  it('drawer shows the read-only Oversight (Deb) projection of run signals', async () => {
+    render(<App />)
+    await waitFor(() => screen.getByText('Fixture replay'))
+    await waitFor(() => screen.getByText('run_17'))
+    fireEvent.click(screen.getByText('run_17'))
+    await waitFor(() => expect(screen.getByText('Oversight · Deb (read-only)')).toBeDefined())
+    // run_17 fixture carries daemon-stale + out-of-scope; at least one oversight signal renders
+    const dialog = screen.getByRole('dialog')
+    expect(/Daemon stale vs HEAD|Out-of-scope change flagged|Monitor assessment/.test(dialog.textContent ?? '')).toBe(true)
+  })
+
   it('drawer Resume reports its outcome', async () => {
     render(<App />)
     await waitFor(() => screen.getByText('Fixture replay'))

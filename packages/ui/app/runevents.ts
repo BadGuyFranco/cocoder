@@ -56,6 +56,12 @@ export function formatEvent(e: RunEvent): TimelineLine {
   }
 }
 
+// Oversight projection (slice 6): the event types Deb/the monitor write that Oz READS read-only.
+// Substring match keeps it forward-compatible with fault/triage/disposition events the daemon may add.
+const OVERSIGHT_EXACT = new Set(['out-of-scope', 'monitor-assessment', 'daemon-stale', 'run-error', 'orphaned'])
+const OVERSIGHT_SUBSTR = ['fault', 'triage', 'disposition']
+export const isOversightEvent = (type: string): boolean => OVERSIGHT_EXACT.has(type) || OVERSIGHT_SUBSTR.some((k) => type.includes(k))
+
 export const formatTime = (ms: number): string => {
   if (!ms) return ''
   const d = new Date(ms)

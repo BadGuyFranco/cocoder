@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatEvent, formatDuration } from '../app/runevents.ts'
+import { formatEvent, formatDuration, isOversightEvent } from '../app/runevents.ts'
 import type { RunEvent } from '../electron/ipc-contract.ts'
 
 const ev = (type: string, data: Record<string, unknown>): RunEvent => ({ id: 'e', runId: 'r', type, data, at: 1000 })
@@ -17,6 +17,16 @@ describe('formatEvent — human timeline, never raw JSON', () => {
     const line = formatEvent(ev('some-new-thing', { a: 1 }))
     expect(line.title).toBe('some new thing')
     expect(line.title).not.toContain('{')
+  })
+
+  it('classifies oversight signals (Deb/monitor), incl. forward-compatible fault/triage', () => {
+    expect(isOversightEvent('out-of-scope')).toBe(true)
+    expect(isOversightEvent('monitor-assessment')).toBe(true)
+    expect(isOversightEvent('daemon-stale')).toBe(true)
+    expect(isOversightEvent('fault-recorded')).toBe(true)
+    expect(isOversightEvent('triage-disposition')).toBe(true)
+    expect(isOversightEvent('commit')).toBe(false)
+    expect(isOversightEvent('spawn')).toBe(false)
   })
 
   it('formats duration', () => {
