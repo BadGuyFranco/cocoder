@@ -67,10 +67,29 @@ function WorkspaceTabs({ workspaces, loadedIds, activeId, runsMap, onSelect, onC
   )
 }
 
-export function TopBar({ title, route, workspaces, activeId, loadedIds, runsMap, onSelectWs, onCloseWs, onLoadWs, onCreateWs, theme, setTheme }: {
+// Connection states → a small dot + label. 'fixtures' is honest demo mode; 'connected' is the live
+// daemon; 'connecting'/'offline' tell the founder the backend isn't (yet) answering.
+const CONN_META: Record<string, { color: string; label: string }> = {
+  connected: { color: 'var(--cb-success)', label: 'Live' },
+  fixtures: { color: 'var(--cb-text-muted)', label: 'Demo data' },
+  connecting: { color: 'var(--cb-highlight)', label: 'Connecting…' },
+  offline: { color: 'var(--cb-highlight)', label: 'Daemon offline' },
+}
+
+function ConnIndicator({ conn }: { conn: string }) {
+  const m = CONN_META[conn] ?? CONN_META.offline
+  return (
+    <div title={`Daemon: ${m.label}`} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', fontSize: 11, color: 'var(--cb-text-muted)', flexShrink: 0 }}>
+      <span style={{ width: 7, height: 7, borderRadius: '50%', background: m.color, animation: conn === 'connecting' ? 'ozPulse 1.6s infinite' : 'none', flexShrink: 0 }} />
+      <span style={{ whiteSpace: 'nowrap' }}>{m.label}</span>
+    </div>
+  )
+}
+
+export function TopBar({ title, route, workspaces, activeId, loadedIds, runsMap, onSelectWs, onCloseWs, onLoadWs, onCreateWs, theme, setTheme, conn }: {
   title: string; route: string; workspaces: Workspace[]; activeId: string; loadedIds: string[]; runsMap: Record<string, Run[]>
   onSelectWs: (id: string) => void; onCloseWs: (id: string) => void; onLoadWs: (id: string) => void; onCreateWs: () => void
-  theme: 'dark' | 'light'; setTheme: (fn: (t: 'dark' | 'light') => 'dark' | 'light') => void
+  theme: 'dark' | 'light'; setTheme: (fn: (t: 'dark' | 'light') => 'dark' | 'light') => void; conn: string
 }) {
   return (
     <header className="oz-topbar">
@@ -83,6 +102,7 @@ export function TopBar({ title, route, workspaces, activeId, loadedIds, runsMap,
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', color: 'var(--cb-text-muted)', fontSize: 12, cursor: 'pointer', minWidth: 220 }}>
         <Icon name="magnifying-glass" size={13} /><span>Search runs, priorities…</span><span className="oz-kbd" style={{ marginLeft: 'auto' }}>⌘K</span>
       </div>
+      <ConnIndicator conn={conn} />
       <button className="oz-iconbtn" title="Toggle theme" onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}><Icon name={theme === 'dark' ? 'sun' : 'moon'} size={15} /></button>
       <button className="oz-iconbtn" title="Notifications"><Icon name="bell" size={15} /></button>
     </header>

@@ -3,7 +3,8 @@
 // screens (Workspaces · CLIs · Personas · Settings) with the two creation modals. This slice renders
 // the design-faithful view-model from the ported seed (fixture parity, fully interactive); the daemon
 // adapter is wired in the next slice (the existing electron/ plumbing is untouched).
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ozApi, loadWorkspaces, loadWsData, loadRunDetail, type ConnectionState } from './live.ts'
 import { Sidebar, type Route } from './ui/Sidebar.tsx'
 import { TopBar } from './ui/TopBar.tsx'
 import { Dashboard } from './sections/dashboard/Dashboard.tsx'
@@ -12,7 +13,7 @@ import { CLIsScreen } from './sections/CLIs.tsx'
 import { PersonasScreen } from './sections/Personas.tsx'
 import { SettingsScreen } from './sections/Settings.tsx'
 import { NewWorkspaceModal, CraftPersonaModal } from './sections/modals.tsx'
-import { seed, DEFAULT_SETTINGS, type ChatMessage, type Cli, type Dependency, type Persona, type Priority, type Settings, type SubAgent, type Workspace } from './model.ts'
+import { seed, DEFAULT_SETTINGS, type ChatMessage, type Cli, type Dependency, type Persona, type Priority, type Run, type Settings, type SubAgent, type Workspace } from './model.ts'
 
 const USER = seed.workspaces.length ? { initials: 'AF', name: 'Anthony Franco', role: 'founder' } : { initials: 'AF', name: 'Anthony Franco', role: 'founder' }
 const ROUTE_TITLE: Record<Route, string> = { dashboard: 'Dashboard', workspaces: 'Workspaces', clis: 'CLIs', personas: 'Personas', settings: 'Settings' }
@@ -39,6 +40,23 @@ function ozReply(text: string): ChatMessage {
   return { id: `m${Date.now()}`, role: 'oz', time: 'now', body }
 }
 
+// Honest empty state when a live launch can't reach the daemon — no seed demo masquerading as real data.
+function ConnectionPanel({ conn, onRetry }: { conn: ConnectionState; onRetry: () => void }) {
+  const offline = conn === 'offline'
+  return (
+    <div className="oz-empty" style={{ margin: 'auto', maxWidth: 460, padding: '48px 24px', textAlign: 'center' }}>
+      <div className="oz-empty-icon" style={{ width: 52, height: 52 }} aria-hidden>{offline ? '⚠' : '…'}</div>
+      <div className="oz-empty-title">{offline ? 'Daemon offline' : 'Connecting to the daemon…'}</div>
+      <div className="oz-empty-body">
+        {offline
+          ? 'The CoCoder daemon at 127.0.0.1:7878 isn’t answering. Start it (scripts/oz.sh start) and retry.'
+          : 'Reaching the CoCoder daemon at 127.0.0.1:7878.'}
+      </div>
+      {offline && <button className="oz-btn oz-btn-secondary oz-btn-sm" onClick={onRetry} style={{ marginTop: 14 }}>Retry</button>}
+    </div>
+  )
+}
+
 export function App() {
   const [route, setRoute] = useState<Route>('dashboard')
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
@@ -49,7 +67,7 @@ export function App() {
   const seedPriorities = (seed as unknown as { priorities?: Record<string, Priority[]> }).priorities ?? {}
   const seedChat = (seed as unknown as { ozChat?: Record<string, ChatMessage[]> }).ozChat ?? {}
   const [prioritiesByWs, setPrioritiesByWs] = useState<Record<string, Priority[]>>(() => Object.fromEntries(workspaces.map((w) => [w.id, [...(seedPriorities[w.id] ?? [])]])))
-  const runsByWs = seed.runsByWs
+  const [runsByWs, setRunsByWs] = useState<Record<string, Run[]>>(seed.runsByWs)
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null)
   const [runHistoryOpen, setRunHistoryOpen] = useState(false)
   const [msgsByWs, setMsgsByWs] = useState<Record<string, ChatMessage[]>>(() => Object.fromEntries(workspaces.map((w) => [w.id, [...(seedChat[w.id] ?? [])]])))
@@ -64,8 +82,87 @@ export function App() {
   const [craftOpen, setCraftOpen] = useState(false)
   const [navCollapsed, setNavCollapsed] = useState(false)
 
+  // ── Live daemon wiring ── source is decided by window.oz.health(): 'fixtures' (or no bridge, e.g.
+  // jsdom tests) keeps the ported seed; 'connected' loads real data through the adapter; otherwise we
+  // show an honest offline state. clis/dependencies/ozChat/settings stay seed-backed (pending endpoints).
+  const [conn, setConn] = useState<ConnectionState>('connecting')
+  const [live, setLive] = useState(false)
+  const [pollMs, setPollMs] = useState(2500)
+  const [reloadNonce, setReloadNonce] = useState(0) // bumped by Retry to re-attempt the connection
+  const namesRef = useRef<Record<string, Record<string, string>>>({}) // wsId → (priorityId → title)
+
   useEffect(() => { document.documentElement.setAttribute('data-theme', theme) }, [theme])
   useEffect(() => { setTheme(settings.preferences.theme) }, [settings.preferences.theme])
+
+  // Decide the data source once on mount and, when connected, replace workspaces/priorities/runs/personas
+  // with live data. Seed state stays as the initial value so fixtures/tests render immediately.
+  useEffect(() => {
+    const oz = ozApi()
+    if (!oz) { setConn('fixtures'); return }
+    let cancelled = false
+    const goOffline = (state: ConnectionState) => {
+      // A bridge exists but the daemon isn't answering: never present seed demo data as if it were live.
+      setLive(false); setConn(state); setWorkspaces([]); setRunsByWs({}); setPrioritiesByWs({})
+    }
+    void (async () => {
+      setConn('connecting')
+      let health
+      try { health = await oz.health() } catch { if (!cancelled) goOffline('offline'); return }
+      if (cancelled) return
+      if (health.state === 'fixtures') { setConn('fixtures'); return }
+      if (health.state !== 'connected') { goOffline(health.state); return }
+      setConn('connected'); setLive(true)
+      try { const s = await oz.settingsGet(); if (!cancelled && s?.pollIntervalMs) setPollMs(s.pollIntervalMs) } catch { /* keep default */ }
+      const wss = await loadWorkspaces(oz)
+      if (cancelled) return
+      if (!wss.length) { goOffline('offline'); return }
+      setWorkspaces(wss)
+      const first = wss[0]
+      setActiveId(first.id); setLoadedIds([first.id])
+      const data = await loadWsData(oz, first.id)
+      if (cancelled) return
+      namesRef.current[first.id] = data.names
+      setPrioritiesByWs((cur) => ({ ...cur, [first.id]: data.priorities }))
+      setRunsByWs((cur) => ({ ...cur, [first.id]: data.runs }))
+      if (data.personas.length) setPersonas(data.personas)
+    })()
+    return () => { cancelled = true }
+  }, [reloadNonce])
+
+  // Poll the open run's detail (~pollMs) for the live transcript/evidence; pause when the window is
+  // hidden, and fetch once immediately on open. Only runs in live mode.
+  useEffect(() => {
+    if (!live || !selectedRunId) return
+    const oz = ozApi()
+    if (!oz) return
+    const ws = activeId
+    let stop = false
+    const tick = async () => {
+      if (document.hidden) return
+      const enriched = await loadRunDetail(oz, selectedRunId, namesRef.current[ws] ?? {})
+      if (stop || !enriched) return
+      setRunsByWs((cur) => ({ ...cur, [ws]: (cur[ws] ?? []).map((r) => (r.id === enriched.id ? enriched : r)) }))
+    }
+    void tick()
+    const id = setInterval(() => void tick(), pollMs)
+    return () => { stop = true; clearInterval(id) }
+  }, [live, selectedRunId, activeId, pollMs])
+
+  // Lazy-load a workspace's data the first time it becomes active (switching tabs in live mode).
+  useEffect(() => {
+    if (!live || !activeId || namesRef.current[activeId]) return
+    const oz = ozApi()
+    if (!oz) return
+    let cancelled = false
+    void (async () => {
+      const data = await loadWsData(oz, activeId)
+      if (cancelled) return
+      namesRef.current[activeId] = data.names
+      setPrioritiesByWs((cur) => ({ ...cur, [activeId]: data.priorities }))
+      setRunsByWs((cur) => ({ ...cur, [activeId]: data.runs }))
+    })()
+    return () => { cancelled = true }
+  }, [live, activeId])
 
   const workspace = workspaces.find((w) => w.id === activeId) ?? workspaces[0]
   const priorities = prioritiesByWs[activeId] ?? []
@@ -100,8 +197,11 @@ export function App() {
     <div className="oz-app" style={{ gridTemplateColumns: `${navCollapsed ? 64 : 220}px 1fr` }}>
       <Sidebar route={route} setRoute={setRoute} runs={runs} user={USER} collapsed={navCollapsed} onToggleCollapsed={() => setNavCollapsed((c) => !c)} />
       <div className="oz-main">
-        <TopBar title={ROUTE_TITLE[route]} route={route} workspaces={workspaces} activeId={activeId} loadedIds={loadedIds} runsMap={runsByWs} onSelectWs={selectWs} onCloseWs={closeWs} onLoadWs={loadWs} onCreateWs={() => setNewWsOpen(true)} theme={theme} setTheme={setTheme} />
+        <TopBar title={ROUTE_TITLE[route]} route={route} workspaces={workspaces} activeId={activeId} loadedIds={loadedIds} runsMap={runsByWs} onSelectWs={selectWs} onCloseWs={closeWs} onLoadWs={loadWs} onCreateWs={() => setNewWsOpen(true)} theme={theme} setTheme={setTheme} conn={conn} />
         <div className="oz-content">
+          {(conn === 'offline' || (conn === 'connecting' && !workspace)) ? (
+            <ConnectionPanel conn={conn} onRetry={() => setReloadNonce((n) => n + 1)} />
+          ) : (<>
           {route === 'dashboard' && workspace && (
             <Dashboard
               workspace={workspace} priorities={priorities} runs={runs} ozMessages={messages}
@@ -117,6 +217,7 @@ export function App() {
           {route === 'clis' && <CLIsScreen clis={clis} onTest={(id) => setClis((cs) => cs.map((c) => (c.id === id ? { ...c, lastTested: 'just now' } : c)))} onAdd={() => onSend('Register a new CLI.')} />}
           {route === 'personas' && <PersonasScreen personas={personas} clis={clis} onChange={setPersona} onAddSub={addSub} onRemoveSub={removeSub} onUpdateSub={updateSub} onNewPersonaAsPriority={() => setCraftOpen(true)} />}
           {route === 'settings' && <SettingsScreen settings={settings} dependencies={dependencies} onRecheckDep={(id: string) => setDependencies((ds: Dependency[]) => ds.map((d: Dependency) => (d.id === id ? { ...d, lastChecked: 'just now' } : d)))} onChange={setSettings} />}
+          </>)}
         </div>
       </div>
 
