@@ -3,6 +3,7 @@
 // Ported from design-ref/screens.jsx.
 import { useState } from 'react'
 import { Icon, Button, Card, ScreenHeader } from '../ui/primitives.tsx'
+import { PendingBanner } from '../ui/PendingBanner.tsx'
 import type { Dependency, Settings } from '../model.ts'
 
 function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
@@ -77,7 +78,7 @@ const TABS = [
   { id: 'about', label: 'About', icon: 'info' },
 ]
 
-export function SettingsScreen({ settings, dependencies, onRecheckDep, onChange }: { settings: Settings; dependencies: Dependency[]; onRecheckDep: (id: string) => void; onChange: (s: Settings) => void }) {
+export function SettingsScreen({ settings, dependencies, onRecheckDep, onChange, live = false }: { settings: Settings; dependencies: Dependency[]; onRecheckDep: (id: string) => void; onChange: (s: Settings) => void; live?: boolean }) {
   const [tab, setTab] = useState('preferences')
   const update = <S extends keyof Settings>(section: S, key: keyof Settings[S], value: unknown) =>
     onChange({ ...settings, [section]: { ...settings[section], [key]: value } })
@@ -97,6 +98,7 @@ export function SettingsScreen({ settings, dependencies, onRecheckDep, onChange 
         </div>
         <div className="oz-panel" style={{ minHeight: 0 }}>
           <div className="oz-panel-body" style={{ padding: '0 24px 24px' }}>
+            <div style={{ paddingTop: 16 }}><PendingBanner live={live}>Settings aren’t persisted to the daemon yet (<code>GET/PUT /settings</code> owed) and system tools aren’t probed live — changes here are local to this session.</PendingBanner></div>
             {tab === 'system' && (
               <>
                 <div className="oz-section-marker lhs">System dependencies</div>

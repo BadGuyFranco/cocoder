@@ -2,6 +2,7 @@
 // expandable model list, and inline error detail with re-auth/install actions. Ported from design-ref.
 import { useState } from 'react'
 import { Icon, StatusChip, Button, Card, ScreenHeader } from '../ui/primitives.tsx'
+import { PendingBanner } from '../ui/PendingBanner.tsx'
 import type { Cli } from '../model.ts'
 
 function CliRow({ cli, onTest, testing, expanded, onToggle }: { cli: Cli; onTest: (id: string) => void; testing: boolean; expanded: boolean; onToggle: (id: string) => void }) {
@@ -49,7 +50,7 @@ function CliRow({ cli, onTest, testing, expanded, onToggle }: { cli: Cli; onTest
   )
 }
 
-export function CLIsScreen({ clis, onTest, onAdd }: { clis: Cli[]; onTest: (id: string) => void; onAdd: () => void }) {
+export function CLIsScreen({ clis, onTest, onAdd, live = false }: { clis: Cli[]; onTest: (id: string) => void; onAdd: () => void; live?: boolean }) {
   const [testingId, setTestingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const handleTest = (id: string) => { setTestingId(id); setTimeout(() => { onTest(id); setTestingId(null) }, 1100) }
@@ -62,6 +63,7 @@ export function CLIsScreen({ clis, onTest, onAdd }: { clis: Cli[]; onTest: (id: 
     <div style={{ height: '100%', overflow: 'hidden', display: 'grid', gridTemplateRows: 'auto 1fr' }}>
       <ScreenHeader title="CLIs" subtitle="The coding-agent command-line tools personas run on. Each must be installed on this machine and authenticated." actions={<Button variant="primary" icon="plus" onClick={onAdd}>Register CLI</Button>} />
       <div style={{ padding: '0 28px 24px', overflowY: 'auto', minHeight: 0 }}>
+        <PendingBanner live={live}>CLI discovery, status probes, and per-CLI testing aren’t served yet (<code>GET /clis</code>, <code>POST /clis/:id/test</code> — owned by the model-discovery priority). The list below is illustrative, not live.</PendingBanner>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
           {summary.map((s) => (
             <Card key={s.label} style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>

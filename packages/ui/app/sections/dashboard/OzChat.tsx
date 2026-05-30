@@ -54,9 +54,9 @@ const QUICK_PROMPTS = [
   { label: 'Reorder priorities', prompt: 'Promote #4 to the top.' },
 ]
 
-export function OzChatPanel({ messages, runs, workspaceName, onSend, onSelectRun, onDecision, ozTyping }: {
+export function OzChatPanel({ messages, runs, workspaceName, onSend, onSelectRun, onDecision, ozTyping, live = false }: {
   messages: ChatMessage[]; runs: Run[]; workspaceName: string; onSend: (text: string) => void
-  onSelectRun: (id: string) => void; onDecision: (choice: string) => void; ozTyping: boolean
+  onSelectRun: (id: string) => void; onDecision: (choice: string) => void; ozTyping: boolean; live?: boolean
 }) {
   const [text, setText] = useState('')
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -85,6 +85,12 @@ export function OzChatPanel({ messages, runs, workspaceName, onSend, onSelectRun
         )}
       </div>
       <div style={{ borderTop: '1px solid var(--cb-border)', padding: '12px 24px 14px' }}>
+        {live && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '7px 10px', background: 'var(--cb-highlight-muted)', border: '1px solid rgba(212,118,110,0.25)', borderRadius: 'var(--cb-radius-md)', fontSize: 10.5, color: 'var(--cb-text-secondary)', lineHeight: 1.5 }}>
+            <Icon name="warning-circle" size={13} style={{ color: 'var(--cb-highlight)', flexShrink: 0 }} />
+            <span>Free-text Oz chat is a pending endpoint (<code>POST /oz/messages</code>). Use the Launch / Attach / queue controls — they drive the real daemon.</span>
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
           {QUICK_PROMPTS.map((qp) => (
             <button key={qp.label} onClick={() => setText(qp.prompt)} style={{ background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border)', color: 'var(--cb-text-secondary)', padding: '4px 10px', borderRadius: 'var(--cb-radius-pill)', fontSize: 11, cursor: 'pointer', fontFamily: 'var(--cb-font-body)' }}

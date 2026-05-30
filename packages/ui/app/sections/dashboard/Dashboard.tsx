@@ -80,12 +80,12 @@ function RunHistoryModal({ open, onClose, runs, onSelectRun, priorities }: { ope
   )
 }
 
-export function Dashboard({ workspace, priorities, runs, ozMessages, selectedRunId, setSelectedRunId, onReorder, onLaunch, onAdhoc, onAddPriority, onSend, onDecision, onRunAction, ozTyping, runHistoryOpen, setRunHistoryOpen }: {
+export function Dashboard({ workspace, priorities, runs, ozMessages, selectedRunId, setSelectedRunId, onReorder, onLaunch, onAdhoc, onAddPriority, onSend, onDecision, onRunAction, ozTyping, runHistoryOpen, setRunHistoryOpen, live = false }: {
   workspace: Workspace; priorities: Priority[]; runs: Run[]; ozMessages: ChatMessage[]
   selectedRunId: string | null; setSelectedRunId: (id: string | null) => void
   onReorder: (from: number, to: number) => void; onLaunch: (p: Priority) => void; onAdhoc: () => void; onAddPriority: () => void
   onSend: (text: string) => void; onDecision: (choice: string) => void; onRunAction: (action: string, id: string) => void
-  ozTyping: boolean; runHistoryOpen: boolean; setRunHistoryOpen: (b: boolean) => void
+  ozTyping: boolean; runHistoryOpen: boolean; setRunHistoryOpen: (b: boolean) => void; live?: boolean
 }) {
   const [prioWidth, setPrioWidth] = useState(PRIO_DEFAULT)
   const selectedRun = selectedRunId ? runs.find((r) => r.id === selectedRunId) : null
@@ -101,7 +101,7 @@ export function Dashboard({ workspace, priorities, runs, ozMessages, selectedRun
         <PrioritiesPanel priorities={priorities} runs={runs} onReorder={onReorder} onLaunch={onLaunch} onAdhoc={onAdhoc} onAddPriority={onAddPriority} onSelectRun={setSelectedRunId} onOpenRunHistory={() => setRunHistoryOpen(true)} selectedRunId={selectedRunId} />
         <ResizeHandle width={prioWidth} onResizeTo={onResizeTo} />
         {selectedRun && <RunDetail run={selectedRun} parentPriority={selectedRun.priorityId ? priorities.find((p) => p.id === selectedRun.priorityId) || null : null} parentPriorityIndex={selectedRun.priorityId ? priorities.findIndex((p) => p.id === selectedRun.priorityId) : -1} onClose={() => setSelectedRunId(null)} onAction={onRunAction} />}
-        <OzChatPanel messages={ozMessages} runs={runs} workspaceName={workspace.name} onSend={onSend} onSelectRun={setSelectedRunId} onDecision={onDecision} ozTyping={ozTyping} />
+        <OzChatPanel messages={ozMessages} runs={runs} workspaceName={workspace.name} onSend={onSend} onSelectRun={setSelectedRunId} onDecision={onDecision} ozTyping={ozTyping} live={live} />
       </div>
       <RunHistoryModal open={runHistoryOpen} onClose={() => setRunHistoryOpen(false)} runs={runs} priorities={priorities} onSelectRun={setSelectedRunId} />
     </>

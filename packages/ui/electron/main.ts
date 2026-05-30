@@ -69,7 +69,10 @@ async function runSmoke(win: BrowserWindow): Promise<void> {
     const health = await win.webContents.executeJavaScript(
       `new Promise((resolve, reject) => { let n=0; const c = () => (window.oz ? resolve(window.oz.health()) : (++n>40 ? reject(new Error('window.oz never appeared — preload bridge failed to load')) : setTimeout(c, 50))); c() })`,
     )
-    if (!health || health.state !== 'fixtures') throw new Error(`IPC health round-trip failed: ${JSON.stringify(health)}`)
+    // The smoke runs in either source: OZ_FIXTURES replay ('fixtures') or a real read-only launch
+    // against the live daemon ('connected'). Both must round-trip health through the IPC bridge.
+    if (!health || (health.state !== 'fixtures' && health.state !== 'connected')) throw new Error(`IPC health round-trip failed: ${JSON.stringify(health)}`)
+    if (health.state === 'connected') await wait(1500) // let the live load settle before screenshots
     for (const label of SECTIONS) {
       try {
         await win.webContents.executeJavaScript(

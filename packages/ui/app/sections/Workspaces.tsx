@@ -3,6 +3,7 @@
 // Ported from design-ref/screens.jsx.
 import { useState } from 'react'
 import { Icon, Button, ScreenHeader } from '../ui/primitives.tsx'
+import { PendingBanner } from '../ui/PendingBanner.tsx'
 import { phicon, type Root, type Workspace } from '../model.ts'
 
 const ROLE_META: Record<string, { label: string; color: string; bg: string; border: string; body: string }> = {
@@ -34,8 +35,8 @@ function RootRow({ root, hasPrimary, onChange, onDelete }: { root: Root; hasPrim
   )
 }
 
-export function WorkspacesScreen({ workspaces, activeId, onChange, onSetActive, onCreate, onDelete, onGotoDashboard }: {
-  workspaces: Workspace[]; activeId: string; onChange: (ws: Workspace) => void; onSetActive: (id: string) => void; onCreate: () => void; onDelete: (id: string) => void; onGotoDashboard: () => void
+export function WorkspacesScreen({ workspaces, activeId, onChange, onSetActive, onCreate, onDelete, onGotoDashboard, live = false }: {
+  workspaces: Workspace[]; activeId: string; onChange: (ws: Workspace) => void; onSetActive: (id: string) => void; onCreate: () => void; onDelete: (id: string) => void; onGotoDashboard: () => void; live?: boolean
 }) {
   const [editId, setEditId] = useState(activeId)
   const editing = workspaces.find((w) => w.id === editId)
@@ -80,6 +81,7 @@ export function WorkspacesScreen({ workspaces, activeId, onChange, onSetActive, 
               </div>
             </div>
             <div className="oz-panel-body">
+              <PendingBanner live={live}>The daemon’s <code>/workspaces</code> is thin (id · name · path); roots, roles, and descriptions aren’t served and workspace create/edit/delete isn’t wired (<code>POST/PUT/DELETE /workspaces</code> + a roots/role model owed). The single primary root shown is derived from the path.</PendingBanner>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
                 <div><label className="oz-field-label">Name</label><input className="oz-input" value={editing.name} onChange={(e) => onChange({ ...editing, name: e.target.value })} /></div>
                 <div><label className="oz-field-label">Created</label><div style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 12, color: 'var(--cb-text-muted)', padding: '9px 0' }}>{editing.created}</div></div>

@@ -92,4 +92,22 @@ describe('Oz renderer — live daemon path', () => {
     fireEvent.click(screen.getAllByText('Launch')[0])
     await waitFor(() => expect(screen.getByText(/already in flight/i)).toBeDefined())
   })
+
+  it('marks unbacked surfaces as pending endpoints in live mode (CLIs screen)', async () => {
+    setOz(mockOz())
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+    fireEvent.click(screen.getByText('CLIs'))
+    await waitFor(() => expect(screen.getAllByText(/Pending daemon endpoint/).length).toBeGreaterThan(0))
+  })
+})
+
+describe('Oz renderer — seed/fixtures mode shows no pending markers', () => {
+  it('does not render the pending-endpoint banner when there is no live daemon', () => {
+    delete (window as unknown as { oz?: unknown }).oz
+    render(<App />)
+    fireEvent.click(screen.getByText('CLIs'))
+    expect(screen.queryByText(/Pending daemon endpoint/)).toBeNull()
+    cleanup()
+  })
 })

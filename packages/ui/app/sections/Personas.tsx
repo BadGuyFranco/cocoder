@@ -3,6 +3,7 @@
 // (each sub independently CLI+Model configurable). "Craft a new persona" files a priority. Ported from
 // design-ref/screens.jsx.
 import { Icon, Button, Card, ScreenHeader } from '../ui/primitives.tsx'
+import { PendingBanner } from '../ui/PendingBanner.tsx'
 import { phicon, type Cli, type Persona, type SubAgent } from '../model.ts'
 
 function PersonaRow({ persona, clis, onChange, onAddSub, onRemoveSub, onUpdateSub }: {
@@ -82,9 +83,9 @@ function PersonaRow({ persona, clis, onChange, onAddSub, onRemoveSub, onUpdateSu
   )
 }
 
-export function PersonasScreen({ personas, clis, onChange, onAddSub, onRemoveSub, onUpdateSub, onNewPersonaAsPriority }: {
+export function PersonasScreen({ personas, clis, onChange, onAddSub, onRemoveSub, onUpdateSub, onNewPersonaAsPriority, live = false }: {
   personas: Persona[]; clis: Cli[]; onChange: (id: string, p: Persona) => void
-  onAddSub: (pid: string) => void; onRemoveSub: (pid: string, sid: string) => void; onUpdateSub: (pid: string, sid: string, sa: SubAgent) => void; onNewPersonaAsPriority: () => void
+  onAddSub: (pid: string) => void; onRemoveSub: (pid: string, sid: string) => void; onUpdateSub: (pid: string, sid: string, sa: SubAgent) => void; onNewPersonaAsPriority: () => void; live?: boolean
 }) {
   return (
     <div style={{ height: '100%', overflow: 'hidden', display: 'grid', gridTemplateRows: 'auto 1fr' }}>
@@ -97,6 +98,7 @@ export function PersonasScreen({ personas, clis, onChange, onAddSub, onRemoveSub
             <div style={{ fontSize: 11.5, color: 'var(--cb-text-secondary)', lineHeight: 1.55 }}>Sketch what the persona should do. Oz files it as a priority and the team scaffolds the new role — prompts, sub-agents, and tests included.</div>
           </div>
         </div>
+        <PendingBanner live={live}>The roster (and each persona’s CLI) is live from the daemon, but editing here isn’t saved yet: model lists need per-CLI discovery, and run-mode/sub-agents need the assignment schema extended (<code>PUT …/assignments</code> with <code>{'{'}mode, subAgents{'}'}</code> owed). Edits below are local previews.</PendingBanner>
         {personas.map((p) => <PersonaRow key={p.id} persona={p} clis={clis} onChange={(next) => onChange(p.id, next)} onAddSub={onAddSub} onRemoveSub={onRemoveSub} onUpdateSub={onUpdateSub} />)}
       </div>
     </div>
