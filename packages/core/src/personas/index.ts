@@ -5,6 +5,7 @@ export { mergePersona, PersonaMergeError } from './merge.js'
 export {
   loadPersonaDelta,
   loadEffectivePersona,
+  listEffectivePersonas,
   resolveEffectivePersona,
   PersonaDeltaLoadError,
   type PersonaSources,

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseFrontmatter } from './frontmatter.js'
 import { loadPersona } from './loader.js'
@@ -58,6 +58,26 @@ export function resolveEffectivePersona(sources: PersonaSources, assignments: As
   return { ...definition, cli: assignment.cli, model: assignment.model }
 }
 
+export function listEffectivePersonas(sources: PersonaSources): readonly Persona[] {
+  const baseIds = new Set(listMarkdownIds(sources.baseDir).filter((id) => id !== 'shared-standards'))
+  const personas: Persona[] = []
+
+  for (const id of baseIds) {
+    personas.push(loadEffectivePersona(sources.baseDir, sources.deltaDir, id))
+  }
+
+  for (const id of listMarkdownIds(sources.repoPersonaDir)) {
+    if (baseIds.has(id)) continue
+    try {
+      personas.push(loadPersona(sources.repoPersonaDir, id))
+    } catch {
+      /* not a persona definition */
+    }
+  }
+
+  return [...personas].sort((a: Persona, b: Persona) => a.id.localeCompare(b.id))
+}
+
 function asString(value: string | string[] | undefined, field: string, file: string): string {
   if (typeof value !== 'string' || value === '') {
     throw new PersonaDeltaLoadError(`persona delta ${file}: frontmatter "${field}" must be a non-empty string`, file)
@@ -73,6 +93,13 @@ function optionalString(value: string | string[] | undefined, field: string, fil
 function normalizeWriteScope(value: string | string[] | undefined): readonly string[] | undefined {
   if (value === undefined) return undefined
   return Array.isArray(value) ? value : [value]
+}
+
+function listMarkdownIds(dir: string): readonly string[] {
+  if (!existsSync(dir)) return []
+  return readdirSync(dir)
+    .filter((name) => name.endsWith('.md'))
+    .map((name) => name.slice(0, -3))
 }
 
 function withOptional<K extends keyof PersonaDelta>(

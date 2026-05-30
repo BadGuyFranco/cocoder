@@ -46,6 +46,7 @@ export {
   PersonaMergeError,
   loadPersonaDelta,
   loadEffectivePersona,
+  listEffectivePersonas,
   resolveEffectivePersona,
   PersonaDeltaLoadError,
 } from './personas/index.js'

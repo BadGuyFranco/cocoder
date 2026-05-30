@@ -77,11 +77,17 @@ describe('Oz read surfaces', () => {
     )
     await writeFile(join(home, 'cocoder', 'priorities', 'demo.md'), `---\nid: demo\ntitle: Demo priority\n---\nDo the small thing.`)
     await writeFile(join(home, 'cocoder', 'priorities', 'AGENTS.md'), `# Priorities registry\nno frontmatter here`)
+    await mkdir(join(home, 'cocoder', 'personas', 'deltas'))
     await writeFile(
-      join(home, 'cocoder', 'personas', 'bob.md'),
-      `---\nid: bob\nlabel: Builder\nrole: builder\nwriteScope:\n  - packages/**\n---\nBob body`,
+      join(home, 'cocoder', 'personas', 'deltas', 'bob.md'),
+      `---\nid: bob\nlabel: Repo Bob\nwriteScope:\n  - cocoder/**\n---\nRepo Bob body`,
+    )
+    await writeFile(
+      join(home, 'cocoder', 'personas', 'phil.md'),
+      `---\nid: phil\nlabel: Phil\nrole: repo-only\nwriteScope:\n  - plugins/**\n---\nPhil body`,
     )
     await writeFile(join(home, 'cocoder', 'personas', 'shared-standards.md'), `# Shared standards\nno frontmatter`)
+    await writeFile(join(home, 'cocoder', 'personas', 'AGENTS.md'), `# Personas registry\nno frontmatter here`)
     await writeFile(
       join(home, 'cocoder', 'personas', 'assignments.json'),
       JSON.stringify({ personas: { bob: { cli: 'codex', model: '' } } }),
@@ -107,11 +113,23 @@ describe('Oz read surfaces', () => {
     expect(r.json.priorities[0]).toMatchObject({ title: 'Demo priority' })
   })
 
-  test('GET /workspaces/:id/personas merges defs with assignments, skips shared-standards.md', async () => {
+  test('GET /workspaces/:id/personas lists effective personas with assignments', async () => {
     const r = await get(oz!, '/workspaces/cocoder/personas')
     expect(r.status).toBe(200)
-    expect(r.json.personas.map((p: any) => p.id)).toEqual(['bob'])
-    expect(r.json.personas[0]).toMatchObject({ label: 'Builder', cli: 'codex', model: '', writeScope: ['packages/**'] })
+    const personas = r.json.personas as Array<{ id: string; label: string; writeScope: readonly string[]; cli: string | null; model: string | null }>
+    expect(personas.map((p) => p.id)).toEqual(['bob', 'deb', 'oscar', 'phil'])
+    expect(personas.find((p) => p.id === 'bob')).toMatchObject({
+      label: 'Repo Bob',
+      cli: 'codex',
+      model: '',
+      writeScope: ['packages/**', 'cocoder/**'],
+    })
+    expect(personas.find((p) => p.id === 'phil')).toMatchObject({
+      label: 'Phil',
+      cli: null,
+      model: null,
+      writeScope: ['plugins/**'],
+    })
   })
 
   test('GET /workspaces/:id/priorities → 404 for an unknown workspace', async () => {
