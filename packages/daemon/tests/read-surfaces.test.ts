@@ -118,11 +118,12 @@ describe('Oz read surfaces', () => {
     expect(r.status).toBe(200)
     const personas = r.json.personas as Array<{ id: string; label: string; writeScope: readonly string[]; cli: string | null; model: string | null }>
     expect(personas.map((p) => p.id)).toEqual(['bob', 'deb', 'oscar', 'phil'])
+    // base bob is repo-agnostic (writeScope []), so the effective scope is whatever the repo delta grants.
     expect(personas.find((p) => p.id === 'bob')).toMatchObject({
       label: 'Repo Bob',
       cli: 'codex',
       model: '',
-      writeScope: ['packages/**', 'cocoder/**'],
+      writeScope: ['cocoder/**'],
     })
     expect(personas.find((p) => p.id === 'phil')).toMatchObject({
       label: 'Phil',
