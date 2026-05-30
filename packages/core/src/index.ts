@@ -44,6 +44,9 @@ export {
   resolvePersona,
   mergePersona,
   PersonaMergeError,
+  loadPersonaDelta,
+  loadEffectivePersona,
+  PersonaDeltaLoadError,
 } from './personas/index.js'
 
 export { loadPriority, type Priority } from './priorities/index.js'

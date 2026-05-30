@@ -2,3 +2,4 @@ export type { Persona, PersonaDelta, PersonaAssignment, Assignments, ResolvedPer
 export { parseFrontmatter, type Frontmatter } from './frontmatter.js'
 export { loadPersona, loadAssignments, isPersonaEnabled, resolvePersona } from './loader.js'
 export { mergePersona, PersonaMergeError } from './merge.js'
+export { loadPersonaDelta, loadEffectivePersona, PersonaDeltaLoadError } from './effective.js'
