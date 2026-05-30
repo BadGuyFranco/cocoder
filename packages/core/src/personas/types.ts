@@ -13,6 +13,17 @@ export interface Persona {
   readonly body: string
 }
 
+export interface PersonaDelta {
+  /** Base persona id this delta extends. */
+  readonly id: string
+  readonly label?: string
+  readonly role?: string
+  /** Additional write-scope globs appended after the base scope with stable de-duplication. */
+  readonly writeScope?: readonly string[]
+  /** Markdown appended after the base persona body. Blank/whitespace-only means no body delta. */
+  readonly body?: string
+}
+
 export interface PersonaAssignment {
   /** Adapter id — which CLI runs this persona (e.g. "claude", "codex"). */
   readonly cli: string
