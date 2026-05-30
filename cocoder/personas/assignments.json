@@ -1,7 +1,13 @@
 {
-  "_comment": "CLI+model assignment per persona (ADR-0005). The SOLE source of which personas are live. Edited by hand for Phase 1; Oz gains a settings editor in Phase 2. model:\"\" means the CLI's default model. A per-machine override may live in cocoder/local/assignments.json.",
+  "_comment": "CLI+model assignment per persona, with optional per-(persona, Play) overrides (ADR-0005). The SOLE source of which personas are live. Edited by hand for Phase 1; Oz gains a settings editor in Phase 2. model:\"\" means the CLI's default model. A per-machine override may live in cocoder/local/assignments.json.",
   "personas": {
-    "oscar": { "cli": "claude", "model": "" },
+    "oscar": {
+      "cli": "claude",
+      "model": "",
+      "plays": {
+        "wrap-up": { "cli": "cursor-agent", "model": "" }
+      }
+    },
     "bob": { "cli": "codex", "model": "" },
     "deb": { "cli": "codex", "model": "", "enabled": true }
   }
