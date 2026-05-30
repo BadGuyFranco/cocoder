@@ -5,18 +5,20 @@ import {
   DEFAULT_OZ_PORT,
   isPersonaEnabled,
   loadAssignments,
+  loadPlay,
   loadPriority,
   makeGit,
   makeRunnerIO,
   openRunStore,
   probeDaemon,
   resolveEffectivePersona,
+  resolvePlayAssignment,
   runRun,
   type PersonaSources,
   type RunnerDeps,
 } from '@cocoder/core'
 import { getAdapter, makeAdapterRegistry } from '@cocoder/adapters'
-import { basePersonasDir } from '@cocoder/personas'
+import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import { CmuxSessionHost } from '@cocoder/session-hosts'
 import { runViaDaemon, startOzDaemon, teardownViaDaemon } from './client.js'
 
@@ -119,6 +121,8 @@ async function runStandalone(priorityId: string, resumeFromRunId?: string): Prom
       oscar,
       bob,
       deb,
+      wrapPlay: loadPlay(basePlaysDir(), 'wrap-up'),
+      wrapPlayAssignment: resolvePlayAssignment(assignments, 'oscar', 'wrap-up'),
       sharedStandards,
       runsRoot,
       pickup,

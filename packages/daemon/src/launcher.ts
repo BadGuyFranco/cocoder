@@ -11,7 +11,9 @@ import { join } from 'node:path'
 import {
   isPersonaEnabled,
   loadAssignments,
+  loadPlay,
   loadPriority,
+  resolvePlayAssignment,
   resolveEffectivePersona,
   runRun,
   type PersonaSources,
@@ -20,7 +22,7 @@ import {
   type SessionHost,
   type Workspace,
 } from '@cocoder/core'
-import { basePersonasDir } from '@cocoder/personas'
+import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import type { OzContext } from './context.js'
 import { findWorkspace } from './registry.js'
 import { appendAudit } from './audit.js'
@@ -72,6 +74,8 @@ async function buildRunInput(ctx: OzContext, workspaceId: string, priorityId: st
     oscar: resolveEffectivePersona(sources, assignments, 'oscar'),
     bob: resolveEffectivePersona(sources, assignments, 'bob'),
     deb: isPersonaEnabled(assignments, 'deb') ? resolveEffectivePersona(sources, assignments, 'deb') : undefined,
+    wrapPlay: loadPlay(basePlaysDir(), 'wrap-up'),
+    wrapPlayAssignment: resolvePlayAssignment(assignments, 'oscar', 'wrap-up'),
     sharedStandards,
     runsRoot: ctx.runsRoot,
     pickup,
