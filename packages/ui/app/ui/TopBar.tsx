@@ -40,7 +40,7 @@ function WorkspaceTabs({ workspaces, loadedIds, activeId, runsMap, onSelect, onC
       <div ref={adderRef} style={{ position: 'relative', flexShrink: 0 }}>
         <button className="oz-ws-tab-add" onClick={() => setAdderOpen((o) => !o)} title="Load another workspace"><Icon name="plus" size={13} /></button>
         {adderOpen && (
-          <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, minWidth: 320, background: '#332D27', border: '1px solid var(--cb-border-strong)', borderRadius: 'var(--cb-radius-lg)', boxShadow: '0 8px 24px rgba(0,0,0,0.55), inset 0 1px 0 0 var(--cb-glass-highlight)', padding: 6, zIndex: 50 }}>
+          <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, minWidth: 320, background: 'var(--cb-surface-raised)', border: '1px solid var(--cb-border-strong)', borderRadius: 'var(--cb-radius-lg)', boxShadow: '0 8px 24px rgba(0,0,0,0.55), inset 0 1px 0 0 var(--cb-glass-highlight)', padding: 6, zIndex: 50 }}>
             <div style={{ padding: '6px 10px 8px', fontFamily: 'var(--cb-font-display)', fontSize: 9.5, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--cb-text-muted)' }}>Load workspace</div>
             {unloaded.length === 0 ? (
               <div style={{ padding: '10px 12px', fontSize: 11.5, color: 'var(--cb-text-muted)' }}>All workspaces already loaded.</div>
