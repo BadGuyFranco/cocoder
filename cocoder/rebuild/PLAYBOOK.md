@@ -102,21 +102,25 @@ Oz/the DB; one line each, derived from each Playbook (not restated), no owner/ro
 F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones in
 `cocoder/priorities/backlog/`. See [`../priorities/AGENTS.md`](../priorities/AGENTS.md).
 
+**Done (archived to `zArchive/v2/`):**
+- `objective-presence-gate` — ADR-0010 minimal-slice gate. ✅ (`bc6c3e8`).
+- `oscar-orchestrates-bob` — ADR-0013 tier 1: multi-atom loop + the reusable monitor primitive (Deb/Oz
+  reuse it). ✅ built + validated live on `run_15`; plus run-id/labels/commit-gate hardening + atom isolation.
+
 **Active (launchable; recommended sequence — the `priorities/` directory is the live index):**
-1. `objective-presence-gate` — ADR-0010 minimal-slice gate. ✅ done (`bc6c3e8`), archived to `zArchive/v2/`.
-2. `oscar-orchestrates-bob` — ADR-0013 tier 1: Oscar drives Bob through a multi-atom plan with
-   continuous observation + an Oscar-decided wrap-up. **Foundational** — the run-lifecycle redesign and
-   the reusable monitor primitive Deb (tier 2) and Oz (tier 3) build on. Large build → plan + adversarial
-   review first. (Being handed to a fresh Claude Code session.)
-3. `deb` — debugger persona; **tier 2** of the observation hierarchy (watch + nudge Oscar; observe-only
-   on Bob), built on `oscar-orchestrates-bob`. In flight (slice 1 done; held-back commit pending).
-4. `base-and-extension-personas` — ADR-0012 living base + repo deltas merged at load. Foundational
-   (persona loader/storage) and the thing that makes Deb's "fix the base for everyone" path real —
-   reconcile with the in-flight `deb` run.
-5. `plays-mechanism` — ADR-0005 Plays mechanism, proven by extracting **wrap-up** as the first Play
-   (cheap-model tiering); `documentation` is the fast-follow. Foundation for the deferred two.
-6. `full-oz-dashboard` — the v1-designed control plane, earned in slices; the road to feature-complete
-   (and where priority ordering eventually lands).
+1. `deb` — debugger persona; **tier 2** of the observation hierarchy (watch + nudge Oscar; observe-only
+   on Bob), built on `oscar-orchestrates-bob`. **Triage spine built + committed** (the runner hands each
+   fault to Deb; she judges; the runner records + writes the disposition). Remaining: the live
+   seeded-fault validation (its "verified when") + decide whether the cut cross-run learning loop / real-PR
+   automation is ever earned.
+2. `base-and-extension-personas` — ADR-0012 living base + repo deltas merged at load. Foundational
+   (persona loader/storage) and the thing that makes Deb's "fix the base for everyone" path real.
+3. `plays-mechanism` — ADR-0005 Plays mechanism, proven by making **wrap-up** the first Play (cheap-model
+   tiering); `documentation` is the fast-follow. Foundation for the deferred two. (Framing refreshed: the
+   loop now triggers wrap-up; the Play is the procedure Oscar runs at that trigger.)
+4. `full-oz-dashboard` — the v1-designed control plane, earned in slices; the road to feature-complete
+   (and where priority ordering eventually lands). **Now unblocked** — its tier-3 oversight reuses the
+   monitor primitive `oscar-orchestrates-bob` built, and reconciles with `deb` (Deb writes faults, Oz reads).
 
 Plus two always-available meta-priorities: `build-priorities-from-plan` (Oscar drafts priorities from
 the plan/ADRs) and `adhoc-session` (no named priority — draft one, or run a read-only review/research).

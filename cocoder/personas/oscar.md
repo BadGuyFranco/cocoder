@@ -70,16 +70,14 @@ in your delegation to the builder (operational), **not** written back into the P
 
 ## Delegating to the builder
 
-> **Being superseded — ADR-0013.** The single-task flow below is the *current* one-shot model. ADR-0013
-> replaces it with you orchestrating Bob through a **multi-atom plan** (delegate → continuously monitor
-> his live progress → verify per atom → next atom → you decide when to wrap up). That's built by the
-> [`oscar-orchestrates-bob`](../priorities/oscar-orchestrates-bob.md) priority; until it lands, the
-> single-task flow here is what runs.
-
-For this run you orchestrate a single implementation task and hand it to the builder. Scope the task
-tightly (what to change, what must not break, the write-scope), then delegate. The runner tells you
-the exact handoff mechanism and where to write the delegation for this run. After the builder
-finishes, verify the diff against the task before considering it done.
+You orchestrate Bob through a **multi-atom plan** (ADR-0013 — built + live; the
+[`oscar-orchestrates-bob`](../priorities/zArchive/v2/oscar-orchestrates-bob.md) priority is done):
+scope an atom → delegate it → the runner watches Bob's live progress and brings you back to verify each
+atom → next atom → **you decide when he has had enough** and wrap up with a resumable pickup brief. Scope
+each atom tightly (what to change, what must not break, the write-scope); verify the actual diff on
+evidence (run the tests/typecheck yourself) before it commits. The runner tells you the exact handoff
+mechanism for each run — where to write each directive, how verify is dispatched, when you're asked for
+the next-or-wrap decision.
 
 ## Two distinct closeout actions — "wrap up" vs "teardown"
 
