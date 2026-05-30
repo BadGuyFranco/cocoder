@@ -82,34 +82,34 @@ async function runSmoke(win: BrowserWindow): Promise<void> {
         console.error(`SMOKE: screenshot ${label} failed — ${(e as Error).message}`)
       }
     }
-    // Modal stacking proof: open the New Workspace modal and screenshot it — verifies it paints OVER
-    // the glass panels (the backdrop-filter stacking-context bug), not behind them.
+    // Overlay-surface proof: the workspace-tab "+" dropdown and the New Workspace modal must each (a)
+    // paint ON TOP of the content (elementFromPoint), and (b) be OPAQUE — computed backgroundColor must
+    // be solid rgb(), not rgba() with alpha — so a glass/translucent surface that lets the blurred
+    // dashboard bleed through fails the smoke loudly (exit 1).
     try {
-      await win.webContents.executeJavaScript(
-        `(() => { const d=[...document.querySelectorAll('.oz-nav-item')].find(x=>x.textContent.trim()==='Dashboard'); if(d) d.click(); return true })()`,
-      )
-      await wait(300)
+      await win.webContents.executeJavaScript(`(() => { const d=[...document.querySelectorAll('.oz-nav-item')].find(x=>x.textContent.trim()==='Dashboard'); if(d) d.click(); return !!d })()`)
+      await wait(500)
       await win.webContents.executeJavaScript(`(() => { const b=document.querySelector('.oz-ws-tab-add'); if(b) b.click(); return !!b })()`)
-      await wait(250)
-      // Probe the adder dropdown paints on top of the content panels (not just that it's clickable).
+      await wait(500)
       const dd = await win.webContents.executeJavaScript(
-        `(() => { const n=[...document.querySelectorAll('*')].find(x=>x.children.length===0 && /New workspace/.test(x.textContent||'')); if(!n) return {open:false}; const r=n.getBoundingClientRect(); const t=document.elementFromPoint(r.left+r.width/2, r.top+r.height/2); return {open:true, onTop: n.contains(t)||t===n} })()`,
+        `(() => { const n=[...document.querySelectorAll('span')].find(x=>(x.textContent||'').includes('New workspace')); if(!n) return {open:false}; const pop=n.parentElement; const r=pop.getBoundingClientRect(); const t=document.elementFromPoint(r.left+8,r.top+8); const bg=getComputedStyle(pop).backgroundColor; return {open:true, onTop: pop.contains(t)||t===pop, bg, opaque: /^rgb\\(/.test(bg)} })()`,
       )
-      console.log(`SMOKE: adder-dropdown open=${dd.open} paintsOnTop=${dd.onTop}`)
-      if (dd.open && !dd.onTop) throw new Error('adder dropdown is OPEN but NOT on top — topbar stacking bug')
-      await win.webContents.executeJavaScript(
-        `(() => { const n=[...document.querySelectorAll('*')].find(x=>x.children.length===0 && /New workspace/.test(x.textContent||'')); if(n) n.click(); return !!n })()`,
+      writeFileSync(join(dir, 'dropdown.png'), (await win.webContents.capturePage()).toPNG())
+      console.log(`SMOKE: dropdown open=${dd.open} onTop=${dd.onTop} opaque=${dd.opaque} bg=${dd.bg}`)
+      if (!dd.open) throw new Error('adder dropdown did not open')
+      if (!dd.onTop || !dd.opaque) throw new Error(`dropdown not solid-on-top (onTop=${dd.onTop} opaque=${dd.opaque} bg=${dd.bg})`)
+      await win.webContents.executeJavaScript(`(() => { const n=[...document.querySelectorAll('span')].find(x=>(x.textContent||'').includes('New workspace')); if(n) n.click(); return !!n })()`)
+      await wait(500)
+      const m = await win.webContents.executeJavaScript(
+        `(() => { const h=[...document.querySelectorAll('h2')].find(x=>x.textContent.trim()==='New workspace'); if(!h) return {open:false}; let card=h; while(card && !/border-radius/.test(card.getAttribute('style')||'')) card=card.parentElement; if(!card) card=h.parentElement.parentElement.parentElement; const r=card.getBoundingClientRect(); const t=document.elementFromPoint(r.left+12,r.top+12); const bg=getComputedStyle(card).backgroundColor; return {open:true, onTop: card.contains(t)||t===card, bg, opaque: /^rgb\\(/.test(bg)} })()`,
       )
-      await wait(350)
-      const probe = await win.webContents.executeJavaScript(
-        `(() => { const h=[...document.querySelectorAll('h2')].find(x=>x.textContent.trim()==='New workspace'); if(!h) return {open:false}; const r=h.getBoundingClientRect(); const cx=r.left+r.width/2, cy=r.top+r.height/2; const top=document.elementFromPoint(cx,cy); return {open:true, onTop: h.contains(top)||top===h} })()`,
-      )
-      const img = await win.webContents.capturePage()
-      writeFileSync(join(dir, 'modal.png'), img.toPNG())
-      console.log(`SMOKE: modal open=${probe.open} paintsOnTop=${probe.onTop}`)
-      if (probe.open && !probe.onTop) throw new Error('modal is OPEN but NOT on top — stacking bug not fixed')
+      writeFileSync(join(dir, 'modal.png'), (await win.webContents.capturePage()).toPNG())
+      console.log(`SMOKE: modal open=${m.open} onTop=${m.onTop} opaque=${m.opaque} bg=${m.bg}`)
+      if (!m.open) throw new Error('New Workspace modal did not open')
+      if (!m.onTop || !m.opaque) throw new Error(`modal not solid-on-top (onTop=${m.onTop} opaque=${m.opaque} bg=${m.bg})`)
     } catch (e) {
-      console.error(`SMOKE: modal check — ${(e as Error).message}`)
+      code = 1
+      console.error(`SMOKE: overlay check FAILED — ${(e as Error).message}`)
     }
     console.log(`SMOKE OK — health=${health.state}, screenshots in ${dir}`)
   } catch (e) {
