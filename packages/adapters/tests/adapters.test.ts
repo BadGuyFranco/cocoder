@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import type { Exec, ExecResult } from '../src/index.js'
-import { ClaudeAdapter, CodexAdapter, getAdapter, makeAdapterRegistry } from '../src/index.js'
+import { ClaudeAdapter, CodexAdapter, CursorAgentAdapter, getAdapter, makeAdapterRegistry } from '../src/index.js'
 
 const fakeExec =
   (responses: Record<string, ExecResult>): Exec =>
@@ -26,6 +26,17 @@ describe('build() pins the spike invocations', () => {
 
     const noModel = new CodexAdapter().build({ prompt: 'do it', model: '', cwd: '/repo', outPath: '/run/last.txt' })
     expect(noModel.args).toEqual(['--dangerously-bypass-approvals-and-sandbox', 'do it'])
+  })
+
+  test('cursor-agent: headless print-mode, output captured; model optional', () => {
+    const built = new CursorAgentAdapter().build({ prompt: 'wrap it up', model: 'gpt-5', cwd: '/repo', outPath: '/run/out.txt' })
+    expect(built.command).toBe('cursor-agent')
+    expect(built.args).toEqual(['-p', '--output-format', 'text', '--force', '--trust', '--model', 'gpt-5', 'wrap it up'])
+    expect(built.stdoutPath).toBe('/run/out.txt')
+
+    const noModel = new CursorAgentAdapter().build({ prompt: 'wrap it up', model: '', cwd: '/repo', outPath: '/run/out.txt' })
+    expect(noModel.args).toEqual(['-p', '--output-format', 'text', '--force', '--trust', 'wrap it up'])
+    expect(noModel.stdoutPath).toBe('/run/out.txt')
   })
 })
 
@@ -65,6 +76,25 @@ describe('preflight() (injected exec)', () => {
     })
     expect((await new CodexAdapter(exec).preflight('')).ok).toBe(true)
   })
+
+  test('cursor-agent: installed + list-models succeeds → ok', async () => {
+    const exec = fakeExec({
+      'cursor-agent --version': { code: 0, stdout: '0.1.0', stderr: '' },
+      'cursor-agent --list-models': { code: 0, stdout: 'gpt-5\nsonnet-4', stderr: '' },
+    })
+    const r = await new CursorAgentAdapter(exec).preflight('gpt-5')
+    expect(r.ok).toBe(true)
+    expect(r.checks.find((c) => c.name === 'authenticated')?.ok).toBe(true)
+    expect(r.checks.find((c) => c.name === 'model')?.detail).toBe('gpt-5')
+  })
+
+  test('cursor-agent: not installed → not ok, auth skipped', async () => {
+    const r = await new CursorAgentAdapter(fakeExec({})).preflight('')
+    expect(r.ok).toBe(false)
+    expect(r.checks.find((c) => c.name === 'installed')?.ok).toBe(false)
+    expect(r.checks.find((c) => c.name === 'authenticated')?.detail).toBe('skipped (cursor-agent not installed)')
+    expect(r.checks.find((c) => c.name === 'model')?.detail).toBe('(cursor-agent default)')
+  })
 })
 
 describe('registry', () => {
@@ -72,6 +102,8 @@ describe('registry', () => {
     const reg = makeAdapterRegistry()
     expect(getAdapter('claude', reg).id).toBe('claude')
     expect(getAdapter('codex', reg).id).toBe('codex')
-    expect(() => getAdapter('cursor-agent', reg)).toThrow(/no adapter for cli/)
+    expect(getAdapter('cursor-agent', reg).id).toBe('cursor-agent')
+    expect([...reg.keys()]).toContain('cursor-agent')
+    expect(() => getAdapter('missing', reg)).toThrow(/no adapter for cli/)
   })
 })

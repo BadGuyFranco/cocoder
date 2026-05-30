@@ -2,15 +2,17 @@
 import type { Adapter } from '@cocoder/core'
 import { ClaudeAdapter } from './claude.js'
 import { CodexAdapter } from './codex.js'
+import { CursorAgentAdapter } from './cursor-agent.js'
 import { type Exec } from './exec.js'
 
 export { ClaudeAdapter } from './claude.js'
 export { CodexAdapter } from './codex.js'
+export { CursorAgentAdapter } from './cursor-agent.js'
 export { defaultExec, type Exec, type ExecResult } from './exec.js'
 
 /** Build the built-in adapter registry, keyed by adapter id (a persona assignment's `cli`). */
 export function makeAdapterRegistry(exec?: Exec): Map<string, Adapter> {
-  const adapters: Adapter[] = [new ClaudeAdapter(exec), new CodexAdapter(exec)]
+  const adapters: Adapter[] = [new ClaudeAdapter(exec), new CodexAdapter(exec), new CursorAgentAdapter(exec)]
   return new Map(adapters.map((a) => [a.id, a]))
 }
 
