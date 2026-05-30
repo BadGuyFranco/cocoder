@@ -1,0 +1,9 @@
+{
+    "workspaces": [
+        {
+            "id": "cocoder",
+            "name": "CoCoder (dogfood)",
+            "path": "/Volumes/NAS LOCAL/CoCoder"
+        }
+    ]
+}
