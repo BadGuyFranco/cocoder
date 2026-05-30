@@ -112,6 +112,34 @@ async function runSmoke(win: BrowserWindow): Promise<void> {
       code = 1
       console.error(`SMOKE: overlay check FAILED — ${(e as Error).message}`)
     }
+    // Tweak captures: close the modal, then screenshot the collapsed sidebar (icon rail) on the
+    // Dashboard. Verifies the collapse toggle actually narrows the shell.
+    try {
+      await win.webContents.executeJavaScript(`(() => { const x=[...document.querySelectorAll('button[aria-label="Close (Esc)"]')][0]; if(x) x.click(); return true })()`)
+      await wait(300)
+      await win.webContents.executeJavaScript(`(() => { const b=document.querySelector('.oz-collapse-btn'); if(b) b.click(); return !!b })()`)
+      await wait(400)
+      const sb = await win.webContents.executeJavaScript(`(() => { const s=document.querySelector('.oz-sidebar'); return { collapsed: s.classList.contains('collapsed'), width: Math.round(s.getBoundingClientRect().width) } })()`)
+      writeFileSync(join(dir, 'sidebar-collapsed.png'), (await win.webContents.capturePage()).toPNG())
+      console.log(`SMOKE: sidebar collapsed=${sb.collapsed} width=${sb.width}px`)
+      // Light-mode overlay proof: flip to light theme, re-open the adder dropdown, assert it's still
+      // opaque AND not a dark surface (the theme-aware --cb-surface-raised must flip to warm linen).
+      await win.webContents.executeJavaScript(`document.documentElement.setAttribute('data-theme','light')`)
+      await wait(200)
+      await win.webContents.executeJavaScript(`(() => { if(document.querySelector('.oz-sidebar').classList.contains('collapsed')) document.querySelector('.oz-collapse-btn').click(); return true })()`)
+      await wait(300)
+      await win.webContents.executeJavaScript(`(() => { const b=document.querySelector('.oz-ws-tab-add'); if(b) b.click(); return !!b })()`)
+      await wait(400)
+      const lt = await win.webContents.executeJavaScript(
+        `(() => { const solid=(el)=>{const c=getComputedStyle(el).backgroundColor; return /^rgb\\(/.test(c)?c:null}; const n=[...document.querySelectorAll('span')].find(x=>(x.textContent||'').includes('New workspace')); if(!n) return {open:false}; let pop=n; let bg=null; while(pop && !(bg=solid(pop))) pop=pop.parentElement; if(!pop) return {open:true, opaque:false}; const m=bg.match(/\\d+/g).map(Number); const light=(m[0]+m[1]+m[2])/3 > 150; return {open:true, opaque:true, bg, light} })()`,
+      )
+      writeFileSync(join(dir, 'dropdown-light.png'), (await win.webContents.capturePage()).toPNG())
+      console.log(`SMOKE: light-dropdown open=${lt.open} opaque=${lt.opaque} light=${lt.light} bg=${lt.bg}`)
+      if (lt.open && (!lt.opaque || !lt.light)) throw new Error(`light-mode dropdown wrong (opaque=${lt.opaque} light=${lt.light} bg=${lt.bg})`)
+    } catch (e) {
+      code = 1
+      console.error(`SMOKE: tweak capture FAILED — ${(e as Error).message}`)
+    }
     console.log(`SMOKE OK — health=${health.state}, screenshots in ${dir}`)
   } catch (e) {
     code = 1

@@ -39,6 +39,9 @@ button { font-family: inherit; }
   border-right: 1px solid var(--cb-border);
   box-shadow: inset 0 1px 0 0 var(--cb-glass-highlight);
   position: relative;
+  /* Above .oz-content so the collapsed-rail hover tooltips, which extend past the sidebar's right
+     edge, paint OVER the main content instead of being covered by it. */
+  z-index: 30;
 }
 .oz-sidebar::after {
   content: '';
@@ -72,10 +75,10 @@ button { font-family: inherit; }
 /* Hover tooltip shown only in collapsed mode */
 .oz-nav-tip {
   position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%);
-  white-space: nowrap; background: #332D27; color: var(--cb-text);
+  white-space: nowrap; background: var(--cb-surface-raised); color: var(--cb-text);
   border: 1px solid var(--cb-border-strong); border-radius: var(--cb-radius-md);
   padding: 5px 10px; font-size: 12px; pointer-events: none;
-  opacity: 0; z-index: 60; box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  opacity: 0; z-index: 60; box-shadow: 0 4px 16px rgba(0,0,0,0.35);
   transition: opacity var(--cb-duration-fast) var(--cb-ease-default);
 }
 .oz-nav-item:hover .oz-nav-tip { opacity: 1; }
