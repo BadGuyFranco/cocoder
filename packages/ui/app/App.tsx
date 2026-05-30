@@ -1,118 +1,130 @@
-// The shell: persistent 5-section left nav (exactly Dashboard · Workspaces · CLIs · Personas ·
-// Settings — Runs and Priorities are PANELS inside Dashboard, never nav items), a workspace picker
-// that switches the whole context, and a live connection indicator. Renders the active section.
-import { useEffect, useState } from 'react'
-import type { ConnectionState, Settings as Prefs, Workspace } from '../electron/ipc-contract.ts'
-import { DEFAULT_SETTINGS } from '../electron/ipc-contract.ts'
-import { getHealth, listWorkspaces } from './client.ts'
-import { Loading, ErrorNote } from './components.tsx'
-import { Dashboard } from './sections/Dashboard.tsx'
-import { Workspaces } from './sections/Workspaces.tsx'
-import { CLIs } from './sections/CLIs.tsx'
-import { Personas } from './sections/Personas.tsx'
-import { Settings } from './sections/Settings.tsx'
+// Oz renderer root — rebuilt against the V1 claude.ai/design prototype (packages/ui/design-ref/).
+// Composes the Fusion shell (Sidebar + TopBar workspace tabs) and routes to the Dashboard + the four
+// screens (Workspaces · CLIs · Personas · Settings) with the two creation modals. This slice renders
+// the design-faithful view-model from the ported seed (fixture parity, fully interactive); the daemon
+// adapter is wired in the next slice (the existing electron/ plumbing is untouched).
+import { useEffect, useMemo, useState } from 'react'
+import { Sidebar, type Route } from './ui/Sidebar.tsx'
+import { TopBar } from './ui/TopBar.tsx'
+import { Dashboard } from './sections/dashboard/Dashboard.tsx'
+import { WorkspacesScreen } from './sections/Workspaces.tsx'
+import { CLIsScreen } from './sections/CLIs.tsx'
+import { PersonasScreen } from './sections/Personas.tsx'
+import { SettingsScreen } from './sections/Settings.tsx'
+import { NewWorkspaceModal, CraftPersonaModal } from './sections/modals.tsx'
+import { seed, DEFAULT_SETTINGS, type ChatMessage, type Cli, type Persona, type Priority, type Settings, type SubAgent, type Workspace } from './model.ts'
 
-type SectionId = 'dashboard' | 'workspaces' | 'clis' | 'personas' | 'settings'
-const NAV: { id: SectionId; label: string }[] = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'workspaces', label: 'Workspaces' },
-  { id: 'clis', label: 'CLIs' },
-  { id: 'personas', label: 'Personas' },
-  { id: 'settings', label: 'Settings' },
-]
+const USER = seed.workspaces.length ? { initials: 'AF', name: 'Anthony Franco', role: 'founder' } : { initials: 'AF', name: 'Anthony Franco', role: 'founder' }
+const ROUTE_TITLE: Record<Route, string> = { dashboard: 'Dashboard', workspaces: 'Workspaces', clis: 'CLIs', personas: 'Personas', settings: 'Settings' }
 
-const CONN_LABEL: Record<ConnectionState, string> = {
-  connected: 'Daemon connected',
-  connecting: 'Connecting…',
-  offline: 'Daemon offline',
-  fixtures: 'Fixture replay',
+const seedSettings = (): Settings => {
+  // The prototype settings nest extra keys; map onto our typed shape, falling back to defaults.
+  const s = (seed as unknown as { settings?: Partial<Settings> }).settings
+  return {
+    preferences: { ...DEFAULT_SETTINGS.preferences, ...(s?.preferences ?? {}) },
+    watching: { ...DEFAULT_SETTINGS.watching, ...(s?.watching ?? {}) },
+    advanced: { ...DEFAULT_SETTINGS.advanced, ...(s?.advanced ?? {}) },
+  }
 }
 
-export function App(): JSX.Element {
-  const [section, setSection] = useState<SectionId>('dashboard')
-  const [conn, setConn] = useState<ConnectionState>('connecting')
-  const [sha, setSha] = useState<string>('')
-  const [workspaces, setWorkspaces] = useState<Workspace[] | null>(null)
-  const [wsId, setWsId] = useState<string>('')
-  const [prefs, setPrefs] = useState<Prefs>(DEFAULT_SETTINGS)
-  const [loadErr, setLoadErr] = useState<string>('')
+const greeting = (wsName: string): ChatMessage => ({ id: 'm0', role: 'oz', time: 'now', body: `Watching **${wsName}**. Ask me to launch a priority, reorder the queue, kick off an ad-hoc run, or just ask for status. Everything on this dashboard is something you can also ask me here.` })
 
-  useEffect(() => {
-    let live = true
-    void getHealth().then((h) => {
-      if (!live) return
-      setConn(h.state)
-      setSha(h.sha ?? '')
-    })
-    void Promise.all([listWorkspaces(), window.oz.settingsGet()]).then(([r, s]) => {
-      if (!live) return
-      setPrefs(s)
-      if (!r.ok) return setLoadErr(r.error)
-      setWorkspaces(r.data.workspaces)
-      const def = s.defaultWorkspaceId && r.data.workspaces.some((w) => w.id === s.defaultWorkspaceId) ? s.defaultWorkspaceId : ''
-      setWsId((cur) => cur || def || r.data.workspaces[0]?.id || '')
-    })
-    return () => {
-      live = false
-    }
-  }, [])
+function ozReply(text: string): ChatMessage {
+  const t = text.trim().toLowerCase()
+  let body: string
+  if (t.includes('status')) body = 'Nothing is blocked right now beyond what\'s shown. Top of the queue is next up — say **launch the next priority** and I\'ll dispatch the team.'
+  else if (t.startsWith('launch') || t.includes('launch ')) body = 'On it — dispatching the team. Watch the run summary expand on the priority row, or open it for the live transcript.'
+  else if (t.includes('reorder') || t.includes('promote')) body = 'Reordered. Top of the queue is next up. (Drag the rows too — both stay in sync.)'
+  else body = `Got it: “${text}”. In the wired build this drives the orchestrator (POST /oz/messages); for now I\'m the design-faithful stand-in.`
+  return { id: `m${Date.now()}`, role: 'oz', time: 'now', body }
+}
 
-  function changePrefs(patch: Partial<Prefs>): void {
-    void window.oz.settingsSet(patch).then(setPrefs)
+export function App() {
+  const [route, setRoute] = useState<Route>('dashboard')
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+  const [workspaces, setWorkspaces] = useState<Workspace[]>(seed.workspaces)
+  const [activeId, setActiveId] = useState(workspaces[0]?.id ?? '')
+  const [loadedIds, setLoadedIds] = useState<string[]>(workspaces[0] ? [workspaces[0].id] : [])
+
+  const seedPriorities = (seed as unknown as { priorities?: Record<string, Priority[]> }).priorities ?? {}
+  const seedChat = (seed as unknown as { ozChat?: Record<string, ChatMessage[]> }).ozChat ?? {}
+  const [prioritiesByWs, setPrioritiesByWs] = useState<Record<string, Priority[]>>(() => Object.fromEntries(workspaces.map((w) => [w.id, [...(seedPriorities[w.id] ?? [])]])))
+  const runsByWs = seed.runsByWs
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null)
+  const [runHistoryOpen, setRunHistoryOpen] = useState(false)
+  const [msgsByWs, setMsgsByWs] = useState<Record<string, ChatMessage[]>>(() => Object.fromEntries(workspaces.map((w) => [w.id, [...(seedChat[w.id] ?? [])]])))
+  const [ozTyping, setOzTyping] = useState(false)
+
+  // global-ish config (the prototype treats these as workspace-independent)
+  const [personas, setPersonas] = useState<Persona[]>(seed.personas)
+  const [clis, setClis] = useState<Cli[]>(seed.clis)
+  const [dependencies, setDependencies] = useState(seed.dependencies)
+  const [settings, setSettings] = useState<Settings>(seedSettings)
+  const [newWsOpen, setNewWsOpen] = useState(false)
+  const [craftOpen, setCraftOpen] = useState(false)
+
+  useEffect(() => { document.documentElement.setAttribute('data-theme', theme) }, [theme])
+  useEffect(() => { setTheme(settings.preferences.theme) }, [settings.preferences.theme])
+
+  const workspace = workspaces.find((w) => w.id === activeId) ?? workspaces[0]
+  const priorities = prioritiesByWs[activeId] ?? []
+  const runs = useMemo(() => runsByWs[activeId] ?? [], [runsByWs, activeId])
+  const messages = (msgsByWs[activeId] && msgsByWs[activeId].length ? msgsByWs[activeId] : [greeting(workspace?.name ?? '')])
+
+  function selectWs(id: string) { setActiveId(id); setSelectedRunId(null) }
+  function loadWs(id: string) { setLoadedIds((ids) => (ids.includes(id) ? ids : [...ids, id])); selectWs(id) }
+  function closeWs(id: string) { setLoadedIds((ids) => ids.filter((x) => x !== id)); if (activeId === id) { const next = loadedIds.find((x) => x !== id); if (next) selectWs(next) } }
+
+  function pushMsg(m: ChatMessage) { setMsgsByWs((cur) => ({ ...cur, [activeId]: [...(cur[activeId] ?? []), m] })) }
+  function onSend(text: string) {
+    pushMsg({ id: `u${Date.now()}`, role: 'user', time: 'now', body: text })
+    setOzTyping(true)
+    setTimeout(() => { setOzTyping(false); pushMsg(ozReply(text)) }, 650)
+  }
+  function reorder(from: number, to: number) {
+    setPrioritiesByWs((cur) => { const list = [...(cur[activeId] ?? [])]; const [moved] = list.splice(from, 1); list.splice(to, 0, moved); return { ...cur, [activeId]: list } })
+  }
+  function addPriority(name: string, summary: string, placeAtTop: boolean) {
+    const p: Priority = { id: `p${Date.now()}`, name, summary, status: 'ready', labels: ['persona-build'] }
+    setPrioritiesByWs((cur) => ({ ...cur, [activeId]: placeAtTop ? [p, ...(cur[activeId] ?? [])] : [...(cur[activeId] ?? []), p] }))
   }
 
-  const ws = workspaces?.find((w) => w.id === wsId)
+  // persona editing
+  const setPersona = (id: string, next: Persona) => setPersonas((ps) => ps.map((p) => (p.id === id ? next : p)))
+  const addSub = (pid: string) => setPersonas((ps) => ps.map((p) => (p.id === pid ? { ...p, subAgents: [...p.subAgents, { id: `sa${Date.now()}`, name: 'new sub', cli: 'claude-code', model: 'Default' }] } : p)))
+  const removeSub = (pid: string, sid: string) => setPersonas((ps) => ps.map((p) => (p.id === pid ? { ...p, subAgents: p.subAgents.filter((s) => s.id !== sid) } : p)))
+  const updateSub = (pid: string, sid: string, sa: SubAgent) => setPersonas((ps) => ps.map((p) => (p.id === pid ? { ...p, subAgents: p.subAgents.map((s) => (s.id === sid ? sa : s)) } : p)))
 
   return (
-    <div className="shell">
-      <aside className="nav">
-        <div className="brand">
-          Oz
-          <span className="brand-sub">control plane</span>
-        </div>
-        <nav>
-          {NAV.map((n) => (
-            <button key={n.id} className={n.id === section ? 'nav-item active' : 'nav-item'} onClick={() => setSection(n.id)}>
-              {n.label}
-            </button>
-          ))}
-        </nav>
-        <div className={`conn conn-${conn}`} title={sha ? `daemon @ ${sha.slice(0, 7)}` : undefined}>
-          <span className="dot" />
-          {CONN_LABEL[conn]}
-        </div>
-      </aside>
-
-      <main className="content">
-        <header className="topbar">
-          <label className="ws-picker">
-            <span>Workspace</span>
-            <select value={wsId} onChange={(e) => setWsId(e.target.value)} disabled={!workspaces?.length}>
-              {!workspaces?.length && <option>—</option>}
-              {workspaces?.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          {ws && <span className="ws-path" title={ws.path}>{ws.path}</span>}
-        </header>
-
-        <div className="surface">
-          {loadErr && <ErrorNote>Could not reach the Oz daemon: {loadErr}</ErrorNote>}
-          {!workspaces && !loadErr && <Loading what="Connecting to daemon" />}
-          {workspaces && (
-            <>
-              {section === 'dashboard' && <Dashboard wsId={wsId} wsName={ws?.name ?? wsId} pollMs={prefs.pollIntervalMs} />}
-              {section === 'workspaces' && <Workspaces workspaces={workspaces} activeId={wsId} />}
-              {section === 'clis' && <CLIs />}
-              {section === 'personas' && <Personas wsId={wsId} wsName={ws?.name ?? wsId} />}
-              {section === 'settings' && <Settings settings={prefs} workspaces={workspaces} onChange={changePrefs} />}
-            </>
+    <div className="oz-app">
+      <Sidebar route={route} setRoute={setRoute} runs={runs} user={USER} />
+      <div className="oz-main">
+        <TopBar title={ROUTE_TITLE[route]} route={route} workspaces={workspaces} activeId={activeId} loadedIds={loadedIds} runsMap={runsByWs} onSelectWs={selectWs} onCloseWs={closeWs} onLoadWs={loadWs} onCreateWs={() => setNewWsOpen(true)} theme={theme} setTheme={setTheme} />
+        <div className="oz-content">
+          {route === 'dashboard' && workspace && (
+            <Dashboard
+              workspace={workspace} priorities={priorities} runs={runs} ozMessages={messages}
+              selectedRunId={selectedRunId} setSelectedRunId={setSelectedRunId}
+              onReorder={reorder} onLaunch={(p) => onSend(`Launch the priority “${p.name}”.`)} onAdhoc={() => onSend('Run an ad-hoc task: ')}
+              onAddPriority={() => onSend('Draft a new priority.')} onSend={onSend} onDecision={(c) => onSend(`Decision: replay ${c} plan.`)} onRunAction={(a, id) => onSend(`${a} ${id}`)}
+              ozTyping={ozTyping} runHistoryOpen={runHistoryOpen} setRunHistoryOpen={setRunHistoryOpen}
+            />
           )}
+          {route === 'workspaces' && (
+            <WorkspacesScreen workspaces={workspaces} activeId={activeId} onChange={(ws) => setWorkspaces((all) => all.map((w) => (w.id === ws.id ? ws : w)))} onSetActive={loadWs} onCreate={() => setNewWsOpen(true)} onDelete={(id) => setWorkspaces((all) => all.filter((w) => w.id !== id))} onGotoDashboard={() => setRoute('dashboard')} />
+          )}
+          {route === 'clis' && <CLIsScreen clis={clis} onTest={(id) => setClis((cs) => cs.map((c) => (c.id === id ? { ...c, lastTested: 'just now' } : c)))} onAdd={() => onSend('Register a new CLI.')} />}
+          {route === 'personas' && <PersonasScreen personas={personas} clis={clis} onChange={setPersona} onAddSub={addSub} onRemoveSub={removeSub} onUpdateSub={updateSub} onNewPersonaAsPriority={() => setCraftOpen(true)} />}
+          {route === 'settings' && <SettingsScreen settings={settings} dependencies={dependencies} onRecheckDep={(id) => setDependencies((ds) => ds.map((d) => (d.id === id ? { ...d, lastChecked: 'just now' } : d)))} onChange={setSettings} />}
         </div>
-      </main>
+      </div>
+
+      <NewWorkspaceModal open={newWsOpen} onClose={() => setNewWsOpen(false)} onCreate={({ name, description, root }) => {
+        const id = `ws-${Date.now()}`
+        const ws: Workspace = { id, name, description, icon: 'ph-thin ph-cube', created: 'just now', roots: [{ id: `r${Date.now()}`, name: root.name, path: root.path, role: 'primary' }] }
+        setWorkspaces((all) => [...all, ws]); setPrioritiesByWs((cur) => ({ ...cur, [id]: [] })); loadWs(id); setRoute('dashboard')
+      }} />
+      <CraftPersonaModal open={craftOpen} onClose={() => setCraftOpen(false)} clis={clis} onSubmit={({ name, summary, placeAtTop }) => { addPriority(name, summary, placeAtTop); setRoute('dashboard') }} />
     </div>
   )
 }

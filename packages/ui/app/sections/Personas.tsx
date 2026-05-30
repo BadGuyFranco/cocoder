@@ -1,126 +1,101 @@
-// Personas section (the brief's "Personas", NOT "Settings"). Editable per persona: CLI + Model as two
-// LINKED dropdowns ("Default" = empty model). Saved via PUT assignments as a FULL-MAP REPLACE — we send
-// the whole map every time or we'd drop personas.
-//
-// Reality: the daemon returns personas:[] empty; the live data is the `assignments` map
-// ({id:{cli,model,enabled?}}). Oz is rendered (it IS a persona, runs headless) but isn't in that map,
-// so its row is informational. Sub-agent hierarchy + visible/headless are shown DISABLED ("coming
-// soon") — no model backing yet (ENDPOINTS OWED: extend assignment with {mode, subAgents}).
-import { useEffect, useState } from 'react'
-import type { PersonaAssignment } from '../../electron/ipc-contract.ts'
-import { getPersonas, putAssignments } from '../client.ts'
-import { Card, Loading, ErrorNote, Pending } from '../components.tsx'
+// Personas screen — the AI team (Oz · Oscar · Bob · Talia · Quinn · Doc). Each persona has CLI + Model
+// linked dropdowns, a visible/headless run-mode toggle (Oz locked headless), and a sub-agent hierarchy
+// (each sub independently CLI+Model configurable). "Craft a new persona" files a priority. Ported from
+// design-ref/screens.jsx.
+import { Icon, Button, Card, ScreenHeader } from '../ui/primitives.tsx'
+import { phicon, type Cli, type Persona, type SubAgent } from '../model.ts'
 
-const CLIS = ['claude', 'codex', 'cursor-agent', 'grok', 'gemini']
-const MODELS: Record<string, string[]> = {
-  claude: ['Opus 4.8', 'Sonnet 4.6', 'Haiku 4.5'],
-  codex: ['gpt-5-codex', 'o4-mini'],
-  'cursor-agent': [],
-  grok: ['grok-4'],
-  gemini: ['gemini-2.5-pro'],
-}
-const DEFAULT = '__default__' // sentinel for the "Default" option => empty model string
-
-type Map_ = Record<string, PersonaAssignment>
-
-export function Personas({ wsId, wsName }: { wsId: string; wsName: string }): JSX.Element {
-  const [map, setMap] = useState<Map_ | null>(null)
-  const [err, setErr] = useState('')
-  const [saved, setSaved] = useState('')
-
-  useEffect(() => {
-    let live = true
-    setMap(null)
-    setErr('')
-    setSaved('')
-    getPersonas(wsId).then((r) => {
-      if (!live) return
-      if (r.ok) setMap(r.data.assignments)
-      else setErr(r.error)
-    })
-    return () => {
-      live = false
-    }
-  }, [wsId])
-
-  function setCli(id: string, cli: string): void {
-    // linked dropdowns: changing CLI resets model to Default (models are CLI-specific)
-    setMap((m) => (m ? { ...m, [id]: { ...m[id], cli, model: '' } } : m))
-    setSaved('')
-  }
-  function setModel(id: string, sel: string): void {
-    setMap((m) => (m ? { ...m, [id]: { ...m[id], model: sel === DEFAULT ? '' : sel } } : m))
-    setSaved('')
-  }
-
-  async function save(): Promise<void> {
-    if (!map) return
-    setSaved('Saving…')
-    const r = await putAssignments(wsId, map) // FULL map — replace, not patch
-    setSaved(r.ok ? 'Saved ✓' : `Save failed: ${r.error}`)
-  }
-
-  if (err) return <div className="section"><h2>Personas — {wsName}</h2><ErrorNote>{err}</ErrorNote></div>
-  if (!map) return <div className="section"><h2>Personas — {wsName}</h2><Loading what="Loading personas" /></div>
-
-  const ids = Object.keys(map)
-
+function PersonaRow({ persona, clis, onChange, onAddSub, onRemoveSub, onUpdateSub }: {
+  persona: Persona; clis: Cli[]; onChange: (p: Persona) => void
+  onAddSub: (pid: string) => void; onRemoveSub: (pid: string, sid: string) => void; onUpdateSub: (pid: string, sid: string, sa: SubAgent) => void
+}) {
+  const isOz = persona.id === 'oz'
+  const cliEntry = clis.find((c) => c.id === persona.cli)
   return (
-    <div className="section">
-      <h2>Personas — {wsName}</h2>
-      <p className="muted">Edits write the governance assignments (full-map replace), not the database.</p>
-
-      <Card title={<>Oz <span className="tag-active">headless · in-app</span></>}>
-        <p className="muted">Oz is itself a persona — the in-app command-center chatbot and the watcher for every run. It runs headless inside this app, so it has no CLI/model row to assign here.</p>
-      </Card>
-
-      <div className="list">
-        {ids.map((id) => {
-          const a = map[id]
-          const cli = a.cli || 'claude'
-          const models = MODELS[cli] ?? []
-          const modelOptions = a.model && !models.includes(a.model) ? [a.model, ...models] : models
-          return (
-            <Card key={id} title={<>{id} {a.enabled === false && <span className="muted">(disabled)</span>}</>}>
-              <div className="persona-row">
-                <label className="field">
-                  <span>CLI</span>
-                  <select value={cli} onChange={(e) => setCli(id, e.target.value)}>
-                    {(CLIS.includes(cli) ? CLIS : [cli, ...CLIS]).map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="field">
-                  <span>Model</span>
-                  <select value={a.model || DEFAULT} onChange={(e) => setModel(id, e.target.value)}>
-                    <option value={DEFAULT}>Default</option>
-                    {modelOptions.map((mo) => (
-                      <option key={mo} value={mo}>{mo}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="field">
-                  <span>Run mode</span>
-                  <select disabled value="headless" title="visible/headless toggle — coming soon">
-                    <option value="headless">Headless</option>
-                  </select>
-                </label>
+    <Card style={{ marginBottom: 12, borderColor: isOz ? 'var(--cb-accent-15)' : 'var(--cb-border)', background: isOz ? 'linear-gradient(180deg, var(--cb-accent-subtle) 0%, var(--cb-surface-glass) 60%)' : undefined }}>
+      <div style={{ padding: '16px 18px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+          <div style={{ width: 44, height: 44, background: isOz ? 'var(--cb-accent-muted)' : 'var(--cb-bg-soft)', border: `1px solid ${isOz ? 'var(--cb-accent-15)' : 'var(--cb-border)'}`, borderRadius: 'var(--cb-radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isOz ? 'var(--cb-accent)' : 'var(--cb-text-secondary)', flexShrink: 0 }}>
+            <Icon name={phicon(persona.icon)} size={22} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 3 }}>
+              <span style={{ fontSize: 15, color: 'var(--cb-text)', fontWeight: 500 }}>{persona.name}</span>
+              {isOz && <span className="oz-chip oz-chip-running"><span className="dot" />HEADLESS</span>}
+              {persona.runMode === 'headless' && !isOz && <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 9.5, padding: '2px 6px', background: 'var(--cb-bg-soft)', color: 'var(--cb-text-muted)', borderRadius: 2 }}>HEADLESS</span>}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--cb-text-secondary)', marginBottom: 6 }}>{persona.role}</div>
+            <div style={{ fontSize: 12, color: 'var(--cb-text-muted)', lineHeight: 1.55 }}>{persona.description}</div>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--cb-border)' }}>
+          <div>
+            <label className="oz-field-label">CLI</label>
+            <select className="oz-select" value={persona.cli} onChange={(e) => onChange({ ...persona, cli: e.target.value, model: 'Default' })}>
+              {clis.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="oz-field-label">Model</label>
+            <select className="oz-select" value={persona.model} onChange={(e) => onChange({ ...persona, model: e.target.value })}>
+              {(cliEntry?.models || ['Default']).map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="oz-field-label">Run mode</label>
+            <div style={{ display: 'flex', gap: 6, padding: 2, background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)' }}>
+              {(['visible', 'headless'] as const).map((m) => (
+                <button key={m} onClick={() => !isOz && onChange({ ...persona, runMode: m })} disabled={isOz && m === 'visible'} style={{ flex: 1, padding: '6px 10px', background: persona.runMode === m ? 'var(--cb-accent-muted)' : 'transparent', color: persona.runMode === m ? 'var(--cb-accent)' : 'var(--cb-text-muted)', border: 'none', borderRadius: 3, fontSize: 11.5, fontWeight: persona.runMode === m ? 500 : 400, cursor: isOz ? 'not-allowed' : 'pointer', textTransform: 'capitalize', opacity: isOz && m === 'visible' ? 0.4 : 1 }}>{m}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div style={{ marginTop: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--cb-font-display)', fontSize: 9.5, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--cb-text-muted)', marginBottom: 10 }}>
+            <Icon name="tree-structure" size={12} />Sub-agents · {persona.subAgents.length}
+            <button onClick={() => onAddSub(persona.id)} style={{ marginLeft: 'auto', fontSize: 11, padding: '2px 8px', background: 'transparent', border: '1px solid var(--cb-border)', borderRadius: 3, color: 'var(--cb-text-muted)', cursor: 'pointer', fontFamily: 'var(--cb-font-body)', letterSpacing: 0, textTransform: 'none', fontWeight: 400 }}>+ Add</button>
+          </div>
+          {persona.subAgents.length === 0 ? (
+            <div style={{ padding: '10px 14px', background: 'var(--cb-bg-soft)', border: '1px dashed var(--cb-border)', borderRadius: 'var(--cb-radius-md)', fontSize: 11.5, color: 'var(--cb-text-muted)', textAlign: 'center' }}>No sub-agents. {persona.name} runs everything itself.</div>
+          ) : persona.subAgents.map((sa) => {
+            const subCli = clis.find((c) => c.id === sa.cli)
+            return (
+              <div key={sa.id} style={{ display: 'grid', gridTemplateColumns: '20px 1.5fr 1fr 1fr 30px', gap: 10, alignItems: 'center', padding: '10px 12px', background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', marginBottom: 6 }}>
+                <Icon name="git-fork" size={12} style={{ color: 'var(--cb-text-muted)', transform: 'rotate(180deg)' }} />
+                <input className="oz-input" value={sa.name} style={{ padding: '5px 8px', fontSize: 12, background: 'transparent', border: 'none' }} onChange={(e) => onUpdateSub(persona.id, sa.id, { ...sa, name: e.target.value })} />
+                <select className="oz-select" value={sa.cli} style={{ padding: '5px 24px 5px 8px', fontSize: 11.5 }} onChange={(e) => onUpdateSub(persona.id, sa.id, { ...sa, cli: e.target.value, model: 'Default' })}>
+                  {clis.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <select className="oz-select" value={sa.model} style={{ padding: '5px 24px 5px 8px', fontSize: 11.5 }} onChange={(e) => onUpdateSub(persona.id, sa.id, { ...sa, model: e.target.value })}>
+                  {(subCli?.models || ['Default']).map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+                <button className="oz-iconbtn" style={{ width: 24, height: 24 }} onClick={() => onRemoveSub(persona.id, sa.id)}><Icon name="x" size={11} /></button>
               </div>
-              <div className="subagents-pending">
-                <span className="pending-tag">coming soon</span> Sub-agents (persona → its sub-agents, each with its own CLI + Model) and the visible/headless toggle need a core change to the assignment model.
-              </div>
-            </Card>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
+    </Card>
+  )
+}
 
-      <div className="save-row">
-        <button className="btn" onClick={() => void save()}>Save assignments</button>
-        <span className="muted">{saved}</span>
+export function PersonasScreen({ personas, clis, onChange, onAddSub, onRemoveSub, onUpdateSub, onNewPersonaAsPriority }: {
+  personas: Persona[]; clis: Cli[]; onChange: (id: string, p: Persona) => void
+  onAddSub: (pid: string) => void; onRemoveSub: (pid: string, sid: string) => void; onUpdateSub: (pid: string, sid: string, sa: SubAgent) => void; onNewPersonaAsPriority: () => void
+}) {
+  return (
+    <div style={{ height: '100%', overflow: 'hidden', display: 'grid', gridTemplateRows: 'auto 1fr' }}>
+      <ScreenHeader title="Personas" subtitle="The AI team. Each persona has a CLI + model and may delegate work to sub-agents. Building a new persona becomes a priority for the team itself." actions={<Button variant="primary" icon="hammer" onClick={onNewPersonaAsPriority}>Craft a new persona</Button>} />
+      <div style={{ padding: '0 28px 24px', overflowY: 'auto', minHeight: 0 }}>
+        <div style={{ padding: '14px 16px', background: 'var(--cb-accent-subtle)', border: '1px solid var(--cb-accent-15)', borderRadius: 'var(--cb-radius-md)', marginBottom: 20, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <Icon name="lightbulb" size={18} style={{ color: 'var(--cb-accent)', marginTop: 1 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12.5, color: 'var(--cb-text)', fontWeight: 500, marginBottom: 3 }}>New personas are built, not configured.</div>
+            <div style={{ fontSize: 11.5, color: 'var(--cb-text-secondary)', lineHeight: 1.55 }}>Sketch what the persona should do. Oz files it as a priority and the team scaffolds the new role — prompts, sub-agents, and tests included.</div>
+          </div>
+        </div>
+        {personas.map((p) => <PersonaRow key={p.id} persona={p} clis={clis} onChange={(next) => onChange(p.id, next)} onAddSub={onAddSub} onRemoveSub={onRemoveSub} onUpdateSub={onUpdateSub} />)}
       </div>
-
-      <Pending label="Create a persona via a priority" note="Starting “make a new persona” should enqueue a workspace priority for the team to build it (not a raw form). Needs POST /workspaces/:id/priorities." />
     </div>
   )
 }

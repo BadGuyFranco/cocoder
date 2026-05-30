@@ -1,0 +1,81 @@
+// Two creation modals — NewWorkspace (name + description + primary root) and CraftPersona (sketches a
+// role and FILES IT AS A PRIORITY for the team to build, not a config form). Ported from design-ref.
+import { useEffect, useState } from 'react'
+import { Icon, Button, Modal } from '../ui/primitives.tsx'
+import type { Cli } from '../model.ts'
+
+export function NewWorkspaceModal({ open, onClose, onCreate }: { open: boolean; onClose: () => void; onCreate: (w: { name: string; description: string; root: { name: string; path: string } }) => void }) {
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [rootName, setRootName] = useState('')
+  const [rootPath, setRootPath] = useState('')
+  useEffect(() => { if (open) { setName(''); setDescription(''); setRootName(''); setRootPath('') } }, [open])
+  const valid = name.trim() && rootName.trim() && rootPath.trim()
+  return (
+    <Modal open={open} onClose={onClose} title="New workspace" subtitle="A workspace bundles one or more root folders and runs its own Oz, priorities, and runs." icon="cube" width={620}
+      footer={<>
+        <div style={{ flex: 1, fontSize: 11, color: 'var(--cb-text-muted)' }}>You can add more roots and assign Writable / Read-only roles after creating it.</div>
+        <Button variant="ghost" onClick={onClose}>Cancel</Button>
+        <Button variant="primary" icon="cube" disabled={!valid} onClick={() => { onCreate({ name: name.trim(), description: description.trim(), root: { name: rootName.trim(), path: rootPath.trim() } }); onClose() }}>Create & open</Button>
+      </>}>
+      <div style={{ marginBottom: 16 }}><label className="oz-field-label">Workspace name</label><input className="oz-input" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. AcmeCRM, Vault, Internal Tools" /></div>
+      <div style={{ marginBottom: 20 }}><label className="oz-field-label">Description</label><textarea className="oz-textarea" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What's this workspace for? Oz reads this on every conversation." rows={2} /></div>
+      <div className="oz-section-marker lhs">Primary root</div>
+      <div style={{ fontSize: 11.5, color: 'var(--cb-text-muted)', marginBottom: 12, lineHeight: 1.55 }}>The main working repo. Where CoCoder picks up and writes freely. Exactly one Primary per workspace.</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
+        <div><label className="oz-field-label">Name</label><input className="oz-input" value={rootName} onChange={(e) => setRootName(e.target.value)} placeholder="cocoder-cli" /></div>
+        <div><label className="oz-field-label">Path</label><div style={{ display: 'flex', gap: 6 }}><input className="oz-input" value={rootPath} style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 12 }} onChange={(e) => setRootPath(e.target.value)} placeholder="~/dev/cocoder-cli" /><button className="oz-iconbtn" title="Pick folder" onClick={() => setRootPath('~/dev/' + (rootName || 'new-root'))}><Icon name="folder-notch-open" size={14} /></button></div></div>
+      </div>
+    </Modal>
+  )
+}
+
+export function CraftPersonaModal({ open, onClose, clis, onSubmit }: { open: boolean; onClose: () => void; clis: Cli[]; onSubmit: (p: { name: string; summary: string; placeAtTop: boolean }) => void }) {
+  const [name, setName] = useState('')
+  const [tagline, setTagline] = useState('')
+  const [description, setDescription] = useState('')
+  const [cli, setCli] = useState('claude-code')
+  const [model, setModel] = useState('Default')
+  const [runMode, setRunMode] = useState<'visible' | 'headless'>('visible')
+  const [capabilities, setCapabilities] = useState('')
+  const [needsSubAgents, setNeedsSubAgents] = useState(false)
+  const [subAgentSketch, setSubAgentSketch] = useState('')
+  const [priority, setPriority] = useState('normal')
+  useEffect(() => { if (open) { setName(''); setTagline(''); setDescription(''); setCli('claude-code'); setModel('Default'); setRunMode('visible'); setCapabilities(''); setNeedsSubAgents(false); setSubAgentSketch(''); setPriority('normal') } }, [open])
+  const cliEntry = clis.find((c) => c.id === cli)
+  const valid = name.trim() && tagline.trim()
+  return (
+    <Modal open={open} onClose={onClose} title="Craft a new persona" subtitle="Sketch the role. Oz files it as a workspace priority — the team builds the persona itself (prompt, sub-agents, tests)." icon="hammer" width={680}
+      footer={<>
+        <div style={{ fontSize: 11, color: 'var(--cb-text-muted)', flex: 1, lineHeight: 1.5 }}><Icon name="info" size={12} style={{ verticalAlign: '-2px', marginRight: 4 }} />Personas aren't configured — they're <span style={{ color: 'var(--cb-accent)' }}>built</span>. Once Bob ships and Talia / Quinn green-light, the persona appears here.</div>
+        <Button variant="ghost" onClick={onClose}>Cancel</Button>
+        <Button variant="primary" icon="plus" disabled={!valid} onClick={() => { onSubmit({ name: `Persona: ${name.trim()}`, summary: `${tagline.trim()}${description.trim() ? ' — ' + description.trim() : ''}`, placeAtTop: priority === 'next' }); onClose() }}>File as priority</Button>
+      </>}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+        <div><label className="oz-field-label">Persona name</label><input className="oz-input" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Translator, Designer, Auditor" /></div>
+        <div><label className="oz-field-label">Role tagline</label><input className="oz-input" value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="One line — what they do" /></div>
+      </div>
+      <div style={{ marginBottom: 16 }}><label className="oz-field-label">Description</label><textarea className="oz-textarea" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Couple sentences. When does this persona get pulled in? What's their lane?" rows={3} /></div>
+      <div className="oz-section-marker lhs">Default config</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+        <div><label className="oz-field-label">CLI</label><select className="oz-select" value={cli} onChange={(e) => { setCli(e.target.value); setModel('Default') }}>{clis.map((c) => <option key={c.id} value={c.id} disabled={c.status !== 'ok'}>{c.name}{c.status !== 'ok' ? ' (unavailable)' : ''}</option>)}</select></div>
+        <div><label className="oz-field-label">Model</label><select className="oz-select" value={model} onChange={(e) => setModel(e.target.value)}>{(cliEntry?.models || ['Default']).map((m) => <option key={m} value={m}>{m}</option>)}</select></div>
+        <div><label className="oz-field-label">Run mode</label><div style={{ display: 'flex', gap: 6, padding: 2, background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)' }}>{(['visible', 'headless'] as const).map((m) => <button key={m} onClick={() => setRunMode(m)} style={{ flex: 1, padding: '6px 8px', background: runMode === m ? 'var(--cb-accent-muted)' : 'transparent', color: runMode === m ? 'var(--cb-accent)' : 'var(--cb-text-muted)', border: 'none', borderRadius: 3, fontSize: 11.5, cursor: 'pointer', textTransform: 'capitalize' }}>{m}</button>)}</div></div>
+      </div>
+      <div style={{ marginBottom: 16 }}><label className="oz-field-label">Capabilities sketch</label><textarea className="oz-textarea" value={capabilities} onChange={(e) => setCapabilities(e.target.value)} placeholder="What should this persona be able to do? Examples, edge cases, things they should never do." rows={3} /><div className="oz-field-help">Free-form. The team uses this to draft the system prompt and design tests.</div></div>
+      <div style={{ padding: '12px 14px', background: 'var(--cb-bg)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', marginBottom: 16 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}><input type="checkbox" checked={needsSubAgents} onChange={(e) => setNeedsSubAgents(e.target.checked)} style={{ width: 14, height: 14, accentColor: 'var(--cb-accent)' }} /><span style={{ fontSize: 12.5, color: 'var(--cb-text)', fontWeight: 500 }}>This persona should have sub-agents</span></label>
+        {needsSubAgents && <textarea className="oz-textarea" value={subAgentSketch} onChange={(e) => setSubAgentSketch(e.target.value)} placeholder="Sketch the sub-agents. e.g. 'a fact-checker sub on Gemini Pro; a formatter sub on Haiku.'" rows={2} style={{ marginTop: 10 }} />}
+      </div>
+      <div className="oz-section-marker lhs">Priority placement</div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        {[{ v: 'next', label: 'Next up', help: 'Pin to the top of the priority list.' }, { v: 'normal', label: 'Add to list', help: 'Append at the current position.' }].map((opt) => (
+          <div key={opt.v} onClick={() => setPriority(opt.v)} style={{ flex: 1, padding: '12px 14px', background: priority === opt.v ? 'var(--cb-accent-muted)' : 'var(--cb-bg-soft)', border: `1px solid ${priority === opt.v ? 'var(--cb-accent-15)' : 'var(--cb-border)'}`, borderRadius: 'var(--cb-radius-md)', cursor: 'pointer' }}>
+            <div style={{ fontSize: 13, color: priority === opt.v ? 'var(--cb-accent)' : 'var(--cb-text)', fontWeight: 500, marginBottom: 3 }}>{opt.label}</div>
+            <div style={{ fontSize: 11.5, color: 'var(--cb-text-muted)', lineHeight: 1.5 }}>{opt.help}</div>
+          </div>
+        ))}
+      </div>
+    </Modal>
+  )
+}

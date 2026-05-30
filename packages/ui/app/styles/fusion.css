@@ -1,0 +1,136 @@
+/*
+ * CoBuilder Fusion Design System — "Warm Espresso" (dark) / "Warm Linen" (light).
+ * Ported verbatim from packages/ui/design-ref/design-system/colors_and_type.css (the V1 claude.ai/design
+ * output). Only change vs. the prototype: fonts are bundled offline (Josefin local @font-face, Inter +
+ * JetBrains Mono via @fontsource imports in main.tsx) instead of the Google Fonts CDN, so it works under
+ * the app's strict CSP with no network. Tokens, type scale, and utilities are otherwise unchanged.
+ */
+
+@font-face {
+  font-family: 'Josefin Sans';
+  src: url('../assets/fonts/JosefinSans-VariableFont_wght.ttf') format('truetype-variations'),
+       url('../assets/fonts/JosefinSans-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* DARK THEME (default) — "Warm Espresso" */
+:root {
+  color-scheme: dark;
+  --cb-font-display: 'Josefin Sans', sans-serif;
+  --cb-font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --cb-font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+  --cb-bg: #14110E;
+  --cb-bg-soft: #1A1714;
+  --cb-surface: rgba(30, 26, 22, 0.55);
+  --cb-surface-solid: #1E1A16;
+  --cb-surface-raised: #221E19;
+  --cb-surface-glass: rgba(30, 26, 22, 0.55);
+
+  --cb-text: #E5DCD0;
+  --cb-text-secondary: #8E8477;
+  --cb-text-muted: #6B6358;
+  --cb-text-on-accent: #14110E;
+
+  --cb-accent: #C9A96E;
+  --cb-accent-hover: #D6B97D;
+  --cb-accent-muted: rgba(201, 169, 110, 0.12);
+  --cb-accent-subtle: rgba(201, 169, 110, 0.06);
+  --cb-accent-30: rgba(201, 169, 110, 0.30);
+  --cb-accent-25: rgba(201, 169, 110, 0.25);
+  --cb-accent-15: rgba(201, 169, 110, 0.15);
+
+  --cb-highlight: #D4766E;
+  --cb-highlight-muted: rgba(212, 118, 110, 0.15);
+  --cb-error: #D4766E;
+
+  --cb-success: #7DAF6E;
+  --cb-success-muted: rgba(125, 175, 110, 0.12);
+
+  --cb-border: rgba(200, 170, 120, 0.08);
+  --cb-border-strong: rgba(200, 170, 120, 0.16);
+  --cb-gold-line: rgba(201, 169, 110, 0.15);
+  --cb-hover: rgba(200, 170, 120, 0.06);
+  --cb-active: rgba(200, 170, 120, 0.10);
+
+  --cb-glass-blur: 22px;
+  --cb-glass-highlight: rgba(255, 245, 230, 0.04);
+  --cb-ambient-1: rgba(201, 169, 110, 0.07);
+  --cb-ambient-2: rgba(201, 169, 110, 0.05);
+
+  --cb-radius-xs: 2px;
+  --cb-radius-sm: 3px;
+  --cb-radius-md: 4px;
+  --cb-radius-lg: 6px;
+  --cb-radius-xl: 8px;
+  --cb-radius-pill: 9999px;
+
+  --cb-space-xs: 4px;
+  --cb-space-sm: 8px;
+  --cb-space-md: 12px;
+  --cb-space-lg: 16px;
+  --cb-space-xl: 24px;
+  --cb-space-2xl: 32px;
+
+  --cb-duration-fast: 150ms;
+  --cb-duration-normal: 250ms;
+  --cb-duration-slow: 400ms;
+  --cb-ease-default: ease-out;
+  --cb-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* LIGHT THEME — "Warm Linen" */
+[data-theme='light'] {
+  color-scheme: light;
+  --cb-bg: #F3EEE6;
+  --cb-bg-soft: #EDE8DF;
+  --cb-surface: #EDE8DF;
+  --cb-surface-solid: #EDE8DF;
+  --cb-surface-raised: #FAF6EE;
+  --cb-surface-glass: rgba(255, 252, 248, 0.65);
+
+  --cb-text: #1E1B17;
+  --cb-text-secondary: #6B6358;
+  --cb-text-muted: #9E9689;
+  --cb-text-on-accent: #FFFFFF;
+
+  --cb-accent: #8B7545;
+  --cb-accent-hover: #75623A;
+  --cb-accent-muted: rgba(139, 117, 69, 0.12);
+  --cb-accent-subtle: rgba(139, 117, 69, 0.06);
+  --cb-accent-30: rgba(139, 117, 69, 0.30);
+  --cb-accent-25: rgba(139, 117, 69, 0.25);
+  --cb-accent-15: rgba(139, 117, 69, 0.15);
+
+  --cb-highlight: #C0584F;
+  --cb-highlight-muted: rgba(192, 88, 79, 0.12);
+  --cb-error: #C0584F;
+
+  --cb-success: #4A8040;
+  --cb-success-muted: rgba(74, 128, 64, 0.10);
+
+  --cb-border: rgba(100, 85, 55, 0.10);
+  --cb-border-strong: rgba(100, 85, 55, 0.22);
+  --cb-gold-line: rgba(139, 117, 69, 0.20);
+  --cb-hover: rgba(100, 85, 55, 0.06);
+  --cb-active: rgba(140, 115, 65, 0.10);
+
+  --cb-glass-highlight: rgba(255, 255, 255, 0.60);
+  --cb-ambient-1: rgba(139, 117, 69, 0.06);
+  --cb-ambient-2: rgba(139, 117, 69, 0.04);
+}
+
+/* SEMANTIC TYPE */
+h1, .cb-h1 { font-family: var(--cb-font-display); font-weight: 600; font-size: 24px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cb-accent); line-height: 1.2; margin: 0; }
+h2, .cb-h2 { font-family: var(--cb-font-display); font-weight: 600; font-size: 20px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--cb-text); line-height: 1.25; margin: 0; }
+h3, .cb-h3 { font-family: var(--cb-font-display); font-weight: 500; font-size: 18px; letter-spacing: 1px; text-transform: uppercase; color: var(--cb-text); line-height: 1.3; margin: 0; }
+h4, .cb-h4 { font-family: var(--cb-font-display); font-weight: 500; font-size: 13px; letter-spacing: 0.8px; text-transform: uppercase; color: var(--cb-text-secondary); line-height: 1.4; margin: 0; }
+body, p, .cb-body { font-family: var(--cb-font-body); font-weight: 400; font-size: 14px; line-height: 1.7; letter-spacing: -0.011em; color: var(--cb-text); }
+small, .cb-small { font-family: var(--cb-font-body); font-weight: 400; font-size: 12px; color: var(--cb-text-muted); }
+code, kbd, samp, pre, .cb-mono { font-family: var(--cb-font-mono); font-feature-settings: 'tnum'; font-variant-numeric: tabular-nums; }
+a, .cb-link { color: var(--cb-accent); text-decoration: none; transition: opacity var(--cb-duration-fast) var(--cb-ease-default); }
+a:hover { opacity: 0.78; }
+
+::selection { background: var(--cb-accent-25); color: var(--cb-text); }
