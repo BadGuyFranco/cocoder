@@ -92,8 +92,10 @@ export const Modal = ({
   // Portal to <body>: the Fusion glass panels use backdrop-filter, which creates stacking contexts —
   // a modal rendered inside .oz-app would paint BEHIND them despite z-index. Escaping to body fixes it.
   return createPortal(
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(10, 8, 6, 0.55)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, animation: 'ozFadeIn 200ms ease-out' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width, maxWidth: '100%', maxHeight: 'calc(100vh - 48px)', background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border-strong)', borderRadius: 'var(--cb-radius-xl)', boxShadow: '0 24px 60px rgba(0,0,0,0.55), inset 0 1px 0 0 var(--cb-glass-highlight)', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', animation: 'ozSlideIn 240ms ease-out' }}>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(6, 4, 3, 0.82)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, animation: 'ozFadeIn 200ms ease-out' }}>
+      {/* SOLID, fully-opaque card (NOT a glass surface — those let the blurred dashboard show through and
+          read as transparent). Explicit opaque hex + a clearly-lighter tone than the espresso bg. */}
+      <div onClick={(e) => e.stopPropagation()} style={{ width, maxWidth: '100%', maxHeight: 'calc(100vh - 48px)', background: '#2A2520', border: '1px solid var(--cb-border-strong)', borderRadius: 'var(--cb-radius-xl)', boxShadow: '0 24px 70px rgba(0,0,0,0.7), inset 0 1px 0 0 var(--cb-glass-highlight)', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', animation: 'ozSlideIn 240ms ease-out' }}>
         <div style={{ position: 'absolute', top: -1, left: -1, width: 16, height: 16, borderTop: '1px solid var(--cb-accent)', borderLeft: '1px solid var(--cb-accent)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: -1, right: -1, width: 16, height: 16, borderBottom: '1px solid var(--cb-accent)', borderRight: '1px solid var(--cb-accent)', pointerEvents: 'none' }} />
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '20px 24px 16px', borderBottom: '1px solid var(--cb-border)' }}>
