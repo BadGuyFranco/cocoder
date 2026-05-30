@@ -3,7 +3,13 @@ import { join } from 'node:path'
 import { parseFrontmatter } from './frontmatter.js'
 import { loadPersona } from './loader.js'
 import { mergePersona } from './merge.js'
-import type { Persona, PersonaDelta } from './types.js'
+import type { Assignments, Persona, PersonaDelta, ResolvedPersona } from './types.js'
+
+export interface PersonaSources {
+  readonly baseDir: string
+  readonly deltaDir: string
+  readonly repoPersonaDir: string
+}
 
 export class PersonaDeltaLoadError extends Error {
   public constructor(
@@ -38,6 +44,18 @@ export function loadEffectivePersona(baseDir: string, deltaDir: string, id: stri
   const deltaFile = join(deltaDir, `${id}.md`)
   if (!existsSync(deltaFile)) return base
   return mergePersona(base, loadPersonaDelta(deltaDir, id))
+}
+
+export function resolveEffectivePersona(sources: PersonaSources, assignments: Assignments, id: string): ResolvedPersona {
+  const assignment = assignments.personas[id]
+  if (!assignment) throw new Error(`persona "${id}" has no assignment in assignments.json (not a live persona)`)
+
+  const baseFile = join(sources.baseDir, `${id}.md`)
+  const definition = existsSync(baseFile)
+    ? loadEffectivePersona(sources.baseDir, sources.deltaDir, id)
+    : loadPersona(sources.repoPersonaDir, id)
+
+  return { ...definition, cli: assignment.cli, model: assignment.model }
 }
 
 function asString(value: string | string[] | undefined, field: string, file: string): string {

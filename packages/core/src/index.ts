@@ -34,7 +34,7 @@ export { openRunStore, type OpenRunStoreOptions, SCHEMA_SQL } from './store/inde
 
 export { probeDaemon, DEFAULT_OZ_PORT, type ProbeResult, type ProbeOptions } from './liveness/index.js'
 
-export type { Persona, PersonaDelta, PersonaAssignment, Assignments, ResolvedPersona } from './personas/index.js'
+export type { Persona, PersonaDelta, PersonaAssignment, Assignments, ResolvedPersona, PersonaSources } from './personas/index.js'
 export {
   parseFrontmatter,
   type Frontmatter,
@@ -46,6 +46,7 @@ export {
   PersonaMergeError,
   loadPersonaDelta,
   loadEffectivePersona,
+  resolveEffectivePersona,
   PersonaDeltaLoadError,
 } from './personas/index.js'
 
