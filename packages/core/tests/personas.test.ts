@@ -2,7 +2,15 @@ import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { isPersonaEnabled, loadAssignments, loadPersona, loadPriority, parseFrontmatter, resolvePersona } from '../src/index.js'
+import {
+  isPersonaEnabled,
+  loadAssignments,
+  loadPersona,
+  loadPriority,
+  parseFrontmatter,
+  resolvePersona,
+  resolvePlayAssignment,
+} from '../src/index.js'
 
 describe('parseFrontmatter', () => {
   test('parses scalars, block lists, empty arrays, and body', () => {
@@ -60,6 +68,65 @@ describe('persona + assignment loading', () => {
 
     await writeFile(join(dir, 'bad.json'), JSON.stringify({ personas: { deb: { cli: 'claude', model: '', enabled: 'no' } } }))
     expect(() => loadAssignments(join(dir, 'bad.json'))).toThrow(/optional "enabled" must be a boolean/)
+  })
+
+  test('play assignment overrides fall back to the persona assignment', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'personas-'))
+    await writeFile(
+      join(dir, 'assignments.json'),
+      JSON.stringify({
+        personas: {
+          oscar: {
+            cli: 'claude',
+            model: 'sonnet',
+            plays: {
+              'wrap-up': { cli: 'cursor-agent', model: '' },
+            },
+          },
+        },
+      }),
+    )
+
+    const assignments = loadAssignments(join(dir, 'assignments.json'))
+
+    expect(resolvePlayAssignment(assignments, 'oscar', 'wrap-up')).toEqual({ cli: 'cursor-agent', model: '' })
+    expect(resolvePlayAssignment(assignments, 'oscar', 'some-other-play')).toEqual({ cli: 'claude', model: 'sonnet' })
+  })
+
+  test('play assignment resolver throws for an unknown persona', () => {
+    expect(() => resolvePlayAssignment({ personas: {} }, 'oscar', 'wrap-up')).toThrow(/no assignment/)
+  })
+
+  test('loadAssignments rejects malformed play assignments', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'personas-'))
+    await writeFile(
+      join(dir, 'bad-plays.json'),
+      JSON.stringify({
+        personas: {
+          oscar: { cli: 'claude', model: '', plays: [] },
+        },
+      }),
+    )
+    await writeFile(
+      join(dir, 'missing-cli.json'),
+      JSON.stringify({
+        personas: {
+          oscar: { cli: 'claude', model: '', plays: { 'wrap-up': { model: '' } } },
+        },
+      }),
+    )
+    await writeFile(
+      join(dir, 'bad-model.json'),
+      JSON.stringify({
+        personas: {
+          oscar: { cli: 'claude', model: '', plays: { 'wrap-up': { cli: 'cursor-agent', model: 3 } } },
+        },
+      }),
+    )
+
+    expect(() => loadAssignments(join(dir, 'bad-plays.json'))).toThrow(/optional "plays" must be an object/)
+    expect(() => loadAssignments(join(dir, 'missing-cli.json'))).toThrow(/play "wrap-up" needs string "cli" and "model"/)
+    expect(() => loadAssignments(join(dir, 'bad-model.json'))).toThrow(/play "wrap-up" needs string "cli" and "model"/)
   })
 
   test('id/filename mismatch and missing assignment throw clearly', async () => {

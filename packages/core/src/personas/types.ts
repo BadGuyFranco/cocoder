@@ -31,6 +31,15 @@ export interface PersonaAssignment {
   readonly model: string
   /** Default-on launch toggle. Absent means enabled for backward compatibility. */
   readonly enabled?: boolean
+  /** Per-(persona, Play) cli+model override. Absent means the Play inherits this assignment. */
+  readonly plays?: Readonly<Record<string, PlayAssignment>>
+}
+
+export interface PlayAssignment {
+  /** Adapter id — which CLI runs this persona's Play. */
+  readonly cli: string
+  /** Model name; empty string means "the CLI's default model". */
+  readonly model: string
 }
 
 /** assignments.json — the SOLE source of which personas are live and on what CLI/model. */
