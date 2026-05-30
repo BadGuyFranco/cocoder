@@ -10,16 +10,17 @@ const PRIO_DEFAULT = 380
 
 // Thin draggable divider that resizes the Priorities column. Width is owned by the Dashboard and
 // clamped; dragging attaches window listeners so the cursor can leave the 6px handle without dropping.
-function ResizeHandle({ onResize }: { onResize: (deltaX: number) => void }) {
+function ResizeHandle({ width, onResizeTo }: { width: number; onResizeTo: (px: number) => void }) {
   const onMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     const startX = e.clientX
-    const move = (ev: MouseEvent) => onResize(ev.clientX - startX)
+    const startWidth = width
+    const move = (ev: MouseEvent) => onResizeTo(startWidth + (ev.clientX - startX))
     const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); document.body.style.cursor = '' }
     document.addEventListener('mousemove', move)
     document.addEventListener('mouseup', up)
     document.body.style.cursor = 'col-resize'
-  }, [onResize])
+  }, [width, onResizeTo])
   return <div className="oz-resize-handle" onMouseDown={onMouseDown} title="Drag to resize" />
 }
 import { PrioritiesPanel } from './Priorities.tsx'
