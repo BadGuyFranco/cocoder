@@ -2,7 +2,7 @@
 
 **Status:** Accepted (founder + Claude, 2026-05-28)
 **Seam:** S3 — topology / one concept, one home
-**Charter:** [0001](./0001-rebuild-charter.md) · **Builds on:** all prior ADRs · **Amends:** [0005](./0005-personas-and-subtasks.md) (persona home) · **Largely resolves:** S8
+**Charter:** [0001](./0001-rebuild-charter.md) · **Builds on:** all prior ADRs · **Amends:** [0005](./0005-personas-and-subtasks.md) (persona home) · **Resolves S8 / absorbs** [ADR-0009](./0009-extensibility.md) (extensibility, merged here 2026-05-30)
 **Amended by:** [0012](./0012-living-base-personas.md) — the default persona set is no longer *copied* on `cocoder init`; it is a **living base** referenced from the install (improvements propagate to all installs), with repos layering deltas merged at load.
 
 ## Context
@@ -54,6 +54,15 @@ governance trap.
   persona by ID (ADR-0005). **Write-scope default** can live in the persona file's frontmatter —
   co-located, one home.
 - Sub-task registry + default scopes are likewise flat/readable governance files.
+
+### Extensibility — extend by files; new CLIs need a driver (absorbs ADR-0009, seam S8)
+Adopters extend CoCoder by **adding governance files, no core fork:** a custom persona (a delta on a
+base persona, or a repo-only persona), a custom Play type (a registry entry — default prompt + scope),
+or a custom scope (in the persona file / priority). The base set is referenced and propagates to all
+installs (ADR-0012); a repo adds or layers in its own `cocoder/` zone — nothing requires touching
+`packages/`. **The one exception:** a brand-new model CLI needs an **adapter driver** (code in
+`packages/adapters/`, ADR-0006) — data-driven adapter declarations were deferred as unearned (the
+built-in CLIs cover the common case; adapter-as-data is a future earned feature).
 
 ### Carry-forward action
 **Audit CoBuilder's persona definitions** (e.g. Bob's componentization/elegance coding rules,

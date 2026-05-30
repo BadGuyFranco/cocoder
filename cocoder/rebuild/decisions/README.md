@@ -15,9 +15,9 @@ Clean ADR set for the v2 rebuild. Authoritative for v2; the v1 ADRs under
 | [0006](./0006-adapter-contract.md) | Adapter contract: trust-the-CLI + capability probe (S6) | Accepted |
 | [0007](./0007-write-scope-enforcement.md) | Write-scope: allow-list + commit-gate enforcement (S7) | Accepted |
 | [0008](./0008-repository-topology.md) | Repository topology + one-home enforcement (S3; amends 0005; ~resolves S8) | Accepted |
-| [0009](./0009-extensibility.md) | Extensibility: extend by files; new CLIs need a driver (S8) | Accepted |
+| [0009](./0009-extensibility.md) | Extensibility — *merged into 0008 §Extensibility* (redirect signpost) | Merged → 0008 |
 | [0010](./0010-taxonomy-and-authoring.md) | Taxonomy & authoring lifecycle: Playbooks, Plays, Objectives (amends 0005) | Accepted |
-| [0011](./0011-orchestrator-verify-gate.md) | Orchestrator verify-gate: the commit runs only on Oscar's pass (refines 0004) | Accepted |
+| [0011](./0011-orchestrator-verify-gate.md) | Orchestrator verify-gate — *merged into 0013* (redirect signpost) | Merged → 0013 |
 | [0012](./0012-living-base-personas.md) | Living base personas + repo extensions — base ships with the install & propagates; repos layer deltas (amends 0008/0009) | Accepted |
 | [0013](./0013-orchestration-observation.md) | Orchestration + observation: Oscar drives Bob through a multi-atom plan; tiered continuous monitoring (Oscar→Bob, Deb→Oscar, Oz→sessions) with the direct-your-primary rule (refines 0004) | Accepted |
 
@@ -42,9 +42,10 @@ assemble the current model, read in this order:
 **Consolidation (2026-05-30, per ADR-0014):** the set is leaned out by *content*, not by renumbering —
 ADR numbers are stable handles cited in ~70 places (code, personas, priorities), so a physical renumber
 is deliberately avoided (cosmetic gain, large breakage). Done so far: stale bodies brought to current
-truth (0005), 0012 slimmed (implementation log → its priority). **Pending founder confirm:** fold the
-extensibility corollary **0009 → 0008**, and the verify-gate **0011 → 0013**, each leaving a redirect
-signpost so existing citations resolve. **0010** (taxonomy) stays standalone — too substantial to fold.
+truth (0005), 0012 slimmed (implementation log → its priority). **Merged (founder-approved):** the
+extensibility corollary **0009 → 0008 §Extensibility**, and the verify-gate **0011 → 0013**, each left as
+a redirect signpost so existing citations resolve. **0010** (taxonomy) stays standalone — too
+substantial to fold. Net: **12 substantive ADRs** (+ 2 signposts), all current-truth, no renumber.
 
 ## Candidate irreversible seams (the Phase-0 Q&A agenda)
 
