@@ -5,7 +5,7 @@
 //   - data-model schema + RunStore port (Step 3)
 //   - SessionHost port (Step 2)
 //   - Adapter interface + preflight (Step 4)
-//   - persona/priority loader (Step 4)
+//   - persona/play/priority loader (Step 4)
 //   - write-scope + commit-gate (Step 5)
 //   - the runner / launch composition (Step 6)
 
@@ -50,6 +50,9 @@ export {
   resolveEffectivePersona,
   PersonaDeltaLoadError,
 } from './personas/index.js'
+
+export type { Play } from './plays/index.js'
+export { loadPlay } from './plays/index.js'
 
 export { loadPriority, type Priority } from './priorities/index.js'
 
