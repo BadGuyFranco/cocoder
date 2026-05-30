@@ -87,12 +87,13 @@ async function runSmoke(win: BrowserWindow): Promise<void> {
     // be solid rgb(), not rgba() with alpha — so a glass/translucent surface that lets the blurred
     // dashboard bleed through fails the smoke loudly (exit 1).
     try {
-      await win.webContents.executeJavaScript(`(() => { const d=[...document.querySelectorAll('.oz-nav-item')].find(x=>x.textContent.trim()==='Dashboard'); if(d) d.click(); return !!d })()`)
+      // Match by includes, not ===: the Dashboard nav item's text is "Dashboard2" (it carries a badge).
+      await win.webContents.executeJavaScript(`(() => { const d=[...document.querySelectorAll('.oz-nav-item')].find(x=>(x.textContent||'').includes('Dashboard')); if(d) d.click(); return !!d })()`)
       await wait(500)
       await win.webContents.executeJavaScript(`(() => { const b=document.querySelector('.oz-ws-tab-add'); if(b) b.click(); return !!b })()`)
       await wait(500)
       const dd = await win.webContents.executeJavaScript(
-        `(() => { const n=[...document.querySelectorAll('span')].find(x=>(x.textContent||'').includes('New workspace')); if(!n) return {open:false}; const pop=n.parentElement; const r=pop.getBoundingClientRect(); const t=document.elementFromPoint(r.left+8,r.top+8); const bg=getComputedStyle(pop).backgroundColor; return {open:true, onTop: pop.contains(t)||t===pop, bg, opaque: /^rgb\\(/.test(bg)} })()`,
+        `(() => { const solid=(el)=>{const c=getComputedStyle(el).backgroundColor; return /^rgb\\(/.test(c)?c:null}; const n=[...document.querySelectorAll('span')].find(x=>(x.textContent||'').includes('New workspace')); if(!n) return {open:false}; let pop=n; let bg=null; while(pop && !(bg=solid(pop))) pop=pop.parentElement; if(!pop) return {open:true, opaque:false, bg:'(none found)'}; const r=pop.getBoundingClientRect(); const t=document.elementFromPoint(r.left+8,r.top+8); return {open:true, onTop: pop.contains(t)||t===pop, bg, opaque:true} })()`,
       )
       writeFileSync(join(dir, 'dropdown.png'), (await win.webContents.capturePage()).toPNG())
       console.log(`SMOKE: dropdown open=${dd.open} onTop=${dd.onTop} opaque=${dd.opaque} bg=${dd.bg}`)
@@ -101,7 +102,7 @@ async function runSmoke(win: BrowserWindow): Promise<void> {
       await win.webContents.executeJavaScript(`(() => { const n=[...document.querySelectorAll('span')].find(x=>(x.textContent||'').includes('New workspace')); if(n) n.click(); return !!n })()`)
       await wait(500)
       const m = await win.webContents.executeJavaScript(
-        `(() => { const h=[...document.querySelectorAll('h2')].find(x=>x.textContent.trim()==='New workspace'); if(!h) return {open:false}; let card=h; while(card && !/border-radius/.test(card.getAttribute('style')||'')) card=card.parentElement; if(!card) card=h.parentElement.parentElement.parentElement; const r=card.getBoundingClientRect(); const t=document.elementFromPoint(r.left+12,r.top+12); const bg=getComputedStyle(card).backgroundColor; return {open:true, onTop: card.contains(t)||t===card, bg, opaque: /^rgb\\(/.test(bg)} })()`,
+        `(() => { const solid=(el)=>{const c=getComputedStyle(el).backgroundColor; return /^rgb\\(/.test(c)?c:null}; const h=[...document.querySelectorAll('h2')].find(x=>x.textContent.trim()==='New workspace'); if(!h) return {open:false}; let card=h; let bg=null; while(card && !(bg=solid(card))) card=card.parentElement; if(!card) return {open:true, opaque:false, bg:'(none found)'}; const r=card.getBoundingClientRect(); const t=document.elementFromPoint(r.left+12,r.top+12); return {open:true, onTop: card.contains(t)||t===card, bg, opaque:true} })()`,
       )
       writeFileSync(join(dir, 'modal.png'), (await win.webContents.capturePage()).toPNG())
       console.log(`SMOKE: modal open=${m.open} onTop=${m.onTop} opaque=${m.opaque} bg=${m.bg}`)
