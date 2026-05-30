@@ -44,10 +44,12 @@ This points at *structure*, never at governance docs — so it is not the F5 gov
 governance trap.
 
 ### Personas live as flat governance files (amends ADR-0005)
-- **Persona definition = flat markdown (+ optional scripts)** in `cocoder/personas/` — human-
-  readable and auditable (role, mental model, rules). **Not** code built-ins.
-- The **default persona set ships in `templates/`** (copied on `cocoder init`); the **loader/
-  validator lives in `core`**; the **definitions are files** the operator owns.
+- **Persona definition = flat markdown (+ optional scripts)** — human-readable and auditable (role,
+  mental model, rules). **Not** code built-ins.
+- The **base persona set is a referenced package** (`@cocoder/personas`), the single source improved
+  centrally (ADR-0012) — *not* copied on `cocoder init`. A repo's **extensions** (deltas on a base
+  persona, and repo-only personas) are flat files in its `cocoder/personas/` zone (`deltas/<id>.md`
+  and top-level `<id>.md`); the **loader/validator lives in `core`** and merges base+delta at load.
 - **CLI+model assignment** (per persona / per sub-task) stays an Oz-edited setting referencing the
   persona by ID (ADR-0005). **Write-scope default** can live in the persona file's frontmatter —
   co-located, one home.

@@ -14,13 +14,16 @@ files, which largely answers this.
 ## Decision
 
 ### Extend by adding governance files (no core fork)
-- **Custom personas** → a `.md` (+ optional scripts) in `cocoder/personas/`. v1's "Phil"
-  primitive-builder pattern is simply an example custom persona file.
+- **Custom personas** → a `.md` (+ optional scripts) in `cocoder/personas/` — either a *delta* on a
+  base persona (`deltas/<id>.md`, merged onto the referenced base at load, ADR-0012) or a wholly new
+  repo-only persona (top-level `<id>.md`). v1's "Phil" primitive-builder pattern is an example
+  repo-only persona.
 - **Custom sub-task types** → a registry entry (default prompt + default scope) in the
   governance zone.
 - **Custom scopes** → in the persona file / priority.
-- Defaults ship in `templates/` (copied on `cocoder init`); adopters **override or add** in their
-  own workspace governance zone. Nothing requires touching `packages/`.
+- The **base set is referenced** (`@cocoder/personas`), improved centrally and propagated to all
+  installs (ADR-0012) — *not* copied on `cocoder init`; adopters **add or layer** in their own
+  workspace governance zone. Nothing requires touching `packages/`.
 
 ### The one exception — new CLIs
 A brand-new model CLI needs an **adapter driver (code in `packages/adapters/`)**, because data-

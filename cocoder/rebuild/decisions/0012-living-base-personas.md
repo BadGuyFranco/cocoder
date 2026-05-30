@@ -23,6 +23,12 @@ A **base persona set** ships with the CoCoder install and is the **single source
 centrally — changes land in the CoCoder product via review (Deb proposes base fixes as PRs) and
 propagate to every install on update. The base is **referenced**, never copied-and-frozen.
 
+**Repo-agnostic means agnostic to the _target repo_, not to CoCoder.** The base ships CoCoder's full
+product runtime — Oz, cmux, the runner, the atom loop, the verify-gate, wrap-up/teardown,
+objective-first, the decision-classifier — because that machinery is identical on every install and a
+base persona must orchestrate *with* it. The base knows nothing about the *repo being built*: its
+languages, layout, write-scope, conventions, tests, or domain. Those live in the repo's extension.
+
 ### Repos extend two ways — merged at load
 - **Delta on a base persona:** a repo carries only its *delta* (repo-specific additions/overrides).
   The loader **merges base + delta** at load, so future base improvements still flow through to a repo
@@ -41,6 +47,14 @@ priority.
 ### Propagation is review-gated
 Base changes ship to all installs, so they land through review (Deb proposes; founder approves) — a
 bad base change would otherwise break everyone, so the gate is explicit, not implicit.
+
+### Base↔extended triage (Deb-owned, founder-arbitrated)
+Every orchestration improvement is classified before it lands. The test: *would this help orchestration
+on any repo?* If yes → improve the **base** persona, shipped to all installs (review-gated PR to the
+cocoder repo). If it is specific to *this* repo's build (its stack, conventions, tests, domain) → its
+**extended** persona, kept local in `[repo]/cocoder/`. On a genuine tie, default **local** — a bad base
+change has all-installs blast radius, a bad local change is contained; promote local→base later once
+proven general. Deb proposes the classification; the founder arbitrates ambiguity.
 
 ## Consequences
 
@@ -69,6 +83,8 @@ Resolved in run_17 (2026-05-29 — the `base-and-extension-personas` priority):
   silently orphan a repo override). Primitive `mergePersona`; on-disk compose `loadEffectivePersona` /
   `resolveEffectivePersona` / `listEffectivePersonas` (all in `core`). A repo-only new persona is a
   full file with no base counterpart.
-- **CoCoder split + cutover:** launcher, CLI, and the Oz personas route all resolve base+delta; CoCoder
-  carries only its delta (oscar/deb; bob is fully generic). Base→extended-repo propagation is proven by
-  `packages/core/tests/personas-propagation.test.ts`.
+- **CoCoder split + cutover:** launcher, CLI, and the Oz personas route all resolve base+delta. The
+  base personas are *rich* (they carry CoCoder's full orchestration runtime); CoCoder's deltas in
+  `cocoder/personas/deltas/` are *thin* repo-specifics — Bob's TypeScript/tooling rules + `packages/**`
+  scope, and Deb's current-slice status note. Oscar is entirely product runtime, so it has no delta.
+  Base→extended-repo propagation is proven by `packages/core/tests/personas-propagation.test.ts`.
