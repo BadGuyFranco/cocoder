@@ -117,6 +117,13 @@ async function runSmoke(win: BrowserWindow): Promise<void> {
     try {
       await win.webContents.executeJavaScript(`(() => { const x=[...document.querySelectorAll('button[aria-label="Close (Esc)"]')][0]; if(x) x.click(); return true })()`)
       await wait(300)
+      // Resize proof: drag the Priorities divider +60px and assert the panel grows ~60px (1:1 with the
+      // mouse), not a runaway multiple. Dispatches real mouse events so React + the document listeners fire.
+      const rz = await win.webContents.executeJavaScript(
+        `(() => { const panel=document.querySelector('.oz-panel'); const h=document.querySelector('.oz-resize-handle'); if(!panel||!h) return {ok:false}; const before=Math.round(panel.getBoundingClientRect().width); const hr=h.getBoundingClientRect(); const sx=hr.left+hr.width/2, sy=hr.top+hr.height/2; const mk=(t,x)=>new MouseEvent(t,{bubbles:true,cancelable:true,clientX:x,clientY:sy}); h.dispatchEvent(mk('mousedown',sx)); document.dispatchEvent(mk('mousemove',sx+60)); document.dispatchEvent(mk('mouseup',sx+60)); const after=Math.round(document.querySelector('.oz-panel').getBoundingClientRect().width); return {ok:true, before, after, delta: after-before} })()`,
+      )
+      console.log(`SMOKE: resize before=${rz.before} after=${rz.after} delta=${rz.delta} (expect ~60)`)
+      if (rz.ok && Math.abs(rz.delta - 60) > 12) throw new Error(`resize not 1:1 — moved 60px but panel changed ${rz.delta}px`)
       await win.webContents.executeJavaScript(`(() => { const b=document.querySelector('.oz-collapse-btn'); if(b) b.click(); return !!b })()`)
       await wait(400)
       const sb = await win.webContents.executeJavaScript(`(() => { const s=document.querySelector('.oz-sidebar'); return { collapsed: s.classList.contains('collapsed'), width: Math.round(s.getBoundingClientRect().width) } })()`)

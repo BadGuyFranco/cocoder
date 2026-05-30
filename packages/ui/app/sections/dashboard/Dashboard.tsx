@@ -93,12 +93,12 @@ export function Dashboard({ workspace, priorities, runs, ozMessages, selectedRun
     return <FirstRun wsName={workspace.name} onBegin={() => onSend('Walk me through setting up this workspace.')} />
   }
   // The Priorities column is user-resizable via the drag handle; clamp to keep both sides usable.
-  const onResize = (dx: number) => setPrioWidth((w) => Math.max(PRIO_MIN, Math.min(PRIO_MAX, w + dx)))
+  const onResizeTo = (px: number) => setPrioWidth(Math.max(PRIO_MIN, Math.min(PRIO_MAX, px)))
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: selectedRun ? `${prioWidth}px 6px 460px 1fr` : `${prioWidth}px 6px 1fr`, gap: 16, padding: 16, height: '100%', overflow: 'hidden' }}>
         <PrioritiesPanel priorities={priorities} runs={runs} onReorder={onReorder} onLaunch={onLaunch} onAdhoc={onAdhoc} onAddPriority={onAddPriority} onSelectRun={setSelectedRunId} onOpenRunHistory={() => setRunHistoryOpen(true)} selectedRunId={selectedRunId} />
-        <ResizeHandle onResize={onResize} />
+        <ResizeHandle width={prioWidth} onResizeTo={onResizeTo} />
         {selectedRun && <RunDetail run={selectedRun} parentPriority={selectedRun.priorityId ? priorities.find((p) => p.id === selectedRun.priorityId) || null : null} parentPriorityIndex={selectedRun.priorityId ? priorities.findIndex((p) => p.id === selectedRun.priorityId) : -1} onClose={() => setSelectedRunId(null)} onAction={onRunAction} />}
         <OzChatPanel messages={ozMessages} runs={runs} workspaceName={workspace.name} onSend={onSend} onSelectRun={setSelectedRunId} onDecision={onDecision} ozTyping={ozTyping} />
       </div>
