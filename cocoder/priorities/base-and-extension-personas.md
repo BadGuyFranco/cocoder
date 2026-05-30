@@ -28,8 +28,10 @@ repurposed from a one-time seed to a referenced base) and the delta format.
   at `cocoder/personas/deltas/<id>.md`; repo-only personas as full files. Loader: `mergePersona` →
   `loadEffectivePersona` / `resolveEffectivePersona` / `listEffectivePersonas` (in `core`).
 - **All consumers cut over:** daemon launcher, standalone CLI, and the Oz personas route.
-- **CoCoder split:** oscar/deb carry only their CoCoder delta; bob is fully generic; the duplicated
-  flat files were removed (single source). Merge is behavior-preserving (byte-exact slice diffs).
+- **CoCoder split (corrected):** "repo-agnostic" means agnostic to the *target repo*, not to CoCoder's
+  own runtime — so base personas carry CoCoder's full machinery (Oz/cmux/atoms/teardown). Base is rich;
+  CoCoder's deltas are thin repo-specifics: Bob's TypeScript/tooling + `packages/**` scope, Deb's
+  current-slice note. Oscar is all product runtime → no delta. (ADR-0012/0014.)
 - **Propagation proven:** `packages/core/tests/personas-propagation.test.ts` shows a base improvement
   reaching an already-extended repo while the delta survives.
 
