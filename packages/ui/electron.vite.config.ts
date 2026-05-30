@@ -15,8 +15,10 @@ export default defineConfig({
   preload: {
     build: {
       outDir: 'out/preload',
-      lib: { entry: resolve(__dirname, 'electron/preload.ts') },
-      rollupOptions: { external: ['electron'] },
+      // Sandboxed preloads (sandbox:true) MUST be CommonJS — an ESM .mjs preload silently fails to
+      // load, leaving window.oz undefined. The package is type:module, so force a .cjs CommonJS bundle.
+      lib: { entry: resolve(__dirname, 'electron/preload.ts'), formats: ['cjs'], fileName: () => 'preload.cjs' },
+      rollupOptions: { external: ['electron'], output: { entryFileNames: 'preload.cjs' } },
     },
   },
   renderer: {

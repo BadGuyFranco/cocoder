@@ -32,7 +32,7 @@ function createWindow(): BrowserWindow {
     backgroundColor: '#0b0d12',
     show: process.env.OZ_SMOKE !== '1',
     webPreferences: {
-      preload: join(HERE, '../preload/preload.mjs'),
+      preload: join(HERE, '../preload/preload.cjs'),
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,
@@ -52,12 +52,22 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 async function runSmoke(win: BrowserWindow): Promise<void> {
   const dir = join(HERE, '../screenshots')
   mkdirSync(dir, { recursive: true })
+  // Hard watchdog: a smoke must never hang the process. Force-exit if it overruns.
+  const watchdog = setTimeout(() => {
+    console.error('SMOKE FAIL — watchdog timeout (40s)')
+    app.exit(2)
+  }, 40000)
   let code = 0
   try {
-    await new Promise<void>((r) => win.webContents.once('did-finish-load', () => r()))
+    if (win.webContents.isLoading()) {
+      await new Promise<void>((r) => win.webContents.once('did-finish-load', () => r()))
+    }
+    console.log('SMOKE: page loaded')
+    win.show() // paint the window so capturePage has real pixels (and prove it launches visibly)
+    console.log('SMOKE: bridge present =', await win.webContents.executeJavaScript('!!window.oz'))
     // wait for the preload bridge to be present, then round-trip IPC health through it
     const health = await win.webContents.executeJavaScript(
-      `new Promise((resolve) => { const c = () => (window.oz ? resolve(window.oz.health()) : setTimeout(c, 50)); c() })`,
+      `new Promise((resolve, reject) => { let n=0; const c = () => (window.oz ? resolve(window.oz.health()) : (++n>40 ? reject(new Error('window.oz never appeared — preload bridge failed to load')) : setTimeout(c, 50))); c() })`,
     )
     if (!health || health.state !== 'fixtures') throw new Error(`IPC health round-trip failed: ${JSON.stringify(health)}`)
     for (const label of SECTIONS) {
@@ -77,6 +87,7 @@ async function runSmoke(win: BrowserWindow): Promise<void> {
     code = 1
     console.error(`SMOKE FAIL — ${(e as Error).message}`)
   } finally {
+    clearTimeout(watchdog)
     app.exit(code)
   }
 }
