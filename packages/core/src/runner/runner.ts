@@ -15,7 +15,9 @@ import type { Adapter } from '../adapter/index.js'
 import { runCommitGate } from '../commit-gate/index.js'
 import type { Git } from '../commit-gate/index.js'
 import type { Priority } from '../priorities/index.js'
-import type { ResolvedPersona } from '../personas/index.js'
+import type { PlayAssignment, ResolvedPersona } from '../personas/index.js'
+import { dispatchPlay } from '../plays/index.js'
+import type { Play } from '../plays/index.js'
 import type { Run, RunStatus, RunStore, Workspace } from '../store/index.js'
 import { effectiveScope, partitionByScope } from '../write-scope/index.js'
 import type { SessionHost, SessionRef } from '../session-host/index.js'
@@ -51,6 +53,7 @@ export interface RunnerDeps {
   readonly makeJudge?: MakeJudge
   readonly timeouts?: {
     orchestrationMs?: number
+    wrapupMs?: number
     buildMs?: number
     pollMs?: number
     monitorCadenceMs?: number
@@ -75,6 +78,9 @@ export interface RunInput {
   readonly runsRoot: string
   /** A prior run's pickup brief to resume from (ADR-0002 C1 / F8), woven into Oscar's prompt. */
   readonly pickup?: string | null
+  /** Resolved wrap-up Play + per-(persona, Play) assignment; when present, the runner dispatches the Play to author closeout. */
+  readonly wrapPlay?: Play
+  readonly wrapPlayAssignment?: PlayAssignment
 }
 
 export interface RunResult {
@@ -125,6 +131,7 @@ export class DirtyWorkingTreeError extends Error {
 // check; a timeout only guards a run abandoned with a still-alive pane. Default 4h, matching CoBuilder.
 const DEFAULTS = {
   orchestrationMs: 14_400_000,
+  wrapupMs: 14_400_000,
   buildMs: 14_400_000,
   pollMs: 1500,
   monitorCadenceMs: 15_000,
@@ -297,9 +304,47 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     }
 
     if (directive.kind === 'wrapup') {
-      pickup = directive.pickup
-      store.recordEvent({ runId: run.id, type: 'wrapup', data: { atoms: n, forced: false } })
-      log(`oscar wrapped up after ${n} atom(s)`)
+      if (input.wrapPlay && input.wrapPlayAssignment) {
+        const headBeforeWrap = await git.headSha(workspace.path)
+        const task =
+          `Run ${run.id} on priority ${priority.id}. ${n} atom(s) were delegated; commits so far: ${committedShas.join(', ') || 'none'}.\n\n` +
+          `Oscar's notes for this wrap-up:\n${directive.pickup ?? ''}`
+        const wrapOut = join(runDir, 'wrapup-out.txt')
+        const res = await dispatchPlay(
+          { sessionHost, getAdapter },
+          {
+            play: input.wrapPlay,
+            assignment: input.wrapPlayAssignment,
+            persona: oscar.id,
+            task,
+            cwd: workspace.path,
+            outPath: wrapOut,
+            group: run.id,
+            timeoutMs: t.wrapupMs,
+          },
+        )
+        const wrapGate = await runCommitGate({
+          git,
+          store,
+          cwd: workspace.path,
+          runId: run.id,
+          workItemId: null,
+          scope: input.wrapPlay.writeScope,
+          message: commitMessage(priority.id, run.id, n),
+          headBefore: headBeforeWrap,
+        })
+        if (wrapGate.committedSha) committedShas.push(wrapGate.committedSha)
+        committedFiles.push(...wrapGate.committedFiles)
+        outOfScope.push(...wrapGate.outOfScope)
+        selfCommitted = selfCommitted || wrapGate.selfCommitted
+        pickup = res.output && res.output.trim() ? res.output : (directive.pickup ?? null)
+        store.recordEvent({ runId: run.id, type: 'wrapup', data: { atoms: n, forced: false, play: input.wrapPlay.id } })
+        log(`wrap-up play ${input.wrapPlay.id} ran after ${n} atom(s)`)
+      } else {
+        pickup = directive.pickup
+        store.recordEvent({ runId: run.id, type: 'wrapup', data: { atoms: n, forced: false } })
+        log(`oscar wrapped up after ${n} atom(s)`)
+      }
       break
     }
 

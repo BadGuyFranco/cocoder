@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { dirname, join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import {
   type Adapter,
@@ -6,6 +9,8 @@ import {
   type Git,
   type MakeJudge,
   MissingObjectiveError,
+  type Play,
+  type PlayAssignment,
   PreflightError,
   type ResolvedPersona,
   type RunnerDeps,
@@ -90,6 +95,7 @@ const fakeIO = (opts: {
   directives: Directive[]
   verdicts?: { verdict: 'pass' | 'fail'; reason: string | null }[]
   triage?: { disposition: 'cocoder-bug' | 'repo-bug' | 'one-off'; summary: string; proposal?: string }
+  pickupWrites?: string[]
 }): RunnerIO => {
   let di = 0
   let vi = 0
@@ -110,7 +116,8 @@ const fakeIO = (opts: {
     async writeDisposition(runDir, index) {
       return `${runDir}/disposition-${index}.md`
     },
-    async writePickup(runDir) {
+    async writePickup(runDir, markdown) {
+      opts.pickupWrites?.push(markdown)
       return `${runDir}/pickup.md`
     },
     async writeRunRecord(runDir) {
@@ -124,6 +131,14 @@ const doneJudge: MakeJudge = () => async () => ({ state: 'done' })
 
 const delegate = (task: string): Directive => ({ kind: 'delegate', task })
 const wrapup = (pickup: string): Directive => ({ kind: 'wrapup', pickup })
+const wrapPlay: Play = {
+  id: 'wrap-up',
+  label: 'Wrap-up',
+  kind: 'headless',
+  writeScope: ['docs/**'],
+  body: 'Wrap-up Play body.\n\nProduce the closeout.',
+}
+const wrapPlayAssignment: PlayAssignment = { cli: 'cursor-agent', model: 'cheap-wrap' }
 
 const baseDeps = (over: Partial<RunnerDeps>): RunnerDeps => ({
   store: openRunStore(':memory:'),
@@ -177,6 +192,91 @@ describe('runRun (multi-atom loop)', () => {
     expect(result.atoms).toBe(1)
     expect(result.committedShas).toHaveLength(1)
     expect(result.status).toBe('completed')
+  })
+
+  test('dispatches the configured wrap-up Play, writes pickup from Play output, and gate-commits its scope', async () => {
+    const store = openRunStore(':memory:')
+    const pickupWrites: string[] = []
+    const adapterCalls: string[] = []
+    const wrapBuilds: { prompt: string; model: string }[] = []
+    const spawnedArgs: readonly string[][] = []
+    const runsRoot = await mkdtemp(join(tmpdir(), 'runner-wrap-play-'))
+    const wrapAdapter: Adapter = {
+      id: 'cursor-agent',
+      build(input) {
+        wrapBuilds.push({ prompt: input.prompt, model: input.model })
+        return { command: 'cursor-agent', args: ['--prompt', input.prompt], stdoutPath: input.outPath }
+      },
+      preflight: async () => ({ ok: true, checks: [] }),
+    }
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([['packages/atom.ts'], ['docs/wrap.md', 'packages/not-wrap.ts']]),
+        io: fakeIO({ directives: [delegate('atom 0'), wrapup('Oscar seed closeout')], pickupWrites }),
+        getAdapter: (cli) => {
+          adapterCalls.push(cli)
+          return cli === 'cursor-agent' ? wrapAdapter : okAdapter
+        },
+        sessionHost: fakeSessionHost({
+          async spawn(opts) {
+            spawnedArgs.push(opts.args)
+            if (opts.command === 'cursor-agent') {
+              const out = opts.stdoutPath ?? join(runsRoot, 'missing-wrap-output.txt')
+              await mkdir(dirname(out), { recursive: true })
+              await writeFile(out, 'PLAY CLOSEOUT\n', 'utf8')
+            }
+            return { id: `surface:${spawnedArgs.length}`, driver: 'fake' }
+          },
+        }),
+      }),
+      { ...input, runsRoot, wrapPlay, wrapPlayAssignment },
+    )
+
+    expect(adapterCalls).toContain('cursor-agent')
+    expect(wrapBuilds).toHaveLength(1)
+    expect(wrapBuilds[0]).toMatchObject({ model: 'cheap-wrap' })
+    expect(wrapBuilds[0]?.prompt).toContain('Wrap-up Play body.')
+    expect(wrapBuilds[0]?.prompt).toContain('Run run_1 on priority demo. 1 atom(s) were delegated; commits so far: sha-2.')
+    expect(wrapBuilds[0]?.prompt).toContain('Oscar seed closeout')
+    expect(spawnedArgs.some((args) => args.join('\n').includes('Wrap-up Play body.'))).toBe(true)
+    expect(pickupWrites).toEqual(['PLAY CLOSEOUT\n'])
+    expect(result.committedShas).toEqual(['sha-2', 'sha-3'])
+    expect(result.committedFiles).toEqual(['packages/atom.ts', 'docs/wrap.md'])
+    expect(result.outOfScope).toEqual(['packages/not-wrap.ts'])
+    expect(result.status).toBe('pending-scope-decision')
+    const links = store.listCommitLinks(result.runId)
+    expect(links.map((c) => c.files)).toEqual([['packages/atom.ts'], ['docs/wrap.md']])
+    expect(links.map((c) => c.workItemId)).toEqual([store.listWorkItems(result.runId)[0]?.id, null])
+    const wrap = store.listEvents(result.runId).find((e) => e.type === 'wrapup')
+    expect((wrap?.data as { play?: string }).play).toBe('wrap-up')
+  })
+
+  test('falls back to Oscar pickup without dispatching a Play when no wrap Play is configured', async () => {
+    const store = openRunStore(':memory:')
+    const pickupWrites: string[] = []
+    const adapterCalls: string[] = []
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        io: fakeIO({ directives: [wrapup('Oscar hand-authored pickup')], pickupWrites }),
+        getAdapter: (cli) => {
+          adapterCalls.push(cli)
+          return okAdapter
+        },
+      }),
+      input,
+    )
+
+    expect(result.atoms).toBe(0)
+    expect(result.committedShas).toEqual([])
+    expect(pickupWrites).toEqual(['Oscar hand-authored pickup'])
+    expect(adapterCalls).not.toContain('cursor-agent')
+    expect(store.listCommitLinks(result.runId)).toEqual([])
+    const wrap = store.listEvents(result.runId).find((e) => e.type === 'wrapup')
+    expect(wrap?.data).toEqual({ atoms: 0, forced: false })
   })
 
   test('per-atom commit attribution: a prior atom held-back file is not re-attributed to the next atom', async () => {
