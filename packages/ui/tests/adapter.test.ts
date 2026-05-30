@@ -10,6 +10,7 @@ import {
   adaptRunSummary,
   adaptRunDetail,
   adaptPersonas,
+  applyOrder,
   eventToLine,
   evidenceFromDetail,
   mapRunStatus,
@@ -145,6 +146,16 @@ describe('run detail enrichment', () => {
     // run_21 sessions are not deepLinkable → no attach command (renderer falls back to a default)
     const anyLinkable = DETAIL.sessions.some((s: any) => s.deepLinkable)
     expect(run.attachCmd === undefined).toBe(!anyLinkable)
+  })
+})
+
+describe('drag-reorder overlay', () => {
+  const items = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }]
+  it('orders known ids by saved index; unknown ids keep daemon order, appended', () => {
+    expect(applyOrder(items, ['c', 'a']).map((x) => x.id)).toEqual(['c', 'a', 'b', 'd'])
+  })
+  it('returns items unchanged when there is no saved order', () => {
+    expect(applyOrder(items, []).map((x) => x.id)).toEqual(['a', 'b', 'c', 'd'])
   })
 })
 

@@ -101,6 +101,19 @@ export function adaptPriorities(priorities: readonly DPriority[], runs: readonly
     })
 }
 
+// Apply a client-owned order overlay to the daemon's priority list (the drag-reorder seam): known ids
+// sort by their saved index; ids not in the overlay (new priorities) keep their daemon order, appended.
+// Pure + stable so it's deterministic. Swaps to a daemon reorder endpoint later with no renderer change.
+export function applyOrder<T extends { id: string }>(items: T[], order: readonly string[]): T[] {
+  if (!order || !order.length) return items
+  const idx = new Map(order.map((id, i) => [id, i]))
+  const rank = (id: string): number => (idx.has(id) ? (idx.get(id) as number) : Number.MAX_SAFE_INTEGER)
+  return items
+    .map((item, i) => ({ item, i }))
+    .sort((a, b) => rank(a.item.id) - rank(b.item.id) || a.i - b.i)
+    .map((x) => x.item)
+}
+
 // last-event one-liner for a run we only know as a summary (no events fetched yet).
 function summaryLastEvent(status: RunStatus): string | undefined {
   switch (status) {

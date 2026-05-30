@@ -75,6 +75,15 @@ export async function teardownRun(oz: OzApi, runId: string): Promise<MutationRes
   return oz.daemonPost(`/runs/${runId}/teardown`)
 }
 
+// ── Drag-reorder seam ── the priority order is client-owned and persisted in the main-process store
+// today (store.ts), addressed by the same channel that will later proxy a daemon reorder endpoint.
+export async function loadOrder(oz: OzApi, wsId: string): Promise<string[]> {
+  try { return [...(await oz.prioritiesOrder(wsId))] } catch { return [] }
+}
+export async function persistOrder(oz: OzApi, wsId: string, ids: readonly string[]): Promise<void> {
+  try { await oz.prioritiesReorder(wsId, ids) } catch { /* best-effort; UI already reordered locally */ }
+}
+
 // PUT replaces the WHOLE assignments map — the caller must hand a full, merged map (preserving fields
 // like plays/enabled it didn't edit), never a partial patch.
 export async function saveAssignments(oz: OzApi, wsId: string, assignments: Record<string, unknown>): Promise<MutationResult> {

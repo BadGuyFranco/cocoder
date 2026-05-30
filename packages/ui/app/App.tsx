@@ -4,8 +4,8 @@
 // the design-faithful view-model from the ported seed (fixture parity, fully interactive); the daemon
 // adapter is wired in the next slice (the existing electron/ plumbing is untouched).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ozApi, loadWorkspaces, loadWsData, loadRunDetail, launchRun, attachRun, teardownRun, type ConnectionState } from './live.ts'
-import { ADHOC_PRIORITY_ID } from './adapter.ts'
+import { ozApi, loadWorkspaces, loadWsData, loadRunDetail, launchRun, attachRun, teardownRun, loadOrder, persistOrder, type ConnectionState } from './live.ts'
+import { ADHOC_PRIORITY_ID, applyOrder } from './adapter.ts'
 import { Sidebar, type Route } from './ui/Sidebar.tsx'
 import { TopBar } from './ui/TopBar.tsx'
 import { Dashboard } from './sections/dashboard/Dashboard.tsx'
@@ -121,9 +121,10 @@ export function App() {
       const first = wss[0]
       setActiveId(first.id); setLoadedIds([first.id])
       const data = await loadWsData(oz, first.id)
+      const order = await loadOrder(oz, first.id)
       if (cancelled) return
       namesRef.current[first.id] = data.names
-      setPrioritiesByWs((cur) => ({ ...cur, [first.id]: data.priorities }))
+      setPrioritiesByWs((cur) => ({ ...cur, [first.id]: applyOrder(data.priorities, order) }))
       setRunsByWs((cur) => ({ ...cur, [first.id]: data.runs }))
       if (data.personas.length) setPersonas(data.personas)
     })()
@@ -157,9 +158,10 @@ export function App() {
     let cancelled = false
     void (async () => {
       const data = await loadWsData(oz, activeId)
+      const order = await loadOrder(oz, activeId)
       if (cancelled) return
       namesRef.current[activeId] = data.names
-      setPrioritiesByWs((cur) => ({ ...cur, [activeId]: data.priorities }))
+      setPrioritiesByWs((cur) => ({ ...cur, [activeId]: applyOrder(data.priorities, order) }))
       setRunsByWs((cur) => ({ ...cur, [activeId]: data.runs }))
     })()
     return () => { cancelled = true }
@@ -181,7 +183,12 @@ export function App() {
     setTimeout(() => { setOzTyping(false); pushMsg(ozReply(text)) }, 650)
   }
   function reorder(from: number, to: number) {
-    setPrioritiesByWs((cur) => { const list = [...(cur[activeId] ?? [])]; const [moved] = list.splice(from, 1); list.splice(to, 0, moved); return { ...cur, [activeId]: list } })
+    const list = [...(prioritiesByWs[activeId] ?? [])]
+    const [moved] = list.splice(from, 1)
+    list.splice(to, 0, moved)
+    setPrioritiesByWs((cur) => ({ ...cur, [activeId]: list }))
+    // Persist the client-owned order (main-process store today; daemon reorder endpoint later).
+    if (live) { const oz = ozApi(); if (oz) void persistOrder(oz, activeId, list.map((p) => p.id)) }
   }
   function addPriority(name: string, summary: string, placeAtTop: boolean) {
     const p: Priority = { id: `p${Date.now()}`, name, summary, status: 'ready', labels: ['persona-build'] }
@@ -196,8 +203,9 @@ export function App() {
     const oz = ozApi()
     if (!oz) return
     const data = await loadWsData(oz, activeId)
+    const order = await loadOrder(oz, activeId)
     namesRef.current[activeId] = data.names
-    setPrioritiesByWs((cur) => ({ ...cur, [activeId]: data.priorities }))
+    setPrioritiesByWs((cur) => ({ ...cur, [activeId]: applyOrder(data.priorities, order) }))
     setRunsByWs((cur) => ({ ...cur, [activeId]: data.runs }))
   }
   // POST /runs launches a REAL run — only ever reached from a live user click, never in tests/CI.
