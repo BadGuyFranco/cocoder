@@ -25,11 +25,12 @@ const PKGS_DIR = join(ROOT, 'packages')
 // Keyed by the short package directory name; values are short names too.
 const POLICY = {
   core: [], // depends on nothing in the workspace
+  personas: [], // leaf content package
   adapters: ['core'], // pure edge driver
   'session-hosts': ['core'], // pure edge driver
   ui: ['core'], // pure edge (client)
-  daemon: ['core', 'adapters', 'session-hosts'], // composition root: wires drivers
-  cli: ['core', 'adapters', 'session-hosts'], // composition root: wires drivers
+  daemon: ['core', 'personas', 'adapters', 'session-hosts'], // composition root: wires drivers
+  cli: ['core', 'personas', 'adapters', 'session-hosts'], // composition root: wires drivers
 }
 
 const SRC_EXT = /\.(ts|mts|cts|tsx|js|mjs|cjs)$/
