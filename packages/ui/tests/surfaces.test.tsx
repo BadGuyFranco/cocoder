@@ -44,6 +44,25 @@ describe('Oz shell', () => {
     await waitFor(() => expect(screen.getByText('echo: launch base personas')).toBeDefined())
   })
 
+  it('Priorities panel lists priorities and launches a run (202 → launched)', async () => {
+    render(<App />)
+    await waitFor(() => screen.getByText('Fixture replay'))
+    await waitFor(() => expect(screen.getByText('+ Launch a run without a priority')).toBeDefined())
+    // a named priority (not the adhoc one) is listed with a Launch button
+    const launches = await screen.findAllByRole('button', { name: 'Launch' })
+    expect(launches.length).toBeGreaterThan(0)
+    fireEvent.click(launches[0])
+    await waitFor(() => expect(screen.getByText(/Launched run_fixture/)).toBeDefined())
+  })
+
+  it('Priorities surfaces a 409 in-flight launch honestly', async () => {
+    installMockOz({ daemonPost: async () => ({ ok: false, status: 409, error: 'in flight' }) as never })
+    render(<App />)
+    await waitFor(() => screen.getByText('Fixture replay'))
+    fireEvent.click(await screen.findByText('+ Launch a run without a priority'))
+    await waitFor(() => expect(screen.getByText(/already in flight \(409\)/)).toBeDefined())
+  })
+
   it('shows pending markers on stub sections', async () => {
     render(<App />)
     await waitFor(() => screen.getByText('Fixture replay'))

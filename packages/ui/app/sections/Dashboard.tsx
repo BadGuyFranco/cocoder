@@ -3,6 +3,7 @@
 // fill the chat (1), priorities panel (2), and runs panel + drawer (3).
 import { Card, Pending } from '../components.tsx'
 import { OzChat } from './OzChat.tsx'
+import { Priorities } from './Priorities.tsx'
 
 export function Dashboard({ wsId, wsName }: { wsId: string; wsName: string }): JSX.Element {
   return (
@@ -16,7 +17,7 @@ export function Dashboard({ wsId, wsName }: { wsId: string; wsName: string }): J
         </div>
         <div className="dash-side">
           <Card title="Priorities">
-            <Pending label="Priorities panel" note="Ordered list with Launch + ad-hoc run. Arrives in slice 2." />
+            <Priorities wsId={wsId} />
           </Card>
           <Card title="Runs">
             <Pending label="Runs panel" note="Live + recent runs with status, opening an in-place detail drawer. Arrives in slice 3." />
