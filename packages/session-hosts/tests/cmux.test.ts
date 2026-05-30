@@ -95,8 +95,9 @@ describe('CmuxSessionHost driver (fake cli)', () => {
     const script = await readFile(join(scriptDir, files[0]!), 'utf8')
     expect(script).toBe(`cd '/repo'\nexec 'claude' '--' 'hi'\n`)
     const sent = calls.find((c) => c[0] === 'send')
-    expect(sent?.[3]).toMatch(/^bash '.*cocoder-cmux-.*\.sh'$/)
-    expect(calls.some((c) => c[0] === 'send-key' && c.includes('Enter'))).toBe(true)
+    expect(sent).toEqual(expect.arrayContaining(['--workspace', 'workspace:2', '--surface', 'surface:2'])) // scoped by workspace (cmux 0.64.x ref resolution)
+    expect(sent?.at(-1)).toMatch(/^bash '.*cocoder-cmux-.*\.sh'$/)
+    expect(calls.some((c) => c[0] === 'send-key' && c.includes('--workspace') && c.includes('Enter'))).toBe(true)
   })
 
   test('groupLabel names the workspace (priority + session), while the pane keeps the persona label', async () => {
@@ -145,9 +146,9 @@ describe('CmuxSessionHost driver (fake cli)', () => {
     const ref = await host.spawn({ persona: 'bob', command: 'codex', args: [], cwd: '/repo' })
 
     await host.sendInput(ref, 'PROCEED — go')
-    expect(calls).toContainEqual(['send', '--surface', 'surface:2', 'PROCEED — go'])
-    const after = calls.slice(calls.findIndex((c) => c[3] === 'PROCEED — go'))
-    expect(after.some((c) => c[0] === 'send-key' && c.includes('Enter'))).toBe(true)
+    expect(calls).toContainEqual(['send', '--workspace', 'workspace:2', '--surface', 'surface:2', 'PROCEED — go'])
+    const after = calls.slice(calls.findIndex((c) => c.at(-1) === 'PROCEED — go'))
+    expect(after.some((c) => c[0] === 'send-key' && c.includes('--workspace') && c.includes('Enter'))).toBe(true)
   })
 
   test('kill closes the pane surface (not the shared workspace); methods reject unknown refs', async () => {
