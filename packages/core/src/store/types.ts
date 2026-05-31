@@ -54,6 +54,7 @@ export interface Session {
   readonly runId: string
   readonly persona: string // persona id (governance ref)
   readonly sessionRef: string // SessionHost ref id (e.g. cmux surface)
+  readonly workspaceRef: string | null // container ref (cmux workspace) — durable for cross-restart close
   readonly startedAt: number
   readonly exitCode: number | null
 }
@@ -108,7 +109,7 @@ export interface RunStore {
    *  Powers Oz's run-list surface and the daemon's startup orphan reconciliation. */
   listRuns(filter?: { workspaceId?: string; limit?: number }): Run[]
 
-  createSession(input: { runId: string; persona: string; sessionRef: string }): Session
+  createSession(input: { runId: string; persona: string; sessionRef: string; workspaceRef?: string | null }): Session
   setSessionExit(sessionId: string, exitCode: number): void
 
   createWorkItem(input: {

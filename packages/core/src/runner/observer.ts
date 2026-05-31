@@ -56,7 +56,7 @@ export async function spawnObserver(input: {
       groupLabel,
       label: paneLabel(deb),
     })
-    store.createSession({ runId: run.id, persona: deb.id, sessionRef: ref.id })
+    store.createSession({ runId: run.id, persona: deb.id, sessionRef: ref.id, workspaceRef: ref.workspaceRef ?? null })
     store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: deb.id, ref: ref.id } })
     return ref
   } catch (err) {

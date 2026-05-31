@@ -83,7 +83,7 @@ describe('CmuxSessionHost driver (fake cli)', () => {
     const host = new CmuxSessionHost({ cli, scriptDir, pollMs: 1 })
 
     const ref = await host.spawn({ persona: 'oscar', label: 'Oscar', command: 'claude', args: ['--', 'hi'], cwd: '/repo' })
-    expect(ref).toEqual({ id: 'surface:2', driver: 'cmux' })
+    expect(ref).toEqual({ id: 'surface:2', driver: 'cmux', workspaceRef: 'workspace:2' })
 
     const newWs = calls.find((c) => c[0] === 'new-workspace')
     expect(newWs).toContain('--name')
@@ -162,6 +162,19 @@ describe('CmuxSessionHost driver (fake cli)', () => {
     await expect(host.status({ id: 'surface:999', driver: 'cmux' })).rejects.toThrow(/unknown session/)
   })
 
+  test('closeSurface closes by durable refs with NO prior spawn (cross-restart Deb-pane leak fix)', async () => {
+    const { cli, calls } = makeFakeCli()
+    const scriptDir = await mkdtemp(join(tmpdir(), 'cmux-test-'))
+    // A BRAND-NEW host (empty #sessions) — exactly the post-`oz.sh restart` state where kill() throws.
+    const host = new CmuxSessionHost({ cli, scriptDir, pollMs: 1 })
+
+    await host.closeSurface({ workspaceRef: 'workspace:7', surfaceRef: 'surface:7' })
+    // The close command IS issued against the durable refs — no 'unknown session ref' throw.
+    expect(calls).toContainEqual(['close-surface', '--workspace', 'workspace:7', '--surface', 'surface:7'])
+    // kill() on the same un-spawned ref WOULD throw (the bug closeSurface routes around).
+    await expect(host.kill({ id: 'surface:7', driver: 'cmux' })).rejects.toThrow(/unknown session/)
+  })
+
   test('spawn auto-launches cmux when the socket is down, then proceeds', async () => {
     let socketUp = false
     let launched = 0
@@ -191,6 +204,6 @@ describe('CmuxSessionHost driver (fake cli)', () => {
 
     const ref = await host.spawn({ persona: 'oscar', label: 'Oscar', command: 'claude', args: [], cwd: '/repo' })
     expect(launched).toBe(1)
-    expect(ref).toEqual({ id: 'surface:2', driver: 'cmux' })
+    expect(ref).toEqual({ id: 'surface:2', driver: 'cmux', workspaceRef: 'workspace:2' })
   })
 })

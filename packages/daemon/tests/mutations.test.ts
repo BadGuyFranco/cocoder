@@ -63,7 +63,11 @@ const fakeGit = (changed: string[] = [], shas: readonly string[] = ['h0']): Git 
     async resetHard() {},
   }
 }
-const fakeHost = (onShow?: (ref: SessionRef) => void, onKill?: (ref: SessionRef) => void): SessionHost => {
+const fakeHost = (
+  onShow?: (ref: SessionRef) => void,
+  onKill?: (ref: SessionRef) => void,
+  onClose?: (args: { workspaceRef: string; surfaceRef: string }) => void,
+): SessionHost => {
   let n = 0
   return {
     async spawn() {
@@ -84,6 +88,9 @@ const fakeHost = (onShow?: (ref: SessionRef) => void, onKill?: (ref: SessionRef)
     },
     async kill(ref) {
       onKill?.(ref)
+    },
+    async closeSurface(args) {
+      onClose?.(args)
     },
   }
 }
@@ -302,6 +309,31 @@ describe('Oz mutations + lifecycle', () => {
     expect(killed.map((k) => k.id).sort()).toEqual(['surface:1', 'surface:2', 'surface:deb'])
     expect(oz!.ctx.liveRefs.has('surface:1')).toBe(false) // live refs pruned
     expect(store.listEvents(run.id).some((e) => e.type === 'teardown')).toBe(true)
+  })
+
+  test('teardown closes a prior-instance pane via durable workspaceRef (closeSurface, not kill)', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    // A session persisted WITH its workspaceRef (the durable data a prior daemon recorded).
+    store.createSession({ runId: run.id, persona: 'deb', sessionRef: 'surface:deb', workspaceRef: 'workspace:9' })
+    const closes: { workspaceRef: string; surfaceRef: string }[] = []
+    const killedHere: SessionRef[] = []
+    // Fresh daemon (empty liveRefs, empty driver spawn-map) — the post-restart state.
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit(),
+      sessionHost: fakeHost(undefined, (r) => killedHere.push(r), (a) => closes.push(a)),
+      getAdapter: () => okAdapter,
+      io: fakeIO(),
+    })
+    const r = await call(oz, 'POST', `/runs/${run.id}/teardown`)
+    expect(r.status).toBe(200)
+    expect(r.json.closed).toEqual(['surface:deb'])
+    // Closed via the DURABLE closeSurface path (cross-instance), NOT kill() (which would throw here).
+    expect(closes).toEqual([{ workspaceRef: 'workspace:9', surfaceRef: 'surface:deb' }])
+    expect(killedHere).toEqual([])
   })
 
   test('teardown prunes a stale ref even when kill fails (pane closed by hand)', async () => {

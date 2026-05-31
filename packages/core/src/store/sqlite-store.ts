@@ -42,6 +42,7 @@ interface SessionRow {
   session_ref: string
   started_at: number
   exit_code: number | null
+  workspace_ref: string | null
 }
 interface WorkItemRow {
   id: string
@@ -91,6 +92,7 @@ const toSession = (r: SessionRow): Session => ({
   runId: r.run_id,
   persona: r.persona,
   sessionRef: r.session_ref,
+  workspaceRef: r.workspace_ref ?? null,
   startedAt: r.started_at,
   exitCode: r.exit_code,
 })
@@ -210,18 +212,19 @@ class SqliteRunStore implements RunStore {
     return rows.map(toRun)
   }
 
-  createSession(input: { runId: string; persona: string; sessionRef: string }): Session {
+  createSession(input: { runId: string; persona: string; sessionRef: string; workspaceRef?: string | null }): Session {
     const session: Session = {
       id: genId('ses'),
       runId: input.runId,
       persona: input.persona,
       sessionRef: input.sessionRef,
+      workspaceRef: input.workspaceRef ?? null,
       startedAt: this.#now(),
       exitCode: null,
     }
     this.#db
-      .prepare(`INSERT INTO session (id, run_id, persona, session_ref, started_at, exit_code) VALUES (?, ?, ?, ?, ?, ?)`)
-      .run(session.id, session.runId, session.persona, session.sessionRef, session.startedAt, session.exitCode)
+      .prepare(`INSERT INTO session (id, run_id, persona, session_ref, started_at, exit_code, workspace_ref) VALUES (?, ?, ?, ?, ?, ?, ?)`)
+      .run(session.id, session.runId, session.persona, session.sessionRef, session.startedAt, session.exitCode, session.workspaceRef)
     return session
   }
 

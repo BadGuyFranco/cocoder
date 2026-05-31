@@ -28,12 +28,15 @@ CREATE TABLE IF NOT EXISTS run (
 CREATE INDEX IF NOT EXISTS idx_run_workspace ON run(workspace_id);
 
 CREATE TABLE IF NOT EXISTS session (
-  id          TEXT PRIMARY KEY,
-  run_id      TEXT NOT NULL REFERENCES run(id),
-  persona     TEXT NOT NULL,
-  session_ref TEXT NOT NULL,
-  started_at  INTEGER NOT NULL,
-  exit_code   INTEGER
+  id            TEXT PRIMARY KEY,
+  run_id        TEXT NOT NULL REFERENCES run(id),
+  persona       TEXT NOT NULL,
+  session_ref   TEXT NOT NULL,
+  started_at    INTEGER NOT NULL,
+  exit_code     INTEGER,
+  -- The session's container ref (cmux workspace), durable so teardown can close the pane after a
+  -- daemon restart (ADR-0015 — kill() needs it but its in-memory map is empty in a fresh process).
+  workspace_ref TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_session_run ON session(run_id);
 
@@ -107,4 +110,5 @@ export const COLUMN_MIGRATIONS: readonly ColumnMigration[] = [
   { table: 'commit_link', column: 'kind', ddl: "TEXT NOT NULL DEFAULT 'atom'" },
   { table: 'commit_link', column: 'merge_sha', ddl: 'TEXT' },
   { table: 'commit_link', column: 'trunk_parent', ddl: 'TEXT' },
+  { table: 'session', column: 'workspace_ref', ddl: 'TEXT' },
 ]

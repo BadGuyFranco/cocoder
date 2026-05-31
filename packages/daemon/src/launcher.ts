@@ -45,6 +45,7 @@ function trackingHost(ctx: OzContext): SessionHost {
       ctx.liveRefs.delete(ref.id)
       await h.kill(ref)
     },
+    closeSurface: (args) => h.closeSurface(args),
   }
 }
 
@@ -177,7 +178,14 @@ async function closeRunSurfaces(ctx: OzContext, runId: string): Promise<string[]
   const closed: string[] = []
   for (const s of ctx.store.listSessions(runId)) {
     try {
-      await ctx.sessionHost.kill({ id: s.sessionRef, driver: 'cmux' })
+      if (s.workspaceRef) {
+        // Durable path: close by stored {workspaceRef, surfaceRef} — works even for a pane spawned by a
+        // PRIOR daemon instance (the actual Deb-leak fix; no in-memory spawn-map lookup).
+        await ctx.sessionHost.closeSurface({ workspaceRef: s.workspaceRef, surfaceRef: s.sessionRef })
+      } else {
+        // Legacy rows (pre-workspace_ref): best-effort same-instance kill.
+        await ctx.sessionHost.kill({ id: s.sessionRef, driver: 'cmux' })
+      }
       closed.push(s.sessionRef)
     } catch {
       /* already gone (closed by hand, or a pane this process never tracked) — nothing to close */

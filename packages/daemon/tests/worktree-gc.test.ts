@@ -41,6 +41,7 @@ const fakeHost = (): SessionHost => ({
   async sendInput() {},
   async show() {},
   async kill() {},
+  async closeSurface() {},
 })
 const fakeIO = () =>
   ({

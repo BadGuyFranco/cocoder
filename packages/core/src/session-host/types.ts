@@ -9,6 +9,10 @@ export interface SessionRef {
   readonly id: string
   /** Driver name that minted this ref (e.g. "cmux"), for diagnostics. */
   readonly driver: string
+  /** The container ref this surface lives in (cmux workspace). PERSISTED with the session so the pane
+   *  can be closed by a LATER daemon instance (ADR-0015 teardown after restart) — kill() relies on an
+   *  in-memory map that is empty after a restart; closeSurface() uses these durable refs instead. */
+  readonly workspaceRef?: string
 }
 
 export interface SpawnOptions {
@@ -66,6 +70,10 @@ export interface SessionHost {
   sendInput(ref: SessionRef, text: string): Promise<void>
   /** Surface/focus the session in the UI for the founder to watch. */
   show(ref: SessionRef): Promise<void>
-  /** Tear down the session. */
+  /** Tear down the session (by a ref this driver INSTANCE spawned — uses its in-memory map). */
   kill(ref: SessionRef): Promise<void>
+  /** Close a surface by its DURABLE refs, without the in-memory spawn map — so a pane spawned by a
+   *  PRIOR daemon instance can still be closed after a restart (ADR-0015 teardown; the Deb-pane leak).
+   *  Must tolerate an already-gone surface as success. */
+  closeSurface(args: { readonly workspaceRef: string; readonly surfaceRef: string }): Promise<void>
 }

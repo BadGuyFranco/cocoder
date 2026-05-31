@@ -274,7 +274,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     groupLabel,
     label: paneLabel(oscar),
   })
-  store.createSession({ runId: run.id, persona: oscar.id, sessionRef: oscarRef.id })
+  store.createSession({ runId: run.id, persona: oscar.id, sessionRef: oscarRef.id, workspaceRef: oscarRef.workspaceRef ?? null })
   store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: oscar.id, ref: oscarRef.id } })
 
   const bobCmd = getAdapter(bob.cli).build({
@@ -293,7 +293,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     groupLabel,
     label: paneLabel(bob),
   })
-  store.createSession({ runId: run.id, persona: bob.id, sessionRef: bobRef.id })
+  store.createSession({ runId: run.id, persona: bob.id, sessionRef: bobRef.id, workspaceRef: bobRef.workspaceRef ?? null })
   store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: bob.id, ref: bobRef.id } })
   const debRef = deb
     ? await spawnObserver({ store, sessionHost, getAdapter, run, workspace, priority, deb, sharedStandards, runDir, groupLabel, cwd: worktreePath, runBranch })

@@ -102,7 +102,9 @@ export class CmuxSessionHost implements SessionHost {
 
     this.#sessions.set(surfaceRef, { workspaceRef, paneRef, surfaceRef, exitCode: null })
     await this.show({ id: surfaceRef, driver: 'cmux' }) // bring the active agent to the front
-    return { id: surfaceRef, driver: 'cmux' }
+    // workspaceRef rides on the ref so the runner can PERSIST it — closeSurface() then works across a
+    // daemon restart (kill() can't: its #sessions map is empty in a fresh process).
+    return { id: surfaceRef, driver: 'cmux', workspaceRef }
   }
 
   async readScreen(ref: SessionRef): Promise<string> {
@@ -162,6 +164,17 @@ export class CmuxSessionHost implements SessionHost {
     // whole workspace would take out a sibling persona. --workspace scopes the ref (see spawn note).
     await this.#cli.run(['close-surface', '--workspace', s.workspaceRef, '--surface', s.surfaceRef])
     this.#sessions.delete(ref.id)
+  }
+
+  async closeSurface(args: { workspaceRef: string; surfaceRef: string }): Promise<void> {
+    // Close by DURABLE refs only — NO #sessions lookup — so a pane spawned by a prior daemon instance
+    // still closes after a restart (the Deb-pane leak). Already-gone is success: the goal is "not open".
+    try {
+      await this.#cli.run(['close-surface', '--workspace', args.workspaceRef, '--surface', args.surfaceRef])
+    } catch {
+      /* surface already gone (closed by hand / never existed in this cmux) — the desired end state */
+    }
+    this.#sessions.delete(args.surfaceRef) // prune if this instance happened to know it
   }
 
   #session(ref: SessionRef): Session {
