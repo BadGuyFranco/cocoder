@@ -85,7 +85,11 @@ folds into the **same teardown primitive** that must also be fixed for the curre
   not reconstructed.
 - **Resume** ([0002](./0002-substrate-oz-and-cmux.md) C1): the run row carries durable `worktree_path`,
   `run_branch`, and `integration_status` (`pending` | `resolving` | `verifying` | `merged` |
-  `escalated`), so a relaunched agent rebinds to the right worktree and a mid-merge crash is resumable.
+  `escalated`). These are recorded **for discernment, not auto-resume** (founder decision 2026-05-31): a
+  mid-merge crash is rare, so the system does NOT automatically pick up and finish a half-done merge.
+  Instead the state is durable so a relaunched **orchestrator (Oscar) reads `integration_status` + the
+  git state and discerns what happened** when picking the priority back up — and resolves it as work,
+  the same way it would any other incomplete priority. (No fragile auto-resume machinery is built.)
 
 ### 7. Concurrency is an explicit MVP non-goal
 Worktrees remove git-tree contention, but [0004](./0004-process-architecture.md)'s single-writer still
@@ -137,9 +141,9 @@ adversarial plan review (8 must-fixes, all addressed). Each atom typecheck + tes
 - §4 merge-conflict Play: a non-ff merges trunk into the run branch, resolves via the Play →
   re-verifies → ff's; a genuine semantic divergence aborts + escalates, never guessed; verified-when #3.
 - §5 teardown worktree GC + daemon-boot orphan-sweep + the Deb-pane leak root fix; verified-when #4.
-- **Open for the founder (does NOT block the four criteria):** §6 "a mid-merge crash is resumable" —
-  only the write side (status transitions) exists; the read/rebind/auto-resume side is unbuilt. Decide:
-  build it, or amend §6 to "recorded-for-forensics, not auto-resumed."
+- **§6 crash-resume — DECIDED (founder, 2026-05-31):** do NOT build auto-resume (too rare to justify the
+  fragility). The durable `integration_status` + branch/worktree are recorded so a relaunched Oscar
+  discerns a half-done merge on pickup and resolves it as ordinary work. §6 amended accordingly.
 - **Strongest remaining evidence gap:** all proof is from unit + LIVE-git tests, NOT yet a real
   daemon-driven dogfood run (the daemon was down). One live run that isolates → verifies → merges in
   anger is the final archive proof; it needs the daemon back up.
