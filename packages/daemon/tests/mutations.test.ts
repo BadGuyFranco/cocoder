@@ -269,21 +269,24 @@ describe('Oz mutations + lifecycle', () => {
     expect(shown.map((s) => s.id)).toEqual(['surface:9'])
   })
 
-  test('POST /runs/:id/teardown closes ONLY the run\'s live tracked surfaces', async () => {
+  test('POST /runs/:id/teardown closes ALL stored surfaces by durable ref (post-restart Deb-pane leak fix)', async () => {
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
     store.createSession({ runId: run.id, persona: 'oscar', sessionRef: 'surface:1' })
     store.createSession({ runId: run.id, persona: 'bob', sessionRef: 'surface:2' })
-    store.createSession({ runId: run.id, persona: 'ghost', sessionRef: 'surface:stale' }) // not live
+    store.createSession({ runId: run.id, persona: 'deb', sessionRef: 'surface:deb' })
     await startServer()
+    // Simulate a daemon restart: only some panes are in this process's liveRefs; Deb's is NOT tracked
+    // (the exact condition that USED to leak it — teardown closed nothing it didn't have live).
     oz!.ctx.liveRefs.add('surface:1')
-    oz!.ctx.liveRefs.add('surface:2') // surface:stale intentionally NOT live
+    oz!.ctx.liveRefs.add('surface:2')
 
     const r = await call(oz!, 'POST', `/runs/${run.id}/teardown`)
     expect(r.status).toBe(200)
-    expect(r.json.closed.sort()).toEqual(['surface:1', 'surface:2'])
-    expect(killed.map((k) => k.id).sort()).toEqual(['surface:1', 'surface:2']) // never the stale one
-    expect(oz!.ctx.liveRefs.has('surface:1')).toBe(false) // cleared from the live set
+    // All three of the run's stored surfaces are closed — including Deb's untracked pane (no leak).
+    expect(r.json.closed.sort()).toEqual(['surface:1', 'surface:2', 'surface:deb'])
+    expect(killed.map((k) => k.id).sort()).toEqual(['surface:1', 'surface:2', 'surface:deb'])
+    expect(oz!.ctx.liveRefs.has('surface:1')).toBe(false) // live refs pruned
     expect(store.listEvents(run.id).some((e) => e.type === 'teardown')).toBe(true)
   })
 

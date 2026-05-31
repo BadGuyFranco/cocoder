@@ -7,7 +7,7 @@
 //     and never becomes an unhandled rejection that takes the always-on daemon down;
 //   - track spawned surfaceRefs in ctx.liveRefs so deep-links are decidable without throwing.
 import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import {
   isPersonaEnabled,
   loadAssignments,
@@ -162,24 +162,58 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
   return { status: 202, body: { runId } }
 }
 
-/** Teardown (safe, daemon-mediated): close ONLY this run's tracked cmux surfaces — the sessions the
- *  daemon spawned and still has live. It physically cannot touch the Oz daemon, the cmux app, or any
- *  window it didn't spawn (it only ever kills refs in its own liveRefs set). Invoked by Oz (button →
- *  POST /runs/:id/teardown) AND by Oscar (the run-local helper / `cocoder oz teardown`) — same op. */
-export async function teardownRun(ctx: OzContext, runId: string): Promise<LaunchResult> {
-  const run = ctx.store.getRun(runId)
-  if (!run) return { status: 404, body: { error: 'unknown run' } }
+/** Close ALL of a run's tracked cmux surfaces by their DURABLE stored sessionRef (ADR-0015). This is
+ *  the ONE home for the kill primitive — teardown AND the boot orphan-sweep both use it. It kills by
+ *  the ref recorded in the store rather than only those in this process's `liveRefs`, which is what
+ *  fixes the post-restart leak: after a daemon restart liveRefs is EMPTY, so the old liveRefs-gated
+ *  loop closed nothing — every pane a prior daemon spawned (Deb's especially) leaked. Killing by
+ *  stored ref is idempotent (an already-gone pane throws and is ignored) and only ever targets a
+ *  surface CoCoder spawned for THIS run — never the Oz daemon, the cmux app, or a founder window. */
+async function closeRunSurfaces(ctx: OzContext, runId: string): Promise<string[]> {
   const closed: string[] = []
   for (const s of ctx.store.listSessions(runId)) {
-    if (!ctx.liveRefs.has(s.sessionRef)) continue // not live in this process → nothing to close
     try {
       await ctx.sessionHost.kill({ id: s.sessionRef, driver: 'cmux' })
       closed.push(s.sessionRef)
     } catch {
-      /* pane already gone (e.g. closed by hand) — nothing to close */
+      /* already gone (closed by hand, or a pane this process never tracked) — nothing to close */
     }
-    ctx.liveRefs.delete(s.sessionRef) // prune regardless: a failed kill means it's no longer live, so don't leave a stale deep-link
+    ctx.liveRefs.delete(s.sessionRef) // prune any stale deep-link regardless of kill outcome
   }
+  return closed
+}
+
+/** GC a run's worktree DIRECTORY (ADR-0015 §5). Removes only the dir; the branch ref is left intact,
+ *  so un-integrated commits are NEVER lost. BLOCKED while the run awaits a scope decision: its
+ *  out-of-scope held-back changes live UNCOMMITTED in the worktree (ADR-0007 forbids silent discard),
+ *  and a plain `worktree remove` refuses a dirty tree anyway — we never --force. Must run AFTER the
+ *  run's panes are closed (a live pane's cwd sits inside the dir). No-op if the run has no worktree. */
+async function gcWorktree(ctx: OzContext, runId: string): Promise<void> {
+  const run = ctx.store.getRun(runId)
+  if (!run?.worktreePath) return
+  if (run.status === 'pending-scope-decision') {
+    ctx.store.recordEvent({ runId, type: 'worktree-gc-blocked', data: { worktreePath: run.worktreePath, reason: 'pending-scope-decision' } })
+    return
+  }
+  try {
+    await ctx.git.worktreeRemove(ctx.cocoderHome, run.worktreePath)
+    ctx.store.recordEvent({ runId, type: 'worktree-removed', data: { worktreePath: run.worktreePath } })
+  } catch (err) {
+    // Dirty/locked/already-gone → leave it (forensics + safety); never force a worktree away.
+    ctx.store.recordEvent({ runId, type: 'worktree-gc-failed', data: { worktreePath: run.worktreePath, reason: err instanceof Error ? err.message : String(err) } })
+  }
+}
+
+/** Teardown (safe, daemon-mediated): close this run's tracked cmux surfaces THEN GC its worktree dir.
+ *  Order matters — a live pane's cwd is inside the worktree (§5). Closing is by durable sessionRef, so
+ *  it works even for a run launched by a PRIOR daemon instance (the Deb-pane leak fix). It physically
+ *  cannot touch the Oz daemon, the cmux app, or any window CoCoder didn't spawn for this run. Invoked
+ *  by Oz (button → POST /runs/:id/teardown) AND by Oscar (`cocoder oz teardown`) — the same op. */
+export async function teardownRun(ctx: OzContext, runId: string): Promise<LaunchResult> {
+  const run = ctx.store.getRun(runId)
+  if (!run) return { status: 404, body: { error: 'unknown run' } }
+  const closed = await closeRunSurfaces(ctx, runId)
+  await gcWorktree(ctx, runId)
   ctx.store.recordEvent({ runId, type: 'teardown', data: { closed } })
   void appendAudit(ctx.cocoderHome, { action: 'teardown', runId, closed })
   return { status: 200, body: { closed } }
@@ -213,14 +247,39 @@ export async function showRun(ctx: OzContext, runId: string): Promise<LaunchResu
   return { status: 200, body: { shown: true, sessionRef: live.sessionRef } }
 }
 
-/** Startup orphan reconciliation (review blocker / F6 honesty): at boot the live set is empty, so any
- *  run still 'running' was stranded by a daemon crash/restart. Mark it failed so surface 4 is honest.
- *  This is NOT ADR-0002-C1 relaunch (run continuation) — it just closes the ghost-row. */
-export function reconcileOrphans(ctx: OzContext): void {
+/** Startup orphan reconciliation (review blocker / F6 honesty + ADR-0015 §5). Two passes:
+ *  1. Ghost-row close: at boot the live set is empty, so any run still 'running' was stranded by a
+ *     daemon crash/restart — mark it failed so the run list stays honest. (NOT ADR-0002-C1 relaunch.)
+ *  2. Orphan-worktree sweep: reconcile on-disk worktrees against the run table. A worktree whose run
+ *     is terminal (and not awaiting a scope decision) is stray — close any panes a prior daemon left
+ *     (by durable ref) THEN remove the dir. Preserves active/held-back worktrees and never force-
+ *     removes; the branch ref is untouched, so un-integrated commits are never lost. */
+export async function reconcileOrphans(ctx: OzContext): Promise<void> {
   for (const run of ctx.store.listRuns()) {
     if (run.status === 'running') {
       ctx.store.recordEvent({ runId: run.id, type: 'orphaned', data: { reason: 'daemon restarted' } })
       ctx.store.setRunStatus(run.id, 'failed')
     }
+  }
+  await sweepOrphanWorktrees(ctx)
+}
+
+async function sweepOrphanWorktrees(ctx: OzContext): Promise<void> {
+  let worktrees
+  try {
+    worktrees = await ctx.git.listWorktrees(ctx.cocoderHome)
+  } catch {
+    return // not a git repo / git unavailable → nothing to sweep
+  }
+  for (const wt of worktrees) {
+    // A CoCoder run worktree is identified by its dir basename being a known runId that carries a
+    // worktree — NOT by a path prefix, which would mis-match under symlink normalisation (e.g. macOS
+    // /var vs /private/var). The founder's main checkout has no matching run row, so it is never swept.
+    const run = ctx.store.getRun(basename(wt.path))
+    if (!run?.worktreePath) continue
+    if (run.status === 'running' || run.status === 'pending-scope-decision') continue // active/held-back → preserve
+    await closeRunSurfaces(ctx, run.id) // close any prior-instance panes before removing the cwd they live in
+    await gcWorktree(ctx, run.id)
+    ctx.store.recordEvent({ runId: run.id, type: 'worktree-swept', data: { worktreePath: run.worktreePath } })
   }
 }

@@ -146,8 +146,9 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
   }
 
   // Startup orphan reconciliation: any run still 'running' at boot was stranded by a prior daemon
-  // crash/restart (the live set is empty here) — mark it failed so surface 4 stays honest (F6).
-  reconcileOrphans(ctx)
+  // crash/restart (the live set is empty here) — mark it failed so surface 4 stays honest (F6) — and
+  // sweep stray run worktrees against the run table (ADR-0015 §5).
+  await reconcileOrphans(ctx)
 
   const server = createServer(handler)
   const port = await new Promise<number>((resolve) => {
