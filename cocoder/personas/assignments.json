@@ -6,7 +6,8 @@
       "model": "",
       "plays": {
         "wrap-up": { "cli": "cursor-agent", "model": "" },
-        "integration-verify": { "cli": "claude", "model": "" }
+        "integration-verify": { "cli": "claude", "model": "" },
+        "merge-conflict": { "cli": "claude", "model": "" }
       }
     },
     "bob": { "cli": "codex", "model": "" },

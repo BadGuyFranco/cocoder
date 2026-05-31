@@ -90,6 +90,11 @@ export interface RunInput {
    *  without a clear pass) a run does NOT auto-merge; it escalates. */
   readonly integrationVerifyPlay?: Play
   readonly integrationVerifyAssignment?: PlayAssignment
+  /** Resolved merge-conflict Play + assignment (ADR-0015 §4): dispatched when trunk advanced since launch
+   *  (non-ff) to resolve the conflict CONTENT in the worktree. A genuine semantic divergence the Play
+   *  reports as `escalate` aborts the merge and surfaces to the founder rather than being guessed. */
+  readonly mergeConflictPlay?: Play
+  readonly mergeConflictAssignment?: PlayAssignment
   /** Daemon launch-time guard: true when the long-lived daemon is serving code older than repo HEAD. */
   readonly daemonStale?: boolean
 }
@@ -154,6 +159,22 @@ export function parseVerifyVerdict(output: string): { verdict: 'pass' | 'fail'; 
       if (o.verdict === 'pass' || o.verdict === 'fail') return { verdict: o.verdict, reason: String(o.reason ?? '') }
     } catch {
       /* not valid JSON — keep scanning earlier candidates */
+    }
+  }
+  return null
+}
+
+/** Parse a merge-conflict Play's resolution signal from its captured output (ADR-0015 §4). FAIL-CLOSED
+ *  like parseVerifyVerdict: null (missing/unparseable) is treated by the caller as escalate-don't-guess. */
+export function parseResolution(output: string): { resolution: 'resolved' | 'escalate'; reason: string } | null {
+  const matches = output.match(/\{[^{}]*"resolution"[^{}]*\}/g)
+  if (!matches) return null
+  for (let i = matches.length - 1; i >= 0; i--) {
+    try {
+      const o = JSON.parse(matches[i]!) as { resolution?: unknown; reason?: unknown }
+      if (o.resolution === 'resolved' || o.resolution === 'escalate') return { resolution: o.resolution, reason: String(o.reason ?? '') }
+    } catch {
+      /* keep scanning earlier candidates */
     }
   }
   return null
@@ -403,6 +424,38 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     return verdict
   }
 
+  // Merge-conflict resolution (ADR-0015 §4): dispatch the merge-conflict Play to reconcile the CONTENT
+  // of an in-progress conflicted merge in the worktree. FAIL-CLOSED: null (no Play / unparseable) is
+  // treated by the caller as escalate. The Play resolves content only — the runner concludes the merge.
+  const runMergeConflictResolve = async (conflicts: string[]): Promise<{ resolution: 'resolved' | 'escalate'; reason: string } | null> => {
+    if (!input.mergeConflictPlay || !input.mergeConflictAssignment) {
+      store.recordEvent({ runId: run.id, type: 'merge-conflict-skipped', data: { reason: 'no merge-conflict play configured', conflicts } })
+      return null
+    }
+    const task =
+      `Resolve the merge conflict for run ${run.id} (priority ${priority.id}) in this worktree. Trunk advanced since ` +
+      `launch, so merging trunk into ${runBranch} conflicts in: ${conflicts.join(', ')}. Reconcile the CONTENT of the ` +
+      `conflicted files (edit them; do NOT run git or commit — the runner concludes the merge). If two intentional ` +
+      `changes genuinely disagree (a semantic divergence you cannot safely reconcile), do NOT guess. Emit as your final ` +
+      `output {"resolution":"resolved"} once reconciled, or {"resolution":"escalate","reason":"<one line>"}.`
+    const res = await dispatchPlay(
+      { sessionHost, getAdapter, runHeadless: deps.runHeadless },
+      {
+        play: input.mergeConflictPlay,
+        assignment: input.mergeConflictAssignment,
+        persona: oscar.id,
+        task,
+        cwd: worktreePath,
+        outPath: join(runDir, 'merge-conflict-out.txt'),
+        group: run.id,
+        timeoutMs: t.wrapupMs,
+      },
+    )
+    const resolution = parseResolution(res.output)
+    store.recordEvent({ runId: run.id, type: 'merge-conflict-resolve', data: { resolution: resolution?.resolution ?? null, reason: resolution?.reason ?? null, conflicts } })
+    return resolution
+  }
+
   // ── The multi-atom loop ───────────────────────────────────────────────────────────────────────
   const committedShas: string[] = []
   const committedFiles: string[] = []
@@ -596,14 +649,14 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const status: RunStatus = terminalStatus ?? (outOfScope.length > 0 ? 'pending-scope-decision' : 'completed')
   store.setRunStatus(run.id, status)
 
-  // ── Integrate: VERIFY the merged-to-be tree as a whole, THEN fast-forward onto trunk (ADR-0015 §3) ──
+  // ── Integrate: bring trunk in if it moved (§4), VERIFY the merged tree (§3), THEN ff onto trunk ──────
   // A run reaches trunk ONLY here, only on a clean completion, and only AFTER a fresh whole-tree
-  // integration verify passes — per-atom green proves each change in isolation, not the integrated line
-  // the founder ships from (the 0013 lesson). The verify is FAIL-CLOSED (F11 — no bypassable gate): a
-  // missing verifier, a timeout, an unparseable verdict, or a `fail` all escalate WITHOUT landing trunk.
-  // For a fast-forward the worktree HEAD already IS the merged-to-be tree, so the verifier runs there.
-  // A non-fast-forward (trunk advanced since launch) is left for the merge-conflict Play; a run awaiting
-  // a scope decision or failed does NOT auto-land.
+  // integration verify passes (FAIL-CLOSED, F11 — missing/timeout/unparseable/`fail` all escalate WITHOUT
+  // landing). For a fast-forward the worktree HEAD already IS the merged-to-be tree. For a NON-ff (trunk
+  // advanced since launch) the runner merges trunk INTO the run branch in the worktree (§4): a clean merge
+  // proceeds; a conflict goes to the merge-conflict Play to reconcile CONTENT, and a genuine semantic
+  // divergence (or no/garbled verdict) is aborted + escalated — never guessed. A run awaiting a scope
+  // decision or failed does NOT auto-land.
   let mergeSha: string | null = null
   if (status === 'completed') {
     try {
@@ -611,33 +664,44 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       const unmerged = await git.unmergedCommits(cocoderHome, trunkNow, runBranch)
       if (unmerged.length === 0) {
         store.setIntegrationStatus(run.id, 'merged') // nothing un-integrated → vacuously landed
-      } else if (await git.isAncestor(cocoderHome, trunkNow, runBranch)) {
-        store.setIntegrationStatus(run.id, 'verifying')
-        const verdict = await runIntegrationVerify(`${runBranch} → trunk`)
-        if (verdict?.verdict !== 'pass') {
-          // Fail-closed: do NOT land. The verified commits stay safe on the branch for the founder.
-          store.setIntegrationStatus(run.id, 'escalated')
-          store.recordEvent({ runId: run.id, type: 'integration-escalated', data: { runBranch, trunkParent: trunkNow, reason: verdict ? verdict.reason : 'no integration-verify verdict (fail-closed)' } })
-          log(`integration ESCALATED for ${runBranch}: ${verdict ? `verifier said fail (${verdict.reason})` : 'no verdict — fail-closed, not landed'}`)
-        } else {
-          // Verified green → land. Record the merge link ONLY after the merge succeeds (write-ordering).
-          mergeSha = await git.mergeFastForwardOnly(cocoderHome, runBranch)
-          store.recordCommitLink({
-            runId: run.id,
-            commitSha: mergeSha,
-            message: `merge: ${runBranch} → trunk`,
-            files: [],
-            kind: 'merge',
-            mergeSha,
-            trunkParent: trunkNow,
-          })
-          store.setIntegrationStatus(run.id, 'merged')
-          store.recordEvent({ runId: run.id, type: 'integrated', data: { mergeSha, trunkParent: trunkNow, runBranch, commits: unmerged.length, verifyReason: verdict.reason } })
-          log(`integrated ${runBranch} → trunk (${mergeSha.slice(0, 8)}; ${unmerged.length} commit(s); verified)`)
-        }
       } else {
-        store.recordEvent({ runId: run.id, type: 'integration-deferred', data: { reason: 'non-fast-forward', trunkNow, runBranch, commits: unmerged.length } })
-        log(`integration deferred for ${runBranch}: trunk advanced since launch (non-ff) — left for the merge-conflict Play`)
+        let escalated = false
+        // NON-ff: merge trunk into the run branch first so a later ff lands everything (§4).
+        if (!(await git.isAncestor(cocoderHome, trunkNow, runBranch))) {
+          store.setIntegrationStatus(run.id, 'resolving')
+          if ((await git.mergeInto(worktreePath, trunkNow)) === 'conflict') {
+            const conflicts = await git.conflictedFiles(worktreePath)
+            const resolution = await runMergeConflictResolve(conflicts)
+            if (resolution?.resolution === 'resolved') {
+              await git.completeMerge(worktreePath, `merge: trunk → ${runBranch} (conflict resolved)`)
+            } else {
+              // Semantic divergence (or no Play / no verdict) → abort + escalate; nothing guessed/landed.
+              await git.abortMerge(worktreePath)
+              store.setIntegrationStatus(run.id, 'escalated')
+              store.recordEvent({ runId: run.id, type: 'merge-conflict-escalated', data: { runBranch, trunkParent: trunkNow, conflicts, reason: resolution ? resolution.reason : 'no resolution verdict (fail-closed)' } })
+              log(`merge conflict ESCALATED for ${runBranch}: ${resolution ? resolution.reason : 'no verdict — not landed'}`)
+              escalated = true
+            }
+          }
+          // A clean mergeInto auto-committed the merge on the run branch → fall through to verify + ff.
+        }
+        // VERIFY the merged tree (for a non-ff the worktree HEAD now includes trunk), then ff trunk.
+        if (!escalated) {
+          store.setIntegrationStatus(run.id, 'verifying')
+          const verdict = await runIntegrationVerify(`${runBranch} → trunk`)
+          if (verdict?.verdict !== 'pass') {
+            store.setIntegrationStatus(run.id, 'escalated')
+            store.recordEvent({ runId: run.id, type: 'integration-escalated', data: { runBranch, trunkParent: trunkNow, reason: verdict ? verdict.reason : 'no integration-verify verdict (fail-closed)' } })
+            log(`integration ESCALATED for ${runBranch}: ${verdict ? `verifier said fail (${verdict.reason})` : 'no verdict — fail-closed, not landed'}`)
+          } else {
+            // Verified green → land. Record the merge link ONLY after the merge succeeds (write-ordering).
+            mergeSha = await git.mergeFastForwardOnly(cocoderHome, runBranch)
+            store.recordCommitLink({ runId: run.id, commitSha: mergeSha, message: `merge: ${runBranch} → trunk`, files: [], kind: 'merge', mergeSha, trunkParent: trunkNow })
+            store.setIntegrationStatus(run.id, 'merged')
+            store.recordEvent({ runId: run.id, type: 'integrated', data: { mergeSha, trunkParent: trunkNow, runBranch, commits: unmerged.length, verifyReason: verdict.reason } })
+            log(`integrated ${runBranch} → trunk (${mergeSha.slice(0, 8)}; verified)`)
+          }
+        }
       }
     } catch (err) {
       store.recordEvent({ runId: run.id, type: 'integration-failed', data: { runBranch, reason: err instanceof Error ? err.message : String(err) } })

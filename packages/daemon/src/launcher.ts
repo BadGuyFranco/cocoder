@@ -78,6 +78,8 @@ async function buildRunInput(ctx: OzContext, workspaceId: string, priorityId: st
     wrapPlayAssignment: resolvePlayAssignment(assignments, 'oscar', 'wrap-up'),
     integrationVerifyPlay: loadPlay(basePlaysDir(), 'integration-verify'),
     integrationVerifyAssignment: resolvePlayAssignment(assignments, 'oscar', 'integration-verify'),
+    mergeConflictPlay: loadPlay(basePlaysDir(), 'merge-conflict'),
+    mergeConflictAssignment: resolvePlayAssignment(assignments, 'oscar', 'merge-conflict'),
     sharedStandards,
     runsRoot: ctx.runsRoot,
     pickup,

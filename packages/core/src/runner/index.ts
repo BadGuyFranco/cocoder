@@ -1,6 +1,7 @@
 export {
   runRun,
   parseVerifyVerdict,
+  parseResolution,
   PreflightError,
   MissingObjectiveError,
   type RunnerDeps,
