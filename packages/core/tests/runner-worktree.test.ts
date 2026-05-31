@@ -88,7 +88,7 @@ afterEach(async () => {
 // Run a full scenario: a fake Bob writes a real in-scope file into its worktree, and the injected
 // integration-verify Play returns `verifyOutput`. `onProceed` (if given) runs when Bob is dispatched —
 // used to mutate the founder's checkout (e.g. switch branches) to exercise the misrouting guard.
-async function runScenario(verifyOutput: string, onProceed?: () => Promise<void>) {
+async function runScenario(verifyOutput: string, onProceed?: () => Promise<void>, gitOverride?: import('../src/index.js').Git) {
   let bobRefId: string | null = null
   let bobCwd: string | null = null
   const sessionHost: SessionHost = {
@@ -124,7 +124,7 @@ async function runScenario(verifyOutput: string, onProceed?: () => Promise<void>
     {
       store,
       sessionHost,
-      git: makeGit(),
+      git: gitOverride ?? makeGit(),
       getAdapter: () => okAdapter,
       io: fakeIO([delegate('add the feature'), wrapup('done')]),
       makeJudge: doneJudge,
@@ -182,6 +182,18 @@ describe('runRun worktree isolation + VERIFIED auto-merge (ADR-0015, live git)',
     expect(await g(home, ['rev-parse', 'HEAD'])).toBe(trunkBefore) // a non-cooperating verifier cannot land trunk
     expect(store.getRun(result.runId)?.integrationStatus).toBe('escalated')
     expect(store.listCommitLinks(result.runId).some((l) => l.kind === 'merge')).toBe(false)
+  })
+
+  test('a THROW during the land is fail-closed: terminal escalated status, trunk untouched (no stuck state)', async () => {
+    const trunkBefore = await g(home, ['rev-parse', 'HEAD'])
+    // Real git for everything EXCEPT the final ff, which throws (e.g. a dirty-overlap / transient git error).
+    const throwingGit = { ...makeGit(), async mergeFastForwardOnly(): Promise<string> { throw new Error('ff blew up') } }
+    const { result, store } = await runScenario('{"verdict":"pass","reason":"green"}', undefined, throwingGit)
+
+    // The catch must leave a TERMINAL status — never stranded at 'verifying'/'resolving'.
+    expect(store.getRun(result.runId)?.integrationStatus).toBe('escalated')
+    expect(await g(home, ['rev-parse', 'HEAD'])).toBe(trunkBefore) // nothing landed
+    expect(store.listEvents(result.runId).some((e) => e.type === 'integration-failed')).toBe(true)
   })
 
   test('founder switching branches mid-run escalates instead of MISROUTING the land (§1 guard)', async () => {
