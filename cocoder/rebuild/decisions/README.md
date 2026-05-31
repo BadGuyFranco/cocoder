@@ -11,12 +11,12 @@ Clean ADR set for the v2 rebuild. Authoritative for v2; the v1 ADRs under
 | [0002](./0002-substrate-oz-and-cmux.md) | Substrate: Oz brain + cmux terminal host (S1) | Accepted |
 | [0003](./0003-data-model-hybrid.md) | Data model: hybrid files + central Oz-owned SQLite (S2) | Accepted |
 | [0004](./0004-process-architecture.md) | Process architecture: core lib, optional daemon, CLI-standalone (S4) | Accepted |
-| [0005](./0005-personas-and-subtasks.md) | Personas + delegatable sub-tasks (S5; dissolves S9) | Accepted |
+| [0005](./0005-personas-and-subtasks.md) | Personas + delegatable Plays (S5; dissolves S9) | Accepted |
 | [0006](./0006-adapter-contract.md) | Adapter contract: trust-the-CLI + capability probe (S6) | Accepted |
 | [0007](./0007-write-scope-enforcement.md) | Write-scope: allow-list + commit-gate enforcement (S7) | Accepted |
-| [0008](./0008-repository-topology.md) | Repository topology + one-home enforcement (S3; amends 0005; ~resolves S8) | Accepted |
+| [0008](./0008-repository-topology.md) | Repository topology + one-home enforcement (S3; relates to 0005; ~resolves S8) | Accepted |
 | [0009](./0009-extensibility.md) | Extensibility — *merged into 0008 §Extensibility* (redirect signpost) | Merged → 0008 |
-| [0010](./0010-taxonomy-and-authoring.md) | Taxonomy & authoring lifecycle: Playbooks, Plays, Objectives (amends 0005) | Accepted |
+| [0010](./0010-taxonomy-and-authoring.md) | Taxonomy & authoring lifecycle: Playbooks, Plays, Objectives (refines 0005) | Accepted |
 | [0011](./0011-orchestrator-verify-gate.md) | Orchestrator verify-gate — *merged into 0013* (redirect signpost) | Merged → 0013 |
 | [0012](./0012-living-base-personas.md) | Living base personas + repo extensions — base ships with the install & propagates; repos layer deltas (amends 0008/0009) | Accepted |
 | [0013](./0013-orchestration-observation.md) | Orchestration + observation: Oscar drives Bob through a multi-atom plan; tiered continuous monitoring (Oscar→Bob, Deb→Oscar, Oz→sessions) with the direct-your-primary rule (refines 0004) | Accepted |
@@ -59,11 +59,11 @@ are the space to explore, not recommendations. Order is rough priority.
 | ~~S2 — Core data model~~ | **RESOLVED → [ADR-0003](./0003-data-model-hybrid.md):** hybrid — governance in git-tracked files; operational state in one central Oz-owned SQLite (workspace-tagged, WAL, sole writer); write-once run receipts; DB references governance by ID, never copies. | | |
 | ~~S3 — One concept, one home (topology)~~ | **RESOLVED → [ADR-0008](./0008-repository-topology.md):** v1 storage zones retained; six packages (core/adapters/session-hosts/daemon/cli/ui) with inward-only deps enforced by a deterministic CI check; personas = flat governance markdown files (+ scripts), default set in templates, loader in core. | | |
 | ~~S4 — Oz ↔ runner boundary~~ | **RESOLVED → [ADR-0004](./0004-process-architecture.md):** I/O-agnostic `core` library (deps inward); Oz daemon = always-on owner in interactive use; CLI runs standalone headless; single-writer-at-a-time via SQLite lock. | | |
-| ~~S5 — Persona / model-tiering contract~~ | **RESOLVED → [ADR-0005](./0005-personas-and-subtasks.md):** two tiers — top-level personas + a shared registry of delegatable sub-tasks; CLI+model set per-persona AND per-(persona,sub-task) in Oz; one-level delegation for MVP. | | |
-| ~~S9 — Collaboration model~~ (surfaced mid-Q&A) | **DISSOLVED → [ADR-0005](./0005-personas-and-subtasks.md):** no standing "route" concept; collaboration = the sub-task delegation graph + dynamic persona-to-persona assignment within configured personas. Kills the F1 route→priority coupling. | | |
+| ~~S5 — Persona / model-tiering contract~~ | **RESOLVED → [ADR-0005](./0005-personas-and-subtasks.md):** two tiers — top-level personas + a shared registry of delegatable Plays; CLI+model set per-persona AND per-(persona,Play) in Oz; one-level delegation for MVP. | | |
+| ~~S9 — Collaboration model~~ (surfaced mid-Q&A) | **DISSOLVED → [ADR-0005](./0005-personas-and-subtasks.md):** no standing "route" concept; collaboration = the Play delegation graph + dynamic persona-to-persona assignment within configured personas. Kills the F1 route→priority coupling. | | |
 | ~~S6 — Adapter / sandbox contract~~ | **RESOLVED → [ADR-0006](./0006-adapter-contract.md):** per-CLI driver behind a common interface; trust-the-CLI (normal perms, no OS sandbox); deterministic preflight (installed/authed/model); + a "Test CLI permissions" probe = deterministic capability verification + agentic setup guidance. | | |
-| ~~S7 — Write-scope & enforcement boundary~~ | **RESOLVED → [ADR-0007](./0007-write-scope-enforcement.md):** allow-list globs (per-persona default, priority-narrowable; sub-task types carry default scopes); enforced by deterministic git-diff check at CoCoder's commit gate; out-of-scope = block-commit-but-surface-for-approval; honest that out-of-band git isn't policed. | | |
-| ~~S8 — Persona extensibility seam~~ | **RESOLVED → [ADR-0009](./0009-extensibility.md):** extend by adding governance files (custom personas/sub-tasks/scopes) — no core fork; defaults ship in templates, adopters override in their workspace. One exception: a new CLI needs an adapter driver (code) until data-driven adapters are earned. | | |
+| ~~S7 — Write-scope & enforcement boundary~~ | **RESOLVED → [ADR-0007](./0007-write-scope-enforcement.md):** allow-list globs (per-persona default, priority-narrowable; Play types carry default scopes); enforced by deterministic git-diff check at CoCoder's commit gate; out-of-scope = block-commit-but-surface-for-approval; honest that out-of-band git isn't policed. | | |
+| ~~S8 — Persona extensibility seam~~ | **RESOLVED → [ADR-0009](./0009-extensibility.md):** extend by adding governance files (custom personas/Plays/scopes) — no core fork; defaults ship in templates, adopters override in their workspace. One exception: a new CLI needs an adapter driver (code) until data-driven adapters are earned. | | |
 
 ## Conventions
 
