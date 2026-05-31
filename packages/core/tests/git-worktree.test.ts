@@ -120,9 +120,9 @@ describe('Git conflict-aware merge primitives (ADR-0015 §4, live git)', () => {
     expect(await git.mergeInto(wt, 'trunk')).toBe('conflict')
     expect(await git.conflictedFiles(wt)).toEqual(['shared.txt'])
 
-    // The Play resolves the CONTENT; the runner concludes the merge (ADR-0015 §2 split).
+    // The Play resolves the CONTENT; the runner concludes the merge, staging only the conflicted path (§2).
     await writeFile(join(wt, 'shared.txt'), 'reconciled\n')
-    const mergeSha = await git.completeMerge(wt, 'merge: trunk → cocoder/run_x')
+    const mergeSha = await git.completeMerge(wt, 'merge: trunk → cocoder/run_x', ['shared.txt'])
     expect(mergeSha).toBeTruthy()
     expect(await git.conflictedFiles(wt)).toEqual([]) // merge concluded, no unmerged paths
     // trunk is now an ancestor of the resolved branch → a subsequent ff lands everything.

@@ -693,7 +693,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
             const conflicts = await git.conflictedFiles(worktreePath)
             const resolution = await runMergeConflictResolve(conflicts)
             if (resolution?.resolution === 'resolved') {
-              await git.completeMerge(worktreePath, `merge: trunk → ${runBranch} (conflict resolved)`)
+              await git.completeMerge(worktreePath, `merge: trunk → ${runBranch} (conflict resolved)`, conflicts)
               mergedTrunkIn = true
             } else {
               // Semantic divergence (or no Play / no verdict) → abort + escalate; nothing guessed/landed.

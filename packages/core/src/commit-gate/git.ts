@@ -61,9 +61,12 @@ export interface Git {
   mergeInto(cwd: string, ref: string): Promise<'clean' | 'conflict'>
   /** The unmerged (conflicted) paths of an in-progress merge (`git diff --name-only --diff-filter=U`). */
   conflictedFiles(cwd: string): Promise<string[]>
-  /** Conclude an in-progress merge once conflicts are resolved: stage everything + commit. Returns the
-   *  new HEAD sha. (The runner owns this git step; the Play only edits file CONTENT — ADR-0015 §2.) */
-  completeMerge(cwd: string, message: string): Promise<string>
+  /** Conclude an in-progress merge once conflicts are resolved: stage ONLY the resolved `paths` (the
+   *  previously-conflicted files; git already staged the auto-merged ones) + commit. Returns the new
+   *  HEAD sha. Staging just `paths` — never `git add -A` — keeps any stray out-of-scope file the
+   *  resolver Play left in the worktree OUT of the merge commit that then lands on trunk. (The runner
+   *  owns this git step; the Play only edits file CONTENT — ADR-0015 §2.) */
+  completeMerge(cwd: string, message: string, paths: readonly string[]): Promise<string>
   /** Abort an in-progress merge, restoring the pre-merge branch state (`git merge --abort`). Used when
    *  the Play judges a genuine semantic divergence — escalate rather than guess. */
   abortMerge(cwd: string): Promise<void>
@@ -221,9 +224,11 @@ export function makeGit(): Git {
         throw err
       }
     },
-    async completeMerge(cwd, message) {
-      await git(cwd, ['add', '-A'])
-      await git(cwd, ['commit', '-m', message]) // concludes the in-progress merge with all paths staged
+    async completeMerge(cwd, message, paths) {
+      // Stage ONLY the resolved (previously-conflicted) paths — the auto-merged files are already staged
+      // by the merge, and a `git add -A` would sweep in any stray file the resolver left behind.
+      if (paths.length > 0) await git(cwd, ['add', '--', ...paths])
+      await git(cwd, ['commit', '-m', message]) // concludes the in-progress merge
       return (await git(cwd, ['rev-parse', 'HEAD'])).trim()
     },
     async abortMerge(cwd) {

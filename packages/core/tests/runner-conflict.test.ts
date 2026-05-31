@@ -135,6 +135,9 @@ async function runScenario(conflictResolution: 'resolve' | 'escalate') {
         if (prompt.includes('Resolve the merge conflict')) {
           if (conflictResolution === 'resolve') {
             await writeFile(join(input.cwd, 'packages', 'shared.ts'), 'export const v = "reconciled"\n')
+            // The resolver also leaves a STRAY out-of-scope file — it must NOT ride onto trunk via the
+            // merge commit (completeMerge stages only the conflicted paths, never `git add -A`).
+            await writeFile(join(input.cwd, 'STRAY.txt'), 'should not land\n')
             return { exitCode: 0, output: '{"resolution":"resolved"}' }
           }
           return { exitCode: 0, output: '{"resolution":"escalate","reason":"run and trunk intentionally disagree"}' }
@@ -167,6 +170,8 @@ describe('runRun merge-conflict path (ADR-0015 §4, live git)', () => {
     // Trunk now carries the RECONCILED content (the Play's resolution landed via the conclude+ff).
     expect(await g(home, ['show', 'HEAD:packages/shared.ts'])).toBe('export const v = "reconciled"')
     expect(store.listEvents(result.runId).some((e) => e.type === 'merge-conflict-resolve')).toBe(true)
+    // The resolver's stray out-of-scope file did NOT land on trunk (completeMerge staged only conflicts).
+    expect(await g(home, ['cat-file', '-e', 'HEAD:STRAY.txt']).then(() => true, () => false)).toBe(false)
   })
 
   test('a semantic divergence is aborted + escalated; trunk is left untouched (nothing guessed)', async () => {
