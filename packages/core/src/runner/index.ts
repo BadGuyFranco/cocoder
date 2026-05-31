@@ -2,7 +2,6 @@ export {
   runRun,
   PreflightError,
   MissingObjectiveError,
-  DirtyWorkingTreeError,
   type RunnerDeps,
   type RunInput,
   type RunResult,

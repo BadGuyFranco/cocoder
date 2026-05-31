@@ -5,7 +5,6 @@ import { describe, expect, test } from 'vitest'
 import {
   type Adapter,
   type Directive,
-  DirtyWorkingTreeError,
   type Git,
   type HeadlessRunInput,
   type MakeJudge,
@@ -91,9 +90,9 @@ function scriptedGit(changedPerAtom: string[][]): Git {
       return head
     },
     async changedFiles() {
-      // First call is the runner's clean-tree precondition → report a clean tree; then per-atom sets.
-      const i = call++
-      return i === 0 ? [] : (changedPerAtom[i - 1] ?? [])
+      // One changed-file set per atom commit-gate call (ADR-0015 retired the launch precondition, so
+      // there is no longer a leading clean-tree probe to skip).
+      return changedPerAtom[call++] ?? []
     },
     async addAndCommit() {
       head = `sha-${call}`
@@ -262,7 +261,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(wrapBuilds).toHaveLength(1)
     expect(wrapBuilds[0]).toMatchObject({ model: 'cheap-wrap' })
     expect(wrapBuilds[0]?.prompt).toContain('Wrap-up Play body.')
-    expect(wrapBuilds[0]?.prompt).toContain('Run run_1 on priority demo. 1 atom(s) were delegated; commits so far: sha-2.')
+    expect(wrapBuilds[0]?.prompt).toContain('Run run_1 on priority demo. 1 atom(s) were delegated; commits so far: sha-1.')
     expect(wrapBuilds[0]?.prompt).toContain('Oscar seed closeout')
     // Ran headless (captured subprocess) carrying the built prompt — and NO cmux pane was spawned for it.
     expect(headlessCalls).toHaveLength(1)
@@ -270,7 +269,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(headlessCalls[0]?.args.join('\n')).toContain('Wrap-up Play body.')
     expect(paneSpawns).not.toContain('cursor-agent')
     expect(pickupWrites).toEqual(['PLAY CLOSEOUT\n'])
-    expect(result.committedShas).toEqual(['sha-2', 'sha-3'])
+    expect(result.committedShas).toEqual(['sha-1', 'sha-2'])
     expect(result.committedFiles).toEqual(['packages/atom.ts', 'docs/wrap.md'])
     expect(result.outOfScope).toEqual(['packages/not-wrap.ts'])
     expect(result.status).toBe('pending-scope-decision')
@@ -363,7 +362,7 @@ describe('runRun (multi-atom loop)', () => {
     const store = openRunStore(':memory:')
     const restored: string[][] = []
     let call = 0
-    const changedPerCall = [[], ['packages/bad.ts'], ['packages/good.ts']] // [precondition: clean], atom0 rejected, atom1's work
+    const changedPerCall = [['packages/bad.ts'], ['packages/good.ts']] // atom0 rejected (quarantined), atom1's work
     const git: Git = {
       ...worktreeStubs,
       async headSha() {
@@ -642,33 +641,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(store.getRun(store.listRuns()[0]!.id)?.status).toBe('failed')
   })
 
-  test('refuses to launch on a dirty in-scope working tree (no data-loss from a later quarantine)', async () => {
-    const store = openRunStore(':memory:')
-    const spawns: string[] = []
-    // changedFiles returns a pre-existing IN-SCOPE change at the launch precondition check.
-    const dirtyGit: Git = { ...scriptedGit([]), async changedFiles() {
-      return ['packages/already-here.ts']
-    } }
-    await expect(
-      runRun(baseDeps({ store, git: dirtyGit, sessionHost: fakeSessionHost({ async spawn(o) {
-        spawns.push(o.persona)
-        return { id: 's', driver: 'fake' }
-      } }) }), input),
-    ).rejects.toBeInstanceOf(DirtyWorkingTreeError)
-    expect(spawns).toEqual([]) // failed BEFORE spawning any agent
-    expect(store.getRun(store.listRuns()[0]!.id)?.status).toBe('failed')
-  })
 
-  test('out-of-scope dirt at launch is allowed (held back, never touched)', async () => {
-    const store = openRunStore(':memory:')
-    // launch precondition sees only an out-of-scope change → proceeds normally
-    let cf = 0
-    const git: Git = { ...scriptedGit([['packages/x.ts']]), async changedFiles() {
-      return cf++ === 0 ? ['docs/notes.md'] : ['packages/x.ts'] // precondition sees out-of-scope only → proceeds
-    } }
-    const result = await runRun(baseDeps({ store, git }), input)
-    expect(result.status).toBe('completed')
-  })
 
   test('a self-committed rejected atom is surfaced (working-tree quarantine cannot undo it)', async () => {
     const store = openRunStore(':memory:')

@@ -122,16 +122,6 @@ export class MissingObjectiveError extends Error {
   }
 }
 
-export class DirtyWorkingTreeError extends Error {
-  constructor(files: readonly string[]) {
-    super(
-      `working tree has ${files.length} uncommitted in-scope change(s) — commit or stash before launching ` +
-        `(a run commits and, on a rejected atom, discards in-scope files on your behalf): ${files.join(', ')}`,
-    )
-    this.name = 'DirtyWorkingTreeError'
-  }
-}
-
 // Interactive sessions are human-watched, so an atom may take many minutes — these are generous
 // BACKSTOPS, not tight headless budgets. A dead pane is caught immediately by the monitor's liveness
 // check; a timeout only guards a run abandoned with a still-alive pane. Default 4h, matching CoBuilder.
@@ -200,15 +190,10 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   store.recordEvent({ runId: run.id, type: 'worktree-created', data: { worktreePath, runBranch, trunkSha } })
   log(`worktree ${worktreePath} on ${runBranch} (from trunk ${trunkSha.slice(0, 8)})`)
 
-  // Clean-tree precondition — now checked against the run's OWN worktree (clean by construction), so a
-  // DIRTY FOUNDER checkout no longer blocks a launch (ADR-0015 retires that friction). Kept here only
-  // as a belt-and-braces invariant on the worktree; the guard itself is removed in the next atom.
-  const preExistingInScope = partitionByScope(await git.changedFiles(worktreePath), scope).inScope
-  if (preExistingInScope.length > 0) {
-    store.recordEvent({ runId: run.id, type: 'dirty-working-tree', data: { files: preExistingInScope } })
-    store.setRunStatus(run.id, 'failed')
-    throw new DirtyWorkingTreeError(preExistingInScope)
-  }
+  // No dirty-tree guard (ADR-0015): the run owns a fresh worktree off the committed trunk tip, so its
+  // in-scope tree is clean BY CONSTRUCTION — the precondition the retired DirtyWorkingTreeError used to
+  // enforce against the shared founder checkout. The founder's uncommitted work is irrelevant to a
+  // launch and is never touched; the per-atom quarantine can only ever reset the run's own worktree.
   // The run's cmux workspace is named for the run: "<priority> #<session number>" (the numeric part of
   // the sequential run id), so the founder identifies it by priority + session, not by a persona.
   const groupLabel = `${priority.id} #${run.id.replace(/^run_/, '')}`
