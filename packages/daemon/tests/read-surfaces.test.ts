@@ -21,6 +21,21 @@ const fakeGit = (): Git => ({
   async show(_cwd, sha) {
     return `diff for ${sha}`
   },
+  async restoreToHead() {},
+  async worktreeAdd() {},
+  async worktreeRemove() {},
+  async listWorktrees() {
+    return []
+  },
+  async isAncestor() {
+    return true
+  },
+  async mergeFastForwardOnly() {
+    return 'h0'
+  },
+  async unmergedCommits() {
+    return []
+  },
 })
 
 const fakeHost = (): SessionHost =>

@@ -674,10 +674,13 @@ describe('runRun (multi-atom loop)', () => {
     const store = openRunStore(':memory:')
     let n = 0
     // clean at launch; HEAD moves between the atom's headBefore snapshot and the post-reject check.
+    // The launch trunk-tip read (against cocoderHome, not the worktree) returns a stable sha; only the
+    // per-atom snapshots (against the worktree path) model the self-commit HEAD movement.
     const git: Git = {
       ...worktreeStubs,
-      async headSha() {
-        return n++ === 0 ? 'h0' : 'h-self' // headBefore = h0; the post-reject check sees HEAD moved (self-commit)
+      async headSha(cwd) {
+        if (!cwd.includes('worktrees')) return 'trunk' // ADR-0015: the launch read against cocoderHome
+        return n++ === 0 ? 'h0' : 'h-self' // atom headBefore = h0; the post-reject check sees HEAD moved
       },
       async changedFiles() {
         return []

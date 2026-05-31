@@ -19,6 +19,8 @@ export function buildOrchestratorPrompt(input: {
   builderLabel: string
   builderCli: string
   runId: string
+  /** This run's isolated branch (ADR-0015) — agents work on it and never integrate by hand. */
+  runBranch: string
   /** A prior run's pickup brief to resume from (ADR-0002 C1 / F8), or null for a fresh start. */
   pickup?: string | null
 }): string {
@@ -40,6 +42,12 @@ Priority: **${input.priorityTitle}**
 
 ${input.priorityGoal}
 ${resume}
+# Isolated working state (this run)
+
+This run works in its OWN git worktree on branch \`${input.runBranch}\`, branched from the trunk tip at
+launch. CoCoder integrates the run's verified work to trunk for you (a verified auto-merge). Do NOT push,
+merge, rebase, or switch branches by hand — work on this branch and let the runner land it.
+
 # How this run works — you orchestrate the builder through a LOOP
 
 You drive the builder (${input.builderLabel}, a \`${input.builderCli}\` CLI) through a SEQUENCE of small
@@ -104,6 +112,8 @@ export function buildObserverPrompt(input: {
   priorityTitle: string
   priorityGoal: string
   runId: string
+  /** This run's isolated branch (ADR-0015) — Deb is read-only and never integrates either. */
+  runBranch: string
 }): string {
   return `${input.sharedStandards}
 
@@ -118,6 +128,9 @@ ${input.debBody}
 Priority: **${input.priorityTitle}**
 
 ${input.priorityGoal}
+
+This run works in an isolated git worktree on branch \`${input.runBranch}\` (ADR-0015); the runner
+integrates verified work to trunk. You are read-only regardless — never push, merge, or commit.
 
 # What to do right now — stand by until the runner hands you a fault to triage
 
@@ -155,6 +168,8 @@ export function buildBuilderStandbyPrompt(input: {
   sharedStandards: string
   bobBody: string
   scope: readonly string[]
+  /** This run's isolated branch (ADR-0015) — Bob works on it; the runner integrates to trunk. */
+  runBranch: string
 }): string {
   const scope = input.scope.length > 0 ? input.scope.map((s) => `  - ${s}`).join('\n') : '  (none — read-only)'
   return `${input.sharedStandards}
@@ -169,6 +184,9 @@ ${input.bobBody}
 
 You have been launched early so your session is warm. **Do nothing yet** — do not inspect files, plan,
 run commands, or edit. Wait for a dispatch message that gives you an atom to implement.
+
+You are in this run's isolated git worktree on branch \`${input.runBranch}\` (ADR-0015). Just do the
+work on this branch — do NOT push, merge, rebase, or switch branches; the runner integrates to trunk.
 
 This run runs MULTIPLE atoms through this same pane, one at a time. For EACH atom the runner sends you:
 1. Read the JSON at the directive path it names — its \`task\` field is your atom.

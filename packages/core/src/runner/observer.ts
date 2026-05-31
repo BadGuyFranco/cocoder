@@ -18,8 +18,12 @@ export async function spawnObserver(input: {
   readonly sharedStandards: string
   readonly runDir: string
   readonly groupLabel: string
+  /** The run's isolated worktree dir — Deb runs here, not the founder's checkout (ADR-0015). */
+  readonly cwd: string
+  /** The run's isolated branch (ADR-0015) — surfaced in Deb's prompt. */
+  readonly runBranch: string
 }): Promise<SessionRef | null> {
-  const { store, sessionHost, getAdapter, run, workspace, priority, deb, sharedStandards, runDir, groupLabel } = input
+  const { store, sessionHost, getAdapter, run, priority, deb, sharedStandards, runDir, groupLabel, cwd, runBranch } = input
   try {
     const adapter = getAdapter(deb.cli)
     const pf = await adapter.preflight(deb.model)
@@ -37,16 +41,17 @@ export async function spawnObserver(input: {
         priorityTitle: priority.title,
         priorityGoal: priority.goal,
         runId: run.id,
+        runBranch,
       }),
       model: deb.model,
-      cwd: workspace.path,
+      cwd,
       outPath: join(runDir, 'deb.out'),
     })
     const ref = await sessionHost.spawn({
       persona: deb.id,
       command: cmd.command,
       args: cmd.args,
-      cwd: workspace.path,
+      cwd,
       group: run.id,
       groupLabel,
       label: paneLabel(deb),

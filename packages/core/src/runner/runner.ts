@@ -22,6 +22,7 @@ import type { Run, RunStatus, RunStore, Workspace } from '../store/index.js'
 import { effectiveScope, partitionByScope } from '../write-scope/index.js'
 import type { SessionHost, SessionRef } from '../session-host/index.js'
 import { join } from 'node:path'
+import { runBranchFor, worktreePathFor } from '../worktree/paths.js'
 import type { RunnerIO } from './io.js'
 import { paneLabel } from './labels.js'
 import { type Judge, makeHeuristicJudge, runMonitor } from './monitor.js'
@@ -185,12 +186,24 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
   const scope = effectiveScope(bob.writeScope, priority.scopeNarrowing) // known at launch (constant per run)
 
-  // Clean-tree precondition (fail fast, before spawning): a run commits in-scope files on the founder's
-  // behalf and, on a rejected atom, DISCARDS in-scope working-tree changes — so pre-existing uncommitted
-  // in-scope work would be swept into the run's commit or destroyed by the quarantine. Refuse rather than
-  // risk it. Out-of-scope dirt is fine (always held back, never touched). This also makes the per-atom
-  // quarantine sound: with a clean in-scope start, every in-scope change during the run is the run's own.
-  const preExistingInScope = partitionByScope(await git.changedFiles(workspace.path), scope).inScope
+  // Isolated working state (ADR-0015 §1): the run executes in its OWN git worktree on its OWN branch,
+  // cut from the trunk tip at launch. The founder's checkout (cocoderHome = workspace.path) is NEVER
+  // touched — every agent and every git op below runs against `worktreePath`. A fresh branch off a
+  // committed trunk point is clean in-scope BY CONSTRUCTION, which is the soundness precondition the
+  // per-atom quarantine relies on (and exactly what the retired dirty-tree guard used to provide).
+  const cocoderHome = workspace.path
+  const trunkSha = await git.headSha(cocoderHome)
+  const worktreePath = worktreePathFor(cocoderHome, run.id)
+  const runBranch = runBranchFor(run.id)
+  await git.worktreeAdd(cocoderHome, worktreePath, runBranch, trunkSha)
+  store.setWorktree(run.id, worktreePath, runBranch)
+  store.recordEvent({ runId: run.id, type: 'worktree-created', data: { worktreePath, runBranch, trunkSha } })
+  log(`worktree ${worktreePath} on ${runBranch} (from trunk ${trunkSha.slice(0, 8)})`)
+
+  // Clean-tree precondition — now checked against the run's OWN worktree (clean by construction), so a
+  // DIRTY FOUNDER checkout no longer blocks a launch (ADR-0015 retires that friction). Kept here only
+  // as a belt-and-braces invariant on the worktree; the guard itself is removed in the next atom.
+  const preExistingInScope = partitionByScope(await git.changedFiles(worktreePath), scope).inScope
   if (preExistingInScope.length > 0) {
     store.recordEvent({ runId: run.id, type: 'dirty-working-tree', data: { files: preExistingInScope } })
     store.setRunStatus(run.id, 'failed')
@@ -212,17 +225,18 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       builderLabel: bob.label,
       builderCli: bob.cli,
       runId: run.id,
+      runBranch,
       pickup: input.pickup ?? null,
     }),
     model: oscar.model,
-    cwd: workspace.path,
+    cwd: worktreePath,
     outPath: join(runDir, 'oscar.out'),
   })
   const oscarRef = await sessionHost.spawn({
     persona: oscar.id,
     command: oscarCmd.command,
     args: oscarCmd.args,
-    cwd: workspace.path,
+    cwd: worktreePath,
     group: run.id,
     groupLabel,
     label: paneLabel(oscar),
@@ -232,16 +246,16 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
   const bobCmd = getAdapter(bob.cli).build({
     persona: bob.id,
-    prompt: buildBuilderStandbyPrompt({ sharedStandards, bobBody: bob.body, scope }),
+    prompt: buildBuilderStandbyPrompt({ sharedStandards, bobBody: bob.body, scope, runBranch }),
     model: bob.model,
-    cwd: workspace.path,
+    cwd: worktreePath,
     outPath: join(runDir, 'bob.out'),
   })
   const bobRef = await sessionHost.spawn({
     persona: bob.id,
     command: bobCmd.command,
     args: bobCmd.args,
-    cwd: workspace.path,
+    cwd: worktreePath,
     group: run.id, // same workspace as Oscar → splits in beside it (warm, on standby)
     groupLabel,
     label: paneLabel(bob),
@@ -249,7 +263,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   store.createSession({ runId: run.id, persona: bob.id, sessionRef: bobRef.id })
   store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: bob.id, ref: bobRef.id } })
   const debRef = deb
-    ? await spawnObserver({ store, sessionHost, getAdapter, run, workspace, priority, deb, sharedStandards, runDir, groupLabel })
+    ? await spawnObserver({ store, sessionHost, getAdapter, run, workspace, priority, deb, sharedStandards, runDir, groupLabel, cwd: worktreePath, runBranch })
     : null
   await sessionHost.show(oscarRef)
   log(`oscar + bob spawned (${oscarRef.id}, ${bobRef.id}); awaiting first directive, bob on standby`)
@@ -382,7 +396,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         store.recordEvent({ runId: run.id, type: 'wrapup-stale-abort', data: { atoms: n } })
         log(`wrap-up aborted after ${n} atom(s): stale daemon`)
       } else if (input.wrapPlay && input.wrapPlayAssignment) {
-        const headBeforeWrap = await git.headSha(workspace.path)
+        const headBeforeWrap = await git.headSha(worktreePath)
         const task =
           `Run ${run.id} on priority ${priority.id}. ${n} atom(s) were delegated; commits so far: ${committedShas.join(', ') || 'none'}.\n\n` +
           `Oscar's notes for this wrap-up:\n${directive.pickup ?? ''}`
@@ -394,7 +408,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
             assignment: input.wrapPlayAssignment,
             persona: oscar.id,
             task,
-            cwd: workspace.path,
+            cwd: worktreePath,
             outPath: wrapOut,
             group: run.id,
             timeoutMs: t.wrapupMs,
@@ -403,7 +417,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         const wrapGate = await runCommitGate({
           git,
           store,
-          cwd: workspace.path,
+          cwd: worktreePath,
           runId: run.id,
           workItemId: null,
           scope: input.wrapPlay.writeScope,
@@ -430,7 +444,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     const atomIndex = n
     const workItem = store.createWorkItem({ runId: run.id, sourcePersona: oscar.id, targetPersona: bob.id, task: directive.task, writeScope: scope })
     store.recordEvent({ runId: run.id, type: 'delegation', data: { workItemId: workItem.id, atom: atomIndex, task: directive.task } })
-    const headBefore = await git.headSha(workspace.path) // re-snapshot per atom (self-commit detection)
+    const headBefore = await git.headSha(worktreePath) // re-snapshot per atom (self-commit detection)
     const sentinel = atomSentinel(atomIndex)
     await sessionHost.show(bobRef)
     await sessionHost.sendInput(bobRef, buildBuilderDispatch(directivePath, atomIndex))
@@ -478,17 +492,17 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       store.setWorkItemStatus(workItem.id, 'abandoned')
       // If the rejected atom SELF-committed (HEAD moved under trust-the-CLI), the working-tree quarantine
       // can't undo it — surface that so it isn't silently carried in history.
-      if ((await git.headSha(workspace.path)) !== headBefore) {
+      if ((await git.headSha(worktreePath)) !== headBefore) {
         store.recordEvent({ runId: run.id, type: 'atom-self-committed-rejected', data: { atom: atomIndex, headBefore } })
       }
       // QUARANTINE (atom isolation): discard this rejected atom's IN-SCOPE working-tree changes so they
       // can't ride into a LATER passing atom's commit. The clean-tree precondition + per-atom commit
       // guarantee every in-scope change now in the tree is THIS atom's; prior work is committed (untouched),
       // out-of-scope files are left alone. If the restore fails, record it honestly (don't claim success).
-      const { inScope: rejectedInScope } = partitionByScope(await git.changedFiles(workspace.path), scope)
+      const { inScope: rejectedInScope } = partitionByScope(await git.changedFiles(worktreePath), scope)
       if (rejectedInScope.length > 0) {
         try {
-          await git.restoreToHead(workspace.path, rejectedInScope)
+          await git.restoreToHead(worktreePath, rejectedInScope)
           store.recordEvent({ runId: run.id, type: 'atom-quarantined', data: { atom: atomIndex, files: rejectedInScope } })
         } catch (err) {
           store.recordEvent({ runId: run.id, type: 'atom-quarantine-failed', data: { atom: atomIndex, files: rejectedInScope, reason: String(err) } })
@@ -503,7 +517,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       const gate = await runCommitGate({
         git,
         store,
-        cwd: workspace.path,
+        cwd: worktreePath,
         runId: run.id,
         workItemId: workItem.id,
         scope,
@@ -542,10 +556,50 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const pickupPath = pickup ? await io.writePickup(runDir, pickup) : null
   const status: RunStatus = terminalStatus ?? (outOfScope.length > 0 ? 'pending-scope-decision' : 'completed')
   store.setRunStatus(run.id, status)
+
+  // ── Integrate: fast-forward the run's branch onto trunk (ADR-0015 §3) ──────────────────────────────
+  // A run reaches trunk ONLY here, and only on a clean completion — so a green run's verified commits
+  // are not stranded on the branch (the failure the review flagged for an isolation-without-integration
+  // intermediate). This is the BARE fast-forward merge; the distinct whole-tree integration VERIFY and
+  // the escalation paths are the next atom. A non-fast-forward (trunk advanced since launch) is left
+  // un-integrated for the merge-conflict Play — recorded, never guessed — and a dirty/locked founder
+  // tree surfaces as `integration-failed` (the work stays safe on the branch either way). A run still
+  // awaiting a scope decision (`pending-scope-decision`) or failed does NOT auto-land.
+  let mergeSha: string | null = null
+  if (status === 'completed') {
+    try {
+      const trunkNow = await git.headSha(cocoderHome)
+      const unmerged = await git.unmergedCommits(cocoderHome, trunkNow, runBranch)
+      if (unmerged.length === 0) {
+        store.setIntegrationStatus(run.id, 'merged') // nothing un-integrated → vacuously landed
+      } else if (await git.isAncestor(cocoderHome, trunkNow, runBranch)) {
+        mergeSha = await git.mergeFastForwardOnly(cocoderHome, runBranch)
+        store.recordCommitLink({
+          runId: run.id,
+          commitSha: mergeSha,
+          message: `merge: ${runBranch} → trunk`,
+          files: [],
+          kind: 'merge',
+          mergeSha,
+          trunkParent: trunkNow,
+        })
+        store.setIntegrationStatus(run.id, 'merged')
+        store.recordEvent({ runId: run.id, type: 'integrated', data: { mergeSha, trunkParent: trunkNow, runBranch, commits: unmerged.length } })
+        log(`integrated ${runBranch} → trunk (${mergeSha.slice(0, 8)}; ${unmerged.length} commit(s))`)
+      } else {
+        store.recordEvent({ runId: run.id, type: 'integration-deferred', data: { reason: 'non-fast-forward', trunkNow, runBranch, commits: unmerged.length } })
+        log(`integration deferred for ${runBranch}: trunk advanced since launch (non-ff) — left for the merge-conflict Play`)
+      }
+    } catch (err) {
+      store.recordEvent({ runId: run.id, type: 'integration-failed', data: { runBranch, reason: err instanceof Error ? err.message : String(err) } })
+      log(`integration failed for ${runBranch}: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
   store.recordEvent({
     runId: run.id,
     type: 'run-end',
-    data: { status, atoms: n, committedShas, outOfScope, selfCommitted },
+    data: { status, integrationStatus: store.getRun(run.id)?.integrationStatus ?? 'pending', mergeSha, atoms: n, committedShas, outOfScope, selfCommitted },
   })
   const recordPath = await io.writeRunRecord(runDir, renderRunRecord(store, run.id, { workspace, priority }))
   log(`run ${run.id} ${status}; ${committedShas.length} commit(s) over ${n} atom(s); record at ${recordPath}`)

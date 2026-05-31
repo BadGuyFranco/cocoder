@@ -31,6 +31,22 @@ const fakeGit = (changed: string[] = [], shas: readonly string[] = ['h0']): Git 
     async show() {
       return 'diff'
     },
+    // ADR-0015 worktree/merge methods — no-ops for the daemon's fake-git launch path. unmergedCommits
+    // returns [] so the end-of-run integration is a vacuous 'merged' (no real merge attempted in-fake).
+    async worktreeAdd() {},
+    async worktreeRemove() {},
+    async listWorktrees() {
+      return []
+    },
+    async isAncestor() {
+      return true
+    },
+    async mergeFastForwardOnly() {
+      return 'merged'
+    },
+    async unmergedCommits() {
+      return []
+    },
   }
 }
 const fakeHost = (onShow?: (ref: SessionRef) => void, onKill?: (ref: SessionRef) => void): SessionHost => {
