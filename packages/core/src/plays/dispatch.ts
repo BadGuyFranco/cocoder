@@ -76,6 +76,7 @@ function runHeadlessProcess(input: HeadlessRunInput): Promise<DispatchPlayResult
 export async function dispatchPlay(deps: DispatchPlayDeps, input: DispatchPlayInput): Promise<DispatchPlayResult> {
   const prompt = `${input.play.body.trim()}\n\n## This invocation\n${input.task.trim()}`
   const cmd = deps.getAdapter(input.assignment.cli).build({
+    persona: input.persona,
     prompt,
     model: input.assignment.model,
     cwd: input.cwd,

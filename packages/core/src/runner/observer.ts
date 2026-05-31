@@ -30,6 +30,7 @@ export async function spawnObserver(input: {
       return null
     }
     const cmd = adapter.build({
+      persona: deb.id,
       prompt: buildObserverPrompt({
         sharedStandards,
         debBody: deb.body,
