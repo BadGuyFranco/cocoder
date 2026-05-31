@@ -60,12 +60,33 @@ function fakeSessionHost(over: Partial<SessionHost> = {}): SessionHost {
   }
 }
 
+// The worktree/merge port methods (ADR-0015) the runner doesn't exercise in these fake-git unit
+// tests — spread into every fake so the Git interface stays satisfied (real git math is covered by
+// the live-git test in git-worktree.test.ts). Defaults model the happy path: clean fast-forward.
+const worktreeStubs = {
+  async worktreeAdd() {},
+  async worktreeRemove() {},
+  async listWorktrees() {
+    return []
+  },
+  async isAncestor() {
+    return true
+  },
+  async mergeFastForwardOnly() {
+    return 'merged'
+  },
+  async unmergedCommits() {
+    return []
+  },
+}
+
 // Git that returns a scripted changed-file set per atom and advances HEAD on commit (so per-atom
 // self-commit detection and commit attribution can be asserted).
 function scriptedGit(changedPerAtom: string[][]): Git {
   let head = 'h0'
   let call = 0
   return {
+    ...worktreeStubs,
     async headSha() {
       return head
     },
@@ -344,6 +365,7 @@ describe('runRun (multi-atom loop)', () => {
     let call = 0
     const changedPerCall = [[], ['packages/bad.ts'], ['packages/good.ts']] // [precondition: clean], atom0 rejected, atom1's work
     const git: Git = {
+      ...worktreeStubs,
       async headSha() {
         return 'h0'
       },
@@ -653,6 +675,7 @@ describe('runRun (multi-atom loop)', () => {
     let n = 0
     // clean at launch; HEAD moves between the atom's headBefore snapshot and the post-reject check.
     const git: Git = {
+      ...worktreeStubs,
       async headSha() {
         return n++ === 0 ? 'h0' : 'h-self' // headBefore = h0; the post-reject check sees HEAD moved (self-commit)
       },

@@ -85,10 +85,12 @@ export {
   makeGit,
   parsePorcelain,
   type Git,
+  type WorktreeInfo,
   runCommitGate,
   type CommitGateInput,
   type CommitGateResult,
 } from './commit-gate/index.js'
+export { worktreesRoot, worktreePathFor, runBranchFor } from './worktree/paths.js'
 
 export {
   runRun,

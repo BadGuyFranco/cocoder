@@ -5,6 +5,13 @@ import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
 
+/** One row of `git worktree list` (ADR-0015) — the on-disk checkout, its branch, and its HEAD. */
+export interface WorktreeInfo {
+  readonly path: string // absolute worktree directory
+  readonly branch: string | null // short branch name, or null if detached / bare
+  readonly head: string // HEAD sha (empty string for a bare main entry)
+}
+
 export interface Git {
   /** Current HEAD sha (snapshot before spawning, to detect agent self-commits). */
   headSha(cwd: string): Promise<string>
@@ -18,6 +25,28 @@ export interface Git {
   restoreToHead(cwd: string, files: readonly string[]): Promise<void>
   /** `git show <sha>` — the committed diff for a run's commit_link (read-only; Oz run detail). */
   show(cwd: string, sha: string): Promise<string>
+
+  // ── Worktree isolation + integration (ADR-0015). `cwd` is any path inside the repo (object store
+  //    is shared across worktrees). These are the deterministic git mechanics; semantics (conflict
+  //    resolution, integration verify) live in Plays, never here. ──────────────────────────────────
+  /** Create a worktree at `dir` on a NEW branch `branch` starting at `baseSha`. Throws if `dir`
+   *  exists or `branch` is already checked out elsewhere. */
+  worktreeAdd(cwd: string, dir: string, branch: string, baseSha: string): Promise<void>
+  /** Remove the worktree at `dir`. `force` allows removal of a dirty/locked worktree; default refuses
+   *  (so un-saved work surfaces instead of vanishing). NEVER call force while a process lives inside. */
+  worktreeRemove(cwd: string, dir: string, opts?: { force?: boolean }): Promise<void>
+  /** The repo's worktrees (`git worktree list --porcelain`). Used by the daemon-boot orphan sweep. */
+  listWorktrees(cwd: string): Promise<WorktreeInfo[]>
+  /** True iff `ancestor` is an ancestor of `descendant` — i.e. merging `descendant` into `ancestor`
+   *  would be a clean fast-forward (no divergence). Maps to `git merge-base --is-ancestor`. */
+  isAncestor(cwd: string, ancestor: string, descendant: string): Promise<boolean>
+  /** Fast-forward-only merge of `ref` into the branch checked out at `cwd`; returns the new HEAD sha.
+   *  THROWS if it is not a fast-forward (trunk diverged) — the caller then routes to the merge-conflict
+   *  Play. Never produces a merge commit; a non-ff never lands silently. */
+  mergeFastForwardOnly(cwd: string, ref: string): Promise<string>
+  /** SHAs reachable from `branch` but not from `base` (`git rev-list base..branch`) — the run's
+   *  un-integrated commits. Empty ⇒ everything is already on `base`, so the branch is safe to GC. */
+  unmergedCommits(cwd: string, base: string, branch: string): Promise<string[]>
 }
 
 const git = async (cwd: string, args: string[]): Promise<string> => {
@@ -82,6 +111,61 @@ export function makeGit(): Git {
     },
     async show(cwd, sha) {
       return git(cwd, ['show', sha])
+    },
+
+    async worktreeAdd(cwd, dir, branch, baseSha) {
+      // -b creates the new branch at baseSha and checks it out into the new worktree dir.
+      await git(cwd, ['worktree', 'add', '-b', branch, dir, baseSha])
+    },
+    async worktreeRemove(cwd, dir, opts) {
+      await git(cwd, ['worktree', 'remove', ...(opts?.force ? ['--force'] : []), dir])
+    },
+    async listWorktrees(cwd) {
+      // --porcelain emits stable, NUL-free records: blank-line-separated blocks of `key value`
+      // lines (`worktree <path>`, `HEAD <sha>`, `branch refs/heads/<b>` | `detached` | `bare`).
+      const out = await git(cwd, ['worktree', 'list', '--porcelain'])
+      const infos: WorktreeInfo[] = []
+      let path: string | null = null
+      let head = ''
+      let branch: string | null = null
+      const flush = (): void => {
+        if (path !== null) infos.push({ path, head, branch })
+        path = null
+        head = ''
+        branch = null
+      }
+      for (const line of out.split('\n')) {
+        if (line.startsWith('worktree ')) {
+          flush()
+          path = line.slice('worktree '.length)
+        } else if (line.startsWith('HEAD ')) head = line.slice('HEAD '.length)
+        else if (line.startsWith('branch ')) branch = line.slice('branch refs/heads/'.length)
+      }
+      flush()
+      return infos
+    },
+    async isAncestor(cwd, ancestor, descendant) {
+      // Exit 0 ⇒ ancestor; exit 1 ⇒ not. Any other failure (bad ref) must surface, not read as false.
+      try {
+        await git(cwd, ['merge-base', '--is-ancestor', ancestor, descendant])
+        return true
+      } catch (err) {
+        if ((err as { code?: number }).code === 1) return false
+        throw err
+      }
+    },
+    async mergeFastForwardOnly(cwd, ref) {
+      // --ff-only fast-forwards or FAILS (no merge commit) — a non-ff surfaces as a throw, never a
+      // silent merge commit, so the caller routes diverged trunk to the merge-conflict Play.
+      await git(cwd, ['merge', '--ff-only', ref])
+      return (await git(cwd, ['rev-parse', 'HEAD'])).trim()
+    },
+    async unmergedCommits(cwd, base, branch) {
+      const out = await git(cwd, ['rev-list', `${base}..${branch}`])
+      return out
+        .split('\n')
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
     },
   }
 }
