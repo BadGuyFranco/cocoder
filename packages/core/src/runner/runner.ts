@@ -143,6 +143,7 @@ const DEFAULTS = {
   minNudgeIntervalMs: 60_000,
 }
 const LIMITS = { maxAtoms: 12, maxConsecutiveRejects: 3, stuckAfter: 4 }
+const OSCAR_IDLE_NUDGE = "You've gone quiet — write the next directive (or your verify verdict), or wrap up."
 
 const defaultMakeJudge =
   (stuckAfter: number): MakeJudge =>
@@ -289,6 +290,65 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       store.recordEvent({ runId: run.id, type: 'triage-skipped', data: { fault: faultType, reason: err instanceof Error ? err.message : String(err) } })
     }
   }
+  const awaitOscarWithDebWatchdog = async <T>(
+    stage: 'directive' | 'verify',
+    atomIndex: number,
+    task: string,
+    awaitOscar: () => Promise<T>,
+  ): Promise<T> => {
+    const debPersona = deb?.id
+    if (!debRef || !debPersona) return await awaitOscar()
+
+    let stopped = false
+    let stopSleep: (() => void) | null = null
+    const stoppedPromise = new Promise<void>((resolve) => {
+      stopSleep = resolve
+    })
+    const stop = (): void => {
+      stopped = true
+      stopSleep?.()
+    }
+    const monitor = runMonitor(
+      {
+        readScreen: async () => {
+          if (stopped) throw new Error('oscar await settled')
+          return await sessionHost.readScreen(oscarRef)
+        },
+        judge: async (sample) => {
+          if (stopped) return { state: 'done', note: 'oscar await settled' }
+          if (sample.idleStreak > 0) {
+            return { state: 'stuck', note: `no oscar screen change for ${sample.idleStreak} sample(s)`, nudge: OSCAR_IDLE_NUDGE }
+          }
+          return { state: 'progressing' }
+        },
+        isAlive: oscarAlive,
+        nudge: (text) => sessionHost.sendInput(oscarRef, text),
+        onAssessment: (a) => {
+          if (a.state !== 'progressing') {
+            store.recordEvent({ runId: run.id, type: 'oscar-monitor-assessment', data: { persona: debPersona, stage, atom: atomIndex, state: a.state, note: a.note ?? null } })
+          }
+        },
+        onNudge: (text) => store.recordEvent({ runId: run.id, type: 'oscar-nudge', data: { persona: debPersona, stage, atom: atomIndex, text } }),
+        sleep: (ms) =>
+          Promise.race([
+            new Promise<void>((resolve) => {
+              setTimeout(resolve, ms)
+            }),
+            stoppedPromise,
+          ]),
+      },
+      { task, cadenceMs: t.monitorCadenceMs, timeoutMs: t.orchestrationMs, minNudgeIntervalMs: t.minNudgeIntervalMs },
+    ).catch((err: unknown) => {
+      store.recordEvent({ runId: run.id, type: 'oscar-monitor-error', data: { persona: debPersona, stage, atom: atomIndex, message: err instanceof Error ? err.message : String(err) } })
+    })
+
+    try {
+      return await awaitOscar()
+    } finally {
+      stop()
+      await monitor
+    }
+  }
 
   // ── The multi-atom loop ───────────────────────────────────────────────────────────────────────
   const committedShas: string[] = []
@@ -304,7 +364,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     const directivePath = join(runDir, `directive-${n}.json`)
     let directive
     try {
-      directive = await io.awaitDirective(directivePath, { timeoutMs: t.orchestrationMs, pollMs: t.pollMs, isAlive: oscarAlive })
+      directive = await awaitOscarWithDebWatchdog('directive', n, `awaiting directive ${n}`, () =>
+        io.awaitDirective(directivePath, { timeoutMs: t.orchestrationMs, pollMs: t.pollMs, isAlive: oscarAlive }),
+      )
     } catch (err) {
       // First directive failed → tear down the idle standby builder; KEEP Deb alive so she can triage.
       if (n === 0) await sessionHost.kill(bobRef).catch(() => {})
@@ -402,7 +464,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     store.recordEvent({ runId: run.id, type: 'verify-dispatch', data: { ref: oscarRef.id, atom: atomIndex } })
     let verdict
     try {
-      verdict = await io.awaitVerification(verifyPath, { timeoutMs: t.orchestrationMs, pollMs: t.pollMs, isAlive: oscarAlive })
+      verdict = await awaitOscarWithDebWatchdog('verify', atomIndex, directive.task, () =>
+        io.awaitVerification(verifyPath, { timeoutMs: t.orchestrationMs, pollMs: t.pollMs, isAlive: oscarAlive }),
+      )
     } catch (err) {
       store.setWorkItemStatus(workItem.id, 'abandoned')
       return await fail('verify-failed', String(err), atomIndex)

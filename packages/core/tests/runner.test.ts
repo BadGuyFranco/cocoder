@@ -132,6 +132,7 @@ const doneJudge: MakeJudge = () => async () => ({ state: 'done' })
 
 const delegate = (task: string): Directive => ({ kind: 'delegate', task })
 const wrapup = (pickup: string): Directive => ({ kind: 'wrapup', pickup })
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 const wrapPlay: Play = {
   id: 'wrap-up',
   label: 'Wrap-up',
@@ -442,6 +443,40 @@ describe('runRun (multi-atom loop)', () => {
     )
     expect(nudges).toEqual(['are you blocked?'])
     expect(store.listEvents(store.listRuns()[0]!.id).some((e) => e.type === 'nudge')).toBe(true)
+  })
+
+  test('Deb-backed watchdog nudges an idle Oscar while awaiting a directive only when Deb is present', async () => {
+    const slowDirectiveIO = (): RunnerIO => {
+      const directives = [delegate('do it'), wrapup('done')]
+      let i = 0
+      return {
+        ...fakeIO({ directives }),
+        async awaitDirective() {
+          if (i === 0) await sleep(20)
+          const d = directives[i++]
+          if (!d) throw new Error('test: ran out of scripted directives')
+          return d
+        },
+      }
+    }
+    const timeouts = { orchestrationMs: 200, buildMs: 200, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 1000 }
+
+    const storeWithDeb = openRunStore(':memory:')
+    const result = await runRun(baseDeps({ store: storeWithDeb, io: slowDirectiveIO(), timeouts }), { ...input, deb })
+    expect(result.status).toBe('completed')
+    const withDebEvents = storeWithDeb.listEvents(result.runId).filter((e) => e.type === 'oscar-nudge')
+    expect(withDebEvents).toHaveLength(1)
+    expect(withDebEvents[0]?.data).toEqual({
+      persona: 'deb',
+      stage: 'directive',
+      atom: 0,
+      text: "You've gone quiet — write the next directive (or your verify verdict), or wrap up.",
+    })
+
+    const storeWithoutDeb = openRunStore(':memory:')
+    const noDebResult = await runRun(baseDeps({ store: storeWithoutDeb, io: slowDirectiveIO(), timeouts }), input)
+    expect(noDebResult.status).toBe('completed')
+    expect(storeWithoutDeb.listEvents(noDebResult.runId).some((e) => e.type === 'oscar-nudge')).toBe(false)
   })
 
   test('Deb triages a builder failure before the run unwinds (tier 2 disposition)', async () => {
