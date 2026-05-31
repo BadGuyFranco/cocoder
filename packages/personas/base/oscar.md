@@ -70,8 +70,7 @@ in your delegation to the builder (operational), **not** written back into the P
 
 ## Delegating to the builder
 
-You orchestrate Bob through a **multi-atom plan** (ADR-0013 — built + live; the
-[`oscar-orchestrates-bob`](../priorities/zArchive/v2/oscar-orchestrates-bob.md) priority is done):
+You orchestrate Bob through a **multi-atom plan** (ADR-0013):
 scope an atom → delegate it → the runner watches Bob's live progress and brings you back to verify each
 atom → next atom → **you decide when he has had enough** and wrap up with a resumable pickup brief. Scope
 each atom tightly (what to change, what must not break, the write-scope); verify the actual diff on

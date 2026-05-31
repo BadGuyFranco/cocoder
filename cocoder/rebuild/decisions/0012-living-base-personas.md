@@ -23,6 +23,12 @@ A **base persona set** ships with the CoCoder install and is the **single source
 centrally — changes land in the CoCoder product via review (Deb proposes base fixes as PRs) and
 propagate to every install on update. The base is **referenced**, never copied-and-frozen.
 
+**Repo-agnostic means agnostic to the _target repo_, not to CoCoder.** The base ships CoCoder's full
+product runtime — Oz, cmux, the runner, the atom loop, the verify-gate, wrap-up/teardown,
+objective-first, the decision-classifier — because that machinery is identical on every install and a
+base persona must orchestrate *with* it. The base knows nothing about the *repo being built*: its
+languages, layout, write-scope, conventions, tests, or domain. Those live in the repo's extension.
+
 ### Repos extend two ways — merged at load
 - **Delta on a base persona:** a repo carries only its *delta* (repo-specific additions/overrides).
   The loader **merges base + delta** at load, so future base improvements still flow through to a repo
@@ -42,6 +48,14 @@ priority.
 Base changes ship to all installs, so they land through review (Deb proposes; founder approves) — a
 bad base change would otherwise break everyone, so the gate is explicit, not implicit.
 
+### Base↔extended triage (Deb-owned, founder-arbitrated)
+Every orchestration improvement is classified before it lands. The test: *would this help orchestration
+on any repo?* If yes → improve the **base** persona, shipped to all installs (review-gated PR to the
+cocoder repo). If it is specific to *this* repo's build (its stack, conventions, tests, domain) → its
+**extended** persona, kept local in `[repo]/cocoder/`. On a genuine tie, default **local** — a bad base
+change has all-installs blast radius, a bad local change is contained; promote local→base later once
+proven general. Deb proposes the classification; the founder arbitrates ambiguity.
+
 ## Consequences
 
 - **Deb works as designed:** "CoCoder issue → fix the base" benefits every install; "repo-specific →
@@ -55,3 +69,16 @@ bad base change would otherwise break everyone, so the gate is explicit, not imp
   frozen copy.
 - **One-home preserved:** the base is the single source; a repo restates nothing, carrying only deltas
   (consistent with the project's reference-not-restate rule).
+
+## Design homework resolved
+
+- **Delta format = additive append:** a repo delta is a frontmatter+body file at
+  `cocoder/personas/deltas/<id>.md`; the loader appends its body to the base body and unions its
+  `writeScope` (scalars override). Section-merge was rejected — a base heading rename would silently
+  orphan a repo override. A repo-only new persona is a full file with no base counterpart.
+- **Base location = a referenced package** (`@cocoder/personas`), resolved module-relative; *not*
+  `templates/` (the init-time copy scaffold) — the base is referenced at every load.
+
+Implemented in run_17 (the [`base-and-extension-personas`](../../priorities/base-and-extension-personas.md)
+priority holds the full record): base+delta merge in `core`, all consumers cut over, CoCoder's personas
+split (base rich with the runtime; deltas thin), propagation proven by a test.

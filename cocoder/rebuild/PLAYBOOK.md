@@ -116,11 +116,18 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
 2. `base-and-extension-personas` — ADR-0012 living base + repo deltas merged at load. Foundational
    (persona loader/storage) and the thing that makes Deb's "fix the base for everyone" path real.
 3. `plays-mechanism` — ADR-0005 Plays mechanism, proven by making **wrap-up** the first Play (cheap-model
-   tiering); `documentation` is the fast-follow. Foundation for the deferred two. (Framing refreshed: the
-   loop now triggers wrap-up; the Play is the procedure Oscar runs at that trigger.)
-4. `full-oz-dashboard` — the v1-designed control plane, earned in slices; the road to feature-complete
+   tiering). **✅ proven end-to-end on `run_29`** (commit `05cbcb2`); pending archive to `zArchive/v2/`.
+   (Framing refreshed: the loop now triggers wrap-up; the Play is the procedure Oscar runs at that trigger.)
+4. `no-brainer-plays` — the base Plays we already know we need now: **`documentation`**, **`code-review`**,
+   and Quinn's **`electron-test`** (+ a minimal v2 base Quinn). Refactors the ad-hoc Oz-dashboard test
+   scripts into a real Play (tech-debt paydown) and decides the base-vs-delta-for-Plays seam. Unblocked by
+   `plays-mechanism`; folds in the Electron half of `quinn-app-testing`.
+5. `full-oz-dashboard` — the v1-designed control plane, earned in slices; the road to feature-complete
    (and where priority ordering eventually lands). **Now unblocked** — its tier-3 oversight reuses the
    monitor primitive `oscar-orchestrates-bob` built, and reconciles with `deb` (Deb writes faults, Oz reads).
+6. `new-primary-root` (**plan-first**) — onboarding Play for a brand-new repo: scaffolds the stub
+   `cocoder/` folder and seeds the *"Analyze Primary Root"* first priority. A seam (D1) → its first
+   deliverable is a **founder Q&A + an ADR**, not code. The concrete form of Phase 5 ("first external repo").
 
 Plus two always-available meta-priorities: `build-priorities-from-plan` (Oscar drafts priorities from
 the plan/ADRs) and `adhoc-session` (no named priority — draft one, or run a read-only review/research).

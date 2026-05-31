@@ -8,7 +8,21 @@
 //   - track spawned surfaceRefs in ctx.liveRefs so deep-links are decidable without throwing.
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { isPersonaEnabled, resolvePersona, loadAssignments, loadPriority, runRun, type RunInput, type RunnerDeps, type SessionHost, type Workspace } from '@cocoder/core'
+import {
+  isPersonaEnabled,
+  loadAssignments,
+  loadPlay,
+  loadPriority,
+  resolvePlayAssignment,
+  resolveEffectivePersona,
+  runRun,
+  type PersonaSources,
+  type RunInput,
+  type RunnerDeps,
+  type SessionHost,
+  type Workspace,
+} from '@cocoder/core'
+import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import type { OzContext } from './context.js'
 import { findWorkspace } from './registry.js'
 import { appendAudit } from './audit.js'
@@ -41,7 +55,9 @@ async function buildRunInput(ctx: OzContext, workspaceId: string, priorityId: st
   if (!ws) throw new Error(`unknown workspace "${workspaceId}"`)
   const personasDir = join(ws.path, 'cocoder', 'personas')
   const prioritiesDir = join(ws.path, 'cocoder', 'priorities')
-  const sharedStandards = await readFile(join(personasDir, 'shared-standards.md'), 'utf8')
+  const baseDir = basePersonasDir()
+  const sources: PersonaSources = { baseDir, deltaDir: join(personasDir, 'deltas'), repoPersonaDir: personasDir }
+  const sharedStandards = await readFile(join(baseDir, 'shared-standards.md'), 'utf8')
   const assignments = loadAssignments(join(personasDir, 'assignments.json'))
   const workspace: Workspace = { id: ws.id, path: ws.path, name: ws.name }
   let pickup: string | null = null
@@ -55,9 +71,11 @@ async function buildRunInput(ctx: OzContext, workspaceId: string, priorityId: st
   return {
     workspace,
     priority: loadPriority(prioritiesDir, priorityId),
-    oscar: resolvePersona(personasDir, assignments, 'oscar'),
-    bob: resolvePersona(personasDir, assignments, 'bob'),
-    deb: isPersonaEnabled(assignments, 'deb') ? resolvePersona(personasDir, assignments, 'deb') : undefined,
+    oscar: resolveEffectivePersona(sources, assignments, 'oscar'),
+    bob: resolveEffectivePersona(sources, assignments, 'bob'),
+    deb: isPersonaEnabled(assignments, 'deb') ? resolveEffectivePersona(sources, assignments, 'deb') : undefined,
+    wrapPlay: loadPlay(basePlaysDir(), 'wrap-up'),
+    wrapPlayAssignment: resolvePlayAssignment(assignments, 'oscar', 'wrap-up'),
     sharedStandards,
     runsRoot: ctx.runsRoot,
     pickup,
@@ -107,6 +125,10 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
     return { status: 400, body: { error: err instanceof Error ? err.message : String(err) } }
   }
   const headNow = await headShaOrUnknown(ctx, input.workspace.path)
+  input = {
+    ...input,
+    daemonStale: ctx.bootSha !== 'unknown' && headNow !== 'unknown' && headNow !== ctx.bootSha,
+  }
 
   let runId: string | null = null
   const deps: RunnerDeps = {
@@ -115,6 +137,7 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
     git: ctx.git,
     getAdapter: ctx.getAdapter,
     io: ctx.io,
+    runHeadless: ctx.runHeadless,
     onRunCreated: (run) => {
       runId = run.id
       ctx.inFlight.set(workspaceId, run.id)
@@ -160,6 +183,21 @@ export async function teardownRun(ctx: OzContext, runId: string): Promise<Launch
   ctx.store.recordEvent({ runId, type: 'teardown', data: { closed } })
   void appendAudit(ctx.cocoderHome, { action: 'teardown', runId, closed })
   return { status: 200, body: { closed } }
+}
+
+/** Refresh the daemon onto current code (the dashboard's "Restart daemon" button → POST
+ *  /daemon/restart). REFUSES (409) when any run is in flight — restarting would orphan it — matching
+ *  `oz.sh stop`'s own guard. Otherwise triggers the (injectable) restart action and returns 202; the
+ *  detached `oz.sh restart` then bounces this process. Honors the headless-substrate decision: the UI
+ *  only TRIGGERS the restart (daemon-side); it is never required, and the daemon never dies with the
+ *  app. The daemon does NOT restart itself in-process — `ctx.restartDaemon` spawns a detached child. */
+export async function requestDaemonRestart(ctx: OzContext): Promise<LaunchResult> {
+  if (ctx.inFlight.size > 0) {
+    return { status: 409, body: { error: 'refusing to restart: a run is in flight (would orphan it) — wait for it to finish' } }
+  }
+  void appendAudit(ctx.cocoderHome, { action: 'daemon-restart', bootSha: ctx.bootSha })
+  ctx.restartDaemon()
+  return { status: 202, body: { restarting: true, bootSha: ctx.bootSha } }
 }
 
 /** Bring a run's live cmux pane to the foreground. 409 if no session is live in THIS daemon process

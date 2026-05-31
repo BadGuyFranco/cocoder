@@ -35,6 +35,9 @@ importers:
       '@cocoder/core':
         specifier: workspace:*
         version: link:../core
+      '@cocoder/personas':
+        specifier: workspace:*
+        version: link:../personas
       '@cocoder/session-hosts':
         specifier: workspace:*
         version: link:../session-hosts
@@ -49,9 +52,14 @@ importers:
       '@cocoder/core':
         specifier: workspace:*
         version: link:../core
+      '@cocoder/personas':
+        specifier: workspace:*
+        version: link:../personas
       '@cocoder/session-hosts':
         specifier: workspace:*
         version: link:../session-hosts
+
+  packages/personas: {}
 
   packages/session-hosts:
     dependencies:

@@ -2,7 +2,7 @@
 
 **Status:** Accepted (founder + Claude, 2026-05-29)
 **Seam:** run-orchestration & observation (the run lifecycle)
-**Refines:** [0004](./0004-process-architecture.md) (runner composition: one-shot → orchestrated loop) · **Composes with:** [0011](./0011-orchestrator-verify-gate.md) (verify-gate, now per atom) · **Realizes:** [0002](./0002-substrate-oz-and-cmux.md) C1 (durable run-state → resume) + [0003](./0003-data-model-hybrid.md) (run/session/work-item lifecycle supports continuation — fixes **F8**)
+**Refines:** [0004](./0004-process-architecture.md) (runner composition: one-shot → orchestrated loop) · **Incorporates:** the per-atom verify-gate (formerly ADR-0011, merged here 2026-05-30) · **Realizes:** [0002](./0002-substrate-oz-and-cmux.md) C1 (durable run-state → resume) + [0003](./0003-data-model-hybrid.md) (run/session/work-item lifecycle supports continuation — fixes **F8**)
 **Build:** the `oscar-orchestrates-bob` priority (tier 1, now). Deb = tier 2; Oz tier = `full-oz-dashboard`.
 
 ## Context
@@ -25,6 +25,17 @@ Oscar drives Bob through a plan: **delegate an atom → continuously monitor Bob
 a natural breakpoint) and ends the run with a **wrap-up** — a pickup brief a fresh session resumes from
 (continuation; ADR-0002 C1 / ADR-0003) plus the founder report. The run no longer ends because Bob
 finished one small thing.
+
+### The verify-gate, per atom — the commit runs only on Oscar's pass (was ADR-0011)
+After the builder signals an atom done, the runner dispatches a `VERIFY` into Oscar's live pane and
+**blocks**: Oscar reads the actual diff and runs the checks himself (evidence, not the builder's word —
+global #3), then writes `{"verdict":"pass"|"fail","reason":…}`. **`pass` → run the commit-gate; `fail`
+(or a dead / timed-out Oscar pane) → nothing is committed, the atom is rejected and recorded.** The
+*enforcement* is deterministic at the machine boundary (no pass, no commit); the *judgment* (is the diff
+good?) is Oscar's, model-driven and unconstrained — the D3 split: the spine enforces that the gate was
+passed, never second-guesses it. This gates only *whether* the commit-gate runs; it does not change the
+commit-gate's scope semantics (ADR-0007). Earned from a dogfood run where an unverified builder diff
+broke a sibling package's tests and was auto-committed (a gate the spine can skip is not a gate).
 
 ### Observation is continuous, not artifact-blind
 A reusable **monitor** reads its target's live progress (`readScreen` + run events), **judges how it is

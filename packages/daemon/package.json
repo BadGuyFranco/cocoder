@@ -15,6 +15,7 @@
   "dependencies": {
     "@cocoder/core": "workspace:*",
     "@cocoder/adapters": "workspace:*",
+    "@cocoder/personas": "workspace:*",
     "@cocoder/session-hosts": "workspace:*"
   }
 }

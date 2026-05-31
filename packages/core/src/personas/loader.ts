@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseFrontmatter } from './frontmatter.js'
-import type { Assignments, Persona, PersonaAssignment, ResolvedPersona } from './types.js'
+import type { Assignments, Persona, PersonaAssignment, PlayAssignment, ResolvedPersona } from './types.js'
 
 const asString = (v: string | string[] | undefined, field: string, file: string): string => {
   if (typeof v !== 'string' || v === '') throw new Error(`persona ${file}: frontmatter "${field}" must be a non-empty string`)
@@ -40,6 +40,17 @@ export function loadAssignments(path: string): Assignments {
     if (asn.enabled !== undefined && typeof asn.enabled !== 'boolean') {
       throw new Error(`assignments ${path}: persona "${id}" optional "enabled" must be a boolean`)
     }
+    if (asn.plays !== undefined) {
+      if (typeof asn.plays !== 'object' || asn.plays === null || Array.isArray(asn.plays)) {
+        throw new Error(`assignments ${path}: persona "${id}" optional "plays" must be an object`)
+      }
+      for (const [playId, p] of Object.entries(asn.plays)) {
+        const play = p as Partial<PlayAssignment> | null
+        if (typeof play?.cli !== 'string' || typeof play?.model !== 'string') {
+          throw new Error(`assignments ${path}: persona "${id}" play "${playId}" needs string "cli" and "model" (model may be "")`)
+        }
+      }
+    }
   }
   return parsed as Assignments
 }
@@ -54,4 +65,10 @@ export function resolvePersona(personasDir: string, assignments: Assignments, id
   const assignment = assignments.personas[id]
   if (!assignment) throw new Error(`persona "${id}" has no assignment in assignments.json (not a live persona)`)
   return { ...loadPersona(personasDir, id), cli: assignment.cli, model: assignment.model }
+}
+
+export function resolvePlayAssignment(assignments: Assignments, personaId: string, playId: string): PlayAssignment {
+  const assignment = assignments.personas[personaId]
+  if (!assignment) throw new Error(`persona "${personaId}" has no assignment in assignments.json (not a live persona)`)
+  return assignment.plays?.[playId] ?? { cli: assignment.cli, model: assignment.model }
 }

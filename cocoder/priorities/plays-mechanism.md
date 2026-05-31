@@ -20,3 +20,11 @@ at that trigger onto a cheaper assigned model — it is no longer "extract the o
 `documentation` and other Plays then become cheap governance adds (ADR-0009). This is the foundation the
 deferred [`quinn-app-testing`](./backlog/quinn-app-testing.md) and
 [`deployment-plays`](./backlog/deployment-plays.md) priorities both depend on.
+
+## Status
+
+**Live proof landed in run_29.** Oscar delegated the wrap-up Play on its per-(persona, Play) assignment
+(`oscar` → `wrap-up` → `cursor-agent`, per `cocoder/personas/assignments.json`); it ran headless as a
+captured subprocess to completion (e8b9848 fix for the run_28 cmux hang), authored this closeout within
+the Play's writeScope, and the runner committed the in-scope edit. The `documentation` fast-follow Play
+remains named but not built here.

@@ -15,7 +15,9 @@ import type { Adapter } from '../adapter/index.js'
 import { runCommitGate } from '../commit-gate/index.js'
 import type { Git } from '../commit-gate/index.js'
 import type { Priority } from '../priorities/index.js'
-import type { ResolvedPersona } from '../personas/index.js'
+import type { PlayAssignment, ResolvedPersona } from '../personas/index.js'
+import { dispatchPlay, type DispatchPlayResult, type HeadlessRunInput } from '../plays/index.js'
+import type { Play } from '../plays/index.js'
 import type { Run, RunStatus, RunStore, Workspace } from '../store/index.js'
 import { effectiveScope, partitionByScope } from '../write-scope/index.js'
 import type { SessionHost, SessionRef } from '../session-host/index.js'
@@ -47,10 +49,14 @@ export interface RunnerDeps {
   readonly git: Git
   readonly getAdapter: (cli: string) => Adapter
   readonly io: RunnerIO
+  /** Runs a headless Play's command as a captured subprocess (passed through to dispatchPlay).
+   *  Default (undefined) spawns the real process; tests inject a fake. */
+  readonly runHeadless?: (input: HeadlessRunInput) => Promise<DispatchPlayResult>
   /** How to build the per-atom monitor judge. Defaults to the tier-1 heuristic. */
   readonly makeJudge?: MakeJudge
   readonly timeouts?: {
     orchestrationMs?: number
+    wrapupMs?: number
     buildMs?: number
     pollMs?: number
     monitorCadenceMs?: number
@@ -75,6 +81,11 @@ export interface RunInput {
   readonly runsRoot: string
   /** A prior run's pickup brief to resume from (ADR-0002 C1 / F8), woven into Oscar's prompt. */
   readonly pickup?: string | null
+  /** Resolved wrap-up Play + per-(persona, Play) assignment; when present, the runner dispatches the Play to author closeout. */
+  readonly wrapPlay?: Play
+  readonly wrapPlayAssignment?: PlayAssignment
+  /** Daemon launch-time guard: true when the long-lived daemon is serving code older than repo HEAD. */
+  readonly daemonStale?: boolean
 }
 
 export interface RunResult {
@@ -125,6 +136,7 @@ export class DirtyWorkingTreeError extends Error {
 // check; a timeout only guards a run abandoned with a still-alive pane. Default 4h, matching CoBuilder.
 const DEFAULTS = {
   orchestrationMs: 14_400_000,
+  wrapupMs: 14_400_000,
   buildMs: 14_400_000,
   pollMs: 1500,
   monitorCadenceMs: 15_000,
@@ -282,6 +294,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const outOfScope: string[] = []
   let selfCommitted = false
   let pickup: string | null = null
+  let terminalStatus: RunStatus | null = null
   let n = 0
   let consecutiveRejects = 0
 
@@ -297,9 +310,54 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     }
 
     if (directive.kind === 'wrapup') {
-      pickup = directive.pickup
-      store.recordEvent({ runId: run.id, type: 'wrapup', data: { atoms: n, forced: false } })
-      log(`oscar wrapped up after ${n} atom(s)`)
+      if (input.daemonStale === true) {
+        pickup =
+          '⚠️ STALE DAEMON - wrap-up did NOT run on current code. NO valid closeout/proof was produced. ' +
+          'Restart the daemon (scripts/oz.sh restart) and re-run this priority.'
+        terminalStatus = 'failed'
+        store.recordEvent({ runId: run.id, type: 'wrapup-stale-abort', data: { atoms: n } })
+        log(`wrap-up aborted after ${n} atom(s): stale daemon`)
+      } else if (input.wrapPlay && input.wrapPlayAssignment) {
+        const headBeforeWrap = await git.headSha(workspace.path)
+        const task =
+          `Run ${run.id} on priority ${priority.id}. ${n} atom(s) were delegated; commits so far: ${committedShas.join(', ') || 'none'}.\n\n` +
+          `Oscar's notes for this wrap-up:\n${directive.pickup ?? ''}`
+        const wrapOut = join(runDir, 'wrapup-out.txt')
+        const res = await dispatchPlay(
+          { sessionHost, getAdapter, runHeadless: deps.runHeadless },
+          {
+            play: input.wrapPlay,
+            assignment: input.wrapPlayAssignment,
+            persona: oscar.id,
+            task,
+            cwd: workspace.path,
+            outPath: wrapOut,
+            group: run.id,
+            timeoutMs: t.wrapupMs,
+          },
+        )
+        const wrapGate = await runCommitGate({
+          git,
+          store,
+          cwd: workspace.path,
+          runId: run.id,
+          workItemId: null,
+          scope: input.wrapPlay.writeScope,
+          message: commitMessage(priority.id, run.id, n),
+          headBefore: headBeforeWrap,
+        })
+        if (wrapGate.committedSha) committedShas.push(wrapGate.committedSha)
+        committedFiles.push(...wrapGate.committedFiles)
+        outOfScope.push(...wrapGate.outOfScope)
+        selfCommitted = selfCommitted || wrapGate.selfCommitted
+        pickup = res.output && res.output.trim() ? res.output : (directive.pickup ?? null)
+        store.recordEvent({ runId: run.id, type: 'wrapup', data: { atoms: n, forced: false, play: input.wrapPlay.id } })
+        log(`wrap-up play ${input.wrapPlay.id} ran after ${n} atom(s)`)
+      } else {
+        pickup = directive.pickup
+        store.recordEvent({ runId: run.id, type: 'wrapup', data: { atoms: n, forced: false } })
+        log(`oscar wrapped up after ${n} atom(s)`)
+      }
       break
     }
 
@@ -416,7 +474,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
   // ── Wrap-up: pickup brief (continuation; F8) + run record ───────────────────────────────────────
   const pickupPath = pickup ? await io.writePickup(runDir, pickup) : null
-  const status: RunStatus = outOfScope.length > 0 ? 'pending-scope-decision' : 'completed'
+  const status: RunStatus = terminalStatus ?? (outOfScope.length > 0 ? 'pending-scope-decision' : 'completed')
   store.setRunStatus(run.id, status)
   store.recordEvent({
     runId: run.id,

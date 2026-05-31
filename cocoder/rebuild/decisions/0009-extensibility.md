@@ -1,37 +1,9 @@
-# ADR-0009 — Extensibility: extend by files; new CLIs need a driver (seam S8)
+# ADR-0009 — Extensibility (merged into ADR-0008)
 
-**Status:** Accepted (founder + Claude, 2026-05-28)
-**Seam:** S8 — persona / sub-task / domain extensibility
-**Charter:** [0001](./0001-rebuild-charter.md) · **Builds on:** [0005](./0005-personas-and-subtasks.md), [0006](./0006-adapter-contract.md), [0008](./0008-repository-topology.md)
-**Amended by:** [0012](./0012-living-base-personas.md) — extend-by-files becomes *additive layering against a living base* (base improvements propagate to all installs); replaces copy-on-init for personas. New repo-only personas (e.g. Ian, Phil) are unchanged.
+**Status:** Merged into [ADR-0008](./0008-repository-topology.md) (2026-05-30, per ADR-0014).
 
-## Context
-
-The eventual vision includes adopters extending CoCoder (custom personas, domain "primitives")
-without forking core. ADR-0008 already made personas, sub-tasks, and scopes flat governance
-files, which largely answers this.
-
-## Decision
-
-### Extend by adding governance files (no core fork)
-- **Custom personas** → a `.md` (+ optional scripts) in `cocoder/personas/`. v1's "Phil"
-  primitive-builder pattern is simply an example custom persona file.
-- **Custom sub-task types** → a registry entry (default prompt + default scope) in the
-  governance zone.
-- **Custom scopes** → in the persona file / priority.
-- Defaults ship in `templates/` (copied on `cocoder init`); adopters **override or add** in their
-  own workspace governance zone. Nothing requires touching `packages/`.
-
-### The one exception — new CLIs
-A brand-new model CLI needs an **adapter driver (code in `packages/adapters/`)**, because data-
-driven adapter declarations were deferred in ADR-0006 (unearned). For MVP this is a contributor-
-level action, not a drop-in file; the built-in CLIs cover the common case. Data-driven adapters
-become an earned feature later if demand appears.
-
-## Consequences
-
-- Extensibility is mostly "drop a file" — matches the vision without building a plugin engine we
-  haven't earned (D1).
-- Custom-CLI-as-data is explicitly a future earned feature, not MVP.
-- **This closes the seam list. The Phase-0 architecture Q&A is complete** — the v2 foundation is
-  decided across ADRs 0001–0009.
+The extensibility decision — *extend by adding governance files (custom personas, Plays, scopes), no
+core fork; a new model CLI needs an adapter driver* — now lives in
+[ADR-0008](./0008-repository-topology.md) §Extensibility, where it belongs alongside the topology and
+persona-home decisions it is a corollary of. This file remains as a stable pointer so existing
+references to "ADR-0009" still resolve.

@@ -17,8 +17,8 @@ sandbox.
 - **Allow-list globs, default-deny.** Attached as a **per-persona default** (`builder` →
   `packages/**`), optionally **narrowed per priority** (a priority references and narrows the
   persona default — never restates it, so no F4 fragmentation).
-- **Sub-task types also carry default scopes** (per the S5 registry): e.g. `code-review` is
-  **read-only**; `documentation` writes only doc paths. This is why the sub-task registry is a
+- **Plays also carry default scopes** (per the S5 registry): e.g. `code-review` is
+  **read-only**; `documentation` writes only doc paths. This is why the Play registry is a
   known set — scope is one of the things the deterministic layer reads from it.
 
 ### Enforcement — gate the commit, not the write
@@ -44,7 +44,7 @@ Scope is enforced **for commits CoCoder makes**. CoCoder does **not** police out
 ## Homes (D4)
 
 - Persona default scope → persona definition (governance). Priority narrowing → the priority
-  (governance). Sub-task default scope → the sub-task registry (governance).
+  (governance). Play default scope → the Play registry (governance).
 - Enforcement logic → `core` (the commit gate), shared by daemon and CLI.
 - The commit gate is also where **run↔commit linkage** is recorded (ADR-0003, fixes F6).
 
@@ -54,4 +54,4 @@ Scope is enforced **for commits CoCoder makes**. CoCoder does **not** police out
 - "Surface for approval" needs a UI affordance (Oz) and a CLI prompt (standalone mode) —
   implementation, not a seam (D1).
 - With S7 settled, the remaining seams are **S3** (topology — now highly derivable; all
-  components are known) and **S8** (persona/sub-task extensibility).
+  components are known) and **S8** (persona/Play extensibility).

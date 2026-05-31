@@ -85,7 +85,7 @@ export class CmuxSessionHost implements SessionHost {
     // Label the pane/tab with the persona so Oscar vs Bob is obvious.
     if (opts.label) {
       try {
-        await this.#cli.run(['rename-tab', '--surface', surfaceRef, opts.label])
+        await this.#cli.run(['rename-tab', '--workspace', workspaceRef, '--surface', surfaceRef, opts.label])
       } catch {
         /* labelling is cosmetic — never fail a spawn over it */
       }
@@ -94,8 +94,11 @@ export class CmuxSessionHost implements SessionHost {
     const scriptPath = join(this.#scriptDir, `cocoder-cmux-${randomUUID()}.sh`)
     await writeFile(scriptPath, buildLaunchScript(opts), 'utf8')
 
-    await this.#cli.run(['send', '--surface', surfaceRef, `bash ${shquote(scriptPath)}`])
-    await this.#cli.run(['send-key', '--surface', surfaceRef, 'Enter'])
+    // `send`/`read-screen`/`send-key` MUST carry --workspace: cmux 0.64.x resolves a bare --surface ref
+    // against the CALLER's workspace, so a surface in the run's own workspace reads as "not a terminal"
+    // (the daemon is not in that workspace). Scoping by workspace makes the ref resolve in every context.
+    await this.#cli.run(['send', '--workspace', workspaceRef, '--surface', surfaceRef, `bash ${shquote(scriptPath)}`])
+    await this.#cli.run(['send-key', '--workspace', workspaceRef, '--surface', surfaceRef, 'Enter'])
 
     this.#sessions.set(surfaceRef, { workspaceRef, paneRef, surfaceRef, exitCode: null })
     await this.show({ id: surfaceRef, driver: 'cmux' }) // bring the active agent to the front
@@ -103,7 +106,8 @@ export class CmuxSessionHost implements SessionHost {
   }
 
   async readScreen(ref: SessionRef): Promise<string> {
-    return this.#cli.run(['read-screen', '--surface', ref.id, '--lines', '200'])
+    const s = this.#session(ref)
+    return this.#cli.run(['read-screen', '--workspace', s.workspaceRef, '--surface', ref.id, '--lines', '200'])
   }
 
   async status(ref: SessionRef): Promise<SessionStatus> {
@@ -112,7 +116,7 @@ export class CmuxSessionHost implements SessionHost {
     // Interactive sessions don't print an exit sentinel — "running" means the pane is still alive.
     // Liveness = the surface is still readable; if cmux/the pane is gone, read-screen throws.
     try {
-      await this.#cli.run(['read-screen', '--surface', ref.id, '--lines', '1'])
+      await this.#cli.run(['read-screen', '--workspace', s.workspaceRef, '--surface', ref.id, '--lines', '1'])
       return { state: 'running' }
     } catch {
       s.exitCode = -1
@@ -134,12 +138,12 @@ export class CmuxSessionHost implements SessionHost {
   }
 
   async sendInput(ref: SessionRef, text: string): Promise<void> {
-    this.#session(ref) // assert it's ours
+    const s = this.#session(ref) // assert it's ours + get its workspace for the ref scope
     // Type the line into the agent's pane, then submit. Used to dispatch a task into a warm,
     // standby builder (the concurrent-spawn model). Keep dispatch text SHORT (a pointer to a task
-    // file) — long multi-line sends are quoting-fragile.
-    await this.#cli.run(['send', '--surface', ref.id, text])
-    await this.#cli.run(['send-key', '--surface', ref.id, 'Enter'])
+    // file) — long multi-line sends are quoting-fragile. --workspace is required (see spawn note).
+    await this.#cli.run(['send', '--workspace', s.workspaceRef, '--surface', ref.id, text])
+    await this.#cli.run(['send-key', '--workspace', s.workspaceRef, '--surface', ref.id, 'Enter'])
   }
 
   async show(ref: SessionRef): Promise<void> {
@@ -155,8 +159,8 @@ export class CmuxSessionHost implements SessionHost {
   async kill(ref: SessionRef): Promise<void> {
     const s = this.#session(ref)
     // Close just this pane's surface — runs now SHARE a workspace (split panes), so closing the
-    // whole workspace would take out a sibling persona.
-    await this.#cli.run(['close-surface', '--surface', s.surfaceRef])
+    // whole workspace would take out a sibling persona. --workspace scopes the ref (see spawn note).
+    await this.#cli.run(['close-surface', '--workspace', s.workspaceRef, '--surface', s.surfaceRef])
     this.#sessions.delete(ref.id)
   }
 

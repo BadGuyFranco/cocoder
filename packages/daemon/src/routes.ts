@@ -4,13 +4,14 @@
 import { readdir, rename, rm, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { join } from 'node:path'
-import { loadAssignments, loadPersona, loadPriority, truncate } from '@cocoder/core'
+import { listEffectivePersonas, loadAssignments, loadPriority, truncate, type PersonaSources } from '@cocoder/core'
+import { basePersonasDir } from '@cocoder/personas'
 import type { OzContext } from './context.js'
 import { sendJson } from './server.js'
 import { findWorkspace, readWorkspaces } from './registry.js'
 import { readRunDir } from './rundir.js'
 import { appendAudit } from './audit.js'
-import { launchRun, showRun, teardownRun } from './launcher.js'
+import { launchRun, requestDaemonRestart, showRun, teardownRun } from './launcher.js'
 
 export type { OzContext } from './context.js'
 
@@ -86,24 +87,18 @@ async function listPersonas(ctx: OzContext, res: ServerResponse, workspaceId: st
   } catch {
     /* no assignments yet — personas list still renders with unassigned entries */
   }
-  let names: string[]
-  try {
-    names = await readdir(dir)
-  } catch {
-    return sendJson(res, 200, { workspace: ws, personas: [], assignments })
-  }
-  const personas = []
-  for (const name of names) {
-    if (!name.endsWith('.md')) continue
-    const id = name.slice(0, -3)
-    try {
-      const p = loadPersona(dir, id) // skips shared-standards.md / AGENTS.md / PORT-NOTES.md (no id frontmatter)
-      const a = assignments[id]
-      personas.push({ id: p.id, label: p.label, role: p.role, writeScope: p.writeScope, cli: a?.cli ?? null, model: a?.model ?? null })
-    } catch {
-      /* not a persona definition — omit */
+  const sources: PersonaSources = { baseDir: basePersonasDir(), deltaDir: join(dir, 'deltas'), repoPersonaDir: dir }
+  const personas = listEffectivePersonas(sources).map((persona) => {
+    const assignment = assignments[persona.id]
+    return {
+      id: persona.id,
+      label: persona.label,
+      role: persona.role,
+      writeScope: persona.writeScope,
+      cli: assignment?.cli ?? null,
+      model: assignment?.model ?? null,
     }
-  }
+  })
   sendJson(res, 200, { workspace: ws, personas, assignments })
 }
 
@@ -209,6 +204,10 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
   }
   if (method === 'POST' && seg[0] === 'runs' && seg.length === 3 && seg[2] === 'teardown') {
     const { status, body: out } = await teardownRun(ctx, decodeURIComponent(seg[1]!))
+    return sendJson(res, status, out), true
+  }
+  if (method === 'POST' && pathname === '/daemon/restart') {
+    const { status, body: out } = await requestDaemonRestart(ctx)
     return sendJson(res, status, out), true
   }
   if (method === 'PUT' && seg[0] === 'workspaces' && seg.length === 4 && seg[2] === 'personas' && seg[3] === 'assignments') {

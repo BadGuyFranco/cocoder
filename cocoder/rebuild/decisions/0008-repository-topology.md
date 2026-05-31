@@ -2,7 +2,7 @@
 
 **Status:** Accepted (founder + Claude, 2026-05-28)
 **Seam:** S3 — topology / one concept, one home
-**Charter:** [0001](./0001-rebuild-charter.md) · **Builds on:** all prior ADRs · **Amends:** [0005](./0005-personas-and-subtasks.md) (persona home) · **Largely resolves:** S8
+**Charter:** [0001](./0001-rebuild-charter.md) · **Builds on:** all prior ADRs · **Relates to:** [0005](./0005-personas-and-subtasks.md) (persona home) · **Resolves S8 / absorbs** [ADR-0009](./0009-extensibility.md) (extensibility, merged here 2026-05-30)
 **Amended by:** [0012](./0012-living-base-personas.md) — the default persona set is no longer *copied* on `cocoder init`; it is a **living base** referenced from the install (improvements propagate to all installs), with repos layering deltas merged at load.
 
 ## Context
@@ -23,7 +23,7 @@ failures. All components are now named by ADRs 0002–0007, so the topology is d
 ```
 packages/
 ├── core/            I/O-agnostic (pure, testable): runner · composition · data-model schema ·
-│                      SessionHost port · Adapter interface · persona/sub-task loader ·
+│                      SessionHost port · Adapter interface · persona/Play loader ·
 │                      write-scope + commit-gate · preflight
 ├── adapters/        per-CLI drivers + probe specs (claude, codex, cursor-agent)      [I/O]
 ├── session-hosts/   SessionHost drivers (cmux now; tmux later)                       [I/O]
@@ -43,15 +43,26 @@ dependency direction holds (`core` imports no driver; nothing imports outward). 
 This points at *structure*, never at governance docs — so it is not the F5 governance-of-
 governance trap.
 
-### Personas live as flat governance files (amends ADR-0005)
-- **Persona definition = flat markdown (+ optional scripts)** in `cocoder/personas/` — human-
-  readable and auditable (role, mental model, rules). **Not** code built-ins.
-- The **default persona set ships in `templates/`** (copied on `cocoder init`); the **loader/
-  validator lives in `core`**; the **definitions are files** the operator owns.
-- **CLI+model assignment** (per persona / per sub-task) stays an Oz-edited setting referencing the
+### Personas live as flat governance files (relates to ADR-0005)
+- **Persona definition = flat markdown (+ optional scripts)** — human-readable and auditable (role,
+  mental model, rules). **Not** code built-ins.
+- The **base persona set is a referenced package** (`@cocoder/personas`), the single source improved
+  centrally (ADR-0012) — *not* copied on `cocoder init`. A repo's **extensions** (deltas on a base
+  persona, and repo-only personas) are flat files in its `cocoder/personas/` zone (`deltas/<id>.md`
+  and top-level `<id>.md`); the **loader/validator lives in `core`** and merges base+delta at load.
+- **CLI+model assignment** (per persona / per Play) stays an Oz-edited setting referencing the
   persona by ID (ADR-0005). **Write-scope default** can live in the persona file's frontmatter —
   co-located, one home.
-- Sub-task registry + default scopes are likewise flat/readable governance files.
+- Play registry + default scopes are likewise flat/readable governance files.
+
+### Extensibility — extend by files; new CLIs need a driver (absorbs ADR-0009, seam S8)
+Adopters extend CoCoder by **adding governance files, no core fork:** a custom persona (a delta on a
+base persona, or a repo-only persona), a custom Play type (a registry entry — default prompt + scope),
+or a custom scope (in the persona file / priority). The base set is referenced and propagates to all
+installs (ADR-0012); a repo adds or layers in its own `cocoder/` zone — nothing requires touching
+`packages/`. **The one exception:** a brand-new model CLI needs an **adapter driver** (code in
+`packages/adapters/`, ADR-0006) — data-driven adapter declarations were deferred as unearned (the
+built-in CLIs cover the common case; adapter-as-data is a future earned feature).
 
 ### Carry-forward action
 **Audit CoBuilder's persona definitions** (e.g. Bob's componentization/elegance coding rules,

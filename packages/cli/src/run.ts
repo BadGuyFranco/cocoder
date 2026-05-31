@@ -5,16 +5,20 @@ import {
   DEFAULT_OZ_PORT,
   isPersonaEnabled,
   loadAssignments,
+  loadPlay,
   loadPriority,
   makeGit,
   makeRunnerIO,
   openRunStore,
   probeDaemon,
-  resolvePersona,
+  resolveEffectivePersona,
+  resolvePlayAssignment,
   runRun,
+  type PersonaSources,
   type RunnerDeps,
 } from '@cocoder/core'
 import { getAdapter, makeAdapterRegistry } from '@cocoder/adapters'
+import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import { CmuxSessionHost } from '@cocoder/session-hosts'
 import { runViaDaemon, startOzDaemon, teardownViaDaemon } from './client.js'
 
@@ -77,13 +81,15 @@ async function runStandalone(priorityId: string, resumeFromRunId?: string): Prom
   const personasDir = join(root, 'cocoder', 'personas')
   const prioritiesDir = join(root, 'cocoder', 'priorities')
   const runsRoot = join(root, 'local', 'runs')
-  const sharedStandards = readFileSync(join(personasDir, 'shared-standards.md'), 'utf8')
+  const baseDir = basePersonasDir()
+  const sources: PersonaSources = { baseDir, deltaDir: join(personasDir, 'deltas'), repoPersonaDir: personasDir }
+  const sharedStandards = readFileSync(join(baseDir, 'shared-standards.md'), 'utf8')
   const assignments = loadAssignments(join(personasDir, 'assignments.json'))
 
   const workspace = { id: 'cocoder', path: root, name: 'CoCoder' }
-  const oscar = resolvePersona(personasDir, assignments, 'oscar')
-  const bob = resolvePersona(personasDir, assignments, 'bob')
-  const deb = isPersonaEnabled(assignments, 'deb') ? resolvePersona(personasDir, assignments, 'deb') : undefined
+  const oscar = resolveEffectivePersona(sources, assignments, 'oscar')
+  const bob = resolveEffectivePersona(sources, assignments, 'bob')
+  const deb = isPersonaEnabled(assignments, 'deb') ? resolveEffectivePersona(sources, assignments, 'deb') : undefined
   const priority = loadPriority(prioritiesDir, priorityId)
 
   // Resume: continue from a prior run's pickup brief (ADR-0013 / F8).
@@ -115,6 +121,8 @@ async function runStandalone(priorityId: string, resumeFromRunId?: string): Prom
       oscar,
       bob,
       deb,
+      wrapPlay: loadPlay(basePlaysDir(), 'wrap-up'),
+      wrapPlayAssignment: resolvePlayAssignment(assignments, 'oscar', 'wrap-up'),
       sharedStandards,
       runsRoot,
       pickup,

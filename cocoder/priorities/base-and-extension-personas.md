@@ -18,3 +18,23 @@ Decided in ADR-0012 (replaces the old "copy the base in once at setup" model). T
 work: her "fix the CoCoder base" path benefits every install; her "fix the repo" path stays local.
 Design homework for the run: where the base physically lives (likely the shipped install location,
 repurposed from a one-time seed to a referenced base) and the delta format.
+
+## Status — implemented (run_17, 2026-05-29)
+
+**Done.** The base + delta + repo-only model is built, wired end-to-end, and proven:
+- **Base = a shipped package:** `@cocoder/personas` (`packages/personas/`) is the single source;
+  `basePersonasDir()` resolves it module-relative. shared-standards lives here too.
+- **Delta format = additive append** (design homework resolved; see ADR-0012 "Implemented"): repo deltas
+  at `cocoder/personas/deltas/<id>.md`; repo-only personas as full files. Loader: `mergePersona` →
+  `loadEffectivePersona` / `resolveEffectivePersona` / `listEffectivePersonas` (in `core`).
+- **All consumers cut over:** daemon launcher, standalone CLI, and the Oz personas route.
+- **CoCoder split (corrected):** "repo-agnostic" means agnostic to the *target repo*, not to CoCoder's
+  own runtime — so base personas carry CoCoder's full machinery (Oz/cmux/atoms/teardown). Base is rich;
+  CoCoder's deltas are thin repo-specifics: Bob's TypeScript/tooling + `packages/**` scope, Deb's
+  current-slice note. Oscar is all product runtime → no delta. (ADR-0012/0014.)
+- **Propagation proven:** `packages/core/tests/personas-propagation.test.ts` shows a base improvement
+  reaching an already-extended repo while the delta survives.
+
+Follow-ups (non-blocking): decide whether repo-only personas live at `cocoder/personas/` top-level or
+in `custom/`; restart the Oz daemon (`scripts/oz.sh restart`) so the running loop picks up the new
+loader; consider archiving this priority once confirmed.

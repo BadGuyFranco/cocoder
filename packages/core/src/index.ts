@@ -5,7 +5,7 @@
 //   - data-model schema + RunStore port (Step 3)
 //   - SessionHost port (Step 2)
 //   - Adapter interface + preflight (Step 4)
-//   - persona/priority loader (Step 4)
+//   - persona/play/priority loader (Step 4)
 //   - write-scope + commit-gate (Step 5)
 //   - the runner / launch composition (Step 6)
 
@@ -34,8 +34,34 @@ export { openRunStore, type OpenRunStoreOptions, SCHEMA_SQL } from './store/inde
 
 export { probeDaemon, DEFAULT_OZ_PORT, type ProbeResult, type ProbeOptions } from './liveness/index.js'
 
-export type { Persona, PersonaAssignment, Assignments, ResolvedPersona } from './personas/index.js'
-export { parseFrontmatter, type Frontmatter, loadPersona, loadAssignments, isPersonaEnabled, resolvePersona } from './personas/index.js'
+export type {
+  Persona,
+  PersonaDelta,
+  PersonaAssignment,
+  PlayAssignment,
+  Assignments,
+  ResolvedPersona,
+  PersonaSources,
+} from './personas/index.js'
+export {
+  parseFrontmatter,
+  type Frontmatter,
+  loadPersona,
+  loadAssignments,
+  isPersonaEnabled,
+  resolvePersona,
+  resolvePlayAssignment,
+  mergePersona,
+  PersonaMergeError,
+  loadPersonaDelta,
+  loadEffectivePersona,
+  listEffectivePersonas,
+  resolveEffectivePersona,
+  PersonaDeltaLoadError,
+} from './personas/index.js'
+
+export type { Play, DispatchPlayDeps, DispatchPlayInput, DispatchPlayResult, HeadlessRunInput } from './plays/index.js'
+export { loadPlay, dispatchPlay } from './plays/index.js'
 
 export { loadPriority, type Priority } from './priorities/index.js'
 

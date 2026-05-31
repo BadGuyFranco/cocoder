@@ -3,8 +3,8 @@
 **Status:** Accepted (founder + Claude, 2026-05-29). Preceded by a 6-lens adversarial review (30 findings
 raised → 1 confirmed blocker + 1 heeded F1/F2 refinement folded in; rest misread/overstated). See
 [`../taxonomy-and-authoring.md`](../taxonomy-and-authoring.md).
-**Charter:** [0001](./0001-rebuild-charter.md) · **Builds on:** [0003](./0003-data-model-hybrid.md) (stability split), [0005](./0005-personas-and-subtasks.md) (sub-task→Play), [0007](./0007-write-scope-enforcement.md) (create-priority scope)
-**Amends:** [0005](./0005-personas-and-subtasks.md) — "sub-task" is renamed **Play**, and a Play may be *interactive + governance-writing* (not only a headless read-mostly sub-agent dispatch).
+**Charter:** [0001](./0001-rebuild-charter.md) · **Builds on:** [0003](./0003-data-model-hybrid.md) (stability split), [0005](./0005-personas-and-subtasks.md) (the Play registry), [0007](./0007-write-scope-enforcement.md) (create-priority scope)
+**Refines:** [0005](./0005-personas-and-subtasks.md) — names 0005's delegatable-procedure registry **Play** (the term 0005 now uses), and adds that a Play may be *interactive + governance-writing* (not only a headless read-mostly sub-agent dispatch).
 
 ## Context
 
@@ -21,7 +21,7 @@ thought-through objective produced bad code — earns this under D2).
 ### Vocabulary (three nouns; nothing else from WISER adopted as structure)
 - **Playbook** — the per-priority plan document (the artifact in `cocoder/priorities/*.md`). Born a
   *stub* (Objective + its one-line boundary) and stays one.
-- **Play** — a reusable procedure runnable without its author. **Renames ADR-0005's "sub-task."** One
+- **Play** — a reusable procedure runnable without its author. **The procedure type in [ADR-0005](./0005-personas-and-subtasks.md)'s registry** (formerly "sub-task"). One
   category, two attributes: **headless** (e.g. `code-review`, read-only) vs **interactive** (founder-
   gated, may write governance). The nine-field WISER Play schema is the template for authoring *Plays*,
   not Playbooks.
@@ -69,7 +69,7 @@ the F1 reverse-pointer). Reusable procedure + its pitfalls/variations → the Pl
   the adoption list.
 - **The Objective becomes a checkable launch precondition** at the human→system boundary, with an
   honest split: deterministic *presence*, probabilistic *quality/conflict*, human *approval*.
-- **ADR-0005 vocabulary changes** (sub-task→Play) and gains the interactive-Play kind; the registry,
+- **ADR-0005's registry uses the Play vocabulary** and gains the interactive-Play kind; the registry,
   scopes, and one-level-delegation decisions are otherwise unchanged.
 - **No new store** for continuation — the per-priority pickup is a projection (ADR-0003), a query +
   render, not a second source of truth. If "render together" ever copies operational state into the

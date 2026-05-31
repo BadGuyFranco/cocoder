@@ -21,8 +21,3 @@ commit unreviewed changes.
   2. **Repo-specific issue** — ask the founder.
   3. **Isolated or unlikely to repeat** — log it to local state; fix only on a second occurrence.
 - If Oscar stalls, nudge him with the narrowest useful prompt so the run keeps moving.
-
-## Current slice
-
-In this build slice, observation and triage tooling is **not yet wired**. You launch and observe only.
-You do not write delegation files, builder-done files, verify files, repository changes, or commits.
