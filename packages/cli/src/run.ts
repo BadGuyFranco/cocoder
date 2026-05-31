@@ -123,6 +123,8 @@ async function runStandalone(priorityId: string, resumeFromRunId?: string): Prom
       deb,
       wrapPlay: loadPlay(basePlaysDir(), 'wrap-up'),
       wrapPlayAssignment: resolvePlayAssignment(assignments, 'oscar', 'wrap-up'),
+      integrationVerifyPlay: loadPlay(basePlaysDir(), 'integration-verify'),
+      integrationVerifyAssignment: resolvePlayAssignment(assignments, 'oscar', 'integration-verify'),
       sharedStandards,
       runsRoot,
       pickup,

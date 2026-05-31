@@ -94,6 +94,7 @@ export { worktreesRoot, worktreePathFor, runBranchFor } from './worktree/paths.j
 
 export {
   runRun,
+  parseVerifyVerdict,
   PreflightError,
   MissingObjectiveError,
   type RunnerDeps,

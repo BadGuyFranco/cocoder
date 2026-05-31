@@ -76,6 +76,8 @@ async function buildRunInput(ctx: OzContext, workspaceId: string, priorityId: st
     deb: isPersonaEnabled(assignments, 'deb') ? resolveEffectivePersona(sources, assignments, 'deb') : undefined,
     wrapPlay: loadPlay(basePlaysDir(), 'wrap-up'),
     wrapPlayAssignment: resolvePlayAssignment(assignments, 'oscar', 'wrap-up'),
+    integrationVerifyPlay: loadPlay(basePlaysDir(), 'integration-verify'),
+    integrationVerifyAssignment: resolvePlayAssignment(assignments, 'oscar', 'integration-verify'),
     sharedStandards,
     runsRoot: ctx.runsRoot,
     pickup,
