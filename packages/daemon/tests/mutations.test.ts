@@ -142,6 +142,7 @@ describe('Oz mutations + lifecycle', () => {
       ),
       getAdapter: () => okAdapter,
       io: fakeIO(),
+      runHeadless: async () => ({ exitCode: 0, output: 'wrap closeout' }), // headless wrap-up Play: don't shell out in tests
     })
     return oz
   }

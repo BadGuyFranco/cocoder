@@ -7,6 +7,7 @@ import {
   type Directive,
   DirtyWorkingTreeError,
   type Git,
+  type HeadlessRunInput,
   type MakeJudge,
   MissingObjectiveError,
   type Play,
@@ -194,12 +195,13 @@ describe('runRun (multi-atom loop)', () => {
     expect(result.status).toBe('completed')
   })
 
-  test('dispatches the configured wrap-up Play, writes pickup from Play output, and gate-commits its scope', async () => {
+  test('dispatches the wrap-up Play as a HEADLESS subprocess (no pane), pickup from its output, gate-commits its scope', async () => {
     const store = openRunStore(':memory:')
     const pickupWrites: string[] = []
     const adapterCalls: string[] = []
     const wrapBuilds: { prompt: string; model: string }[] = []
-    const spawnedArgs: readonly string[][] = []
+    const headlessCalls: HeadlessRunInput[] = []
+    const paneSpawns: string[] = []
     const runsRoot = await mkdtemp(join(tmpdir(), 'runner-wrap-play-'))
     const wrapAdapter: Adapter = {
       id: 'cursor-agent',
@@ -219,17 +221,17 @@ describe('runRun (multi-atom loop)', () => {
           adapterCalls.push(cli)
           return cli === 'cursor-agent' ? wrapAdapter : okAdapter
         },
+        // The headless wrap-up Play must NOT open a cmux pane — it runs as a captured subprocess.
         sessionHost: fakeSessionHost({
           async spawn(opts) {
-            spawnedArgs.push(opts.args)
-            if (opts.command === 'cursor-agent') {
-              const out = opts.stdoutPath ?? join(runsRoot, 'missing-wrap-output.txt')
-              await mkdir(dirname(out), { recursive: true })
-              await writeFile(out, 'PLAY CLOSEOUT\n', 'utf8')
-            }
-            return { id: `surface:${spawnedArgs.length}`, driver: 'fake' }
+            paneSpawns.push(opts.command)
+            return { id: `surface:${paneSpawns.length}`, driver: 'fake' }
           },
         }),
+        runHeadless: async (i) => {
+          headlessCalls.push(i)
+          return { exitCode: 0, output: 'PLAY CLOSEOUT\n' }
+        },
       }),
       { ...input, runsRoot, wrapPlay, wrapPlayAssignment, daemonStale: false },
     )
@@ -240,7 +242,11 @@ describe('runRun (multi-atom loop)', () => {
     expect(wrapBuilds[0]?.prompt).toContain('Wrap-up Play body.')
     expect(wrapBuilds[0]?.prompt).toContain('Run run_1 on priority demo. 1 atom(s) were delegated; commits so far: sha-2.')
     expect(wrapBuilds[0]?.prompt).toContain('Oscar seed closeout')
-    expect(spawnedArgs.some((args) => args.join('\n').includes('Wrap-up Play body.'))).toBe(true)
+    // Ran headless (captured subprocess) carrying the built prompt — and NO cmux pane was spawned for it.
+    expect(headlessCalls).toHaveLength(1)
+    expect(headlessCalls[0]?.command).toBe('cursor-agent')
+    expect(headlessCalls[0]?.args.join('\n')).toContain('Wrap-up Play body.')
+    expect(paneSpawns).not.toContain('cursor-agent')
     expect(pickupWrites).toEqual(['PLAY CLOSEOUT\n'])
     expect(result.committedShas).toEqual(['sha-2', 'sha-3'])
     expect(result.committedFiles).toEqual(['packages/atom.ts', 'docs/wrap.md'])

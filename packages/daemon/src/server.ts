@@ -37,6 +37,8 @@ export interface OzServerOptions {
   readonly sessionHost?: SessionHost
   readonly getAdapter?: (cli: string) => Adapter
   readonly io?: RunnerIO
+  /** Override the headless-Play subprocess runner (tests inject a fake so a wrap-up doesn't shell out). */
+  readonly runHeadless?: OzContext['runHeadless']
   /** Override the daemon-restart action (tests inject a no-op/spy so they never restart the real
    *  daemon). Default spawns a detached, delayed `scripts/oz.sh restart`. */
   readonly restartDaemon?: () => void
@@ -101,6 +103,7 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
     csrfToken,
     liveRefs: new Set<string>(),
     inFlight: new Map<string, string>(),
+    runHeadless: opts.runHeadless,
     restartDaemon: opts.restartDaemon ?? defaultRestartDaemon(opts.cocoderHome),
   }
 

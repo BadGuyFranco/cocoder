@@ -16,7 +16,7 @@ import { runCommitGate } from '../commit-gate/index.js'
 import type { Git } from '../commit-gate/index.js'
 import type { Priority } from '../priorities/index.js'
 import type { PlayAssignment, ResolvedPersona } from '../personas/index.js'
-import { dispatchPlay } from '../plays/index.js'
+import { dispatchPlay, type DispatchPlayResult, type HeadlessRunInput } from '../plays/index.js'
 import type { Play } from '../plays/index.js'
 import type { Run, RunStatus, RunStore, Workspace } from '../store/index.js'
 import { effectiveScope, partitionByScope } from '../write-scope/index.js'
@@ -49,6 +49,9 @@ export interface RunnerDeps {
   readonly git: Git
   readonly getAdapter: (cli: string) => Adapter
   readonly io: RunnerIO
+  /** Runs a headless Play's command as a captured subprocess (passed through to dispatchPlay).
+   *  Default (undefined) spawns the real process; tests inject a fake. */
+  readonly runHeadless?: (input: HeadlessRunInput) => Promise<DispatchPlayResult>
   /** How to build the per-atom monitor judge. Defaults to the tier-1 heuristic. */
   readonly makeJudge?: MakeJudge
   readonly timeouts?: {
@@ -321,7 +324,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           `Oscar's notes for this wrap-up:\n${directive.pickup ?? ''}`
         const wrapOut = join(runDir, 'wrapup-out.txt')
         const res = await dispatchPlay(
-          { sessionHost, getAdapter },
+          { sessionHost, getAdapter, runHeadless: deps.runHeadless },
           {
             play: input.wrapPlay,
             assignment: input.wrapPlayAssignment,

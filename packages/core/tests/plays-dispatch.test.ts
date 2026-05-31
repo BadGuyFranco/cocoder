@@ -7,6 +7,8 @@ import {
   type Adapter,
   type BuildInput,
   type BuiltCommand,
+  type DispatchPlayResult,
+  type HeadlessRunInput,
   type Play,
   type PlayAssignment,
   type SessionHost,
@@ -40,6 +42,21 @@ function fakeAdapter(build: BuiltCommand = { command: 'cursor-agent', args: ['-p
         return build
       },
       preflight: async () => ({ ok: true, checks: [] }),
+    },
+  }
+}
+
+// A headless Play runs as a captured subprocess; inject a fake runner so tests never spawn a real CLI.
+function fakeRunHeadless(result: DispatchPlayResult = { exitCode: 0, output: 'closeout' }): {
+  runHeadless: (i: HeadlessRunInput) => Promise<DispatchPlayResult>
+  calls: HeadlessRunInput[]
+} {
+  const calls: HeadlessRunInput[] = []
+  return {
+    calls,
+    runHeadless: async (i) => {
+      calls.push(i)
+      return result
     },
   }
 }
@@ -80,9 +97,10 @@ describe('dispatchPlay', () => {
     const out = await outPath()
     const { adapter, builtInputs } = fakeAdapter()
     const { sessionHost } = fakeSessionHost()
+    const { runHeadless } = fakeRunHeadless()
 
     await dispatchPlay(
-      { sessionHost, getAdapter: () => adapter },
+      { sessionHost, getAdapter: () => adapter, runHeadless },
       { play, assignment, persona: 'oscar', task: 'Summarize run 18.', cwd: '/repo', outPath: out },
     )
 
@@ -92,71 +110,54 @@ describe('dispatchPlay', () => {
     expect(builtInputs[0]?.model).toBe('gpt-5')
   })
 
-  test('spawns the built command and falls back to outPath for stdout capture', async () => {
+  test('a HEADLESS Play runs as a captured subprocess — no cmux pane spawned', async () => {
     const out = await outPath()
     const { adapter } = fakeAdapter({ command: 'cursor-agent', args: ['-p', 'hi'] })
     const { sessionHost, spawns } = fakeSessionHost()
+    const { runHeadless, calls } = fakeRunHeadless()
 
     await dispatchPlay(
-      { sessionHost, getAdapter: () => adapter },
-      { play, assignment, persona: 'oscar', task: 'Do it.', cwd: '/repo', outPath: out, group: 'run_1' },
+      { sessionHost, getAdapter: () => adapter, runHeadless },
+      { play, assignment, persona: 'oscar', task: 'Do it.', cwd: '/repo', outPath: out, group: 'run_1', timeoutMs: 5000 },
     )
 
-    expect(spawns[0]).toMatchObject({
-      persona: 'oscar',
-      command: 'cursor-agent',
-      args: ['-p', 'hi'],
-      cwd: '/repo',
-      stdoutPath: out,
-      label: 'Wrap-up',
-      group: 'run_1',
-    })
+    expect(spawns).toHaveLength(0) // the whole point: headless => NO interactive cmux surface
+    expect(calls[0]).toEqual({ command: 'cursor-agent', args: ['-p', 'hi'], cwd: '/repo', outPath: out, timeoutMs: 5000 })
   })
 
-  test('returns captured output and exit code', async () => {
+  test('returns the headless runner exit code and captured output', async () => {
+    const out = await outPath()
+    const { adapter } = fakeAdapter()
+    const { sessionHost } = fakeSessionHost()
+    const { runHeadless } = fakeRunHeadless({ exitCode: 2, output: 'partial closeout' })
+
+    await expect(
+      dispatchPlay(
+        { sessionHost, getAdapter: () => adapter, runHeadless },
+        { play, assignment, persona: 'oscar', task: 'Do it.', cwd: '/repo', outPath: out },
+      ),
+    ).resolves.toEqual({ exitCode: 2, output: 'partial closeout' })
+  })
+
+  test('an INTERACTIVE Play spawns a cmux pane and reads its captured output file', async () => {
     const out = await outPath()
     await mkdir(dirname(out), { recursive: true })
+    const interactivePlay: Play = { ...play, kind: 'interactive' }
     const { adapter } = fakeAdapter({ command: 'cursor-agent', args: ['-p'], stdoutPath: out })
-    const { sessionHost } = fakeSessionHost({
-      async spawn() {
+    const { sessionHost, spawns } = fakeSessionHost({
+      async spawn(opts) {
+        spawns.push(opts)
         await writeFile(out, 'closeout complete', 'utf8')
         return fakeRef
       },
     })
 
-    await expect(
-      dispatchPlay({ sessionHost, getAdapter: () => adapter }, { play, assignment, persona: 'oscar', task: 'Do it.', cwd: '/repo', outPath: out }),
-    ).resolves.toEqual({ exitCode: 0, output: 'closeout complete' })
-  })
-
-  test('returns non-zero exit with captured output', async () => {
-    const out = await outPath()
-    await writeFile(out, 'partial closeout', 'utf8')
-    const { adapter } = fakeAdapter()
-    const { sessionHost } = fakeSessionHost({
-      async waitForExit() {
-        return { state: 'exited', code: 2 }
-      },
-    })
-
     const result = await dispatchPlay(
       { sessionHost, getAdapter: () => adapter },
-      { play, assignment, persona: 'oscar', task: 'Do it.', cwd: '/repo', outPath: out },
+      { play: interactivePlay, assignment, persona: 'oscar', task: 'Do it.', cwd: '/repo', outPath: out, group: 'run_1' },
     )
 
-    expect(result).toEqual({ exitCode: 2, output: 'partial closeout' })
-  })
-
-  test('returns empty output when the capture file is missing', async () => {
-    const out = await outPath()
-    const { adapter } = fakeAdapter()
-    const { sessionHost } = fakeSessionHost()
-
-    const result = await dispatchPlay(
-      { sessionHost, getAdapter: () => adapter },
-      { play, assignment, persona: 'oscar', task: 'Do it.', cwd: '/repo', outPath: out },
-    )
-
-    expect(result.output).toBe('')
+    expect(spawns[0]).toMatchObject({ command: 'cursor-agent', args: ['-p'], label: 'Wrap-up', group: 'run_1' })
+    expect(result).toEqual({ exitCode: 0, output: 'closeout complete' })
   })
 })

@@ -137,6 +137,7 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
     git: ctx.git,
     getAdapter: ctx.getAdapter,
     io: ctx.io,
+    runHeadless: ctx.runHeadless,
     onRunCreated: (run) => {
       runId = run.id
       ctx.inFlight.set(workspaceId, run.id)

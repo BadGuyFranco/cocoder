@@ -5,4 +5,5 @@ export {
   type DispatchPlayDeps,
   type DispatchPlayInput,
   type DispatchPlayResult,
+  type HeadlessRunInput,
 } from './dispatch.js'
