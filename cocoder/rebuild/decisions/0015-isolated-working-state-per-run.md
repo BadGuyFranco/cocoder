@@ -143,3 +143,24 @@ adversarial plan review (8 must-fixes, all addressed). Each atom typecheck + tes
 - **Strongest remaining evidence gap:** all proof is from unit + LIVE-git tests, NOT yet a real
   daemon-driven dogfood run (the daemon was down). One live run that isolates → verifies → merges in
   anger is the final archive proof; it needs the daemon back up.
+
+### Post-implementation adversarial review (2026-05-31)
+A 4-lens bug-hunt over the committed implementation (each finding adversarially verified) confirmed the
+launch-side isolation sound and all 8 plan-review must-fixes genuinely closed, but found real defects on
+the LANDING / teardown seam — now fixed (commits `4378cec`, `94f5de8`):
+- **Cross-restart pane close was broken** (the Deb-leak fix didn't actually work — the fake host masked
+  it): the workspace ref needed to close a pane was never persisted, so teardown after a daemon restart
+  closed nothing. Fixed: durable `session.workspace_ref` + `SessionHost.closeSurface()`. **This is what
+  actually makes verified-when #4 hold in production.**
+- **Landing safety:** added a misrouting guard (pin the trunk BRANCH NAME at launch; escalate if the
+  founder switched branches / went detached) and guaranteed a terminal integration status on every exit
+  (fail-closed catch + abort), so a run can never strand at `verifying`/`resolving`.
+- **GC preservation:** an escalated/un-integrated run's worktree (the inspection artifact) is no longer
+  GC'd.
+- **Open design question (founder call):** a *clean* fast-forward still lands by merging in the founder's
+  checkout, which updates their working tree. Made SAFE (misroute-guarded; dirty-overlap escalates), but
+  eliminating the working-tree touch entirely needs the trunk-topology decision this ADR's open questions
+  already flag (ref-move vs a dedicated integration worktree vs a non-checked-out trunk).
+- **Deferred minor (shouldFix):** the merge-conflict `completeMerge` stages with `git add -A` (no
+  deterministic scope partition at merge conclusion — gated only by the integration verify after);
+  `pending-scope-decision` still has no expand-or-discard exit (its worktree is intentionally pinned).
