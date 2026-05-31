@@ -13,6 +13,6 @@ not a general test framework.
 yet; one is planned). Promote out of `backlog/` (a `git mv` up to `priorities/`) when there's a browser
 app to test.
 
-**Scope moved (2026-05-31):** base Quinn + the **`electron-test`** Play are now in
-[`no-brainer-plays`](../no-brainer-plays.md) — that half is unblocked because the Oz dashboard IS an
+**Scope moved (2026-05-31):** base Quinn (with Talia) + the **`electron-test`** Play are now in
+[`personas-and-plays`](../personas-and-plays.md) — that half is unblocked because the Oz dashboard IS an
 Electron app to dogfood against. This backlog item is now browser-testing only.

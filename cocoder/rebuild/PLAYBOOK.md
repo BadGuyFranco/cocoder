@@ -106,6 +106,10 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
 - `objective-presence-gate` — ADR-0010 minimal-slice gate. ✅ (`bc6c3e8`).
 - `oscar-orchestrates-bob` — ADR-0013 tier 1: multi-atom loop + the reusable monitor primitive (Deb/Oz
   reuse it). ✅ built + validated live on `run_15`; plus run-id/labels/commit-gate hardening + atom isolation.
+- `base-and-extension-personas` — ADR-0012 living base + repo deltas; persona loader/merge. ✅ built +
+  proven on `run_17` (propagation test). Folded into the `personas-and-plays` master priority.
+- `plays-mechanism` — ADR-0005 Plays registry, proven by making **wrap-up** the first Play (cheap-model
+  tiering). ✅ proven end-to-end on `run_29` (`05cbcb2`).
 
 **Active (launchable; recommended sequence — the `priorities/` directory is the live index):**
 1. `deb` — debugger persona; **tier 2** of the observation hierarchy (watch + nudge Oscar; observe-only
@@ -113,19 +117,16 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    fault to Deb; she judges; the runner records + writes the disposition). Remaining: the live
    seeded-fault validation (its "verified when") + decide whether the cut cross-run learning loop / real-PR
    automation is ever earned.
-2. `base-and-extension-personas` — ADR-0012 living base + repo deltas merged at load. Foundational
-   (persona loader/storage) and the thing that makes Deb's "fix the base for everyone" path real.
-3. `plays-mechanism` — ADR-0005 Plays mechanism, proven by making **wrap-up** the first Play (cheap-model
-   tiering). **✅ proven end-to-end on `run_29`** (commit `05cbcb2`); pending archive to `zArchive/v2/`.
-   (Framing refreshed: the loop now triggers wrap-up; the Play is the procedure Oscar runs at that trigger.)
-4. `no-brainer-plays` — the base Plays we already know we need now: **`documentation`**, **`code-review`**,
-   and Quinn's **`electron-test`** (+ a minimal v2 base Quinn). Refactors the ad-hoc Oz-dashboard test
-   scripts into a real Play (tech-debt paydown) and decides the base-vs-delta-for-Plays seam. Unblocked by
-   `plays-mechanism`; folds in the Electron half of `quinn-app-testing`.
-5. `full-oz-dashboard` — the v1-designed control plane, earned in slices; the road to feature-complete
-   (and where priority ordering eventually lands). **Now unblocked** — its tier-3 oversight reuses the
-   monitor primitive `oscar-orchestrates-bob` built, and reconciles with `deb` (Deb writes faults, Oz reads).
-6. `new-primary-root` (**plan-first**) — onboarding Play for a brand-new repo: scaffolds the stub
+2. `personas-and-plays` — **master priority** (merges the done `base-and-extension-personas` + the folded
+   `no-brainer-plays`): one living-base+extension model for **both personas and Plays**. Completes the
+   base QA roster — **Quinn** (user-simulation) and **Talia** (acceptance QA) — and lands the no-brainer
+   Plays (`documentation`, `code-review`, Quinn's `electron-test`, refactoring the ad-hoc Oz test scripts
+   out of tech debt), and extends the ADR-0012 base/delta model to Plays. Unblocked by `plays-mechanism`.
+3. `full-oz-dashboard` — the v1-designed control plane, earned in slices; the road to feature-complete
+   (and where priority ordering eventually lands). **Partly done / now unblocked** — its tier-3 oversight
+   reuses the monitor primitive `oscar-orchestrates-bob` built, and reconciles with `deb` (Deb writes
+   faults, Oz reads).
+4. `new-primary-root` (**plan-first**) — onboarding Play for a brand-new repo: scaffolds the stub
    `cocoder/` folder and seeds the *"Analyze Primary Root"* first priority. A seam (D1) → its first
    deliverable is a **founder Q&A + an ADR**, not code. The concrete form of Phase 5 ("first external repo").
 
