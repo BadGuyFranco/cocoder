@@ -117,16 +117,20 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    fault to Deb; she judges; the runner records + writes the disposition). Remaining: the live
    seeded-fault validation (its "verified when") + decide whether the cut cross-run learning loop / real-PR
    automation is ever earned.
-2. `personas-and-plays` — **master priority** (merges the done `base-and-extension-personas` + the folded
+2. `isolated-working-state-per-run` — ADR-0015: each run gets its own git worktree + branch and reaches
+   trunk via a **verified auto-merge** (whole-tree integration verify), with a `merge-conflict` Play
+   (resolve → re-verify → merge; escalate genuine divergence). Retires the dirty-tree launch guard; fixes
+   the Deb-pane teardown leak. Concurrency stays a non-goal. Sequenced right after `deb`.
+3. `personas-and-plays` — **master priority** (merges the done `base-and-extension-personas` + the folded
    `no-brainer-plays`): one living-base+extension model for **both personas and Plays**. Completes the
    base QA roster — **Quinn** (user-simulation) and **Talia** (acceptance QA) — and lands the no-brainer
    Plays (`documentation`, `code-review`, Quinn's `electron-test`, refactoring the ad-hoc Oz test scripts
    out of tech debt), and extends the ADR-0012 base/delta model to Plays. Unblocked by `plays-mechanism`.
-3. `full-oz-dashboard` — the v1-designed control plane, earned in slices; the road to feature-complete
+4. `full-oz-dashboard` — the v1-designed control plane, earned in slices; the road to feature-complete
    (and where priority ordering eventually lands). **Partly done / now unblocked** — its tier-3 oversight
    reuses the monitor primitive `oscar-orchestrates-bob` built, and reconciles with `deb` (Deb writes
    faults, Oz reads).
-4. `new-primary-root` (**plan-first**) — onboarding Play for a brand-new repo: scaffolds the stub
+5. `new-primary-root` (**plan-first**) — onboarding Play for a brand-new repo: scaffolds the stub
    `cocoder/` folder and seeds the *"Analyze Primary Root"* first priority. A seam (D1) → its first
    deliverable is a **founder Q&A + an ADR**, not code. The concrete form of Phase 5 ("first external repo").
 
