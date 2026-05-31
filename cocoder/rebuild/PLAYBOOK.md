@@ -110,27 +110,26 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   proven on `run_17` (propagation test). Folded into the `personas-and-plays` master priority.
 - `plays-mechanism` — ADR-0005 Plays registry, proven by making **wrap-up** the first Play (cheap-model
   tiering). ✅ proven end-to-end on `run_29` (`05cbcb2`).
+- `deb` — ADR-0013 **tier 2**: debugger persona (watch + nudge Oscar; observe-only on Bob). ✅ built +
+  **live-proven on `run_33`**: a real induced `directive-timeout` was triaged by live codex Deb →
+  `cocoder-bug` with a propose-only fix; nudge-Oscar watchdog added (`34ecf13`). Cross-run learning loop /
+  Deb↔dashboard reconciliation deferred to `full-oz-dashboard`.
 
 **Active (launchable; recommended sequence — the `priorities/` directory is the live index):**
-1. `deb` — debugger persona; **tier 2** of the observation hierarchy (watch + nudge Oscar; observe-only
-   on Bob), built on `oscar-orchestrates-bob`. **Triage spine built + committed** (the runner hands each
-   fault to Deb; she judges; the runner records + writes the disposition). Remaining: the live
-   seeded-fault validation (its "verified when") + decide whether the cut cross-run learning loop / real-PR
-   automation is ever earned.
-2. `isolated-working-state-per-run` — ADR-0015: each run gets its own git worktree + branch and reaches
+1. `isolated-working-state-per-run` — ADR-0015: each run gets its own git worktree + branch and reaches
    trunk via a **verified auto-merge** (whole-tree integration verify), with a `merge-conflict` Play
    (resolve → re-verify → merge; escalate genuine divergence). Retires the dirty-tree launch guard; fixes
    the Deb-pane teardown leak. Concurrency stays a non-goal. Sequenced right after `deb`.
-3. `personas-and-plays` — **master priority** (merges the done `base-and-extension-personas` + the folded
+2. `personas-and-plays` — **master priority** (merges the done `base-and-extension-personas` + the folded
    `no-brainer-plays`): one living-base+extension model for **both personas and Plays**. Completes the
    base QA roster — **Quinn** (user-simulation) and **Talia** (acceptance QA) — and lands the no-brainer
    Plays (`documentation`, `code-review`, Quinn's `electron-test`, refactoring the ad-hoc Oz test scripts
    out of tech debt), and extends the ADR-0012 base/delta model to Plays. Unblocked by `plays-mechanism`.
-4. `full-oz-dashboard` — the v1-designed control plane, earned in slices; the road to feature-complete
+3. `full-oz-dashboard` — the v1-designed control plane, earned in slices; the road to feature-complete
    (and where priority ordering eventually lands). **Partly done / now unblocked** — its tier-3 oversight
    reuses the monitor primitive `oscar-orchestrates-bob` built, and reconciles with `deb` (Deb writes
    faults, Oz reads).
-5. `new-primary-root` (**plan-first**) — onboarding Play for a brand-new repo: scaffolds the stub
+4. `new-primary-root` (**plan-first**) — onboarding Play for a brand-new repo: scaffolds the stub
    `cocoder/` folder and seeds the *"Analyze Primary Root"* first priority. A seam (D1) → its first
    deliverable is a **founder Q&A + an ADR**, not code. The concrete form of Phase 5 ("first external repo").
 
