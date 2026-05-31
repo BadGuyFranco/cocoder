@@ -46,6 +46,10 @@ const fakeGit = (): Git => ({
     return 'h0'
   },
   async abortMerge() {},
+  async currentBranch() {
+    return 'trunk'
+  },
+  async resetHard() {},
 })
 
 const fakeHost = (): SessionHost =>

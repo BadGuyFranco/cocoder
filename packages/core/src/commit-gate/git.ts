@@ -15,6 +15,10 @@ export interface WorktreeInfo {
 export interface Git {
   /** Current HEAD sha (snapshot before spawning, to detect agent self-commits). */
   headSha(cwd: string): Promise<string>
+  /** The short name of the branch checked out at `cwd`, or null if HEAD is detached. Used to pin the
+   *  trunk branch at launch so the end-of-run land targets the SAME branch and never misroutes if the
+   *  founder switched branches mid-run (ADR-0015 §1). */
+  currentBranch(cwd: string): Promise<string | null>
   /** Changed paths in the working tree (modified, added, untracked, deleted, renamed). */
   changedFiles(cwd: string): Promise<string[]>
   /** Stage + commit exactly `files` (pathspec --only semantics); return the new HEAD sha. */
@@ -63,6 +67,10 @@ export interface Git {
   /** Abort an in-progress merge, restoring the pre-merge branch state (`git merge --abort`). Used when
    *  the Play judges a genuine semantic divergence — escalate rather than guess. */
   abortMerge(cwd: string): Promise<void>
+  /** Hard-reset the checked-out branch at `cwd` back to `sha` (`git reset --hard`). Used to undo a
+   *  trunk-into-branch merge commit when the post-merge integration verify fails, so the escalated
+   *  branch is left as the pure run-work line (symmetry with abortMerge). */
+  resetHard(cwd: string, sha: string): Promise<void>
 }
 
 const git = async (cwd: string, args: string[]): Promise<string> => {
@@ -98,6 +106,15 @@ export function makeGit(): Git {
   return {
     async headSha(cwd) {
       return (await git(cwd, ['rev-parse', 'HEAD'])).trim()
+    },
+    async currentBranch(cwd) {
+      // `symbolic-ref --short -q HEAD` prints the branch and exits 0, or exits non-zero when detached.
+      try {
+        const out = (await git(cwd, ['symbolic-ref', '--short', '-q', 'HEAD'])).trim()
+        return out.length > 0 ? out : null
+      } catch {
+        return null // detached HEAD
+      }
     },
     async changedFiles(cwd) {
       // -z → NUL-separated, paths VERBATIM (no quoting) so spaces/special chars can't corrupt the
@@ -211,6 +228,9 @@ export function makeGit(): Git {
     },
     async abortMerge(cwd) {
       await git(cwd, ['merge', '--abort'])
+    },
+    async resetHard(cwd, sha) {
+      await git(cwd, ['reset', '--hard', sha])
     },
   }
 }

@@ -57,6 +57,10 @@ const fakeGit = (changed: string[] = [], shas: readonly string[] = ['h0']): Git 
       return 'merged'
     },
     async abortMerge() {},
+    async currentBranch() {
+      return 'trunk'
+    },
+    async resetHard() {},
   }
 }
 const fakeHost = (onShow?: (ref: SessionRef) => void, onKill?: (ref: SessionRef) => void): SessionHost => {

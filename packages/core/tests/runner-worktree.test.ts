@@ -86,8 +86,9 @@ afterEach(async () => {
 })
 
 // Run a full scenario: a fake Bob writes a real in-scope file into its worktree, and the injected
-// integration-verify Play returns `verifyOutput`. Returns the result + store for assertions.
-async function runScenario(verifyOutput: string) {
+// integration-verify Play returns `verifyOutput`. `onProceed` (if given) runs when Bob is dispatched —
+// used to mutate the founder's checkout (e.g. switch branches) to exercise the misrouting guard.
+async function runScenario(verifyOutput: string, onProceed?: () => Promise<void>) {
   let bobRefId: string | null = null
   let bobCwd: string | null = null
   const sessionHost: SessionHost = {
@@ -112,6 +113,7 @@ async function runScenario(verifyOutput: string) {
       if (ref.id === bobRefId && bobCwd && text.includes('PROCEED')) {
         await mkdir(join(bobCwd, 'packages'), { recursive: true })
         await writeFile(join(bobCwd, 'packages', 'feature.ts'), 'export const feature = 42\n')
+        if (onProceed) await onProceed()
       }
     },
     async show() {},
@@ -180,6 +182,20 @@ describe('runRun worktree isolation + VERIFIED auto-merge (ADR-0015, live git)',
     expect(await g(home, ['rev-parse', 'HEAD'])).toBe(trunkBefore) // a non-cooperating verifier cannot land trunk
     expect(store.getRun(result.runId)?.integrationStatus).toBe('escalated')
     expect(store.listCommitLinks(result.runId).some((l) => l.kind === 'merge')).toBe(false)
+  })
+
+  test('founder switching branches mid-run escalates instead of MISROUTING the land (§1 guard)', async () => {
+    const trunkTip = await g(home, ['rev-parse', 'trunk'])
+    // The run is cut from `trunk`; mid-run the founder switches their checkout to another branch.
+    const { result, store } = await runScenario('{"verdict":"pass","reason":"green"}', async () => {
+      await g(home, ['checkout', '-q', '-b', 'sidequest'])
+    })
+
+    expect(store.getRun(result.runId)?.integrationStatus).toBe('escalated') // not landed
+    expect(store.listCommitLinks(result.runId).some((l) => l.kind === 'merge')).toBe(false)
+    expect(await g(home, ['rev-parse', 'trunk'])).toBe(trunkTip) // the original trunk branch is untouched
+    const ev = store.listEvents(result.runId).find((e) => e.type === 'integration-escalated')
+    expect(JSON.stringify(ev?.data)).toContain('trunk branch changed')
   })
 })
 

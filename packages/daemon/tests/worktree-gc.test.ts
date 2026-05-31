@@ -71,8 +71,12 @@ let store: RunStore
 let oz: OzServer | undefined
 const dirs: string[] = []
 
-// Create a run row WITH a real worktree on disk (committed work on its branch) at the given status.
-async function seedRunWithWorktree(status: 'completed' | 'pending-scope-decision'): Promise<string> {
+// Create a run row WITH a real worktree on disk (committed work on its branch) at the given status,
+// optionally with an integration status (default 'pending').
+async function seedRunWithWorktree(
+  status: 'completed' | 'pending-scope-decision',
+  integrationStatus?: 'merged' | 'escalated' | 'resolving' | 'verifying',
+): Promise<string> {
   const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
   const wt = worktreePathFor(home, run.id)
   const branch = runBranchFor(run.id)
@@ -83,6 +87,7 @@ async function seedRunWithWorktree(status: 'completed' | 'pending-scope-decision
   await g(wt, ['commit', '-q', '-m', 'atom work'])
   store.setWorktree(run.id, wt, branch)
   store.setRunStatus(run.id, status)
+  if (integrationStatus) store.setIntegrationStatus(run.id, integrationStatus)
   return run.id
 }
 
@@ -136,13 +141,25 @@ describe('worktree GC + orphan sweep (ADR-0015, live git)', () => {
     expect(store.listEvents(runId).some((e) => e.type === 'worktree-gc-blocked')).toBe(true)
   })
 
-  test('daemon-boot sweep removes a terminal run\'s stray worktree but preserves a held-back one', async () => {
-    const done = await seedRunWithWorktree('completed')
+  test('teardown does NOT remove the worktree of an ESCALATED integration (the inspection artifact)', async () => {
+    const runId = await seedRunWithWorktree('completed', 'escalated')
+    await start()
+
+    await teardownRun(oz!.ctx, runId)
+
+    expect(await exists(worktreePathFor(home, runId))).toBe(true) // preserved — founder routed to inspect it
+    expect(store.listEvents(runId).some((e) => e.type === 'worktree-gc-blocked')).toBe(true)
+  })
+
+  test('daemon-boot sweep removes a terminal run\'s stray worktree but preserves held-back + escalated ones', async () => {
+    const done = await seedRunWithWorktree('completed', 'merged')
     const held = await seedRunWithWorktree('pending-scope-decision')
+    const escalated = await seedRunWithWorktree('completed', 'escalated')
     await start() // createOzServer runs reconcileOrphans → sweepOrphanWorktrees at boot
 
-    expect(await exists(worktreePathFor(home, done))).toBe(false) // swept
+    expect(await exists(worktreePathFor(home, done))).toBe(false) // swept (merged → safe)
     expect(await exists(worktreePathFor(home, held))).toBe(true) // preserved (held-back)
+    expect(await exists(worktreePathFor(home, escalated))).toBe(true) // preserved (un-integrated escalation)
     expect(store.listEvents(done).some((e) => e.type === 'worktree-swept')).toBe(true)
   })
 })

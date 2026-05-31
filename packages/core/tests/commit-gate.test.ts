@@ -101,6 +101,10 @@ function makeFakeGit(opts: { changed: string[]; headBefore: string; headNow?: st
       return head
     },
     async abortMerge() {},
+    async currentBranch() {
+      return 'trunk'
+    },
+    async resetHard() {},
   }
   return { git, commits }
 }

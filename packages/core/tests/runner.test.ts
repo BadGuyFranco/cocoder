@@ -87,6 +87,10 @@ const worktreeStubs = {
     return 'merged'
   },
   async abortMerge() {},
+  async currentBranch() {
+    return 'trunk'
+  },
+  async resetHard() {},
 }
 
 // Git that returns a scripted changed-file set per atom and advances HEAD on commit (so per-atom
