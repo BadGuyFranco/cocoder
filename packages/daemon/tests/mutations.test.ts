@@ -47,6 +47,16 @@ const fakeGit = (changed: string[] = [], shas: readonly string[] = ['h0']): Git 
     async unmergedCommits() {
       return []
     },
+    async mergeInto() {
+      return 'clean' as const
+    },
+    async conflictedFiles() {
+      return []
+    },
+    async completeMerge() {
+      return 'merged'
+    },
+    async abortMerge() {},
   }
 }
 const fakeHost = (onShow?: (ref: SessionRef) => void, onKill?: (ref: SessionRef) => void): SessionHost => {

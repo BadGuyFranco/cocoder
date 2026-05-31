@@ -77,6 +77,16 @@ const worktreeStubs = {
   async unmergedCommits() {
     return []
   },
+  async mergeInto() {
+    return 'clean' as const
+  },
+  async conflictedFiles() {
+    return []
+  },
+  async completeMerge() {
+    return 'merged'
+  },
+  async abortMerge() {},
 }
 
 // Git that returns a scripted changed-file set per atom and advances HEAD on commit (so per-atom

@@ -36,6 +36,16 @@ const fakeGit = (): Git => ({
   async unmergedCommits() {
     return []
   },
+  async mergeInto() {
+    return 'clean' as const
+  },
+  async conflictedFiles() {
+    return []
+  },
+  async completeMerge() {
+    return 'h0'
+  },
+  async abortMerge() {},
 })
 
 const fakeHost = (): SessionHost =>

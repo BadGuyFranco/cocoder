@@ -3,7 +3,7 @@
 // control flow but structurally cannot catch a wrong `git` invocation (the F7 lesson: load-bearing
 // path handling gets discovered at runtime unless exercised end-to-end).
 import { execFile } from 'node:child_process'
-import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
@@ -95,5 +95,51 @@ describe('Git worktree/merge primitives (ADR-0015, live git)', () => {
     expect((await git.listWorktrees(main)).map((w) => w.branch)).not.toContain('cocoder/run_x')
     // The branch ref survives removal — its un-integrated commit is NOT lost (ADR-0015 §5).
     expect(await git.unmergedCommits(main, 'trunk', 'cocoder/run_x')).toHaveLength(1)
+  })
+})
+
+describe('Git conflict-aware merge primitives (ADR-0015 §4, live git)', () => {
+  test('mergeInto is clean when branch + trunk touch different files', async () => {
+    const wt = join(main, 'wt-run')
+    await git.worktreeAdd(main, wt, 'cocoder/run_x', trunkSha)
+    await commitFile(wt, 'a.txt', 'run\n', 'atom: a') // run edits a.txt
+    await commitFile(main, 'b.txt', 'trunk\n', 'trunk: b') // trunk edits b.txt (disjoint)
+
+    expect(await git.mergeInto(wt, 'trunk')).toBe('clean') // no overlap → merge commits cleanly
+    expect(await git.conflictedFiles(wt)).toEqual([])
+    // The run branch now contains trunk's commit, so trunk can fast-forward onto it.
+    expect(await git.isAncestor(main, await g(main, ['rev-parse', 'HEAD']), 'cocoder/run_x')).toBe(true)
+  })
+
+  test('mergeInto reports a conflict; completeMerge lands the resolution', async () => {
+    const wt = join(main, 'wt-run')
+    await git.worktreeAdd(main, wt, 'cocoder/run_x', trunkSha)
+    await commitFile(wt, 'shared.txt', 'run version\n', 'atom: shared') // both sides edit shared.txt…
+    await commitFile(main, 'shared.txt', 'trunk version\n', 'trunk: shared') // …differently → conflict
+
+    expect(await git.mergeInto(wt, 'trunk')).toBe('conflict')
+    expect(await git.conflictedFiles(wt)).toEqual(['shared.txt'])
+
+    // The Play resolves the CONTENT; the runner concludes the merge (ADR-0015 §2 split).
+    await writeFile(join(wt, 'shared.txt'), 'reconciled\n')
+    const mergeSha = await git.completeMerge(wt, 'merge: trunk → cocoder/run_x')
+    expect(mergeSha).toBeTruthy()
+    expect(await git.conflictedFiles(wt)).toEqual([]) // merge concluded, no unmerged paths
+    // trunk is now an ancestor of the resolved branch → a subsequent ff lands everything.
+    expect(await git.isAncestor(main, await g(main, ['rev-parse', 'HEAD']), 'cocoder/run_x')).toBe(true)
+  })
+
+  test('abortMerge restores the pre-merge branch state (escalate-without-guessing path)', async () => {
+    const wt = join(main, 'wt-run')
+    await git.worktreeAdd(main, wt, 'cocoder/run_x', trunkSha)
+    const runSha = await commitFile(wt, 'shared.txt', 'run version\n', 'atom: shared')
+    await commitFile(main, 'shared.txt', 'trunk version\n', 'trunk: shared')
+
+    expect(await git.mergeInto(wt, 'trunk')).toBe('conflict')
+    await git.abortMerge(wt)
+
+    expect(await git.conflictedFiles(wt)).toEqual([]) // no merge in progress
+    expect(await g(wt, ['rev-parse', 'HEAD'])).toBe(runSha) // branch tip unchanged — nothing guessed/landed
+    expect((await readFile(join(wt, 'shared.txt'), 'utf8'))).toBe('run version\n') // working tree restored
   })
 })

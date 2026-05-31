@@ -91,6 +91,16 @@ function makeFakeGit(opts: { changed: string[]; headBefore: string; headNow?: st
     async unmergedCommits() {
       return []
     },
+    async mergeInto() {
+      return 'clean' as const
+    },
+    async conflictedFiles() {
+      return []
+    },
+    async completeMerge() {
+      return head
+    },
+    async abortMerge() {},
   }
   return { git, commits }
 }

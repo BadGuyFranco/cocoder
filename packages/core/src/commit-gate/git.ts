@@ -47,6 +47,22 @@ export interface Git {
   /** SHAs reachable from `branch` but not from `base` (`git rev-list base..branch`) — the run's
    *  un-integrated commits. Empty ⇒ everything is already on `base`, so the branch is safe to GC. */
   unmergedCommits(cwd: string, base: string, branch: string): Promise<string[]>
+
+  // ── Conflict-aware integration (ADR-0015 §4). Used when trunk advanced since launch (non-ff): the
+  //    runner merges trunk INTO the run branch in the worktree; a clean merge commits, a conflicting
+  //    one is left in progress for the merge-conflict Play to resolve, then completeMerge/abortMerge. ──
+  /** Merge `ref` into the branch checked out at `cwd` (a REAL merge that may conflict — unlike
+   *  mergeFastForwardOnly). 'clean' ⇒ merge committed; 'conflict' ⇒ merge left IN PROGRESS with
+   *  conflict markers (resolve → completeMerge, or abortMerge). Throws on a non-conflict error. */
+  mergeInto(cwd: string, ref: string): Promise<'clean' | 'conflict'>
+  /** The unmerged (conflicted) paths of an in-progress merge (`git diff --name-only --diff-filter=U`). */
+  conflictedFiles(cwd: string): Promise<string[]>
+  /** Conclude an in-progress merge once conflicts are resolved: stage everything + commit. Returns the
+   *  new HEAD sha. (The runner owns this git step; the Play only edits file CONTENT — ADR-0015 §2.) */
+  completeMerge(cwd: string, message: string): Promise<string>
+  /** Abort an in-progress merge, restoring the pre-merge branch state (`git merge --abort`). Used when
+   *  the Play judges a genuine semantic divergence — escalate rather than guess. */
+  abortMerge(cwd: string): Promise<void>
 }
 
 const git = async (cwd: string, args: string[]): Promise<string> => {
@@ -166,6 +182,35 @@ export function makeGit(): Git {
         .split('\n')
         .map((s) => s.trim())
         .filter((s) => s.length > 0)
+    },
+
+    async conflictedFiles(cwd) {
+      const out = await git(cwd, ['diff', '--name-only', '--diff-filter=U'])
+      return out
+        .split('\n')
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+    },
+    async mergeInto(cwd, ref) {
+      try {
+        await git(cwd, ['merge', '--no-ff', '--no-edit', ref])
+        return 'clean'
+      } catch (err) {
+        // `git merge` exits non-zero on conflicts, leaving the merge in progress — distinguish that
+        // (unmerged paths exist) from a genuine error (bad ref, etc.), which we surface after cleanup.
+        const unmerged = (await git(cwd, ['diff', '--name-only', '--diff-filter=U'])).trim()
+        if (unmerged.length > 0) return 'conflict'
+        await git(cwd, ['merge', '--abort']).catch(() => {}) // not a conflict → don't leave partial state
+        throw err
+      }
+    },
+    async completeMerge(cwd, message) {
+      await git(cwd, ['add', '-A'])
+      await git(cwd, ['commit', '-m', message]) // concludes the in-progress merge with all paths staged
+      return (await git(cwd, ['rev-parse', 'HEAD'])).trim()
+    },
+    async abortMerge(cwd) {
+      await git(cwd, ['merge', '--abort'])
     },
   }
 }
