@@ -128,16 +128,18 @@ semantics undecided), not a benefit claimed here.
 ## Implementation status (2026-05-31, run_34 — branch `rebuild/phase-2-oz`)
 Built by direct hand-build (the daemon/loop was down; the work is the loop's own engine), per an
 adversarial plan review (8 must-fixes, all addressed). Each atom typecheck + tests green, committed.
-**6 of 7 atoms landed.**
-- **Landed:** the data model + idempotent migration (§6 schema); the Git worktree/merge port
-  primitives; worktree-at-launch with full cwd isolation (§1, §2); retirement of the dirty-tree guard
-  (verified-when #1); the **fail-closed whole-tree integration VERIFY before the fast-forward merge**
-  (§3 — a fresh verifier Play; missing/timeout/unparseable/`fail` all escalate without landing, F11
-  closed; verified-when #2); teardown worktree GC + daemon-boot orphan-sweep + the Deb-pane leak fix
-  (§5, verified-when #4).
-- **Not yet built:** the **`merge-conflict` Play** (§4, verified-when #3). A non-fast-forward (trunk
-  advanced since launch) is currently recorded as `integration-deferred` — safe (work preserved on the
-  branch, never guessed), but not yet auto-resolved-then-verified-then-merged.
-- **Scoped open:** §6 says "a mid-merge crash is resumable" — only the write side (status transitions)
-  exists; the read/rebind/auto-resume side is unbuilt. Decide: build it, or amend §6 to
-  "recorded-for-forensics, not auto-resumed."
+**All 7 atoms landed — verified-when #1–#4 met with live-git evidence.**
+- §1/§2 worktree-at-launch + full cwd isolation; verified-when #1 (dirty checkout launches unblocked,
+  founder tree untouched).
+- §6 data model + idempotent ALTER migration (proven against a copy of the real 34-run db).
+- §3 fail-closed whole-tree integration VERIFY before the ff-merge — a fresh verifier Play; a
+  missing/timeout/unparseable/`fail` verdict all escalate without landing (F11 closed); verified-when #2.
+- §4 merge-conflict Play: a non-ff merges trunk into the run branch, resolves via the Play →
+  re-verifies → ff's; a genuine semantic divergence aborts + escalates, never guessed; verified-when #3.
+- §5 teardown worktree GC + daemon-boot orphan-sweep + the Deb-pane leak root fix; verified-when #4.
+- **Open for the founder (does NOT block the four criteria):** §6 "a mid-merge crash is resumable" —
+  only the write side (status transitions) exists; the read/rebind/auto-resume side is unbuilt. Decide:
+  build it, or amend §6 to "recorded-for-forensics, not auto-resumed."
+- **Strongest remaining evidence gap:** all proof is from unit + LIVE-git tests, NOT yet a real
+  daemon-driven dogfood run (the daemon was down). One live run that isolates → verifies → merges in
+  anger is the final archive proof; it needs the daemon back up.
