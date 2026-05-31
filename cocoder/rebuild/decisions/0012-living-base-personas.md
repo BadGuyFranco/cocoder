@@ -79,6 +79,7 @@ proven general. Deb proposes the classification; the founder arbitrates ambiguit
 - **Base location = a referenced package** (`@cocoder/personas`), resolved module-relative; *not*
   `templates/` (the init-time copy scaffold) — the base is referenced at every load.
 
-Implemented in run_17 (the [`base-and-extension-personas`](../../priorities/base-and-extension-personas.md)
-priority holds the full record): base+delta merge in `core`, all consumers cut over, CoCoder's personas
-split (base rich with the runtime; deltas thin), propagation proven by a test.
+Implemented in run_17 (the [`base-and-extension-personas`](../../priorities/zArchive/v2/base-and-extension-personas.md)
+priority, archived, holds the full record; now folded into the `personas-and-plays` master priority):
+base+delta merge in `core`, all consumers cut over, CoCoder's personas split (base rich with the
+runtime; deltas thin), propagation proven by a test.

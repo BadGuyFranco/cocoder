@@ -8,14 +8,20 @@ const fakeExec =
     responses[[command, ...args].join(' ')] ?? { code: 127, stdout: '', stderr: 'not found' }
 
 describe('build() pins the spike invocations', () => {
-  test('claude: interactive — disable-slash, acceptEdits, prompt after --; model optional', () => {
-    const built = new ClaudeAdapter().build({ prompt: 'hi', model: 'opus', cwd: '/repo', outPath: '/run/o.json' })
+  test('claude: interactive — Oscar keeps slash commands, acceptEdits, prompt after --; model optional', () => {
+    const built = new ClaudeAdapter().build({ persona: 'oscar', prompt: 'hi', model: 'opus', cwd: '/repo', outPath: '/run/o.json' })
     expect(built.command).toBe('claude')
-    expect(built.args).toEqual(['--disable-slash-commands', '--permission-mode', 'acceptEdits', '--model', 'opus', '--', 'hi'])
+    expect(built.args).toEqual(['--permission-mode', 'acceptEdits', '--model', 'opus', '--', 'hi'])
     expect(built.stdoutPath).toBeUndefined() // interactive — no redirect
 
-    const noModel = new ClaudeAdapter().build({ prompt: 'hi', model: '', cwd: '/repo', outPath: '/run/o.json' })
-    expect(noModel.args).toEqual(['--disable-slash-commands', '--permission-mode', 'acceptEdits', '--', 'hi'])
+    const noModel = new ClaudeAdapter().build({ persona: 'oscar', prompt: 'hi', model: '', cwd: '/repo', outPath: '/run/o.json' })
+    expect(noModel.args).toEqual(['--permission-mode', 'acceptEdits', '--', 'hi'])
+  })
+
+  test('claude: interactive — non-Oscar lanes still disable slash commands', () => {
+    const built = new ClaudeAdapter().build({ persona: 'deb', prompt: 'hi', model: '', cwd: '/repo', outPath: '/run/o.json' })
+    expect(built.command).toBe('claude')
+    expect(built.args).toEqual(['--disable-slash-commands', '--permission-mode', 'acceptEdits', '--', 'hi'])
   })
 
   test('codex: interactive — bypass approvals+sandbox, positional prompt; model optional', () => {

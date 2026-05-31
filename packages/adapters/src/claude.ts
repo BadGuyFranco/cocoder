@@ -1,10 +1,11 @@
 // claude (Claude Code) adapter — the orchestrator CLI, launched as a real INTERACTIVE session in
 // its cmux pane (the founder watches the native TUI), mirroring CoBuilder's proven pattern:
-// `claude --disable-slash-commands --permission-mode acceptEdits -- "<prompt>"`. The prompt is the
-// positional arg after `--`. acceptEdits lets it write its delegation file without prompting;
-// --disable-slash-commands keeps launch deterministic. Completion is ARTIFACT-based — the runner
-// polls for the delegation file the prompt tells it to write — NOT process exit (a TUI doesn't
-// exit). (Supersedes the Step 0.5 spike's headless `-p --output-format json`.)
+// `claude --permission-mode acceptEdits -- "<prompt>"`. The prompt is the positional arg after `--`.
+// acceptEdits lets it write its delegation file without prompting. Non-Oscar lanes keep
+// --disable-slash-commands for deterministic launches; Oscar intentionally keeps Claude Code slash
+// commands available. Completion is ARTIFACT-based — the runner polls for the delegation file the
+// prompt tells it to write — NOT process exit (a TUI doesn't exit). (Supersedes the Step 0.5 spike's
+// headless `-p --output-format json`.)
 import type { Adapter, BuildInput, BuiltCommand, PreflightResult } from '@cocoder/core'
 import { defaultExec, type Exec } from './exec.js'
 
@@ -16,7 +17,10 @@ export class ClaudeAdapter implements Adapter {
   }
 
   build(input: BuildInput): BuiltCommand {
-    const args = ['--disable-slash-commands', '--permission-mode', 'acceptEdits']
+    const args =
+      input.persona === 'oscar'
+        ? ['--permission-mode', 'acceptEdits']
+        : ['--disable-slash-commands', '--permission-mode', 'acceptEdits']
     if (input.model) args.push('--model', input.model)
     args.push('--', input.prompt) // positional initial prompt; runs agentically in the TUI
     return { command: 'claude', args }

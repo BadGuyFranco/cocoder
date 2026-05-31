@@ -13,10 +13,11 @@ and [ADR-0012](../rebuild/decisions/0012-living-base-personas.md) (base + extens
   as reviewed PRs; they propagate on update). Referenced, never copied-and-frozen.
 - **Repo extensions** — a repo layers a **delta** onto a base persona (carrying only its delta, merged
   at load, so base improvements still reach it) or adds **new repo-only personas** (e.g. Ian, Phil).
-- **Today this isn't split yet:** base + CoCoder's-own deltas are merged in this one folder. Splitting
-  them (base in the install, this folder = CoCoder's deltas) is tracked as the
-  [`base-and-extension-personas`](../priorities/base-and-extension-personas.md) priority. The
-  install-side base templates are currently empty — known, not-yet-done.
+- **The split is done (run_17, ADR-0012):** the base set ships as `@cocoder/personas`
+  (`packages/personas/`) as the single source; this folder holds CoCoder's own deltas
+  (`deltas/<id>.md`) + repo-only personas. The `core` loader merges base + delta at load, and a base
+  improvement provably reaches an already-extended repo. (Priority archived to
+  `priorities/zArchive/v2/base-and-extension-personas.md`.)
 
 ## How personas compose at launch
 

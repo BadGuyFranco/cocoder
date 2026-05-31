@@ -201,6 +201,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
   // Spawn Oscar (full loop prompt → writes the first directive), Bob on standby beside it, optional Deb.
   const oscarCmd = getAdapter(oscar.cli).build({
+    persona: oscar.id,
     prompt: buildOrchestratorPrompt({
       sharedStandards,
       oscarBody: oscar.body,
@@ -229,6 +230,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: oscar.id, ref: oscarRef.id } })
 
   const bobCmd = getAdapter(bob.cli).build({
+    persona: bob.id,
     prompt: buildBuilderStandbyPrompt({ sharedStandards, bobBody: bob.body, scope }),
     model: bob.model,
     cwd: workspace.path,

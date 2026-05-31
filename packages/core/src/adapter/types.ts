@@ -3,6 +3,8 @@
 // and are wired in by the cli (composition root).
 
 export interface BuildInput {
+  /** Persona/lane being launched; lets adapters preserve persona-specific CLI policy. */
+  readonly persona?: string
   /** Full prompt to pass to the CLI (shared standards + persona role + task). */
   readonly prompt: string
   /** Model name; empty string means the CLI's default. */
