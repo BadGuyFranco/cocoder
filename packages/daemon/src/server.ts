@@ -36,6 +36,7 @@ export interface OzServerOptions {
   readonly git?: Git
   readonly sessionHost?: SessionHost
   readonly getAdapter?: (cli: string) => Adapter
+  readonly listAdapters?: () => readonly Adapter[]
   readonly io?: RunnerIO
   /** Override the headless-Play subprocess runner (tests inject a fake so a wrap-up doesn't shell out). */
   readonly runHeadless?: OzContext['runHeadless']
@@ -98,6 +99,8 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
     bootSha,
     sessionHost: opts.sessionHost ?? new CmuxSessionHost(),
     getAdapter: opts.getAdapter ?? ((cli) => resolveAdapter(cli, registry)),
+    listAdapters: opts.listAdapters ?? (() => [...registry.values()]),
+    cliTestCache: new Map(),
     io: opts.io ?? makeRunnerIO(),
     token,
     csrfToken,

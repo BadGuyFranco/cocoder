@@ -11,6 +11,7 @@ import { sendJson } from './server.js'
 import { findWorkspace, readWorkspaces } from './registry.js'
 import { readRunDir } from './rundir.js'
 import { appendAudit } from './audit.js'
+import { listClis, testCli } from './clis.js'
 import { launchRun, requestDaemonRestart, showRun, teardownRun } from './launcher.js'
 
 export type { OzContext } from './context.js'
@@ -45,6 +46,21 @@ function readJsonBody(req: IncomingMessage): Promise<unknown> {
 /** Personas dir / priorities dir for a workspace's tracked governance zone. */
 const personasDir = (workspacePath: string): string => join(workspacePath, 'cocoder', 'personas')
 const prioritiesDir = (workspacePath: string): string => join(workspacePath, 'cocoder', 'priorities')
+
+interface LaunchBody {
+  readonly workspaceId: string
+  readonly priorityId: string
+  readonly resumeFromRunId?: string
+}
+
+function launchBody(body: unknown): LaunchBody {
+  const record = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {}
+  return {
+    workspaceId: typeof record.workspaceId === 'string' ? record.workspaceId : '',
+    priorityId: typeof record.priorityId === 'string' ? record.priorityId : '',
+    resumeFromRunId: typeof record.resumeFromRunId === 'string' ? record.resumeFromRunId : undefined,
+  }
+}
 
 /** GET /workspaces — surface 1. */
 async function listWorkspaces(ctx: OzContext, res: ServerResponse): Promise<void> {
@@ -143,6 +159,10 @@ export async function dispatchReads(ctx: OzContext, method: string, pathname: st
     await listWorkspaces(ctx, res)
     return true
   }
+  if (method === 'GET' && pathname === '/clis') {
+    sendJson(res, 200, listClis(ctx))
+    return true
+  }
   if (method === 'GET' && seg[0] === 'workspaces' && seg.length === 3 && seg[2] === 'priorities') {
     await listPriorities(ctx, res, decodeURIComponent(seg[1]!))
     return true
@@ -189,13 +209,14 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
   const seg = pathname.split('/').filter(Boolean)
 
   if (method === 'POST' && pathname === '/runs') {
-    let body: any
+    let body: unknown
     try {
       body = await readJsonBody(req)
     } catch {
       return sendJson(res, 400, { error: 'invalid JSON body' }), true
     }
-    const { status, body: out } = await launchRun(ctx, body?.workspaceId, body?.priorityId, { resumeFromRunId: body?.resumeFromRunId })
+    const input = launchBody(body)
+    const { status, body: out } = await launchRun(ctx, input.workspaceId, input.priorityId, { resumeFromRunId: input.resumeFromRunId })
     return sendJson(res, status, out), true
   }
   if (method === 'POST' && seg[0] === 'runs' && seg.length === 3 && seg[2] === 'show') {
@@ -208,6 +229,10 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
   }
   if (method === 'POST' && pathname === '/daemon/restart') {
     const { status, body: out } = await requestDaemonRestart(ctx)
+    return sendJson(res, status, out), true
+  }
+  if (method === 'POST' && seg[0] === 'clis' && seg.length === 3 && seg[2] === 'test') {
+    const { status, body: out } = await testCli(ctx, decodeURIComponent(seg[1]!))
     return sendJson(res, status, out), true
   }
   if (method === 'PUT' && seg[0] === 'workspaces' && seg.length === 4 && seg[2] === 'personas' && seg[3] === 'assignments') {

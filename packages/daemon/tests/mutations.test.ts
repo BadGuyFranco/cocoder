@@ -15,6 +15,30 @@ const okAdapter: Adapter = {
   preflight: async () => ({ ok: true, checks: [{ name: 'installed', ok: true, detail: 'ok' }] }),
   listModels: async () => ({ canEnumerate: false, models: [], detail: 'test adapter' }),
 }
+interface CliAdapterCalls {
+  preflight: number
+  listModels: number
+}
+const cliAdapter = (id: string, detail: string, calls?: CliAdapterCalls): Adapter => ({
+  id,
+  runReadiness: { mechanism: 'launch-flags', flags: [`--${id}`], managesUserConfig: false, detail },
+  build: () => ({ command: id, args: [] }),
+  preflight: async () => {
+    if (calls) calls.preflight += 1
+    return {
+      ok: true,
+      checks: [
+        { name: 'installed', ok: true, detail: `${id} installed` },
+        { name: 'authenticated', ok: true, detail: `${id} authenticated` },
+        { name: 'model', ok: true, detail: `(${id} default)` },
+      ],
+    }
+  },
+  listModels: async () => {
+    if (calls) calls.listModels += 1
+    return { canEnumerate: true, models: [`${id}-model-a`, `${id}-model-b`], detail: `${id} model list` }
+  },
+})
 const fakeGit = (changed: string[] = [], shas: readonly string[] = ['h0']): Git => {
   let headCalls = 0
   return {
@@ -262,6 +286,104 @@ describe('Oz mutations + lifecycle', () => {
     expect(store.listEvents(r.json.runId).filter((e) => e.type === 'daemon-stale')).toEqual([])
   })
 
+  test('GET /clis returns static config-managed state before any CLI test', async () => {
+    const calls: CliAdapterCalls = { preflight: 0, listModels: 0 }
+    const adapters = [cliAdapter('alpha', 'managed alpha', calls), cliAdapter('beta', 'managed beta', calls)]
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit(),
+      sessionHost: fakeHost(),
+      getAdapter: (cli) => {
+        const adapter = adapters.find((a) => a.id === cli)
+        if (!adapter) throw new Error('unknown cli')
+        return adapter
+      },
+      listAdapters: () => adapters,
+      io: fakeIO(),
+    })
+
+    const r = await call(oz, 'GET', '/clis')
+
+    expect(r.status).toBe(200)
+    expect(calls).toEqual({ preflight: 0, listModels: 0 })
+    expect(r.json.clis).toEqual([
+      {
+        id: 'alpha',
+        tested: false,
+        testedAt: null,
+        install: { ok: false, detail: 'not yet tested' },
+        auth: { ok: false, detail: 'not yet tested' },
+        models: { canEnumerate: false, models: [], detail: 'not yet tested' },
+        configManaged: adapters[0]!.runReadiness,
+      },
+      {
+        id: 'beta',
+        tested: false,
+        testedAt: null,
+        install: { ok: false, detail: 'not yet tested' },
+        auth: { ok: false, detail: 'not yet tested' },
+        models: { canEnumerate: false, models: [], detail: 'not yet tested' },
+        configManaged: adapters[1]!.runReadiness,
+      },
+    ])
+  })
+
+  test('POST /clis/:id/test refreshes and caches a CLI test result', async () => {
+    const calls: CliAdapterCalls = { preflight: 0, listModels: 0 }
+    const adapters = [cliAdapter('alpha', 'managed alpha', calls)]
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit(),
+      sessionHost: fakeHost(),
+      getAdapter: (cli) => {
+        const adapter = adapters.find((a) => a.id === cli)
+        if (!adapter) throw new Error('unknown cli')
+        return adapter
+      },
+      listAdapters: () => adapters,
+      io: fakeIO(),
+    })
+
+    const tested = await call(oz, 'POST', '/clis/alpha/test')
+
+    expect(tested.status).toBe(200)
+    expect(calls).toEqual({ preflight: 1, listModels: 1 })
+    expect(tested.json.cli).toMatchObject({
+      id: 'alpha',
+      tested: true,
+      install: { ok: true, detail: 'alpha installed' },
+      auth: { ok: true, detail: 'alpha authenticated' },
+      models: { canEnumerate: true, models: ['alpha-model-a', 'alpha-model-b'], detail: 'alpha model list' },
+      configManaged: adapters[0]!.runReadiness,
+    })
+    expect(tested.json.cli.testedAt).toEqual(expect.any(Number))
+
+    const cached = await call(oz, 'GET', '/clis')
+    expect(cached.status).toBe(200)
+    expect(cached.json.clis[0]).toEqual(tested.json.cli)
+  })
+
+  test('POST /clis/:id/test → 404 for an unknown CLI', async () => {
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit(),
+      sessionHost: fakeHost(),
+      getAdapter: () => {
+        throw new Error('unknown cli')
+      },
+      listAdapters: () => [],
+      io: fakeIO(),
+    })
+    const r = await call(oz!, 'POST', '/clis/nope/test')
+    expect(r).toEqual({ status: 404, json: { error: 'unknown cli' } })
+  })
+
   test('POST /runs → 409 when a run is already in flight for the workspace', async () => {
     await startServer()
     oz!.ctx.inFlight.set('cocoder', 'run_existing') // simulate an in-flight run
@@ -435,6 +557,12 @@ describe('Oz mutations + lifecycle', () => {
   test('POST /daemon/restart → 403 without a CSRF token (mutation gate)', async () => {
     await startServer()
     const r = await call(oz!, 'POST', '/daemon/restart', { csrf: false })
+    expect(r.status).toBe(403)
+  })
+
+  test('POST /clis/:id/test → 403 without a CSRF token (mutation gate)', async () => {
+    await startServer()
+    const r = await call(oz!, 'POST', '/clis/any/test', { csrf: false })
     expect(r.status).toBe(403)
   })
 
