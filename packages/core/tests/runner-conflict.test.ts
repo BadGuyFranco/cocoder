@@ -27,7 +27,12 @@ const exec = promisify(execFile)
 const g = (cwd: string, args: string[]): Promise<string> => exec('git', ['-C', cwd, ...args]).then((r) => r.stdout.trim())
 
 // Adapter that surfaces the built prompt in args[0] so the fake runHeadless can tell Plays apart.
-const promptAdapter: Adapter = { id: 'x', build: (i) => ({ command: 'x', args: [i.prompt] }), preflight: async () => ({ ok: true, checks: [] }) }
+const promptAdapter: Adapter = {
+  id: 'x',
+  build: (i) => ({ command: 'x', args: [i.prompt] }),
+  preflight: async () => ({ ok: true, checks: [] }),
+  listModels: async () => ({ canEnumerate: false, models: [], detail: 'test adapter' }),
+}
 const doneJudge: MakeJudge = () => async () => ({ state: 'done' })
 const delegate = (task: string): Directive => ({ kind: 'delegate', task })
 const wrapup = (pickup: string): Directive => ({ kind: 'wrapup', pickup })

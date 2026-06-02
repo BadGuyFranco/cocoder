@@ -12,6 +12,7 @@ const okAdapter: Adapter = {
   id: 'any',
   build: () => ({ command: 'x', args: [] }),
   preflight: async () => ({ ok: true, checks: [{ name: 'installed', ok: true, detail: 'ok' }] }),
+  listModels: async () => ({ canEnumerate: false, models: [], detail: 'test adapter' }),
 }
 const fakeGit = (changed: string[] = [], shas: readonly string[] = ['h0']): Git => {
   let headCalls = 0

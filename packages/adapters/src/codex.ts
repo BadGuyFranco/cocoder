@@ -6,7 +6,7 @@
 // enforced at CoCoder's commit-gate (S7). Completion is ARTIFACT-based — the runner polls for the
 // builder-done file the prompt tells it to write — NOT process exit. (Supersedes the spike's
 // headless `codex exec`.)
-import type { Adapter, BuildInput, BuiltCommand, PreflightResult } from '@cocoder/core'
+import type { Adapter, BuildInput, BuiltCommand, ModelListResult, PreflightResult } from '@cocoder/core'
 import { defaultExec, type Exec } from './exec.js'
 
 export class CodexAdapter implements Adapter {
@@ -47,5 +47,10 @@ export class CodexAdapter implements Adapter {
     checks.push({ name: 'model', ok: true, detail: model || '(codex default)' })
 
     return { ok: checks.every((c) => c.ok), checks }
+  }
+
+  async listModels(): Promise<ModelListResult> {
+    // Checked `codex --help`: it documents model selection (`--model`) but no model-enumeration command.
+    return { canEnumerate: false, models: [], detail: 'codex exposes no model-enumeration command — Default + free-text' }
   }
 }

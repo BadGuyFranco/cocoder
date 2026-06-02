@@ -29,7 +29,12 @@ const exec = promisify(execFile)
 const g = (cwd: string, args: string[]): Promise<string> => exec('git', ['-C', cwd, ...args]).then((r) => r.stdout.trim())
 const exists = (p: string): Promise<boolean> => stat(p).then(() => true, () => false)
 
-const okAdapter: Adapter = { id: 'any', build: () => ({ command: 'x', args: [] }), preflight: async () => ({ ok: true, checks: [] }) }
+const okAdapter: Adapter = {
+  id: 'any',
+  build: () => ({ command: 'x', args: [] }),
+  preflight: async () => ({ ok: true, checks: [] }),
+  listModels: async () => ({ canEnumerate: false, models: [], detail: 'test adapter' }),
+}
 const doneJudge: MakeJudge = () => async () => ({ state: 'done' })
 const delegate = (task: string): Directive => ({ kind: 'delegate', task })
 const wrapup = (pickup: string): Directive => ({ kind: 'wrapup', pickup })

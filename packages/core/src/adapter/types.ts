@@ -36,6 +36,15 @@ export interface PreflightResult {
   readonly checks: readonly PreflightCheck[]
 }
 
+export interface ModelListResult {
+  /** True when the CLI was queried and returned an explicit model list. */
+  readonly canEnumerate: boolean
+  /** Enumerated model names. Default (the empty model string) is always implicit and is not listed. */
+  readonly models: readonly string[]
+  /** Human-readable provenance or reason for the result. */
+  readonly detail: string
+}
+
 export interface Adapter {
   /** Adapter id, matching a persona assignment's `cli` (e.g. "claude", "codex"). */
   readonly id: string
@@ -43,4 +52,8 @@ export interface Adapter {
   build(input: BuildInput): BuiltCommand
   /** Deterministic preflight; blocks launch on failure with a clear per-check reason. */
   preflight(model: string): Promise<PreflightResult>
+  /** Enumerate CLI-provided model names when the CLI supports it.
+   *  Default (the empty model string) is always a first-class option regardless of this result.
+   *  CLIs that cannot enumerate return { canEnumerate: false, models: [], detail }. */
+  listModels(): Promise<ModelListResult>
 }

@@ -76,6 +76,7 @@ export type {
   Adapter,
   BuildInput,
   BuiltCommand,
+  ModelListResult,
   PreflightCheck,
   PreflightResult,
 } from './adapter/index.js'

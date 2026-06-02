@@ -1,7 +1,7 @@
 // cursor-agent adapter — headless print-mode Play sub-agent. `--force` + `--trust` are the
 // ADR-0006 trust-the-CLI unattended posture; CoCoder still enforces the write boundary at the
 // commit-gate (S7). Completion output is captured by the SessionHost via stdoutPath.
-import type { Adapter, BuildInput, BuiltCommand, PreflightResult } from '@cocoder/core'
+import type { Adapter, BuildInput, BuiltCommand, ModelListResult, PreflightResult } from '@cocoder/core'
 import { defaultExec, type Exec } from './exec.js'
 
 export class CursorAgentAdapter implements Adapter {
@@ -44,4 +44,25 @@ export class CursorAgentAdapter implements Adapter {
 
     return { ok: checks.every((c) => c.ok), checks }
   }
+
+  async listModels(): Promise<ModelListResult> {
+    const r = await this.#exec('cursor-agent', ['--list-models'])
+    if (r.code !== 0) {
+      return { canEnumerate: false, models: [], detail: `cursor-agent --list-models failed (code ${r.code})` }
+    }
+
+    return {
+      canEnumerate: true,
+      models: parseCursorAgentModels(r.stdout),
+      detail: 'cursor-agent --list-models',
+    }
+  }
+}
+
+function parseCursorAgentModels(stdout: string): readonly string[] {
+  return stdout
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .filter((line) => !/^(available\s+models\b.*|models):?$/i.test(line))
 }

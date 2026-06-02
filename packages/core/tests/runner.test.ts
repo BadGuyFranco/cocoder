@@ -124,6 +124,7 @@ const okAdapter: Adapter = {
   id: 'any',
   build: () => ({ command: 'x', args: [] }),
   preflight: async () => ({ ok: true, checks: [{ name: 'installed', ok: true, detail: 'ok' }] }),
+  listModels: async () => ({ canEnumerate: false, models: [], detail: 'test adapter' }),
 }
 
 // IO that scripts Oscar's directive sequence + per-atom verdicts (default: every atom passes).
@@ -265,6 +266,7 @@ describe('runRun (multi-atom loop)', () => {
         return { command: 'cursor-agent', args: ['--prompt', input.prompt], stdoutPath: input.outPath }
       },
       preflight: async () => ({ ok: true, checks: [] }),
+      listModels: async () => ({ canEnumerate: false, models: [], detail: 'test adapter' }),
     }
 
     const result = await runRun(

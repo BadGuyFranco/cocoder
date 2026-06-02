@@ -42,6 +42,7 @@ function fakeAdapter(build: BuiltCommand = { command: 'cursor-agent', args: ['-p
         return build
       },
       preflight: async () => ({ ok: true, checks: [] }),
+      listModels: async () => ({ canEnumerate: false, models: [], detail: 'test adapter' }),
     },
   }
 }

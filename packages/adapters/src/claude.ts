@@ -6,7 +6,7 @@
 // commands available. Completion is ARTIFACT-based — the runner polls for the delegation file the
 // prompt tells it to write — NOT process exit (a TUI doesn't exit). (Supersedes the Step 0.5 spike's
 // headless `-p --output-format json`.)
-import type { Adapter, BuildInput, BuiltCommand, PreflightResult } from '@cocoder/core'
+import type { Adapter, BuildInput, BuiltCommand, ModelListResult, PreflightResult } from '@cocoder/core'
 import { defaultExec, type Exec } from './exec.js'
 
 export class ClaudeAdapter implements Adapter {
@@ -50,5 +50,10 @@ export class ClaudeAdapter implements Adapter {
     checks.push({ name: 'model', ok: true, detail: model || '(claude default)' })
 
     return { ok: checks.every((c) => c.ok), checks }
+  }
+
+  async listModels(): Promise<ModelListResult> {
+    // Checked `claude --help`: it documents model selection (`--model`) but no model-enumeration command.
+    return { canEnumerate: false, models: [], detail: 'claude exposes no model-enumeration command — Default + free-text' }
   }
 }

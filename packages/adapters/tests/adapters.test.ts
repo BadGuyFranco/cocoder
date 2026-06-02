@@ -103,6 +103,56 @@ describe('preflight() (injected exec)', () => {
   })
 })
 
+describe('listModels() (injected exec)', () => {
+  test('cursor-agent: parses model lines and drops headers/blanks', async () => {
+    const exec = fakeExec({
+      'cursor-agent --list-models': { code: 0, stdout: 'Available models for this account:\n\ngpt-5\nsonnet-4\nsonnet-4-thinking\n', stderr: '' },
+    })
+
+    const r = await new CursorAgentAdapter(exec).listModels()
+
+    expect(r).toEqual({
+      canEnumerate: true,
+      models: ['gpt-5', 'sonnet-4', 'sonnet-4-thinking'],
+      detail: 'cursor-agent --list-models',
+    })
+  })
+
+  test('cursor-agent: non-zero list-models degrades clearly', async () => {
+    const exec = fakeExec({
+      'cursor-agent --list-models': { code: 2, stdout: '', stderr: 'auth failed' },
+    })
+
+    const r = await new CursorAgentAdapter(exec).listModels()
+
+    expect(r).toEqual({
+      canEnumerate: false,
+      models: [],
+      detail: 'cursor-agent --list-models failed (code 2)',
+    })
+  })
+
+  test('codex: no documented model enumeration command', async () => {
+    const r = await new CodexAdapter(fakeExec({})).listModels()
+
+    expect(r).toEqual({
+      canEnumerate: false,
+      models: [],
+      detail: 'codex exposes no model-enumeration command — Default + free-text',
+    })
+  })
+
+  test('claude: no documented model enumeration command', async () => {
+    const r = await new ClaudeAdapter(fakeExec({})).listModels()
+
+    expect(r).toEqual({
+      canEnumerate: false,
+      models: [],
+      detail: 'claude exposes no model-enumeration command — Default + free-text',
+    })
+  })
+})
+
 describe('registry', () => {
   test('resolves built-ins and throws on unknown cli', () => {
     const reg = makeAdapterRegistry()
