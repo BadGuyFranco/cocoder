@@ -10,6 +10,7 @@ export type {
   WorkItemStatus,
   CommitLink,
   RunEvent,
+  FaultRecord,
 } from './types.js'
 export { isFullyLanded } from './types.js'
 export { openRunStore, type OpenRunStoreOptions } from './sqlite-store.js'

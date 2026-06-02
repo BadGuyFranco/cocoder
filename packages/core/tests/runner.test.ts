@@ -137,6 +137,8 @@ const fakeIO = (opts: {
     mode?: 'propose' | 'repair'
     diagnosis?: string
     filesChanged?: string[]
+    escalation?: 'repair' | 'ticket' | 'recommend-priority'
+    ticketId?: string
   }
   /** Deb's nudge recommendation, returned by readNudgeRequest. */
   nudge?: { target: 'oscar'; message: string; rationale: string; seq: number } | null
@@ -808,6 +810,53 @@ describe('runRun (multi-atom loop)', () => {
     expect((events.find((e) => e.type === 'out-of-scope')?.data as { files?: string[] })?.files).toEqual(['packages/app/product.ts'])
     expect(store.listCommitLinks(runId).flatMap((c) => c.files)).toEqual(['cocoder/priorities/x.md'])
     expect(store.getRun(runId)?.status).toBe('failed') // a repair never rescues the run
+  })
+
+  test('a recurring fault escalates on the 2nd occurrence: Deb files a ticket, gate-committed (ADR-0016 §recurrence)', async () => {
+    const store = openRunStore(':memory:')
+    const debScoped = persona({ id: 'deb', cli: 'claude', writeScope: ['cocoder/**'] })
+    const MSG = 'no valid directive within 1ms'
+    const timeoutIO = (triage: Parameters<typeof fakeIO>[0]['triage']): RunnerIO => ({
+      ...fakeIO({ directives: [], triage }),
+      async awaitDirective() {
+        throw new Error(MSG) // directive-timeout — same message both runs → same fingerprint
+      },
+    })
+    const ticketFile = 'cocoder/tickets/open/0002-recurring-directive-timeout.md'
+    const ticketGit = (): Git => ({
+      ...worktreeStubs,
+      async headSha() {
+        return 'h0'
+      },
+      async changedFiles() {
+        return [ticketFile] // the ticket Deb wrote (in her cocoder/** scope)
+      },
+      async addAndCommit() {
+        return 'sha-ticket'
+      },
+      async restoreToHead() {},
+      async show() {
+        return ''
+      },
+    })
+
+    // 1st occurrence → one-off; records a fault-triaged carrying the fingerprint, but no recurrence yet.
+    await expect(
+      runRun(baseDeps({ store, io: timeoutIO({ disposition: 'one-off', summary: 'first time' }), git: ticketGit() }), { ...input, deb: debScoped }),
+    ).rejects.toThrow(/no valid directive/)
+    const r1 = store.listRuns()[0]!.id
+    expect(store.listEvents(r1).some((e) => e.type === 'fault-recurrence')).toBe(false)
+
+    // 2nd occurrence (same fault) → Deb escalates with a ticket; the runner gate-commits it.
+    await expect(
+      runRun(baseDeps({ store, io: timeoutIO({ disposition: 'cocoder-bug', summary: 'recurring directive-timeout', escalation: 'ticket', ticketId: '0002' }), git: ticketGit() }), { ...input, deb: debScoped }),
+    ).rejects.toThrow(/no valid directive/)
+    const r2 = store.listRuns()[0]!.id // newest-first
+    const evs = store.listEvents(r2)
+    expect((evs.find((e) => e.type === 'fault-recurrence')?.data as { occurrence?: number })?.occurrence).toBe(2)
+    expect(evs.find((e) => e.type === 'deb-repair')?.data).toMatchObject({ escalation: 'ticket', ticketId: '0002', committedSha: 'sha-ticket', files: [ticketFile] })
+    expect(store.listCommitLinks(r2).flatMap((c) => c.files)).toEqual([ticketFile])
+    expect(store.getRun(r2)?.status).toBe('failed') // escalation tracks it; the run still fails
   })
 
   test('preflight failure aborts before spawning and marks the run failed', async () => {

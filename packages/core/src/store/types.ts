@@ -95,6 +95,17 @@ export interface RunEvent {
   readonly at: number
 }
 
+/** A prior triaged fault, projected for cross-run recurrence detection (ADR-0016 §recurrence). Derived
+ *  from `fault-triaged` events across a workspace's runs — the durable memory that lets Deb escalate a
+ *  fault on its SECOND occurrence instead of logging it as a one-off forever. */
+export interface FaultRecord {
+  readonly runId: string
+  readonly fingerprint: string | null // null for legacy events recorded before fingerprinting
+  readonly faultType: string
+  readonly disposition: string
+  readonly at: number
+}
+
 export interface RunStore {
   upsertWorkspace(ws: Workspace): void
 
@@ -141,6 +152,9 @@ export interface RunStore {
   listWorkItems(runId: string): WorkItem[]
   listCommitLinks(runId: string): CommitLink[]
   listEvents(runId: string): RunEvent[]
+  /** Cross-run fault memory (ADR-0016 §recurrence): every `fault-triaged` event across a workspace's
+   *  runs, newest-last, for recurrence detection. One WHERE (ADR-0003); the runner fingerprints + counts. */
+  listFaultHistory(workspaceId: string): FaultRecord[]
 
   close(): void
 }

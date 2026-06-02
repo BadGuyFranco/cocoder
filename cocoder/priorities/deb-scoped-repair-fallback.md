@@ -20,11 +20,16 @@ implementing [ADR-0016](../rebuild/decisions/0016-deb-scoped-repair-fallback.md)
    `deb-repair` commit) while target-repo product code is **held back + surfaced**, never committed;
    a repair never rescues the run (a faulted run still fails);
 4. Deb's write-scope is **explicit and enforced** — portable governance (`cocoder/priorities|rebuild|
-   personas/**`) in the base persona, dogfood machinery (`packages/personas/**`,
+   personas|tickets/**`) in the base persona, dogfood machinery (`packages/personas/**`,
    `packages/core/src/{runner,personas}/**`) in the CoCoder-repo delta, self-gating to the dogfood case;
-5. fault dispatch still returns exactly one of `cocoder-bug | repo-bug | one-off`.
+5. fault dispatch still returns exactly one of `cocoder-bug | repo-bug | one-off`;
+6. **cross-run recurrence escalation** — the runner fingerprints faults and counts prior occurrences; on
+   a **2nd** occurrence Deb escalates (fix-if-easy → file a `cocoder/tickets/` ticket tagged to an
+   existing priority → recommend a new priority for founder approval), recorded as `fault-recurrence` +
+   surfaced in the durable disposition. She never auto-creates a priority.
 
 **Boundary:** implements ADR-0016 — the status feed, nudge-request channel, repair mode + triage-contract
-extension, and the base/delta write-scope split. Does **not** widen Deb into product features (daemon,
-UI, adapters, the rest of core) or target-repo product code; cross-run learning (auto-fix on a second
-occurrence) stays a later, separate priority. Decomposition into atoms lives in the run, not this file.
+extension, the base/delta write-scope split, and the cross-run recurrence-escalation loop. Does **not**
+widen Deb into product features (daemon, UI, adapters, the rest of core) or target-repo product code, and
+does **not** auto-land a failed run's governance commit to trunk (deferred to its own ADR). Decomposition
+into atoms lives in the run, not this file.

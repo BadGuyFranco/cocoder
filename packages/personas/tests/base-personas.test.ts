@@ -40,6 +40,11 @@ describe('basePersonasDir', () => {
       expect(text.split(/\r?\n/, 1)[0]).toBe('---')
     }
   })
+
+  test('Deb base scope covers the governance surfaces incl. tickets (ADR-0016 recurrence escalation)', () => {
+    const scope = frontmatterList(readFileSync(join(basePersonasDir(), 'deb.md'), 'utf8'), 'writeScope')
+    expect(scope).toEqual(expect.arrayContaining(['cocoder/priorities/**', 'cocoder/rebuild/**', 'cocoder/personas/**', 'cocoder/tickets/**']))
+  })
 })
 
 describe('basePlaysDir', () => {

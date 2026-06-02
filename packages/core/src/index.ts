@@ -123,6 +123,7 @@ export {
   parseTriage,
   type NudgeRequest,
   parseNudgeRequest,
+  faultFingerprint,
   renderDebStatus,
   type DebStatus,
   type RunnerPhase,

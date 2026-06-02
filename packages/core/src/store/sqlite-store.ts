@@ -11,6 +11,7 @@ import { COLUMN_MIGRATIONS, SCHEMA_SQL } from './schema.js'
 import type {
   CommitKind,
   CommitLink,
+  FaultRecord,
   IntegrationStatus,
   Run,
   RunEvent,
@@ -347,6 +348,27 @@ class SqliteRunStore implements RunStore {
 
   listEvents(runId: string): RunEvent[] {
     return (this.#db.prepare(`SELECT * FROM event WHERE run_id = ? ORDER BY at`).all(runId) as unknown as EventRow[]).map(toEvent)
+  }
+
+  listFaultHistory(workspaceId: string): FaultRecord[] {
+    const rows = this.#db
+      .prepare(
+        `SELECT e.run_id AS run_id, e.data AS data, e.at AS at
+           FROM event e JOIN run r ON e.run_id = r.id
+          WHERE r.workspace_id = ? AND e.type = 'fault-triaged'
+          ORDER BY e.at`,
+      )
+      .all(workspaceId) as unknown as Array<{ run_id: string; data: string; at: number }>
+    return rows.map((row) => {
+      const d = (JSON.parse(row.data || '{}') ?? {}) as { fingerprint?: unknown; fault?: unknown; disposition?: unknown }
+      return {
+        runId: row.run_id,
+        fingerprint: typeof d.fingerprint === 'string' ? d.fingerprint : null,
+        faultType: typeof d.fault === 'string' ? d.fault : 'unknown',
+        disposition: typeof d.disposition === 'string' ? d.disposition : 'unknown',
+        at: row.at,
+      }
+    })
   }
 
   close(): void {

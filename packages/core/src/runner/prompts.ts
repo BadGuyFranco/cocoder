@@ -188,9 +188,23 @@ ${scope}
 Anything you edit OUTSIDE this scope — especially target-repo product code — is held back at the gate and
 surfaced to the founder, never committed. Do NOT widen scope to make progress, never commit on behalf of
 Bob/Talia/Quinn, and never write their delegation/verify verdicts. A repair does NOT rescue the run (a
-faulted run still fails); it lands as a distinct \`deb-repair\` commit the founder reviews. When the fault
-is a recurring orchestration failure, the right repair is often a new scoped priority or a persona/runner
-contract change under your scope — not a one-off patch.
+faulted run still fails); it lands as a distinct \`deb-repair\` commit the founder reviews.
+
+# Recurring faults — escalate on the SECOND occurrence
+
+The fault context carries an \`occurrence\` count (how many times this fault's fingerprint has appeared
+across runs). On a FIRST occurrence, a transient is fine to log as \`one-off\`. On a SECOND+ occurrence it
+is not a one-off — escalate, in this order:
+1. **Fix it** if it is easy and clearly within your fence (repair mode above).
+2. **Otherwise (your default): file a tracked ticket** — create \`cocoder/tickets/open/NNNN-slug.md\` (next
+   id from \`cocoder/tickets/INDEX.md\`, which you also update) with frontmatter \`type: bug\`, \`status:
+   Open\`, \`owner: deb\`, and \`priority: <the most relevant existing priority slug, or none>\`. That is "a
+   follow-up on an existing priority" — set \`"escalation":"ticket","ticketId":"NNNN"\` in your verdict.
+3. **Only if a new priority is truly warranted**, recommend it INSIDE that ticket for founder approval
+   (\`"escalation":"recommend-priority"\`) — never create a \`cocoder/priorities/*\` file yourself.
+
+The ticket is gate-committed like a repair (on the run branch; the founder lands it), and the recurrence
+is recorded in your disposition so the founder is informed. Do not spin up new priorities to make progress.
 
 # Teardown mechanism (for this run)
 
@@ -263,9 +277,14 @@ export function buildNextOrWrapDispatch(nextDirectivePath: string, outcome: stri
 
 /** Dispatch a fault to Deb to triage (ADR-0013 tier 2, expanded by ADR-0016). Names the fault-context
  *  path to read and the triage path to write the verdict to — same pointer-to-file pattern as the
- *  builder/verify dispatches. The status feed (already in Deb's launch prompt) gives her the run context. */
-export function buildDebTriageDispatch(faultPath: string, triagePath: string): string {
-  return `TRIAGE — a fault occurred in this run. Read the fault context from ${faultPath} (and the status feed for context), classify it to exactly one disposition (cocoder-bug | repo-bug | one-off), and write your verdict to ${triagePath}. For a cocoder-bug choose "mode":"propose" (a "proposal" diff, reviewed not applied) OR, only within your write-scope, "mode":"repair" (edit the files now, then report diagnosis/whyCocoderOwned/filesChanged/verification/remainingRisk). Out-of-scope edits — including any target-repo product code — are held back at the commit-gate, never committed. A repair does not rescue the run.`
+ *  builder/verify dispatches. The status feed (already in Deb's launch prompt) gives her the run context.
+ *  `occurrence` is how many times this fault's fingerprint has been seen (1 = first; >=2 = recurrence). */
+export function buildDebTriageDispatch(faultPath: string, triagePath: string, occurrence = 1): string {
+  const recurrence =
+    occurrence >= 2
+      ? ` This fault has now occurred ${occurrence} times (see "occurrence" in the context) — it is NOT a one-off. Escalate per your recurring-fault rules: fix it if it is easy and clearly in your fence; else file a tracked ticket under cocoder/tickets/ tagged to the most relevant existing priority (set "escalation":"ticket","ticketId":"NNNN"); only recommend a NEW priority inside that ticket for founder approval (set "escalation":"recommend-priority") — never create a priority file yourself.`
+      : ''
+  return `TRIAGE — a fault occurred in this run. Read the fault context from ${faultPath} (and the status feed for context), classify it to exactly one disposition (cocoder-bug | repo-bug | one-off), and write your verdict to ${triagePath}. For a cocoder-bug choose "mode":"propose" (a "proposal" diff, reviewed not applied) OR, only within your write-scope, "mode":"repair" (edit the files now, then report diagnosis/whyCocoderOwned/filesChanged/verification/remainingRisk). Out-of-scope edits — including any target-repo product code — are held back at the commit-gate, never committed. A repair does not rescue the run.${recurrence}`
 }
 
 export function commitMessage(priorityId: string, runId: string, atomIndex: number): string {

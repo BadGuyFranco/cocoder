@@ -213,4 +213,24 @@ describe('schema migration (ADR-0015) — existing db gains new columns without 
     expect(isFullyLanded(store.getRun(run.id)!)).toBe(true) // both agree → on the shipped line
     store.close()
   })
+
+  test('listFaultHistory returns prior fault-triaged events across the workspace (recurrence memory, ADR-0016)', () => {
+    const store = openRunStore(':memory:', { now: clock() })
+    store.upsertWorkspace({ id: 'cocoder', path: '/repo', name: 'CoCoder' })
+    store.upsertWorkspace({ id: 'other', path: '/other', name: 'Other' })
+    const r1 = store.createRun({ workspaceId: 'cocoder', priorityId: 'p-1' })
+    store.recordEvent({ runId: r1.id, type: 'fault-triaged', data: { fault: 'directive-timeout', disposition: 'one-off', fingerprint: 'directive-timeout|no directive', occurrence: 1 } })
+    const r2 = store.createRun({ workspaceId: 'cocoder', priorityId: 'p-1' })
+    store.recordEvent({ runId: r2.id, type: 'verify-pass', data: { atom: 0 } }) // noise — not a fault
+    store.recordEvent({ runId: r2.id, type: 'fault-triaged', data: { fault: 'builder-failed', disposition: 'repo-bug', fingerprint: 'builder-failed|x', occurrence: 1 } })
+    const rOther = store.createRun({ workspaceId: 'other', priorityId: 'p-9' })
+    store.recordEvent({ runId: rOther.id, type: 'fault-triaged', data: { fault: 'directive-timeout', disposition: 'one-off', fingerprint: 'directive-timeout|no directive', occurrence: 1 } })
+
+    const history = store.listFaultHistory('cocoder')
+    expect(history.map((f) => f.fingerprint)).toEqual(['directive-timeout|no directive', 'builder-failed|x']) // workspace-scoped, fault-triaged only, in order
+    expect(history[0]).toMatchObject({ runId: r1.id, faultType: 'directive-timeout', disposition: 'one-off' })
+    // A second occurrence is now derivable: the same fingerprint appears once before.
+    expect(history.filter((f) => f.fingerprint === 'directive-timeout|no directive')).toHaveLength(1)
+    store.close()
+  })
 })

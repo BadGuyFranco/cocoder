@@ -32,6 +32,12 @@ export interface Triage {
   readonly filesChanged?: readonly string[]
   readonly verification?: string
   readonly remainingRisk?: string
+  /** How Deb escalated a RECURRING fault (ADR-0016 §recurrence): `repair` (fixed it), `ticket` (filed a
+   *  tracked follow-up on an existing priority), or `recommend-priority` (the ticket asks the founder to
+   *  approve a new priority). Absent for a first occurrence / no escalation. */
+  readonly escalation?: 'repair' | 'ticket' | 'recommend-priority'
+  /** The ticket id Deb filed under `cocoder/tickets/`, when `escalation` involves one. */
+  readonly ticketId?: string
 }
 
 const DISPOSITIONS: readonly Disposition[] = ['cocoder-bug', 'repo-bug', 'one-off']
@@ -53,6 +59,8 @@ export function parseTriage(json: string): Triage {
   }
   const disposition = d.disposition as Disposition
   const mode: TriageMode = d.mode === 'repair' && disposition === 'cocoder-bug' ? 'repair' : 'propose'
+  const escalation =
+    d.escalation === 'repair' || d.escalation === 'ticket' || d.escalation === 'recommend-priority' ? d.escalation : undefined
   return {
     disposition,
     summary: d.summary,
@@ -63,5 +71,7 @@ export function parseTriage(json: string): Triage {
     filesChanged: asStringList(d.filesChanged),
     verification: asString(d.verification),
     remainingRisk: asString(d.remainingRisk),
+    escalation,
+    ticketId: asString(d.ticketId),
   }
 }

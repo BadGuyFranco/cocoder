@@ -26,6 +26,7 @@ export {
 export { type Directive, parseDirective } from './directive.js'
 export { type Triage, type Disposition, type TriageMode, parseTriage } from './triage.js'
 export { type NudgeRequest, parseNudgeRequest } from './nudge.js'
+export { faultFingerprint } from './fingerprint.js'
 export {
   renderDebStatus,
   type DebStatus,

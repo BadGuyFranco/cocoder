@@ -49,9 +49,30 @@ edits land as a distinct `deb-repair` commit; anything outside (especially targe
 **held back and surfaced**, never silently committed or hidden. A repair **does not rescue the run** — a
 faulted run still fails; the repair commit is surfaced for the founder to review/land.
 
+### 4. Cross-run recurrence escalation (the learning loop)
+A run-scoped triage forgets: the same fault can recur run after run, each logged as a fresh `one-off`.
+So the runner now keeps **durable cross-run fault memory** — when it dispatches a fault it computes a
+**coarse fingerprint** (fault type + a normalized message: run ids / worktree paths / shas / counts
+stripped) and counts prior matches across the workspace's `fault-triaged` records, folding `occurrence`
+into the fault context Deb reads (and recording a `fault-recurrence` event at occurrence ≥ 2).
+
+On a **second** occurrence Deb escalates, preferring the **lightest home** (founder-decided order):
+**(1)** fix it if easy + clearly in her fence (repair mode); else **(2) the default — file a tracked
+ticket** under `cocoder/tickets/` tagged to the most relevant **existing** priority (a follow-up, *not*
+a new priority, *not* a rewrite of the immutable priority stub); **(3)** only **recommend** a new
+priority *inside that ticket* for founder approval — she never creates a `cocoder/priorities/*` file
+herself. The ticket is committed via the same commit-gate path as a repair.
+
+**Failed-run seam (decided):** a recurrence is usually detected on a run that then **fails**, and failed
+runs never reach trunk — so the escalation is surfaced in the **durable disposition** (the run dir,
+always visible — the founder is informed) and the ticket is **drafted on the run branch for the founder
+to land**. An auto-land carve-out (a failed run touching trunk with a governance-only commit) is
+**deliberately deferred** to its own ADR — it would punch a hole in an integration invariant.
+
 ### Write scope — split by the living-base/delta seam (self-gating)
 Per ADR-0012, the **base persona** carries the portable governance scope present in every CoCoder
-workspace — `cocoder/priorities/**`, `cocoder/rebuild/**`, `cocoder/personas/**` — and the **CoCoder-repo
+workspace — `cocoder/priorities/**`, `cocoder/rebuild/**`, `cocoder/personas/**`, `cocoder/tickets/**` —
+and the **CoCoder-repo
 delta** adds the dogfood-only machinery scope — `packages/personas/**`, `packages/core/src/runner/**`,
 `packages/core/src/personas/**` (the runner/persona/debugger control plane). In a non-CoCoder workspace
 those machinery globs match nothing in-tree, so a machinery `cocoder-bug` is **proposed** (a PR to the
