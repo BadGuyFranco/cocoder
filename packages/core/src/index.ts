@@ -79,6 +79,8 @@ export type {
   ModelListResult,
   PreflightCheck,
   PreflightResult,
+  RunReadinessMechanism,
+  RunReadinessProfile,
 } from './adapter/index.js'
 
 export { globToRegExp, matchesAny, partitionByScope, effectiveScope, type ScopePartition } from './write-scope/index.js'

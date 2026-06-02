@@ -6,21 +6,27 @@
 // commands available. Completion is ARTIFACT-based — the runner polls for the delegation file the
 // prompt tells it to write — NOT process exit (a TUI doesn't exit). (Supersedes the Step 0.5 spike's
 // headless `-p --output-format json`.)
-import type { Adapter, BuildInput, BuiltCommand, ModelListResult, PreflightResult } from '@cocoder/core'
+import type { Adapter, BuildInput, BuiltCommand, ModelListResult, PreflightResult, RunReadinessProfile } from '@cocoder/core'
 import { defaultExec, type Exec } from './exec.js'
 
 export class ClaudeAdapter implements Adapter {
   readonly id = 'claude'
+  // ADR-0006 trust-the-CLI posture: this reduces the CLI's own guardrails only because CoCoder's
+  // scope/write-fence + verify-gate are the real guardrail; run write-scope is never widened for it.
+  readonly runReadiness: RunReadinessProfile = {
+    mechanism: 'launch-flags',
+    flags: ['--permission-mode', 'acceptEdits'],
+    managesUserConfig: false,
+    detail: 'managed by CoCoder: --permission-mode acceptEdits (launch flags; no user config modified)',
+  }
   readonly #exec: Exec
   constructor(exec: Exec = defaultExec) {
     this.#exec = exec
   }
 
   build(input: BuildInput): BuiltCommand {
-    const args =
-      input.persona === 'oscar'
-        ? ['--permission-mode', 'acceptEdits']
-        : ['--disable-slash-commands', '--permission-mode', 'acceptEdits']
+    const lead = input.persona === 'oscar' ? [] : ['--disable-slash-commands']
+    const args = [...lead, ...this.runReadiness.flags]
     if (input.model) args.push('--model', input.model)
     args.push('--', input.prompt) // positional initial prompt; runs agentically in the TUI
     return { command: 'claude', args }

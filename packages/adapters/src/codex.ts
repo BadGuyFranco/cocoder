@@ -6,18 +6,26 @@
 // enforced at CoCoder's commit-gate (S7). Completion is ARTIFACT-based — the runner polls for the
 // builder-done file the prompt tells it to write — NOT process exit. (Supersedes the spike's
 // headless `codex exec`.)
-import type { Adapter, BuildInput, BuiltCommand, ModelListResult, PreflightResult } from '@cocoder/core'
+import type { Adapter, BuildInput, BuiltCommand, ModelListResult, PreflightResult, RunReadinessProfile } from '@cocoder/core'
 import { defaultExec, type Exec } from './exec.js'
 
 export class CodexAdapter implements Adapter {
   readonly id = 'codex'
+  // ADR-0006 trust-the-CLI posture: this reduces the CLI's own guardrails only because CoCoder's
+  // scope/write-fence + verify-gate are the real guardrail; run write-scope is never widened for it.
+  readonly runReadiness: RunReadinessProfile = {
+    mechanism: 'launch-flags',
+    flags: ['--dangerously-bypass-approvals-and-sandbox'],
+    managesUserConfig: false,
+    detail: 'managed by CoCoder: --dangerously-bypass-approvals-and-sandbox (launch flags; no user config modified)',
+  }
   readonly #exec: Exec
   constructor(exec: Exec = defaultExec) {
     this.#exec = exec
   }
 
   build(input: BuildInput): BuiltCommand {
-    const args = ['--dangerously-bypass-approvals-and-sandbox']
+    const args = [...this.runReadiness.flags]
     if (input.model) args.push('-m', input.model)
     args.push(input.prompt) // positional initial prompt starts the interactive session
     return { command: 'codex', args }

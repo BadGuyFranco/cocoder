@@ -5,4 +5,6 @@ export type {
   ModelListResult,
   PreflightCheck,
   PreflightResult,
+  RunReadinessMechanism,
+  RunReadinessProfile,
 } from './types.js'

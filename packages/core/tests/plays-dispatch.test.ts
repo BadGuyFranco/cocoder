@@ -37,6 +37,7 @@ function fakeAdapter(build: BuiltCommand = { command: 'cursor-agent', args: ['-p
     builtInputs,
     adapter: {
       id: 'cursor-agent',
+      runReadiness: { mechanism: 'launch-flags', flags: [], managesUserConfig: false, detail: 'test adapter' },
       build(input) {
         builtInputs.push(input)
         return build

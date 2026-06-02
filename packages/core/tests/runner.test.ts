@@ -122,6 +122,7 @@ function scriptedGit(changedPerAtom: string[][]): Git {
 
 const okAdapter: Adapter = {
   id: 'any',
+  runReadiness: { mechanism: 'launch-flags', flags: [], managesUserConfig: false, detail: 'test adapter' },
   build: () => ({ command: 'x', args: [] }),
   preflight: async () => ({ ok: true, checks: [{ name: 'installed', ok: true, detail: 'ok' }] }),
   listModels: async () => ({ canEnumerate: false, models: [], detail: 'test adapter' }),
@@ -261,6 +262,7 @@ describe('runRun (multi-atom loop)', () => {
     const runsRoot = await mkdtemp(join(tmpdir(), 'runner-wrap-play-'))
     const wrapAdapter: Adapter = {
       id: 'cursor-agent',
+      runReadiness: { mechanism: 'launch-flags', flags: [], managesUserConfig: false, detail: 'test adapter' },
       build(input) {
         wrapBuilds.push({ prompt: input.prompt, model: input.model })
         return { command: 'cursor-agent', args: ['--prompt', input.prompt], stdoutPath: input.outPath }

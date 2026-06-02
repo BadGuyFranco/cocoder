@@ -7,6 +7,9 @@ const fakeExec =
   async (command, args) =>
     responses[[command, ...args].join(' ')] ?? { code: 127, stdout: '', stderr: 'not found' }
 
+const containsSubsequence = (values: readonly string[], subsequence: readonly string[]): boolean =>
+  subsequence.length === 0 || values.some((_, i) => subsequence.every((value, j) => values[i + j] === value))
+
 describe('build() pins the spike invocations', () => {
   test('claude: interactive — Oscar keeps slash commands, acceptEdits, prompt after --; model optional', () => {
     const built = new ClaudeAdapter().build({ persona: 'oscar', prompt: 'hi', model: 'opus', cwd: '/repo', outPath: '/run/o.json' })
@@ -19,9 +22,12 @@ describe('build() pins the spike invocations', () => {
   })
 
   test('claude: interactive — non-Oscar lanes still disable slash commands', () => {
-    const built = new ClaudeAdapter().build({ persona: 'deb', prompt: 'hi', model: '', cwd: '/repo', outPath: '/run/o.json' })
+    const built = new ClaudeAdapter().build({ persona: 'deb', prompt: 'hi', model: 'sonnet', cwd: '/repo', outPath: '/run/o.json' })
     expect(built.command).toBe('claude')
-    expect(built.args).toEqual(['--disable-slash-commands', '--permission-mode', 'acceptEdits', '--', 'hi'])
+    expect(built.args).toEqual(['--disable-slash-commands', '--permission-mode', 'acceptEdits', '--model', 'sonnet', '--', 'hi'])
+
+    const noModel = new ClaudeAdapter().build({ persona: 'deb', prompt: 'hi', model: '', cwd: '/repo', outPath: '/run/o.json' })
+    expect(noModel.args).toEqual(['--disable-slash-commands', '--permission-mode', 'acceptEdits', '--', 'hi'])
   })
 
   test('codex: interactive — bypass approvals+sandbox, positional prompt; model optional', () => {
@@ -43,6 +49,42 @@ describe('build() pins the spike invocations', () => {
     const noModel = new CursorAgentAdapter().build({ prompt: 'wrap it up', model: '', cwd: '/repo', outPath: '/run/out.txt' })
     expect(noModel.args).toEqual(['-p', '--output-format', 'text', '--force', '--trust', 'wrap it up'])
     expect(noModel.stdoutPath).toBe('/run/out.txt')
+  })
+})
+
+describe('runReadiness profiles', () => {
+  test('declares each built-in CLI readiness profile', () => {
+    expect(new ClaudeAdapter().runReadiness).toEqual({
+      mechanism: 'launch-flags',
+      flags: ['--permission-mode', 'acceptEdits'],
+      managesUserConfig: false,
+      detail: 'managed by CoCoder: --permission-mode acceptEdits (launch flags; no user config modified)',
+    })
+    expect(new CodexAdapter().runReadiness).toEqual({
+      mechanism: 'launch-flags',
+      flags: ['--dangerously-bypass-approvals-and-sandbox'],
+      managesUserConfig: false,
+      detail: 'managed by CoCoder: --dangerously-bypass-approvals-and-sandbox (launch flags; no user config modified)',
+    })
+    expect(new CursorAgentAdapter().runReadiness).toEqual({
+      mechanism: 'launch-flags',
+      flags: ['--force', '--trust'],
+      managesUserConfig: false,
+      detail: 'managed by CoCoder: --force --trust (launch flags; no user config modified)',
+    })
+  })
+
+  test('build output contains the declared readiness flags', () => {
+    const cases = [
+      new ClaudeAdapter(),
+      new CodexAdapter(),
+      new CursorAgentAdapter(),
+    ] as const
+
+    for (const adapter of cases) {
+      const built = adapter.build({ persona: 'oscar', prompt: 'hi', model: 'm', cwd: '/repo', outPath: '/run/out.txt' })
+      expect(containsSubsequence(built.args, adapter.runReadiness.flags)).toBe(true)
+    }
   })
 })
 

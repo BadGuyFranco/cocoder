@@ -31,6 +31,7 @@ const exists = (p: string): Promise<boolean> => stat(p).then(() => true, () => f
 
 const okAdapter: Adapter = {
   id: 'any',
+  runReadiness: { mechanism: 'launch-flags', flags: [], managesUserConfig: false, detail: 'test adapter' },
   build: () => ({ command: 'x', args: [] }),
   preflight: async () => ({ ok: true, checks: [] }),
   listModels: async () => ({ canEnumerate: false, models: [], detail: 'test adapter' }),

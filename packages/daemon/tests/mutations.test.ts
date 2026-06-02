@@ -10,6 +10,7 @@ import { createOzServer, OZ_CSRF_HEADER, type OzServer } from '../src/index.js'
 
 const okAdapter: Adapter = {
   id: 'any',
+  runReadiness: { mechanism: 'launch-flags', flags: [], managesUserConfig: false, detail: 'test adapter' },
   build: () => ({ command: 'x', args: [] }),
   preflight: async () => ({ ok: true, checks: [{ name: 'installed', ok: true, detail: 'ok' }] }),
   listModels: async () => ({ canEnumerate: false, models: [], detail: 'test adapter' }),

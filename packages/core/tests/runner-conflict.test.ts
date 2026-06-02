@@ -29,6 +29,7 @@ const g = (cwd: string, args: string[]): Promise<string> => exec('git', ['-C', c
 // Adapter that surfaces the built prompt in args[0] so the fake runHeadless can tell Plays apart.
 const promptAdapter: Adapter = {
   id: 'x',
+  runReadiness: { mechanism: 'launch-flags', flags: [], managesUserConfig: false, detail: 'test adapter' },
   build: (i) => ({ command: 'x', args: [i.prompt] }),
   preflight: async () => ({ ok: true, checks: [] }),
   listModels: async () => ({ canEnumerate: false, models: [], detail: 'test adapter' }),

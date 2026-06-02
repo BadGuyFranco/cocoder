@@ -45,9 +45,25 @@ export interface ModelListResult {
   readonly detail: string
 }
 
+export type RunReadinessMechanism = 'launch-flags' | 'config-file' | 'env' | 'prompt-preamble'
+
+export interface RunReadinessProfile {
+  /** How CoCoder makes this CLI run non-interactively under orchestration. */
+  readonly mechanism: RunReadinessMechanism
+  /** Exact non-interactive launch flags CoCoder injects at spawn when mechanism is launch-flags. */
+  readonly flags: readonly string[]
+  /** True only when CoCoder modifies a user config file on disk for this CLI. */
+  readonly managesUserConfig: boolean
+  /** Human-readable, CLIs-screen-ready summary. */
+  readonly detail: string
+}
+
 export interface Adapter {
   /** Adapter id, matching a persona assignment's `cli` (e.g. "claude", "codex"). */
   readonly id: string
+  /** Single source of this CLI's non-interactive readiness flags.
+   *  build() consumes this value, and the CLIs screen surfaces it as config-managed state. */
+  readonly runReadiness: RunReadinessProfile
   /** Build the pinned headless invocation. The driver adds `< /dev/null` + cd-prepend. */
   build(input: BuildInput): BuiltCommand
   /** Deterministic preflight; blocks launch on failure with a clear per-check reason. */

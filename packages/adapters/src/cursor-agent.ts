@@ -1,18 +1,26 @@
 // cursor-agent adapter — headless print-mode Play sub-agent. `--force` + `--trust` are the
 // ADR-0006 trust-the-CLI unattended posture; CoCoder still enforces the write boundary at the
 // commit-gate (S7). Completion output is captured by the SessionHost via stdoutPath.
-import type { Adapter, BuildInput, BuiltCommand, ModelListResult, PreflightResult } from '@cocoder/core'
+import type { Adapter, BuildInput, BuiltCommand, ModelListResult, PreflightResult, RunReadinessProfile } from '@cocoder/core'
 import { defaultExec, type Exec } from './exec.js'
 
 export class CursorAgentAdapter implements Adapter {
   readonly id = 'cursor-agent'
+  // ADR-0006 trust-the-CLI posture: this reduces the CLI's own guardrails only because CoCoder's
+  // scope/write-fence + verify-gate are the real guardrail; run write-scope is never widened for it.
+  readonly runReadiness: RunReadinessProfile = {
+    mechanism: 'launch-flags',
+    flags: ['--force', '--trust'],
+    managesUserConfig: false,
+    detail: 'managed by CoCoder: --force --trust (launch flags; no user config modified)',
+  }
   readonly #exec: Exec
   constructor(exec: Exec = defaultExec) {
     this.#exec = exec
   }
 
   build(input: BuildInput): BuiltCommand {
-    const args = ['-p', '--output-format', 'text', '--force', '--trust']
+    const args = ['-p', '--output-format', 'text', ...this.runReadiness.flags]
     if (input.model) args.push('--model', input.model)
     args.push(input.prompt) // trailing positional prompt; cursor-agent help does not advertise `--`
     return { command: 'cursor-agent', args, stdoutPath: input.outPath }
