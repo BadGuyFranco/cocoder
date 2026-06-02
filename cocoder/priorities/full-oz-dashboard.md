@@ -106,10 +106,10 @@ So this is a **`daemon → view-model` adapter**, not a rewrite.
 
 ### Endpoints owed by the daemon (surfaces that stay "pending endpoint" until added)
 
-`POST /oz/messages` (+ `GET /oz/stream` SSE) for the Oz chat command interface · `GET /clis`,
-`POST /clis/:id/test`, `POST /clis` (the `GET /clis` + test specifics — deterministic **model
-discovery** and per-CLI **required-config injection** — are owned by
-[`cli-config-and-model-discovery`](./cli-config-and-model-discovery.md)) ·
+`POST /oz/messages` (+ `GET /oz/stream` SSE) for the Oz chat command interface · **`GET /clis` +
+`POST /clis/:id/test` — served** (daemon, run_41;
+[`cli-config-and-model-discovery`](./cli-config-and-model-discovery.md); UI wire-up is the last atom on
+that priority) · `POST /clis` (add CLI) ·
 `POST /workspaces/:id/priorities/reorder` ·
 `POST /workspaces/:id/priorities` (create) · `POST /workspaces`, `PUT/DELETE /workspaces/:id` + a
 roots[]/role model · `GET/PUT /settings` · extend `POST /runs` with `{task?}` for ad-hoc free-text ·

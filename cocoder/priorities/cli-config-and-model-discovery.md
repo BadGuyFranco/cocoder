@@ -47,17 +47,52 @@ they can never drift from reality.
   persona assigned a model the CLI no longer reports is flagged.
 - A CLI that can't enumerate models degrades to "Default" + free-text, clearly marked.
 
-## Endpoints / seams owed (consumed by the Oz dashboard)
-- `GET /clis` returns, per CLI: install + auth status, **available models** (Part B), and **config-managed**
-  state (Part A).
-- `POST /clis/:id/test` runs the health check **and** refreshes the model list.
-- The persona Model dropdown reads models from `GET /clis` instead of the current placeholder constant in
-  `packages/ui/app/sections/Personas.tsx` / `CLIs.tsx`.
+## Endpoints / seams (daemon ↔ Oz dashboard)
+- **`GET /clis` — served** (run_41): per CLI — install + auth, **models** (Part B), declarative
+  **configManaged** / `runReadiness` (Part A); untested CLIs show placeholder detail for tested fields.
+- **`POST /clis/:id/test` — served** (run_41): preflight + `listModels()`, caches into `cliTestCache`.
+- **UI consumption — owed:** persona Model dropdown + CLIs screen still seed/stub-backed in
+  `packages/ui` until the next atom wires `daemon-client` → adapter → `App.tsx` / `CLIs.tsx` /
+  `Personas.tsx`.
 
 ## Relationship to other priorities
-- Feeds [`full-oz-dashboard`](./full-oz-dashboard.md) — these are the daemon side of its CLIs screen and
-  persona Model picker; that doc's "endpoints owed" already lists `GET /clis` + `POST /clis/:id/test`,
-  which this priority specifies and fills.
+- Feeds [`full-oz-dashboard`](./full-oz-dashboard.md) — daemon side of its CLIs screen and persona Model
+  picker; `GET /clis` + `POST /clis/:id/test` are served (run_41); UI wire-up is the remaining slice.
 - Per-CLI run-readiness is adjacent to the run-launch path; keep it behind the `adapters`/`session-hosts`
   ports so `core` and the daemon stay CLI-agnostic.
 - Sequencing decided when picked up, not here.
+
+## Status
+
+**Disposition: `continue`.** Not archive-ready — the Objective is not end-to-end verifiable until
+`packages/ui` consumes the daemon seam (one atom left).
+
+**Done (run_41, 3 atoms — `2cf63d9`, `b3e6cac`, `167ca8c`):** adapter + daemon backend for both
+parts is built, typecheck/topology clean, and suites green (adapters 17, core 168, daemon 47).
+
+- **Part B — model discovery:** `listModels(): Promise<ModelListResult>` on the Adapter port
+  (`packages/core/src/adapter/types.ts`). `cursor-agent` enumerates via `--list-models`; codex and
+  claude honestly degrade (`canEnumerate: false`). Daemon: `GET /clis` (cache read only) and
+  `POST /clis/:id/test` (preflight + `listModels()`, CSRF-gated) in `packages/daemon/src/clis.ts`;
+  `OzContext.cliTestCache` + `listAdapters()`.
+- **Part A — run-readiness:** `runReadiness: RunReadinessProfile` on the Adapter port (launch-flag
+  mechanism for all three CLIs today; `managesUserConfig: false`). Non-interactive flags are the
+  single source consumed by `build()` (byte-identical argv, pinned by tests). Safety rationale
+  recorded against existing ADR-0006 (no new ADR). `GET /clis` always returns declarative
+  `configManaged` per CLI.
+
+**Remaining (blocks archive):**
+
+| Gap | Owner |
+|-----|-------|
+| **Product:** Wire Oz UI off live `GET /clis` / `POST /clis/:id/test` — persona Model dropdown,
+  CLIs screen Test + refresh, stale-model warning when assignment ∉ reported models; remove stale
+  PendingBanners | `packages/ui` (~8 files, Electron IPC bridge) |
+| **Evidence:** End-to-end demo that (b) dropdown lists only CLI-reported models (+ Default); (a)
+  already holds via `runReadiness` → `build()` | after UI atom |
+
+**Next session start:** Bob atom on `packages/ui` — `electron/daemon-client.ts` (`clis()`,
+`clisTest(id)`), `app/adapter.ts` mapper (`/clis` → `Cli`, replace preflight-derived clis),
+`app/App.tsx` live load on connect, `app/sections/CLIs.tsx` + `Personas.tsx` (stale-model flag),
+vitest for adapter mapping + stale flag. Acceptance: typecheck + topology + ui/daemon/core/adapters
+suites green. No founder decisions outstanding.
