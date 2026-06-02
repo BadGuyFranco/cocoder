@@ -33,9 +33,14 @@ construction**, which *is* the soundness precondition the retired dirty-tree gua
 (runner.ts computes `preExistingInScope` so the per-atom `restoreToHead` quarantine only ever discards
 the run's *own* work — a fresh branch off a committed trunk point satisfies that without a guard).
 Agents (Oscar/Bob/Deb, Plays) run with cwd = the worktree. The founder's own checkout is **never
-touched**: the `DirtyWorkingTreeError` guard is **retired**, the founder's WIP is irrelevant to a
-launch, and `restoreToHead` can only ever reset the run's own worktree. The founder's uncommitted edits
-are intentionally **excluded** from the run (to build on them, commit first — explicit, not forced).
+touched DURING the run**: the `DirtyWorkingTreeError` guard is **retired**, the founder's WIP is
+irrelevant to a launch, and `restoreToHead` can only ever reset the run's own worktree. The founder's
+uncommitted edits are intentionally **excluded** from the run (to build on them, commit first —
+explicit, not forced). **At the end**, the verified auto-merge intentionally **advances the trunk
+branch** (§3) — standard fast-forward, exactly like the founder's own `git pull` when a teammate
+pushes; it never clobbers uncommitted work (an overlap escalates instead of overwriting). CoCoder is
+deliberately autonomous here (verify→commit→merge, no human review gate) — that is the "no human
+backstop" premise, distinct from a leave-it-uncommitted-for-review model (founder decision 2026-06-02).
 
 The **run directory stays under `local/runs/<runId>`** (the install root), NOT inside the worktree.
 Governance files are read at launch **from the worktree's branch point** (a consistent snapshot). The
