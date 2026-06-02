@@ -23,7 +23,7 @@ async function ensureSession(): Promise<Session> {
   return session
 }
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<DaemonResult<T>> {
+async function request<T>(method: string, path: string, body?: unknown, retried = false): Promise<DaemonResult<T>> {
   if (fixturesEnabled()) return method === 'GET' ? fixtureGet<T>(path) : fixtureMutate<T>(method, path)
   let s: Session
   try {
@@ -41,10 +41,14 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
     })
-    // A stale token (daemon restarted) → 401: drop and retry once.
-    if (res.status === 401 && session) {
+    // A stale token (daemon restarted) → re-bootstrap the session and retry ONCE. The two tokens have
+    // different lifetimes: the Bearer is per-install (persisted, survives a restart) so it 401s; the
+    // CSRF token is per-process (re-minted each boot) so a stale one 403s on mutations. Covering both —
+    // bounded by `retried` so a genuinely-forbidden response can't loop — keeps an open dashboard from
+    // wedging after `oz.sh restart` (it only re-fetched on 401 before, never on the CSRF 403).
+    if ((res.status === 401 || res.status === 403) && session && !retried) {
       session = null
-      return request<T>(method, path, body)
+      return request<T>(method, path, body, true)
     }
     const isJson = res.headers.get('content-type')?.includes('json')
     const payload = isJson ? await res.json() : null
