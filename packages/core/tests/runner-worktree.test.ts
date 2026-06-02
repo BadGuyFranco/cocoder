@@ -49,11 +49,15 @@ const fakeIO = (directives: Directive[]): RunnerIO => {
       return { verdict: 'pass' as const, reason: 'ok' }
     },
     async awaitTriage() {
-      return { disposition: 'one-off' as const, summary: 'x' }
+      return { disposition: 'one-off' as const, summary: 'x', mode: 'propose' as const }
     },
     async writeFaultContext() {},
     async writeDisposition(d, i) {
       return `${d}/disposition-${i}.md`
+    },
+    async writeDebStatus() {},
+    async readNudgeRequest() {
+      return null
     },
     async writePickup(d) {
       return `${d}/pickup.md`

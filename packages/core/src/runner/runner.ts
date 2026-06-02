@@ -38,6 +38,8 @@ import {
   commitMessage,
 } from './prompts.js'
 import { renderRunRecord } from './record.js'
+import { type RunnerPhase, renderDebStatus } from './status.js'
+import type { CommitGateResult } from '../commit-gate/index.js'
 import type { Triage } from './triage.js'
 
 /** Build the per-atom Judge (ADR-0013). Injected so tests use a scripted fake and cli/daemon get the
@@ -315,24 +317,75 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   // (ADR-0003) — records it and surfaces her disposition. Absent Deb → unchanged behavior.
   const debAlive = async (): Promise<boolean> => (debRef ? (await sessionHost.status(debRef)).state === 'running' : false)
   let faultSeq = 0
-  const renderDisposition = (faultType: string, atomIndex: number | null, v: Triage): string => {
+
+  // Deb's runner-owned surfaces (ADR-0016): the live status feed she reads + the nudge-request she
+  // writes. Both no-op cheaply when no Deb is on the run. `lastDebNudgeSeq` persists across watchdog
+  // invocations so a recommendation is delivered to Oscar at most once for the whole run.
+  const debScopes = { oscar: oscar.writeScope, bob: scope, deb: deb?.writeScope ?? [] }
+  const nudgePath = join(runDir, 'deb-nudge.json')
+  let lastDebNudgeSeq = 0
+  const refreshStatus = async (phase: RunnerPhase, activeAtom: number | null, activeTask: string | null, waitCondition: string): Promise<void> => {
+    if (!debRef) return // status feed exists only for a Deb-backed run
+    try {
+      const { json, markdown } = renderDebStatus({ store, runId: run.id, priority, scopes: debScopes, phase, activeAtom, activeTask, waitCondition })
+      await io.writeDebStatus(runDir, json, markdown)
+    } catch {
+      /* status is a convenience projection — never let a render hiccup fail the run */
+    }
+  }
+
+  const renderDisposition = (faultType: string, atomIndex: number | null, v: Triage, repair: CommitGateResult | null): string => {
     const where = atomIndex !== null ? ` (atom ${atomIndex})` : ''
-    const lines = [`# Deb disposition: ${v.disposition}`, '', `- **Fault:** ${faultType}${where}`, `- **Summary:** ${v.summary}`, '']
-    if (v.disposition === 'cocoder-bug') lines.push('## Proposed fix — NOT applied; for founder review', '', '```diff', v.proposal ?? '(no diff provided)', '```', '')
+    const lines = [`# Deb disposition: ${v.disposition}`, '', `- **Fault:** ${faultType}${where}`, `- **Mode:** ${v.mode}`, `- **Summary:** ${v.summary}`, '']
+    if (v.disposition === 'cocoder-bug' && v.mode === 'repair') {
+      lines.push('## Scoped repair — APPLIED within Deb\'s write-scope', '')
+      if (v.diagnosis) lines.push(`- **Diagnosis:** ${v.diagnosis}`)
+      if (v.whyCocoderOwned) lines.push(`- **Why CoCoder-owned:** ${v.whyCocoderOwned}`)
+      if (v.filesChanged && v.filesChanged.length) lines.push(`- **Files Deb changed:** ${v.filesChanged.join(', ')}`)
+      if (v.verification) lines.push(`- **Verification:** ${v.verification}`)
+      if (v.remainingRisk) lines.push(`- **Remaining risk:** ${v.remainingRisk}`)
+      lines.push('')
+      if (repair?.committedSha) lines.push(`Committed as \`${repair.committedSha}\` (files: ${repair.committedFiles.join(', ') || 'none'}). The run still fails — this repair is surfaced for you to review/land.`, '')
+      else lines.push('No in-scope changes were committed (nothing within Deb\'s write-scope changed).', '')
+      if (repair && repair.outOfScope.length > 0) lines.push(`**Held back (out of Deb's scope — NOT committed):** ${repair.outOfScope.join(', ')}`, '')
+    } else if (v.disposition === 'cocoder-bug') {
+      lines.push('## Proposed fix — NOT applied; for founder review', '', '```diff', v.proposal ?? '(no diff provided)', '```', '')
+    }
     if (v.disposition === 'repo-bug') lines.push('## For the founder', '', v.summary, '')
     return lines.join('\n')
   }
   const triageFault = async (faultType: string, atomIndex: number | null, message: string): Promise<void> => {
     if (!debRef) return // no Deb on this run → no triage
     const i = faultSeq++
+    await refreshStatus('faulted', atomIndex, null, `fault: ${faultType}`)
     try {
+      // Snapshot the worktree HEAD before Deb may edit (repair mode) so the commit-gate attributes only
+      // her changes and detects any self-commit (ADR-0007).
+      const headBeforeRepair = await git.headSha(worktreePath)
       await io.writeFaultContext(join(runDir, `fault-${i}.json`), { fault: faultType, atom: atomIndex, message })
       await sessionHost.show(debRef)
       await sessionHost.sendInput(debRef, buildDebTriageDispatch(join(runDir, `fault-${i}.json`), join(runDir, `triage-${i}.json`)))
       store.recordEvent({ runId: run.id, type: 'triage-dispatch', data: { fault: faultType, atom: atomIndex } })
       const verdict = await io.awaitTriage(join(runDir, `triage-${i}.json`), { timeoutMs: t.orchestrationMs, pollMs: t.pollMs, isAlive: debAlive })
-      store.recordEvent({ runId: run.id, type: 'fault-triaged', data: { fault: faultType, atom: atomIndex, disposition: verdict.disposition, summary: verdict.summary } })
-      await io.writeDisposition(runDir, i, renderDisposition(faultType, atomIndex, verdict))
+      store.recordEvent({ runId: run.id, type: 'fault-triaged', data: { fault: faultType, atom: atomIndex, disposition: verdict.disposition, mode: verdict.mode, summary: verdict.summary } })
+      // REPAIR MODE (ADR-0016): on a cocoder-bug Deb may have edited files within her write-scope. Gate-
+      // commit ONLY her in-scope edits — anything outside (incl. target-repo product code) is held back +
+      // surfaced by the same commit-gate (ADR-0007), never silently committed. Deb never rescues the run.
+      let repair: CommitGateResult | null = null
+      if (verdict.disposition === 'cocoder-bug' && verdict.mode === 'repair' && deb && deb.writeScope.length > 0) {
+        repair = await runCommitGate({
+          git,
+          store,
+          cwd: worktreePath,
+          runId: run.id,
+          workItemId: null,
+          scope: deb.writeScope,
+          message: `deb-repair: ${faultType}${atomIndex !== null ? ` (atom ${atomIndex})` : ''} via CoCoder run ${run.id}`,
+          headBefore: headBeforeRepair,
+        })
+        store.recordEvent({ runId: run.id, type: 'deb-repair', data: { fault: faultType, atom: atomIndex, committedSha: repair.committedSha, files: repair.committedFiles, outOfScope: repair.outOfScope } })
+      }
+      await io.writeDisposition(runDir, i, renderDisposition(faultType, atomIndex, verdict, repair))
     } catch (err) {
       store.recordEvent({ runId: run.id, type: 'triage-skipped', data: { fault: faultType, reason: err instanceof Error ? err.message : String(err) } })
     }
@@ -345,6 +398,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   ): Promise<T> => {
     const debPersona = deb?.id
     if (!debRef || !debPersona) return await awaitOscar()
+    const phase: RunnerPhase = stage === 'verify' ? 'verifying' : 'awaiting-directive'
 
     let stopped = false
     let stopSleep: (() => void) | null = null
@@ -355,6 +409,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       stopped = true
       stopSleep?.()
     }
+    // The recommendation currently being delivered, if any — set by the judge when it picks up a fresh
+    // deb-nudge.json, read by onNudge to attribute the delivery to Deb (vs the generic idle fallback).
+    let pendingDebReq: { message: string; rationale: string; seq: number } | null = null
     const monitor = runMonitor(
       {
         readScreen: async () => {
@@ -363,6 +420,14 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         },
         judge: async (sample) => {
           if (stopped) return { state: 'done', note: 'oscar await settled' }
+          // Deb-authored nudge takes priority over the generic idle prompt: deliver her specific
+          // recommendation to Oscar (the runner owns delivery; authority rule keeps it Oscar-only).
+          const req = await io.readNudgeRequest(nudgePath)
+          if (req && req.seq > lastDebNudgeSeq) {
+            pendingDebReq = { message: req.message, rationale: req.rationale, seq: req.seq }
+            return { state: 'stuck', note: `deb recommends a nudge (seq ${req.seq})`, nudge: req.message }
+          }
+          pendingDebReq = null
           if (sample.idleStreak > 0) {
             return { state: 'stuck', note: `no oscar screen change for ${sample.idleStreak} sample(s)`, nudge: OSCAR_IDLE_NUDGE }
           }
@@ -374,8 +439,19 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           if (a.state !== 'progressing') {
             store.recordEvent({ runId: run.id, type: 'oscar-monitor-assessment', data: { persona: debPersona, stage, atom: atomIndex, state: a.state, note: a.note ?? null } })
           }
+          void refreshStatus(phase, atomIndex, task, `awaiting Oscar's ${stage} for atom ${atomIndex}`)
         },
-        onNudge: (text) => store.recordEvent({ runId: run.id, type: 'oscar-nudge', data: { persona: debPersona, stage, atom: atomIndex, text } }),
+        onNudge: (text) => {
+          const fromDeb = pendingDebReq !== null && text === pendingDebReq.message
+          if (fromDeb) lastDebNudgeSeq = pendingDebReq!.seq
+          store.recordEvent({
+            runId: run.id,
+            type: 'oscar-nudge',
+            data: fromDeb
+              ? { persona: debPersona, stage, atom: atomIndex, text, source: 'deb-authored', rationale: pendingDebReq!.rationale, seq: pendingDebReq!.seq }
+              : { persona: debPersona, stage, atom: atomIndex, text, source: 'idle' },
+          })
+        },
         sleep: (ms) =>
           Promise.race([
             new Promise<void>((resolve) => {
@@ -470,8 +546,11 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   let n = 0
   let consecutiveRejects = 0
 
+  await refreshStatus('awaiting-directive', 0, null, 'awaiting first directive')
+
   for (;;) {
     const directivePath = join(runDir, `directive-${n}.json`)
+    await refreshStatus('awaiting-directive', n, null, `awaiting directive ${n}`)
     let directive
     try {
       directive = await awaitOscarWithDebWatchdog('directive', n, `awaiting directive ${n}`, () =>
@@ -532,6 +611,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         store.recordEvent({ runId: run.id, type: 'wrapup', data: { atoms: n, forced: false } })
         log(`oscar wrapped up after ${n} atom(s)`)
       }
+      await refreshStatus('wrapped', n, null, 'wrapped up')
       break
     }
 
@@ -545,6 +625,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     await sessionHost.show(bobRef)
     await sessionHost.sendInput(bobRef, buildBuilderDispatch(directivePath, atomIndex))
     store.recordEvent({ runId: run.id, type: 'builder-dispatch', data: { ref: bobRef.id, atom: atomIndex } })
+    await refreshStatus('building', atomIndex, directive.task, `monitoring builder on atom ${atomIndex}`)
     log(`atom ${atomIndex} dispatched to bob (work item ${workItem.id}); monitoring live progress`)
 
     // MONITOR Bob's live progress — the primary signal (ADR-0013), replacing the blind done-file poll.
@@ -572,6 +653,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     await sessionHost.show(oscarRef)
     await sessionHost.sendInput(oscarRef, buildVerifyDispatch(directivePath, verifyPath))
     store.recordEvent({ runId: run.id, type: 'verify-dispatch', data: { ref: oscarRef.id, atom: atomIndex } })
+    await refreshStatus('verifying', atomIndex, directive.task, `awaiting verify verdict for atom ${atomIndex}`)
     let verdict
     try {
       verdict = await awaitOscarWithDebWatchdog('verify', atomIndex, directive.task, () =>

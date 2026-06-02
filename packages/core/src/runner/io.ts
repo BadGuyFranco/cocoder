@@ -4,6 +4,8 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { type Directive, parseDirective } from './directive.js'
+import { type NudgeRequest, parseNudgeRequest } from './nudge.js'
+import type { DebStatus } from './status.js'
 import { type Triage, parseTriage } from './triage.js'
 
 export interface RunnerIO {
@@ -35,6 +37,13 @@ export interface RunnerIO {
   ): Promise<Triage>
   /** Write Deb's disposition for the founder (the proposed patch / escalation / log note). */
   writeDisposition(runDir: string, index: number, markdown: string): Promise<string>
+  /** Write the live status feed Deb reads to answer "how's Oscar/Bob doing?" (ADR-0016). A runner-owned
+   *  projection over the store, refreshed at each transition; the JSON is written for machine reads, the
+   *  markdown rendering beside it for a human glance. */
+  writeDebStatus(runDir: string, status: DebStatus, markdown: string): Promise<void>
+  /** Read Deb's nudge recommendation if she has written one (ADR-0016). Returns null when the file is
+   *  absent/partial/malformed — a missing recommendation is "nothing to deliver", never an error. */
+  readNudgeRequest(nudgePath: string): Promise<NudgeRequest | null>
 }
 
 interface Verification {
@@ -99,6 +108,17 @@ export function makeRunnerIO(): RunnerIO {
       const path = join(runDir, `disposition-${index}.md`)
       await writeFile(path, markdown, 'utf8')
       return path
+    },
+    async writeDebStatus(runDir, status, markdown) {
+      await writeFile(join(runDir, 'deb-status.json'), JSON.stringify(status, null, 2), 'utf8')
+      await writeFile(join(runDir, 'deb-status.md'), markdown, 'utf8')
+    },
+    async readNudgeRequest(nudgePath) {
+      try {
+        return parseNudgeRequest(await readFile(nudgePath, 'utf8'))
+      } catch {
+        return null // absent / partial / malformed → nothing to deliver
+      }
     },
     async writePickup(runDir, markdown) {
       const path = join(runDir, 'pickup.md')

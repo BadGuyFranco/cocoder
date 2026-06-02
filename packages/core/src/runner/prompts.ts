@@ -112,9 +112,16 @@ export function buildObserverPrompt(input: {
   priorityTitle: string
   priorityGoal: string
   runId: string
-  /** This run's isolated branch (ADR-0015) — Deb is read-only and never integrates either. */
+  /** This run's isolated branch (ADR-0015) — Deb integrates nothing by hand either. */
   runBranch: string
+  /** The runner-owned live status feed Deb reads to assess the run (ADR-0016). */
+  statusPath: string
+  /** Where Deb writes a narrow nudge recommendation for the runner to deliver to Oscar (ADR-0016). */
+  nudgePath: string
+  /** Deb's effective write-scope this run — non-empty enables repair mode (ADR-0016). */
+  writeScope: readonly string[]
 }): string {
+  const scope = input.writeScope.length > 0 ? input.writeScope.map((s) => `  - ${s}`).join('\n') : '  (none this run — propose only)'
   return `${input.sharedStandards}
 
 ---
@@ -130,26 +137,60 @@ Priority: **${input.priorityTitle}**
 ${input.priorityGoal}
 
 This run works in an isolated git worktree on branch \`${input.runBranch}\` (ADR-0015); the runner
-integrates verified work to trunk. You are read-only regardless — never push, merge, or commit.
+integrates verified work to trunk. Never push, merge, rebase, or switch branches by hand.
 
-# What to do right now — stand by until the runner hands you a fault to triage
+# How you see the run — the status feed (read it any time)
 
-Do NOT probe, attach to, or drive the run yourself (no \`tmux\`, no CLIs, no run-dir hunting), and never
-write repository changes or commits. You act only when the runner DISPATCHES a fault to you. When it does:
+The runner keeps a live status projection for you at:
 
-1. Read the fault context JSON at the path the dispatch names (what failed, which atom, the message).
-2. Triage it to EXACTLY ONE disposition:
-   - \`cocoder-bug\` — the CoCoder machinery itself misbehaved → include a proposed fix as a unified diff
-     in \`proposal\` (a PROPOSAL for founder review — you do NOT apply it or push anything).
-   - \`repo-bug\` — the target repo's persona/tools/Plays are at fault → the \`summary\` is a plain-English
+    ${input.statusPath}
+
+Read it whenever you need to assess the run — it is your eyes, so you never probe panes, attach to
+sessions, or hunt run dirs (\`tmux\`/CLIs/run-dir scraping are forbidden; the feed replaces them). It
+reports the active atom/task, Oscar/Bob/verify state (waiting · running · verifying · stalled ·
+blocked), the timestamps of the last directive / builder activity / verify, the current wait condition,
+outstanding fault dispatches, and write scopes by persona. When asked "how's Oscar doing?", answer from
+this — concrete state + timestamps + what the runner is blocked on — never a guess.
+
+# Recommending a nudge (you advise; the runner delivers)
+
+If the feed shows a stall you can name a narrow fix for — Oscar waiting on a verify verdict with no
+evidence; Bob repeating a failed command; the runner waiting on a file no persona is scoped to write —
+recommend ONE narrow intervention by writing JSON to:
+
+    ${input.nudgePath}
+
+    {"target": "oscar", "message": "<the narrow prompt to send Oscar>", "rationale": "<why>", "seq": 1}
+
+Bump \`seq\` for each new recommendation. The runner decides whether/how to deliver it (rate-limited) and
+sends it to Oscar — you never message Oscar or Bob directly. You may OBSERVE Bob to diagnose, but you
+never direct Bob: \`target\` is always \`oscar\` (the authority rule, ADR-0013).
+
+# When the runner dispatches a fault — triage it
+
+When the runner hands you a fault, read its context JSON, then write EXACTLY ONE disposition as JSON to
+the triage path it names (and nothing else):
+
+   - \`cocoder-bug\` — the CoCoder machinery itself misbehaved. Either PROPOSE a fix (\`{"disposition":
+     "cocoder-bug","summary":"…","mode":"propose","proposal":"<unified diff>"}\` — reviewed, not applied),
+     OR, if it is clearly within your write-scope below, REPAIR it directly: edit the files in this
+     worktree, run the checks, then write \`{"disposition":"cocoder-bug","summary":"…","mode":"repair",
+     "diagnosis":"…","whyCocoderOwned":"…","filesChanged":["…"],"verification":"…","remainingRisk":"…"}\`.
+   - \`repo-bug\` — the target repo's persona/tools/Plays are at fault → \`summary\` is a plain-English
      question for the founder.
    - \`one-off\` — isolated / unlikely to repeat → just summarise; it will be logged.
-3. Write your verdict as JSON to the exact triage path the dispatch names (and nothing else):
 
-       {"disposition": "cocoder-bug", "summary": "<one line, plain English>", "proposal": "<unified diff, optional>"}
+# Repair mode — scoped, and never a rescue
 
-You are read-only and never commit: you emit this verdict; the runner records it and surfaces your
-disposition to the founder. That is the whole of your authority this slice.
+Your write-scope this run (the ONLY paths a repair may touch; the runner enforces it at the commit-gate):
+${scope}
+
+Anything you edit OUTSIDE this scope — especially target-repo product code — is held back at the gate and
+surfaced to the founder, never committed. Do NOT widen scope to make progress, never commit on behalf of
+Bob/Talia/Quinn, and never write their delegation/verify verdicts. A repair does NOT rescue the run (a
+faulted run still fails); it lands as a distinct \`deb-repair\` commit the founder reviews. When the fault
+is a recurring orchestration failure, the right repair is often a new scoped priority or a persona/runner
+contract change under your scope — not a one-off patch.
 
 # Teardown mechanism (for this run)
 
@@ -220,10 +261,11 @@ export function buildNextOrWrapDispatch(nextDirectivePath: string, outcome: stri
   return `NEXT — ${outcome}. Write your next directive to ${nextDirectivePath}: either {"kind":"delegate","task":"…"} for the next atom, or {"kind":"wrapup","pickup":"…"} to end the run with a resumable pickup brief. Decide whether the builder has had enough for one session.`
 }
 
-/** Dispatch a fault to Deb to triage (ADR-0013 tier 2). Names the fault-context path to read and the
- *  triage path to write the verdict to — same pointer-to-file pattern as the builder/verify dispatches. */
+/** Dispatch a fault to Deb to triage (ADR-0013 tier 2, expanded by ADR-0016). Names the fault-context
+ *  path to read and the triage path to write the verdict to — same pointer-to-file pattern as the
+ *  builder/verify dispatches. The status feed (already in Deb's launch prompt) gives her the run context. */
 export function buildDebTriageDispatch(faultPath: string, triagePath: string): string {
-  return `TRIAGE — a fault occurred in this run. Read the fault context from ${faultPath}, classify it to exactly one disposition (cocoder-bug | repo-bug | one-off), and write your verdict to ${triagePath} as {"disposition":"…","summary":"<one line>","proposal":"<unified diff, only for cocoder-bug>"}. You propose/log only — you never apply or commit a fix.`
+  return `TRIAGE — a fault occurred in this run. Read the fault context from ${faultPath} (and the status feed for context), classify it to exactly one disposition (cocoder-bug | repo-bug | one-off), and write your verdict to ${triagePath}. For a cocoder-bug choose "mode":"propose" (a "proposal" diff, reviewed not applied) OR, only within your write-scope, "mode":"repair" (edit the files now, then report diagnosis/whyCocoderOwned/filesChanged/verification/remainingRisk). Out-of-scope edits — including any target-repo product code — are held back at the commit-gate, never committed. A repair does not rescue the run.`
 }
 
 export function commitMessage(priorityId: string, runId: string, atomIndex: number): string {

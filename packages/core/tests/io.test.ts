@@ -64,7 +64,7 @@ describe('awaitVerification', () => {
 describe('awaitTriage', () => {
   test('returns Deb\'s verdict once triage.json holds a valid disposition', async () => {
     const path = await tmpPath('triage-0.json', JSON.stringify({ disposition: 'cocoder-bug', summary: 'monitor mis-timed', proposal: 'diff' }))
-    expect(await io.awaitTriage(path, { timeoutMs: 1000, pollMs: 1 })).toEqual({ disposition: 'cocoder-bug', summary: 'monitor mis-timed', proposal: 'diff' })
+    expect(await io.awaitTriage(path, { timeoutMs: 1000, pollMs: 1 })).toEqual({ disposition: 'cocoder-bug', summary: 'monitor mis-timed', proposal: 'diff', mode: 'propose' })
   })
 
   test('treats an unknown disposition as not-ready (keeps polling)', async () => {

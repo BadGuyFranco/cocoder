@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import {
   type Adapter,
+  type DebStatus,
   type Directive,
   type Git,
   type HeadlessRunInput,
@@ -129,7 +130,18 @@ const okAdapter: Adapter = {
 const fakeIO = (opts: {
   directives: Directive[]
   verdicts?: { verdict: 'pass' | 'fail'; reason: string | null }[]
-  triage?: { disposition: 'cocoder-bug' | 'repo-bug' | 'one-off'; summary: string; proposal?: string }
+  triage?: {
+    disposition: 'cocoder-bug' | 'repo-bug' | 'one-off'
+    summary: string
+    proposal?: string
+    mode?: 'propose' | 'repair'
+    diagnosis?: string
+    filesChanged?: string[]
+  }
+  /** Deb's nudge recommendation, returned by readNudgeRequest. */
+  nudge?: { target: 'oscar'; message: string; rationale: string; seq: number } | null
+  /** Status snapshots captured each time the runner refreshes the feed. */
+  statusWrites?: DebStatus[]
   pickupWrites?: string[]
 }): RunnerIO => {
   let di = 0
@@ -145,11 +157,17 @@ const fakeIO = (opts: {
       return opts.verdicts?.[vi++] ?? { verdict: 'pass' as const, reason: 'looks good' }
     },
     async awaitTriage() {
-      return opts.triage ?? { disposition: 'cocoder-bug' as const, summary: 'machinery fault', proposal: '--- a\n+++ b' }
+      return { mode: 'propose' as const, ...(opts.triage ?? { disposition: 'cocoder-bug' as const, summary: 'machinery fault', proposal: '--- a\n+++ b' }) }
     },
     async writeFaultContext() {},
     async writeDisposition(runDir, index) {
       return `${runDir}/disposition-${index}.md`
+    },
+    async writeDebStatus(_runDir, status) {
+      opts.statusWrites?.push(status)
+    },
+    async readNudgeRequest() {
+      return opts.nudge ?? null
     },
     async writePickup(runDir, markdown) {
       opts.pickupWrites?.push(markdown)
@@ -506,6 +524,7 @@ describe('runRun (multi-atom loop)', () => {
       stage: 'directive',
       atom: 0,
       text: "You've gone quiet — write the next directive (or your verify verdict), or wrap up.",
+      source: 'idle',
     })
 
     const storeWithoutDeb = openRunStore(':memory:')
@@ -708,6 +727,87 @@ describe('runRun (multi-atom loop)', () => {
     const types = store.listEvents(store.listRuns()[0]!.id).map((e) => e.type)
     expect(types).toContain('triage-skipped')
     expect(types).not.toContain('fault-triaged') // never claim a verdict we didn't get
+  })
+
+  test('writes a live status feed so Deb can report concrete run state (ADR-0016)', async () => {
+    const store = openRunStore(':memory:')
+    const statusWrites: DebStatus[] = []
+    await runRun(baseDeps({ store, io: fakeIO({ directives: [delegate('do x'), wrapup('done')], statusWrites }) }), { ...input, deb })
+    // The feed only exists for a Deb-backed run, and it carries evidence (state + wait condition).
+    expect(statusWrites.length).toBeGreaterThan(0)
+    expect(statusWrites[0]).toMatchObject({ oscar: 'waiting', bob: 'standby', waitCondition: 'awaiting first directive' })
+    expect(statusWrites.some((s) => s.bob === 'running' && s.waitCondition.includes('monitoring builder'))).toBe(true)
+    expect(statusWrites.some((s) => s.oscar === 'verifying' && s.verify === 'pending')).toBe(true)
+    expect(statusWrites.at(-1)?.oscar).toBe('wrapped')
+
+    const noDebStore = openRunStore(':memory:')
+    const noDebStatus: DebStatus[] = []
+    await runRun(baseDeps({ store: noDebStore, io: fakeIO({ directives: [delegate('do x'), wrapup('done')], statusWrites: noDebStatus }) }), input)
+    expect(noDebStatus).toHaveLength(0) // no status feed without Deb
+  })
+
+  test('delivers a Deb-authored nudge to Oscar (Deb advises; the runner delivers — ADR-0016)', async () => {
+    const store = openRunStore(':memory:')
+    const directives = [delegate('do it'), wrapup('done')]
+    let i = 0
+    const io: RunnerIO = {
+      ...fakeIO({
+        directives,
+        nudge: { target: 'oscar', message: 'Oscar — ask Bob for a root-cause diagnosis', rationale: 'Bob repeated a failed command', seq: 1 },
+      }),
+      async awaitDirective() {
+        if (i === 0) await sleep(20) // hold the first directive so the watchdog samples and delivers
+        const d = directives[i++]
+        if (!d) throw new Error('test: ran out of scripted directives')
+        return d
+      },
+    }
+    const timeouts = { orchestrationMs: 200, buildMs: 200, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 }
+    const result = await runRun(baseDeps({ store, io, timeouts }), { ...input, deb })
+    expect(result.status).toBe('completed')
+    const debNudge = store.listEvents(result.runId).find((e) => e.type === 'oscar-nudge' && (e.data as { source?: string }).source === 'deb-authored')
+    expect(debNudge).toBeTruthy()
+    expect(debNudge?.data).toMatchObject({ persona: 'deb', text: 'Oscar — ask Bob for a root-cause diagnosis', source: 'deb-authored', seq: 1 })
+  })
+
+  test('repair mode gate-commits only Deb\'s in-scope edits; product code is held back, never committed (ADR-0016)', async () => {
+    const store = openRunStore(':memory:')
+    const debRepair = persona({ id: 'deb', cli: 'claude', writeScope: ['cocoder/**'] })
+    const io: RunnerIO = {
+      ...fakeIO({
+        directives: [],
+        triage: { disposition: 'cocoder-bug', summary: 'runner contract bug', mode: 'repair', diagnosis: 'wait condition references an unassigned file', filesChanged: ['cocoder/priorities/x.md'] },
+      }),
+      async awaitDirective() {
+        throw new Error('no valid directive within 1ms') // the fault Deb triages + repairs
+      },
+    }
+    // Deb edited one in-scope CoCoder file and (out of scope) one product file in the worktree.
+    const git: Git = {
+      ...worktreeStubs,
+      async headSha() {
+        return 'h0'
+      },
+      async changedFiles() {
+        return ['cocoder/priorities/x.md', 'packages/app/product.ts']
+      },
+      async addAndCommit() {
+        return 'sha-repair'
+      },
+      async restoreToHead() {},
+      async show() {
+        return ''
+      },
+    }
+    await expect(runRun(baseDeps({ store, io, git }), { ...input, deb: debRepair })).rejects.toThrow(/no valid directive/)
+    const runId = store.listRuns()[0]!.id
+    const events = store.listEvents(runId)
+    const repair = events.find((e) => e.type === 'deb-repair')
+    expect(repair?.data).toMatchObject({ committedSha: 'sha-repair', files: ['cocoder/priorities/x.md'], outOfScope: ['packages/app/product.ts'] })
+    // The commit-gate surfaced the product file as out-of-scope and committed only the in-scope one.
+    expect((events.find((e) => e.type === 'out-of-scope')?.data as { files?: string[] })?.files).toEqual(['packages/app/product.ts'])
+    expect(store.listCommitLinks(runId).flatMap((c) => c.files)).toEqual(['cocoder/priorities/x.md'])
+    expect(store.getRun(runId)?.status).toBe('failed') // a repair never rescues the run
   })
 
   test('preflight failure aborts before spawning and marks the run failed', async () => {

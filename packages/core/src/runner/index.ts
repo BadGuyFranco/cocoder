@@ -24,7 +24,16 @@ export {
   type HeuristicJudgeOptions,
 } from './monitor.js'
 export { type Directive, parseDirective } from './directive.js'
-export { type Triage, type Disposition, parseTriage } from './triage.js'
+export { type Triage, type Disposition, type TriageMode, parseTriage } from './triage.js'
+export { type NudgeRequest, parseNudgeRequest } from './nudge.js'
+export {
+  renderDebStatus,
+  type DebStatus,
+  type RunnerPhase,
+  type OscarState,
+  type BobState,
+  type VerifyState,
+} from './status.js'
 export { renderRunRecord } from './record.js'
 export {
   atomSentinel,
