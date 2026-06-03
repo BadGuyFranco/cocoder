@@ -4,7 +4,7 @@
 // the design-faithful view-model from the ported seed (fixture parity, fully interactive); the daemon
 // adapter is wired in the next slice (the existing electron/ plumbing is untouched).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ozApi, loadWorkspaces, loadWsData, loadRunDetail, launchRun, attachRun, teardownRun, loadOrder, persistOrder, type ConnectionState } from './live.ts'
+import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, launchRun, attachRun, teardownRun, testCli, loadOrder, persistOrder, type ConnectionState } from './live.ts'
 import { ADHOC_PRIORITY_ID, applyOrder } from './adapter.ts'
 import { Sidebar, type Route } from './ui/Sidebar.tsx'
 import { TopBar } from './ui/TopBar.tsx'
@@ -114,6 +114,8 @@ export function App() {
       if (health.state !== 'connected') { goOffline(health.state); return }
       setConn('connected'); setLive(true)
       try { const s = await oz.settingsGet(); if (!cancelled && s?.pollIntervalMs) setPollMs(s.pollIntervalMs) } catch { /* keep default */ }
+      const cs = await loadClis(oz)
+      if (!cancelled && cs.length) setClis(cs)
       const wss = await loadWorkspaces(oz)
       if (cancelled) return
       if (!wss.length) { goOffline('offline'); return }
@@ -249,10 +251,21 @@ export function App() {
       }
     })()
   }
+  async function handleCliTest(id: string): Promise<void> {
+    if (!live) {
+      setClis((cs) => cs.map((c) => (c.id === id ? { ...c, tested: true, lastTested: 'just now' } : c)))
+      return
+    }
+    const oz = ozApi()
+    if (!oz) { notify('err', 'CLI test failed: daemon bridge unavailable.'); return }
+    const cli = await testCli(oz, id)
+    if (cli) setClis((cs) => cs.map((c) => (c.id === id ? cli : c)))
+    else notify('err', 'CLI test failed.')
+  }
 
   // persona editing
   const setPersona = (id: string, next: Persona) => setPersonas((ps) => ps.map((p) => (p.id === id ? next : p)))
-  const addSub = (pid: string) => setPersonas((ps) => ps.map((p) => (p.id === pid ? { ...p, subAgents: [...p.subAgents, { id: `sa${Date.now()}`, name: 'new sub', cli: 'claude-code', model: 'Default' }] } : p)))
+  const addSub = (pid: string) => setPersonas((ps) => ps.map((p) => (p.id === pid ? { ...p, subAgents: [...p.subAgents, { id: `sa${Date.now()}`, name: 'new sub', cli: clis[0]?.id ?? 'claude-code', model: 'Default' }] } : p)))
   const removeSub = (pid: string, sid: string) => setPersonas((ps) => ps.map((p) => (p.id === pid ? { ...p, subAgents: p.subAgents.filter((s: SubAgent) => s.id !== sid) } : p)))
   const updateSub = (pid: string, sid: string, sa: SubAgent) => setPersonas((ps) => ps.map((p) => (p.id === pid ? { ...p, subAgents: p.subAgents.map((s: SubAgent) => (s.id === sid ? sa : s)) } : p)))
 
@@ -283,7 +296,7 @@ export function App() {
           {route === 'workspaces' && (
             <WorkspacesScreen workspaces={workspaces} activeId={activeId} onChange={(ws) => setWorkspaces((all) => all.map((w) => (w.id === ws.id ? ws : w)))} onSetActive={loadWs} onCreate={() => setNewWsOpen(true)} onDelete={(id) => setWorkspaces((all) => all.filter((w) => w.id !== id))} onGotoDashboard={() => setRoute('dashboard')} live={live} />
           )}
-          {route === 'clis' && <CLIsScreen clis={clis} onTest={(id) => setClis((cs) => cs.map((c) => (c.id === id ? { ...c, lastTested: 'just now' } : c)))} onAdd={() => onSend('Register a new CLI.')} live={live} />}
+          {route === 'clis' && <CLIsScreen clis={clis} onTest={handleCliTest} onAdd={() => onSend('Register a new CLI.')} />}
           {route === 'personas' && <PersonasScreen personas={personas} clis={clis} onChange={setPersona} onAddSub={addSub} onRemoveSub={removeSub} onUpdateSub={updateSub} onNewPersonaAsPriority={() => setCraftOpen(true)} live={live} />}
           {route === 'settings' && <SettingsScreen settings={settings} dependencies={dependencies} onRecheckDep={(id: string) => setDependencies((ds: Dependency[]) => ds.map((d: Dependency) => (d.id === id ? { ...d, lastChecked: 'just now' } : d)))} onChange={setSettings} live={live} />}
           </>)}

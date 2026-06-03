@@ -4,7 +4,48 @@
 // design-ref/screens.jsx.
 import { Icon, Button, Card, ScreenHeader } from '../ui/primitives.tsx'
 import { PendingBanner } from '../ui/PendingBanner.tsx'
+import { modelIsStale } from '../adapter.ts'
 import { phicon, type Cli, type Persona, type SubAgent } from '../model.ts'
+
+function ModelControl({ cli, model, onChange, compact = false }: { cli: Cli | undefined; model: string; onChange: (model: string) => void; compact?: boolean }) {
+  const stale = modelIsStale(cli, model)
+  const models = cli?.models ?? ['Default']
+  const options = stale ? [...models, model] : models
+  const inputStyle = compact ? { padding: '5px 8px', fontSize: 11.5 } : undefined
+  const stateNote = stale
+    ? <span style={{ color: 'var(--cb-highlight)', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10.5 }}><Icon name="warning-circle" size={11} />Unavailable</span>
+    : cli && !cli.canEnumerate
+      ? <span style={{ color: 'var(--cb-text-muted)', fontSize: 10.5 }}>free text</span>
+      : null
+  const label = (
+    <label className="oz-field-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      Model
+      {stateNote && <span style={{ fontFamily: 'var(--cb-font-body)', letterSpacing: 0, textTransform: 'none' }}>{stateNote}</span>}
+    </label>
+  )
+  if (cli && !cli.canEnumerate) {
+    const input = <input className="oz-input" value={model === 'Default' ? '' : model} placeholder="Default" style={inputStyle} onChange={(e) => onChange(e.target.value || 'Default')} />
+    if (compact) return <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>{input}{stateNote}</div>
+    return (
+      <>
+        {label}
+        {input}
+      </>
+    )
+  }
+  const select = (
+    <select className="oz-select" value={model} style={compact ? { padding: '5px 24px 5px 8px', fontSize: 11.5 } : undefined} onChange={(e) => onChange(e.target.value)}>
+      {options.map((m) => <option key={m} value={m}>{m}{stale && m === model ? ' (unavailable)' : ''}</option>)}
+    </select>
+  )
+  if (compact) return <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>{select}{stateNote}</div>
+  return (
+    <>
+      {label}
+      {select}
+    </>
+  )
+}
 
 function PersonaRow({ persona, clis, onChange, onAddSub, onRemoveSub, onUpdateSub }: {
   persona: Persona; clis: Cli[]; onChange: (p: Persona) => void
@@ -37,13 +78,7 @@ function PersonaRow({ persona, clis, onChange, onAddSub, onRemoveSub, onUpdateSu
             </select>
           </div>
           <div>
-            <label className="oz-field-label">Model</label>
-            {/* Model list comes from the selected CLI's reported models (cliEntry.models). Today those
-                are seed values; the daemon will populate them via deterministic per-CLI model discovery
-                — see priority cli-config-and-model-discovery. "Default" = the CLI's own default. */}
-            <select className="oz-select" value={persona.model} onChange={(e) => onChange({ ...persona, model: e.target.value })}>
-              {(cliEntry?.models || ['Default']).map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
+            <ModelControl cli={cliEntry} model={persona.model} onChange={(model) => onChange({ ...persona, model })} />
           </div>
           <div>
             <label className="oz-field-label">Run mode</label>
@@ -70,9 +105,7 @@ function PersonaRow({ persona, clis, onChange, onAddSub, onRemoveSub, onUpdateSu
                 <select className="oz-select" value={sa.cli} style={{ padding: '5px 24px 5px 8px', fontSize: 11.5 }} onChange={(e) => onUpdateSub(persona.id, sa.id, { ...sa, cli: e.target.value, model: 'Default' })}>
                   {clis.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-                <select className="oz-select" value={sa.model} style={{ padding: '5px 24px 5px 8px', fontSize: 11.5 }} onChange={(e) => onUpdateSub(persona.id, sa.id, { ...sa, model: e.target.value })}>
-                  {(subCli?.models || ['Default']).map((m) => <option key={m} value={m}>{m}</option>)}
-                </select>
+                <ModelControl cli={subCli} model={sa.model} compact onChange={(model) => onUpdateSub(persona.id, sa.id, { ...sa, model })} />
                 <button className="oz-iconbtn" style={{ width: 24, height: 24 }} onClick={() => onRemoveSub(persona.id, sa.id)}><Icon name="x" size={11} /></button>
               </div>
             )
@@ -98,7 +131,7 @@ export function PersonasScreen({ personas, clis, onChange, onAddSub, onRemoveSub
             <div style={{ fontSize: 11.5, color: 'var(--cb-text-secondary)', lineHeight: 1.55 }}>Sketch what the persona should do. Oz files it as a priority and the team scaffolds the new role — prompts, sub-agents, and tests included.</div>
           </div>
         </div>
-        <PendingBanner live={live}>The roster (and each persona’s CLI) is live from the daemon, but editing here isn’t saved yet: model lists need per-CLI discovery, and run-mode/sub-agents need the assignment schema extended (<code>PUT …/assignments</code> with <code>{'{'}mode, subAgents{'}'}</code> owed). Edits below are local previews.</PendingBanner>
+        <PendingBanner live={live}>The roster (and each persona’s CLI) is live from the daemon, but editing here isn’t saved yet: run-mode/sub-agents need the assignment schema extended (<code>PUT …/assignments</code> with <code>{'{'}mode, subAgents{'}'}</code> owed). Edits below are local previews.</PendingBanner>
         {personas.map((p) => <PersonaRow key={p.id} persona={p} clis={clis} onChange={(next) => onChange(p.id, next)} onAddSub={onAddSub} onRemoveSub={onRemoveSub} onUpdateSub={onUpdateSub} />)}
       </div>
     </div>

@@ -9,9 +9,11 @@ import type {
   RunSummary,
   RunDetail,
   PersonasResponse,
+  ClisResponse,
+  CliTestResponse,
 } from '../electron/ipc-contract.ts'
-import { adaptWorkspace, adaptRuns, adaptPriorities, adaptRunDetail, adaptPersonas } from './adapter.ts'
-import type { Workspace, Priority, Run, Persona } from './model.ts'
+import { adaptWorkspace, adaptRuns, adaptPriorities, adaptRunDetail, adaptPersonas, adaptCli } from './adapter.ts'
+import type { Workspace, Priority, Run, Persona, Cli } from './model.ts'
 
 export type { ConnectionState }
 
@@ -30,6 +32,15 @@ export interface WsData {
 export async function loadWorkspaces(oz: OzApi): Promise<Workspace[]> {
   const r = await oz.daemonGet<{ workspaces: DWorkspace[] }>('/workspaces')
   return r.ok ? r.data.workspaces.map(adaptWorkspace) : []
+}
+
+export async function loadClis(oz: OzApi): Promise<Cli[]> {
+  try {
+    const r = await oz.daemonGet<ClisResponse>('/clis')
+    return r.ok ? r.data.clis.map(adaptCli) : []
+  } catch {
+    return []
+  }
 }
 
 // Fetch the three per-workspace surfaces in parallel and adapt them. A failed sub-fetch degrades that
@@ -73,6 +84,15 @@ export async function attachRun(oz: OzApi, runId: string): Promise<MutationResul
 
 export async function teardownRun(oz: OzApi, runId: string): Promise<MutationResult> {
   return oz.daemonPost(`/runs/${runId}/teardown`)
+}
+
+export async function testCli(oz: OzApi, id: string): Promise<Cli | null> {
+  try {
+    const r = await oz.daemonPost<CliTestResponse>(`/clis/${encodeURIComponent(id)}/test`)
+    return r.ok ? adaptCli(r.data.cli) : null
+  } catch {
+    return null
+  }
 }
 
 // ── Drag-reorder seam ── the priority order is client-owned and persisted in the main-process store

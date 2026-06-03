@@ -15,6 +15,29 @@ import runDetailFx from '../fixtures/run-detail.json'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ok = (data: any) => ({ ok: true, status: 200, data })
 
+const clisFx = {
+  clis: [
+    {
+      id: 'claude',
+      tested: true,
+      testedAt: 1780153227239,
+      install: { ok: true, detail: 'installed' },
+      auth: { ok: true, detail: 'authenticated' },
+      models: { canEnumerate: true, models: ['opus'], detail: 'listed models' },
+      configManaged: { mechanism: 'env', flags: ['--model'], managesUserConfig: true, detail: 'ready' },
+    },
+    {
+      id: 'codex',
+      tested: false,
+      testedAt: null,
+      install: { ok: false, detail: 'not probed' },
+      auth: { ok: false, detail: 'not probed' },
+      models: { canEnumerate: false, models: [], detail: 'free-text model entry' },
+      configManaged: { mechanism: 'none', flags: [], managesUserConfig: false, detail: 'not checked' },
+    },
+  ],
+}
+
 interface PostCall { path: string; body?: unknown }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mockOz(opts: { posts?: PostCall[]; postResult?: any } = {}) {
@@ -24,6 +47,7 @@ function mockOz(opts: { posts?: PostCall[]; postResult?: any } = {}) {
     settingsSet: async (p: unknown) => p,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     daemonGet: async (path: string): Promise<any> => {
+      if (path === '/clis') return ok(clisFx)
       if (path === '/workspaces') return ok(workspacesFx)
       if (/\/priorities$/.test(path)) return ok(prioritiesFx)
       if (/\/personas$/.test(path)) return ok(personasFx)
@@ -93,12 +117,13 @@ describe('Oz renderer — live daemon path', () => {
     await waitFor(() => expect(screen.getByText(/already in flight/i)).toBeDefined())
   })
 
-  it('marks unbacked surfaces as pending endpoints in live mode (CLIs screen)', async () => {
+  it('loads CLIs from the live seam and does not show a pending endpoint banner', async () => {
     setOz(mockOz())
     render(<App />)
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
     fireEvent.click(screen.getByText('CLIs'))
-    await waitFor(() => expect(screen.getAllByText(/Pending daemon endpoint/).length).toBeGreaterThan(0))
+    await waitFor(() => expect(screen.getAllByText('Not tested').length).toBeGreaterThan(0))
+    expect(screen.queryByText(/Pending daemon endpoint/)).toBeNull()
   })
 })
 

@@ -450,6 +450,8 @@
       "version": "0.42.1",
       "icon": "ph-thin ph-terminal-window",
       "status": "ok",
+      "tested": true,
+      "canEnumerate": true,
       "lastTested": "12 min ago",
       "models": [
         "Default",
@@ -465,6 +467,8 @@
       "version": "2.4.0",
       "icon": "ph-thin ph-terminal-window",
       "status": "auth-failed",
+      "tested": true,
+      "canEnumerate": true,
       "lastTested": "1 hr ago",
       "errorDetail": "401 Unauthorized — token expired Tue 02:14 AM. Run `codex auth login`.",
       "models": [
@@ -480,6 +484,8 @@
       "version": "1.8.2",
       "icon": "ph-thin ph-terminal-window",
       "status": "auth-failed",
+      "tested": true,
+      "canEnumerate": true,
       "lastTested": "yesterday",
       "errorDetail": "Token expired. Re-auth via Cursor desktop app.",
       "models": [
@@ -495,6 +501,8 @@
       "version": "0.9.4",
       "icon": "ph-thin ph-terminal-window",
       "status": "ok",
+      "tested": true,
+      "canEnumerate": true,
       "lastTested": "3 min ago",
       "models": [
         "Default",
@@ -509,6 +517,8 @@
       "version": "—",
       "icon": "ph-thin ph-terminal-window",
       "status": "not-installed",
+      "tested": true,
+      "canEnumerate": true,
       "lastTested": "never",
       "errorDetail": "Not found on PATH. Install via `npm i -g @xai/grok-cli`.",
       "models": []

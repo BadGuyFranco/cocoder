@@ -39,9 +39,13 @@ export interface Persona {
   subAgents: SubAgent[]; headless?: boolean
 }
 export type CliStatus = 'ok' | 'auth-failed' | 'not-installed'
+export interface CliRunReadiness {
+  mechanism: string; flags: string[]; managesUserConfig: boolean; detail: string
+}
 export interface Cli {
   id: string; name: string; vendor: string; status: CliStatus
   version: string; lastTested: string; models: string[]; errorDetail?: string | null
+  tested: boolean; canEnumerate: boolean; modelsDetail?: string; runReadiness?: CliRunReadiness
 }
 export type DepStatus = 'ok' | 'not-installed'
 export interface Dependency {

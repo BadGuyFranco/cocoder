@@ -12,8 +12,9 @@ import type {
   RunDetail,
   RunEvent,
   PersonasResponse,
+  CliView,
 } from '../electron/ipc-contract.ts'
-import type { Workspace, Priority, Run, RunStatus, Persona, TranscriptLine, EvidenceItem, SubAgent } from './model.ts'
+import type { Workspace, Priority, Run, RunStatus, Persona, TranscriptLine, EvidenceItem, SubAgent, Cli } from './model.ts'
 
 // The pinned "Ad-hoc" row is a real daemon priority but the design renders it specially (a pinned row
 // holding many concurrent runs), so it is pulled OUT of the normal queue and its runs lose their
@@ -65,6 +66,47 @@ export function mapRunStatus(status: string): RunStatus {
 }
 
 const isActive = (s: RunStatus): boolean => s === 'running' || s === 'blocked'
+
+const CLI_META: Record<string, { name: string; vendor: string }> = {
+  claude: { name: 'Claude Code', vendor: 'Anthropic' },
+  codex: { name: 'Codex', vendor: 'OpenAI' },
+  'cursor-agent': { name: 'Cursor-agent', vendor: 'Cursor' },
+}
+
+// ── CLIs ── daemon probes/reporting → the renderer's design view-model.
+export function adaptCli(view: CliView): Cli {
+  const meta = CLI_META[view.id] ?? { name: humanize(view.id), vendor: '—' }
+  const status = !view.tested
+    ? 'not-installed'
+    : !view.install.ok
+      ? 'not-installed'
+      : !view.auth.ok
+        ? 'auth-failed'
+        : 'ok'
+  return {
+    id: view.id,
+    name: meta.name,
+    vendor: meta.vendor,
+    status,
+    version: '—',
+    lastTested: view.testedAt == null ? 'never' : fmtTime(view.testedAt),
+    models: ['Default', ...view.models.models],
+    canEnumerate: view.models.canEnumerate,
+    modelsDetail: view.models.detail,
+    runReadiness: {
+      mechanism: view.configManaged.mechanism,
+      flags: [...view.configManaged.flags],
+      managesUserConfig: view.configManaged.managesUserConfig,
+      detail: view.configManaged.detail,
+    },
+    tested: view.tested,
+    errorDetail: !view.tested ? null : !view.install.ok ? view.install.detail : !view.auth.ok ? view.auth.detail : null,
+  }
+}
+
+export function modelIsStale(cli: Cli | undefined, model: string): boolean {
+  return model !== '' && model !== 'Default' && cli !== undefined && cli.canEnumerate && !cli.models.includes(model)
+}
 
 // ── Workspaces (thin: id/name/path only — description/roots/role are owed; degrade gracefully) ──
 export function adaptWorkspace(w: DWorkspace): Workspace {

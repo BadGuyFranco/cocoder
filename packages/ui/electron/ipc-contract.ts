@@ -124,6 +124,36 @@ export interface PersonasResponse {
   readonly personas: readonly { id: string; label: string; role: string }[]
   readonly assignments: Record<string, PersonaAssignment>
 }
+export interface CliCheckView {
+  readonly ok: boolean
+  readonly detail: string
+}
+export interface CliModelsView {
+  readonly canEnumerate: boolean
+  readonly models: readonly string[]
+  readonly detail: string
+}
+export interface CliRunReadinessView {
+  readonly mechanism: string
+  readonly flags: readonly string[]
+  readonly managesUserConfig: boolean
+  readonly detail: string
+}
+export interface CliView {
+  readonly id: string
+  readonly tested: boolean
+  readonly testedAt: number | null
+  readonly install: CliCheckView
+  readonly auth: CliCheckView
+  readonly models: CliModelsView
+  readonly configManaged: CliRunReadinessView
+}
+export interface ClisResponse {
+  readonly clis: readonly CliView[]
+}
+export interface CliTestResponse {
+  readonly cli: CliView
+}
 
 // --- chat (slice 1 stub) ---
 export interface ChatMessage {

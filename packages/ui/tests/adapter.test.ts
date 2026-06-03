@@ -10,6 +10,8 @@ import {
   adaptRunSummary,
   adaptRunDetail,
   adaptPersonas,
+  adaptCli,
+  modelIsStale,
   applyOrder,
   eventToLine,
   evidenceFromDetail,
@@ -18,6 +20,7 @@ import {
   fmtTime,
   ADHOC_PRIORITY_ID,
 } from '../app/adapter.ts'
+import type { CliCheckView, CliModelsView, CliRunReadinessView, CliView } from '../electron/ipc-contract.ts'
 import workspacesFx from '../fixtures/workspaces.json'
 import prioritiesFx from '../fixtures/priorities.json'
 import personasFx from '../fixtures/personas.json'
@@ -36,6 +39,28 @@ const RUNS = runsFx as any
 const DETAIL = runDetailFx as any
 
 const priorityNames: Record<string, string> = Object.fromEntries(P.priorities.map((p: any) => [p.id, p.title]))
+
+type CliViewOverrides = {
+  id?: string
+  tested?: boolean
+  testedAt?: number | null
+  install?: Partial<CliCheckView>
+  auth?: Partial<CliCheckView>
+  models?: Partial<CliModelsView>
+  configManaged?: Partial<CliRunReadinessView>
+}
+
+function cliView(overrides: CliViewOverrides = {}): CliView {
+  return {
+    id: overrides.id ?? 'claude',
+    tested: overrides.tested ?? true,
+    testedAt: overrides.testedAt === undefined ? 1780153227239 : overrides.testedAt,
+    install: { ok: true, detail: 'installed', ...(overrides.install ?? {}) },
+    auth: { ok: true, detail: 'authenticated', ...(overrides.auth ?? {}) },
+    models: { canEnumerate: true, models: ['opus', 'sonnet'], detail: 'listed models', ...(overrides.models ?? {}) },
+    configManaged: { mechanism: 'env', flags: ['--model'], managesUserConfig: false, detail: 'ready', ...(overrides.configManaged ?? {}) },
+  }
+}
 
 describe('status mapping', () => {
   it('maps the four daemon statuses onto the design vocabulary; pending-scope-decision → blocked', () => {
@@ -169,5 +194,61 @@ describe('personas from the assignments map + roster', () => {
     // role is split off the long description
     expect(bob.role.length).toBeLessThan(bob.description.length + 1)
     expect(bob.subAgents).toEqual([])
+  })
+})
+
+describe('clis', () => {
+  it('maps a tested ok CLI, prepends Default, and formats lastTested via fmtTime', () => {
+    const cli = adaptCli(cliView())
+    expect(cli).toMatchObject({
+      id: 'claude',
+      name: 'Claude Code',
+      vendor: 'Anthropic',
+      status: 'ok',
+      version: '—',
+      lastTested: fmtTime(1780153227239),
+      tested: true,
+      canEnumerate: true,
+      modelsDetail: 'listed models',
+      errorDetail: null,
+    })
+    expect(cli.models).toEqual(['Default', 'opus', 'sonnet'])
+    expect(cli.runReadiness).toEqual({ mechanism: 'env', flags: ['--model'], managesUserConfig: false, detail: 'ready' })
+  })
+
+  it('maps install failure to not-installed with install detail', () => {
+    const cli = adaptCli(cliView({ install: { ok: false, detail: 'missing binary' }, auth: { ok: false, detail: 'not checked' } }))
+    expect(cli.status).toBe('not-installed')
+    expect(cli.errorDetail).toBe('missing binary')
+  })
+
+  it('maps auth failure to auth-failed with auth detail when install is ok', () => {
+    const cli = adaptCli(cliView({ auth: { ok: false, detail: 'login expired' } }))
+    expect(cli.status).toBe('auth-failed')
+    expect(cli.errorDetail).toBe('login expired')
+  })
+
+  it('keeps an untested CLI honest with no error detail and never lastTested', () => {
+    const cli = adaptCli(cliView({ tested: false, testedAt: null, install: { ok: false, detail: 'not probed' } }))
+    expect(cli.tested).toBe(false)
+    expect(cli.status).toBe('not-installed')
+    expect(cli.errorDetail).toBeNull()
+    expect(cli.lastTested).toBe('never')
+  })
+
+  it('maps non-enumerating CLIs to Default-only when no models are reported', () => {
+    const cli = adaptCli(cliView({ models: { canEnumerate: false, models: [], detail: 'free text only' } }))
+    expect(cli.canEnumerate).toBe(false)
+    expect(cli.models).toEqual(['Default'])
+    expect(cli.modelsDetail).toBe('free text only')
+  })
+
+  it('detects stale models only when an enumerated list can prove the model is gone', () => {
+    const cli = adaptCli(cliView())
+    const nonEnumerating = adaptCli(cliView({ models: { canEnumerate: false, models: [], detail: 'free text only' } }))
+    expect(modelIsStale(cli, 'haiku')).toBe(true)
+    expect(modelIsStale(cli, 'Default')).toBe(false)
+    expect(modelIsStale(undefined, 'haiku')).toBe(false)
+    expect(modelIsStale(nonEnumerating, 'haiku')).toBe(false)
   })
 })
