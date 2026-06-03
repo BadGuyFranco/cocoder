@@ -259,31 +259,31 @@ describe('Oz mutations + lifecycle', () => {
     expect(ok.json.runId).toMatch(/^run_/)
   })
 
-  test('POST /runs records daemon-stale once when the daemon boot sha differs from current HEAD', async () => {
+  test('REFUSES to launch on a stale daemon (425, no run created) — ADR-0016 incident fix', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     try {
-      await startServer(fakeGit([], ['boot-sha', 'head-sha']))
+      await startServer(fakeGit([], ['boot-sha', 'head-sha'])) // boot reads boot-sha; launch reads head-sha
+      const before = store.listRuns().length
       const r = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
-      expect(r.status).toBe(202)
-      expect(r.json.runId).toMatch(/^run_/)
-
-      const events = store.listEvents(r.json.runId).filter((e) => e.type === 'daemon-stale')
-      expect(events).toHaveLength(1)
-      expect(events[0]?.data).toEqual({ bootSha: 'boot-sha', headSha: 'head-sha' })
-      expect(warn).toHaveBeenCalledWith(
-        '[oz] STALE DAEMON: running code from boot-sha but repo HEAD is head-sha — restart (scripts/oz.sh restart) to pick up changes',
-      )
+      expect(r.status).toBe(425) // refused BEFORE spawning anything (no whole-run-then-abort, no hijackable session)
+      expect(r.json.stale).toBe(true)
+      expect(r.json.error).toMatch(/stale/i)
+      expect(r.json.error).toMatch(/do NOT restart from inside a run or agent pane/)
+      expect(store.listRuns().length).toBe(before) // no run row created
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('STALE DAEMON: refusing launch'))
+      // The in-flight reservation is released so a post-restart re-launch isn't blocked.
+      const r2 = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
+      expect(r2.status).toBe(425) // still stale (same fake), but NOT a 409 in-flight — the slot was freed
     } finally {
       warn.mockRestore()
     }
   })
 
-  test('POST /runs skips daemon-stale when the daemon boot sha matches current HEAD', async () => {
+  test('launches normally when the daemon boot sha matches current HEAD (not stale)', async () => {
     await startServer(fakeGit([], ['same-sha']))
     const r = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
     expect(r.status).toBe(202)
     expect(r.json.runId).toMatch(/^run_/)
-    expect(store.listEvents(r.json.runId).filter((e) => e.type === 'daemon-stale')).toEqual([])
   })
 
   test('GET /clis returns static config-managed state before any CLI test', async () => {

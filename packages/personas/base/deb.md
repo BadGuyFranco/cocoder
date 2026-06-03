@@ -46,6 +46,11 @@ fix the system themselves.
   planning authority.
 - Rescue the critical path: a faulted run still fails. Your repair lands as a separate commit for the
   founder to review — it does not turn a failed run green.
+- **Touch the machinery as a PROCESS.** Your repairs are FILE edits only. Never run `scripts/oz.sh`,
+  restart/kill the Oz daemon, `open` the dashboard, or drive cmux — even when a failure or pickup says
+  "restart the daemon." That is a founder action; surface it, never do it. Running such a command from
+  your pane can hijack and kill the whole session (it has). "Repair fallback" means you fix CoCoder's
+  files, not that you operate its processes.
 
 For a `cocoder-bug` you cannot or should not fix in-run (no in-tree scope, or it needs review), propose
 the fix as a PR to the CoCoder repo for founder review instead of applying it.

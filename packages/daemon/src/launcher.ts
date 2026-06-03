@@ -95,19 +95,6 @@ async function headShaOrUnknown(ctx: OzContext, cwd: string): Promise<string> {
   }
 }
 
-function warnIfDaemonStale(ctx: OzContext, runId: string, headSha: string): void {
-  if (ctx.bootSha === 'unknown' || headSha === 'unknown' || headSha === ctx.bootSha) return
-  try {
-    ctx.store.recordEvent({ runId, type: 'daemon-stale', data: { bootSha: ctx.bootSha, headSha } })
-    console.warn(
-      `[oz] STALE DAEMON: running code from ${ctx.bootSha} but repo HEAD is ${headSha} — restart (scripts/oz.sh restart) to pick up changes`,
-    )
-    void appendAudit(ctx.cocoderHome, { action: 'daemon-stale', runId, bootSha: ctx.bootSha, headSha })
-  } catch {
-    /* loud if possible, but never block a launch */
-  }
-}
-
 export interface LaunchResult {
   readonly status: number
   readonly body: Record<string, unknown>
@@ -129,10 +116,28 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
     ctx.inFlight.delete(workspaceId)
     return { status: 400, body: { error: err instanceof Error ? err.message : String(err) } }
   }
+  // Fail-fast on a STALE daemon (serving code older than repo HEAD) BEFORE creating a run or spawning any
+  // agents. Earned from a live incident: a stale daemon used to run a whole build that could only abort at
+  // wrap-up, leaving a "restart the daemon" pickup that an idle agent (Deb) then acted on — running
+  // `scripts/oz.sh restart` from inside its cmux pane, whose `open <dashboard-url>` hijacked the run's
+  // workspace and replaced the agent panes. Refuse the launch instead: a FOUNDER restarts + re-launches;
+  // nothing is spawned, so there is no session to hijack and no wasted build.
   const headNow = await headShaOrUnknown(ctx, input.workspace.path)
-  input = {
-    ...input,
-    daemonStale: ctx.bootSha !== 'unknown' && headNow !== 'unknown' && headNow !== ctx.bootSha,
+  if (ctx.bootSha !== 'unknown' && headNow !== 'unknown' && headNow !== ctx.bootSha) {
+    ctx.inFlight.delete(workspaceId)
+    console.warn(
+      `[oz] STALE DAEMON: refusing launch — serving ${ctx.bootSha.slice(0, 8)} but repo HEAD is ${headNow.slice(0, 8)}. Restart (scripts/oz.sh restart) and re-launch.`,
+    )
+    void appendAudit(ctx.cocoderHome, { action: 'launch-refused-stale', workspaceId, priorityId, bootSha: ctx.bootSha, headSha: headNow })
+    return {
+      status: 425,
+      body: {
+        error: `Oz daemon is stale (serving ${ctx.bootSha.slice(0, 8)}, repo HEAD is ${headNow.slice(0, 8)}). A founder must restart it (scripts/oz.sh restart) and re-launch — do NOT restart from inside a run or agent pane.`,
+        stale: true,
+        bootSha: ctx.bootSha,
+        headSha: headNow,
+      },
+    }
   }
 
   let runId: string | null = null
@@ -146,7 +151,6 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
     onRunCreated: (run) => {
       runId = run.id
       ctx.inFlight.set(workspaceId, run.id)
-      warnIfDaemonStale(ctx, run.id, headNow)
     },
   }
 

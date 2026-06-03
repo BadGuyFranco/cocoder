@@ -292,7 +292,7 @@ describe('runRun (multi-atom loop)', () => {
           return { exitCode: 0, output: 'PLAY CLOSEOUT\n' }
         },
       }),
-      { ...input, runsRoot, wrapPlay, wrapPlayAssignment, daemonStale: false },
+      { ...input, runsRoot, wrapPlay, wrapPlayAssignment },
     )
 
     expect(adapterCalls).toContain('cursor-agent')
@@ -318,37 +318,10 @@ describe('runRun (multi-atom loop)', () => {
     expect((wrap?.data as { play?: string }).play).toBe('wrap-up')
   })
 
-  test('stale daemon aborts wrap-up loudly without dispatching a Play or using Oscar pickup', async () => {
-    const store = openRunStore(':memory:')
-    const pickupWrites: string[] = []
-    const adapterCalls: string[] = []
-
-    const result = await runRun(
-      baseDeps({
-        store,
-        io: fakeIO({ directives: [wrapup('normal-looking closeout')], pickupWrites }),
-        getAdapter: (cli) => {
-          adapterCalls.push(cli)
-          return okAdapter
-        },
-      }),
-      { ...input, wrapPlay, wrapPlayAssignment, daemonStale: true },
-    )
-
-    expect(result.status).toBe('failed')
-    expect(result.atoms).toBe(0)
-    expect(adapterCalls).not.toContain('cursor-agent')
-    expect(pickupWrites).toHaveLength(1)
-    expect(pickupWrites[0]).toMatch(/^⚠️ STALE DAEMON/)
-    expect(pickupWrites[0]).not.toContain('normal-looking closeout')
-    const events = store.listEvents(result.runId)
-    expect(events.some((e) => e.type === 'wrapup')).toBe(false)
-    const abort = events.find((e) => e.type === 'wrapup-stale-abort')
-    expect(abort?.data).toEqual({ atoms: 0 })
-    const end = events.find((e) => e.type === 'run-end')
-    expect((end?.data as { status?: string }).status).toBe('failed')
-    expect(store.getRun(result.runId)?.status).toBe('failed')
-  })
+  // NOTE: stale-daemon handling moved OUT of the runner (ADR-0016 incident fix). A stale daemon is now
+  // refused at the daemon LAUNCHER before any run is created — see packages/daemon/tests/mutations.test.ts
+  // ("refuses to launch on a stale daemon"). The runner no longer knows about staleness (the CLI
+  // standalone path always loads fresh, so it can never be stale).
 
   test('falls back to Oscar pickup without dispatching a Play when no wrap Play is configured', async () => {
     const store = openRunStore(':memory:')

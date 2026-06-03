@@ -98,8 +98,6 @@ export interface RunInput {
    *  reports as `escalate` aborts the merge and surfaces to the founder rather than being guessed. */
   readonly mergeConflictPlay?: Play
   readonly mergeConflictAssignment?: PlayAssignment
-  /** Daemon launch-time guard: true when the long-lived daemon is serving code older than repo HEAD. */
-  readonly daemonStale?: boolean
 }
 
 export interface RunResult {
@@ -567,7 +565,6 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const outOfScope: string[] = []
   let selfCommitted = false
   let pickup: string | null = null
-  let terminalStatus: RunStatus | null = null
   let n = 0
   let consecutiveRejects = 0
 
@@ -588,14 +585,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     }
 
     if (directive.kind === 'wrapup') {
-      if (input.daemonStale === true) {
-        pickup =
-          '⚠️ STALE DAEMON - wrap-up did NOT run on current code. NO valid closeout/proof was produced. ' +
-          'Restart the daemon (scripts/oz.sh restart) and re-run this priority.'
-        terminalStatus = 'failed'
-        store.recordEvent({ runId: run.id, type: 'wrapup-stale-abort', data: { atoms: n } })
-        log(`wrap-up aborted after ${n} atom(s): stale daemon`)
-      } else if (input.wrapPlay && input.wrapPlayAssignment) {
+      if (input.wrapPlay && input.wrapPlayAssignment) {
         const headBeforeWrap = await git.headSha(worktreePath)
         const task =
           `Run ${run.id} on priority ${priority.id}. ${n} atom(s) were delegated; commits so far: ${committedShas.join(', ') || 'none'}.\n\n` +
@@ -757,7 +747,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
   // ── Wrap-up: pickup brief (continuation; F8) + run record ───────────────────────────────────────
   const pickupPath = pickup ? await io.writePickup(runDir, pickup) : null
-  const status: RunStatus = terminalStatus ?? (outOfScope.length > 0 ? 'pending-scope-decision' : 'completed')
+  const status: RunStatus = outOfScope.length > 0 ? 'pending-scope-decision' : 'completed'
   store.setRunStatus(run.id, status)
 
   // ── Integrate: bring trunk in if it moved (§4), VERIFY the merged tree (§3), THEN ff onto trunk ──────

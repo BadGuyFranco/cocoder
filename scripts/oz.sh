@@ -33,7 +33,13 @@ start() {
   for _ in 1 2 3 4 5 6 7 8 9 10; do
     if curl -fsS "${URL%/}/health" >/dev/null 2>&1; then
       echo "Oz running on ${URL} (pid $(cat "${PIDFILE}"), log: local/oz.log)"
-      command -v open >/dev/null 2>&1 && open "${URL}" || true
+      echo "Dashboard: ${URL}"
+      # Auto-open is OPT-IN (OZ_OPEN=1), never default. `open <url>` is routed to cmux on this host, which
+      # spawns a dashboard browser surface in the CURRENTLY-FOCUSED cmux workspace — so running oz.sh from
+      # inside a run's agent pane would REPLACE the agent panes with the dashboard and kill the session
+      # (observed incident). The founder opens the printed URL himself, or sets OZ_OPEN=1 from his own
+      # terminal. An agent must never run this script (see persona standards).
+      if [ "${OZ_OPEN:-0}" = "1" ]; then command -v open >/dev/null 2>&1 && open "${URL}" || true; fi
       return 0
     fi
     sleep 0.5
