@@ -7,8 +7,9 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { CHANNELS } from './ipc-contract.ts'
 import { daemonGet, daemonPost, daemonPut, health } from './daemon-client.ts'
-import { initStore, getSettings, setSettings, getPriorityOrder, setPriorityOrder } from './store.ts'
+import { initStore, getPriorityOrder, setPriorityOrder } from './store.ts'
 import { ozReply } from './chat.ts'
+import { getSettingsViaDaemon, setSettingsViaDaemon } from './settings-sync.ts'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 
@@ -20,8 +21,8 @@ function registerIpc(): void {
   ipcMain.handle(CHANNELS.chatSend, (_e, _ws: string, text: string) => ozReply(text, Date.now()))
   ipcMain.handle(CHANNELS.prioritiesReorder, (_e, ws: string, order: string[]) => setPriorityOrder(ws, order))
   ipcMain.handle(CHANNELS.prioritiesOrder, (_e, ws: string) => getPriorityOrder(ws))
-  ipcMain.handle(CHANNELS.settingsGet, () => getSettings())
-  ipcMain.handle(CHANNELS.settingsSet, (_e, patch) => setSettings(patch))
+  ipcMain.handle(CHANNELS.settingsGet, () => getSettingsViaDaemon())
+  ipcMain.handle(CHANNELS.settingsSet, (_e, patch) => setSettingsViaDaemon(patch))
 }
 
 function createWindow(): BrowserWindow {

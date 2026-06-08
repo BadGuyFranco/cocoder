@@ -507,6 +507,20 @@ describe('Oz mutations + lifecycle', () => {
     expect(after.personas.oscar.model).toBe('opus')
   })
 
+  test('PUT /settings merges a partial patch, persists atomically, and round-trips via GET', async () => {
+    await startServer()
+
+    const put = await call(oz!, 'PUT', '/settings', { body: { pollIntervalMs: 5000, ignored: true } })
+
+    expect(put.status).toBe(200)
+    expect(put.json).toEqual({ pollIntervalMs: 5000, defaultWorkspaceId: null })
+    const persisted = JSON.parse(await readFile(join(home, 'local', 'settings.json'), 'utf8'))
+    expect(persisted).toEqual({ pollIntervalMs: 5000, defaultWorkspaceId: null })
+    const get = await call(oz!, 'GET', '/settings')
+    expect(get.status).toBe(200)
+    expect(get.json).toEqual(put.json)
+  })
+
   test('POST /daemon/restart → 202 and triggers the (injected) restart action when idle', async () => {
     let restarts = 0
     oz = await createOzServer({
@@ -569,6 +583,12 @@ describe('Oz mutations + lifecycle', () => {
   test('PUT assignments → 403 without a CSRF token (mutation gate)', async () => {
     await startServer()
     const r = await call(oz!, 'PUT', '/workspaces/cocoder/personas/assignments', { csrf: false, body: { personas: {} } })
+    expect(r.status).toBe(403)
+  })
+
+  test('PUT /settings → 403 without a CSRF token (mutation gate)', async () => {
+    await startServer()
+    const r = await call(oz!, 'PUT', '/settings', { csrf: false, body: { pollIntervalMs: 5000 } })
     expect(r.status).toBe(403)
   })
 

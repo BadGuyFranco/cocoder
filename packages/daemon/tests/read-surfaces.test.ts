@@ -136,6 +136,12 @@ describe('Oz read surfaces', () => {
     expect(r.json.workspaces).toEqual([{ id: 'cocoder', name: 'CoCoder', path: home }])
   })
 
+  test('GET /settings returns defaults when no settings file exists', async () => {
+    const r = await get(oz!, '/settings')
+    expect(r.status).toBe(200)
+    expect(r.json).toEqual({ pollIntervalMs: 2500, defaultWorkspaceId: null })
+  })
+
   test('GET /workspaces/:id/priorities skips AGENTS.md (no frontmatter) without throwing', async () => {
     const r = await get(oz!, '/workspaces/cocoder/priorities')
     expect(r.status).toBe(200)

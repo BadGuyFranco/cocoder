@@ -13,6 +13,7 @@ import { readRunDir } from './rundir.js'
 import { appendAudit } from './audit.js'
 import { listClis, testCli } from './clis.js'
 import { launchRun, requestDaemonRestart, showRun, teardownRun } from './launcher.js'
+import { mergeWriteSettings, readSettings } from './settings.js'
 
 export type { OzContext } from './context.js'
 
@@ -163,6 +164,10 @@ export async function dispatchReads(ctx: OzContext, method: string, pathname: st
     sendJson(res, 200, listClis(ctx))
     return true
   }
+  if (method === 'GET' && pathname === '/settings') {
+    sendJson(res, 200, await readSettings(ctx.cocoderHome))
+    return true
+  }
   if (method === 'GET' && seg[0] === 'workspaces' && seg.length === 3 && seg[2] === 'priorities') {
     await listPriorities(ctx, res, decodeURIComponent(seg[1]!))
     return true
@@ -230,6 +235,16 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
   if (method === 'POST' && pathname === '/daemon/restart') {
     const { status, body: out } = await requestDaemonRestart(ctx)
     return sendJson(res, status, out), true
+  }
+  if (method === 'PUT' && pathname === '/settings') {
+    let body: unknown
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      return sendJson(res, 400, { error: 'invalid JSON body' }), true
+    }
+    sendJson(res, 200, await mergeWriteSettings(ctx.cocoderHome, body))
+    return true
   }
   if (method === 'POST' && seg[0] === 'clis' && seg.length === 3 && seg[2] === 'test') {
     const { status, body: out } = await testCli(ctx, decodeURIComponent(seg[1]!))
