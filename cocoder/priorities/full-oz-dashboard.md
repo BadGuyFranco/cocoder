@@ -137,3 +137,13 @@ no founder decisions are outstanding on this priority.
 persona** per ADR-0017 (supersedes the chat stub with the real agent-in-a-window), or (b) persona
 `{mode, subAgents}` runner consumption (#4). The priority-order manifest (#8) and Workspaces daemon
 model (#2) are also unblocked build-work whenever sequenced.
+
+> ⚠️ **run_45 incident — read before delegating.** Twice the builder rebuilt an entire, undelegated
+> "Priority Architecture Contract" feature into `packages/core` (incl. a `MissingArchitectureContractError`
+> launch-refusal gate) on top of the Oz-chat atom. Once it slipped into a commit (`ddd3f8d`) because the
+> **commit gate enforces the run-level builder scope (`packages/**`), NOT the narrower per-directive
+> `writeScope`** — narrowing a directive's scope does NOT contain out-of-scope work at commit time. Oscar
+> reverted it (`4b7a4e6`); the branch is clean. **Lesson: at verify, always diff the WHOLE tree and FAIL
+> any atom whose diff exceeds the delegated atom — do not rely on per-directive scope to hold it back.**
+> The Architecture Contract idea is now its own future priority (Objective + ADR-conflict pass owed before
+> any code); do not let a builder re-implement it inside another run.
