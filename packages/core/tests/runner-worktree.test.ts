@@ -180,6 +180,8 @@ describe('runRun worktree isolation + VERIFIED auto-merge (ADR-0015, live git)',
     const { result, store } = await runScenario('{"verdict":"fail","reason":"a test is red"}')
 
     expect(await g(home, ['rev-parse', 'HEAD'])).toBe(trunkBefore) // trunk NOT advanced
+    expect(result.status).toBe('pending-landing')
+    expect(store.getRun(result.runId)?.status).toBe('pending-landing')
     expect(store.getRun(result.runId)?.integrationStatus).toBe('escalated')
     expect(store.listCommitLinks(result.runId).some((l) => l.kind === 'merge')).toBe(false) // never merged
     expect(store.listEvents(result.runId).some((e) => e.type === 'integration-escalated')).toBe(true)
@@ -190,6 +192,8 @@ describe('runRun worktree isolation + VERIFIED auto-merge (ADR-0015, live git)',
     const { result, store } = await runScenario('the verifier crashed and printed only this') // no JSON verdict
 
     expect(await g(home, ['rev-parse', 'HEAD'])).toBe(trunkBefore) // a non-cooperating verifier cannot land trunk
+    expect(result.status).toBe('pending-landing')
+    expect(store.getRun(result.runId)?.status).toBe('pending-landing')
     expect(store.getRun(result.runId)?.integrationStatus).toBe('escalated')
     expect(store.listCommitLinks(result.runId).some((l) => l.kind === 'merge')).toBe(false)
   })
@@ -201,6 +205,8 @@ describe('runRun worktree isolation + VERIFIED auto-merge (ADR-0015, live git)',
     const { result, store } = await runScenario('{"verdict":"pass","reason":"green"}', undefined, throwingGit)
 
     // The catch must leave a TERMINAL status — never stranded at 'verifying'/'resolving'.
+    expect(result.status).toBe('pending-landing')
+    expect(store.getRun(result.runId)?.status).toBe('pending-landing')
     expect(store.getRun(result.runId)?.integrationStatus).toBe('escalated')
     expect(await g(home, ['rev-parse', 'HEAD'])).toBe(trunkBefore) // nothing landed
     expect(store.listEvents(result.runId).some((e) => e.type === 'integration-failed')).toBe(true)
@@ -213,6 +219,8 @@ describe('runRun worktree isolation + VERIFIED auto-merge (ADR-0015, live git)',
       await g(home, ['checkout', '-q', '-b', 'sidequest'])
     })
 
+    expect(result.status).toBe('pending-landing')
+    expect(store.getRun(result.runId)?.status).toBe('pending-landing')
     expect(store.getRun(result.runId)?.integrationStatus).toBe('escalated') // not landed
     expect(store.listCommitLinks(result.runId).some((l) => l.kind === 'merge')).toBe(false)
     expect(await g(home, ['rev-parse', 'trunk'])).toBe(trunkTip) // the original trunk branch is untouched

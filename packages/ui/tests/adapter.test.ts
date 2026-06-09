@@ -63,10 +63,12 @@ function cliView(overrides: CliViewOverrides = {}): CliView {
 }
 
 describe('status mapping', () => {
-  it('maps the four daemon statuses onto the design vocabulary; pending-scope-decision → blocked', () => {
+  it('maps daemon statuses onto the design vocabulary; pending-scope-decision → blocked, pending-landing → not-landed', () => {
     expect(mapRunStatus('running')).toBe('running')
     expect(mapRunStatus('completed')).toBe('complete')
+    expect(mapRunStatus('completed', 'escalated')).toBe('not-landed')
     expect(mapRunStatus('pending-scope-decision')).toBe('blocked')
+    expect(mapRunStatus('pending-landing')).toBe('not-landed')
     expect(mapRunStatus('failed')).toBe('failed')
     expect(mapRunStatus('weird-unknown')).toBe('stopped')
   })
@@ -119,6 +121,15 @@ describe('priorities joined with runs', () => {
     const dormant = out.find((p) => !runs.some((r) => r.priorityId === p.id && (r.status === 'running' || r.status === 'blocked')))
     expect(dormant!.status).toBe('ready')
   })
+  it('keeps a not-landed run attached to its priority until integration is resolved', () => {
+    const priorities = [{ id: 'p-not-landed', title: 'Needs landing', goal: 'g', scopeNarrowing: null }]
+    const runs = adaptRuns(
+      [{ id: 'run_not_landed', workspaceId: 'cocoder', priorityId: 'p-not-landed', status: 'pending-landing', integrationStatus: 'escalated', createdAt: 1780153227239, endedAt: 1780153229000 }],
+      { 'p-not-landed': 'Needs landing' },
+    )
+    const out = adaptPriorities(priorities, runs)
+    expect(out[0]).toMatchObject({ runId: 'run_not_landed', status: 'not-landed' })
+  })
 })
 
 describe('runs list', () => {
@@ -146,6 +157,8 @@ describe('transcript from events', () => {
     }
     const stale = DETAIL.events.find((e: any) => e.type === 'daemon-stale')
     if (stale) expect(eventToLine(stale).flag).toBe('decision')
+    expect(eventToLine({ id: 'e', runId: 'r', type: 'integration-escalated', data: { reason: 'verify failed' }, at: 0 }).body).toContain('Not landed')
+    expect(eventToLine({ id: 'e', runId: 'r', type: 'integration-escalated', data: { reason: 'verify failed' }, at: 0 }).flag).toBe('decision')
   })
 })
 

@@ -50,14 +50,17 @@ export function summarize(goal: string | null | undefined): string {
 
 // daemon run status → design run status. `pending-scope-decision` IS the design's "blocked / needs a
 // decision" (the decision-callout case). `stopped` has no daemon equivalent yet; unknowns degrade to it.
-export function mapRunStatus(status: string): RunStatus {
+export function mapRunStatus(status: string, integrationStatus?: string | null): RunStatus {
   switch (status) {
     case 'running':
       return 'running'
     case 'completed':
+      if (integrationStatus && integrationStatus !== 'merged') return 'not-landed'
       return 'complete'
     case 'pending-scope-decision':
       return 'blocked'
+    case 'pending-landing':
+      return 'not-landed'
     case 'failed':
       return 'failed'
     default:
@@ -65,7 +68,7 @@ export function mapRunStatus(status: string): RunStatus {
   }
 }
 
-const isActive = (s: RunStatus): boolean => s === 'running' || s === 'blocked'
+const isActive = (s: RunStatus): boolean => s === 'running' || s === 'blocked' || s === 'not-landed'
 
 const CLI_META: Record<string, { name: string; vendor: string }> = {
   claude: { name: 'Claude Code', vendor: 'Anthropic' },
@@ -163,6 +166,8 @@ function summaryLastEvent(status: RunStatus): string | undefined {
       return 'Running…'
     case 'blocked':
       return 'Paused — needs a scope decision'
+    case 'not-landed':
+      return 'Verified but not landed in the main checkout'
     case 'failed':
       return 'Run failed'
     default:
@@ -172,7 +177,7 @@ function summaryLastEvent(status: RunStatus): string | undefined {
 
 // ── Runs (list) ── only id/status/priority/timestamps are known here; personas/transcript come from detail.
 export function adaptRunSummary(r: RunSummary, priorityNames: Record<string, string>): Run {
-  const status = mapRunStatus(r.status)
+  const status = mapRunStatus(r.status, r.integrationStatus)
   const adhoc = r.priorityId === ADHOC_PRIORITY_ID
   return {
     id: r.id,
@@ -193,7 +198,7 @@ export function adaptRuns(runs: readonly RunSummary[], priorityNames: Record<str
 
 // ── Transcript ── every event → a humanized line (never raw JSON). role = the persona if the event has
 // one, else "system"; attention events carry flag:'decision' (used by callout styling).
-const DECISION_EVENTS = new Set(['out-of-scope', 'run-error', 'verify-fail', 'wrapup-stale-abort', 'daemon-stale'])
+const DECISION_EVENTS = new Set(['out-of-scope', 'run-error', 'verify-fail', 'wrapup-stale-abort', 'daemon-stale', 'integration-escalated', 'integration-failed'])
 
 export function eventToLine(e: RunEvent): TranscriptLine {
   const d = (e.data ?? {}) as Record<string, unknown>
@@ -247,7 +252,16 @@ export function eventToLine(e: RunEvent): TranscriptLine {
       body = '⚠️ Wrap-up aborted — daemon stale; no closeout produced.'
       break
     case 'run-end':
-      body = `Run ended — status ${str('status')}.`
+      body = `Run ended — status ${str('status')}${str('integrationStatus') ? `; integration ${str('integrationStatus')}` : ''}.`
+      break
+    case 'integrated':
+      body = `Integrated onto trunk — ${shortSha(str('mergeSha'))}.`
+      break
+    case 'integration-escalated':
+      body = `⚠️ Not landed${str('reason') ? ` — ${trunc(str('reason'), 180)}` : ''}.`
+      break
+    case 'integration-failed':
+      body = `⚠️ Integration failed${str('reason') ? ` — ${trunc(str('reason'), 180)}` : ''}.`
       break
     case 'run-error':
       body = `Run error — ${trunc(str('message'), 200)}`

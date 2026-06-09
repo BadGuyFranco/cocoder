@@ -126,9 +126,9 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    Plays (`documentation`, `code-review`, Quinn's `electron-test`, refactoring the ad-hoc Oz test scripts
    out of tech debt), and extends the ADR-0012 base/delta model to Plays. Unblocked by `plays-mechanism`.
 3. `full-oz-dashboard` — the v1-designed control plane, earned in slices; the road to feature-complete
-   (and where priority ordering eventually lands). **Partly done / now unblocked** — its tier-3 oversight
-   reuses the monitor primitive `oscar-orchestrates-bob` built, and reconciles with `deb` (Deb writes
-   faults, Oz reads).
+   (and where priority ordering eventually lands). **In progress / continue** — the Electron dashboard
+   is live against existing daemon endpoints; remaining work is new daemon surfaces tracked in the
+   priority, starting with the Oz chat command-interface decision and workspace CRUD role-model decision.
 4. `new-primary-root` (**plan-first**) — onboarding Play for a brand-new repo: scaffolds the stub
    `cocoder/` folder and seeds the *"Analyze Primary Root"* first priority. A seam (D1) → its first
    deliverable is a **founder Q&A + an ADR**, not code. The concrete form of Phase 5 ("first external repo").

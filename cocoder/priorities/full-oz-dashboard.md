@@ -29,9 +29,6 @@ mutations, drag-reorder seam) plus CLI list/test consumption are **merged to tru
 was the merge-base). **Not archive-ready** — seven owed surfaces remain; two blocked on founder design
 decisions (see below).
 
-> **Founder note:** the rebuild [`PLAYBOOK.md`](../rebuild/PLAYBOOK.md) "Priority roadmap" line for this
-> priority still reads "partly done / now unblocked" without reflecting trunk merge — update when convenient.
->
 > History worth recording: a first pass mistakenly built from `docs/oz-design-brief.md` (the *input
 > brief* that was pasted into claude.ai/design), not the founder's actual **design output**. It was then
 > **rebuilt** against the real v1 prototype, now preserved in-repo at **`packages/ui/design-ref/`** —
@@ -97,6 +94,11 @@ mechanical infra (Settings was the last clean infra slice).
 | 8 | Priority create + reorder | Source-of-truth migration (ordering off `backlog/` + PLAYBOOK into Oz/DB). |
 
 ### Founder judgment questions (start next session here)
+
+**Fresh-session pickup (2026-06-09):** the orchestration repair around isolated worktrees is landed in
+main: a verified-but-not-landed run now surfaces as `pending-landing` / **Not landed**, and Deb's
+dogfood repair authority is no longer constrained by a hardcoded machinery path fence. Do not restart
+that repair in the next Oz session. Start from the remaining Oz product slice below.
 
 **Q1 (marquee):** Oz chat = in-daemon LLM agent (needs new ADR) vs bounded command interface
 (shippable now within existing security posture)? Oscar recommends bounded interface; full agent deferred

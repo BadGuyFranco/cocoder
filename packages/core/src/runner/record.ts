@@ -1,7 +1,7 @@
 // Run-record projection (ADR-0003): a human-readable receipt GENERATED from the DB rows.
 // Write-once, never read back as truth — a rendering, not a source.
 import type { Priority } from '../priorities/index.js'
-import type { RunStore, Workspace } from '../store/index.js'
+import { isFullyLanded, type RunStore, type Workspace } from '../store/index.js'
 
 const ts = (ms: number | null): string => (ms === null ? '—' : new Date(ms).toISOString())
 
@@ -22,6 +22,11 @@ export function renderRunRecord(
   lines.push(`- **Workspace:** ${meta.workspace.name} (\`${meta.workspace.id}\`) — ${meta.workspace.path}`)
   lines.push(`- **Priority:** ${meta.priority.title} (\`${run.priorityId}\`)`)
   lines.push(`- **Status:** ${run.status}`)
+  lines.push(`- **Integration:** ${run.integrationStatus}`)
+  lines.push(`- **Landed on main checkout/trunk:** ${isFullyLanded(run) ? 'yes' : 'no'}`)
+  if (!isFullyLanded(run)) {
+    lines.push(`- **Disposition:** work remains on run branch \`${run.runBranch ?? 'n/a'}\` in \`${run.worktreePath ?? 'n/a'}\``)
+  }
   lines.push(`- **Started:** ${ts(run.createdAt)}  ·  **Ended:** ${ts(run.endedAt)}`, '')
 
   lines.push('## Sessions', '')

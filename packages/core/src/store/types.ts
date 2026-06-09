@@ -3,18 +3,19 @@
 // or a daemon-served conn later) is swappable. Governance is referenced by stable id
 // (workspaceId, priorityId, persona) — never copied (the F1/F4 rule).
 
-export type RunStatus = 'running' | 'completed' | 'pending-scope-decision' | 'failed'
+export type RunStatus = 'running' | 'completed' | 'pending-scope-decision' | 'pending-landing' | 'failed'
 export type WorkItemStatus = 'open' | 'done' | 'abandoned'
 
 // The branch→trunk integration sub-lifecycle (ADR-0015 §6). ORTHOGONAL to RunStatus:
-// RunStatus is authoritative for "is the run process done" (running → completed/failed/…);
-// integrationStatus tracks where the run's branch is on its way to trunk. A run is only
-// FULLY landed (its work is on the shipped line) when BOTH agree — see isFullyLanded().
+// RunStatus is authoritative for the founder-facing disposition. `completed` means the accepted
+// work is visible on trunk/main; integrationStatus proves how it landed. If atom verification
+// passes but branch→trunk integration escalates, RunStatus is `pending-landing` — never completed.
 //   pending    — branch created, not yet integrated (the default for every run + all legacy rows)
 //   resolving  — a non-fast-forward merge is being resolved by the merge-conflict Play
 //   verifying  — the merged tree is in the whole-tree integration verify (§3)
 //   merged     — branch landed on trunk (verified)
-//   escalated  — integration needs founder attention (semantic divergence, or verify fail-closed)
+//   escalated  — integration needs founder attention (semantic divergence, or verify fail-closed);
+//                implies RunStatus `pending-landing`, never completed.
 export type IntegrationStatus = 'pending' | 'resolving' | 'verifying' | 'merged' | 'escalated'
 
 // A commit_link row discriminator (ADR-0015 §6): an ordinary in-scope atom commit, or the

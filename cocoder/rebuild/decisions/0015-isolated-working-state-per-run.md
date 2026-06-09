@@ -65,6 +65,12 @@ from — must be proven as a whole, not assumed. **Required on both** the fast-f
 post-conflict path: trunk is never landed unverified (F11 — no bypassable gate masquerading as a
 guarantee). On verify-fail, the run does not land; it escalates.
 
+Founder-facing completion is tied to that landing, not just to atom verification. `completed` is
+reserved for work that is visible on trunk/main. If the atoms verify but integration escalates, the run
+status is `pending-landing`; Oz shows **Not landed** and keeps the run attached to its priority until
+the landing question is resolved. This prevents isolated worktree success from being mistaken for a
+completed priority in the main checkout.
+
 ### 4. The `merge-conflict` Play (built now)
 When the merge is not a clean fast-forward (trunk advanced — founder edited trunk, or a later run), the
 runner dispatches the **`merge-conflict` Play** ([0005](./0005-personas-and-subtasks.md) registry) on

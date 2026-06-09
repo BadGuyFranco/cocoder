@@ -747,7 +747,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
   // ── Wrap-up: pickup brief (continuation; F8) + run record ───────────────────────────────────────
   const pickupPath = pickup ? await io.writePickup(runDir, pickup) : null
-  const status: RunStatus = outOfScope.length > 0 ? 'pending-scope-decision' : 'completed'
+  let status: RunStatus = outOfScope.length > 0 ? 'pending-scope-decision' : 'completed'
   store.setRunStatus(run.id, status)
 
   // ── Integrate: bring trunk in if it moved (§4), VERIFY the merged tree (§3), THEN ff onto trunk ──────
@@ -828,6 +828,10 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       store.recordEvent({ runId: run.id, type: 'integration-failed', data: { runBranch, reason: err instanceof Error ? err.message : String(err) } })
       log(`integration failed for ${runBranch}: ${err instanceof Error ? err.message : String(err)}`)
     }
+  }
+  if (status === 'completed' && store.getRun(run.id)?.integrationStatus === 'escalated') {
+    status = 'pending-landing'
+    store.setRunStatus(run.id, status)
   }
 
   store.recordEvent({
