@@ -248,6 +248,76 @@ export async function teardownRun(ctx: OzContext, runId: string): Promise<Launch
   return { status: 200, body: { closed } }
 }
 
+export type ResolveDisposition = 'discard' | 'landed'
+
+/** Founder resolution for a run parked awaiting a decision (the ADR-0015 §5 decision-mechanics exit,
+ *  drafted there but never built — runs 44–46 sat unresolvable for days because of it). An explicit,
+ *  CSRF-gated founder mutation — never automatic. Two dispositions:
+ *    - 'discard' — drop the held-back working-tree changes (the explicit founder discard; ADR-0007
+ *      only forbids a SILENT one), close panes, GC the worktree. Status → failed; the branch ref and
+ *      its gate-committed atoms are preserved for forensics, integration honestly stays un-merged.
+ *    - 'landed' — the founder asserts the run's work reached trunk by hand. FAIL-CLOSED: refused
+ *      unless the run branch's tip is an ancestor of trunk HEAD (a cherry-picked/superseded branch
+ *      does NOT count — resolve that as 'discard'). Status → completed, integration → merged. */
+export async function resolveRun(ctx: OzContext, runId: string, body: unknown): Promise<LaunchResult> {
+  const run = ctx.store.getRun(runId)
+  if (!run) return { status: 404, body: { error: 'unknown run' } }
+  const record = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {}
+  const disposition = record.disposition
+  const note = typeof record.note === 'string' ? record.note : null
+  if (disposition !== 'discard' && disposition !== 'landed') {
+    return { status: 400, body: { error: 'disposition must be "discard" or "landed"' } }
+  }
+  if (run.status !== 'pending-scope-decision' && run.status !== 'pending-landing') {
+    return { status: 409, body: { error: `run is "${run.status}" — only a pending-scope-decision or pending-landing run takes a resolution` } }
+  }
+  const ws = await findWorkspace(ctx.cocoderHome, run.workspaceId)
+  if (!ws) return { status: 404, body: { error: 'unknown workspace' } }
+
+  if (disposition === 'landed') {
+    if (!run.runBranch) return { status: 409, body: { error: 'run has no branch to verify against trunk' } }
+    let onTrunk = false
+    try {
+      onTrunk = await ctx.git.isAncestor(ws.path, run.runBranch, 'HEAD')
+    } catch {
+      onTrunk = false // unresolvable ref (branch deleted?) → fail closed
+    }
+    if (!onTrunk) {
+      return {
+        status: 409,
+        body: { error: `refusing "landed": tip of ${run.runBranch} is not an ancestor of trunk HEAD — land the branch first, or resolve as "discard" if it is superseded` },
+      }
+    }
+    ctx.store.setIntegrationStatus(run.id, 'merged')
+    ctx.store.setRunStatus(run.id, 'completed')
+  } else {
+    // discard — drop whatever is held back UNCOMMITTED in the worktree so a plain (never --force)
+    // worktree remove succeeds. Recorded file-by-file first: an explicit discard is auditable.
+    if (run.worktreePath) {
+      try {
+        const held = await ctx.git.changedFiles(run.worktreePath)
+        if (held.length > 0) {
+          await ctx.git.restoreToHead(run.worktreePath, held)
+          ctx.store.recordEvent({ runId: run.id, type: 'scope-decision-discarded-files', data: { files: held } })
+        }
+      } catch {
+        /* worktree dir already gone — nothing held back to drop */
+      }
+    }
+    // An escalated integration is resolved by this explicit founder decision; back to the honest
+    // "branch never integrated" state so GC unblocks (the branch itself is kept).
+    if (run.integrationStatus === 'escalated') ctx.store.setIntegrationStatus(run.id, 'pending')
+    ctx.store.setRunStatus(run.id, 'failed')
+  }
+
+  ctx.store.recordEvent({ runId: run.id, type: 'scope-decision', data: { disposition, note } })
+  const closed = await closeRunSurfaces(ctx, run.id)
+  await gcWorktree(ctx, run.id)
+  void appendAudit(ctx.cocoderHome, { action: 'resolve-run', runId, disposition, note })
+  const after = ctx.store.getRun(run.id)
+  return { status: 200, body: { runId: run.id, disposition, status: after?.status, integrationStatus: after?.integrationStatus, closed } }
+}
+
 /** Refresh the daemon onto current code (the dashboard's "Restart daemon" button → POST
  *  /daemon/restart). REFUSES (409) when any run is in flight — restarting would orphan it — matching
  *  `oz.sh stop`'s own guard. Otherwise triggers the (injectable) restart action and returns 202; the
