@@ -12,6 +12,21 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-09 — **Loop unjammed: stranded runs 43–46 landed/resolved, ADR-0015 resolution exit BUILT, directive-0 root-caused, stale-daemon self-heal**
+
+**Persona:** Claude (founder-directed direct hand-build; the loop machinery was the work) | **Priority:** [run-resolution-and-loop-reliability](./priorities/run-resolution-and-loop-reliability.md) | **Plan:** that Playbook (drafted + executed this session)
+
+**Outcomes:**
+- **Whole-repo review found the binding constraint:** 46 runs → only 4 ever merged; runs 44–46 (Oz-chat, built 3×) parked in `pending-scope-decision`; throughput 16 atoms/wk → ~0. Root cause: ADR-0015's decision-mechanics exit was drafted, never built.
+- **Landed the stranded work:** run_46 merged (`0b0a057` — Oz-chat slice + Oscar-wrap fix + ADR-0017 docs); run_45's docs-only uniques cherry-picked (`3f7ca0c`, `82d38bb`); run_43's unlanded Deb repair landed (`c8f3bb2` — local-state export lane, ticket 0002 closed); run_44 code stays abandoned (founder decision, run_46). run_43's dirty worktree files were verified STALE drafts of already-landed work and discarded (recorded).
+- **Built `POST /runs/:id/resolve`** (`519a8a6`): `discard` (drop held-back, GC worktree, branch kept) / `landed` (fail-closed ancestor check → completed/merged). Exercised LIVE on runs 17/43–46 + two pre-ADR-0015 zombies — zero parked runs remain, all run worktrees GC'd.
+- **Directive-0 fix** (`56d7462`): artifact-first rule in Oscar's launch prompt (the fix Deb's run_33 triage specified; 5 runs lost to it). **Stale-daemon self-heal** (`4964a5a`): stale + idle → daemon restarts itself; never mid-run. **ADR-0018 drafted (proposed)** (`ddfc9e9`): sub-agents = per-persona Play assignments; `mode` honored-when-persisted.
+- Whole-tree verify green throughout: typecheck 0, 331 tests across 7 packages. Daemon restarted onto current code; codex `--disable apps` landed (`bb330c1`).
+
+**Next:** founder reviews ADR-0018 (then build slice #4 mode/subAgents honoring); next build slices unblocked per full-oz-dashboard (Oz-as-persona per ADR-0017, Workspaces daemon model per ADR-0007, priority order.json per ADR-0010 amendment). First fresh run should confirm the directive-0 fault class is gone.
+
+---
+
 ## 2026-05-28 — **v0.5 Phase 3 preventive guard shipped; surfaced a real ghost (founder-approved retirement is next)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [v0.5-orchestration-services](./priorities/v0.5-orchestration-services/README.md) | **Run:** jr9lw470 (oscar-lead)

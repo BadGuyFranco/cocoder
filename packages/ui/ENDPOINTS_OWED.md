@@ -16,6 +16,7 @@ Each item names the **surface** that needs it and the **seam** in this codebase 
 | 7 | extend `POST /runs` with `{task?}` | Ad-hoc "run without a priority" with free text | `app/sections/Priorities.tsx` ad-hoc button → currently launches the `adhoc-session` priority | **Working** via `adhoc-session`; no free-text field yet |
 | 8 | extend personas assignment with `{mode, subAgents}` | Personas: visible/headless toggle + sub-agent hierarchy | `app/sections/Personas.tsx` (disabled "coming soon" controls); `PersonaAssignment` type in `electron/ipc-contract.ts` | **Stub**: needs a core change to the assignment model |
 | 9 | `POST /runs/:id/stop` | Stop a RUNNING run (vs. only closing panes) | `app/sections/RunDrawer.tsx` controls — add a Stop next to Close; `app/client.ts` add a `stopRun()` | **Not built**: today only `POST /runs/:id/teardown` (closes panes, not a stop) |
+| 10 | `POST /runs/:id/resolve` `{disposition: "discard"\|"landed", note?}` | Resolve a parked run (pending-scope-decision / pending-landing) from the run drawer / a "decisions awaiting you" panel — the ADR-0015 decision-mechanics exit | `app/sections/RunDrawer.tsx` — Resolve actions on parked runs; an "awaiting founder" Dashboard list derives from `GET /runs` statuses (no new read endpoint needed) | **SERVED** (daemon, 2026-06-09; exercised live on runs 17/43–46) — UI consumption owed |
 
 ## Notes on fidelity to daemon reality (wired to these, not assumptions)
 
@@ -25,7 +26,7 @@ Each item names the **surface** that needs it and the **seam** in this codebase 
 - **Oz is not in the personas response** — it is rendered as a persona (headless, in-app) with no
   assignment row.
 - **Run ids are opaque** (mixed `run_17` / hex) and never parsed. **Status** ∈ {running, completed,
-  pending-scope-decision, failed}. **Transcript is polled** (`GET /runs/:id`, ~poll interval from
+  pending-scope-decision, pending-landing, failed}. **Transcript is polled** (`GET /runs/:id`, ~poll interval from
   Settings, paused when hidden) — there is no SSE/WS yet.
 - **Security**: all daemon HTTP is in the Electron main process — Bearer on every request, the
   `x-oz-csrf-token` on every mutation, loopback Host, and **no** `Origin` header (an absent Origin is
