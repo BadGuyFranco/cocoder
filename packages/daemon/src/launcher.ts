@@ -125,15 +125,27 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
   const headNow = await headShaOrUnknown(ctx, input.workspace.path)
   if (ctx.bootSha !== 'unknown' && headNow !== 'unknown' && headNow !== ctx.bootSha) {
     ctx.inFlight.delete(workspaceId)
+    // Self-heal (daemon-side, per the 2026-05-30 headless-substrate decision): a stale daemon with
+    // ZERO runs in flight restarts itself via the same detached mechanism as POST /daemon/restart —
+    // the launch is still refused (a restart can't carry it across the process bounce; the caller
+    // re-launches), but the manual "founder must run oz.sh restart" step disappears. Never mid-run:
+    // any in-flight run suppresses it, exactly like requestDaemonRestart's own guard. This is the
+    // daemon restarting ITSELF while idle — not an agent running oz.sh from a pane (run_42 incident).
+    const idle = ctx.inFlight.size === 0
     console.warn(
-      `[oz] STALE DAEMON: refusing launch — serving ${ctx.bootSha.slice(0, 8)} but repo HEAD is ${headNow.slice(0, 8)}. Restart (scripts/oz.sh restart) and re-launch.`,
+      `[oz] STALE DAEMON: refusing launch — serving ${ctx.bootSha.slice(0, 8)} but repo HEAD is ${headNow.slice(0, 8)}.` +
+        (idle ? ' Idle → self-restarting onto current code; re-launch in a few seconds.' : ' Restart (scripts/oz.sh restart) once the in-flight run finishes.'),
     )
-    void appendAudit(ctx.cocoderHome, { action: 'launch-refused-stale', workspaceId, priorityId, bootSha: ctx.bootSha, headSha: headNow })
+    void appendAudit(ctx.cocoderHome, { action: 'launch-refused-stale', workspaceId, priorityId, bootSha: ctx.bootSha, headSha: headNow, selfRestart: idle })
+    if (idle) ctx.restartDaemon()
     return {
       status: 425,
       body: {
-        error: `Oz daemon is stale (serving ${ctx.bootSha.slice(0, 8)}, repo HEAD is ${headNow.slice(0, 8)}). A founder must restart it (scripts/oz.sh restart) and re-launch — do NOT restart from inside a run or agent pane.`,
+        error: idle
+          ? `Oz daemon was stale (serving ${ctx.bootSha.slice(0, 8)}, repo HEAD is ${headNow.slice(0, 8)}) and is restarting itself onto current code — re-launch in a few seconds.`
+          : `Oz daemon is stale (serving ${ctx.bootSha.slice(0, 8)}, repo HEAD is ${headNow.slice(0, 8)}) but a run is in flight, so it will not self-restart. Restart (scripts/oz.sh restart) once the run finishes — do NOT restart from inside a run or agent pane.`,
         stale: true,
+        restarting: idle,
         bootSha: ctx.bootSha,
         headSha: headNow,
       },

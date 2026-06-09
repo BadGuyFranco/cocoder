@@ -259,21 +259,61 @@ describe('Oz mutations + lifecycle', () => {
     expect(ok.json.runId).toMatch(/^run_/)
   })
 
-  test('REFUSES to launch on a stale daemon (425, no run created) — ADR-0016 incident fix', async () => {
+  test('REFUSES to launch on a stale daemon (425, no run created) and SELF-RESTARTS when idle', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    let restarts = 0
     try {
-      await startServer(fakeGit([], ['boot-sha', 'head-sha'])) // boot reads boot-sha; launch reads head-sha
+      oz = await createOzServer({
+        cocoderHome: home,
+        port: 0,
+        store,
+        git: fakeGit([], ['boot-sha', 'head-sha']), // boot reads boot-sha; launch reads head-sha
+        sessionHost: fakeHost(),
+        getAdapter: () => okAdapter,
+        io: fakeIO(),
+        restartDaemon: () => {
+          restarts += 1
+        },
+      })
       const before = store.listRuns().length
-      const r = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
+      const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
       expect(r.status).toBe(425) // refused BEFORE spawning anything (no whole-run-then-abort, no hijackable session)
       expect(r.json.stale).toBe(true)
-      expect(r.json.error).toMatch(/stale/i)
-      expect(r.json.error).toMatch(/do NOT restart from inside a run or agent pane/)
+      expect(r.json.restarting).toBe(true) // idle → the daemon heals itself; no manual oz.sh restart step
+      expect(r.json.error).toMatch(/restarting itself/)
+      expect(restarts).toBe(1)
       expect(store.listRuns().length).toBe(before) // no run row created
       expect(warn).toHaveBeenCalledWith(expect.stringContaining('STALE DAEMON: refusing launch'))
       // The in-flight reservation is released so a post-restart re-launch isn't blocked.
-      const r2 = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
+      const r2 = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
       expect(r2.status).toBe(425) // still stale (same fake), but NOT a 409 in-flight — the slot was freed
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  test('a stale daemon with a run in flight does NOT self-restart (never mid-run)', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    let restarts = 0
+    try {
+      oz = await createOzServer({
+        cocoderHome: home,
+        port: 0,
+        store,
+        git: fakeGit([], ['boot-sha', 'head-sha']),
+        sessionHost: fakeHost(),
+        getAdapter: () => okAdapter,
+        io: fakeIO(),
+        restartDaemon: () => {
+          restarts += 1
+        },
+      })
+      oz.ctx.inFlight.set('other-workspace', 'run_busy') // another workspace's live run
+      const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
+      expect(r.status).toBe(425)
+      expect(r.json.restarting).toBe(false)
+      expect(r.json.error).toMatch(/do NOT restart from inside a run or agent pane/)
+      expect(restarts).toBe(0) // restarting would orphan the in-flight run
     } finally {
       warn.mockRestore()
     }
