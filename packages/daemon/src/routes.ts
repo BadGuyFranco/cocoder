@@ -13,6 +13,7 @@ import { readRunDir } from './rundir.js'
 import { appendAudit } from './audit.js'
 import { listClis, testCli } from './clis.js'
 import { launchRun, requestDaemonRestart, showRun, teardownRun } from './launcher.js'
+import { handleOzMessage } from './oz-chat.js'
 import { mergeWriteSettings, readSettings } from './settings.js'
 
 export type { OzContext } from './context.js'
@@ -213,6 +214,16 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
   const method = req.method ?? 'GET'
   const seg = pathname.split('/').filter(Boolean)
 
+  if (method === 'POST' && pathname === '/oz/messages') {
+    let body: unknown
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      return sendJson(res, 400, { error: 'invalid JSON body' }), true
+    }
+    const { status, body: out } = await handleOzMessage(ctx, body)
+    return sendJson(res, status, out), true
+  }
   if (method === 'POST' && pathname === '/runs') {
     let body: unknown
     try {

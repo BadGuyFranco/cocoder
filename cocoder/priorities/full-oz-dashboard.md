@@ -25,9 +25,9 @@ is decided when this is picked up, not here.
 **In progress — `continue`.** The v1 Electron dashboard is realized and **wired to every daemon
 endpoint that exists**; surfaces without an endpoint stub cleanly and are tracked in
 `packages/ui/ENDPOINTS_OWED.md` (live tracker). Slices 1–5 (adapter, polling, connection-states,
-mutations, drag-reorder seam) plus CLI list/test consumption are **merged to trunk** (`feat/oz-dashboard`
-was the merge-base). **Not archive-ready** — seven owed surfaces remain; two blocked on founder design
-decisions (see below).
+mutations, drag-reorder seam), CLI list/test consumption, and `POST /oz/messages` are **merged to
+trunk** (`feat/oz-dashboard` was the merge-base). **Not archive-ready** — six owed surfaces remain;
+one blocked on a founder design decision (Q2) (see below).
 
 > History worth recording: a first pass mistakenly built from `docs/oz-design-brief.md` (the *input
 > brief* that was pasted into claude.ai/design), not the founder's actual **design output**. It was then
@@ -73,8 +73,24 @@ decisions (see below).
   (atomic tmp+rename); PUT rides CSRF+Bearer mutation gate (403-without-CSRF proven). UI main-process
   handlers prefer daemon, fall back to local store when unreachable (`daemon-client` returns `{ok:false}`
   on network failure — fallback genuinely fires). `Settings.tsx` contract untouched.
-- **Verification (run_43):** daemon tests 50 · ui tests 42 · typecheck 0 · topology pass. Fresh
+- **Oz chat — `POST /oz/messages`** (run_46, `0637c04`): the marquee command-center slice. A **bounded
+  command interface** (`launch` / `show` / `stop`+`teardown` / `status` / `help`) parsed in
+  `packages/daemon/src/oz-chat.ts` and routed to existing run-lifecycle launcher ops — **no in-daemon
+  LLM**; same Bearer/CSRF/loopback posture. UI wired via `electron/chat-send.ts` + `daemon-client`.
+  **Recovered, not rebuilt** — see the stranding note below.
+- **Verification (run_46):** daemon tests 69 · ui tests 46 · typecheck 0 · topology pass. Fresh
   worktree baseline needs `pnpm install` at root first (no `node_modules` ship in the worktree).
+
+> History worth recording (run_46): this Oz-chat slice was independently built by **run_44** (a
+> status/query design) and **run_45** (the bounded command-interface design) — but **neither landed**;
+> both were collateral of the worktree-landing bug since fixed in main. run_46 **recovered run_45's
+> bounded-command version byte-identically and re-verified it** so it finally lands, and **abandoned
+> run_44's divergent design**. Do not rebuild this slice a fourth time — the stranded `cocoder/run_44`
+> / `cocoder/run_45` branches are superseded.
+>
+> Operational note (run_46): Bob's write-scope is `packages/**` only — it **fences out**
+> `cocoder/priorities/` (governance). Priority Playbook edits belong in **Oscar wrap-up**, not a Bob
+> atom; don't waste a builder atom on governance-doc updates.
 
 ### Remaining — daemon endpoints owed (back half)
 
@@ -84,29 +100,40 @@ mechanical infra (Settings was the last clean infra slice).
 
 | # | Surface | Seam / blocker |
 |---|---------|----------------|
-| 1 | Oz chat — `POST /oz/messages` (+ SSE) | **Founder decision (Q1):** in-daemon LLM Oz agent (new ADR) vs bounded command interface (verbs → existing ops). Oscar recommends bounded interface next. |
-| 2 | Workspaces CRUD + `roots[]`/role model | **Founder decision (Q2):** reconcile with ADR-0008 before building. |
+| 1 | Oz chat — `POST /oz/messages` | **SERVED** (run_46, `0637c04`): bounded command interface — verbs `launch <priorityId>` / `show <runId>` / `stop`+`teardown <runId>` / `status [runId]` / `help` parsed in `packages/daemon/src/oz-chat.ts` and dispatched to existing launcher ops; **no in-daemon LLM**, rides the existing Bearer/CSRF/loopback posture. SSE/stream still deferred. |
+| 2 | Workspaces CRUD + `roots[]`/role model | **DECIDED — build-work, not a decision.** Model settled in [ADR-0007](../decisions/0007-workspace-files-and-multiroot-description.md) (three roles primary/writable/readonly; `workspace/` directory-of-files; CoCoder-always-a-root). Build = teach the daemon the ratified model (today's `workspace` table is a single-path stub). Only open detail: which zone the `workspace/` dir lives in (install `local/` vs `cocoder/local/`) — a footnote, not a blocker. |
 | 3 | `POST /runs/:id/stop` | Investigate launcher/runner process ownership before scoping. |
 | 4 | Persona `{mode, subAgents}` | Assignments map round-trips via existing PUT/GET, but runner does not honor `mode`/`subAgents` yet — honest scope = wire runner consumption or label "saved, not yet honored". |
 | 5 | `POST /clis` (add CLI) | CLIs derive from compiled adapters — defer (dynamic registration feature). |
 | 6 | Settings | **SERVED** (run_43). |
 | 7 | `POST /runs {task?}` free-text ad-hoc | Bounded; threads task to builder. |
-| 8 | Priority create + reorder | Source-of-truth migration (ordering off `backlog/` + PLAYBOOK into Oz/DB). |
+| 8 | Priority create + reorder | **DECIDED ([ADR-0010 amendment](../rebuild/decisions/0010-taxonomy-and-authoring.md), run_46):** NO DB migration. Priorities stay `.md` files; sequence is a git-tracked **order-only** `cocoder/priorities/order.json` (array of ids); drag-reorder rewrites it; `.md` files stay the existence-SSOT. |
 
-### Founder judgment questions (start next session here)
+### Founder decisions + next-session pickup
 
 **Fresh-session pickup (2026-06-09):** the orchestration repair around isolated worktrees is landed in
 main: a verified-but-not-landed run now surfaces as `pending-landing` / **Not landed**, and Deb's
-dogfood repair authority is no longer constrained by a hardcoded machinery path fence. Do not restart
-that repair in the next Oz session. Start from the remaining Oz product slice below.
+dogfood repair authority is no longer constrained by a hardcoded machinery path fence. The Oz-chat slice
+is landed; do not rebuild it. **All three open founder questions are now LOCKED (run_46, see below)** —
+no founder decisions are outstanding on this priority.
 
-**Q1 (marquee):** Oz chat = in-daemon LLM agent (needs new ADR) vs bounded command interface
-(shippable now within existing security posture)? Oscar recommends bounded interface; full agent deferred
-to its own ADR.
+**ALL THREE LOCKED (founder, run_46, 2026-06-09):**
 
-**Q2:** Workspaces multi-root/role model — confirm model and ADR-0008 reconciliation before Workspaces
-CRUD.
+- **Q1 (Oz chat) — RESOLVED.** Bounded command interface landed (`0637c04`). The deeper "what IS Oz"
+  question is now answered by a real ADR (see Q2-Oz), not deferred.
+- **Q2 (multi-root workspaces) — NOT a decision; build-work.** The model was already fully ratified in
+  [ADR-0007](../decisions/0007-workspace-files-and-multiroot-description.md); the only gap is the daemon
+  implementing it. Removed as a founder blocker. Owed slice #2 reclassified above.
+- **Q2-Oz (what Oz IS) — DECIDED, new [ADR-0017](../rebuild/decisions/0017-oz-orchestration-persona.md).**
+  Oz = a CLI-backed persona run as a long-lived session, surfaced as the in-app chat window, with a
+  **bounded tool surface** mapping to existing run-lifecycle ops. Dissolves the old "command interface
+  vs in-daemon LLM" binary; the `run_46` `parseOzCommand` stub becomes Oz's action layer. **No custom
+  in-daemon LLM.** TIER-3 preserved.
+- **Q3 (priority ordering) — DECIDED, [ADR-0010 amendment](../rebuild/decisions/0010-taxonomy-and-authoring.md).**
+  No DB migration: priorities stay `.md` files; sequence is a git-tracked order-only
+  `cocoder/priorities/order.json`; drag-reorder rewrites it. Owed slice #8 reclassified above.
 
-**Recommended next slice:** if Q1 → bounded command interface, build `POST /oz/messages` mapping a small
-verb vocabulary to existing run-lifecycle ops (SSE/stream later). Else persona `{mode, subAgents}` with
-runner consumption wired (#4). Avoid Workspaces CRUD until Q2 is settled.
+**Recommended next slice:** two now-ripe build slices, no decisions blocking either — (a) **Oz as a
+persona** per ADR-0017 (supersedes the chat stub with the real agent-in-a-window), or (b) persona
+`{mode, subAgents}` runner consumption (#4). The priority-order manifest (#8) and Workspaces daemon
+model (#2) are also unblocked build-work whenever sequenced.

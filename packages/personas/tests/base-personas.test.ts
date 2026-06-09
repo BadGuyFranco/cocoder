@@ -45,6 +45,11 @@ describe('basePersonasDir', () => {
     const scope = frontmatterList(readFileSync(join(basePersonasDir(), 'deb.md'), 'utf8'), 'writeScope')
     expect(scope).toEqual(expect.arrayContaining(['cocoder/priorities/**', 'cocoder/rebuild/**', 'cocoder/personas/**', 'cocoder/tickets/**']))
   })
+
+  test('Oscar base scope covers support artifacts the runner can commit at wrap', () => {
+    const scope = frontmatterList(readFileSync(join(basePersonasDir(), 'oscar.md'), 'utf8'), 'writeScope')
+    expect(scope).toEqual(expect.arrayContaining(['cocoder/priorities/**', 'cocoder/tickets/**', 'docs/**', 'ARCHITECTURE.md']))
+  })
 })
 
 describe('basePlaysDir', () => {

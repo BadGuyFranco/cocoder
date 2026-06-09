@@ -1,0 +1,9 @@
+{
+  "reply": "Fixture Oz: status is available from the daemon chat endpoint.",
+  "ok": true,
+  "command": "status",
+  "action": {
+    "type": "status",
+    "workspaceId": "cocoder"
+  }
+}

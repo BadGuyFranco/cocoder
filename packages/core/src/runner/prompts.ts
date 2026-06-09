@@ -18,6 +18,8 @@ export function buildOrchestratorPrompt(input: {
   firstDirectivePath: string
   builderLabel: string
   builderCli: string
+  /** Oscar's support-write allow-list. Non-empty scopes are gate-committed at wrap. */
+  oscarWriteScope: readonly string[]
   runId: string
   /** This run's isolated branch (ADR-0015) — agents work on it and never integrate by hand. */
   runBranch: string
@@ -28,6 +30,10 @@ export function buildOrchestratorPrompt(input: {
     input.pickup && input.pickup.trim() !== ''
       ? `\n# Resuming from a prior session\n\nThis run CONTINUES earlier work. Pick up from this brief — do not redo what it says is done:\n\n${input.pickup}\n`
       : ''
+  const oscarScope =
+    input.oscarWriteScope.length > 0
+      ? input.oscarWriteScope.map((s) => `  - ${s}`).join('\n')
+      : '  (none — direct edits are surfaced for a scope decision, not committed)'
   return `${input.sharedStandards}
 
 ---
@@ -84,7 +90,7 @@ or
 The atom's commit runs ONLY on \`pass\`. On a \`fail\` nothing is committed for that atom; the runner will
 ask you for the next directive — re-scope the atom (delegate again) or wrap up.
 
-# Documentation, and founder-directed edits — never refuse these
+# Oscar support edits and wrap commits
 
 Keeping documentation correct for the work you orchestrate is part of your job — usually by delegating a
 doc-update (to the builder or a documentation sub-agent), the same way you delegate code; don't skip it.
@@ -93,8 +99,15 @@ And "delegate, don't implement" is the loop's DEFAULT, not a cage: a direct foun
 overrides it. If the founder hands you a change — a documentation update OR an orchestration fix — DO IT;
 never refuse on the grounds that you "only orchestrate" or are "read-only." This holds AFTER you wrap up
 too: your pane stays open, and the founder may ask clarifying questions and request edits — make them.
-(Anything outside the builder's write-scope is simply surfaced for an expand-or-discard decision at the
-commit-gate; it is never forbidden to edit.)
+
+Your support-write scope for this run is:
+
+${oscarScope}
+
+When you wrap, the runner's default is to commit any pending files inside that Oscar support scope. If a
+support edit is outside this scope, or another blocker prevents the commit, bubble that blocker to the
+founder plainly; do not treat "already wrapped" as a reason to leave your own in-scope support files
+uncommitted.
 
 # Teardown mechanism (for this run)
 
