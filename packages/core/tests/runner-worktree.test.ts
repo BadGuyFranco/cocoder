@@ -88,6 +88,7 @@ beforeEach(async () => {
   await g(home, ['config', 'user.email', 't@t.test'])
   await g(home, ['config', 'user.name', 'Test'])
   await writeFile(join(home, 'README.md'), '# repo\n')
+  await writeFile(join(home, '.gitignore'), '/local/\n')
   await g(home, ['add', '-A'])
   await g(home, ['commit', '-q', '-m', 'init'])
 })
@@ -98,7 +99,7 @@ afterEach(async () => {
 // Run a full scenario: a fake Bob writes a real in-scope file into its worktree, and the injected
 // integration-verify Play returns `verifyOutput`. `onProceed` (if given) runs when Bob is dispatched —
 // used to mutate the founder's checkout (e.g. switch branches) to exercise the misrouting guard.
-async function runScenario(verifyOutput: string, onProceed?: () => Promise<void>, gitOverride?: import('../src/index.js').Git) {
+async function runScenario(verifyOutput: string, onProceed?: (bobCwd: string) => Promise<void>, gitOverride?: import('../src/index.js').Git) {
   let bobRefId: string | null = null
   let bobCwd: string | null = null
   const sessionHost: SessionHost = {
@@ -123,7 +124,7 @@ async function runScenario(verifyOutput: string, onProceed?: () => Promise<void>
       if (ref.id === bobRefId && bobCwd && text.includes('PROCEED')) {
         await mkdir(join(bobCwd, 'packages'), { recursive: true })
         await writeFile(join(bobCwd, 'packages', 'feature.ts'), 'export const feature = 42\n')
-        if (onProceed) await onProceed()
+        if (onProceed) await onProceed(bobCwd)
       }
     },
     async show() {},
@@ -173,6 +174,21 @@ describe('runRun worktree isolation + VERIFIED auto-merge (ADR-0015, live git)',
     expect(store.getRun(result.runId)?.integrationStatus).toBe('merged')
     // The founder's pre-existing uncommitted work is exactly as it was.
     expect(await readFile(join(home, 'packages', 'wip.ts'), 'utf8')).toBe('export const wip = 1\n')
+  })
+
+  test('verified runs export allowed ignored local state but block secrets', async () => {
+    const { result, store } = await runScenario('{"verdict":"pass","reason":"tree green"}', async (bobCwd) => {
+      await mkdir(join(bobCwd, 'local', 'secrets'), { recursive: true })
+      await writeFile(join(bobCwd, 'local', 'settings.json'), '{"pollIntervalMs":5000}\n')
+      await writeFile(join(bobCwd, 'local', 'secrets', 'token'), 'do-not-copy\n')
+    })
+
+    expect(result.status).toBe('completed')
+    expect(store.getRun(result.runId)?.integrationStatus).toBe('merged')
+    expect(await readFile(join(home, 'local', 'settings.json'), 'utf8')).toBe('{"pollIntervalMs":5000}\n')
+    expect(await exists(join(home, 'local', 'secrets', 'token'))).toBe(false)
+    const ev = store.listEvents(result.runId).find((e) => e.type === 'local-state-export')
+    expect(ev?.data).toEqual({ exported: ['local/settings.json'], blocked: ['local/secrets/token'] })
   })
 
   test('a FAIL integration verdict escalates without landing trunk (F11 fail-closed)', async () => {

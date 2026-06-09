@@ -40,6 +40,7 @@ import {
 import { renderRunRecord } from './record.js'
 import { type RunnerPhase, renderDebStatus } from './status.js'
 import { faultFingerprint } from './fingerprint.js'
+import { exportRunLocalState } from './local-state.js'
 import type { CommitGateResult } from '../commit-gate/index.js'
 import type { Triage } from './triage.js'
 
@@ -865,6 +866,17 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   if (status === 'completed' && store.getRun(run.id)?.integrationStatus === 'escalated') {
     status = 'pending-landing'
     store.setRunStatus(run.id, status)
+  }
+
+  if (status === 'completed' && store.getRun(run.id)?.integrationStatus === 'merged') {
+    try {
+      const localState = await exportRunLocalState(worktreePath, cocoderHome)
+      if (localState.exported.length > 0 || localState.blocked.length > 0) {
+        store.recordEvent({ runId: run.id, type: 'local-state-export', data: localState })
+      }
+    } catch (err) {
+      store.recordEvent({ runId: run.id, type: 'local-state-export-failed', data: { reason: err instanceof Error ? err.message : String(err) } })
+    }
   }
 
   store.recordEvent({

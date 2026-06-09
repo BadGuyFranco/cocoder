@@ -1,13 +1,13 @@
 ---
 id: deb-scoped-repair-fallback
-title: "Deb — scoped CoCoder repair fallback (ADR-0016)"
+title: "Deb — CoCoder repair fallback (ADR-0016)"
 ---
 
 ## Objective
 Rebuild Deb from a passive fault-classification endpoint into CoCoder's **escalation engineer**: a
 read-only observer of ordinary target-repo work that can inspect orchestration state and write
-**narrowly scoped** CoCoder improvement artifacts when the orchestration system itself is failing —
-implementing [ADR-0016](../rebuild/decisions/0016-deb-scoped-repair-fallback.md).
+CoCoder repairs when the orchestration system itself is failing — implementing
+[ADR-0016](../rebuild/decisions/0016-deb-scoped-repair-fallback.md).
 
 **Verified when:**
 1. Deb answers "how's Oscar doing?" with **evidence from runner state** — the runner writes a live
@@ -20,8 +20,8 @@ implementing [ADR-0016](../rebuild/decisions/0016-deb-scoped-repair-fallback.md)
    `deb-repair` commit) while target-repo product code is **held back + surfaced**, never committed;
    a repair never rescues the run (a faulted run still fails);
 4. Deb's write-scope is **explicit and enforced** — portable governance (`cocoder/priorities|rebuild|
-   personas|tickets/**`) in the base persona, dogfood machinery (`packages/personas/**`,
-   `packages/core/src/{runner,personas}/**`) in the CoCoder-repo delta, self-gating to the dogfood case;
+   personas|tickets/**`) in the base persona, broad CoCoder implementation repair authority in the
+   CoCoder-repo delta, self-gating to the dogfood case;
 5. fault dispatch still returns exactly one of `cocoder-bug | repo-bug | one-off`;
 6. **cross-run recurrence escalation** — the runner fingerprints faults and counts prior occurrences; on
    a **2nd** occurrence Deb escalates (fix-if-easy → file a `cocoder/tickets/` ticket tagged to an
@@ -29,7 +29,7 @@ implementing [ADR-0016](../rebuild/decisions/0016-deb-scoped-repair-fallback.md)
    surfaced in the durable disposition. She never auto-creates a priority.
 
 **Boundary:** implements ADR-0016 — the status feed, nudge-request channel, repair mode + triage-contract
-extension, the base/delta write-scope split, and the cross-run recurrence-escalation loop. Does **not**
-widen Deb into product features (daemon, UI, adapters, the rest of core) or target-repo product code, and
-does **not** auto-land a failed run's governance commit to trunk (deferred to its own ADR). Decomposition
-into atoms lives in the run, not this file.
+extension, the base/delta write-scope split, and the cross-run recurrence-escalation loop. It widens Deb
+inside the CoCoder source repo for diagnosed `cocoder-bug`s; it does **not** widen Deb into target-repo
+product code and does **not** auto-land a failed run's repair commit to trunk. Decomposition into atoms
+lives in the run, not this file.

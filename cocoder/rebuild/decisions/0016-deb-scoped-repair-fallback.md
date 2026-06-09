@@ -1,4 +1,4 @@
-# ADR-0016 — Deb: the scoped CoCoder repair fallback
+# ADR-0016 — Deb: the CoCoder repair fallback
 
 **Status:** Accepted (founder + Claude, 2026-06-02)
 **Seam:** the debugger tier — Deb's authority, visibility, and write scope
@@ -40,14 +40,15 @@ with `source:"deb-authored"`. The **authority rule holds**: `target` is fixed to
 observe Bob to diagnose but never directs Bob. The generic idle nudge remains the no-recommendation
 fallback.
 
-### 3. Repair mode (scoped, gate-enforced, never a rescue)
+### 3. Repair mode (authority-gated, never a rescue)
 For a `cocoder-bug`, Deb chooses `mode:"propose"` (a diff for founder review — the default, and the only
-option where she has no in-tree scope) or `mode:"repair"`: she edits files **within her write-scope** in
-the run's worktree and reports diagnosis / why-CoCoder-owned / files-changed / verification / remaining
-risk. The runner then runs the **existing commit-gate against Deb's scope** (ADR-0007): her in-scope
-edits land as a distinct `deb-repair` commit; anything outside (especially target-repo product code) is
-**held back and surfaced**, never silently committed or hidden. A repair **does not rescue the run** — a
-faulted run still fails; the repair commit is surfaced for the founder to review/land.
+option where she has no in-tree authority) or `mode:"repair"`: she edits files **within her active
+CoCoder authority** in the run's worktree and reports diagnosis / why-CoCoder-owned / files-changed /
+verification / remaining risk. The runner then runs the **existing commit-gate against Deb's active
+scope** (ADR-0007): her in-scope edits land as a distinct `deb-repair` commit; anything outside
+(especially target-repo product code) is **held back and surfaced**, never silently committed or hidden.
+A repair **does not rescue the run** — a faulted run still fails; the repair commit is surfaced for the
+founder to review/land.
 
 ### 4. Cross-run recurrence escalation (the learning loop)
 A run-scoped triage forgets: the same fault can recur run after run, each logged as a fresh `one-off`.
@@ -57,7 +58,7 @@ stripped) and counts prior matches across the workspace's `fault-triaged` record
 into the fault context Deb reads (and recording a `fault-recurrence` event at occurrence ≥ 2).
 
 On a **second** occurrence Deb escalates, preferring the **lightest home** (founder-decided order):
-**(1)** fix it if easy + clearly in her fence (repair mode); else **(2) the default — file a tracked
+**(1)** fix it if easy + clearly in her CoCoder authority (repair mode); else **(2) the default — file a tracked
 ticket** under `cocoder/tickets/` tagged to the most relevant **existing** priority (a follow-up, *not*
 a new priority, *not* a rewrite of the immutable priority stub); **(3)** only **recommend** a new
 priority *inside that ticket* for founder approval — she never creates a `cocoder/priorities/*` file
@@ -72,20 +73,25 @@ to land**. An auto-land carve-out (a failed run touching trunk with a governance
 ### Write scope — split by the living-base/delta seam (self-gating)
 Per ADR-0012, the **base persona** carries the portable governance scope present in every CoCoder
 workspace — `cocoder/priorities/**`, `cocoder/rebuild/**`, `cocoder/personas/**`, `cocoder/tickets/**` —
-and the **CoCoder-repo
-delta** adds the dogfood-only machinery scope — `packages/personas/**`, `packages/core/src/runner/**`,
-`packages/core/src/personas/**` (the runner/persona/debugger control plane). In a non-CoCoder workspace
-those machinery globs match nothing in-tree, so a machinery `cocoder-bug` is **proposed** (a PR to the
-CoCoder repo) rather than applied — the same verdict, routed for review. Everything else — the daemon,
-UI, adapters, the rest of `core`, and all target product code — stays read-only and is enforced at the
-gate.
+and the **CoCoder-repo delta** adds broad dogfood-only CoCoder implementation authority (`packages/**`
+plus the repo's public docs/templates/scripts/root metadata). In a non-CoCoder workspace those machinery
+globs match nothing in-tree, so a machinery `cocoder-bug` is **proposed** (a PR to the CoCoder repo)
+rather than applied — the same verdict, routed for review. Target-repo product code, secrets,
+install-local state without an explicit export contract, and process/window lifecycle remain outside
+Deb's authority and are enforced at the gate.
+
+**Founder correction, 2026-06-08:** Deb should not be blocked by a narrow path repair fence when the
+CoCoder machinery itself is failing. The boundary is diagnosis and ownership (`cocoder-bug`), not an
+old list of implementation folders. ADR-0007 still gates what is committed; this ADR no longer treats
+the daemon, UI, adapters, commit gate, tests, or the rest of `packages/core` as off-limits for Deb in
+the CoCoder source repo.
 
 ## Consequences
 
 - **Deb's authority now matches her responsibility:** she can answer how Oscar/Bob are tracking, detect a
-  stall before a formal fault, recommend a narrow nudge without taking over, and repair the machinery
-  within a fence — or escalate a recurring failure into a tracked priority / persona-or-runner contract
-  change instead of the founder hand-drafting it.
+  stall before a formal fault, recommend a narrow nudge without taking over, and repair CoCoder machinery
+  where the root cause actually lives — or escalate a recurring failure into a tracked priority /
+  persona-or-runner contract change instead of the founder hand-drafting it.
 - **Invariants preserved:** the runner stays the single store writer (ADR-0003) and runs every
   commit-gate; write-scope is enforced deterministically at the gate (ADR-0007); the authority rule holds
   (Oscar-only nudges; never directs Bob); Deb never rescues the critical path.

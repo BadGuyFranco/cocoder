@@ -19,4 +19,5 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0002](./closed/0002-local-state-run-export-lane.md) | Add local-state export lane for isolated runs | bug | 2026-06-08 | Local-state export lane implemented |
 | [0001](./closed/0001-cocoder-command-wrapper-decision.md) | Restore or retire CoCoder `.command` double-click wrappers | question | 2026-05-23 | Path B — Retire (terminal-only) |

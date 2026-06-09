@@ -46,6 +46,14 @@ The **run directory stays under `local/runs/<runId>`** (the install root), NOT i
 Governance files are read at launch **from the worktree's branch point** (a consistent snapshot). The
 stale-daemon check keeps reading `cocoderHome` trunk HEAD, not the worktree HEAD.
 
+**Ignored local state is a separate lane from source commits.** If a verified + integrated run writes
+allowed files under the worktree's ignored `local/` directory, the runner exports those files back to
+the canonical install/workspace `local/` zone after integration. This does **not** widen git write-scope:
+tracked source still lands only through the commit gate ([0007](./0007-write-scope-enforcement.md)).
+Run-management and secret paths (`local/worktrees/**`, `local/runs/**`, `local/secrets/**`) are not
+exported; blocked or failed exports are recorded as run events, and teardown/orphan GC preserves the
+worktree until they are resolved.
+
 ### 2. The runner owns git mechanics; Plays own semantics
 Deterministic code — not a model — does worktree create, branch, per-atom scope-gated commit
 ([0007](./0007-write-scope-enforcement.md)), the merge, and worktree GC. The semantic work (resolving a

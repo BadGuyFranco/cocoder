@@ -158,6 +158,18 @@ describe('worktree GC + orphan sweep (ADR-0015, live git)', () => {
     expect(store.listEvents(runId).some((e) => e.type === 'worktree-gc-blocked')).toBe(true)
   })
 
+  test('teardown does NOT remove a worktree with unresolved blocked local-state exports', async () => {
+    const runId = await seedRunWithWorktree('completed', 'merged')
+    store.recordEvent({ runId, type: 'local-state-export', data: { exported: [], blocked: ['local/secrets/token'] } })
+    await start()
+
+    await teardownRun(oz!.ctx, runId)
+
+    expect(await exists(worktreePathFor(home, runId))).toBe(true)
+    const ev = store.listEvents(runId).find((e) => e.type === 'worktree-gc-blocked')
+    expect(JSON.stringify(ev?.data)).toContain('local-state-export-blocked')
+  })
+
   test('daemon-boot sweep removes a terminal run\'s stray worktree but preserves held-back + escalated ones', async () => {
     const done = await seedRunWithWorktree('completed', 'merged')
     const held = await seedRunWithWorktree('pending-scope-decision')

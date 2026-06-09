@@ -220,18 +220,31 @@ async function closeRunSurfaces(ctx: OzContext, runId: string): Promise<string[]
  *  (pending-scope-decision), or an un-integrated/escalated integration (the worktree IS the inspection
  *  artifact the founder was routed to — ADR-0015 §5/§6). 'merged' and 'pending' (a failed run that never
  *  integrated; its commits are safe on the branch) do not block. */
-function gcBlockedReason(run: { status: string; integrationStatus: string }): string | null {
+function localStateBlockedReason(ctx: OzContext, runId: string): string | null {
+  for (const event of ctx.store.listEvents(runId)) {
+    if (event.type === 'local-state-export-failed') return 'local-state-export-failed'
+    if (event.type === 'local-state-export') {
+      const blocked = (event.data as { blocked?: unknown } | null | undefined)?.blocked
+      if (Array.isArray(blocked) && blocked.length > 0) return 'local-state-export-blocked'
+    }
+  }
+  return null
+}
+
+function gcBlockedReason(ctx: OzContext, run: { id: string; status: string; integrationStatus: string }): string | null {
   if (run.status === 'pending-scope-decision') return 'pending-scope-decision'
   if (run.integrationStatus === 'escalated' || run.integrationStatus === 'resolving' || run.integrationStatus === 'verifying') {
     return `integration-${run.integrationStatus}`
   }
+  const localState = localStateBlockedReason(ctx, run.id)
+  if (localState) return localState
   return null
 }
 
 async function gcWorktree(ctx: OzContext, runId: string): Promise<void> {
   const run = ctx.store.getRun(runId)
   if (!run?.worktreePath) return
-  const blocked = gcBlockedReason(run)
+  const blocked = gcBlockedReason(ctx, run)
   if (blocked) {
     ctx.store.recordEvent({ runId, type: 'worktree-gc-blocked', data: { worktreePath: run.worktreePath, reason: blocked } })
     return
@@ -388,7 +401,7 @@ async function sweepOrphanWorktrees(ctx: OzContext): Promise<void> {
     // /var vs /private/var). The founder's main checkout has no matching run row, so it is never swept.
     const run = ctx.store.getRun(basename(wt.path))
     if (!run?.worktreePath) continue
-    if (run.status === 'running' || gcBlockedReason(run)) continue // active / held-back / un-integrated → preserve
+    if (run.status === 'running' || gcBlockedReason(ctx, run)) continue // active / held-back / un-integrated → preserve
     await closeRunSurfaces(ctx, run.id) // close any prior-instance panes before removing the cwd they live in
     await gcWorktree(ctx, run.id)
     ctx.store.recordEvent({ runId: run.id, type: 'worktree-swept', data: { worktreePath: run.worktreePath } })
