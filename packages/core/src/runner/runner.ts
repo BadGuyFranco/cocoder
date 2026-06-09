@@ -258,6 +258,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       firstDirectivePath: join(runDir, 'directive-0.json'),
       builderLabel: bob.label,
       builderCli: bob.cli,
+      oscarWriteScope: oscar.writeScope,
       runId: run.id,
       runBranch,
       pickup: input.pickup ?? null,
@@ -568,6 +569,42 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   let n = 0
   let consecutiveRejects = 0
 
+  const absorbGateResult = (gate: CommitGateResult): void => {
+    if (gate.committedSha) committedShas.push(gate.committedSha)
+    committedFiles.push(...gate.committedFiles)
+    if (gate.committedFiles.length > 0) {
+      const nowCommitted = new Set(gate.committedFiles)
+      for (let i = outOfScope.length - 1; i >= 0; i--) {
+        if (nowCommitted.has(outOfScope[i]!)) outOfScope.splice(i, 1)
+      }
+    }
+    outOfScope.push(...gate.outOfScope)
+    selfCommitted = selfCommitted || gate.selfCommitted
+  }
+
+  const commitOscarSupport = async (headBefore: string): Promise<CommitGateResult | null> => {
+    if (oscar.writeScope.length === 0) return null
+    const gate = await runCommitGate({
+      git,
+      store,
+      cwd: worktreePath,
+      runId: run.id,
+      workItemId: null,
+      scope: oscar.writeScope,
+      message: `oscar-support: ${priority.id} via CoCoder run ${run.id}`,
+      headBefore,
+    })
+    absorbGateResult(gate)
+    if (gate.committedSha || gate.outOfScope.length > 0 || gate.selfCommitted) {
+      store.recordEvent({
+        runId: run.id,
+        type: 'oscar-support-commit',
+        data: { committedSha: gate.committedSha, files: gate.committedFiles, outOfScope: gate.outOfScope, selfCommitted: gate.selfCommitted },
+      })
+    }
+    return gate
+  }
+
   await refreshStatus('awaiting-directive', 0, null, 'awaiting first directive')
 
   for (;;) {
@@ -585,6 +622,8 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     }
 
     if (directive.kind === 'wrapup') {
+      const headBeforeOscarSupport = await git.headSha(worktreePath)
+      await commitOscarSupport(headBeforeOscarSupport)
       if (input.wrapPlay && input.wrapPlayAssignment) {
         const headBeforeWrap = await git.headSha(worktreePath)
         const task =
@@ -614,10 +653,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           message: commitMessage(priority.id, run.id, n),
           headBefore: headBeforeWrap,
         })
-        if (wrapGate.committedSha) committedShas.push(wrapGate.committedSha)
-        committedFiles.push(...wrapGate.committedFiles)
-        outOfScope.push(...wrapGate.outOfScope)
-        selfCommitted = selfCommitted || wrapGate.selfCommitted
+        absorbGateResult(wrapGate)
         pickup = res.output && res.output.trim() ? res.output : (directive.pickup ?? null)
         store.recordEvent({ runId: run.id, type: 'wrapup', data: { atoms: n, forced: false, play: input.wrapPlay.id } })
         log(`wrap-up play ${input.wrapPlay.id} ran after ${n} atom(s)`)
@@ -718,10 +754,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         headBefore,
       })
       store.setWorkItemStatus(workItem.id, 'done')
-      if (gate.committedSha) committedShas.push(gate.committedSha)
-      committedFiles.push(...gate.committedFiles)
-      outOfScope.push(...gate.outOfScope)
-      selfCommitted = selfCommitted || gate.selfCommitted
+      absorbGateResult(gate)
       outcomeLine = gate.committedSha ? `atom ${atomIndex} verified + committed ${gate.committedSha}` : `atom ${atomIndex} verified (no in-scope changes to commit)`
       log(outcomeLine)
     }

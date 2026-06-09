@@ -349,6 +349,36 @@ describe('runRun (multi-atom loop)', () => {
     expect(wrap?.data).toEqual({ atoms: 0, forced: false })
   })
 
+  test('gate-commits Oscar support files at wrap and clears matching prior holdback', async () => {
+    const store = openRunStore(':memory:')
+    const oscarWithSupport = { ...oscar, writeScope: ['cocoder/priorities/**'] }
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([
+          ['packages/atom.ts', 'cocoder/priorities/full-oz-dashboard.md'],
+          ['cocoder/priorities/full-oz-dashboard.md'],
+        ]),
+        io: fakeIO({ directives: [delegate('atom 0'), wrapup('done')] }),
+      }),
+      { ...input, oscar: oscarWithSupport },
+    )
+
+    expect(result.status).toBe('completed')
+    expect(result.committedShas).toEqual(['sha-1', 'sha-2'])
+    expect(result.committedFiles).toEqual(['packages/atom.ts', 'cocoder/priorities/full-oz-dashboard.md'])
+    expect(result.outOfScope).toEqual([])
+
+    const links = store.listCommitLinks(result.runId)
+    expect(links.map((c) => c.files)).toEqual([['packages/atom.ts'], ['cocoder/priorities/full-oz-dashboard.md']])
+    expect(links.map((c) => c.workItemId)).toEqual([store.listWorkItems(result.runId)[0]?.id, null])
+
+    const types = store.listEvents(result.runId).map((e) => e.type)
+    expect(types).toContain('out-of-scope')
+    expect(types).toContain('oscar-support-commit')
+  })
+
   test('per-atom commit attribution: a prior atom held-back file is not re-attributed to the next atom', async () => {
     const store = openRunStore(':memory:')
     // atom 0 leaves docs/leak.md out of scope (held back); it REAPPEARS in atom 1's changed set but
