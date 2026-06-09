@@ -646,6 +646,29 @@ describe('runRun (multi-atom loop)', () => {
     expect(prompts.some((p) => p.includes('PRIOR WORK: atoms 0-2 done'))).toBe(true)
   })
 
+  test("Oscar's launch prompt enforces the artifact-first rule (directive-timeout root cause)", async () => {
+    // Runs 33/34/38/39/40 all faulted the same way: Oscar exited (or idled) without ever writing
+    // directive-0.json — the prompt let "write the JSON" read as one option among several. The rule
+    // makes the first artifact non-negotiable and gives a no-delegable-work fallback (wrap-up with a
+    // pickup naming the missing founder input) instead of a bare exit.
+    const store = openRunStore(':memory:')
+    const prompts: string[] = []
+    await runRun(
+      baseDeps({
+        store,
+        getAdapter: () => ({ ...okAdapter, build: (i) => {
+          prompts.push(i.prompt)
+          return { command: 'x', args: [] }
+        } }),
+      }),
+      input,
+    )
+    const oscarPrompt = prompts[0]!
+    expect(oscarPrompt).toContain('Artifact-first rule')
+    expect(oscarPrompt).toContain('your FIRST action in this run is to write the required\ndirective JSON')
+    expect(oscarPrompt).toContain('never just exit')
+  })
+
   test('Deb observer spawns in the run group without changing the commit flow', async () => {
     const spawns: string[] = []
     const store = openRunStore(':memory:')

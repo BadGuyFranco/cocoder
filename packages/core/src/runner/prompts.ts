@@ -56,6 +56,13 @@ merge, rebase, or switch branches by hand — work on this branch and let the ru
 
 # How this run works — you orchestrate the builder through a LOOP
 
+**Artifact-first rule (non-negotiable):** your FIRST action in this run is to write the required
+directive JSON to \`${input.firstDirectivePath}\`. Do not answer in chat, finish the session, or wait
+for founder follow-up before that artifact exists — the runner is polling for the FILE; a chat reply
+is invisible to it, and exiting without the file faults the whole run (\`directive-timeout\`, the
+loop's most-recurred failure). If the priority does not contain enough concrete work to delegate yet,
+write a wrap-up directive whose pickup says exactly what founder input is needed — never just exit.
+
 You drive the builder (${input.builderLabel}, a \`${input.builderCli}\` CLI) through a SEQUENCE of small
 atoms. One atom at a time:
 
