@@ -30,14 +30,14 @@ describe('build() pins the spike invocations', () => {
     expect(noModel.args).toEqual(['--disable-slash-commands', '--permission-mode', 'acceptEdits', '--', 'hi'])
   })
 
-  test('codex: interactive — bypass approvals+sandbox, positional prompt; model optional', () => {
+  test('codex: interactive — bypass approvals+sandbox, disables apps, positional prompt; model optional', () => {
     const built = new CodexAdapter().build({ prompt: 'do it', model: 'gpt', cwd: '/repo', outPath: '/run/last.txt' })
     expect(built.command).toBe('codex')
-    expect(built.args).toEqual(['--dangerously-bypass-approvals-and-sandbox', '-m', 'gpt', 'do it'])
+    expect(built.args).toEqual(['--dangerously-bypass-approvals-and-sandbox', '--disable', 'apps', '-m', 'gpt', 'do it'])
     expect(built.stdoutPath).toBeUndefined()
 
     const noModel = new CodexAdapter().build({ prompt: 'do it', model: '', cwd: '/repo', outPath: '/run/last.txt' })
-    expect(noModel.args).toEqual(['--dangerously-bypass-approvals-and-sandbox', 'do it'])
+    expect(noModel.args).toEqual(['--dangerously-bypass-approvals-and-sandbox', '--disable', 'apps', 'do it'])
   })
 
   test('cursor-agent: headless print-mode, output captured; model optional', () => {
@@ -62,9 +62,9 @@ describe('runReadiness profiles', () => {
     })
     expect(new CodexAdapter().runReadiness).toEqual({
       mechanism: 'launch-flags',
-      flags: ['--dangerously-bypass-approvals-and-sandbox'],
+      flags: ['--dangerously-bypass-approvals-and-sandbox', '--disable', 'apps'],
       managesUserConfig: false,
-      detail: 'managed by CoCoder: --dangerously-bypass-approvals-and-sandbox (launch flags; no user config modified)',
+      detail: 'managed by CoCoder: --dangerously-bypass-approvals-and-sandbox; --disable apps (launch flags; no user config modified)',
     })
     expect(new CursorAgentAdapter().runReadiness).toEqual({
       mechanism: 'launch-flags',

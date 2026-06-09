@@ -1,6 +1,6 @@
 // codex adapter — the builder CLI, launched as a real INTERACTIVE session in its cmux pane (the
 // founder watches the native TUI), mirroring CoBuilder: `codex
-// --dangerously-bypass-approvals-and-sandbox [-m <model>] "<prompt>"` (positional prompt starts
+// --dangerously-bypass-approvals-and-sandbox --disable apps [-m <model>] "<prompt>"` (positional prompt starts
 // the session). The bypass flag is the ADR-0006 trust-the-CLI posture (no OS sandbox → no F10
 // Keychain block) AND it auto-approves tools so the builder runs unattended; the write boundary is
 // enforced at CoCoder's commit-gate (S7). Completion is ARTIFACT-based — the runner polls for the
@@ -13,11 +13,13 @@ export class CodexAdapter implements Adapter {
   readonly id = 'codex'
   // ADR-0006 trust-the-CLI posture: this reduces the CLI's own guardrails only because CoCoder's
   // scope/write-fence + verify-gate are the real guardrail; run write-scope is never widened for it.
+  // `--disable apps` keeps Codex's optional Apps/connectors surface out of unattended builder runs;
+  // Bob does not need codex_apps or the app-server daemon for normal code work.
   readonly runReadiness: RunReadinessProfile = {
     mechanism: 'launch-flags',
-    flags: ['--dangerously-bypass-approvals-and-sandbox'],
+    flags: ['--dangerously-bypass-approvals-and-sandbox', '--disable', 'apps'],
     managesUserConfig: false,
-    detail: 'managed by CoCoder: --dangerously-bypass-approvals-and-sandbox (launch flags; no user config modified)',
+    detail: 'managed by CoCoder: --dangerously-bypass-approvals-and-sandbox; --disable apps (launch flags; no user config modified)',
   }
   readonly #exec: Exec
   constructor(exec: Exec = defaultExec) {
