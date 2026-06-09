@@ -17,7 +17,8 @@ async function bootstrap() {
   } catch {}
 }
 
-async function api(method, path, body) {
+async function api(method, path, body, retried = false) {
+  if (!auth) await bootstrap()
   const headers = { authorization: `Bearer ${auth.bearerToken}` }
   if (body !== undefined) {
     headers['content-type'] = 'application/json'
@@ -26,6 +27,11 @@ async function api(method, path, body) {
     headers[CSRF_HEADER] = auth.csrfToken
   }
   const res = await fetch(path, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined })
+  if ((res.status === 401 || res.status === 403) && !retried) {
+    auth = null
+    await bootstrap()
+    return api(method, path, body, true)
+  }
   const json = res.headers.get('content-type')?.includes('json') ? await res.json() : null
   if (!res.ok) throw new Error(json?.error || `${method} ${path} → ${res.status}`)
   return json
