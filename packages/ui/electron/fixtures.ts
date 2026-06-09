@@ -32,7 +32,8 @@ export function fixtureGet<T>(path: string): DaemonResult<T> {
 }
 
 // Mutations in fixture mode: acknowledge without side effects (the UI still exercises its states).
-export function fixtureMutate<T>(method: string, path: string): DaemonResult<T> {
+export function fixtureMutate<T>(method: string, path: string, _body?: unknown): DaemonResult<T> {
+  if (method === 'POST' && path === '/oz/messages') return { ok: true, status: 200, data: load('oz-messages.json') as T }
   if (method === 'POST' && path === '/runs') return { ok: true, status: 202, data: { runId: 'run_fixture' } as T }
   if (/\/show$/.test(path)) return { ok: true, status: 200, data: { shown: true, sessionRef: 'surface:2' } as T }
   if (/\/teardown$/.test(path)) return { ok: true, status: 200, data: { closed: [] } as T }

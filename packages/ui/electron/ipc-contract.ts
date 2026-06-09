@@ -163,6 +163,12 @@ export interface ChatMessage {
   readonly text: string
   readonly at: number
 }
+export interface OzChatReply {
+  readonly reply: string
+  readonly ok: boolean
+  readonly command: string
+  readonly action?: unknown
+}
 
 // --- local settings (slice 7, client-only prefs) ---
 export interface Settings {

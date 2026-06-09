@@ -7,7 +7,7 @@ Each item names the **surface** that needs it and the **seam** in this codebase 
 
 | # | Endpoint(s) | Needed by | Seam (where it plugs in) | Status today |
 |---|-------------|-----------|--------------------------|--------------|
-| 1 | `POST /oz/messages` (+ `GET /oz/stream` SSE) | Oz chat — the command center (Dashboard) | `electron/chat.ts` `ozReply()` → swap for a daemon call behind `window.oz.chatSend`; renderer (`app/sections/OzChat.tsx`) unchanged | **Stub**: main-process Oz reply; real, working chat shell with GUI⇄Oz parity as the design goal |
+| 1 | `POST /oz/messages` (+ `GET /oz/stream` SSE) | Oz chat — the command center (Dashboard) | `electron/daemon-client.ts` `ozChat()` behind `window.oz.chatSend`; renderer (`app/sections/OzChat.tsx`) unchanged | **PARTIAL**: `POST /oz/messages` is wired to the daemon command parser; `GET /oz/stream` SSE remains owed |
 | 2 | `GET /clis` ; `POST /clis/:id/test` ; `POST /clis` | CLIs section | `app/sections/CLIs.tsx` (disabled preview of list + status + Test + add form) | **Stub**: clearly-marked "pending endpoint" preview |
 | 3 | `POST /workspaces/:id/priorities/reorder` (needs a position/order field) | Drag-reorder priorities (Dashboard) | `electron/store.ts` `setPriorityOrder` behind `window.oz.prioritiesReorder` — swap local store for the daemon call; `app/sections/Priorities.tsx` unchanged | **Working** via client-owned `order: string[]` in a local store |
 | 4 | `POST /workspaces/:id/priorities` (create) | "Create a persona via a priority" (Personas) and priority creation | `app/sections/Personas.tsx` pending block; a future Priorities "+ new" action | **Stub**: marked pending |

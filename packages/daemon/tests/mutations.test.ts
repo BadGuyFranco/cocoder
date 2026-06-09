@@ -384,6 +384,15 @@ describe('Oz mutations + lifecycle', () => {
     expect(r).toEqual({ status: 404, json: { error: 'unknown cli' } })
   })
 
+  test('POST /oz/messages returns a deterministic chat reply', async () => {
+    await startServer()
+    const r = await call(oz!, 'POST', '/oz/messages', { body: { text: 'help', workspaceId: 'cocoder' } })
+    expect(r).toMatchObject({
+      status: 200,
+      json: { ok: true, command: 'help', reply: expect.stringContaining('Supported commands') },
+    })
+  })
+
   test('POST /runs → 409 when a run is already in flight for the workspace', async () => {
     await startServer()
     oz!.ctx.inFlight.set('cocoder', 'run_existing') // simulate an in-flight run
@@ -577,6 +586,12 @@ describe('Oz mutations + lifecycle', () => {
   test('POST /clis/:id/test → 403 without a CSRF token (mutation gate)', async () => {
     await startServer()
     const r = await call(oz!, 'POST', '/clis/any/test', { csrf: false })
+    expect(r.status).toBe(403)
+  })
+
+  test('POST /oz/messages → 403 without a CSRF token (mutation gate)', async () => {
+    await startServer()
+    const r = await call(oz!, 'POST', '/oz/messages', { csrf: false, body: { text: 'help' } })
     expect(r.status).toBe(403)
   })
 
