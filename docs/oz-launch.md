@@ -67,6 +67,23 @@ pnpm exec cocoder launch \
 
 Oz invokes `cocoder stop-run` via argv; no shell interpolation.
 
+## Oz Terminal (bounded chat commands)
+
+The dashboard **Oz Terminal** sends free text to `POST /oz/messages`. The daemon parses a **fixed verb
+vocabulary** — it is not an LLM agent. Supported commands (workspace context required for mutating ops):
+
+| Command | Example | Effect |
+|---------|---------|--------|
+| `launch` | `launch full-oz-dashboard` | Launches the named priority in the active workspace |
+| `show` | `show run_45` | Attaches/show panes for the run |
+| `stop` / `teardown` | `stop run_45` | Closes run panes (teardown) |
+| `status` | `status` or `status run_45` | Lists runs or shows one run's status |
+| `help` | `help` | Prints the supported command list |
+
+Unknown or ambiguous input returns a hint and **executes nothing**. Mutating requests require the same
+Bearer + CSRF tokens as other dashboard mutations. When the daemon is unreachable, the Electron app
+falls back to a local stub reply.
+
 ## Development vs production UI
 
 - **Dev:** `pnpm --filter oz-dashboard dev` (Vite proxies API to `:7878`; C-D2).

@@ -1,7 +1,7 @@
 # Oz
 
 **Status:** Draft, implemented by Sub-Playbook D Solve  
-**Last verified:** 2026-05-27 (docs pass only; no runtime behavior changed)
+**Last verified:** 2026-06-09 (run_45 Oz-chat command interface slice)
 
 Oz is CoCoder's local browser control surface. In v0.1 it helps an operator register workspaces, inspect priorities, launch runs, watch run status, and stop runs without hand-copying long CLI commands.
 
@@ -19,6 +19,11 @@ The v0.1 dashboard covers:
 - run listing and stop actions
 - a run inspector with minimum viable evidence paths
 - settings surfaced through the shared configuration resolver
+- **Oz Terminal** — a bounded chat command interface (`POST /oz/messages`) that maps a fixed verb
+  vocabulary (`launch`, `show`, `stop`/`teardown`, `status`, `help`) to existing run-lifecycle ops.
+  This is **not** an in-daemon LLM agent; ambiguous or unknown input executes nothing. GUI controls
+  remain the primary path; chat is parity for the same actions. Streaming (`GET /oz/stream` SSE) is
+  not yet wired.
 
 Use Oz when you want repeatable launches across multiple workspaces. Use the CLI directly when debugging launch composition or working in a terminal-only environment.
 
