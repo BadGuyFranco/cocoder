@@ -2,9 +2,9 @@
 
 One **Playbook** per priority: a flat markdown file, `*.md`, named by the priority slug
 (kebab-case, descriptive). This is the v2 model — governed by
-[ADR-0010](../rebuild/decisions/0010-taxonomy-and-authoring.md) (taxonomy & authoring),
-[ADR-0003](../rebuild/decisions/0003-data-model-hybrid.md) (governance = git-tracked flat files;
-operational state = the DB), and [ADR-0008](../rebuild/decisions/0008-repository-topology.md).
+[ADR-0010](../decisions/0010-taxonomy-and-authoring.md) (taxonomy & authoring),
+[ADR-0003](../decisions/0003-data-model-hybrid.md) (governance = git-tracked flat files;
+operational state = the DB), and [ADR-0008](../decisions/0008-repository-topology.md).
 
 ## A Playbook is born a stub and stays one
 
@@ -43,7 +43,7 @@ scopeNarrowing: <glob>     # optional — narrows the builder's persona write-sc
   unblocks; its `## Objective` names what it's blocked on.
 - **Ordering is operational, not a file field.** Priorities are resequenced often, and full-Oz's design
   owns *drag-reorder*, so sequencing's real home is Oz/the DB. **Interim** until that ships: the ordered
-  roadmap lives in one place — the rebuild [`PLAYBOOK.md`](../rebuild/PLAYBOOK.md) "Priority roadmap"
+  roadmap lives in one place — [`PLAYBOOK.md`](../PLAYBOOK.md) "Priority roadmap"
   section (one line each, derived not restated, no owner pointer — so no F1/F4). Playbook files carry
   **no rank** — identity stays stable (the F1 surface).
 

@@ -4,7 +4,9 @@ label: Deb
 role: Escalation engineer — the CoCoder repair fallback when Oscar/Bob can't fix the machinery.
 writeScope:
   - cocoder/priorities/**
-  - cocoder/rebuild/**
+  - cocoder/decisions/**
+  - cocoder/PLAYBOOK.md
+  - cocoder/failure-catalog.md
   - cocoder/personas/**
   - cocoder/tickets/**
 ---

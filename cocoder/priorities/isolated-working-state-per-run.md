@@ -5,7 +5,7 @@ title: "Isolated working state per run — worktree + verified auto-merge (ADR-0
 
 ## Objective
 Every CoCoder run executes in its **own git worktree + branch** (created from the trunk tip at launch)
-and reaches trunk only via a **verified auto-merge** — implementing [ADR-0015](../rebuild/decisions/0015-isolated-working-state-per-run.md).
+and reaches trunk only via a **verified auto-merge** — implementing [ADR-0015](../decisions/0015-isolated-working-state-per-run.md).
 **Verified when:**
 1. a run launches while the founder's own checkout is **dirty** and is **not blocked** (the
    `DirtyWorkingTreeError` guard is gone), doing all its work under `local/worktrees/<runId>` and never

@@ -7,7 +7,7 @@ title: "Deb — CoCoder repair fallback (ADR-0016)"
 Rebuild Deb from a passive fault-classification endpoint into CoCoder's **escalation engineer**: a
 read-only observer of ordinary target-repo work that can inspect orchestration state and write
 CoCoder repairs when the orchestration system itself is failing — implementing
-[ADR-0016](../rebuild/decisions/0016-deb-scoped-repair-fallback.md).
+[ADR-0016](../decisions/0016-deb-scoped-repair-fallback.md).
 
 **Verified when:**
 1. Deb answers "how's Oscar doing?" with **evidence from runner state** — the runner writes a live

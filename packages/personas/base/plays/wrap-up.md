@@ -6,7 +6,7 @@ writeScope:
   - cocoder/priorities/**
   - docs/**
   - ARCHITECTURE.md
-  - cocoder/rebuild/decisions/**
+  - cocoder/decisions/**
 ---
 
 # Wrap-up Play

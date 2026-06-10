@@ -1,7 +1,7 @@
 # CoCoder Architecture
 
 **Status:** v0.1 release candidate  
-**Last verified:** 2026-05-29 (package topology, language/validation policy, and ADR citations reconciled against the v2 rebuild codebase and `cocoder/rebuild/decisions/`)
+**Last verified:** 2026-05-29 (package topology, language/validation policy, and ADR citations reconciled against the v2 rebuild codebase and `cocoder/decisions/`)
 
 ## Mental Model
 
@@ -189,7 +189,7 @@ The Oz daemon owns run state and evidence without forking the engine's business 
 
 ## Package topology and dependency rule
 
-The v2 rebuild is a clean build (not an extraction): the six packages already exist under `packages/`. Per [`cocoder/rebuild/decisions/0008-repository-topology.md`](./cocoder/rebuild/decisions/0008-repository-topology.md), dependencies flow inward only:
+The v2 rebuild is a clean build (not an extraction): the six packages already exist under `packages/`. Per [`cocoder/decisions/0008-repository-topology.md`](./cocoder/decisions/0008-repository-topology.md), dependencies flow inward only:
 
 - `core` depends on nothing else in the workspace.
 - `adapters`, `session-hosts`, and `ui` depend only on `core`.
@@ -244,12 +244,12 @@ Oz classifies every proposed improvement by target zone before making or recomme
 - `install-local` — the ignored `<CoCoder>/local/` install preference zone.
 - `upstream-candidate` — a workspace finding that may belong upstream, but should be drafted for contributor review instead of edited into the install.
 
-Normal adopters get workspace customization by default. CoCoder product improvements are only routed to `cocoder-product` when the active workspace is the CoCoder repo dogfood workspace and developer mode is enabled. See [`cocoder/rebuild/decisions/0008-repository-topology.md`](./cocoder/rebuild/decisions/0008-repository-topology.md) (one-home enforcement) and [`0009-extensibility.md`](./cocoder/rebuild/decisions/0009-extensibility.md).
+Normal adopters get workspace customization by default. CoCoder product improvements are only routed to `cocoder-product` when the active workspace is the CoCoder repo dogfood workspace and developer mode is enabled. See [`cocoder/decisions/0008-repository-topology.md`](./cocoder/decisions/0008-repository-topology.md) (one-home enforcement) and [`0009-extensibility.md`](./cocoder/decisions/0009-extensibility.md).
 
 ## References
 
 - Design language: [`docs/oz-design-brief.md`](./docs/oz-design-brief.md)
-- ADR index (authoritative for v2): [`cocoder/rebuild/decisions/README.md`](./cocoder/rebuild/decisions/README.md)
+- ADR index (authoritative for v2): [`cocoder/decisions/README.md`](./cocoder/decisions/README.md)
 - Attribution / prior art: `NOTICE`
 - Dogfood meta-project: `cocoder/AGENTS.md`
 - Active priorities: `cocoder/PRIORITIES.md`

@@ -50,7 +50,7 @@ decision-mechanics exit, compounded by directive-0 prompt ambiguity and the stal
   this file's status; final report.
 
 ## Relationship to other priorities
-- Completes the owed exit path from [ADR-0015](../rebuild/decisions/0015-isolated-working-state-per-run.md)
+- Completes the owed exit path from [ADR-0015](../decisions/0015-isolated-working-state-per-run.md)
   (`pending-scope-decision` mechanics were drafted, never built).
 - Unblocks [`full-oz-dashboard`](./full-oz-dashboard.md) — its run_44–46 work is what's stranded.
 - The Phase 3 seam ADR is the "persona mode/sub-agents runner-honoring gap" named in that priority.

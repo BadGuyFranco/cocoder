@@ -43,7 +43,7 @@ describe('basePersonasDir', () => {
 
   test('Deb base scope covers the governance surfaces incl. tickets (ADR-0016 recurrence escalation)', () => {
     const scope = frontmatterList(readFileSync(join(basePersonasDir(), 'deb.md'), 'utf8'), 'writeScope')
-    expect(scope).toEqual(expect.arrayContaining(['cocoder/priorities/**', 'cocoder/rebuild/**', 'cocoder/personas/**', 'cocoder/tickets/**']))
+    expect(scope).toEqual(expect.arrayContaining(['cocoder/priorities/**', 'cocoder/decisions/**', 'cocoder/personas/**', 'cocoder/tickets/**']))
   })
 
   test('Oscar base scope covers support artifacts the runner can commit at wrap', () => {

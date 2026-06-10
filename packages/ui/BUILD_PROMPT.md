@@ -52,10 +52,10 @@ ORIENTATION (AGENTS.md convention — read before building)
   - `cocoder/decisions/0008-oz-control-plane-architecture.md` — v1 architecture ADR.
   - `cocoder/priorities/full-oz-dashboard.md` — the priority you're realizing + its 3 reconciliations.
   - `cocoder/priorities/zArchive/v0.4-oz-control-plane/README.md` — the archived v1 priority.
-  - `cocoder/rebuild/decisions/0013-orchestration-observation.md` — Oz oversight is TIER 3 (observe,
+  - `cocoder/decisions/0013-orchestration-observation.md` — Oz oversight is TIER 3 (observe,
     NEVER orchestrate; reuse the monitor primitive). `cocoder/priorities/deb.md` — Deb WRITES faults,
     Oz READS them (ONE debugger, not two).
-  - `cocoder/rebuild/decisions/0002-substrate-oz-and-cmux.md` — cmux is the terminal host; deep-link,
+  - `cocoder/decisions/0002-substrate-oz-and-cmux.md` — cmux is the terminal host; deep-link,
     don't embed/fork (AGPL arm's-length). `0008-repository-topology.md` + `scripts/check-topology.mjs`.
   - `packages/ui/public/{index.html,app.js,style.css}` — today's thin static dashboard. REUSE as the
     reference for what each surface shows; KEEP these files (the daemon serves them statically).

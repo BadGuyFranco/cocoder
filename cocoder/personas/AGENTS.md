@@ -2,9 +2,9 @@
 
 A persona is a flat markdown file (`oscar.md`, `bob.md`, `deb.md`, …) — role, mental model, rules —
 plus `shared-standards.md` (the cross-persona globals) and `assignments.json` (CLI + model per persona).
-Governed by [ADR-0008](../rebuild/decisions/0008-repository-topology.md) (personas-as-files),
-[ADR-0005](../rebuild/decisions/0005-personas-and-subtasks.md) (persona/Play tiers + model assignment),
-and [ADR-0012](../rebuild/decisions/0012-living-base-personas.md) (base + extension model).
+Governed by [ADR-0008](../decisions/0008-repository-topology.md) (personas-as-files),
+[ADR-0005](../decisions/0005-personas-and-subtasks.md) (persona/Play tiers + model assignment),
+and [ADR-0012](../decisions/0012-living-base-personas.md) (base + extension model).
 
 ## Base vs extension (ADR-0012)
 

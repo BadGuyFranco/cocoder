@@ -72,7 +72,7 @@ to land**. An auto-land carve-out (a failed run touching trunk with a governance
 
 ### Write scope — split by the living-base/delta seam (self-gating)
 Per ADR-0012, the **base persona** carries the portable governance scope present in every CoCoder
-workspace — `cocoder/priorities/**`, `cocoder/rebuild/**`, `cocoder/personas/**`, `cocoder/tickets/**` —
+workspace — `cocoder/priorities/**`, `cocoder/decisions/**` + the Playbook/failure-catalog, `cocoder/personas/**`, `cocoder/tickets/**` —
 and the **CoCoder-repo delta** adds broad dogfood-only CoCoder implementation authority (`packages/**`
 plus the repo's public docs/templates/scripts/root metadata). In a non-CoCoder workspace those machinery
 globs match nothing in-tree, so a machinery `cocoder-bug` is **proposed** (a PR to the CoCoder repo)

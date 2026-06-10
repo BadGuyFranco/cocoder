@@ -25,7 +25,7 @@ reviewed together. Surface the eventual vision *only* to locate seams (G1). No v
 **Exit:** every seam is an Accepted ADR or explicitly deferred; the v2 topology is decided (S3).
 
 - **All seams resolved — ADRs 0001–0009 accepted** (S1, S2, S4, S5, S6, S7, S3, S8; S9 dissolved).
-- **CoBuilder persona-rule audit captured** → [`persona-rules-to-carry.md`](./persona-rules-to-carry.md) (feeds Phase-1 persona authoring).
+- **CoBuilder persona-rule audit captured** → [`persona-rules-to-carry.md`](./zArchive/rebuild-notes/persona-rules-to-carry.md) (feeds Phase-1 persona authoring).
 - **Design implication discovered:** v2 needs a **shared-standards layer** — ~10 cross-persona
   global rules (root-cause-fix, verify-don't-assert, decision-classifier, the "you ARE the
   developer" premise) that personas *reference* rather than duplicate. Author alongside personas.
@@ -65,7 +65,7 @@ session). Defer any chat-command control plane (feature, not seam — G1).
 
 **Built (2026-05-28):** loopback `node:http` daemon (`@cocoder/daemon`, always-on owner) + a vanilla
 static dashboard (`@cocoder/ui`, no build step) over the existing ports — see
-[`oz-thin.md`](./oz-thin.md). Transport decided as loopback-HTTP-browser; the v1 security checklist
+[`oz-thin.md`](./zArchive/rebuild-notes/oz-thin.md). Transport decided as loopback-HTTP-browser; the v1 security checklist
 ported to node:http (C-S1/2/3/4/6/7), **C-S5 dropped as unearned** (no secret endpoint in the thin
 route set — G2/F5). ADR-0004's deferred liveness probe implemented: `cocoder run` probes → client
 vs standalone, two writers never coexist. ADR-0002-C1 crash-relaunch stays deferred (orphan rows are
@@ -100,7 +100,7 @@ the only test that validates the whole bet.
 The ordered view of v2 priorities. **Interim home** until full-Oz's drag-reorder owns sequencing in
 Oz/the DB; one line each, derived from each Playbook (not restated), no owner/route pointer (so no
 F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones in
-`cocoder/priorities/backlog/`. See [`../priorities/AGENTS.md`](../priorities/AGENTS.md).
+`cocoder/priorities/backlog/`. See [`../priorities/AGENTS.md`](./priorities/AGENTS.md).
 
 **Done (archived to `zArchive/v2/`):**
 - `objective-presence-gate` — ADR-0010 minimal-slice gate. ✅ (`bc6c3e8`).

@@ -103,11 +103,11 @@ mechanical infra (Settings was the last clean infra slice).
 | 1 | Oz chat — `POST /oz/messages` | **SERVED** (run_46, `0637c04`): bounded command interface — verbs `launch <priorityId>` / `show <runId>` / `stop`+`teardown <runId>` / `status [runId]` / `help` parsed in `packages/daemon/src/oz-chat.ts` and dispatched to existing launcher ops; **no in-daemon LLM**, rides the existing Bearer/CSRF/loopback posture. SSE/stream still deferred. |
 | 2 | Workspaces CRUD + `roots[]`/role model | **DECIDED — build-work, not a decision.** Model settled in [ADR-0007](../decisions/0007-workspace-files-and-multiroot-description.md) (three roles primary/writable/readonly; `workspace/` directory-of-files; CoCoder-always-a-root). Build = teach the daemon the ratified model (today's `workspace` table is a single-path stub). Only open detail: which zone the `workspace/` dir lives in (install `local/` vs `cocoder/local/`) — a footnote, not a blocker. |
 | 3 | `POST /runs/:id/stop` | Investigate launcher/runner process ownership before scoping. |
-| 4 | Persona `{mode, subAgents}` | **Seam drafted → [ADR-0018](../rebuild/decisions/0018-persona-run-mode-and-sub-agents.md) (proposed, founder review owed):** sub-agents = per-persona Play assignments (no new schema concept); `mode` persists only when the runner honors it the same slice (truthfulness rule). Build follows acceptance. |
+| 4 | Persona `{mode, subAgents}` | **Seam drafted → [ADR-0018](../decisions/0018-persona-run-mode-and-sub-agents.md) (proposed, founder review owed):** sub-agents = per-persona Play assignments (no new schema concept); `mode` persists only when the runner honors it the same slice (truthfulness rule). Build follows acceptance. |
 | 5 | `POST /clis` (add CLI) | CLIs derive from compiled adapters — defer (dynamic registration feature). |
 | 6 | Settings | **SERVED** (run_43). |
 | 7 | `POST /runs {task?}` free-text ad-hoc | Bounded; threads task to builder. |
-| 8 | Priority create + reorder | **DECIDED ([ADR-0010 amendment](../rebuild/decisions/0010-taxonomy-and-authoring.md), run_46):** NO DB migration. Priorities stay `.md` files; sequence is a git-tracked **order-only** `cocoder/priorities/order.json` (array of ids); drag-reorder rewrites it; `.md` files stay the existence-SSOT. |
+| 8 | Priority create + reorder | **DECIDED ([ADR-0010 amendment](../decisions/0010-taxonomy-and-authoring.md), run_46):** NO DB migration. Priorities stay `.md` files; sequence is a git-tracked **order-only** `cocoder/priorities/order.json` (array of ids); drag-reorder rewrites it; `.md` files stay the existence-SSOT. |
 
 ### Founder decisions + next-session pickup
 
@@ -124,12 +124,12 @@ no founder decisions are outstanding on this priority.
 - **Q2 (multi-root workspaces) — NOT a decision; build-work.** The model was already fully ratified in
   [ADR-0007](../decisions/0007-workspace-files-and-multiroot-description.md); the only gap is the daemon
   implementing it. Removed as a founder blocker. Owed slice #2 reclassified above.
-- **Q2-Oz (what Oz IS) — DECIDED, new [ADR-0017](../rebuild/decisions/0017-oz-orchestration-persona.md).**
+- **Q2-Oz (what Oz IS) — DECIDED, new [ADR-0017](../decisions/0017-oz-orchestration-persona.md).**
   Oz = a CLI-backed persona run as a long-lived session, surfaced as the in-app chat window, with a
   **bounded tool surface** mapping to existing run-lifecycle ops. Dissolves the old "command interface
   vs in-daemon LLM" binary; the `run_46` `parseOzCommand` stub becomes Oz's action layer. **No custom
   in-daemon LLM.** TIER-3 preserved.
-- **Q3 (priority ordering) — DECIDED, [ADR-0010 amendment](../rebuild/decisions/0010-taxonomy-and-authoring.md).**
+- **Q3 (priority ordering) — DECIDED, [ADR-0010 amendment](../decisions/0010-taxonomy-and-authoring.md).**
   No DB migration: priorities stay `.md` files; sequence is a git-tracked order-only
   `cocoder/priorities/order.json`; drag-reorder rewrites it. Owed slice #8 reclassified above.
 

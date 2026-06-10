@@ -1,7 +1,7 @@
 # ADR-0001 — Rebuild Charter
 
 **Status:** Accepted (founder + Claude, 2026-05-28)
-**Supersedes:** the v1 ADR set under `cocoder/decisions/` is treated as *history*; where a
+**Supersedes:** the v1 ADR set (now archived at `cocoder/zArchive/v1/decisions/`) is treated as *history*; where a
 rebuild ADR conflicts with a v1 ADR, the rebuild ADR wins.
 
 ## Context

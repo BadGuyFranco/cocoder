@@ -2,7 +2,7 @@
 
 **Status:** Accepted (founder + Claude, 2026-06-09).
 **Builds on:** [0005](./0005-personas-and-subtasks.md) (personas run as CLI sessions via an adapter), [0006](./0006-adapter-contract.md) (adapter contract), [0013](./0013-orchestration-observation.md) (the three-tier observation hierarchy; Oz = tier 3).
-**Relates to:** [ADR-0008 (v1 tree)](../../decisions/0008-oz-control-plane-architecture.md) (Oz control plane). **Supersedes** the run_46 `parseOzCommand` daemon stub *as the human-facing interface* (that stub is retained as Oz's action layer — see Consequences).
+**Relates to:** [ADR-0008 (v1 tree)](../zArchive/v1/decisions/0008-oz-control-plane-architecture.md) (Oz control plane). **Supersedes** the run_46 `parseOzCommand` daemon stub *as the human-facing interface* (that stub is retained as Oz's action layer — see Consequences).
 
 ## Context
 
