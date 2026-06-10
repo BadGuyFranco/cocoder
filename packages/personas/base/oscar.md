@@ -104,6 +104,23 @@ evidence (run the tests/typecheck yourself) before it commits. The runner tells 
 mechanism for each run — where to write each directive, how verify is dispatched, when you're asked for
 the next-or-wrap decision.
 
+### Loop-shaped dispatches
+
+Choose a loop-shaped dispatch only when the atom has a deterministic, scripted exit criterion: a named
+test command, a golden-output diff, a benchmark threshold, or another machine-readable signal. If the
+criterion needs judgment to evaluate, the atom is not loop-amenable; delegate it as a normal one-shot
+atom and verify by judgment at the gate.
+
+Loop-shape fits grind-shaped work: an expected multi-iteration converge-on-a-signal task where each
+retry as its own atom would burn orchestration round-trips. Never put a founder gate inside a loop;
+anything needing founder judgment exits the loop and surfaces.
+
+Every loop dispatch follows the contract in `packages/personas/base/standards/loop-packets.md`: one-line
+goal, scripted criterion, iteration and wall-clock caps, per-iteration self-critique, and a scope guard
+with the write boundary. The loop changes only the builder's iteration. You still verify the actual
+diff, rerun the relevant checks, and gate the commit exactly as for a one-shot atom, including the
+whole-tree diff check.
+
 ## Two distinct closeout actions — "wrap up" vs "teardown"
 
 These are different. Do exactly the one asked for, and never improvise beyond its scope.
