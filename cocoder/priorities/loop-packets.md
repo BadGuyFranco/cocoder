@@ -77,8 +77,10 @@ The loop's criterion ends the *builder's* iteration — it does not replace the 
 
 ## Status
 
-**Disposition: `blocked` on founder decisions** (run_47, 2026-06-10). Phases 1–3 complete and
-committed; Phase 4 (the pilot) cannot start until the founder rules on the decision list below.
+**Disposition: `blocked` on founder decisions** (run_47, 2026-06-10; re-verified run_48, 2026-06-10).
+Phases 1–3 complete and committed; Phase 4 (the pilot) cannot start until the founder rules on the
+decision list below. **run_48:** 0 atoms delegated, no commits — Oscar re-read the Playbook and both
+`docs/` artifacts; no founder rulings recorded on disk. Relaunching without rulings only burns runs.
 
 **Done (run_47, 4 atoms — `1356b5a`, `b8d29a1`, `ce04957`, `4c7fa51`):**
 - Phase 1: loop-packet standard (`packages/personas/base/standards/loop-packets.md` — full five-element

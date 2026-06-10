@@ -197,3 +197,9 @@ persona mode/sub-agents runner-honoring gap, gated by `pnpm --filter @cocoder/co
 `pnpm --filter @cocoder/daemon test`) — per this audit's own rule for that priority: declare
 loop-amenability only once the slice's acceptance is an existing package test command going green.
 Pilot selection is a founder decision (per-priority approval, never wholesale).
+
+## Founder ruling status
+
+**run_48 (2026-06-10):** Re-verified — no founder verdicts recorded for any audit entry. The
+recommendation column above is unchanged; approve/reject each entry per priority (decision 1 in
+`cocoder/priorities/loop-packets.md` Status).
