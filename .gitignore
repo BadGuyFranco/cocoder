@@ -1,18 +1,18 @@
-# Install-private preferences (survives git pull; sync across machines via Syncthing/iCloud/etc.)
-# Leading slash anchors to repo root — without it, this pattern would also match
-# `cocoder/local/` and shadow its inner `.gitignore` + tracked README.md per
-# ARCHITECTURE.md ignore matrix.
-/local/
+# Install-private machine state (survives git pull; one per machine, spans ALL managed workspaces:
+# DB, runs, worktrees, secrets, settings, workspace definition files). The ONLY "local" zone —
+# a workspace governance dir (cocoder/) never contains one (ADR-0008 amendment, 2026-06-10).
+# `/local/*` + negation keeps the signage README tracked while everything else stays private.
+/local/*
+!/local/README.md
 
 # Secrets — never tracked at any depth (ARCHITECTURE.md ignore matrix; audit §B7)
 *.env
 .env.*
 secrets/
-# Quinn credentials — belt-and-braces against accidental tracking outside
-# the workspace-private zone. The canonical home is
-# `cocoder/local/.quinn-credentials.json`, already covered by
-# cocoder/local/.gitignore; this catches mis-placed copies elsewhere in the
-# tree. The `*.example.json` template stays tracked (no leading `.`).
+# Quinn credentials — belt-and-braces against accidental tracking. The canonical
+# home is `local/secrets/.quinn-credentials.json` (install-private zone, already
+# ignored); this catches mis-placed copies elsewhere in the tree. The
+# `*.example.json` template stays tracked (no leading `.`).
 .quinn-credentials.json
 # Exception: the install-template ships an empty secrets/ directory with its own
 # .gitignore so `cocoder init` lays down the correct ignore rule for adopters.
@@ -26,9 +26,6 @@ node_modules/
 *.tsbuildinfo
 # Per-package build output (v2: TS compiles to dist/ per package)
 packages/*/dist/
-
-# NOTE: cocoder/local/ has its own .gitignore that keeps README.md + .gitignore tracked.
-# Do NOT add `cocoder/local/` here — that would shadow the inner rule and hide the README.
 
 # OS / editor
 .DS_Store

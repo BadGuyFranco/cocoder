@@ -142,7 +142,7 @@ the plan/ADRs) and `adhoc-session` (no named priority — draft one, or run a re
 
 **Vision backlog (re-author from frozen v1 reference when earned):** cloud/managed adapters (v1
 `v0.2`, cf. ADR-0006/0009) · onboarding/workspace lifecycle (v1 `v0.3`, Phase 5) · the deferred Oz G1
-items folded into `full-oz-dashboard`. Sources in `cocoder/priorities/zArchive/`.
+items folded into `full-oz-dashboard`. Sources in `cocoder/zArchive/priorities/`.
 
 ## Earned guardrails log
 

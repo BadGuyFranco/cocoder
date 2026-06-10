@@ -4,7 +4,7 @@ CoCoder is solo-maintained early-stage OSS. Outside contributions are welcome; t
 
 ## Before you open a change
 
-1. **Read the orientation chain:** [`AGENTS.md`](./AGENTS.md), [`ARCHITECTURE.md`](./ARCHITECTURE.md), and the active Playbook linked from [`cocoder/PRIORITIES.md`](./cocoder/PRIORITIES.md). Most "is this the right thing to build" questions are already answered there.
+1. **Read the orientation chain:** [`AGENTS.md`](./AGENTS.md), [`ARCHITECTURE.md`](./ARCHITECTURE.md), and the roadmap in [`cocoder/PLAYBOOK.md`](./cocoder/PLAYBOOK.md). Most "is this the right thing to build" questions are already answered there.
 2. **Check existing work:** scan open [issues](https://github.com/BadGuyFranco/cocoder/issues), [PRs](https://github.com/BadGuyFranco/cocoder/pulls), and recent entries in [`cocoder/SESSION_LOG.md`](./cocoder/SESSION_LOG.md). The proposal you have in mind may already be in flight or deliberately deferred.
 3. **For non-trivial changes, open a Discussion or Feature Request first.** Saves you from writing code that doesn't fit the current Sub-Playbook scope. Small bug fixes and obvious typo corrections can go straight to PR.
 

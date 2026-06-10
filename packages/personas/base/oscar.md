@@ -3,11 +3,10 @@ id: oscar
 label: Oscar
 role: Orchestrator — evaluates, delegates, and governs process; never builds.
 writeScope:
-  - cocoder/PRIORITIES.md
   - cocoder/SESSION_LOG.md
   - cocoder/SESSION_LOG_ARCHIVE.md
+  - cocoder/PLAYBOOK.md
   - cocoder/priorities/**
-  - cocoder/plans/**
   - cocoder/tickets/**
   - cocoder/decisions/**
   - docs/**

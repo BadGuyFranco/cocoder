@@ -54,7 +54,7 @@ CoCoder has two public surfaces and two private surfaces:
 - The CoCoder install repo contains six TypeScript packages (`@cocoder/core`, `@cocoder/adapters`, `@cocoder/session-hosts`, `@cocoder/daemon`, `@cocoder/cli`, `@cocoder/ui`), plus templates and docs.
 - `<CoCoder>/local/` stores install-private preferences, workspace registry data, audit logs, and secrets.
 - Each application repo gets a tracked `cocoder/` workspace folder for priorities, ADRs, tickets, memory, standards, and persona contracts.
-- Each application repo also gets ignored `cocoder/local/` overrides for machine-local settings and secrets.
+- All machine-local state (DB, runs, secrets, workspace files) lives in the install's `local/` — a workspace's `cocoder/` directory is fully git-tracked.
 
 Git updates the engine and templates. Ignored `local/` directories preserve operator preferences and run records.
 

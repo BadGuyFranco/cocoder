@@ -17,7 +17,7 @@ the PLAYBOOK roadmap) into Oz/DB; its **oversight/debugger** must be reconciled 
 so we build one debugger, not two; and its oversight is **tier 3 of the observation hierarchy
 (ADR-0013)** — Oz monitors Oscars across sessions and may observe (poll) Bobs/Debs, but never
 orchestrates them — **reusing** the monitor primitive built by
-[`oscar-orchestrates-bob`](./zArchive/v2/oscar-orchestrates-bob.md) (done + archived), not a second implementation. Slice sequencing
+[`oscar-orchestrates-bob`](../zArchive/priorities/v2/oscar-orchestrates-bob.md) (done + archived), not a second implementation. Slice sequencing
 is decided when this is picked up, not here.
 
 ## Status

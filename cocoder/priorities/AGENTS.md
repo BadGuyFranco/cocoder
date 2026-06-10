@@ -47,8 +47,9 @@ scopeNarrowing: <glob>     # optional — narrows the builder's persona write-sc
   section (one line each, derived not restated, no owner pointer — so no F1/F4). Playbook files carry
   **no rank** — identity stays stable (the F1 surface).
 
-## v1 history (frozen)
+## Archived history
 
-The folder-priorities (`v0.2-…`/`v0.3-…`/`v0.4-…`/`v0.5-…`), `../PRIORITIES.md`, and `zArchive/` are
-**frozen v1 artifacts** — they encode the old route/Canon/Owner model the rebuild is escaping and are
-not read by v2. Pending a founder decision to archive them under `../rebuild/`-era cleanup.
+Completed and frozen priorities live in [`../zArchive/priorities/`](../zArchive/priorities/) — the
+v1 folder-priorities (`v0.2-…`…`v0.5-…`, the old route/Canon/Owner model) and archived v2 priorities
+alike (reorg, 2026-06-10). Nothing in there is read by the engine; this directory's flat listing is
+the only live set.
