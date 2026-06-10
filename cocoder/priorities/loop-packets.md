@@ -74,3 +74,38 @@ The loop's criterion ends the *builder's* iteration — it does not replace the 
 > "priority boundary file (Rule 20a)" → the `scopeNarrowing` frontmatter above; "orchestration/docs/"
 > → home decided in Phase 1 by the portability test; "Rule 29 synthetic hardening" → the scope-guard
 > clause above; "Decision Presentation" → a plain-English founder decision (shared standard #8).
+
+## Status
+
+**Disposition: `blocked` on founder decisions** (run_47, 2026-06-10). Phases 1–3 complete and
+committed; Phase 4 (the pilot) cannot start until the founder rules on the decision list below.
+
+**Done (run_47, 4 atoms — `1356b5a`, `b8d29a1`, `ce04957`, `4c7fa51`):**
+- Phase 1: loop-packet standard (`packages/personas/base/standards/loop-packets.md` — full five-element
+  contract, not-loop-amenable rule, founder-gates-never-in-a-loop, Oscar-still-gates, worked example) +
+  base `oscar.md` "Loop-shaped dispatches" section (when loop vs one-shot). Both pass the ADR-0012
+  portability test (generic language).
+- Phase 2: planning integration — base `oscar.md` now requires every scoped atom AND every planned atom
+  in new-priority decomposition to declare its exit criterion + loop-amenability (unscriptable →
+  one-shot).
+- Phase 3: retrofit audit over the 9 active Playbooks (`docs/loop-packets-retrofit-audit.md`) + the
+  dispatch-mechanics inventory with six NOT-BUILT core-support findings
+  (`docs/loop-packets-dispatch-inventory.md`).
+- Correction (Oscar): the audit's pilot pick (`cli-config-and-model-discovery` UI wire-up) was based on
+  that Playbook's stale Status — the atom landed in run_42 (`d76cb5a`). Playbook fixed; audit carries a
+  dated correction; no audited priority currently names a ready-made loop-amenable atom.
+
+**Founder decisions outstanding (per priority, never wholesale):**
+1. Retrofit verdicts — approve/reject each audit entry (8 are "no retrofit"; the 1 "retrofit" is
+   voided by the correction).
+2. Pilot selection — recommended: carve a test-gated slice from `full-oz-dashboard` (e.g. the persona
+   mode/sub-agents runner-honoring gap, criterion `pnpm --filter @cocoder/core test` +
+   `--filter @cocoder/daemon test`) and run it loop-shaped with measured round-trips + wall-clock vs a
+   comparable historical atom from the run DB.
+3. Core-support findings — the six NOT-BUILT enforcement gaps in the inventory doc (structured loop
+   fields, runner-enforced caps, ledger capture, loop-aware monitor, runner criterion rerun): file as
+   a future priority, or accept trust-the-builder for now.
+
+**Verified-when ledger:** standard doc + oscar.md amendment ✅ committed · atom-scoping/authoring
+guidance ✅ committed · retrofit list founder-approved ⬜ (decision 1) · pilot run + measured ⬜
+(decisions 2, then a follow-up run on the chosen priority). Then propose archive.

@@ -178,3 +178,19 @@ scripted criterion.
 Why this one: the Playbook names one remaining product slice, the work is grind-shaped UI wiring, the
 criterion uses existing scripts, and comparable historical UI atoms exist in the priority history for
 round-trip and wall-clock comparison.
+
+## Correction (Oscar, run_47, 2026-06-10)
+
+The pilot recommendation above rested on a stale Playbook. The `cli-config-and-model-discovery` UI
+wire-up was already built, verified, and committed in run_42 (`d76cb5a`, ui suite 40/40 green); the
+Playbook's Status section had not been updated and still listed the atom as owed. The audit faithfully
+reported its input — the input was wrong. The Playbook has now been corrected (disposition
+`archive-candidate`; remaining = live demo only, no code owed), so `cli-config-and-model-discovery` is
+**not** a valid pilot candidate.
+
+Consequence: no audited priority currently names a ready-made loop-amenable atom. The strongest pilot
+route is to carve a concrete, test-gated implementation slice from `full-oz-dashboard` (for example the
+persona mode/sub-agents runner-honoring gap, gated by `pnpm --filter @cocoder/core test` /
+`pnpm --filter @cocoder/daemon test`) — per this audit's own rule for that priority: declare
+loop-amenability only once the slice's acceptance is an existing package test command going green.
+Pilot selection is a founder decision (per-priority approval, never wholesale).

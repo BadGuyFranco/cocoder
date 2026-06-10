@@ -12,6 +12,19 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-10 — **Loop packets: dispatch standard + planning integration shipped; pilot founder-gated (run_47)**
+
+**Persona:** Oscar + Bob (run_47, the Bob loop) | **Priority:** loop-packets | **Plan:** founder spec 2026-06-10 (Playbook phases 1–4)
+
+**Outcomes:**
+- Phases 1–3 done in 4 verified atoms (`1356b5a`, `b8d29a1`, `ce04957`, `4c7fa51`): loop-packet standard at `packages/personas/base/standards/loop-packets.md` (five-element contract + worked example); base `oscar.md` gains loop-vs-one-shot guidance AND mandatory exit-criterion + loop-amenability declarations for every scoped/planned atom; retrofit audit over 9 active Playbooks + dispatch-mechanics inventory with six NOT-BUILT core-support findings in `docs/`.
+- Correction en route: the audit's pilot pick (cli-config UI wire-up) rested on that Playbook's stale Status — the atom landed run_42 (`d76cb5a`). cli-config Playbook fixed to `archive-candidate` (only a live demo remains); audit carries a dated correction.
+- Process observation: every Deb nudge this run arrived one pipeline step behind reality (nudging for directives/verdicts already delivered); harmless here but the nudge generator reads a stale status snapshot.
+
+**Next:** founder rules on the loop-packets decision list (retrofit verdicts per priority; pilot selection — recommended: carve a test-gated slice from full-oz-dashboard; disposition of the six core-support findings), then a follow-up run executes the Phase 4 pilot loop packet with measured round-trips/wall-clock vs a historical atom.
+
+---
+
 ## 2026-06-10 — **The reorg: one decisions tree, three zones, cocoder/local eliminated, the repo explains itself**
 
 **Persona:** Claude (founder-directed hand-build) | **Priority:** repo reorg (founder-approved plan, executed R1–R5) | **Plan:** ADR-0008 amendment + ADR-0019

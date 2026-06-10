@@ -51,21 +51,27 @@ they can never drift from reality.
 - **`GET /clis` — served** (run_41): per CLI — install + auth, **models** (Part B), declarative
   **configManaged** / `runReadiness` (Part A); untested CLIs show placeholder detail for tested fields.
 - **`POST /clis/:id/test` — served** (run_41): preflight + `listModels()`, caches into `cliTestCache`.
-- **UI consumption — owed:** persona Model dropdown + CLIs screen still seed/stub-backed in
-  `packages/ui` until the next atom wires `daemon-client` → adapter → `App.tsx` / `CLIs.tsx` /
-  `Personas.tsx`.
+- **UI consumption — served** (run_42, `d76cb5a`): renderer loads live `GET /clis` on connect; CLIs
+  screen Test wired to real `POST /clis/:id/test`; persona Model pickers list reported models
+  Default-first, flag stale assignments, free-text for non-enumerating CLIs. ui suite 40/40 green.
 
 ## Relationship to other priorities
 - Feeds [`full-oz-dashboard`](./full-oz-dashboard.md) — daemon side of its CLIs screen and persona Model
-  picker; `GET /clis` + `POST /clis/:id/test` are served (run_41); UI wire-up is the remaining slice.
+  picker; `GET /clis` + `POST /clis/:id/test` are served (run_41); UI wire-up landed run_42.
 - Per-CLI run-readiness is adjacent to the run-launch path; keep it behind the `adapters`/`session-hosts`
   ports so `core` and the daemon stay CLI-agnostic.
 - Sequencing decided when picked up, not here.
 
 ## Status
 
-**Disposition: `continue`.** Not archive-ready — the Objective is not end-to-end verifiable until
-`packages/ui` consumes the daemon seam (one atom left).
+**Disposition: `archive-candidate`** (updated run_47, 2026-06-10 — this section previously still
+showed the UI atom as owed, which misled the loop-packets retrofit audit). All code is built and
+verified end-to-end; the ONLY remaining gap is a live demo (evidence, no code owed).
+
+**Done (run_42, 1 atom — `d76cb5a`):** `packages/ui` consumes the daemon seam — renderer loads
+`GET /clis` live on connect, CLIs screen Test calls the real `POST /clis/:id/test`, persona Model
+pickers list reported models Default-first with stale-assignment flagging and free-text for
+non-enumerating CLIs. typecheck + topology clean, ui 40/40 green.
 
 **Done (run_41, 3 atoms — `2cf63d9`, `b3e6cac`, `167ca8c`):** adapter + daemon backend for both
 parts is built, typecheck/topology clean, and suites green (adapters 17, core 168, daemon 47).
@@ -85,14 +91,9 @@ parts is built, typecheck/topology clean, and suites green (adapters 17, core 16
 
 | Gap | Owner |
 |-----|-------|
-| **Product:** Wire Oz UI off live `GET /clis` / `POST /clis/:id/test` — persona Model dropdown,
-  CLIs screen Test + refresh, stale-model warning when assignment ∉ reported models; remove stale
-  PendingBanners | `packages/ui` (~8 files, Electron IPC bridge) |
-| **Evidence:** End-to-end demo that (b) dropdown lists only CLI-reported models (+ Default); (a)
-  already holds via `runReadiness` → `build()` | after UI atom |
+| **Evidence:** live end-to-end demo that the dropdown lists only CLI-reported models (+ Default);
+  Part A already holds via `runReadiness` → `build()` | founder-witnessed demo; no code owed |
 
-**Next session start:** Bob atom on `packages/ui` — `electron/daemon-client.ts` (`clis()`,
-`clisTest(id)`), `app/adapter.ts` mapper (`/clis` → `Cli`, replace preflight-derived clis),
-`app/App.tsx` live load on connect, `app/sections/CLIs.tsx` + `Personas.tsx` (stale-model flag),
-vitest for adapter mapping + stale flag. Acceptance: typecheck + topology + ui/daemon/core/adapters
-suites green. No founder decisions outstanding.
+**Next session start:** run the live demo (open the dashboard against the running daemon, Test a
+CLI, observe the persona Model picker reflect reported models). On founder sign-off, propose
+archive. No founder decisions outstanding; NOT loop-amenable (no remaining code work).
