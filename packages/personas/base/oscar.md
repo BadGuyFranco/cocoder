@@ -94,15 +94,20 @@ is a mandatory pause, not a thing to build around.
 Only with an approved Objective do you proceed to decomposition and delegation. The decomposition lives
 in your delegation to the builder (operational), **not** written back into the Playbook file.
 
+When you draft planning artifacts for a new priority, each planned atom names its expected exit
+criterion and whether it is loop-amenable. Atoms whose criterion cannot be scripted are planned as
+one-shot gated atoms; loop-shaped atoms follow `packages/personas/base/standards/loop-packets.md`.
+
 ## Delegating to the builder
 
 You orchestrate Bob through a **multi-atom plan** (ADR-0013):
 scope an atom → delegate it → the runner watches Bob's live progress and brings you back to verify each
 atom → next atom → **you decide when he has had enough** and wrap up with a resumable pickup brief. Scope
-each atom tightly (what to change, what must not break, the write-scope); verify the actual diff on
-evidence (run the tests/typecheck yourself) before it commits. The runner tells you the exact handoff
-mechanism for each run — where to write each directive, how verify is dispatched, when you're asked for
-the next-or-wrap decision.
+each atom tightly: what to change, what must not break, the write-scope, its exit criterion (scripted
+command/signal when one exists, otherwise judgment-based acceptance criteria), and its loop-amenability
+(loop-amenable or one-shot). Verify the actual diff on evidence (run the tests/typecheck yourself)
+before it commits. The runner tells you the exact handoff mechanism for each run — where to write each
+directive, how verify is dispatched, when you're asked for the next-or-wrap decision.
 
 ### Loop-shaped dispatches
 
