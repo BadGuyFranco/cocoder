@@ -1,32 +1,30 @@
 ---
 id: new-primary-root
-title: "New Primary Root onboarding Play (plan-first — founder Q&A + ADR)"
+title: "Primary-root audit: bootstrap a new root's cocoder/, re-audit on drift (ADR-0020)"
 ---
 
 ## Objective
-CoCoder can be pointed at a brand-new primary root (a repo it has never managed) and bootstrap itself.
-Intended shape (founder's framing, to confirm in the Q&A): a **`new-primary-root`** procedure scaffolds
-the stub `cocoder/` governance folder and seeds exactly **one** priority — *"Analyze Primary Root"* —
-with its Playbook pre-associated, so the **first priority ever run** in a new root *is* that analysis: a
-comprehensive architecture-mapping + code review of the existing codebase (leveraging Ultra Code review
-when the claude CLI is installed), which then shapes that root's personas, write-scopes, and initial
-priorities to match how it was actually architected.
+CoCoder can be pointed at a primary root it has never managed and **bootstrap itself**: a
+deterministic scaffold of the `cocoder/` governance skeleton, then a **world-class agentic audit**
+(the `primary-root-audit` base Play, pinned to a top-tier model via its play assignment) that
+deep-reads the repo and authors its governance — memory, draft priorities with draft Objectives
+(founder-ratified before anything is runnable), persona/standards extensions. The same Play's
+**drift mode** is available in every workspace as a shipped meta-priority and re-audits an existing
+`cocoder/` against repo reality — **propose-only** (report + tickets/amendment drafts, never
+in-place rewrites). **Verified when:** (a) a real external repo is bootstrapped end-to-end — scaffold
+→ audit run → founder approves the drafted Objectives → first ordinary run executes against them;
+and (b) drift mode runs against the dogfood and produces an honest report. Boundary: governed by
+[ADR-0020](../decisions/0020-primary-root-audit.md) (proposed — **founder acceptance gates any
+build**); writes only the target's `cocoder/**`; no deployment, no multi-repo commit spine, no
+product code.
 
-**This is a STUB — plan-first.** It is a seam (charter D1: expensive to reverse; it defines the whole
-workspace-bootstrap model, and is the concrete form of Phase 5 — "first external repo"). Its **first
-deliverable is a founder Q&A + an ADR**, NOT the Play. **Verified (this stage) when** an approved ADR
-records the onboarding model and a real build Playbook exists. No build before that ADR is approved.
+Design settled by ADR-0020 (drafted 2026-06-10, absorbing the prior Q&A): vocabulary (workspace =
+the multi-root set, primary root = the governed repo — no new term); deterministic/agentic line
+(files scaffolded, content authored); Ultra Code review stays founder-triggered; the self-continuing
+bootstrap confirmed (first run in a new root IS the audit); pervasive availability = install-shipped
+meta-priorities (small loader extension, authorized by the ADR); model pinning rides ADR-0018 play
+assignments.
 
-Open Q&A items to resolve before building:
-- **Vocabulary** — "primary root" vs the existing "workspace" (ADR-0008 storage zones, `cocoder init`).
-  One concept, one home, one term — don't mint a second.
-- **Deterministic vs agentic split** — scaffolding the folder may be a plain `cocoder init` command;
-  the architecture analysis is clearly an agentic Play. Where's the line?
-- **May a Play invoke Ultra Code review?** It is normally user-triggered + billed — decide whether and
-  how an onboarding Play may leverage it.
-- **The self-continuing bootstrap** — confirm the "Play seeds a stub folder + a pre-associated *Analyze
-  Primary Root* Playbook, so the first run IS the analysis" design vs alternatives.
-
-**Boundary:** the onboarding design + its ADR + a build Playbook — nothing more. This is the Phase-5
-onboarding capability made concrete; it does not build deployment, multi-root management, or the
-analysis Play itself until planned.
+Build atoms (once the ADR is accepted) live in the run, not here — expected shape: init scaffold op
+→ base Play (bootstrap + drift prompts, adversarially reviewed) → shipped meta-priority + loader
+extension → live bootstrap proof on a real external repo (the Phase-5 entry).

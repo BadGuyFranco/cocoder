@@ -28,6 +28,12 @@ their still-live content was absorbed into [ADR-0019](./0019-multi-root-workspac
 | [0018](./0018-persona-run-mode-and-sub-agents.md) | Persona run-mode + sub-agents: sub-agents ARE per-persona Play assignments; `mode` honored the slice it lands (refines 0005) | Accepted |
 | [0019](./0019-multi-root-workspaces.md) | Multi-root workspaces: `.code-workspace` files in `local/workspace/`, three root roles, no nesting (absorbs live v1-0007/0006) | Accepted |
 
+## Proposed (founder review owed)
+
+| ADR | Title | Status |
+|---|---|---|
+| [0020](./0020-primary-root-audit.md) | Primary-root audit: bootstrap + drift as one base Play, top-tier model via play assignment, shipped meta-priorities | Proposed |
+
 **Phase-0 architecture Q&A complete — all seams resolved (ADRs 0001–0009).** ADR-0010 (taxonomy &
 authoring) accepted 2026-05-29 after a 6-lens adversarial review. ADR-0011 (orchestrator verify-gate)
 accepted 2026-05-29 — earned from a dogfood run where an unverified builder diff broke a sibling
