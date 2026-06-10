@@ -2,7 +2,7 @@
 
 **Status:** Accepted (founder, 2026-06-09; drafted by Claude the same day — this is the "persona
 `{mode, subAgents}` runner-honoring gap" named in
-[`full-oz-dashboard`](../../priorities/full-oz-dashboard.md) owed-surface #4).
+[`full-oz-dashboard`](../priorities/full-oz-dashboard.md) owed-surface #4).
 **Builds on:** [0005](./0005-personas-and-subtasks.md) (personas + Plays), [0006](./0006-adapter-contract.md)
 (adapter contract), [0017](./0017-oz-orchestration-persona.md) (Oz is a persona).
 

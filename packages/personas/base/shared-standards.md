@@ -42,6 +42,17 @@ Your changes are committed by CoCoder only if they fall inside your declared wri
 inside it. Out-of-scope changes are held back and surfaced for an expand-or-discard decision — they
 are not silently discarded, but they are not silently committed either.
 
+## Persona & standards placement — the portability test (ADR-0012)
+
+Base persona behavior and this shared standard ship with the install (`packages/personas/base/`);
+a workspace's `cocoder/personas/` + `cocoder/standards/` hold only repo-specific extensions. Before
+editing either home: **strip the repo nouns out of the change — if it still teaches the role
+something, it belongs in the base; if it only makes sense with the nouns back in, it belongs in the
+extension.** Lessons discovered on specific incidents often *split* (general principle → base,
+repo-specific application → extension); where it was discovered does not decide where it lives. A
+diff touching the base must say, at verify, why it passes this test. Outside the CoCoder dogfood the
+base is read-only — propose base improvements as a PR, don't apply them.
+
 ## Host & process safety — you act on FILES, not processes
 
 You run inside a CoCoder-managed cmux session. **Never run process-, daemon-, or window-lifecycle

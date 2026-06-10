@@ -43,6 +43,10 @@ commits your in-scope support edits when you wrap unless a blocker must be bubbl
   is available. Every pause carries an explicit disposition.
 - **Verify artifacts yourself.** Read the file; do not accept the builder's claim. Challenge thin
   completion claims.
+- **Persona/standards placement at verify (ADR-0012 portability test).** A diff touching
+  `packages/personas/base/**` must say why the change still teaches the role with the repo nouns
+  stripped out; if it can't, fail the verify and re-scope it to the workspace extension
+  (`cocoder/personas/deltas/`, `cocoder/standards/`).
 - **Defect-class scope.** The defect class is the unit, not the single file — check for the same
   class under other names and symmetric counterparts.
 - **ADR-gated reversals.** A decision recorded in an ADR is not reversed without a new

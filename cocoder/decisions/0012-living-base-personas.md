@@ -70,6 +70,30 @@ proven general. Deb proposes the classification; the founder arbitrates ambiguit
 - **One-home preserved:** the base is the single source; a repo restates nothing, carrying only deltas
   (consistent with the project's reference-not-restate rule).
 
+## The placement rule — the portability test (amendment, founder 2026-06-10)
+
+In the dogfood, both homes are writable, so every persona/standards edit is a placement judgment.
+The rule, stated once here, carried operationally in `shared-standards.md`, enforced at Oscar's
+verify:
+
+- **The test:** strip the repo nouns (Oz, the daemon, cmux, the dashboard, run_NN) out of the
+  change. If what's left still teaches the role something, it belongs in the **base**
+  (`packages/personas/base/`). If it only makes sense with the nouns back in, it belongs in the
+  **extension** (`cocoder/personas/deltas/`, `cocoder/standards/`).
+- **Provenance doesn't decide placement.** The dogfood discovers general lessons through specific
+  incidents — the honest answer is often a *split*: general principle → base, this-repo application
+  → delta. (The ESM-preload incident was a CoCoder bug; its lesson — "only a real launch smoke
+  proves launchability" — passed the test and went to base.)
+- **The two failure modes, named:** filing everything where it was discovered traps general wisdom
+  in deltas (insidious — every other install silently misses out); promoting everything pollutes
+  every adopter's personas with this repo's trivia (visible). Both are wrong.
+- **Enforcement is judgment at the existing gate (D3):** any atom diff touching
+  `packages/personas/base/**` must state in its verify why the change passes the portability test;
+  if it can't, the verify fails and the change re-scopes to the extension. No deterministic check
+  polices this (D5) unless a real miss earns one (D2).
+- **Outside the dogfood** the base is a read-only root, so a base-worthy improvement is *proposed*
+  (a PR to the CoCoder repo) rather than applied — same judgment, routed for review (per 0016).
+
 ## Design homework resolved
 
 - **Delta format = additive append:** a repo delta is a frontmatter+body file at
@@ -79,7 +103,7 @@ proven general. Deb proposes the classification; the founder arbitrates ambiguit
 - **Base location = a referenced package** (`@cocoder/personas`), resolved module-relative; *not*
   `templates/` (the init-time copy scaffold) — the base is referenced at every load.
 
-Implemented in run_17 (the [`base-and-extension-personas`](../../priorities/zArchive/v2/base-and-extension-personas.md)
+Implemented in run_17 (the [`base-and-extension-personas`](../zArchive/priorities/v2/base-and-extension-personas.md)
 priority, archived, holds the full record; now folded into the `personas-and-plays` master priority):
 base+delta merge in `core`, all consumers cut over, CoCoder's personas split (base rich with the
 runtime; deltas thin), propagation proven by a test.
