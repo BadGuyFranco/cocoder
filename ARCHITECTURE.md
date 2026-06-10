@@ -1,65 +1,57 @@
 # CoCoder Architecture
 
-**Status:** v0.1 release candidate  
-**Last verified:** 2026-05-29 (package topology, language/validation policy, and ADR citations reconciled against the v2 rebuild codebase and `cocoder/decisions/`)
+**Status:** v2 (rebuild) — live  
+**Last verified:** 2026-06-10 (reorg: one decisions tree, three zones, `cocoder/local/` eliminated; reconciled against `cocoder/decisions/` ADRs 0001–0019)
 
 ## Mental Model
 
-CoCoder has **four storage zones** that must never be conflated. Two live in the CoCoder install repo; two live in any application repo where a user runs `cocoder init`.
+CoCoder has **three storage zones** ([ADR-0008](./cocoder/decisions/0008-repository-topology.md), amended 2026-06-10) that must never be conflated.
 
 ```mermaid
 flowchart TB
   subgraph install ["CoCoder install repo (tracked)"]
     Core[packages/core — I/O-agnostic engine]
-    Cli[packages/cli — cocoder binary]
+    Daemon[packages/daemon — Oz daemon]
     Dash[packages/ui — Oz dashboard]
-    Docs[docs/]
-    Tpl[templates/workspace-cocoder]
+    Base[packages/personas/base — shipped persona + standards base]
+    Dogfood[cocoder/ — the dogfood workspace's governance]
   end
 
-  subgraph installLocal ["CoCoder/local/ (gitignored)"]
-    Oz[Oz state + workspaces registry]
-    Wsps[workspaces/ — per-ws install-side state]
-    Prefs[Models, accounts, secrets, audit, roots]
+  subgraph installLocal ["CoCoder/local/ (gitignored — ONE per machine, spans ALL workspaces)"]
+    Db[cocoder.db + runs/ + worktrees/]
+    Wsp[workspace/ — .code-workspace definition files]
+    Prefs[settings, secrets, audit]
   end
 
-  subgraph wsA ["Application workspace A"]
-    CA[cocoder/ — tracked governance]
-    CALA[cocoder/local/ — gitignored overrides]
+  subgraph wsA ["Managed workspace A (primary root)"]
+    CA[cocoder/ — tracked governance, same shape as the dogfood's]
   end
 
-  subgraph wsB ["Application workspace B"]
-    CB[cocoder/ — tracked governance]
-    CBLB[cocoder/local/ — gitignored overrides]
-  end
-
-  Dash --> Oz
-  Oz --> Core
-  Cli --> Core
+  Dash --> Daemon
+  Daemon --> Core
+  Core --> Dogfood
   Core --> CA
-  Core --> CB
-  Prefs --> Oz
-  Prefs --> Core
-  Tpl --> CA
-  Tpl --> CB
+  Wsp --> Daemon
+  Base --> Core
 ```
 
 | Zone | Location | Tracked in git? | Purpose |
 |------|----------|-----------------|---------|
-| **Install (public)** | CoCoder clone — `packages/`, `docs/`, `templates/`, `ARCHITECTURE.md`, `README.md`, `LICENSE` | Yes | Engine (`packages/core`), CLI (`packages/cli`), Oz dashboard source (`packages/ui`), public docs |
-| **Install (private)** | `<CoCoder>/local/` | **Never** (entire directory ignored) | Oz settings, workspace registry, per-workspace install-side state, models, secrets, audit logs — survives `git pull` |
-| **Workspace (shared)** | `<app>/cocoder/` | Yes (committed to your app repo) | Priorities, plans, tickets, decisions, memory, standards, custom personas — community-visible |
-| **Workspace (private)** | `<app>/cocoder/local/` | **Never** (entire directory ignored except `README.md` and `.gitignore`) | Per-workspace, per-machine overrides and secrets |
+| **Install (public)** | CoCoder clone — `packages/`, `docs/`, `templates/`, `scripts/`, `cocoder/` (dogfood governance) | Yes | The engine, the shipped persona/standards base, the dashboard, public docs — and the dogfood workspace's own governance |
+| **Install (private)** | `<CoCoder>/local/` | **Never** (only its signage `README.md` is tracked) | ALL machine-local state, spanning every managed workspace: the operational DB, run artifacts, per-run worktrees, workspace definition files (`local/workspace/`), settings, secrets, audit logs — survives `git pull` |
+| **Workspace (tracked)** | `<primary-root>/cocoder/` | Yes (committed to that repo) | That workspace's governance: priorities, decisions, tickets, memory, standards extensions, persona extensions — community-visible |
 
-### Dogfood collapse (CoCoder building itself)
+**There is no per-workspace "local" zone.** A `cocoder/` governance directory is fully git-tracked
+and never contains machine state; everything machine-specific lives in the install's one `local/`.
 
-CoCoder is both producer of the framework and consumer of it, so the two "workspace" zones in the table above collapse into a single tracked `cocoder/` directory at the CoCoder repo root:
+### The dual nature (CoCoder building itself)
 
-- `<CoCoder>/cocoder/` — the meta-project tracking how we build CoCoder (priorities, plans, tickets, decisions, memory, standards, custom personas)
-- `<CoCoder>/cocoder/local/` — narrow private overrides (typically empty for OSS CoCoder)
-- ADRs about the *product itself* live in `<CoCoder>/cocoder/decisions/` (rather than at repo root) because for us "product decisions" and "build decisions" are the same set
-
-A normal CoCoder *adopter* still sees the two zones distinctly: install-zone ADRs ship in the CoCoder clone they pull; workspace-zone ADRs live in their own application repo's `cocoder/decisions/`.
+The CoCoder repo is two things at once: the **engine install** every workspace shares, and the host
+of one particular workspace — the **dogfood**, whose primary root is CoCoder itself. So
+`<CoCoder>/cocoder/` is simply the dogfood workspace's governance directory, structurally identical
+to the `cocoder/` directory any managed repo gets. For the dogfood, "product decisions" and "build
+decisions" are the same set, so they share one `cocoder/decisions/` tree. An adopter's repo carries
+*their* product's ADRs in *their* `cocoder/decisions/`; CoCoder's ship here.
 
 ### Multi-machine sync
 
@@ -73,95 +65,75 @@ Git only modifies **tracked** files. Ignored paths are invisible to `git pull`, 
 
 | Repo | Path | Status | Owner of the rule |
 |---|---|---|---|
-| **CoCoder install** (this repo) | `/local/` | Ignored (entire directory; install-level state) | Root `.gitignore` in CoCoder install |
-| **CoCoder install** (this repo) | `/cocoder/local/` | Ignored except `README.md` and `.gitignore` (dogfood narrow-private zone) | `cocoder/local/.gitignore` (`*` + `!.gitignore` + `!README.md`) |
-| **CoCoder install** (this repo) | `/cocoder/` (everything except `cocoder/local/*`) | **Tracked** — community-visible priorities, plans, tickets, decisions, memory, standards, custom personas | No rule needed; just *don't* add it to .gitignore |
-| **Workspace template** (`templates/workspace-cocoder/`) | `cocoder/local/` (relative to the template root) | Ignore rule **inside the template**, applied when copied into a user workspace | Template's own `cocoder/.gitignore` |
-| **Your application repo** (after `cocoder init`) | `cocoder/local/` | Ignored | Template's `cocoder/.gitignore` (primary) AND belt-and-braces line in user repo's root `.gitignore` added by `cocoder init` |
+| **CoCoder install** (this repo) | `/local/` | Ignored (`/local/*` + `!/local/README.md` — only the signage README is tracked) | Root `.gitignore` in CoCoder install |
+| **CoCoder install** (this repo) | `/cocoder/` | **Tracked, fully** — the dogfood workspace's governance | No rule needed; just *don't* add it to .gitignore |
+| **Your application repo** (after init) | `cocoder/` | **Tracked, fully** — your workspace's governance | Same — never ignored, never contains machine state |
 | Any repo | `*.env`, `.env.*`, `secrets/` | Ignored at both levels | Both root and template `.gitignore` |
 | Any repo | `*.example.yaml`, `*.example.json` | **Tracked** (public reference samples) | Explicit allow — never add example files to ignore rules |
 
-**Rule of thumb:** `local/` is the *only* private zone. Priorities, plans, tickets, decisions, memory, standards, and custom personas are all tracked and community-visible. If a tool proposes ignoring anything outside `local/`, refuse.
+**Rule of thumb:** the install's `/local/` is the *only* private zone, period. Everything in a
+`cocoder/` governance directory — priorities, decisions, tickets, memory, standards, persona
+extensions — is tracked and community-visible. If a tool proposes ignoring anything outside the
+install's `local/`, refuse.
 
 ### Pattern
 
-1. Ship `templates/workspace-cocoder/cocoder/.gitignore` containing:
+1. Ship **example** files as `*.example.*` (tracked); real config lives in `local/` (untracked).
+2. On init/bootstrap, copy `templates/workspace-cocoder/` → `<primary-root>/cocoder/`; nothing
+   machine-local is ever written into the workspace.
+3. On CoCoder self-update: `git pull` updates `packages/` and `templates/`; `local/` is invisible to
+   git and survives untouched.
 
-   ```
-   local/
-   secrets/
-   *.env
-   .env.*
-   ```
-
-2. `cocoder init` appends `cocoder/local/` to the user repo's root `.gitignore` (belt-and-braces; survives even if a user deletes the inner gitignore).
-
-3. Ship **example** files as `*.example.yaml` (tracked); real `config.yaml` lives in `local/` (untracked).
-
-4. On `cocoder init`, copy template → workspace; never copy `local/` contents from examples (only `*.example.*` files are copied with their `.example` suffix preserved).
-
-5. On CoCoder self-update: `git pull` updates `packages/` and `templates/`; re-run `cocoder init --merge` to pick up new *tracked* workspace files only. `--merge` is idempotent and never overwrites user-edited tracked files without explicit confirmation.
-
-**Optional hardening:** `git update-index --skip-worktree` for specific tracked files — avoid as default; gitignore is simpler.
-
-## Directory Layout (Target)
+## Directory Layout (canonical — reorg of 2026-06-10)
 
 ```
-CoCoder/                          # public repository (git tracked)
-├── AGENTS.md
-├── ARCHITECTURE.md               # this file (product synthesis)
-├── LICENSE                       # Apache-2.0
-├── README.md
-├── pnpm-workspace.yaml           # pnpm workspaces
-├── .nvmrc                        # Node version (see .nvmrc)
+CoCoder/                          # the engine install AND the dogfood workspace's host
+├── AGENTS.md                     # repo orientation (start here)
+├── ARCHITECTURE.md               # this file
+├── LICENSE · README.md · pnpm-workspace.yaml · …
+├── packages/                     # seven TypeScript packages, inward-only deps (ADR-0008)
+│   ├── core/                     # I/O-agnostic engine: runner, personas, plays, commit-gate, store
+│   ├── personas/                 # shipped BASE personas + Plays + shared-standards (ADR-0012) —
+│   │                             #   the vast majority of persona behavior lives HERE
+│   ├── adapters/                 # per-CLI drivers + preflight (claude, codex, cursor-agent)
+│   ├── session-hosts/            # SessionHost drivers (cmux)
+│   ├── daemon/                   # Oz daemon: DB write-conn + cmux + live runs + HTTP API
+│   ├── cli/                      # `cocoder` binary (standalone + daemon-client modes)
+│   └── ui/                       # Oz dashboard (Electron)
 ├── docs/                         # public docs
-├── packages/                     # seven TypeScript packages, inward-only deps (rebuild ADR-0008)
-│   ├── core/                     # I/O-agnostic library: runner, composition, ports, loaders, write-scope/commit-gate, preflight (depends on nothing in the workspace)
-│   ├── personas/                 # shipped BASE persona set — the single source, improved centrally (ADR-0012); leaf content pkg (depends on nothing)
-│   ├── adapters/                 # per-CLI drivers + preflight (depends on core)
-│   ├── session-hosts/            # SessionHost drivers (cmux) (depends on core)
-│   ├── daemon/                   # Oz: DB write-conn + cmux + live runs (depends on core + adapters + session-hosts)
-│   ├── cli/                      # `cocoder` binary, standalone + client modes (depends on core + adapters + session-hosts)
-│   └── ui/                       # Oz dashboard (depends on core)
-├── templates/install-local/      # install-zone config + secrets examples
-├── templates/workspace-cocoder/  # the workspace template users get from `cocoder init`
-├── examples/personas/phil-primitive-builder/                               # example custom persona
-├── cocoder/                      # ← dogfood meta-project (TRACKED, community-visible)
-│   ├── AGENTS.md
-│   ├── PRIORITIES.md             # slim index
-│   ├── SESSION_LOG.md
-│   ├── priorities/[slug]/        # one folder per priority, with plans/
-│   ├── plans/                    # cross-priority Playbooks (rare)
+├── examples/                     # example custom personas etc.
+├── scripts/                      # oz.sh (daemon lifecycle), check-topology.mjs
+├── templates/
+│   ├── install-local/            # install-zone config + secrets examples
+│   └── workspace-cocoder/        # the cocoder/ scaffold a managed repo gets
+├── cocoder/                      # ← the DOGFOOD workspace's governance (tracked; same shape as
+│   │                             #   any <primary-root>/cocoder/ — every dir below is LIVE)
+│   ├── AGENTS.md                 # meta-project routing
+│   ├── PLAYBOOK.md               # the roadmap (phases + priority ordering, interim)
+│   ├── SESSION_LOG.md            # append-only work log (+ SESSION_LOG_ARCHIVE.md)
+│   ├── failure-catalog.md        # observed failures that earn guardrails (D2)
+│   ├── decisions/                # THE one live ADR tree (0001–0019+)
+│   ├── priorities/               # one flat .md per launchable priority (+ backlog/)
 │   ├── tickets/                  # INDEX.md + open/ + closed/
-│   ├── decisions/                # ALL ADRs (product + build, collapsed for CoCoder dogfood)
-│   ├── memory/                   # codebase-map.md, tech-stack.md, onboarding-questions.md
-│   ├── personas/custom/
-│   ├── standards/
-│   └── local/                    # ← narrow private overrides; only README.md + .gitignore tracked
-└── local/                        # ← install-level private; ENTIRE directory gitignored
-    ├── config.yaml
-    ├── workspaces.json           # Oz workspace registry
-    ├── workspaces/               # per-workspace install-side state (evidence, run cache, audit)
-    │   └── [workspace-slug]/
-    ├── roots.yaml                # multi-machine path tokens
-    ├── secrets/                  # API keys, oz-token
-    └── audit/oz-actions.jsonl    # Oz launch/stop audit log
+│   ├── personas/                 # EXTENSIONS only: deltas/ + custom/ + assignments.json
+│   ├── memory/                   # codebase-map, tech-stack, onboarding
+│   ├── standards/                # workspace extensions of the shipped base standard
+│   ├── spikes/                   # exploration notes that informed ADRs
+│   └── zArchive/                 # ALL frozen history (v1 tree, v1 decisions, archived priorities)
+└── local/                        # ← the ONE machine-local zone (gitignored; spans ALL workspaces)
+    ├── cocoder.db                # Oz-owned operational SQLite (ADR-0003)
+    ├── runs/ · worktrees/        # per-run artifacts + isolated worktrees (ADR-0015)
+    ├── workspace/                # .code-workspace definition files, one per workspace (ADR-0019)
+    ├── workspaces.json           # legacy registry (superseded by workspace/, ADR-0019)
+    ├── settings.json · secrets/ · oz-audit.log · scratch/
+    └── README.md                 # the only tracked file — zone signage
 
-<your-app>/cocoder/               # per workspace, in YOUR application repo
-├── AGENTS.md
-├── PRIORITIES.md                 # slim index
-├── SESSION_LOG.md
-├── config.yaml                   # OPTIONAL team-shared defaults (tracked); empty/absent for most adopters
-├── priorities/[slug]/
-├── plans/
-├── tickets/
-├── decisions/                    # workspace-level ADRs (about YOUR product)
-├── memory/
-├── personas/custom/
-├── standards/
-└── local/                        # GITIGNORED (except README.md + .gitignore)
-    ├── config.yaml               # per-machine overrides on top of the tracked defaults above
-    └── persona-overrides.json
+<primary-root>/                   # any repo CoCoder manages
+└── cocoder/                      # that workspace's governance — IDENTICAL SHAPE to the dogfood's:
+    ├── AGENTS.md · SESSION_LOG.md
+    ├── decisions/ · priorities/ · tickets/ · memory/ · standards/
+    └── personas/ (deltas/ + custom/ + assignments.json)
+                                  # NO local/ — machine state lives only in the install's local/
 ```
 
 ## Persona Boundaries (CoCoder)
@@ -238,10 +210,9 @@ Oz runs an HTTP daemon that can launch and stop processes. It is **not** interne
 
 Oz classifies every proposed improvement by target zone before making or recommending a change:
 
-- `cocoder-product` — CoCoder source itself (`packages/`, `templates/`, public docs, shipped prompts). This is contributor-only developer-mode work.
-- `workspace-shared` — the active repo's tracked `cocoder/` folder.
-- `workspace-local` — the active repo's ignored `cocoder/local/` folder.
-- `install-local` — the ignored `<CoCoder>/local/` install preference zone.
+- `cocoder-product` — CoCoder source itself (`packages/`, `templates/`, public docs, shipped prompts + base personas). This is contributor-only developer-mode work; in the dogfood it's the portability-test call (ADR-0012).
+- `workspace-shared` — the active repo's tracked `cocoder/` governance folder.
+- `install-local` — the ignored `<CoCoder>/local/` machine-state zone (the only local zone).
 - `upstream-candidate` — a workspace finding that may belong upstream, but should be drafted for contributor review instead of edited into the install.
 
 Normal adopters get workspace customization by default. CoCoder product improvements are only routed to `cocoder-product` when the active workspace is the CoCoder repo dogfood workspace and developer mode is enabled. See [`cocoder/decisions/0008-repository-topology.md`](./cocoder/decisions/0008-repository-topology.md) (one-home enforcement) and [`0009-extensibility.md`](./cocoder/decisions/0009-extensibility.md).
@@ -252,4 +223,4 @@ Normal adopters get workspace customization by default. CoCoder product improvem
 - ADR index (authoritative for v2): [`cocoder/decisions/README.md`](./cocoder/decisions/README.md)
 - Attribution / prior art: `NOTICE`
 - Dogfood meta-project: `cocoder/AGENTS.md`
-- Active priorities: `cocoder/PRIORITIES.md`
+- Roadmap + active priorities: `cocoder/PLAYBOOK.md` + the `cocoder/priorities/*.md` listing

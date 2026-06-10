@@ -1,39 +1,27 @@
-# `cocoder/standards/` — Workspace operational standards
+# `cocoder/standards/` — workspace extensions of the shipped base standard
 
-Workspace-specific operational standards: RACI, write boundaries, evidence requirements, escalation paths, communication protocols. Distinct from product code standards (linting, code style — those live in `../../packages/*/` and are enforced by tooling).
+CoCoder's shared operating standard **ships with the install** at
+`packages/personas/base/shared-standards.md` — it is prepended to every persona prompt in every run,
+in every workspace (ADR-0012's living-base model, applied to standards exactly as to personas).
 
-**Status:** Mostly stub. Standards will be authored during Sub-Playbook A (when extraction reveals which CoBuilder standards generalize) and Sub-Playbook B (when persona system lands and we know what to constrain).
+This directory holds the **workspace-specific extensions** to that base: rules that are true for
+*this* repo but would be noise or wrong elsewhere. The relationship mirrors
+`packages/personas/base/` ⇄ `cocoder/personas/deltas/` — base behavior ships, extensions live here.
 
-## When a standard belongs here
+## When a rule belongs here vs the base
 
-| Situation | Standard belongs here? |
+Apply the portability test (ADR-0012): strip the repo nouns — if the rule still teaches every
+workspace something, it belongs in the shipped base (`shared-standards.md`, review-gated); if it
+only makes sense with this repo's nouns in it, it belongs here.
+
+| Situation | Belongs |
 |---|---|
-| Defines who is accountable for a class of work (RACI) | Yes |
-| Defines what a persona is allowed to touch (write boundaries) | Yes |
-| Defines when evidence bundles are required before merge | Yes |
-| Defines failure modes that require human pause vs. autonomous retry | Yes |
-| Code style, linter config, formatter rules | No — those live with the package |
-| Architectural decisions | No — those are ADRs in `../decisions/` |
-| Per-priority operational quirks | No — document in that priority's README |
+| "Verify with evidence, not the builder's claim" | Base (it's already there) |
+| Dogfood-specific accountability or write-boundary nuances | Here |
+| Code style, linter config | Neither — lives with the package, enforced by tooling |
+| Architectural decisions | Neither — ADRs in `../decisions/` |
 
-## Planned files (authored during Sub-Playbooks A and B)
-
-| File | Purpose | Owned by |
-|---|---|---|
-| `raci.md` | Persona accountability matrix (Responsible, Accountable, Consulted, Informed) | Sub-Playbook B |
-| `write-boundaries.md` | Who can touch what (orchestration vs product code vs ADRs vs memory vs personas) | Sub-Playbook A |
-| `evidence-required.md` | When evidence bundles are mandatory before merge or completion | Sub-Playbook A |
-| `escalation.md` | Failure modes requiring human pause vs autonomous retry; mirrors WISER autonomous guardrails | Sub-Playbook B |
-| `communication.md` | Session-log entry expectations, ticket vs Playbook task vs priority decision tree | Sub-Playbook D (as part of docs) |
-
-## SSOT rule (per `../AGENTS.md`)
-
-Each standards file is canonical for its rule. Where rules are referenced from Playbooks or personas, the standards file remains canonical; the reference is informational.
-
-## How to add a new standard
-
-1. Create the file with a clear short name (`raci.md`, not `responsibility-accountability-consulted-informed-matrix.md`)
-2. Open with a single-sentence purpose statement
-3. State the rule(s) concretely — examples beat abstractions
-4. Add the file to the table above with its owning Playbook
-5. Cross-reference from any persona/playbook/ADR that depends on it
+**Status:** intentionally empty today (D6 — earned, not pre-built). The first real
+dogfood-specific standard creates the first file; until then the base standard is the whole
+standard. When a file lands: short name, one-sentence purpose, concrete rules, cross-referenced
+from whatever depends on it.
