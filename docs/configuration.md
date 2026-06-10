@@ -32,7 +32,7 @@ Oz settings route through the same resolver path. Use `--workspace-root` wheneve
 
 ## Workspaces and the install repo
 
-**CoCoder does not support workspaces nested inside its own install repository** (see [ADR-0006](../cocoder/decisions/0006-no-nested-workspaces-inside-install.md)).
+**CoCoder does not support workspaces nested inside its own install repository** (see [ADR-0006](../cocoder/zArchive/v1/decisions/0006-no-nested-workspaces-inside-install.md)).
 
 The install repo already contains exactly one workspace — the dogfood meta-project at `<CoCoder>/cocoder/`. Any other CoCoder workspace must live **outside** the install tree. Running `cocoder init` inside an existing install (or anywhere under it) refuses with a clear error and asks you to move the target directory out, or pass `--workspace-root` pointing at an out-of-tree path.
 

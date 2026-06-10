@@ -1,7 +1,7 @@
 # Oz design brief
 
 **Status:** intent — pending the claude.ai/design output, then implementation.
-**Decides nothing on its own:** the settled architecture is in [ADR-0008](../cocoder/decisions/0008-oz-control-plane-architecture.md) (Oz control-plane model) and [ADR-0007](../cocoder/decisions/0007-workspace-files-and-multiroot-description.md) (root roles). This file captures the **screen/flow brief** and the **verbatim design prompt** used to generate the Oz UI, so the intent is durable and feeds implementation under the `v0.4-oz-control-plane` priority.
+**Decides nothing on its own:** the settled architecture is in [ADR-0008](../cocoder/zArchive/v1/decisions/0008-oz-control-plane-architecture.md) (Oz control-plane model) and [ADR-0007](../cocoder/zArchive/v1/decisions/0007-workspace-files-and-multiroot-description.md) (root roles). This file captures the **screen/flow brief** and the **verbatim design prompt** used to generate the Oz UI, so the intent is durable and feeds implementation under the `v0.4-oz-control-plane` priority.
 
 Authored 2026-05-27. Revised 2026-05-27 to match the founder's stated layout: a **five-section** left nav (Dashboard · Workspaces · CLIs · Personas · Settings) with **runs and priorities folded into the Dashboard**, and the **Oz chat as the command center** — superseding the earlier six-section draft that mirrored the current app (standalone Runs + Priorities screens). Audience: technical founder/operator. Visual styling is owned by the claude.ai/design system and is intentionally unspecified here.
 

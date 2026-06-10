@@ -13,7 +13,7 @@ next slice starts. Boundary: rides the existing `core` ports + the Phase-2 daemo
 This is the road to feature-complete and the surface you actually operate from (re-authored from the
 archived v1 `v0.4-oz-control-plane` as reference, not resurrected). Three reconciliations flagged for
 design time: its **drag-reorder** is where priority *ordering* migrates off the interim (`backlog/` +
-the PLAYBOOK roadmap) into Oz/DB; its **oversight/debugger** must be reconciled with [`deb`](./deb.md)
+the PLAYBOOK roadmap) into Oz/DB; its **oversight/debugger** must be reconciled with [`deb`](../zArchive/priorities/v2/deb.md)
 so we build one debugger, not two; and its oversight is **tier 3 of the observation hierarchy
 (ADR-0013)** — Oz monitors Oscars across sessions and may observe (poll) Bobs/Debs, but never
 orchestrates them — **reusing** the monitor primitive built by
@@ -101,7 +101,7 @@ mechanical infra (Settings was the last clean infra slice).
 | # | Surface | Seam / blocker |
 |---|---------|----------------|
 | 1 | Oz chat — `POST /oz/messages` | **SERVED** (run_46, `0637c04`): bounded command interface — verbs `launch <priorityId>` / `show <runId>` / `stop`+`teardown <runId>` / `status [runId]` / `help` parsed in `packages/daemon/src/oz-chat.ts` and dispatched to existing launcher ops; **no in-daemon LLM**, rides the existing Bearer/CSRF/loopback posture. SSE/stream still deferred. |
-| 2 | Workspaces CRUD + `roots[]`/role model | **DECIDED — build-work, not a decision.** Model settled in [ADR-0007](../decisions/0007-workspace-files-and-multiroot-description.md) (three roles primary/writable/readonly; `workspace/` directory-of-files; CoCoder-always-a-root). Build = teach the daemon the ratified model (today's `workspace` table is a single-path stub). Only open detail: which zone the `workspace/` dir lives in (install `local/` vs `cocoder/local/`) — a footnote, not a blocker. |
+| 2 | Workspaces CRUD + `roots[]`/role model | **DECIDED — build-work, not a decision.** Model settled in [ADR-0019](../decisions/0019-multi-root-workspaces.md) (three roles primary/writable/readonly; `workspace/` directory-of-files; CoCoder-always-a-root). Build = teach the daemon the ratified model (today's `workspace` table is a single-path stub). Zone settled by the reorg (2026-06-10): install `local/workspace/`. |
 | 3 | `POST /runs/:id/stop` | Investigate launcher/runner process ownership before scoping. |
 | 4 | Persona `{mode, subAgents}` | **Seam drafted → [ADR-0018](../decisions/0018-persona-run-mode-and-sub-agents.md) (proposed, founder review owed):** sub-agents = per-persona Play assignments (no new schema concept); `mode` persists only when the runner honors it the same slice (truthfulness rule). Build follows acceptance. |
 | 5 | `POST /clis` (add CLI) | CLIs derive from compiled adapters — defer (dynamic registration feature). |
@@ -122,7 +122,7 @@ no founder decisions are outstanding on this priority.
 - **Q1 (Oz chat) — RESOLVED.** Bounded command interface landed (`0637c04`). The deeper "what IS Oz"
   question is now answered by a real ADR (see Q2-Oz), not deferred.
 - **Q2 (multi-root workspaces) — NOT a decision; build-work.** The model was already fully ratified in
-  [ADR-0007](../decisions/0007-workspace-files-and-multiroot-description.md); the only gap is the daemon
+  [ADR-0019](../decisions/0019-multi-root-workspaces.md); the only gap is the daemon
   implementing it. Removed as a founder blocker. Owed slice #2 reclassified above.
 - **Q2-Oz (what Oz IS) — DECIDED, new [ADR-0017](../decisions/0017-oz-orchestration-persona.md).**
   Oz = a CLI-backed persona run as a long-lived session, surfaced as the in-app chat window, with a

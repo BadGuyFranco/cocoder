@@ -85,4 +85,4 @@ exit. New invocations:
 
 The two findings above still matter in spirit (the trust-the-CLI no-sandbox posture for codex is
 retained; the stdin-hang is moot because an interactive PTY has a real stdin). See
-[`../oz-thin.md`](../oz-thin.md).
+[`../oz-thin.md`](../zArchive/rebuild-notes/oz-thin.md).

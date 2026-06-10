@@ -37,7 +37,7 @@ When you report, please include (as much as you can — none of this is required
 ## Out of scope
 
 - User-installed adapter CLIs (Codex, Claude, Grok, etc.) — report security issues to those vendors directly.
-- Vulnerabilities in user-authored personas, profiles, routes, or priority boundaries in their own `cocoder/` workspace — those are user-zone, not product surface (see [ADR-0005](./cocoder/decisions/0005-oz-improvement-target-routing.md)).
+- Vulnerabilities in user-authored personas, profiles, routes, or priority boundaries in their own `cocoder/` workspace — those are user-zone, not product surface (see [ADR-0005](./cocoder/zArchive/v1/decisions/0005-oz-improvement-target-routing.md)).
 - Vulnerabilities that require an attacker to already have local filesystem write access to `<CoCoder>/local/` (that zone holds secrets by design; protecting it is the user's responsibility per [ARCHITECTURE.md](./ARCHITECTURE.md)).
 - Social-engineering attacks against project maintainers.
 

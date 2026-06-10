@@ -8,7 +8,7 @@ Durable knowledge about the workspace that should outlive any single session or 
 |---|---|---|
 | [`codebase-map.md`](./codebase-map.md) | Repository layout + key modules | When directory structure or module boundaries change |
 | [`tech-stack.md`](./tech-stack.md) | Languages, frameworks, tools, ADR-locked decisions | When ADRs land or stack changes |
-| [`onboarding-questions.md`](./onboarding-questions.md) | Open questions a new contributor would ask | Append-only as questions surface; resolve by moving to ADR or doc |
+| [`onboarding-questions.md`](./tech-stack.md) | Open questions a new contributor would ask | Append-only as questions surface; resolve by moving to ADR or doc |
 
 `onboarding-questions.md` is created on demand by `cocoder audit-workspace` (Sub-Playbook B). It does not exist yet for CoCoder's own dogfood.
 
