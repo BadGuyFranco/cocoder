@@ -129,9 +129,13 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    (and where priority ordering eventually lands). **In progress / continue** — the Electron dashboard
    is live against existing daemon endpoints; remaining work is new daemon surfaces tracked in the
    priority, starting with the Oz chat command-interface decision and workspace CRUD role-model decision.
-4. `new-primary-root` (**plan-first**) — onboarding Play for a brand-new repo: scaffolds the stub
-   `cocoder/` folder and seeds the *"Analyze Primary Root"* first priority. A seam (D1) → its first
-   deliverable is a **founder Q&A + an ADR**, not code. The concrete form of Phase 5 ("first external repo").
+4. `new-primary-root` — the primary-root audit: bootstrap a new root's `cocoder/` + propose-only
+   drift re-audit, one base Play pinned to a top-tier model. Design drafted as **ADR-0020 (proposed,
+   2026-06-10)** — founder acceptance gates the build. The concrete form of Phase 5 ("first external repo").
+5. `loop-packets` (added 2026-06-10) — loop-shaped dispatch as a first-class atom shape: builder
+   grinds against a deterministic scripted exit criterion under iteration/wall-clock caps, with an
+   iteration ledger and a hard scope guard. **Dispatch language + planning artifacts only** — core
+   needs are findings, never built here. Ends with one measured pilot before any rollout.
 
 Plus two always-available meta-priorities: `build-priorities-from-plan` (Oscar drafts priorities from
 the plan/ADRs) and `adhoc-session` (no named priority — draft one, or run a read-only review/research).
