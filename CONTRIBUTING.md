@@ -11,7 +11,7 @@ CoCoder is solo-maintained early-stage OSS. Outside contributions are welcome; t
 ## How to make changes
 
 1. **Fork + branch.** Branch names like `fix/short-description` or `feature/short-description` keep history scannable; this is a recommendation, not a hard rule.
-2. **Match the existing style.** The orchestration core under `packages/core/` is `.mjs` (preserved verbatim from CoBuilder per ADR-0004). New TypeScript packages live in `packages/cocoder-cli/`, `packages/schemas/`, `packages/oz-daemon/`, `packages/oz-dashboard/`.
+2. **Match the existing style.** All packages are TypeScript: `packages/core/` (engine), `packages/adapters/`, `packages/session-hosts/`, `packages/daemon/` (Oz), `packages/cli/`, `packages/ui/` (dashboard), `packages/personas/` (shipped base) — inward-only deps, enforced by `scripts/check-topology.mjs`.
 3. **Write tests where behavior changes.** `node:test` for `.mjs` packages, `vitest` for TS packages. Source-grep tests are not accepted as runtime tests — see [ADR-0004](./cocoder/zArchive/v1/decisions/0004-typescript-validation-toolchain.md) and the M4.26 / Q5 lineage in [`cocoder/SESSION_LOG.md`](./cocoder/SESSION_LOG.md) for the reasoning.
 4. **Update docs in the same PR.** Anything that affects behavior described in `docs/`, an ADR, or the active Playbook needs the docs touched in the same change set. A future `cocoder lint` (v0.2) will enforce this automatically; today it's a review check.
 5. **Run the local gate:**

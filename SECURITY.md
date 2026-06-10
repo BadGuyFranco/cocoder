@@ -28,9 +28,9 @@ When you report, please include (as much as you can — none of this is required
 ## In scope
 
 - `packages/core/` — orchestration runtime, contract validation, run lifecycle.
-- `packages/cocoder-cli/` — the user-facing `cocoder` binary.
-- `packages/oz-daemon/` and `packages/oz-dashboard/` *(when shipped in Sub-Playbook C)* — local HTTP daemon and its security model (see [`ARCHITECTURE.md`](./ARCHITECTURE.md) "Oz daemon security model").
-- `packages/schemas/` — config and contract schemas.
+- `packages/cli/` — the user-facing `cocoder` binary.
+- `packages/daemon/` and `packages/ui/` — the local HTTP daemon + Electron dashboard and their security model (see [`ARCHITECTURE.md`](./ARCHITECTURE.md) "Oz daemon security model").
+- `packages/core/` — the engine: commit-gate, write-scope enforcement, run lifecycle.
 - Default `templates/workspace-cocoder/` *(when shipped in Sub-Playbook B)*.
 - Documentation in `docs/` to the extent it describes incorrect security posture.
 

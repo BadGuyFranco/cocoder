@@ -6,6 +6,7 @@ writeScope:
   - cocoder/SESSION_LOG.md
   - cocoder/SESSION_LOG_ARCHIVE.md
   - cocoder/PLAYBOOK.md
+  - cocoder/failure-catalog.md
   - cocoder/priorities/**
   - cocoder/tickets/**
   - cocoder/decisions/**
