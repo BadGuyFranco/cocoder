@@ -171,6 +171,9 @@ retrofit only a concrete failing test repair.
 
 ## Best Phase 4 Pilot Candidate
 
+> **Superseded (run_47):** the recommendation below rested on a stale Playbook. See the
+> **Correction** section for the current pilot route and founder decision.
+
 The single best pilot candidate is `cli-config-and-model-discovery`: retrofit the remaining Oz UI
 live-CLI wiring atom as a loop packet with `pnpm --filter @cocoder/ui test` and `pnpm typecheck` as the
 scripted criterion.

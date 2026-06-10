@@ -66,3 +66,10 @@ commit gate checks the whole changed tree against the atom's write-scope.
 - **Criterion rerun by the runner: NOT BUILT in this priority.**
   The orchestrator already reruns checks during verify, but the deterministic runner does not execute
   the loop criterion itself before accepting the builder's completion marker.
+
+## Disposition (run_47)
+
+These six findings are surfaced only — not built under `loop-packets` (dispatch-language boundary).
+Founder decision outstanding: file as a future priority, or accept trust-the-builder for now. See
+`cocoder/priorities/loop-packets.md` Status (decision 3) and the retrofit verdict list (decision 1)
+before Phase 4 pilot selection (decision 2).
