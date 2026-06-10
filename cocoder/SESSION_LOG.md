@@ -12,6 +12,22 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-10 — **The reorg: one decisions tree, three zones, cocoder/local eliminated, the repo explains itself**
+
+**Persona:** Claude (founder-directed hand-build) | **Priority:** repo reorg (founder-approved plan, executed R1–R5) | **Plan:** ADR-0008 amendment + ADR-0019
+
+**Outcomes:**
+- **One decisions tree:** `rebuild/decisions/` → `cocoder/decisions/` (numbers stable, 0001–0019); v1 tree archived to `zArchive/v1/decisions/` with a SUPERSEDED banner; the still-live v1 content (multi-root workspaces + no-nesting) absorbed as **ADR-0019** — `.code-workspace` files at install `local/workspace/` (founder, settles the 2026-06-08 open detail). `rebuild/` dissolved: PLAYBOOK/failure-catalog/spikes live directly under `cocoder/`.
+- **Three zones (ADR-0008 amendment):** `cocoder/local/` ELIMINATED — the install's `local/` is the only machine-local zone, spanning all workspaces; a `cocoder/` governance dir is fully tracked, everywhere. Contents migrated (`local/workspace/`, `local/scratch/`); gitignore now `/local/*` + tracked signage README.
+- **Dead v1 weight archived** (verified zero live readers): plans/profiles/routes/priority-boundaries + personas/{playbooks,prompts,_archived-v1,PORT-NOTES} → `zArchive/v1/`; `priorities/zArchive` → `zArchive/priorities/` — ONE archive home. Oscar/Deb base writeScopes updated; workspace template sheds local/+plans/+PRIORITIES.md.
+- **Signage:** root AGENTS.md + cocoder/AGENTS.md rewritten (dual-nature: install + dogfood workspace; `<primary-root>/cocoder/` mirrors it); ARCHITECTURE.md carries the canonical map; standards/ documented as extension-of-shipped-base. Ticket 0003 filed (public docs/ wholesale v1-stale).
+- **Portability test (ADR-0012 amendment):** strip the repo nouns — still teaches the role → base (`packages/personas/base/`); needs the nouns → extension. Split corollary + both failure modes named; in every prompt via shared-standards; enforced at Oscar verify for base-touching diffs. ADR-0018 ACCEPTED (founder).
+- **Verify:** typecheck 0 · topology pass · 331 tests green · repo-wide relative-link checker: all live links resolve. Commits `ec095fd`→`5424675`.
+
+**Next:** ADR-0020 draft (primary-root audit Play: bootstrap + drift modes, model pinned via play assignment) + revamped `new-primary-root` priority for founder review; daemon restart onto reorg code; first fresh run (also proves the directive-0 fix).
+
+---
+
 ## 2026-06-09 — **Loop unjammed: stranded runs 43–46 landed/resolved, ADR-0015 resolution exit BUILT, directive-0 root-caused, stale-daemon self-heal**
 
 **Persona:** Claude (founder-directed direct hand-build; the loop machinery was the work) | **Priority:** [run-resolution-and-loop-reliability](./priorities/run-resolution-and-loop-reliability.md) | **Plan:** that Playbook (drafted + executed this session)
