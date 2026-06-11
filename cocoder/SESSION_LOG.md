@@ -12,6 +12,29 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-11 — **Full Oz dashboard: sub-agents live, Awaiting-you list, priority create (run_55)**
+
+**Persona:** Oscar + Bob (3 atoms, 5 dispatches) | **Priority:** full-oz-dashboard | **Plan:** owed surfaces #4 (sub-agents), #9 (awaiting list), #8 (create daemon-half)
+
+**Outcomes:**
+- 3 atoms verified and committed on `cocoder/run_55`: Personas sub-agents wired to the real `plays`
+  map per accepted ADR-0018 — render + persist per-Play `{cli, model}` via `{personas: full-map}`
+  `PUT …/assignments`, `mode` stays a truthful preview (`2eb8591`); renderer-only "Awaiting you"
+  Dashboard strip deriving blocked/not-landed runs, click-through to the drawer's Resolve actions
+  (`414633d`); daemon `POST /workspaces/:id/priorities` create — slugged ids, atomic
+  validate-then-rename, frontmatter-injection-proof titles (`97e3283`).
+- Two first attempts REJECTED at the verify gate and fixed in one retry each: a PUT wire-shape bug
+  (bare map where the daemon validator demands `{personas: …}`) and a frontmatter injection via
+  newline-bearing titles — both invisible to green bridge-mocked tests; caught by reading the daemon
+  validators and probing the real parser. Wire-level and injection tests now lock both down.
+- Verification: core 202 · daemon 97 · ui 62 · root typecheck clean (per-atom; whole-tree diff each gate).
+- Disposition: **`continue`** — remaining: priority-create UI consumption (cheap opener),
+  Oz-as-persona (ADR-0017), Workspaces daemon model (ADR-0019), `mode` honoring (ADR-0018
+  Plays→Oscar→Bob-last), `POST /runs/:id/stop`, Oz-chat SSE.
+
+**Next:** wire the Priorities "+ new" / "Craft a persona" UI to `POST …/priorities` (follow the
+personas-sync seam pattern), or start ADR-0017 Oz-as-persona with the founder present.
+
 ## 2026-06-11 — **Full Oz dashboard: reorder, ad-hoc runs, run-resolve drawer — five atoms (run_54)**
 
 **Persona:** Oscar + Bob (5 atoms) | **Priority:** full-oz-dashboard | **Plan:** owed surfaces #3, #7, #8 (reorder), #10 (resolve drawer)
