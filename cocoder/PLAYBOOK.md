@@ -132,10 +132,11 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    base QA roster — **Quinn** (user-simulation) and **Talia** (acceptance QA) — and lands the no-brainer
    Plays (`documentation`, `code-review`, Quinn's `electron-test`, refactoring the ad-hoc Oz test scripts
    out of tech debt), and extends the ADR-0012 base/delta model to Plays. Unblocked by `plays-mechanism`.
-3. `full-oz-dashboard` — the v1-designed control plane, earned in slices; the road to feature-complete
-   (and where priority ordering eventually lands). **In progress / continue** — the Electron dashboard
-   is live against existing daemon endpoints; remaining work is new daemon surfaces tracked in the
-   priority, starting with the Oz chat command-interface decision and workspace CRUD role-model decision.
+3. `full-oz-dashboard` — the v1-designed control plane, earned in slices; the road to feature-complete.
+   **In progress / continue** — Electron dashboard wired to every existing daemon endpoint; run_54 landed
+   priority reorder (ADR-0010 `order.json`), free-text ad-hoc runs (`POST /runs {task?}` + Oz `adhoc`
+   verb), and run-drawer Resolve on parked runs. Next: Oz-as-persona (ADR-0017), Workspaces daemon model
+   (ADR-0019), priority create, `POST /runs/:id/stop`, "awaiting founder" Dashboard list, Oz-chat SSE.
 4. `new-primary-root` — the primary-root audit: bootstrap a new root's `cocoder/` + propose-only
    drift re-audit, one base Play pinned to a top-tier model. Design drafted as **ADR-0020 (proposed,
    2026-06-10)** — founder acceptance gates the build. The concrete form of Phase 5 ("first external repo").

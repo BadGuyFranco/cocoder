@@ -127,6 +127,7 @@ mechanical infra (Settings was the last clean infra slice).
 | 6 | Settings | **SERVED** (run_43). |
 | 7 | `POST /runs {task?}` free-text ad-hoc | **SERVED** (run_54): `{task?}` threads into launch prompts (`54745f7`); bounded Oz `adhoc <task>` verb + describe-first UI (`721437d`). |
 | 8 | Priority create + reorder | **Reorder SERVED** (run_54, `e4b1435` + `c1360a3`): the ADR-0010 order-only `cocoder/priorities/order.json` manifest is implemented daemon+UI end-to-end. **Create still owed** (`POST /workspaces/:id/priorities`). |
+| 9 | `POST /runs/:id/resolve` + "awaiting founder" list | **PARTIAL** (run_54, `b1747cc`): run drawer Resolve actions (Mark landed / Discard) consume the daemon endpoint; daemon 409 fail-closed messages surface verbatim. The separate Dashboard "awaiting founder" list (derives from `GET /runs` statuses — renderer-only, no new read endpoint) **still owed**. |
 
 ### Founder decisions + next-session pickup
 

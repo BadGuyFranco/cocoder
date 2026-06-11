@@ -12,6 +12,29 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-11 — **Full Oz dashboard: reorder, ad-hoc runs, run-resolve drawer — five atoms (run_54)**
+
+**Persona:** Oscar + Bob (5 atoms) | **Priority:** full-oz-dashboard | **Plan:** owed surfaces #3, #7, #8 (reorder), #10 (resolve drawer)
+
+**Outcomes:**
+- 5/5 atoms verified and committed on `cocoder/run_54` (`e4b1435`→`721437d`, `c8dfd1d` Oscar support):
+  daemon priority ordering per ADR-0010 amendment (`order.json` manifest + `POST …/reorder`);
+  UI drag-reorder via `electron/priorities-sync.ts` (daemon-first, offline cache); run-drawer Resolve
+  actions on parked runs (`POST /runs/:id/resolve`, 409 surfaced verbatim); `POST /runs {task?}` threaded
+  into Oscar+Deb launch prompts; bounded Oz `adhoc <task>` verb + describe-first Ad-hoc Launch + live
+  `chatSend` bridge (was fixture-only).
+- Verification: core 202 · daemon 90 · ui 53 · root typecheck clean (per-atom at verify gate; whole-tree
+  diff checked every atom).
+- Disposition: **`continue`** — Oz-as-persona (ADR-0017), Workspaces daemon model (ADR-0019), priority
+  create, `POST /runs/:id/stop`, "awaiting founder" Dashboard list, Oz-chat SSE, and persona
+  `{mode, subAgents}` (ADR-0018 review) remain.
+
+**Next:** Oz-as-persona per ADR-0017 (founder-present adversarial plan review recommended), or Workspaces
+daemon model per ADR-0019 (#2) as autonomous-safe build-work; smaller owed: priority create, awaiting-
+founder list, `POST /runs/:id/stop` (investigate runner process ownership first).
+
+---
+
 ## 2026-06-11 — **Loop packets: live-enforcement proof recorded (run_52) — archive-candidate, no implementation gaps (run_53)**
 
 **Persona:** Oscar (wrap-up only, founder-directed) | **Priority:** loop-packets | **Plan:** record run_52 as the live proof
