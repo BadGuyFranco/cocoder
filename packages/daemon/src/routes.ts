@@ -1,14 +1,14 @@
 // Route dispatch for the Oz daemon. The security gate (server.ts) has already run; these handlers
 // read/serve the four surfaces. Stage 3 = the read surfaces; stage 4 adds the mutations (launch,
 // deep-link, assignments write) to the same dispatch. All handlers close over the shared OzContext.
-import { mkdir, readdir, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { join } from 'node:path'
+import { isAbsolute, join, relative, resolve } from 'node:path'
 import { listEffectivePersonas, loadAssignments, loadPriority, parseFrontmatter, truncate, type PersonaAssignment, type PersonaSources, type Priority } from '@cocoder/core'
 import { basePersonasDir } from '@cocoder/personas'
 import type { OzContext } from './context.js'
 import { sendJson } from './server.js'
-import { findWorkspace, readWorkspaces } from './registry.js'
+import { findWorkspace, readWorkspaces, validateWorkspaceFolders, workspaceDirectory, workspaceFilePath } from './registry.js'
 import { readRunDir } from './rundir.js'
 import { appendAudit } from './audit.js'
 import { listClis, testCli } from './clis.js'
@@ -80,6 +80,10 @@ function reorderBody(body: unknown): readonly string[] | null {
   return Array.isArray(record.order) && record.order.every((id) => typeof id === 'string') ? record.order : null
 }
 
+function bodyRecord(body: unknown): Record<string, unknown> {
+  return typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {}
+}
+
 interface CreatePriorityInput {
   readonly id: string
   readonly title: string
@@ -134,6 +138,15 @@ function validateCreatedPriority(markdown: string, priority: Priority, input: Cr
   if (priority.id !== input.id) throw new Error('priority id did not round-trip')
   if (priority.title !== input.title) throw new Error('priority title did not round-trip')
   if (priority.scopeNarrowing !== null) throw new Error('priority scopeNarrowing must not be set by create')
+}
+
+function isSamePath(a: string, b: string): boolean {
+  return resolve(a) === resolve(b)
+}
+
+function isInsidePath(parent: string, child: string): boolean {
+  const rel = relative(resolve(parent), resolve(child))
+  return rel !== '' && !rel.startsWith('..') && !isAbsolute(rel)
 }
 
 /** GET /workspaces — surface 1. */
@@ -302,6 +315,45 @@ async function createPriority(ctx: OzContext, res: ServerResponse, workspaceId: 
   }
 }
 
+async function updateWorkspace(ctx: OzContext, res: ServerResponse, workspaceId: string, body: unknown): Promise<void> {
+  const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
+  if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
+
+  const target = workspaceFilePath(ctx.cocoderHome, workspaceId)
+  let existingRaw: string
+  try {
+    existingRaw = await readFile(target, 'utf8')
+  } catch {
+    return sendJson(res, 409, { error: `workspace must be migrated to local/workspace/${workspaceId}.code-workspace first` })
+  }
+
+  const dir = workspaceDirectory(ctx.cocoderHome)
+  const vars = { COCODER_HOME: ctx.cocoderHome }
+  const parsed = validateWorkspaceFolders(bodyRecord(body).folders, dir, vars)
+  if (!parsed.ok) return sendJson(res, 400, { error: parsed.error })
+  if (!parsed.roots.some((root) => isSamePath(root.path, ctx.cocoderHome))) return sendJson(res, 400, { error: 'workspace must include the CoCoder install root' })
+  const primary = parsed.roots.find((root) => root.role === 'primary')!
+  if (!isSamePath(primary.path, ctx.cocoderHome) && isInsidePath(ctx.cocoderHome, primary.path)) {
+    return sendJson(res, 400, { error: 'primary root must not be inside the CoCoder install root' })
+  }
+
+  let existing: unknown
+  try {
+    existing = JSON.parse(existingRaw)
+  } catch {
+    existing = {}
+  }
+  const settings = typeof existing === 'object' && existing !== null && Object.prototype.hasOwnProperty.call(existing, 'settings')
+    ? (existing as Record<string, unknown>).settings
+    : {}
+  const tmp = join(dir, `.${workspaceId}.${process.pid}.${Date.now()}.tmp`)
+  await writeFile(tmp, `${JSON.stringify({ folders: parsed.folders, settings }, null, 2)}\n`)
+  await rename(tmp, target)
+  void appendAudit(ctx.cocoderHome, { action: 'workspace-write', workspaceId })
+  const updated = await findWorkspace(ctx.cocoderHome, workspaceId)
+  sendJson(res, 200, { ok: true, workspace: updated })
+}
+
 /** Mutation dispatch (stage 4). Returns true if handled. The security gate already required CSRF. */
 export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pathname: string, res: ServerResponse): Promise<boolean> {
   const method = req.method ?? 'GET'
@@ -384,6 +436,16 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
       return sendJson(res, 400, { error: 'invalid JSON body' }), true
     }
     sendJson(res, 200, await mergeWriteSettings(ctx.cocoderHome, body))
+    return true
+  }
+  if (method === 'PUT' && seg[0] === 'workspaces' && seg.length === 2) {
+    let body: unknown
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      return sendJson(res, 400, { error: 'invalid JSON body' }), true
+    }
+    await updateWorkspace(ctx, res, decodeURIComponent(seg[1]!), body)
     return true
   }
   if (method === 'POST' && seg[0] === 'clis' && seg.length === 3 && seg[2] === 'test') {

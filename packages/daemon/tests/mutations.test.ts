@@ -196,6 +196,14 @@ async function fixtures(home: string): Promise<void> {
   )
 }
 
+async function writeWorkspaceFile(home: string, id = 'cocoder', data: unknown = { folders: [{ path: '${COCODER_HOME}', role: 'primary' }], settings: {} }): Promise<string> {
+  const dir = join(home, 'local', 'workspace')
+  await mkdir(dir, { recursive: true })
+  const file = join(dir, `${id}.code-workspace`)
+  await writeFile(file, `${JSON.stringify(data, null, 2)}\n`)
+  return file
+}
+
 describe('Oz mutations + lifecycle', () => {
   let home: string
   let store: RunStore
@@ -857,6 +865,76 @@ describe('Oz mutations + lifecycle', () => {
     await startServer()
     const r = await call(oz!, 'PUT', '/workspaces/cocoder/personas/assignments', { csrf: false, body: { personas: {} } })
     expect(r.status).toBe(403)
+  })
+
+  test('PUT /workspaces/:id rewrites folders, preserves raw paths and settings, and returns re-read roots', async () => {
+    const file = await writeWorkspaceFile(home, 'cocoder', {
+      folders: [{ path: '${COCODER_HOME}', role: 'primary' }],
+      settings: { 'editor.tabSize': 2 },
+    })
+    await startServer()
+
+    const folders = [
+      { name: 'Dogfood', path: '${COCODER_HOME}', role: 'primary', description: 'install root' },
+      { path: './support', role: 'readonly' },
+    ]
+    const r = await call(oz!, 'PUT', '/workspaces/cocoder', { body: { folders } })
+
+    expect(r.status).toBe(200)
+    expect(r.json.workspace).toMatchObject({ id: 'cocoder', name: 'cocoder', path: home })
+    expect(r.json.workspace.roots).toEqual([
+      { name: 'Dogfood', path: home, role: 'primary', description: 'install root' },
+      { name: 'support', path: join(home, 'local', 'workspace', 'support'), role: 'readonly' },
+    ])
+    const persisted = JSON.parse(await readFile(file, 'utf8'))
+    expect(persisted).toEqual({ folders, settings: { 'editor.tabSize': 2 } })
+  })
+
+  test('PUT /workspaces/:id rejects invalid folders without touching the file', async () => {
+    const file = await writeWorkspaceFile(home)
+    await startServer()
+
+    for (const body of [
+      { folders: [{ path: '${COCODER_HOME}', role: 'admin' }] },
+      { folders: [{ path: '${COCODER_HOME}', role: 'readonly' }] },
+      { folders: [{ path: '${COCODER_HOME}', role: 'primary' }, { path: './other', role: 'primary' }] },
+      { folders: [{ path: join(home, '..', 'external'), role: 'primary' }] },
+      { folders: [{ path: '${COCODER_HOME}/nested', role: 'primary' }, { path: '${COCODER_HOME}', role: 'readonly' }] },
+    ]) {
+      const before = await readFile(file, 'utf8')
+      const r = await call(oz!, 'PUT', '/workspaces/cocoder', { body })
+      expect(r.status).toBe(400)
+      expect(await readFile(file, 'utf8')).toBe(before)
+    }
+  })
+
+  test('PUT /workspaces/:id returns 404 for an unknown workspace', async () => {
+    await writeWorkspaceFile(home)
+    await startServer()
+
+    const r = await call(oz!, 'PUT', '/workspaces/nope', { body: { folders: [{ path: '${COCODER_HOME}', role: 'primary' }] } })
+
+    expect(r.status).toBe(404)
+  })
+
+  test('PUT /workspaces/:id returns 409 for a legacy-sourced workspace', async () => {
+    await startServer()
+
+    const r = await call(oz!, 'PUT', '/workspaces/cocoder', { body: { folders: [{ path: '${COCODER_HOME}', role: 'primary' }] } })
+
+    expect(r.status).toBe(409)
+    expect(r.json.error).toBe('workspace must be migrated to local/workspace/cocoder.code-workspace first')
+  })
+
+  test('PUT /workspaces/:id → 403 without a CSRF token', async () => {
+    const file = await writeWorkspaceFile(home)
+    await startServer()
+    const before = await readFile(file, 'utf8')
+
+    const r = await call(oz!, 'PUT', '/workspaces/cocoder', { csrf: false, body: { folders: [{ path: '${COCODER_HOME}', role: 'primary' }] } })
+
+    expect(r.status).toBe(403)
+    expect(await readFile(file, 'utf8')).toBe(before)
   })
 
   test('PUT /settings → 403 without a CSRF token (mutation gate)', async () => {

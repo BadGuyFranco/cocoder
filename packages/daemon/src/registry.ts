@@ -24,6 +24,17 @@ export interface RegistryWorkspace {
   readonly roots: ReadonlyArray<RegistryRoot>
 }
 
+export interface WorkspaceFolderInput {
+  readonly name?: string
+  readonly path: string
+  readonly role: WorkspaceRole
+  readonly description?: string
+}
+
+export type WorkspaceFoldersValidation =
+  | { readonly ok: true; readonly roots: ReadonlyArray<RegistryRoot>; readonly folders: ReadonlyArray<WorkspaceFolderInput> }
+  | { readonly ok: false; readonly error: string }
+
 /** Expand ${NAME} tokens from `vars` (falling back to process.env). Unknown tokens → empty. */
 export function expandVars(input: string, vars: Record<string, string>): string {
   return input.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_m, name: string) => vars[name] ?? process.env[name] ?? '')
@@ -33,15 +44,55 @@ function asRecord(input: unknown): Record<string, unknown> | null {
   return typeof input === 'object' && input !== null ? (input as Record<string, unknown>) : null
 }
 
-function withRoots(workspace: Omit<RegistryWorkspace, 'roots'>, roots: ReadonlyArray<RegistryRoot>): RegistryWorkspace {
-  const out = workspace as RegistryWorkspace
-  Object.defineProperty(out, 'roots', { value: roots, enumerable: false })
-  return out
-}
-
 function resolveWorkspacePath(workspaceDir: string, path: string, vars: Record<string, string>): string {
   const expanded = expandVars(path, vars)
   return isAbsolute(expanded) ? resolve(expanded) : resolve(workspaceDir, expanded)
+}
+
+export function workspaceFilePath(cocoderHome: string, id: string): string {
+  return join(cocoderHome, 'local', 'workspace', `${id}${WORKSPACE_SUFFIX}`)
+}
+
+export function workspaceDirectory(cocoderHome: string): string {
+  return join(cocoderHome, 'local', 'workspace')
+}
+
+export function validateWorkspaceFolders(folders: unknown, workspaceDir: string, vars: Record<string, string>): WorkspaceFoldersValidation {
+  if (!Array.isArray(folders)) return { ok: false, error: 'folders must be an array' }
+
+  const roots: RegistryRoot[] = []
+  const out: WorkspaceFolderInput[] = []
+  for (const folder of folders) {
+    const record = asRecord(folder)
+    if (!record || typeof record.path !== 'string' || record.path === '') return { ok: false, error: 'each folder must have a non-empty path' }
+    if (typeof record.role !== 'string' || !ROLES.has(record.role)) return { ok: false, error: 'each folder role must be primary, writable, or readonly' }
+    if (Object.prototype.hasOwnProperty.call(record, 'name') && typeof record.name !== 'string') return { ok: false, error: 'folder name must be a string' }
+    if (Object.prototype.hasOwnProperty.call(record, 'description') && typeof record.description !== 'string') {
+      return { ok: false, error: 'folder description must be a string' }
+    }
+
+    const path = resolveWorkspacePath(workspaceDir, record.path, vars)
+    const root: RegistryRoot = {
+      name: typeof record.name === 'string' ? record.name : basename(path),
+      path,
+      role: record.role as WorkspaceRole,
+      ...(typeof record.description === 'string' ? { description: record.description } : {}),
+    }
+    const raw: WorkspaceFolderInput = {
+      ...(typeof record.name === 'string' ? { name: record.name } : {}),
+      path: record.path,
+      role: record.role as WorkspaceRole,
+      ...(typeof record.description === 'string' ? { description: record.description } : {}),
+    }
+    roots.push(root)
+    out.push(raw)
+  }
+
+  const primaries = roots.filter((root) => root.role === 'primary')
+  if (primaries.length === 0) return { ok: false, error: 'workspace must have exactly one primary folder' }
+  if (primaries.length > 1) return { ok: false, error: 'workspace must have exactly one primary folder' }
+
+  return { ok: true, roots, folders: out }
 }
 
 function parseWorkspaceFile(id: string, workspaceDir: string, raw: string, vars: Record<string, string>): RegistryWorkspace | null {
@@ -53,34 +104,16 @@ function parseWorkspaceFile(id: string, workspaceDir: string, raw: string, vars:
   }
 
   const data = asRecord(parsed)
-  const folders = data && Array.isArray(data.folders) ? data.folders : null
-  if (!folders) return null
+  const validated = validateWorkspaceFolders(data?.folders, workspaceDir, vars)
+  if (!validated.ok) return null
 
-  const roots: RegistryRoot[] = []
-  for (const folder of folders) {
-    const record = asRecord(folder)
-    if (!record || typeof record.path !== 'string' || record.path === '') return null
-    if (typeof record.role !== 'string' || !ROLES.has(record.role)) return null
-
-    const path = resolveWorkspacePath(workspaceDir, record.path, vars)
-    const root: RegistryRoot = {
-      name: typeof record.name === 'string' ? record.name : basename(path),
-      path,
-      role: record.role as WorkspaceRole,
-      ...(typeof record.description === 'string' ? { description: record.description } : {}),
-    }
-    roots.push(root)
-  }
-
-  const primaries = roots.filter((root) => root.role === 'primary')
-  if (primaries.length !== 1) return null
-
-  return withRoots({ id, name: id, path: primaries[0]!.path }, roots)
+  const primary = validated.roots.find((root) => root.role === 'primary')!
+  return { id, name: id, path: primary.path, roots: validated.roots }
 }
 
 async function readWorkspaceDirectory(cocoderHome: string): Promise<RegistryWorkspace[]> {
   const vars = { COCODER_HOME: cocoderHome }
-  const workspaceDir = join(cocoderHome, 'local', 'workspace')
+  const workspaceDir = workspaceDirectory(cocoderHome)
   let entries: string[]
   try {
     entries = await readdir(workspaceDir)
@@ -123,7 +156,7 @@ async function readLegacyWorkspaces(cocoderHome: string): Promise<RegistryWorksp
     if (!record || typeof record.id !== 'string' || typeof record.path !== 'string') continue
     const name = typeof record.name === 'string' ? record.name : record.id
     const path = expandVars(record.path, vars)
-    out.push(withRoots({ id: record.id, name, path }, [{ name, path, role: 'primary' }]))
+    out.push({ id: record.id, name, path, roots: [{ name, path, role: 'primary' }] })
   }
   return out
 }

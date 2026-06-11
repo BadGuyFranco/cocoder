@@ -142,7 +142,7 @@ describe('Oz read surfaces', () => {
   test('GET /workspaces expands ${COCODER_HOME}', async () => {
     const r = await get(oz!, '/workspaces')
     expect(r.status).toBe(200)
-    expect(r.json.workspaces).toEqual([{ id: 'cocoder', name: 'CoCoder', path: home }])
+    expect(r.json.workspaces).toEqual([{ id: 'cocoder', name: 'CoCoder', path: home, roots: [{ name: 'CoCoder', path: home, role: 'primary' }] }])
   })
 
   test('GET /settings returns defaults when no settings file exists', async () => {
