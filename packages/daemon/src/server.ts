@@ -106,6 +106,7 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
     csrfToken,
     liveRefs: new Set<string>(),
     inFlight: new Map<string, string>(),
+    stopControllers: new Map<string, AbortController>(),
     runHeadless: opts.runHeadless,
     restartDaemon: opts.restartDaemon ?? defaultRestartDaemon(opts.cocoderHome),
   }

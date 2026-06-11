@@ -158,6 +158,7 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
   }
 
   let runId: string | null = null
+  const stopController = new AbortController()
   const deps: RunnerDeps = {
     store: ctx.store,
     sessionHost: trackingHost(ctx),
@@ -165,9 +166,11 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
     getAdapter: ctx.getAdapter,
     io: ctx.io,
     runHeadless: ctx.runHeadless,
+    signal: stopController.signal,
     onRunCreated: (run) => {
       runId = run.id
       ctx.inFlight.set(workspaceId, run.id)
+      ctx.stopControllers.set(run.id, stopController)
     },
   }
 
@@ -185,8 +188,18 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
         }
       }
     })
-    .finally(() => {
+    .finally(async () => {
       ctx.inFlight.delete(workspaceId)
+      if (runId) ctx.stopControllers.delete(runId)
+      if (runId && stopController.signal.aborted) {
+        try {
+          const closed = await closeRunSurfaces(ctx, runId)
+          await gcWorktree(ctx, runId, { explicitTeardown: true })
+          ctx.store.recordEvent({ runId, type: 'stop-teardown', data: { closed } })
+        } catch {
+          /* shutdown/test teardown may close the store before post-stop cleanup finishes */
+        }
+      }
     })
 
   void appendAudit(ctx.cocoderHome, { action: 'launch', workspaceId, priorityId, runId })
@@ -284,6 +297,21 @@ export async function teardownRun(ctx: OzContext, runId: string): Promise<Launch
   ctx.store.recordEvent({ runId, type: 'teardown', data: { closed } })
   void appendAudit(ctx.cocoderHome, { action: 'teardown', runId, closed })
   return { status: 200, body: { closed } }
+}
+
+/** Request a COOPERATIVE stop for a live run driven by THIS daemon process. The runner only observes
+ *  the signal at its loop wait seams (directive/verify/triage waits and builder monitor cadence), so
+ *  a stop requested after the loop during wrap-up or integration may let the run finish normally. */
+export async function requestStopRun(ctx: OzContext, runId: string): Promise<LaunchResult> {
+  const run = ctx.store.getRun(runId)
+  if (!run) return { status: 404, body: { error: 'unknown run' } }
+  const controller = ctx.stopControllers.get(runId)
+  if (!controller || run.status !== 'running') {
+    return { status: 409, body: { error: `run is not live in this daemon process or is "${run.status}" — only a running live run can be stopped cooperatively` } }
+  }
+  controller.abort()
+  void appendAudit(ctx.cocoderHome, { action: 'stop', runId })
+  return { status: 202, body: { stopping: true, runId } }
 }
 
 export type ResolveDisposition = 'discard' | 'landed'

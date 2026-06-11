@@ -5,7 +5,7 @@ import { request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { loadPriority, openRunStore, type Adapter, type Git, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
+import { loadPriority, openRunStore, StopRequestedError, type Adapter, type Git, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
 import { createOzServer, OZ_CSRF_HEADER, type OzServer } from '../src/index.js'
 
 const okAdapter: Adapter = {
@@ -178,6 +178,21 @@ const fakeIO = (): RunnerIO => ({
   },
 })
 
+const stopAwaitingDirectiveIO = (): RunnerIO => ({
+  ...fakeIO(),
+  async awaitDirective(_path, opts) {
+    const signal = opts.signal
+    if (!signal) throw new Error('test: stop signal was not passed to RunnerIO')
+    if (signal.aborted) throw new StopRequestedError()
+    return await new Promise<never>((_resolve, reject) => {
+      signal.addEventListener('abort', () => reject(new StopRequestedError()), { once: true })
+    })
+  },
+  async awaitTriage() {
+    throw new Error('triage should not run for cooperative stop')
+  },
+})
+
 async function fixtures(home: string): Promise<void> {
   await mkdir(join(home, 'cocoder', 'priorities'), { recursive: true })
   await mkdir(join(home, 'cocoder', 'personas'), { recursive: true })
@@ -258,6 +273,84 @@ describe('Oz mutations + lifecycle', () => {
     // C-S6 audit: a launch line was appended.
     const audit = await readFile(join(home, 'local', 'oz-audit.log'), 'utf8')
     expect(audit).toContain('"action":"launch"')
+  })
+
+  test('POST /runs/:id/stop cooperatively stops a live launched run and cleans up panes', async () => {
+    shown = []
+    killed = []
+    const removed: string[] = []
+    const git = fakeGit()
+    git.worktreeRemove = async (_cwd, dir) => {
+      removed.push(dir)
+    }
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git,
+      sessionHost: fakeHost(
+        (ref) => shown.push(ref),
+        (ref) => killed.push(ref),
+      ),
+      getAdapter: () => okAdapter,
+      io: stopAwaitingDirectiveIO(),
+      runHeadless: async () => ({ exitCode: 0, output: 'wrap closeout' }),
+    })
+
+    const launch = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
+    expect(launch.status).toBe(202)
+    const runId = String(launch.json.runId)
+    expect(oz.ctx.stopControllers.has(runId)).toBe(true)
+
+    const stop = await call(oz, 'POST', `/runs/${runId}/stop`)
+    expect(stop).toEqual({ status: 202, json: { stopping: true, runId } })
+
+    for (let i = 0; i < 50 && (store.getRun(runId)?.status === 'running' || oz.ctx.stopControllers.has(runId)); i++) {
+      await sleep(10)
+    }
+
+    expect(store.getRun(runId)?.status).toBe('stopped')
+    expect(oz.ctx.stopControllers.has(runId)).toBe(false)
+    expect(killed.map((k) => k.id).sort()).toEqual(['surface:1', 'surface:2'])
+    expect(removed).toEqual([join(home, 'local', 'worktrees', runId)])
+    const events = store.listEvents(runId)
+    expect(events.some((e) => e.type === 'run-stopped')).toBe(true)
+    expect(events.some((e) => e.type === 'stop-teardown')).toBe(true)
+    expect(events.some((e) => ['directive-timeout', 'builder-failed'].includes(e.type))).toBe(false)
+  })
+
+  test('POST /runs/:id/stop → 404 for an unknown run', async () => {
+    await startServer()
+    expect((await call(oz!, 'POST', '/runs/nope/stop')).status).toBe(404)
+  })
+
+  test('POST /runs/:id/stop → 409 for terminal runs', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const completed = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(completed.id, 'completed')
+    const failed = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(failed.id, 'failed')
+    await startServer()
+
+    expect((await call(oz!, 'POST', `/runs/${completed.id}/stop`)).status).toBe(409)
+    expect((await call(oz!, 'POST', `/runs/${failed.id}/stop`)).status).toBe(409)
+  })
+
+  test('POST /runs/:id/stop → 409 for a running row with no live controller', async () => {
+    await startServer()
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+
+    const r = await call(oz!, 'POST', `/runs/${run.id}/stop`)
+
+    expect(r.status).toBe(409)
+    expect(store.getRun(run.id)?.status).toBe('running')
+  })
+
+  test('POST /runs/:id/stop → 403 without a CSRF token (mutation gate)', async () => {
+    await startServer()
+    const r = await call(oz!, 'POST', '/runs/nope/stop', { csrf: false })
+    expect(r.status).toBe(403)
   })
 
   test('POST /runs --resume reads a prior run pickup (200/202); a missing pickup is a 400', async () => {

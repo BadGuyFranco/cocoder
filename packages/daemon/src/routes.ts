@@ -12,7 +12,7 @@ import { findWorkspace, readWorkspaces, validateWorkspaceFolders, workspaceDirec
 import { readRunDir } from './rundir.js'
 import { appendAudit } from './audit.js'
 import { listClis, testCli } from './clis.js'
-import { launchRun, requestDaemonRestart, resolveRun, showRun, teardownRun } from './launcher.js'
+import { launchRun, requestDaemonRestart, requestStopRun, resolveRun, showRun, teardownRun } from './launcher.js'
 import { handleOzMessage } from './oz-chat.js'
 import { mergeWriteSettings, readSettings } from './settings.js'
 import { readPriorities, writePriorityOrder } from './priority-order.js'
@@ -469,6 +469,10 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
   }
   if (method === 'POST' && seg[0] === 'runs' && seg.length === 3 && seg[2] === 'teardown') {
     const { status, body: out } = await teardownRun(ctx, decodeURIComponent(seg[1]!))
+    return sendJson(res, status, out), true
+  }
+  if (method === 'POST' && seg[0] === 'runs' && seg.length === 3 && seg[2] === 'stop') {
+    const { status, body: out } = await requestStopRun(ctx, decodeURIComponent(seg[1]!))
     return sendJson(res, status, out), true
   }
   if (method === 'POST' && seg[0] === 'runs' && seg.length === 3 && seg[2] === 'resolve') {

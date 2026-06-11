@@ -27,6 +27,8 @@ export interface OzContext {
   /** workspaceId → runId (or 'pending') for the single in-flight run per workspace. Guards the
    *  shared git working tree against cross-run commit contamination (review blocker / F6). */
   readonly inFlight: Map<string, string>
+  /** runId → cooperative stop controller for runs this daemon process is actively driving. */
+  readonly stopControllers: Map<string, AbortController>
   /** Trigger a daemon refresh (the lightweight dashboard's "Restart daemon" button). Default spawns
    *  a detached `scripts/oz.sh restart`; injectable in tests so they never restart the real daemon.
    *  The daemon must NEVER restart itself in-process — a process can't cleanly respawn itself. */
