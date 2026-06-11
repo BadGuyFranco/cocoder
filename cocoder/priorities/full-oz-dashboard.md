@@ -44,9 +44,13 @@ path; `visible` never forces panes), plus a truth sweep of `ENDPOINTS_OWED.md`. 
 atoms: the registry reads `local/workspace/*.code-workspace` files (roles, one-primary rule,
 legacy `workspaces.json` fallback), full daemon CRUD (`PUT`/`POST`/`DELETE /workspaces…`) with
 ADR rules 6/7 enforced at the write gate, and the Workspaces screen operating it live with
-raw-path fidelity. **Not archive-ready** — remaining: Oz-as-persona (ADR-0017), persona `mode`
-honoring for Oscar/Bob sessions (ADR-0018 stage 3; Bob gated on a captured-subprocess monitor
-path) + the UI mode editor, `POST /runs/:id/stop`, and Oz-chat SSE.
+raw-path fidelity. run_58 (2026-06-11) closed **`POST /runs/:id/stop` end-to-end (owed slice #3)**
+in three atoms: a cooperative-stop seam in the runner core (first-class `stopped` run status; a
+founder stop is no longer misrecorded as a fault), the CSRF-gated daemon endpoint with per-run
+abort controllers + post-settle pane/worktree cleanup, and the consumption tail (Oz-chat `stop`
+verb split off its teardown alias; the dashboard's Stop action wired live). **Not archive-ready**
+— remaining: Oz-as-persona (ADR-0017), persona `mode` honoring for Oscar/Bob sessions (ADR-0018
+stage 3; Bob gated on a captured-subprocess monitor path) + the UI mode editor, and Oz-chat SSE.
 
 > History worth recording: a first pass mistakenly built from `docs/oz-design-brief.md` (the *input
 > brief* that was pasted into claude.ai/design), not the founder's actual **design output**. It was then
@@ -178,6 +182,30 @@ path) + the UI mode editor, `POST /runs/:id/stop`, and Oz-chat SSE.
   state only (daemon name = filename stem by design) so a name edit reverts on refresh.
 - **Verification (run_57):** core 204 · daemon 120 · ui 77 · root typecheck clean · topology pass
   (per-atom at the verify gate; whole-tree diff checked every atom).
+- **run_58 (2026-06-11), three atoms, all verified + committed on `cocoder/run_58` — `POST
+  /runs/:id/stop`, end-to-end (owed slice #3):**
+  (0) core cooperative-stop seam (`9a0c099`) — `RunnerDeps` gains an optional `AbortSignal`,
+  honored at the loop's wait seams (the directive/verify/triage `pollFile` loops and the builder
+  monitor's cadence) via a single `StopRequestedError` mechanism; on stop the runner records ONE
+  `run-stopped` event, abandons + quarantines the in-flight atom, SKIPS integration, still writes
+  the run record, and exits with a new first-class `'stopped'` RunStatus — a deliberate founder
+  stop can no longer masquerade as `directive-timeout`/`builder-failed` or trigger Deb triage
+  (which is what teardown-as-stop did). No signal = byte-identical behavior. The UI's
+  `mapRunStatus` default already rendered unknown statuses as 'stopped', so zero UI accommodation
+  was needed; (1) daemon `POST /runs/:id/stop` (`932df67`) — `OzContext.stopControllers` (runId →
+  AbortController, registered at `onRunCreated`, always removed on settle), post-settle
+  pane-close + worktree GC reusing the existing `closeRunSurfaces`/`gcWorktree` helpers (a
+  `stop-teardown` event records it), and `requestStopRun` with honest statuses: 404 unknown, 409
+  for terminal runs or a running row with no live controller (the daemon-restart orphan), 202
+  cooperative. Stop is COOPERATIVE — honored only at the wait seams, so a stop arriving during
+  wrap-up or integration lets the run finish rather than corrupting a merge; (2) consumption tail
+  (`d570278`) — Oz-chat `stop <runId>` split off its teardown alias into a real `{kind:'stop'}`
+  command dispatching `requestStopRun` (cooperative-wording reply, 409s verbatim; `teardown`
+  byte-identical, re-asserted by test), renderer `live.ts stopRun()` over the existing generic
+  `daemonPost` bridge (zero new IPC), the App's stubbed "isn't wired yet" Stop branch replaced
+  with the real call, `ENDPOINTS_OWED.md` row 9 truthed.
+- **Verification (run_58):** core 209 · daemon 127 · ui 79 · root typecheck clean (per-atom at
+  the verify gate; whole-tree diff checked every atom).
 
 > History worth recording (run_46): this Oz-chat slice was independently built by **run_44** (a
 > status/query design) and **run_45** (the bounded command-interface design) — but **neither landed**;
@@ -200,7 +228,7 @@ mechanical infra (Settings was the last clean infra slice).
 |---|---------|----------------|
 | 1 | Oz chat — `POST /oz/messages` | **SERVED** (run_46, `0637c04`): bounded command interface — verbs `launch <priorityId>` / `show <runId>` / `stop`+`teardown <runId>` / `status [runId]` / `help` parsed in `packages/daemon/src/oz-chat.ts` and dispatched to existing launcher ops; **no in-daemon LLM**, rides the existing Bearer/CSRF/loopback posture. SSE/stream still deferred. |
 | 2 | Workspaces CRUD + `roots[]`/role model | **SERVED end-to-end** (run_57, `25c9b8d` + `99f8509` + `e5207dc` + `eb7460c`): the daemon implements the full [ADR-0019](../decisions/0019-multi-root-workspaces.md) model — `local/workspace/*.code-workspace` directory-of-files SSOT (legacy `workspaces.json` fallback until migrated), roots/roles on `GET`, `PUT`/`POST`/`DELETE /workspaces…` with rules 6/7 enforced at the write gate, create = the migration path (`legacyHidden` visibility) — and the Workspaces screen operates it live with raw-path fidelity via `electron/workspaces-sync.ts`. NOTE: this install still runs on the legacy fallback until someone creates `local/workspace/cocoder.code-workspace` (the New-Workspace modal or a `POST /workspaces` does it). |
-| 3 | `POST /runs/:id/stop` | Investigate launcher/runner process ownership before scoping. |
+| 3 | `POST /runs/:id/stop` | **SERVED end-to-end** (run_58, `9a0c099` + `932df67` + `d570278`): cooperative stop — core `AbortSignal` seam with first-class `'stopped'` RunStatus (no fault/triage misfire), CSRF-gated daemon endpoint with per-run controllers + post-settle pane/worktree cleanup, Oz-chat `stop` verb remapped off teardown, dashboard Stop action live. Honored at the loop's wait seams only: a stop during wrap-up/integration lets the run finish (never corrupts a merge). |
 | 4 | Persona `{mode, subAgents}` | **[ADR-0018](../decisions/0018-persona-run-mode-and-sub-agents.md) ACCEPTED (run_54 wrap). Sub-agents SERVED** (run_55, `2eb8591`): the Personas screen renders + persists per-Play `{cli, model}` over the existing `plays` map (no new schema). **`mode` stage 2 SERVED** (run_56, `bcac308`): `mode` persists in `assignments.json` and is honored for Play dispatch (`headless` forces captured subprocess; `visible` never forces panes — pane exit isn't detectable, the run_28 hang class); renderer passes `mode` through its full-map PUT untouched. **Still owed:** Oscar/Bob session honoring (Bob gated on a captured-subprocess monitor path) + the UI mode editor (picker stays a local preview until honoring is complete). |
 | 5 | `POST /clis` (add CLI) | CLIs derive from compiled adapters — defer (dynamic registration feature). |
 | 6 | Settings | **SERVED** (run_43). |
@@ -232,18 +260,17 @@ no founder decisions are outstanding on this priority.
   No DB migration: priorities stay `.md` files; sequence is a git-tracked order-only
   `cocoder/priorities/order.json`; drag-reorder rewrites it. Owed slice #8 reclassified above.
 
-**Recommended next slice (updated run_57):** the Workspaces daemon model (#2) landed in run_57,
-so the founder-independent queue is thinner. In rough order of value: (a) **Oz as a persona** per
-ADR-0017 — biggest remaining piece, best started with the founder present; (b) **ADR-0018
-stage 3** (#4) — honor `mode` for the Oscar session next; note the real seam is the runner's
-PROMPTING mechanism (the orchestration loop sends Oscar follow-up prompts via its pane — a
-headless Oscar needs the runner to deliver verify/next prompts to a captured-subprocess session,
-likely as fresh one-shot invocations over the file-artifact handshake), so scope that
+**Recommended next slice (updated run_58):** stop (#3) landed in run_58, so the
+founder-independent queue is down to two code slices. In rough order of value: (a) **Oz as a
+persona** per ADR-0017 — biggest remaining piece, best started with the founder present;
+(b) **ADR-0018 stage 3** (#4) — honor `mode` for the Oscar session next; note the real seam is
+the runner's PROMPTING mechanism (the orchestration loop sends Oscar follow-up prompts via its
+pane — a headless Oscar needs the runner to deliver verify/next prompts to a captured-subprocess
+session, likely as fresh one-shot invocations over the file-artifact handshake), so scope that
 investigation before delegating; Bob stays last (gated on a captured-subprocess monitor path);
-(c) `POST /runs/:id/stop` (#3 — investigate launcher/runner process ownership first); (d) Oz-chat
-SSE. A zero-code founder follow-up from run_57: migrate the dogfood install off the legacy
-registry by creating `local/workspace/cocoder.code-workspace` from the dashboard's New-Workspace
-modal (or `POST /workspaces`) — until then the daemon serves the legacy fallback.
+(c) Oz-chat SSE. A zero-code founder follow-up from run_57: migrate the dogfood install off the
+legacy registry by creating `local/workspace/cocoder.code-workspace` from the dashboard's
+New-Workspace modal (or `POST /workspaces`) — until then the daemon serves the legacy fallback.
 
 > ⚠️ **run_45 incident — read before delegating.** Twice the builder rebuilt an entire, undelegated
 > "Priority Architecture Contract" feature into `packages/core` (incl. a `MissingArchitectureContractError`
