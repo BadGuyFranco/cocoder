@@ -34,10 +34,15 @@ and **run-resolve consumption** (Resolve actions on parked runs in the run drawe
 run_54 wrap — Personas screen renders + persists per-Play `{cli, model}` through the existing
 `PUT …/assignments`), the **"Awaiting you" Dashboard list** (renderer-only, derives blocked /
 not-landed from existing run polling; click opens the drawer with its Resolve actions), and the
-**daemon half of priority create** (`POST /workspaces/:id/priorities`, injection-hardened). **Not
+**daemon half of priority create** (`POST /workspaces/:id/priorities`, injection-hardened). run_56
+(2026-06-11) closed two more: **priority-create UI consumption** (New-Priority modal on the
+Dashboard "Add priority" action + Craft-a-persona files through the same typed
+`electron/priorities-create.ts` seam) and **ADR-0018 stage 2** (`mode` persists in
+`assignments.json` and is honored for Play dispatch — `headless` forces the captured-subprocess
+path; `visible` never forces panes), plus a truth sweep of `ENDPOINTS_OWED.md`. **Not
 archive-ready** — remaining: Oz-as-persona (ADR-0017), Workspaces daemon model (ADR-0019),
-persona `mode` honoring (ADR-0018 stages 2–3: Plays→Oscar→Bob-last), `POST /runs/:id/stop`,
-priority-create **UI consumption**, and Oz-chat SSE.
+persona `mode` honoring for Oscar/Bob sessions (ADR-0018 stage 3; Bob gated on a
+captured-subprocess monitor path) + the UI mode editor, `POST /runs/:id/stop`, and Oz-chat SSE.
 
 > History worth recording: a first pass mistakenly built from `docs/oz-design-brief.md` (the *input
 > brief* that was pasted into claude.ai/design), not the founder's actual **design output**. It was then
@@ -120,6 +125,27 @@ priority-create **UI consumption**, and Oz-chat SSE.
   by reading the daemon validators, not by the (green) bridge-mocked tests.
 - **Verification (run_55):** core 202 · daemon 97 · ui 62 · root typecheck clean (per-atom at the
   verify gate; whole-tree diff checked every atom).
+- **run_56 (2026-06-11), three atoms, all verified + committed on `cocoder/run_56`:**
+  (1) **priority-create UI consumption** — new typed seam `electron/priorities-create.ts` (mirrors
+  personas-sync) behind `window.oz.prioritiesCreate`; the Dashboard "Add priority" action opens a
+  New-Priority modal (title + optional goal + place-at-top) in live mode, and Craft-a-persona files
+  through the same `handleCreatePriority` path; daemon errors surface verbatim with NO offline
+  fake-create; success refreshes from the daemon (real id) and place-at-top persists via the
+  existing reorder seam; fixtures/demo mode unchanged. The design-ref routes "Add priority" through
+  a free-form Oz chat reply — that depends on Oz-as-persona (ADR-0017), so the modal is the
+  truthful interim; revisit when Oz-as-persona lands (`aee75c9`). (2) **ADR-0018 stage 2** —
+  `PersonaAssignment` gains `mode?: 'visible'|'headless'` (core-validated; `PlayAssignment` stays
+  exactly `{cli, model}`); `dispatchPlay` honors it: `headless` forces the captured-subprocess path
+  regardless of Play kind, `visible`/absent leaves the Play's `kind` in control (a pane cannot
+  reliably signal command exit — the run_28 hang class — so `visible` NEVER forces panes; rationale
+  is a comment in `plays/dispatch.ts`); the launcher threads Oscar's mode into all three runner Play
+  sites (wrap-up / integration-verify / merge-conflict); daemon PUT round-trips `mode` and 400s
+  invalid values; the renderer's full-map PUT passes a daemon-side `mode` through untouched (closes
+  a silent-erase footgun) while the Personas run-mode picker stays a local preview per the
+  truthfulness rule (`bcac308`). (3) `packages/ui/ENDPOINTS_OWED.md` truth sweep — rows 2/4/8
+  updated to current reality incl. the stale-since-run_42 CLIs row (`b26d68b`).
+- **Verification (run_56):** core 204 · daemon 98 · ui 70 · root typecheck clean · topology pass
+  (per-atom at the verify gate; whole-tree diff checked every atom).
 
 > History worth recording (run_46): this Oz-chat slice was independently built by **run_44** (a
 > status/query design) and **run_45** (the bounded command-interface design) — but **neither landed**;
@@ -143,11 +169,11 @@ mechanical infra (Settings was the last clean infra slice).
 | 1 | Oz chat — `POST /oz/messages` | **SERVED** (run_46, `0637c04`): bounded command interface — verbs `launch <priorityId>` / `show <runId>` / `stop`+`teardown <runId>` / `status [runId]` / `help` parsed in `packages/daemon/src/oz-chat.ts` and dispatched to existing launcher ops; **no in-daemon LLM**, rides the existing Bearer/CSRF/loopback posture. SSE/stream still deferred. |
 | 2 | Workspaces CRUD + `roots[]`/role model | **DECIDED — build-work, not a decision.** Model settled in [ADR-0019](../decisions/0019-multi-root-workspaces.md) (three roles primary/writable/readonly; `workspace/` directory-of-files; CoCoder-always-a-root). Build = teach the daemon the ratified model (today's `workspace` table is a single-path stub). Zone settled by the reorg (2026-06-10): install `local/workspace/`. |
 | 3 | `POST /runs/:id/stop` | Investigate launcher/runner process ownership before scoping. |
-| 4 | Persona `{mode, subAgents}` | **[ADR-0018](../decisions/0018-persona-run-mode-and-sub-agents.md) ACCEPTED (run_54 wrap). Sub-agents SERVED** (run_55, `2eb8591`): the Personas screen renders + persists per-Play `{cli, model}` over the existing `plays` map (no new schema). **`mode` honoring still owed**, in the ADR's order Plays → Oscar → Bob-last (Bob gated on a captured-subprocess monitor path); per the truthfulness rule `mode` stays an unpersisted preview until honored. |
+| 4 | Persona `{mode, subAgents}` | **[ADR-0018](../decisions/0018-persona-run-mode-and-sub-agents.md) ACCEPTED (run_54 wrap). Sub-agents SERVED** (run_55, `2eb8591`): the Personas screen renders + persists per-Play `{cli, model}` over the existing `plays` map (no new schema). **`mode` stage 2 SERVED** (run_56, `bcac308`): `mode` persists in `assignments.json` and is honored for Play dispatch (`headless` forces captured subprocess; `visible` never forces panes — pane exit isn't detectable, the run_28 hang class); renderer passes `mode` through its full-map PUT untouched. **Still owed:** Oscar/Bob session honoring (Bob gated on a captured-subprocess monitor path) + the UI mode editor (picker stays a local preview until honoring is complete). |
 | 5 | `POST /clis` (add CLI) | CLIs derive from compiled adapters — defer (dynamic registration feature). |
 | 6 | Settings | **SERVED** (run_43). |
 | 7 | `POST /runs {task?}` free-text ad-hoc | **SERVED** (run_54): `{task?}` threads into launch prompts (`54745f7`); bounded Oz `adhoc <task>` verb + describe-first UI (`721437d`). |
-| 8 | Priority create + reorder | **Reorder SERVED** (run_54, `e4b1435` + `c1360a3`): the ADR-0010 order-only `cocoder/priorities/order.json` manifest is implemented daemon+UI end-to-end. **Create daemon-half SERVED** (run_55, `97e3283`): `POST /workspaces/:id/priorities` `{id?, title, goal?}` → governance `.md`, injection-hardened, no order.json write needed (read-side sort appends unlisted ids). **UI consumption still owed** (the Priorities "+ new" action and the Personas "Craft a persona" pending block). |
+| 8 | Priority create + reorder | **Reorder SERVED** (run_54, `e4b1435` + `c1360a3`): the ADR-0010 order-only `cocoder/priorities/order.json` manifest is implemented daemon+UI end-to-end. **Create daemon-half SERVED** (run_55, `97e3283`): `POST /workspaces/:id/priorities` `{id?, title, goal?}` → governance `.md`, injection-hardened, no order.json write needed (read-side sort appends unlisted ids). **UI consumption SERVED** (run_56, `aee75c9`): Dashboard "Add priority" New-Priority modal + Craft-a-persona both file through the typed `electron/priorities-create.ts` seam (verbatim errors, no fake-create, place-at-top via the reorder seam). Surface closed end-to-end. |
 | 9 | `POST /runs/:id/resolve` + "awaiting founder" list | **SERVED end-to-end** (run_54 `b1747cc` + run_55 `414633d`): run drawer Resolve actions consume the daemon endpoint (409s surfaced verbatim), and the Dashboard "Awaiting you" strip derives blocked/not-landed from existing run polling — renders only when non-empty, click opens the drawer. |
 
 ### Founder decisions + next-session pickup
@@ -174,16 +200,17 @@ no founder decisions are outstanding on this priority.
   No DB migration: priorities stay `.md` files; sequence is a git-tracked order-only
   `cocoder/priorities/order.json`; drag-reorder rewrites it. Owed slice #8 reclassified above.
 
-**Recommended next slice (updated run_55):** the cheap opener is **priority-create UI consumption**
-(#8 — wire the Priorities "+ new" action and the Personas "Craft a persona" block to the now-live
-`POST /workspaces/:id/priorities`; renderer + a thin electron seam, follow the personas-sync
-pattern). The meatier candidates stay: (a) **Oz as a persona** per ADR-0017 — biggest remaining
-piece, best started with the founder present; (b) the **Workspaces daemon model** per ADR-0019
-(#2) — decided build-work; (c) **`mode` honoring** per accepted ADR-0018 (#4), starting with Plays
-(they already run headless as captured subprocesses), then Oscar, Bob last (gated on a
-captured-subprocess monitor path). `POST /runs/:id/stop` (#3 — investigate runner process ownership
-first) and Oz-chat SSE remain. Sub-agents (#4 first half), the "Awaiting you" list (#9), and the
-create daemon-half (#8) landed in run_55.
+**Recommended next slice (updated run_56):** no cheap opener is left — the remaining slices are
+all session-sized. In rough order of value: (a) **Oz as a persona** per ADR-0017 — biggest
+remaining piece, best started with the founder present; (b) the **Workspaces daemon model** per
+ADR-0019 (#2) — decided build-work, founder-independent; (c) **ADR-0018 stage 3** (#4) — honor
+`mode` for the Oscar session next; note the real seam is the runner's PROMPTING mechanism (the
+orchestration loop sends Oscar follow-up prompts via its pane — a headless Oscar needs the runner
+to deliver verify/next prompts to a captured-subprocess session, likely as fresh one-shot
+invocations over the file-artifact handshake), so scope that investigation before delegating; Bob
+stays last (gated on a captured-subprocess monitor path); (d) `POST /runs/:id/stop` (#3 —
+investigate launcher/runner process ownership first); (e) Oz-chat SSE. Priority-create (#8, both
+halves) and `mode` stage 2 (#4 Plays) landed across run_55/run_56.
 
 > ⚠️ **run_45 incident — read before delegating.** Twice the builder rebuilt an entire, undelegated
 > "Priority Architecture Contract" feature into `packages/core` (incl. a `MissingArchitectureContractError`
