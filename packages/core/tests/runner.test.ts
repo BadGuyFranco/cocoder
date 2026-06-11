@@ -261,6 +261,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(result.atoms).toBe(1)
     expect(result.committedShas).toHaveLength(1)
     expect(result.status).toBe('completed')
+    expect(store.listEvents(result.runId).filter((e) => e.type === 'loop-iteration')).toHaveLength(0)
   })
 
   test('dispatches the wrap-up Play as a HEADLESS subprocess (no pane), pickup from its output, gate-commits its scope', async () => {
@@ -475,6 +476,82 @@ describe('runRun (multi-atom loop)', () => {
     expect(wis.map((w) => w.status)).toEqual(['abandoned', 'done'])
   })
 
+  test('loop iteration events are deduped across repeated monitor samples', async () => {
+    const store = openRunStore(':memory:')
+    const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-loop-'))
+    let runDir = ''
+    const sessionHost = fakeSessionHost({
+      async readScreen() {
+        await writeFile(
+          join(runDir, 'loop-ledger-0.jsonl'),
+          '{"iteration":1,"result":"red","failed":"criterion still red","changed":"edited x","inScope":true}',
+          'utf8',
+        )
+        return 'working'
+      },
+    })
+    const progressProgressDone: MakeJudge = () => {
+      let samples = 0
+      return async () => (++samples < 3 ? { state: 'progressing' } : { state: 'done' })
+    }
+    const io = fakeIO({ directives: [loopDelegate('loop atom', { maxIterations: 5 }), wrapup('done')] })
+    const result = await runRun(
+      baseDeps({
+        store,
+        sessionHost,
+        makeJudge: progressProgressDone,
+        io: {
+          ...io,
+          async ensureRunDir(dir) {
+            runDir = dir
+            await mkdir(dir, { recursive: true })
+          },
+        },
+      }),
+      { ...input, runsRoot },
+    )
+
+    const iterations = store.listEvents(result.runId).filter((e) => e.type === 'loop-iteration')
+    expect(iterations).toHaveLength(1)
+    expect(iterations[0]?.data).toMatchObject({ atom: 0, iteration: 1, result: 'red', failed: 'criterion still red', changed: 'edited x', inScope: true })
+  })
+
+  test('loop final flush captures an entry written just before the done sentinel', async () => {
+    const store = openRunStore(':memory:')
+    const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-loop-'))
+    let runDir = ''
+    const sessionHost = fakeSessionHost({
+      async readScreen() {
+        await writeFile(
+          join(runDir, 'loop-ledger-0.jsonl'),
+          '{"iteration":1,"result":"green","failed":"","changed":"tests green","inScope":true}',
+          'utf8',
+        )
+        return 'done'
+      },
+    })
+    const io = fakeIO({ directives: [loopDelegate('loop atom'), wrapup('done')] })
+    const result = await runRun(
+      baseDeps({
+        store,
+        sessionHost,
+        makeJudge: doneJudge,
+        io: {
+          ...io,
+          async ensureRunDir(dir) {
+            runDir = dir
+            await mkdir(dir, { recursive: true })
+          },
+        },
+      }),
+      { ...input, runsRoot },
+    )
+
+    const iterations = store.listEvents(result.runId).filter((e) => e.type === 'loop-iteration')
+    expect(iterations).toHaveLength(1)
+    expect(iterations[0]?.data).toMatchObject({ atom: 0, iteration: 1, result: 'green', failed: '', changed: 'tests green', inScope: true })
+  })
+
   test('loop iteration cap blocks the atom, quarantines in-scope changes, and continues', async () => {
     const store = openRunStore(':memory:')
     const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-loop-'))
@@ -546,6 +623,10 @@ describe('runRun (multi-atom loop)', () => {
       cap: 'iterations',
       ledger: [{ iteration: 1, result: 'red', failed: 'criterion still red', changed: 'edited bad', inScope: true }],
     })
+    const iterations = store.listEvents(result.runId).filter((e) => e.type === 'loop-iteration')
+    expect(iterations.map((e) => e.data)).toEqual([
+      { atom: 0, iteration: 1, result: 'red', failed: 'criterion still red', changed: 'edited bad', inScope: true },
+    ])
     expect(sent.some((text) => text.includes('BLOCKED at the loop iterations cap'))).toBe(true)
   })
 

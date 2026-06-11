@@ -25,7 +25,7 @@ import { join } from 'node:path'
 import { runBranchFor, worktreePathFor } from '../worktree/paths.js'
 import type { RunnerIO } from './io.js'
 import { paneLabel } from './labels.js'
-import { readLoopLedger } from './loop-ledger.js'
+import { readLoopLedger, type LoopLedgerEntry } from './loop-ledger.js'
 import { type Judge, makeHeuristicJudge, runMonitor } from './monitor.js'
 import { spawnObserver } from './observer.js'
 import {
@@ -694,6 +694,19 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     const headBefore = await git.headSha(worktreePath) // re-snapshot per atom (self-commit detection)
     const sentinel = atomSentinel(atomIndex)
     const loopLedgerPath = directive.loop === undefined ? null : join(runDir, `loop-ledger-${atomIndex}.jsonl`)
+    const recordedLoopIterations = new Set<number>()
+    const readAndRecordLoopLedger =
+      loopLedgerPath === null
+        ? null
+        : async (): Promise<readonly LoopLedgerEntry[]> => {
+            const ledger = await readLoopLedger(loopLedgerPath)
+            for (const entry of ledger) {
+              if (recordedLoopIterations.has(entry.iteration)) continue
+              recordedLoopIterations.add(entry.iteration)
+              store.recordEvent({ runId: run.id, type: 'loop-iteration', data: { atom: atomIndex, ...entry } })
+            }
+            return ledger
+          }
     await sessionHost.show(bobRef)
     await sessionHost.sendInput(bobRef, buildBuilderDispatch(directivePath, atomIndex, loopLedgerPath ?? undefined))
     store.recordEvent({ runId: run.id, type: 'builder-dispatch', data: { ref: bobRef.id, atom: atomIndex } })
@@ -707,7 +720,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         judge: makeJudge({ atomIndex, doneSentinel: sentinel, task: directive.task }),
         isAlive: async () => (await sessionHost.status(bobRef)).state === 'running',
         nudge: (text) => sessionHost.sendInput(bobRef, text),
-        readLoopLedger: loopLedgerPath === null ? undefined : () => readLoopLedger(loopLedgerPath),
+        readLoopLedger: readAndRecordLoopLedger ?? undefined,
         onAssessment: (a) => {
           if (a.state !== 'progressing') store.recordEvent({ runId: run.id, type: 'monitor-assessment', data: { atom: atomIndex, state: a.state, note: a.note ?? null } })
         },
@@ -721,8 +734,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         loop: directive.loop === undefined ? undefined : { maxIterations: directive.loop.maxIterations, wallClockMs: directive.loop.wallClockMs },
       },
     )
+    const finalLoopLedger = readAndRecordLoopLedger === null ? null : await readAndRecordLoopLedger()
     if (outcome.reason === 'loop-iteration-cap' || outcome.reason === 'loop-wall-clock-cap') {
-      const ledger = outcome.loopLedger ?? (loopLedgerPath === null ? [] : await readLoopLedger(loopLedgerPath))
+      const ledger = finalLoopLedger ?? outcome.loopLedger ?? []
       const cap = outcome.reason === 'loop-iteration-cap' ? 'iterations' : 'wall-clock'
       store.setWorkItemStatus(workItem.id, 'abandoned')
       store.recordEvent({ runId: run.id, type: 'loop-capped', data: { atom: atomIndex, cap, ledger } })
