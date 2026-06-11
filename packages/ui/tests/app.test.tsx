@@ -46,6 +46,23 @@ describe('Oz — rebuilt Fusion renderer', () => {
     await waitFor(() => expect(screen.getByText(/Top of the queue is next up/)).toBeDefined())
   })
 
+  it('fixture mode keeps the Dashboard Add priority chat stub', async () => {
+    render(<App />)
+    fireEvent.click(screen.getByTitle('Add priority'))
+    await waitFor(() => expect(screen.getByText('Draft a new priority.')).toBeDefined())
+  })
+
+  it('fixture mode keeps Craft persona as a local demo priority', async () => {
+    render(<App />)
+    fireEvent.click(screen.getByText('Personas'))
+    fireEvent.click(screen.getByText('Craft a new persona'))
+    fireEvent.change(await screen.findByPlaceholderText('e.g. Translator, Designer, Auditor'), { target: { value: 'Translator' } })
+    fireEvent.change(screen.getByPlaceholderText('One line — what they do'), { target: { value: 'Translates product copy' } })
+    fireEvent.click(screen.getByText('File as priority'))
+    await waitFor(() => expect(screen.getByText('Persona: Translator')).toBeDefined())
+    expect(screen.getByText('Translates product copy')).toBeDefined()
+  })
+
   it('Workspaces screen shows the roots/roles editor (root name is an editable input value)', () => {
     render(<App />)
     fireEvent.click(screen.getByText('Workspaces'))

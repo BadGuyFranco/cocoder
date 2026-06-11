@@ -110,6 +110,14 @@ export async function testCli(oz: OzApi, id: string): Promise<Cli | null> {
   }
 }
 
+export async function createPriority(
+  oz: OzApi,
+  workspaceId: string,
+  priority: { title: string; goal?: string },
+): Promise<{ ok: true; status: number; data: DPriority } | { ok: false; status: number; error: string }> {
+  return oz.prioritiesCreate(workspaceId, priority)
+}
+
 // ── Drag-reorder seam ── the main-process channel prefers the daemon reorder endpoint and falls back
 // to its local cache when Oz is offline.
 export async function loadOrder(oz: OzApi, wsId: string): Promise<string[]> {

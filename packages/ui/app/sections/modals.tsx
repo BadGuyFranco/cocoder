@@ -1,5 +1,5 @@
-// Two creation modals — NewWorkspace (name + description + primary root) and CraftPersona (sketches a
-// role and FILES IT AS A PRIORITY for the team to build, not a config form). Ported from design-ref.
+// Creation modals: NewWorkspace, NewPriority, and CraftPersona (sketches a role and files it as a
+// priority for the team to build, not a config form). Ported from design-ref.
 import { useEffect, useState } from 'react'
 import { Icon, Button, Modal } from '../ui/primitives.tsx'
 import type { Cli } from '../model.ts'
@@ -30,7 +30,38 @@ export function NewWorkspaceModal({ open, onClose, onCreate }: { open: boolean; 
   )
 }
 
-export function CraftPersonaModal({ open, onClose, clis, onSubmit }: { open: boolean; onClose: () => void; clis: Cli[]; onSubmit: (p: { name: string; summary: string; placeAtTop: boolean }) => void }) {
+export function NewPriorityModal({ open, onClose, onSubmit }: { open: boolean; onClose: () => void; onSubmit: (p: { title: string; goal?: string; placeAtTop: boolean }) => boolean | Promise<boolean> }) {
+  const [title, setTitle] = useState('')
+  const [goal, setGoal] = useState('')
+  const [placeAtTop, setPlaceAtTop] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  useEffect(() => { if (open) { setTitle(''); setGoal(''); setPlaceAtTop(false); setSubmitting(false) } }, [open])
+  const valid = title.trim()
+  const submit = async () => {
+    if (!valid || submitting) return
+    setSubmitting(true)
+    const ok = await onSubmit({ title: title.trim(), goal: goal.trim() || undefined, placeAtTop })
+    setSubmitting(false)
+    if (ok) onClose()
+  }
+  return (
+    <Modal open={open} onClose={onClose} title="New priority" subtitle="File a workspace priority for the team to build." icon="plus" width={620}
+      footer={<>
+        <div style={{ flex: 1, fontSize: 11, color: 'var(--cb-text-muted)' }}>Oz will dispatch from the queue when you launch the priority.</div>
+        <Button variant="ghost" onClick={onClose}>Cancel</Button>
+        <Button variant="primary" icon="plus" disabled={!valid || submitting} onClick={() => void submit()}>{submitting ? 'Creating…' : 'Create priority'}</Button>
+      </>}>
+      <div style={{ marginBottom: 16 }}><label className="oz-field-label">Title</label><input className="oz-input" autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Add priority creation UI" /></div>
+      <div style={{ marginBottom: 16 }}><label className="oz-field-label">Goal</label><textarea className="oz-textarea" value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="What should be true when this is done?" rows={4} /></div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '12px 14px', background: 'var(--cb-bg)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)' }}>
+        <input type="checkbox" checked={placeAtTop} onChange={(e) => setPlaceAtTop(e.target.checked)} style={{ width: 14, height: 14, accentColor: 'var(--cb-accent)' }} />
+        <span style={{ fontSize: 12.5, color: 'var(--cb-text)', fontWeight: 500 }}>Place at top</span>
+      </label>
+    </Modal>
+  )
+}
+
+export function CraftPersonaModal({ open, onClose, clis, onSubmit }: { open: boolean; onClose: () => void; clis: Cli[]; onSubmit: (p: { name: string; summary: string; placeAtTop: boolean }) => boolean | Promise<boolean> }) {
   const [name, setName] = useState('')
   const [tagline, setTagline] = useState('')
   const [description, setDescription] = useState('')
@@ -41,15 +72,23 @@ export function CraftPersonaModal({ open, onClose, clis, onSubmit }: { open: boo
   const [needsSubAgents, setNeedsSubAgents] = useState(false)
   const [subAgentSketch, setSubAgentSketch] = useState('')
   const [priority, setPriority] = useState('normal')
-  useEffect(() => { if (open) { setName(''); setTagline(''); setDescription(''); setCli('claude-code'); setModel('Default'); setRunMode('visible'); setCapabilities(''); setNeedsSubAgents(false); setSubAgentSketch(''); setPriority('normal') } }, [open])
+  const [submitting, setSubmitting] = useState(false)
+  useEffect(() => { if (open) { setName(''); setTagline(''); setDescription(''); setCli('claude-code'); setModel('Default'); setRunMode('visible'); setCapabilities(''); setNeedsSubAgents(false); setSubAgentSketch(''); setPriority('normal'); setSubmitting(false) } }, [open])
   const cliEntry = clis.find((c) => c.id === cli)
   const valid = name.trim() && tagline.trim()
+  const submit = async () => {
+    if (!valid || submitting) return
+    setSubmitting(true)
+    const ok = await onSubmit({ name: `Persona: ${name.trim()}`, summary: `${tagline.trim()}${description.trim() ? ' — ' + description.trim() : ''}`, placeAtTop: priority === 'next' })
+    setSubmitting(false)
+    if (ok) onClose()
+  }
   return (
     <Modal open={open} onClose={onClose} title="Craft a new persona" subtitle="Sketch the role. Oz files it as a workspace priority — the team builds the persona itself (prompt, sub-agents, tests)." icon="hammer" width={680}
       footer={<>
         <div style={{ fontSize: 11, color: 'var(--cb-text-muted)', flex: 1, lineHeight: 1.5 }}><Icon name="info" size={12} style={{ verticalAlign: '-2px', marginRight: 4 }} />Personas aren't configured — they're <span style={{ color: 'var(--cb-accent)' }}>built</span>. Once Bob ships and Talia / Quinn green-light, the persona appears here.</div>
         <Button variant="ghost" onClick={onClose}>Cancel</Button>
-        <Button variant="primary" icon="plus" disabled={!valid} onClick={() => { onSubmit({ name: `Persona: ${name.trim()}`, summary: `${tagline.trim()}${description.trim() ? ' — ' + description.trim() : ''}`, placeAtTop: priority === 'next' }); onClose() }}>File as priority</Button>
+        <Button variant="primary" icon="plus" disabled={!valid || submitting} onClick={() => void submit()}>{submitting ? 'Filing…' : 'File as priority'}</Button>
       </>}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
         <div><label className="oz-field-label">Persona name</label><input className="oz-input" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Translator, Designer, Auditor" /></div>

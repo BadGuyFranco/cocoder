@@ -4,7 +4,7 @@
 // the design-faithful view-model from the ported seed (fixture parity, fully interactive); the daemon
 // adapter is wired in the next slice (the existing electron/ plumbing is untouched).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, sendOzMessage, launchRun, attachRun, teardownRun, resolveRun, testCli, loadOrder, persistOrder, saveAssignments, type ConnectionState } from './live.ts'
+import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, sendOzMessage, launchRun, attachRun, teardownRun, resolveRun, testCli, createPriority, loadOrder, persistOrder, saveAssignments, type ConnectionState } from './live.ts'
 import { ADHOC_PRIORITY_ID, applyOrder, personasToAssignments } from './adapter.ts'
 import { Sidebar, type Route } from './ui/Sidebar.tsx'
 import { TopBar } from './ui/TopBar.tsx'
@@ -13,7 +13,7 @@ import { WorkspacesScreen } from './sections/Workspaces.tsx'
 import { CLIsScreen } from './sections/CLIs.tsx'
 import { PersonasScreen } from './sections/Personas.tsx'
 import { SettingsScreen } from './sections/Settings.tsx'
-import { NewWorkspaceModal, CraftPersonaModal } from './sections/modals.tsx'
+import { NewWorkspaceModal, CraftPersonaModal, NewPriorityModal } from './sections/modals.tsx'
 import { seed, DEFAULT_SETTINGS, type ChatMessage, type Cli, type Dependency, type Persona, type Priority, type Run, type Settings, type SubAgent, type Workspace } from './model.ts'
 import type { PersonaAssignment } from '../electron/ipc-contract.ts'
 
@@ -84,6 +84,7 @@ export function App() {
   const [settings, setSettings] = useState<Settings>(seedSettings)
   const [newWsOpen, setNewWsOpen] = useState(false)
   const [craftOpen, setCraftOpen] = useState(false)
+  const [newPriorityOpen, setNewPriorityOpen] = useState(false)
   const [navCollapsed, setNavCollapsed] = useState(false)
 
   // ── Live daemon wiring ── source is decided by window.oz.health(): 'fixtures' (or no bridge, e.g.
@@ -239,6 +240,32 @@ export function App() {
     setPrioritiesByWs((cur) => ({ ...cur, [activeId]: applyOrder(data.priorities, order) }))
     setRunsByWs((cur) => ({ ...cur, [activeId]: data.runs }))
   }
+  async function handleCreatePriority(p: { title: string; goal?: string; placeAtTop: boolean }): Promise<boolean> {
+    const goal = p.goal?.trim() ? p.goal.trim() : undefined
+    if (!live) {
+      addPriority(p.title, goal ?? '', p.placeAtTop)
+      setRoute('dashboard')
+      return true
+    }
+    const oz = ozApi()
+    if (!oz) {
+      notify('err', 'Priority create failed: daemon bridge unavailable.')
+      return false
+    }
+    const res = await createPriority(oz, activeId, goal ? { title: p.title, goal } : { title: p.title })
+    if (!res.ok) {
+      notify('err', res.error)
+      return false
+    }
+    await refreshActiveWs()
+    if (p.placeAtTop) {
+      const order = [res.data.id, ...priorities.filter((priority) => priority.id !== res.data.id).map((priority) => priority.id)]
+      await persistOrder(oz, activeId, order)
+      await refreshActiveWs()
+    }
+    setRoute('dashboard')
+    return true
+  }
   // POST /runs launches a REAL run — only ever reached from a live user click, never in tests/CI.
   async function doLaunch(priorityId: string, label: string, resumeFromRunId?: string) {
     const oz = ozApi()
@@ -362,7 +389,7 @@ export function App() {
               workspace={workspace} priorities={priorities} runs={runs} ozMessages={messages}
               selectedRunId={selectedRunId} setSelectedRunId={setSelectedRunId}
               onReorder={reorder} onLaunch={handleLaunch} onAdhoc={handleAdhoc}
-              onAddPriority={() => onSend('Draft a new priority.')} onSend={onSend} onDecision={(c: string) => onSend(`Decision: replay ${c} plan.`)} onRunAction={handleRunAction}
+              onAddPriority={() => { if (live) setNewPriorityOpen(true); else onSend('Draft a new priority.') }} onSend={onSend} onDecision={(c: string) => onSend(`Decision: replay ${c} plan.`)} onRunAction={handleRunAction}
               ozTyping={ozTyping} runHistoryOpen={runHistoryOpen} setRunHistoryOpen={setRunHistoryOpen} live={live}
               chatPrefill={chatPrefill} onChatPrefillConsumed={() => setChatPrefill(null)}
             />
@@ -382,7 +409,8 @@ export function App() {
         const ws: Workspace = { id, name, description, icon: 'ph-thin ph-cube', created: 'just now', roots: [{ id: `r${Date.now()}`, name: root.name, path: root.path, role: 'primary' }] }
         setWorkspaces((all) => [...all, ws]); setPrioritiesByWs((cur) => ({ ...cur, [id]: [] })); loadWs(id); setRoute('dashboard')
       }} />
-      <CraftPersonaModal open={craftOpen} onClose={() => setCraftOpen(false)} clis={clis} onSubmit={({ name, summary, placeAtTop }) => { addPriority(name, summary, placeAtTop); setRoute('dashboard') }} />
+      <NewPriorityModal open={newPriorityOpen} onClose={() => setNewPriorityOpen(false)} onSubmit={handleCreatePriority} />
+      <CraftPersonaModal open={craftOpen} onClose={() => setCraftOpen(false)} clis={clis} onSubmit={({ name, summary, placeAtTop }) => handleCreatePriority({ title: name, goal: summary, placeAtTop })} />
     </div>
   )
 }

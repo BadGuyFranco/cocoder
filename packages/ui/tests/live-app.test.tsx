@@ -50,8 +50,10 @@ const clisFx = {
 
 interface PostCall { path: string; body?: unknown }
 interface PutCall { workspaceId: string; assignments: unknown }
+interface CreateCall { workspaceId: string; priority: { title: string; goal?: string } }
+interface ReorderCall { workspaceId: string; order: readonly string[] }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mockOz(opts: { posts?: PostCall[]; puts?: PutCall[]; postResult?: any; putResult?: any; runs?: { runs: RunSummary[] } } = {}) {
+function mockOz(opts: { posts?: PostCall[]; puts?: PutCall[]; creates?: CreateCall[]; reorders?: ReorderCall[]; postResult?: any; putResult?: any; createResult?: any; runs?: { runs: RunSummary[] } } = {}) {
   return {
     health: async () => ({ state: 'connected', sha: 'deadbeef' }),
     settingsGet: async () => ({ pollIntervalMs: 2500, defaultWorkspaceId: null }),
@@ -76,8 +78,15 @@ function mockOz(opts: { posts?: PostCall[]; puts?: PutCall[]; postResult?: any; 
       opts.puts?.push({ workspaceId, assignments })
       return opts.putResult ?? ok(assignments)
     },
+    prioritiesCreate: async (workspaceId: string, priority: { title: string; goal?: string }) => {
+      opts.creates?.push({ workspaceId, priority })
+      return opts.createResult ?? { ok: true, status: 201, data: { id: 'created-priority', title: priority.title, scopeNarrowing: null, goal: priority.goal ?? '' } }
+    },
     chatSend: async () => ({ role: 'oz', text: '', at: 0 }),
-    prioritiesReorder: async (_ws: string, order: readonly string[]) => order,
+    prioritiesReorder: async (workspaceId: string, order: readonly string[]) => {
+      opts.reorders?.push({ workspaceId, order })
+      return order
+    },
     prioritiesOrder: async () => [],
   }
 }
@@ -216,6 +225,66 @@ describe('Oz renderer — live daemon path', () => {
     expect(assignments.deb.enabled).toBe(true)
     expect(assignments.bob.plays).toEqual({ documentation: { cli: 'claude', model: '' } })
     expect(assignments.oscar.plays).toEqual({ 'wrap-up': { cli: 'cursor-agent', model: '' } })
+  })
+
+  it('Dashboard Add priority uses the typed create bridge and persists top placement', async () => {
+    const creates: CreateCall[] = []
+    const reorders: ReorderCall[] = []
+    setOz(mockOz({ creates, reorders }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(screen.getByTitle('Add priority'))
+    fireEvent.change(await screen.findByPlaceholderText('e.g. Add priority creation UI'), { target: { value: 'Create endpoint UI' } })
+    fireEvent.change(screen.getByPlaceholderText('What should be true when this is done?'), { target: { value: 'Priority is daemon-backed.' } })
+    fireEvent.click(screen.getByText('Place at top'))
+    fireEvent.click(screen.getByText('Create priority'))
+
+    await waitFor(() => expect(creates.length).toBe(1))
+    expect(creates[0]).toEqual({
+      workspaceId: 'cocoder',
+      priority: { title: 'Create endpoint UI', goal: 'Priority is daemon-backed.' },
+    })
+    await waitFor(() => expect(reorders.length).toBe(1))
+    expect(reorders[0].workspaceId).toBe('cocoder')
+    expect(reorders[0].order[0]).toBe('created-priority')
+  })
+
+  it('Dashboard priority create failures surface daemon text without adding a local fake row', async () => {
+    const creates: CreateCall[] = []
+    const reorders: ReorderCall[] = []
+    setOz(mockOz({ creates, reorders, createResult: { ok: false, status: 409, error: 'priority slug already exists' } }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(screen.getByTitle('Add priority'))
+    fireEvent.change(await screen.findByPlaceholderText('e.g. Add priority creation UI'), { target: { value: 'Rejected Priority' } })
+    fireEvent.click(screen.getByText('Create priority'))
+
+    await waitFor(() => expect(screen.getByText('priority slug already exists')).toBeDefined())
+    expect(creates.length).toBe(1)
+    expect(reorders.length).toBe(0)
+    fireEvent.click(screen.getByTitle('Close (Esc)'))
+    expect(screen.queryByText('Rejected Priority')).toBeNull()
+  })
+
+  it('Craft persona files its priority through the typed create bridge in live mode', async () => {
+    const creates: CreateCall[] = []
+    setOz(mockOz({ creates }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(screen.getByText('Personas'))
+    fireEvent.click(await screen.findByText('Craft a new persona'))
+    fireEvent.change(await screen.findByPlaceholderText('e.g. Translator, Designer, Auditor'), { target: { value: 'Auditor' } })
+    fireEvent.change(screen.getByPlaceholderText('One line — what they do'), { target: { value: 'Reviews risky diffs' } })
+    fireEvent.click(screen.getByText('File as priority'))
+
+    await waitFor(() => expect(creates.length).toBe(1))
+    expect(creates[0]).toEqual({
+      workspaceId: 'cocoder',
+      priority: { title: 'Persona: Auditor', goal: 'Reviews risky diffs' },
+    })
   })
 })
 

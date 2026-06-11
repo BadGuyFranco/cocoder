@@ -10,6 +10,7 @@ export const CHANNELS = {
   daemonPut: 'oz:daemon:put',
   chatSend: 'oz:chat:send',
   personasAssignmentsSave: 'oz:personas:assignments:save',
+  prioritiesCreate: 'oz:priorities:create',
   prioritiesReorder: 'oz:priorities:reorder',
   prioritiesOrder: 'oz:priorities:order',
   settingsGet: 'oz:settings:get',
@@ -187,6 +188,7 @@ export interface OzApi {
   daemonPut<T = unknown>(path: string, body?: unknown): Promise<DaemonResult<T>>
   chatSend(workspaceId: string, text: string): Promise<ChatMessage>
   personasAssignmentsSave(workspaceId: string, assignments: Record<string, PersonaAssignment>): Promise<DaemonResult<Record<string, PersonaAssignment>>>
+  prioritiesCreate(workspaceId: string, priority: { title: string; goal?: string }): Promise<DaemonResult<Priority>>
   prioritiesReorder(workspaceId: string, order: readonly string[]): Promise<readonly string[]>
   prioritiesOrder(workspaceId: string): Promise<readonly string[]>
   settingsGet(): Promise<Settings>
