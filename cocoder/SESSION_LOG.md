@@ -12,6 +12,29 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-10 — **Loop packets: enforcement built, archive-candidate — live proof after daemon restart (run_51)**
+
+**Persona:** Oscar + Bob (7 atoms) | **Priority:** loop-packets | **Plan:** Phase 5 enforcement build (founder amendment)
+
+**Outcomes:**
+- 7/7 atoms verified and committed, zero rejections (`fe263cb`→`bc5e5d7`, `057d235` Oscar support):
+  wrap-up play writeScope fix; structured `loop` directive schema with loud malformed-rejection; runner-
+  enforced iteration + wall-clock caps (cap-out → blocked-with-ledger, nothing committed); per-attempt
+  `loop-iteration` run events; criterion rerun before sentinel acceptance; loop-aware monitor (ledger
+  growth = progress); standard doc Enforcement section + inventory findings flipped to BUILT.
+- **Pilot measurements:** every loop-shaped atom = 1 orchestrator round-trip, 0 rejects, ≈3.5 min avg
+  delegation→verify (range 1.3–6.4 min) vs run_45 comparable core unit ≈25.1 min with 2 round-trips +
+  reject/re-scope. Honesty caveat: run_51 used pre-enforcement boot-time runner — unit tests green
+  (199 core tests); live enforcement after founder restart only.
+- Design-seam ruling (Oscar): iteration boundaries via `loop-ledger-<atom>.jsonl` (file-based IPC;
+  founder may veto). Disposition: **`archive-candidate`**, founder confirmation requested.
+
+**Next:** if daemon restarted → dispatch ONE atom with structured `loop`, confirm `loop-iteration` /
+  `loop-criterion-rerun` events in run DB, then propose archive; if not → ask founder for
+  `scripts/oz.sh restart` first.
+
+---
+
 ## 2026-06-10 — **Loop packets: founder decisions still outstanding — do not relaunch (run_48)**
 
 **Persona:** Oscar (wrap-up only) | **Priority:** loop-packets | **Plan:** Phase 4 pilot (blocked)

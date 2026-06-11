@@ -134,10 +134,16 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    2026-06-10)** — founder acceptance gates the build. The concrete form of Phase 5 ("first external repo").
 5. `loop-packets` (added 2026-06-10) — loop-shaped dispatch as a first-class atom shape: builder
    grinds against a deterministic scripted exit criterion under iteration/wall-clock caps, with an
-   iteration ledger and a hard scope guard. **Dispatch language + planning artifacts only** — core
-   needs are findings, never built here. **Blocked — founder decisions** (run_48): Phases 1–3 done;
-   Phase 4 pilot gated on three per-priority rulings (retrofit verdicts, pilot selection, core-support
-   findings). Do not relaunch until ruled.
+   iteration ledger and a hard scope guard. Phases 1–3 done (run_47); founder amendment lifted the
+   "dispatch-only" boundary for six core-support findings. **Enforcement built (run_51, 7/7 atoms,
+   zero rejections):** structured `loop` directive schema, runner-enforced caps + ledger +
+   `loop-iteration`/`loop-criterion-rerun` events, criterion rerun before verify, loop-aware monitor,
+   docs synced. **Pilot measurements (run_51 vs run DB):** 6 loop-shaped atoms each = 1 orchestrator
+   round-trip, 0 rejects, ≈3.5 min avg delegation→verify (vs run_45 core unit ≈25.1 min with
+   2 round-trips + reject/re-scope); honesty caveat — run_51 was driven by pre-enforcement boot-time
+   runner, so live proof waits on founder daemon restart. **Disposition: `archive-candidate`** — founder
+   confirms archive after one post-restart live-enforcement proof (structured-`loop` dispatch showing
+   runner-recorded loop events in the run DB). Do not relaunch this priority unless that proof fails.
 
 Plus two always-available meta-priorities: `build-priorities-from-plan` (Oscar drafts priorities from
 the plan/ADRs) and `adhoc-session` (no named priority — draft one, or run a read-only review/research).
