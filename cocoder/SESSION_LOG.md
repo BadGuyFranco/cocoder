@@ -12,6 +12,30 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-10 — **Loop packets: founder decisions still outstanding — do not relaunch (run_48)**
+
+**Persona:** Oscar (wrap-up only) | **Priority:** loop-packets | **Plan:** Phase 4 pilot (blocked)
+
+**Outcomes:**
+- 0 atoms delegated, no commits — no delegable work exists until founder rulings land.
+- Re-verified on disk: Playbook Status, `docs/loop-packets-retrofit-audit.md`, and
+  `docs/loop-packets-dispatch-inventory.md` still carry no founder verdicts; the three-item decision
+  list is unchanged from run_47.
+- Disposition reaffirmed: `blocked` on founder decisions (retrofit verdicts, pilot selection, core-support
+  findings disposition).
+
+**Next:** if the founder has ruled, start Phase 4 — dispatch the chosen pilot atom as a loop packet per
+the standard doc, capture before/after round-trip + wall-clock vs a comparable historical atom, report
+findings before wider rollout; then the verified-when ledger completes and the priority is
+archive-candidate. If not ruled, do not relaunch this priority.
+
+*Postscript (same day, post-wrap):* the founder ruled in conversation — retrofit list approved as
+audited; and by Objective amendment the six core-support enforcement gaps are built INSIDE
+loop-packets as loop-shaped atoms (session 49), those runs doubling as the live measured test. See
+the Playbook's amendment + rulings sections.
+
+---
+
 ## 2026-06-10 — **Loop packets: dispatch standard + planning integration shipped; pilot founder-gated (run_47)**
 
 **Persona:** Oscar + Bob (run_47, the Bob loop) | **Priority:** loop-packets | **Plan:** founder spec 2026-06-10 (Playbook phases 1–4)

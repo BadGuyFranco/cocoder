@@ -67,9 +67,12 @@ commit gate checks the whole changed tree against the atom's write-scope.
   The orchestrator already reruns checks during verify, but the deterministic runner does not execute
   the loop criterion itself before accepting the builder's completion marker.
 
-## Disposition (run_47; re-verified run_48)
+## Disposition (founder ruled 2026-06-10, run_48 follow-up)
 
-These six findings are surfaced only — not built under `loop-packets` (dispatch-language boundary).
-Founder decision outstanding (run_48: still unruled): file as ONE future priority, or accept
-trust-the-builder for now. See `cocoder/priorities/loop-packets.md` Status (decision 3) and the
-retrofit verdict list (decision 1) before Phase 4 pilot selection (decision 2).
+The founder chose to **build these six findings, not park them — inside `loop-packets` itself**: an
+Objective amendment (recorded in `cocoder/priorities/loop-packets.md`) lifts the original
+dispatch-language-only boundary for exactly these six gaps. Session 49 runs them as loop-shaped
+atoms, and those runs double as the live loop test producing the measured round-trips + wall-clock.
+(An earlier same-day draft filed them as a separate `loop-packet-enforcement` priority; the founder
+corrected that framing and the draft was deleted.) Until they land — and until a daemon restart
+picks them up — the loop contract remains builder-honored with the runner's existing outer rails.

@@ -135,7 +135,9 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
 5. `loop-packets` (added 2026-06-10) — loop-shaped dispatch as a first-class atom shape: builder
    grinds against a deterministic scripted exit criterion under iteration/wall-clock caps, with an
    iteration ledger and a hard scope guard. **Dispatch language + planning artifacts only** — core
-   needs are findings, never built here. Ends with one measured pilot before any rollout.
+   needs are findings, never built here. **Blocked — founder decisions** (run_48): Phases 1–3 done;
+   Phase 4 pilot gated on three per-priority rulings (retrofit verdicts, pilot selection, core-support
+   findings). Do not relaunch until ruled.
 
 Plus two always-available meta-priorities: `build-priorities-from-plan` (Oscar drafts priorities from
 the plan/ADRs) and `adhoc-session` (no named priority — draft one, or run a read-only review/research).
