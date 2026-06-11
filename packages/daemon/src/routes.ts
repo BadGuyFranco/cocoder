@@ -54,15 +54,25 @@ interface LaunchBody {
   readonly workspaceId: string
   readonly priorityId: string
   readonly resumeFromRunId?: string
+  readonly task?: string
 }
 
-function launchBody(body: unknown): LaunchBody {
+type ParsedLaunchBody = { readonly ok: true; readonly input: LaunchBody } | { readonly ok: false; readonly error: string }
+
+function launchBody(body: unknown): ParsedLaunchBody {
   const record = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {}
-  return {
+  const input: LaunchBody = {
     workspaceId: typeof record.workspaceId === 'string' ? record.workspaceId : '',
     priorityId: typeof record.priorityId === 'string' ? record.priorityId : '',
     resumeFromRunId: typeof record.resumeFromRunId === 'string' ? record.resumeFromRunId : undefined,
   }
+  if (Object.prototype.hasOwnProperty.call(record, 'task')) {
+    if (typeof record.task !== 'string') return { ok: false, error: 'task must be a string' }
+    const task = record.task.trim()
+    if (task.length > 4000) return { ok: false, error: 'task too long' }
+    if (task !== '') return { ok: true, input: { ...input, task } }
+  }
+  return { ok: true, input }
 }
 
 function reorderBody(body: unknown): readonly string[] | null {
@@ -225,8 +235,10 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
     } catch {
       return sendJson(res, 400, { error: 'invalid JSON body' }), true
     }
-    const input = launchBody(body)
-    const { status, body: out } = await launchRun(ctx, input.workspaceId, input.priorityId, { resumeFromRunId: input.resumeFromRunId })
+    const parsed = launchBody(body)
+    if (!parsed.ok) return sendJson(res, 400, { error: parsed.error }), true
+    const input = parsed.input
+    const { status, body: out } = await launchRun(ctx, input.workspaceId, input.priorityId, { resumeFromRunId: input.resumeFromRunId, task: input.task })
     return sendJson(res, status, out), true
   }
   if (method === 'POST' && seg[0] === 'runs' && seg.length === 3 && seg[2] === 'show') {

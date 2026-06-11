@@ -10,11 +10,16 @@ export function atomSentinel(atomIndex: number, attemptQualifier?: string): stri
   return `<<<COCODER-ATOM-${atomIndex}${attemptQualifier === undefined ? '' : `-${attemptQualifier}`}-DONE>>>`
 }
 
+function adHocInstruction(task?: string | null): string {
+  return typeof task === 'string' && task.trim() !== '' ? `\n## Founder's ad-hoc instruction (this run)\n\n${task}\n` : ''
+}
+
 export function buildOrchestratorPrompt(input: {
   sharedStandards: string
   oscarBody: string
   priorityTitle: string
   priorityGoal: string
+  task?: string | null
   firstDirectivePath: string
   builderLabel: string
   builderCli: string
@@ -46,7 +51,7 @@ ${input.oscarBody}
 
 Priority: **${input.priorityTitle}**
 
-${input.priorityGoal}
+${input.priorityGoal}${adHocInstruction(input.task)}
 ${resume}
 # Isolated working state (this run)
 
@@ -133,6 +138,7 @@ export function buildObserverPrompt(input: {
   debBody: string
   priorityTitle: string
   priorityGoal: string
+  task?: string | null
   runId: string
   /** This run's isolated branch (ADR-0015) — Deb integrates nothing by hand either. */
   runBranch: string
@@ -156,7 +162,7 @@ ${input.debBody}
 
 Priority: **${input.priorityTitle}**
 
-${input.priorityGoal}
+${input.priorityGoal}${adHocInstruction(input.task)}
 
 This run works in an isolated git worktree on branch \`${input.runBranch}\` (ADR-0015); the runner
 integrates verified work to trunk. Never push, merge, rebase, or switch branches by hand.

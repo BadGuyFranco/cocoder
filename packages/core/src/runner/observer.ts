@@ -14,6 +14,7 @@ export async function spawnObserver(input: {
   readonly run: Run
   readonly workspace: Workspace
   readonly priority: Priority
+  readonly task?: string | null
   readonly deb: ResolvedPersona
   readonly sharedStandards: string
   readonly runDir: string
@@ -23,7 +24,7 @@ export async function spawnObserver(input: {
   /** The run's isolated branch (ADR-0015) — surfaced in Deb's prompt. */
   readonly runBranch: string
 }): Promise<SessionRef | null> {
-  const { store, sessionHost, getAdapter, run, priority, deb, sharedStandards, runDir, groupLabel, cwd, runBranch } = input
+  const { store, sessionHost, getAdapter, run, priority, task, deb, sharedStandards, runDir, groupLabel, cwd, runBranch } = input
   try {
     const adapter = getAdapter(deb.cli)
     const pf = await adapter.preflight(deb.model)
@@ -40,6 +41,7 @@ export async function spawnObserver(input: {
         debBody: deb.body,
         priorityTitle: priority.title,
         priorityGoal: priority.goal,
+        task: task ?? null,
         runId: run.id,
         runBranch,
         statusPath: join(runDir, 'deb-status.json'),

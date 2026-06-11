@@ -259,6 +259,62 @@ describe('Oz mutations + lifecycle', () => {
     expect(ok.json.runId).toMatch(/^run_/)
   })
 
+  test('POST /runs threads a trimmed task into the launch prompt', async () => {
+    const prompts: string[] = []
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit(),
+      sessionHost: fakeHost(),
+      getAdapter: () => ({ ...okAdapter, build: (input) => {
+        prompts.push(input.prompt)
+        return { command: 'x', args: [] }
+      } }),
+      io: fakeIO(),
+      runHeadless: async () => ({ exitCode: 0, output: 'wrap closeout' }),
+    })
+
+    const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo', task: '  check the launch prompt  ' } })
+
+    expect(r.status).toBe(202)
+    for (let i = 0; i < 20 && prompts.length === 0; i++) await sleep(10)
+    expect(prompts[0]).toContain("## Founder's ad-hoc instruction (this run)")
+    expect(prompts[0]).toContain('check the launch prompt')
+    expect(prompts[0]).not.toContain('  check the launch prompt  ')
+  })
+
+  test('POST /runs treats a whitespace-only task as absent', async () => {
+    const prompts: string[] = []
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit(),
+      sessionHost: fakeHost(),
+      getAdapter: () => ({ ...okAdapter, build: (input) => {
+        prompts.push(input.prompt)
+        return { command: 'x', args: [] }
+      } }),
+      io: fakeIO(),
+      runHeadless: async () => ({ exitCode: 0, output: 'wrap closeout' }),
+    })
+
+    const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo', task: '   \n\t  ' } })
+
+    expect(r.status).toBe(202)
+    for (let i = 0; i < 20 && prompts.length === 0; i++) await sleep(10)
+    expect(prompts[0]).not.toContain("## Founder's ad-hoc instruction (this run)")
+  })
+
+  test('POST /runs rejects tasks longer than 4000 chars', async () => {
+    await startServer()
+
+    const r = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo', task: 'x'.repeat(4001) } })
+
+    expect(r).toEqual({ status: 400, json: { error: 'task too long' } })
+  })
+
   test('REFUSES to launch on a stale daemon (425, no run created) and SELF-RESTARTS when idle', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     let restarts = 0

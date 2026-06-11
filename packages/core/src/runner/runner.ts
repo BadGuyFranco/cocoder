@@ -99,6 +99,8 @@ export interface RunInput {
   readonly sharedStandards: string
   /** runs root; the run dir is <runsRoot>/<runId>. */
   readonly runsRoot: string
+  /** Optional founder-provided free-text instruction for this run; not persisted in the store. */
+  readonly task?: string | null
   /** A prior run's pickup brief to resume from (ADR-0002 C1 / F8), woven into Oscar's prompt. */
   readonly pickup?: string | null
   /** Resolved wrap-up Play + per-(persona, Play) assignment; when present, the runner dispatches the Play to author closeout. */
@@ -289,6 +291,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       oscarBody: oscar.body,
       priorityTitle: priority.title,
       priorityGoal: priority.goal,
+      task: input.task ?? null,
       firstDirectivePath: join(runDir, 'directive-0.json'),
       builderLabel: bob.label,
       builderCli: bob.cli,
@@ -332,7 +335,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   store.createSession({ runId: run.id, persona: bob.id, sessionRef: bobRef.id, workspaceRef: bobRef.workspaceRef ?? null })
   store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: bob.id, ref: bobRef.id } })
   const debRef = deb
-    ? await spawnObserver({ store, sessionHost, getAdapter, run, workspace, priority, deb, sharedStandards, runDir, groupLabel, cwd: worktreePath, runBranch })
+    ? await spawnObserver({ store, sessionHost, getAdapter, run, workspace, priority, task: input.task ?? null, deb, sharedStandards, runDir, groupLabel, cwd: worktreePath, runBranch })
     : null
   await sessionHost.show(oscarRef)
   log(`oscar + bob spawned (${oscarRef.id}, ${bobRef.id}); awaiting first directive, bob on standby`)
