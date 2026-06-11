@@ -21,6 +21,8 @@ export interface MonitorSample {
   readonly prevFrame: string | null
   /** Consecutive samples whose frame equalled the previous one (the idle streak). */
   readonly idleStreak: number
+  /** Parsed loop-ledger entries seen for this atom, present only for structured loop atoms. */
+  readonly loopIterations?: number
   /** The atom task the target is working on — context for the judge. */
   readonly task: string
 }
@@ -93,6 +95,7 @@ export async function runMonitor(deps: MonitorDeps, opts: MonitorOptions): Promi
   let samples = 0
   let last: Assessment | null = null
   let lastNudgeAt = Number.NEGATIVE_INFINITY
+  let prevLoopIterations: number | null = null
 
   for (;;) {
     let frame: string
@@ -102,9 +105,13 @@ export async function runMonitor(deps: MonitorDeps, opts: MonitorOptions): Promi
       return { reason: 'dead', last, samples } // pane gone — read-screen throws (cmux liveness contract)
     }
 
-    idleStreak = prevFrame !== null && frame === prevFrame ? idleStreak + 1 : 0
-    const sample: MonitorSample = { frame, prevFrame, idleStreak, task: opts.task }
-    const assessment = await deps.judge(sample)
+    const ledger = opts.loop === undefined ? null : deps.readLoopLedger ? await deps.readLoopLedger() : []
+    const loopIterations = ledger?.length
+    const ledgerGrew = prevLoopIterations !== null && loopIterations !== undefined && loopIterations > prevLoopIterations
+    idleStreak = prevFrame !== null && frame === prevFrame && !ledgerGrew ? idleStreak + 1 : 0
+    const sample: MonitorSample =
+      loopIterations === undefined ? { frame, prevFrame, idleStreak, task: opts.task } : { frame, prevFrame, idleStreak, loopIterations, task: opts.task }
+    const assessment = withLoopStuckNote(await deps.judge(sample), sample)
     samples += 1
     last = assessment
     deps.onAssessment?.(assessment, sample)
@@ -112,13 +119,13 @@ export async function runMonitor(deps: MonitorDeps, opts: MonitorOptions): Promi
     if (assessment.state === 'done') return { reason: 'done', last, samples }
 
     if (opts.loop !== undefined) {
-      const ledger = deps.readLoopLedger ? await deps.readLoopLedger() : []
-      const latest = ledger.at(-1)
-      if (ledger.length > opts.loop.maxIterations || (ledger.length === opts.loop.maxIterations && latest?.result === 'red')) {
-        return { reason: 'loop-iteration-cap', last, samples, loopLedger: ledger }
+      const checkedLedger = ledger ?? []
+      const latest = checkedLedger.at(-1)
+      if (checkedLedger.length > opts.loop.maxIterations || (checkedLedger.length === opts.loop.maxIterations && latest?.result === 'red')) {
+        return { reason: 'loop-iteration-cap', last, samples, loopLedger: checkedLedger }
       }
       if (loopDeadline !== null && now() >= loopDeadline) {
-        return { reason: 'loop-wall-clock-cap', last, samples, loopLedger: ledger }
+        return { reason: 'loop-wall-clock-cap', last, samples, loopLedger: checkedLedger }
       }
     }
 
@@ -135,8 +142,15 @@ export async function runMonitor(deps: MonitorDeps, opts: MonitorOptions): Promi
     if (now() >= deadline) return { reason: 'timeout', last, samples }
 
     prevFrame = frame
+    if (loopIterations !== undefined) prevLoopIterations = loopIterations
     await sleep(opts.cadenceMs)
   }
+}
+
+function withLoopStuckNote(assessment: Assessment, sample: MonitorSample): Assessment {
+  if (assessment.state !== 'stuck' || sample.loopIterations === undefined) return assessment
+  const suffix = `(loop: ${sample.loopIterations} iteration${sample.loopIterations === 1 ? '' : 's'} so far)`
+  return { ...assessment, note: assessment.note === undefined ? suffix : `${assessment.note} ${suffix}` }
 }
 
 export interface HeuristicJudgeOptions {

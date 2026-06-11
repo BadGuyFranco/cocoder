@@ -131,6 +131,68 @@ describe('runMonitor', () => {
     expect(out.reason).toBe('timeout')
   })
 
+  test('treats loop ledger growth as progress despite an unchanged screen', async () => {
+    const c = clock()
+    const sent: string[] = []
+    const frames = ['working', 'working', 'working', 'done\n<<<DONE>>>']
+    const ledgerSizes = [0, 1, 2, 2]
+    const out = await runMonitor(
+      deps({
+        ...c,
+        readScreen: async () => frames.shift() ?? 'done\n<<<DONE>>>',
+        judge: makeHeuristicJudge({ doneSentinel: '<<<DONE>>>', stuckAfter: 1, nudge: 'still there?' }),
+        readLoopLedger: async () =>
+          Array.from({ length: ledgerSizes.shift() ?? 2 }, (_, i) => ({
+            iteration: i + 1,
+            result: 'green',
+            failed: '',
+            changed: 'progress',
+            inScope: true,
+          })),
+        nudge: async (text) => {
+          sent.push(text)
+        },
+      }),
+      { ...opts, loop: { maxIterations: 5, wallClockMs: 1_000_000 } },
+    )
+    expect(out.reason).toBe('done')
+    expect(sent).toEqual([])
+  })
+
+  test('static loop ledger plus unchanged screen still reports stuck with iteration count', async () => {
+    const c = clock()
+    const assessments: Assessment[] = []
+    const out = await runMonitor(
+      deps({
+        ...c,
+        readScreen: async () => 'working',
+        judge: makeHeuristicJudge({ doneSentinel: '<<<DONE>>>', stuckAfter: 1, nudge: 'still there?' }),
+        readLoopLedger: async () => [{ iteration: 1, result: 'green', failed: '', changed: 'progress', inScope: true }],
+        onAssessment: (assessment) => assessments.push(assessment),
+      }),
+      { ...opts, timeoutMs: 15, loop: { maxIterations: 5, wallClockMs: 1_000_000 } },
+    )
+    expect(out.reason).toBe('timeout')
+    expect(assessments.some((a) => a.state === 'stuck' && a.note?.includes('(loop: 1 iteration so far)'))).toBe(true)
+  })
+
+  test('passes loop iteration count to the judge', async () => {
+    const c = clock()
+    const seen: Array<number | undefined> = []
+    await runMonitor(
+      deps({
+        ...c,
+        judge: async (sample) => {
+          seen.push(sample.loopIterations)
+          return seen.length === 2 ? { state: 'done' } : { state: 'progressing' }
+        },
+        readLoopLedger: async () => [{ iteration: 1, result: 'green', failed: '', changed: 'progress', inScope: true }],
+      }),
+      { ...opts, loop: { maxIterations: 5, wallClockMs: 1_000_000 } },
+    )
+    expect(seen).toEqual([1, 1])
+  })
+
   test('records every assessment via the injected sink', async () => {
     const c = clock()
     const states: string[] = []
