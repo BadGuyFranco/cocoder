@@ -29,6 +29,62 @@ import { RunDetail } from './RunDetail.tsx'
 import { FirstRun } from './FirstRun.tsx'
 import type { ChatMessage, Priority, Run, Workspace } from '../../model.ts'
 
+export function awaitingFounderRuns(runs: readonly Run[]): Run[] {
+  return runs.filter((run) => run.status === 'blocked' || run.status === 'not-landed')
+}
+
+function AwaitingYouPanel({ runs, priorities, selectedRunId, onSelectRun }: {
+  runs: Run[]; priorities: Priority[]; selectedRunId: string | null; onSelectRun: (id: string) => void
+}) {
+  const awaiting = awaitingFounderRuns(runs)
+  if (awaiting.length === 0) return null
+  return (
+    <div className="oz-panel" style={{ flexShrink: 0 }}>
+      <div className="oz-panel-header" style={{ padding: '10px 12px' }}>
+        <Icon name="warning-circle" size={14} style={{ color: 'var(--cb-highlight)' }} />
+        <div className="oz-panel-title">Awaiting you</div>
+        <span className="oz-panel-count">{awaiting.length}</span>
+      </div>
+      <div style={{ padding: '0 8px 8px' }}>
+        {awaiting.map((run) => {
+          const parentPriority = run.priorityId ? priorities.find((p) => p.id === run.priorityId) : null
+          const selected = run.id === selectedRunId
+          return (
+            <button
+              key={run.id}
+              type="button"
+              onClick={() => onSelectRun(run.id)}
+              style={{
+                width: '100%',
+                display: 'grid',
+                gridTemplateColumns: '1fr auto',
+                gap: 10,
+                alignItems: 'center',
+                textAlign: 'left',
+                padding: '9px 10px',
+                marginTop: 6,
+                background: selected ? 'var(--cb-accent-muted)' : 'var(--cb-bg-soft)',
+                border: `1px solid ${selected ? 'var(--cb-accent)' : 'var(--cb-border)'}`,
+                borderRadius: 'var(--cb-radius-md)',
+                cursor: 'pointer',
+                fontFamily: 'var(--cb-font-body)',
+              }}
+            >
+              <span style={{ minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: 12.5, color: 'var(--cb-text)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{run.title}</span>
+                <span style={{ display: 'block', fontSize: 10.5, color: 'var(--cb-text-muted)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {parentPriority ? <>priority · <span style={{ color: 'var(--cb-text-secondary)' }}>{parentPriority.name}</span></> : 'ad-hoc run'}
+                </span>
+              </span>
+              <StatusChip status={run.status} />
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function RunHistoryModal({ open, onClose, runs, onSelectRun, priorities }: { open: boolean; onClose: () => void; runs: Run[]; onSelectRun: (id: string) => void; priorities: Priority[] }) {
   const [filter, setFilter] = useState('all')
   if (!open) return null
@@ -99,7 +155,12 @@ export function Dashboard({ workspace, priorities, runs, ozMessages, selectedRun
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: selectedRun ? `${prioWidth}px 6px 460px 1fr` : `${prioWidth}px 6px 1fr`, gap: 16, padding: 16, height: '100%', overflow: 'hidden' }}>
-        <PrioritiesPanel priorities={priorities} runs={runs} onReorder={onReorder} onLaunch={onLaunch} onAdhoc={onAdhoc} onAddPriority={onAddPriority} onSelectRun={setSelectedRunId} onOpenRunHistory={() => setRunHistoryOpen(true)} selectedRunId={selectedRunId} />
+        <div style={{ minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <AwaitingYouPanel runs={runs} priorities={priorities} selectedRunId={selectedRunId} onSelectRun={setSelectedRunId} />
+          <div style={{ minHeight: 0, flex: 1 }}>
+            <PrioritiesPanel priorities={priorities} runs={runs} onReorder={onReorder} onLaunch={onLaunch} onAdhoc={onAdhoc} onAddPriority={onAddPriority} onSelectRun={setSelectedRunId} onOpenRunHistory={() => setRunHistoryOpen(true)} selectedRunId={selectedRunId} />
+          </div>
+        </div>
         <ResizeHandle width={prioWidth} onResizeTo={onResizeTo} />
         {selectedRun && <RunDetail run={selectedRun} parentPriority={selectedRun.priorityId ? priorities.find((p) => p.id === selectedRun.priorityId) || null : null} parentPriorityIndex={selectedRun.priorityId ? priorities.findIndex((p) => p.id === selectedRun.priorityId) : -1} onClose={() => setSelectedRunId(null)} onAction={onRunAction} />}
         <OzChatPanel messages={ozMessages} runs={runs} workspaceName={workspace.name} onSend={onSend} onSelectRun={setSelectedRunId} onDecision={onDecision} ozTyping={ozTyping} live={live} prefill={chatPrefill} onPrefillConsumed={onChatPrefillConsumed} />

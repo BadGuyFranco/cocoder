@@ -83,6 +83,10 @@ function mockOz(opts: { posts?: PostCall[]; puts?: PutCall[]; postResult?: any; 
 }
 
 const setOz = (m: unknown) => { (window as unknown as { oz: unknown }).oz = m }
+const clickFirstText = async (text: string): Promise<void> => {
+  const matches = await screen.findAllByText(text)
+  fireEvent.click(matches[0])
+}
 
 describe('Oz renderer — live daemon path', () => {
   afterEach(() => { cleanup(); delete (window as unknown as { oz?: unknown }).oz })
@@ -93,7 +97,7 @@ describe('Oz renderer — live daemon path', () => {
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const realTitle = (prioritiesFx as any).priorities.find((p: any) => p.id !== 'adhoc-session').title as string
-    await waitFor(() => expect(screen.getByText(realTitle)).toBeDefined())
+    await waitFor(() => expect(screen.getAllByText(realTitle).length).toBeGreaterThan(0))
     expect(screen.getByText('Ad-hoc')).toBeDefined()
   })
 
@@ -139,7 +143,7 @@ describe('Oz renderer — live daemon path', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
 
-    fireEvent.click(await screen.findByText('Living base personas + repo extensions'))
+    await clickFirstText('Living base personas + repo extensions')
     await waitFor(() => expect(screen.getByRole('button', { name: 'Mark landed' })).toBeDefined())
     expect(screen.getByRole('button', { name: 'Discard run' })).toBeDefined()
     cleanup()
@@ -153,7 +157,7 @@ describe('Oz renderer — live daemon path', () => {
     setOz(mockOz({ runs: running }))
     render(<App />)
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
-    fireEvent.click(await screen.findByText('Living base personas + repo extensions'))
+    await clickFirstText('Living base personas + repo extensions')
     await waitFor(() => expect(screen.getByRole('button', { name: 'Stop run' })).toBeDefined())
     expect(screen.queryByRole('button', { name: 'Mark landed' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Discard run' })).toBeNull()
@@ -165,7 +169,7 @@ describe('Oz renderer — live daemon path', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
 
-    fireEvent.click(await screen.findByText('Living base personas + repo extensions'))
+    await clickFirstText('Living base personas + repo extensions')
     fireEvent.click(await screen.findByRole('button', { name: 'Mark landed' }))
 
     await waitFor(() => expect(posts.find((p) => p.path === '/runs/run_17/resolve')).toBeDefined())
@@ -177,7 +181,7 @@ describe('Oz renderer — live daemon path', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
 
-    fireEvent.click(await screen.findByText('Living base personas + repo extensions'))
+    await clickFirstText('Living base personas + repo extensions')
     fireEvent.click(await screen.findByRole('button', { name: 'Mark landed' }))
 
     await waitFor(() => expect(screen.getByText('run branch is not an ancestor of trunk')).toBeDefined())
