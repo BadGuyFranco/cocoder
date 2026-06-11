@@ -140,10 +140,11 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    `loop-iteration`/`loop-criterion-rerun` events, criterion rerun before verify, loop-aware monitor,
    docs synced. **Pilot measurements (run_51 vs run DB):** 6 loop-shaped atoms each = 1 orchestrator
    round-trip, 0 rejects, ≈3.5 min avg delegation→verify (vs run_45 core unit ≈25.1 min with
-   2 round-trips + reject/re-scope); honesty caveat — run_51 was driven by pre-enforcement boot-time
-   runner, so live proof waits on founder daemon restart. **Disposition: `archive-candidate`** — founder
-   confirms archive after one post-restart live-enforcement proof (structured-`loop` dispatch showing
-   runner-recorded loop events in the run DB). Do not relaunch this priority unless that proof fails.
+   2 round-trips + reject/re-scope). **Live enforcement proven (run_52, post-restart; recorded
+   run_53):** run DB holds `loop-iteration` ×4 + `loop-criterion-rerun` ×1 (exit 0) plus loud
+   malformed-loop rejection — every verified-when element met. **Disposition: `archive-candidate`**
+   — no remaining implementation gaps; founder archive confirmation only. Do not relaunch unless the
+   founder vetoes archive.
 
 Plus two always-available meta-priorities: `build-priorities-from-plan` (Oscar drafts priorities from
 the plan/ADRs) and `adhoc-session` (no named priority — draft one, or run a read-only review/research).
