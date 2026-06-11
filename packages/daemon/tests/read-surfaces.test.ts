@@ -1,6 +1,6 @@
 // Stage-3 read surfaces: workspaces / priorities / personas / runs / run-detail. Uses on-disk
 // governance fixtures + an injected in-memory store + a fake git, on an ephemeral port.
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, writeFile } from 'node:fs/promises'
 import { request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -90,6 +90,15 @@ const get = (oz: OzServer, path: string): Promise<Resp> =>
     req.end()
   })
 
+async function writePriority(home: string, id: string, title = id): Promise<void> {
+  await writeFile(join(home, 'cocoder', 'priorities', `${id}.md`), `---\nid: ${id}\ntitle: ${title}\n---\nDo ${id}.`)
+}
+
+async function priorityIdsByDirOrder(home: string): Promise<string[]> {
+  const names = await readdir(join(home, 'cocoder', 'priorities'))
+  return names.filter((name) => name.endsWith('.md') && name !== 'AGENTS.md').map((name) => name.slice(0, -3))
+}
+
 describe('Oz read surfaces', () => {
   let home: string
   let store: RunStore
@@ -147,6 +156,28 @@ describe('Oz read surfaces', () => {
     expect(r.status).toBe(200)
     expect(r.json.priorities.map((p: any) => p.id)).toEqual(['demo'])
     expect(r.json.priorities[0]).toMatchObject({ title: 'Demo priority' })
+  })
+
+  test('GET /workspaces/:id/priorities applies order.json, appends unlisted priorities, and ignores stale ids', async () => {
+    await writePriority(home, 'alpha', 'Alpha')
+    await writePriority(home, 'beta', 'Beta')
+    await writeFile(join(home, 'cocoder', 'priorities', 'order.json'), JSON.stringify(['beta', 'missing']))
+
+    const r = await get(oz!, '/workspaces/cocoder/priorities')
+
+    expect(r.status).toBe(200)
+    const dirOrder = (await priorityIdsByDirOrder(home)).filter((id) => id !== 'beta')
+    expect(r.json.priorities.map((p: any) => p.id)).toEqual(['beta', ...dirOrder])
+  })
+
+  test('GET /workspaces/:id/priorities without order.json preserves directory order', async () => {
+    await writePriority(home, 'alpha', 'Alpha')
+    await writePriority(home, 'beta', 'Beta')
+
+    const r = await get(oz!, '/workspaces/cocoder/priorities')
+
+    expect(r.status).toBe(200)
+    expect(r.json.priorities.map((p: any) => p.id)).toEqual(await priorityIdsByDirOrder(home))
   })
 
   test('GET /workspaces/:id/personas lists effective personas with assignments', async () => {

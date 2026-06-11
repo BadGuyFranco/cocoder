@@ -1,10 +1,10 @@
 // Route dispatch for the Oz daemon. The security gate (server.ts) has already run; these handlers
 // read/serve the four surfaces. Stage 3 = the read surfaces; stage 4 adds the mutations (launch,
 // deep-link, assignments write) to the same dispatch. All handlers close over the shared OzContext.
-import { readdir, rename, rm, writeFile } from 'node:fs/promises'
+import { rename, rm, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { join } from 'node:path'
-import { listEffectivePersonas, loadAssignments, loadPriority, truncate, type PersonaSources } from '@cocoder/core'
+import { listEffectivePersonas, loadAssignments, truncate, type PersonaSources } from '@cocoder/core'
 import { basePersonasDir } from '@cocoder/personas'
 import type { OzContext } from './context.js'
 import { sendJson } from './server.js'
@@ -15,6 +15,7 @@ import { listClis, testCli } from './clis.js'
 import { launchRun, requestDaemonRestart, resolveRun, showRun, teardownRun } from './launcher.js'
 import { handleOzMessage } from './oz-chat.js'
 import { mergeWriteSettings, readSettings } from './settings.js'
+import { readPriorities, writePriorityOrder } from './priority-order.js'
 
 export type { OzContext } from './context.js'
 
@@ -64,6 +65,11 @@ function launchBody(body: unknown): LaunchBody {
   }
 }
 
+function reorderBody(body: unknown): readonly string[] | null {
+  const record = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {}
+  return Array.isArray(record.order) && record.order.every((id) => typeof id === 'string') ? record.order : null
+}
+
 /** GET /workspaces — surface 1. */
 async function listWorkspaces(ctx: OzContext, res: ServerResponse): Promise<void> {
   sendJson(res, 200, { workspaces: await readWorkspaces(ctx.cocoderHome) })
@@ -73,25 +79,7 @@ async function listWorkspaces(ctx: OzContext, res: ServerResponse): Promise<void
 async function listPriorities(ctx: OzContext, res: ServerResponse, workspaceId: string): Promise<void> {
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
   if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
-  const dir = prioritiesDir(ws.path)
-  let names: string[]
-  try {
-    names = await readdir(dir)
-  } catch {
-    return sendJson(res, 200, { workspace: ws, priorities: [] })
-  }
-  const priorities = []
-  for (const name of names) {
-    if (!name.endsWith('.md')) continue // flat .md files only (subdirs / READMEs skipped)
-    const id = name.slice(0, -3)
-    try {
-      const p = loadPriority(dir, id) // throws on AGENTS.md (no frontmatter) / dirs — skip it
-      priorities.push({ id: p.id, title: p.title, scopeNarrowing: p.scopeNarrowing, goal: truncate(p.goal, CAP) })
-    } catch {
-      /* not a priority file — omit, never fatal */
-    }
-  }
-  sendJson(res, 200, { workspace: ws, priorities })
+  sendJson(res, 200, { workspace: ws, priorities: await readPriorities(prioritiesDir(ws.path), CAP) })
 }
 
 /** GET /workspaces/:id/personas — surface 3 (read). Persona defs + their CLI/model assignment. */
@@ -209,6 +197,12 @@ async function writeAssignments(ctx: OzContext, res: ServerResponse, workspaceId
   sendJson(res, 200, { ok: true, assignments: loadAssignments(target).personas })
 }
 
+async function reorderPriorities(ctx: OzContext, res: ServerResponse, workspaceId: string, order: readonly string[]): Promise<void> {
+  const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
+  if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
+  sendJson(res, 200, { order: await writePriorityOrder(prioritiesDir(ws.path), order) })
+}
+
 /** Mutation dispatch (stage 4). Returns true if handled. The security gate already required CSRF. */
 export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pathname: string, res: ServerResponse): Promise<boolean> {
   const method = req.method ?? 'GET'
@@ -256,6 +250,18 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
   if (method === 'POST' && pathname === '/daemon/restart') {
     const { status, body: out } = await requestDaemonRestart(ctx)
     return sendJson(res, status, out), true
+  }
+  if (method === 'POST' && seg[0] === 'workspaces' && seg.length === 4 && seg[2] === 'priorities' && seg[3] === 'reorder') {
+    let body: unknown
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      return sendJson(res, 400, { error: 'invalid JSON body' }), true
+    }
+    const order = reorderBody(body)
+    if (!order) return sendJson(res, 400, { error: 'order must be an array of strings' }), true
+    await reorderPriorities(ctx, res, decodeURIComponent(seg[1]!), order)
+    return true
   }
   if (method === 'PUT' && pathname === '/settings') {
     let body: unknown

@@ -570,6 +570,36 @@ describe('Oz mutations + lifecycle', () => {
     expect(get.json).toEqual(put.json)
   })
 
+  test('POST /workspaces/:id/priorities/reorder writes order.json and subsequent GET reflects it', async () => {
+    await writeFile(join(home, 'cocoder', 'priorities', 'later.md'), `---\nid: later\ntitle: Later\n---\nLater work.`)
+    await startServer()
+
+    const post = await call(oz!, 'POST', '/workspaces/cocoder/priorities/reorder', { body: { order: ['later', 'missing', 'demo'] } })
+
+    expect(post.status).toBe(200)
+    expect(post.json).toEqual({ order: ['later', 'demo'] })
+    expect(JSON.parse(await readFile(join(home, 'cocoder', 'priorities', 'order.json'), 'utf8'))).toEqual(['later', 'demo'])
+
+    const get = await call(oz!, 'GET', '/workspaces/cocoder/priorities')
+    expect(get.status).toBe(200)
+    expect(get.json.priorities.map((p: any) => p.id)).toEqual(['later', 'demo'])
+  })
+
+  test('POST /workspaces/:id/priorities/reorder rejects invalid bodies', async () => {
+    await startServer()
+
+    expect((await call(oz!, 'POST', '/workspaces/cocoder/priorities/reorder', { body: { order: 'demo' } })).status).toBe(400)
+    expect((await call(oz!, 'POST', '/workspaces/cocoder/priorities/reorder', { body: { order: ['demo', 1] } })).status).toBe(400)
+  })
+
+  test('POST /workspaces/:id/priorities/reorder returns 404 for an unknown workspace', async () => {
+    await startServer()
+
+    const r = await call(oz!, 'POST', '/workspaces/nope/priorities/reorder', { body: { order: ['demo'] } })
+
+    expect(r.status).toBe(404)
+  })
+
   test('POST /daemon/restart → 202 and triggers the (injected) restart action when idle', async () => {
     let restarts = 0
     oz = await createOzServer({
@@ -620,6 +650,12 @@ describe('Oz mutations + lifecycle', () => {
   test('POST /daemon/restart → 403 without a CSRF token (mutation gate)', async () => {
     await startServer()
     const r = await call(oz!, 'POST', '/daemon/restart', { csrf: false })
+    expect(r.status).toBe(403)
+  })
+
+  test('POST /workspaces/:id/priorities/reorder → 403 without a CSRF token (mutation gate)', async () => {
+    await startServer()
+    const r = await call(oz!, 'POST', '/workspaces/cocoder/priorities/reorder', { csrf: false, body: { order: ['demo'] } })
     expect(r.status).toBe(403)
   })
 
