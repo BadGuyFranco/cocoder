@@ -119,18 +119,38 @@ hadn't landed yet — and wrapped with 0 atoms, so the build run is the next lau
 
 ## Status
 
-**Disposition: `continue` — the NEXT run on this priority builds the six enforcement gaps as
-loop-shaped atoms; those runs ARE the live test** (founder rulings landed 2026-06-10, run_48
-follow-up; previously `blocked` since run_47). Phases 1–3 complete and committed. **run_48:** 0
-atoms delegated, no commits — Oscar verified no rulings on disk and wrapped; the founder then ruled
-in the post-wrap conversation (recorded below). **run_49:** launched off pre-amendment trunk (the
-run_48 rulings were stranded on its unmerged branch), so it saw the stale `blocked` Status and
-wrapped with 0 atoms; its Oscar then landed run_48's branch in the post-wrap conversation
-(2026-06-10) and launched the build run. Known machinery snag for the build run's Oscar: the wrap-up
-play edits `cocoder/PLAYBOOK.md` + `cocoder/SESSION_LOG.md` but its writeScope
-(`packages/personas/base/plays/wrap-up.md`) omits both, so run_48 AND run_49 parked
-`pending-scope-decision` at wrap — schedule one small one-shot atom to add those two files to the
-play's writeScope (in this priority's scope: `packages/personas/base/**`).
+**Disposition: `archive-candidate` (pending founder confirmation) — run_51 (2026-06-10) built ALL
+six enforcement atoms loop-shaped + the wrap-up writeScope fix, 7/7 atoms verified and committed,
+zero rejections.** The only remaining gap is the explicit follow-up the amendment already named: the
+live-enforcement proof after a founder daemon restart (the daemon serves boot-time code, so run_51's
+enforcement is unit-test-proven but not yet live). Never self-archive — founder confirms.
+
+**Done (run_51, 7 atoms — `fe263cb`, `b1ce428`, `6da5334`, `ae8aa3a`, `1b5075f`, `a04051b`,
+`bc5e5d7`):**
+- Atom 0 (one-shot): wrap-up play writeScope now includes `cocoder/PLAYBOOK.md` +
+  `cocoder/SESSION_LOG.md` (the run_48/49 `pending-scope-decision` parking bug).
+- Atoms 1–5 (loop-shaped): structured `loop` directive schema with loud malformed-rejection
+  (`directive.ts` + fail-fast in `io.ts`); runner-enforced iteration + wall-clock caps with
+  blocked-with-ledger disposition (run continues, nothing committed); per-attempt `loop-iteration`
+  run events (deduped, final-flushed); criterion rerun by the runner before sentinel acceptance
+  (re-armed `R<n>` markers, fixed wall-clock budget, green still gates through verify); loop-aware
+  monitor (ledger growth = progress, no false stall-nudges).
+- Atom 6 (one-shot): standard doc gained an Enforcement section (runner-enforced vs builder-honored);
+  inventory findings flipped to BUILT with the stale-daemon caveat.
+
+**Pilot measurements (run_51 vs run DB baselines):** every loop-shaped atom completed in ONE
+orchestrator round-trip (delegate → verify), zero rejections; per-atom wall-clock
+(delegation → verify-pass) averaged ≈3.5 min (range 1.3–6.4 min; the heaviest, criterion-rerun
+machinery, took 6.4 min). Comparable historical core-code unit: run_45's `POST /oz/messages` work
+took TWO round-trips + a reject/re-scope ≈25.1 min (delegation-1 → verify-pass-2) for one unit of
+work. Caveat recorded honestly: run_51 itself was driven by the pre-enforcement (boot-time) runner,
+so these loop packets were dispatch-language/builder-honored — the contract alone already produced
+the 1-round-trip/0-reject profile; runner enforcement adds the guarantees, provable live after
+restart.
+
+**Design-seam ruling (Oscar, run_51 — founder may veto):** iteration boundaries signal via a FILE
+(`loop-ledger-<atom>.jsonl`, one JSON line per attempt), the house IPC pattern (directive/verify/
+triage/nudge are all file artifacts) — classified design-homework, not founder judgment.
 
 **Done (run_47, 4 atoms — `1356b5a`, `b8d29a1`, `ce04957`, `4c7fa51`):**
 - Phase 1: loop-packet standard (`packages/personas/base/standards/loop-packets.md` — full five-element
@@ -158,7 +178,9 @@ play's writeScope (in this priority's scope: `packages/personas/base/**`).
    in here. (`full-oz-dashboard` still runs next on its own merits; it is no longer the loop pilot.)
 
 **Verified-when ledger:** standard doc + oscar.md amendment ✅ committed · atom-scoping/authoring
-guidance ✅ committed · retrofit list founder-approved ✅ (2026-06-10) · pilot run + measured ⬜
-(the next run: the enforcement atoms, loop-shaped — record round-trips + wall-clock here) ·
-enforcement atoms 1–6 ⬜ (the amendment). Then propose archive (live-enforcement proof after a
-daemon restart is the explicit follow-up).
+guidance ✅ committed · retrofit list founder-approved ✅ (2026-06-10) · pilot run + measured ✅
+(run_51: 6 loop packets on real atoms, 1 round-trip/0 rejects each, ≈3.5 min avg vs run_45's
+2-round-trip ≈25.1 min reject/re-scope unit — see Pilot measurements above) · enforcement atoms 1–6
+✅ (run_51, unit-test-proven). **Archive proposed** — the one open follow-up is the live-enforcement
+proof after a founder daemon restart (a structured-`loop` dispatch on a post-restart run showing
+runner-recorded `loop-iteration`/`loop-criterion-rerun` events).
