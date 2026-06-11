@@ -2,6 +2,7 @@
 // linked dropdowns, a visible/headless run-mode toggle (Oz locked headless), and a sub-agent hierarchy
 // (each sub independently CLI+Model configurable). "Craft a new persona" files a priority. Ported from
 // design-ref/screens.jsx.
+import { useState } from 'react'
 import { Icon, Button, Card, ScreenHeader } from '../ui/primitives.tsx'
 import { PendingBanner } from '../ui/PendingBanner.tsx'
 import { modelIsStale } from '../adapter.ts'
@@ -49,10 +50,19 @@ function ModelControl({ cli, model, onChange, compact = false }: { cli: Cli | un
 
 function PersonaRow({ persona, clis, onChange, onAddSub, onRemoveSub, onUpdateSub }: {
   persona: Persona; clis: Cli[]; onChange: (p: Persona) => void
-  onAddSub: (pid: string) => void; onRemoveSub: (pid: string, sid: string) => void; onUpdateSub: (pid: string, sid: string, sa: SubAgent) => void
+  onAddSub: (pid: string, playId: string) => void; onRemoveSub: (pid: string, sid: string) => void; onUpdateSub: (pid: string, sid: string, sa: SubAgent) => void
 }) {
   const isOz = persona.id === 'oz'
   const cliEntry = clis.find((c) => c.id === persona.cli)
+  const [playId, setPlayId] = useState('')
+  const trimmedPlayId = playId.trim()
+  const playIdTaken = persona.subAgents.some((sa) => sa.id === trimmedPlayId)
+  const canAddPlay = trimmedPlayId.length > 0 && !playIdTaken
+  const addPlay = () => {
+    if (!canAddPlay) return
+    onAddSub(persona.id, trimmedPlayId)
+    setPlayId('')
+  }
   return (
     <Card style={{ marginBottom: 12, borderColor: isOz ? 'var(--cb-accent-15)' : 'var(--cb-border)', background: isOz ? 'linear-gradient(180deg, var(--cb-accent-subtle) 0%, var(--cb-surface-glass) 60%)' : undefined }}>
       <div style={{ padding: '16px 18px' }}>
@@ -92,7 +102,10 @@ function PersonaRow({ persona, clis, onChange, onAddSub, onRemoveSub, onUpdateSu
         <div style={{ marginTop: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--cb-font-display)', fontSize: 9.5, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--cb-text-muted)', marginBottom: 10 }}>
             <Icon name="tree-structure" size={12} />Sub-agents · {persona.subAgents.length}
-            <button onClick={() => onAddSub(persona.id)} style={{ marginLeft: 'auto', fontSize: 11, padding: '2px 8px', background: 'transparent', border: '1px solid var(--cb-border)', borderRadius: 3, color: 'var(--cb-text-muted)', cursor: 'pointer', fontFamily: 'var(--cb-font-body)', letterSpacing: 0, textTransform: 'none', fontWeight: 400 }}>+ Add</button>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input className="oz-input" aria-label={`${persona.name} play id`} value={playId} placeholder="play id" onChange={(e) => setPlayId(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addPlay() }} style={{ width: 130, padding: '4px 7px', fontSize: 11, fontFamily: 'var(--cb-font-mono)' }} />
+              <button onClick={addPlay} disabled={!canAddPlay} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', border: '1px solid var(--cb-border)', borderRadius: 3, color: canAddPlay ? 'var(--cb-text-muted)' : 'var(--cb-text-disabled)', cursor: canAddPlay ? 'pointer' : 'not-allowed', fontFamily: 'var(--cb-font-body)', letterSpacing: 0, textTransform: 'none', fontWeight: 400 }}>+ Add</button>
+            </div>
           </div>
           {persona.subAgents.length === 0 ? (
             <div style={{ padding: '10px 14px', background: 'var(--cb-bg-soft)', border: '1px dashed var(--cb-border)', borderRadius: 'var(--cb-radius-md)', fontSize: 11.5, color: 'var(--cb-text-muted)', textAlign: 'center' }}>No sub-agents. {persona.name} runs everything itself.</div>
@@ -101,7 +114,7 @@ function PersonaRow({ persona, clis, onChange, onAddSub, onRemoveSub, onUpdateSu
             return (
               <div key={sa.id} style={{ display: 'grid', gridTemplateColumns: '20px 1.5fr 1fr 1fr 30px', gap: 10, alignItems: 'center', padding: '10px 12px', background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', marginBottom: 6 }}>
                 <Icon name="git-fork" size={12} style={{ color: 'var(--cb-text-muted)', transform: 'rotate(180deg)' }} />
-                <input className="oz-input" value={sa.name} style={{ padding: '5px 8px', fontSize: 12, background: 'transparent', border: 'none' }} onChange={(e) => onUpdateSub(persona.id, sa.id, { ...sa, name: e.target.value })} />
+                <input className="oz-input" value={sa.id} readOnly style={{ padding: '5px 8px', fontSize: 12, background: 'transparent', border: 'none', fontFamily: 'var(--cb-font-mono)' }} />
                 <select className="oz-select" value={sa.cli} style={{ padding: '5px 24px 5px 8px', fontSize: 11.5 }} onChange={(e) => onUpdateSub(persona.id, sa.id, { ...sa, cli: e.target.value, model: 'Default' })}>
                   {clis.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
@@ -118,7 +131,7 @@ function PersonaRow({ persona, clis, onChange, onAddSub, onRemoveSub, onUpdateSu
 
 export function PersonasScreen({ personas, clis, onChange, onAddSub, onRemoveSub, onUpdateSub, onNewPersonaAsPriority, live = false }: {
   personas: Persona[]; clis: Cli[]; onChange: (id: string, p: Persona) => void
-  onAddSub: (pid: string) => void; onRemoveSub: (pid: string, sid: string) => void; onUpdateSub: (pid: string, sid: string, sa: SubAgent) => void; onNewPersonaAsPriority: () => void; live?: boolean
+  onAddSub: (pid: string, playId: string) => void; onRemoveSub: (pid: string, sid: string) => void; onUpdateSub: (pid: string, sid: string, sa: SubAgent) => void; onNewPersonaAsPriority: () => void; live?: boolean
 }) {
   return (
     <div style={{ height: '100%', overflow: 'hidden', display: 'grid', gridTemplateRows: 'auto 1fr' }}>
@@ -131,7 +144,7 @@ export function PersonasScreen({ personas, clis, onChange, onAddSub, onRemoveSub
             <div style={{ fontSize: 11.5, color: 'var(--cb-text-secondary)', lineHeight: 1.55 }}>Sketch what the persona should do. Oz files it as a priority and the team scaffolds the new role — prompts, sub-agents, and tests included.</div>
           </div>
         </div>
-        <PendingBanner live={live}>The roster (and each persona’s CLI) is live from the daemon, but editing here isn’t saved yet: run-mode/sub-agents need the assignment schema extended (<code>PUT …/assignments</code> with <code>{'{'}mode, subAgents{'}'}</code> owed). Edits below are local previews.</PendingBanner>
+        <PendingBanner live={live}>CLI/model edits and sub-agents (Play assignments) persist through <code>PUT …/assignments</code>. Run-mode remains a local preview until the runner honors it.</PendingBanner>
         {personas.map((p) => <PersonaRow key={p.id} persona={p} clis={clis} onChange={(next) => onChange(p.id, next)} onAddSub={onAddSub} onRemoveSub={onRemoveSub} onUpdateSub={onUpdateSub} />)}
       </div>
     </div>

@@ -16,11 +16,13 @@ import {
   eventToLine,
   evidenceFromDetail,
   mapRunStatus,
+  personasToAssignments,
   summarize,
   fmtTime,
   ADHOC_PRIORITY_ID,
 } from '../app/adapter.ts'
 import type { CliCheckView, CliModelsView, CliRunReadinessView, CliView } from '../electron/ipc-contract.ts'
+import type { Persona } from '../app/model.ts'
 import workspacesFx from '../fixtures/workspaces.json'
 import prioritiesFx from '../fixtures/priorities.json'
 import personasFx from '../fixtures/personas.json'
@@ -39,6 +41,11 @@ const RUNS = runsFx as any
 const DETAIL = runDetailFx as any
 
 const priorityNames: Record<string, string> = Object.fromEntries(P.priorities.map((p: any) => [p.id, p.title]))
+
+function keysDeep(value: unknown): string[] {
+  if (!value || typeof value !== 'object') return []
+  return Object.entries(value as Record<string, unknown>).flatMap(([key, child]) => [key, ...keysDeep(child)])
+}
 
 type CliViewOverrides = {
   id?: string
@@ -207,6 +214,60 @@ describe('personas from the assignments map + roster', () => {
     // role is split off the long description
     expect(bob.role.length).toBeLessThan(bob.description.length + 1)
     expect(bob.subAgents).toEqual([])
+  })
+
+  it('maps assignment plays to sub-agents and keeps absent plays as an empty hierarchy', () => {
+    const personas = adaptPersonas(PERS)
+    const oscar = personas.find((p) => p.id === 'oscar')!
+    expect(oscar.subAgents).toEqual([{ id: 'wrap-up', name: 'wrap-up', cli: 'cursor-agent', model: 'Default' }])
+    expect(personas.find((p) => p.id === 'bob')!.subAgents).toEqual([])
+  })
+
+  it('builds a full assignments save payload with plays and no run-mode field', () => {
+    const personas = adaptPersonas(PERS)
+    const bobNext = { ...personas.find((p) => p.id === 'bob')!, model: 'gpt-5' }
+    const oscarNext = {
+      ...personas.find((p) => p.id === 'oscar')!,
+      subAgents: [{ id: 'wrap-up', name: 'wrap-up', cli: 'cursor-agent', model: 'gpt-5-mini' }],
+    }
+    const next = personas.map((p) => (p.id === 'bob' ? bobNext : p.id === 'oscar' ? oscarNext : p))
+
+    const payload = personasToAssignments(next, PERS.assignments)
+
+    expect(Object.keys(payload).sort()).toEqual(Object.keys(PERS.assignments).sort())
+    expect(payload.bob).toMatchObject({ cli: 'codex', model: 'gpt-5' })
+    expect(payload.deb.enabled).toBe(true)
+    expect(payload.oscar.plays).toEqual({ 'wrap-up': { cli: 'cursor-agent', model: 'gpt-5-mini' } })
+    expect(keysDeep(payload)).not.toContain('mode')
+  })
+
+  it('removing a sub-agent drops only that play key', () => {
+    const persona: Persona = {
+      id: 'oscar',
+      name: 'Oscar',
+      role: 'Orchestrator',
+      description: 'Delegates work.',
+      icon: 'ph-thin ph-strategy',
+      cli: 'claude',
+      model: 'Default',
+      runMode: 'visible',
+      subAgents: [
+        { id: 'wrap-up', name: 'wrap-up', cli: 'cursor-agent', model: 'Default' },
+        { id: 'documentation', name: 'documentation', cli: 'codex', model: 'gpt-5-mini' },
+      ],
+    }
+    const payload = personasToAssignments([{ ...persona, subAgents: persona.subAgents.filter((sa) => sa.id !== 'wrap-up') }], {
+      oscar: {
+        cli: 'claude',
+        model: '',
+        plays: {
+          'wrap-up': { cli: 'cursor-agent', model: '' },
+          documentation: { cli: 'codex', model: 'gpt-5-mini' },
+        },
+      },
+    })
+
+    expect(payload.oscar.plays).toEqual({ documentation: { cli: 'codex', model: 'gpt-5-mini' } })
   })
 })
 

@@ -12,6 +12,7 @@ import type {
   RunDetail,
   RunEvent,
   PersonasResponse,
+  PersonaAssignment,
   CliView,
 } from '../electron/ipc-contract.ts'
 import type { Workspace, Priority, Run, RunStatus, Persona, TranscriptLine, EvidenceItem, SubAgent, Cli } from './model.ts'
@@ -368,7 +369,12 @@ export function adaptPersonas(resp: PersonasResponse): Persona[] {
     const meta = roster.find((p) => p.id === id)
     const a = assignments[id] ?? { cli: '', model: '' }
     const { role, description } = splitRole(meta?.role ?? id)
-    const subAgents: SubAgent[] = [] // sub-agents/plays are a pending endpoint
+    const subAgents: SubAgent[] = Object.entries(a.plays ?? {}).map(([playId, play]) => ({
+      id: playId,
+      name: playId,
+      cli: play.cli,
+      model: play.model || 'Default',
+    }))
     return {
       id,
       name: meta?.label ?? humanize(id),
@@ -381,4 +387,24 @@ export function adaptPersonas(resp: PersonasResponse): Persona[] {
       subAgents,
     }
   })
+}
+
+const assignmentModel = (model: string): string => (model === 'Default' ? '' : model)
+
+export function personasToAssignments(personas: readonly Persona[], base: Record<string, PersonaAssignment> = {}): Record<string, PersonaAssignment> {
+  const out: Record<string, PersonaAssignment> = { ...base }
+  for (const persona of personas) {
+    const prev = base[persona.id]
+    const { plays: _oldPlays, ...rest } = prev ?? {}
+    const plays = Object.fromEntries(
+      persona.subAgents.map((sa) => [sa.id, { cli: sa.cli, model: assignmentModel(sa.model) }]),
+    )
+    const core = {
+      ...rest,
+      cli: persona.cli,
+      model: assignmentModel(persona.model),
+    }
+    out[persona.id] = Object.keys(plays).length ? { ...core, plays } : core
+  }
+  return out
 }

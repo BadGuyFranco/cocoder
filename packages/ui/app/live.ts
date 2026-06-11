@@ -9,6 +9,7 @@ import type {
   RunSummary,
   RunDetail,
   PersonasResponse,
+  PersonaAssignment,
   ClisResponse,
   CliTestResponse,
   ChatMessage as DaemonChatMessage,
@@ -27,6 +28,7 @@ export interface WsData {
   priorities: Priority[]
   runs: Run[]
   personas: Persona[]
+  assignments: Record<string, PersonaAssignment>
   names: Record<string, string> // priorityId → title, for titling runs during polling
 }
 
@@ -58,7 +60,8 @@ export async function loadWsData(oz: OzApi, wsId: string): Promise<WsData> {
   const runs = adaptRuns(dRuns, names)
   const priorities = adaptPriorities(dPriorities, runs)
   const personas = pe.ok ? adaptPersonas(pe.data) : []
-  return { priorities, runs, personas, names }
+  const assignments = pe.ok ? pe.data.assignments ?? {} : {}
+  return { priorities, runs, personas, assignments, names }
 }
 
 // Poll one run's detail → an enriched Run (transcript + evidence + personas). Null on a failed fetch
@@ -118,6 +121,6 @@ export async function persistOrder(oz: OzApi, wsId: string, ids: readonly string
 
 // PUT replaces the WHOLE assignments map — the caller must hand a full, merged map (preserving fields
 // like plays/enabled it didn't edit), never a partial patch.
-export async function saveAssignments(oz: OzApi, wsId: string, assignments: Record<string, unknown>): Promise<MutationResult> {
-  return oz.daemonPut(`/workspaces/${wsId}/personas/assignments`, assignments)
+export async function saveAssignments(oz: OzApi, wsId: string, assignments: Record<string, PersonaAssignment>): Promise<MutationResult> {
+  return oz.personasAssignmentsSave(wsId, assignments)
 }

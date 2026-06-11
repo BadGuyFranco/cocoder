@@ -36,12 +36,22 @@ const clisFx = {
       models: { canEnumerate: false, models: [], detail: 'free-text model entry' },
       configManaged: { mechanism: 'none', flags: [], managesUserConfig: false, detail: 'not checked' },
     },
+    {
+      id: 'cursor-agent',
+      tested: true,
+      testedAt: 1780153227239,
+      install: { ok: true, detail: 'installed' },
+      auth: { ok: true, detail: 'authenticated' },
+      models: { canEnumerate: false, models: [], detail: 'free-text model entry' },
+      configManaged: { mechanism: 'env', flags: ['--model'], managesUserConfig: true, detail: 'ready' },
+    },
   ],
 }
 
 interface PostCall { path: string; body?: unknown }
+interface PutCall { workspaceId: string; assignments: unknown }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mockOz(opts: { posts?: PostCall[]; postResult?: any; runs?: { runs: RunSummary[] } } = {}) {
+function mockOz(opts: { posts?: PostCall[]; puts?: PutCall[]; postResult?: any; putResult?: any; runs?: { runs: RunSummary[] } } = {}) {
   return {
     health: async () => ({ state: 'connected', sha: 'deadbeef' }),
     settingsGet: async () => ({ pollIntervalMs: 2500, defaultWorkspaceId: null }),
@@ -62,6 +72,10 @@ function mockOz(opts: { posts?: PostCall[]; postResult?: any; runs?: { runs: Run
       return typeof opts.postResult === 'function' ? opts.postResult(path, body) : (opts.postResult ?? { ok: true, status: 202, data: { runId: 'run_new' } })
     },
     daemonPut: async () => ok({}),
+    personasAssignmentsSave: async (workspaceId: string, assignments: unknown) => {
+      opts.puts?.push({ workspaceId, assignments })
+      return opts.putResult ?? ok(assignments)
+    },
     chatSend: async () => ({ role: 'oz', text: '', at: 0 }),
     prioritiesReorder: async (_ws: string, order: readonly string[]) => order,
     prioritiesOrder: async () => [],
@@ -176,6 +190,28 @@ describe('Oz renderer — live daemon path', () => {
     fireEvent.click(screen.getByText('CLIs'))
     await waitFor(() => expect(screen.getAllByText('Not tested').length).toBeGreaterThan(0))
     expect(screen.queryByText(/Pending daemon endpoint/)).toBeNull()
+  })
+
+  it('saves a sub-agent Play assignment through the typed personas bridge with the full map', async () => {
+    const puts: PutCall[] = []
+    setOz(mockOz({ puts }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(screen.getByText('Personas'))
+    const playId = await screen.findByLabelText('Bob play id')
+    fireEvent.change(playId, { target: { value: 'documentation' } })
+    const add = playId.parentElement?.querySelector('button')
+    expect(add).toBeDefined()
+    fireEvent.click(add!)
+
+    await waitFor(() => expect(puts.length).toBe(1))
+    expect(puts[0].workspaceId).toBe('cocoder')
+    const assignments = puts[0].assignments as Record<string, { cli: string; model: string; enabled?: boolean; plays?: Record<string, { cli: string; model: string }> }>
+    expect(Object.keys(assignments).sort()).toEqual(['bob', 'deb', 'oscar'])
+    expect(assignments.deb.enabled).toBe(true)
+    expect(assignments.bob.plays).toEqual({ documentation: { cli: 'claude', model: '' } })
+    expect(assignments.oscar.plays).toEqual({ 'wrap-up': { cli: 'cursor-agent', model: '' } })
   })
 })
 

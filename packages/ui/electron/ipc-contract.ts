@@ -9,6 +9,7 @@ export const CHANNELS = {
   daemonPost: 'oz:daemon:post',
   daemonPut: 'oz:daemon:put',
   chatSend: 'oz:chat:send',
+  personasAssignmentsSave: 'oz:personas:assignments:save',
   prioritiesReorder: 'oz:priorities:reorder',
   prioritiesOrder: 'oz:priorities:order',
   settingsGet: 'oz:settings:get',
@@ -120,6 +121,7 @@ export interface PersonaAssignment {
   readonly cli: string
   readonly model: string
   readonly enabled?: boolean
+  readonly plays?: Record<string, { cli: string; model: string }>
 }
 export interface PersonasResponse {
   readonly workspace: Workspace
@@ -184,6 +186,7 @@ export interface OzApi {
   daemonPost<T = unknown>(path: string, body?: unknown): Promise<DaemonResult<T>>
   daemonPut<T = unknown>(path: string, body?: unknown): Promise<DaemonResult<T>>
   chatSend(workspaceId: string, text: string): Promise<ChatMessage>
+  personasAssignmentsSave(workspaceId: string, assignments: Record<string, PersonaAssignment>): Promise<DaemonResult<Record<string, PersonaAssignment>>>
   prioritiesReorder(workspaceId: string, order: readonly string[]): Promise<readonly string[]>
   prioritiesOrder(workspaceId: string): Promise<readonly string[]>
   settingsGet(): Promise<Settings>

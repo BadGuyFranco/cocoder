@@ -10,6 +10,7 @@ const api: OzApi = {
   daemonPost: (path, body) => ipcRenderer.invoke(CHANNELS.daemonPost, path, body),
   daemonPut: (path, body) => ipcRenderer.invoke(CHANNELS.daemonPut, path, body),
   chatSend: (ws, text) => ipcRenderer.invoke(CHANNELS.chatSend, ws, text),
+  personasAssignmentsSave: (ws, assignments) => ipcRenderer.invoke(CHANNELS.personasAssignmentsSave, ws, assignments),
   prioritiesReorder: (ws, order) => ipcRenderer.invoke(CHANNELS.prioritiesReorder, ws, order),
   prioritiesOrder: (ws) => ipcRenderer.invoke(CHANNELS.prioritiesOrder, ws),
   settingsGet: () => ipcRenderer.invoke(CHANNELS.settingsGet),

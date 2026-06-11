@@ -4,8 +4,8 @@
 // the design-faithful view-model from the ported seed (fixture parity, fully interactive); the daemon
 // adapter is wired in the next slice (the existing electron/ plumbing is untouched).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, sendOzMessage, launchRun, attachRun, teardownRun, resolveRun, testCli, loadOrder, persistOrder, type ConnectionState } from './live.ts'
-import { ADHOC_PRIORITY_ID, applyOrder } from './adapter.ts'
+import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, sendOzMessage, launchRun, attachRun, teardownRun, resolveRun, testCli, loadOrder, persistOrder, saveAssignments, type ConnectionState } from './live.ts'
+import { ADHOC_PRIORITY_ID, applyOrder, personasToAssignments } from './adapter.ts'
 import { Sidebar, type Route } from './ui/Sidebar.tsx'
 import { TopBar } from './ui/TopBar.tsx'
 import { Dashboard } from './sections/dashboard/Dashboard.tsx'
@@ -15,6 +15,7 @@ import { PersonasScreen } from './sections/Personas.tsx'
 import { SettingsScreen } from './sections/Settings.tsx'
 import { NewWorkspaceModal, CraftPersonaModal } from './sections/modals.tsx'
 import { seed, DEFAULT_SETTINGS, type ChatMessage, type Cli, type Dependency, type Persona, type Priority, type Run, type Settings, type SubAgent, type Workspace } from './model.ts'
+import type { PersonaAssignment } from '../electron/ipc-contract.ts'
 
 const USER = seed.workspaces.length ? { initials: 'AF', name: 'Anthony Franco', role: 'founder' } : { initials: 'AF', name: 'Anthony Franco', role: 'founder' }
 const ROUTE_TITLE: Record<Route, string> = { dashboard: 'Dashboard', workspaces: 'Workspaces', clis: 'CLIs', personas: 'Personas', settings: 'Settings' }
@@ -77,6 +78,7 @@ export function App() {
 
   // global-ish config (the prototype treats these as workspace-independent)
   const [personas, setPersonas] = useState<Persona[]>(seed.personas)
+  const [personaAssignments, setPersonaAssignments] = useState<Record<string, PersonaAssignment>>({})
   const [clis, setClis] = useState<Cli[]>(seed.clis)
   const [dependencies, setDependencies] = useState(seed.dependencies)
   const [settings, setSettings] = useState<Settings>(seedSettings)
@@ -129,7 +131,10 @@ export function App() {
       namesRef.current[first.id] = data.names
       setPrioritiesByWs((cur) => ({ ...cur, [first.id]: applyOrder(data.priorities, order) }))
       setRunsByWs((cur) => ({ ...cur, [first.id]: data.runs }))
-      if (data.personas.length) setPersonas(data.personas)
+      if (data.personas.length) {
+        setPersonas(data.personas)
+        setPersonaAssignments(data.assignments)
+      }
     })()
     return () => { cancelled = true }
   }, [reloadNonce])
@@ -166,6 +171,10 @@ export function App() {
       namesRef.current[activeId] = data.names
       setPrioritiesByWs((cur) => ({ ...cur, [activeId]: applyOrder(data.priorities, order) }))
       setRunsByWs((cur) => ({ ...cur, [activeId]: data.runs }))
+      if (data.personas.length) {
+        setPersonas(data.personas)
+        setPersonaAssignments(data.assignments)
+      }
     })()
     return () => { cancelled = true }
   }, [live, activeId])
@@ -289,10 +298,49 @@ export function App() {
   }
 
   // persona editing
-  const setPersona = (id: string, next: Persona) => setPersonas((ps) => ps.map((p) => (p.id === id ? next : p)))
-  const addSub = (pid: string) => setPersonas((ps) => ps.map((p) => (p.id === pid ? { ...p, subAgents: [...p.subAgents, { id: `sa${Date.now()}`, name: 'new sub', cli: clis[0]?.id ?? 'claude-code', model: 'Default' }] } : p)))
-  const removeSub = (pid: string, sid: string) => setPersonas((ps) => ps.map((p) => (p.id === pid ? { ...p, subAgents: p.subAgents.filter((s: SubAgent) => s.id !== sid) } : p)))
-  const updateSub = (pid: string, sid: string, sa: SubAgent) => setPersonas((ps) => ps.map((p) => (p.id === pid ? { ...p, subAgents: p.subAgents.map((s: SubAgent) => (s.id === sid ? sa : s)) } : p)))
+  async function persistPersonas(next: Persona[]): Promise<boolean> {
+    if (!live) {
+      setPersonas(next)
+      return true
+    }
+    const oz = ozApi()
+    if (!oz) {
+      notify('err', 'Persona assignment save failed: daemon bridge unavailable.')
+      return false
+    }
+    const assignments = personasToAssignments(next, personaAssignments)
+    const res = await saveAssignments(oz, activeId, assignments)
+    if (!res.ok) {
+      notify('err', res.error || `Persona assignment save failed (${res.status}).`)
+      return false
+    }
+    setPersonas(next)
+    setPersonaAssignments(res.data as Record<string, PersonaAssignment>)
+    notify('ok', 'Persona assignments saved.')
+    return true
+  }
+  function setPersona(id: string, next: Persona) {
+    const prev = personas.find((p) => p.id === id)
+    if (prev && prev.cli === next.cli && prev.model === next.model && prev.subAgents === next.subAgents) {
+      setPersonas(personas.map((p) => (p.id === id ? next : p)))
+      return
+    }
+    void persistPersonas(personas.map((p) => (p.id === id ? next : p)))
+  }
+  function addSub(pid: string, playId: string) {
+    const id = playId.trim()
+    if (!id) { notify('err', 'Play id is required.'); return }
+    const persona = personas.find((p) => p.id === pid)
+    if (persona?.subAgents.some((s) => s.id === id)) { notify('err', `Play "${id}" is already assigned to ${persona.name}.`); return }
+    const next = personas.map((p) => (p.id === pid ? { ...p, subAgents: [...p.subAgents, { id, name: id, cli: clis[0]?.id ?? 'claude', model: 'Default' }] } : p))
+    void persistPersonas(next)
+  }
+  function removeSub(pid: string, sid: string) {
+    void persistPersonas(personas.map((p) => (p.id === pid ? { ...p, subAgents: p.subAgents.filter((s: SubAgent) => s.id !== sid) } : p)))
+  }
+  function updateSub(pid: string, sid: string, sa: SubAgent) {
+    void persistPersonas(personas.map((p) => (p.id === pid ? { ...p, subAgents: p.subAgents.map((s: SubAgent) => (s.id === sid ? sa : s)) } : p)))
+  }
 
   return (
     <div className="oz-app" style={{ gridTemplateColumns: `${navCollapsed ? 64 : 220}px 1fr` }}>
