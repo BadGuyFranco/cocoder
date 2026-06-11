@@ -4,7 +4,7 @@
 // the design-faithful view-model from the ported seed (fixture parity, fully interactive); the daemon
 // adapter is wired in the next slice (the existing electron/ plumbing is untouched).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, sendOzMessage, launchRun, attachRun, teardownRun, resolveRun, testCli, createPriority, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, saveAssignments, type ConnectionState } from './live.ts'
+import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, sendOzMessage, launchRun, attachRun, teardownRun, stopRun, resolveRun, testCli, createPriority, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, saveAssignments, type ConnectionState } from './live.ts'
 import { ADHOC_PRIORITY_ID, applyOrder, personasToAssignments } from './adapter.ts'
 import { Sidebar, type Route } from './ui/Sidebar.tsx'
 import { TopBar } from './ui/TopBar.tsx'
@@ -362,7 +362,9 @@ export function App() {
         if (res.ok) { notify('ok', disposition === 'landed' ? 'Marked the run landed.' : 'Discarded the run.'); await refreshActiveWs() }
         else notify('err', res.error || `Resolve failed (${res.status}).`)
       } else if (action === 'stop') {
-        notify('info', 'Stopping a run isn’t wired yet (POST /runs/:id/stop — pending endpoint).')
+        const res = await stopRun(oz, id)
+        if (res.ok) { notify('ok', 'Stop requested — the run winds down at its next checkpoint.'); await refreshActiveWs() }
+        else notify('err', res.error || `Stop failed (${res.status}).`)
       } else {
         notify('info', 'The Oz chat command interface is a pending endpoint.')
       }

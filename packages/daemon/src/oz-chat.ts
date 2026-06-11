@@ -1,6 +1,6 @@
 import type { Run } from '@cocoder/core'
 import type { OzContext } from './context.js'
-import { launchRun as launchRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type LaunchResult } from './launcher.js'
+import { launchRun as launchRunOp, requestStopRun as stopRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type LaunchResult } from './launcher.js'
 
 const ADHOC_PRIORITY_ID = 'adhoc-session'
 const HELP_HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, stop <runId>, teardown <runId>, status [runId], help.'
@@ -9,13 +9,14 @@ export type OzCommand =
   | { readonly kind: 'launch'; readonly priorityId: string }
   | { readonly kind: 'adhoc'; readonly task: string }
   | { readonly kind: 'show'; readonly runId: string }
+  | { readonly kind: 'stop'; readonly runId: string }
   | { readonly kind: 'teardown'; readonly runId: string }
   | { readonly kind: 'status'; readonly runId?: string }
   | { readonly kind: 'help' }
   | { readonly kind: 'unknown'; readonly hint: string }
 
 export interface OzChatAction {
-  readonly type: 'launch' | 'show' | 'teardown' | 'status'
+  readonly type: 'launch' | 'show' | 'stop' | 'teardown' | 'status'
   readonly workspaceId?: string
   readonly priorityId?: string
   readonly runId?: string
@@ -37,10 +38,11 @@ export interface OzChatResult {
 export interface OzChatOps {
   readonly launchRun: typeof launchRunOp
   readonly showRun: typeof showRunOp
+  readonly stopRun: typeof stopRunOp
   readonly teardownRun: typeof teardownRunOp
 }
 
-const defaultOps: OzChatOps = { launchRun: launchRunOp, showRun: showRunOp, teardownRun: teardownRunOp }
+const defaultOps: OzChatOps = { launchRun: launchRunOp, showRun: showRunOp, stopRun: stopRunOp, teardownRun: teardownRunOp }
 
 export function parseOzCommand(text: string): OzCommand {
   const trimmed = text.trim()
@@ -58,7 +60,8 @@ export function parseOzCommand(text: string): OzCommand {
     return { kind: 'adhoc', task }
   }
   if (verb === 'show') return args.length === 1 ? { kind: 'show', runId: args[0]! } : unknownCommand()
-  if (verb === 'stop' || verb === 'teardown') return args.length === 1 ? { kind: 'teardown', runId: args[0]! } : unknownCommand()
+  if (verb === 'stop') return args.length === 1 ? { kind: 'stop', runId: args[0]! } : unknownCommand()
+  if (verb === 'teardown') return args.length === 1 ? { kind: 'teardown', runId: args[0]! } : unknownCommand()
   if (verb === 'status') {
     if (args.length === 0) return { kind: 'status' }
     if (args.length === 1) return { kind: 'status', runId: args[0]! }
@@ -112,6 +115,15 @@ export async function handleOzMessage(ctx: OzContext, body: unknown, ops: OzChat
       'teardown',
       () => ops.teardownRun(ctx, command.runId),
       (out) => teardownReply(command.runId, out),
+    )
+  }
+
+  if (command.kind === 'stop') {
+    if (!input.workspaceId) return missingWorkspace()
+    return runOp(
+      'stop',
+      () => ops.stopRun(ctx, command.runId),
+      (out) => stopReply(command.runId, out),
     )
   }
 
@@ -190,6 +202,16 @@ function teardownReply(runId: string, out: LaunchResult): OzChatReply {
   if (!isOk(out.status)) return failedReply('teardown', `Could not stop ${runId}`, out)
   const paneText = closed.length === 0 ? 'no panes were open' : `closed ${closed.length} pane${closed.length === 1 ? '' : 's'}`
   return { reply: `Stopped ${runId} (${paneText}).`, command: 'teardown', ok: true, action: { type: 'teardown', runId, closed } }
+}
+
+function stopReply(runId: string, out: LaunchResult): OzChatReply {
+  if (!isOk(out.status)) return failedReply('stop', `Could not stop ${runId}`, out)
+  return {
+    reply: `Stopping ${runId} — it will wind down at its next checkpoint.`,
+    command: 'stop',
+    ok: true,
+    action: { type: 'stop', runId },
+  }
 }
 
 function failedReply(command: OzChatReply['command'], prefix: string, out: LaunchResult): OzChatReply {

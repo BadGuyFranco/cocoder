@@ -10,6 +10,7 @@ function testCtx(store: RunStore = openRunStore(':memory:')): OzContext {
     runsRoot: '/tmp/cocoder/local/runs',
     liveRefs: new Set<string>(),
     inFlight: new Map<string, string>(),
+    stopControllers: new Map<string, AbortController>(),
   } as unknown as OzContext
 }
 
@@ -19,7 +20,7 @@ describe('parseOzCommand', () => {
     ['  LAUNCH PriorityA  ', { kind: 'launch', priorityId: 'PriorityA' }],
     ['adhoc fix the flaky test', { kind: 'adhoc', task: 'fix the flaky test' }],
     ['show run_45', { kind: 'show', runId: 'run_45' }],
-    ['stop run_45', { kind: 'teardown', runId: 'run_45' }],
+    ['stop run_45', { kind: 'stop', runId: 'run_45' }],
     ['teardown run_45', { kind: 'teardown', runId: 'run_45' }],
     ['status', { kind: 'status' }],
     ['status run_45', { kind: 'status', runId: 'run_45' }],
@@ -47,6 +48,7 @@ describe('handleOzMessage', () => {
         return { status: 202, body: { runId: 'run_47' } }
       },
       showRun: async () => ({ status: 500, body: { error: 'unexpected show' } }),
+      stopRun: async () => ({ status: 500, body: { error: 'unexpected stop' } }),
       teardownRun: async () => ({ status: 500, body: { error: 'unexpected teardown' } }),
     }
 
@@ -67,6 +69,7 @@ describe('handleOzMessage', () => {
         return { status: 202, body: { runId: 'run_adhoc' } }
       },
       showRun: async () => ({ status: 500, body: { error: 'unexpected show' } }),
+      stopRun: async () => ({ status: 500, body: { error: 'unexpected stop' } }),
       teardownRun: async () => ({ status: 500, body: { error: 'unexpected teardown' } }),
     }
 
@@ -87,6 +90,7 @@ describe('handleOzMessage', () => {
         return { status: 202, body: { runId: 'run_adhoc' } }
       },
       showRun: async () => ({ status: 500, body: { error: 'unexpected show' } }),
+      stopRun: async () => ({ status: 500, body: { error: 'unexpected stop' } }),
       teardownRun: async () => ({ status: 500, body: { error: 'unexpected teardown' } }),
     }
 
@@ -102,23 +106,61 @@ describe('handleOzMessage', () => {
     expect(result.body.reply).toContain('adhoc <task>')
   })
 
-  test('stop maps to teardownRun', async () => {
+  test('stop maps to stopRun', async () => {
     const calls: string[] = []
     const ops: OzChatOps = {
       launchRun: async () => ({ status: 500, body: { error: 'unexpected launch' } }),
       showRun: async () => ({ status: 500, body: { error: 'unexpected show' } }),
-      teardownRun: async (_ctx, runId) => {
+      stopRun: async (_ctx, runId) => {
         calls.push(runId)
-        return { status: 200, body: { closed: ['surface:1', 'surface:2'] } }
+        return { status: 202, body: { stopping: true, runId } }
       },
+      teardownRun: async () => ({ status: 500, body: { error: 'unexpected teardown' } }),
     }
 
     const result = await handleOzMessage(testCtx(), { text: 'stop run_45', workspaceId: 'cocoder' }, ops)
 
     expect(calls).toEqual(['run_45'])
     expect(result).toMatchObject({
+      status: 202,
+      body: { ok: true, command: 'stop', reply: 'Stopping run_45 — it will wind down at its next checkpoint.', action: { type: 'stop', runId: 'run_45' } },
+    })
+  })
+
+  test('teardown still maps to teardownRun', async () => {
+    const calls: string[] = []
+    const ops: OzChatOps = {
+      launchRun: async () => ({ status: 500, body: { error: 'unexpected launch' } }),
+      showRun: async () => ({ status: 500, body: { error: 'unexpected show' } }),
+      stopRun: async () => ({ status: 500, body: { error: 'unexpected stop' } }),
+      teardownRun: async (_ctx, runId) => {
+        calls.push(runId)
+        return { status: 200, body: { closed: ['surface:1', 'surface:2'] } }
+      },
+    }
+
+    const result = await handleOzMessage(testCtx(), { text: 'teardown run_45', workspaceId: 'cocoder' }, ops)
+
+    expect(calls).toEqual(['run_45'])
+    expect(result).toMatchObject({
       status: 200,
       body: { ok: true, command: 'teardown', reply: 'Stopped run_45 (closed 2 panes).', action: { type: 'teardown', runId: 'run_45' } },
+    })
+  })
+
+  test('stop surfaces daemon 409 errors verbatim', async () => {
+    const ops: OzChatOps = {
+      launchRun: async () => ({ status: 500, body: { error: 'unexpected launch' } }),
+      showRun: async () => ({ status: 500, body: { error: 'unexpected show' } }),
+      stopRun: async () => ({ status: 409, body: { error: 'run is not live in this daemon process' } }),
+      teardownRun: async () => ({ status: 500, body: { error: 'unexpected teardown' } }),
+    }
+
+    const result = await handleOzMessage(testCtx(), { text: 'stop run_45', workspaceId: 'cocoder' }, ops)
+
+    expect(result).toMatchObject({
+      status: 409,
+      body: { ok: false, command: 'stop', reply: 'Could not stop run_45: run is not live in this daemon process.' },
     })
   })
 
@@ -148,6 +190,7 @@ describe('handleOzMessage', () => {
         calls.show += 1
         return { status: 200, body: { shown: true } }
       },
+      stopRun: async () => ({ status: 500, body: { error: 'unexpected stop' } }),
       teardownRun: async () => {
         calls.teardown += 1
         return { status: 200, body: { closed: [] } }
@@ -166,6 +209,7 @@ describe('handleOzMessage', () => {
     const ops: OzChatOps = {
       launchRun: async () => ({ status: 400, body: { error: 'unknown priority "missing"' } }),
       showRun: async () => ({ status: 500, body: { error: 'unexpected show' } }),
+      stopRun: async () => ({ status: 500, body: { error: 'unexpected stop' } }),
       teardownRun: async () => ({ status: 500, body: { error: 'unexpected teardown' } }),
     }
 

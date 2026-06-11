@@ -96,6 +96,10 @@ export async function teardownRun(oz: OzApi, runId: string): Promise<MutationRes
   return oz.daemonPost(`/runs/${runId}/teardown`)
 }
 
+export async function stopRun(oz: OzApi, runId: string): Promise<MutationResult> {
+  return oz.daemonPost(`/runs/${runId}/stop`)
+}
+
 export async function resolveRun(oz: OzApi, runId: string, disposition: 'discard' | 'landed', note?: string): Promise<MutationResult> {
   const body: { disposition: 'discard' | 'landed'; note?: string } = { disposition }
   if (note) body.note = note

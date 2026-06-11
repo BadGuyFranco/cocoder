@@ -6,7 +6,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react'
 import { App } from '../app/App.tsx'
-import type { RunSummary } from '../electron/ipc-contract.ts'
+import { stopRun } from '../app/live.ts'
+import type { OzApi, RunSummary } from '../electron/ipc-contract.ts'
 import workspacesFx from '../fixtures/workspaces.json'
 import prioritiesFx from '../fixtures/priorities.json'
 import personasFx from '../fixtures/personas.json'
@@ -125,6 +126,15 @@ const clickFirstText = async (text: string): Promise<void> => {
 describe('Oz renderer — live daemon path', () => {
   afterEach(() => { cleanup(); delete (window as unknown as { oz?: unknown }).oz })
 
+  it('stopRun posts to the daemon stop endpoint', async () => {
+    const posts: PostCall[] = []
+    const oz = mockOz({ posts })
+
+    await stopRun(oz as OzApi, 'run_45')
+
+    expect(posts).toEqual([{ path: '/runs/run_45/stop', body: undefined }])
+  })
+
   it('switches off seed onto live data: shows "Live" and a real daemon priority title', async () => {
     setOz(mockOz())
     render(<App />)
@@ -195,6 +205,25 @@ describe('Oz renderer — live daemon path', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Stop run' })).toBeDefined())
     expect(screen.queryByRole('button', { name: 'Mark landed' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Discard run' })).toBeNull()
+  })
+
+  it('Stop run posts to /runs/:id/stop and shows cooperative success text', async () => {
+    const posts: PostCall[] = []
+    const running = {
+      runs: [
+        { ...(runsFx as { runs: RunSummary[] }).runs.find((r) => r.id === 'run_17')!, status: 'running' },
+        ...(runsFx as { runs: RunSummary[] }).runs.filter((r) => r.id !== 'run_17'),
+      ],
+    }
+    setOz(mockOz({ posts, runs: running }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    await clickFirstText('Living base personas + repo extensions')
+    fireEvent.click(await screen.findByRole('button', { name: 'Stop run' }))
+
+    await waitFor(() => expect(posts.find((p) => p.path === '/runs/run_17/stop')).toBeDefined())
+    expect(screen.getByText('Stop requested — the run winds down at its next checkpoint.')).toBeDefined()
   })
 
   it('Mark landed posts the landed disposition to /runs/:id/resolve', async () => {
