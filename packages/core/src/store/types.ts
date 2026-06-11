@@ -3,7 +3,7 @@
 // or a daemon-served conn later) is swappable. Governance is referenced by stable id
 // (workspaceId, priorityId, persona) — never copied (the F1/F4 rule).
 
-export type RunStatus = 'running' | 'completed' | 'pending-scope-decision' | 'pending-landing' | 'failed'
+export type RunStatus = 'running' | 'completed' | 'pending-scope-decision' | 'pending-landing' | 'failed' | 'stopped'
 export type WorkItemStatus = 'open' | 'done' | 'abandoned'
 
 // The branch→trunk integration sub-lifecycle (ADR-0015 §6). ORTHOGONAL to RunStatus:

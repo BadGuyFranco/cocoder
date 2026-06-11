@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { type Assessment, type Judge, type MonitorDeps, makeHeuristicJudge, runMonitor } from '../src/index.js'
+import { type Assessment, type Judge, type MonitorDeps, StopRequestedError, makeHeuristicJudge, runMonitor } from '../src/index.js'
 
 // A controllable clock the fake sleep advances, so timeout/rate-limit are deterministic (no real time).
 function clock(start = 0): { now: () => number; sleep: (ms: number) => Promise<void> } {
@@ -66,6 +66,12 @@ describe('runMonitor', () => {
     const out = await runMonitor(deps({ ...c, isAlive: async () => false }), opts)
     expect(out.reason).toBe('dead')
     expect(out.samples).toBe(1)
+  })
+
+  test('throws StopRequestedError when the stop signal is aborted', async () => {
+    const signal = new AbortController()
+    signal.abort()
+    await expect(runMonitor(deps({}), { ...opts, signal: signal.signal })).rejects.toBeInstanceOf(StopRequestedError)
   })
 
   test('treats a thrown readScreen as a dead session', async () => {

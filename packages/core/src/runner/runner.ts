@@ -43,6 +43,7 @@ import {
 } from './prompts.js'
 import { renderRunRecord } from './record.js'
 import { type RunnerPhase, renderDebStatus } from './status.js'
+import { isStopRequestedError } from './stop.js'
 import { faultFingerprint } from './fingerprint.js'
 import { exportRunLocalState } from './local-state.js'
 import type { CommitGateResult } from '../commit-gate/index.js'
@@ -88,6 +89,7 @@ export interface RunnerDeps {
   /** Fired synchronously the instant the run row is created (before any await), so a fire-and-forget
    *  caller (the Oz daemon) learns the runId for its 202 response WITHOUT pre-creating a second row. */
   readonly onRunCreated?: (run: Run) => void
+  readonly signal?: AbortSignal
 }
 
 export interface RunInput {
@@ -425,7 +427,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       await sessionHost.show(debRef)
       await sessionHost.sendInput(debRef, buildDebTriageDispatch(join(runDir, `fault-${i}.json`), join(runDir, `triage-${i}.json`), occurrence))
       store.recordEvent({ runId: run.id, type: 'triage-dispatch', data: { fault: faultType, atom: atomIndex, occurrence } })
-      const verdict = await io.awaitTriage(join(runDir, `triage-${i}.json`), { timeoutMs: t.orchestrationMs, pollMs: t.pollMs, isAlive: debAlive })
+      const verdict = await io.awaitTriage(join(runDir, `triage-${i}.json`), { timeoutMs: t.orchestrationMs, pollMs: t.pollMs, isAlive: debAlive, signal: deps.signal })
       // Record the fingerprint on the triaged event so FUTURE runs match this occurrence (closes the loop).
       store.recordEvent({ runId: run.id, type: 'fault-triaged', data: { fault: faultType, atom: atomIndex, disposition: verdict.disposition, mode: verdict.mode, summary: verdict.summary, fingerprint, occurrence } })
       // REPAIR / ESCALATION (ADR-0016): on a cocoder-bug Deb may have edited files within her write-scope —
@@ -451,6 +453,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       }
       await io.writeDisposition(runDir, i, renderDisposition(faultType, atomIndex, verdict, gate, occurrence))
     } catch (err) {
+      if (isStopRequestedError(err)) throw err
       store.recordEvent({ runId: run.id, type: 'triage-skipped', data: { fault: faultType, reason: err instanceof Error ? err.message : String(err) } })
     }
   }
@@ -524,8 +527,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
             stoppedPromise,
           ]),
       },
-      { task, cadenceMs: t.monitorCadenceMs, timeoutMs: t.orchestrationMs, minNudgeIntervalMs: t.minNudgeIntervalMs },
+      { task, cadenceMs: t.monitorCadenceMs, timeoutMs: t.orchestrationMs, minNudgeIntervalMs: t.minNudgeIntervalMs, signal: deps.signal },
     ).catch((err: unknown) => {
+      if (isStopRequestedError(err)) return
       store.recordEvent({ runId: run.id, type: 'oscar-monitor-error', data: { persona: debPersona, stage, atom: atomIndex, message: err instanceof Error ? err.message : String(err) } })
     })
 
@@ -610,6 +614,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   let pickup: string | null = null
   let n = 0
   let consecutiveRejects = 0
+  let activeAtom: { readonly index: number; readonly workItemId: string; readonly headBefore: string } | null = null
 
   const absorbGateResult = (gate: CommitGateResult): void => {
     if (gate.committedSha) committedShas.push(gate.committedSha)
@@ -665,17 +670,50 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     }
   }
 
-  await refreshStatus('awaiting-directive', 0, null, 'awaiting first directive')
+  const stopRun = async (): Promise<RunResult> => {
+    const stoppedAtom = activeAtom
+    const atoms = stoppedAtom ? Math.max(n, stoppedAtom.index + 1) : n
+    store.recordEvent({ runId: run.id, type: 'run-stopped', data: { atom: stoppedAtom?.index ?? null } })
+    if (stoppedAtom) {
+      store.setWorkItemStatus(stoppedAtom.workItemId, 'abandoned')
+      await quarantineAtom(stoppedAtom.index, stoppedAtom.headBefore, 'atom-self-committed-stopped')
+    }
+    const status: RunStatus = 'stopped'
+    store.setRunStatus(run.id, status)
+    store.recordEvent({
+      runId: run.id,
+      type: 'run-end',
+      data: { status, integrationStatus: store.getRun(run.id)?.integrationStatus ?? 'pending', mergeSha: null, atoms, committedShas, outOfScope, selfCommitted },
+    })
+    const recordPath = await io.writeRunRecord(runDir, renderRunRecord(store, run.id, { workspace, priority }))
+    log(`run ${run.id} stopped; ${committedShas.length} commit(s) over ${atoms} atom(s); record at ${recordPath}`)
+    return {
+      runId: run.id,
+      status,
+      committedSha: committedShas.at(-1) ?? null,
+      committedShas,
+      committedFiles,
+      outOfScope,
+      selfCommitted,
+      atoms,
+      pickupPath: null,
+      recordPath,
+    }
+  }
 
-  for (;;) {
+  try {
+    await refreshStatus('awaiting-directive', 0, null, 'awaiting first directive')
+
+    for (;;) {
     const directivePath = join(runDir, `directive-${n}.json`)
     await refreshStatus('awaiting-directive', n, null, `awaiting directive ${n}`)
     let directive
     try {
       directive = await awaitOscarWithDebWatchdog('directive', n, `awaiting directive ${n}`, () =>
-        io.awaitDirective(directivePath, { timeoutMs: t.orchestrationMs, pollMs: t.pollMs, isAlive: oscarAlive }),
+        io.awaitDirective(directivePath, { timeoutMs: t.orchestrationMs, pollMs: t.pollMs, isAlive: oscarAlive, signal: deps.signal }),
       )
     } catch (err) {
+      if (isStopRequestedError(err)) throw err
       // First directive failed → tear down the idle standby builder; KEEP Deb alive so she can triage.
       if (n === 0) await sessionHost.kill(bobRef).catch(() => {})
       return await fail('directive-timeout', String(err), n)
@@ -738,6 +776,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     const workItem = store.createWorkItem({ runId: run.id, sourcePersona: oscar.id, targetPersona: bob.id, task: directive.task, writeScope: scope })
     store.recordEvent({ runId: run.id, type: 'delegation', data: { workItemId: workItem.id, atom: atomIndex, task: directive.task } })
     const headBefore = await git.headSha(worktreePath) // re-snapshot per atom (self-commit detection)
+    activeAtom = { index: atomIndex, workItemId: workItem.id, headBefore }
     const loopLedgerPath = directive.loop === undefined ? null : join(runDir, `loop-ledger-${atomIndex}.jsonl`)
     const loopStartedAt = directive.loop === undefined ? null : now()
     const recordedLoopIterations = new Set<number>()
@@ -787,6 +826,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           timeoutMs: t.buildMs,
           minNudgeIntervalMs: t.minNudgeIntervalMs,
           loop: directive.loop === undefined ? undefined : { maxIterations: directive.loop.maxIterations, wallClockMs: remainingLoopMs ?? directive.loop.wallClockMs },
+          signal: deps.signal,
         },
       )
       monitorSamples += outcome.samples
@@ -837,6 +877,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       store.setWorkItemStatus(workItem.id, 'abandoned')
       store.recordEvent({ runId: run.id, type: 'loop-capped', data: { atom: atomIndex, cap, ledger } })
       await quarantineAtom(atomIndex, headBefore, 'atom-self-committed-loop-capped')
+      activeAtom = null
       const outcomeLine = `atom ${atomIndex} was BLOCKED at the loop ${cap} cap — nothing committed`
       log(outcomeLine)
       n += 1
@@ -860,9 +901,10 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     let verdict
     try {
       verdict = await awaitOscarWithDebWatchdog('verify', atomIndex, directive.task, () =>
-        io.awaitVerification(verifyPath, { timeoutMs: t.orchestrationMs, pollMs: t.pollMs, isAlive: oscarAlive }),
+        io.awaitVerification(verifyPath, { timeoutMs: t.orchestrationMs, pollMs: t.pollMs, isAlive: oscarAlive, signal: deps.signal }),
       )
     } catch (err) {
+      if (isStopRequestedError(err)) throw err
       store.setWorkItemStatus(workItem.id, 'abandoned')
       return await fail('verify-failed', String(err), atomIndex)
     }
@@ -894,6 +936,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       log(outcomeLine)
     }
     n += 1
+    activeAtom = null
 
     // Deterministic backstops — the bound is the spine's; the "enough" judgment stays Oscar's.
     if (consecutiveRejects >= limits.maxConsecutiveRejects) {
@@ -911,6 +954,10 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     // Ask Oscar for the next turn (names the exact next directive path — the numbered handshake).
     await sessionHost.show(oscarRef)
     await sessionHost.sendInput(oscarRef, buildNextOrWrapDispatch(join(runDir, `directive-${n}.json`), outcomeLine))
+  }
+  } catch (err) {
+    if (isStopRequestedError(err)) return await stopRun()
+    throw err
   }
 
   // ── Wrap-up: pickup brief (continuation; F8) + run record ───────────────────────────────────────

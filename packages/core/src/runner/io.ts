@@ -6,7 +6,16 @@ import { join } from 'node:path'
 import { type Directive, isMalformedLoopDirectiveError, parseDirective } from './directive.js'
 import { type NudgeRequest, parseNudgeRequest } from './nudge.js'
 import type { DebStatus } from './status.js'
+import { throwIfStopRequested } from './stop.js'
 import { type Triage, parseTriage } from './triage.js'
+
+export interface RunnerPollOptions {
+  readonly timeoutMs: number
+  readonly pollMs: number
+  readonly now?: () => number
+  readonly isAlive?: () => Promise<boolean>
+  readonly signal?: AbortSignal
+}
 
 export interface RunnerIO {
   ensureRunDir(runDir: string): Promise<void>
@@ -15,14 +24,14 @@ export interface RunnerIO {
    *  given and the orchestrator session exits before producing one, fail FAST (don't wait the timeout). */
   awaitDirective(
     directivePath: string,
-    opts: { timeoutMs: number; pollMs: number; now?: () => number; isAlive?: () => Promise<boolean> },
+    opts: RunnerPollOptions,
   ): Promise<Directive>
   /** Poll `verifyPath` until the orchestrator writes its verdict on the atom's diff
    *  (`{verdict:'pass'|'fail', reason?}`), or throw on timeout / if its session dies first. This is the
    *  Oscar quality-gate (ADR-0011), now PER ATOM: the atom's commit runs only on `pass`. */
   awaitVerification(
     verifyPath: string,
-    opts: { timeoutMs: number; pollMs: number; now?: () => number; isAlive?: () => Promise<boolean> },
+    opts: RunnerPollOptions,
   ): Promise<{ verdict: 'pass' | 'fail'; reason: string | null }>
   /** Write the run's pickup brief (the resumable continuation artifact; ADR-0002 C1 / F8). */
   writePickup(runDir: string, markdown: string): Promise<string>
@@ -33,7 +42,7 @@ export interface RunnerIO {
    *  timeout / if her session dies first. Deb only READS the fault + emits this; the runner records it. */
   awaitTriage(
     triagePath: string,
-    opts: { timeoutMs: number; pollMs: number; now?: () => number; isAlive?: () => Promise<boolean> },
+    opts: RunnerPollOptions,
   ): Promise<Triage>
   /** Write Deb's disposition for the founder (the proposed patch / escalation / log note). */
   writeDisposition(runDir: string, index: number, markdown: string): Promise<string>
@@ -64,7 +73,7 @@ async function pollFile<T>(
   path: string,
   parse: (raw: string) => T,
   what: string,
-  { timeoutMs, pollMs, now = Date.now, isAlive }: { timeoutMs: number; pollMs: number; now?: () => number; isAlive?: () => Promise<boolean> },
+  { timeoutMs, pollMs, now = Date.now, isAlive, signal }: RunnerPollOptions,
   failFastParseError?: (error: unknown) => boolean,
 ): Promise<T> {
   const deadline = now() + timeoutMs
@@ -77,8 +86,10 @@ async function pollFile<T>(
     }
   }
   for (;;) {
+    throwIfStopRequested(signal)
     const found = await read()
     if (found !== null) return found
+    throwIfStopRequested(signal)
     if (isAlive && !(await isAlive())) {
       const last = await read() // tolerate the write-then-exit race
       if (last !== null) return last

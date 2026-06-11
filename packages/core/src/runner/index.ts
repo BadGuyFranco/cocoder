@@ -9,7 +9,8 @@ export {
   type RunResult,
   type MakeJudge,
 } from './runner.js'
-export { makeRunnerIO, type RunnerIO } from './io.js'
+export { StopRequestedError } from './stop.js'
+export { makeRunnerIO, type RunnerIO, type RunnerPollOptions } from './io.js'
 export {
   runMonitor,
   makeHeuristicJudge,

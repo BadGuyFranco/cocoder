@@ -11,6 +11,7 @@
 // sendInput so it can steer; a future OBSERVE-ONLY monitor (Deb→Bob) is its own tier's work. Tier 1
 // builds only the directing path.
 import type { LoopLedgerEntry } from './loop-ledger.js'
+import { throwIfStopRequested } from './stop.js'
 
 export type MonitorState = 'progressing' | 'stuck' | 'done'
 
@@ -79,6 +80,7 @@ export interface MonitorOptions {
   readonly defaultNudge?: string
   /** Optional structured loop caps. Absent for prose/non-loop atoms. */
   readonly loop?: { readonly maxIterations: number; readonly wallClockMs: number }
+  readonly signal?: AbortSignal
 }
 
 const defaultSleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
@@ -98,6 +100,7 @@ export async function runMonitor(deps: MonitorDeps, opts: MonitorOptions): Promi
   let prevLoopIterations: number | null = null
 
   for (;;) {
+    throwIfStopRequested(opts.signal)
     let frame: string
     try {
       frame = await deps.readScreen()
@@ -143,6 +146,7 @@ export async function runMonitor(deps: MonitorDeps, opts: MonitorOptions): Promi
 
     prevFrame = frame
     if (loopIterations !== undefined) prevLoopIterations = loopIterations
+    throwIfStopRequested(opts.signal)
     await sleep(opts.cadenceMs)
   }
 }

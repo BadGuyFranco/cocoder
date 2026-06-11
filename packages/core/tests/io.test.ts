@@ -2,7 +2,7 @@ import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { MalformedLoopDirectiveError, makeRunnerIO } from '../src/runner/index.js'
+import { MalformedLoopDirectiveError, StopRequestedError, makeRunnerIO } from '../src/runner/index.js'
 
 const io = makeRunnerIO()
 
@@ -47,6 +47,13 @@ describe('awaitDirective', () => {
   test('fails FAST when the orchestrator session exits without writing a directive', async () => {
     const path = await tmpPath('directive-0.json') // no file written
     await expect(io.awaitDirective(path, { timeoutMs: 60_000, pollMs: 1, isAlive: async () => false })).rejects.toThrow(/session exited before/)
+  })
+
+  test('throws StopRequestedError when the stop signal is aborted', async () => {
+    const path = await tmpPath('directive-0.json')
+    const signal = new AbortController()
+    signal.abort()
+    await expect(io.awaitDirective(path, { timeoutMs: 60_000, pollMs: 1, signal: signal.signal })).rejects.toBeInstanceOf(StopRequestedError)
   })
 
   test('tolerates the write-then-exit race: file present + session exited → returns it', async () => {
