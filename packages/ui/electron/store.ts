@@ -1,6 +1,5 @@
-// Tiny JSON file store in userData for client-only state the daemon doesn't own yet: local settings
-// (slice 7) and the client-owned priority order (slice 4). Each is a seam that swaps to a daemon
-// endpoint later with zero renderer change — see ENDPOINTS OWED (priorities/reorder, GET/PUT settings).
+// Tiny JSON file store in userData for dashboard fallback cache: settings and priority order both
+// prefer daemon endpoints, then use this local cache when Oz is offline.
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { DEFAULT_SETTINGS, type Settings } from './ipc-contract.ts'

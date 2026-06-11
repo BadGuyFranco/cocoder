@@ -7,9 +7,10 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { CHANNELS } from './ipc-contract.ts'
 import { daemonGet, daemonPost, daemonPut, health } from './daemon-client.ts'
-import { initStore, getPriorityOrder, setPriorityOrder } from './store.ts'
+import { initStore, getPriorityOrder } from './store.ts'
 import { sendChatMessage } from './chat-send.ts'
 import { getSettingsViaDaemon, setSettingsViaDaemon } from './settings-sync.ts'
+import { reorderPrioritiesViaDaemon } from './priorities-sync.ts'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 
@@ -19,7 +20,7 @@ function registerIpc(): void {
   ipcMain.handle(CHANNELS.daemonPost, (_e, path: string, body?: unknown) => daemonPost(path, body))
   ipcMain.handle(CHANNELS.daemonPut, (_e, path: string, body?: unknown) => daemonPut(path, body))
   ipcMain.handle(CHANNELS.chatSend, (_e, ws: string, text: string) => sendChatMessage(ws, text))
-  ipcMain.handle(CHANNELS.prioritiesReorder, (_e, ws: string, order: string[]) => setPriorityOrder(ws, order))
+  ipcMain.handle(CHANNELS.prioritiesReorder, (_e, ws: string, order: string[]) => reorderPrioritiesViaDaemon(ws, order))
   ipcMain.handle(CHANNELS.prioritiesOrder, (_e, ws: string) => getPriorityOrder(ws))
   ipcMain.handle(CHANNELS.settingsGet, () => getSettingsViaDaemon())
   ipcMain.handle(CHANNELS.settingsSet, (_e, patch) => setSettingsViaDaemon(patch))
