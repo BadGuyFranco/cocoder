@@ -3,7 +3,6 @@
 // Ported from design-ref/screens.jsx.
 import { useState } from 'react'
 import { Icon, Button, ScreenHeader } from '../ui/primitives.tsx'
-import { PendingBanner } from '../ui/PendingBanner.tsx'
 import { phicon, type Root, type Workspace } from '../model.ts'
 
 const ROLE_META: Record<string, { label: string; color: string; bg: string; border: string; body: string }> = {
@@ -14,16 +13,18 @@ const ROLE_META: Record<string, { label: string; color: string; bg: string; bord
 
 function RootRow({ root, hasPrimary, onChange, onDelete }: { root: Root; hasPrimary: boolean; onChange: (r: Root) => void; onDelete: () => void }) {
   const meta = ROLE_META[root.role]
+  const showResolved = root.resolvedPath && root.resolvedPath !== root.path
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 2fr 200px 32px', gap: 12, alignItems: 'center', padding: '12px 14px', background: 'var(--cb-surface-glass)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', marginBottom: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
         <Icon name={root.role === 'primary' ? 'folder-star' : root.role === 'writable' ? 'folder-open' : 'folder-lock'} size={16} style={{ color: meta.color }} />
         <input value={root.name} onChange={(e) => onChange({ ...root, name: e.target.value })} className="oz-input" style={{ padding: '5px 8px', fontSize: 12.5, background: 'transparent', border: 'none' }} />
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--cb-font-mono)', fontSize: 11.5, color: 'var(--cb-text-secondary)', minWidth: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '13px 1fr 24px', columnGap: 6, rowGap: 3, alignItems: 'center', minWidth: 0 }}>
         <Icon name="folder" size={13} style={{ color: 'var(--cb-text-muted)' }} />
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{root.path}</span>
+        <input value={root.path} onChange={(e) => onChange({ ...root, path: e.target.value })} className="oz-input" style={{ padding: '5px 8px', fontSize: 11.5, fontFamily: 'var(--cb-font-mono)', background: 'transparent', border: 'none', minWidth: 0 }} />
         <button className="oz-iconbtn" style={{ width: 24, height: 24, flexShrink: 0 }} title="Pick folder"><Icon name="folder-notch-open" size={11} /></button>
+        {showResolved && <div style={{ gridColumn: '2 / 4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-text-muted)' }}>{root.resolvedPath}</div>}
       </div>
       <select className="oz-select" value={root.role} onChange={(e) => onChange({ ...root, role: e.target.value as Root['role'] })} style={{ fontSize: 12 }}>
         <option value="primary" disabled={hasPrimary && root.role !== 'primary'}>Primary{hasPrimary && root.role !== 'primary' ? ' (taken)' : ''}</option>
@@ -35,8 +36,8 @@ function RootRow({ root, hasPrimary, onChange, onDelete }: { root: Root; hasPrim
   )
 }
 
-export function WorkspacesScreen({ workspaces, activeId, onChange, onSetActive, onCreate, onDelete, onGotoDashboard, live = false }: {
-  workspaces: Workspace[]; activeId: string; onChange: (ws: Workspace) => void; onSetActive: (id: string) => void; onCreate: () => void; onDelete: (id: string) => void; onGotoDashboard: () => void; live?: boolean
+export function WorkspacesScreen({ workspaces, activeId, onChange, onSetActive, onCreate, onDelete, onSave, onGotoDashboard }: {
+  workspaces: Workspace[]; activeId: string; onChange: (ws: Workspace) => void; onSetActive: (id: string) => void; onCreate: () => void; onDelete: (id: string) => void; onSave: (ws: Workspace) => void; onGotoDashboard: () => void
 }) {
   const [editId, setEditId] = useState(activeId)
   const editing = workspaces.find((w) => w.id === editId)
@@ -77,11 +78,11 @@ export function WorkspacesScreen({ workspaces, activeId, onChange, onSetActive, 
               <div className="oz-panel-title" style={{ color: 'var(--cb-accent)' }}>{editing.name}</div>
               <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
                 {editing.id !== activeId && <Button variant="secondary" size="sm" icon="arrow-right" onClick={() => { onSetActive(editing.id); onGotoDashboard() }}>Open in Dashboard</Button>}
+                <Button variant="secondary" size="sm" icon="floppy-disk" onClick={() => onSave(editing)}>Save roots</Button>
                 <Button variant="ghost" size="sm" icon="trash" onClick={() => onDelete(editing.id)}>Delete</Button>
               </div>
             </div>
             <div className="oz-panel-body">
-              <PendingBanner live={live}>The daemon’s <code>/workspaces</code> is thin (id · name · path); roots, roles, and descriptions aren’t served and workspace create/edit/delete isn’t wired (<code>POST/PUT/DELETE /workspaces</code> + a roots/role model owed). The single primary root shown is derived from the path.</PendingBanner>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
                 <div><label className="oz-field-label">Name</label><input className="oz-input" value={editing.name} onChange={(e) => onChange({ ...editing, name: e.target.value })} /></div>
                 <div><label className="oz-field-label">Created</label><div style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 12, color: 'var(--cb-text-muted)', padding: '9px 0' }}>{editing.created}</div></div>

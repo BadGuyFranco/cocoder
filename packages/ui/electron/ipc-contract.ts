@@ -8,11 +8,15 @@ export const CHANNELS = {
   daemonGet: 'oz:daemon:get',
   daemonPost: 'oz:daemon:post',
   daemonPut: 'oz:daemon:put',
+  daemonDelete: 'oz:daemon:delete',
   chatSend: 'oz:chat:send',
   personasAssignmentsSave: 'oz:personas:assignments:save',
   prioritiesCreate: 'oz:priorities:create',
   prioritiesReorder: 'oz:priorities:reorder',
   prioritiesOrder: 'oz:priorities:order',
+  workspacesUpdate: 'oz:workspaces:update',
+  workspacesCreate: 'oz:workspaces:create',
+  workspacesDelete: 'oz:workspaces:delete',
   settingsGet: 'oz:settings:get',
   settingsSet: 'oz:settings:set',
 } as const
@@ -43,6 +47,21 @@ export interface Workspace {
   readonly id: string
   readonly name: string
   readonly path: string
+  readonly roots?: readonly WorkspaceRoot[]
+}
+export type WorkspaceRole = 'primary' | 'writable' | 'readonly'
+export interface WorkspaceRoot {
+  readonly name: string
+  readonly path: string
+  readonly rawPath: string
+  readonly role: WorkspaceRole
+  readonly description?: string
+}
+export interface WorkspaceFolder {
+  readonly name?: string
+  readonly path: string
+  readonly role: WorkspaceRole
+  readonly description?: string
 }
 export interface Priority {
   readonly id: string
@@ -187,11 +206,15 @@ export interface OzApi {
   daemonGet<T = unknown>(path: string): Promise<DaemonResult<T>>
   daemonPost<T = unknown>(path: string, body?: unknown): Promise<DaemonResult<T>>
   daemonPut<T = unknown>(path: string, body?: unknown): Promise<DaemonResult<T>>
+  daemonDelete<T = unknown>(path: string): Promise<DaemonResult<T>>
   chatSend(workspaceId: string, text: string): Promise<ChatMessage>
   personasAssignmentsSave(workspaceId: string, assignments: Record<string, PersonaAssignment>): Promise<DaemonResult<Record<string, PersonaAssignment>>>
   prioritiesCreate(workspaceId: string, priority: { title: string; goal?: string }): Promise<DaemonResult<Priority>>
   prioritiesReorder(workspaceId: string, order: readonly string[]): Promise<readonly string[]>
   prioritiesOrder(workspaceId: string): Promise<readonly string[]>
+  workspacesUpdate(workspaceId: string, folders: readonly WorkspaceFolder[]): Promise<DaemonResult<Workspace>>
+  workspacesCreate(workspaceId: string, folders: readonly WorkspaceFolder[]): Promise<DaemonResult<{ workspace: Workspace; legacyHidden: readonly string[] }>>
+  workspacesDelete(workspaceId: string): Promise<DaemonResult<true>>
   settingsGet(): Promise<Settings>
   settingsSet(patch: Partial<Settings>): Promise<Settings>
 }

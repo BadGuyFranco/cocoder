@@ -112,14 +112,26 @@ export function modelIsStale(cli: Cli | undefined, model: string): boolean {
   return model !== '' && model !== 'Default' && cli !== undefined && cli.canEnumerate && !cli.models.includes(model)
 }
 
-// ── Workspaces (thin: id/name/path only — description/roots/role are owed; degrade gracefully) ──
+// ── Workspaces ── daemon roots carry both rawPath (what the editor must persist) and resolved path.
 export function adaptWorkspace(w: DWorkspace): Workspace {
+  const roots = w.roots?.length
+    ? w.roots.map((root, i) => ({
+      id: `${w.id}-root-${i}`,
+      name: root.name,
+      path: root.rawPath,
+      resolvedPath: root.path,
+      role: root.role,
+      ...(root.description ? { description: root.description } : {}),
+    }))
+    : w.path
+      ? [{ id: `${w.id}-root`, name: basename(w.path), path: w.path, resolvedPath: w.path, role: 'primary' as const }]
+      : []
   return {
     id: w.id,
     name: w.name,
-    description: '', // pending endpoint — daemon /workspaces is thin
+    description: '',
     icon: 'ph-thin ph-cube',
-    roots: w.path ? [{ id: `${w.id}-root`, name: basename(w.path), path: w.path, role: 'primary' }] : [],
+    roots,
   }
 }
 

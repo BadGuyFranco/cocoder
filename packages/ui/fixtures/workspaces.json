@@ -1,1 +1,1 @@
-{"workspaces":[{"id":"cocoder","name":"CoCoder (dogfood)","path":"/Volumes/NAS LOCAL/CoCoder"}]}
+{"workspaces":[{"id":"cocoder","name":"CoCoder (dogfood)","path":"/Volumes/NAS LOCAL/CoCoder","roots":[{"name":"CoCoder","path":"/Volumes/NAS LOCAL/CoCoder","rawPath":"${COCODER_HOME}","role":"primary"},{"name":"Reference","path":"/Volumes/NAS LOCAL/CoCoder/local/workspace/reference","rawPath":"./reference","role":"readonly","description":"Docs root"}]}]}

@@ -13,6 +13,7 @@ type WorkspaceRole = 'primary' | 'writable' | 'readonly'
 export interface RegistryRoot {
   readonly name: string
   readonly path: string
+  readonly rawPath: string
   readonly role: WorkspaceRole
   readonly description?: string
 }
@@ -75,6 +76,7 @@ export function validateWorkspaceFolders(folders: unknown, workspaceDir: string,
     const root: RegistryRoot = {
       name: typeof record.name === 'string' ? record.name : basename(path),
       path,
+      rawPath: record.path,
       role: record.role as WorkspaceRole,
       ...(typeof record.description === 'string' ? { description: record.description } : {}),
     }
@@ -156,7 +158,7 @@ async function readLegacyWorkspaces(cocoderHome: string): Promise<RegistryWorksp
     if (!record || typeof record.id !== 'string' || typeof record.path !== 'string') continue
     const name = typeof record.name === 'string' ? record.name : record.id
     const path = expandVars(record.path, vars)
-    out.push({ id: record.id, name, path, roots: [{ name, path, role: 'primary' }] })
+    out.push({ id: record.id, name, path, roots: [{ name, path, rawPath: record.path, role: 'primary' }] })
   }
   return out
 }

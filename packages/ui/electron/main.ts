@@ -6,13 +6,14 @@ import { dirname, join } from 'node:path'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { CHANNELS, type PersonaAssignment } from './ipc-contract.ts'
-import { daemonGet, daemonPost, daemonPut, health } from './daemon-client.ts'
+import { daemonDelete, daemonGet, daemonPost, daemonPut, health } from './daemon-client.ts'
 import { initStore, getPriorityOrder } from './store.ts'
 import { sendChatMessage } from './chat-send.ts'
 import { getSettingsViaDaemon, setSettingsViaDaemon } from './settings-sync.ts'
 import { createPriorityViaDaemon } from './priorities-create.ts'
 import { reorderPrioritiesViaDaemon } from './priorities-sync.ts'
 import { savePersonaAssignmentsViaDaemon } from './personas-sync.ts'
+import { createWorkspaceViaDaemon, deleteWorkspaceViaDaemon, updateWorkspaceViaDaemon } from './workspaces-sync.ts'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 
@@ -21,11 +22,15 @@ function registerIpc(): void {
   ipcMain.handle(CHANNELS.daemonGet, (_e, path: string) => daemonGet(path))
   ipcMain.handle(CHANNELS.daemonPost, (_e, path: string, body?: unknown) => daemonPost(path, body))
   ipcMain.handle(CHANNELS.daemonPut, (_e, path: string, body?: unknown) => daemonPut(path, body))
+  ipcMain.handle(CHANNELS.daemonDelete, (_e, path: string) => daemonDelete(path))
   ipcMain.handle(CHANNELS.chatSend, (_e, ws: string, text: string) => sendChatMessage(ws, text))
   ipcMain.handle(CHANNELS.personasAssignmentsSave, (_e, ws: string, assignments: Record<string, PersonaAssignment>) => savePersonaAssignmentsViaDaemon(ws, assignments))
   ipcMain.handle(CHANNELS.prioritiesCreate, (_e, ws: string, priority: { title: string; goal?: string }) => createPriorityViaDaemon(ws, priority))
   ipcMain.handle(CHANNELS.prioritiesReorder, (_e, ws: string, order: string[]) => reorderPrioritiesViaDaemon(ws, order))
   ipcMain.handle(CHANNELS.prioritiesOrder, (_e, ws: string) => getPriorityOrder(ws))
+  ipcMain.handle(CHANNELS.workspacesUpdate, (_e, ws: string, folders) => updateWorkspaceViaDaemon(ws, folders))
+  ipcMain.handle(CHANNELS.workspacesCreate, (_e, ws: string, folders) => createWorkspaceViaDaemon(ws, folders))
+  ipcMain.handle(CHANNELS.workspacesDelete, (_e, ws: string) => deleteWorkspaceViaDaemon(ws))
   ipcMain.handle(CHANNELS.settingsGet, () => getSettingsViaDaemon())
   ipcMain.handle(CHANNELS.settingsSet, (_e, patch) => setSettingsViaDaemon(patch))
 }

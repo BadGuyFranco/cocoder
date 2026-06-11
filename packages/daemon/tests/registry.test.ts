@@ -36,9 +36,9 @@ describe('workspace registry', () => {
     expect(workspaces).toHaveLength(1)
     expect(workspaces[0]).toMatchObject({ id: 'demo', name: 'demo', path: join(home, 'product') })
     expect(workspaces[0]!.roots).toEqual([
-      { name: 'Product', path: join(home, 'product'), role: 'primary' },
-      { name: 'Support', path: join(home, 'local', 'workspace', 'support'), role: 'writable', description: 'editable tools' },
-      { name: 'reference', path: join(home, 'local', 'workspace', 'reference'), role: 'readonly' },
+      { name: 'Product', path: join(home, 'product'), rawPath: '${COCODER_HOME}/product', role: 'primary' },
+      { name: 'Support', path: join(home, 'local', 'workspace', 'support'), rawPath: './support', role: 'writable', description: 'editable tools' },
+      { name: 'reference', path: join(home, 'local', 'workspace', 'reference'), rawPath: 'refs/../reference', role: 'readonly' },
     ])
   })
 
@@ -93,6 +93,6 @@ describe('workspace registry', () => {
 
     const workspaces = await readWorkspaces(home)
 
-    expect(workspaces[0]!.roots).toEqual([{ name: 'Legacy', path: join(home, 'legacy'), role: 'primary' }])
+    expect(workspaces[0]!.roots).toEqual([{ name: 'Legacy', path: join(home, 'legacy'), rawPath: '${COCODER_HOME}/legacy', role: 'primary' }])
   })
 })

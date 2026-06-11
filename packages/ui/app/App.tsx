@@ -4,7 +4,7 @@
 // the design-faithful view-model from the ported seed (fixture parity, fully interactive); the daemon
 // adapter is wired in the next slice (the existing electron/ plumbing is untouched).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, sendOzMessage, launchRun, attachRun, teardownRun, resolveRun, testCli, createPriority, loadOrder, persistOrder, saveAssignments, type ConnectionState } from './live.ts'
+import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, sendOzMessage, launchRun, attachRun, teardownRun, resolveRun, testCli, createPriority, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, saveAssignments, type ConnectionState } from './live.ts'
 import { ADHOC_PRIORITY_ID, applyOrder, personasToAssignments } from './adapter.ts'
 import { Sidebar, type Route } from './ui/Sidebar.tsx'
 import { TopBar } from './ui/TopBar.tsx'
@@ -240,6 +240,62 @@ export function App() {
     setPrioritiesByWs((cur) => ({ ...cur, [activeId]: applyOrder(data.priorities, order) }))
     setRunsByWs((cur) => ({ ...cur, [activeId]: data.runs }))
   }
+  async function refreshWorkspaces(): Promise<Workspace[]> {
+    const oz = ozApi()
+    if (!oz) return workspaces
+    const next = await loadWorkspaces(oz)
+    if (next.length) setWorkspaces(next)
+    return next
+  }
+  const workspaceSlug = (name: string): string => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').replace(/-+/g, '-')
+  async function handleSaveWorkspace(ws: Workspace): Promise<void> {
+    if (!live) { setWorkspaces((all) => all.map((w) => (w.id === ws.id ? ws : w))); return }
+    const oz = ozApi()
+    if (!oz) { notify('err', 'Workspace save failed: daemon bridge unavailable.'); return }
+    const res = await updateWorkspace(oz, ws)
+    if (!res.ok) { notify('err', res.error); return }
+    await refreshWorkspaces()
+    notify('ok', 'Workspace saved.')
+  }
+  async function handleDeleteWorkspace(id: string): Promise<void> {
+    if (!live) {
+      setWorkspaces((all) => all.filter((w) => w.id !== id))
+      return
+    }
+    const oz = ozApi()
+    if (!oz) { notify('err', 'Workspace delete failed: daemon bridge unavailable.'); return }
+    const res = await deleteWorkspace(oz, id)
+    if (!res.ok) { notify('err', res.error); return }
+    const next = await refreshWorkspaces()
+    if (activeId === id) {
+      const first = next.find((w) => w.id !== id) ?? next[0]
+      if (first) selectWs(first.id)
+    }
+    notify('ok', 'Workspace deleted.')
+  }
+  async function handleCreateWorkspace(input: { name: string; description: string; root: { name: string; path: string } }): Promise<void> {
+    if (!live) {
+      const id = `ws-${Date.now()}`
+      const ws: Workspace = { id, name: input.name, description: input.description, icon: 'ph-thin ph-cube', created: 'just now', roots: [{ id: `r${Date.now()}`, name: input.root.name, path: input.root.path, role: 'primary' }] }
+      setWorkspaces((all) => [...all, ws]); setPrioritiesByWs((cur) => ({ ...cur, [id]: [] })); loadWs(id); setRoute('dashboard')
+      return
+    }
+    const oz = ozApi()
+    if (!oz) { notify('err', 'Workspace create failed: daemon bridge unavailable.'); return }
+    const id = workspaceSlug(input.name)
+    const folders = [
+      { name: input.root.name, path: input.root.path, role: 'primary' as const, ...(input.description ? { description: input.description } : {}) },
+      ...(input.root.path === '${COCODER_HOME}' ? [] : [{ name: 'CoCoder', path: '${COCODER_HOME}', role: 'readonly' as const }]),
+    ]
+    const res = await createWorkspace(oz, id, folders)
+    if (!res.ok) { notify('err', res.error); return }
+    await refreshWorkspaces()
+    setPrioritiesByWs((cur) => ({ ...cur, [res.data.workspace.id]: [] }))
+    loadWs(res.data.workspace.id)
+    setRoute('dashboard')
+    if (res.data.legacyHidden.length) notify('info', `Legacy workspaces no longer served: ${res.data.legacyHidden.join(', ')}`)
+    else notify('ok', 'Workspace created.')
+  }
   async function handleCreatePriority(p: { title: string; goal?: string; placeAtTop: boolean }): Promise<boolean> {
     const goal = p.goal?.trim() ? p.goal.trim() : undefined
     if (!live) {
@@ -395,7 +451,7 @@ export function App() {
             />
           )}
           {route === 'workspaces' && (
-            <WorkspacesScreen workspaces={workspaces} activeId={activeId} onChange={(ws) => setWorkspaces((all) => all.map((w) => (w.id === ws.id ? ws : w)))} onSetActive={loadWs} onCreate={() => setNewWsOpen(true)} onDelete={(id) => setWorkspaces((all) => all.filter((w) => w.id !== id))} onGotoDashboard={() => setRoute('dashboard')} live={live} />
+            <WorkspacesScreen workspaces={workspaces} activeId={activeId} onChange={(ws) => setWorkspaces((all) => all.map((w) => (w.id === ws.id ? ws : w)))} onSetActive={loadWs} onCreate={() => setNewWsOpen(true)} onDelete={(id) => void handleDeleteWorkspace(id)} onSave={(ws) => void handleSaveWorkspace(ws)} onGotoDashboard={() => setRoute('dashboard')} />
           )}
           {route === 'clis' && <CLIsScreen clis={clis} onTest={handleCliTest} onAdd={() => onSend('Register a new CLI.')} />}
           {route === 'personas' && <PersonasScreen personas={personas} clis={clis} onChange={setPersona} onAddSub={addSub} onRemoveSub={removeSub} onUpdateSub={updateSub} onNewPersonaAsPriority={() => setCraftOpen(true)} live={live} />}
@@ -404,11 +460,7 @@ export function App() {
         </div>
       </div>
 
-      <NewWorkspaceModal open={newWsOpen} onClose={() => setNewWsOpen(false)} onCreate={({ name, description, root }) => {
-        const id = `ws-${Date.now()}`
-        const ws: Workspace = { id, name, description, icon: 'ph-thin ph-cube', created: 'just now', roots: [{ id: `r${Date.now()}`, name: root.name, path: root.path, role: 'primary' }] }
-        setWorkspaces((all) => [...all, ws]); setPrioritiesByWs((cur) => ({ ...cur, [id]: [] })); loadWs(id); setRoute('dashboard')
-      }} />
+      <NewWorkspaceModal open={newWsOpen} onClose={() => setNewWsOpen(false)} onCreate={(input) => { void handleCreateWorkspace(input) }} />
       <NewPriorityModal open={newPriorityOpen} onClose={() => setNewPriorityOpen(false)} onSubmit={handleCreatePriority} />
       <CraftPersonaModal open={craftOpen} onClose={() => setCraftOpen(false)} clis={clis} onSubmit={({ name, summary, placeAtTop }) => handleCreatePriority({ title: name, goal: summary, placeAtTop })} />
     </div>

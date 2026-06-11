@@ -89,15 +89,17 @@ describe('helpers', () => {
   })
 })
 
-describe('workspaces (thin)', () => {
-  it('maps id/name and synthesizes a single primary root from path; description owed', () => {
+describe('workspaces', () => {
+  it('maps daemon roots with raw editable paths and resolved display paths', () => {
     const w = adaptWorkspace(W.workspaces[0])
     expect(w.id).toBe('cocoder')
     expect(w.name).toBe('CoCoder (dogfood)')
     expect(w.description).toBe('')
-    expect(w.roots).toHaveLength(1)
+    expect(w.roots).toHaveLength(2)
     expect(w.roots[0].role).toBe('primary')
-    expect(w.roots[0].path).toBe(W.workspaces[0].path)
+    expect(w.roots[0].path).toBe('${COCODER_HOME}')
+    expect(w.roots[0].resolvedPath).toBe(W.workspaces[0].path)
+    expect(w.roots[1]).toMatchObject({ name: 'Reference', path: './reference', resolvedPath: '/Volumes/NAS LOCAL/CoCoder/local/workspace/reference', role: 'readonly', description: 'Docs root' })
   })
 })
 

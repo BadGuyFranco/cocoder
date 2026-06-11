@@ -13,6 +13,7 @@ import type {
   ClisResponse,
   CliTestResponse,
   ChatMessage as DaemonChatMessage,
+  WorkspaceFolder,
 } from '../electron/ipc-contract.ts'
 import { adaptWorkspace, adaptRuns, adaptPriorities, adaptRunDetail, adaptPersonas, adaptCli } from './adapter.ts'
 import type { Workspace, Priority, Run, Persona, Cli, ChatMessage } from './model.ts'
@@ -116,6 +117,38 @@ export async function createPriority(
   priority: { title: string; goal?: string },
 ): Promise<{ ok: true; status: number; data: DPriority } | { ok: false; status: number; error: string }> {
   return oz.prioritiesCreate(workspaceId, priority)
+}
+
+export function workspaceFolders(workspace: Workspace): WorkspaceFolder[] {
+  return workspace.roots.map((root) => ({
+    ...(root.name.trim() ? { name: root.name.trim() } : {}),
+    path: root.path,
+    role: root.role,
+    ...(root.description?.trim() ? { description: root.description.trim() } : {}),
+  }))
+}
+
+export async function updateWorkspace(
+  oz: OzApi,
+  workspace: Workspace,
+): Promise<{ ok: true; status: number; data: Workspace } | { ok: false; status: number; error: string }> {
+  const res = await oz.workspacesUpdate(workspace.id, workspaceFolders(workspace))
+  if (!res.ok) return res
+  return { ok: true, status: res.status, data: adaptWorkspace(res.data) }
+}
+
+export async function createWorkspace(
+  oz: OzApi,
+  id: string,
+  folders: readonly WorkspaceFolder[],
+): Promise<{ ok: true; status: number; data: { workspace: Workspace; legacyHidden: readonly string[] } } | { ok: false; status: number; error: string }> {
+  const res = await oz.workspacesCreate(id, folders)
+  if (!res.ok) return res
+  return { ok: true, status: res.status, data: { workspace: adaptWorkspace(res.data.workspace), legacyHidden: res.data.legacyHidden } }
+}
+
+export async function deleteWorkspace(oz: OzApi, id: string): Promise<MutationResult> {
+  return oz.workspacesDelete(id)
 }
 
 // ── Drag-reorder seam ── the main-process channel prefers the daemon reorder endpoint and falls back

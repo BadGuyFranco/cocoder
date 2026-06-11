@@ -883,8 +883,8 @@ describe('Oz mutations + lifecycle', () => {
     expect(r.status).toBe(200)
     expect(r.json.workspace).toMatchObject({ id: 'cocoder', name: 'cocoder', path: home })
     expect(r.json.workspace.roots).toEqual([
-      { name: 'Dogfood', path: home, role: 'primary', description: 'install root' },
-      { name: 'support', path: join(home, 'local', 'workspace', 'support'), role: 'readonly' },
+      { name: 'Dogfood', path: home, rawPath: '${COCODER_HOME}', role: 'primary', description: 'install root' },
+      { name: 'support', path: join(home, 'local', 'workspace', 'support'), rawPath: './support', role: 'readonly' },
     ])
     const persisted = JSON.parse(await readFile(file, 'utf8'))
     expect(persisted).toEqual({ folders, settings: { 'editor.tabSize': 2 } })
@@ -950,8 +950,8 @@ describe('Oz mutations + lifecycle', () => {
     expect(r.json.legacyHidden).toEqual(['cocoder'])
     expect(r.json.workspace).toMatchObject({ id: 'new-workspace', name: 'new-workspace', path: home })
     expect(r.json.workspace.roots).toEqual([
-      { name: 'Dogfood', path: home, role: 'primary' },
-      { name: 'docs', path: join(home, 'local', 'workspace', 'docs'), role: 'readonly' },
+      { name: 'Dogfood', path: home, rawPath: '${COCODER_HOME}', role: 'primary' },
+      { name: 'docs', path: join(home, 'local', 'workspace', 'docs'), rawPath: './docs', role: 'readonly' },
     ])
     expect(JSON.parse(await readFile(join(home, 'local', 'workspace', 'new-workspace.code-workspace'), 'utf8'))).toEqual({ folders, settings: {} })
     const get = await call(oz!, 'GET', '/workspaces')
@@ -985,7 +985,7 @@ describe('Oz mutations + lifecycle', () => {
     expect(r.status).toBe(201)
     expect(r.json.legacyHidden).toEqual(['other'])
     expect(r.json.workspace).toMatchObject({ id: 'cocoder', name: 'cocoder', path: home })
-    expect(r.json.workspace.roots).toEqual([{ name: 'Migrated', path: home, role: 'primary' }])
+    expect(r.json.workspace.roots).toEqual([{ name: 'Migrated', path: home, rawPath: '${COCODER_HOME}', role: 'primary' }])
     const get = await call(oz!, 'GET', '/workspaces')
     expect(get.json.workspaces.map((workspace: any) => workspace.id)).toEqual(['cocoder'])
   })
@@ -1062,7 +1062,7 @@ describe('Oz mutations + lifecycle', () => {
     const get = await call(oz!, 'GET', '/workspaces')
 
     expect(deleted.status).toBe(200)
-    expect(get.json.workspaces).toEqual([{ id: 'cocoder', name: 'CoCoder', path: home, roots: [{ name: 'CoCoder', path: home, role: 'primary' }] }])
+    expect(get.json.workspaces).toEqual([{ id: 'cocoder', name: 'CoCoder', path: home, roots: [{ name: 'CoCoder', path: home, rawPath: '${COCODER_HOME}', role: 'primary' }] }])
   })
 
   test('DELETE /workspaces/:id → 403 without a CSRF token', async () => {

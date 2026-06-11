@@ -52,8 +52,23 @@ interface PostCall { path: string; body?: unknown }
 interface PutCall { workspaceId: string; assignments: unknown }
 interface CreateCall { workspaceId: string; priority: { title: string; goal?: string } }
 interface ReorderCall { workspaceId: string; order: readonly string[] }
+interface WorkspaceUpdateCall { workspaceId: string; folders: unknown }
+interface WorkspaceCreateCall { workspaceId: string; folders: unknown }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mockOz(opts: { posts?: PostCall[]; puts?: PutCall[]; creates?: CreateCall[]; reorders?: ReorderCall[]; postResult?: any; putResult?: any; createResult?: any; runs?: { runs: RunSummary[] } } = {}) {
+function mockOz(opts: {
+  posts?: PostCall[]
+  puts?: PutCall[]
+  creates?: CreateCall[]
+  reorders?: ReorderCall[]
+  workspaceUpdates?: WorkspaceUpdateCall[]
+  workspaceCreates?: WorkspaceCreateCall[]
+  postResult?: any
+  putResult?: any
+  createResult?: any
+  workspaceUpdateResult?: any
+  workspaceCreateResult?: any
+  runs?: { runs: RunSummary[] }
+} = {}) {
   return {
     health: async () => ({ state: 'connected', sha: 'deadbeef' }),
     settingsGet: async () => ({ pollIntervalMs: 2500, defaultWorkspaceId: null }),
@@ -74,6 +89,7 @@ function mockOz(opts: { posts?: PostCall[]; puts?: PutCall[]; creates?: CreateCa
       return typeof opts.postResult === 'function' ? opts.postResult(path, body) : (opts.postResult ?? { ok: true, status: 202, data: { runId: 'run_new' } })
     },
     daemonPut: async () => ok({}),
+    daemonDelete: async () => ok({}),
     personasAssignmentsSave: async (workspaceId: string, assignments: unknown) => {
       opts.puts?.push({ workspaceId, assignments })
       return opts.putResult ?? ok(assignments)
@@ -88,6 +104,15 @@ function mockOz(opts: { posts?: PostCall[]; puts?: PutCall[]; creates?: CreateCa
       return order
     },
     prioritiesOrder: async () => [],
+    workspacesUpdate: async (workspaceId: string, folders: unknown) => {
+      opts.workspaceUpdates?.push({ workspaceId, folders })
+      return opts.workspaceUpdateResult ?? ok((workspacesFx as any).workspaces[0])
+    },
+    workspacesCreate: async (workspaceId: string, folders: unknown) => {
+      opts.workspaceCreates?.push({ workspaceId, folders })
+      return opts.workspaceCreateResult ?? ok({ workspace: { id: workspaceId, name: workspaceId, path: '/new', roots: folders }, legacyHidden: [] })
+    },
+    workspacesDelete: async () => ok(true),
   }
 }
 
@@ -285,6 +310,72 @@ describe('Oz renderer — live daemon path', () => {
       workspaceId: 'cocoder',
       priority: { title: 'Persona: Auditor', goal: 'Reviews risky diffs' },
     })
+  })
+
+  it('Workspaces save sends raw path strings and the full folders array', async () => {
+    const workspaceUpdates: WorkspaceUpdateCall[] = []
+    setOz(mockOz({ workspaceUpdates }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(screen.getByText('Workspaces'))
+    fireEvent.change(await screen.findByDisplayValue('${COCODER_HOME}'), { target: { value: '${COCODER_HOME}/edited' } })
+    fireEvent.click(screen.getByText('Save roots'))
+
+    await waitFor(() => expect(workspaceUpdates.length).toBe(1))
+    expect(workspaceUpdates[0].workspaceId).toBe('cocoder')
+    expect(workspaceUpdates[0].folders).toEqual([
+      { name: 'CoCoder', path: '${COCODER_HOME}/edited', role: 'primary' },
+      { name: 'Reference', path: './reference', role: 'readonly', description: 'Docs root' },
+    ])
+  })
+
+  it('Workspaces save failures surface daemon text without fake-saving locally', async () => {
+    const workspaceUpdates: WorkspaceUpdateCall[] = []
+    setOz(mockOz({ workspaceUpdates, workspaceUpdateResult: { ok: false, status: 409, error: 'workspace must be migrated first' } }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(screen.getByText('Workspaces'))
+    fireEvent.click(await screen.findByText('Save roots'))
+
+    await waitFor(() => expect(screen.getByText('workspace must be migrated first')).toBeDefined())
+    expect(workspaceUpdates.length).toBe(1)
+  })
+
+  it('Workspaces create surfaces legacyHidden from the daemon', async () => {
+    const workspaceCreates: WorkspaceCreateCall[] = []
+    setOz(mockOz({
+      workspaceCreates,
+      workspaceCreateResult: ok({
+        workspace: {
+          id: 'new-workspace',
+          name: 'new-workspace',
+          path: '/new',
+          roots: [{ name: 'New Root', path: '/new', rawPath: '/new', role: 'primary' }],
+        },
+        legacyHidden: ['legacy-only'],
+      }),
+    }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(screen.getByText('Workspaces'))
+    fireEvent.click(await screen.findByText('New workspace'))
+    fireEvent.change(await screen.findByPlaceholderText('e.g. AcmeCRM, Vault, Internal Tools'), { target: { value: 'New Workspace' } })
+    fireEvent.change(screen.getByPlaceholderText('cocoder-cli'), { target: { value: 'New Root' } })
+    fireEvent.change(screen.getByPlaceholderText('~/dev/cocoder-cli'), { target: { value: '/new' } })
+    fireEvent.click(screen.getByText('Create & open'))
+
+    await waitFor(() => expect(workspaceCreates.length).toBe(1))
+    expect(workspaceCreates[0]).toEqual({
+      workspaceId: 'new-workspace',
+      folders: [
+        { name: 'New Root', path: '/new', role: 'primary' },
+        { name: 'CoCoder', path: '${COCODER_HOME}', role: 'readonly' },
+      ],
+    })
+    await waitFor(() => expect(screen.getByText('Legacy workspaces no longer served: legacy-only')).toBeDefined())
   })
 })
 

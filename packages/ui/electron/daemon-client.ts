@@ -84,6 +84,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 export const daemonGet = <T>(path: string) => request<T>('GET', path)
 export const daemonPost = <T>(path: string, body?: unknown) => request<T>('POST', path, body)
 export const daemonPut = <T>(path: string, body?: unknown) => request<T>('PUT', path, body)
+export const daemonDelete = <T>(path: string) => request<T>('DELETE', path)
 
 export async function ozChat(workspaceId: string, text: string): Promise<DaemonResult<OzChatReply>> {
   const r = await requestRaw<Partial<OzChatReply> & { error?: string }>('POST', '/oz/messages', { text, workspaceId })
