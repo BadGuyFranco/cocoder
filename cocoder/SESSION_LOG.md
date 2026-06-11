@@ -12,6 +12,36 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-11 — **Full Oz dashboard: ADR-0019 Workspaces daemon model end-to-end (run_57)**
+
+**Persona:** Oscar + Bob (4 atoms) | **Priority:** full-oz-dashboard | **Plan:** owed surface #2
+(Workspaces CRUD + roots/role model per ADR-0019)
+
+**Outcomes:**
+- 4 atoms verified and committed on `cocoder/run_57`, closing owed surface #2 **end-to-end**:
+  registry reader rebuilt on the `local/workspace/*.code-workspace` directory-of-files SSOT
+  (three roles, exactly-one-primary, invalid files skipped, `${VAR}` + relative-path resolution,
+  legacy `workspaces.json` fallback, `path`=primary invariant so routes/launcher unchanged)
+  (`25c9b8d`); roots/roles on `GET` + `PUT /workspaces/:id` via ONE shared validator, raw path
+  strings persisted verbatim, ADR rules 6/7 enforced pre-write, 409-with-migration-message for
+  legacy workspaces (`99f8509`); `POST` (slug-gated create = the migration path, `legacyHidden`
+  visibility instead of a refuse-deadlock) + `DELETE` (409 on legacy/in-flight-run; last-file
+  delete resurrects the fallback, asserted as intended) (`e5207dc`); Workspaces screen live —
+  `rawPath` fidelity in the editor, `electron/workspaces-sync.ts` seam (daemon-first, verbatim
+  errors, no fake-saves), New-Workspace modal POSTs with auto-CoCoder-root, stale banner removed,
+  ENDPOINTS_OWED row 5 → SERVED (`eb7460c`).
+- Verification: core 204 · daemon 120 · ui 77 · root typecheck clean · topology pass (per-atom;
+  whole-tree diff each gate).
+- Known cosmetic gap: the screen's workspace Name field edits local state only (daemon name =
+  filename stem by design) — a name edit reverts on refresh.
+- Disposition: **`continue`** — remaining: Oz-as-persona (ADR-0017), ADR-0018 stage 3 (Oscar
+  session mode — investigate the runner prompting seam first), `POST /runs/:id/stop`, Oz-chat SSE.
+
+**Next:** founder follow-up (zero code): migrate the dogfood install off the legacy registry via
+the New-Workspace modal (creates `local/workspace/cocoder.code-workspace`). Then Oz-as-persona
+per ADR-0017 (founder-present recommended) or ADR-0018 stage 3 after the prompting-seam
+investigation.
+
 ## 2026-06-11 — **Full Oz dashboard: priority-create UI, ADR-0018 stage 2, ENDPOINTS_OWED sweep (run_56)**
 
 **Persona:** Oscar + Bob (3 atoms) | **Priority:** full-oz-dashboard | **Plan:** owed surfaces #8

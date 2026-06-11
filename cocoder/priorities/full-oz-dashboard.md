@@ -39,10 +39,14 @@ not-landed from existing run polling; click opens the drawer with its Resolve ac
 Dashboard "Add priority" action + Craft-a-persona files through the same typed
 `electron/priorities-create.ts` seam) and **ADR-0018 stage 2** (`mode` persists in
 `assignments.json` and is honored for Play dispatch — `headless` forces the captured-subprocess
-path; `visible` never forces panes), plus a truth sweep of `ENDPOINTS_OWED.md`. **Not
-archive-ready** — remaining: Oz-as-persona (ADR-0017), Workspaces daemon model (ADR-0019),
-persona `mode` honoring for Oscar/Bob sessions (ADR-0018 stage 3; Bob gated on a
-captured-subprocess monitor path) + the UI mode editor, `POST /runs/:id/stop`, and Oz-chat SSE.
+path; `visible` never forces panes), plus a truth sweep of `ENDPOINTS_OWED.md`. run_57
+(2026-06-11) closed the **Workspaces daemon model end-to-end (ADR-0019, owed slice #2)** in four
+atoms: the registry reads `local/workspace/*.code-workspace` files (roles, one-primary rule,
+legacy `workspaces.json` fallback), full daemon CRUD (`PUT`/`POST`/`DELETE /workspaces…`) with
+ADR rules 6/7 enforced at the write gate, and the Workspaces screen operating it live with
+raw-path fidelity. **Not archive-ready** — remaining: Oz-as-persona (ADR-0017), persona `mode`
+honoring for Oscar/Bob sessions (ADR-0018 stage 3; Bob gated on a captured-subprocess monitor
+path) + the UI mode editor, `POST /runs/:id/stop`, and Oz-chat SSE.
 
 > History worth recording: a first pass mistakenly built from `docs/oz-design-brief.md` (the *input
 > brief* that was pasted into claude.ai/design), not the founder's actual **design output**. It was then
@@ -146,6 +150,34 @@ captured-subprocess monitor path) + the UI mode editor, `POST /runs/:id/stop`, a
   updated to current reality incl. the stale-since-run_42 CLIs row (`b26d68b`).
 - **Verification (run_56):** core 204 · daemon 98 · ui 70 · root typecheck clean · topology pass
   (per-atom at the verify gate; whole-tree diff checked every atom).
+- **run_57 (2026-06-11), four atoms, all verified + committed on `cocoder/run_57` — the ADR-0019
+  Workspaces daemon model, end-to-end:**
+  (0) registry reader rebuilt on the directory-of-files SSOT (`25c9b8d`) — `local/workspace/
+  *.code-workspace` files (id/name = filename stem), three-role taxonomy with exactly-one-primary
+  enforced, invalid files skipped not fatal, `${VAR}` expansion + VS-Code-style relative-path
+  resolution against the file's dir, legacy `workspaces.json` fallback (synthesizes a primary
+  root; the directory, once non-empty, supersedes it WHOLESALE), and the invariant
+  `RegistryWorkspace.path` = the primary root's path so routes/launcher needed zero changes;
+  (1) roots/roles exposed on `GET /workspaces` + `PUT /workspaces/:id` (`99f8509`) — ONE shared
+  validator in `registry.ts` owns the folder rules for reader and writer; raw `${VAR}`/relative
+  path strings persist verbatim (never resolved absolutes); ADR rules 6 (CoCoder always a root)
+  and 7 (primary never strictly inside the install) reject with plain-English 400s BEFORE any
+  write; 409 for legacy-sourced workspaces names the migration path; atomic dot-tmp+rename;
+  (2) `POST /workspaces` + `DELETE /workspaces/:id` (`e5207dc`) — create is slug-gated
+  (traversal-proof), 409s case-insensitively, and doubles as the legacy-migration path: the 201
+  returns `legacyHidden` naming any legacy-only ids no longer served (visible + audited, never a
+  refuse-deadlock); delete 409s for legacy-sourced workspaces and for in-flight runs
+  (`ctx.inFlight`), and deleting the last file resurrecting the legacy fallback is asserted as
+  intended; (3) Workspaces screen live (`eb7460c`) — `RegistryRoot.rawPath` feeds the editor (the
+  raw string is what's edited and persisted; resolved path shown muted), new
+  `electron/workspaces-sync.ts` seam behind `window.oz.workspacesUpdate/Create/Delete`
+  (daemon-first, verbatim errors, NO offline fake-saves), New-Workspace modal POSTs a slugged id
+  and auto-includes the CoCoder root (rule 6), `legacyHidden` surfaces as a plain notice, Delete
+  wired to the screen's pre-existing button, stale PendingBanner removed + `ENDPOINTS_OWED.md`
+  row 5 truthed to SERVED. Known cosmetic gap: the screen's workspace Name field edits local
+  state only (daemon name = filename stem by design) so a name edit reverts on refresh.
+- **Verification (run_57):** core 204 · daemon 120 · ui 77 · root typecheck clean · topology pass
+  (per-atom at the verify gate; whole-tree diff checked every atom).
 
 > History worth recording (run_46): this Oz-chat slice was independently built by **run_44** (a
 > status/query design) and **run_45** (the bounded command-interface design) — but **neither landed**;
@@ -167,7 +199,7 @@ mechanical infra (Settings was the last clean infra slice).
 | # | Surface | Seam / blocker |
 |---|---------|----------------|
 | 1 | Oz chat — `POST /oz/messages` | **SERVED** (run_46, `0637c04`): bounded command interface — verbs `launch <priorityId>` / `show <runId>` / `stop`+`teardown <runId>` / `status [runId]` / `help` parsed in `packages/daemon/src/oz-chat.ts` and dispatched to existing launcher ops; **no in-daemon LLM**, rides the existing Bearer/CSRF/loopback posture. SSE/stream still deferred. |
-| 2 | Workspaces CRUD + `roots[]`/role model | **DECIDED — build-work, not a decision.** Model settled in [ADR-0019](../decisions/0019-multi-root-workspaces.md) (three roles primary/writable/readonly; `workspace/` directory-of-files; CoCoder-always-a-root). Build = teach the daemon the ratified model (today's `workspace` table is a single-path stub). Zone settled by the reorg (2026-06-10): install `local/workspace/`. |
+| 2 | Workspaces CRUD + `roots[]`/role model | **SERVED end-to-end** (run_57, `25c9b8d` + `99f8509` + `e5207dc` + `eb7460c`): the daemon implements the full [ADR-0019](../decisions/0019-multi-root-workspaces.md) model — `local/workspace/*.code-workspace` directory-of-files SSOT (legacy `workspaces.json` fallback until migrated), roots/roles on `GET`, `PUT`/`POST`/`DELETE /workspaces…` with rules 6/7 enforced at the write gate, create = the migration path (`legacyHidden` visibility) — and the Workspaces screen operates it live with raw-path fidelity via `electron/workspaces-sync.ts`. NOTE: this install still runs on the legacy fallback until someone creates `local/workspace/cocoder.code-workspace` (the New-Workspace modal or a `POST /workspaces` does it). |
 | 3 | `POST /runs/:id/stop` | Investigate launcher/runner process ownership before scoping. |
 | 4 | Persona `{mode, subAgents}` | **[ADR-0018](../decisions/0018-persona-run-mode-and-sub-agents.md) ACCEPTED (run_54 wrap). Sub-agents SERVED** (run_55, `2eb8591`): the Personas screen renders + persists per-Play `{cli, model}` over the existing `plays` map (no new schema). **`mode` stage 2 SERVED** (run_56, `bcac308`): `mode` persists in `assignments.json` and is honored for Play dispatch (`headless` forces captured subprocess; `visible` never forces panes — pane exit isn't detectable, the run_28 hang class); renderer passes `mode` through its full-map PUT untouched. **Still owed:** Oscar/Bob session honoring (Bob gated on a captured-subprocess monitor path) + the UI mode editor (picker stays a local preview until honoring is complete). |
 | 5 | `POST /clis` (add CLI) | CLIs derive from compiled adapters — defer (dynamic registration feature). |
@@ -200,17 +232,18 @@ no founder decisions are outstanding on this priority.
   No DB migration: priorities stay `.md` files; sequence is a git-tracked order-only
   `cocoder/priorities/order.json`; drag-reorder rewrites it. Owed slice #8 reclassified above.
 
-**Recommended next slice (updated run_56):** no cheap opener is left — the remaining slices are
-all session-sized. In rough order of value: (a) **Oz as a persona** per ADR-0017 — biggest
-remaining piece, best started with the founder present; (b) the **Workspaces daemon model** per
-ADR-0019 (#2) — decided build-work, founder-independent; (c) **ADR-0018 stage 3** (#4) — honor
-`mode` for the Oscar session next; note the real seam is the runner's PROMPTING mechanism (the
-orchestration loop sends Oscar follow-up prompts via its pane — a headless Oscar needs the runner
-to deliver verify/next prompts to a captured-subprocess session, likely as fresh one-shot
-invocations over the file-artifact handshake), so scope that investigation before delegating; Bob
-stays last (gated on a captured-subprocess monitor path); (d) `POST /runs/:id/stop` (#3 —
-investigate launcher/runner process ownership first); (e) Oz-chat SSE. Priority-create (#8, both
-halves) and `mode` stage 2 (#4 Plays) landed across run_55/run_56.
+**Recommended next slice (updated run_57):** the Workspaces daemon model (#2) landed in run_57,
+so the founder-independent queue is thinner. In rough order of value: (a) **Oz as a persona** per
+ADR-0017 — biggest remaining piece, best started with the founder present; (b) **ADR-0018
+stage 3** (#4) — honor `mode` for the Oscar session next; note the real seam is the runner's
+PROMPTING mechanism (the orchestration loop sends Oscar follow-up prompts via its pane — a
+headless Oscar needs the runner to deliver verify/next prompts to a captured-subprocess session,
+likely as fresh one-shot invocations over the file-artifact handshake), so scope that
+investigation before delegating; Bob stays last (gated on a captured-subprocess monitor path);
+(c) `POST /runs/:id/stop` (#3 — investigate launcher/runner process ownership first); (d) Oz-chat
+SSE. A zero-code founder follow-up from run_57: migrate the dogfood install off the legacy
+registry by creating `local/workspace/cocoder.code-workspace` from the dashboard's New-Workspace
+modal (or `POST /workspaces`) — until then the daemon serves the legacy fallback.
 
 > ⚠️ **run_45 incident — read before delegating.** Twice the builder rebuilt an entire, undelegated
 > "Priority Architecture Contract" feature into `packages/core` (incl. a `MissingArchitectureContractError`
