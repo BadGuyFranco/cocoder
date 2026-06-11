@@ -281,8 +281,10 @@ The orchestrator watches your pane live and may nudge you if you stall; keep wor
 /** Dispatch an atom into Bob's warm pane (sent once Oscar has delegated it). Names the directive path to
  *  read and the atom NUMBER — never the literal completion marker, so the monitor cannot match the
  *  marker from this instruction's own echo (dogfood bug). Bob forms the marker per the standby prompt. */
-export function buildBuilderDispatch(directivePath: string, atomIndex: number): string {
-  return `PROCEED — this is atom ${atomIndex}. Read your task from ${directivePath} and implement it now within your write-scope. When you are fully done (tests/typecheck run), print your completion marker for atom ${atomIndex} on its own line, exactly as your standby instructions describe.`
+export function buildBuilderDispatch(directivePath: string, atomIndex: number, loopLedgerPath?: string): string {
+  const base = `PROCEED — this is atom ${atomIndex}. Read your task from ${directivePath} and implement it now within your write-scope. When you are fully done (tests/typecheck run), print your completion marker for atom ${atomIndex} on its own line, exactly as your standby instructions describe.`
+  if (loopLedgerPath === undefined) return base
+  return `${base} This is a loop atom: after each completed iteration, append one JSON line to ${loopLedgerPath} with at minimum {"iteration":<1-based int>,"result":"green"|"red","failed":"<what failed>","changed":"<what changed>","inScope":<bool>}.`
 }
 
 /** The verify dispatch into Oscar's pane once the monitor reports the atom done — the gate (ADR-0011),

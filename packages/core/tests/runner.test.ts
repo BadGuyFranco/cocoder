@@ -187,6 +187,17 @@ const fakeIO = (opts: {
 const doneJudge: MakeJudge = () => async () => ({ state: 'done' })
 
 const delegate = (task: string): Directive => ({ kind: 'delegate', task })
+const loopDelegate = (task: string, over: Partial<NonNullable<Extract<Directive, { kind: 'delegate' }>['loop']>> = {}): Directive => ({
+  kind: 'delegate',
+  task,
+  loop: {
+    goal: 'Make the criterion green',
+    criterion: 'pnpm test exits 0',
+    maxIterations: 1,
+    wallClockMs: 1_000_000,
+    ...over,
+  },
+})
 const wrapup = (pickup: string): Directive => ({ kind: 'wrapup', pickup })
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 const wrapPlay: Play = {
@@ -462,6 +473,115 @@ describe('runRun (multi-atom loop)', () => {
     expect(types).toContain('verify-rejected')
     const wis = store.listWorkItems(result.runId)
     expect(wis.map((w) => w.status)).toEqual(['abandoned', 'done'])
+  })
+
+  test('loop iteration cap blocks the atom, quarantines in-scope changes, and continues', async () => {
+    const store = openRunStore(':memory:')
+    const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-loop-'))
+    const restored: string[][] = []
+    const sent: string[] = []
+    let runDir = ''
+    let changedCall = 0
+    const git: Git = {
+      ...worktreeStubs,
+      async headSha() {
+        return 'h0'
+      },
+      async changedFiles() {
+        return changedCall++ === 0 ? ['packages/bad.ts'] : ['packages/good.ts']
+      },
+      async addAndCommit() {
+        return 'sha-good'
+      },
+      async restoreToHead(_cwd, files) {
+        restored.push([...files])
+      },
+      async show() {
+        return ''
+      },
+    }
+    const sessionHost = fakeSessionHost({
+      async readScreen() {
+        await writeFile(
+          join(runDir, 'loop-ledger-0.jsonl'),
+          [
+            'not json',
+            '{"iteration":1,"result":"red","failed":"criterion still red","changed":"edited bad","inScope":true}',
+          ].join('\n'),
+          'utf8',
+        )
+        return 'still working'
+      },
+      async sendInput(_ref, text) {
+        sent.push(text)
+      },
+    })
+    const loopThenDone: MakeJudge = ({ atomIndex }) => async () => (atomIndex === 0 ? { state: 'progressing' } : { state: 'done' })
+    const io = fakeIO({ directives: [loopDelegate('loop atom'), delegate('good atom'), wrapup('done')] })
+    const result = await runRun(
+      baseDeps({
+        store,
+        git,
+        sessionHost,
+        makeJudge: loopThenDone,
+        io: {
+          ...io,
+          async ensureRunDir(dir) {
+            runDir = dir
+            await mkdir(dir, { recursive: true })
+          },
+        },
+      }),
+      { ...input, runsRoot },
+    )
+
+    expect(result.status).toBe('completed')
+    expect(result.atoms).toBe(2)
+    expect(result.committedShas).toEqual(['sha-good'])
+    expect(restored).toEqual([['packages/bad.ts']])
+    expect(store.listWorkItems(result.runId).map((w) => w.status)).toEqual(['abandoned', 'done'])
+    const cap = store.listEvents(result.runId).find((e) => e.type === 'loop-capped')
+    expect(cap?.data).toMatchObject({
+      atom: 0,
+      cap: 'iterations',
+      ledger: [{ iteration: 1, result: 'red', failed: 'criterion still red', changed: 'edited bad', inScope: true }],
+    })
+    expect(sent.some((text) => text.includes('BLOCKED at the loop iterations cap'))).toBe(true)
+  })
+
+  test('loop wall-clock cap is recorded distinctly from the atom timeout', async () => {
+    const store = openRunStore(':memory:')
+    const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-loop-'))
+    let runDir = ''
+    const sessionHost = fakeSessionHost({
+      async readScreen() {
+        if (runDir !== '') await writeFile(join(runDir, 'loop-ledger-0.jsonl'), '', 'utf8')
+        await sleep(5)
+        return 'still working'
+      },
+    })
+    const loopThenDone: MakeJudge = ({ atomIndex }) => async () => (atomIndex === 0 ? { state: 'progressing' } : { state: 'done' })
+    const io = fakeIO({ directives: [loopDelegate('loop atom', { wallClockMs: 1 }), delegate('good atom'), wrapup('done')] })
+    const result = await runRun(
+      baseDeps({
+        store,
+        sessionHost,
+        makeJudge: loopThenDone,
+        io: {
+          ...io,
+          async ensureRunDir(dir) {
+            runDir = dir
+            await mkdir(dir, { recursive: true })
+          },
+        },
+      }),
+      { ...input, runsRoot },
+    )
+
+    expect(result.status).toBe('completed')
+    const cap = store.listEvents(result.runId).find((e) => e.type === 'loop-capped')
+    expect(cap?.data).toMatchObject({ atom: 0, cap: 'wall-clock', ledger: [] })
+    expect(store.listEvents(result.runId).some((e) => e.type === 'builder-failed')).toBe(false)
   })
 
   test('backstop: too many consecutive rejects force-wraps the run with a recorded reason', async () => {

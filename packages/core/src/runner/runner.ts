@@ -25,6 +25,7 @@ import { join } from 'node:path'
 import { runBranchFor, worktreePathFor } from '../worktree/paths.js'
 import type { RunnerIO } from './io.js'
 import { paneLabel } from './labels.js'
+import { readLoopLedger } from './loop-ledger.js'
 import { type Judge, makeHeuristicJudge, runMonitor } from './monitor.js'
 import { spawnObserver } from './observer.js'
 import {
@@ -606,6 +607,24 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     return gate
   }
 
+  const quarantineAtom = async (atomIndex: number, headBefore: string, selfCommitEvent: string): Promise<void> => {
+    // If the atom SELF-committed (HEAD moved under trust-the-CLI), the working-tree quarantine can't
+    // undo it — surface that so it isn't silently carried in history.
+    if ((await git.headSha(worktreePath)) !== headBefore) {
+      store.recordEvent({ runId: run.id, type: selfCommitEvent, data: { atom: atomIndex, headBefore } })
+    }
+    // QUARANTINE (atom isolation): discard this atom's IN-SCOPE working-tree changes so they can't ride
+    // into a LATER passing atom's commit. Prior work is already committed; out-of-scope files are left.
+    const { inScope } = partitionByScope(await git.changedFiles(worktreePath), scope)
+    if (inScope.length === 0) return
+    try {
+      await git.restoreToHead(worktreePath, inScope)
+      store.recordEvent({ runId: run.id, type: 'atom-quarantined', data: { atom: atomIndex, files: inScope } })
+    } catch (err) {
+      store.recordEvent({ runId: run.id, type: 'atom-quarantine-failed', data: { atom: atomIndex, files: inScope, reason: String(err) } })
+    }
+  }
+
   await refreshStatus('awaiting-directive', 0, null, 'awaiting first directive')
 
   for (;;) {
@@ -674,8 +693,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     store.recordEvent({ runId: run.id, type: 'delegation', data: { workItemId: workItem.id, atom: atomIndex, task: directive.task } })
     const headBefore = await git.headSha(worktreePath) // re-snapshot per atom (self-commit detection)
     const sentinel = atomSentinel(atomIndex)
+    const loopLedgerPath = directive.loop === undefined ? null : join(runDir, `loop-ledger-${atomIndex}.jsonl`)
     await sessionHost.show(bobRef)
-    await sessionHost.sendInput(bobRef, buildBuilderDispatch(directivePath, atomIndex))
+    await sessionHost.sendInput(bobRef, buildBuilderDispatch(directivePath, atomIndex, loopLedgerPath ?? undefined))
     store.recordEvent({ runId: run.id, type: 'builder-dispatch', data: { ref: bobRef.id, atom: atomIndex } })
     await refreshStatus('building', atomIndex, directive.task, `monitoring builder on atom ${atomIndex}`)
     log(`atom ${atomIndex} dispatched to bob (work item ${workItem.id}); monitoring live progress`)
@@ -687,13 +707,38 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         judge: makeJudge({ atomIndex, doneSentinel: sentinel, task: directive.task }),
         isAlive: async () => (await sessionHost.status(bobRef)).state === 'running',
         nudge: (text) => sessionHost.sendInput(bobRef, text),
+        readLoopLedger: loopLedgerPath === null ? undefined : () => readLoopLedger(loopLedgerPath),
         onAssessment: (a) => {
           if (a.state !== 'progressing') store.recordEvent({ runId: run.id, type: 'monitor-assessment', data: { atom: atomIndex, state: a.state, note: a.note ?? null } })
         },
         onNudge: (text) => store.recordEvent({ runId: run.id, type: 'nudge', data: { atom: atomIndex, text } }),
       },
-      { task: directive.task, cadenceMs: t.monitorCadenceMs, timeoutMs: t.buildMs, minNudgeIntervalMs: t.minNudgeIntervalMs },
+      {
+        task: directive.task,
+        cadenceMs: t.monitorCadenceMs,
+        timeoutMs: t.buildMs,
+        minNudgeIntervalMs: t.minNudgeIntervalMs,
+        loop: directive.loop === undefined ? undefined : { maxIterations: directive.loop.maxIterations, wallClockMs: directive.loop.wallClockMs },
+      },
     )
+    if (outcome.reason === 'loop-iteration-cap' || outcome.reason === 'loop-wall-clock-cap') {
+      const ledger = outcome.loopLedger ?? (loopLedgerPath === null ? [] : await readLoopLedger(loopLedgerPath))
+      const cap = outcome.reason === 'loop-iteration-cap' ? 'iterations' : 'wall-clock'
+      store.setWorkItemStatus(workItem.id, 'abandoned')
+      store.recordEvent({ runId: run.id, type: 'loop-capped', data: { atom: atomIndex, cap, ledger } })
+      await quarantineAtom(atomIndex, headBefore, 'atom-self-committed-loop-capped')
+      const outcomeLine = `atom ${atomIndex} was BLOCKED at the loop ${cap} cap — nothing committed`
+      log(outcomeLine)
+      n += 1
+      if (n >= limits.maxAtoms) {
+        pickup = `Run stopped at the ${limits.maxAtoms}-atom backstop. Continue from here in a fresh session.`
+        store.recordEvent({ runId: run.id, type: 'wrapup', data: { atoms: n, forced: true, reason: 'max-atoms' } })
+        break
+      }
+      await sessionHost.show(oscarRef)
+      await sessionHost.sendInput(oscarRef, buildNextOrWrapDispatch(join(runDir, `directive-${n}.json`), outcomeLine))
+      continue
+    }
     if (outcome.reason !== 'done') {
       store.setWorkItemStatus(workItem.id, 'abandoned')
       return await fail('builder-failed', `builder ${outcome.reason} on atom ${atomIndex}`, atomIndex)
@@ -720,24 +765,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     if (verdict.verdict === 'fail') {
       store.recordEvent({ runId: run.id, type: 'verify-rejected', data: { atom: atomIndex, reason: verdict.reason } })
       store.setWorkItemStatus(workItem.id, 'abandoned')
-      // If the rejected atom SELF-committed (HEAD moved under trust-the-CLI), the working-tree quarantine
-      // can't undo it — surface that so it isn't silently carried in history.
-      if ((await git.headSha(worktreePath)) !== headBefore) {
-        store.recordEvent({ runId: run.id, type: 'atom-self-committed-rejected', data: { atom: atomIndex, headBefore } })
-      }
-      // QUARANTINE (atom isolation): discard this rejected atom's IN-SCOPE working-tree changes so they
-      // can't ride into a LATER passing atom's commit. The clean-tree precondition + per-atom commit
-      // guarantee every in-scope change now in the tree is THIS atom's; prior work is committed (untouched),
-      // out-of-scope files are left alone. If the restore fails, record it honestly (don't claim success).
-      const { inScope: rejectedInScope } = partitionByScope(await git.changedFiles(worktreePath), scope)
-      if (rejectedInScope.length > 0) {
-        try {
-          await git.restoreToHead(worktreePath, rejectedInScope)
-          store.recordEvent({ runId: run.id, type: 'atom-quarantined', data: { atom: atomIndex, files: rejectedInScope } })
-        } catch (err) {
-          store.recordEvent({ runId: run.id, type: 'atom-quarantine-failed', data: { atom: atomIndex, files: rejectedInScope, reason: String(err) } })
-        }
-      }
+      await quarantineAtom(atomIndex, headBefore, 'atom-self-committed-rejected')
       consecutiveRejects += 1
       outcomeLine = `atom ${atomIndex} was REJECTED (${verdict.reason ?? 'no reason'}) — nothing committed`
       log(outcomeLine)

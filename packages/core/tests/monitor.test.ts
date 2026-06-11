@@ -87,6 +87,50 @@ describe('runMonitor', () => {
     expect(out.reason).toBe('timeout')
   })
 
+  test('caps a loop when the max iteration ledger entry is red', async () => {
+    const c = clock()
+    const out = await runMonitor(
+      deps({
+        ...c,
+        readLoopLedger: async () => [{ iteration: 1, result: 'red', failed: 'test failed', changed: 'fixed x', inScope: true }],
+      }),
+      { ...opts, loop: { maxIterations: 1, wallClockMs: 1_000_000 } },
+    )
+    expect(out.reason).toBe('loop-iteration-cap')
+    expect(out.loopLedger).toEqual([{ iteration: 1, result: 'red', failed: 'test failed', changed: 'fixed x', inScope: true }])
+  })
+
+  test('uses a distinct wall-clock cap for loop atoms', async () => {
+    const c = clock()
+    const out = await runMonitor(deps({ ...c }), { ...opts, timeoutMs: 1_000_000, loop: { maxIterations: 5, wallClockMs: 5 } })
+    expect(out.reason).toBe('loop-wall-clock-cap')
+  })
+
+  test('done wins over loop cap checks in the same sample', async () => {
+    const c = clock()
+    const out = await runMonitor(
+      deps({
+        ...c,
+        judge: scriptedJudge([{ state: 'done' }]),
+        readLoopLedger: async () => [{ iteration: 1, result: 'red', failed: 'test failed', changed: 'fixed x', inScope: true }],
+      }),
+      { ...opts, loop: { maxIterations: 1, wallClockMs: 1 } },
+    )
+    expect(out.reason).toBe('done')
+  })
+
+  test('ignores malformed ledger lines supplied by the ledger reader', async () => {
+    const c = clock()
+    const out = await runMonitor(
+      deps({
+        ...c,
+        readLoopLedger: async () => [],
+      }),
+      { ...opts, timeoutMs: 25, loop: { maxIterations: 1, wallClockMs: 1_000_000 } },
+    )
+    expect(out.reason).toBe('timeout')
+  })
+
   test('records every assessment via the injected sink', async () => {
     const c = clock()
     const states: string[] = []

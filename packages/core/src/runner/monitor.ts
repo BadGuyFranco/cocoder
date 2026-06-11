@@ -10,6 +10,7 @@
 // is parameterised by its target's thunks. A DIRECTING monitor (Oscar→Bob, tier 1) wires `nudge` to
 // sendInput so it can steer; a future OBSERVE-ONLY monitor (Deb→Bob) is its own tier's work. Tier 1
 // builds only the directing path.
+import type { LoopLedgerEntry } from './loop-ledger.js'
 
 export type MonitorState = 'progressing' | 'stuck' | 'done'
 
@@ -35,12 +36,13 @@ export interface Assessment {
 /** How the monitor judges a sample. Injected: a cheap heuristic (tier 1) or a model call (earned later). */
 export type Judge = (sample: MonitorSample) => Promise<Assessment>
 
-export type MonitorOutcomeReason = 'done' | 'dead' | 'timeout'
+export type MonitorOutcomeReason = 'done' | 'dead' | 'timeout' | 'loop-iteration-cap' | 'loop-wall-clock-cap'
 
 export interface MonitorOutcome {
   readonly reason: MonitorOutcomeReason
   readonly last: Assessment | null
   readonly samples: number
+  readonly loopLedger?: readonly LoopLedgerEntry[]
 }
 
 export interface MonitorDeps {
@@ -56,6 +58,8 @@ export interface MonitorDeps {
   readonly onAssessment?: (assessment: Assessment, sample: MonitorSample) => void
   /** Called when a nudge is actually sent (e.g. a run event) — every nudge is logged, no silent caps. */
   readonly onNudge?: (text: string) => void
+  /** Read the loop ledger artifact for loop atoms. Missing/malformed data is normalized by the reader. */
+  readonly readLoopLedger?: () => Promise<readonly LoopLedgerEntry[]>
   readonly sleep?: (ms: number) => Promise<void>
   readonly now?: () => number
 }
@@ -71,6 +75,8 @@ export interface MonitorOptions {
   readonly minNudgeIntervalMs?: number
   /** Fallback nudge when the judge returns 'stuck' without one. */
   readonly defaultNudge?: string
+  /** Optional structured loop caps. Absent for prose/non-loop atoms. */
+  readonly loop?: { readonly maxIterations: number; readonly wallClockMs: number }
 }
 
 const defaultSleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
@@ -80,6 +86,7 @@ export async function runMonitor(deps: MonitorDeps, opts: MonitorOptions): Promi
   const now = deps.now ?? Date.now
   const minNudgeIntervalMs = opts.minNudgeIntervalMs ?? 0
   const deadline = now() + opts.timeoutMs
+  const loopDeadline = opts.loop === undefined ? null : now() + opts.loop.wallClockMs
 
   let prevFrame: string | null = null
   let idleStreak = 0
@@ -103,6 +110,17 @@ export async function runMonitor(deps: MonitorDeps, opts: MonitorOptions): Promi
     deps.onAssessment?.(assessment, sample)
 
     if (assessment.state === 'done') return { reason: 'done', last, samples }
+
+    if (opts.loop !== undefined) {
+      const ledger = deps.readLoopLedger ? await deps.readLoopLedger() : []
+      const latest = ledger.at(-1)
+      if (ledger.length > opts.loop.maxIterations || (ledger.length === opts.loop.maxIterations && latest?.result === 'red')) {
+        return { reason: 'loop-iteration-cap', last, samples, loopLedger: ledger }
+      }
+      if (loopDeadline !== null && now() >= loopDeadline) {
+        return { reason: 'loop-wall-clock-cap', last, samples, loopLedger: ledger }
+      }
+    }
 
     if (assessment.state === 'stuck') {
       const text = assessment.nudge ?? opts.defaultNudge
