@@ -28,9 +28,12 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 - Playbook Status + verified-when ledger and `docs/loop-packets-dispatch-inventory.md` updated:
   every verified-when element met; disposition **`archive-candidate` with no remaining
   implementation gaps** — founder archive confirmation requested.
+- **Founder CONFIRMED archive (same session, post-wrap):** Playbook stamped `ARCHIVED` and moved to
+  `cocoder/zArchive/priorities/v2/loop-packets.md` (git mv); PLAYBOOK.md roadmap entry moved from
+  Active #5 to the Done list. `loop-packets` is closed.
 
-**Next:** founder confirms archive of `loop-packets` (or vetoes); the UI Resolve patch picks up
-  under `full-oz-dashboard`.
+**Next:** the UI Resolve patch (run_52 `heldback-ui-work.patch`) picks up under `full-oz-dashboard`;
+  active roadmap continues per PLAYBOOK.md.
 
 ---
 

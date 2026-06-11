@@ -114,6 +114,13 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   **live-proven on `run_33`**: a real induced `directive-timeout` was triaged by live codex Deb →
   `cocoder-bug` with a propose-only fix; nudge-Oscar watchdog added (`34ecf13`). Cross-run learning loop /
   Deb↔dashboard reconciliation deferred to `full-oz-dashboard`.
+- `loop-packets` — loop-shaped dispatch as a first-class atom shape: structured `loop` directive,
+  runner-enforced caps + iteration ledger + criterion rerun before sentinel acceptance, loop-aware
+  monitor, base standard + `oscar.md` guidance. ✅ built run_47/51 (7/7 atoms, zero rejections),
+  measured (loop atoms = 1 round-trip ≈3.5 min avg vs ≈25.1 min comparable historical unit),
+  **live-proven on `run_52`** post-restart (runner-recorded `loop-iteration` ×4 +
+  `loop-criterion-rerun` ×1, plus loud malformed-loop rejection). Archived 2026-06-11
+  (founder-confirmed, run_53).
 
 **Active (launchable; recommended sequence — the `priorities/` directory is the live index):**
 1. `isolated-working-state-per-run` — ADR-0015: each run gets its own git worktree + branch and reaches
@@ -132,20 +139,6 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
 4. `new-primary-root` — the primary-root audit: bootstrap a new root's `cocoder/` + propose-only
    drift re-audit, one base Play pinned to a top-tier model. Design drafted as **ADR-0020 (proposed,
    2026-06-10)** — founder acceptance gates the build. The concrete form of Phase 5 ("first external repo").
-5. `loop-packets` (added 2026-06-10) — loop-shaped dispatch as a first-class atom shape: builder
-   grinds against a deterministic scripted exit criterion under iteration/wall-clock caps, with an
-   iteration ledger and a hard scope guard. Phases 1–3 done (run_47); founder amendment lifted the
-   "dispatch-only" boundary for six core-support findings. **Enforcement built (run_51, 7/7 atoms,
-   zero rejections):** structured `loop` directive schema, runner-enforced caps + ledger +
-   `loop-iteration`/`loop-criterion-rerun` events, criterion rerun before verify, loop-aware monitor,
-   docs synced. **Pilot measurements (run_51 vs run DB):** 6 loop-shaped atoms each = 1 orchestrator
-   round-trip, 0 rejects, ≈3.5 min avg delegation→verify (vs run_45 core unit ≈25.1 min with
-   2 round-trips + reject/re-scope). **Live enforcement proven (run_52, post-restart; recorded
-   run_53):** run DB holds `loop-iteration` ×4 + `loop-criterion-rerun` ×1 (exit 0) plus loud
-   malformed-loop rejection — every verified-when element met. **Disposition: `archive-candidate`**
-   — no remaining implementation gaps; founder archive confirmation only. Do not relaunch unless the
-   founder vetoes archive.
-
 Plus two always-available meta-priorities: `build-priorities-from-plan` (Oscar drafts priorities from
 the plan/ADRs) and `adhoc-session` (no named priority — draft one, or run a read-only review/research).
 

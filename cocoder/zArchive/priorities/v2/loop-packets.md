@@ -119,8 +119,8 @@ hadn't landed yet — and wrapped with 0 atoms, so the build run is the next lau
 
 ## Status
 
-**Disposition: `archive-candidate` — NO remaining implementation gaps (founder-directed recording,
-run_53, 2026-06-11). Awaiting only the founder's archive confirmation.** The one follow-up the
+**Disposition: `ARCHIVED` — founder confirmed 2026-06-11 (run_53). NO remaining implementation
+gaps; every verified-when element met.** The one follow-up the
 amendment named — the live-enforcement proof after a founder daemon restart — was delivered by
 **run_52** (2026-06-11, post-restart): the runner recorded **4 `loop-iteration` events and 1
 `loop-criterion-rerun` event (exit 0, pass)** in the run DB (the first loop events ever recorded
