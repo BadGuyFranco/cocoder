@@ -38,6 +38,7 @@ import {
   buildNextOrWrapDispatch,
   buildOrchestratorPrompt,
   buildVerifyDispatch,
+  buildWrapupDelivery,
   commitMessage,
 } from './prompts.js'
 import { renderRunRecord } from './record.js'
@@ -713,7 +714,12 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         store.recordEvent({ runId: run.id, type: 'wrapup', data: { atoms: n, forced: false } })
         log(`oscar wrapped up after ${n} atom(s)`)
       }
-      await refreshStatus('wrapped', n, null, 'wrapped up')
+      if (pickup && pickup.trim() !== '') {
+        await sessionHost.show(oscarRef).catch(() => {})
+        await sessionHost.sendInput(oscarRef, buildWrapupDelivery(run.id, pickup)).catch(() => {})
+        store.recordEvent({ runId: run.id, type: 'wrapup-delivery-dispatch', data: { ref: oscarRef.id } })
+      }
+      await refreshStatus('wrapped', n, null, 'wrap-up delivered; awaiting founder questions, priority updates, or explicit kill/teardown')
       break
     }
 

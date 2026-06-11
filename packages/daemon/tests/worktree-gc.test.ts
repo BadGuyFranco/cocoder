@@ -1,7 +1,8 @@
 // LIVE test of teardown worktree GC + the daemon-boot orphan-worktree sweep (ADR-0015 §5, Atom G).
-// Real git so it proves the actual lifecycle: a terminal run's worktree is removed (after its panes
-// close), a run still awaiting a scope decision is PRESERVED (its held-back work is uncommitted in the
-// worktree), and the branch ref always survives so un-integrated commits are never lost.
+// Real git so it proves the actual lifecycle: explicit teardown removes a completed run's worktree
+// after its panes close, boot sweep preserves successfully wrapped runs until founder teardown, a run
+// still awaiting a scope decision is PRESERVED (its held-back work is uncommitted in the worktree),
+// and the branch ref always survives so un-integrated commits are never lost.
 import { execFile } from 'node:child_process'
 import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -81,7 +82,7 @@ const dirs: string[] = []
 // Create a run row WITH a real worktree on disk (committed work on its branch) at the given status,
 // optionally with an integration status (default 'pending').
 async function seedRunWithWorktree(
-  status: 'completed' | 'pending-scope-decision',
+  status: 'completed' | 'pending-scope-decision' | 'failed',
   integrationStatus?: 'merged' | 'escalated' | 'resolving' | 'verifying',
 ): Promise<string> {
   const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
@@ -170,15 +171,18 @@ describe('worktree GC + orphan sweep (ADR-0015, live git)', () => {
     expect(JSON.stringify(ev?.data)).toContain('local-state-export-blocked')
   })
 
-  test('daemon-boot sweep removes a terminal run\'s stray worktree but preserves held-back + escalated ones', async () => {
+  test('daemon-boot sweep preserves wrapped runs until founder teardown but removes disposable failed strays', async () => {
     const done = await seedRunWithWorktree('completed', 'merged')
+    const failed = await seedRunWithWorktree('failed')
     const held = await seedRunWithWorktree('pending-scope-decision')
     const escalated = await seedRunWithWorktree('completed', 'escalated')
     await start() // createOzServer runs reconcileOrphans → sweepOrphanWorktrees at boot
 
-    expect(await exists(worktreePathFor(home, done))).toBe(false) // swept (merged → safe)
+    expect(await exists(worktreePathFor(home, done))).toBe(true) // preserved until explicit founder teardown
+    expect(await exists(worktreePathFor(home, failed))).toBe(false) // swept (failed terminal stray)
     expect(await exists(worktreePathFor(home, held))).toBe(true) // preserved (held-back)
     expect(await exists(worktreePathFor(home, escalated))).toBe(true) // preserved (un-integrated escalation)
-    expect(store.listEvents(done).some((e) => e.type === 'worktree-swept')).toBe(true)
+    expect(store.listEvents(done).some((e) => e.type === 'worktree-swept')).toBe(false)
+    expect(store.listEvents(failed).some((e) => e.type === 'worktree-swept')).toBe(true)
   })
 })

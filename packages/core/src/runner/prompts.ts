@@ -238,6 +238,16 @@ by hand, and never touch the Oz daemon:
 That safely closes only this run's panes (the same operation Oz's teardown button uses).`
 }
 
+export function buildWrapupDelivery(runId: string, brief: string): string {
+  return `WRAP-UP READY for ${runId}.
+
+Deliver this founder-facing wrap-up now, in plain English, then wait. Do not close panes, do not run
+teardown, and do not ask for teardown. The founder may ask questions, request a priority update, or say
+"kill" / "tear down" explicitly.
+
+${brief}`
+}
+
 /** The builder's LAUNCH prompt: Bob is spawned up front, on standby, and must NOT act until the runner
  *  dispatches an atom. Each atom's task arrives via a directive file; Bob signals completion by printing
  *  a sentinel line the runner's monitor watches for (NOT a done-file — the monitor is the live signal). */

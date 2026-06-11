@@ -171,8 +171,13 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
   running
     .catch((err: unknown) => {
       if (runId) {
-        ctx.store.recordEvent({ runId, type: 'run-error', data: { message: err instanceof Error ? err.message : String(err) } })
-        ctx.store.setRunStatus(runId, 'failed')
+        try {
+          ctx.store.recordEvent({ runId, type: 'run-error', data: { message: err instanceof Error ? err.message : String(err) } })
+          ctx.store.setRunStatus(runId, 'failed')
+        } catch {
+          // Shutdown/test teardown may close the store before a fire-and-forget run rejects. The
+          // background error is already contained here; never let the containment path throw.
+        }
       }
     })
     .finally(() => {
@@ -231,7 +236,10 @@ function localStateBlockedReason(ctx: OzContext, runId: string): string | null {
   return null
 }
 
-function gcBlockedReason(ctx: OzContext, run: { id: string; status: string; integrationStatus: string }): string | null {
+function gcBlockedReason(ctx: OzContext, run: { id: string; status: string; integrationStatus: string }, opts: { explicitTeardown?: boolean } = {}): string | null {
+  if (!opts.explicitTeardown && run.status === 'completed' && run.integrationStatus === 'merged') {
+    return 'awaiting-founder-teardown'
+  }
   if (run.status === 'pending-scope-decision') return 'pending-scope-decision'
   if (run.integrationStatus === 'escalated' || run.integrationStatus === 'resolving' || run.integrationStatus === 'verifying') {
     return `integration-${run.integrationStatus}`
@@ -241,10 +249,10 @@ function gcBlockedReason(ctx: OzContext, run: { id: string; status: string; inte
   return null
 }
 
-async function gcWorktree(ctx: OzContext, runId: string): Promise<void> {
+async function gcWorktree(ctx: OzContext, runId: string, opts: { explicitTeardown?: boolean } = {}): Promise<void> {
   const run = ctx.store.getRun(runId)
   if (!run?.worktreePath) return
-  const blocked = gcBlockedReason(ctx, run)
+  const blocked = gcBlockedReason(ctx, run, opts)
   if (blocked) {
     ctx.store.recordEvent({ runId, type: 'worktree-gc-blocked', data: { worktreePath: run.worktreePath, reason: blocked } })
     return
@@ -267,7 +275,7 @@ export async function teardownRun(ctx: OzContext, runId: string): Promise<Launch
   const run = ctx.store.getRun(runId)
   if (!run) return { status: 404, body: { error: 'unknown run' } }
   const closed = await closeRunSurfaces(ctx, runId)
-  await gcWorktree(ctx, runId)
+  await gcWorktree(ctx, runId, { explicitTeardown: true })
   ctx.store.recordEvent({ runId, type: 'teardown', data: { closed } })
   void appendAudit(ctx.cocoderHome, { action: 'teardown', runId, closed })
   return { status: 200, body: { closed } }
@@ -337,7 +345,7 @@ export async function resolveRun(ctx: OzContext, runId: string, body: unknown): 
 
   ctx.store.recordEvent({ runId: run.id, type: 'scope-decision', data: { disposition, note } })
   const closed = await closeRunSurfaces(ctx, run.id)
-  await gcWorktree(ctx, run.id)
+  await gcWorktree(ctx, run.id, { explicitTeardown: true })
   void appendAudit(ctx.cocoderHome, { action: 'resolve-run', runId, disposition, note })
   const after = ctx.store.getRun(run.id)
   return { status: 200, body: { runId: run.id, disposition, status: after?.status, integrationStatus: after?.integrationStatus, closed } }
@@ -375,9 +383,10 @@ export async function showRun(ctx: OzContext, runId: string): Promise<LaunchResu
  *  1. Ghost-row close: at boot the live set is empty, so any run still 'running' was stranded by a
  *     daemon crash/restart — mark it failed so the run list stays honest. (NOT ADR-0002-C1 relaunch.)
  *  2. Orphan-worktree sweep: reconcile on-disk worktrees against the run table. A worktree whose run
- *     is terminal (and not awaiting a scope decision) is stray — close any panes a prior daemon left
- *     (by durable ref) THEN remove the dir. Preserves active/held-back worktrees and never force-
- *     removes; the branch ref is untouched, so un-integrated commits are never lost. */
+ *     is terminal and disposable is stray — close any panes a prior daemon left (by durable ref) THEN
+ *     remove the dir. A successfully wrapped run is NOT disposable until the founder explicitly asks
+ *     for teardown. Preserves active/held-back worktrees and never force-removes; the branch ref is
+ *     untouched, so un-integrated commits are never lost. */
 export async function reconcileOrphans(ctx: OzContext): Promise<void> {
   for (const run of ctx.store.listRuns()) {
     if (run.status === 'running') {
@@ -401,7 +410,7 @@ async function sweepOrphanWorktrees(ctx: OzContext): Promise<void> {
     // /var vs /private/var). The founder's main checkout has no matching run row, so it is never swept.
     const run = ctx.store.getRun(basename(wt.path))
     if (!run?.worktreePath) continue
-    if (run.status === 'running' || gcBlockedReason(ctx, run)) continue // active / held-back / un-integrated → preserve
+    if (run.status === 'running' || gcBlockedReason(ctx, run)) continue // active / founder-visible / held-back / un-integrated → preserve
     await closeRunSurfaces(ctx, run.id) // close any prior-instance panes before removing the cwd they live in
     await gcWorktree(ctx, run.id)
     ctx.store.recordEvent({ runId: run.id, type: 'worktree-swept', data: { worktreePath: run.worktreePath } })

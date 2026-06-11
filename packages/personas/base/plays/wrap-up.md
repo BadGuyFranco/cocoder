@@ -18,7 +18,9 @@ This Play runs headless on its per-(persona, Play) assigned model.
 The `writeScope` above is the default allow-list for wrap-up; later assignment machinery may narrow
 or refine it for a specific run.
 
-Produce the closeout for a run:
+Produce the founder-visible wrap-up for a run. Wrap-up is a content checkpoint, not teardown: no
+terminals are closed, and the founder may still ask questions, request a priority update, or explicitly
+say "kill" / "tear down" afterward.
 
 1. Update documentation thoughtfully for only what genuinely changed in the run, staying within this
    Play's write-scope.
@@ -28,7 +30,18 @@ Produce the closeout for a run:
    `archive-candidate`. If it is not archive-ready, name the concrete gaps preventing archive across
    product behavior, architecture, tests, documentation, founder decisions, and missing evidence. If it
    appears archive-ready, ask for founder archive confirmation; never self-archive.
-4. Emit, as your final output, a resumable closeout brief (conclusion-first, founder-readable): what
-   is done, the priority disposition, archive readiness, what remains, and exactly where the next
-   session should start. The runner persists this output as the run's pickup brief — do NOT write
-   pickup.md yourself.
+4. Emit, as your final output, a resumable closeout brief (conclusion-first, founder-readable) with
+   these exact sections:
+   - `Summary` — plain English summary of what was accomplished.
+   - `Priority Ran` — the priority id/title this session ran.
+   - `Priority Status` — `continue`, `blocked`, or `archive-candidate`, plus the concrete reason.
+   - `Next Priority To Run` — the recommended next priority, or this same priority if it should
+     continue.
+   - `Committed` — acknowledge whether everything this session did is committed; if anything is held
+     back, name it plainly.
+   - `Archive Estimate` — how close this priority is to archive and the remaining proof/gap.
+   - `Founder Options` — state that the founder can ask questions, request a priority update, or say
+     `kill` / `tear down`; teardown performs one final safety pass and then closes the run's Oscar,
+     Bob, and Deb windows through the runner-provided teardown mechanism.
+
+The runner persists this output as the run's pickup brief — do NOT write `pickup.md` yourself.
