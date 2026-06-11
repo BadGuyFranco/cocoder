@@ -12,6 +12,33 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-11 — **Full Oz dashboard: priority-create UI, ADR-0018 stage 2, ENDPOINTS_OWED sweep (run_56)**
+
+**Persona:** Oscar + Bob (3 atoms) | **Priority:** full-oz-dashboard | **Plan:** owed surfaces #8
+(UI consumption), #4 (`mode` stage 2), ENDPOINTS_OWED truth sweep
+
+**Outcomes:**
+- 3 atoms verified and committed on `cocoder/run_56`: priority-create **UI consumption** — typed
+  `electron/priorities-create.ts` seam behind `window.oz.prioritiesCreate`; Dashboard "Add priority"
+  opens a New-Priority modal (title + goal + place-at-top), Craft-a-persona files through the same
+  path; verbatim daemon errors, no offline fake-create, refresh-from-daemon on success, place-at-top
+  via the reorder seam; fixtures mode unchanged (`aee75c9`); **ADR-0018 stage 2** — `mode?: 'visible'|'headless'`
+  persists in `assignments.json`, `dispatchPlay` honors it (`headless` forces captured subprocess;
+  `visible` never forces panes — run_28 hang class), launcher threads Oscar's mode into all three
+  runner Play sites, daemon PUT round-trips `mode`, renderer full-map PUT passes daemon-side `mode`
+  through untouched (`bcac308`); `ENDPOINTS_OWED.md` truth sweep for rows 2/4/8 incl. stale CLIs row
+  (`b26d68b`).
+- Surface #8 (priority create + reorder) is **closed end-to-end** — both daemon and UI halves.
+- Verification: core 204 · daemon 98 · ui 70 · root typecheck clean · topology pass (per-atom;
+  whole-tree diff each gate).
+- Disposition: **`continue`** — no cheap opener remains; remaining slices are all session-sized:
+  Oz-as-persona (ADR-0017), Workspaces daemon model (ADR-0019), ADR-0018 stage 3 (Oscar session
+  mode — investigate runner prompting seam first), `POST /runs/:id/stop`, Oz-chat SSE.
+
+**Next:** Oz-as-persona per ADR-0017 (founder-present recommended), or Workspaces daemon model
+(ADR-0019) as founder-independent build-work; ADR-0018 stage 3 needs a prompting-mechanism
+investigation before delegating.
+
 ## 2026-06-11 — **Full Oz dashboard: sub-agents live, Awaiting-you list, priority create (run_55)**
 
 **Persona:** Oscar + Bob (3 atoms, 5 dispatches) | **Priority:** full-oz-dashboard | **Plan:** owed surfaces #4 (sub-agents), #9 (awaiting list), #8 (create daemon-half)
