@@ -138,9 +138,10 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    sub-agents over the `plays` map (ADR-0018 stage 1), the "Awaiting you" Dashboard strip, and daemon
    priority-create (`POST …/priorities`); run_56 landed priority-create UI consumption (surface #8
    closed end-to-end), ADR-0018 stage 2 (`mode` persists + Play dispatch honors it), and an
-   `ENDPOINTS_OWED.md` truth sweep. Next (all session-sized — no cheap opener): Oz-as-persona
-   (ADR-0017, founder-present recommended), Workspaces daemon model (ADR-0019), ADR-0018 stage 3
-   (Oscar session `mode` — investigate runner prompting seam first), `POST /runs/:id/stop`, Oz-chat SSE.
+   `ENDPOINTS_OWED.md` truth sweep; run_57 landed the Workspaces daemon model end-to-end (ADR-0019 —
+   registry reader, full CRUD, Workspaces screen live with raw-path fidelity). Next (all session-sized
+   — no cheap opener): Oz-as-persona (ADR-0017, founder-present recommended), ADR-0018 stage 3 (Oscar
+   session `mode` — investigate runner prompting seam first), `POST /runs/:id/stop`, Oz-chat SSE.
 4. `new-primary-root` — the primary-root audit: bootstrap a new root's `cocoder/` + propose-only
    drift re-audit, one base Play pinned to a top-tier model. Design drafted as **ADR-0020 (proposed,
    2026-06-10)** — founder acceptance gates the build. The concrete form of Phase 5 ("first external repo").
