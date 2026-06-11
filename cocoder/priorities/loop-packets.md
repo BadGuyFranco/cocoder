@@ -68,8 +68,10 @@ The loop's criterion ends the *builder's* iteration — it does not replace the 
 
 The original "dispatch language ONLY / zero orchestration-core changes" boundary is **lifted by the
 founder**: rather than parking the six NOT-BUILT enforcement findings as a future priority, this
-priority now builds them, and the next session (49) runs them as the live loop test — the loop
-mechanism builds its own enforcement, loop-shaped, and the measurements come from those very atoms.
+priority now builds them, and the NEXT run on this priority runs them as the live loop test — the
+loop mechanism builds its own enforcement, loop-shaped, and the measurements come from those very
+atoms. (Originally slated for session 49; run_49 launched off pre-amendment trunk — these rulings
+hadn't landed yet — and wrapped with 0 atoms, so the build run is the next launch after run_49.)
 
 **Planned atoms** (each test-gated, criterion `pnpm --filter @cocoder/core test` green +
 `pnpm typecheck` + `pnpm check:topology`; all loop-amenable except #6):
@@ -117,11 +119,18 @@ mechanism builds its own enforcement, loop-shaped, and the measurements come fro
 
 ## Status
 
-**Disposition: `continue` — session 49 runs THIS priority: build the six enforcement gaps as
+**Disposition: `continue` — the NEXT run on this priority builds the six enforcement gaps as
 loop-shaped atoms; those runs ARE the live test** (founder rulings landed 2026-06-10, run_48
 follow-up; previously `blocked` since run_47). Phases 1–3 complete and committed. **run_48:** 0
 atoms delegated, no commits — Oscar verified no rulings on disk and wrapped; the founder then ruled
-in the post-wrap conversation (recorded below).
+in the post-wrap conversation (recorded below). **run_49:** launched off pre-amendment trunk (the
+run_48 rulings were stranded on its unmerged branch), so it saw the stale `blocked` Status and
+wrapped with 0 atoms; its Oscar then landed run_48's branch in the post-wrap conversation
+(2026-06-10) and launched the build run. Known machinery snag for the build run's Oscar: the wrap-up
+play edits `cocoder/PLAYBOOK.md` + `cocoder/SESSION_LOG.md` but its writeScope
+(`packages/personas/base/plays/wrap-up.md`) omits both, so run_48 AND run_49 parked
+`pending-scope-decision` at wrap — schedule one small one-shot atom to add those two files to the
+play's writeScope (in this priority's scope: `packages/personas/base/**`).
 
 **Done (run_47, 4 atoms — `1356b5a`, `b8d29a1`, `ce04957`, `4c7fa51`):**
 - Phase 1: loop-packet standard (`packages/personas/base/standards/loop-packets.md` — full five-element
@@ -150,6 +159,6 @@ in the post-wrap conversation (recorded below).
 
 **Verified-when ledger:** standard doc + oscar.md amendment ✅ committed · atom-scoping/authoring
 guidance ✅ committed · retrofit list founder-approved ✅ (2026-06-10) · pilot run + measured ⬜
-(session 49: the enforcement atoms, loop-shaped — record round-trips + wall-clock here) ·
+(the next run: the enforcement atoms, loop-shaped — record round-trips + wall-clock here) ·
 enforcement atoms 1–6 ⬜ (the amendment). Then propose archive (live-enforcement proof after a
 daemon restart is the explicit follow-up).
