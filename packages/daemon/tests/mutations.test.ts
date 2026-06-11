@@ -1,11 +1,11 @@
 // Stage-4 mutations + run-lifecycle correctness: launch (202 / 409 in-flight), deep-link (200 / 409
 // non-live, never 500), assignments write (validate + atomic), startup orphan reconciliation.
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { openRunStore, type Adapter, type Git, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
+import { loadPriority, openRunStore, type Adapter, type Git, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
 import { createOzServer, OZ_CSRF_HEADER, type OzServer } from '../src/index.js'
 
 const okAdapter: Adapter = {
@@ -140,6 +140,14 @@ function call(oz: OzServer, method: string, path: string, opts: { body?: unknown
   })
 }
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
+const exists = async (path: string): Promise<boolean> => {
+  try {
+    await stat(path)
+    return true
+  } catch {
+    return false
+  }
+}
 
 // Fake RunnerIO so runRun completes against fakes (no real directive file to poll for). Oscar
 // immediately wraps up (zero atoms) — enough to exercise the launch→terminal lifecycle this suite tests.
@@ -654,6 +662,110 @@ describe('Oz mutations + lifecycle', () => {
     const r = await call(oz!, 'POST', '/workspaces/nope/priorities/reorder', { body: { order: ['demo'] } })
 
     expect(r.status).toBe(404)
+  })
+
+  test('POST /workspaces/:id/priorities creates a priority with a derived slug and GET returns it', async () => {
+    await startServer()
+
+    const post = await call(oz!, 'POST', '/workspaces/cocoder/priorities', { body: { title: 'New Launch Priority', goal: '## Objective\nShip the create endpoint.' } })
+
+    expect(post.status).toBe(201)
+    expect(post.json.priority).toMatchObject({
+      id: 'new-launch-priority',
+      title: 'New Launch Priority',
+      goal: '## Objective\nShip the create endpoint.',
+      objective: 'Ship the create endpoint.',
+      scopeNarrowing: null,
+    })
+    const parsed = loadPriority(join(home, 'cocoder', 'priorities'), 'new-launch-priority')
+    expect(parsed.objective).toBe('Ship the create endpoint.')
+    const file = await readFile(join(home, 'cocoder', 'priorities', 'new-launch-priority.md'), 'utf8')
+    expect(file).toBe('---\nid: new-launch-priority\ntitle: New Launch Priority\n---\n## Objective\nShip the create endpoint.\n')
+
+    const get = await call(oz!, 'GET', '/workspaces/cocoder/priorities')
+    expect(get.status).toBe(200)
+    expect(get.json.priorities.map((p: any) => p.id)).toContain('new-launch-priority')
+  })
+
+  test('POST /workspaces/:id/priorities creates a priority with an explicit id and skeleton goal in a fresh priorities dir', async () => {
+    await rm(join(home, 'cocoder', 'priorities'), { recursive: true, force: true })
+    await startServer()
+
+    const post = await call(oz!, 'POST', '/workspaces/cocoder/priorities', { body: { id: 'explicit-id', title: 'Explicit priority' } })
+
+    expect(post.status).toBe(201)
+    expect(post.json.priority).toMatchObject({
+      id: 'explicit-id',
+      title: 'Explicit priority',
+      goal: '## Objective',
+      objective: null,
+      scopeNarrowing: null,
+    })
+    expect(loadPriority(join(home, 'cocoder', 'priorities'), 'explicit-id').objective).toBeNull()
+    expect(await readFile(join(home, 'cocoder', 'priorities', 'explicit-id.md'), 'utf8')).toBe('---\nid: explicit-id\ntitle: Explicit priority\n---\n## Objective\n')
+
+    const get = await call(oz!, 'GET', '/workspaces/cocoder/priorities')
+    expect(get.status).toBe(200)
+    expect(get.json.priorities.map((p: any) => p.id)).toEqual(['explicit-id'])
+  })
+
+  test('POST /workspaces/:id/priorities rejects missing or empty titles, invalid ids, and oversized fields', async () => {
+    await startServer()
+
+    expect((await call(oz!, 'POST', '/workspaces/cocoder/priorities', { body: {} })).status).toBe(400)
+    expect((await call(oz!, 'POST', '/workspaces/cocoder/priorities', { body: { title: '   ' } })).status).toBe(400)
+    expect((await call(oz!, 'POST', '/workspaces/cocoder/priorities', { body: { title: 'x'.repeat(201) } })).status).toBe(400)
+    expect((await call(oz!, 'POST', '/workspaces/cocoder/priorities', { body: { title: 'Oversized goal', goal: 'x'.repeat(20_001) } })).status).toBe(400)
+    for (const id of ['../x', 'A B', '.hidden', 'a'.repeat(65)]) {
+      const r = await call(oz!, 'POST', '/workspaces/cocoder/priorities', { body: { id, title: 'Bad id' } })
+      expect(r.status).toBe(400)
+    }
+  })
+
+  test('POST /workspaces/:id/priorities rejects frontmatter injection through title before creating a file', async () => {
+    await startServer()
+    const priorities = join(home, 'cocoder', 'priorities')
+    const injectionFile = join(priorities, 'innocent-scope-narrowing-packages-core.md')
+
+    const injected = await call(oz!, 'POST', '/workspaces/cocoder/priorities', {
+      body: { title: 'Innocent\nscopeNarrowing: packages/core/**' },
+    })
+    expect(injected.status).toBe(400)
+    expect(await exists(injectionFile)).toBe(false)
+
+    for (const title of ['Carriage\rReturn', 'Tabbed\tTitle']) {
+      const r = await call(oz!, 'POST', '/workspaces/cocoder/priorities', { body: { title } })
+      expect(r.status).toBe(400)
+    }
+  })
+
+  test('POST /workspaces/:id/priorities returns 409 on duplicate ids including case-insensitive disk collisions', async () => {
+    await writeFile(join(home, 'cocoder', 'priorities', 'Casey.md'), `---\nid: Casey\ntitle: Invalid but colliding\n---\ntext`)
+    await startServer()
+
+    const duplicate = await call(oz!, 'POST', '/workspaces/cocoder/priorities', { body: { id: 'demo', title: 'Demo again' } })
+    expect(duplicate.status).toBe(409)
+    expect(duplicate.json.error).toContain('demo')
+
+    const caseInsensitive = await call(oz!, 'POST', '/workspaces/cocoder/priorities', { body: { id: 'casey', title: 'Case insensitive' } })
+    expect(caseInsensitive.status).toBe(409)
+    expect(caseInsensitive.json.error).toContain('casey')
+  })
+
+  test('POST /workspaces/:id/priorities returns 404 for an unknown workspace', async () => {
+    await startServer()
+
+    const r = await call(oz!, 'POST', '/workspaces/nope/priorities', { body: { title: 'No workspace' } })
+
+    expect(r.status).toBe(404)
+  })
+
+  test('POST /workspaces/:id/priorities → 403 without a CSRF token (mutation gate)', async () => {
+    await startServer()
+
+    const r = await call(oz!, 'POST', '/workspaces/cocoder/priorities', { csrf: false, body: { title: 'Blocked' } })
+
+    expect(r.status).toBe(403)
   })
 
   test('POST /daemon/restart → 202 and triggers the (injected) restart action when idle', async () => {

@@ -1,10 +1,10 @@
 // Route dispatch for the Oz daemon. The security gate (server.ts) has already run; these handlers
 // read/serve the four surfaces. Stage 3 = the read surfaces; stage 4 adds the mutations (launch,
 // deep-link, assignments write) to the same dispatch. All handlers close over the shared OzContext.
-import { rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, rename, rm, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { join } from 'node:path'
-import { listEffectivePersonas, loadAssignments, truncate, type PersonaSources } from '@cocoder/core'
+import { listEffectivePersonas, loadAssignments, loadPriority, parseFrontmatter, truncate, type PersonaSources, type Priority } from '@cocoder/core'
 import { basePersonasDir } from '@cocoder/personas'
 import type { OzContext } from './context.js'
 import { sendJson } from './server.js'
@@ -78,6 +78,62 @@ function launchBody(body: unknown): ParsedLaunchBody {
 function reorderBody(body: unknown): readonly string[] | null {
   const record = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {}
   return Array.isArray(record.order) && record.order.every((id) => typeof id === 'string') ? record.order : null
+}
+
+interface CreatePriorityInput {
+  readonly id: string
+  readonly title: string
+  readonly goal: string
+}
+
+type ParsedCreatePriorityBody = { readonly ok: true; readonly input: CreatePriorityInput } | { readonly ok: false; readonly error: string }
+
+const PRIORITY_ID_RE = /^[a-z0-9][a-z0-9-]*$/
+const CONTROL_CHARS_RE = /[\u0000-\u001f\u007f]/
+
+function slugifyTitle(title: string): string {
+  return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').replace(/-+/g, '-')
+}
+
+function createPriorityBody(body: unknown): ParsedCreatePriorityBody {
+  const record = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {}
+  if (typeof record.title !== 'string') return { ok: false, error: 'title must be a non-empty string' }
+  const title = record.title.trim()
+  if (title === '') return { ok: false, error: 'title must be a non-empty string' }
+  if (title.length > 200) return { ok: false, error: 'title too long' }
+  if (CONTROL_CHARS_RE.test(title)) return { ok: false, error: 'title must not contain control characters' }
+
+  let id: string
+  if (Object.prototype.hasOwnProperty.call(record, 'id') && record.id !== undefined) {
+    if (typeof record.id !== 'string') return { ok: false, error: 'id must be a string' }
+    id = record.id.trim()
+  } else {
+    id = slugifyTitle(title)
+  }
+  if (id.length > 64) return { ok: false, error: 'id too long' }
+  if (!PRIORITY_ID_RE.test(id)) return { ok: false, error: 'id must match /^[a-z0-9][a-z0-9-]*$/' }
+
+  let goal = '## Objective\n'
+  if (Object.prototype.hasOwnProperty.call(record, 'goal') && record.goal !== undefined) {
+    if (typeof record.goal !== 'string') return { ok: false, error: 'goal must be a string' }
+    goal = record.goal.trim()
+    if (goal.length > 20_000) return { ok: false, error: 'goal too long' }
+  }
+  return { ok: true, input: { id, title, goal } }
+}
+
+function composePriorityMarkdown(input: CreatePriorityInput): string {
+  const body = input.goal.endsWith('\n') ? input.goal : `${input.goal}\n`
+  return `---\nid: ${input.id}\ntitle: ${input.title}\n---\n${body}`
+}
+
+function validateCreatedPriority(markdown: string, priority: Priority, input: CreatePriorityInput): void {
+  const frontmatter = parseFrontmatter(markdown)
+  const keys = Object.keys(frontmatter.data).sort()
+  if (keys.length !== 2 || keys[0] !== 'id' || keys[1] !== 'title') throw new Error('priority frontmatter must contain exactly id and title')
+  if (priority.id !== input.id) throw new Error('priority id did not round-trip')
+  if (priority.title !== input.title) throw new Error('priority title did not round-trip')
+  if (priority.scopeNarrowing !== null) throw new Error('priority scopeNarrowing must not be set by create')
 }
 
 /** GET /workspaces — surface 1. */
@@ -213,6 +269,39 @@ async function reorderPriorities(ctx: OzContext, res: ServerResponse, workspaceI
   sendJson(res, 200, { order: await writePriorityOrder(prioritiesDir(ws.path), order) })
 }
 
+async function createPriority(ctx: OzContext, res: ServerResponse, workspaceId: string, input: CreatePriorityInput): Promise<void> {
+  const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
+  if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
+  const dir = prioritiesDir(ws.path)
+  const fileName = `${input.id}.md`
+  await mkdir(dir, { recursive: true })
+  const existing = await readdir(dir)
+  if (existing.some((name) => name.toLowerCase() === fileName.toLowerCase())) {
+    return sendJson(res, 409, { error: `priority id "${input.id}" already exists` })
+  }
+
+  const markdown = composePriorityMarkdown(input)
+  const target = join(dir, fileName)
+  const tmpDir = join(dir, `.priority-create-${input.id}-${process.pid}-${Date.now()}`)
+  const tmp = join(tmpDir, fileName)
+  await mkdir(tmpDir, { recursive: true })
+  try {
+    parseFrontmatter(markdown)
+    await writeFile(tmp, markdown)
+    validateCreatedPriority(markdown, loadPriority(tmpDir, input.id), input)
+    await rename(tmp, target)
+    const priority = loadPriority(dir, input.id)
+    validateCreatedPriority(markdown, priority, input)
+    await rm(tmpDir, { recursive: true, force: true })
+    void appendAudit(ctx.cocoderHome, { action: 'priority-create', workspaceId, priorityId: input.id })
+    sendJson(res, 201, { ok: true, priority })
+  } catch (err) {
+    await rm(tmpDir, { recursive: true, force: true })
+    await rm(target, { force: true })
+    sendJson(res, 500, { error: err instanceof Error ? err.message : String(err) })
+  }
+}
+
 /** Mutation dispatch (stage 4). Returns true if handled. The security gate already required CSRF. */
 export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pathname: string, res: ServerResponse): Promise<boolean> {
   const method = req.method ?? 'GET'
@@ -273,6 +362,18 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
     const order = reorderBody(body)
     if (!order) return sendJson(res, 400, { error: 'order must be an array of strings' }), true
     await reorderPriorities(ctx, res, decodeURIComponent(seg[1]!), order)
+    return true
+  }
+  if (method === 'POST' && seg[0] === 'workspaces' && seg.length === 3 && seg[2] === 'priorities') {
+    let body: unknown
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      return sendJson(res, 400, { error: 'invalid JSON body' }), true
+    }
+    const parsed = createPriorityBody(body)
+    if (!parsed.ok) return sendJson(res, 400, { error: parsed.error }), true
+    await createPriority(ctx, res, decodeURIComponent(seg[1]!), parsed.input)
     return true
   }
   if (method === 'PUT' && pathname === '/settings') {
