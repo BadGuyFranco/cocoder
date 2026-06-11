@@ -14,6 +14,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 | ID | Title | Type | Priority | Owner |
 |---|---|---|---|---|
 | [0003](./open/0003-public-docs-v1-stale.md) | Public docs/ tree is v1-stale (commands, PRIORITIES.md, cocoder/local, routes) | task | none | founder-session |
+| [0004](./open/0004-post-wrap-edits-not-committed.md) | Post-wrap Oscar edits can stay stranded in run worktrees | bug | run-resolution-and-loop-reliability | deb |
 
 ## Recently Closed
 

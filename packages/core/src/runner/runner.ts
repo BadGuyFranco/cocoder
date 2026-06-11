@@ -719,7 +719,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         await sessionHost.sendInput(oscarRef, buildWrapupDelivery(run.id, pickup)).catch(() => {})
         store.recordEvent({ runId: run.id, type: 'wrapup-delivery-dispatch', data: { ref: oscarRef.id } })
       }
-      await refreshStatus('wrapped', n, null, 'wrap-up delivered; awaiting founder questions, priority updates, or explicit kill/teardown')
+      await refreshStatus('wrapped', n, null, 'wrap-up delivered; awaiting founder questions only; file-changing follow-ups need a new committed run path or explicit teardown')
       break
     }
 

@@ -1015,6 +1015,25 @@ describe('runRun (multi-atom loop)', () => {
     expect(oscarPrompt).toContain('never just exit')
   })
 
+  test("Oscar's launch prompt does not invite post-wrap file edits without a commit path", async () => {
+    const store = openRunStore(':memory:')
+    const prompts: string[] = []
+    await runRun(
+      baseDeps({
+        store,
+        getAdapter: () => ({ ...okAdapter, build: (i) => {
+          prompts.push(i.prompt)
+          return { command: 'x', args: [] }
+        } }),
+      }),
+      input,
+    )
+    const oscarPrompt = prompts[0]!
+    expect(oscarPrompt).toContain('After wrap-up\ndelivery, answer questions and diagnose freely')
+    expect(oscarPrompt).toContain('do not make file-changing edits unless the runner has')
+    expect(oscarPrompt).not.toContain('This holds AFTER you wrap up')
+  })
+
   test('Deb observer spawns in the run group without changing the commit flow', async () => {
     const spawns: string[] = []
     const store = openRunStore(':memory:')
@@ -1117,6 +1136,8 @@ describe('runRun (multi-atom loop)', () => {
     expect(statusWrites.some((s) => s.bob === 'running' && s.waitCondition.includes('monitoring builder'))).toBe(true)
     expect(statusWrites.some((s) => s.oscar === 'verifying' && s.verify === 'pending')).toBe(true)
     expect(statusWrites.at(-1)?.oscar).toBe('wrapped')
+    expect(statusWrites.at(-1)?.waitCondition).toContain('founder questions only')
+    expect(statusWrites.at(-1)?.waitCondition).toContain('file-changing follow-ups need a new committed run path')
 
     const noDebStore = openRunStore(':memory:')
     const noDebStatus: DebStatus[] = []

@@ -69,11 +69,12 @@ commits your in-scope support edits when you wrap unless a blocker must be bubbl
   same as you delegate code. Don't skip it.
 - **A direct founder instruction overrides your default read-only posture for support work.** If the
   founder explicitly hands you a change — a documentation update, or an orchestration fix — **make it.
-  Never refuse on the grounds that you "only orchestrate" or are "read-only."** This holds *after*
-  wrap-up too: the run stays open and the founder may ask follow-ups and request edits. The default
-  outcome for files you write inside your support scope is that the runner commits them at wrap; if a
-  file is outside your support scope or another blocker prevents commit, bubble that blocker to the
-  founder plainly.
+  Never refuse on the grounds that you "only orchestrate" or are "read-only."** Do this before wrap-up
+  so the runner can commit it. After wrap-up delivery, answer questions and diagnose freely, but do not
+  make file-changing edits unless the runner has opened a fresh committed path for them; otherwise state
+  that the change needs a new run or explicit repair path. The default outcome for files you write
+  inside your support scope is that the runner commits them at wrap; if a file is outside your support
+  scope or another blocker prevents commit, bubble that blocker to the founder plainly.
 
 ## Objective first — your mandatory first act (ADR-0010)
 
