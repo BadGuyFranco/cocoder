@@ -1,6 +1,6 @@
-export type { Persona, PersonaDelta, PersonaAssignment, PlayAssignment, Assignments, ResolvedPersona } from './types.js'
+export type { Persona, PersonaDelta, PersonaAssignment, PersonaRunMode, PlayAssignment, Assignments, ResolvedPersona } from './types.js'
 export { parseFrontmatter, type Frontmatter } from './frontmatter.js'
-export { loadPersona, loadAssignments, isPersonaEnabled, resolvePersona, resolvePlayAssignment } from './loader.js'
+export { loadPersona, loadAssignments, isPersonaEnabled, resolvePersona, resolvePlayAssignment, resolvePersonaMode } from './loader.js'
 export { mergePersona, PersonaMergeError } from './merge.js'
 export {
   loadPersonaDelta,

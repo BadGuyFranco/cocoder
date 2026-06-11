@@ -29,11 +29,15 @@ export interface PersonaAssignment {
   readonly cli: string
   /** Model name; empty string means "the CLI's default model". */
   readonly model: string
+  /** Session hosting preference. Absent means visible/default for backward compatibility. */
+  readonly mode?: PersonaRunMode
   /** Default-on launch toggle. Absent means enabled for backward compatibility. */
   readonly enabled?: boolean
   /** Per-(persona, Play) cli+model override. Absent means the Play inherits this assignment. */
   readonly plays?: Readonly<Record<string, PlayAssignment>>
 }
+
+export type PersonaRunMode = 'visible' | 'headless'
 
 export interface PlayAssignment {
   /** Adapter id — which CLI runs this persona's Play. */

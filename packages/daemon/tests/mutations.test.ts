@@ -612,12 +612,26 @@ describe('Oz mutations + lifecycle', () => {
     expect(before).toContain('"model"') // file untouched by the rejected write
 
     const ok = await call(oz!, 'PUT', '/workspaces/cocoder/personas/assignments', {
-      body: { personas: { oscar: { cli: 'claude', model: 'opus' }, bob: { cli: 'codex', model: '' } } },
+      body: { personas: { oscar: { cli: 'claude', model: 'opus', mode: 'headless' }, bob: { cli: 'codex', model: '' } } },
     })
     expect(ok.status).toBe(200)
-    expect(ok.json.assignments.oscar).toEqual({ cli: 'claude', model: 'opus' })
+    expect(ok.json.assignments.oscar).toEqual({ cli: 'claude', model: 'opus', mode: 'headless' })
     const after = JSON.parse(await readFile(join(home, 'cocoder', 'personas', 'assignments.json'), 'utf8'))
     expect(after.personas.oscar.model).toBe('opus')
+    expect(after.personas.oscar.mode).toBe('headless')
+  })
+
+  test('PUT assignments rejects an invalid persona mode without touching the file', async () => {
+    await startServer()
+    const before = await readFile(join(home, 'cocoder', 'personas', 'assignments.json'), 'utf8')
+
+    const invalidMode = await call(oz!, 'PUT', '/workspaces/cocoder/personas/assignments', {
+      body: { personas: { oscar: { cli: 'claude', model: 'opus', mode: 'pane' }, bob: { cli: 'codex', model: '' } } },
+    })
+
+    expect(invalidMode.status).toBe(400)
+    expect(invalidMode.json.error).toMatch(/optional "mode" must be "visible" or "headless"/)
+    expect(await readFile(join(home, 'cocoder', 'personas', 'assignments.json'), 'utf8')).toBe(before)
   })
 
   test('PUT /settings merges a partial patch, persists atomically, and round-trips via GET', async () => {

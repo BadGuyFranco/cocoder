@@ -10,7 +10,7 @@
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import type { Adapter } from '../adapter/types.js'
-import type { PlayAssignment } from '../personas/types.js'
+import type { PersonaRunMode, PlayAssignment } from '../personas/types.js'
 import type { SessionHost } from '../session-host/types.js'
 import type { Play } from './types.js'
 
@@ -33,6 +33,7 @@ export interface DispatchPlayDeps {
 export interface DispatchPlayInput {
   readonly play: Play
   readonly assignment: PlayAssignment
+  readonly personaMode?: PersonaRunMode
   readonly persona: string
   readonly task: string
   readonly cwd: string
@@ -83,11 +84,13 @@ export async function dispatchPlay(deps: DispatchPlayDeps, input: DispatchPlayIn
     outPath: input.outPath,
   })
 
-  if (input.play.kind === 'headless') {
+  if (input.personaMode === 'headless' || input.play.kind === 'headless') {
     const run = deps.runHeadless ?? runHeadlessProcess
     return run({ command: cmd.command, args: cmd.args, cwd: input.cwd, outPath: input.outPath, timeoutMs: input.timeoutMs })
   }
 
+  // visible mode leaves the Play kind in control: kind:headless must stay a captured subprocess because
+  // a cmux pane cannot reliably signal command exit, which was the run_28 hang class.
   // interactive Play → a real cmux pane the founder can watch.
   const ref = await deps.sessionHost.spawn({
     persona: input.persona,

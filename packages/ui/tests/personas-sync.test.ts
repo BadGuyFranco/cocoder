@@ -21,6 +21,7 @@ describe('main-process personas assignments seam', () => {
       oscar: {
         cli: 'claude',
         model: '',
+        mode: 'headless' as const,
         plays: { 'wrap-up': { cli: 'cursor-agent', model: '' } },
       },
       deb: { cli: 'codex', model: '', enabled: true },
@@ -40,5 +41,14 @@ describe('main-process personas assignments seam', () => {
     mocks.daemonPut.mockResolvedValue({ ok: false, status: 400, error: 'missing "personas" object' })
 
     await expect(savePersonaAssignmentsViaDaemon('cocoder', {})).resolves.toEqual({ ok: false, status: 400, error: 'missing "personas" object' })
+  })
+
+  it('passes persona mode through the daemon-client payload unchanged', async () => {
+    const assignments = { bob: { cli: 'codex', model: '', mode: 'headless' as const } }
+    mocks.daemonPut.mockResolvedValue({ ok: true, status: 200, data: { ok: true, assignments } })
+
+    await expect(savePersonaAssignmentsViaDaemon('cocoder', assignments)).resolves.toEqual({ ok: true, status: 200, data: assignments })
+
+    expect(mocks.daemonPut).toHaveBeenCalledWith('/workspaces/cocoder/personas/assignments', { personas: assignments })
   })
 })

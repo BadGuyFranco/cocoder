@@ -129,7 +129,7 @@ describe('Oz read surfaces', () => {
     await writeFile(join(home, 'cocoder', 'personas', 'AGENTS.md'), `# Personas registry\nno frontmatter here`)
     await writeFile(
       join(home, 'cocoder', 'personas', 'assignments.json'),
-      JSON.stringify({ personas: { bob: { cli: 'codex', model: '' } } }),
+      JSON.stringify({ personas: { bob: { cli: 'codex', model: '', mode: 'headless' } } }),
     )
     store = openRunStore(':memory:')
     oz = await createOzServer({ cocoderHome: home, port: 0, store, git: fakeGit(), sessionHost: fakeHost() })
@@ -185,6 +185,7 @@ describe('Oz read surfaces', () => {
     expect(r.status).toBe(200)
     const personas = r.json.personas as Array<{ id: string; label: string; writeScope: readonly string[]; cli: string | null; model: string | null }>
     expect(personas.map((p) => p.id)).toEqual(['bob', 'deb', 'oscar', 'phil'])
+    expect(r.json.assignments.bob).toMatchObject({ cli: 'codex', model: '', mode: 'headless' })
     // base bob is repo-agnostic (writeScope []), so the effective scope is whatever the repo delta grants.
     expect(personas.find((p) => p.id === 'bob')).toMatchObject({
       label: 'Repo Bob',

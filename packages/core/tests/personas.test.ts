@@ -70,6 +70,27 @@ describe('persona + assignment loading', () => {
     expect(() => loadAssignments(join(dir, 'bad.json'))).toThrow(/optional "enabled" must be a boolean/)
   })
 
+  test('assignment mode accepts absent, visible, and headless; rejects other values', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'personas-'))
+    await writeFile(
+      join(dir, 'assignments.json'),
+      JSON.stringify({
+        personas: {
+          oscar: { cli: 'claude', model: '' },
+          bob: { cli: 'codex', model: '', mode: 'visible' },
+          deb: { cli: 'claude', model: '', mode: 'headless' },
+        },
+      }),
+    )
+    const assignments = loadAssignments(join(dir, 'assignments.json'))
+    expect(assignments.personas.oscar?.mode).toBeUndefined()
+    expect(assignments.personas.bob?.mode).toBe('visible')
+    expect(assignments.personas.deb?.mode).toBe('headless')
+
+    await writeFile(join(dir, 'bad-mode.json'), JSON.stringify({ personas: { bob: { cli: 'codex', model: '', mode: 'pane' } } }))
+    expect(() => loadAssignments(join(dir, 'bad-mode.json'))).toThrow(/optional "mode" must be "visible" or "headless"/)
+  })
+
   test('play assignment overrides fall back to the persona assignment', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'personas-'))
     await writeFile(

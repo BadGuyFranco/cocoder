@@ -162,4 +162,35 @@ describe('dispatchPlay', () => {
     expect(spawns[0]).toMatchObject({ command: 'cursor-agent', args: ['-p'], label: 'Wrap-up', group: 'run_1' })
     expect(result).toEqual({ exitCode: 0, output: 'closeout complete' })
   })
+
+  test('persona mode only forces headless hosting; visible and absent keep Play kind behavior', async () => {
+    const cases = [
+      { name: 'interactive + headless mode', kind: 'interactive' as const, personaMode: 'headless' as const, headless: true },
+      { name: 'headless + visible mode', kind: 'headless' as const, personaMode: 'visible' as const, headless: true },
+      { name: 'interactive + absent mode', kind: 'interactive' as const, personaMode: undefined, headless: false },
+      { name: 'headless + absent mode', kind: 'headless' as const, personaMode: undefined, headless: true },
+    ]
+
+    for (const c of cases) {
+      const out = await outPath(`${c.name}.out`)
+      await mkdir(dirname(out), { recursive: true })
+      const { adapter } = fakeAdapter({ command: 'cursor-agent', args: ['-p'], stdoutPath: out })
+      const { runHeadless, calls } = fakeRunHeadless()
+      const { sessionHost, spawns } = fakeSessionHost({
+        async spawn(opts) {
+          spawns.push(opts)
+          await writeFile(out, 'visible closeout', 'utf8')
+          return fakeRef
+        },
+      })
+
+      await dispatchPlay(
+        { sessionHost, getAdapter: () => adapter, runHeadless },
+        { play: { ...play, kind: c.kind }, assignment, personaMode: c.personaMode, persona: 'oscar', task: 'Do it.', cwd: '/repo', outPath: out },
+      )
+
+      expect(calls, c.name).toHaveLength(c.headless ? 1 : 0)
+      expect(spawns, c.name).toHaveLength(c.headless ? 0 : 1)
+    }
+  })
 })

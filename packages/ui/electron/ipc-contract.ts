@@ -121,6 +121,7 @@ export interface RunDetail {
 export interface PersonaAssignment {
   readonly cli: string
   readonly model: string
+  readonly mode?: 'visible' | 'headless'
   readonly enabled?: boolean
   readonly plays?: Record<string, { cli: string; model: string }>
 }

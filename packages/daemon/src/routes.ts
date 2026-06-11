@@ -4,7 +4,7 @@
 import { mkdir, readdir, rename, rm, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { join } from 'node:path'
-import { listEffectivePersonas, loadAssignments, loadPriority, parseFrontmatter, truncate, type PersonaSources, type Priority } from '@cocoder/core'
+import { listEffectivePersonas, loadAssignments, loadPriority, parseFrontmatter, truncate, type PersonaAssignment, type PersonaSources, type Priority } from '@cocoder/core'
 import { basePersonasDir } from '@cocoder/personas'
 import type { OzContext } from './context.js'
 import { sendJson } from './server.js'
@@ -153,9 +153,9 @@ async function listPersonas(ctx: OzContext, res: ServerResponse, workspaceId: st
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
   if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
   const dir = personasDir(ws.path)
-  let assignments: Record<string, { cli: string; model: string; enabled?: boolean }> = {}
+  let assignments: Record<string, PersonaAssignment> = {}
   try {
-    assignments = loadAssignments(join(dir, 'assignments.json')).personas as Record<string, { cli: string; model: string; enabled?: boolean }>
+    assignments = loadAssignments(join(dir, 'assignments.json')).personas as Record<string, PersonaAssignment>
   } catch {
     /* no assignments yet — personas list still renders with unassigned entries */
   }

@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseFrontmatter } from './frontmatter.js'
-import type { Assignments, Persona, PersonaAssignment, PlayAssignment, ResolvedPersona } from './types.js'
+import type { Assignments, Persona, PersonaAssignment, PersonaRunMode, PlayAssignment, ResolvedPersona } from './types.js'
 
 const asString = (v: string | string[] | undefined, field: string, file: string): string => {
   if (typeof v !== 'string' || v === '') throw new Error(`persona ${file}: frontmatter "${field}" must be a non-empty string`)
@@ -40,6 +40,9 @@ export function loadAssignments(path: string): Assignments {
     if (asn.enabled !== undefined && typeof asn.enabled !== 'boolean') {
       throw new Error(`assignments ${path}: persona "${id}" optional "enabled" must be a boolean`)
     }
+    if (asn.mode !== undefined && asn.mode !== 'visible' && asn.mode !== 'headless') {
+      throw new Error(`assignments ${path}: persona "${id}" optional "mode" must be "visible" or "headless"`)
+    }
     if (asn.plays !== undefined) {
       if (typeof asn.plays !== 'object' || asn.plays === null || Array.isArray(asn.plays)) {
         throw new Error(`assignments ${path}: persona "${id}" optional "plays" must be an object`)
@@ -71,4 +74,10 @@ export function resolvePlayAssignment(assignments: Assignments, personaId: strin
   const assignment = assignments.personas[personaId]
   if (!assignment) throw new Error(`persona "${personaId}" has no assignment in assignments.json (not a live persona)`)
   return assignment.plays?.[playId] ?? { cli: assignment.cli, model: assignment.model }
+}
+
+export function resolvePersonaMode(assignments: Assignments, personaId: string): PersonaRunMode | undefined {
+  const assignment = assignments.personas[personaId]
+  if (!assignment) throw new Error(`persona "${personaId}" has no assignment in assignments.json (not a live persona)`)
+  return assignment.mode
 }

@@ -42,11 +42,6 @@ const DETAIL = runDetailFx as any
 
 const priorityNames: Record<string, string> = Object.fromEntries(P.priorities.map((p: any) => [p.id, p.title]))
 
-function keysDeep(value: unknown): string[] {
-  if (!value || typeof value !== 'object') return []
-  return Object.entries(value as Record<string, unknown>).flatMap(([key, child]) => [key, ...keysDeep(child)])
-}
-
 type CliViewOverrides = {
   id?: string
   tested?: boolean
@@ -223,8 +218,12 @@ describe('personas from the assignments map + roster', () => {
     expect(personas.find((p) => p.id === 'bob')!.subAgents).toEqual([])
   })
 
-  it('builds a full assignments save payload with plays and no run-mode field', () => {
+  it('builds a full assignments save payload with plays and preserves daemon-side mode', () => {
     const personas = adaptPersonas(PERS)
+    const base = {
+      ...PERS.assignments,
+      oscar: { ...PERS.assignments.oscar, mode: 'headless' as const },
+    }
     const bobNext = { ...personas.find((p) => p.id === 'bob')!, model: 'gpt-5' }
     const oscarNext = {
       ...personas.find((p) => p.id === 'oscar')!,
@@ -232,13 +231,13 @@ describe('personas from the assignments map + roster', () => {
     }
     const next = personas.map((p) => (p.id === 'bob' ? bobNext : p.id === 'oscar' ? oscarNext : p))
 
-    const payload = personasToAssignments(next, PERS.assignments)
+    const payload = personasToAssignments(next, base)
 
     expect(Object.keys(payload).sort()).toEqual(Object.keys(PERS.assignments).sort())
     expect(payload.bob).toMatchObject({ cli: 'codex', model: 'gpt-5' })
     expect(payload.deb.enabled).toBe(true)
+    expect(payload.oscar.mode).toBe('headless')
     expect(payload.oscar.plays).toEqual({ 'wrap-up': { cli: 'cursor-agent', model: 'gpt-5-mini' } })
-    expect(keysDeep(payload)).not.toContain('mode')
   })
 
   it('removing a sub-agent drops only that play key', () => {

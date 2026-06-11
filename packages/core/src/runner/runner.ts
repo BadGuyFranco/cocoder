@@ -15,7 +15,7 @@ import type { Adapter } from '../adapter/index.js'
 import { runCommitGate } from '../commit-gate/index.js'
 import type { Git } from '../commit-gate/index.js'
 import type { Priority } from '../priorities/index.js'
-import type { PlayAssignment, ResolvedPersona } from '../personas/index.js'
+import type { PersonaRunMode, PlayAssignment, ResolvedPersona } from '../personas/index.js'
 import { dispatchPlay, type DispatchPlayResult, type HeadlessRunInput } from '../plays/index.js'
 import type { Play } from '../plays/index.js'
 import type { Run, RunStatus, RunStore, Workspace } from '../store/index.js'
@@ -106,16 +106,19 @@ export interface RunInput {
   /** Resolved wrap-up Play + per-(persona, Play) assignment; when present, the runner dispatches the Play to author closeout. */
   readonly wrapPlay?: Play
   readonly wrapPlayAssignment?: PlayAssignment
+  readonly wrapPlayPersonaMode?: PersonaRunMode
   /** Resolved integration-verify Play + assignment (ADR-0015 §3): a FRESH whole-tree verifier the runner
    *  dispatches against the merged-to-be worktree before landing trunk. Fail-closed — without it (or
    *  without a clear pass) a run does NOT auto-merge; it escalates. */
   readonly integrationVerifyPlay?: Play
   readonly integrationVerifyAssignment?: PlayAssignment
+  readonly integrationVerifyPersonaMode?: PersonaRunMode
   /** Resolved merge-conflict Play + assignment (ADR-0015 §4): dispatched when trunk advanced since launch
    *  (non-ff) to resolve the conflict CONTENT in the worktree. A genuine semantic divergence the Play
    *  reports as `escalate` aborts the merge and surfaces to the founder rather than being guessed. */
   readonly mergeConflictPlay?: Play
   readonly mergeConflictAssignment?: PlayAssignment
+  readonly mergeConflictPersonaMode?: PersonaRunMode
 }
 
 export interface RunResult {
@@ -552,6 +555,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       {
         play: input.integrationVerifyPlay,
         assignment: input.integrationVerifyAssignment,
+        personaMode: input.integrationVerifyPersonaMode,
         persona: oscar.id,
         task,
         cwd: worktreePath,
@@ -584,6 +588,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       {
         play: input.mergeConflictPlay,
         assignment: input.mergeConflictAssignment,
+        personaMode: input.mergeConflictPersonaMode,
         persona: oscar.id,
         task,
         cwd: worktreePath,
@@ -690,6 +695,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           {
             play: input.wrapPlay,
             assignment: input.wrapPlayAssignment,
+            personaMode: input.wrapPlayPersonaMode,
             persona: oscar.id,
             task,
             cwd: worktreePath,
