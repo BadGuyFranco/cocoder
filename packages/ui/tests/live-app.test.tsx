@@ -100,14 +100,16 @@ describe('Oz renderer — live daemon path', () => {
     await waitFor(() => expect(screen.getByText(/Launching/i)).toBeDefined())
   })
 
-  it('the Ad-hoc row launches the adhoc-session priority', async () => {
+  it('the Ad-hoc row prompts for a task instead of launching immediately', async () => {
     const posts: PostCall[] = []
     setOz(mockOz({ posts }))
     render(<App />)
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
     fireEvent.click(screen.getByText('Launch run'))
-    await waitFor(() => expect(posts.find((p) => p.path === '/runs')).toBeDefined())
-    expect((posts.find((p) => p.path === '/runs')!.body as { priorityId: string }).priorityId).toBe('adhoc-session')
+    const box = screen.getByLabelText('Message Oz') as HTMLTextAreaElement
+    await waitFor(() => expect(box.value).toBe('adhoc '))
+    await waitFor(() => expect(document.activeElement).toBe(box))
+    expect(posts.find((p) => p.path === '/runs')).toBeUndefined()
   })
 
   it('a 409 from /runs surfaces an honest "already in flight" banner (not an error)', async () => {

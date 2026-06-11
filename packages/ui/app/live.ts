@@ -11,9 +11,10 @@ import type {
   PersonasResponse,
   ClisResponse,
   CliTestResponse,
+  ChatMessage as DaemonChatMessage,
 } from '../electron/ipc-contract.ts'
 import { adaptWorkspace, adaptRuns, adaptPriorities, adaptRunDetail, adaptPersonas, adaptCli } from './adapter.ts'
-import type { Workspace, Priority, Run, Persona, Cli } from './model.ts'
+import type { Workspace, Priority, Run, Persona, Cli, ChatMessage } from './model.ts'
 
 export type { ConnectionState }
 
@@ -65,6 +66,11 @@ export async function loadWsData(oz: OzApi, wsId: string): Promise<WsData> {
 export async function loadRunDetail(oz: OzApi, runId: string, names: Record<string, string>): Promise<Run | null> {
   const r = await oz.daemonGet<RunDetail>(`/runs/${runId}`)
   return r.ok ? adaptRunDetail(r.data, names) : null
+}
+
+export async function sendOzMessage(oz: OzApi, workspaceId: string, text: string): Promise<ChatMessage> {
+  const msg: DaemonChatMessage = await oz.chatSend(workspaceId, text)
+  return { id: `oz${msg.at}`, role: 'oz', time: 'now', body: msg.text }
 }
 
 // ── Mutations ── all return the DaemonResult envelope so the UI renders 202/409/400 as first-class

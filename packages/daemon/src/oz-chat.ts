@@ -2,10 +2,12 @@ import type { Run } from '@cocoder/core'
 import type { OzContext } from './context.js'
 import { launchRun as launchRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type LaunchResult } from './launcher.js'
 
-const HELP_HINT = 'Supported commands: launch <priorityId>, show <runId>, stop <runId>, teardown <runId>, status [runId], help.'
+const ADHOC_PRIORITY_ID = 'adhoc-session'
+const HELP_HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, stop <runId>, teardown <runId>, status [runId], help.'
 
 export type OzCommand =
   | { readonly kind: 'launch'; readonly priorityId: string }
+  | { readonly kind: 'adhoc'; readonly task: string }
   | { readonly kind: 'show'; readonly runId: string }
   | { readonly kind: 'teardown'; readonly runId: string }
   | { readonly kind: 'status'; readonly runId?: string }
@@ -49,6 +51,12 @@ export function parseOzCommand(text: string): OzCommand {
 
   if (verb === 'help') return args.length === 0 ? { kind: 'help' } : unknownCommand()
   if (verb === 'launch') return args.length === 1 ? { kind: 'launch', priorityId: args[0]! } : unknownCommand()
+  if (verb === 'adhoc') {
+    const task = trimmed.slice(rawVerb!.length).trim()
+    if (!task) return { kind: 'unknown', hint: 'Usage: adhoc <task>' }
+    if (task.length > 4000) return { kind: 'unknown', hint: 'Ad-hoc task too long (max 4000 chars).' }
+    return { kind: 'adhoc', task }
+  }
   if (verb === 'show') return args.length === 1 ? { kind: 'show', runId: args[0]! } : unknownCommand()
   if (verb === 'stop' || verb === 'teardown') return args.length === 1 ? { kind: 'teardown', runId: args[0]! } : unknownCommand()
   if (verb === 'status') {
@@ -76,6 +84,16 @@ export async function handleOzMessage(ctx: OzContext, body: unknown, ops: OzChat
       'launch',
       () => ops.launchRun(ctx, workspaceId, command.priorityId),
       (out) => launchReply(workspaceId, command.priorityId, out),
+    )
+  }
+
+  if (command.kind === 'adhoc') {
+    if (!input.workspaceId) return missingWorkspace()
+    const workspaceId = input.workspaceId
+    return runOp(
+      'launch',
+      () => ops.launchRun(ctx, workspaceId, ADHOC_PRIORITY_ID, { task: command.task }),
+      (out) => launchReply(workspaceId, ADHOC_PRIORITY_ID, out),
     )
   }
 
@@ -138,7 +156,7 @@ function unknownReply(status: number, hint: string): OzChatResult {
 }
 
 function missingWorkspace(): OzChatResult {
-  return unknownReply(400, 'Pick a workspace first, then use launch <priorityId>, show <runId>, stop <runId>, teardown <runId>, or status.')
+  return unknownReply(400, 'Pick a workspace first, then use launch <priorityId>, adhoc <task>, show <runId>, stop <runId>, teardown <runId>, or status.')
 }
 
 async function runOp(command: OzChatReply['command'], call: () => Promise<LaunchResult>, reply: (out: LaunchResult) => OzChatReply): Promise<OzChatResult> {

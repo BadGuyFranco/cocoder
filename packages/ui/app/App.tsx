@@ -4,7 +4,7 @@
 // the design-faithful view-model from the ported seed (fixture parity, fully interactive); the daemon
 // adapter is wired in the next slice (the existing electron/ plumbing is untouched).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, launchRun, attachRun, teardownRun, resolveRun, testCli, loadOrder, persistOrder, type ConnectionState } from './live.ts'
+import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, sendOzMessage, launchRun, attachRun, teardownRun, resolveRun, testCli, loadOrder, persistOrder, type ConnectionState } from './live.ts'
 import { ADHOC_PRIORITY_ID, applyOrder } from './adapter.ts'
 import { Sidebar, type Route } from './ui/Sidebar.tsx'
 import { TopBar } from './ui/TopBar.tsx'
@@ -73,6 +73,7 @@ export function App() {
   const [runHistoryOpen, setRunHistoryOpen] = useState(false)
   const [msgsByWs, setMsgsByWs] = useState<Record<string, ChatMessage[]>>(() => Object.fromEntries(workspaces.map((w) => [w.id, [...(seedChat[w.id] ?? [])]])))
   const [ozTyping, setOzTyping] = useState(false)
+  const [chatPrefill, setChatPrefill] = useState<string | null>(null)
 
   // global-ish config (the prototype treats these as workspace-independent)
   const [personas, setPersonas] = useState<Persona[]>(seed.personas)
@@ -182,7 +183,26 @@ export function App() {
   function onSend(text: string) {
     pushMsg({ id: `u${Date.now()}`, role: 'user', time: 'now', body: text })
     setOzTyping(true)
-    setTimeout(() => { setOzTyping(false); pushMsg(ozReply(text)) }, 650)
+    if (!live) {
+      setTimeout(() => { setOzTyping(false); pushMsg(ozReply(text)) }, 650)
+      return
+    }
+    const oz = ozApi()
+    if (!oz) {
+      setOzTyping(false)
+      notify('err', 'Oz chat failed: daemon bridge unavailable.')
+      return
+    }
+    void (async () => {
+      try {
+        pushMsg(await sendOzMessage(oz, activeId, text))
+        await refreshActiveWs()
+      } catch {
+        notify('err', 'Oz chat failed.')
+      } finally {
+        setOzTyping(false)
+      }
+    })()
   }
   function reorder(from: number, to: number) {
     const list = [...(prioritiesByWs[activeId] ?? [])]
@@ -225,7 +245,7 @@ export function App() {
   }
   function handleAdhoc() {
     if (!live) { onSend('Run an ad-hoc task: '); return }
-    void doLaunch(ADHOC_PRIORITY_ID, 'Starting an ad-hoc run')
+    setChatPrefill('adhoc ')
   }
   function handleRunAction(action: string, id: string) {
     if (!live) { onSend(`${action} ${id}`); return }
@@ -296,6 +316,7 @@ export function App() {
               onReorder={reorder} onLaunch={handleLaunch} onAdhoc={handleAdhoc}
               onAddPriority={() => onSend('Draft a new priority.')} onSend={onSend} onDecision={(c: string) => onSend(`Decision: replay ${c} plan.`)} onRunAction={handleRunAction}
               ozTyping={ozTyping} runHistoryOpen={runHistoryOpen} setRunHistoryOpen={setRunHistoryOpen} live={live}
+              chatPrefill={chatPrefill} onChatPrefillConsumed={() => setChatPrefill(null)}
             />
           )}
           {route === 'workspaces' && (
