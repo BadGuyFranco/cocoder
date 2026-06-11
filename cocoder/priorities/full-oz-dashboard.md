@@ -26,8 +26,13 @@ is decided when this is picked up, not here.
 endpoint that exists**; surfaces without an endpoint stub cleanly and are tracked in
 `packages/ui/ENDPOINTS_OWED.md` (live tracker). Slices 1–5 (adapter, polling, connection-states,
 mutations, drag-reorder seam), CLI list/test consumption, and `POST /oz/messages` are **merged to
-trunk** (`feat/oz-dashboard` was the merge-base). **Not archive-ready** — six owed surfaces remain;
-one blocked on a founder design decision (Q2) (see below).
+trunk** (`feat/oz-dashboard` was the merge-base). run_54 (2026-06-11) closed three more owed
+surfaces end-to-end: **priority reorder** (the ADR-0010 `order.json` manifest, daemon + UI),
+**free-text ad-hoc runs** (`POST /runs {task?}` + the bounded Oz `adhoc` verb + describe-first UI),
+and **run-resolve consumption** (Resolve actions on parked runs in the run drawer). **Not
+archive-ready** — remaining: Oz-as-persona (ADR-0017), Workspaces daemon model (ADR-0019),
+persona `{mode, subAgents}` (awaiting ADR-0018 review), `POST /runs/:id/stop`, priority create,
+the "awaiting founder" Dashboard list, and Oz-chat SSE.
 
 > History worth recording: a first pass mistakenly built from `docs/oz-design-brief.md` (the *input
 > brief* that was pasted into claude.ai/design), not the founder's actual **design output**. It was then
@@ -80,6 +85,20 @@ one blocked on a founder design decision (Q2) (see below).
   **Recovered, not rebuilt** — see the stranding note below.
 - **Verification (run_46):** daemon tests 69 · ui tests 46 · typecheck 0 · topology pass. Fresh
   worktree baseline needs `pnpm install` at root first (no `node_modules` ship in the worktree).
+- **run_54 (2026-06-11), five atoms, all verified + committed on `cocoder/run_54`:**
+  (0) daemon priority ordering via the ADR-0010 **order-only manifest** — `GET …/priorities` sorts by
+  `cocoder/priorities/order.json` (unlisted appended, stale ids ignored, missing manifest = old
+  behavior), new `POST /workspaces/:id/priorities/reorder` writes it atomically behind the CSRF gate
+  (`e4b1435`); (1) UI drag-reorder consumes it — `electron/priorities-sync.ts` mirrors the
+  settings-sync daemon-first/offline-cache pattern, zero renderer change (`c1360a3`); (2) run drawer
+  **Resolve actions** on parked runs (Mark landed / Discard) consuming `POST /runs/:id/resolve`,
+  daemon 409 fail-closed messages surfaced verbatim (`b1747cc`); (3) `POST /runs` gains optional
+  `{task}` (trim, 4000 cap, never persisted) threaded into Oscar+Deb launch prompts as a labeled
+  ad-hoc-instruction section, byte-identical prompts when absent (`54745f7`); (4) bounded Oz
+  `adhoc <task>` verb + design's describe-first ad-hoc flow (Launch pre-fills the Oz Terminal), and
+  live chat send now actually posts through the existing `chatSend` bridge (`721437d`).
+- **Verification (run_54):** core 202 · daemon 90 · ui 53 · root typecheck clean (all run per-atom at
+  the verify gate).
 
 > History worth recording (run_46): this Oz-chat slice was independently built by **run_44** (a
 > status/query design) and **run_45** (the bounded command-interface design) — but **neither landed**;
@@ -106,8 +125,8 @@ mechanical infra (Settings was the last clean infra slice).
 | 4 | Persona `{mode, subAgents}` | **Seam drafted → [ADR-0018](../decisions/0018-persona-run-mode-and-sub-agents.md) (proposed, founder review owed):** sub-agents = per-persona Play assignments (no new schema concept); `mode` persists only when the runner honors it the same slice (truthfulness rule). Build follows acceptance. |
 | 5 | `POST /clis` (add CLI) | CLIs derive from compiled adapters — defer (dynamic registration feature). |
 | 6 | Settings | **SERVED** (run_43). |
-| 7 | `POST /runs {task?}` free-text ad-hoc | Bounded; threads task to builder. |
-| 8 | Priority create + reorder | **DECIDED ([ADR-0010 amendment](../decisions/0010-taxonomy-and-authoring.md), run_46):** NO DB migration. Priorities stay `.md` files; sequence is a git-tracked **order-only** `cocoder/priorities/order.json` (array of ids); drag-reorder rewrites it; `.md` files stay the existence-SSOT. |
+| 7 | `POST /runs {task?}` free-text ad-hoc | **SERVED** (run_54): `{task?}` threads into launch prompts (`54745f7`); bounded Oz `adhoc <task>` verb + describe-first UI (`721437d`). |
+| 8 | Priority create + reorder | **Reorder SERVED** (run_54, `e4b1435` + `c1360a3`): the ADR-0010 order-only `cocoder/priorities/order.json` manifest is implemented daemon+UI end-to-end. **Create still owed** (`POST /workspaces/:id/priorities`). |
 
 ### Founder decisions + next-session pickup
 
@@ -133,10 +152,13 @@ no founder decisions are outstanding on this priority.
   No DB migration: priorities stay `.md` files; sequence is a git-tracked order-only
   `cocoder/priorities/order.json`; drag-reorder rewrites it. Owed slice #8 reclassified above.
 
-**Recommended next slice:** two now-ripe build slices, no decisions blocking either — (a) **Oz as a
-persona** per ADR-0017 (supersedes the chat stub with the real agent-in-a-window), or (b) persona
-`{mode, subAgents}` runner consumption (#4). The priority-order manifest (#8) and Workspaces daemon
-model (#2) are also unblocked build-work whenever sequenced.
+**Recommended next slice (updated run_54):** (a) **Oz as a persona** per ADR-0017 (supersedes the
+chat stub with the real agent-in-a-window) — the biggest remaining piece and best started with the
+founder present, or (b) the **Workspaces daemon model** per ADR-0019 (#2) — decided build-work.
+Persona `{mode, subAgents}` (#4) stays gated on the founder's ADR-0018 review. The priority-order
+manifest (#8 reorder) and free-text ad-hoc (#7) landed in run_54; priority **create**, `POST
+/runs/:id/stop` (#3 — investigate runner process ownership first), the "awaiting founder" Dashboard
+list, and Oz-chat SSE remain.
 
 > ⚠️ **run_45 incident — read before delegating.** Twice the builder rebuilt an entire, undelegated
 > "Priority Architecture Contract" feature into `packages/core` (incl. a `MissingArchitectureContractError`
