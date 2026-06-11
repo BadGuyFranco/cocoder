@@ -937,6 +937,144 @@ describe('Oz mutations + lifecycle', () => {
     expect(await readFile(file, 'utf8')).toBe(before)
   })
 
+  test('POST /workspaces creates a workspace file with raw paths and GET serves it', async () => {
+    await startServer()
+    const folders = [
+      { name: 'Dogfood', path: '${COCODER_HOME}', role: 'primary' },
+      { path: './docs', role: 'readonly' },
+    ]
+
+    const r = await call(oz!, 'POST', '/workspaces', { body: { id: 'new-workspace', folders } })
+
+    expect(r.status).toBe(201)
+    expect(r.json.legacyHidden).toEqual(['cocoder'])
+    expect(r.json.workspace).toMatchObject({ id: 'new-workspace', name: 'new-workspace', path: home })
+    expect(r.json.workspace.roots).toEqual([
+      { name: 'Dogfood', path: home, role: 'primary' },
+      { name: 'docs', path: join(home, 'local', 'workspace', 'docs'), role: 'readonly' },
+    ])
+    expect(JSON.parse(await readFile(join(home, 'local', 'workspace', 'new-workspace.code-workspace'), 'utf8'))).toEqual({ folders, settings: {} })
+    const get = await call(oz!, 'GET', '/workspaces')
+    expect(get.json.workspaces.map((workspace: any) => workspace.id)).toEqual(['new-workspace'])
+  })
+
+  test('POST /workspaces returns 409 for an existing file including case-insensitive collisions', async () => {
+    await writeWorkspaceFile(home, 'Casey')
+    await startServer()
+
+    const r = await call(oz!, 'POST', '/workspaces', { body: { id: 'casey', folders: [{ path: '${COCODER_HOME}', role: 'primary' }] } })
+
+    expect(r.status).toBe(409)
+    expect(r.json.error).toContain('casey')
+  })
+
+  test('POST /workspaces migrates a legacy id and reports other legacy ids hidden by directory mode', async () => {
+    await writeFile(
+      join(home, 'local', 'workspaces.json'),
+      JSON.stringify({
+        workspaces: [
+          { id: 'cocoder', name: 'Legacy CoCoder', path: '${COCODER_HOME}' },
+          { id: 'other', name: 'Other', path: '${COCODER_HOME}/other' },
+        ],
+      }),
+    )
+    await startServer()
+
+    const r = await call(oz!, 'POST', '/workspaces', { body: { id: 'cocoder', folders: [{ name: 'Migrated', path: '${COCODER_HOME}', role: 'primary' }] } })
+
+    expect(r.status).toBe(201)
+    expect(r.json.legacyHidden).toEqual(['other'])
+    expect(r.json.workspace).toMatchObject({ id: 'cocoder', name: 'cocoder', path: home })
+    expect(r.json.workspace.roots).toEqual([{ name: 'Migrated', path: home, role: 'primary' }])
+    const get = await call(oz!, 'GET', '/workspaces')
+    expect(get.json.workspaces.map((workspace: any) => workspace.id)).toEqual(['cocoder'])
+  })
+
+  test('POST /workspaces rejects bad ids and invalid roots', async () => {
+    await startServer()
+
+    expect((await call(oz!, 'POST', '/workspaces', { body: { id: '../x', folders: [{ path: '${COCODER_HOME}', role: 'primary' }] } })).status).toBe(400)
+    expect((await call(oz!, 'POST', '/workspaces', { body: { id: 'bad-role', folders: [{ path: '${COCODER_HOME}', role: 'admin' }] } })).status).toBe(400)
+    expect((await call(oz!, 'POST', '/workspaces', { body: { id: 'missing-root', folders: [{ path: join(home, '..', 'external'), role: 'primary' }] } })).status).toBe(400)
+    expect(
+      (await call(oz!, 'POST', '/workspaces', { body: { id: 'nested-primary', folders: [{ path: '${COCODER_HOME}/nested', role: 'primary' }, { path: '${COCODER_HOME}', role: 'readonly' }] } })).status,
+    ).toBe(400)
+  })
+
+  test('POST /workspaces → 403 without a CSRF token', async () => {
+    await startServer()
+
+    const r = await call(oz!, 'POST', '/workspaces', { csrf: false, body: { id: 'blocked', folders: [{ path: '${COCODER_HOME}', role: 'primary' }] } })
+
+    expect(r.status).toBe(403)
+    expect(await exists(join(home, 'local', 'workspace', 'blocked.code-workspace'))).toBe(false)
+  })
+
+  test('DELETE /workspaces/:id removes a file-backed workspace and subsequent GET no longer serves it', async () => {
+    const file = await writeWorkspaceFile(home, 'delete-me')
+    await writeWorkspaceFile(home, 'keep-me')
+    await startServer()
+
+    const r = await call(oz!, 'DELETE', '/workspaces/delete-me')
+
+    expect(r.status).toBe(200)
+    expect(r.json).toEqual({ ok: true })
+    expect(await exists(file)).toBe(false)
+    const get = await call(oz!, 'GET', '/workspaces')
+    expect(get.json.workspaces.map((workspace: any) => workspace.id)).toEqual(['keep-me'])
+  })
+
+  test('DELETE /workspaces/:id returns 404 for an unknown workspace', async () => {
+    await writeWorkspaceFile(home)
+    await startServer()
+
+    const r = await call(oz!, 'DELETE', '/workspaces/nope')
+
+    expect(r.status).toBe(404)
+  })
+
+  test('DELETE /workspaces/:id returns 409 for a legacy-sourced workspace', async () => {
+    await startServer()
+
+    const r = await call(oz!, 'DELETE', '/workspaces/cocoder')
+
+    expect(r.status).toBe(409)
+    expect(r.json.error).toBe('workspace must be migrated to local/workspace/cocoder.code-workspace first')
+  })
+
+  test('DELETE /workspaces/:id returns 409 while a run is in flight for that workspace', async () => {
+    const file = await writeWorkspaceFile(home)
+    await startServer()
+    oz!.ctx.inFlight.set('cocoder', 'pending')
+
+    const r = await call(oz!, 'DELETE', '/workspaces/cocoder')
+
+    expect(r.status).toBe(409)
+    expect(r.json.error).toBe('workspace has an active run')
+    expect(await exists(file)).toBe(true)
+  })
+
+  test('DELETE /workspaces/:id resurrects legacy fallback when the last workspace file is removed', async () => {
+    await writeWorkspaceFile(home, 'cocoder', { folders: [{ name: 'File-backed', path: '${COCODER_HOME}/file-backed', role: 'primary' }, { path: '${COCODER_HOME}', role: 'readonly' }], settings: {} })
+    await startServer()
+
+    const deleted = await call(oz!, 'DELETE', '/workspaces/cocoder')
+    const get = await call(oz!, 'GET', '/workspaces')
+
+    expect(deleted.status).toBe(200)
+    expect(get.json.workspaces).toEqual([{ id: 'cocoder', name: 'CoCoder', path: home, roots: [{ name: 'CoCoder', path: home, role: 'primary' }] }])
+  })
+
+  test('DELETE /workspaces/:id → 403 without a CSRF token', async () => {
+    const file = await writeWorkspaceFile(home)
+    await startServer()
+
+    const r = await call(oz!, 'DELETE', '/workspaces/cocoder', { csrf: false })
+
+    expect(r.status).toBe(403)
+    expect(await exists(file)).toBe(true)
+  })
+
   test('PUT /settings → 403 without a CSRF token (mutation gate)', async () => {
     await startServer()
     const r = await call(oz!, 'PUT', '/settings', { csrf: false, body: { pollIntervalMs: 5000 } })

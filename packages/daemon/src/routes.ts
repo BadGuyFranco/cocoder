@@ -8,7 +8,7 @@ import { listEffectivePersonas, loadAssignments, loadPriority, parseFrontmatter,
 import { basePersonasDir } from '@cocoder/personas'
 import type { OzContext } from './context.js'
 import { sendJson } from './server.js'
-import { findWorkspace, readWorkspaces, validateWorkspaceFolders, workspaceDirectory, workspaceFilePath } from './registry.js'
+import { findWorkspace, readWorkspaces, validateWorkspaceFolders, workspaceDirectory, workspaceFilePath, type RegistryRoot, type WorkspaceFolderInput } from './registry.js'
 import { readRunDir } from './rundir.js'
 import { appendAudit } from './audit.js'
 import { listClis, testCli } from './clis.js'
@@ -92,6 +92,14 @@ interface CreatePriorityInput {
 
 type ParsedCreatePriorityBody = { readonly ok: true; readonly input: CreatePriorityInput } | { readonly ok: false; readonly error: string }
 
+interface CreateWorkspaceInput {
+  readonly id: string
+  readonly folders: ReadonlyArray<WorkspaceFolderInput>
+  readonly roots: ReadonlyArray<RegistryRoot>
+}
+
+type ParsedCreateWorkspaceBody = { readonly ok: true; readonly input: CreateWorkspaceInput } | { readonly ok: false; readonly error: string }
+
 const PRIORITY_ID_RE = /^[a-z0-9][a-z0-9-]*$/
 const CONTROL_CHARS_RE = /[\u0000-\u001f\u007f]/
 
@@ -126,6 +134,26 @@ function createPriorityBody(body: unknown): ParsedCreatePriorityBody {
   return { ok: true, input: { id, title, goal } }
 }
 
+function validateWorkspaceRootRules(roots: ReadonlyArray<RegistryRoot>, cocoderHome: string): string | null {
+  if (!roots.some((root) => isSamePath(root.path, cocoderHome))) return 'workspace must include the CoCoder install root'
+  const primary = roots.find((root) => root.role === 'primary')!
+  return !isSamePath(primary.path, cocoderHome) && isInsidePath(cocoderHome, primary.path) ? 'primary root must not be inside the CoCoder install root' : null
+}
+
+function createWorkspaceBody(body: unknown, cocoderHome: string): ParsedCreateWorkspaceBody {
+  const record = bodyRecord(body)
+  if (typeof record.id !== 'string') return { ok: false, error: 'id must be a string' }
+  const id = record.id.trim()
+  if (id.length > 64) return { ok: false, error: 'id too long' }
+  if (!PRIORITY_ID_RE.test(id)) return { ok: false, error: 'id must match /^[a-z0-9][a-z0-9-]*$/' }
+
+  const parsed = validateWorkspaceFolders(record.folders, workspaceDirectory(cocoderHome), { COCODER_HOME: cocoderHome })
+  if (!parsed.ok) return { ok: false, error: parsed.error }
+  const rootError = validateWorkspaceRootRules(parsed.roots, cocoderHome)
+  if (rootError) return { ok: false, error: rootError }
+  return { ok: true, input: { id, folders: parsed.folders, roots: parsed.roots } }
+}
+
 function composePriorityMarkdown(input: CreatePriorityInput): string {
   const body = input.goal.endsWith('\n') ? input.goal : `${input.goal}\n`
   return `---\nid: ${input.id}\ntitle: ${input.title}\n---\n${body}`
@@ -147,6 +175,23 @@ function isSamePath(a: string, b: string): boolean {
 function isInsidePath(parent: string, child: string): boolean {
   const rel = relative(resolve(parent), resolve(child))
   return rel !== '' && !rel.startsWith('..') && !isAbsolute(rel)
+}
+
+async function legacyWorkspaceIds(cocoderHome: string): Promise<string[]> {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(await readFile(join(cocoderHome, 'local', 'workspaces.json'), 'utf8'))
+  } catch {
+    return []
+  }
+  const record = bodyRecord(parsed)
+  const workspaces = Array.isArray(record.workspaces) ? record.workspaces : []
+  const ids: string[] = []
+  for (const workspace of workspaces) {
+    const item = bodyRecord(workspace)
+    if (typeof item.id === 'string') ids.push(item.id)
+  }
+  return ids
 }
 
 /** GET /workspaces — surface 1. */
@@ -331,11 +376,8 @@ async function updateWorkspace(ctx: OzContext, res: ServerResponse, workspaceId:
   const vars = { COCODER_HOME: ctx.cocoderHome }
   const parsed = validateWorkspaceFolders(bodyRecord(body).folders, dir, vars)
   if (!parsed.ok) return sendJson(res, 400, { error: parsed.error })
-  if (!parsed.roots.some((root) => isSamePath(root.path, ctx.cocoderHome))) return sendJson(res, 400, { error: 'workspace must include the CoCoder install root' })
-  const primary = parsed.roots.find((root) => root.role === 'primary')!
-  if (!isSamePath(primary.path, ctx.cocoderHome) && isInsidePath(ctx.cocoderHome, primary.path)) {
-    return sendJson(res, 400, { error: 'primary root must not be inside the CoCoder install root' })
-  }
+  const rootError = validateWorkspaceRootRules(parsed.roots, ctx.cocoderHome)
+  if (rootError) return sendJson(res, 400, { error: rootError })
 
   let existing: unknown
   try {
@@ -352,6 +394,45 @@ async function updateWorkspace(ctx: OzContext, res: ServerResponse, workspaceId:
   void appendAudit(ctx.cocoderHome, { action: 'workspace-write', workspaceId })
   const updated = await findWorkspace(ctx.cocoderHome, workspaceId)
   sendJson(res, 200, { ok: true, workspace: updated })
+}
+
+async function createWorkspace(ctx: OzContext, res: ServerResponse, body: unknown): Promise<void> {
+  const parsed = createWorkspaceBody(body, ctx.cocoderHome)
+  if (!parsed.ok) return sendJson(res, 400, { error: parsed.error })
+  const { id, folders } = parsed.input
+  const dir = workspaceDirectory(ctx.cocoderHome)
+  const target = workspaceFilePath(ctx.cocoderHome, id)
+
+  await mkdir(dir, { recursive: true })
+  const existing = await readdir(dir)
+  if (existing.some((name) => name.toLowerCase() === `${id}.code-workspace`)) {
+    return sendJson(res, 409, { error: `workspace id "${id}" already exists` })
+  }
+
+  const servedBefore = new Set((await readWorkspaces(ctx.cocoderHome)).map((workspace) => workspace.id))
+  const legacyHidden = (await legacyWorkspaceIds(ctx.cocoderHome)).filter((legacyId) => legacyId !== id && servedBefore.has(legacyId))
+  const tmp = join(dir, `.${id}.${process.pid}.${Date.now()}.tmp`)
+  await writeFile(tmp, `${JSON.stringify({ folders, settings: {} }, null, 2)}\n`)
+  await rename(tmp, target)
+  void appendAudit(ctx.cocoderHome, { action: 'workspace-create', workspaceId: id, legacyHidden })
+  const workspace = await findWorkspace(ctx.cocoderHome, id)
+  sendJson(res, 201, { ok: true, workspace, legacyHidden })
+}
+
+async function deleteWorkspace(ctx: OzContext, res: ServerResponse, workspaceId: string): Promise<void> {
+  const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
+  if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
+  const target = workspaceFilePath(ctx.cocoderHome, workspaceId)
+  try {
+    await readFile(target, 'utf8')
+  } catch {
+    return sendJson(res, 409, { error: `workspace must be migrated to local/workspace/${workspaceId}.code-workspace first` })
+  }
+  if (ctx.inFlight.has(workspaceId)) return sendJson(res, 409, { error: 'workspace has an active run' })
+
+  await rm(target, { force: true })
+  void appendAudit(ctx.cocoderHome, { action: 'workspace-delete', workspaceId })
+  sendJson(res, 200, { ok: true })
 }
 
 /** Mutation dispatch (stage 4). Returns true if handled. The security gate already required CSRF. */
@@ -404,6 +485,16 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
     const { status, body: out } = await requestDaemonRestart(ctx)
     return sendJson(res, status, out), true
   }
+  if (method === 'POST' && pathname === '/workspaces') {
+    let body: unknown
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      return sendJson(res, 400, { error: 'invalid JSON body' }), true
+    }
+    await createWorkspace(ctx, res, body)
+    return true
+  }
   if (method === 'POST' && seg[0] === 'workspaces' && seg.length === 4 && seg[2] === 'priorities' && seg[3] === 'reorder') {
     let body: unknown
     try {
@@ -446,6 +537,10 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
       return sendJson(res, 400, { error: 'invalid JSON body' }), true
     }
     await updateWorkspace(ctx, res, decodeURIComponent(seg[1]!), body)
+    return true
+  }
+  if (method === 'DELETE' && seg[0] === 'workspaces' && seg.length === 2) {
+    await deleteWorkspace(ctx, res, decodeURIComponent(seg[1]!))
     return true
   }
   if (method === 'POST' && seg[0] === 'clis' && seg.length === 3 && seg[2] === 'test') {
