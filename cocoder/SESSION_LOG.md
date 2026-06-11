@@ -12,6 +12,32 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-11 — **Full Oz dashboard: cooperative `POST /runs/:id/stop` end-to-end (run_58)**
+
+**Persona:** Oscar + Bob (3 atoms) | **Priority:** full-oz-dashboard | **Plan:** owed surface #3
+(`POST /runs/:id/stop` — cooperative stop, not teardown-as-stop)
+
+**Outcomes:**
+- 3 atoms verified and committed on `cocoder/run_58`, closing owed surface #3 **end-to-end**:
+  core cooperative-stop seam — `RunnerDeps` optional `AbortSignal` honored at loop wait seams via
+  `StopRequestedError`; one `run-stopped` event, in-flight atom abandoned + quarantined, integration
+  SKIPPED, run record still written, new first-class `'stopped'` RunStatus (founder stop no longer
+  masquerades as fault/triage) (`9a0c099`); daemon `POST /runs/:id/stop` — per-run
+  `AbortController` map, post-settle pane/worktree cleanup via existing helpers, honest 404/409/202
+  statuses; cooperative by design (stop during wrap-up/integration lets the run finish) (`932df67`);
+  consumption tail — Oz-chat `stop` verb split off teardown alias, renderer `stopRun()` over generic
+  `daemonPost`, dashboard Stop action live, `ENDPOINTS_OWED` row 9 → SERVED (`d570278`).
+- Verification: core 209 · daemon 127 · ui 79 · root typecheck clean (per-atom; whole-tree diff
+  each gate).
+- Disposition: **`continue`** — remaining: Oz-as-persona (ADR-0017), ADR-0018 stage 3 (Oscar
+  session `mode` — investigate runner prompting seam first; Bob gated on captured-subprocess monitor),
+  Oz-chat SSE.
+
+**Next:** scope ADR-0018 stage 3 prompting investigation (runner.ts dispatch sites) before
+delegating build atoms; or Oz-as-persona (ADR-0017, founder-present recommended). Zero-code
+founder follow-up: migrate dogfood off legacy workspace registry via New-Workspace modal; optional
+live-smoke of Stop button (unit/integration green, no live-dashboard smoke this session).
+
 ## 2026-06-11 — **Full Oz dashboard: ADR-0019 Workspaces daemon model end-to-end (run_57)**
 
 **Persona:** Oscar + Bob (4 atoms) | **Priority:** full-oz-dashboard | **Plan:** owed surface #2

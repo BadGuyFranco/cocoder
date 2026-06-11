@@ -62,10 +62,12 @@ pnpm exec cocoder launch \
 
 ## Stop a run
 
-- Dashboard **Runs** page (`#/runs`) → **Stop** on a row, or
-- **Run Inspector** (`#/runs/:runId`) for evidence paths, then stop from Runs.
+- Dashboard run drawer → **Stop** on a running run (cooperative — `POST /runs/:id/stop`), or
+- Oz Terminal: `stop <runId>` (same cooperative path).
 
-Oz invokes `cocoder stop-run` via argv; no shell interpolation.
+Cooperative stop honors the runner's wait seams; a stop during wrap-up or integration may let the
+run finish rather than corrupting a merge. To close panes without stopping the loop, use `teardown
+<runId>` (chat) or the existing teardown surfaces.
 
 ## Oz Terminal (bounded chat commands)
 
@@ -76,7 +78,8 @@ vocabulary** — it is not an LLM agent. Supported commands (workspace context r
 |---------|---------|--------|
 | `launch` | `launch full-oz-dashboard` | Launches the named priority in the active workspace |
 | `show` | `show run_45` | Attaches/show panes for the run |
-| `stop` / `teardown` | `stop run_45` | Closes run panes (teardown) |
+| `stop` | `stop run_45` | Cooperative run stop (`POST /runs/:id/stop`) |
+| `teardown` | `teardown run_45` | Closes run panes (surface teardown; does not cooperative-stop) |
 | `status` | `status` or `status run_45` | Lists runs or shows one run's status |
 | `help` | `help` | Prints the supported command list |
 
