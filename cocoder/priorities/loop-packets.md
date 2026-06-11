@@ -119,11 +119,27 @@ hadn't landed yet — and wrapped with 0 atoms, so the build run is the next lau
 
 ## Status
 
-**Disposition: `archive-candidate` (pending founder confirmation) — run_51 (2026-06-10) built ALL
-six enforcement atoms loop-shaped + the wrap-up writeScope fix, 7/7 atoms verified and committed,
-zero rejections.** The only remaining gap is the explicit follow-up the amendment already named: the
-live-enforcement proof after a founder daemon restart (the daemon serves boot-time code, so run_51's
-enforcement is unit-test-proven but not yet live). Never self-archive — founder confirms.
+**Disposition: `archive-candidate` — NO remaining implementation gaps (founder-directed recording,
+run_53, 2026-06-11). Awaiting only the founder's archive confirmation.** The one follow-up the
+amendment named — the live-enforcement proof after a founder daemon restart — was delivered by
+**run_52** (2026-06-11, post-restart): the runner recorded **4 `loop-iteration` events and 1
+`loop-criterion-rerun` event (exit 0, pass)** in the run DB (the first loop events ever recorded
+there), and Oscar's verify passed. Bonus live proof from the same run: a malformed structured loop
+directive was rejected loudly (`MalformedLoopDirectiveError`, fault-0) exactly as atom 1 specified —
+never silently treated as prose. Never self-archive — founder confirms.
+
+**Live-enforcement proof (run_52, 2026-06-11 — post-restart):**
+- Structured `loop` dispatch on a real atom (full-oz-dashboard UI consumption of
+  `POST /runs/:id/resolve`), criterion `pnpm --filter @cocoder/ui test`.
+- Builder ledger `loop-ledger-0.jsonl`: 4 iterations (red → red → green → green), all in-scope,
+  per-iteration self-critique present.
+- Runner enforcement live: run DB holds `loop-iteration` ×4 + `loop-criterion-rerun` ×1 (exit 0)
+  for run_52 — verified directly by run_53. Criterion rerun preceded sentinel acceptance; Oscar's
+  verify still gated (pass, ui 54/54 + typecheck green).
+- Founder ruling (run_53, 2026-06-11): the run_52 UI Resolve work itself stays **parked**
+  (`heldback-ui-work.patch` in the run_52 run dir) — it belongs to the dashboard/UI priority
+  (`full-oz-dashboard`), not relanded here. The proof recorded here is the loop *mechanism*, not
+  that UI change.
 
 **Done (run_51, 7 atoms — `fe263cb`, `b1ce428`, `6da5334`, `ae8aa3a`, `1b5075f`, `a04051b`,
 `bc5e5d7`):**
@@ -181,6 +197,7 @@ triage/nudge are all file artifacts) — classified design-homework, not founder
 guidance ✅ committed · retrofit list founder-approved ✅ (2026-06-10) · pilot run + measured ✅
 (run_51: 6 loop packets on real atoms, 1 round-trip/0 rejects each, ≈3.5 min avg vs run_45's
 2-round-trip ≈25.1 min reject/re-scope unit — see Pilot measurements above) · enforcement atoms 1–6
-✅ (run_51, unit-test-proven). **Archive proposed** — the one open follow-up is the live-enforcement
-proof after a founder daemon restart (a structured-`loop` dispatch on a post-restart run showing
-runner-recorded `loop-iteration`/`loop-criterion-rerun` events).
+✅ (run_51, unit-test-proven) · live-enforcement proof ✅ (run_52, post-restart: runner-recorded
+`loop-iteration` ×4 + `loop-criterion-rerun` ×1 in the run DB, plus loud malformed-loop rejection —
+see Live-enforcement proof above). **Every verified-when element is met. Archive proposed —
+awaiting founder confirmation.**

@@ -12,6 +12,28 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-11 — **Loop packets: live-enforcement proof recorded (run_52) — archive-candidate, no implementation gaps (run_53)**
+
+**Persona:** Oscar (wrap-up only, founder-directed) | **Priority:** loop-packets | **Plan:** record run_52 as the live proof
+
+**Outcomes:**
+- **run_52 (post-restart daemon) IS the live-enforcement proof:** a structured `loop` dispatch on a
+  real atom produced runner-recorded `loop-iteration` ×4 + `loop-criterion-rerun` ×1 (exit 0) in the
+  run DB — the first loop events ever recorded there — verified directly by run_53 against the DB
+  and run_52 artifacts (`loop-ledger-0.jsonl` 4 iterations red→red→green→green, `verify-0.json`
+  pass). Bonus: the runner loudly rejected a malformed loop directive (`MalformedLoopDirectiveError`,
+  fault-0) — atom 1's enforcement live.
+- Founder ruling: run_52's parked UI Resolve work (`heldback-ui-work.patch`) is NOT relanded here —
+  it belongs to `full-oz-dashboard`. The proof recorded is the loop mechanism, not that UI change.
+- Playbook Status + verified-when ledger and `docs/loop-packets-dispatch-inventory.md` updated:
+  every verified-when element met; disposition **`archive-candidate` with no remaining
+  implementation gaps** — founder archive confirmation requested.
+
+**Next:** founder confirms archive of `loop-packets` (or vetoes); the UI Resolve patch picks up
+  under `full-oz-dashboard`.
+
+---
+
 ## 2026-06-10 — **Loop packets: enforcement built, archive-candidate — live proof after daemon restart (run_51)**
 
 **Persona:** Oscar + Bob (7 atoms) | **Priority:** loop-packets | **Plan:** Phase 5 enforcement build (founder amendment)

@@ -79,3 +79,11 @@ The founder chose to **build these six findings, not park them — inside `loop-
 Important live caveat: the running daemon serves boot-time code. This inventory claims unit-test-proven
 enforcement in this worktree only; it takes live effect after the founder restarts the daemon. Live
 proof after restart remains a follow-up and is not claimed by run_51.
+
+**Live proof DELIVERED (run_52, 2026-06-11, post-restart daemon):** the caveat above is resolved.
+A structured `loop` dispatch on a real atom produced runner-recorded enforcement in the run DB —
+`loop-iteration` ×4 and `loop-criterion-rerun` ×1 (exit 0, pass), the first loop events ever
+recorded there — and the same run also proved the loud malformed-loop rejection live
+(`MalformedLoopDirectiveError` on a malformed directive, never silently treated as prose). Recorded
+by run_53 at the founder's direction; evidence verified directly against the run DB and the run_52
+artifacts (`loop-ledger-0.jsonl`, `verify-0.json`, `fault-0.json`).
