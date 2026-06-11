@@ -86,6 +86,12 @@ export async function teardownRun(oz: OzApi, runId: string): Promise<MutationRes
   return oz.daemonPost(`/runs/${runId}/teardown`)
 }
 
+export async function resolveRun(oz: OzApi, runId: string, disposition: 'discard' | 'landed', note?: string): Promise<MutationResult> {
+  const body: { disposition: 'discard' | 'landed'; note?: string } = { disposition }
+  if (note) body.note = note
+  return oz.daemonPost(`/runs/${runId}/resolve`, body)
+}
+
 export async function testCli(oz: OzApi, id: string): Promise<Cli | null> {
   try {
     const r = await oz.daemonPost<CliTestResponse>(`/clis/${encodeURIComponent(id)}/test`)
@@ -95,8 +101,8 @@ export async function testCli(oz: OzApi, id: string): Promise<Cli | null> {
   }
 }
 
-// ── Drag-reorder seam ── the priority order is client-owned and persisted in the main-process store
-// today (store.ts), addressed by the same channel that will later proxy a daemon reorder endpoint.
+// ── Drag-reorder seam ── the main-process channel prefers the daemon reorder endpoint and falls back
+// to its local cache when Oz is offline.
 export async function loadOrder(oz: OzApi, wsId: string): Promise<string[]> {
   try { return [...(await oz.prioritiesOrder(wsId))] } catch { return [] }
 }

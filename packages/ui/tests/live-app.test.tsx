@@ -6,6 +6,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react'
 import { App } from '../app/App.tsx'
+import type { RunSummary } from '../electron/ipc-contract.ts'
 import workspacesFx from '../fixtures/workspaces.json'
 import prioritiesFx from '../fixtures/priorities.json'
 import personasFx from '../fixtures/personas.json'
@@ -40,7 +41,7 @@ const clisFx = {
 
 interface PostCall { path: string; body?: unknown }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mockOz(opts: { posts?: PostCall[]; postResult?: any } = {}) {
+function mockOz(opts: { posts?: PostCall[]; postResult?: any; runs?: { runs: RunSummary[] } } = {}) {
   return {
     health: async () => ({ state: 'connected', sha: 'deadbeef' }),
     settingsGet: async () => ({ pollIntervalMs: 2500, defaultWorkspaceId: null }),
@@ -51,14 +52,14 @@ function mockOz(opts: { posts?: PostCall[]; postResult?: any } = {}) {
       if (path === '/workspaces') return ok(workspacesFx)
       if (/\/priorities$/.test(path)) return ok(prioritiesFx)
       if (/\/personas$/.test(path)) return ok(personasFx)
-      if (path.startsWith('/runs?')) return ok(runsFx)
+      if (path.startsWith('/runs?')) return ok(opts.runs ?? runsFx)
       if (/^\/runs\/[^/]+$/.test(path)) return ok(runDetailFx)
       return { ok: false, status: 404, error: `no mock for ${path}` }
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     daemonPost: async (path: string, body?: unknown): Promise<any> => {
       opts.posts?.push({ path, body })
-      return opts.postResult ?? { ok: true, status: 202, data: { runId: 'run_new' } }
+      return typeof opts.postResult === 'function' ? opts.postResult(path, body) : (opts.postResult ?? { ok: true, status: 202, data: { runId: 'run_new' } })
     },
     daemonPut: async () => ok({}),
     chatSend: async () => ({ role: 'oz', text: '', at: 0 }),
@@ -115,6 +116,55 @@ describe('Oz renderer — live daemon path', () => {
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
     fireEvent.click(screen.getAllByText('Launch')[0])
     await waitFor(() => expect(screen.getByText(/already in flight/i)).toBeDefined())
+  })
+
+  it('a parked run drawer shows Resolve actions while a running run drawer does not', async () => {
+    setOz(mockOz())
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(await screen.findByText('Living base personas + repo extensions'))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Mark landed' })).toBeDefined())
+    expect(screen.getByRole('button', { name: 'Discard run' })).toBeDefined()
+    cleanup()
+
+    const running = {
+      runs: [
+        { ...(runsFx as { runs: RunSummary[] }).runs.find((r) => r.id === 'run_17')!, status: 'running' },
+        ...(runsFx as { runs: RunSummary[] }).runs.filter((r) => r.id !== 'run_17'),
+      ],
+    }
+    setOz(mockOz({ runs: running }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+    fireEvent.click(await screen.findByText('Living base personas + repo extensions'))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Stop run' })).toBeDefined())
+    expect(screen.queryByRole('button', { name: 'Mark landed' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Discard run' })).toBeNull()
+  })
+
+  it('Mark landed posts the landed disposition to /runs/:id/resolve', async () => {
+    const posts: PostCall[] = []
+    setOz(mockOz({ posts }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(await screen.findByText('Living base personas + repo extensions'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark landed' }))
+
+    await waitFor(() => expect(posts.find((p) => p.path === '/runs/run_17/resolve')).toBeDefined())
+    expect(posts.find((p) => p.path === '/runs/run_17/resolve')!.body).toEqual({ disposition: 'landed' })
+  })
+
+  it('resolve daemon errors surface the daemon error text', async () => {
+    setOz(mockOz({ postResult: { ok: false, status: 409, error: 'run branch is not an ancestor of trunk' } }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(await screen.findByText('Living base personas + repo extensions'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark landed' }))
+
+    await waitFor(() => expect(screen.getByText('run branch is not an ancestor of trunk')).toBeDefined())
   })
 
   it('loads CLIs from the live seam and does not show a pending endpoint banner', async () => {

@@ -4,7 +4,7 @@
 // the design-faithful view-model from the ported seed (fixture parity, fully interactive); the daemon
 // adapter is wired in the next slice (the existing electron/ plumbing is untouched).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, launchRun, attachRun, teardownRun, testCli, loadOrder, persistOrder, type ConnectionState } from './live.ts'
+import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, launchRun, attachRun, teardownRun, resolveRun, testCli, loadOrder, persistOrder, type ConnectionState } from './live.ts'
 import { ADHOC_PRIORITY_ID, applyOrder } from './adapter.ts'
 import { Sidebar, type Route } from './ui/Sidebar.tsx'
 import { TopBar } from './ui/TopBar.tsx'
@@ -189,7 +189,7 @@ export function App() {
     const [moved] = list.splice(from, 1)
     list.splice(to, 0, moved)
     setPrioritiesByWs((cur) => ({ ...cur, [activeId]: list }))
-    // Persist the client-owned order (main-process store today; daemon reorder endpoint later).
+    // Persist the order through the daemon-backed main-process seam, with local cache fallback.
     if (live) { const oz = ozApi(); if (oz) void persistOrder(oz, activeId, list.map((p) => p.id)) }
   }
   function addPriority(name: string, summary: string, placeAtTop: boolean) {
@@ -244,6 +244,11 @@ export function App() {
         const res = await teardownRun(oz, id)
         if (res.ok) { notify('ok', 'Closed the run’s panes.'); await refreshActiveWs() }
         else notify('err', res.error || `Teardown failed (${res.status}).`)
+      } else if (action === 'resolve-landed' || action === 'resolve-discard') {
+        const disposition = action === 'resolve-landed' ? 'landed' : 'discard'
+        const res = await resolveRun(oz, id, disposition)
+        if (res.ok) { notify('ok', disposition === 'landed' ? 'Marked the run landed.' : 'Discarded the run.'); await refreshActiveWs() }
+        else notify('err', res.error || `Resolve failed (${res.status}).`)
       } else if (action === 'stop') {
         notify('info', 'Stopping a run isn’t wired yet (POST /runs/:id/stop — pending endpoint).')
       } else {

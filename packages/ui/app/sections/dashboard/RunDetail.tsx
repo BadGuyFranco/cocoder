@@ -9,7 +9,9 @@ export function RunDetail({ run, parentPriority, parentPriorityIndex, onClose, o
   run: Run; parentPriority: Priority | null; parentPriorityIndex: number; onClose: () => void; onAction: (action: string, id: string) => void
 }) {
   const [tab, setTab] = useState<'transcript' | 'evidence' | 'session'>('transcript')
-  const isLive = run.status === 'running' || run.status === 'blocked'
+  const isRunning = run.status === 'running'
+  const isParked = run.status === 'blocked' || run.status === 'not-landed'
+  const isStreaming = run.status === 'running' || run.status === 'blocked'
   return (
     <div className="oz-panel" style={{ height: '100%', animation: 'ozSlideIn 250ms ease-out', borderLeft: '2px solid var(--cb-accent)', position: 'relative' }}>
       <div style={{ padding: '10px 20px', background: 'var(--cb-accent-muted)', borderBottom: '1px solid var(--cb-accent-15)', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -77,7 +79,7 @@ export function RunDetail({ run, parentPriority, parentPriorityIndex, onClose, o
                 </div>
               )
             })}
-            {isLive && <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, color: 'var(--cb-accent)' }}><span style={{ width: 6, height: 6, background: 'var(--cb-accent)', borderRadius: '50%', animation: 'ozPulse 1.6s infinite' }} /><span style={{ fontSize: 11, fontFamily: 'var(--cb-font-mono)' }}>streaming…</span></div>}
+            {isStreaming && <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, color: 'var(--cb-accent)' }}><span style={{ width: 6, height: 6, background: 'var(--cb-accent)', borderRadius: '50%', animation: 'ozPulse 1.6s infinite' }} /><span style={{ fontSize: 11, fontFamily: 'var(--cb-font-mono)' }}>streaming…</span></div>}
           </div>
         )}
         {tab === 'evidence' && (
@@ -113,11 +115,17 @@ export function RunDetail({ run, parentPriority, parentPriorityIndex, onClose, o
         )}
       </div>
       <div style={{ borderTop: '1px solid var(--cb-border)', padding: '12px 20px', display: 'flex', gap: 8 }}>
-        {isLive ? (
+        {isRunning ? (
           <>
             <Button variant="destructive" size="sm" icon="stop" onClick={() => onAction('stop', run.id)}>Stop run</Button>
             <Button variant="ghost" size="sm" icon="terminal-window" onClick={() => onAction('attach', run.id)}>Attach</Button>
             <Button variant="ghost" size="sm" icon="x-square" onClick={() => onAction('teardown', run.id)} title="Close the run's cmux panes (does not stop the run)">Close panes</Button>
+            <Button variant="ghost" size="sm" icon="chat-circle-text" onClick={() => onAction('ask-oz', run.id)} style={{ marginLeft: 'auto' }}>Ask Oz</Button>
+          </>
+        ) : isParked ? (
+          <>
+            <Button variant="secondary" size="sm" icon="check-circle" onClick={() => onAction('resolve-landed', run.id)} title="Mark this run as already landed on trunk">Mark landed</Button>
+            <Button variant="destructive" size="sm" icon="trash" onClick={() => onAction('resolve-discard', run.id)} title="Close out this run without landing its work">Discard run</Button>
             <Button variant="ghost" size="sm" icon="chat-circle-text" onClick={() => onAction('ask-oz', run.id)} style={{ marginLeft: 'auto' }}>Ask Oz</Button>
           </>
         ) : run.status === 'failed' ? (
