@@ -3,7 +3,7 @@
 // numbered directive each turn; there is no longer a builder-done file (the monitor is the live signal).
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { type Directive, parseDirective } from './directive.js'
+import { type Directive, isMalformedLoopDirectiveError, parseDirective } from './directive.js'
 import { type NudgeRequest, parseNudgeRequest } from './nudge.js'
 import type { DebStatus } from './status.js'
 import { type Triage, parseTriage } from './triage.js'
@@ -65,12 +65,14 @@ async function pollFile<T>(
   parse: (raw: string) => T,
   what: string,
   { timeoutMs, pollMs, now = Date.now, isAlive }: { timeoutMs: number; pollMs: number; now?: () => number; isAlive?: () => Promise<boolean> },
+  failFastParseError?: (error: unknown) => boolean,
 ): Promise<T> {
   const deadline = now() + timeoutMs
   const read = async (): Promise<T | null> => {
     try {
       return parse(await readFile(path, 'utf8'))
-    } catch {
+    } catch (error) {
+      if (failFastParseError?.(error)) throw error
       return null
     }
   }
@@ -93,7 +95,7 @@ export function makeRunnerIO(): RunnerIO {
       await mkdir(runDir, { recursive: true })
     },
     awaitDirective(directivePath, opts) {
-      return pollFile(directivePath, parseDirective, 'a valid directive', opts)
+      return pollFile(directivePath, parseDirective, 'a valid directive', opts, isMalformedLoopDirectiveError)
     },
     awaitVerification(verifyPath, opts) {
       return pollFile(verifyPath, parseVerification, 'a verdict', opts)

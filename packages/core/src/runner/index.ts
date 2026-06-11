@@ -23,7 +23,7 @@ export {
   type MonitorOutcomeReason,
   type HeuristicJudgeOptions,
 } from './monitor.js'
-export { type Directive, parseDirective } from './directive.js'
+export { MalformedLoopDirectiveError, type Directive, type LoopDirective, parseDirective } from './directive.js'
 export { type Triage, type Disposition, type TriageMode, parseTriage } from './triage.js'
 export { type NudgeRequest, parseNudgeRequest } from './nudge.js'
 export { faultFingerprint } from './fingerprint.js'

@@ -2,7 +2,7 @@ import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { makeRunnerIO } from '../src/index.js'
+import { MalformedLoopDirectiveError, makeRunnerIO } from '../src/runner/index.js'
 
 const io = makeRunnerIO()
 
@@ -26,6 +26,20 @@ describe('awaitDirective', () => {
 
   test('treats an unknown/partial kind as not-ready (keeps polling)', async () => {
     const path = await tmpPath('directive-0.json', JSON.stringify({ kind: 'maybe' }))
+    let t = 0
+    await expect(io.awaitDirective(path, { timeoutMs: 30, pollMs: 1, now: () => (t += 20) })).rejects.toThrow(/within 30ms/)
+  })
+
+  test('fails fast when a fully written loop directive is malformed', async () => {
+    const path = await tmpPath(
+      'directive-0.json',
+      JSON.stringify({ kind: 'delegate', task: 'do it', loop: { goal: 'g', criterion: 'c' } }),
+    )
+    await expect(io.awaitDirective(path, { timeoutMs: 60_000, pollMs: 1 })).rejects.toBeInstanceOf(MalformedLoopDirectiveError)
+  })
+
+  test('still treats truncated directive JSON as not-ready', async () => {
+    const path = await tmpPath('directive-0.json', '{"kind":"delegate","task":"do it","loop":')
     let t = 0
     await expect(io.awaitDirective(path, { timeoutMs: 30, pollMs: 1, now: () => (t += 20) })).rejects.toThrow(/within 30ms/)
   })
