@@ -4,6 +4,8 @@ label: Wrap-up
 kind: headless
 writeScope:
   - cocoder/priorities/**
+  - cocoder/PLAYBOOK.md
+  - cocoder/SESSION_LOG.md
   - docs/**
   - ARCHITECTURE.md
   - cocoder/decisions/**
