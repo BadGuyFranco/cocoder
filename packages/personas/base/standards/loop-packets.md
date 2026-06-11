@@ -38,6 +38,30 @@ The loop's criterion ends only the builder's iteration. It does not replace the 
 Oscar still verifies the actual diff, reruns the relevant checks, writes the verify verdict, and the
 commit gate runs exactly as it does for a one-shot atom.
 
+## Enforcement
+
+For structured loop directives, the runner enforces the machine-readable loop contract:
+
+- Delegate directives may include `loop.goal`, `loop.criterion`, `loop.maxIterations`,
+  `loop.wallClockMs`, and `loop.writeBoundary`. `goal` and `criterion` must be non-empty strings;
+  `maxIterations` defaults to `5`; `wallClockMs` is required; `writeBoundary` is an optional
+  non-empty string list. A malformed `loop` fails loudly and is never treated as prose.
+- The runner names a `loop-ledger-<atom>.jsonl` file. The builder appends one JSON line per completed
+  iteration: `{ "iteration": number, "result": "green"|"red", "failed": string, "changed": string,
+  "inScope": boolean }`. Each parsed entry is also recorded as a run event.
+- Iteration and wall-clock caps are enforced by the runner. Cap-out blocks the atom, records the full
+  parsed ledger, quarantines in-scope changes, commits nothing for that atom, and lets the run continue.
+- Before accepting a loop atom's completion marker, the runner reruns `loop.criterion` in the worktree.
+  A non-zero result sends the builder back to iterate with a re-armed completion marker; only a green
+  rerun can proceed to the normal verify gate.
+- Ledger growth counts as monitor progress. A quiet screen with new loop entries is not treated as an
+  idle stall; a static screen with no ledger growth still can be nudged.
+
+Some parts remain builder-honored during the iteration itself: the truthfulness and quality of ledger
+content and self-critique, staying inside the loop's intended scope while editing, and stopping when a
+needed change exits the loop's mandate. The final diff and commit remain guarded at the orchestrator
+verify gate and commit gate. A green runner criterion never bypasses verify.
+
 ## Ledger
 
 The builder's completion evidence must include the loop ledger:
@@ -48,9 +72,9 @@ The builder's completion evidence must include the loop ledger:
 - What changed.
 - Whether the next action stayed inside scope.
 
-If the criterion is green, the builder prints the atom completion marker after reporting the ledger. If
-the criterion is still red at a cap, the builder reports blocked with the ledger and does not keep
-editing.
+If the criterion is green, the builder prints the atom completion marker after reporting the ledger; the
+runner still reruns the criterion before verify. If the criterion is still red at a cap, the builder
+reports blocked with the ledger and does not keep editing.
 
 ## Example Directive Body
 
