@@ -500,6 +500,7 @@ describe('runRun (multi-atom loop)', () => {
         store,
         sessionHost,
         makeJudge: progressProgressDone,
+        execCriterion: async () => ({ exitCode: 0, output: 'green' }),
         io: {
           ...io,
           async ensureRunDir(dir) {
@@ -536,6 +537,7 @@ describe('runRun (multi-atom loop)', () => {
         store,
         sessionHost,
         makeJudge: doneJudge,
+        execCriterion: async () => ({ exitCode: 0, output: 'green' }),
         io: {
           ...io,
           async ensureRunDir(dir) {
@@ -550,6 +552,149 @@ describe('runRun (multi-atom loop)', () => {
     const iterations = store.listEvents(result.runId).filter((e) => e.type === 'loop-iteration')
     expect(iterations).toHaveLength(1)
     expect(iterations[0]?.data).toMatchObject({ atom: 0, iteration: 1, result: 'green', failed: '', changed: 'tests green', inScope: true })
+  })
+
+  test('loop green criterion rerun records an event before verify dispatch', async () => {
+    const store = openRunStore(':memory:')
+    const calls: { command: string; cwd: string }[] = []
+    const result = await runRun(
+      baseDeps({
+        store,
+        io: fakeIO({ directives: [loopDelegate('loop atom', { criterion: 'pnpm test' }), wrapup('done')] }),
+        execCriterion: async (command, cwd) => {
+          calls.push({ command, cwd })
+          return { exitCode: 0, output: 'ok' }
+        },
+      }),
+      input,
+    )
+
+    expect(result.committedShas).toHaveLength(1)
+    expect(calls).toEqual([{ command: 'pnpm test', cwd: expect.stringContaining('/repo') }])
+    const types = store.listEvents(result.runId).map((e) => e.type)
+    expect(types.indexOf('loop-criterion-rerun')).toBeLessThan(types.indexOf('verify-dispatch'))
+    const event = store.listEvents(result.runId).find((e) => e.type === 'loop-criterion-rerun')
+    expect(event?.data).toMatchObject({ atom: 0, attempt: 1, command: 'pnpm test', exitCode: 0, pass: true, outputTail: 'ok' })
+  })
+
+  test('loop red criterion rerun nudges with a re-armed marker, then green rerun verifies', async () => {
+    const store = openRunStore(':memory:')
+    const sent: string[] = []
+    const sentinels: string[] = []
+    const doneEachMonitor: MakeJudge = ({ doneSentinel }) => {
+      sentinels.push(doneSentinel)
+      return async () => ({ state: 'done' })
+    }
+    let attempts = 0
+    const result = await runRun(
+      baseDeps({
+        store,
+        sessionHost: fakeSessionHost({
+          async sendInput(_ref, text) {
+            sent.push(text)
+          },
+        }),
+        makeJudge: doneEachMonitor,
+        io: fakeIO({ directives: [loopDelegate('loop atom', { maxIterations: 3, criterion: 'pnpm test' }), wrapup('done')] }),
+        execCriterion: async () => (++attempts === 1 ? { exitCode: 1, output: 'first failure' } : { exitCode: 0, output: 'ok' }),
+      }),
+      input,
+    )
+
+    expect(result.committedShas).toHaveLength(1)
+    expect(sentinels).toEqual(['<<<COCODER-ATOM-0-DONE>>>', '<<<COCODER-ATOM-0-R1-DONE>>>'])
+    const rerunNudge = sent.find((text) => text.includes('LOOP CRITERION RED'))
+    expect(rerunNudge).toContain('atom 0-R1')
+    expect(rerunNudge).not.toContain('<<<COCODER-ATOM-0-R1-DONE>>>')
+    expect(store.listEvents(result.runId).filter((e) => e.type === 'loop-criterion-rerun').map((e) => (e.data as { pass: boolean }).pass)).toEqual([false, true])
+    expect(store.listEvents(result.runId).some((e) => e.type === 'verify-dispatch')).toBe(true)
+  })
+
+  test('persistent red criterion reruns cap the loop and commit nothing', async () => {
+    const store = openRunStore(':memory:')
+    const restored: string[][] = []
+    const git: Git = {
+      ...scriptedGit([['packages/bad.ts']]),
+      async restoreToHead(_cwd, files) {
+        restored.push([...files])
+      },
+    }
+    const doneEachMonitor: MakeJudge = () => async () => ({ state: 'done' })
+    const result = await runRun(
+      baseDeps({
+        store,
+        git,
+        makeJudge: doneEachMonitor,
+        io: fakeIO({ directives: [loopDelegate('loop atom', { maxIterations: 2 }), wrapup('done')] }),
+        execCriterion: async () => ({ exitCode: 1, output: 'still red' }),
+      }),
+      input,
+    )
+
+    expect(result.committedShas).toHaveLength(0)
+    expect(restored).toEqual([['packages/bad.ts']])
+    expect(store.listWorkItems(result.runId).map((w) => w.status)).toEqual(['abandoned'])
+    expect(store.listEvents(result.runId).filter((e) => e.type === 'loop-criterion-rerun')).toHaveLength(2)
+    expect(store.listEvents(result.runId).find((e) => e.type === 'loop-capped')?.data).toMatchObject({ atom: 0, cap: 'iterations' })
+  })
+
+  test('loop wall-clock budget is not reset across red reruns', async () => {
+    const store = openRunStore(':memory:')
+    let t = 0
+    const result = await runRun(
+      baseDeps({
+        store,
+        makeJudge: doneJudge,
+        now: () => t,
+        io: fakeIO({ directives: [loopDelegate('loop atom', { maxIterations: 5, wallClockMs: 50 }), wrapup('done')] }),
+        execCriterion: async () => {
+          t = 60
+          return { exitCode: 1, output: 'too slow' }
+        },
+      }),
+      input,
+    )
+
+    expect(result.committedShas).toHaveLength(0)
+    expect(store.listEvents(result.runId).find((e) => e.type === 'loop-capped')?.data).toMatchObject({ atom: 0, cap: 'wall-clock' })
+    expect(store.listEvents(result.runId).filter((e) => e.type === 'loop-criterion-rerun')).toHaveLength(1)
+  })
+
+  test('criterion executor failure is treated as a red rerun result', async () => {
+    const store = openRunStore(':memory:')
+    const result = await runRun(
+      baseDeps({
+        store,
+        makeJudge: doneJudge,
+        io: fakeIO({ directives: [loopDelegate('loop atom'), wrapup('done')] }),
+        execCriterion: async () => {
+          throw new Error('spawn failed')
+        },
+      }),
+      input,
+    )
+
+    const rerun = store.listEvents(result.runId).find((e) => e.type === 'loop-criterion-rerun')
+    expect(rerun?.data).toMatchObject({ atom: 0, attempt: 1, exitCode: 1, pass: false, outputTail: 'Error: spawn failed' })
+  })
+
+  test('non-loop atom never executes a criterion', async () => {
+    const store = openRunStore(':memory:')
+    let calls = 0
+    const result = await runRun(
+      baseDeps({
+        store,
+        execCriterion: async () => {
+          calls += 1
+          return { exitCode: 1, output: 'should not run' }
+        },
+      }),
+      input,
+    )
+
+    expect(result.committedShas).toHaveLength(1)
+    expect(calls).toBe(0)
+    expect(store.listEvents(result.runId).filter((e) => e.type === 'loop-criterion-rerun')).toHaveLength(0)
   })
 
   test('loop iteration cap blocks the atom, quarantines in-scope changes, and continues', async () => {
@@ -1072,17 +1217,32 @@ describe('runRun (multi-atom loop)', () => {
     })
 
     // 1st occurrence → one-off; records a fault-triaged carrying the fingerprint, but no recurrence yet.
+    let r1 = ''
     await expect(
-      runRun(baseDeps({ store, io: timeoutIO({ disposition: 'one-off', summary: 'first time' }), git: ticketGit() }), { ...input, deb: debScoped }),
+      runRun(
+        baseDeps({ store, io: timeoutIO({ disposition: 'one-off', summary: 'first time' }), git: ticketGit(), onRunCreated: (r) => {
+          r1 = r.id
+        } }),
+        { ...input, deb: debScoped },
+      ),
     ).rejects.toThrow(/no valid directive/)
-    const r1 = store.listRuns()[0]!.id
     expect(store.listEvents(r1).some((e) => e.type === 'fault-recurrence')).toBe(false)
 
     // 2nd occurrence (same fault) → Deb escalates with a ticket; the runner gate-commits it.
+    let r2 = ''
     await expect(
-      runRun(baseDeps({ store, io: timeoutIO({ disposition: 'cocoder-bug', summary: 'recurring directive-timeout', escalation: 'ticket', ticketId: '0002' }), git: ticketGit() }), { ...input, deb: debScoped }),
+      runRun(
+        baseDeps({
+          store,
+          io: timeoutIO({ disposition: 'cocoder-bug', summary: 'recurring directive-timeout', escalation: 'ticket', ticketId: '0002' }),
+          git: ticketGit(),
+          onRunCreated: (r) => {
+            r2 = r.id
+          },
+        }),
+        { ...input, deb: debScoped },
+      ),
     ).rejects.toThrow(/no valid directive/)
-    const r2 = store.listRuns()[0]!.id // newest-first
     const evs = store.listEvents(r2)
     expect((evs.find((e) => e.type === 'fault-recurrence')?.data as { occurrence?: number })?.occurrence).toBe(2)
     expect(evs.find((e) => e.type === 'deb-repair')?.data).toMatchObject({ escalation: 'ticket', ticketId: '0002', committedSha: 'sha-ticket', files: [ticketFile] })

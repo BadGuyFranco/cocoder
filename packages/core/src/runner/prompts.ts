@@ -6,8 +6,8 @@
 
 /** The per-atom completion sentinel Bob prints when an atom is done. Per-atom-unique so a prior atom's
  *  sentinel still on screen cannot falsely complete the next one (the monitor matches it deterministically). */
-export function atomSentinel(atomIndex: number): string {
-  return `<<<COCODER-ATOM-${atomIndex}-DONE>>>`
+export function atomSentinel(atomIndex: number, attemptQualifier?: string): string {
+  return `<<<COCODER-ATOM-${atomIndex}${attemptQualifier === undefined ? '' : `-${attemptQualifier}`}-DONE>>>`
 }
 
 export function buildOrchestratorPrompt(input: {

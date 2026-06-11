@@ -21,7 +21,9 @@ import type { Play } from '../plays/index.js'
 import type { Run, RunStatus, RunStore, Workspace } from '../store/index.js'
 import { effectiveScope, partitionByScope } from '../write-scope/index.js'
 import type { SessionHost, SessionRef } from '../session-host/index.js'
+import { exec as execChildProcess } from 'node:child_process'
 import { join } from 'node:path'
+import { promisify } from 'node:util'
 import { runBranchFor, worktreePathFor } from '../worktree/paths.js'
 import type { RunnerIO } from './io.js'
 import { paneLabel } from './labels.js'
@@ -45,9 +47,16 @@ import { exportRunLocalState } from './local-state.js'
 import type { CommitGateResult } from '../commit-gate/index.js'
 import type { Triage } from './triage.js'
 
+const exec = promisify(execChildProcess)
+
 /** Build the per-atom Judge (ADR-0013). Injected so tests use a scripted fake and cli/daemon get the
  *  real heuristic. Tier 1 = a cheap idle/sentinel heuristic; semantic judgment stays at the verify-gate. */
 export type MakeJudge = (ctx: { atomIndex: number; doneSentinel: string; task: string }) => Judge
+
+export interface CriterionResult {
+  readonly exitCode: number
+  readonly output: string
+}
 
 export interface RunnerDeps {
   readonly store: RunStore
@@ -60,6 +69,10 @@ export interface RunnerDeps {
   readonly runHeadless?: (input: HeadlessRunInput) => Promise<DispatchPlayResult>
   /** How to build the per-atom monitor judge. Defaults to the tier-1 heuristic. */
   readonly makeJudge?: MakeJudge
+  /** Executes a loop directive's scripted criterion in the run worktree. Non-zero means "keep iterating". */
+  readonly execCriterion?: (command: string, cwd: string) => Promise<CriterionResult>
+  /** Clock injected for deterministic loop wall-clock budget tests. */
+  readonly now?: () => number
   readonly timeouts?: {
     orchestrationMs?: number
     wrapupMs?: number
@@ -148,6 +161,8 @@ const DEFAULTS = {
 }
 const LIMITS = { maxAtoms: 12, maxConsecutiveRejects: 3, stuckAfter: 4 }
 const OSCAR_IDLE_NUDGE = "You've gone quiet — write the next directive (or your verify verdict), or wrap up."
+const CRITERION_TIMEOUT_MS = 900_000
+const OUTPUT_TAIL_CHARS = 2_000
 
 /** Parse a verify verdict from a headless verifier Play's captured output (ADR-0015 §3). FAIL-CLOSED:
  *  returns null for missing / unparseable / non-{pass,fail} output, so only an explicit, well-formed
@@ -192,6 +207,20 @@ const defaultMakeJudge =
       nudge: 'You seem stalled — what is blocking you? Keep going, or say what you need.',
     })
 
+const outputTail = (output: string): string => (output.length <= OUTPUT_TAIL_CHARS ? output : output.slice(-OUTPUT_TAIL_CHARS))
+
+async function defaultExecCriterion(command: string, cwd: string): Promise<CriterionResult> {
+  try {
+    const result = await exec(command, { cwd, timeout: CRITERION_TIMEOUT_MS, maxBuffer: 10 * 1024 * 1024 })
+    return { exitCode: 0, output: `${result.stdout}${result.stderr}` }
+  } catch (error) {
+    const err = error as { code?: unknown; stdout?: unknown; stderr?: unknown; message?: unknown }
+    const code = typeof err.code === 'number' ? err.code : 1
+    const output = `${typeof err.stdout === 'string' ? err.stdout : ''}${typeof err.stderr === 'string' ? err.stderr : ''}${err.message === undefined ? '' : `\n${String(err.message)}`}`
+    return { exitCode: code === 0 ? 1 : code, output }
+  }
+}
+
 export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResult> {
   if (input.priority.objective === null) throw new MissingObjectiveError(input.priority.id)
 
@@ -199,6 +228,8 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const t = { ...DEFAULTS, ...deps.timeouts }
   const limits = { ...LIMITS, ...deps.limits }
   const makeJudge = deps.makeJudge ?? defaultMakeJudge(limits.stuckAfter)
+  const execCriterion = deps.execCriterion ?? defaultExecCriterion
+  const now = deps.now ?? Date.now
   const log = deps.log ?? (() => {})
   const { workspace, priority, oscar, bob, deb, sharedStandards, runsRoot } = input
 
@@ -692,8 +723,8 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     const workItem = store.createWorkItem({ runId: run.id, sourcePersona: oscar.id, targetPersona: bob.id, task: directive.task, writeScope: scope })
     store.recordEvent({ runId: run.id, type: 'delegation', data: { workItemId: workItem.id, atom: atomIndex, task: directive.task } })
     const headBefore = await git.headSha(worktreePath) // re-snapshot per atom (self-commit detection)
-    const sentinel = atomSentinel(atomIndex)
     const loopLedgerPath = directive.loop === undefined ? null : join(runDir, `loop-ledger-${atomIndex}.jsonl`)
+    const loopStartedAt = directive.loop === undefined ? null : now()
     const recordedLoopIterations = new Set<number>()
     const readAndRecordLoopLedger =
       loopLedgerPath === null
@@ -713,31 +744,81 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     await refreshStatus('building', atomIndex, directive.task, `monitoring builder on atom ${atomIndex}`)
     log(`atom ${atomIndex} dispatched to bob (work item ${workItem.id}); monitoring live progress`)
 
+    let cappedLoop: { readonly cap: 'iterations' | 'wall-clock'; readonly ledger: readonly LoopLedgerEntry[] } | null = null
+    let monitorSamples = 0
+    let completionAttempt = 0
+
     // MONITOR Bob's live progress — the primary signal (ADR-0013), replacing the blind done-file poll.
-    const outcome = await runMonitor(
-      {
-        readScreen: () => sessionHost.readScreen(bobRef),
-        judge: makeJudge({ atomIndex, doneSentinel: sentinel, task: directive.task }),
-        isAlive: async () => (await sessionHost.status(bobRef)).state === 'running',
-        nudge: (text) => sessionHost.sendInput(bobRef, text),
-        readLoopLedger: readAndRecordLoopLedger ?? undefined,
-        onAssessment: (a) => {
-          if (a.state !== 'progressing') store.recordEvent({ runId: run.id, type: 'monitor-assessment', data: { atom: atomIndex, state: a.state, note: a.note ?? null } })
+    for (;;) {
+      const doneSentinel = atomSentinel(atomIndex, completionAttempt === 0 ? undefined : `R${completionAttempt}`)
+      const remainingLoopMs =
+        directive.loop === undefined || loopStartedAt === null ? undefined : Math.max(0, directive.loop.wallClockMs - (now() - loopStartedAt))
+      const outcome = await runMonitor(
+        {
+          readScreen: () => sessionHost.readScreen(bobRef),
+          judge: makeJudge({ atomIndex, doneSentinel, task: directive.task }),
+          isAlive: async () => (await sessionHost.status(bobRef)).state === 'running',
+          nudge: (text) => sessionHost.sendInput(bobRef, text),
+          readLoopLedger: readAndRecordLoopLedger ?? undefined,
+          onAssessment: (a) => {
+            if (a.state !== 'progressing') store.recordEvent({ runId: run.id, type: 'monitor-assessment', data: { atom: atomIndex, state: a.state, note: a.note ?? null } })
+          },
+          onNudge: (text) => store.recordEvent({ runId: run.id, type: 'nudge', data: { atom: atomIndex, text } }),
+          now,
         },
-        onNudge: (text) => store.recordEvent({ runId: run.id, type: 'nudge', data: { atom: atomIndex, text } }),
-      },
-      {
-        task: directive.task,
-        cadenceMs: t.monitorCadenceMs,
-        timeoutMs: t.buildMs,
-        minNudgeIntervalMs: t.minNudgeIntervalMs,
-        loop: directive.loop === undefined ? undefined : { maxIterations: directive.loop.maxIterations, wallClockMs: directive.loop.wallClockMs },
-      },
-    )
-    const finalLoopLedger = readAndRecordLoopLedger === null ? null : await readAndRecordLoopLedger()
-    if (outcome.reason === 'loop-iteration-cap' || outcome.reason === 'loop-wall-clock-cap') {
-      const ledger = finalLoopLedger ?? outcome.loopLedger ?? []
-      const cap = outcome.reason === 'loop-iteration-cap' ? 'iterations' : 'wall-clock'
+        {
+          task: directive.task,
+          cadenceMs: t.monitorCadenceMs,
+          timeoutMs: t.buildMs,
+          minNudgeIntervalMs: t.minNudgeIntervalMs,
+          loop: directive.loop === undefined ? undefined : { maxIterations: directive.loop.maxIterations, wallClockMs: remainingLoopMs ?? directive.loop.wallClockMs },
+        },
+      )
+      monitorSamples += outcome.samples
+      const finalLoopLedger = readAndRecordLoopLedger === null ? null : await readAndRecordLoopLedger()
+      if (outcome.reason === 'loop-iteration-cap' || outcome.reason === 'loop-wall-clock-cap') {
+        cappedLoop = {
+          cap: outcome.reason === 'loop-iteration-cap' ? 'iterations' : 'wall-clock',
+          ledger: finalLoopLedger ?? outcome.loopLedger ?? [],
+        }
+        break
+      }
+      if (outcome.reason !== 'done') {
+        store.setWorkItemStatus(workItem.id, 'abandoned')
+        return await fail('builder-failed', `builder ${outcome.reason} on atom ${atomIndex}`, atomIndex)
+      }
+      if (directive.loop === undefined) break
+
+      const criterionAttempt = completionAttempt + 1
+      const criterion = await execCriterion(directive.loop.criterion, worktreePath).catch((err: unknown) => ({ exitCode: 1, output: String(err) }))
+      const pass = criterion.exitCode === 0
+      const tail = outputTail(criterion.output)
+      store.recordEvent({
+        runId: run.id,
+        type: 'loop-criterion-rerun',
+        data: { atom: atomIndex, attempt: criterionAttempt, command: directive.loop.criterion, exitCode: criterion.exitCode, pass, outputTail: tail },
+      })
+      if (pass) break
+
+      const ledger = finalLoopLedger ?? []
+      if (criterionAttempt >= directive.loop.maxIterations) {
+        cappedLoop = { cap: 'iterations', ledger }
+        break
+      }
+      if (loopStartedAt !== null && now() - loopStartedAt >= directive.loop.wallClockMs) {
+        cappedLoop = { cap: 'wall-clock', ledger }
+        break
+      }
+
+      const nextMarkerId = `${atomIndex}-R${criterionAttempt}`
+      const nudge = `LOOP CRITERION RED on attempt ${criterionAttempt} (exit ${criterion.exitCode}). Keep iterating, append the next loop-ledger line, and when fully done print your completion marker for atom ${nextMarkerId} on its own line using your standby marker format. Failing output tail:\n${tail}`
+      await sessionHost.sendInput(bobRef, nudge)
+      store.recordEvent({ runId: run.id, type: 'nudge', data: { atom: atomIndex, text: nudge } })
+      completionAttempt = criterionAttempt
+    }
+
+    if (cappedLoop !== null) {
+      const { cap, ledger } = cappedLoop
       store.setWorkItemStatus(workItem.id, 'abandoned')
       store.recordEvent({ runId: run.id, type: 'loop-capped', data: { atom: atomIndex, cap, ledger } })
       await quarantineAtom(atomIndex, headBefore, 'atom-self-committed-loop-capped')
@@ -753,11 +834,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       await sessionHost.sendInput(oscarRef, buildNextOrWrapDispatch(join(runDir, `directive-${n}.json`), outcomeLine))
       continue
     }
-    if (outcome.reason !== 'done') {
-      store.setWorkItemStatus(workItem.id, 'abandoned')
-      return await fail('builder-failed', `builder ${outcome.reason} on atom ${atomIndex}`, atomIndex)
-    }
-    store.recordEvent({ runId: run.id, type: 'builder-done', data: { atom: atomIndex, samples: outcome.samples } })
+    store.recordEvent({ runId: run.id, type: 'builder-done', data: { atom: atomIndex, samples: monitorSamples } })
 
     // Verify the atom (ADR-0011, per atom) — the commit runs only on `pass`.
     const verifyPath = join(runDir, `verify-${atomIndex}.json`)
