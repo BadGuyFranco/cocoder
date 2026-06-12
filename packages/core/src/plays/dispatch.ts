@@ -21,6 +21,10 @@ export interface HeadlessRunInput {
   readonly cwd: string
   readonly outPath: string
   readonly timeoutMs?: number
+  /** Incremental capture seam: invoked with each decoded stdout/stderr chunk as it arrives, in arrival order.
+   *  The concatenation of all chunks equals the final output; consumers use it to observe live progress of
+   *  a long-running headless invocation. */
+  readonly onData?: (chunk: string) => void
 }
 
 export interface DispatchPlayDeps {
@@ -54,7 +58,17 @@ export function runHeadlessProcess(input: HeadlessRunInput): Promise<DispatchPla
     const chunks: Buffer[] = []
     const child = spawn(input.command, [...input.args], { cwd: input.cwd, stdio: ['ignore', 'pipe', 'pipe'] })
     const timer = input.timeoutMs ? setTimeout(() => child.kill('SIGKILL'), input.timeoutMs) : undefined
-    const collect = (d: Buffer): void => void chunks.push(d)
+    const collect = (d: Buffer): void => {
+      chunks.push(d)
+      if (!input.onData) return
+      try {
+        // Per-chunk utf8 decode can split a multi-byte char across chunks; acceptable for progress
+        // observation because final output still decodes from the concatenated buffers below.
+        input.onData(d.toString('utf8'))
+      } catch {
+        /* observation hook only — capture and process lifecycle must continue */
+      }
+    }
     child.stdout?.on('data', collect)
     child.stderr?.on('data', collect)
     child.on('error', (err) => {

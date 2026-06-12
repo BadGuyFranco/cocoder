@@ -1,9 +1,10 @@
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import {
   dispatchPlay,
+  runHeadlessProcess,
   type Adapter,
   type BuildInput,
   type BuiltCommand,
@@ -192,5 +193,56 @@ describe('dispatchPlay', () => {
       expect(calls, c.name).toHaveLength(c.headless ? 1 : 0)
       expect(spawns, c.name).toHaveLength(c.headless ? 0 : 1)
     }
+  })
+})
+
+describe('runHeadlessProcess', () => {
+  test('onData receives incremental chunks whose concatenation equals the resolved output', async () => {
+    const out = await outPath()
+    const chunks: string[] = []
+
+    const result = await runHeadlessProcess({
+      command: process.execPath,
+      args: ['-e', "process.stdout.write('alpha'); process.stderr.write('beta')"],
+      cwd: process.cwd(),
+      outPath: out,
+      onData: (chunk) => chunks.push(chunk),
+    })
+
+    expect(result.exitCode).toBe(0)
+    expect(chunks.length).toBeGreaterThanOrEqual(1)
+    expect(chunks.join('')).toBe(result.output)
+    expect(result.output).toContain('alpha')
+    expect(result.output).toContain('beta')
+  })
+
+  test('a throwing onData callback does not reject or corrupt captured output', async () => {
+    const out = await outPath()
+
+    await expect(
+      runHeadlessProcess({
+        command: process.execPath,
+        args: ['-e', "process.stdout.write('complete')"],
+        cwd: process.cwd(),
+        outPath: out,
+        onData: () => {
+          throw new Error('observer failed')
+        },
+      }),
+    ).resolves.toEqual({ exitCode: 0, output: 'complete' })
+  })
+
+  test('omitting onData preserves final output capture and outPath write', async () => {
+    const out = await outPath()
+
+    const result = await runHeadlessProcess({
+      command: process.execPath,
+      args: ['-e', "process.stdout.write('final-only')"],
+      cwd: process.cwd(),
+      outPath: out,
+    })
+
+    expect(result).toEqual({ exitCode: 0, output: 'final-only' })
+    await expect(readFile(out, 'utf8')).resolves.toBe('final-only')
   })
 })
