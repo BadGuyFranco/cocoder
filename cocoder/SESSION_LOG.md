@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-12 — **Full Oz dashboard: run_63 fallout closed + priorities-pane audit & Atom B (run_64)**
+
+**Persona:** Oscar + Bob (4 atoms, all first-try passes) | **Priority:** full-oz-dashboard | **Play:** founder-directed run_63 fallout, then the design-conformance audit
+**Outcomes:**
+- Worktree placement, F12 instance 3 (`19d55ea`): explicit `engineHome` on `RunInput` — worktree dirs live under the ENGINE's `local/worktrees/` for every workspace while all workspace-repo git ops stay anchored at `workspace.path` (variable renamed `workspaceRepo`); `gcWorktree` removes through the owning workspace repo; boot sweep also reconciles from run-table `worktreePath`s; 4 regression tests incl. nothing-under-workspace/local.
+- Scaffold additions (`47e1d2a`): blank `cocoder/AGENTS.md` + portable `CLAUDE.md` pointer, create-only-if-missing, one shared scaffold site; tests pin content portability, byte-preservation, never-a-README.
+- Priorities-pane audit (`daf9763`, no-code): `packages/ui/design-audit-priorities-pane.md` — 10 dual-cited mismatches, 10 conformances, 6-atom rebuild split A–F; verdict: structure largely faithful, the founder-felt wrongness is mostly data semantics (`not-landed` invisibility, empty summary fields on list rows, first-run hijacking the empty state).
+- Rebuild Atom B (`20ec2aa`): shared `isActiveRun` incl. `not-landed` — inline summary + drawer select + Launch suppressed on not-landed priority rows; not-landed ad-hoc runs stay in the pinned row; blocked warning treatment preserved; 4 new renderer tests.
+- Evidence per-atom at the gate: core 226 · daemon 164 · ui 92 · typecheck + topology clean; whole-tree diff every atom.
+**Next:** Audit atoms in order A (handoff geometry) → C (real inline-summary data — decide daemon list enrichment vs bounded detail fetches) → D (explicit first-run signal) → E (polish incl. not-landed static-vs-pulse bar) → F (coverage). Then the Oz `repair` verb design question (founder judgment on trunk commit authority) + the live Oz proof session.
+
 ## 2026-06-12 — **Full Oz dashboard: fresh-workspace bugs A+B fixed (run_62)**
 
 **Persona:** Oscar + Bob (3 atoms, one gate rejection en route) | **Priority:** full-oz-dashboard | **Play:** founder-directed CoPublisher onboarding fixes

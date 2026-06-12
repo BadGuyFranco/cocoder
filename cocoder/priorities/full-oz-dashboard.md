@@ -91,13 +91,17 @@ stored absolute path), `copublisher.code-workspace` deregistered, founder delete
 folders — fresh-workspace onboarding will be re-run properly AFTER Oz completes, as its own
 priority (see backlog/workspace-onboarding.md). Founder also flagged: the **Dashboard priorities
 pane does not match the design spec** (`packages/ui/design-ref/`) — "the priorities pane in the
-dashboard is all wrong"; an audit + rebuild against design-ref is owed. **Not archive-ready** —
-remaining: the worktree-placement fix + scaffold AGENTS.md/claude.md (next build atoms), the
-priorities-pane design-conformance rebuild, the Oz `repair` verb (a real design seam is owed
-BEFORE build — see the next-slice note), a LIVE exercise of Oz with a real CLI assigned
-(everything is injected-runner-proven only), Bob session `mode` honoring (gated on a
-captured-subprocess monitor path for builder work), and a live (non-test) exercise of a
-headless-Oscar run.
+dashboard is all wrong"; an audit + rebuild against design-ref is owed. run_64 (2026-06-12)
+closed all of the run_63 fallout: the worktree-placement fix (F12 instance 3) and the scaffold
+AGENTS.md/CLAUDE.md additions are landed, the priorities-pane design-conformance AUDIT is
+committed (`packages/ui/design-audit-priorities-pane.md` — 10 cited mismatches, 10 conformances,
+a 6-atom rebuild split A–F), and rebuild Atom B (active-run semantics: `not-landed` rows render
+inline, suppress Launch, stay visible in the ad-hoc row) is landed. **Not archive-ready** —
+remaining: priorities-pane rebuild atoms A, C, D, E, F (see the audit doc; C and D carry
+data-contract judgment), the Oz `repair` verb (a real design seam is owed BEFORE build — see the
+next-slice note), a LIVE exercise of Oz with a real CLI assigned (everything is
+injected-runner-proven only), Bob session `mode` honoring (gated on a captured-subprocess
+monitor path for builder work), and a live (non-test) exercise of a headless-Oscar run.
 
 > History worth recording: a first pass mistakenly built from `docs/oz-design-brief.md` (the *input
 > brief* that was pasted into claude.ai/design), not the founder's actual **design output**. It was then
@@ -363,6 +367,43 @@ headless-Oscar run.
   also implemented an undelegated Bug-B scaffold (with the dogfood noun 'CoBuilder' baked into
   the product template + an unconditional mkdir-recursive on the primary root). The whole-tree
   diff check caught it; Bug A was re-delegated alone, then Bug B with the corrected design.
+- **run_64 (2026-06-12), four atoms, all verified + committed on `cocoder/run_64` — the run_63
+  fallout closed + the priorities-pane audit and its first rebuild atom:**
+  (0) **Worktree placement, F12 instance 3** (`19d55ea`) — `RunInput` gains an explicit
+  `engineHome` (the daemon always passes `ctx.cocoderHome`; direct callers default to the
+  historical dogfood shape with a documented rationale); the worktree DIRECTORY now lives at
+  `<engineHome>/local/worktrees/<runId>` for EVERY workspace while every git op that targets the
+  workspace's repo (branch cut at trunk tip, land/ff-merge, misrouting guard) stays anchored at
+  `workspace.path` — the conflation variable was renamed `workspaceRepo`; daemon `gcWorktree`
+  removes through the OWNING workspace repo (resolved from the run's workspaceId; safe recorded
+  fallback if unresolvable) and `sweepOrphanWorktrees` now ALSO reconciles from the run table's
+  stored `worktreePath`s, so non-engine worktrees are no longer invisible to the boot sweep.
+  Four regression tests pin: worktree-under-engine with NOTHING created under
+  `<workspace>/local/**`, dogfood path-identity when the two homes coincide, gc of a
+  workspace-owned worktree, sweep of a non-engine orphan.
+  (1) **Scaffold additions** (`47e1d2a`) — `scaffoldWorkspaceGovernance` also writes a BLANK
+  `cocoder/AGENTS.md` + a portable `cocoder/CLAUDE.md` pointer to it (create-only-if-missing via
+  the existing `wx` helper; one shared scaffold site so the legacy-migration path inherits it);
+  tests pin pointer content (regex: no dogfood nouns), byte-preservation of pre-existing files,
+  NO README ever written into a workspace, and no leakage into priorities/personas listings.
+  (2) **Priorities-pane design-conformance audit** (`daf9763`) — a no-code atom; the single new
+  file `packages/ui/design-audit-priorities-pane.md` holds 10 dual-cited mismatches (design-ref
+  line vs app line, major/minor), 10 conformances (the drawer IS in place; row anatomy +
+  drag-reorder largely faithful — the founder's "all wrong" is mostly DATA SEMANTICS), and a
+  6-atom rebuild split A–F with per-atom exit criteria. Headline mismatches: `not-landed` runs
+  lose their inline summary and show a misleading Launch button; not-landed ad-hoc runs VANISH
+  from the pinned row; active rows render empty personas/no progress until selected (the list
+  endpoint doesn't carry those fields — detail fetch only); first-run hijacks the designed
+  "Nothing queued" empty state; the post-design resize handle interrupts the gold-notch handoff.
+  (3) **Rebuild Atom B — active-run semantics** (`20ec2aa`) — one shared `isActiveRun` helper
+  (`running|blocked|not-landed`): a not-landed priority row renders the inline run summary,
+  selects/opens the drawer, and SUPPRESSES Launch; not-landed ad-hoc runs stay in the pinned
+  row's sub-list; blocked keeps its distinct warning treatment; 4 new renderer tests. Noted for
+  Atom E polish: a not-landed row currently inherits the pulsing "live" accent bar — worth a
+  static-vs-pulse distinction when polish is tuned.
+- **Verification (run_64):** core 226 · daemon 164 · ui 92 · root typecheck clean · topology pass
+  (per-atom at the verify gate; whole-tree diff checked every atom; all four atoms passed their
+  gate first try).
 - **Verification (run_62):** core 224 · daemon 162 · personas 9 · root typecheck clean · topology
   pass (per-atom at the verify gate; whole-tree diff checked every atom).
 - **Verification (run_59):** core 216 · daemon 130 · ui 88 · root typecheck clean · topology pass
@@ -422,7 +463,19 @@ no founder decisions are outstanding on this priority.
   No DB migration: priorities stay `.md` files; sequence is a git-tracked order-only
   `cocoder/priorities/order.json`; drag-reorder rewrites it. Owed slice #8 reclassified above.
 
-**Recommended next slice (updated run_62 wrap):**
+**Recommended next slice (updated run_64 wrap):**
+~~(0) the run_63 fallout~~ **ALL THREE DONE (run_64, 2026-06-12):** (0a) worktree placement
+landed (`19d55ea`); (0b) scaffold AGENTS.md/CLAUDE.md landed (`47e1d2a`); (0c) the
+priorities-pane audit is COMMITTED at `packages/ui/design-audit-priorities-pane.md` and decides
+the rebuild split — Atom B (active-run semantics) already landed (`20ec2aa`). **Next build
+atoms = the audit's remaining atoms, suggested order: A (handoff geometry, renderer-only), then
+C (real inline-summary data for active rows — carries the one data-contract judgment: enrich the
+daemon run-list response vs bounded per-active-row detail fetches; read the audit's Atom C notes
+and decide deliberately, don't fake fields), D (explicit first-run signal vs the empty-data
+heuristic — likely needs a small daemon/model seam), E (polish: chat run-card status chip,
+ad-hoc hover, selected-row border, the not-landed static-vs-pulse bar), F (regression coverage
+of the lot). Each is independently delegable from the audit doc's scope/exit-criterion entries.**
+The pre-run_64 text below is kept for context:
 ~~(0) the CoPublisher live retry~~ **DONE LIVE (run_63, 2026-06-12): launched, built, landed on
 the CoPublisher trunk — Bug-A acceptance met.** CoPublisher has since been reset entirely
 (founder decision); onboarding re-runs properly as its own future priority after Oz completes.
