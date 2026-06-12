@@ -24,9 +24,13 @@ import {
   type Workspace,
 } from '@cocoder/core'
 import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
-import type { OzContext } from './context.js'
+import type { OzContext, OzEvent } from './context.js'
 import { findWorkspace } from './registry.js'
 import { appendAudit } from './audit.js'
+
+function emitOzEvent(ctx: OzContext, event: Omit<OzEvent, 'ts'>): void {
+  ctx.events.emit({ ...event, ts: new Date().toISOString() })
+}
 
 /** Wrap the shared session host so each spawned/killed surfaceRef is mirrored into ctx.liveRefs. */
 function trackingHost(ctx: OzContext): SessionHost {
@@ -171,6 +175,7 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
       runId = run.id
       ctx.inFlight.set(workspaceId, run.id)
       ctx.stopControllers.set(run.id, stopController)
+      emitOzEvent(ctx, { type: 'run-created', runId: run.id, workspaceId })
     },
   }
 
@@ -199,6 +204,15 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
         } catch {
           /* shutdown/test teardown may close the store before post-stop cleanup finishes */
         }
+      }
+      if (runId) {
+        let status: string | undefined
+        try {
+          status = ctx.store.getRun(runId)?.status
+        } catch {
+          status = undefined
+        }
+        emitOzEvent(ctx, { type: 'run-settled', runId, workspaceId, status })
       }
     })
 
@@ -296,6 +310,7 @@ export async function teardownRun(ctx: OzContext, runId: string): Promise<Launch
   await gcWorktree(ctx, runId, { explicitTeardown: true })
   ctx.store.recordEvent({ runId, type: 'teardown', data: { closed } })
   void appendAudit(ctx.cocoderHome, { action: 'teardown', runId, closed })
+  emitOzEvent(ctx, { type: 'run-torn-down', runId, workspaceId: run.workspaceId })
   return { status: 200, body: { closed } }
 }
 
@@ -311,6 +326,7 @@ export async function requestStopRun(ctx: OzContext, runId: string): Promise<Lau
   }
   controller.abort()
   void appendAudit(ctx.cocoderHome, { action: 'stop', runId })
+  emitOzEvent(ctx, { type: 'stop-requested', runId, workspaceId: run.workspaceId })
   return { status: 202, body: { stopping: true, runId } }
 }
 
@@ -381,6 +397,7 @@ export async function resolveRun(ctx: OzContext, runId: string, body: unknown): 
   await gcWorktree(ctx, run.id, { explicitTeardown: true })
   void appendAudit(ctx.cocoderHome, { action: 'resolve-run', runId, disposition, note })
   const after = ctx.store.getRun(run.id)
+  emitOzEvent(ctx, { type: 'run-resolved', runId: run.id, workspaceId: run.workspaceId, disposition })
   return { status: 200, body: { runId: run.id, disposition, status: after?.status, integrationStatus: after?.integrationStatus, closed } }
 }
 
