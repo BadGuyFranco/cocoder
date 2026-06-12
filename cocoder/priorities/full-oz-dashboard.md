@@ -67,10 +67,17 @@ source-attributed `oscar-nudge` events, delivery via `oscarDriver.nudge` so head
 recorded-not-delivered semantics apply), the daemon's TOOL-ONLY `nudge` verb through the shared
 action layer (parser + help frozen like `refresh`; honest 404/409/400s mirroring stop's liveness
 checks; atomic restart-durable monotonic seq; truthful queued-not-delivered reply), and an
-`ENDPOINTS_OWED.md` truth sweep. **Not archive-ready** — remaining: the Oz `repair` verb (a real
-design seam is owed BEFORE build — see the next-slice note), a LIVE exercise of Oz with a real CLI
-assigned (everything is injected-runner-proven only), Bob session `mode` honoring (gated on a
-captured-subprocess monitor path for builder work), and a live (non-test) exercise of a
+`ENDPOINTS_OWED.md` truth sweep. run_62 (2026-06-12) fixed BOTH founder-directed fresh-workspace
+bugs found live onboarding CoPublisher (the first real non-dogfood workspace): the launch
+stale-gate now compares the daemon's bootSha to the ENGINE repo HEAD (`ctx.cocoderHome`), not the
+workspace's own HEAD — previously every non-dogfood launch was refused 425 in a futile
+self-restart loop — and `POST /workspaces` now scaffolds the launch-required governance zone
+(portable base `adhoc-session.md` template + seeded `assignments.json`, create-only-if-missing,
+resolved-path, 400 existence gate on the primary root). **Not archive-ready** — remaining: the Oz
+`repair` verb (a real design seam is owed BEFORE build — see the next-slice note), a LIVE
+exercise of Oz with a real CLI assigned (everything is injected-runner-proven only), the LIVE
+CoPublisher first-launch retry (the Bug-A acceptance story), Bob session `mode` honoring (gated
+on a captured-subprocess monitor path for builder work), and a live (non-test) exercise of a
 headless-Oscar run.
 
 > History worth recording: a first pass mistakenly built from `docs/oz-design-brief.md` (the *input
@@ -307,6 +314,38 @@ headless-Oscar run.
 - **Verification (run_61):** core 224 · daemon 155 · ui 88 · root typecheck clean (per-atom at
   the verify gate; whole-tree diff checked every atom; all three atoms passed their gate first
   try).
+- **run_62 (2026-06-12), two landed atoms (one gate rejection en route), all verified + committed
+  on `cocoder/run_62` — both founder-directed fresh-workspace bugs (found live onboarding
+  CoPublisher, the first real non-dogfood workspace):**
+  (1) **Bug A, the launch stale-gate** (`099b453`) — `launchRun` compared the daemon's bootSha to
+  the WORKSPACE repo's HEAD (`input.workspace.path`), correct only by dogfood coincidence
+  (workspace path == install root); for any other workspace every launch was refused 425 stale
+  and the idle self-restart looped futilely (observed live: bootSha `b97f186b` vs CoPublisher
+  HEAD `25ab851e`). One-line fix: compare against the ENGINE repo (`ctx.cocoderHome`). Two
+  regression tests pin it from both directions: an external workspace launches (202) when the
+  daemon is current, and a genuinely stale daemon still 425s + self-restarts even when the
+  workspace's HEAD equals bootSha (which the old code would have wrongly accepted).
+  (2) **Bug B, workspace-create governance scaffold** (`d8eea96`) — `POST /workspaces` registered
+  a workspace without the governance files the launch path hard-requires (first launch died on
+  raw ENOENT for `cocoder/personas/assignments.json`; `cocoder/priorities/adhoc-session.md`
+  equally required for adhoc). Create now scaffolds the minimal zone: the ad-hoc template ships
+  PORTABLY in the install base (`packages/personas/base/priorities/adhoc-session.md`, new
+  `basePrioritiesDir()` export; no dogfood nouns — regex-pinned in two suites) and
+  `assignments.json` is seeded with the standard defaults (oscar=claude + the three Play
+  overrides, bob=codex, deb=codex enabled — matches the dogfood and the founder's hand-scaffolded
+  CoPublisher). Scaffold targets the validator-RESOLVED primary root (`${VAR}` expansion proven
+  by test), behind a plain-English 400 existence gate BEFORE any write (no blind mkdir of a
+  typo'd path), create-only-if-missing (`wx`; pre-existing files byte-preserved by test), with
+  gate→scaffold→register ordering so a failure never registers a half-usable workspace.
+  `loadAssignments` stays STRICT — the scaffold self-checks its output with the same loaders
+  launch uses, so an invalid pre-existing zone surfaces at create time. The legacy-migration
+  create path gets the same scaffold as a safe no-op on already-scaffolded repos.
+  ⚠️ The first Bug-A atom was REJECTED at the gate as a run_45-class scope blowout: the builder
+  also implemented an undelegated Bug-B scaffold (with the dogfood noun 'CoBuilder' baked into
+  the product template + an unconditional mkdir-recursive on the primary root). The whole-tree
+  diff check caught it; Bug A was re-delegated alone, then Bug B with the corrected design.
+- **Verification (run_62):** core 224 · daemon 162 · personas 9 · root typecheck clean · topology
+  pass (per-atom at the verify gate; whole-tree diff checked every atom).
 - **Verification (run_59):** core 216 · daemon 130 · ui 88 · root typecheck clean · topology pass
   (per-atom at the verify gate; whole-tree diff checked every atom; all seven atoms passed their
   gate first try).
@@ -364,7 +403,11 @@ no founder decisions are outstanding on this priority.
   No DB migration: priorities stay `.md` files; sequence is a git-tracked order-only
   `cocoder/priorities/order.json`; drag-reorder rewrites it. Owed slice #8 reclassified above.
 
-**Recommended next slice (updated run_61 wrap):**
+**Recommended next slice (updated run_62 wrap):**
+(0) **FIRST, zero-code: the CoPublisher live retry — the Bug-A acceptance story.** run_62's fixes
+are on trunk but the daemon serves pre-fix code until restarted; the very first launch attempt
+will 425 stale and (idle) self-restart onto current code — retry once more and the CoPublisher
+launch should go through. That retry is also the first LIVE non-dogfood run, so watch it.
 (a) **The Oz `repair` verb — DESIGN FIRST, do not delegate a build yet.** Scoring the approved
 Oz-as-persona Objective's five criteria after run_61: (1) natural-language artifact-grounded
 answers — BUILT, injected-runner-proven, NOT yet exercised live; (2) launch/stop through tools
