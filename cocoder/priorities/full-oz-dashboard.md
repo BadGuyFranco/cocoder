@@ -48,9 +48,15 @@ raw-path fidelity. run_58 (2026-06-11) closed **`POST /runs/:id/stop` end-to-end
 in three atoms: a cooperative-stop seam in the runner core (first-class `stopped` run status; a
 founder stop is no longer misrecorded as a fault), the CSRF-gated daemon endpoint with per-run
 abort controllers + post-settle pane/worktree cleanup, and the consumption tail (Oz-chat `stop`
-verb split off its teardown alias; the dashboard's Stop action wired live). **Not archive-ready**
-— remaining: Oz-as-persona (ADR-0017), persona `mode` honoring for Oscar/Bob sessions (ADR-0018
-stage 3; Bob gated on a captured-subprocess monitor path) + the UI mode editor, and Oz-chat SSE.
+verb split off its teardown alias; the dashboard's Stop action wired live). run_59 (2026-06-11,
+overnight auto mode) closed two more: **Oz-chat SSE end-to-end** (daemon `GET /oz/events` coarse
+refetch hints + UI main-process consumption debounced into the existing polling refresh paths,
+polling retained as fallback) and **ADR-0018 stage 3 for the OSCAR session end-to-end** (an
+`OscarDriver` seam in the runner; `mode:'headless'` runs Oscar as fresh one-shot
+captured-subprocess invocations over the unchanged file-artifact handshake; the Personas
+run-mode editor persists for Oscar only). **Not archive-ready** — remaining: Oz-as-persona
+(ADR-0017), Bob session `mode` honoring (gated on a captured-subprocess monitor path for builder
+work), and a live (non-test) exercise of a headless-Oscar run.
 
 > History worth recording: a first pass mistakenly built from `docs/oz-design-brief.md` (the *input
 > brief* that was pasted into claude.ai/design), not the founder's actual **design output**. It was then
@@ -206,6 +212,34 @@ stage 3; Bob gated on a captured-subprocess monitor path) + the UI mode editor, 
   with the real call, `ENDPOINTS_OWED.md` row 9 truthed.
 - **Verification (run_58):** core 209 · daemon 127 · ui 79 · root typecheck clean (per-atom at
   the verify gate; whole-tree diff checked every atom).
+- **run_59 (2026-06-11, overnight auto mode), seven atoms, all verified + committed on
+  `cocoder/run_59` — Oz-chat SSE end-to-end AND ADR-0018 stage 3 for the Oscar session:**
+  (0) daemon `GET /oz/events` (`da24ba8`) — a typed `OzEventBus` on `OzContext` with five
+  synchronous never-throw emit sites in the launcher (run-created / run-settled w/ final status /
+  stop-requested / run-resolved w/ disposition / run-torn-down), Bearer-gated SSE (GET, so no
+  CSRF; mutation gate untouched) with `retry:` hint, 15s heartbeat, and disconnect cleanup —
+  proven by a real streaming test; (1) UI consumption (`2b9c29d`) — main-process connector
+  `electron/events-stream.ts` reuses the daemon-client Bearer session (tokens never cross the
+  bridge), the contract's FIRST main→renderer push channel (`onOzEvent`, sanitized data only,
+  field-whitelisted), renderer debounces hints (250ms) into the same workspace/run-detail refresh
+  paths polling uses, polling untouched as fallback, fixtures mode never connects; (2)
+  `OscarDriver` seam (`6ff309e`) — behavior-preserving extraction of all seven Oscar
+  `sessionHost` touchpoints behind one interface, proven byte-identical by the unedited core
+  suite; (3) `ENDPOINTS_OWED.md` row-1 truth sweep (`db59dd8`); (4) headless Oscar honoring
+  (`67e7a99`) — `mode:'headless'` on Oscar's effective persona skips the pane: each dispatch is a
+  fresh one-shot captured-subprocess invocation (reusing the Plays `runHeadlessProcess`, D4) with
+  a `buildHeadlessOscarTurnPrompt` telling the fresh session to reconstruct state from the
+  on-disk directive/verify artifacts; serialized never-throw sends, exit-0-safe `alive()` (no
+  pollFile race), always-changing never-throw `readScreen`, nudges recorded-not-delivered,
+  wrap-up pane delivery skipped with a `wrapup-delivery-skipped` event; `visible`/absent proven
+  byte-identical + never invokes `runHeadless`; (5) Personas mode editor for Oscar only
+  (`7a0921e`) — display `runMode` now derives from the real `mode` field (the `enabled`
+  conflation ADR-0018 flagged is gone), `MODE_HONORED_PERSONAS = {oscar}` persists through the
+  existing full-map PUT with verbatim errors, Bob's toggle stays a local preview, run_56
+  silent-erase guard intact; (6) `ENDPOINTS_OWED.md` mode-row truth sweep (`fe7d94f`).
+- **Verification (run_59):** core 216 · daemon 130 · ui 88 · root typecheck clean · topology pass
+  (per-atom at the verify gate; whole-tree diff checked every atom; all seven atoms passed their
+  gate first try).
 
 > History worth recording (run_46): this Oz-chat slice was independently built by **run_44** (a
 > status/query design) and **run_45** (the bounded command-interface design) — but **neither landed**;
@@ -226,10 +260,10 @@ mechanical infra (Settings was the last clean infra slice).
 
 | # | Surface | Seam / blocker |
 |---|---------|----------------|
-| 1 | Oz chat — `POST /oz/messages` | **SERVED** (run_46, `0637c04`): bounded command interface — verbs `launch <priorityId>` / `show <runId>` / `stop`+`teardown <runId>` / `status [runId]` / `help` parsed in `packages/daemon/src/oz-chat.ts` and dispatched to existing launcher ops; **no in-daemon LLM**, rides the existing Bearer/CSRF/loopback posture. SSE/stream still deferred. |
+| 1 | Oz chat — `POST /oz/messages` | **SERVED** (run_46, `0637c04`): bounded command interface — verbs `launch <priorityId>` / `show <runId>` / `stop`+`teardown <runId>` / `status [runId]` / `help` parsed in `packages/daemon/src/oz-chat.ts` and dispatched to existing launcher ops; **no in-daemon LLM**, rides the existing Bearer/CSRF/loopback posture. **SSE SERVED** (run_59, `da24ba8` + `2b9c29d`): Bearer-gated `GET /oz/events` streams coarse refetch hints from a typed `OzEventBus`; the UI main process consumes it (tokens never cross the bridge) and debounces hints into the same refresh paths polling uses — polling stays the fallback. Anything richer than coarse hints (e.g. streamed transcripts) is a future refinement, not owed. |
 | 2 | Workspaces CRUD + `roots[]`/role model | **SERVED end-to-end** (run_57, `25c9b8d` + `99f8509` + `e5207dc` + `eb7460c`): the daemon implements the full [ADR-0019](../decisions/0019-multi-root-workspaces.md) model — `local/workspace/*.code-workspace` directory-of-files SSOT (legacy `workspaces.json` fallback until migrated), roots/roles on `GET`, `PUT`/`POST`/`DELETE /workspaces…` with rules 6/7 enforced at the write gate, create = the migration path (`legacyHidden` visibility) — and the Workspaces screen operates it live with raw-path fidelity via `electron/workspaces-sync.ts`. NOTE: this install still runs on the legacy fallback until someone creates `local/workspace/cocoder.code-workspace` (the New-Workspace modal or a `POST /workspaces` does it). |
 | 3 | `POST /runs/:id/stop` | **SERVED end-to-end** (run_58, `9a0c099` + `932df67` + `d570278`): cooperative stop — core `AbortSignal` seam with first-class `'stopped'` RunStatus (no fault/triage misfire), CSRF-gated daemon endpoint with per-run controllers + post-settle pane/worktree cleanup, Oz-chat `stop` verb remapped off teardown, dashboard Stop action live. Honored at the loop's wait seams only: a stop during wrap-up/integration lets the run finish (never corrupts a merge). |
-| 4 | Persona `{mode, subAgents}` | **[ADR-0018](../decisions/0018-persona-run-mode-and-sub-agents.md) ACCEPTED (run_54 wrap). Sub-agents SERVED** (run_55, `2eb8591`): the Personas screen renders + persists per-Play `{cli, model}` over the existing `plays` map (no new schema). **`mode` stage 2 SERVED** (run_56, `bcac308`): `mode` persists in `assignments.json` and is honored for Play dispatch (`headless` forces captured subprocess; `visible` never forces panes — pane exit isn't detectable, the run_28 hang class); renderer passes `mode` through its full-map PUT untouched. **Still owed:** Oscar/Bob session honoring (Bob gated on a captured-subprocess monitor path) + the UI mode editor (picker stays a local preview until honoring is complete). |
+| 4 | Persona `{mode, subAgents}` | **[ADR-0018](../decisions/0018-persona-run-mode-and-sub-agents.md) ACCEPTED (run_54 wrap). Sub-agents SERVED** (run_55, `2eb8591`): the Personas screen renders + persists per-Play `{cli, model}` over the existing `plays` map (no new schema). **`mode` stage 2 SERVED** (run_56, `bcac308`): `mode` persists in `assignments.json` and is honored for Play dispatch (`headless` forces captured subprocess; `visible` never forces panes — pane exit isn't detectable, the run_28 hang class); renderer passes `mode` through its full-map PUT untouched. **Stage 3 SERVED for OSCAR end-to-end** (run_59, `6ff309e` + `67e7a99` + `7a0921e`): the runner honors Oscar `mode:'headless'` via the `OscarDriver` seam (fresh one-shot captured-subprocess invocations per dispatch; file-artifact handshake unchanged; nudges recorded-not-delivered; wrap-up pane delivery skipped), and the Personas run-mode editor persists for Oscar only (`MODE_HONORED_PERSONAS`; display untangled from `enabled`; Bob's toggle stays a local preview). **Still owed:** Bob session honoring, gated on a captured-subprocess monitor path for builder work (the run_28 hang class). |
 | 5 | `POST /clis` (add CLI) | CLIs derive from compiled adapters — defer (dynamic registration feature). |
 | 6 | Settings | **SERVED** (run_43). |
 | 7 | `POST /runs {task?}` free-text ad-hoc | **SERVED** (run_54): `{task?}` threads into launch prompts (`54745f7`); bounded Oz `adhoc <task>` verb + describe-first UI (`721437d`). |
@@ -260,17 +294,19 @@ no founder decisions are outstanding on this priority.
   No DB migration: priorities stay `.md` files; sequence is a git-tracked order-only
   `cocoder/priorities/order.json`; drag-reorder rewrites it. Owed slice #8 reclassified above.
 
-**Recommended next slice (updated run_58):** stop (#3) landed in run_58, so the
-founder-independent queue is down to two code slices. In rough order of value: (a) **Oz as a
-persona** per ADR-0017 — biggest remaining piece, best started with the founder present;
-(b) **ADR-0018 stage 3** (#4) — honor `mode` for the Oscar session next; note the real seam is
-the runner's PROMPTING mechanism (the orchestration loop sends Oscar follow-up prompts via its
-pane — a headless Oscar needs the runner to deliver verify/next prompts to a captured-subprocess
-session, likely as fresh one-shot invocations over the file-artifact handshake), so scope that
-investigation before delegating; Bob stays last (gated on a captured-subprocess monitor path);
-(c) Oz-chat SSE. A zero-code founder follow-up from run_57: migrate the dogfood install off the
-legacy registry by creating `local/workspace/cocoder.code-workspace` from the dashboard's
-New-Workspace modal (or `POST /workspaces`) — until then the daemon serves the legacy fallback.
+**Recommended next slice (updated run_59):** SSE and Oscar-mode honoring both landed in run_59,
+so the remaining queue is: (a) **Oz as a persona** per ADR-0017 — the biggest remaining piece and
+now the headline; best started with the founder present (design seams: which CLI hosts Oz, how
+its bounded verbs become tools, session lifetime); (b) **Bob session `mode` honoring** — gated on
+a captured-subprocess monitor path for builder work (the run_28 hang class: the monitor's
+readScreen/sentinel detection assumes a pane; a headless Bob needs incremental output capture the
+current `runHeadless` final-only contract doesn't provide); (c) optional refinements: richer
+Oz-chat streaming beyond coarse refetch hints, and Deb-nudge delivery for headless Oscars (folded
+into the next one-shot turn). Worth a cheap live check when convenient: flip Oscar to `headless`
+in the Personas screen and launch a small run — the honoring is unit/orchestration-test proven
+but has not yet driven a live run. Zero-code founder follow-up still open from run_57: create
+`local/workspace/cocoder.code-workspace` via the New-Workspace modal to migrate off the legacy
+registry fallback.
 
 > ⚠️ **run_45 incident — read before delegating.** Twice the builder rebuilt an entire, undelegated
 > "Priority Architecture Contract" feature into `packages/core` (incl. a `MissingArchitectureContractError`
