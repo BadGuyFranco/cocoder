@@ -21,6 +21,9 @@ export interface HeadlessRunInput {
   readonly cwd: string
   readonly outPath: string
   readonly timeoutMs?: number
+  /** Termination seam: when aborted, the child is SIGKILLed and the promise resolves through the
+   *  normal close path with captured output, exitCode -1, and the usual outPath write. */
+  readonly signal?: AbortSignal
   /** Incremental capture seam: invoked with each decoded stdout/stderr chunk as it arrives, in arrival order.
    *  The concatenation of all chunks equals the final output; consumers use it to observe live progress of
    *  a long-running headless invocation. */
@@ -58,6 +61,9 @@ export function runHeadlessProcess(input: HeadlessRunInput): Promise<DispatchPla
     const chunks: Buffer[] = []
     const child = spawn(input.command, [...input.args], { cwd: input.cwd, stdio: ['ignore', 'pipe', 'pipe'] })
     const timer = input.timeoutMs ? setTimeout(() => child.kill('SIGKILL'), input.timeoutMs) : undefined
+    const abort = (): void => void child.kill('SIGKILL')
+    if (input.signal?.aborted) abort()
+    else input.signal?.addEventListener('abort', abort, { once: true })
     const collect = (d: Buffer): void => {
       chunks.push(d)
       if (!input.onData) return
@@ -73,10 +79,12 @@ export function runHeadlessProcess(input: HeadlessRunInput): Promise<DispatchPla
     child.stderr?.on('data', collect)
     child.on('error', (err) => {
       if (timer) clearTimeout(timer)
+      input.signal?.removeEventListener('abort', abort)
       reject(err)
     })
     child.on('close', (code) => {
       if (timer) clearTimeout(timer)
+      input.signal?.removeEventListener('abort', abort)
       const output = Buffer.concat(chunks).toString('utf8')
       try {
         writeFileSync(input.outPath, output)

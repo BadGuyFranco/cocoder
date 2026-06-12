@@ -245,4 +245,60 @@ describe('runHeadlessProcess', () => {
     expect(result).toEqual({ exitCode: 0, output: 'final-only' })
     await expect(readFile(out, 'utf8')).resolves.toBe('final-only')
   })
+
+  test('aborting the signal kills a running child and preserves partial output', async () => {
+    const out = await outPath()
+    const controller = new AbortController()
+    const startedAt = Date.now()
+
+    const result = await runHeadlessProcess({
+      command: process.execPath,
+      args: ['-e', "process.stdout.write('started\\n'); setTimeout(() => process.stdout.write('never\\n'), 3000)"],
+      cwd: process.cwd(),
+      outPath: out,
+      signal: controller.signal,
+      onData: (chunk) => {
+        if (chunk.includes('started')) controller.abort()
+      },
+    })
+
+    expect(Date.now() - startedAt).toBeLessThan(1500)
+    expect(result.exitCode).toBe(-1)
+    expect(result.output).toContain('started')
+    expect(result.output).not.toContain('never')
+    await expect(readFile(out, 'utf8')).resolves.toBe(result.output)
+  })
+
+  test('a pre-aborted signal kills the child promptly', async () => {
+    const out = await outPath()
+    const controller = new AbortController()
+    controller.abort()
+    const startedAt = Date.now()
+
+    const result = await runHeadlessProcess({
+      command: process.execPath,
+      args: ['-e', "setTimeout(() => process.stdout.write('never\\n'), 3000)"],
+      cwd: process.cwd(),
+      outPath: out,
+      signal: controller.signal,
+    })
+
+    expect(Date.now() - startedAt).toBeLessThan(1500)
+    expect(result).toEqual({ exitCode: -1, output: '' })
+    await expect(readFile(out, 'utf8')).resolves.toBe('')
+  })
+
+  test('omitting signal preserves successful final output capture', async () => {
+    const out = await outPath()
+
+    const result = await runHeadlessProcess({
+      command: process.execPath,
+      args: ['-e', "process.stdout.write('no-signal')"],
+      cwd: process.cwd(),
+      outPath: out,
+    })
+
+    expect(result).toEqual({ exitCode: 0, output: 'no-signal' })
+    await expect(readFile(out, 'utf8')).resolves.toBe('no-signal')
+  })
 })
