@@ -35,6 +35,18 @@ async function ensureSession(): Promise<Session> {
   return session
 }
 
+export async function ensureDaemonSession(): Promise<Readonly<Session>> {
+  return ensureSession()
+}
+
+export function resetDaemonSession(): void {
+  session = null
+}
+
+export function daemonBaseUrl(): string {
+  return BASE
+}
+
 async function requestRaw<T>(method: string, path: string, body?: unknown, retried = false): Promise<RawResult<T>> {
   if (fixturesEnabled()) {
     const r = method === 'GET' ? fixtureGet<T>(path) : fixtureMutate<T>(method, path, body)

@@ -15,7 +15,7 @@ import { PersonasScreen } from './sections/Personas.tsx'
 import { SettingsScreen } from './sections/Settings.tsx'
 import { NewWorkspaceModal, CraftPersonaModal, NewPriorityModal } from './sections/modals.tsx'
 import { seed, DEFAULT_SETTINGS, type ChatMessage, type Cli, type Dependency, type Persona, type Priority, type Run, type Settings, type SubAgent, type Workspace } from './model.ts'
-import type { PersonaAssignment } from '../electron/ipc-contract.ts'
+import type { OzEventHint, PersonaAssignment } from '../electron/ipc-contract.ts'
 
 const USER = seed.workspaces.length ? { initials: 'AF', name: 'Anthony Franco', role: 'founder' } : { initials: 'AF', name: 'Anthony Franco', role: 'founder' }
 const ROUTE_TITLE: Record<Route, string> = { dashboard: 'Dashboard', workspaces: 'Workspaces', clis: 'CLIs', personas: 'Personas', settings: 'Settings' }
@@ -95,9 +95,13 @@ export function App() {
   const [pollMs, setPollMs] = useState(2500)
   const [reloadNonce, setReloadNonce] = useState(0) // bumped by Retry to re-attempt the connection
   const namesRef = useRef<Record<string, Record<string, string>>>({}) // wsId → (priorityId → title)
+  const activeIdRef = useRef(activeId)
+  const selectedRunIdRef = useRef(selectedRunId)
 
   useEffect(() => { document.documentElement.setAttribute('data-theme', theme) }, [theme])
   useEffect(() => { setTheme(settings.preferences.theme) }, [settings.preferences.theme])
+  useEffect(() => { activeIdRef.current = activeId }, [activeId])
+  useEffect(() => { selectedRunIdRef.current = selectedRunId }, [selectedRunId])
 
   // Decide the data source once on mount and, when connected, replace workspaces/priorities/runs/personas
   // with live data. Seed state stays as the initial value so fixtures/tests render immediately.
@@ -150,14 +154,42 @@ export function App() {
     let stop = false
     const tick = async () => {
       if (document.hidden) return
-      const enriched = await loadRunDetail(oz, selectedRunId, namesRef.current[ws] ?? {})
-      if (stop || !enriched) return
-      setRunsByWs((cur) => ({ ...cur, [ws]: (cur[ws] ?? []).map((r) => (r.id === enriched.id ? enriched : r)) }))
+      await refreshRunDetail(selectedRunId, ws, () => stop)
     }
     void tick()
     const id = setInterval(() => void tick(), pollMs)
     return () => { stop = true; clearInterval(id) }
   }, [live, selectedRunId, activeId, pollMs])
+
+  useEffect(() => {
+    if (!live) return
+    const oz = ozApi()
+    if (!oz?.onOzEvent) return
+    const workspacesToRefresh = new Set<string>()
+    const runsToRefresh = new Map<string, string>()
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const flush = () => {
+      timer = null
+      const workspaceIds = [...workspacesToRefresh]
+      const runIds = [...runsToRefresh]
+      workspacesToRefresh.clear()
+      runsToRefresh.clear()
+      for (const wsId of workspaceIds) void refreshWorkspace(wsId)
+      for (const [runId, wsId] of runIds) void refreshRunDetail(runId, wsId)
+    }
+    const onEvent = (event: OzEventHint) => {
+      const wsId = event.workspaceId ?? activeIdRef.current
+      if (wsId) workspacesToRefresh.add(wsId)
+      if (event.runId && event.runId === selectedRunIdRef.current) runsToRefresh.set(event.runId, wsId)
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(flush, 250)
+    }
+    const unsubscribe = oz.onOzEvent(onEvent)
+    return () => {
+      if (timer) clearTimeout(timer)
+      unsubscribe()
+    }
+  }, [live])
 
   // Lazy-load a workspace's data the first time it becomes active (switching tabs in live mode).
   useEffect(() => {
@@ -232,13 +264,23 @@ export function App() {
   const [actionMsg, setActionMsg] = useState<{ kind: 'ok' | 'info' | 'err'; text: string } | null>(null)
   const notify = (kind: 'ok' | 'info' | 'err', text: string) => { setActionMsg({ kind, text }); window.setTimeout(() => setActionMsg(null), 6000) }
   async function refreshActiveWs() {
+    await refreshWorkspace(activeId)
+  }
+  async function refreshWorkspace(wsId: string) {
     const oz = ozApi()
     if (!oz) return
-    const data = await loadWsData(oz, activeId)
-    const order = await loadOrder(oz, activeId)
-    namesRef.current[activeId] = data.names
-    setPrioritiesByWs((cur) => ({ ...cur, [activeId]: applyOrder(data.priorities, order) }))
-    setRunsByWs((cur) => ({ ...cur, [activeId]: data.runs }))
+    const data = await loadWsData(oz, wsId)
+    const order = await loadOrder(oz, wsId)
+    namesRef.current[wsId] = data.names
+    setPrioritiesByWs((cur) => ({ ...cur, [wsId]: applyOrder(data.priorities, order) }))
+    setRunsByWs((cur) => ({ ...cur, [wsId]: data.runs }))
+  }
+  async function refreshRunDetail(runId: string, wsId: string, shouldSkip: () => boolean = () => false) {
+    const oz = ozApi()
+    if (!oz || shouldSkip()) return
+    const enriched = await loadRunDetail(oz, runId, namesRef.current[wsId] ?? {})
+    if (!enriched || shouldSkip()) return
+    setRunsByWs((cur) => ({ ...cur, [wsId]: (cur[wsId] ?? []).map((r) => (r.id === enriched.id ? enriched : r)) }))
   }
   async function refreshWorkspaces(): Promise<Workspace[]> {
     const oz = ozApi()

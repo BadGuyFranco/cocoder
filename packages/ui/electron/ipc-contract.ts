@@ -9,6 +9,7 @@ export const CHANNELS = {
   daemonPost: 'oz:daemon:post',
   daemonPut: 'oz:daemon:put',
   daemonDelete: 'oz:daemon:delete',
+  ozEvent: 'oz:event',
   chatSend: 'oz:chat:send',
   personasAssignmentsSave: 'oz:personas:assignments:save',
   prioritiesCreate: 'oz:priorities:create',
@@ -40,6 +41,15 @@ export interface HealthStatus {
   readonly state: ConnectionState
   readonly sha?: string
   readonly error?: string
+}
+
+export interface OzEventHint {
+  readonly type: string
+  readonly runId?: string
+  readonly workspaceId?: string
+  readonly ts: string
+  readonly status?: string
+  readonly disposition?: string
 }
 
 // --- domain shapes (wired to the LIVE daemon's actual responses, not assumptions) ---
@@ -207,6 +217,7 @@ export interface OzApi {
   daemonPost<T = unknown>(path: string, body?: unknown): Promise<DaemonResult<T>>
   daemonPut<T = unknown>(path: string, body?: unknown): Promise<DaemonResult<T>>
   daemonDelete<T = unknown>(path: string): Promise<DaemonResult<T>>
+  onOzEvent?(cb: (event: OzEventHint) => void): () => void
   chatSend(workspaceId: string, text: string): Promise<ChatMessage>
   personasAssignmentsSave(workspaceId: string, assignments: Record<string, PersonaAssignment>): Promise<DaemonResult<Record<string, PersonaAssignment>>>
   prioritiesCreate(workspaceId: string, priority: { title: string; goal?: string }): Promise<DaemonResult<Priority>>
