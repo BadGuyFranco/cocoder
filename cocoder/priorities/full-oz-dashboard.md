@@ -54,9 +54,16 @@ refetch hints + UI main-process consumption debounced into the existing polling 
 polling retained as fallback) and **ADR-0018 stage 3 for the OSCAR session end-to-end** (an
 `OscarDriver` seam in the runner; `mode:'headless'` runs Oscar as fresh one-shot
 captured-subprocess invocations over the unchanged file-artifact handshake; the Personas
-run-mode editor persists for Oscar only). **Not archive-ready** — remaining: Oz-as-persona
-(ADR-0017), Bob session `mode` honoring (gated on a captured-subprocess monitor path for builder
-work), and a live (non-test) exercise of a headless-Oscar run.
+run-mode editor persists for Oscar only). run_60 (2026-06-12) built the **core of Oz-as-persona
+(ADR-0017 slice 1)** in four landed atoms: the `oz` base persona definition, a daemon-hosted Oz
+agent turn host (free-text chat → one-shot captured-subprocess turns of the assigned oz CLI,
+artifact-grounded facts digest, verb surface untouched), the bounded **tool loop** (`OZ_TOOL`
+protocol — the agent speaks the gated verbs through ONE shared action layer, 3-round budget,
+truthful errors), and the **`refresh` tool** (reuses the idle-guarded daemon restart;
+short-circuits the loop on success). **Not archive-ready** — remaining: Oz `nudge` + `repair`
+verbs (need core runner work), a LIVE exercise of Oz with a real CLI assigned (everything is
+injected-runner-proven only), Bob session `mode` honoring (gated on a captured-subprocess monitor
+path for builder work), and a live (non-test) exercise of a headless-Oscar run.
 
 > History worth recording: a first pass mistakenly built from `docs/oz-design-brief.md` (the *input
 > brief* that was pasted into claude.ai/design), not the founder's actual **design output**. It was then
@@ -237,6 +244,37 @@ work), and a live (non-test) exercise of a headless-Oscar run.
   conflation ADR-0018 flagged is gone), `MODE_HONORED_PERSONAS = {oscar}` persists through the
   existing full-map PUT with verbatim errors, Bob's toggle stays a local preview, run_56
   silent-erase guard intact; (6) `ENDPOINTS_OWED.md` mode-row truth sweep (`fe7d94f`).
+- **run_60 (2026-06-12), four landed atoms (one gate rejection + rebuild en route), all verified +
+  committed on `cocoder/run_60` — Oz-as-persona (ADR-0017 slice 1), the agent core:**
+  (0) `packages/personas/base/oz.md` (`d9aa34e`) — the oz base persona: tier-3 boundary (direct
+  only Oscars via runner-mediated nudge; observe anyone; never write into Bob/Deb), bounded-tools
+  doctrine, artifacts-for-facts/Deb-for-interpretation, repair fenced as future Oz-level-only
+  authority, `writeScope: []`; passes the ADR-0012 portability test (product concepts only, no
+  dogfood nouns); the existing loader/assignment machinery covers Oz with ZERO code change
+  (proven by test). (1) daemon Oz turn host (`3d23d61`) — `packages/daemon/src/oz-host.ts`:
+  free-text messages (anything `parseOzCommand` calls `unknown`) run a one-shot
+  captured-subprocess turn of the assigned oz CLI via `ctx.getAdapter(...).build(...)` +
+  `runHeadlessProcess` (the run_59 headless machinery), prompt = persona body + daemon-composed
+  facts digest (priorities + runs) + capped in-memory transcript (drops on restart BY DESIGN —
+  Refresh = fresh session) + turn instructions; per-workspace serialized turns (409 busy),
+  truthful failure replies naming exit code + `local/oz/<ws>/turn-<n>.log`; typed verbs and
+  no-oz-assigned behavior byte-identical (existing tests pass unmodified). (2) tool loop
+  (`3c3de8c`) — the agent acts: output ending `OZ_TOOL {\"tool\":...,\"args\":{...}}` (strict JSON,
+  last line, one per turn) executes launch/adhoc/show/stop/teardown/status through the SAME
+  `executeOzCommand` action layer the parser uses (the ADR's 'parser becomes Oz's action layer',
+  literally one code path), result feeds a follow-up turn, hard 3-round budget with truthful
+  exceeded reply, malformed/unknown calls feed errors back without executing, GUI gets the same
+  action metadata as typed verbs. ⚠️ First attempt REJECTED at the gate: the shared-executor
+  refactor silently 400ed `status`/`status <runId>` without workspaceId (previously 200
+  summaries) — caught by reading the diff against pre-atom behavior, NOT by the (green) suite;
+  rebuild restored per-verb guards + 3 regression tests pinning no-workspace status. (3)
+  `refresh` tool (`ef1ed14`) — Refresh Oz v1: reuses `requestDaemonRestart` (idle guard — 409
+  while a run is in flight — audit, detached restart) as a TOOL-ONLY verb (parser + help text
+  frozen); on success the loop SHORT-CIRCUITS (no follow-up turn racing the dying daemon) with a
+  truthful restarting/fresh-session/transcript-resets reply; refused refresh feeds back to the
+  agent to explain.
+- **Verification (run_60):** core 220 · daemon 150 · ui 88 · root typecheck clean · topology pass
+  (per-atom at the verify gate; whole-tree diff checked every atom).
 - **Verification (run_59):** core 216 · daemon 130 · ui 88 · root typecheck clean · topology pass
   (per-atom at the verify gate; whole-tree diff checked every atom; all seven atoms passed their
   gate first try).
@@ -260,7 +298,7 @@ mechanical infra (Settings was the last clean infra slice).
 
 | # | Surface | Seam / blocker |
 |---|---------|----------------|
-| 1 | Oz chat — `POST /oz/messages` | **SERVED** (run_46, `0637c04`): bounded command interface — verbs `launch <priorityId>` / `show <runId>` / `stop`+`teardown <runId>` / `status [runId]` / `help` parsed in `packages/daemon/src/oz-chat.ts` and dispatched to existing launcher ops; **no in-daemon LLM**, rides the existing Bearer/CSRF/loopback posture. **SSE SERVED** (run_59, `da24ba8` + `2b9c29d`): Bearer-gated `GET /oz/events` streams coarse refetch hints from a typed `OzEventBus`; the UI main process consumes it (tokens never cross the bridge) and debounces hints into the same refresh paths polling uses — polling stays the fallback. Anything richer than coarse hints (e.g. streamed transcripts) is a future refinement, not owed. |
+| 1 | Oz chat — `POST /oz/messages` | **SERVED** (run_46, `0637c04`): bounded command interface — verbs `launch <priorityId>` / `show <runId>` / `stop`+`teardown <runId>` / `status [runId]` / `help` parsed in `packages/daemon/src/oz-chat.ts` and dispatched to existing launcher ops; **no in-daemon LLM**, rides the existing Bearer/CSRF/loopback posture. **SSE SERVED** (run_59, `da24ba8` + `2b9c29d`): Bearer-gated `GET /oz/events` streams coarse refetch hints from a typed `OzEventBus`; the UI main process consumes it (tokens never cross the bridge) and debounces hints into the same refresh paths polling uses — polling stays the fallback. Anything richer than coarse hints (e.g. streamed transcripts) is a future refinement, not owed. **AGENT SERVED** (run_60, `3d23d61` + `3c3de8c` + `ef1ed14`): free-text messages run a real one-shot turn of the assigned `oz` persona (ADR-0017) with a bounded `OZ_TOOL` tool loop over the same gated action layer (+ `refresh`); typed verbs byte-identical; `nudge`/`repair` tools still owed; not yet exercised live. |
 | 2 | Workspaces CRUD + `roots[]`/role model | **SERVED end-to-end** (run_57, `25c9b8d` + `99f8509` + `e5207dc` + `eb7460c`): the daemon implements the full [ADR-0019](../decisions/0019-multi-root-workspaces.md) model — `local/workspace/*.code-workspace` directory-of-files SSOT (legacy `workspaces.json` fallback until migrated), roots/roles on `GET`, `PUT`/`POST`/`DELETE /workspaces…` with rules 6/7 enforced at the write gate, create = the migration path (`legacyHidden` visibility) — and the Workspaces screen operates it live with raw-path fidelity via `electron/workspaces-sync.ts`. NOTE: this install still runs on the legacy fallback until someone creates `local/workspace/cocoder.code-workspace` (the New-Workspace modal or a `POST /workspaces` does it). |
 | 3 | `POST /runs/:id/stop` | **SERVED end-to-end** (run_58, `9a0c099` + `932df67` + `d570278`): cooperative stop — core `AbortSignal` seam with first-class `'stopped'` RunStatus (no fault/triage misfire), CSRF-gated daemon endpoint with per-run controllers + post-settle pane/worktree cleanup, Oz-chat `stop` verb remapped off teardown, dashboard Stop action live. Honored at the loop's wait seams only: a stop during wrap-up/integration lets the run finish (never corrupts a merge). |
 | 4 | Persona `{mode, subAgents}` | **[ADR-0018](../decisions/0018-persona-run-mode-and-sub-agents.md) ACCEPTED (run_54 wrap). Sub-agents SERVED** (run_55, `2eb8591`): the Personas screen renders + persists per-Play `{cli, model}` over the existing `plays` map (no new schema). **`mode` stage 2 SERVED** (run_56, `bcac308`): `mode` persists in `assignments.json` and is honored for Play dispatch (`headless` forces captured subprocess; `visible` never forces panes — pane exit isn't detectable, the run_28 hang class); renderer passes `mode` through its full-map PUT untouched. **Stage 3 SERVED for OSCAR end-to-end** (run_59, `6ff309e` + `67e7a99` + `7a0921e`): the runner honors Oscar `mode:'headless'` via the `OscarDriver` seam (fresh one-shot captured-subprocess invocations per dispatch; file-artifact handshake unchanged; nudges recorded-not-delivered; wrap-up pane delivery skipped), and the Personas run-mode editor persists for Oscar only (`MODE_HONORED_PERSONAS`; display untangled from `enabled`; Bob's toggle stays a local preview). **Still owed:** Bob session honoring, gated on a captured-subprocess monitor path for builder work (the run_28 hang class). |
@@ -294,26 +332,25 @@ no founder decisions are outstanding on this priority.
   No DB migration: priorities stay `.md` files; sequence is a git-tracked order-only
   `cocoder/priorities/order.json`; drag-reorder rewrites it. Owed slice #8 reclassified above.
 
-**Recommended next slice (updated run_59 post-wrap — Objective APPROVED, ready to build):**
-(a) **Oz as a persona**, per ADR-0017 **as amended 2026-06-12** (read the amendment first — it
-records the founder's decisions from the run_59 wrap conversation: daemon-owned lifecycle-synced
-hosting, the Refresh Oz action (idle-only v1), the extended verb surface incl. runner-mediated
-nudge-to-Oscar and Oz-level repair, and the artifacts-first/Deb-for-interpretation info doctrine).
-**Founder-approved Objective for this slice:** Oz becomes a real agent, not a parser — an `oz`
-persona with a founder-chosen CLI+model, hosted BY THE DAEMON as a long-lived headless session
-lifecycle-synced to the daemon (boot starts Oz; Refresh Oz restarts both: new session up → old
-closed → priorities/run statuses re-derived from disk; v1 refuses while a run is in flight). The
-dashboard chat becomes a window into that session; Oz acts only through his bounded tools (the
-existing gated verbs + nudge/repair/refresh). **Verified when:** (1) a natural-language status
-question gets a correct artifact-grounded chat answer; (2) launch/stop round-trip through tools,
-not regex; (3) Refresh Oz performs the full cycle live with state correctly re-derived; (4) a
-nudge reaches a live Oscar via the runner channel; (5) the security posture is untouched — every
-Oz action is an already-gated daemon op. Build seams: the conflict scan (run_59 wrap) was clean;
-the one flagged risk is that ADR-0006's adapter contract covers launch-and-run, not long-lived
-conversational sessions — slice 1 may extend it deliberately (the run_59 headless-Oscar machinery
-is most of the host). Suggested slice order: 1. oz persona definition + daemon session host +
-chat wired to the real agent; 2. tools (existing verbs as the agent's tool calls); 3. Refresh Oz;
-4. nudge + repair verbs. (b) **Bob session `mode` honoring** — gated on
+**Recommended next slice (updated run_60 wrap — Oz-as-persona Objective is PART-MET; finish it):**
+(a) **Finish Oz-as-persona** (ADR-0017 as amended). run_60 landed the agent core — oz persona,
+daemon-hosted one-shot turn host, bounded `OZ_TOOL` tool loop over the shared action layer, and
+the `refresh` tool (see Accomplished). Scoring the approved Objective's five criteria:
+(1) natural-language artifact-grounded answers — BUILT, injected-runner-proven, NOT yet exercised
+live; (2) launch/stop through tools not regex — BUILT + proven at unit level; (3) Refresh Oz full
+cycle live — tool BUILT, live cycle NOT yet performed; (4) nudge to a live Oscar — **NOT BUILT**
+(needs the runner-mediated channel: reuse the Deb-nudge mechanics per the amendment — runner
+core + a daemon seam + an `oz` tool; this is the meatiest remaining piece); (5) security posture
+untouched — HOLDS (every tool is an already-gated op; zero new endpoints). Remaining work, in
+order: nudge verb (core runner channel reusing Deb-nudge mechanics), repair verb (Oz-level scope
++ same repair primitive as ADR-0016), then a LIVE proof session: assign oz a real CLI+model in
+the Personas screen, ask a status question in the dashboard chat, drive a launch/stop through
+chat, and run one real Refresh Oz — criteria 1–3 flip to met on that evidence. NOTE for the live
+proof: turn logs land in `local/oz/<workspaceId>/turn-<n>.log`; the oz turn subprocess is NOT
+tool-restricted in this build (prompt-level discipline only — the assigned CLI could in principle
+touch files; acceptable v1 seam, recorded here deliberately) — prefer a CLI/flags combo with
+read-only behavior until tool-restriction lands in the adapter contract. (b) **Bob session `mode`
+honoring** — gated on
 a captured-subprocess monitor path for builder work (the run_28 hang class: the monitor's
 readScreen/sentinel detection assumes a pane; a headless Bob needs incremental output capture the
 current `runHeadless` final-only contract doesn't provide); (c) optional refinements: richer
