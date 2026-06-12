@@ -4,10 +4,10 @@
 // This exercises the whole live chain — health switch → loadWsData → adapter → renderer, and the
 // launch/attach mutation path — without ever touching a real daemon.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react'
+import { act, render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react'
 import { App } from '../app/App.tsx'
 import { stopRun } from '../app/live.ts'
-import type { OzApi, OzEventHint, RunSummary } from '../electron/ipc-contract.ts'
+import type { ConnectionState, OzApi, OzEventHint, RunDetail, RunSummary } from '../electron/ipc-contract.ts'
 import workspacesFx from '../fixtures/workspaces.json'
 import prioritiesFx from '../fixtures/priorities.json'
 import personasFx from '../fixtures/personas.json'
@@ -57,6 +57,8 @@ interface WorkspaceUpdateCall { workspaceId: string; folders: unknown }
 interface WorkspaceCreateCall { workspaceId: string; folders: unknown }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mockOz(opts: {
+  getPaths?: string[]
+  healthState?: ConnectionState
   posts?: PostCall[]
   puts?: PutCall[]
   creates?: CreateCall[]
@@ -69,21 +71,25 @@ function mockOz(opts: {
   workspaceUpdateResult?: any
   workspaceCreateResult?: any
   runs?: { runs: RunSummary[] }
+  runDetails?: Record<string, RunDetail>
+  pollIntervalMs?: number
   onOzEvent?: (cb: (event: OzEventHint) => void) => () => void
 } = {}) {
   return {
-    health: async () => ({ state: 'connected', sha: 'deadbeef' }),
+    health: async () => ({ state: opts.healthState ?? 'connected', sha: 'deadbeef' }),
     onOzEvent: opts.onOzEvent,
-    settingsGet: async () => ({ pollIntervalMs: 2500, defaultWorkspaceId: null }),
+    settingsGet: async () => ({ pollIntervalMs: opts.pollIntervalMs ?? 2500, defaultWorkspaceId: null }),
     settingsSet: async (p: unknown) => p,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     daemonGet: async (path: string): Promise<any> => {
+      opts.getPaths?.push(path)
       if (path === '/clis') return ok(clisFx)
       if (path === '/workspaces') return ok(workspacesFx)
       if (/\/priorities$/.test(path)) return ok(prioritiesFx)
       if (/\/personas$/.test(path)) return ok(personasFx)
       if (path.startsWith('/runs?')) return ok(opts.runs ?? runsFx)
-      if (/^\/runs\/[^/]+$/.test(path)) return ok(runDetailFx)
+      const runDetailMatch = path.match(/^\/runs\/([^/]+)$/)
+      if (runDetailMatch) return ok(opts.runDetails?.[runDetailMatch[1]] ?? runDetailFx)
       return { ok: false, status: 404, error: `no mock for ${path}` }
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -124,6 +130,36 @@ const clickFirstText = async (text: string): Promise<void> => {
   const matches = await screen.findAllByText(text)
   fireEvent.click(matches[0])
 }
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
+function runSummary(id: string, status: RunSummary['status'], priorityId = 'base-and-extension-personas'): RunSummary {
+  return {
+    id,
+    workspaceId: 'cocoder',
+    priorityId,
+    status,
+    createdAt: 1780112098510,
+    endedAt: status === 'running' ? null : 1780115351387,
+  }
+}
+
+function detailFor(summary: RunSummary, latestEvent = 'Real latest event for the row.'): RunDetail {
+  return {
+    run: summary,
+    sessions: [
+      { id: `${summary.id}-oscar`, runId: summary.id, persona: 'oscar', sessionRef: 'surface:2', startedAt: summary.createdAt + 1, exitCode: null, deepLinkable: false },
+      { id: `${summary.id}-bob`, runId: summary.id, persona: 'bob', sessionRef: 'surface:3', startedAt: summary.createdAt + 2, exitCode: null, deepLinkable: false },
+    ],
+    workItems: [],
+    commitLinks: [],
+    events: [
+      { id: `${summary.id}-start`, runId: summary.id, type: 'run-start', data: { priority: summary.priorityId }, at: summary.createdAt },
+      { id: `${summary.id}-delegation`, runId: summary.id, type: 'delegation', data: { task: latestEvent }, at: summary.createdAt + 5 },
+    ],
+    files: { oscarOut: null, oscarErr: null, bobOut: null, bobErr: null, pickup: null, record: null },
+    diffs: [],
+  }
+}
 
 describe('Oz renderer — live daemon path', () => {
   afterEach(() => { cleanup(); delete (window as unknown as { oz?: unknown }).oz })
@@ -145,6 +181,84 @@ describe('Oz renderer — live daemon path', () => {
     const realTitle = (prioritiesFx as any).priorities.find((p: any) => p.id !== 'adhoc-session').title as string
     await waitFor(() => expect(screen.getAllByText(realTitle).length).toBeGreaterThan(0))
     expect(screen.getByText('Ad-hoc')).toBeDefined()
+  })
+
+  it('enriches active priority rows from run detail without selecting the run', async () => {
+    const activeRun = runSummary('run_inline', 'pending-scope-decision')
+    const detail = detailFor(activeRun, 'Renderer fetched the real latest event.')
+    setOz(mockOz({ runs: { runs: [activeRun] }, runDetails: { run_inline: detail } }))
+    render(<App />)
+
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    expect(screen.queryByText('Transcript')).toBeNull()
+    await waitFor(() => expect(screen.getByText('oscar')).toBeDefined())
+    expect(screen.getByText('bob')).toBeDefined()
+    expect(screen.getByText('Delegated: Renderer fetched the real latest event.')).toBeDefined()
+    expect(screen.queryByText(/50%/)).toBeNull()
+  })
+
+  it('caps active-row enrichment at six detail fetches per cycle, preferring running and blocked runs', async () => {
+    const getPaths: string[] = []
+    const activeRuns = [
+      ...Array.from({ length: 4 }, (_, i) => runSummary(`run_hot_${i}`, i % 2 === 0 ? 'running' : 'pending-scope-decision')),
+      ...Array.from({ length: 4 }, (_, i) => runSummary(`run_landed_${i}`, 'pending-landing')),
+    ]
+    const runDetails = Object.fromEntries(activeRuns.map((run) => [run.id, detailFor(run)]))
+    setOz(mockOz({ getPaths, runs: { runs: activeRuns }, runDetails }))
+    render(<App />)
+
+    await waitFor(() => expect(getPaths.filter((path) => /^\/runs\/[^/]+$/.test(path))).toHaveLength(6))
+
+    const detailPaths = getPaths.filter((path) => /^\/runs\/[^/]+$/.test(path))
+    expect(detailPaths).toEqual(['/runs/run_hot_0', '/runs/run_hot_1', '/runs/run_hot_2', '/runs/run_hot_3', '/runs/run_landed_0', '/runs/run_landed_1'])
+  })
+
+  it('fetches not-landed detail once while the run status is unchanged', async () => {
+    const getPaths: string[] = []
+    const notLanded = runSummary('run_waiting', 'pending-landing')
+    setOz(mockOz({
+      getPaths,
+      pollIntervalMs: 40,
+      runs: { runs: [notLanded] },
+      runDetails: { run_waiting: detailFor(notLanded, 'Waiting for founder landing.') },
+    }))
+    render(<App />)
+
+    await waitFor(() => expect(getPaths.filter((path) => path === '/runs/run_waiting')).toHaveLength(1))
+    await sleep(140)
+
+    expect(getPaths.filter((path) => path === '/runs/run_waiting')).toHaveLength(1)
+  })
+
+  it('keeps enriched active-row data across workspace summary refreshes', async () => {
+    let handler: ((event: OzEventHint) => void) | null = null
+    const getPaths: string[] = []
+    const activeRun = runSummary('run_refresh', 'pending-scope-decision')
+    setOz(mockOz({
+      getPaths,
+      runs: { runs: [activeRun] },
+      runDetails: { run_refresh: detailFor(activeRun, 'Still the real detail after refresh.') },
+      onOzEvent: (cb) => {
+        handler = cb
+        return () => {
+          handler = null
+        }
+      },
+    }))
+    render(<App />)
+
+    await waitFor(() => expect(screen.getByText('Delegated: Still the real detail after refresh.')).toBeDefined())
+    expect(screen.getByText('oscar')).toBeDefined()
+    await waitFor(() => expect(handler).toBeTypeOf('function'))
+    const detailFetchesBeforeRefresh = getPaths.filter((path) => path === '/runs/run_refresh').length
+
+    handler!({ type: 'run-settled', workspaceId: 'cocoder', runId: 'run_refresh', ts: '2026-06-12T00:00:00.000Z' })
+
+    await waitFor(() => expect(getPaths.filter((path) => path === '/runs?workspace=cocoder').length).toBeGreaterThan(1), { timeout: 1500 })
+    expect(screen.getByText('Delegated: Still the real detail after refresh.')).toBeDefined()
+    expect(screen.getByText('oscar')).toBeDefined()
+    expect(getPaths.filter((path) => path === '/runs/run_refresh').length).toBeGreaterThanOrEqual(detailFetchesBeforeRefresh)
   })
 
   it('Launch posts to /runs with the workspace + priority (202 → "Launching")', async () => {
@@ -476,6 +590,19 @@ describe('Oz renderer — seed/fixtures mode shows no pending markers', () => {
     render(<App />)
     fireEvent.click(screen.getByText('CLIs'))
     expect(screen.queryByText(/Pending daemon endpoint/)).toBeNull()
+    cleanup()
+  })
+
+  it('does not fetch run detail when the bridge reports fixtures mode', async () => {
+    const getPaths: string[] = []
+    setOz(mockOz({ getPaths, healthState: 'fixtures' }))
+    render(<App />)
+
+    await act(async () => {
+      await sleep(20)
+    })
+
+    expect(getPaths.filter((path) => /^\/runs\/[^/]+$/.test(path))).toHaveLength(0)
     cleanup()
   })
 })

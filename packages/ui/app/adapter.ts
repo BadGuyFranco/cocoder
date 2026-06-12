@@ -69,7 +69,7 @@ export function mapRunStatus(status: string, integrationStatus?: string | null):
   }
 }
 
-const isActive = (s: RunStatus): boolean => s === 'running' || s === 'blocked' || s === 'not-landed'
+export const isActiveRun = (s: RunStatus): boolean => s === 'running' || s === 'blocked' || s === 'not-landed'
 
 const CLI_META: Record<string, { name: string; vendor: string }> = {
   claude: { name: 'Claude Code', vendor: 'Anthropic' },
@@ -153,10 +153,28 @@ export function adaptPriorities(priorities: readonly DPriority[], runs: readonly
     .filter((p) => p.id !== ADHOC_PRIORITY_ID)
     .map((p) => {
       const base = adaptPriority(p)
-      const live = runs.find((r) => r.priorityId === p.id && isActive(r.status))
+      const live = runs.find((r) => r.priorityId === p.id && isActiveRun(r.status))
       if (live) return { ...base, runId: live.id, status: live.status }
       return base
     })
+}
+
+export function mergeRunsWithEnrichment(summaries: readonly Run[], existing: readonly Run[]): Run[] {
+  const byId = new Map(existing.map((run) => [run.id, run]))
+  return summaries.map((summary) => {
+    const previous = byId.get(summary.id)
+    if (!previous || previous.status !== summary.status || !isActiveRun(summary.status)) return summary
+    return {
+      ...summary,
+      personas: previous.personas,
+      cli: previous.cli,
+      progress: previous.progress,
+      transcript: previous.transcript,
+      evidence: previous.evidence,
+      attachCmd: previous.attachCmd,
+      lastEvent: previous.lastEvent ?? summary.lastEvent,
+    }
+  })
 }
 
 // Apply a client-owned order overlay to the daemon's priority list (the drag-reorder seam): known ids

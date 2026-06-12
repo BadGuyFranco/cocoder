@@ -4,9 +4,8 @@
 // faithfully from design-ref/dashboard.jsx (dev pins dropped).
 import { useState } from 'react'
 import { Icon, StatusChip, Button } from '../../ui/primitives.tsx'
+import { isActiveRun } from '../../adapter.ts'
 import type { Priority, Run } from '../../model.ts'
-
-const isActiveRun = (status: Run['status']): boolean => status === 'running' || status === 'blocked' || status === 'not-landed'
 
 function PriorityRow({ priority, index, onLaunch, onDrag, isDragging, isDropTarget, onSelectRun, runs, selectedRunId }: {
   priority: Priority; index: number; onLaunch: (p: Priority) => void; onDrag: (type: string, index: number) => void

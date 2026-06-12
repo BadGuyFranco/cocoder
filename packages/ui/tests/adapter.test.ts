@@ -16,6 +16,7 @@ import {
   eventToLine,
   evidenceFromDetail,
   mapRunStatus,
+  mergeRunsWithEnrichment,
   personasToAssignments,
   summarize,
   fmtTime,
@@ -148,6 +149,31 @@ describe('runs list', () => {
     const newest = adaptRunSummary(RUNS.runs[0], priorityNames)
     expect(newest.id).toBe(RUNS.runs[0].id)
     expect(newest.startedAt).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/)
+  })
+})
+
+describe('run enrichment merging', () => {
+  it('preserves real detail-only fields for unchanged active runs during summary refreshes', () => {
+    const summary = adaptRunSummary({ id: 'run_active', workspaceId: 'cocoder', priorityId: 'p', status: 'running', createdAt: 1780153227239, endedAt: null }, { p: 'Priority' })
+    const enriched = {
+      ...summary,
+      personas: ['oscar', 'bob'],
+      cli: 'claude · codex',
+      lastEvent: 'Delegated: real event',
+      transcript: [{ role: 'oscar', body: 'real event' }],
+      evidence: [{ kind: 'note' as const, label: 'Run record', body: 'record' }],
+      attachCmd: 'cmux show surface:2',
+    }
+
+    expect(mergeRunsWithEnrichment([summary], [enriched])).toEqual([enriched])
+  })
+
+  it('does not carry enrichment across a status change', () => {
+    const blocked = adaptRunSummary({ id: 'run_active', workspaceId: 'cocoder', priorityId: 'p', status: 'pending-scope-decision', createdAt: 1780153227239, endedAt: null }, { p: 'Priority' })
+    const running = adaptRunSummary({ id: 'run_active', workspaceId: 'cocoder', priorityId: 'p', status: 'running', createdAt: 1780153227239, endedAt: null }, { p: 'Priority' })
+    const enrichedBlocked = { ...blocked, personas: ['oscar'], lastEvent: 'Blocked detail' }
+
+    expect(mergeRunsWithEnrichment([running], [enrichedBlocked])).toEqual([running])
   })
 })
 

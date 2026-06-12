@@ -5,7 +5,7 @@
 // adapter is wired in the next slice (the existing electron/ plumbing is untouched).
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, sendOzMessage, launchRun, attachRun, teardownRun, stopRun, resolveRun, testCli, createPriority, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, saveAssignments, type ConnectionState } from './live.ts'
-import { ADHOC_PRIORITY_ID, MODE_HONORED_PERSONAS, applyOrder, personasToAssignments } from './adapter.ts'
+import { ADHOC_PRIORITY_ID, MODE_HONORED_PERSONAS, applyOrder, isActiveRun, mergeRunsWithEnrichment, personasToAssignments } from './adapter.ts'
 import { Sidebar, type Route } from './ui/Sidebar.tsx'
 import { TopBar } from './ui/TopBar.tsx'
 import { Dashboard } from './sections/dashboard/Dashboard.tsx'
@@ -19,6 +19,7 @@ import type { OzEventHint, PersonaAssignment } from '../electron/ipc-contract.ts
 
 const USER = seed.workspaces.length ? { initials: 'AF', name: 'Anthony Franco', role: 'founder' } : { initials: 'AF', name: 'Anthony Franco', role: 'founder' }
 const ROUTE_TITLE: Record<Route, string> = { dashboard: 'Dashboard', workspaces: 'Workspaces', clis: 'CLIs', personas: 'Personas', settings: 'Settings' }
+const ACTIVE_DETAIL_FETCH_LIMIT = 6
 
 const seedSettings = (): Settings => {
   // The prototype settings nest extra keys; map onto our typed shape, falling back to defaults.
@@ -95,13 +96,17 @@ export function App() {
   const [pollMs, setPollMs] = useState(2500)
   const [reloadNonce, setReloadNonce] = useState(0) // bumped by Retry to re-attempt the connection
   const namesRef = useRef<Record<string, Record<string, string>>>({}) // wsId → (priorityId → title)
+  const runsByWsRef = useRef<Record<string, Run[]>>(runsByWs)
   const activeIdRef = useRef(activeId)
   const selectedRunIdRef = useRef(selectedRunId)
+  const notLandedDetailFetchedRef = useRef<Record<string, true>>({})
+  const runStatusRef = useRef<Record<string, Run['status']>>({})
 
   useEffect(() => { document.documentElement.setAttribute('data-theme', theme) }, [theme])
   useEffect(() => { setTheme(settings.preferences.theme) }, [settings.preferences.theme])
   useEffect(() => { activeIdRef.current = activeId }, [activeId])
   useEffect(() => { selectedRunIdRef.current = selectedRunId }, [selectedRunId])
+  useEffect(() => { runsByWsRef.current = runsByWs }, [runsByWs])
 
   // Decide the data source once on mount and, when connected, replace workspaces/priorities/runs/personas
   // with live data. Seed state stays as the initial value so fixtures/tests render immediately.
@@ -136,6 +141,7 @@ export function App() {
       namesRef.current[first.id] = data.names
       setPrioritiesByWs((cur) => ({ ...cur, [first.id]: applyOrder(data.priorities, order) }))
       setRunsByWs((cur) => ({ ...cur, [first.id]: data.runs }))
+      void enrichActiveRunDetails(first.id, data.runs)
       if (data.personas.length) {
         setPersonas(data.personas)
         setPersonaAssignments(data.assignments)
@@ -143,6 +149,21 @@ export function App() {
     })()
     return () => { cancelled = true }
   }, [reloadNonce])
+
+  // Active-row enrichment is intentionally bounded: each live cycle fetches detail for at most six
+  // active runs, with running/blocked runs before settled not-landed runs. Not-landed detail is fetched
+  // once per unchanged status because it is stable founder-action state; running/blocked follow pollMs.
+  useEffect(() => {
+    if (!live) return
+    let stop = false
+    const tick = () => {
+      const wsId = activeIdRef.current
+      if (!wsId || document.hidden) return
+      void enrichActiveRunDetails(wsId, undefined, () => stop)
+    }
+    const id = setInterval(tick, pollMs)
+    return () => { stop = true; clearInterval(id) }
+  }, [live, pollMs])
 
   // Poll the open run's detail (~pollMs) for the live transcript/evidence; pause when the window is
   // hidden, and fetch once immediately on open. Only runs in live mode.
@@ -204,6 +225,7 @@ export function App() {
       namesRef.current[activeId] = data.names
       setPrioritiesByWs((cur) => ({ ...cur, [activeId]: applyOrder(data.priorities, order) }))
       setRunsByWs((cur) => ({ ...cur, [activeId]: data.runs }))
+      void enrichActiveRunDetails(activeId, data.runs, () => cancelled)
       if (data.personas.length) {
         setPersonas(data.personas)
         setPersonaAssignments(data.assignments)
@@ -272,15 +294,54 @@ export function App() {
     const data = await loadWsData(oz, wsId)
     const order = await loadOrder(oz, wsId)
     namesRef.current[wsId] = data.names
+    const mergedRuns = mergeRunsWithEnrichment(data.runs, runsByWsRef.current[wsId] ?? [])
     setPrioritiesByWs((cur) => ({ ...cur, [wsId]: applyOrder(data.priorities, order) }))
-    setRunsByWs((cur) => ({ ...cur, [wsId]: data.runs }))
+    setRunsByWs((cur) => ({ ...cur, [wsId]: mergedRuns }))
+    void enrichActiveRunDetails(wsId, mergedRuns)
   }
-  async function refreshRunDetail(runId: string, wsId: string, shouldSkip: () => boolean = () => false) {
+  async function refreshRunDetail(runId: string, wsId: string, shouldSkip: () => boolean = () => false): Promise<boolean> {
     const oz = ozApi()
-    if (!oz || shouldSkip()) return
+    if (!oz || shouldSkip()) return false
     const enriched = await loadRunDetail(oz, runId, namesRef.current[wsId] ?? {})
-    if (!enriched || shouldSkip()) return
+    if (!enriched || shouldSkip()) return false
     setRunsByWs((cur) => ({ ...cur, [wsId]: (cur[wsId] ?? []).map((r) => (r.id === enriched.id ? enriched : r)) }))
+    return true
+  }
+  function runKey(wsId: string, runId: string): string {
+    return `${wsId}:${runId}`
+  }
+  function syncRunStatusTracking(wsId: string, runsForWs: readonly Run[]): void {
+    const prefix = `${wsId}:`
+    const seen = new Set<string>()
+    for (const run of runsForWs) {
+      const key = runKey(wsId, run.id)
+      seen.add(key)
+      if (runStatusRef.current[key] !== run.status) delete notLandedDetailFetchedRef.current[key]
+      runStatusRef.current[key] = run.status
+      if (run.status !== 'not-landed') delete notLandedDetailFetchedRef.current[key]
+    }
+    for (const key of Object.keys(runStatusRef.current)) {
+      if (!key.startsWith(prefix) || seen.has(key)) continue
+      delete runStatusRef.current[key]
+      delete notLandedDetailFetchedRef.current[key]
+    }
+  }
+  async function enrichActiveRunDetails(wsId: string, sourceRuns?: readonly Run[], shouldSkip: () => boolean = () => false): Promise<void> {
+    if (shouldSkip() || document.hidden || !namesRef.current[wsId]) return
+    const runsForWs = sourceRuns ?? runsByWsRef.current[wsId] ?? []
+    syncRunStatusTracking(wsId, runsForWs)
+    const selected = selectedRunIdRef.current
+    const liveRuns = runsForWs.filter((run) => run.id !== selected && (run.status === 'running' || run.status === 'blocked'))
+    const settledRuns = runsForWs.filter((run) => {
+      if (run.id === selected || run.status !== 'not-landed') return false
+      return !notLandedDetailFetchedRef.current[runKey(wsId, run.id)]
+    })
+    const candidates = [...liveRuns, ...settledRuns].slice(0, ACTIVE_DETAIL_FETCH_LIMIT)
+    for (const run of candidates) {
+      if (shouldSkip() || document.hidden) return
+      const refreshed = await refreshRunDetail(run.id, wsId, shouldSkip)
+      if (refreshed && run.status === 'not-landed') notLandedDetailFetchedRef.current[runKey(wsId, run.id)] = true
+    }
   }
   async function refreshWorkspaces(): Promise<Workspace[]> {
     const oz = ozApi()
