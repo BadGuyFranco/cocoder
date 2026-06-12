@@ -5,7 +5,7 @@
 // adapter is wired in the next slice (the existing electron/ plumbing is untouched).
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, sendOzMessage, launchRun, attachRun, teardownRun, stopRun, resolveRun, testCli, createPriority, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, saveAssignments, type ConnectionState } from './live.ts'
-import { ADHOC_PRIORITY_ID, applyOrder, personasToAssignments } from './adapter.ts'
+import { ADHOC_PRIORITY_ID, MODE_HONORED_PERSONAS, applyOrder, personasToAssignments } from './adapter.ts'
 import { Sidebar, type Route } from './ui/Sidebar.tsx'
 import { TopBar } from './ui/TopBar.tsx'
 import { Dashboard } from './sections/dashboard/Dashboard.tsx'
@@ -448,7 +448,8 @@ export function App() {
   }
   function setPersona(id: string, next: Persona) {
     const prev = personas.find((p) => p.id === id)
-    if (prev && prev.cli === next.cli && prev.model === next.model && prev.subAgents === next.subAgents) {
+    const runModeChanged = prev?.runMode !== next.runMode && MODE_HONORED_PERSONAS.has(id)
+    if (prev && prev.cli === next.cli && prev.model === next.model && prev.subAgents === next.subAgents && !runModeChanged) {
       setPersonas(personas.map((p) => (p.id === id ? next : p)))
       return
     }

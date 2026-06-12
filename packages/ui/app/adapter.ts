@@ -365,6 +365,10 @@ const PERSONA_ICONS: Record<string, string> = {
   doc: 'ph-thin ph-book-open',
 }
 
+// As of run_59, the runner honors mode only for Oscar's session. Bob remains visible until the runner
+// has a captured-subprocess monitor path for builder work.
+export const MODE_HONORED_PERSONAS = new Set(['oscar'])
+
 // A roster `role` is "Short title — long description"; split it so the card shows a crisp role.
 function splitRole(role: string): { role: string; description: string } {
   const i = role.indexOf('—')
@@ -395,7 +399,7 @@ export function adaptPersonas(resp: PersonasResponse): Persona[] {
       icon: PERSONA_ICONS[id] ?? 'ph-thin ph-user',
       cli: a.cli || '',
       model: a.model || 'Default',
-      runMode: a.enabled === false ? 'headless' : 'visible',
+      runMode: a.mode ?? 'visible',
       subAgents,
     }
   })
@@ -415,6 +419,7 @@ export function personasToAssignments(personas: readonly Persona[], base: Record
       ...rest,
       cli: persona.cli,
       model: assignmentModel(persona.model),
+      ...(MODE_HONORED_PERSONAS.has(persona.id) ? { mode: persona.runMode } : {}),
     }
     out[persona.id] = Object.keys(plays).length ? { ...core, plays } : core
   }

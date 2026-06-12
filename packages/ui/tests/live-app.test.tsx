@@ -315,6 +315,34 @@ describe('Oz renderer — live daemon path', () => {
     expect(assignments.oscar.plays).toEqual({ 'wrap-up': { cli: 'cursor-agent', model: '' } })
   })
 
+  it('persists Oscar run-mode through the assignments bridge and surfaces daemon errors', async () => {
+    const puts: PutCall[] = []
+    setOz(mockOz({ puts, putResult: { ok: false, status: 500, error: 'mode save failed' } }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(screen.getByText('Personas'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Oscar headless run mode' }))
+
+    await waitFor(() => expect(puts.length).toBe(1))
+    const assignments = puts[0].assignments as Record<string, { mode?: 'visible' | 'headless' }>
+    expect(assignments.oscar.mode).toBe('headless')
+    await waitFor(() => expect(screen.getByText('mode save failed')).toBeDefined())
+  })
+
+  it('keeps Bob run-mode as a local preview without saving assignments', async () => {
+    const puts: PutCall[] = []
+    setOz(mockOz({ puts }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(screen.getByText('Personas'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Bob headless run mode' }))
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    expect(puts).toHaveLength(0)
+  })
+
   it('Dashboard Add priority uses the typed create bridge and persists top placement', async () => {
     const creates: CreateCall[] = []
     const reorders: ReorderCall[] = []
