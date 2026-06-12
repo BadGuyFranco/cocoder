@@ -21,6 +21,7 @@ export type { OzContext } from './context.js'
 
 const CAP = 50_000
 const ADHOC_PRIORITY_ID = 'adhoc-session'
+const CLAUDE_POINTER = 'Claude CLI sessions should read AGENTS.md in this same cocoder/ folder for repo instructions.\nKeep workspace-specific guidance there.\n'
 const DEFAULT_ASSIGNMENTS = {
   personas: {
     oscar: {
@@ -63,6 +64,7 @@ function readJsonBody(req: IncomingMessage): Promise<unknown> {
 }
 
 /** Personas dir / priorities dir for a workspace's tracked governance zone. */
+const governanceDir = (workspacePath: string): string => join(workspacePath, 'cocoder')
 const personasDir = (workspacePath: string): string => join(workspacePath, 'cocoder', 'personas')
 const prioritiesDir = (workspacePath: string): string => join(workspacePath, 'cocoder', 'priorities')
 
@@ -236,10 +238,13 @@ async function writeIfMissing(path: string, contents: string): Promise<void> {
 }
 
 async function scaffoldWorkspaceGovernance(root: string): Promise<void> {
+  const cocoderDir = governanceDir(root)
   const personaDir = personasDir(root)
   const priorityDir = prioritiesDir(root)
   await mkdir(personaDir, { recursive: true })
   await mkdir(priorityDir, { recursive: true })
+  await writeIfMissing(join(cocoderDir, 'AGENTS.md'), '')
+  await writeIfMissing(join(cocoderDir, 'CLAUDE.md'), CLAUDE_POINTER)
   await writeIfMissing(join(personaDir, 'assignments.json'), `${JSON.stringify(DEFAULT_ASSIGNMENTS, null, 2)}\n`)
   const adhocTemplate = await readFile(join(basePrioritiesDir(), `${ADHOC_PRIORITY_ID}.md`), 'utf8')
   await writeIfMissing(join(priorityDir, `${ADHOC_PRIORITY_ID}.md`), adhocTemplate)

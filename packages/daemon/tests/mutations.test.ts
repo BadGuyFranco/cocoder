@@ -1,6 +1,6 @@
 // Stage-4 mutations + run-lifecycle correctness: launch (202 / 409 in-flight), deep-link (200 / 409
 // non-live, never 500), assignments write (validate + atomic), startup orphan reconciliation.
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -176,6 +176,19 @@ const exists = async (path: string): Promise<boolean> => {
   } catch {
     return false
   }
+}
+const findReadmes = async (root: string): Promise<string[]> => {
+  const found: string[] = []
+  const visit = async (dir: string): Promise<void> => {
+    const entries = await readdir(dir, { withFileTypes: true })
+    for (const entry of entries) {
+      const path = join(dir, entry.name)
+      if (entry.isDirectory()) await visit(path)
+      else if (entry.isFile() && entry.name === 'README.md') found.push(path)
+    }
+  }
+  await visit(root)
+  return found
 }
 
 // Fake RunnerIO so runRun completes against fakes (no real directive file to poll for). Oscar
@@ -1147,11 +1160,20 @@ describe('Oz mutations + lifecycle', () => {
     const r = await call(oz!, 'POST', '/workspaces', { body: { id: 'fresh-product', folders } })
 
     expect(r.status).toBe(201)
+    expect(await readFile(join(workspaceRoot, 'cocoder', 'AGENTS.md'), 'utf8')).toBe('')
+    const claudePointer = await readFile(join(workspaceRoot, 'cocoder', 'CLAUDE.md'), 'utf8')
+    expect(claudePointer).toBe('Claude CLI sessions should read AGENTS.md in this same cocoder/ folder for repo instructions.\nKeep workspace-specific guidance there.\n')
+    expect(claudePointer).not.toMatch(/CoBuilder|CoPublisher|dogfood/i)
+    expect(await findReadmes(workspaceRoot)).toEqual([])
     expect(loadAssignments(join(workspaceRoot, 'cocoder', 'personas', 'assignments.json')).personas).toEqual(expectedScaffoldAssignments)
     expect(loadPriority(join(workspaceRoot, 'cocoder', 'priorities'), 'adhoc-session')).toMatchObject({
       id: 'adhoc-session',
       title: 'Session without a named priority',
     })
+    const priorities = await call(oz!, 'GET', '/workspaces/fresh-product/priorities')
+    expect(priorities.json.priorities.map((p: any) => p.id)).toEqual(['adhoc-session'])
+    const personas = await call(oz!, 'GET', '/workspaces/fresh-product/personas')
+    expect(personas.json.personas.map((p: any) => p.id)).not.toEqual(expect.arrayContaining(['AGENTS', 'CLAUDE']))
   })
 
   test('base ad-hoc priority template parses and stays product-generic', async () => {
@@ -1174,10 +1196,16 @@ describe('Oz mutations + lifecycle', () => {
     await mkdir(priorityDir, { recursive: true })
     const assignmentsPath = join(personaDir, 'assignments.json')
     const priorityPath = join(priorityDir, 'adhoc-session.md')
+    const agentsPath = join(workspaceRoot, 'cocoder', 'AGENTS.md')
+    const claudePath = join(workspaceRoot, 'cocoder', 'CLAUDE.md')
     const assignmentsBefore = '{"personas":{"oscar":{"cli":"claude","model":""},"bob":{"cli":"codex","model":""}}}\n'
     const priorityBefore = '---\nid: adhoc-session\ntitle: Session without a named priority\n---\n## Objective\nExisting brief.\n'
+    const agentsBefore = '# Existing repo instructions\nKeep this exact.\n'
+    const claudeBefore = 'Existing CLAUDE pointer.\n'
     await writeFile(assignmentsPath, assignmentsBefore)
     await writeFile(priorityPath, priorityBefore)
+    await writeFile(agentsPath, agentsBefore)
+    await writeFile(claudePath, claudeBefore)
 
     const r = await call(oz!, 'POST', '/workspaces', {
       body: {
@@ -1192,6 +1220,8 @@ describe('Oz mutations + lifecycle', () => {
     expect(r.status).toBe(201)
     expect(await readFile(assignmentsPath, 'utf8')).toBe(assignmentsBefore)
     expect(await readFile(priorityPath, 'utf8')).toBe(priorityBefore)
+    expect(await readFile(agentsPath, 'utf8')).toBe(agentsBefore)
+    expect(await readFile(claudePath, 'utf8')).toBe(claudeBefore)
   })
 
   test('POST /workspaces rejects a nonexistent primary root before writing a workspace file', async () => {
