@@ -100,6 +100,10 @@ export interface RunInput {
   readonly bob: ResolvedPersona
   readonly deb?: ResolvedPersona
   readonly sharedStandards: string
+  /** Engine install home; run worktree dirs live under <engineHome>/local/worktrees for every workspace.
+   *  Direct runner callers that omit this retain the historical dogfood shape: engine home == workspace
+   *  repo. The daemon always passes this explicitly because it knows the install home. */
+  readonly engineHome?: string
   /** runs root; the run dir is <runsRoot>/<runId>. */
   readonly runsRoot: string
   /** Optional founder-provided free-text instruction for this run; not persisted in the store. */
@@ -241,6 +245,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const now = deps.now ?? Date.now
   const log = deps.log ?? (() => {})
   const { workspace, priority, oscar, bob, deb, sharedStandards, runsRoot } = input
+  const engineHome = input.engineHome ?? workspace.path
 
   store.upsertWorkspace(workspace)
   const run = store.createRun({ workspaceId: workspace.id, priorityId: priority.id })
@@ -264,19 +269,20 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const scope = effectiveScope(bob.writeScope, priority.scopeNarrowing) // known at launch (constant per run)
 
   // Isolated working state (ADR-0015 §1): the run executes in its OWN git worktree on its OWN branch,
-  // cut from the trunk tip at launch. The founder's checkout (cocoderHome = workspace.path) is NEVER
-  // touched — every agent and every git op below runs against `worktreePath`. A fresh branch off a
-  // committed trunk point is clean in-scope BY CONSTRUCTION, which is the soundness precondition the
-  // per-atom quarantine relies on (and exactly what the retired dirty-tree guard used to provide).
-  const cocoderHome = workspace.path
-  const trunkSha = await git.headSha(cocoderHome)
+  // cut from the workspace repo's trunk tip at launch. The worktree DIRECTORY is under the ENGINE
+  // install home, while the git worktree remains owned by the workspace repo. The founder's checkout is
+  // never used as an agent cwd — every agent runs against `worktreePath`. A fresh branch off a committed
+  // trunk point is clean in-scope BY CONSTRUCTION, which is the soundness precondition the per-atom
+  // quarantine relies on (and exactly what the retired dirty-tree guard used to provide).
+  const workspaceRepo = workspace.path
+  const trunkSha = await git.headSha(workspaceRepo)
   // Pin the trunk BRANCH NAME (not just the sha) at launch: the end-of-run land must target the same
   // branch the run was cut from, so it never misroutes onto a different branch the founder switched to
   // mid-run (ADR-0015 §1). null = detached HEAD → we refuse to auto-land later (escalate).
-  const trunkBranch = await git.currentBranch(cocoderHome)
-  const worktreePath = worktreePathFor(cocoderHome, run.id)
+  const trunkBranch = await git.currentBranch(workspaceRepo)
+  const worktreePath = worktreePathFor(engineHome, run.id)
   const runBranch = runBranchFor(run.id)
-  await git.worktreeAdd(cocoderHome, worktreePath, runBranch, trunkSha)
+  await git.worktreeAdd(workspaceRepo, worktreePath, runBranch, trunkSha)
   store.setWorktree(run.id, worktreePath, runBranch)
   store.recordEvent({ runId: run.id, type: 'worktree-created', data: { worktreePath, runBranch, trunkSha, trunkBranch } })
   log(`worktree ${worktreePath} on ${runBranch} (from trunk ${trunkBranch ?? '(detached)'} ${trunkSha.slice(0, 8)})`)
@@ -302,7 +308,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     oscarWriteScope: oscar.writeScope,
     runId: run.id,
     runBranch,
-    cocoderHome,
+    cocoderHome: engineHome,
     pickup: input.pickup ?? null,
   })
   let oscarDriver: OscarDriver
@@ -1028,21 +1034,21 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       escalated = true
     }
     try {
-      const trunkNow = await git.headSha(cocoderHome)
-      const unmerged = await git.unmergedCommits(cocoderHome, trunkNow, runBranch)
+      const trunkNow = await git.headSha(workspaceRepo)
+      const unmerged = await git.unmergedCommits(workspaceRepo, trunkNow, runBranch)
       if (unmerged.length === 0) {
         store.setIntegrationStatus(run.id, 'merged') // nothing un-integrated → vacuously landed
       } else {
         // Misrouting guard (§1): the founder's checkout must STILL be on the branch we cut from, or an
         // ff would land on the wrong branch (or fail). If they switched / went detached, escalate.
-        const trunkBranchNow = await git.currentBranch(cocoderHome)
+        const trunkBranchNow = await git.currentBranch(workspaceRepo)
         if (trunkBranch === null || trunkBranchNow !== trunkBranch) {
           escalate('integration-escalated', { runBranch, reason: `trunk branch changed since launch (cut from ${trunkBranch ?? 'detached'}, now ${trunkBranchNow ?? 'detached'}) — not auto-landing to avoid misrouting` })
         }
         // NON-ff: merge trunk INTO the run branch first so a later ff lands everything (§4).
         const branchTipBeforeMerge = await git.headSha(worktreePath)
         let mergedTrunkIn = false
-        if (!escalated && !(await git.isAncestor(cocoderHome, trunkNow, runBranch))) {
+        if (!escalated && !(await git.isAncestor(workspaceRepo, trunkNow, runBranch))) {
           store.setIntegrationStatus(run.id, 'resolving')
           if ((await git.mergeInto(worktreePath, trunkNow)) === 'conflict') {
             const conflicts = await git.conflictedFiles(worktreePath)
@@ -1070,7 +1076,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
             escalate('integration-escalated', { runBranch, trunkParent: trunkNow, reason: verdict ? verdict.reason : 'no integration-verify verdict (fail-closed)' })
           } else {
             // Verified green → land. Record the merge link ONLY after the merge succeeds (write-ordering).
-            mergeSha = await git.mergeFastForwardOnly(cocoderHome, runBranch)
+            mergeSha = await git.mergeFastForwardOnly(workspaceRepo, runBranch)
             store.recordCommitLink({ runId: run.id, commitSha: mergeSha, message: `merge: ${runBranch} → ${trunkBranch}`, files: [], kind: 'merge', mergeSha, trunkParent: trunkNow })
             store.setIntegrationStatus(run.id, 'merged')
             store.recordEvent({ runId: run.id, type: 'integrated', data: { mergeSha, trunkParent: trunkNow, trunkBranch, runBranch, commits: unmerged.length, verifyReason: verdict.reason } })
@@ -1094,7 +1100,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
   if (status === 'completed' && store.getRun(run.id)?.integrationStatus === 'merged') {
     try {
-      const localState = await exportRunLocalState(worktreePath, cocoderHome)
+      const localState = await exportRunLocalState(worktreePath, engineHome)
       if (localState.exported.length > 0 || localState.blocked.length > 0) {
         store.recordEvent({ runId: run.id, type: 'local-state-export', data: localState })
       }

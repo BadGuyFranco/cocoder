@@ -230,7 +230,7 @@ const baseDeps = (over: Partial<RunnerDeps>): RunnerDeps => ({
   ...over,
 })
 
-const input = { workspace, priority, oscar, bob, sharedStandards: 'STANDARDS', runsRoot: '/runs' }
+const input = { workspace, priority, oscar, bob, sharedStandards: 'STANDARDS', engineHome: '/repo', runsRoot: '/runs' }
 const stopFaultEvents = new Set(['directive-timeout', 'builder-failed', 'verify-failed', 'triage-dispatch', 'fault-triaged', 'triage-skipped'])
 
 describe('runRun (multi-atom loop)', () => {
@@ -1294,12 +1294,12 @@ describe('runRun (multi-atom loop)', () => {
     const store = openRunStore(':memory:')
     let n = 0
     // clean at launch; HEAD moves between the atom's headBefore snapshot and the post-reject check.
-    // The launch trunk-tip read (against cocoderHome, not the worktree) returns a stable sha; only the
+    // The launch trunk-tip read (against the workspace repo, not the worktree) returns a stable sha; only the
     // per-atom snapshots (against the worktree path) model the self-commit HEAD movement.
     const git: Git = {
       ...worktreeStubs,
       async headSha(cwd) {
-        if (!cwd.includes('worktrees')) return 'trunk' // ADR-0015: the launch read against cocoderHome
+        if (!cwd.includes('worktrees')) return 'trunk' // ADR-0015: the launch read against the workspace repo
         return n++ === 0 ? 'h0' : 'h-self' // atom headBefore = h0; the post-reject check sees HEAD moved
       },
       async changedFiles() {

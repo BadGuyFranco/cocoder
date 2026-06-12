@@ -161,6 +161,7 @@ async function runScenario(conflictResolution: 'resolve' | 'escalate') {
       oscar: persona('oscar', 'claude'),
       bob: persona('bob', 'codex', ['packages/**']),
       sharedStandards: 'S',
+      engineHome: home,
       runsRoot,
       integrationVerifyPlay: verifyPlay,
       integrationVerifyAssignment: assignment,

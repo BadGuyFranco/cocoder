@@ -6,7 +6,7 @@
 //   - a .catch on the fire-and-forget run so a throw marks the run failed (poller reaches terminal)
 //     and never becomes an unhandled rejection that takes the always-on daemon down;
 //   - track spawned surfaceRefs in ctx.liveRefs so deep-links are decidable without throwing.
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 import {
   isPersonaEnabled,
@@ -90,6 +90,7 @@ async function buildRunInput(ctx: OzContext, workspaceId: string, priorityId: st
     mergeConflictAssignment: resolvePlayAssignment(assignments, 'oscar', 'merge-conflict'),
     mergeConflictPersonaMode: resolvePersonaMode(assignments, 'oscar'),
     sharedStandards,
+    engineHome: ctx.cocoderHome,
     runsRoot: ctx.runsRoot,
     task: opts.task ?? null,
     pickup,
@@ -290,8 +291,18 @@ async function gcWorktree(ctx: OzContext, runId: string, opts: { explicitTeardow
     return
   }
   try {
-    await ctx.git.worktreeRemove(ctx.cocoderHome, run.worktreePath)
-    ctx.store.recordEvent({ runId, type: 'worktree-removed', data: { worktreePath: run.worktreePath } })
+    const workspace = await findWorkspace(ctx.cocoderHome, run.workspaceId)
+    if (workspace) {
+      await ctx.git.worktreeRemove(workspace.path, run.worktreePath)
+      ctx.store.recordEvent({ runId, type: 'worktree-removed', data: { worktreePath: run.worktreePath, workspaceId: run.workspaceId, workspaceRepo: workspace.path } })
+    } else {
+      try {
+        await ctx.git.worktreeRemove(ctx.cocoderHome, run.worktreePath)
+      } catch {
+        await rm(run.worktreePath, { recursive: true, force: true })
+      }
+      ctx.store.recordEvent({ runId, type: 'worktree-removed', data: { worktreePath: run.worktreePath, workspaceId: run.workspaceId, owner: 'unresolved-workspace' } })
+    }
   } catch (err) {
     // Dirty/locked/already-gone → leave it (forensics + safety); never force a worktree away.
     ctx.store.recordEvent({ runId, type: 'worktree-gc-failed', data: { worktreePath: run.worktreePath, reason: err instanceof Error ? err.message : String(err) } })
@@ -493,17 +504,27 @@ export async function reconcileOrphans(ctx: OzContext): Promise<void> {
 }
 
 async function sweepOrphanWorktrees(ctx: OzContext): Promise<void> {
-  let worktrees
+  let worktrees: { readonly path: string }[]
   try {
     worktrees = await ctx.git.listWorktrees(ctx.cocoderHome)
   } catch {
-    return // not a git repo / git unavailable → nothing to sweep
+    worktrees = [] // not a git repo / git unavailable → fall back to run-table paths only
   }
-  for (const wt of worktrees) {
+
+  const candidates = new Map<string, string>()
+  for (const wt of worktrees) candidates.set(basename(wt.path), wt.path)
+  for (const run of ctx.store.listRuns()) {
+    if (!run.worktreePath) continue
+    if (await stat(run.worktreePath).then((s) => s.isDirectory(), () => false)) {
+      candidates.set(run.id, run.worktreePath)
+    }
+  }
+
+  for (const [runId] of candidates) {
     // A CoCoder run worktree is identified by its dir basename being a known runId that carries a
     // worktree — NOT by a path prefix, which would mis-match under symlink normalisation (e.g. macOS
     // /var vs /private/var). The founder's main checkout has no matching run row, so it is never swept.
-    const run = ctx.store.getRun(basename(wt.path))
+    const run = ctx.store.getRun(runId)
     if (!run?.worktreePath) continue
     if (run.status === 'running' || gcBlockedReason(ctx, run)) continue // active / founder-visible / held-back / un-integrated → preserve
     await closeRunSurfaces(ctx, run.id) // close any prior-instance panes before removing the cwd they live in

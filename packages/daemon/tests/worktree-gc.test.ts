@@ -4,7 +4,7 @@
 // still awaiting a scope decision is PRESERVED (its held-back work is uncommitted in the worktree),
 // and the branch ref always survives so un-integrated commits are never lost.
 import { execFile } from 'node:child_process'
-import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
@@ -79,6 +79,20 @@ let store: RunStore
 let oz: OzServer | undefined
 const dirs: string[] = []
 
+async function initRepo(path: string): Promise<void> {
+  await g(path, ['init', '-q', '-b', 'trunk'])
+  await g(path, ['config', 'user.email', 't@t.test'])
+  await g(path, ['config', 'user.name', 'Test'])
+  await writeFile(join(path, 'README.md'), '# r\n')
+  await g(path, ['add', '-A'])
+  await g(path, ['commit', '-q', '-m', 'init'])
+}
+
+async function writeLegacyWorkspace(id: string, path: string): Promise<void> {
+  await mkdir(join(home, 'local'), { recursive: true })
+  await writeFile(join(home, 'local', 'workspaces.json'), JSON.stringify({ workspaces: [{ id, name: id, path }] }))
+}
+
 // Create a run row WITH a real worktree on disk (committed work on its branch) at the given status,
 // optionally with an integration status (default 'pending').
 async function seedRunWithWorktree(
@@ -99,15 +113,30 @@ async function seedRunWithWorktree(
   return run.id
 }
 
+async function seedExternalRunWithWorktree(status: 'completed' | 'failed'): Promise<{ runId: string; workspacePath: string; worktreePath: string }> {
+  const workspacePath = await mkdtemp(join(tmpdir(), 'cocoder-gc-workspace-'))
+  dirs.push(workspacePath)
+  await initRepo(workspacePath)
+  await writeLegacyWorkspace('external', workspacePath)
+  store.upsertWorkspace({ id: 'external', path: workspacePath, name: 'External' })
+
+  const run = store.createRun({ workspaceId: 'external', priorityId: 'demo' })
+  const worktreePath = worktreePathFor(home, run.id)
+  const branch = runBranchFor(run.id)
+  const trunk = await g(workspacePath, ['rev-parse', 'HEAD'])
+  await makeGit().worktreeAdd(workspacePath, worktreePath, branch, trunk)
+  await writeFile(join(worktreePath, 'work.txt'), 'external work\n')
+  await g(worktreePath, ['add', '-A'])
+  await g(worktreePath, ['commit', '-q', '-m', 'atom work'])
+  store.setWorktree(run.id, worktreePath, branch)
+  store.setRunStatus(run.id, status)
+  return { runId: run.id, workspacePath, worktreePath }
+}
+
 beforeEach(async () => {
   home = await mkdtemp(join(tmpdir(), 'cocoder-gc-'))
   dirs.push(home)
-  await g(home, ['init', '-q', '-b', 'trunk'])
-  await g(home, ['config', 'user.email', 't@t.test'])
-  await g(home, ['config', 'user.name', 'Test'])
-  await writeFile(join(home, 'README.md'), '# r\n')
-  await g(home, ['add', '-A'])
-  await g(home, ['commit', '-q', '-m', 'init'])
+  await initRepo(home)
   store = openRunStore(':memory:')
   store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
 })
@@ -135,6 +164,18 @@ describe('worktree GC + orphan sweep (ADR-0015, live git)', () => {
     // The branch ref is NOT pruned — its un-integrated commit is still reachable (no data loss).
     expect(await g(home, ['rev-parse', '--verify', runBranchFor(runId)]).then(() => true, () => false)).toBe(true)
     expect(store.listEvents(runId).some((e) => e.type === 'worktree-removed')).toBe(true)
+  })
+
+  test('teardown removes a non-engine workspace-owned worktree through the workspace repo', async () => {
+    const { runId, workspacePath, worktreePath } = await seedExternalRunWithWorktree('completed')
+    await start()
+
+    await teardownRun(oz!.ctx, runId)
+
+    expect(await exists(worktreePath)).toBe(false)
+    expect((await makeGit().listWorktrees(workspacePath)).map((w) => w.path)).not.toContain(worktreePath)
+    const ev = store.listEvents(runId).find((e) => e.type === 'worktree-removed')
+    expect(ev?.data).toMatchObject({ worktreePath, workspaceId: 'external', workspaceRepo: workspacePath })
   })
 
   test('teardown does NOT remove a worktree while the run awaits a scope decision (held-back work)', async () => {
@@ -184,5 +225,15 @@ describe('worktree GC + orphan sweep (ADR-0015, live git)', () => {
     expect(await exists(worktreePathFor(home, escalated))).toBe(true) // preserved (un-integrated escalation)
     expect(store.listEvents(done).some((e) => e.type === 'worktree-swept')).toBe(false)
     expect(store.listEvents(failed).some((e) => e.type === 'worktree-swept')).toBe(true)
+  })
+
+  test('daemon-boot sweep removes disposable non-engine workspace-owned worktrees from run-table paths', async () => {
+    const { runId, workspacePath, worktreePath } = await seedExternalRunWithWorktree('failed')
+
+    await start()
+
+    expect(await exists(worktreePath)).toBe(false)
+    expect((await makeGit().listWorktrees(workspacePath)).map((w) => w.path)).not.toContain(worktreePath)
+    expect(store.listEvents(runId).some((e) => e.type === 'worktree-swept')).toBe(true)
   })
 })

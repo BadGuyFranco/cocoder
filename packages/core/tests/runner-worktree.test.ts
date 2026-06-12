@@ -99,7 +99,12 @@ afterEach(async () => {
 // Run a full scenario: a fake Bob writes a real in-scope file into its worktree, and the injected
 // integration-verify Play returns `verifyOutput`. `onProceed` (if given) runs when Bob is dispatched —
 // used to mutate the founder's checkout (e.g. switch branches) to exercise the misrouting guard.
-async function runScenario(verifyOutput: string, onProceed?: (bobCwd: string) => Promise<void>, gitOverride?: import('../src/index.js').Git) {
+async function runScenario(
+  verifyOutput: string,
+  onProceed?: (bobCwd: string) => Promise<void>,
+  gitOverride?: import('../src/index.js').Git,
+  engineHome = home,
+) {
   let bobRefId: string | null = null
   let bobCwd: string | null = null
   const sessionHost: SessionHost = {
@@ -149,6 +154,7 @@ async function runScenario(verifyOutput: string, onProceed?: (bobCwd: string) =>
       oscar: persona('oscar', 'claude'),
       bob: persona('bob', 'codex', ['packages/**']),
       sharedStandards: 'STANDARDS',
+      engineHome,
       runsRoot,
       integrationVerifyPlay: verifyPlay,
       integrationVerifyAssignment: verifyAssignment,
@@ -158,6 +164,28 @@ async function runScenario(verifyOutput: string, onProceed?: (bobCwd: string) =>
 }
 
 describe('runRun worktree isolation + VERIFIED auto-merge (ADR-0015, live git)', () => {
+  test('external workspace worktree directory lives under the engine home while git ownership stays with the workspace repo', async () => {
+    const engineHome = await mkdtemp(join(tmpdir(), 'cocoder-engine-'))
+    dirs.push(engineHome)
+
+    const { result, bobCwd } = await runScenario('{"verdict":"pass","reason":"tree green"}', undefined, undefined, engineHome)
+
+    expect(result.status).toBe('completed')
+    expect(bobCwd).toBe(join(engineHome, 'local', 'worktrees', result.runId))
+    expect(await exists(join(engineHome, 'local', 'worktrees', result.runId))).toBe(true)
+    expect(await g(home, ['rev-parse', '--verify', `cocoder/${result.runId}`]).then(() => true, () => false)).toBe(true)
+    expect(await exists(join(home, 'local'))).toBe(false)
+  })
+
+  test('dogfood engineHome equal workspace path preserves the existing worktree path and creation event', async () => {
+    const { result, store, bobCwd } = await runScenario('{"verdict":"pass","reason":"tree green"}')
+    const expected = join(home, 'local', 'worktrees', result.runId)
+
+    expect(bobCwd).toBe(expected)
+    const ev = store.listEvents(result.runId).find((e) => e.type === 'worktree-created')
+    expect(ev?.data).toMatchObject({ worktreePath: expected, runBranch: `cocoder/${result.runId}` })
+  })
+
   test('dirty founder checkout is NOT blocked/clobbered; verified work ff-merges to trunk', async () => {
     await mkdir(join(home, 'packages'), { recursive: true })
     await writeFile(join(home, 'packages', 'wip.ts'), 'export const wip = 1\n') // uncommitted founder WIP

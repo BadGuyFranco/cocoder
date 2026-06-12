@@ -349,7 +349,7 @@ describe('Oz mutations + lifecycle', () => {
     const stop = await call(oz, 'POST', `/runs/${runId}/stop`)
     expect(stop).toEqual({ status: 202, json: { stopping: true, runId } })
 
-    for (let i = 0; i < 50 && (store.getRun(runId)?.status === 'running' || oz.ctx.stopControllers.has(runId)); i++) {
+    for (let i = 0; i < 50 && !store.listEvents(runId).some((e) => e.type === 'stop-teardown'); i++) {
       await sleep(10)
     }
 
