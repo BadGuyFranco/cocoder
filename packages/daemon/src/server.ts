@@ -43,6 +43,8 @@ export interface OzServerOptions {
   /** Override the daemon-restart action (tests inject a no-op/spy so they never restart the real
    *  daemon). Default spawns a detached, delayed `scripts/oz.sh restart`. */
   readonly restartDaemon?: () => void
+  /** Override full-dashboard launch (tests inject a fake so they never spawn Electron). */
+  readonly dashboardLauncher?: OzContext['dashboardLauncher']
 }
 
 /** Default restart action: spawn a DETACHED `scripts/oz.sh restart` after a short delay, so the HTTP
@@ -57,6 +59,21 @@ function defaultRestartDaemon(cocoderHome: string): () => void {
       cwd: cocoderHome,
     })
     child.unref()
+  }
+}
+
+function defaultDashboardLauncher(): OzContext['dashboardLauncher'] {
+  return {
+    current: null,
+    spawn(input) {
+      const child = spawn(input.command, [...input.args], {
+        detached: true,
+        stdio: 'ignore',
+        cwd: input.cwd,
+      })
+      child.unref()
+      return child
+    },
   }
 }
 
@@ -110,6 +127,7 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
     events: createOzEventBus(),
     runHeadless: opts.runHeadless,
     restartDaemon: opts.restartDaemon ?? defaultRestartDaemon(opts.cocoderHome),
+    dashboardLauncher: opts.dashboardLauncher ?? defaultDashboardLauncher(),
   }
 
   const handler = (req: IncomingMessage, res: ServerResponse): void => {

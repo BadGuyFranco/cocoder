@@ -26,7 +26,7 @@ import {
   type Workspace,
 } from '@cocoder/core'
 import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
-import type { OzContext, OzEvent } from './context.js'
+import type { DashboardLaunchHandle, OzContext, OzEvent } from './context.js'
 import { findWorkspace } from './registry.js'
 import { appendAudit } from './audit.js'
 
@@ -474,6 +474,95 @@ export async function requestDaemonRestart(ctx: OzContext): Promise<LaunchResult
   void appendAudit(ctx.cocoderHome, { action: 'daemon-restart', bootSha: ctx.bootSha })
   ctx.restartDaemon()
   return { status: 202, body: { restarting: true, bootSha: ctx.bootSha } }
+}
+
+export async function requestDashboardLaunch(ctx: OzContext): Promise<LaunchResult> {
+  if (ctx.dashboardLauncher.current && !ctx.dashboardLauncher.current.killed) {
+    return { status: 409, body: { error: 'Oz dashboard is already launching/running from this daemon process' } }
+  }
+
+  const plan = await resolveDashboardLaunch(ctx.cocoderHome)
+  if (!plan.ok) return { status: 409, body: { error: plan.error } }
+  const command = { mode: plan.mode, command: plan.command, args: plan.args, cwd: plan.cwd }
+
+  let child: DashboardLaunchHandle
+  try {
+    child = ctx.dashboardLauncher.spawn(command)
+  } catch (err) {
+    return { status: 500, body: { error: `failed to start Oz dashboard: ${err instanceof Error ? err.message : String(err)}` } }
+  }
+  ctx.dashboardLauncher.current = child
+  const clear = (): void => {
+    if (ctx.dashboardLauncher.current === child) ctx.dashboardLauncher.current = null
+  }
+  child.on('exit', clear)
+  child.on('error', clear)
+
+  void appendAudit(ctx.cocoderHome, { action: 'dashboard-launch', mode: command.mode, command: commandText(command), pid: child.pid ?? null })
+  return { status: 202, body: { launched: true, launching: true, mode: command.mode, command: commandText(command) } }
+}
+
+type DashboardLaunchPlan = {
+  readonly ok: true
+  readonly mode: 'dev' | 'built'
+  readonly command: string
+  readonly args: readonly string[]
+  readonly cwd: string
+} | {
+  readonly ok: false
+  readonly error: string
+}
+
+async function resolveDashboardLaunch(cocoderHome: string): Promise<DashboardLaunchPlan> {
+  const uiDir = join(cocoderHome, 'packages', 'ui')
+  const builtEntry = join(uiDir, 'out', 'main', 'main.js')
+  const uiPackage = join(uiDir, 'package.json')
+  const manager = await packageManager(cocoderHome)
+
+  if (await isFile(builtEntry)) {
+    return { ok: true, mode: 'built', command: manager, args: ['exec', 'electron', '.'], cwd: uiDir }
+  }
+
+  const devScript = await hasDevScript(uiPackage)
+  if (devScript) return { ok: true, mode: 'dev', command: manager, args: ['dev'], cwd: uiDir }
+
+  return {
+    ok: false,
+    error: `no launchable Oz dashboard entry found; looked for built entry ${builtEntry} and dev script ${uiPackage}#scripts.dev`,
+  }
+}
+
+async function packageManager(cocoderHome: string): Promise<string> {
+  try {
+    const parsed = JSON.parse(await readFile(join(cocoderHome, 'package.json'), 'utf8')) as { packageManager?: unknown }
+    if (typeof parsed.packageManager === 'string' && parsed.packageManager.trim()) {
+      return parsed.packageManager.trim().split('@')[0] || 'pnpm'
+    }
+  } catch {
+    /* default below */
+  }
+  return 'pnpm'
+}
+
+async function hasDevScript(path: string): Promise<boolean> {
+  try {
+    const parsed = JSON.parse(await readFile(path, 'utf8')) as { scripts?: Record<string, unknown> }
+    return typeof parsed.scripts?.dev === 'string' && parsed.scripts.dev.trim().length > 0
+  } catch {
+    return false
+  }
+}
+
+async function isFile(path: string): Promise<boolean> {
+  try {
+    return (await stat(path)).isFile()
+  } catch {
+    return false
+  }
+}
+
+function commandText(plan: { readonly command: string; readonly args: readonly string[] }): string {
+  return [plan.command, ...plan.args].join(' ')
 }
 
 export async function requestOzRepair(ctx: OzContext, input: { readonly workspaceId: string; readonly message: string; readonly rationale?: string }): Promise<LaunchResult> {

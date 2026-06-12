@@ -4,6 +4,27 @@
 import type { Adapter, DispatchPlayResult, Git, HeadlessRunInput, RunnerIO, RunStore, SessionHost } from '@cocoder/core'
 import type { CliTestEntry } from './clis.js'
 
+export type DashboardLaunchMode = 'dev' | 'built'
+
+export interface DashboardLaunchCommand {
+  readonly mode: DashboardLaunchMode
+  readonly command: string
+  readonly args: readonly string[]
+  readonly cwd: string
+}
+
+export interface DashboardLaunchHandle {
+  readonly pid?: number
+  readonly killed?: boolean
+  on(event: 'exit' | 'error', listener: (...args: readonly unknown[]) => void): unknown
+  unref(): void
+}
+
+export interface DashboardLauncher {
+  current: DashboardLaunchHandle | null
+  spawn(input: DashboardLaunchCommand): DashboardLaunchHandle
+}
+
 export interface OzEvent {
   readonly type: string
   readonly runId?: string
@@ -74,4 +95,6 @@ export interface OzContext {
    *  a detached `scripts/oz.sh restart`; injectable in tests so they never restart the real daemon.
    *  The daemon must NEVER restart itself in-process — a process can't cleanly respawn itself. */
   readonly restartDaemon: () => void
+  /** Launches the full dashboard as a detached process; injectable so tests never spawn Electron. */
+  readonly dashboardLauncher: DashboardLauncher
 }

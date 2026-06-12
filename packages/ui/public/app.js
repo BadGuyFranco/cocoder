@@ -219,6 +219,25 @@ setInterval(() => {
 }, 2500)
 
 // --- Restart-daemon button (global) ---
+// Starts the full Electron dashboard from the daemon. The daemon can only confirm the detached
+// process started; it cannot prove the window appeared.
+const launchDashboardBtn = document.getElementById('launch-dashboard')
+if (launchDashboardBtn)
+  launchDashboardBtn.onclick = async () => {
+    launchDashboardBtn.disabled = true
+    launchDashboardBtn.textContent = 'launching…'
+    try {
+      const r = await api('POST', '/oz/dashboard/launch')
+      banner(`Oz dashboard launching (${r.mode}): ${r.command}`)
+      launchDashboardBtn.textContent = 'Launch Oz dashboard'
+    } catch (e) {
+      banner(e.message)
+      launchDashboardBtn.textContent = 'Launch Oz dashboard'
+    } finally {
+      launchDashboardBtn.disabled = false
+    }
+  }
+
 // Triggers a daemon-side restart onto current code; the daemon refuses (409) while a run is in flight.
 // On success the daemon bounces, so we poll /health until it answers again, then reload.
 const restartBtn = document.getElementById('restart-daemon')

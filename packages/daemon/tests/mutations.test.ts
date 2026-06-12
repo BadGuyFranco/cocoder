@@ -1034,6 +1034,12 @@ describe('Oz mutations + lifecycle', () => {
     expect(r.status).toBe(403)
   })
 
+  test('POST /oz/dashboard/launch → 403 without a CSRF token (mutation gate)', async () => {
+    await startServer()
+    const r = await call(oz!, 'POST', '/oz/dashboard/launch', { csrf: false })
+    expect(r.status).toBe(403)
+  })
+
   test('POST /workspaces/:id/priorities/reorder → 403 without a CSRF token (mutation gate)', async () => {
     await startServer()
     const r = await call(oz!, 'POST', '/workspaces/cocoder/priorities/reorder', { csrf: false, body: { order: ['demo'] } })
