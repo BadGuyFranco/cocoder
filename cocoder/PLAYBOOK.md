@@ -184,10 +184,13 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    teardown+boot stranded-commit detector surfaces unlanded branch tips for Resolve — no auto-land).
    core 242 · daemon 188 · ui 109.
    Founder directive: complete Oz first, then workspace onboarding.
-   Next: ZERO code owed — **live proofs only** (founder confirmed he'll run them): the Oz live
-   session (assign oz a real CLI, chat status/launch/stop/nudge/repair/refresh, eyeball the rebuilt
-   pane); live headless runs for Oscar AND Bob (flip in Personas, launch a small run).
-   Archive-candidate after the live proofs.
+   Next: ZERO code owed — **live proofs only** (founder confirmed he'll run them). Restart the
+   daemon onto current code first (`scripts/oz.sh restart` or idle self-restart — repair, launch
+   button, and strand detector all load at boot). Then: the Oz live session (assign oz a real
+   CLI+model, chat status/launch/stop/nudge/repair/Refresh, eyeball the rebuilt priorities pane vs
+   design-ref, click the new Launch-Oz-dashboard button on the lightweight page); one live
+   headless-Oscar run and one live headless-Bob run (flip mode in Personas, launch a small run).
+   Archive-candidate after the live proofs pass.
 4. `new-primary-root` — the primary-root audit: bootstrap a new root's `cocoder/` + propose-only
    drift re-audit, one base Play pinned to a top-tier model. Design drafted as **ADR-0020 (proposed,
    2026-06-10)** — founder acceptance gates the build. The concrete form of Phase 5 ("first external repo").
