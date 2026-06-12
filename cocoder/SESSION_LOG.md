@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-11 — **Full Oz dashboard: Oz-chat SSE end-to-end + ADR-0018 stage 3 served for Oscar (run_59, overnight auto mode)**
+
+**Persona:** Oscar + Bob (7 atoms) | **Priority:** full-oz-dashboard | **Plan:** owed surfaces "Oz-chat SSE" + ADR-0018 stage 3 (Oscar)
+**Outcomes:**
+- Oz event stream SERVED end-to-end: daemon `GET /oz/events` (typed `OzEventBus`, 5 launcher emit sites, Bearer-gated SSE w/ heartbeat + cleanup, `da24ba8`) + UI consumption (`electron/events-stream.ts`, first sanitized main→renderer push channel, debounced into existing refresh paths, polling kept as fallback, `2b9c29d`).
+- ADR-0018 stage 3 SERVED for the OSCAR session: behavior-preserving `OscarDriver` seam (`6ff309e`), `mode:'headless'` honored as fresh one-shot captured-subprocess invocations over the unchanged file-artifact handshake (`67e7a99`), Personas run-mode editor persists for Oscar only with display untangled from `enabled` (`7a0921e`).
+- `ENDPOINTS_OWED.md` trued twice (rows for Oz-chat SSE `db59dd8` and persona mode `fe7d94f`).
+- Evidence per-atom at the gate: core 216 · daemon 130 · ui 88 · root typecheck clean; whole-tree diff checked every atom; all 7 atoms passed first try.
+**Next:** Oz-as-persona (ADR-0017) with the founder present; Bob session mode honoring needs a captured-subprocess monitor path first; cheap live check — flip Oscar to headless and launch a small run.
+
 ## 2026-06-11 — **Full Oz dashboard: cooperative `POST /runs/:id/stop` end-to-end (run_58)**
 
 **Persona:** Oscar + Bob (3 atoms) | **Priority:** full-oz-dashboard | **Plan:** owed surface #3

@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react'
 import { App } from '../app/App.tsx'
 import { stopRun } from '../app/live.ts'
-import type { OzApi, RunSummary } from '../electron/ipc-contract.ts'
+import type { OzApi, OzEventHint, RunSummary } from '../electron/ipc-contract.ts'
 import workspacesFx from '../fixtures/workspaces.json'
 import prioritiesFx from '../fixtures/priorities.json'
 import personasFx from '../fixtures/personas.json'
@@ -69,9 +69,11 @@ function mockOz(opts: {
   workspaceUpdateResult?: any
   workspaceCreateResult?: any
   runs?: { runs: RunSummary[] }
+  onOzEvent?: (cb: (event: OzEventHint) => void) => () => void
 } = {}) {
   return {
     health: async () => ({ state: 'connected', sha: 'deadbeef' }),
+    onOzEvent: opts.onOzEvent,
     settingsGet: async () => ({ pollIntervalMs: 2500, defaultWorkspaceId: null }),
     settingsSet: async (p: unknown) => p,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -226,6 +228,38 @@ describe('Oz renderer — live daemon path', () => {
     expect(screen.getByText('Stop requested — the run winds down at its next checkpoint.')).toBeDefined()
   })
 
+  it('debounces Oz event hints into workspace and open-run refetches', async () => {
+    let handler: ((event: OzEventHint) => void) | null = null
+    const oz = mockOz({
+      onOzEvent: (cb) => {
+        handler = cb
+        return () => {
+          handler = null
+        }
+      },
+    })
+    const originalGet = oz.daemonGet
+    const paths: string[] = []
+    oz.daemonGet = async (path: string) => {
+      paths.push(path)
+      return originalGet(path)
+    }
+    setOz(oz)
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    await clickFirstText('Living base personas + repo extensions')
+    await waitFor(() => expect(screen.getByText('Transcript')).toBeDefined())
+    await waitFor(() => expect(handler).toBeTypeOf('function'))
+    paths.length = 0
+
+    handler!({ type: 'run-created', workspaceId: 'cocoder', runId: 'run_17', ts: '2026-06-12T00:00:00.000Z' })
+    handler!({ type: 'run-settled', workspaceId: 'cocoder', runId: 'run_17', ts: '2026-06-12T00:00:00.100Z' })
+
+    await waitFor(() => expect(paths.filter((path) => path === '/runs?workspace=cocoder')).toHaveLength(1), { timeout: 1500 })
+    expect(paths.filter((path) => path === '/runs/run_17')).toHaveLength(1)
+  })
+
   it('Mark landed posts the landed disposition to /runs/:id/resolve', async () => {
     const posts: PostCall[] = []
     setOz(mockOz({ posts }))
@@ -279,6 +313,34 @@ describe('Oz renderer — live daemon path', () => {
     expect(assignments.deb.enabled).toBe(true)
     expect(assignments.bob.plays).toEqual({ documentation: { cli: 'claude', model: '' } })
     expect(assignments.oscar.plays).toEqual({ 'wrap-up': { cli: 'cursor-agent', model: '' } })
+  })
+
+  it('persists Oscar run-mode through the assignments bridge and surfaces daemon errors', async () => {
+    const puts: PutCall[] = []
+    setOz(mockOz({ puts, putResult: { ok: false, status: 500, error: 'mode save failed' } }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(screen.getByText('Personas'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Oscar headless run mode' }))
+
+    await waitFor(() => expect(puts.length).toBe(1))
+    const assignments = puts[0].assignments as Record<string, { mode?: 'visible' | 'headless' }>
+    expect(assignments.oscar.mode).toBe('headless')
+    await waitFor(() => expect(screen.getByText('mode save failed')).toBeDefined())
+  })
+
+  it('keeps Bob run-mode as a local preview without saving assignments', async () => {
+    const puts: PutCall[] = []
+    setOz(mockOz({ puts }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(screen.getByText('Personas'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Bob headless run mode' }))
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    expect(puts).toHaveLength(0)
   })
 
   it('Dashboard Add priority uses the typed create bridge and persists top placement', async () => {

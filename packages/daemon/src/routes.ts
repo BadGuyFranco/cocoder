@@ -6,7 +6,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 import { listEffectivePersonas, loadAssignments, loadPriority, parseFrontmatter, truncate, type PersonaAssignment, type PersonaSources, type Priority } from '@cocoder/core'
 import { basePersonasDir } from '@cocoder/personas'
-import type { OzContext } from './context.js'
+import type { OzContext, OzEvent } from './context.js'
 import { sendJson } from './server.js'
 import { findWorkspace, readWorkspaces, validateWorkspaceFolders, workspaceDirectory, workspaceFilePath, type RegistryRoot, type WorkspaceFolderInput } from './registry.js'
 import { readRunDir } from './rundir.js'
@@ -265,10 +265,47 @@ async function runDetail(ctx: OzContext, res: ServerResponse, runId: string): Pr
   sendJson(res, 200, { run, sessions, workItems, commitLinks, events, files, diffs })
 }
 
+function writeSseFrame(res: ServerResponse, event: OzEvent): void {
+  if (res.destroyed || res.writableEnded) return
+  res.write(`event: ${event.type}\n`)
+  res.write(`data: ${JSON.stringify(event)}\n\n`)
+}
+
+/** GET /oz/events — authenticated Server-Sent Events stream of coarse refetch hints. */
+function streamOzEvents(ctx: OzContext, req: IncomingMessage, res: ServerResponse): void {
+  res.writeHead(200, {
+    'content-type': 'text/event-stream',
+    'cache-control': 'no-cache',
+    connection: 'keep-alive',
+  })
+  res.write('retry: 5000\n')
+  res.write(': connected\n\n')
+
+  let closed = false
+  const unsubscribe = ctx.events.subscribe((event) => writeSseFrame(res, event))
+  const heartbeat = setInterval(() => {
+    if (!closed && !res.destroyed && !res.writableEnded) res.write(': heartbeat\n\n')
+  }, 15_000)
+
+  const cleanup = (): void => {
+    if (closed) return
+    closed = true
+    clearInterval(heartbeat)
+    unsubscribe()
+  }
+  req.on('close', cleanup)
+  res.on('close', cleanup)
+}
+
 /** Read-surface dispatch (stage 3). Returns true if handled; false → fall through (stage 4 / 404). */
-export async function dispatchReads(ctx: OzContext, method: string, pathname: string, query: URLSearchParams, res: ServerResponse): Promise<boolean> {
+export async function dispatchReads(ctx: OzContext, method: string, pathname: string, query: URLSearchParams, res: ServerResponse, req?: IncomingMessage): Promise<boolean> {
   const seg = pathname.split('/').filter(Boolean) // e.g. ['workspaces','cocoder','priorities']
 
+  if (method === 'GET' && pathname === '/oz/events') {
+    if (!req) return sendJson(res, 500, { error: 'internal error' }), true
+    streamOzEvents(ctx, req, res)
+    return true
+  }
   if (method === 'GET' && pathname === '/workspaces') {
     await listWorkspaces(ctx, res)
     return true

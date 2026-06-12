@@ -220,6 +220,26 @@ describe('personas from the assignments map + roster', () => {
     expect(personas.find((p) => p.id === 'bob')!.subAgents).toEqual([])
   })
 
+  it('derives display runMode from assignment mode, not enabled staffing', () => {
+    const personas = adaptPersonas({
+      workspace: { id: 'cocoder', name: 'CoCoder', path: '/repo' },
+      personas: [
+        { id: 'oscar', label: 'Oscar', role: 'Orchestrator — delegates work' },
+        { id: 'bob', label: 'Bob', role: 'Builder — builds work' },
+        { id: 'deb', label: 'Deb', role: 'Repair — triages faults' },
+      ],
+      assignments: {
+        oscar: { cli: 'claude', model: '', mode: 'headless' },
+        bob: { cli: 'codex', model: '', enabled: false },
+        deb: { cli: 'claude', model: '' },
+      },
+    })
+
+    expect(personas.find((p) => p.id === 'oscar')!.runMode).toBe('headless')
+    expect(personas.find((p) => p.id === 'bob')!.runMode).toBe('visible')
+    expect(personas.find((p) => p.id === 'deb')!.runMode).toBe('visible')
+  })
+
   it('builds a full assignments save payload with plays and preserves daemon-side mode', () => {
     const personas = adaptPersonas(PERS)
     const base = {
@@ -229,6 +249,7 @@ describe('personas from the assignments map + roster', () => {
     const bobNext = { ...personas.find((p) => p.id === 'bob')!, model: 'gpt-5' }
     const oscarNext = {
       ...personas.find((p) => p.id === 'oscar')!,
+      runMode: 'headless' as const,
       subAgents: [{ id: 'wrap-up', name: 'wrap-up', cli: 'cursor-agent', model: 'gpt-5-mini' }],
     }
     const next = personas.map((p) => (p.id === 'bob' ? bobNext : p.id === 'oscar' ? oscarNext : p))
@@ -240,6 +261,51 @@ describe('personas from the assignments map + roster', () => {
     expect(payload.deb.enabled).toBe(true)
     expect(payload.oscar.mode).toBe('headless')
     expect(payload.oscar.plays).toEqual({ 'wrap-up': { cli: 'cursor-agent', model: 'gpt-5-mini' } })
+  })
+
+  it('writes edited mode only for Oscar and preserves non-honored daemon modes untouched', () => {
+    const oscar: Persona = {
+      id: 'oscar',
+      name: 'Oscar',
+      role: 'Orchestrator',
+      description: 'Delegates work.',
+      icon: 'ph-thin ph-strategy',
+      cli: 'claude',
+      model: 'Default',
+      runMode: 'headless',
+      subAgents: [],
+    }
+    const bob: Persona = {
+      id: 'bob',
+      name: 'Bob',
+      role: 'Builder',
+      description: 'Builds work.',
+      icon: 'ph-thin ph-hammer',
+      cli: 'codex',
+      model: 'Default',
+      runMode: 'visible',
+      subAgents: [],
+    }
+    const deb: Persona = {
+      id: 'deb',
+      name: 'Deb',
+      role: 'Repair',
+      description: 'Repairs machinery.',
+      icon: 'ph-thin ph-bug-beetle',
+      cli: 'claude',
+      model: 'Default',
+      runMode: 'headless',
+      subAgents: [],
+    }
+
+    const payload = personasToAssignments([oscar, bob, deb], {
+      bob: { cli: 'codex', model: '', mode: 'headless' },
+      deb: { cli: 'claude', model: '' },
+    })
+
+    expect(payload.oscar.mode).toBe('headless')
+    expect(payload.bob.mode).toBe('headless')
+    expect(payload.deb.mode).toBeUndefined()
   })
 
   it('removing a sub-agent drops only that play key', () => {

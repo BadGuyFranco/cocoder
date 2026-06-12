@@ -2,7 +2,7 @@
 // no node, no tokens reach the renderer. Channel names come from the shared contract so a rename is a
 // compile error here, in main, and in the renderer at once.
 import { contextBridge, ipcRenderer } from 'electron'
-import { CHANNELS, type OzApi } from './ipc-contract.ts'
+import { CHANNELS, type OzApi, type OzEventHint } from './ipc-contract.ts'
 
 const api: OzApi = {
   health: () => ipcRenderer.invoke(CHANNELS.health),
@@ -10,6 +10,11 @@ const api: OzApi = {
   daemonPost: (path, body) => ipcRenderer.invoke(CHANNELS.daemonPost, path, body),
   daemonPut: (path, body) => ipcRenderer.invoke(CHANNELS.daemonPut, path, body),
   daemonDelete: (path) => ipcRenderer.invoke(CHANNELS.daemonDelete, path),
+  onOzEvent: (cb: (event: OzEventHint) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, event: OzEventHint) => cb(event)
+    ipcRenderer.on(CHANNELS.ozEvent, listener)
+    return () => ipcRenderer.off(CHANNELS.ozEvent, listener)
+  },
   chatSend: (ws, text) => ipcRenderer.invoke(CHANNELS.chatSend, ws, text),
   personasAssignmentsSave: (ws, assignments) => ipcRenderer.invoke(CHANNELS.personasAssignmentsSave, ws, assignments),
   prioritiesCreate: (ws, priority) => ipcRenderer.invoke(CHANNELS.prioritiesCreate, ws, priority),

@@ -29,6 +29,7 @@ import type { RunnerIO } from './io.js'
 import { paneLabel } from './labels.js'
 import { readLoopLedger, type LoopLedgerEntry } from './loop-ledger.js'
 import { type Judge, makeHeuristicJudge, runMonitor } from './monitor.js'
+import { createHeadlessOscarDriver, createPaneOscarDriver, type OscarDriver } from './oscar-driver.js'
 import { spawnObserver } from './observer.js'
 import {
   atomSentinel,
@@ -289,38 +290,65 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const groupLabel = `${priority.id} #${run.id.replace(/^run_/, '')}`
 
   // Spawn Oscar (full loop prompt → writes the first directive), Bob on standby beside it, optional Deb.
-  const oscarCmd = getAdapter(oscar.cli).build({
-    persona: oscar.id,
-    prompt: buildOrchestratorPrompt({
-      sharedStandards,
-      oscarBody: oscar.body,
-      priorityTitle: priority.title,
-      priorityGoal: priority.goal,
-      task: input.task ?? null,
-      firstDirectivePath: join(runDir, 'directive-0.json'),
-      builderLabel: bob.label,
-      builderCli: bob.cli,
-      oscarWriteScope: oscar.writeScope,
-      runId: run.id,
-      runBranch,
-      cocoderHome,
-      pickup: input.pickup ?? null,
-    }),
-    model: oscar.model,
-    cwd: worktreePath,
-    outPath: join(runDir, 'oscar.out'),
+  const oscarLaunchPrompt = buildOrchestratorPrompt({
+    sharedStandards,
+    oscarBody: oscar.body,
+    priorityTitle: priority.title,
+    priorityGoal: priority.goal,
+    task: input.task ?? null,
+    firstDirectivePath: join(runDir, 'directive-0.json'),
+    builderLabel: bob.label,
+    builderCli: bob.cli,
+    oscarWriteScope: oscar.writeScope,
+    runId: run.id,
+    runBranch,
+    cocoderHome,
+    pickup: input.pickup ?? null,
   })
-  const oscarRef = await sessionHost.spawn({
-    persona: oscar.id,
-    command: oscarCmd.command,
-    args: oscarCmd.args,
-    cwd: worktreePath,
-    group: run.id,
-    groupLabel,
-    label: paneLabel(oscar),
-  })
-  store.createSession({ runId: run.id, persona: oscar.id, sessionRef: oscarRef.id, workspaceRef: oscarRef.workspaceRef ?? null })
-  store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: oscar.id, ref: oscarRef.id } })
+  let oscarDriver: OscarDriver
+  if (oscar.mode === 'headless') {
+    oscarDriver = createHeadlessOscarDriver({
+      getAdapter,
+      oscar,
+      cwd: worktreePath,
+      runDir,
+      launchPrompt: oscarLaunchPrompt,
+      turnPrompt: {
+        sharedStandards,
+        oscarBody: oscar.body,
+        priorityTitle: priority.title,
+        priorityGoal: priority.goal,
+        task: input.task ?? null,
+        builderLabel: bob.label,
+        builderCli: bob.cli,
+        oscarWriteScope: oscar.writeScope,
+        runId: run.id,
+        runBranch,
+      },
+      runHeadless: deps.runHeadless,
+    })
+    store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: oscar.id, ref: oscarDriver.refId, mode: 'headless' } })
+  } else {
+    const oscarCmd = getAdapter(oscar.cli).build({
+      persona: oscar.id,
+      prompt: oscarLaunchPrompt,
+      model: oscar.model,
+      cwd: worktreePath,
+      outPath: join(runDir, 'oscar.out'),
+    })
+    const oscarRef = await sessionHost.spawn({
+      persona: oscar.id,
+      command: oscarCmd.command,
+      args: oscarCmd.args,
+      cwd: worktreePath,
+      group: run.id,
+      groupLabel,
+      label: paneLabel(oscar),
+    })
+    oscarDriver = createPaneOscarDriver(sessionHost, oscarRef)
+    store.createSession({ runId: run.id, persona: oscar.id, sessionRef: oscarRef.id, workspaceRef: oscarRef.workspaceRef ?? null })
+    store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: oscar.id, ref: oscarRef.id } })
+  }
 
   const bobCmd = getAdapter(bob.cli).build({
     persona: bob.id,
@@ -343,10 +371,10 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const debRef = deb
     ? await spawnObserver({ store, sessionHost, getAdapter, run, workspace, priority, task: input.task ?? null, deb, sharedStandards, runDir, groupLabel, cwd: worktreePath, runBranch })
     : null
-  await sessionHost.show(oscarRef)
-  log(`oscar + bob spawned (${oscarRef.id}, ${bobRef.id}); awaiting first directive, bob on standby`)
+  await oscarDriver.show()
+  log(`oscar + bob spawned (${oscarDriver.refId}, ${bobRef.id}); awaiting first directive, bob on standby`)
 
-  const oscarAlive = async (): Promise<boolean> => (await sessionHost.status(oscarRef)).state === 'running'
+  const oscarAlive = (): Promise<boolean> => oscarDriver.alive()
   // Every terminal fault funnels through here: record it, let Deb triage it (if present), then fail.
   const fail = async (type: string, message: string, atomIndex: number | null = null): Promise<never> => {
     store.recordEvent({ runId: run.id, type, data: atomIndex !== null ? { message, atom: atomIndex } : { message } })
@@ -484,7 +512,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       {
         readScreen: async () => {
           if (stopped) throw new Error('oscar await settled')
-          return await sessionHost.readScreen(oscarRef)
+          return await oscarDriver.readScreen()
         },
         judge: async (sample) => {
           if (stopped) return { state: 'done', note: 'oscar await settled' }
@@ -502,7 +530,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           return { state: 'progressing' }
         },
         isAlive: oscarAlive,
-        nudge: (text) => sessionHost.sendInput(oscarRef, text),
+        nudge: (text) => oscarDriver.nudge(text),
         onAssessment: (a) => {
           if (a.state !== 'progressing') {
             store.recordEvent({ runId: run.id, type: 'oscar-monitor-assessment', data: { persona: debPersona, stage, atom: atomIndex, state: a.state, note: a.note ?? null } })
@@ -763,9 +791,13 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         log(`oscar wrapped up after ${n} atom(s)`)
       }
       if (pickup && pickup.trim() !== '') {
-        await sessionHost.show(oscarRef).catch(() => {})
-        await sessionHost.sendInput(oscarRef, buildWrapupDelivery(run.id, pickup)).catch(() => {})
-        store.recordEvent({ runId: run.id, type: 'wrapup-delivery-dispatch', data: { ref: oscarRef.id } })
+        if (oscarDriver.kind === 'headless') {
+          store.recordEvent({ runId: run.id, type: 'wrapup-delivery-skipped', data: { reason: 'headless-oscar' } })
+        } else {
+          await oscarDriver.show().catch(() => {})
+          await oscarDriver.send(buildWrapupDelivery(run.id, pickup)).catch(() => {})
+          store.recordEvent({ runId: run.id, type: 'wrapup-delivery-dispatch', data: { ref: oscarDriver.refId } })
+        }
       }
       await refreshStatus('wrapped', n, null, 'wrap-up delivered; awaiting founder questions only; file-changing follow-ups need a new committed run path or explicit teardown')
       break
@@ -887,17 +919,17 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         store.recordEvent({ runId: run.id, type: 'wrapup', data: { atoms: n, forced: true, reason: 'max-atoms' } })
         break
       }
-      await sessionHost.show(oscarRef)
-      await sessionHost.sendInput(oscarRef, buildNextOrWrapDispatch(join(runDir, `directive-${n}.json`), outcomeLine))
+      await oscarDriver.show()
+      await oscarDriver.send(buildNextOrWrapDispatch(join(runDir, `directive-${n}.json`), outcomeLine))
       continue
     }
     store.recordEvent({ runId: run.id, type: 'builder-done', data: { atom: atomIndex, samples: monitorSamples } })
 
     // Verify the atom (ADR-0011, per atom) — the commit runs only on `pass`.
     const verifyPath = join(runDir, `verify-${atomIndex}.json`)
-    await sessionHost.show(oscarRef)
-    await sessionHost.sendInput(oscarRef, buildVerifyDispatch(directivePath, verifyPath))
-    store.recordEvent({ runId: run.id, type: 'verify-dispatch', data: { ref: oscarRef.id, atom: atomIndex } })
+    await oscarDriver.show()
+    await oscarDriver.send(buildVerifyDispatch(directivePath, verifyPath))
+    store.recordEvent({ runId: run.id, type: 'verify-dispatch', data: { ref: oscarDriver.refId, atom: atomIndex } })
     await refreshStatus('verifying', atomIndex, directive.task, `awaiting verify verdict for atom ${atomIndex}`)
     let verdict
     try {
@@ -953,8 +985,8 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     }
 
     // Ask Oscar for the next turn (names the exact next directive path — the numbered handshake).
-    await sessionHost.show(oscarRef)
-    await sessionHost.sendInput(oscarRef, buildNextOrWrapDispatch(join(runDir, `directive-${n}.json`), outcomeLine))
+    await oscarDriver.show()
+    await oscarDriver.send(buildNextOrWrapDispatch(join(runDir, `directive-${n}.json`), outcomeLine))
   }
   } catch (err) {
     if (isStopRequestedError(err)) return await stopRun()

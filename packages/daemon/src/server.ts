@@ -22,7 +22,7 @@ import { CmuxSessionHost } from '@cocoder/session-hosts'
 import { checkBearer, checkCsrf, checkHost, checkOrigin, isMutation } from './security.js'
 import { readOrCreateToken } from './secrets.js'
 import { dispatchMutations, dispatchReads } from './routes.js'
-import type { OzContext } from './context.js'
+import { createOzEventBus, type OzContext } from './context.js'
 import { reconcileOrphans } from './launcher.js'
 import { serveStatic } from './static.js'
 
@@ -107,6 +107,7 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
     liveRefs: new Set<string>(),
     inFlight: new Map<string, string>(),
     stopControllers: new Map<string, AbortController>(),
+    events: createOzEventBus(),
     runHeadless: opts.runHeadless,
     restartDaemon: opts.restartDaemon ?? defaultRestartDaemon(opts.cocoderHome),
   }
@@ -144,7 +145,7 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
     }
 
     // --- surfaces ---
-    if (await dispatchReads(ctx, req.method ?? 'GET', pathname, url.searchParams, res)) return
+    if (await dispatchReads(ctx, req.method ?? 'GET', pathname, url.searchParams, res, req)) return
     if (await dispatchMutations(ctx, req, pathname, res)) return
     return sendJson(res, 404, { error: 'not found' })
   }

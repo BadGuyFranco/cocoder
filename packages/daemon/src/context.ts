@@ -4,6 +4,45 @@
 import type { Adapter, DispatchPlayResult, Git, HeadlessRunInput, RunnerIO, RunStore, SessionHost } from '@cocoder/core'
 import type { CliTestEntry } from './clis.js'
 
+export interface OzEvent {
+  readonly type: string
+  readonly runId?: string
+  readonly workspaceId?: string
+  readonly ts: string
+  readonly status?: string
+  readonly disposition?: string
+}
+
+export interface OzEventBus {
+  emit(event: OzEvent): void
+  subscribe(fn: (event: OzEvent) => void): () => void
+  size(): number
+}
+
+export function createOzEventBus(): OzEventBus {
+  const subscribers = new Set<(event: OzEvent) => void>()
+  return {
+    emit(event) {
+      for (const fn of subscribers) {
+        try {
+          fn(event)
+        } catch {
+          /* event hints must never throw into launcher/request paths */
+        }
+      }
+    },
+    subscribe(fn) {
+      subscribers.add(fn)
+      return () => {
+        subscribers.delete(fn)
+      }
+    },
+    size() {
+      return subscribers.size
+    },
+  }
+}
+
 export interface OzContext {
   readonly cocoderHome: string
   readonly runsRoot: string
@@ -29,6 +68,8 @@ export interface OzContext {
   readonly inFlight: Map<string, string>
   /** runId → cooperative stop controller for runs this daemon process is actively driving. */
   readonly stopControllers: Map<string, AbortController>
+  /** Coarse daemon-local event hints for clients that should refetch after lifecycle changes. */
+  readonly events: OzEventBus
   /** Trigger a daemon refresh (the lightweight dashboard's "Restart daemon" button). Default spawns
    *  a detached `scripts/oz.sh restart`; injectable in tests so they never restart the real daemon.
    *  The daemon must NEVER restart itself in-process — a process can't cleanly respawn itself. */

@@ -49,7 +49,7 @@ export interface DispatchPlayResult {
 
 /** Default headless runner: spawn the command, capture stdout+stderr → outPath, resolve on real exit.
  *  A timeout kills the child (resolving with whatever was captured) so a stuck Play can't hang the run. */
-function runHeadlessProcess(input: HeadlessRunInput): Promise<DispatchPlayResult> {
+export function runHeadlessProcess(input: HeadlessRunInput): Promise<DispatchPlayResult> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = []
     const child = spawn(input.command, [...input.args], { cwd: input.cwd, stdio: ['ignore', 'pipe', 'pipe'] })

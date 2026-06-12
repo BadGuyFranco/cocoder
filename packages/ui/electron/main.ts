@@ -14,6 +14,7 @@ import { createPriorityViaDaemon } from './priorities-create.ts'
 import { reorderPrioritiesViaDaemon } from './priorities-sync.ts'
 import { savePersonaAssignmentsViaDaemon } from './personas-sync.ts'
 import { createWorkspaceViaDaemon, deleteWorkspaceViaDaemon, updateWorkspaceViaDaemon } from './workspaces-sync.ts'
+import { startOzEventStream } from './events-stream.ts'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 
@@ -177,6 +178,8 @@ async function runSmoke(win: BrowserWindow): Promise<void> {
 app.whenReady().then(() => {
   initStore(app.getPath('userData'))
   registerIpc()
+  const eventStream = startOzEventStream()
+  app.once('before-quit', () => eventStream.stop())
   const win = createWindow()
   if (process.env.OZ_SMOKE === '1') void runSmoke(win)
   app.on('activate', () => {
