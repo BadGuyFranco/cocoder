@@ -45,7 +45,7 @@ function asRecord(input: unknown): Record<string, unknown> | null {
   return typeof input === 'object' && input !== null ? (input as Record<string, unknown>) : null
 }
 
-function resolveWorkspacePath(workspaceDir: string, path: string, vars: Record<string, string>): string {
+export function resolveWorkspacePath(workspaceDir: string, path: string, vars: Record<string, string>): string {
   const expanded = expandVars(path, vars)
   return isAbsolute(expanded) ? resolve(expanded) : resolve(workspaceDir, expanded)
 }

@@ -5,7 +5,8 @@ import { request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { loadPriority, openRunStore, StopRequestedError, type Adapter, type Git, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
+import { loadAssignments, loadPriority, openRunStore, StopRequestedError, type Adapter, type Git, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
+import { basePrioritiesDir } from '@cocoder/personas'
 import { createOzServer, OZ_CSRF_HEADER, type OzServer } from '../src/index.js'
 
 const okAdapter: Adapter = {
@@ -39,6 +40,19 @@ const cliAdapter = (id: string, detail: string, calls?: CliAdapterCalls): Adapte
     return { canEnumerate: true, models: [`${id}-model-a`, `${id}-model-b`], detail: `${id} model list` }
   },
 })
+const expectedScaffoldAssignments = {
+  oscar: {
+    cli: 'claude',
+    model: '',
+    plays: {
+      'wrap-up': { cli: 'cursor-agent', model: '' },
+      'integration-verify': { cli: 'claude', model: '' },
+      'merge-conflict': { cli: 'claude', model: '' },
+    },
+  },
+  bob: { cli: 'codex', model: '' },
+  deb: { cli: 'codex', model: '', enabled: true },
+}
 const fakeGit = (changed: string[] = [], shas: readonly string[] = ['h0']): Git => {
   let headCalls = 0
   return {
@@ -1120,6 +1134,112 @@ describe('Oz mutations + lifecycle', () => {
     expect(JSON.parse(await readFile(join(home, 'local', 'workspace', 'new-workspace.code-workspace'), 'utf8'))).toEqual({ folders, settings: {} })
     const get = await call(oz!, 'GET', '/workspaces')
     expect(get.json.workspaces.map((workspace: any) => workspace.id)).toEqual(['new-workspace'])
+  })
+
+  test('POST /workspaces scaffolds launch-required governance in a fresh primary root', async () => {
+    await startServer()
+    const workspaceRoot = await mkdtemp(join(tmpdir(), 'cocoder-fresh-workspace-'))
+    const folders = [
+      { name: 'Product', path: workspaceRoot, role: 'primary' },
+      { name: 'CoCoder', path: '${COCODER_HOME}', role: 'readonly' },
+    ]
+
+    const r = await call(oz!, 'POST', '/workspaces', { body: { id: 'fresh-product', folders } })
+
+    expect(r.status).toBe(201)
+    expect(loadAssignments(join(workspaceRoot, 'cocoder', 'personas', 'assignments.json')).personas).toEqual(expectedScaffoldAssignments)
+    expect(loadPriority(join(workspaceRoot, 'cocoder', 'priorities'), 'adhoc-session')).toMatchObject({
+      id: 'adhoc-session',
+      title: 'Session without a named priority',
+    })
+  })
+
+  test('base ad-hoc priority template parses and stays product-generic', async () => {
+    const dir = basePrioritiesDir()
+    const text = await readFile(join(dir, 'adhoc-session.md'), 'utf8')
+
+    expect(loadPriority(dir, 'adhoc-session')).toMatchObject({
+      id: 'adhoc-session',
+      title: 'Session without a named priority',
+    })
+    expect(text).not.toMatch(/CoBuilder|CoCoder|dogfood/i)
+  })
+
+  test('POST /workspaces preserves pre-existing governance files byte-for-byte', async () => {
+    await startServer()
+    const workspaceRoot = await mkdtemp(join(tmpdir(), 'cocoder-existing-governance-'))
+    const personaDir = join(workspaceRoot, 'cocoder', 'personas')
+    const priorityDir = join(workspaceRoot, 'cocoder', 'priorities')
+    await mkdir(personaDir, { recursive: true })
+    await mkdir(priorityDir, { recursive: true })
+    const assignmentsPath = join(personaDir, 'assignments.json')
+    const priorityPath = join(priorityDir, 'adhoc-session.md')
+    const assignmentsBefore = '{"personas":{"oscar":{"cli":"claude","model":""},"bob":{"cli":"codex","model":""}}}\n'
+    const priorityBefore = '---\nid: adhoc-session\ntitle: Session without a named priority\n---\n## Objective\nExisting brief.\n'
+    await writeFile(assignmentsPath, assignmentsBefore)
+    await writeFile(priorityPath, priorityBefore)
+
+    const r = await call(oz!, 'POST', '/workspaces', {
+      body: {
+        id: 'existing-governance',
+        folders: [
+          { path: workspaceRoot, role: 'primary' },
+          { path: '${COCODER_HOME}', role: 'readonly' },
+        ],
+      },
+    })
+
+    expect(r.status).toBe(201)
+    expect(await readFile(assignmentsPath, 'utf8')).toBe(assignmentsBefore)
+    expect(await readFile(priorityPath, 'utf8')).toBe(priorityBefore)
+  })
+
+  test('POST /workspaces rejects a nonexistent primary root before writing a workspace file', async () => {
+    await startServer()
+    const missingRoot = join(tmpdir(), `cocoder-missing-product-${process.pid}-${Date.now()}`)
+
+    const r = await call(oz!, 'POST', '/workspaces', {
+      body: {
+        id: 'missing-product',
+        folders: [
+          { path: missingRoot, role: 'primary' },
+          { path: '${COCODER_HOME}', role: 'readonly' },
+        ],
+      },
+    })
+
+    expect(r.status).toBe(400)
+    expect(r.json.error).toContain(`primary root does not exist or is not a directory: ${missingRoot}`)
+    expect(await exists(join(home, 'local', 'workspace', 'missing-product.code-workspace'))).toBe(false)
+    expect(await exists(join(missingRoot, 'cocoder'))).toBe(false)
+  })
+
+  test('POST /workspaces scaffolds at a resolved env-var primary root', async () => {
+    await startServer()
+    const workspaceRoot = await mkdtemp(join(tmpdir(), 'cocoder-env-workspace-'))
+    const prior = process.env.COCODER_TEST_WORKSPACE_ROOT
+    process.env.COCODER_TEST_WORKSPACE_ROOT = workspaceRoot
+    try {
+      const r = await call(oz!, 'POST', '/workspaces', {
+        body: {
+          id: 'env-workspace',
+          folders: [
+            { path: '${COCODER_TEST_WORKSPACE_ROOT}', role: 'primary' },
+            { path: '${COCODER_HOME}', role: 'readonly' },
+          ],
+        },
+      })
+
+      expect(r.status).toBe(201)
+      expect(r.json.workspace.path).toBe(workspaceRoot)
+      expect(loadAssignments(join(workspaceRoot, 'cocoder', 'personas', 'assignments.json')).personas).toEqual(expectedScaffoldAssignments)
+    } finally {
+      if (prior === undefined) {
+        delete process.env.COCODER_TEST_WORKSPACE_ROOT
+      } else {
+        process.env.COCODER_TEST_WORKSPACE_ROOT = prior
+      }
+    }
   })
 
   test('POST /workspaces returns 409 for an existing file including case-insensitive collisions', async () => {

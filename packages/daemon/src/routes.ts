@@ -1,11 +1,11 @@
 // Route dispatch for the Oz daemon. The security gate (server.ts) has already run; these handlers
 // read/serve the four surfaces. Stage 3 = the read surfaces; stage 4 adds the mutations (launch,
 // deep-link, assignments write) to the same dispatch. All handlers close over the shared OzContext.
-import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 import { listEffectivePersonas, loadAssignments, loadPriority, parseFrontmatter, truncate, type PersonaAssignment, type PersonaSources, type Priority } from '@cocoder/core'
-import { basePersonasDir } from '@cocoder/personas'
+import { basePersonasDir, basePrioritiesDir } from '@cocoder/personas'
 import type { OzContext, OzEvent } from './context.js'
 import { sendJson } from './server.js'
 import { findWorkspace, readWorkspaces, validateWorkspaceFolders, workspaceDirectory, workspaceFilePath, type RegistryRoot, type WorkspaceFolderInput } from './registry.js'
@@ -20,6 +20,22 @@ import { readPriorities, writePriorityOrder } from './priority-order.js'
 export type { OzContext } from './context.js'
 
 const CAP = 50_000
+const ADHOC_PRIORITY_ID = 'adhoc-session'
+const DEFAULT_ASSIGNMENTS = {
+  personas: {
+    oscar: {
+      cli: 'claude',
+      model: '',
+      plays: {
+        'wrap-up': { cli: 'cursor-agent', model: '' },
+        'integration-verify': { cli: 'claude', model: '' },
+        'merge-conflict': { cli: 'claude', model: '' },
+      },
+    },
+    bob: { cli: 'codex', model: '' },
+    deb: { cli: 'codex', model: '', enabled: true },
+  },
+} as const
 
 /** Read + JSON-parse a request body with a hard size cap (mutation handlers). */
 function readJsonBody(req: IncomingMessage): Promise<unknown> {
@@ -192,6 +208,43 @@ async function legacyWorkspaceIds(cocoderHome: string): Promise<string[]> {
     if (typeof item.id === 'string') ids.push(item.id)
   }
   return ids
+}
+
+function errorCode(err: unknown): string | null {
+  return typeof err === 'object' && err !== null && 'code' in err && typeof (err as { readonly code?: unknown }).code === 'string'
+    ? (err as { readonly code: string }).code
+    : null
+}
+
+async function directoryGate(path: string): Promise<string | null> {
+  let info: Awaited<ReturnType<typeof stat>>
+  try {
+    info = await stat(path)
+  } catch {
+    return `primary root does not exist or is not a directory: ${path}`
+  }
+  return info.isDirectory() ? null : `primary root does not exist or is not a directory: ${path}`
+}
+
+async function writeIfMissing(path: string, contents: string): Promise<void> {
+  try {
+    await writeFile(path, contents, { flag: 'wx' })
+  } catch (err) {
+    if (errorCode(err) === 'EEXIST') return
+    throw err
+  }
+}
+
+async function scaffoldWorkspaceGovernance(root: string): Promise<void> {
+  const personaDir = personasDir(root)
+  const priorityDir = prioritiesDir(root)
+  await mkdir(personaDir, { recursive: true })
+  await mkdir(priorityDir, { recursive: true })
+  await writeIfMissing(join(personaDir, 'assignments.json'), `${JSON.stringify(DEFAULT_ASSIGNMENTS, null, 2)}\n`)
+  const adhocTemplate = await readFile(join(basePrioritiesDir(), `${ADHOC_PRIORITY_ID}.md`), 'utf8')
+  await writeIfMissing(join(priorityDir, `${ADHOC_PRIORITY_ID}.md`), adhocTemplate)
+  loadAssignments(join(personaDir, 'assignments.json'))
+  loadPriority(priorityDir, ADHOC_PRIORITY_ID)
 }
 
 /** GET /workspaces — surface 1. */
@@ -436,18 +489,30 @@ async function updateWorkspace(ctx: OzContext, res: ServerResponse, workspaceId:
 async function createWorkspace(ctx: OzContext, res: ServerResponse, body: unknown): Promise<void> {
   const parsed = createWorkspaceBody(body, ctx.cocoderHome)
   if (!parsed.ok) return sendJson(res, 400, { error: parsed.error })
-  const { id, folders } = parsed.input
+  const { id, folders, roots } = parsed.input
   const dir = workspaceDirectory(ctx.cocoderHome)
   const target = workspaceFilePath(ctx.cocoderHome, id)
 
-  await mkdir(dir, { recursive: true })
-  const existing = await readdir(dir)
+  const primaryRoot = roots.find((root) => root.role === 'primary')!.path
+  const rootError = await directoryGate(primaryRoot)
+  if (rootError) return sendJson(res, 400, { error: rootError })
+
+  const existing = await readdir(dir).catch((err: unknown) => {
+    if (errorCode(err) === 'ENOENT') return []
+    throw err
+  })
   if (existing.some((name) => name.toLowerCase() === `${id}.code-workspace`)) {
     return sendJson(res, 409, { error: `workspace id "${id}" already exists` })
   }
 
   const servedBefore = new Set((await readWorkspaces(ctx.cocoderHome)).map((workspace) => workspace.id))
   const legacyHidden = (await legacyWorkspaceIds(ctx.cocoderHome)).filter((legacyId) => legacyId !== id && servedBefore.has(legacyId))
+  try {
+    await scaffoldWorkspaceGovernance(primaryRoot)
+  } catch (err) {
+    return sendJson(res, 400, { error: err instanceof Error ? err.message : String(err) })
+  }
+  await mkdir(dir, { recursive: true })
   const tmp = join(dir, `.${id}.${process.pid}.${Date.now()}.tmp`)
   await writeFile(tmp, `${JSON.stringify({ folders, settings: {} }, null, 2)}\n`)
   await rename(tmp, target)

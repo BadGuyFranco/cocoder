@@ -1,7 +1,7 @@
 import { statSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { basePersonasDir, basePlaysDir } from '../src/index.js'
+import { basePersonasDir, basePlaysDir, basePrioritiesDir } from '../src/index.js'
 
 const BASE_PERSONA_FILES = ['oscar.md', 'bob.md', 'deb.md', 'shared-standards.md'] as const
 const FRONTMATTER_PERSONA_FILES = ['oscar.md', 'bob.md', 'deb.md'] as const
@@ -67,5 +67,23 @@ describe('basePlaysDir', () => {
     expect(frontmatterValue(text, 'kind')).toBe('headless')
     expect(body.length).toBeGreaterThan(0)
     expect(frontmatterList(text, 'writeScope').length).toBeGreaterThan(0)
+  })
+})
+
+describe('basePrioritiesDir', () => {
+  test('resolves to the shipped base priorities directory', () => {
+    const dir = basePrioritiesDir()
+
+    expect(statSync(dir).isDirectory()).toBe(true)
+  })
+
+  test('ships a product-generic ad-hoc session template', () => {
+    const dir = basePrioritiesDir()
+    const text = readFileSync(join(dir, 'adhoc-session.md'), 'utf8')
+
+    expect(frontmatterValue(text, 'id')).toBe('adhoc-session')
+    expect(frontmatterValue(text, 'title')).toBe('Session without a named priority')
+    expect(text).toContain('## Objective')
+    expect(text).not.toMatch(/CoBuilder|CoCoder|dogfood/i)
   })
 })
