@@ -22,7 +22,12 @@ is decided when this is picked up, not here.
 
 ## Status
 
-**In progress — `continue`.** The v1 Electron dashboard is realized and **wired to every daemon
+**Blocked — `blocked`.** Founder judgment owed on ADR-0021 (may an Oz `repair` commit land on trunk
+without a run's verify gate, and under what scope?). Zero builder atoms this run — all
+builder-delegable code landed by run_66. run_67 (2026-06-12) drafted ADR-0021 (PROPOSED): idle-only
+one-shot headless repair over trunk checkout, whole-tree diff, `oz-repair` gate-commit for governance +
+Oz operation only, machinery code propose-only in v1, hold-back surfacing for everything else. The v1
+Electron dashboard is realized and **wired to every daemon
 endpoint that exists**; surfaces without an endpoint stub cleanly and are tracked in
 `packages/ui/ENDPOINTS_OWED.md` (live tracker). Slices 1–5 (adapter, polling, connection-states,
 mutations, drag-reorder seam), CLI list/test consumption, and `POST /oz/messages` are **merged to
@@ -111,8 +116,9 @@ captured-subprocess turn; the monitor watches LIVE via incremental capture so th
 class does not apply; in-flight nudges recorded-not-delivered while idle nudges — loop-criterion
 retries, post-exit marker recovery — start a fresh follow-up turn; stop kills the in-flight
 child before quarantine), and the UI tail (`MODE_HONORED_PERSONAS` = {oscar, bob}).
-**Not archive-ready** — remaining (NO builder-delegable code left): the Oz `repair` verb (a
-real design seam needing a FOUNDER decision BEFORE build — see the next-slice note), a LIVE
+**Not archive-ready** — remaining (NO builder-delegable code left): **ADR-0021 founder acceptance**
+(may Oz repair commit to trunk without a run verify gate? — PROPOSED at run_67, build blocked until
+answered), the Oz `repair` verb build (if ADR accepted — tool-only through `executeOzCommand`), a LIVE
 exercise of Oz with a real CLI assigned (everything is injected-runner-proven only), and live
 (non-test) exercises of a headless-Oscar run and a headless-Bob run (both honorings are
 unit/orchestration-test proven only).
@@ -541,23 +547,18 @@ no founder decisions are outstanding on this priority.
   No DB migration: priorities stay `.md` files; sequence is a git-tracked order-only
   `cocoder/priorities/order.json`; drag-reorder rewrites it. Owed slice #8 reclassified above.
 
-**Recommended next slice (updated run_66 wrap):**
-~~Bob session `mode` honoring~~ **COMPLETE (run_66, 2026-06-12): five atoms landed, every gate
-first-try — the runner honors `mode:'headless'` for the builder session end-to-end; the
-captured-subprocess monitor gap (run_28 hang class) is closed by incremental output capture.**
-**ALL BUILDER-DELEGABLE CODE ON THIS PRIORITY IS NOW LANDED.** What remains is exactly: (a)
-**the Oz `repair` verb design seam** — a FOUNDER decision before any build (may an Oz repair
-commit land on trunk without a run's verify gate, and under what scope?); the sketch to
-evaluate is recorded below under the pre-run_64 context. (b) **The LIVE proof session** (zero
-code owed): assign oz a real CLI+model in the Personas screen, ask a status question in the
-dashboard chat, drive a launch/stop through chat, nudge a live run's Oscar, run one real
-Refresh Oz — Oz-as-persona criteria 1–4 flip to met on that evidence; while at it, eyeball the
-rebuilt priorities pane against design-ref live (a code-conformance rebuild is landed; a
-founder look is the real acceptance). (c) Live (non-test) **headless runs for Oscar AND Bob**
-(cheap: flip them headless in Personas, launch a small run — Bob headless turn outputs land in
-`<runDir>/bob-turn-<n>.out`). Once (a) is decided (+ built if approved) and (b)/(c) are
-exercised, this priority is **archive-candidate**. The pre-run_64 text below is kept for
-context:
+**Recommended next slice (updated run_67 wrap):**
+~~Bob session `mode` honoring~~ **COMPLETE (run_66, 2026-06-12).**
+**ALL BUILDER-DELEGABLE CODE ON THIS PRIORITY IS NOW LANDED.**
+**BLOCKED on founder judgment (run_67):** accept or amend **[ADR-0021](../decisions/0021-oz-repair-commit-authority.md)**
+— may an Oz repair commit land on trunk without a run's verify gate? Proposal: yes for governance +
+Oz operation only; machinery code propose-only in v1. **Do not delegate a repair build atom until
+answered.** If accepted → delegate repair verb (tool-only through `executeOzCommand`, like
+refresh/nudge). Then: (b) **LIVE proof session** (founder-present, zero code): assign oz a real
+CLI+model, chat status/launch/stop/nudge/Refresh Oz, eyeball rebuilt priorities pane vs design-ref;
+(c) live headless-Oscar + headless-Bob runs (flip in Personas, launch a small run). Archive-candidate
+after ADR decision (+ build if approved) and (b)/(c) live evidence. The pre-run_64 text below is kept
+for context:
 ~~(0) the CoPublisher live retry~~ **DONE LIVE (run_63, 2026-06-12): launched, built, landed on
 the CoPublisher trunk — Bug-A acceptance met.** CoPublisher has since been reset entirely
 (founder decision); onboarding re-runs properly as its own future priority after Oz completes.

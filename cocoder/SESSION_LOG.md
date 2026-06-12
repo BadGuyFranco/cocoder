@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-12 — **Full Oz dashboard: Oz `repair` ADR drafted — blocked on founder trunk-commit judgment (run_67)**
+
+**Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** full-oz-dashboard | **Play:** design-first for the Oz `repair` verb
+**Outcomes:**
+- No builder atom delegated — all builder-delegable code on this priority landed by run_66.
+- Drafted **ADR-0021 (PROPOSED)**: Oz repair as idle-only one-shot headless turn over trunk checkout; whole-tree diff afterward; in-scope gate-committed as distinct `oz-repair` commit (reusing deb-repair scope-split helpers); v1 scope = governance docs + Oz operation, machinery code propose-only; everything else held back and surfaced.
+- Surfaced the founder judgment explicitly: may an Oz repair commit land on trunk **without** a run's verify gate (Deb repairs ride the run branch; Oz operates outside any run — new direct-to-trunk agent commit authority).
+**Next:** Founder accepts/amends ADR-0021 → if accepted, delegate repair-verb build (tool-only through `executeOzCommand`, like refresh/nudge). Then LIVE proofs (assign oz a real CLI; chat status/launch/stop/nudge/Refresh Oz; eyeball priorities pane; one live headless-Oscar + one live headless-Bob run). Archive-candidate after decision + proofs.
+
 ## 2026-06-12 — **Full Oz dashboard: Bob session `mode` honoring end-to-end — the last buildable slice (run_66)**
 
 **Persona:** Oscar + Bob (5 atoms, all first-try passes) | **Priority:** full-oz-dashboard | **Play:** ADR-0018 stage 3 for the BUILDER session, mirroring run_59's Oscar pattern

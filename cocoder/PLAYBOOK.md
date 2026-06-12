@@ -169,13 +169,14 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    loop atoms work headless; stop kills child before quarantine), UI tail (`MODE_HONORED_PERSONAS`
    = {oscar, bob}; core 238 · daemon 164 · ui 109). **All builder-delegable code on this priority
    is now landed.**
+   run_67 (2026-06-12, Oscar wrap-up only): drafted **ADR-0021 (PROPOSED)** for Oz repair trunk-commit
+   authority — idle-only one-shot repair over trunk, governance in-scope, machinery propose-only in
+   v1; **blocked on founder acceptance** before any repair build atom.
    Founder directive: complete Oz first, then workspace onboarding.
-   Next (zero code until founder weighs in): Oz `repair` verb **DESIGN-FIRST** (founder judgment on
-   trunk commit authority without a run's verify gate — do not delegate a build atom until answered;
-   see priority next-slice note); **live Oz proof session** (assign oz a real CLI, chat
-   status/launch/stop/nudge/refresh, founder eyeball of the rebuilt pane); live headless runs for
-   Oscar AND Bob (flip in Personas, launch a small run — honoring is unit/orchestration-test proven
-   only). Archive-candidate after (a) is decided (+ built if approved) and (b)/(c) show live evidence.
+   Next: founder accepts/amends ADR-0021 → repair verb build if approved → **live Oz proof session**
+   (assign oz a real CLI, chat status/launch/stop/nudge/refresh, founder eyeball of the rebuilt pane);
+   live headless runs for Oscar AND Bob (flip in Personas, launch a small run). Archive-candidate after
+   ADR decision (+ build if approved) and live proofs.
 4. `new-primary-root` — the primary-root audit: bootstrap a new root's `cocoder/` + propose-only
    drift re-audit, one base Play pinned to a top-tier model. Design drafted as **ADR-0020 (proposed,
    2026-06-10)** — founder acceptance gates the build. The concrete form of Phase 5 ("first external repo").
