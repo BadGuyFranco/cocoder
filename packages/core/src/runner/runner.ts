@@ -389,12 +389,13 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const debAlive = async (): Promise<boolean> => (debRef ? (await sessionHost.status(debRef)).state === 'running' : false)
   let faultSeq = 0
 
-  // Deb's runner-owned surfaces (ADR-0016): the live status feed she reads + the nudge-request she
-  // writes. Both no-op cheaply when no Deb is on the run. `lastDebNudgeSeq` persists across watchdog
-  // invocations so a recommendation is delivered to Oscar at most once for the whole run.
+  // Runner-owned nudge surfaces (ADR-0016/0017): Deb and Oz write separate request files, both delivered
+  // by the Oscar watchdog. Independent seq counters keep one writer's delivery from consuming the other.
   const debScopes = { oscar: oscar.writeScope, bob: scope, deb: deb?.writeScope ?? [] }
-  const nudgePath = join(runDir, 'deb-nudge.json')
+  const debNudgePath = join(runDir, 'deb-nudge.json')
+  const ozNudgePath = join(runDir, 'oz-nudge.json')
   let lastDebNudgeSeq = 0
+  let lastOzNudgeSeq = 0
   const refreshStatus = async (phase: RunnerPhase, activeAtom: number | null, activeTask: string | null, waitCondition: string): Promise<void> => {
     if (!debRef) return // status feed exists only for a Deb-backed run
     try {
@@ -486,14 +487,16 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       store.recordEvent({ runId: run.id, type: 'triage-skipped', data: { fault: faultType, reason: err instanceof Error ? err.message : String(err) } })
     }
   }
-  const awaitOscarWithDebWatchdog = async <T>(
+  type OscarNudgeSource = 'oz' | 'deb'
+  const awaitOscarWithNudgeWatchdog = async <T>(
     stage: 'directive' | 'verify',
     atomIndex: number,
     task: string,
     awaitOscar: () => Promise<T>,
   ): Promise<T> => {
     const debPersona = deb?.id
-    if (!debRef || !debPersona) return await awaitOscar()
+    const hasDebWatchdog = debRef !== null && debPersona !== undefined
+    const eventPersona = (source: OscarNudgeSource | 'idle'): string => (source === 'oz' ? 'oz' : (debPersona ?? 'deb'))
     const phase: RunnerPhase = stage === 'verify' ? 'verifying' : 'awaiting-directive'
 
     let stopped = false
@@ -506,25 +509,30 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       stopSleep?.()
     }
     // The recommendation currently being delivered, if any — set by the judge when it picks up a fresh
-    // deb-nudge.json, read by onNudge to attribute the delivery to Deb (vs the generic idle fallback).
-    let pendingDebReq: { message: string; rationale: string; seq: number } | null = null
+    // nudge file, read by onNudge to attribute delivery (vs the generic idle fallback).
+    let pendingNudgeReq: { source: OscarNudgeSource; message: string; rationale: string; seq: number } | null = null
     const monitor = runMonitor(
       {
         readScreen: async () => {
           if (stopped) throw new Error('oscar await settled')
-          return await oscarDriver.readScreen()
+          return hasDebWatchdog ? await oscarDriver.readScreen() : ''
         },
         judge: async (sample) => {
           if (stopped) return { state: 'done', note: 'oscar await settled' }
-          // Deb-authored nudge takes priority over the generic idle prompt: deliver her specific
-          // recommendation to Oscar (the runner owns delivery; authority rule keeps it Oscar-only).
-          const req = await io.readNudgeRequest(nudgePath)
-          if (req && req.seq > lastDebNudgeSeq) {
-            pendingDebReq = { message: req.message, rationale: req.rationale, seq: req.seq }
-            return { state: 'stuck', note: `deb recommends a nudge (seq ${req.seq})`, nudge: req.message }
+          // Authored nudges take priority over the generic idle prompt. Oz outranks Deb for same-sample
+          // freshness, and Deb remains pending because its seq is not consumed until actually delivered.
+          const ozReq = await io.readNudgeRequest(ozNudgePath)
+          if (ozReq && ozReq.seq > lastOzNudgeSeq) {
+            pendingNudgeReq = { source: 'oz', message: ozReq.message, rationale: ozReq.rationale, seq: ozReq.seq }
+            return { state: 'stuck', note: `oz recommends a nudge (seq ${ozReq.seq})`, nudge: ozReq.message }
           }
-          pendingDebReq = null
-          if (sample.idleStreak > 0) {
+          const debReq = hasDebWatchdog ? await io.readNudgeRequest(debNudgePath) : null
+          if (debReq && debReq.seq > lastDebNudgeSeq) {
+            pendingNudgeReq = { source: 'deb', message: debReq.message, rationale: debReq.rationale, seq: debReq.seq }
+            return { state: 'stuck', note: `deb recommends a nudge (seq ${debReq.seq})`, nudge: debReq.message }
+          }
+          pendingNudgeReq = null
+          if (hasDebWatchdog && sample.idleStreak > 0) {
             return { state: 'stuck', note: `no oscar screen change for ${sample.idleStreak} sample(s)`, nudge: OSCAR_IDLE_NUDGE }
           }
           return { state: 'progressing' }
@@ -533,19 +541,21 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         nudge: (text) => oscarDriver.nudge(text),
         onAssessment: (a) => {
           if (a.state !== 'progressing') {
-            store.recordEvent({ runId: run.id, type: 'oscar-monitor-assessment', data: { persona: debPersona, stage, atom: atomIndex, state: a.state, note: a.note ?? null } })
+            store.recordEvent({ runId: run.id, type: 'oscar-monitor-assessment', data: { persona: hasDebWatchdog ? debPersona : 'oz', stage, atom: atomIndex, state: a.state, note: a.note ?? null } })
           }
           void refreshStatus(phase, atomIndex, task, `awaiting Oscar's ${stage} for atom ${atomIndex}`)
         },
         onNudge: (text) => {
-          const fromDeb = pendingDebReq !== null && text === pendingDebReq.message
-          if (fromDeb) lastDebNudgeSeq = pendingDebReq!.seq
+          const authored = pendingNudgeReq !== null && text === pendingNudgeReq.message ? pendingNudgeReq : null
+          if (authored?.source === 'oz') lastOzNudgeSeq = authored.seq
+          if (authored?.source === 'deb') lastDebNudgeSeq = authored.seq
+          const source = authored?.source ?? 'idle'
           store.recordEvent({
             runId: run.id,
             type: 'oscar-nudge',
-            data: fromDeb
-              ? { persona: debPersona, stage, atom: atomIndex, text, source: 'deb-authored', rationale: pendingDebReq!.rationale, seq: pendingDebReq!.seq }
-              : { persona: debPersona, stage, atom: atomIndex, text, source: 'idle' },
+            data: authored
+              ? { persona: eventPersona(authored.source), stage, atom: atomIndex, text, source, rationale: authored.rationale, seq: authored.seq }
+              : { persona: eventPersona('idle'), stage, atom: atomIndex, text, source },
           })
         },
         sleep: (ms) =>
@@ -559,7 +569,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       { task, cadenceMs: t.monitorCadenceMs, timeoutMs: t.orchestrationMs, minNudgeIntervalMs: t.minNudgeIntervalMs, signal: deps.signal },
     ).catch((err: unknown) => {
       if (isStopRequestedError(err)) return
-      store.recordEvent({ runId: run.id, type: 'oscar-monitor-error', data: { persona: debPersona, stage, atom: atomIndex, message: err instanceof Error ? err.message : String(err) } })
+      store.recordEvent({ runId: run.id, type: 'oscar-monitor-error', data: { persona: hasDebWatchdog ? debPersona : 'oz', stage, atom: atomIndex, message: err instanceof Error ? err.message : String(err) } })
     })
 
     try {
@@ -738,7 +748,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     await refreshStatus('awaiting-directive', n, null, `awaiting directive ${n}`)
     let directive
     try {
-      directive = await awaitOscarWithDebWatchdog('directive', n, `awaiting directive ${n}`, () =>
+      directive = await awaitOscarWithNudgeWatchdog('directive', n, `awaiting directive ${n}`, () =>
         io.awaitDirective(directivePath, { timeoutMs: t.orchestrationMs, pollMs: t.pollMs, isAlive: oscarAlive, signal: deps.signal }),
       )
     } catch (err) {
@@ -933,7 +943,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     await refreshStatus('verifying', atomIndex, directive.task, `awaiting verify verdict for atom ${atomIndex}`)
     let verdict
     try {
-      verdict = await awaitOscarWithDebWatchdog('verify', atomIndex, directive.task, () =>
+      verdict = await awaitOscarWithNudgeWatchdog('verify', atomIndex, directive.task, () =>
         io.awaitVerification(verifyPath, { timeoutMs: t.orchestrationMs, pollMs: t.pollMs, isAlive: oscarAlive, signal: deps.signal }),
       )
     } catch (err) {

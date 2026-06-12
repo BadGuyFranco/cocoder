@@ -9,6 +9,7 @@ import {
   type Git,
   type HeadlessRunInput,
   type MakeJudge,
+  type NudgeRequest,
   MissingObjectiveError,
   type Play,
   type PlayAssignment,
@@ -143,8 +144,11 @@ const fakeIO = (opts: {
     escalation?: 'repair' | 'ticket' | 'recommend-priority'
     ticketId?: string
   }
-  /** Deb's nudge recommendation, returned by readNudgeRequest. */
-  nudge?: { target: 'oscar'; message: string; rationale: string; seq: number } | null
+  /** Nudge recommendation returned for every readNudgeRequest call, unless nudges/readNudge override it. */
+  nudge?: NudgeRequest | null
+  /** Path-aware nudge recommendations, keyed by basename such as deb-nudge.json or oz-nudge.json. */
+  nudges?: Partial<Record<'deb-nudge.json' | 'oz-nudge.json', NudgeRequest | null>>
+  readNudge?: (nudgePath: string) => Promise<NudgeRequest | null>
   /** Status snapshots captured each time the runner refreshes the feed. */
   statusWrites?: DebStatus[]
   pickupWrites?: string[]
@@ -172,7 +176,10 @@ const fakeIO = (opts: {
     async writeDebStatus(_runDir, status) {
       opts.statusWrites?.push(status)
     },
-    async readNudgeRequest() {
+    async readNudgeRequest(nudgePath) {
+      if (opts.readNudge) return await opts.readNudge(nudgePath)
+      const file = nudgePath.endsWith('oz-nudge.json') ? 'oz-nudge.json' : nudgePath.endsWith('deb-nudge.json') ? 'deb-nudge.json' : null
+      if (file && Object.prototype.hasOwnProperty.call(opts.nudges ?? {}, file)) return opts.nudges?.[file] ?? null
       return opts.nudge ?? null
     },
     async writePickup(runDir, markdown) {
@@ -1374,9 +1381,83 @@ describe('runRun (multi-atom loop)', () => {
     const timeouts = { orchestrationMs: 200, buildMs: 200, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 }
     const result = await runRun(baseDeps({ store, io, timeouts }), { ...input, deb })
     expect(result.status).toBe('completed')
-    const debNudge = store.listEvents(result.runId).find((e) => e.type === 'oscar-nudge' && (e.data as { source?: string }).source === 'deb-authored')
+    const debNudge = store.listEvents(result.runId).find((e) => e.type === 'oscar-nudge' && (e.data as { source?: string }).source === 'deb')
     expect(debNudge).toBeTruthy()
-    expect(debNudge?.data).toMatchObject({ persona: 'deb', text: 'Oscar — ask Bob for a root-cause diagnosis', source: 'deb-authored', seq: 1 })
+    expect(debNudge?.data).toMatchObject({ persona: 'deb', text: 'Oscar — ask Bob for a root-cause diagnosis', source: 'deb', seq: 1 })
+  })
+
+  test('delivers a fresh Oz-authored nudge to Oscar and does not redeliver the same seq', async () => {
+    const store = openRunStore(':memory:')
+    const directives = [delegate('do it'), wrapup('done')]
+    const sent: string[] = []
+    let i = 0
+    const ozReq: NudgeRequest = { target: 'oscar', message: 'Oscar — ask for a concise status update', rationale: 'Founder asked for a nudge', seq: 1 }
+    const io: RunnerIO = {
+      ...fakeIO({ directives, nudges: { 'oz-nudge.json': ozReq } }),
+      async awaitDirective() {
+        if (i === 0) await sleep(25)
+        const d = directives[i++]
+        if (!d) throw new Error('test: ran out of scripted directives')
+        return d
+      },
+    }
+    const timeouts = { orchestrationMs: 200, buildMs: 200, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 }
+    const result = await runRun(
+      baseDeps({
+        store,
+        io,
+        sessionHost: fakeSessionHost({
+          async sendInput(_ref, text) {
+            sent.push(text)
+          },
+        }),
+        timeouts,
+      }),
+      input,
+    )
+    expect(result.status).toBe('completed')
+    expect(sent.filter((text) => text === ozReq.message)).toHaveLength(1)
+    const ozNudges = store.listEvents(result.runId).filter((e) => e.type === 'oscar-nudge' && (e.data as { source?: string }).source === 'oz')
+    expect(ozNudges).toHaveLength(1)
+    expect(ozNudges[0]?.data).toMatchObject({ persona: 'oz', text: ozReq.message, source: 'oz', rationale: ozReq.rationale, seq: 1 })
+  })
+
+  test('tracks Oz and Deb nudge seqs independently, with Oz winning a same-sample tie', async () => {
+    const store = openRunStore(':memory:')
+    const directives = [delegate('do it'), wrapup('done')]
+    const sent: string[] = []
+    let i = 0
+    const ozReq: NudgeRequest = { target: 'oscar', message: 'Oscar — answer Oz first', rationale: 'Oz is tier 3', seq: 1 }
+    const debReq: NudgeRequest = { target: 'oscar', message: 'Oscar — then handle Deb', rationale: 'Deb still has a pending diagnosis', seq: 1 }
+    const io: RunnerIO = {
+      ...fakeIO({ directives, nudges: { 'oz-nudge.json': ozReq, 'deb-nudge.json': debReq } }),
+      async awaitDirective() {
+        if (i === 0) await sleep(30)
+        const d = directives[i++]
+        if (!d) throw new Error('test: ran out of scripted directives')
+        return d
+      },
+    }
+    const timeouts = { orchestrationMs: 200, buildMs: 200, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 }
+    const result = await runRun(
+      baseDeps({
+        store,
+        io,
+        sessionHost: fakeSessionHost({
+          async sendInput(_ref, text) {
+            sent.push(text)
+          },
+        }),
+        timeouts,
+      }),
+      { ...input, deb },
+    )
+    expect(result.status).toBe('completed')
+    const delivered = sent.filter((text) => text === ozReq.message || text === debReq.message)
+    expect(delivered).toEqual([ozReq.message, debReq.message])
+    const nudgeEvents = store.listEvents(result.runId).filter((e) => e.type === 'oscar-nudge')
+    expect(nudgeEvents.map((e) => (e.data as { source?: string }).source).filter((source) => source === 'oz' || source === 'deb')).toEqual(['oz', 'deb'])
+    expect(nudgeEvents.find((e) => (e.data as { source?: string }).source === 'deb')?.data).toMatchObject({ text: debReq.message, seq: 1 })
   })
 
   test('repair mode gate-commits only Deb\'s in-scope edits; product code is held back, never committed (ADR-0016)', async () => {

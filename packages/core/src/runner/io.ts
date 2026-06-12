@@ -50,7 +50,7 @@ export interface RunnerIO {
    *  projection over the store, refreshed at each transition; the JSON is written for machine reads, the
    *  markdown rendering beside it for a human glance. */
   writeDebStatus(runDir: string, status: DebStatus, markdown: string): Promise<void>
-  /** Read Deb's nudge recommendation if she has written one (ADR-0016). Returns null when the file is
+  /** Read a runner-owned nudge recommendation if one has been written. Returns null when the file is
    *  absent/partial/malformed — a missing recommendation is "nothing to deliver", never an error. */
   readNudgeRequest(nudgePath: string): Promise<NudgeRequest | null>
 }

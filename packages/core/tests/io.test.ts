@@ -100,6 +100,20 @@ describe('awaitTriage', () => {
   })
 })
 
+describe('readNudgeRequest', () => {
+  test('returns a valid runner-owned nudge request', async () => {
+    const path = await tmpPath('oz-nudge.json', JSON.stringify({ target: 'oscar', message: 'Oscar — continue', rationale: 'Oz requested it', seq: 1 }))
+    await expect(io.readNudgeRequest(path)).resolves.toEqual({ target: 'oscar', message: 'Oscar — continue', rationale: 'Oz requested it', seq: 1 })
+  })
+
+  test('ignores malformed or misrouted nudge files without throwing', async () => {
+    const malformed = await tmpPath('oz-nudge.json', '{')
+    const misrouted = await tmpPath('oz-nudge.json', JSON.stringify({ target: 'bob', message: 'Bob — continue', seq: 1 }))
+    await expect(io.readNudgeRequest(malformed)).resolves.toBeNull()
+    await expect(io.readNudgeRequest(misrouted)).resolves.toBeNull()
+  })
+})
+
 describe('writePickup', () => {
   test('writes the pickup brief into the run dir and returns its path', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'cocoder-io-'))
