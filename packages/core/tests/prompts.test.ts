@@ -12,6 +12,7 @@ const orchestratorInput = {
   oscarWriteScope: [],
   runId: 'run_1',
   runBranch: 'cocoder/run_1',
+  cocoderHome: '/Volumes/NAS LOCAL/CoCoder',
 }
 
 const observerInput = {
@@ -21,6 +22,7 @@ const observerInput = {
   priorityGoal: 'Do the base goal.',
   runId: 'run_1',
   runBranch: 'cocoder/run_1',
+  cocoderHome: '/Volumes/NAS LOCAL/CoCoder',
   statusPath: '/runs/run_1/deb-status.json',
   nudgePath: '/runs/run_1/deb-nudge.json',
   writeScope: [],
@@ -55,5 +57,10 @@ describe('buildBuilderDispatch', () => {
   test('renders prompts identically when task is absent or null', () => {
     expect(buildOrchestratorPrompt(orchestratorInput)).toBe(buildOrchestratorPrompt({ ...orchestratorInput, task: null }))
     expect(buildObserverPrompt(observerInput)).toBe(buildObserverPrompt({ ...observerInput, task: null }))
+  })
+
+  test('renders teardown through the install root so pane PATH does not matter', () => {
+    const prompt = buildOrchestratorPrompt(orchestratorInput)
+    expect(prompt).toContain("pnpm --dir '/Volumes/NAS LOCAL/CoCoder' exec cocoder oz teardown run_1")
   })
 })

@@ -14,6 +14,10 @@ function adHocInstruction(task?: string | null): string {
   return typeof task === 'string' && task.trim() !== '' ? `\n## Founder's ad-hoc instruction (this run)\n\n${task}\n` : ''
 }
 
+function shellSingleQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`
+}
+
 export function buildOrchestratorPrompt(input: {
   sharedStandards: string
   oscarBody: string
@@ -28,6 +32,8 @@ export function buildOrchestratorPrompt(input: {
   runId: string
   /** This run's isolated branch (ADR-0015) — agents work on it and never integrate by hand. */
   runBranch: string
+  /** The install/root checkout. Used for CLI invocations that must not depend on pane PATH state. */
+  cocoderHome: string
   /** A prior run's pickup brief to resume from (ADR-0002 C1 / F8), or null for a fresh start. */
   pickup?: string | null
 }): string {
@@ -128,7 +134,7 @@ uncommitted.
 If you are asked to tear down this run, invoke the provided mechanism — do NOT kill processes or windows
 by hand, and never touch the Oz daemon:
 
-    cocoder oz teardown ${input.runId}
+    pnpm --dir ${shellSingleQuote(input.cocoderHome)} exec cocoder oz teardown ${input.runId}
 
 That safely closes only this run's panes (the same operation Oz's teardown button uses).`
 }
@@ -142,6 +148,8 @@ export function buildObserverPrompt(input: {
   runId: string
   /** This run's isolated branch (ADR-0015) — Deb integrates nothing by hand either. */
   runBranch: string
+  /** The install/root checkout. Used for CLI invocations that must not depend on pane PATH state. */
+  cocoderHome: string
   /** The runner-owned live status feed Deb reads to assess the run (ADR-0016). */
   statusPath: string
   /** Where Deb writes a narrow nudge recommendation for the runner to deliver to Oscar (ADR-0016). */
@@ -241,7 +249,7 @@ is recorded in your disposition so the founder is informed. Do not spin up new p
 If you are asked to tear down this run, invoke the provided mechanism — do NOT kill processes or windows
 by hand, and never touch the Oz daemon:
 
-    cocoder oz teardown ${input.runId}
+    pnpm --dir ${shellSingleQuote(input.cocoderHome)} exec cocoder oz teardown ${input.runId}
 
 That safely closes only this run's panes (the same operation Oz's teardown button uses).`
 }

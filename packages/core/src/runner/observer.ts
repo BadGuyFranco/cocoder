@@ -24,7 +24,7 @@ export async function spawnObserver(input: {
   /** The run's isolated branch (ADR-0015) — surfaced in Deb's prompt. */
   readonly runBranch: string
 }): Promise<SessionRef | null> {
-  const { store, sessionHost, getAdapter, run, priority, task, deb, sharedStandards, runDir, groupLabel, cwd, runBranch } = input
+  const { store, sessionHost, getAdapter, run, workspace, priority, task, deb, sharedStandards, runDir, groupLabel, cwd, runBranch } = input
   try {
     const adapter = getAdapter(deb.cli)
     const pf = await adapter.preflight(deb.model)
@@ -44,6 +44,7 @@ export async function spawnObserver(input: {
         task: task ?? null,
         runId: run.id,
         runBranch,
+        cocoderHome: workspace.path,
         statusPath: join(runDir, 'deb-status.json'),
         nudgePath: join(runDir, 'deb-nudge.json'),
         writeScope: deb.writeScope,

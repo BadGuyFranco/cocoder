@@ -303,6 +303,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       oscarWriteScope: oscar.writeScope,
       runId: run.id,
       runBranch,
+      cocoderHome,
       pickup: input.pickup ?? null,
     }),
     model: oscar.model,

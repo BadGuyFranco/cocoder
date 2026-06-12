@@ -16,6 +16,7 @@
     "check:topology": "node scripts/check-topology.mjs"
   },
   "devDependencies": {
+    "@cocoder/cli": "workspace:*",
     "@types/node": "^24.0.0",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
