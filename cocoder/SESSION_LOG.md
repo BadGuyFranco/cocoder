@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-12 — **Founder post-wrap session (run_70): dashboard blank screen root-caused (F16); Claude-Code-memory side channel dismantled into repo flat files**
+
+**Persona:** Oscar (post-wrap, founder-directed support edits) | **Priority:** full-oz-dashboard | **Play:** diagnosis + memory migration
+**Outcomes:**
+- **Blank dashboard root-caused (F16):** the run_69 launch probe trusts `out/main/main.js`, but `electron-vite dev` leaves a partial `out/` with NO renderer → the "built" app loads a missing `out/renderer/index.html`. Workaround: `pnpm --dir packages/ui build` (or delete `out/`). Fix = one small daemon atom, recorded as remaining item (a) in the priority.
+- **Founder policy set: NO Claude Code memory for CoCoder-managed repos** — all memory lives in the repo's governed flat files. The accumulated side-channel memory (~28 entries) was audited; everything not already in the repo was migrated: F15 (cmux `--workspace` misdiagnosis) + F16 → failure catalog; the run_66 **founder Q/A + punch-list archive condition RESTORED to the priority** (it had been silently dropped); live fault-injection methodology → `docs/fault-injection-live-proofs.md`; UI launchability lessons → `docs/ui-dev-notes.md`; runner-resident-monitoring clarification → ADR-0013; multi-repo commit spine + ADR-0019 amendment candidates → `backlog/multi-repo-commit-spine.md`; tmux-scrub rule → ticket 0003; persona-file items (Oscar's launch-runs-via-daemon authorization, the cocoder/cofounder/cobuilder disambiguation, base-persona lessons) → ticket 0005 (their homes are outside this run's support scope).
+- ARCHITECTURE.md References repointed to `packages/ui/design-ref/` (was the stale input brief).
+**Next:** founder: `pnpm --dir packages/ui build`, then the live-proof ladder (priority remaining (a)–(d)). Next run: the F16 probe fix + apply ticket 0005's persona-file migrations.
+
 ## 2026-06-12 — **Full Oz dashboard: code-complete reaffirmed — zero builder atoms, live proofs only (run_70)**
 
 **Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** full-oz-dashboard | **Play:** confirm run_69 trunk landing; no rebuild work

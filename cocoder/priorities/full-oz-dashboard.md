@@ -131,14 +131,16 @@ captured-subprocess turn; the monitor watches LIVE via incremental capture so th
 class does not apply; in-flight nudges recorded-not-delivered while idle nudges — loop-criterion
 retries, post-exit marker recovery — start a fresh follow-up turn; stop kills the in-flight
 child before quarantine), and the UI tail (`MODE_HONORED_PERSONAS` = {oscar, bob}).
-**Not archive-ready** — remaining (ZERO code owed; live evidence only, founder confirmed at run_67
-wrap he'll run these): a LIVE exercise of Oz with a real CLI assigned (chat
+**Not archive-ready** — remaining (updated run_70 post-wrap): ONE small fix (the F16
+launch-probe bug, found live by the founder's blank-screen report — see remaining item (a)
+below), then the evidence ladder: a LIVE exercise of Oz with a real CLI assigned (chat
 status/launch/stop/nudge/repair/Refresh — everything is injected-runner-proven only), a live
-eyeball of the rebuilt priorities pane vs design-ref, and live (non-test) exercises of a
+eyeball of the rebuilt priorities pane vs design-ref, live (non-test) exercises of a
 headless-Oscar run and a headless-Bob run (both honorings are unit/orchestration-test proven
-only). The daemon must be restarted onto current code first (idle self-restart or
-`scripts/oz.sh restart`, founder action) — the repair verb, launch button, and strand detector all
-ship in daemon/runner code loaded at boot.
+only), and a **full founder Q/A pass of the dashboard with an expected punch-list run** (founder
+instruction, run_66 post-wrap; restored run_70 after being dropped). Daemon restart onto current
+code appears already done — the Launch button responding live implies run_69 code; confirm via
+`/health` bootSha.
 
 > History worth recording: a first pass mistakenly built from `docs/oz-design-brief.md` (the *input
 > brief* that was pasted into claude.ai/design), not the founder's actual **design output**. It was then
@@ -591,11 +593,24 @@ by run_69).** ~~The Oz `repair` verb~~ **BUILT (run_69 atoms 0–1).** ~~The lig
 "Launch Oz dashboard" button (founder, run_67 wrap)~~ **BUILT (run_69 atom 2).** ~~The run_67
 strand class~~ **FIXED both halves (run_69 atoms 3–4: in-run post-land re-land/park + the
 teardown/boot stranded-commit detector feeding Resolve).**
-**ALL CODE ON THIS PRIORITY IS NOW LANDED. Remaining = live evidence only:**
-(b) **LIVE proof session** (founder-present, zero code): restart the daemon onto current code
-first, assign oz a real CLI+model, chat status/launch/stop/nudge/repair/Refresh Oz, eyeball the
-rebuilt priorities pane vs design-ref; (c) live headless-Oscar + headless-Bob runs (flip in
-Personas, launch a small run). Archive-candidate after (b)/(c). The pre-run_64 text below is kept
+**Remaining = one small fix found live (run_70 post-wrap) + the live/Q-A evidence ladder:**
+(a) **Launch-probe fix (found run_70 post-wrap, founder blank-screen report — catalogued F16):**
+`resolveDashboardLaunch` (`packages/daemon/src/launcher.ts`) picks built mode if
+`packages/ui/out/main/main.js` exists — but `electron-vite dev` writes `out/main` + `out/preload`
+WITHOUT `out/renderer` (the dev server serves the renderer), so a past `pnpm dev` leaves a partial
+tree the probe trusts; the built app then `loadFile`s the missing `out/renderer/index.html` →
+silent blank window. Fix (one small daemon atom): built mode requires BOTH `out/main/main.js` AND
+`out/renderer/index.html` (the file the app actually loads), else fall back to the dev script.
+Founder workaround meanwhile: `pnpm --dir packages/ui build`, or delete `out/` to force dev mode.
+(b) **LIVE proof session** (founder-present, zero code): daemon restart onto current code is
+likely already done — the Launch button responding implies run_69 code is live; confirm via
+`/health` bootSha — then assign oz a real CLI+model, chat status/launch/stop/nudge/repair/Refresh
+Oz, eyeball the rebuilt priorities pane vs design-ref; (c) live headless-Oscar + headless-Bob runs
+(flip in Personas, launch a small run); (d) **FULL FOUNDER Q/A PASS + punch-list run (founder
+instruction, run_66 post-wrap; RESTORED run_70 — the teardown sweep had dropped it):** the founder
+exercises the whole dashboard end-to-end and files a punch-list; expect one punch-list run of
+fixes. Order: (a) fix → (b)/(c) live proofs → (d) founder Q/A → punch-list fixes → THEN
+archive-candidate. (b)/(c) alone do NOT make this archive-ready. The pre-run_64 text below is kept
 for context:
 ~~(0) the CoPublisher live retry~~ **DONE LIVE (run_63, 2026-06-12): launched, built, landed on
 the CoPublisher trunk — Bug-A acceptance met.** CoPublisher has since been reset entirely

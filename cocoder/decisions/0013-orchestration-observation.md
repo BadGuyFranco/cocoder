@@ -53,6 +53,15 @@ The same monitor primitive, applied at three tiers:
 **Authority rule (the invariant):** *you direct only your immediate primary; you may observe deeper, but
 never direct across a tier you don't own.* This is what prevents two agents orchestrating Bob at once.
 
+**Clarification (2026-06-12, from the `oscar-orchestrates-bob` dogfood; recorded at the founder's
+memory-migration sweep):** `readScreen`/`sendInput` belong to the **SessionHost handles held by the
+RUNNER process**, not to any agent — an agent sitting in a pane cannot observe another agent.
+"Oscar monitors Bob" mechanically means *the runner runs the monitor loop on Bob's pane on Oscar's
+behalf*; the agent's pane is where it reasons and reports, the runner is its eyes and hands.
+Deb→Oscar and Oz→Oscar are the SAME primitive one tier up, simply instantiated (or not) per tier —
+tiers differ only by which loops are wired and which monitors get a nudge sink (direct your
+primary) versus none (observe deeper only), not by any fundamental barrier.
+
 ## Consequences
 
 - **Fixes the three live failures comprehensively:** Bob can't end the run by finishing something small

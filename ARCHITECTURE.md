@@ -219,7 +219,7 @@ Normal adopters get workspace customization by default. CoCoder product improvem
 
 ## References
 
-- Design language: [`docs/oz-design-brief.md`](./docs/oz-design-brief.md)
+- Design language: [`packages/ui/design-ref/`](./packages/ui/design-ref/) — the authoritative Oz V1 design (the preserved claude.ai/design prototype). `docs/oz-design-brief.md` is only the historical *input brief*, not the design.
 - ADR index (authoritative for v2): [`cocoder/decisions/README.md`](./cocoder/decisions/README.md)
 - Attribution / prior art: `NOTICE`
 - Dogfood meta-project: `cocoder/AGENTS.md`

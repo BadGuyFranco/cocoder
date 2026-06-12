@@ -24,3 +24,9 @@ Rewrite the affected docs against the v2 reality (daemon + dashboard + prioritie
 zones), or stub them to short pointers at ARCHITECTURE.md/AGENTS.md until real adopter docs are
 owed. Candidate for a `documentation` Play atom inside a future run; `docs/**` is in Oscar's
 support scope and Bob's build scope.
+
+**Folded in (2026-06-12, run_70 memory-migration sweep) — the tmux scrub.** Founder standing
+rule: tmux is v1-only (frozen zArchive); the rebuild's session host is cmux (ADR-0002), and
+**tmux must not appear anywhere in live documentation**. Currently violated: `ARCHITECTURE.md`
+still carries tmux sections ("Multi-workspace concurrency", `--tmux-socket` references). Scrub
+tmux from all live docs as part of this rewrite; never describe the rebuild in tmux terms.
