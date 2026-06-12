@@ -6,30 +6,32 @@ import { useState } from 'react'
 import { Icon, StatusChip, Button } from '../../ui/primitives.tsx'
 import type { Priority, Run } from '../../model.ts'
 
+const isActiveRun = (status: Run['status']): boolean => status === 'running' || status === 'blocked' || status === 'not-landed'
+
 function PriorityRow({ priority, index, onLaunch, onDrag, isDragging, isDropTarget, onSelectRun, runs, selectedRunId }: {
   priority: Priority; index: number; onLaunch: (p: Priority) => void; onDrag: (type: string, index: number) => void
   isDragging: boolean; isDropTarget: boolean; onSelectRun: (id: string) => void; runs: Run[]; selectedRunId: string | null
 }) {
   const linkedRun = priority.runId ? runs.find((r) => r.id === priority.runId) : null
-  const isRunning = !!linkedRun && (linkedRun.status === 'running' || linkedRun.status === 'blocked')
+  const isActive = !!linkedRun && isActiveRun(linkedRun.status)
   const isBlocked = !!linkedRun && linkedRun.status === 'blocked'
   const isSelected = !!linkedRun && linkedRun.id === selectedRunId
   return (
     <div draggable onDragStart={() => onDrag('start', index)} onDragOver={(e) => { e.preventDefault(); onDrag('over', index) }} onDragEnd={() => onDrag('end', index)} onDrop={(e) => { e.preventDefault(); onDrag('drop', index) }}
-      onClick={() => isRunning && linkedRun && onSelectRun(linkedRun.id)}
+      onClick={() => isActive && linkedRun && onSelectRun(linkedRun.id)}
       style={{
-        background: isSelected ? 'var(--cb-accent-muted)' : isRunning ? 'var(--cb-accent-subtle)' : 'var(--cb-surface-glass)',
-        border: `1px solid ${isSelected ? 'var(--cb-accent)' : isBlocked ? 'rgba(212,118,110,0.30)' : isRunning ? 'var(--cb-accent-30)' : 'var(--cb-border)'}`,
+        background: isSelected ? 'var(--cb-accent-muted)' : isActive ? 'var(--cb-accent-subtle)' : 'var(--cb-surface-glass)',
+        border: `1px solid ${isSelected ? 'var(--cb-accent)' : isBlocked ? 'rgba(212,118,110,0.30)' : isActive ? 'var(--cb-accent-30)' : 'var(--cb-border)'}`,
         borderRadius: isSelected ? 'var(--cb-radius-md) 0 0 var(--cb-radius-md)' : 'var(--cb-radius-md)',
         padding: '11px 12px 12px', marginBottom: 8, marginRight: isSelected ? -17 : 0, paddingRight: isSelected ? 24 : 12,
         opacity: isDragging ? 0.4 : 1,
         boxShadow: isDropTarget ? '0 0 0 2px var(--cb-accent-30)' : isSelected ? '0 4px 16px rgba(201,169,110,0.18)' : 'none',
-        cursor: isRunning ? 'pointer' : 'grab',
+        cursor: isActive ? 'pointer' : 'grab',
         transition: 'box-shadow 120ms ease-out, background 120ms ease-out, margin-right 200ms ease-out, padding-right 200ms ease-out, border-radius 200ms ease-out',
         position: 'relative', zIndex: isSelected ? 5 : 1,
       }}>
       {isSelected && <div style={{ position: 'absolute', right: -8, top: '50%', transform: 'translateY(-50%) rotate(45deg)', width: 14, height: 14, background: 'var(--cb-accent-muted)', borderTop: '1px solid var(--cb-accent)', borderRight: '1px solid var(--cb-accent)', zIndex: 6, pointerEvents: 'none' }} />}
-      {isRunning && !isSelected && <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: isBlocked ? 'var(--cb-highlight)' : 'var(--cb-accent)', animation: isBlocked ? 'none' : 'ozPulse 1.8s infinite' }} />}
+      {isActive && !isSelected && <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: isBlocked ? 'var(--cb-highlight)' : 'var(--cb-accent)', animation: isBlocked ? 'none' : 'ozPulse 1.8s infinite' }} />}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 1 }}>
           <Icon name="dots-six-vertical" size={14} style={{ color: 'var(--cb-text-muted)', cursor: 'grab' }} />
@@ -43,9 +45,9 @@ function PriorityRow({ priority, index, onLaunch, onDrag, isDragging, isDropTarg
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 36, flexWrap: 'wrap' }}>
         {linkedRun ? <StatusChip status={linkedRun.status} /> : <StatusChip status={priority.status} label={priority.status === 'ready' ? 'Ready' : priority.status} />}
         {priority.labels.map((l) => <span key={l} style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 9.5, color: 'var(--cb-text-muted)', padding: '2px 6px', border: '1px solid var(--cb-border)', borderRadius: 2 }}>{l}</span>)}
-        <div style={{ marginLeft: 'auto' }}>{!isRunning && <Button variant="secondary" size="sm" icon="play" onClick={(e) => { e.stopPropagation(); onLaunch(priority) }}>Launch</Button>}</div>
+        <div style={{ marginLeft: 'auto' }}>{!isActive && <Button variant="secondary" size="sm" icon="play" onClick={(e) => { e.stopPropagation(); onLaunch(priority) }}>Launch</Button>}</div>
       </div>
-      {isRunning && linkedRun && (
+      {isActive && linkedRun && (
         <div style={{ marginTop: 10, marginLeft: 36, paddingTop: 10, borderTop: '1px solid var(--cb-border)', position: 'relative' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-text-muted)' }}>{linkedRun.id} · {linkedRun.startedAt}</span>
@@ -62,7 +64,7 @@ function PriorityRow({ priority, index, onLaunch, onDrag, isDragging, isDropTarg
 }
 
 function AdhocPriorityRow({ adhocRuns, onLaunch, onSelectRun, selectedRunId }: { adhocRuns: Run[]; onLaunch: () => void; onSelectRun: (id: string) => void; selectedRunId: string | null }) {
-  const activeCount = adhocRuns.filter((r) => r.status === 'running' || r.status === 'blocked').length
+  const activeCount = adhocRuns.filter((r) => isActiveRun(r.status)).length
   const hasSelected = adhocRuns.some((r) => r.id === selectedRunId)
   return (
     <div style={{ background: hasSelected ? 'var(--cb-accent-muted)' : 'var(--cb-surface-glass)', border: `1px solid ${hasSelected ? 'var(--cb-accent)' : adhocRuns.length > 0 ? 'var(--cb-accent-30)' : 'var(--cb-border)'}`, borderRadius: hasSelected ? 'var(--cb-radius-md) 0 0 var(--cb-radius-md)' : 'var(--cb-radius-md)', padding: '11px 12px 12px', marginBottom: 8, marginRight: hasSelected ? -17 : 0, paddingRight: hasSelected ? 24 : 12, position: 'relative', transition: 'all 200ms ease-out', boxShadow: hasSelected ? '0 4px 16px rgba(201,169,110,0.18)' : 'none', zIndex: hasSelected ? 5 : 1 }}>
@@ -83,7 +85,7 @@ function AdhocPriorityRow({ adhocRuns, onLaunch, onSelectRun, selectedRunId }: {
       {adhocRuns.length > 0 && (
         <div style={{ marginTop: 10, marginLeft: 36, paddingTop: 10, borderTop: '1px solid var(--cb-border)' }}>
           {adhocRuns.map((r, idx) => {
-            const isSel = r.id === selectedRunId, isBlocked = r.status === 'blocked', isLive = r.status === 'running' || r.status === 'blocked'
+            const isSel = r.id === selectedRunId, isBlocked = r.status === 'blocked', isLive = isActiveRun(r.status)
             return (
               <div key={r.id} onClick={() => onSelectRun(r.id)} style={{ padding: '8px 10px', background: isSel ? 'var(--cb-accent-15)' : 'transparent', border: `1px solid ${isSel ? 'var(--cb-accent-30)' : 'var(--cb-border)'}`, borderRadius: 'var(--cb-radius-sm)', marginBottom: idx === adhocRuns.length - 1 ? 0 : 6, cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
                 {isLive && <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 2, background: isBlocked ? 'var(--cb-highlight)' : 'var(--cb-accent)', animation: isBlocked ? 'none' : 'ozPulse 1.8s infinite' }} />}
@@ -110,7 +112,7 @@ export function PrioritiesPanel({ priorities, runs, onReorder, onLaunch, onAdhoc
     else if (type === 'drop') { if (drag.from !== null && drag.from !== index) onReorder(drag.from, index); setDrag({ from: null, over: null }) }
     else if (type === 'end') setDrag({ from: null, over: null })
   }
-  const adhocRuns = runs.filter((r) => !r.priorityId && (r.status === 'running' || r.status === 'blocked'))
+  const adhocRuns = runs.filter((r) => !r.priorityId && isActiveRun(r.status))
   return (
     <div className="oz-panel" style={{ height: '100%' }}>
       <div className="oz-panel-header">
