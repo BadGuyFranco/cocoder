@@ -7,6 +7,7 @@ import {
   parsePorcelain,
   partitionByScope,
   runCommitGate,
+  gateCommitRepair,
 } from '../src/index.js'
 
 describe('glob matcher', () => {
@@ -168,5 +169,36 @@ describe('runCommitGate', () => {
     })
     expect(res.selfCommitted).toBe(true)
     expect(store.listEvents(run.id).some((e) => e.type === 'agent-self-commit')).toBe(true)
+  })
+})
+
+describe('gateCommitRepair', () => {
+  test('commits only in-scope repair files and reports held-back files without store coupling', async () => {
+    const { git, commits } = makeFakeGit({ changed: ['cocoder/PLAYBOOK.md', 'packages/core/src/leak.ts'], headBefore: 'h0' })
+
+    const res = await gateCommitRepair({
+      git,
+      cwd: '/repo',
+      scope: ['cocoder/**'],
+      message: 'oz-repair',
+    })
+
+    expect(res).toEqual({
+      committedSha: 'sha-after-1',
+      committedFiles: ['cocoder/PLAYBOOK.md'],
+      heldBackFiles: ['packages/core/src/leak.ts'],
+    })
+    expect(commits).toEqual([{ files: ['cocoder/PLAYBOOK.md'], message: 'oz-repair' }])
+  })
+
+  test('clean repair diff produces no empty commit', async () => {
+    const { git, commits } = makeFakeGit({ changed: [], headBefore: 'h0' })
+
+    await expect(gateCommitRepair({ git, cwd: '/repo', scope: ['cocoder/**'], message: 'oz-repair' })).resolves.toMatchObject({
+      committedSha: null,
+      committedFiles: [],
+      heldBackFiles: [],
+    })
+    expect(commits).toEqual([])
   })
 })

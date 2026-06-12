@@ -94,6 +94,9 @@ export {
   runCommitGate,
   type CommitGateInput,
   type CommitGateResult,
+  gateCommitRepair,
+  type RepairCommitInput,
+  type RepairCommitResult,
 } from './commit-gate/index.js'
 export { worktreesRoot, worktreePathFor, runBranchFor } from './worktree/paths.js'
 

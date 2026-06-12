@@ -10,12 +10,14 @@ import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 import {
   isPersonaEnabled,
+  gateCommitRepair,
   loadAssignments,
   loadPlay,
   loadPriority,
   resolvePlayAssignment,
   resolvePersonaMode,
   resolveEffectivePersona,
+  runHeadlessProcess,
   runRun,
   type PersonaSources,
   type RunInput,
@@ -27,6 +29,8 @@ import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import type { OzContext, OzEvent } from './context.js'
 import { findWorkspace } from './registry.js'
 import { appendAudit } from './audit.js'
+
+const OZ_REPAIR_TIMEOUT_MS = 120_000
 
 function emitOzEvent(ctx: OzContext, event: Omit<OzEvent, 'ts'>): void {
   ctx.events.emit({ ...event, ts: new Date().toISOString() })
@@ -470,6 +474,115 @@ export async function requestDaemonRestart(ctx: OzContext): Promise<LaunchResult
   void appendAudit(ctx.cocoderHome, { action: 'daemon-restart', bootSha: ctx.bootSha })
   ctx.restartDaemon()
   return { status: 202, body: { restarting: true, bootSha: ctx.bootSha } }
+}
+
+export async function requestOzRepair(ctx: OzContext, input: { readonly workspaceId: string; readonly message: string; readonly rationale?: string }): Promise<LaunchResult> {
+  if (ctx.inFlight.size > 0) {
+    return { status: 409, body: { error: 'refusing to repair: a run is in flight (would orphan it) — wait for it to finish' } }
+  }
+
+  const message = input.message.trim()
+  if (!message) return { status: 400, body: { error: 'repair message is required' } }
+  if (message.length > 4000) return { status: 400, body: { error: 'repair message too long (max 4000 chars)' } }
+
+  const workspace = await findWorkspace(ctx.cocoderHome, input.workspaceId)
+  if (!workspace) return { status: 404, body: { error: 'unknown workspace' } }
+
+  const target = resolveOzRepairTarget(workspace.path)
+  if (!target) {
+    return { status: 409, body: { error: `no Oz CLI is assigned for workspace "${workspace.id}"` } }
+  }
+
+  const turnLogPath = join(ctx.cocoderHome, 'local', 'oz', workspace.id, `repair-${Date.now()}.log`)
+  await mkdir(dirname(turnLogPath), { recursive: true })
+  const prompt = buildOzRepairPrompt({
+    workspaceId: workspace.id,
+    message,
+    rationale: typeof input.rationale === 'string' && input.rationale.trim() ? input.rationale.trim() : null,
+    scope: ozRepairScope(workspace.id, message, input.rationale),
+  })
+
+  let turn: { readonly exitCode: number; readonly output: string }
+  try {
+    const cmd = ctx.getAdapter(target.cli).build({
+      persona: 'oz',
+      prompt,
+      model: target.model,
+      cwd: ctx.cocoderHome,
+      outPath: turnLogPath,
+    })
+    const run = ctx.runHeadless ?? runHeadlessProcess
+    turn = await run({ command: cmd.command, args: cmd.args, cwd: ctx.cocoderHome, outPath: turnLogPath, timeoutMs: OZ_REPAIR_TIMEOUT_MS })
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err)
+    await writeFile(turnLogPath, detail, 'utf8')
+    return { status: 500, body: { error: `Oz repair turn failed before diff/commit: ${detail}`, committedPaths: [], commitSha: null, heldBackPaths: [], exitCode: -1, turnLogPath } }
+  }
+  await writeFile(turnLogPath, turn.output, 'utf8')
+
+  const scope = ozRepairScope(workspace.id, message, input.rationale)
+  const gate = await gateCommitRepair({
+    git: ctx.git,
+    cwd: ctx.cocoderHome,
+    scope,
+    message: 'oz-repair',
+  })
+  const body = {
+    ok: turn.exitCode === 0,
+    committedPaths: gate.committedFiles,
+    commitSha: gate.committedSha,
+    heldBackPaths: gate.heldBackFiles,
+    exitCode: turn.exitCode,
+    turnLogPath,
+  }
+  await appendAudit(ctx.cocoderHome, { action: 'oz-repair', workspaceId: workspace.id, ...body })
+  emitOzEvent(ctx, { type: 'oz-repair', workspaceId: workspace.id, status: gate.committedSha ? 'committed' : 'no-commit' })
+  return { status: turn.exitCode === 0 ? 200 : 500, body }
+}
+
+function resolveOzRepairTarget(workspacePath: string): { readonly cli: string; readonly model: string } | null {
+  try {
+    const assignments = loadAssignments(join(workspacePath, 'cocoder', 'personas', 'assignments.json'))
+    if (!isPersonaEnabled(assignments, 'oz')) return null
+    const assignment = assignments.personas.oz
+    return assignment ? { cli: assignment.cli, model: assignment.model } : null
+  } catch {
+    return null
+  }
+}
+
+function ozRepairScope(workspaceId: string, message: string, rationale?: string): readonly string[] {
+  const scope = [
+    'cocoder/**',
+    'local/settings.json',
+    'local/workspaces.json',
+    `local/workspace/${workspaceId}.code-workspace`,
+  ]
+  const targetText = `${message}\n${rationale ?? ''}`.toLowerCase()
+  if (targetText.includes('local/oz') || targetText.includes('oz artifact') || targetText.includes('oz log') || targetText.includes('turn log')) {
+    scope.push(`local/oz/${workspaceId}/**`)
+  }
+  return scope
+}
+
+function buildOzRepairPrompt(input: { readonly workspaceId: string; readonly message: string; readonly rationale: string | null; readonly scope: readonly string[] }): string {
+  return [
+    '## Oz repair turn',
+    'You are Oz running one headless repair turn over the CoCoder engine trunk working tree.',
+    'Diagnosed fault:',
+    input.message,
+    input.rationale ? `Rationale:\n${input.rationale}` : null,
+    'Allowed v1 repair scope:',
+    '- Workspace governance under cocoder/**.',
+    '- Daemon-local Oz-owned configuration: local/settings.json, local/workspaces.json, and this workspace registry file under local/workspace/.',
+    '- Oz operational artifacts under local/oz/<workspaceId>/ only when the fault explicitly targets Oz artifacts or turn logs.',
+    'Concrete commit-gate allow-list for this request:',
+    input.scope.map((item) => `- ${item}`).join('\n'),
+    'Everything else is propose-only and will be left uncommitted in the working tree: packages/** machinery, install docs/templates/scripts, product code, secrets, and arbitrary local/** files.',
+    'Do not run git commit, git reset, git checkout, daemon restart, process/window lifecycle commands, or cmux commands. Repair does not rescue or relaunch runs.',
+    'After an in-scope repair lands, the founder/Oz must Refresh Oz so the daemon reloads the changed state.',
+    `Workspace id: ${input.workspaceId}`,
+  ].filter((part): part is string => part !== null).join('\n\n')
 }
 
 /** Bring a run's live cmux pane to the foreground. 409 if no session is live in THIS daemon process
