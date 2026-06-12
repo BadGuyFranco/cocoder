@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-12 — **Full Oz dashboard: Oz-as-persona agent core (run_60)**
+
+**Persona:** Oscar + Bob (5 atoms, 1 gate rejection) | **Priority:** full-oz-dashboard | **Play:** ADR-0017 Oz-as-persona slice 1
+**Outcomes:**
+- Oz base persona (`d9aa34e`): tier-3 boundary, bounded-tools doctrine, `writeScope: []`; loader covers Oz with zero code change.
+- Daemon Oz turn host (`3d23d61`): free-text chat → one-shot captured-subprocess turns of the assigned oz CLI; facts digest + capped in-memory transcript; per-workspace serialized (409 busy); turn logs in `local/oz/<ws>/turn-<n>.log`.
+- Tool loop (`3c3de8c`): `OZ_CALL` executes launch/adhoc/show/stop/teardown/status through the shared `executeOzCommand` layer; 3-round budget; gate lesson — status without workspaceId silently 400'd until rebuild restored guards + 3 regression tests.
+- Refresh tool (`ef1ed14`): reuses idle-guarded `requestDaemonRestart`; short-circuits the loop on success (no follow-up turn racing the dying daemon).
+- Evidence per-atom at the gate: core 2220 · daemon 150 · ui 88 · root typecheck clean · topology pass.
+**Next:** Finish Oz-as-persona: nudge verb (runner-mediated channel reusing Deb-nudge mechanics), repair verb (Oz-level scope), then live proof (assign oz a real CLI, status Q in chat, launch/stop via tools, one Refresh Oz). Bob session mode honoring still gated on captured-subprocess monitor path.
+
 ## 2026-06-11 — **Full Oz dashboard: Oz-chat SSE end-to-end + ADR-0018 stage 3 served for Oscar (run_59, overnight auto mode)**
 
 **Persona:** Oscar + Bob (7 atoms) | **Priority:** full-oz-dashboard | **Plan:** owed surfaces "Oz-chat SSE" + ADR-0018 stage 3 (Oscar)

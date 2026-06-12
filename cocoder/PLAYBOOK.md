@@ -144,9 +144,12 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    `stop` verb + dashboard Stop action); run_59 landed Oz-chat SSE end-to-end (`GET /oz/events` +
    UI consumption debounced into existing refresh paths, polling retained as fallback) and ADR-0018
    stage 3 for the Oscar session (`OscarDriver` seam, headless honoring via one-shot
-   captured-subprocess invocations, Personas run-mode editor for Oscar only). Next (all
-   session-sized — no cheap opener): Oz-as-persona (ADR-0017, founder-present recommended), Bob
-   session `mode` honoring (gated on a captured-subprocess monitor path for builder work).
+   captured-subprocess invocations, Personas run-mode editor for Oscar only); run_60 landed
+   Oz-as-persona (ADR-0017 slice 1) — oz base persona, daemon-hosted one-shot agent turns,
+   bounded `OZ_CALL` tool loop over the shared action layer, and the `refresh` tool (one gate
+   rejection + rebuild on the status workspace guard). Next: finish Oz-as-persona (nudge + repair
+   verbs, then a live proof session with a real oz CLI assigned); Bob session `mode` honoring
+   (gated on a captured-subprocess monitor path for builder work).
 4. `new-primary-root` — the primary-root audit: bootstrap a new root's `cocoder/` + propose-only
    drift re-audit, one base Play pinned to a top-tier model. Design drafted as **ADR-0020 (proposed,
    2026-06-10)** — founder acceptance gates the build. The concrete form of Phase 5 ("first external repo").
