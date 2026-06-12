@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-12 — **Full Oz dashboard: Oz `nudge` verb end-to-end (run_61)**
+
+**Persona:** Oscar + Bob (3 atoms, all first-try passes) | **Priority:** full-oz-dashboard | **Play:** ADR-0017 amendment — the `nudge` verb
+**Outcomes:**
+- Core oz-nudge channel (`ebc951b`): the Oscar watchdog reads `<runDir>/oz-nudge.json` alongside deb-nudge (shared parser, independent seqs, Oz outranks Deb on a same-sample tie, source-attributed `oscar-nudge` events); watchdog extended to Deb-less runs (idle nudges stay Deb-gated); delivery via `oscarDriver.nudge` keeps headless-Oscar recorded-not-delivered semantics.
+- Daemon tool-only `nudge` verb (`8013904`): `requestNudgeRun` mirrors stop's liveness honesty (404/409/400), atomic restart-durable monotonic seq, audited + `nudge-queued` event, truthful queued-not-delivered reply; `OZ_TOOL` gains `nudge {runId,message[,rationale]}` through the shared action layer; parser + typed help frozen byte-identical (regression-pinned, the run_60 lesson).
+- `ENDPOINTS_OWED.md` row 1 trued (`a6e528f`): only `repair` remains owed on the Oz agent surface.
+- Evidence per-atom at the gate: core 224 · daemon 155 · root typecheck clean; whole-tree diff checked every atom.
+**Next:** `repair` is DESIGN-FIRST — founder judgment call surfaced in the Playbook: may an Oz repair commit land on trunk without a run's verify gate (Deb repairs ride the run branch; Oz has no run)? Then the live proof session (assign oz a real CLI, status Q, launch/stop, nudge a live Oscar, one Refresh Oz) flips Objective criteria 1–4 to met.
+
 ## 2026-06-12 — **Full Oz dashboard: Oz-as-persona agent core (run_60)**
 
 **Persona:** Oscar + Bob (5 atoms, 1 gate rejection) | **Priority:** full-oz-dashboard | **Play:** ADR-0017 Oz-as-persona slice 1
