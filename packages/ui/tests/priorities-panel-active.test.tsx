@@ -33,22 +33,25 @@ function renderPanel({
   selectedRunId = null,
   onLaunch = vi.fn(),
   onSelectRun = vi.fn(),
+  onReorder = vi.fn(),
 }: {
   priorities?: Priority[]
   runs?: Run[]
   selectedRunId?: string | null
   onLaunch?: (priority: Priority) => void
   onSelectRun?: (id: string) => void
+  onReorder?: (from: number, to: number) => void
 } = {}) {
   return {
     onLaunch,
     onSelectRun,
+    onReorder,
     ...render(
       <PrioritiesPanel
         priorities={priorities}
         runs={runs}
         selectedRunId={selectedRunId}
-        onReorder={vi.fn()}
+        onReorder={onReorder}
         onLaunch={onLaunch}
         onAdhoc={vi.fn()}
         onAddPriority={vi.fn()}
@@ -96,6 +99,28 @@ describe('PrioritiesPanel active run semantics', () => {
     expect(onSelectRun).toHaveBeenCalledWith('run-adhoc-landing')
   })
 
+  it('shows multiple concurrent ad-hoc runs and keeps each selectable', () => {
+    const onSelectRun = vi.fn()
+    renderPanel({
+      runs: [
+        run({ id: 'run-adhoc-running', title: 'Ad-hoc running run', priorityId: null, status: 'running', lastEvent: 'Running ad-hoc work.' }),
+        run({ id: 'run-adhoc-blocked', title: 'Ad-hoc blocked run', priorityId: null, status: 'blocked', lastEvent: 'Blocked ad-hoc work.' }),
+        run({ id: 'run-adhoc-landing', title: 'Ad-hoc landing run', priorityId: null, status: 'not-landed', lastEvent: 'Landing ad-hoc work.' }),
+      ],
+      onSelectRun,
+    })
+
+    expect(screen.getByText('3 active')).toBeDefined()
+    for (const title of ['Ad-hoc running run', 'Ad-hoc blocked run', 'Ad-hoc landing run']) {
+      expect(screen.getByText(title)).toBeDefined()
+      fireEvent.click(screen.getByText(title))
+    }
+
+    expect(onSelectRun).toHaveBeenCalledWith('run-adhoc-running')
+    expect(onSelectRun).toHaveBeenCalledWith('run-adhoc-blocked')
+    expect(onSelectRun).toHaveBeenCalledWith('run-adhoc-landing')
+  })
+
   it('keeps running and blocked priority runs inline, with blocked-only warning treatment', () => {
     const { container } = renderPanel({
       priorities: [
@@ -140,5 +165,26 @@ describe('PrioritiesPanel active run semantics', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Launch' }))
 
     expect(onLaunch).toHaveBeenCalledWith(expect.objectContaining({ id: 'p-ready' }))
+  })
+
+  it('calls onReorder with source and target indices when a priority row is dropped', () => {
+    const onReorder = vi.fn()
+    renderPanel({
+      priorities: [
+        priority({ id: 'p-first', name: 'First priority' }),
+        priority({ id: 'p-second', name: 'Second priority' }),
+        priority({ id: 'p-third', name: 'Third priority' }),
+      ],
+      onReorder,
+    })
+
+    const firstRow = screen.getByText('First priority').closest('[draggable="true"]') as HTMLElement
+    const thirdRow = screen.getByText('Third priority').closest('[draggable="true"]') as HTMLElement
+
+    fireEvent.dragStart(firstRow)
+    fireEvent.dragOver(thirdRow)
+    fireEvent.drop(thirdRow)
+
+    expect(onReorder).toHaveBeenCalledWith(0, 2)
   })
 })
