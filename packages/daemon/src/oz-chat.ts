@@ -1,6 +1,7 @@
 import type { Run } from '@cocoder/core'
 import type { OzContext } from './context.js'
 import { launchRun as launchRunOp, requestStopRun as stopRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type LaunchResult } from './launcher.js'
+import { tryHandleOzAgentTurn } from './oz-host.js'
 
 const ADHOC_PRIORITY_ID = 'adhoc-session'
 const HELP_HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, stop <runId>, teardown <runId>, status [runId], help.'
@@ -27,7 +28,7 @@ export interface OzChatAction {
 }
 export interface OzChatReply {
   readonly reply: string
-  readonly command: OzCommand['kind']
+  readonly command: OzCommand['kind'] | 'chat'
   readonly ok: boolean
   readonly action?: OzChatAction
 }
@@ -78,7 +79,10 @@ export async function handleOzMessage(ctx: OzContext, body: unknown, ops: OzChat
 
   const command = parseOzCommand(input.text)
   if (command.kind === 'help') return chatResult(200, { reply: HELP_HINT, command: 'help', ok: true })
-  if (command.kind === 'unknown') return unknownReply(200, command.hint)
+  if (command.kind === 'unknown') {
+    const agentReply = input.workspaceId ? await tryHandleOzAgentTurn(ctx, input.text, input.workspaceId) : null
+    return agentReply ?? unknownReply(200, command.hint)
+  }
 
   if (command.kind === 'launch') {
     if (!input.workspaceId) return missingWorkspace()
