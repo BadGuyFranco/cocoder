@@ -89,6 +89,21 @@ const fakeGit = (changed: string[] = [], shas: readonly string[] = ['h0']): Git 
     async resetHard() {},
   }
 }
+const fakeGitByCwd = (shas: Readonly<Record<string, readonly string[] | string>>, fallback = 'h0'): Git => {
+  const headCalls = new Map<string, number>()
+  return {
+    ...fakeGit(),
+    async headSha(cwd) {
+      const value = shas[cwd] ?? fallback
+      if (Array.isArray(value)) {
+        const call = headCalls.get(cwd) ?? 0
+        headCalls.set(cwd, call + 1)
+        return value[Math.min(call, value.length - 1)] ?? fallback
+      }
+      return value
+    },
+  }
+}
 const fakeHost = (
   onShow?: (ref: SessionRef) => void,
   onKill?: (ref: SessionRef) => void,
@@ -217,6 +232,21 @@ async function writeWorkspaceFile(home: string, id = 'cocoder', data: unknown = 
   const file = join(dir, `${id}.code-workspace`)
   await writeFile(file, `${JSON.stringify(data, null, 2)}\n`)
   return file
+}
+
+async function writeExternalWorkspace(home: string, id = 'external'): Promise<string> {
+  const workspacePath = await mkdtemp(join(tmpdir(), 'cocoder-external-workspace-'))
+  await mkdir(join(workspacePath, 'cocoder', 'priorities'), { recursive: true })
+  await mkdir(join(workspacePath, 'cocoder', 'personas'), { recursive: true })
+  await writeFile(join(workspacePath, 'cocoder', 'priorities', 'demo.md'), `---\nid: demo\ntitle: Demo\n---\n## Objective\nDo the thing.`)
+  await writeFile(join(workspacePath, 'cocoder', 'personas', 'oscar.md'), `---\nid: oscar\nlabel: Orchestrator\nrole: orchestrator\nwriteScope: []\n---\nOscar`)
+  await writeFile(join(workspacePath, 'cocoder', 'personas', 'bob.md'), `---\nid: bob\nlabel: Builder\nrole: builder\nwriteScope:\n  - packages/**\n---\nBob`)
+  await writeFile(
+    join(workspacePath, 'cocoder', 'personas', 'assignments.json'),
+    JSON.stringify({ personas: { oscar: { cli: 'claude', model: '' }, bob: { cli: 'codex', model: '' } } }),
+  )
+  await writeFile(join(home, 'local', 'workspaces.json'), JSON.stringify({ workspaces: [{ id, name: 'External', path: workspacePath }] }))
+  return workspacePath
 }
 
 describe('Oz mutations + lifecycle', () => {
@@ -489,6 +519,47 @@ describe('Oz mutations + lifecycle', () => {
     const r = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
     expect(r.status).toBe(202)
     expect(r.json.runId).toMatch(/^run_/)
+  })
+
+  test('launch stale gate compares the engine repo HEAD, not the target workspace HEAD', async () => {
+    const workspacePath = await writeExternalWorkspace(home)
+    await startServer(fakeGitByCwd({ [home]: ['engine-sha', 'engine-sha'], [workspacePath]: 'workspace-sha' }))
+
+    const r = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'external', priorityId: 'demo' } })
+
+    expect(r.status).toBe(202)
+    expect(r.json.runId).toMatch(/^run_/)
+  })
+
+  test("a genuinely stale daemon still refuses based on engine HEAD, regardless of the workspace's HEAD", async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    let restarts = 0
+    try {
+      const workspacePath = await writeExternalWorkspace(home)
+      oz = await createOzServer({
+        cocoderHome: home,
+        port: 0,
+        store,
+        git: fakeGitByCwd({ [home]: ['boot-sha', 'engine-head'], [workspacePath]: 'boot-sha' }),
+        sessionHost: fakeHost(),
+        getAdapter: () => okAdapter,
+        io: fakeIO(),
+        restartDaemon: () => {
+          restarts += 1
+        },
+      })
+
+      const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'external', priorityId: 'demo' } })
+
+      expect(r.status).toBe(425)
+      expect(r.json.stale).toBe(true)
+      expect(r.json.restarting).toBe(true)
+      expect(r.json.bootSha).toBe('boot-sha')
+      expect(r.json.headSha).toBe('engine-head')
+      expect(restarts).toBe(1)
+    } finally {
+      warn.mockRestore()
+    }
   })
 
   test('GET /clis returns static config-managed state before any CLI test', async () => {

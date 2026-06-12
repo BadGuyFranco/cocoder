@@ -131,7 +131,7 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
   // `scripts/oz.sh restart` from inside its cmux pane, whose `open <dashboard-url>` hijacked the run's
   // workspace and replaced the agent panes. Refuse the launch instead: a FOUNDER restarts + re-launches;
   // nothing is spawned, so there is no session to hijack and no wasted build.
-  const headNow = await headShaOrUnknown(ctx, input.workspace.path)
+  const headNow = await headShaOrUnknown(ctx, ctx.cocoderHome)
   if (ctx.bootSha !== 'unknown' && headNow !== 'unknown' && headNow !== ctx.bootSha) {
     ctx.inFlight.delete(workspaceId)
     // Self-heal (daemon-side, per the 2026-05-30 headless-substrate decision): a stale daemon with
