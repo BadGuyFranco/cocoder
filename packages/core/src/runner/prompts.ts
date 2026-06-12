@@ -370,6 +370,46 @@ ${scope}
 The orchestrator watches your pane live and may nudge you if you stall; keep working visibly.`
 }
 
+export function buildHeadlessBuilderTurnPrompt(input: {
+  sharedStandards: string
+  bobBody: string
+  scope: readonly string[]
+  /** This run's isolated branch (ADR-0015) — Bob works on it; the runner integrates to trunk. */
+  runBranch: string
+  dispatch: string
+}): string {
+  const scope = input.scope.length > 0 ? input.scope.map((s) => `  - ${s}`).join('\n') : '  (none — read-only)'
+  return `${input.sharedStandards}
+
+---
+# Your role
+
+${input.bobBody}
+
+---
+# One-shot builder turn
+
+You are in this run's isolated git worktree on branch \`${input.runBranch}\` (ADR-0015). Just do the
+work on this branch — do NOT push, merge, rebase, or switch branches; the runner integrates to trunk.
+
+Your write-scope (enforced at CoCoder's commit-gate; anything outside is held back):
+${scope}
+
+This session is ONE-SHOT: act NOW on the dispatched instruction below, run the relevant checks, print
+your completion marker as your FINAL line, then finish. The process exits; there is no next atom in
+this session.
+
+As your FINAL action, print your completion marker for the atom on its OWN line, with nothing else on
+that line: the literal text \`<<<COCODER-ATOM-#-DONE>>>\` with \`#\` replaced by the atom number the
+dispatch names. That standalone line is how CoCoder knows the atom is done. Do not print the marker
+until the work is actually finished.
+
+---
+# Dispatch
+
+${input.dispatch}`
+}
+
 /** Dispatch an atom into Bob's warm pane (sent once Oscar has delegated it). Names the directive path to
  *  read and the atom NUMBER — never the literal completion marker, so the monitor cannot match the
  *  marker from this instruction's own echo (dogfood bug). Bob forms the marker per the standby prompt. */

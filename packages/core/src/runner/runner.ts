@@ -26,7 +26,7 @@ import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { runBranchFor, worktreePathFor } from '../worktree/paths.js'
 import type { RunnerIO } from './io.js'
-import { createPaneBuilderDriver } from './builder-driver.js'
+import { createHeadlessBuilderDriver, createPaneBuilderDriver, type BuilderDriver } from './builder-driver.js'
 import { paneLabel } from './labels.js'
 import { readLoopLedger, type LoopLedgerEntry } from './loop-ledger.js'
 import { type Judge, makeHeuristicJudge, runMonitor } from './monitor.js'
@@ -357,30 +357,36 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: oscar.id, ref: oscarRef.id } })
   }
 
-  const bobCmd = getAdapter(bob.cli).build({
-    persona: bob.id,
-    prompt: buildBuilderStandbyPrompt({ sharedStandards, bobBody: bob.body, scope, runBranch }),
-    model: bob.model,
-    cwd: worktreePath,
-    outPath: join(runDir, 'bob.out'),
-  })
-  const bobRef = await sessionHost.spawn({
-    persona: bob.id,
-    command: bobCmd.command,
-    args: bobCmd.args,
-    cwd: worktreePath,
-    group: run.id, // same workspace as Oscar → splits in beside it (warm, on standby)
-    groupLabel,
-    label: paneLabel(bob),
-  })
-  store.createSession({ runId: run.id, persona: bob.id, sessionRef: bobRef.id, workspaceRef: bobRef.workspaceRef ?? null })
-  store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: bob.id, ref: bobRef.id } })
-  const bobDriver = createPaneBuilderDriver(sessionHost, bobRef)
+  let bobDriver: BuilderDriver
+  if (bob.mode === 'headless') {
+    bobDriver = createHeadlessBuilderDriver({ getAdapter, bob, cwd: worktreePath, runDir, scope, sharedStandards, runBranch, runHeadless: deps.runHeadless })
+    store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: bob.id, ref: bobDriver.refId, mode: 'headless' } })
+  } else {
+    const bobCmd = getAdapter(bob.cli).build({
+      persona: bob.id,
+      prompt: buildBuilderStandbyPrompt({ sharedStandards, bobBody: bob.body, scope, runBranch }),
+      model: bob.model,
+      cwd: worktreePath,
+      outPath: join(runDir, 'bob.out'),
+    })
+    const bobRef = await sessionHost.spawn({
+      persona: bob.id,
+      command: bobCmd.command,
+      args: bobCmd.args,
+      cwd: worktreePath,
+      group: run.id, // same workspace as Oscar → splits in beside it (warm, on standby)
+      groupLabel,
+      label: paneLabel(bob),
+    })
+    store.createSession({ runId: run.id, persona: bob.id, sessionRef: bobRef.id, workspaceRef: bobRef.workspaceRef ?? null })
+    store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: bob.id, ref: bobRef.id } })
+    bobDriver = createPaneBuilderDriver(sessionHost, bobRef)
+  }
   const debRef = deb
     ? await spawnObserver({ store, sessionHost, getAdapter, run, workspace, priority, task: input.task ?? null, deb, sharedStandards, runDir, groupLabel, cwd: worktreePath, runBranch })
     : null
   await oscarDriver.show()
-  log(`oscar + bob spawned (${oscarDriver.refId}, ${bobRef.id}); awaiting first directive, bob on standby`)
+  log(`oscar + bob spawned (${oscarDriver.refId}, ${bobDriver.refId}); awaiting first directive, bob on standby`)
 
   const oscarAlive = (): Promise<boolean> => oscarDriver.alive()
   // Every terminal fault funnels through here: record it, let Deb triage it (if present), then fail.
@@ -718,6 +724,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   }
 
   const stopRun = async (): Promise<RunResult> => {
+    // A still-running one-shot child must die before quarantine resets the worktree; pane cleanup
+    // remains daemon-side after settle.
+    if (bobDriver.kind === 'headless') await bobDriver.kill().catch(() => {})
     const stoppedAtom = activeAtom
     const atoms = stoppedAtom ? Math.max(n, stoppedAtom.index + 1) : n
     store.recordEvent({ runId: run.id, type: 'run-stopped', data: { atom: stoppedAtom?.index ?? null } })
@@ -845,7 +854,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           }
     await bobDriver.show()
     await bobDriver.dispatch(buildBuilderDispatch(directivePath, atomIndex, loopLedgerPath ?? undefined))
-    store.recordEvent({ runId: run.id, type: 'builder-dispatch', data: { ref: bobRef.id, atom: atomIndex } })
+    store.recordEvent({ runId: run.id, type: 'builder-dispatch', data: { ref: bobDriver.refId, atom: atomIndex } })
     await refreshStatus('building', atomIndex, directive.task, `monitoring builder on atom ${atomIndex}`)
     log(`atom ${atomIndex} dispatched to bob (work item ${workItem.id}); monitoring live progress`)
 
