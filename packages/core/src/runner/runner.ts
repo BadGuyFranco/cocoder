@@ -29,6 +29,7 @@ import type { RunnerIO } from './io.js'
 import { paneLabel } from './labels.js'
 import { readLoopLedger, type LoopLedgerEntry } from './loop-ledger.js'
 import { type Judge, makeHeuristicJudge, runMonitor } from './monitor.js'
+import { createPaneOscarDriver } from './oscar-driver.js'
 import { spawnObserver } from './observer.js'
 import {
   atomSentinel,
@@ -318,6 +319,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     groupLabel,
     label: paneLabel(oscar),
   })
+  const oscarDriver = createPaneOscarDriver(sessionHost, oscarRef)
   store.createSession({ runId: run.id, persona: oscar.id, sessionRef: oscarRef.id, workspaceRef: oscarRef.workspaceRef ?? null })
   store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: oscar.id, ref: oscarRef.id } })
 
@@ -342,10 +344,10 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const debRef = deb
     ? await spawnObserver({ store, sessionHost, getAdapter, run, workspace, priority, task: input.task ?? null, deb, sharedStandards, runDir, groupLabel, cwd: worktreePath, runBranch })
     : null
-  await sessionHost.show(oscarRef)
+  await oscarDriver.show()
   log(`oscar + bob spawned (${oscarRef.id}, ${bobRef.id}); awaiting first directive, bob on standby`)
 
-  const oscarAlive = async (): Promise<boolean> => (await sessionHost.status(oscarRef)).state === 'running'
+  const oscarAlive = (): Promise<boolean> => oscarDriver.alive()
   // Every terminal fault funnels through here: record it, let Deb triage it (if present), then fail.
   const fail = async (type: string, message: string, atomIndex: number | null = null): Promise<never> => {
     store.recordEvent({ runId: run.id, type, data: atomIndex !== null ? { message, atom: atomIndex } : { message } })
@@ -483,7 +485,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       {
         readScreen: async () => {
           if (stopped) throw new Error('oscar await settled')
-          return await sessionHost.readScreen(oscarRef)
+          return await oscarDriver.readScreen()
         },
         judge: async (sample) => {
           if (stopped) return { state: 'done', note: 'oscar await settled' }
@@ -501,7 +503,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           return { state: 'progressing' }
         },
         isAlive: oscarAlive,
-        nudge: (text) => sessionHost.sendInput(oscarRef, text),
+        nudge: (text) => oscarDriver.send(text),
         onAssessment: (a) => {
           if (a.state !== 'progressing') {
             store.recordEvent({ runId: run.id, type: 'oscar-monitor-assessment', data: { persona: debPersona, stage, atom: atomIndex, state: a.state, note: a.note ?? null } })
@@ -762,8 +764,8 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         log(`oscar wrapped up after ${n} atom(s)`)
       }
       if (pickup && pickup.trim() !== '') {
-        await sessionHost.show(oscarRef).catch(() => {})
-        await sessionHost.sendInput(oscarRef, buildWrapupDelivery(run.id, pickup)).catch(() => {})
+        await oscarDriver.show().catch(() => {})
+        await oscarDriver.send(buildWrapupDelivery(run.id, pickup)).catch(() => {})
         store.recordEvent({ runId: run.id, type: 'wrapup-delivery-dispatch', data: { ref: oscarRef.id } })
       }
       await refreshStatus('wrapped', n, null, 'wrap-up delivered; awaiting founder questions only; file-changing follow-ups need a new committed run path or explicit teardown')
@@ -886,16 +888,16 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         store.recordEvent({ runId: run.id, type: 'wrapup', data: { atoms: n, forced: true, reason: 'max-atoms' } })
         break
       }
-      await sessionHost.show(oscarRef)
-      await sessionHost.sendInput(oscarRef, buildNextOrWrapDispatch(join(runDir, `directive-${n}.json`), outcomeLine))
+      await oscarDriver.show()
+      await oscarDriver.send(buildNextOrWrapDispatch(join(runDir, `directive-${n}.json`), outcomeLine))
       continue
     }
     store.recordEvent({ runId: run.id, type: 'builder-done', data: { atom: atomIndex, samples: monitorSamples } })
 
     // Verify the atom (ADR-0011, per atom) — the commit runs only on `pass`.
     const verifyPath = join(runDir, `verify-${atomIndex}.json`)
-    await sessionHost.show(oscarRef)
-    await sessionHost.sendInput(oscarRef, buildVerifyDispatch(directivePath, verifyPath))
+    await oscarDriver.show()
+    await oscarDriver.send(buildVerifyDispatch(directivePath, verifyPath))
     store.recordEvent({ runId: run.id, type: 'verify-dispatch', data: { ref: oscarRef.id, atom: atomIndex } })
     await refreshStatus('verifying', atomIndex, directive.task, `awaiting verify verdict for atom ${atomIndex}`)
     let verdict
@@ -952,8 +954,8 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     }
 
     // Ask Oscar for the next turn (names the exact next directive path — the numbered handshake).
-    await sessionHost.show(oscarRef)
-    await sessionHost.sendInput(oscarRef, buildNextOrWrapDispatch(join(runDir, `directive-${n}.json`), outcomeLine))
+    await oscarDriver.show()
+    await oscarDriver.send(buildNextOrWrapDispatch(join(runDir, `directive-${n}.json`), outcomeLine))
   }
   } catch (err) {
     if (isStopRequestedError(err)) return await stopRun()
