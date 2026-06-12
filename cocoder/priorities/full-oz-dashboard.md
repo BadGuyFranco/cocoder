@@ -73,11 +73,30 @@ stale-gate now compares the daemon's bootSha to the ENGINE repo HEAD (`ctx.cocod
 workspace's own HEAD — previously every non-dogfood launch was refused 425 in a futile
 self-restart loop — and `POST /workspaces` now scaffolds the launch-required governance zone
 (portable base `adhoc-session.md` template + seeded `assignments.json`, create-only-if-missing,
-resolved-path, 400 existence gate on the primary root). **Not archive-ready** — remaining: the Oz
-`repair` verb (a real design seam is owed BEFORE build — see the next-slice note), a LIVE
-exercise of Oz with a real CLI assigned (everything is injected-runner-proven only), the LIVE
-CoPublisher first-launch retry (the Bug-A acceptance story), Bob session `mode` honoring (gated
-on a captured-subprocess monitor path for builder work), and a live (non-test) exercise of a
+resolved-path, 400 existence gate on the primary root). POST-WRAP run_62 (2026-06-12, founder
+live): the CoPublisher first launch (run_63) **WORKED end-to-end** — launched, built, wrapped,
+and LANDED two commits on the CoPublisher trunk; the Bug-A fix is **live-proven**. But run_63
+also exposed the THIRD dogfood-coincidence bug (failure-catalog F12): the runner anchors the
+run worktree at `<workspace.path>/local/worktrees/<runId>` (`runner.ts` literally does
+`const cocoderHome = workspace.path`), polluting the target repo — and the daemon's boot
+orphan-sweep lists only the ENGINE repo's worktrees, so workspace-side worktrees would never be
+swept. Founder then stated the **workspace-footprint contract**: CoCoder's ONLY entry into a
+target repo is the `cocoder/` folder itself; `local/` exists ONLY in the CoCoder install (it
+holds the install's non-git-tracked runtime state) and must NEVER be created inside a workspace;
+each workspace's `cocoder/` zone should carry an `AGENTS.md` (repo instructions, blank at
+scaffold) plus a `claude.md`/`CLAUDE.md` pointer to it; and CoCoder never writes a README into a
+workspace. CoPublisher was then RESET entirely (founder decision): run_63 torn down via the
+mechanism (3 panes closed; its worktree was GC'd from CoPublisher because gcWorktree uses the
+stored absolute path), `copublisher.code-workspace` deregistered, founder deletes the repo's
+folders — fresh-workspace onboarding will be re-run properly AFTER Oz completes, as its own
+priority (see backlog/workspace-onboarding.md). Founder also flagged: the **Dashboard priorities
+pane does not match the design spec** (`packages/ui/design-ref/`) — "the priorities pane in the
+dashboard is all wrong"; an audit + rebuild against design-ref is owed. **Not archive-ready** —
+remaining: the worktree-placement fix + scaffold AGENTS.md/claude.md (next build atoms), the
+priorities-pane design-conformance rebuild, the Oz `repair` verb (a real design seam is owed
+BEFORE build — see the next-slice note), a LIVE exercise of Oz with a real CLI assigned
+(everything is injected-runner-proven only), Bob session `mode` honoring (gated on a
+captured-subprocess monitor path for builder work), and a live (non-test) exercise of a
 headless-Oscar run.
 
 > History worth recording: a first pass mistakenly built from `docs/oz-design-brief.md` (the *input
@@ -404,10 +423,34 @@ no founder decisions are outstanding on this priority.
   `cocoder/priorities/order.json`; drag-reorder rewrites it. Owed slice #8 reclassified above.
 
 **Recommended next slice (updated run_62 wrap):**
-(0) **FIRST, zero-code: the CoPublisher live retry — the Bug-A acceptance story.** run_62's fixes
-are on trunk but the daemon serves pre-fix code until restarted; the very first launch attempt
-will 425 stale and (idle) self-restart onto current code — retry once more and the CoPublisher
-launch should go through. That retry is also the first LIVE non-dogfood run, so watch it.
+~~(0) the CoPublisher live retry~~ **DONE LIVE (run_63, 2026-06-12): launched, built, landed on
+the CoPublisher trunk — Bug-A acceptance met.** CoPublisher has since been reset entirely
+(founder decision); onboarding re-runs properly as its own future priority after Oz completes.
+**Founder-set ordering (2026-06-12, post-run_62): COMPLETE OZ FIRST, then build the
+fresh-workspace onboarding process as its own priority (`backlog/workspace-onboarding.md`).**
+(0) **NEXT BUILD ATOMS — the run_63 fallout (do these before other slices):**
+(0a) **Worktree placement (F12 instance 3):** run worktree DIRECTORIES must live under the
+ENGINE install's `local/worktrees/` for EVERY workspace — the git worktree still belongs to the
+workspace's repo; only the directory moves. Root cause: `packages/core/src/runner/runner.ts`
+does `const cocoderHome = workspace.path` and anchors `worktreePathFor` there; thread the
+engine home (vs the workspace repo) EXPLICITLY through worktree create + gcWorktree + the boot
+orphan-sweep (`sweepOrphanWorktrees` lists only `ctx.cocoderHome`'s worktrees today, so
+workspace-side worktrees are invisible to it — after the move, also make the sweep reconcile
+from the run table's stored `worktreePath`s, not just the engine repo's worktree list). The
+workspace-footprint contract this enforces: **CoCoder's ONLY entry into a target repo is
+`cocoder/`; `local/` exists ONLY in the install.**
+(0b) **Scaffold additions:** the run_62 workspace-create scaffold also writes a blank
+`cocoder/AGENTS.md` (repo instructions) and a `CLAUDE.md` pointer file to it (founder asked for
+"claude.md" — use the CLAUDE.md casing the claude CLI reads unless the founder objects);
+create-only-if-missing like the rest. CoCoder never writes a README into a workspace.
+(0c) **Dashboard priorities pane — design-conformance audit + rebuild.** Founder (2026-06-12):
+"the priorities list is not modeled against the design spec; the priorities pane in the
+dashboard is all wrong." Audit the current Dashboard priorities pane against
+`packages/ui/design-ref/` (the authoritative spec: drag-reorderable queue where top = next up, a
+running priority expands an inline run summary, run-detail drawer opens IN PLACE between queue
+and Oz chat with the gold-notch handoff, ad-hoc as a pinned row holding many concurrent runs)
+and write up the concrete mismatches BEFORE delegating rebuild atoms — the audit decides the
+atom split.
 (a) **The Oz `repair` verb — DESIGN FIRST, do not delegate a build yet.** Scoring the approved
 Oz-as-persona Objective's five criteria after run_61: (1) natural-language artifact-grounded
 answers — BUILT, injected-runner-proven, NOT yet exercised live; (2) launch/stop through tools
@@ -438,9 +481,11 @@ current `runHeadless` final-only contract doesn't provide); (d) optional refinem
 Oz-chat streaming beyond coarse refetch hints, and Deb-nudge delivery for headless Oscars (folded
 into the next one-shot turn). Worth a cheap live check when convenient: flip Oscar to `headless`
 in the Personas screen and launch a small run — the honoring is unit/orchestration-test proven
-but has not yet driven a live run. Zero-code founder follow-up still open from run_57: create
-`local/workspace/cocoder.code-workspace` via the New-Workspace modal to migrate off the legacy
-registry fallback.
+but has not yet driven a live run. ~~Zero-code founder follow-up from run_57~~ DONE
+(2026-06-12): `local/workspace/cocoder.code-workspace` exists — the dogfood is off the legacy
+registry fallback. AFTER OZ COMPLETES: pick up `backlog/workspace-onboarding.md` (founder-set
+sequencing) — the two onboarding flows (brand-new primary root; existing-code primary root with
+a full repo audit/review + ingestion into the `cocoder/` zone).
 
 > ⚠️ **run_45 incident — read before delegating.** Twice the builder rebuilt an entire, undelegated
 > "Priority Architecture Contract" feature into `packages/core` (incl. a `MissingArchitectureContractError`
