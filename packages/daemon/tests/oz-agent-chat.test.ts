@@ -104,6 +104,158 @@ describe('Oz agent chat turns', () => {
     expect((await stat(path)).isFile()).toBe(true)
     expect(await readFile(path, 'utf8')).toBe('loggable answer')
   })
+
+  test('launch tool dispatches through ops and follow-up sees the tool result', async () => {
+    const fixture = await makeFixture({
+      outputs: [
+        'Working.\nOZ_TOOL {"tool":"launch","args":{"priorityId":"demo"}}',
+        'Launched it.',
+      ],
+    })
+    const calls: Array<{ readonly workspaceId: string; readonly priorityId: string }> = []
+    const ops: OzChatOps = {
+      ...fakeOps(),
+      launchRun: async (_ctx, workspaceId, priorityId) => {
+        calls.push({ workspaceId, priorityId })
+        return { status: 202, body: { runId: 'run_tool' } }
+      },
+    }
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'start demo', workspaceId: 'cocoder' }, ops)
+
+    expect(calls).toEqual([{ workspaceId: 'cocoder', priorityId: 'demo' }])
+    expect(fixture.headlessInputs).toHaveLength(2)
+    expect(fixture.prompts[1]?.prompt).toContain('Tool result')
+    expect(fixture.prompts[1]?.prompt).toContain('run_tool')
+    expect(result).toMatchObject({
+      status: 200,
+      body: { reply: 'Launched it.', command: 'chat', ok: true, action: { type: 'launch', workspaceId: 'cocoder', priorityId: 'demo', runId: 'run_tool' } },
+    })
+  })
+
+  test('plain output executes no tools and still uses one turn', async () => {
+    const fixture = await makeFixture({ outputs: ['Just answering.'] })
+    let launches = 0
+    const ops: OzChatOps = {
+      ...fakeOps(),
+      launchRun: async () => {
+        launches += 1
+        return { status: 202, body: { runId: 'never' } }
+      },
+    }
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'what is next?', workspaceId: 'cocoder' }, ops)
+
+    expect(launches).toBe(0)
+    expect(fixture.headlessInputs).toHaveLength(1)
+    expect(result).toMatchObject({ status: 200, body: { reply: 'Just answering.', command: 'chat', ok: true } })
+  })
+
+  test('malformed tool JSON is fed back to the agent without executing an op', async () => {
+    const fixture = await makeFixture({
+      outputs: [
+        'Need action.\nOZ_TOOL {"tool":"launch","args":',
+        'I could not parse the tool call.',
+      ],
+    })
+    let launches = 0
+    const ops: OzChatOps = {
+      ...fakeOps(),
+      launchRun: async () => {
+        launches += 1
+        return { status: 202, body: { runId: 'never' } }
+      },
+    }
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'start demo', workspaceId: 'cocoder' }, ops)
+
+    expect(launches).toBe(0)
+    expect(fixture.headlessInputs).toHaveLength(2)
+    expect(fixture.prompts[1]?.prompt).toContain('Malformed OZ_TOOL JSON')
+    expect(result).toMatchObject({ status: 200, body: { reply: 'I could not parse the tool call.', command: 'chat', ok: true } })
+  })
+
+  test('three tool rounds hit the action budget and return a truthful failure', async () => {
+    const fixture = await makeFixture({
+      outputs: [
+        'Again.\nOZ_TOOL {"tool":"status","args":{}}',
+        'Again.\nOZ_TOOL {"tool":"status","args":{}}',
+        'Again.\nOZ_TOOL {"tool":"status","args":{}}',
+      ],
+    })
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'keep checking', workspaceId: 'cocoder' }, fakeOps())
+
+    expect(fixture.headlessInputs).toHaveLength(3)
+    expect(result.status).toBe(500)
+    expect(result.body).toMatchObject({ command: 'chat', ok: false })
+    expect(result.body.reply).toContain('exceeded the 3-tool action budget')
+    expect(result.body.reply).toContain(join(fixture.home, 'local', 'oz', 'cocoder', 'turn-1.log'))
+    expect(result.body.reply).toContain(join(fixture.home, 'local', 'oz', 'cocoder', 'turn-3.log'))
+  })
+
+  test('stop tool dispatches injected stopRun and failed op text reaches the follow-up prompt', async () => {
+    const fixture = await makeFixture({
+      outputs: [
+        'Stopping.\nOZ_TOOL {"tool":"stop","args":{"runId":"run_45"}}',
+        'It is not live in this daemon.',
+      ],
+    })
+    const calls: string[] = []
+    const ops: OzChatOps = {
+      ...fakeOps(),
+      stopRun: async (_ctx, runId) => {
+        calls.push(runId)
+        return { status: 409, body: { error: 'run is not live in this daemon process' } }
+      },
+    }
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'stop run 45', workspaceId: 'cocoder' }, ops)
+
+    expect(calls).toEqual(['run_45'])
+    expect(fixture.prompts[1]?.prompt).toContain('run is not live in this daemon process')
+    expect(result).toMatchObject({ status: 200, body: { reply: 'It is not live in this daemon.', command: 'chat', ok: true } })
+  })
+
+  test('status tool without runId feeds the workspace run summary to the follow-up prompt', async () => {
+    const fixture = await makeFixture({
+      outputs: [
+        'Checking.\nOZ_TOOL {"tool":"status","args":{}}',
+        'There is one run.',
+      ],
+    })
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'where are we?', workspaceId: 'cocoder' }, fakeOps())
+
+    expect(fixture.prompts[1]?.prompt).toContain('1 run:')
+    expect(fixture.prompts[1]?.prompt).toContain(fixture.runId)
+    expect(result).toMatchObject({ status: 200, body: { reply: 'There is one run.', command: 'chat', ok: true, action: { type: 'status', workspaceId: 'cocoder' } } })
+  })
+
+  test('adhoc tool rejects invalid task args without executing', async () => {
+    const fixture = await makeFixture({
+      outputs: [
+        'Bad empty.\nOZ_TOOL {"tool":"adhoc","args":{"task":"   "}}',
+        `Bad long.\nOZ_TOOL {"tool":"adhoc","args":{"task":"${'x'.repeat(4001)}"}}`,
+        'I cannot run those ad-hoc tasks.',
+      ],
+    })
+    const calls: string[] = []
+    const ops: OzChatOps = {
+      ...fakeOps(),
+      launchRun: async (_ctx, _workspaceId, priorityId) => {
+        calls.push(priorityId)
+        return { status: 202, body: { runId: 'never' } }
+      },
+    }
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'run some ad-hoc work', workspaceId: 'cocoder' }, ops)
+
+    expect(calls).toEqual([])
+    expect(fixture.prompts[1]?.prompt).toContain('Usage: adhoc <task>')
+    expect(fixture.prompts[2]?.prompt).toContain('Ad-hoc task too long')
+    expect(result).toMatchObject({ status: 200, body: { reply: 'I cannot run those ad-hoc tasks.', command: 'chat', ok: true } })
+  })
 })
 
 type FakeOutput = string | { readonly exitCode: number; readonly output: string }

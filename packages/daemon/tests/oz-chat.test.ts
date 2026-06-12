@@ -179,6 +179,49 @@ describe('handleOzMessage', () => {
     store.close()
   })
 
+  test('bare status without a workspace returns all runs', async () => {
+    const store = openRunStore(':memory:')
+    store.upsertWorkspace({ id: 'cocoder', path: '/tmp/cocoder', name: 'CoCoder' })
+    store.upsertWorkspace({ id: 'other', path: '/tmp/other', name: 'Other' })
+    const a = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    const b = store.createRun({ workspaceId: 'other', priorityId: 'elsewhere' })
+
+    const result = await handleOzMessage(testCtx(store), { text: 'status' })
+
+    expect(result.status).toBe(200)
+    expect(result.body).toMatchObject({ ok: true, command: 'status' })
+    expect(result.body.reply).toContain('2 runs:')
+    expect(result.body.reply).toContain(a.id)
+    expect(result.body.reply).toContain(b.id)
+    expect(result.body.action).toMatchObject({ type: 'status', runs: expect.arrayContaining([a, b]) })
+    expect(result.body.action?.workspaceId).toBeUndefined()
+    store.close()
+  })
+
+  test('status runId without a workspace returns the single run summary', async () => {
+    const store = openRunStore(':memory:')
+    store.upsertWorkspace({ id: 'cocoder', path: '/tmp/cocoder', name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+
+    const result = await handleOzMessage(testCtx(store), { text: `status ${run.id}` })
+
+    expect(result).toMatchObject({
+      status: 200,
+      body: { ok: true, command: 'status', reply: `${run.id} is running on demo (integration pending).` },
+    })
+    expect(result.body.action).toMatchObject({ type: 'status', runId: run.id })
+    store.close()
+  })
+
+  test('launch without a workspace still returns the missing-workspace guard', async () => {
+    const result = await handleOzMessage(testCtx(), { text: 'launch demo' })
+
+    expect(result).toMatchObject({
+      status: 400,
+      body: { ok: false, command: 'unknown', reply: 'Pick a workspace first, then use launch <priorityId>, adhoc <task>, show <runId>, stop <runId>, teardown <runId>, or status.' },
+    })
+  })
+
   test('unknown command and missing workspace execute nothing', async () => {
     const calls = { launch: 0, show: 0, teardown: 0 }
     const ops: OzChatOps = {

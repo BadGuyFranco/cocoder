@@ -15,6 +15,8 @@ export type OzCommand =
   | { readonly kind: 'status'; readonly runId?: string }
   | { readonly kind: 'help' }
   | { readonly kind: 'unknown'; readonly hint: string }
+export type OzExecutableCommand = Exclude<OzCommand, { readonly kind: 'help' } | { readonly kind: 'unknown' }>
+export type OzCommandExecutor = (command: OzExecutableCommand) => Promise<OzChatResult>
 
 export interface OzChatAction {
   readonly type: 'launch' | 'show' | 'stop' | 'teardown' | 'status'
@@ -80,13 +82,16 @@ export async function handleOzMessage(ctx: OzContext, body: unknown, ops: OzChat
   const command = parseOzCommand(input.text)
   if (command.kind === 'help') return chatResult(200, { reply: HELP_HINT, command: 'help', ok: true })
   if (command.kind === 'unknown') {
-    const agentReply = input.workspaceId ? await tryHandleOzAgentTurn(ctx, input.text, input.workspaceId) : null
+    const agentReply = input.workspaceId ? await tryHandleOzAgentTurn(ctx, input.text, input.workspaceId, (tool) => executeOzCommand(ctx, input.workspaceId, tool, ops)) : null
     return agentReply ?? unknownReply(200, command.hint)
   }
 
+  return executeOzCommand(ctx, input.workspaceId, command, ops)
+}
+
+export async function executeOzCommand(ctx: OzContext, workspaceId: string | undefined, command: OzExecutableCommand, ops: OzChatOps = defaultOps): Promise<OzChatResult> {
   if (command.kind === 'launch') {
-    if (!input.workspaceId) return missingWorkspace()
-    const workspaceId = input.workspaceId
+    if (!workspaceId) return missingWorkspace()
     return runOp(
       'launch',
       () => ops.launchRun(ctx, workspaceId, command.priorityId),
@@ -95,8 +100,7 @@ export async function handleOzMessage(ctx: OzContext, body: unknown, ops: OzChat
   }
 
   if (command.kind === 'adhoc') {
-    if (!input.workspaceId) return missingWorkspace()
-    const workspaceId = input.workspaceId
+    if (!workspaceId) return missingWorkspace()
     return runOp(
       'launch',
       () => ops.launchRun(ctx, workspaceId, ADHOC_PRIORITY_ID, { task: command.task }),
@@ -105,7 +109,7 @@ export async function handleOzMessage(ctx: OzContext, body: unknown, ops: OzChat
   }
 
   if (command.kind === 'show') {
-    if (!input.workspaceId) return missingWorkspace()
+    if (!workspaceId) return missingWorkspace()
     return runOp(
       'show',
       () => ops.showRun(ctx, command.runId),
@@ -114,7 +118,7 @@ export async function handleOzMessage(ctx: OzContext, body: unknown, ops: OzChat
   }
 
   if (command.kind === 'teardown') {
-    if (!input.workspaceId) return missingWorkspace()
+    if (!workspaceId) return missingWorkspace()
     return runOp(
       'teardown',
       () => ops.teardownRun(ctx, command.runId),
@@ -123,7 +127,7 @@ export async function handleOzMessage(ctx: OzContext, body: unknown, ops: OzChat
   }
 
   if (command.kind === 'stop') {
-    if (!input.workspaceId) return missingWorkspace()
+    if (!workspaceId) return missingWorkspace()
     return runOp(
       'stop',
       () => ops.stopRun(ctx, command.runId),
@@ -144,12 +148,12 @@ export async function handleOzMessage(ctx: OzContext, body: unknown, ops: OzChat
     })
   }
 
-  const runs = ctx.store.listRuns(input.workspaceId ? { workspaceId: input.workspaceId } : undefined)
+  const runs = ctx.store.listRuns(workspaceId ? { workspaceId } : undefined)
   return chatResult(200, {
     reply: runsSummary(runs),
     command: 'status',
     ok: true,
-    action: { type: 'status', workspaceId: input.workspaceId, runs },
+    action: { type: 'status', workspaceId, runs },
   })
 }
 
