@@ -23,8 +23,9 @@ is decided when this is picked up, not here.
 ## Status
 
 **Blocked — `blocked`.** Founder judgment owed on ADR-0021 (may an Oz `repair` commit land on trunk
-without a run's verify gate, and under what scope?). Zero builder atoms this run — all
-builder-delegable code landed by run_66. run_67 (2026-06-12) drafted ADR-0021 (PROPOSED): idle-only
+without a run's verify gate, and under what scope?). **Do not launch another run on this priority
+until the founder accepts, amends, or rejects ADR-0021.** run_68 (2026-06-12, 0 atoms) reaffirmed
+this block — zero builder-delegable work remains. run_67 (2026-06-12) drafted ADR-0021 (PROPOSED): idle-only
 one-shot headless repair over trunk checkout, whole-tree diff, `oz-repair` gate-commit for governance +
 Oz operation only, machinery code propose-only in v1, hold-back surfacing for everything else. The v1
 Electron dashboard is realized and **wired to every daemon
@@ -547,14 +548,15 @@ no founder decisions are outstanding on this priority.
   No DB migration: priorities stay `.md` files; sequence is a git-tracked order-only
   `cocoder/priorities/order.json`; drag-reorder rewrites it. Owed slice #8 reclassified above.
 
-**Recommended next slice (updated run_67 wrap):**
+**Recommended next slice (updated run_68 wrap):**
 ~~Bob session `mode` honoring~~ **COMPLETE (run_66, 2026-06-12).**
 **ALL BUILDER-DELEGABLE CODE ON THIS PRIORITY IS NOW LANDED.**
-**BLOCKED on founder judgment (run_67):** accept or amend **[ADR-0021](../decisions/0021-oz-repair-commit-authority.md)**
+**BLOCKED on founder judgment (run_67, reaffirmed run_68):** accept, amend, or reject **[ADR-0021](../decisions/0021-oz-repair-commit-authority.md)**
 — may an Oz repair commit land on trunk without a run's verify gate? Proposal: yes for governance +
 Oz operation only; machinery code propose-only in v1. **Do not delegate a repair build atom until
-answered.** If accepted → delegate repair verb (tool-only through `executeOzCommand`, like
-refresh/nudge). Then: (b) **LIVE proof session** (founder-present, zero code): assign oz a real
+answered.** If **accepted** → delegate repair verb (tool-only through `executeOzCommand`, like
+refresh/nudge). If **amended** → re-scope to the amended authority before build. If **rejected** →
+mark the repair verb out-of-scope in this playbook and `ENDPOINTS_OWED.md` row 1. Then: (b) **LIVE proof session** (founder-present, zero code): assign oz a real
 CLI+model, chat status/launch/stop/nudge/Refresh Oz, eyeball rebuilt priorities pane vs design-ref;
 (c) live headless-Oscar + headless-Bob runs (flip in Personas, launch a small run). Archive-candidate
 after ADR decision (+ build if approved) and (b)/(c) live evidence. The pre-run_64 text below is kept

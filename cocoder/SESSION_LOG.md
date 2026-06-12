@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-12 — **Full Oz dashboard: ADR-0021 block reaffirmed — zero builder atoms, founder answer owed (run_68)**
+
+**Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** full-oz-dashboard | **Play:** blocked continuation — no delegable work until ADR-0021 is decided
+**Outcomes:**
+- Zero builder atoms delegated — all builder-delegable code landed by run_66; ADR-0021 remains **PROPOSED** (drafted run_67); no code or ADR text changed this run.
+- Re-surfaced the single founder question blocking all further build: may an Oz `repair` commit land on trunk **without** a run's verify gate, and under what scope? (Proposal: yes for governance + Oz operation only; machinery code propose-only in v1.)
+- Documented the pickup path: ADR accepted → repair verb build (tool-only through `executeOzCommand`); ADR amended → re-scope; ADR rejected → mark repair out-of-scope in playbook + ENDPOINTS_OWED row 1. Then zero-code LIVE proofs (Oz chat exercise, priorities-pane eyeball, one live headless-Oscar + one live headless-Bob run).
+**Next:** **Do not launch another run on this priority until the founder accepts, amends, or rejects ADR-0021.** Then follow the pickup path above.
+
 ## 2026-06-12 — **Full Oz dashboard: Oz `repair` ADR drafted — blocked on founder trunk-commit judgment (run_67)**
 
 **Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** full-oz-dashboard | **Play:** design-first for the Oz `repair` verb

@@ -172,6 +172,9 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    run_67 (2026-06-12, Oscar wrap-up only): drafted **ADR-0021 (PROPOSED)** for Oz repair trunk-commit
    authority — idle-only one-shot repair over trunk, governance in-scope, machinery propose-only in
    v1; **blocked on founder acceptance** before any repair build atom.
+   run_68 (2026-06-12, Oscar wrap-up only, 0 atoms): **blocked reaffirmed** — no builder-delegable work
+   remains; ADR-0021 still PROPOSED; **do not launch another run until the founder answers** the trunk-commit
+   scope question.
    Founder directive: complete Oz first, then workspace onboarding.
    Next: founder accepts/amends ADR-0021 → repair verb build if approved → **live Oz proof session**
    (assign oz a real CLI, chat status/launch/stop/nudge/refresh, founder eyeball of the rebuilt pane);
