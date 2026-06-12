@@ -104,6 +104,36 @@ describe('requestOzRepair', () => {
     })
     expect(await git(fixture.home, ['rev-parse', 'HEAD'])).toBe(headBefore)
   })
+
+  test('nonzero repair turn commits nothing and reports the whole dirty tree as held back', async () => {
+    const fixture = await makeFixture({
+      runHeadless: async (input) => {
+        fixture.headlessInputs.push(input)
+        await writeFile(join(fixture.home, 'cocoder', 'PLAYBOOK.md'), 'half-written governance\n')
+        await mkdir(join(fixture.home, 'packages', 'daemon', 'src'), { recursive: true })
+        await writeFile(join(fixture.home, 'packages', 'daemon', 'src', 'partial.ts'), 'export const partial = true\n')
+        return { exitCode: 2, output: 'failed midway' }
+      },
+    })
+    const headBefore = await git(fixture.home, ['rev-parse', 'HEAD'])
+
+    const result = await requestOzRepair(fixture.ctx, { workspaceId: 'cocoder', message: 'repair governance and daemon drift' })
+
+    expect(result).toMatchObject({
+      status: 500,
+      body: {
+        ok: false,
+        error: 'Oz repair turn failed with exit code 2; nothing was committed.',
+        committedPaths: [],
+        commitSha: null,
+        heldBackPaths: ['cocoder/PLAYBOOK.md', 'packages/daemon/src/partial.ts'],
+        exitCode: 2,
+      },
+    })
+    expect(await git(fixture.home, ['rev-parse', 'HEAD'])).toBe(headBefore)
+    expect(await readFile(join(fixture.home, 'cocoder', 'PLAYBOOK.md'), 'utf8')).toBe('half-written governance\n')
+    expect(await readFile(join(fixture.home, 'packages', 'daemon', 'src', 'partial.ts'), 'utf8')).toBe('export const partial = true\n')
+  })
 })
 
 async function makeFixture(options: {

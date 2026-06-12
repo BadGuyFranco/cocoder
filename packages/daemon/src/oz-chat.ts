@@ -1,6 +1,6 @@
 import type { Run } from '@cocoder/core'
 import type { OzContext } from './context.js'
-import { launchRun as launchRunOp, requestDaemonRestart as restartDaemonOp, requestNudgeRun as nudgeRunOp, requestStopRun as stopRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type LaunchResult } from './launcher.js'
+import { launchRun as launchRunOp, requestDaemonRestart as restartDaemonOp, requestNudgeRun as nudgeRunOp, requestOzRepair as repairOzOp, requestStopRun as stopRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type LaunchResult } from './launcher.js'
 import { tryHandleOzAgentTurn } from './oz-host.js'
 
 const ADHOC_PRIORITY_ID = 'adhoc-session'
@@ -12,6 +12,7 @@ export type OzCommand =
   | { readonly kind: 'show'; readonly runId: string }
   | { readonly kind: 'stop'; readonly runId: string }
   | { readonly kind: 'nudge'; readonly runId: string; readonly message: string; readonly rationale?: string }
+  | { readonly kind: 'repair'; readonly message: string; readonly rationale?: string }
   | { readonly kind: 'teardown'; readonly runId: string }
   | { readonly kind: 'status'; readonly runId?: string }
   | { readonly kind: 'refresh' }
@@ -21,7 +22,7 @@ export type OzExecutableCommand = Exclude<OzCommand, { readonly kind: 'help' } |
 export type OzCommandExecutor = (command: OzExecutableCommand) => Promise<OzChatResult>
 
 export interface OzChatAction {
-  readonly type: 'launch' | 'show' | 'stop' | 'nudge' | 'teardown' | 'status' | 'refresh'
+  readonly type: 'launch' | 'show' | 'stop' | 'nudge' | 'repair' | 'teardown' | 'status' | 'refresh'
   readonly workspaceId?: string
   readonly priorityId?: string
   readonly runId?: string
@@ -29,6 +30,10 @@ export interface OzChatAction {
   readonly runs?: readonly Run[]
   readonly closed?: readonly string[]
   readonly sessionRef?: string
+  readonly committedPaths?: readonly string[]
+  readonly commitSha?: string | null
+  readonly heldBackPaths?: readonly string[]
+  readonly turnLogPath?: string
 }
 export interface OzChatReply {
   readonly reply: string
@@ -47,9 +52,10 @@ export interface OzChatOps {
   readonly teardownRun: typeof teardownRunOp
   readonly restartDaemon: typeof restartDaemonOp
   readonly nudgeRun: typeof nudgeRunOp
+  readonly repairOz: typeof repairOzOp
 }
 
-const defaultOps: OzChatOps = { launchRun: launchRunOp, showRun: showRunOp, stopRun: stopRunOp, teardownRun: teardownRunOp, restartDaemon: restartDaemonOp, nudgeRun: nudgeRunOp }
+const defaultOps: OzChatOps = { launchRun: launchRunOp, showRun: showRunOp, stopRun: stopRunOp, teardownRun: teardownRunOp, restartDaemon: restartDaemonOp, nudgeRun: nudgeRunOp, repairOz: repairOzOp }
 
 export function parseOzCommand(text: string): OzCommand {
   const trimmed = text.trim()
@@ -156,6 +162,15 @@ export async function executeOzCommand(ctx: OzContext, workspaceId: string | und
     )
   }
 
+  if (command.kind === 'repair') {
+    if (!workspaceId) return missingWorkspace()
+    return runOp(
+      'repair',
+      () => ops.repairOz(ctx, { workspaceId, message: command.message, ...(command.rationale ? { rationale: command.rationale } : {}) }),
+      (out) => repairReply(workspaceId, out),
+    )
+  }
+
   if (command.runId) {
     const run = ctx.store.getRun(command.runId)
     if (!run) {
@@ -254,6 +269,29 @@ function nudgeReply(runId: string, out: LaunchResult): OzChatReply {
   }
 }
 
+function repairReply(workspaceId: string, out: LaunchResult): OzChatReply {
+  const committedPaths = stringArray(out.body.committedPaths)
+  const heldBackPaths = stringArray(out.body.heldBackPaths)
+  const commitSha = typeof out.body.commitSha === 'string' ? out.body.commitSha : null
+  const turnLogPath = typeof out.body.turnLogPath === 'string' ? out.body.turnLogPath : undefined
+  if (!isOk(out.status)) return failedReply('repair', 'Could not repair', out)
+
+  const committed = commitSha
+    ? `Committed ${committedPaths.length === 0 ? 'in-scope changes' : committedPaths.join(', ')} as ${commitSha}.`
+    : 'Nothing changed; no repair commit was created.'
+  const heldBack = heldBackPaths.length > 0
+    ? ` Held back and did NOT commit: ${heldBackPaths.join(', ')}. These await founder review.`
+    : ' No held-back paths.'
+  const log = turnLogPath ? ` Turn log: ${turnLogPath}.` : ''
+  const refresh = commitSha ? ' Refresh Oz next so the daemon reloads the repaired state.' : ''
+  return {
+    reply: `${committed}${heldBack}${log}${refresh}`,
+    command: 'repair',
+    ok: true,
+    action: { type: 'repair', workspaceId, committedPaths, commitSha, heldBackPaths, ...(turnLogPath ? { turnLogPath } : {}) },
+  }
+}
+
 function refreshReply(out: LaunchResult): OzChatReply {
   if (!isOk(out.status)) return failedReply('refresh', 'Could not refresh Oz', out)
   return {
@@ -266,7 +304,12 @@ function refreshReply(out: LaunchResult): OzChatReply {
 
 function failedReply(command: OzChatReply['command'], prefix: string, out: LaunchResult): OzChatReply {
   const error = typeof out.body.error === 'string' ? out.body.error : `status ${out.status}`
-  return { reply: `${prefix}: ${error}.`, command, ok: false }
+  const suffix = /[.!?]$/.test(error) ? '' : '.'
+  return { reply: `${prefix}: ${error}${suffix}`, command, ok: false }
+}
+
+function stringArray(input: unknown): string[] {
+  return Array.isArray(input) ? input.filter((item): item is string => typeof item === 'string') : []
 }
 
 function runSummary(run: Run): string {

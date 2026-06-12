@@ -520,6 +520,22 @@ export async function requestOzRepair(ctx: OzContext, input: { readonly workspac
   }
   await writeFile(turnLogPath, turn.output, 'utf8')
 
+  if (turn.exitCode !== 0) {
+    const changed = await ctx.git.changedFiles(ctx.cocoderHome)
+    const body = {
+      ok: false,
+      error: `Oz repair turn failed with exit code ${turn.exitCode}; nothing was committed.`,
+      committedPaths: [],
+      commitSha: null,
+      heldBackPaths: changed,
+      exitCode: turn.exitCode,
+      turnLogPath,
+    }
+    await appendAudit(ctx.cocoderHome, { action: 'oz-repair', workspaceId: workspace.id, ...body })
+    emitOzEvent(ctx, { type: 'oz-repair', workspaceId: workspace.id, status: 'failed' })
+    return { status: 500, body }
+  }
+
   const scope = ozRepairScope(workspace.id, message, input.rationale)
   const gate = await gateCommitRepair({
     git: ctx.git,

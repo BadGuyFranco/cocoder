@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { openRunStore, type RunStore } from '@cocoder/core'
 import type { OzContext } from '../src/context.js'
-import { handleOzMessage, parseOzCommand, type OzChatOps } from '../src/oz-chat.js'
+import { executeOzCommand, handleOzMessage, parseOzCommand, type OzChatOps } from '../src/oz-chat.js'
 
 const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, stop <runId>, teardown <runId>, status [runId], help.'
 
@@ -38,6 +38,10 @@ describe('parseOzCommand', () => {
 
   test('typed nudge remains an unknown chat command', () => {
     expect(parseOzCommand('nudge run_45 please wake Oscar')).toEqual({ kind: 'unknown', hint: HINT })
+  })
+
+  test('typed repair remains an unknown chat command', () => {
+    expect(parseOzCommand('repair fix the Oz assignment drift')).toEqual({ kind: 'unknown', hint: HINT })
   })
 
   test('bare adhoc is a bounded usage error', () => {
@@ -110,6 +114,12 @@ describe('handleOzMessage', () => {
     const result = await handleOzMessage(testCtx(), { text: 'help', workspaceId: 'cocoder' })
 
     expect(result.body.reply).toBe(HINT)
+  })
+
+  test('typed repair text with no Oz assignment returns the frozen help hint', async () => {
+    const result = await handleOzMessage(testCtx(), { text: 'repair fix the Oz assignment drift', workspaceId: 'cocoder' })
+
+    expect(result).toEqual({ status: 200, body: { reply: HINT, command: 'unknown', ok: false } })
   })
 
   test('stop maps to stopRun', async () => {
@@ -269,4 +279,85 @@ describe('handleOzMessage', () => {
       body: { ok: false, command: 'launch', reply: 'Could not launch missing: unknown priority "missing".' },
     })
   })
+
+  test('repair executable reply names committed, held-back, log, and Refresh next step', async () => {
+    const ops = repairOps({
+      status: 200,
+      body: {
+        ok: true,
+        committedPaths: ['cocoder/PLAYBOOK.md'],
+        commitSha: 'abc123',
+        heldBackPaths: ['packages/core/src/proposal.ts'],
+        exitCode: 0,
+        turnLogPath: '/tmp/cocoder/local/oz/cocoder/repair.log',
+      },
+    })
+
+    const result = await executeOzCommand(testCtx(), 'cocoder', { kind: 'repair', message: 'fix governance drift', rationale: 'founder asked' }, ops)
+
+    expect(result.status).toBe(200)
+    expect(result.body).toMatchObject({
+      ok: true,
+      command: 'repair',
+      action: {
+        type: 'repair',
+        workspaceId: 'cocoder',
+        committedPaths: ['cocoder/PLAYBOOK.md'],
+        commitSha: 'abc123',
+        heldBackPaths: ['packages/core/src/proposal.ts'],
+        turnLogPath: '/tmp/cocoder/local/oz/cocoder/repair.log',
+      },
+    })
+    expect(result.body.reply).toContain('Committed cocoder/PLAYBOOK.md as abc123.')
+    expect(result.body.reply).toContain('Held back and did NOT commit: packages/core/src/proposal.ts.')
+    expect(result.body.reply).toContain('Turn log: /tmp/cocoder/local/oz/cocoder/repair.log.')
+    expect(result.body.reply).toContain('Refresh Oz next')
+  })
+
+  test('repair executable reply reports clean no-op without a refresh instruction', async () => {
+    const result = await executeOzCommand(testCtx(), 'cocoder', { kind: 'repair', message: 'inspect config' }, repairOps({
+      status: 200,
+      body: { ok: true, committedPaths: [], commitSha: null, heldBackPaths: [], exitCode: 0, turnLogPath: '/tmp/repair.log' },
+    }))
+
+    expect(result).toMatchObject({ status: 200, body: { ok: true, command: 'repair' } })
+    expect(result.body.reply).toContain('Nothing changed; no repair commit was created.')
+    expect(result.body.reply).toContain('No held-back paths.')
+    expect(result.body.reply).not.toContain('Refresh Oz next')
+  })
+
+  test('repair executable relays daemon refusal and failed-turn errors truthfully', async () => {
+    const refused = await executeOzCommand(testCtx(), 'cocoder', { kind: 'repair', message: 'fix assignments' }, repairOps({
+      status: 409,
+      body: { error: 'refusing to repair: a run is in flight (would orphan it) — wait for it to finish' },
+    }))
+    const failed = await executeOzCommand(testCtx(), 'cocoder', { kind: 'repair', message: 'fix assignments' }, repairOps({
+      status: 500,
+      body: { error: 'Oz repair turn failed with exit code 2; nothing was committed.', committedPaths: [], commitSha: null, heldBackPaths: ['cocoder/PLAYBOOK.md'] },
+    }))
+
+    expect(refused).toMatchObject({
+      status: 409,
+      body: { ok: false, command: 'repair', reply: 'Could not repair: refusing to repair: a run is in flight (would orphan it) — wait for it to finish.' },
+    })
+    expect(failed).toMatchObject({
+      status: 500,
+      body: { ok: false, command: 'repair', reply: 'Could not repair: Oz repair turn failed with exit code 2; nothing was committed.' },
+    })
+  })
 })
+
+function repairOps(result: { readonly status: number; readonly body: Record<string, unknown> }): OzChatOps {
+  return {
+    launchRun: async () => ({ status: 500, body: { error: 'unexpected launch' } }),
+    showRun: async () => ({ status: 500, body: { error: 'unexpected show' } }),
+    stopRun: async () => ({ status: 500, body: { error: 'unexpected stop' } }),
+    nudgeRun: async () => ({ status: 500, body: { error: 'unexpected nudge' } }),
+    repairOz: async (_ctx, input) => {
+      expect(input).toMatchObject({ workspaceId: 'cocoder' })
+      return result
+    },
+    teardownRun: async () => ({ status: 500, body: { error: 'unexpected teardown' } }),
+    restartDaemon: async () => ({ status: 500, body: { error: 'unexpected restart' } }),
+  }
+}

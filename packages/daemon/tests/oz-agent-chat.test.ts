@@ -260,6 +260,100 @@ describe('Oz agent chat turns', () => {
     await expect(stat(join(fixture.home, 'local', 'runs', fixture.runId, 'oz-nudge.json'))).rejects.toThrow()
   })
 
+  test('repair tool dispatches through ops and feeds truthful repair result to the follow-up prompt', async () => {
+    const fixture = await makeFixture({
+      outputs: [
+        'Repairing.\nOZ_TOOL {"tool":"repair","args":{"message":" fix Oz assignment drift ","rationale":"founder asked"}}',
+        'I repaired the governance drift and you should refresh Oz.',
+      ],
+    })
+    const calls: Array<{ readonly workspaceId: string; readonly message: string; readonly rationale?: string }> = []
+    const ops: OzChatOps = {
+      ...fakeOps(),
+      repairOz: async (_ctx, input) => {
+        calls.push(input)
+        return {
+          status: 200,
+          body: {
+            ok: true,
+            committedPaths: ['cocoder/personas/assignments.json'],
+            commitSha: 'sha-repair',
+            heldBackPaths: ['packages/daemon/src/proposal.ts'],
+            exitCode: 0,
+            turnLogPath: '/tmp/cocoder/local/oz/cocoder/repair.log',
+          },
+        }
+      },
+    }
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'repair the assignment drift', workspaceId: 'cocoder' }, ops)
+
+    expect(calls).toEqual([{ workspaceId: 'cocoder', message: 'fix Oz assignment drift', rationale: 'founder asked' }])
+    expect(fixture.headlessInputs).toHaveLength(2)
+    expect(fixture.prompts[0]?.prompt).toContain('repair {"message":"..."}')
+    expect(fixture.prompts[1]?.prompt).toContain('Committed cocoder/personas/assignments.json as sha-repair.')
+    expect(fixture.prompts[1]?.prompt).toContain('Held back and did NOT commit: packages/daemon/src/proposal.ts.')
+    expect(fixture.prompts[1]?.prompt).toContain('Refresh Oz next')
+    expect(result).toMatchObject({
+      status: 200,
+      body: { reply: 'I repaired the governance drift and you should refresh Oz.', command: 'chat', ok: true, action: { type: 'repair', workspaceId: 'cocoder', commitSha: 'sha-repair' } },
+    })
+  })
+
+  test('malformed repair tool calls feed validation errors back without executing repair', async () => {
+    const fixture = await makeFixture({
+      outputs: [
+        'Bad repair.\nOZ_TOOL {"tool":"repair","args":{}}',
+        'Bad repair.\nOZ_TOOL {"tool":"repair","args":{"message":"   "}}',
+        'I need a repair message before I can run repair.',
+      ],
+    })
+    let repairs = 0
+    const ops: OzChatOps = {
+      ...fakeOps(),
+      repairOz: async () => {
+        repairs += 1
+        return { status: 200, body: { ok: true, committedPaths: [], commitSha: null, heldBackPaths: [], exitCode: 0 } }
+      },
+    }
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'repair something', workspaceId: 'cocoder' }, ops)
+
+    expect(repairs).toBe(0)
+    expect(fixture.prompts[1]?.prompt).toContain('Tool "repair" requires string arg "message".')
+    expect(fixture.prompts[2]?.prompt).toContain('Tool "repair" requires string arg "message".')
+    expect(result).toMatchObject({ status: 200, body: { reply: 'I need a repair message before I can run repair.', command: 'chat', ok: true } })
+  })
+
+  test('failed repair tool result reaches the follow-up prompt and does not short-circuit like refresh', async () => {
+    const fixture = await makeFixture({
+      outputs: [
+        'Repairing.\nOZ_TOOL {"tool":"repair","args":{"message":"fix Oz drift"}}',
+        'The repair turn failed and nothing was committed.',
+      ],
+    })
+    const ops: OzChatOps = {
+      ...fakeOps(),
+      repairOz: async () => ({
+        status: 500,
+        body: {
+          error: 'Oz repair turn failed with exit code 2; nothing was committed.',
+          committedPaths: [],
+          commitSha: null,
+          heldBackPaths: ['cocoder/PLAYBOOK.md'],
+          exitCode: 2,
+          turnLogPath: '/tmp/repair.log',
+        },
+      }),
+    }
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'repair Oz drift', workspaceId: 'cocoder' }, ops)
+
+    expect(fixture.headlessInputs).toHaveLength(2)
+    expect(fixture.prompts[1]?.prompt).toContain('nothing was committed')
+    expect(result).toMatchObject({ status: 200, body: { reply: 'The repair turn failed and nothing was committed.', command: 'chat', ok: true } })
+  })
+
   test('status tool without runId feeds the workspace run summary to the follow-up prompt', async () => {
     const fixture = await makeFixture({
       outputs: [
@@ -448,6 +542,7 @@ function fakeOps(): OzChatOps {
     showRun: async () => ({ status: 200, body: { sessionRef: 'surface:1' } }),
     stopRun: async () => ({ status: 202, body: { stopping: true } }),
     nudgeRun: async () => ({ status: 202, body: { queued: true, seq: 1 } }),
+    repairOz: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, heldBackPaths: [], exitCode: 0 } }),
     teardownRun: async () => ({ status: 200, body: { closed: [] } }),
     restartDaemon: async () => ({ status: 202, body: { restarting: true } }),
   }
