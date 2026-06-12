@@ -102,11 +102,20 @@ so **the priorities-pane rebuild is COMPLETE**: handoff geometry matches the des
 rows carry real enriched data (bounded renderer detail fetches — no daemon contract change),
 first-run vs empty-queue is gated on the real configured signal, the polish items (chat
 status chip, hover, borders, static not-landed bar) are in, and the lot is regression-pinned
-(ui 108 tests). **Not archive-ready** — remaining: the Oz `repair` verb (a real design seam is
-owed BEFORE build — see the next-slice note), a LIVE exercise of Oz with a real CLI assigned
-(everything is injected-runner-proven only), Bob session `mode` honoring (gated on a
-captured-subprocess monitor path for builder work), and a live (non-test) exercise of a
-headless-Oscar run.
+(ui 108 tests). run_66 (2026-06-12) closed **Bob session `mode` honoring end-to-end (ADR-0018
+stage 3 for the BUILDER session — the last buildable slice)** in five atoms: two seams on the
+headless subprocess runner (incremental `onData` capture + an `AbortSignal` termination seam),
+a behavior-preserving `BuilderDriver` extraction of all Bob touchpoints (the OscarDriver
+precedent), the headless implementation itself (each builder atom = a fresh one-shot
+captured-subprocess turn; the monitor watches LIVE via incremental capture so the run_28 hang
+class does not apply; in-flight nudges recorded-not-delivered while idle nudges — loop-criterion
+retries, post-exit marker recovery — start a fresh follow-up turn; stop kills the in-flight
+child before quarantine), and the UI tail (`MODE_HONORED_PERSONAS` = {oscar, bob}).
+**Not archive-ready** — remaining (NO builder-delegable code left): the Oz `repair` verb (a
+real design seam needing a FOUNDER decision BEFORE build — see the next-slice note), a LIVE
+exercise of Oz with a real CLI assigned (everything is injected-runner-proven only), and live
+(non-test) exercises of a headless-Oscar run and a headless-Bob run (both honorings are
+unit/orchestration-test proven only).
 
 > History worth recording: a first pass mistakenly built from `docs/oz-design-brief.md` (the *input
 > brief* that was pasted into claude.ai/design), not the founder's actual **design output**. It was then
@@ -435,6 +444,39 @@ headless-Oscar run.
   both states (selected + unselected grid/DOM order), ad-hoc multi-run concurrent visibility
   with per-run selectability, drag→drop reorder indices at the panel level. Coverage from
   atoms B–E (14 tests) was already in place; F added only the genuine gaps.
+- **run_66 (2026-06-12), five atoms, all verified + committed on `cocoder/run_66` — Bob session
+  `mode` honoring end-to-end (ADR-0018 stage 3 for the BUILDER session):**
+  (0) **incremental-output seam** (`c1f477f`) — `HeadlessRunInput` gains optional
+  `onData?: (chunk: string) => void`, invoked per decoded stdout/stderr chunk in arrival order
+  (guarded: a throwing callback can never corrupt capture); the final-output contract is
+  byte-identical when absent. This is the capture seam the priority named as Bob's gate.
+  (1) **`BuilderDriver` extraction** (`b6c4982`) — behavior-preserving wrap of all 7 bobRef
+  touchpoints in `runner.ts` behind one interface (the OscarDriver precedent), with `dispatch`
+  deliberately separate from `nudge` even though the pane maps both to sendInput — that split is
+  what the headless implementation exploits; proven byte-identical by the unedited core suite.
+  (2) **abort seam** (`e4f449b`) — `HeadlessRunInput.signal?: AbortSignal` SIGKILLs the child
+  through the normal close path (partial output + outPath preserved, exitCode -1, leak-free
+  listener) — a headless turn previously had NO termination path except its timeout.
+  (3) **headless honoring** (`861e3e9`) — `createHeadlessBuilderDriver`: `mode:'headless'` on
+  Bob skips the pane entirely; each atom dispatch runs a fresh ONE-SHOT captured-subprocess turn
+  (prompt recasts the standby contract incl. the placeholder-form marker, echo-proofing intact);
+  `dispatch` is fire-and-forget so the monitor samples the LIVE turn via incremental capture
+  (idleStreak + done-sentinel work unchanged — the run_28 hang class does not apply); nudges
+  while a turn is in flight are recorded-not-delivered (the run_59 race rationale), while idle
+  nudges START a fresh follow-up turn — this keeps LOOP atoms working headless (a
+  loop-criterion-red retry becomes the next iteration's turn) and recovers a builder that
+  exited 0 without its marker; `stopRun()` kills the in-flight child BEFORE quarantine resets
+  the tree (kind-guarded — pane behavior byte-identical); turns serialized, 4h orphan-backstop
+  timeout (the monitor stays the real watchdog). Orchestration-proven by a full
+  runRun-with-headless-Bob test (no Bob pane spawn, no session row, mode-attributed spawn
+  event, monitor→verify→commit completes).
+  (4) **UI tail** (`3c6f94e`) — `MODE_HONORED_PERSONAS` = {oscar, bob} (one constant drives the
+  save trigger + PUT payload), truthful Personas banner, `ENDPOINTS_OWED.md` row-8 truth sweep;
+  Bob's editor value now wins over a daemon-side mode (pinned by re-aimed tests), Deb stays
+  pass-through preview.
+- **Verification (run_66):** core 238 · daemon 164 · ui 109 · root typecheck clean (per-atom at
+  the verify gate; whole-tree diff checked every atom; all five atoms passed their gate first
+  try).
 - **Verification (run_65):** ui 108 · root typecheck clean (per-atom at the verify gate;
   whole-tree diff checked every atom; all five atoms passed their gate first try).
 - **Verification (run_64):** core 226 · daemon 164 · ui 92 · root typecheck clean · topology pass
@@ -468,7 +510,7 @@ mechanical infra (Settings was the last clean infra slice).
 | 1 | Oz chat — `POST /oz/messages` | **SERVED** (run_46, `0637c04`): bounded command interface — verbs `launch <priorityId>` / `show <runId>` / `stop`+`teardown <runId>` / `status [runId]` / `help` parsed in `packages/daemon/src/oz-chat.ts` and dispatched to existing launcher ops; **no in-daemon LLM**, rides the existing Bearer/CSRF/loopback posture. **SSE SERVED** (run_59, `da24ba8` + `2b9c29d`): Bearer-gated `GET /oz/events` streams coarse refetch hints from a typed `OzEventBus`; the UI main process consumes it (tokens never cross the bridge) and debounces hints into the same refresh paths polling uses — polling stays the fallback. Anything richer than coarse hints (e.g. streamed transcripts) is a future refinement, not owed. **AGENT SERVED** (run_60, `3d23d61` + `3c3de8c` + `ef1ed14`): free-text messages run a real one-shot turn of the assigned `oz` persona (ADR-0017) with a bounded `OZ_TOOL` tool loop over the same gated action layer (+ `refresh`); typed verbs byte-identical; not yet exercised live. **NUDGE SERVED** (run_61, `ebc951b` + `8013904`): tool-only `nudge` writes the runner-owned `<runDir>/oz-nudge.json` channel; the runner delivers to Oscar at the watchdog (independent oz/deb seqs, source-attributed events, rate-limited, headless-safe). Only `repair` remains owed — its design seam (Oz-level repairs commit OUTSIDE any run branch) is owed before build. |
 | 2 | Workspaces CRUD + `roots[]`/role model | **SERVED end-to-end** (run_57, `25c9b8d` + `99f8509` + `e5207dc` + `eb7460c`): the daemon implements the full [ADR-0019](../decisions/0019-multi-root-workspaces.md) model — `local/workspace/*.code-workspace` directory-of-files SSOT (legacy `workspaces.json` fallback until migrated), roots/roles on `GET`, `PUT`/`POST`/`DELETE /workspaces…` with rules 6/7 enforced at the write gate, create = the migration path (`legacyHidden` visibility) — and the Workspaces screen operates it live with raw-path fidelity via `electron/workspaces-sync.ts`. NOTE: this install still runs on the legacy fallback until someone creates `local/workspace/cocoder.code-workspace` (the New-Workspace modal or a `POST /workspaces` does it). |
 | 3 | `POST /runs/:id/stop` | **SERVED end-to-end** (run_58, `9a0c099` + `932df67` + `d570278`): cooperative stop — core `AbortSignal` seam with first-class `'stopped'` RunStatus (no fault/triage misfire), CSRF-gated daemon endpoint with per-run controllers + post-settle pane/worktree cleanup, Oz-chat `stop` verb remapped off teardown, dashboard Stop action live. Honored at the loop's wait seams only: a stop during wrap-up/integration lets the run finish (never corrupts a merge). |
-| 4 | Persona `{mode, subAgents}` | **[ADR-0018](../decisions/0018-persona-run-mode-and-sub-agents.md) ACCEPTED (run_54 wrap). Sub-agents SERVED** (run_55, `2eb8591`): the Personas screen renders + persists per-Play `{cli, model}` over the existing `plays` map (no new schema). **`mode` stage 2 SERVED** (run_56, `bcac308`): `mode` persists in `assignments.json` and is honored for Play dispatch (`headless` forces captured subprocess; `visible` never forces panes — pane exit isn't detectable, the run_28 hang class); renderer passes `mode` through its full-map PUT untouched. **Stage 3 SERVED for OSCAR end-to-end** (run_59, `6ff309e` + `67e7a99` + `7a0921e`): the runner honors Oscar `mode:'headless'` via the `OscarDriver` seam (fresh one-shot captured-subprocess invocations per dispatch; file-artifact handshake unchanged; nudges recorded-not-delivered; wrap-up pane delivery skipped), and the Personas run-mode editor persists for Oscar only (`MODE_HONORED_PERSONAS`; display untangled from `enabled`; Bob's toggle stays a local preview). **Still owed:** Bob session honoring, gated on a captured-subprocess monitor path for builder work (the run_28 hang class). |
+| 4 | Persona `{mode, subAgents}` | **[ADR-0018](../decisions/0018-persona-run-mode-and-sub-agents.md) ACCEPTED (run_54 wrap). Sub-agents SERVED** (run_55, `2eb8591`): the Personas screen renders + persists per-Play `{cli, model}` over the existing `plays` map (no new schema). **`mode` stage 2 SERVED** (run_56, `bcac308`): `mode` persists in `assignments.json` and is honored for Play dispatch (`headless` forces captured subprocess; `visible` never forces panes — pane exit isn't detectable, the run_28 hang class); renderer passes `mode` through its full-map PUT untouched. **Stage 3 SERVED for OSCAR end-to-end** (run_59, `6ff309e` + `67e7a99` + `7a0921e`): the runner honors Oscar `mode:'headless'` via the `OscarDriver` seam (fresh one-shot captured-subprocess invocations per dispatch; file-artifact handshake unchanged; nudges recorded-not-delivered; wrap-up pane delivery skipped), and the Personas run-mode editor persists for Oscar only (`MODE_HONORED_PERSONAS`; display untangled from `enabled`; Bob's toggle stays a local preview). **Stage 3 SERVED for BOB end-to-end** (run_66, `c1f477f` + `b6c4982` + `e4f449b` + `861e3e9` + `3c6f94e`): the runner honors Bob `mode:'headless'` via a `BuilderDriver` seam — each builder atom is a fresh one-shot captured-subprocess turn, the monitor watches LIVE via new incremental-output capture on `runHeadlessProcess` (the run_28 hang class is resolved by capture, not panes), idle nudges start follow-up turns so loop atoms work headless, an abort seam kills the child on stop before quarantine, and the Personas editor persists run-mode for Oscar AND Bob. **Still owed:** a LIVE (non-test) headless run for each — the honoring is unit/orchestration-test proven only. |
 | 5 | `POST /clis` (add CLI) | CLIs derive from compiled adapters — defer (dynamic registration feature). |
 | 6 | Settings | **SERVED** (run_43). |
 | 7 | `POST /runs {task?}` free-text ad-hoc | **SERVED** (run_54): `{task?}` threads into launch prompts (`54745f7`); bounded Oz `adhoc <task>` verb + describe-first UI (`721437d`). |
@@ -499,21 +541,23 @@ no founder decisions are outstanding on this priority.
   No DB migration: priorities stay `.md` files; sequence is a git-tracked order-only
   `cocoder/priorities/order.json`; drag-reorder rewrites it. Owed slice #8 reclassified above.
 
-**Recommended next slice (updated run_65 wrap):**
-~~The priorities-pane rebuild~~ **COMPLETE (run_65, 2026-06-12): audit atoms A, C, D, E, F all
-landed (Atom B landed run_64) — the Dashboard priorities pane now conforms to design-ref.**
-What remains on this priority is exactly the four items in the Status remaining list, in this
-suggested order: (a) **the Oz `repair` verb design seam** — surface the founder judgment call
-(may an Oz repair commit land on trunk without a run's verify gate, and under what scope?)
-BEFORE delegating any build; the sketch to evaluate is recorded below under the pre-run_64
-context. (b) **The LIVE proof session** (zero code owed): assign oz a real CLI+model in the
-Personas screen, ask a status question in the dashboard chat, drive a launch/stop through
-chat, nudge a live run's Oscar, run one real Refresh Oz — Oz-as-persona criteria 1–4 flip to
-met on that evidence; while at it, eyeball the rebuilt priorities pane against design-ref live
-(a code-conformance rebuild is landed; a founder look is the real acceptance). (c) **Bob
-session `mode` honoring** — still gated on a captured-subprocess monitor path for builder work
-(the run_28 hang class). (d) A live (non-test) **headless-Oscar run** (cheap: flip Oscar to
-headless in Personas, launch a small run). The pre-run_64 text below is kept for context:
+**Recommended next slice (updated run_66 wrap):**
+~~Bob session `mode` honoring~~ **COMPLETE (run_66, 2026-06-12): five atoms landed, every gate
+first-try — the runner honors `mode:'headless'` for the builder session end-to-end; the
+captured-subprocess monitor gap (run_28 hang class) is closed by incremental output capture.**
+**ALL BUILDER-DELEGABLE CODE ON THIS PRIORITY IS NOW LANDED.** What remains is exactly: (a)
+**the Oz `repair` verb design seam** — a FOUNDER decision before any build (may an Oz repair
+commit land on trunk without a run's verify gate, and under what scope?); the sketch to
+evaluate is recorded below under the pre-run_64 context. (b) **The LIVE proof session** (zero
+code owed): assign oz a real CLI+model in the Personas screen, ask a status question in the
+dashboard chat, drive a launch/stop through chat, nudge a live run's Oscar, run one real
+Refresh Oz — Oz-as-persona criteria 1–4 flip to met on that evidence; while at it, eyeball the
+rebuilt priorities pane against design-ref live (a code-conformance rebuild is landed; a
+founder look is the real acceptance). (c) Live (non-test) **headless runs for Oscar AND Bob**
+(cheap: flip them headless in Personas, launch a small run — Bob headless turn outputs land in
+`<runDir>/bob-turn-<n>.out`). Once (a) is decided (+ built if approved) and (b)/(c) are
+exercised, this priority is **archive-candidate**. The pre-run_64 text below is kept for
+context:
 ~~(0) the CoPublisher live retry~~ **DONE LIVE (run_63, 2026-06-12): launched, built, landed on
 the CoPublisher trunk — Bug-A acceptance met.** CoPublisher has since been reset entirely
 (founder decision); onboarding re-runs properly as its own future priority after Oz completes.

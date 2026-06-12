@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-12 — **Full Oz dashboard: Bob session `mode` honoring end-to-end — the last buildable slice (run_66)**
+
+**Persona:** Oscar + Bob (5 atoms, all first-try passes) | **Priority:** full-oz-dashboard | **Play:** ADR-0018 stage 3 for the BUILDER session, mirroring run_59's Oscar pattern
+**Outcomes:**
+- Atom 0 (`c1f477f`): `HeadlessRunInput.onData` incremental-capture seam — per-chunk decoded callback, throw-guarded, final-output contract byte-identical when absent. The exact gap the priority named as Bob's gate.
+- Atom 1 (`b6c4982`): behavior-preserving `BuilderDriver` extraction — all 7 bobRef touchpoints in `runner.ts` behind one interface, `dispatch` deliberately split from `nudge` (the seam headless exploits); unedited core suite = the byte-identical proof.
+- Atom 2 (`e4f449b`): `HeadlessRunInput.signal` abort seam — SIGKILL through the normal close path, partial output preserved; a headless turn previously had no termination path except timeout.
+- Atom 3 (`861e3e9`): `createHeadlessBuilderDriver` + runner honoring — fresh one-shot captured-subprocess turn per atom (fire-and-forget dispatch so the monitor samples the LIVE turn via incremental capture; run_28 hang class closed by capture, not panes); in-flight nudges recorded-not-delivered, idle nudges start follow-up turns (loop atoms work headless: criterion-red retry = next turn); `stopRun()` kills the child BEFORE quarantine, kind-guarded. Orchestration-proven by a full runRun-with-headless-Bob test.
+- Atom 4 (`3c6f94e`): `MODE_HONORED_PERSONAS` = {oscar, bob}; truthful Personas banner; ENDPOINTS_OWED row-8 truth sweep. Evidence per-atom at the gate: core 238 · daemon 164 · ui 109 · root typecheck clean · whole-tree diff every atom.
+**Next:** NO builder-delegable code left on this priority. (a) The Oz `repair` verb FOUNDER decision (may an Oz repair commit to trunk without a run's verify gate, under what scope?); (b) the LIVE Oz proof session (assign a real CLI; chat status/launch/stop/nudge/refresh; founder eyeball of the rebuilt priorities pane); (c) live headless runs for Oscar AND Bob (flip in Personas, launch a small run). Then archive-candidate.
+
 ## 2026-06-12 — **Full Oz dashboard: priorities-pane rebuild COMPLETE — audit atoms A, C, D, E, F (run_65)**
 
 **Persona:** Oscar + Bob (5 atoms, all first-try passes) | **Priority:** full-oz-dashboard | **Play:** the audit's remaining rebuild atoms, in order
