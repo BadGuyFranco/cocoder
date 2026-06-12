@@ -26,6 +26,7 @@ import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { runBranchFor, worktreePathFor } from '../worktree/paths.js'
 import type { RunnerIO } from './io.js'
+import { createPaneBuilderDriver } from './builder-driver.js'
 import { paneLabel } from './labels.js'
 import { readLoopLedger, type LoopLedgerEntry } from './loop-ledger.js'
 import { type Judge, makeHeuristicJudge, runMonitor } from './monitor.js'
@@ -374,6 +375,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   })
   store.createSession({ runId: run.id, persona: bob.id, sessionRef: bobRef.id, workspaceRef: bobRef.workspaceRef ?? null })
   store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: bob.id, ref: bobRef.id } })
+  const bobDriver = createPaneBuilderDriver(sessionHost, bobRef)
   const debRef = deb
     ? await spawnObserver({ store, sessionHost, getAdapter, run, workspace, priority, task: input.task ?? null, deb, sharedStandards, runDir, groupLabel, cwd: worktreePath, runBranch })
     : null
@@ -760,7 +762,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     } catch (err) {
       if (isStopRequestedError(err)) throw err
       // First directive failed → tear down the idle standby builder; KEEP Deb alive so she can triage.
-      if (n === 0) await sessionHost.kill(bobRef).catch(() => {})
+      if (n === 0) await bobDriver.kill().catch(() => {})
       return await fail('directive-timeout', String(err), n)
     }
 
@@ -841,8 +843,8 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
             }
             return ledger
           }
-    await sessionHost.show(bobRef)
-    await sessionHost.sendInput(bobRef, buildBuilderDispatch(directivePath, atomIndex, loopLedgerPath ?? undefined))
+    await bobDriver.show()
+    await bobDriver.dispatch(buildBuilderDispatch(directivePath, atomIndex, loopLedgerPath ?? undefined))
     store.recordEvent({ runId: run.id, type: 'builder-dispatch', data: { ref: bobRef.id, atom: atomIndex } })
     await refreshStatus('building', atomIndex, directive.task, `monitoring builder on atom ${atomIndex}`)
     log(`atom ${atomIndex} dispatched to bob (work item ${workItem.id}); monitoring live progress`)
@@ -858,10 +860,10 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         directive.loop === undefined || loopStartedAt === null ? undefined : Math.max(0, directive.loop.wallClockMs - (now() - loopStartedAt))
       const outcome = await runMonitor(
         {
-          readScreen: () => sessionHost.readScreen(bobRef),
+          readScreen: () => bobDriver.readScreen(),
           judge: makeJudge({ atomIndex, doneSentinel, task: directive.task }),
-          isAlive: async () => (await sessionHost.status(bobRef)).state === 'running',
-          nudge: (text) => sessionHost.sendInput(bobRef, text),
+          isAlive: () => bobDriver.alive(),
+          nudge: (text) => bobDriver.nudge(text),
           readLoopLedger: readAndRecordLoopLedger ?? undefined,
           onAssessment: (a) => {
             if (a.state !== 'progressing') store.recordEvent({ runId: run.id, type: 'monitor-assessment', data: { atom: atomIndex, state: a.state, note: a.note ?? null } })
@@ -916,7 +918,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
       const nextMarkerId = `${atomIndex}-R${criterionAttempt}`
       const nudge = `LOOP CRITERION RED on attempt ${criterionAttempt} (exit ${criterion.exitCode}). Keep iterating, append the next loop-ledger line, and when fully done print your completion marker for atom ${nextMarkerId} on its own line using your standby marker format. Failing output tail:\n${tail}`
-      await sessionHost.sendInput(bobRef, nudge)
+      await bobDriver.nudge(nudge)
       store.recordEvent({ runId: run.id, type: 'nudge', data: { atom: atomIndex, text: nudge } })
       completionAttempt = criterionAttempt
     }
