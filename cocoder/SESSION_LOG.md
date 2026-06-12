@@ -12,7 +12,19 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
-## 2026-06-12 — **Full Oz dashboard: ADR-0021 block reaffirmed — zero builder atoms, founder answer owed (run_68)**
+## 2026-06-12 — **Full Oz dashboard: repair verb + launch button + strand-class fixes; stranded ADR-0021 acceptance recovered (run_69)**
+
+**Persona:** Oscar + Bob (5 atoms, all first-try passes) | **Priority:** full-oz-dashboard | **Play:** recover the run_67 strand, then build everything it had unblocked
+**Outcomes:**
+- **Recovered the stranded run_67 wrap commit (`826ec00`)**: the founder's ACCEPTANCE of ADR-0021 + the launch-button request never landed (the commit was authored 66 min AFTER run_67's runRun exited — no runner path existed to land it). ADR-0021 + decisions README restored byte-identically; this log, the Playbook, and the priority reconciled. run_68's "still blocked" entry below was written unaware of the acceptance — the strand hid it.
+- Atom 0 (`6204df9`) + atom 1 (`ab59232`): the **Oz `repair` verb end-to-end** under accepted ADR-0021 — `requestOzRepair` (idle-only 409, one-shot headless turn over the ENGINE trunk checkout, whole-tree diff, scope partition via core `gateCommitRepair`, distinct `oz-repair` commit, hold-back surfacing, failed turns commit NOTHING) wired as a TOOL-ONLY verb through the shared `executeOzCommand` action layer (parser + typed help frozen, pinned); truthful replies name committed/held-back paths + turn log + Refresh-next; `oz.md` repair fence aligned to the accepted scope; ENDPOINTS_OWED row 1 truthed. The LAST owed Oz-chat verb is built.
+- Atom 2 (`29036d1`): the founder's **"Launch Oz dashboard" button** — CSRF-gated `POST /oz/dashboard/launch` detached-spawns the Electron app (honest dev-vs-built probe, double-launch 409, truthful "launching" wording), button on the vanilla page via the Restart-daemon pattern.
+- Atom 3 (`ee4cb0c`): in-run half of the strand class — post-land Oscar-support commits now re-gate + re-land through the extracted `landRunBranch` (clean ff lands; trunk-moved parks as pending-landing/escalated, branch intact).
+- Atom 4 (`0a72e55`): post-settle half (the run_67 mechanism itself) — a stranded-commit detector at teardown AND daemon boot flips a silently-"merged" run whose branch tip is not a trunk ancestor to pending-landing/escalated with a `stranded-commits-detected` event; no auto-land (unverified commits stay founder-gated via the existing Resolve actions); founder resolutions respected; idempotent.
+- Evidence per-atom at the gate: core 242 · daemon 188 · ui 109 · root typecheck clean · whole-tree diff checked every atom.
+**Next:** ZERO code owed on this priority. Live proofs only (founder, confirmed at run_67 wrap he'll run them): (a) Oz live session — assign oz a real CLI/model, chat status/launch/stop/nudge/repair/Refresh, eyeball the rebuilt priorities pane; (b) one live headless-Oscar + one live headless-Bob run. Archive-candidate once those are done. NOTE: daemon must be restarted (`scripts/oz.sh restart`, founder action or idle self-restart) before the new repair/launch-button/strand code is live.
+
+## 2026-06-12 — **Full Oz dashboard: ADR-0021 block reaffirmed — zero builder atoms, founder answer owed (run_68)** *(CORRECTION, run_69: written unaware that the founder had ALREADY accepted ADR-0021 at run_67's wrap — the acceptance commit was stranded off trunk; entry preserved as history)*
 
 **Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** full-oz-dashboard | **Play:** blocked continuation — no delegable work until ADR-0021 is decided
 **Outcomes:**
@@ -21,14 +33,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 - Documented the pickup path: ADR accepted → repair verb build (tool-only through `executeOzCommand`); ADR amended → re-scope; ADR rejected → mark repair out-of-scope in playbook + ENDPOINTS_OWED row 1. Then zero-code LIVE proofs (Oz chat exercise, priorities-pane eyeball, one live headless-Oscar + one live headless-Bob run).
 **Next:** **Do not launch another run on this priority until the founder accepts, amends, or rejects ADR-0021.** Then follow the pickup path above.
 
-## 2026-06-12 — **Full Oz dashboard: Oz `repair` ADR drafted — blocked on founder trunk-commit judgment (run_67)**
+## 2026-06-12 — **Full Oz dashboard: Oz `repair` ADR drafted AND accepted at wrap; lightweight-dashboard launch button recorded (run_67)** *(recovered run_69 from stranded commit `826ec00`)*
 
 **Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** full-oz-dashboard | **Play:** design-first for the Oz `repair` verb
 **Outcomes:**
 - No builder atom delegated — all builder-delegable code on this priority landed by run_66.
-- Drafted **ADR-0021 (PROPOSED)**: Oz repair as idle-only one-shot headless turn over trunk checkout; whole-tree diff afterward; in-scope gate-committed as distinct `oz-repair` commit (reusing deb-repair scope-split helpers); v1 scope = governance docs + Oz operation, machinery code propose-only; everything else held back and surfaced.
-- Surfaced the founder judgment explicitly: may an Oz repair commit land on trunk **without** a run's verify gate (Deb repairs ride the run branch; Oz operates outside any run — new direct-to-trunk agent commit authority).
-**Next:** Founder accepts/amends ADR-0021 → if accepted, delegate repair-verb build (tool-only through `executeOzCommand`, like refresh/nudge). Then LIVE proofs (assign oz a real CLI; chat status/launch/stop/nudge/Refresh Oz; eyeball priorities pane; one live headless-Oscar + one live headless-Bob run). Archive-candidate after decision + proofs.
+- Drafted **ADR-0021**: Oz repair as idle-only one-shot headless turn over trunk checkout; whole-tree diff afterward; in-scope gate-committed as distinct `oz-repair` commit (reusing deb-repair scope-split helpers); v1 scope = governance docs + Oz operation, machinery code propose-only; everything else held back and surfaced.
+- **Founder ACCEPTED ADR-0021 at the wrap conversation** (the surfaced judgment: trunk commits without a run verify gate — approved for the governance/Oz-operation scope), with the note that the v1 restrictions will likely need loosening once Oz is in real use (future lightweight amendment).
+- Recorded a founder item that was previously UNRECORDED anywhere: the lightweight web dashboard (`packages/ui/public/`) needs a **"Launch Oz dashboard" button** (daemon endpoint spawning the Electron app detached + vanilla-page button) — now item (2) in the priority's next slice.
+- Founder confirmed he'll run the live proofs himself (Oz-as-persona live exercise; headless Oscar + Bob runs).
+**Next:** Delegate the two open atoms in the next run: (1) the `repair` verb per ADR-0021's build sketch; (2) the lightweight-dashboard launch button. Archive-candidate after those land + the founder's live proofs.
 
 ## 2026-06-12 — **Full Oz dashboard: Bob session `mode` honoring end-to-end — the last buildable slice (run_66)**
 

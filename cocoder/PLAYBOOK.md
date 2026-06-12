@@ -169,17 +169,25 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    loop atoms work headless; stop kills child before quarantine), UI tail (`MODE_HONORED_PERSONAS`
    = {oscar, bob}; core 238 · daemon 164 · ui 109). **All builder-delegable code on this priority
    is now landed.**
-   run_67 (2026-06-12, Oscar wrap-up only): drafted **ADR-0021 (PROPOSED)** for Oz repair trunk-commit
+   run_67 (2026-06-12, Oscar wrap-up only): drafted **ADR-0021** for Oz repair trunk-commit
    authority — idle-only one-shot repair over trunk, governance in-scope, machinery propose-only in
-   v1; **blocked on founder acceptance** before any repair build atom.
-   run_68 (2026-06-12, Oscar wrap-up only, 0 atoms): **blocked reaffirmed** — no builder-delegable work
-   remains; ADR-0021 still PROPOSED; **do not launch another run until the founder answers** the trunk-commit
-   scope question.
+   v1 — and the founder **ACCEPTED it at the same wrap** (restrictions expected to loosen once Oz is
+   in real use — future amendment), plus a previously-unrecorded founder item: a **"Launch Oz
+   dashboard" button** on the lightweight web dashboard. ⚠️ That wrap commit stranded off trunk
+   (authored after the run had landed), so run_68 (0 atoms) wrongly reaffirmed the block.
+   run_69 (2026-06-12, 5 atoms, all first-try): **recovered the stranded acceptance** and built
+   everything it unblocked — the **Oz `repair` verb end-to-end** (idle-only headless turn over the
+   engine trunk, whole-tree diff, `oz-repair` gate-commit, hold-back surfacing, failed turns commit
+   nothing; tool-only through `executeOzCommand`, parser/help frozen), the **launch-dashboard
+   button** (CSRF-gated `POST /oz/dashboard/launch`, detached spawn, honest dev-vs-built probe),
+   and BOTH halves of the strand class (post-land support commits re-land or park visibly; a
+   teardown+boot stranded-commit detector surfaces unlanded branch tips for Resolve — no auto-land).
+   core 242 · daemon 188 · ui 109.
    Founder directive: complete Oz first, then workspace onboarding.
-   Next: founder accepts/amends ADR-0021 → repair verb build if approved → **live Oz proof session**
-   (assign oz a real CLI, chat status/launch/stop/nudge/refresh, founder eyeball of the rebuilt pane);
-   live headless runs for Oscar AND Bob (flip in Personas, launch a small run). Archive-candidate after
-   ADR decision (+ build if approved) and live proofs.
+   Next: ZERO code owed — **live proofs only** (founder confirmed he'll run them): the Oz live
+   session (assign oz a real CLI, chat status/launch/stop/nudge/repair/refresh, eyeball the rebuilt
+   pane); live headless runs for Oscar AND Bob (flip in Personas, launch a small run).
+   Archive-candidate after the live proofs.
 4. `new-primary-root` — the primary-root audit: bootstrap a new root's `cocoder/` + propose-only
    drift re-audit, one base Play pinned to a top-tier model. Design drafted as **ADR-0020 (proposed,
    2026-06-10)** — founder acceptance gates the build. The concrete form of Phase 5 ("first external repo").

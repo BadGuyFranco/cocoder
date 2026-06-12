@@ -1,8 +1,10 @@
 # ADR-0021 — Oz repair: trunk commit authority outside any run
 
-**Status:** Proposed (drafted by Oscar, run_67 wrap — founder review owed before any build; this is the
-design deliverable the [`full-oz-dashboard`](../priorities/full-oz-dashboard.md) priority requires
-before the Oz `repair` verb is delegated).
+**Status:** Accepted (founder, 2026-06-12, run_67 wrap; drafted by Oscar the same wrap as the design
+deliverable the [`full-oz-dashboard`](../priorities/full-oz-dashboard.md) priority required). Founder
+note at acceptance: the v1 restrictions (especially the machinery propose-only fence) are expected to
+need **loosening once Oz is in real day-to-day use** — widening is a lightweight amendment to this ADR
+after the narrow scope earns trust, not a re-litigation.
 **Builds on:** [0017](./0017-oz-orchestration-persona.md) (Oz repair verb, tier-3 boundary),
 [0016](./0016-deb-scoped-repair-fallback.md) (repair mode + gate-commit discipline),
 [0007](./0007-write-scope-enforcement.md) (commit-gate enforcement),
@@ -81,14 +83,15 @@ Tool-only verb through the shared action layer — same pattern as `refresh` and
   commit gate directly today — mirror the deb-repair path's partition + commit sequence.
 - `ENDPOINTS_OWED.md` row 1 updated when landed; Oz base persona `repair` fence aligned to this scope.
 
-## Founder judgment (owed)
+## Founder judgment — DECIDED (founder, 2026-06-12, run_67 wrap)
 
 **May an Oz repair commit land on the trunk checkout without a run's verify gate, and if so under what
 scope?**
 
-The proposal above says **yes for governance + Oz-operation only; machinery code propose-only in v1.**
-If the founder amends (e.g. no trunk commits at all, or machinery in-scope with extra gates), update
-this ADR before delegating any repair build atom.
+**Approved as proposed:** yes for governance + Oz-operation only; machinery code propose-only in v1.
+At acceptance the founder flagged that these restrictions may need loosening when Oz enters real use —
+that is a future amendment to this ADR (widen the in-scope fence), not a blocker and not a
+re-litigation of the trunk-commit authority itself.
 
 ## Consequences (if accepted)
 
