@@ -55,7 +55,7 @@ interface ToolResult {
   readonly action?: OzChatAction
 }
 
-type ToolName = 'launch' | 'adhoc' | 'show' | 'stop' | 'teardown' | 'status' | 'refresh'
+type ToolName = 'launch' | 'adhoc' | 'show' | 'stop' | 'nudge' | 'teardown' | 'status' | 'refresh'
 
 // Daemon-local by design: Refresh Oz means a fresh daemon-owned session, so restart drops transcript.
 const sessions = new Map<string, OzSession>()
@@ -192,7 +192,7 @@ function toolInstructions(): string {
     'Reply in plain English for the founder, decision-first.',
     'Act only through these tools, and never claim an action succeeded unless the tool result says it did.',
     'Facts come from the digest above.',
-    'Available tools: `launch {"priorityId":"..."}`, `adhoc {"task":"..."}`, `show {"runId":"..."}`, `stop {"runId":"..."}`, `teardown {"runId":"..."}`, `status {"runId":"..."}` or `status {}`, and `refresh {}`.',
+    'Available tools: `launch {"priorityId":"..."}`, `adhoc {"task":"..."}`, `show {"runId":"..."}`, `stop {"runId":"..."}`, `nudge {"runId":"...","message":"..."}` (optional `rationale`), `teardown {"runId":"..."}`, `status {"runId":"..."}` or `status {}`, and `refresh {}`.',
     '`refresh {}` restarts the daemon to refresh Oz and re-derive state from disk. It refuses while a run is in flight. Use it when the founder asks to refresh Oz/restart the daemon, or after a repair needs the daemon to reload code.',
     'To use a tool, your output must end with exactly one final non-empty line in this form: `OZ_TOOL {"tool":"launch","args":{"priorityId":"demo"}}`.',
     'Use strict JSON after `OZ_TOOL `. Only one tool call is allowed per turn. Everything before the `OZ_TOOL` line is working notes and is not shown to the founder.',
@@ -233,6 +233,7 @@ function validateToolCall(call: ToolCall): ToolValidation {
   if (call.tool === 'launch') return requiredString(call, 'priorityId', (priorityId) => ({ kind: 'launch', priorityId }))
   if (call.tool === 'show') return requiredString(call, 'runId', (runId) => ({ kind: 'show', runId }))
   if (call.tool === 'stop') return requiredString(call, 'runId', (runId) => ({ kind: 'stop', runId }))
+  if (call.tool === 'nudge') return validateNudgeTool(call)
   if (call.tool === 'teardown') return requiredString(call, 'runId', (runId) => ({ kind: 'teardown', runId }))
   if (call.tool === 'status') {
     if (!Object.prototype.hasOwnProperty.call(call.args, 'runId')) return { ok: true, command: { kind: 'status' } }
@@ -251,8 +252,27 @@ function requiredString(call: ToolCall, key: string, build: (value: string) => O
   return typeof value === 'string' && value.trim() ? { ok: true, command: build(value.trim()) } : { ok: false, error: `Tool "${call.tool}" requires string arg "${key}".` }
 }
 
+function validateNudgeTool(call: ToolCall): ToolValidation {
+  const runId = call.args.runId
+  const message = call.args.message
+  const rationale = call.args.rationale
+  if (typeof runId !== 'string' || !runId.trim()) return { ok: false, error: 'Tool "nudge" requires string arg "runId".' }
+  if (typeof message !== 'string' || !message.trim()) return { ok: false, error: 'Tool "nudge" requires string arg "message".' }
+  if (message.trim().length > 4000) return { ok: false, error: 'Nudge message too long (max 4000 chars).' }
+  if (rationale !== undefined && typeof rationale !== 'string') return { ok: false, error: 'Tool "nudge" optional arg "rationale" must be a string.' }
+  return {
+    ok: true,
+    command: {
+      kind: 'nudge',
+      runId: runId.trim(),
+      message: message.trim(),
+      ...(typeof rationale === 'string' && rationale.trim() ? { rationale: rationale.trim() } : {}),
+    },
+  }
+}
+
 function isToolName(tool: string): tool is ToolName {
-  return tool === 'launch' || tool === 'adhoc' || tool === 'show' || tool === 'stop' || tool === 'teardown' || tool === 'status' || tool === 'refresh'
+  return tool === 'launch' || tool === 'adhoc' || tool === 'show' || tool === 'stop' || tool === 'nudge' || tool === 'teardown' || tool === 'status' || tool === 'refresh'
 }
 
 async function executeTool(command: OzExecutableCommand, execute: OzCommandExecutor): Promise<ToolResult> {

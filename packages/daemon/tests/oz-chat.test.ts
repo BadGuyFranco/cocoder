@@ -3,6 +3,8 @@ import { openRunStore, type RunStore } from '@cocoder/core'
 import type { OzContext } from '../src/context.js'
 import { handleOzMessage, parseOzCommand, type OzChatOps } from '../src/oz-chat.js'
 
+const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, stop <runId>, teardown <runId>, status [runId], help.'
+
 function testCtx(store: RunStore = openRunStore(':memory:')): OzContext {
   return {
     store,
@@ -32,6 +34,10 @@ describe('parseOzCommand', () => {
 
   test.each(['dance run_45', 'launch', 'show run_45 extra'])('does not guess for %j', (text) => {
     expect(parseOzCommand(text)).toMatchObject({ kind: 'unknown', hint: expect.stringContaining('Supported commands') })
+  })
+
+  test('typed nudge remains an unknown chat command', () => {
+    expect(parseOzCommand('nudge run_45 please wake Oscar')).toEqual({ kind: 'unknown', hint: HINT })
   })
 
   test('bare adhoc is a bounded usage error', () => {
@@ -100,10 +106,10 @@ describe('handleOzMessage', () => {
     expect(result).toMatchObject({ status: 200, body: { ok: false, command: 'unknown', reply: 'Usage: adhoc <task>' } })
   })
 
-  test('help mentions adhoc', async () => {
+  test('help reply stays byte-identical for typed commands', async () => {
     const result = await handleOzMessage(testCtx(), { text: 'help', workspaceId: 'cocoder' })
 
-    expect(result.body.reply).toContain('adhoc <task>')
+    expect(result.body.reply).toBe(HINT)
   })
 
   test('stop maps to stopRun', async () => {

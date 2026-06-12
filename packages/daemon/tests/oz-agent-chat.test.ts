@@ -2,8 +2,8 @@ import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { openRunStore, type Adapter, type BuildInput, type HeadlessRunInput, type RunStore } from '@cocoder/core'
-import type { OzContext } from '../src/context.js'
+import { openRunStore, parseNudgeRequest, type Adapter, type BuildInput, type HeadlessRunInput, type RunStore } from '@cocoder/core'
+import { createOzEventBus, type OzContext } from '../src/context.js'
 import { handleOzMessage, type OzChatOps } from '../src/oz-chat.js'
 
 const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, stop <runId>, teardown <runId>, status [runId], help.'
@@ -218,6 +218,48 @@ describe('Oz agent chat turns', () => {
     expect(result).toMatchObject({ status: 200, body: { reply: 'It is not live in this daemon.', command: 'chat', ok: true } })
   })
 
+  test('nudge tool queues a runner-delivered Oz nudge and returns a truthful follow-up', async () => {
+    const fixture = await makeFixture()
+    const outputs = [
+      `Nudging.\nOZ_TOOL {"tool":"nudge","args":{"runId":"${fixture.runId}","message":"  Oscar — ask Bob for status  ","rationale":"founder asked"}}`,
+      'I queued the nudge.',
+    ]
+    ;(fixture.ctx as { runHeadless: (input: HeadlessRunInput) => Promise<{ readonly exitCode: number; readonly output: string }> }).runHeadless = async (input) => {
+      fixture.headlessInputs.push(input)
+      const next = outputs.shift() ?? 'I queued the nudge.'
+      return { exitCode: 0, output: next }
+    }
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'nudge Oscar', workspaceId: 'cocoder' })
+
+    expect(result).toMatchObject({ status: 200, body: { reply: 'I queued the nudge.', command: 'chat', ok: true, action: { type: 'nudge', runId: fixture.runId } } })
+    expect(fixture.prompts[0]?.prompt).toContain('nudge {"runId":"...","message":"..."}')
+    expect(fixture.prompts[1]?.prompt).toContain('The runner will deliver it to Oscar at the next watchdog sample')
+    const raw = await readFile(join(fixture.home, 'local', 'runs', fixture.runId, 'oz-nudge.json'), 'utf8')
+    expect(parseNudgeRequest(raw)).toMatchObject({ target: 'oscar', message: 'Oscar — ask Bob for status', rationale: 'founder asked', seq: 1 })
+  })
+
+  test('malformed nudge tool calls feed the validation error back without writing the file', async () => {
+    const fixture = await makeFixture()
+    const outputs = [
+      'Bad nudge.\nOZ_TOOL {"tool":"nudge","args":{"message":"wake Oscar"}}',
+      `Bad nudge.\nOZ_TOOL {"tool":"nudge","args":{"runId":"${fixture.runId}"}}`,
+      'I need a message before I can nudge.',
+    ]
+    ;(fixture.ctx as { runHeadless: (input: HeadlessRunInput) => Promise<{ readonly exitCode: number; readonly output: string }> }).runHeadless = async (input) => {
+      fixture.headlessInputs.push(input)
+      const next = outputs.shift() ?? 'I need a message before I can nudge.'
+      return { exitCode: 0, output: next }
+    }
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'nudge Oscar', workspaceId: 'cocoder' })
+
+    expect(result).toMatchObject({ status: 200, body: { reply: 'I need a message before I can nudge.', command: 'chat', ok: true } })
+    expect(fixture.prompts[1]?.prompt).toContain('Tool "nudge" requires string arg "runId".')
+    expect(fixture.prompts[2]?.prompt).toContain('Tool "nudge" requires string arg "message".')
+    await expect(stat(join(fixture.home, 'local', 'runs', fixture.runId, 'oz-nudge.json'))).rejects.toThrow()
+  })
+
   test('status tool without runId feeds the workspace run summary to the follow-up prompt', async () => {
     const fixture = await makeFixture({
       outputs: [
@@ -364,8 +406,12 @@ async function makeFixture(options: {
   let restartActionCalls = 0
   const ctx = {
     cocoderHome: home,
+    runsRoot: join(home, 'local', 'runs'),
     store,
     getAdapter: () => fakeAdapter(prompts),
+    inFlight: new Map<string, string>([['cocoder', run.id]]),
+    stopControllers: new Map<string, AbortController>([[run.id, new AbortController()]]),
+    events: createOzEventBus(),
     restartDaemon: () => {
       restartActionCalls += 1
     },
@@ -401,6 +447,7 @@ function fakeOps(): OzChatOps {
     launchRun: async () => ({ status: 202, body: { runId: 'run_launch' } }),
     showRun: async () => ({ status: 200, body: { sessionRef: 'surface:1' } }),
     stopRun: async () => ({ status: 202, body: { stopping: true } }),
+    nudgeRun: async () => ({ status: 202, body: { queued: true, seq: 1 } }),
     teardownRun: async () => ({ status: 200, body: { closed: [] } }),
     restartDaemon: async () => ({ status: 202, body: { restarting: true } }),
   }

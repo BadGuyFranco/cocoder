@@ -1,6 +1,6 @@
 import type { Run } from '@cocoder/core'
 import type { OzContext } from './context.js'
-import { launchRun as launchRunOp, requestDaemonRestart as restartDaemonOp, requestStopRun as stopRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type LaunchResult } from './launcher.js'
+import { launchRun as launchRunOp, requestDaemonRestart as restartDaemonOp, requestNudgeRun as nudgeRunOp, requestStopRun as stopRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type LaunchResult } from './launcher.js'
 import { tryHandleOzAgentTurn } from './oz-host.js'
 
 const ADHOC_PRIORITY_ID = 'adhoc-session'
@@ -11,6 +11,7 @@ export type OzCommand =
   | { readonly kind: 'adhoc'; readonly task: string }
   | { readonly kind: 'show'; readonly runId: string }
   | { readonly kind: 'stop'; readonly runId: string }
+  | { readonly kind: 'nudge'; readonly runId: string; readonly message: string; readonly rationale?: string }
   | { readonly kind: 'teardown'; readonly runId: string }
   | { readonly kind: 'status'; readonly runId?: string }
   | { readonly kind: 'refresh' }
@@ -20,7 +21,7 @@ export type OzExecutableCommand = Exclude<OzCommand, { readonly kind: 'help' } |
 export type OzCommandExecutor = (command: OzExecutableCommand) => Promise<OzChatResult>
 
 export interface OzChatAction {
-  readonly type: 'launch' | 'show' | 'stop' | 'teardown' | 'status' | 'refresh'
+  readonly type: 'launch' | 'show' | 'stop' | 'nudge' | 'teardown' | 'status' | 'refresh'
   readonly workspaceId?: string
   readonly priorityId?: string
   readonly runId?: string
@@ -45,9 +46,10 @@ export interface OzChatOps {
   readonly stopRun: typeof stopRunOp
   readonly teardownRun: typeof teardownRunOp
   readonly restartDaemon: typeof restartDaemonOp
+  readonly nudgeRun: typeof nudgeRunOp
 }
 
-const defaultOps: OzChatOps = { launchRun: launchRunOp, showRun: showRunOp, stopRun: stopRunOp, teardownRun: teardownRunOp, restartDaemon: restartDaemonOp }
+const defaultOps: OzChatOps = { launchRun: launchRunOp, showRun: showRunOp, stopRun: stopRunOp, teardownRun: teardownRunOp, restartDaemon: restartDaemonOp, nudgeRun: nudgeRunOp }
 
 export function parseOzCommand(text: string): OzCommand {
   const trimmed = text.trim()
@@ -145,6 +147,15 @@ export async function executeOzCommand(ctx: OzContext, workspaceId: string | und
     )
   }
 
+  if (command.kind === 'nudge') {
+    if (!workspaceId) return missingWorkspace()
+    return runOp(
+      'nudge',
+      () => ops.nudgeRun(ctx, command.runId, command.message, command.rationale),
+      (out) => nudgeReply(command.runId, out),
+    )
+  }
+
   if (command.runId) {
     const run = ctx.store.getRun(command.runId)
     if (!run) {
@@ -229,6 +240,17 @@ function stopReply(runId: string, out: LaunchResult): OzChatReply {
     command: 'stop',
     ok: true,
     action: { type: 'stop', runId },
+  }
+}
+
+function nudgeReply(runId: string, out: LaunchResult): OzChatReply {
+  const seq = typeof out.body.seq === 'number' ? out.body.seq : undefined
+  if (!isOk(out.status)) return failedReply('nudge', `Could not nudge ${runId}`, out)
+  return {
+    reply: `Queued nudge ${seq === undefined ? '' : `#${seq} `}for ${runId}. The runner will deliver it to Oscar at the next watchdog sample, subject to its rate limit.`,
+    command: 'nudge',
+    ok: true,
+    action: { type: 'nudge', runId },
   }
 }
 

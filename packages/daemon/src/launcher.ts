@@ -6,8 +6,8 @@
 //   - a .catch on the fire-and-forget run so a throw marks the run failed (poller reaches terminal)
 //     and never becomes an unhandled rejection that takes the always-on daemon down;
 //   - track spawned surfaceRefs in ctx.liveRefs so deep-links are decidable without throwing.
-import { readFile } from 'node:fs/promises'
-import { basename, join } from 'node:path'
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { basename, dirname, join } from 'node:path'
 import {
   isPersonaEnabled,
   loadAssignments,
@@ -328,6 +328,51 @@ export async function requestStopRun(ctx: OzContext, runId: string): Promise<Lau
   void appendAudit(ctx.cocoderHome, { action: 'stop', runId })
   emitOzEvent(ctx, { type: 'stop-requested', runId, workspaceId: run.workspaceId })
   return { status: 202, body: { stopping: true, runId } }
+}
+
+/** Queue an Oz-authored nudge for this run's Oscar. The daemon writes the runner-owned channel; the
+ *  runner decides when to deliver it at the next Oscar watchdog sample, subject to its rate limit. */
+export async function requestNudgeRun(ctx: OzContext, runId: string, message: string, rationale?: string): Promise<LaunchResult> {
+  const run = ctx.store.getRun(runId)
+  if (!run) return { status: 404, body: { error: 'unknown run' } }
+
+  const text = message.trim()
+  if (!text) return { status: 400, body: { error: 'nudge message is required' } }
+  if (text.length > 4000) return { status: 400, body: { error: 'nudge message too long (max 4000 chars)' } }
+
+  const controller = ctx.stopControllers.get(runId)
+  if (!controller || run.status !== 'running' || ctx.inFlight.get(run.workspaceId) !== runId) {
+    return { status: 409, body: { error: `run is not live in this daemon process or is "${run.status}" — only a running live run can be nudged cooperatively` } }
+  }
+
+  const path = join(ctx.runsRoot, runId, 'oz-nudge.json')
+  const seq = (await readNudgeSeq(path)) + 1
+  const payload = {
+    target: 'oscar' as const,
+    message: text,
+    rationale: typeof rationale === 'string' && rationale.trim() ? rationale.trim() : 'oz tool call',
+    seq,
+  }
+  await atomicWriteJson(path, payload)
+  void appendAudit(ctx.cocoderHome, { action: 'nudge', runId, seq })
+  emitOzEvent(ctx, { type: 'nudge-queued', runId, workspaceId: run.workspaceId })
+  return { status: 202, body: { queued: true, runId, seq } }
+}
+
+async function readNudgeSeq(path: string): Promise<number> {
+  try {
+    const data = JSON.parse(await readFile(path, 'utf8')) as { seq?: unknown }
+    return typeof data.seq === 'number' && Number.isFinite(data.seq) ? data.seq : 0
+  } catch {
+    return 0
+  }
+}
+
+async function atomicWriteJson(path: string, payload: unknown): Promise<void> {
+  await mkdir(dirname(path), { recursive: true })
+  const tmp = `${path}.${process.pid}.${Date.now()}.tmp`
+  await writeFile(tmp, `${JSON.stringify(payload, null, 2)}\n`, 'utf8')
+  await rename(tmp, path)
 }
 
 export type ResolveDisposition = 'discard' | 'landed'
