@@ -184,8 +184,9 @@ describe('Oz read surfaces', () => {
     const r = await get(oz!, '/workspaces/cocoder/personas')
     expect(r.status).toBe(200)
     const personas = r.json.personas as Array<{ id: string; label: string; writeScope: readonly string[]; cli: string | null; model: string | null }>
-    expect(personas.map((p) => p.id)).toEqual(['bob', 'deb', 'oscar', 'phil'])
+    expect(personas.map((p) => p.id)).toEqual(['bob', 'deb', 'oscar', 'oz', 'phil'])
     expect(r.json.assignments.bob).toMatchObject({ cli: 'codex', model: '', mode: 'headless' })
+    expect(r.json.assignments.oz).toBeUndefined()
     // base bob is repo-agnostic (writeScope []), so the effective scope is whatever the repo delta grants.
     expect(personas.find((p) => p.id === 'bob')).toMatchObject({
       label: 'Repo Bob',

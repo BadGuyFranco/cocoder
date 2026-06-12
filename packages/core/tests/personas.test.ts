@@ -1,6 +1,7 @@
 import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
 import {
   isPersonaEnabled,
@@ -11,6 +12,8 @@ import {
   resolvePersona,
   resolvePlayAssignment,
 } from '../src/index.js'
+
+const realBasePersonasDir = (): string => join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'personas', 'base')
 
 describe('parseFrontmatter', () => {
   test('parses scalars, block lists, empty arrays, and body', () => {
@@ -32,6 +35,18 @@ describe('parseFrontmatter', () => {
 })
 
 describe('persona + assignment loading', () => {
+  test('loads the shipped Oz base persona as default-deny', () => {
+    const oz = loadPersona(realBasePersonasDir(), 'oz')
+
+    expect(oz).toMatchObject({
+      id: 'oz',
+      label: 'Oz',
+      role: 'Tier-3 control-plane persona — founder-facing orchestration agent for run lifecycle and oversight.',
+      writeScope: [],
+    })
+    expect(oz.body).toContain("You are the founder's control-plane agent")
+  })
+
   test('loadPersona reads fields; resolvePersona merges the assignment', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'personas-'))
     await writeFile(

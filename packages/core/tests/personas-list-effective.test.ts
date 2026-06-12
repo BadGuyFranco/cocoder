@@ -1,10 +1,20 @@
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
 import { listEffectivePersonas, type PersonaSources } from '../src/index.js'
 
+const realBasePersonasDir = (): string => join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'personas', 'base')
+
 describe('listEffectivePersonas', () => {
+  test('lists Oz with the real shipped base personas', async () => {
+    const sources = await makeSources()
+    const personas = listEffectivePersonas({ ...sources, baseDir: realBasePersonasDir() })
+
+    expect(personas.map((persona) => persona.id)).toEqual(['bob', 'deb', 'oscar', 'oz'])
+  })
+
   test('lists base personas sorted and excludes shared-standards', async () => {
     const sources = await makeSources()
     await writePersona(sources.baseDir, { id: 'oscar', label: 'Oscar', role: 'Orchestrator', scope: [], body: 'Oscar body' })

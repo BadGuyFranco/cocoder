@@ -1,10 +1,31 @@
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
 import { loadPersona, resolveEffectivePersona, type Assignments, type PersonaSources } from '../src/index.js'
 
+const realBasePersonasDir = (): string => join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'personas', 'base')
+
 describe('resolveEffectivePersona', () => {
+  test('resolves Oz with a normal assignment from the shipped base definition', async () => {
+    const sources = await makeSources()
+    const resolved = resolveEffectivePersona(
+      { ...sources, baseDir: realBasePersonasDir() },
+      { personas: { oz: { cli: 'codex', model: 'gpt-5' } } },
+      'oz',
+    )
+
+    expect(resolved).toMatchObject({
+      id: 'oz',
+      label: 'Oz',
+      role: 'Tier-3 control-plane persona — founder-facing orchestration agent for run lifecycle and oversight.',
+      writeScope: [],
+      cli: 'codex',
+      model: 'gpt-5',
+    })
+  })
+
   test('attaches assignment to the base definition when no delta exists', async () => {
     const sources = await makeSources()
     await writePersona(sources.baseDir, { id: 'bob', label: 'Bob', role: 'Builder', scope: ['packages/**'], body: 'Base rules.' })
