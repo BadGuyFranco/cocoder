@@ -148,11 +148,15 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    Oz-as-persona (ADR-0017 slice 1) — oz base persona, daemon-hosted one-shot agent turns,
    bounded `OZ_TOOL` tool loop over the shared action layer, and the `refresh` tool (one gate
    rejection + rebuild on the status workspace guard); run_61 landed the Oz `nudge` verb
-   end-to-end (core `oz-nudge.json` channel + daemon tool-only verb, all three atoms first-try).
-   Next: `repair` verb is DESIGN-FIRST (founder judgment on trunk commit authority without a run's
-   verify gate — see priority next-slice note); then a live proof session with a real oz CLI
-   assigned; Bob session `mode` honoring (gated on a captured-subprocess monitor path for builder
-   work).
+   end-to-end (core `oz-nudge.json` channel + daemon tool-only verb, all three atoms first-try);
+   run_62 fixed both founder-directed fresh-workspace bugs from CoPublisher onboarding (Bug A:
+   stale-gate compares bootSha to engine repo not workspace HEAD; Bug B: `POST /workspaces`
+   scaffolds governance zone with portable base template + seeded assignments, create-only-if-missing;
+   F12/F13 recorded). Founder directive fully discharged.
+   Next: zero-code CoPublisher live retry first (Bug-A acceptance + first live non-dogfood run);
+   then `repair` verb DESIGN-FIRST (founder judgment on trunk commit authority without a run's
+   verify gate — see priority next-slice note); live Oz proof session with a real oz CLI assigned;
+   Bob session `mode` honoring (gated on a captured-subprocess monitor path for builder work).
 4. `new-primary-root` — the primary-root audit: bootstrap a new root's `cocoder/` + propose-only
    drift re-audit, one base Play pinned to a top-tier model. Design drafted as **ADR-0020 (proposed,
    2026-06-10)** — founder acceptance gates the build. The concrete form of Phase 5 ("first external repo").

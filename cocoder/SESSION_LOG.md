@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-12 — **Full Oz dashboard: fresh-workspace bugs A+B fixed (run_62)**
+
+**Persona:** Oscar + Bob (3 atoms, one gate rejection en route) | **Priority:** full-oz-dashboard | **Play:** founder-directed CoPublisher onboarding fixes
+**Outcomes:**
+- Bug A, launch stale-gate (`099b453`): `launchRun` now compares bootSha to the ENGINE repo (`ctx.cocoderHome`), not the workspace HEAD — every non-dogfood launch had been refused 425 in a futile self-restart loop; two regression tests pin both directions.
+- Bug B, workspace-create scaffold (`d8eea96`): `POST /workspaces` scaffolds launch-required governance (portable base `adhoc-session.md` via new `basePrioritiesDir()` + seeded `assignments.json`); resolved-path 400 existence gate, create-only-if-missing, gate→scaffold→register ordering; `loadAssignments` stays strict.
+- Failure catalog F12 (dogfood-coincidence) + F13 (builder scope blowout, re-proven live); first Bug-A atom rejected as run_45-class scope blowout (undelegated Bug-B scaffold with dogfood noun + blind mkdir) — whole-tree diff caught it, both atoms re-landed clean.
+- Evidence per-atom at the gate: core 224 · daemon 162 · personas 9 · typecheck + topology clean.
+**Next:** Zero-code FIRST — CoPublisher live launch retry (Bug-A acceptance; first attempt 425s + self-restarts onto current code, second should go through). Then Oz `repair` verb DESIGN-FIRST (founder judgment on trunk commit authority); live Oz proof session; Bob session mode honoring.
+
 ## 2026-06-12 — **Full Oz dashboard: Oz `nudge` verb end-to-end (run_61)**
 
 **Persona:** Oscar + Bob (3 atoms, all first-try passes) | **Priority:** full-oz-dashboard | **Play:** ADR-0017 amendment — the `nudge` verb
