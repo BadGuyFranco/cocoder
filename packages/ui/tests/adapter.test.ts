@@ -289,7 +289,7 @@ describe('personas from the assignments map + roster', () => {
     expect(payload.oscar.plays).toEqual({ 'wrap-up': { cli: 'cursor-agent', model: 'gpt-5-mini' } })
   })
 
-  it('writes edited mode only for Oscar and preserves non-honored daemon modes untouched', () => {
+  it('writes edited mode for Oscar and Bob while preserving non-honored daemon modes untouched', () => {
     const oscar: Persona = {
       id: 'oscar',
       name: 'Oscar',
@@ -330,8 +330,52 @@ describe('personas from the assignments map + roster', () => {
     })
 
     expect(payload.oscar.mode).toBe('headless')
-    expect(payload.bob.mode).toBe('headless')
+    expect(payload.bob.mode).toBe('visible')
     expect(payload.deb.mode).toBeUndefined()
+  })
+
+  it('maps Bob runMode into the assignments payload like Oscar and keeps Deb preview-only', () => {
+    const oscar: Persona = {
+      id: 'oscar',
+      name: 'Oscar',
+      role: 'Orchestrator',
+      description: 'Delegates work.',
+      icon: 'ph-thin ph-strategy',
+      cli: 'claude',
+      model: 'Default',
+      runMode: 'headless',
+      subAgents: [],
+    }
+    const bob: Persona = {
+      id: 'bob',
+      name: 'Bob',
+      role: 'Builder',
+      description: 'Builds work.',
+      icon: 'ph-thin ph-hammer',
+      cli: 'codex',
+      model: 'Default',
+      runMode: 'headless',
+      subAgents: [],
+    }
+    const deb: Persona = {
+      id: 'deb',
+      name: 'Deb',
+      role: 'Repair',
+      description: 'Repairs machinery.',
+      icon: 'ph-thin ph-bug-beetle',
+      cli: 'claude',
+      model: 'Default',
+      runMode: 'headless',
+      subAgents: [],
+    }
+
+    const payload = personasToAssignments([oscar, bob, deb], {
+      deb: { cli: 'claude', model: '', mode: 'visible' },
+    })
+
+    expect(payload.oscar.mode).toBe('headless')
+    expect(payload.bob.mode).toBe('headless')
+    expect(payload.deb.mode).toBe('visible')
   })
 
   it('removing a sub-agent drops only that play key', () => {

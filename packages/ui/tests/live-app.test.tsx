@@ -495,7 +495,7 @@ describe('Oz renderer — live daemon path', () => {
     await waitFor(() => expect(screen.getByText('mode save failed')).toBeDefined())
   })
 
-  it('keeps Bob run-mode as a local preview without saving assignments', async () => {
+  it('persists Bob run-mode through the assignments bridge', async () => {
     const puts: PutCall[] = []
     setOz(mockOz({ puts }))
     render(<App />)
@@ -503,9 +503,10 @@ describe('Oz renderer — live daemon path', () => {
 
     fireEvent.click(screen.getByText('Personas'))
     fireEvent.click(await screen.findByRole('button', { name: 'Bob headless run mode' }))
-    await new Promise((resolve) => setTimeout(resolve, 50))
 
-    expect(puts).toHaveLength(0)
+    await waitFor(() => expect(puts.length).toBe(1))
+    const assignments = puts[0].assignments as Record<string, { mode?: 'visible' | 'headless' }>
+    expect(assignments.bob.mode).toBe('headless')
   })
 
   it('Dashboard Add priority uses the typed create bridge and persists top placement', async () => {

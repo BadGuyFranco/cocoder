@@ -144,7 +144,7 @@ export function PersonasScreen({ personas, clis, onChange, onAddSub, onRemoveSub
             <div style={{ fontSize: 11.5, color: 'var(--cb-text-secondary)', lineHeight: 1.55 }}>Sketch what the persona should do. Oz files it as a priority and the team scaffolds the new role — prompts, sub-agents, and tests included.</div>
           </div>
         </div>
-        <PendingBanner live={live}>CLI/model edits, sub-agents, and Oscar run-mode persist through <code>PUT …/assignments</code>; other personas’ run-mode remains a local preview until the runner honors it.</PendingBanner>
+        <PendingBanner live={live}>CLI/model edits, sub-agents, and Oscar/Bob run-mode persist through <code>PUT …/assignments</code>; other personas’ run-mode remains a local preview until the runner honors it.</PendingBanner>
         {personas.map((p) => <PersonaRow key={p.id} persona={p} clis={clis} onChange={(next) => onChange(p.id, next)} onAddSub={onAddSub} onRemoveSub={onRemoveSub} onUpdateSub={onUpdateSub} />)}
       </div>
     </div>

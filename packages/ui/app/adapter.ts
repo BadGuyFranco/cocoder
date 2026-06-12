@@ -383,9 +383,9 @@ const PERSONA_ICONS: Record<string, string> = {
   doc: 'ph-thin ph-book-open',
 }
 
-// As of run_59, the runner honors mode only for Oscar's session. Bob remains visible until the runner
-// has a captured-subprocess monitor path for builder work.
-export const MODE_HONORED_PERSONAS = new Set(['oscar'])
+// The runner honors mode for Oscar orchestration and Bob builder sessions. Other personas remain
+// preview-only until their session mode is implemented.
+export const MODE_HONORED_PERSONAS = new Set(['oscar', 'bob'])
 
 // A roster `role` is "Short title — long description"; split it so the card shows a crisp role.
 function splitRole(role: string): { role: string; description: string } {
