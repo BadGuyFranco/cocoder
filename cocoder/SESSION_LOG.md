@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-12 — **Full Oz dashboard: priorities-pane rebuild COMPLETE — audit atoms A, C, D, E, F (run_65)**
+
+**Persona:** Oscar + Bob (5 atoms, all first-try passes) | **Priority:** full-oz-dashboard | **Play:** the audit's remaining rebuild atoms, in order
+**Outcomes:**
+- Atom A (`29e5e6c`): selected-run grid now `prioWidth 460px 6px 1fr` — drawer immediately after priorities (design's 16px gap carries the gold notch), resize handle moved to the drawer/chat edge; delta-based resize stays correct.
+- Atom C (`11f9632`): active rows get REAL personas/lastEvent via bounded renderer detail fetches (cap 6/cycle, running/blocked first, not-landed fetched once, selected-run + hidden + fixtures excluded) — no daemon/wire change, `adaptRunDetail` stays the single enrichment owner; also fixed `refreshWorkspace` clobbering enriched rows (`mergeRunsWithEnrichment`).
+- Atom D (`7e73cbe`): first-run vs empty-queue gated on the REAL configured signal (personas response's assignments map — empty = unscaffolded; failed fetch = treated configured, never the ladder on a blip); configured-empty workspaces finally reach the designed "Nothing queued" state; fixtures heuristic untouched.
+- Atom E (`74e8d83`): chat run-card StatusChip, design-verbatim ad-hoc hover, explicit borderRight selected treatment, not-landed accent bar now STATIC vs running's pulse (run_64 note closed).
+- Atom F (`d4b007f`, tests-only): gap-fill — handoff geometry pinned both states, ad-hoc multi-run concurrent visibility, drag→drop reorder indices. Evidence per-atom at the gate: ui 108 · root typecheck clean · whole-tree diff every atom.
+**Next:** The Oz `repair` verb design seam (surface the founder judgment: may an Oz repair commit to trunk without a run's verify gate, and under what scope?) → the LIVE Oz proof session (assign a real CLI, chat status/launch/stop/nudge/refresh; founder eyeball of the rebuilt pane) → Bob `mode` honoring → a live headless-Oscar run.
+
 ## 2026-06-12 — **Full Oz dashboard: run_63 fallout closed + priorities-pane audit & Atom B (run_64)**
 
 **Persona:** Oscar + Bob (4 atoms, all first-try passes) | **Priority:** full-oz-dashboard | **Play:** founder-directed run_63 fallout, then the design-conformance audit

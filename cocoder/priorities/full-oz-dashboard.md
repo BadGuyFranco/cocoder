@@ -96,12 +96,17 @@ closed all of the run_63 fallout: the worktree-placement fix (F12 instance 3) an
 AGENTS.md/CLAUDE.md additions are landed, the priorities-pane design-conformance AUDIT is
 committed (`packages/ui/design-audit-priorities-pane.md` — 10 cited mismatches, 10 conformances,
 a 6-atom rebuild split A–F), and rebuild Atom B (active-run semantics: `not-landed` rows render
-inline, suppress Launch, stay visible in the ad-hoc row) is landed. **Not archive-ready** —
-remaining: priorities-pane rebuild atoms A, C, D, E, F (see the audit doc; C and D carry
-data-contract judgment), the Oz `repair` verb (a real design seam is owed BEFORE build — see the
-next-slice note), a LIVE exercise of Oz with a real CLI assigned (everything is
-injected-runner-proven only), Bob session `mode` honoring (gated on a captured-subprocess
-monitor path for builder work), and a live (non-test) exercise of a headless-Oscar run.
+inline, suppress Launch, stay visible in the ad-hoc row) is landed. run_65 (2026-06-12) closed
+the REST of the rebuild — atoms A, C, D, E, F all landed (five atoms, every gate first-try),
+so **the priorities-pane rebuild is COMPLETE**: handoff geometry matches the design grid, active
+rows carry real enriched data (bounded renderer detail fetches — no daemon contract change),
+first-run vs empty-queue is gated on the real configured signal, the polish items (chat
+status chip, hover, borders, static not-landed bar) are in, and the lot is regression-pinned
+(ui 108 tests). **Not archive-ready** — remaining: the Oz `repair` verb (a real design seam is
+owed BEFORE build — see the next-slice note), a LIVE exercise of Oz with a real CLI assigned
+(everything is injected-runner-proven only), Bob session `mode` honoring (gated on a
+captured-subprocess monitor path for builder work), and a live (non-test) exercise of a
+headless-Oscar run.
 
 > History worth recording: a first pass mistakenly built from `docs/oz-design-brief.md` (the *input
 > brief* that was pasted into claude.ai/design), not the founder's actual **design output**. It was then
@@ -401,6 +406,37 @@ monitor path for builder work), and a live (non-test) exercise of a headless-Osc
   row's sub-list; blocked keeps its distinct warning treatment; 4 new renderer tests. Noted for
   Atom E polish: a not-landed row currently inherits the pulsing "live" accent bar — worth a
   static-vs-pulse distinction when polish is tuned.
+- **run_65 (2026-06-12), five atoms, all verified + committed on `cocoder/run_65` — the
+  priorities-pane rebuild COMPLETED (audit atoms A, C, D, E, F):**
+  (0) **Atom A — handoff geometry** (`29e5e6c`) — the selected-run grid is now
+  `prioWidth 460px 6px 1fr` (design: drawer immediately after priorities, the design's own 16px
+  gap carrying the gold notch); the resize handle moved to the drawer/chat far edge; resize
+  stays correct because the handle is delta-based, not position-based.
+  (1) **Atom C — real inline-summary data for active rows** (`11f9632`) — DESIGN DECISION
+  (taken at scope time, recorded here): bounded per-active-run `GET /runs/:id` fetches in the
+  RENDERER, no daemon/wire change — `adaptRunDetail` stays the single enrichment owner.
+  `enrichActiveRunDetails` caps at 6 fetches/cycle preferring running/blocked, fetches
+  not-landed detail ONCE (status-change invalidates), skips the selected run (already polled)
+  and `document.hidden`; `mergeRunsWithEnrichment` fixes a real clobber bug where
+  `refreshWorkspace` wiped enriched rows back to bare summaries on every refresh; `isActiveRun`
+  consolidated into `adapter.ts`. Fixtures mode performs zero detail fetches (pinned by test).
+  (2) **Atom D — first-run vs empty configured queue** (`7e73cbe`) — renderer-only after
+  reading the daemon: `GET /workspaces/:id/personas` already 200s with an EMPTY assignments map
+  for an unscaffolded zone vs a seeded map for any created workspace, so `loadWsData` derives
+  `configured` from it; a FAILED personas fetch counts as configured (a network blip can never
+  show the setup ladder); live mode shows `FirstRun` only on explicit `configured === false`
+  with empty data, so a configured workspace with zero priorities finally reaches the designed
+  "Nothing queued" empty state; fixtures keep the old heuristic byte-identically.
+  (3) **Atom E — polish pass** (`74e8d83`) — chat run cards gain the design's `StatusChip`;
+  selected priority/ad-hoc rows match the reference borderRight accent treatment; ad-hoc
+  sub-run hover restored verbatim from design-ref; not-landed accent bars are now STATIC while
+  running keeps the pulse (the run_64 note, closed) — blocked's warning treatment untouched.
+  (4) **Atom F — regression gap-fill, tests only** (`d4b007f`) — handoff geometry pinned in
+  both states (selected + unselected grid/DOM order), ad-hoc multi-run concurrent visibility
+  with per-run selectability, drag→drop reorder indices at the panel level. Coverage from
+  atoms B–E (14 tests) was already in place; F added only the genuine gaps.
+- **Verification (run_65):** ui 108 · root typecheck clean (per-atom at the verify gate;
+  whole-tree diff checked every atom; all five atoms passed their gate first try).
 - **Verification (run_64):** core 226 · daemon 164 · ui 92 · root typecheck clean · topology pass
   (per-atom at the verify gate; whole-tree diff checked every atom; all four atoms passed their
   gate first try).
@@ -463,19 +499,21 @@ no founder decisions are outstanding on this priority.
   No DB migration: priorities stay `.md` files; sequence is a git-tracked order-only
   `cocoder/priorities/order.json`; drag-reorder rewrites it. Owed slice #8 reclassified above.
 
-**Recommended next slice (updated run_64 wrap):**
-~~(0) the run_63 fallout~~ **ALL THREE DONE (run_64, 2026-06-12):** (0a) worktree placement
-landed (`19d55ea`); (0b) scaffold AGENTS.md/CLAUDE.md landed (`47e1d2a`); (0c) the
-priorities-pane audit is COMMITTED at `packages/ui/design-audit-priorities-pane.md` and decides
-the rebuild split — Atom B (active-run semantics) already landed (`20ec2aa`). **Next build
-atoms = the audit's remaining atoms, suggested order: A (handoff geometry, renderer-only), then
-C (real inline-summary data for active rows — carries the one data-contract judgment: enrich the
-daemon run-list response vs bounded per-active-row detail fetches; read the audit's Atom C notes
-and decide deliberately, don't fake fields), D (explicit first-run signal vs the empty-data
-heuristic — likely needs a small daemon/model seam), E (polish: chat run-card status chip,
-ad-hoc hover, selected-row border, the not-landed static-vs-pulse bar), F (regression coverage
-of the lot). Each is independently delegable from the audit doc's scope/exit-criterion entries.**
-The pre-run_64 text below is kept for context:
+**Recommended next slice (updated run_65 wrap):**
+~~The priorities-pane rebuild~~ **COMPLETE (run_65, 2026-06-12): audit atoms A, C, D, E, F all
+landed (Atom B landed run_64) — the Dashboard priorities pane now conforms to design-ref.**
+What remains on this priority is exactly the four items in the Status remaining list, in this
+suggested order: (a) **the Oz `repair` verb design seam** — surface the founder judgment call
+(may an Oz repair commit land on trunk without a run's verify gate, and under what scope?)
+BEFORE delegating any build; the sketch to evaluate is recorded below under the pre-run_64
+context. (b) **The LIVE proof session** (zero code owed): assign oz a real CLI+model in the
+Personas screen, ask a status question in the dashboard chat, drive a launch/stop through
+chat, nudge a live run's Oscar, run one real Refresh Oz — Oz-as-persona criteria 1–4 flip to
+met on that evidence; while at it, eyeball the rebuilt priorities pane against design-ref live
+(a code-conformance rebuild is landed; a founder look is the real acceptance). (c) **Bob
+session `mode` honoring** — still gated on a captured-subprocess monitor path for builder work
+(the run_28 hang class). (d) A live (non-test) **headless-Oscar run** (cheap: flip Oscar to
+headless in Personas, launch a small run). The pre-run_64 text below is kept for context:
 ~~(0) the CoPublisher live retry~~ **DONE LIVE (run_63, 2026-06-12): launched, built, landed on
 the CoPublisher trunk — Bug-A acceptance met.** CoPublisher has since been reset entirely
 (founder decision); onboarding re-runs properly as its own future priority after Oz completes.
