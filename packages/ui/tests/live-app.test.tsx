@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { act, render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react'
 import { App } from '../app/App.tsx'
 import { stopRun } from '../app/live.ts'
-import type { ConnectionState, OzApi, OzEventHint, RunDetail, RunSummary } from '../electron/ipc-contract.ts'
+import type { ConnectionState, OzApi, OzEventHint, PersonasResponse, Priority as DPriority, RunDetail, RunSummary } from '../electron/ipc-contract.ts'
 import workspacesFx from '../fixtures/workspaces.json'
 import prioritiesFx from '../fixtures/priorities.json'
 import personasFx from '../fixtures/personas.json'
@@ -70,6 +70,9 @@ function mockOz(opts: {
   createResult?: any
   workspaceUpdateResult?: any
   workspaceCreateResult?: any
+  priorities?: { priorities: DPriority[] }
+  personasResult?: { ok: false; status: number; error: string }
+  personasResponse?: PersonasResponse
   runs?: { runs: RunSummary[] }
   runDetails?: Record<string, RunDetail>
   pollIntervalMs?: number
@@ -85,8 +88,8 @@ function mockOz(opts: {
       opts.getPaths?.push(path)
       if (path === '/clis') return ok(clisFx)
       if (path === '/workspaces') return ok(workspacesFx)
-      if (/\/priorities$/.test(path)) return ok(prioritiesFx)
-      if (/\/personas$/.test(path)) return ok(personasFx)
+      if (/\/priorities$/.test(path)) return ok(opts.priorities ?? prioritiesFx)
+      if (/\/personas$/.test(path)) return opts.personasResult ?? ok(opts.personasResponse ?? personasFx)
       if (path.startsWith('/runs?')) return ok(opts.runs ?? runsFx)
       const runDetailMatch = path.match(/^\/runs\/([^/]+)$/)
       if (runDetailMatch) return ok(opts.runDetails?.[runDetailMatch[1]] ?? runDetailFx)
@@ -161,6 +164,14 @@ function detailFor(summary: RunSummary, latestEvent = 'Real latest event for the
   }
 }
 
+function personasResponse(assignments: PersonasResponse['assignments']): PersonasResponse {
+  return {
+    workspace: (workspacesFx as { workspaces: PersonasResponse['workspace'][] }).workspaces[0],
+    personas: (personasFx as PersonasResponse).personas,
+    assignments,
+  }
+}
+
 describe('Oz renderer — live daemon path', () => {
   afterEach(() => { cleanup(); delete (window as unknown as { oz?: unknown }).oz })
 
@@ -181,6 +192,46 @@ describe('Oz renderer — live daemon path', () => {
     const realTitle = (prioritiesFx as any).priorities.find((p: any) => p.id !== 'adhoc-session').title as string
     await waitFor(() => expect(screen.getAllByText(realTitle).length).toBeGreaterThan(0))
     expect(screen.getByText('Ad-hoc')).toBeDefined()
+  })
+
+  it('shows first-run setup for a live empty workspace with no persona assignments', async () => {
+    setOz(mockOz({
+      priorities: { priorities: [] },
+      runs: { runs: [] },
+      personasResponse: personasResponse({}),
+    }))
+    render(<App />)
+
+    await waitFor(() => expect(screen.getByText(/FIRST-RUN SETUP/)).toBeDefined())
+
+    expect(screen.queryByText('Nothing queued')).toBeNull()
+  })
+
+  it('shows the empty configured queue instead of first-run when persona assignments exist', async () => {
+    setOz(mockOz({
+      priorities: { priorities: [] },
+      runs: { runs: [] },
+      personasResponse: personasResponse({ oscar: { cli: 'claude', model: '' } }),
+    }))
+    render(<App />)
+
+    await waitFor(() => expect(screen.getByText('Nothing queued')).toBeDefined())
+
+    expect(screen.queryByText(/FIRST-RUN SETUP/)).toBeNull()
+    expect(screen.getAllByRole('button', { name: /Add priority/i }).length).toBeGreaterThan(0)
+  })
+
+  it('treats a failed personas fetch as configured so a network blip does not show first-run', async () => {
+    setOz(mockOz({
+      priorities: { priorities: [] },
+      runs: { runs: [] },
+      personasResult: { ok: false, status: 500, error: 'personas unavailable' },
+    }))
+    render(<App />)
+
+    await waitFor(() => expect(screen.getByText('Nothing queued')).toBeDefined())
+
+    expect(screen.queryByText(/FIRST-RUN SETUP/)).toBeNull()
   })
 
   it('enriches active priority rows from run detail without selecting the run', async () => {

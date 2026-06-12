@@ -71,6 +71,7 @@ export function App() {
   const seedChat = (seed as unknown as { ozChat?: Record<string, ChatMessage[]> }).ozChat ?? {}
   const [prioritiesByWs, setPrioritiesByWs] = useState<Record<string, Priority[]>>(() => Object.fromEntries(workspaces.map((w) => [w.id, [...(seedPriorities[w.id] ?? [])]])))
   const [runsByWs, setRunsByWs] = useState<Record<string, Run[]>>(seed.runsByWs)
+  const [configuredByWs, setConfiguredByWs] = useState<Record<string, boolean>>({})
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null)
   const [runHistoryOpen, setRunHistoryOpen] = useState(false)
   const [msgsByWs, setMsgsByWs] = useState<Record<string, ChatMessage[]>>(() => Object.fromEntries(workspaces.map((w) => [w.id, [...(seedChat[w.id] ?? [])]])))
@@ -116,7 +117,7 @@ export function App() {
     let cancelled = false
     const goOffline = (state: ConnectionState) => {
       // A bridge exists but the daemon isn't answering: never present seed demo data as if it were live.
-      setLive(false); setConn(state); setWorkspaces([]); setRunsByWs({}); setPrioritiesByWs({})
+      setLive(false); setConn(state); setWorkspaces([]); setRunsByWs({}); setPrioritiesByWs({}); setConfiguredByWs({})
     }
     void (async () => {
       setConn('connecting')
@@ -139,6 +140,7 @@ export function App() {
       const order = await loadOrder(oz, first.id)
       if (cancelled) return
       namesRef.current[first.id] = data.names
+      setConfiguredByWs((cur) => ({ ...cur, [first.id]: data.configured }))
       setPrioritiesByWs((cur) => ({ ...cur, [first.id]: applyOrder(data.priorities, order) }))
       setRunsByWs((cur) => ({ ...cur, [first.id]: data.runs }))
       void enrichActiveRunDetails(first.id, data.runs)
@@ -223,6 +225,7 @@ export function App() {
       const order = await loadOrder(oz, activeId)
       if (cancelled) return
       namesRef.current[activeId] = data.names
+      setConfiguredByWs((cur) => ({ ...cur, [activeId]: data.configured }))
       setPrioritiesByWs((cur) => ({ ...cur, [activeId]: applyOrder(data.priorities, order) }))
       setRunsByWs((cur) => ({ ...cur, [activeId]: data.runs }))
       void enrichActiveRunDetails(activeId, data.runs, () => cancelled)
@@ -295,6 +298,7 @@ export function App() {
     const order = await loadOrder(oz, wsId)
     namesRef.current[wsId] = data.names
     const mergedRuns = mergeRunsWithEnrichment(data.runs, runsByWsRef.current[wsId] ?? [])
+    setConfiguredByWs((cur) => ({ ...cur, [wsId]: data.configured }))
     setPrioritiesByWs((cur) => ({ ...cur, [wsId]: applyOrder(data.priorities, order) }))
     setRunsByWs((cur) => ({ ...cur, [wsId]: mergedRuns }))
     void enrichActiveRunDetails(wsId, mergedRuns)
@@ -549,6 +553,7 @@ export function App() {
           {route === 'dashboard' && workspace && (
             <Dashboard
               workspace={workspace} priorities={priorities} runs={runs} ozMessages={messages}
+              workspaceConfigured={live ? configuredByWs[activeId] : undefined}
               selectedRunId={selectedRunId} setSelectedRunId={setSelectedRunId}
               onReorder={reorder} onLaunch={handleLaunch} onAdhoc={handleAdhoc}
               onAddPriority={() => { if (live) setNewPriorityOpen(true); else onSend('Draft a new priority.') }} onSend={onSend} onDecision={(c: string) => onSend(`Decision: replay ${c} plan.`)} onRunAction={handleRunAction}

@@ -30,6 +30,7 @@ export interface WsData {
   runs: Run[]
   personas: Persona[]
   assignments: Record<string, PersonaAssignment>
+  configured: boolean
   names: Record<string, string> // priorityId → title, for titling runs during polling
 }
 
@@ -60,9 +61,10 @@ export async function loadWsData(oz: OzApi, wsId: string): Promise<WsData> {
   const names: Record<string, string> = Object.fromEntries(dPriorities.map((p) => [p.id, p.title]))
   const runs = adaptRuns(dRuns, names)
   const priorities = adaptPriorities(dPriorities, runs)
-  const personas = pe.ok ? adaptPersonas(pe.data) : []
   const assignments = pe.ok ? pe.data.assignments ?? {} : {}
-  return { priorities, runs, personas, assignments, names }
+  const personas = pe.ok ? adaptPersonas(pe.data) : []
+  const configured = pe.ok ? Object.keys(assignments).length > 0 : true
+  return { priorities, runs, personas, assignments, configured, names }
 }
 
 // Poll one run's detail → an enriched Run (transcript + evidence + personas). Null on a failed fetch

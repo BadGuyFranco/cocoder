@@ -136,8 +136,9 @@ function RunHistoryModal({ open, onClose, runs, onSelectRun, priorities }: { ope
   )
 }
 
-export function Dashboard({ workspace, priorities, runs, ozMessages, selectedRunId, setSelectedRunId, onReorder, onLaunch, onAdhoc, onAddPriority, onSend, onDecision, onRunAction, ozTyping, runHistoryOpen, setRunHistoryOpen, live = false, chatPrefill = null, onChatPrefillConsumed }: {
+export function Dashboard({ workspace, priorities, runs, ozMessages, selectedRunId, setSelectedRunId, onReorder, onLaunch, onAdhoc, onAddPriority, onSend, onDecision, onRunAction, ozTyping, runHistoryOpen, setRunHistoryOpen, live = false, workspaceConfigured, chatPrefill = null, onChatPrefillConsumed }: {
   workspace: Workspace; priorities: Priority[]; runs: Run[]; ozMessages: ChatMessage[]
+  workspaceConfigured?: boolean
   selectedRunId: string | null; setSelectedRunId: (id: string | null) => void
   onReorder: (from: number, to: number) => void; onLaunch: (p: Priority) => void; onAdhoc: () => void; onAddPriority: () => void
   onSend: (text: string) => void; onDecision: (choice: string) => void; onRunAction: (action: string, id: string) => void
@@ -147,7 +148,7 @@ export function Dashboard({ workspace, priorities, runs, ozMessages, selectedRun
   const [prioWidth, setPrioWidth] = useState(PRIO_DEFAULT)
   const selectedRun = selectedRunId ? runs.find((r) => r.id === selectedRunId) : null
   // Fresh workspace (nothing queued, nothing run yet) → the first-run setup ladder, not a blank grid.
-  if (priorities.length === 0 && runs.length === 0) {
+  if (priorities.length === 0 && runs.length === 0 && (!live || workspaceConfigured === false)) {
     return <FirstRun wsName={workspace.name} onBegin={() => onSend('Walk me through setting up this workspace.')} />
   }
   // The Priorities column is user-resizable via the drag handle; clamp to keep both sides usable.
