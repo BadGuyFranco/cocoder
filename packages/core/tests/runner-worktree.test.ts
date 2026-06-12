@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import {
   type Adapter,
   type Directive,
+  type Git,
   type MakeJudge,
   type Play,
   type PlayAssignment,
@@ -102,17 +103,26 @@ afterEach(async () => {
 async function runScenario(
   verifyOutput: string,
   onProceed?: (bobCwd: string) => Promise<void>,
-  gitOverride?: import('../src/index.js').Git,
+  gitOverride?: Git,
   engineHome = home,
+  opts?: {
+    readonly onWrapDelivery?: (oscarCwd: string) => Promise<void>
+    readonly oscarWriteScope?: readonly string[]
+  },
 ) {
   let bobRefId: string | null = null
   let bobCwd: string | null = null
+  let oscarRefId: string | null = null
+  let oscarCwd: string | null = null
   const sessionHost: SessionHost = {
     async spawn(o: { persona: string; cwd: string }) {
       const ref: SessionRef = { id: `surface:${o.persona}`, driver: 'fake' }
       if (o.persona === 'bob') {
         bobRefId = ref.id
         bobCwd = o.cwd
+      } else if (o.persona === 'oscar') {
+        oscarRefId = ref.id
+        oscarCwd = o.cwd
       }
       return ref
     },
@@ -130,6 +140,9 @@ async function runScenario(
         await mkdir(join(bobCwd, 'packages'), { recursive: true })
         await writeFile(join(bobCwd, 'packages', 'feature.ts'), 'export const feature = 42\n')
         if (onProceed) await onProceed(bobCwd)
+      }
+      if (ref.id === oscarRefId && oscarCwd && text.includes('WRAP-UP READY')) {
+        await opts?.onWrapDelivery?.(oscarCwd)
       }
     },
     async show() {},
@@ -151,7 +164,7 @@ async function runScenario(
     {
       workspace: { id: 'cocoder', path: home, name: 'CoCoder' },
       priority: { id: 'demo', title: 'Demo', scopeNarrowing: null, goal: 'g', objective: 'o' },
-      oscar: persona('oscar', 'claude'),
+      oscar: persona('oscar', 'claude', [...(opts?.oscarWriteScope ?? [])]),
       bob: persona('bob', 'codex', ['packages/**']),
       sharedStandards: 'STANDARDS',
       engineHome,
@@ -202,6 +215,71 @@ describe('runRun worktree isolation + VERIFIED auto-merge (ADR-0015, live git)',
     expect(store.getRun(result.runId)?.integrationStatus).toBe('merged')
     // The founder's pre-existing uncommitted work is exactly as it was.
     expect(await readFile(join(home, 'packages', 'wip.ts'), 'utf8')).toBe('export const wip = 1\n')
+  })
+
+  test('post-land Oscar support commit is immediately verified and landed', async () => {
+    const supportPath = join('cocoder', 'priorities', 'full-oz-dashboard.md')
+    const { result, store } = await runScenario(
+      '{"verdict":"pass","reason":"tree green"}',
+      undefined,
+      undefined,
+      home,
+      {
+        oscarWriteScope: ['cocoder/priorities/**'],
+        async onWrapDelivery(oscarCwd) {
+          await mkdir(join(oscarCwd, 'cocoder', 'priorities'), { recursive: true })
+          await writeFile(join(oscarCwd, supportPath), '# Full Oz dashboard\n')
+        },
+      },
+    )
+
+    expect(result.status).toBe('completed')
+    expect(store.getRun(result.runId)?.integrationStatus).toBe('merged')
+    expect(await readFile(join(home, supportPath), 'utf8')).toBe('# Full Oz dashboard\n')
+    expect(store.listEvents(result.runId).some((e) => e.type === 'oscar-support-commit')).toBe(true)
+    expect(store.listEvents(result.runId).some((e) => e.type === 'post-land-oscar-support-integrated')).toBe(true)
+    expect(store.listCommitLinks(result.runId).filter((l) => l.kind === 'merge')).toHaveLength(2)
+  })
+
+  test('post-land Oscar support commit escalates visibly when trunk advances incompatibly', async () => {
+    const supportPath = join('cocoder', 'priorities', 'full-oz-dashboard.md')
+    const realGit = makeGit()
+    let firstLand = true
+    const git: Git = {
+      ...realGit,
+      async mergeFastForwardOnly(cwd, ref) {
+        const sha = await realGit.mergeFastForwardOnly(cwd, ref)
+        if (firstLand) {
+          firstLand = false
+          await mkdir(join(home, 'cocoder', 'priorities'), { recursive: true })
+          await writeFile(join(home, supportPath), '# Trunk moved first\n')
+          await g(home, ['add', supportPath])
+          await g(home, ['commit', '-q', '-m', 'external priority update'])
+        }
+        return sha
+      },
+    }
+
+    const { result, store } = await runScenario(
+      '{"verdict":"pass","reason":"tree green"}',
+      undefined,
+      git,
+      home,
+      {
+        oscarWriteScope: ['cocoder/priorities/**'],
+        async onWrapDelivery(oscarCwd) {
+          await mkdir(join(oscarCwd, 'cocoder', 'priorities'), { recursive: true })
+          await writeFile(join(oscarCwd, supportPath), '# Oscar support update\n')
+        },
+      },
+    )
+
+    expect(result.status).toBe('pending-landing')
+    expect(store.getRun(result.runId)?.integrationStatus).toBe('escalated')
+    expect(await readFile(join(home, supportPath), 'utf8')).toBe('# Trunk moved first\n')
+    expect(store.listEvents(result.runId).some((e) => e.type === 'post-land-oscar-support-merge-conflict-escalated')).toBe(true)
+    expect(store.listCommitLinks(result.runId).filter((l) => l.kind === 'merge')).toHaveLength(1)
+    expect(await g(home, ['cat-file', '-e', `cocoder/${result.runId}:${supportPath}`]).then(() => true, () => false)).toBe(true)
   })
 
   test('verified runs export allowed ignored local state but block secrets', async () => {

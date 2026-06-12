@@ -705,6 +705,90 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     return gate
   }
 
+  const landRunBranch = async (events?: {
+    readonly integrated?: string
+    readonly escalated?: string
+    readonly failed?: string
+    readonly mergeConflictEscalated?: string
+  }): Promise<{ readonly status: 'merged' | 'escalated'; readonly mergeSha: string | null }> => {
+    const integratedEvent = events?.integrated ?? 'integrated'
+    const escalatedEvent = events?.escalated ?? 'integration-escalated'
+    const failedEvent = events?.failed ?? 'integration-failed'
+    const mergeConflictEscalatedEvent = events?.mergeConflictEscalated ?? 'merge-conflict-escalated'
+
+    // Every exit below writes a TERMINAL integration status ('merged' or 'escalated') — never leaving a
+    // run stuck at 'verifying'/'resolving' (which no surface reconciles). `escalate()` is the single
+    // not-landed exit; the catch is fail-CLOSED (aborts any in-progress merge + escalates on any throw).
+    let escalated = false
+    let landedSha: string | null = null
+    const escalate = (type: string, data: Record<string, unknown>): void => {
+      store.setIntegrationStatus(run.id, 'escalated')
+      store.recordEvent({ runId: run.id, type, data })
+      escalated = true
+    }
+    try {
+      const trunkNow = await git.headSha(workspaceRepo)
+      const unmerged = await git.unmergedCommits(workspaceRepo, trunkNow, runBranch)
+      if (unmerged.length === 0) {
+        store.setIntegrationStatus(run.id, 'merged') // nothing un-integrated → vacuously landed
+      } else {
+        // Misrouting guard (§1): the founder's checkout must STILL be on the branch we cut from, or an
+        // ff would land on the wrong branch (or fail). If they switched / went detached, escalate.
+        const trunkBranchNow = await git.currentBranch(workspaceRepo)
+        if (trunkBranch === null || trunkBranchNow !== trunkBranch) {
+          escalate(escalatedEvent, { runBranch, reason: `trunk branch changed since launch (cut from ${trunkBranch ?? 'detached'}, now ${trunkBranchNow ?? 'detached'}) — not auto-landing to avoid misrouting` })
+        }
+        // NON-ff: merge trunk INTO the run branch first so a later ff lands everything (§4).
+        const branchTipBeforeMerge = await git.headSha(worktreePath)
+        let mergedTrunkIn = false
+        if (!escalated && !(await git.isAncestor(workspaceRepo, trunkNow, runBranch))) {
+          store.setIntegrationStatus(run.id, 'resolving')
+          if ((await git.mergeInto(worktreePath, trunkNow)) === 'conflict') {
+            const conflicts = await git.conflictedFiles(worktreePath)
+            const resolution = await runMergeConflictResolve(conflicts)
+            if (resolution?.resolution === 'resolved') {
+              await git.completeMerge(worktreePath, `merge: trunk → ${runBranch} (conflict resolved)`, conflicts)
+              mergedTrunkIn = true
+            } else {
+              // Semantic divergence (or no Play / no verdict) → abort + escalate; nothing guessed/landed.
+              await git.abortMerge(worktreePath)
+              escalate(mergeConflictEscalatedEvent, { runBranch, trunkParent: trunkNow, conflicts, reason: resolution ? resolution.reason : 'no resolution verdict (fail-closed)' })
+            }
+          } else {
+            mergedTrunkIn = true // a clean mergeInto auto-committed the merge on the run branch
+          }
+        }
+        // VERIFY the merged tree (for a non-ff the worktree HEAD now includes trunk), then ff trunk.
+        if (!escalated) {
+          store.setIntegrationStatus(run.id, 'verifying')
+          const verdict = await runIntegrationVerify(`${runBranch} → ${trunkBranch}`)
+          if (verdict?.verdict !== 'pass') {
+            // If we merged trunk into the branch but verify failed, undo that merge commit so the
+            // escalated branch is the pure run-work line the founder expects (symmetry with the abort).
+            if (mergedTrunkIn) await git.resetHard(worktreePath, branchTipBeforeMerge).catch(() => {})
+            escalate(escalatedEvent, { runBranch, trunkParent: trunkNow, reason: verdict ? verdict.reason : 'no integration-verify verdict (fail-closed)' })
+          } else {
+            // Verified green → land. Record the merge link ONLY after the merge succeeds (write-ordering).
+            landedSha = await git.mergeFastForwardOnly(workspaceRepo, runBranch)
+            store.recordCommitLink({ runId: run.id, commitSha: landedSha, message: `merge: ${runBranch} → ${trunkBranch}`, files: [], kind: 'merge', mergeSha: landedSha, trunkParent: trunkNow })
+            store.setIntegrationStatus(run.id, 'merged')
+            store.recordEvent({ runId: run.id, type: integratedEvent, data: { mergeSha: landedSha, trunkParent: trunkNow, trunkBranch, runBranch, commits: unmerged.length, verifyReason: verdict.reason } })
+            log(`integrated ${runBranch} → ${trunkBranch} (${landedSha.slice(0, 8)}; verified)`)
+          }
+        }
+      }
+    } catch (err) {
+      // FAIL-CLOSED on any throw: abort any in-progress merge so the worktree isn't left mid-merge (which
+      // would also block GC), and mark the run escalated so it surfaces as needs-attention (never stuck).
+      await git.abortMerge(worktreePath).catch(() => {})
+      if (!escalated) store.setIntegrationStatus(run.id, 'escalated')
+      store.recordEvent({ runId: run.id, type: failedEvent, data: { runBranch, reason: err instanceof Error ? err.message : String(err) } })
+      log(`integration failed for ${runBranch}: ${err instanceof Error ? err.message : String(err)}`)
+      escalated = true
+    }
+    return { status: escalated ? 'escalated' : 'merged', mergeSha: landedSha }
+  }
+
   const quarantineAtom = async (atomIndex: number, headBefore: string, selfCommitEvent: string): Promise<void> => {
     // If the atom SELF-committed (HEAD moved under trust-the-CLI), the working-tree quarantine can't
     // undo it — surface that so it isn't silently carried in history.
@@ -1035,73 +1119,19 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   // decision or failed does NOT auto-land.
   let mergeSha: string | null = null
   if (status === 'completed') {
-    // Every exit below writes a TERMINAL integration status ('merged' or 'escalated') — never leaving a
-    // run stuck at 'verifying'/'resolving' (which no surface reconciles). `escalate()` is the single
-    // not-landed exit; the catch is fail-CLOSED (aborts any in-progress merge + escalates on any throw).
-    let escalated = false
-    const escalate = (type: string, data: Record<string, unknown>): void => {
-      store.setIntegrationStatus(run.id, 'escalated')
-      store.recordEvent({ runId: run.id, type, data })
-      escalated = true
-    }
-    try {
-      const trunkNow = await git.headSha(workspaceRepo)
-      const unmerged = await git.unmergedCommits(workspaceRepo, trunkNow, runBranch)
-      if (unmerged.length === 0) {
-        store.setIntegrationStatus(run.id, 'merged') // nothing un-integrated → vacuously landed
-      } else {
-        // Misrouting guard (§1): the founder's checkout must STILL be on the branch we cut from, or an
-        // ff would land on the wrong branch (or fail). If they switched / went detached, escalate.
-        const trunkBranchNow = await git.currentBranch(workspaceRepo)
-        if (trunkBranch === null || trunkBranchNow !== trunkBranch) {
-          escalate('integration-escalated', { runBranch, reason: `trunk branch changed since launch (cut from ${trunkBranch ?? 'detached'}, now ${trunkBranchNow ?? 'detached'}) — not auto-landing to avoid misrouting` })
-        }
-        // NON-ff: merge trunk INTO the run branch first so a later ff lands everything (§4).
-        const branchTipBeforeMerge = await git.headSha(worktreePath)
-        let mergedTrunkIn = false
-        if (!escalated && !(await git.isAncestor(workspaceRepo, trunkNow, runBranch))) {
-          store.setIntegrationStatus(run.id, 'resolving')
-          if ((await git.mergeInto(worktreePath, trunkNow)) === 'conflict') {
-            const conflicts = await git.conflictedFiles(worktreePath)
-            const resolution = await runMergeConflictResolve(conflicts)
-            if (resolution?.resolution === 'resolved') {
-              await git.completeMerge(worktreePath, `merge: trunk → ${runBranch} (conflict resolved)`, conflicts)
-              mergedTrunkIn = true
-            } else {
-              // Semantic divergence (or no Play / no verdict) → abort + escalate; nothing guessed/landed.
-              await git.abortMerge(worktreePath)
-              escalate('merge-conflict-escalated', { runBranch, trunkParent: trunkNow, conflicts, reason: resolution ? resolution.reason : 'no resolution verdict (fail-closed)' })
-            }
-          } else {
-            mergedTrunkIn = true // a clean mergeInto auto-committed the merge on the run branch
-          }
-        }
-        // VERIFY the merged tree (for a non-ff the worktree HEAD now includes trunk), then ff trunk.
-        if (!escalated) {
-          store.setIntegrationStatus(run.id, 'verifying')
-          const verdict = await runIntegrationVerify(`${runBranch} → ${trunkBranch}`)
-          if (verdict?.verdict !== 'pass') {
-            // If we merged trunk into the branch but verify failed, undo that merge commit so the
-            // escalated branch is the pure run-work line the founder expects (symmetry with the abort).
-            if (mergedTrunkIn) await git.resetHard(worktreePath, branchTipBeforeMerge).catch(() => {})
-            escalate('integration-escalated', { runBranch, trunkParent: trunkNow, reason: verdict ? verdict.reason : 'no integration-verify verdict (fail-closed)' })
-          } else {
-            // Verified green → land. Record the merge link ONLY after the merge succeeds (write-ordering).
-            mergeSha = await git.mergeFastForwardOnly(workspaceRepo, runBranch)
-            store.recordCommitLink({ runId: run.id, commitSha: mergeSha, message: `merge: ${runBranch} → ${trunkBranch}`, files: [], kind: 'merge', mergeSha, trunkParent: trunkNow })
-            store.setIntegrationStatus(run.id, 'merged')
-            store.recordEvent({ runId: run.id, type: 'integrated', data: { mergeSha, trunkParent: trunkNow, trunkBranch, runBranch, commits: unmerged.length, verifyReason: verdict.reason } })
-            log(`integrated ${runBranch} → ${trunkBranch} (${mergeSha.slice(0, 8)}; verified)`)
-          }
-        }
+    const integration = await landRunBranch()
+    mergeSha = integration.mergeSha
+    if (integration.status === 'merged') {
+      const gate = await commitOscarSupport(await git.headSha(worktreePath))
+      if (gate?.committedSha || gate?.selfCommitted) {
+        const supportIntegration = await landRunBranch({
+          integrated: 'post-land-oscar-support-integrated',
+          escalated: 'post-land-oscar-support-escalated',
+          failed: 'post-land-oscar-support-failed',
+          mergeConflictEscalated: 'post-land-oscar-support-merge-conflict-escalated',
+        })
+        mergeSha = supportIntegration.mergeSha ?? mergeSha
       }
-    } catch (err) {
-      // FAIL-CLOSED on any throw: abort any in-progress merge so the worktree isn't left mid-merge (which
-      // would also block GC), and mark the run escalated so it surfaces as needs-attention (never stuck).
-      await git.abortMerge(worktreePath).catch(() => {})
-      if (!escalated) store.setIntegrationStatus(run.id, 'escalated')
-      store.recordEvent({ runId: run.id, type: 'integration-failed', data: { runBranch, reason: err instanceof Error ? err.message : String(err) } })
-      log(`integration failed for ${runBranch}: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
   if (status === 'completed' && store.getRun(run.id)?.integrationStatus === 'escalated') {
