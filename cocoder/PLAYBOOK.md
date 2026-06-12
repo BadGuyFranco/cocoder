@@ -183,6 +183,8 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    and BOTH halves of the strand class (post-land support commits re-land or park visibly; a
    teardown+boot stranded-commit detector surfaces unlanded branch tips for Resolve — no auto-land).
    core 242 · daemon 188 · ui 109.
+   run_70 (2026-06-12, 0 atoms): Oscar wrap-up only — reaffirmed **CODE-COMPLETE** at branch
+   point; all run_69 work confirmed on trunk; no delegable build work remains.
    Founder directive: complete Oz first, then workspace onboarding.
    Next: ZERO code owed — **live proofs only** (founder confirmed he'll run them). Restart the
    daemon onto current code first (`scripts/oz.sh restart` or idle self-restart — repair, launch

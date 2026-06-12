@@ -12,6 +12,14 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-12 — **Full Oz dashboard: code-complete reaffirmed — zero builder atoms, live proofs only (run_70)**
+
+**Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** full-oz-dashboard | **Play:** confirm run_69 trunk landing; no rebuild work
+**Outcomes:**
+- Zero builder atoms delegated — run_70 deliberately confirmed **CODE-COMPLETE**; all run_69 work (repair verb `6204df9`/`ab59232`, launch button `29036d1`, in-run strand fix `ee4cb0c`, stranded-commit detector `0a72e55`, ADR-0021 recovery) verified on trunk at this run's branch point; baselines core 242 · daemon 188 · ui 109 · typecheck clean.
+- No code, ADR, or architecture changes this run — archive blocked only on founder-present live evidence (daemon restart, Oz chat exercise, priorities-pane eyeball, one headless-Oscar + one headless-Bob run).
+**Next:** Founder live proofs (1)–(5) per the priority Status section; archive-candidate once witnessed. After archive: `backlog/workspace-onboarding.md`.
+
 ## 2026-06-12 — **Full Oz dashboard: repair verb + launch button + strand-class fixes; stranded ADR-0021 acceptance recovered (run_69)**
 
 **Persona:** Oscar + Bob (5 atoms, all first-try passes) | **Priority:** full-oz-dashboard | **Play:** recover the run_67 strand, then build everything it had unblocked

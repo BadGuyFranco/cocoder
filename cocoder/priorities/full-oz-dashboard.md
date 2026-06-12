@@ -22,7 +22,10 @@ is decided when this is picked up, not here.
 
 ## Status
 
-**Live proofs owed — `continue` (code-complete).** run_67 (2026-06-12) drafted ADR-0021 and the
+**Live proofs owed — `continue` (code-complete).** run_70 (2026-06-12, 0 atoms) reaffirmed
+CODE-COMPLETE at branch point — all run_69 work confirmed on trunk, zero builder atoms delegated,
+no code or ADR changes; archive blocked on founder-present live evidence only. run_67 (2026-06-12)
+drafted ADR-0021 and the
 founder **ACCEPTED it at the same wrap** (idle-only one-shot headless repair over trunk checkout,
 whole-tree diff, `oz-repair` gate-commit for governance + Oz operation only, machinery code
 propose-only in v1, hold-back surfacing; founder note: expect to LOOSEN these restrictions once Oz
