@@ -114,6 +114,25 @@ describe('PrioritiesPanel active run semantics', () => {
     expect(container.querySelectorAll('.ph-warning-circle').length).toBeGreaterThan(1)
   })
 
+  it('keeps running accents pulsing while not-landed accents are static', () => {
+    const { container } = renderPanel({
+      priorities: [
+        priority({ id: 'p-running', name: 'Running priority', runId: 'run-running' }),
+        priority({ id: 'p-landing', name: 'Landing priority', runId: 'run-landing' }),
+      ],
+      runs: [
+        run({ id: 'run-running', priorityId: 'p-running', status: 'running' }),
+        run({ id: 'run-landing', priorityId: 'p-landing', status: 'not-landed' }),
+      ],
+    })
+
+    const runningAccent = container.querySelector('[data-run-accent="running"]') as HTMLElement
+    const notLandedAccent = container.querySelector('[data-run-accent="not-landed"]') as HTMLElement
+
+    expect(runningAccent.style.animation).toContain('ozPulse')
+    expect(notLandedAccent.style.animation).toBe('none')
+  })
+
   it('still shows Launch for a priority with no linked active run', () => {
     const onLaunch = vi.fn()
     renderPanel({ priorities: [priority({ id: 'p-ready', name: 'Ready priority' })], onLaunch })

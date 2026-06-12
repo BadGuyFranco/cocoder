@@ -2,7 +2,7 @@
 // can carry inline run cards (pivot to inspection) and a decision callout (resolve a blocked run
 // without leaving the thread). Quick-prompt pills pre-fill common ops. Ported from design-ref.
 import { useEffect, useRef, useState } from 'react'
-import { Icon, Button } from '../../ui/primitives.tsx'
+import { Icon, Button, StatusChip } from '../../ui/primitives.tsx'
 import type { ChatMessage, Run } from '../../model.ts'
 
 function ChatMessageView({ msg, runs, onSelectRun, onDecision }: { msg: ChatMessage; runs: Run[]; onSelectRun: (id: string) => void; onDecision: (choice: string) => void }) {
@@ -25,7 +25,7 @@ function ChatMessageView({ msg, runs, onSelectRun, onDecision }: { msg: ChatMess
           <div key={i} onClick={() => onSelectRun(run.id)} style={{ marginTop: 10, padding: 12, background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}
             onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--cb-accent-30)')} onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--cb-border)')}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}><span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-text-muted)' }}>{run.id}</span></div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}><StatusChip status={run.status} /><span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-text-muted)' }}>{run.id}</span></div>
               <div style={{ fontSize: 12.5, color: 'var(--cb-text)', fontWeight: 500 }}>{run.title}</div>
               <div style={{ fontSize: 11, color: 'var(--cb-text-muted)', marginTop: 3 }}>{run.personas.join(' · ')} · started {run.startedAt}</div>
             </div>
