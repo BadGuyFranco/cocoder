@@ -20,6 +20,7 @@ import {
   runHeadlessProcess,
   runRun,
   type PersonaSources,
+  type Run,
   type RunInput,
   type RunnerDeps,
   type SessionHost,
@@ -273,11 +274,18 @@ function localStateBlockedReason(ctx: OzContext, runId: string): string | null {
   return null
 }
 
+function runHasEvent(ctx: OzContext, runId: string, type: string): boolean {
+  return ctx.store.listEvents(runId).some((event) => event.type === type)
+}
+
 function gcBlockedReason(ctx: OzContext, run: { id: string; status: string; integrationStatus: string }, opts: { explicitTeardown?: boolean } = {}): string | null {
   if (!opts.explicitTeardown && run.status === 'completed' && run.integrationStatus === 'merged') {
     return 'awaiting-founder-teardown'
   }
   if (run.status === 'pending-scope-decision') return 'pending-scope-decision'
+  if (opts.explicitTeardown && run.status === 'pending-landing' && run.integrationStatus === 'escalated' && runHasEvent(ctx, run.id, 'stranded-commits-detected')) {
+    return null
+  }
   if (run.integrationStatus === 'escalated' || run.integrationStatus === 'resolving' || run.integrationStatus === 'verifying') {
     return `integration-${run.integrationStatus}`
   }
@@ -313,6 +321,51 @@ async function gcWorktree(ctx: OzContext, runId: string, opts: { explicitTeardow
   }
 }
 
+async function workspaceRepoForRun(ctx: OzContext, run: Run): Promise<{ readonly path: string; readonly owner: 'workspace' | 'fallback' }> {
+  const workspace = await findWorkspace(ctx.cocoderHome, run.workspaceId)
+  return workspace ? { path: workspace.path, owner: 'workspace' } : { path: ctx.cocoderHome, owner: 'fallback' }
+}
+
+async function reconcileStrandedRunCommits(ctx: OzContext, run: Run): Promise<void> {
+  if (run.status !== 'completed' || run.integrationStatus !== 'merged' || !run.runBranch) return
+  if (runHasEvent(ctx, run.id, 'scope-decision')) return
+
+  const repo = await workspaceRepoForRun(ctx, run)
+  let onTrunk: boolean
+  try {
+    onTrunk = await ctx.git.isAncestor(repo.path, run.runBranch, 'HEAD')
+  } catch {
+    return // Branch deleted or repo unavailable: no stranded branch to surface.
+  }
+  if (onTrunk) return
+
+  let ahead: readonly string[]
+  try {
+    ahead = await ctx.git.unmergedCommits(repo.path, 'HEAD', run.runBranch)
+  } catch {
+    return
+  }
+  const branchTip = ahead[0]
+  if (!branchTip) return
+
+  if (!runHasEvent(ctx, run.id, 'stranded-commits-detected')) {
+    ctx.store.recordEvent({
+      runId: run.id,
+      type: 'stranded-commits-detected',
+      data: {
+        runBranch: run.runBranch,
+        branchTip,
+        aheadCount: ahead.length,
+        workspaceId: run.workspaceId,
+        workspaceRepo: repo.path,
+        workspaceRepoOwner: repo.owner,
+      },
+    })
+  }
+  ctx.store.setIntegrationStatus(run.id, 'escalated')
+  ctx.store.setRunStatus(run.id, 'pending-landing')
+}
+
 /** Teardown (safe, daemon-mediated): close this run's tracked cmux surfaces THEN GC its worktree dir.
  *  Order matters — a live pane's cwd is inside the worktree (§5). Closing is by durable sessionRef, so
  *  it works even for a run launched by a PRIOR daemon instance (the Deb-pane leak fix). It physically
@@ -322,6 +375,7 @@ export async function teardownRun(ctx: OzContext, runId: string): Promise<Launch
   const run = ctx.store.getRun(runId)
   if (!run) return { status: 404, body: { error: 'unknown run' } }
   const closed = await closeRunSurfaces(ctx, runId)
+  await reconcileStrandedRunCommits(ctx, run)
   await gcWorktree(ctx, runId, { explicitTeardown: true })
   ctx.store.recordEvent({ runId, type: 'teardown', data: { closed } })
   void appendAudit(ctx.cocoderHome, { action: 'teardown', runId, closed })
@@ -717,6 +771,9 @@ export async function reconcileOrphans(ctx: OzContext): Promise<void> {
       ctx.store.recordEvent({ runId: run.id, type: 'orphaned', data: { reason: 'daemon restarted' } })
       ctx.store.setRunStatus(run.id, 'failed')
     }
+  }
+  for (const run of ctx.store.listRuns()) {
+    await reconcileStrandedRunCommits(ctx, run)
   }
   await sweepOrphanWorktrees(ctx)
 }
