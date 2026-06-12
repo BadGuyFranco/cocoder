@@ -67,7 +67,7 @@ export function isPersonaEnabled(assignments: Assignments, id: string): boolean 
 export function resolvePersona(personasDir: string, assignments: Assignments, id: string): ResolvedPersona {
   const assignment = assignments.personas[id]
   if (!assignment) throw new Error(`persona "${id}" has no assignment in assignments.json (not a live persona)`)
-  return { ...loadPersona(personasDir, id), cli: assignment.cli, model: assignment.model }
+  return { ...loadPersona(personasDir, id), cli: assignment.cli, model: assignment.model, ...(assignment.mode === undefined ? {} : { mode: assignment.mode }) }
 }
 
 export function resolvePlayAssignment(assignments: Assignments, personaId: string, playId: string): PlayAssignment {

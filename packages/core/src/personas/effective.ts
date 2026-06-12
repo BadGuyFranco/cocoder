@@ -55,7 +55,7 @@ export function resolveEffectivePersona(sources: PersonaSources, assignments: As
     ? loadEffectivePersona(sources.baseDir, sources.deltaDir, id)
     : loadPersona(sources.repoPersonaDir, id)
 
-  return { ...definition, cli: assignment.cli, model: assignment.model }
+  return { ...definition, cli: assignment.cli, model: assignment.model, ...(assignment.mode === undefined ? {} : { mode: assignment.mode }) }
 }
 
 export function listEffectivePersonas(sources: PersonaSources): readonly Persona[] {

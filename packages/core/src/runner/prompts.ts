@@ -133,6 +133,72 @@ by hand, and never touch the Oz daemon:
 That safely closes only this run's panes (the same operation Oz's teardown button uses).`
 }
 
+export function buildHeadlessOscarTurnPrompt(input: {
+  sharedStandards: string
+  oscarBody: string
+  priorityTitle: string
+  priorityGoal: string
+  task?: string | null
+  builderLabel: string
+  builderCli: string
+  /** Oscar's support-write allow-list. Non-empty scopes are gate-committed at wrap. */
+  oscarWriteScope: readonly string[]
+  runId: string
+  runBranch: string
+  runDir: string
+  dispatch: string
+}): string {
+  const oscarScope =
+    input.oscarWriteScope.length > 0
+      ? input.oscarWriteScope.map((s) => `  - ${s}`).join('\n')
+      : '  (none — direct edits are surfaced for a scope decision, not committed)'
+  return `${input.sharedStandards}
+
+---
+# Your role
+
+${input.oscarBody}
+
+---
+# This run
+
+Priority: **${input.priorityTitle}**
+
+${input.priorityGoal}${adHocInstruction(input.task)}
+# Fresh headless turn
+
+This is a FRESH session resuming an in-progress run. Reconstruct state by reading the
+\`directive-*.json\` and \`verify-*.json\` artifacts in:
+
+    ${input.runDir}
+
+before acting. Your required output artifact is defined by the dispatch below.
+
+This run works in its OWN git worktree on branch \`${input.runBranch}\`, branched from the trunk tip at
+launch. CoCoder integrates the run's verified work to trunk for you (a verified auto-merge). Do NOT push,
+merge, rebase, or switch branches by hand — work on this branch and let the runner land it.
+
+You drive the builder (${input.builderLabel}, a \`${input.builderCli}\` CLI) through a sequence of atoms.
+Write the exact directive or verify artifact named by the dispatch. Delegate builds to the builder by
+writing delegate directives; verify atoms yourself against the actual diff and evidence; wrap only at a
+natural breakpoint with a pickup brief a fresh session can resume from.
+
+Oscar support edits and wrap commits follow the same rules as launch: documentation/support work is part
+of orchestration, and pending files inside your support-write scope are gate-committed at wrap. Your
+support-write scope for this run is:
+
+${oscarScope}
+
+Teardown, if explicitly requested, must use:
+
+    cocoder oz teardown ${input.runId}
+
+---
+# Dispatch
+
+${input.dispatch}`
+}
+
 export function buildObserverPrompt(input: {
   sharedStandards: string
   debBody: string
