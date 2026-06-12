@@ -49,10 +49,13 @@ interface ToolCall {
 
 interface ToolResult {
   readonly summary: string
+  readonly reply: string
+  readonly ok: boolean
+  readonly status: number
   readonly action?: OzChatAction
 }
 
-type ToolName = 'launch' | 'adhoc' | 'show' | 'stop' | 'teardown' | 'status'
+type ToolName = 'launch' | 'adhoc' | 'show' | 'stop' | 'teardown' | 'status' | 'refresh'
 
 // Daemon-local by design: Refresh Oz means a fresh daemon-owned session, so restart drops transcript.
 const sessions = new Map<string, OzSession>()
@@ -117,9 +120,12 @@ async function runToolLoop(ctx: OzContext, target: OzTarget, session: OzSession,
     }
 
     const validation = validateToolCall(parsed)
-    toolResult = validation.ok ? await executeTool(validation.command, execute) : { summary: validation.error }
+    toolResult = validation.ok ? await executeTool(validation.command, execute) : { summary: validation.error, reply: validation.error, ok: false, status: 400 }
     if (toolResult.action) lastAction = toolResult.action
     appendTranscript(session, { role: 'tool', text: `call=${JSON.stringify(parsed)}\nresult=${toolResult.summary}`, ts: new Date().toISOString() })
+    if (validation.ok && validation.command.kind === 'refresh' && toolResult.ok) {
+      return chatResult(200, { reply: toolResult.reply, command: 'chat', ok: true, ...(toolResult.action ? { action: toolResult.action } : {}) })
+    }
   }
 
   return chatResult(500, {
@@ -186,7 +192,8 @@ function toolInstructions(): string {
     'Reply in plain English for the founder, decision-first.',
     'Act only through these tools, and never claim an action succeeded unless the tool result says it did.',
     'Facts come from the digest above.',
-    'Available tools: `launch {"priorityId":"..."}`, `adhoc {"task":"..."}`, `show {"runId":"..."}`, `stop {"runId":"..."}`, `teardown {"runId":"..."}`, and `status {"runId":"..."}` or `status {}`.',
+    'Available tools: `launch {"priorityId":"..."}`, `adhoc {"task":"..."}`, `show {"runId":"..."}`, `stop {"runId":"..."}`, `teardown {"runId":"..."}`, `status {"runId":"..."}` or `status {}`, and `refresh {}`.',
+    '`refresh {}` restarts the daemon to refresh Oz and re-derive state from disk. It refuses while a run is in flight. Use it when the founder asks to refresh Oz/restart the daemon, or after a repair needs the daemon to reload code.',
     'To use a tool, your output must end with exactly one final non-empty line in this form: `OZ_TOOL {"tool":"launch","args":{"priorityId":"demo"}}`.',
     'Use strict JSON after `OZ_TOOL `. Only one tool call is allowed per turn. Everything before the `OZ_TOOL` line is working notes and is not shown to the founder.',
     'You have at most 3 tool rounds for this founder message. After a tool result, either answer the founder or call one more available tool.',
@@ -231,6 +238,7 @@ function validateToolCall(call: ToolCall): ToolValidation {
     if (!Object.prototype.hasOwnProperty.call(call.args, 'runId')) return { ok: true, command: { kind: 'status' } }
     return requiredString(call, 'runId', (runId) => ({ kind: 'status', runId }))
   }
+  if (call.tool === 'refresh') return { ok: true, command: { kind: 'refresh' } }
 
   const task = typeof call.args.task === 'string' ? call.args.task.trim() : ''
   if (!task) return { ok: false, error: 'Usage: adhoc <task>' }
@@ -244,13 +252,16 @@ function requiredString(call: ToolCall, key: string, build: (value: string) => O
 }
 
 function isToolName(tool: string): tool is ToolName {
-  return tool === 'launch' || tool === 'adhoc' || tool === 'show' || tool === 'stop' || tool === 'teardown' || tool === 'status'
+  return tool === 'launch' || tool === 'adhoc' || tool === 'show' || tool === 'stop' || tool === 'teardown' || tool === 'status' || tool === 'refresh'
 }
 
 async function executeTool(command: OzExecutableCommand, execute: OzCommandExecutor): Promise<ToolResult> {
   const result = await execute(command)
   return {
     summary: `Tool ${command.kind} returned status ${result.status}, ok=${result.body.ok}: ${result.body.reply}`,
+    reply: result.body.reply,
+    ok: result.body.ok,
+    status: result.status,
     ...(result.body.action && result.body.ok ? { action: result.body.action } : {}),
   }
 }

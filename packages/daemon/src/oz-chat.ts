@@ -1,6 +1,6 @@
 import type { Run } from '@cocoder/core'
 import type { OzContext } from './context.js'
-import { launchRun as launchRunOp, requestStopRun as stopRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type LaunchResult } from './launcher.js'
+import { launchRun as launchRunOp, requestDaemonRestart as restartDaemonOp, requestStopRun as stopRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type LaunchResult } from './launcher.js'
 import { tryHandleOzAgentTurn } from './oz-host.js'
 
 const ADHOC_PRIORITY_ID = 'adhoc-session'
@@ -13,13 +13,14 @@ export type OzCommand =
   | { readonly kind: 'stop'; readonly runId: string }
   | { readonly kind: 'teardown'; readonly runId: string }
   | { readonly kind: 'status'; readonly runId?: string }
+  | { readonly kind: 'refresh' }
   | { readonly kind: 'help' }
   | { readonly kind: 'unknown'; readonly hint: string }
 export type OzExecutableCommand = Exclude<OzCommand, { readonly kind: 'help' } | { readonly kind: 'unknown' }>
 export type OzCommandExecutor = (command: OzExecutableCommand) => Promise<OzChatResult>
 
 export interface OzChatAction {
-  readonly type: 'launch' | 'show' | 'stop' | 'teardown' | 'status'
+  readonly type: 'launch' | 'show' | 'stop' | 'teardown' | 'status' | 'refresh'
   readonly workspaceId?: string
   readonly priorityId?: string
   readonly runId?: string
@@ -43,9 +44,10 @@ export interface OzChatOps {
   readonly showRun: typeof showRunOp
   readonly stopRun: typeof stopRunOp
   readonly teardownRun: typeof teardownRunOp
+  readonly restartDaemon: typeof restartDaemonOp
 }
 
-const defaultOps: OzChatOps = { launchRun: launchRunOp, showRun: showRunOp, stopRun: stopRunOp, teardownRun: teardownRunOp }
+const defaultOps: OzChatOps = { launchRun: launchRunOp, showRun: showRunOp, stopRun: stopRunOp, teardownRun: teardownRunOp, restartDaemon: restartDaemonOp }
 
 export function parseOzCommand(text: string): OzCommand {
   const trimmed = text.trim()
@@ -90,6 +92,14 @@ export async function handleOzMessage(ctx: OzContext, body: unknown, ops: OzChat
 }
 
 export async function executeOzCommand(ctx: OzContext, workspaceId: string | undefined, command: OzExecutableCommand, ops: OzChatOps = defaultOps): Promise<OzChatResult> {
+  if (command.kind === 'refresh') {
+    return runOp(
+      'refresh',
+      () => ops.restartDaemon(ctx),
+      refreshReply,
+    )
+  }
+
   if (command.kind === 'launch') {
     if (!workspaceId) return missingWorkspace()
     return runOp(
@@ -219,6 +229,16 @@ function stopReply(runId: string, out: LaunchResult): OzChatReply {
     command: 'stop',
     ok: true,
     action: { type: 'stop', runId },
+  }
+}
+
+function refreshReply(out: LaunchResult): OzChatReply {
+  if (!isOk(out.status)) return failedReply('refresh', 'Could not refresh Oz', out)
+  return {
+    reply: 'Daemon is restarting. Oz will come back as a fresh session after boot, and this chat transcript resets.',
+    command: 'refresh',
+    ok: true,
+    action: { type: 'refresh' },
   }
 }
 

@@ -15,6 +15,7 @@ interface Fixture {
   readonly headlessInputs: HeadlessRunInput[]
   readonly ctx: OzContext
   readonly runId: string
+  readonly restartActionCalls: () => number
 }
 
 describe('Oz agent chat turns', () => {
@@ -256,6 +257,84 @@ describe('Oz agent chat turns', () => {
     expect(fixture.prompts[2]?.prompt).toContain('Ad-hoc task too long')
     expect(result).toMatchObject({ status: 200, body: { reply: 'I cannot run those ad-hoc tasks.', command: 'chat', ok: true } })
   })
+
+  test('refresh tool restarts through ops and short-circuits without a follow-up turn', async () => {
+    const fixture = await makeFixture({
+      outputs: [
+        'Refreshing now.\nOZ_TOOL {"tool":"refresh","args":{}}',
+        'this must not run',
+      ],
+    })
+    let restarts = 0
+    const ops: OzChatOps = {
+      ...fakeOps(),
+      restartDaemon: async () => {
+        restarts += 1
+        return { status: 202, body: { restarting: true } }
+      },
+    }
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'refresh oz', workspaceId: 'cocoder' }, ops)
+
+    expect(restarts).toBe(1)
+    expect(fixture.headlessInputs).toHaveLength(1)
+    expect(result).toMatchObject({ status: 200, body: { command: 'chat', ok: true, action: { type: 'refresh' } } })
+    expect(result.body.reply).toContain('Daemon is restarting')
+    expect(result.body.reply).toContain('fresh session')
+    expect(result.body.reply).toContain('transcript resets')
+  })
+
+  test('failed refresh feeds the in-flight error back to the agent', async () => {
+    const fixture = await makeFixture({
+      outputs: [
+        'Trying refresh.\nOZ_TOOL {"tool":"refresh","args":{}}',
+        'A run is in flight, so I cannot refresh yet.',
+      ],
+    })
+    let restartCalls = 0
+    const ops: OzChatOps = {
+      ...fakeOps(),
+      restartDaemon: async () => {
+        restartCalls += 1
+        return { status: 409, body: { error: 'refusing to restart: a run is in flight (would orphan it) — wait for it to finish' } }
+      },
+    }
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'refresh oz', workspaceId: 'cocoder' }, ops)
+
+    expect(restartCalls).toBe(1)
+    expect(fixture.restartActionCalls()).toBe(0)
+    expect(fixture.headlessInputs).toHaveLength(2)
+    expect(fixture.prompts[1]?.prompt).toContain('refusing to restart: a run is in flight')
+    expect(result).toMatchObject({ status: 200, body: { command: 'chat', ok: true, reply: 'A run is in flight, so I cannot refresh yet.' } })
+  })
+
+  test('typed refresh with Oz assigned routes to the agent, not a parser branch', async () => {
+    const fixture = await makeFixture({ outputs: ['I can refresh if you want me to use the tool.'] })
+    let restarts = 0
+    const ops: OzChatOps = {
+      ...fakeOps(),
+      restartDaemon: async () => {
+        restarts += 1
+        return { status: 202, body: { restarting: true } }
+      },
+    }
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'refresh', workspaceId: 'cocoder' }, ops)
+
+    expect(fixture.headlessInputs).toHaveLength(1)
+    expect(restarts).toBe(0)
+    expect(result).toMatchObject({ status: 200, body: { command: 'chat', ok: true, reply: 'I can refresh if you want me to use the tool.' } })
+  })
+
+  test('typed refresh without Oz assigned returns the legacy unknown hint', async () => {
+    const fixture = await makeFixture({ ozAssigned: false })
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'refresh', workspaceId: 'cocoder' })
+
+    expect(result).toEqual({ status: 200, body: { reply: HINT, command: 'unknown', ok: false } })
+    expect(fixture.headlessInputs).toEqual([])
+  })
 })
 
 type FakeOutput = string | { readonly exitCode: number; readonly output: string }
@@ -282,10 +361,14 @@ async function makeFixture(options: {
   const prompts: BuildInput[] = []
   const headlessInputs: HeadlessRunInput[] = []
   const outputs = [...(options.outputs ?? ['agent answer'])]
+  let restartActionCalls = 0
   const ctx = {
     cocoderHome: home,
     store,
     getAdapter: () => fakeAdapter(prompts),
+    restartDaemon: () => {
+      restartActionCalls += 1
+    },
     runHeadless: options.runHeadless ?? (async (input: HeadlessRunInput) => {
       headlessInputs.push(input)
       const next = outputs.shift() ?? 'agent answer'
@@ -293,7 +376,7 @@ async function makeFixture(options: {
     }),
   } as unknown as OzContext
 
-  return { home, store, prompts, headlessInputs, ctx, runId: run.id }
+  return { home, store, prompts, headlessInputs, ctx, runId: run.id, restartActionCalls: () => restartActionCalls }
 }
 
 function fakeAdapter(prompts: BuildInput[]): Adapter {
@@ -319,5 +402,6 @@ function fakeOps(): OzChatOps {
     showRun: async () => ({ status: 200, body: { sessionRef: 'surface:1' } }),
     stopRun: async () => ({ status: 202, body: { stopping: true } }),
     teardownRun: async () => ({ status: 200, body: { closed: [] } }),
+    restartDaemon: async () => ({ status: 202, body: { restarting: true } }),
   }
 }
