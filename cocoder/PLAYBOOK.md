@@ -158,17 +158,24 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    fallout (worktree dirs under ENGINE `local/worktrees/` for every workspace, scaffold
    `AGENTS.md`/`CLAUDE.md`, priorities-pane design audit at
    `packages/ui/design-audit-priorities-pane.md`, rebuild Atom B for `not-landed` active-run
-   semantics — four atoms, all first-try); run_65 **completed the priorities-pane rebuild**
+   semantics — four atoms, all first-try);    run_65 **completed the priorities-pane rebuild**
    (audit atoms A, C, D, E, F — five atoms, all first-try; handoff geometry, bounded renderer
    detail enrichment, first-run vs empty-queue signal, polish pass, regression gap-fill; ui 108
-   tests — the founder's "priorities pane is all wrong" complaint is closed at code level).
+   tests — the founder's "priorities pane is all wrong" complaint is closed at code level);
+   run_66 **closed Bob session `mode` honoring end-to-end (ADR-0018 stage 3 for the builder
+   session — the last buildable slice)** — five atoms, all first-try: incremental-output +
+   abort seams on `runHeadlessProcess`, behavior-preserving `BuilderDriver` extraction, headless
+   honoring (fresh one-shot captured-subprocess turn per atom; monitor watches LIVE via capture;
+   loop atoms work headless; stop kills child before quarantine), UI tail (`MODE_HONORED_PERSONAS`
+   = {oscar, bob}; core 238 · daemon 164 · ui 109). **All builder-delegable code on this priority
+   is now landed.**
    Founder directive: complete Oz first, then workspace onboarding.
-   Next: Oz `repair` verb **DESIGN-FIRST** (founder judgment on trunk commit authority without a
-   run's verify gate — do not delegate a build atom until answered; see priority next-slice note);
-   **live Oz proof session** (zero code owed — assign oz a real CLI, chat status/launch/stop/nudge/
-   refresh, founder eyeball of the rebuilt pane); Bob session `mode` honoring (gated on a
-   captured-subprocess monitor path for builder work); cheap live check — flip Oscar to headless
-   and launch a small run.
+   Next (zero code until founder weighs in): Oz `repair` verb **DESIGN-FIRST** (founder judgment on
+   trunk commit authority without a run's verify gate — do not delegate a build atom until answered;
+   see priority next-slice note); **live Oz proof session** (assign oz a real CLI, chat
+   status/launch/stop/nudge/refresh, founder eyeball of the rebuilt pane); live headless runs for
+   Oscar AND Bob (flip in Personas, launch a small run — honoring is unit/orchestration-test proven
+   only). Archive-candidate after (a) is decided (+ built if approved) and (b)/(c) show live evidence.
 4. `new-primary-root` — the primary-root audit: bootstrap a new root's `cocoder/` + propose-only
    drift re-audit, one base Play pinned to a top-tier model. Design drafted as **ADR-0020 (proposed,
    2026-06-10)** — founder acceptance gates the build. The concrete form of Phase 5 ("first external repo").
