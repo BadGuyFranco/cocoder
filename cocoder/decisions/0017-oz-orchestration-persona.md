@@ -1,6 +1,6 @@
 # ADR-0017 — Oz orchestration: Oz is a CLI-backed persona in a window, with a bounded tool surface
 
-**Status:** Accepted (founder + Claude, 2026-06-09).
+**Status:** Accepted (founder + Claude, 2026-06-09). **Amended 2026-06-12** (founder + Claude, run_59 post-wrap): hosting decided, verb surface extended, Refresh Oz added — see the Amendment section.
 **Builds on:** [0005](./0005-personas-and-subtasks.md) (personas run as CLI sessions via an adapter), [0006](./0006-adapter-contract.md) (adapter contract), [0013](./0013-orchestration-observation.md) (the three-tier observation hierarchy; Oz = tier 3).
 **Relates to:** [ADR-0008 (v1 tree)](../zArchive/v1/decisions/0008-oz-control-plane-architecture.md) (Oz control plane). **Supersedes** the run_46 `parseOzCommand` daemon stub *as the human-facing interface* (that stub is retained as Oz's action layer — see Consequences).
 
@@ -53,3 +53,53 @@ map to the daemon's existing run-lifecycle operations.**
 - **Deferred:** streaming/SSE polish, and the exact division of "daemon hosts the session" vs "app
   hosts it as a client" are earned during build, not fixed here. The minimal first slice is an Oz
   persona + session host + the existing tool surface wired as the agent's tools.
+  *(The hosting question is no longer deferred — resolved by the 2026-06-12 Amendment below.)*
+
+## Amendment — 2026-06-12 (founder + Claude, decided in conversation at run_59 wrap)
+
+Four decisions, extending — not reversing — the 2026-06-09 acceptance:
+
+1. **Hosting resolved: the DAEMON owns Oz's session, lifecycle-synced.** Oz starts when the daemon
+   boots and restarts when the daemon restarts; the Electron app is only a window into that session
+   (consistent with the standing "daemon stays headless and UI-independent" decision — a cron-driven
+   or UI-less CoCoder still has Oz). This resolves the question the original ADR deferred.
+
+2. **"Refresh Oz" is a first-class action** (founder-named), answering the context-accumulation worry
+   for an agent overseeing many sessions: (i) restart the daemon; (ii) start a fresh Oz session, then
+   close the old one; (iii) re-derive priorities and run statuses from current on-disk/DB state;
+   (iv) re-display any live sessions. **v1 is idle-only** — it refuses while a run is in flight, the
+   same guard the daemon's restart endpoint already enforces, because the loop driving a run lives in
+   the daemon process and restarting would orphan it. *Adopting a live run across a restart is a
+   distinct future capability with its own ADR, not part of this amendment.* Refresh doubles as the
+   code-refresh path (the daemon serves code loaded at boot) and as the tail of Oz's self-repair loop.
+
+3. **Verb surface extended.** Beyond the existing gated lifecycle verbs (launch / show / stop /
+   teardown / status / adhoc / resolve / create-priority / reorder), Oz gains:
+   - **nudge** — delivered by the RUNNER to a session's OSCAR only, reusing the existing Deb-nudge
+     channel mechanics. This is sanctioned by ADR-0013's authority rule as written: Oscar IS Oz's
+     immediate primary ("you direct only your immediate primary; you may observe deeper"). The hard
+     line stands: Oz never writes into Bob's or Deb's panes — one manager per agent.
+   - **repair** — Oz-level repair only: daemon config, assignments, governance docs, and Oz's own
+     operation. In-run orchestration faults remain DEB's (ADR-0016); where an Oz repair touches
+     machinery code it reuses the same repair primitive and gate-commit discipline (one repair
+     system, two tiers — the same way tier-2/3 oversight reuses the tier-1 monitor primitive).
+     The self-repair loop is: diagnose → fix files → Refresh Oz (the restart makes the fix live) →
+     relaunch/resume affected work.
+   - **refresh** — the Refresh Oz action above.
+
+4. **Information-source doctrine.** For session FACTS (status, progress, verdicts, faults) Oz reads
+   the runner-produced artifacts directly — run records, event streams, status feeds, directive/verify
+   files — never burning a model call or another agent's context for what disk already knows. For
+   INTERPRETATION ("why does this run feel stuck?") Oz asks DEB, the idle observer with the session's
+   context. Oscar is nudged through the runner channel, never queried mid-run: his input channel
+   carries the loop's verify/next-or-wrap protocol and free-form questions would interleave with it.
+
+**Tier-boundary restatement (current truth, replacing looser summaries):** "Oz never orchestrates"
+means **Oz never bypasses a session's manager** — he directs Oscars (his immediate primaries), observes
+anyone, and runs lifecycle + system-level repair. It has never meant Oz is passive: every verb above is
+an action.
+
+**Build note for the next slice:** Oz needs a long-lived *conversational* session; the adapter contract
+(ADR-0006) today covers launch-and-run, so slice 1 may need a deliberate contract extension (the run_59
+headless-Oscar machinery — captured one-shot turns reconstructing state from artifacts — is most of the
+host). The slice's Objective lives in the full-oz-dashboard Playbook ("Recommended next slice").

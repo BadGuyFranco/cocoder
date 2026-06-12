@@ -294,10 +294,26 @@ no founder decisions are outstanding on this priority.
   No DB migration: priorities stay `.md` files; sequence is a git-tracked order-only
   `cocoder/priorities/order.json`; drag-reorder rewrites it. Owed slice #8 reclassified above.
 
-**Recommended next slice (updated run_59):** SSE and Oscar-mode honoring both landed in run_59,
-so the remaining queue is: (a) **Oz as a persona** per ADR-0017 — the biggest remaining piece and
-now the headline; best started with the founder present (design seams: which CLI hosts Oz, how
-its bounded verbs become tools, session lifetime); (b) **Bob session `mode` honoring** — gated on
+**Recommended next slice (updated run_59 post-wrap — Objective APPROVED, ready to build):**
+(a) **Oz as a persona**, per ADR-0017 **as amended 2026-06-12** (read the amendment first — it
+records the founder's decisions from the run_59 wrap conversation: daemon-owned lifecycle-synced
+hosting, the Refresh Oz action (idle-only v1), the extended verb surface incl. runner-mediated
+nudge-to-Oscar and Oz-level repair, and the artifacts-first/Deb-for-interpretation info doctrine).
+**Founder-approved Objective for this slice:** Oz becomes a real agent, not a parser — an `oz`
+persona with a founder-chosen CLI+model, hosted BY THE DAEMON as a long-lived headless session
+lifecycle-synced to the daemon (boot starts Oz; Refresh Oz restarts both: new session up → old
+closed → priorities/run statuses re-derived from disk; v1 refuses while a run is in flight). The
+dashboard chat becomes a window into that session; Oz acts only through his bounded tools (the
+existing gated verbs + nudge/repair/refresh). **Verified when:** (1) a natural-language status
+question gets a correct artifact-grounded chat answer; (2) launch/stop round-trip through tools,
+not regex; (3) Refresh Oz performs the full cycle live with state correctly re-derived; (4) a
+nudge reaches a live Oscar via the runner channel; (5) the security posture is untouched — every
+Oz action is an already-gated daemon op. Build seams: the conflict scan (run_59 wrap) was clean;
+the one flagged risk is that ADR-0006's adapter contract covers launch-and-run, not long-lived
+conversational sessions — slice 1 may extend it deliberately (the run_59 headless-Oscar machinery
+is most of the host). Suggested slice order: 1. oz persona definition + daemon session host +
+chat wired to the real agent; 2. tools (existing verbs as the agent's tool calls); 3. Refresh Oz;
+4. nudge + repair verbs. (b) **Bob session `mode` honoring** — gated on
 a captured-subprocess monitor path for builder work (the run_28 hang class: the monitor's
 readScreen/sentinel detection assumes a pane; a headless Bob needs incremental output capture the
 current `runHeadless` final-only contract doesn't provide); (c) optional refinements: richer
