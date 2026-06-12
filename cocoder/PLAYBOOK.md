@@ -141,9 +141,12 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    `ENDPOINTS_OWED.md` truth sweep; run_57 landed the Workspaces daemon model end-to-end (ADR-0019 —
    registry reader, full CRUD, Workspaces screen live with raw-path fidelity); run_58 landed
    cooperative `POST /runs/:id/stop` end-to-end (core `stopped` status, daemon endpoint, Oz-chat
-   `stop` verb + dashboard Stop action). Next (all session-sized — no cheap opener): ADR-0018 stage 3
-   (Oscar session `mode` — investigate runner prompting seam first; Bob gated on captured-subprocess
-   monitor), Oz-as-persona (ADR-0017, founder-present recommended), Oz-chat SSE.
+   `stop` verb + dashboard Stop action); run_59 landed Oz-chat SSE end-to-end (`GET /oz/events` +
+   UI consumption debounced into existing refresh paths, polling retained as fallback) and ADR-0018
+   stage 3 for the Oscar session (`OscarDriver` seam, headless honoring via one-shot
+   captured-subprocess invocations, Personas run-mode editor for Oscar only). Next (all
+   session-sized — no cheap opener): Oz-as-persona (ADR-0017, founder-present recommended), Bob
+   session `mode` honoring (gated on a captured-subprocess monitor path for builder work).
 4. `new-primary-root` — the primary-root audit: bootstrap a new root's `cocoder/` + propose-only
    drift re-audit, one base Play pinned to a top-tier model. Design drafted as **ADR-0020 (proposed,
    2026-06-10)** — founder acceptance gates the build. The concrete form of Phase 5 ("first external repo").
