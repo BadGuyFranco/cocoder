@@ -22,7 +22,11 @@ is decided when this is picked up, not here.
 
 ## Status
 
-**Live proofs owed — `continue` (code-complete).** run_72 (2026-06-13, 1 atom, first-try pass)
+**Live proofs owed — `continue` (code-complete).** run_74 (2026-06-13, 0 atoms) reaffirmed
+CODE-COMPLETE: verified no buildable work remains on this priority (the F16 fix below is confirmed
+on trunk; the three open tickets belong to other priorities), delegated zero builder atoms, made no
+code/ADR changes — archive blocked on the founder-present live-evidence + Q/A ladder only. run_72
+(2026-06-13, 1 atom, first-try pass)
 landed the **F16 launch-probe fix** (`88888d7`) — the LAST buildable atom: `resolveDashboardLaunch`
 now requires BOTH `out/main/main.js` AND `out/renderer/index.html` before choosing built mode, else
 falls back to dev (regression-pinned), so a partial `electron-vite dev` tree no longer launches a
