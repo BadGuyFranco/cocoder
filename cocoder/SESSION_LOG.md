@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-13 — **Full Oz dashboard: F16 launch-probe fix landed (run_72) — the last buildable atom**
+
+**Persona:** Oscar | **Priority:** full-oz-dashboard | **Play:** one-atom fix + wrap
+**Outcomes:**
+- **F16 FIXED (`88888d7`), 1 atom, first-try pass.** `resolveDashboardLaunch` (`packages/daemon/src/launcher.ts`) now requires BOTH `out/main/main.js` AND `out/renderer/index.html` before choosing built mode; a partial dev tree (`electron-vite dev` leaves `out/main`+`out/preload`, no renderer) now falls back to dev instead of launching a built app that `loadFile`s a missing renderer → blank window. Error message updated to name both built files. Regression-pinned: partial-tree → dev, full-built-tree → built. Daemon 189 · root typecheck clean.
+- Confirmed F16 was the **live** cause: founder reported the dashboard still blank; the engine install's `packages/ui/out/` held only `main`+`preload` (no `renderer`) — the exact partial tree the old probe trusted.
+- **This was the last buildable atom on the priority.** Remaining is founder-present live evidence only (the (b)–(d) ladder). Zero further code to delegate without inventing work or pulling the post-Oz onboarding priority forward.
+- Founder noted run_71 closed unexpectedly mid-session; no landed work lost (nothing verified+committed by run_71 is on trunk to recover); if a specific close error recurs, diagnose then.
+**Next:** Founder, after the daemon restarts onto run_72 code (Restart-daemon button or relaunch): the dashboard should now render. Then the live-proof ladder — exercise Oz with a real CLI (status/launch/stop/nudge/repair/Refresh), eyeball the rebuilt priorities pane vs `design-ref/`, run one headless-Oscar + one headless-Bob run, and the **full founder Q/A pass + punch-list run**. Archive-candidate only after that evidence. After archive: `backlog/workspace-onboarding.md`.
+
 ## 2026-06-12 — **Founder post-wrap session (run_70): dashboard blank screen root-caused (F16); Claude-Code-memory side channel dismantled into repo flat files**
 
 **Persona:** Oscar (post-wrap, founder-directed support edits) | **Priority:** full-oz-dashboard | **Play:** diagnosis + memory migration

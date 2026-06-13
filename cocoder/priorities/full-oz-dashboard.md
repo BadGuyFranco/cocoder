@@ -22,7 +22,13 @@ is decided when this is picked up, not here.
 
 ## Status
 
-**Live proofs owed — `continue` (code-complete).** run_70 (2026-06-12, 0 atoms) reaffirmed
+**Live proofs owed — `continue` (code-complete).** run_72 (2026-06-13, 1 atom, first-try pass)
+landed the **F16 launch-probe fix** (`88888d7`) — the LAST buildable atom: `resolveDashboardLaunch`
+now requires BOTH `out/main/main.js` AND `out/renderer/index.html` before choosing built mode, else
+falls back to dev (regression-pinned), so a partial `electron-vite dev` tree no longer launches a
+blank built window. Confirmed it was the live cause (founder's "still not working" report; the
+engine `out/` held only `main`+`preload`). Remaining item (a) below is now CLOSED in code; live
+confirmation folds into the (b)–(d) ladder. run_70 (2026-06-12, 0 atoms) reaffirmed
 CODE-COMPLETE at branch point — all run_69 work confirmed on trunk, zero builder atoms delegated,
 no code or ADR changes; archive blocked on founder-present live evidence only. run_67 (2026-06-12)
 drafted ADR-0021 and the
@@ -131,16 +137,16 @@ captured-subprocess turn; the monitor watches LIVE via incremental capture so th
 class does not apply; in-flight nudges recorded-not-delivered while idle nudges — loop-criterion
 retries, post-exit marker recovery — start a fresh follow-up turn; stop kills the in-flight
 child before quarantine), and the UI tail (`MODE_HONORED_PERSONAS` = {oscar, bob}).
-**Not archive-ready** — remaining (updated run_70 post-wrap): ONE small fix (the F16
-launch-probe bug, found live by the founder's blank-screen report — see remaining item (a)
-below), then the evidence ladder: a LIVE exercise of Oz with a real CLI assigned (chat
+**Not archive-ready** — remaining (updated run_72): the one buildable fix (F16
+launch-probe) is now **DONE (run_72, `88888d7`)**; what remains is the
+evidence ladder only: a LIVE exercise of Oz with a real CLI assigned (chat
 status/launch/stop/nudge/repair/Refresh — everything is injected-runner-proven only), a live
 eyeball of the rebuilt priorities pane vs design-ref, live (non-test) exercises of a
 headless-Oscar run and a headless-Bob run (both honorings are unit/orchestration-test proven
 only), and a **full founder Q/A pass of the dashboard with an expected punch-list run** (founder
-instruction, run_66 post-wrap; restored run_70 after being dropped). Daemon restart onto current
-code appears already done — the Launch button responding live implies run_69 code; confirm via
-`/health` bootSha.
+instruction, run_66 post-wrap; restored run_70 after being dropped). The F16 fix only takes effect
+once the daemon is restarted onto run_72 code (Restart-daemon button or relaunch) — confirm via
+`/health` bootSha before treating the live launch as proof.
 
 > History worth recording: a first pass mistakenly built from `docs/oz-design-brief.md` (the *input
 > brief* that was pasted into claude.ai/design), not the founder's actual **design output**. It was then
@@ -593,15 +599,15 @@ by run_69).** ~~The Oz `repair` verb~~ **BUILT (run_69 atoms 0–1).** ~~The lig
 "Launch Oz dashboard" button (founder, run_67 wrap)~~ **BUILT (run_69 atom 2).** ~~The run_67
 strand class~~ **FIXED both halves (run_69 atoms 3–4: in-run post-land re-land/park + the
 teardown/boot stranded-commit detector feeding Resolve).**
-**Remaining = one small fix found live (run_70 post-wrap) + the live/Q-A evidence ladder:**
-(a) **Launch-probe fix (found run_70 post-wrap, founder blank-screen report — catalogued F16):**
-`resolveDashboardLaunch` (`packages/daemon/src/launcher.ts`) picks built mode if
-`packages/ui/out/main/main.js` exists — but `electron-vite dev` writes `out/main` + `out/preload`
-WITHOUT `out/renderer` (the dev server serves the renderer), so a past `pnpm dev` leaves a partial
-tree the probe trusts; the built app then `loadFile`s the missing `out/renderer/index.html` →
-silent blank window. Fix (one small daemon atom): built mode requires BOTH `out/main/main.js` AND
-`out/renderer/index.html` (the file the app actually loads), else fall back to the dev script.
-Founder workaround meanwhile: `pnpm --dir packages/ui build`, or delete `out/` to force dev mode.
+**Remaining = the live/Q-A evidence ladder (the one buildable fix is now DONE):**
+(a) ~~**Launch-probe fix (catalogued F16):**~~ **FIXED run_72 (`88888d7`).**
+`resolveDashboardLaunch` (`packages/daemon/src/launcher.ts`) now requires BOTH `out/main/main.js`
+AND `out/renderer/index.html` (the file the app actually loads) before choosing built mode, else
+falls back to the dev script — regression-pinned (partial tree → dev, full-built-tree → built),
+error message updated to name both files. This was the partial-`electron-vite dev`-tree blank-window
+bug; confirmed live as the cause of the founder's "still not working" report. Live confirmation
+(restart the daemon onto run_72 code, then launch) folds into (b). Founder pre-restart workaround if
+needed: `pnpm --dir packages/ui build`, or delete `out/` to force dev mode.
 (b) **LIVE proof session** (founder-present, zero code): daemon restart onto current code is
 likely already done — the Launch button responding implies run_69 code is live; confirm via
 `/health` bootSha — then assign oz a real CLI+model, chat status/launch/stop/nudge/repair/Refresh
