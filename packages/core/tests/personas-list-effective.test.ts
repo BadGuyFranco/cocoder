@@ -8,11 +8,11 @@ import { listEffectivePersonas, type PersonaSources } from '../src/index.js'
 const realBasePersonasDir = (): string => join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'personas', 'base')
 
 describe('listEffectivePersonas', () => {
-  test('lists Oz with the real shipped base personas', async () => {
+  test('lists the real shipped base personas', async () => {
     const sources = await makeSources()
     const personas = listEffectivePersonas({ ...sources, baseDir: realBasePersonasDir() })
 
-    expect(personas.map((persona) => persona.id)).toEqual(['bob', 'deb', 'oscar', 'oz'])
+    expect(personas.map((persona) => persona.id)).toEqual(['bob', 'deb', 'oscar', 'oz', 'quinn', 'talia'])
   })
 
   test('lists base personas sorted and excludes shared-standards', async () => {

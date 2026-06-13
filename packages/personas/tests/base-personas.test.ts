@@ -3,8 +3,8 @@ import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { basePersonasDir, basePlaysDir, basePrioritiesDir } from '../src/index.js'
 
-const BASE_PERSONA_FILES = ['oscar.md', 'bob.md', 'deb.md', 'shared-standards.md'] as const
-const FRONTMATTER_PERSONA_FILES = ['oscar.md', 'bob.md', 'deb.md'] as const
+const BASE_PERSONA_FILES = ['bob.md', 'deb.md', 'oscar.md', 'oz.md', 'quinn.md', 'talia.md', 'shared-standards.md'] as const
+const FRONTMATTER_PERSONA_FILES = ['bob.md', 'deb.md', 'oscar.md', 'oz.md', 'quinn.md', 'talia.md'] as const
 
 const frontmatterValue = (text: string, key: string): string | null => {
   const match = text.match(new RegExp(`^${key}:\\s*(.+)$`, 'm'))
