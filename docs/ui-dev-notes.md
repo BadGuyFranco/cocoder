@@ -15,7 +15,8 @@ Migrated 2026-06-12 (run_70) from session memory. Both lessons bit for real; bot
    "is there a built app here?" must check for `out/renderer/index.html` (the file the built main
    process actually loads), not just `out/main/main.js` existing. This fooled the daemon's
    dashboard-launch probe into launching a renderer-less "built" app → silent blank window
-   (failure-catalog F16, found live 2026-06-12).
+   (failure-catalog F16, found live 2026-06-12). **Fixed run_72 (`88888d7`):**
+   `resolveDashboardLaunch` requires both files before choosing built mode, else dev.
 
 3. **What a launch smoke needs:** a hard watchdog timeout + reject-if-bridge-missing (assert
    `window.oz` appears), never an infinite poll. Unit/jsdom tests inject the bridge directly, so

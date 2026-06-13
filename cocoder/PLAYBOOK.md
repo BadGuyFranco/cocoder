@@ -188,17 +188,20 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    that re-opens a small build atom: the founder hit a **blank dashboard** — the run_69 Launch
    button's probe trusts a partial `out/` left by `electron-vite dev` and loads a missing
    renderer (**failure-catalog F16**).
+   run_72 (2026-06-13, 1 atom, first-try): **F16 FIXED (`88888d7`) — the last buildable atom.**
+   `resolveDashboardLaunch` now requires BOTH `out/main/main.js` AND `out/renderer/index.html`
+   before choosing built mode, else falls back to dev (regression-pinned). Confirmed live as the
+   cause of the founder's blank-window report (engine `out/` held only main+preload). Daemon 189 ·
+   root typecheck clean. **Code-complete — zero further builder atoms without inventing work.**
    Founder directive: complete Oz first, then workspace onboarding.
-   Next: ONE small build atom — the **F16 launch-probe fix** (priority remaining item (a): built
-   mode must require `out/renderer/index.html`, not just `out/main/main.js`, else fall back to
-   dev). Then **live proofs** (founder confirmed he'll run them): restart the daemon onto current
-   code first (`scripts/oz.sh restart` or idle self-restart — repair, launch button, strand
-   detector all load at boot); the Oz live session (assign oz a real CLI+model, chat
-   status/launch/stop/nudge/repair/Refresh, eyeball the rebuilt priorities pane vs design-ref,
-   click the Launch-Oz-dashboard button); one live headless-Oscar run + one live headless-Bob run
-   (flip mode in Personas, launch a small run); then a **full founder Q/A pass with an expected
-   punch-list run** (founder instruction, run_66 — restored run_70). Archive-candidate only AFTER
-   the Q/A pass + punch-list, not after the live proofs alone.
+   Next: **founder live proofs only** — restart the daemon onto run_72 code first (Restart-daemon
+   button or relaunch; confirm via `/health` bootSha), then launch the dashboard (should render,
+   not blank). Then the live ladder: Oz chat exercise with a real CLI assigned
+   (status/launch/stop/nudge/repair/Refresh), eyeball the rebuilt priorities pane vs design-ref,
+   one live headless-Oscar run + one live headless-Bob run (flip mode in Personas); then a **full
+   founder Q/A pass with an expected punch-list run** (founder instruction, run_66 — restored
+   run_70). Archive-candidate only AFTER the Q/A pass + punch-list, not after the live proofs
+   alone.
 4. `new-primary-root` — the primary-root audit: bootstrap a new root's `cocoder/` + propose-only
    drift re-audit, one base Play pinned to a top-tier model. Design drafted as **ADR-0020 (proposed,
    2026-06-10)** — founder acceptance gates the build. The concrete form of Phase 5 ("first external repo").
