@@ -2,10 +2,19 @@
 type: bug
 status: Open
 owner: deb
-priority: run-resolution-and-loop-reliability
+priority: orchestration-change-durability
 ---
 
 # Post-wrap Oscar edits can stay stranded in run worktrees
+
+> **Re-pointed 2026-06-13** to [`orchestration-change-durability`](../../priorities/orchestration-change-durability.md)
+> (was `run-resolution-and-loop-reliability`, now archived). **The "Immediate Rule" below is RETIRED
+> by founder decision (2026-06-13):** post-wrap edits to **Surface-A** artifacts — priorities,
+> personas, ADRs/standards/tickets, docs, and orchestration-machinery blocker fixes — are **allowed
+> and must be committed** (the system debugs itself in real time). Only **Surface-B** net-new
+> product/primary-root feature code stays gated behind a verified run. The "Desired Fix" below
+> (a runner-owned post-wrap support-commit path) is the correct direction and folds into that
+> priority's proof 1.
 
 ## Summary
 

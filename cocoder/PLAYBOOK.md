@@ -129,6 +129,14 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   the F17 fix remains owed and is tracked outside this priority.
 
 **Active (launchable; recommended sequence — the `priorities/` directory is the live index):**
+0. `orchestration-change-durability` — **prerequisite, runs first.** Make every governance/orchestration
+   change land where the next session reads it: retire the wrap prohibition on Surface-A (governance,
+   orchestration, docs) edits, one owner for the founder wrap-brief format, broad-by-default
+   orchestration commit access (the restriction must justify itself, not access), and a closed-loop
+   "nothing ends off-trunk-or-unsurfaced" invariant. Names the root cause behind F2/F9/F14/F17 (the
+   run-integration funnel is the only road to trunk) instead of patching one leak at a time. Carries
+   the conflict resolutions: retire ticket 0004's rule, reconcile ADR-0007, generalize ADR-0021 beyond
+   Oz, absorb the archived loop priority's owed F17 live proof.
 1. `isolated-working-state-per-run` — ADR-0015: each run gets its own git worktree + branch and reaches
    trunk via a **verified auto-merge** (whole-tree integration verify), with a `merge-conflict` Play
    (resolve → re-verify → merge; escalate genuine divergence). Retires the dirty-tree launch guard; fixes
