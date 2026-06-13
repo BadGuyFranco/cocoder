@@ -3,6 +3,17 @@ id: orchestration-change-durability
 title: Make orchestration & governance changes reliably land where the next session reads them
 ---
 
+> **ARCHIVED 2026-06-13 (founder-confirmed).** Objective met. The terminal landing invariant (ADR-0022
+> §3) was built + verified by run_76 (3 atoms, all first-try; core 251 · daemon 198 · typecheck clean)
+> and is now runnable on demand — `node scripts/proof-4-strands.mjs` (17/17 exit-path + guarantee rows
+> green) is the standing Proof-4. Broad-by-default access + the two-surface boundary shipped to the base
+> personas; the wrap-brief single-owner contract was enforced (proof 2, pinned by tests). Conflicts
+> resolved: ticket 0004 closed, ADR-0007 reconciled, ADR-0021 generalized — all in ADR-0022 (Accepted).
+> Proofs 1/3/5 were demonstrated in passing (run_76/77 governance edits landed on trunk and the next run
+> read them; Oscar committed a Surface-A edit with zero build atoms; this session committed governance
+> directly without escalation). F18 (un-runnable "Next Action") was caught and fixed here too. Kept for
+> history.
+
 ## Objective
 
 Every orchestration or governance change — a priority, a persona, an ADR/standard/ticket, a doc, or

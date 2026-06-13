@@ -128,19 +128,16 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   run_73; landed by hand after the runner stranded run_73's own commits — an instance of F17, the
   meta-pattern now generalized by ADR-0022). Live proof of the F17 fix is now runnable via
   `node scripts/proof-4-strands.mjs` and otherwise tracked under `orchestration-change-durability`.
+- `orchestration-change-durability` — the prerequisite: every governance/orchestration change lands
+  where the next session reads it. Broad-by-default access + the two-surface (A/B) boundary shipped to
+  the base personas; wrap-brief single-owner enforced (proof 2, test-pinned); the terminal landing
+  invariant (ADR-0022 §3) built + verified by **run_76** (3 atoms, all first-try; core 251 · daemon 198)
+  and runnable as `node scripts/proof-4-strands.mjs` (**17/17 green** = the standing Proof-4). Conflicts
+  resolved: ticket 0004 closed, ADR-0007 reconciled, ADR-0021 generalized — **ADR-0022 Accepted**. F18
+  (orchestrator ends on un-runnable "Next Action") caught + fixed here. **Archived 2026-06-13**
+  (founder-confirmed; runs 76/77).
 
 **Active (launchable; recommended sequence — the `priorities/` directory is the live index):**
-0. `orchestration-change-durability` — **prerequisite, runs first.** Make every governance/orchestration
-   change land where the next session reads it: retire the wrap prohibition on Surface-A (governance,
-   orchestration, docs) edits, one owner for the founder wrap-brief format, broad-by-default
-   orchestration commit access (the restriction must justify itself, not access), and a closed-loop
-   "nothing ends off-trunk-or-unsurfaced" invariant. Names the root cause behind F2/F9/F14/F17 (the
-   run-integration funnel is the only road to trunk) instead of patching one leak at a time. Carries
-   the conflict resolutions: retire ticket 0004's rule, reconcile ADR-0007, generalize ADR-0021 beyond
-   Oz, absorb the archived loop priority's owed F17 live proof. **run_76 (2026-06-13): machinery
-   code-complete** — all three ADR-0022 §3 leaks closed in code + daemon governance commits; proof 2
-   done. **run_77 (2026-06-13): trunk confirmed** — run_76 commits on `rebuild/phase-2-oz` (not
-   `main`); no strand. **Founder-driven live proofs 1/3/4/5 remain** (see priority Status).
 1. `isolated-working-state-per-run` — ADR-0015: each run gets its own git worktree + branch and reaches
    trunk via a **verified auto-merge** (whole-tree integration verify), with a `merge-conflict` Play
    (resolve → re-verify → merge; escalate genuine divergence). Retires the dirty-tree launch guard; fixes

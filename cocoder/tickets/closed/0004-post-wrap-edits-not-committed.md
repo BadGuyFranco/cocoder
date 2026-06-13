@@ -1,20 +1,26 @@
 ---
 type: bug
-status: Open
+status: Closed
 owner: deb
 priority: orchestration-change-durability
 ---
 
 # Post-wrap Oscar edits can stay stranded in run worktrees
 
-> **Re-pointed 2026-06-13** to [`orchestration-change-durability`](../../priorities/orchestration-change-durability.md)
-> (was `run-resolution-and-loop-reliability`, now archived). **The "Immediate Rule" below is RETIRED
-> by founder decision (2026-06-13):** post-wrap edits to **Surface-A** artifacts — priorities,
-> personas, ADRs/standards/tickets, docs, and orchestration-machinery blocker fixes — are **allowed
-> and must be committed** (the system debugs itself in real time). Only **Surface-B** net-new
-> product/primary-root feature code stays gated behind a verified run. The "Desired Fix" below
-> (a runner-owned post-wrap support-commit path) is the correct direction and folds into that
-> priority's proof 1.
+> **CLOSED 2026-06-13 — resolved by [ADR-0022](../../decisions/0022-orchestration-change-durability.md)
+> + run_76.** Three things together close this: (1) post-wrap **Surface-A** edits are now explicitly
+> allowed and committed (broad-by-default personas + the retired "Immediate Rule" below); (2) the
+> terminal landing invariant (run_76) surfaces any committed-but-unlanded work on EVERY exit path as
+> `pending-landing`+`stranded-commits-detected` — proven by `node scripts/proof-4-strands.mjs` (green);
+> (3) the daemon reconciler catches post-settle strands at boot/teardown. A post-wrap edit now either
+> lands on trunk or is surfaced — never silently stranded. Original re-point note preserved below.
+>
+> **Re-pointed 2026-06-13** to `orchestration-change-durability` (was `run-resolution-and-loop-reliability`,
+> now archived). **The "Immediate Rule" below is RETIRED by founder decision (2026-06-13):** post-wrap
+> edits to **Surface-A** artifacts — priorities, personas, ADRs/standards/tickets, docs, and
+> orchestration-machinery blocker fixes — are **allowed and must be committed** (the system debugs
+> itself in real time). Only **Surface-B** net-new product/primary-root feature code stays gated behind
+> a verified run.
 
 ## Summary
 

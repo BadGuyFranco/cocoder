@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-13 — **orchestration-change-durability ARCHIVED — Proof-4 made a one-command button; F18 (un-runnable Next Action) caught + fixed (founder session, Claude Code)**
+
+**Persona:** Claude Code (direct founder session) | **Priority:** orchestration-change-durability (now archived) | **Play:** proof-harness + systemic fix + archive
+**Outcomes:**
+- **Proof 4 is now a button:** `node scripts/proof-4-strands.mjs` runs the real live-git settlement + reconciler suites and prints a PASS/FAIL table mapped to every exit path (failed/stopped/escalate/ff-blocked/post-settle) + guarantees (detection-only, no false strands, idempotent, recoverable). **17/17 green.** The harness exercises the same code the live daemon uses; only the production-daemon-process check stays optional/manual.
+- **F18 added + fixed** (orchestrator ends a run on un-runnable verification homework — recurred as full-oz-dashboard's 5 reaffirmation wraps): the wrap-up Play's *own* `Next Action` example ("run a live-proof checklist") was the anti-pattern. Now the wrap-up Play + `oscar.md` require a RUNNABLE Next Action (command / launch-priority / offer to craft the test), never a doc pointer; don't relaunch a code-complete priority. Pinned phrases preserved; personas 13/13.
+- **Archived `orchestration-change-durability`** (founder-confirmed): `git mv` to `zArchive/priorities/v2/`, PLAYBOOK roadmap moved Active→Done, **ticket 0004 closed** (resolved by ADR-0022 + run_76; INDEX mirrored). ADR-0022 Accepted; ADR-0007 reconciled; ADR-0021 generalized.
+- **Teardowns done:** `run_76` + `run_77` (3 panes each closed). run_76 worktree lingers — next daemon boot-sweep reclaims it.
+- Commits this session: `d64c19d` `9c54932` `a15cbbd` `d0c464b` `6c0801c` `c1e3aba` `375d3b5` + this archive batch.
+**Next:** Founder — **restart the daemon** (`scripts/oz.sh restart`; founder action, not auto-run — `oz.sh` can replace panes) so the F18 wrap-up/persona fixes go live for future runs; confirm `/health` bootSha matches trunk HEAD. Then the **priority audit**: assess every `priorities/*.md` + `backlog/` for staleness vs the current state (Oz largely built, run isolation + landing invariant done) and what needs sharper definition.
+
 ## 2026-06-13 — **orchestration-change-durability: run_76 machinery confirmed on trunk — no strand; live proofs only (run_77)**
 
 **Persona:** Oscar (wrap-up only; 0 atoms) | **Priority:** [orchestration-change-durability](./priorities/orchestration-change-durability.md) | **Play:** wrap-up
