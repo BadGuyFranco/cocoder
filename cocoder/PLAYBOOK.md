@@ -159,6 +159,16 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    base QA roster — **Quinn** (user-simulation) and **Talia** (acceptance QA) — and lands the no-brainer
    Plays (`documentation`, `code-review`, Quinn's `electron-test`, refactoring the ad-hoc Oz test scripts
    out of tech debt), and extends the ADR-0012 base/delta model to Plays. Unblocked by `plays-mechanism`.
+   **In progress (run_78), 4 atoms landed:** base **Quinn**+**Talia** personas (portable, v1 boundary
+   re-homed); the **Plays base/delta mechanism** (`mergePlay`/`loadEffectivePlay`/`listEffectivePlays`,
+   mirroring the persona model) with an override+propagation test; the **`documentation`** + **`code-review`**
+   base Plays; and the **`electron-test`** base Play + the first **Play delta** (`cocoder/plays/deltas/electron-test.md`,
+   CoCoder-Quinn → Oz) proven to override/extend the base. **Correction to the boundary:** there were **no
+   ad-hoc Oz test scripts to refactor** (only the vitest-suite proof harnesses + launch-resolution unit tests
+   exist); driving the live Oz GUI is genuinely founder-present Quinn work, not a headless build, so no
+   speculative CDP harness was built. **Remaining:** (a) wire the daemon's `buildRunInput` to load Plays via
+   `loadEffectivePlay` (so deltas apply at runtime — localized change at `launcher.ts`); (b) the founder-present
+   live drive of the Oz dashboard via Quinn's `electron-test` delta. Continue (not archive-ready).
 2. `full-oz-dashboard` — the v1-designed control plane, earned in slices; the road to feature-complete.
    **In progress / continue** — Electron dashboard wired to every existing daemon endpoint; run_54 landed
    priority reorder (ADR-0010 `order.json`), free-text ad-hoc runs, and run-drawer Resolve; run_55 landed

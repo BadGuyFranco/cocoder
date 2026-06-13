@@ -12,6 +12,18 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-13 — **personas-and-plays: base QA roster + Plays base/delta model + 3 no-brainer Plays — 4 atoms, all first-try (run_78)**
+
+**Persona:** Oscar + Bob (4 atoms, all first-try passes) | **Priority:** [personas-and-plays](./priorities/personas-and-plays.md) | **Play:** multi-atom build (persona roster + Plays base/delta coupling + no-brainer Plays)
+**Outcomes:**
+- **Atom 0 (`d2f014d`): base Quinn + Talia personas.** Generic, portable (ADR-0012 test: no Oz/repo nouns — verified at gate); Talia = acceptance-QA verdict-owner (scoped to tests/specs), Quinn = read-only user-simulation invokable by any persona; the v1 Talia↔Quinn boundary re-homed into both bodies. Base set now `bob/deb/oscar/oz/quinn/talia`; enumeration tests updated.
+- **Atom 1 (`6bc6615`): Plays base/delta MECHANISM** mirroring the persona model — `mergePlay`/`loadEffectivePlay`/`loadPlayDelta`/`listEffectivePlays`/`PlayDelta` in `packages/core/src/plays/`, exported through both index files. New `plays-effective.test.ts` proves override (label/kind), writeScope union, body-append, **propagation** (base v1→v2 reaches an extended repo), and id/kind guards. Core-only (no daemon wiring this atom).
+- **Atom 2 (`f9b828f`): `documentation` + `code-review` base Plays** — generic/portable; documentation = headless, generic doc globs, "only what changed"; code-review = headless, `writeScope:[]` read-only, structured severity findings, no rubber-stamp. Real `loadPlay` parse confirmed (incl. the `**/*.md` glob via the custom frontmatter parser).
+- **Atom 3 (`10289de`): `electron-test` base Play + first Play DELTA.** Generic headless read-only Electron-test procedure (portable); `cocoder/plays/deltas/electron-test.md` establishes the repo Play-delta convention and binds it to the Oz dashboard (F16 launch resolution, surfaces, design-ref). Core test proves the delta **extends** the base for this concrete pair (merged body = base procedure + `resolveDashboardLaunch`/Oz binding).
+- Evidence at every gate, **in the worktree** (corrected away from the main-checkout trap): personas 15/15 · core 259/259 · root typecheck clean; per-atom scope honored.
+- **Boundary correction (finding):** the priority assumed "ad-hoc Oz-dashboard test scripts" existed to refactor into `electron-test`. They do NOT — only `proof-oz-surfaces.mjs` (runs the daemon/UI vitest suites) + `dashboard-launch.test.ts` (launch resolution w/ fake handle) exist; no CDP/GUI driver. So no speculative driver was built; the live GUI drive stays founder-present Quinn work.
+**Next:** Founder — launch `personas-and-plays` again for one atom: **wire the daemon's `buildRunInput` (`packages/daemon/src/launcher.ts`) to load Plays via `loadEffectivePlay`** using `join(ws.path,'cocoder','plays','deltas')` (the workspace path + delta dir are already in scope there), + a daemon test proving a Play delta overrides the base at run-launch. Then the founder-present live drive of the Oz dashboard via Quinn's `electron-test` delta (assign Quinn a CLI/model). Not archive-ready until both land.
+
 ## 2026-06-13 — **orchestration-change-durability ARCHIVED — Proof-4 made a one-command button; F18 (un-runnable Next Action) caught + fixed (founder session, Claude Code)**
 
 **Persona:** Claude Code (direct founder session) | **Priority:** orchestration-change-durability (now archived) | **Play:** proof-harness + systemic fix + archive
