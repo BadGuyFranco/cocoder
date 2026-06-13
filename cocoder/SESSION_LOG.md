@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-13 — **Loop reliability hardening: run_71 silent-strand class closed + trunkBranch record reads (run_73)**
+
+**Persona:** Oscar + Bob (2 atoms, both first-try after one atom-1 rejection) | **Priority:** [run-resolution-and-loop-reliability](./priorities/run-resolution-and-loop-reliability.md) | **Play:** founder-directed follow-up hardening
+**Outcomes:**
+- Atom 1 (`6d1b0ee`): closed the **run_71 silent-strand class** — `packages/core/src/runner/runner.ts` now lands committed work whenever `committedShas.length > 0 || selfCommitted` (not only `status === 'completed'`), records a runner-sourced `stranded-commits-detected` event on every integration escalate/fail (`recordStrandedCommits`), and flips ANY escalated integration to `pending-landing`. `packages/daemon/src/launcher.ts`: `reconcileStrandedRunCommits` surfaces `pending-scope-decision` strands at boot only; teardown GC is gated by `runHasDisposableDaemonStrandedEvent` (only completed+merged-origin daemon strands are disposable) so held-back/escalated/runner-detected worktrees stay preserved for Resolve/inspection. Regression-pinned in `runner-worktree.test.ts` + `worktree-gc.test.ts`. (First attempt rejected for a teardown-preservation regression + an unrelated nudge change; both fixed before re-land.)
+- Atom 2 (`d37ed7b`): `packages/core/src/runner/record.ts` landed-label reads the actual `trunkBranch` from the worktree-created event (generic "Landed on trunk" fallback; no hardcoded `main`). New `packages/core/tests/record.test.ts`.
+- Priority's original verified-when objective (a)–(e) was met 2026-06-09; this run was follow-up hardening only. Baselines at gates: typecheck clean · core 246 · daemon 191.
+- Optional follow-up (not committed): re-introduce the nudge-truthfulness change as its own atom (`oscar-nudge-skipped` vs falsely `oscar-nudge`); live proof of atom-1 fix still owed (real run that verifies+commits but cannot ff to trunk → `pending-landing` + recoverable via `POST /runs/:id/resolve`).
+**Next:** Founder live proof of the run_71 fix (see above), then archive confirmation for this priority if satisfied; otherwise continue `full-oz-dashboard` live-proof ladder.
+
 ## 2026-06-13 — **Full Oz dashboard: F16 launch-probe fix landed (run_72) — the last buildable atom**
 
 **Persona:** Oscar | **Priority:** full-oz-dashboard | **Play:** one-atom fix + wrap
