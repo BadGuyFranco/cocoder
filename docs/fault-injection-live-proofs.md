@@ -25,6 +25,11 @@ proofs don't rediscover it.
 
 ## Proof 4 — orchestration-change-durability (ADR-0022 §3 invariant)
 
+**Trunk branch:** the dogfood primary root's trunk is `rebuild/phase-2-oz` — NOT GitHub-default
+`main` (that branch carries an unrelated stale `v0.5` lineage). Strand checks and `git log` evidence
+must use the primary root's checked-out branch (confirmed run_77: HEAD `c1e3aba` contains run_76
+`d6ef668` through archive).
+
 **Prerequisite:** restart the daemon onto the branch that carries run_76's commits; confirm
 `/health` `bootSha` matches that HEAD before injecting. The new `failed`/`stopped` reconciler
 coverage and `cocoder-governance` daemon commits only take effect after restart.

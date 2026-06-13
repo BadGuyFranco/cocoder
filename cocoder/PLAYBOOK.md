@@ -138,7 +138,8 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    the conflict resolutions: retire ticket 0004's rule, reconcile ADR-0007, generalize ADR-0021 beyond
    Oz, absorb the archived loop priority's owed F17 live proof. **run_76 (2026-06-13): machinery
    code-complete** — all three ADR-0022 §3 leaks closed in code + daemon governance commits; proof 2
-   done; **founder-driven live proofs 1/3/4/5 remain** (see priority Status).
+   done. **run_77 (2026-06-13): trunk confirmed** — run_76 commits on `rebuild/phase-2-oz` (not
+   `main`); no strand. **Founder-driven live proofs 1/3/4/5 remain** (see priority Status).
 1. `isolated-working-state-per-run` — ADR-0015: each run gets its own git worktree + branch and reaches
    trunk via a **verified auto-merge** (whole-tree integration verify), with a `merge-conflict` Play
    (resolve → re-verify → merge; escalate genuine divergence). Retires the dirty-tree launch guard; fixes

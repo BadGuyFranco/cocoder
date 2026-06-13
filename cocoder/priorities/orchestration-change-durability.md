@@ -137,6 +137,13 @@ The three landing-invariant leaks the ADR-0022 §3 audit named are now closed in
 Evidence at the gate (worktree checkout): core 251/251 · daemon 198/198 · root typecheck clean across
 7 workspaces; per-atom whole-tree diff checked; scope honored each atom.
 
+### Trunk landing confirmed (run_77, Oscar wrap-up, 0 atoms)
+
+Read-only verification: primary-root trunk is `rebuild/phase-2-oz` (HEAD `c1e3aba`); it contains
+run_76 atom0 `d6ef668` through the archive commit. **No run_76 strand** — the key risk for this
+priority is cleared on-branch. **Trunk is NOT GitHub-default `main`** (that branch carries an
+unrelated stale `v0.5` lineage); future strand checks must use the primary root's checked-out branch.
+
 ### Proof-by-proof state
 
 - **Proof 4 (closed-loop invariant):** MACHINERY DONE (Atoms 0+1 settlement+entry, Atom 2 daemon writes).

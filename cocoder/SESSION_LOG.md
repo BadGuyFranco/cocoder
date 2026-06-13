@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-13 — **orchestration-change-durability: run_76 machinery confirmed on trunk — no strand; live proofs only (run_77)**
+
+**Persona:** Oscar (wrap-up only; 0 atoms) | **Priority:** [orchestration-change-durability](./priorities/orchestration-change-durability.md) | **Play:** wrap-up
+**Outcomes:**
+- Zero builder atoms — machinery is code-complete; only founder-present LIVE proofs remain (cannot be delegated atoms).
+- **Trunk verification (read-only):** primary-root trunk is `rebuild/phase-2-oz` (HEAD `c1e3aba`); it contains run_76 atom0 `d6ef668` through the archive commit. **No run_76 strand** — the key risk for this priority is cleared on-branch.
+- **Trunk ≠ `main`:** GitHub-default `main` carries an unrelated stale `v0.5` lineage and is NOT this project's trunk. Future strand checks must use the primary root's checked-out branch, not `main`.
+- Proof 2 confirmed still satisfied (wrap-up Play sole section-contract owner; `base-personas.test.ts` pins it). Conflict resolutions unchanged: ADR-0007 reconciled; ticket 0004 retired/re-pointed; ADR-0021 widening accepted in ADR-0022.
+**Next:** Founder runs Proof 4 live fault-injection checklist (`docs/fault-injection-live-proofs.md`) with Oscar driving — inject one off-trunk strand on each of six exit paths and confirm reconciler marks each `pending-landing`+`escalated` with `stranded-commits-detected`. Same founder-present session: Proofs 1, 3, 5.
+
 ## 2026-06-13 — **orchestration-change-durability: the landing-invariant machinery BUILT — all 3 ADR-0022 §3 leaks closed in code (run_76)**
 
 **Persona:** Oscar + Bob (3 atoms, all first-try passes) | **Priority:** [orchestration-change-durability](./priorities/orchestration-change-durability.md) | **Play:** dogfood build of the ADR-0022 finalizer (the high-risk runner/daemon surgery the founder deferred to a verified run)
