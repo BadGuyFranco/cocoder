@@ -5,7 +5,8 @@ import { basePersonasDir, basePlaysDir, basePrioritiesDir } from '../src/index.j
 
 const BASE_PERSONA_FILES = ['bob.md', 'deb.md', 'oscar.md', 'oz.md', 'quinn.md', 'talia.md', 'shared-standards.md'] as const
 const FRONTMATTER_PERSONA_FILES = ['bob.md', 'deb.md', 'oscar.md', 'oz.md', 'quinn.md', 'talia.md'] as const
-const NEW_BASE_PLAY_FILES = ['documentation.md', 'code-review.md'] as const
+const NEW_BASE_PLAY_FILES = ['documentation.md', 'code-review.md', 'electron-test.md'] as const
+const READ_ONLY_BASE_PLAY_FILES = ['code-review.md', 'electron-test.md'] as const
 
 const frontmatterValue = (text: string, key: string): string | null => {
   const match = text.match(new RegExp(`^${key}:\\s*(.+)$`, 'm'))
@@ -81,7 +82,7 @@ describe('basePlaysDir', () => {
     expect(frontmatterList(text, 'writeScope').length).toBeGreaterThan(0)
   })
 
-  test('loads and validates the generic documentation and code-review plays', () => {
+  test('loads and validates the generic content and user-simulation plays', () => {
     for (const file of NEW_BASE_PLAY_FILES) {
       const id = file.slice(0, -3)
       const text = readFileSync(join(basePlaysDir(), file), 'utf8')
@@ -96,11 +97,13 @@ describe('basePlaysDir', () => {
     }
   })
 
-  test('code-review play is read-only', () => {
-    const text = readFileSync(join(basePlaysDir(), 'code-review.md'), 'utf8')
+  test('read-only base plays declare an empty write scope', () => {
+    for (const file of READ_ONLY_BASE_PLAY_FILES) {
+      const text = readFileSync(join(basePlaysDir(), file), 'utf8')
 
-    expect(frontmatterList(text, 'writeScope')).toEqual([])
-    expect(frontmatterValue(text, 'writeScope')).toBe('[]')
+      expect(frontmatterList(text, 'writeScope')).toEqual([])
+      expect(frontmatterValue(text, 'writeScope')).toBe('[]')
+    }
   })
 
   test('wrap-up requires a concrete next action for founder handoff', () => {
