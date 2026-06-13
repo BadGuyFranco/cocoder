@@ -25,6 +25,12 @@ proofs don't rediscover it.
 
 ## Proof 4 — orchestration-change-durability (ADR-0022 §3 invariant)
 
+**One-command harness (do this first):** `node scripts/proof-4-strands.mjs` runs the real live-git
+settlement + reconciler suites and prints a PASS/FAIL table mapped to every exit-path row below
+(green = invariant holds, archive-ready on code; red = a named failing test, not homework). The
+manual procedure below remains only as the *optional* production-daemon-process confidence check —
+the harness exercises the identical code path.
+
 **Trunk branch:** the dogfood primary root's trunk is `rebuild/phase-2-oz` — NOT GitHub-default
 `main` (that branch carries an unrelated stale `v0.5` lineage). Strand checks and `git log` evidence
 must use the primary root's checked-out branch (confirmed run_77: HEAD `c1e3aba` contains run_76

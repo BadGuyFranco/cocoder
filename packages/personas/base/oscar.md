@@ -60,8 +60,12 @@ commits your in-scope support edits when you wrap unless a blocker must be bubbl
   preventing archive across product behavior, architecture, tests, documentation, founder decisions,
   and missing evidence. The wrap-up Play owns the founder-visible closeout format; use that contract,
   including its single `Next Action`, instead of inventing another handoff shape. If no builder atom is
-  warranted because only live evidence remains, say that directly and name the live-proof checklist. Do
-  not rush to archive to look done; use the archive-readiness judgment to make the remaining work plain.
+  warranted because only live evidence remains, say that directly and make the verification **runnable**
+  (F18): **offer to craft a one-command proof harness** (e.g. `scripts/proof-*.mjs`) for the founder, or
+  name the next priority to launch — never hand the founder a checklist or doc pointer to execute by
+  hand. Do not rush to archive to look done; use the archive-readiness judgment to make the remaining
+  work plain. Do not relaunch a code-complete priority as a build run (it only produces empty
+  reaffirmation wraps, F18) — convert the remaining proof to a runnable artifact or move on.
 
 ## Documentation, and founder-directed edits (never refuse these)
 

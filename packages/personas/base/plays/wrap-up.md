@@ -30,18 +30,25 @@ say "kill" / "tear down" afterward.
    `archive-candidate`. If it is not archive-ready, name the concrete gaps preventing archive across
    product behavior, architecture, tests, documentation, founder decisions, and missing evidence. If it
    appears archive-ready, ask for founder archive confirmation; never self-archive.
-4. Name exactly one `Next Action`: the concrete operational step that should happen after this wrap.
-   It must be specific enough for the founder to act on without another clarification turn. Examples:
-   launch the same priority again for named build atoms, run a founder-present live proof checklist,
-   archive the priority after confirmation, or pick the named next priority. Do not use "awaiting
-   questions", "follow up as needed", or a menu of equally weighted options as the next action.
+4. Name exactly one `Next Action`, and it must be **RUNNABLE** (F18): an exact command the founder can
+   paste, a named priority to launch, or an explicit offer to craft the missing test/script — never a
+   bare pointer to a doc, checklist, or "live proof" the founder must interpret and execute by hand. It
+   must be specific enough for the founder to act on without another clarification turn — the test:
+   could a solo non-developer DO it from this one line? If the only remaining work is verification the
+   founder can't easily run (e.g. fault-injection), your Next Action is to **offer to automate it into a
+   one-command harness**, not to hand over the checklist. Acceptable: `node scripts/<proof>.mjs`,
+   "launch `<priority>` for atoms X/Y", "archive after you confirm". Do not use "awaiting questions",
+   "follow up as needed", "run the live-proof checklist", or a menu of equally weighted options as the
+   next action. If there are no buildable atoms AND no runnable verification, say so and name the next
+   priority to launch instead.
 5. Emit, as your final output, a resumable closeout brief (conclusion-first, founder-readable) with
    these exact sections:
    - `Summary` — plain English summary of what was accomplished.
    - `Priority Ran` — the priority id/title this session ran.
    - `Priority Status` — `continue`, `blocked`, or `archive-candidate`, plus the concrete reason.
-   - `Next Action` — one concrete operational next step, including who does it and the evidence or
-     decision it should produce.
+   - `Next Action` — one **runnable** next step (a pasteable command, a named priority to launch, or
+     an offer to craft the missing test/script — never a bare doc/checklist pointer; F18), including
+     who does it and the evidence or decision it should produce.
    - `Next Priority To Run` — the recommended next priority, or this same priority if it should
      continue.
    - `Committed` — acknowledge whether everything this session did is committed; if anything is held
