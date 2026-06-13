@@ -147,20 +147,19 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
 - `daemon-auto-restart` (was backlog) — stale-daemon self-heal. ✅ delivered `4964a5a` inside
   `run-resolution-and-loop-reliability` Phase 4 (idle-only re-exec onto current HEAD, never mid-run,
   test-pinned). **Archived 2026-06-13** (priority audit) — obsolete as a standing priority.
+- `isolated-working-state-per-run` — ADR-0015 run isolation + verified auto-merge + `merge-conflict`
+  Play + GC. ✅ all four clauses green via `node scripts/proof-isolation.mjs` (40/40 live-git tests)
+  AND exercised on **every run** (run_76/77 cut worktrees → verify → ff-merge; boot-sweep + teardown
+  ran). **Archived 2026-06-13** (founder-confirmed, priority audit) — no live proof owed; runs
+  continuously in production.
 
 **Active (launchable; recommended sequence — the `priorities/` directory is the live index):**
-1. `isolated-working-state-per-run` — ADR-0015: each run gets its own git worktree + branch and reaches
-   trunk via a **verified auto-merge** (whole-tree integration verify), with a `merge-conflict` Play
-   (resolve → re-verify → merge; escalate genuine divergence). Retires the dirty-tree launch guard; fixes
-   the Deb-pane teardown leak. Concurrency stays a non-goal. **Built; archive-candidate** — all four
-   ADR-0015 clauses proven green by `node scripts/proof-isolation.mjs`; only an optional live
-   end-to-end run remains.
-2. `personas-and-plays` — **master priority** (merges the done `base-and-extension-personas` + the folded
+1. `personas-and-plays` — **master priority** (merges the done `base-and-extension-personas` + the folded
    `no-brainer-plays`): one living-base+extension model for **both personas and Plays**. Completes the
    base QA roster — **Quinn** (user-simulation) and **Talia** (acceptance QA) — and lands the no-brainer
    Plays (`documentation`, `code-review`, Quinn's `electron-test`, refactoring the ad-hoc Oz test scripts
    out of tech debt), and extends the ADR-0012 base/delta model to Plays. Unblocked by `plays-mechanism`.
-3. `full-oz-dashboard` — the v1-designed control plane, earned in slices; the road to feature-complete.
+2. `full-oz-dashboard` — the v1-designed control plane, earned in slices; the road to feature-complete.
    **In progress / continue** — Electron dashboard wired to every existing daemon endpoint; run_54 landed
    priority reorder (ADR-0010 `order.json`), free-text ad-hoc runs, and run-drawer Resolve; run_55 landed
    sub-agents over the `plays` map (ADR-0018 stage 1), the "Awaiting you" Dashboard strip, and daemon
@@ -236,7 +235,7 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    run_70). Archive-candidate only AFTER the Q/A pass + punch-list, not after the live proofs
    alone. Mechanical surfaces + the bounded 3-item live remainder: `node scripts/proof-oz-surfaces.mjs`
    (do NOT relaunch this priority for a reaffirmation wrap — F18).
-4. `new-primary-root` — the primary-root audit: bootstrap a new root's `cocoder/` + propose-only
+3. `new-primary-root` — the primary-root audit: bootstrap a new root's `cocoder/` + propose-only
    drift re-audit, one base Play pinned to a top-tier model. Design drafted as **ADR-0020 (proposed,
    2026-06-10)** — founder acceptance gates the build. The concrete form of Phase 5 ("first external repo").
 Plus two always-available meta-priorities: `build-priorities-from-plan` (Oscar drafts priorities from

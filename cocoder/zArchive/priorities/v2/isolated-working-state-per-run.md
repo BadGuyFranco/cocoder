@@ -3,6 +3,14 @@ id: isolated-working-state-per-run
 title: "Isolated working state per run — worktree + verified auto-merge (ADR-0015)"
 ---
 
+> **ARCHIVED 2026-06-13 (founder-confirmed, priority audit).** Objective met: ADR-0015 Accepted; each
+> run cuts its own worktree+branch, reaches trunk only via a fresh whole-tree verified auto-merge, the
+> dirty-tree launch guard is retired, the `merge-conflict` Play reconciles-or-escalates, and teardown/
+> boot GC reclaims worktrees without losing work. All four verified-when clauses are green via
+> `node scripts/proof-isolation.mjs` (40/40 live-git tests) — AND the behavior is exercised on **every
+> run** (run_76/run_77 cut worktrees, verified, ff-merged; boot-sweep + teardown ran). No live proof
+> "owed" — it runs continuously in production. Kept for history.
+
 ## Objective
 Every CoCoder run executes in its **own git worktree + branch** (created from the trunk tip at launch)
 and reaches trunk only via a **verified auto-merge** — implementing [ADR-0015](../decisions/0015-isolated-working-state-per-run.md).
