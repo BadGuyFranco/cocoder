@@ -124,8 +124,9 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
 - `run-resolution-and-loop-reliability` — loop unjam (runs 43–46 landed/resolved, ADR-0015 resolve
   exit built, directive-0 fix, stale-daemon self-heal, ADR-0018 drafted). ✅ objective (a)–(e)
   met 2026-06-09; run_73 follow-up hardening (`6d1b0ee`, `d37ed7b`) closed the run_71 silent-strand
-  class (F17) and fixed trunkBranch reads in run records. **Archive-candidate** — founder confirmation
-  + live proof of F17 fix still owed; priority kept as the living loop-reliability home until archived.
+  class (F17) and fixed trunkBranch reads in run records. **Archived 2026-06-13** (founder-confirmed,
+  run_73; landed by hand after the runner stranded run_73's own commits — see F17/F18). Live proof of
+  the F17 fix remains owed and is tracked outside this priority.
 
 **Active (launchable; recommended sequence — the `priorities/` directory is the live index):**
 1. `isolated-working-state-per-run` — ADR-0015: each run gets its own git worktree + branch and reaches
