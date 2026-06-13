@@ -88,6 +88,32 @@ describe('basePlaysDir', () => {
     expect(text).toMatch(/Do not use "awaiting\s+questions"/)
     expect(text).toContain('- `Next Action`')
   })
+
+  // ADR-0022 proof #2: the wrap-up Play is the SINGLE owner of the founder closeout-brief format.
+  // Pin its section contract so no surface can silently drift a parallel shape past review.
+  test('wrap-up Play pins the canonical closeout-brief sections (single owner)', () => {
+    const text = readFileSync(join(basePlaysDir(), 'wrap-up.md'), 'utf8')
+    const sections = [
+      'Summary',
+      'Priority Ran',
+      'Priority Status',
+      'Next Action',
+      'Next Priority To Run',
+      'Committed',
+      'Archive Estimate',
+      'Founder Options',
+    ]
+    for (const s of sections) {
+      expect(text).toContain(`- \`${s}\``)
+    }
+  })
+
+  // ADR-0022 proof #2: Oscar must defer to the wrap-up Play's contract, not restate a parallel format.
+  test('oscar defers to the wrap-up Play as the closeout-brief owner', () => {
+    const text = readFileSync(join(basePersonasDir(), 'oscar.md'), 'utf8')
+    expect(text).toContain("wrap-up Play's closeout-brief contract")
+    expect(text).not.toContain('Report back to the founder in the standardized format')
+  })
 })
 
 describe('basePrioritiesDir', () => {

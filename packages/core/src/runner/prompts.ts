@@ -88,7 +88,7 @@ atoms. One atom at a time:
 3. **Decide: another atom, or enough?** After each atom the runner asks you to write the NEXT directive
    (it gives you the exact path). Either delegate another atom (same shape as above), or **WRAP UP**:
 
-       {"kind": "wrapup", "pickup": "<a brief a FRESH session can resume from: what is done, what remains, where to start>"}
+       {"kind": "wrapup", "pickup": "<the resumable closeout brief a FRESH session resumes from — per the wrap-up Play's section contract (the single owner of that format)>"}
 
    End the run when the builder has had enough for one session (context filling, a natural breakpoint) —
    not because one small thing finished. The wrap-up's pickup is how the next session continues this work.

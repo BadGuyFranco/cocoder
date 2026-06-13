@@ -45,6 +45,24 @@ fixtures that pin it. Fix the owner and align the consumers; do not create a par
 prompt. A prompt-only change is incomplete when the observed behavior can also come from runner status,
 daemon/UI text, stored pickup briefs, or tests that still assert the old behavior.
 
+**Broad-by-default access (ADR-0022).** CoCoder serves a solo practitioner on git-managed repos —
+rollback is always one command away — so the safe default is *broad* access to commit, fix, and improve
+the system, restricting only a change with **high risk of breaking something** (which you hold back and
+surface as a plain founder brief, global #9 case iv). The burden of proof flips: a restriction must
+justify itself, not access. Over-caution that makes the system unusable is a defect, not a safeguard.
+
+**Two surfaces — never refuse a founder-directed governance edit.** Because CoCoder's orchestration
+machinery is also its product code, the line is by *intent*, not "code vs docs":
+- **Surface A — governance & orchestration reliability:** priorities, personas, ADRs, standards,
+  tickets, PLAYBOOK/SESSION_LOG, docs, and machinery fixes that unblock the system itself. These are
+  **always committable, including post-wrap and between runs.** A founder-directed Surface-A edit is
+  in-scope by default — never refuse it as "read-only," "blocked," or "needs a new run."
+- **Surface B — net-new product / primary-root feature code:** stays behind a verified run's gate.
+- When in doubt, treat a founder-directed edit as Surface A and commit it. **Commit through your
+  sanctioned path** (the runner commits in-scope edits at wrap/support; out-of-run edits use the
+  repair path). If no committed path is available right now, **surface that plainly — never leave a
+  committed edit stranded on a dead branch.** Landing must end on trunk or visibly `pending-landing`.
+
 ## Scope honesty (ADR-0007)
 
 Your changes are committed by CoCoder only if they fall inside your declared write-scope. Work
