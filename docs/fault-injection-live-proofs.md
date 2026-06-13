@@ -22,3 +22,29 @@ proofs don't rediscover it.
 - **Daemon staleness:** the daemon serves code loaded at boot — confirm `/health` bootSha matches
   the engine HEAD before attributing live behavior to new code (see
   `cocoder/priorities/backlog/daemon-auto-restart.md`).
+
+## Proof 4 — orchestration-change-durability (ADR-0022 §3 invariant)
+
+**Prerequisite:** restart the daemon onto the branch that carries run_76's commits; confirm
+`/health` `bootSha` matches that HEAD before injecting. The new `failed`/`stopped` reconciler
+coverage and `cocoder-governance` daemon commits only take effect after restart.
+
+**Goal:** every exit path that can leave off-trunk commits must end either landed on trunk or
+surfaced as `pending-landing` + `escalated` with a `stranded-commits-detected` event — no path
+closes silently.
+
+**Checklist (inject a committed-but-unlanded strand on each path; confirm recover via Resolve or
+auto-land):**
+
+| Exit path | How to induce | Expected outcome |
+|---|---|---|
+| post-wrap | Run completes with off-trunk commit after wrap | `pending-landing` + strand event |
+| escalate | Integration ff-block or scope escalate with commits | `pending-landing` + strand event |
+| ff-blocked | Verify passes, ff-merge fails | `pending-landing` + strand event |
+| post-settle | Run settles (`completed`) but branch not merged | reconciler surfaces at next boot/teardown |
+| **failed** | Fault mid-run after Bob commits (e.g. directive-timeout) | runner surfaces strand; reconciler preserves at boot |
+| **stopped** | Cooperative stop after Bob commits | runner surfaces strand; reconciler preserves at boot |
+
+After each injection: verify trunk HEAD unchanged until Resolve (detection-only), the run record
+shows `pending-landing` + `stranded-commits-detected`, and the work is recoverable — none lost.
+The daemon boot/teardown reconciler must catch any strand the runner missed on the next cycle.

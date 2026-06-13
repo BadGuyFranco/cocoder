@@ -2,8 +2,12 @@
 
 **Status:** Accepted (founder, 2026-06-13). The founder endorsed the direction (broad-by-default
 principle + the priority [`orchestration-change-durability`](../priorities/orchestration-change-durability.md))
-and then reviewed and decided both open questions below. Implementation of §3 (the finalizer) is owed
-via a dogfood run; ADR acceptance is of the decisions, not their build.
+and then reviewed and decided both open questions below.
+**Implementation (run_76, 2026-06-13):** the three §3 leaks and §4 daemon-commit identity are built
+and verified on-branch (`d6ef668` reconciler total, `8495dcf` runner stop/fault surfacing,
+`0ecc6f3` `cocoder-governance` commits). Founder-driven live proofs remain — see the priority
+[`Status`](../priorities/orchestration-change-durability.md) and
+[`docs/fault-injection-live-proofs.md`](../../docs/fault-injection-live-proofs.md#proof-4-orchestration-change-durability).
 **Builds on:** [0015](./0015-isolated-working-state-per-run.md) (run isolation — the seam every strand
 crosses), [0007](./0007-write-scope-enforcement.md) (commit gate — *reconciled here*), [0021](./0021-oz-repair-commit-authority.md)
 (out-of-run trunk authority — *generalized here*), [0013](./0013-orchestration-observation.md) /
