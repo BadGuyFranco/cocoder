@@ -136,6 +136,17 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   resolved: ticket 0004 closed, ADR-0007 reconciled, ADR-0021 generalized — **ADR-0022 Accepted**. F18
   (orchestrator ends on un-runnable "Next Action") caught + fixed here. **Archived 2026-06-13**
   (founder-confirmed; runs 76/77).
+- `deb-scoped-repair-fallback` — ADR-0016 full Deb rebuild (escalation engineer: `deb-status`,
+  Oscar-only `deb-nudge`, gate-enforced `deb-repair`, cross-run recurrence escalation, base/delta
+  scope split). ✅ built + **live-proven run_33** (`34ecf13`); the `deb` tier-2 entry above is its
+  first slice. **Archived 2026-06-13** (priority audit) — had lingered in active `priorities/`.
+- `cli-config-and-model-discovery` — per-CLI required-config injection + deterministic
+  `listModels()`/`runReadiness`; `GET /clis` + `POST /clis/:id/test`; truthful Personas Model picker.
+  ✅ built run_41/42 (`d76cb5a`), suites green. **Archived 2026-06-13** (priority audit); a founder
+  live demo of the picker is opportunistic, not blocking.
+- `daemon-auto-restart` (was backlog) — stale-daemon self-heal. ✅ delivered `4964a5a` inside
+  `run-resolution-and-loop-reliability` Phase 4 (idle-only re-exec onto current HEAD, never mid-run,
+  test-pinned). **Archived 2026-06-13** (priority audit) — obsolete as a standing priority.
 
 **Active (launchable; recommended sequence — the `priorities/` directory is the live index):**
 1. `isolated-working-state-per-run` — ADR-0015: each run gets its own git worktree + branch and reaches

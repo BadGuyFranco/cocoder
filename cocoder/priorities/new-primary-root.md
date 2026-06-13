@@ -3,6 +3,14 @@ id: new-primary-root
 title: "Primary-root audit: bootstrap a new root's cocoder/, re-audit on drift (ADR-0020)"
 ---
 
+> **At launch — founder alignment first (founder, 2026-06-13).** Before any build, the run must get on
+> the same page with the founder, asking questions as needed, on: (1) **ADR-0020** (currently Proposed)
+> — accept / amend / defer; nothing builds until it's accepted. (2) The **overlap with
+> `backlog/workspace-onboarding.md`** — the "existing-code root → audit + ingest into `cocoder/`" flow
+> is shared between the two; reconcile them under one ADR-0020 umbrella (likely fold workspace-onboarding
+> in) rather than building duplicative paths. (3) Confirm the first real target repo. Surface these as a
+> plain-English alignment pass, not a checklist.
+
 ## Objective
 CoCoder can be pointed at a primary root it has never managed and **bootstrap itself**: a
 deterministic scaffold of the `cocoder/` governance skeleton, then a **world-class agentic audit**

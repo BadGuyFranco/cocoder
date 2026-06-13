@@ -3,6 +3,13 @@ id: daemon-auto-restart
 title: "Daemon auto-restart — never silently run stale orchestration code (deferred: not yet scheduled)"
 ---
 
+> **ARCHIVED 2026-06-13 (founder-confirmed, priority audit).** Delivered (not as its own run): the
+> stale-daemon self-heal shipped `4964a5a` inside the now-archived `run-resolution-and-loop-reliability`
+> (Phase 4) — `launcher.ts` re-execs onto current HEAD when a stale launch is refused and
+> `inFlight.size === 0`, never mid-run, audited as `launch-refused-stale` + `selfRestart`, test-pinned
+> in `mutations.test.ts`. The deeper "runs as fresh subprocesses" approach (#2) was deliberately not
+> needed. Obsolete as a standing priority. Kept for history.
+
 ## Objective
 CoCoder **never silently runs stale orchestration code**. When a commit advances repo HEAD past the
 code the long-lived daemon loaded at boot, the daemon picks up the current code **on its own** — no

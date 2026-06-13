@@ -3,6 +3,13 @@ id: cli-config-and-model-discovery
 title: Per-CLI required-config injection + deterministic model discovery
 ---
 
+> **ARCHIVED 2026-06-13 (founder-confirmed, priority audit).** Objective met: per-CLI config injection
+> + deterministic `listModels()`/`runReadiness` built (run_41/42, `d76cb5a`); `GET /clis` +
+> `POST /clis/:id/test` served; the Personas Model picker is truthful (stale-flagged, free-text when not
+> enumerable). All suites green. The only un-witnessed piece is a founder live demo of the picker —
+> opportunistic, not blocking. (Also resolves: this file was missing from the PLAYBOOK roadmap and had
+> drifted from the stub convention — both moot on archive.) Kept for history.
+
 ## Objective
 Make each coding CLI **actually usable by CoCoder unattended** and make the persona **Model** picker
 **truthful**. Two related daemon capabilities, both about the CLI ⇄ CoCoder seam (no UI invention —

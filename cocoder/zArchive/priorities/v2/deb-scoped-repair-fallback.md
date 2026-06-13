@@ -3,6 +3,12 @@ id: deb-scoped-repair-fallback
 title: "Deb — CoCoder repair fallback (ADR-0016)"
 ---
 
+> **ARCHIVED 2026-06-13 (founder-confirmed, priority audit).** Objective met: ADR-0016 Accepted; all
+> six surfaces (`deb-status`, `deb-nudge` Oscar-only, gate-enforced `deb-repair`, `deb-authored`,
+> cross-run recurrence escalation, base/delta scope split) built and **live-proven on run_33**
+> (`34ecf13`). No buildable work left; was lingering in active `priorities/` after the PLAYBOOK Done
+> list already credited the `deb` tier. Kept for history.
+
 ## Objective
 Rebuild Deb from a passive fault-classification endpoint into CoCoder's **escalation engineer**: a
 read-only observer of ordinary target-repo work that can inspect orchestration state and write

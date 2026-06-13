@@ -12,9 +12,10 @@ priority without a valid contract cannot launch; (2) a priority with a valid con
 active priority is bricked by a partial rollout. Boundary: the launch-refusal gate and governing-section
 parser only — not redefining priority authoring taxonomy (ADR-0010) or Oz drag-reorder.
 
-**Blocked on founder approval:** a verifiable Objective (this stub is a placeholder), an ADR-conflict
-pass (governing / superseded / conflicts / gaps / invariants), and resolution of the contested ADR-0017
-number (two ADR trees; a prior deleted rebuild-0017). **Do not implement inside another priority's run**
+**Blocked on founder approval:** a verifiable Objective (this stub is a placeholder) and an ADR-conflict
+pass (governing / superseded / conflicts / gaps / invariants). *(Stale blocker removed 2026-06-13: the
+"contested ADR-0017 number" is resolved — `decisions/` carries a single Accepted ADR-0017.)*
+**Do not implement inside another priority's run**
 — run_45 showed a builder can slip this into `packages/core` when commit scope is run-level `packages/**`.
 
 **Origin:** founder chat proposal surfaced twice during run_45 (`full-oz-dashboard`); Oscar reverted the
