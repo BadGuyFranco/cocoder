@@ -5,6 +5,14 @@ import { isFullyLanded, type RunStore, type Workspace } from '../store/index.js'
 
 const ts = (ms: number | null): string => (ms === null ? '—' : new Date(ms).toISOString())
 
+function landedLabel(events: ReturnType<RunStore['listEvents']>): string {
+  const worktreeCreated = events.find((event) => event.type === 'worktree-created')
+  const trunkBranch = (worktreeCreated?.data as { trunkBranch?: unknown } | null | undefined)?.trunkBranch
+  return typeof trunkBranch === 'string' && trunkBranch.trim() !== ''
+    ? `Landed on trunk (\`${trunkBranch}\`)`
+    : 'Landed on trunk'
+}
+
 export function renderRunRecord(
   store: RunStore,
   runId: string,
@@ -23,7 +31,7 @@ export function renderRunRecord(
   lines.push(`- **Priority:** ${meta.priority.title} (\`${run.priorityId}\`)`)
   lines.push(`- **Status:** ${run.status}`)
   lines.push(`- **Integration:** ${run.integrationStatus}`)
-  lines.push(`- **Landed on main checkout/trunk:** ${isFullyLanded(run) ? 'yes' : 'no'}`)
+  lines.push(`- **${landedLabel(events)}:** ${isFullyLanded(run) ? 'yes' : 'no'}`)
   if (!isFullyLanded(run)) {
     lines.push(`- **Disposition:** work remains on run branch \`${run.runBranch ?? 'n/a'}\` in \`${run.worktreePath ?? 'n/a'}\``)
   }
