@@ -337,12 +337,9 @@ async function workspaceRepoForRun(ctx: OzContext, run: Run): Promise<{ readonly
 async function reconcileStrandedRunCommits(ctx: OzContext, run: Run, opts: { explicitTeardown?: boolean } = {}): Promise<void> {
   if (!run.runBranch) return
   if (runHasEvent(ctx, run.id, 'scope-decision')) return
-  if (run.status === 'running' || run.status === 'failed' || run.status === 'stopped') return
+  if (run.status === 'running') return
   if (run.status === 'pending-landing' && run.integrationStatus === 'escalated') return
-  const eligible =
-    (run.status === 'completed' && run.integrationStatus === 'merged') ||
-    (!opts.explicitTeardown && run.status === 'pending-scope-decision')
-  if (!eligible) return
+  if (opts.explicitTeardown && run.status === 'pending-scope-decision') return
 
   const repo = await workspaceRepoForRun(ctx, run)
   let onTrunk: boolean

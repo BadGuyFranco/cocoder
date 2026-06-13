@@ -97,7 +97,7 @@ async function writeLegacyWorkspace(id: string, path: string): Promise<void> {
 // Create a run row WITH a real worktree on disk (committed work on its branch) at the given status,
 // optionally with an integration status (default 'pending').
 async function seedRunWithWorktree(
-  status: 'completed' | 'pending-scope-decision' | 'failed',
+  status: 'completed' | 'pending-scope-decision' | 'failed' | 'stopped',
   integrationStatus?: 'merged' | 'escalated' | 'resolving' | 'verifying',
 ): Promise<string> {
   const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
@@ -114,8 +114,8 @@ async function seedRunWithWorktree(
   return run.id
 }
 
-async function seedCleanlyLandedRunWithWorktree(): Promise<string> {
-  const runId = await seedRunWithWorktree('completed', 'merged')
+async function seedCleanlyLandedRunWithWorktree(status: 'completed' | 'failed' | 'stopped' = 'completed'): Promise<string> {
+  const runId = await seedRunWithWorktree(status, status === 'completed' ? 'merged' : undefined)
   await g(home, ['merge', '--ff-only', runBranchFor(runId)])
   return runId
 }
@@ -138,6 +138,13 @@ async function seedExternalRunWithWorktree(status: 'completed' | 'failed'): Prom
   store.setWorktree(run.id, worktreePath, branch)
   store.setRunStatus(run.id, status)
   return { runId: run.id, workspacePath, worktreePath }
+}
+
+async function seedCleanlyLandedExternalRunWithWorktree(status: 'completed' | 'failed'): Promise<{ runId: string; workspacePath: string; worktreePath: string }> {
+  const seeded = await seedExternalRunWithWorktree(status)
+  await g(seeded.workspacePath, ['merge', '--ff-only', runBranchFor(seeded.runId)])
+  if (status === 'completed') store.setIntegrationStatus(seeded.runId, 'merged')
+  return seeded
 }
 
 beforeEach(async () => {
@@ -186,7 +193,7 @@ const daemonCtx = (): OzContext => ({
 
 describe('worktree GC + orphan sweep (ADR-0015, live git)', () => {
   test('teardown removes a completed run\'s worktree dir; the branch ref + its commits survive', async () => {
-    const runId = await seedRunWithWorktree('completed')
+    const runId = await seedCleanlyLandedRunWithWorktree()
     const wt = worktreePathFor(home, runId)
     expect(await exists(wt)).toBe(true)
     await start()
@@ -194,7 +201,7 @@ describe('worktree GC + orphan sweep (ADR-0015, live git)', () => {
     await teardownRun(oz!.ctx, runId)
 
     expect(await exists(wt)).toBe(false) // dir GC'd
-    // The branch ref is NOT pruned — its un-integrated commit is still reachable (no data loss).
+    // The branch ref is NOT pruned — its commit is still reachable (no data loss).
     expect(await g(home, ['rev-parse', '--verify', runBranchFor(runId)]).then(() => true, () => false)).toBe(true)
     expect(store.listEvents(runId).some((e) => e.type === 'worktree-removed')).toBe(true)
   })
@@ -235,6 +242,44 @@ describe('worktree GC + orphan sweep (ADR-0015, live git)', () => {
     expect(await exists(worktreePathFor(home, runId))).toBe(true)
   })
 
+  test('daemon boot surfaces a failed run whose branch still has commits not on trunk', async () => {
+    const runId = await seedRunWithWorktree('failed')
+
+    await start()
+
+    expect(store.getRun(runId)).toMatchObject({ status: 'pending-landing', integrationStatus: 'escalated' })
+    const events = store.listEvents(runId).filter((e) => e.type === 'stranded-commits-detected')
+    expect(events).toHaveLength(1)
+    expect(events[0]?.data).toMatchObject({
+      runBranch: runBranchFor(runId),
+      aheadCount: 1,
+      workspaceRepo: home,
+      source: 'daemon',
+      detectedFromStatus: 'failed',
+      detectedFromIntegrationStatus: 'pending',
+    })
+    expect(await exists(worktreePathFor(home, runId))).toBe(true)
+  })
+
+  test('daemon boot surfaces a stopped run whose branch still has commits not on trunk', async () => {
+    const runId = await seedRunWithWorktree('stopped')
+
+    await start()
+
+    expect(store.getRun(runId)).toMatchObject({ status: 'pending-landing', integrationStatus: 'escalated' })
+    const events = store.listEvents(runId).filter((e) => e.type === 'stranded-commits-detected')
+    expect(events).toHaveLength(1)
+    expect(events[0]?.data).toMatchObject({
+      runBranch: runBranchFor(runId),
+      aheadCount: 1,
+      workspaceRepo: home,
+      source: 'daemon',
+      detectedFromStatus: 'stopped',
+      detectedFromIntegrationStatus: 'pending',
+    })
+    expect(await exists(worktreePathFor(home, runId))).toBe(true)
+  })
+
   test('cleanly landed completed runs are untouched by teardown and boot stranded-commit checks', async () => {
     const teardownRunId = await seedCleanlyLandedRunWithWorktree()
     const bootRunId = await seedCleanlyLandedRunWithWorktree()
@@ -248,6 +293,18 @@ describe('worktree GC + orphan sweep (ADR-0015, live git)', () => {
     expect(store.listEvents(bootRunId).some((e) => e.type === 'stranded-commits-detected')).toBe(false)
     expect(await exists(worktreePathFor(home, teardownRunId))).toBe(false)
     expect(await exists(worktreePathFor(home, bootRunId))).toBe(true)
+  })
+
+  test('cleanly landed failed and stopped runs are untouched by boot stranded-commit checks', async () => {
+    const failedRunId = await seedCleanlyLandedRunWithWorktree('failed')
+    const stoppedRunId = await seedCleanlyLandedRunWithWorktree('stopped')
+
+    await start()
+
+    expect(store.getRun(failedRunId)?.status).toBe('failed')
+    expect(store.getRun(stoppedRunId)?.status).toBe('stopped')
+    expect(store.listEvents(failedRunId).some((e) => e.type === 'stranded-commits-detected')).toBe(false)
+    expect(store.listEvents(stoppedRunId).some((e) => e.type === 'stranded-commits-detected')).toBe(false)
   })
 
   test('boot does not re-flag a founder-discarded run even when its branch still has stranded commits', async () => {
@@ -271,8 +328,19 @@ describe('worktree GC + orphan sweep (ADR-0015, live git)', () => {
     expect(store.listEvents(runId).filter((e) => e.type === 'stranded-commits-detected')).toHaveLength(1)
   })
 
+  test('boot stranded-commit reconciliation is idempotent for failed runs', async () => {
+    const runId = await seedRunWithWorktree('failed')
+
+    const ctx = daemonCtx()
+    await reconcileOrphans(ctx)
+    await reconcileOrphans(ctx)
+
+    expect(store.getRun(runId)).toMatchObject({ status: 'pending-landing', integrationStatus: 'escalated' })
+    expect(store.listEvents(runId).filter((e) => e.type === 'stranded-commits-detected')).toHaveLength(1)
+  })
+
   test('teardown removes a non-engine workspace-owned worktree through the workspace repo', async () => {
-    const { runId, workspacePath, worktreePath } = await seedExternalRunWithWorktree('completed')
+    const { runId, workspacePath, worktreePath } = await seedCleanlyLandedExternalRunWithWorktree('completed')
     await start()
 
     await teardownRun(oz!.ctx, runId)
@@ -321,6 +389,23 @@ describe('worktree GC + orphan sweep (ADR-0015, live git)', () => {
     expect(store.listEvents(runId).some((e) => e.type === 'worktree-gc-blocked')).toBe(true)
   })
 
+  test('teardown preserves daemon-surfaced failed and stopped strands for inspection', async () => {
+    const failedRunId = await seedRunWithWorktree('failed')
+    const stoppedRunId = await seedRunWithWorktree('stopped')
+    const ctx = daemonCtx()
+    await reconcileOrphans(ctx)
+
+    await teardownRun(ctx, failedRunId)
+    await teardownRun(ctx, stoppedRunId)
+
+    expect(await exists(worktreePathFor(home, failedRunId))).toBe(true)
+    expect(await exists(worktreePathFor(home, stoppedRunId))).toBe(true)
+    expect(store.listEvents(failedRunId).filter((e) => e.type === 'stranded-commits-detected')).toHaveLength(1)
+    expect(store.listEvents(stoppedRunId).filter((e) => e.type === 'stranded-commits-detected')).toHaveLength(1)
+    expect(store.listEvents(failedRunId).some((e) => e.type === 'worktree-gc-blocked')).toBe(true)
+    expect(store.listEvents(stoppedRunId).some((e) => e.type === 'worktree-gc-blocked')).toBe(true)
+  })
+
   test('teardown does NOT remove a worktree with unresolved blocked local-state exports', async () => {
     const runId = await seedCleanlyLandedRunWithWorktree()
     store.recordEvent({ runId, type: 'local-state-export', data: { exported: [], blocked: ['local/secrets/token'] } })
@@ -335,7 +420,7 @@ describe('worktree GC + orphan sweep (ADR-0015, live git)', () => {
 
   test('daemon-boot sweep preserves wrapped runs until founder teardown but removes disposable failed strays', async () => {
     const done = await seedCleanlyLandedRunWithWorktree()
-    const failed = await seedRunWithWorktree('failed')
+    const failed = await seedCleanlyLandedRunWithWorktree('failed')
     const held = await seedRunWithWorktree('pending-scope-decision')
     const escalated = await seedRunWithWorktree('completed', 'escalated')
     await start() // createOzServer runs reconcileOrphans → sweepOrphanWorktrees at boot
@@ -349,7 +434,7 @@ describe('worktree GC + orphan sweep (ADR-0015, live git)', () => {
   })
 
   test('daemon-boot sweep removes disposable non-engine workspace-owned worktrees from run-table paths', async () => {
-    const { runId, workspacePath, worktreePath } = await seedExternalRunWithWorktree('failed')
+    const { runId, workspacePath, worktreePath } = await seedCleanlyLandedExternalRunWithWorktree('failed')
 
     await start()
 
