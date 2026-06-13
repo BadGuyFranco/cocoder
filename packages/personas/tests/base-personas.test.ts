@@ -5,6 +5,7 @@ import { basePersonasDir, basePlaysDir, basePrioritiesDir } from '../src/index.j
 
 const BASE_PERSONA_FILES = ['bob.md', 'deb.md', 'oscar.md', 'oz.md', 'quinn.md', 'talia.md', 'shared-standards.md'] as const
 const FRONTMATTER_PERSONA_FILES = ['bob.md', 'deb.md', 'oscar.md', 'oz.md', 'quinn.md', 'talia.md'] as const
+const NEW_BASE_PLAY_FILES = ['documentation.md', 'code-review.md'] as const
 
 const frontmatterValue = (text: string, key: string): string | null => {
   const match = text.match(new RegExp(`^${key}:\\s*(.+)$`, 'm'))
@@ -78,6 +79,28 @@ describe('basePlaysDir', () => {
     expect(frontmatterValue(text, 'kind')).toBe('headless')
     expect(body.length).toBeGreaterThan(0)
     expect(frontmatterList(text, 'writeScope').length).toBeGreaterThan(0)
+  })
+
+  test('loads and validates the generic documentation and code-review plays', () => {
+    for (const file of NEW_BASE_PLAY_FILES) {
+      const id = file.slice(0, -3)
+      const text = readFileSync(join(basePlaysDir(), file), 'utf8')
+      const body = text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '').trim()
+
+      expect(frontmatterValue(text, 'id')).toBe(id)
+      expect(frontmatterValue(text, 'label')?.length).toBeGreaterThan(0)
+      expect(frontmatterValue(text, 'kind')).toBe('headless')
+      expect(body.length).toBeGreaterThan(0)
+      expect(body).not.toMatch(/cocoder/i)
+      expect(body).not.toContain('Oz')
+    }
+  })
+
+  test('code-review play is read-only', () => {
+    const text = readFileSync(join(basePlaysDir(), 'code-review.md'), 'utf8')
+
+    expect(frontmatterList(text, 'writeScope')).toEqual([])
+    expect(frontmatterValue(text, 'writeScope')).toBe('[]')
   })
 
   test('wrap-up requires a concrete next action for founder handoff', () => {
