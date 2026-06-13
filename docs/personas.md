@@ -1,7 +1,7 @@
 # CoCoder Personas
 
 **Status:** Draft, implemented by Sub-Playbook D Solve  
-**Last verified:** 2026-05-27 (docs pass only; no runtime behavior changed)
+**Last verified:** 2026-06-13 (Talia + Quinn added to the shipped base set, run_78)
 
 Personas are role contracts for orchestration lanes. They describe what a lane is responsible for, how it receives work, what evidence it must return, and whether it can write.
 

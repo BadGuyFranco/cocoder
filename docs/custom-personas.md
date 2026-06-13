@@ -1,6 +1,9 @@
 # Custom personas
 
-CoCoder ships core personas (Bob, Talia, Oscar, and stubs for Quinn, Ian, Verifier) in the install repo. **Custom personas** extend the library for workspace-specific roles without forking orchestration core.
+CoCoder ships core personas (Oscar, Bob, Deb, Oz, Talia, Quinn, …) in the install base at
+`packages/personas/base/` (ADR-0012). Ian, Verifier, and other domain roles remain demand-driven or
+repo-only. **Custom personas** extend the library for workspace-specific roles without forking
+orchestration core.
 
 ## Contract schema
 

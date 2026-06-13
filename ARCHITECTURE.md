@@ -94,7 +94,8 @@ CoCoder/                          # the engine install AND the dogfood workspace
 ├── packages/                     # seven TypeScript packages, inward-only deps (ADR-0008)
 │   ├── core/                     # I/O-agnostic engine: runner, personas, plays, commit-gate, store
 │   ├── personas/                 # shipped BASE personas + Plays + shared-standards (ADR-0012) —
-│   │                             #   the vast majority of persona behavior lives HERE
+│   │                             #   base Plays in base/plays/; core loader merges repo deltas
+│   │                             #   (loadEffectivePlay — same model as personas)
 │   ├── adapters/                 # per-CLI drivers + preflight (claude, codex, cursor-agent)
 │   ├── session-hosts/            # SessionHost drivers (cmux)
 │   ├── daemon/                   # Oz daemon: DB write-conn + cmux + live runs + HTTP API
@@ -116,6 +117,8 @@ CoCoder/                          # the engine install AND the dogfood workspace
 │   ├── priorities/               # one flat .md per launchable priority (+ backlog/)
 │   ├── tickets/                  # INDEX.md + open/ + closed/
 │   ├── personas/                 # EXTENSIONS only: deltas/ + custom/ + assignments.json
+│   ├── plays/                    # EXTENSIONS only: deltas/ (repo Play overrides; base Plays ship in
+│   │                             #   packages/personas/base/plays/ — same base+delta model as personas)
 │   ├── memory/                   # codebase-map, tech-stack, onboarding
 │   ├── standards/                # workspace extensions of the shipped base standard
 │   ├── spikes/                   # exploration notes that informed ADRs
@@ -132,7 +135,8 @@ CoCoder/                          # the engine install AND the dogfood workspace
 └── cocoder/                      # that workspace's governance — IDENTICAL SHAPE to the dogfood's:
     ├── AGENTS.md · SESSION_LOG.md
     ├── decisions/ · priorities/ · tickets/ · memory/ · standards/
-    └── personas/ (deltas/ + custom/ + assignments.json)
+    ├── personas/ (deltas/ + custom/ + assignments.json)
+    └── plays/ (deltas/ — repo Play overrides)
                                   # NO local/ — machine state lives only in the install's local/
 ```
 
