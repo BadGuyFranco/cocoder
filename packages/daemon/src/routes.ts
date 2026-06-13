@@ -21,6 +21,7 @@ export type { OzContext } from './context.js'
 
 const CAP = 50_000
 const ADHOC_PRIORITY_ID = 'adhoc-session'
+const COCODER_GOVERNANCE = { name: 'cocoder-governance', email: 'governance@cocoder.local' } as const
 const CLAUDE_POINTER = 'Claude CLI sessions should read AGENTS.md in this same cocoder/ folder for repo instructions.\nKeep workspace-specific guidance there.\n'
 const DEFAULT_ASSIGNMENTS = {
   personas: {
@@ -67,6 +68,7 @@ function readJsonBody(req: IncomingMessage): Promise<unknown> {
 const governanceDir = (workspacePath: string): string => join(workspacePath, 'cocoder')
 const personasDir = (workspacePath: string): string => join(workspacePath, 'cocoder', 'personas')
 const prioritiesDir = (workspacePath: string): string => join(workspacePath, 'cocoder', 'priorities')
+const priorityOrderFile = (workspacePath: string): string => join(prioritiesDir(workspacePath), 'order.json')
 
 interface LaunchBody {
   readonly workspaceId: string
@@ -228,28 +230,50 @@ async function directoryGate(path: string): Promise<string | null> {
   return info.isDirectory() ? null : `primary root does not exist or is not a directory: ${path}`
 }
 
-async function writeIfMissing(path: string, contents: string): Promise<void> {
+async function commitGovernance(ctx: OzContext, repoPath: string, files: readonly string[], message: string): Promise<string | null> {
+  if (files.length === 0) return null
+  try {
+    return await ctx.git.addAndCommit(repoPath, files, message, COCODER_GOVERNANCE)
+  } catch (err) {
+    await appendAudit(ctx.cocoderHome, {
+      action: 'governance-commit-failed',
+      repoPath,
+      message,
+      reason: err instanceof Error ? err.message : String(err),
+    })
+    return null
+  }
+}
+
+async function writeIfMissing(path: string, contents: string): Promise<boolean> {
   try {
     await writeFile(path, contents, { flag: 'wx' })
+    return true
   } catch (err) {
-    if (errorCode(err) === 'EEXIST') return
+    if (errorCode(err) === 'EEXIST') return false
     throw err
   }
 }
 
-async function scaffoldWorkspaceGovernance(root: string): Promise<void> {
+async function scaffoldWorkspaceGovernance(root: string): Promise<readonly string[]> {
   const cocoderDir = governanceDir(root)
   const personaDir = personasDir(root)
   const priorityDir = prioritiesDir(root)
+  const created: string[] = []
   await mkdir(personaDir, { recursive: true })
   await mkdir(priorityDir, { recursive: true })
-  await writeIfMissing(join(cocoderDir, 'AGENTS.md'), '')
-  await writeIfMissing(join(cocoderDir, 'CLAUDE.md'), CLAUDE_POINTER)
-  await writeIfMissing(join(personaDir, 'assignments.json'), `${JSON.stringify(DEFAULT_ASSIGNMENTS, null, 2)}\n`)
+  const agents = join(cocoderDir, 'AGENTS.md')
+  const claude = join(cocoderDir, 'CLAUDE.md')
+  const assignments = join(personaDir, 'assignments.json')
+  if (await writeIfMissing(agents, '')) created.push(agents)
+  if (await writeIfMissing(claude, CLAUDE_POINTER)) created.push(claude)
+  if (await writeIfMissing(assignments, `${JSON.stringify(DEFAULT_ASSIGNMENTS, null, 2)}\n`)) created.push(assignments)
   const adhocTemplate = await readFile(join(basePrioritiesDir(), `${ADHOC_PRIORITY_ID}.md`), 'utf8')
-  await writeIfMissing(join(priorityDir, `${ADHOC_PRIORITY_ID}.md`), adhocTemplate)
+  const adhoc = join(priorityDir, `${ADHOC_PRIORITY_ID}.md`)
+  if (await writeIfMissing(adhoc, adhocTemplate)) created.push(adhoc)
   loadAssignments(join(personaDir, 'assignments.json'))
   loadPriority(priorityDir, ADHOC_PRIORITY_ID)
+  return created
 }
 
 /** GET /workspaces — surface 1. */
@@ -396,8 +420,8 @@ export async function dispatchReads(ctx: OzContext, method: string, pathname: st
 }
 
 /** PUT /workspaces/:id/personas/assignments — surface 3 (write). Validates via loadAssignments
- *  (one home for the rule) then writes atomically (temp + rename). Founder settings write — NOT an
- *  agent write, so no commit-gate. */
+ *  (one home for the rule) then writes atomically (temp + rename). Governance writes commit directly
+ *  to the workspace repo as daemon-authored Surface-A history, not through the run commit-gate. */
 async function writeAssignments(ctx: OzContext, res: ServerResponse, workspaceId: string, body: unknown): Promise<void> {
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
   if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
@@ -412,14 +436,17 @@ async function writeAssignments(ctx: OzContext, res: ServerResponse, workspaceId
     return sendJson(res, 400, { error: err instanceof Error ? err.message : String(err) })
   }
   await rename(tmp, target) // atomic on the same filesystem
+  const committedSha = await commitGovernance(ctx, ws.path, [relative(ws.path, target)], `governance: update persona assignments (${workspaceId})`)
   void appendAudit(ctx.cocoderHome, { action: 'assignments-write', workspaceId })
-  sendJson(res, 200, { ok: true, assignments: loadAssignments(target).personas })
+  sendJson(res, 200, { ok: true, assignments: loadAssignments(target).personas, committedSha })
 }
 
 async function reorderPriorities(ctx: OzContext, res: ServerResponse, workspaceId: string, order: readonly string[]): Promise<void> {
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
   if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
-  sendJson(res, 200, { order: await writePriorityOrder(prioritiesDir(ws.path), order) })
+  const written = await writePriorityOrder(prioritiesDir(ws.path), order)
+  const committedSha = await commitGovernance(ctx, ws.path, [relative(ws.path, priorityOrderFile(ws.path))], `governance: reorder priorities (${workspaceId})`)
+  sendJson(res, 200, { order: written, committedSha })
 }
 
 async function createPriority(ctx: OzContext, res: ServerResponse, workspaceId: string, input: CreatePriorityInput): Promise<void> {
@@ -446,8 +473,9 @@ async function createPriority(ctx: OzContext, res: ServerResponse, workspaceId: 
     const priority = loadPriority(dir, input.id)
     validateCreatedPriority(markdown, priority, input)
     await rm(tmpDir, { recursive: true, force: true })
+    const committedSha = await commitGovernance(ctx, ws.path, [relative(ws.path, target)], `governance: create priority ${input.id}`)
     void appendAudit(ctx.cocoderHome, { action: 'priority-create', workspaceId, priorityId: input.id })
-    sendJson(res, 201, { ok: true, priority })
+    sendJson(res, 201, { ok: true, priority, committedSha })
   } catch (err) {
     await rm(tmpDir, { recursive: true, force: true })
     await rm(target, { force: true })
@@ -512,18 +540,20 @@ async function createWorkspace(ctx: OzContext, res: ServerResponse, body: unknow
 
   const servedBefore = new Set((await readWorkspaces(ctx.cocoderHome)).map((workspace) => workspace.id))
   const legacyHidden = (await legacyWorkspaceIds(ctx.cocoderHome)).filter((legacyId) => legacyId !== id && servedBefore.has(legacyId))
+  let scaffolded: readonly string[]
   try {
-    await scaffoldWorkspaceGovernance(primaryRoot)
+    scaffolded = await scaffoldWorkspaceGovernance(primaryRoot)
   } catch (err) {
     return sendJson(res, 400, { error: err instanceof Error ? err.message : String(err) })
   }
+  const committedSha = await commitGovernance(ctx, primaryRoot, scaffolded.map((path) => relative(primaryRoot, path)), `governance: scaffold workspace governance (${id})`)
   await mkdir(dir, { recursive: true })
   const tmp = join(dir, `.${id}.${process.pid}.${Date.now()}.tmp`)
   await writeFile(tmp, `${JSON.stringify({ folders, settings: {} }, null, 2)}\n`)
   await rename(tmp, target)
   void appendAudit(ctx.cocoderHome, { action: 'workspace-create', workspaceId: id, legacyHidden })
   const workspace = await findWorkspace(ctx.cocoderHome, id)
-  sendJson(res, 201, { ok: true, workspace, legacyHidden })
+  sendJson(res, 201, { ok: true, workspace, legacyHidden, governanceCommittedSha: committedSha })
 }
 
 async function deleteWorkspace(ctx: OzContext, res: ServerResponse, workspaceId: string): Promise<void> {

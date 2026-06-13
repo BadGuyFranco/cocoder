@@ -22,7 +22,7 @@ export interface Git {
   /** Changed paths in the working tree (modified, added, untracked, deleted, renamed). */
   changedFiles(cwd: string): Promise<string[]>
   /** Stage + commit exactly `files` (pathspec --only semantics); return the new HEAD sha. */
-  addAndCommit(cwd: string, files: readonly string[], message: string): Promise<string>
+  addAndCommit(cwd: string, files: readonly string[], message: string, author?: { readonly name: string; readonly email: string }): Promise<string>
   /** Discard `files`' working-tree changes back to HEAD: tracked files are restored, untracked
    *  additions removed. Used to QUARANTINE a verify-rejected atom's changes so they cannot ride into
    *  a later passing atom's commit (ADR-0013 atom isolation). */
@@ -126,9 +126,12 @@ export function makeGit(): Git {
       // matching scope too coarsely. (Caught by the live gate test, not the fake-git unit tests.)
       return parsePorcelain(await git(cwd, ['status', '--porcelain', '-z', '--untracked-files=all']))
     },
-    async addAndCommit(cwd, files, message) {
+    async addAndCommit(cwd, files, message, author) {
       await git(cwd, ['add', '--', ...files])
-      await git(cwd, ['commit', '-m', message, '--', ...files])
+      const authorArgs = author
+        ? ['-c', `user.name=${author.name}`, '-c', `user.email=${author.email}`, 'commit', '-m', message, `--author=${author.name} <${author.email}>`]
+        : ['commit', '-m', message]
+      await git(cwd, [...authorArgs, '--', ...files])
       return (await git(cwd, ['rev-parse', 'HEAD'])).trim()
     },
     async restoreToHead(cwd, files) {

@@ -1,13 +1,19 @@
 // Stage-4 mutations + run-lifecycle correctness: launch (202 / 409 in-flight), deep-link (200 / 409
 // non-live, never 500), assignments write (validate + atomic), startup orphan reconciliation.
+import { execFile } from 'node:child_process'
 import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { promisify } from 'node:util'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { loadAssignments, loadPriority, openRunStore, StopRequestedError, type Adapter, type Git, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
+import { loadAssignments, loadPriority, makeGit, openRunStore, StopRequestedError, type Adapter, type Git, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
 import { basePrioritiesDir } from '@cocoder/personas'
 import { createOzServer, OZ_CSRF_HEADER, type OzServer } from '../src/index.js'
+
+const exec = promisify(execFile)
+const g = (cwd: string, args: string[]): Promise<string> => exec('git', ['-C', cwd, ...args]).then((r) => r.stdout.trim())
+const COCODER_GOVERNANCE = { name: 'cocoder-governance', email: 'governance@cocoder.local' } as const
 
 const okAdapter: Adapter = {
   id: 'any',
@@ -103,6 +109,19 @@ const fakeGit = (changed: string[] = [], shas: readonly string[] = ['h0']): Git 
     async resetHard() {},
   }
 }
+interface GovernanceCommitCall {
+  readonly cwd: string
+  readonly files: readonly string[]
+  readonly message: string
+  readonly author: { readonly name: string; readonly email: string } | undefined
+}
+const recordingGovernanceGit = (calls: GovernanceCommitCall[], sha = 'sha-governance'): Git => ({
+  ...fakeGit(),
+  async addAndCommit(cwd, files, message, author) {
+    calls.push({ cwd, files: [...files], message, author })
+    return sha
+  },
+})
 const fakeGitByCwd = (shas: Readonly<Record<string, readonly string[] | string>>, fallback = 'h0'): Git => {
   const headCalls = new Map<string, number>()
   return {
@@ -251,6 +270,14 @@ async function fixtures(home: string): Promise<void> {
     join(home, 'cocoder', 'personas', 'assignments.json'),
     JSON.stringify({ personas: { oscar: { cli: 'claude', model: '' }, bob: { cli: 'codex', model: '' } } }),
   )
+}
+
+async function initRepo(path: string): Promise<void> {
+  await g(path, ['init', '-q', '-b', 'trunk'])
+  await g(path, ['config', 'user.email', 't@t.test'])
+  await g(path, ['config', 'user.name', 'Test'])
+  await g(path, ['add', '-A'])
+  await g(path, ['commit', '-q', '-m', 'init'])
 }
 
 async function writeWorkspaceFile(home: string, id = 'cocoder', data: unknown = { folders: [{ path: '${COCODER_HOME}', role: 'primary' }], settings: {} }): Promise<string> {
@@ -804,7 +831,8 @@ describe('Oz mutations + lifecycle', () => {
   })
 
   test('PUT assignments: validates (400 on bad payload), writes atomically (200 + round-trips)', async () => {
-    await startServer()
+    const commits: GovernanceCommitCall[] = []
+    await startServer(recordingGovernanceGit(commits))
     const bad = await call(oz!, 'PUT', '/workspaces/cocoder/personas/assignments', { body: { personas: { bob: { cli: 'codex' } } } })
     expect(bad.status).toBe(400) // missing model
     const before = await readFile(join(home, 'cocoder', 'personas', 'assignments.json'), 'utf8')
@@ -814,10 +842,19 @@ describe('Oz mutations + lifecycle', () => {
       body: { personas: { oscar: { cli: 'claude', model: 'opus', mode: 'headless' }, bob: { cli: 'codex', model: '' } } },
     })
     expect(ok.status).toBe(200)
+    expect(ok.json.committedSha).toBe('sha-governance')
     expect(ok.json.assignments.oscar).toEqual({ cli: 'claude', model: 'opus', mode: 'headless' })
     const after = JSON.parse(await readFile(join(home, 'cocoder', 'personas', 'assignments.json'), 'utf8'))
     expect(after.personas.oscar.model).toBe('opus')
     expect(after.personas.oscar.mode).toBe('headless')
+    expect(commits).toEqual([
+      {
+        cwd: home,
+        files: ['cocoder/personas/assignments.json'],
+        message: 'governance: update persona assignments (cocoder)',
+        author: COCODER_GOVERNANCE,
+      },
+    ])
   })
 
   test('PUT assignments rejects an invalid persona mode without touching the file', async () => {
@@ -849,13 +886,22 @@ describe('Oz mutations + lifecycle', () => {
 
   test('POST /workspaces/:id/priorities/reorder writes order.json and subsequent GET reflects it', async () => {
     await writeFile(join(home, 'cocoder', 'priorities', 'later.md'), `---\nid: later\ntitle: Later\n---\nLater work.`)
-    await startServer()
+    const commits: GovernanceCommitCall[] = []
+    await startServer(recordingGovernanceGit(commits))
 
     const post = await call(oz!, 'POST', '/workspaces/cocoder/priorities/reorder', { body: { order: ['later', 'missing', 'demo'] } })
 
     expect(post.status).toBe(200)
-    expect(post.json).toEqual({ order: ['later', 'demo'] })
+    expect(post.json).toEqual({ order: ['later', 'demo'], committedSha: 'sha-governance' })
     expect(JSON.parse(await readFile(join(home, 'cocoder', 'priorities', 'order.json'), 'utf8'))).toEqual(['later', 'demo'])
+    expect(commits).toEqual([
+      {
+        cwd: home,
+        files: ['cocoder/priorities/order.json'],
+        message: 'governance: reorder priorities (cocoder)',
+        author: COCODER_GOVERNANCE,
+      },
+    ])
 
     const get = await call(oz!, 'GET', '/workspaces/cocoder/priorities')
     expect(get.status).toBe(200)
@@ -878,11 +924,13 @@ describe('Oz mutations + lifecycle', () => {
   })
 
   test('POST /workspaces/:id/priorities creates a priority with a derived slug and GET returns it', async () => {
-    await startServer()
+    const commits: GovernanceCommitCall[] = []
+    await startServer(recordingGovernanceGit(commits))
 
     const post = await call(oz!, 'POST', '/workspaces/cocoder/priorities', { body: { title: 'New Launch Priority', goal: '## Objective\nShip the create endpoint.' } })
 
     expect(post.status).toBe(201)
+    expect(post.json.committedSha).toBe('sha-governance')
     expect(post.json.priority).toMatchObject({
       id: 'new-launch-priority',
       title: 'New Launch Priority',
@@ -894,10 +942,31 @@ describe('Oz mutations + lifecycle', () => {
     expect(parsed.objective).toBe('Ship the create endpoint.')
     const file = await readFile(join(home, 'cocoder', 'priorities', 'new-launch-priority.md'), 'utf8')
     expect(file).toBe('---\nid: new-launch-priority\ntitle: New Launch Priority\n---\n## Objective\nShip the create endpoint.\n')
+    expect(commits).toEqual([
+      {
+        cwd: home,
+        files: ['cocoder/priorities/new-launch-priority.md'],
+        message: 'governance: create priority new-launch-priority',
+        author: COCODER_GOVERNANCE,
+      },
+    ])
 
     const get = await call(oz!, 'GET', '/workspaces/cocoder/priorities')
     expect(get.status).toBe(200)
     expect(get.json.priorities.map((p: any) => p.id)).toContain('new-launch-priority')
+  })
+
+  test('POST /workspaces/:id/priorities commits created priority files with the governance identity in a real repo', async () => {
+    await initRepo(home)
+    await startServer(makeGit())
+
+    const post = await call(oz!, 'POST', '/workspaces/cocoder/priorities', { body: { id: 'history-backed', title: 'History Backed' } })
+
+    expect(post.status).toBe(201)
+    expect(post.json.committedSha).toMatch(/^[0-9a-f]{40}$/)
+    expect(await g(home, ['log', '-1', '--format=%an <%ae>'])).toBe('cocoder-governance <governance@cocoder.local>')
+    expect(await g(home, ['log', '-1', '--format=%cn <%ce>'])).toBe('cocoder-governance <governance@cocoder.local>')
+    expect(await g(home, ['cat-file', '-e', 'HEAD:cocoder/priorities/history-backed.md']).then(() => true, () => false)).toBe(true)
   })
 
   test('POST /workspaces/:id/priorities creates a priority with an explicit id and skeleton goal in a fresh priorities dir', async () => {
@@ -1156,7 +1225,8 @@ describe('Oz mutations + lifecycle', () => {
   })
 
   test('POST /workspaces scaffolds launch-required governance in a fresh primary root', async () => {
-    await startServer()
+    const commits: GovernanceCommitCall[] = []
+    await startServer(recordingGovernanceGit(commits))
     const workspaceRoot = await mkdtemp(join(tmpdir(), 'cocoder-fresh-workspace-'))
     const folders = [
       { name: 'Product', path: workspaceRoot, role: 'primary' },
@@ -1166,6 +1236,7 @@ describe('Oz mutations + lifecycle', () => {
     const r = await call(oz!, 'POST', '/workspaces', { body: { id: 'fresh-product', folders } })
 
     expect(r.status).toBe(201)
+    expect(r.json.governanceCommittedSha).toBe('sha-governance')
     expect(await readFile(join(workspaceRoot, 'cocoder', 'AGENTS.md'), 'utf8')).toBe('')
     const claudePointer = await readFile(join(workspaceRoot, 'cocoder', 'CLAUDE.md'), 'utf8')
     expect(claudePointer).toBe('Claude CLI sessions should read AGENTS.md in this same cocoder/ folder for repo instructions.\nKeep workspace-specific guidance there.\n')
@@ -1180,6 +1251,42 @@ describe('Oz mutations + lifecycle', () => {
     expect(priorities.json.priorities.map((p: any) => p.id)).toEqual(['adhoc-session'])
     const personas = await call(oz!, 'GET', '/workspaces/fresh-product/personas')
     expect(personas.json.personas.map((p: any) => p.id)).not.toEqual(expect.arrayContaining(['AGENTS', 'CLAUDE']))
+    expect(commits).toEqual([
+      {
+        cwd: workspaceRoot,
+        files: [
+          'cocoder/AGENTS.md',
+          'cocoder/CLAUDE.md',
+          'cocoder/personas/assignments.json',
+          'cocoder/priorities/adhoc-session.md',
+        ],
+        message: 'governance: scaffold workspace governance (fresh-product)',
+        author: COCODER_GOVERNANCE,
+      },
+    ])
+  })
+
+  test('POST /workspaces succeeds and audits governance commit failure for a non-git primary root', async () => {
+    await startServer(makeGit())
+    const workspaceRoot = await mkdtemp(join(tmpdir(), 'cocoder-nongit-workspace-'))
+
+    const r = await call(oz!, 'POST', '/workspaces', {
+      body: {
+        id: 'nongit-product',
+        folders: [
+          { path: workspaceRoot, role: 'primary' },
+          { path: '${COCODER_HOME}', role: 'readonly' },
+        ],
+      },
+    })
+
+    expect(r.status).toBe(201)
+    expect(r.json.governanceCommittedSha).toBeNull()
+    expect(loadAssignments(join(workspaceRoot, 'cocoder', 'personas', 'assignments.json')).personas).toEqual(expectedScaffoldAssignments)
+    const audit = await readFile(join(home, 'local', 'oz-audit.log'), 'utf8')
+    expect(audit).toContain('"action":"governance-commit-failed"')
+    expect(audit).toContain('"repoPath"')
+    expect(audit).toContain('nongit-product')
   })
 
   test('base ad-hoc priority template parses and stays product-generic', async () => {
