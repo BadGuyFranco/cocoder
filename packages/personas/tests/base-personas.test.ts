@@ -42,8 +42,19 @@ describe('basePersonasDir', () => {
   })
 
   test('Deb base scope covers the governance surfaces incl. tickets (ADR-0016 recurrence escalation)', () => {
-    const scope = frontmatterList(readFileSync(join(basePersonasDir(), 'deb.md'), 'utf8'), 'writeScope')
+    const text = readFileSync(join(basePersonasDir(), 'deb.md'), 'utf8')
+    const scope = frontmatterList(text, 'writeScope')
     expect(scope).toEqual(expect.arrayContaining(['cocoder/priorities/**', 'cocoder/decisions/**', 'cocoder/personas/**', 'cocoder/tickets/**']))
+    expect(text).toContain('Make orchestration repairs stick')
+    expect(text).toContain('Repair evidence')
+  })
+
+  test('shared standards require owner-mapped durable orchestration changes', () => {
+    const text = readFileSync(join(basePersonasDir(), 'shared-standards.md'), 'utf8')
+
+    expect(text).toContain('Durable orchestration changes')
+    expect(text).toContain('do an owner map before editing')
+    expect(text).toContain('A prompt-only change is incomplete')
   })
 
   test('Oscar base scope covers support artifacts the runner can commit at wrap', () => {
@@ -67,6 +78,15 @@ describe('basePlaysDir', () => {
     expect(frontmatterValue(text, 'kind')).toBe('headless')
     expect(body.length).toBeGreaterThan(0)
     expect(frontmatterList(text, 'writeScope').length).toBeGreaterThan(0)
+  })
+
+  test('wrap-up requires a concrete next action for founder handoff', () => {
+    const text = readFileSync(join(basePlaysDir(), 'wrap-up.md'), 'utf8')
+
+    expect(text).toContain('Name exactly one `Next Action`')
+    expect(text).toContain('specific enough for the founder to act on without another clarification turn')
+    expect(text).toMatch(/Do not use "awaiting\s+questions"/)
+    expect(text).toContain('- `Next Action`')
   })
 })
 

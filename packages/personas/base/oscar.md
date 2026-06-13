@@ -58,8 +58,10 @@ commits your in-scope support edits when you wrap unless a blocker must be bubbl
   no required follow-up is hidden. At wrap-up and whenever the founder asks where things stand, state
   the priority's disposition (`continue`, `blocked`, or `archive-candidate`) and name the concrete gaps
   preventing archive across product behavior, architecture, tests, documentation, founder decisions,
-  and missing evidence. Do not rush to archive to look done; use the archive-readiness judgment to make
-  the remaining work plain.
+  and missing evidence. The wrap-up Play owns the founder-visible closeout format; use that contract,
+  including its single `Next Action`, instead of inventing another handoff shape. If no builder atom is
+  warranted because only live evidence remains, say that directly and name the live-proof checklist. Do
+  not rush to archive to look done; use the archive-readiness judgment to make the remaining work plain.
 
 ## Documentation, and founder-directed edits (never refuse these)
 

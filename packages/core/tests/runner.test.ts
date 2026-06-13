@@ -1353,7 +1353,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(statusWrites.some((s) => s.bob === 'running' && s.waitCondition.includes('monitoring builder'))).toBe(true)
     expect(statusWrites.some((s) => s.oscar === 'verifying' && s.verify === 'pending')).toBe(true)
     expect(statusWrites.at(-1)?.oscar).toBe('wrapped')
-    expect(statusWrites.at(-1)?.waitCondition).toContain('founder questions only')
+    expect(statusWrites.at(-1)?.waitCondition).toContain('pickup brief Next Action')
     expect(statusWrites.at(-1)?.waitCondition).toContain('file-changing follow-ups need a new committed run path')
 
     const noDebStore = openRunStore(':memory:')

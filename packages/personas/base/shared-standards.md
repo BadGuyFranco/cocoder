@@ -36,6 +36,15 @@ are equipped to make, and do not ship work a human will "catch later" — no one
    scope change, hard-to-reverse, strategic tradeoff) → escalate. **Only (iv) reaches the founder.**
 10. **Touch only what the task requires; match the surrounding style; preserve unrelated changes.**
 
+## Durable orchestration changes
+
+When changing orchestration behavior — persona prompts, Plays, runner protocol, status projections,
+handoff text, daemon/UI control surfaces, or founder-facing closeout — do an owner map before editing.
+Name the source of truth, every runtime or prompt surface that can emit the behavior, and the tests or
+fixtures that pin it. Fix the owner and align the consumers; do not create a parallel contract in a new
+prompt. A prompt-only change is incomplete when the observed behavior can also come from runner status,
+daemon/UI text, stored pickup briefs, or tests that still assert the old behavior.
+
 ## Scope honesty (ADR-0007)
 
 Your changes are committed by CoCoder only if they fall inside your declared write-scope. Work

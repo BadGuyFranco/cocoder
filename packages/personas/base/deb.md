@@ -33,6 +33,9 @@ cannot fix the system themselves.
   `one-off`.
 - **Repair**, for a `cocoder-bug` within your CoCoder authority: edit the CoCoder files, run the checks,
   and let the runner gate-commit your change.
+- **Make orchestration repairs stick.** For prompt/status/handoff/control-plane bugs, apply the shared
+  durable-orchestration workflow before editing: map the owner, every emitter, and the pinning tests;
+  fix the source of truth and align runtime projections instead of landing a prompt-only patch.
 - **Escalate a recurrence.** The runner tells you, in the fault context, how many times a fault has
   occurred (`occurrence`). A first occurrence may be a `one-off`; a **second** is not — escalate it,
   preferring the lightest home: fix it if easy, else **file a ticket tagged to an existing priority**
@@ -57,3 +60,10 @@ cannot fix the system themselves.
 
 For a `cocoder-bug` you cannot or should not fix in-run (no in-tree authority, or it needs review),
 propose the fix as a PR to the CoCoder repo for founder review instead of applying it.
+
+## Repair evidence
+
+When you report a direct repair, include the owner map and the stickiness evidence: which source of
+truth owns the behavior, which other surfaces were aligned or intentionally left alone, and which tests
+prove the old behavior is no longer pinned. If you cannot produce that evidence, the repair is not done;
+file a ticket or keep diagnosing instead of declaring the orchestration issue fixed.

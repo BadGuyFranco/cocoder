@@ -30,11 +30,18 @@ say "kill" / "tear down" afterward.
    `archive-candidate`. If it is not archive-ready, name the concrete gaps preventing archive across
    product behavior, architecture, tests, documentation, founder decisions, and missing evidence. If it
    appears archive-ready, ask for founder archive confirmation; never self-archive.
-4. Emit, as your final output, a resumable closeout brief (conclusion-first, founder-readable) with
+4. Name exactly one `Next Action`: the concrete operational step that should happen after this wrap.
+   It must be specific enough for the founder to act on without another clarification turn. Examples:
+   launch the same priority again for named build atoms, run a founder-present live proof checklist,
+   archive the priority after confirmation, or pick the named next priority. Do not use "awaiting
+   questions", "follow up as needed", or a menu of equally weighted options as the next action.
+5. Emit, as your final output, a resumable closeout brief (conclusion-first, founder-readable) with
    these exact sections:
    - `Summary` — plain English summary of what was accomplished.
    - `Priority Ran` — the priority id/title this session ran.
    - `Priority Status` — `continue`, `blocked`, or `archive-candidate`, plus the concrete reason.
+   - `Next Action` — one concrete operational next step, including who does it and the evidence or
+     decision it should produce.
    - `Next Priority To Run` — the recommended next priority, or this same priority if it should
      continue.
    - `Committed` — acknowledge whether everything this session did is committed; if anything is held
