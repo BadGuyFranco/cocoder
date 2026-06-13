@@ -224,6 +224,17 @@ describe('worktree GC + orphan sweep (ADR-0015, live git)', () => {
     expect(await exists(worktreePathFor(home, runId))).toBe(true)
   })
 
+  test('daemon boot surfaces a legacy pending-scope run whose committed branch work never landed', async () => {
+    const runId = await seedRunWithWorktree('pending-scope-decision')
+
+    await start()
+
+    expect(store.getRun(runId)).toMatchObject({ status: 'pending-landing', integrationStatus: 'escalated' })
+    const ev = store.listEvents(runId).find((e) => e.type === 'stranded-commits-detected')
+    expect(ev?.data).toMatchObject({ runBranch: runBranchFor(runId), aheadCount: 1, workspaceRepo: home })
+    expect(await exists(worktreePathFor(home, runId))).toBe(true)
+  })
+
   test('cleanly landed completed runs are untouched by teardown and boot stranded-commit checks', async () => {
     const teardownRunId = await seedCleanlyLandedRunWithWorktree()
     const bootRunId = await seedCleanlyLandedRunWithWorktree()
@@ -291,6 +302,22 @@ describe('worktree GC + orphan sweep (ADR-0015, live git)', () => {
     await teardownRun(oz!.ctx, runId)
 
     expect(await exists(worktreePathFor(home, runId))).toBe(true) // preserved — founder routed to inspect it
+    expect(store.listEvents(runId).some((e) => e.type === 'worktree-gc-blocked')).toBe(true)
+  })
+
+  test('teardown preserves runner-detected pending-landing worktrees for inspection', async () => {
+    const runId = await seedRunWithWorktree('completed', 'escalated')
+    store.setRunStatus(runId, 'pending-landing')
+    store.recordEvent({
+      runId,
+      type: 'stranded-commits-detected',
+      data: { runBranch: runBranchFor(runId), branchTip: await g(home, ['rev-parse', runBranchFor(runId)]), aheadCount: 1, source: 'runner' },
+    })
+    await start()
+
+    await teardownRun(oz!.ctx, runId)
+
+    expect(await exists(worktreePathFor(home, runId))).toBe(true)
     expect(store.listEvents(runId).some((e) => e.type === 'worktree-gc-blocked')).toBe(true)
   })
 

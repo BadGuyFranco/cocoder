@@ -217,6 +217,36 @@ describe('runRun worktree isolation + VERIFIED auto-merge (ADR-0015, live git)',
     expect(await readFile(join(home, 'packages', 'wip.ts'), 'utf8')).toBe('export const wip = 1\n')
   })
 
+  test('held-back out-of-scope files do not prevent clean committed work from landing', async () => {
+    const { result, store, bobCwd } = await runScenario('{"verdict":"pass","reason":"tree green"}', async (cwd) => {
+      await mkdir(join(cwd, 'docs'), { recursive: true })
+      await writeFile(join(cwd, 'docs', 'held-back.md'), 'outside the atom scope\n')
+    })
+
+    expect(result.status).toBe('pending-scope-decision')
+    expect(result.outOfScope).toEqual(['docs/held-back.md'])
+    expect(store.getRun(result.runId)?.integrationStatus).toBe('merged')
+    expect(await g(home, ['cat-file', '-e', 'HEAD:packages/feature.ts']).then(() => true, () => false)).toBe(true)
+    expect(await g(home, ['cat-file', '-e', 'HEAD:docs/held-back.md']).then(() => true, () => false)).toBe(false)
+    expect(await readFile(join(bobCwd!, 'docs', 'held-back.md'), 'utf8')).toBe('outside the atom scope\n')
+  })
+
+  test('committed work with held-back out-of-scope files cannot wrap as only pending-scope when landing escalates', async () => {
+    const trunkBefore = await g(home, ['rev-parse', 'HEAD'])
+    const { result, store } = await runScenario('{"verdict":"fail","reason":"integration red"}', async (cwd) => {
+      await mkdir(join(cwd, 'docs'), { recursive: true })
+      await writeFile(join(cwd, 'docs', 'held-back.md'), 'outside the atom scope\n')
+    })
+
+    expect(await g(home, ['rev-parse', 'HEAD'])).toBe(trunkBefore)
+    expect(result.status).toBe('pending-landing')
+    expect(result.outOfScope).toEqual(['docs/held-back.md'])
+    expect(store.getRun(result.runId)).toMatchObject({ status: 'pending-landing', integrationStatus: 'escalated' })
+    expect(store.listEvents(result.runId).some((e) => e.type === 'integration-escalated')).toBe(true)
+    const stranded = store.listEvents(result.runId).find((e) => e.type === 'stranded-commits-detected')
+    expect(stranded?.data).toMatchObject({ runBranch: `cocoder/${result.runId}`, aheadCount: 1, source: 'runner' })
+  })
+
   test('post-land Oscar support commit is immediately verified and landed', async () => {
     const supportPath = join('cocoder', 'priorities', 'full-oz-dashboard.md')
     const { result, store } = await runScenario(

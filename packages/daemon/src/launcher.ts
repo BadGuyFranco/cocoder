@@ -278,12 +278,20 @@ function runHasEvent(ctx: OzContext, runId: string, type: string): boolean {
   return ctx.store.listEvents(runId).some((event) => event.type === type)
 }
 
+function runHasDisposableDaemonStrandedEvent(ctx: OzContext, runId: string): boolean {
+  return ctx.store.listEvents(runId).some((event) => {
+    if (event.type !== 'stranded-commits-detected') return false
+    const data = event.data as { source?: unknown; detectedFromStatus?: unknown; detectedFromIntegrationStatus?: unknown } | null | undefined
+    return data?.source !== 'runner' && data?.detectedFromStatus === 'completed' && data?.detectedFromIntegrationStatus === 'merged'
+  })
+}
+
 function gcBlockedReason(ctx: OzContext, run: { id: string; status: string; integrationStatus: string }, opts: { explicitTeardown?: boolean } = {}): string | null {
   if (!opts.explicitTeardown && run.status === 'completed' && run.integrationStatus === 'merged') {
     return 'awaiting-founder-teardown'
   }
   if (run.status === 'pending-scope-decision') return 'pending-scope-decision'
-  if (opts.explicitTeardown && run.status === 'pending-landing' && run.integrationStatus === 'escalated' && runHasEvent(ctx, run.id, 'stranded-commits-detected')) {
+  if (opts.explicitTeardown && run.status === 'pending-landing' && run.integrationStatus === 'escalated' && runHasDisposableDaemonStrandedEvent(ctx, run.id)) {
     return null
   }
   if (run.integrationStatus === 'escalated' || run.integrationStatus === 'resolving' || run.integrationStatus === 'verifying') {
@@ -326,9 +334,15 @@ async function workspaceRepoForRun(ctx: OzContext, run: Run): Promise<{ readonly
   return workspace ? { path: workspace.path, owner: 'workspace' } : { path: ctx.cocoderHome, owner: 'fallback' }
 }
 
-async function reconcileStrandedRunCommits(ctx: OzContext, run: Run): Promise<void> {
-  if (run.status !== 'completed' || run.integrationStatus !== 'merged' || !run.runBranch) return
+async function reconcileStrandedRunCommits(ctx: OzContext, run: Run, opts: { explicitTeardown?: boolean } = {}): Promise<void> {
+  if (!run.runBranch) return
   if (runHasEvent(ctx, run.id, 'scope-decision')) return
+  if (run.status === 'running' || run.status === 'failed' || run.status === 'stopped') return
+  if (run.status === 'pending-landing' && run.integrationStatus === 'escalated') return
+  const eligible =
+    (run.status === 'completed' && run.integrationStatus === 'merged') ||
+    (!opts.explicitTeardown && run.status === 'pending-scope-decision')
+  if (!eligible) return
 
   const repo = await workspaceRepoForRun(ctx, run)
   let onTrunk: boolean
@@ -359,6 +373,9 @@ async function reconcileStrandedRunCommits(ctx: OzContext, run: Run): Promise<vo
         workspaceId: run.workspaceId,
         workspaceRepo: repo.path,
         workspaceRepoOwner: repo.owner,
+        source: 'daemon',
+        detectedFromStatus: run.status,
+        detectedFromIntegrationStatus: run.integrationStatus,
       },
     })
   }
@@ -375,7 +392,7 @@ export async function teardownRun(ctx: OzContext, runId: string): Promise<Launch
   const run = ctx.store.getRun(runId)
   if (!run) return { status: 404, body: { error: 'unknown run' } }
   const closed = await closeRunSurfaces(ctx, runId)
-  await reconcileStrandedRunCommits(ctx, run)
+  await reconcileStrandedRunCommits(ctx, run, { explicitTeardown: true })
   await gcWorktree(ctx, runId, { explicitTeardown: true })
   ctx.store.recordEvent({ runId, type: 'teardown', data: { closed } })
   void appendAudit(ctx.cocoderHome, { action: 'teardown', runId, closed })

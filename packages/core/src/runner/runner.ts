@@ -721,14 +721,36 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     // not-landed exit; the catch is fail-CLOSED (aborts any in-progress merge + escalates on any throw).
     let escalated = false
     let landedSha: string | null = null
+    let unlandedCommits: readonly string[] = []
+    const recordStrandedCommits = (reason: string): void => {
+      const branchTip = unlandedCommits[0]
+      if (!branchTip) return
+      if (store.listEvents(run.id).some((event) => event.type === 'stranded-commits-detected')) return
+      store.recordEvent({
+        runId: run.id,
+        type: 'stranded-commits-detected',
+        data: {
+          runBranch,
+          branchTip,
+          aheadCount: unlandedCommits.length,
+          workspaceId: workspace.id,
+          workspaceRepo,
+          workspaceRepoOwner: 'workspace',
+          source: 'runner',
+          reason,
+        },
+      })
+    }
     const escalate = (type: string, data: Record<string, unknown>): void => {
       store.setIntegrationStatus(run.id, 'escalated')
       store.recordEvent({ runId: run.id, type, data })
+      recordStrandedCommits(type)
       escalated = true
     }
     try {
       const trunkNow = await git.headSha(workspaceRepo)
       const unmerged = await git.unmergedCommits(workspaceRepo, trunkNow, runBranch)
+      unlandedCommits = unmerged
       if (unmerged.length === 0) {
         store.setIntegrationStatus(run.id, 'merged') // nothing un-integrated → vacuously landed
       } else {
@@ -783,6 +805,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       await git.abortMerge(worktreePath).catch(() => {})
       if (!escalated) store.setIntegrationStatus(run.id, 'escalated')
       store.recordEvent({ runId: run.id, type: failedEvent, data: { runBranch, reason: err instanceof Error ? err.message : String(err) } })
+      recordStrandedCommits(failedEvent)
       log(`integration failed for ${runBranch}: ${err instanceof Error ? err.message : String(err)}`)
       escalated = true
     }
@@ -1115,10 +1138,10 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   // landing). For a fast-forward the worktree HEAD already IS the merged-to-be tree. For a NON-ff (trunk
   // advanced since launch) the runner merges trunk INTO the run branch in the worktree (§4): a clean merge
   // proceeds; a conflict goes to the merge-conflict Play to reconcile CONTENT, and a genuine semantic
-  // divergence (or no/garbled verdict) is aborted + escalated — never guessed. A run awaiting a scope
-  // decision or failed does NOT auto-land.
+  // divergence (or no/garbled verdict) is aborted + escalated — never guessed. Held-back out-of-scope
+  // files do not block landing already committed branch work; they remain surfaced for scope resolution.
   let mergeSha: string | null = null
-  if (status === 'completed') {
+  if (status === 'completed' || committedShas.length > 0 || selfCommitted) {
     const integration = await landRunBranch()
     mergeSha = integration.mergeSha
     if (integration.status === 'merged') {
@@ -1134,7 +1157,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       }
     }
   }
-  if (status === 'completed' && store.getRun(run.id)?.integrationStatus === 'escalated') {
+  if (store.getRun(run.id)?.integrationStatus === 'escalated') {
     status = 'pending-landing'
     store.setRunStatus(run.id, status)
   }
