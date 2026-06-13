@@ -389,11 +389,44 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   log(`oscar + bob spawned (${oscarDriver.refId}, ${bobDriver.refId}); awaiting first directive, bob on standby`)
 
   const oscarAlive = (): Promise<boolean> => oscarDriver.alive()
+  const recordStrandedCommits = (unlandedCommits: readonly string[], reason: string): void => {
+    const branchTip = unlandedCommits[0]
+    if (!branchTip) return
+    if (store.listEvents(run.id).some((event) => event.type === 'stranded-commits-detected')) return
+    store.recordEvent({
+      runId: run.id,
+      type: 'stranded-commits-detected',
+      data: {
+        runBranch,
+        branchTip,
+        aheadCount: unlandedCommits.length,
+        workspaceId: workspace.id,
+        workspaceRepo,
+        workspaceRepoOwner: 'workspace',
+        source: 'runner',
+        reason,
+      },
+    })
+  }
+  const surfaceStrandedCommitsIfAny = async (reason: string, terminalStatus: RunStatus): Promise<RunStatus> => {
+    try {
+      const trunkNow = await git.headSha(workspaceRepo)
+      const unmerged = await git.unmergedCommits(workspaceRepo, trunkNow, runBranch)
+      if (unmerged.length === 0) return terminalStatus
+      recordStrandedCommits(unmerged, reason)
+      store.setIntegrationStatus(run.id, 'escalated')
+      store.setRunStatus(run.id, 'pending-landing')
+      return 'pending-landing'
+    } catch {
+      return terminalStatus
+    }
+  }
   // Every terminal fault funnels through here: record it, let Deb triage it (if present), then fail.
   const fail = async (type: string, message: string, atomIndex: number | null = null): Promise<never> => {
     store.recordEvent({ runId: run.id, type, data: atomIndex !== null ? { message, atom: atomIndex } : { message } })
     await triageFault(type, atomIndex, message)
-    store.setRunStatus(run.id, 'failed')
+    const status = await surfaceStrandedCommitsIfAny(type, 'failed')
+    if (status !== 'pending-landing') store.setRunStatus(run.id, status)
     throw new Error(message)
   }
 
@@ -722,29 +755,10 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     let escalated = false
     let landedSha: string | null = null
     let unlandedCommits: readonly string[] = []
-    const recordStrandedCommits = (reason: string): void => {
-      const branchTip = unlandedCommits[0]
-      if (!branchTip) return
-      if (store.listEvents(run.id).some((event) => event.type === 'stranded-commits-detected')) return
-      store.recordEvent({
-        runId: run.id,
-        type: 'stranded-commits-detected',
-        data: {
-          runBranch,
-          branchTip,
-          aheadCount: unlandedCommits.length,
-          workspaceId: workspace.id,
-          workspaceRepo,
-          workspaceRepoOwner: 'workspace',
-          source: 'runner',
-          reason,
-        },
-      })
-    }
     const escalate = (type: string, data: Record<string, unknown>): void => {
       store.setIntegrationStatus(run.id, 'escalated')
       store.recordEvent({ runId: run.id, type, data })
-      recordStrandedCommits(type)
+      recordStrandedCommits(unlandedCommits, type)
       escalated = true
     }
     try {
@@ -805,7 +819,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       await git.abortMerge(worktreePath).catch(() => {})
       if (!escalated) store.setIntegrationStatus(run.id, 'escalated')
       store.recordEvent({ runId: run.id, type: failedEvent, data: { runBranch, reason: err instanceof Error ? err.message : String(err) } })
-      recordStrandedCommits(failedEvent)
+      recordStrandedCommits(unlandedCommits, failedEvent)
       log(`integration failed for ${runBranch}: ${err instanceof Error ? err.message : String(err)}`)
       escalated = true
     }
@@ -841,7 +855,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       store.setWorkItemStatus(stoppedAtom.workItemId, 'abandoned')
       await quarantineAtom(stoppedAtom.index, stoppedAtom.headBefore, 'atom-self-committed-stopped')
     }
-    const status: RunStatus = 'stopped'
+    const status = await surfaceStrandedCommitsIfAny('run-stopped', 'stopped')
     store.setRunStatus(run.id, status)
     store.recordEvent({
       runId: run.id,

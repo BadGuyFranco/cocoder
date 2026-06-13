@@ -17,9 +17,12 @@ import {
   type MakeJudge,
   type Play,
   type PlayAssignment,
+  type Run,
+  type RunStore,
   type RunnerIO,
   type SessionHost,
   type SessionRef,
+  StopRequestedError,
   makeGit,
   openRunStore,
   parseVerifyVerdict,
@@ -106,6 +109,10 @@ async function runScenario(
   gitOverride?: Git,
   engineHome = home,
   opts?: {
+    readonly io?: RunnerIO
+    readonly store?: RunStore
+    readonly signal?: AbortSignal
+    readonly onRunCreated?: (run: Run) => void
     readonly onWrapDelivery?: (oscarCwd: string) => Promise<void>
     readonly oscarWriteScope?: readonly string[]
   },
@@ -148,18 +155,20 @@ async function runScenario(
     async show() {},
     async kill() {},
   }
-  const store = openRunStore(':memory:')
+  const store = opts?.store ?? openRunStore(':memory:')
   const result = await runRun(
     {
       store,
       sessionHost,
       git: gitOverride ?? makeGit(),
       getAdapter: () => okAdapter,
-      io: fakeIO([delegate('add the feature'), wrapup('done')]),
+      io: opts?.io ?? fakeIO([delegate('add the feature'), wrapup('done')]),
       makeJudge: doneJudge,
       timeouts: { pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 },
       // The integration-verify Play runs headless — inject its captured verdict output.
       runHeadless: async () => ({ exitCode: 0, output: verifyOutput }),
+      onRunCreated: opts?.onRunCreated,
+      signal: opts?.signal,
     },
     {
       workspace: { id: 'cocoder', path: home, name: 'CoCoder' },
@@ -174,6 +183,54 @@ async function runScenario(
     },
   )
   return { result, store, bobCwd }
+}
+
+function stopBeforeFirstDirectiveIO(signal: AbortController): RunnerIO {
+  return {
+    ...fakeIO([]),
+    async awaitDirective(_path, opts) {
+      signal.abort()
+      if (opts.signal?.aborted) throw new StopRequestedError()
+      throw new Error('test: stop signal was not threaded')
+    },
+  }
+}
+
+function stopAfterFirstAtomIO(signal: AbortController): RunnerIO {
+  let calls = 0
+  return {
+    ...fakeIO([]),
+    async awaitDirective(_path, opts) {
+      if (calls++ === 0) return delegate('add the feature')
+      signal.abort()
+      if (opts.signal?.aborted) throw new StopRequestedError()
+      throw new Error('test: stop signal was not threaded')
+    },
+  }
+}
+
+function faultBeforeFirstDirectiveIO(): RunnerIO {
+  return {
+    ...fakeIO([]),
+    async awaitDirective() {
+      throw new Error('first directive exploded')
+    },
+  }
+}
+
+function faultAfterFirstAtomIO(onTriage?: () => void): RunnerIO {
+  let calls = 0
+  return {
+    ...fakeIO([]),
+    async awaitDirective() {
+      if (calls++ === 0) return delegate('add the feature')
+      throw new Error('next directive exploded')
+    },
+    async awaitTriage() {
+      onTriage?.()
+      return { disposition: 'one-off' as const, summary: 'fault reproduced', mode: 'propose' as const }
+    },
+  }
 }
 
 describe('runRun worktree isolation + VERIFIED auto-merge (ADR-0015, live git)', () => {
@@ -215,6 +272,80 @@ describe('runRun worktree isolation + VERIFIED auto-merge (ADR-0015, live git)',
     expect(store.getRun(result.runId)?.integrationStatus).toBe('merged')
     // The founder's pre-existing uncommitted work is exactly as it was.
     expect(await readFile(join(home, 'packages', 'wip.ts'), 'utf8')).toBe('export const wip = 1\n')
+  })
+
+  test('cooperative stop after an off-trunk atom commit surfaces pending landing without landing trunk', async () => {
+    const signal = new AbortController()
+    const trunkBefore = await g(home, ['rev-parse', 'HEAD'])
+
+    const { result, store } = await runScenario('{"verdict":"pass","reason":"tree green"}', undefined, undefined, home, {
+      io: stopAfterFirstAtomIO(signal),
+      signal: signal.signal,
+    })
+
+    expect(result.status).toBe('pending-landing')
+    expect(await g(home, ['rev-parse', 'HEAD'])).toBe(trunkBefore)
+    expect(await g(home, ['cat-file', '-e', 'HEAD:packages/feature.ts']).then(() => true, () => false)).toBe(false)
+    expect(store.getRun(result.runId)).toMatchObject({ status: 'pending-landing', integrationStatus: 'escalated' })
+    const stranded = store.listEvents(result.runId).filter((e) => e.type === 'stranded-commits-detected')
+    expect(stranded).toHaveLength(1)
+    expect(stranded[0]?.data).toMatchObject({ runBranch: `cocoder/${result.runId}`, aheadCount: 1, source: 'runner', reason: 'run-stopped' })
+    const ended = store.listEvents(result.runId).find((e) => e.type === 'run-end')
+    expect(ended?.data).toMatchObject({ status: 'pending-landing', integrationStatus: 'escalated', mergeSha: null })
+  })
+
+  test('cooperative stop with no off-trunk commits remains stopped without a strand event', async () => {
+    const signal = new AbortController()
+
+    const { result, store } = await runScenario('{"verdict":"pass","reason":"tree green"}', undefined, undefined, home, {
+      io: stopBeforeFirstDirectiveIO(signal),
+      signal: signal.signal,
+    })
+
+    expect(result.status).toBe('stopped')
+    expect(store.getRun(result.runId)).toMatchObject({ status: 'stopped', integrationStatus: 'pending' })
+    expect(store.listEvents(result.runId).some((e) => e.type === 'stranded-commits-detected')).toBe(false)
+  })
+
+  test('fault after an off-trunk atom commit surfaces pending landing and still propagates the fault', async () => {
+    const store = openRunStore(':memory:')
+    await expect(runScenario('{"verdict":"pass","reason":"tree green"}', undefined, undefined, home, { store, io: faultAfterFirstAtomIO() })).rejects.toThrow(/next directive exploded/)
+    const runId = store.listRuns()[0]!.id
+
+    expect(store.getRun(runId)).toMatchObject({ status: 'pending-landing', integrationStatus: 'escalated' })
+    const stranded = store.listEvents(runId).filter((e) => e.type === 'stranded-commits-detected')
+    expect(stranded).toHaveLength(1)
+    expect(stranded[0]?.data).toMatchObject({ runBranch: `cocoder/${runId}`, aheadCount: 1, source: 'runner', reason: 'directive-timeout' })
+  })
+
+  test('fault with no committed work remains failed without a strand event', async () => {
+    const store = openRunStore(':memory:')
+    await expect(runScenario('{"verdict":"pass","reason":"tree green"}', undefined, undefined, home, { store, io: faultBeforeFirstDirectiveIO() })).rejects.toThrow(/first directive exploded/)
+    const runId = store.listRuns()[0]!.id
+
+    expect(store.getRun(runId)).toMatchObject({ status: 'failed', integrationStatus: 'pending' })
+    expect(store.listEvents(runId).some((e) => e.type === 'stranded-commits-detected')).toBe(false)
+  })
+
+  test('fault surfacing preserves a single stranded-commits event when one already exists', async () => {
+    const store = openRunStore(':memory:')
+    let runId: string | null = null
+    const io = faultAfterFirstAtomIO(() => {
+      if (!runId) throw new Error('run id was not captured')
+      store.recordEvent({ runId, type: 'stranded-commits-detected', data: { source: 'runner', reason: 'preexisting' } })
+    })
+
+    await expect(runScenario('{"verdict":"pass","reason":"tree green"}', undefined, undefined, home, {
+      store,
+      io,
+      onRunCreated(run) {
+        runId = run.id
+      },
+    })).rejects.toThrow(/next directive exploded/)
+
+    expect(runId).not.toBeNull()
+    expect(store.getRun(runId!)).toMatchObject({ status: 'pending-landing', integrationStatus: 'escalated' })
+    expect(store.listEvents(runId!).filter((e) => e.type === 'stranded-commits-detected')).toHaveLength(1)
   })
 
   test('held-back out-of-scope files do not prevent clean committed work from landing', async () => {
