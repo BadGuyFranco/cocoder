@@ -3,6 +3,10 @@ id: run-resolution-and-loop-reliability
 title: Unjam the loop — land stranded work, build the run-resolution exit, fix directive-0, self-heal staleness
 ---
 
+> **ARCHIVED 2026-06-13 (founder-confirmed, run_73).** Objective (a)–(e) met 2026-06-09; run_73 added
+> the run_71 silent-strand fix (F17) + trunkBranch-in-record fix. Live proof of the F17 fix remains
+> owed and is tracked separately. Kept for history.
+
 ## Objective
 Restore the loop's throughput by making **getting work out of a run** as reliable as doing work in
 one. **Verified** when: (a) the stranded run_44–46 work is landed on trunk or explicitly discarded,
