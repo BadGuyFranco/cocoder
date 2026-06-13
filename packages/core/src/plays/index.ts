@@ -1,5 +1,13 @@
-export type { Play } from './types.js'
+export type { Play, PlayDelta } from './types.js'
 export { loadPlay } from './loader.js'
+export { mergePlay, PlayMergeError } from './merge.js'
+export {
+  loadPlayDelta,
+  loadEffectivePlay,
+  listEffectivePlays,
+  PlayDeltaLoadError,
+  type PlaySources,
+} from './effective.js'
 export {
   dispatchPlay,
   runHeadlessProcess,

@@ -64,8 +64,18 @@ export {
   PersonaDeltaLoadError,
 } from './personas/index.js'
 
-export type { Play, DispatchPlayDeps, DispatchPlayInput, DispatchPlayResult, HeadlessRunInput } from './plays/index.js'
-export { loadPlay, dispatchPlay, runHeadlessProcess } from './plays/index.js'
+export type { Play, PlayDelta, PlaySources, DispatchPlayDeps, DispatchPlayInput, DispatchPlayResult, HeadlessRunInput } from './plays/index.js'
+export {
+  loadPlay,
+  mergePlay,
+  PlayMergeError,
+  loadPlayDelta,
+  loadEffectivePlay,
+  listEffectivePlays,
+  PlayDeltaLoadError,
+  dispatchPlay,
+  runHeadlessProcess,
+} from './plays/index.js'
 
 export { loadPriority, type Priority } from './priorities/index.js'
 
