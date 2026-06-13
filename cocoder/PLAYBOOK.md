@@ -152,7 +152,9 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
 1. `isolated-working-state-per-run` — ADR-0015: each run gets its own git worktree + branch and reaches
    trunk via a **verified auto-merge** (whole-tree integration verify), with a `merge-conflict` Play
    (resolve → re-verify → merge; escalate genuine divergence). Retires the dirty-tree launch guard; fixes
-   the Deb-pane teardown leak. Concurrency stays a non-goal. Sequenced right after `deb`.
+   the Deb-pane teardown leak. Concurrency stays a non-goal. **Built; archive-candidate** — all four
+   ADR-0015 clauses proven green by `node scripts/proof-isolation.mjs`; only an optional live
+   end-to-end run remains.
 2. `personas-and-plays` — **master priority** (merges the done `base-and-extension-personas` + the folded
    `no-brainer-plays`): one living-base+extension model for **both personas and Plays**. Completes the
    base QA roster — **Quinn** (user-simulation) and **Talia** (acceptance QA) — and lands the no-brainer
@@ -232,7 +234,8 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    one live headless-Oscar run + one live headless-Bob run (flip mode in Personas); then a **full
    founder Q/A pass with an expected punch-list run** (founder instruction, run_66 — restored
    run_70). Archive-candidate only AFTER the Q/A pass + punch-list, not after the live proofs
-   alone.
+   alone. Mechanical surfaces + the bounded 3-item live remainder: `node scripts/proof-oz-surfaces.mjs`
+   (do NOT relaunch this priority for a reaffirmation wrap — F18).
 4. `new-primary-root` — the primary-root audit: bootstrap a new root's `cocoder/` + propose-only
    drift re-audit, one base Play pinned to a top-tier model. Design drafted as **ADR-0020 (proposed,
    2026-06-10)** — founder acceptance gates the build. The concrete form of Phase 5 ("first external repo").
