@@ -34,6 +34,7 @@ their still-live content was absorbed into [ADR-0019](./0019-multi-root-workspac
 |---|---|---|
 | [0020](./0020-primary-root-audit.md) | Primary-root audit: bootstrap + drift as one base Play, top-tier model via play assignment, shipped meta-priorities | Proposed |
 | [0021](./0021-oz-repair-commit-authority.md) | Oz repair: trunk commit authority outside any run — idle-only one-shot repair, governance in-scope, machinery propose-only in v1 (loosening expected with real Oz use) | Accepted |
+| [0022](./0022-orchestration-change-durability.md) | Orchestration-change durability: broad-by-default access + the two-surface boundary + a terminal landing invariant (reconciles 0007, generalizes 0021) | Proposed |
 
 **Phase-0 architecture Q&A complete — all seams resolved (ADRs 0001–0009).** ADR-0010 (taxonomy &
 authoring) accepted 2026-05-29 after a 6-lens adversarial review. ADR-0011 (orchestrator verify-gate)

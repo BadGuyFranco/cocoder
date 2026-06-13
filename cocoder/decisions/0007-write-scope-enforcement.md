@@ -11,6 +11,16 @@ v1's priority-boundaries were heavy and fragmented (F4); F11 showed a bypassable
 to be a guarantee. We need the deterministic agent→reality boundary (charter D3) without an OS
 sandbox.
 
+> **Reconciliation note (2026-06-13, [ADR-0022](./0022-orchestration-change-durability.md)).** The
+> commit gate below stays — it is the deterministic agent→reality boundary, not a restriction to
+> remove. Two clarifications from the broad-by-default principle (ADR-0022 §1, §6): (1) a
+> **founder-directed Surface-A edit** (governance, orchestration, docs, machinery-blocker fix) is
+> **in-scope by default** — personas do not refuse or defer it as "read-only / needs a new run"; (2)
+> the bar for holding a change back is **high risk of breaking something**, not merely "outside a
+> narrow preset scope." Out-of-scope-but-low-risk changes still surface for an expand decision (never
+> silent-discard, never silent-commit). Nothing in this ADR may be read to license refusing a
+> founder-directed governance edit.
+
 ## Decision
 
 ### Scope expression
