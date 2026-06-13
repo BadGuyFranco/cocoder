@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-13 — **Full Oz dashboard: code-complete reaffirmed — verified on-branch, not asserted (run_75, 5th reaffirmation)**
+
+**Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** [full-oz-dashboard](./priorities/full-oz-dashboard.md) | **Play:** wrap-up
+**Outcomes:**
+- run_75 (0 atoms) **verified** CODE-COMPLETE by reading branch artifacts: F16 launch-probe fix (`88888d7`) confirmed in `resolveDashboardLaunch` (`packages/daemon/src/launcher.ts` requires BOTH `out/main/main.js` AND `out/renderer/index.html` before built mode); every `ENDPOINTS_OWED.md` row is **SERVED** — only PARTIALs are row 2 (CLIs `POST` defer, by-design) and row 8 (Oscar/Bob headless honoring — code-done, live run owed); open tickets 0003/0004/0005 carry priority `none` or `run-resolution-and-loop-reliability` — none belong to this priority.
+- No code, ADR, or governance changes this run. Archive blocked **only** on the founder-present live-evidence + Q/A ladder: (b) Oz chat exercise with real CLI+model, (c) one live headless-Oscar + one live headless-Bob run, (d) full founder Q/A pass + expected punch-list run. No further builder atoms without a **new** live finding.
+- Caveat recorded: Oz turn subprocess is NOT tool-restricted in this build (prompt-level discipline only) — prefer a read-only-behaving CLI/flags combo until adapter tool-restriction lands. Turn logs: `local/oz/<workspaceId>/turn-<n>.log`.
+**Next:** Founder: confirm daemon is on current trunk via `/health` bootSha (restart if needed — F16 fix only takes effect after restart; workaround: `pnpm --dir packages/ui build` or delete `out/`), then run live-proof step (b): assign Oz a real CLI+model, exercise status/launch/stop/nudge/repair/Refresh, eyeball priorities pane vs `packages/ui/design-ref/`.
+
 ## 2026-06-13 — **Loop reliability hardening: run_71 silent-strand class closed + trunkBranch record reads (run_73)**
 
 **Persona:** Oscar + Bob (2 atoms, both first-try after one atom-1 rejection) | **Priority:** [run-resolution-and-loop-reliability](./priorities/run-resolution-and-loop-reliability.md) | **Play:** founder-directed follow-up hardening

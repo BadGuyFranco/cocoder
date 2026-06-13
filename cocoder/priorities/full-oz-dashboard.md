@@ -22,10 +22,17 @@ is decided when this is picked up, not here.
 
 ## Status
 
-**Live proofs owed — `continue` (code-complete).** run_74 (2026-06-13, 0 atoms) reaffirmed
-CODE-COMPLETE: verified no buildable work remains on this priority (the F16 fix below is confirmed
-on trunk; the three open tickets belong to other priorities), delegated zero builder atoms, made no
-code/ADR changes — archive blocked on the founder-present live-evidence + Q/A ladder only. run_72
+**Live proofs owed — `continue` (code-complete).** run_75 (2026-06-13, 0 atoms) reaffirmed
+CODE-COMPLETE — the 5th reaffirmation (after run_68/70/74): **verified this run, not asserted** —
+(1) F16 launch-probe fix is on-branch (`88888d7`): `resolveDashboardLaunch` requires BOTH
+`out/main/main.js` AND `out/renderer/index.html` before built mode, else falls back to dev
+(regression-pinned); (2) every `ENDPOINTS_OWED.md` row is SERVED — only PARTIALs are row 2 (CLIs
+POST defer, by-design) and row 8 (Bob/Oscar headless honoring, code-done, LIVE run owed); (3) open
+tickets 0003/0004/0005 carry priority `none` or `run-resolution-and-loop-reliability` — none belong
+to this priority. Zero builder atoms delegated, no code/ADR changes — archive blocked on the
+founder-present live-evidence + Q/A ladder only. Do not open a builder atom on a future
+reaffirmation unless a NEW live finding produces a concrete defect. run_74 (2026-06-13, 0 atoms)
+reaffirmed CODE-COMPLETE similarly. run_72
 (2026-06-13, 1 atom, first-try pass)
 landed the **F16 launch-probe fix** (`88888d7`) — the LAST buildable atom: `resolveDashboardLaunch`
 now requires BOTH `out/main/main.js` AND `out/renderer/index.html` before choosing built mode, else

@@ -199,8 +199,13 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    before choosing built mode, else falls back to dev (regression-pinned). Confirmed live as the
    cause of the founder's blank-window report (engine `out/` held only main+preload). Daemon 189 ·
    root typecheck clean. **Code-complete — zero further builder atoms without inventing work.**
+   run_74 (2026-06-13, 0 atoms): Oscar wrap-up — CODE-COMPLETE reaffirmed; zero builder atoms; no
+   code changes; archive blocked on live proofs only.
+   run_75 (2026-06-13, 0 atoms): 5th reaffirmation (after run_68/70/74) — verified on-branch: F16
+   fix present, `ENDPOINTS_OWED.md` truthed, no open tickets belong to this priority; still
+   founder-present live ladder only; no builder atoms without a new live finding.
    Founder directive: complete Oz first, then workspace onboarding.
-   Next: **founder live proofs only** — restart the daemon onto run_72 code first (Restart-daemon
+   Next: **founder live proofs only** — restart the daemon onto current trunk first (Restart-daemon
    button or relaunch; confirm via `/health` bootSha), then launch the dashboard (should render,
    not blank). Then the live ladder: Oz chat exercise with a real CLI assigned
    (status/launch/stop/nudge/repair/Refresh), eyeball the rebuilt priorities pane vs design-ref,
