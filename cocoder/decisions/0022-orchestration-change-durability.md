@@ -1,8 +1,9 @@
 # ADR-0022 — Orchestration-change durability: broad-by-default access + a terminal landing invariant
 
-**Status:** Proposed (founder review owed). The founder endorsed the *direction* on 2026-06-13 (the
-broad-by-default principle and the priority [`orchestration-change-durability`](../priorities/orchestration-change-durability.md));
-acceptance of this ADR's specific decisions is owed.
+**Status:** Accepted (founder, 2026-06-13). The founder endorsed the direction (broad-by-default
+principle + the priority [`orchestration-change-durability`](../priorities/orchestration-change-durability.md))
+and then reviewed and decided both open questions below. Implementation of §3 (the finalizer) is owed
+via a dogfood run; ADR acceptance is of the decisions, not their build.
 **Builds on:** [0015](./0015-isolated-working-state-per-run.md) (run isolation — the seam every strand
 crosses), [0007](./0007-write-scope-enforcement.md) (commit gate — *reconciled here*), [0021](./0021-oz-repair-commit-authority.md)
 (out-of-run trunk authority — *generalized here*), [0013](./0013-orchestration-observation.md) /
@@ -92,8 +93,10 @@ states the current reconciler skips.
 
 Direct daemon writes to the primary root that represent durable governance (`createPriority`,
 `writeAssignments`, priority reorder, workspace scaffold) **git-commit their change** to the workspace
-repo as a distinct daemon/`oz` governance commit, rather than leaving an uncommitted working-tree edit.
-A governance change the next session must read belongs in history, not only on disk.
+repo, rather than leaving an uncommitted working-tree edit. A governance change the next session must
+read belongs in history, not only on disk. **Decided (founder, 2026-06-13):** commit these, authored as
+a distinct `cocoder-governance` identity (mirrors the `oz-repair` commit-type pattern) for
+auditability.
 
 ### 5. Post-wrap / post-settle Surface-A edits have one sanctioned home
 
@@ -124,9 +127,11 @@ still surface for an expand decision; they are never silently discarded and neve
 - Live proof is owed (founder-driven): fault-inject a commit on each exit path (post-wrap, escalate,
   ff-blocked, post-settle, failed, stopped) and confirm the finalizer lands or surfaces it every time.
 
-## Open questions for founder review
+## Founder decisions (2026-06-13)
 
-- **Acceptance of the broad-access widening of ADR-0021** (item 5) — agent governance commits to trunk
-  outside a run, for all orchestration personas, not just idle-only Oz.
-- **Daemon governance-commit author/identity** (item 4) — commit as `oz`, as the founder, or a distinct
-  `cocoder-governance` identity?
+- **Broad-access widening of ADR-0021 (item 5): ACCEPTED.** Agent governance commits to trunk outside a
+  run, for all orchestration personas — not just idle-only Oz. This is the loosening ADR-0021
+  anticipated at its acceptance; the verify gate stays for Surface-B product code.
+- **Daemon governance-commit identity (item 4): COMMIT, as `cocoder-governance`.** Direct daemon
+  governance writes are git-committed (not left dirty), authored as a distinct `cocoder-governance`
+  identity for auditability.

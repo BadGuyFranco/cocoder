@@ -11,9 +11,9 @@ after the narrow scope earns trust, not a re-litigation.
 [0012](./0012-living-base-personas.md) (base/delta write-scope split),
 [0015](./0015-isolated-working-state-per-run.md) (run isolation — the seam Oz repair crosses).
 **Relates to:** [0013](./0013-orchestration-observation.md) (tier boundaries — in-run faults stay Deb's).
-**Generalized by:** [0022](./0022-orchestration-change-durability.md) — the anticipated loosening: the
-out-of-run trunk-commit path widens beyond Oz / idle-only into the durable home for any orchestration
-persona's Surface-A edit made outside an active run (founder review owed on the widening).
+**Generalized by:** [0022](./0022-orchestration-change-durability.md) — the anticipated loosening,
+**founder-accepted 2026-06-13:** the out-of-run trunk-commit path widens beyond Oz / idle-only into the
+durable home for any orchestration persona's Surface-A edit made outside an active run.
 
 ## Context
 
