@@ -570,10 +570,11 @@ type DashboardLaunchPlan = {
 async function resolveDashboardLaunch(cocoderHome: string): Promise<DashboardLaunchPlan> {
   const uiDir = join(cocoderHome, 'packages', 'ui')
   const builtEntry = join(uiDir, 'out', 'main', 'main.js')
+  const builtRenderer = join(uiDir, 'out', 'renderer', 'index.html')
   const uiPackage = join(uiDir, 'package.json')
   const manager = await packageManager(cocoderHome)
 
-  if (await isFile(builtEntry)) {
+  if ((await isFile(builtEntry)) && (await isFile(builtRenderer))) {
     return { ok: true, mode: 'built', command: manager, args: ['exec', 'electron', '.'], cwd: uiDir }
   }
 
@@ -582,7 +583,7 @@ async function resolveDashboardLaunch(cocoderHome: string): Promise<DashboardLau
 
   return {
     ok: false,
-    error: `no launchable Oz dashboard entry found; looked for built entry ${builtEntry} and dev script ${uiPackage}#scripts.dev`,
+    error: `no launchable Oz dashboard entry found; looked for built entries ${builtEntry} and ${builtRenderer}, and dev script ${uiPackage}#scripts.dev`,
   }
 }
 

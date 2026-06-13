@@ -51,8 +51,20 @@ describe('requestDashboardLaunch', () => {
     expect(fixture.spawns[0]).toEqual({ mode: 'built', command: 'pnpm', args: ['exec', 'electron', '.'], cwd: join(home, 'packages', 'ui') })
   })
 
+  test('falls back to the dev dashboard when the built tree is missing the renderer', async () => {
+    const home = await makeHome({ dev: true, partialBuilt: true })
+    const fixture = makeCtx(home)
+
+    const result = await requestDashboardLaunch(fixture.ctx)
+
+    expect(result).toEqual({ status: 202, body: { launched: true, launching: true, mode: 'dev', command: 'pnpm dev' } })
+    expect(fixture.spawns).toEqual([
+      { mode: 'dev', command: 'pnpm', args: ['dev'], cwd: join(home, 'packages', 'ui') },
+    ])
+  })
+
   test('reports a missing launchable entry without spawning', async () => {
-    const home = await makeHome({})
+    const home = await makeHome({ partialBuilt: true })
     const fixture = makeCtx(home)
 
     const result = await requestDashboardLaunch(fixture.ctx)
@@ -60,6 +72,7 @@ describe('requestDashboardLaunch', () => {
     expect(result.status).toBe(409)
     expect(result.body.error).toContain('no launchable Oz dashboard entry found')
     expect(result.body.error).toContain(join(home, 'packages', 'ui', 'out', 'main', 'main.js'))
+    expect(result.body.error).toContain(join(home, 'packages', 'ui', 'out', 'renderer', 'index.html'))
     expect(result.body.error).toContain('package.json#scripts.dev')
     expect(fixture.spawns).toEqual([])
   })
@@ -89,15 +102,19 @@ describe('requestDashboardLaunch', () => {
   })
 })
 
-async function makeHome(opts: { readonly dev?: boolean; readonly built?: boolean }): Promise<string> {
+async function makeHome(opts: { readonly dev?: boolean; readonly built?: boolean; readonly partialBuilt?: boolean }): Promise<string> {
   const home = await mkdtemp(join(tmpdir(), 'cocoder-dashboard-launch-'))
   await writeFile(join(home, 'package.json'), JSON.stringify({ packageManager: 'pnpm@10.30.3' }))
   const uiDir = join(home, 'packages', 'ui')
   await mkdir(uiDir, { recursive: true })
   await writeFile(join(uiDir, 'package.json'), JSON.stringify({ scripts: opts.dev ? { dev: 'electron-vite dev' } : {} }))
-  if (opts.built) {
+  if (opts.built || opts.partialBuilt) {
     await mkdir(join(uiDir, 'out', 'main'), { recursive: true })
     await writeFile(join(uiDir, 'out', 'main', 'main.js'), 'console.log("built")\n')
+  }
+  if (opts.built) {
+    await mkdir(join(uiDir, 'out', 'renderer'), { recursive: true })
+    await writeFile(join(uiDir, 'out', 'renderer', 'index.html'), '<!doctype html>\n')
   }
   return home
 }
