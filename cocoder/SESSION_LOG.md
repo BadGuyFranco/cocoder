@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-13 — **orchestration-change-durability: the landing-invariant machinery BUILT — all 3 ADR-0022 §3 leaks closed in code (run_76)**
+
+**Persona:** Oscar + Bob (3 atoms, all first-try passes) | **Priority:** [orchestration-change-durability](./priorities/orchestration-change-durability.md) | **Play:** dogfood build of the ADR-0022 finalizer (the high-risk runner/daemon surgery the founder deferred to a verified run)
+**Outcomes:**
+- **Atom 0 (`d6ef668`): daemon strand-reconciler made TOTAL/authoritative.** `reconcileStrandedRunCommits` (`packages/daemon/src/launcher.ts`) no longer skips `failed`/`stopped` (the old blanket skip covered only 2 of ~6 exit states); now ANY non-`running` run whose branch tip is off-trunk is surfaced as `pending-landing`+`escalated` with a `source:'daemon'` `stranded-commits-detected` event carrying `detectedFromStatus`. Teardown-GC preservation (run_73) verified intact — failed/stopped strands are non-disposable, preserved for Resolve. +5 regression tests.
+- **Atom 1 (`8495dcf`): runner stop + fault settlement paths surface strands.** `runner.ts` cooperative-stop and `fail()` paths now end `pending-landing`+`escalated` with a `source:'runner'` event when off-trunk commits exist — via ONE hoisted `recordStrandedCommits` helper (single source of truth; `landRunBranch` delegates to it, behavior byte-identical). Detection-only (stop test proves trunk HEAD unchanged); the fault still propagates. Closes the Deb-repair-on-a-faulted-run exposure (ADR-0022 §3 pt 3). +5 core tests.
+- **Atom 2 (`0ecc6f3`): daemon governance writes COMMIT as `cocoder-governance` (ADR-0022 §4).** `createPriority`/`writeAssignments`/reorder/workspace-scaffold now git-commit their primary-root writes (optional `author` arg on `Git.addAndCommit`, backward-compatible; graceful audit+no-op on a non-git workspace). Real-git test proves author+committer attribution and file-in-tree. Closes "daemon dashboard writes are uncommitted" (§3 pt 2). +2 daemon tests.
+- Evidence at each gate (WORKTREE checkout — corrected mid-run after catching that earlier runs hit the main repo): core 251 · daemon 198 · root typecheck clean; per-atom whole-tree diff + scope honored.
+- Proof 2 confirmed already satisfied on-branch (wrap-up Play single owner; `oscar.md` "standardized format" sentence gone; `base-personas.test.ts` pins it).
+**Next:** Founder-driven LIVE proofs only — no further buildable atom. (1) Proof 4: fault-inject a commit on each exit path (post-wrap, escalate, ff-blocked, post-settle, **failed**, **stopped**) per `docs/fault-injection-live-proofs.md`; confirm the reconciler lands-or-surfaces every time. (2) Proof 1: post-wrap doc edit → trunk → next run's pickup reflects it. (3) Proof 3: Oz, Oscar, and Deb each commit a Surface-A edit to trunk in one turn, no new run. (4) Proof 5: a live run auto-commits a low-risk orchestration edit and surfaces a high-risk one as a brief. Then archive-candidate.
+
 ## 2026-06-13 — **New prerequisite priority `orchestration-change-durability` + ADR-0022; broad-by-default access shipped to personas (founder session, Claude Code)**
 
 **Persona:** Claude Code (direct founder session — not a CoCoder run) | **Priority:** [orchestration-change-durability](./priorities/orchestration-change-durability.md) | **Play:** create-priority + Surface-A governance edits

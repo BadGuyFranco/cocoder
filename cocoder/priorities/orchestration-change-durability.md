@@ -111,3 +111,52 @@ change is on — is part of the deliverable (proof 4).
 Surface-B product code; it makes *landing/visibility* reliable, gives out-of-run Surface-A edits one
 sanctioned always-available home, and rebalances default access toward broad. No net-new product
 features.
+
+## Status
+
+**Disposition: `continue` (machinery code-complete; founder-driven live proofs owed).**
+
+### Machinery built & verified on-branch (run_76, Oscar+Bob, 3 atoms, all first-try passes)
+
+The three landing-invariant leaks the ADR-0022 §3 audit named are now closed in code:
+
+- **Atom 0 (`d6ef668`) — daemon reconciler made TOTAL.** `reconcileStrandedRunCommits`
+  (`packages/daemon/src/launcher.ts`) no longer skips `failed`/`stopped`; it surfaces ANY non-`running`
+  run whose branch tip is off-trunk as `pending-landing`+`escalated` with a `stranded-commits-detected`
+  event (`source:'daemon'`, `detectedFromStatus`). Teardown-GC preservation (run_73) is intact —
+  failed/stopped strands are NOT disposable. Covers the ~4 of ~6 exit states the old reconciler skipped.
+- **Atom 1 (`8495dcf`) — runner settlement paths surface strands.** The cooperative-stop and fault
+  paths in `runner.ts` now end `pending-landing`+`escalated` with a `source:'runner'` strand event when
+  off-trunk commits exist (one hoisted `recordStrandedCommits` helper, single source). Detection-only:
+  no auto-land; the fault still propagates. Closes the "Deb-repair-on-a-faulted-run" exposure (§3 pt 3).
+- **Atom 2 (`0ecc6f3`) — daemon governance writes COMMIT (§4).** `createPriority` / `writeAssignments`
+  / reorder / workspace-scaffold now git-commit their primary-root writes as the founder-approved
+  `cocoder-governance` identity (optional `author` arg added to `Git.addAndCommit`, backward-compatible;
+  graceful no-op/audit on a non-git workspace). Closes "daemon dashboard writes are uncommitted" (§3 pt 2).
+
+Evidence at the gate (worktree checkout): core 251/251 · daemon 198/198 · root typecheck clean across
+7 workspaces; per-atom whole-tree diff checked; scope honored each atom.
+
+### Proof-by-proof state
+
+- **Proof 4 (closed-loop invariant):** MACHINERY DONE (Atoms 0+1 settlement+entry, Atom 2 daemon writes).
+  OWED: founder-driven **live** fault-injection on every exit path (post-wrap, escalate, ff-blocked,
+  post-settle, **failed**, **stopped**) per `docs/fault-injection-live-proofs.md` — confirm the
+  reconciler lands-or-surfaces each time.
+- **Proof 1 (wrap never prohibits a governance edit; it lands):** behavioral half shipped to personas
+  (founder session: `a15cbbd`). OWED: live reproduction of the run_74/run_53 scenario (post-wrap edit →
+  trunk → next run's pickup reflects it).
+- **Proof 2 (one owner for the wrap-brief format):** DONE — wrap-up Play is the single section-contract
+  owner; `oscar.md`'s old "standardized format" sentence removed; pinned by `base-personas.test.ts`.
+- **Proof 3 (Oz/Oscar/Deb commit Surface-A anytime):** behavioral shipped; Oz-repair + the generalized
+  out-of-run path exist. OWED: a live exercise where each of the three commits a Surface-A edit to trunk
+  in one turn with no new run.
+- **Proof 5 (default-commit low-risk, surface high-risk):** policy lives in shared-standards "Durable
+  orchestration changes" + persona prompts. OWED: a live run that auto-commits a low-risk edit and
+  surfaces a high-risk one as a brief.
+
+### Conflict-resolution status
+
+ADR-0007 reconciled (founder session dated note); ticket 0004 retired/re-pointed; ADR-0021 broad-access
+widening ACCEPTED by founder in ADR-0022 (§ Founder decisions). The F17 live proof folds into proof 4's
+live checklist above.
