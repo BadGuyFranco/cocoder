@@ -48,6 +48,26 @@ Each row: the failure → the root cause → the implication for the v2 architec
 | F19 | **Wrap brief authored before settlement → the founder is told success on a run that strands** (run_78, 2026-06-13). Oscar's founder-facing wrap said *"verified for landing"* and *"Nothing held back,"* but the run then escalated at the whole-tree integration verify (a stale daemon persona-list test, `read-surfaces.test.ts`, caught exactly as designed) AND had real held-back out-of-scope work (a Play delta). The work stranded `pending-landing` and needed manual recovery; the founder asked "why is this STILL an issue?" The F17/ADR-0022 invariant correctly made it *recoverable* — but recovery was manual and the closeout was untruthful. | The wrap-up Play generates + delivers the founder brief (`runner.ts` ~908/946) BEFORE the authoritative settlement: the out-of-scope/held-back determination (~1146) and the integration verify + ff-merge (~1159). Its Committed / held-back / verified-for-landing claims are authored optimistically by the wrap model, never DERIVED from the runner's actual `outOfScope`/integration outcome, and never reconciled after integration runs. Separately, a trivially-fixable integration failure (a stale assertion) has no in-run self-correct path, so it becomes a strand instead of a 30-second fix. | The founder-facing closeout must be produced AFTER (or reconciled against) the run's authoritative settlement, with committed/held-back/landed claims **derived from the runner** (outOfScope, integration status, mergeSha) — never asserted. A fixable integration failure should get an **in-run self-correct** (fix-up turn + re-verify) before stranding. **FIXED (truthfulness half) 2026-06-13 (`1c4437d`):** the runner now derives + records + delivers an authoritative `landing-outcome` after integration (LANDED+sha / NOT-LANDED+blocker+`resolve` recovery / HELD-BACK), and the wrap-up Play's `Committed` section may no longer assert landing — the founder can never again be told "verified for landing / nothing held back" on a run that strands. **Still owed (deliberately dogfood-deferred):** the in-run self-correct loop (extracting the inline atom-execution path + re-dispatch is high runner-regression risk; do it through a verified run, not blind). |
 | F20 | **Orchestrator vanishes leaving the founder stuck** (run_79, 2026-06-13). Oscar's wrap named a `Next Priority To Run` of *"launch a priority audit"* — but **no `priority-audit` priority existed**, so there was nothing to launch; the run was then torn down (proactively, by the assisting session — violating the founder-explicit-teardown rule), removing Oscar before the suggested priority was crafted. The founder was left with a suggestion pointing at nothing and no orchestrator to ask: "stuck yet again." | The wrap-up contract let Oscar **name** a next priority without ensuring it is launchable (an existing file) or crafting it (the F1 ghost-priority class, now hitting the founder's hand-off). Teardown was not gated on a complete hand-off and was invoked proactively despite the standard's founder-explicit-only rule. | The wrap's `Next Priority To Run` must be a **launchable** priority; if the next step is new work, the run must **craft it** (create-priority: draft Objective → founder approval) before ending — never a dangling suggestion. **Teardown is founder-explicit-only**; agents (incl. the assisting session) never tear down proactively, and never before a launchable next exists. **FIXED 2026-06-13:** wrap-up Play + `oscar.md` updated; the named gap is itself closed by crafting the `priority-audit` priority. |
 
+## The strand class — structurally dissolved (ADR-0023, 2026-06-14)
+
+**F14, F17, F19, F20 are one failure with one root cause**, and each row above records an *incremental
+patch* (in-run re-land, escalate→`pending-landing`, derived landing-outcome, launchable-next gating).
+The root cause was the default itself: [ADR-0015](./zArchive/v2/decisions/0015-isolated-working-state-per-run.md)
+made every run work on an isolated **run branch**, and committed work that didn't ff-land sat off-trunk.
+The patches were unbounded because they fought the funnel instead of the default.
+
+The `orchestration-operating-model-reset` priority removed the default:
+[**ADR-0023**](./decisions/0023-workspace-commit-spine.md) makes **direct-to-branch** the default — a
+run commits straight onto the active branch, so **there is no run branch for work to strand on.** The
+strand class is dissolved *structurally*, not patched. Held-back (out-of-scope) is now the only
+not-landed state, and it is surfaced with a recovery action. The run-branch landing machinery
+(F14/F17/F19 fixes) survives only on the **opt-in isolation lane**. Proof:
+`node scripts/proof-direct-spine.mjs` (10/10 green). The historical run-branch strands these rows
+describe can no longer recur on the default path; they are no longer a live risk class.
+
+- **F13 note:** the per-atom whole-tree diff (scope-blowout catch) still applies in direct mode — it
+  runs in place against the active checkout before the spine commits, gated by the single-writer lock.
+
 ## Cross-cutting lessons (feed the charter)
 
 - **L1.** Nearly all failures above are *coordination/state* failures, not algorithm failures —
