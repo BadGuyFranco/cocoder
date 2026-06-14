@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-13 — **priority-audit run_80: priority-set audit table produced + verified (read-only)**
+
+**Persona:** Oscar + Bob (1 atom, first-try pass) | **Priority:** [priority-audit](./priorities/priority-audit.md) | **Play:** read-and-recommend audit
+**Outcomes:**
+- **One founder-decision artifact:** `cocoder/priorities/audits/latest-audit.md` — ranked table assessing all 6 active priorities + 5 backlog items against built state (PLAYBOOK, SESSION_LOG, ADR statuses, code). Read-only boundary honored; no product code or priority moves.
+- **Oscar spot-checked every cited anchor** (PLAYBOOK:157-167, ADR-0020=Proposed, F18/F20, deployment-plays stale blocker, quinn-app-testing PLAYBOOK conflict) — all accurate. Disposition refinement: `personas-and-plays` is **archive-candidate** (two live proofs owed), not outright archive.
+- **Key recommendations:** `personas-and-plays` → archive-candidate after live proofs; `full-oz-dashboard` → redefine as acceptance checklist; `new-primary-root` + `workspace-onboarding` → merge under ADR-0020; `deployment-plays` / `quinn-app-testing` → redefine stale labels; backlog placeholders → redefine or keep non-launchable; meta-priorities → keep-active.
+**Next:** Founder — reply `accept ADR-0020` or `defer ADR-0020` in Oz chat to unblock the merged bootstrap priority; add any other audit disposition approvals in the same message (e.g. `archive personas-and-plays`, `redefine full-oz`, `apply stale-label fixes`).
+
 ## 2026-06-13 — **personas-and-plays: Play deltas wired into run-launch + one-command proof harness — CODE-COMPLETE (run_79)**
 
 **Persona:** Oscar + Bob (2 atoms, both first-try passes) | **Priority:** [personas-and-plays](./priorities/personas-and-plays.md) | **Play:** multi-atom build (close the last buildable gap, then make verification runnable)
