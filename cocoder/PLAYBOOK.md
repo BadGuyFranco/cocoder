@@ -157,8 +157,8 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   dissolving the F14/F17/F19/F20 strand class structurally. ✅ all six phases on `main` (A `e4a9172` ·
   B `9dc1c4d` · C `724a3d1` · D `bce0140` · F `32e4795` · E `751d920`); `node scripts/proof-direct-spine.mjs`
   10/10; 626 tests; `main` promoted to canonical trunk + pushed. **Archived 2026-06-14** — the live
-  end-to-end validation rides the next real run (`oz-dashboard-priorities-pane` is the first); re-opens
-  only if a run surfaces a machinery defect.
+  end-to-end validation exercised on `oz-dashboard-priorities-pane` run_81 (first live run post-reset);
+  re-opens only if a run surfaces a machinery defect.
 - `personas-and-plays` — one living-base+delta model for **personas AND Plays**; base QA roster (Quinn,
   Talia) + the no-brainer Plays (`documentation`, `code-review`, `electron-test`) + Play deltas honored
   at run-launch. ✅ CODE-COMPLETE run_78/79; `node scripts/proof-plays.mjs` 4/4. **Archived 2026-06-14**
@@ -166,18 +166,16 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   run; Quinn drives the Oz GUI) are opportunistic, not blocking.
 
 **Active (launchable; recommended sequence — the `priorities/` directory is the live index):**
-1. `oz-dashboard-priorities-pane` — **NEXT TO RUN (founder defect, 2026-06-14).** The dashboard's left
-   column shows runs, but design-ref says it must be the **drag-reorderable priorities queue** (runs nest
-   inside). A prior audit (`packages/ui/design-audit-priorities-pane.md`, run_64) + rebuild (run_65)
-   exist, so reproduce → diff vs `design-ref/` → fix the root cause (regression / data-seam / first-run
-   fallthrough). Doubles as the **first live run on the post-reset machinery** — watch it commit straight
-   to `main` (ADR-0023). `packages/ui` first; minimal daemon model only if priorities/`order.json` aren't
-   reaching the renderer; no new endpoints.
+1. `oz-dashboard-priorities-pane` — **ARCHIVE-CANDIDATE (run_81, 2026-06-14).** Root cause was an
+   off-design `AwaitingYouPanel` above `PrioritiesPanel` in column 1 (removed, atoms `158d208`/`52b4587`);
+   regression test pins "priorities queue, not runs-as-primary." First live run on post-reset machinery
+   (ADR-0023) — committed straight to branch. Remaining before archive: founder runs `pnpm proof:queue`
+   (harness verified but held back — reply `expand scope` to commit it, or `discard`); optional live
+   drag-reorder to create `cocoder/priorities/order.json` (this install has none yet). Do NOT self-archive.
 2. `full-oz-dashboard` — the v1-designed control plane (chat, oversight, settings, drag-reorder).
-   **CODE-COMPLETE (all daemon surfaces served); design-conformance + live founder acceptance still
-   OPEN** — proven open by the founder finding the priorities-pane defect (now split out as priority #1).
-   This is the umbrella the live Q/A pass runs under; concrete defects it surfaces become focused
-   priorities. Do NOT relaunch it as a build run (F18). Mechanical proof: `node scripts/proof-oz-surfaces.mjs`.
+   **CODE-COMPLETE (all daemon surfaces served); founder live-proof ladder still OPEN** — the priorities-pane
+   defect (priority #1) is fixed; this is the umbrella for the live Q/A pass. Do NOT relaunch it as a build
+   run (F18). Mechanical proof: `node scripts/proof-oz-surfaces.mjs`.
 3. `new-primary-root` — **design-gated, NOT build-launchable yet** (blocked on accepting ADR-0020 — the
    bootstrap/takeover/drift onboarding Playbooks). Launching it now = the ADR-0020 acceptance + alignment
    conversation, not a build. **Absorbs `workspace-onboarding`** (one onboarding path). The concrete form

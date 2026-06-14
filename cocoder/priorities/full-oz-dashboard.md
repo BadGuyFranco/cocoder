@@ -25,7 +25,9 @@ All builder-delegable work is landed on `main`. Every owed daemon surface in
 `packages/ui/ENDPOINTS_OWED.md` is served: Oz chat (+ SSE, agent turns, nudge, repair); Workspaces CRUD
 ([ADR-0019](../decisions/0019-multi-root-workspaces.md)); cooperative stop; persona run-mode + sub-agents
 honored for Oscar **and** Bob ([ADR-0018](../decisions/0018-persona-run-mode-and-sub-agents.md)); settings;
-free-text ad-hoc runs; priority create + reorder; resolve + the "Awaiting you" strip. The two by-design
+free-text ad-hoc runs; priority create + reorder; resolve from the run drawer. (The post-design
+"Awaiting you" column-1 strip was removed in run_81 — design-ref has no such panel; founder-attention
+runs surface via the drawer + Oz chat.) The two by-design
 deferrals are dynamic CLI registration (CLIs derive from compiled adapters) and richer chat streaming
 beyond coarse refetch hints. Mechanical proof: `node scripts/proof-oz-surfaces.mjs`.
 
@@ -35,9 +37,9 @@ builder atom only if a live finding surfaces a concrete defect.
 > **Post-reset note (2026-06-14, [ADR-0023](../decisions/0023-workspace-commit-spine.md)).** The
 > orchestration operating-model reset changed how runs commit: **direct-to-branch is the default**, so
 > the `pending-landing` / stranded-commit / **Resolve** surfaces now fire only on the opt-in isolation
-> lane, and out-of-scope **held-back** is the normal "Awaiting you" state. The dashboard's
-> run / resolve / Awaiting-you surfaces should be sanity-checked against this during the live pass (a
-> likely punch-list item). The historical slice-by-slice build log that used to fill this file was
+> lane, and out-of-scope **held-back** is the normal founder-attention state (drawer + Oz chat, not a
+> column-1 runs list). The dashboard's run / resolve surfaces should be sanity-checked against this
+> during the live pass (a likely punch-list item). The historical slice-by-slice build log that used to fill this file was
 > written against the pre-reset model — it now lives in the PLAYBOOK roadmap + SESSION_LOG + git history
 > (it never belonged in a stub — ADR-0010).
 
