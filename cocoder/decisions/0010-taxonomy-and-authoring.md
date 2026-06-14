@@ -1,5 +1,12 @@
 # ADR-0010 — Taxonomy & authoring lifecycle: Playbooks, Plays, Objectives
 
+> **Extended by [ADR-0020](./0020-primary-root-audit.md) (2026-06-14).** The "a priority is a stub; its
+> plan lives in the run, improvised by the orchestrator" rule below governs all **ordinary** priorities.
+> ADR-0020 adds ONE narrow second category — **shipped onboarding Playbooks** (bootstrap / takeover /
+> drift) — whose multi-phase plan is deliberately *baked into the file* because the process is
+> repeatable and high-stakes (improvising it badly is expensive). That exception is scoped to onboarding
+> and does not loosen the stub rule for anything else.
+
 **Status:** Accepted (founder + Claude, 2026-05-29). Preceded by a 6-lens adversarial review (30 findings
 raised → 1 confirmed blocker + 1 heeded F1/F2 refinement folded in; rest misread/overstated). See
 [`../taxonomy-and-authoring.md`](../zArchive/rebuild-notes/taxonomy-and-authoring.md).

@@ -1,12 +1,13 @@
 ---
 id: new-primary-root
-title: "Primary-root audit: bootstrap a new root's cocoder/, re-audit on drift (ADR-0020)"
+title: "Onboard a primary root — bootstrap / takeover / drift Playbooks (ADR-0020)"
 ---
 
-> **At launch — founder alignment first (founder, 2026-06-13).** Before any build, the run must get on
-> the same page with the founder, asking questions as needed, on: (1) **ADR-0020** (currently Proposed)
-> — accept / amend / defer; nothing builds until it's accepted. (2) Confirm the first real target repo.
-> Surface these as a plain-English alignment pass, not a checklist.
+> **At launch — founder alignment first.** Before any build, the run must get on the same page with the
+> founder on: (1) **accept the redrafted [ADR-0020](../decisions/0020-primary-root-audit.md)** (Onboarding
+> Playbooks — founder co-designed 2026-06-14; acceptance still gates the build). (2) Confirm the first
+> real target repo (CoPublisher is the intended Takeover target). Surface as a plain-English alignment
+> pass, not a checklist.
 >
 > **Absorbs `workspace-onboarding` (merged 2026-06-14, priority audit).** That backlog priority is folded
 > in here so there is ONE bootstrap/audit/onboarding path, not two overlapping ones. It contributed:
@@ -20,27 +21,23 @@ title: "Primary-root audit: bootstrap a new root's cocoder/, re-audit on drift (
 > the ADR-0020 scaffold+audit machinery.
 
 ## Objective
-CoCoder can be pointed at a primary root it has never managed and **bootstrap itself**: a
-deterministic scaffold of the `cocoder/` governance skeleton, then a **world-class agentic audit**
-(the `primary-root-audit` base Play, pinned to a top-tier model via its play assignment) that
-deep-reads the repo and authors its governance — memory, draft priorities with draft Objectives
-(founder-ratified before anything is runnable), persona/standards extensions. The same Play's
-**drift mode** is available in every workspace as a shipped meta-priority and re-audits an existing
-`cocoder/` against repo reality — **propose-only** (report + tickets/amendment drafts, never
-in-place rewrites). **Verified when:** (a) a real external repo is bootstrapped end-to-end — scaffold
-→ audit run → founder approves the drafted Objectives → first ordinary run executes against them;
-and (b) drift mode runs against the dogfood and produces an honest report. Boundary: governed by
-[ADR-0020](../decisions/0020-primary-root-audit.md) (proposed — **founder acceptance gates any
-build**); writes only the target's `cocoder/**`; no deployment, no multi-repo commit spine, no
-product code.
+CoCoder can onboard any primary root through **three shipped, baked-plan onboarding Playbooks**
+([ADR-0020](../decisions/0020-primary-root-audit.md)), one per situation: **New Primary** (fresh/empty
+root — scaffold + intake + minimal seeded governance), **CoCoder Takeover** (existing repo — the big
+lift: a world-class multi-agent, founder-checkpointed audit that authors governance, never one cheap
+pass), and **Drift Audit** (already-managed root — propose-only: compare governance vs reality → report
+→ founder-ratify → apply). Each writes only the target's `cocoder/**`, commits via the spine (ADR-0023)
+to the target's active branch, and **the founder ratifies every drafted Objective** before anything is
+runnable. **Verified when:** (a) a real external repo is taken over end-to-end — scaffold → audit →
+founder ratifies Objectives → first run lands, findings traceable to repo reality; and (b) a Drift Audit
+runs against the dogfood and produces an honest, ratify-then-apply report. Boundary: **founder acceptance
+of ADR-0020 gates any build**; no deployment, no multi-repo commit spine, no product code.
 
-Design settled by ADR-0020 (drafted 2026-06-10, absorbing the prior Q&A): vocabulary (workspace =
-the multi-root set, primary root = the governed repo — no new term); deterministic/agentic line
-(files scaffolded, content authored); Ultra Code review stays founder-triggered; the self-continuing
-bootstrap confirmed (first run in a new root IS the audit); pervasive availability = install-shipped
-meta-priorities (small loader extension, authorized by the ADR); model pinning rides ADR-0018 play
-assignments.
+The three template **skeletons are drafted** at `packages/personas/base/playbooks/{new-primary,
+cocoder-takeover,drift-audit}.md` (inert until built). They fix the phase structure, founder gates,
+scopes, and outputs; the per-phase agent prompts + the loader extension + the scaffold op are the build.
 
-Build atoms (once the ADR is accepted) live in the run, not here — expected shape: init scaffold op
-→ base Play (bootstrap + drift prompts, adversarially reviewed) → shipped meta-priority + loader
-extension → live bootstrap proof on a real external repo (the Phase-5 entry).
+Build atoms (once the ADR is accepted): wire the three Playbooks as shipped meta-Playbooks + the loader
+extension (ADR-0020 §7); the `deep-read` audit Play (the Takeover P2 unit, adversarially reviewed); the
+deterministic scaffold init op; and a **live Takeover proof on a real external repo** (the Phase-5 entry,
+CoPublisher).

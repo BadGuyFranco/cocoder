@@ -32,7 +32,7 @@ their still-live content was absorbed into [ADR-0019](./0019-multi-root-workspac
 
 | ADR | Title | Status |
 |---|---|---|
-| [0020](./0020-primary-root-audit.md) | Primary-root audit: bootstrap + drift as one base Play, top-tier model via play assignment, shipped meta-priorities | Proposed |
+| [0020](./0020-primary-root-audit.md) | **Onboarding Playbooks** — bootstrap / takeover / drift as shipped baked-plan Playbooks (multi-agent takeover, propose-only drift, top-tier pins, founder checkpoints; extends 0010) | Proposed (founder co-design 2026-06-14) |
 
 ## Retired to history (superseded — not in the live tree)
 
