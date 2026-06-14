@@ -30,7 +30,8 @@ export function buildOrchestratorPrompt(input: {
   /** Oscar's support-write allow-list. Non-empty scopes are gate-committed at wrap. */
   oscarWriteScope: readonly string[]
   runId: string
-  /** This run's isolated branch (ADR-0015) — agents work on it and never integrate by hand. */
+  /** The branch this run commits to — the active branch (direct, default) or an isolated run branch
+   *  (opt-in); agents work on it and never run git by hand (ADR-0023). */
   runBranch: string
   /** The install/root checkout. Used for CLI invocations that must not depend on pane PATH state. */
   cocoderHome: string
@@ -59,11 +60,11 @@ Priority: **${input.priorityTitle}**
 
 ${input.priorityGoal}${adHocInstruction(input.task)}
 ${resume}
-# Isolated working state (this run)
+# Working state (this run)
 
-This run works in its OWN git worktree on branch \`${input.runBranch}\`, branched from the trunk tip at
-launch. CoCoder integrates the run's verified work to trunk for you (a verified auto-merge). Do NOT push,
-merge, rebase, or switch branches by hand — work on this branch and let the runner land it.
+This run works on branch \`${input.runBranch}\`. CoCoder commits your verified in-scope work to that
+branch for you (ADR-0023 — the commit spine). Do NOT run git yourself — never push, merge, rebase, or
+switch branches by hand; just do the work and let the runner commit it.
 
 # How this run works — you orchestrate the builder through a LOOP
 
@@ -180,9 +181,9 @@ This is a FRESH session resuming an in-progress run. Reconstruct state by readin
 
 before acting. Your required output artifact is defined by the dispatch below.
 
-This run works in its OWN git worktree on branch \`${input.runBranch}\`, branched from the trunk tip at
-launch. CoCoder integrates the run's verified work to trunk for you (a verified auto-merge). Do NOT push,
-merge, rebase, or switch branches by hand — work on this branch and let the runner land it.
+This run works on branch \`${input.runBranch}\`. CoCoder commits your verified in-scope work to that
+branch for you (ADR-0023 — the commit spine). Do NOT run git yourself — never push, merge, rebase, or
+switch branches by hand; just do the work and let the runner commit it.
 
 You drive the builder (${input.builderLabel}, a \`${input.builderCli}\` CLI) through a sequence of atoms.
 Write the exact directive or verify artifact named by the dispatch. Delegate builds to the builder by
@@ -212,7 +213,7 @@ export function buildObserverPrompt(input: {
   priorityGoal: string
   task?: string | null
   runId: string
-  /** This run's isolated branch (ADR-0015) — Deb integrates nothing by hand either. */
+  /** The branch this run commits to (ADR-0023) — Deb runs no git by hand either. */
   runBranch: string
   /** The install/root checkout. Used for CLI invocations that must not depend on pane PATH state. */
   cocoderHome: string
@@ -238,8 +239,8 @@ Priority: **${input.priorityTitle}**
 
 ${input.priorityGoal}${adHocInstruction(input.task)}
 
-This run works in an isolated git worktree on branch \`${input.runBranch}\` (ADR-0015); the runner
-integrates verified work to trunk. Never push, merge, rebase, or switch branches by hand.
+This run works on branch \`${input.runBranch}\`; CoCoder commits verified work to it (ADR-0023). Never
+push, merge, rebase, or switch branches by hand.
 
 # How you see the run — the status feed (read it any time)
 
@@ -307,8 +308,9 @@ is not a one-off — escalate, in this order:
 3. **Only if a new priority is truly warranted**, recommend it INSIDE that ticket for founder approval
    (\`"escalation":"recommend-priority"\`) — never create a \`cocoder/priorities/*\` file yourself.
 
-The ticket is gate-committed like a repair (on the run branch; the founder lands it), and the recurrence
-is recorded in your disposition so the founder is informed. Do not spin up new priorities to make progress.
+The ticket is gate-committed like a repair (committed to the run's branch through the commit spine), and
+the recurrence is recorded in your disposition so the founder is informed. Do not spin up new priorities
+to make progress.
 
 # Teardown mechanism (for this run)
 
@@ -346,7 +348,7 @@ export function buildBuilderStandbyPrompt(input: {
   sharedStandards: string
   bobBody: string
   scope: readonly string[]
-  /** This run's isolated branch (ADR-0015) — Bob works on it; the runner integrates to trunk. */
+  /** The branch this run commits to (ADR-0023) — Bob works on it; the runner commits for him. */
   runBranch: string
 }): string {
   const scope = input.scope.length > 0 ? input.scope.map((s) => `  - ${s}`).join('\n') : '  (none — read-only)'
@@ -363,8 +365,8 @@ ${input.bobBody}
 You have been launched early so your session is warm. **Do nothing yet** — do not inspect files, plan,
 run commands, or edit. Wait for a dispatch message that gives you an atom to implement.
 
-You are in this run's isolated git worktree on branch \`${input.runBranch}\` (ADR-0015). Just do the
-work on this branch — do NOT push, merge, rebase, or switch branches; the runner integrates to trunk.
+You work on branch \`${input.runBranch}\`. CoCoder commits your verified in-scope work to it (ADR-0023).
+Just do the work — do NOT push, merge, rebase, or switch branches; let the runner commit it.
 
 This run runs MULTIPLE atoms through this same pane, one at a time. For EACH atom the runner sends you:
 1. Read the JSON at the directive path it names — its \`task\` field is your atom.
@@ -383,7 +385,7 @@ export function buildHeadlessBuilderTurnPrompt(input: {
   sharedStandards: string
   bobBody: string
   scope: readonly string[]
-  /** This run's isolated branch (ADR-0015) — Bob works on it; the runner integrates to trunk. */
+  /** The branch this run commits to (ADR-0023) — Bob works on it; the runner commits for him. */
   runBranch: string
   dispatch: string
 }): string {
@@ -398,8 +400,8 @@ ${input.bobBody}
 ---
 # One-shot builder turn
 
-You are in this run's isolated git worktree on branch \`${input.runBranch}\` (ADR-0015). Just do the
-work on this branch — do NOT push, merge, rebase, or switch branches; the runner integrates to trunk.
+You work on branch \`${input.runBranch}\`. CoCoder commits your verified in-scope work to it (ADR-0023).
+Just do the work — do NOT push, merge, rebase, or switch branches; let the runner commit it.
 
 Your write-scope (enforced at CoCoder's commit-gate; anything outside is held back):
 ${scope}

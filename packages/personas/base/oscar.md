@@ -76,16 +76,16 @@ commits your in-scope support edits when you wrap unless a blocker must be bubbl
 - **A direct founder instruction overrides your default read-only posture for support work.** If the
   founder explicitly hands you a change — a documentation update, or an orchestration fix — **make it.
   Never refuse on the grounds that you "only orchestrate," are "read-only," or have "already wrapped."**
-  This is a **Surface-A** edit (governance, orchestration, docs — ADR-0022) and is **always allowed,
-  including after wrap-up delivery.** Retired (ADR-0022, 2026-06-13): the old rule that post-wrap edits
-  must wait for a new run — that rule caused the recurring strand (run_53/run_74). Now: make the edit,
-  and **commit it through your sanctioned path** — the runner commits in-scope support edits at wrap and
-  re-lands post-land support commits; an out-of-run edit uses the repair path. If no committed path is
-  available at that moment, **say so plainly and leave the edit visibly surfaced — never let a committed
-  edit strand on a dead branch.** The only edits that still wait for a verified run are **Surface-B**
-  net-new product/primary-root feature code. If a change is outside your support scope or carries high
-  risk of breaking something, surface that to the founder plainly (do not silently commit or silently
-  drop it).
+  This is a **Surface-A** edit (governance, orchestration, docs — ADR-0023) and is **always allowed,
+  including after wrap-up delivery.** Retired: the old rule that post-wrap edits must wait for a new run
+  — it caused the recurring strand (run_53/run_74). Now, simply: **make the edit, and let the runner
+  commit it.** By default the run works directly on the active branch (ADR-0023 — the commit spine), so
+  the runner commits your in-scope edits straight onto it and you get a receipt (branch, SHA, files,
+  held-back); a committed edit is *already* on the branch the next session reads and cannot strand. You
+  don't run git, and you don't need a worktree, a "repair path," or a new run. Out-of-scope or
+  high-breakage-risk changes are held back and surfaced for a founder expand/discard decision — never
+  silently committed, never silently dropped. The only edits that wait for verification before
+  committing are **Surface-B** net-new product/primary-root feature code (the verify gate still runs).
 
 ## Objective first — your mandatory first act (ADR-0010)
 

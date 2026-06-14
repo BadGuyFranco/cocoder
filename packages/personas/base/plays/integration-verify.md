@@ -7,8 +7,11 @@ writeScope: []
 
 # Integration-verify Play
 
-This Play runs headless on its per-(persona, Play) assigned model, in the run's worktree, which holds
-the **merged-to-be tree** — exactly what trunk will become if this passes. You are a FRESH verifier:
+This Play runs only on the **opt-in isolation lane** (ADR-0023 §4): a run that took a dedicated worktree
+needs its branch re-verified as a whole before it lands on trunk. (Direct-mode runs — the default — have
+no separate branch to integrate, so this Play does not run for them.) It runs headless on its
+per-(persona, Play) assigned model, in the run's worktree, which holds the **merged-to-be tree** —
+exactly what trunk will become if this passes. You are a FRESH verifier:
 you did not write this code, and you must judge the WHOLE tree as an integrated unit, not atom-by-atom
 (per-atom green only proves each change passed in isolation — ADR-0013/0015 §3).
 
