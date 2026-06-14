@@ -157,7 +157,7 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
 0. `orchestration-operating-model-reset` — **IN FLIGHT (founder-directed, 2026-06-14), runs OUTSIDE the
    CoCoder run machinery** (a direct Opus session — the machinery is what's being reset). The diagnosis
    was confirmed against the code: "commit to the active branch" had drifted into three divergent
-   homes, isolation-per-run ([ADR-0015](./decisions/0015-isolated-working-state-per-run.md)) was the
+   homes, isolation-per-run ([ADR-0015](./zArchive/v2/decisions/0015-isolated-working-state-per-run.md)) was the
    default that stranded work (F14/F17/F19/F20), and `main` had died 351 commits behind. **Target model:
    [ADR-0023 — the workspace commit spine](./decisions/0023-workspace-commit-spine.md)** (direct-to-branch
    by default, isolation opt-in; one commit service for every actor; derived receipts). Founder decisions

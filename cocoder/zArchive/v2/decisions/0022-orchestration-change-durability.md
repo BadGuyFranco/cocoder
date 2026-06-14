@@ -1,6 +1,6 @@
 # ADR-0022 — Orchestration-change durability: broad-by-default access + a terminal landing invariant
 
-> **SUPERSEDED by [ADR-0023](./0023-workspace-commit-spine.md) (2026-06-14) — principles retained.**
+> **SUPERSEDED by [ADR-0023](../../../decisions/0023-workspace-commit-spine.md) (2026-06-14) — principles retained.**
 > Its diagnosis and principles carry forward intact: broad-by-default access (§1), the two-surface
 > boundary (§2), daemon-writes-are-committed (§4), and the derived (not asserted) receipt. What
 > retires is the machinery it built to make the **run-branch funnel total** — the "terminal landing

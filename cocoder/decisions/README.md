@@ -22,13 +22,10 @@ their still-live content was absorbed into [ADR-0019](./0019-multi-root-workspac
 | [0012](./0012-living-base-personas.md) | Living base personas + repo extensions — base ships with the install & propagates; repos layer deltas (amends 0008/0009) | Accepted |
 | [0013](./0013-orchestration-observation.md) | Orchestration + observation: Oscar drives Bob through a multi-atom plan; tiered continuous monitoring (Oscar→Bob, Deb→Oscar, Oz→sessions) with the direct-your-primary rule (refines 0004) | Accepted |
 | [0014](./0014-living-adrs.md) | ADRs are living documents (founder-approved, conflict-audited) | Accepted |
-| [0015](./0015-isolated-working-state-per-run.md) | Isolated working state per run: worktree + branch, verified auto-merge on green | **Superseded → 0023** (isolation now opt-in, not default) |
-| [0016](./0016-deb-scoped-repair-fallback.md) | Deb: the scoped CoCoder repair fallback — live status feed + nudge-request channel + gate-enforced repair mode; base/delta write-scope split (refines 0013) | Accepted |
+| [0016](./0016-deb-scoped-repair-fallback.md) | Deb: the scoped CoCoder repair fallback — live status feed + nudge-request channel + gate-enforced repair mode; base/delta write-scope split (refines 0013; repairs land via the spine, ADR-0023) | Accepted |
 | [0017](./0017-oz-orchestration-persona.md) | Oz orchestration: Oz is a CLI-backed persona in a window, with a bounded tool surface (builds on 0005/0013) | Accepted |
 | [0018](./0018-persona-run-mode-and-sub-agents.md) | Persona run-mode + sub-agents: sub-agents ARE per-persona Play assignments; `mode` honored the slice it lands (refines 0005) | Accepted |
 | [0019](./0019-multi-root-workspaces.md) | Multi-root workspaces: `.code-workspace` files in `local/workspace/`, three root roles, no nesting (absorbs live v1-0007/0006) | Accepted |
-| [0021](./0021-oz-repair-commit-authority.md) | Oz repair: trunk commit authority outside any run — idle-only one-shot repair, governance in-scope, machinery propose-only in v1 | **Superseded → 0023** (Oz is now an ordinary spine caller) |
-| [0022](./0022-orchestration-change-durability.md) | Orchestration-change durability: broad-by-default access + the two-surface boundary + a terminal landing invariant (reconciles 0007, generalizes 0021) | **Superseded → 0023**, principles retained |
 | [0023](./0023-workspace-commit-spine.md) | **The workspace commit spine: direct-to-branch by default, isolation opt-in** — one commit service for all actors; collapses the three divergent commit paths; dissolves the run-branch strand class (supersedes 0015/0021/0022, reconciles 0007) | Accepted |
 
 ## Proposed (founder review owed)
@@ -36,6 +33,21 @@ their still-live content was absorbed into [ADR-0019](./0019-multi-root-workspac
 | ADR | Title | Status |
 |---|---|---|
 | [0020](./0020-primary-root-audit.md) | Primary-root audit: bootstrap + drift as one base Play, top-tier model via play assignment, shipped meta-priorities | Proposed |
+
+## Retired to history (superseded — not in the live tree)
+
+The live tree above carries only **current-truth** decisions. ADRs whose decisions later changed are
+moved to history so none sits in "Accepted" while contradicting reality (founder directive 2026-06-14):
+
+- **0015, 0021, 0022 → superseded by 0023**, retired to
+  [`../zArchive/v2/decisions/`](../zArchive/v2/decisions/README.md). 0015 made isolation the default
+  (the strand surface); 0021 gave Oz a special out-of-run commit path; 0022 built the run-branch landing
+  invariant. ADR-0023 (the commit spine) replaces all three — its principles inherit 0022's
+  broad-by-default/two-surface/derived-receipt; the worktree+merge machinery survives only as 0023's
+  opt-in isolation lane.
+
+Two **merged** ADRs remain in the live tree as one-line redirect signposts (their decisions live wholly
+inside their target, ~70 citations resolve through them): **0009 → 0008 §Extensibility**, **0011 → 0013**.
 
 **Phase-0 architecture Q&A complete — all seams resolved (ADRs 0001–0009).** ADR-0010 (taxonomy &
 authoring) accepted 2026-05-29 after a 6-lens adversarial review. ADR-0011 (orchestrator verify-gate)

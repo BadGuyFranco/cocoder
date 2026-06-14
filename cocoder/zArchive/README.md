@@ -8,6 +8,7 @@ Consolidated in the 2026-06-10 reorg — every archived artifact lives here, now
 |---|---|
 | `source/` | Reference snapshot of the v1 engine (see below) |
 | `v1/decisions/` | The frozen v1 ADR tree (superseded; live tree = [`../decisions/`](../decisions/README.md)) |
+| `v2/decisions/` | Retired **v2** ADRs superseded by the live tree (0015/0021/0022 → ADR-0023, 2026-06-14) — [README](./v2/decisions/README.md) |
 | `v1/` (plans, profiles, routes, priority-boundaries, personas/…) | Dead v1 governance machinery (routes/profiles/boundaries = the old routing model; playbooks/prompts = pre-Plays persona artifacts) |
 | `priorities/` | Completed + frozen priorities (v1 folder-priorities AND archived v2 stubs) |
 | `rebuild-notes/` | Rebuild-era process notes (charter narrative, oz-thin design, carry-forward inputs) whose outcomes live in the ADRs |

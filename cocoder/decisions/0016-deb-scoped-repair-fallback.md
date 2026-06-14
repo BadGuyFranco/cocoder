@@ -1,11 +1,20 @@
 # ADR-0016 — Deb: the CoCoder repair fallback
 
+> **Reconciliation note ([ADR-0023](./0023-workspace-commit-spine.md), 2026-06-14).** Deb's repair model
+> (live status feed, Oscar-only nudge channel, gate-enforced repair/ticket, base/delta scope) stays
+> live. What changed: a Deb repair or ticket is gate-committed **through the one commit spine straight
+> onto the active branch by default** (ADR-0023) — not onto a separate run branch the founder must land.
+> Body references below to "the run's worktree" / "drafted on the run branch for the founder" describe
+> the **opt-in isolation lane** only; in the default (direct) mode Deb edits the active checkout and the
+> commit lands in place. It still "does not rescue the run" — a faulted run still fails; the repair is a
+> distinct, reviewable commit.
+
 **Status:** Accepted (founder + Claude, 2026-06-02)
 **Seam:** the debugger tier — Deb's authority, visibility, and write scope
 **Refines:** [0013](./0013-orchestration-observation.md) (tier-2 Deb: was observe-and-triage; now observe,
 diagnose, nudge, **and repair within a fence**) · **Builds on:** [0007](./0007-write-scope-enforcement.md)
 (commit-gate enforcement), [0012](./0012-living-base-personas.md) (base/delta split), [0003](./0003-data-model-hybrid.md)
-(single writer), [0015](./0015-isolated-working-state-per-run.md) (the run's worktree)
+(single writer), [0015](../zArchive/v2/decisions/0015-isolated-working-state-per-run.md) (the run's worktree)
 
 ## Context
 

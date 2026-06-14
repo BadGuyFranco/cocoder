@@ -1,6 +1,6 @@
 # ADR-0015 — Isolated working state per run (worktree + branch), auto-merge on verified green
 
-> **SUPERSEDED by [ADR-0023](./0023-workspace-commit-spine.md) (2026-06-14).** This ADR made an
+> **SUPERSEDED by [ADR-0023](../../../decisions/0023-workspace-commit-spine.md) (2026-06-14).** This ADR made an
 > isolated worktree + run branch the **default** for every run — the run branch that became "the seam
 > every strand crosses" (F14/F17/F19/F20). ADR-0023 flips the default to direct-to-active-branch and
 > keeps the worktree as an **opt-in sandbox** for risky/large/parallel work. The verified-merge,

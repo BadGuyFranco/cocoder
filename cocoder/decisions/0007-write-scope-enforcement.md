@@ -11,7 +11,7 @@ v1's priority-boundaries were heavy and fragmented (F4); F11 showed a bypassable
 to be a guarantee. We need the deterministic agent→reality boundary (charter D3) without an OS
 sandbox.
 
-> **Reconciliation note (2026-06-13, [ADR-0022](./0022-orchestration-change-durability.md)).** The
+> **Reconciliation note (2026-06-13, [ADR-0022](../zArchive/v2/decisions/0022-orchestration-change-durability.md)).** The
 > commit gate below stays — it is the deterministic agent→reality boundary, not a restriction to
 > remove. Two clarifications from the broad-by-default principle (ADR-0022 §1, §6): (1) a
 > **founder-directed Surface-A edit** (governance, orchestration, docs, machinery-blocker fix) is

@@ -3,9 +3,9 @@
 **Status:** Accepted (founder, 2026-06-14) — decided in a direct Opus session under the priority
 [`orchestration-operating-model-reset`](../priorities/orchestration-operating-model-reset.md), outside
 CoCoder's own run machinery (the machinery being reset).
-**Supersedes:** [0015](./0015-isolated-working-state-per-run.md) (isolation-per-run was the *default*;
-now opt-in), [0021](./0021-oz-repair-commit-authority.md) (Oz out-of-run trunk authority → just one
-caller of the spine), [0022](./0022-orchestration-change-durability.md) (its **principles are retained**;
+**Supersedes:** [0015](../zArchive/v2/decisions/0015-isolated-working-state-per-run.md) (isolation-per-run was the *default*;
+now opt-in), [0021](../zArchive/v2/decisions/0021-oz-repair-commit-authority.md) (Oz out-of-run trunk authority → just one
+caller of the spine), [0022](../zArchive/v2/decisions/0022-orchestration-change-durability.md) (its **principles are retained**;
 the run-branch strand machinery it built is dissolved — see Conflict audit).
 **Reconciles:** [0007](./0007-write-scope-enforcement.md) (the allow-list + gate-the-commit primitive
 *is* the spine's scope step — unchanged in spirit, relocated).
@@ -31,7 +31,7 @@ merge path, none unified — a direct violation of the charter's D4 ("one concep
    trunk checkout**; idle-only; **no store row, no commit-link, no event** — the most privileged write
    has the weakest receipt.
 
-Every recurring failure traces to one root: **[ADR-0015](./0015-isolated-working-state-per-run.md) made
+Every recurring failure traces to one root: **[ADR-0015](../zArchive/v2/decisions/0015-isolated-working-state-per-run.md) made
 an isolated worktree + run branch the DEFAULT for every run.** That run branch is, in ADR-0022's own
 words, "the seam every strand crosses." F14 (post-land strand), F17 (escalate strand), F19 (wrap
 asserted success before the branch landed), F20 (orchestrator vanished mid-handoff) are all the same
@@ -41,7 +41,7 @@ escalate→`pending-landing`, ADR-0021 Oz repair, ADR-0022 a "terminal landing i
 questioning the default that creates the funnel. Meanwhile 23 worktrees orphaned (GC blocks on
 held-back/escalated state that keeps firing), and `main` died because nothing ever converged to it.
 
-[ADR-0022](./0022-orchestration-change-durability.md) got the *principles* right — broad-by-default
+[ADR-0022](../zArchive/v2/decisions/0022-orchestration-change-durability.md) got the *principles* right — broad-by-default
 access, the two-surface boundary, daemon writes must commit, receipts derived not asserted — but kept
 isolation-by-default and tried to make the run-branch funnel **total**. Totalizing a leaky default is
 still enumeration. The structural fix is to **remove the default that strands**.

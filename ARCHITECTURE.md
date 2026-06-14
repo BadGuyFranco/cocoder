@@ -82,7 +82,7 @@ quarantine (`restoreToHead`) can only ever touch the one actor's own uncommitted
 drift:** with no run branch in the default path, there is no off-trunk place for committed work to
 strand — the F14/F17/F19/F20 strand class is dissolved structurally. The only non-landed state is an
 out-of-scope **held-back** change, surfaced as a first-class Oz "Awaiting you" item with land/discard.
-Isolated worktrees ([ADR-0015](./cocoder/decisions/0015-isolated-working-state-per-run.md), now opt-in)
+Isolated worktrees ([ADR-0015](./cocoder/zArchive/v2/decisions/0015-isolated-working-state-per-run.md), now opt-in)
 remain available for the cases that genuinely need them.
 
 ## Why Git Will Not Destroy User Preferences

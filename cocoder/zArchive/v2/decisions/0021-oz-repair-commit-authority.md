@@ -1,6 +1,6 @@
 # ADR-0021 — Oz repair: trunk commit authority outside any run
 
-> **SUPERSEDED by [ADR-0023](./0023-workspace-commit-spine.md) (2026-06-14).** Oz's special
+> **SUPERSEDED by [ADR-0023](../../../decisions/0023-workspace-commit-spine.md) (2026-06-14).** Oz's special
 > idle-only, narrow-scope, receipt-less out-of-run trunk-commit path is dissolved: under the one
 > commit spine, Oz is an ordinary caller, gated by the same scope step, serialized by the same
 > single-writer lock, with the same durable receipt as every other actor. Kept as history.
