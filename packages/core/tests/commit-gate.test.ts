@@ -8,6 +8,8 @@ import {
   partitionByScope,
   runCommitGate,
   gateCommitRepair,
+  commitFiles,
+  commitScoped,
 } from '../src/index.js'
 
 describe('glob matcher', () => {
@@ -200,5 +202,44 @@ describe('gateCommitRepair', () => {
       heldBackFiles: [],
     })
     expect(commits).toEqual([])
+  })
+})
+
+describe('workspace commit spine (ADR-0023 §1)', () => {
+  test('commitFiles commits a controlled list with a uniform receipt + author', async () => {
+    const { git, commits } = makeFakeGit({ changed: [], headBefore: 'h0' })
+    const author = { name: 'cocoder-governance', email: 'governance@cocoder.local' }
+    const r = await commitFiles(git, '/repo', ['cocoder/priorities/x.md'], 'governance: create x', author)
+    expect(r).toEqual({ committed: true, committedSha: 'sha-after-1', committedFiles: ['cocoder/priorities/x.md'], heldBack: [], error: null })
+    expect(commits).toEqual([{ files: ['cocoder/priorities/x.md'], message: 'governance: create x' }])
+  })
+
+  test('commitFiles on an empty list is a no-op, not an empty commit', async () => {
+    const { git, commits } = makeFakeGit({ changed: [], headBefore: 'h0' })
+    expect(await commitFiles(git, '/repo', [], 'noop')).toMatchObject({ committed: false, committedSha: null, error: null })
+    expect(commits).toEqual([])
+  })
+
+  test('commitFiles NEVER swallows a failure — it surfaces committed:false + error', async () => {
+    const { git } = makeFakeGit({ changed: [], headBefore: 'h0' })
+    const failing: Git = { ...git, async addAndCommit() { throw new Error('index.lock held') } }
+    const r = await commitFiles(failing, '/repo', ['cocoder/x.md'], 'governance: x')
+    expect(r.committed).toBe(false)
+    expect(r.committedSha).toBeNull()
+    expect(r.error).toBe('index.lock held')
+  })
+
+  test('commitScoped commits in-scope, holds out-of-scope back, uniform receipt', async () => {
+    const { git, commits } = makeFakeGit({ changed: ['cocoder/PLAYBOOK.md', 'packages/core/src/leak.ts'], headBefore: 'h0' })
+    const r = await commitScoped(git, '/repo', ['cocoder/**'], 'oz-repair')
+    expect(r).toEqual({ committed: true, committedSha: 'sha-after-1', committedFiles: ['cocoder/PLAYBOOK.md'], heldBack: ['packages/core/src/leak.ts'], error: null })
+    expect(commits).toEqual([{ files: ['cocoder/PLAYBOOK.md'], message: 'oz-repair' }])
+  })
+
+  test('commitScoped never swallows a failure — held-back stays intact for recovery', async () => {
+    const { git } = makeFakeGit({ changed: ['cocoder/x.md', 'packages/y.ts'], headBefore: 'h0' })
+    const failing: Git = { ...git, async addAndCommit() { throw new Error('disk full') } }
+    const r = await commitScoped(failing, '/repo', ['cocoder/**'], 'oz-repair')
+    expect(r).toMatchObject({ committed: false, committedSha: null, heldBack: ['packages/y.ts'], error: 'disk full' })
   })
 })

@@ -699,11 +699,14 @@ export async function requestOzRepair(ctx: OzContext, input: { readonly workspac
   }
 
   const scope = ozRepairScope(workspace.id, message, input.rationale)
+  // Through the one commit spine (ADR-0023 §1), attributed to a distinct `oz-repair` identity for
+  // auditability (mirrors the `cocoder-governance` author on daemon governance commits).
   const gate = await gateCommitRepair({
     git: ctx.git,
     cwd: ctx.cocoderHome,
     scope,
     message: 'oz-repair',
+    author: { name: 'oz-repair', email: 'oz-repair@cocoder.local' },
   })
   const body = {
     ok: turn.exitCode === 0,

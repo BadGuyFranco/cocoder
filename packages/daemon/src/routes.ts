@@ -4,7 +4,7 @@
 import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { isAbsolute, join, relative, resolve } from 'node:path'
-import { listEffectivePersonas, loadAssignments, loadPriority, parseFrontmatter, truncate, type PersonaAssignment, type PersonaSources, type Priority } from '@cocoder/core'
+import { commitFiles, listEffectivePersonas, loadAssignments, loadPriority, parseFrontmatter, truncate, type CommitReceipt, type PersonaAssignment, type PersonaSources, type Priority } from '@cocoder/core'
 import { basePersonasDir, basePrioritiesDir } from '@cocoder/personas'
 import type { OzContext, OzEvent } from './context.js'
 import { sendJson } from './server.js'
@@ -233,19 +233,28 @@ async function directoryGate(path: string): Promise<string | null> {
   return info.isDirectory() ? null : `primary root does not exist or is not a directory: ${path}`
 }
 
-async function commitGovernance(ctx: OzContext, repoPath: string, files: readonly string[], message: string): Promise<string | null> {
-  if (files.length === 0) return null
-  try {
-    return await ctx.git.addAndCommit(repoPath, files, message, COCODER_GOVERNANCE)
-  } catch (err) {
-    await appendAudit(ctx.cocoderHome, {
-      action: 'governance-commit-failed',
-      repoPath,
-      message,
-      reason: err instanceof Error ? err.message : String(err),
-    })
-    return null
+/** Commit a daemon-authored governance file set to the workspace branch through the one commit spine
+ *  (ADR-0023 §1, core `commitFiles`). Authored as `cocoder-governance` for auditability (ADR-0022 §4).
+ *  NEVER swallows: a commit failure is returned in the receipt + audited, and the caller surfaces it to
+ *  the founder (a 502) rather than reporting a false success with the file left uncommitted on disk. */
+async function commitGovernance(ctx: OzContext, repoPath: string, files: readonly string[], message: string): Promise<CommitReceipt> {
+  const receipt = await commitFiles(ctx.git, repoPath, files, message, COCODER_GOVERNANCE)
+  if (receipt.error !== null) {
+    await appendAudit(ctx.cocoderHome, { action: 'governance-commit-failed', repoPath, message, reason: receipt.error })
   }
+  return receipt
+}
+
+/** If a governance commit FAILED (file written but not committed), surface it truthfully and tell the
+ *  caller to stop (ADR-0023 §1/§6 — no false success). Returns true when it has already responded. */
+function governanceCommitFailed(res: Parameters<typeof sendJson>[0], receipt: CommitReceipt): boolean {
+  if (receipt.error === null) return false
+  sendJson(res, 502, {
+    error: `the change was written to disk but its commit failed: ${receipt.error}. It is NOT on the branch — retry, or commit it by hand.`,
+    committed: false,
+    committedSha: null,
+  })
+  return true
 }
 
 async function writeIfMissing(path: string, contents: string): Promise<boolean> {
@@ -439,17 +448,20 @@ async function writeAssignments(ctx: OzContext, res: ServerResponse, workspaceId
     return sendJson(res, 400, { error: err instanceof Error ? err.message : String(err) })
   }
   await rename(tmp, target) // atomic on the same filesystem
-  const committedSha = await commitGovernance(ctx, ws.path, [relative(ws.path, target)], `governance: update persona assignments (${workspaceId})`)
-  void appendAudit(ctx.cocoderHome, { action: 'assignments-write', workspaceId })
-  sendJson(res, 200, { ok: true, assignments: loadAssignments(target).personas, committedSha })
+  const receipt = await commitGovernance(ctx, ws.path, [relative(ws.path, target)], `governance: update persona assignments (${workspaceId})`)
+  void appendAudit(ctx.cocoderHome, { action: 'assignments-write', workspaceId, committedSha: receipt.committedSha, committed: receipt.committed })
+  if (governanceCommitFailed(res, receipt)) return
+  sendJson(res, 200, { ok: true, assignments: loadAssignments(target).personas, committedSha: receipt.committedSha })
 }
 
 async function reorderPriorities(ctx: OzContext, res: ServerResponse, workspaceId: string, order: readonly string[]): Promise<void> {
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
   if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
   const written = await writePriorityOrder(prioritiesDir(ws.path), order)
-  const committedSha = await commitGovernance(ctx, ws.path, [relative(ws.path, priorityOrderFile(ws.path))], `governance: reorder priorities (${workspaceId})`)
-  sendJson(res, 200, { order: written, committedSha })
+  const receipt = await commitGovernance(ctx, ws.path, [relative(ws.path, priorityOrderFile(ws.path))], `governance: reorder priorities (${workspaceId})`)
+  void appendAudit(ctx.cocoderHome, { action: 'priority-reorder', workspaceId, committedSha: receipt.committedSha, committed: receipt.committed })
+  if (governanceCommitFailed(res, receipt)) return
+  sendJson(res, 200, { order: written, committedSha: receipt.committedSha })
 }
 
 async function createPriority(ctx: OzContext, res: ServerResponse, workspaceId: string, input: CreatePriorityInput): Promise<void> {
@@ -476,9 +488,10 @@ async function createPriority(ctx: OzContext, res: ServerResponse, workspaceId: 
     const priority = loadPriority(dir, input.id)
     validateCreatedPriority(markdown, priority, input)
     await rm(tmpDir, { recursive: true, force: true })
-    const committedSha = await commitGovernance(ctx, ws.path, [relative(ws.path, target)], `governance: create priority ${input.id}`)
-    void appendAudit(ctx.cocoderHome, { action: 'priority-create', workspaceId, priorityId: input.id })
-    sendJson(res, 201, { ok: true, priority, committedSha })
+    const receipt = await commitGovernance(ctx, ws.path, [relative(ws.path, target)], `governance: create priority ${input.id}`)
+    void appendAudit(ctx.cocoderHome, { action: 'priority-create', workspaceId, priorityId: input.id, committedSha: receipt.committedSha, committed: receipt.committed })
+    if (governanceCommitFailed(res, receipt)) return
+    sendJson(res, 201, { ok: true, priority, committedSha: receipt.committedSha })
   } catch (err) {
     await rm(tmpDir, { recursive: true, force: true })
     await rm(target, { force: true })
@@ -549,14 +562,17 @@ async function createWorkspace(ctx: OzContext, res: ServerResponse, body: unknow
   } catch (err) {
     return sendJson(res, 400, { error: err instanceof Error ? err.message : String(err) })
   }
-  const committedSha = await commitGovernance(ctx, primaryRoot, scaffolded.map((path) => relative(primaryRoot, path)), `governance: scaffold workspace governance (${id})`)
+  // The workspace registry write below is install-local and proceeds regardless; if the governance
+  // commit failed we report it truthfully in the receipt (never as a silent success) rather than bail
+  // mid-scaffold and leave a half-created workspace.
+  const receipt = await commitGovernance(ctx, primaryRoot, scaffolded.map((path) => relative(primaryRoot, path)), `governance: scaffold workspace governance (${id})`)
   await mkdir(dir, { recursive: true })
   const tmp = join(dir, `.${id}.${process.pid}.${Date.now()}.tmp`)
   await writeFile(tmp, `${JSON.stringify({ folders, settings: {} }, null, 2)}\n`)
   await rename(tmp, target)
-  void appendAudit(ctx.cocoderHome, { action: 'workspace-create', workspaceId: id, legacyHidden })
+  void appendAudit(ctx.cocoderHome, { action: 'workspace-create', workspaceId: id, legacyHidden, governanceCommittedSha: receipt.committedSha, governanceCommitted: receipt.committed })
   const workspace = await findWorkspace(ctx.cocoderHome, id)
-  sendJson(res, 201, { ok: true, workspace, legacyHidden, governanceCommittedSha: committedSha })
+  sendJson(res, 201, { ok: true, workspace, legacyHidden, governanceCommittedSha: receipt.committedSha, governanceCommitted: receipt.committed, ...(receipt.error ? { governanceCommitError: receipt.error } : {}) })
 }
 
 async function deleteWorkspace(ctx: OzContext, res: ServerResponse, workspaceId: string): Promise<void> {
