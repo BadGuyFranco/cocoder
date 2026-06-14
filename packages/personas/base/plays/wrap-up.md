@@ -51,8 +51,11 @@ say "kill" / "tear down" afterward.
      who does it and the evidence or decision it should produce.
    - `Next Priority To Run` — the recommended next priority, or this same priority if it should
      continue.
-   - `Committed` — acknowledge whether everything this session did is committed; if anything is held
-     back, name it plainly.
+   - `Committed` — state plainly **what you committed this session** (the atoms/support edits). Do NOT
+     assert whether it *landed* on trunk or that "nothing is held back" — you wrap **before** the
+     whole-tree integration verify runs, so you cannot know (F19). CoCoder delivers the **authoritative
+     landing outcome** (landed / escalated + recovery / held-back) right after this wrap; that is the
+     source of truth, not your prediction. Describe only what you did, never the landing result.
    - `Archive Estimate` — how close this priority is to archive and the remaining proof/gap.
    - `Founder Options` — state that the founder can ask questions, request a priority update, or say
      `kill` / `tear down`; teardown performs one final safety pass and then closes the run's Oscar,

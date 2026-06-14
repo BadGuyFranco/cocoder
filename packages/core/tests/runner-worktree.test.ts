@@ -470,6 +470,33 @@ describe('runRun worktree isolation + VERIFIED auto-merge (ADR-0015, live git)',
     expect(store.listEvents(result.runId).some((e) => e.type === 'integration-escalated')).toBe(true)
   })
 
+  // F19: the founder-facing landing outcome is DERIVED from settled state AFTER integration — never the
+  // wrap's pre-integration prediction. An escalated run must report NOT-LANDED + the blocker + recovery.
+  test('escalation delivers an authoritative NOT-LANDED outcome naming the blocker + recovery (F19)', async () => {
+    const { result, store } = await runScenario('{"verdict":"fail","reason":"a test is red"}')
+
+    expect(result.status).toBe('pending-landing')
+    const outcome = store.listEvents(result.runId).find((e) => e.type === 'landing-outcome')
+    expect(outcome).toBeDefined()
+    expect(outcome!.data).toMatchObject({ landed: false, status: 'pending-landing', integrationStatus: 'escalated' })
+    const text = (outcome!.data as { outcome: string }).outcome
+    expect(text).toContain('NOT LANDED')
+    expect(text).toContain('a test is red') // the actual blocker, surfaced
+    expect(text).toContain(`POST /runs/${result.runId}/resolve`) // a runnable recovery, not just "it failed"
+  })
+
+  // F19: a clean run reports LANDED truthfully (the wrap can no longer claim landing — the runner does).
+  test('a verified run delivers an authoritative LANDED outcome with the merge sha (F19)', async () => {
+    const { result, store } = await runScenario('{"verdict":"pass","reason":"tree green"}')
+
+    expect(result.status).toBe('completed')
+    const outcome = store.listEvents(result.runId).find((e) => e.type === 'landing-outcome')
+    expect(outcome).toBeDefined()
+    expect(outcome!.data).toMatchObject({ landed: true, status: 'completed', integrationStatus: 'merged' })
+    expect((outcome!.data as { outcome: string }).outcome).toContain('LANDED on trunk')
+    expect((outcome!.data as { mergeSha: string | null }).mergeSha).toBeTruthy()
+  })
+
   test('an UNPARSEABLE/absent verdict escalates without landing trunk (fail-closed by construction)', async () => {
     const trunkBefore = await g(home, ['rev-parse', 'HEAD'])
     const { result, store } = await runScenario('the verifier crashed and printed only this') // no JSON verdict

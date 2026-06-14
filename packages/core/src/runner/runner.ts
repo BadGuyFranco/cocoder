@@ -37,6 +37,7 @@ import {
   buildBuilderDispatch,
   buildBuilderStandbyPrompt,
   buildDebTriageDispatch,
+  buildLandingOutcome,
   buildNextOrWrapDispatch,
   buildOrchestratorPrompt,
   buildVerifyDispatch,
@@ -743,7 +744,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     readonly escalated?: string
     readonly failed?: string
     readonly mergeConflictEscalated?: string
-  }): Promise<{ readonly status: 'merged' | 'escalated'; readonly mergeSha: string | null }> => {
+  }): Promise<{ readonly status: 'merged' | 'escalated'; readonly mergeSha: string | null; readonly reason: string | null }> => {
     const integratedEvent = events?.integrated ?? 'integrated'
     const escalatedEvent = events?.escalated ?? 'integration-escalated'
     const failedEvent = events?.failed ?? 'integration-failed'
@@ -753,12 +754,14 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     // run stuck at 'verifying'/'resolving' (which no surface reconciles). `escalate()` is the single
     // not-landed exit; the catch is fail-CLOSED (aborts any in-progress merge + escalates on any throw).
     let escalated = false
+    let escalateReason: string | null = null
     let landedSha: string | null = null
     let unlandedCommits: readonly string[] = []
     const escalate = (type: string, data: Record<string, unknown>): void => {
       store.setIntegrationStatus(run.id, 'escalated')
       store.recordEvent({ runId: run.id, type, data })
       recordStrandedCommits(unlandedCommits, type)
+      if (typeof data.reason === 'string') escalateReason = data.reason
       escalated = true
     }
     try {
@@ -821,9 +824,10 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       store.recordEvent({ runId: run.id, type: failedEvent, data: { runBranch, reason: err instanceof Error ? err.message : String(err) } })
       recordStrandedCommits(unlandedCommits, failedEvent)
       log(`integration failed for ${runBranch}: ${err instanceof Error ? err.message : String(err)}`)
+      escalateReason = err instanceof Error ? err.message : String(err)
       escalated = true
     }
-    return { status: escalated ? 'escalated' : 'merged', mergeSha: landedSha }
+    return { status: escalated ? 'escalated' : 'merged', mergeSha: landedSha, reason: escalateReason }
   }
 
   const quarantineAtom = async (atomIndex: number, headBefore: string, selfCommitEvent: string): Promise<void> => {
@@ -1155,9 +1159,11 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   // divergence (or no/garbled verdict) is aborted + escalated — never guessed. Held-back out-of-scope
   // files do not block landing already committed branch work; they remain surfaced for scope resolution.
   let mergeSha: string | null = null
+  let integrationReason: string | null = null
   if (status === 'completed' || committedShas.length > 0 || selfCommitted) {
     const integration = await landRunBranch()
     mergeSha = integration.mergeSha
+    integrationReason = integration.reason
     if (integration.status === 'merged') {
       const gate = await commitOscarSupport(await git.headSha(worktreePath))
       if (gate?.committedSha || gate?.selfCommitted) {
@@ -1168,12 +1174,44 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           mergeConflictEscalated: 'post-land-oscar-support-merge-conflict-escalated',
         })
         mergeSha = supportIntegration.mergeSha ?? mergeSha
+        if (supportIntegration.status === 'escalated') integrationReason = supportIntegration.reason ?? integrationReason
       }
     }
   }
   if (store.getRun(run.id)?.integrationStatus === 'escalated') {
     status = 'pending-landing'
     store.setRunStatus(run.id, status)
+  }
+
+  // ── Authoritative landing outcome (F19) ──────────────────────────────────────────────────────────
+  // The founder-facing TRUTH about whether work reached trunk, DERIVED from settled state — not the wrap
+  // model's pre-integration prediction (run_78: the wrap claimed "verified for landing / nothing held
+  // back" while the run escalated + held work back). Delivered AFTER integration so it cannot misreport;
+  // recorded so the run record and the next session read the real result, with recovery if it did not land.
+  {
+    const integ = store.getRun(run.id)?.integrationStatus ?? 'pending'
+    const heldBack = outOfScope.length > 0 ? `Held back (out of scope, NOT committed): ${outOfScope.join(', ')}.` : 'Nothing held back.'
+    const nCommits = committedShas.length
+    let landed: boolean
+    let outcome: string
+    if (status === 'completed' && integ === 'merged') {
+      landed = true
+      outcome = `✅ LANDED on trunk${mergeSha ? ` (merge ${mergeSha.slice(0, 8)})` : ''} — ${nCommits} commit(s) verified and merged. ${heldBack}`
+    } else if (status === 'pending-landing') {
+      landed = false
+      outcome = `⚠️ NOT LANDED — integration escalated${integrationReason ? `: ${integrationReason}` : ''}. The ${nCommits} commit(s) are preserved on branch ${runBranch} (recoverable, NOT lost). Recover with POST /runs/${run.id}/resolve, or fix the blocker and re-launch. ${heldBack}`
+    } else if (status === 'pending-scope-decision') {
+      landed = integ === 'merged'
+      outcome = `${landed ? `Committed work LANDED${mergeSha ? ` (merge ${mergeSha.slice(0, 8)})` : ''}; ` : `Committed work is preserved on branch ${runBranch}; `}out-of-scope changes are HELD BACK awaiting your decision: ${outOfScope.join(', ')}.`
+    } else {
+      landed = false
+      outcome = `Run ended ${status}; integration ${integ}. ${nCommits} commit(s). ${heldBack}`
+    }
+    store.recordEvent({ runId: run.id, type: 'landing-outcome', data: { landed, status, integrationStatus: integ, mergeSha, outOfScope, reason: integrationReason, outcome } })
+    if (pickup && pickup.trim() !== '' && oscarDriver.kind !== 'headless') {
+      await oscarDriver.show().catch(() => {})
+      await oscarDriver.send(buildLandingOutcome(run.id, outcome)).catch(() => {})
+    }
   }
 
   if (status === 'completed' && store.getRun(run.id)?.integrationStatus === 'merged') {

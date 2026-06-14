@@ -330,6 +330,15 @@ teardown, and do not ask for teardown. The founder may ask questions, request a 
 ${brief}`
 }
 
+/** The AUTHORITATIVE landing outcome (F19), delivered AFTER integration so it cannot misreport. The
+ *  narrative wrap is a prediction; this is the verified result — whether work reached trunk, what is
+ *  held back, and how to recover if it did not. Derived from settled run state, never asserted. */
+export function buildLandingOutcome(runId: string, outcome: string): string {
+  return `LANDING OUTCOME for ${runId} — verified by CoCoder after integration. This is the authoritative result (not the wrap's prediction); relay it to the founder plainly:
+
+${outcome}`
+}
+
 /** The builder's LAUNCH prompt: Bob is spawned up front, on standby, and must NOT act until the runner
  *  dispatches an atom. Each atom's task arrives via a directive file; Bob signals completion by printing
  *  a sentinel line the runner's monitor watches for (NOT a done-file — the monitor is the live signal). */
