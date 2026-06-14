@@ -13,7 +13,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "pnpm -r test",
-    "check:topology": "node scripts/check-topology.mjs"
+    "check:topology": "node scripts/check-topology.mjs",
+    "proof:queue": "node scripts/proof-priorities-queue.mjs"
   },
   "devDependencies": {
     "@cocoder/cli": "workspace:*",
