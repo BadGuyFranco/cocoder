@@ -159,7 +159,14 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   run; Quinn drives the Oz GUI) are opportunistic, not blocking.
 
 **Active (launchable; recommended sequence — the `priorities/` directory is the live index):**
-1. `orchestration-operating-model-reset` — **CODE-COMPLETE 2026-06-14** (founder-directed; ran OUTSIDE the
+1. `oz-dashboard-priorities-pane` — **NEXT TO RUN (founder defect, 2026-06-14).** The dashboard's left
+   column shows runs, but design-ref says it must be the **drag-reorderable priorities queue** (runs nest
+   inside). A prior audit (`packages/ui/design-audit-priorities-pane.md`, run_64) + rebuild (run_65)
+   exist, so reproduce → diff vs `design-ref/` → fix the root cause (regression / data-seam / first-run
+   fallthrough). Doubles as the **first live run on the post-reset machinery** — watch it commit straight
+   to `main` (ADR-0023). `packages/ui` first; minimal daemon model only if priorities/`order.json` aren't
+   reaching the renderer; no new endpoints.
+2. `orchestration-operating-model-reset` — **CODE-COMPLETE 2026-06-14** (founder-directed; ran OUTSIDE the
    run machinery, which was what it reset). The operating model is now
    [ADR-0023 — the workspace commit spine](./decisions/0023-workspace-commit-spine.md): direct-to-branch by
    default, isolation opt-in, one commit service for every actor, derived receipts — dissolving the
@@ -167,12 +174,12 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    C `724a3d1` · D `bce0140` · F `32e4795` · E `751d920`); proof `node scripts/proof-direct-spine.mjs`
    (10/10); 626 tests green; `main` promoted to canonical trunk + pushed. **Archive-candidate** pending an
    optional live founder conversation on the running daemon.
-2. `full-oz-dashboard` — the v1-designed control plane (chat, oversight, settings, drag-reorder).
+3. `full-oz-dashboard` — the v1-designed control plane (chat, oversight, settings, drag-reorder).
    **CODE-COMPLETE; founder live-proof ladder owed** (restart → launch → Oz-chat exercise → live
    headless Oscar/Bob runs → full founder Q/A pass + punch-list). Do NOT relaunch as a build run (F18);
    open an atom only on a concrete live defect. Mechanical proof: `node scripts/proof-oz-surfaces.mjs`.
    The live pass folds in a post-reset surface check (ADR-0023 changed the resolve / Awaiting-you semantics).
-3. `new-primary-root` — the primary-root audit: bootstrap a new root's `cocoder/` + propose-only drift
+4. `new-primary-root` — the primary-root audit: bootstrap a new root's `cocoder/` + propose-only drift
    re-audit, one base Play pinned to a top-tier model. **Now absorbs `workspace-onboarding`** (one
    bootstrap/audit/onboarding path, not two). Design = **ADR-0020 (Proposed)** — founder acceptance gates
    any build. The concrete form of Phase 5 ("first external repo").
