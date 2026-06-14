@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-14 — **oz-dashboard-priorities-pane run_81: left column is the priorities queue, not runs — fixed + test-pinned + live-proof harness**
+
+**Persona:** Oscar + Bob (3 atoms, all first-try passes) | **Priority:** [oz-dashboard-priorities-pane](./priorities/oz-dashboard-priorities-pane.md) | **Play:** multi-atom build (diagnose root cause → regression pin → make verification runnable)
+**Outcomes:**
+- **Atom 0 (`158d208`): root cause fixed.** The founder-reported "runs down the side" was an **off-design `AwaitingYouPanel`** rendered *above* `PrioritiesPanel` in column 1 of `packages/ui/app/sections/dashboard/Dashboard.tsx`, listing `blocked`/`not-landed` runs as a primary list. design-ref's column 1 is `PrioritiesPanel` directly (no awaiting panel; attention runs surface via the drawer + Oz chat). Removed the panel + its now-dead `awaitingFounderRuns` export. Oscar verified against design-ref (`dashboard.jsx` `380px 460px 1fr`, no awaiting concept), ui typecheck clean, full UI suite green.
+- **Atom 1 (`52b4587`): regression pin.** Extended `dashboard-awaiting.test.tsx` 'Dashboard layout' with a column-1-scoped test: priorities header + count, priority ordering, ad-hoc pinned first, and `Awaiting you`/run-title rows ABSENT from column 1, drawer still opens on click. Oscar independently reproduced the regression (re-injected a runs panel → test FAILED at the `Awaiting you` assertion) then reverted — confirmed non-vacuous guard. UI suite 107/107, typecheck clean.
+- **Atom 2 (verified, HELD BACK — out of run write-scope):** `scripts/proof-priorities-queue.mjs` + `pnpm proof:queue` wiring. Headless one-command proof that exercises the **real** daemon readers (`readPriorities`/`findWorkspace`/`openRunStore`) + UI adapters (`adaptPriorities`/`adaptRuns`) — no daemon/app lifecycle. On live data: exit 0, Ad-hoc pinned + 5 ordered priorities, **0 runs as primary items**; reports the source paths (so legacy-registry fallback is visible). Two built-in negative injections (`runs`/`misorder`) both fail loudly non-zero. **Held back** because `scripts/**` + `package.json` fell outside this run's declared write-scope (boundary was `packages/ui` + minimal `packages/daemon`); needs a founder expand-or-discard decision — verify-2 already passed.
+- **Live finding:** this install has **no `cocoder/priorities/order.json`** — the queue is on daemon fallback order, so the Objective's "drag-to-reorder *persists*" clause is unverified live until a reorder is actually saved.
+**Next:** Founder — reply `expand scope` to commit the verified `scripts/proof-priorities-queue.mjs` + `package.json` harness (recommended; additive, low-risk, it's your one-command live check), or `discard` to drop it. The core defect fix (atoms 0+1) is committed and test-pinned regardless.
+
 ## 2026-06-13 — **priority-audit run_80: priority-set audit table produced + verified (read-only)**
 
 **Persona:** Oscar + Bob (1 atom, first-try pass) | **Priority:** [priority-audit](./priorities/priority-audit.md) | **Play:** read-and-recommend audit
