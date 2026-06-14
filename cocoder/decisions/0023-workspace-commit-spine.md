@@ -150,17 +150,27 @@ again tell the founder "verified for landing / nothing held back" on work that d
 - **0013 — retained.** The verify gate is how §3 protects code; it runs in place (default) or inside the
   opt-in worktree.
 
-## Implementation status
+## Implementation status — code-complete 2026-06-14 (all six phases landed on `main`)
 
-- **Phase A (this ADR + governance reconciliation):** landed 2026-06-14 (`e4a9172`).
-- **Phase B (the core spine + runner default flip to direct-to-branch):** landed 2026-06-14 (`9dc1c4d`)
-  — direct mode is the default; isolation is opt-in; the scoped dirty-guard restores quarantine
-  soundness; live-git proof in `runner-direct.test.ts`. core 265 · daemon 200 green.
-- **Phase C (daemon/Oz routed through the spine; first-class held-back surface):** in progress.
-- **Phase D (persona/Play prompts aligned to the built spine):** owed.
-- **Phase F (consolidate the ADR tree — live = current-truth only):** owed. The Phase-A supersede
-  banners were a first pass; F retires wholly-superseded/merged ADRs OUT of the live tree into history
-  and fixes stale survivors, so the live `decisions/` set contains only current-truth decisions (no
-  ADR may sit in "Accepted" while contradicting reality). Runs after D, before E's final proof.
-- **Phase E (live-git verification + orphan-worktree GC):** owed — the fresh-session proof is the
-  archive gate, per the priority's "Verified when."
+- **Phase A (this ADR + governance reconciliation):** landed (`e4a9172`).
+- **Phase B (core spine + runner default flip to direct-to-branch):** landed (`9dc1c4d`) — direct mode
+  is the default; isolation is opt-in; the scoped dirty-guard restores quarantine soundness; live-git
+  proof in `runner-direct.test.ts`.
+- **Phase C (daemon commit paths collapsed into one spine):** landed (`724a3d1`) — `commitFiles` /
+  `commitScoped` + a uniform `CommitReceipt`; the `commitGovernance` swallowed-failure bug is gone
+  (502 + reason on failure); `gateCommitRepair` is a thin adapter over the spine; repair attributed to
+  an `oz-repair` author.
+- **Phase D (persona/Play prompts aligned):** landed (`bce0140`) — the over-promise lines ("repair path
+  Oscar doesn't own", "re-lands post-land", "always committable between runs") removed; runtime agent
+  prompts are mode-correct (no false "OWN worktree / auto-merge to trunk").
+- **Phase F (ADR tree consolidated):** landed (`32e4795`) — 0015/0021/0022 retired to
+  `../zArchive/v2/decisions/`; the live `decisions/` set is current-truth only; survivors reconciled.
+- **Phase E (verification):** landed (`751d920`) — `node scripts/proof-direct-spine.mjs` is the archive
+  proof (10/10 green); full monorepo 626 tests green; failure-catalog records the strand class as
+  structurally dissolved.
+
+**Remaining (not code):** (1) an optional live founder conversation on the running daemon — same code
+path the tests exercise; (2) a founder inspect/discard decision on **11 historical pre-reset run
+branches** that still carry un-landed commits (`git for-each-ref refs/heads/cocoder/`) — left untouched
+because ADR-0007/0023 forbid silent discard. The push of `main` to the public `origin` is a separate,
+founder-approved step.

@@ -9,15 +9,20 @@ title: Reset CoCoder's orchestration operating model around durable founder-dire
 > orchestration machinery is part of what is being evaluated, so do not depend on a CoCoder run to make
 > or land these changes.
 >
-> **In flight (2026-06-14).** Diagnosis evaluated and confirmed against the code; founder decisions taken
-> (direct-to-branch by default, isolation opt-in, aggressive ADR consolidation, `main` promoted to trunk).
-> Target model is **[ADR-0023 — the workspace commit spine](../decisions/0023-workspace-commit-spine.md)**.
-> Six phases: **A** governance north-star (✅ `e4a9172`) · **B** runner flip to direct-to-branch
-> (✅ `9dc1c4d`) · **C** daemon/Oz routed through the one spine + first-class held-back surface (in
-> progress) · **D** persona/Play prompts aligned to the built machinery · **F** consolidate the ADR
-> tree so the live `decisions/` set is current-truth only (retire superseded/merged ADRs to history,
-> fix stale survivors — founder directive 2026-06-14) · **E** live-git fresh-session proof + GC the
-> orphan worktrees + failure-catalog update (the archive gate). F runs after D, before E.
+> **CODE-COMPLETE (2026-06-14).** Diagnosis confirmed against the code; founder decisions taken
+> (direct-to-branch by default, isolation opt-in, aggressive ADR consolidation, `main` promoted to
+> trunk). Target model **[ADR-0023 — the workspace commit spine](../decisions/0023-workspace-commit-spine.md)**.
+> All six phases landed on `main`: **A** governance north-star (`e4a9172`) · **B** runner flip to
+> direct-to-branch (`9dc1c4d`) · **C** daemon commit paths collapsed into one spine, swallowed-failure
+> bug fixed (`724a3d1`) · **D** persona/Play prompts aligned, over-promises removed (`bce0140`) ·
+> **F** ADR tree consolidated to current-truth-only (`32e4795`) · **E** verification harness +
+> failure-catalog (`751d920`). Archive proof: `node scripts/proof-direct-spine.mjs` (10/10); full
+> monorepo 626 tests green.
+>
+> **Remaining before archive (founder, not code):** (1) optional live founder conversation on the
+> running daemon (same code path the tests exercise); (2) a founder inspect/discard decision on **11
+> historical pre-reset run branches** that still carry un-landed commits (left untouched — ADR-0007/0023
+> forbid silent discard); (3) the `main`→public-`origin` push is a separate founder-approved step.
 
 ## Objective
 
