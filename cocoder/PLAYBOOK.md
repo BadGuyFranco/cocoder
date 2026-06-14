@@ -150,124 +150,45 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
 - `isolated-working-state-per-run` — ADR-0015 run isolation + verified auto-merge + `merge-conflict`
   Play + GC. ✅ all four clauses green via `node scripts/proof-isolation.mjs` (40/40 live-git tests)
   AND exercised on **every run** (run_76/77 cut worktrees → verify → ff-merge; boot-sweep + teardown
-  ran). **Archived 2026-06-13** (founder-confirmed, priority audit) — no live proof owed; runs
-  continuously in production.
+  ran). **Archived 2026-06-13** (founder-confirmed, priority audit) — no live proof owed. (Per ADR-0023,
+  isolation is now opt-in, not the default; this machinery runs only on the opt-in lane.)
+- `personas-and-plays` — one living-base+delta model for **personas AND Plays**; base QA roster (Quinn,
+  Talia) + the no-brainer Plays (`documentation`, `code-review`, `electron-test`) + Play deltas honored
+  at run-launch. ✅ CODE-COMPLETE run_78/79; `node scripts/proof-plays.mjs` 4/4. **Archived 2026-06-14**
+  (priority audit) — buildable work done; the 2 founder-present live proofs (Plays dispatch on a real
+  run; Quinn drives the Oz GUI) are opportunistic, not blocking.
 
 **Active (launchable; recommended sequence — the `priorities/` directory is the live index):**
-0. `orchestration-operating-model-reset` — **IN FLIGHT (founder-directed, 2026-06-14), runs OUTSIDE the
-   CoCoder run machinery** (a direct Opus session — the machinery is what's being reset). The diagnosis
-   was confirmed against the code: "commit to the active branch" had drifted into three divergent
-   homes, isolation-per-run ([ADR-0015](./zArchive/v2/decisions/0015-isolated-working-state-per-run.md)) was the
-   default that stranded work (F14/F17/F19/F20), and `main` had died 351 commits behind. **Target model:
-   [ADR-0023 — the workspace commit spine](./decisions/0023-workspace-commit-spine.md)** (direct-to-branch
-   by default, isolation opt-in; one commit service for every actor; derived receipts). Founder decisions
-   taken; `main` promoted back to canonical trunk. **Phase A** (governance north-star — ADR-0023 +
-   supersede 0015/0021/0022) ✅ `e4a9172`; **Phase B** (runner flip to direct-to-branch, isolation
-   opt-in, scoped dirty-guard; core 265 · daemon 200 green) ✅ `9dc1c4d`; **Phase C** (daemon/Oz routed
-   through the one spine + first-class held-back surface) in progress; **Phase D** (persona/Play prompts
-   aligned to the built machinery); **Phase F** (consolidate the ADR tree to current-truth-only — retire
-   superseded/merged ADRs to history, fix stale survivors; founder directive); **Phase E** (live-git
-   fresh-session proof + GC orphan worktrees + failure-catalog — the archive gate). **This reset takes
-   precedence over the incremental Oz/personas work below** — the dashboard is close, but the back-end
-   orchestration is what this fixes.
-1. `personas-and-plays` — **master priority** (merges the done `base-and-extension-personas` + the folded
-   `no-brainer-plays`): one living-base+extension model for **both personas and Plays**. Completes the
-   base QA roster — **Quinn** (user-simulation) and **Talia** (acceptance QA) — and lands the no-brainer
-   Plays (`documentation`, `code-review`, Quinn's `electron-test`), and extends the ADR-0012 base/delta model
-   to Plays. **CODE-COMPLETE (run_79):** run_78 landed Quinn+Talia, the Plays base/delta mechanism, the three
-   no-brainer base Plays, and the first Play delta (`cocoder/plays/deltas/electron-test.md`); run_79 wired
-   Play deltas into run-launch (`buildRunInput` → `loadEffectivePlay`, `c2a838c`) and added
-   `node scripts/proof-plays.mjs` (4/4 machine-provable clauses PASS). **No buildable atoms left.**
-   **Archive-candidate** pending 2 founder-present live proofs only: documentation/code-review Plays dispatch
-   on assigned CLI/models on a real run; Quinn's `electron-test` delta drives the real Oz dashboard GUI with
-   captured evidence (no CDP/GUI driver — run_78 boundary). Do NOT relaunch as a build run.
-2. `full-oz-dashboard` — the v1-designed control plane, earned in slices; the road to feature-complete.
-   **In progress / continue** — Electron dashboard wired to every existing daemon endpoint; run_54 landed
-   priority reorder (ADR-0010 `order.json`), free-text ad-hoc runs, and run-drawer Resolve; run_55 landed
-   sub-agents over the `plays` map (ADR-0018 stage 1), the "Awaiting you" Dashboard strip, and daemon
-   priority-create (`POST …/priorities`); run_56 landed priority-create UI consumption (surface #8
-   closed end-to-end), ADR-0018 stage 2 (`mode` persists + Play dispatch honors it), and an
-   `ENDPOINTS_OWED.md` truth sweep; run_57 landed the Workspaces daemon model end-to-end (ADR-0019 —
-   registry reader, full CRUD, Workspaces screen live with raw-path fidelity); run_58 landed
-   cooperative `POST /runs/:id/stop` end-to-end (core `stopped` status, daemon endpoint, Oz-chat
-   `stop` verb + dashboard Stop action); run_59 landed Oz-chat SSE end-to-end (`GET /oz/events` +
-   UI consumption debounced into existing refresh paths, polling retained as fallback) and ADR-0018
-   stage 3 for the Oscar session (`OscarDriver` seam, headless honoring via one-shot
-   captured-subprocess invocations, Personas run-mode editor for Oscar only); run_60 landed
-   Oz-as-persona (ADR-0017 slice 1) — oz base persona, daemon-hosted one-shot agent turns,
-   bounded `OZ_TOOL` tool loop over the shared action layer, and the `refresh` tool (one gate
-   rejection + rebuild on the status workspace guard); run_61 landed the Oz `nudge` verb
-   end-to-end (core `oz-nudge.json` channel + daemon tool-only verb, all three atoms first-try);
-   run_62 fixed both founder-directed fresh-workspace bugs from CoPublisher onboarding (Bug A:
-   stale-gate compares bootSha to engine repo not workspace HEAD; Bug B: `POST /workspaces`
-   scaffolds governance zone with portable base template + seeded assignments, create-only-if-missing;
-   F12/F13 recorded); run_63 live-proved Bug A on CoPublisher (launched, built, landed) but exposed
-   F12 instance 3 (worktree dirs under workspace `local/`); CoPublisher reset (founder decision —
-   onboarding re-runs as `backlog/workspace-onboarding.md` after Oz);    run_64 closed the run_63
-   fallout (worktree dirs under ENGINE `local/worktrees/` for every workspace, scaffold
-   `AGENTS.md`/`CLAUDE.md`, priorities-pane design audit at
-   `packages/ui/design-audit-priorities-pane.md`, rebuild Atom B for `not-landed` active-run
-   semantics — four atoms, all first-try);    run_65 **completed the priorities-pane rebuild**
-   (audit atoms A, C, D, E, F — five atoms, all first-try; handoff geometry, bounded renderer
-   detail enrichment, first-run vs empty-queue signal, polish pass, regression gap-fill; ui 108
-   tests — the founder's "priorities pane is all wrong" complaint is closed at code level);
-   run_66 **closed Bob session `mode` honoring end-to-end (ADR-0018 stage 3 for the builder
-   session — the last buildable slice)** — five atoms, all first-try: incremental-output +
-   abort seams on `runHeadlessProcess`, behavior-preserving `BuilderDriver` extraction, headless
-   honoring (fresh one-shot captured-subprocess turn per atom; monitor watches LIVE via capture;
-   loop atoms work headless; stop kills child before quarantine), UI tail (`MODE_HONORED_PERSONAS`
-   = {oscar, bob}; core 238 · daemon 164 · ui 109). **All builder-delegable code on this priority
-   is now landed.**
-   run_67 (2026-06-12, Oscar wrap-up only): drafted **ADR-0021** for Oz repair trunk-commit
-   authority — idle-only one-shot repair over trunk, governance in-scope, machinery propose-only in
-   v1 — and the founder **ACCEPTED it at the same wrap** (restrictions expected to loosen once Oz is
-   in real use — future amendment), plus a previously-unrecorded founder item: a **"Launch Oz
-   dashboard" button** on the lightweight web dashboard. ⚠️ That wrap commit stranded off trunk
-   (authored after the run had landed), so run_68 (0 atoms) wrongly reaffirmed the block.
-   run_69 (2026-06-12, 5 atoms, all first-try): **recovered the stranded acceptance** and built
-   everything it unblocked — the **Oz `repair` verb end-to-end** (idle-only headless turn over the
-   engine trunk, whole-tree diff, `oz-repair` gate-commit, hold-back surfacing, failed turns commit
-   nothing; tool-only through `executeOzCommand`, parser/help frozen), the **launch-dashboard
-   button** (CSRF-gated `POST /oz/dashboard/launch`, detached spawn, honest dev-vs-built probe),
-   and BOTH halves of the strand class (post-land support commits re-land or park visibly; a
-   teardown+boot stranded-commit detector surfaces unlanded branch tips for Resolve — no auto-land).
-   core 242 · daemon 188 · ui 109.
-   run_70 (2026-06-12/13, 0 atoms): Oscar wrap-up only — all run_69 work confirmed on trunk; a
-   post-wrap memory-migration support commit landed (`dfc4df0`). The wrap surfaced ONE live bug
-   that re-opens a small build atom: the founder hit a **blank dashboard** — the run_69 Launch
-   button's probe trusts a partial `out/` left by `electron-vite dev` and loads a missing
-   renderer (**failure-catalog F16**).
-   run_72 (2026-06-13, 1 atom, first-try): **F16 FIXED (`88888d7`) — the last buildable atom.**
-   `resolveDashboardLaunch` now requires BOTH `out/main/main.js` AND `out/renderer/index.html`
-   before choosing built mode, else falls back to dev (regression-pinned). Confirmed live as the
-   cause of the founder's blank-window report (engine `out/` held only main+preload). Daemon 189 ·
-   root typecheck clean. **Code-complete — zero further builder atoms without inventing work.**
-   run_74 (2026-06-13, 0 atoms): Oscar wrap-up — CODE-COMPLETE reaffirmed; zero builder atoms; no
-   code changes; archive blocked on live proofs only.
-   run_75 (2026-06-13, 0 atoms): 5th reaffirmation (after run_68/70/74) — verified on-branch: F16
-   fix present, `ENDPOINTS_OWED.md` truthed, no open tickets belong to this priority; still
-   founder-present live ladder only; no builder atoms without a new live finding.
-   Founder directive: complete Oz first, then workspace onboarding.
-   Next: **founder live proofs only** — restart the daemon onto current trunk first (Restart-daemon
-   button or relaunch; confirm via `/health` bootSha), then launch the dashboard (should render,
-   not blank). Then the live ladder: Oz chat exercise with a real CLI assigned
-   (status/launch/stop/nudge/repair/Refresh), eyeball the rebuilt priorities pane vs design-ref,
-   one live headless-Oscar run + one live headless-Bob run (flip mode in Personas); then a **full
-   founder Q/A pass with an expected punch-list run** (founder instruction, run_66 — restored
-   run_70). Archive-candidate only AFTER the Q/A pass + punch-list, not after the live proofs
-   alone. Mechanical surfaces + the bounded 3-item live remainder: `node scripts/proof-oz-surfaces.mjs`
-   (do NOT relaunch this priority for a reaffirmation wrap — F18).
-3. `new-primary-root` — the primary-root audit: bootstrap a new root's `cocoder/` + propose-only
-   drift re-audit, one base Play pinned to a top-tier model. Design drafted as **ADR-0020 (proposed,
-   2026-06-10)** — founder acceptance gates the build. The concrete form of Phase 5 ("first external repo").
-Plus three always-available meta-priorities: `build-priorities-from-plan` (Oscar drafts priorities from
-the plan/ADRs), `priority-audit` (assess the priority set for staleness → a founder-decision table;
-the pruning sibling), and `adhoc-session` (no named priority — draft one, or run a read-only
-review/research).
+1. `orchestration-operating-model-reset` — **CODE-COMPLETE 2026-06-14** (founder-directed; ran OUTSIDE the
+   run machinery, which was what it reset). The operating model is now
+   [ADR-0023 — the workspace commit spine](./decisions/0023-workspace-commit-spine.md): direct-to-branch by
+   default, isolation opt-in, one commit service for every actor, derived receipts — dissolving the
+   F14/F17/F19/F20 strand class structurally. All six phases on `main` (A `e4a9172` · B `9dc1c4d` ·
+   C `724a3d1` · D `bce0140` · F `32e4795` · E `751d920`); proof `node scripts/proof-direct-spine.mjs`
+   (10/10); 626 tests green; `main` promoted to canonical trunk + pushed. **Archive-candidate** pending an
+   optional live founder conversation on the running daemon.
+2. `full-oz-dashboard` — the v1-designed control plane (chat, oversight, settings, drag-reorder).
+   **CODE-COMPLETE; founder live-proof ladder owed** (restart → launch → Oz-chat exercise → live
+   headless Oscar/Bob runs → full founder Q/A pass + punch-list). Do NOT relaunch as a build run (F18);
+   open an atom only on a concrete live defect. Mechanical proof: `node scripts/proof-oz-surfaces.mjs`.
+   The live pass folds in a post-reset surface check (ADR-0023 changed the resolve / Awaiting-you semantics).
+3. `new-primary-root` — the primary-root audit: bootstrap a new root's `cocoder/` + propose-only drift
+   re-audit, one base Play pinned to a top-tier model. **Now absorbs `workspace-onboarding`** (one
+   bootstrap/audit/onboarding path, not two). Design = **ADR-0020 (Proposed)** — founder acceptance gates
+   any build. The concrete form of Phase 5 ("first external repo").
+Plus three always-available meta-priorities: `build-priorities-from-plan` (draft priorities from the
+plan/ADRs), `priority-audit` (assess the priority set for staleness → a founder-decision table — this
+pruning pass's home), and `adhoc-session` (no named priority — draft one, or run a read-only review/research).
 
-**Deferred — `backlog/` (blocked on the Plays mechanism + Phase 5, an external app/deploy target):**
-- `quinn-app-testing` — Quinn persona + browser/Electron test Plays.
-- `deployment-plays` — human-gated deploys (Vercel/GCloud/signed-Electron/GitHub) + `local/secrets`.
+**Deferred — `backlog/` (each file's `## Objective` names what it's blocked on):**
+- `quinn-app-testing` — Quinn **browser** app-testing Plays only (base Quinn + the `electron-test` Play
+  already shipped under the archived `personas-and-plays`); blocked on a Phase-5 web app to drive.
+- `deployment-plays` — human-gated deploys (Vercel/GCloud/signed-Electron/GitHub) + `local/secrets`;
+  blocker is now **Phase 5 only** — the Plays mechanism is built.
+- `multi-repo-commit-spine` — per-root commit spine (slice 2 of ADR-0019); reconcile with ADR-0023 at
+  pickup; needs an Objective + ADR amendment before it's runnable.
+- `priority-architecture-contract` — founder-owned placeholder; re-scope to a real launch boundary (not
+  governance-of-governance — G4/F5) before any build.
 
 **Vision backlog (re-author from frozen v1 reference when earned):** cloud/managed adapters (v1
 `v0.2`, cf. ADR-0006/0009) · onboarding/workspace lifecycle (v1 `v0.3`, Phase 5) · the deferred Oz G1

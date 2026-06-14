@@ -5,11 +5,19 @@ title: "Primary-root audit: bootstrap a new root's cocoder/, re-audit on drift (
 
 > **At launch — founder alignment first (founder, 2026-06-13).** Before any build, the run must get on
 > the same page with the founder, asking questions as needed, on: (1) **ADR-0020** (currently Proposed)
-> — accept / amend / defer; nothing builds until it's accepted. (2) The **overlap with
-> `backlog/workspace-onboarding.md`** — the "existing-code root → audit + ingest into `cocoder/`" flow
-> is shared between the two; reconcile them under one ADR-0020 umbrella (likely fold workspace-onboarding
-> in) rather than building duplicative paths. (3) Confirm the first real target repo. Surface these as a
-> plain-English alignment pass, not a checklist.
+> — accept / amend / defer; nothing builds until it's accepted. (2) Confirm the first real target repo.
+> Surface these as a plain-English alignment pass, not a checklist.
+>
+> **Absorbs `workspace-onboarding` (merged 2026-06-14, priority audit).** That backlog priority is folded
+> in here so there is ONE bootstrap/audit/onboarding path, not two overlapping ones. It contributed:
+> the **two operated-from-Oz flows** — (a) *brand-new primary root*: init the repo + `cocoder/` zone,
+> launch-ready immediately; (b) *existing-code primary root*: a full repo audit/review that **ingests
+> findings into `cocoder/`** (repo instructions → `cocoder/AGENTS.md`, candidate priorities,
+> architecture notes) so CoCoder starts informed; the **workspace-footprint contract** (CoCoder's ONLY
+> entry into a target repo is the `cocoder/` folder; `local/` exists ONLY in the install; never a
+> README); and the **CoPublisher** motivation (F12 — the first hand-scaffolded non-dogfood workspace,
+> since reset, the intended first onboarding target). These flows are the concrete product surface over
+> the ADR-0020 scaffold+audit machinery.
 
 ## Objective
 CoCoder can be pointed at a primary root it has never managed and **bootstrap itself**: a

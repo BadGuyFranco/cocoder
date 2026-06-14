@@ -6,9 +6,17 @@ discipline.
 
 ADR-0019 landed slice 1 of multi-root workspaces (identity: the `.code-workspace` directory-of-
 files SSOT, three root roles, daemon CRUD, the Workspaces screen). This is the deferred second
-slice: **per-root worktree isolation, commit-gate, write-scope, and teardown become PER-REPO**, so
-one run can safely produce commits in more than one root (e.g. a host-project change plus an
-orthogonal engine fix).
+slice: **the commit spine, write-scope, and (opt-in) isolation become PER-REPO**, so one run can
+safely produce commits in more than one root (e.g. a host-project change plus an orthogonal engine
+fix).
+
+**Reconcile with [ADR-0023](../../decisions/0023-workspace-commit-spine.md) at pickup (2026-06-14).**
+The single-root commit model changed under the operating-model reset: direct-to-branch is now the
+default and the one commit spine (`commitFiles` / `commitScoped` / `runCommitGate`) writes to the
+active workspace branch; isolated worktrees are opt-in. Multi-root is the natural extension —
+**one spine instance per managed root**, each committing to its own root's active branch with its own
+scope. The "per-root worktree isolation" framing below predates ADR-0023; the live design question is
+how the spine + single-writer lock generalize across N roots, not how to give each root a worktree.
 
 **ADR-0019 amendment candidates to ratify with the founder at pickup** (discussed and agreed in
 the run_43/44 design conversations but never recorded in the ADR itself):

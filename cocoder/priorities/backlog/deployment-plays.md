@@ -11,6 +11,8 @@ sourced from `local/secrets`, with the deploy step gated on explicit human go-ah
 human decision; WISER tiered autonomy). Boundary: deployment procedures + key storage; **not** a new
 "Charlie" persona — these are Plays + the existing secrets zone.
 
-**Deferred — blocked on:** the Plays mechanism ([`plays-mechanism`](../../zArchive/priorities/v2/plays-mechanism.md))
-**and** Phase 5 (a repo that actually deploys — CoCoder doesn't). A constant CoBuilder pain, captured
-now so it's first in line at Phase 5; promote out of `backlog/` when unblocked.
+**Deferred — blocked on:** Phase 5 only — a repo that actually deploys (CoCoder doesn't). The generic
+Plays prerequisite is **built** (the Plays base/delta mechanism + no-brainer Plays landed run_78/79,
+`personas-and-plays` archived 2026-06-14), so the remaining blocker is an external deploy target plus
+the secrets/keys UX. A constant CoBuilder pain, captured now so it's first in line at Phase 5; promote
+out of `backlog/` when unblocked.
