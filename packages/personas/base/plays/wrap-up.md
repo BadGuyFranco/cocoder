@@ -41,27 +41,43 @@ say "kill" / "tear down" afterward.
    "follow up as needed", "run the live-proof checklist", or a menu of equally weighted options as the
    next action. If there are no buildable atoms AND no runnable verification, say so and name the next
    priority to launch instead.
-5. Emit, as your final output, a resumable closeout brief (conclusion-first, founder-readable) with
-   these exact sections:
-   - `Summary` — plain English summary of what was accomplished.
-   - `Priority Ran` — the priority id/title this session ran.
-   - `Priority Status` — `continue`, `blocked`, or `archive-candidate`, plus the concrete reason.
-   - `Next Action` — one **runnable** next step (a pasteable command, a named priority to launch, or
-     an offer to craft the missing test/script — never a bare doc/checklist pointer; F18), including
-     who does it and the evidence or decision it should produce.
-   - `Next Priority To Run` — must be a **launchable** priority (an existing `cocoder/priorities/*.md`),
-     or this same priority if it should continue. If the best next step is **new work with no priority
-     yet**, do NOT just name it — run the create-priority flow (draft a limited Objective, surface it for
-     founder approval) so a launchable priority **exists before this run ends**. Never leave the founder a
-     "next priority" that isn't launchable, or a bare suggestion with no orchestrator to act on it (F1/F20).
-   - `Committed` — state plainly **what you committed this session** (the atoms/support edits). Do NOT
-     assert whether it *landed* on trunk or that "nothing is held back" — you wrap **before** the
-     whole-tree integration verify runs, so you cannot know (F19). CoCoder delivers the **authoritative
-     landing outcome** (landed / escalated + recovery / held-back) right after this wrap; that is the
-     source of truth, not your prediction. Describe only what you did, never the landing result.
-   - `Archive Estimate` — how close this priority is to archive and the remaining proof/gap.
-   - `Founder Options` — state that the founder can ask questions, request a priority update, or say
-     `kill` / `tear down`; teardown performs one final safety pass and then closes the run's Oscar,
-     Bob, and Deb windows through the runner-provided teardown mechanism.
+5. Emit, as your final output, a founder-readable closeout. It **must lead with the `Run Handoff`
+   block below** — a scannable answer to "what do I do next?" that a solo non-developer reads in five
+   seconds. The detail sections follow it, for reference. A run that ends without leaving the founder
+   one obvious move is a failed wrap (the F18/F20 class) — the handoff exists to make that impossible.
+
+   ```
+   ── Run Handoff ──────────────────────────────
+   Priority worked:   <priority id>
+   Disposition:       continue | blocked | archive-candidate — <one clause why>
+   This run:          <one line: what changed + what you committed this session>
+   Held back:         <out-of-scope files + "reply `expand scope` to commit them, or `discard`">  | none
+   Next priority:     <a LAUNCHABLE priority id, or "this one (continue)">
+   ► Your move:       <exactly ONE runnable action — see the rules below>
+   ```
+
+   - **`Disposition`** is the single lifecycle verdict (§3). If `archive-candidate`, the `► Your move`
+     is to confirm archive — never self-archive.
+   - **`This run`** states plainly **what you committed this session**. Do NOT assert whether it *landed*
+     on trunk (F19) — CoCoder delivers the **authoritative landing outcome** right after this wrap; that
+     line, not your prediction, is the source of truth.
+   - **`Held back`** — name any out-of-scope files the gate surfaced this run and the exact reply that
+     resolves them; write `none` if there were none. Never imply held-back work was lost — it is safe in
+     the working tree awaiting the founder's call.
+   - **`Next priority`** must be **launchable** (an existing `cocoder/priorities/*.md`) or "this one". If
+     the best next step is new work with no priority yet, run the create-priority flow (draft a limited
+     Objective → founder approval) so a launchable priority **exists before this run ends** (F1/F20).
+   - **`► Your move`** is exactly ONE **runnable** action (F18): a pasteable command, "launch `<id>` in
+     Oz", "reply `archive <id>`", or "reply `expand scope`" — never a bare doc/checklist pointer, never a
+     menu of equally-weighted options, never "awaiting questions". The test: could a solo non-developer
+     DO it from this one line? If the only remaining work is verification the founder can't run, the move
+     is your offer to automate it into a one-command harness.
+
+   Then the detail sections (for the founder who wants more — keep each tight):
+   - `Summary` — plain English, what was accomplished + the concrete reason for the disposition.
+   - `Archive Estimate` — how close to archive and the remaining proof/gap.
+   - `Founder Options` — the founder may ask questions, request a priority update, or say `kill` /
+     `tear down` (teardown runs one final safety pass, then closes this run's Oscar/Bob/Deb windows
+     through the runner-provided mechanism — never the Oz daemon).
 
 The runner persists this output as the run's pickup brief — do NOT write `pickup.md` yourself.
