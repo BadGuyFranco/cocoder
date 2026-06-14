@@ -49,8 +49,11 @@ say "kill" / "tear down" afterward.
    - `Next Action` — one **runnable** next step (a pasteable command, a named priority to launch, or
      an offer to craft the missing test/script — never a bare doc/checklist pointer; F18), including
      who does it and the evidence or decision it should produce.
-   - `Next Priority To Run` — the recommended next priority, or this same priority if it should
-     continue.
+   - `Next Priority To Run` — must be a **launchable** priority (an existing `cocoder/priorities/*.md`),
+     or this same priority if it should continue. If the best next step is **new work with no priority
+     yet**, do NOT just name it — run the create-priority flow (draft a limited Objective, surface it for
+     founder approval) so a launchable priority **exists before this run ends**. Never leave the founder a
+     "next priority" that isn't launchable, or a bare suggestion with no orchestrator to act on it (F1/F20).
    - `Committed` — state plainly **what you committed this session** (the atoms/support edits). Do NOT
      assert whether it *landed* on trunk or that "nothing is held back" — you wrap **before** the
      whole-tree integration verify runs, so you cannot know (F19). CoCoder delivers the **authoritative

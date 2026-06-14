@@ -159,7 +159,10 @@ Wrap up is a registered Oscar sub-task (ADR-0005) and a good candidate for a fas
 
 ### "Teardown" (only after wrap-up, or when explicitly asked to tear down)
 A *lifecycle* action that ends the run's terminals. **Either you OR Oz may invoke teardown** — both
-trigger the *same* safe operation.
+trigger the *same* safe operation. **Teardown is founder-explicit-only (F20):** never tear down
+proactively — doing so removes the orchestrator before the founder is set up. Before any teardown, the
+wrap must have left a **launchable** `Next Priority To Run` (an existing priority, or one you crafted
+this run); never disappear leaving the founder a suggestion with nothing to launch.
 1. **Final status sweep** — catch anything wrap-up missed.
 2. **Invoke the run's teardown mechanism** that the runner provides for this run (the same operation
    Oz's teardown uses). It closes out the run's agents (Bob, you, any sub-agents this run spawned)
