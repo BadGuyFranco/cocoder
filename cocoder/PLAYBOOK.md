@@ -152,6 +152,13 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   AND exercised on **every run** (run_76/77 cut worktrees → verify → ff-merge; boot-sweep + teardown
   ran). **Archived 2026-06-13** (founder-confirmed, priority audit) — no live proof owed. (Per ADR-0023,
   isolation is now opt-in, not the default; this machinery runs only on the opt-in lane.)
+- `orchestration-operating-model-reset` — the operating-model reset to **ADR-0023** (the workspace
+  commit spine: direct-to-branch default, isolation opt-in, one commit service, derived receipts),
+  dissolving the F14/F17/F19/F20 strand class structurally. ✅ all six phases on `main` (A `e4a9172` ·
+  B `9dc1c4d` · C `724a3d1` · D `bce0140` · F `32e4795` · E `751d920`); `node scripts/proof-direct-spine.mjs`
+  10/10; 626 tests; `main` promoted to canonical trunk + pushed. **Archived 2026-06-14** — the live
+  end-to-end validation rides the next real run (`oz-dashboard-priorities-pane` is the first); re-opens
+  only if a run surfaces a machinery defect.
 - `personas-and-plays` — one living-base+delta model for **personas AND Plays**; base QA roster (Quinn,
   Talia) + the no-brainer Plays (`documentation`, `code-review`, `electron-test`) + Play deltas honored
   at run-launch. ✅ CODE-COMPLETE run_78/79; `node scripts/proof-plays.mjs` 4/4. **Archived 2026-06-14**
@@ -166,23 +173,15 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    fallthrough). Doubles as the **first live run on the post-reset machinery** — watch it commit straight
    to `main` (ADR-0023). `packages/ui` first; minimal daemon model only if priorities/`order.json` aren't
    reaching the renderer; no new endpoints.
-2. `orchestration-operating-model-reset` — **CODE-COMPLETE 2026-06-14** (founder-directed; ran OUTSIDE the
-   run machinery, which was what it reset). The operating model is now
-   [ADR-0023 — the workspace commit spine](./decisions/0023-workspace-commit-spine.md): direct-to-branch by
-   default, isolation opt-in, one commit service for every actor, derived receipts — dissolving the
-   F14/F17/F19/F20 strand class structurally. All six phases on `main` (A `e4a9172` · B `9dc1c4d` ·
-   C `724a3d1` · D `bce0140` · F `32e4795` · E `751d920`); proof `node scripts/proof-direct-spine.mjs`
-   (10/10); 626 tests green; `main` promoted to canonical trunk + pushed. **Archive-candidate** pending an
-   optional live founder conversation on the running daemon.
-3. `full-oz-dashboard` — the v1-designed control plane (chat, oversight, settings, drag-reorder).
-   **CODE-COMPLETE; founder live-proof ladder owed** (restart → launch → Oz-chat exercise → live
-   headless Oscar/Bob runs → full founder Q/A pass + punch-list). Do NOT relaunch as a build run (F18);
-   open an atom only on a concrete live defect. Mechanical proof: `node scripts/proof-oz-surfaces.mjs`.
-   The live pass folds in a post-reset surface check (ADR-0023 changed the resolve / Awaiting-you semantics).
-4. `new-primary-root` — the primary-root audit: bootstrap a new root's `cocoder/` + propose-only drift
-   re-audit, one base Play pinned to a top-tier model. **Now absorbs `workspace-onboarding`** (one
-   bootstrap/audit/onboarding path, not two). Design = **ADR-0020 (Proposed)** — founder acceptance gates
-   any build. The concrete form of Phase 5 ("first external repo").
+2. `full-oz-dashboard` — the v1-designed control plane (chat, oversight, settings, drag-reorder).
+   **CODE-COMPLETE (all daemon surfaces served); design-conformance + live founder acceptance still
+   OPEN** — proven open by the founder finding the priorities-pane defect (now split out as priority #1).
+   This is the umbrella the live Q/A pass runs under; concrete defects it surfaces become focused
+   priorities. Do NOT relaunch it as a build run (F18). Mechanical proof: `node scripts/proof-oz-surfaces.mjs`.
+3. `new-primary-root` — **design-gated, NOT build-launchable yet** (blocked on accepting ADR-0020 — the
+   bootstrap/takeover/drift onboarding Playbooks). Launching it now = the ADR-0020 acceptance + alignment
+   conversation, not a build. **Absorbs `workspace-onboarding`** (one onboarding path). The concrete form
+   of Phase 5 ("first external repo").
 Plus three always-available meta-priorities: `build-priorities-from-plan` (draft priorities from the
 plan/ADRs), `priority-audit` (assess the priority set for staleness → a founder-decision table — this
 pruning pass's home), and `adhoc-session` (no named priority — draft one, or run a read-only review/research).
