@@ -161,11 +161,15 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    default that stranded work (F14/F17/F19/F20), and `main` had died 351 commits behind. **Target model:
    [ADR-0023 — the workspace commit spine](./decisions/0023-workspace-commit-spine.md)** (direct-to-branch
    by default, isolation opt-in; one commit service for every actor; derived receipts). Founder decisions
-   taken; `main` promoted back to canonical trunk. Phase A (governance reset — ADR-0023, supersede
-   0015/0021/0022, ARCHITECTURE/PLAYBOOK) landing; Phases B–E (core spine + runner default flip,
-   daemon/Oz routing + held-back surface, persona-prompt alignment, live-git verification) owed. **This
-   reset takes precedence over the incremental Oz/personas work below** — the dashboard is close, but the
-   back-end orchestration is what this fixes.
+   taken; `main` promoted back to canonical trunk. **Phase A** (governance north-star — ADR-0023 +
+   supersede 0015/0021/0022) ✅ `e4a9172`; **Phase B** (runner flip to direct-to-branch, isolation
+   opt-in, scoped dirty-guard; core 265 · daemon 200 green) ✅ `9dc1c4d`; **Phase C** (daemon/Oz routed
+   through the one spine + first-class held-back surface) in progress; **Phase D** (persona/Play prompts
+   aligned to the built machinery); **Phase F** (consolidate the ADR tree to current-truth-only — retire
+   superseded/merged ADRs to history, fix stale survivors; founder directive); **Phase E** (live-git
+   fresh-session proof + GC orphan worktrees + failure-catalog — the archive gate). **This reset takes
+   precedence over the incremental Oz/personas work below** — the dashboard is close, but the back-end
+   orchestration is what this fixes.
 1. `personas-and-plays` — **master priority** (merges the done `base-and-extension-personas` + the folded
    `no-brainer-plays`): one living-base+extension model for **both personas and Plays**. Completes the
    base QA roster — **Quinn** (user-simulation) and **Talia** (acceptance QA) — and lands the no-brainer

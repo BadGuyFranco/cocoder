@@ -10,10 +10,14 @@ title: Reset CoCoder's orchestration operating model around durable founder-dire
 > or land these changes.
 >
 > **In flight (2026-06-14).** Diagnosis evaluated and confirmed against the code; founder decisions taken
-> (direct-to-branch by default, isolation opt-in, aggressive ADR supersede, `main` promoted to trunk).
+> (direct-to-branch by default, isolation opt-in, aggressive ADR consolidation, `main` promoted to trunk).
 > Target model is **[ADR-0023 — the workspace commit spine](../decisions/0023-workspace-commit-spine.md)**.
-> Phase A (this stub + ADR-0023 + supersede 0015/0021/0022 + ARCHITECTURE/PLAYBOOK) landing; Phases
-> B–E (core spine, daemon/Oz, persona prompts, live-git verification) owed.
+> Six phases: **A** governance north-star (✅ `e4a9172`) · **B** runner flip to direct-to-branch
+> (✅ `9dc1c4d`) · **C** daemon/Oz routed through the one spine + first-class held-back surface (in
+> progress) · **D** persona/Play prompts aligned to the built machinery · **F** consolidate the ADR
+> tree so the live `decisions/` set is current-truth only (retire superseded/merged ADRs to history,
+> fix stale survivors — founder directive 2026-06-14) · **E** live-git fresh-session proof + GC the
+> orphan worktrees + failure-catalog update (the archive gate). F runs after D, before E.
 
 ## Objective
 

@@ -152,9 +152,15 @@ again tell the founder "verified for landing / nothing held back" on work that d
 
 ## Implementation status
 
-- **Phase A (this ADR + governance reconciliation):** in progress 2026-06-14.
-- **Phase B (the core spine + runner default flip):** owed.
-- **Phase C (daemon/Oz routed through the spine; first-class held-back surface):** owed.
+- **Phase A (this ADR + governance reconciliation):** landed 2026-06-14 (`e4a9172`).
+- **Phase B (the core spine + runner default flip to direct-to-branch):** landed 2026-06-14 (`9dc1c4d`)
+  — direct mode is the default; isolation is opt-in; the scoped dirty-guard restores quarantine
+  soundness; live-git proof in `runner-direct.test.ts`. core 265 · daemon 200 green.
+- **Phase C (daemon/Oz routed through the spine; first-class held-back surface):** in progress.
 - **Phase D (persona/Play prompts aligned to the built spine):** owed.
+- **Phase F (consolidate the ADR tree — live = current-truth only):** owed. The Phase-A supersede
+  banners were a first pass; F retires wholly-superseded/merged ADRs OUT of the live tree into history
+  and fixes stale survivors, so the live `decisions/` set contains only current-truth decisions (no
+  ADR may sit in "Accepted" while contradicting reality). Runs after D, before E's final proof.
 - **Phase E (live-git verification + orphan-worktree GC):** owed — the fresh-session proof is the
   archive gate, per the priority's "Verified when."
