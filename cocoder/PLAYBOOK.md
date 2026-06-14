@@ -244,8 +244,10 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
 3. `new-primary-root` — the primary-root audit: bootstrap a new root's `cocoder/` + propose-only
    drift re-audit, one base Play pinned to a top-tier model. Design drafted as **ADR-0020 (proposed,
    2026-06-10)** — founder acceptance gates the build. The concrete form of Phase 5 ("first external repo").
-Plus two always-available meta-priorities: `build-priorities-from-plan` (Oscar drafts priorities from
-the plan/ADRs) and `adhoc-session` (no named priority — draft one, or run a read-only review/research).
+Plus three always-available meta-priorities: `build-priorities-from-plan` (Oscar drafts priorities from
+the plan/ADRs), `priority-audit` (assess the priority set for staleness → a founder-decision table;
+the pruning sibling), and `adhoc-session` (no named priority — draft one, or run a read-only
+review/research).
 
 **Deferred — `backlog/` (blocked on the Plays mechanism + Phase 5, an external app/deploy target):**
 - `quinn-app-testing` — Quinn persona + browser/Electron test Plays.

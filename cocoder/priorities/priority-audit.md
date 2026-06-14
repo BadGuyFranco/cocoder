@@ -3,9 +3,8 @@ id: priority-audit
 title: Audit the priority set for staleness and recommend dispositions
 ---
 
-> **Draft (2026-06-13)** — crafted to satisfy run_79's "launch a priority audit" suggestion (F20: a
-> suggested next priority must be made *launchable*, not left dangling). Founder owns this Objective —
-> refine or approve.
+> **Founder-approved 2026-06-13** (standing meta-priority) — crafted from run_79's "launch a priority
+> audit" suggestion after F20 (a suggested next priority must be made *launchable*, not left dangling).
 
 ## Objective
 
