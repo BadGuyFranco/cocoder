@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-13 — **personas-and-plays: Play deltas wired into run-launch + one-command proof harness — CODE-COMPLETE (run_79)**
+
+**Persona:** Oscar + Bob (2 atoms, both first-try passes) | **Priority:** [personas-and-plays](./priorities/personas-and-plays.md) | **Play:** multi-atom build (close the last buildable gap, then make verification runnable)
+**Outcomes:**
+- **Atom 0 (`c2a838c`): Play deltas honored at run-launch.** `buildRunInput` (`packages/daemon/src/launcher.ts`) now loads its three Plays (`wrap-up`/`integration-verify`/`merge-conflict`) via `loadEffectivePlay(basePlaysDir(), join(ws.path,'cocoder','plays','deltas'), id)` instead of base-only `loadPlay` — mirroring the persona-delta path already in the same function. This makes the Plays base/delta coupling proven in core (run_78 atoms 1 & 3) **LIVE at run-launch**, not just unit-tested. New daemon test `play-delta-launch.test.ts` proves a repo Play delta WINS at launch (merged label + base-body-then-delta-body) AND no-delta = unmodified base. `buildRunInput` exported with an accurately-narrowed ctx type as the testable seam. Evidence in worktree: daemon **200/200** (+2) · root typecheck clean.
+- **Atom 1 (new script only, `scripts/proof-plays.mjs`): one-command proof harness (F18).** Models `proof-oz-surfaces.mjs`: proves every machine-provable verified-when clause against REAL repo files and bounds the irreducibly-live remainder. `node scripts/proof-plays.mjs` → exit 0, all 4 rows PASS: clause 1 (quinn/talia load from base set), clause 2 (documentation/code-review/electron-test parse; code-review read-only), clause 4 (the REAL `electron-test` delta merges base procedure + Oz binding, and absent-delta-dir = base), and the daemon run-launch seam test (2/2). Bounds exactly the 2 founder-live items.
+- **Priority is CODE-COMPLETE.** Verified-when clauses 1 and 4 are now machine-proven (roster loads; a Play delta provably overrides a base Play, in core AND at the live run-launch seam). The remaining halves of clauses 2 & 3 are irreducibly founder-present: documentation/code-review **dispatch** on assigned CLI/models on a real run, and Quinn's `electron-test` delta driving the **real Oz dashboard** GUI (no CDP/GUI driver exists — run_78 boundary).
+**Next:** Founder — run `node scripts/proof-plays.mjs` to confirm the code-complete portions green, then the 2 live checks (assign Quinn a CLI/model and drive the Oz dashboard via the `electron-test` delta; exercise documentation/code-review dispatch on a real run). Archive-candidate after those two live proofs.
+
 ## 2026-06-13 — **personas-and-plays: base QA roster + Plays base/delta model + 3 no-brainer Plays — 4 atoms, all first-try (run_78)**
 
 **Persona:** Oscar + Bob (4 atoms, all first-try passes) | **Priority:** [personas-and-plays](./priorities/personas-and-plays.md) | **Play:** multi-atom build (persona roster + Plays base/delta coupling + no-brainer Plays)

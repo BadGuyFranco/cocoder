@@ -42,3 +42,26 @@ base Play** the way a persona delta does.
 decision. **Not:** other personas (Ian/Phil/verifier stay demand-driven); **browser** testing of
 external apps (stays in backlog [`quinn-app-testing`](./backlog/quinn-app-testing.md), Phase-5-deferred —
 no website yet); changing what existing personas do.
+
+## Status — CODE-COMPLETE (run_79)
+
+The buildable work is done. What landed across run_78 (4 atoms) + run_79 (2 atoms):
+- Base **Quinn** + **Talia** personas exist and load (run_78 `d2f014d`).
+- Plays **base/delta mechanism** in core (run_78 `6bc6615`), the **documentation** + **code-review**
+  base Plays (run_78 `f9b828f`), and the **electron-test** base Play + first repo **Play delta**
+  (run_78 `10289de`).
+- Play deltas are now **honored at run-launch** — `buildRunInput` loads via `loadEffectivePlay`
+  (run_79 `c2a838c`); a daemon seam test proves a delta wins at launch and no-delta = base.
+- One-command proof harness **`scripts/proof-plays.mjs`** (run_79) machine-proves verified-when
+  clauses 1 & 4 against real repo files and bounds the live remainder. `node scripts/proof-plays.mjs`
+  → exit 0, 4/4 PASS.
+
+**Remaining = founder-present live evidence only (not delegatable atoms):**
+1. documentation + code-review Plays **dispatch** on their assigned CLI/models on a real run and do
+   their job in-scope (live half of verified-when clause 2).
+2. Quinn's `electron-test` delta **drives the real Oz dashboard** GUI and reports pass/fail with
+   captured evidence (verified-when clause 3) — no CDP/GUI driver exists yet (run_78 boundary), so this
+   stays founder-present.
+
+**Archive-candidate** once those two live proofs pass. Do NOT relaunch as a build run — there are no
+buildable atoms left (F18); the next step is the live ladder above.
