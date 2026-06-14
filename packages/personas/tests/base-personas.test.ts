@@ -106,30 +106,26 @@ describe('basePlaysDir', () => {
     }
   })
 
-  test('wrap-up requires a concrete next action for founder handoff', () => {
+  test('wrap-up leads with a scannable Run Handoff whose "Your move" is one runnable action (F18)', () => {
     const text = readFileSync(join(basePlaysDir(), 'wrap-up.md'), 'utf8')
 
-    expect(text).toContain('Name exactly one `Next Action`')
-    expect(text).toContain('specific enough for the founder to act on without another clarification turn')
-    expect(text).toMatch(/Do not use "awaiting\s+questions"/)
-    expect(text).toContain('- `Next Action`')
+    expect(text).toContain('Run Handoff')
+    expect(text).toContain('► Your move')
+    expect(text).toContain('exactly ONE **runnable** action')
+    expect(text).toContain('could a solo non-developer DO it from this one line')
+    expect(text).toMatch(/never "awaiting questions"/)
   })
 
-  // ADR-0022 proof #2: the wrap-up Play is the SINGLE owner of the founder closeout-brief format.
-  // Pin its section contract so no surface can silently drift a parallel shape past review.
-  test('wrap-up Play pins the canonical closeout-brief sections (single owner)', () => {
+  // ADR-0022 proof #2: the wrap-up Play is the SINGLE owner of the founder closeout format.
+  // Pin the Run Handoff fields + the detail sections so no surface can silently drift a parallel shape.
+  test('wrap-up Play pins the canonical Run Handoff + detail contract (single owner)', () => {
     const text = readFileSync(join(basePlaysDir(), 'wrap-up.md'), 'utf8')
-    const sections = [
-      'Summary',
-      'Priority Ran',
-      'Priority Status',
-      'Next Action',
-      'Next Priority To Run',
-      'Committed',
-      'Archive Estimate',
-      'Founder Options',
-    ]
-    for (const s of sections) {
+    // The handoff block answers "what do I do next?" at a glance.
+    for (const field of ['Priority worked', 'Disposition', 'This run', 'Held back', 'Next priority', '► Your move']) {
+      expect(text).toContain(field)
+    }
+    // The detail sections it solely owns follow the handoff.
+    for (const s of ['Summary', 'Archive Estimate', 'Founder Options']) {
       expect(text).toContain(`- \`${s}\``)
     }
   })
