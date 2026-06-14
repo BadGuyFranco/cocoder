@@ -1,6 +1,14 @@
 # ADR-0022 — Orchestration-change durability: broad-by-default access + a terminal landing invariant
 
-**Status:** Accepted (founder, 2026-06-13). The founder endorsed the direction (broad-by-default
+> **SUPERSEDED by [ADR-0023](./0023-workspace-commit-spine.md) (2026-06-14) — principles retained.**
+> Its diagnosis and principles carry forward intact: broad-by-default access (§1), the two-surface
+> boundary (§2), daemon-writes-are-committed (§4), and the derived (not asserted) receipt. What
+> retires is the machinery it built to make the **run-branch funnel total** — the "terminal landing
+> invariant" (§3) and the run-branch reconciler / `stranded-commits-detected` path — because ADR-0023
+> removes the default run branch those exist to police. Kept as history and as the rationale record
+> for the retained principles.
+
+**Status:** Superseded by ADR-0023, principles retained (was: Accepted, founder, 2026-06-13). The founder endorsed the direction (broad-by-default
 principle + the priority [`orchestration-change-durability`](../priorities/orchestration-change-durability.md))
 and then reviewed and decided both open questions below.
 **Implementation (run_76, 2026-06-13):** the three §3 leaks and §4 daemon-commit identity are built

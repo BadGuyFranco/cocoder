@@ -154,6 +154,18 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   continuously in production.
 
 **Active (launchable; recommended sequence — the `priorities/` directory is the live index):**
+0. `orchestration-operating-model-reset` — **IN FLIGHT (founder-directed, 2026-06-14), runs OUTSIDE the
+   CoCoder run machinery** (a direct Opus session — the machinery is what's being reset). The diagnosis
+   was confirmed against the code: "commit to the active branch" had drifted into three divergent
+   homes, isolation-per-run ([ADR-0015](./decisions/0015-isolated-working-state-per-run.md)) was the
+   default that stranded work (F14/F17/F19/F20), and `main` had died 351 commits behind. **Target model:
+   [ADR-0023 — the workspace commit spine](./decisions/0023-workspace-commit-spine.md)** (direct-to-branch
+   by default, isolation opt-in; one commit service for every actor; derived receipts). Founder decisions
+   taken; `main` promoted back to canonical trunk. Phase A (governance reset — ADR-0023, supersede
+   0015/0021/0022, ARCHITECTURE/PLAYBOOK) landing; Phases B–E (core spine + runner default flip,
+   daemon/Oz routing + held-back surface, persona-prompt alignment, live-git verification) owed. **This
+   reset takes precedence over the incremental Oz/personas work below** — the dashboard is close, but the
+   back-end orchestration is what this fixes.
 1. `personas-and-plays` — **master priority** (merges the done `base-and-extension-personas` + the folded
    `no-brainer-plays`): one living-base+extension model for **both personas and Plays**. Completes the
    base QA roster — **Quinn** (user-simulation) and **Talia** (acceptance QA) — and lands the no-brainer

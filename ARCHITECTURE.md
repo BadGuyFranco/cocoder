@@ -1,7 +1,7 @@
 # CoCoder Architecture
 
 **Status:** v2 (rebuild) — live  
-**Last verified:** 2026-06-10 (reorg: one decisions tree, three zones, `cocoder/local/` eliminated; reconciled against `cocoder/decisions/` ADRs 0001–0019)
+**Last verified:** 2026-06-14 (orchestration operating-model reset: the one commit spine — direct-to-branch by default, isolation opt-in — [ADR-0023](./cocoder/decisions/0023-workspace-commit-spine.md); `main` fast-forwarded to the rebuild tip and is again the canonical trunk)
 
 ## Mental Model
 
@@ -56,6 +56,34 @@ decisions" are the same set, so they share one `cocoder/decisions/` tree. An ado
 ### Multi-machine sync
 
 `local/` is not in git, but it **lives inside your CoCoder folder**. Sync the CoCoder directory across machines the same way you sync any dev environment (Syncthing, iCloud Drive, a private dotfiles repo, etc.). Git updates the engine; your sync tool keeps `local/` aligned across laptops.
+
+## How work reaches trunk — the commit spine (ADR-0023)
+
+There is exactly **one** way tracked files reach the active workspace branch: the **commit spine**, a
+single `core` service every actor calls — Oscar's wrap edits, Bob's verified atom, Deb's repair, Oz's
+repair, the daemon's priority/persona/governance mutations, and any founder-directed edit. No actor
+reimplements `git commit`. (This replaces the three divergent commit paths the 2026-06-14 audit found —
+`runCommitGate`, `commitGovernance`, `gateCommitRepair` — which is what had been stranding work.)
+
+The spine always: works on the **active checkout / active branch** (no worktree by default); applies the
+**scope gate** ([ADR-0007](./cocoder/decisions/0007-write-scope-enforcement.md) — in-scope commits,
+out-of-scope held back and surfaced); applies **verification matched to risk**; and emits **one durable
+receipt** (commit-link + event: branch, SHA(s), changed files, held-back files, verification evidence).
+
+| Change kind | Default path | Verification |
+|---|---|---|
+| Governance / docs / ADRs / priorities / personas / standards | **Direct to the active branch** — commit in place, no worktree, no merge | light / none (can't break a build) |
+| Product / machinery **code** | **Direct to the active branch**, but the orchestrator verifies *before* the spine commits (per-atom diff + tests); fail → revert in place, commit nothing | risk-matched ([ADR-0013](./cocoder/decisions/0013-orchestration-observation.md)) |
+| Risky / large / throwaway / parallel work | **Opt-in only** — a run cuts a worktree + branch, builds, verifies, and the spine lands it back via a verified ff-merge | full integration verify |
+
+**Why this is safe without a worktree by default:** the single-writer-per-workspace lock
+([ADR-0004](./cocoder/decisions/0004-process-architecture.md)) serializes all writes, so in-place
+quarantine (`restoreToHead`) can only ever touch the one actor's own uncommitted work. **Why it ends the
+drift:** with no run branch in the default path, there is no off-trunk place for committed work to
+strand — the F14/F17/F19/F20 strand class is dissolved structurally. The only non-landed state is an
+out-of-scope **held-back** change, surfaced as a first-class Oz "Awaiting you" item with land/discard.
+Isolated worktrees ([ADR-0015](./cocoder/decisions/0015-isolated-working-state-per-run.md), now opt-in)
+remain available for the cases that genuinely need them.
 
 ## Why Git Will Not Destroy User Preferences
 

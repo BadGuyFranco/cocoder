@@ -1,6 +1,6 @@
 # ADR-0007 — Write-scope: allow-list + commit-gate enforcement (seam S7)
 
-**Status:** Accepted (founder + Claude, 2026-05-28)
+**Status:** Accepted (founder + Claude, 2026-05-28). **Reconciled into [ADR-0023](./0023-workspace-commit-spine.md) (2026-06-14):** the allow-list + gate-the-commit primitive below *is* the one commit spine's scope step — unchanged in spirit, relocated to a single shared service. The 2026-06-13 reconciliation note (founder-directed Surface-A edits in-scope by default; hold-back bar = breakage-risk) carries forward.
 **Seam:** S7 — write-scope & enforcement boundary
 **Charter:** [0001](./0001-rebuild-charter.md) · **Builds on:** [0006](./0006-adapter-contract.md) (trust-the-CLI), [0003](./0003-data-model-hybrid.md) (commit linkage), [0005](./0005-personas-and-subtasks.md) · **Touches seams:** S3 (topology)
 

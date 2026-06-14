@@ -14,7 +14,7 @@ their still-live content was absorbed into [ADR-0019](./0019-multi-root-workspac
 | [0004](./0004-process-architecture.md) | Process architecture: core lib, optional daemon, CLI-standalone (S4) | Accepted |
 | [0005](./0005-personas-and-subtasks.md) | Personas + delegatable Plays (S5; dissolves S9) | Accepted |
 | [0006](./0006-adapter-contract.md) | Adapter contract: trust-the-CLI + capability probe (S6) | Accepted |
-| [0007](./0007-write-scope-enforcement.md) | Write-scope: allow-list + commit-gate enforcement (S7) | Accepted |
+| [0007](./0007-write-scope-enforcement.md) | Write-scope: allow-list + commit-gate enforcement (S7) — *reconciled into 0023 (the spine's scope step)* | Accepted |
 | [0008](./0008-repository-topology.md) | Repository topology + one-home enforcement (S3; relates to 0005; ~resolves S8) | Accepted |
 | [0009](./0009-extensibility.md) | Extensibility — *merged into 0008 §Extensibility* (redirect signpost) | Merged → 0008 |
 | [0010](./0010-taxonomy-and-authoring.md) | Taxonomy & authoring lifecycle: Playbooks, Plays, Objectives (refines 0005) | Accepted |
@@ -22,13 +22,14 @@ their still-live content was absorbed into [ADR-0019](./0019-multi-root-workspac
 | [0012](./0012-living-base-personas.md) | Living base personas + repo extensions — base ships with the install & propagates; repos layer deltas (amends 0008/0009) | Accepted |
 | [0013](./0013-orchestration-observation.md) | Orchestration + observation: Oscar drives Bob through a multi-atom plan; tiered continuous monitoring (Oscar→Bob, Deb→Oscar, Oz→sessions) with the direct-your-primary rule (refines 0004) | Accepted |
 | [0014](./0014-living-adrs.md) | ADRs are living documents (founder-approved, conflict-audited) | Accepted |
-| [0015](./0015-isolated-working-state-per-run.md) | Isolated working state per run: worktree + branch, verified auto-merge on green | Accepted |
+| [0015](./0015-isolated-working-state-per-run.md) | Isolated working state per run: worktree + branch, verified auto-merge on green | **Superseded → 0023** (isolation now opt-in, not default) |
 | [0016](./0016-deb-scoped-repair-fallback.md) | Deb: the scoped CoCoder repair fallback — live status feed + nudge-request channel + gate-enforced repair mode; base/delta write-scope split (refines 0013) | Accepted |
 | [0017](./0017-oz-orchestration-persona.md) | Oz orchestration: Oz is a CLI-backed persona in a window, with a bounded tool surface (builds on 0005/0013) | Accepted |
 | [0018](./0018-persona-run-mode-and-sub-agents.md) | Persona run-mode + sub-agents: sub-agents ARE per-persona Play assignments; `mode` honored the slice it lands (refines 0005) | Accepted |
 | [0019](./0019-multi-root-workspaces.md) | Multi-root workspaces: `.code-workspace` files in `local/workspace/`, three root roles, no nesting (absorbs live v1-0007/0006) | Accepted |
-| [0021](./0021-oz-repair-commit-authority.md) | Oz repair: trunk commit authority outside any run — idle-only one-shot repair, governance in-scope, machinery propose-only in v1 (loosening expected with real Oz use; widened by 0022) | Accepted |
-| [0022](./0022-orchestration-change-durability.md) | Orchestration-change durability: broad-by-default access + the two-surface boundary + a terminal landing invariant (reconciles 0007, generalizes 0021) | Accepted |
+| [0021](./0021-oz-repair-commit-authority.md) | Oz repair: trunk commit authority outside any run — idle-only one-shot repair, governance in-scope, machinery propose-only in v1 | **Superseded → 0023** (Oz is now an ordinary spine caller) |
+| [0022](./0022-orchestration-change-durability.md) | Orchestration-change durability: broad-by-default access + the two-surface boundary + a terminal landing invariant (reconciles 0007, generalizes 0021) | **Superseded → 0023**, principles retained |
+| [0023](./0023-workspace-commit-spine.md) | **The workspace commit spine: direct-to-branch by default, isolation opt-in** — one commit service for all actors; collapses the three divergent commit paths; dissolves the run-branch strand class (supersedes 0015/0021/0022, reconciles 0007) | Accepted |
 
 ## Proposed (founder review owed)
 
@@ -53,6 +54,9 @@ assemble the current model, read in this order:
 3. **0005** personas + Plays · **0008** topology + one-home · **0012** living base personas
 4. **0006** adapter contract · **0007** write-scope · **0013** run lifecycle (multi-atom loop + the
    0011 verify-gate + observation)
+5. **0023** the workspace commit spine — **the current orchestration operating model**: how every
+   actor commits (direct-to-branch by default, isolation opt-in). Read it last; it supersedes
+   0015/0021/0022 and is the single ground truth for how work reaches trunk.
 
 **Consolidation (2026-05-30, per ADR-0014):** the set is leaned out by *content*, not by renumbering —
 ADR numbers are stable handles cited in ~70 places (code, personas, priorities), so a physical renumber

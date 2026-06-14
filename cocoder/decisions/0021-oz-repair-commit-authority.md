@@ -1,6 +1,11 @@
 # ADR-0021 — Oz repair: trunk commit authority outside any run
 
-**Status:** Accepted (founder, 2026-06-12, run_67 wrap; drafted by Oscar the same wrap as the design
+> **SUPERSEDED by [ADR-0023](./0023-workspace-commit-spine.md) (2026-06-14).** Oz's special
+> idle-only, narrow-scope, receipt-less out-of-run trunk-commit path is dissolved: under the one
+> commit spine, Oz is an ordinary caller, gated by the same scope step, serialized by the same
+> single-writer lock, with the same durable receipt as every other actor. Kept as history.
+
+**Status:** Superseded by ADR-0023 (was: Accepted, founder, 2026-06-12, run_67 wrap; drafted by Oscar the same wrap as the design
 deliverable the [`full-oz-dashboard`](../priorities/full-oz-dashboard.md) priority required). Founder
 note at acceptance: the v1 restrictions (especially the machinery propose-only fence) are expected to
 need **loosening once Oz is in real day-to-day use** — widening is a lightweight amendment to this ADR

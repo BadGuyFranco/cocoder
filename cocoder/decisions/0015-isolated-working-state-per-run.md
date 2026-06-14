@@ -1,6 +1,13 @@
 # ADR-0015 — Isolated working state per run (worktree + branch), auto-merge on verified green
 
-**Status:** Accepted (founder + Claude, 2026-05-31; drafted → adversarially reviewed → revised per founder decisions: verified-merge + build the merge-conflict Play)
+> **SUPERSEDED by [ADR-0023](./0023-workspace-commit-spine.md) (2026-06-14).** This ADR made an
+> isolated worktree + run branch the **default** for every run — the run branch that became "the seam
+> every strand crosses" (F14/F17/F19/F20). ADR-0023 flips the default to direct-to-active-branch and
+> keeps the worktree as an **opt-in sandbox** for risky/large/parallel work. The verified-merge,
+> integration-verify, merge-conflict, and worktree-GC machinery below survive **only** behind that
+> opt-in flag. Kept as history; do not read its default-isolation framing as live.
+
+**Status:** Superseded by ADR-0023 (was: Accepted, founder + Claude, 2026-05-31; drafted → adversarially reviewed → revised per founder decisions: verified-merge + build the merge-conflict Play)
 **Seam:** run lifecycle / git integration
 **Charter:** [0001](./0001-rebuild-charter.md) (D1 dogfood-earned · D3 probabilistic-for-judgment · D4 one-home)
 **Amends:** [0004](./0004-process-architecture.md) (runner launch/teardown + integration step), [0003](./0003-data-model-hybrid.md) (merge-link row + run integration state), [0005](./0005-personas-and-subtasks.md) (adds the `merge-conflict` Play), [0007](./0007-write-scope-enforcement.md) (held-back-change lifetime now coupled to worktree GC), [0013](./0013-orchestration-observation.md) (extends the per-atom verify to a whole-tree integration verify)
