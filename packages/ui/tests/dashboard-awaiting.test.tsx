@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, cleanup, within } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, within } from '@testing-library/react'
 import { useState } from 'react'
 import { Dashboard } from '../app/sections/dashboard/Dashboard.tsx'
 import type { ChatMessage, Priority, Run, Workspace } from '../app/model.ts'
@@ -32,12 +32,12 @@ const run = (id: string, status: Run['status'], priorityId: string | null = 'p-b
 
 const messages: ChatMessage[] = [{ id: 'm1', role: 'oz', body: 'Watching.', time: 'now' }]
 
-function DashboardHarness({ runs, initialSelectedRunId = null }: { runs: Run[]; initialSelectedRunId?: string | null }) {
+function DashboardHarness({ runs, initialSelectedRunId = null, queuePriorities = priorities }: { runs: Run[]; initialSelectedRunId?: string | null; queuePriorities?: Priority[] }) {
   const [selectedRunId, setSelectedRunId] = useState<string | null>(initialSelectedRunId)
   return (
     <Dashboard
       workspace={workspace}
-      priorities={priorities}
+      priorities={queuePriorities}
       runs={runs}
       ozMessages={messages}
       selectedRunId={selectedRunId}
@@ -58,6 +58,37 @@ function DashboardHarness({ runs, initialSelectedRunId = null }: { runs: Run[]; 
 
 describe('Dashboard layout', () => {
   afterEach(() => cleanup())
+
+  it('keeps column 1 as the priorities queue when blocked and not-landed runs exist', () => {
+    const priorityRuns = [
+      run('blocked', 'blocked', 'p-blocked'),
+      run('not-landed', 'not-landed', 'p-landed'),
+      run('done', 'complete', 'p-landed'),
+    ]
+    const queuePriorities: Priority[] = [
+      { ...priorities[0], runId: 'blocked', status: 'blocked' },
+      { ...priorities[1], runId: 'not-landed', status: 'not-landed' },
+    ]
+
+    const { container } = render(<DashboardHarness runs={priorityRuns} queuePriorities={queuePriorities} />)
+    const grid = container.firstElementChild as HTMLElement
+    const firstColumn = grid.children[0] as HTMLElement
+    const column = within(firstColumn)
+    const columnText = firstColumn.textContent ?? ''
+
+    expect(column.getByText('Priorities')).toBeDefined()
+    expect(firstColumn.querySelector('.oz-panel-count')?.textContent).toBe('2')
+    expect(columnText.indexOf('Blocked priority')).toBeLessThan(columnText.indexOf('Landing priority'))
+    expect(column.getByText('Ad-hoc')).toBeDefined()
+    expect(column.queryByText('Awaiting you')).toBeNull()
+    expect(column.queryByText('Run blocked')).toBeNull()
+    expect(column.queryByText('Run not-landed')).toBeNull()
+
+    fireEvent.click(column.getByText('Blocked priority'))
+
+    expect(screen.getByText('PRIORITY · RUN OF')).toBeDefined()
+    expect(screen.getAllByText('Blocked priority').length).toBeGreaterThan(1)
+  })
 
   it('places the selected run drawer between priorities and chat, with the resize handle on the drawer far edge', () => {
     const { container } = render(<DashboardHarness runs={[run('running', 'running')]} initialSelectedRunId="running" />)
