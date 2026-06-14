@@ -116,6 +116,7 @@ export {
   parseResolution,
   PreflightError,
   MissingObjectiveError,
+  DirtyWorkingTreeError,
   StopRequestedError,
   type RunnerDeps,
   type RunInput,

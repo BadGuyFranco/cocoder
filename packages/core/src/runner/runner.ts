@@ -112,6 +112,11 @@ export interface RunInput {
   readonly task?: string | null
   /** A prior run's pickup brief to resume from (ADR-0002 C1 / F8), woven into Oscar's prompt. */
   readonly pickup?: string | null
+  /** Opt into an isolated worktree + branch for this run (ADR-0023 §4): risky / large / throwaway /
+   *  parallel work. DEFAULT (false / omitted) = direct mode — agents work in the active checkout and the
+   *  commit-gate commits straight onto the active branch, so committed work is already on trunk and can
+   *  never strand (ADR-0023 §2). */
+  readonly isolation?: boolean
   /** Resolved wrap-up Play + per-(persona, Play) assignment; when present, the runner dispatches the Play to author closeout. */
   readonly wrapPlay?: Play
   readonly wrapPlayAssignment?: PlayAssignment
@@ -160,6 +165,16 @@ export class MissingObjectiveError extends Error {
   constructor(priorityId: string) {
     super(`priority "${priorityId}" has no Objective — refusing to launch`)
     this.name = 'MissingObjectiveError'
+  }
+}
+
+/** A direct-mode run (ADR-0023 §2) refuses to launch when the active checkout has uncommitted changes
+ *  that overlap the run's commit scope — committing or quarantining in place could otherwise sweep up or
+ *  destroy the founder's WIP. The fix is one of: commit/stash the WIP, or launch with isolation. */
+export class DirtyWorkingTreeError extends Error {
+  constructor(repo: string, detail: string) {
+    super(`refusing direct-mode launch in "${repo}": ${detail}`)
+    this.name = 'DirtyWorkingTreeError'
   }
 }
 
@@ -270,29 +285,58 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
   const scope = effectiveScope(bob.writeScope, priority.scopeNarrowing) // known at launch (constant per run)
 
-  // Isolated working state (ADR-0015 §1): the run executes in its OWN git worktree on its OWN branch,
-  // cut from the workspace repo's trunk tip at launch. The worktree DIRECTORY is under the ENGINE
-  // install home, while the git worktree remains owned by the workspace repo. The founder's checkout is
-  // never used as an agent cwd — every agent runs against `worktreePath`. A fresh branch off a committed
-  // trunk point is clean in-scope BY CONSTRUCTION, which is the soundness precondition the per-atom
-  // quarantine relies on (and exactly what the retired dirty-tree guard used to provide).
+  // Execution context (ADR-0023). DEFAULT = direct: agents run in the active checkout on the active
+  // branch and the commit-gate commits straight onto it, so committed work is already on trunk and can
+  // never strand (ADR-0023 §2). OPT-IN isolation (input.isolation): the run owns a dedicated worktree on
+  // its own branch, cut from the trunk tip, landed back by a verified ff-merge (ADR-0015, now the
+  // exception — risky / large / throwaway / parallel work — not the default).
+  const isolated = input.isolation === true
   const workspaceRepo = workspace.path
   const trunkSha = await git.headSha(workspaceRepo)
-  // Pin the trunk BRANCH NAME (not just the sha) at launch: the end-of-run land must target the same
-  // branch the run was cut from, so it never misroutes onto a different branch the founder switched to
-  // mid-run (ADR-0015 §1). null = detached HEAD → we refuse to auto-land later (escalate).
+  // Pin the trunk BRANCH NAME at launch: the branch work commits to (direct) / lands onto (isolation).
   const trunkBranch = await git.currentBranch(workspaceRepo)
-  const worktreePath = worktreePathFor(engineHome, run.id)
-  const runBranch = runBranchFor(run.id)
-  await git.worktreeAdd(workspaceRepo, worktreePath, runBranch, trunkSha)
-  store.setWorktree(run.id, worktreePath, runBranch)
-  store.recordEvent({ runId: run.id, type: 'worktree-created', data: { worktreePath, runBranch, trunkSha, trunkBranch } })
-  log(`worktree ${worktreePath} on ${runBranch} (from trunk ${trunkBranch ?? '(detached)'} ${trunkSha.slice(0, 8)})`)
-
-  // No dirty-tree guard (ADR-0015): the run owns a fresh worktree off the committed trunk tip, so its
-  // in-scope tree is clean BY CONSTRUCTION — the precondition the retired DirtyWorkingTreeError used to
-  // enforce against the shared founder checkout. The founder's uncommitted work is irrelevant to a
-  // launch and is never touched; the per-atom quarantine can only ever reset the run's own worktree.
+  let worktreePath: string
+  let runBranch: string
+  if (isolated) {
+    // Isolated working state (ADR-0015 §1): the run's OWN worktree + branch under the ENGINE install
+    // home, git-owned by the workspace repo. A fresh branch off a committed trunk point is clean
+    // in-scope BY CONSTRUCTION — the soundness precondition the per-atom quarantine relies on. The
+    // founder's checkout is never used as an agent cwd; their WIP is irrelevant to the launch.
+    worktreePath = worktreePathFor(engineHome, run.id)
+    runBranch = runBranchFor(run.id)
+    await git.worktreeAdd(workspaceRepo, worktreePath, runBranch, trunkSha)
+    store.setWorktree(run.id, worktreePath, runBranch)
+    store.recordEvent({ runId: run.id, type: 'worktree-created', data: { worktreePath, runBranch, trunkSha, trunkBranch } })
+    log(`worktree ${worktreePath} on ${runBranch} (from trunk ${trunkBranch ?? '(detached)'} ${trunkSha.slice(0, 8)})`)
+  } else {
+    // Direct mode (ADR-0023 §2): commit onto the active branch. Leave worktree_path/run_branch NULL on
+    // the run row so the daemon's worktree GC and stranded-commit reconciler correctly no-op (there is
+    // nothing to GC and — since every commit is already on the branch — nothing to strand).
+    if (trunkBranch === null) {
+      store.setRunStatus(run.id, 'failed')
+      store.recordEvent({ runId: run.id, type: 'direct-mode-refused', data: { reason: 'detached-head' } })
+      throw new DirtyWorkingTreeError(workspaceRepo, 'the checkout is on a detached HEAD; a direct-mode run needs a branch. Check out a branch, or launch with isolation.')
+    }
+    // The worktree's "clean in-scope by construction" precondition has no free lunch in place: restore
+    // the launch guard, SCOPED to the union of everything that will commit this run. If in-scope files
+    // are already dirty, the atom commit-gate (which commits ALL in-scope changed files) or the per-atom
+    // quarantine (which restores in-scope files to HEAD) could sweep up or destroy the founder's
+    // uncommitted work — so refuse with an actionable message rather than risk it.
+    const committingScopes = [scope, oscar.writeScope, deb?.writeScope ?? [], input.wrapPlay?.writeScope ?? []].flat()
+    const { inScope: dirtyInScope } = partitionByScope(await git.changedFiles(workspaceRepo), committingScopes)
+    if (dirtyInScope.length > 0) {
+      store.setRunStatus(run.id, 'failed')
+      store.recordEvent({ runId: run.id, type: 'dirty-working-tree', data: { files: dirtyInScope } })
+      throw new DirtyWorkingTreeError(
+        workspaceRepo,
+        `${dirtyInScope.length} uncommitted in-scope file(s) (${dirtyInScope.slice(0, 5).join(', ')}${dirtyInScope.length > 5 ? ', …' : ''}). Commit or stash them, or launch with isolation.`,
+      )
+    }
+    worktreePath = workspaceRepo
+    runBranch = trunkBranch
+    store.recordEvent({ runId: run.id, type: 'direct-mode', data: { branch: trunkBranch, trunkSha } })
+    log(`direct mode on ${trunkBranch} (${trunkSha.slice(0, 8)}) — committing to the active branch`)
+  }
   // The run's cmux workspace is named for the run: "<priority> #<session number>" (the numeric part of
   // the sequential run id), so the founder identifies it by priority + session, not by a persona.
   const groupLabel = `${priority.id} #${run.id.replace(/^run_/, '')}`
@@ -1160,7 +1204,12 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   // files do not block landing already committed branch work; they remain surfaced for scope resolution.
   let mergeSha: string | null = null
   let integrationReason: string | null = null
-  if (status === 'completed' || committedShas.length > 0 || selfCommitted) {
+  if (!isolated) {
+    // Direct mode (ADR-0023 §2): every atom + Oscar-support commit already landed on the active branch
+    // as it was made (the commit-gate ran with cwd = the active checkout). There is no run branch to
+    // integrate — the run is vacuously merged, and there is nothing that can strand.
+    store.setIntegrationStatus(run.id, 'merged')
+  } else if (status === 'completed' || committedShas.length > 0 || selfCommitted) {
     const integration = await landRunBranch()
     mergeSha = integration.mergeSha
     integrationReason = integration.reason
@@ -1214,7 +1263,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     }
   }
 
-  if (status === 'completed' && store.getRun(run.id)?.integrationStatus === 'merged') {
+  if (isolated && status === 'completed' && store.getRun(run.id)?.integrationStatus === 'merged') {
     try {
       const localState = await exportRunLocalState(worktreePath, engineHome)
       if (localState.exported.length > 0 || localState.blocked.length > 0) {

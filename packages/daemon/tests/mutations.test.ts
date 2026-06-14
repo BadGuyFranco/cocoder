@@ -381,7 +381,8 @@ describe('Oz mutations + lifecycle', () => {
       runHeadless: async () => ({ exitCode: 0, output: 'wrap closeout' }),
     })
 
-    const launch = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
+    // isolation:true — this test exercises stop + worktree GC, which only exists on the opt-in path.
+    const launch = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo', isolation: true } })
     expect(launch.status).toBe(202)
     const runId = String(launch.json.runId)
     expect(oz.ctx.stopControllers.has(runId)).toBe(true)

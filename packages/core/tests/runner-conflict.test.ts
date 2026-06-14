@@ -163,6 +163,7 @@ async function runScenario(conflictResolution: 'resolve' | 'escalate') {
       sharedStandards: 'S',
       engineHome: home,
       runsRoot,
+      isolation: true, // the merge-conflict path is part of the OPT-IN isolation lane (ADR-0023 §4)
       integrationVerifyPlay: verifyPlay,
       integrationVerifyAssignment: assignment,
       mergeConflictPlay: conflictPlay,

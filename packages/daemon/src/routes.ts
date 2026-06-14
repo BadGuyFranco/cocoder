@@ -75,6 +75,8 @@ interface LaunchBody {
   readonly priorityId: string
   readonly resumeFromRunId?: string
   readonly task?: string
+  /** Opt into an isolated worktree for this run (ADR-0023 §4); default false = direct-to-branch. */
+  readonly isolation?: boolean
 }
 
 type ParsedLaunchBody = { readonly ok: true; readonly input: LaunchBody } | { readonly ok: false; readonly error: string }
@@ -85,6 +87,7 @@ function launchBody(body: unknown): ParsedLaunchBody {
     workspaceId: typeof record.workspaceId === 'string' ? record.workspaceId : '',
     priorityId: typeof record.priorityId === 'string' ? record.priorityId : '',
     resumeFromRunId: typeof record.resumeFromRunId === 'string' ? record.resumeFromRunId : undefined,
+    isolation: record.isolation === true,
   }
   if (Object.prototype.hasOwnProperty.call(record, 'task')) {
     if (typeof record.task !== 'string') return { ok: false, error: 'task must be a string' }
@@ -597,7 +600,7 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
     const parsed = launchBody(body)
     if (!parsed.ok) return sendJson(res, 400, { error: parsed.error }), true
     const input = parsed.input
-    const { status, body: out } = await launchRun(ctx, input.workspaceId, input.priorityId, { resumeFromRunId: input.resumeFromRunId, task: input.task })
+    const { status, body: out } = await launchRun(ctx, input.workspaceId, input.priorityId, { resumeFromRunId: input.resumeFromRunId, task: input.task, isolation: input.isolation })
     return sendJson(res, status, out), true
   }
   if (method === 'POST' && seg[0] === 'runs' && seg.length === 3 && seg[2] === 'show') {

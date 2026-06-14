@@ -178,6 +178,7 @@ async function runScenario(
       sharedStandards: 'STANDARDS',
       engineHome,
       runsRoot,
+      isolation: true, // this suite exercises the OPT-IN isolation path (ADR-0023 §4 / ADR-0015)
       integrationVerifyPlay: verifyPlay,
       integrationVerifyAssignment: verifyAssignment,
     },

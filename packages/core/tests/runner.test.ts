@@ -230,7 +230,10 @@ const baseDeps = (over: Partial<RunnerDeps>): RunnerDeps => ({
   ...over,
 })
 
-const input = { workspace, priority, oscar, bob, sharedStandards: 'STANDARDS', engineHome: '/repo', runsRoot: '/runs' }
+// This suite drives the runner with a FAKE git over the OPT-IN isolation path (ADR-0023 §4 / ADR-0015):
+// worktree create/land are stubbed, so the loop/verify/commit machinery is exercised without a real repo.
+// The new direct-mode DEFAULT (ADR-0023 §2) is proven against LIVE git in runner-direct.test.ts.
+const input = { workspace, priority, oscar, bob, sharedStandards: 'STANDARDS', engineHome: '/repo', runsRoot: '/runs', isolation: true as const }
 const stopFaultEvents = new Set(['directive-timeout', 'builder-failed', 'verify-failed', 'triage-dispatch', 'fault-triaged', 'triage-skipped'])
 
 describe('runRun (multi-atom loop)', () => {

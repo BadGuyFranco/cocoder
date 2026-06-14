@@ -4,6 +4,7 @@ export {
   parseResolution,
   PreflightError,
   MissingObjectiveError,
+  DirtyWorkingTreeError,
   type RunnerDeps,
   type RunInput,
   type RunResult,

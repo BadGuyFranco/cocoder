@@ -61,7 +61,7 @@ function trackingHost(ctx: OzContext): SessionHost {
 
 /** Assemble RunInput from governance on disk (mirrors cli/src/run.ts). Throws on unknown ids. When
  *  resuming, reads the prior run's pickup brief so a fresh session continues it (ADR-0013 / F8). */
-export async function buildRunInput(ctx: Pick<OzContext, 'cocoderHome' | 'runsRoot'>, workspaceId: string, priorityId: string, opts: { readonly resumeFromRunId?: string; readonly task?: string | null } = {}): Promise<RunInput> {
+export async function buildRunInput(ctx: Pick<OzContext, 'cocoderHome' | 'runsRoot'>, workspaceId: string, priorityId: string, opts: { readonly resumeFromRunId?: string; readonly task?: string | null; readonly isolation?: boolean } = {}): Promise<RunInput> {
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
   if (!ws) throw new Error(`unknown workspace "${workspaceId}"`)
   const personasDir = join(ws.path, 'cocoder', 'personas')
@@ -100,6 +100,9 @@ export async function buildRunInput(ctx: Pick<OzContext, 'cocoderHome' | 'runsRo
     runsRoot: ctx.runsRoot,
     task: opts.task ?? null,
     pickup,
+    // Direct-to-branch is the DEFAULT (ADR-0023 §2). Isolation is an explicit founder opt-in for
+    // risky / large / throwaway / parallel work, threaded from the launch request.
+    isolation: opts.isolation === true,
   }
 }
 
@@ -118,7 +121,7 @@ export interface LaunchResult {
 
 /** Launch a run for {workspaceId, priorityId}. Async (fire-and-forget); returns 202 with the runId,
  *  409 if a run is already in flight for the workspace, or 400 if the request can't be assembled. */
-export async function launchRun(ctx: OzContext, workspaceId: string, priorityId: string, opts: { readonly resumeFromRunId?: string; readonly task?: string | null } = {}): Promise<LaunchResult> {
+export async function launchRun(ctx: OzContext, workspaceId: string, priorityId: string, opts: { readonly resumeFromRunId?: string; readonly task?: string | null; readonly isolation?: boolean } = {}): Promise<LaunchResult> {
   if (!workspaceId || !priorityId) return { status: 400, body: { error: 'workspaceId and priorityId are required' } }
   if (ctx.inFlight.has(workspaceId)) {
     return { status: 409, body: { error: `a run is already in flight for workspace "${workspaceId}"` } }
