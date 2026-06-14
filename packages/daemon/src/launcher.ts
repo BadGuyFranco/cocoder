@@ -12,7 +12,7 @@ import {
   isPersonaEnabled,
   gateCommitRepair,
   loadAssignments,
-  loadPlay,
+  loadEffectivePlay,
   loadPriority,
   resolvePlayAssignment,
   resolvePersonaMode,
@@ -61,10 +61,11 @@ function trackingHost(ctx: OzContext): SessionHost {
 
 /** Assemble RunInput from governance on disk (mirrors cli/src/run.ts). Throws on unknown ids. When
  *  resuming, reads the prior run's pickup brief so a fresh session continues it (ADR-0013 / F8). */
-async function buildRunInput(ctx: OzContext, workspaceId: string, priorityId: string, opts: { readonly resumeFromRunId?: string; readonly task?: string | null } = {}): Promise<RunInput> {
+export async function buildRunInput(ctx: Pick<OzContext, 'cocoderHome' | 'runsRoot'>, workspaceId: string, priorityId: string, opts: { readonly resumeFromRunId?: string; readonly task?: string | null } = {}): Promise<RunInput> {
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
   if (!ws) throw new Error(`unknown workspace "${workspaceId}"`)
   const personasDir = join(ws.path, 'cocoder', 'personas')
+  const playDeltaDir = join(ws.path, 'cocoder', 'plays', 'deltas')
   const prioritiesDir = join(ws.path, 'cocoder', 'priorities')
   const baseDir = basePersonasDir()
   const sources: PersonaSources = { baseDir, deltaDir: join(personasDir, 'deltas'), repoPersonaDir: personasDir }
@@ -85,13 +86,13 @@ async function buildRunInput(ctx: OzContext, workspaceId: string, priorityId: st
     oscar: resolveEffectivePersona(sources, assignments, 'oscar'),
     bob: resolveEffectivePersona(sources, assignments, 'bob'),
     deb: isPersonaEnabled(assignments, 'deb') ? resolveEffectivePersona(sources, assignments, 'deb') : undefined,
-    wrapPlay: loadPlay(basePlaysDir(), 'wrap-up'),
+    wrapPlay: loadEffectivePlay(basePlaysDir(), playDeltaDir, 'wrap-up'),
     wrapPlayAssignment: resolvePlayAssignment(assignments, 'oscar', 'wrap-up'),
     wrapPlayPersonaMode: resolvePersonaMode(assignments, 'oscar'),
-    integrationVerifyPlay: loadPlay(basePlaysDir(), 'integration-verify'),
+    integrationVerifyPlay: loadEffectivePlay(basePlaysDir(), playDeltaDir, 'integration-verify'),
     integrationVerifyAssignment: resolvePlayAssignment(assignments, 'oscar', 'integration-verify'),
     integrationVerifyPersonaMode: resolvePersonaMode(assignments, 'oscar'),
-    mergeConflictPlay: loadPlay(basePlaysDir(), 'merge-conflict'),
+    mergeConflictPlay: loadEffectivePlay(basePlaysDir(), playDeltaDir, 'merge-conflict'),
     mergeConflictAssignment: resolvePlayAssignment(assignments, 'oscar', 'merge-conflict'),
     mergeConflictPersonaMode: resolvePersonaMode(assignments, 'oscar'),
     sharedStandards,
