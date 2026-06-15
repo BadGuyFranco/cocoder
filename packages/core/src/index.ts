@@ -85,6 +85,12 @@ export {
   type OnboardingPlaybookMode,
 } from './playbooks/index.js'
 
+export {
+  scaffoldCocoderZone,
+  type ScaffoldCocoderZoneOptions,
+  type ScaffoldCocoderZoneResult,
+} from './scaffold/index.js'
+
 export { clamp } from './util/clamp.js'
 export { mean } from './util/mean.js'
 export { pluralize } from './util/pluralize.js'
