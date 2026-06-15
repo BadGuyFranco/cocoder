@@ -2,7 +2,13 @@
   "personas": {
     "oz": {
       "cli": "claude",
-      "model": "sonnet"
+      "model": "sonnet",
+      "plays": {
+        "code-review": {
+          "cli": "claude",
+          "model": ""
+        }
+      }
     },
     "oscar": {
       "cli": "claude",
