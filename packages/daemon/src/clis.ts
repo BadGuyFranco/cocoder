@@ -54,6 +54,22 @@ export function listClis(ctx: OzContext): CliListResponse {
   return { clis: ctx.listAdapters().map((adapter) => cliView(adapter, ctx.cliTestCache.get(adapter.id))) }
 }
 
+/** Boot warm-up: probe every registered CLI once so `/clis` (and the Personas model dropdowns, which key
+ *  off `canEnumerate`) show real install/auth status + enumerated models immediately — instead of every
+ *  CLI reading "not tested / does not enumerate models" until the founder clicks Test on each one, and
+ *  losing it again on the next restart (the cache is in-memory). Best-effort + sequential: a probe failure
+ *  for one CLI (not installed, exec error) must never abort the rest. Opt-in via the daemon bin so tests,
+ *  which construct the server directly, never spawn real CLI subprocesses. */
+export async function warmCliCache(ctx: OzContext): Promise<void> {
+  for (const adapter of ctx.listAdapters()) {
+    try {
+      await testCli(ctx, adapter.id)
+    } catch {
+      /* best-effort — a CLI that can't be probed just stays in its untested view */
+    }
+  }
+}
+
 export async function testCli(ctx: OzContext, id: string): Promise<CliTestResponse> {
   let adapter: Adapter
   try {

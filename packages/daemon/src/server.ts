@@ -23,6 +23,7 @@ import { checkBearer, checkCsrf, checkHost, checkOrigin, isMutation } from './se
 import { readOrCreateToken } from './secrets.js'
 import { dispatchMutations, dispatchReads } from './routes.js'
 import { createOzEventBus, type OzContext } from './context.js'
+import { warmCliCache } from './clis.js'
 import { reconcileOrphans } from './launcher.js'
 import { serveStatic } from './static.js'
 
@@ -45,6 +46,10 @@ export interface OzServerOptions {
   readonly restartDaemon?: () => void
   /** Override full-dashboard launch (tests inject a fake so they never spawn Electron). */
   readonly dashboardLauncher?: OzContext['dashboardLauncher']
+  /** Probe every CLI once after boot so `/clis` + Personas model dropdowns show real status/models
+   *  immediately (and survive restarts). Off by default; the daemon bin opts in. Tests omit it so they
+   *  never spawn real CLI subprocesses. */
+  readonly warmCliCacheOnBoot?: boolean
 }
 
 /** Default restart action: spawn a DETACHED `scripts/oz.sh restart` after a short delay, so the HTTP
@@ -180,6 +185,12 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
       resolve(typeof addr === 'object' && addr ? addr.port : (opts.port ?? DEFAULT_OZ_PORT))
     })
   })
+
+  // After the server is listening (so probing doesn't delay boot), warm the CLI cache in the background:
+  // /clis and the Personas model dropdowns then show real install/auth + enumerated models immediately,
+  // instead of "not tested / does not enumerate" until each CLI is manually Tested. Opt-in (the bin sets
+  // it); tests omit it and never shell out to real CLIs.
+  if (opts.warmCliCacheOnBoot) void warmCliCache(ctx)
 
   return {
     server,

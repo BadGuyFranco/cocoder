@@ -663,6 +663,35 @@ describe('Oz mutations + lifecycle', () => {
     ])
   })
 
+  test('warmCliCacheOnBoot probes every CLI once at boot so /clis shows models without a manual Test', async () => {
+    const calls: CliAdapterCalls = { preflight: 0, listModels: 0 }
+    const adapters = [cliAdapter('alpha', 'managed alpha', calls), cliAdapter('beta', 'managed beta', calls)]
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit(),
+      sessionHost: fakeHost(),
+      getAdapter: (cli) => {
+        const adapter = adapters.find((a) => a.id === cli)
+        if (!adapter) throw new Error('unknown cli')
+        return adapter
+      },
+      listAdapters: () => adapters,
+      io: fakeIO(),
+      warmCliCacheOnBoot: true,
+    })
+
+    // The warm-up is fired in the background after listen; poll until it lands.
+    for (let i = 0; i < 100 && calls.preflight < 2; i += 1) await new Promise((r) => setTimeout(r, 2))
+    expect(calls).toEqual({ preflight: 2, listModels: 2 })
+
+    const r = await call(oz, 'GET', '/clis')
+    expect(r.status).toBe(200)
+    expect(r.json.clis.map((c: { id: string; tested: boolean; models: { canEnumerate: boolean } }) => [c.id, c.tested, c.models.canEnumerate]))
+      .toEqual([['alpha', true, true], ['beta', true, true]])
+  })
+
   test('POST /clis/:id/test refreshes and caches a CLI test result', async () => {
     const calls: CliAdapterCalls = { preflight: 0, listModels: 0 }
     const adapters = [cliAdapter('alpha', 'managed alpha', calls)]

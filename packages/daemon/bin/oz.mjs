@@ -11,7 +11,7 @@ const { createOzServer } = await import('../src/index.ts')
 const portFlag = process.argv.indexOf('--port')
 const port = portFlag >= 0 ? Number(process.argv[portFlag + 1]) : undefined
 
-const oz = await createOzServer({ cocoderHome: process.cwd(), port })
+const oz = await createOzServer({ cocoderHome: process.cwd(), port, warmCliCacheOnBoot: true })
 console.log(`[oz] daemon listening on ${oz.url} — dashboard at ${oz.url}/`)
 
 const shutdown = () => {
