@@ -1,6 +1,7 @@
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { loadPriority, truncate } from '@cocoder/core'
+import { loadOnboardingPlaybooks, loadPriority, truncate } from '@cocoder/core'
+import { basePlaybooksDir } from '@cocoder/personas'
 
 export interface PrioritySummary {
   readonly id: string
@@ -9,7 +10,23 @@ export interface PrioritySummary {
   readonly goal: string
 }
 
+export interface OnboardingPlaybookSummary {
+  readonly id: string
+  readonly title: string
+  readonly mode: 'bootstrap' | 'takeover' | 'drift'
+  readonly modelPin: string
+}
+
 const priorityOrderPath = (prioritiesDir: string): string => join(prioritiesDir, 'order.json')
+
+export function readOnboardingPlaybooks(): readonly OnboardingPlaybookSummary[] {
+  return loadOnboardingPlaybooks(basePlaybooksDir()).map((playbook) => ({
+    id: playbook.id,
+    title: playbook.title,
+    mode: playbook.mode,
+    modelPin: playbook.modelPin,
+  }))
+}
 
 async function readManifest(prioritiesDir: string): Promise<readonly string[] | null> {
   try {

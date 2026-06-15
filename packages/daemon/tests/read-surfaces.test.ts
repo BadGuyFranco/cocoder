@@ -154,8 +154,17 @@ describe('Oz read surfaces', () => {
   test('GET /workspaces/:id/priorities skips AGENTS.md (no frontmatter) without throwing', async () => {
     const r = await get(oz!, '/workspaces/cocoder/priorities')
     expect(r.status).toBe(200)
-    expect(r.json.priorities.map((p: any) => p.id)).toEqual(['demo'])
+    const priorityIds = r.json.priorities.map((p: any) => p.id)
+    expect(priorityIds).toEqual(['demo'])
     expect(r.json.priorities[0]).toMatchObject({ title: 'Demo priority' })
+    expect(priorityIds).not.toContain('cocoder-takeover')
+    expect(priorityIds).not.toContain('drift-audit')
+    expect(priorityIds).not.toContain('new-primary')
+    expect(r.json.onboarding).toEqual([
+      expect.objectContaining({ id: 'cocoder-takeover', mode: 'takeover', modelPin: 'top-tier' }),
+      expect.objectContaining({ id: 'drift-audit', mode: 'drift', modelPin: 'top-tier' }),
+      expect.objectContaining({ id: 'new-primary', mode: 'bootstrap', modelPin: 'standard' }),
+    ])
   })
 
   test('GET /workspaces/:id/priorities applies order.json, appends unlisted priorities, and ignores stale ids', async () => {

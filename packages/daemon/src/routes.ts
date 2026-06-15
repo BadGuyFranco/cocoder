@@ -15,7 +15,7 @@ import { listClis, testCli } from './clis.js'
 import { launchRun, requestDaemonRestart, requestDashboardLaunch, requestStopRun, resolveRun, showRun, teardownRun } from './launcher.js'
 import { handleOzMessage } from './oz-chat.js'
 import { mergeWriteSettings, readSettings } from './settings.js'
-import { readPriorities, writePriorityOrder } from './priority-order.js'
+import { readOnboardingPlaybooks, readPriorities, writePriorityOrder } from './priority-order.js'
 
 export type { OzContext } from './context.js'
 
@@ -297,7 +297,7 @@ async function listWorkspaces(ctx: OzContext, res: ServerResponse): Promise<void
 async function listPriorities(ctx: OzContext, res: ServerResponse, workspaceId: string): Promise<void> {
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
   if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
-  sendJson(res, 200, { workspace: ws, priorities: await readPriorities(prioritiesDir(ws.path), CAP) })
+  sendJson(res, 200, { workspace: ws, priorities: await readPriorities(prioritiesDir(ws.path), CAP), onboarding: readOnboardingPlaybooks() })
 }
 
 /** GET /workspaces/:id/personas — surface 3 (read). Persona defs + their CLI/model assignment. */
