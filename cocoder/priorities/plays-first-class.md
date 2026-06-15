@@ -37,7 +37,7 @@ Play** on different models, and any **dynamic per-persona sub-delegation** ("a d
 sub-agent task"). Both need schema + engine changes and fight the current one-level-deep,
 no-further-delegation dispatch model (`packages/core/src/plays/dispatch.ts`). Decide in the ADR first.
 
-## Status — ARCHIVE-CANDIDATE (2026-06-15, re-verified run_89)
+## Status — ARCHIVE-CANDIDATE (2026-06-15, re-verified run_89/run_90)
 
 All four deliverables shipped and verified. Re-verified this run: root typecheck clean; full suite
 **592 green** (core 257 / daemon 180 / ui 108 / adapters 17 / personas 15 / session-hosts 13 / cli 2):
@@ -52,6 +52,9 @@ All four deliverables shipped and verified. Re-verified this run: root typecheck
 4. ✅ Permission surfacing: write-scope chips per binding + ⚠️ headless-Play-on-non-headless-capable-CLI
    warning, proven by a negative test not to misfire — capability data `20260c4`, UI `eb691a8`.
 
-**Verified-when criteria are met.** Remaining work is only the deferred boundary above (multi-binding +
-dynamic per-persona sub-delegation) — it needs the ADR first and is the natural next priority. Recommend
-archiving this priority once the founder confirms.
+**Verified-when criteria are met.** The boundary the Objective deferred (adversarial multi-binding +
+dynamic per-persona sub-delegation) is no longer an open gap: it was examined and **RESOLVED** in a
+founder design dive post-run_88 — see [`play-dispatch-boundary.md`](./play-dispatch-boundary.md)
+(one-level dispatch stands, no engine reversal, no ADR authorship required). So nothing further is
+buildable under this priority; it is archive-ready pending founder confirmation. Next queued priority is
+`new-primary-root` (order.json #2). Recommend archiving once the founder confirms.

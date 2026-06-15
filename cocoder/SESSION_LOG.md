@@ -12,6 +12,20 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-15 — **plays-first-class archive-readiness confirmed (run_90): stale ADR pointer corrected**
+
+**Persona:** Oscar (wrap-up only; 0 atoms) | **Priority:** [plays-first-class](./priorities/plays-first-class.md) | **Play:** wrap-up
+**Outcomes:**
+- **No build atoms** — all four deliverables remain shipped from run_88; re-verified run_89 (592 green).
+  This run added no code; relaunching a code-complete priority as a build run only produces empty
+  reaffirmation wraps (F18).
+- **Priority Status corrected:** the stale "needs the ADR first" line superseded — the deferred boundary
+  was resolved in [play-dispatch-boundary.md](./priorities/play-dispatch-boundary.md) (one-level dispatch
+  stands; no ADR authorship required).
+- **Disposition: archive-candidate** — verified-when met; nothing blocks archive except founder
+  confirmation.
+**Next:** Reply **`archive plays-first-class`** to archive; then launch **`new-primary-root`** in Oz.
+
 ## 2026-06-15 — **plays-first-class re-verified (run_89): archive-candidate, nav relocation recorded**
 
 **Persona:** Oscar (wrap-up only; 0 atoms) | **Priority:** [plays-first-class](./priorities/plays-first-class.md) | **Play:** wrap-up
