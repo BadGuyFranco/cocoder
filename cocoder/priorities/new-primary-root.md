@@ -72,8 +72,10 @@ CoPublisher).
   **gated on Oz-debug-complete**. Do not attempt a live run until the founder lifts this gate.
 
 **Remaining work:**
-1. **D1 template files on trunk** — reply `expand scope` to commit the three held-back template files
-   (assignments, adhoc priority, CLAUDE pointer). Required before scaffold is complete on a fresh clone.
+1. **D1 template files on trunk** — ✅ **RESOLVED** 2026-06-14 (Oz dashboard session). The three template
+   files (assignments, adhoc priority, CLAUDE pointer) are now committed to trunk with their verified
+   canonical contents; the run_86 strand below is closed (recovery executed). Scaffold is complete on a
+   fresh clone again and CI is green.
 2. **P2→P5 fan-out executor** — the launcher/runner path that runs a Takeover Playbook's phases: P1 recon →
    founder gate → P2 fan deep-read (one top-tier sub-agent per subsystem) → P3 cross-check → P4 synthesize
    `cocoder/**` → P5 founder ratify. **NOT yet designed** — today the runner only does the Oscar↔Bob directive
@@ -86,3 +88,34 @@ CoPublisher).
 
 **Do not relaunch this priority for build atoms** until D2 lifts or the P2→P5 executor is designed — the
 bounded buildable remainder is exhausted.
+
+### Founder decision + outcome (2026-06-14, run_86 post-wrap) — D3 + a STRAND
+- **D3 — EXPAND SCOPE APPROVED.** The founder explicitly approved expand-scope to **land the three
+  held-back D1 template files** onto trunk:
+  - `templates/workspace-cocoder/cocoder/CLAUDE.md`
+  - `templates/workspace-cocoder/cocoder/personas/assignments.json`
+  - `templates/workspace-cocoder/cocoder/priorities/adhoc-session.md`
+  Their verified contents: `assignments.json` byte-matches the retired inline `DEFAULT_ASSIGNMENTS`,
+  `CLAUDE.md` byte-matches the retired `CLAUDE_POINTER`, and `adhoc-session.md` is identical to
+  `packages/personas/base/priorities/adhoc-session.md`. Low risk; required for the committed `735d741`
+  scaffold path to work (without them, `createWorkspace` → `scaffoldCocoderZone` copies an incomplete
+  template and `loadAssignments` throws on a fresh clone).
+- **OUTCOME: NOT executed — STRAND.** The expand decision was **not carried out.** As of this writing the
+  three files are neither on trunk nor on disk (working tree clean, files absent). Root cause: **neither
+  Oscar nor Deb can commit** — held-back out-of-scope files require a committing actor, and the post-wrap
+  run had no open committed path, so the decision could not be honored from inside the run. This is the
+  recurring "decision made, nothing lands" strand. The decision had also only ever been recorded in chat
+  (not durably) until this block.
+- **RECOVERY (next session / founder IDE flow):** re-create the three files with the verified contents
+  above and commit them via a path that can actually commit — the founder's IDE flow, or a fresh CoCoder
+  run whose write-scope includes `templates/workspace-cocoder/**` and that reaches the commit gate
+  in-scope (so they are NOT held back again). Verify after: `git ls-files templates/workspace-cocoder/cocoder/{CLAUDE.md,personas/assignments.json,priorities/adhoc-session.md}` lists all three, and
+  `pnpm --filter @cocoder/daemon test` (createWorkspace scaffold assertions) stays green.
+- **✅ RESOLVED 2026-06-14 (Oz dashboard session, founder + Opus, direct git path).** The recovery above
+  was executed: the strand surfaced when the run_86-modified `scaffold.test.ts` (commit `735d741`) turned
+  CI red on a fresh clone (the 3 files were untracked). The three files were re-created with the verified
+  canonical contents and committed to trunk; `adhoc-session.md` byte-matches the base, `assignments.json`
+  matches `JSON.stringify(DEFAULT_ASSIGNMENTS, null, 2)`, `CLAUDE.md` matches `CLAUDE_POINTER`.
+  `git ls-files` now lists all three; full monorepo suite + CI green. The strand is closed. (This is
+  another instance of the recurring "decision made, nothing lands" class — a run approved expand-scope but
+  had no committing path; it was only closed out-of-run by a committing actor.)
