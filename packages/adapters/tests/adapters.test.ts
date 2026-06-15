@@ -174,24 +174,20 @@ describe('listModels() (injected exec)', () => {
     })
   })
 
-  test('codex: no documented model enumeration command', async () => {
+  test('codex: curated `-m` model list (no enumerate command)', async () => {
     const r = await new CodexAdapter(fakeExec({})).listModels()
 
-    expect(r).toEqual({
-      canEnumerate: false,
-      models: [],
-      detail: 'codex exposes no model-enumeration command — Default + free-text',
-    })
+    expect(r.canEnumerate).toBe(true)
+    expect(r.models).toEqual(['gpt-5-codex', 'gpt-5', 'o3'])
+    expect(r.detail).toMatch(/curated/i)
   })
 
-  test('claude: no documented model enumeration command', async () => {
+  test('claude: curated `--model` alias list (no enumerate command)', async () => {
     const r = await new ClaudeAdapter(fakeExec({})).listModels()
 
-    expect(r).toEqual({
-      canEnumerate: false,
-      models: [],
-      detail: 'claude exposes no model-enumeration command — Default + free-text',
-    })
+    expect(r.canEnumerate).toBe(true)
+    expect(r.models).toEqual(['opus', 'sonnet', 'haiku', 'fable'])
+    expect(r.detail).toMatch(/curated/i)
   })
 })
 

@@ -8,44 +8,42 @@ import { SessionNote } from '../ui/PendingBanner.tsx'
 import { modelIsStale } from '../adapter.ts'
 import { phicon, type Cli, type Persona, type SubAgent } from '../model.ts'
 
+// Sentinel select value: "type a model name yourself". Enumerable CLIs (claude/codex curated aliases,
+// cursor-agent --list-models) get a dropdown; "Custom…" keeps the free-text escape hatch so a full model
+// id (e.g. claude-opus-4-8) can still be pinned. A model not in the list is treated as a custom value.
+const CUSTOM_MODEL = '__custom__'
+
 function ModelControl({ cli, model, onChange, compact = false }: { cli: Cli | undefined; model: string; onChange: (model: string) => void; compact?: boolean }) {
-  const stale = modelIsStale(cli, model)
+  const canEnumerate = !!cli?.canEnumerate
   const models = cli?.models ?? ['Default']
-  const options = stale ? [...models, model] : models
+  // modelIsStale is exactly "canEnumerate && model is non-Default and not in the curated list" — i.e. a
+  // custom/free-form value. Start such a value in custom mode so its input is shown, not hidden.
+  const isCustomValue = modelIsStale(cli, model)
+  const [customMode, setCustomMode] = useState(isCustomValue)
   const inputStyle = compact ? { padding: '5px 8px', fontSize: 11.5 } : undefined
-  const stateNote = stale
-    ? <span style={{ color: 'var(--cb-highlight)', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10.5 }}><Icon name="warning-circle" size={11} />Unavailable</span>
-    : cli && !cli.canEnumerate
-      ? <span style={{ color: 'var(--cb-text-muted)', fontSize: 10.5 }}>free text</span>
-      : null
-  const label = (
-    <label className="oz-field-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-      Model
-      {stateNote && <span style={{ fontFamily: 'var(--cb-font-body)', letterSpacing: 0, textTransform: 'none' }}>{stateNote}</span>}
-    </label>
-  )
-  if (cli && !cli.canEnumerate) {
-    const input = <input className="oz-input" value={model === 'Default' ? '' : model} placeholder="Default" style={inputStyle} onChange={(e) => onChange(e.target.value || 'Default')} />
-    if (compact) return <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>{input}{stateNote}</div>
-    return (
-      <>
-        {label}
-        {input}
-      </>
-    )
+  const label = <label className="oz-field-label">Model</label>
+
+  // CLIs with no enumerate command and no curated list: a plain free-text input.
+  if (cli && !canEnumerate) {
+    const input = <input className="oz-input" aria-label="Model" value={model === 'Default' ? '' : model} placeholder="Default" style={inputStyle} onChange={(e) => onChange(e.target.value || 'Default')} />
+    if (compact) return <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>{input}</div>
+    return <>{label}{input}</>
   }
+
+  const usingCustom = customMode || isCustomValue
   const select = (
-    <select className="oz-select" value={model} style={compact ? { padding: '5px 24px 5px 8px', fontSize: 11.5 } : undefined} onChange={(e) => onChange(e.target.value)}>
-      {options.map((m) => <option key={m} value={m}>{m}{stale && m === model ? ' (unavailable)' : ''}</option>)}
+    <select className="oz-select" aria-label="Model" value={usingCustom ? CUSTOM_MODEL : model} style={compact ? { padding: '5px 24px 5px 8px', fontSize: 11.5 } : undefined}
+      onChange={(e) => { if (e.target.value === CUSTOM_MODEL) setCustomMode(true); else { setCustomMode(false); onChange(e.target.value) } }}>
+      {models.map((m) => <option key={m} value={m}>{m}</option>)}
+      <option value={CUSTOM_MODEL}>Custom…</option>
     </select>
   )
-  if (compact) return <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>{select}{stateNote}</div>
-  return (
-    <>
-      {label}
-      {select}
-    </>
-  )
+  const customInput = usingCustom
+    ? <input className="oz-input" aria-label="Custom model id" placeholder="model id — e.g. claude-opus-4-8" value={model === 'Default' ? '' : model} style={{ ...(inputStyle ?? {}), marginTop: 4 }} onChange={(e) => onChange(e.target.value || 'Default')} />
+    : null
+
+  if (compact) return <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>{select}{customInput}</div>
+  return <>{label}{select}{customInput}</>
 }
 
 function PersonaRow({ persona, clis, onChange, onAddSub, onRemoveSub, onUpdateSub }: {

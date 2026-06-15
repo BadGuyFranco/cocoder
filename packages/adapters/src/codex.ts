@@ -60,7 +60,13 @@ export class CodexAdapter implements Adapter {
   }
 
   async listModels(): Promise<ModelListResult> {
-    // Checked `codex --help`: it documents model selection (`--model`) but no model-enumeration command.
-    return { canEnumerate: false, models: [], detail: 'codex exposes no model-enumeration command — Default + free-text' }
+    // Codex has no model-enumeration command, but `codex --help` documents `-m/--model <MODEL>` (with
+    // `o3` as the worked example). Offer a small curated set of the headline Codex models; the UI keeps
+    // a Custom… escape hatch for any other model name.
+    return {
+      canEnumerate: true,
+      models: ['gpt-5-codex', 'gpt-5', 'o3'],
+      detail: 'curated `-m` models (codex has no enumerate command); Custom… for any other model name',
+    }
   }
 }

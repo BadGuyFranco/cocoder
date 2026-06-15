@@ -59,7 +59,14 @@ export class ClaudeAdapter implements Adapter {
   }
 
   async listModels(): Promise<ModelListResult> {
-    // Checked `claude --help`: it documents model selection (`--model`) but no model-enumeration command.
-    return { canEnumerate: false, models: [], detail: 'claude exposes no model-enumeration command — Default + free-text' }
+    // Claude Code has no model-enumeration command, but `claude --help` documents that `--model` takes
+    // an ALIAS for the latest model ("'fable', 'opus', or 'sonnet'") or a full name. So we offer the
+    // curated aliases — stable across version bumps (they always resolve to the current tier) — and the
+    // UI keeps a Custom… escape hatch for pinning a full model id (e.g. claude-opus-4-8).
+    return {
+      canEnumerate: true,
+      models: ['opus', 'sonnet', 'haiku', 'fable'],
+      detail: 'curated `--model` aliases (claude has no enumerate command); Custom… for a full model id',
+    }
   }
 }
