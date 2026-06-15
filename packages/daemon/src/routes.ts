@@ -4,8 +4,22 @@
 import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { isAbsolute, join, relative, resolve } from 'node:path'
-import { commitFiles, listEffectivePersonas, loadAssignments, loadPriority, parseFrontmatter, truncate, type CommitReceipt, type PersonaAssignment, type PersonaSources, type Priority } from '@cocoder/core'
-import { basePersonasDir, basePrioritiesDir } from '@cocoder/personas'
+import {
+  commitFiles,
+  installRoot as cocoderInstallRoot,
+  listEffectivePersonas,
+  loadAssignments,
+  loadPriority,
+  parseFrontmatter,
+  scaffoldCocoderZone,
+  truncate,
+  workspaceTemplateDir,
+  type CommitReceipt,
+  type PersonaAssignment,
+  type PersonaSources,
+  type Priority,
+} from '@cocoder/core'
+import { basePersonasDir } from '@cocoder/personas'
 import type { OzContext, OzEvent } from './context.js'
 import { sendJson } from './server.js'
 import { findWorkspace, readWorkspaces, validateWorkspaceFolders, workspaceDirectory, workspaceFilePath, type RegistryRoot, type WorkspaceFolderInput } from './registry.js'
@@ -22,22 +36,6 @@ export type { OzContext } from './context.js'
 const CAP = 50_000
 const ADHOC_PRIORITY_ID = 'adhoc-session'
 const COCODER_GOVERNANCE = { name: 'cocoder-governance', email: 'governance@cocoder.local' } as const
-const CLAUDE_POINTER = 'Claude CLI sessions should read AGENTS.md in this same cocoder/ folder for repo instructions.\nKeep workspace-specific guidance there.\n'
-const DEFAULT_ASSIGNMENTS = {
-  personas: {
-    oscar: {
-      cli: 'claude',
-      model: '',
-      plays: {
-        'wrap-up': { cli: 'cursor-agent', model: '' },
-        'integration-verify': { cli: 'claude', model: '' },
-        'merge-conflict': { cli: 'claude', model: '' },
-      },
-    },
-    bob: { cli: 'codex', model: '' },
-    deb: { cli: 'codex', model: '', enabled: true },
-  },
-} as const
 
 /** Read + JSON-parse a request body with a hard size cap (mutation handlers). */
 function readJsonBody(req: IncomingMessage): Promise<unknown> {
@@ -65,7 +63,6 @@ function readJsonBody(req: IncomingMessage): Promise<unknown> {
 }
 
 /** Personas dir / priorities dir for a workspace's tracked governance zone. */
-const governanceDir = (workspacePath: string): string => join(workspacePath, 'cocoder')
 const personasDir = (workspacePath: string): string => join(workspacePath, 'cocoder', 'personas')
 const prioritiesDir = (workspacePath: string): string => join(workspacePath, 'cocoder', 'priorities')
 const priorityOrderFile = (workspacePath: string): string => join(prioritiesDir(workspacePath), 'order.json')
@@ -257,35 +254,13 @@ function governanceCommitFailed(res: Parameters<typeof sendJson>[0], receipt: Co
   return true
 }
 
-async function writeIfMissing(path: string, contents: string): Promise<boolean> {
-  try {
-    await writeFile(path, contents, { flag: 'wx' })
-    return true
-  } catch (err) {
-    if (errorCode(err) === 'EEXIST') return false
-    throw err
-  }
-}
-
 async function scaffoldWorkspaceGovernance(root: string): Promise<readonly string[]> {
-  const cocoderDir = governanceDir(root)
   const personaDir = personasDir(root)
   const priorityDir = prioritiesDir(root)
-  const created: string[] = []
-  await mkdir(personaDir, { recursive: true })
-  await mkdir(priorityDir, { recursive: true })
-  const agents = join(cocoderDir, 'AGENTS.md')
-  const claude = join(cocoderDir, 'CLAUDE.md')
-  const assignments = join(personaDir, 'assignments.json')
-  if (await writeIfMissing(agents, '')) created.push(agents)
-  if (await writeIfMissing(claude, CLAUDE_POINTER)) created.push(claude)
-  if (await writeIfMissing(assignments, `${JSON.stringify(DEFAULT_ASSIGNMENTS, null, 2)}\n`)) created.push(assignments)
-  const adhocTemplate = await readFile(join(basePrioritiesDir(), `${ADHOC_PRIORITY_ID}.md`), 'utf8')
-  const adhoc = join(priorityDir, `${ADHOC_PRIORITY_ID}.md`)
-  if (await writeIfMissing(adhoc, adhocTemplate)) created.push(adhoc)
+  const { created } = scaffoldCocoderZone({ templateDir: workspaceTemplateDir(), targetRoot: root, installRoot: cocoderInstallRoot() })
   loadAssignments(join(personaDir, 'assignments.json'))
   loadPriority(priorityDir, ADHOC_PRIORITY_ID)
-  return created
+  return created.map((path) => join(root, path))
 }
 
 /** GET /workspaces — surface 1. */

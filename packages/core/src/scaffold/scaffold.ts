@@ -2,6 +2,7 @@
 // it copies the shipped workspace template into a target primary root without git or commits.
 import { copyFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 export interface ScaffoldCocoderZoneResult {
   readonly created: readonly string[]
@@ -38,6 +39,21 @@ function copyTree(templateDir: string, targetDir: string, targetRoot: string, cr
     copyFileSync(from, to)
     created.push(posixPath(relative(targetRoot, to)))
   }
+}
+
+export function installRoot(): string {
+  let dir = dirname(fileURLToPath(import.meta.url))
+  while (dir !== dirname(dir)) {
+    if (existsSync(join(dir, 'templates', 'workspace-cocoder', 'cocoder')) && existsSync(join(dir, 'packages', 'core'))) {
+      return dir
+    }
+    dir = dirname(dir)
+  }
+  throw new Error(`unable to resolve CoCoder install root from ${fileURLToPath(import.meta.url)}`)
+}
+
+export function workspaceTemplateDir(): string {
+  return join(installRoot(), 'templates', 'workspace-cocoder', 'cocoder')
 }
 
 export function scaffoldCocoderZone(opts: ScaffoldCocoderZoneOptions): ScaffoldCocoderZoneResult {

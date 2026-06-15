@@ -1,7 +1,7 @@
 // Stage-4 mutations + run-lifecycle correctness: launch (202 / 409 in-flight), deep-link (200 / 409
 // non-live, never 500), assignments write (validate + atomic), startup orphan reconciliation.
 import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -59,6 +59,22 @@ const expectedScaffoldAssignments = {
   bob: { cli: 'codex', model: '' },
   deb: { cli: 'codex', model: '', enabled: true },
 }
+const expectedScaffoldFiles = [
+  'cocoder/.gitignore',
+  'cocoder/AGENTS.md',
+  'cocoder/CLAUDE.md',
+  'cocoder/SESSION_LOG.md',
+  'cocoder/decisions/README.md',
+  'cocoder/memory/AGENTS.md',
+  'cocoder/memory/codebase-map.md',
+  'cocoder/memory/tech-stack.md',
+  'cocoder/personas/assignments.json',
+  'cocoder/personas/custom/.gitkeep',
+  'cocoder/priorities/.gitkeep',
+  'cocoder/priorities/adhoc-session.md',
+  'cocoder/standards/AGENTS.md',
+  'cocoder/tickets/INDEX.md',
+]
 const fakeGit = (changed: string[] = [], shas: readonly string[] = ['h0']): Git => {
   let headCalls = 0
   return {
@@ -196,20 +212,6 @@ const exists = async (path: string): Promise<boolean> => {
     return false
   }
 }
-const findReadmes = async (root: string): Promise<string[]> => {
-  const found: string[] = []
-  const visit = async (dir: string): Promise<void> => {
-    const entries = await readdir(dir, { withFileTypes: true })
-    for (const entry of entries) {
-      const path = join(dir, entry.name)
-      if (entry.isDirectory()) await visit(path)
-      else if (entry.isFile() && entry.name === 'README.md') found.push(path)
-    }
-  }
-  await visit(root)
-  return found
-}
-
 // Fake RunnerIO so runRun completes against fakes (no real directive file to poll for). Oscar
 // immediately wraps up (zero atoms) — enough to exercise the launch→terminal lifecycle this suite tests.
 const fakeIO = (): RunnerIO => ({
@@ -1238,11 +1240,13 @@ describe('Oz mutations + lifecycle', () => {
 
     expect(r.status).toBe(201)
     expect(r.json.governanceCommittedSha).toBe('sha-governance')
-    expect(await readFile(join(workspaceRoot, 'cocoder', 'AGENTS.md'), 'utf8')).toBe('')
+    expect(await readFile(join(workspaceRoot, 'cocoder', 'AGENTS.md'), 'utf8')).toContain("workspace's governance")
     const claudePointer = await readFile(join(workspaceRoot, 'cocoder', 'CLAUDE.md'), 'utf8')
     expect(claudePointer).toBe('Claude CLI sessions should read AGENTS.md in this same cocoder/ folder for repo instructions.\nKeep workspace-specific guidance there.\n')
     expect(claudePointer).not.toMatch(/CoBuilder|CoPublisher|dogfood/i)
-    expect(await findReadmes(workspaceRoot)).toEqual([])
+    for (const file of expectedScaffoldFiles) {
+      expect(await exists(join(workspaceRoot, file))).toBe(true)
+    }
     expect(loadAssignments(join(workspaceRoot, 'cocoder', 'personas', 'assignments.json')).personas).toEqual(expectedScaffoldAssignments)
     expect(loadPriority(join(workspaceRoot, 'cocoder', 'priorities'), 'adhoc-session')).toMatchObject({
       id: 'adhoc-session',
@@ -1255,12 +1259,7 @@ describe('Oz mutations + lifecycle', () => {
     expect(commits).toEqual([
       {
         cwd: workspaceRoot,
-        files: [
-          'cocoder/AGENTS.md',
-          'cocoder/CLAUDE.md',
-          'cocoder/personas/assignments.json',
-          'cocoder/priorities/adhoc-session.md',
-        ],
+        files: expectedScaffoldFiles,
         message: 'governance: scaffold workspace governance (fresh-product)',
         author: COCODER_GOVERNANCE,
       },

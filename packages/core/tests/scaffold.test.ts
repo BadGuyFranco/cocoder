@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, test } from 'vitest'
-import { scaffoldCocoderZone } from '../src/index.js'
+import { installRoot, loadAssignments, loadPriority, scaffoldCocoderZone, workspaceTemplateDir } from '../src/index.js'
 
 const repoRoot = (): string => join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
 const templateDir = (): string => join(repoRoot(), 'templates', 'workspace-cocoder', 'cocoder')
@@ -26,22 +26,38 @@ describe('scaffoldCocoderZone', () => {
     const targetRoot = await tempTarget('cocoder-scaffold-')
     const result = scaffoldCocoderZone({ templateDir: templateDir(), targetRoot, installRoot: repoRoot() })
     const expectedFiles = [
-      'cocoder/AGENTS.md',
       'cocoder/.gitignore',
+      'cocoder/AGENTS.md',
+      'cocoder/CLAUDE.md',
       'cocoder/SESSION_LOG.md',
-      'cocoder/memory/tech-stack.md',
-      'cocoder/memory/codebase-map.md',
-      'cocoder/memory/AGENTS.md',
       'cocoder/decisions/README.md',
+      'cocoder/memory/AGENTS.md',
+      'cocoder/memory/codebase-map.md',
+      'cocoder/memory/tech-stack.md',
+      'cocoder/personas/assignments.json',
+      'cocoder/personas/custom/.gitkeep',
+      'cocoder/priorities/.gitkeep',
+      'cocoder/priorities/adhoc-session.md',
       'cocoder/standards/AGENTS.md',
       'cocoder/tickets/INDEX.md',
-      'cocoder/priorities/.gitkeep',
     ]
 
+    expect(result.created).toEqual(expectedFiles)
     for (const file of expectedFiles) {
       expect(await exists(join(targetRoot, file))).toBe(true)
-      expect(result.created).toContain(file)
     }
+    expect(await readFile(join(targetRoot, 'cocoder', 'AGENTS.md'), 'utf8')).toContain("workspace's governance")
+    expect(loadAssignments(join(targetRoot, 'cocoder', 'personas', 'assignments.json')).personas.bob).toEqual({ cli: 'codex', model: '' })
+    expect(loadPriority(join(targetRoot, 'cocoder', 'priorities'), 'adhoc-session')).toMatchObject({
+      id: 'adhoc-session',
+      title: 'Session without a named priority',
+    })
+  })
+
+  test('resolves the shipped template from the running package location', async () => {
+    expect(installRoot()).toBe(repoRoot())
+    expect(workspaceTemplateDir()).toBe(templateDir())
+    expect(await exists(join(workspaceTemplateDir(), 'AGENTS.md'))).toBe(true)
   })
 
   test('never overwrites an existing target file', async () => {
