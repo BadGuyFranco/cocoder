@@ -53,14 +53,24 @@ The **additive engine foundation is built and committed** (4 atoms, all first-tr
 - ✅ **`deep-read` audit Play** — the Takeover P2 unit, 5-axis findings + `file:line`→`UNVERIFIED`
   traceability gate, portability-clean (`4e9c98d`).
 
-**Remaining (each needs a founder input/decision — that's why this run wrapped here):**
-1. **Scaffold reconciliation.** The live `createWorkspace` scaffold (`scaffoldWorkspaceGovernance`,
-   `packages/daemon/src/routes.ts:270`) writes a *different minimal inline* file set and ignores the template
-   tree. Decide the canonical scaffolded `cocoder/` file set, then wire `createWorkspace` onto
-   `scaffoldCocoderZone`. Recommendation: template tree = single source; fold the runtime-required
-   `assignments.json`/adhoc-priority/CLAUDE-pointer into it (the route hard-depends on them).
+### Founder decisions (2026-06-14, run_83 wrap)
+- **D1 — Scaffold reconciliation APPROVED.** Founder accepted the recommendation: the
+  `templates/workspace-cocoder/` tree becomes the **single source** for the scaffolded `cocoder/` zone;
+  fold the runtime-required files (`assignments.json`, adhoc priority, CLAUDE pointer) into the template,
+  then wire `createWorkspace` onto `scaffoldCocoderZone`. This is now a **ratified buildable atom** (no
+  further founder decision needed) — proceed next session.
+- **D2 — Live proofs DEFERRED until Oz is fully debugged.** No live onboarding/Takeover of a new
+  workspace runs until Oz is fully debugged (a separate session owns that). So Objective verifications
+  (a) live external Takeover and (b) dogfood Drift Audit are **gated on Oz-debug-complete**, not on this
+  priority. Build the engine to ready; do not attempt a live run until the founder lifts this gate.
+
+**Remaining work:**
+1. **Scaffold reconciliation** *(ratified — D1)* — fold the runtime-required files into the template tree,
+   wire `createWorkspace` (`scaffoldWorkspaceGovernance`, `packages/daemon/src/routes.ts:270`) onto
+   `scaffoldCocoderZone`, retire the divergent inline file set. Buildable now.
 2. **Takeover orchestration wiring** — assignments/model-pins (top-tier per ADR-0018) for the `deep-read`
    Play + the launcher path that fans it out P2→P5, plus a fuller adversarial review of the Play before
-   first live use.
-3. **Live CoPublisher Takeover proof** (Phase-5 entry) — needs the CoPublisher repo path confirmed +
-   reachable. This is the Objective's verification (a) and the last step.
+   first live use. Buildable now (no live run required to build/test the wiring).
+3. **Live CoPublisher Takeover proof** (Phase-5 entry) — Objective verification (a). **BLOCKED on D2**
+   (Oz-debug-complete) — do not attempt until the founder lifts the gate.
+4. **Dogfood Drift Audit run** — Objective verification (b). **BLOCKED on D2** as above.
