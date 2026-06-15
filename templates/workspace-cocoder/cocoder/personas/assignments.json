@@ -4,12 +4,28 @@
       "cli": "claude",
       "model": "",
       "plays": {
-        "wrap-up": { "cli": "cursor-agent", "model": "" },
-        "integration-verify": { "cli": "claude", "model": "" },
-        "merge-conflict": { "cli": "claude", "model": "" }
+        "wrap-up": {
+          "cli": "cursor-agent",
+          "model": ""
+        },
+        "integration-verify": {
+          "cli": "claude",
+          "model": ""
+        },
+        "merge-conflict": {
+          "cli": "claude",
+          "model": ""
+        }
       }
     },
-    "bob": { "cli": "codex", "model": "" },
-    "deb": { "cli": "codex", "model": "", "enabled": true }
+    "bob": {
+      "cli": "codex",
+      "model": ""
+    },
+    "deb": {
+      "cli": "codex",
+      "model": "",
+      "enabled": true
+    }
   }
 }
