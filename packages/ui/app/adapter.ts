@@ -49,8 +49,9 @@ export function summarize(goal: string | null | undefined): string {
   return `${(lastStop > 80 ? cut.slice(0, lastStop + 1) : cut).trimEnd()}…`
 }
 
-// daemon run status → design run status. `pending-scope-decision` IS the design's "blocked / needs a
-// decision" (the decision-callout case). `stopped` has no daemon equivalent yet; unknowns degrade to it.
+// daemon run status → design run status. `stopped` has no daemon equivalent yet; unknowns degrade to it.
+// (There is no longer a `pending-scope-decision`/held-back daemon status — scope is advisory, ADR-0023,
+// so the spine never withholds and a run never parks awaiting a scope decision.)
 export function mapRunStatus(status: string, integrationStatus?: string | null): RunStatus {
   switch (status) {
     case 'running':
@@ -58,8 +59,6 @@ export function mapRunStatus(status: string, integrationStatus?: string | null):
     case 'completed':
       if (integrationStatus && integrationStatus !== 'merged') return 'not-landed'
       return 'complete'
-    case 'pending-scope-decision':
-      return 'blocked'
     case 'pending-landing':
       return 'not-landed'
     case 'failed':

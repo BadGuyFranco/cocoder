@@ -216,25 +216,25 @@ describe('runRun direct mode — the default (ADR-0023 §2, live git)', () => {
     expect(await g(home, ['status', '--porcelain', '--untracked-files=all'])).toContain('packages/wip.ts')
   })
 
-  test('out-of-scope changes are HELD BACK (uncommitted, surfaced) while in-scope work still lands', async () => {
+  test('out-of-scope changes are COMMITTED and FLAGGED (scope is advisory — the spine never withholds)', async () => {
     const { result, store } = await runDirect({
       bobScope: ['packages/**'],
       bobWrites: async (cwd) => {
         await mkdir(join(cwd, 'packages'), { recursive: true })
         await writeFile(join(cwd, 'packages', 'feature.ts'), 'export const feature = 42\n')
-        await writeFile(join(cwd, 'OUTSIDE.md'), 'out of scope\n') // not under packages/**
+        await writeFile(join(cwd, 'OUTSIDE.md'), 'out of scope\n') // not under packages/** — flagged, NOT held
       },
     })
 
-    // In-scope work landed on trunk; out-of-scope file is surfaced + held back, NOT committed.
-    expect(result.committedFiles).toEqual(['packages/feature.ts'])
-    expect(result.outOfScope).toEqual(['OUTSIDE.md'])
-    expect(result.status).toBe('pending-scope-decision')
-    expect(store.getRun(result.runId)!.integrationStatus).toBe('merged') // committed work DID land
+    // BOTH files committed and landed on trunk; the out-of-lane one is flagged, not parked.
+    expect(result.committedFiles).toEqual(expect.arrayContaining(['packages/feature.ts', 'OUTSIDE.md']))
+    expect(result.outOfScope).toEqual(['OUTSIDE.md']) // visibility flag
+    expect(result.status).toBe('completed') // never pending-scope-decision — nothing is held
+    expect(store.getRun(result.runId)!.integrationStatus).toBe('merged')
     expect(await g(home, ['show', '--stat', 'HEAD'])).toContain('packages/feature.ts')
-    expect(await g(home, ['show', '--stat', 'HEAD'])).not.toContain('OUTSIDE.md')
-    // The held-back file remains uncommitted in the active checkout for the expand/discard decision.
-    expect(await g(home, ['status', '--porcelain'])).toContain('OUTSIDE.md')
+    expect(await g(home, ['show', '--stat', 'HEAD'])).toContain('OUTSIDE.md')
+    // Nothing held back — the working tree is clean (everything the actor produced committed).
+    expect(await g(home, ['status', '--porcelain'])).toBe('')
   })
 
   test('a rejected atom is quarantined in place without touching the founder’s out-of-scope file', async () => {
@@ -251,10 +251,11 @@ describe('runRun direct mode — the default (ADR-0023 §2, live git)', () => {
       },
     })
 
-    // Atom rejected → nothing committed; the in-scope change was restored in place (quarantine).
+    // Atom rejected → nothing committed; the atom's own change was restored in place (quarantine).
     expect(result.committedShas).toHaveLength(0)
     expect(await exists(join(home, 'packages', 'bad.ts'))).toBe(false)
-    // The founder's pre-existing out-of-scope file is untouched (quarantine only restores in-scope).
+    // The founder's PRE-EXISTING file is untouched — quarantine reverts only what the atom produced
+    // (dirty-after minus dirty-before), never pre-existing dirt.
     expect(await g(home, ['status', '--porcelain'])).toContain('NOTES.md')
     expect(store.listEvents(result.runId).map((e) => e.type)).toContain('atom-quarantined')
   })

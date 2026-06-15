@@ -1,10 +1,13 @@
-// Write-scope commit-gate (ADR-0007) — the canonical deterministic agent→reality boundary (D3).
-// Earned by F6 (run↔commit linkage must be a first-class explicit row) + F11 (don't pretend a
-// bypassable gate is a guarantee — only commits CoCoder makes are gated, stated plainly).
+// The commit gate (ADR-0023) — the deterministic agent→reality boundary (D3). Earned by F6 (run↔commit
+// linkage must be a first-class explicit row) + F11 (don't pretend a bypassable gate is a guarantee —
+// only commits CoCoder makes are gated, stated plainly).
 //
-// In-scope changes are committed (recording an explicit commit_link); out-of-scope changes are
-// held back in the working tree and surfaced as an event — never silently committed, never
-// silently discarded. Agent self-commits (possible under trust-the-CLI) are detected, not trusted.
+// SCOPE IS ADVISORY (founder directive 2026-06-15, F21): the spine NEVER WITHHOLDS a commit. Every change
+// the actor produced commits to the active branch in one commit; out-of-scope paths are recorded as a
+// FLAG (visibility), never held back, never parked for a human decision. The constraint that any actor's
+// commit could be blocked — and the held-back/pending-scope-decision state it created — is gone. Safety
+// is "git is the undo" + the verify gate UPSTREAM of this gate (it runs only after Oscar's verify `pass`
+// for product code), not commit-blocking. Agent self-commits (trust-the-CLI) are detected, not trusted.
 import type { RunStore } from '../store/index.js'
 import { partitionByScope } from '../write-scope/partition.js'
 import type { Git } from './git.js'
@@ -25,6 +28,8 @@ export interface CommitGateInput {
 export interface CommitGateResult {
   readonly committedSha: string | null
   readonly committedFiles: readonly string[]
+  /** Paths committed that fell outside the (now advisory) allow-list — FLAGGED for visibility, NOT
+   *  withheld. They are included in `committedFiles`; this is the "out of lane" signal, not a hold-back. */
   readonly outOfScope: readonly string[]
   /** True if the agent committed on its own (HEAD moved outside the gate). */
   readonly selfCommitted: boolean
@@ -40,18 +45,20 @@ export async function runCommitGate(input: CommitGateInput): Promise<CommitGateR
   }
 
   const changed = await git.changedFiles(cwd)
-  const { inScope, outOfScope } = partitionByScope(changed, scope)
+  // Scope is ADVISORY: commit EVERYTHING the actor changed in one commit; out-of-scope is a flag, not a
+  // hold. The spine never withholds (founder directive 2026-06-15) — no held-back working-tree state.
+  const { outOfScope } = partitionByScope(changed, scope)
 
   let committedSha: string | null = null
-  if (inScope.length > 0) {
-    committedSha = await git.addAndCommit(cwd, inScope, message)
-    store.recordCommitLink({ runId, workItemId, commitSha: committedSha, message, files: inScope })
-    store.recordEvent({ runId, type: 'commit', data: { sha: committedSha, files: inScope } })
+  if (changed.length > 0) {
+    committedSha = await git.addAndCommit(cwd, changed, message)
+    store.recordCommitLink({ runId, workItemId, commitSha: committedSha, message, files: changed })
+    store.recordEvent({ runId, type: 'commit', data: { sha: committedSha, files: changed } })
   }
   if (outOfScope.length > 0) {
-    // Held back in the working tree and surfaced for expand-or-discard — never silent.
-    store.recordEvent({ runId, type: 'out-of-scope', data: { files: outOfScope } })
+    // Committed anyway — recorded so an out-of-lane edit is VISIBLE (not invisible, not withheld).
+    store.recordEvent({ runId, type: 'out-of-scope-committed', data: { files: outOfScope } })
   }
 
-  return { committedSha, committedFiles: inScope, outOfScope, selfCommitted }
+  return { committedSha, committedFiles: changed, outOfScope, selfCommitted }
 }

@@ -12,6 +12,33 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-15 — **Scope made advisory: the commit spine never withholds (the constraint itself removed)**
+
+**Persona:** Opus (direct session) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Plan:** remove the commit-blocking constraint at the root (founder directive)
+**Outcomes:**
+- **Reframed the run_86 D3 strand.** An earlier attempt added an `expand` resolve disposition + proposed
+  ADR-0024 to *release* held-back files — process theater (machinery + a ratification gate to work around a
+  constraint that should not exist). Per the founder directive — *remove any constraint on Oscar/Oz/Deb/Bob
+  committing anything at any time* — the constraint itself is removed. ADR-0024, `resolveExpand`, the
+  `expand` disposition, and `resolve-expand.test.ts` are **deleted**.
+- **Scope is advisory; the spine never withholds.** `runCommitGate` (`packages/core/src/commit-gate/gate.ts`)
+  and `commitScoped`/`gateCommitRepair` (Oz repair) now commit the WHOLE working tree; out-of-lane paths are
+  recorded as a flag (`out-of-scope-committed` / `outOfLane`), never held back. The CLI/UI/receipt wording
+  follows ("committed out of lane, flagged, not withheld").
+- **`pending-scope-decision` retired** from `RunStatus` (core), the daemon GC/reconcile, the UI adapter, and
+  the ipc-contract. The only non-terminal default-path outcome is `pending-landing` (opt-in isolation
+  escalation, ADR-0023 §4); `resolve` (`discard`/`landed`) now serves only that lane.
+- **Verify-on-product-code preserved (founder's chosen exception).** Verify still runs BEFORE the gate
+  commits (runner.ts) and quarantines a rejected atom — now reverting everything the atom produced
+  (dirty-after minus a run-start snapshot, so a founder's pre-existing uncommitted edit is never destroyed).
+  It is automated and self-clearing; it never parks awaiting a human.
+- **Verified:** `pnpm -w typecheck` clean; full suite green (core 280, daemon 201, ui 107, personas 15,
+  adapters 17, session-hosts 13, cli 2); `scripts/proof-direct-spine.mjs` 10/10 (clauses updated to the new
+  truth); topology check passes. ADR-0023 §3/§5 corrected in place; failure-catalog **F21** + ticket
+  [0007](./tickets/closed/0007-post-wrap-orchestration-commit-gap.md) record the lesson (delete the
+  constraint at the root; don't build ceremony around it).
+**Next:** none required for this change. Unrelated: `oz-dashboard-bugs` ticket 0006 still owns lifting D2.
+
 ## 2026-06-14 — **new-primary-root run_86: D1 scaffold live-wired + deep-read hardened (2 atoms, all first-try passes)**
 
 **Persona:** Oscar + Bob (2 atoms, all first-try passes) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Play:** multi-atom build (scaffold reconciliation + deep-read hardening)

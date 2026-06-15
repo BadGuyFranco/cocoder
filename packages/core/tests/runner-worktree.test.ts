@@ -349,17 +349,18 @@ describe('runRun worktree isolation + VERIFIED auto-merge (ADR-0015, live git)',
     expect(store.listEvents(runId!).filter((e) => e.type === 'stranded-commits-detected')).toHaveLength(1)
   })
 
-  test('held-back out-of-scope files do not prevent clean committed work from landing', async () => {
+  test('out-of-lane files are committed + flagged (scope advisory) and land with the run', async () => {
     const { result, store, bobCwd } = await runScenario('{"verdict":"pass","reason":"tree green"}', async (cwd) => {
       await mkdir(join(cwd, 'docs'), { recursive: true })
       await writeFile(join(cwd, 'docs', 'held-back.md'), 'outside the atom scope\n')
     })
 
-    expect(result.status).toBe('pending-scope-decision')
-    expect(result.outOfScope).toEqual(['docs/held-back.md'])
+    expect(result.status).toBe('completed') // never pending-scope-decision — nothing is held back
+    expect(result.outOfScope).toEqual(['docs/held-back.md']) // flag only
     expect(store.getRun(result.runId)?.integrationStatus).toBe('merged')
     expect(await g(home, ['cat-file', '-e', 'HEAD:packages/feature.ts']).then(() => true, () => false)).toBe(true)
-    expect(await g(home, ['cat-file', '-e', 'HEAD:docs/held-back.md']).then(() => true, () => false)).toBe(false)
+    // The out-of-lane file was committed and merged to trunk too — not withheld.
+    expect(await g(home, ['cat-file', '-e', 'HEAD:docs/held-back.md']).then(() => true, () => false)).toBe(true)
     expect(await readFile(join(bobCwd!, 'docs', 'held-back.md'), 'utf8')).toBe('outside the atom scope\n')
   })
 

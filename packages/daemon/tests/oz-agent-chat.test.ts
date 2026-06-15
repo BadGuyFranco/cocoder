@@ -276,9 +276,9 @@ describe('Oz agent chat turns', () => {
           status: 200,
           body: {
             ok: true,
-            committedPaths: ['cocoder/personas/assignments.json'],
+            committedPaths: ['cocoder/personas/assignments.json', 'packages/daemon/src/proposal.ts'],
             commitSha: 'sha-repair',
-            heldBackPaths: ['packages/daemon/src/proposal.ts'],
+            outOfLanePaths: ['packages/daemon/src/proposal.ts'],
             exitCode: 0,
             turnLogPath: '/tmp/cocoder/local/oz/cocoder/repair.log',
           },
@@ -291,8 +291,8 @@ describe('Oz agent chat turns', () => {
     expect(calls).toEqual([{ workspaceId: 'cocoder', message: 'fix Oz assignment drift', rationale: 'founder asked' }])
     expect(fixture.headlessInputs).toHaveLength(2)
     expect(fixture.prompts[0]?.prompt).toContain('repair {"message":"..."}')
-    expect(fixture.prompts[1]?.prompt).toContain('Committed cocoder/personas/assignments.json as sha-repair.')
-    expect(fixture.prompts[1]?.prompt).toContain('Held back and did NOT commit: packages/daemon/src/proposal.ts.')
+    expect(fixture.prompts[1]?.prompt).toContain('Committed cocoder/personas/assignments.json, packages/daemon/src/proposal.ts as sha-repair.')
+    expect(fixture.prompts[1]?.prompt).toContain("Committed out of Oz's repair lane (flagged for your visibility, NOT withheld): packages/daemon/src/proposal.ts.")
     expect(fixture.prompts[1]?.prompt).toContain('Refresh Oz next')
     expect(result).toMatchObject({
       status: 200,
@@ -313,7 +313,7 @@ describe('Oz agent chat turns', () => {
       ...fakeOps(),
       repairOz: async () => {
         repairs += 1
-        return { status: 200, body: { ok: true, committedPaths: [], commitSha: null, heldBackPaths: [], exitCode: 0 } }
+        return { status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0 } }
       },
     }
 
@@ -340,7 +340,7 @@ describe('Oz agent chat turns', () => {
           error: 'Oz repair turn failed with exit code 2; nothing was committed.',
           committedPaths: [],
           commitSha: null,
-          heldBackPaths: ['cocoder/PLAYBOOK.md'],
+          outOfLanePaths: ['cocoder/PLAYBOOK.md'],
           exitCode: 2,
           turnLogPath: '/tmp/repair.log',
         },
@@ -542,7 +542,7 @@ function fakeOps(): OzChatOps {
     showRun: async () => ({ status: 200, body: { sessionRef: 'surface:1' } }),
     stopRun: async () => ({ status: 202, body: { stopping: true } }),
     nudgeRun: async () => ({ status: 202, body: { queued: true, seq: 1 } }),
-    repairOz: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, heldBackPaths: [], exitCode: 0 } }),
+    repairOz: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0 } }),
     teardownRun: async () => ({ status: 200, body: { closed: [] } }),
     restartDaemon: async () => ({ status: 202, body: { restarting: true } }),
   }

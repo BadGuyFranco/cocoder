@@ -119,3 +119,13 @@ bounded buildable remainder is exhausted.
   `git ls-files` now lists all three; full monorepo suite + CI green. The strand is closed. (This is
   another instance of the recurring "decision made, nothing lands" class — a run approved expand-scope but
   had no committing path; it was only closed out-of-run by a committing actor.)
+- **✅ STRUCTURAL FIX 2026-06-15 (founder directive — scope is advisory; the spine never withholds).** The
+  recovery above closed the *instance*; the *gap* is now closed at the root. An earlier attempt (a proposed
+  ADR-0024 `expand` disposition to *release* held-back files) was process theater — machinery to work around
+  a commit constraint that should not exist — and was discarded. Instead the **withholding behavior itself
+  is removed**: the commit gate (`gate.ts`) and Oz repair commit the WHOLE working tree; out-of-lane edits
+  are committed and FLAGGED, never held. `pending-scope-decision`/held-back is retired; the only gate left
+  is the automated, self-clearing verify-on-product-code (ADR-0023 §3). There is no held-back state for a
+  decision to strand on, so "decided but nothing lands" is gone by construction. Proof:
+  `scripts/proof-direct-spine.mjs` (green), `pnpm -w typecheck` + full monorepo suite green. See
+  failure-catalog **F21** and ticket [0007](../tickets/closed/0007-post-wrap-orchestration-commit-gap.md).

@@ -235,7 +235,7 @@ describe('Oz renderer — live daemon path', () => {
   })
 
   it('enriches active priority rows from run detail without selecting the run', async () => {
-    const activeRun = runSummary('run_inline', 'pending-scope-decision')
+    const activeRun = runSummary('run_inline', 'pending-landing')
     const detail = detailFor(activeRun, 'Renderer fetched the real latest event.')
     setOz(mockOz({ runs: { runs: [activeRun] }, runDetails: { run_inline: detail } }))
     render(<App />)
@@ -249,10 +249,10 @@ describe('Oz renderer — live daemon path', () => {
     expect(screen.queryByText(/50%/)).toBeNull()
   })
 
-  it('caps active-row enrichment at six detail fetches per cycle, preferring running and blocked runs', async () => {
+  it('caps active-row enrichment at six detail fetches per cycle, preferring running and not-landed runs', async () => {
     const getPaths: string[] = []
     const activeRuns = [
-      ...Array.from({ length: 4 }, (_, i) => runSummary(`run_hot_${i}`, i % 2 === 0 ? 'running' : 'pending-scope-decision')),
+      ...Array.from({ length: 4 }, (_, i) => runSummary(`run_hot_${i}`, 'running')),
       ...Array.from({ length: 4 }, (_, i) => runSummary(`run_landed_${i}`, 'pending-landing')),
     ]
     const runDetails = Object.fromEntries(activeRuns.map((run) => [run.id, detailFor(run)]))
@@ -285,7 +285,7 @@ describe('Oz renderer — live daemon path', () => {
   it('keeps enriched active-row data across workspace summary refreshes', async () => {
     let handler: ((event: OzEventHint) => void) | null = null
     const getPaths: string[] = []
-    const activeRun = runSummary('run_refresh', 'pending-scope-decision')
+    const activeRun = runSummary('run_refresh', 'pending-landing')
     setOz(mockOz({
       getPaths,
       runs: { runs: [activeRun] },

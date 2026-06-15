@@ -10,8 +10,8 @@
 //   node scripts/proof-direct-spine.mjs
 //
 // Green table -> the direct-commit default lands work straight on the active branch with nothing
-//                stranded, held-back is first-class and recoverable, and the one commit spine never
-//                reports a false success. The reset is archive-ready on code.
+//                stranded, scope is ADVISORY (out-of-lane edits commit and are flagged, never withheld),
+//                and the one commit spine never reports a false success. The reset is archive-ready on code.
 // Any red row -> a specific, named failing test to fix (not vague homework).
 
 import { execFile } from 'node:child_process'
@@ -33,14 +33,14 @@ const SUITES = [
 const CLAUSES = [
   { clause: 'direct-to-branch is the default', expect: 'verified atom lands straight on the active branch — no worktree, vacuously merged', match: 'commits STRAIGHT onto the active branch' },
   { clause: 'nothing strands (no run branch)', expect: 'a fresh git/store read sees it landed; no worktree/stranded events', match: 'commits STRAIGHT onto the active branch' },
-  { clause: 'held-back is the only not-landed state', expect: 'out-of-scope held back + surfaced while in-scope work still lands', match: 'out-of-scope changes are HELD BACK' },
+  { clause: 'scope is advisory — out-of-lane commits, never withheld', expect: 'out-of-lane edits are committed + flagged; nothing is held back', match: 'out-of-scope changes are COMMITTED and FLAGGED' },
   { clause: 'quarantine is sound in place', expect: 'a rejected atom is restored without touching the founder\'s files', match: 'rejected atom is quarantined in place' },
   { clause: 'direct-mode launch safety (dirty guard)', expect: 'in-scope WIP refuses the launch and commits nothing', match: 'scoped dirty guard refuses the launch' },
 ]
 
 const SPINE = [
   { clause: 'one spine: controlled-list commit', expect: 'commitFiles commits exactly the authored files, uniform receipt', match: 'commitFiles commits a controlled list' },
-  { clause: 'one spine: scoped commit', expect: 'commitScoped commits in-scope, holds out-of-scope back', match: 'commitScoped commits in-scope, holds out-of-scope back' },
+  { clause: 'one spine: scoped commit', expect: 'commitScoped commits everything and flags out-of-lane', match: 'commitScoped commits EVERYTHING and flags out-of-lane' },
   { clause: 'never a false success (controlled)', expect: 'a failed governance commit surfaces committed:false + error', match: 'commitFiles NEVER swallows a failure' },
   { clause: 'never a false success (scoped)', expect: 'a failed repair commit surfaces error; held-back intact', match: 'commitScoped never swallows a failure' },
   { clause: 'no empty commit on a clean tree', expect: 'an empty file list is a no-op, not an empty commit', match: 'commitFiles on an empty list is a no-op' },
@@ -106,7 +106,7 @@ try {
   console.log('\n' + '═'.repeat(96))
   if (failed.length === 0) {
     console.log('✅ VERDICT: all', all.length, 'clauses green. Direct-to-branch lands work with nothing stranded;')
-    console.log('   held-back is first-class + recoverable; the one spine never reports a false success.')
+    console.log('   scope is advisory (out-of-lane commits + flagged, never withheld); the one spine never reports a false success.')
     console.log('   Optional final confidence: drive one real founder conversation on the live daemon —')
     console.log('   same code path. The 11 historical pre-reset run branches with un-landed commits are a')
     console.log('   separate founder inspect/discard decision (git for-each-ref refs/heads/cocoder/).')

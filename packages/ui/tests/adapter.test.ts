@@ -66,11 +66,10 @@ function cliView(overrides: CliViewOverrides = {}): CliView {
 }
 
 describe('status mapping', () => {
-  it('maps daemon statuses onto the design vocabulary; pending-scope-decision → blocked, pending-landing → not-landed', () => {
+  it('maps daemon statuses onto the design vocabulary; pending-landing → not-landed (held-back state retired)', () => {
     expect(mapRunStatus('running')).toBe('running')
     expect(mapRunStatus('completed')).toBe('complete')
     expect(mapRunStatus('completed', 'escalated')).toBe('not-landed')
-    expect(mapRunStatus('pending-scope-decision')).toBe('blocked')
     expect(mapRunStatus('pending-landing')).toBe('not-landed')
     expect(mapRunStatus('failed')).toBe('failed')
     expect(mapRunStatus('weird-unknown')).toBe('stopped')
@@ -116,14 +115,14 @@ describe('priorities joined with runs', () => {
   it('a priority with a live run adopts the run id + status; others are "ready"', () => {
     const runs = adaptRuns(RUNS.runs, priorityNames)
     const out = adaptPriorities(P.priorities, runs)
-    // run_24 (plays-mechanism) is failed; run_17 (base-and-extension) is pending-scope-decision.
-    const blocked = out.find((p) => p.id === 'base-and-extension-personas')
-    const liveRun = runs.find((r) => r.priorityId === 'base-and-extension-personas' && r.status === 'blocked')
+    // run_24 (plays-mechanism) is failed; run_17 (base-and-extension) is pending-landing → not-landed.
+    const active = out.find((p) => p.id === 'base-and-extension-personas')
+    const liveRun = runs.find((r) => r.priorityId === 'base-and-extension-personas' && r.status === 'not-landed')
     if (liveRun) {
-      expect(blocked!.runId).toBe(liveRun.id)
-      expect(blocked!.status).toBe('blocked')
+      expect(active!.runId).toBe(liveRun.id)
+      expect(active!.status).toBe('not-landed')
     }
-    const dormant = out.find((p) => !runs.some((r) => r.priorityId === p.id && (r.status === 'running' || r.status === 'blocked')))
+    const dormant = out.find((p) => !runs.some((r) => r.priorityId === p.id && (r.status === 'running' || r.status === 'not-landed')))
     expect(dormant!.status).toBe('ready')
   })
   it('keeps a not-landed run attached to its priority until integration is resolved', () => {

@@ -6,8 +6,9 @@
 // Two shapes, one receipt:
 //   - commitFiles: a daemon-CONTROLLED file list (governance create/reorder/assignments/scaffold) — the
 //     daemon wrote exactly these paths, so there is no scope partition; commit them or report why not.
-//   - commitScoped: an AGENT's whole-tree diff (Oz repair) — partition against the allow-list, commit
-//     in-scope, hold the rest back (surfaced, never silently dropped, never silently committed — ADR-0007).
+//   - commitScoped: an AGENT's whole-tree diff (Oz repair) — commit EVERYTHING the agent changed and
+//     FLAG anything outside the allow-list (scope is advisory, founder directive 2026-06-15). The spine
+//     NEVER WITHHOLDS — there is no held-back state; out-of-lane edits land and are surfaced as a flag.
 //
 // Neither EVER swallows a failure: a commit error is reported in the receipt (committed:false, error),
 // not as a false success (the run path records the receipt as a store event; the daemon records it to
@@ -27,18 +28,18 @@ export interface CommitReceipt {
   readonly committed: boolean
   readonly committedSha: string | null
   readonly committedFiles: readonly string[]
-  /** Out-of-scope paths held back from the commit and surfaced for an expand/discard decision
-   *  (commitScoped only; always empty for the controlled-list commitFiles). */
-  readonly heldBack: readonly string[]
+  /** Paths COMMITTED that fell outside the (advisory) allow-list — a flag for visibility, NOT withheld.
+   *  They are in `committedFiles` (commitScoped only; always empty for the controlled-list commitFiles). */
+  readonly outOfLane: readonly string[]
   /** A commit was attempted but FAILED — surfaced, never swallowed. null on success or no-op. */
   readonly error: string | null
 }
 
-const empty = (heldBack: readonly string[], error: string | null): CommitReceipt => ({
+const empty = (outOfLane: readonly string[], error: string | null): CommitReceipt => ({
   committed: false,
   committedSha: null,
   committedFiles: [],
-  heldBack,
+  outOfLane,
   error,
 })
 
@@ -56,14 +57,16 @@ export async function commitFiles(
   if (files.length === 0) return empty([], null)
   try {
     const committedSha = await git.addAndCommit(repoPath, files, message, author)
-    return { committed: true, committedSha, committedFiles: [...files], heldBack: [], error: null }
+    return { committed: true, committedSha, committedFiles: [...files], outOfLane: [], error: null }
   } catch (err) {
     return empty([], errMsg(err))
   }
 }
 
-/** Scope-partition an agent's whole-tree diff: commit in-scope paths to the active branch, hold the rest
- *  back (surfaced). Never swallows: a commit failure returns committed:false + error (held-back intact). */
+/** Commit an agent's WHOLE-tree diff to the active branch — everything it changed, in one commit. Scope is
+ *  advisory: paths outside the allow-list are FLAGGED (`outOfLane`) for visibility but still committed,
+ *  never withheld (the spine never holds back — founder directive 2026-06-15). Never swallows: a commit
+ *  failure returns committed:false + error. */
 export async function commitScoped(
   git: Git,
   repoPath: string,
@@ -71,11 +74,12 @@ export async function commitScoped(
   message: string,
   author?: CommitAuthor,
 ): Promise<CommitReceipt> {
-  const { inScope, outOfScope } = partitionByScope(await git.changedFiles(repoPath), scope)
-  if (inScope.length === 0) return empty(outOfScope, null)
+  const changed = await git.changedFiles(repoPath)
+  const { outOfScope } = partitionByScope(changed, scope)
+  if (changed.length === 0) return empty([], null)
   try {
-    const committedSha = await git.addAndCommit(repoPath, inScope, message, author)
-    return { committed: true, committedSha, committedFiles: inScope, heldBack: outOfScope, error: null }
+    const committedSha = await git.addAndCommit(repoPath, changed, message, author)
+    return { committed: true, committedSha, committedFiles: changed, outOfLane: outOfScope, error: null }
   } catch (err) {
     return empty(outOfScope, errMsg(err))
   }

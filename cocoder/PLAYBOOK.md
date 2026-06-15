@@ -156,7 +156,8 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   priorities, workspaces, run lifecycle), earned in slices over runs 43–72. ✅ **feature-complete** — all
   daemon surfaces served (`node scripts/proof-oz-surfaces.mjs`); the last design-conformance defect
   (priorities pane) fixed run_81. **Archived 2026-06-14** (priority audit). Live Q/A is a founder activity;
-  defects become focused priorities; the one open punch-list item is `backlog/oz-held-back-expand-scope`.
+  defects become focused priorities. (Its old punch-list item `oz-held-back-expand-scope` is CANCELLED
+  2026-06-15 — superseded by the scope-advisory change; nothing is held back any more.)
 - `build-priorities-from-plan` — a standing meta-priority to draft priority stubs from decided-but-unbuilt
   plan/ADR work. **Archived 2026-06-14** (priority audit) — never exercised in practice (priorities were
   drafted conversationally); the capability lives in the create-priority Play + `adhoc-session`, and the
@@ -195,8 +196,8 @@ end-to-end is a founder activity, and any defect found becomes its own focused p
 `oz-dashboard-priorities-pane` proved).
 
 **Deferred — `backlog/` (each file's `## Objective` names what it's blocked on):**
-- `oz-held-back-expand-scope` — a founder-reachable "expand-scope → commit held-back" path (the run_81
-  punch-list: `resolveRun` only does discard/landed, Oz chat has no resolve verb). Small + concrete.
+- ~~`oz-held-back-expand-scope`~~ — **CANCELLED 2026-06-15.** Superseded by the scope-advisory change
+  (ADR-0023 amendment / F21): the spine never withholds, so there is no held-back state to expand.
 - `quinn-app-testing` — Quinn **browser** app-testing Plays only (base Quinn + the `electron-test` Play
   already shipped under the archived `personas-and-plays`); blocked on a Phase-5 web app to drive.
 - `deployment-plays` — human-gated deploys (Vercel/GCloud/signed-Electron/GitHub) + `local/secrets`;
@@ -205,6 +206,9 @@ end-to-end is a founder activity, and any defect found becomes its own focused p
   pickup; needs an Objective + ADR amendment before it's runnable.
 - `priority-architecture-contract` — founder-owned placeholder; re-scope to a real launch boundary (not
   governance-of-governance — G4/F5) before any build.
+- `research-sandboxing` — decision spike (IF/WHEN/minimal-form) on OS-level run sandboxing; default
+  expected answer is "not now." **Blocked on the commit spine being boringly reliable first**; explicitly
+  bars over-constraint, security theater, and any happy-path/doc blockers (opt-in, off by default).
 
 **Vision backlog (re-author from frozen v1 reference when earned):** cloud/managed adapters (v1
 `v0.2`, cf. ADR-0006/0009) · onboarding/workspace lifecycle (v1 `v0.3`, Phase 5) · the deferred Oz G1

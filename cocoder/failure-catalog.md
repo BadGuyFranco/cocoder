@@ -68,6 +68,24 @@ describe can no longer recur on the default path; they are no longer a live risk
 - **F13 note:** the per-atom whole-tree diff (scope-blowout catch) still applies in direct mode — it
   runs in place against the active checkout before the spine commits, gated by the single-writer lock.
 
+- **F21 — A commit-blocking constraint that should not exist, then ceremony to work around it (2026-06-15).**
+  Two failures, one root. (1) The commit gate *withheld* out-of-scope changes (held back in the working
+  tree → `pending-scope-decision`), so when run_86 wrapped holding back three scaffold-required template
+  files and the founder approved landing them, **no persona could commit them** — the run_86 D3 strand
+  ("decided but nothing lands"). (2) The first fix attempt added a new `expand` resolve disposition + a
+  proposed ADR with a founder-ratification gate — i.e. **machinery + an approval step to undo an approval
+  step**. That is process theater: it accepted the illegitimate constraint and built an exception around
+  it. **Root cause:** the spine could WITHHOLD a commit at all — a survivor of the enforcement-by-blocking
+  model that three rebuilds were meant to delete; it deterministically regenerates the strand class one
+  rung up. **Fix (founder directive 2026-06-15):** scope is **advisory** — the spine NEVER withholds.
+  Every actor (Oscar/Oz/Deb/Bob) commits everything it changed, directly, anytime; out-of-lane edits are
+  committed and FLAGGED, never held. `pending-scope-decision`, held-back, and the whole `expand`/`discard`
+  release apparatus are deleted; the only gate left is the automated, self-clearing verify-on-product-code
+  (ADR-0023 §3). **Lesson:** a constraint that contradicts a ratified principle is a bug to *delete at the
+  root*, not a feature to build exceptions around — adding ceremony to remove a constraint multiplies the
+  very thing you're removing. Proof: `scripts/proof-direct-spine.mjs` (green), full suite green.
+  Ticket [0007](./tickets/closed/0007-post-wrap-orchestration-commit-gap.md).
+
 ## Cross-cutting lessons (feed the charter)
 
 - **L1.** Nearly all failures above are *coordination/state* failures, not algorithm failures —

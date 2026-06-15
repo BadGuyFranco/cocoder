@@ -1545,22 +1545,24 @@ describe('Oz mutations + lifecycle', () => {
     expect(store.listEvents(orphan.id).some((e) => e.type === 'orphaned')).toBe(true)
   })
 
-  // POST /runs/:id/resolve — the ADR-0015 §5 decision-mechanics exit (founder resolution).
+  // POST /runs/:id/resolve — the ISOLATION-lane escalation exit (ADR-0023 §4). The default direct-to-branch
+  // path never parks (scope is advisory, the spine never withholds), so the ONLY resolvable state is a
+  // pending-landing run whose opt-in branch escalated at integration.
   describe('POST /runs/:id/resolve', () => {
-    /** A parked run with a worktree + branch, in the given decision state. */
-    const parkedRun = (status: 'pending-scope-decision' | 'pending-landing') => {
+    /** A pending-landing isolation run with a worktree + branch (its escalated integration awaits a call). */
+    const parkedRun = () => {
       store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
       const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
       store.setWorktree(run.id, join(home, 'local', 'worktrees', run.id), `cocoder/${run.id}`)
-      store.setRunStatus(run.id, status)
+      store.setRunStatus(run.id, 'pending-landing')
       return run
     }
 
-    test('discard drops held-back files, GCs the worktree, and closes the run as failed', async () => {
-      const run = parkedRun('pending-scope-decision')
+    test('discard drops the run worktree\'s uncommitted changes, GCs the worktree, and closes the run as failed', async () => {
+      const run = parkedRun()
       const restored: string[][] = []
       const removed: string[] = []
-      const git = fakeGit(['held-back.txt', 'also-held.ts'])
+      const git = fakeGit(['wip.txt', 'also-wip.ts'])
       git.restoreToHead = async (_cwd, files) => {
         restored.push([...files])
       }
@@ -1571,7 +1573,7 @@ describe('Oz mutations + lifecycle', () => {
       const r = await call(oz!, 'POST', `/runs/${run.id}/resolve`, { body: { disposition: 'discard', note: 'superseded by run_46' } })
       expect(r.status).toBe(200)
       expect(r.json.status).toBe('failed')
-      expect(restored).toEqual([['held-back.txt', 'also-held.ts']]) // explicit, recorded discard — never silent
+      expect(restored).toEqual([['wip.txt', 'also-wip.ts']]) // explicit, recorded discard — never silent
       expect(removed).toEqual([join(home, 'local', 'worktrees', run.id)]) // GC unblocked by the decision
       const events = store.listEvents(run.id)
       expect(events.some((e) => e.type === 'scope-decision-discarded-files')).toBe(true)
@@ -1579,7 +1581,7 @@ describe('Oz mutations + lifecycle', () => {
     })
 
     test('landed verifies the branch tip is an ancestor of trunk HEAD, then completed/merged', async () => {
-      const run = parkedRun('pending-landing')
+      const run = parkedRun()
       const git = fakeGit()
       git.isAncestor = async () => true
       await startServer(git)
@@ -1590,27 +1592,27 @@ describe('Oz mutations + lifecycle', () => {
     })
 
     test('landed is REFUSED (409) when the branch tip is not on trunk — fail closed', async () => {
-      const run = parkedRun('pending-scope-decision')
+      const run = parkedRun()
       const git = fakeGit()
       git.isAncestor = async () => false // cherry-picked / superseded branch: tip not an ancestor
       await startServer(git)
       const r = await call(oz!, 'POST', `/runs/${run.id}/resolve`, { body: { disposition: 'landed' } })
       expect(r.status).toBe(409)
-      expect(store.getRun(run.id)?.status).toBe('pending-scope-decision') // untouched
+      expect(store.getRun(run.id)?.status).toBe('pending-landing') // untouched
     })
 
-    test('only a parked run takes a resolution (409 otherwise); bad disposition is 400', async () => {
+    test('only a pending-landing run takes a resolution (409 otherwise); bad disposition is 400', async () => {
       store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
       const done = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
       store.setRunStatus(done.id, 'completed')
       await startServer()
       expect((await call(oz!, 'POST', `/runs/${done.id}/resolve`, { body: { disposition: 'discard' } })).status).toBe(409)
-      expect((await call(oz!, 'POST', `/runs/${done.id}/resolve`, { body: { disposition: 'expand' } })).status).toBe(400)
+      expect((await call(oz!, 'POST', `/runs/${done.id}/resolve`, { body: { disposition: 'bogus' } })).status).toBe(400)
       expect((await call(oz!, 'POST', '/runs/nope/resolve', { body: { disposition: 'discard' } })).status).toBe(404)
     })
 
     test('resolve → 403 without a CSRF token (mutation gate)', async () => {
-      const run = parkedRun('pending-scope-decision')
+      const run = parkedRun()
       await startServer()
       const r = await call(oz!, 'POST', `/runs/${run.id}/resolve`, { csrf: false, body: { disposition: 'discard' } })
       expect(r.status).toBe(403)

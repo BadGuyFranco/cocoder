@@ -1,9 +1,19 @@
 ---
 id: oz-held-back-expand-scope
 title: "Oz: a founder-reachable expand-scope → commit path for held-back files"
+status: cancelled
 ---
 
-## Objective
+> **CANCELLED 2026-06-15 — superseded by the scope-advisory change (ADR-0023 amendment, failure-catalog
+> F21).** This priority's entire premise — "when a run holds back out-of-scope changes, let the founder
+> `expand` them" — no longer exists. The commit spine NEVER withholds: out-of-lane edits are committed and
+> flagged, `pending-scope-decision`/held-back is retired, and the `resolveRun` `expand` disposition this
+> asked for was built (proposed ADR-0024) and then DELETED as process theater. There is nothing to expand
+> because nothing is held back. The founder-friction it was earned from (run_81: held-back harness files
+> with no committing path) is gone by construction — those files would now simply commit + flag. Do not
+> build. The original Objective is preserved below for the record only.
+
+## Objective (obsolete — see CANCELLED banner)
 When a run holds back out-of-scope changes (ADR-0023 §5), the founder can **allow** them with one action
 — commit the held-back files to the active branch through the commit spine — without leaving the CoCoder
 flow or committing by hand. **Verified when:** from the Oz run drawer (and/or an Oz-chat verb), a

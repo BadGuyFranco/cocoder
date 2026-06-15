@@ -101,14 +101,19 @@ const worktreeStubs = {
 function scriptedGit(changedPerAtom: string[][]): Git {
   let head = 'h0'
   let call = 0
+  let started = false
   return {
     ...worktreeStubs,
     async headSha() {
       return head
     },
     async changedFiles() {
-      // One changed-file set per atom commit-gate call (ADR-0015 retired the launch precondition, so
-      // there is no longer a leading clean-tree probe to skip).
+      // FIRST call = the run-start pre-existing-dirt snapshot (clean in these fakes). Then one changed
+      // set per commit-gate / quarantine call.
+      if (!started) {
+        started = true
+        return []
+      }
       return changedPerAtom[call++] ?? []
     },
     async addAndCommit() {
@@ -387,9 +392,10 @@ describe('runRun (multi-atom loop)', () => {
       async headSha() {
         return 'h0'
       },
-      async changedFiles() {
-        return ['packages/half-built.ts']
-      },
+      changedFiles: (() => {
+        let first = true
+        return async () => (first ? ((first = false), []) : ['packages/half-built.ts']) // call 0 = run-start (clean)
+      })(),
       async addAndCommit() {
         throw new Error('stopped atom should not commit')
       },
@@ -439,9 +445,10 @@ describe('runRun (multi-atom loop)', () => {
       async headSha() {
         return 'h0'
       },
-      async changedFiles() {
-        return ['packages/unverified.ts']
-      },
+      changedFiles: (() => {
+        let first = true
+        return async () => (first ? ((first = false), []) : ['packages/unverified.ts']) // call 0 = run-start (clean)
+      })(),
       async addAndCommit() {
         throw new Error('stopped atom should not commit')
       },
@@ -540,11 +547,12 @@ describe('runRun (multi-atom loop)', () => {
     expect(paneSpawns).not.toContain('cursor-agent')
     expect(pickupWrites).toEqual(['PLAY CLOSEOUT\n'])
     expect(result.committedShas).toEqual(['sha-1', 'sha-2'])
-    expect(result.committedFiles).toEqual(['packages/atom.ts', 'docs/wrap.md'])
+    // Scope advisory: the wrap commit includes the out-of-lane file too; it's flagged, not withheld.
+    expect(result.committedFiles).toEqual(['packages/atom.ts', 'docs/wrap.md', 'packages/not-wrap.ts'])
     expect(result.outOfScope).toEqual(['packages/not-wrap.ts'])
-    expect(result.status).toBe('pending-scope-decision')
+    expect(result.status).toBe('completed')
     const links = store.listCommitLinks(result.runId)
-    expect(links.map((c) => c.files)).toEqual([['packages/atom.ts'], ['docs/wrap.md']])
+    expect(links.map((c) => c.files)).toEqual([['packages/atom.ts'], ['docs/wrap.md', 'packages/not-wrap.ts']])
     expect(links.map((c) => c.workItemId)).toEqual([store.listWorkItems(result.runId)[0]?.id, null])
     const wrap = store.listEvents(result.runId).find((e) => e.type === 'wrapup')
     expect((wrap?.data as { play?: string }).play).toBe('wrap-up')
@@ -581,7 +589,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(wrap?.data).toEqual({ atoms: 0, forced: false })
   })
 
-  test('gate-commits Oscar support files at wrap and clears matching prior holdback', async () => {
+  test('gate-commits Oscar support files at wrap (no holdback to clear — nothing is held)', async () => {
     const store = openRunStore(':memory:')
     const oscarWithSupport = { ...oscar, writeScope: ['cocoder/priorities/**'] }
 
@@ -589,7 +597,7 @@ describe('runRun (multi-atom loop)', () => {
       baseDeps({
         store,
         git: scriptedGit([
-          ['packages/atom.ts', 'cocoder/priorities/full-oz-dashboard.md'],
+          ['packages/atom.ts'],
           ['cocoder/priorities/full-oz-dashboard.md'],
         ]),
         io: fakeIO({ directives: [delegate('atom 0'), wrapup('done')] }),
@@ -606,15 +614,13 @@ describe('runRun (multi-atom loop)', () => {
     expect(links.map((c) => c.files)).toEqual([['packages/atom.ts'], ['cocoder/priorities/full-oz-dashboard.md']])
     expect(links.map((c) => c.workItemId)).toEqual([store.listWorkItems(result.runId)[0]?.id, null])
 
-    const types = store.listEvents(result.runId).map((e) => e.type)
-    expect(types).toContain('out-of-scope')
-    expect(types).toContain('oscar-support-commit')
+    expect(store.listEvents(result.runId).map((e) => e.type)).toContain('oscar-support-commit')
   })
 
-  test('per-atom commit attribution: a prior atom held-back file is not re-attributed to the next atom', async () => {
+  test('per-atom commit attribution stays clean: each atom commits exactly its own changed set (incl. out-of-lane)', async () => {
     const store = openRunStore(':memory:')
-    // atom 0 leaves docs/leak.md out of scope (held back); it REAPPEARS in atom 1's changed set but
-    // must stay held back, never stamped onto atom 1's commit.
+    // Both atoms touch docs/leak.md out of lane; scope is advisory so each atom COMMITS its own changed
+    // set — leak.md lands with each atom, flagged, and attribution never bleeds between atoms.
     const result = await runRun(
       baseDeps({
         store,
@@ -626,16 +632,16 @@ describe('runRun (multi-atom loop)', () => {
       }),
       input,
     )
-    expect(store.listCommitLinks(result.runId).map((c) => c.files)).toEqual([['packages/a.ts'], ['packages/b.ts']])
-    expect(result.outOfScope).toEqual(['docs/leak.md', 'docs/leak.md']) // held back both atoms, never committed
-    expect(result.status).toBe('pending-scope-decision')
+    expect(store.listCommitLinks(result.runId).map((c) => c.files)).toEqual([['packages/a.ts', 'docs/leak.md'], ['packages/b.ts', 'docs/leak.md']])
+    expect(result.outOfScope).toEqual(['docs/leak.md']) // flagged once (unioned), committed both atoms
+    expect(result.status).toBe('completed')
   })
 
   test('atom isolation: a rejected atom\'s in-scope changes are quarantined, not committed by a later atom', async () => {
     const store = openRunStore(':memory:')
     const restored: string[][] = []
     let call = 0
-    const changedPerCall = [['packages/bad.ts'], ['packages/good.ts']] // atom0 rejected (quarantined), atom1's work
+    const changedPerCall = [[], ['packages/bad.ts'], ['packages/good.ts']] // [run-start clean], atom0 rejected (quarantined), atom1's work
     const git: Git = {
       ...worktreeStubs,
       async headSha() {
@@ -930,7 +936,11 @@ describe('runRun (multi-atom loop)', () => {
         return 'h0'
       },
       async changedFiles() {
-        return changedCall++ === 0 ? ['packages/bad.ts'] : ['packages/good.ts']
+        // call 0 = run-start snapshot (clean); call 1 = the capped atom's work (quarantined); rest = good atom.
+        const c = changedCall++
+        if (c === 0) return []
+        if (c === 1) return ['packages/bad.ts']
+        return ['packages/good.ts']
       },
       async addAndCommit() {
         return 'sha-good'
@@ -1463,7 +1473,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(nudgeEvents.find((e) => (e.data as { source?: string }).source === 'deb')?.data).toMatchObject({ text: debReq.message, seq: 1 })
   })
 
-  test('repair mode gate-commits only Deb\'s in-scope edits; product code is held back, never committed (ADR-0016)', async () => {
+  test('repair mode commits everything Deb touched; out-of-lane product code is flagged, not withheld (scope advisory)', async () => {
     const store = openRunStore(':memory:')
     const debRepair = persona({ id: 'deb', cli: 'claude', writeScope: ['cocoder/**'] })
     const io: RunnerIO = {
@@ -1496,10 +1506,10 @@ describe('runRun (multi-atom loop)', () => {
     const runId = store.listRuns()[0]!.id
     const events = store.listEvents(runId)
     const repair = events.find((e) => e.type === 'deb-repair')
-    expect(repair?.data).toMatchObject({ committedSha: 'sha-repair', files: ['cocoder/priorities/x.md'], outOfScope: ['packages/app/product.ts'] })
-    // The commit-gate surfaced the product file as out-of-scope and committed only the in-scope one.
-    expect((events.find((e) => e.type === 'out-of-scope')?.data as { files?: string[] })?.files).toEqual(['packages/app/product.ts'])
-    expect(store.listCommitLinks(runId).flatMap((c) => c.files)).toEqual(['cocoder/priorities/x.md'])
+    expect(repair?.data).toMatchObject({ committedSha: 'sha-repair', files: ['cocoder/priorities/x.md', 'packages/app/product.ts'], outOfScope: ['packages/app/product.ts'] })
+    // The commit-gate committed BOTH files and flagged the out-of-lane one (scope advisory, never withheld).
+    expect((events.find((e) => e.type === 'out-of-scope-committed')?.data as { files?: string[] })?.files).toEqual(['packages/app/product.ts'])
+    expect(store.listCommitLinks(runId).flatMap((c) => c.files)).toEqual(['cocoder/priorities/x.md', 'packages/app/product.ts'])
     expect(store.getRun(runId)?.status).toBe('failed') // a repair never rescues the run
   })
 

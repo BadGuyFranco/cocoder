@@ -133,7 +133,7 @@ async function runStandalone(priorityId: string, resumeFromRunId?: string): Prom
     })
     console.log(`\nRun ${result.runId}: ${result.status}`)
     if (result.committedSha) console.log(`  committed ${result.committedSha} (${result.committedFiles.length} file(s))`)
-    if (result.outOfScope.length) console.log(`  out-of-scope held back: ${result.outOfScope.join(', ')}`)
+    if (result.outOfScope.length) console.log(`  committed out of lane (flagged, not withheld): ${result.outOfScope.join(', ')}`)
     if (result.selfCommitted) console.log('  note: agent made its own commit(s) (detected via HEAD snapshot)')
     console.log(`  record: ${result.recordPath}`)
     process.exitCode = result.status === 'completed' ? 0 : 1

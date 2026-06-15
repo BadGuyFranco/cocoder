@@ -263,10 +263,10 @@ async function closeRunSurfaces(ctx: OzContext, runId: string): Promise<string[]
  *  out-of-scope held-back changes live UNCOMMITTED in the worktree (ADR-0007 forbids silent discard),
  *  and a plain `worktree remove` refuses a dirty tree anyway — we never --force. Must run AFTER the
  *  run's panes are closed (a live pane's cwd sits inside the dir). No-op if the run has no worktree. */
-/** Block GC while the worktree still holds something the founder needs: out-of-scope held-back changes
- *  (pending-scope-decision), or an un-integrated/escalated integration (the worktree IS the inspection
- *  artifact the founder was routed to — ADR-0015 §5/§6). 'merged' and 'pending' (a failed run that never
- *  integrated; its commits are safe on the branch) do not block. */
+/** Block GC while the worktree still holds something the founder needs: an un-integrated/escalated
+ *  integration (the worktree IS the inspection artifact the founder was routed to — ADR-0015 §5/§6).
+ *  'merged' and 'pending' (a failed run that never integrated; its commits are safe on the branch) do
+ *  not block. (There is no held-back/pending-scope state any more — scope is advisory, ADR-0023.) */
 function localStateBlockedReason(ctx: OzContext, runId: string): string | null {
   for (const event of ctx.store.listEvents(runId)) {
     if (event.type === 'local-state-export-failed') return 'local-state-export-failed'
@@ -294,7 +294,6 @@ function gcBlockedReason(ctx: OzContext, run: { id: string; status: string; inte
   if (!opts.explicitTeardown && run.status === 'completed' && run.integrationStatus === 'merged') {
     return 'awaiting-founder-teardown'
   }
-  if (run.status === 'pending-scope-decision') return 'pending-scope-decision'
   if (opts.explicitTeardown && run.status === 'pending-landing' && run.integrationStatus === 'escalated' && runHasDisposableDaemonStrandedEvent(ctx, run.id)) {
     return null
   }
@@ -343,7 +342,6 @@ async function reconcileStrandedRunCommits(ctx: OzContext, run: Run, opts: { exp
   if (runHasEvent(ctx, run.id, 'scope-decision')) return
   if (run.status === 'running') return
   if (run.status === 'pending-landing' && run.integrationStatus === 'escalated') return
-  if (opts.explicitTeardown && run.status === 'pending-scope-decision') return
 
   const repo = await workspaceRepoForRun(ctx, run)
   let onTrunk: boolean
@@ -464,15 +462,17 @@ async function atomicWriteJson(path: string, payload: unknown): Promise<void> {
 
 export type ResolveDisposition = 'discard' | 'landed'
 
-/** Founder resolution for a run parked awaiting a decision (the ADR-0015 §5 decision-mechanics exit,
- *  drafted there but never built — runs 44–46 sat unresolvable for days because of it). An explicit,
- *  CSRF-gated founder mutation — never automatic. Two dispositions:
- *    - 'discard' — drop the held-back working-tree changes (the explicit founder discard; ADR-0007
- *      only forbids a SILENT one), close panes, GC the worktree. Status → failed; the branch ref and
- *      its gate-committed atoms are preserved for forensics, integration honestly stays un-merged.
- *    - 'landed' — the founder asserts the run's work reached trunk by hand. FAIL-CLOSED: refused
- *      unless the run branch's tip is an ancestor of trunk HEAD (a cherry-picked/superseded branch
- *      does NOT count — resolve that as 'discard'). Status → completed, integration → merged. */
+/** Founder resolution for an OPT-IN ISOLATION run whose branch escalated at integration (pending-landing,
+ *  ADR-0023 §4). The DEFAULT direct-to-branch path never parks — scope is advisory and the spine commits
+ *  everything in place, so there is no held-back/pending-scope-decision state to resolve. This handles
+ *  only the isolation lane's run-branch escalation. An explicit, CSRF-gated founder mutation. Two
+ *  dispositions:
+ *    - 'discard' — drop whatever is uncommitted in the run worktree (the explicit founder discard; ADR-0007
+ *      only forbids a SILENT one), close panes, GC the worktree. Status → failed; the branch ref and its
+ *      gate-committed atoms are preserved for forensics, integration honestly stays un-merged.
+ *    - 'landed' — the founder asserts the run's branch reached trunk by hand. FAIL-CLOSED: refused unless
+ *      the run branch's tip is an ancestor of trunk HEAD (a cherry-picked/superseded branch does NOT count
+ *      — resolve that as 'discard'). Status → completed, integration → merged. */
 export async function resolveRun(ctx: OzContext, runId: string, body: unknown): Promise<LaunchResult> {
   const run = ctx.store.getRun(runId)
   if (!run) return { status: 404, body: { error: 'unknown run' } }
@@ -482,8 +482,8 @@ export async function resolveRun(ctx: OzContext, runId: string, body: unknown): 
   if (disposition !== 'discard' && disposition !== 'landed') {
     return { status: 400, body: { error: 'disposition must be "discard" or "landed"' } }
   }
-  if (run.status !== 'pending-scope-decision' && run.status !== 'pending-landing') {
-    return { status: 409, body: { error: `run is "${run.status}" — only a pending-scope-decision or pending-landing run takes a resolution` } }
+  if (run.status !== 'pending-landing') {
+    return { status: 409, body: { error: `run is "${run.status}" — only a pending-landing (isolation-lane escalation) run takes a resolution` } }
   }
   const ws = await findWorkspace(ctx.cocoderHome, run.workspaceId)
   if (!ws) return { status: 404, body: { error: 'unknown workspace' } }
@@ -678,18 +678,17 @@ export async function requestOzRepair(ctx: OzContext, input: { readonly workspac
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err)
     await writeFile(turnLogPath, detail, 'utf8')
-    return { status: 500, body: { error: `Oz repair turn failed before diff/commit: ${detail}`, committedPaths: [], commitSha: null, heldBackPaths: [], exitCode: -1, turnLogPath } }
+    return { status: 500, body: { error: `Oz repair turn failed before diff/commit: ${detail}`, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: -1, turnLogPath } }
   }
   await writeFile(turnLogPath, turn.output, 'utf8')
 
   if (turn.exitCode !== 0) {
-    const changed = await ctx.git.changedFiles(ctx.cocoderHome)
     const body = {
       ok: false,
       error: `Oz repair turn failed with exit code ${turn.exitCode}; nothing was committed.`,
       committedPaths: [],
       commitSha: null,
-      heldBackPaths: changed,
+      outOfLanePaths: [],
       exitCode: turn.exitCode,
       turnLogPath,
     }
@@ -712,7 +711,7 @@ export async function requestOzRepair(ctx: OzContext, input: { readonly workspac
     ok: turn.exitCode === 0,
     committedPaths: gate.committedFiles,
     commitSha: gate.committedSha,
-    heldBackPaths: gate.heldBackFiles,
+    outOfLanePaths: gate.outOfLaneFiles,
     exitCode: turn.exitCode,
     turnLogPath,
   }

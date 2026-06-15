@@ -52,6 +52,17 @@ opt-in for genuinely risky / large / throwaway / parallel work only.
 
 ## Decision
 
+> **Amendment (founder directive, 2026-06-15) — scope is ADVISORY; the spine never withholds.** The
+> original §1/§5 had the scope gate *withhold* out-of-scope changes (held back → `pending-scope-decision`).
+> That residual commit-blocking regenerated the "decided but nothing lands" strand one rung up (the run_86
+> D3 strand) and is the exact constraint three rebuilds set out to remove. It is deleted at the root:
+> **every actor (Oscar/Oz/Deb/Bob) commits everything it changed, directly, anytime.** Out-of-lane edits
+> are **committed and FLAGGED**, never held back; there is no held-back / `pending-scope-decision` state.
+> The only gate that remains is the automated, self-clearing **verify-on-product-code** (§3) — it runs
+> before the spine commits and never parks awaiting a human. §1 and §5 below are corrected accordingly; §2
+> (direct-to-branch default), §4 (opt-in isolation lane, which still uses `pending-landing`), and §6
+> (derived receipt) are unchanged.
+
 ### 1. One commit spine
 
 Exactly **one** core service writes tracked files to the active workspace branch. Every actor calls it
@@ -60,13 +71,13 @@ priority/persona/governance mutations, and any founder-directed edit. No actor r
 commit`. The spine:
 
 - works on the **active checkout, active branch** (default) — no worktree, no run branch, no merge step;
-- applies the **scope gate** ([ADR-0007](./0007-write-scope-enforcement.md) partition): in-scope paths
-  commit; out-of-scope paths are **held back and surfaced**, never silently dropped, never silently
-  committed;
-- applies **verification matched to the change's risk** (§3);
+- commits **everything the actor changed** in one commit; the [ADR-0007](./0007-write-scope-enforcement.md)
+  allow-list is now **advisory** — out-of-lane paths are committed and **FLAGGED** for visibility, never
+  withheld (2026-06-15 amendment). The spine never holds a commit back;
+- applies **verification matched to the change's risk** (§3) — the one remaining gate, automated;
 - emits **one durable receipt** for every actor — a commit-link row + event capturing branch, SHA(s),
-  changed files, held-back files, and verification evidence. The privileged direct-to-trunk write no
-  longer has the weakest receipt; a write that fails to commit can no longer report success.
+  changed files, out-of-lane (flagged) files, and verification evidence. The privileged direct-to-trunk
+  write no longer has the weakest receipt; a write that fails to commit can no longer report success.
 
 `runCommitGate`, `commitGovernance`, and `gateCommitRepair` collapse into this one service.
 
@@ -88,10 +99,12 @@ Safety comes from **verifying before the spine commits**, in place — not from 
   no test gate (the change cannot break a build).
 - **Product / machinery code:** the orchestrator still verifies before the spine commits — the per-atom
   whole-tree diff check (catches the F13 scope blowout) and the change's tests
-  ([ADR-0013](./0013-orchestration-observation.md)). If verification fails, **nothing commits** and the
-  working tree is reverted in place (`restoreToHead` quarantine — sound because the single-writer lock
-  guarantees the only uncommitted changes are this actor's own). No worktree is required to make
-  quarantine safe.
+  ([ADR-0013](./0013-orchestration-observation.md)). This is the **one remaining gate** and it is
+  automated + self-clearing — it never parks awaiting a human. If verification fails, **the atom's product
+  code does not commit** and is reverted in place (`restoreToHead` quarantine, reverting what *the atom*
+  produced — dirty-after minus a run-start snapshot, so a founder's pre-existing uncommitted edit is never
+  destroyed). A failed atom blocks only itself; the run's other (governance/doc) work still commits. No
+  worktree is required to make quarantine safe.
 
 ### 4. Isolated worktree = explicit opt-in sandbox
 
@@ -101,13 +114,17 @@ owns the land-back to the active branch (verified ff-merge) and emits the **same
 a sandbox you opt into, never the road every change travels. ADR-0015's verified-merge,
 integration-verify, and merge-conflict machinery are **retained for this opt-in path only**.
 
-### 5. Held-back is the only "not yet landed" state, and it is first-class
+### 5. There is no held-back state — out-of-lane edits commit and are flagged (2026-06-15 amendment)
 
-In the default path the sole non-landed outcome is an **out-of-scope held-back change**. It is surfaced
-as a first-class Oz "Awaiting you" item with **land** / **discard** actions, recorded in the receipt.
-There is no `pending-landing`-on-a-run-branch state in the default path (that state exists only for
-opt-in isolation runs). A solo founder never needs to understand worktrees, run branches, merges, or
-manual git recovery to use CoCoder.
+In the default path **nothing is withheld.** Every change the actor produces commits to the active branch;
+paths outside the actor's advisory allow-list are **committed and FLAGGED** in the receipt (an "out of
+lane" visibility signal), never parked for a founder decision. There is no held-back working-tree state and
+no `pending-scope-decision` run status — so the "decided but nothing lands" class cannot occur. (The
+*original* §5 made held-back a first-class "Awaiting you" item with land/discard actions; that withholding
+was the constraint removed by this amendment.) The only non-landed default-path state is none; the opt-in
+isolation lane (§4) still has `pending-landing` for a run-branch that escalates at integration, resolved by
+the `discard`/`landed` actions. A solo founder never needs to understand worktrees, run branches, merges,
+held-back queues, or manual git recovery to use CoCoder — work commits, and git is the undo.
 
 ### 6. The receipt is derived, never asserted (closes F19)
 

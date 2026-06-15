@@ -3,7 +3,10 @@
 // or a daemon-served conn later) is swappable. Governance is referenced by stable id
 // (workspaceId, priorityId, persona) — never copied (the F1/F4 rule).
 
-export type RunStatus = 'running' | 'completed' | 'pending-scope-decision' | 'pending-landing' | 'failed' | 'stopped'
+// `pending-scope-decision` was RETIRED (founder directive 2026-06-15): scope is advisory, the spine never
+// withholds, so there is no held-back state to park on. The only non-terminal outcome is `pending-landing`
+// (an opt-in isolation run whose branch escalated at integration, ADR-0023 §4).
+export type RunStatus = 'running' | 'completed' | 'pending-landing' | 'failed' | 'stopped'
 export type WorkItemStatus = 'open' | 'done' | 'abandoned'
 
 // The branch→trunk integration sub-lifecycle (ADR-0015 §6). ORTHOGONAL to RunStatus:

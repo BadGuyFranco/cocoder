@@ -280,14 +280,14 @@ describe('handleOzMessage', () => {
     })
   })
 
-  test('repair executable reply names committed, held-back, log, and Refresh next step', async () => {
+  test('repair executable reply names committed, out-of-lane flag, log, and Refresh next step', async () => {
     const ops = repairOps({
       status: 200,
       body: {
         ok: true,
-        committedPaths: ['cocoder/PLAYBOOK.md'],
+        committedPaths: ['cocoder/PLAYBOOK.md', 'packages/core/src/proposal.ts'],
         commitSha: 'abc123',
-        heldBackPaths: ['packages/core/src/proposal.ts'],
+        outOfLanePaths: ['packages/core/src/proposal.ts'],
         exitCode: 0,
         turnLogPath: '/tmp/cocoder/local/oz/cocoder/repair.log',
       },
@@ -302,14 +302,14 @@ describe('handleOzMessage', () => {
       action: {
         type: 'repair',
         workspaceId: 'cocoder',
-        committedPaths: ['cocoder/PLAYBOOK.md'],
+        committedPaths: ['cocoder/PLAYBOOK.md', 'packages/core/src/proposal.ts'],
         commitSha: 'abc123',
-        heldBackPaths: ['packages/core/src/proposal.ts'],
+        outOfLanePaths: ['packages/core/src/proposal.ts'],
         turnLogPath: '/tmp/cocoder/local/oz/cocoder/repair.log',
       },
     })
-    expect(result.body.reply).toContain('Committed cocoder/PLAYBOOK.md as abc123.')
-    expect(result.body.reply).toContain('Held back and did NOT commit: packages/core/src/proposal.ts.')
+    expect(result.body.reply).toContain('Committed cocoder/PLAYBOOK.md, packages/core/src/proposal.ts as abc123.')
+    expect(result.body.reply).toContain("Committed out of Oz's repair lane (flagged for your visibility, NOT withheld): packages/core/src/proposal.ts.")
     expect(result.body.reply).toContain('Turn log: /tmp/cocoder/local/oz/cocoder/repair.log.')
     expect(result.body.reply).toContain('Refresh Oz next')
   })
@@ -317,12 +317,11 @@ describe('handleOzMessage', () => {
   test('repair executable reply reports clean no-op without a refresh instruction', async () => {
     const result = await executeOzCommand(testCtx(), 'cocoder', { kind: 'repair', message: 'inspect config' }, repairOps({
       status: 200,
-      body: { ok: true, committedPaths: [], commitSha: null, heldBackPaths: [], exitCode: 0, turnLogPath: '/tmp/repair.log' },
+      body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0, turnLogPath: '/tmp/repair.log' },
     }))
 
     expect(result).toMatchObject({ status: 200, body: { ok: true, command: 'repair' } })
     expect(result.body.reply).toContain('Nothing changed; no repair commit was created.')
-    expect(result.body.reply).toContain('No held-back paths.')
     expect(result.body.reply).not.toContain('Refresh Oz next')
   })
 
@@ -333,7 +332,7 @@ describe('handleOzMessage', () => {
     }))
     const failed = await executeOzCommand(testCtx(), 'cocoder', { kind: 'repair', message: 'fix assignments' }, repairOps({
       status: 500,
-      body: { error: 'Oz repair turn failed with exit code 2; nothing was committed.', committedPaths: [], commitSha: null, heldBackPaths: ['cocoder/PLAYBOOK.md'] },
+      body: { error: 'Oz repair turn failed with exit code 2; nothing was committed.', committedPaths: [], commitSha: null, outOfLanePaths: [] },
     }))
 
     expect(refused).toMatchObject({

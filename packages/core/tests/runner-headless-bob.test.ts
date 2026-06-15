@@ -85,16 +85,15 @@ const worktreeStubs = {
 
 function scriptedGit(): Git {
   let head = 'h0'
-  let changed = false
+  let call = 0
   return {
     ...worktreeStubs,
     async headSha() {
       return head
     },
     async changedFiles() {
-      if (changed) return []
-      changed = true
-      return ['packages/headless-bob.ts']
+      // call 0 = run-start pre-existing-dirt snapshot (clean); call 1 = the atom's diff; then clean.
+      return call++ === 1 ? ['packages/headless-bob.ts'] : []
     },
     async addAndCommit() {
       head = 'sha-1'

@@ -32,7 +32,7 @@ export interface OzChatAction {
   readonly sessionRef?: string
   readonly committedPaths?: readonly string[]
   readonly commitSha?: string | null
-  readonly heldBackPaths?: readonly string[]
+  readonly outOfLanePaths?: readonly string[]
   readonly turnLogPath?: string
 }
 export interface OzChatReply {
@@ -271,24 +271,24 @@ function nudgeReply(runId: string, out: LaunchResult): OzChatReply {
 
 function repairReply(workspaceId: string, out: LaunchResult): OzChatReply {
   const committedPaths = stringArray(out.body.committedPaths)
-  const heldBackPaths = stringArray(out.body.heldBackPaths)
+  const outOfLanePaths = stringArray(out.body.outOfLanePaths)
   const commitSha = typeof out.body.commitSha === 'string' ? out.body.commitSha : null
   const turnLogPath = typeof out.body.turnLogPath === 'string' ? out.body.turnLogPath : undefined
   if (!isOk(out.status)) return failedReply('repair', 'Could not repair', out)
 
   const committed = commitSha
-    ? `Committed ${committedPaths.length === 0 ? 'in-scope changes' : committedPaths.join(', ')} as ${commitSha}.`
+    ? `Committed ${committedPaths.length === 0 ? 'the repair' : committedPaths.join(', ')} as ${commitSha}.`
     : 'Nothing changed; no repair commit was created.'
-  const heldBack = heldBackPaths.length > 0
-    ? ` Held back and did NOT commit: ${heldBackPaths.join(', ')}. These await founder review.`
-    : ' No held-back paths.'
+  const outOfLane = outOfLanePaths.length > 0
+    ? ` Committed out of Oz's repair lane (flagged for your visibility, NOT withheld): ${outOfLanePaths.join(', ')}.`
+    : ''
   const log = turnLogPath ? ` Turn log: ${turnLogPath}.` : ''
   const refresh = commitSha ? ' Refresh Oz next so the daemon reloads the repaired state.' : ''
   return {
-    reply: `${committed}${heldBack}${log}${refresh}`,
+    reply: `${committed}${outOfLane}${log}${refresh}`,
     command: 'repair',
     ok: true,
-    action: { type: 'repair', workspaceId, committedPaths, commitSha, heldBackPaths, ...(turnLogPath ? { turnLogPath } : {}) },
+    action: { type: 'repair', workspaceId, committedPaths, commitSha, outOfLanePaths, ...(turnLogPath ? { turnLogPath } : {}) },
   }
 }
 

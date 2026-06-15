@@ -524,7 +524,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     if (gate) {
       if (gate.committedSha) lines.push(`Committed as \`${gate.committedSha}\` (files: ${gate.committedFiles.join(', ') || 'none'}) on branch \`${runBranch}\`. The run still fails — land it from that branch to bring the ${isTicket ? 'ticket' : 'repair'} to trunk.`, '')
       else lines.push('No in-scope changes were committed (nothing within Deb\'s write-scope changed).', '')
-      if (gate.outOfScope.length > 0) lines.push(`**Held back (out of Deb's scope — NOT committed):** ${gate.outOfScope.join(', ')}`, '')
+      if (gate.outOfScope.length > 0) lines.push(`**Committed out of Deb's lane (flagged, NOT withheld):** ${gate.outOfScope.join(', ')}`, '')
     }
     if (v.disposition === 'repo-bug') lines.push('## For the founder', '', v.summary, '')
     return lines.join('\n')
@@ -746,17 +746,17 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   let n = 0
   let consecutiveRejects = 0
   let activeAtom: { readonly index: number; readonly workItemId: string; readonly headBefore: string } | null = null
+  // Founder's PRE-EXISTING uncommitted edits at run start. Quarantine must never revert these (data
+  // loss) — only the atom's own produced changes. After a passing atom commits, the tree is clean, so a
+  // single run-start snapshot covers every later atom's quarantine.
+  const dirtyAtStart = new Set(await git.changedFiles(worktreePath))
 
   const absorbGateResult = (gate: CommitGateResult): void => {
     if (gate.committedSha) committedShas.push(gate.committedSha)
     committedFiles.push(...gate.committedFiles)
-    if (gate.committedFiles.length > 0) {
-      const nowCommitted = new Set(gate.committedFiles)
-      for (let i = outOfScope.length - 1; i >= 0; i--) {
-        if (nowCommitted.has(outOfScope[i]!)) outOfScope.splice(i, 1)
-      }
-    }
-    outOfScope.push(...gate.outOfScope)
+    // outOfScope is now a pure visibility flag (the paths committed out of lane), unioned across atoms.
+    // No more "clear prior holdback" dance — nothing is held back, so there is nothing to clear.
+    for (const f of gate.outOfScope) if (!outOfScope.includes(f)) outOfScope.push(f)
     selfCommitted = selfCommitted || gate.selfCommitted
   }
 
@@ -880,15 +880,17 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     if ((await git.headSha(worktreePath)) !== headBefore) {
       store.recordEvent({ runId: run.id, type: selfCommitEvent, data: { atom: atomIndex, headBefore } })
     }
-    // QUARANTINE (atom isolation): discard this atom's IN-SCOPE working-tree changes so they can't ride
-    // into a LATER passing atom's commit. Prior work is already committed; out-of-scope files are left.
-    const { inScope } = partitionByScope(await git.changedFiles(worktreePath), scope)
-    if (inScope.length === 0) return
+    // QUARANTINE (atom isolation): discard everything THIS rejected atom touched — regardless of scope —
+    // so it can't ride into a LATER passing atom's commit (the gate now commits the whole tree, so an
+    // out-of-lane edit by a failed atom would otherwise land). A founder's PRE-EXISTING uncommitted edit
+    // (dirty at run start) is not the atom's work — exclude it so quarantine never destroys it.
+    const produced = (await git.changedFiles(worktreePath)).filter((f) => !dirtyAtStart.has(f))
+    if (produced.length === 0) return
     try {
-      await git.restoreToHead(worktreePath, inScope)
-      store.recordEvent({ runId: run.id, type: 'atom-quarantined', data: { atom: atomIndex, files: inScope } })
+      await git.restoreToHead(worktreePath, produced)
+      store.recordEvent({ runId: run.id, type: 'atom-quarantined', data: { atom: atomIndex, files: produced } })
     } catch (err) {
-      store.recordEvent({ runId: run.id, type: 'atom-quarantine-failed', data: { atom: atomIndex, files: inScope, reason: String(err) } })
+      store.recordEvent({ runId: run.id, type: 'atom-quarantine-failed', data: { atom: atomIndex, files: produced, reason: String(err) } })
     }
   }
 
@@ -1191,7 +1193,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
   // ── Wrap-up: pickup brief (continuation; F8) + run record ───────────────────────────────────────
   const pickupPath = pickup ? await io.writePickup(runDir, pickup) : null
-  let status: RunStatus = outOfScope.length > 0 ? 'pending-scope-decision' : 'completed'
+  // Out-of-scope no longer parks the run: the gate committed it (flagged, not withheld). The only
+  // non-completed default-path outcome is integration escalation → pending-landing, set below.
+  let status: RunStatus = 'completed'
   store.setRunStatus(run.id, status)
 
   // ── Integrate: bring trunk in if it moved (§4), VERIFY the merged tree (§3), THEN ff onto trunk ──────
@@ -1239,22 +1243,20 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   // recorded so the run record and the next session read the real result, with recovery if it did not land.
   {
     const integ = store.getRun(run.id)?.integrationStatus ?? 'pending'
-    const heldBack = outOfScope.length > 0 ? `Held back (out of scope, NOT committed): ${outOfScope.join(', ')}.` : 'Nothing held back.'
+    // Out-of-scope paths were COMMITTED (scope is advisory) — surfaced as a flag, never withheld.
+    const flagged = outOfScope.length > 0 ? `Committed out-of-lane (flagged, NOT held back): ${outOfScope.join(', ')}.` : 'Nothing out of lane.'
     const nCommits = committedShas.length
     let landed: boolean
     let outcome: string
     if (status === 'completed' && integ === 'merged') {
       landed = true
-      outcome = `✅ LANDED on trunk${mergeSha ? ` (merge ${mergeSha.slice(0, 8)})` : ''} — ${nCommits} commit(s) verified and merged. ${heldBack}`
+      outcome = `✅ LANDED on trunk${mergeSha ? ` (merge ${mergeSha.slice(0, 8)})` : ''} — ${nCommits} commit(s) verified and merged. ${flagged}`
     } else if (status === 'pending-landing') {
       landed = false
-      outcome = `⚠️ NOT LANDED — integration escalated${integrationReason ? `: ${integrationReason}` : ''}. The ${nCommits} commit(s) are preserved on branch ${runBranch} (recoverable, NOT lost). Recover with POST /runs/${run.id}/resolve, or fix the blocker and re-launch. ${heldBack}`
-    } else if (status === 'pending-scope-decision') {
-      landed = integ === 'merged'
-      outcome = `${landed ? `Committed work LANDED${mergeSha ? ` (merge ${mergeSha.slice(0, 8)})` : ''}; ` : `Committed work is preserved on branch ${runBranch}; `}out-of-scope changes are HELD BACK awaiting your decision: ${outOfScope.join(', ')}.`
+      outcome = `⚠️ NOT LANDED — integration escalated${integrationReason ? `: ${integrationReason}` : ''}. The ${nCommits} commit(s) are preserved on branch ${runBranch} (recoverable, NOT lost). Recover with POST /runs/${run.id}/resolve, or fix the blocker and re-launch. ${flagged}`
     } else {
       landed = false
-      outcome = `Run ended ${status}; integration ${integ}. ${nCommits} commit(s). ${heldBack}`
+      outcome = `Run ended ${status}; integration ${integ}. ${nCommits} commit(s). ${flagged}`
     }
     store.recordEvent({ runId: run.id, type: 'landing-outcome', data: { landed, status, integrationStatus: integ, mergeSha, outOfScope, reason: integrationReason, outcome } })
     if (pickup && pickup.trim() !== '' && oscarDriver.kind !== 'headless') {

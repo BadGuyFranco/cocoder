@@ -52,7 +52,7 @@ describe('requestOzRepair', () => {
     expect(noOz.headlessInputs).toEqual([])
   })
 
-  test('runs one repair turn on the trunk checkout, commits in-scope paths, and leaves held-back paths dirty', async () => {
+  test('runs one repair turn on the trunk checkout, commits EVERYTHING it changed, and flags out-of-lane paths', async () => {
     const fixture = await makeFixture({
       runHeadless: async (input) => {
         fixture.headlessInputs.push(input)
@@ -72,15 +72,16 @@ describe('requestOzRepair', () => {
       status: 200,
       body: {
         ok: true,
-        committedPaths: ['cocoder/PLAYBOOK.md'],
-        heldBackPaths: ['packages/core/src/leak.ts'],
+        committedPaths: ['cocoder/PLAYBOOK.md', 'packages/core/src/leak.ts'],
+        outOfLanePaths: ['packages/core/src/leak.ts'],
         exitCode: 0,
       },
     })
     expect(typeof result.body.commitSha).toBe('string')
     expect(await git(fixture.home, ['rev-parse', 'HEAD'])).not.toBe(headBefore)
     expect((await git(fixture.home, ['log', '-1', '--pretty=%s'])).trim()).toBe('oz-repair')
-    await expect(git(fixture.home, ['cat-file', '-e', 'HEAD:packages/core/src/leak.ts'])).rejects.toThrow()
+    // The out-of-lane file was committed too (flagged, not withheld).
+    await expect(git(fixture.home, ['cat-file', '-e', 'HEAD:packages/core/src/leak.ts'])).resolves.toBeDefined()
     expect(await readFile(join(fixture.home, 'packages', 'core', 'src', 'leak.ts'), 'utf8')).toBe('export const leak = true\n')
     expect(fixture.headlessInputs[0]?.cwd).toBe(fixture.home)
     expect(fixture.prompts[0]?.prompt).toContain('Diagnosed fault:')
@@ -89,7 +90,7 @@ describe('requestOzRepair', () => {
     expect(events.some((event) => event.type === 'oz-repair' && event.workspaceId === 'cocoder')).toBe(true)
     const audit = await readFile(join(fixture.home, 'local', 'oz-audit.log'), 'utf8')
     expect(audit).toContain('"action":"oz-repair"')
-    expect(audit).toContain('"heldBackPaths":["packages/core/src/leak.ts"]')
+    expect(audit).toContain('"outOfLanePaths":["packages/core/src/leak.ts"]')
   })
 
   test('clean repair turn returns a truthful no-op without an empty commit', async () => {
@@ -100,12 +101,12 @@ describe('requestOzRepair', () => {
 
     expect(result).toMatchObject({
       status: 200,
-      body: { ok: true, committedPaths: [], commitSha: null, heldBackPaths: [], exitCode: 0 },
+      body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0 },
     })
     expect(await git(fixture.home, ['rev-parse', 'HEAD'])).toBe(headBefore)
   })
 
-  test('nonzero repair turn commits nothing and reports the whole dirty tree as held back', async () => {
+  test('nonzero repair turn commits nothing; the failed turn\'s changes stay in the working tree', async () => {
     const fixture = await makeFixture({
       runHeadless: async (input) => {
         fixture.headlessInputs.push(input)
@@ -126,7 +127,7 @@ describe('requestOzRepair', () => {
         error: 'Oz repair turn failed with exit code 2; nothing was committed.',
         committedPaths: [],
         commitSha: null,
-        heldBackPaths: ['cocoder/PLAYBOOK.md', 'packages/daemon/src/partial.ts'],
+        outOfLanePaths: [],
         exitCode: 2,
       },
     })

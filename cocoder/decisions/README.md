@@ -31,7 +31,7 @@ their still-live content was absorbed into [ADR-0019](./0019-multi-root-workspac
 
 ## Proposed (founder review owed)
 
-_(none — ADR-0020 accepted 2026-06-14.)_
+_(none.)_
 
 ## Retired to history (superseded — not in the live tree)
 

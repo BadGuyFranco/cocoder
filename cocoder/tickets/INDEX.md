@@ -20,6 +20,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0007](./closed/0007-post-wrap-orchestration-commit-gap.md) | Orchestration personas can't commit a founder-approved held-back file post-wrap (the D3 strand) | bug | 2026-06-15 | Root-caused deeper: the held-back/withhold constraint itself is removed (scope advisory, ADR-0023). The spine never withholds, so the strand class cannot recur |
 | [0004](./closed/0004-post-wrap-edits-not-committed.md) | Post-wrap Oscar edits can stay stranded in run worktrees | bug | 2026-06-13 | ADR-0022 + run_76 landing invariant; post-wrap Surface-A edits allowed, strands surfaced |
 | [0002](./closed/0002-local-state-run-export-lane.md) | Add local-state export lane for isolated runs | bug | 2026-06-08 | Local-state export lane implemented |
 | [0001](./closed/0001-cocoder-command-wrapper-decision.md) | Restore or retire CoCoder `.command` double-click wrappers | question | 2026-05-23 | Path B — Retire (terminal-only) |

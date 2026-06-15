@@ -113,7 +113,7 @@ function makeFakeGit(opts: { changed: string[]; headBefore: string; headNow?: st
 }
 
 describe('runCommitGate', () => {
-  test('commits in-scope (explicit commit_link), surfaces out-of-scope, never silent', async () => {
+  test('commits EVERYTHING in one commit; out-of-lane paths are flagged, never withheld', async () => {
     const store = openRunStore(':memory:')
     store.upsertWorkspace({ id: 'cocoder', path: '/repo', name: 'CoCoder' })
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'p' })
@@ -133,18 +133,19 @@ describe('runCommitGate', () => {
       headBefore: 'h0',
     })
 
-    expect(res.committedFiles).toEqual(['packages/cli/src/run.ts'])
+    // Scope is advisory: BOTH files commit; the out-of-lane one is flagged, not held back.
+    expect(res.committedFiles).toEqual(['packages/cli/src/run.ts', 'docs/leak.md'])
     expect(res.outOfScope).toEqual(['docs/leak.md'])
     expect(res.selfCommitted).toBe(false)
     expect(commits).toHaveLength(1)
 
-    // Explicit commit_link recorded (F6); out-of-scope surfaced as an event (never silent).
+    // The commit_link records the whole commit (F6); the out-of-lane edit is surfaced (visible, committed).
     const links = store.listCommitLinks(run.id)
-    expect(links[0]?.files).toEqual(['packages/cli/src/run.ts'])
-    expect(store.listEvents(run.id).map((e) => e.type)).toEqual(expect.arrayContaining(['commit', 'out-of-scope']))
+    expect(links[0]?.files).toEqual(['packages/cli/src/run.ts', 'docs/leak.md'])
+    expect(store.listEvents(run.id).map((e) => e.type)).toEqual(expect.arrayContaining(['commit', 'out-of-scope-committed']))
   })
 
-  test('read-only persona (empty scope) commits nothing; all changes surfaced', async () => {
+  test('even an empty scope COMMITS everything (scope is advisory) — all paths flagged out-of-lane', async () => {
     const store = openRunStore(':memory:')
     store.upsertWorkspace({ id: 'cocoder', path: '/repo', name: 'CoCoder' })
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'p' })
@@ -154,9 +155,9 @@ describe('runCommitGate', () => {
       git, store, cwd: '/repo', runId: run.id, workItemId: null,
       scope: [], message: 'x', headBefore: 'h0',
     })
-    expect(res.committedSha).toBeNull()
+    expect(res.committedFiles).toEqual(['packages/a.ts'])
     expect(res.outOfScope).toEqual(['packages/a.ts'])
-    expect(commits).toHaveLength(0)
+    expect(commits).toHaveLength(1)
   })
 
   test('detects an agent self-commit (HEAD moved outside the gate)', async () => {
@@ -175,7 +176,7 @@ describe('runCommitGate', () => {
 })
 
 describe('gateCommitRepair', () => {
-  test('commits only in-scope repair files and reports held-back files without store coupling', async () => {
+  test('commits EVERYTHING Oz changed and flags out-of-lane files (scope advisory, never withheld)', async () => {
     const { git, commits } = makeFakeGit({ changed: ['cocoder/PLAYBOOK.md', 'packages/core/src/leak.ts'], headBefore: 'h0' })
 
     const res = await gateCommitRepair({
@@ -187,10 +188,10 @@ describe('gateCommitRepair', () => {
 
     expect(res).toEqual({
       committedSha: 'sha-after-1',
-      committedFiles: ['cocoder/PLAYBOOK.md'],
-      heldBackFiles: ['packages/core/src/leak.ts'],
+      committedFiles: ['cocoder/PLAYBOOK.md', 'packages/core/src/leak.ts'],
+      outOfLaneFiles: ['packages/core/src/leak.ts'],
     })
-    expect(commits).toEqual([{ files: ['cocoder/PLAYBOOK.md'], message: 'oz-repair' }])
+    expect(commits).toEqual([{ files: ['cocoder/PLAYBOOK.md', 'packages/core/src/leak.ts'], message: 'oz-repair' }])
   })
 
   test('clean repair diff produces no empty commit', async () => {
@@ -199,7 +200,7 @@ describe('gateCommitRepair', () => {
     await expect(gateCommitRepair({ git, cwd: '/repo', scope: ['cocoder/**'], message: 'oz-repair' })).resolves.toMatchObject({
       committedSha: null,
       committedFiles: [],
-      heldBackFiles: [],
+      outOfLaneFiles: [],
     })
     expect(commits).toEqual([])
   })
@@ -210,7 +211,7 @@ describe('workspace commit spine (ADR-0023 §1)', () => {
     const { git, commits } = makeFakeGit({ changed: [], headBefore: 'h0' })
     const author = { name: 'cocoder-governance', email: 'governance@cocoder.local' }
     const r = await commitFiles(git, '/repo', ['cocoder/priorities/x.md'], 'governance: create x', author)
-    expect(r).toEqual({ committed: true, committedSha: 'sha-after-1', committedFiles: ['cocoder/priorities/x.md'], heldBack: [], error: null })
+    expect(r).toEqual({ committed: true, committedSha: 'sha-after-1', committedFiles: ['cocoder/priorities/x.md'], outOfLane: [], error: null })
     expect(commits).toEqual([{ files: ['cocoder/priorities/x.md'], message: 'governance: create x' }])
   })
 
@@ -229,17 +230,17 @@ describe('workspace commit spine (ADR-0023 §1)', () => {
     expect(r.error).toBe('index.lock held')
   })
 
-  test('commitScoped commits in-scope, holds out-of-scope back, uniform receipt', async () => {
+  test('commitScoped commits EVERYTHING and flags out-of-lane paths, uniform receipt', async () => {
     const { git, commits } = makeFakeGit({ changed: ['cocoder/PLAYBOOK.md', 'packages/core/src/leak.ts'], headBefore: 'h0' })
     const r = await commitScoped(git, '/repo', ['cocoder/**'], 'oz-repair')
-    expect(r).toEqual({ committed: true, committedSha: 'sha-after-1', committedFiles: ['cocoder/PLAYBOOK.md'], heldBack: ['packages/core/src/leak.ts'], error: null })
-    expect(commits).toEqual([{ files: ['cocoder/PLAYBOOK.md'], message: 'oz-repair' }])
+    expect(r).toEqual({ committed: true, committedSha: 'sha-after-1', committedFiles: ['cocoder/PLAYBOOK.md', 'packages/core/src/leak.ts'], outOfLane: ['packages/core/src/leak.ts'], error: null })
+    expect(commits).toEqual([{ files: ['cocoder/PLAYBOOK.md', 'packages/core/src/leak.ts'], message: 'oz-repair' }])
   })
 
-  test('commitScoped never swallows a failure — held-back stays intact for recovery', async () => {
+  test('commitScoped never swallows a failure — the out-of-lane flag stays intact for recovery', async () => {
     const { git } = makeFakeGit({ changed: ['cocoder/x.md', 'packages/y.ts'], headBefore: 'h0' })
     const failing: Git = { ...git, async addAndCommit() { throw new Error('disk full') } }
     const r = await commitScoped(failing, '/repo', ['cocoder/**'], 'oz-repair')
-    expect(r).toMatchObject({ committed: false, committedSha: null, heldBack: ['packages/y.ts'], error: 'disk full' })
+    expect(r).toMatchObject({ committed: false, committedSha: null, outOfLane: ['packages/y.ts'], error: 'disk full' })
   })
 })

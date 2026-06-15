@@ -13,14 +13,15 @@ export interface RepairCommitInput {
 export interface RepairCommitResult {
   readonly committedSha: string | null
   readonly committedFiles: readonly string[]
-  readonly heldBackFiles: readonly string[]
+  /** Committed paths outside Oz's repair lane — FLAGGED for visibility, NOT withheld. */
+  readonly outOfLaneFiles: readonly string[]
 }
 
-/** Gate a daemon-owned repair diff (Oz repair). A thin adapter over the workspace commit spine's
- *  `commitScoped` (ADR-0023 §1) — one implementation for every scope-partitioned commit. Out-of-scope
- *  files stay dirty (held back); a commit failure surfaces as a null sha (the daemon records the
- *  receipt to its audit log + SSE, not the run store — there is no run). */
+/** Commit a daemon-owned repair diff (Oz repair) through the workspace commit spine's `commitScoped`
+ *  (ADR-0023 §1). Commits EVERYTHING Oz changed; out-of-lane paths are flagged, never held back (scope is
+ *  advisory — founder directive 2026-06-15). A commit failure surfaces as a null sha (the daemon records
+ *  the receipt to its audit log + SSE, not the run store — there is no run). */
 export async function gateCommitRepair(input: RepairCommitInput): Promise<RepairCommitResult> {
   const r = await commitScoped(input.git, input.cwd, input.scope, input.message, input.author)
-  return { committedSha: r.committedSha, committedFiles: r.committedFiles, heldBackFiles: r.heldBack }
+  return { committedSha: r.committedSha, committedFiles: r.committedFiles, outOfLaneFiles: r.outOfLane }
 }
