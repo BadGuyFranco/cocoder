@@ -1,17 +1,19 @@
-// Glass sidebar — the 5-section nav (Dashboard · Workspaces · CLIs · Personas · Settings). The
-// Dashboard item carries a badge counting running+blocked runs in the active workspace. Collapsible to
-// an icon rail (toggle in the brand row); when collapsed, hovering an item shows its label as a tooltip
-// — giving the Priorities panel more room. Ported from design-ref/components.jsx (dev-pin overlay dropped).
+// Glass sidebar — the nav (Dashboard · Workspaces · CLIs · Personas · Plays · Settings). The Dashboard
+// item carries a badge counting running+blocked runs in the active workspace. Collapsible to an icon rail
+// (toggle in the brand row); when collapsed, hovering an item shows its label as a tooltip — giving the
+// Priorities panel more room. NAV_ITEMS is the single source of truth; add an entry to add a section (the
+// old "five items only" cap was a design-ref artifact, not a real constraint).
 import { Icon } from './primitives.tsx'
 import type { Run } from '../model.ts'
 
-export type Route = 'dashboard' | 'workspaces' | 'clis' | 'personas' | 'settings'
+export type Route = 'dashboard' | 'workspaces' | 'clis' | 'personas' | 'plays' | 'settings'
 
 const NAV_ITEMS: { id: Route; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: 'squares-four' },
   { id: 'workspaces', label: 'Workspaces', icon: 'folders' },
   { id: 'clis', label: 'CLIs', icon: 'terminal-window' },
   { id: 'personas', label: 'Personas', icon: 'users-three' },
+  { id: 'plays', label: 'Plays', icon: 'tree-structure' },
   { id: 'settings', label: 'Settings', icon: 'gear-six' },
 ]
 

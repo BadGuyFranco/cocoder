@@ -12,13 +12,14 @@ import { Dashboard } from './sections/dashboard/Dashboard.tsx'
 import { WorkspacesScreen } from './sections/Workspaces.tsx'
 import { CLIsScreen } from './sections/CLIs.tsx'
 import { PersonasScreen } from './sections/Personas.tsx'
+import { PlaysScreen } from './sections/Plays.tsx'
 import { SettingsScreen } from './sections/Settings.tsx'
 import { NewWorkspaceModal, CraftPersonaModal, NewPriorityModal } from './sections/modals.tsx'
 import { seed, DEFAULT_SETTINGS, type ChatMessage, type Cli, type Dependency, type Persona, type Play, type Priority, type Run, type Settings, type SubAgent, type Workspace } from './model.ts'
 import type { OzEventHint, PersonaAssignment } from '../electron/ipc-contract.ts'
 
 const USER = seed.workspaces.length ? { initials: 'AF', name: 'Anthony Franco', role: 'founder' } : { initials: 'AF', name: 'Anthony Franco', role: 'founder' }
-const ROUTE_TITLE: Record<Route, string> = { dashboard: 'Dashboard', workspaces: 'Workspaces', clis: 'CLIs', personas: 'Personas', settings: 'Settings' }
+const ROUTE_TITLE: Record<Route, string> = { dashboard: 'Dashboard', workspaces: 'Workspaces', clis: 'CLIs', personas: 'Personas', plays: 'Plays', settings: 'Settings' }
 const ACTIVE_DETAIL_FETCH_LIMIT = 6
 
 const seedSettings = (): Settings => {
@@ -575,6 +576,7 @@ export function App() {
           )}
           {route === 'clis' && <CLIsScreen clis={clis} onTest={handleCliTest} onAdd={() => onSend('Register a new CLI.')} />}
           {route === 'personas' && <PersonasScreen personas={personas} plays={plays} clis={clis} onChange={setPersona} onAddSub={addSub} onRemoveSub={removeSub} onUpdateSub={updateSub} onNewPersonaAsPriority={() => setCraftOpen(true)} live={live} />}
+          {route === 'plays' && <PlaysScreen plays={plays} />}
           {route === 'settings' && <SettingsScreen settings={settings} dependencies={dependencies} onRecheckDep={(id: string) => setDependencies((ds: Dependency[]) => ds.map((d: Dependency) => (d.id === id ? { ...d, lastChecked: 'just now' } : d)))} onChange={setSettings} live={live} />}
           </>)}
         </div>

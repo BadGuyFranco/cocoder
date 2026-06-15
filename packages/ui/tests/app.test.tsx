@@ -23,9 +23,9 @@ function boundPlayRow(playId: string): HTMLElement {
 describe('Oz — rebuilt Fusion renderer', () => {
   beforeEach(() => cleanup())
 
-  it('renders exactly the five nav sections', () => {
+  it('renders the nav sections (incl. top-level Plays)', () => {
     render(<App />)
-    for (const label of ['Dashboard', 'Workspaces', 'CLIs', 'Personas', 'Settings']) {
+    for (const label of ['Dashboard', 'Workspaces', 'CLIs', 'Personas', 'Plays', 'Settings']) {
       expect(screen.getByText(label)).toBeDefined()
     }
   })
@@ -107,9 +107,9 @@ describe('Oz — rebuilt Fusion renderer', () => {
     expect(screen.getAllByText(/HEADLESS/i).length).toBeGreaterThan(0)
   })
 
-  it('Personas screen shows the read-only Plays catalog', () => {
+  it('Plays screen (top-level nav) shows the read-only Plays catalog', () => {
     render(<App />)
-    fireEvent.click(screen.getByText('Personas'))
+    fireEvent.click(screen.getByText('Plays'))
     expect(screen.getByText(/Plays catalog/)).toBeDefined()
     expect(screen.getAllByTestId('play-row').length).toBeGreaterThan(0)
     expect(screen.getByText('wrap-up')).toBeDefined()
