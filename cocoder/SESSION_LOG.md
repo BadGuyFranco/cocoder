@@ -12,6 +12,34 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-14 — **oz-dashboard-bugs: 10-bug Oz dashboard defect sweep (direct founder+Opus session, committed to main)**
+
+**Persona:** founder + Opus (direct, outside run machinery) | **Priority:** oz-dashboard-bugs | **Plan:** in-session
+**Outcomes:**
+- **Bug 1 (Oz NL chat dead) — fixed + verified live.** Root cause: `oz` absent from
+  `cocoder/personas/assignments.json` → `isPersonaEnabled('oz')` false → the NL agent path was gated,
+  so every non-command fell back to the command list. Assigned Oz→`cursor-agent` (the only adapter that
+  runs headless today). `POST /oz/messages` now returns natural-language answers. Deeper finding filed
+  as **ticket 0006**: claude/codex adapters are interactive-TUI-only (no headless lane) — blocks
+  Oz-on-claude AND is a latent hang for headless Plays pinned to claude (integration-verify/merge-conflict).
+- **Bugs 2,5,7(now),8 (renderer clarity):** priority rows trimmed to number+name+status; canonical
+  persona order (Oz,Oscar,Bob,Deb,Talia,Quinn); "Sub-agents"→"Skills (Plays)"; red "pending endpoint"
+  banners → calm accurate SessionNotes (the Settings one was misleading — settings ARE served).
+- **Bugs 4,6 — fixed + verified live.** claude/codex now enumerate curated `--model` lists
+  (canEnumerate:true); ModelControl renders a dropdown with a "Custom…" free-text escape.
+- **Bug 3:** single-writer launch lock (ADR-0004) made legible — Launch disabled with a tooltip when a
+  run is executing, instead of a silent 409. (Pushed back: concurrency is NOT wanted; the lock is correct.)
+- **Bug 9:** Compact density + Reduce motion were no-ops; wired to root data-attributes + CSS.
+- **Bug 10 — fixed + verified live.** "Restart Oz" button (TopBar) → `POST /daemon/restart` (202; 409 +
+  reason while a run is in flight), via the existing daemonPost bridge.
+- **Verification:** UI 107/107, adapters 17/17, daemon 200/200, tsc clean, UI build green (F16 artifacts
+  present), proof-oz-surfaces + proof-priorities-queue green. Also landed run_83's stranded wrap-up.
+- **Follow-ups crafted:** priority `plays-first-class` (Bug 7 full: `GET /plays` catalog + permission
+  surfacing) and ticket 0006 (Bug 1 "claude path next" + latent Play hang). ADR owed for adversarial /
+  dynamic Plays.
+**Next:** ticket 0006 (headless claude/codex lane → Oz-on-claude); then `plays-first-class`. Found but
+not fixed: `cursor-agent --list-models` parser includes a trailing "Tip:" line as a fake model.
+
 ## 2026-06-14 — **new-primary-root run_83: onboarding-ENGINE foundation built — loader extension + scaffold primitive + deep-read Play (4 atoms, all first-try passes)**
 
 **Persona:** Oscar + Bob (4 atoms, all first-try passes) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Play:** multi-atom build (the ADR-0020 engine foundation, not a live onboarding yet)

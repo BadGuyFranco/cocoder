@@ -1,0 +1,42 @@
+---
+id: 0006
+title: Headless adapter lane for claude/codex (Oz-on-claude; fixes headless Plays pinned to interactive CLIs)
+type: bug
+status: Open
+priority: oz-dashboard-bugs
+owner: founder-session 2026-06-14
+created: 2026-06-14
+---
+
+# 0006 — Headless adapter lane for claude/codex
+
+## Context
+Found during the Oz dashboard defect sweep (`oz-dashboard-bugs`, Bug 1). The adapter contract
+(`packages/core/src/adapter/types.ts`) advertises "build a **headless** invocation," but only the
+`cursor-agent` adapter actually does: `claude` and `codex` `build()` produce **interactive TUI**
+commands (claude `--permission-mode acceptEdits -- <prompt>`; codex
+`--dangerously-bypass-approvals-and-sandbox <prompt>`) that never exit and don't print a clean answer
+to stdout. Anything that runs them via `runHeadlessProcess` (captured subprocess, await exit) hangs to
+timeout.
+
+Two live consequences:
+1. **Oz chat (Bug 1):** the headless Oz agent turn (`packages/daemon/src/oz-host.ts`) only works on a
+   headless CLI. Oz was assigned `cursor-agent` to ship the fix; it cannot currently run on `claude`.
+2. **Latent Play hang:** `assignments.json` pins Oscar's `integration-verify` and `merge-conflict`
+   (both `kind: headless` Plays) to `claude`. `dispatchPlay` runs `kind: headless` Plays as captured
+   subprocesses — so if either dispatches, the interactive claude command would hang until the Play
+   timeout. Only `wrap-up`→`cursor-agent` is safe today.
+
+## Ask
+Add a real headless lane to the claude/codex adapters:
+- Add an optional `headless?: boolean` to `BuildInput` (core).
+- `oz-host.ts` always sets it; `dispatchPlay` sets it when `personaMode==='headless' || play.kind==='headless'`.
+- `claude.build()` headless → print mode (`claude -p … --output-format text [--model]`, `stdoutPath` set);
+  `codex.build()` headless → `codex exec …` (the non-interactive lane). Verify exact flags against the
+  installed CLIs before shipping (cursor-agent's `-p --output-format text` is the working reference).
+- Tests for the headless branch of each adapter; then Oz-on-claude becomes a valid assignment and the
+  integration-verify/merge-conflict pins stop being a latent hang.
+
+## Boundary
+Adapter + core-contract + dispatch change. Behind it, the founder's "claude path next" choice (Bug 1)
+is satisfied. Until then, keep headless lanes (Oz, headless Plays) on `cursor-agent`.
