@@ -179,6 +179,10 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   at run-launch. ✅ CODE-COMPLETE run_78/79; `node scripts/proof-plays.mjs` 4/4. **Archived 2026-06-14**
   (priority audit) — buildable work done; the 2 founder-present live proofs (Plays dispatch on a real
   run; Quinn drives the Oz GUI) are opportunistic, not blocking.
+- `plays-first-class` — Oz Play catalog + persona binding + write-scope/CLI-capability surfacing
+  (`GET /workspaces/:id/plays`, Personas-screen catalog section, catalog picker, `headlessCapable` data,
+  ⚠️ misconfig guard). ✅ run_88 (5 atoms, all first-try; core 280 · daemon 204 · ui 112). **Archive-candidate
+  2026-06-15** — verified-when met; deferred boundary tracked as `play-dispatch-boundary`.
 
 **Active build priorities (launchable; the `priorities/` directory is the live index):**
 1. `new-primary-root` — **CONTINUE (run_86, 2026-06-14).** Onboard a primary root via the
@@ -188,6 +192,12 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    **Next:** commit held-back D1 template files; lift D2 via `oz-dashboard-bugs`/ticket 0006; then design
    the P2→P5 fan-out executor and run live CoPublisher Takeover + dogfood Drift Audit proofs. **Absorbs
    `workspace-onboarding`.** Phase 5 ("first external repo").
+
+**Decision-first (launchable ADR work — no build atoms until Accepted):**
+- `play-dispatch-boundary` — draft **ADR-0024** for the deferred `plays-first-class` boundary: adversarial
+  multi-bindings of the same Play on different models, and dynamic per-persona sub-delegation. Conflicts with
+  the one-level-deep dispatch model in `packages/core/src/plays/dispatch.ts`; decide before any schema or
+  engine changes.
 
 **Standing tools (always available — not build work):** `priority-audit` (assess the priority set for
 staleness → a founder-decision table; the pruning tool) · `adhoc-session` (no named priority — draft one,

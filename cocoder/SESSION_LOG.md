@@ -35,11 +35,8 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 - **Verified each atom on evidence at its gate** (read the diff + ran tests/typecheck myself, not the
   builder's word): final state — root `pnpm typecheck` clean; core 280, daemon 204, ui 112 all green. Scope
   stayed within each atom's declared write-fence.
-**Next:** Priority is **archive-candidate** — objective met with evidence, docs current, no hidden follow-up.
-The only remaining work is the **explicitly deferred boundary**: multi-bindings of the same Play on different
-models, and dynamic per-persona sub-delegation — both require schema + dispatch-engine changes and an **ADR
-first** (they fight the one-level-deep dispatch model in `packages/core/src/plays/dispatch.ts`). Recommend the
-founder either archive `plays-first-class` and open that ADR as the next priority, or confirm archive.
+**Next:** Reply **`archive plays-first-class`** to close this priority; then launch **`play-dispatch-boundary`**
+in Oz to draft ADR-0024 (the deferred multi-binding + sub-delegation boundary — decision before code).
 
 ## 2026-06-15 — **Scope made advisory: the commit spine never withholds (the constraint itself removed)**
 
