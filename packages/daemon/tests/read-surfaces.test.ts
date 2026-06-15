@@ -109,6 +109,7 @@ describe('Oz read surfaces', () => {
     // Governance fixtures under the (dogfood) workspace == cocoderHome.
     await mkdir(join(home, 'cocoder', 'priorities'), { recursive: true })
     await mkdir(join(home, 'cocoder', 'personas'), { recursive: true })
+    await mkdir(join(home, 'cocoder', 'plays', 'deltas'), { recursive: true })
     await mkdir(join(home, 'local'), { recursive: true })
     await writeFile(
       join(home, 'local', 'workspaces.json'),
@@ -130,6 +131,14 @@ describe('Oz read surfaces', () => {
     await writeFile(
       join(home, 'cocoder', 'personas', 'assignments.json'),
       JSON.stringify({ personas: { bob: { cli: 'codex', model: '', mode: 'headless' } } }),
+    )
+    await writeFile(
+      join(home, 'cocoder', 'plays', 'deltas', 'wrap-up.md'),
+      `---\nid: wrap-up\nlabel: Workspace Wrap-up\nwriteScope:\n  - cocoder/**\n---\nRepo wrap-up body`,
+    )
+    await writeFile(
+      join(home, 'cocoder', 'plays', 'repo-only.md'),
+      `---\nid: repo-only\nlabel: Repo-only Play\nkind: interactive\nwriteScope:\n  - docs/**\n---\nRepo-only body`,
     )
     store = openRunStore(':memory:')
     oz = await createOzServer({ cocoderHome: home, port: 0, store, git: fakeGit(), sessionHost: fakeHost() })
@@ -209,6 +218,35 @@ describe('Oz read surfaces', () => {
       model: null,
       writeScope: ['plugins/**'],
     })
+  })
+
+  test('GET /workspaces/:id/plays lists effective Plays', async () => {
+    const r = await get(oz!, '/workspaces/cocoder/plays')
+    expect(r.status).toBe(200)
+    const plays = r.json.plays as Array<{ id: string; label: string; kind: string; writeScope: readonly string[] }>
+    expect(plays.length).toBeGreaterThan(0)
+    expect(plays.map((play) => play.id)).toEqual(expect.arrayContaining(['wrap-up', 'deep-read', 'code-review', 'repo-only']))
+    for (const play of plays) {
+      expect(play).toEqual({
+        id: expect.any(String),
+        label: expect.any(String),
+        kind: expect.stringMatching(/^(headless|interactive)$/),
+        writeScope: expect.any(Array),
+      })
+    }
+    expect(plays.find((play) => play.id === 'wrap-up')).toMatchObject({
+      label: 'Workspace Wrap-up',
+      writeScope: expect.arrayContaining(['cocoder/**']),
+    })
+    expect(plays.find((play) => play.id === 'repo-only')).toMatchObject({
+      label: 'Repo-only Play',
+      kind: 'interactive',
+      writeScope: ['docs/**'],
+    })
+  })
+
+  test('GET /workspaces/:id/plays → 404 for an unknown workspace', async () => {
+    expect((await get(oz!, '/workspaces/nope/plays')).status).toBe(404)
   })
 
   test('GET /workspaces/:id/priorities → 404 for an unknown workspace', async () => {

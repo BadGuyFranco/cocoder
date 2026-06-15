@@ -7,6 +7,7 @@ import { isAbsolute, join, relative, resolve } from 'node:path'
 import {
   commitFiles,
   installRoot as cocoderInstallRoot,
+  listEffectivePlays,
   listEffectivePersonas,
   loadAssignments,
   loadPriority,
@@ -17,9 +18,10 @@ import {
   type CommitReceipt,
   type PersonaAssignment,
   type PersonaSources,
+  type PlaySources,
   type Priority,
 } from '@cocoder/core'
-import { basePersonasDir } from '@cocoder/personas'
+import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import type { OzContext, OzEvent } from './context.js'
 import { sendJson } from './server.js'
 import { findWorkspace, readWorkspaces, validateWorkspaceFolders, workspaceDirectory, workspaceFilePath, type RegistryRoot, type WorkspaceFolderInput } from './registry.js'
@@ -301,6 +303,24 @@ async function listPersonas(ctx: OzContext, res: ServerResponse, workspaceId: st
   sendJson(res, 200, { workspace: ws, personas, assignments })
 }
 
+/** GET /workspaces/:id/plays — surface 3 (read). Effective base Plays + repo deltas/custom Plays. */
+async function listPlays(ctx: OzContext, res: ServerResponse, workspaceId: string): Promise<void> {
+  const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
+  if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
+  const sources: PlaySources = {
+    baseDir: basePlaysDir(),
+    deltaDir: join(ws.path, 'cocoder', 'plays', 'deltas'),
+    repoPlayDir: join(ws.path, 'cocoder', 'plays'),
+  }
+  const plays = listEffectivePlays(sources).map((play) => ({
+    id: play.id,
+    label: play.label,
+    kind: play.kind,
+    writeScope: play.writeScope,
+  }))
+  sendJson(res, 200, { workspace: ws, plays })
+}
+
 /** GET /runs (optionally ?workspace=) — surface 4 list. */
 function listRuns(ctx: OzContext, res: ServerResponse, workspaceId: string | null): void {
   const runs = ctx.store.listRuns(workspaceId ? { workspaceId } : undefined)
@@ -393,6 +413,10 @@ export async function dispatchReads(ctx: OzContext, method: string, pathname: st
   }
   if (method === 'GET' && seg[0] === 'workspaces' && seg.length === 3 && seg[2] === 'personas') {
     await listPersonas(ctx, res, decodeURIComponent(seg[1]!))
+    return true
+  }
+  if (method === 'GET' && seg[0] === 'workspaces' && seg.length === 3 && seg[2] === 'plays') {
+    await listPlays(ctx, res, decodeURIComponent(seg[1]!))
     return true
   }
   if (method === 'GET' && pathname === '/runs') {
