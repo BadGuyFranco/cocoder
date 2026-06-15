@@ -105,6 +105,10 @@ export function App() {
 
   useEffect(() => { document.documentElement.setAttribute('data-theme', theme) }, [theme])
   useEffect(() => { setTheme(settings.preferences.theme) }, [settings.preferences.theme])
+  // Appearance toggles → root attributes the stylesheet keys off (see styles/oz.css). Boolean-presence
+  // attributes so the CSS selectors are [data-compact] / [data-reduce-motion].
+  useEffect(() => { document.documentElement.toggleAttribute('data-compact', settings.preferences.compactMode) }, [settings.preferences.compactMode])
+  useEffect(() => { document.documentElement.toggleAttribute('data-reduce-motion', settings.preferences.reduceMotion) }, [settings.preferences.reduceMotion])
   useEffect(() => { activeIdRef.current = activeId }, [activeId])
   useEffect(() => { selectedRunIdRef.current = selectedRunId }, [selectedRunId])
   useEffect(() => { runsByWsRef.current = runsByWs }, [runsByWs])

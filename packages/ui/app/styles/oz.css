@@ -503,3 +503,25 @@ button { font-family: inherit; }
 /* Animations from Oz.html inline <style> (the prototype entry point) */
 @keyframes ozSlideIn { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes ozFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ───────── Appearance toggles (Settings → Appearance), keyed off root data-attributes set in App.tsx ───────── */
+
+/* Reduce motion — neutralize keyframe animations AND transitions everywhere, including inline-styled
+   elements (the app is heavily inline-styled, so this must reach *). Honors the accessibility intent. */
+[data-reduce-motion] *,
+[data-reduce-motion] *::before,
+[data-reduce-motion] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  animation-delay: 0ms !important;
+  transition-duration: 0.001ms !important;
+  transition-delay: 0ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Compact density — tighten the class-based chrome (panels, headers, sidebar, screen padding). The
+   inline-styled inner content keeps its own spacing; full per-component density is a separate refactor. */
+[data-compact] .oz-panel-header { padding: 9px 12px; }
+[data-compact] .oz-panel-body { padding: 8px; }
+[data-compact] .oz-btn { padding: 6px 11px; }
+[data-compact] .oz-content { gap: 12px; }
