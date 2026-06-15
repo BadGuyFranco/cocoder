@@ -1,7 +1,7 @@
 # CoCoder Architecture
 
 **Status:** v2 (rebuild) — live  
-**Last verified:** 2026-06-14 (orchestration operating-model reset: the one commit spine — direct-to-branch by default, isolation opt-in — [ADR-0023](./cocoder/decisions/0023-workspace-commit-spine.md); `main` fast-forwarded to the rebuild tip and is again the canonical trunk)
+**Last verified:** 2026-06-15 (orchestration operating-model reset: the one commit spine — direct-to-branch, **single mode** (the opt-in isolation lane was removed, [ADR-0023](./cocoder/decisions/0023-workspace-commit-spine.md) Amendment 2 / failure-catalog F22); `main` is the canonical trunk and committed work is on the checked-out branch by construction)
 
 ## Mental Model
 
@@ -65,25 +65,26 @@ repair, the daemon's priority/persona/governance mutations, and any founder-dire
 reimplements `git commit`. (This replaces the three divergent commit paths the 2026-06-14 audit found —
 `runCommitGate`, `commitGovernance`, `gateCommitRepair` — which is what had been stranding work.)
 
-The spine always: works on the **active checkout / active branch** (no worktree by default); applies the
-**scope gate** ([ADR-0007](./cocoder/decisions/0007-write-scope-enforcement.md) — in-scope commits,
-out-of-scope held back and surfaced); applies **verification matched to risk**; and emits **one durable
-receipt** (commit-link + event: branch, SHA(s), changed files, held-back files, verification evidence).
+There is exactly **one mode** (ADR-0023 Amendment 2, founder directive 2026-06-15 — the opt-in isolation
+lane was removed). The spine always: works on the **active checkout / active branch** (no worktree, no run
+branch, no landing step); commits **everything the actor changed** in one commit — the
+[ADR-0007](./cocoder/decisions/0007-write-scope-enforcement.md) allow-list is **advisory**, out-of-lane
+paths are committed and **flagged**, never withheld; applies **verification in place** for code; and emits
+**one durable receipt** (commit-link + event: branch, SHA(s), changed files, out-of-lane flagged files,
+verification evidence).
 
-| Change kind | Default path | Verification |
+| Change kind | Path | Verification |
 |---|---|---|
-| Governance / docs / ADRs / priorities / personas / standards | **Direct to the active branch** — commit in place, no worktree, no merge | light / none (can't break a build) |
-| Product / machinery **code** | **Direct to the active branch**, but the orchestrator verifies *before* the spine commits (per-atom diff + tests); fail → revert in place, commit nothing | risk-matched ([ADR-0013](./cocoder/decisions/0013-orchestration-observation.md)) |
-| Risky / large / throwaway / parallel work | **Opt-in only** — a run cuts a worktree + branch, builds, verifies, and the spine lands it back via a verified ff-merge | full integration verify |
+| Governance / docs / ADRs / priorities / personas / standards | **Direct to the active branch** — commit in place | light / none (can't break a build) |
+| Product / machinery **code** | **Direct to the active branch**, but the orchestrator verifies *before* the spine commits (per-atom diff + tests); fail → revert that atom in place, commit nothing | risk-matched ([ADR-0013](./cocoder/decisions/0013-orchestration-observation.md)) |
+| Shared GitHub repo | The founder checks out a feature branch; the engine commits to it and `git push`es (**non-gating**). The merge to the shared `main` is GitHub's **PR review**, not the engine's | per the repo's CI / PR gate |
 
-**Why this is safe without a worktree by default:** the single-writer-per-workspace lock
+**Why this is safe with one mode:** the single-writer-per-workspace lock
 ([ADR-0004](./cocoder/decisions/0004-process-architecture.md)) serializes all writes, so in-place
-quarantine (`restoreToHead`) can only ever touch the one actor's own uncommitted work. **Why it ends the
-drift:** with no run branch in the default path, there is no off-trunk place for committed work to
-strand — the F14/F17/F19/F20 strand class is dissolved structurally. The only non-landed state is an
-out-of-scope **held-back** change, surfaced as a first-class Oz "Awaiting you" item with land/discard.
-Isolated worktrees ([ADR-0015](./cocoder/zArchive/v2/decisions/0015-isolated-working-state-per-run.md), now opt-in)
-remain available for the cases that genuinely need them.
+quarantine (`restoreToHead`) can only ever touch the one actor's own uncommitted work; and "git is the
+undo." **Why it ends the drift for good:** there is no run branch on *any* path — so no off-trunk place for
+committed work to strand. The F14/F17/F19/F20/**F22** strand class is gone by construction. There is no
+`pending-landing`, no held-back queue, no manual recovery: work commits to the checked-out branch, always.
 
 ## Why Git Will Not Destroy User Preferences
 
@@ -153,7 +154,7 @@ CoCoder/                          # the engine install AND the dogfood workspace
 │   └── zArchive/                 # ALL frozen history (v1 tree, v1 decisions, archived priorities)
 └── local/                        # ← the ONE machine-local zone (gitignored; spans ALL workspaces)
     ├── cocoder.db                # Oz-owned operational SQLite (ADR-0003)
-    ├── runs/ · worktrees/        # per-run artifacts + isolated worktrees (ADR-0015)
+    ├── runs/                     # per-run artifacts (worktrees/ only holds pre-2026-06-15 historical runs)
     ├── workspace/                # .code-workspace definition files, one per workspace (ADR-0019)
     ├── workspaces.json           # legacy registry (superseded by workspace/, ADR-0019)
     ├── settings.json · secrets/ · oz-audit.log · scratch/

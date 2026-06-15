@@ -313,7 +313,7 @@ function factsDigest(priorities: readonly PrioritySummary[], runs: readonly Run[
 
 function formatRun(run: Run): string {
   const endedAt = run.endedAt === null ? 'null' : new Date(run.endedAt).toISOString()
-  return `- ${run.id}: ${run.status} priority=${run.priorityId} integration=${run.integrationStatus} createdAt=${new Date(run.createdAt).toISOString()} endedAt=${endedAt}`
+  return `- ${run.id}: ${run.status} priority=${run.priorityId} createdAt=${new Date(run.createdAt).toISOString()} endedAt=${endedAt}`
 }
 
 function formatTranscript(transcript: readonly TranscriptEntry[]): string {

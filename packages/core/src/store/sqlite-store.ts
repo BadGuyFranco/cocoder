@@ -9,10 +9,8 @@ import { randomUUID } from 'node:crypto'
 import { DatabaseSync } from 'node:sqlite'
 import { COLUMN_MIGRATIONS, SCHEMA_SQL } from './schema.js'
 import type {
-  CommitKind,
   CommitLink,
   FaultRecord,
-  IntegrationStatus,
   Run,
   RunEvent,
   RunStatus,
@@ -32,9 +30,6 @@ interface RunRow {
   status: string
   created_at: number
   ended_at: number | null
-  worktree_path: string | null
-  run_branch: string | null
-  integration_status: string
 }
 interface SessionRow {
   id: string
@@ -63,9 +58,6 @@ interface CommitLinkRow {
   message: string
   files: string
   created_at: number
-  kind: string
-  merge_sha: string | null
-  trunk_parent: string | null
 }
 interface EventRow {
   id: string
@@ -82,11 +74,6 @@ const toRun = (r: RunRow): Run => ({
   status: r.status as RunStatus,
   createdAt: r.created_at,
   endedAt: r.ended_at,
-  worktreePath: r.worktree_path ?? null,
-  runBranch: r.run_branch ?? null,
-  // Legacy rows predate the column; the migration backfills 'pending' as the DEFAULT, but coalesce
-  // defensively so a hand-edited/partial db still hydrates a valid enum value.
-  integrationStatus: (r.integration_status ?? 'pending') as IntegrationStatus,
 })
 const toSession = (r: SessionRow): Session => ({
   id: r.id,
@@ -115,9 +102,6 @@ const toCommitLink = (r: CommitLinkRow): CommitLink => ({
   message: r.message,
   files: JSON.parse(r.files) as string[],
   createdAt: r.created_at,
-  kind: (r.kind ?? 'atom') as CommitKind, // legacy rows predate the column; default 'atom'
-  mergeSha: r.merge_sha ?? null,
-  trunkParent: r.trunk_parent ?? null,
 })
 const toEvent = (r: EventRow): RunEvent => ({
   id: r.id,
@@ -163,40 +147,19 @@ class SqliteRunStore implements RunStore {
       status: 'running',
       createdAt: this.#now(),
       endedAt: null,
-      worktreePath: null, // set by setWorktree once the launch creates the worktree (ADR-0015)
-      runBranch: null,
-      integrationStatus: 'pending',
     }
     this.#db
       .prepare(
-        `INSERT INTO run (id, workspace_id, priority_id, status, created_at, ended_at, worktree_path, run_branch, integration_status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO run (id, workspace_id, priority_id, status, created_at, ended_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
       )
-      .run(
-        run.id,
-        run.workspaceId,
-        run.priorityId,
-        run.status,
-        run.createdAt,
-        run.endedAt,
-        run.worktreePath,
-        run.runBranch,
-        run.integrationStatus,
-      )
+      .run(run.id, run.workspaceId, run.priorityId, run.status, run.createdAt, run.endedAt)
     return run
   }
 
   setRunStatus(runId: string, status: RunStatus): void {
     const ended = status === 'running' ? null : this.#now()
     this.#db.prepare(`UPDATE run SET status = ?, ended_at = ? WHERE id = ?`).run(status, ended, runId)
-  }
-
-  setWorktree(runId: string, worktreePath: string, runBranch: string): void {
-    this.#db.prepare(`UPDATE run SET worktree_path = ?, run_branch = ? WHERE id = ?`).run(worktreePath, runBranch, runId)
-  }
-
-  setIntegrationStatus(runId: string, status: IntegrationStatus): void {
-    this.#db.prepare(`UPDATE run SET integration_status = ? WHERE id = ?`).run(status, runId)
   }
 
   getRun(runId: string): Run | null {
@@ -278,9 +241,6 @@ class SqliteRunStore implements RunStore {
     commitSha: string
     message: string
     files: readonly string[]
-    kind?: CommitKind
-    mergeSha?: string | null
-    trunkParent?: string | null
   }): CommitLink {
     const link: CommitLink = {
       id: genId('cl'),
@@ -290,27 +250,13 @@ class SqliteRunStore implements RunStore {
       message: input.message,
       files: [...input.files],
       createdAt: this.#now(),
-      kind: input.kind ?? 'atom',
-      mergeSha: input.mergeSha ?? null,
-      trunkParent: input.trunkParent ?? null,
     }
     this.#db
       .prepare(
-        `INSERT INTO commit_link (id, run_id, work_item_id, commit_sha, message, files, created_at, kind, merge_sha, trunk_parent)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO commit_link (id, run_id, work_item_id, commit_sha, message, files, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(
-        link.id,
-        link.runId,
-        link.workItemId,
-        link.commitSha,
-        link.message,
-        JSON.stringify(link.files),
-        link.createdAt,
-        link.kind,
-        link.mergeSha,
-        link.trunkParent,
-      )
+      .run(link.id, link.runId, link.workItemId, link.commitSha, link.message, JSON.stringify(link.files), link.createdAt)
     return link
   }
 

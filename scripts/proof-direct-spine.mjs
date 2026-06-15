@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Proof — the workspace commit spine (ADR-0023): direct-to-branch by default, isolation opt-in.
+// Proof — the workspace commit spine (ADR-0023, Amendment 2): direct-to-branch, single mode (no isolation lane).
 //
 // Turns "is the orchestration operating-model reset really verified?" into ONE command with a
 // PASS/FAIL table. It does NOT reimplement anything: it runs the REAL live-git + spine tests
@@ -31,8 +31,8 @@ const SUITES = [
 
 // Each clause of ADR-0023's "Verified when", matched to the real test that proves it.
 const CLAUSES = [
-  { clause: 'direct-to-branch is the default', expect: 'verified atom lands straight on the active branch — no worktree, vacuously merged', match: 'commits STRAIGHT onto the active branch' },
-  { clause: 'nothing strands (no run branch)', expect: 'a fresh git/store read sees it landed; no worktree/stranded events', match: 'commits STRAIGHT onto the active branch' },
+  { clause: 'direct-to-branch is the only mode', expect: 'verified atom lands straight on the active branch — no worktree, no landing step', match: 'commits STRAIGHT onto the active branch' },
+  { clause: 'nothing strands (no run branch)', expect: 'a fresh git/store read sees it on the branch; no worktree/stranded events', match: 'commits STRAIGHT onto the active branch' },
   { clause: 'scope is advisory — out-of-lane commits, never withheld', expect: 'out-of-lane edits are committed + flagged; nothing is held back', match: 'out-of-scope changes are COMMITTED and FLAGGED' },
   { clause: 'quarantine is sound in place', expect: 'a rejected atom is restored without touching the founder\'s files', match: 'rejected atom is quarantined in place' },
   { clause: 'direct-mode launch safety (dirty guard)', expect: 'in-scope WIP refuses the launch and commits nothing', match: 'scoped dirty guard refuses the launch' },
@@ -86,7 +86,7 @@ function printTable(title, evaluated) {
 
 const tmp = await mkdtemp(join(tmpdir(), 'proof-spine-'))
 try {
-  console.log('Proof — the workspace commit spine (ADR-0023): direct-to-branch by default, isolation opt-in')
+  console.log('Proof — the workspace commit spine (ADR-0023, Amendment 2): direct-to-branch, single mode')
   console.log('Running the real live-git runner + commit-spine suites…')
   const allResults = new Map()
   for (const suite of SUITES) {

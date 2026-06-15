@@ -79,14 +79,12 @@ export interface Priority {
   readonly scopeNarrowing: string | null
   readonly goal: string
 }
-export type RunStatus = 'running' | 'completed' | 'pending-landing' | 'failed'
-export type IntegrationStatus = 'pending' | 'resolving' | 'verifying' | 'merged' | 'escalated'
+export type RunStatus = 'running' | 'completed' | 'failed'
 export interface RunSummary {
   readonly id: string
   readonly workspaceId: string
   readonly priorityId: string
   readonly status: RunStatus | string
-  readonly integrationStatus?: IntegrationStatus | string
   readonly createdAt: number
   readonly endedAt: number | null
 }

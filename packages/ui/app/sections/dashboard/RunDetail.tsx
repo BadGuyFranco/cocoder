@@ -10,7 +10,7 @@ export function RunDetail({ run, parentPriority, parentPriorityIndex, onClose, o
 }) {
   const [tab, setTab] = useState<'transcript' | 'evidence' | 'session'>('transcript')
   const isRunning = run.status === 'running'
-  const isParked = run.status === 'blocked' || run.status === 'not-landed'
+  const isParked = run.status === 'blocked'
   const isStreaming = run.status === 'running' || run.status === 'blocked'
   return (
     <div className="oz-panel" style={{ height: '100%', animation: 'ozSlideIn 250ms ease-out', borderLeft: '2px solid var(--cb-accent)', position: 'relative' }}>
@@ -124,8 +124,6 @@ export function RunDetail({ run, parentPriority, parentPriorityIndex, onClose, o
           </>
         ) : isParked ? (
           <>
-            <Button variant="secondary" size="sm" icon="check-circle" onClick={() => onAction('resolve-landed', run.id)} title="Mark this run as already landed on trunk">Mark landed</Button>
-            <Button variant="destructive" size="sm" icon="trash" onClick={() => onAction('resolve-discard', run.id)} title="Close out this run without landing its work">Discard run</Button>
             <Button variant="ghost" size="sm" icon="chat-circle-text" onClick={() => onAction('ask-oz', run.id)} style={{ marginLeft: 'auto' }}>Ask Oz</Button>
           </>
         ) : run.status === 'failed' ? (

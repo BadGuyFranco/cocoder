@@ -176,12 +176,9 @@ describe('runRun direct mode — the default (ADR-0023 §2, live git)', () => {
     expect(await g(home, ['show', '--stat', 'HEAD'])).toContain('packages/feature.ts')
     expect(await g(home, ['rev-parse', '--abbrev-ref', 'HEAD'])).toBe('main')
 
-    // The run row carries NO worktree/branch (so the daemon GC + strand reconciler no-op), and is
-    // vacuously merged → fully landed.
+    // Single mode: the run committed straight to the active branch — there is no worktree, no run branch,
+    // no integration sub-state. `completed` is the whole story; the work is on the branch by construction.
     const run = store.getRun(result.runId)!
-    expect(run.worktreePath).toBeNull()
-    expect(run.runBranch).toBeNull()
-    expect(run.integrationStatus).toBe('merged')
     expect(run.status).toBe('completed')
 
     // No worktree directory was ever created.
@@ -230,8 +227,7 @@ describe('runRun direct mode — the default (ADR-0023 §2, live git)', () => {
     // BOTH files committed and landed on trunk; the out-of-lane one is flagged, not parked.
     expect(result.committedFiles).toEqual(expect.arrayContaining(['packages/feature.ts', 'OUTSIDE.md']))
     expect(result.outOfScope).toEqual(['OUTSIDE.md']) // visibility flag
-    expect(result.status).toBe('completed') // never pending-scope-decision — nothing is held
-    expect(store.getRun(result.runId)!.integrationStatus).toBe('merged')
+    expect(result.status).toBe('completed') // never held back — nothing is withheld
     expect(await g(home, ['show', '--stat', 'HEAD'])).toContain('packages/feature.ts')
     expect(await g(home, ['show', '--stat', 'HEAD'])).toContain('OUTSIDE.md')
     // Nothing held back — the working tree is clean (everything the actor produced committed).

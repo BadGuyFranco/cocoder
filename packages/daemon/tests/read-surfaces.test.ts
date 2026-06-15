@@ -256,11 +256,10 @@ describe('Oz read surfaces', () => {
   test('GET /runs lists runs (newest-first); ?workspace filters', async () => {
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
     const a = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
-    store.setRunStatus(a.id, 'pending-landing')
-    store.setIntegrationStatus(a.id, 'escalated')
+    store.setRunStatus(a.id, 'completed')
     const r = await get(oz!, '/runs')
     expect(r.status).toBe(200)
-    expect(r.json.runs.find((x: any) => x.id === a.id)).toMatchObject({ status: 'pending-landing', integrationStatus: 'escalated' })
+    expect(r.json.runs.find((x: any) => x.id === a.id)).toMatchObject({ status: 'completed' })
     expect((await get(oz!, '/runs?workspace=other')).json.runs).toEqual([])
   })
 

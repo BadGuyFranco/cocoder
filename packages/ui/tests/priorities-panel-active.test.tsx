@@ -65,17 +65,17 @@ function renderPanel({
 describe('PrioritiesPanel active run semantics', () => {
   afterEach(() => cleanup())
 
-  it('shows a linked not-landed priority run inline and suppresses Launch', () => {
+  it('shows a linked active (blocked) priority run inline and suppresses Launch', () => {
     const onSelectRun = vi.fn()
     renderPanel({
       priorities: [priority({ id: 'p-landing', name: 'Landing priority', runId: 'run-landing' })],
-      runs: [run({ id: 'run-landing', title: 'Landing run', priorityId: 'p-landing', status: 'not-landed', lastEvent: 'Landing finished; founder action needed.' })],
+      runs: [run({ id: 'run-landing', title: 'Landing run', priorityId: 'p-landing', status: 'blocked', lastEvent: 'Needs a founder decision.' })],
       onSelectRun,
     })
 
-    expect(screen.getByText('Not landed')).toBeDefined()
+    expect(screen.getByText('Needs decision')).toBeDefined()
     expect(screen.getByText(/run-landing/)).toBeDefined()
-    expect(screen.getByText('Landing finished; founder action needed.')).toBeDefined()
+    expect(screen.getByText('Needs a founder decision.')).toBeDefined()
     expect(screen.queryByRole('button', { name: 'Launch' })).toBeNull()
 
     fireEvent.click(screen.getByText('Landing priority'))
@@ -86,7 +86,7 @@ describe('PrioritiesPanel active run semantics', () => {
   it('shows not-landed ad-hoc runs and makes them selectable', () => {
     const onSelectRun = vi.fn()
     renderPanel({
-      runs: [run({ id: 'run-adhoc-landing', title: 'Ad-hoc landing run', priorityId: null, status: 'not-landed', lastEvent: 'Ad-hoc result needs landing.' })],
+      runs: [run({ id: 'run-adhoc-landing', title: 'Ad-hoc landing run', priorityId: null, status: 'blocked', lastEvent: 'Ad-hoc result needs landing.' })],
       onSelectRun,
     })
 
@@ -105,7 +105,7 @@ describe('PrioritiesPanel active run semantics', () => {
       runs: [
         run({ id: 'run-adhoc-running', title: 'Ad-hoc running run', priorityId: null, status: 'running', lastEvent: 'Running ad-hoc work.' }),
         run({ id: 'run-adhoc-blocked', title: 'Ad-hoc blocked run', priorityId: null, status: 'blocked', lastEvent: 'Blocked ad-hoc work.' }),
-        run({ id: 'run-adhoc-landing', title: 'Ad-hoc landing run', priorityId: null, status: 'not-landed', lastEvent: 'Landing ad-hoc work.' }),
+        run({ id: 'run-adhoc-landing', title: 'Ad-hoc landing run', priorityId: null, status: 'blocked', lastEvent: 'Landing ad-hoc work.' }),
       ],
       onSelectRun,
     })
@@ -147,12 +147,12 @@ describe('PrioritiesPanel active run semantics', () => {
       ],
       runs: [
         run({ id: 'run-running', priorityId: 'p-running', status: 'running' }),
-        run({ id: 'run-landing', priorityId: 'p-landing', status: 'not-landed' }),
+        run({ id: 'run-landing', priorityId: 'p-landing', status: 'blocked' }),
       ],
     })
 
     const runningAccent = container.querySelector('[data-run-accent="running"]') as HTMLElement
-    const notLandedAccent = container.querySelector('[data-run-accent="not-landed"]') as HTMLElement
+    const notLandedAccent = container.querySelector('[data-run-accent="blocked"]') as HTMLElement
 
     expect(runningAccent.style.animation).toContain('ozPulse')
     expect(notLandedAccent.style.animation).toBe('none')

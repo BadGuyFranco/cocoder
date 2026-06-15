@@ -4,7 +4,7 @@
 // the design-faithful view-model from the ported seed (fixture parity, fully interactive); the daemon
 // adapter is wired in the next slice (the existing electron/ plumbing is untouched).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, sendOzMessage, launchRun, attachRun, teardownRun, stopRun, resolveRun, testCli, createPriority, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, saveAssignments, restartDaemon, type ConnectionState } from './live.ts'
+import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, sendOzMessage, launchRun, attachRun, teardownRun, stopRun, testCli, createPriority, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, saveAssignments, restartDaemon, type ConnectionState } from './live.ts'
 import { ADHOC_PRIORITY_ID, MODE_HONORED_PERSONAS, applyOrder, isActiveRun, mergeRunsWithEnrichment, personasToAssignments } from './adapter.ts'
 import { Sidebar, type Route } from './ui/Sidebar.tsx'
 import { TopBar } from './ui/TopBar.tsx'
@@ -101,7 +101,6 @@ export function App() {
   const runsByWsRef = useRef<Record<string, Run[]>>(runsByWs)
   const activeIdRef = useRef(activeId)
   const selectedRunIdRef = useRef(selectedRunId)
-  const notLandedDetailFetchedRef = useRef<Record<string, true>>({})
   const runStatusRef = useRef<Record<string, Run['status']>>({})
 
   useEffect(() => { document.documentElement.setAttribute('data-theme', theme) }, [theme])
@@ -159,8 +158,7 @@ export function App() {
   }, [reloadNonce])
 
   // Active-row enrichment is intentionally bounded: each live cycle fetches detail for at most six
-  // active runs, with running/blocked runs before settled not-landed runs. Not-landed detail is fetched
-  // once per unchanged status because it is stable founder-action state; running/blocked follow pollMs.
+  // active (running/blocked) runs; they follow pollMs.
   useEffect(() => {
     if (!live) return
     let stop = false
@@ -327,14 +325,11 @@ export function App() {
     for (const run of runsForWs) {
       const key = runKey(wsId, run.id)
       seen.add(key)
-      if (runStatusRef.current[key] !== run.status) delete notLandedDetailFetchedRef.current[key]
       runStatusRef.current[key] = run.status
-      if (run.status !== 'not-landed') delete notLandedDetailFetchedRef.current[key]
     }
     for (const key of Object.keys(runStatusRef.current)) {
       if (!key.startsWith(prefix) || seen.has(key)) continue
       delete runStatusRef.current[key]
-      delete notLandedDetailFetchedRef.current[key]
     }
   }
   async function enrichActiveRunDetails(wsId: string, sourceRuns?: readonly Run[], shouldSkip: () => boolean = () => false): Promise<void> {
@@ -343,15 +338,10 @@ export function App() {
     syncRunStatusTracking(wsId, runsForWs)
     const selected = selectedRunIdRef.current
     const liveRuns = runsForWs.filter((run) => run.id !== selected && (run.status === 'running' || run.status === 'blocked'))
-    const settledRuns = runsForWs.filter((run) => {
-      if (run.id === selected || run.status !== 'not-landed') return false
-      return !notLandedDetailFetchedRef.current[runKey(wsId, run.id)]
-    })
-    const candidates = [...liveRuns, ...settledRuns].slice(0, ACTIVE_DETAIL_FETCH_LIMIT)
+    const candidates = liveRuns.slice(0, ACTIVE_DETAIL_FETCH_LIMIT)
     for (const run of candidates) {
       if (shouldSkip() || document.hidden) return
-      const refreshed = await refreshRunDetail(run.id, wsId, shouldSkip)
-      if (refreshed && run.status === 'not-landed') notLandedDetailFetchedRef.current[runKey(wsId, run.id)] = true
+      await refreshRunDetail(run.id, wsId, shouldSkip)
     }
   }
   async function refreshWorkspaces(): Promise<Workspace[]> {
@@ -470,11 +460,6 @@ export function App() {
         const res = await teardownRun(oz, id)
         if (res.ok) { notify('ok', 'Closed the run’s panes.'); await refreshActiveWs() }
         else notify('err', res.error || `Teardown failed (${res.status}).`)
-      } else if (action === 'resolve-landed' || action === 'resolve-discard') {
-        const disposition = action === 'resolve-landed' ? 'landed' : 'discard'
-        const res = await resolveRun(oz, id, disposition)
-        if (res.ok) { notify('ok', disposition === 'landed' ? 'Marked the run landed.' : 'Discarded the run.'); await refreshActiveWs() }
-        else notify('err', res.error || `Resolve failed (${res.status}).`)
       } else if (action === 'stop') {
         const res = await stopRun(oz, id)
         if (res.ok) { notify('ok', 'Stop requested — the run winds down at its next checkpoint.'); await refreshActiveWs() }

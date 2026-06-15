@@ -313,7 +313,7 @@ function stringArray(input: unknown): string[] {
 }
 
 function runSummary(run: Run): string {
-  return `${run.id} is ${run.status} on ${run.priorityId} (integration ${run.integrationStatus}).`
+  return `${run.id} is ${run.status} on ${run.priorityId}.`
 }
 
 function runsSummary(runs: readonly Run[]): string {

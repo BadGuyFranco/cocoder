@@ -59,11 +59,31 @@ The patches were unbounded because they fought the funnel instead of the default
 The `orchestration-operating-model-reset` priority removed the default:
 [**ADR-0023**](./decisions/0023-workspace-commit-spine.md) makes **direct-to-branch** the default — a
 run commits straight onto the active branch, so **there is no run branch for work to strand on.** The
-strand class is dissolved *structurally*, not patched. Held-back (out-of-scope) is now the only
-not-landed state, and it is surfaced with a recovery action. The run-branch landing machinery
-(F14/F17/F19 fixes) survives only on the **opt-in isolation lane**. Proof:
-`node scripts/proof-direct-spine.mjs` (10/10 green). The historical run-branch strands these rows
-describe can no longer recur on the default path; they are no longer a live risk class.
+strand class is dissolved *structurally*, not patched. Proof: `node scripts/proof-direct-spine.mjs`.
+
+- **F22 — the strand class survived on the opt-in isolation lane, and kept biting (2026-06-15).** ADR-0023
+  dissolved the funnel for the *default* path but **kept the run-worktree + branch→trunk landing machinery
+  alive as an opt-in (§4)**. That lane carried a *second* path from "actor changed a file" to "it's on
+  trunk" with a different contract: commits landed on a run branch and reached trunk only through
+  `landRunBranch` → a **fail-closed, content-blind integration-verify gate**. Any isolation run — including
+  pure-governance runs by Oscar/Oz/Deb that have no product code to verify — stranded `pending-landing`
+  whenever that LLM verify returned no/garbled verdict, timed out, hit an unrelated pre-existing red test,
+  saw the trunk branch change, or merge-conflicted. The founder's lived report: *"successful runs are left
+  out in the cold — can't commit,"* across **six sessions**, each "fixing" a symptom at the commit-gate /
+  scope layer while the real blocker was the surviving landing gate. **Root cause:** keeping two
+  paths-to-trunk with two contracts — fixing one regenerates the symptom on the other. **Fix (founder
+  directive 2026-06-15):** the isolation lane is **removed entirely** — one mode, one contract: *commit
+  everything to the currently checked-out branch, always.* The run worktree, run branch, integration
+  sub-status, `landRunBranch`, integration-verify + merge-conflict Plays, the daemon strand
+  reconciler / worktree-GC / `POST /runs/:id/resolve`, and the store's
+  `worktree_path`/`run_branch`/`integration_status` + merge-link columns are deleted. The per-atom verify
+  (§3) stays in place and reverts a failed atom's product code *before* the commit — it never gates landing,
+  because there is no landing step. A shared GitHub repo is served by checking out a feature branch + a
+  **non-gating** `git push`; the merge to the shared `main` is GitHub's PR review, not the engine's. ADR-0023
+  Amendment 2. **Lesson:** dissolving a failure class on the default path but leaving a structurally
+  identical sibling path alive doesn't dissolve the class — it relocates it. Remove the second contract, not
+  just the first. Verified: `pnpm typecheck` + 592 tests green. The strand class can no longer recur on ANY
+  path; it is gone by construction, not patched.
 
 - **F13 note:** the per-atom whole-tree diff (scope-blowout catch) still applies in direct mode — it
   runs in place against the active checkout before the spine commits, gated by the single-writer lock.

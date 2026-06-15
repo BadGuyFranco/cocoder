@@ -74,6 +74,16 @@ export interface Git {
    *  trunk-into-branch merge commit when the post-merge integration verify fails, so the escalated
    *  branch is left as the pure run-work line (symmetry with abortMerge). */
   resetHard(cwd: string, sha: string): Promise<void>
+
+  // ── Shared-remote push (founder directive 2026-06-15). The ONLY reason a branch matters: sharing on a
+  //    remote. NON-GATING — committed work is already on the local branch; a push that can't happen never
+  //    blocks a run. The merge to a shared main is the remote's PR review, not the engine's. ────────────
+  /** True iff `branch` has a configured upstream — i.e. there is somewhere to push. `git rev-parse
+   *  --abbrev-ref <branch>@{upstream}` exits non-zero (→ false) when no upstream is set / no remote. */
+  hasUpstream(cwd: string, branch: string): Promise<boolean>
+  /** Push `branch` to its upstream. Returns {ok, detail} instead of throwing, so a failed push (offline,
+   *  rejected, no remote) is reported and never blocks a run. */
+  push(cwd: string, branch: string): Promise<{ ok: boolean; detail: string }>
 }
 
 const git = async (cwd: string, args: string[]): Promise<string> => {
@@ -239,6 +249,23 @@ export function makeGit(): Git {
     },
     async resetHard(cwd, sha) {
       await git(cwd, ['reset', '--hard', sha])
+    },
+
+    async hasUpstream(cwd, branch) {
+      // Exits 0 with the upstream ref iff one is configured; non-zero (→ false) when there is none.
+      return git(cwd, ['rev-parse', '--abbrev-ref', `${branch}@{upstream}`]).then(
+        () => true,
+        () => false,
+      )
+    },
+    async push(cwd, branch) {
+      // Non-gating: never throw. A push failure is reported in the receipt; the run is unaffected.
+      try {
+        const out = await git(cwd, ['push', 'origin', branch])
+        return { ok: true, detail: out.trim() || `pushed ${branch}` }
+      } catch (err) {
+        return { ok: false, detail: err instanceof Error ? err.message : String(err) }
+      }
     },
   }
 }

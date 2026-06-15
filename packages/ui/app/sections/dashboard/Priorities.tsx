@@ -16,7 +16,6 @@ function PriorityRow({ priority, index, onLaunch, onDrag, isDragging, isDropTarg
   const linkedRun = priority.runId ? runs.find((r) => r.id === priority.runId) : null
   const isActive = !!linkedRun && isActiveRun(linkedRun.status)
   const isBlocked = !!linkedRun && linkedRun.status === 'blocked'
-  const isNotLanded = !!linkedRun && linkedRun.status === 'not-landed'
   const isSelected = !!linkedRun && linkedRun.id === selectedRunId
   const borderColor = isSelected ? 'var(--cb-accent)' : isBlocked ? 'rgba(212,118,110,0.30)' : isActive ? 'var(--cb-accent-30)' : 'var(--cb-border)'
   return (
@@ -37,7 +36,7 @@ function PriorityRow({ priority, index, onLaunch, onDrag, isDragging, isDropTarg
         position: 'relative', zIndex: isSelected ? 5 : 1,
       }}>
       {isSelected && <div style={{ position: 'absolute', right: -8, top: '50%', transform: 'translateY(-50%) rotate(45deg)', width: 14, height: 14, background: 'var(--cb-accent-muted)', borderTop: '1px solid var(--cb-accent)', borderRight: '1px solid var(--cb-accent)', zIndex: 6, pointerEvents: 'none' }} />}
-      {isActive && !isSelected && <div data-run-accent={linkedRun?.status} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: isBlocked ? 'var(--cb-highlight)' : 'var(--cb-accent)', animation: isBlocked || isNotLanded ? 'none' : 'ozPulse 1.8s infinite' }} />}
+      {isActive && !isSelected && <div data-run-accent={linkedRun?.status} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: isBlocked ? 'var(--cb-highlight)' : 'var(--cb-accent)', animation: isBlocked ? 'none' : 'ozPulse 1.8s infinite' }} />}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 1 }}>
           <Icon name="dots-six-vertical" size={14} style={{ color: 'var(--cb-text-muted)', cursor: 'grab' }} />
@@ -96,7 +95,7 @@ function AdhocPriorityRow({ adhocRuns, onLaunch, onSelectRun, selectedRunId, lau
               <div key={r.id} onClick={() => onSelectRun(r.id)} style={{ padding: '8px 10px', background: isSel ? 'var(--cb-accent-15)' : 'transparent', border: `1px solid ${isSel ? 'var(--cb-accent-30)' : 'var(--cb-border)'}`, borderRadius: 'var(--cb-radius-sm)', marginBottom: idx === adhocRuns.length - 1 ? 0 : 6, cursor: 'pointer', transition: 'all 120ms ease-out', position: 'relative', overflow: 'hidden' }}
                 onMouseEnter={(e) => { if (!isSel) e.currentTarget.style.background = 'var(--cb-hover)' }}
                 onMouseLeave={(e) => { if (!isSel) e.currentTarget.style.background = 'transparent' }}>
-                {isLive && <div data-run-accent={r.status} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 2, background: isBlocked ? 'var(--cb-highlight)' : 'var(--cb-accent)', animation: isBlocked || r.status === 'not-landed' ? 'none' : 'ozPulse 1.8s infinite' }} />}
+                {isLive && <div data-run-accent={r.status} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 2, background: isBlocked ? 'var(--cb-highlight)' : 'var(--cb-accent)', animation: isBlocked ? 'none' : 'ozPulse 1.8s infinite' }} />}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}><StatusChip status={r.status} /><span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-text-muted)' }}>{r.id}</span><span style={{ marginLeft: 'auto', fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-text-muted)' }}>{r.startedAt}</span></div>
                 <div style={{ fontSize: 12, color: 'var(--cb-text)', fontWeight: 500, marginBottom: 4, lineHeight: 1.4 }}>{r.title}</div>
                 {r.lastEvent && <div style={{ fontSize: 11, color: isBlocked ? 'var(--cb-highlight)' : 'var(--cb-text-muted)', lineHeight: 1.5, fontStyle: 'italic' }}>{r.lastEvent}</div>}
@@ -123,7 +122,7 @@ export function PrioritiesPanel({ priorities, runs, onReorder, onLaunch, onAdhoc
   const adhocRuns = runs.filter((r) => !r.priorityId && isActiveRun(r.status))
   // The daemon serializes runs per workspace (single-writer lock, ADR-0004): a POST /runs while a run is
   // executing 409s. Mirror that here so Launch is legibly disabled instead of silently failing. Only a
-  // truly in-flight ('running') run holds the lock — blocked / not-landed runs have ended.
+  // truly in-flight ('running') run holds the lock — settled runs have ended.
   const launchBlocked = runs.some((r) => r.status === 'running')
   return (
     <div className="oz-panel" style={{ height: '100%' }}>

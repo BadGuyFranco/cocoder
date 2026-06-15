@@ -1,7 +1,5 @@
 export {
   runRun,
-  parseVerifyVerdict,
-  parseResolution,
   PreflightError,
   MissingObjectiveError,
   DirtyWorkingTreeError,

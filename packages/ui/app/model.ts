@@ -7,7 +7,7 @@ import seedJson from './seed.json'
 export type RootRole = 'primary' | 'writable' | 'readonly'
 export interface Root { id: string; name: string; path: string; role: RootRole; resolvedPath?: string; description?: string }
 
-export type RunStatus = 'running' | 'blocked' | 'not-landed' | 'complete' | 'failed' | 'stopped'
+export type RunStatus = 'running' | 'blocked' | 'complete' | 'failed' | 'stopped'
 
 export interface PersonaSpec {
   name: string; tagline: string; description: string

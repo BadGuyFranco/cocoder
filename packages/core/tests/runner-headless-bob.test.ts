@@ -175,7 +175,7 @@ describe('runRun with headless Bob', () => {
           return { exitCode: 0, output }
         },
       }),
-      { workspace, priority, oscar, bob, sharedStandards: 'STANDARDS', engineHome: '/repo', runsRoot: '/runs', isolation: true },
+      { workspace, priority, oscar, bob, sharedStandards: 'STANDARDS', engineHome: '/repo', runsRoot: '/runs' },
     )
 
     expect(result.status).toBe('completed')

@@ -6,8 +6,8 @@
 //   - a .catch on the fire-and-forget run so a throw marks the run failed (poller reaches terminal)
 //     and never becomes an unhandled rejection that takes the always-on daemon down;
 //   - track spawned surfaceRefs in ctx.liveRefs so deep-links are decidable without throwing.
-import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
-import { basename, dirname, join } from 'node:path'
+import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import {
   isPersonaEnabled,
   gateCommitRepair,
@@ -20,7 +20,6 @@ import {
   runHeadlessProcess,
   runRun,
   type PersonaSources,
-  type Run,
   type RunInput,
   type RunnerDeps,
   type SessionHost,
@@ -61,7 +60,7 @@ function trackingHost(ctx: OzContext): SessionHost {
 
 /** Assemble RunInput from governance on disk (mirrors cli/src/run.ts). Throws on unknown ids. When
  *  resuming, reads the prior run's pickup brief so a fresh session continues it (ADR-0013 / F8). */
-export async function buildRunInput(ctx: Pick<OzContext, 'cocoderHome' | 'runsRoot'>, workspaceId: string, priorityId: string, opts: { readonly resumeFromRunId?: string; readonly task?: string | null; readonly isolation?: boolean } = {}): Promise<RunInput> {
+export async function buildRunInput(ctx: Pick<OzContext, 'cocoderHome' | 'runsRoot'>, workspaceId: string, priorityId: string, opts: { readonly resumeFromRunId?: string; readonly task?: string | null } = {}): Promise<RunInput> {
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
   if (!ws) throw new Error(`unknown workspace "${workspaceId}"`)
   const personasDir = join(ws.path, 'cocoder', 'personas')
@@ -89,20 +88,11 @@ export async function buildRunInput(ctx: Pick<OzContext, 'cocoderHome' | 'runsRo
     wrapPlay: loadEffectivePlay(basePlaysDir(), playDeltaDir, 'wrap-up'),
     wrapPlayAssignment: resolvePlayAssignment(assignments, 'oscar', 'wrap-up'),
     wrapPlayPersonaMode: resolvePersonaMode(assignments, 'oscar'),
-    integrationVerifyPlay: loadEffectivePlay(basePlaysDir(), playDeltaDir, 'integration-verify'),
-    integrationVerifyAssignment: resolvePlayAssignment(assignments, 'oscar', 'integration-verify'),
-    integrationVerifyPersonaMode: resolvePersonaMode(assignments, 'oscar'),
-    mergeConflictPlay: loadEffectivePlay(basePlaysDir(), playDeltaDir, 'merge-conflict'),
-    mergeConflictAssignment: resolvePlayAssignment(assignments, 'oscar', 'merge-conflict'),
-    mergeConflictPersonaMode: resolvePersonaMode(assignments, 'oscar'),
     sharedStandards,
     engineHome: ctx.cocoderHome,
     runsRoot: ctx.runsRoot,
     task: opts.task ?? null,
     pickup,
-    // Direct-to-branch is the DEFAULT (ADR-0023 §2). Isolation is an explicit founder opt-in for
-    // risky / large / throwaway / parallel work, threaded from the launch request.
-    isolation: opts.isolation === true,
   }
 }
 
@@ -121,7 +111,7 @@ export interface LaunchResult {
 
 /** Launch a run for {workspaceId, priorityId}. Async (fire-and-forget); returns 202 with the runId,
  *  409 if a run is already in flight for the workspace, or 400 if the request can't be assembled. */
-export async function launchRun(ctx: OzContext, workspaceId: string, priorityId: string, opts: { readonly resumeFromRunId?: string; readonly task?: string | null; readonly isolation?: boolean } = {}): Promise<LaunchResult> {
+export async function launchRun(ctx: OzContext, workspaceId: string, priorityId: string, opts: { readonly resumeFromRunId?: string; readonly task?: string | null } = {}): Promise<LaunchResult> {
   if (!workspaceId || !priorityId) return { status: 400, body: { error: 'workspaceId and priorityId are required' } }
   if (ctx.inFlight.has(workspaceId)) {
     return { status: 409, body: { error: `a run is already in flight for workspace "${workspaceId}"` } }
@@ -209,7 +199,6 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
       if (runId && stopController.signal.aborted) {
         try {
           const closed = await closeRunSurfaces(ctx, runId)
-          await gcWorktree(ctx, runId, { explicitTeardown: true })
           ctx.store.recordEvent({ runId, type: 'stop-teardown', data: { closed } })
         } catch {
           /* shutdown/test teardown may close the store before post-stop cleanup finishes */
@@ -258,141 +247,15 @@ async function closeRunSurfaces(ctx: OzContext, runId: string): Promise<string[]
   return closed
 }
 
-/** GC a run's worktree DIRECTORY (ADR-0015 §5). Removes only the dir; the branch ref is left intact,
- *  so un-integrated commits are NEVER lost. BLOCKED while the run awaits a scope decision: its
- *  out-of-scope held-back changes live UNCOMMITTED in the worktree (ADR-0007 forbids silent discard),
- *  and a plain `worktree remove` refuses a dirty tree anyway — we never --force. Must run AFTER the
- *  run's panes are closed (a live pane's cwd sits inside the dir). No-op if the run has no worktree. */
-/** Block GC while the worktree still holds something the founder needs: an un-integrated/escalated
- *  integration (the worktree IS the inspection artifact the founder was routed to — ADR-0015 §5/§6).
- *  'merged' and 'pending' (a failed run that never integrated; its commits are safe on the branch) do
- *  not block. (There is no held-back/pending-scope state any more — scope is advisory, ADR-0023.) */
-function localStateBlockedReason(ctx: OzContext, runId: string): string | null {
-  for (const event of ctx.store.listEvents(runId)) {
-    if (event.type === 'local-state-export-failed') return 'local-state-export-failed'
-    if (event.type === 'local-state-export') {
-      const blocked = (event.data as { blocked?: unknown } | null | undefined)?.blocked
-      if (Array.isArray(blocked) && blocked.length > 0) return 'local-state-export-blocked'
-    }
-  }
-  return null
-}
-
-function runHasEvent(ctx: OzContext, runId: string, type: string): boolean {
-  return ctx.store.listEvents(runId).some((event) => event.type === type)
-}
-
-function runHasDisposableDaemonStrandedEvent(ctx: OzContext, runId: string): boolean {
-  return ctx.store.listEvents(runId).some((event) => {
-    if (event.type !== 'stranded-commits-detected') return false
-    const data = event.data as { source?: unknown; detectedFromStatus?: unknown; detectedFromIntegrationStatus?: unknown } | null | undefined
-    return data?.source !== 'runner' && data?.detectedFromStatus === 'completed' && data?.detectedFromIntegrationStatus === 'merged'
-  })
-}
-
-function gcBlockedReason(ctx: OzContext, run: { id: string; status: string; integrationStatus: string }, opts: { explicitTeardown?: boolean } = {}): string | null {
-  if (!opts.explicitTeardown && run.status === 'completed' && run.integrationStatus === 'merged') {
-    return 'awaiting-founder-teardown'
-  }
-  if (opts.explicitTeardown && run.status === 'pending-landing' && run.integrationStatus === 'escalated' && runHasDisposableDaemonStrandedEvent(ctx, run.id)) {
-    return null
-  }
-  if (run.integrationStatus === 'escalated' || run.integrationStatus === 'resolving' || run.integrationStatus === 'verifying') {
-    return `integration-${run.integrationStatus}`
-  }
-  const localState = localStateBlockedReason(ctx, run.id)
-  if (localState) return localState
-  return null
-}
-
-async function gcWorktree(ctx: OzContext, runId: string, opts: { explicitTeardown?: boolean } = {}): Promise<void> {
-  const run = ctx.store.getRun(runId)
-  if (!run?.worktreePath) return
-  const blocked = gcBlockedReason(ctx, run, opts)
-  if (blocked) {
-    ctx.store.recordEvent({ runId, type: 'worktree-gc-blocked', data: { worktreePath: run.worktreePath, reason: blocked } })
-    return
-  }
-  try {
-    const workspace = await findWorkspace(ctx.cocoderHome, run.workspaceId)
-    if (workspace) {
-      await ctx.git.worktreeRemove(workspace.path, run.worktreePath)
-      ctx.store.recordEvent({ runId, type: 'worktree-removed', data: { worktreePath: run.worktreePath, workspaceId: run.workspaceId, workspaceRepo: workspace.path } })
-    } else {
-      try {
-        await ctx.git.worktreeRemove(ctx.cocoderHome, run.worktreePath)
-      } catch {
-        await rm(run.worktreePath, { recursive: true, force: true })
-      }
-      ctx.store.recordEvent({ runId, type: 'worktree-removed', data: { worktreePath: run.worktreePath, workspaceId: run.workspaceId, owner: 'unresolved-workspace' } })
-    }
-  } catch (err) {
-    // Dirty/locked/already-gone → leave it (forensics + safety); never force a worktree away.
-    ctx.store.recordEvent({ runId, type: 'worktree-gc-failed', data: { worktreePath: run.worktreePath, reason: err instanceof Error ? err.message : String(err) } })
-  }
-}
-
-async function workspaceRepoForRun(ctx: OzContext, run: Run): Promise<{ readonly path: string; readonly owner: 'workspace' | 'fallback' }> {
-  const workspace = await findWorkspace(ctx.cocoderHome, run.workspaceId)
-  return workspace ? { path: workspace.path, owner: 'workspace' } : { path: ctx.cocoderHome, owner: 'fallback' }
-}
-
-async function reconcileStrandedRunCommits(ctx: OzContext, run: Run, opts: { explicitTeardown?: boolean } = {}): Promise<void> {
-  if (!run.runBranch) return
-  if (runHasEvent(ctx, run.id, 'scope-decision')) return
-  if (run.status === 'running') return
-  if (run.status === 'pending-landing' && run.integrationStatus === 'escalated') return
-
-  const repo = await workspaceRepoForRun(ctx, run)
-  let onTrunk: boolean
-  try {
-    onTrunk = await ctx.git.isAncestor(repo.path, run.runBranch, 'HEAD')
-  } catch {
-    return // Branch deleted or repo unavailable: no stranded branch to surface.
-  }
-  if (onTrunk) return
-
-  let ahead: readonly string[]
-  try {
-    ahead = await ctx.git.unmergedCommits(repo.path, 'HEAD', run.runBranch)
-  } catch {
-    return
-  }
-  const branchTip = ahead[0]
-  if (!branchTip) return
-
-  if (!runHasEvent(ctx, run.id, 'stranded-commits-detected')) {
-    ctx.store.recordEvent({
-      runId: run.id,
-      type: 'stranded-commits-detected',
-      data: {
-        runBranch: run.runBranch,
-        branchTip,
-        aheadCount: ahead.length,
-        workspaceId: run.workspaceId,
-        workspaceRepo: repo.path,
-        workspaceRepoOwner: repo.owner,
-        source: 'daemon',
-        detectedFromStatus: run.status,
-        detectedFromIntegrationStatus: run.integrationStatus,
-      },
-    })
-  }
-  ctx.store.setIntegrationStatus(run.id, 'escalated')
-  ctx.store.setRunStatus(run.id, 'pending-landing')
-}
-
-/** Teardown (safe, daemon-mediated): close this run's tracked cmux surfaces THEN GC its worktree dir.
- *  Order matters — a live pane's cwd is inside the worktree (§5). Closing is by durable sessionRef, so
- *  it works even for a run launched by a PRIOR daemon instance (the Deb-pane leak fix). It physically
- *  cannot touch the Oz daemon, the cmux app, or any window CoCoder didn't spawn for this run. Invoked
- *  by Oz (button → POST /runs/:id/teardown) AND by Oscar (`cocoder oz teardown`) — the same op. */
+/** Teardown (safe, daemon-mediated): close this run's tracked cmux surfaces. Closing is by durable
+ *  sessionRef, so it works even for a run launched by a PRIOR daemon instance (the Deb-pane leak fix). It
+ *  physically cannot touch the Oz daemon, the cmux app, or any window CoCoder didn't spawn for this run.
+ *  There is no worktree to GC — runs commit directly to the active branch (founder directive 2026-06-15).
+ *  Invoked by Oz (button → POST /runs/:id/teardown) AND by Oscar (`cocoder oz teardown`) — the same op. */
 export async function teardownRun(ctx: OzContext, runId: string): Promise<LaunchResult> {
   const run = ctx.store.getRun(runId)
   if (!run) return { status: 404, body: { error: 'unknown run' } }
   const closed = await closeRunSurfaces(ctx, runId)
-  await reconcileStrandedRunCommits(ctx, run, { explicitTeardown: true })
-  await gcWorktree(ctx, runId, { explicitTeardown: true })
   ctx.store.recordEvent({ runId, type: 'teardown', data: { closed } })
   void appendAudit(ctx.cocoderHome, { action: 'teardown', runId, closed })
   emitOzEvent(ctx, { type: 'run-torn-down', runId, workspaceId: run.workspaceId })
@@ -458,79 +321,6 @@ async function atomicWriteJson(path: string, payload: unknown): Promise<void> {
   const tmp = `${path}.${process.pid}.${Date.now()}.tmp`
   await writeFile(tmp, `${JSON.stringify(payload, null, 2)}\n`, 'utf8')
   await rename(tmp, path)
-}
-
-export type ResolveDisposition = 'discard' | 'landed'
-
-/** Founder resolution for an OPT-IN ISOLATION run whose branch escalated at integration (pending-landing,
- *  ADR-0023 §4). The DEFAULT direct-to-branch path never parks — scope is advisory and the spine commits
- *  everything in place, so there is no held-back/pending-scope-decision state to resolve. This handles
- *  only the isolation lane's run-branch escalation. An explicit, CSRF-gated founder mutation. Two
- *  dispositions:
- *    - 'discard' — drop whatever is uncommitted in the run worktree (the explicit founder discard; ADR-0007
- *      only forbids a SILENT one), close panes, GC the worktree. Status → failed; the branch ref and its
- *      gate-committed atoms are preserved for forensics, integration honestly stays un-merged.
- *    - 'landed' — the founder asserts the run's branch reached trunk by hand. FAIL-CLOSED: refused unless
- *      the run branch's tip is an ancestor of trunk HEAD (a cherry-picked/superseded branch does NOT count
- *      — resolve that as 'discard'). Status → completed, integration → merged. */
-export async function resolveRun(ctx: OzContext, runId: string, body: unknown): Promise<LaunchResult> {
-  const run = ctx.store.getRun(runId)
-  if (!run) return { status: 404, body: { error: 'unknown run' } }
-  const record = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {}
-  const disposition = record.disposition
-  const note = typeof record.note === 'string' ? record.note : null
-  if (disposition !== 'discard' && disposition !== 'landed') {
-    return { status: 400, body: { error: 'disposition must be "discard" or "landed"' } }
-  }
-  if (run.status !== 'pending-landing') {
-    return { status: 409, body: { error: `run is "${run.status}" — only a pending-landing (isolation-lane escalation) run takes a resolution` } }
-  }
-  const ws = await findWorkspace(ctx.cocoderHome, run.workspaceId)
-  if (!ws) return { status: 404, body: { error: 'unknown workspace' } }
-
-  if (disposition === 'landed') {
-    if (!run.runBranch) return { status: 409, body: { error: 'run has no branch to verify against trunk' } }
-    let onTrunk = false
-    try {
-      onTrunk = await ctx.git.isAncestor(ws.path, run.runBranch, 'HEAD')
-    } catch {
-      onTrunk = false // unresolvable ref (branch deleted?) → fail closed
-    }
-    if (!onTrunk) {
-      return {
-        status: 409,
-        body: { error: `refusing "landed": tip of ${run.runBranch} is not an ancestor of trunk HEAD — land the branch first, or resolve as "discard" if it is superseded` },
-      }
-    }
-    ctx.store.setIntegrationStatus(run.id, 'merged')
-    ctx.store.setRunStatus(run.id, 'completed')
-  } else {
-    // discard — drop whatever is held back UNCOMMITTED in the worktree so a plain (never --force)
-    // worktree remove succeeds. Recorded file-by-file first: an explicit discard is auditable.
-    if (run.worktreePath) {
-      try {
-        const held = await ctx.git.changedFiles(run.worktreePath)
-        if (held.length > 0) {
-          await ctx.git.restoreToHead(run.worktreePath, held)
-          ctx.store.recordEvent({ runId: run.id, type: 'scope-decision-discarded-files', data: { files: held } })
-        }
-      } catch {
-        /* worktree dir already gone — nothing held back to drop */
-      }
-    }
-    // An escalated integration is resolved by this explicit founder decision; back to the honest
-    // "branch never integrated" state so GC unblocks (the branch itself is kept).
-    if (run.integrationStatus === 'escalated') ctx.store.setIntegrationStatus(run.id, 'pending')
-    ctx.store.setRunStatus(run.id, 'failed')
-  }
-
-  ctx.store.recordEvent({ runId: run.id, type: 'scope-decision', data: { disposition, note } })
-  const closed = await closeRunSurfaces(ctx, run.id)
-  await gcWorktree(ctx, run.id, { explicitTeardown: true })
-  void appendAudit(ctx.cocoderHome, { action: 'resolve-run', runId, disposition, note })
-  const after = ctx.store.getRun(run.id)
-  emitOzEvent(ctx, { type: 'run-resolved', runId: run.id, workspaceId: run.workspaceId, disposition })
-  return { status: 200, body: { runId: run.id, disposition, status: after?.status, integrationStatus: after?.integrationStatus, closed } }
 }
 
 /** Refresh the daemon onto current code (the dashboard's "Restart daemon" button → POST
@@ -778,53 +568,15 @@ export async function showRun(ctx: OzContext, runId: string): Promise<LaunchResu
   return { status: 200, body: { shown: true, sessionRef: live.sessionRef } }
 }
 
-/** Startup orphan reconciliation (review blocker / F6 honesty + ADR-0015 §5). Two passes:
- *  1. Ghost-row close: at boot the live set is empty, so any run still 'running' was stranded by a
- *     daemon crash/restart — mark it failed so the run list stays honest. (NOT ADR-0002-C1 relaunch.)
- *  2. Orphan-worktree sweep: reconcile on-disk worktrees against the run table. A worktree whose run
- *     is terminal and disposable is stray — close any panes a prior daemon left (by durable ref) THEN
- *     remove the dir. A successfully wrapped run is NOT disposable until the founder explicitly asks
- *     for teardown. Preserves active/held-back worktrees and never force-removes; the branch ref is
- *     untouched, so un-integrated commits are never lost. */
+/** Startup orphan reconciliation (review blocker / F6 honesty). Ghost-row close: at boot the live set is
+ *  empty, so any run still 'running' was stranded by a daemon crash/restart — mark it failed so the run
+ *  list stays honest. (NOT ADR-0002-C1 relaunch.) There are no worktrees to sweep and no off-branch
+ *  commits to reconcile — runs commit directly to the active branch (founder directive 2026-06-15). */
 export async function reconcileOrphans(ctx: OzContext): Promise<void> {
   for (const run of ctx.store.listRuns()) {
     if (run.status === 'running') {
       ctx.store.recordEvent({ runId: run.id, type: 'orphaned', data: { reason: 'daemon restarted' } })
       ctx.store.setRunStatus(run.id, 'failed')
     }
-  }
-  for (const run of ctx.store.listRuns()) {
-    await reconcileStrandedRunCommits(ctx, run)
-  }
-  await sweepOrphanWorktrees(ctx)
-}
-
-async function sweepOrphanWorktrees(ctx: OzContext): Promise<void> {
-  let worktrees: { readonly path: string }[]
-  try {
-    worktrees = await ctx.git.listWorktrees(ctx.cocoderHome)
-  } catch {
-    worktrees = [] // not a git repo / git unavailable → fall back to run-table paths only
-  }
-
-  const candidates = new Map<string, string>()
-  for (const wt of worktrees) candidates.set(basename(wt.path), wt.path)
-  for (const run of ctx.store.listRuns()) {
-    if (!run.worktreePath) continue
-    if (await stat(run.worktreePath).then((s) => s.isDirectory(), () => false)) {
-      candidates.set(run.id, run.worktreePath)
-    }
-  }
-
-  for (const [runId] of candidates) {
-    // A CoCoder run worktree is identified by its dir basename being a known runId that carries a
-    // worktree — NOT by a path prefix, which would mis-match under symlink normalisation (e.g. macOS
-    // /var vs /private/var). The founder's main checkout has no matching run row, so it is never swept.
-    const run = ctx.store.getRun(runId)
-    if (!run?.worktreePath) continue
-    if (run.status === 'running' || gcBlockedReason(ctx, run)) continue // active / founder-visible / held-back / un-integrated → preserve
-    await closeRunSurfaces(ctx, run.id) // close any prior-instance panes before removing the cwd they live in
-    await gcWorktree(ctx, run.id)
-    ctx.store.recordEvent({ runId: run.id, type: 'worktree-swept', data: { worktreePath: run.worktreePath } })
   }
 }

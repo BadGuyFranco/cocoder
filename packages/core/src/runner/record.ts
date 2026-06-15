@@ -1,16 +1,14 @@
 // Run-record projection (ADR-0003): a human-readable receipt GENERATED from the DB rows.
 // Write-once, never read back as truth — a rendering, not a source.
 import type { Priority } from '../priorities/index.js'
-import { isFullyLanded, type RunStore, type Workspace } from '../store/index.js'
+import type { RunStore, Workspace } from '../store/index.js'
 
 const ts = (ms: number | null): string => (ms === null ? '—' : new Date(ms).toISOString())
 
-function landedLabel(events: ReturnType<RunStore['listEvents']>): string {
-  const worktreeCreated = events.find((event) => event.type === 'worktree-created')
-  const trunkBranch = (worktreeCreated?.data as { trunkBranch?: unknown } | null | undefined)?.trunkBranch
-  return typeof trunkBranch === 'string' && trunkBranch.trim() !== ''
-    ? `Landed on trunk (\`${trunkBranch}\`)`
-    : 'Landed on trunk'
+function branchLabel(events: ReturnType<RunStore['listEvents']>): string {
+  const directMode = events.find((event) => event.type === 'direct-mode')
+  const branch = (directMode?.data as { branch?: unknown } | null | undefined)?.branch
+  return typeof branch === 'string' && branch.trim() !== '' ? `\`${branch}\`` : 'the active branch'
 }
 
 export function renderRunRecord(
@@ -30,11 +28,7 @@ export function renderRunRecord(
   lines.push(`- **Workspace:** ${meta.workspace.name} (\`${meta.workspace.id}\`) — ${meta.workspace.path}`)
   lines.push(`- **Priority:** ${meta.priority.title} (\`${run.priorityId}\`)`)
   lines.push(`- **Status:** ${run.status}`)
-  lines.push(`- **Integration:** ${run.integrationStatus}`)
-  lines.push(`- **${landedLabel(events)}:** ${isFullyLanded(run) ? 'yes' : 'no'}`)
-  if (!isFullyLanded(run)) {
-    lines.push(`- **Disposition:** work remains on run branch \`${run.runBranch ?? 'n/a'}\` in \`${run.worktreePath ?? 'n/a'}\``)
-  }
+  lines.push(`- **Branch:** committed directly to ${branchLabel(events)} (no isolation lane — work is on the branch by construction)`)
   lines.push(`- **Started:** ${ts(run.createdAt)}  ·  **Ended:** ${ts(run.endedAt)}`, '')
 
   lines.push('## Sessions', '')
@@ -60,9 +54,9 @@ export function renderRunRecord(
   if (commits.length === 0) lines.push('- (none committed)')
   lines.push('')
 
-  const outOfScope = events.filter((e) => e.type === 'out-of-scope')
+  const outOfScope = events.filter((e) => e.type === 'out-of-scope-committed')
   if (outOfScope.length > 0) {
-    lines.push('## Out-of-scope (held back — expand or discard)', '')
+    lines.push('## Out-of-lane (committed + flagged — scope is advisory, never withheld)', '')
     for (const e of outOfScope) {
       const files = (e.data as { files?: string[] })?.files ?? []
       for (const f of files) lines.push(`- ${f}`)

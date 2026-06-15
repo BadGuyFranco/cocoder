@@ -24,7 +24,6 @@ import type { SessionHost, SessionRef } from '../session-host/index.js'
 import { exec as execChildProcess } from 'node:child_process'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import { runBranchFor, worktreePathFor } from '../worktree/paths.js'
 import type { RunnerIO } from './io.js'
 import { createHeadlessBuilderDriver, createPaneBuilderDriver, type BuilderDriver } from './builder-driver.js'
 import { paneLabel } from './labels.js'
@@ -48,7 +47,6 @@ import { renderRunRecord } from './record.js'
 import { type RunnerPhase, renderDebStatus } from './status.js'
 import { isStopRequestedError } from './stop.js'
 import { faultFingerprint } from './fingerprint.js'
-import { exportRunLocalState } from './local-state.js'
 import type { CommitGateResult } from '../commit-gate/index.js'
 import type { Triage } from './triage.js'
 
@@ -112,27 +110,10 @@ export interface RunInput {
   readonly task?: string | null
   /** A prior run's pickup brief to resume from (ADR-0002 C1 / F8), woven into Oscar's prompt. */
   readonly pickup?: string | null
-  /** Opt into an isolated worktree + branch for this run (ADR-0023 §4): risky / large / throwaway /
-   *  parallel work. DEFAULT (false / omitted) = direct mode — agents work in the active checkout and the
-   *  commit-gate commits straight onto the active branch, so committed work is already on trunk and can
-   *  never strand (ADR-0023 §2). */
-  readonly isolation?: boolean
   /** Resolved wrap-up Play + per-(persona, Play) assignment; when present, the runner dispatches the Play to author closeout. */
   readonly wrapPlay?: Play
   readonly wrapPlayAssignment?: PlayAssignment
   readonly wrapPlayPersonaMode?: PersonaRunMode
-  /** Resolved integration-verify Play + assignment (ADR-0015 §3): a FRESH whole-tree verifier the runner
-   *  dispatches against the merged-to-be worktree before landing trunk. Fail-closed — without it (or
-   *  without a clear pass) a run does NOT auto-merge; it escalates. */
-  readonly integrationVerifyPlay?: Play
-  readonly integrationVerifyAssignment?: PlayAssignment
-  readonly integrationVerifyPersonaMode?: PersonaRunMode
-  /** Resolved merge-conflict Play + assignment (ADR-0015 §4): dispatched when trunk advanced since launch
-   *  (non-ff) to resolve the conflict CONTENT in the worktree. A genuine semantic divergence the Play
-   *  reports as `escalate` aborts the merge and surfaces to the founder rather than being guessed. */
-  readonly mergeConflictPlay?: Play
-  readonly mergeConflictAssignment?: PlayAssignment
-  readonly mergeConflictPersonaMode?: PersonaRunMode
 }
 
 export interface RunResult {
@@ -194,40 +175,6 @@ const OSCAR_IDLE_NUDGE = "You've gone quiet — write the next directive (or you
 const CRITERION_TIMEOUT_MS = 900_000
 const OUTPUT_TAIL_CHARS = 2_000
 
-/** Parse a verify verdict from a headless verifier Play's captured output (ADR-0015 §3). FAIL-CLOSED:
- *  returns null for missing / unparseable / non-{pass,fail} output, so only an explicit, well-formed
- *  `pass` can ever let a run land trunk. Scans for the LAST JSON object carrying a `verdict` field so a
- *  trailing structured line wins over any earlier reasoning text. */
-export function parseVerifyVerdict(output: string): { verdict: 'pass' | 'fail'; reason: string } | null {
-  const matches = output.match(/\{[^{}]*"verdict"[^{}]*\}/g)
-  if (!matches) return null
-  for (let i = matches.length - 1; i >= 0; i--) {
-    try {
-      const o = JSON.parse(matches[i]!) as { verdict?: unknown; reason?: unknown }
-      if (o.verdict === 'pass' || o.verdict === 'fail') return { verdict: o.verdict, reason: String(o.reason ?? '') }
-    } catch {
-      /* not valid JSON — keep scanning earlier candidates */
-    }
-  }
-  return null
-}
-
-/** Parse a merge-conflict Play's resolution signal from its captured output (ADR-0015 §4). FAIL-CLOSED
- *  like parseVerifyVerdict: null (missing/unparseable) is treated by the caller as escalate-don't-guess. */
-export function parseResolution(output: string): { resolution: 'resolved' | 'escalate'; reason: string } | null {
-  const matches = output.match(/\{[^{}]*"resolution"[^{}]*\}/g)
-  if (!matches) return null
-  for (let i = matches.length - 1; i >= 0; i--) {
-    try {
-      const o = JSON.parse(matches[i]!) as { resolution?: unknown; reason?: unknown }
-      if (o.resolution === 'resolved' || o.resolution === 'escalate') return { resolution: o.resolution, reason: String(o.reason ?? '') }
-    } catch {
-      /* keep scanning earlier candidates */
-    }
-  }
-  return null
-}
-
 const defaultMakeJudge =
   (stuckAfter: number): MakeJudge =>
   ({ doneSentinel }) =>
@@ -285,58 +232,46 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
   const scope = effectiveScope(bob.writeScope, priority.scopeNarrowing) // known at launch (constant per run)
 
-  // Execution context (ADR-0023). DEFAULT = direct: agents run in the active checkout on the active
-  // branch and the commit-gate commits straight onto it, so committed work is already on trunk and can
-  // never strand (ADR-0023 §2). OPT-IN isolation (input.isolation): the run owns a dedicated worktree on
-  // its own branch, cut from the trunk tip, landed back by a verified ff-merge (ADR-0015, now the
-  // exception — risky / large / throwaway / parallel work — not the default).
-  const isolated = input.isolation === true
+  // Execution context — ONE mode (founder directive 2026-06-15, correcting ADR-0015/0023): agents run in
+  // the active checkout on the active branch and the commit-gate commits straight onto it, so committed
+  // work is on that branch BY CONSTRUCTION and no code path can hold it off-branch. There is no isolation
+  // lane, no run worktree, no branch→trunk landing step — and therefore no strand class. If the repo is
+  // shared (a GitHub collaboration repo), the founder checks out a feature branch; the engine commits to
+  // it and pushes (non-gating, below) — the merge to the shared main is GitHub's PR review, not the engine's.
   const workspaceRepo = workspace.path
   const trunkSha = await git.headSha(workspaceRepo)
-  // Pin the trunk BRANCH NAME at launch: the branch work commits to (direct) / lands onto (isolation).
   const trunkBranch = await git.currentBranch(workspaceRepo)
-  let worktreePath: string
-  let runBranch: string
-  if (isolated) {
-    // Isolated working state (ADR-0015 §1): the run's OWN worktree + branch under the ENGINE install
-    // home, git-owned by the workspace repo. A fresh branch off a committed trunk point is clean
-    // in-scope BY CONSTRUCTION — the soundness precondition the per-atom quarantine relies on. The
-    // founder's checkout is never used as an agent cwd; their WIP is irrelevant to the launch.
-    worktreePath = worktreePathFor(engineHome, run.id)
-    runBranch = runBranchFor(run.id)
-    await git.worktreeAdd(workspaceRepo, worktreePath, runBranch, trunkSha)
-    store.setWorktree(run.id, worktreePath, runBranch)
-    store.recordEvent({ runId: run.id, type: 'worktree-created', data: { worktreePath, runBranch, trunkSha, trunkBranch } })
-    log(`worktree ${worktreePath} on ${runBranch} (from trunk ${trunkBranch ?? '(detached)'} ${trunkSha.slice(0, 8)})`)
-  } else {
-    // Direct mode (ADR-0023 §2): commit onto the active branch. Leave worktree_path/run_branch NULL on
-    // the run row so the daemon's worktree GC and stranded-commit reconciler correctly no-op (there is
-    // nothing to GC and — since every commit is already on the branch — nothing to strand).
-    if (trunkBranch === null) {
-      store.setRunStatus(run.id, 'failed')
-      store.recordEvent({ runId: run.id, type: 'direct-mode-refused', data: { reason: 'detached-head' } })
-      throw new DirtyWorkingTreeError(workspaceRepo, 'the checkout is on a detached HEAD; a direct-mode run needs a branch. Check out a branch, or launch with isolation.')
-    }
-    // The worktree's "clean in-scope by construction" precondition has no free lunch in place: restore
-    // the launch guard, SCOPED to the union of everything that will commit this run. If in-scope files
-    // are already dirty, the atom commit-gate (which commits ALL in-scope changed files) or the per-atom
-    // quarantine (which restores in-scope files to HEAD) could sweep up or destroy the founder's
-    // uncommitted work — so refuse with an actionable message rather than risk it.
-    const committingScopes = [scope, oscar.writeScope, deb?.writeScope ?? [], input.wrapPlay?.writeScope ?? []].flat()
-    const { inScope: dirtyInScope } = partitionByScope(await git.changedFiles(workspaceRepo), committingScopes)
-    if (dirtyInScope.length > 0) {
-      store.setRunStatus(run.id, 'failed')
-      store.recordEvent({ runId: run.id, type: 'dirty-working-tree', data: { files: dirtyInScope } })
-      throw new DirtyWorkingTreeError(
-        workspaceRepo,
-        `${dirtyInScope.length} uncommitted in-scope file(s) (${dirtyInScope.slice(0, 5).join(', ')}${dirtyInScope.length > 5 ? ', …' : ''}). Commit or stash them, or launch with isolation.`,
-      )
-    }
-    worktreePath = workspaceRepo
-    runBranch = trunkBranch
-    store.recordEvent({ runId: run.id, type: 'direct-mode', data: { branch: trunkBranch, trunkSha } })
-    log(`direct mode on ${trunkBranch} (${trunkSha.slice(0, 8)}) — committing to the active branch`)
+  if (trunkBranch === null) {
+    store.setRunStatus(run.id, 'failed')
+    store.recordEvent({ runId: run.id, type: 'direct-mode-refused', data: { reason: 'detached-head' } })
+    throw new DirtyWorkingTreeError(workspaceRepo, 'the checkout is on a detached HEAD; a run needs a branch. Check out a branch first.')
   }
+  // Launch guard, SCOPED to the union of everything that will commit this run. If in-scope files are
+  // already dirty, the atom commit-gate (which commits ALL in-scope changed files) or the per-atom
+  // quarantine (which restores in-scope files to HEAD) could sweep up or destroy the founder's
+  // uncommitted work — so refuse with an actionable message rather than risk it.
+  // ONE start-of-run snapshot, used for BOTH the guard and the quarantine baseline (dirtyAtStart) so the
+  // tree is read once. The guard refuses if any IN-SCOPE file is already dirty (the atom gate / quarantine
+  // could sweep up or destroy the founder's uncommitted work); the FULL set is the founder's pre-existing
+  // edits the per-atom quarantine must never revert (out-of-scope dirt is theirs to keep).
+  const committingScopes = [scope, oscar.writeScope, deb?.writeScope ?? [], input.wrapPlay?.writeScope ?? []].flat()
+  const changedAtStart = await git.changedFiles(workspaceRepo)
+  const { inScope: dirtyInScope } = partitionByScope(changedAtStart, committingScopes)
+  if (dirtyInScope.length > 0) {
+    store.setRunStatus(run.id, 'failed')
+    store.recordEvent({ runId: run.id, type: 'dirty-working-tree', data: { files: dirtyInScope } })
+    throw new DirtyWorkingTreeError(
+      workspaceRepo,
+      `${dirtyInScope.length} uncommitted in-scope file(s) (${dirtyInScope.slice(0, 5).join(', ')}${dirtyInScope.length > 5 ? ', …' : ''}). Commit or stash them first.`,
+    )
+  }
+  const dirtyAtStart = new Set(changedAtStart)
+  // Bound to the active checkout/branch; kept as named locals so the prompts/drivers/observer (which take
+  // a cwd + branch name) need no change — they always describe the one real branch the run commits to.
+  const worktreePath = workspaceRepo
+  const runBranch = trunkBranch
+  store.recordEvent({ runId: run.id, type: 'direct-mode', data: { branch: trunkBranch, trunkSha } })
+  log(`committing directly to ${trunkBranch} (${trunkSha.slice(0, 8)})`)
   // The run's cmux workspace is named for the run: "<priority> #<session number>" (the numeric part of
   // the sequential run id), so the founder identifies it by priority + session, not by a persona.
   const groupLabel = `${priority.id} #${run.id.replace(/^run_/, '')}`
@@ -434,44 +369,13 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   log(`oscar + bob spawned (${oscarDriver.refId}, ${bobDriver.refId}); awaiting first directive, bob on standby`)
 
   const oscarAlive = (): Promise<boolean> => oscarDriver.alive()
-  const recordStrandedCommits = (unlandedCommits: readonly string[], reason: string): void => {
-    const branchTip = unlandedCommits[0]
-    if (!branchTip) return
-    if (store.listEvents(run.id).some((event) => event.type === 'stranded-commits-detected')) return
-    store.recordEvent({
-      runId: run.id,
-      type: 'stranded-commits-detected',
-      data: {
-        runBranch,
-        branchTip,
-        aheadCount: unlandedCommits.length,
-        workspaceId: workspace.id,
-        workspaceRepo,
-        workspaceRepoOwner: 'workspace',
-        source: 'runner',
-        reason,
-      },
-    })
-  }
-  const surfaceStrandedCommitsIfAny = async (reason: string, terminalStatus: RunStatus): Promise<RunStatus> => {
-    try {
-      const trunkNow = await git.headSha(workspaceRepo)
-      const unmerged = await git.unmergedCommits(workspaceRepo, trunkNow, runBranch)
-      if (unmerged.length === 0) return terminalStatus
-      recordStrandedCommits(unmerged, reason)
-      store.setIntegrationStatus(run.id, 'escalated')
-      store.setRunStatus(run.id, 'pending-landing')
-      return 'pending-landing'
-    } catch {
-      return terminalStatus
-    }
-  }
-  // Every terminal fault funnels through here: record it, let Deb triage it (if present), then fail.
+  // Every terminal fault funnels through here: record it, let Deb triage it (if present), then fail. Any
+  // commits already made this run are on the active branch (committed by the gate as they happened) — there
+  // is no run branch and nothing to strand, so a fault just marks the run failed.
   const fail = async (type: string, message: string, atomIndex: number | null = null): Promise<never> => {
     store.recordEvent({ runId: run.id, type, data: atomIndex !== null ? { message, atom: atomIndex } : { message } })
     await triageFault(type, atomIndex, message)
-    const status = await surfaceStrandedCommitsIfAny(type, 'failed')
-    if (status !== 'pending-landing') store.setRunStatus(run.id, status)
+    store.setRunStatus(run.id, 'failed')
     throw new Error(message)
   }
 
@@ -672,71 +576,6 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     }
   }
 
-  // Integration verify (ADR-0015 §3): dispatch the FRESH whole-tree verifier Play against the merged-
-  // to-be worktree and parse its verdict FAIL-CLOSED. Returns null when no verifier is configured or no
-  // clear verdict is produced; the caller treats null (and a `fail`) as escalate-don't-land. It runs as
-  // a captured subprocess — a different process from Bob (who produced the code) and from Oscar's live
-  // pane, so it is never the producer self-verifying (§3).
-  const runIntegrationVerify = async (label: string): Promise<{ verdict: 'pass' | 'fail'; reason: string } | null> => {
-    if (!input.integrationVerifyPlay || !input.integrationVerifyAssignment) {
-      store.recordEvent({ runId: run.id, type: 'integration-verify-skipped', data: { reason: 'no integration-verify play configured' } })
-      return null
-    }
-    const task =
-      `Integration verify for run ${run.id} (priority ${priority.id}). The run's branch is about to land on trunk (${label}). ` +
-      `Verify the WHOLE merged tree in this worktree as one integrated unit (typecheck + tests), then emit your one-line {"verdict":…} as your final output.`
-    const res = await dispatchPlay(
-      { sessionHost, getAdapter, runHeadless: deps.runHeadless },
-      {
-        play: input.integrationVerifyPlay,
-        assignment: input.integrationVerifyAssignment,
-        personaMode: input.integrationVerifyPersonaMode,
-        persona: oscar.id,
-        task,
-        cwd: worktreePath,
-        outPath: join(runDir, 'integration-verify-out.txt'),
-        group: run.id,
-        timeoutMs: t.wrapupMs,
-      },
-    )
-    const verdict = parseVerifyVerdict(res.output)
-    store.recordEvent({ runId: run.id, type: 'integration-verify', data: { verdict: verdict?.verdict ?? null, reason: verdict?.reason ?? null, exitCode: res.exitCode } })
-    return verdict
-  }
-
-  // Merge-conflict resolution (ADR-0015 §4): dispatch the merge-conflict Play to reconcile the CONTENT
-  // of an in-progress conflicted merge in the worktree. FAIL-CLOSED: null (no Play / unparseable) is
-  // treated by the caller as escalate. The Play resolves content only — the runner concludes the merge.
-  const runMergeConflictResolve = async (conflicts: string[]): Promise<{ resolution: 'resolved' | 'escalate'; reason: string } | null> => {
-    if (!input.mergeConflictPlay || !input.mergeConflictAssignment) {
-      store.recordEvent({ runId: run.id, type: 'merge-conflict-skipped', data: { reason: 'no merge-conflict play configured', conflicts } })
-      return null
-    }
-    const task =
-      `Resolve the merge conflict for run ${run.id} (priority ${priority.id}) in this worktree. Trunk advanced since ` +
-      `launch, so merging trunk into ${runBranch} conflicts in: ${conflicts.join(', ')}. Reconcile the CONTENT of the ` +
-      `conflicted files (edit them; do NOT run git or commit — the runner concludes the merge). If two intentional ` +
-      `changes genuinely disagree (a semantic divergence you cannot safely reconcile), do NOT guess. Emit as your final ` +
-      `output {"resolution":"resolved"} once reconciled, or {"resolution":"escalate","reason":"<one line>"}.`
-    const res = await dispatchPlay(
-      { sessionHost, getAdapter, runHeadless: deps.runHeadless },
-      {
-        play: input.mergeConflictPlay,
-        assignment: input.mergeConflictAssignment,
-        personaMode: input.mergeConflictPersonaMode,
-        persona: oscar.id,
-        task,
-        cwd: worktreePath,
-        outPath: join(runDir, 'merge-conflict-out.txt'),
-        group: run.id,
-        timeoutMs: t.wrapupMs,
-      },
-    )
-    const resolution = parseResolution(res.output)
-    store.recordEvent({ runId: run.id, type: 'merge-conflict-resolve', data: { resolution: resolution?.resolution ?? null, reason: resolution?.reason ?? null, conflicts } })
-    return resolution
-  }
-
   // ── The multi-atom loop ───────────────────────────────────────────────────────────────────────
   const committedShas: string[] = []
   const committedFiles: string[] = []
@@ -746,10 +585,10 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   let n = 0
   let consecutiveRejects = 0
   let activeAtom: { readonly index: number; readonly workItemId: string; readonly headBefore: string } | null = null
-  // Founder's PRE-EXISTING uncommitted edits at run start. Quarantine must never revert these (data
-  // loss) — only the atom's own produced changes. After a passing atom commits, the tree is clean, so a
-  // single run-start snapshot covers every later atom's quarantine.
-  const dirtyAtStart = new Set(await git.changedFiles(worktreePath))
+  // `dirtyAtStart` (the founder's pre-existing uncommitted edits) was captured at launch from the same
+  // single start-of-run snapshot as the guard above. Quarantine must never revert these (data loss) — only
+  // the atom's own produced changes. After a passing atom commits, the tree is clean, so that one snapshot
+  // covers every later atom's quarantine.
 
   const absorbGateResult = (gate: CommitGateResult): void => {
     if (gate.committedSha) committedShas.push(gate.committedSha)
@@ -783,95 +622,19 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     return gate
   }
 
-  const landRunBranch = async (events?: {
-    readonly integrated?: string
-    readonly escalated?: string
-    readonly failed?: string
-    readonly mergeConflictEscalated?: string
-  }): Promise<{ readonly status: 'merged' | 'escalated'; readonly mergeSha: string | null; readonly reason: string | null }> => {
-    const integratedEvent = events?.integrated ?? 'integrated'
-    const escalatedEvent = events?.escalated ?? 'integration-escalated'
-    const failedEvent = events?.failed ?? 'integration-failed'
-    const mergeConflictEscalatedEvent = events?.mergeConflictEscalated ?? 'merge-conflict-escalated'
-
-    // Every exit below writes a TERMINAL integration status ('merged' or 'escalated') — never leaving a
-    // run stuck at 'verifying'/'resolving' (which no surface reconciles). `escalate()` is the single
-    // not-landed exit; the catch is fail-CLOSED (aborts any in-progress merge + escalates on any throw).
-    let escalated = false
-    let escalateReason: string | null = null
-    let landedSha: string | null = null
-    let unlandedCommits: readonly string[] = []
-    const escalate = (type: string, data: Record<string, unknown>): void => {
-      store.setIntegrationStatus(run.id, 'escalated')
-      store.recordEvent({ runId: run.id, type, data })
-      recordStrandedCommits(unlandedCommits, type)
-      if (typeof data.reason === 'string') escalateReason = data.reason
-      escalated = true
-    }
+  // Non-gating push (founder directive 2026-06-15): after the run settles, push the active branch to its
+  // upstream IF one exists. This is the ONLY thing a branch is for — sharing on a remote (e.g. a GitHub
+  // collaboration repo). It NEVER gates: a push failure (no remote, offline, rejected) is recorded and the
+  // run still reports its real status. The merge to a shared main is GitHub's PR review, not the engine's.
+  const pushActiveBranchIfRemote = async (): Promise<void> => {
     try {
-      const trunkNow = await git.headSha(workspaceRepo)
-      const unmerged = await git.unmergedCommits(workspaceRepo, trunkNow, runBranch)
-      unlandedCommits = unmerged
-      if (unmerged.length === 0) {
-        store.setIntegrationStatus(run.id, 'merged') // nothing un-integrated → vacuously landed
-      } else {
-        // Misrouting guard (§1): the founder's checkout must STILL be on the branch we cut from, or an
-        // ff would land on the wrong branch (or fail). If they switched / went detached, escalate.
-        const trunkBranchNow = await git.currentBranch(workspaceRepo)
-        if (trunkBranch === null || trunkBranchNow !== trunkBranch) {
-          escalate(escalatedEvent, { runBranch, reason: `trunk branch changed since launch (cut from ${trunkBranch ?? 'detached'}, now ${trunkBranchNow ?? 'detached'}) — not auto-landing to avoid misrouting` })
-        }
-        // NON-ff: merge trunk INTO the run branch first so a later ff lands everything (§4).
-        const branchTipBeforeMerge = await git.headSha(worktreePath)
-        let mergedTrunkIn = false
-        if (!escalated && !(await git.isAncestor(workspaceRepo, trunkNow, runBranch))) {
-          store.setIntegrationStatus(run.id, 'resolving')
-          if ((await git.mergeInto(worktreePath, trunkNow)) === 'conflict') {
-            const conflicts = await git.conflictedFiles(worktreePath)
-            const resolution = await runMergeConflictResolve(conflicts)
-            if (resolution?.resolution === 'resolved') {
-              await git.completeMerge(worktreePath, `merge: trunk → ${runBranch} (conflict resolved)`, conflicts)
-              mergedTrunkIn = true
-            } else {
-              // Semantic divergence (or no Play / no verdict) → abort + escalate; nothing guessed/landed.
-              await git.abortMerge(worktreePath)
-              escalate(mergeConflictEscalatedEvent, { runBranch, trunkParent: trunkNow, conflicts, reason: resolution ? resolution.reason : 'no resolution verdict (fail-closed)' })
-            }
-          } else {
-            mergedTrunkIn = true // a clean mergeInto auto-committed the merge on the run branch
-          }
-        }
-        // VERIFY the merged tree (for a non-ff the worktree HEAD now includes trunk), then ff trunk.
-        if (!escalated) {
-          store.setIntegrationStatus(run.id, 'verifying')
-          const verdict = await runIntegrationVerify(`${runBranch} → ${trunkBranch}`)
-          if (verdict?.verdict !== 'pass') {
-            // If we merged trunk into the branch but verify failed, undo that merge commit so the
-            // escalated branch is the pure run-work line the founder expects (symmetry with the abort).
-            if (mergedTrunkIn) await git.resetHard(worktreePath, branchTipBeforeMerge).catch(() => {})
-            escalate(escalatedEvent, { runBranch, trunkParent: trunkNow, reason: verdict ? verdict.reason : 'no integration-verify verdict (fail-closed)' })
-          } else {
-            // Verified green → land. Record the merge link ONLY after the merge succeeds (write-ordering).
-            landedSha = await git.mergeFastForwardOnly(workspaceRepo, runBranch)
-            store.recordCommitLink({ runId: run.id, commitSha: landedSha, message: `merge: ${runBranch} → ${trunkBranch}`, files: [], kind: 'merge', mergeSha: landedSha, trunkParent: trunkNow })
-            store.setIntegrationStatus(run.id, 'merged')
-            store.recordEvent({ runId: run.id, type: integratedEvent, data: { mergeSha: landedSha, trunkParent: trunkNow, trunkBranch, runBranch, commits: unmerged.length, verifyReason: verdict.reason } })
-            log(`integrated ${runBranch} → ${trunkBranch} (${landedSha.slice(0, 8)}; verified)`)
-          }
-        }
-      }
+      if (!(await git.hasUpstream(workspaceRepo, runBranch))) return
+      const res = await git.push(workspaceRepo, runBranch)
+      store.recordEvent({ runId: run.id, type: res.ok ? 'branch-pushed' : 'branch-push-failed', data: { branch: runBranch, detail: res.detail } })
+      log(res.ok ? `pushed ${runBranch} to upstream` : `push of ${runBranch} failed (non-gating): ${res.detail}`)
     } catch (err) {
-      // FAIL-CLOSED on any throw: abort any in-progress merge so the worktree isn't left mid-merge (which
-      // would also block GC), and mark the run escalated so it surfaces as needs-attention (never stuck).
-      await git.abortMerge(worktreePath).catch(() => {})
-      if (!escalated) store.setIntegrationStatus(run.id, 'escalated')
-      store.recordEvent({ runId: run.id, type: failedEvent, data: { runBranch, reason: err instanceof Error ? err.message : String(err) } })
-      recordStrandedCommits(unlandedCommits, failedEvent)
-      log(`integration failed for ${runBranch}: ${err instanceof Error ? err.message : String(err)}`)
-      escalateReason = err instanceof Error ? err.message : String(err)
-      escalated = true
+      store.recordEvent({ runId: run.id, type: 'branch-push-failed', data: { branch: runBranch, detail: err instanceof Error ? err.message : String(err) } })
     }
-    return { status: escalated ? 'escalated' : 'merged', mergeSha: landedSha, reason: escalateReason }
   }
 
   const quarantineAtom = async (atomIndex: number, headBefore: string, selfCommitEvent: string): Promise<void> => {
@@ -905,12 +668,14 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       store.setWorkItemStatus(stoppedAtom.workItemId, 'abandoned')
       await quarantineAtom(stoppedAtom.index, stoppedAtom.headBefore, 'atom-self-committed-stopped')
     }
-    const status = await surfaceStrandedCommitsIfAny('run-stopped', 'stopped')
+    const status: RunStatus = 'stopped'
     store.setRunStatus(run.id, status)
+    // Any commits already made are on the active branch; push them (non-gating) so a shared remote sees them.
+    await pushActiveBranchIfRemote()
     store.recordEvent({
       runId: run.id,
       type: 'run-end',
-      data: { status, integrationStatus: store.getRun(run.id)?.integrationStatus ?? 'pending', mergeSha: null, atoms, committedShas, outOfScope, selfCommitted },
+      data: { status, atoms, committedShas, outOfScope, selfCommitted },
     })
     const recordPath = await io.writeRunRecord(runDir, renderRunRecord(store, run.id, { workspace, priority }))
     log(`run ${run.id} stopped; ${committedShas.length} commit(s) over ${atoms} atom(s); record at ${recordPath}`)
@@ -1193,93 +958,34 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
   // ── Wrap-up: pickup brief (continuation; F8) + run record ───────────────────────────────────────
   const pickupPath = pickup ? await io.writePickup(runDir, pickup) : null
-  // Out-of-scope no longer parks the run: the gate committed it (flagged, not withheld). The only
-  // non-completed default-path outcome is integration escalation → pending-landing, set below.
-  let status: RunStatus = 'completed'
+  const status: RunStatus = 'completed'
   store.setRunStatus(run.id, status)
 
-  // ── Integrate: bring trunk in if it moved (§4), VERIFY the merged tree (§3), THEN ff onto trunk ──────
-  // A run reaches trunk ONLY here, only on a clean completion, and only AFTER a fresh whole-tree
-  // integration verify passes (FAIL-CLOSED, F11 — missing/timeout/unparseable/`fail` all escalate WITHOUT
-  // landing). For a fast-forward the worktree HEAD already IS the merged-to-be tree. For a NON-ff (trunk
-  // advanced since launch) the runner merges trunk INTO the run branch in the worktree (§4): a clean merge
-  // proceeds; a conflict goes to the merge-conflict Play to reconcile CONTENT, and a genuine semantic
-  // divergence (or no/garbled verdict) is aborted + escalated — never guessed. Held-back out-of-scope
-  // files do not block landing already committed branch work; they remain surfaced for scope resolution.
-  let mergeSha: string | null = null
-  let integrationReason: string | null = null
-  if (!isolated) {
-    // Direct mode (ADR-0023 §2): every atom + Oscar-support commit already landed on the active branch
-    // as it was made (the commit-gate ran with cwd = the active checkout). There is no run branch to
-    // integrate — the run is vacuously merged, and there is nothing that can strand.
-    store.setIntegrationStatus(run.id, 'merged')
-  } else if (status === 'completed' || committedShas.length > 0 || selfCommitted) {
-    const integration = await landRunBranch()
-    mergeSha = integration.mergeSha
-    integrationReason = integration.reason
-    if (integration.status === 'merged') {
-      const gate = await commitOscarSupport(await git.headSha(worktreePath))
-      if (gate?.committedSha || gate?.selfCommitted) {
-        const supportIntegration = await landRunBranch({
-          integrated: 'post-land-oscar-support-integrated',
-          escalated: 'post-land-oscar-support-escalated',
-          failed: 'post-land-oscar-support-failed',
-          mergeConflictEscalated: 'post-land-oscar-support-merge-conflict-escalated',
-        })
-        mergeSha = supportIntegration.mergeSha ?? mergeSha
-        if (supportIntegration.status === 'escalated') integrationReason = supportIntegration.reason ?? integrationReason
-      }
-    }
-  }
-  if (store.getRun(run.id)?.integrationStatus === 'escalated') {
-    status = 'pending-landing'
-    store.setRunStatus(run.id, status)
-  }
+  // Every atom + Oscar-support commit already landed on the active branch as it was made (the commit-gate
+  // ran with cwd = the active checkout). There is no run branch to integrate, no landing step, and nothing
+  // that can strand — committed work is on the branch BY CONSTRUCTION. Push to a shared remote if one
+  // exists (non-gating); the merge to a shared main is GitHub's PR review, not the engine's.
+  await pushActiveBranchIfRemote()
 
-  // ── Authoritative landing outcome (F19) ──────────────────────────────────────────────────────────
-  // The founder-facing TRUTH about whether work reached trunk, DERIVED from settled state — not the wrap
-  // model's pre-integration prediction (run_78: the wrap claimed "verified for landing / nothing held
-  // back" while the run escalated + held work back). Delivered AFTER integration so it cannot misreport;
-  // recorded so the run record and the next session read the real result, with recovery if it did not land.
+  // ── Authoritative outcome ─────────────────────────────────────────────────────────────────────────
+  // The founder-facing TRUTH, DERIVED from settled state. Work is on the active branch by construction —
+  // there is no separate landing that could fail. Out-of-lane paths were COMMITTED (scope is advisory) and
+  // flagged for visibility, never withheld.
   {
-    const integ = store.getRun(run.id)?.integrationStatus ?? 'pending'
-    // Out-of-scope paths were COMMITTED (scope is advisory) — surfaced as a flag, never withheld.
     const flagged = outOfScope.length > 0 ? `Committed out-of-lane (flagged, NOT held back): ${outOfScope.join(', ')}.` : 'Nothing out of lane.'
     const nCommits = committedShas.length
-    let landed: boolean
-    let outcome: string
-    if (status === 'completed' && integ === 'merged') {
-      landed = true
-      outcome = `✅ LANDED on trunk${mergeSha ? ` (merge ${mergeSha.slice(0, 8)})` : ''} — ${nCommits} commit(s) verified and merged. ${flagged}`
-    } else if (status === 'pending-landing') {
-      landed = false
-      outcome = `⚠️ NOT LANDED — integration escalated${integrationReason ? `: ${integrationReason}` : ''}. The ${nCommits} commit(s) are preserved on branch ${runBranch} (recoverable, NOT lost). Recover with POST /runs/${run.id}/resolve, or fix the blocker and re-launch. ${flagged}`
-    } else {
-      landed = false
-      outcome = `Run ended ${status}; integration ${integ}. ${nCommits} commit(s). ${flagged}`
-    }
-    store.recordEvent({ runId: run.id, type: 'landing-outcome', data: { landed, status, integrationStatus: integ, mergeSha, outOfScope, reason: integrationReason, outcome } })
+    const outcome = `✅ COMMITTED on \`${runBranch}\` — ${nCommits} commit(s) on the active branch (no landing step; work is on the branch by construction). ${flagged}`
+    store.recordEvent({ runId: run.id, type: 'landing-outcome', data: { landed: true, status, outOfScope, outcome } })
     if (pickup && pickup.trim() !== '' && oscarDriver.kind !== 'headless') {
       await oscarDriver.show().catch(() => {})
       await oscarDriver.send(buildLandingOutcome(run.id, outcome)).catch(() => {})
     }
   }
 
-  if (isolated && status === 'completed' && store.getRun(run.id)?.integrationStatus === 'merged') {
-    try {
-      const localState = await exportRunLocalState(worktreePath, engineHome)
-      if (localState.exported.length > 0 || localState.blocked.length > 0) {
-        store.recordEvent({ runId: run.id, type: 'local-state-export', data: localState })
-      }
-    } catch (err) {
-      store.recordEvent({ runId: run.id, type: 'local-state-export-failed', data: { reason: err instanceof Error ? err.message : String(err) } })
-    }
-  }
-
   store.recordEvent({
     runId: run.id,
     type: 'run-end',
-    data: { status, integrationStatus: store.getRun(run.id)?.integrationStatus ?? 'pending', mergeSha, atoms: n, committedShas, outOfScope, selfCommitted },
+    data: { status, atoms: n, committedShas, outOfScope, selfCommitted },
   })
   const recordPath = await io.writeRunRecord(runDir, renderRunRecord(store, run.id, { workspace, priority }))
   log(`run ${run.id} ${status}; ${committedShas.length} commit(s) over ${n} atom(s); record at ${recordPath}`)

@@ -248,7 +248,7 @@ describe('Oz renderer — live daemon path', () => {
   })
 
   it('enriches active priority rows from run detail without selecting the run', async () => {
-    const activeRun = runSummary('run_inline', 'pending-landing')
+    const activeRun = runSummary('run_inline', 'running')
     const detail = detailFor(activeRun, 'Renderer fetched the real latest event.')
     setOz(mockOz({ runs: { runs: [activeRun] }, runDetails: { run_inline: detail } }))
     render(<App />)
@@ -262,12 +262,9 @@ describe('Oz renderer — live daemon path', () => {
     expect(screen.queryByText(/50%/)).toBeNull()
   })
 
-  it('caps active-row enrichment at six detail fetches per cycle, preferring running and not-landed runs', async () => {
+  it('caps active-row enrichment at six detail fetches per cycle', async () => {
     const getPaths: string[] = []
-    const activeRuns = [
-      ...Array.from({ length: 4 }, (_, i) => runSummary(`run_hot_${i}`, 'running')),
-      ...Array.from({ length: 4 }, (_, i) => runSummary(`run_landed_${i}`, 'pending-landing')),
-    ]
+    const activeRuns = Array.from({ length: 8 }, (_, i) => runSummary(`run_hot_${i}`, 'running'))
     const runDetails = Object.fromEntries(activeRuns.map((run) => [run.id, detailFor(run)]))
     setOz(mockOz({ getPaths, runs: { runs: activeRuns }, runDetails }))
     render(<App />)
@@ -275,30 +272,13 @@ describe('Oz renderer — live daemon path', () => {
     await waitFor(() => expect(getPaths.filter((path) => /^\/runs\/[^/]+$/.test(path))).toHaveLength(6))
 
     const detailPaths = getPaths.filter((path) => /^\/runs\/[^/]+$/.test(path))
-    expect(detailPaths).toEqual(['/runs/run_hot_0', '/runs/run_hot_1', '/runs/run_hot_2', '/runs/run_hot_3', '/runs/run_landed_0', '/runs/run_landed_1'])
-  })
-
-  it('fetches not-landed detail once while the run status is unchanged', async () => {
-    const getPaths: string[] = []
-    const notLanded = runSummary('run_waiting', 'pending-landing')
-    setOz(mockOz({
-      getPaths,
-      pollIntervalMs: 40,
-      runs: { runs: [notLanded] },
-      runDetails: { run_waiting: detailFor(notLanded, 'Waiting for founder landing.') },
-    }))
-    render(<App />)
-
-    await waitFor(() => expect(getPaths.filter((path) => path === '/runs/run_waiting')).toHaveLength(1))
-    await sleep(140)
-
-    expect(getPaths.filter((path) => path === '/runs/run_waiting')).toHaveLength(1)
+    expect(detailPaths).toEqual(['/runs/run_hot_0', '/runs/run_hot_1', '/runs/run_hot_2', '/runs/run_hot_3', '/runs/run_hot_4', '/runs/run_hot_5'])
   })
 
   it('keeps enriched active-row data across workspace summary refreshes', async () => {
     let handler: ((event: OzEventHint) => void) | null = null
     const getPaths: string[] = []
-    const activeRun = runSummary('run_refresh', 'pending-landing')
+    const activeRun = runSummary('run_refresh', 'running')
     setOz(mockOz({
       getPaths,
       runs: { runs: [activeRun] },
@@ -362,31 +342,6 @@ describe('Oz renderer — live daemon path', () => {
     await waitFor(() => expect(screen.getByText(/already in flight/i)).toBeDefined())
   })
 
-  it('a parked run drawer shows Resolve actions while a running run drawer does not', async () => {
-    setOz(mockOz())
-    render(<App />)
-    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
-
-    await clickFirstText('Living base personas + repo extensions')
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Mark landed' })).toBeDefined())
-    expect(screen.getByRole('button', { name: 'Discard run' })).toBeDefined()
-    cleanup()
-
-    const running = {
-      runs: [
-        { ...(runsFx as { runs: RunSummary[] }).runs.find((r) => r.id === 'run_17')!, status: 'running' },
-        ...(runsFx as { runs: RunSummary[] }).runs.filter((r) => r.id !== 'run_17'),
-      ],
-    }
-    setOz(mockOz({ runs: running }))
-    render(<App />)
-    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
-    await clickFirstText('Living base personas + repo extensions')
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Stop run' })).toBeDefined())
-    expect(screen.queryByRole('button', { name: 'Mark landed' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Discard run' })).toBeNull()
-  })
-
   it('Stop run posts to /runs/:id/stop and shows cooperative success text', async () => {
     const posts: PostCall[] = []
     const running = {
@@ -408,7 +363,14 @@ describe('Oz renderer — live daemon path', () => {
 
   it('debounces Oz event hints into workspace and open-run refetches', async () => {
     let handler: ((event: OzEventHint) => void) | null = null
+    const running = {
+      runs: [
+        { ...(runsFx as { runs: RunSummary[] }).runs.find((r) => r.id === 'run_17')!, status: 'running' },
+        ...(runsFx as { runs: RunSummary[] }).runs.filter((r) => r.id !== 'run_17'),
+      ],
+    }
     const oz = mockOz({
+      runs: running,
       onOzEvent: (cb) => {
         handler = cb
         return () => {
@@ -436,30 +398,6 @@ describe('Oz renderer — live daemon path', () => {
 
     await waitFor(() => expect(paths.filter((path) => path === '/runs?workspace=cocoder')).toHaveLength(1), { timeout: 1500 })
     expect(paths.filter((path) => path === '/runs/run_17')).toHaveLength(1)
-  })
-
-  it('Mark landed posts the landed disposition to /runs/:id/resolve', async () => {
-    const posts: PostCall[] = []
-    setOz(mockOz({ posts }))
-    render(<App />)
-    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
-
-    await clickFirstText('Living base personas + repo extensions')
-    fireEvent.click(await screen.findByRole('button', { name: 'Mark landed' }))
-
-    await waitFor(() => expect(posts.find((p) => p.path === '/runs/run_17/resolve')).toBeDefined())
-    expect(posts.find((p) => p.path === '/runs/run_17/resolve')!.body).toEqual({ disposition: 'landed' })
-  })
-
-  it('resolve daemon errors surface the daemon error text', async () => {
-    setOz(mockOz({ postResult: { ok: false, status: 409, error: 'run branch is not an ancestor of trunk' } }))
-    render(<App />)
-    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
-
-    await clickFirstText('Living base personas + repo extensions')
-    fireEvent.click(await screen.findByRole('button', { name: 'Mark landed' }))
-
-    await waitFor(() => expect(screen.getByText('run branch is not an ancestor of trunk')).toBeDefined())
   })
 
   it('loads CLIs from the live seam and does not show a pending endpoint banner', async () => {

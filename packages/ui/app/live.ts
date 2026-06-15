@@ -112,12 +112,6 @@ export async function stopRun(oz: OzApi, runId: string): Promise<MutationResult>
   return oz.daemonPost(`/runs/${runId}/stop`)
 }
 
-export async function resolveRun(oz: OzApi, runId: string, disposition: 'discard' | 'landed', note?: string): Promise<MutationResult> {
-  const body: { disposition: 'discard' | 'landed'; note?: string } = { disposition }
-  if (note) body.note = note
-  return oz.daemonPost(`/runs/${runId}/resolve`, body)
-}
-
 export async function testCli(oz: OzApi, id: string): Promise<Cli | null> {
   try {
     const r = await oz.daemonPost<CliTestResponse>(`/clis/${encodeURIComponent(id)}/test`)

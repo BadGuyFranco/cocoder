@@ -94,6 +94,12 @@ const worktreeStubs = {
     return 'trunk'
   },
   async resetHard() {},
+  async hasUpstream() {
+    return false
+  },
+  async push() {
+    return { ok: true, detail: '' }
+  },
 }
 
 // Git that returns a scripted changed-file set per atom and advances HEAD on commit (so per-atom
@@ -239,7 +245,7 @@ const baseDeps = (over: Partial<RunnerDeps>): RunnerDeps => ({
 // This suite drives the runner with a FAKE git over the OPT-IN isolation path (ADR-0023 §4 / ADR-0015):
 // worktree create/land are stubbed, so the loop/verify/commit machinery is exercised without a real repo.
 // The new direct-mode DEFAULT (ADR-0023 §2) is proven against LIVE git in runner-direct.test.ts.
-const input = { workspace, priority, oscar, bob, sharedStandards: 'STANDARDS', engineHome: '/repo', runsRoot: '/runs', isolation: true as const }
+const input = { workspace, priority, oscar, bob, sharedStandards: 'STANDARDS', engineHome: '/repo', runsRoot: '/runs' }
 const stopFaultEvents = new Set(['directive-timeout', 'builder-failed', 'verify-failed', 'triage-dispatch', 'fault-triaged', 'triage-skipped'])
 
 describe('runRun (multi-atom loop)', () => {
@@ -1308,14 +1314,14 @@ describe('runRun (multi-atom loop)', () => {
   test('a self-committed rejected atom is surfaced (working-tree quarantine cannot undo it)', async () => {
     const store = openRunStore(':memory:')
     let n = 0
-    // clean at launch; HEAD moves between the atom's headBefore snapshot and the post-reject check.
-    // The launch trunk-tip read (against the workspace repo, not the worktree) returns a stable sha; only the
-    // per-atom snapshots (against the worktree path) model the self-commit HEAD movement.
+    // clean at launch; HEAD moves between the atom's headBefore snapshot and the post-reject check. Single
+    // mode commits to the active checkout, so there is no worktree-path distinction: model the HEAD movement
+    // as a call sequence — launch trunk-tip read, then atom headBefore = h0, then the post-reject check sees
+    // HEAD moved (h-self), which is what the self-commit surfacing asserts.
     const git: Git = {
       ...worktreeStubs,
-      async headSha(cwd) {
-        if (!cwd.includes('worktrees')) return 'trunk' // ADR-0015: the launch read against the workspace repo
-        return n++ === 0 ? 'h0' : 'h-self' // atom headBefore = h0; the post-reject check sees HEAD moved
+      async headSha() {
+        return (['trunk', 'h0', 'h-self'][n++] ?? 'h-self')
       },
       async changedFiles() {
         return []
@@ -1487,13 +1493,20 @@ describe('runRun (multi-atom loop)', () => {
         throw new Error('no valid directive within 1ms') // the fault Deb triages + repairs
       },
     }
-    // Deb edited one in-scope CoCoder file and (out of scope) one product file in the worktree.
+    // Deb edited one in-scope CoCoder file and (out of scope) one product file during her repair. The tree
+    // is CLEAN at launch (first changedFiles call = the start-of-run guard/snapshot); the edits appear once
+    // the repair runs.
+    let repairStarted = false
     const git: Git = {
       ...worktreeStubs,
       async headSha() {
         return 'h0'
       },
       async changedFiles() {
+        if (!repairStarted) {
+          repairStarted = true
+          return []
+        }
         return ['cocoder/priorities/x.md', 'packages/app/product.ts']
       },
       async addAndCommit() {
@@ -1526,22 +1539,31 @@ describe('runRun (multi-atom loop)', () => {
       },
     })
     const ticketFile = 'cocoder/tickets/open/0002-recurring-directive-timeout.md'
-    const ticketGit = (): Git => ({
-      ...worktreeStubs,
-      async headSha() {
-        return 'h0'
-      },
-      async changedFiles() {
-        return [ticketFile] // the ticket Deb wrote (in her cocoder/** scope)
-      },
-      async addAndCommit() {
-        return 'sha-ticket'
-      },
-      async restoreToHead() {},
-      async show() {
-        return ''
-      },
-    })
+    const ticketGit = (): Git => {
+      // Clean at launch (first changedFiles call = the start-of-run guard/snapshot); the ticket Deb writes
+      // in her cocoder/** scope appears once she files it during triage.
+      let started = false
+      return {
+        ...worktreeStubs,
+        async headSha() {
+          return 'h0'
+        },
+        async changedFiles() {
+          if (!started) {
+            started = true
+            return []
+          }
+          return [ticketFile]
+        },
+        async addAndCommit() {
+          return 'sha-ticket'
+        },
+        async restoreToHead() {},
+        async show() {
+          return ''
+        },
+      }
+    }
 
     // 1st occurrence → one-off; records a fault-triaged carrying the fingerprint, but no recurrence yet.
     let r1 = ''

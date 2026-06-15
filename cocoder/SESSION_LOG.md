@@ -12,6 +12,55 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-15 — **Removed the isolation lane entirely — the strand class's last home (6-session "can't commit" bug, root-caused + deleted)**
+
+**Persona:** Claude (founder-directed) | **Priority:** orchestration-change-durability / commit spine | **Plan:** diagnose-then-excise (founder chose: remove the lane, non-gating push, fully clean, staged+tested)
+**Outcomes:**
+- **Root-caused the recurring "successful runs can't commit" bug** (6 sessions). The symptom was never the
+  commit gate (that was fixed 5×); it was **landing**. ADR-0023 dissolved the strand class on the *default*
+  path but kept the **opt-in isolation lane (§4)** alive — a second path-to-trunk whose `landRunBranch` →
+  **fail-closed, content-blind integration-verify gate** stranded any isolation run (incl. pure-governance
+  Oscar/Oz/Deb runs) `pending-landing` on no/garbled verdict, timeout, an unrelated red test, trunk-branch
+  change, or merge conflict. Two contracts → fixing one regenerates the symptom on the other. Logged as **F22**.
+- **Excised the lane at the root** (ADR-0023 **Amendment 2**, founder directive). One mode, one contract:
+  *commit everything to the checked-out branch, always* — no code path can hold a committed change off the
+  branch. Deleted: run worktree, run branch, `integration_status`/`worktree_path`/`run_branch` + merge-link
+  store columns, `landRunBranch`, integration-verify + merge-conflict Plays, daemon strand reconciler /
+  worktree-GC / `POST /runs/:id/resolve`, the UI `not-landed`/resolve surfaces. Per-atom verify (§3) stays
+  in place (reverts a failed atom's product code *before* commit); it never gates landing.
+- **Shared-repo case is the only reason a branch matters:** added a **non-gating** `git push` of the active
+  branch after a run (new `Git.hasUpstream`/`push`); the merge to a shared `main` is GitHub's PR review, not
+  the engine's. A single `changedFiles` snapshot now serves both the launch dirty-guard and the quarantine
+  baseline.
+- **Green:** `pnpm typecheck` (0 errors) + **592 tests** across core/daemon/ui/cli/personas (0 failures).
+  Tests rewritten to single mode; `proof-direct-spine.mjs` prose updated. ~31 source files + scripts/plays/
+  governance touched.
+**Next:** Optional — wire a real founder run on the live daemon to confirm end-to-end; the 11 historical
+pre-reset `cocoder/*` run branches remain a separate founder inspect/discard decision (never auto-discarded).
+
+## 2026-06-15 — **Design dive (post run_88): dispatch-boundary resolved (one level stands); queue repointed to hybrid-Plays**
+
+**Persona:** Oscar (orchestrator) + founder | **Priority:** plays-first-class follow-up → [hybrid-plays](./priorities/hybrid-plays.md) | **Plan:** founder design dive, no code
+**Outcomes:**
+- **Resolved the deferred dispatch-boundary question without building it.** Read ADR-0005/0018/0023 +
+  `dispatch.ts`/`gate.ts` with the founder. Decided **one-level dispatch STANDS** — no free-form
+  sub-delegation, no builder-recursion, no `PlayAssignment[]` reversal. Grounded: ADR-0005 dissolved the
+  standing-route concept to kill F1; ADR-0023 already made write-scope **advisory** (the spine never
+  withholds — verified in `commit-gate/gate.ts`), so "bounded files limit building" does not apply; and
+  the multi-agent / new-thinking need is already met by orchestrator decomposition (run_88 was the proof).
+  The founder could not name a build where decomposition fails and a builder must self-fan-out. Recorded
+  in [play-dispatch-boundary](./priorities/play-dispatch-boundary.md) (now `status: resolved`, de-queued).
+- **What remains of the old ADR-0024 is small:** multi-model ensemble as an *orchestration pattern*
+  (not schema) — no engine reversal, may not be ADR-sized.
+- **Surfaced the higher-value thread and repointed the queue to it.** A Play today is a pure LLM prompt
+  (`{id,label,kind,writeScope,body}`; no script/exec field — verified). New priority **hybrid-plays**:
+  give a Play an optional **deterministic code spine** (run real checks, gate the LLM layer), aligning
+  with our verify-don't-assert / F18 standard. `order.json`: `play-dispatch-boundary` → `hybrid-plays`.
+- **Objective is a DRAFT** — founder confirms at launch; first atom is an ADR-0010 taxonomy amendment
+  (decision-before-code) since ADR-0010 owns the Play taxonomy.
+**Next:** Founder may launch `hybrid-plays` when ready (starts with the ADR-0010 amendment). `plays-first-class`
+remains archive-candidate pending the founder's `archive` confirm.
+
 ## 2026-06-15 — **Plays first-class + persona-bound: full catalog→binding→permission-surfacing shipped (5 atoms)**
 
 **Persona:** Oscar (orchestrator) + Bob (builder, codex) | **Priority:** [plays-first-class](./priorities/plays-first-class.md) | **Plan:** 5-atom loop (run_88)

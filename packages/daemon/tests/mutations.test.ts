@@ -54,8 +54,6 @@ const expectedScaffoldAssignments = {
     model: '',
     plays: {
       'wrap-up': { cli: 'cursor-agent', model: '' },
-      'integration-verify': { cli: 'claude', model: '' },
-      'merge-conflict': { cli: 'claude', model: '' },
     },
   },
   bob: { cli: 'codex', model: '' },
@@ -366,11 +364,7 @@ describe('Oz mutations + lifecycle', () => {
   test('POST /runs/:id/stop cooperatively stops a live launched run and cleans up panes', async () => {
     shown = []
     killed = []
-    const removed: string[] = []
     const git = fakeGit()
-    git.worktreeRemove = async (_cwd, dir) => {
-      removed.push(dir)
-    }
     oz = await createOzServer({
       cocoderHome: home,
       port: 0,
@@ -385,8 +379,7 @@ describe('Oz mutations + lifecycle', () => {
       runHeadless: async () => ({ exitCode: 0, output: 'wrap closeout' }),
     })
 
-    // isolation:true — this test exercises stop + worktree GC, which only exists on the opt-in path.
-    const launch = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo', isolation: true } })
+    const launch = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
     expect(launch.status).toBe(202)
     const runId = String(launch.json.runId)
     expect(oz.ctx.stopControllers.has(runId)).toBe(true)
@@ -401,7 +394,6 @@ describe('Oz mutations + lifecycle', () => {
     expect(store.getRun(runId)?.status).toBe('stopped')
     expect(oz.ctx.stopControllers.has(runId)).toBe(false)
     expect(killed.map((k) => k.id).sort()).toEqual(['surface:1', 'surface:2'])
-    expect(removed).toEqual([join(home, 'local', 'worktrees', runId)])
     const events = store.listEvents(runId)
     expect(events.some((e) => e.type === 'run-stopped')).toBe(true)
     expect(events.some((e) => e.type === 'stop-teardown')).toBe(true)
@@ -1581,77 +1573,4 @@ describe('Oz mutations + lifecycle', () => {
     expect(store.listEvents(orphan.id).some((e) => e.type === 'orphaned')).toBe(true)
   })
 
-  // POST /runs/:id/resolve — the ISOLATION-lane escalation exit (ADR-0023 §4). The default direct-to-branch
-  // path never parks (scope is advisory, the spine never withholds), so the ONLY resolvable state is a
-  // pending-landing run whose opt-in branch escalated at integration.
-  describe('POST /runs/:id/resolve', () => {
-    /** A pending-landing isolation run with a worktree + branch (its escalated integration awaits a call). */
-    const parkedRun = () => {
-      store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
-      const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
-      store.setWorktree(run.id, join(home, 'local', 'worktrees', run.id), `cocoder/${run.id}`)
-      store.setRunStatus(run.id, 'pending-landing')
-      return run
-    }
-
-    test('discard drops the run worktree\'s uncommitted changes, GCs the worktree, and closes the run as failed', async () => {
-      const run = parkedRun()
-      const restored: string[][] = []
-      const removed: string[] = []
-      const git = fakeGit(['wip.txt', 'also-wip.ts'])
-      git.restoreToHead = async (_cwd, files) => {
-        restored.push([...files])
-      }
-      git.worktreeRemove = async (_cwd, dir) => {
-        removed.push(dir)
-      }
-      await startServer(git)
-      const r = await call(oz!, 'POST', `/runs/${run.id}/resolve`, { body: { disposition: 'discard', note: 'superseded by run_46' } })
-      expect(r.status).toBe(200)
-      expect(r.json.status).toBe('failed')
-      expect(restored).toEqual([['wip.txt', 'also-wip.ts']]) // explicit, recorded discard — never silent
-      expect(removed).toEqual([join(home, 'local', 'worktrees', run.id)]) // GC unblocked by the decision
-      const events = store.listEvents(run.id)
-      expect(events.some((e) => e.type === 'scope-decision-discarded-files')).toBe(true)
-      expect(events.some((e) => e.type === 'scope-decision')).toBe(true)
-    })
-
-    test('landed verifies the branch tip is an ancestor of trunk HEAD, then completed/merged', async () => {
-      const run = parkedRun()
-      const git = fakeGit()
-      git.isAncestor = async () => true
-      await startServer(git)
-      const r = await call(oz!, 'POST', `/runs/${run.id}/resolve`, { body: { disposition: 'landed' } })
-      expect(r.status).toBe(200)
-      expect(store.getRun(run.id)?.status).toBe('completed')
-      expect(store.getRun(run.id)?.integrationStatus).toBe('merged')
-    })
-
-    test('landed is REFUSED (409) when the branch tip is not on trunk — fail closed', async () => {
-      const run = parkedRun()
-      const git = fakeGit()
-      git.isAncestor = async () => false // cherry-picked / superseded branch: tip not an ancestor
-      await startServer(git)
-      const r = await call(oz!, 'POST', `/runs/${run.id}/resolve`, { body: { disposition: 'landed' } })
-      expect(r.status).toBe(409)
-      expect(store.getRun(run.id)?.status).toBe('pending-landing') // untouched
-    })
-
-    test('only a pending-landing run takes a resolution (409 otherwise); bad disposition is 400', async () => {
-      store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
-      const done = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
-      store.setRunStatus(done.id, 'completed')
-      await startServer()
-      expect((await call(oz!, 'POST', `/runs/${done.id}/resolve`, { body: { disposition: 'discard' } })).status).toBe(409)
-      expect((await call(oz!, 'POST', `/runs/${done.id}/resolve`, { body: { disposition: 'bogus' } })).status).toBe(400)
-      expect((await call(oz!, 'POST', '/runs/nope/resolve', { body: { disposition: 'discard' } })).status).toBe(404)
-    })
-
-    test('resolve → 403 without a CSRF token (mutation gate)', async () => {
-      const run = parkedRun()
-      await startServer()
-      const r = await call(oz!, 'POST', `/runs/${run.id}/resolve`, { csrf: false, body: { disposition: 'discard' } })
-      expect(r.status).toBe(403)
-    })
-  })
 })

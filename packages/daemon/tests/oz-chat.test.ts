@@ -189,7 +189,7 @@ describe('handleOzMessage', () => {
 
     expect(result).toMatchObject({
       status: 200,
-      body: { ok: true, command: 'status', reply: `${run.id} is running on demo (integration pending).` },
+      body: { ok: true, command: 'status', reply: `${run.id} is running on demo.` },
     })
     expect(result.body.action).toMatchObject({ type: 'status', runId: run.id })
     store.close()
@@ -223,7 +223,7 @@ describe('handleOzMessage', () => {
 
     expect(result).toMatchObject({
       status: 200,
-      body: { ok: true, command: 'status', reply: `${run.id} is running on demo (integration pending).` },
+      body: { ok: true, command: 'status', reply: `${run.id} is running on demo.` },
     })
     expect(result.body.action).toMatchObject({ type: 'status', runId: run.id })
     store.close()

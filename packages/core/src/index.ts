@@ -24,15 +24,13 @@ export type {
   Workspace,
   Run,
   RunStatus,
-  IntegrationStatus,
-  CommitKind,
   Session,
   WorkItem,
   WorkItemStatus,
   CommitLink,
   RunEvent,
 } from './store/index.js'
-export { openRunStore, type OpenRunStoreOptions, SCHEMA_SQL, isFullyLanded } from './store/index.js'
+export { openRunStore, type OpenRunStoreOptions, SCHEMA_SQL } from './store/index.js'
 
 export { probeDaemon, DEFAULT_OZ_PORT, type ProbeResult, type ProbeOptions } from './liveness/index.js'
 
@@ -126,12 +124,9 @@ export {
   type CommitReceipt,
   type CommitAuthor,
 } from './commit-gate/index.js'
-export { worktreesRoot, worktreePathFor, runBranchFor } from './worktree/paths.js'
 
 export {
   runRun,
-  parseVerifyVerdict,
-  parseResolution,
   PreflightError,
   MissingObjectiveError,
   DirtyWorkingTreeError,

@@ -1,4 +1,4 @@
-# ADR-0023 — The workspace commit spine: direct-to-branch by default, isolation opt-in
+# ADR-0023 — The workspace commit spine: direct-to-branch, single mode
 
 **Status:** Accepted (founder, 2026-06-14) — decided in a direct Opus session under the priority
 [`orchestration-operating-model-reset`](../priorities/orchestration-operating-model-reset.md), outside
@@ -52,7 +52,28 @@ opt-in for genuinely risky / large / throwaway / parallel work only.
 
 ## Decision
 
-> **Amendment (founder directive, 2026-06-15) — scope is ADVISORY; the spine never withholds.** The
+> **Amendment 2 (founder directive, 2026-06-15) — the OPT-IN ISOLATION LANE (§4) is REMOVED; there is now
+> exactly ONE mode.** ADR-0023 dissolved the strand class on the *default* path but kept §4's run-worktree +
+> branch→trunk landing machinery alive as an opt-in. That surviving lane was the same funnel — its
+> **fail-closed, content-blind integration-verify landing gate** (`landRunBranch` → `runIntegrationVerify`)
+> could hold a successful run's commits off-trunk for any reason (no/garbled verdict, timeout, an unrelated
+> pre-existing red test, trunk-branch change, merge conflict), regenerating the exact "successful run can't
+> commit" symptom F14/F17/F19/F20 each patched. After six sessions chasing it, the root was named: a *second*
+> path from "actor changed a file" to "it's on trunk" with a *different* contract than the default's. The fix
+> is the same move Amendment 1 made for scope — delete the constraint at the root, don't add a valve: **the
+> isolation lane is removed.** §4 is retired; §5's `pending-landing` (its only remaining user) is retired; the
+> run worktree, run branch, integration sub-status, `landRunBranch`, integration-verify + merge-conflict Plays,
+> the daemon's strand reconciler / worktree-GC / `POST /runs/:id/resolve`, and the store's
+> `worktree_path`/`run_branch`/`integration_status` + merge-link columns are all deleted. There is now ONE
+> contract for every path: **commit everything to the currently checked-out branch, always** — so no code path
+> can hold a committed change off that branch. The verify gate (§3) stays *per-atom and in place* (it reverts a
+> failed atom's product code before the commit); it never gates *landing*, because there is no landing step.
+> The only reason a branch matters is a **shared remote** (a GitHub collaboration repo): the founder checks out
+> a feature branch, the engine commits to it and `git push`es (non-gating); the merge to the shared `main` is
+> GitHub's PR review, not the engine's. Verified green: `pnpm typecheck` + 592 tests across all packages.
+> §2/§6 stand; §4 and the `pending-landing` half of §5 are struck.
+
+> **Amendment 1 (founder directive, 2026-06-15) — scope is ADVISORY; the spine never withholds.** The
 > original §1/§5 had the scope gate *withhold* out-of-scope changes (held back → `pending-scope-decision`).
 > That residual commit-blocking regenerated the "decided but nothing lands" strand one rung up (the run_86
 > D3 strand) and is the exact constraint three rebuilds set out to remove. It is deleted at the root:

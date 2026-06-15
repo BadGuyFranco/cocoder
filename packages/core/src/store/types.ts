@@ -4,26 +4,13 @@
 // (workspaceId, priorityId, persona) — never copied (the F1/F4 rule).
 
 // `pending-scope-decision` was RETIRED (founder directive 2026-06-15): scope is advisory, the spine never
-// withholds, so there is no held-back state to park on. The only non-terminal outcome is `pending-landing`
-// (an opt-in isolation run whose branch escalated at integration, ADR-0023 §4).
-export type RunStatus = 'running' | 'completed' | 'pending-landing' | 'failed' | 'stopped'
+// withholds. The isolation lane + its `pending-landing` / branch→trunk integration sub-lifecycle were
+// REMOVED (founder directive 2026-06-15, correcting ADR-0015/0023): there is ONE mode — commit straight to
+// the checked-out branch, always — so committed work is on that branch by construction and no code path
+// can hold it off-branch. There is no strand state for anything to wait on. RunStatus is therefore the
+// whole story; every terminal outcome below is final.
+export type RunStatus = 'running' | 'completed' | 'failed' | 'stopped'
 export type WorkItemStatus = 'open' | 'done' | 'abandoned'
-
-// The branch→trunk integration sub-lifecycle (ADR-0015 §6). ORTHOGONAL to RunStatus:
-// RunStatus is authoritative for the founder-facing disposition. `completed` means the accepted
-// work is visible on trunk/main; integrationStatus proves how it landed. If atom verification
-// passes but branch→trunk integration escalates, RunStatus is `pending-landing` — never completed.
-//   pending    — branch created, not yet integrated (the default for every run + all legacy rows)
-//   resolving  — a non-fast-forward merge is being resolved by the merge-conflict Play
-//   verifying  — the merged tree is in the whole-tree integration verify (§3)
-//   merged     — branch landed on trunk (verified)
-//   escalated  — integration needs founder attention (semantic divergence, or verify fail-closed);
-//                implies RunStatus `pending-landing`, never completed.
-export type IntegrationStatus = 'pending' | 'resolving' | 'verifying' | 'merged' | 'escalated'
-
-// A commit_link row discriminator (ADR-0015 §6): an ordinary in-scope atom commit, or the
-// branch→trunk merge commit (which has no work_item_id and carries merge_sha + trunk_parent).
-export type CommitKind = 'atom' | 'merge'
 
 export interface Workspace {
   readonly id: string // stable slug, e.g. "cocoder"
@@ -38,19 +25,6 @@ export interface Run {
   readonly status: RunStatus
   readonly createdAt: number // epoch ms
   readonly endedAt: number | null
-  // Isolated working state (ADR-0015). Durable so a relaunched agent rebinds to the right
-  // worktree (§6 crash-resume). Null until the worktree is created at launch; legacy rows
-  // (pre-ADR-0015) hydrate to null/'pending'.
-  readonly worktreePath: string | null // absolute path to local/worktrees/<runId>
-  readonly runBranch: string | null // the run's branch, created from trunk tip at launch
-  readonly integrationStatus: IntegrationStatus
-}
-
-/** RunStatus is authoritative for run-process terminality; integrationStatus is the orthogonal
- *  branch→trunk sub-state. A run's work is on the shipped line only when BOTH say so. One home
- *  for this predicate so no surface re-derives terminality from two columns (F1/F3/L3). */
-export function isFullyLanded(run: Run): boolean {
-  return run.status === 'completed' && run.integrationStatus === 'merged'
 }
 
 export interface Session {
@@ -74,21 +48,17 @@ export interface WorkItem {
   readonly createdAt: number
 }
 
-/** Run↔commit linkage is a FIRST-CLASS explicit row (fixes F6) — never path-reconstructed. */
+/** Run↔commit linkage is a FIRST-CLASS explicit row (fixes F6) — never path-reconstructed. Every commit
+ *  lands directly on the checked-out branch; there is no branch→trunk merge link (the isolation lane that
+ *  produced them was removed — founder directive 2026-06-15). */
 export interface CommitLink {
   readonly id: string
   readonly runId: string
-  readonly workItemId: string | null // null for a merge link (a merge has no work item)
+  readonly workItemId: string | null
   readonly commitSha: string
   readonly message: string
   readonly files: readonly string[]
   readonly createdAt: number
-  // ADR-0015 §6 merge linkage. kind='atom' for ordinary commits (the default; legacy rows
-  // hydrate to 'atom'); kind='merge' for the branch→trunk merge, which carries the merge SHA
-  // and the trunk parent it landed on.
-  readonly kind: CommitKind
-  readonly mergeSha: string | null
-  readonly trunkParent: string | null
 }
 
 export interface RunEvent {
@@ -115,10 +85,6 @@ export interface RunStore {
 
   createRun(input: { workspaceId: string; priorityId: string }): Run
   setRunStatus(runId: string, status: RunStatus): void
-  /** Persist the run's isolated working state once the worktree is created at launch (ADR-0015 §1/§6). */
-  setWorktree(runId: string, worktreePath: string, runBranch: string): void
-  /** Transition the branch→trunk integration sub-state (ADR-0015 §6). */
-  setIntegrationStatus(runId: string, status: IntegrationStatus): void
   getRun(runId: string): Run | null
   /** Cross-run read (newest-first), optionally scoped to a workspace (ADR-0003: one WHERE).
    *  Powers Oz's run-list surface and the daemon's startup orphan reconciliation. */
@@ -142,11 +108,6 @@ export interface RunStore {
     commitSha: string
     message: string
     files: readonly string[]
-    // ADR-0015 §6: omitted ⇒ 'atom' (back-compat). A 'merge' link carries the merge SHA +
-    // trunk parent and has no workItemId.
-    kind?: CommitKind
-    mergeSha?: string | null
-    trunkParent?: string | null
   }): CommitLink
 
   recordEvent(input: { runId: string; type: string; data?: unknown }): RunEvent

@@ -18,12 +18,10 @@ CREATE TABLE IF NOT EXISTS run (
   priority_id        TEXT NOT NULL,
   status             TEXT NOT NULL,
   created_at         INTEGER NOT NULL,
-  ended_at           INTEGER,
-  -- Isolated working state (ADR-0015). worktree_path/run_branch are null until launch creates
-  -- the worktree; integration_status is the branch→trunk sub-lifecycle (default 'pending').
-  worktree_path      TEXT,
-  run_branch         TEXT,
-  integration_status TEXT NOT NULL DEFAULT 'pending'
+  ended_at           INTEGER
+  -- Single mode: every run commits straight to the checked-out branch (founder directive 2026-06-15).
+  -- The isolation lane (worktree_path / run_branch / integration_status) was removed; pre-existing dbs
+  -- retain those columns inert (no reader/writer references them).
 );
 CREATE INDEX IF NOT EXISTS idx_run_workspace ON run(workspace_id);
 
@@ -59,12 +57,9 @@ CREATE TABLE IF NOT EXISTS commit_link (
   commit_sha   TEXT NOT NULL,
   message      TEXT NOT NULL,
   files        TEXT NOT NULL,
-  created_at   INTEGER NOT NULL,
-  -- Merge linkage (ADR-0015 §6). kind='atom' (default) for ordinary commits; kind='merge' for
-  -- the branch→trunk merge, which carries merge_sha + trunk_parent and no work_item_id.
-  kind         TEXT NOT NULL DEFAULT 'atom',
-  merge_sha    TEXT,
-  trunk_parent TEXT
+  created_at   INTEGER NOT NULL
+  -- Every commit lands directly on the checked-out branch; the branch→trunk merge link
+  -- (kind/merge_sha/trunk_parent) was removed with the isolation lane (founder directive 2026-06-15).
 );
 CREATE INDEX IF NOT EXISTS idx_commit_link_run ON commit_link(run_id);
 
@@ -88,27 +83,22 @@ CREATE TABLE IF NOT EXISTS run_counter (
 INSERT OR IGNORE INTO run_counter (id, next) VALUES (0, (SELECT COUNT(*) + 1 FROM run));
 `
 
-// Additive column migrations (ADR-0015). The CREATE TABLE statements above are the current-truth
-// schema for a FRESH db, but `CREATE TABLE IF NOT EXISTS` is a no-op on an EXISTING db — so a db
-// created before these columns existed (e.g. the live local/cocoder.db with its historical runs)
-// would silently lack them. The store applies these idempotently after the schema: for each entry,
+// Additive column migrations. The CREATE TABLE statements above are the current-truth schema for a FRESH
+// db, but `CREATE TABLE IF NOT EXISTS` is a no-op on an EXISTING db — so a db created before a column
+// existed would silently lack it. The store applies these idempotently after the schema: for each entry,
 // if the column is absent (PRAGMA table_info), it runs `ALTER TABLE … ADD COLUMN`. SQLite has no
-// `ADD COLUMN IF NOT EXISTS`, hence the guard; and a NOT NULL column added to existing rows MUST
-// carry a DEFAULT, which is why integration_status/kind default rather than being bare NOT NULL.
-// Order matters only within a table (none here are interdependent). Keep in sync with CREATE TABLE.
+// `ADD COLUMN IF NOT EXISTS`, hence the guard. Keep in sync with CREATE TABLE.
+//
+// The removed isolation-lane columns (worktree_path/run_branch/integration_status on run;
+// kind/merge_sha/trunk_parent on commit_link) are intentionally NOT migrated away: a pre-existing db
+// keeps them as inert columns no code reads or writes. Dropping them is unnecessary and riskier.
 export interface ColumnMigration {
   readonly table: string
   readonly column: string
-  /** The column-definition tail after the name, e.g. "TEXT" or "TEXT NOT NULL DEFAULT 'pending'". */
+  /** The column-definition tail after the name, e.g. "TEXT" or "TEXT NOT NULL DEFAULT 'x'". */
   readonly ddl: string
 }
 
 export const COLUMN_MIGRATIONS: readonly ColumnMigration[] = [
-  { table: 'run', column: 'worktree_path', ddl: 'TEXT' },
-  { table: 'run', column: 'run_branch', ddl: 'TEXT' },
-  { table: 'run', column: 'integration_status', ddl: "TEXT NOT NULL DEFAULT 'pending'" },
-  { table: 'commit_link', column: 'kind', ddl: "TEXT NOT NULL DEFAULT 'atom'" },
-  { table: 'commit_link', column: 'merge_sha', ddl: 'TEXT' },
-  { table: 'commit_link', column: 'trunk_parent', ddl: 'TEXT' },
   { table: 'session', column: 'workspace_ref', ddl: 'TEXT' },
 ]
