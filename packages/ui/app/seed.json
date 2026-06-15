@@ -464,6 +464,12 @@
       "label": "Code review",
       "kind": "headless",
       "writeScope": []
+    },
+    {
+      "id": "pairing-session",
+      "label": "Pairing session",
+      "kind": "interactive",
+      "writeScope": []
     }
   ],
   "clis": [

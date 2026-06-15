@@ -12,6 +12,7 @@ import { phicon, type Cli, type Persona, type Play, type SubAgent } from '../mod
 // cursor-agent --list-models) get a dropdown; "Custom…" keeps the free-text escape hatch so a full model
 // id (e.g. claude-opus-4-8) can still be pinned. A model not in the list is treated as a custom value.
 const CUSTOM_MODEL = '__custom__'
+const HEADLESS_CLI_WARNING = 'Headless Play on an interactive-only CLI — would hang'
 
 function ModelControl({ cli, model, onChange, compact = false }: { cli: Cli | undefined; model: string; onChange: (model: string) => void; compact?: boolean }) {
   const canEnumerate = !!cli?.canEnumerate
@@ -44,6 +45,18 @@ function ModelControl({ cli, model, onChange, compact = false }: { cli: Cli | un
 
   if (compact) return <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>{select}{customInput}</div>
   return <>{label}{select}{customInput}</>
+}
+
+function ScopeChips({ writeScope }: { writeScope: readonly string[] }) {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, minWidth: 0 }}>
+      {writeScope.length === 0 ? (
+        <span style={{ fontSize: 11.5, color: 'var(--cb-text-muted)' }}>read-only</span>
+      ) : writeScope.map((scope) => (
+        <span key={scope} style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10.5, color: 'var(--cb-text-muted)', padding: '2px 5px', background: 'var(--cb-surface-glass)', border: '1px solid var(--cb-border)', borderRadius: 3 }}>{scope}</span>
+      ))}
+    </div>
+  )
 }
 
 function PersonaRow({ persona, plays, clis, onChange, onAddSub, onRemoveSub, onUpdateSub }: {
@@ -114,15 +127,31 @@ function PersonaRow({ persona, plays, clis, onChange, onAddSub, onRemoveSub, onU
             <div style={{ padding: '10px 14px', background: 'var(--cb-bg-soft)', border: '1px dashed var(--cb-border)', borderRadius: 'var(--cb-radius-md)', fontSize: 11.5, color: 'var(--cb-text-muted)', textAlign: 'center' }}>No Plays bound. {persona.name} runs everything itself. (A Play is a shared procedure — binding one here grants {persona.name} permission to run it.)</div>
           ) : persona.subAgents.map((sa) => {
             const subCli = clis.find((c) => c.id === sa.cli)
+            const play = plays.find((p) => p.id === sa.id)
+            const cliCanHeadless = subCli?.headlessCapable ?? true
+            const misconfigured = play?.kind === 'headless' && subCli !== undefined && !cliCanHeadless
             return (
-              <div key={sa.id} style={{ display: 'grid', gridTemplateColumns: '20px 1.5fr 1fr 1fr 30px', gap: 10, alignItems: 'center', padding: '10px 12px', background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', marginBottom: 6 }}>
-                <Icon name="git-fork" size={12} style={{ color: 'var(--cb-text-muted)', transform: 'rotate(180deg)' }} />
-                <input className="oz-input" value={sa.id} readOnly style={{ padding: '5px 8px', fontSize: 12, background: 'transparent', border: 'none', fontFamily: 'var(--cb-font-mono)' }} />
-                <select className="oz-select" value={sa.cli} style={{ padding: '5px 24px 5px 8px', fontSize: 11.5 }} onChange={(e) => onUpdateSub(persona.id, sa.id, { ...sa, cli: e.target.value, model: 'Default' })}>
-                  {clis.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                <ModelControl cli={subCli} model={sa.model} compact onChange={(model) => onUpdateSub(persona.id, sa.id, { ...sa, model })} />
-                <button className="oz-iconbtn" style={{ width: 24, height: 24 }} onClick={() => onRemoveSub(persona.id, sa.id)}><Icon name="x" size={11} /></button>
+              <div key={sa.id} data-testid="bound-play-row" style={{ padding: '10px 12px', background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', marginBottom: 6 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '20px 1.5fr 1fr 1fr 30px', gap: 10, alignItems: 'center' }}>
+                  <Icon name="git-fork" size={12} style={{ color: 'var(--cb-text-muted)', transform: 'rotate(180deg)' }} />
+                  <input className="oz-input" value={sa.id} readOnly style={{ padding: '5px 8px', fontSize: 12, background: 'transparent', border: 'none', fontFamily: 'var(--cb-font-mono)' }} />
+                  <select className="oz-select" value={sa.cli} style={{ padding: '5px 24px 5px 8px', fontSize: 11.5 }} onChange={(e) => onUpdateSub(persona.id, sa.id, { ...sa, cli: e.target.value, model: 'Default' })}>
+                    {clis.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  <ModelControl cli={subCli} model={sa.model} compact onChange={(model) => onUpdateSub(persona.id, sa.id, { ...sa, model })} />
+                  <button className="oz-iconbtn" style={{ width: 24, height: 24 }} onClick={() => onRemoveSub(persona.id, sa.id)}><Icon name="x" size={11} /></button>
+                </div>
+                {play && (
+                  <div style={{ marginTop: 8, paddingLeft: 30 }}>
+                    <ScopeChips writeScope={play.writeScope} />
+                  </div>
+                )}
+                {misconfigured && (
+                  <div style={{ marginTop: 8, marginLeft: 30, padding: '7px 9px', background: 'var(--cb-highlight-muted)', border: '1px solid rgba(212,118,110,0.2)', borderRadius: 3, fontSize: 11.5, color: 'var(--cb-highlight)', display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <Icon name="warning-circle" size={13} />
+                    <span>{HEADLESS_CLI_WARNING}</span>
+                  </div>
+                )}
               </div>
             )
           })}
@@ -145,13 +174,7 @@ function PlaysCatalog({ plays }: { plays: Play[] }) {
               <div style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 12, color: 'var(--cb-text)' }}>{play.id}</div>
               <div style={{ fontSize: 12, color: 'var(--cb-text-secondary)', minWidth: 0 }}>{play.label}</div>
               <div style={{ justifySelf: 'start', fontFamily: 'var(--cb-font-mono)', fontSize: 9.5, padding: '2px 6px', background: 'var(--cb-surface)', color: 'var(--cb-text-muted)', border: '1px solid var(--cb-border)', borderRadius: 2, textTransform: 'uppercase' }}>{play.kind}</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, minWidth: 0 }}>
-                {play.writeScope.length === 0 ? (
-                  <span style={{ fontSize: 11.5, color: 'var(--cb-text-muted)' }}>read-only</span>
-                ) : play.writeScope.map((scope) => (
-                  <span key={scope} style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10.5, color: 'var(--cb-text-muted)', padding: '2px 5px', background: 'var(--cb-surface-glass)', border: '1px solid var(--cb-border)', borderRadius: 3 }}>{scope}</span>
-                ))}
-              </div>
+              <ScopeChips writeScope={play.writeScope} />
             </div>
           ))}
         </div>

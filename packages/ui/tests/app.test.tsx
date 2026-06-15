@@ -2,8 +2,23 @@
 // so these assert the V1 mental models are present: 5-section nav, run-IS-a-priority drawer with the
 // gold handoff, Oz chat decision callout + round-trip, and the four screens.
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react'
 import { App } from '../app/App.tsx'
+
+const HEADLESS_CLI_WARNING = 'Headless Play on an interactive-only CLI — would hang'
+
+function bindBobPlay(playId: string): HTMLElement {
+  const picker = screen.getByLabelText('Bob Play') as HTMLSelectElement
+  fireEvent.change(picker, { target: { value: playId } })
+  fireEvent.click(picker.parentElement!.querySelector('button')!)
+  return boundPlayRow(playId)
+}
+
+function boundPlayRow(playId: string): HTMLElement {
+  const row = screen.getByDisplayValue(playId).closest('[data-testid="bound-play-row"]')
+  expect(row).toBeDefined()
+  return row as HTMLElement
+}
 
 describe('Oz — rebuilt Fusion renderer', () => {
   beforeEach(() => cleanup())
@@ -113,6 +128,34 @@ describe('Oz — rebuilt Fusion renderer', () => {
     expect(screen.getByDisplayValue('deep-read')).toBeDefined()
     const updated = screen.getByLabelText('Bob Play') as HTMLSelectElement
     expect(Array.from(updated.options).map((option) => option.value)).not.toContain('deep-read')
+  })
+
+  it('bound Play rows show write-scope and warn only until a headless-capable CLI is selected', () => {
+    render(<App />)
+    fireEvent.click(screen.getByText('Personas'))
+    const row = bindBobPlay('wrap-up')
+    expect(within(row).getByText('cocoder/SESSION_LOG.md')).toBeDefined()
+    expect(within(row).getByText(HEADLESS_CLI_WARNING)).toBeDefined()
+
+    fireEvent.change(within(row).getAllByRole('combobox')[0], { target: { value: 'cursor-agent' } })
+
+    const updated = boundPlayRow('wrap-up')
+    expect(within(updated).queryByText(HEADLESS_CLI_WARNING)).toBeNull()
+    expect(within(updated).getByText('cocoder/SESSION_LOG.md')).toBeDefined()
+  })
+
+  it('bound Play rows show read-only scope and do not warn for interactive Plays', () => {
+    render(<App />)
+    fireEvent.click(screen.getByText('Personas'))
+    const readOnlyRow = bindBobPlay('deep-read')
+    expect(within(readOnlyRow).getByText('read-only')).toBeDefined()
+
+    cleanup()
+    render(<App />)
+    fireEvent.click(screen.getByText('Personas'))
+    const interactiveRow = bindBobPlay('pairing-session')
+    expect(within(interactiveRow).getByText('read-only')).toBeDefined()
+    expect(within(interactiveRow).queryByText(HEADLESS_CLI_WARNING)).toBeNull()
   })
 
   it('Settings is tabbed and renders forms (Theme control + probed system deps), not JSON', () => {
