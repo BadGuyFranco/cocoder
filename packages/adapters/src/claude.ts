@@ -19,6 +19,8 @@ export class ClaudeAdapter implements Adapter {
     managesUserConfig: false,
     detail: 'managed by CoCoder: --permission-mode acceptEdits (launch flags; no user config modified)',
   }
+  // Interactive TUI with artifact-based completion; headless Play dispatch would hang.
+  readonly headlessCapable = false
   readonly #exec: Exec
   constructor(exec: Exec = defaultExec) {
     this.#exec = exec

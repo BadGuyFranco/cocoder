@@ -27,6 +27,7 @@ const clisFx = {
       auth: { ok: true, detail: 'authenticated' },
       models: { canEnumerate: true, models: ['opus'], detail: 'listed models' },
       configManaged: { mechanism: 'env', flags: ['--model'], managesUserConfig: true, detail: 'ready' },
+      headlessCapable: false,
     },
     {
       id: 'codex',
@@ -36,6 +37,7 @@ const clisFx = {
       auth: { ok: false, detail: 'not probed' },
       models: { canEnumerate: false, models: [], detail: 'free-text model entry' },
       configManaged: { mechanism: 'none', flags: [], managesUserConfig: false, detail: 'not checked' },
+      headlessCapable: false,
     },
     {
       id: 'cursor-agent',
@@ -45,6 +47,7 @@ const clisFx = {
       auth: { ok: true, detail: 'authenticated' },
       models: { canEnumerate: false, models: [], detail: 'free-text model entry' },
       configManaged: { mechanism: 'env', flags: ['--model'], managesUserConfig: true, detail: 'ready' },
+      headlessCapable: true,
     },
   ],
 }

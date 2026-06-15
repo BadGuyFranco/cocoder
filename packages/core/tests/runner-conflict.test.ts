@@ -30,6 +30,7 @@ const g = (cwd: string, args: string[]): Promise<string> => exec('git', ['-C', c
 const promptAdapter: Adapter = {
   id: 'x',
   runReadiness: { mechanism: 'launch-flags', flags: [], managesUserConfig: false, detail: 'test adapter' },
+  headlessCapable: false,
   build: (i) => ({ command: 'x', args: [i.prompt] }),
   preflight: async () => ({ ok: true, checks: [] }),
   listModels: async () => ({ canEnumerate: false, models: [], detail: 'test adapter' }),

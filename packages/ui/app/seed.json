@@ -476,6 +476,7 @@
       "status": "ok",
       "tested": true,
       "canEnumerate": true,
+      "headlessCapable": false,
       "lastTested": "12 min ago",
       "models": [
         "Default",
@@ -493,6 +494,7 @@
       "status": "auth-failed",
       "tested": true,
       "canEnumerate": true,
+      "headlessCapable": false,
       "lastTested": "1 hr ago",
       "errorDetail": "401 Unauthorized — token expired Tue 02:14 AM. Run `codex auth login`.",
       "models": [
@@ -510,6 +512,7 @@
       "status": "auth-failed",
       "tested": true,
       "canEnumerate": true,
+      "headlessCapable": true,
       "lastTested": "yesterday",
       "errorDetail": "Token expired. Re-auth via Cursor desktop app.",
       "models": [
@@ -527,6 +530,7 @@
       "status": "ok",
       "tested": true,
       "canEnumerate": true,
+      "headlessCapable": false,
       "lastTested": "3 min ago",
       "models": [
         "Default",
@@ -543,6 +547,7 @@
       "status": "not-installed",
       "tested": true,
       "canEnumerate": true,
+      "headlessCapable": false,
       "lastTested": "never",
       "errorDetail": "Not found on PATH. Install via `npm i -g @xai/grok-cli`.",
       "models": []

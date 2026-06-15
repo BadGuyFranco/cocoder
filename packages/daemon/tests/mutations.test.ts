@@ -18,6 +18,7 @@ const COCODER_GOVERNANCE = { name: 'cocoder-governance', email: 'governance@coco
 const okAdapter: Adapter = {
   id: 'any',
   runReadiness: { mechanism: 'launch-flags', flags: [], managesUserConfig: false, detail: 'test adapter' },
+  headlessCapable: false,
   build: () => ({ command: 'x', args: [] }),
   preflight: async () => ({ ok: true, checks: [{ name: 'installed', ok: true, detail: 'ok' }] }),
   listModels: async () => ({ canEnumerate: false, models: [], detail: 'test adapter' }),
@@ -26,9 +27,10 @@ interface CliAdapterCalls {
   preflight: number
   listModels: number
 }
-const cliAdapter = (id: string, detail: string, calls?: CliAdapterCalls): Adapter => ({
+const cliAdapter = (id: string, detail: string, calls?: CliAdapterCalls, headlessCapable = false): Adapter => ({
   id,
   runReadiness: { mechanism: 'launch-flags', flags: [`--${id}`], managesUserConfig: false, detail },
+  headlessCapable,
   build: () => ({ command: id, args: [] }),
   preflight: async () => {
     if (calls) calls.preflight += 1
@@ -650,6 +652,7 @@ describe('Oz mutations + lifecycle', () => {
         auth: { ok: false, detail: 'not yet tested' },
         models: { canEnumerate: false, models: [], detail: 'not yet tested' },
         configManaged: adapters[0]!.runReadiness,
+        headlessCapable: false,
       },
       {
         id: 'beta',
@@ -659,8 +662,40 @@ describe('Oz mutations + lifecycle', () => {
         auth: { ok: false, detail: 'not yet tested' },
         models: { canEnumerate: false, models: [], detail: 'not yet tested' },
         configManaged: adapters[1]!.runReadiness,
+        headlessCapable: false,
       },
     ])
+  })
+
+  test('GET /clis surfaces headless capability from each adapter', async () => {
+    const adapters = [
+      cliAdapter('claude', 'managed claude', undefined, false),
+      cliAdapter('codex', 'managed codex', undefined, false),
+      cliAdapter('cursor-agent', 'managed cursor-agent', undefined, true),
+    ]
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit(),
+      sessionHost: fakeHost(),
+      getAdapter: (cli) => {
+        const adapter = adapters.find((a) => a.id === cli)
+        if (!adapter) throw new Error('unknown cli')
+        return adapter
+      },
+      listAdapters: () => adapters,
+      io: fakeIO(),
+    })
+
+    const r = await call(oz, 'GET', '/clis')
+
+    expect(r.status).toBe(200)
+    expect(Object.fromEntries(r.json.clis.map((cli: { id: string; headlessCapable: boolean }) => [cli.id, cli.headlessCapable]))).toEqual({
+      claude: false,
+      codex: false,
+      'cursor-agent': true,
+    })
   })
 
   test('warmCliCacheOnBoot probes every CLI once at boot so /clis shows models without a manual Test', async () => {
@@ -721,6 +756,7 @@ describe('Oz mutations + lifecycle', () => {
       auth: { ok: true, detail: 'alpha authenticated' },
       models: { canEnumerate: true, models: ['alpha-model-a', 'alpha-model-b'], detail: 'alpha model list' },
       configManaged: adapters[0]!.runReadiness,
+      headlessCapable: false,
     })
     expect(tested.json.cli.testedAt).toEqual(expect.any(Number))
 

@@ -79,6 +79,7 @@ function adapter(prompts: string[] = []): Adapter {
   return {
     id: 'codex',
     runReadiness: { mechanism: 'launch-flags', flags: [], managesUserConfig: false, detail: 'test adapter' },
+    headlessCapable: false,
     build(input) {
       prompts.push(input.prompt)
       return { command: 'codex', args: ['--prompt', input.prompt] }

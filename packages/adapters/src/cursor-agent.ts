@@ -14,6 +14,8 @@ export class CursorAgentAdapter implements Adapter {
     managesUserConfig: false,
     detail: 'managed by CoCoder: --force --trust (launch flags; no user config modified)',
   }
+  // Print-mode subprocess with stdout capture; safe for headless Play dispatch.
+  readonly headlessCapable = true
   readonly #exec: Exec
   constructor(exec: Exec = defaultExec) {
     this.#exec = exec

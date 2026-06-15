@@ -523,6 +523,7 @@ function fakeAdapter(prompts: BuildInput[]): Adapter {
   return {
     id: 'fake',
     runReadiness: { mechanism: 'launch-flags', flags: [], managesUserConfig: false, detail: 'fake' },
+    headlessCapable: false,
     build(input) {
       prompts.push(input)
       return { command: 'fake-cli', args: ['--answer'] }

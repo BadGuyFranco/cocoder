@@ -109,6 +109,7 @@ function scriptedGit(): Git {
 const adapter: Adapter = {
   id: 'any',
   runReadiness: { mechanism: 'launch-flags', flags: [], managesUserConfig: false, detail: 'test adapter' },
+  headlessCapable: false,
   build: (input) => ({ command: input.persona, args: ['--prompt', input.prompt] }),
   preflight: async () => ({ ok: true, checks: [{ name: 'installed', ok: true, detail: 'ok' }] }),
   listModels: async () => ({ canEnumerate: false, models: [], detail: 'test adapter' }),

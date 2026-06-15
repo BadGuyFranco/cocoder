@@ -20,6 +20,7 @@ interface CliView {
   readonly auth: CheckView
   readonly models: ModelListResult
   readonly configManaged: RunReadinessProfile
+  readonly headlessCapable: boolean
 }
 
 interface CliListResponse {
@@ -47,6 +48,7 @@ export function cliView(adapter: Adapter, entry?: CliTestEntry): CliView {
     auth: entry ? checkView(entry.preflight.checks, 'authenticated') : UNTESTED_CHECK,
     models: entry?.models ?? UNTESTED_MODELS,
     configManaged: adapter.runReadiness,
+    headlessCapable: adapter.headlessCapable,
   }
 }
 

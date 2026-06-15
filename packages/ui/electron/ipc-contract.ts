@@ -192,6 +192,7 @@ export interface CliView {
   readonly auth: CliCheckView
   readonly models: CliModelsView
   readonly configManaged: CliRunReadinessView
+  readonly headlessCapable: boolean
 }
 export interface ClisResponse {
   readonly clis: readonly CliView[]

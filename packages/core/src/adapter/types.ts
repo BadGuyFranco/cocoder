@@ -64,6 +64,9 @@ export interface Adapter {
   /** Single source of this CLI's non-interactive readiness flags.
    *  build() consumes this value, and the CLIs screen surfaces it as config-managed state. */
   readonly runReadiness: RunReadinessProfile
+  /** Whether this CLI can run a headless Play as a non-interactive subprocess;
+   *  false for interactive-TUI/artifact-completion CLIs. */
+  readonly headlessCapable: boolean
   /** Build the pinned headless invocation. The driver adds `< /dev/null` + cd-prepend. */
   build(input: BuildInput): BuiltCommand
   /** Deterministic preflight; blocks launch on failure with a clear per-check reason. */

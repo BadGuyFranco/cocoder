@@ -95,6 +95,7 @@ export function adaptCli(view: CliView): Cli {
     lastTested: view.testedAt == null ? 'never' : fmtTime(view.testedAt),
     models: ['Default', ...view.models.models],
     canEnumerate: view.models.canEnumerate,
+    headlessCapable: view.headlessCapable,
     modelsDetail: view.models.detail,
     runReadiness: {
       mechanism: view.configManaged.mechanism,

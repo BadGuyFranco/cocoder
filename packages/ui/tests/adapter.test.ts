@@ -51,6 +51,7 @@ type CliViewOverrides = {
   auth?: Partial<CliCheckView>
   models?: Partial<CliModelsView>
   configManaged?: Partial<CliRunReadinessView>
+  headlessCapable?: boolean
 }
 
 function cliView(overrides: CliViewOverrides = {}): CliView {
@@ -62,6 +63,7 @@ function cliView(overrides: CliViewOverrides = {}): CliView {
     auth: { ok: true, detail: 'authenticated', ...(overrides.auth ?? {}) },
     models: { canEnumerate: true, models: ['opus', 'sonnet'], detail: 'listed models', ...(overrides.models ?? {}) },
     configManaged: { mechanism: 'env', flags: ['--model'], managesUserConfig: false, detail: 'ready', ...(overrides.configManaged ?? {}) },
+    headlessCapable: overrides.headlessCapable ?? false,
   }
 }
 
@@ -419,11 +421,17 @@ describe('clis', () => {
       lastTested: fmtTime(1780153227239),
       tested: true,
       canEnumerate: true,
+      headlessCapable: false,
       modelsDetail: 'listed models',
       errorDetail: null,
     })
     expect(cli.models).toEqual(['Default', 'opus', 'sonnet'])
     expect(cli.runReadiness).toEqual({ mechanism: 'env', flags: ['--model'], managesUserConfig: false, detail: 'ready' })
+  })
+
+  it('preserves headless capability from the daemon CLI view', () => {
+    expect(adaptCli(cliView({ id: 'cursor-agent', headlessCapable: true })).headlessCapable).toBe(true)
+    expect(adaptCli(cliView({ id: 'claude', headlessCapable: false })).headlessCapable).toBe(false)
   })
 
   it('maps install failure to not-installed with install detail', () => {

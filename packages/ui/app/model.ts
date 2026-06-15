@@ -48,7 +48,7 @@ export interface CliRunReadiness {
 export interface Cli {
   id: string; name: string; vendor: string; status: CliStatus
   version: string; lastTested: string; models: string[]; errorDetail?: string | null
-  tested: boolean; canEnumerate: boolean; modelsDetail?: string; runReadiness?: CliRunReadiness
+  tested: boolean; canEnumerate: boolean; headlessCapable: boolean; modelsDetail?: string; runReadiness?: CliRunReadiness
 }
 export type DepStatus = 'ok' | 'not-installed'
 export interface Dependency {
