@@ -14,7 +14,7 @@
           "model": ""
         },
         "integration-verify": {
-          "cli": "codex",
+          "cli": "claude",
           "model": ""
         },
         "merge-conflict": {
