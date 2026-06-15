@@ -7,6 +7,10 @@
         "code-review": {
           "cli": "claude",
           "model": ""
+        },
+        "wrap-up": {
+          "cli": "claude",
+          "model": ""
         }
       }
     },
