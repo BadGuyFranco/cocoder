@@ -4,10 +4,6 @@
       "cli": "claude",
       "model": "sonnet",
       "plays": {
-        "code-review": {
-          "cli": "claude",
-          "model": ""
-        },
         "wrap-up": {
           "cli": "claude",
           "model": ""
