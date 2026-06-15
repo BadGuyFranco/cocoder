@@ -20,6 +20,10 @@
         "merge-conflict": {
           "cli": "claude",
           "model": ""
+        },
+        "code-review": {
+          "cli": "claude",
+          "model": ""
         }
       }
     },
