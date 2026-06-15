@@ -18,7 +18,7 @@
           "model": ""
         },
         "merge-conflict": {
-          "cli": "claude",
+          "cli": "cursor-agent",
           "model": ""
         },
         "code-review": {
