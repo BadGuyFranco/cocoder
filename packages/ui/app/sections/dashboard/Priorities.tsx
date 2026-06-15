@@ -7,9 +7,11 @@ import { Icon, StatusChip, Button } from '../../ui/primitives.tsx'
 import { isActiveRun } from '../../adapter.ts'
 import type { Priority, Run } from '../../model.ts'
 
-function PriorityRow({ priority, index, onLaunch, onDrag, isDragging, isDropTarget, onSelectRun, runs, selectedRunId }: {
+const LAUNCH_BLOCKED_HINT = 'A run is active in this workspace — only one run executes at a time (single-writer lock). It frees up when the run finishes.'
+
+function PriorityRow({ priority, index, onLaunch, onDrag, isDragging, isDropTarget, onSelectRun, runs, selectedRunId, launchBlocked }: {
   priority: Priority; index: number; onLaunch: (p: Priority) => void; onDrag: (type: string, index: number) => void
-  isDragging: boolean; isDropTarget: boolean; onSelectRun: (id: string) => void; runs: Run[]; selectedRunId: string | null
+  isDragging: boolean; isDropTarget: boolean; onSelectRun: (id: string) => void; runs: Run[]; selectedRunId: string | null; launchBlocked: boolean
 }) {
   const linkedRun = priority.runId ? runs.find((r) => r.id === priority.runId) : null
   const isActive = !!linkedRun && isActiveRun(linkedRun.status)
@@ -48,7 +50,7 @@ function PriorityRow({ priority, index, onLaunch, onDrag, isDragging, isDropTarg
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 36, flexWrap: 'wrap' }}>
         {linkedRun ? <StatusChip status={linkedRun.status} /> : <StatusChip status={priority.status} label={priority.status === 'ready' ? 'Ready' : priority.status} />}
         {priority.labels.map((l) => <span key={l} style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 9.5, color: 'var(--cb-text-muted)', padding: '2px 6px', border: '1px solid var(--cb-border)', borderRadius: 2 }}>{l}</span>)}
-        <div style={{ marginLeft: 'auto' }}>{!isActive && <Button variant="secondary" size="sm" icon="play" onClick={(e) => { e.stopPropagation(); onLaunch(priority) }}>Launch</Button>}</div>
+        <div style={{ marginLeft: 'auto' }}>{!isActive && <Button variant="secondary" size="sm" icon="play" disabled={launchBlocked} title={launchBlocked ? LAUNCH_BLOCKED_HINT : undefined} onClick={(e) => { e.stopPropagation(); onLaunch(priority) }}>Launch</Button>}</div>
       </div>
       {isActive && linkedRun && (
         <div style={{ marginTop: 10, marginLeft: 36, paddingTop: 10, borderTop: '1px solid var(--cb-border)', position: 'relative' }}>
@@ -66,7 +68,7 @@ function PriorityRow({ priority, index, onLaunch, onDrag, isDragging, isDropTarg
   )
 }
 
-function AdhocPriorityRow({ adhocRuns, onLaunch, onSelectRun, selectedRunId }: { adhocRuns: Run[]; onLaunch: () => void; onSelectRun: (id: string) => void; selectedRunId: string | null }) {
+function AdhocPriorityRow({ adhocRuns, onLaunch, onSelectRun, selectedRunId, launchBlocked }: { adhocRuns: Run[]; onLaunch: () => void; onSelectRun: (id: string) => void; selectedRunId: string | null; launchBlocked: boolean }) {
   const activeCount = adhocRuns.filter((r) => isActiveRun(r.status)).length
   const hasSelected = adhocRuns.some((r) => r.id === selectedRunId)
   const borderColor = hasSelected ? 'var(--cb-accent)' : adhocRuns.length > 0 ? 'var(--cb-accent-30)' : 'var(--cb-border)'
@@ -84,7 +86,7 @@ function AdhocPriorityRow({ adhocRuns, onLaunch, onSelectRun, selectedRunId }: {
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 36 }}>
         {activeCount > 0 ? <span className="oz-chip oz-chip-running"><span className="dot" />{activeCount} active</span> : <StatusChip status="ready" label="Ready" />}
-        <div style={{ marginLeft: 'auto' }}><Button variant="secondary" size="sm" icon="play" onClick={(e) => { e.stopPropagation(); onLaunch() }}>Launch run</Button></div>
+        <div style={{ marginLeft: 'auto' }}><Button variant="secondary" size="sm" icon="play" disabled={launchBlocked} title={launchBlocked ? LAUNCH_BLOCKED_HINT : undefined} onClick={(e) => { e.stopPropagation(); onLaunch() }}>Launch run</Button></div>
       </div>
       {adhocRuns.length > 0 && (
         <div style={{ marginTop: 10, marginLeft: 36, paddingTop: 10, borderTop: '1px solid var(--cb-border)' }}>
@@ -119,6 +121,10 @@ export function PrioritiesPanel({ priorities, runs, onReorder, onLaunch, onAdhoc
     else if (type === 'end') setDrag({ from: null, over: null })
   }
   const adhocRuns = runs.filter((r) => !r.priorityId && isActiveRun(r.status))
+  // The daemon serializes runs per workspace (single-writer lock, ADR-0004): a POST /runs while a run is
+  // executing 409s. Mirror that here so Launch is legibly disabled instead of silently failing. Only a
+  // truly in-flight ('running') run holds the lock — blocked / not-landed runs have ended.
+  const launchBlocked = runs.some((r) => r.status === 'running')
   return (
     <div className="oz-panel" style={{ height: '100%' }}>
       <div className="oz-panel-header">
@@ -133,7 +139,7 @@ export function PrioritiesPanel({ priorities, runs, onReorder, onLaunch, onAdhoc
         </div>
       </div>
       <div className="oz-panel-body">
-        <AdhocPriorityRow adhocRuns={adhocRuns} onLaunch={onAdhoc} onSelectRun={onSelectRun} selectedRunId={selectedRunId} />
+        <AdhocPriorityRow adhocRuns={adhocRuns} onLaunch={onAdhoc} onSelectRun={onSelectRun} selectedRunId={selectedRunId} launchBlocked={launchBlocked} />
         {priorities.length === 0 ? (
           <div className="oz-empty" style={{ padding: '32px 16px' }}>
             <div className="oz-empty-icon" style={{ width: 44, height: 44 }}><Icon name="list-numbers" size={22} /></div>
@@ -146,7 +152,7 @@ export function PrioritiesPanel({ priorities, runs, onReorder, onLaunch, onAdhoc
             <div style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 9.5, color: 'var(--cb-text-muted)', letterSpacing: 0.5, padding: '4px 4px 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
               <span>QUEUE · ↑ TOP = NEXT UP</span><span style={{ flex: 1, height: 1, background: 'var(--cb-border)' }} />
             </div>
-            {priorities.map((p, i) => <PriorityRow key={p.id} priority={p} index={i} onLaunch={onLaunch} onSelectRun={onSelectRun} onDrag={handleDrag} isDragging={drag.from === i} isDropTarget={drag.over === i && drag.from !== i} runs={runs} selectedRunId={selectedRunId} />)}
+            {priorities.map((p, i) => <PriorityRow key={p.id} priority={p} index={i} onLaunch={onLaunch} onSelectRun={onSelectRun} onDrag={handleDrag} isDragging={drag.from === i} isDropTarget={drag.over === i && drag.from !== i} runs={runs} selectedRunId={selectedRunId} launchBlocked={launchBlocked} />)}
           </>
         )}
       </div>
