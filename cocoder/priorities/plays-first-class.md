@@ -37,15 +37,21 @@ Play** on different models, and any **dynamic per-persona sub-delegation** ("a d
 sub-agent task"). Both need schema + engine changes and fight the current one-level-deep,
 no-further-delegation dispatch model (`packages/core/src/plays/dispatch.ts`). Decide in the ADR first.
 
-## Status — ARCHIVE-CANDIDATE (2026-06-15, run_88)
+## Status — ARCHIVE-CANDIDATE (2026-06-15, re-verified run_89)
 
-All four deliverables shipped and verified (root typecheck clean; core 280 / daemon 204 / ui 112 green):
+All four deliverables shipped and verified. Re-verified this run: root typecheck clean; full suite
+**592 green** (core 257 / daemon 180 / ui 108 / adapters 17 / personas 15 / session-hosts 13 / cli 2):
 
 1. ✅ `GET /workspaces/:id/plays` effective catalog endpoint — `cb20af3` (reuses `listEffectivePlays`).
-2. ✅ Read-only Plays catalog section inside the Personas screen (no 6th nav item) — `595f70e`.
+2. ✅ Read-only Plays catalog (id/label/kind/write-scope). Originally shipped as a section inside the
+   Personas screen — `595f70e`. **Relocated by founder directive to its own top-level Plays nav item**
+   (`12d2f0c`): the "five top-level nav items only" rule was a design-ref mockup artifact, not an
+   enforced constraint, so the Objective's "NOT a 6th nav item" boundary was superseded by the founder.
+   Catalog substance unchanged; Personas keeps the per-persona binding picker + bound-play scope.
 3. ✅ Free-text play-id box replaced by a catalog picker; uncatalogued ids impossible by construction — `222ae75`.
 4. ✅ Permission surfacing: write-scope chips per binding + ⚠️ headless-Play-on-non-headless-capable-CLI
    warning, proven by a negative test not to misfire — capability data `20260c4`, UI `eb691a8`.
 
-**Verified-when criteria are met.** Remaining work is only the deferred boundary above — it needs the ADR
-first and is the natural next priority. Recommend archiving this priority once the founder confirms.
+**Verified-when criteria are met.** Remaining work is only the deferred boundary above (multi-binding +
+dynamic per-persona sub-delegation) — it needs the ADR first and is the natural next priority. Recommend
+archiving this priority once the founder confirms.
