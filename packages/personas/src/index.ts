@@ -12,3 +12,7 @@ export function basePlaysDir(): string {
 export function basePrioritiesDir(): string {
   return join(dirname(fileURLToPath(import.meta.url)), '..', 'base', 'priorities')
 }
+
+export function basePlaybooksDir(): string {
+  return join(dirname(fileURLToPath(import.meta.url)), '..', 'base', 'playbooks')
+}
