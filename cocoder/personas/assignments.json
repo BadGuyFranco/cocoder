@@ -22,7 +22,7 @@
           "model": ""
         },
         "code-review": {
-          "cli": "claude",
+          "cli": "cursor-agent",
           "model": ""
         }
       }
