@@ -12,6 +12,35 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-15 — **Plays first-class + persona-bound: full catalog→binding→permission-surfacing shipped (5 atoms)**
+
+**Persona:** Oscar (orchestrator) + Bob (builder, codex) | **Priority:** [plays-first-class](./priorities/plays-first-class.md) | **Plan:** 5-atom loop (run_88)
+**Outcomes:**
+- **All four founder deliverables shipped and verified** end-to-end: the founder can browse the real Play
+  catalog, attach a Play to a persona via the UI, see each bound Play's write-scope, and get a trustworthy
+  ⚠️ when a headless Play is pinned to a CLI that cannot run it.
+- **Atom 1 (`cb20af3`)** — `GET /workspaces/:id/plays` daemon endpoint returns the *effective* catalog
+  (base + repo deltas), reusing the existing `listEffectivePlays` merge (no new merge logic); mirrors the
+  personas endpoint. **Atom 2 (`595f70e`)** — read-only Plays catalog section *inside* the Personas screen
+  (no 6th nav item; the five-nav rule holds). **Atom 3 (`222ae75`)** — the free-text play-id box became a
+  catalog picker; binding an uncatalogued/typo id is now impossible by construction (the structural
+  replacement for ad-hoc validation). **Atom 4 (`20260c4`)** — CLI headless-capability promoted from prose
+  in the adapter headers to first-class data: required `Adapter.headlessCapable` (claude:false, codex:false,
+  cursor-agent:true), threaded unchanged through `/clis` → renderer `Cli`. **Atom 5 (`eb691a8`)** —
+  write-scope chips + the ⚠️ misconfig warning at each binding.
+- **The warning is proven not to misfire.** The capability was made real data (not a UI hardcode) precisely
+  so the ⚠️ never fires on a valid binding; atom 5 ships a negative test (interactive Play, and headless Play
+  on a headless-capable CLI → silent) alongside the positive case. This is the warning that would have caught
+  the live `integration-verify`/`merge-conflict`→claude hang that motivated the priority.
+- **Verified each atom on evidence at its gate** (read the diff + ran tests/typecheck myself, not the
+  builder's word): final state — root `pnpm typecheck` clean; core 280, daemon 204, ui 112 all green. Scope
+  stayed within each atom's declared write-fence.
+**Next:** Priority is **archive-candidate** — objective met with evidence, docs current, no hidden follow-up.
+The only remaining work is the **explicitly deferred boundary**: multi-bindings of the same Play on different
+models, and dynamic per-persona sub-delegation — both require schema + dispatch-engine changes and an **ADR
+first** (they fight the one-level-deep dispatch model in `packages/core/src/plays/dispatch.ts`). Recommend the
+founder either archive `plays-first-class` and open that ADR as the next priority, or confirm archive.
+
 ## 2026-06-15 — **Scope made advisory: the commit spine never withholds (the constraint itself removed)**
 
 **Persona:** Opus (direct session) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Plan:** remove the commit-blocking constraint at the root (founder directive)
