@@ -9,6 +9,7 @@ import type {
   RunSummary,
   RunDetail,
   PersonasResponse,
+  PlaysResponse,
   PersonaAssignment,
   ClisResponse,
   CliTestResponse,
@@ -16,7 +17,7 @@ import type {
   WorkspaceFolder,
 } from '../electron/ipc-contract.ts'
 import { adaptWorkspace, adaptRuns, adaptPriorities, adaptRunDetail, adaptPersonas, adaptCli } from './adapter.ts'
-import type { Workspace, Priority, Run, Persona, Cli, ChatMessage } from './model.ts'
+import type { Workspace, Priority, Run, Persona, Play, Cli, ChatMessage } from './model.ts'
 
 export type { ConnectionState }
 
@@ -29,6 +30,7 @@ export interface WsData {
   priorities: Priority[]
   runs: Run[]
   personas: Persona[]
+  plays: Play[]
   assignments: Record<string, PersonaAssignment>
   configured: boolean
   names: Record<string, string> // priorityId → title, for titling runs during polling
@@ -51,10 +53,11 @@ export async function loadClis(oz: OzApi): Promise<Cli[]> {
 // Fetch the three per-workspace surfaces in parallel and adapt them. A failed sub-fetch degrades that
 // surface to empty rather than failing the whole load.
 export async function loadWsData(oz: OzApi, wsId: string): Promise<WsData> {
-  const [pr, ru, pe] = await Promise.all([
+  const [pr, ru, pe, pl] = await Promise.all([
     oz.daemonGet<{ priorities: DPriority[] }>(`/workspaces/${wsId}/priorities`),
     oz.daemonGet<{ runs: RunSummary[] }>(`/runs?workspace=${encodeURIComponent(wsId)}`),
     oz.daemonGet<PersonasResponse>(`/workspaces/${wsId}/personas`),
+    oz.daemonGet<PlaysResponse>(`/workspaces/${wsId}/plays`),
   ])
   const dPriorities = pr.ok ? pr.data.priorities ?? [] : []
   const dRuns = ru.ok ? ru.data.runs ?? [] : []
@@ -63,8 +66,9 @@ export async function loadWsData(oz: OzApi, wsId: string): Promise<WsData> {
   const priorities = adaptPriorities(dPriorities, runs)
   const assignments = pe.ok ? pe.data.assignments ?? {} : {}
   const personas = pe.ok ? adaptPersonas(pe.data) : []
+  const plays = pl.ok ? [...(pl.data.plays ?? [])] : []
   const configured = pe.ok ? Object.keys(assignments).length > 0 : true
-  return { priorities, runs, personas, assignments, configured, names }
+  return { priorities, runs, personas, plays, assignments, configured, names }
 }
 
 // Poll one run's detail → an enriched Run (transcript + evidence + personas). Null on a failed fetch

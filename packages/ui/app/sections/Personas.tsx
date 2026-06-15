@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { Icon, Button, Card, ScreenHeader } from '../ui/primitives.tsx'
 import { SessionNote } from '../ui/PendingBanner.tsx'
 import { modelIsStale } from '../adapter.ts'
-import { phicon, type Cli, type Persona, type SubAgent } from '../model.ts'
+import { phicon, type Cli, type Persona, type Play, type SubAgent } from '../model.ts'
 
 // Sentinel select value: "type a model name yourself". Enumerable CLIs (claude/codex curated aliases,
 // cursor-agent --list-models) get a dropdown; "Custom…" keeps the free-text escape hatch so a full model
@@ -127,8 +127,36 @@ function PersonaRow({ persona, clis, onChange, onAddSub, onRemoveSub, onUpdateSu
   )
 }
 
-export function PersonasScreen({ personas, clis, onChange, onAddSub, onRemoveSub, onUpdateSub, onNewPersonaAsPriority, live = false }: {
-  personas: Persona[]; clis: Cli[]; onChange: (id: string, p: Persona) => void
+function PlaysCatalog({ plays }: { plays: Play[] }) {
+  return (
+    <Card style={{ marginBottom: 16 }}>
+      <div style={{ padding: '14px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--cb-font-display)', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--cb-text-muted)', marginBottom: 10 }}>
+          <Icon name="tree-structure" size={13} />Plays catalog · {plays.length}
+        </div>
+        <div style={{ display: 'grid', gap: 6 }}>
+          {plays.map((play) => (
+            <div key={play.id} data-testid="play-row" style={{ display: 'grid', gridTemplateColumns: '1.1fr 1.5fr 110px minmax(160px, 2fr)', gap: 10, alignItems: 'center', padding: '10px 12px', background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)' }}>
+              <div style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 12, color: 'var(--cb-text)' }}>{play.id}</div>
+              <div style={{ fontSize: 12, color: 'var(--cb-text-secondary)', minWidth: 0 }}>{play.label}</div>
+              <div style={{ justifySelf: 'start', fontFamily: 'var(--cb-font-mono)', fontSize: 9.5, padding: '2px 6px', background: 'var(--cb-surface)', color: 'var(--cb-text-muted)', border: '1px solid var(--cb-border)', borderRadius: 2, textTransform: 'uppercase' }}>{play.kind}</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, minWidth: 0 }}>
+                {play.writeScope.length === 0 ? (
+                  <span style={{ fontSize: 11.5, color: 'var(--cb-text-muted)' }}>read-only</span>
+                ) : play.writeScope.map((scope) => (
+                  <span key={scope} style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10.5, color: 'var(--cb-text-muted)', padding: '2px 5px', background: 'var(--cb-surface-glass)', border: '1px solid var(--cb-border)', borderRadius: 3 }}>{scope}</span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+export function PersonasScreen({ personas, plays, clis, onChange, onAddSub, onRemoveSub, onUpdateSub, onNewPersonaAsPriority, live = false }: {
+  personas: Persona[]; plays: Play[]; clis: Cli[]; onChange: (id: string, p: Persona) => void
   onAddSub: (pid: string, playId: string) => void; onRemoveSub: (pid: string, sid: string) => void; onUpdateSub: (pid: string, sid: string, sa: SubAgent) => void; onNewPersonaAsPriority: () => void; live?: boolean
 }) {
   return (
@@ -143,6 +171,7 @@ export function PersonasScreen({ personas, clis, onChange, onAddSub, onRemoveSub
           </div>
         </div>
         <SessionNote live={live}>CLI, model, and Play (skill) assignments save to the workspace. Run-mode currently takes effect for <strong>Oscar and Bob</strong> only — for other personas it’s a preview the runner doesn’t honor yet.</SessionNote>
+        <PlaysCatalog plays={plays} />
         {personas.map((p) => <PersonaRow key={p.id} persona={p} clis={clis} onChange={(next) => onChange(p.id, next)} onAddSub={onAddSub} onRemoveSub={onRemoveSub} onUpdateSub={onUpdateSub} />)}
       </div>
     </div>

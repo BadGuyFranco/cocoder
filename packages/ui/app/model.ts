@@ -32,6 +32,9 @@ export interface Run {
   progress?: number | null; lastEvent?: string; attachCmd?: string
   transcript?: TranscriptLine[]; evidence?: EvidenceItem[]
 }
+export interface Play {
+  id: string; label: string; kind: 'headless' | 'interactive'; writeScope: readonly string[]
+}
 export interface SubAgent { id: string; name: string; cli: string; model: string }
 export interface Persona {
   id: string; name: string; role: string; description: string; icon: string
@@ -72,6 +75,7 @@ interface Seed {
   workspaces: Workspace[]
   priorities: Record<string, Priority[]>
   runsByWs: Record<string, Run[]>
+  plays: Play[]
   personas: Persona[]
   clis: Cli[]
   dependencies: Dependency[]

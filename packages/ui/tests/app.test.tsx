@@ -92,6 +92,16 @@ describe('Oz — rebuilt Fusion renderer', () => {
     expect(screen.getAllByText(/HEADLESS/i).length).toBeGreaterThan(0)
   })
 
+  it('Personas screen shows the read-only Plays catalog', () => {
+    render(<App />)
+    fireEvent.click(screen.getByText('Personas'))
+    expect(screen.getByText(/Plays catalog/)).toBeDefined()
+    expect(screen.getAllByTestId('play-row').length).toBeGreaterThan(0)
+    expect(screen.getByText('wrap-up')).toBeDefined()
+    expect(screen.getAllByText(/headless/i).length).toBeGreaterThan(0)
+    expect(screen.getByText('cocoder/SESSION_LOG.md')).toBeDefined()
+  })
+
   it('Settings is tabbed and renders forms (Theme control + probed system deps), not JSON', () => {
     render(<App />)
     fireEvent.click(screen.getByText('Settings'))

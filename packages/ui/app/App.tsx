@@ -14,7 +14,7 @@ import { CLIsScreen } from './sections/CLIs.tsx'
 import { PersonasScreen } from './sections/Personas.tsx'
 import { SettingsScreen } from './sections/Settings.tsx'
 import { NewWorkspaceModal, CraftPersonaModal, NewPriorityModal } from './sections/modals.tsx'
-import { seed, DEFAULT_SETTINGS, type ChatMessage, type Cli, type Dependency, type Persona, type Priority, type Run, type Settings, type SubAgent, type Workspace } from './model.ts'
+import { seed, DEFAULT_SETTINGS, type ChatMessage, type Cli, type Dependency, type Persona, type Play, type Priority, type Run, type Settings, type SubAgent, type Workspace } from './model.ts'
 import type { OzEventHint, PersonaAssignment } from '../electron/ipc-contract.ts'
 
 const USER = seed.workspaces.length ? { initials: 'AF', name: 'Anthony Franco', role: 'founder' } : { initials: 'AF', name: 'Anthony Franco', role: 'founder' }
@@ -80,6 +80,7 @@ export function App() {
 
   // global-ish config (the prototype treats these as workspace-independent)
   const [personas, setPersonas] = useState<Persona[]>(seed.personas)
+  const [plays, setPlays] = useState<Play[]>(seed.plays)
   const [personaAssignments, setPersonaAssignments] = useState<Record<string, PersonaAssignment>>({})
   const [clis, setClis] = useState<Cli[]>(seed.clis)
   const [dependencies, setDependencies] = useState(seed.dependencies)
@@ -148,6 +149,7 @@ export function App() {
       setPrioritiesByWs((cur) => ({ ...cur, [first.id]: applyOrder(data.priorities, order) }))
       setRunsByWs((cur) => ({ ...cur, [first.id]: data.runs }))
       void enrichActiveRunDetails(first.id, data.runs)
+      setPlays(data.plays)
       if (data.personas.length) {
         setPersonas(data.personas)
         setPersonaAssignments(data.assignments)
@@ -233,6 +235,7 @@ export function App() {
       setPrioritiesByWs((cur) => ({ ...cur, [activeId]: applyOrder(data.priorities, order) }))
       setRunsByWs((cur) => ({ ...cur, [activeId]: data.runs }))
       void enrichActiveRunDetails(activeId, data.runs, () => cancelled)
+      setPlays(data.plays)
       if (data.personas.length) {
         setPersonas(data.personas)
         setPersonaAssignments(data.assignments)
@@ -586,7 +589,7 @@ export function App() {
             <WorkspacesScreen workspaces={workspaces} activeId={activeId} onChange={(ws) => setWorkspaces((all) => all.map((w) => (w.id === ws.id ? ws : w)))} onSetActive={loadWs} onCreate={() => setNewWsOpen(true)} onDelete={(id) => void handleDeleteWorkspace(id)} onSave={(ws) => void handleSaveWorkspace(ws)} onGotoDashboard={() => setRoute('dashboard')} />
           )}
           {route === 'clis' && <CLIsScreen clis={clis} onTest={handleCliTest} onAdd={() => onSend('Register a new CLI.')} />}
-          {route === 'personas' && <PersonasScreen personas={personas} clis={clis} onChange={setPersona} onAddSub={addSub} onRemoveSub={removeSub} onUpdateSub={updateSub} onNewPersonaAsPriority={() => setCraftOpen(true)} live={live} />}
+          {route === 'personas' && <PersonasScreen personas={personas} plays={plays} clis={clis} onChange={setPersona} onAddSub={addSub} onRemoveSub={removeSub} onUpdateSub={updateSub} onNewPersonaAsPriority={() => setCraftOpen(true)} live={live} />}
           {route === 'settings' && <SettingsScreen settings={settings} dependencies={dependencies} onRecheckDep={(id: string) => setDependencies((ds: Dependency[]) => ds.map((d: Dependency) => (d.id === id ? { ...d, lastChecked: 'just now' } : d)))} onChange={setSettings} live={live} />}
           </>)}
         </div>

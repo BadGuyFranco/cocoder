@@ -154,10 +154,20 @@ export interface PersonaAssignment {
   readonly enabled?: boolean
   readonly plays?: Record<string, { cli: string; model: string }>
 }
+export interface Play {
+  readonly id: string
+  readonly label: string
+  readonly kind: 'headless' | 'interactive'
+  readonly writeScope: readonly string[]
+}
 export interface PersonasResponse {
   readonly workspace: Workspace
   readonly personas: readonly { id: string; label: string; role: string }[]
   readonly assignments: Record<string, PersonaAssignment>
+}
+export interface PlaysResponse {
+  readonly workspace: Workspace
+  readonly plays: readonly Play[]
 }
 export interface CliCheckView {
   readonly ok: boolean

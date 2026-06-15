@@ -442,6 +442,30 @@
       "icon": "ph-thin ph-pen-nib"
     }
   ],
+  "plays": [
+    {
+      "id": "wrap-up",
+      "label": "Wrap-up",
+      "kind": "headless",
+      "writeScope": [
+        "cocoder/PLAYBOOK.md",
+        "cocoder/SESSION_LOG.md",
+        "docs/**"
+      ]
+    },
+    {
+      "id": "deep-read",
+      "label": "Deep read",
+      "kind": "headless",
+      "writeScope": []
+    },
+    {
+      "id": "code-review",
+      "label": "Code review",
+      "kind": "headless",
+      "writeScope": []
+    }
+  ],
   "clis": [
     {
       "id": "claude-code",
