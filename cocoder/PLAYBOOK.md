@@ -180,12 +180,13 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   run; Quinn drives the Oz GUI) are opportunistic, not blocking.
 
 **Active build priorities (launchable; the `priorities/` directory is the live index):**
-1. `new-primary-root` — **CONTINUE (run_83, 2026-06-14).** Onboard a primary root via the
-   bootstrap/takeover/drift onboarding Playbooks (ADR-0020 Accepted). **Engine foundation built** in
-   run_83 (4 atoms): core+daemon loader extension (§7), `scaffoldCocoderZone` primitive, `deep-read`
-   audit Play. **Next:** scaffold reconciliation (wire `createWorkspace` onto the template tree),
-   Takeover P2→P5 orchestration wiring, then live CoPublisher Takeover + dogfood Drift Audit proofs.
-   **Absorbs `workspace-onboarding`.** Phase 5 ("first external repo").
+1. `new-primary-root` — **CONTINUE (run_86, 2026-06-14).** Onboard a primary root via the
+   bootstrap/takeover/drift onboarding Playbooks (ADR-0020 Accepted). **Engine foundation built and
+   live-wired** (run_83 + run_86): loader extension (§7), `scaffoldCocoderZone` + `createWorkspace`
+   wiring (D1 code landed; three template files held back — expand scope), `deep-read` hardened for P3.
+   **Next:** commit held-back D1 template files; lift D2 via `oz-dashboard-bugs`/ticket 0006; then design
+   the P2→P5 fan-out executor and run live CoPublisher Takeover + dogfood Drift Audit proofs. **Absorbs
+   `workspace-onboarding`.** Phase 5 ("first external repo").
 
 **Standing tools (always available — not build work):** `priority-audit` (assess the priority set for
 staleness → a founder-decision table; the pruning tool) · `adhoc-session` (no named priority — draft one,

@@ -43,34 +43,46 @@ extension (ADR-0020 §7); the `deep-read` audit Play (the Takeover P2 unit, adve
 deterministic scaffold init op; and a **live Takeover proof on a real external repo** (the Phase-5 entry,
 CoPublisher).
 
-## Build progress (run_83, 2026-06-14) — disposition: `continue`
-The **additive engine foundation is built and committed** (4 atoms, all first-try passes):
+## Build progress — disposition: `continue`
+
+### Cumulative engine state (run_83 + run_86)
 - ✅ **Loader extension (§7)** — core reads the three shipped Playbooks (`loadOnboardingPlaybooks`, `082fa48`)
   and the daemon offers them via a distinct `onboarding` field on `GET .../priorities`, available in every
   workspace, never copied into the repo (`70ed0e9`).
-- ✅ **Scaffold primitive** — `scaffoldCocoderZone()` create-only-copies the `templates/workspace-cocoder/`
-  tree with install-tree refusal (ADR-0019 §7), idempotent (`658f931`). NOT yet wired into the live route.
-- ✅ **`deep-read` audit Play** — the Takeover P2 unit, 5-axis findings + `file:line`→`UNVERIFIED`
-  traceability gate, portability-clean (`4e9c98d`).
+- ✅ **Scaffold primitive + live wiring (D1)** — `scaffoldCocoderZone()` create-only-copies the
+  `templates/workspace-coder/cocoder/` tree with install-tree refusal (ADR-0019 §7), idempotent (`658f931`);
+  `createWorkspace` now calls it via `scaffoldWorkspaceGovernance` (`735d741`, run_86). Retired the divergent
+  inline `DEFAULT_ASSIGNMENTS`/`CLAUDE_POINTER`/`writeIfMissing` set. Added runtime-robust
+  `installRoot()`/`workspaceTemplateDir()` (marker-climb; holds in compiled daemon). **Held back this run:**
+  the three D1 template files (`personas/assignments.json`, `priorities/adhoc-session.md`, `CLAUDE.md`) —
+  present in the working tree, not yet on trunk; reply `expand scope` to commit them.
+- ✅ **`deep-read` audit Play** — the Takeover P2 unit, portability-clean (`4e9c98d`); hardened for first live
+  use with machine-checkable findings (`axis`/`claim`/`evidence`/`confidence`), one-subsystem-per-invocation
+  boundary, explicit inference labeling (`0f076ff`, run_86).
 
 ### Founder decisions (2026-06-14, run_83 wrap)
 - **D1 — Scaffold reconciliation APPROVED.** Founder accepted the recommendation: the
   `templates/workspace-cocoder/` tree becomes the **single source** for the scaffolded `cocoder/` zone;
   fold the runtime-required files (`assignments.json`, adhoc priority, CLAUDE pointer) into the template,
-  then wire `createWorkspace` onto `scaffoldCocoderZone`. This is now a **ratified buildable atom** (no
-  further founder decision needed) — proceed next session.
+  then wire `createWorkspace` onto `scaffoldCocoderZone`. Code wiring landed run_86; template files await
+  expand-scope.
 - **D2 — Live proofs DEFERRED until Oz is fully debugged.** No live onboarding/Takeover of a new
-  workspace runs until Oz is fully debugged (a separate session owns that). So Objective verifications
-  (a) live external Takeover and (b) dogfood Drift Audit are **gated on Oz-debug-complete**, not on this
-  priority. Build the engine to ready; do not attempt a live run until the founder lifts this gate.
+  workspace runs until Oz is fully debugged (a separate session owns that — see `oz-dashboard-bugs` +
+  ticket 0006). Objective verifications (a) live external Takeover and (b) dogfood Drift Audit are
+  **gated on Oz-debug-complete**. Do not attempt a live run until the founder lifts this gate.
 
 **Remaining work:**
-1. **Scaffold reconciliation** *(ratified — D1)* — fold the runtime-required files into the template tree,
-   wire `createWorkspace` (`scaffoldWorkspaceGovernance`, `packages/daemon/src/routes.ts:270`) onto
-   `scaffoldCocoderZone`, retire the divergent inline file set. Buildable now.
-2. **Takeover orchestration wiring** — assignments/model-pins (top-tier per ADR-0018) for the `deep-read`
-   Play + the launcher path that fans it out P2→P5, plus a fuller adversarial review of the Play before
-   first live use. Buildable now (no live run required to build/test the wiring).
-3. **Live CoPublisher Takeover proof** (Phase-5 entry) — Objective verification (a). **BLOCKED on D2**
-   (Oz-debug-complete) — do not attempt until the founder lifts the gate.
-4. **Dogfood Drift Audit run** — Objective verification (b). **BLOCKED on D2** as above.
+1. **D1 template files on trunk** — reply `expand scope` to commit the three held-back template files
+   (assignments, adhoc priority, CLAUDE pointer). Required before scaffold is complete on a fresh clone.
+2. **P2→P5 fan-out executor** — the launcher/runner path that runs a Takeover Playbook's phases: P1 recon →
+   founder gate → P2 fan deep-read (one top-tier sub-agent per subsystem) → P3 cross-check → P4 synthesize
+   `cocoder/**` → P5 founder ratify. **NOT yet designed** — today the runner only does the Oscar↔Bob directive
+   loop + three hardcoded Plays (`wrap-up`, `integration-verify`, `merge-conflict` via `dispatch.ts`); there is
+   NO Playbook-phase execution engine. Acceptance is a live run; **blocked on D2** for verification. Needs a
+   design pass (likely ADR-0020 addendum: phase storage, P1 subsystem enumeration, founder P1/P5 gate interleave,
+   deep-read top-tier model pin per ADR-0018).
+3. **Live CoPublisher Takeover proof** (Phase-5 entry) — Objective verification (a). **BLOCKED on D2**.
+4. **Dogfood Drift Audit run** — Objective verification (b). **BLOCKED on D2**.
+
+**Do not relaunch this priority for build atoms** until D2 lifts or the P2→P5 executor is designed — the
+bounded buildable remainder is exhausted.

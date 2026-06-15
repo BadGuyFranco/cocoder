@@ -12,6 +12,30 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-14 — **new-primary-root run_86: D1 scaffold live-wired + deep-read hardened (2 atoms, all first-try passes)**
+
+**Persona:** Oscar + Bob (2 atoms, all first-try passes) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Play:** multi-atom build (scaffold reconciliation + deep-read hardening)
+**Outcomes:**
+- **Atom 0 (`735d741`): scaffold reconciliation (D1) — code landed.** Rewrote `scaffoldWorkspaceGovernance`
+  (`packages/daemon/src/routes.ts`) onto `scaffoldCocoderZone`; retired inline `DEFAULT_ASSIGNMENTS`/
+  `CLAUDE_POINTER`/`writeIfMissing`. Added `installRoot()`/`workspaceTemplateDir()` in
+  `packages/core/src/scaffold/scaffold.ts` (marker-climb, holds in compiled daemon). New workspaces now get
+  the rich template tree; governance commit covers the whole zone. Daemon mutation tests updated (file-set +
+  commit-list assertions). **Held back:** three D1 template files
+  (`templates/workspace-coder/cocoder/personas/assignments.json`, `priorities/adhoc-session.md`, `CLAUDE.md`)
+  — in working tree, outside run write-scope; reply `expand scope` to commit. Verified: tsc clean, core 279/279,
+  daemon 200/200.
+- **Atom 1 (`0f076ff`): deep-read Play hardened for P3 cross-check.** `packages/personas/base/plays/deep-read.md`
+  now emits findings in fixed machine-checkable shape (`axis`/`claim`/`evidence`/`confidence`); strict
+  one-subsystem-per-invocation boundary (named-adjacency allowance); explicit inference labeling. Test extended
+  in `packages/core/tests/deep-read-play.test.ts`. Verified: tsc clean, core 280/280.
+- **Cumulative with run_83:** loader §7 + onboarding field, scaffold primitive, deep-read base Play all live.
+  **Remaining:** D1 template files on trunk (expand scope); P2→P5 fan-out executor (undesigned, unverifiable
+  until D2 lifts); live CoPublisher Takeover + dogfood Drift Audit (both blocked on D2).
+**Next:** reply `expand scope` to commit the three held-back D1 template files; then launch `oz-dashboard-bugs`
+(ticket 0006 — headless claude/codex lane) to lift D2 before designing the P2→P5 executor or attempting live
+onboarding proofs.
+
 ## 2026-06-14 — **oz-dashboard-bugs: 10-bug Oz dashboard defect sweep (direct founder+Opus session, committed to main)**
 
 **Persona:** founder + Opus (direct, outside run machinery) | **Priority:** oz-dashboard-bugs | **Plan:** in-session
