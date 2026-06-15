@@ -387,6 +387,15 @@ const PERSONA_ICONS: Record<string, string> = {
 // preview-only until their session mode is implemented.
 export const MODE_HONORED_PERSONAS = new Set(['oscar', 'bob'])
 
+// Canonical roster order — the orchestration pecking order (Oz oversees; Oscar orchestrates; Bob builds;
+// Deb repairs; Talia tests; Quinn QAs). Unknown personas sort after these, keeping their source order
+// (Array.prototype.sort is stable). Daemon roster/assignment key order is otherwise nondeterministic.
+const PERSONA_ORDER = ['oz', 'oscar', 'bob', 'deb', 'talia', 'quinn']
+const personaRank = (id: string): number => {
+  const i = PERSONA_ORDER.indexOf(id)
+  return i === -1 ? PERSONA_ORDER.length : i
+}
+
 // A roster `role` is "Short title — long description"; split it so the card shows a crisp role.
 function splitRole(role: string): { role: string; description: string } {
   const i = role.indexOf('—')
@@ -397,8 +406,11 @@ function splitRole(role: string): { role: string; description: string } {
 export function adaptPersonas(resp: PersonasResponse): Persona[] {
   const assignments = resp.assignments ?? {}
   const roster = resp.personas ?? []
-  // If the roster is empty (older daemon), synthesize from the assignment keys.
-  const ids = roster.length ? roster.map((p) => p.id) : Object.keys(assignments)
+  // If the roster is empty (older daemon), synthesize from the assignment keys. Sort to the canonical
+  // pecking order so the Personas screen is stable regardless of daemon key/roster ordering.
+  const ids = (roster.length ? roster.map((p) => p.id) : Object.keys(assignments))
+    .slice()
+    .sort((a, b) => personaRank(a) - personaRank(b))
   return ids.map((id) => {
     const meta = roster.find((p) => p.id === id)
     const a = assignments[id] ?? { cli: '', model: '' }

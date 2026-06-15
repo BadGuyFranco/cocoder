@@ -42,8 +42,7 @@ function PriorityRow({ priority, index, onLaunch, onDrag, isDragging, isDropTarg
           <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: index === 0 ? 'var(--cb-accent)' : 'var(--cb-text-muted)', minWidth: 18, textAlign: 'right' }}>{String(index + 1).padStart(2, '0')}</span>
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--cb-text)', lineHeight: 1.4, marginBottom: 4 }}>{priority.name}</div>
-          <div style={{ fontSize: 11.5, color: 'var(--cb-text-muted)', lineHeight: 1.5 }}>{priority.summary}</div>
+          <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--cb-text)', lineHeight: 1.4 }}>{priority.name}</div>
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 36, flexWrap: 'wrap' }}>

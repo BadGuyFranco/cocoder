@@ -59,8 +59,9 @@ describe('Oz — rebuilt Fusion renderer', () => {
     fireEvent.change(await screen.findByPlaceholderText('e.g. Translator, Designer, Auditor'), { target: { value: 'Translator' } })
     fireEvent.change(screen.getByPlaceholderText('One line — what they do'), { target: { value: 'Translates product copy' } })
     fireEvent.click(screen.getByText('File as priority'))
+    // The priority row shows name + number only (Bug 2: the verbose summary line was dropped), so we
+    // assert on the crafted priority's NAME, not its summary.
     await waitFor(() => expect(screen.getByText('Persona: Translator')).toBeDefined())
-    expect(screen.getByText('Translates product copy')).toBeDefined()
   })
 
   it('Workspaces screen shows the roots/roles editor (root name is an editable input value)', () => {
@@ -83,8 +84,9 @@ describe('Oz — rebuilt Fusion renderer', () => {
     fireEvent.click(screen.getByText('Personas'))
     expect(screen.getByText('Oscar')).toBeDefined()
     expect(screen.getByText('Bob')).toBeDefined()
-    // every persona card has a Sub-agents header — there are several
-    expect(screen.getAllByText(/Sub-agents/).length).toBeGreaterThan(0)
+    // every persona card has a Skills (Plays) header — there are several (Bug 7 relabel: Plays are
+    // first-class procedures bound to a persona, not anonymous "sub-agents")
+    expect(screen.getAllByText(/Skills \(Plays\)/).length).toBeGreaterThan(0)
     // Oz is rendered as a persona and is locked headless
     expect(screen.getAllByText('Oz').length).toBeGreaterThan(0)
     expect(screen.getAllByText(/HEADLESS/i).length).toBeGreaterThan(0)

@@ -16,3 +16,16 @@ export function PendingBanner({ live, children }: { live: boolean; children: Rea
     </div>
   )
 }
+
+// A calm, informational note (NOT a red "pending endpoint" alarm). For surfaces that ARE wired but carry
+// a small, honest caveat — e.g. settings that apply per-session, or a run-mode that's preview-only for
+// some personas. Renders nothing in fixtures/seed mode so the design demo + launch smoke are unchanged.
+export function SessionNote({ live, children }: { live: boolean; children: React.ReactNode }) {
+  if (!live) return null
+  return (
+    <div role="note" style={{ display: 'flex', alignItems: 'flex-start', gap: 9, padding: '9px 12px', marginBottom: 16, background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)' }}>
+      <Icon name="info" size={14} style={{ color: 'var(--cb-text-muted)', marginTop: 1, flexShrink: 0 }} />
+      <div style={{ flex: 1, fontSize: 11.5, color: 'var(--cb-text-muted)', lineHeight: 1.55 }}>{children}</div>
+    </div>
+  )
+}

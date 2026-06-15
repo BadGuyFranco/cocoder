@@ -4,7 +4,7 @@
 // design-ref/screens.jsx.
 import { useState } from 'react'
 import { Icon, Button, Card, ScreenHeader } from '../ui/primitives.tsx'
-import { PendingBanner } from '../ui/PendingBanner.tsx'
+import { SessionNote } from '../ui/PendingBanner.tsx'
 import { modelIsStale } from '../adapter.ts'
 import { phicon, type Cli, type Persona, type SubAgent } from '../model.ts'
 
@@ -101,14 +101,14 @@ function PersonaRow({ persona, clis, onChange, onAddSub, onRemoveSub, onUpdateSu
         </div>
         <div style={{ marginTop: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--cb-font-display)', fontSize: 9.5, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--cb-text-muted)', marginBottom: 10 }}>
-            <Icon name="tree-structure" size={12} />Sub-agents · {persona.subAgents.length}
+            <Icon name="tree-structure" size={12} />Skills (Plays) · {persona.subAgents.length}
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
               <input className="oz-input" aria-label={`${persona.name} play id`} value={playId} placeholder="play id" onChange={(e) => setPlayId(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addPlay() }} style={{ width: 130, padding: '4px 7px', fontSize: 11, fontFamily: 'var(--cb-font-mono)' }} />
               <button onClick={addPlay} disabled={!canAddPlay} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', border: '1px solid var(--cb-border)', borderRadius: 3, color: canAddPlay ? 'var(--cb-text-muted)' : 'var(--cb-text-disabled)', cursor: canAddPlay ? 'pointer' : 'not-allowed', fontFamily: 'var(--cb-font-body)', letterSpacing: 0, textTransform: 'none', fontWeight: 400 }}>+ Add</button>
             </div>
           </div>
           {persona.subAgents.length === 0 ? (
-            <div style={{ padding: '10px 14px', background: 'var(--cb-bg-soft)', border: '1px dashed var(--cb-border)', borderRadius: 'var(--cb-radius-md)', fontSize: 11.5, color: 'var(--cb-text-muted)', textAlign: 'center' }}>No sub-agents. {persona.name} runs everything itself.</div>
+            <div style={{ padding: '10px 14px', background: 'var(--cb-bg-soft)', border: '1px dashed var(--cb-border)', borderRadius: 'var(--cb-radius-md)', fontSize: 11.5, color: 'var(--cb-text-muted)', textAlign: 'center' }}>No Plays bound. {persona.name} runs everything itself. (A Play is a shared procedure — binding one here grants {persona.name} permission to run it.)</div>
           ) : persona.subAgents.map((sa) => {
             const subCli = clis.find((c) => c.id === sa.cli)
             return (
@@ -144,7 +144,7 @@ export function PersonasScreen({ personas, clis, onChange, onAddSub, onRemoveSub
             <div style={{ fontSize: 11.5, color: 'var(--cb-text-secondary)', lineHeight: 1.55 }}>Sketch what the persona should do. Oz files it as a priority and the team scaffolds the new role — prompts, sub-agents, and tests included.</div>
           </div>
         </div>
-        <PendingBanner live={live}>CLI/model edits, sub-agents, and Oscar/Bob run-mode persist through <code>PUT …/assignments</code>; other personas’ run-mode remains a local preview until the runner honors it.</PendingBanner>
+        <SessionNote live={live}>CLI, model, and Play (skill) assignments save to the workspace. Run-mode currently takes effect for <strong>Oscar and Bob</strong> only — for other personas it’s a preview the runner doesn’t honor yet.</SessionNote>
         {personas.map((p) => <PersonaRow key={p.id} persona={p} clis={clis} onChange={(next) => onChange(p.id, next)} onAddSub={onAddSub} onRemoveSub={onRemoveSub} onUpdateSub={onUpdateSub} />)}
       </div>
     </div>
