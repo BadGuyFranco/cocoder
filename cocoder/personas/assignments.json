@@ -1,8 +1,8 @@
 {
   "personas": {
     "oz": {
-      "cli": "cursor-agent",
-      "model": "composer-2.5 - Composer 2.5 (current)"
+      "cli": "claude",
+      "model": ""
     },
     "oscar": {
       "cli": "claude",
