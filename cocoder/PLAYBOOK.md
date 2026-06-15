@@ -152,6 +152,11 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   AND exercised on **every run** (run_76/77 cut worktrees → verify → ff-merge; boot-sweep + teardown
   ran). **Archived 2026-06-13** (founder-confirmed, priority audit) — no live proof owed. (Per ADR-0023,
   isolation is now opt-in, not the default; this machinery runs only on the opt-in lane.)
+- `oz-dashboard-priorities-pane` — founder-reported dashboard defect (column 1 showed runs, not the
+  orderable priorities queue). ✅ fixed run_81 (off-design `AwaitingYouPanel` removed; regression test +
+  `scripts/proof-priorities-queue.mjs` harness pin it) — the **first live run on the post-reset stack**,
+  committed straight to `main` (158d208…f1d04d0). **Archived 2026-06-14.** Surfaced one full-oz punch-list
+  item (no founder-reachable expand-scope path for held-back files).
 - `orchestration-operating-model-reset` — the operating-model reset to **ADR-0023** (the workspace
   commit spine: direct-to-branch default, isolation opt-in, one commit service, derived receipts),
   dissolving the F14/F17/F19/F20 strand class structurally. ✅ all six phases on `main` (A `e4a9172` ·
@@ -166,20 +171,18 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   run; Quinn drives the Oz GUI) are opportunistic, not blocking.
 
 **Active (launchable; recommended sequence — the `priorities/` directory is the live index):**
-1. `oz-dashboard-priorities-pane` — **ARCHIVE-CANDIDATE (run_81, 2026-06-14).** Root cause was an
-   off-design `AwaitingYouPanel` above `PrioritiesPanel` in column 1 (removed, atoms `158d208`/`52b4587`);
-   regression test pins "priorities queue, not runs-as-primary." First live run on post-reset machinery
-   (ADR-0023) — committed straight to branch. Remaining before archive: founder runs `pnpm proof:queue`
-   (harness verified but held back — reply `expand scope` to commit it, or `discard`); optional live
-   drag-reorder to create `cocoder/priorities/order.json` (this install has none yet). Do NOT self-archive.
+1. `new-primary-root` — **LAUNCHABLE (ADR-0020 Accepted 2026-06-14).** Onboard a primary root via the
+   bootstrap/takeover/drift onboarding Playbooks. **The first run builds the onboarding ENGINE** — the
+   loader extension for shipped meta-Playbooks (ADR-0020 §7), the `deep-read` audit Play (Takeover P2),
+   the deterministic scaffold init op, and wiring the three inert skeleton templates under
+   `packages/personas/base/playbooks/`. A meaty multi-atom build; the live CoPublisher **Takeover** proof
+   is the LAST step, after the engine exists. **Absorbs `workspace-onboarding`.** The concrete form of
+   Phase 5 ("first external repo").
 2. `full-oz-dashboard` — the v1-designed control plane (chat, oversight, settings, drag-reorder).
    **CODE-COMPLETE (all daemon surfaces served); founder live-proof ladder still OPEN** — the priorities-pane
-   defect (priority #1) is fixed; this is the umbrella for the live Q/A pass. Do NOT relaunch it as a build
-   run (F18). Mechanical proof: `node scripts/proof-oz-surfaces.mjs`.
-3. `new-primary-root` — **design-gated, NOT build-launchable yet** (blocked on accepting ADR-0020 — the
-   bootstrap/takeover/drift onboarding Playbooks). Launching it now = the ADR-0020 acceptance + alignment
-   conversation, not a build. **Absorbs `workspace-onboarding`** (one onboarding path). The concrete form
-   of Phase 5 ("first external repo").
+   defect is fixed (run_81); this is the umbrella for the live Q/A pass. Do NOT relaunch it as a build
+   run (F18). Mechanical proof: `node scripts/proof-oz-surfaces.mjs`. Open punch-list: no founder-reachable
+   "expand-scope → commit held-back" path (run_81 finding).
 Plus three always-available meta-priorities: `build-priorities-from-plan` (draft priorities from the
 plan/ADRs), `priority-audit` (assess the priority set for staleness → a founder-decision table — this
 pruning pass's home), and `adhoc-session` (no named priority — draft one, or run a read-only review/research).

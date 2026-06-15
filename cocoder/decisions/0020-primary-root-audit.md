@@ -1,9 +1,10 @@
 # ADR-0020 — Onboarding Playbooks: bootstrap, takeover, and drift as shipped baked-plan Playbooks
 
-**Status:** Proposed — **founder co-designed 2026-06-14** (this redraft supersedes the 2026-06-10 draft;
-the founder set the high-quality bar, the three-template split, and the mid-process checkpoints in this
-session). **Founder acceptance still gates any build** — this is the design deliverable the
-[`new-primary-root`](../priorities/new-primary-root.md) priority requires.
+**Status:** **Accepted (founder, 2026-06-14).** Co-designed with the founder (this redraft supersedes the
+2026-06-10 draft; the founder set the high-quality bar, the three-template split, and the mid-process
+checkpoints) and accepted to proceed with the [`new-primary-root`](../priorities/new-primary-root.md)
+build. The three skeletons under `packages/personas/base/playbooks/` remain inert until that build wires
+the loader extension (§7).
 **Builds on:** [0019](./0019-multi-root-workspaces.md) (primary root / workspace model),
 [0012](./0012-living-base-personas.md) (living base + portability), [0018](./0018-persona-run-mode-and-sub-agents.md)
 (per-Play model pinning + sub-agents), [0005](./0005-personas-and-subtasks.md) (Plays),

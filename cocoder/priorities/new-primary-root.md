@@ -3,11 +3,12 @@ id: new-primary-root
 title: "Onboard a primary root — bootstrap / takeover / drift Playbooks (ADR-0020)"
 ---
 
-> **At launch — founder alignment first.** Before any build, the run must get on the same page with the
-> founder on: (1) **accept the redrafted [ADR-0020](../decisions/0020-primary-root-audit.md)** (Onboarding
-> Playbooks — founder co-designed 2026-06-14; acceptance still gates the build). (2) Confirm the first
-> real target repo (CoPublisher is the intended Takeover target). Surface as a plain-English alignment
-> pass, not a checklist.
+> **At launch — quick alignment, then build.** [ADR-0020](../decisions/0020-primary-root-audit.md) is
+> **Accepted (2026-06-14)**, so this is build-launchable. The first run builds the **onboarding ENGINE**
+> (the loader extension for shipped meta-Playbooks §7, the `deep-read` audit Play, the scaffold init op,
+> and wiring the three inert skeleton templates) — NOT an actual onboarding yet. Open with one short
+> alignment beat: confirm the first real **Takeover** target repo (CoPublisher is the intended one) so the
+> engine is built against a concrete first proof. The live Takeover proof is the last step.
 >
 > **Absorbs `workspace-onboarding` (merged 2026-06-14, priority audit).** That backlog priority is folded
 > in here so there is ONE bootstrap/audit/onboarding path, not two overlapping ones. It contributed:
