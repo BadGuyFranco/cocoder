@@ -94,6 +94,12 @@ export async function attachRun(oz: OzApi, runId: string): Promise<MutationResul
   return oz.daemonPost(`/runs/${runId}/show`)
 }
 
+// Restart the daemon ("Restart Oz"). 202 {restarting:true} on success; the daemon refuses with 409 while
+// a run is in flight (it would orphan it). Errors are DATA — the caller renders the 409 reason verbatim.
+export async function restartDaemon(oz: OzApi): Promise<MutationResult> {
+  return oz.daemonPost('/daemon/restart')
+}
+
 export async function teardownRun(oz: OzApi, runId: string): Promise<MutationResult> {
   return oz.daemonPost(`/runs/${runId}/teardown`)
 }

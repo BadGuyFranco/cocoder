@@ -4,7 +4,7 @@
 // the design-faithful view-model from the ported seed (fixture parity, fully interactive); the daemon
 // adapter is wired in the next slice (the existing electron/ plumbing is untouched).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, sendOzMessage, launchRun, attachRun, teardownRun, stopRun, resolveRun, testCli, createPriority, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, saveAssignments, type ConnectionState } from './live.ts'
+import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, sendOzMessage, launchRun, attachRun, teardownRun, stopRun, resolveRun, testCli, createPriority, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, saveAssignments, restartDaemon, type ConnectionState } from './live.ts'
 import { ADHOC_PRIORITY_ID, MODE_HONORED_PERSONAS, applyOrder, isActiveRun, mergeRunsWithEnrichment, personasToAssignments } from './adapter.ts'
 import { Sidebar, type Route } from './ui/Sidebar.tsx'
 import { TopBar } from './ui/TopBar.tsx'
@@ -481,6 +481,23 @@ export function App() {
       }
     })()
   }
+  async function handleRestartOz(): Promise<void> {
+    if (!live) { notify('info', 'Restart applies to the live daemon only.'); return }
+    const oz = ozApi()
+    if (!oz) { notify('err', 'Restart failed: daemon bridge unavailable.'); return }
+    if (!window.confirm('Restart Oz? This restarts the daemon and resets the chat session. It refuses while a run is in flight.')) return
+    const res = await restartDaemon(oz)
+    if (res.ok) {
+      notify('info', 'Oz is restarting — reconnecting…')
+      setLive(false); setConn('connecting')
+      // The daemon detaches and respawns; give it a moment, then re-run the connection bootstrap.
+      window.setTimeout(() => setReloadNonce((n) => n + 1), 2500)
+    } else if (res.status === 409) {
+      notify('info', res.error) // "refusing to restart: a run is in flight…" — surfaced verbatim
+    } else {
+      notify('err', res.error || `Restart failed (${res.status}).`)
+    }
+  }
   async function handleCliTest(id: string): Promise<void> {
     if (!live) {
       setClis((cs) => cs.map((c) => (c.id === id ? { ...c, tested: true, lastTested: 'just now' } : c)))
@@ -543,7 +560,7 @@ export function App() {
     <div className="oz-app" style={{ gridTemplateColumns: `${navCollapsed ? 64 : 220}px 1fr` }}>
       <Sidebar route={route} setRoute={setRoute} runs={runs} user={USER} collapsed={navCollapsed} onToggleCollapsed={() => setNavCollapsed((c) => !c)} />
       <div className="oz-main">
-        <TopBar title={ROUTE_TITLE[route]} route={route} workspaces={workspaces} activeId={activeId} loadedIds={loadedIds} runsMap={runsByWs} onSelectWs={selectWs} onCloseWs={closeWs} onLoadWs={loadWs} onCreateWs={() => setNewWsOpen(true)} theme={theme} setTheme={setTheme} conn={conn} />
+        <TopBar title={ROUTE_TITLE[route]} route={route} workspaces={workspaces} activeId={activeId} loadedIds={loadedIds} runsMap={runsByWs} onSelectWs={selectWs} onCloseWs={closeWs} onLoadWs={loadWs} onCreateWs={() => setNewWsOpen(true)} theme={theme} setTheme={setTheme} conn={conn} onRestartOz={() => void handleRestartOz()} />
         <div className="oz-content">
           {actionMsg && (
             <div role="status" style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 80, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 'var(--cb-radius-md)', fontSize: 12, color: 'var(--cb-text)', background: 'var(--cb-surface-raised)', border: `1px solid ${actionMsg.kind === 'err' ? 'var(--cb-highlight)' : actionMsg.kind === 'ok' ? 'var(--cb-success)' : 'var(--cb-border-strong)'}`, boxShadow: '0 8px 24px rgba(0,0,0,0.45)' }}>

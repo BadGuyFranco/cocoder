@@ -86,10 +86,10 @@ function ConnIndicator({ conn }: { conn: string }) {
   )
 }
 
-export function TopBar({ title, route, workspaces, activeId, loadedIds, runsMap, onSelectWs, onCloseWs, onLoadWs, onCreateWs, theme, setTheme, conn }: {
+export function TopBar({ title, route, workspaces, activeId, loadedIds, runsMap, onSelectWs, onCloseWs, onLoadWs, onCreateWs, theme, setTheme, conn, onRestartOz }: {
   title: string; route: string; workspaces: Workspace[]; activeId: string; loadedIds: string[]; runsMap: Record<string, Run[]>
   onSelectWs: (id: string) => void; onCloseWs: (id: string) => void; onLoadWs: (id: string) => void; onCreateWs: () => void
-  theme: 'dark' | 'light'; setTheme: (fn: (t: 'dark' | 'light') => 'dark' | 'light') => void; conn: string
+  theme: 'dark' | 'light'; setTheme: (fn: (t: 'dark' | 'light') => 'dark' | 'light') => void; conn: string; onRestartOz?: () => void
 }) {
   return (
     <header className="oz-topbar">
@@ -103,6 +103,7 @@ export function TopBar({ title, route, workspaces, activeId, loadedIds, runsMap,
         <Icon name="magnifying-glass" size={13} /><span>Search runs, priorities…</span><span className="oz-kbd" style={{ marginLeft: 'auto' }}>⌘K</span>
       </div>
       <ConnIndicator conn={conn} />
+      {conn === 'connected' && onRestartOz && <button className="oz-iconbtn" title="Restart Oz — restarts the daemon and resets the chat session (refuses while a run is in flight)" aria-label="Restart Oz" onClick={onRestartOz}><Icon name="arrow-clockwise" size={15} /></button>}
       <button className="oz-iconbtn" title="Toggle theme" onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}><Icon name={theme === 'dark' ? 'sun' : 'moon'} size={15} /></button>
       <button className="oz-iconbtn" title="Notifications"><Icon name="bell" size={15} /></button>
     </header>
