@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { act, render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react'
 import { App } from '../app/App.tsx'
 import { stopRun } from '../app/live.ts'
-import type { ConnectionState, OzApi, OzEventHint, PersonasResponse, Priority as DPriority, RunDetail, RunSummary } from '../electron/ipc-contract.ts'
+import type { ConnectionState, OzApi, OzEventHint, PersonasResponse, PlaysResponse, Priority as DPriority, RunDetail, RunSummary } from '../electron/ipc-contract.ts'
 import workspacesFx from '../fixtures/workspaces.json'
 import prioritiesFx from '../fixtures/priorities.json'
 import personasFx from '../fixtures/personas.json'
@@ -49,6 +49,14 @@ const clisFx = {
   ],
 }
 
+const playsFx: PlaysResponse = {
+  workspace: (workspacesFx as { workspaces: PlaysResponse['workspace'][] }).workspaces[0],
+  plays: [
+    { id: 'wrap-up', label: 'Wrap-up', kind: 'headless', writeScope: ['cocoder/**'] },
+    { id: 'documentation', label: 'Documentation', kind: 'headless', writeScope: ['docs/**'] },
+  ],
+}
+
 interface PostCall { path: string; body?: unknown }
 interface PutCall { workspaceId: string; assignments: unknown }
 interface CreateCall { workspaceId: string; priority: { title: string; goal?: string } }
@@ -73,6 +81,7 @@ function mockOz(opts: {
   priorities?: { priorities: DPriority[] }
   personasResult?: { ok: false; status: number; error: string }
   personasResponse?: PersonasResponse
+  playsResponse?: PlaysResponse
   runs?: { runs: RunSummary[] }
   runDetails?: Record<string, RunDetail>
   pollIntervalMs?: number
@@ -90,6 +99,7 @@ function mockOz(opts: {
       if (path === '/workspaces') return ok(workspacesFx)
       if (/\/priorities$/.test(path)) return ok(opts.priorities ?? prioritiesFx)
       if (/\/personas$/.test(path)) return opts.personasResult ?? ok(opts.personasResponse ?? personasFx)
+      if (/\/plays$/.test(path)) return ok(opts.playsResponse ?? playsFx)
       if (path.startsWith('/runs?')) return ok(opts.runs ?? runsFx)
       const runDetailMatch = path.match(/^\/runs\/([^/]+)$/)
       if (runDetailMatch) return ok(opts.runDetails?.[runDetailMatch[1]] ?? runDetailFx)
@@ -465,7 +475,7 @@ describe('Oz renderer — live daemon path', () => {
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
 
     fireEvent.click(screen.getByText('Personas'))
-    const playId = await screen.findByLabelText('Bob play id')
+    const playId = await screen.findByLabelText('Bob Play')
     fireEvent.change(playId, { target: { value: 'documentation' } })
     const add = playId.parentElement?.querySelector('button')
     expect(add).toBeDefined()

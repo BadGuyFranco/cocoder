@@ -46,19 +46,21 @@ function ModelControl({ cli, model, onChange, compact = false }: { cli: Cli | un
   return <>{label}{select}{customInput}</>
 }
 
-function PersonaRow({ persona, clis, onChange, onAddSub, onRemoveSub, onUpdateSub }: {
-  persona: Persona; clis: Cli[]; onChange: (p: Persona) => void
+function PersonaRow({ persona, plays, clis, onChange, onAddSub, onRemoveSub, onUpdateSub }: {
+  persona: Persona; plays: Play[]; clis: Cli[]; onChange: (p: Persona) => void
   onAddSub: (pid: string, playId: string) => void; onRemoveSub: (pid: string, sid: string) => void; onUpdateSub: (pid: string, sid: string, sa: SubAgent) => void
 }) {
   const isOz = persona.id === 'oz'
   const cliEntry = clis.find((c) => c.id === persona.cli)
   const [playId, setPlayId] = useState('')
-  const trimmedPlayId = playId.trim()
-  const playIdTaken = persona.subAgents.some((sa) => sa.id === trimmedPlayId)
-  const canAddPlay = trimmedPlayId.length > 0 && !playIdTaken
+  const boundPlayIds = new Set(persona.subAgents.map((sa) => sa.id))
+  const availablePlays = plays.filter((play) => !boundPlayIds.has(play.id))
+  const playIdTaken = boundPlayIds.has(playId)
+  const canAddPlay = playId.length > 0 && !playIdTaken && availablePlays.some((play) => play.id === playId)
+  const pickerHint = plays.length === 0 ? 'No Plays available' : availablePlays.length === 0 ? 'All Plays bound' : 'Select Play'
   const addPlay = () => {
     if (!canAddPlay) return
-    onAddSub(persona.id, trimmedPlayId)
+    onAddSub(persona.id, playId)
     setPlayId('')
   }
   return (
@@ -101,7 +103,10 @@ function PersonaRow({ persona, clis, onChange, onAddSub, onRemoveSub, onUpdateSu
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--cb-font-display)', fontSize: 9.5, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--cb-text-muted)', marginBottom: 10 }}>
             <Icon name="tree-structure" size={12} />Skills (Plays) · {persona.subAgents.length}
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <input className="oz-input" aria-label={`${persona.name} play id`} value={playId} placeholder="play id" onChange={(e) => setPlayId(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addPlay() }} style={{ width: 130, padding: '4px 7px', fontSize: 11, fontFamily: 'var(--cb-font-mono)' }} />
+              <select className="oz-select" aria-label={`${persona.name} Play`} value={playId} disabled={availablePlays.length === 0} onChange={(e) => setPlayId(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addPlay() }} style={{ width: 190, padding: '4px 24px 4px 7px', fontSize: 11 }}>
+                <option value="">{pickerHint}</option>
+                {availablePlays.map((play) => <option key={play.id} value={play.id}>{play.label} ({play.id})</option>)}
+              </select>
               <button onClick={addPlay} disabled={!canAddPlay} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', border: '1px solid var(--cb-border)', borderRadius: 3, color: canAddPlay ? 'var(--cb-text-muted)' : 'var(--cb-text-disabled)', cursor: canAddPlay ? 'pointer' : 'not-allowed', fontFamily: 'var(--cb-font-body)', letterSpacing: 0, textTransform: 'none', fontWeight: 400 }}>+ Add</button>
             </div>
           </div>
@@ -172,7 +177,7 @@ export function PersonasScreen({ personas, plays, clis, onChange, onAddSub, onRe
         </div>
         <SessionNote live={live}>CLI, model, and Play (skill) assignments save to the workspace. Run-mode currently takes effect for <strong>Oscar and Bob</strong> only — for other personas it’s a preview the runner doesn’t honor yet.</SessionNote>
         <PlaysCatalog plays={plays} />
-        {personas.map((p) => <PersonaRow key={p.id} persona={p} clis={clis} onChange={(next) => onChange(p.id, next)} onAddSub={onAddSub} onRemoveSub={onRemoveSub} onUpdateSub={onUpdateSub} />)}
+        {personas.map((p) => <PersonaRow key={p.id} persona={p} plays={plays} clis={clis} onChange={(next) => onChange(p.id, next)} onAddSub={onAddSub} onRemoveSub={onRemoveSub} onUpdateSub={onUpdateSub} />)}
       </div>
     </div>
   )

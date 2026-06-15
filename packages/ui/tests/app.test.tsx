@@ -102,6 +102,19 @@ describe('Oz — rebuilt Fusion renderer', () => {
     expect(screen.getByText('cocoder/SESSION_LOG.md')).toBeDefined()
   })
 
+  it('Personas screen binds Plays through the catalog picker', () => {
+    render(<App />)
+    fireEvent.click(screen.getByText('Personas'))
+    const picker = screen.getByLabelText('Bob Play') as HTMLSelectElement
+    const optionLabels = Array.from(picker.options).map((option) => option.textContent)
+    expect(optionLabels).toContain('Deep read (deep-read)')
+    fireEvent.change(picker, { target: { value: 'deep-read' } })
+    fireEvent.click(picker.parentElement!.querySelector('button')!)
+    expect(screen.getByDisplayValue('deep-read')).toBeDefined()
+    const updated = screen.getByLabelText('Bob Play') as HTMLSelectElement
+    expect(Array.from(updated.options).map((option) => option.value)).not.toContain('deep-read')
+  })
+
   it('Settings is tabbed and renders forms (Theme control + probed system deps), not JSON', () => {
     render(<App />)
     fireEvent.click(screen.getByText('Settings'))
