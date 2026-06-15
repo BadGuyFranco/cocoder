@@ -12,6 +12,21 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-15 — **plays-first-class re-verified (run_89): archive-candidate, nav relocation recorded**
+
+**Persona:** Oscar (wrap-up only; 0 atoms) | **Priority:** [plays-first-class](./priorities/plays-first-class.md) | **Play:** wrap-up
+**Outcomes:**
+- **No build atoms needed** — all four deliverables remain shipped from run_88; this run re-verified the
+  tree: root `pnpm typecheck` clean; `pnpm -r test` = **592 green** (core 257 / daemon 180 / ui 108 /
+  adapters 17 / personas 15 / session-hosts 13 / cli 2).
+- **Priority Status updated** to record the founder's nav relocation (`12d2f0c`): the read-only Plays
+  catalog moved from a Personas-screen section to its own top-level Plays nav item. The design-ref's
+  "five top-level nav items only" rule was a mockup artifact, not enforced — a sanctioned override, not a
+  regression; catalog substance unchanged.
+- **Disposition: archive-candidate** — verified-when criteria met; deferred boundary (multi-binding /
+  dynamic sub-delegation) is explicitly out of scope pending a future ADR and does not block archive.
+**Next:** Reply **`archive plays-first-class`** to archive; then launch **`new-primary-root`** in Oz.
+
 ## 2026-06-15 — **Removed the isolation lane entirely — the strand class's last home (6-session "can't commit" bug, root-caused + deleted)**
 
 **Persona:** Claude (founder-directed) | **Priority:** orchestration-change-durability / commit spine | **Plan:** diagnose-then-excise (founder chose: remove the lane, non-gating push, fully clean, staged+tested)

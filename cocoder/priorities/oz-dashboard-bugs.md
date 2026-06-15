@@ -33,5 +33,6 @@ build`, the proof scripts, and live against the running daemon.
 
 **Verified when:** each defect is fixed at the cause, renderer/daemon tests + proof scripts are green,
 and the fixes are confirmed live on the running daemon. Follow-up design work is carried by
-`plays-first-class` (catalog + permissions — archive-candidate, run_88) and `play-dispatch-boundary`
-(ADR-0024 for adversarial/dynamic Plays).
+`plays-first-class` (catalog + permissions — archive-candidate, run_88/89; top-level Plays nav per
+founder `12d2f0c`). The deferred dispatch-boundary question is resolved (`play-dispatch-boundary.md`);
+optional follow-on is `hybrid-plays`.
