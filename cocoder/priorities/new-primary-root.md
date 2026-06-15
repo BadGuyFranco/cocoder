@@ -42,3 +42,25 @@ Build atoms (once the ADR is accepted): wire the three Playbooks as shipped meta
 extension (ADR-0020 §7); the `deep-read` audit Play (the Takeover P2 unit, adversarially reviewed); the
 deterministic scaffold init op; and a **live Takeover proof on a real external repo** (the Phase-5 entry,
 CoPublisher).
+
+## Build progress (run_83, 2026-06-14) — disposition: `continue`
+The **additive engine foundation is built and committed** (4 atoms, all first-try passes):
+- ✅ **Loader extension (§7)** — core reads the three shipped Playbooks (`loadOnboardingPlaybooks`, `082fa48`)
+  and the daemon offers them via a distinct `onboarding` field on `GET .../priorities`, available in every
+  workspace, never copied into the repo (`70ed0e9`).
+- ✅ **Scaffold primitive** — `scaffoldCocoderZone()` create-only-copies the `templates/workspace-cocoder/`
+  tree with install-tree refusal (ADR-0019 §7), idempotent (`658f931`). NOT yet wired into the live route.
+- ✅ **`deep-read` audit Play** — the Takeover P2 unit, 5-axis findings + `file:line`→`UNVERIFIED`
+  traceability gate, portability-clean (`4e9c98d`).
+
+**Remaining (each needs a founder input/decision — that's why this run wrapped here):**
+1. **Scaffold reconciliation.** The live `createWorkspace` scaffold (`scaffoldWorkspaceGovernance`,
+   `packages/daemon/src/routes.ts:270`) writes a *different minimal inline* file set and ignores the template
+   tree. Decide the canonical scaffolded `cocoder/` file set, then wire `createWorkspace` onto
+   `scaffoldCocoderZone`. Recommendation: template tree = single source; fold the runtime-required
+   `assignments.json`/adhoc-priority/CLAUDE-pointer into it (the route hard-depends on them).
+2. **Takeover orchestration wiring** — assignments/model-pins (top-tier per ADR-0018) for the `deep-read`
+   Play + the launcher path that fans it out P2→P5, plus a fuller adversarial review of the Play before
+   first live use.
+3. **Live CoPublisher Takeover proof** (Phase-5 entry) — needs the CoPublisher repo path confirmed +
+   reachable. This is the Objective's verification (a) and the last step.
