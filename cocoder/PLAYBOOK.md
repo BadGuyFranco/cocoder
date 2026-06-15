@@ -152,6 +152,15 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   AND exercised on **every run** (run_76/77 cut worktrees → verify → ff-merge; boot-sweep + teardown
   ran). **Archived 2026-06-13** (founder-confirmed, priority audit) — no live proof owed. (Per ADR-0023,
   isolation is now opt-in, not the default; this machinery runs only on the opt-in lane.)
+- `full-oz-dashboard` — the v1-designed control plane (chat, oversight/debugger, settings, drag-reorder
+  priorities, workspaces, run lifecycle), earned in slices over runs 43–72. ✅ **feature-complete** — all
+  daemon surfaces served (`node scripts/proof-oz-surfaces.mjs`); the last design-conformance defect
+  (priorities pane) fixed run_81. **Archived 2026-06-14** (priority audit). Live Q/A is a founder activity;
+  defects become focused priorities; the one open punch-list item is `backlog/oz-held-back-expand-scope`.
+- `build-priorities-from-plan` — a standing meta-priority to draft priority stubs from decided-but-unbuilt
+  plan/ADR work. **Archived 2026-06-14** (priority audit) — never exercised in practice (priorities were
+  drafted conversationally); the capability lives in the create-priority Play + `adhoc-session`, and the
+  rebuild plan is spent (forward work now comes from dogfood findings + onboarding).
 - `oz-dashboard-priorities-pane` — founder-reported dashboard defect (column 1 showed runs, not the
   orderable priorities queue). ✅ fixed run_81 (off-design `AwaitingYouPanel` removed; regression test +
   `scripts/proof-priorities-queue.mjs` harness pin it) — the **first live run on the post-reset stack**,
@@ -170,7 +179,7 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   (priority audit) — buildable work done; the 2 founder-present live proofs (Plays dispatch on a real
   run; Quinn drives the Oz GUI) are opportunistic, not blocking.
 
-**Active (launchable; recommended sequence — the `priorities/` directory is the live index):**
+**Active build priorities (launchable; the `priorities/` directory is the live index):**
 1. `new-primary-root` — **LAUNCHABLE (ADR-0020 Accepted 2026-06-14).** Onboard a primary root via the
    bootstrap/takeover/drift onboarding Playbooks. **The first run builds the onboarding ENGINE** — the
    loader extension for shipped meta-Playbooks (ADR-0020 §7), the `deep-read` audit Play (Takeover P2),
@@ -178,16 +187,16 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    `packages/personas/base/playbooks/`. A meaty multi-atom build; the live CoPublisher **Takeover** proof
    is the LAST step, after the engine exists. **Absorbs `workspace-onboarding`.** The concrete form of
    Phase 5 ("first external repo").
-2. `full-oz-dashboard` — the v1-designed control plane (chat, oversight, settings, drag-reorder).
-   **CODE-COMPLETE (all daemon surfaces served); founder live-proof ladder still OPEN** — the priorities-pane
-   defect is fixed (run_81); this is the umbrella for the live Q/A pass. Do NOT relaunch it as a build
-   run (F18). Mechanical proof: `node scripts/proof-oz-surfaces.mjs`. Open punch-list: no founder-reachable
-   "expand-scope → commit held-back" path (run_81 finding).
-Plus three always-available meta-priorities: `build-priorities-from-plan` (draft priorities from the
-plan/ADRs), `priority-audit` (assess the priority set for staleness → a founder-decision table — this
-pruning pass's home), and `adhoc-session` (no named priority — draft one, or run a read-only review/research).
+
+**Standing tools (always available — not build work):** `priority-audit` (assess the priority set for
+staleness → a founder-decision table; the pruning tool) · `adhoc-session` (no named priority — draft one,
+or run a read-only review/research). The Oz dashboard itself is feature-complete and archived; running it
+end-to-end is a founder activity, and any defect found becomes its own focused priority (the model
+`oz-dashboard-priorities-pane` proved).
 
 **Deferred — `backlog/` (each file's `## Objective` names what it's blocked on):**
+- `oz-held-back-expand-scope` — a founder-reachable "expand-scope → commit held-back" path (the run_81
+  punch-list: `resolveRun` only does discard/landed, Oz chat has no resolve verb). Small + concrete.
 - `quinn-app-testing` — Quinn **browser** app-testing Plays only (base Quinn + the `electron-test` Play
   already shipped under the archived `personas-and-plays`); blocked on a Phase-5 web app to drive.
 - `deployment-plays` — human-gated deploys (Vercel/GCloud/signed-Electron/GitHub) + `local/secrets`;
