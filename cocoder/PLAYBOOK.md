@@ -187,13 +187,14 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   `zArchive/priorities/v2/plays-first-class.md`.
 
 **Active build priorities (launchable; the `priorities/` directory is the live index):**
-1. `governance-authoring-plays` — **CONTINUE (run_98, 2026-06-16).** Founder-directed: never leave
-   launch-blocking governance dirt. **Part 2 DONE:** launch guard self-heals governance-only dirt
-   ([ADR-0024](./decisions/0024-governance-pre-run-snapshot.md), `5842e32`). **Part 1 DONE:** three
-   authoring Plays (`8492d32`); dispatch harness (`requestAuthoringPlay`, `85f3a0a`); one-tool-action
-   (`OZ_TOOL author`, `f7d16e0`, resolves `oz-dashboard-bugs` #12); [ADR-0025](./decisions/0025-atomic-authoring-plays.md).
-   **Next:** one Bob atom — `scripts/proof-governance-authoring.mjs` (author-then-launch, zero manual
-   commits, both paths); then `assignments.json` grants (Deb-scope/dashboard route, NOT a Bob atom).
+1. `governance-authoring-plays` — **ARCHIVE-CANDIDATE (run_99, 2026-06-16).** Founder-directed: never
+   leave launch-blocking governance dirt. **All code DONE** (Parts 1 & 2): launch self-heal
+   ([ADR-0024](./decisions/0024-governance-pre-run-snapshot.md), `5842e32`); three authoring Plays
+   (`8492d32`); dispatch harness (`85f3a0a`); one-tool-action (`f7d16e0`, resolves `oz-dashboard-bugs`
+   #12); [ADR-0025](./decisions/0025-atomic-authoring-plays.md). **Proof harness DONE + verified**
+   (`49d08c6`): `node scripts/proof-governance-authoring.mjs` — clauses A–F + H green; clause **G (persona
+   grants) is the sole remaining gate**. Grants land via Deb/dashboard (`cocoder/personas/**`, outside
+   Oscar/Bob writeScope); then rerun proof all-green → founder archive confirmation.
 2. `oz-dashboard-bugs` — **ARCHIVE-CANDIDATE (run_94, 2026-06-15).** All 12 founder-reported Oz
    dashboard defects fixed at the cause (renderer 111/111 · daemon 181/181 · builds green). run_94
    re-landed #2/#5/#7/#8 after a design-ref rebuild clobber (F21) and newly fixed #11/#12; #1–#10

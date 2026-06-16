@@ -65,10 +65,12 @@ governance dirt yet still refuses builder-scope WIP (covered by tests); a `pnpm 
   runs the REAL daemon/core suites (no reimplemented logic) and maps each clause to its proving test —
   A: authoring Plays commit atomically through the one spine; B: Oz's one-tool `author` action (resolves
   `oz-dashboard-bugs` #12); C: human hand-edit author-then-launch self-heals; D: launch still refuses
-  builder-scope WIP; E: the three Plays exist; G: `pnpm typecheck` green (the real compile gate — no `build`
-  script exists in these packages). Oscar ran it: A–E + G green, exit 0. Clause **F (the three Plays granted
-  to oz/oscar/deb) is RED-but-not-required** — it names the 9 missing grants and is the single remaining
-  archive gate; the founder reruns this harness after granting to confirm all-green.
+  builder-scope WIP; F: the three Plays exist on disk; H: `pnpm typecheck` green (the real compile gate — no
+  `build` script exists in these packages). Oscar ran it at atom 1 (`49d08c6`): clauses A–F + H green.
+  Oscar support (`c27d0fe`) tightened the harness — added agent author-then-launch (clause C), re-lettered
+  clauses, and made **G (the three Plays granted to oz/oscar/deb) required**; it names the 9 missing grants
+  and is the single remaining archive gate. Rerun `node scripts/proof-governance-authoring.mjs` after
+  granting → all clauses green → archive-ready.
   - *run_99 atom 0 was rejected (scope violation): Bob bundled the proof script with an unrequested rewrite of
     the daemon-staleness launch guard (`launcher.ts`), its test, and the `assignments.json` grants. Atom 1
     reverted all three and landed only the verified proof script. The launcher.ts idea — governance commits
@@ -78,7 +80,7 @@ governance dirt yet still refuses builder-scope WIP (covered by tests); a `pnpm 
   oz/oscar/deb (per-(persona, Play)). This is a `cocoder/personas/**` edit **outside Oscar's *and* Bob's
   writeScope** — it must land via **Deb** (who holds `cocoder/personas/**`) or the **dashboard assignments
   route**, NOT a Bob atom. Suggested config (matching each persona's base CLI): oz→`claude`, oscar→`claude`,
-  deb→`codex`, empty model. After granting, rerun `node scripts/proof-governance-authoring.mjs` → clause F
+  deb→`codex`, empty model. After granting, rerun `node scripts/proof-governance-authoring.mjs` → clause G
   flips green → archive-ready.
 
 **Disposition:** `archive-candidate` (gated on one governance config edit). The entire code surface

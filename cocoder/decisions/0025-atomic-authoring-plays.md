@@ -76,5 +76,7 @@ non-enum `play` rejected without executing). Landed in atoms `85f3a0a` (harness)
 wiring); `requestOzRepair` behavior unchanged (its suite stays green).
 
 **Remaining to fully realize the priority's verified-when** (tracked in the priority Status, not this ADR):
-the `assignments.json` grants to oz/oscar/deb, and an end-to-end proof harness
-(`scripts/proof-governance-authoring.mjs`) exercising author-then-launch with zero manual commits.
+the `assignments.json` grants of `create-priority`, `edit-priority`, and `archive-priority` to
+oz/oscar/deb (per-(persona, Play); Deb-scope or dashboard route — outside Oscar/Bob writeScope). The
+end-to-end proof harness (`scripts/proof-governance-authoring.mjs`, `49d08c6`) is landed and verified;
+clause G (grants) is the sole remaining required row before archive.

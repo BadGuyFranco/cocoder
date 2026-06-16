@@ -151,7 +151,7 @@ describe('requestAuthoringPlay', () => {
     const fixture = await makeFixture({
       runHeadless: async (input) => {
         fixture.headlessInputs.push(input)
-        if (input.prompt.includes('# Create Priority Play')) {
+        if (fixture.prompts.at(-1)?.prompt.includes('# Create Priority Play')) {
           await writePriority(fixture.home, 'agent-alpha', 'Agent Alpha', 'Launch the agent-authored priority.')
           return { exitCode: 0, output: 'created agent-alpha' }
         }
@@ -217,7 +217,7 @@ async function makeFixture(options: {
     runsRoot: join(home, 'local', 'runs'),
     store,
     git: makeGit(),
-    bootSha: await git(home, ['rev-parse', 'HEAD']),
+    bootSha: (await git(home, ['rev-parse', 'HEAD'])).trim(),
     sessionHost: fakeHost(),
     getAdapter: () => fakeAdapter(prompts),
     listAdapters: () => [],
