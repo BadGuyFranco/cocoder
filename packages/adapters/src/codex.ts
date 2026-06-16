@@ -21,8 +21,8 @@ export class CodexAdapter implements Adapter {
     managesUserConfig: false,
     detail: 'managed by CoCoder: --dangerously-bypass-approvals-and-sandbox; --disable apps (launch flags; no user config modified)',
   }
-  // Interactive TUI with artifact-based completion; headless Play dispatch would hang.
-  readonly headlessCapable = false
+  // Supports both the interactive TUI lane and `codex exec`; safe for headless Play dispatch.
+  readonly headlessCapable = true
   readonly #exec: Exec
   constructor(exec: Exec = defaultExec) {
     this.#exec = exec

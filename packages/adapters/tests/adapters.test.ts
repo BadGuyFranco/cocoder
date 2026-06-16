@@ -96,8 +96,8 @@ describe('runReadiness profiles', () => {
   test('declares the canonical headless capability table for built-in adapters', () => {
     const registry = makeAdapterRegistry()
     expect(Object.fromEntries([...registry.values()].map((adapter) => [adapter.id, adapter.headlessCapable]))).toEqual({
-      claude: false,
-      codex: false,
+      claude: true,
+      codex: true,
       'cursor-agent': true,
     })
   })

@@ -482,7 +482,7 @@
       "status": "ok",
       "tested": true,
       "canEnumerate": true,
-      "headlessCapable": false,
+      "headlessCapable": true,
       "lastTested": "12 min ago",
       "models": [
         "Default",
@@ -500,7 +500,7 @@
       "status": "auth-failed",
       "tested": true,
       "canEnumerate": true,
-      "headlessCapable": false,
+      "headlessCapable": true,
       "lastTested": "1 hr ago",
       "errorDetail": "401 Unauthorized — token expired Tue 02:14 AM. Run `codex auth login`.",
       "models": [

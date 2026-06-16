@@ -57,15 +57,16 @@ type CliViewOverrides = {
 }
 
 function cliView(overrides: CliViewOverrides = {}): CliView {
+  const id = overrides.id ?? 'claude'
   return {
-    id: overrides.id ?? 'claude',
+    id,
     tested: overrides.tested ?? true,
     testedAt: overrides.testedAt === undefined ? 1780153227239 : overrides.testedAt,
     install: { ok: true, detail: 'installed', ...(overrides.install ?? {}) },
     auth: { ok: true, detail: 'authenticated', ...(overrides.auth ?? {}) },
     models: { canEnumerate: true, models: ['opus', 'sonnet'], detail: 'listed models', ...(overrides.models ?? {}) },
     configManaged: { mechanism: 'env', flags: ['--model'], managesUserConfig: false, detail: 'ready', ...(overrides.configManaged ?? {}) },
-    headlessCapable: overrides.headlessCapable ?? false,
+    headlessCapable: overrides.headlessCapable ?? (id === 'claude' || id === 'codex' || id === 'cursor-agent'),
   }
 }
 
@@ -420,7 +421,7 @@ describe('personas from the assignments map + roster', () => {
 
 describe('clis', () => {
   it('keeps fixture CLI headless capability aligned with the adapter ids', () => {
-    const adapterTruth = { claude: false, codex: false, 'cursor-agent': true } as const
+    const adapterTruth = { claude: true, codex: true, 'cursor-agent': true } as const
     const clisById = Object.fromEntries(seed.clis.map((cli) => [cli.id, cli.headlessCapable]))
 
     expect(Object.fromEntries(Object.keys(adapterTruth).map((id) => [id, clisById[id]]))).toEqual(adapterTruth)
@@ -439,7 +440,7 @@ describe('clis', () => {
       lastTested: fmtTime(1780153227239),
       tested: true,
       canEnumerate: true,
-      headlessCapable: false,
+      headlessCapable: true,
       modelsDetail: 'listed models',
       errorDetail: null,
     })
@@ -449,7 +450,7 @@ describe('clis', () => {
 
   it('preserves headless capability from the daemon CLI view', () => {
     expect(adaptCli(cliView({ id: 'cursor-agent', headlessCapable: true })).headlessCapable).toBe(true)
-    expect(adaptCli(cliView({ id: 'claude', headlessCapable: false })).headlessCapable).toBe(false)
+    expect(adaptCli(cliView({ id: 'claude', headlessCapable: true })).headlessCapable).toBe(true)
   })
 
   it('maps install failure to not-installed with install detail', () => {

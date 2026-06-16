@@ -139,10 +139,13 @@ describe('Oz — rebuilt Fusion renderer', () => {
     fireEvent.click(screen.getByText('Personas'))
     const row = bindBobPlay('wrap-up')
     expect(within(row).getByText('cocoder/SESSION_LOG.md')).toBeDefined()
-    expect(within(row).getByText(HEADLESS_CLI_WARNING)).toBeDefined()
+    expect(within(row).queryByText(HEADLESS_CLI_WARNING)).toBeNull()
+
+    fireEvent.change(within(row).getAllByRole('combobox')[0], { target: { value: 'gemini' } })
+    expect(within(boundPlayRow('wrap-up')).getByText(HEADLESS_CLI_WARNING)).toBeDefined()
 
     fireEvent.change(within(row).getAllByRole('combobox')[0], { target: { value: 'codex' } })
-    expect(within(boundPlayRow('wrap-up')).getByText(HEADLESS_CLI_WARNING)).toBeDefined()
+    expect(within(boundPlayRow('wrap-up')).queryByText(HEADLESS_CLI_WARNING)).toBeNull()
 
     fireEvent.change(within(row).getAllByRole('combobox')[0], { target: { value: 'cursor-agent' } })
 
