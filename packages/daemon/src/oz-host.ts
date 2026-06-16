@@ -55,7 +55,8 @@ interface ToolResult {
   readonly action?: OzChatAction
 }
 
-type ToolName = 'launch' | 'adhoc' | 'show' | 'stop' | 'nudge' | 'repair' | 'teardown' | 'status' | 'refresh'
+type AuthoringPlayId = 'create-priority' | 'edit-priority' | 'archive-priority'
+type ToolName = 'launch' | 'adhoc' | 'show' | 'stop' | 'nudge' | 'repair' | 'author' | 'teardown' | 'status' | 'refresh'
 
 // Daemon-local by design: Refresh Oz means a fresh daemon-owned session, so restart drops transcript.
 const sessions = new Map<string, OzSession>()
@@ -197,7 +198,8 @@ function toolInstructions(): string {
     'Reply in plain English for the founder, decision-first.',
     'Act only through these tools, and never claim an action succeeded unless the tool result says it did.',
     'Facts come from the digest above.',
-    'Available tools: `launch {"priorityId":"..."}`, `adhoc {"task":"..."}`, `show {"runId":"..."}`, `stop {"runId":"..."}`, `nudge {"runId":"...","message":"..."}` (optional `rationale`), `repair {"message":"..."}` (optional `rationale`), `teardown {"runId":"..."}`, `status {"runId":"..."}` or `status {}`, and `refresh {}`.',
+    'Available tools: `launch {"priorityId":"..."}`, `adhoc {"task":"..."}`, `show {"runId":"..."}`, `stop {"runId":"..."}`, `nudge {"runId":"...","message":"..."}` (optional `rationale`), `repair {"message":"..."}` (optional `rationale`), `author {"play":"create-priority","id":"...","title":"...","objective":"..."}`, `teardown {"runId":"..."}`, `status {"runId":"..."}` or `status {}`, and `refresh {}`.',
+    '`author` runs exactly one priority authoring Play. `play` must be `create-priority`, `edit-priority`, or `archive-priority`; edit-priority and archive-priority take the same `play` key plus their own fields. create-priority and any Objective edit require the founder-approved id/title/Objective in the args. Do not fabricate them.',
     '`refresh {}` restarts the daemon to refresh Oz and re-derive state from disk. It refuses while a run is in flight. Use it when the founder asks to refresh Oz/restart the daemon, or after a repair needs the daemon to reload code.',
     'To use a tool, your output must end with exactly one final non-empty line in this form: `OZ_TOOL {"tool":"launch","args":{"priorityId":"demo"}}`.',
     'Use strict JSON after `OZ_TOOL `. Only one tool call is allowed per turn. Everything before the `OZ_TOOL` line is working notes and is not shown to the founder.',
@@ -275,6 +277,7 @@ function validateToolCall(call: ToolCall): ToolValidation {
   if (call.tool === 'stop') return requiredString(call, 'runId', (runId) => ({ kind: 'stop', runId }))
   if (call.tool === 'nudge') return validateNudgeTool(call)
   if (call.tool === 'repair') return validateRepairTool(call)
+  if (call.tool === 'author') return validateAuthoringTool(call)
   if (call.tool === 'teardown') return requiredString(call, 'runId', (runId) => ({ kind: 'teardown', runId }))
   if (call.tool === 'status') {
     if (!Object.prototype.hasOwnProperty.call(call.args, 'runId')) return { ok: true, command: { kind: 'status' } }
@@ -328,8 +331,21 @@ function validateRepairTool(call: ToolCall): ToolValidation {
   }
 }
 
+function validateAuthoringTool(call: ToolCall): ToolValidation {
+  const play = call.args.play
+  if (!isAuthoringPlayId(play)) {
+    return { ok: false, error: 'Tool "author" requires arg "play" to be one of create-priority, edit-priority, archive-priority.' }
+  }
+  const { play: _play, ...invocation } = call.args
+  return { ok: true, command: { kind: 'author', playId: play, invocation } }
+}
+
+function isAuthoringPlayId(value: unknown): value is AuthoringPlayId {
+  return value === 'create-priority' || value === 'edit-priority' || value === 'archive-priority'
+}
+
 function isToolName(tool: string): tool is ToolName {
-  return tool === 'launch' || tool === 'adhoc' || tool === 'show' || tool === 'stop' || tool === 'nudge' || tool === 'repair' || tool === 'teardown' || tool === 'status' || tool === 'refresh'
+  return tool === 'launch' || tool === 'adhoc' || tool === 'show' || tool === 'stop' || tool === 'nudge' || tool === 'repair' || tool === 'author' || tool === 'teardown' || tool === 'status' || tool === 'refresh'
 }
 
 async function executeTool(command: OzExecutableCommand, execute: OzCommandExecutor): Promise<ToolResult> {

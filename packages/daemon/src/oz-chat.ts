@@ -1,6 +1,6 @@
 import type { Run } from '@cocoder/core'
 import type { OzContext } from './context.js'
-import { launchRun as launchRunOp, requestDaemonRestart as restartDaemonOp, requestNudgeRun as nudgeRunOp, requestOzRepair as repairOzOp, requestStopRun as stopRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type LaunchResult } from './launcher.js'
+import { launchRun as launchRunOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestNudgeRun as nudgeRunOp, requestOzRepair as repairOzOp, requestStopRun as stopRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
 import { tryHandleOzAgentTurn } from './oz-host.js'
 
 const ADHOC_PRIORITY_ID = 'adhoc-session'
@@ -13,6 +13,7 @@ export type OzCommand =
   | { readonly kind: 'stop'; readonly runId: string }
   | { readonly kind: 'nudge'; readonly runId: string; readonly message: string; readonly rationale?: string }
   | { readonly kind: 'repair'; readonly message: string; readonly rationale?: string }
+  | { readonly kind: 'author'; readonly playId: AuthoringPlayInput['playId']; readonly invocation: unknown }
   | { readonly kind: 'teardown'; readonly runId: string }
   | { readonly kind: 'status'; readonly runId?: string }
   | { readonly kind: 'refresh' }
@@ -22,7 +23,7 @@ export type OzExecutableCommand = Exclude<OzCommand, { readonly kind: 'help' } |
 export type OzCommandExecutor = (command: OzExecutableCommand) => Promise<OzChatResult>
 
 export interface OzChatAction {
-  readonly type: 'launch' | 'show' | 'stop' | 'nudge' | 'repair' | 'teardown' | 'status' | 'refresh'
+  readonly type: 'launch' | 'show' | 'stop' | 'nudge' | 'repair' | 'author' | 'teardown' | 'status' | 'refresh'
   readonly workspaceId?: string
   readonly priorityId?: string
   readonly runId?: string
@@ -53,9 +54,19 @@ export interface OzChatOps {
   readonly restartDaemon: typeof restartDaemonOp
   readonly nudgeRun: typeof nudgeRunOp
   readonly repairOz: typeof repairOzOp
+  readonly requestAuthoringPlay: typeof authoringPlayOp
 }
 
-const defaultOps: OzChatOps = { launchRun: launchRunOp, showRun: showRunOp, stopRun: stopRunOp, teardownRun: teardownRunOp, restartDaemon: restartDaemonOp, nudgeRun: nudgeRunOp, repairOz: repairOzOp }
+const defaultOps: OzChatOps = {
+  launchRun: launchRunOp,
+  showRun: showRunOp,
+  stopRun: stopRunOp,
+  teardownRun: teardownRunOp,
+  restartDaemon: restartDaemonOp,
+  nudgeRun: nudgeRunOp,
+  repairOz: repairOzOp,
+  requestAuthoringPlay: authoringPlayOp,
+}
 
 export function parseOzCommand(text: string): OzCommand {
   const trimmed = text.trim()
@@ -168,6 +179,15 @@ export async function executeOzCommand(ctx: OzContext, workspaceId: string | und
       'repair',
       () => ops.repairOz(ctx, { workspaceId, message: command.message, ...(command.rationale ? { rationale: command.rationale } : {}) }),
       (out) => repairReply(workspaceId, out),
+    )
+  }
+
+  if (command.kind === 'author') {
+    if (!workspaceId) return missingWorkspace()
+    return runOp(
+      'author',
+      () => ops.requestAuthoringPlay(ctx, { workspaceId, persona: 'oz', playId: command.playId, invocation: command.invocation }),
+      (out) => authoringReply(workspaceId, out),
     )
   }
 
@@ -289,6 +309,29 @@ function repairReply(workspaceId: string, out: LaunchResult): OzChatReply {
     command: 'repair',
     ok: true,
     action: { type: 'repair', workspaceId, committedPaths, commitSha, outOfLanePaths, ...(turnLogPath ? { turnLogPath } : {}) },
+  }
+}
+
+function authoringReply(workspaceId: string, out: LaunchResult): OzChatReply {
+  const committedPaths = stringArray(out.body.committedPaths)
+  const outOfLanePaths = stringArray(out.body.outOfLanePaths)
+  const commitSha = typeof out.body.commitSha === 'string' ? out.body.commitSha : null
+  const turnLogPath = typeof out.body.turnLogPath === 'string' ? out.body.turnLogPath : undefined
+  if (!isOk(out.status)) return failedReply('author', 'Could not author priority governance', out)
+
+  const committed = commitSha
+    ? `Committed ${committedPaths.length === 0 ? 'the authoring change' : committedPaths.join(', ')} as ${commitSha}.`
+    : 'Nothing changed; no authoring commit was created.'
+  const outOfLane = outOfLanePaths.length > 0
+    ? ` Held back outside the authoring Play lane: ${outOfLanePaths.join(', ')}.`
+    : ''
+  const log = turnLogPath ? ` Turn log: ${turnLogPath}.` : ''
+  const refresh = commitSha ? ' Refresh Oz next so the daemon reloads governance.' : ''
+  return {
+    reply: `${committed}${outOfLane}${log}${refresh}`,
+    command: 'author',
+    ok: true,
+    action: { type: 'author', workspaceId, committedPaths, commitSha, outOfLanePaths, ...(turnLogPath ? { turnLogPath } : {}) },
   }
 }
 

@@ -377,6 +377,76 @@ describe('Oz agent chat turns', () => {
     expect(result).toMatchObject({ status: 200, body: { reply: 'The repair turn failed and nothing was committed.', command: 'chat', ok: true } })
   })
 
+  test('author tool strips play from invocation and dispatches one authoring Play action', async () => {
+    const fixture = await makeFixture({
+      outputs: [
+        'Creating priority.\nOZ_TOOL {"tool":"author","args":{"play":"create-priority","id":"alpha","title":"Alpha","objective":"Ship alpha."}}',
+        'I created the priority and you should refresh Oz.',
+      ],
+    })
+    const calls: unknown[] = []
+    const ops: OzChatOps = {
+      ...fakeOps(),
+      requestAuthoringPlay: async (_ctx, input) => {
+        calls.push(input)
+        return {
+          status: 200,
+          body: {
+            ok: true,
+            committedPaths: ['cocoder/priorities/alpha.md'],
+            commitSha: 'sha-author',
+            outOfLanePaths: [],
+            exitCode: 0,
+            turnLogPath: '/tmp/cocoder/local/oz/cocoder/authoring-create-priority.log',
+          },
+        }
+      },
+    }
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'create alpha priority', workspaceId: 'cocoder' }, ops)
+
+    expect(calls).toEqual([{
+      workspaceId: 'cocoder',
+      persona: 'oz',
+      playId: 'create-priority',
+      invocation: { id: 'alpha', title: 'Alpha', objective: 'Ship alpha.' },
+    }])
+    expect(fixture.headlessInputs).toHaveLength(2)
+    expect(fixture.prompts[0]?.prompt).toContain('author {"play":"create-priority","id":"...","title":"...","objective":"..."}')
+    expect(fixture.prompts[0]?.prompt).toContain('Do not fabricate them.')
+    expect(fixture.prompts[1]?.prompt).toContain('Committed cocoder/priorities/alpha.md as sha-author.')
+    expect(fixture.prompts[1]?.prompt).toContain('Refresh Oz next')
+    expect(result).toMatchObject({
+      status: 200,
+      body: { reply: 'I created the priority and you should refresh Oz.', command: 'chat', ok: true, action: { type: 'author', workspaceId: 'cocoder', commitSha: 'sha-author' } },
+    })
+  })
+
+  test('author tool rejects missing and non-enum play without executing authoring', async () => {
+    const fixture = await makeFixture({
+      outputs: [
+        'Missing play.\nOZ_TOOL {"tool":"author","args":{"id":"alpha","title":"Alpha","objective":"Ship alpha."}}',
+        'Bad play.\nOZ_TOOL {"tool":"author","args":{"play":"rename-priority","id":"alpha"}}',
+        'I need a valid authoring play before I can make that change.',
+      ],
+    })
+    let calls = 0
+    const ops: OzChatOps = {
+      ...fakeOps(),
+      requestAuthoringPlay: async () => {
+        calls += 1
+        return { status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0 } }
+      },
+    }
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'create alpha priority', workspaceId: 'cocoder' }, ops)
+
+    expect(calls).toBe(0)
+    expect(fixture.prompts[1]?.prompt).toContain('Tool "author" requires arg "play" to be one of create-priority, edit-priority, archive-priority.')
+    expect(fixture.prompts[2]?.prompt).toContain('Tool "author" requires arg "play" to be one of create-priority, edit-priority, archive-priority.')
+    expect(result).toMatchObject({ status: 200, body: { reply: 'I need a valid authoring play before I can make that change.', command: 'chat', ok: true } })
+  })
+
   test('status tool without runId feeds the workspace run summary to the follow-up prompt', async () => {
     const fixture = await makeFixture({
       outputs: [
@@ -567,6 +637,7 @@ function fakeOps(): OzChatOps {
     stopRun: async () => ({ status: 202, body: { stopping: true } }),
     nudgeRun: async () => ({ status: 202, body: { queued: true, seq: 1 } }),
     repairOz: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0 } }),
+    requestAuthoringPlay: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0 } }),
     teardownRun: async () => ({ status: 200, body: { closed: [] } }),
     restartDaemon: async () => ({ status: 202, body: { restarting: true } }),
   }

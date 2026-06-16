@@ -344,6 +344,99 @@ describe('handleOzMessage', () => {
       body: { ok: false, command: 'repair', reply: 'Could not repair: Oz repair turn failed with exit code 2; nothing was committed.' },
     })
   })
+
+  test('author executable dispatches to the authoring Play op and renders committed path, sha, log, and refresh hint', async () => {
+    const calls: unknown[] = []
+    const ops = authorOps({
+      status: 200,
+      body: {
+        ok: true,
+        committedPaths: ['cocoder/priorities/alpha.md'],
+        commitSha: 'sha-author',
+        outOfLanePaths: [],
+        exitCode: 0,
+        turnLogPath: '/tmp/cocoder/local/oz/cocoder/authoring-create-priority.log',
+      },
+    }, calls)
+
+    const result = await executeOzCommand(testCtx(), 'cocoder', {
+      kind: 'author',
+      playId: 'create-priority',
+      invocation: { id: 'alpha', title: 'Alpha', objective: 'Ship alpha.' },
+    }, ops)
+
+    expect(calls).toEqual([{
+      workspaceId: 'cocoder',
+      persona: 'oz',
+      playId: 'create-priority',
+      invocation: { id: 'alpha', title: 'Alpha', objective: 'Ship alpha.' },
+    }])
+    expect(result).toMatchObject({
+      status: 200,
+      body: {
+        ok: true,
+        command: 'author',
+        action: {
+          type: 'author',
+          workspaceId: 'cocoder',
+          committedPaths: ['cocoder/priorities/alpha.md'],
+          commitSha: 'sha-author',
+          outOfLanePaths: [],
+          turnLogPath: '/tmp/cocoder/local/oz/cocoder/authoring-create-priority.log',
+        },
+      },
+    })
+    expect(result.body.reply).toContain('Committed cocoder/priorities/alpha.md as sha-author.')
+    expect(result.body.reply).toContain('Turn log: /tmp/cocoder/local/oz/cocoder/authoring-create-priority.log.')
+    expect(result.body.reply).toContain('Refresh Oz next')
+  })
+
+  test('author executable reports no-commit and held-back paths without a refresh hint', async () => {
+    const result = await executeOzCommand(testCtx(), 'cocoder', {
+      kind: 'author',
+      playId: 'create-priority',
+      invocation: { id: 'alpha', title: 'Alpha', objective: 'Ship alpha.' },
+    }, authorOps({
+      status: 200,
+      body: {
+        ok: true,
+        committedPaths: [],
+        commitSha: null,
+        outOfLanePaths: ['cocoder/PLAYBOOK.md'],
+        exitCode: 0,
+        turnLogPath: '/tmp/authoring.log',
+      },
+    }))
+
+    expect(result).toMatchObject({
+      status: 200,
+      body: {
+        ok: true,
+        command: 'author',
+        action: { type: 'author', workspaceId: 'cocoder', committedPaths: [], commitSha: null, outOfLanePaths: ['cocoder/PLAYBOOK.md'] },
+      },
+    })
+    expect(result.body.reply).toContain('Nothing changed; no authoring commit was created.')
+    expect(result.body.reply).toContain('Held back outside the authoring Play lane: cocoder/PLAYBOOK.md.')
+    expect(result.body.reply).not.toContain('Refresh Oz next')
+  })
+
+  test('author executable requires a workspace', async () => {
+    let calls = 0
+    const result = await executeOzCommand(testCtx(), undefined, {
+      kind: 'author',
+      playId: 'create-priority',
+      invocation: { id: 'alpha', title: 'Alpha', objective: 'Ship alpha.' },
+    }, authorOps({ status: 200, body: { ok: true } }, undefined, () => {
+      calls += 1
+    }))
+
+    expect(calls).toBe(0)
+    expect(result).toMatchObject({
+      status: 400,
+      body: { ok: false, command: 'unknown', reply: expect.stringContaining('Pick a workspace first') },
+    })
+  })
 })
 
 function repairOps(result: { readonly status: number; readonly body: Record<string, unknown> }): OzChatOps {
@@ -354,6 +447,28 @@ function repairOps(result: { readonly status: number; readonly body: Record<stri
     nudgeRun: async () => ({ status: 500, body: { error: 'unexpected nudge' } }),
     repairOz: async (_ctx, input) => {
       expect(input).toMatchObject({ workspaceId: 'cocoder' })
+      return result
+    },
+    requestAuthoringPlay: async () => ({ status: 500, body: { error: 'unexpected author' } }),
+    teardownRun: async () => ({ status: 500, body: { error: 'unexpected teardown' } }),
+    restartDaemon: async () => ({ status: 500, body: { error: 'unexpected restart' } }),
+  }
+}
+
+function authorOps(
+  result: { readonly status: number; readonly body: Record<string, unknown> },
+  calls: unknown[] = [],
+  onCall?: () => void,
+): OzChatOps {
+  return {
+    launchRun: async () => ({ status: 500, body: { error: 'unexpected launch' } }),
+    showRun: async () => ({ status: 500, body: { error: 'unexpected show' } }),
+    stopRun: async () => ({ status: 500, body: { error: 'unexpected stop' } }),
+    nudgeRun: async () => ({ status: 500, body: { error: 'unexpected nudge' } }),
+    repairOz: async () => ({ status: 500, body: { error: 'unexpected repair' } }),
+    requestAuthoringPlay: async (_ctx, input) => {
+      onCall?.()
+      calls.push(input)
       return result
     },
     teardownRun: async () => ({ status: 500, body: { error: 'unexpected teardown' } }),
