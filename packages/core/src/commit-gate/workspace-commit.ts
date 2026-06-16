@@ -6,9 +6,10 @@
 // Two shapes, one receipt:
 //   - commitFiles: a daemon-CONTROLLED file list (governance create/reorder/assignments/scaffold) — the
 //     daemon wrote exactly these paths, so there is no scope partition; commit them or report why not.
-//   - commitScoped: an AGENT's whole-tree diff (Oz repair) — commit EVERYTHING the agent changed and
-//     FLAG anything outside the allow-list (scope is advisory, founder directive 2026-06-15). The spine
-//     NEVER WITHHOLDS — there is no held-back state; out-of-lane edits land and are surfaced as a flag.
+//   - commitScoped: an AGENT's whole-tree diff. By default it commits EVERYTHING the agent changed and
+//     FLAGs anything outside the allow-list (Oz repair's founder-directed broad-access contract). A
+//     caller can opt into committing only the allow-list when the Play contract explicitly promises
+//     held-back out-of-scope edits.
 //
 // Neither EVER swallows a failure: a commit error is reported in the receipt (committed:false, error),
 // not as a false success (the run path records the receipt as a store event; the daemon records it to
@@ -31,11 +32,17 @@ export interface CommitReceipt {
   readonly committed: boolean
   readonly committedSha: string | null
   readonly committedFiles: readonly string[]
-  /** Paths COMMITTED that fell outside the (advisory) allow-list — a flag for visibility, NOT withheld.
-   *  They are in `committedFiles` (commitScoped only; always empty for the controlled-list commitFiles). */
+  /** Paths outside the allow-list. By default these are committed and flagged; with commitOnlyScope they
+   *  are left in the working tree and surfaced here. Always empty for controlled-list commitFiles. */
   readonly outOfLane: readonly string[]
   /** A commit was attempted but FAILED — surfaced, never swallowed. null on success or no-op. */
   readonly error: string | null
+}
+
+export interface CommitScopedOptions {
+  /** Commit only in-scope files and leave out-of-scope files in the working tree. Default commits all
+   *  changes and reports out-of-lane paths for visibility, preserving the Oz repair contract. */
+  readonly commitOnlyScope?: boolean
 }
 
 const empty = (outOfLane: readonly string[], error: string | null): CommitReceipt => ({
@@ -66,23 +73,24 @@ export async function commitFiles(
   }
 }
 
-/** Commit an agent's WHOLE-tree diff to the active branch — everything it changed, in one commit. Scope is
- *  advisory: paths outside the allow-list are FLAGGED (`outOfLane`) for visibility but still committed,
- *  never withheld (the spine never holds back — founder directive 2026-06-15). Never swallows: a commit
- *  failure returns committed:false + error. */
+/** Commit an agent's whole-tree diff to the active branch. Default behavior commits every changed path
+ *  and flags paths outside the allow-list; commitOnlyScope commits only matching paths and leaves the
+ *  rest in the working tree. Never swallows: a commit failure returns committed:false + error. */
 export async function commitScoped(
   git: Git,
   repoPath: string,
   scope: readonly string[],
   message: string,
   author?: CommitAuthor,
+  opts: CommitScopedOptions = {},
 ): Promise<CommitReceipt> {
   const changed = await git.changedFiles(repoPath)
-  const { outOfScope } = partitionByScope(changed, scope)
-  if (changed.length === 0) return empty([], null)
+  const { inScope, outOfScope } = partitionByScope(changed, scope)
+  const committable = opts.commitOnlyScope ? inScope : changed
+  if (committable.length === 0) return empty(outOfScope, null)
   try {
-    const committedSha = await git.addAndCommit(repoPath, changed, message, author)
-    return { committed: true, committedSha, committedFiles: changed, outOfLane: outOfScope, error: null }
+    const committedSha = await git.addAndCommit(repoPath, committable, message, author)
+    return { committed: true, committedSha, committedFiles: committable, outOfLane: outOfScope, error: null }
   } catch (err) {
     return empty(outOfScope, errMsg(err))
   }

@@ -31,6 +31,18 @@ import { findWorkspace } from './registry.js'
 import { appendAudit } from './audit.js'
 
 const OZ_REPAIR_TIMEOUT_MS = 120_000
+const AUTHORING_PLAY_TIMEOUT_MS = 120_000
+const AUTHORING_PLAY_IDS = ['create-priority', 'edit-priority', 'archive-priority'] as const
+
+type AuthoringPersona = 'oz' | 'oscar' | 'deb'
+type AuthoringPlayId = typeof AUTHORING_PLAY_IDS[number]
+
+export interface AuthoringPlayInput {
+  readonly workspaceId: string
+  readonly persona: AuthoringPersona
+  readonly playId: AuthoringPlayId
+  readonly invocation: unknown
+}
 
 function emitOzEvent(ctx: OzContext, event: Omit<OzEvent, 'ts'>): void {
   ctx.events.emit({ ...event, ts: new Date().toISOString() })
@@ -454,60 +466,144 @@ export async function requestOzRepair(ctx: OzContext, input: { readonly workspac
     scope: ozRepairScope(workspace.id, message, input.rationale),
   })
 
+  return runHeadlessThenGateCommit(ctx, {
+    workspaceId: workspace.id,
+    persona: 'oz',
+    cli: target.cli,
+    model: target.model,
+    cwd: ctx.cocoderHome,
+    turnLogPath,
+    prompt,
+    timeoutMs: OZ_REPAIR_TIMEOUT_MS,
+    scope: ozRepairScope(workspace.id, message, input.rationale),
+    commitMessage: 'oz-repair',
+    author: { name: 'oz-repair', email: 'oz-repair@cocoder.local' },
+    auditAction: 'oz-repair',
+    eventType: 'oz-repair',
+    preTurnError: (detail) => `Oz repair turn failed before diff/commit: ${detail}`,
+    exitError: (exitCode) => `Oz repair turn failed with exit code ${exitCode}; nothing was committed.`,
+  })
+}
+
+export async function requestAuthoringPlay(ctx: OzContext, input: AuthoringPlayInput): Promise<LaunchResult> {
+  if (ctx.inFlight.size > 0) {
+    return { status: 409, body: { error: 'refusing to run authoring Play: a run is in flight (would orphan it) — wait for it to finish' } }
+  }
+  if (!AUTHORING_PLAY_IDS.includes(input.playId)) {
+    return { status: 400, body: { error: `unsupported authoring Play "${input.playId}"` } }
+  }
+
+  const workspace = await findWorkspace(ctx.cocoderHome, input.workspaceId)
+  if (!workspace) return { status: 404, body: { error: 'unknown workspace' } }
+
+  const playDeltaDir = join(workspace.path, 'cocoder', 'plays', 'deltas')
+  let assignment: { readonly cli: string; readonly model: string }
+  let play: { readonly body: string; readonly writeScope: readonly string[] }
+  try {
+    const assignments = loadAssignments(join(workspace.path, 'cocoder', 'personas', 'assignments.json'))
+    assignment = resolvePlayAssignment(assignments, input.persona, input.playId)
+    play = loadEffectivePlay(basePlaysDir(), playDeltaDir, input.playId)
+  } catch {
+    return { status: 409, body: { error: `no CLI is assigned for ${input.persona}/${input.playId} in workspace "${workspace.id}"` } }
+  }
+  if (!assignment.cli.trim()) {
+    return { status: 409, body: { error: `no CLI is assigned for ${input.persona}/${input.playId} in workspace "${workspace.id}"` } }
+  }
+
+  const turnLogPath = join(ctx.cocoderHome, 'local', 'oz', workspace.id, `authoring-${input.playId}-${Date.now()}.log`)
+  await mkdir(dirname(turnLogPath), { recursive: true })
+  return runHeadlessThenGateCommit(ctx, {
+    workspaceId: workspace.id,
+    persona: input.persona,
+    cli: assignment.cli,
+    model: assignment.model,
+    cwd: workspace.path,
+    turnLogPath,
+    prompt: buildAuthoringPlayPrompt({ workspaceId: workspace.id, playId: input.playId, playBody: play.body, invocation: input.invocation }),
+    timeoutMs: AUTHORING_PLAY_TIMEOUT_MS,
+    scope: play.writeScope,
+    commitMessage: `governance: ${input.playId}`,
+    author: { name: 'cocoder-governance', email: 'governance@cocoder.local' },
+    commitOnlyScope: true,
+    auditAction: 'authoring-play',
+    eventType: 'authoring-play',
+    preTurnError: (detail) => `Authoring Play turn failed before diff/commit: ${detail}`,
+    exitError: (exitCode) => `Authoring Play turn failed with exit code ${exitCode}; nothing was committed.`,
+  })
+}
+
+interface HeadlessCommitOptions {
+  readonly workspaceId: string
+  readonly persona: string
+  readonly cli: string
+  readonly model: string
+  readonly cwd: string
+  readonly turnLogPath: string
+  readonly prompt: string
+  readonly timeoutMs: number
+  readonly scope: readonly string[]
+  readonly commitMessage: string
+  readonly author: { readonly name: string; readonly email: string }
+  readonly commitOnlyScope?: boolean
+  readonly auditAction: string
+  readonly eventType: string
+  readonly preTurnError: (detail: string) => string
+  readonly exitError: (exitCode: number) => string
+}
+
+async function runHeadlessThenGateCommit(ctx: OzContext, opts: HeadlessCommitOptions): Promise<LaunchResult> {
   let turn: { readonly exitCode: number; readonly output: string }
   try {
-    const cmd = ctx.getAdapter(target.cli).build({
-      persona: 'oz',
-      prompt,
-      model: target.model,
-      cwd: ctx.cocoderHome,
-      outPath: turnLogPath,
+    const cmd = ctx.getAdapter(opts.cli).build({
+      persona: opts.persona,
+      prompt: opts.prompt,
+      model: opts.model,
+      cwd: opts.cwd,
+      outPath: opts.turnLogPath,
     })
     const run = ctx.runHeadless ?? runHeadlessProcess
-    turn = await run({ command: cmd.command, args: cmd.args, cwd: ctx.cocoderHome, outPath: turnLogPath, timeoutMs: OZ_REPAIR_TIMEOUT_MS })
+    turn = await run({ command: cmd.command, args: cmd.args, cwd: opts.cwd, outPath: opts.turnLogPath, timeoutMs: opts.timeoutMs })
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err)
-    await writeFile(turnLogPath, detail, 'utf8')
-    return { status: 500, body: { error: `Oz repair turn failed before diff/commit: ${detail}`, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: -1, turnLogPath } }
+    await writeFile(opts.turnLogPath, detail, 'utf8')
+    return { status: 500, body: { error: opts.preTurnError(detail), committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: -1, turnLogPath: opts.turnLogPath } }
   }
-  await writeFile(turnLogPath, turn.output, 'utf8')
+  await writeFile(opts.turnLogPath, turn.output, 'utf8')
 
   if (turn.exitCode !== 0) {
     const body = {
       ok: false,
-      error: `Oz repair turn failed with exit code ${turn.exitCode}; nothing was committed.`,
+      error: opts.exitError(turn.exitCode),
       committedPaths: [],
       commitSha: null,
       outOfLanePaths: [],
       exitCode: turn.exitCode,
-      turnLogPath,
+      turnLogPath: opts.turnLogPath,
     }
-    await appendAudit(ctx.cocoderHome, { action: 'oz-repair', workspaceId: workspace.id, ...body })
-    emitOzEvent(ctx, { type: 'oz-repair', workspaceId: workspace.id, status: 'failed' })
+    await appendAudit(ctx.cocoderHome, { action: opts.auditAction, workspaceId: opts.workspaceId, ...body })
+    emitOzEvent(ctx, { type: opts.eventType, workspaceId: opts.workspaceId, status: 'failed' })
     return { status: 500, body }
   }
 
-  const scope = ozRepairScope(workspace.id, message, input.rationale)
-  // Through the one commit spine (ADR-0023 §1), attributed to a distinct `oz-repair` identity for
-  // auditability (mirrors the `cocoder-governance` author on daemon governance commits).
   const gate = await gateCommitRepair({
     git: ctx.git,
-    cwd: ctx.cocoderHome,
-    scope,
-    message: 'oz-repair',
-    author: { name: 'oz-repair', email: 'oz-repair@cocoder.local' },
+    cwd: opts.cwd,
+    scope: opts.scope,
+    message: opts.commitMessage,
+    author: opts.author,
+    commitOnlyScope: opts.commitOnlyScope,
   })
   const body = {
-    ok: turn.exitCode === 0,
+    ok: true,
     committedPaths: gate.committedFiles,
     commitSha: gate.committedSha,
     outOfLanePaths: gate.outOfLaneFiles,
     exitCode: turn.exitCode,
-    turnLogPath,
+    turnLogPath: opts.turnLogPath,
   }
-  await appendAudit(ctx.cocoderHome, { action: 'oz-repair', workspaceId: workspace.id, ...body })
-  emitOzEvent(ctx, { type: 'oz-repair', workspaceId: workspace.id, status: gate.committedSha ? 'committed' : 'no-commit' })
-  return { status: turn.exitCode === 0 ? 200 : 500, body }
+  await appendAudit(ctx.cocoderHome, { action: opts.auditAction, workspaceId: opts.workspaceId, ...body })
+  emitOzEvent(ctx, { type: opts.eventType, workspaceId: opts.workspaceId, status: gate.committedSha ? 'committed' : 'no-commit' })
+  return { status: 200, body }
 }
 
 function resolveOzRepairTarget(workspacePath: string): { readonly cli: string; readonly model: string } | null {
@@ -553,6 +649,24 @@ function buildOzRepairPrompt(input: { readonly workspaceId: string; readonly mes
     'After an in-scope repair lands, the founder/Oz must Refresh Oz so the daemon reloads the changed state.',
     `Workspace id: ${input.workspaceId}`,
   ].filter((part): part is string => part !== null).join('\n\n')
+}
+
+function buildAuthoringPlayPrompt(input: { readonly workspaceId: string; readonly playId: string; readonly playBody: string; readonly invocation: unknown }): string {
+  return [
+    '## Authoring Play dispatch',
+    `Workspace id: ${input.workspaceId}`,
+    `Play id: ${input.playId}`,
+    'Run exactly one headless authoring Play against the current workspace checkout.',
+    'Do not run git and do not commit. The dispatch harness commits the Play write-scope after this turn returns.',
+    '# Play markdown',
+    input.playBody,
+    '# Founder-approved invocation input',
+    renderInvocation(input.invocation),
+  ].join('\n\n')
+}
+
+function renderInvocation(invocation: unknown): string {
+  return typeof invocation === 'string' ? invocation : JSON.stringify(invocation, null, 2) ?? String(invocation)
 }
 
 /** Bring a run's live cmux pane to the foreground. 409 if no session is live in THIS daemon process
