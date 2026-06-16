@@ -28,6 +28,7 @@ their still-live content was absorbed into [ADR-0019](./0019-multi-root-workspac
 | [0019](./0019-multi-root-workspaces.md) | Multi-root workspaces: `.code-workspace` files in `local/workspace/`, three root roles, no nesting (absorbs live v1-0007/0006) | Accepted |
 | [0023](./0023-workspace-commit-spine.md) | **The workspace commit spine: direct-to-branch by default, isolation opt-in** — one commit service for all actors; collapses the three divergent commit paths; dissolves the run-branch strand class (supersedes 0015/0021/0022, reconciles 0007) | Accepted |
 | [0020](./0020-primary-root-audit.md) | **Onboarding Playbooks** — bootstrap / takeover / drift as shipped baked-plan Playbooks (multi-agent takeover, propose-only drift, top-tier pins, founder checkpoints; extends 0010) | Accepted (2026-06-14) |
+| [0024](./0024-governance-pre-run-snapshot.md) | **Launch self-heals governance dirt** — the launch guard partitions dirty-in-scope by builder vs. governance scope; governance-only dirt is auto-committed as a `governance: pre-run snapshot` and the launch proceeds, while builder/product WIP still refuses (amends 0023 §2/§3) | Accepted (2026-06-16) |
 
 ## Proposed (founder review owed)
 
