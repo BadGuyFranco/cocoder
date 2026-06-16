@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-16 — **Governance authoring as atomic Plays (run_97): launch self-heal landed + ADR-0024; three authoring Plays defined — dispatch harness + grants remain**
+
+**Persona:** Oscar (orchestrator) + Bob (builder, codex) | **Priority:** [governance-authoring-plays](./priorities/governance-authoring-plays.md) | **Run:** run_97
+**Outcomes:**
+- **Part 2 (launch self-heal) DONE** — atom 0 (`5842e32`): the direct-mode launch guard now partitions dirty-in-scope files by owner. **Governance-only** dirt (`cocoder/**`/docs/`ARCHITECTURE.md`) is auto-committed as a `governance: pre-run snapshot` and the launch proceeds; **builder/product** dirt (`packages/**`) still refuses (founder WIP protected); **mixed** dirt refuses and snapshots nothing. Quarantine baseline recomputed post-snapshot. Bonus single-source win: the `cocoder-governance` author was hoisted into one core spine constant (`COCODER_GOVERNANCE_AUTHOR`), dedup'd from the daemon. Core 259→263, daemon 181, typecheck/topology green.
+- **ADR-0024 authored + indexed** (Oscar support edit) — records the launch self-heal as an amendment to ADR-0023 §2/§3, with the run_91–96 strand lineage. ARCHITECTURE.md commit-spine section updated with the same.
+- **Part 1 foundation DONE** — atom 1 (`8492d32`): three first-class authoring Plays defined (`create-priority`, `edit-priority`, `archive-priority`) under `packages/personas/base/plays/`, headless, `cocoder/priorities/**` scope, with ADR-0010 founder-approval guardrails (create + Objective-edits founder-approved; archive lower-stakes) and a verified single-source mirror of the daemon's `composePriorityMarkdown`/id-validation contract. Loader auto-enumerates them (no code change). New test: core 263.
+- **Verify discipline:** read every diff + ran core/daemon/typecheck/topology myself per atom before each commit; both atoms passed clean on first dispatch.
+**Next:** Launch **`governance-authoring-plays`** again for the keystone atom — the out-of-run **dispatch+commit harness** (generalize `requestOzRepair` so Oz/Deb invoke the authoring Plays as one tool action, committing through the spine). Then the `assignments.json` grants (Deb-scope/dashboard route, NOT a Bob atom) + an authoring-Plays ADR.
+
 ## 2026-06-15 — **Oz dashboard defect sweep (run_94): all 12 founder bugs addressed; #2/#5/#7/#8 recovered from a rebuild-clobber, #11/#12 newly fixed**
 
 **Persona:** Oscar (orchestrator + wrap-up) + Bob (builder, codex) | **Priority:** [oz-dashboard-bugs](./priorities/oz-dashboard-bugs.md) | **Run:** run_94

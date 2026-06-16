@@ -73,6 +73,14 @@ paths are committed and **flagged**, never withheld; applies **verification in p
 **one durable receipt** (commit-link + event: branch, SHA(s), changed files, out-of-lane flagged files,
 verification evidence).
 
+**Launch self-heals governance dirt ([ADR-0024](./cocoder/decisions/0024-governance-pre-run-snapshot.md)).**
+The direct-mode launch guard partitions uncommitted in-scope files by owner: **builder/product** dirt
+(`packages/**`) still **refuses** the launch (protecting the founder's product WIP), but **governance-only**
+dirt (the `cocoder/**` / docs / `ARCHITECTURE.md` surfaces) is auto-committed as a single
+`governance: pre-run snapshot` through the spine and the launch proceeds. So authoring a priority and
+immediately launching it can never be blocked by the governance edit it just made (the run_91–96 strand
+class). Mixed dirt refuses and snapshots nothing.
+
 | Change kind | Path | Verification |
 |---|---|---|
 | Governance / docs / ADRs / priorities / personas / standards | **Direct to the active branch** — commit in place | light / none (can't break a build) |
