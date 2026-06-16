@@ -187,11 +187,12 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   `zArchive/priorities/v2/plays-first-class.md`.
 
 **Active build priorities (launchable; the `priorities/` directory is the live index):**
-1. `headless-adapter-lane` — **ARCHIVE-CANDIDATE (run_104, 2026-06-16).** Claude Code + Codex real
+1. `headless-adapter-lane` — **ARCHIVED (run_104, founder-confirmed 2026-06-16).** Claude Code + Codex real
    headless invocation built (`BuildInput.headless`, claude print mode + codex exec), wired through
    `dispatchPlay` + `oz-host`, `headlessCapable=true` (single source). Flags verified vs real binaries;
    `node scripts/proof-headless-lane.mjs` re-proves (PASS claude, PASS codex). Oz-on-claude and latent
-   headless-Play pins no longer hang. Closes ticket 0006. Awaiting founder `archive` confirmation.
+   headless-Play pins no longer hang. Closes ticket 0006. Playbook moved to `priorities/archive/`; dropped
+   from `order.json` (next launchable: `new-primary-root`).
 2. `governance-authoring-plays` — **ARCHIVE-READY (run_99, 2026-06-16).** Founder-directed: never leave
    launch-blocking governance dirt. Parts 1 & 2 are done: launch self-heal ([ADR-0024](./decisions/0024-governance-pre-run-snapshot.md),
    `5842e32`); three authoring Plays (`8492d32`); dispatch harness (`85f3a0a`); one-tool-action
