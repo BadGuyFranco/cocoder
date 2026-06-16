@@ -37,19 +37,18 @@ function PriorityRow({ priority, index, onLaunch, onDrag, isDragging, isDropTarg
       }}>
       {isSelected && <div style={{ position: 'absolute', right: -8, top: '50%', transform: 'translateY(-50%) rotate(45deg)', width: 14, height: 14, background: 'var(--cb-accent-muted)', borderTop: '1px solid var(--cb-accent)', borderRight: '1px solid var(--cb-accent)', zIndex: 6, pointerEvents: 'none' }} />}
       {isActive && !isSelected && <div data-run-accent={linkedRun?.status} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: isBlocked ? 'var(--cb-highlight)' : 'var(--cb-accent)', animation: isBlocked ? 'none' : 'ozPulse 1.8s infinite' }} />}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 1 }}>
           <Icon name="dots-six-vertical" size={14} style={{ color: 'var(--cb-text-muted)', cursor: 'grab' }} />
           <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: index === 0 ? 'var(--cb-accent)' : 'var(--cb-text-muted)', minWidth: 18, textAlign: 'right' }}>{String(index + 1).padStart(2, '0')}</span>
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--cb-text)', lineHeight: 1.4 }}>{priority.name}</div>
+          <div style={{ marginLeft: 'auto', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+            {linkedRun ? <StatusChip status={linkedRun.status} /> : <StatusChip status={priority.status} label={priority.status === 'ready' ? 'Ready' : priority.status} />}
+            {!isActive && <Button variant="secondary" size="sm" icon="play" disabled={launchBlocked} title={launchBlocked ? LAUNCH_BLOCKED_HINT : undefined} onClick={(e) => { e.stopPropagation(); onLaunch(priority) }}>Launch</Button>}
+          </div>
         </div>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 36, flexWrap: 'wrap' }}>
-        {linkedRun ? <StatusChip status={linkedRun.status} /> : <StatusChip status={priority.status} label={priority.status === 'ready' ? 'Ready' : priority.status} />}
-        {priority.labels.map((l) => <span key={l} style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 9.5, color: 'var(--cb-text-muted)', padding: '2px 6px', border: '1px solid var(--cb-border)', borderRadius: 2 }}>{l}</span>)}
-        <div style={{ marginLeft: 'auto' }}>{!isActive && <Button variant="secondary" size="sm" icon="play" disabled={launchBlocked} title={launchBlocked ? LAUNCH_BLOCKED_HINT : undefined} onClick={(e) => { e.stopPropagation(); onLaunch(priority) }}>Launch</Button>}</div>
       </div>
       {isActive && linkedRun && (
         <div style={{ marginTop: 10, marginLeft: 36, paddingTop: 10, borderTop: '1px solid var(--cb-border)', position: 'relative' }}>

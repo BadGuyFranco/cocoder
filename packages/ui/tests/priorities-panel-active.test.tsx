@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { PrioritiesPanel } from '../app/sections/dashboard/Priorities.tsx'
 import type { Priority, Run } from '../app/model.ts'
+
+const LAUNCH_BLOCKED_HINT = 'A run is active in this workspace — only one run executes at a time (single-writer lock). It frees up when the run finishes.'
 
 const priority = (overrides: Partial<Priority> = {}): Priority => ({
   id: 'p-main',
@@ -158,13 +160,36 @@ describe('PrioritiesPanel active run semantics', () => {
     expect(notLandedAccent.style.animation).toBe('none')
   })
 
-  it('still shows Launch for a priority with no linked active run', () => {
+  it('shows only number, name, status, and Launch for a priority with no linked active run', () => {
     const onLaunch = vi.fn()
-    renderPanel({ priorities: [priority({ id: 'p-ready', name: 'Ready priority' })], onLaunch })
+    renderPanel({ priorities: [priority({ id: 'p-ready', name: 'Ready priority', labels: ['scope-narrowed'] })], onLaunch })
+    const row = screen.getByText('Ready priority').closest('[draggable="true"]') as HTMLElement
 
-    fireEvent.click(screen.getByRole('button', { name: 'Launch' }))
+    expect(within(row).getByText('01')).toBeDefined()
+    expect(within(row).getByText('Ready priority')).toBeDefined()
+    expect(within(row).getByText('Ready')).toBeDefined()
+    expect(within(row).queryByText('Priority summary.')).toBeNull()
+    expect(within(row).queryByText('scope-narrowed')).toBeNull()
+
+    fireEvent.click(within(row).getByRole('button', { name: 'Launch' }))
 
     expect(onLaunch).toHaveBeenCalledWith(expect.objectContaining({ id: 'p-ready' }))
+  })
+
+  it('disables queued priority Launch with the single-writer reason while a run is active', () => {
+    const onLaunch = vi.fn()
+    renderPanel({
+      priorities: [priority({ id: 'p-ready', name: 'Ready priority' })],
+      runs: [run({ id: 'run-other', priorityId: 'p-other', status: 'running' })],
+      onLaunch,
+    })
+
+    const launch = screen.getByRole('button', { name: 'Launch' })
+
+    expect((launch as HTMLButtonElement).disabled).toBe(true)
+    expect(launch.getAttribute('title')).toBe(LAUNCH_BLOCKED_HINT)
+    fireEvent.click(launch)
+    expect(onLaunch).not.toHaveBeenCalled()
   })
 
   it('calls onReorder with source and target indices when a priority row is dropped', () => {
