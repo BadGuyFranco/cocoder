@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-16 — **Priority-set audit re-verify (run_106): table still current; D2 follow-up closed**
+
+**Persona:** Oscar (wrap-up; 0 atoms) | **Priority:** [priority-audit](./priorities/priority-audit.md) | **Run:** run_106
+**Outcomes:**
+- **No table regeneration** — run_105's artifact at `cocoder/priorities/audits/latest-audit.md` re-verified accurate against built state; empty reaffirmation avoided (F18).
+- **D2 follow-up closed:** confirmed `new-primary-root` relaunch gate already reconciled in-file (lines 90–92); updated audit table row + dangling-refs section to reflect closure.
+- **Pending enactment (founder-approved run_105, not yet moved):** archive `play-dispatch-boundary`, archive `oz-held-back-expand-scope`. Open founder call: `hybrid-plays` queue vs backlog.
+**Next:** Reply `backlog hybrid-plays` in Oz (audit demote recommendation) — I'll enact the two approved archives and leave `new-primary-root` ready to launch.
+
 ## 2026-06-16 — **Priority-set audit (run_105): founder-decision table for 11 priorities — read-only deliverable**
 
 **Persona:** Oscar (orchestrator + wrap-up; 2 Bob atoms rejected for scope breach) | **Priority:** [priority-audit](./priorities/priority-audit.md) | **Run:** run_105

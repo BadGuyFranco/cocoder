@@ -25,27 +25,21 @@ separate founder-approved actions. Governance-only, like its sibling `build-prio
 (that one *drafts* new priorities; this one *prunes* the existing set). It is a **standing
 meta-priority** — runnable on demand, never archived.
 
-## Latest run pickup — run_105 (2026-06-16)
+## Latest run pickup — run_106 (2026-06-16)
 
-The audit table was produced and is durable at [`audits/latest-audit.md`](./audits/latest-audit.md).
+Re-verified run_105's audit table at [`audits/latest-audit.md`](./audits/latest-audit.md) — still
+accurate; not regenerated (identical re-run would be empty reaffirmation). Confirmed
+`new-primary-root`'s stale D2 relaunch gate is **already reconciled** in that file (lines 90–92: D2
+lifted, launch build atoms). Updated the audit table to close that dangling-ref row.
 
-Decisions made in-session by the founder + Oscar:
-- Treat the audit result as valid and carry it forward from the durable table, even though run_105's
-  wrap-up/control-plane behavior faulted after the table was produced.
-- Archive `play-dispatch-boundary`: the dispatch-boundary question is resolved; one-level dispatch
-  stands, and the remaining idea is `hybrid-plays`.
-- Archive `oz-held-back-expand-scope`: the premise is obsolete because the commit spine no longer
-  withholds out-of-lane edits.
-- Keep `priority-audit` as a standing meta-priority; do not archive it after acting on this audit.
-- Keep `new-primary-root` as the next build priority, but first reconcile its stale D2/headless-lane gate
-  against the now-closed headless-lane dependency.
+Decisions carried forward from run_105 (founder-approved, not yet enacted):
+- Archive `play-dispatch-boundary` — dispatch-boundary question resolved; one-level dispatch stands.
+- Archive `oz-held-back-expand-scope` — premise obsolete (ADR-0023 Amendment 1).
 
 One remaining founder call:
-- Decide whether `hybrid-plays` should be queued after `new-primary-root` or moved to backlog until the
-  deterministic-steps-in-Plays idea is actually wanted.
+- `hybrid-plays` — queue after `new-primary-root`, or move to backlog until deterministic-steps-in-Plays
+  is wanted? (Audit recommends demote/backlog.)
 
-Run_105 itself exposed a separate orchestration bug: after wrap-up, Oscar treated the live run as too
-closed to make founder-directed governance edits. That is not this priority's audit result; it is tracked
-under closed ticket 0008 and repaired there with `commit-support <runId>` / `POST
-/runs/:id/support-commit`. The priority remains a standing meta-priority, so do not archive it after
-acting on this audit.
+Run_105's orchestration bug (wrap-up blocked founder-directed governance edits) is tracked under closed
+ticket 0008; repair path is `commit-support <runId>`. This priority remains a standing meta-priority —
+never archived.
