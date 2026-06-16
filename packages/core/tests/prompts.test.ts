@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { buildBuilderDispatch, buildObserverPrompt, buildOrchestratorPrompt } from '../src/index.js'
+import { buildBuilderDispatch, buildNextOrWrapDispatch, buildObserverPrompt, buildOrchestratorPrompt } from '../src/index.js'
 
 const orchestratorInput = {
   sharedStandards: '# Standards',
@@ -62,5 +62,25 @@ describe('buildBuilderDispatch', () => {
   test('renders teardown through the install root so pane PATH does not matter', () => {
     const prompt = buildOrchestratorPrompt(orchestratorInput)
     expect(prompt).toContain("pnpm --dir '/Volumes/NAS LOCAL/CoCoder' exec cocoder oz teardown run_1")
+  })
+
+  test('tells Oscar to continue by default while concrete priority work remains', () => {
+    const prompt = buildOrchestratorPrompt(orchestratorInput)
+
+    expect(prompt).toContain('Continue by default when the next item is')
+    expect(prompt).toContain('A clean commit boundary is a good place to')
+    expect(prompt).toContain('Stop conditions: the priority is done')
+    expect(prompt).not.toContain('End the run when the builder has had enough')
+  })
+
+  test('next-or-wrap dispatch biases toward the next concrete atom without removing wrap discretion', () => {
+    const dispatch = buildNextOrWrapDispatch('/runs/run_1/directive-2.json', 'atom 1 verified + committed abc123')
+
+    expect(dispatch).toContain('/runs/run_1/directive-2.json')
+    expect(dispatch).toContain('delegate the next concrete in-priority atom')
+    expect(dispatch).toContain('unless a real stop condition applies')
+    expect(dispatch).toContain('A clean commit boundary alone is not a reason to stop')
+    expect(dispatch).toContain('founder approval needed')
+    expect(dispatch).not.toContain('builder has had enough')
   })
 })

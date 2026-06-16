@@ -2,7 +2,9 @@
 // rules + the run-specific instructions. The shared layer is prepended once, not duplicated.
 //
 // ADR-0013: the run is a multi-atom loop. Oscar drives Bob through a SEQUENCE of atoms, the runner
-// watches Bob live (the monitor), and Oscar ends the run on his own wrap-up decision.
+// watches Bob live (the monitor), and Oscar ends the run on his own wrap-up decision. The default
+// next-turn bias is to continue while concrete in-priority work remains; wrap-up is for real stop
+// conditions, not merely for a clean commit boundary.
 
 /** The per-atom completion sentinel Bob prints when an atom is done. Per-atom-unique so a prior atom's
  *  sentinel still on screen cannot falsely complete the next one (the monitor matches it deterministically). */
@@ -86,13 +88,18 @@ atoms. One atom at a time:
    Then stop and wait for the builder rather than implementing the atom yourself. Delegating the build
    is your DEFAULT working mode for the loop — it is how you run, not a limit on what you may touch.
 2. **Verify** when the runner prompts you (see below) — per atom, the commit will NOT happen without your pass.
-3. **Decide: another atom, or enough?** After each atom the runner asks you to write the NEXT directive
-   (it gives you the exact path). Either delegate another atom (same shape as above), or **WRAP UP**:
+3. **Decide: next concrete atom, or a real stop condition?** After each atom the runner asks you to
+   write the NEXT directive (it gives you the exact path). Continue by default when the next item is
+   concrete, inside this launched priority, needs no founder judgment, and you still have healthy
+   context. Either delegate that next atom (same shape as above), or **WRAP UP** only when a stop
+   condition applies:
 
        {"kind": "wrapup", "pickup": "<the resumable closeout brief a FRESH session resumes from — per the wrap-up Play's section contract (the single owner of that format)>"}
 
-   End the run when the builder has had enough for one session (context filling, a natural breakpoint) —
-   not because one small thing finished. The wrap-up's pickup is how the next session continues this work.
+   Stop conditions: the priority is done; the next step needs founder approval; the next step is not
+   concrete enough to delegate; the next step needs a different launch/surface; context is genuinely
+   tight; or failures/faults make continuing wasteful. A clean commit boundary is a good place to
+   continue with the next known atom, not by itself a reason to stop.
 
 # Verifying an atom (the gate — no human backstop)
 
@@ -187,8 +194,9 @@ switch branches by hand; just do the work and let the runner commit it.
 
 You drive the builder (${input.builderLabel}, a \`${input.builderCli}\` CLI) through a sequence of atoms.
 Write the exact directive or verify artifact named by the dispatch. Delegate builds to the builder by
-writing delegate directives; verify atoms yourself against the actual diff and evidence; wrap only at a
-natural breakpoint with a pickup brief a fresh session can resume from.
+writing delegate directives; verify atoms yourself against the actual diff and evidence; continue by
+default while concrete in-priority work remains. Wrap only when a real stop condition applies, with a
+pickup brief a fresh session can resume from.
 
 Oscar support edits and wrap commits follow the same rules as launch: documentation/support work is part
 of orchestration, and pending files inside your support-write scope are gate-committed at wrap. Your
@@ -439,7 +447,7 @@ export function buildVerifyDispatch(directivePath: string, verifyPath: string): 
 /** Prompt Oscar for the next turn after an atom resolved: delegate another atom, or wrap up. Names the
  *  exact directive path so the numbered handshake is unambiguous (a re-delegation is simply the next n). */
 export function buildNextOrWrapDispatch(nextDirectivePath: string, outcome: string): string {
-  return `NEXT — ${outcome}. Write your next directive to ${nextDirectivePath}: either {"kind":"delegate","task":"…"} for the next atom, or {"kind":"wrapup","pickup":"…"} to end the run with a resumable pickup brief. Decide whether the builder has had enough for one session.`
+  return `NEXT — ${outcome}. Write your next directive to ${nextDirectivePath}: delegate the next concrete in-priority atom by writing {"kind":"delegate","task":"…"} unless a real stop condition applies; otherwise write {"kind":"wrapup","pickup":"…"} to end the run with a resumable pickup brief. Stop conditions are: priority done, founder approval needed, no concrete next atom, different launch/surface needed, context genuinely tight, or failures/faults make continuing wasteful. A clean commit boundary alone is not a reason to stop.`
 }
 
 /** Dispatch a fault to Deb to triage (ADR-0013 tier 2, expanded by ADR-0016). Names the fault-context

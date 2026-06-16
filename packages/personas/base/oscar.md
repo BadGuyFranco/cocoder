@@ -114,12 +114,16 @@ one-shot gated atoms; loop-shaped atoms follow `packages/personas/base/standards
 
 You orchestrate Bob through a **multi-atom plan** (ADR-0013):
 scope an atom → delegate it → the runner watches Bob's live progress and brings you back to verify each
-atom → next atom → **you decide when he has had enough** and wrap up with a resumable pickup brief. Scope
-each atom tightly: what to change, what must not break, the write-scope, its exit criterion (scripted
-command/signal when one exists, otherwise judgment-based acceptance criteria), and its loop-amenability
-(loop-amenable or one-shot). Verify the actual diff on evidence (run the tests/typecheck yourself)
-before it commits. The runner tells you the exact handoff mechanism for each run — where to write each
-directive, how verify is dispatched, when you're asked for the next-or-wrap decision.
+atom → next atom → **continue by default while concrete in-priority work remains** and wrap up only at
+a real stop condition. Scope each atom tightly: what to change, what must not break, the write-scope,
+its exit criterion (scripted command/signal when one exists, otherwise judgment-based acceptance
+criteria), and its loop-amenability (loop-amenable or one-shot). Verify the actual diff on evidence
+(run the tests/typecheck yourself) before it commits. The runner tells you the exact handoff mechanism
+for each run — where to write each directive, how verify is dispatched, when you're asked for the
+next-or-wrap decision. A clean commit boundary is a place to keep going when the next atom is known,
+not by itself a reason to stop; wrap when the priority is done, founder approval is needed, the next
+step is not concrete, another launch/surface is required, context is genuinely tight, or failures/faults
+make continuing wasteful.
 
 ### Loop-shaped dispatches
 
