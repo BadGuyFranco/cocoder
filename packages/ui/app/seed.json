@@ -163,7 +163,7 @@
           "Bob",
           "Quinn"
         ],
-        "cli": "claude-code",
+        "cli": "claude",
         "startedAt": "14 min ago",
         "durationMs": 840000,
         "progress": 0.62,
@@ -223,7 +223,7 @@
           "Oscar",
           "Quinn"
         ],
-        "cli": "claude-code",
+        "cli": "claude",
         "startedAt": "48 min ago",
         "progress": 0.4,
         "lastEvent": "Quinn needs a decision on whether to include Grok (not installed locally).",
@@ -261,7 +261,7 @@
           "Talia",
           "Quinn"
         ],
-        "cli": "claude-code",
+        "cli": "claude",
         "startedAt": "2 hr ago",
         "durationMs": 4320000,
         "progress": 1,
@@ -366,7 +366,7 @@
       "description": "The headless persona that runs in the dashboard. There is exactly ONE Oz per workspace — switching workspace tabs swaps the entire Oz instance (its conversation, its watchers, its context). Multiple loaded workspaces = multiple independent Oz instances running in parallel.",
       "builtIn": true,
       "headless": true,
-      "cli": "claude-code",
+      "cli": "claude",
       "model": "Claude Opus 4.5",
       "runMode": "headless",
       "subAgents": [],
@@ -377,7 +377,7 @@
       "name": "Oscar",
       "role": "Build orchestrator",
       "description": "Owns a run end-to-end. Reads the priority, drafts the plan, dispatches Bob / Deb / Talia / Quinn, and reports back to Oz when the work is done or stuck.",
-      "cli": "claude-code",
+      "cli": "claude",
       "model": "Claude Opus 4.5",
       "runMode": "visible",
       "subAgents": [
@@ -395,14 +395,14 @@
       "name": "Bob",
       "role": "Coder",
       "description": "The hands. Executes Oscar's plan, edits files in the primary root, and owns the diff. Doesn't ship without Talia + Quinn green.",
-      "cli": "claude-code",
+      "cli": "claude",
       "model": "Default",
       "runMode": "visible",
       "subAgents": [
         {
           "id": "bob-fmt",
           "name": "Formatter sub",
-          "cli": "claude-code",
+          "cli": "claude",
           "model": "Claude Haiku 4.5"
         }
       ],
@@ -413,7 +413,7 @@
       "name": "Deb",
       "role": "Escalation engineer",
       "description": "Observes runs, triages faults, and repairs scoped orchestration machinery when the system itself blocks progress.",
-      "cli": "claude-code",
+      "cli": "claude",
       "model": "Claude Sonnet 4.5",
       "runMode": "visible",
       "subAgents": [],
@@ -424,7 +424,7 @@
       "name": "Talia",
       "role": "Unit tester",
       "description": "Trails Bob. Writes unit tests for new code, exercises edge cases, and flags coverage gaps before they reach Quinn.",
-      "cli": "claude-code",
+      "cli": "claude",
       "model": "Claude Sonnet 4.5",
       "runMode": "visible",
       "subAgents": [],
@@ -435,7 +435,7 @@
       "name": "Quinn",
       "role": "QA expert",
       "description": "End-to-end review. Audits behaviour against the priority's intent, runs scenario suites, and surfaces decisions the founder needs to make.",
-      "cli": "claude-code",
+      "cli": "claude",
       "model": "Claude Sonnet 4.5",
       "runMode": "visible",
       "subAgents": [],
@@ -474,7 +474,7 @@
   ],
   "clis": [
     {
-      "id": "claude-code",
+      "id": "claude",
       "name": "Claude Code",
       "vendor": "Anthropic",
       "version": "0.42.1",
@@ -626,7 +626,7 @@
   },
   "settings": {
     "defaults": {
-      "defaultCli": "claude-code",
+      "defaultCli": "claude",
       "defaultModel": "Default",
       "defaultRunMode": "visible",
       "defaultPersonas": [

@@ -25,6 +25,7 @@ import {
 } from '../app/adapter.ts'
 import type { CliCheckView, CliModelsView, CliRunReadinessView, CliView } from '../electron/ipc-contract.ts'
 import type { Persona } from '../app/model.ts'
+import { seed } from '../app/model.ts'
 import workspacesFx from '../fixtures/workspaces.json'
 import prioritiesFx from '../fixtures/priorities.json'
 import personasFx from '../fixtures/personas.json'
@@ -418,6 +419,15 @@ describe('personas from the assignments map + roster', () => {
 })
 
 describe('clis', () => {
+  it('keeps fixture CLI headless capability aligned with the adapter ids', () => {
+    const adapterTruth = { claude: false, codex: false, 'cursor-agent': true } as const
+    const clisById = Object.fromEntries(seed.clis.map((cli) => [cli.id, cli.headlessCapable]))
+
+    expect(Object.fromEntries(Object.keys(adapterTruth).map((id) => [id, clisById[id]]))).toEqual(adapterTruth)
+    expect(clisById['claude-code']).toBeUndefined()
+    expect(seed.clis.filter((cli) => !(cli.id in adapterTruth) && cli.headlessCapable)).toEqual([])
+  })
+
   it('maps a tested ok CLI, prepends Default, and formats lastTested via fmtTime', () => {
     const cli = adaptCli(cliView())
     expect(cli).toMatchObject({

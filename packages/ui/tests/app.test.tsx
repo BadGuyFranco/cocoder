@@ -141,6 +141,9 @@ describe('Oz — rebuilt Fusion renderer', () => {
     expect(within(row).getByText('cocoder/SESSION_LOG.md')).toBeDefined()
     expect(within(row).getByText(HEADLESS_CLI_WARNING)).toBeDefined()
 
+    fireEvent.change(within(row).getAllByRole('combobox')[0], { target: { value: 'codex' } })
+    expect(within(boundPlayRow('wrap-up')).getByText(HEADLESS_CLI_WARNING)).toBeDefined()
+
     fireEvent.change(within(row).getAllByRole('combobox')[0], { target: { value: 'cursor-agent' } })
 
     const updated = boundPlayRow('wrap-up')

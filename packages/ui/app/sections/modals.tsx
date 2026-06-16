@@ -65,7 +65,7 @@ export function CraftPersonaModal({ open, onClose, clis, onSubmit }: { open: boo
   const [name, setName] = useState('')
   const [tagline, setTagline] = useState('')
   const [description, setDescription] = useState('')
-  const [cli, setCli] = useState('claude-code')
+  const [cli, setCli] = useState('claude')
   const [model, setModel] = useState('Default')
   const [runMode, setRunMode] = useState<'visible' | 'headless'>('visible')
   const [capabilities, setCapabilities] = useState('')
@@ -73,7 +73,7 @@ export function CraftPersonaModal({ open, onClose, clis, onSubmit }: { open: boo
   const [subAgentSketch, setSubAgentSketch] = useState('')
   const [priority, setPriority] = useState('normal')
   const [submitting, setSubmitting] = useState(false)
-  useEffect(() => { if (open) { setName(''); setTagline(''); setDescription(''); setCli('claude-code'); setModel('Default'); setRunMode('visible'); setCapabilities(''); setNeedsSubAgents(false); setSubAgentSketch(''); setPriority('normal'); setSubmitting(false) } }, [open])
+  useEffect(() => { if (open) { setName(''); setTagline(''); setDescription(''); setCli('claude'); setModel('Default'); setRunMode('visible'); setCapabilities(''); setNeedsSubAgents(false); setSubAgentSketch(''); setPriority('normal'); setSubmitting(false) } }, [open])
   const cliEntry = clis.find((c) => c.id === cli)
   const valid = name.trim() && tagline.trim()
   const submit = async () => {

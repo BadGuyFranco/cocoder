@@ -53,6 +53,15 @@ describe('build() pins the spike invocations', () => {
 })
 
 describe('runReadiness profiles', () => {
+  test('declares the canonical headless capability table for built-in adapters', () => {
+    const registry = makeAdapterRegistry()
+    expect(Object.fromEntries([...registry.values()].map((adapter) => [adapter.id, adapter.headlessCapable]))).toEqual({
+      claude: false,
+      codex: false,
+      'cursor-agent': true,
+    })
+  })
+
   test('declares each built-in CLI readiness profile', () => {
     expect(new ClaudeAdapter().runReadiness).toEqual({
       mechanism: 'launch-flags',
