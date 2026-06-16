@@ -76,20 +76,24 @@ CoPublisher).
    files (assignments, adhoc priority, CLAUDE pointer) are now committed to trunk with their verified
    canonical contents; the run_86 strand below is closed (recovery executed). Scaffold is complete on a
    fresh clone again and CI is green.
-2. **P2→P5 fan-out executor** — the launcher/runner path that runs a Takeover Playbook's phases: P1 recon →
-   founder gate → P2 fan deep-read (one top-tier sub-agent per subsystem) → P3 cross-check → P4 synthesize
-   `cocoder/**` → P5 founder ratify. **NOT yet designed** — today the runner only does the Oscar↔Bob directive
-   loop + three hardcoded Plays (`wrap-up`, `integration-verify`, `merge-conflict` via `dispatch.ts`); there is
-   NO Playbook-phase execution engine. Acceptance is a live run; **blocked on this executor** for
-   verification. Needs a design pass (likely ADR-0020 addendum: phase storage, P1 subsystem enumeration,
-   founder P1/P5 gate interleave, deep-read top-tier model pin per ADR-0018).
-3. **Live CoPublisher Takeover proof** (Phase-5 entry) — Objective verification (a). **BLOCKED on P2→P5
-   executor**.
-4. **Dogfood Drift Audit run** — Objective verification (b). **BLOCKED on P2→P5 executor**.
+2. **P2→P5 fan-out executor** — **✅ DESIGNED run_107** ([ADR-0020 addendum](../decisions/0020-addendum-phase-executor.md),
+   commit `aee464b`, status **Proposed**). Concrete P1→P5 execution design: new runner mode (not a forked
+   loop), phase metadata from shipped Playbook tables, founder gates at P1/P5, P2 deep-read fan-out via
+   `dispatchPlay`, P3 cross-check → P4 synthesize → P5 ratify through the ADR-0023 spine. Code-traceable to
+   existing modules (`loadOnboardingPlaybooks`, `dispatchPlay`, `runCommitGate`, `requestAuthoringPlay`).
+   **Build gated on founder ratification** of the addendum plus one policy call: the default `{cli, model}` for
+   `modelPin: top-tier` P2/P3 deep-read when a brand-new target has not overridden `deep-read` in
+   `assignments.json` (see addendum §Founder Ratification Required). **Not yet built** — Atoms 1–10 in the
+   addendum's ordered plan remain open.
+3. **Live CoPublisher Takeover proof** (Phase-5 entry) — Objective verification (a). **BLOCKED on executor
+   build** (#2 above).
+4. **Dogfood Drift Audit run** — Objective verification (b). **BLOCKED on executor build** (#2 above).
 
-**Relaunch guidance (2026-06-16, priority audit run_105):** D2 is lifted (PLAYBOOK:214). **Launch build
-atoms** for the P2→P5 fan-out executor (design + implementation). Live Takeover and Drift Audit proofs
-(#3–#4) remain gated on that executor — do not attempt live onboarding until it ships.
+**Relaunch guidance (2026-06-16, run_107):** Founder accepts the [0020 addendum](../decisions/0020-addendum-phase-executor.md)
+and names the top-tier deep-read default → launch **Atom 1** (Phase metadata loader: extend
+`loadOnboardingPlaybooks()` with ordered executable phases parsed from each Playbook's baked table; pin exact
+phase lists in `packages/core/tests/playbooks.test.ts`). Then Atoms 2–10 per the addendum. Live Takeover and
+Drift Audit proofs (#3–#4) remain gated on the executor shipping — do not attempt live onboarding until then.
 
 ### Founder decision + outcome (2026-06-14, run_86 post-wrap) — D3 + a STRAND
 - **D3 — EXPAND SCOPE APPROVED.** The founder explicitly approved expand-scope to **land the three

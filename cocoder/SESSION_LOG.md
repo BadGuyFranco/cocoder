@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-16 — **P2→P5 phase executor design (run_107): ADR-0020 addendum mapped, build gated on founder ratification**
+
+**Persona:** Oscar (wrap-up; 1 atom delegated) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_107
+**Outcomes:**
+- **Executor design committed (`aee464b`)** — [0020 addendum](./decisions/0020-addendum-phase-executor.md): concrete P1→P5 execution design extending the existing runner as a new mode (not a forked loop), reusing ADR-0023 spine, keeping draft Objectives non-runnable until P5 ratification. Code-traceable to `loadOnboardingPlaybooks`, `dispatchPlay`, `runCommitGate`, `requestAuthoringPlay`.
+- **Priority blocker #2 closed at design level** — was "NOT yet designed"; now Proposed addendum with ordered Atoms 1–10 build plan. Live proofs (#3–#4) remain gated on executor build.
+- **Founder gate surfaced:** accept addendum + choose default `{cli, model}` for `modelPin: top-tier` P2/P3 deep-read on brand-new targets without `assignments.json` override.
+**Next:** Reply in Oz: `accept 0020-addendum, deep-read top-tier default <cli>/<model>` — then launch `new-primary-root` for Atom 1 (Phase metadata loader).
+
 ## 2026-06-16 — **Priority-set audit re-verify (run_106): table still current; D2 follow-up closed**
 
 **Persona:** Oscar (wrap-up; 0 atoms) | **Priority:** [priority-audit](./priorities/priority-audit.md) | **Run:** run_106
