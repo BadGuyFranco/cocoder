@@ -3,10 +3,14 @@ id: 0006
 title: Headless adapter lane for claude/codex (Oz-on-claude; fixes headless Plays pinned to interactive CLIs)
 type: bug
 status: Open
-priority: oz-dashboard-bugs
+priority: headless-adapter-lane
 owner: founder-session 2026-06-14
 created: 2026-06-14
 ---
+
+> **2026-06-15:** promoted to its own launchable priority — see
+> [`headless-adapter-lane`](../../priorities/headless-adapter-lane.md). This ticket is the technical
+> detail; the priority carries the Objective + verification for a fresh run.
 
 # 0006 — Headless adapter lane for claude/codex
 
