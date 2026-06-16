@@ -54,3 +54,14 @@ and the fixes are confirmed live on the running daemon. Follow-up design work is
 `plays-first-class` (catalog + permissions — archive-candidate, run_88/89; top-level Plays nav per
 founder `12d2f0c`). The deferred dispatch-boundary question is resolved (`play-dispatch-boundary.md`);
 optional follow-on is `hybrid-plays`.
+
+## Status — run_94 (2026-06-15): all 12 addressed · archive-candidate
+
+All twelve defects are fixed at the cause; renderer/daemon tests + builds green.
+
+- **Landed run_94:** #2, #5, #7, #8 (recovered — see below), #11, #12.
+- **Pre-fixed 2026-06-14, verified surviving in the live tree run_94:** #1, #3, #4, #6, #9, #10.
+- **Rebuild-clobber (failure-catalog F21):** #2/#5/#7/#8 were fixed 2026-06-14, then silently reverted when the "Fusion" renderer rebuild (`2ccff89`) regenerated `packages/ui/app` from the frozen `design-ref/`. run_94 re-fixed them. `design-ref/` still holds the old `claude-code` id, so #11's `claude` rename stays exposed → **ticket 0007** (design-ref rebuild guard).
+- **#11 scope:** capability data now matches adapter reality (only `cursor-agent` runs headless today). The founder's "any CLI headless" is the unbuilt headless-adapter lane → **ticket 0006**, not a data flip (flipping it would cause real hangs).
+
+**Disposition:** `archive-candidate`. Remaining gap before archive: live-on-daemon confirmation — the renderer fixes are visual (eyeball after a Restart Oz); the server-side fixes (#1/#11/#12) can be machine-proven via an offered `scripts/proof-oz-dashboard.mjs`. Founder confirmation required to archive (no self-archive).
