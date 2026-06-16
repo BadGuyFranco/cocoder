@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-16 — **Priority-set audit (run_105): founder-decision table for 11 priorities — read-only deliverable**
+
+**Persona:** Oscar (orchestrator + wrap-up; 2 Bob atoms rejected for scope breach) | **Priority:** [priority-audit](./priorities/priority-audit.md) | **Run:** run_105
+**Outcomes:**
+- **One founder-decision artifact:** `cocoder/priorities/audits/latest-audit.md` — ranked table assessing 5 active + 6 backlog priorities against built state (PLAYBOOK, ADRs, code). Read-only boundary honored for the deliverable; no priority moves/archives performed (founder decides separately).
+- **Bob scope breaches (both atoms rejected):** atom 0 touched daemon teardown code (`launcher.ts`, `mutations.test.ts`) unrelated to the audit; atom 1 over-reverted and wiped the deliverable. Oscar authored the verified audit directly (Surface-A governance, in support scope) rather than risk a third builder round-trip.
+- **Top recommendations:** archive `play-dispatch-boundary` + `oz-held-back-expand-scope`; demote `hybrid-plays` / `deployment-plays` / `quinn-app-testing` / `research-sandboxing`; redefine `multi-repo-commit-spine` + `priority-architecture-contract`; keep-active `new-primary-root`, `priority-audit`, `adhoc-session`. Stale `new-primary-root` D2 relaunch gate reconciled in wrap-up (PLAYBOOK:214 + ticket 0006 closed).
+- **Out-of-scope spot-check (recommendation only):** held-back / `pending-scope-decision` language still in `runner.ts`, `prompts.ts`, `BUILD_PROMPT.md` after ADR-0023 Amendment 1 — candidate small machinery/docs cleanup priority.
+**Next:** Launch **`new-primary-root`** in Oz (D2 gate cleared; next build slice is P2→P5 executor design + implementation). To action audit dispositions first, reply in Oz e.g. `archive play-dispatch-boundary`.
+
 ## 2026-06-16 — **Headless adapter lane for Claude Code + Codex (run_104): built, proven, flag flipped — archive-candidate**
 
 **Persona:** Oscar (lead) + Bob (builder, codex) | **Priority:** [headless-adapter-lane](./priorities/headless-adapter-lane.md) | **Run:** run_104

@@ -66,10 +66,10 @@ CoPublisher).
   fold the runtime-required files (`assignments.json`, adhoc priority, CLAUDE pointer) into the template,
   then wire `createWorkspace` onto `scaffoldCocoderZone`. Code wiring landed run_86; template files await
   expand-scope.
-- **D2 — Live proofs DEFERRED until Oz is fully debugged.** No live onboarding/Takeover of a new
-  workspace runs until Oz is fully debugged (a separate session owns that — see `oz-dashboard-bugs` +
-  ticket 0006). Objective verifications (a) live external Takeover and (b) dogfood Drift Audit are
-  **gated on Oz-debug-complete**. Do not attempt a live run until the founder lifts this gate.
+- **D2 — Live proofs DEFERRED until Oz is fully debugged.** **✅ RESOLVED 2026-06-16** — Oz dashboard
+  archived (run_103, founder-confirmed); headless adapter lane built + proven (run_104,
+  `scripts/proof-headless-lane.mjs`); ticket 0006 closed. Live Takeover / Drift Audit proofs are now
+  **gated on the P2→P5 executor** (#2 below), not Oz debug.
 
 **Remaining work:**
 1. **D1 template files on trunk** — ✅ **RESOLVED** 2026-06-14 (Oz dashboard session). The three template
@@ -80,14 +80,16 @@ CoPublisher).
    founder gate → P2 fan deep-read (one top-tier sub-agent per subsystem) → P3 cross-check → P4 synthesize
    `cocoder/**` → P5 founder ratify. **NOT yet designed** — today the runner only does the Oscar↔Bob directive
    loop + three hardcoded Plays (`wrap-up`, `integration-verify`, `merge-conflict` via `dispatch.ts`); there is
-   NO Playbook-phase execution engine. Acceptance is a live run; **blocked on D2** for verification. Needs a
-   design pass (likely ADR-0020 addendum: phase storage, P1 subsystem enumeration, founder P1/P5 gate interleave,
-   deep-read top-tier model pin per ADR-0018).
-3. **Live CoPublisher Takeover proof** (Phase-5 entry) — Objective verification (a). **BLOCKED on D2**.
-4. **Dogfood Drift Audit run** — Objective verification (b). **BLOCKED on D2**.
+   NO Playbook-phase execution engine. Acceptance is a live run; **blocked on this executor** for
+   verification. Needs a design pass (likely ADR-0020 addendum: phase storage, P1 subsystem enumeration,
+   founder P1/P5 gate interleave, deep-read top-tier model pin per ADR-0018).
+3. **Live CoPublisher Takeover proof** (Phase-5 entry) — Objective verification (a). **BLOCKED on P2→P5
+   executor**.
+4. **Dogfood Drift Audit run** — Objective verification (b). **BLOCKED on P2→P5 executor**.
 
-**Do not relaunch this priority for build atoms** until D2 lifts or the P2→P5 executor is designed — the
-bounded buildable remainder is exhausted.
+**Relaunch guidance (2026-06-16, priority audit run_105):** D2 is lifted (PLAYBOOK:214). **Launch build
+atoms** for the P2→P5 fan-out executor (design + implementation). Live Takeover and Drift Audit proofs
+(#3–#4) remain gated on that executor — do not attempt live onboarding until it ships.
 
 ### Founder decision + outcome (2026-06-14, run_86 post-wrap) — D3 + a STRAND
 - **D3 — EXPAND SCOPE APPROVED.** The founder explicitly approved expand-scope to **land the three
