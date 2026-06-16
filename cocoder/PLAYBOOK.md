@@ -187,12 +187,18 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   `zArchive/priorities/v2/plays-first-class.md`.
 
 **Active build priorities (launchable; the `priorities/` directory is the live index):**
-1. `new-primary-root` — **CONTINUE (run_86, 2026-06-14).** Onboard a primary root via the
+1. `oz-dashboard-bugs` — **ARCHIVE-CANDIDATE (run_94, 2026-06-15).** All 12 founder-reported Oz
+   dashboard defects fixed at the cause (renderer 111/111 · daemon 181/181 · builds green). run_94
+   re-landed #2/#5/#7/#8 after a design-ref rebuild clobber (F21) and newly fixed #11/#12; #1–#10
+   verified surviving. Only gap before archive: live-on-daemon confirmation (Restart Oz + eyeball, or an
+   offered `scripts/proof-oz-dashboard.mjs`). Follow-ups filed, neither blocks archive: ticket 0006
+   (headless claude/codex lane) · ticket 0007 (design-ref rebuild guard).
+2. `new-primary-root` — **CONTINUE (run_86, 2026-06-14).** Onboard a primary root via the
    bootstrap/takeover/drift onboarding Playbooks (ADR-0020 Accepted). **Engine foundation built and
    live-wired** (run_83 + run_86): loader extension (§7), `scaffoldCocoderZone` + `createWorkspace`
    wiring (D1 code landed; three template files held back — expand scope), `deep-read` hardened for P3.
-   **Next:** commit held-back D1 template files; lift D2 via `oz-dashboard-bugs`/ticket 0006; then design
-   the P2→P5 fan-out executor and run live CoPublisher Takeover + dogfood Drift Audit proofs. **Absorbs
+   **Next:** commit held-back D1 template files; lift D2 via ticket 0006 (headless lane); then design the
+   P2→P5 fan-out executor and run live CoPublisher Takeover + dogfood Drift Audit proofs. **Absorbs
    `workspace-onboarding`.** Phase 5 ("first external repo").
 
 **Decision-first (launchable ADR work — no build atoms until Accepted):**

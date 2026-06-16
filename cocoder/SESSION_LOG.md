@@ -14,14 +14,14 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ## 2026-06-15 — **Oz dashboard defect sweep (run_94): all 12 founder bugs addressed; #2/#5/#7/#8 recovered from a rebuild-clobber, #11/#12 newly fixed**
 
-**Persona:** Oscar (lead) + Bob (builder, codex) | **Priority:** [oz-dashboard-bugs](./priorities/oz-dashboard-bugs.md) | **Run:** run_94
+**Persona:** Oscar (orchestrator + wrap-up) + Bob (builder, codex) | **Priority:** [oz-dashboard-bugs](./priorities/oz-dashboard-bugs.md) | **Run:** run_94
 **Outcomes:**
 - **All 12 bugs addressed.** Landed this run: **#2** (priority rows → number+name+chip, Launch restored with disabled-with-reason), **#5/#7/#8** (canonical persona order via single-source `orderPersonas`; "Skills (Plays)" relabel; honest banners), **#11** (CLI `headlessCapable` single-sourced to the adapter id — seed `claude-code`→`claude` — values kept honest: only `cursor-agent` headless), **#12** (Oz tool-action budget 3→10 + graceful degradation: hitting the cap now forces a final plain-English answer instead of a 500). Gates green per atom (renderer 111/111, daemon 181/181, builds).
 - **#1/#3/#4/#6/#9/#10 verified surviving** in the live tree (Oz live persona + NL path, launch-lock legibility, curated models + dropdown, density/reduce-motion wiring, Restart Oz control).
 - **Governance finding (F21):** #2/#5/#7/#8 had ALREADY been fixed 2026-06-14, then silently reverted by the "Fusion" renderer rebuild (`2ccff89`) regenerating `packages/ui/app` from the frozen `design-ref/`. Cost two atoms to re-fix. Still-live risk: `design-ref/` retains `claude-code`, exposing #11's rename to the next rebuild → filed **ticket 0007** (design-ref rebuild guard).
 - **#11 honesty:** the founder's "any CLI should run headless" needs the unbuilt headless-adapter lane (**ticket 0006**), NOT a data flip — marking claude/codex headless would cause real hangs. Capability data now matches adapter reality; the warning correctly stays for interactive-only adapters.
 - **Verify discipline:** rejected atom 0 (bug #2 removed the Launch feature — global #1) and atom 4 (bundled unrelated `not-landed` test rewrites — global #10); both re-scoped and re-landed clean.
-**Next:** Disposition **archive-candidate** — all 12 fixed at the cause, tests+builds green; only gap is live-on-daemon confirmation (founder eyeball after a Restart Oz; optional `scripts/proof-oz-dashboard.mjs` for server-side #1/#11/#12). Founder: reply `archive oz-dashboard-bugs` to close, or ask for the proof harness first. Follow-ups: ticket 0006 (headless lanes), ticket 0007 (design-ref guard).
+**Next:** Reply **`archive oz-dashboard-bugs`** to close (archive-candidate — all 12 fixed, gates green; live-on-daemon eyeball optional). Follow-ups: ticket 0006 (headless lanes), ticket 0007 (design-ref guard).
 
 ## 2026-06-15 — **plays-first-class archive-readiness confirmed (run_90): stale ADR pointer corrected**
 
