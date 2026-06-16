@@ -257,9 +257,9 @@
         "status": "complete",
         "personas": [
           "Bob",
+          "Deb",
           "Talia",
-          "Quinn",
-          "Doc"
+          "Quinn"
         ],
         "cli": "claude-code",
         "startedAt": "2 hr ago",
@@ -296,8 +296,8 @@
             "body": "E2E scenarios pass. Approved for merge."
           },
           {
-            "role": "Doc",
-            "body": "Changelog + README section updated."
+            "role": "Deb",
+            "body": "Checked for orchestration follow-ups; no repair needed."
           },
           {
             "role": "Oz",
@@ -376,7 +376,7 @@
       "id": "oscar",
       "name": "Oscar",
       "role": "Build orchestrator",
-      "description": "Owns a run end-to-end. Reads the priority, drafts the plan, dispatches Bob / Talia / Quinn / Doc, and reports back to Oz when the work is done or stuck.",
+      "description": "Owns a run end-to-end. Reads the priority, drafts the plan, dispatches Bob / Deb / Talia / Quinn, and reports back to Oz when the work is done or stuck.",
       "cli": "claude-code",
       "model": "Claude Opus 4.5",
       "runMode": "visible",
@@ -409,6 +409,17 @@
       "icon": "ph-thin ph-hammer"
     },
     {
+      "id": "deb",
+      "name": "Deb",
+      "role": "Escalation engineer",
+      "description": "Observes runs, triages faults, and repairs scoped orchestration machinery when the system itself blocks progress.",
+      "cli": "claude-code",
+      "model": "Claude Sonnet 4.5",
+      "runMode": "visible",
+      "subAgents": [],
+      "icon": "ph-thin ph-bug-beetle"
+    },
+    {
       "id": "talia",
       "name": "Talia",
       "role": "Unit tester",
@@ -429,17 +440,6 @@
       "runMode": "visible",
       "subAgents": [],
       "icon": "ph-thin ph-magnifying-glass"
-    },
-    {
-      "id": "doc",
-      "name": "Doc",
-      "role": "Documenter",
-      "description": "README, changelog, inline comments, release notes. Keeps human-readable artifacts in sync with the code Bob ships.",
-      "cli": "claude-code",
-      "model": "Claude Haiku 4.5",
-      "runMode": "visible",
-      "subAgents": [],
-      "icon": "ph-thin ph-pen-nib"
     }
   ],
   "plays": [

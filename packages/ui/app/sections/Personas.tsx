@@ -1,5 +1,5 @@
-// Personas screen — the AI team (Oz · Oscar · Bob · Talia · Quinn · Doc). Each persona has CLI + Model
-// linked dropdowns, a visible/headless run-mode toggle (Oz locked headless), and a sub-agent hierarchy
+// Personas screen — the AI team (Oz · Oscar · Bob · Deb · Talia · Quinn). Each persona has CLI + Model
+// linked dropdowns, a visible/headless run-mode toggle (Oz locked headless), and a Skills (Plays) hierarchy
 // (each sub independently CLI+Model configurable). "Craft a new persona" files a priority. Ported from
 // design-ref/screens.jsx.
 import { useState } from 'react'
@@ -59,7 +59,7 @@ function PersonaRow({ persona, plays, clis, onChange, onAddSub, onRemoveSub, onU
   const availablePlays = plays.filter((play) => !boundPlayIds.has(play.id))
   const playIdTaken = boundPlayIds.has(playId)
   const canAddPlay = playId.length > 0 && !playIdTaken && availablePlays.some((play) => play.id === playId)
-  const pickerHint = plays.length === 0 ? 'No Plays available' : availablePlays.length === 0 ? 'All Plays bound' : 'Select Play'
+  const pickerHint = plays.length === 0 ? 'No Skills (Plays) available' : availablePlays.length === 0 ? 'All Skills (Plays) bound' : 'Select Skill (Play)'
   const addPlay = () => {
     if (!canAddPlay) return
     onAddSub(persona.id, playId)
@@ -105,7 +105,7 @@ function PersonaRow({ persona, plays, clis, onChange, onAddSub, onRemoveSub, onU
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--cb-font-display)', fontSize: 9.5, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--cb-text-muted)', marginBottom: 10 }}>
             <Icon name="tree-structure" size={12} />Skills (Plays) · {persona.subAgents.length}
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <select className="oz-select" aria-label={`${persona.name} Play`} value={playId} disabled={availablePlays.length === 0} onChange={(e) => setPlayId(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addPlay() }} style={{ width: 190, padding: '4px 24px 4px 7px', fontSize: 11 }}>
+              <select className="oz-select" aria-label={`${persona.name} Skill (Play)`} value={playId} disabled={availablePlays.length === 0} onChange={(e) => setPlayId(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addPlay() }} style={{ width: 190, padding: '4px 24px 4px 7px', fontSize: 11 }}>
                 <option value="">{pickerHint}</option>
                 {availablePlays.map((play) => <option key={play.id} value={play.id}>{play.label} ({play.id})</option>)}
               </select>
@@ -113,7 +113,7 @@ function PersonaRow({ persona, plays, clis, onChange, onAddSub, onRemoveSub, onU
             </div>
           </div>
           {persona.subAgents.length === 0 ? (
-            <div style={{ padding: '10px 14px', background: 'var(--cb-bg-soft)', border: '1px dashed var(--cb-border)', borderRadius: 'var(--cb-radius-md)', fontSize: 11.5, color: 'var(--cb-text-muted)', textAlign: 'center' }}>No Plays bound. {persona.name} runs everything itself. (A Play is a shared procedure — binding one here grants {persona.name} permission to run it.)</div>
+            <div style={{ padding: '10px 14px', background: 'var(--cb-bg-soft)', border: '1px dashed var(--cb-border)', borderRadius: 'var(--cb-radius-md)', fontSize: 11.5, color: 'var(--cb-text-muted)', textAlign: 'center' }}>No Skills (Plays) bound. {persona.name} runs everything itself. (A Play is a shared procedure — binding one here grants {persona.name} permission to run it.)</div>
           ) : persona.subAgents.map((sa) => {
             const subCli = clis.find((c) => c.id === sa.cli)
             const play = plays.find((p) => p.id === sa.id)
@@ -156,16 +156,16 @@ export function PersonasScreen({ personas, plays, clis, onChange, onAddSub, onRe
 }) {
   return (
     <div style={{ height: '100%', overflow: 'hidden', display: 'grid', gridTemplateRows: 'auto 1fr' }}>
-      <ScreenHeader title="Personas" subtitle="The AI team. Each persona has a CLI + model and may delegate work to sub-agents. Building a new persona becomes a priority for the team itself." actions={<Button variant="primary" icon="hammer" onClick={onNewPersonaAsPriority}>Craft a new persona</Button>} />
+      <ScreenHeader title="Personas" subtitle="The AI team. Each persona has a CLI + model and may use Skills (Plays). Building a new persona becomes a priority for the team itself." actions={<Button variant="primary" icon="hammer" onClick={onNewPersonaAsPriority}>Craft a new persona</Button>} />
       <div style={{ padding: '0 28px 24px', overflowY: 'auto', minHeight: 0 }}>
         <div style={{ padding: '14px 16px', background: 'var(--cb-accent-subtle)', border: '1px solid var(--cb-accent-15)', borderRadius: 'var(--cb-radius-md)', marginBottom: 20, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <Icon name="lightbulb" size={18} style={{ color: 'var(--cb-accent)', marginTop: 1 }} />
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12.5, color: 'var(--cb-text)', fontWeight: 500, marginBottom: 3 }}>New personas are built, not configured.</div>
-            <div style={{ fontSize: 11.5, color: 'var(--cb-text-secondary)', lineHeight: 1.55 }}>Sketch what the persona should do. Oz files it as a priority and the team scaffolds the new role — prompts, sub-agents, and tests included.</div>
+            <div style={{ fontSize: 11.5, color: 'var(--cb-text-secondary)', lineHeight: 1.55 }}>Sketch what the persona should do. Oz files it as a priority and the team scaffolds the new role — prompts, Skills (Plays), and tests included.</div>
           </div>
         </div>
-        <SessionNote live={live}>CLI, model, and Play (skill) assignments save to the workspace. Browse the full Play catalog on the <strong>Plays</strong> screen. Run-mode currently takes effect for <strong>Oscar and Bob</strong> only — for other personas it’s a preview the runner doesn’t honor yet.</SessionNote>
+        <SessionNote live={live}>CLI, model, and Skills (Plays) assignments save to the workspace. Browse the full catalog on the <strong>Skills (Plays)</strong> screen. Run-mode currently takes effect for <strong>Oscar and Bob</strong> only — for other personas it’s a preview the runner doesn’t honor yet.</SessionNote>
         {personas.map((p) => <PersonaRow key={p.id} persona={p} plays={plays} clis={clis} onChange={(next) => onChange(p.id, next)} onAddSub={onAddSub} onRemoveSub={onRemoveSub} onUpdateSub={onUpdateSub} />)}
       </div>
     </div>

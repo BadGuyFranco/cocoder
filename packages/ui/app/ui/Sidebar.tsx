@@ -1,4 +1,4 @@
-// Glass sidebar — the nav (Dashboard · Workspaces · CLIs · Personas · Plays · Settings). The Dashboard
+// Glass sidebar — the nav (Dashboard · Workspaces · CLIs · Personas · Skills (Plays) · Settings). The Dashboard
 // item carries a badge counting running+blocked runs in the active workspace. Collapsible to an icon rail
 // (toggle in the brand row); when collapsed, hovering an item shows its label as a tooltip — giving the
 // Priorities panel more room. NAV_ITEMS is the single source of truth; add an entry to add a section (the
@@ -13,7 +13,7 @@ const NAV_ITEMS: { id: Route; label: string; icon: string }[] = [
   { id: 'workspaces', label: 'Workspaces', icon: 'folders' },
   { id: 'clis', label: 'CLIs', icon: 'terminal-window' },
   { id: 'personas', label: 'Personas', icon: 'users-three' },
-  { id: 'plays', label: 'Plays', icon: 'tree-structure' },
+  { id: 'plays', label: 'Skills (Plays)', icon: 'tree-structure' },
   { id: 'settings', label: 'Settings', icon: 'gear-six' },
 ]
 

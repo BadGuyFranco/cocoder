@@ -8,7 +8,7 @@ import { App } from '../app/App.tsx'
 const HEADLESS_CLI_WARNING = 'Headless Play on an interactive-only CLI — would hang'
 
 function bindBobPlay(playId: string): HTMLElement {
-  const picker = screen.getByLabelText('Bob Play') as HTMLSelectElement
+  const picker = screen.getByLabelText('Bob Skill (Play)') as HTMLSelectElement
   fireEvent.change(picker, { target: { value: playId } })
   fireEvent.click(picker.parentElement!.querySelector('button')!)
   return boundPlayRow(playId)
@@ -23,9 +23,9 @@ function boundPlayRow(playId: string): HTMLElement {
 describe('Oz — rebuilt Fusion renderer', () => {
   beforeEach(() => cleanup())
 
-  it('renders the nav sections (incl. top-level Plays)', () => {
+  it('renders the nav sections (incl. top-level Skills (Plays))', () => {
     render(<App />)
-    for (const label of ['Dashboard', 'Workspaces', 'CLIs', 'Personas', 'Plays', 'Settings']) {
+    for (const label of ['Dashboard', 'Workspaces', 'CLIs', 'Personas', 'Skills (Plays)', 'Settings']) {
       expect(screen.getByText(label)).toBeDefined()
     }
   })
@@ -94,39 +94,43 @@ describe('Oz — rebuilt Fusion renderer', () => {
     expect(screen.getAllByText(/token expired/i).length).toBeGreaterThan(0)
   })
 
-  it('Personas screen lists Oz + the roster with sub-agent hierarchy', () => {
+  it('Personas screen lists Oz + the roster with Skills (Plays) hierarchy', () => {
     render(<App />)
     fireEvent.click(screen.getByText('Personas'))
     expect(screen.getByText('Oscar')).toBeDefined()
     expect(screen.getByText('Bob')).toBeDefined()
     // every persona card has a Skills (Plays) header — there are several (Bug 7 relabel: Plays are
-    // first-class procedures bound to a persona, not anonymous "sub-agents")
+    // first-class procedures bound to a persona, not anonymous sub-workers.
     expect(screen.getAllByText(/Skills \(Plays\)/).length).toBeGreaterThan(0)
     // Oz is rendered as a persona and is locked headless
     expect(screen.getAllByText('Oz').length).toBeGreaterThan(0)
     expect(screen.getAllByText(/HEADLESS/i).length).toBeGreaterThan(0)
+    const headings = ['Oz', 'Oscar', 'Bob', 'Deb', 'Talia', 'Quinn'].map((name) => screen.getAllByText(name)[0])
+    for (let i = 0; i < headings.length - 1; i++) {
+      expect(headings[i].compareDocumentPosition(headings[i + 1]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    }
   })
 
-  it('Plays screen (top-level nav) shows the read-only Plays catalog', () => {
+  it('Skills (Plays) screen (top-level nav) shows the read-only catalog', () => {
     render(<App />)
-    fireEvent.click(screen.getByText('Plays'))
-    expect(screen.getByText(/Plays catalog/)).toBeDefined()
+    fireEvent.click(screen.getByText('Skills (Plays)'))
+    expect(screen.getByText(/Skills \(Plays\) catalog/)).toBeDefined()
     expect(screen.getAllByTestId('play-row').length).toBeGreaterThan(0)
     expect(screen.getByText('wrap-up')).toBeDefined()
     expect(screen.getAllByText(/headless/i).length).toBeGreaterThan(0)
     expect(screen.getByText('cocoder/SESSION_LOG.md')).toBeDefined()
   })
 
-  it('Personas screen binds Plays through the catalog picker', () => {
+  it('Personas screen binds Skills (Plays) through the catalog picker', () => {
     render(<App />)
     fireEvent.click(screen.getByText('Personas'))
-    const picker = screen.getByLabelText('Bob Play') as HTMLSelectElement
+    const picker = screen.getByLabelText('Bob Skill (Play)') as HTMLSelectElement
     const optionLabels = Array.from(picker.options).map((option) => option.textContent)
     expect(optionLabels).toContain('Deep read (deep-read)')
     fireEvent.change(picker, { target: { value: 'deep-read' } })
     fireEvent.click(picker.parentElement!.querySelector('button')!)
     expect(screen.getByDisplayValue('deep-read')).toBeDefined()
-    const updated = screen.getByLabelText('Bob Play') as HTMLSelectElement
+    const updated = screen.getByLabelText('Bob Skill (Play)') as HTMLSelectElement
     expect(Array.from(updated.options).map((option) => option.value)).not.toContain('deep-read')
   })
 

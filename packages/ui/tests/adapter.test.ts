@@ -17,6 +17,7 @@ import {
   evidenceFromDetail,
   mapRunStatus,
   mergeRunsWithEnrichment,
+  orderPersonas,
   personasToAssignments,
   summarize,
   fmtTime,
@@ -233,12 +234,18 @@ describe('personas from the assignments map + roster', () => {
   it('renders the live roster with cli/model resolved from assignments', () => {
     const personas = adaptPersonas(PERS)
     expect(personas.length).toBeGreaterThan(0)
+    expect(personas.map((p) => p.id)).toEqual(['oscar', 'bob', 'deb'])
     const bob = personas.find((p) => p.id === 'bob')!
     expect(bob.name).toBe('Bob')
     expect(bob.cli).toBe(PERS.assignments.bob.cli)
     // role is split off the long description
     expect(bob.role.length).toBeLessThan(bob.description.length + 1)
     expect(bob.subAgents).toEqual([])
+  })
+
+  it('uses the canonical persona order with unknown personas after the roster', () => {
+    const personas = orderPersonas([{ id: 'quinn' }, { id: 'doc' }, { id: 'bob' }, { id: 'oz' }, { id: 'deb' }, { id: 'oscar' }, { id: 'talia' }])
+    expect(personas.map((p) => p.id)).toEqual(['oz', 'oscar', 'bob', 'deb', 'talia', 'quinn', 'doc'])
   })
 
   it('maps assignment plays to sub-agents and keeps absent plays as an empty hierarchy', () => {

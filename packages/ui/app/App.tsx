@@ -1,11 +1,11 @@
 // Oz renderer root — rebuilt against the V1 claude.ai/design prototype (packages/ui/design-ref/).
-// Composes the Fusion shell (Sidebar + TopBar workspace tabs) and routes to the Dashboard + the four
-// screens (Workspaces · CLIs · Personas · Settings) with the two creation modals. This slice renders
+// Composes the Fusion shell (Sidebar + TopBar workspace tabs) and routes to the Dashboard plus the
+// workspace/config screens with the creation modals. This slice renders
 // the design-faithful view-model from the ported seed (fixture parity, fully interactive); the daemon
 // adapter is wired in the next slice (the existing electron/ plumbing is untouched).
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, sendOzMessage, launchRun, attachRun, teardownRun, stopRun, testCli, createPriority, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, saveAssignments, restartDaemon, type ConnectionState } from './live.ts'
-import { ADHOC_PRIORITY_ID, MODE_HONORED_PERSONAS, applyOrder, isActiveRun, mergeRunsWithEnrichment, personasToAssignments } from './adapter.ts'
+import { ADHOC_PRIORITY_ID, MODE_HONORED_PERSONAS, applyOrder, isActiveRun, mergeRunsWithEnrichment, orderPersonas, personasToAssignments } from './adapter.ts'
 import { Sidebar, type Route } from './ui/Sidebar.tsx'
 import { TopBar } from './ui/TopBar.tsx'
 import { Dashboard } from './sections/dashboard/Dashboard.tsx'
@@ -19,7 +19,7 @@ import { seed, DEFAULT_SETTINGS, type ChatMessage, type Cli, type Dependency, ty
 import type { OzEventHint, PersonaAssignment } from '../electron/ipc-contract.ts'
 
 const USER = seed.workspaces.length ? { initials: 'AF', name: 'Anthony Franco', role: 'founder' } : { initials: 'AF', name: 'Anthony Franco', role: 'founder' }
-const ROUTE_TITLE: Record<Route, string> = { dashboard: 'Dashboard', workspaces: 'Workspaces', clis: 'CLIs', personas: 'Personas', plays: 'Plays', settings: 'Settings' }
+const ROUTE_TITLE: Record<Route, string> = { dashboard: 'Dashboard', workspaces: 'Workspaces', clis: 'CLIs', personas: 'Personas', plays: 'Skills (Plays)', settings: 'Settings' }
 const ACTIVE_DETAIL_FETCH_LIMIT = 6
 
 const seedSettings = (): Settings => {
@@ -80,7 +80,7 @@ export function App() {
   const [chatPrefill, setChatPrefill] = useState<string | null>(null)
 
   // global-ish config (the prototype treats these as workspace-independent)
-  const [personas, setPersonas] = useState<Persona[]>(seed.personas)
+  const [personas, setPersonas] = useState<Persona[]>(() => orderPersonas(seed.personas))
   const [plays, setPlays] = useState<Play[]>(seed.plays)
   const [personaAssignments, setPersonaAssignments] = useState<Record<string, PersonaAssignment>>({})
   const [clis, setClis] = useState<Cli[]>(seed.clis)
@@ -151,7 +151,7 @@ export function App() {
       void enrichActiveRunDetails(first.id, data.runs)
       setPlays(data.plays)
       if (data.personas.length) {
-        setPersonas(data.personas)
+        setPersonas(orderPersonas(data.personas))
         setPersonaAssignments(data.assignments)
       }
     })()
@@ -236,7 +236,7 @@ export function App() {
       void enrichActiveRunDetails(activeId, data.runs, () => cancelled)
       setPlays(data.plays)
       if (data.personas.length) {
-        setPersonas(data.personas)
+        setPersonas(orderPersonas(data.personas))
         setPersonaAssignments(data.assignments)
       }
     })()
@@ -534,8 +534,11 @@ export function App() {
     const id = playId.trim()
     if (!id) { notify('err', 'Play id is required.'); return }
     const persona = personas.find((p) => p.id === pid)
-    if (persona?.subAgents.some((s) => s.id === id)) { notify('err', `Play "${id}" is already assigned to ${persona.name}.`); return }
-    const next = personas.map((p) => (p.id === pid ? { ...p, subAgents: [...p.subAgents, { id, name: id, cli: clis[0]?.id ?? 'claude', model: 'Default' }] } : p))
+    if (!persona) { notify('err', 'Persona not found.'); return }
+    if (persona.subAgents.some((s) => s.id === id)) { notify('err', `Play "${id}" is already assigned to ${persona.name}.`); return }
+    const play = plays.find((entry) => entry.id === id)
+    if (!play) { notify('err', 'Select an available Play from the catalog.'); return }
+    const next = personas.map((p) => (p.id === pid ? { ...p, subAgents: [...p.subAgents, { id, name: play.label, cli: clis[0]?.id ?? 'claude', model: 'Default' }] } : p))
     void persistPersonas(next)
   }
   function removeSub(pid: string, sid: string) {

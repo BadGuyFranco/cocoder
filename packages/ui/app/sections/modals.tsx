@@ -84,7 +84,7 @@ export function CraftPersonaModal({ open, onClose, clis, onSubmit }: { open: boo
     if (ok) onClose()
   }
   return (
-    <Modal open={open} onClose={onClose} title="Craft a new persona" subtitle="Sketch the role. Oz files it as a workspace priority — the team builds the persona itself (prompt, sub-agents, tests)." icon="hammer" width={680}
+    <Modal open={open} onClose={onClose} title="Craft a new persona" subtitle="Sketch the role. Oz files it as a workspace priority — the team builds the persona itself (prompt, Skills (Plays), tests)." icon="hammer" width={680}
       footer={<>
         <div style={{ fontSize: 11, color: 'var(--cb-text-muted)', flex: 1, lineHeight: 1.5 }}><Icon name="info" size={12} style={{ verticalAlign: '-2px', marginRight: 4 }} />Personas aren't configured — they're <span style={{ color: 'var(--cb-accent)' }}>built</span>. Once Bob ships and Talia / Quinn green-light, the persona appears here.</div>
         <Button variant="ghost" onClick={onClose}>Cancel</Button>
@@ -103,8 +103,8 @@ export function CraftPersonaModal({ open, onClose, clis, onSubmit }: { open: boo
       </div>
       <div style={{ marginBottom: 16 }}><label className="oz-field-label">Capabilities sketch</label><textarea className="oz-textarea" value={capabilities} onChange={(e) => setCapabilities(e.target.value)} placeholder="What should this persona be able to do? Examples, edge cases, things they should never do." rows={3} /><div className="oz-field-help">Free-form. The team uses this to draft the system prompt and design tests.</div></div>
       <div style={{ padding: '12px 14px', background: 'var(--cb-bg)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', marginBottom: 16 }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}><input type="checkbox" checked={needsSubAgents} onChange={(e) => setNeedsSubAgents(e.target.checked)} style={{ width: 14, height: 14, accentColor: 'var(--cb-accent)' }} /><span style={{ fontSize: 12.5, color: 'var(--cb-text)', fontWeight: 500 }}>This persona should have sub-agents</span></label>
-        {needsSubAgents && <textarea className="oz-textarea" value={subAgentSketch} onChange={(e) => setSubAgentSketch(e.target.value)} placeholder="Sketch the sub-agents. e.g. 'a fact-checker sub on Gemini Pro; a formatter sub on Haiku.'" rows={2} style={{ marginTop: 10 }} />}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}><input type="checkbox" checked={needsSubAgents} onChange={(e) => setNeedsSubAgents(e.target.checked)} style={{ width: 14, height: 14, accentColor: 'var(--cb-accent)' }} /><span style={{ fontSize: 12.5, color: 'var(--cb-text)', fontWeight: 500 }}>This persona should use Skills (Plays)</span></label>
+        {needsSubAgents && <textarea className="oz-textarea" value={subAgentSketch} onChange={(e) => setSubAgentSketch(e.target.value)} placeholder="Sketch the Skills (Plays). e.g. 'a fact-checker Play on Gemini Pro; a formatter Play on Haiku.'" rows={2} style={{ marginTop: 10 }} />}
       </div>
       <div className="oz-section-marker lhs">Priority placement</div>
       <div style={{ display: 'flex', gap: 8 }}>

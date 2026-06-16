@@ -3,7 +3,6 @@
 // Ported from design-ref/screens.jsx.
 import { useState } from 'react'
 import { Icon, Button, Card, ScreenHeader } from '../ui/primitives.tsx'
-import { SessionNote } from '../ui/PendingBanner.tsx'
 import type { Dependency, Settings } from '../model.ts'
 
 function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
@@ -98,7 +97,6 @@ export function SettingsScreen({ settings, dependencies, onRecheckDep, onChange,
         </div>
         <div className="oz-panel" style={{ minHeight: 0 }}>
           <div className="oz-panel-body" style={{ padding: '0 24px 24px' }}>
-            <div style={{ paddingTop: 16 }}><SessionNote live={live}>Appearance, watching, and advanced preferences apply to this session. System dependencies aren’t probed live yet — that tab shows reference data.</SessionNote></div>
             {tab === 'system' && (
               <>
                 <div className="oz-section-marker lhs">System dependencies</div>

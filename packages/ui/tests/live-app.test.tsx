@@ -409,14 +409,14 @@ describe('Oz renderer — live daemon path', () => {
     expect(screen.queryByText(/Pending daemon endpoint/)).toBeNull()
   })
 
-  it('saves a sub-agent Play assignment through the typed personas bridge with the full map', async () => {
+  it('saves a Skills (Plays) assignment through the typed personas bridge with the full map', async () => {
     const puts: PutCall[] = []
     setOz(mockOz({ puts }))
     render(<App />)
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
 
     fireEvent.click(screen.getByText('Personas'))
-    const playId = await screen.findByLabelText('Bob Play')
+    const playId = await screen.findByLabelText('Bob Skill (Play)')
     fireEvent.change(playId, { target: { value: 'documentation' } })
     const add = playId.parentElement?.querySelector('button')
     expect(add).toBeDefined()

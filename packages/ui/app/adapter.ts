@@ -367,8 +367,8 @@ export function adaptRunDetail(detail: RunDetail, priorityNames: Record<string, 
   }
 }
 
-// ── Personas ── prefer the real personas[] roster; fall back to the assignments map. Oz is rendered
-// separately by the screen. cli/model come from the assignment when present, else the roster default.
+// ── Personas ── prefer the real personas[] roster; fall back to the assignments map. cli/model come
+// from the assignment when present, else the roster default.
 const PERSONA_ICONS: Record<string, string> = {
   oscar: 'ph-thin ph-strategy',
   bob: 'ph-thin ph-hammer',
@@ -391,6 +391,13 @@ const personaRank = (id: string): number => {
   return i === -1 ? PERSONA_ORDER.length : i
 }
 
+export function orderPersonas<T extends { id: string }>(personas: readonly T[]): T[] {
+  return personas
+    .map((persona, i) => ({ persona, i }))
+    .sort((a, b) => personaRank(a.persona.id) - personaRank(b.persona.id) || a.i - b.i)
+    .map((entry) => entry.persona)
+}
+
 // A roster `role` is "Short title — long description"; split it so the card shows a crisp role.
 function splitRole(role: string): { role: string; description: string } {
   const i = role.indexOf('—')
@@ -403,9 +410,8 @@ export function adaptPersonas(resp: PersonasResponse): Persona[] {
   const roster = resp.personas ?? []
   // If the roster is empty (older daemon), synthesize from the assignment keys. Sort to the canonical
   // pecking order so the Personas screen is stable regardless of daemon key/roster ordering.
-  const ids = (roster.length ? roster.map((p) => p.id) : Object.keys(assignments))
-    .slice()
-    .sort((a, b) => personaRank(a) - personaRank(b))
+  const ids = orderPersonas(roster.length ? roster.map((p) => ({ id: p.id })) : Object.keys(assignments).map((id) => ({ id })))
+    .map((p) => p.id)
   return ids.map((id) => {
     const meta = roster.find((p) => p.id === id)
     const a = assignments[id] ?? { cli: '', model: '' }
