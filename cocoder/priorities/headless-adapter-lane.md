@@ -44,6 +44,19 @@ Concretely (grounded in ticket 0006):
   headless-Play pins to `claude` (assignments.json) stop being latent hangs (ticket 0006).
 - Renderer + daemon + adapter test suites and builds stay green.
 
+## Status — archive-candidate (run_104, 2026-06-16)
+
+All "Verified when" criteria met and evidence-backed:
+- Adapter unit tests assert the exact headless argv for `claude` + `codex` (atom 0, `dd2f518`).
+- `scripts/proof-headless-lane.mjs` runs a real prompt on each CLI headless → exits 0, answer captured
+  (claude via stdout, codex via `--output-last-message`); ran green this run (PASS claude, PASS codex).
+- `headlessCapable = true` for both; the dashboard "would hang" warning no longer fires for them
+  (regression-guarded by `app.test.tsx`, which still fires it for an interactive-only CLI, `gemini`).
+- Oz-on-`claude` and the `integration-verify`/`merge-conflict` headless pins are no longer latent hangs.
+- adapters 20 · ui 111 · core 266 · daemon 194 + typecheck green.
+
+No build atoms remain. Awaiting founder `archive` confirmation (no self-archive). Closes ticket 0006.
+
 ## Scope / boundary
 
 Adapter + core-contract + dispatch change (`packages/adapters`, `packages/core`, `packages/daemon`),

@@ -2,11 +2,21 @@
 id: 0006
 title: Headless adapter lane for claude/codex (Oz-on-claude; fixes headless Plays pinned to interactive CLIs)
 type: bug
-status: Open
+status: Closed
 priority: headless-adapter-lane
 owner: founder-session 2026-06-14
 created: 2026-06-14
+closed: 2026-06-16
 ---
+
+> **Resolved 2026-06-16 (run_104).** Headless lane built for both adapters: `claude.build()` print mode
+> (`claude -p --output-format text …`) and `codex.build()` → `codex exec … --output-last-message`, wired
+> through `dispatchPlay` + `oz-host` via `BuildInput.headless`. `headlessCapable = true` for claude+codex
+> (single source). Flags verified against the real binaries; `scripts/proof-headless-lane.mjs` re-proves
+> both run headless and exit cleanly. Oz-on-claude and the integration-verify/merge-conflict headless pins
+> are no longer latent hangs. Commits `dd2f518` (atom 0) + `336fb20` (atom 1). Note: current
+> `assignments.json` had `integration-verify`→`codex` (not `claude`) — the flag flip made it valid with no
+> assignments edit needed.
 
 > **2026-06-15:** promoted to its own launchable priority — see
 > [`headless-adapter-lane`](../../priorities/headless-adapter-lane.md). This ticket is the technical

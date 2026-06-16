@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-16 — **Headless adapter lane for Claude Code + Codex (run_104): built, proven, flag flipped — archive-candidate**
+
+**Persona:** Oscar (lead) + Bob (builder, codex) | **Priority:** [headless-adapter-lane](./priorities/headless-adapter-lane.md) | **Run:** run_104
+**Outcomes:**
+- **Atom 0 (`dd2f518`) — real headless invocation built.** `BuildInput.headless?` added; `claude.build()` headless → print mode (`claude -p --output-format text --permission-mode acceptEdits [--model] <prompt>`, stdout-captured); `codex.build()` headless → `codex exec … --output-last-message <outPath>` (clean answer to the file; verbose transcript parked in a `.stdout` sidecar by dispatch/oz-host). `dispatchPlay` + `oz-host` wire `headless` (single-sourced condition). Unit tests assert exact argv for both branches + interactive unchanged. **Flags verified against the real binaries** (F10): I ran `claude -p …` → `OK` exit 0, and `codex exec … --output-last-message` with stdin closed → `OK` exit 0.
+- **Atom 1 (`336fb20`) — capability flipped + proof harness.** `headlessCapable = true` on claude+codex (single source); every consumer aligned (adapter registry truth map, `packages/ui/app/seed.json`, ui adapter/app/live tests). Warning regression-guarded: `app.test.tsx` now proves "would hang" *disappears* for claude/codex but still fires for a genuinely interactive-only CLI (`gemini`). `scripts/proof-headless-lane.mjs` added — one command builds argv through the real adapters and runs both CLIs headless. **I ran it: PASS claude, PASS codex, exit 0.**
+- **Suites green every gate:** adapters 20, ui 111, core 266, daemon 194; `tsc -p tsconfig.json` clean.
+- **Latent hangs resolved:** Oz-on-`claude` and Oscar's `integration-verify`→`codex` headless pin are now valid (both CLIs headless-capable); `assignments.json` needed no edit — the existing pins became valid by the flag flip. Closes **ticket 0006**.
+
+**Next:** Founder confirms `archive headless-adapter-lane` (no build atoms remain; re-prove anytime with `node scripts/proof-headless-lane.mjs`).
+
 ## 2026-06-16 — **Oz dashboard defect sweep (run_103): ARCHIVED — founder-confirmed, no build atoms**
 
 **Persona:** Oscar (wrap-up + archive; 0 build atoms) | **Priority:** [oz-dashboard-bugs](./priorities/archive/oz-dashboard-bugs.md) | **Run:** run_103
