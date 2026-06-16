@@ -12,14 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
-## 2026-06-16 — **Oz dashboard defect sweep (run_103): archive-candidate reaffirmed — no build atoms**
+## 2026-06-16 — **Oz dashboard defect sweep (run_103): ARCHIVED — founder-confirmed, no build atoms**
 
-**Persona:** Oscar (wrap-up only; 0 atoms) | **Priority:** [oz-dashboard-bugs](./priorities/oz-dashboard-bugs.md) | **Run:** run_103
+**Persona:** Oscar (wrap-up + archive; 0 build atoms) | **Priority:** [oz-dashboard-bugs](./priorities/archive/oz-dashboard-bugs.md) | **Run:** run_103
 **Outcomes:**
 - **No build atoms** — all 12 defects remain fixed from run_94; renderer/daemon vitest + `pnpm --dir packages/ui build` green. Relaunching as a build run only produces empty reaffirmation wraps (F18).
 - **#11/#12 lineage closed** — capability data matches adapter reality (only `cursor-agent` headless today); #12 resolved by `governance-authoring-plays` (one-tool `author` action, run_98). The founder's "any CLI headless" ask is the unbuilt adapter lane → `headless-adapter-lane` + ticket 0006, not a data flip.
-- **Disposition: archive-candidate** — machine proof runnable via `node scripts/proof-oz-surfaces.mjs`; three irreducibly-live founder proofs remain (Oz chat with real CLI, one headless Oscar + Bob run, Q/A acceptance pass).
-**Next:** Run `node scripts/proof-oz-surfaces.mjs`; on PASS complete the three live proofs it prints; reply **`archive oz-dashboard-bugs`**. Or launch **`headless-adapter-lane`** for the real follow-on.
+- **Machine proof rerun green this run** — `node scripts/proof-oz-surfaces.mjs`: daemon 194/194, UI 111/111, ENDPOINTS_OWED 8/10 served, remainder bounded to the three live founder proofs.
+- **ARCHIVED on the founder's explicit `archive` go-ahead** (founder-owned acceptance gate; no self-archive). Playbook moved `priorities/ → priorities/archive/`; dropped from `order.json`; PLAYBOOK roadmap updated. Followed the `archive-priority` convention (945eb45).
+**Next:** Launch **`headless-adapter-lane`** (now top of `order.json`) — the real follow-on that makes "any CLI headless" true and retires two of the three live gaps. Open tickets 0006/0007 do not reopen this priority.
 
 ## 2026-06-16 — **Governance authoring as atomic Plays (run_99): grants + proof all green (archive-ready)**
 

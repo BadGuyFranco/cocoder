@@ -55,9 +55,13 @@ and the fixes are confirmed live on the running daemon. Follow-up design work is
 founder `12d2f0c`). The deferred dispatch-boundary question is resolved (`play-dispatch-boundary.md`);
 optional follow-on is `hybrid-plays`.
 
-## Status — run_103 (2026-06-16): archive-candidate reaffirmed · code-complete
+## Status — run_103 (2026-06-16): ARCHIVED · founder-confirmed · code-complete
 
-All twelve defects are fixed at the cause; renderer/daemon tests + builds green. run_103 added no code — reaffirmed archive-candidate after run_94 landed the fixes.
+**Archived 2026-06-16 on the founder's explicit `archive` go-ahead** (the founder-owned acceptance gate;
+no self-archive). All twelve defects are fixed at the cause; renderer/daemon tests + builds green. run_103
+added no code — reaffirmed archive-candidate after run_94 landed the fixes, ran the machine proof
+(`node scripts/proof-oz-surfaces.mjs` — daemon 194/194, UI 111/111, ENDPOINTS_OWED 8/10 served, remainder
+bounded to the three live proofs), and archived on founder confirmation.
 
 - **Landed run_94:** #2, #5, #7, #8 (recovered — see below), #11, #12.
 - **Pre-fixed 2026-06-14, verified surviving in the live tree run_94:** #1, #3, #4, #6, #9, #10.
@@ -65,4 +69,4 @@ All twelve defects are fixed at the cause; renderer/daemon tests + builds green.
 - **Rebuild-clobber (failure-catalog F21):** #2/#5/#7/#8 were fixed 2026-06-14, then silently reverted when the "Fusion" renderer rebuild (`2ccff89`) regenerated `packages/ui/app` from the frozen `design-ref/`. run_94 re-fixed them. `design-ref/` still holds the old `claude-code` id → **ticket 0007** (design-ref rebuild guard).
 - **#11 scope:** capability data matches adapter reality (only `cursor-agent` runs headless today). The founder's "any CLI headless" is the unbuilt headless-adapter lane → **`headless-adapter-lane`** + **ticket 0006**, not a data flip (flipping would cause real hangs).
 
-**Disposition:** `archive-candidate`. Machine proof: `node scripts/proof-oz-surfaces.mjs` (daemon + UI suites green, ENDPOINTS_OWED ledger served). Three irreducibly-live founder proofs remain (script prints them on PASS): Oz chat with a real CLI, one headless Oscar + Bob run, Q/A acceptance pass. Renderer fixes (#2/#5/#7/#8) are visual — eyeball after Restart Oz. Founder confirmation required to archive (no self-archive).
+**Disposition:** `archived` (founder-confirmed 2026-06-16). Machine proof: `node scripts/proof-oz-surfaces.mjs` (daemon + UI suites green, ENDPOINTS_OWED ledger served). The three irreducibly-live founder proofs (Oz chat with a real CLI, one headless Oscar + Bob run, Q/A acceptance pass) were the founder's acceptance gate, cleared by the explicit `archive` go-ahead. Open follow-ons that do NOT reopen this priority: `headless-adapter-lane` + ticket 0006 (make "any CLI headless" real), ticket 0007 (design-ref rebuild guard, F21).
