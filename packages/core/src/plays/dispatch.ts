@@ -98,17 +98,26 @@ export function runHeadlessProcess(input: HeadlessRunInput): Promise<DispatchPla
 
 export async function dispatchPlay(deps: DispatchPlayDeps, input: DispatchPlayInput): Promise<DispatchPlayResult> {
   const prompt = `${input.play.body.trim()}\n\n## This invocation\n${input.task.trim()}`
+  const headless = input.personaMode === 'headless' || input.play.kind === 'headless'
   const cmd = deps.getAdapter(input.assignment.cli).build({
     persona: input.persona,
     prompt,
     model: input.assignment.model,
     cwd: input.cwd,
     outPath: input.outPath,
+    headless,
   })
 
-  if (input.personaMode === 'headless' || input.play.kind === 'headless') {
+  if (headless) {
     const run = deps.runHeadless ?? runHeadlessProcess
-    return run({ command: cmd.command, args: cmd.args, cwd: input.cwd, outPath: input.outPath, timeoutMs: input.timeoutMs })
+    // Codex owns input.outPath via --output-last-message; keep its verbose stdout in a sidecar.
+    const adapterOwnsOutput = !cmd.stdoutPath && cmd.args.includes(input.outPath)
+    const stdoutPath = cmd.stdoutPath ?? (adapterOwnsOutput ? `${input.outPath}.stdout` : input.outPath)
+    const result = await run({ command: cmd.command, args: cmd.args, cwd: input.cwd, outPath: stdoutPath, timeoutMs: input.timeoutMs })
+    if (cmd.stdoutPath) return result
+    if (!adapterOwnsOutput) return result
+    const output = existsSync(input.outPath) ? readFileSync(input.outPath, 'utf8') : result.output
+    return { exitCode: result.exitCode, output }
   }
 
   // visible mode leaves the Play kind in control: kind:headless must stay a captured subprocess because

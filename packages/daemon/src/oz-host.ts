@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import {
   isPersonaEnabled,
@@ -158,9 +158,19 @@ async function runTurn(ctx: OzContext, target: OzTarget, session: OzSession, inp
       model: target.persona.model,
       cwd: target.workspace.path,
       outPath,
+      headless: true,
     })
     const run = ctx.runHeadless ?? runHeadlessProcess
-    result = await run({ command: cmd.command, args: cmd.args, cwd: target.workspace.path, outPath, timeoutMs: TURN_TIMEOUT_MS })
+    const adapterOwnsOutput = !cmd.stdoutPath && cmd.args.includes(outPath)
+    const stdoutPath = cmd.stdoutPath ?? (adapterOwnsOutput ? `${outPath}.stdout` : outPath)
+    result = await run({ command: cmd.command, args: cmd.args, cwd: target.workspace.path, outPath: stdoutPath, timeoutMs: TURN_TIMEOUT_MS })
+    if (adapterOwnsOutput) {
+      try {
+        result = { exitCode: result.exitCode, output: await readFile(outPath, 'utf8') }
+      } catch {
+        /* keep the subprocess output; the failure path below points at the turn log */
+      }
+    }
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err)
     await writeFile(outPath, detail)

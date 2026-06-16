@@ -116,7 +116,7 @@ describe('dispatchPlay', () => {
 
   test('a HEADLESS Play runs as a captured subprocess — no cmux pane spawned', async () => {
     const out = await outPath()
-    const { adapter } = fakeAdapter({ command: 'cursor-agent', args: ['-p', 'hi'] })
+    const { adapter } = fakeAdapter({ command: 'cursor-agent', args: ['-p', 'hi'], stdoutPath: out })
     const { sessionHost, spawns } = fakeSessionHost()
     const { runHeadless, calls } = fakeRunHeadless()
 
@@ -127,6 +127,29 @@ describe('dispatchPlay', () => {
 
     expect(spawns).toHaveLength(0) // the whole point: headless => NO interactive cmux surface
     expect(calls[0]).toEqual({ command: 'cursor-agent', args: ['-p', 'hi'], cwd: '/repo', outPath: out, timeoutMs: 5000 })
+  })
+
+  test('a headless command can own the answer file while stdout is captured to a sidecar', async () => {
+    const out = await outPath()
+    const { adapter } = fakeAdapter({ command: 'codex', args: ['exec', '--output-last-message', out] })
+    const { sessionHost } = fakeSessionHost()
+    const calls: HeadlessRunInput[] = []
+
+    const result = await dispatchPlay(
+      {
+        sessionHost,
+        getAdapter: () => adapter,
+        runHeadless: async (i) => {
+          calls.push(i)
+          await writeFile(out, 'clean final answer', 'utf8')
+          return { exitCode: 0, output: 'verbose transcript' }
+        },
+      },
+      { play, assignment, persona: 'oscar', task: 'Do it.', cwd: '/repo', outPath: out },
+    )
+
+    expect(calls[0]?.outPath).toBe(`${out}.stdout`)
+    expect(result).toEqual({ exitCode: 0, output: 'clean final answer' })
   })
 
   test('returns the headless runner exit code and captured output', async () => {
@@ -176,7 +199,7 @@ describe('dispatchPlay', () => {
     for (const c of cases) {
       const out = await outPath(`${c.name}.out`)
       await mkdir(dirname(out), { recursive: true })
-      const { adapter } = fakeAdapter({ command: 'cursor-agent', args: ['-p'], stdoutPath: out })
+      const { adapter, builtInputs } = fakeAdapter({ command: 'cursor-agent', args: ['-p'], stdoutPath: out })
       const { runHeadless, calls } = fakeRunHeadless()
       const { sessionHost, spawns } = fakeSessionHost({
         async spawn(opts) {
@@ -193,6 +216,7 @@ describe('dispatchPlay', () => {
 
       expect(calls, c.name).toHaveLength(c.headless ? 1 : 0)
       expect(spawns, c.name).toHaveLength(c.headless ? 0 : 1)
+      expect(builtInputs[0]?.headless, c.name).toBe(c.headless)
     }
   })
 })

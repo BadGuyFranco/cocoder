@@ -27,6 +27,13 @@ export class ClaudeAdapter implements Adapter {
   }
 
   build(input: BuildInput): BuiltCommand {
+    if (input.headless) {
+      const args = ['-p', '--output-format', 'text', ...this.runReadiness.flags]
+      if (input.model) args.push('--model', input.model)
+      args.push(input.prompt)
+      return { command: 'claude', args, stdoutPath: input.outPath }
+    }
+
     const lead = input.persona === 'oscar' ? [] : ['--disable-slash-commands']
     const args = [...lead, ...this.runReadiness.flags]
     if (input.model) args.push('--model', input.model)

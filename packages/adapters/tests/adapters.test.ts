@@ -30,6 +30,17 @@ describe('build() pins the spike invocations', () => {
     expect(noModel.args).toEqual(['--disable-slash-commands', '--permission-mode', 'acceptEdits', '--', 'hi'])
   })
 
+  test('claude: headless print-mode, output captured; model optional', () => {
+    const built = new ClaudeAdapter().build({ persona: 'deb', prompt: 'hi', model: 'sonnet', cwd: '/repo', outPath: '/run/o.txt', headless: true })
+    expect(built.command).toBe('claude')
+    expect(built.args).toEqual(['-p', '--output-format', 'text', '--permission-mode', 'acceptEdits', '--model', 'sonnet', 'hi'])
+    expect(built.stdoutPath).toBe('/run/o.txt')
+
+    const noModel = new ClaudeAdapter().build({ persona: 'oscar', prompt: 'hi', model: '', cwd: '/repo', outPath: '/run/o.txt', headless: true })
+    expect(noModel.args).toEqual(['-p', '--output-format', 'text', '--permission-mode', 'acceptEdits', 'hi'])
+    expect(noModel.stdoutPath).toBe('/run/o.txt')
+  })
+
   test('codex: interactive — bypass approvals+sandbox, disables apps, positional prompt; model optional', () => {
     const built = new CodexAdapter().build({ prompt: 'do it', model: 'gpt', cwd: '/repo', outPath: '/run/last.txt' })
     expect(built.command).toBe('codex')
@@ -38,6 +49,35 @@ describe('build() pins the spike invocations', () => {
 
     const noModel = new CodexAdapter().build({ prompt: 'do it', model: '', cwd: '/repo', outPath: '/run/last.txt' })
     expect(noModel.args).toEqual(['--dangerously-bypass-approvals-and-sandbox', '--disable', 'apps', 'do it'])
+  })
+
+  test('codex: headless exec, clean output via last-message file; model optional', () => {
+    const built = new CodexAdapter().build({ prompt: 'do it', model: 'gpt', cwd: '/repo', outPath: '/run/last.txt', headless: true })
+    expect(built.command).toBe('codex')
+    expect(built.args).toEqual([
+      'exec',
+      '--dangerously-bypass-approvals-and-sandbox',
+      '--disable',
+      'apps',
+      '--output-last-message',
+      '/run/last.txt',
+      '-m',
+      'gpt',
+      'do it',
+    ])
+    expect(built.stdoutPath).toBeUndefined()
+
+    const noModel = new CodexAdapter().build({ prompt: 'do it', model: '', cwd: '/repo', outPath: '/run/last.txt', headless: true })
+    expect(noModel.args).toEqual([
+      'exec',
+      '--dangerously-bypass-approvals-and-sandbox',
+      '--disable',
+      'apps',
+      '--output-last-message',
+      '/run/last.txt',
+      'do it',
+    ])
+    expect(noModel.stdoutPath).toBeUndefined()
   })
 
   test('cursor-agent: headless print-mode, output captured; model optional', () => {

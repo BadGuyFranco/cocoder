@@ -14,6 +14,9 @@ export interface BuildInput {
   /** Path where the CLI's structured completion artifact should land (claude JSON via
    *  stdout redirect; codex last-message via `-o`). The runner reads it after exit. */
   readonly outPath: string
+  /** When true, build() must emit a non-interactive invocation that runs to completion
+   *  and exits with the answer on stdout, not an interactive TUI. */
+  readonly headless?: boolean
 }
 
 export interface BuiltCommand {

@@ -29,6 +29,16 @@ export class CodexAdapter implements Adapter {
   }
 
   build(input: BuildInput): BuiltCommand {
+    if (input.headless) {
+      const args = ['exec', ...this.runReadiness.flags]
+      // Verified against Codex v0.137.0: stdout includes the session transcript and token footer,
+      // so the clean Play answer must come from Codex's last-message file instead of stdout capture.
+      args.push('--output-last-message', input.outPath)
+      if (input.model) args.push('-m', input.model)
+      args.push(input.prompt)
+      return { command: 'codex', args }
+    }
+
     const args = [...this.runReadiness.flags]
     if (input.model) args.push('-m', input.model)
     args.push(input.prompt) // positional initial prompt starts the interactive session
