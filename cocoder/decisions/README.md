@@ -33,7 +33,9 @@ their still-live content was absorbed into [ADR-0019](./0019-multi-root-workspac
 
 ## Proposed (founder review owed)
 
-_(none.)_
+| ADR | Title | Status |
+|---|---|---|
+| [0020 Addendum](./0020-addendum-phase-executor.md) | **Playbook phase executor** — concrete P1→P5 execution design for onboarding Playbooks: phase state, founder gates, P2 deep-read fan-out, P3 cross-check, P4/P5 governance synthesis and ratification through the commit spine | Proposed implementation addendum |
 
 ## Retired to history (superseded — not in the live tree)
 
