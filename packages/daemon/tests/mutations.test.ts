@@ -817,6 +817,24 @@ describe('Oz mutations + lifecycle', () => {
     expect(shown.map((s) => s.id)).toEqual(['surface:9'])
   })
 
+  test('POST /runs/:id/show prefers live Oscar after wrap so the founder can ask follow-up questions', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.createSession({ runId: run.id, persona: 'oscar', sessionRef: 'surface:oscar' })
+    store.createSession({ runId: run.id, persona: 'bob', sessionRef: 'surface:bob' })
+    store.createSession({ runId: run.id, persona: 'deb', sessionRef: 'surface:deb' })
+    store.setRunStatus(run.id, 'completed')
+    await startServer()
+    oz!.ctx.liveRefs.add('surface:oscar')
+    oz!.ctx.liveRefs.add('surface:bob')
+    oz!.ctx.liveRefs.add('surface:deb')
+
+    const r = await call(oz!, 'POST', `/runs/${run.id}/show`)
+
+    expect(r).toMatchObject({ status: 200, json: { sessionRef: 'surface:oscar', persona: 'oscar' } })
+    expect(shown.map((s) => s.id)).toEqual(['surface:oscar'])
+  })
+
   test('POST /runs/:id/teardown closes ALL stored surfaces by durable ref (post-restart Deb-pane leak fix)', async () => {
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
@@ -861,6 +879,29 @@ describe('Oz mutations + lifecycle', () => {
     // Closed via the DURABLE closeSurface path (cross-instance), NOT kill() (which would throw here).
     expect(closes).toEqual([{ workspaceRef: 'workspace:9', surfaceRef: 'surface:deb' }])
     expect(killedHere).toEqual([])
+  })
+
+  test('teardown does not report a durable surface as closed when closeSurface fails', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.createSession({ runId: run.id, persona: 'deb', sessionRef: 'surface:deb', workspaceRef: 'workspace:9' })
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit(),
+      sessionHost: { ...fakeHost(), async closeSurface() {
+        throw new Error('cmux refused close')
+      } },
+      getAdapter: () => okAdapter,
+      io: fakeIO(),
+    })
+
+    const r = await call(oz, 'POST', `/runs/${run.id}/teardown`)
+
+    expect(r.status).toBe(200)
+    expect(r.json.closed).toEqual([])
+    expect(store.listEvents(run.id).find((e) => e.type === 'teardown')?.data).toEqual({ closed: [] })
   })
 
   test('teardown prunes a stale ref even when kill fails (pane closed by hand)', async () => {

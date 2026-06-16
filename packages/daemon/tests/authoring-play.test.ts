@@ -197,7 +197,7 @@ describe('requestAuthoringPlay', () => {
     const run = await waitForTerminal(fixture.store, launch.body.runId)
     expect(run.status).toBe('completed')
     expect(await git(fixture.home, ['status', '--porcelain', '--untracked-files=all'])).toBe('')
-    expect(await git(fixture.home, ['log', '-1', '--format=%s'])).toBe('governance: pre-run snapshot')
+    expect((await git(fixture.home, ['log', '-1', '--format=%s'])).trim()).toBe('governance: pre-run snapshot')
     const event = fixture.store.listEvents(run.id).find((item) => item.type === 'governance-presnapshot')
     expect(event?.data).toMatchObject({ files: ['cocoder/priorities/human-alpha.md'] })
   })

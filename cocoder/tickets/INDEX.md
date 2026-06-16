@@ -14,6 +14,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 | ID | Title | Type | Priority | Owner |
 |---|---|---|---|---|
 | [0006](./open/0006-headless-adapter-lane-claude-codex.md) | Headless adapter lane for claude/codex (Oz-on-claude; fixes headless Plays pinned to interactive CLIs) | bug | headless-adapter-lane | founder-session |
+| [0008](./open/0008-post-wrap-founder-interaction-contract.md) | Wrapped Oscar is reachable but lacks a committed post-wrap action path | bug | governance-authoring-plays | deb |
 | [0003](./open/0003-public-docs-v1-stale.md) | Public docs/ tree is v1-stale (commands, PRIORITIES.md, cocoder/local, routes) | task | none | founder-session |
 | [0007](./open/0007-design-ref-rebuild-clobber-guard.md) | Guard against design-ref rebuilds reverting committed packages/ui/app fixes | task | oz-dashboard-bugs | oscar run_94 |
 

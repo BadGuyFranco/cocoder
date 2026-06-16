@@ -6,8 +6,10 @@
 //   - a .catch on the fire-and-forget run so a throw marks the run failed (poller reaches terminal)
 //     and never becomes an unhandled rejection that takes the always-on daemon down;
 //   - track spawned surfaceRefs in ctx.liveRefs so deep-links are decidable without throwing.
+import { execFile } from 'node:child_process'
 import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
+import { promisify } from 'node:util'
 import {
   isPersonaEnabled,
   gateCommitRepair,
@@ -33,6 +35,7 @@ import { appendAudit } from './audit.js'
 const OZ_REPAIR_TIMEOUT_MS = 120_000
 const AUTHORING_PLAY_TIMEOUT_MS = 120_000
 const AUTHORING_PLAY_IDS = ['create-priority', 'edit-priority', 'archive-priority'] as const
+const execFileAsync = promisify(execFile)
 
 type AuthoringPersona = 'oz' | 'oscar' | 'deb'
 type AuthoringPlayId = typeof AUTHORING_PLAY_IDS[number]
@@ -116,6 +119,26 @@ async function headShaOrUnknown(ctx: OzContext, cwd: string): Promise<string> {
   }
 }
 
+async function filesChangedBetween(cwd: string, from: string, to: string): Promise<readonly string[] | null> {
+  try {
+    const { stdout } = await execFileAsync('git', ['-C', cwd, 'diff', '--name-only', from, to, '--'], { maxBuffer: 16 * 1024 * 1024 })
+    return stdout.split('\n').map((line) => line.trim()).filter((line) => line.length > 0)
+  } catch {
+    return null
+  }
+}
+
+async function daemonRuntimeStale(ctx: OzContext, cwd: string, bootSha: string, headSha: string): Promise<boolean> {
+  if (bootSha === 'unknown' || headSha === 'unknown' || bootSha === headSha) return false
+  const changed = await filesChangedBetween(cwd, bootSha, headSha)
+  if (changed === null) return true
+  return changed.some((file) => !isNonRuntimeBootDrift(file))
+}
+
+function isNonRuntimeBootDrift(file: string): boolean {
+  return file === 'ARCHITECTURE.md' || file.startsWith('cocoder/') || file.startsWith('docs/')
+}
+
 export interface LaunchResult {
   readonly status: number
   readonly body: Record<string, unknown>
@@ -144,7 +167,7 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
   // workspace and replaced the agent panes. Refuse the launch instead: a FOUNDER restarts + re-launches;
   // nothing is spawned, so there is no session to hijack and no wasted build.
   const headNow = await headShaOrUnknown(ctx, ctx.cocoderHome)
-  if (ctx.bootSha !== 'unknown' && headNow !== 'unknown' && headNow !== ctx.bootSha) {
+  if (await daemonRuntimeStale(ctx, ctx.cocoderHome, ctx.bootSha, headNow)) {
     ctx.inFlight.delete(workspaceId)
     // Self-heal (daemon-side, per the 2026-05-30 headless-substrate decision): a stale daemon with
     // ZERO runs in flight restarts itself via the same detached mechanism as POST /daemon/restart —
@@ -669,17 +692,20 @@ function renderInvocation(invocation: unknown): string {
   return typeof invocation === 'string' ? invocation : JSON.stringify(invocation, null, 2) ?? String(invocation)
 }
 
-/** Bring a run's live cmux pane to the foreground. 409 if no session is live in THIS daemon process
- *  (completed run, or daemon restarted — ADR-0002-C1) — never a 500 from show() throwing. */
+/** Bring a run's live founder-facing pane to the foreground. After wrap-up, Oscar remains the surface
+ *  for founder questions/decisions while the panes are still live, so prefer Oscar over Bob/Deb.
+ *  409 if no session is live in THIS daemon process (teardown or daemon restarted) — never a 500 from
+ *  show() throwing. */
 export async function showRun(ctx: OzContext, runId: string): Promise<LaunchResult> {
   const run = ctx.store.getRun(runId)
   if (!run) return { status: 404, body: { error: 'unknown run' } }
-  // Prefer the most recent live session (the builder's pane).
-  const live = [...ctx.store.listSessions(runId)].reverse().find((s) => ctx.liveRefs.has(s.sessionRef))
-  if (!live) return { status: 409, body: { error: 'session not live (run completed or daemon restarted)' } }
+  const sessions = ctx.store.listSessions(runId)
+  const liveOscar = sessions.find((s) => s.persona === 'oscar' && ctx.liveRefs.has(s.sessionRef))
+  const live = liveOscar ?? [...sessions].reverse().find((s) => ctx.liveRefs.has(s.sessionRef))
+  if (!live) return { status: 409, body: { error: 'session not live (run torn down or daemon restarted)' } }
   await ctx.sessionHost.show({ id: live.sessionRef, driver: 'cmux' })
   void appendAudit(ctx.cocoderHome, { action: 'show', runId, sessionRef: live.sessionRef })
-  return { status: 200, body: { shown: true, sessionRef: live.sessionRef } }
+  return { status: 200, body: { shown: true, sessionRef: live.sessionRef, persona: live.persona } }
 }
 
 /** Startup orphan reconciliation (review blocker / F6 honesty). Ghost-row close: at boot the live set is

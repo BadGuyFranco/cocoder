@@ -168,11 +168,18 @@ export class CmuxSessionHost implements SessionHost {
 
   async closeSurface(args: { workspaceRef: string; surfaceRef: string }): Promise<void> {
     // Close by DURABLE refs only — NO #sessions lookup — so a pane spawned by a prior daemon instance
-    // still closes after a restart (the Deb-pane leak). Already-gone is success: the goal is "not open".
+    // still closes after a restart (the Deb-pane leak). Already-gone is success, but a failed close of a
+    // still-readable surface must surface; otherwise teardown can claim it closed Deb while the pane stays.
     try {
       await this.#cli.run(['close-surface', '--workspace', args.workspaceRef, '--surface', args.surfaceRef])
-    } catch {
-      /* surface already gone (closed by hand / never existed in this cmux) — the desired end state */
+    } catch (err) {
+      try {
+        await this.#cli.run(['read-screen', '--workspace', args.workspaceRef, '--surface', args.surfaceRef, '--lines', '1'])
+      } catch {
+        this.#sessions.delete(args.surfaceRef)
+        return
+      }
+      throw err
     }
     this.#sessions.delete(args.surfaceRef) // prune if this instance happened to know it
   }

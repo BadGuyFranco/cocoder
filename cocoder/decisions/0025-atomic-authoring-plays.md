@@ -70,13 +70,9 @@ through the one spine in a single dispatch.**
   which is the same underlying `commitFiles` spine.
 
 **Verified:** `packages/daemon/tests/authoring-play.test.ts` (create commits exactly the one file through
-the spine; in-flight refuses; out-of-scope held back; nonzero turn commits nothing) and the `author` tool
-tests in `oz-chat.test.ts` / `oz-agent-chat.test.ts` (one-tool dispatch renders the receipt; missing/
-non-enum `play` rejected without executing). Landed in atoms `85f3a0a` (harness) and `f7d16e0` (tool
-wiring); `requestOzRepair` behavior unchanged (its suite stays green).
-
-**Remaining to fully realize the priority's verified-when** (tracked in the priority Status, not this ADR):
-the `assignments.json` grants of `create-priority`, `edit-priority`, and `archive-priority` to
-oz/oscar/deb (per-(persona, Play); Deb-scope or dashboard route — outside Oscar/Bob writeScope). The
-end-to-end proof harness (`scripts/proof-governance-authoring.mjs`, `49d08c6`) is landed and verified;
-clause G (grants) is the sole remaining required row before archive.
+the spine; in-flight refuses; out-of-scope held back; nonzero turn commits nothing; agent authoring can
+launch immediately after its governance commit; human hand-edits are snapshotted at launch), the `author`
+tool tests in `oz-chat.test.ts` / `oz-agent-chat.test.ts` (one-tool dispatch renders the receipt; missing/
+non-enum `play` rejected without executing), and `packages/core/tests/priority-authoring-plays.test.ts`
+(the three Plays exist and are explicitly granted to oz/oscar/deb). The archive proof is
+`node scripts/proof-governance-authoring.mjs`, which passed 8/8 on 2026-06-16.

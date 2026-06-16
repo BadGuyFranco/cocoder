@@ -193,6 +193,40 @@ describe('CmuxSessionHost driver (fake cli)', () => {
     await expect(host.kill({ id: 'surface:7', driver: 'cmux' })).rejects.toThrow(/unknown session/)
   })
 
+  test('closeSurface treats an already-gone durable surface as success', async () => {
+    const calls: string[][] = []
+    const cli: CmuxCli = {
+      async run(args) {
+        calls.push([...args])
+        if (args[0] === 'ping') return 'PONG'
+        if (args[0] === 'close-surface') throw new Error('surface not found')
+        if (args[0] === 'read-screen') throw new Error('surface gone')
+        return ''
+      },
+    }
+    const host = new CmuxSessionHost({ cli, scriptDir: await mkdtemp(join(tmpdir(), 'cmux-test-')), pollMs: 1 })
+
+    await expect(host.closeSurface({ workspaceRef: 'workspace:7', surfaceRef: 'surface:7' })).resolves.toBeUndefined()
+    expect(calls).toContainEqual(['read-screen', '--workspace', 'workspace:7', '--surface', 'surface:7', '--lines', '1'])
+  })
+
+  test('closeSurface throws when close fails but the durable surface is still readable', async () => {
+    const calls: string[][] = []
+    const cli: CmuxCli = {
+      async run(args) {
+        calls.push([...args])
+        if (args[0] === 'ping') return 'PONG'
+        if (args[0] === 'close-surface') throw new Error('cmux refused close')
+        if (args[0] === 'read-screen') return 'still here'
+        return ''
+      },
+    }
+    const host = new CmuxSessionHost({ cli, scriptDir: await mkdtemp(join(tmpdir(), 'cmux-test-')), pollMs: 1 })
+
+    await expect(host.closeSurface({ workspaceRef: 'workspace:7', surfaceRef: 'surface:7' })).rejects.toThrow(/cmux refused close/)
+    expect(calls).toContainEqual(['read-screen', '--workspace', 'workspace:7', '--surface', 'surface:7', '--lines', '1'])
+  })
+
   test('spawn auto-launches cmux when the socket is down, then proceeds', async () => {
     let socketUp = false
     let launched = 0

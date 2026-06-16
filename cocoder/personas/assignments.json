@@ -2,7 +2,21 @@
   "personas": {
     "oz": {
       "cli": "claude",
-      "model": "sonnet"
+      "model": "sonnet",
+      "plays": {
+        "create-priority": {
+          "cli": "claude",
+          "model": "sonnet"
+        },
+        "edit-priority": {
+          "cli": "claude",
+          "model": "sonnet"
+        },
+        "archive-priority": {
+          "cli": "claude",
+          "model": "sonnet"
+        }
+      }
     },
     "oscar": {
       "cli": "claude",
@@ -24,6 +38,18 @@
         "code-review": {
           "cli": "cursor-agent",
           "model": ""
+        },
+        "create-priority": {
+          "cli": "claude",
+          "model": ""
+        },
+        "edit-priority": {
+          "cli": "claude",
+          "model": ""
+        },
+        "archive-priority": {
+          "cli": "claude",
+          "model": ""
         }
       }
     },
@@ -39,6 +65,18 @@
       "plays": {
         "code-review": {
           "cli": "cursor-agent",
+          "model": ""
+        },
+        "create-priority": {
+          "cli": "codex",
+          "model": ""
+        },
+        "edit-priority": {
+          "cli": "codex",
+          "model": ""
+        },
+        "archive-priority": {
+          "cli": "codex",
           "model": ""
         }
       }
