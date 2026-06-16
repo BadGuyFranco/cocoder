@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-16 — **Governance authoring as atomic Plays (run_98): dispatch harness + one-tool-action landed (resolves oz-dashboard-bugs #12) + ADR-0025 — code surface complete; grants + proof remain**
+
+**Persona:** Oscar (orchestrator) + Bob (builder, codex) | **Priority:** [governance-authoring-plays](./priorities/governance-authoring-plays.md) | **Run:** run_98
+**Outcomes:**
+- **Part 1 dispatch harness DONE** — atom 0 (`85f3a0a`): `requestAuthoringPlay` generalizes `requestOzRepair` through a shared `runHeadlessThenGateCommit` core, committing the authoring Play's write-scope through the **same** spine (`gateCommitRepair`→`commitScoped`). Added a `commitOnlyScope` opt-in so authoring **holds back** out-of-lane edits (`outOfLanePaths`, never committed/dropped) while Oz repair keeps its founder-directed broad-access default. No divergent commit path. 4 new daemon tests; typecheck + core 263 + daemon 185 green; `oz-repair` suite unchanged.
+- **Part 1 one-tool-action DONE** — atom 1 (`f7d16e0`): Oz authors a priority as one `OZ_TOOL` `author {"play":"create-priority",…}` action — `oz-host` enum-validates `play`, strips it, passes the rest through faithfully (Play enforces ADR-0010; no fabricated Objective); `oz-chat` adds the `author` command + `authoringReply`. **Resolves `oz-dashboard-bugs` #12** (author collapses to one tool action; agent-path test asserts a bad/missing `play` is rejected *without* executing). 5 new daemon tests; daemon 190 green.
+- **ADR-0025 authored + indexed** (Oscar support) — atomic authoring Plays: validate→write→commit in one dispatch, the shared spine, the one tool action, the ADR-0010 boundary; pairs with ADR-0024's hand-edit backstop.
+- **Verify discipline:** read every diff + ran typecheck/core/daemon myself per atom before each commit; both atoms passed clean on first dispatch. The runner's spurious "no builder activity" flag on atom 0 was disproven by the on-disk diff + passing tests.
+**Next:** Grant the three authoring Plays to oz/oscar/deb in `cocoder/personas/assignments.json` (a `cocoder/personas/**` edit **outside Oscar's writeScope** — do it via Deb-scope or the dashboard assignments route, NOT a Bob atom), then build/offer `scripts/proof-governance-authoring.mjs` proving author-then-launch with zero manual commits on both the agent and human-hand-edit paths. That proof is the last gap before archive-ready.
+
 ## 2026-06-16 — **Governance authoring as atomic Plays (run_97): launch self-heal landed + ADR-0024; three authoring Plays defined — dispatch harness + grants remain**
 
 **Persona:** Oscar (orchestrator) + Bob (builder, codex) | **Priority:** [governance-authoring-plays](./priorities/governance-authoring-plays.md) | **Run:** run_97

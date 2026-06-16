@@ -29,6 +29,7 @@ their still-live content was absorbed into [ADR-0019](./0019-multi-root-workspac
 | [0023](./0023-workspace-commit-spine.md) | **The workspace commit spine: direct-to-branch by default, isolation opt-in** — one commit service for all actors; collapses the three divergent commit paths; dissolves the run-branch strand class (supersedes 0015/0021/0022, reconciles 0007) | Accepted |
 | [0020](./0020-primary-root-audit.md) | **Onboarding Playbooks** — bootstrap / takeover / drift as shipped baked-plan Playbooks (multi-agent takeover, propose-only drift, top-tier pins, founder checkpoints; extends 0010) | Accepted (2026-06-14) |
 | [0024](./0024-governance-pre-run-snapshot.md) | **Launch self-heals governance dirt** — the launch guard partitions dirty-in-scope by builder vs. governance scope; governance-only dirt is auto-committed as a `governance: pre-run snapshot` and the launch proceeds, while builder/product WIP still refuses (amends 0023 §2/§3) | Accepted (2026-06-16) |
+| [0025](./0025-atomic-authoring-plays.md) | **Atomic authoring Plays** — `create`/`edit`/`archive-priority` Plays validate→write→commit through the one spine in a single dispatch (`requestAuthoringPlay`, generalizing `requestOzRepair` with `commitOnlyScope`); Oz authors as one `OZ_TOOL author` action (resolves `oz-dashboard-bugs` #12); create/Objective-edits stay founder-approved (ADR-0010); pairs with 0024's hand-edit backstop | Accepted (2026-06-16) |
 
 ## Proposed (founder review owed)
 

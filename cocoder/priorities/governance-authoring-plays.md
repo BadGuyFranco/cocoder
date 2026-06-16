@@ -39,19 +39,34 @@ an agent *and* a human can author-then-launch with no manual commit; the launch 
 governance dirt yet still refuses builder-scope WIP (covered by tests); a `pnpm --dir packages/daemon build`
 (and `packages/core`) is green. Lineage: `oz-dashboard-bugs` #11/#12, ticket 0006, `headless-adapter-lane`.
 
-## Status — run_97 (2026-06-16): Part 2 done · Part 1 foundation done · dispatch harness remains · continue
+## Status — run_98 (2026-06-16): Part 1 code surface done · ADR-0025 landed · grants + proof remain · continue
 
 - **Part 2 DONE (run_97 atom 0, `5842e32`):** launch guard self-heals governance-only dirt as a
   `governance: pre-run snapshot` and proceeds; builder/product WIP still refuses; mixed dirt refuses and
   snapshots nothing. [ADR-0024](../decisions/0024-governance-pre-run-snapshot.md) records the contract.
-- **Part 1 foundation DONE (run_97 atom 1, `8492d32`):** three headless authoring Plays defined
+- **Part 1 Plays DONE (run_97 atom 1, `8492d32`):** three headless authoring Plays defined
   (`create-priority`, `edit-priority`, `archive-priority`) under `packages/personas/base/plays/`, scoped to
   `cocoder/priorities/**`, with ADR-0010 founder-approval guardrails and a single-source mirror of the
-  daemon's priority-file contract. Core 263, daemon 181, typecheck/topology green.
-- **Remaining before verified-when:** (1) out-of-run dispatch+commit harness (generalize
-  `requestOzRepair` so Oz/Deb invoke authoring Plays as one tool action — resolves `oz-dashboard-bugs`
-  #12); (2) `assignments.json` grants to oz/oscar/deb (Deb-scope/dashboard route, not a Bob atom); (3)
-  authoring-Plays ADR; (4) end-to-end proof (`scripts/proof-governance-authoring.mjs` — offer to craft).
+  daemon's priority-file contract.
+- **Part 1 dispatch harness DONE (run_98 atom 0, `85f3a0a`):** `requestAuthoringPlay` generalizes
+  `requestOzRepair` via a shared `runHeadlessThenGateCommit` core, committing the Play write-scope through
+  the **same** spine (`gateCommitRepair` → `commitScoped` with a new `commitOnlyScope` opt-in that holds
+  back out-of-lane edits; Oz repair's broad-access default unchanged). 4 new daemon tests. typecheck +
+  core 263 + daemon 185 green.
+- **Part 1 one-tool-action DONE (run_98 atom 1, `f7d16e0`):** Oz authors via one `OZ_TOOL`
+  `author {"play":...}` action — `oz-host` enum-validates `play`, strips it, passes the invocation through
+  faithfully (no fabricated Objective); `oz-chat` dispatches to `requestAuthoringPlay` and renders the
+  receipt. **Resolves `oz-dashboard-bugs` #12.** 5 new daemon tests; daemon 190 green.
+- **Authoring-Plays ADR DONE (run_98, Oscar support):**
+  [ADR-0025](../decisions/0025-atomic-authoring-plays.md) records validate→write→commit-in-one-dispatch,
+  the shared spine, the one tool action, and the ADR-0010 boundary; indexed in `decisions/README.md`.
+- **Remaining before verified-when:** (1) `assignments.json` grants of the three Plays to oz/oscar/deb
+  (per-(persona, Play); a `cocoder/personas/**` edit **outside Oscar's writeScope** — Deb-scope or the
+  dashboard assignments route, NOT a Bob atom); (2) end-to-end proof
+  (`scripts/proof-governance-authoring.mjs`) exercising author-then-launch with **zero** manual commits on
+  both the agent and human-hand-edit paths.
 
-**Disposition:** `continue`. The human hand-edit path is covered (Part 2); the agent author-then-launch
-path is not yet provable end-to-end until the dispatch harness lands.
+**Disposition:** `continue`. The entire code surface for Parts 1 & 2 is landed and tested; both remaining
+items are governance/proof, not builder atoms. The agent author-then-launch path is implemented end-to-end
+in code but not yet *proven* by a runnable harness — that proof + the persona grants are all that stand
+between here and archive-ready.
