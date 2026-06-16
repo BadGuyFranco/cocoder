@@ -119,6 +119,7 @@ export {
   gateCommitRepair,
   type RepairCommitInput,
   type RepairCommitResult,
+  COCODER_GOVERNANCE_AUTHOR,
   commitFiles,
   commitScoped,
   type CommitReceipt,

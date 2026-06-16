@@ -12,7 +12,7 @@
 // quality gate; there is no human backstop). All collaborators are injected (SessionHost, Git, RunStore,
 // adapters, IO, the Judge) so the orchestration is unit-testable without real cmux/CLIs/models.
 import type { Adapter } from '../adapter/index.js'
-import { runCommitGate } from '../commit-gate/index.js'
+import { COCODER_GOVERNANCE_AUTHOR, commitFiles, runCommitGate } from '../commit-gate/index.js'
 import type { Git } from '../commit-gate/index.js'
 import type { Priority } from '../priorities/index.js'
 import type { PersonaRunMode, PlayAssignment, ResolvedPersona } from '../personas/index.js'
@@ -246,18 +246,14 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     store.recordEvent({ runId: run.id, type: 'direct-mode-refused', data: { reason: 'detached-head' } })
     throw new DirtyWorkingTreeError(workspaceRepo, 'the checkout is on a detached HEAD; a run needs a branch. Check out a branch first.')
   }
-  // Launch guard, SCOPED to the union of everything that will commit this run. If in-scope files are
-  // already dirty, the atom commit-gate (which commits ALL in-scope changed files) or the per-atom
-  // quarantine (which restores in-scope files to HEAD) could sweep up or destroy the founder's
-  // uncommitted work — so refuse with an actionable message rather than risk it.
-  // ONE start-of-run snapshot, used for BOTH the guard and the quarantine baseline (dirtyAtStart) so the
-  // tree is read once. The guard refuses if any IN-SCOPE file is already dirty (the atom gate / quarantine
-  // could sweep up or destroy the founder's uncommitted work); the FULL set is the founder's pre-existing
-  // edits the per-atom quarantine must never revert (out-of-scope dirt is theirs to keep).
+  // Launch guard, SCOPED to the union of everything that will commit this run. Builder-scope dirt is
+  // still refused because the atom commit-gate/quarantine could sweep up or destroy founder WIP.
+  // Governance-only dirt is self-healed with a pre-run snapshot (ADR-0024) before quarantine baseline.
   const committingScopes = [scope, oscar.writeScope, deb?.writeScope ?? [], input.wrapPlay?.writeScope ?? []].flat()
   const changedAtStart = await git.changedFiles(workspaceRepo)
   const { inScope: dirtyInScope } = partitionByScope(changedAtStart, committingScopes)
-  if (dirtyInScope.length > 0) {
+  const { inScope: builderDirt, outOfScope: governanceDirt } = partitionByScope(dirtyInScope, scope)
+  if (builderDirt.length > 0) {
     store.setRunStatus(run.id, 'failed')
     store.recordEvent({ runId: run.id, type: 'dirty-working-tree', data: { files: dirtyInScope } })
     throw new DirtyWorkingTreeError(
@@ -265,7 +261,18 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       `${dirtyInScope.length} uncommitted in-scope file(s) (${dirtyInScope.slice(0, 5).join(', ')}${dirtyInScope.length > 5 ? ', …' : ''}). Commit or stash them first.`,
     )
   }
-  const dirtyAtStart = new Set(changedAtStart)
+  let dirtyAtStartFiles = changedAtStart
+  if (governanceDirt.length > 0) {
+    const receipt = await commitFiles(git, workspaceRepo, governanceDirt, 'governance: pre-run snapshot', COCODER_GOVERNANCE_AUTHOR)
+    if (!receipt.committed || receipt.committedSha === null) {
+      store.setRunStatus(run.id, 'failed')
+      store.recordEvent({ runId: run.id, type: 'governance-presnapshot-failed', data: { files: governanceDirt, reason: receipt.error } })
+      throw new DirtyWorkingTreeError(workspaceRepo, `unable to snapshot governance dirt before launch: ${receipt.error ?? 'no commit created'}`)
+    }
+    store.recordEvent({ runId: run.id, type: 'governance-presnapshot', data: { files: receipt.committedFiles, sha: receipt.committedSha } })
+    dirtyAtStartFiles = await git.changedFiles(workspaceRepo)
+  }
+  const dirtyAtStart = new Set(dirtyAtStartFiles)
   // Bound to the active checkout/branch; kept as named locals so the prompts/drivers/observer (which take
   // a cwd + branch name) need no change — they always describe the one real branch the run commits to.
   const worktreePath = workspaceRepo

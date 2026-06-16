@@ -22,6 +22,9 @@ export interface CommitAuthor {
   readonly email: string
 }
 
+/** Shared author for CoCoder-authored governance commits through the spine. */
+export const COCODER_GOVERNANCE_AUTHOR = { name: 'cocoder-governance', email: 'governance@cocoder.local' } as const satisfies CommitAuthor
+
 /** The one receipt every spine commit returns (ADR-0023 §1). */
 export interface CommitReceipt {
   /** True iff a commit was actually created. */

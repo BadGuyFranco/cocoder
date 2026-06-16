@@ -5,6 +5,7 @@ import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/p
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 import {
+  COCODER_GOVERNANCE_AUTHOR,
   commitFiles,
   installRoot as cocoderInstallRoot,
   listEffectivePlays,
@@ -37,7 +38,6 @@ export type { OzContext } from './context.js'
 
 const CAP = 50_000
 const ADHOC_PRIORITY_ID = 'adhoc-session'
-const COCODER_GOVERNANCE = { name: 'cocoder-governance', email: 'governance@cocoder.local' } as const
 
 /** Read + JSON-parse a request body with a hard size cap (mutation handlers). */
 function readJsonBody(req: IncomingMessage): Promise<unknown> {
@@ -234,7 +234,7 @@ async function directoryGate(path: string): Promise<string | null> {
  *  NEVER swallows: a commit failure is returned in the receipt + audited, and the caller surfaces it to
  *  the founder (a 502) rather than reporting a false success with the file left uncommitted on disk. */
 async function commitGovernance(ctx: OzContext, repoPath: string, files: readonly string[], message: string): Promise<CommitReceipt> {
-  const receipt = await commitFiles(ctx.git, repoPath, files, message, COCODER_GOVERNANCE)
+  const receipt = await commitFiles(ctx.git, repoPath, files, message, COCODER_GOVERNANCE_AUTHOR)
   if (receipt.error !== null) {
     await appendAudit(ctx.cocoderHome, { action: 'governance-commit-failed', repoPath, message, reason: receipt.error })
   }

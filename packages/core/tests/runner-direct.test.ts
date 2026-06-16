@@ -102,6 +102,7 @@ afterEach(async () => {
 async function runDirect(opts: {
   bobWrites: (cwd: string) => Promise<void>
   bobScope?: string[]
+  oscarScope?: string[]
   verdicts?: { verdict: 'pass' | 'fail'; reason: string }[]
   directives?: Directive[]
 }) {
@@ -146,7 +147,7 @@ async function runDirect(opts: {
     {
       workspace: { id: 'cocoder', path: home, name: 'CoCoder' },
       priority: { id: 'demo', title: 'Demo', scopeNarrowing: null, goal: 'g', objective: 'o' },
-      oscar: persona('oscar', 'claude'),
+      oscar: persona('oscar', 'claude', opts.oscarScope),
       bob: persona('bob', 'codex', opts.bobScope ?? ['packages/**']),
       sharedStandards: 'STANDARDS',
       engineHome: home,
@@ -212,6 +213,47 @@ describe('runRun direct mode — the default (ADR-0023 §2, live git)', () => {
     expect(await g(home, ['rev-parse', 'HEAD'])).toBe(headBefore)
     expect(await exists(join(home, 'packages', 'wip.ts'))).toBe(true)
     expect(await g(home, ['status', '--porcelain', '--untracked-files=all'])).toContain('packages/wip.ts')
+  })
+
+  test('governance-only dirty guard self-heals with a pre-run snapshot and proceeds', async () => {
+    await mkdir(join(home, 'cocoder'), { recursive: true })
+    await writeFile(join(home, 'cocoder', 'PLAYBOOK.md'), '# Playbook\n')
+    const headBefore = await g(home, ['rev-parse', 'HEAD'])
+
+    const { result, store } = await runDirect({
+      oscarScope: ['cocoder/**'],
+      bobWrites: async () => {},
+    })
+
+    expect(result.status).toBe('completed')
+    expect(await g(home, ['rev-parse', 'HEAD'])).not.toBe(headBefore)
+    expect(await g(home, ['log', '-1', '--format=%s'])).toBe('governance: pre-run snapshot')
+    expect(await g(home, ['show', '--stat', 'HEAD'])).toContain('cocoder/PLAYBOOK.md')
+    expect(await g(home, ['status', '--porcelain', '--untracked-files=all'])).toBe('')
+
+    const event = store.listEvents(result.runId).find((e) => e.type === 'governance-presnapshot')!
+    expect(event.data).toEqual({ files: ['cocoder/PLAYBOOK.md'], sha: await g(home, ['rev-parse', 'HEAD']) })
+  })
+
+  test('mixed builder and governance dirt still refuses the launch and snapshots nothing', async () => {
+    await mkdir(join(home, 'packages'), { recursive: true })
+    await mkdir(join(home, 'cocoder'), { recursive: true })
+    await writeFile(join(home, 'packages', 'wip.ts'), 'export const wip = true\n')
+    await writeFile(join(home, 'cocoder', 'PLAYBOOK.md'), '# Playbook\n')
+    const headBefore = await g(home, ['rev-parse', 'HEAD'])
+
+    await expect(
+      runDirect({
+        oscarScope: ['cocoder/**'],
+        bobWrites: async () => {},
+      }),
+    ).rejects.toBeInstanceOf(DirtyWorkingTreeError)
+
+    expect(await g(home, ['rev-parse', 'HEAD'])).toBe(headBefore)
+    expect(await g(home, ['log', '--format=%s'])).not.toContain('governance: pre-run snapshot')
+    const status = await g(home, ['status', '--porcelain', '--untracked-files=all'])
+    expect(status).toContain('packages/wip.ts')
+    expect(status).toContain('cocoder/PLAYBOOK.md')
   })
 
   test('out-of-scope changes are COMMITTED and FLAGGED (scope is advisory — the spine never withholds)', async () => {
