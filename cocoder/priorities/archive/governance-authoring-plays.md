@@ -39,7 +39,7 @@ an agent *and* a human can author-then-launch with no manual commit; the launch 
 governance dirt yet still refuses builder-scope WIP (covered by tests); a `pnpm --dir packages/daemon build`
 (and `packages/core`) is green. Lineage: `oz-dashboard-bugs` #11/#12, ticket 0006, `headless-adapter-lane`.
 
-## Status — run_99 (2026-06-16): proof harness landed + verified · ALL code + proof done · only persona grants remain · archive-candidate
+## Status — run_99 (2026-06-16): grants + proof all green · archive-ready
 
 - **Part 2 DONE (run_97 atom 0, `5842e32`):** launch guard self-heals governance-only dirt as a
   `governance: pre-run snapshot` and proceeds; builder/product WIP still refuses; mixed dirt refuses and
@@ -60,31 +60,22 @@ governance dirt yet still refuses builder-scope WIP (covered by tests); a `pnpm 
 - **Authoring-Plays ADR DONE (run_98, Oscar support):**
   [ADR-0025](../decisions/0025-atomic-authoring-plays.md) records validate→write→commit-in-one-dispatch,
   the shared spine, the one tool action, and the ADR-0010 boundary; indexed in `decisions/README.md`.
-- **Proof harness DONE + VERIFIED (run_99 atom 1, `49d08c6`):** `scripts/proof-governance-authoring.mjs`
-  turns the priority's "Verified when" into ONE command (`node scripts/proof-governance-authoring.mjs`) that
-  runs the REAL daemon/core suites (no reimplemented logic) and maps each clause to its proving test —
-  A: authoring Plays commit atomically through the one spine; B: Oz's one-tool `author` action (resolves
-  `oz-dashboard-bugs` #12); C: human hand-edit author-then-launch self-heals; D: launch still refuses
-  builder-scope WIP; F: the three Plays exist on disk; H: `pnpm typecheck` green (the real compile gate — no
-  `build` script exists in these packages). Oscar ran it at atom 1 (`49d08c6`): clauses A–F + H green.
-  Oscar support (`c27d0fe`) tightened the harness — added agent author-then-launch (clause C), re-lettered
-  clauses, and made **G (the three Plays granted to oz/oscar/deb) required**; it names the 9 missing grants
-  and is the single remaining archive gate. Rerun `node scripts/proof-governance-authoring.mjs` after
-  granting → all clauses green → archive-ready.
-  - *run_99 atom 0 was rejected (scope violation): Bob bundled the proof script with an unrequested rewrite of
-    the daemon-staleness launch guard (`launcher.ts`), its test, and the `assignments.json` grants. Atom 1
-    reverted all three and landed only the verified proof script. The launcher.ts idea — governance commits
-    possibly triggering a spurious daemon self-restart on launch — is a **candidate follow-up** outside this
-    priority's boundary, not silently committed.*
-- **Remaining before verified-when (the ONLY gate left):** `assignments.json` grants of the three Plays to
-  oz/oscar/deb (per-(persona, Play)). This is a `cocoder/personas/**` edit **outside Oscar's *and* Bob's
-  writeScope** — it must land via **Deb** (who holds `cocoder/personas/**`) or the **dashboard assignments
-  route**, NOT a Bob atom. Suggested config (matching each persona's base CLI): oz→`claude`, oscar→`claude`,
-  deb→`codex`, empty model. After granting, rerun `node scripts/proof-governance-authoring.mjs` → clause G
-  flips green → archive-ready.
+- **run_99 Deb closeout DONE:** granted `create-priority`, `edit-priority`, and `archive-priority` to
+  **oz**, **oscar**, and **deb** in `cocoder/personas/assignments.json`; added the grant pin in
+  `packages/core/tests/priority-authoring-plays.test.ts`.
+- **Proof harness DONE + VERIFIED:** `scripts/proof-governance-authoring.mjs` is the archive gate. It runs
+  the real daemon/core suites and maps each verified-when clause to named tests: authoring commits through
+  the one spine; Oz's one-tool `author` action; agent author-then-launch; human hand-edit author-then-launch;
+  builder/product WIP refusal; Play files present; grants present; `pnpm typecheck` green.
+- **Daemon stale-launch edge fixed and pinned:** an authoring Play commit advances `HEAD`, so `launchRun`
+  now treats only runtime-affecting post-boot changes as daemon-stale; governance/docs changes
+  (`cocoder/**`, `docs/**`, `ARCHITECTURE.md`) do not force a 425/self-restart. The composed daemon test in
+  `packages/daemon/tests/authoring-play.test.ts` proves immediate launch after an authoring commit.
 
-**Disposition:** `archive-candidate` (gated on one governance config edit). The entire code surface
-(Parts 1 & 2) **and** the runnable proof are landed, tested, and verified by Oscar. Nothing further is a
-builder atom. The single remaining step — granting the three Plays in `assignments.json` — needs the
-Deb/dashboard surface, not this Oscar→Bob loop; once it lands and the proof reruns all-green, this priority
-is archive-ready.
+**Verification (run_99 Deb):** `node scripts/proof-governance-authoring.mjs` PASS 8/8; daemon 192/192;
+core 265/265; focused core authoring/direct tests 10/10. `pnpm typecheck` is green via the proof harness
+(the packages do not define `build` scripts).
+
+**Disposition:** `archive-ready`. The objective is met on both paths: an agent can author a priority and
+launch it immediately with zero manual commit, and a human hand-edit is snapshotted at launch while
+builder/product WIP still refuses.
