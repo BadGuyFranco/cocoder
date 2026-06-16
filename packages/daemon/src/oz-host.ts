@@ -18,7 +18,7 @@ import { findWorkspace, type RegistryWorkspace } from './registry.js'
 const TRANSCRIPT_LIMIT = 20
 const TURN_TIMEOUT_MS = 120_000
 const PRIORITIES_CAP = 1_000
-const TOOL_ROUND_LIMIT = 3
+const TOOL_ROUND_LIMIT = 10
 
 interface TranscriptEntry {
   readonly role: 'founder' | 'oz' | 'tool'
@@ -104,13 +104,11 @@ async function resolveOzTarget(ctx: OzContext, workspaceId: string): Promise<OzT
 async function runToolLoop(ctx: OzContext, target: OzTarget, session: OzSession, text: string, execute: OzCommandExecutor): Promise<OzChatResult> {
   const founderTs = new Date().toISOString()
   let lastAction: OzChatAction | undefined
-  const turnLogPaths: string[] = []
   let toolResult: ToolResult | null = null
 
   for (let round = 0; round < TOOL_ROUND_LIMIT; round += 1) {
     const output = await runTurn(ctx, target, session, round === 0 ? { kind: 'founder', text } : { kind: 'tool-result', result: toolResult!.summary })
     if ('status' in output) return output
-    turnLogPaths.push(output.outPath)
 
     const parsed = parseToolLine(output.text)
     if (!parsed) {
@@ -128,15 +126,21 @@ async function runToolLoop(ctx: OzContext, target: OzTarget, session: OzSession,
     }
   }
 
-  return chatResult(500, {
-    reply: `Oz exceeded the 3-tool action budget for this message. Turn logs: ${turnLogPaths.join(', ')}.`,
-    command: 'chat',
-    ok: false,
-    ...(lastAction ? { action: lastAction } : {}),
-  })
+  const finalOutput = await runTurn(ctx, target, session, { kind: 'tool-budget-exhausted', result: toolResult?.summary ?? 'No tool result was available.' })
+  if ('status' in finalOutput) {
+    return lastAction ? { ...finalOutput, body: { ...finalOutput.body, action: lastAction } } : finalOutput
+  }
+
+  const reply = finalFounderReply(finalOutput.text, toolResult?.summary)
+  appendTranscript(session, { role: 'founder', text, ts: founderTs })
+  appendTranscript(session, { role: 'oz', text: reply, ts: new Date().toISOString() })
+  return chatResult(200, { reply, command: 'chat', ok: true, ...(lastAction ? { action: lastAction } : {}) })
 }
 
-type TurnInput = { readonly kind: 'founder'; readonly text: string } | { readonly kind: 'tool-result'; readonly result: string }
+type TurnInput =
+  | { readonly kind: 'founder'; readonly text: string }
+  | { readonly kind: 'tool-result'; readonly result: string }
+  | { readonly kind: 'tool-budget-exhausted'; readonly result: string }
 
 async function runTurn(ctx: OzContext, target: OzTarget, session: OzSession, input: TurnInput): Promise<TurnOutput | OzChatResult> {
   const turn = session.nextTurn
@@ -173,6 +177,7 @@ async function runTurn(ctx: OzContext, target: OzTarget, session: OzSession, inp
 async function buildPrompt(ctx: OzContext, target: OzTarget, transcript: readonly TranscriptEntry[], input: TurnInput): Promise<string> {
   const priorities = await readPriorities(prioritiesDir(target.workspace.path), PRIORITIES_CAP)
   const runs = ctx.store.listRuns({ workspaceId: target.workspace.id })
+  const body = input.kind === 'founder' ? input.text.trim() : input.result
   return [
     '## Oz persona',
     target.persona.body.trim(),
@@ -180,10 +185,10 @@ async function buildPrompt(ctx: OzContext, target: OzTarget, transcript: readonl
     factsDigest(priorities, runs),
     '## Recent transcript',
     formatTranscript(transcript),
-    input.kind === 'founder' ? '## Founder message' : '## Tool result',
-    input.kind === 'founder' ? input.text.trim() : input.result,
+    turnInputHeading(input),
+    body,
     '## Turn instructions',
-    input.kind === 'founder' ? toolInstructions() : followUpInstructions(),
+    turnInstructions(input),
   ].join('\n\n')
 }
 
@@ -196,7 +201,7 @@ function toolInstructions(): string {
     '`refresh {}` restarts the daemon to refresh Oz and re-derive state from disk. It refuses while a run is in flight. Use it when the founder asks to refresh Oz/restart the daemon, or after a repair needs the daemon to reload code.',
     'To use a tool, your output must end with exactly one final non-empty line in this form: `OZ_TOOL {"tool":"launch","args":{"priorityId":"demo"}}`.',
     'Use strict JSON after `OZ_TOOL `. Only one tool call is allowed per turn. Everything before the `OZ_TOOL` line is working notes and is not shown to the founder.',
-    'You have at most 3 tool rounds for this founder message. After a tool result, either answer the founder or call one more available tool.',
+    `You have at most ${TOOL_ROUND_LIMIT} tool rounds for this founder message. After a tool result, either answer the founder or call one more available tool.`,
   ].join('\n')
 }
 
@@ -205,6 +210,41 @@ function followUpInstructions(): string {
     'The tool call and result are recorded above. Reply to the founder in plain English, decision-first, or call one more available tool using the same final-line `OZ_TOOL { ... }` syntax.',
     'Never claim an action succeeded unless the tool result says it did. Do not edit files.',
   ].join('\n')
+}
+
+function finalAnswerInstructions(): string {
+  return [
+    `You have used all ${TOOL_ROUND_LIMIT} tool rounds for this founder message.`,
+    'No tool rounds remain. Do not output an `OZ_TOOL` line.',
+    'Reply to the founder now in plain English, decision-first. State what you did, what you learned, and any remaining limitation.',
+    'Never claim an action succeeded unless the tool result says it did. Do not edit files.',
+  ].join('\n')
+}
+
+function turnInputHeading(input: TurnInput): string {
+  if (input.kind === 'founder') return '## Founder message'
+  if (input.kind === 'tool-result') return '## Tool result'
+  return '## Final tool result'
+}
+
+function turnInstructions(input: TurnInput): string {
+  if (input.kind === 'founder') return toolInstructions()
+  if (input.kind === 'tool-result') return followUpInstructions()
+  return finalAnswerInstructions()
+}
+
+function finalFounderReply(output: string, lastToolSummary: string | undefined): string {
+  const lines = output.split(/\r?\n/)
+  let lastToolLine = -1
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    if (lines[index]!.trimStart().startsWith('OZ_TOOL ')) {
+      lastToolLine = index
+      break
+    }
+  }
+  const reply = lastToolLine === -1 ? output.trim() : lines.slice(0, lastToolLine).join('\n').trim()
+  if (reply) return reply
+  return `I used the ${TOOL_ROUND_LIMIT}-round tool guardrail before I could finish a fuller answer. Last tool result: ${lastToolSummary ?? 'none recorded.'}`
 }
 
 function parseToolLine(output: string): ToolCall | null {

@@ -176,23 +176,46 @@ describe('Oz agent chat turns', () => {
     expect(result).toMatchObject({ status: 200, body: { reply: 'I could not parse the tool call.', command: 'chat', ok: true } })
   })
 
-  test('three tool rounds hit the action budget and return a truthful failure', async () => {
+  test('more than three tool rounds can complete with a plain-English reply', async () => {
     const fixture = await makeFixture({
       outputs: [
         'Again.\nOZ_TOOL {"tool":"status","args":{}}',
         'Again.\nOZ_TOOL {"tool":"status","args":{}}',
         'Again.\nOZ_TOOL {"tool":"status","args":{}}',
+        'Again.\nOZ_TOOL {"tool":"status","args":{}}',
+        'I checked several times and have the current state.',
       ],
     })
 
     const result = await handleOzMessage(fixture.ctx, { text: 'keep checking', workspaceId: 'cocoder' }, fakeOps())
 
-    expect(fixture.headlessInputs).toHaveLength(3)
-    expect(result.status).toBe(500)
-    expect(result.body).toMatchObject({ command: 'chat', ok: false })
-    expect(result.body.reply).toContain('exceeded the 3-tool action budget')
-    expect(result.body.reply).toContain(join(fixture.home, 'local', 'oz', 'cocoder', 'turn-1.log'))
-    expect(result.body.reply).toContain(join(fixture.home, 'local', 'oz', 'cocoder', 'turn-3.log'))
+    expect(fixture.headlessInputs).toHaveLength(5)
+    expect(result).toMatchObject({ status: 200, body: { command: 'chat', ok: true, reply: 'I checked several times and have the current state.' } })
+  })
+
+  test('tool round cap forces a final plain-English answer instead of a budget error', async () => {
+    const fixture = await makeFixture({
+      outputs: [
+        ...Array.from({ length: 10 }, () => 'Again.\nOZ_TOOL {"tool":"status","args":{}}'),
+        'I hit the tool-round guardrail, but the last status check succeeded and I can summarize it.',
+      ],
+    })
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'keep checking until done', workspaceId: 'cocoder' }, fakeOps())
+
+    expect(fixture.headlessInputs).toHaveLength(11)
+    expect(fixture.prompts[10]?.prompt).toContain('You have used all 10 tool rounds')
+    expect(fixture.prompts[10]?.prompt).toContain('No tool rounds remain')
+    expect(result).toMatchObject({
+      status: 200,
+      body: {
+        command: 'chat',
+        ok: true,
+        reply: 'I hit the tool-round guardrail, but the last status check succeeded and I can summarize it.',
+        action: { type: 'status', workspaceId: 'cocoder' },
+      },
+    })
+    expect(result.body.reply).not.toContain('budget')
   })
 
   test('stop tool dispatches injected stopRun and failed op text reaches the follow-up prompt', async () => {
