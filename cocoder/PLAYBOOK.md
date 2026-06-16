@@ -187,25 +187,30 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   `zArchive/priorities/v2/plays-first-class.md`.
 
 **Active build priorities (launchable; the `priorities/` directory is the live index):**
-1. `governance-authoring-plays` — **ARCHIVE-READY (run_99, 2026-06-16).** Founder-directed: never leave
+1. `headless-adapter-lane` — **ARCHIVE-CANDIDATE (run_104, 2026-06-16).** Claude Code + Codex real
+   headless invocation built (`BuildInput.headless`, claude print mode + codex exec), wired through
+   `dispatchPlay` + `oz-host`, `headlessCapable=true` (single source). Flags verified vs real binaries;
+   `node scripts/proof-headless-lane.mjs` re-proves (PASS claude, PASS codex). Oz-on-claude and latent
+   headless-Play pins no longer hang. Closes ticket 0006. Awaiting founder `archive` confirmation.
+2. `governance-authoring-plays` — **ARCHIVE-READY (run_99, 2026-06-16).** Founder-directed: never leave
    launch-blocking governance dirt. Parts 1 & 2 are done: launch self-heal ([ADR-0024](./decisions/0024-governance-pre-run-snapshot.md),
    `5842e32`); three authoring Plays (`8492d32`); dispatch harness (`85f3a0a`); one-tool-action
    (`f7d16e0`, resolves `oz-dashboard-bugs` #12); [ADR-0025](./decisions/0025-atomic-authoring-plays.md).
    Deb granted the three Plays to oz/oscar/deb, fixed the governance-commit daemon-stale edge needed for
    immediate launch, and reran `node scripts/proof-governance-authoring.mjs`: **8/8 clauses green**.
-2. `oz-dashboard-bugs` — **ARCHIVED (run_103, founder-confirmed 2026-06-16).** All 12 founder-reported
+3. `oz-dashboard-bugs` — **ARCHIVED (run_103, founder-confirmed 2026-06-16).** All 12 founder-reported
    Oz dashboard defects fixed at the cause (run_94; renderer/daemon vitest + UI build green). #12 closed
    via `governance-authoring-plays` (one-tool `author`, run_98). Machine proof
    (`node scripts/proof-oz-surfaces.mjs`) green; the three irreducibly-live founder proofs (Oz chat with
    real CLI, one headless Oscar + Bob run, Q/A acceptance) were the founder's acceptance gate, cleared by
    the explicit `archive` go-ahead. Playbook moved to `priorities/archive/`. Open follow-ons (do NOT
-   reopen this priority): ticket 0006 + `headless-adapter-lane` (make "any CLI headless" real) · ticket
-   0007 (design-ref rebuild guard).
-3. `new-primary-root` — **CONTINUE (run_86, 2026-06-14).** Onboard a primary root via the
+   reopen this priority): ticket 0006 closed via `headless-adapter-lane` (run_104, archive-candidate) ·
+   ticket 0007 (design-ref rebuild guard).
+4. `new-primary-root` — **CONTINUE (run_86, 2026-06-14).** Onboard a primary root via the
    bootstrap/takeover/drift onboarding Playbooks (ADR-0020 Accepted). **Engine foundation built and
    live-wired** (run_83 + run_86): loader extension (§7), `scaffoldCocoderZone` + `createWorkspace`
    wiring (D1 code landed; three template files held back — expand scope), `deep-read` hardened for P3.
-   **Next:** commit held-back D1 template files; lift D2 via ticket 0006 (headless lane); then design the
+   **Next:** D2 headless-lane dependency satisfied (ticket 0006 closed, run_104); design the
    P2→P5 fan-out executor and run live CoPublisher Takeover + dogfood Drift Audit proofs. **Absorbs
    `workspace-onboarding`.** Phase 5 ("first external repo").
 
