@@ -187,13 +187,19 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   `zArchive/priorities/v2/plays-first-class.md`.
 
 **Active build priorities (launchable; the `priorities/` directory is the live index):**
-1. `oz-dashboard-bugs` — **ARCHIVE-CANDIDATE (run_94, 2026-06-15).** All 12 founder-reported Oz
+1. `governance-authoring-plays` — **CONTINUE (run_97, 2026-06-16).** Founder-directed: never leave
+   launch-blocking governance dirt. **Part 2 DONE:** launch guard self-heals governance-only dirt
+   ([ADR-0024](./decisions/0024-governance-pre-run-snapshot.md), `5842e32`). **Part 1 foundation DONE:**
+   three authoring Plays defined (`create/edit/archive-priority`, `8492d32`). **Next:** dispatch+commit
+   harness (keystone — Oz/Deb invoke authoring Plays as one tool action, resolves `oz-dashboard-bugs`
+   #12); then `assignments.json` grants + authoring-Plays ADR + end-to-end proof.
+2. `oz-dashboard-bugs` — **ARCHIVE-CANDIDATE (run_94, 2026-06-15).** All 12 founder-reported Oz
    dashboard defects fixed at the cause (renderer 111/111 · daemon 181/181 · builds green). run_94
    re-landed #2/#5/#7/#8 after a design-ref rebuild clobber (F21) and newly fixed #11/#12; #1–#10
    verified surviving. Only gap before archive: live-on-daemon confirmation (Restart Oz + eyeball, or an
    offered `scripts/proof-oz-dashboard.mjs`). Follow-ups filed, neither blocks archive: ticket 0006
    (headless claude/codex lane) · ticket 0007 (design-ref rebuild guard).
-2. `new-primary-root` — **CONTINUE (run_86, 2026-06-14).** Onboard a primary root via the
+3. `new-primary-root` — **CONTINUE (run_86, 2026-06-14).** Onboard a primary root via the
    bootstrap/takeover/drift onboarding Playbooks (ADR-0020 Accepted). **Engine foundation built and
    live-wired** (run_83 + run_86): loader extension (§7), `scaffoldCocoderZone` + `createWorkspace`
    wiring (D1 code landed; three template files held back — expand scope), `deep-read` hardened for P3.

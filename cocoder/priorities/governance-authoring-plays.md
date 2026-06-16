@@ -38,3 +38,20 @@ Boundary: does **not** change Bob's build scope, the commit-gate's per-atom beha
 an agent *and* a human can author-then-launch with no manual commit; the launch guard auto-commits
 governance dirt yet still refuses builder-scope WIP (covered by tests); a `pnpm --dir packages/daemon build`
 (and `packages/core`) is green. Lineage: `oz-dashboard-bugs` #11/#12, ticket 0006, `headless-adapter-lane`.
+
+## Status — run_97 (2026-06-16): Part 2 done · Part 1 foundation done · dispatch harness remains · continue
+
+- **Part 2 DONE (run_97 atom 0, `5842e32`):** launch guard self-heals governance-only dirt as a
+  `governance: pre-run snapshot` and proceeds; builder/product WIP still refuses; mixed dirt refuses and
+  snapshots nothing. [ADR-0024](../decisions/0024-governance-pre-run-snapshot.md) records the contract.
+- **Part 1 foundation DONE (run_97 atom 1, `8492d32`):** three headless authoring Plays defined
+  (`create-priority`, `edit-priority`, `archive-priority`) under `packages/personas/base/plays/`, scoped to
+  `cocoder/priorities/**`, with ADR-0010 founder-approval guardrails and a single-source mirror of the
+  daemon's priority-file contract. Core 263, daemon 181, typecheck/topology green.
+- **Remaining before verified-when:** (1) out-of-run dispatch+commit harness (generalize
+  `requestOzRepair` so Oz/Deb invoke authoring Plays as one tool action — resolves `oz-dashboard-bugs`
+  #12); (2) `assignments.json` grants to oz/oscar/deb (Deb-scope/dashboard route, not a Bob atom); (3)
+  authoring-Plays ADR; (4) end-to-end proof (`scripts/proof-governance-authoring.mjs` — offer to craft).
+
+**Disposition:** `continue`. The human hand-edit path is covered (Part 2); the agent author-then-launch
+path is not yet provable end-to-end until the dispatch harness lands.

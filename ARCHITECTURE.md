@@ -1,7 +1,7 @@
 # CoCoder Architecture
 
 **Status:** v2 (rebuild) — live  
-**Last verified:** 2026-06-15 (orchestration operating-model reset: the one commit spine — direct-to-branch, **single mode** (the opt-in isolation lane was removed, [ADR-0023](./cocoder/decisions/0023-workspace-commit-spine.md) Amendment 2 / failure-catalog F22); `main` is the canonical trunk and committed work is on the checked-out branch by construction)
+**Last verified:** 2026-06-16 (launch self-heals governance dirt — [ADR-0024](./cocoder/decisions/0024-governance-pre-run-snapshot.md); the one commit spine remains direct-to-branch, **single mode** ([ADR-0023](./cocoder/decisions/0023-workspace-commit-spine.md) Amendment 2 / failure-catalog F22); `main` is the canonical trunk and committed work is on the checked-out branch by construction)
 
 ## Mental Model
 
