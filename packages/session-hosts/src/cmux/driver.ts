@@ -67,11 +67,11 @@ export class CmuxSessionHost implements SessionHost {
     if (existing) {
       // A later persona of the same run → split a new pane beside the others (watch side-by-side).
       const panesBefore = parsePaneRefs(await this.#cli.run(['list-panes', '--workspace', existing]))
-      const out = await this.#cli.run(['new-split', 'right', '--workspace', existing, '--focus', 'true'])
+      await this.#cli.run(['new-split', 'right', '--workspace', existing, '--focus', 'true'])
       workspaceRef = existing
-      surfaceRef = parseOkRef(out, 'surface')
       const panesAfter = parsePaneRefs(await this.#cli.run(['list-panes', '--workspace', existing]))
       paneRef = diffNewWorkspace(panesBefore, panesAfter) // reuse the single-new-ref differ
+      ;({ surfaceRef } = parseSurface(await this.#cli.run(['list-pane-surfaces', '--pane', paneRef, '--workspace', workspaceRef, '--json'])))
     } else {
       // First persona of the run → a fresh workspace named for the RUN (priority + session number via
       // groupLabel), not for whichever persona spawned first; cwd set, brought to front.

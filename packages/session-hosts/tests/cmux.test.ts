@@ -46,7 +46,7 @@ describe('pure helpers', () => {
 })
 
 /** Fake cmux CLI: new-workspace (first persona) + new-split (later persona); read-screen liveness. */
-function makeFakeCli(opts: { up?: boolean; surfaceAlive?: () => boolean } = {}): { cli: CmuxCli; calls: string[][] } {
+function makeFakeCli(opts: { up?: boolean; surfaceAlive?: () => boolean; splitOutput?: string } = {}): { cli: CmuxCli; calls: string[][] } {
   const calls: string[][] = []
   const up = opts.up ?? true
   const surfaceAlive = opts.surfaceAlive ?? (() => true)
@@ -60,11 +60,16 @@ function makeFakeCli(opts: { up?: boolean; surfaceAlive?: () => boolean } = {}):
         return 'PONG'
       }
       if (args[0] === 'new-workspace') return 'OK workspace:2'
-      if (args[0] === 'list-pane-surfaces') return '{"pane_ref":"pane:2","surfaces":[{"ref":"surface:2","selected":true}]}'
+      if (args[0] === 'list-pane-surfaces') {
+        const paneIndex = args.indexOf('--pane')
+        const pane = paneIndex === -1 ? 'pane:2' : args[paneIndex + 1]
+        const surface = pane === 'pane:3' ? 'surface:3' : 'surface:2'
+        return `{"pane_ref":"${pane}","surfaces":[{"ref":"${surface}","selected":true}]}`
+      }
       if (args[0] === 'list-panes') return panes.join('\n')
       if (args[0] === 'new-split') {
         panes = ['pane:2', 'pane:3']
-        return 'OK surface:3 workspace:2'
+        return opts.splitOutput ?? 'OK surface:3 workspace:2'
       }
       if (args[0] === 'read-screen') {
         if (!surfaceAlive()) throw new Error('surface gone')
@@ -124,6 +129,19 @@ describe('CmuxSessionHost driver (fake cli)', () => {
     expect(bob.id).toBe('surface:3')
     expect(calls.filter((c) => c[0] === 'new-workspace')).toHaveLength(1)
     expect(calls.find((c) => c[0] === 'new-split')).toEqual(['new-split', 'right', '--workspace', 'workspace:2', '--focus', 'true'])
+  })
+
+  test('split spawn records the new pane surface, not stale new-split output', async () => {
+    const { cli, calls } = makeFakeCli({ splitOutput: 'OK surface:2 workspace:2' })
+    const scriptDir = await mkdtemp(join(tmpdir(), 'cmux-test-'))
+    const host = new CmuxSessionHost({ cli, scriptDir, pollMs: 1 })
+
+    await host.spawn({ persona: 'oscar', label: 'Oscar', command: 'claude', args: [], cwd: '/repo', group: 'run_1' })
+    const bob = await host.spawn({ persona: 'bob', label: 'Bob', command: 'codex', args: [], cwd: '/repo', group: 'run_1' })
+
+    expect(bob.id).toBe('surface:3')
+    expect(calls).toContainEqual(['list-pane-surfaces', '--pane', 'pane:3', '--workspace', 'workspace:2', '--json'])
+    expect(calls).toContainEqual(expect.arrayContaining(['send', '--workspace', 'workspace:2', '--surface', 'surface:3']))
   })
 
   test('status is running while the surface is readable, exited when it disappears', async () => {
