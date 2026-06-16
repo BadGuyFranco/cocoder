@@ -5,7 +5,7 @@ title: Hybrid Plays — a deterministic code spine behind the LLM procedure
 
 > **Spawned 2026-06-15 from a founder design dive (post run_88).** Replaces the queued
 > `play-dispatch-boundary` slot, whose question was resolved (one-level dispatch stands — see
-> [play-dispatch-boundary](./play-dispatch-boundary.md)). This is the higher-value thread that emerged:
+> [play-dispatch-boundary](./archive/play-dispatch-boundary.md)). This is the higher-value thread that emerged:
 > the founder's observation that a Play may be "LLM-driven but also have deterministic code behind it,"
 > and that **we have no structure for it today** (verified: a Play is `{id,label,kind,writeScope,body}`
 > — `body` is markdown injected into a CLI prompt; no Play declares a script/exec/steps field).

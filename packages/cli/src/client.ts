@@ -32,6 +32,28 @@ export async function teardownViaDaemon(baseUrl: string, runId: string): Promise
   return (await res.json()) as { closed: string[] }
 }
 
+export interface SupportCommitResult {
+  readonly ok: boolean
+  readonly runId: string
+  readonly committedPaths: readonly string[]
+  readonly commitSha?: string | null
+  readonly outOfLanePaths: readonly string[]
+  readonly selfCommitted?: boolean
+  readonly liveOscar?: boolean
+}
+
+/** Commit post-wrap Oscar support edits through the daemon-owned commit spine. This is not a
+ *  lifecycle operation: it does not stop/restart/teardown processes or touch panes. */
+export async function supportCommitViaDaemon(baseUrl: string, runId: string): Promise<SupportCommitResult> {
+  const session = (await (await fetch(`${baseUrl}/auth/session`)).json()) as { bearerToken: string; csrfToken: string }
+  const res = await fetch(`${baseUrl}/runs/${encodeURIComponent(runId)}/support-commit`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${session.bearerToken}`, [CSRF_HEADER]: session.csrfToken },
+  })
+  if (!res.ok) throw new Error(`support commit failed (${res.status}): ${await res.text()}`)
+  return (await res.json()) as SupportCommitResult
+}
+
 export interface ClientRunResult {
   readonly runId: string
   readonly status: string

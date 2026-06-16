@@ -4,6 +4,9 @@ title: "Oz: a founder-reachable expand-scope → commit path for held-back files
 status: cancelled
 ---
 
+> **ARCHIVED 2026-06-16** (priority-audit run_106, founder go-ahead) — moved from `backlog/` to
+> `archive/`; preserved for the record only.
+>
 > **CANCELLED 2026-06-15 — superseded by the scope-advisory change (ADR-0023 amendment, failure-catalog
 > F21).** This priority's entire premise — "when a run holds back out-of-scope changes, let the founder
 > `expand` them" — no longer exists. The commit spine NEVER withholds: out-of-lane edits are committed and

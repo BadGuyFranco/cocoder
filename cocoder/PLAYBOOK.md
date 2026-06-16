@@ -183,7 +183,7 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   (`GET /workspaces/:id/plays`, top-level Plays nav catalog — relocated `12d2f0c` by founder directive,
   catalog picker, `headlessCapable` data, ⚠️ misconfig guard). ✅ run_88 (5 atoms); re-verified run_89
   (592 tests). **Archived 2026-06-15** (founder-confirmed, run_90) — verified-when met; deferred boundary
-  resolved (one-level dispatch stands — see `play-dispatch-boundary.md`). File moved to
+  resolved (one-level dispatch stands — see `priorities/archive/play-dispatch-boundary.md`). File moved to
   `zArchive/priorities/v2/plays-first-class.md`.
 
 **Active build priorities (launchable; the `priorities/` directory is the live index):**
@@ -215,10 +215,13 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    P2→P5 fan-out executor and run live CoPublisher Takeover + dogfood Drift Audit proofs. **Absorbs
    `workspace-onboarding`.** Phase 5 ("first external repo").
 
-**Decision-first (launchable ADR work — no build atoms until Accepted):**
-- ~~`play-dispatch-boundary`~~ — **RESOLVED 2026-06-15** (founder design dive post run_88): one-level
-  dispatch stands; no engine reversal. Decision record: `play-dispatch-boundary.md`. Higher-value follow-on:
-  `hybrid-plays` (deterministic code spine inside a Play — draft Objective, founder confirms at launch).
+**Queued after `new-primary-root` (founder go-ahead 2026-06-16, priority-audit run_106 — in `order.json`):**
+- `hybrid-plays` — deterministic code spine inside a Play (promotes "verify, don't assert — evidence over
+  claims" to first-class structure; e.g. `integration-verify` *runs* the real check instead of prompting an
+  agent to). Step 1 is an **ADR-0010 taxonomy amendment** the founder confirms at launch (the Play-component
+  shape); then schema (`Play` type) + dispatch + reimplement `integration-verify` as the hybrid proof.
+- ~~`play-dispatch-boundary`~~ — **RESOLVED 2026-06-15, ARCHIVED 2026-06-16** (run_106): one-level dispatch
+  stands; no engine reversal. Decision record now at `priorities/archive/play-dispatch-boundary.md`.
 
 **Standing tools (always available — not build work):** `priority-audit` (assess the priority set for
 staleness → a founder-decision table; the pruning tool) · `adhoc-session` (no named priority — draft one,
@@ -227,8 +230,9 @@ end-to-end is a founder activity, and any defect found becomes its own focused p
 `oz-dashboard-priorities-pane` proved).
 
 **Deferred — `backlog/` (each file's `## Objective` names what it's blocked on):**
-- ~~`oz-held-back-expand-scope`~~ — **CANCELLED 2026-06-15.** Superseded by the scope-advisory change
-  (ADR-0023 amendment / F21): the spine never withholds, so there is no held-back state to expand.
+- ~~`oz-held-back-expand-scope`~~ — **CANCELLED 2026-06-15, ARCHIVED 2026-06-16** (run_106). Superseded by
+  the scope-advisory change (ADR-0023 amendment / F21): the spine never withholds, so there is no held-back
+  state to expand. Decision record now at `priorities/archive/`.
 - `quinn-app-testing` — Quinn **browser** app-testing Plays only (base Quinn + the `electron-test` Play
   already shipped under the archived `personas-and-plays`); blocked on a Phase-5 web app to drive.
 - `deployment-plays` — human-gated deploys (Vercel/GCloud/signed-Electron/GitHub) + `local/secrets`;

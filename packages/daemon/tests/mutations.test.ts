@@ -866,6 +866,29 @@ describe('Oz mutations + lifecycle', () => {
     expect(store.listEvents(run.id).some((e) => e.type === 'post-wrap-support-commit')).toBe(true)
   })
 
+  test('POST /runs/:id/support-commit allows the same wrapped run while Oscar remains live', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.createSession({ runId: run.id, persona: 'oscar', sessionRef: 'surface:oscar' })
+    store.setRunStatus(run.id, 'completed')
+    await startServer(fakeGit(['cocoder/SESSION_LOG.md']))
+    oz!.ctx.inFlight.set('cocoder', run.id)
+    oz!.ctx.liveRefs.add('surface:oscar')
+
+    const r = await call(oz!, 'POST', `/runs/${run.id}/support-commit`)
+
+    expect(r).toMatchObject({
+      status: 200,
+      json: {
+        ok: true,
+        runId: run.id,
+        commitSha: 'sha-committed',
+        committedPaths: ['cocoder/SESSION_LOG.md'],
+        liveOscar: true,
+      },
+    })
+  })
+
   test('POST /oz/messages commit-support routes through the post-wrap support commit path', async () => {
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })

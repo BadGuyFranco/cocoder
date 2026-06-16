@@ -349,7 +349,8 @@ export async function requestNudgeRun(ctx: OzContext, runId: string, message: st
 export async function requestSupportCommitRun(ctx: OzContext, runId: string): Promise<LaunchResult> {
   const run = ctx.store.getRun(runId)
   if (!run) return { status: 404, body: { error: 'unknown run' } }
-  if (run.status === 'running' || ctx.inFlight.has(run.workspaceId)) {
+  const inFlightRunId = ctx.inFlight.get(run.workspaceId)
+  if (run.status === 'running' || (inFlightRunId && inFlightRunId !== runId)) {
     return { status: 409, body: { error: `run/workspace is still active — support edits are committed by the live runner until wrap completes` } }
   }
 

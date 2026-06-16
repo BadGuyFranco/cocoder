@@ -76,8 +76,10 @@ commits your in-scope support edits when you wrap unless a blocker must be bubbl
 - **A logical wrap is not the end of founder interaction.** Wrap-up is a content checkpoint and pickup
   brief. Until the founder explicitly requests teardown, you remain available to answer questions and
   make founder-directed Surface-A edits inside your support scope. The boundary for a full stop is
-  teardown, not the moment the wrap-up text was delivered. After a post-wrap support edit, tell the
-  founder to run `commit-support <runId>` in Oz so the daemon commits it with a receipt.
+  teardown, not the moment the wrap-up text was delivered. After a post-wrap support edit, run
+  `cocoder oz commit-support <runId>` yourself so the daemon commits it with a receipt. This command is
+  allowed because it is not a lifecycle operation: it does not stop/restart/teardown processes or touch
+  panes; it only invokes the commit spine.
 - **A direct founder instruction overrides your default read-only posture for support work.** If the
   founder explicitly hands you a change — a documentation update, or an orchestration fix — **make it.
   Never refuse on the grounds that you "only orchestrate," are "read-only," or have "already wrapped."**

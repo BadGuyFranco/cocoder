@@ -3,12 +3,14 @@
 // dependency, so the cli stays daemon-import-free).
 import { createServer, type Server } from 'node:http'
 import { afterEach, describe, expect, test } from 'vitest'
-import { runViaDaemon } from '../src/client.js'
+import { runViaDaemon, supportCommitViaDaemon } from '../src/client.js'
 
 interface Captured {
   launchAuth?: string
   launchCsrf?: string | string[]
   launchBody?: any
+  supportAuth?: string
+  supportCsrf?: string | string[]
 }
 
 function fakeDaemon(): { server: Server; captured: Captured; ready: Promise<number> } {
@@ -37,6 +39,18 @@ function fakeDaemon(): { server: Server; captured: Captured; ready: Promise<numb
       return polls < 2
         ? json({ run: { status: 'running' }, commitLinks: [] })
         : json({ run: { status: 'completed' }, commitLinks: [{ commitSha: 'abc123' }] })
+    }
+    if (req.method === 'POST' && req.url === '/runs/run_xyz/support-commit') {
+      captured.supportAuth = req.headers.authorization
+      captured.supportCsrf = req.headers['x-oz-csrf-token']
+      return json({
+        ok: true,
+        runId: 'run_xyz',
+        commitSha: 'def456',
+        committedPaths: ['cocoder/SESSION_LOG.md'],
+        outOfLanePaths: [],
+        liveOscar: true,
+      })
     }
     res.writeHead(404)
     res.end()
@@ -67,6 +81,25 @@ describe('runViaDaemon (client mode)', () => {
     expect(d.captured.launchAuth).toBe('Bearer tok')
     expect(d.captured.launchCsrf).toBe('csrf')
     expect(d.captured.launchBody).toEqual({ workspaceId: 'cocoder', priorityId: 'demo' })
+  })
+
+  test('support-commit posts with Bearer + CSRF and returns the daemon receipt', async () => {
+    const d = fakeDaemon()
+    server = d.server
+    const port = await d.ready
+
+    const result = await supportCommitViaDaemon(`http://127.0.0.1:${port}`, 'run_xyz')
+
+    expect(result).toMatchObject({
+      ok: true,
+      runId: 'run_xyz',
+      commitSha: 'def456',
+      committedPaths: ['cocoder/SESSION_LOG.md'],
+      outOfLanePaths: [],
+      liveOscar: true,
+    })
+    expect(d.captured.supportAuth).toBe('Bearer tok')
+    expect(d.captured.supportCsrf).toBe('csrf')
   })
 
   test('throws a clear error when the daemon rejects the launch', async () => {

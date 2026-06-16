@@ -69,6 +69,33 @@ Verification:
 - `pnpm --dir '/Volumes/NAS LOCAL/CoCoder' exec vitest run packages/core/tests/runner.test.ts packages/daemon/tests/mutations.test.ts`
   → 168 tests passed.
 
+## Addendum — same wrapped run still marked in-flight
+
+Founder report during run_106 exposed a missed subcase in the closed repair: the daemon support path
+existed, but `requestSupportCommitRun` rejected whenever the workspace still appeared in `ctx.inFlight`.
+That is valid for a different active run, but invalid for the same run after logical wrap-up: Oscar is
+intentionally still live for founder questions and Surface-A edits, so the support command must be able
+to commit that wrapped run's dirt.
+
+Repair:
+- `requestSupportCommitRun` now blocks a running run or a different in-flight run, but allows the same
+  non-running run id while its wrapped Oscar surface remains live.
+- `packages/daemon/tests/mutations.test.ts` now pins the same-run case: completed run, live Oscar,
+  `ctx.inFlight` set to that run id, `POST /runs/:id/support-commit` returns a commit receipt.
+- `cocoder oz commit-support <runId>` now exists as a real CLI command over the authenticated daemon
+  endpoint. It is explicitly not a lifecycle command: it does not stop/restart/teardown processes or
+  touch panes.
+- Base Oscar and the generated runner prompt now tell Oscar to run that support-commit command himself
+  after a post-wrap Surface-A edit and report the receipt, rather than telling the founder to do it.
+
+Verification:
+- `pnpm --dir '/Volumes/NAS LOCAL/CoCoder' exec vitest run packages/daemon/tests/mutations.test.ts`
+  → 97 tests passed.
+- `pnpm --dir '/Volumes/NAS LOCAL/CoCoder' exec vitest run packages/core/tests/runner.test.ts packages/daemon/tests/mutations.test.ts`
+  → 169 tests passed.
+- `pnpm --dir '/Volumes/NAS LOCAL/CoCoder' exec vitest run packages/cli/tests/client.test.ts packages/core/tests/runner.test.ts packages/daemon/tests/mutations.test.ts`
+  → 174 tests passed.
+
 ## Ask
 Add a durable post-wrap founder-interaction contract:
 - After wrap-up delivery, keep Oscar reachable for founder questions/decisions while the pane is live.

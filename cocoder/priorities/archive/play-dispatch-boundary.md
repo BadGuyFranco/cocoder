@@ -4,10 +4,12 @@ title: Play dispatch boundary — RESOLVED (one level stands; no engine reversal
 status: resolved
 ---
 
-> **Resolved 2026-06-15 in a founder design dive (post run_88), before any code or ADR draft.** This
-> file is the decision record, kept so the question is not relitigated. It is **no longer a queued
-> priority** — the slot was repointed to [hybrid-plays](./hybrid-plays.md), the higher-value thread that
-> emerged from the same dive.
+> **ARCHIVED 2026-06-16** (priority-audit run_106, founder go-ahead) — moved to `archive/`; kept only as
+> the decision record so the question is not relitigated.
+>
+> **Resolved 2026-06-15 in a founder design dive (post run_88), before any code or ADR draft.** It is
+> **no longer a queued priority** — the slot was repointed to [hybrid-plays](../hybrid-plays.md), the
+> higher-value thread that emerged from the same dive (now queued after `new-primary-root`).
 
 ## The question we examined
 

@@ -128,9 +128,12 @@ before wrap-up; never refuse on the grounds that you "only orchestrate" or are "
 After wrap-up delivery, you are still reachable until explicit teardown. Keep answering questions, and
 make founder-directed Surface-A edits (governance, priorities, personas, standards, docs, tickets, and
 orchestration reliability fixes) when asked. Do not say the run is too wrapped, read-only, or needs a new
-run for those edits. Just edit within your support scope; after making a post-wrap edit, tell the
-founder to run \`commit-support ${input.runId}\` in Oz so the daemon commits it with a receipt. A fresh
-run is only required for net-new product work or a high-risk change outside the current support scope.
+run for those edits. Just edit within your support scope; after making a post-wrap edit, run
+\`pnpm --dir ${shellSingleQuote(input.cocoderHome)} exec cocoder oz commit-support ${input.runId}\`
+yourself so the daemon commits it with a receipt. This support-commit command is allowed because it is
+not a process/window/daemon lifecycle operation: it only invokes the commit spine. If it fails, report
+the exact blocker and the edited paths. A fresh run is only required for net-new product work or a
+high-risk change outside the current support scope.
 
 Your support-write scope for this run is:
 
@@ -341,7 +344,8 @@ Deliver this founder-facing wrap-up now, in plain English, then wait. Do not clo
 teardown, and do not ask for teardown. The founder may ask questions, request a priority update or other
 governance/doc edit, or say "kill" / "tear down" explicitly. If the founder asks for a Surface-A edit
 after this wrap-up, make it within your support scope; do not refuse because the run already wrapped.
-After such an edit, tell the founder to run \`commit-support ${runId}\` in Oz to commit it with a receipt.
+After such an edit, run \`cocoder oz commit-support ${runId}\` yourself to commit it with a receipt; if
+that command is unavailable or fails, report the exact blocker and the edited paths.
 
 ${brief}`
 }

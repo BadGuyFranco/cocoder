@@ -32,13 +32,13 @@ accurate; not regenerated (identical re-run would be empty reaffirmation). Confi
 `new-primary-root`'s stale D2 relaunch gate is **already reconciled** in that file (lines 90–92: D2
 lifted, launch build atoms). Updated the audit table to close that dangling-ref row.
 
-Decisions carried forward from run_105 (founder-approved, not yet enacted):
-- Archive `play-dispatch-boundary` — dispatch-boundary question resolved; one-level dispatch stands.
-- Archive `oz-held-back-expand-scope` — premise obsolete (ADR-0023 Amendment 1).
+Dispositions enacted in run_106 (founder go-ahead this session) — active set is now clean:
+- Archived `play-dispatch-boundary` → `priorities/archive/` (dispatch-boundary question resolved).
+- Archived `oz-held-back-expand-scope` → `priorities/archive/` (premise obsolete, ADR-0023 Amendment 1).
+- Founder chose **queue `hybrid-plays`**; `order.json` now reads
+  `[new-primary-root, hybrid-plays, priority-audit]`. (Audit had recommended backlog; founder overrode.)
 
-One remaining founder call:
-- `hybrid-plays` — queue after `new-primary-root`, or move to backlog until deterministic-steps-in-Plays
-  is wanted? (Audit recommends demote/backlog.)
+No audit follow-ups remain open.
 
 Run_105's orchestration bug (wrap-up blocked founder-directed governance edits) is tracked under closed
 ticket 0008; repair path is `commit-support <runId>`. This priority remains a standing meta-priority —
