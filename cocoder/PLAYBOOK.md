@@ -182,8 +182,9 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
 - `plays-first-class` — Oz Play catalog + persona binding + write-scope/CLI-capability surfacing
   (`GET /workspaces/:id/plays`, top-level Plays nav catalog — relocated `12d2f0c` by founder directive,
   catalog picker, `headlessCapable` data, ⚠️ misconfig guard). ✅ run_88 (5 atoms); re-verified run_89
-  (592 tests). **Archive-candidate 2026-06-15** — verified-when met; deferred boundary resolved
-  (one-level dispatch stands — see `play-dispatch-boundary.md`).
+  (592 tests). **Archived 2026-06-15** (founder-confirmed, run_90) — verified-when met; deferred boundary
+  resolved (one-level dispatch stands — see `play-dispatch-boundary.md`). File moved to
+  `zArchive/priorities/v2/plays-first-class.md`.
 
 **Active build priorities (launchable; the `priorities/` directory is the live index):**
 1. `new-primary-root` — **CONTINUE (run_86, 2026-06-14).** Onboard a primary root via the

@@ -37,7 +37,7 @@ Play** on different models, and any **dynamic per-persona sub-delegation** ("a d
 sub-agent task"). Both need schema + engine changes and fight the current one-level-deep,
 no-further-delegation dispatch model (`packages/core/src/plays/dispatch.ts`). Decide in the ADR first.
 
-## Status — ARCHIVE-CANDIDATE (2026-06-15, re-verified run_89/run_90)
+## Status — ARCHIVED (2026-06-15, founder-confirmed run_90)
 
 All four deliverables shipped and verified. Re-verified this run: root typecheck clean; full suite
 **592 green** (core 257 / daemon 180 / ui 108 / adapters 17 / personas 15 / session-hosts 13 / cli 2):

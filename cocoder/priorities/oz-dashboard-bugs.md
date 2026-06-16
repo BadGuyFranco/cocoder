@@ -1,6 +1,6 @@
 ---
 id: oz-dashboard-bugs
-title: Oz dashboard defect sweep (10 founder-reported bugs)
+title: Oz dashboard defect sweep (12 founder-reported bugs)
 ---
 
 > **Founder-directed 2026-06-14** — a focused defect sweep on the Oz dashboard (`packages/ui`), run as
@@ -30,6 +30,24 @@ build`, the proof scripts, and live against the running daemon.
    served); remove it. Personas banner is mostly stale; rework to an accurate, calm note.
 9. **Compact density / reduce motion are no-ops** — wire both to actually take effect.
 10. **No "Restart Oz" control** — wire `POST /daemon/restart` through the IPC bridge + add a button.
+11. **Headless-Play→CLI binding warns for every CLI except codex** *(founder-reported 2026-06-15)* —
+    binding a headless Play to any CLI other than codex raises **"Headless Play on an interactive-only
+    CLI — would hang"**, blocking the bind. Founder position: **any CLI should be able to run headless**,
+    so the warning misfires for all non-codex CLIs. Root direction: this is the `headlessCapable`
+    capability **data** shipped with `plays-first-class` (commit `20260c4`), not the warning's render
+    logic — the data marks too few CLIs headless-capable (note the tension with bug #1's claim that only
+    `cursor-agent` runs headless and claude/codex are interactive-TUI-only; the capability table and the
+    real adapter headless support must be reconciled to one source of truth). Fix the capability data so
+    every CLI that can actually run headless is marked so; keep the ⚠️ only for genuinely
+    interactive-only adapters. This does **not** reopen `plays-first-class` deliverable 4 (the warning's
+    no-misfire negative test stands for a correct capability table); it corrects the capability inputs.
+12. **Oz orchestrator fails routine edits — 3-tool action budget too low** *(founder-reported
+    2026-06-15)* — asking Oz (headless orchestrator, bound to cocoder) to add bug #11 errored with
+    **"Oz exceeded the 3-tool action budget for this message."** A routine governance edit (read the
+    priority, edit it) exceeds the per-message tool-action cap of 3, so Oz cannot complete simple
+    founder-directed priority edits. Root-cause the cap (raise it, or make the budget per-turn/adaptive
+    rather than a hard 3 that fails the message). Turn logs:
+    `local/oz/cocoder/turn-1.log`, `turn-2.log`, `turn-3.log`.
 
 **Verified when:** each defect is fixed at the cause, renderer/daemon tests + proof scripts are green,
 and the fixes are confirmed live on the running daemon. Follow-up design work is carried by
