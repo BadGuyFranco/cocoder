@@ -1,15 +1,16 @@
 import type { Run } from '@cocoder/core'
 import type { OzContext } from './context.js'
-import { launchRun as launchRunOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestNudgeRun as nudgeRunOp, requestOzRepair as repairOzOp, requestStopRun as stopRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
+import { launchRun as launchRunOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestNudgeRun as nudgeRunOp, requestOzRepair as repairOzOp, requestStopRun as stopRunOp, requestSupportCommitRun as supportCommitRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
 import { tryHandleOzAgentTurn } from './oz-host.js'
 
 const ADHOC_PRIORITY_ID = 'adhoc-session'
-const HELP_HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, stop <runId>, teardown <runId>, status [runId], help.'
+const HELP_HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
 
 export type OzCommand =
   | { readonly kind: 'launch'; readonly priorityId: string }
   | { readonly kind: 'adhoc'; readonly task: string }
   | { readonly kind: 'show'; readonly runId: string }
+  | { readonly kind: 'support-commit'; readonly runId: string }
   | { readonly kind: 'stop'; readonly runId: string }
   | { readonly kind: 'nudge'; readonly runId: string; readonly message: string; readonly rationale?: string }
   | { readonly kind: 'repair'; readonly message: string; readonly rationale?: string }
@@ -23,7 +24,7 @@ export type OzExecutableCommand = Exclude<OzCommand, { readonly kind: 'help' } |
 export type OzCommandExecutor = (command: OzExecutableCommand) => Promise<OzChatResult>
 
 export interface OzChatAction {
-  readonly type: 'launch' | 'show' | 'stop' | 'nudge' | 'repair' | 'author' | 'teardown' | 'status' | 'refresh'
+  readonly type: 'launch' | 'show' | 'support-commit' | 'stop' | 'nudge' | 'repair' | 'author' | 'teardown' | 'status' | 'refresh'
   readonly workspaceId?: string
   readonly priorityId?: string
   readonly runId?: string
@@ -55,6 +56,7 @@ export interface OzChatOps {
   readonly nudgeRun: typeof nudgeRunOp
   readonly repairOz: typeof repairOzOp
   readonly requestAuthoringPlay: typeof authoringPlayOp
+  readonly supportCommitRun: typeof supportCommitRunOp
 }
 
 const defaultOps: OzChatOps = {
@@ -66,6 +68,7 @@ const defaultOps: OzChatOps = {
   nudgeRun: nudgeRunOp,
   repairOz: repairOzOp,
   requestAuthoringPlay: authoringPlayOp,
+  supportCommitRun: supportCommitRunOp,
 }
 
 export function parseOzCommand(text: string): OzCommand {
@@ -84,6 +87,7 @@ export function parseOzCommand(text: string): OzCommand {
     return { kind: 'adhoc', task }
   }
   if (verb === 'show') return args.length === 1 ? { kind: 'show', runId: args[0]! } : unknownCommand()
+  if (verb === 'commit-support' || verb === 'support-commit') return args.length === 1 ? { kind: 'support-commit', runId: args[0]! } : unknownCommand()
   if (verb === 'stop') return args.length === 1 ? { kind: 'stop', runId: args[0]! } : unknownCommand()
   if (verb === 'teardown') return args.length === 1 ? { kind: 'teardown', runId: args[0]! } : unknownCommand()
   if (verb === 'status') {
@@ -152,6 +156,15 @@ export async function executeOzCommand(ctx: OzContext, workspaceId: string | und
       'teardown',
       () => ops.teardownRun(ctx, command.runId),
       (out) => teardownReply(command.runId, out),
+    )
+  }
+
+  if (command.kind === 'support-commit') {
+    if (!workspaceId) return missingWorkspace()
+    return runOp(
+      'support-commit',
+      () => ops.supportCommitRun(ctx, command.runId),
+      (out) => supportCommitReply(command.runId, out),
     )
   }
 
@@ -275,6 +288,26 @@ function stopReply(runId: string, out: LaunchResult): OzChatReply {
     command: 'stop',
     ok: true,
     action: { type: 'stop', runId },
+  }
+}
+
+function supportCommitReply(runId: string, out: LaunchResult): OzChatReply {
+  const committedPaths = stringArray(out.body.committedPaths)
+  const outOfLanePaths = stringArray(out.body.outOfLanePaths)
+  const commitSha = typeof out.body.commitSha === 'string' ? out.body.commitSha : null
+  if (!isOk(out.status)) return failedReply('support-commit', `Could not commit support edits for ${runId}`, out)
+
+  const committed = commitSha
+    ? `Committed post-wrap support edits for ${runId} as ${commitSha} (${committedPaths.join(', ') || 'no file list'}).`
+    : `No post-wrap support edits were pending for ${runId}; no commit was created.`
+  const outOfLane = outOfLanePaths.length > 0
+    ? ` Committed out of Oscar's support lane (flagged for visibility, NOT withheld): ${outOfLanePaths.join(', ')}.`
+    : ''
+  return {
+    reply: `${committed}${outOfLane}`,
+    command: 'support-commit',
+    ok: true,
+    action: { type: 'support-commit', runId, committedPaths, commitSha, outOfLanePaths },
   }
 }
 

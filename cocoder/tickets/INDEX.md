@@ -13,7 +13,6 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Owner |
 |---|---|---|---|---|
-| [0008](./open/0008-post-wrap-founder-interaction-contract.md) | Wrapped Oscar is reachable but lacks a committed post-wrap action path | bug | governance-authoring-plays | deb |
 | [0003](./open/0003-public-docs-v1-stale.md) | Public docs/ tree is v1-stale (commands, PRIORITIES.md, cocoder/local, routes) | task | none | founder-session |
 | [0007](./open/0007-design-ref-rebuild-clobber-guard.md) | Guard against design-ref rebuilds reverting committed packages/ui/app fixes | task | oz-dashboard-bugs | oscar run_94 |
 
@@ -21,6 +20,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0008](./closed/0008-post-wrap-founder-interaction-contract.md) | Wrapped Oscar is reachable but lacks a committed post-wrap action path | bug | 2026-06-16 | Added `commit-support <runId>` / `POST /runs/:id/support-commit`; wrapped Oscar can make Surface-A edits and the daemon commits them with a run-linked receipt |
 | [0006](./closed/0006-headless-adapter-lane-claude-codex.md) | Headless adapter lane for claude/codex (Oz-on-claude; fixes headless Plays pinned to interactive CLIs) | bug | 2026-06-16 | Headless lane built (claude print mode + codex exec), `headlessCapable=true`, flags verified vs real binaries, `scripts/proof-headless-lane.mjs` re-proves; latent pins no longer hang (`dd2f518`+`336fb20`) |
 | [0007](./closed/0007-post-wrap-orchestration-commit-gap.md) | Orchestration personas can't commit a founder-approved held-back file post-wrap (the D3 strand) | bug | 2026-06-15 | Root-caused deeper: the held-back/withhold constraint itself is removed (scope advisory, ADR-0023). The spine never withholds, so the strand class cannot recur |
 | [0004](./closed/0004-post-wrap-edits-not-committed.md) | Post-wrap Oscar edits can stay stranded in run worktrees | bug | 2026-06-13 | ADR-0022 + run_76 landing invariant; post-wrap Surface-A edits allowed, strands surfaced |

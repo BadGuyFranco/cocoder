@@ -835,6 +835,59 @@ describe('Oz mutations + lifecycle', () => {
     expect(shown.map((s) => s.id)).toEqual(['surface:oscar'])
   })
 
+  test('POST /runs/:id/support-commit commits post-wrap Oscar support edits with a run receipt', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.createSession({ runId: run.id, persona: 'oscar', sessionRef: 'surface:oscar' })
+    store.setRunStatus(run.id, 'completed')
+    await startServer(fakeGit(['cocoder/priorities/demo.md', 'packages/stray.ts']))
+    oz!.ctx.liveRefs.add('surface:oscar')
+
+    const r = await call(oz!, 'POST', `/runs/${run.id}/support-commit`)
+
+    expect(r).toMatchObject({
+      status: 200,
+      json: {
+        ok: true,
+        runId: run.id,
+        commitSha: 'sha-committed',
+        committedPaths: ['cocoder/priorities/demo.md', 'packages/stray.ts'],
+        outOfLanePaths: ['packages/stray.ts'],
+        liveOscar: true,
+      },
+    })
+    expect(store.listCommitLinks(run.id)).toEqual([
+      expect.objectContaining({
+        commitSha: 'sha-committed',
+        message: `oscar-post-wrap: demo via CoCoder run ${run.id}`,
+        files: ['cocoder/priorities/demo.md', 'packages/stray.ts'],
+      }),
+    ])
+    expect(store.listEvents(run.id).some((e) => e.type === 'post-wrap-support-commit')).toBe(true)
+  })
+
+  test('POST /oz/messages commit-support routes through the post-wrap support commit path', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(run.id, 'completed')
+    await startServer(fakeGit(['cocoder/SESSION_LOG.md']))
+
+    const r = await call(oz!, 'POST', '/oz/messages', { body: { text: `commit-support ${run.id}`, workspaceId: 'cocoder' } })
+
+    expect(r.status).toBe(200)
+    expect(r.json).toMatchObject({
+      ok: true,
+      command: 'support-commit',
+      action: {
+        type: 'support-commit',
+        runId: run.id,
+        commitSha: 'sha-committed',
+        committedPaths: ['cocoder/SESSION_LOG.md'],
+      },
+    })
+    expect(String(r.json.reply)).toContain(`Committed post-wrap support edits for ${run.id}`)
+  })
+
   test('POST /runs/:id/teardown closes ALL stored surfaces by durable ref (post-restart Deb-pane leak fix)', async () => {
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })

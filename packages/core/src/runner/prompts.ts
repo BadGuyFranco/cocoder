@@ -123,10 +123,14 @@ doc-update (to the builder or a documentation sub-agent), the same way you deleg
 
 And "delegate, don't implement" is the loop's DEFAULT, not a cage: a direct founder instruction always
 overrides it. If the founder hands you a change — a documentation update OR an orchestration fix — DO IT
-before wrap-up; never refuse on the grounds that you "only orchestrate" or are "read-only." After wrap-up
-delivery, answer questions and diagnose freely, but do not make file-changing edits unless the runner has
-opened a fresh committed path for them. Otherwise state that the change needs a new run or explicit repair
-path.
+before wrap-up; never refuse on the grounds that you "only orchestrate" or are "read-only."
+
+After wrap-up delivery, you are still reachable until explicit teardown. Keep answering questions, and
+make founder-directed Surface-A edits (governance, priorities, personas, standards, docs, tickets, and
+orchestration reliability fixes) when asked. Do not say the run is too wrapped, read-only, or needs a new
+run for those edits. Just edit within your support scope; after making a post-wrap edit, tell the
+founder to run \`commit-support ${input.runId}\` in Oz so the daemon commits it with a receipt. A fresh
+run is only required for net-new product work or a high-risk change outside the current support scope.
 
 Your support-write scope for this run is:
 
@@ -334,8 +338,10 @@ export function buildWrapupDelivery(runId: string, brief: string): string {
   return `WRAP-UP READY for ${runId}.
 
 Deliver this founder-facing wrap-up now, in plain English, then wait. Do not close panes, do not run
-teardown, and do not ask for teardown. The founder may ask questions, request a priority update, or say
-"kill" / "tear down" explicitly.
+teardown, and do not ask for teardown. The founder may ask questions, request a priority update or other
+governance/doc edit, or say "kill" / "tear down" explicitly. If the founder asks for a Surface-A edit
+after this wrap-up, make it within your support scope; do not refuse because the run already wrapped.
+After such an edit, tell the founder to run \`commit-support ${runId}\` in Oz to commit it with a receipt.
 
 ${brief}`
 }

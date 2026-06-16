@@ -16,6 +16,7 @@ import {
   loadAssignments,
   loadEffectivePlay,
   loadPriority,
+  runCommitGate,
   resolvePlayAssignment,
   resolvePersonaMode,
   resolveEffectivePersona,
@@ -340,6 +341,63 @@ export async function requestNudgeRun(ctx: OzContext, runId: string, message: st
   void appendAudit(ctx.cocoderHome, { action: 'nudge', runId, seq })
   emitOzEvent(ctx, { type: 'nudge-queued', runId, workspaceId: run.workspaceId })
   return { status: 202, body: { queued: true, runId, seq } }
+}
+
+/** Commit founder-directed Oscar support edits after logical wrap-up. Wrap-up leaves Oscar reachable for
+ *  questions and Surface-A edits, but the multi-atom runner has already ended, so this daemon-owned
+ *  operation is the explicit commit spine for dirty files produced from that wrapped Oscar surface. */
+export async function requestSupportCommitRun(ctx: OzContext, runId: string): Promise<LaunchResult> {
+  const run = ctx.store.getRun(runId)
+  if (!run) return { status: 404, body: { error: 'unknown run' } }
+  if (run.status === 'running' || ctx.inFlight.has(run.workspaceId)) {
+    return { status: 409, body: { error: `run/workspace is still active — support edits are committed by the live runner until wrap completes` } }
+  }
+
+  const workspace = await findWorkspace(ctx.cocoderHome, run.workspaceId)
+  if (!workspace) return { status: 404, body: { error: 'unknown workspace' } }
+
+  let scope: readonly string[]
+  try {
+    const personasDir = join(workspace.path, 'cocoder', 'personas')
+    const assignments = loadAssignments(join(personasDir, 'assignments.json'))
+    const sources: PersonaSources = { baseDir: basePersonasDir(), deltaDir: join(personasDir, 'deltas'), repoPersonaDir: personasDir }
+    scope = resolveEffectivePersona(sources, assignments, 'oscar').writeScope
+  } catch {
+    return { status: 409, body: { error: `could not resolve Oscar support scope for workspace "${workspace.id}"` } }
+  }
+  if (scope.length === 0) return { status: 409, body: { error: 'Oscar has no support-write scope for this workspace' } }
+
+  const headBefore = await ctx.git.headSha(workspace.path)
+  const gate = await runCommitGate({
+    git: ctx.git,
+    store: ctx.store,
+    cwd: workspace.path,
+    runId,
+    workItemId: null,
+    scope,
+    message: `oscar-post-wrap: ${run.priorityId} via CoCoder run ${runId}`,
+    headBefore,
+  })
+  const liveOscar = ctx.store.listSessions(runId).some((s) => s.persona === 'oscar' && ctx.liveRefs.has(s.sessionRef))
+  ctx.store.recordEvent({
+    runId,
+    type: 'post-wrap-support-commit',
+    data: { committedSha: gate.committedSha, files: gate.committedFiles, outOfScope: gate.outOfScope, selfCommitted: gate.selfCommitted, liveOscar },
+  })
+  await appendAudit(ctx.cocoderHome, { action: 'post-wrap-support-commit', workspaceId: run.workspaceId, runId, committedSha: gate.committedSha, files: gate.committedFiles, outOfScope: gate.outOfScope, liveOscar })
+  emitOzEvent(ctx, { type: 'post-wrap-support-commit', runId, workspaceId: run.workspaceId, status: gate.committedSha ? 'committed' : 'no-commit' })
+  return {
+    status: 200,
+    body: {
+      ok: true,
+      runId,
+      committedPaths: gate.committedFiles,
+      commitSha: gate.committedSha,
+      outOfLanePaths: gate.outOfScope,
+      selfCommitted: gate.selfCommitted,
+      liveOscar,
+    },
+  }
 }
 
 async function readNudgeSeq(path: string): Promise<number> {

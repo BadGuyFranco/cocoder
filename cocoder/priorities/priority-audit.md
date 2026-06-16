@@ -24,3 +24,28 @@ archives / redefines / moves a priority itself — the founder decides, and arch
 separate founder-approved actions. Governance-only, like its sibling `build-priorities-from-plan`
 (that one *drafts* new priorities; this one *prunes* the existing set). It is a **standing
 meta-priority** — runnable on demand, never archived.
+
+## Latest run pickup — run_105 (2026-06-16)
+
+The audit table was produced and is durable at [`audits/latest-audit.md`](./audits/latest-audit.md).
+
+Decisions made in-session by the founder + Oscar:
+- Treat the audit result as valid and carry it forward from the durable table, even though run_105's
+  wrap-up/control-plane behavior faulted after the table was produced.
+- Archive `play-dispatch-boundary`: the dispatch-boundary question is resolved; one-level dispatch
+  stands, and the remaining idea is `hybrid-plays`.
+- Archive `oz-held-back-expand-scope`: the premise is obsolete because the commit spine no longer
+  withholds out-of-lane edits.
+- Keep `priority-audit` as a standing meta-priority; do not archive it after acting on this audit.
+- Keep `new-primary-root` as the next build priority, but first reconcile its stale D2/headless-lane gate
+  against the now-closed headless-lane dependency.
+
+One remaining founder call:
+- Decide whether `hybrid-plays` should be queued after `new-primary-root` or moved to backlog until the
+  deterministic-steps-in-Plays idea is actually wanted.
+
+Run_105 itself exposed a separate orchestration bug: after wrap-up, Oscar treated the live run as too
+closed to make founder-directed governance edits. That is not this priority's audit result; it is tracked
+under closed ticket 0008 and repaired there with `commit-support <runId>` / `POST
+/runs/:id/support-commit`. The priority remains a standing meta-priority, so do not archive it after
+acting on this audit.

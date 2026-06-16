@@ -769,7 +769,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           store.recordEvent({ runId: run.id, type: 'wrapup-delivery-dispatch', data: { ref: oscarDriver.refId } })
         }
       }
-      await refreshStatus('wrapped', n, null, 'wrap-up delivered; use the pickup brief Next Action for the next operational step; file-changing follow-ups need a new committed run path or explicit teardown')
+      await refreshStatus('wrapped', n, null, 'wrap-up delivered; Oscar remains reachable for founder questions and in-scope Surface-A edits until explicit teardown')
       break
     }
 

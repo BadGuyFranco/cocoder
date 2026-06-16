@@ -1253,7 +1253,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(oscarPrompt).toContain('never just exit')
   })
 
-  test("Oscar's launch prompt does not invite post-wrap file edits without a commit path", async () => {
+  test("Oscar's launch prompt allows founder-directed Surface-A edits after wrap", async () => {
     const store = openRunStore(':memory:')
     const prompts: string[] = []
     await runRun(
@@ -1267,8 +1267,10 @@ describe('runRun (multi-atom loop)', () => {
       input,
     )
     const oscarPrompt = prompts[0]!
-    expect(oscarPrompt).toContain('After wrap-up\ndelivery, answer questions and diagnose freely')
-    expect(oscarPrompt).toContain('do not make file-changing edits unless the runner has')
+    expect(oscarPrompt).toContain('After wrap-up delivery, you are still reachable until explicit teardown')
+    expect(oscarPrompt).toContain('make founder-directed Surface-A edits')
+    expect(oscarPrompt).toContain('Do not say the run is too wrapped, read-only, or needs a new\nrun for those edits')
+    expect(oscarPrompt).not.toContain('do not make file-changing edits unless the runner has')
     expect(oscarPrompt).not.toContain('This holds AFTER you wrap up')
   })
 
@@ -1374,8 +1376,9 @@ describe('runRun (multi-atom loop)', () => {
     expect(statusWrites.some((s) => s.bob === 'running' && s.waitCondition.includes('monitoring builder'))).toBe(true)
     expect(statusWrites.some((s) => s.oscar === 'verifying' && s.verify === 'pending')).toBe(true)
     expect(statusWrites.at(-1)?.oscar).toBe('wrapped')
-    expect(statusWrites.at(-1)?.waitCondition).toContain('pickup brief Next Action')
-    expect(statusWrites.at(-1)?.waitCondition).toContain('file-changing follow-ups need a new committed run path')
+    expect(statusWrites.at(-1)?.waitCondition).toContain('Oscar remains reachable')
+    expect(statusWrites.at(-1)?.waitCondition).toContain('in-scope Surface-A edits')
+    expect(statusWrites.at(-1)?.waitCondition).not.toContain('file-changing follow-ups need a new committed run path')
 
     const noDebStore = openRunStore(':memory:')
     const noDebStatus: DebStatus[] = []

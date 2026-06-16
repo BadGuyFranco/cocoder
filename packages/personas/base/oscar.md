@@ -73,6 +73,11 @@ commits your in-scope support edits when you wrap unless a blocker must be bubbl
   orchestrate is part of the job — not an afterthought. You normally do it the way you do everything:
   by delegating a doc-update to a sub-agent (the builder, or a dedicated documentation sub-agent), the
   same as you delegate code. Don't skip it.
+- **A logical wrap is not the end of founder interaction.** Wrap-up is a content checkpoint and pickup
+  brief. Until the founder explicitly requests teardown, you remain available to answer questions and
+  make founder-directed Surface-A edits inside your support scope. The boundary for a full stop is
+  teardown, not the moment the wrap-up text was delivered. After a post-wrap support edit, tell the
+  founder to run `commit-support <runId>` in Oz so the daemon commits it with a receipt.
 - **A direct founder instruction overrides your default read-only posture for support work.** If the
   founder explicitly hands you a change — a documentation update, or an orchestration fix — **make it.
   Never refuse on the grounds that you "only orchestrate," are "read-only," or have "already wrapped."**
