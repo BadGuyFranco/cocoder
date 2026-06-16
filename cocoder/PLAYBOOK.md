@@ -193,12 +193,12 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    (`f7d16e0`, resolves `oz-dashboard-bugs` #12); [ADR-0025](./decisions/0025-atomic-authoring-plays.md).
    Deb granted the three Plays to oz/oscar/deb, fixed the governance-commit daemon-stale edge needed for
    immediate launch, and reran `node scripts/proof-governance-authoring.mjs`: **8/8 clauses green**.
-2. `oz-dashboard-bugs` — **ARCHIVE-CANDIDATE (run_94, 2026-06-15).** All 12 founder-reported Oz
-   dashboard defects fixed at the cause (renderer 111/111 · daemon 181/181 · builds green). run_94
-   re-landed #2/#5/#7/#8 after a design-ref rebuild clobber (F21) and newly fixed #11/#12; #1–#10
-   verified surviving. Only gap before archive: live-on-daemon confirmation (Restart Oz + eyeball, or an
-   offered `scripts/proof-oz-dashboard.mjs`). Follow-ups filed, neither blocks archive: ticket 0006
-   (headless claude/codex lane) · ticket 0007 (design-ref rebuild guard).
+2. `oz-dashboard-bugs` — **ARCHIVE-CANDIDATE (run_103 reaffirmed, 2026-06-16).** All 12 founder-reported
+   Oz dashboard defects fixed at the cause (run_94; renderer/daemon vitest + UI build green). #12 closed
+   via `governance-authoring-plays` (one-tool `author`, run_98). Machine proof:
+   `node scripts/proof-oz-surfaces.mjs`. Three irreducibly-live founder proofs remain (Oz chat with real
+   CLI, one headless Oscar + Bob run, Q/A acceptance). Follow-ons, neither blocks archive: ticket 0006 +
+   `headless-adapter-lane` (any CLI headless) · ticket 0007 (design-ref rebuild guard).
 3. `new-primary-root` — **CONTINUE (run_86, 2026-06-14).** Onboard a primary root via the
    bootstrap/takeover/drift onboarding Playbooks (ADR-0020 Accepted). **Engine foundation built and
    live-wired** (run_83 + run_86): loader extension (§7), `scaffoldCocoderZone` + `createWorkspace`

@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-16 — **Oz dashboard defect sweep (run_103): archive-candidate reaffirmed — no build atoms**
+
+**Persona:** Oscar (wrap-up only; 0 atoms) | **Priority:** [oz-dashboard-bugs](./priorities/oz-dashboard-bugs.md) | **Run:** run_103
+**Outcomes:**
+- **No build atoms** — all 12 defects remain fixed from run_94; renderer/daemon vitest + `pnpm --dir packages/ui build` green. Relaunching as a build run only produces empty reaffirmation wraps (F18).
+- **#11/#12 lineage closed** — capability data matches adapter reality (only `cursor-agent` headless today); #12 resolved by `governance-authoring-plays` (one-tool `author` action, run_98). The founder's "any CLI headless" ask is the unbuilt adapter lane → `headless-adapter-lane` + ticket 0006, not a data flip.
+- **Disposition: archive-candidate** — machine proof runnable via `node scripts/proof-oz-surfaces.mjs`; three irreducibly-live founder proofs remain (Oz chat with real CLI, one headless Oscar + Bob run, Q/A acceptance pass).
+**Next:** Run `node scripts/proof-oz-surfaces.mjs`; on PASS complete the three live proofs it prints; reply **`archive oz-dashboard-bugs`**. Or launch **`headless-adapter-lane`** for the real follow-on.
+
 ## 2026-06-16 — **Governance authoring as atomic Plays (run_99): grants + proof all green (archive-ready)**
 
 **Persona:** Oscar (orchestrator) + Bob (builder, codex) | **Priority:** [governance-authoring-plays](./priorities/governance-authoring-plays.md) | **Run:** run_99
