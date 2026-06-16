@@ -38,7 +38,7 @@
       "enabled": true,
       "plays": {
         "code-review": {
-          "cli": "codex",
+          "cli": "claude",
           "model": ""
         }
       }
