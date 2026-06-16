@@ -8,12 +8,11 @@
 //
 //   node scripts/proof-governance-authoring.mjs
 //
-// Green required rows -> the three authoring Plays commit atomically through the repair spine, Oz
-//                        exposes one author action, governance-only hand edits self-heal on launch,
-//                        builder-scope WIP is still refused, the Play files exist, and typecheck is green.
-// Red clause F row     -> land the persona grants, then rerun this harness. Clause F is printed red
-//                        while grants are missing, but it is not required for this atom's exit code.
-// Any other red row    -> a specific failing suite, missing test, missing file, or failed build to fix.
+// Green rows -> the three authoring Plays commit atomically through the repair spine, Oz exposes one
+//               author action, agent author-then-launch and human hand-edit author-then-launch both
+//               work with zero manual commits, builder-scope WIP is still refused, the Play files and
+//               persona grants exist, and typecheck is green.
+// Any red row -> a specific failing suite, missing test, missing file/grant, or failed build to fix.
 
 import { execFile } from 'node:child_process'
 import { access, mkdtemp, readFile, rm } from 'node:fs/promises'
@@ -61,11 +60,20 @@ const CLAUSES = [
   {
     id: 'C',
     required: true,
-    clause: 'A human hand-edit author-then-launch self-heals (launch auto-commits governance dirt, zero manual commit)',
-    tests: ['governance-only dirty guard self-heals with a pre-run snapshot and proceeds'],
+    clause: 'Agent author-then-launch succeeds immediately with zero manual commit',
+    tests: ['agent authoring commits a priority and immediate launch succeeds with no manual commit'],
   },
   {
     id: 'D',
+    required: true,
+    clause: 'A human hand-edit author-then-launch self-heals (launch auto-commits governance dirt, zero manual commit)',
+    tests: [
+      'human hand-edit authoring is snapshotted at launch and then proceeds',
+      'governance-only dirty guard self-heals with a pre-run snapshot and proceeds',
+    ],
+  },
+  {
+    id: 'E',
     required: true,
     clause: "The launch guard STILL refuses builder-scope WIP (the guard's real purpose preserved)",
     tests: [
@@ -138,7 +146,7 @@ async function evaluatePlayFiles() {
     await access(join(repoRoot, path)).catch(() => missing.push(path))
   }
   return {
-    id: 'E',
+    id: 'F',
     required: true,
     clause: 'The three Plays exist on disk',
     status: missing.length === 0 ? 'PASS' : 'FAIL',
@@ -157,8 +165,8 @@ async function evaluatePersonaGrants() {
     }
   }
   return {
-    id: 'F',
-    required: false,
+    id: 'G',
+    required: true,
     clause: 'The three Plays are GRANTED to oz, oscar, deb',
     status: missing.length === 0 ? 'PASS' : 'FAIL',
     evidence: missing.length === 0
@@ -172,7 +180,7 @@ async function evaluateBuilds() {
   for (const build of BUILDS) results.push(await runBuild(build))
   const failed = results.filter((result) => !result.ok)
   return {
-    id: 'G',
+    id: 'H',
     required: true,
     clause: 'Builds green',
     status: failed.length === 0 ? 'PASS' : 'FAIL',
@@ -213,14 +221,9 @@ try {
   printTable(rows)
 
   const requiredFailed = rows.filter((row) => row.required && row.status !== 'PASS')
-  const optionalFailed = rows.filter((row) => !row.required && row.status !== 'PASS')
   console.log('\n' + '='.repeat(120))
   if (requiredFailed.length === 0) {
-    console.log(`PASS: ${rows.length - optionalFailed.length}/${rows.length - optionalFailed.length} required clause(s) green.`)
-    if (optionalFailed.length > 0) {
-      console.log(`Known remaining work: ${optionalFailed.map((row) => `${row.id} (${row.evidence})`).join('; ')}.`)
-      console.log('Land the persona grants, then rerun this harness for an all-green archive gate.')
-    }
+    console.log(`PASS: ${rows.length}/${rows.length} required clause(s) green.`)
   } else {
     console.log(`FAIL: ${requiredFailed.length} required clause(s) red.`)
     for (const row of requiredFailed) console.log(`  - ${row.id}. ${row.clause}: ${row.evidence}`)

@@ -4,9 +4,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { describe, expect, test } from 'vitest'
-import { makeGit, openRunStore, type Adapter, type BuildInput, type HeadlessRunInput, type RunStore } from '@cocoder/core'
+import { makeGit, openRunStore, type Adapter, type BuildInput, type HeadlessRunInput, type Run, type RunnerIO, type RunStore, type SessionHost } from '@cocoder/core'
 import { createOzEventBus, type OzContext, type OzEvent } from '../src/context.js'
-import { requestAuthoringPlay } from '../src/launcher.js'
+import { launchRun, requestAuthoringPlay } from '../src/launcher.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -146,6 +146,61 @@ describe('requestAuthoringPlay', () => {
     expect(await git(fixture.home, ['rev-parse', 'HEAD'])).toBe(headBefore)
     expect(await readFile(join(fixture.home, 'cocoder', 'priorities', 'alpha.md'), 'utf8')).toBe('partial priority\n')
   })
+
+  test('agent authoring commits a priority and immediate launch succeeds with no manual commit', async () => {
+    const fixture = await makeFixture({
+      runHeadless: async (input) => {
+        fixture.headlessInputs.push(input)
+        if (input.prompt.includes('# Create Priority Play')) {
+          await writePriority(fixture.home, 'agent-alpha', 'Agent Alpha', 'Launch the agent-authored priority.')
+          return { exitCode: 0, output: 'created agent-alpha' }
+        }
+        return { exitCode: 0, output: 'wrap closeout' }
+      },
+    })
+    const bootSha = fixture.ctx.bootSha
+
+    const author = await requestAuthoringPlay(fixture.ctx, {
+      workspaceId: 'cocoder',
+      persona: 'oz',
+      playId: 'create-priority',
+      invocation: { id: 'agent-alpha', title: 'Agent Alpha', objective: 'Launch the agent-authored priority.' },
+    })
+
+    expect(author).toMatchObject({
+      status: 200,
+      body: { ok: true, committedPaths: ['cocoder/priorities/agent-alpha.md'], outOfLanePaths: [] },
+    })
+    expect(await git(fixture.home, ['rev-parse', 'HEAD'])).not.toBe(bootSha)
+    expect(await git(fixture.home, ['status', '--porcelain', '--untracked-files=all'])).toBe('')
+
+    const launch = await launchRun(fixture.ctx, 'cocoder', 'agent-alpha')
+
+    expect(launch.status).toBe(202)
+    const run = await waitForTerminal(fixture.store, launch.body.runId)
+    expect(run.status).toBe('completed')
+    expect(await git(fixture.home, ['status', '--porcelain', '--untracked-files=all'])).toBe('')
+    const audit = await readFile(join(fixture.home, 'local', 'oz-audit.log'), 'utf8')
+    expect(audit).toContain('"action":"authoring-play"')
+    expect(audit).toContain('"action":"launch"')
+    expect(audit).not.toContain('"action":"launch-refused-stale"')
+  })
+
+  test('human hand-edit authoring is snapshotted at launch and then proceeds', async () => {
+    const fixture = await makeFixture()
+    await writePriority(fixture.home, 'human-alpha', 'Human Alpha', 'Launch the hand-authored priority.')
+    expect(await git(fixture.home, ['status', '--porcelain', '--untracked-files=all'])).toContain('cocoder/priorities/human-alpha.md')
+
+    const launch = await launchRun(fixture.ctx, 'cocoder', 'human-alpha')
+
+    expect(launch.status).toBe(202)
+    const run = await waitForTerminal(fixture.store, launch.body.runId)
+    expect(run.status).toBe('completed')
+    expect(await git(fixture.home, ['status', '--porcelain', '--untracked-files=all'])).toBe('')
+    expect(await git(fixture.home, ['log', '-1', '--format=%s'])).toBe('governance: pre-run snapshot')
+    const event = fixture.store.listEvents(run.id).find((item) => item.type === 'governance-presnapshot')
+    expect(event?.data).toMatchObject({ files: ['cocoder/priorities/human-alpha.md'] })
+  })
 })
 
 async function makeFixture(options: {
@@ -162,11 +217,20 @@ async function makeFixture(options: {
     runsRoot: join(home, 'local', 'runs'),
     store,
     git: makeGit(),
-    bootSha: 'h0',
+    bootSha: await git(home, ['rev-parse', 'HEAD']),
+    sessionHost: fakeHost(),
     getAdapter: () => fakeAdapter(prompts),
+    listAdapters: () => [],
+    cliTestCache: new Map(),
+    io: fakeIO(),
     inFlight: new Map<string, string>(),
     stopControllers: new Map<string, AbortController>(),
     events: createOzEventBus(),
+    token: 'test-token',
+    csrfToken: 'test-csrf',
+    liveRefs: new Set(),
+    restartDaemon: () => {},
+    dashboardLauncher: { current: null, spawn: () => { throw new Error('dashboard must not launch in tests') } },
     runHeadless: options.runHeadless ?? (async (input: HeadlessRunInput) => {
       headlessInputs.push(input)
       return { exitCode: 0, output: 'no changes' }
@@ -192,6 +256,20 @@ async function initRepo(home: string): Promise<void> {
           model: 'model-1',
           plays: {
             'create-priority': { cli: 'fake', model: 'author-model' },
+            'edit-priority': { cli: 'fake', model: 'author-model' },
+            'archive-priority': { cli: 'fake', model: 'author-model' },
+          },
+        },
+        oscar: { cli: 'fake', model: '', mode: 'visible', plays: { 'wrap-up': { cli: 'fake', model: '' } } },
+        bob: { cli: 'fake', model: '' },
+        deb: {
+          cli: 'fake',
+          model: '',
+          enabled: true,
+          plays: {
+            'create-priority': { cli: 'fake', model: '' },
+            'edit-priority': { cli: 'fake', model: '' },
+            'archive-priority': { cli: 'fake', model: '' },
           },
         },
       },
@@ -202,6 +280,20 @@ async function initRepo(home: string): Promise<void> {
   await git(home, ['config', 'user.name', 'Test'])
   await git(home, ['add', '.'])
   await git(home, ['commit', '-m', 'initial'])
+}
+
+async function writePriority(home: string, id: string, title: string, objective: string): Promise<void> {
+  await writeFile(join(home, 'cocoder', 'priorities', `${id}.md`), `---\nid: ${id}\ntitle: ${title}\n---\n\n## Objective\n\n${objective}\n`)
+}
+
+async function waitForTerminal(store: RunStore, runId: unknown): Promise<Run> {
+  if (typeof runId !== 'string') throw new Error('launch did not return a runId')
+  for (let i = 0; i < 100; i++) {
+    const run = store.getRun(runId)
+    if (run && run.status !== 'running') return run
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
+  throw new Error(`run ${runId} did not settle`)
 }
 
 function fakeAdapter(prompts: BuildInput[]): Adapter {
@@ -218,6 +310,57 @@ function fakeAdapter(prompts: BuildInput[]): Adapter {
     },
     async listModels() {
       return { canEnumerate: false, models: [], detail: 'fake' }
+    },
+  }
+}
+
+function fakeHost(): SessionHost {
+  let n = 0
+  return {
+    async spawn() {
+      return { id: `surface:${++n}`, driver: 'fake' }
+    },
+    async readScreen() {
+      return ''
+    },
+    async status() {
+      return { state: 'exited', code: 0 }
+    },
+    async waitForExit() {
+      return { state: 'exited', code: 0 }
+    },
+    async sendInput() {},
+    async show() {},
+    async kill() {},
+    async closeSurface() {},
+  }
+}
+
+function fakeIO(): RunnerIO {
+  return {
+    async ensureRunDir() {},
+    async awaitDirective() {
+      return { kind: 'wrapup', pickup: 'done' }
+    },
+    async awaitVerification() {
+      return { verdict: 'pass', reason: 'ok' }
+    },
+    async awaitTriage() {
+      return { disposition: 'one-off', summary: 'n/a', mode: 'propose' }
+    },
+    async writeFaultContext() {},
+    async writeDisposition(runDir, index) {
+      return `${runDir}/disposition-${index}.md`
+    },
+    async writeDebStatus() {},
+    async readNudgeRequest() {
+      return null
+    },
+    async writePickup(runDir) {
+      return `${runDir}/pickup.md`
+    },
+    async writeRunRecord(runDir) {
+      return `${runDir}/record.md`
     },
   }
 }

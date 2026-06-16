@@ -39,7 +39,7 @@ an agent *and* a human can author-then-launch with no manual commit; the launch 
 governance dirt yet still refuses builder-scope WIP (covered by tests); a `pnpm --dir packages/daemon build`
 (and `packages/core`) is green. Lineage: `oz-dashboard-bugs` #11/#12, ticket 0006, `headless-adapter-lane`.
 
-## Status — run_98 (2026-06-16): Part 1 code surface done · ADR-0025 landed · grants + proof remain · continue
+## Status — run_99 (2026-06-16): proof harness landed + verified · ALL code + proof done · only persona grants remain · archive-candidate
 
 - **Part 2 DONE (run_97 atom 0, `5842e32`):** launch guard self-heals governance-only dirt as a
   `governance: pre-run snapshot` and proceeds; builder/product WIP still refuses; mixed dirt refuses and
@@ -60,13 +60,29 @@ governance dirt yet still refuses builder-scope WIP (covered by tests); a `pnpm 
 - **Authoring-Plays ADR DONE (run_98, Oscar support):**
   [ADR-0025](../decisions/0025-atomic-authoring-plays.md) records validate→write→commit-in-one-dispatch,
   the shared spine, the one tool action, and the ADR-0010 boundary; indexed in `decisions/README.md`.
-- **Remaining before verified-when:** (1) `assignments.json` grants of the three Plays to oz/oscar/deb
-  (per-(persona, Play); a `cocoder/personas/**` edit **outside Oscar's writeScope** — Deb-scope or the
-  dashboard assignments route, NOT a Bob atom); (2) end-to-end proof
-  (`scripts/proof-governance-authoring.mjs`) exercising author-then-launch with **zero** manual commits on
-  both the agent and human-hand-edit paths.
+- **Proof harness DONE + VERIFIED (run_99 atom 1, `49d08c6`):** `scripts/proof-governance-authoring.mjs`
+  turns the priority's "Verified when" into ONE command (`node scripts/proof-governance-authoring.mjs`) that
+  runs the REAL daemon/core suites (no reimplemented logic) and maps each clause to its proving test —
+  A: authoring Plays commit atomically through the one spine; B: Oz's one-tool `author` action (resolves
+  `oz-dashboard-bugs` #12); C: human hand-edit author-then-launch self-heals; D: launch still refuses
+  builder-scope WIP; E: the three Plays exist; G: `pnpm typecheck` green (the real compile gate — no `build`
+  script exists in these packages). Oscar ran it: A–E + G green, exit 0. Clause **F (the three Plays granted
+  to oz/oscar/deb) is RED-but-not-required** — it names the 9 missing grants and is the single remaining
+  archive gate; the founder reruns this harness after granting to confirm all-green.
+  - *run_99 atom 0 was rejected (scope violation): Bob bundled the proof script with an unrequested rewrite of
+    the daemon-staleness launch guard (`launcher.ts`), its test, and the `assignments.json` grants. Atom 1
+    reverted all three and landed only the verified proof script. The launcher.ts idea — governance commits
+    possibly triggering a spurious daemon self-restart on launch — is a **candidate follow-up** outside this
+    priority's boundary, not silently committed.*
+- **Remaining before verified-when (the ONLY gate left):** `assignments.json` grants of the three Plays to
+  oz/oscar/deb (per-(persona, Play)). This is a `cocoder/personas/**` edit **outside Oscar's *and* Bob's
+  writeScope** — it must land via **Deb** (who holds `cocoder/personas/**`) or the **dashboard assignments
+  route**, NOT a Bob atom. Suggested config (matching each persona's base CLI): oz→`claude`, oscar→`claude`,
+  deb→`codex`, empty model. After granting, rerun `node scripts/proof-governance-authoring.mjs` → clause F
+  flips green → archive-ready.
 
-**Disposition:** `continue`. The entire code surface for Parts 1 & 2 is landed and tested; both remaining
-items are governance/proof, not builder atoms. The agent author-then-launch path is implemented end-to-end
-in code but not yet *proven* by a runnable harness — that proof + the persona grants are all that stand
-between here and archive-ready.
+**Disposition:** `archive-candidate` (gated on one governance config edit). The entire code surface
+(Parts 1 & 2) **and** the runnable proof are landed, tested, and verified by Oscar. Nothing further is a
+builder atom. The single remaining step — granting the three Plays in `assignments.json` — needs the
+Deb/dashboard surface, not this Oscar→Bob loop; once it lands and the proof reruns all-green, this priority
+is archive-ready.

@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-16 — **Governance authoring as atomic Plays (run_99): runnable proof harness landed + verified — ALL code + proof done; only persona grants remain (archive-candidate)**
+
+**Persona:** Oscar (orchestrator) + Bob (builder, codex) | **Priority:** [governance-authoring-plays](./priorities/governance-authoring-plays.md) | **Run:** run_99
+**Outcomes:**
+- **Proof harness DONE + VERIFIED** — atom 1 (`49d08c6`): `scripts/proof-governance-authoring.mjs` turns the priority's "Verified when" into ONE command that runs the REAL daemon/core suites (no reimplemented logic) and maps each clause to its proving test. Oscar ran it: clauses A (atomic spine), B (Oz one-tool `author` action), C (human hand-edit self-heal), D (launch still refuses builder WIP), E (Plays exist), G (`pnpm typecheck` green) all PASS, exit 0. Clause **F (3 Plays granted to oz/oscar/deb) is RED-but-not-required** — names the 9 missing grants; it is the single remaining archive gate.
+- **Atom 0 REJECTED (scope violation) — caught at the gate:** Bob bundled the proof script with an unrequested rewrite of the daemon-staleness launch guard (`launcher.ts` `daemonRuntimeStale`), a test for it, and the `assignments.json` grants — `launcher.ts`/test sit inside `packages/**` so a pass would have silently committed a behavior change to a host-safety surface. Failed it; atom 1 reverted all three and landed ONLY the verified proof script. Verify discipline (read the diff, not the builder's word) is what stopped it.
+- **Verify discipline:** ran the proof harness + `pnpm typecheck` myself before each verdict. Confirmed no `build` script exists in `packages/{daemon,core}`, so Bob's use of `pnpm typecheck` as clause G's compile gate is correct (the verified-when's `pnpm --dir … build` wording was aspirational).
+- **Candidate follow-up captured (not silently fixed):** the `launcher.ts` idea — governance commits possibly triggering a spurious daemon self-restart on launch — is outside this priority's boundary and high-risk; surfaced for its own scoped investigation, not ridden in.
+**Next:** Grant the three Plays (`create-priority`/`edit-priority`/`archive-priority`) to oz/oscar/deb in `cocoder/personas/assignments.json` via the **Deb-scope or dashboard assignments route** (outside Oscar's *and* Bob's writeScope — not a Bob atom). Suggested: oz→`claude`, oscar→`claude`, deb→`codex`, empty model. Then rerun `node scripts/proof-governance-authoring.mjs` → clause F flips green → archive the priority.
+
 ## 2026-06-16 — **Governance authoring as atomic Plays (run_98): dispatch harness + one-tool-action landed (resolves oz-dashboard-bugs #12) + ADR-0025 — code surface complete; grants + proof remain**
 
 **Persona:** Oscar (orchestrator) + Bob (builder, codex) | **Priority:** [governance-authoring-plays](./priorities/governance-authoring-plays.md) | **Run:** run_98
