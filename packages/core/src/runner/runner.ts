@@ -26,20 +26,17 @@ import { join } from 'node:path'
 import { promisify } from 'node:util'
 import type { RunnerIO } from './io.js'
 import { createHeadlessBuilderDriver, createPaneBuilderDriver, type BuilderDriver } from './builder-driver.js'
+import { executeAgentStep, type AgentStepActiveAtom } from './agent-step.js'
 import { paneLabel } from './labels.js'
-import { readLoopLedger, type LoopLedgerEntry } from './loop-ledger.js'
 import { type Judge, makeHeuristicJudge, runMonitor } from './monitor.js'
 import { createHeadlessOscarDriver, createPaneOscarDriver, type OscarDriver } from './oscar-driver.js'
 import { spawnObserver } from './observer.js'
 import {
-  atomSentinel,
-  buildBuilderDispatch,
   buildBuilderStandbyPrompt,
   buildDebTriageDispatch,
   buildLandingOutcome,
   buildNextOrWrapDispatch,
   buildOrchestratorPrompt,
-  buildVerifyDispatch,
   buildWrapupDelivery,
   commitMessage,
 } from './prompts.js'
@@ -173,7 +170,6 @@ const DEFAULTS = {
 const LIMITS = { maxAtoms: 12, maxConsecutiveRejects: 3, stuckAfter: 4 }
 const OSCAR_IDLE_NUDGE = "You've gone quiet — write the next directive (or your verify verdict), or wrap up."
 const CRITERION_TIMEOUT_MS = 900_000
-const OUTPUT_TAIL_CHARS = 2_000
 
 const defaultMakeJudge =
   (stuckAfter: number): MakeJudge =>
@@ -183,8 +179,6 @@ const defaultMakeJudge =
       stuckAfter,
       nudge: 'You seem stalled — what is blocking you? Keep going, or say what you need.',
     })
-
-const outputTail = (output: string): string => (output.length <= OUTPUT_TAIL_CHARS ? output : output.slice(-OUTPUT_TAIL_CHARS))
 
 async function defaultExecCriterion(command: string, cwd: string): Promise<CriterionResult> {
   try {
@@ -592,7 +586,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   let pickup: string | null = null
   let n = 0
   let consecutiveRejects = 0
-  let activeAtom: { readonly index: number; readonly workItemId: string; readonly headBefore: string } | null = null
+  let activeAtom: AgentStepActiveAtom | null = null
   // `dirtyAtStart` (the founder's pre-existing uncommitted edits) was captured at launch from the same
   // single start-of-run snapshot as the guard above. Quarantine must never revert these (data loss) — only
   // the atom's own produced changes. After a passing atom commits, the tree is clean, so that one snapshot
@@ -775,178 +769,50 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       break
     }
 
-    // Delegate the atom → one work_item per atom (the F8 substrate, ADR-0003). `atomIndex` is this
-    // atom's stable 0-based index; `n` is the count of delegated atoms (and the NEXT directive index).
+    // Delegate/monitor/verify/commit one atom. `atomIndex` is this atom's stable 0-based index; `n` is the
+    // count of delegated atoms (and the NEXT directive index).
     const atomIndex = n
-    const workItem = store.createWorkItem({ runId: run.id, sourcePersona: oscar.id, targetPersona: bob.id, task: directive.task, writeScope: scope })
-    store.recordEvent({ runId: run.id, type: 'delegation', data: { workItemId: workItem.id, atom: atomIndex, task: directive.task } })
-    const headBefore = await git.headSha(worktreePath) // re-snapshot per atom (self-commit detection)
-    activeAtom = { index: atomIndex, workItemId: workItem.id, headBefore }
-    const loopLedgerPath = directive.loop === undefined ? null : join(runDir, `loop-ledger-${atomIndex}.jsonl`)
-    const loopStartedAt = directive.loop === undefined ? null : now()
-    const recordedLoopIterations = new Set<number>()
-    const readAndRecordLoopLedger =
-      loopLedgerPath === null
-        ? null
-        : async (): Promise<readonly LoopLedgerEntry[]> => {
-            const ledger = await readLoopLedger(loopLedgerPath)
-            for (const entry of ledger) {
-              if (recordedLoopIterations.has(entry.iteration)) continue
-              recordedLoopIterations.add(entry.iteration)
-              store.recordEvent({ runId: run.id, type: 'loop-iteration', data: { atom: atomIndex, ...entry } })
-            }
-            return ledger
-          }
-    await bobDriver.show()
-    await bobDriver.dispatch(buildBuilderDispatch(directivePath, atomIndex, loopLedgerPath ?? undefined))
-    store.recordEvent({ runId: run.id, type: 'builder-dispatch', data: { ref: bobDriver.refId, atom: atomIndex } })
-    await refreshStatus('building', atomIndex, directive.task, `monitoring builder on atom ${atomIndex}`)
-    log(`atom ${atomIndex} dispatched to bob (work item ${workItem.id}); monitoring live progress`)
-
-    let cappedLoop: { readonly cap: 'iterations' | 'wall-clock'; readonly ledger: readonly LoopLedgerEntry[] } | null = null
-    let monitorSamples = 0
-    let completionAttempt = 0
-
-    // MONITOR Bob's live progress — the primary signal (ADR-0013), replacing the blind done-file poll.
-    for (;;) {
-      const doneSentinel = atomSentinel(atomIndex, completionAttempt === 0 ? undefined : `R${completionAttempt}`)
-      const remainingLoopMs =
-        directive.loop === undefined || loopStartedAt === null ? undefined : Math.max(0, directive.loop.wallClockMs - (now() - loopStartedAt))
-      const outcome = await runMonitor(
-        {
-          readScreen: () => bobDriver.readScreen(),
-          judge: makeJudge({ atomIndex, doneSentinel, task: directive.task }),
-          isAlive: () => bobDriver.alive(),
-          nudge: (text) => bobDriver.nudge(text),
-          readLoopLedger: readAndRecordLoopLedger ?? undefined,
-          onAssessment: (a) => {
-            if (a.state !== 'progressing') store.recordEvent({ runId: run.id, type: 'monitor-assessment', data: { atom: atomIndex, state: a.state, note: a.note ?? null } })
-          },
-          onNudge: (text) => store.recordEvent({ runId: run.id, type: 'nudge', data: { atom: atomIndex, text } }),
-          now,
-        },
-        {
-          task: directive.task,
-          cadenceMs: t.monitorCadenceMs,
-          timeoutMs: t.buildMs,
-          minNudgeIntervalMs: t.minNudgeIntervalMs,
-          loop: directive.loop === undefined ? undefined : { maxIterations: directive.loop.maxIterations, wallClockMs: remainingLoopMs ?? directive.loop.wallClockMs },
-          signal: deps.signal,
-        },
-      )
-      monitorSamples += outcome.samples
-      const finalLoopLedger = readAndRecordLoopLedger === null ? null : await readAndRecordLoopLedger()
-      if (outcome.reason === 'loop-iteration-cap' || outcome.reason === 'loop-wall-clock-cap') {
-        cappedLoop = {
-          cap: outcome.reason === 'loop-iteration-cap' ? 'iterations' : 'wall-clock',
-          ledger: finalLoopLedger ?? outcome.loopLedger ?? [],
-        }
-        break
-      }
-      if (outcome.reason !== 'done') {
-        store.setWorkItemStatus(workItem.id, 'abandoned')
-        return await fail('builder-failed', `builder ${outcome.reason} on atom ${atomIndex}`, atomIndex)
-      }
-      if (directive.loop === undefined) break
-
-      const criterionAttempt = completionAttempt + 1
-      const criterion = await execCriterion(directive.loop.criterion, worktreePath).catch((err: unknown) => ({ exitCode: 1, output: String(err) }))
-      const pass = criterion.exitCode === 0
-      const tail = outputTail(criterion.output)
-      store.recordEvent({
-        runId: run.id,
-        type: 'loop-criterion-rerun',
-        data: { atom: atomIndex, attempt: criterionAttempt, command: directive.loop.criterion, exitCode: criterion.exitCode, pass, outputTail: tail },
-      })
-      if (pass) break
-
-      const ledger = finalLoopLedger ?? []
-      if (criterionAttempt >= directive.loop.maxIterations) {
-        cappedLoop = { cap: 'iterations', ledger }
-        break
-      }
-      if (loopStartedAt !== null && now() - loopStartedAt >= directive.loop.wallClockMs) {
-        cappedLoop = { cap: 'wall-clock', ledger }
-        break
-      }
-
-      const nextMarkerId = `${atomIndex}-R${criterionAttempt}`
-      const nudge = `LOOP CRITERION RED on attempt ${criterionAttempt} (exit ${criterion.exitCode}). Keep iterating, append the next loop-ledger line, and when fully done print your completion marker for atom ${nextMarkerId} on its own line using your standby marker format. Failing output tail:\n${tail}`
-      await bobDriver.nudge(nudge)
-      store.recordEvent({ runId: run.id, type: 'nudge', data: { atom: atomIndex, text: nudge } })
-      completionAttempt = criterionAttempt
-    }
-
-    if (cappedLoop !== null) {
-      const { cap, ledger } = cappedLoop
-      store.setWorkItemStatus(workItem.id, 'abandoned')
-      store.recordEvent({ runId: run.id, type: 'loop-capped', data: { atom: atomIndex, cap, ledger } })
-      await quarantineAtom(atomIndex, headBefore, 'atom-self-committed-loop-capped')
-      activeAtom = null
-      const outcomeLine = `atom ${atomIndex} was BLOCKED at the loop ${cap} cap — nothing committed`
-      log(outcomeLine)
-      n += 1
-      if (n >= limits.maxAtoms) {
-        pickup = `Run stopped at the ${limits.maxAtoms}-atom backstop. Continue from here in a fresh session.`
-        store.recordEvent({ runId: run.id, type: 'wrapup', data: { atoms: n, forced: true, reason: 'max-atoms' } })
-        break
-      }
-      await oscarDriver.show()
-      await oscarDriver.send(buildNextOrWrapDispatch(join(runDir, `directive-${n}.json`), outcomeLine))
-      continue
-    }
-    store.recordEvent({ runId: run.id, type: 'builder-done', data: { atom: atomIndex, samples: monitorSamples } })
-
-    // Verify the atom (ADR-0011, per atom) — the commit runs only on `pass`.
-    const verifyPath = join(runDir, `verify-${atomIndex}.json`)
-    await oscarDriver.show()
-    await oscarDriver.send(buildVerifyDispatch(directivePath, verifyPath))
-    store.recordEvent({ runId: run.id, type: 'verify-dispatch', data: { ref: oscarDriver.refId, atom: atomIndex } })
-    await refreshStatus('verifying', atomIndex, directive.task, `awaiting verify verdict for atom ${atomIndex}`)
-    let verdict
-    try {
-      verdict = await awaitOscarWithNudgeWatchdog('verify', atomIndex, directive.task, () =>
-        io.awaitVerification(verifyPath, { timeoutMs: t.orchestrationMs, pollMs: t.pollMs, isAlive: oscarAlive, signal: deps.signal }),
-      )
-    } catch (err) {
-      if (isStopRequestedError(err)) throw err
-      store.setWorkItemStatus(workItem.id, 'abandoned')
-      return await fail('verify-failed', String(err), atomIndex)
-    }
-
-    let outcomeLine: string
-    if (verdict.verdict === 'fail') {
-      store.recordEvent({ runId: run.id, type: 'verify-rejected', data: { atom: atomIndex, reason: verdict.reason } })
-      store.setWorkItemStatus(workItem.id, 'abandoned')
-      await quarantineAtom(atomIndex, headBefore, 'atom-self-committed-rejected')
-      consecutiveRejects += 1
-      outcomeLine = `atom ${atomIndex} was REJECTED (${verdict.reason ?? 'no reason'}) — nothing committed`
-      log(outcomeLine)
-    } else {
-      store.recordEvent({ runId: run.id, type: 'verify-pass', data: { atom: atomIndex, reason: verdict.reason } })
-      consecutiveRejects = 0
-      const gate = await runCommitGate({
-        git,
-        store,
-        cwd: worktreePath,
-        runId: run.id,
-        workItemId: workItem.id,
-        scope,
-        message: commitMessage(priority.id, run.id, atomIndex),
-        headBefore,
-      })
-      store.setWorkItemStatus(workItem.id, 'done')
-      absorbGateResult(gate)
-      outcomeLine = gate.committedSha ? `atom ${atomIndex} verified + committed ${gate.committedSha}` : `atom ${atomIndex} verified (no in-scope changes to commit)`
-      log(outcomeLine)
-    }
+    const step = await executeAgentStep({
+      atomIndex,
+      directivePath,
+      directive,
+      runId: run.id,
+      priorityId: priority.id,
+      oscarId: oscar.id,
+      bobId: bob.id,
+      runDir,
+      worktreePath,
+      scope,
+      store,
+      git,
+      io,
+      bobDriver,
+      oscarDriver,
+      makeJudge,
+      execCriterion,
+      awaitOscarWithNudgeWatchdog,
+      oscarAlive,
+      refreshStatus,
+      quarantineAtom,
+      absorbGateResult,
+      fail,
+      setActiveAtom: (atom: AgentStepActiveAtom | null) => {
+        activeAtom = atom
+      },
+      now,
+      timeouts: t,
+      signal: deps.signal,
+      log,
+    })
     n += 1
-    activeAtom = null
+    if (step.kind === 'verified') {
+      consecutiveRejects = step.verdict === 'fail' ? consecutiveRejects + 1 : 0
+    }
 
     // Deterministic backstops — the bound is the spine's; the "enough" judgment stays Oscar's.
-    if (consecutiveRejects >= limits.maxConsecutiveRejects) {
-      await triageFault('max-consecutive-rejects', atomIndex, verdict.reason ?? 'repeated rejections') // Deb triages the stuck-loop
-      pickup = `Run stopped: ${consecutiveRejects} atoms rejected in a row (last: ${verdict.reason ?? 'no reason'}). Re-scope the work and start fresh.`
+    if (step.kind === 'verified' && consecutiveRejects >= limits.maxConsecutiveRejects) {
+      await triageFault('max-consecutive-rejects', atomIndex, step.reason ?? 'repeated rejections') // Deb triages the stuck-loop
+      pickup = `Run stopped: ${consecutiveRejects} atoms rejected in a row (last: ${step.reason ?? 'no reason'}). Re-scope the work and start fresh.`
       store.recordEvent({ runId: run.id, type: 'wrapup', data: { atoms: n, forced: true, reason: 'max-consecutive-rejects' } })
       break
     }
@@ -958,7 +824,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
     // Ask Oscar for the next turn (names the exact next directive path — the numbered handshake).
     await oscarDriver.show()
-    await oscarDriver.send(buildNextOrWrapDispatch(join(runDir, `directive-${n}.json`), outcomeLine))
+    await oscarDriver.send(buildNextOrWrapDispatch(join(runDir, `directive-${n}.json`), step.outcomeLine))
   }
   } catch (err) {
     if (isStopRequestedError(err)) return await stopRun()
