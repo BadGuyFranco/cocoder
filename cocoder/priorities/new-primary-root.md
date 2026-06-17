@@ -45,6 +45,73 @@ CoPublisher).
 
 ## Build progress — disposition: `continue` (ratified 2026-06-17 — build released)
 
+### Executor build progress (run_129, 2026-06-17)
+Ninth build session — **executor P4 — founder-question checkpoint ACTION integration** landed (one atom;
+verified-on-evidence: diff read end-to-end + `pnpm --filter @cocoder/core test` (327) +
+`pnpm --filter @cocoder/daemon test` (208) + `pnpm -w typecheck` + `node scripts/check-topology.mjs`):
+- ✅ **Executor P4 — founder-question checkpoint ACTION integration** (`4a3ee42`). Builds the **content**
+  the existing P4 `awaiting-founder` gate surfaces (the gate/pause itself shipped run_112; the daemon e2e
+  already reached `currentPhaseId:'P4'`). Mirrors the p3-action split across four new core modules +
+  launcher wiring:
+  - `packages/core/src/playbooks/p4-questions.ts` — **pure engine** `buildFounderQuestions({intent,
+    convergence})` partitioning into the **three founder-question classes**, each item carrying a traceable
+    `sourceRef` + `evidence`: **(a) clarifications** ← intent `openQuestions` + unconfirmed inferred-intent
+    claims (only when `founderAsserted.projectPurpose === null`); **(b) conflictingFindings** ← P3
+    `sourceAgreementBySubsystem` disagreement axes (per-axis `agrees:false`) PLUS on-cap unconverged items
+    (`finalUnresolvedItems` when `!converged || capStatus.tripped`), deduped; **(c) futurePriorities** ←
+    `finalUnresolvedItems` filtered to `severity ∈ {material,high}` (the trust-invariant "code issues the
+    audit must NOT fix itself"). Empty classes serialize as empty arrays (never omitted, never fabricated).
+    Pure: no fs/clock/random/network/subprocess (asserted by a determinism guard test).
+  - `packages/core/src/playbooks/p4-input.ts` — refuse-on-malformed reader for `playbook/P1/intent.json` +
+    `playbook/P3/convergence.json`. **Documented design choice:** P4 consumes P1 intent + P3 convergence
+    ONLY (not P2) — P3 already owns the synthesized unresolved material/high set, so rereading P2 would
+    create a second source contract for questions.
+  - `packages/core/src/playbooks/p4-action.ts` — `runPlaybookP4Action`/`createPlaybookP4PhaseAction`
+    (no-ops unless `phase.id==='P4' && phase.kind==='founder-question'`). No dispatch/caps/`now` needed —
+    deterministic synthesis of existing artifacts. `repoDir` is **accepted-but-unused** (`void input.repoDir`);
+    writes ONLY `playbook/P4/{questions.json,questions.md}`; emits `playbook-questions-result` with per-class
+    counts.
+  - `packages/core/src/playbooks/p4-render.ts` — `questions.md` human render (section per class; `- None`
+    on empty).
+  - `launcher.ts` `createDaemonPlaybookPhaseAction` now **composes P1→P2→P3→P4** (`await p4(input)` after
+    p3; questions-result event wired to the store). Executor gate-order (run_124 fix) confirmed: the P4
+    phase action runs then pauses at the P4 gate.
+  - Tests: `playbook-p4-questions.test.ts` (5 unit: all three classes populated + traceable from a crafted
+    P3-disagreement/cap + intent fixture; empty-input → three empty arrays; refuse-on-malformed BEFORE any
+    write; **writes only under `runDir/playbook/P4/**`**, `repoDir/cocoder` never created; determinism guard)
+    + daemon `mutations.test.ts` e2e extended so the P4 gate now carries `questions.json`/`questions.md`,
+    asserts the three class keys, class (a) populated from the fixture open-question, a single
+    `playbook-questions-result` event, and `home/cocoder/AGENTS.md` never created. **Trust invariant held
+    structurally** (P4 ignores repo code; writes confined to `playbook/P4/**`). Ordinary priority runs
+    unchanged (all existing core/daemon tests green).
+
+**Sequencing note (Oscar):** wrapped at this boundary deliberately. The next critical-path atom is **P5 —
+synthesis + `cocoder/**`-only audit write-boundary ENFORCEMENT** — the most delicate remaining atom: it is
+where the HARD trust invariant moves from *structurally avoided* (P4 simply never writes repo code) to
+*enforced at the commit boundary* (the audit commit must **refuse**, not flag, any path outside
+`cocoder/**`). Give it its own super-thoughtful fresh session (run_111 anti-pattern: do not start P5 under
+a context already spent on the P4 verify cycle).
+
+**Next-run sequence (executor critical path; build released, no founder gate needed to build these):**
+- **NEXT → Executor P5 — synthesis + `cocoder/**`-only audit write-boundary ENFORCEMENT** (fresh dedicated
+  session). Per [ADR-0020 addendum](../decisions/0020-addendum-phase-executor.md) §Audit Write-Boundary
+  Enforcement + Founder Ratification directive 3 (HARD trust invariant): build the P5 synthesis phase that
+  consumes the P3 convergence + P4 founder answers + P1 intent and authors the proposed `cocoder/**`
+  governance (drafted Objectives grounded in verified P3 findings, candidate priorities, architecture
+  notes), AND the ENFORCEMENT seam so any audit commit that touches a path outside `cocoder/**` **refuses**
+  (errors), not merely flags. Mirror the p3/p4 action split (pure engine + input reader + action + render).
+  Decide the enforcement home by reading the commit spine (`gate.ts`/Oz repair commit whole-tree behavior,
+  ADR-0023 §3) — P5 must constrain the audit's write set to `cocoder/**` without breaking the
+  commit-the-whole-tree default for ordinary runs. Verify: extend the fake-agent e2e so resume advances
+  P4→P5; a P5 attempt to write outside `cocoder/**` is REFUSED with a clear error; core+daemon+typecheck+
+  topology stay green; ordinary priority runs unchanged.
+- **Then** Atoms 10–11 (P6 ratify → end-to-end fixture proof). Parallel/independent: New-Primary
+  tech-stack-starter template BUILD from Atom E — per-starter non-negotiables and the "if-unsure" fallback
+  question remain draft-pending-ratification in `new-primary-tech-stack.md`; confirm with founder first or
+  scope to ratified parts only.
+- **Still gated:** Live CoPublisher Takeover proof and the dogfood Drift Audit remain gated until the
+  P1→P5 executor path runs end-to-end on fakes.
+
 ### Executor build progress (run_128, 2026-06-17)
 Eighth build session — **executor P3 — cross-check convergence ACTION integration** landed (one atom;
 verified-on-evidence: diff read end-to-end + `pnpm --filter @cocoder/core test` (322) +
@@ -450,8 +517,14 @@ First build session after ratification. Three atoms landed (verified-on-evidence
    `p3-cross-check.ts`/`p3-input.ts`/`p3-action.ts`/`p3-render.ts` capped convergence loop (3/30min/min(125k,alloc)),
    non-gameable ≥2-round predicate over real P2 artifacts, ≤3 injected follow-up reads/round, on-cap gaps
    preserved; launcher composes P1→P2→P3; daemon e2e proves resume→P2→real P3→P4 gate; core 322 + daemon 208
-   green. **Next:** P4 founder-question checkpoint ACTION integration → Atoms 9–11 + tech-stack template build
-   from E.
+   green. **Landed run_129:** executor P4 founder-question checkpoint ACTION integration (`4a3ee42`) —
+   `p4-questions.ts`/`p4-input.ts`/`p4-action.ts`/`p4-render.ts` partition the P4 gate content into three
+   founder-question classes (clarifications / conflicting findings / material-or-high code-issues-as-future-
+   priorities) from P3 convergence + P1 intent, each item traceable; launcher composes P1→P2→P3→P4; daemon
+   e2e proves the P4 gate carries `questions.json`/`questions.md` + a `playbook-questions-result` event;
+   trust invariant held structurally (P4 ignores repo code, writes only `playbook/P4/**`); core 327 + daemon
+   208 green. **Next:** P5 synthesis + `cocoder/**`-only audit write-boundary ENFORCEMENT → Atoms 10–11
+   (P6 ratify → e2e fixture proof) + tech-stack template build from E.
 3. **Live CoPublisher Takeover proof** (Phase-5 entry) — Objective verification (a). **BLOCKED on executor
    build** (#2 above).
 4. **Dogfood Drift Audit run** — Objective verification (b). **BLOCKED on executor build** (#2 above).
@@ -595,9 +668,15 @@ directives now recorded in [addendum §Founder Ratification — RESOLVED](../dec
   `p3-input.ts` + `p3-action.ts` (capped loop 3/30min/min(125k,alloc), ≤3 injected follow-up reads/round,
   on-cap gaps preserved) + `p3-render.ts`; launcher composes P1→P2→P3; daemon e2e proves resume→P2→real
   P3→P4 gate; core 322 + daemon 208 green.
-- **NEXT → Executor P4 — founder-question checkpoint ACTION integration** (fresh session; see §Executor
-  build progress run_128).
-- **Then Atoms 9–11** + New-Primary tech-stack-template build from E.
+- ✅ **Executor P4 — founder-question checkpoint ACTION integration** (`4a3ee42`, run_129).
+  `p4-questions.ts` (pure engine, three founder-question classes from P3 convergence + P1 intent, each
+  traceable) + `p4-input.ts` (P1 intent + P3 convergence only; documented single-source choice) +
+  `p4-action.ts` (writes only `playbook/P4/{questions.json,questions.md}`; `repoDir` unused) + `p4-render.ts`;
+  launcher composes P1→P2→P3→P4; daemon e2e proves the P4 gate carries the questions artifact + a
+  `playbook-questions-result` event; trust invariant held structurally; core 327 + daemon 208 green.
+- **NEXT → Executor P5 — synthesis + `cocoder/**`-only audit write-boundary ENFORCEMENT** (fresh session;
+  see §Executor build progress run_129).
+- **Then Atoms 10–11** (P6 ratify → e2e fixture proof) + New-Primary tech-stack-template build from E.
 
 **Still gated:** Live Takeover (#3) and Drift Audit (#4) proofs remain gated on the executor shipping — do
 not attempt live onboarding until then.
