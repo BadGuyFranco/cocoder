@@ -45,6 +45,61 @@ CoPublisher).
 
 ## Build progress — disposition: `continue` (ratified 2026-06-17 — build released)
 
+### Executor build progress (run_111, 2026-06-17)
+First build session after ratification. Three atoms landed (verified-on-evidence per atom: diff read +
+`pnpm --filter @cocoder/core test` + `pnpm -w typecheck` + topology each time):
+- ✅ **Atom F — design-amendment** (`35eb066`). The three ratified directives are now folded into
+  [ADR-0020 addendum](../decisions/0020-addendum-phase-executor.md): **P2 dual-source adversarial audit**
+  (Bob builder + Oscar orchestrator `deep-read` sources, ADR-0018 resolution must yield *different*
+  models/personas with fail-clear-on-collapse; disagreement is the P3 convergence signal); a **P4
+  Founder-Question Checkpoint** (real `awaiting-founder` gate between cross-check and synthesis — the
+  Takeover phase model renumbered to P0–P7, `founder-question` kind + `P1a`-style id grammar) surfacing
+  the three question classes (clarifications / conflicts / code-issues-as-future-priorities); and a
+  **hard `cocoder/**`-only trust invariant** (new "Audit Write-Boundary Enforcement" section — audit
+  commits *refuse*, not flag, any path outside `cocoder/**`), stated as a user-facing promise in
+  `cocoder-takeover.md`.
+- ✅ **Atom 1 — Phase metadata loader** (`af48ddd`). `loadOnboardingPlaybooks()` now parses each shipped
+  Playbook's `## The baked Playbook` table into an ordered `phases: OnboardingPlaybookPhase[]` via an
+  explicit title→kind map (refuse-on-unmappable, no guessing); handles the `P1a` sub-phase id grammar and
+  the new `stack-starter` kind; `founderGate` keyed off a normalized `▸` marker. Exact phase lists for all
+  three skeletons pinned in `packages/core/tests/playbooks.test.ts` + a malformed-table refusal test. Spec
+  (addendum enum/id) and code reconciled; `loader.ts` is the authoritative type source.
+- ✅ **Atom 5a — deterministic recon inventory helper** (`a2c7195`). New `packages/core/src/playbooks/recon.ts`:
+  pure, read-only, deterministic `inventoryRepo(dir): RepoInventory` (no clock/random/network/subprocess;
+  sorted output; bounded LOC with skip counters) producing manifests, lockfiles, workspace/monorepo
+  packages, source/test roots, entry points, categorized scripts, file/LOC counts, language+framework
+  indicators, dependency fan-out, per-root validation (nearest-enclosing-package association), and
+  mechanical high-risk surface hints with evidence paths. **Deterministic LAYER ONLY** — the agentic recon
+  pass, subsystem proposal, complexity tiers, and `intent.json`/`estimate.json` are deferred to the
+  executor atoms. (First attempt was REJECTED at the gate for a `validationByRoot` defect — duplicate root
+  entries + repo-global commands stamped per-root; redo fixed it with per-root nearest-package association.
+  An instance of the gate catching a defect that test-green alone had enshrined.)
+
+**Two Oscar sequencing decisions this run (design-homework calls, recorded for transparency):**
+1. **Addendum Atom 2 (run target + daemon launch surface) RESEQUENCED to follow the executor core.** Recon
+   of the launch path showed `RunInput` is hard-typed around `priority: Priority` and there is no executor
+   yet, so a `playbookId` launch route would record a run with nothing to execute — not a coherent
+   shippable increment. Atom 2 becomes meaningful only after the executor exists to be launched.
+2. **Recon helper (Atom 5a) pulled forward** because it is the one fully-independent leaf (no runner/
+   executor/launch dependency) and objectively unit-testable — the responsible way to keep the loop
+   productive without starting the delicate runner refactor under a half-spent context.
+
+**Next-run sequence (executor critical path; build released, no founder gate needed for these):**
+- **NEXT → addendum Atom 3 — Runner primitive extraction** (`packages/core/src/runner/runner.ts` + a small
+  helper). Extract an internal "run one agent step → monitor → verify → commit/quarantine" primitive out of
+  the ~1000-line `runRun()` so Playbook phases can call it, with **zero behavior change** (the existing
+  Oscar↔Bob loop + `runner-direct.test.ts` and all runner tests stay green as the objective gate). This is a
+  delicate behavior-preserving refactor of a load-bearing function — give it its own fresh, full-context
+  session, scope it to a single well-defined primitive seam, and verify by careful diff read + the unchanged
+  suite (test-green alone is not sufficient confidence for a refactor this size).
+- **Then** addendum Atom 4 (Playbook state + gate cursor / executor facade; synthetic test) → Atom 2
+  (launch surface, now coherent) → Atom 5b (agentic recon pass, consumes `recon.ts`) → Atoms 6–11 (P2
+  dual-source fan-out, P3 adversarial cross-check, P4 checkpoint, P5 synthesis + audit boundary, P6 ratify,
+  end-to-end fixture proof). Re-sequenced per the priority's plan: P1 implements C+D, P2 implements A+F, P3
+  implements B+F.
+- **Still gated:** Live CoPublisher Takeover proof and the dogfood Drift Audit remain gated on the executor
+  shipping — do not attempt live onboarding until the P1→P5 path runs end-to-end on fakes.
+
 ### Cumulative engine state (run_83 + run_86)
 - ✅ **Loader extension (§7)** — core reads the three shipped Playbooks (`loadOnboardingPlaybooks`, `082fa48`)
   and the daemon offers them via a distinct `onboarding` field on `GET .../priorities`, available in every

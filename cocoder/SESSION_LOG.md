@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-17 — **Executor build begins (run_111): design-amendment + phase loader + deterministic recon helper**
+
+**Persona:** Oscar (3 atoms delegated + verified, 1 rejected-then-fixed) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_111
+**Outcomes:**
+- **Atom F committed (`35eb066`)** — the three ratified directives folded into the [0020 addendum](./decisions/0020-addendum-phase-executor.md) + `cocoder-takeover.md`: **P2 dual-source adversarial audit** (Bob builder + Oscar orchestrator `deep-read`, different models via ADR-0018 with fail-clear-on-collapse; disagreement = P3 signal); a real **P4 Founder-Question Checkpoint** gate between cross-check and synthesis (Takeover renumbered P0–P7, `founder-question` kind, three question classes incl. code-issues-as-future-priorities); and a **hard `cocoder/**`-only trust invariant** (new "Audit Write-Boundary Enforcement" — audit commits *refuse*, not flag, out-of-`cocoder/**` paths) stated as a user-facing promise.
+- **Atom 1 committed (`af48ddd`)** — phase-metadata loader: `loadOnboardingPlaybooks()` parses each Playbook's baked table into ordered `phases` via an explicit title→kind map (refuse-on-unmappable), handles the `P1a` sub-phase id grammar + `stack-starter` kind, `founderGate` from the `▸` marker. Exact phase lists for all three skeletons pinned + a malformed-table refusal test; spec/code reconciled.
+- **Atom 5a committed (`a2c7195`)** — new `packages/core/src/playbooks/recon.ts`: pure deterministic read-only `inventoryRepo(dir)` (manifests, lockfiles, workspace/monorepo packages, source/test roots, entry points, scripts, file/LOC counts, language/framework, dep fan-out, per-root validation via nearest-enclosing package, mechanical risk hints with evidence). Deterministic LAYER ONLY; agentic pass/tiers/estimate deferred. First attempt REJECTED at the gate (`validationByRoot` emitted duplicate roots + repo-global commands per-root); redo fixed with per-root nearest-package association — the gate catching a defect test-green had enshrined.
+- **Two Oscar sequencing calls (design-homework):** (1) addendum **Atom 2 (launch surface) resequenced to follow the executor core** — `RunInput` is hard-typed to `priority: Priority` and no executor exists, so a `playbookId` route would record a run with nothing to execute; (2) **recon helper pulled forward** as the one fully-independent, objectively-testable leaf.
+- **Wrapped (not torn down)** because the next atom — the runner-primitive extraction — is a delicate behavior-preserving refactor of the ~1000-line `runRun()` that warrants a fresh full-context session for a rigorous gate; context this run was meaningfully spent. No founder decision pending (build released).
+**Next:** Relaunch `new-primary-root` as a BUILD run — **addendum Atom 3: Runner primitive extraction** (`packages/core/src/runner/runner.ts`): extract an internal "run one agent step → monitor → verify → commit/quarantine" primitive Playbook phases can call, ZERO behavior change, existing runner suite green as the objective gate. Then Atom 4 (executor state/cursor) → Atom 2 (launch) → Atom 5b (agentic recon) → 6–11.
+
 ## 2026-06-16 — **Design deepen Atom E (run_110): New-Primary tech-stack starter registry — design A–E complete, blocked on ratification**
 
 **Persona:** Oscar (1 atom delegated + verified) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_110
