@@ -338,6 +338,26 @@ function applyMigrations(db: DatabaseSync): void {
   }
 }
 
+function reconcileRunCounter(db: DatabaseSync): void {
+  db.exec(`
+    UPDATE run_counter
+       SET next = CASE
+         WHEN next < COALESCE((
+           SELECT MAX(CAST(substr(id, 5) AS INTEGER)) + 1
+             FROM run
+            WHERE id = 'run_' || CAST(CAST(substr(id, 5) AS INTEGER) AS TEXT)
+         ), 1)
+         THEN COALESCE((
+           SELECT MAX(CAST(substr(id, 5) AS INTEGER)) + 1
+             FROM run
+            WHERE id = 'run_' || CAST(CAST(substr(id, 5) AS INTEGER) AS TEXT)
+         ), 1)
+         ELSE next
+       END
+     WHERE id = 0
+  `)
+}
+
 /** Open (and migrate) the operational store at `dbPath` (use ':memory:' in tests). */
 export function openRunStore(dbPath: string, opts: OpenRunStoreOptions = {}): RunStore {
   const db = new DatabaseSync(dbPath)
@@ -346,5 +366,6 @@ export function openRunStore(dbPath: string, opts: OpenRunStoreOptions = {}): Ru
   db.exec('PRAGMA foreign_keys = ON')
   db.exec(SCHEMA_SQL)
   applyMigrations(db) // ADD COLUMN any field absent from an older db (no-op on a fresh one)
+  reconcileRunCounter(db)
   return new SqliteRunStore(db, opts.now ?? Date.now)
 }

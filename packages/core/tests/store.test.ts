@@ -178,6 +178,64 @@ describe('schema compatibility — existing dbs open and hydrate without data lo
     store.close()
   })
 
+  test('run counter migration continues after max numeric run id, not row count', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'cocoder-counter-max-'))
+    const dbPath = join(dir, 'cocoder.db')
+
+    const legacy = new DatabaseSync(dbPath)
+    legacy.exec(BARE_SCHEMA)
+    legacy.exec(`INSERT INTO workspace (id, path, name) VALUES ('cocoder', '/repo', 'CoCoder')`)
+    legacy.exec(`
+      INSERT INTO run (id, workspace_id, priority_id, status, created_at, ended_at) VALUES
+        ('run_3', 'cocoder', 'p-old', 'completed', 1, 2),
+        ('run_12', 'cocoder', 'p-old', 'completed', 3, 4),
+        ('run_194bf7b7fa374cf4', 'cocoder', 'p-old', 'completed', 5, 6)
+    `)
+    legacy.close()
+
+    const store = openRunStore(dbPath, { now: clock() })
+    const fresh = store.createRun({ workspaceId: 'cocoder', priorityId: 'p-new' })
+
+    expect(fresh.id).toBe('run_13')
+    store.close()
+  })
+
+  test('existing stale run counter is reconciled upward on open', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'cocoder-counter-stale-'))
+    const dbPath = join(dir, 'cocoder.db')
+
+    const stale = new DatabaseSync(dbPath)
+    stale.exec(`
+      CREATE TABLE workspace (id TEXT PRIMARY KEY, path TEXT NOT NULL, name TEXT NOT NULL);
+      CREATE TABLE run (
+        id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, priority_id TEXT NOT NULL,
+        status TEXT NOT NULL, created_at INTEGER NOT NULL, ended_at INTEGER, playbook_id TEXT);
+      CREATE TABLE run_counter (id INTEGER PRIMARY KEY CHECK (id = 0), next INTEGER NOT NULL);
+      CREATE TABLE session (
+        id TEXT PRIMARY KEY, run_id TEXT NOT NULL, persona TEXT NOT NULL,
+        session_ref TEXT NOT NULL, started_at INTEGER NOT NULL, exit_code INTEGER, workspace_ref TEXT);
+      CREATE TABLE work_item (
+        id TEXT PRIMARY KEY, run_id TEXT NOT NULL, source_persona TEXT NOT NULL,
+        target_persona TEXT NOT NULL, task TEXT NOT NULL, write_scope TEXT NOT NULL,
+        status TEXT NOT NULL, created_at INTEGER NOT NULL);
+      CREATE TABLE commit_link (
+        id TEXT PRIMARY KEY, run_id TEXT NOT NULL, work_item_id TEXT,
+        commit_sha TEXT NOT NULL, message TEXT NOT NULL, files TEXT NOT NULL, created_at INTEGER NOT NULL);
+      CREATE TABLE event (id TEXT PRIMARY KEY, run_id TEXT NOT NULL, type TEXT NOT NULL, data TEXT NOT NULL, at INTEGER NOT NULL);
+      INSERT INTO workspace (id, path, name) VALUES ('cocoder', '/repo', 'CoCoder');
+      INSERT INTO run (id, workspace_id, priority_id, status, created_at, ended_at, playbook_id)
+        VALUES ('run_20', 'cocoder', 'p-old', 'completed', 1, 2, NULL);
+      INSERT INTO run_counter (id, next) VALUES (0, 4);
+    `)
+    stale.close()
+
+    const store = openRunStore(dbPath, { now: clock() })
+    const fresh = store.createRun({ workspaceId: 'cocoder', priorityId: 'p-new' })
+
+    expect(fresh.id).toBe('run_21')
+    store.close()
+  })
+
   test('a db still carrying the removed isolation columns opens and hydrates (inert columns)', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'cocoder-inert-'))
     const dbPath = join(dir, 'cocoder.db')

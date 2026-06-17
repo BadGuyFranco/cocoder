@@ -78,13 +78,22 @@ CREATE INDEX IF NOT EXISTS idx_event_run ON event(run_id);
 
 -- Monotonic session counter for run ids (run_1, run_2, …). A dedicated counter — NOT COUNT(*) — so an
 -- id is never reused even if a run row is later deleted, and a single atomic UPDATE allocates it (no
--- read-then-write race). Seeded ONCE to continue from any pre-existing runs, so the number stays the
--- running total of sessions ever launched.
+-- read-then-write race). Seeded ONCE from the max canonical numeric run id, not row count, so cleanup of
+-- old rows cannot make the next launch reuse an existing number. Old UUID-style ids like run_abc or
+-- run_123abc are intentionally ignored by the canonical numeric filter.
 CREATE TABLE IF NOT EXISTS run_counter (
   id   INTEGER PRIMARY KEY CHECK (id = 0),
   next INTEGER NOT NULL
 );
-INSERT OR IGNORE INTO run_counter (id, next) VALUES (0, (SELECT COUNT(*) + 1 FROM run));
+INSERT OR IGNORE INTO run_counter (id, next)
+VALUES (
+  0,
+  COALESCE((
+    SELECT MAX(CAST(substr(id, 5) AS INTEGER)) + 1
+    FROM run
+    WHERE id = 'run_' || CAST(CAST(substr(id, 5) AS INTEGER) AS TEXT)
+  ), 1)
+);
 `
 
 // Additive column migrations. The CREATE TABLE statements above are the current-truth schema for a FRESH
