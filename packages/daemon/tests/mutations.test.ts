@@ -160,7 +160,9 @@ const fakeHost = (
   onCloseWorkspace?: (args: { workspaceRef: string }) => void,
 ): SessionHost => {
   let n = 0
-  return {
+  const receiverToken = Symbol('fake host receiver')
+  const host: SessionHost & { receiverToken: symbol } = {
+    receiverToken,
     async spawn() {
       return { id: `surface:${++n}`, driver: 'fake' }
     },
@@ -183,10 +185,12 @@ const fakeHost = (
     async closeSurface(args) {
       onClose?.(args)
     },
-    async closeWorkspace(args) {
+    async closeWorkspace(this: (SessionHost & { receiverToken?: symbol }) | undefined, args) {
+      if (this?.receiverToken !== receiverToken) throw new Error("Cannot read properties of undefined (reading '#cli')")
       onCloseWorkspace?.(args)
     },
   }
+  return host
 }
 
 interface Resp {

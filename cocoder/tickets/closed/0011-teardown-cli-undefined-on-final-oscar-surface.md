@@ -65,9 +65,9 @@ and passes after.
 ## Resolution
 `packages/daemon/src/launcher.ts` now keeps the `closeWorkspace` optional guard but invokes the method
 through `ctx.sessionHost.closeWorkspace({ workspaceRef })`, preserving the cmux host receiver for the
-final durable workspace close. `packages/daemon/tests/mutations.test.ts` now covers the Oscar-initiated
-shared-workspace teardown with a receiver-sensitive `closeWorkspace`; the old unbound call would throw the
-same `#cli`-style error before marking the final Oscar surface closed.
+final durable workspace close. `packages/daemon/tests/mutations.test.ts` now makes the shared `fakeHost()`
+workspace close receiver-sensitive and covers the Oscar-initiated shared-workspace teardown; the old
+unbound call would throw the same `#cli`-style error before marking the final Oscar surface closed.
 
 ## Acceptance / Verified When
 - `cocoder oz teardown <runId> --initiator oscar` closes **all** of the run's surfaces — including the
