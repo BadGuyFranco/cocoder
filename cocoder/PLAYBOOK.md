@@ -187,6 +187,10 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   `zArchive/priorities/v2/plays-first-class.md`.
 
 **Active build priorities (launchable; the `priorities/` directory is the live index):**
+- `fix-ticket-0011` — **LAUNCH-READY (run_119 adhoc diagnosis, 2026-06-17).** One-line
+  `closeWorkspace` bind fix in `packages/daemon/src/launcher.ts` + `this`-aware regression in
+  `mutations.test.ts`; closes [ticket 0011](./tickets/open/0011-teardown-cli-undefined-on-final-oscar-surface.md)
+  (teardown `#cli` undefined on the run's final Oscar surface). Full spec in the open ticket.
 1. `headless-adapter-lane` — **ARCHIVED (run_104, founder-confirmed 2026-06-16).** Claude Code + Codex real
    headless invocation built (`BuildInput.headless`, claude print mode + codex exec), wired through
    `dispatchPlay` + `oz-host`, `headlessCapable=true` (single source). Flags verified vs real binaries;

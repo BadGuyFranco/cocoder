@@ -12,6 +12,18 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-17 — **Adhoc diagnosis: ticket 0011 teardown `#cli` undefined (run_119)**
+
+**Persona:** Oscar (0 atoms delegated) | **Priority:** [adhoc-session](./priorities/adhoc-session.md) | **Run:** run_119
+**Outcomes:**
+- **Read-only support pass:** founder-directed diagnosis of ticket 0011 (teardown 500 on final Oscar surface during run_116 teardown).
+- **Root cause confirmed end-to-end:** unbound `closeWorkspace` detach at `launcher.ts:360` → unbound call at `:378` → `this.#cli` throw in `CmuxDriver.closeWorkspace` (`driver.ts:188`); prefix surfaces unaffected (bound `closeSurface` path).
+- **Test-gap pinned:** `fakeHost().closeWorkspace` in `mutations.test.ts:186` never reads `this`, so the regression passes in test but fails in production.
+- **Ticket 0011 updated** (`c03bff56`) with corrected line numbers, fix spec, regression requirement, and verify commands.
+- **Launch-ready priority drafted:** [fix-ticket-0011](./priorities/fix-ticket-0011.md) — one-line bind fix + regression test + close ticket.
+- **Disposition: continue** — adhoc-session objective met (written diagnosis report delivered); priority remains the standing on-ramp for future adhoc work.
+**Next:** Launch `fix-ticket-0011` in Oz.
+
 ## 2026-06-17 — **Adhoc session on-ramp (run_118): launched, awaiting founder path**
 
 **Persona:** Oscar (0 atoms delegated) | **Priority:** [adhoc-session](./priorities/adhoc-session.md) | **Run:** run_118
