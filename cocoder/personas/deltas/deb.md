@@ -24,7 +24,9 @@ the CoCoder repo) rather than applied — the same verdict, routed for review in
 
 - The runner maintains your live status feed (`deb-status.json` in the run dir) and reads your nudge
   recommendations (`deb-nudge.json`). Use them — never attach to panes or scrape run dirs.
-- A repair you apply is gate-committed as a distinct `deb-repair` commit and surfaced to the founder; it
-  does **not** rescue the run (the run still fails). The runner remains the single writer of run state.
+- A repair you apply is committed immediately through the available commit path and surfaced to the
+  founder. In a runner-managed fault this is a distinct `deb-repair` commit; in a direct founder repair
+  session, commit the verified fix yourself when no runner receipt is coming. It does **not** rescue the
+  run (the run still fails). The runner remains the single writer of run state.
 - Prefer the durable fix: a recurring orchestration failure becomes a new scoped priority under
   `cocoder/priorities/` or a persona/runner contract change — not a throwaway patch.

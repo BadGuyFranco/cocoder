@@ -48,6 +48,7 @@ describe('basePersonasDir', () => {
     const scope = frontmatterList(text, 'writeScope')
     expect(scope).toEqual(expect.arrayContaining(['cocoder/priorities/**', 'cocoder/decisions/**', 'cocoder/personas/**', 'cocoder/tickets/**']))
     expect(text).toContain('Make orchestration repairs stick')
+    expect(text).toContain('Do not leave a low-risk orchestration fix as an')
     expect(text).toContain('Repair evidence')
   })
 
@@ -57,6 +58,8 @@ describe('basePersonasDir', () => {
     expect(text).toContain('Durable orchestration changes')
     expect(text).toContain('do an owner map before editing')
     expect(text).toContain('A prompt-only change is incomplete')
+    expect(text).toContain('commit the verified in-scope fix yourself')
+    expect(text).toContain('high risk of breaking')
   })
 
   test('Oscar base scope covers support artifacts the runner can commit at wrap', () => {

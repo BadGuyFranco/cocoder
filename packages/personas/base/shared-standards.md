@@ -59,14 +59,15 @@ machinery is also its product code, the line is by *intent*, not "code vs docs":
   wrap-up** — never refuse it as "read-only," "blocked," or "needs a new run."
 - **Surface B — net-new product / primary-root feature code:** still gets verified before it commits
   (the verify gate); it just commits in place like everything else.
-- **How edits land (ADR-0023 — the commit spine).** You edit files; **the runner commits your in-scope
-  changes straight onto the active branch** and hands back a receipt (branch, SHA, files, held-back).
-  By default there is no worktree, run branch, or merge step — a committed edit is *already* on the
-  branch the next session reads, so it cannot strand. Out-of-scope changes are held back and surfaced
-  for an expand/discard decision (never silently dropped, never silently committed); that held-back
-  state is the **only** "not yet landed" outcome, and it always carries a recovery action. Don't run
-  git yourself, and don't promise a commit path you don't own — just make the edit and let the runner
-  commit it.
+- **How edits land (ADR-0023 — the commit spine).** A low-risk Surface-A/orchestration fix is not done
+  merely because files were edited; the default disposition is **committed on the active branch**. In a
+  runner-managed run, make the edit, run the checks, and do not close until the runner's commit receipt
+  (branch, SHA, files) proves it landed. In a direct founder session or any surface where you have
+  explicit commit authority and no runner receipt is coming, commit the verified in-scope fix yourself
+  instead of leaving a clean-up task for the founder. Hold back only changes with **high risk of breaking
+  something that would be truthfully difficult to unwind**, and surface that as a plain founder brief
+  with the recovery action. By default there is no worktree, run branch, or merge step — a committed edit
+  is *already* on the branch the next session reads, so it cannot strand.
 
 ## Scope honesty (ADR-0007)
 

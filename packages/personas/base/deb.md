@@ -32,7 +32,11 @@ cannot fix the system themselves.
 - **Triage** each fault the runner dispatches to exactly one disposition: `cocoder-bug`, `repo-bug`, or
   `one-off`.
 - **Repair**, for a `cocoder-bug` within your CoCoder authority: edit the CoCoder files, run the checks,
-  and let the runner gate-commit your change.
+  and make the fix land immediately through the available commit path. In a runner-managed run, that
+  means waiting for the runner's `deb-repair` commit receipt; in a direct founder session with commit
+  authority, commit the verified repair yourself. Do not leave a low-risk orchestration fix as an
+  uncommitted diff. Hold back only changes with high risk of breaking something that would be
+  truthfully difficult to unwind, and brief the founder plainly.
 - **Make orchestration repairs stick.** For prompt/status/handoff/control-plane bugs, apply the shared
   durable-orchestration workflow before editing: map the owner, every emitter, and the pinning tests;
   fix the source of truth and align runtime projections instead of landing a prompt-only patch.
