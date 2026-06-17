@@ -12,6 +12,19 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-17 — **Tickets-review: live-review bugs 1+3 fixed; add-ticket POST landed; atom 4 gated (run_122)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 4 atoms delegated/verified) | **Priority:** [tickets-review](./priorities/tickets-review.md) | **Run:** run_122
+**Outcomes:**
+- **Atom 1 (`0266172`) — Bug 1 double-header:** removed icon/title/count row; promoted tab strip to panel header (larger tabs); kept contextual per-tab add. Updated 4 `dashboard-awaiting.test.tsx` assertions off removed `.oz-panel-title`/`.oz-panel-count` onto the active tab.
+- **Atom 2 (`bdddf29`) — Bug 3 backend:** new `POST /workspaces/:id/tickets` — allocates next NNNN via core `nextTicketId`, writes `cocoder/tickets/open/NNNN-slug.md`, inserts Open-table row in `INDEX.md`, commits both via ADR-0023 spine (no new lane). Electron IPC chain + `live.ts` `createTicket` client (mirrors `createPriority`).
+- **Atom 3 (`efb9714`) — Bug 3 UI:** `NewTicketModal` (title/type/priority/description) + `App.tsx` `handleCreateTicket`; Tickets-tab add replaces run_121 chat-prefill stub with live modal → `createTicket` → `refreshActiveWs`.
+- **Bug 2 (Tickets count=0 live):** not a buildable atom — running daemon predates tickets GET+POST routes; founder `scripts/oz.sh restart` activates both (Oscar cannot restart). Infra follow-on noted: extend ticket 0010 auto-rebuild to `packages/daemon/**`.
+- **Atom 4 gate (verified):** ticket-fix launch still **GATED** on `new-primary-root` Addendum Atom 2 — `RunInput`/`launchRun` hard-typed to `priorityId`; ratified decision 2 forbids a parallel ticket-launch lane.
+- **Gates:** core 284/284, daemon 203/203, UI 121/121 green; typecheck shows only 3 pre-existing `not-landed` fixture errors (not introduced here).
+- **Disposition: `continue`** — Deliverable 1 code-complete; Deliverable 2 (one ticket fixed end-to-end via launched run) awaits run-target generalization.
+**Next:** `scripts/oz.sh restart` (founder — activates tickets routes live), then launch **`new-primary-root`** (Addendum Atom 2), then relaunch **`tickets-review`** for atom 4 only (proof ticket one of `0003/0005/0012`).
+
 ## 2026-06-17 — **Tickets-review: index hygiene + tickets data layer + 3-tab dashboard landed; atom 3 gated (run_121)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 3 atoms delegated/verified) | **Priority:** [tickets-review](./priorities/tickets-review.md) | **Run:** run_121

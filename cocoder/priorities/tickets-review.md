@@ -64,40 +64,32 @@ to decomposition — do not re-open without a new founder decision.
   missing from `INDEX.md`'s Open table, and the active design-ref ticket conflicted with closed
   `post-wrap-orchestration-commit-gap`. Reconciled by run_121 atom 0 as the **first build atom**.
 
-## Live-review bugs (founder, 2026-06-17 — fix in the NEXT session, before atom 3)
-The run_121 tabs passed automated tests but the founder found three defects in the running build. These
-are the next session's first atoms (UI/data fixes), ahead of the still-gated atom 3.
+## Live-review bugs (founder, 2026-06-17 — run_122)
 
-1. **Double header above the tabs.** The left panel renders BOTH the old `oz-panel-header`
-   (icon + title + count) AND the tab strip beneath it — redundant. **Fix:** remove the icon/title/count
-   header row; promote the **tab strip to be the header** and make the tabs larger/primary. Keep the
-   contextual add button. (UI only — `packages/ui/app/sections/dashboard/Dashboard.tsx`, the shared
-   header block built around `headerIcon`/`headerTitle`/`oz-panel-count`.)
-2. **Tickets count shows 0 in the live build** despite real open tickets (`0003/0005/0012`). The data
-   layer is unit-test-green (core `readTickets` against the real dir, the daemon route, `adaptTickets`),
-   so the renderer code is not the suspect. **Leading hypothesis (verify FIRST):** the running daemon
-   predates atom 1 — the UI bundle auto-rebuilds (ticket 0010) but the **daemon binary/process does
-   not**, so `GET /workspaces/:id/tickets` 404s on the live daemon and `loadWsData` degrades the fetch to
-   `[]` (`live.ts`: `ti.ok ? ti.data.tickets : []`). **Next session:** authenticate to the live daemon
-   (bearer token) and curl `/workspaces/<id>/tickets`; if it 404s/empties, the daemon needs a
-   rebuild+restart (a founder/runner lifecycle action — Oscar does not restart the daemon) and we should
-   file an infra follow-on so **daemon-touching runs auto-rebuild like the UI does** (extend ticket 0010's
-   mechanism to `packages/daemon/**`). Only if the route IS served and still returns empty, debug the
-   workspace-path/adapter join.
-3. **Inconsistent add-button behavior → RESOLVED by founder.** Priorities "Add" opens a modal that
-   creates the priority via Oz; Tickets "Add" only drops a prompt into Oz chat. **Decision:** make BOTH a
-   modal that collects details and has **Oz actually create** the item (see Design decision 4 refinement
-   above). Build a `NewTicketModal` + a create-ticket daemon endpoint mirroring `createPriority`
-   (`routes.ts:485` + `createPriorityBody` at `:140`), writing `cocoder/tickets/open/NNNN-slug.md` and
-   updating `INDEX.md` through the ADR-0023 spine; replace the run_121 chat-prefill stub.
+The run_121 tabs passed automated tests but the founder found three defects in the running build. **Bugs
+1 and 3 are code-complete (run_122); Bug 2 is infra — the live daemon predates the tickets routes.**
 
-## Decomposition — status (run_121, 2026-06-17)
+1. ✅ **FIXED (`0266172`, run_122) — Double header above the tabs.** Removed the icon/title/count row;
+   promoted the tab strip to be the panel header (larger tabs); kept the contextual per-tab add button.
+2. ⚠️ **INFRA — Tickets count shows 0 in the live build** despite real open tickets (`0003/0005/0012`).
+   The data layer is unit-test-green; the running daemon predates `GET /workspaces/:id/tickets` (run_121)
+   and `POST /workspaces/:id/tickets` (run_122). **`scripts/oz.sh restart`** (founder action — Oscar does
+   not restart the daemon) activates both routes; until then the count stays 0 and Add-ticket errors at
+   the bridge — expected, not a code defect. **Follow-on:** extend ticket 0010's finalization auto-rebuild
+   to `packages/daemon/**` so daemon-touching runs do not require manual restart.
+3. ✅ **FIXED (`bdddf29` + `efb9714`, run_122) — Add-ticket modal + create endpoint.** `NewTicketModal`
+   (title/type/priority/description) + `handleCreateTicket`; `POST /workspaces/:id/tickets` allocates
+   next NNNN, writes `cocoder/tickets/open/NNNN-slug.md`, updates `INDEX.md` via the ADR-0023 spine
+   (mirrors `createPriority`). Defaults: type `bug|task|question|spike` (default `task`); priority default
+   `none`; owner `founder-session`; created = today. Replaced the run_121 chat-prefill stub.
 
-**Disposition:** `continue` — Deliverable 1 (three dashboard tabs) shipped and unit-verified, but the
-founder live review found three build defects (above) that must be fixed next session; atom 3
-(ticket-fix launch) remains gated on `new-primary-root` Addendum Atom 2 (run-target generalization). Not
-archive-ready until the three live-review bugs are fixed AND one open ticket is fixed end-to-end via a
-launched run.
+## Decomposition — status (run_122, 2026-06-17)
+
+**Disposition:** `continue` — Deliverable 1 (three dashboard tabs + live-review fixes) is code-complete;
+   founder **`scripts/oz.sh restart`** still needed to prove Bug 2 live. Deliverable 2 (atom 4,
+   ticket-fix launch) remains **gated** on `new-primary-root` Addendum Atom 2 (run-target generalization).
+   Not archive-ready until one open ticket is fixed end-to-end via a launched run whose close lands on
+   trunk.
 
 1. ✅ **DONE (`6aa5f60`) — Ticket-index hygiene** (`cocoder/tickets/**`): `0005` added to `INDEX.md` Open
    table; duplicate ID `0007` resolved by renumbering the active design-ref ticket `0007 → 0012` (closed
@@ -109,9 +101,14 @@ launched run.
    unchanged). **The original "tabs refactor" was split into a data-layer atom + a UI atom** because
    listing real tickets required new read plumbing (no ticket reader/type/endpoint existed). Deliverable 1
    (three working tabs) complete + verified.
-3. ⛔ **GATED — Ticket-fix launch** — **on `new-primary-root` Addendum Atom 2** (decision 2). Verified
-   run_121: `RunInput`/`buildRunInput`/`launchRun` are still hard-typed to `priorityId` and no
-   `target = ticket | priority | playbook` abstraction exists. From the Tickets tab, launches a fix run
-   that closes the ticket via the spine — but must **reuse** the generalized run-target, not fork. Relaunch
-   `tickets-review` for this atom only after `new-primary-root` Addendum Atom 2 lands; proof ticket = one
-   of `0003 / 0005 / 0012`.
+3. ✅ **DONE (run_122) — Live-review fixes (bugs 1 + 3; Bug 2 = founder daemon restart).**
+   - **`0266172` — Bug 1:** tab strip promoted to panel header; dashboard test assertions updated.
+   - **`bdddf29` — Bug 3 backend:** `POST /workspaces/:id/tickets` + electron IPC + `createTicket` client.
+   - **`efb9714` — Bug 3 UI:** `NewTicketModal` + `handleCreateTicket`; chat-prefill stub removed.
+   - **Bug 2 (count=0):** not a buildable atom — stale daemon; founder `scripts/oz.sh restart`.
+4. ⛔ **GATED — Ticket-fix launch (Deliverable 2, atom 4)** — **on `new-primary-root` Addendum Atom 2**
+   (decision 2). Verified run_121/run_122: `RunInput`/`buildRunInput`/`launchRun` are still hard-typed to
+   `priorityId`; no `target = ticket | priority | playbook` abstraction exists. From the Tickets tab,
+   launches a fix run that closes the ticket via the spine — but must **reuse** the generalized run-target,
+   not fork. Relaunch `tickets-review` for this atom only after `new-primary-root` Addendum Atom 2 lands;
+   proof ticket = one of `0003 / 0005 / 0012`.

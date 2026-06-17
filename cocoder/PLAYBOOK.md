@@ -229,15 +229,13 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   claims" to first-class structure; e.g. `integration-verify` *runs* the real check instead of prompting an
   agent to). Step 1 is an **ADR-0010 taxonomy amendment** the founder confirms at launch (the Play-component
   shape); then schema (`Play` type) + dispatch + reimplement `integration-verify` as the hybrid proof.
-- `tickets-review` — **DELIVERABLE 1 DONE; atom 3 GATED (run_121, 2026-06-17).** Objective ratified
-  2026-06-17. Landed: ticket-index hygiene (`6aa5f60`, open tickets now **0003/0005/0012**), tickets data
-  layer (`5da8926`, core `readTickets` → daemon `GET /workspaces/:id/tickets` → UI adapter/fixture), and
-  the **3-tab dashboard panel** (`70940a1`, Priorities/Tickets/Runs cycle in place; Runs replaced the old
-  history button+modal; Priorities unchanged). **Remaining = atom 3, a ticket-fix run** that closes a
-  ticket through the spine — **GATED** on `new-primary-root` **Addendum Atom 2 (run target + daemon launch
-  surface)**: `RunInput`/`launchRun` are still hard-typed to `priorityId`, and ratified decision 2 forbids
-  forking a parallel ticket-launch lane. **Next:** land `new-primary-root` Addendum Atom 2, then relaunch
-  for atom 3 (proof ticket one of `0003/0005/0012`).
+- `tickets-review` — **DELIVERABLE 1 CODE-COMPLETE; atom 4 GATED (run_122, 2026-06-17).** Objective
+  ratified 2026-06-17. Landed: ticket-index hygiene + tickets data layer + 3-tab panel (run_121); live-review
+  fixes (`0266172`/`bdddf29`/`efb9714` — tab header, `POST /tickets` + `NewTicketModal`). **Founder:
+  `scripts/oz.sh restart`** to activate tickets GET+POST on the live daemon (Bug 2 count=0 is stale-process,
+  not code). **Remaining = atom 4, a ticket-fix run** that closes a ticket through the spine — **GATED** on
+  `new-primary-root` **Addendum Atom 2 (run target + daemon launch surface)**. **Next:** restart Oz, land
+  `new-primary-root` Addendum Atom 2, then relaunch for atom 4 (proof ticket one of `0003/0005/0012`).
 - `oz-dashboard-design-tweaks` — **archive-candidate (run_115):** rounds 1–3 code-complete — settings
   trim + collapsible personas/plays + contrast (run_113), panel↔background reversal + Oz-card de-gradient
   (run_114, `97bc3a4`), Round-3 persona-card consistency + priority-row separation + stacked priority
