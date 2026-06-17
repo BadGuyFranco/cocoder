@@ -31,11 +31,24 @@ It is NOT a missing/unresolved `workspaceRef` and NOT the old last-surface invar
   field declared at driver.ts:43).
 
 Why only the initiator/final surface fails: Bob/Deb (the *prefix* surfaces) are closed via
-`closeDurableSurface` → `ctx.sessionHost.closeSurface({...})` (`launcher.ts:344`), which is called as a
+`closeDurableSurface` → `ctx.sessionHost.closeSurface({...})` (`launcher.ts:350`), which is called as a
 **bound** method and works. Only the **final remaining surface** is closed through the detached
-`closeWorkspace` reference in `closeDurableWorkspace` (`launcher.ts:353-372`) — so it alone throws. This
+`closeWorkspace` reference in `closeDurableWorkspace` (`launcher.ts:359-378`) — so it alone throws. This
 exactly matches the symptom (prefix surfaces `closed`, final Oscar surface `failed` with the `#cli` error).
 0010 (UI bundle rebuild) is unrelated — no ordering interplay.
+
+### Re-verified against live code — 2026-06-17 (Oscar, run_119, read-only)
+Diagnosis confirmed end-to-end; line numbers drifted, so the builder should target these (not the
+originals above):
+- Detach: `packages/daemon/src/launcher.ts:360` — `const closeWorkspace = ctx.sessionHost.closeWorkspace`.
+- Unbound call: `packages/daemon/src/launcher.ts:378` — `await closeWorkspace({ workspaceRef })`.
+- Throw site: `packages/session-hosts/src/cmux/driver.ts:188` — `this.#cli.run(['close-workspace', …])`;
+  `#cli` declared at `driver.ts:43`.
+- **Test-gap pinned:** the `fakeHost()` in `packages/daemon/tests/mutations.test.ts:186` defines
+  `async closeWorkspace(args) { onCloseWorkspace?.(args) }` — its body never reads `this`, so the daemon's
+  *unbound* call passes in the test while the real `CmuxSessionHost.closeWorkspace` (which reads `this.#cli`)
+  throws in production. The regression must give the fake a `closeWorkspace` that reads an instance/private
+  field via `this` (or asserts `this` is the host), so the unbound path fails *before* the fix.
 
 ### Fix (minimal, preserves the 0009 design)
 Stop detaching the method. Either keep the guard/call on the receiver:
