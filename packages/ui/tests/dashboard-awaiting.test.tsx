@@ -95,8 +95,9 @@ describe('Dashboard layout', () => {
     const column = within(firstColumn)
     const columnText = firstColumn.textContent ?? ''
 
-    expect(firstColumn.querySelector('.oz-panel-title')?.textContent).toBe('Priorities')
-    expect(firstColumn.querySelector('.oz-panel-count')?.textContent).toBe('2')
+    const activeTab = column.getByRole('button', { pressed: true })
+    expect(activeTab.textContent).toContain('Priorities')
+    expect(activeTab.textContent).toContain('2')
     expect(columnText.indexOf('Blocked priority')).toBeLessThan(columnText.indexOf('Landing priority'))
     expect(column.getByText('Ad-hoc')).toBeDefined()
     expect(column.queryByText('Awaiting you')).toBeNull()
@@ -184,7 +185,7 @@ describe('Dashboard layout', () => {
     const children = Array.from(grid.children) as HTMLElement[]
 
     expect(grid.style.gridTemplateColumns).toBe('380px 460px 6px 1fr')
-    expect(children[0].querySelector('.oz-panel-title')?.textContent).toBe('Priorities')
+    expect(within(children[0]).getByRole('button', { pressed: true }).textContent).toContain('Priorities')
     expect(within(children[1]).getByText('Transcript')).toBeDefined()
     expect(children[2].className).toBe('oz-resize-handle')
     expect(within(children[3]).getByText('Oz Terminal')).toBeDefined()
@@ -196,7 +197,7 @@ describe('Dashboard layout', () => {
     const children = Array.from(grid.children) as HTMLElement[]
 
     expect(grid.style.gridTemplateColumns).toBe('380px 6px 1fr')
-    expect(children[0].querySelector('.oz-panel-title')?.textContent).toBe('Priorities')
+    expect(within(children[0]).getByRole('button', { pressed: true }).textContent).toContain('Priorities')
     expect(children[1].className).toBe('oz-resize-handle')
     expect(within(children[2]).getByText('Oz Terminal')).toBeDefined()
   })

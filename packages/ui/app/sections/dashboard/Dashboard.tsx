@@ -51,18 +51,18 @@ function TabStrip({ active, onChange, priorities, tickets, runs }: { active: Das
             display: 'flex',
             alignItems: 'center',
             gap: 6,
-            padding: '5px 8px',
+            padding: '7px 12px',
             border: 'none',
             borderRadius: 3,
             background: active === tab.id ? 'var(--cb-accent-muted)' : 'transparent',
             color: active === tab.id ? 'var(--cb-accent)' : 'var(--cb-text-muted)',
             cursor: 'pointer',
             fontFamily: 'var(--cb-font-body)',
-            fontSize: 11.5,
+            fontSize: 13,
           }}
         >
           <span>{tab.label}</span>
-          <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, opacity: 0.75 }}>{tab.count}</span>
+          <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 11, opacity: 0.75 }}>{tab.count}</span>
         </button>
       ))}
     </div>
@@ -210,8 +210,6 @@ export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, se
   const onResizeTo = (px: number) => setPrioWidth(Math.max(PRIO_MIN, Math.min(PRIO_MAX, px)))
   const gridTemplateColumns = selectedRun ? `${prioWidth}px 460px 6px 1fr` : `${prioWidth}px 6px 1fr`
   const openTicketCount = tickets.filter((ticket) => ticket.state === 'open').length
-  const headerIcon = activeTab === 'priorities' ? 'list-numbers' : activeTab === 'tickets' ? 'ticket' : 'clock-counter-clockwise'
-  const headerTitle = activeTab === 'priorities' ? 'Priorities' : activeTab === 'tickets' ? 'Tickets' : 'Runs'
   const addTitle = activeTab === 'priorities' ? 'Add priority' : activeTab === 'tickets' ? 'Add ticket' : ''
   const addAction = activeTab === 'priorities' ? onAddPriority : activeTab === 'tickets' ? onAddTicket : null
   return (
@@ -219,10 +217,7 @@ export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, se
       <div style={{ minHeight: 0 }}>
         <div className="oz-panel oz-priorities-panel" style={{ height: '100%' }}>
           <div className="oz-panel-header" style={{ gap: 10, flexWrap: 'wrap' }}>
-            <Icon name={headerIcon} size={15} style={{ color: 'var(--cb-accent)' }} />
-            <div className="oz-panel-title">{headerTitle}</div>
-            <span className="oz-panel-count">{activeTab === 'priorities' ? priorities.length : activeTab === 'tickets' ? openTicketCount : runs.length}</span>
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center', minWidth: 0 }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0 }}>
               <TabStrip active={activeTab} onChange={setActiveTab} priorities={priorities.length} tickets={openTicketCount} runs={runs.length} />
               {addAction && <button className="oz-iconbtn" title={addTitle} onClick={addAction} style={{ width: 26, height: 26, flexShrink: 0 }}><Icon name="plus" size={13} /></button>}
             </div>
