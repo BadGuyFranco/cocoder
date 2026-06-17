@@ -38,3 +38,32 @@ no broader restyle.
 - Conflict-scan (light): no ADR governs dashboard styling; an older note referenced an "Oz dashboard
   archived" event — the dashboard code is live in `packages/ui`, so confirm current state before
   editing. Draft Objective; founder ratifies at the priority-start alignment beat (ADR-0010).
+
+## Round-1 outcome (run_113, committed on `main`)
+All three atoms shipped and committed: settings trim (`f3d55dd`), collapsible personas/plays
+(`2995b1b`), contrast tokens (`87fe8bc`), wrap docs (`713db8c`). typecheck clean, UI suite 113/113.
+Founder rebuilt the bundle and visually reviewed — items 2 (collapsible) and 3 (settings trim)
+confirmed good. Item 1 (contrast) needs another pass; see below.
+
+## Round-2 — founder visual refinements (NOT yet built — needs a fresh build run)
+The round-1 contrast pass over-corrected / mis-read the intended direction. The founder's actual
+target, confirmed by eye on the running app:
+
+1. **Dark mode — REVERSE the panel↔background relationship.** Currently the background is dark and
+   panels are the lighter surface; the founder wants this reversed — **panels should read darker than
+   the background** (background the lighter tone, panels recessed/darker). Tune `--cb-bg`/`--cb-bg-soft`
+   and the panel surfaces (`--cb-surface` / `--cb-surface-glass`) in the dark theme accordingly
+   (`packages/ui/app/styles/fusion.css`, mirror to `design-ref/design-system/colors_and_type.css`).
+   Watch that text/border tokens still read against the new panel tone.
+2. **Light mode — background a touch darker.** Nudge `--cb-bg` (and `--cb-bg-soft` as needed) slightly
+   darker in the light theme so panels (already brighter post-round-1) separate more cleanly.
+3. **Oz persona card gradient — remove it.** `packages/ui/app/sections/Personas.tsx` L70: the Oz
+   (`isOz`) Card uses `background: 'linear-gradient(180deg, var(--cb-accent-subtle) 0%,
+   var(--cb-surface-glass) 60%)'`, which makes the Oz panel hard to read. Replace with a solid,
+   readable surface (e.g. `var(--cb-surface)`), keeping the accent border (`--cb-accent-15`) so Oz is
+   still visually distinguished without the unreadable wash.
+
+Boundary unchanged: UI-only (`packages/ui`); no run/orchestration behavior. Item 1 verify remains a
+**founder visual check on the running app** (rebuild required to see it — see ticket 0010). After this
+round lands, founder rebuilds (or the runner auto-rebuilds once 0010 is done) and confirms; if good,
+archive.

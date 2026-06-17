@@ -16,6 +16,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 | [0003](./open/0003-public-docs-v1-stale.md) | Public docs/ tree is v1-stale (commands, PRIORITIES.md, cocoder/local, routes) | task | none | founder-session |
 | [0007](./open/0007-design-ref-rebuild-clobber-guard.md) | Guard against design-ref rebuilds reverting committed packages/ui/app fixes | task | oz-dashboard-bugs | oscar run_94 |
 | [0009](./open/0009-teardown-cannot-close-last-surface.md) | Teardown fails to close the run's last surface (cmux last-surface invariant) | bug | none | oscar run_111 |
+| [0010](./open/0010-auto-rebuild-ui-bundle-after-dashboard-changes.md) | Auto-rebuild the Oz UI bundle after a run changes packages/ui (no manual `pnpm build`) | task | oz-dashboard-design-tweaks | oscar run_113 |
 
 ## Recently Closed
 
