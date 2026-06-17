@@ -105,9 +105,9 @@ function AdhocPriorityRow({ adhocRuns, onLaunch, onSelectRun, selectedRunId, lau
   )
 }
 
-export function PrioritiesPanel({ priorities, runs, onReorder, onLaunch, onAdhoc, onAddPriority, onSelectRun, onOpenRunHistory, selectedRunId }: {
+export function PrioritiesPanel({ priorities, runs, onReorder, onLaunch, onAdhoc, onAddPriority, onSelectRun, selectedRunId }: {
   priorities: Priority[]; runs: Run[]; onReorder: (from: number, to: number) => void; onLaunch: (p: Priority) => void
-  onAdhoc: () => void; onAddPriority: () => void; onSelectRun: (id: string) => void; onOpenRunHistory: () => void; selectedRunId: string | null
+  onAdhoc: () => void; onAddPriority: () => void; onSelectRun: (id: string) => void; selectedRunId: string | null
 }) {
   const [drag, setDrag] = useState<{ from: number | null; over: number | null }>({ from: null, over: null })
   const handleDrag = (type: string, index: number) => {
@@ -122,36 +122,23 @@ export function PrioritiesPanel({ priorities, runs, onReorder, onLaunch, onAdhoc
   // truly in-flight ('running') run holds the lock — settled runs have ended.
   const launchBlocked = runs.some((r) => r.status === 'running')
   return (
-    <div className="oz-panel oz-priorities-panel" style={{ height: '100%' }}>
-      <div className="oz-panel-header">
-        <Icon name="list-numbers" size={15} style={{ color: 'var(--cb-accent)' }} />
-        <div className="oz-panel-title">Priorities</div>
-        <span className="oz-panel-count">{priorities.length}</span>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 4, alignItems: 'center' }}>
-          <button onClick={onOpenRunHistory} title={`Run history (${runs.length})`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 9px', background: 'transparent', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', color: 'var(--cb-text-muted)', fontSize: 11, fontFamily: 'var(--cb-font-body)', cursor: 'pointer' }}>
-            <Icon name="clock-counter-clockwise" size={12} /><span>Run history</span><span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10 }}>{runs.length}</span>
-          </button>
-          <button className="oz-iconbtn" title="Add priority" onClick={onAddPriority} style={{ width: 26, height: 26 }}><Icon name="plus" size={13} /></button>
+    <>
+      <AdhocPriorityRow adhocRuns={adhocRuns} onLaunch={onAdhoc} onSelectRun={onSelectRun} selectedRunId={selectedRunId} launchBlocked={launchBlocked} />
+      {priorities.length === 0 ? (
+        <div className="oz-empty" style={{ padding: '32px 16px' }}>
+          <div className="oz-empty-icon" style={{ width: 44, height: 44 }}><Icon name="list-numbers" size={22} /></div>
+          <div className="oz-empty-title">Nothing queued</div>
+          <div className="oz-empty-body">Ask Oz to draft your first priority, or add one yourself.</div>
+          <Button variant="secondary" size="sm" icon="plus" onClick={onAddPriority}>Add priority</Button>
         </div>
-      </div>
-      <div className="oz-panel-body">
-        <AdhocPriorityRow adhocRuns={adhocRuns} onLaunch={onAdhoc} onSelectRun={onSelectRun} selectedRunId={selectedRunId} launchBlocked={launchBlocked} />
-        {priorities.length === 0 ? (
-          <div className="oz-empty" style={{ padding: '32px 16px' }}>
-            <div className="oz-empty-icon" style={{ width: 44, height: 44 }}><Icon name="list-numbers" size={22} /></div>
-            <div className="oz-empty-title">Nothing queued</div>
-            <div className="oz-empty-body">Ask Oz to draft your first priority, or add one yourself.</div>
-            <Button variant="secondary" size="sm" icon="plus" onClick={onAddPriority}>Add priority</Button>
+      ) : (
+        <>
+          <div style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 9.5, color: 'var(--cb-text-muted)', letterSpacing: 0.5, padding: '4px 4px 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>QUEUE · ↑ TOP = NEXT UP</span><span style={{ flex: 1, height: 1, background: 'var(--cb-border)' }} />
           </div>
-        ) : (
-          <>
-            <div style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 9.5, color: 'var(--cb-text-muted)', letterSpacing: 0.5, padding: '4px 4px 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span>QUEUE · ↑ TOP = NEXT UP</span><span style={{ flex: 1, height: 1, background: 'var(--cb-border)' }} />
-            </div>
-            {priorities.map((p, i) => <PriorityRow key={p.id} priority={p} index={i} onLaunch={onLaunch} onSelectRun={onSelectRun} onDrag={handleDrag} isDragging={drag.from === i} isDropTarget={drag.over === i && drag.from !== i} runs={runs} selectedRunId={selectedRunId} launchBlocked={launchBlocked} />)}
-          </>
-        )}
-      </div>
-    </div>
+          {priorities.map((p, i) => <PriorityRow key={p.id} priority={p} index={i} onLaunch={onLaunch} onSelectRun={onSelectRun} onDrag={handleDrag} isDragging={drag.from === i} isDropTarget={drag.over === i && drag.from !== i} runs={runs} selectedRunId={selectedRunId} launchBlocked={launchBlocked} />)}
+        </>
+      )}
+    </>
   )
 }

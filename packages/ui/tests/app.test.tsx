@@ -57,7 +57,7 @@ describe('Oz — rebuilt Fusion renderer', () => {
   it('Dashboard is built around the Oz Terminal with the priorities queue', () => {
     render(<App />)
     expect(screen.getByText('Oz Terminal')).toBeDefined()
-    expect(screen.getByText('Priorities')).toBeDefined()
+    expect(screen.getAllByText('Priorities').length).toBeGreaterThan(0)
     expect(screen.getByText('Ad-hoc')).toBeDefined()
     expect(screen.getByText(/Persona sub-agent fallback/)).toBeDefined()
   })

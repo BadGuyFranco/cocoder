@@ -58,7 +58,6 @@ function renderPanel({
         onAdhoc={vi.fn()}
         onAddPriority={vi.fn()}
         onSelectRun={onSelectRun}
-        onOpenRunHistory={vi.fn()}
       />,
     ),
   }

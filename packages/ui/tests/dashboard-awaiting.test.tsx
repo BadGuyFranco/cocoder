@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, fireEvent, cleanup, within } from '@testing-library/react'
 import { useState } from 'react'
 import { Dashboard } from '../app/sections/dashboard/Dashboard.tsx'
-import type { ChatMessage, Priority, Run, Workspace } from '../app/model.ts'
+import type { ChatMessage, Priority, Run, Ticket, Workspace } from '../app/model.ts'
 
 const workspace: Workspace = {
   id: 'ws',
@@ -15,6 +15,13 @@ const workspace: Workspace = {
 const priorities: Priority[] = [
   { id: 'p-blocked', name: 'Blocked priority', summary: 'Needs founder input.', status: 'ready', labels: [] },
   { id: 'p-landed', name: 'Landing priority', summary: 'Needs landing resolution.', status: 'ready', labels: [] },
+]
+
+const tickets: Ticket[] = [
+  { id: '0003', title: 'Public docs/ tree is v1-stale', type: 'task', status: 'Open', priority: 'none', owner: 'founder-session', created: '2026-06-10', state: 'open', body: '# 0003 — Public docs/ tree is v1-stale\n\nDocs need reconciliation.' },
+  { id: '0005', title: 'Migrate orchestrator session memory into persona/standards files', type: 'task', status: 'Open', priority: 'none', owner: 'founder-session', created: '2026-06-12', state: 'open', body: '# 0005 — Persona-file memory migrations\n\nMove memory into governed files.' },
+  { id: '0012', title: 'Guard against design-ref rebuilds reverting committed packages/ui/app fixes', type: 'task', status: 'Open', priority: 'oz-dashboard-bugs', owner: 'oscar run_94', created: '2026-06-15', state: 'open', body: '# 0012 — design-ref rebuild-clobber guard\n\nPrevent rebuild clobbers.' },
+  { id: '0008', title: 'Wrapped Oscar support path', type: 'bug', status: 'Closed', priority: 'governance-authoring-plays', owner: 'deb', created: '2026-06-16', state: 'closed', body: '# 0008 — closed' },
 ]
 
 const run = (id: string, status: Run['status'], priorityId: string | null = 'p-blocked'): Run => ({
@@ -32,12 +39,25 @@ const run = (id: string, status: Run['status'], priorityId: string | null = 'p-b
 
 const messages: ChatMessage[] = [{ id: 'm1', role: 'oz', body: 'Watching.', time: 'now' }]
 
-function DashboardHarness({ runs, initialSelectedRunId = null, queuePriorities = priorities }: { runs: Run[]; initialSelectedRunId?: string | null; queuePriorities?: Priority[] }) {
+function DashboardHarness({
+  runs,
+  initialSelectedRunId = null,
+  queuePriorities = priorities,
+  onAddPriority = vi.fn(),
+  onAddTicket = vi.fn(),
+}: {
+  runs: Run[]
+  initialSelectedRunId?: string | null
+  queuePriorities?: Priority[]
+  onAddPriority?: () => void
+  onAddTicket?: () => void
+}) {
   const [selectedRunId, setSelectedRunId] = useState<string | null>(initialSelectedRunId)
   return (
     <Dashboard
       workspace={workspace}
       priorities={queuePriorities}
+      tickets={tickets}
       runs={runs}
       ozMessages={messages}
       selectedRunId={selectedRunId}
@@ -45,13 +65,12 @@ function DashboardHarness({ runs, initialSelectedRunId = null, queuePriorities =
       onReorder={vi.fn()}
       onLaunch={vi.fn()}
       onAdhoc={vi.fn()}
-      onAddPriority={vi.fn()}
+      onAddPriority={onAddPriority}
+      onAddTicket={onAddTicket}
       onSend={vi.fn()}
       onDecision={vi.fn()}
       onRunAction={vi.fn()}
       ozTyping={false}
-      runHistoryOpen={false}
-      setRunHistoryOpen={vi.fn()}
     />
   )
 }
@@ -76,7 +95,7 @@ describe('Dashboard layout', () => {
     const column = within(firstColumn)
     const columnText = firstColumn.textContent ?? ''
 
-    expect(column.getByText('Priorities')).toBeDefined()
+    expect(firstColumn.querySelector('.oz-panel-title')?.textContent).toBe('Priorities')
     expect(firstColumn.querySelector('.oz-panel-count')?.textContent).toBe('2')
     expect(columnText.indexOf('Blocked priority')).toBeLessThan(columnText.indexOf('Landing priority'))
     expect(column.getByText('Ad-hoc')).toBeDefined()
@@ -90,13 +109,82 @@ describe('Dashboard layout', () => {
     expect(screen.getAllByText('Blocked priority').length).toBeGreaterThan(1)
   })
 
+  it('cycles the left panel between Priorities, Tickets, and Runs', () => {
+    render(<DashboardHarness runs={[run('running', 'running')]} />)
+
+    expect(screen.getByText('Ad-hoc')).toBeDefined()
+
+    fireEvent.click(screen.getByRole('button', { name: /Tickets 3/i }))
+    expect(screen.getByText('0003')).toBeDefined()
+    expect(screen.queryByText('Ad-hoc')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: /Runs 1/i }))
+    expect(screen.getByRole('button', { name: /All 1/i })).toBeDefined()
+    expect(screen.getByText('Run running')).toBeDefined()
+  })
+
+  it('lists open tickets and opens a readable in-panel detail view', () => {
+    render(<DashboardHarness runs={[run('running', 'running')]} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /Tickets 3/i }))
+
+    expect(screen.getByText('0003')).toBeDefined()
+    expect(screen.getByText('0005')).toBeDefined()
+    expect(screen.getByText('0012')).toBeDefined()
+    expect(screen.queryByText('0008')).toBeNull()
+
+    fireEvent.click(screen.getByText('Guard against design-ref rebuilds reverting committed packages/ui/app fixes'))
+
+    expect(screen.getByRole('button', { name: /Back to tickets/i })).toBeDefined()
+    expect(screen.getByText('owner')).toBeDefined()
+    expect(screen.getByText('oscar run_94')).toBeDefined()
+    expect(screen.getByText(/Prevent rebuild clobbers/)).toBeDefined()
+  })
+
+  it('shows runs in-panel with filters and opens a run row', () => {
+    render(<DashboardHarness runs={[run('running', 'running'), run('done', 'complete', 'p-landed'), run('failed', 'failed', null)]} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /Runs 3/i }))
+
+    expect(screen.getByRole('button', { name: /All 3/i })).toBeDefined()
+    expect(screen.getByRole('button', { name: /Active 1/i })).toBeDefined()
+    expect(screen.getByRole('button', { name: /Complete 1/i })).toBeDefined()
+    expect(screen.getByRole('button', { name: /Failed \/ stopped 1/i })).toBeDefined()
+    expect(screen.getByText('Run running')).toBeDefined()
+
+    fireEvent.click(screen.getByRole('button', { name: /Complete 1/i }))
+    expect(screen.getByText('Run done')).toBeDefined()
+    expect(screen.queryByText('Run running')).toBeNull()
+
+    fireEvent.click(screen.getByText('Run done'))
+    expect(screen.getByText('Transcript')).toBeDefined()
+    expect(screen.getByText('transcript done')).toBeDefined()
+  })
+
+  it('uses a contextual add button for Priorities and Tickets, with no add button on Runs', () => {
+    const onAddPriority = vi.fn()
+    const onAddTicket = vi.fn()
+    render(<DashboardHarness runs={[run('running', 'running')]} onAddPriority={onAddPriority} onAddTicket={onAddTicket} />)
+
+    fireEvent.click(screen.getByTitle('Add priority'))
+    expect(onAddPriority).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(screen.getByRole('button', { name: /Tickets 3/i }))
+    fireEvent.click(screen.getByTitle('Add ticket'))
+    expect(onAddTicket).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(screen.getByRole('button', { name: /Runs 1/i }))
+    expect(screen.queryByTitle('Add priority')).toBeNull()
+    expect(screen.queryByTitle('Add ticket')).toBeNull()
+  })
+
   it('places the selected run drawer between priorities and chat, with the resize handle on the drawer far edge', () => {
     const { container } = render(<DashboardHarness runs={[run('running', 'running')]} initialSelectedRunId="running" />)
     const grid = container.firstElementChild as HTMLElement
     const children = Array.from(grid.children) as HTMLElement[]
 
     expect(grid.style.gridTemplateColumns).toBe('380px 460px 6px 1fr')
-    expect(within(children[0]).getByText('Priorities')).toBeDefined()
+    expect(children[0].querySelector('.oz-panel-title')?.textContent).toBe('Priorities')
     expect(within(children[1]).getByText('Transcript')).toBeDefined()
     expect(children[2].className).toBe('oz-resize-handle')
     expect(within(children[3]).getByText('Oz Terminal')).toBeDefined()
@@ -108,7 +196,7 @@ describe('Dashboard layout', () => {
     const children = Array.from(grid.children) as HTMLElement[]
 
     expect(grid.style.gridTemplateColumns).toBe('380px 6px 1fr')
-    expect(within(children[0]).getByText('Priorities')).toBeDefined()
+    expect(children[0].querySelector('.oz-panel-title')?.textContent).toBe('Priorities')
     expect(children[1].className).toBe('oz-resize-handle')
     expect(within(children[2]).getByText('Oz Terminal')).toBeDefined()
   })

@@ -72,11 +72,10 @@ export function App() {
   const seedTickets = (seed as unknown as { tickets?: Record<string, Ticket[]> }).tickets ?? {}
   const seedChat = (seed as unknown as { ozChat?: Record<string, ChatMessage[]> }).ozChat ?? {}
   const [prioritiesByWs, setPrioritiesByWs] = useState<Record<string, Priority[]>>(() => Object.fromEntries(workspaces.map((w) => [w.id, [...(seedPriorities[w.id] ?? [])]])))
-  const [, setTicketsByWs] = useState<Record<string, Ticket[]>>(() => Object.fromEntries(workspaces.map((w) => [w.id, [...(seedTickets[w.id] ?? [])]])))
+  const [ticketsByWs, setTicketsByWs] = useState<Record<string, Ticket[]>>(() => Object.fromEntries(workspaces.map((w) => [w.id, [...(seedTickets[w.id] ?? [])]])))
   const [runsByWs, setRunsByWs] = useState<Record<string, Run[]>>(seed.runsByWs)
   const [configuredByWs, setConfiguredByWs] = useState<Record<string, boolean>>({})
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null)
-  const [runHistoryOpen, setRunHistoryOpen] = useState(false)
   const [msgsByWs, setMsgsByWs] = useState<Record<string, ChatMessage[]>>(() => Object.fromEntries(workspaces.map((w) => [w.id, [...(seedChat[w.id] ?? [])]])))
   const [ozTyping, setOzTyping] = useState(false)
   const [chatPrefill, setChatPrefill] = useState<string | null>(null)
@@ -245,6 +244,7 @@ export function App() {
 
   const workspace = workspaces.find((w) => w.id === activeId) ?? workspaces[0]
   const priorities = prioritiesByWs[activeId] ?? []
+  const tickets = ticketsByWs[activeId] ?? []
   const runs = useMemo(() => runsByWs[activeId] ?? [], [runsByWs, activeId])
   const messages = (msgsByWs[activeId] && msgsByWs[activeId].length ? msgsByWs[activeId] : [greeting(workspace?.name ?? '')])
 
@@ -566,12 +566,14 @@ export function App() {
           ) : (<>
           {route === 'dashboard' && workspace && (
             <Dashboard
-              workspace={workspace} priorities={priorities} runs={runs} ozMessages={messages}
+              workspace={workspace} priorities={priorities} tickets={tickets} runs={runs} ozMessages={messages}
               workspaceConfigured={live ? configuredByWs[activeId] : undefined}
               selectedRunId={selectedRunId} setSelectedRunId={setSelectedRunId}
               onReorder={reorder} onLaunch={handleLaunch} onAdhoc={handleAdhoc}
-              onAddPriority={() => { if (live) setNewPriorityOpen(true); else onSend('Draft a new priority.') }} onSend={onSend} onDecision={(c: string) => onSend(`Decision: replay ${c} plan.`)} onRunAction={handleRunAction}
-              ozTyping={ozTyping} runHistoryOpen={runHistoryOpen} setRunHistoryOpen={setRunHistoryOpen} live={live}
+              onAddPriority={() => { if (live) setNewPriorityOpen(true); else onSend('Draft a new priority.') }}
+              onAddTicket={() => setChatPrefill('Draft a new ticket for ')}
+              onSend={onSend} onDecision={(c: string) => onSend(`Decision: replay ${c} plan.`)} onRunAction={handleRunAction}
+              ozTyping={ozTyping} live={live}
               chatPrefill={chatPrefill} onChatPrefillConsumed={() => setChatPrefill(null)}
             />
           )}
