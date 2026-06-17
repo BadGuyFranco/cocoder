@@ -1075,12 +1075,6 @@ const SettingsScreen = ({ settings, clis, personas, dependencies, onRecheckDep, 
                     ))}
                   </div>
                 </SettingsRow>
-                <SettingsRow label="Compact density" help="Tightens spacing across the app.">
-                  <Toggle on={settings.preferences.compactMode} onChange={v => update("preferences", "compactMode", v)} />
-                </SettingsRow>
-                <SettingsRow label="Reduce motion" help="Disables non-essential animation.">
-                  <Toggle on={settings.preferences.reduceMotion} onChange={v => update("preferences", "reduceMotion", v)} />
-                </SettingsRow>
                 <SettingsRow label="Sound on Oz events" help="A subtle chime when a run completes or a decision lands.">
                   <Toggle on={settings.preferences.sound} onChange={v => update("preferences", "sound", v)} />
                 </SettingsRow>

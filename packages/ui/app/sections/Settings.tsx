@@ -112,8 +112,6 @@ export function SettingsScreen({ settings, dependencies, onRecheckDep, onChange,
                     {(['dark', 'light'] as const).map((t) => <button key={t} onClick={() => update('preferences', 'theme', t)} style={{ padding: '7px 14px', fontSize: 12, background: settings.preferences.theme === t ? 'var(--cb-accent-muted)' : 'var(--cb-bg-soft)', color: settings.preferences.theme === t ? 'var(--cb-accent)' : 'var(--cb-text-muted)', border: `1px solid ${settings.preferences.theme === t ? 'var(--cb-accent-15)' : 'var(--cb-border)'}`, borderRadius: 'var(--cb-radius-md)', cursor: 'pointer', textTransform: 'capitalize' }}>{t}</button>)}
                   </div>
                 </SettingsRow>
-                <SettingsRow label="Compact density" help="Tightens spacing across the app."><Toggle on={settings.preferences.compactMode} onChange={(v) => update('preferences', 'compactMode', v)} /></SettingsRow>
-                <SettingsRow label="Reduce motion" help="Disables non-essential animation."><Toggle on={settings.preferences.reduceMotion} onChange={(v) => update('preferences', 'reduceMotion', v)} /></SettingsRow>
                 <SettingsRow label="Sound on Oz events" help="A subtle chime when a run completes or a decision lands."><Toggle on={settings.preferences.sound} onChange={(v) => update('preferences', 'sound', v)} /></SettingsRow>
                 <SettingsRow label="Send on Enter" help="Off makes Enter newline; ⌘+Enter sends."><Toggle on={settings.preferences.sendOnEnter} onChange={(v) => update('preferences', 'sendOnEnter', v)} /></SettingsRow>
               </>

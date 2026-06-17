@@ -60,12 +60,12 @@ export interface ChatMessage {
   flag?: 'decision'; attachments?: { kind: string; runId: string }[]
 }
 export interface Settings {
-  preferences: { theme: 'dark' | 'light'; compactMode: boolean; reduceMotion: boolean; sound: boolean; sendOnEnter: boolean }
+  preferences: { theme: 'dark' | 'light'; sound: boolean; sendOnEnter: boolean }
   watching: { notifyOnDecisionNeeded: boolean; notifyOnRunFailed: boolean; notifyOnRunComplete: boolean; desktopNotifications: boolean; slackWebhook: string }
   advanced: { transcriptRetention: number; autoAttach: boolean }
 }
 export const DEFAULT_SETTINGS: Settings = {
-  preferences: { theme: 'dark', compactMode: false, reduceMotion: false, sound: false, sendOnEnter: true },
+  preferences: { theme: 'dark', sound: false, sendOnEnter: true },
   watching: { notifyOnDecisionNeeded: true, notifyOnRunFailed: true, notifyOnRunComplete: false, desktopNotifications: true, slackWebhook: '' },
   advanced: { transcriptRetention: 7, autoAttach: true },
 }

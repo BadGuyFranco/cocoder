@@ -334,8 +334,6 @@ window.OZ_DATA = {
     },
     preferences: {
       theme: "dark",
-      reduceMotion: false,
-      compactMode: false,
       sound: true,
       sendOnEnter: true,
     },
