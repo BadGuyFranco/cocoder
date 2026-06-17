@@ -163,12 +163,19 @@ Atoms 1–10) follow **after the founder ratification gate**, re-sequenced so th
     Fastify + tRPC + Zod on **Cloud Run** · **Neon Postgres + Drizzle** · pg-boss · **BetterAuth** · Stripe ·
     Resend · GitHub Actions + WIF.
 
-  **Open judgment call for the Atom E session (founder decides):** which stack ships as *the* default
-  New-Primary starter, and which become pluggable options? The CoPublisher v1 stack is highly specialized
-  for content/SEO publishing; the CoBuilder service pattern is the more generic SaaS shape. Likely answer is
-  the pluggable registry ships >1 starter with one marked default — but the *default* choice + the
-  non-negotiables list are the founder's call, to be confirmed when Atom E runs. This capture is design
-  INPUT, not a ratified decision.
+  **Founder hosting guidance (2026-06-16, post-wrap directive — confirms pluggable, multi-stack).** The
+  founder resolved the default-vs-pluggable question toward **multiple starters selected by project type**,
+  with hosting chosen by what the project IS:
+  - **Static content / publishing site** → **Cloudflare Workers** (the CoPublisher v1 pattern above).
+  - **Non-static / dynamic web app** → **Vercel**.
+  - **More complex backend services** → **Google Cloud** (Cloud Run + Neon Postgres + Drizzle, the
+    "CoBuilder service pattern" above).
+
+  So the New-Primary tech-stack starter is a **pluggable registry shipping >1 starter**, not a single
+  default; the selection seam keys off project type (static-publishing / web-app / backend-service), and a
+  user can still bring their own. Remaining for the Atom E session to confirm with the founder: the exact
+  starter set + per-starter non-negotiables (testing, auth, package manager, lint/format, CI), and whether
+  one starter is the "if unsure" fallback default. This capture is design INPUT, not a ratified decision.
 
 **Founder ratification gate (after A–E):** founder ratifies the deepened addendum (A–D) + the New-Primary
 tech-stack approach (E), and names the top-tier `deep-read` default `{cli, model}` (addendum §Founder
