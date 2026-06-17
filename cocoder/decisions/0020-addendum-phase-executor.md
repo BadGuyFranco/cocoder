@@ -89,13 +89,19 @@ table and maps the known phase titles to the `kind` enum. If a shipped Playbook 
 the loader refuses that Playbook instead of guessing. Tests in `packages/core/tests/playbooks.test.ts`
 pin the exact phase lists for all three shipped skeletons.
 
+Takeover does not add a separate intake phase. The shipped Takeover table is fixed as P0 Scaffold, P1
+Recon, P2 deep read, P3 cross-check, P4 Synthesize, P5 Ratify, P6 Prove; its intent capture is folded
+into P1 Recon and confirmed at the existing P1 founder gate. The `intake` phase kind remains for the
+shipped New Primary Playbook, which already has a P1 intake conversation because there is no existing
+codebase to audit. Drift does not get an intake beat.
+
 Runtime state lives in:
 
 - `local/runs/<runId>/playbook-state.json` — current phase, gate id, artifact paths, subsystem ids,
   P2 convergence state, and resume token.
 - `local/runs/<runId>/playbook/<phase-id>/...` — phase artifacts such as `inventory.json`,
-  `subsystems.json`, `findings/<subsystem>.md`, `convergence/<subsystem>.json`,
-  `cross-check.md`, `drafts/`, and `ratification.json`.
+  `subsystems.json`, `intent.json`, `estimate.json`, `findings/<subsystem>.md`,
+  `convergence/<subsystem>.json`, `cross-check.md`, `drafts/`, and `ratification.json`.
 - `RunEvent` rows — `playbook-phase-start`, `playbook-phase-complete`, `playbook-founder-gate`,
   `playbook-resume`, `playbook-fanout-dispatch`, `playbook-fanout-result`, and
   `playbook-phase-commit`.
@@ -106,8 +112,8 @@ screen scraping.
 
 ## P1 Recon And Subsystem Enumeration
 
-P1 Takeover recon produces `playbook/P1/inventory.json`, `playbook/P1/subsystems.json`, and
-`playbook/P1/estimate.json`.
+P1 Takeover recon produces `playbook/P1/inventory.json`, `playbook/P1/subsystems.json`,
+`playbook/P1/intent.json`, and `playbook/P1/estimate.json`.
 
 The recon has two layers:
 
@@ -125,6 +131,19 @@ The recon has two layers:
    add judgment-based complexity signals: cross-subsystem coupling, unclear ownership, stack
    heterogeneity not obvious from manifests, missing or weak validation, unusually broad entry points,
    and high-risk surfaces that need deeper audit attention.
+
+P1 also captures Takeover intent so authored governance reflects where the repo is going, not only what
+the current code is. This is a beat inside P1 Recon, not a new Takeover phase. It has two input classes:
+
+- **Purpose from artifacts:** mechanically enumerate and agentically summarize README files, docs,
+  changelog or release notes, package metadata, issue tracker material if reachable through existing
+  repo configuration, recent commit themes, release tags, and branch names. These inputs produce
+  inferred-purpose claims only when they cite provenance such as file paths, commit hashes, tag names,
+  or issue identifiers.
+- **Founder-stated intent:** at the existing P1 founder gate, ask a short bounded interview alongside
+  subsystem-map and spend approval: what the project is for, where it is going, what must not change,
+  and the near-term milestones or launch constraints. These answers are founder assertions, not inferred
+  repo facts.
 
 Subsystems are the smallest reviewable areas that make sense for one context window. P1 must include:
 
@@ -150,8 +169,12 @@ named entry points/tests to check. Scaling only moves toward the existing P3 cei
 minutes, and 125k captured model tokens for the P3 loop. The "remaining P3 budget allocation" consumed
 by P3 is this approved P3 allocation minus captured P3 spend.
 
-P1 accumulates estimate artifacts on disk:
+P1 accumulates artifacts on disk:
 
+- `playbook/P1/intent.json` is the machine-readable intent record: captured purpose inferred from
+  artifacts, founder-stated direction and milestones, must-not-change constraints, open intent
+  questions, and provenance for every item. The record separates `inferredFromArtifacts` from
+  `founderAsserted` so P4 cannot launder a guess into a founder decision.
 - `playbook/P1/estimate.json` is the machine-readable estimate and approved-plan candidate:
   complexity signals by subsystem, selected complexity tier by subsystem, P2 allocation by subsystem,
   P3 allocation, projected token cost and projected wall-clock per phase and per subsystem, assumptions
@@ -161,17 +184,20 @@ P1 accumulates estimate artifacts on disk:
   day or the expected plan requires staged execution.
 - `pickup.md` includes a human-readable estimate summary for the gate: subsystem count, expected and
   high-band time/cost, the depth tier implied by the plan, the assumptions behind any dollar figure, the
-  multi-day signal when present, and the concrete spend decision needed to resume.
+  multi-day signal when present, the short founder intent interview, and the concrete spend decision
+  needed to resume.
 
 Estimate bands are honest uncertainty, not guarantees. Post-hoc P2 cap/spend data recorded in
 `playbook/P2/convergence/<subsystem-id>.json` can refine future estimates, but the current run is
 bounded by the founder-approved allocation and the hard phase caps.
 
-P1 must not spend P2 money. It samples enough to define boundaries, command inventory, complexity
-signals, and the spend plan, then pauses. The P1 founder gate approves or edits `subsystems.json` and
-approves the spend decision from `estimate.json` before P2 fan-out begins. Drift and New Primary can use
-the same estimate shape with lighter inputs and a lighter or optional spend gate; Takeover always
-requires the explicit P1 spend decision.
+P1 must not spend P2 money. It samples enough to define boundaries, command inventory, inferred purpose,
+complexity signals, and the spend plan, then pauses. The P1 founder gate approves or edits
+`subsystems.json`, completes or confirms `intent.json`, and approves the spend decision from
+`estimate.json` before P2 fan-out begins. Drift and New Primary can use the same estimate shape with
+lighter inputs and a lighter or optional spend gate; Takeover always requires the explicit P1 spend
+decision. New Primary keeps its existing intake conversation as the primary source of intent, and Drift
+does not add founder intent intake because it audits existing governance against reality.
 
 ## Founder Gate Interleave
 
@@ -192,13 +218,15 @@ and P5 ratification cannot be confused with ordinary free-text pickup.
 
 Required gates:
 
-- **Takeover P1 gate:** founder approves or edits the subsystem map and makes an explicit spend
-  decision over `estimate.json`. The gate presents both `subsystems.json` and `estimate.json`, with the
-  estimate summary in `pickup.md`. The typed resume payload must carry the approved subsystem map
-  revision and one spend decision: approve the plan and spend as-is, edit scope by dropping or merging
-  subsystems to reduce cost, or choose a shallower depth tier that lowers allocations beneath the hard
-  caps. The executor records the approved allocation in `playbook-state.json` and does not dispatch any
-  P2 deep-read job until this gate resumes with both subsystem-map approval and spend approval.
+- **Takeover P1 gate:** founder approves or edits the subsystem map, answers or confirms the bounded
+  intent interview, and makes an explicit spend decision over `estimate.json`. The gate presents
+  `subsystems.json`, `intent.json`, and `estimate.json`, with the intent questions and estimate summary
+  in `pickup.md`. The typed resume payload must carry the approved subsystem map revision, founder
+  intent answers or confirmations with provenance marked as founder asserted, and one spend decision:
+  approve the plan and spend as-is, edit scope by dropping or merging subsystems to reduce cost, or
+  choose a shallower depth tier that lowers allocations beneath the hard caps. The executor records the
+  approved intent record and allocation in `playbook-state.json` and does not dispatch any P2 deep-read
+  job until this gate resumes with subsystem-map approval, intent confirmation, and spend approval.
 - **Takeover P5 gate:** founder ratifies each drafted Objective. The executor does not mark candidate
   priorities runnable, and does not launch P6, until this gate resumes with ratified Objectives.
 - **Drift P5 gate:** founder selects which amendments/tickets to apply. P1-P4 remain propose-only.
@@ -355,13 +383,17 @@ P3 accumulates artifacts on disk:
 
 ## P4 Synthesis Into `cocoder/**`
 
-P4 writes only the target primary root's `cocoder/**`, using the verified P3 findings as input.
+P4 writes only the target primary root's `cocoder/**`, using the verified P3 findings and
+`playbook/P1/intent.json` as inputs. Intent shapes which Objectives are worth drafting; verified P3
+reality keeps those Objectives honest. P4 must not turn inferred purpose into founder intent unless the
+intent record marks it as founder asserted or confirmed.
 
 Takeover P4 drafts:
 
 - `cocoder/memory/**` codebase map and tech stack;
 - architecture notes where the target template has a home for them;
-- candidate priorities with draft Objectives;
+- candidate priorities with draft Objectives that reflect founder-stated direction, repo purpose,
+  must-not-change constraints, and near-term milestones, grounded in verified P3 findings;
 - persona deltas when repo-specific behavior is necessary;
 - standards extensions when repo-specific standards are necessary.
 
