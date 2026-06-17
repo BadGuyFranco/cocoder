@@ -213,14 +213,16 @@ First build session after ratification. Three atoms landed (verified-on-evidence
    files (assignments, adhoc priority, CLAUDE pointer) are now committed to trunk with their verified
    canonical contents; the run_86 strand below is closed (recovery executed). Scaffold is complete on a
    fresh clone again and CI is green.
-2. **P2→P5 fan-out executor** — **✅ DESIGNED run_107, ratified run_110, BUILD IN PROGRESS run_111–112**
+2. **P2→P5 fan-out executor** — **✅ DESIGNED run_107, ratified run_110, BUILD IN PROGRESS run_111–123**
    ([ADR-0020 addendum](../decisions/0020-addendum-phase-executor.md)). Concrete P1→P5 execution design:
    new runner mode (not a forked loop), phase metadata from shipped Playbook tables, founder gates at
    P1/P5, P2 deep-read fan-out via `dispatchPlay`, P3 cross-check → P4 synthesize → P5 ratify through the
    ADR-0023 spine. **Landed run_111:** Atom F (`35eb066`), Atom 1 phase loader (`af48ddd`), Atom 5a recon
    helper (`a2c7195`). **Landed run_112:** Atom 3 runner primitive (`ffcce7d`), Atom 4 executor state/cursor
-   (`87cec58`). **Next:** Atom 2 launch surface → Atom 5b (agentic recon) → Atoms 6–11 + tech-stack
-   template build from E. Addendum Atoms 2, 5b–11 remain open.
+   (`87cec58`). **Landed run_123:** Atom 2 launch surface (`9f76e98`), Atom 5b agentic recon (`c165778`),
+   Atoms C/D estimate + intent (`7b9395f`/`2080437`), intent-artifact enumerator (`28ba44a`) — the full P1
+   input layer + producers. **Next:** executor P1 ACTION integration (wire producers + write
+   `playbook/P1/*.json` + `pickup.md` + pause@gate) → Atoms 6–11 + tech-stack template build from E.
 3. **Live CoPublisher Takeover proof** (Phase-5 entry) — Objective verification (a). **BLOCKED on executor
    build** (#2 above).
 4. **Dogfood Drift Audit run** — Objective verification (b). **BLOCKED on executor build** (#2 above).
@@ -343,9 +345,15 @@ directives now recorded in [addendum §Founder Ratification — RESOLVED](../dec
 - ✅ **Atom 4 — Playbook executor state + gate cursor** (`87cec58`, run_112).
   `packages/core/src/playbooks/executor.ts` — phase cursor, `playbook-state.json`, `awaiting-founder`
   pause/resume; per-phase ACTION stub seam.
-- **NEXT → Atom 2 — Run target and daemon launch surface** (fresh session; see §Executor build progress
-  run_112).
-- **Then** Atom 5b (agentic recon) → Atoms 6–11 + New-Primary tech-stack-template build from E.
+- ✅ **Atom 2 — Run target and daemon launch surface** (`9f76e98`, run_123). `Run.playbookId` discriminator;
+  `launchRun` priority\|playbook target; `POST /runs` exactly-one-of; priority runs unchanged.
+- ✅ **Atom 5b — Agentic recon pass** (`c165778`, run_123). `recon-pass.ts` → subsystems.json + complexity
+  signals + humanMap.
+- ✅ **Atoms C/D — estimate + intent** (`7b9395f`/`2080437`, run_123). `estimate.ts` + `intent.ts` with
+  capped P2/P3 allocations and structurally-enforced provenance separation.
+- ✅ **Intent-artifact enumerator** (`28ba44a`, run_123). `intent-artifacts.ts` read-only enumeration.
+- **NEXT → Executor P1 ACTION integration** (fresh session; see §Executor build progress run_123).
+- **Then** Atoms 6–11 + New-Primary tech-stack-template build from E.
 
 **Still gated:** Live Takeover (#3) and Drift Audit (#4) proofs remain gated on the executor shipping — do
 not attempt live onboarding until then.

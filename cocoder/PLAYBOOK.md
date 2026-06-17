@@ -211,31 +211,33 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    the explicit `archive` go-ahead. Playbook moved to `priorities/archive/`. Open follow-ons (do NOT
    reopen this priority): ticket 0006 closed via `headless-adapter-lane` (run_104, archive-candidate) ·
    ticket 0012 (design-ref rebuild guard).
-4. `new-primary-root` — **ACTIVE (run_112, 2026-06-17).** Onboard a primary root via the
+4. `new-primary-root` — **ACTIVE (run_123, 2026-06-17).** Onboard a primary root via the
    bootstrap/takeover/drift onboarding Playbooks (ADR-0020 Accepted). **Engine foundation built and
    live-wired** (run_83 + run_86): loader extension (§7), `scaffoldCocoderZone` + `createWorkspace`
    wiring (D1 complete), `deep-read` hardened for P3. **Executor design ratified** (run_110 cleared
-   founder gate; addendum A–E + tech-stack approach accepted). **Executor build in progress** (run_111–112):
-   Atom F design-amendment (`35eb066`); Atom 1 phase loader (`af48ddd`); Atom 5a recon helper (`a2c7195`);
-   Atom 3 runner primitive (`ffcce7d` — `agent-step.ts`); Atom 4 executor state/cursor (`87cec58` —
-   `playbooks/executor.ts`, `awaiting-founder` gate, synthetic pause/resume test). **Next:** addendum
-   **Atom 2 — run target + daemon launch surface** (Oz launches `playbookId` distinctly from `priorityId`;
-   ordinary priority runs unchanged). Then Atoms 5b → 6–11 + tech-stack-template build; live CoPublisher
-   Takeover + dogfood Drift Audit proofs remain gated on executor shipping. **Absorbs
-   `workspace-onboarding`.** Phase 5 ("first external repo").
+   founder gate; addendum A–E + tech-stack approach accepted). **Executor build in progress**
+   (run_111–123): Atoms F/1/5a/3/4 (run_111–112); **run_123 landed the full P1 input layer** — Atom 2
+   run-target + daemon launch surface (`9f76e98`), Atom 5b agentic recon (`c165778`), Atoms C/D
+   estimate + intent (`7b9395f`/`2080437`), intent-artifact enumerator (`28ba44a`). core 303 + daemon 206
+   green. **Next:** **executor P1 ACTION integration** (fresh session) — wire producers through
+   `executeAgentStep`, write `playbook/P1/*.json` + `pickup.md`, pause at P1 `awaiting-founder` gate;
+   prove start→P1→pause→resume on a fake-agent fixture. Then Atoms 6–11 + tech-stack-template build;
+   live CoPublisher Takeover + dogfood Drift Audit proofs remain gated on executor end-to-end on fakes.
+   **Absorbs `workspace-onboarding`.** Phase 5 ("first external repo").
 
 **Queued after `new-primary-root` (founder go-ahead 2026-06-16, priority-audit run_106 — in `order.json`):**
 - `hybrid-plays` — deterministic code spine inside a Play (promotes "verify, don't assert — evidence over
   claims" to first-class structure; e.g. `integration-verify` *runs* the real check instead of prompting an
   agent to). Step 1 is an **ADR-0010 taxonomy amendment** the founder confirms at launch (the Play-component
   shape); then schema (`Play` type) + dispatch + reimplement `integration-verify` as the hybrid proof.
-- `tickets-review` — **DELIVERABLE 1 CODE-COMPLETE; atom 4 GATED (run_122, 2026-06-17).** Objective
+- `tickets-review` — **DELIVERABLE 1 CODE-COMPLETE; atom 4 UNBLOCKED (run_122, 2026-06-17).** Objective
   ratified 2026-06-17. Landed: ticket-index hygiene + tickets data layer + 3-tab panel (run_121); live-review
   fixes (`0266172`/`bdddf29`/`efb9714` — tab header, `POST /tickets` + `NewTicketModal`). **Founder:
   `scripts/oz.sh restart`** to activate tickets GET+POST on the live daemon (Bug 2 count=0 is stale-process,
-  not code). **Remaining = atom 4, a ticket-fix run** that closes a ticket through the spine — **GATED** on
-  `new-primary-root` **Addendum Atom 2 (run target + daemon launch surface)**. **Next:** restart Oz, land
-  `new-primary-root` Addendum Atom 2, then relaunch for atom 4 (proof ticket one of `0003/0005/0012`).
+  not code). **Remaining = atom 4, a ticket-fix run** that closes a ticket through the spine — run-target
+  dependency **cleared** (`new-primary-root` Atom 2 landed run_123, `9f76e98`). **Queued after** executor
+  P1 ACTION integration on `new-primary-root`; then relaunch for atom 4 (proof ticket one of
+  `0003/0005/0012`).
 - `oz-dashboard-design-tweaks` — **archive-candidate (run_115):** rounds 1–3 code-complete — settings
   trim + collapsible personas/plays + contrast (run_113), panel↔background reversal + Oz-card de-gradient
   (run_114, `97bc3a4`), Round-3 persona-card consistency + priority-row separation + stacked priority
