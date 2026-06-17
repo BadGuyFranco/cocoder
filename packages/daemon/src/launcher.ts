@@ -16,6 +16,7 @@ import {
   createPlaybookP2PhaseAction,
   createPlaybookP3PhaseAction,
   createPlaybookP4PhaseAction,
+  createPlaybookP5PhaseAction,
   dispatchPlay,
   isPersonaEnabled,
   gateCommitRepair,
@@ -227,11 +228,17 @@ export function createDaemonPlaybookPhaseAction(ctx: OzContext, workspacePath: s
     runDir,
     onFounderQuestionsResult: (event) => ctx.store.recordEvent({ runId, type: 'playbook-questions-result', data: event }),
   })
+  const p5 = createPlaybookP5PhaseAction({
+    repoDir: workspacePath,
+    runDir,
+    onSynthesisResult: (event) => ctx.store.recordEvent({ runId, type: 'playbook-synthesis-result', data: event }),
+  })
   return async (input) => {
     await p1(input)
     await p2(input)
     await p3(input)
     await p4(input)
+    await p5(input)
   }
 }
 
@@ -693,6 +700,7 @@ export async function requestSupportCommitRun(ctx: OzContext, runId: string): Pr
     scope,
     message: `oscar-post-wrap: ${run.priorityId} via CoCoder run ${runId}`,
     headBefore,
+    ...(run.playbookId === 'cocoder-takeover' ? { auditWriteBoundary: { label: 'cocoder-takeover', scope: ['cocoder/**'] } } : {}),
   })
   const liveOscar = ctx.store.listSessions(runId).some((s) => s.persona === 'oscar' && ctx.liveRefs.has(s.sessionRef))
   ctx.store.recordEvent({

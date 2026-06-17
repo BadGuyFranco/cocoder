@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import {
+  AuditWriteBoundaryError,
   effectiveScope,
   type Git,
   matchesAny,
@@ -172,6 +173,32 @@ describe('runCommitGate', () => {
     })
     expect(res.selfCommitted).toBe(true)
     expect(store.listEvents(run.id).some((e) => e.type === 'agent-self-commit')).toBe(true)
+  })
+
+  test('refuses takeover audit commits outside cocoder/** before committing', async () => {
+    const store = openRunStore(':memory:')
+    store.upsertWorkspace({ id: 'cocoder', path: '/repo', name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'onboarding-playbook', playbookId: 'cocoder-takeover' })
+    const { git, commits } = makeFakeGit({
+      changed: ['cocoder/memory/codebase-map.md', 'packages/app/product.ts'],
+      headBefore: 'h0',
+    })
+
+    await expect(runCommitGate({
+      git,
+      store,
+      cwd: '/repo',
+      runId: run.id,
+      workItemId: null,
+      scope: ['cocoder/**'],
+      message: 'audit: synthesize governance',
+      headBefore: 'h0',
+      auditWriteBoundary: { label: 'cocoder-takeover', scope: ['cocoder/**'] },
+    })).rejects.toThrow(AuditWriteBoundaryError)
+
+    expect(commits).toEqual([])
+    const event = store.listEvents(run.id).find((item) => item.type === 'audit-write-boundary-refused')
+    expect(event?.data).toMatchObject({ label: 'cocoder-takeover', files: ['packages/app/product.ts'] })
   })
 })
 

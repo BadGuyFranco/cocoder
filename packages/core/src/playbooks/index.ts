@@ -109,12 +109,29 @@ export {
   type RunPlaybookP4ActionInput,
 } from './p4-action.js'
 export {
+  createPlaybookP5PhaseAction,
+  runPlaybookP5Action,
+  type PlaybookP5Artifacts,
+  type PlaybookSynthesisResultEvent,
+  type RunPlaybookP5ActionInput,
+} from './p5-action.js'
+export {
   buildFounderQuestions,
   type P4QuestionItem,
   type P4QuestionsInput,
   type P4QuestionsPayload,
 } from './p4-questions.js'
 export { renderFounderQuestionsMarkdown } from './p4-render.js'
+export {
+  synthesizeP5Governance,
+  type P5ArchitectureNote,
+  type P5CandidatePriority,
+  type P5DraftObjective,
+  type P5FounderCheckpoint,
+  type P5SynthesisInput,
+  type P5SynthesisPayload,
+} from './p5-synthesis.js'
+export { renderP5ArchitectureNotesMarkdown, renderP5PriorityMarkdown, renderP5SynthesisMarkdown } from './p5-render.js'
 export {
   buildIntentIntakePrompt,
   runIntentIntake,

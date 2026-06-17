@@ -518,7 +518,7 @@ describe('Oz mutations + lifecycle', () => {
     await expect(readFile(join(p1Dir, 'pickup.md'), 'utf8')).resolves.toContain('## Spend Decision')
   })
 
-  test('takeover playbook resumes from P1 gate through P2 and real P3 cross-check to the P4 gate', async () => {
+  test('takeover playbook resumes from P1 gate through P2/P3/P4, then P5 synthesis to the P6 gate', async () => {
     await writeFile(join(home, 'README.md'), '# CoCoder Fixture\nTakeover onboarding fixture.\n', 'utf8')
     const builds: Array<{ readonly persona: string; readonly model: string; readonly prompt: string }> = []
     const reconOutput = {
@@ -656,6 +656,30 @@ describe('Oz mutations + lifecycle', () => {
     const questionsEvents = store.listEvents(runId).filter((event) => event.type === 'playbook-questions-result')
     expect(questionsEvents).toHaveLength(1)
     expect(questionsEvents[0]?.data).toMatchObject({ clarificationCount: expect.any(Number), conflictingFindingCount: expect.any(Number), futurePriorityCount: expect.any(Number) })
+
+    const resumedAfterP4Phases: string[] = []
+    const loadedAfterP4 = await loadPlaybookExecutor({
+      playbook: playbook!,
+      runDir,
+      now: (() => {
+        let clock = 2000
+        return () => clock++
+      })(),
+      runPhase: async (input) => {
+        resumedAfterP4Phases.push(input.phase.id)
+        await realRunPhase(input)
+      },
+    })
+    const resumedAfterP4 = await loadedAfterP4.resume({ approvedBy: 'founder', note: 'synthesize proposed governance' })
+    expect(resumedAfterP4.state).toMatchObject({ status: 'awaiting-founder', currentPhaseId: 'P6', gate: { phaseId: 'P6' } })
+    expect(resumedAfterP4Phases).toEqual(['P5', 'P6'])
+    const p5Dir = join(runDir, 'playbook', 'P5')
+    await expect(readFile(join(p5Dir, 'synthesis.json'), 'utf8')).resolves.toContain('"candidatePriorities"')
+    await expect(readFile(join(p5Dir, 'synthesis.md'), 'utf8')).resolves.toContain('# P5 Synthesis')
+    await expect(readFile(join(p5Dir, 'proposed-cocoder', 'memory', 'architecture-notes.md'), 'utf8')).resolves.toContain('Maintain repo onboarding governance')
+    const synthesisEvents = store.listEvents(runId).filter((event) => event.type === 'playbook-synthesis-result')
+    expect(synthesisEvents).toHaveLength(1)
+    expect(synthesisEvents[0]?.data).toMatchObject({ objectiveCount: expect.any(Number), candidatePriorityCount: expect.any(Number), architectureNoteCount: expect.any(Number) })
     await expect(stat(join(home, 'cocoder', 'AGENTS.md'))).rejects.toThrow()
   })
 

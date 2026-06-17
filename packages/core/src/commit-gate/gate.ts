@@ -23,6 +23,9 @@ export interface CommitGateInput {
   readonly message: string
   /** HEAD sha captured before agents were spawned (for self-commit detection). */
   readonly headBefore: string
+  /** Optional hard boundary for Takeover Playbook audits. Ordinary priority runs omit this and keep the
+   *  ADR-0023 whole-tree commit default: everything commits, out-of-lane is only flagged. */
+  readonly auditWriteBoundary?: AuditWriteBoundary
 }
 
 export interface CommitGateResult {
@@ -35,8 +38,24 @@ export interface CommitGateResult {
   readonly selfCommitted: boolean
 }
 
+export interface AuditWriteBoundary {
+  readonly label: string
+  readonly scope: readonly string[]
+}
+
+export class AuditWriteBoundaryError extends Error {
+  readonly name = 'AuditWriteBoundaryError'
+  readonly offendingPaths: readonly string[]
+
+  constructor(label: string, offendingPaths: readonly string[]) {
+    const paths = offendingPaths.length === 0 ? 'agent self-commit' : offendingPaths.join(', ')
+    super(`${label} audit write boundary refused path(s) outside its allowed scope: ${paths}`)
+    this.offendingPaths = [...offendingPaths]
+  }
+}
+
 export async function runCommitGate(input: CommitGateInput): Promise<CommitGateResult> {
-  const { git, store, cwd, runId, workItemId, scope, message, headBefore } = input
+  const { git, store, cwd, runId, workItemId, scope, message, headBefore, auditWriteBoundary } = input
 
   const headNow = await git.headSha(cwd)
   const selfCommitted = headNow !== headBefore
@@ -45,6 +64,14 @@ export async function runCommitGate(input: CommitGateInput): Promise<CommitGateR
   }
 
   const changed = await git.changedFiles(cwd)
+  if (auditWriteBoundary) {
+    if (selfCommitted) throw new AuditWriteBoundaryError(auditWriteBoundary.label, [])
+    const auditPartition = partitionByScope(changed, auditWriteBoundary.scope)
+    if (auditPartition.outOfScope.length > 0) {
+      store.recordEvent({ runId, type: 'audit-write-boundary-refused', data: { label: auditWriteBoundary.label, files: auditPartition.outOfScope } })
+      throw new AuditWriteBoundaryError(auditWriteBoundary.label, auditPartition.outOfScope)
+    }
+  }
   // Scope is ADVISORY: commit EVERYTHING the actor changed in one commit; out-of-scope is a flag, not a
   // hold. The spine never withholds (founder directive 2026-06-15) — no held-back working-tree state.
   const { outOfScope } = partitionByScope(changed, scope)
