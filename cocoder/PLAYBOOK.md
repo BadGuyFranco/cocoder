@@ -207,14 +207,16 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    the explicit `archive` go-ahead. Playbook moved to `priorities/archive/`. Open follow-ons (do NOT
    reopen this priority): ticket 0006 closed via `headless-adapter-lane` (run_104, archive-candidate) ·
    ticket 0007 (design-ref rebuild guard).
-4. `new-primary-root` — **CONTINUE (run_107, 2026-06-16).** Onboard a primary root via the
+4. `new-primary-root` — **CONTINUE (run_108, 2026-06-16).** Onboard a primary root via the
    bootstrap/takeover/drift onboarding Playbooks (ADR-0020 Accepted). **Engine foundation built and
    live-wired** (run_83 + run_86): loader extension (§7), `scaffoldCocoderZone` + `createWorkspace`
-   wiring (D1 complete), `deep-read` hardened for P3. **Executor design landed run_107**
-   ([0020 addendum](./decisions/0020-addendum-phase-executor.md), Proposed): P1→P5 phase machine mapped onto
-   existing runner/dispatch/spine primitives. **Next:** founder ratifies addendum + names top-tier deep-read
-   default → build Atoms 1–10; then live CoPublisher Takeover + dogfood Drift Audit proofs. **Absorbs
-   `workspace-onboarding`.** Phase 5 ("first external repo").
+   wiring (D1 complete), `deep-read` hardened for P3. **Executor design deepening in flight**
+   ([0020 addendum](./decisions/0020-addendum-phase-executor.md), Proposed): run_107 mapped P1→P5 onto
+   existing runner/dispatch/spine; run_108 **Atom A done** — P2 is now an iterative, hypothesis-driven
+   read-until-understood loop with honest caps. **Next:** Atom B (P3 convergence cross-check) → C (P1
+   complexity estimate) → D (intake) → E (New-Primary tech-stack starter, founder-gated) → founder
+   ratification gate → build Atoms 1–10; then live CoPublisher Takeover + dogfood Drift Audit proofs.
+   **Absorbs `workspace-onboarding`.** Phase 5 ("first external repo").
 
 **Queued after `new-primary-root` (founder go-ahead 2026-06-16, priority-audit run_106 — in `order.json`):**
 - `hybrid-plays` — deterministic code spine inside a Play (promotes "verify, don't assert — evidence over

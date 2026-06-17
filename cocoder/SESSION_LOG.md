@@ -12,6 +12,14 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-16 — **Design deepen Atom A (run_108): P2 iterative hypothesis-driven deep-read loop in addendum**
+
+**Persona:** Oscar (wrap-up; 1 atom delegated) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_108
+**Outcomes:**
+- **Atom A committed (`d70dcd`)** — [0020 addendum](./decisions/0020-addendum-phase-executor.md) P2 rewritten from one-shot per subsystem to an iterative read-until-understood loop: hypothesis → verify vs code (`axis`/`claim`/`evidence`/`confidence`) → residual gaps → converge/read-more; executor-checkable "understood" predicate; hard caps (4 iterations / 45 min / min(250k tokens, P2 budget)) with honest on-cap behavior (`understood: false`, gaps preserved to P3/P5); rolling `findings/<id>.md` + `convergence/<id>.json` artifacts; `playbook-fanout-result` carries iteration count/understood/cap status. Status stays Proposed; `deep-read` Play edit deferred to build time.
+- **Planned session stop** — run_107 atom plan mandates one design-deepening atom per dedicated session; Atom B (P3 convergence cross-check) is the next session by design, not a blocker.
+**Next:** Launch `new-primary-root` in Oz for Atom B — deepen P3 Cross-Check into a capped convergence loop (write scope: addendum only).
+
 ## 2026-06-16 — **P2→P5 phase executor design (run_107): ADR-0020 addendum mapped, build gated on founder ratification**
 
 **Persona:** Oscar (wrap-up; 1 atom delegated) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_107

@@ -101,11 +101,15 @@ Atoms 1–10) follow **after the founder ratification gate**, re-sequenced so th
 
 **Design-deepening atoms (amend the addendum; each its own session):**
 
-- **Atom A — Iterative, hypothesis-driven subsystem reads (P2 depth).** Replace "one `deep-read` per
-  subsystem" with *read-until-understood*: form a theory of the subsystem, verify it against the code,
-  re-read to close gaps. Define the per-subsystem "understood" exit signal and hard iteration + cost caps.
-  *Exit:* addendum P2 section rewritten to specify the iteration model, the convergence/"understood" signal,
-  and caps. One-shot, judgment-gated at verify.
+- **Atom A — Iterative, hypothesis-driven subsystem reads (P2 depth).** ✅ **DONE run_108 (commit
+  `d70dcdd`).** Addendum `## P2 Fan-Out` rewritten to a per-subsystem read-until-understood loop (form
+  theory → verify vs code with cited evidence → emit residual gaps → converge/read-more), a concrete
+  non-gameable "understood" predicate (no new material claim + no open gap below high/material + every P1
+  entry point & validation command covered by a verified claim + no unresolved intra-subsystem
+  contradiction), hard caps (4 iterations / 45 min / min(250k tokens, remaining P2 budget)) with on-cap
+  `understood:false` + gaps preserved to P3/P5, and artifacts (`convergence/<id>.json` +
+  `playbook-fanout-result` carrying iteration/understood/cap status). In lane: deferred cost estimate to
+  Atom C, left base `deep-read.md` untouched, Status stays Proposed.
 - **Atom B — Convergence-based cross-check (P3 depth).** P3 loops until no *new* contradictions/coverage
   gaps surface (capped), instead of a single pass; bounded named follow-up reads feed the next round.
   *Exit:* addendum P3 specifies the convergence loop, its exit signal, caps, and how follow-up reads close
