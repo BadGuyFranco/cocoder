@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-17 — **new-primary-root: executor P3 cross-check ACTION integration landed — P4 founder-question checkpoint is next (run_128)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 1 atom delegated/verified-on-evidence) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_128
+**Outcomes:**
+- **Executor P3 — cross-check convergence ACTION integration (`775bf55`):** four new pure-core modules — `p3-cross-check.ts` (deterministic unresolved-item derivation from real P2 artifacts + non-gameable ≥2-round exit predicate), `p3-input.ts` (refuse-on-malformed P1/P2 readers), `p3-action.ts` (capped loop 3 rounds / 30 min / min(125k, p3Allocation), ≤3 named follow-up deep-reads/round via injected dispatch, on-cap honesty with gaps preserved for P5), `p3-render.ts` (human `cross-check.md`). `launcher.ts` `createDaemonPlaybookPhaseAction` now composes P1→P2→P3.
+- **Tests:** `playbook-p3-action.test.ts` (5 unit: full loop, named follow-up, token-cap honesty, ≤3 follow-ups/round, refuse-on-malformed, write-boundary under `runDir/playbook/P3/**` only) + daemon `mutations.test.ts` e2e rewritten so resume advances P2→real P3→P4 gate (asserts `converged:true`, `roundsRun:2`, `home/cocoder/AGENTS.md` never created).
+- **Gates:** core 322 pass, daemon 208 pass, `pnpm -w typecheck` clean, `node scripts/check-topology.mjs` pass.
+- **Disposition: `continue`** — P3 committed and verified on evidence; P4 (founder-question checkpoint ACTION integration) is the next delicate atom at the hard multi-session founder gate and gets its own fresh dedicated session (run_111 anti-pattern).
+**Next:** Launch **`new-primary-root`** in Oz for **Executor P4 — founder-question checkpoint ACTION integration** — build `p4-action.ts` (+ `p4-input.ts`) consuming `playbook/P3/convergence.json` + `playbook/P1/intent.json`, producing `playbook/P4/questions.json` + `questions.md` partitioned into three ADR-0020 question classes (clarifications / conflicting findings / code-issues-as-future-priorities); wire into `createDaemonPlaybookPhaseAction` before the P4 gate pause; extend fake-agent e2e so the gate carries populated questions from fixture P3 disagreement + intent open-questions; enforce P4 writes only under `runDir/playbook/P4/**`. Then Atoms 9–11 + tech-stack template build.
+
 ## 2026-06-17 — **new-primary-root: executor P2c ACTION integration landed — P3 cross-check is next (run_127)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 1 atom delegated/verified-on-evidence) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_127
