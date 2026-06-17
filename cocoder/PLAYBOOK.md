@@ -224,6 +224,12 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   claims" to first-class structure; e.g. `integration-verify` *runs* the real check instead of prompting an
   agent to). Step 1 is an **ADR-0010 taxonomy amendment** the founder confirms at launch (the Play-component
   shape); then schema (`Play` type) + dispatch + reimplement `integration-verify` as the hybrid proof.
+- `tickets-review` — real dashboard tabs (**Priorities** / **Tickets** / **Runs**, replacing the
+  pseudo-tabs + run-history button) + a **ticket-fix run** that proposes/applies a fix and closes the
+  ticket (`open/ → closed/` + `INDEX.md`) through the spine. The "how do we fix a ticket" run shape
+  (Bob-only vs small Oscar↔Bob vs reuse `adhoc-session`, possibly by ticket type) is the open design
+  question resolved at the start alignment beat. Draft Objective pending founder ratification (filed
+  run_111, founder-directed).
 - ~~`play-dispatch-boundary`~~ — **RESOLVED 2026-06-15, ARCHIVED 2026-06-16** (run_106): one-level dispatch
   stands; no engine reversal. Decision record now at `priorities/archive/play-dispatch-boundary.md`.
 
