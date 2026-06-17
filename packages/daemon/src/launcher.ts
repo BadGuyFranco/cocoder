@@ -357,8 +357,7 @@ async function closeRunSurfaces(ctx: OzContext, runId: string, opts: TeardownOpt
   }
 
   const closeDurableWorkspace = async (workspaceRef: string, sessions: ReadonlyArray<StoredSession & { closeSurfaceError?: string }>): Promise<void> => {
-    const closeWorkspace = ctx.sessionHost.closeWorkspace
-    if (!closeWorkspace) {
+    if (!ctx.sessionHost.closeWorkspace) {
       // Non-cmux/fake host without a workspace primitive: preserve the old behavior rather than lying.
       for (const s of sessions) {
         if (!s.workspaceRef) continue
@@ -375,7 +374,7 @@ async function closeRunSurfaces(ctx: OzContext, runId: string, opts: TeardownOpt
       return
     }
     try {
-      await closeWorkspace({ workspaceRef })
+      await ctx.sessionHost.closeWorkspace({ workspaceRef })
       for (const s of sessions) {
         closed.push(s.sessionRef)
         ctx.liveRefs.delete(s.sessionRef)

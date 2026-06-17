@@ -1002,18 +1002,25 @@ describe('Oz mutations + lifecycle', () => {
     store.createSession({ runId: run.id, persona: 'deb', sessionRef: 'surface:deb', workspaceRef: 'workspace:run' })
     const closes: { workspaceRef: string; surfaceRef: string }[] = []
     const workspaceCloses: { workspaceRef: string }[] = []
+    const receiverToken = Symbol('closeWorkspace receiver')
+    const receiverSensitiveHost: SessionHost & { receiverToken: symbol } = {
+      ...fakeHost(),
+      receiverToken,
+      async closeSurface(args) {
+        closes.push(args)
+        if (args.surfaceRef === 'surface:oscar') throw new Error('invalid_state: Cannot close the last surface')
+      },
+      closeWorkspace: async function (this: (SessionHost & { receiverToken?: symbol }) | undefined, args) {
+        if (this?.receiverToken !== receiverToken) throw new Error("Cannot read properties of undefined (reading '#cli')")
+        workspaceCloses.push(args)
+      },
+    }
     oz = await createOzServer({
       cocoderHome: home,
       port: 0,
       store,
       git: fakeGit(),
-      sessionHost: {
-        ...fakeHost(undefined, undefined, (a) => closes.push(a), (a) => workspaceCloses.push(a)),
-        async closeSurface(args) {
-          closes.push(args)
-          if (args.surfaceRef === 'surface:oscar') throw new Error('invalid_state: Cannot close the last surface')
-        },
-      },
+      sessionHost: receiverSensitiveHost,
       getAdapter: () => okAdapter,
       io: fakeIO(),
     })

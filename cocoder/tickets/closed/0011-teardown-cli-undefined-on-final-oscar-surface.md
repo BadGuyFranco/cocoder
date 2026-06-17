@@ -1,7 +1,7 @@
 # 0011 — Teardown throws `#cli` undefined closing the run's final (Oscar) surface
 
-**Status:** Open | **Type:** bug | **Priority:** none (orchestration reliability) | **Owner:** unassigned
-**Filed:** 2026-06-17
+**Status:** Closed | **Type:** bug | **Priority:** none (orchestration reliability) | **Owner:** deb
+**Filed:** 2026-06-17 | **Closed:** 2026-06-17
 
 ## Symptom
 `cocoder oz teardown run_116 --initiator oscar` returned **500** with:
@@ -18,7 +18,7 @@ orchestrator (Oscar) surface `surface:66`, leaving 1 run session open. Observed 
 teardown (founder-explicit). The lingering Oscar surface must be closed by hand by the founder until
 this is fixed — the orchestrator must NOT close it itself (host/process-safety guardrail).
 
-## Root Cause — CONFIRMED by code inspection (still verify by running the repro before closing)
+## Root Cause
 **An unbound-method `this` regression introduced by [0009](../closed/0009-teardown-cannot-close-last-surface.md).**
 It is NOT a missing/unresolved `workspaceRef` and NOT the old last-surface invariant.
 
@@ -61,6 +61,13 @@ The current fake host's `closeWorkspace` is likely a plain closure that doesn't 
 won't reproduce this. The regression needs a host whose `closeWorkspace` reads an instance/private field
 via `this` (or asserts `this` is the host) so the daemon's *unbound* call path fails the test before the fix
 and passes after.
+
+## Resolution
+`packages/daemon/src/launcher.ts` now keeps the `closeWorkspace` optional guard but invokes the method
+through `ctx.sessionHost.closeWorkspace({ workspaceRef })`, preserving the cmux host receiver for the
+final durable workspace close. `packages/daemon/tests/mutations.test.ts` now covers the Oscar-initiated
+shared-workspace teardown with a receiver-sensitive `closeWorkspace`; the old unbound call would throw the
+same `#cli`-style error before marking the final Oscar surface closed.
 
 ## Acceptance / Verified When
 - `cocoder oz teardown <runId> --initiator oscar` closes **all** of the run's surfaces — including the
