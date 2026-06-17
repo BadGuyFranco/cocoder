@@ -211,18 +211,18 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    the explicit `archive` go-ahead. Playbook moved to `priorities/archive/`. Open follow-ons (do NOT
    reopen this priority): ticket 0006 closed via `headless-adapter-lane` (run_104, archive-candidate) ·
    ticket 0012 (design-ref rebuild guard).
-4. `new-primary-root` — **ACTIVE (run_123, 2026-06-17).** Onboard a primary root via the
+4. `new-primary-root` — **ACTIVE (run_124, 2026-06-17).** Onboard a primary root via the
    bootstrap/takeover/drift onboarding Playbooks (ADR-0020 Accepted). **Engine foundation built and
    live-wired** (run_83 + run_86): loader extension (§7), `scaffoldCocoderZone` + `createWorkspace`
    wiring (D1 complete), `deep-read` hardened for P3. **Executor design ratified** (run_110 cleared
    founder gate; addendum A–E + tech-stack approach accepted). **Executor build in progress**
-   (run_111–123): Atoms F/1/5a/3/4 (run_111–112); **run_123 landed the full P1 input layer** — Atom 2
-   run-target + daemon launch surface (`9f76e98`), Atom 5b agentic recon (`c165778`), Atoms C/D
-   estimate + intent (`7b9395f`/`2080437`), intent-artifact enumerator (`28ba44a`). core 303 + daemon 206
-   green. **Next:** **executor P1 ACTION integration** (fresh session) — wire producers through
-   `executeAgentStep`, write `playbook/P1/*.json` + `pickup.md`, pause at P1 `awaiting-founder` gate;
-   prove start→P1→pause→resume on a fake-agent fixture. Then Atoms 6–11 + tech-stack-template build;
-   live CoPublisher Takeover + dogfood Drift Audit proofs remain gated on executor end-to-end on fakes.
+   (run_111–124): Atoms F/1/5a/3/4 (run_111–112); run_123 landed the full P1 input layer; **run_124
+   landed executor P1 ACTION integration** (`94de715`) — real P1 phase wired, launcher drives headless
+   Bob, daemon e2e proves start→P1→pause@gate with artifacts. core 305 + daemon 207 green. **Next:**
+   **executor P2 dual-source adversarial deep-read fan-out** (fresh dedicated session) — per-subsystem
+   `dispatchPlay` deep-read loop, dual-source ADR-0018 resolution, convergence artifacts, fake-agent e2e
+   proving start→P1 pause→resume→P2→P3 stub. Then Atoms 7–11 + tech-stack-template build; live
+   CoPublisher Takeover + dogfood Drift Audit proofs remain gated on executor end-to-end on fakes.
    **Absorbs `workspace-onboarding`.** Phase 5 ("first external repo").
 
 **Queued after `new-primary-root` (founder go-ahead 2026-06-16, priority-audit run_106 — in `order.json`):**
@@ -236,8 +236,7 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   `scripts/oz.sh restart`** to activate tickets GET+POST on the live daemon (Bug 2 count=0 is stale-process,
   not code). **Remaining = atom 4, a ticket-fix run** that closes a ticket through the spine — run-target
   dependency **cleared** (`new-primary-root` Atom 2 landed run_123, `9f76e98`). **Queued after** executor
-  P1 ACTION integration on `new-primary-root`; then relaunch for atom 4 (proof ticket one of
-  `0003/0005/0012`).
+  P2 on `new-primary-root`; then relaunch for atom 4 (proof ticket one of `0003/0005/0012`).
 - `oz-dashboard-design-tweaks` — **archive-candidate (run_115):** rounds 1–3 code-complete — settings
   trim + collapsible personas/plays + contrast (run_113), panel↔background reversal + Oz-card de-gradient
   (run_114, `97bc3a4`), Round-3 persona-card consistency + priority-row separation + stacked priority

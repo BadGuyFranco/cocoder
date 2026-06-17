@@ -45,6 +45,47 @@ CoPublisher).
 
 ## Build progress — disposition: `continue` (ratified 2026-06-17 — build released)
 
+### Executor build progress (run_124, 2026-06-17)
+Fourth build session — **executor P1 ACTION integration** landed (one atom; verified-on-evidence:
+diff read + `pnpm --filter @cocoder/core test` + `pnpm --filter @cocoder/daemon test` + `pnpm -w typecheck`):
+- ✅ **Executor P1 ACTION integration** (`94de715`). New `packages/core/src/playbooks/p1-action.ts` wires
+  the real P1 phase: `enumerateIntentArtifacts` + `inventoryRepo` → `runAgenticRecon` + `runIntentIntake`
+  (through an injected `agentTurn` seam) → `buildEstimate`, writing
+  `playbook/P1/{inventory,subsystems,intent,estimate}.json` + `pickup.md` under `<runDir>`. Executor
+  reorder (`executor.ts`): `runPhase` now runs **before** the `founderGate` check, so a gate phase does
+  its action then pauses (resume advances the cursor — action runs exactly once, no re-run). Launcher
+  (`launcher.ts`) wires the real `runPhase` via `createDaemonPlaybookPhaseAction`, driving Bob headless
+  through the resolved adapter. Verified: core 305 + daemon 207 + typecheck green (additive); write-boundary
+  proven (P1 never creates `repoDir`/`cocoder`); priority-runs-unchanged proven; daemon e2e drives
+  `POST /runs` → `awaiting-founder` with artifacts written + prompts through the adapter.
+
+**Sequencing note (Oscar):** wrapped at this boundary deliberately. The next critical-path atom is **P2 —
+dual-source adversarial deep-read fan-out** — the largest/most integration-heavy executor phase; the
+priority mandates each delicate executor atom get its own dedicated session (run_111-recorded anti-pattern:
+do not start P2 under a context already spent on the P1 verify cycle).
+
+**Next-run sequence (executor critical path; build released, no founder gate needed for these):**
+- **NEXT → Executor P2: dual-source adversarial deep-read fan-out** (fresh dedicated session). Per
+  addendum §P2 Fan-Out (Atom A) + §Founder Ratification directive 1: for each subsystem from
+  `playbook/P1/subsystems.json`, fan out deep-read via `dispatchPlay` (base `deep-read.md`, one subsystem
+  per invocation); loop form-theory → verify-vs-code-with-cited-evidence → residual-gaps → converge with
+  the non-gameable `understood` predicate + hard caps (4 iters / 45 min / min(250k, remaining P2 budget
+  allocation from `estimate.json`)); on-cap honesty (`understood:false`, gaps preserved). Emit
+  `convergence/<id>.json` + `playbook-fanout-result`. Dual-source: Bob builder + Oscar orchestrator
+  deep-read sources resolved via ADR-0018 to **different** models/personas, fail-clear on collapse;
+  disagreement is the P3 signal. P2 writes only under `<runDir>` (the `cocoder/**` audit boundary is
+  enforced at P5, not P2). Verify on a fixture/fake-agent e2e: start → P1 pause@gate → resume → P2 fan-out
+  runs per subsystem, convergence artifacts written, advances to P3 stub. Hard invariant: priority runs +
+  existing tests stay green.
+- **Then** Atoms 7–11 (P3 convergence cross-check → P4 founder-question checkpoint → P5 synthesis +
+  `cocoder/**`-only audit-write boundary → P6 ratify → end-to-end fixture proof). Parallel/independent:
+  New-Primary tech-stack-starter template build from Atom E (`packages/personas/base/templates/starters/<id>/`
+  + manifest + the 3 default starters) — per-starter non-negotiables and the "if-unsure" fallback question
+  remain draft-pending-ratification in `new-primary-tech-stack.md`'s founder-gate table; confirm with the
+  founder first or scope the build to ratified parts only.
+- **Still gated:** Live CoPublisher Takeover proof and the dogfood Drift Audit remain gated until the
+  P1→P5 executor path runs end-to-end on fakes.
+
 ### Executor build progress (run_123, 2026-06-17)
 Third build session — the entire **P1 input layer + producers** landed (five atoms; verified-on-evidence
 per atom: diff read + `pnpm --filter @cocoder/core test` + `pnpm -w typecheck`, plus `@cocoder/daemon test`
@@ -78,28 +119,9 @@ for the launch-surface atom):
   subprocess-free, central `Git` port untouched); fully bounded/deterministic/deduped; proven round-trip
   into intent.ts's provenance guard.
 
-**Sequencing note (Oscar):** the run was wrapped at this boundary deliberately. The next atom is the
-**executor P1 ACTION integration** — the largest, integration-heavy atom — and the priority mandates such
-an atom get its own dedicated super-thoughtful session; starting it under a context already spent across
-five atom cycles is the run_111-recorded anti-pattern. All P1 inputs + producers are now committed, so a
-fresh session can wire them cleanly.
-
-**Next-run sequence (executor critical path; build released, no founder gate needed for these):**
-- **NEXT → Executor P1 ACTION integration** (its own fresh session — delicate). Replace the executor's
-  no-op `runPhase` stub for the P1 phase with the real action: call `enumerateIntentArtifacts` (fs/git) +
-  `inventoryRepo`, drive `runAgenticRecon` / `buildEstimate` / `runIntentIntake` through the runner's real
-  agent-turn primitive (`executeAgentStep`, `packages/core/src/runner/agent-step.ts`) instead of injected
-  fakes, WRITE the `playbook/P1/{inventory,subsystems,intent,estimate}.json` artifacts + assemble
-  `pickup.md` (intent interview + estimate summary + spend decision) under `<runDir>`, and PAUSE at the P1
-  `awaiting-founder` gate. Wire the launcher's real `runPhase` (currently a no-op in `launcher.ts`'s
-  playbook branch) to dispatch per-phase. Keep `cocoder/**`-only write boundary in mind (it is enforced at
-  P2+, but P1 only writes under `<runDir>`/`playbook/P1`). Verify: a fixture/fake-agent e2e drives
-  start→P1→pause@gate, artifacts written, resume past the gate works.
-- **Then** Atoms 6–11 (P2 dual-source fan-out, P3 cross-check, P4 founder-question checkpoint, P5 synthesis
-  + `cocoder/**` audit boundary, P6 ratify, end-to-end fixture proof) + New-Primary tech-stack-starter
-  template build from E.
-- **Still gated:** Live CoPublisher Takeover proof and the dogfood Drift Audit remain gated on the executor
-  shipping end-to-end on fakes — do not attempt live onboarding until the P1→P5 path runs on fixtures.
+**Sequencing note (Oscar):** the run was wrapped at this boundary deliberately so P1 ACTION integration
+could land in its own dedicated session (run_111 anti-pattern). **✅ P1 ACTION integration landed run_124
+(`94de715`).** Next critical-path atom is P2 — see §Executor build progress run_124.
 
 ### Executor build progress (run_112, 2026-06-17)
 Second build session. Two atoms landed (verified-on-evidence per atom: diff read +
@@ -213,7 +235,7 @@ First build session after ratification. Three atoms landed (verified-on-evidence
    files (assignments, adhoc priority, CLAUDE pointer) are now committed to trunk with their verified
    canonical contents; the run_86 strand below is closed (recovery executed). Scaffold is complete on a
    fresh clone again and CI is green.
-2. **P2→P5 fan-out executor** — **✅ DESIGNED run_107, ratified run_110, BUILD IN PROGRESS run_111–123**
+2. **P2→P5 fan-out executor** — **✅ DESIGNED run_107, ratified run_110, BUILD IN PROGRESS run_111–124**
    ([ADR-0020 addendum](../decisions/0020-addendum-phase-executor.md)). Concrete P1→P5 execution design:
    new runner mode (not a forked loop), phase metadata from shipped Playbook tables, founder gates at
    P1/P5, P2 deep-read fan-out via `dispatchPlay`, P3 cross-check → P4 synthesize → P5 ratify through the
@@ -221,8 +243,9 @@ First build session after ratification. Three atoms landed (verified-on-evidence
    helper (`a2c7195`). **Landed run_112:** Atom 3 runner primitive (`ffcce7d`), Atom 4 executor state/cursor
    (`87cec58`). **Landed run_123:** Atom 2 launch surface (`9f76e98`), Atom 5b agentic recon (`c165778`),
    Atoms C/D estimate + intent (`7b9395f`/`2080437`), intent-artifact enumerator (`28ba44a`) — the full P1
-   input layer + producers. **Next:** executor P1 ACTION integration (wire producers + write
-   `playbook/P1/*.json` + `pickup.md` + pause@gate) → Atoms 6–11 + tech-stack template build from E.
+   input layer + producers. **Landed run_124:** executor P1 ACTION integration (`94de715`) — real P1 phase
+   wired, launcher drives headless Bob, daemon e2e proves start→P1→pause@gate with artifacts. **Next:**
+   executor P2 dual-source adversarial deep-read fan-out → Atoms 7–11 + tech-stack template build from E.
 3. **Live CoPublisher Takeover proof** (Phase-5 entry) — Objective verification (a). **BLOCKED on executor
    build** (#2 above).
 4. **Dogfood Drift Audit run** — Objective verification (b). **BLOCKED on executor build** (#2 above).
@@ -352,8 +375,11 @@ directives now recorded in [addendum §Founder Ratification — RESOLVED](../dec
 - ✅ **Atoms C/D — estimate + intent** (`7b9395f`/`2080437`, run_123). `estimate.ts` + `intent.ts` with
   capped P2/P3 allocations and structurally-enforced provenance separation.
 - ✅ **Intent-artifact enumerator** (`28ba44a`, run_123). `intent-artifacts.ts` read-only enumeration.
-- **NEXT → Executor P1 ACTION integration** (fresh session; see §Executor build progress run_123).
-- **Then** Atoms 6–11 + New-Primary tech-stack-template build from E.
+- ✅ **Executor P1 ACTION integration** (`94de715`, run_124). `p1-action.ts` + launcher `runPhase` wiring;
+  executor gate-order fix; daemon e2e proves start→P1→pause@gate with artifacts.
+- **NEXT → Executor P2: dual-source adversarial deep-read fan-out** (fresh session; see §Executor build
+  progress run_124).
+- **Then** Atoms 7–11 + New-Primary tech-stack-template build from E.
 
 **Still gated:** Live Takeover (#3) and Drift Audit (#4) proofs remain gated on the executor shipping — do
 not attempt live onboarding until then.

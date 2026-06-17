@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-17 — **new-primary-root: executor P1 ACTION integration landed — P2 dual-source fan-out is next (run_124)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 1 atom delegated/verified-on-evidence) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_124
+**Outcomes:**
+- **Executor P1 ACTION integration (`94de715`):** new `p1-action.ts` wires the real P1 phase (intent-artifact enumeration + repo inventory → agentic recon + intent intake → estimate build), writing `playbook/P1/{inventory,subsystems,intent,estimate}.json` + `pickup.md` under `<runDir>`. Executor reorder: `runPhase` runs before `founderGate` so gate phases act-then-pause (resume advances cursor — no re-run). Launcher wires real `runPhase` via `createDaemonPlaybookPhaseAction`, driving Bob headless through the resolved adapter.
+- **Gates:** core 305 + daemon 207 + `pnpm -w typecheck` green (additive); write-boundary proven (P1 never creates `repoDir`/`cocoder`); priority-runs-unchanged proven; daemon e2e drives `POST /runs` → `awaiting-founder` with artifacts + adapter prompts.
+- **Disposition: `continue`** — P1 executor path is committed and verified on fakes; P2 (dual-source adversarial deep-read fan-out) is the next critical-path atom and gets its own fresh dedicated session (run_111 anti-pattern: do not start P2 under spent context).
+**Next:** Launch **`new-primary-root`** in Oz for **Executor P2: dual-source adversarial deep-read fan-out** — per-subsystem `dispatchPlay` deep-read loop with dual-source ADR-0018 resolution, convergence artifacts, fake-agent e2e proving start→P1 pause→resume→P2→P3 stub. Then Atoms 7–11 + tech-stack template build. Live Takeover/Drift proofs stay gated on executor end-to-end on fakes.
+
 ## 2026-06-17 — **new-primary-root: P1 input layer + producers complete — 5 atoms landed; executor P1 integration is next (run_123)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 5 atoms delegated/verified-on-evidence) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_123
