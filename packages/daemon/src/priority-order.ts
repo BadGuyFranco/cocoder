@@ -1,6 +1,6 @@
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { loadOnboardingPlaybooks, loadPriority, truncate } from '@cocoder/core'
+import { loadOnboardingPlaybooks, loadPriority, readTickets as readTicketFiles, truncate, type Ticket } from '@cocoder/core'
 import { basePlaybooksDir } from '@cocoder/personas'
 
 export interface PrioritySummary {
@@ -9,6 +9,8 @@ export interface PrioritySummary {
   readonly scopeNarrowing: readonly string[] | null
   readonly goal: string
 }
+
+export type TicketSummary = Ticket
 
 export interface OnboardingPlaybookSummary {
   readonly id: string
@@ -73,6 +75,10 @@ export async function readPriorities(prioritiesDir: string, cap: number): Promis
     if (!seen.has(priority.id)) ordered.push(priority)
   }
   return ordered
+}
+
+export async function readTickets(ticketsDir: string): Promise<TicketSummary[]> {
+  return readTicketFiles(ticketsDir)
 }
 
 export async function writePriorityOrder(prioritiesDir: string, requestedOrder: readonly string[]): Promise<string[]> {

@@ -79,6 +79,18 @@ export interface Priority {
   readonly scopeNarrowing: string | null
   readonly goal: string
 }
+export type TicketState = 'open' | 'closed'
+export interface Ticket {
+  readonly id: string
+  readonly title: string
+  readonly type: string | null
+  readonly status: string | null
+  readonly priority: string | null
+  readonly owner: string | null
+  readonly created: string | null
+  readonly state: TicketState
+  readonly body: string
+}
 export type RunStatus = 'running' | 'completed' | 'failed'
 export interface RunSummary {
   readonly id: string

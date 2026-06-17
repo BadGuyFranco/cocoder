@@ -10,6 +10,7 @@ import { stopRun } from '../app/live.ts'
 import type { ConnectionState, OzApi, OzEventHint, PersonasResponse, PlaysResponse, Priority as DPriority, RunDetail, RunSummary } from '../electron/ipc-contract.ts'
 import workspacesFx from '../fixtures/workspaces.json'
 import prioritiesFx from '../fixtures/priorities.json'
+import ticketsFx from '../fixtures/tickets.json'
 import personasFx from '../fixtures/personas.json'
 import runsFx from '../fixtures/runs.json'
 import runDetailFx from '../fixtures/run-detail.json'
@@ -101,6 +102,7 @@ function mockOz(opts: {
       if (path === '/clis') return ok(clisFx)
       if (path === '/workspaces') return ok(workspacesFx)
       if (/\/priorities$/.test(path)) return ok(opts.priorities ?? prioritiesFx)
+      if (/\/tickets$/.test(path)) return ok(ticketsFx)
       if (/\/personas$/.test(path)) return opts.personasResult ?? ok(opts.personasResponse ?? personasFx)
       if (/\/plays$/.test(path)) return ok(opts.playsResponse ?? playsFx)
       if (path.startsWith('/runs?')) return ok(opts.runs ?? runsFx)

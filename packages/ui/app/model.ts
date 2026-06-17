@@ -19,6 +19,12 @@ export interface Priority {
   status: string; labels: string[]
   runId?: string; spec?: PersonaSpec
 }
+export type TicketState = 'open' | 'closed'
+export interface Ticket {
+  id: string; title: string; type: string | null; status: string | null
+  priority: string | null; owner: string | null; created: string | null
+  state: TicketState; body: string
+}
 export interface Workspace {
   id: string; name: string; description: string; icon: string
   roots: Root[]; priorities?: Priority[]; created?: string
@@ -74,6 +80,7 @@ export const DEFAULT_SETTINGS: Settings = {
 interface Seed {
   workspaces: Workspace[]
   priorities: Record<string, Priority[]>
+  tickets: Record<string, Ticket[]>
   runsByWs: Record<string, Run[]>
   plays: Play[]
   personas: Persona[]

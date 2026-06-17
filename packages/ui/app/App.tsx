@@ -15,7 +15,7 @@ import { PersonasScreen } from './sections/Personas.tsx'
 import { PlaysScreen } from './sections/Plays.tsx'
 import { SettingsScreen } from './sections/Settings.tsx'
 import { NewWorkspaceModal, CraftPersonaModal, NewPriorityModal } from './sections/modals.tsx'
-import { seed, DEFAULT_SETTINGS, type ChatMessage, type Cli, type Dependency, type Persona, type Play, type Priority, type Run, type Settings, type SubAgent, type Workspace } from './model.ts'
+import { seed, DEFAULT_SETTINGS, type ChatMessage, type Cli, type Dependency, type Persona, type Play, type Priority, type Ticket, type Run, type Settings, type SubAgent, type Workspace } from './model.ts'
 import type { OzEventHint, PersonaAssignment } from '../electron/ipc-contract.ts'
 
 const USER = seed.workspaces.length ? { initials: 'AF', name: 'Anthony Franco', role: 'founder' } : { initials: 'AF', name: 'Anthony Franco', role: 'founder' }
@@ -69,8 +69,10 @@ export function App() {
   const [loadedIds, setLoadedIds] = useState<string[]>(workspaces[0] ? [workspaces[0].id] : [])
 
   const seedPriorities = (seed as unknown as { priorities?: Record<string, Priority[]> }).priorities ?? {}
+  const seedTickets = (seed as unknown as { tickets?: Record<string, Ticket[]> }).tickets ?? {}
   const seedChat = (seed as unknown as { ozChat?: Record<string, ChatMessage[]> }).ozChat ?? {}
   const [prioritiesByWs, setPrioritiesByWs] = useState<Record<string, Priority[]>>(() => Object.fromEntries(workspaces.map((w) => [w.id, [...(seedPriorities[w.id] ?? [])]])))
+  const [, setTicketsByWs] = useState<Record<string, Ticket[]>>(() => Object.fromEntries(workspaces.map((w) => [w.id, [...(seedTickets[w.id] ?? [])]])))
   const [runsByWs, setRunsByWs] = useState<Record<string, Run[]>>(seed.runsByWs)
   const [configuredByWs, setConfiguredByWs] = useState<Record<string, boolean>>({})
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null)
@@ -118,7 +120,7 @@ export function App() {
     let cancelled = false
     const goOffline = (state: ConnectionState) => {
       // A bridge exists but the daemon isn't answering: never present seed demo data as if it were live.
-      setLive(false); setConn(state); setWorkspaces([]); setRunsByWs({}); setPrioritiesByWs({}); setConfiguredByWs({})
+      setLive(false); setConn(state); setWorkspaces([]); setRunsByWs({}); setPrioritiesByWs({}); setTicketsByWs({}); setConfiguredByWs({})
     }
     void (async () => {
       setConn('connecting')
@@ -143,6 +145,7 @@ export function App() {
       namesRef.current[first.id] = data.names
       setConfiguredByWs((cur) => ({ ...cur, [first.id]: data.configured }))
       setPrioritiesByWs((cur) => ({ ...cur, [first.id]: applyOrder(data.priorities, order) }))
+      setTicketsByWs((cur) => ({ ...cur, [first.id]: data.tickets }))
       setRunsByWs((cur) => ({ ...cur, [first.id]: data.runs }))
       void enrichActiveRunDetails(first.id, data.runs)
       setPlays(data.plays)
@@ -228,6 +231,7 @@ export function App() {
       namesRef.current[activeId] = data.names
       setConfiguredByWs((cur) => ({ ...cur, [activeId]: data.configured }))
       setPrioritiesByWs((cur) => ({ ...cur, [activeId]: applyOrder(data.priorities, order) }))
+      setTicketsByWs((cur) => ({ ...cur, [activeId]: data.tickets }))
       setRunsByWs((cur) => ({ ...cur, [activeId]: data.runs }))
       void enrichActiveRunDetails(activeId, data.runs, () => cancelled)
       setPlays(data.plays)
@@ -302,6 +306,7 @@ export function App() {
     const mergedRuns = mergeRunsWithEnrichment(data.runs, runsByWsRef.current[wsId] ?? [])
     setConfiguredByWs((cur) => ({ ...cur, [wsId]: data.configured }))
     setPrioritiesByWs((cur) => ({ ...cur, [wsId]: applyOrder(data.priorities, order) }))
+    setTicketsByWs((cur) => ({ ...cur, [wsId]: data.tickets }))
     setRunsByWs((cur) => ({ ...cur, [wsId]: mergedRuns }))
     void enrichActiveRunDetails(wsId, mergedRuns)
   }

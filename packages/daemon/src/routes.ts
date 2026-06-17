@@ -32,7 +32,7 @@ import { listClis, testCli } from './clis.js'
 import { launchRun, requestDaemonRestart, requestDashboardLaunch, requestStopRun, requestSupportCommitRun, showRun, teardownRun } from './launcher.js'
 import { handleOzMessage } from './oz-chat.js'
 import { mergeWriteSettings, readSettings } from './settings.js'
-import { readOnboardingPlaybooks, readPriorities, writePriorityOrder } from './priority-order.js'
+import { readOnboardingPlaybooks, readPriorities, readTickets, writePriorityOrder } from './priority-order.js'
 
 export type { OzContext } from './context.js'
 
@@ -64,9 +64,10 @@ function readJsonBody(req: IncomingMessage): Promise<unknown> {
   })
 }
 
-/** Personas dir / priorities dir for a workspace's tracked governance zone. */
+/** Personas dir / priorities dir / tickets dir for a workspace's tracked governance zone. */
 const personasDir = (workspacePath: string): string => join(workspacePath, 'cocoder', 'personas')
 const prioritiesDir = (workspacePath: string): string => join(workspacePath, 'cocoder', 'priorities')
+const ticketsDir = (workspacePath: string): string => join(workspacePath, 'cocoder', 'tickets')
 const priorityOrderFile = (workspacePath: string): string => join(prioritiesDir(workspacePath), 'order.json')
 
 interface LaunchBody {
@@ -284,6 +285,13 @@ async function listPriorities(ctx: OzContext, res: ServerResponse, workspaceId: 
   sendJson(res, 200, { workspace: ws, priorities: await readPriorities(prioritiesDir(ws.path), CAP), onboarding: readOnboardingPlaybooks() })
 }
 
+/** GET /workspaces/:id/tickets — ticket files are canonical; INDEX.md is not parsed. */
+async function listTickets(ctx: OzContext, res: ServerResponse, workspaceId: string): Promise<void> {
+  const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
+  if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
+  sendJson(res, 200, { workspace: ws, tickets: await readTickets(ticketsDir(ws.path)) })
+}
+
 /** GET /workspaces/:id/personas — surface 3 (read). Persona defs + their CLI/model assignment. */
 async function listPersonas(ctx: OzContext, res: ServerResponse, workspaceId: string): Promise<void> {
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
@@ -416,6 +424,10 @@ export async function dispatchReads(ctx: OzContext, method: string, pathname: st
   }
   if (method === 'GET' && seg[0] === 'workspaces' && seg.length === 3 && seg[2] === 'priorities') {
     await listPriorities(ctx, res, decodeURIComponent(seg[1]!))
+    return true
+  }
+  if (method === 'GET' && seg[0] === 'workspaces' && seg.length === 3 && seg[2] === 'tickets') {
+    await listTickets(ctx, res, decodeURIComponent(seg[1]!))
     return true
   }
   if (method === 'GET' && seg[0] === 'workspaces' && seg.length === 3 && seg[2] === 'personas') {

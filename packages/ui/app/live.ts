@@ -6,6 +6,7 @@ import type {
   ConnectionState,
   Workspace as DWorkspace,
   Priority as DPriority,
+  Ticket as DTicket,
   RunSummary,
   RunDetail,
   PersonasResponse,
@@ -16,8 +17,8 @@ import type {
   ChatMessage as DaemonChatMessage,
   WorkspaceFolder,
 } from '../electron/ipc-contract.ts'
-import { adaptWorkspace, adaptRuns, adaptPriorities, adaptRunDetail, adaptPersonas, adaptCli } from './adapter.ts'
-import type { Workspace, Priority, Run, Persona, Play, Cli, ChatMessage } from './model.ts'
+import { adaptWorkspace, adaptRuns, adaptPriorities, adaptTickets, adaptRunDetail, adaptPersonas, adaptCli } from './adapter.ts'
+import type { Workspace, Priority, Ticket, Run, Persona, Play, Cli, ChatMessage } from './model.ts'
 
 export type { ConnectionState }
 
@@ -28,6 +29,7 @@ export function ozApi(): OzApi | undefined {
 
 export interface WsData {
   priorities: Priority[]
+  tickets: Ticket[]
   runs: Run[]
   personas: Persona[]
   plays: Play[]
@@ -50,25 +52,28 @@ export async function loadClis(oz: OzApi): Promise<Cli[]> {
   }
 }
 
-// Fetch the three per-workspace surfaces in parallel and adapt them. A failed sub-fetch degrades that
+// Fetch the per-workspace surfaces in parallel and adapt them. A failed sub-fetch degrades that
 // surface to empty rather than failing the whole load.
 export async function loadWsData(oz: OzApi, wsId: string): Promise<WsData> {
-  const [pr, ru, pe, pl] = await Promise.all([
+  const [pr, ti, ru, pe, pl] = await Promise.all([
     oz.daemonGet<{ priorities: DPriority[] }>(`/workspaces/${wsId}/priorities`),
+    oz.daemonGet<{ tickets: DTicket[] }>(`/workspaces/${wsId}/tickets`),
     oz.daemonGet<{ runs: RunSummary[] }>(`/runs?workspace=${encodeURIComponent(wsId)}`),
     oz.daemonGet<PersonasResponse>(`/workspaces/${wsId}/personas`),
     oz.daemonGet<PlaysResponse>(`/workspaces/${wsId}/plays`),
   ])
   const dPriorities = pr.ok ? pr.data.priorities ?? [] : []
+  const dTickets = ti.ok ? ti.data.tickets ?? [] : []
   const dRuns = ru.ok ? ru.data.runs ?? [] : []
   const names: Record<string, string> = Object.fromEntries(dPriorities.map((p) => [p.id, p.title]))
   const runs = adaptRuns(dRuns, names)
   const priorities = adaptPriorities(dPriorities, runs)
+  const tickets = adaptTickets(dTickets)
   const assignments = pe.ok ? pe.data.assignments ?? {} : {}
   const personas = pe.ok ? adaptPersonas(pe.data) : []
   const plays = pl.ok ? [...(pl.data.plays ?? [])] : []
   const configured = pe.ok ? Object.keys(assignments).length > 0 : true
-  return { priorities, runs, personas, plays, assignments, configured, names }
+  return { priorities, tickets, runs, personas, plays, assignments, configured, names }
 }
 
 // Poll one run's detail → an enriched Run (transcript + evidence + personas). Null on a failed fetch

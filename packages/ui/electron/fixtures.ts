@@ -20,6 +20,7 @@ export function fixtureGet<T>(path: string): DaemonResult<T> {
   if (p === '/health') return { ok: true, status: 200, data: { ok: true, sha: 'fixtures' } as T }
   if (p === '/workspaces') name = 'workspaces.json'
   else if (/^\/workspaces\/[^/]+\/priorities$/.test(p)) name = 'priorities.json'
+  else if (/^\/workspaces\/[^/]+\/tickets$/.test(p)) name = 'tickets.json'
   else if (/^\/workspaces\/[^/]+\/personas$/.test(p)) name = 'personas.json'
   else if (p === '/runs') name = 'runs.json'
   else if (/^\/runs\/[^/]+$/.test(p)) name = 'run-detail.json'

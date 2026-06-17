@@ -8,6 +8,7 @@
 import type {
   Workspace as DWorkspace,
   Priority as DPriority,
+  Ticket as DTicket,
   RunSummary,
   RunDetail,
   RunEvent,
@@ -15,7 +16,7 @@ import type {
   PersonaAssignment,
   CliView,
 } from '../electron/ipc-contract.ts'
-import type { Workspace, Priority, Run, RunStatus, Persona, TranscriptLine, EvidenceItem, SubAgent, Cli } from './model.ts'
+import type { Workspace, Priority, Ticket, Run, RunStatus, Persona, TranscriptLine, EvidenceItem, SubAgent, Cli } from './model.ts'
 
 // The pinned "Ad-hoc" row is a real daemon priority but the design renders it specially (a pinned row
 // holding many concurrent runs), so it is pulled OUT of the normal queue and its runs lose their
@@ -154,6 +155,24 @@ export function adaptPriorities(priorities: readonly DPriority[], runs: readonly
       if (live) return { ...base, runId: live.id, status: live.status }
       return base
     })
+}
+
+export function adaptTicket(t: DTicket): Ticket {
+  return {
+    id: t.id,
+    title: t.title || humanize(t.id),
+    type: t.type,
+    status: t.status,
+    priority: t.priority,
+    owner: t.owner,
+    created: t.created,
+    state: t.state,
+    body: t.body,
+  }
+}
+
+export function adaptTickets(tickets: readonly DTicket[]): Ticket[] {
+  return tickets.map(adaptTicket)
 }
 
 export function mergeRunsWithEnrichment(summaries: readonly Run[], existing: readonly Run[]): Run[] {

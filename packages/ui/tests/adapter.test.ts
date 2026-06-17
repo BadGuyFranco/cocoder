@@ -6,6 +6,7 @@ import { describe, it, expect } from 'vitest'
 import {
   adaptWorkspace,
   adaptPriorities,
+  adaptTickets,
   adaptRuns,
   adaptRunSummary,
   adaptRunDetail,
@@ -28,6 +29,7 @@ import type { Persona } from '../app/model.ts'
 import { seed } from '../app/model.ts'
 import workspacesFx from '../fixtures/workspaces.json'
 import prioritiesFx from '../fixtures/priorities.json'
+import ticketsFx from '../fixtures/tickets.json'
 import personasFx from '../fixtures/personas.json'
 import runsFx from '../fixtures/runs.json'
 import runDetailFx from '../fixtures/run-detail.json'
@@ -36,6 +38,8 @@ import runDetailFx from '../fixtures/run-detail.json'
 const W = workspacesFx as any
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const P = prioritiesFx as any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const T = ticketsFx as any
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const PERS = personasFx as any
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -138,6 +142,27 @@ describe('priorities joined with runs', () => {
     // A completed run committed its work straight to the branch and ended — it is not an active row.
     expect(out[0].runId).toBeUndefined()
     expect(out[0].status).not.toBe('complete')
+  })
+})
+
+describe('tickets', () => {
+  it('maps daemon ticket fixtures into the renderer view model', () => {
+    const tickets = adaptTickets(T.tickets)
+
+    expect(tickets.map((ticket) => [ticket.id, ticket.state])).toEqual([
+      ['0003', 'open'],
+      ['0012', 'open'],
+      ['0008', 'closed'],
+    ])
+    expect(tickets.find((ticket) => ticket.id === '0012')).toMatchObject({
+      title: 'Guard against design-ref rebuilds reverting committed packages/ui/app fixes',
+      type: 'task',
+      status: 'Open',
+      priority: 'oz-dashboard-bugs',
+      owner: 'oscar run_94',
+      created: '2026-06-15',
+      body: expect.stringContaining('design-ref rebuild-clobber guard'),
+    })
   })
 })
 

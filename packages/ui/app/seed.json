@@ -151,6 +151,45 @@
     "ws-vault": [],
     "ws-lumen": []
   },
+  "tickets": {
+    "ws-cocoder": [
+      {
+        "id": "0003",
+        "title": "Public docs/ tree is v1-stale (commands, PRIORITIES.md, cocoder/local, routes)",
+        "type": "task",
+        "status": "Open",
+        "priority": "none",
+        "owner": "founder-session 2026-06-10",
+        "created": "2026-06-10",
+        "state": "open",
+        "body": "# 0003 — Public docs/ tree is v1-stale\n\nPublic docs are stale and need reconciliation."
+      },
+      {
+        "id": "0012",
+        "title": "Guard against design-ref rebuilds reverting committed packages/ui/app fixes",
+        "type": "task",
+        "status": "Open",
+        "priority": "oz-dashboard-bugs",
+        "owner": "oscar run_94",
+        "created": "2026-06-15",
+        "state": "open",
+        "body": "# 0012 — design-ref rebuild-clobber guard\n\nPrevent design-ref rebuilds from reverting dashboard fixes."
+      },
+      {
+        "id": "0008",
+        "title": "Wrapped Oscar is reachable but lacks a committed post-wrap action path",
+        "type": "bug",
+        "status": "Closed",
+        "priority": "governance-authoring-plays",
+        "owner": "deb",
+        "created": "2026-06-16",
+        "state": "closed",
+        "body": "# 0008 — Wrapped Oscar is reachable but lacks a committed post-wrap action path\n\nClosed by the support-commit path."
+      }
+    ],
+    "ws-vault": [],
+    "ws-lumen": []
+  },
   "runsByWs": {
     "ws-cocoder": [
       {

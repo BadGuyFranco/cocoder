@@ -108,6 +108,8 @@ describe('Oz read surfaces', () => {
     home = await mkdtemp(join(tmpdir(), 'cocoder-oz-read-'))
     // Governance fixtures under the (dogfood) workspace == cocoderHome.
     await mkdir(join(home, 'cocoder', 'priorities'), { recursive: true })
+    await mkdir(join(home, 'cocoder', 'tickets', 'open'), { recursive: true })
+    await mkdir(join(home, 'cocoder', 'tickets', 'closed'), { recursive: true })
     await mkdir(join(home, 'cocoder', 'personas'), { recursive: true })
     await mkdir(join(home, 'cocoder', 'plays', 'deltas'), { recursive: true })
     await mkdir(join(home, 'local'), { recursive: true })
@@ -117,6 +119,15 @@ describe('Oz read surfaces', () => {
     )
     await writeFile(join(home, 'cocoder', 'priorities', 'demo.md'), `---\nid: demo\ntitle: Demo priority\n---\nDo the small thing.`)
     await writeFile(join(home, 'cocoder', 'priorities', 'AGENTS.md'), `# Priorities registry\nno frontmatter here`)
+    await writeFile(
+      join(home, 'cocoder', 'tickets', 'open', '0003-docs.md'),
+      `---\nid: 0003\ntitle: Docs stale\ntype: task\nstatus: Open\npriority: none\nowner: founder-session\ncreated: 2026-06-10\n---\n# 0003\n\nFix docs.`,
+    )
+    await writeFile(
+      join(home, 'cocoder', 'tickets', 'closed', '0007-post-wrap.md'),
+      `---\ntype: bug\nstatus: Closed\npriority: new-primary-root\nowner: founder\n---\n# Closed historical ticket`,
+    )
+    await writeFile(join(home, 'cocoder', 'tickets', 'closed', 'notes.md'), `# not a ticket`)
     await mkdir(join(home, 'cocoder', 'personas', 'deltas'))
     await writeFile(
       join(home, 'cocoder', 'personas', 'deltas', 'bob.md'),
@@ -174,6 +185,18 @@ describe('Oz read surfaces', () => {
       expect.objectContaining({ id: 'drift-audit', mode: 'drift', modelPin: 'top-tier' }),
       expect.objectContaining({ id: 'new-primary', mode: 'bootstrap', modelPin: 'standard' }),
     ])
+  })
+
+  test('GET /workspaces/:id/tickets serves open and closed ticket files', async () => {
+    const r = await get(oz!, '/workspaces/cocoder/tickets')
+
+    expect(r.status).toBe(200)
+    expect(r.json.tickets.map((ticket: any) => [ticket.id, ticket.state])).toEqual([
+      ['0003', 'open'],
+      ['0007', 'closed'],
+    ])
+    expect(r.json.tickets[0]).toMatchObject({ title: 'Docs stale', type: 'task', status: 'Open', body: expect.stringContaining('Fix docs') })
+    expect(r.json.tickets[1]).toMatchObject({ title: 'Closed historical ticket', type: 'bug', status: 'Closed' })
   })
 
   test('GET /workspaces/:id/priorities applies order.json, appends unlisted priorities, and ignores stale ids', async () => {
