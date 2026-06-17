@@ -102,6 +102,20 @@ export {
   type RunPlaybookP3ActionInput,
 } from './p3-action.js'
 export {
+  createPlaybookP4PhaseAction,
+  runPlaybookP4Action,
+  type PlaybookFounderQuestionsResultEvent,
+  type PlaybookP4Artifacts,
+  type RunPlaybookP4ActionInput,
+} from './p4-action.js'
+export {
+  buildFounderQuestions,
+  type P4QuestionItem,
+  type P4QuestionsInput,
+  type P4QuestionsPayload,
+} from './p4-questions.js'
+export { renderFounderQuestionsMarkdown } from './p4-render.js'
+export {
   buildIntentIntakePrompt,
   runIntentIntake,
   type FounderAssertedIntent,

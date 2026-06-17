@@ -644,6 +644,18 @@ describe('Oz mutations + lifecycle', () => {
     const crossCheckEvents = store.listEvents(runId).filter((event) => event.type === 'playbook-cross-check-result')
     expect(crossCheckEvents).toHaveLength(1)
     expect(crossCheckEvents[0]?.data).toMatchObject({ roundsRun: 2, converged: true })
+    const p4Dir = join(runDir, 'playbook', 'P4')
+    const questions = JSON.parse(await readFile(join(p4Dir, 'questions.json'), 'utf8')) as {
+      readonly clarifications: readonly { readonly note: string }[]
+      readonly conflictingFindings: readonly unknown[]
+      readonly futurePriorities: readonly unknown[]
+    }
+    expect(Object.keys(questions).sort()).toEqual(['clarifications', 'conflictingFindings', 'futurePriorities', 'version'])
+    expect(questions.clarifications.map((item) => item.note)).toContain('What should P2 inspect first?')
+    await expect(readFile(join(p4Dir, 'questions.md'), 'utf8')).resolves.toContain('## Clarifications')
+    const questionsEvents = store.listEvents(runId).filter((event) => event.type === 'playbook-questions-result')
+    expect(questionsEvents).toHaveLength(1)
+    expect(questionsEvents[0]?.data).toMatchObject({ clarificationCount: expect.any(Number), conflictingFindingCount: expect.any(Number), futurePriorityCount: expect.any(Number) })
     await expect(stat(join(home, 'cocoder', 'AGENTS.md'))).rejects.toThrow()
   })
 

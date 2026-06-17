@@ -15,6 +15,7 @@ import {
   createPlaybookPhaseAction,
   createPlaybookP2PhaseAction,
   createPlaybookP3PhaseAction,
+  createPlaybookP4PhaseAction,
   dispatchPlay,
   isPersonaEnabled,
   gateCommitRepair,
@@ -221,10 +222,16 @@ export function createDaemonPlaybookPhaseAction(ctx: OzContext, workspacePath: s
     ),
     onCrossCheckResult: (event) => ctx.store.recordEvent({ runId, type: 'playbook-cross-check-result', data: event }),
   })
+  const p4 = createPlaybookP4PhaseAction({
+    repoDir: workspacePath,
+    runDir,
+    onFounderQuestionsResult: (event) => ctx.store.recordEvent({ runId, type: 'playbook-questions-result', data: event }),
+  })
   return async (input) => {
     await p1(input)
     await p2(input)
     await p3(input)
+    await p4(input)
   }
 }
 
