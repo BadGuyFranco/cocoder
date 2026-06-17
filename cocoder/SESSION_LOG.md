@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-17 — **Executor core lands (run_112): runner primitive extraction + playbook executor state/cursor**
+
+**Persona:** Oscar (2 atoms delegated + verified) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_112
+**Outcomes:**
+- **Atom 3 committed (`ffcce7d`)** — behavior-preserving runner primitive extraction: `executeAgentStep` moved to `packages/core/src/runner/agent-step.ts` (delegate→monitor→verify→commit/quarantine unit); `runRun()` rewired to call it with `consecutiveRejects`/`activeAtom` state hoisted; identical semantics. 274→275 core tests green unchanged.
+- **Atom 4 committed (`87cec58`)** — new `packages/core/src/playbooks/executor.ts`: cursor over loaded phases, persists `playbook-state.json` on each transition, PAUSES at `founderGate` (`awaiting-founder`), resumes from saved cursor after process restart via injected `runPhase` seam + injected `now`. Synthetic test proves start→P1→P2→pause@P3→reload→resume→done incl. no post-gate action before approval. Status/store types widened additively: `RunnerPhase` + `'awaiting-founder'`, `RunStatus` + `'awaiting-founder'`, new `PlaybookStatus`/`PlaybookGateStatus` in `runner/status.ts`. Executor public surface exported from `packages/core/src/index.ts` (`startPlaybookExecutor`, `resumePlaybookExecutor`, `loadPlaybookExecutor`, `readPlaybookExecutorState` + types). Per-phase ACTION is still a stub seam — real phase work (recon dispatch, P2 fan-out, etc.) wired in later atoms.
+- **Sequencing unchanged:** Atom 2 (run target + daemon launch surface) is next — now coherent because the executor exists to be launched.
+**Next:** Launch `new-primary-root` in Oz for **addendum Atom 2 — Run target and daemon launch surface** (`packages/core/src/store/types.ts`, `store/schema.ts`, `packages/daemon/src/routes.ts`, `launcher.ts`, `priority-order.ts`, relevant UI store/API): Oz launches `playbookId` distinctly from `priorityId`; ordinary priority runs unchanged; run receipts identify priority vs Playbook target.
+
 ## 2026-06-17 — **Executor build begins (run_111): design-amendment + phase loader + deterministic recon helper**
 
 **Persona:** Oscar (3 atoms delegated + verified, 1 rejected-then-fixed) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_111

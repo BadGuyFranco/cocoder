@@ -45,6 +45,36 @@ CoPublisher).
 
 ## Build progress — disposition: `continue` (ratified 2026-06-17 — build released)
 
+### Executor build progress (run_112, 2026-06-17)
+Second build session. Two atoms landed (verified-on-evidence per atom: diff read +
+`pnpm --filter @cocoder/core test` + `pnpm -w typecheck` + topology each time):
+- ✅ **Atom 3 — Runner primitive extraction** (`ffcce7d`). Behavior-preserving: extracted `executeAgentStep`
+  into `packages/core/src/runner/agent-step.ts` (the delegate→monitor→verify→commit/quarantine unit);
+  `runRun()` rewired to call it with `consecutiveRejects`/`activeAtom` state hoisted; identical semantics.
+  274→275 core tests green unchanged.
+- ✅ **Atom 4 — Playbook executor state + gate cursor** (`87cec58`). New
+  `packages/core/src/playbooks/executor.ts`: cursor over loaded phases, persists `playbook-state.json` on
+  each transition, PAUSES at `founderGate` (`awaiting-founder`), resumes from saved cursor after process
+  restart via injected `runPhase` seam + injected `now`. Synthetic test proves
+  start→P1→P2→pause@P3→reload→resume→done incl. no post-gate action before approval. Status/store types
+  widened additively: `RunnerPhase` + `'awaiting-founder'`, `RunStatus` + `'awaiting-founder'`, new
+  `PlaybookStatus`/`PlaybookGateStatus` in `runner/status.ts`. Executor public surface exported from core
+  (`startPlaybookExecutor`, `resumePlaybookExecutor`, `loadPlaybookExecutor`, `readPlaybookExecutorState` +
+  types). Per-phase ACTION is still a stub seam — real phase work wired in Atoms 5b–11.
+
+**Next-run sequence (executor critical path; build released, no founder gate needed for these):**
+- **NEXT → addendum Atom 2 — Run target and daemon launch surface** (resequenced here — coherent now that
+  the executor exists to be launched). Files: `packages/core/src/store/types.ts`, `store/schema.ts`,
+  `packages/daemon/src/routes.ts`, `launcher.ts`, `priority-order.ts`, relevant UI store/API. Exit: Oz can
+  launch a `playbookId` distinctly from a `priorityId`; ordinary priority runs are UNCHANGED (hard
+  invariant — verify daemon + existing tests stay green); run receipts identify whether the target was a
+  priority or a Playbook.
+- **Then** Atom 5b (agentic recon pass, consumes `recon.ts`) → Atoms 6–11 (P2 dual-source fan-out, P3
+  cross-check, P4 founder-question checkpoint, P5 synthesis + audit boundary, P6 ratify, e2e fixture proof) +
+  New-Primary tech-stack-starter template build from E.
+- **Still gated:** Live CoPublisher Takeover proof and the dogfood Drift Audit remain gated on the executor
+  shipping — do not attempt live onboarding until the P1→P5 path runs end-to-end on fakes.
+
 ### Executor build progress (run_111, 2026-06-17)
 First build session after ratification. Three atoms landed (verified-on-evidence per atom: diff read +
 `pnpm --filter @cocoder/core test` + `pnpm -w typecheck` + topology each time):
@@ -85,18 +115,14 @@ First build session after ratification. Three atoms landed (verified-on-evidence
    productive without starting the delicate runner refactor under a half-spent context.
 
 **Next-run sequence (executor critical path; build released, no founder gate needed for these):**
-- **NEXT → addendum Atom 3 — Runner primitive extraction** (`packages/core/src/runner/runner.ts` + a small
-  helper). Extract an internal "run one agent step → monitor → verify → commit/quarantine" primitive out of
-  the ~1000-line `runRun()` so Playbook phases can call it, with **zero behavior change** (the existing
-  Oscar↔Bob loop + `runner-direct.test.ts` and all runner tests stay green as the objective gate). This is a
-  delicate behavior-preserving refactor of a load-bearing function — give it its own fresh, full-context
-  session, scope it to a single well-defined primitive seam, and verify by careful diff read + the unchanged
-  suite (test-green alone is not sufficient confidence for a refactor this size).
-- **Then** addendum Atom 4 (Playbook state + gate cursor / executor facade; synthetic test) → Atom 2
-  (launch surface, now coherent) → Atom 5b (agentic recon pass, consumes `recon.ts`) → Atoms 6–11 (P2
-  dual-source fan-out, P3 adversarial cross-check, P4 checkpoint, P5 synthesis + audit boundary, P6 ratify,
-  end-to-end fixture proof). Re-sequenced per the priority's plan: P1 implements C+D, P2 implements A+F, P3
-  implements B+F.
+- **NEXT → addendum Atom 2 — Run target and daemon launch surface** (resequenced here — coherent now that
+  the executor exists). Files: `packages/core/src/store/types.ts`, `store/schema.ts`,
+  `packages/daemon/src/routes.ts`, `launcher.ts`, `priority-order.ts`, relevant UI store/API. Exit: Oz
+  launches `playbookId` distinctly from `priorityId`; ordinary priority runs unchanged; run receipts identify
+  priority vs Playbook target.
+- **Then** Atom 5b (agentic recon pass, consumes `recon.ts`) → Atoms 6–11 (P2 dual-source fan-out, P3
+  adversarial cross-check, P4 checkpoint, P5 synthesis + audit boundary, P6 ratify, end-to-end fixture
+  proof). Re-sequenced per the priority's plan: P1 implements C+D, P2 implements A+F, P3 implements B+F.
 - **Still gated:** Live CoPublisher Takeover proof and the dogfood Drift Audit remain gated on the executor
   shipping — do not attempt live onboarding until the P1→P5 path runs end-to-end on fakes.
 
@@ -131,14 +157,14 @@ First build session after ratification. Three atoms landed (verified-on-evidence
    files (assignments, adhoc priority, CLAUDE pointer) are now committed to trunk with their verified
    canonical contents; the run_86 strand below is closed (recovery executed). Scaffold is complete on a
    fresh clone again and CI is green.
-2. **P2→P5 fan-out executor** — **✅ DESIGNED run_107, ratified run_110, BUILD IN PROGRESS run_111**
+2. **P2→P5 fan-out executor** — **✅ DESIGNED run_107, ratified run_110, BUILD IN PROGRESS run_111–112**
    ([ADR-0020 addendum](../decisions/0020-addendum-phase-executor.md)). Concrete P1→P5 execution design:
    new runner mode (not a forked loop), phase metadata from shipped Playbook tables, founder gates at
    P1/P5, P2 deep-read fan-out via `dispatchPlay`, P3 cross-check → P4 synthesize → P5 ratify through the
    ADR-0023 spine. **Landed run_111:** Atom F (`35eb066`), Atom 1 phase loader (`af48ddd`), Atom 5a recon
-   helper (`a2c7195`). **Next:** Atom 3 runner primitive extraction → Atom 4 (executor state/cursor) →
-   Atom 2 (launch surface, resequenced after executor) → Atom 5b (agentic recon) → Atoms 6–11 + tech-stack
-   template build from E. Addendum Atoms 3–11 remain open.
+   helper (`a2c7195`). **Landed run_112:** Atom 3 runner primitive (`ffcce7d`), Atom 4 executor state/cursor
+   (`87cec58`). **Next:** Atom 2 launch surface → Atom 5b (agentic recon) → Atoms 6–11 + tech-stack
+   template build from E. Addendum Atoms 2, 5b–11 remain open.
 3. **Live CoPublisher Takeover proof** (Phase-5 entry) — Objective verification (a). **BLOCKED on executor
    build** (#2 above).
 4. **Dogfood Drift Audit run** — Objective verification (b). **BLOCKED on executor build** (#2 above).
@@ -256,9 +282,14 @@ directives now recorded in [addendum §Founder Ratification — RESOLVED](../dec
   tables into ordered phases; P1a id grammar + `stack-starter` kind; phase lists pinned in tests.
 - ✅ **Atom 5a — deterministic recon helper** (`a2c7195`, run_111). `packages/core/src/playbooks/recon.ts`
   — pure read-only `inventoryRepo()`; agentic pass deferred to Atom 5b.
-- **NEXT → Atom 3 — Runner primitive extraction** (fresh session; see §Executor build progress run_111).
-- **Then** Atom 4 (executor state/cursor) → Atom 2 (launch surface, resequenced after executor) → Atom 5b
-  (agentic recon) → Atoms 6–11 + New-Primary tech-stack-template build from E.
+- ✅ **Atom 3 — Runner primitive extraction** (`ffcce7d`, run_112). `executeAgentStep` in
+  `packages/core/src/runner/agent-step.ts`; `runRun()` rewired, zero behavior change.
+- ✅ **Atom 4 — Playbook executor state + gate cursor** (`87cec58`, run_112).
+  `packages/core/src/playbooks/executor.ts` — phase cursor, `playbook-state.json`, `awaiting-founder`
+  pause/resume; per-phase ACTION stub seam.
+- **NEXT → Atom 2 — Run target and daemon launch surface** (fresh session; see §Executor build progress
+  run_112).
+- **Then** Atom 5b (agentic recon) → Atoms 6–11 + New-Primary tech-stack-template build from E.
 
 **Still gated:** Live Takeover (#3) and Drift Audit (#4) proofs remain gated on the executor shipping — do
 not attempt live onboarding until then.

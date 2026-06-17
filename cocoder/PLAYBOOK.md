@@ -207,16 +207,17 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    the explicit `archive` go-ahead. Playbook moved to `priorities/archive/`. Open follow-ons (do NOT
    reopen this priority): ticket 0006 closed via `headless-adapter-lane` (run_104, archive-candidate) ·
    ticket 0007 (design-ref rebuild guard).
-4. `new-primary-root` — **ACTIVE (run_111, 2026-06-17).** Onboard a primary root via the
+4. `new-primary-root` — **ACTIVE (run_112, 2026-06-17).** Onboard a primary root via the
    bootstrap/takeover/drift onboarding Playbooks (ADR-0020 Accepted). **Engine foundation built and
    live-wired** (run_83 + run_86): loader extension (§7), `scaffoldCocoderZone` + `createWorkspace`
    wiring (D1 complete), `deep-read` hardened for P3. **Executor design ratified** (run_110 cleared
-   founder gate; addendum A–E + tech-stack approach accepted). **Executor build in progress** (run_111):
-   Atom F design-amendment (`35eb066` — dual-source P2, P4 founder-question checkpoint, `cocoder/**`-only
-   trust invariant); Atom 1 phase-metadata loader (`af48ddd`); Atom 5a deterministic recon helper
-   (`a2c7195`). **Sequencing:** addendum Atom 2 (launch surface) follows executor core; next atom is
-   **Atom 3 — runner primitive extraction**. Then Atoms 4 → 2 → 5b → 6–11 + tech-stack-template build;
-   live CoPublisher Takeover + dogfood Drift Audit proofs remain gated on executor shipping. **Absorbs
+   founder gate; addendum A–E + tech-stack approach accepted). **Executor build in progress** (run_111–112):
+   Atom F design-amendment (`35eb066`); Atom 1 phase loader (`af48ddd`); Atom 5a recon helper (`a2c7195`);
+   Atom 3 runner primitive (`ffcce7d` — `agent-step.ts`); Atom 4 executor state/cursor (`87cec58` —
+   `playbooks/executor.ts`, `awaiting-founder` gate, synthetic pause/resume test). **Next:** addendum
+   **Atom 2 — run target + daemon launch surface** (Oz launches `playbookId` distinctly from `priorityId`;
+   ordinary priority runs unchanged). Then Atoms 5b → 6–11 + tech-stack-template build; live CoPublisher
+   Takeover + dogfood Drift Audit proofs remain gated on executor shipping. **Absorbs
    `workspace-onboarding`.** Phase 5 ("first external repo").
 
 **Queued after `new-primary-root` (founder go-ahead 2026-06-16, priority-audit run_106 — in `order.json`):**
