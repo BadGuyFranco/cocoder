@@ -230,6 +230,11 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   (Bob-only vs small Oscar↔Bob vs reuse `adhoc-session`, possibly by ticket type) is the open design
   question resolved at the start alignment beat. Draft Objective pending founder ratification (filed
   run_111, founder-directed).
+- `oz-dashboard-design-tweaks` — focused UI polish: lose/soften the panel gradient for proper
+  panel↔background contrast in both themes; make personas (and their plays) collapsible, collapsed by
+  default; remove the Compact-density + Reduce-motion settings (toggles + model + wiring + dead CSS).
+  UI-only; item 1 verified by founder eye, items 2–3 grep/test-checkable. Draft Objective pending founder
+  ratification (filed run_111, founder-directed).
 - ~~`play-dispatch-boundary`~~ — **RESOLVED 2026-06-15, ARCHIVED 2026-06-16** (run_106): one-level dispatch
   stands; no engine reversal. Decision record now at `priorities/archive/play-dispatch-boundary.md`.
 
