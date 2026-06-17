@@ -207,17 +207,18 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    the explicit `archive` go-ahead. Playbook moved to `priorities/archive/`. Open follow-ons (do NOT
    reopen this priority): ticket 0006 closed via `headless-adapter-lane` (run_104, archive-candidate) ·
    ticket 0007 (design-ref rebuild guard).
-4. `new-primary-root` — **CONTINUE (run_109, 2026-06-16).** Onboard a primary root via the
+4. `new-primary-root` — **BLOCKED (run_110, 2026-06-16).** Onboard a primary root via the
    bootstrap/takeover/drift onboarding Playbooks (ADR-0020 Accepted). **Engine foundation built and
    live-wired** (run_83 + run_86): loader extension (§7), `scaffoldCocoderZone` + `createWorkspace`
-   wiring (D1 complete), `deep-read` hardened for P3. **Executor design deepening A–D complete**
-   ([0020 addendum](./decisions/0020-addendum-phase-executor.md), Proposed): run_107 mapped P1→P5 onto
-   existing runner/dispatch/spine; run_108 **Atom A** (P2 iterative deep-read loop); run_109 **Atoms B–D**
-   — P3 capped convergence cross-check, P1 complexity-scaled spend gate + `estimate.json`, P1 intent
-   capture → `intent.json` feeding P4. **Blocked on founder input:** Atom E (New-Primary tech-stack
-   starter — pluggable mechanism + founder-chosen default stack) → founder ratification gate (A–E +
-   top-tier `deep-read` `{cli,model}`) → build Atoms 1–10; then live CoPublisher Takeover + dogfood Drift
-   Audit proofs. **Absorbs `workspace-onboarding`.** Phase 5 ("first external repo").
+   wiring (D1 complete), `deep-read` hardened for P3. **Executor design deepening A–E complete**
+   ([0020 addendum](./decisions/0020-addendum-phase-executor.md) + [`new-primary-tech-stack.md`](../packages/personas/base/playbooks/new-primary-tech-stack.md),
+   both Proposed): run_107 mapped P1→P5 onto existing runner/dispatch/spine; run_108 **Atom A** (P2
+   iterative deep-read loop); run_109 **Atoms B–D** — P3 capped convergence cross-check, P1
+   complexity-scaled spend gate + `estimate.json`, P1 intent capture → `intent.json` feeding P4; run_110
+   **Atom E** — pluggable tech-stack starter registry (3 founder-provided defaults + BYO seam, P1a beat).
+   **Blocked on founder ratification gate:** accept addendum A–D + tech-stack approach E + name top-tier
+   `deep-read` `{cli,model}` → build Atoms 1–10; then live CoPublisher Takeover + dogfood Drift Audit
+   proofs. **Absorbs `workspace-onboarding`.** Phase 5 ("first external repo").
 
 **Queued after `new-primary-root` (founder go-ahead 2026-06-16, priority-audit run_106 — in `order.json`):**
 - `hybrid-plays` — deterministic code spine inside a Play (promotes "verify, don't assert — evidence over

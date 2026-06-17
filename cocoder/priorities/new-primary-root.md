@@ -43,7 +43,7 @@ extension (ADR-0020 §7); the `deep-read` audit Play (the Takeover P2 unit, adve
 deterministic scaffold init op; and a **live Takeover proof on a real external repo** (the Phase-5 entry,
 CoPublisher).
 
-## Build progress — disposition: `continue`
+## Build progress — disposition: `blocked`
 
 ### Cumulative engine state (run_83 + run_86)
 - ✅ **Loader extension (§7)** — core reads the three shipped Playbooks (`loadOnboardingPlaybooks`, `082fa48`)
@@ -134,16 +134,15 @@ Atoms 1–10) follow **after the founder ratification gate**, re-sequenced so th
 
 **New-Primary feature atom (its own session):**
 
-- **Atom E — Tech-stack starter for New Primary (pluggable; ships a founder default).** Today New Primary
-  scaffolds only the `cocoder/` governance zone and says nothing about the *app* stack — a hole for a
-  non-developer founder starting from empty. This atom must **(1) contemplate HOW we add additional
-  tech-stack templates** — the pluggable mechanism/registry, where starter templates live, how the
-  New-Primary flow selects one, and how a user brings their own — keeping it an **option, not a mandate**;
-  and **(2) ASK the founder for an example stack** to ship as *the* default starter (framework, language,
-  DB, hosting, non-negotiables). *Exit:* a design note (likely a small ADR or New-Primary addendum)
-  specifying the template-add seam + the pluggable contract + the founder-provided default captured.
-  **Founder-gated:** this atom pauses to collect the founder's stack before finalizing. One-shot,
-  founder-gated.
+- **Atom E — Tech-stack starter for New Primary (pluggable; ships founder defaults).** ✅ **DONE run_110
+  (commit `8aa2671`).** [`new-primary-tech-stack.md`](../../packages/personas/base/playbooks/new-primary-tech-stack.md):
+  pluggable starter registry (manifest contract, `packages/personas/base/templates/starters/<starter-id>/`,
+  project-type selection seam, bring-your-own path); three founder-provided default starters
+  (static-publishing→Cloudflare Workers, dynamic-web-app→Vercel, backend-service→Google Cloud); portability
+  reasoning + founder-gate open questions/recommendations (recommend no universal fallback default). Additive
+  **P1a · Optional stack starter** beat in [`new-primary.md`](../../packages/personas/base/playbooks/new-primary.md).
+  Status **Proposed — pending founder ratification** (design INPUT from run_109 capture is now formalized, not
+  yet ratified).
 
   **↳ Captured founder input for Atom E (run_109 post-wrap, 2026-06-16).** The founder provided an example
   stack via the **CoPublisher Playbook** — source: `/Volumes/NAS LOCAL/CoPublisher/Playbook.md` (note: that
@@ -173,13 +172,14 @@ Atoms 1–10) follow **after the founder ratification gate**, re-sequenced so th
 
   So the New-Primary tech-stack starter is a **pluggable registry shipping >1 starter**, not a single
   default; the selection seam keys off project type (static-publishing / web-app / backend-service), and a
-  user can still bring their own. Remaining for the Atom E session to confirm with the founder: the exact
-  starter set + per-starter non-negotiables (testing, auth, package manager, lint/format, CI), and whether
-  one starter is the "if unsure" fallback default. This capture is design INPUT, not a ratified decision.
+  user can still bring their own. Atom E formalized this into the tech-stack design note (see ✅ above);
+  per-starter non-negotiables and the "if unsure" fallback question are draft recommendations in that note's
+  founder-gate table — **pending ratification**, not yet decided.
 
-**Founder ratification gate (after A–E):** founder ratifies the deepened addendum (A–D) + the New-Primary
-tech-stack approach (E), and names the top-tier `deep-read` default `{cli, model}` (addendum §Founder
-Ratification Required). **This gate releases the build.**
+**Founder ratification gate (after A–E — NOW):** design atoms A–E are complete. Founder ratifies the
+deepened addendum (A–D) + the New-Primary tech-stack approach (E), and names the top-tier `deep-read`
+default `{cli, model}` (addendum §Founder Ratification Required; recommendation `{cli: "claude", model:
+"claude-opus-4-8"}`). **This gate releases the build.** Reply `ratify` in Oz to proceed.
 
 **Build (after ratification):** the addendum's Ordered Implementation Atoms 1–10, re-sequenced so P1
 implements C+D, P2 implements A, P3 implements B; plus a New-Primary tech-stack-template build atom from E.

@@ -12,6 +12,14 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-16 — **Design deepen Atom E (run_110): New-Primary tech-stack starter registry — design A–E complete, blocked on ratification**
+
+**Persona:** Oscar (1 atom delegated + verified) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_110
+**Outcomes:**
+- **Atom E committed (`8aa2671`)** — [`new-primary-tech-stack.md`](../../packages/personas/base/playbooks/new-primary-tech-stack.md): pluggable starter registry (manifest contract under `packages/personas/base/templates/starters/<starter-id>/`, project-type selection seam, bring-your-own path); three founder-provided default starters (static-publishing→Cloudflare Workers, dynamic-web-app→Vercel, backend-service→Google Cloud); portability reasoning + founder-gate open questions/recommendations (no universal fallback default). Additive **P1a · Optional stack starter** beat wired into [`new-primary.md`](../../packages/personas/base/playbooks/new-primary.md). Doc-only; 266 core tests green; loader still surfaces exactly the 3 onboarding playbooks.
+- **Design phase A–E complete** — addendum P2/P3/P1 deepening (run_108–run_109) plus New-Primary tech-stack approach (E). Every remaining build atom is gated behind the founder-ratification gate (ADR-0010 / addendum §Founder Ratification Required).
+**Next:** Reply `ratify` with the top-tier deep-read default `{cli, model}` (recommendation: `{cli: "claude", model: "claude-opus-4-8"}`) to release the build — then relaunch `new-primary-root` as a BUILD run (first atom: Phase metadata loader).
+
 ## 2026-06-16 — **Design deepen Atoms B+C+D (run_109): P3 convergence, P1 complexity-scaled spend gate, P1 intent capture**
 
 **Persona:** Oscar (3 atoms delegated + verified) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_109
