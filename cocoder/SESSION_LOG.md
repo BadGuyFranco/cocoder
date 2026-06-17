@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-17 — **new-primary-root: executor P2c ACTION integration landed — P3 cross-check is next (run_127)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 1 atom delegated/verified-on-evidence) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_127
+**Outcomes:**
+- **Executor P2c — P2 ACTION integration (`022d774`):** new pure-core `packages/core/src/playbooks/p2-action.ts` (exported from `playbooks/index.ts` + core index) mirroring `p1-action.ts` — loads `playbook/P1/{subsystems,estimate}.json`; per subsystem resolves two adversarial sources via `resolveDeepReadAssignments` (Bob builder + Oscar orchestrator), builds two `DeepReadTurn`s via `createDeepReadTurn`, runs `runDeepReadSource` for both, then `combineSourcePair`; mkdirs + writes `playbook/P2/findings/<id>/{builder,orchestrator}.md` and `playbook/P2/convergence/<id>.json`; emits `playbook-fanout-result` events. `now`/`dispatch`/`resolveTopTier` all injected (no Date.now/random/network/subprocess in core). `packages/daemon/src/launcher.ts`: `createDaemonPlaybookPhaseAction` exported and composes P1 then P2; binds real `dispatchPlay` into the deep-read seam + `createDaemonTopTierResolver` (reads `ctx.cliTestCache`; fails clearly when no model cached); `launchRun` passes `run.id` through. `recon-pass.ts`: added/exported `parseSubsystemsJsonPayload` (version-checked); refactored `parseReconPassResult` to reuse it — behavior-preserving.
+- **Tests:** `playbook-p2-action.test.ts` (unit: 4 dispatches, distinct top-tier models, findings+convergence written, disagreement preserved, repoDir/cocoder absent) + new daemon `mutations.test.ts` e2e (POST /runs cocoder-takeover → awaiting-founder at P1 → resume → P2 dual-source fan-out → P3 stub → P4 founder-question gate; findings+convergence+fanout events written; `home/cocoder/AGENTS.md` never created).
+- **Gates:** core 317 pass, daemon 208 pass, `pnpm -w typecheck` clean, `node scripts/check-topology.mjs` pass (pre-existing UI warnings only).
+- **Disposition: `continue`** — P2c committed and verified on evidence; P3 (cross-check convergence ACTION integration) is the next heaviest atom and gets its own fresh dedicated session (run_111 anti-pattern).
+**Next:** Launch **`new-primary-root`** in Oz for **Executor P3 — cross-check convergence ACTION integration** — build `p3-action.ts` per run_109 Atom-B design (capped convergence loop over P2 `convergence/<id>.json`, ≤3 follow-up deep-reads/round, non-gameable exit predicate, caps 3 rounds/30 min/min(125k, P3 allocation), writes `playbook/P3/convergence.json`); wire P1→P2→P3 in `createDaemonPlaybookPhaseAction`; extend fake-agent e2e so resume advances P2→P3 (real cross-check, not stub) → P4 gate. Then Atoms 8–11 + tech-stack template build.
+
 ## 2026-06-17 — **new-primary-root: executor P2b dispatch seam landed — P2c ACTION integration is next (run_126)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 1 atom delegated/verified-on-evidence) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_126

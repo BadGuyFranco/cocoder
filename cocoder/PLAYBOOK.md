@@ -211,19 +211,19 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    the explicit `archive` go-ahead. Playbook moved to `priorities/archive/`. Open follow-ons (do NOT
    reopen this priority): ticket 0006 closed via `headless-adapter-lane` (run_104, archive-candidate) ·
    ticket 0012 (design-ref rebuild guard).
-4. `new-primary-root` — **ACTIVE (run_126, 2026-06-17).** Onboard a primary root via the
+4. `new-primary-root` — **ACTIVE (run_127, 2026-06-17).** Onboard a primary root via the
    bootstrap/takeover/drift onboarding Playbooks (ADR-0020 Accepted). **Engine foundation built and
    live-wired** (run_83 + run_86): loader extension (§7), `scaffoldCocoderZone` + `createWorkspace`
    wiring (D1 complete), `deep-read` hardened for P3. **Executor design ratified** (run_110 cleared
    founder gate; addendum A–E + tech-stack approach accepted). **Executor build in progress**
-   (run_111–126): Atoms F/1/5a/3/4 (run_111–112); run_123 landed the full P1 input layer; run_124
-   landed executor P1 ACTION integration (`94de715`); run_125 landed P2a (`a47bd8b`); **run_126 landed
-   P2b** (`66b5038`) — dual-source assignment resolution + `deepReadTurn` dispatch seam (`p2-dispatch.ts`:
-   `resolveDeepReadAssignments` + `createDeepReadTurn`, 3 verify criteria in tests; core 314 green).
-   Integration deferred. **Next:** **executor P2c** (fresh dedicated session) — `p2-action.ts` phase
-   action + `executor.ts`/`launcher.ts` wiring + fake-agent e2e; then Atoms 7–11 + tech-stack-template
-   build; live CoPublisher Takeover + dogfood Drift Audit proofs remain gated on executor end-to-end on
-   fakes. **Absorbs `workspace-onboarding`.** Phase 5 ("first external repo").
+   (run_111–127): Atoms F/1/5a/3/4 (run_111–112); run_123 landed the full P1 input layer; run_124
+   landed executor P1 ACTION integration (`94de715`); run_125 landed P2a (`a47bd8b`); run_126 landed
+   P2b (`66b5038`); **run_127 landed P2c** (`022d774`) — `p2-action.ts` end-to-end dual-source fan-out
+   wired through `launcher.ts` `createDaemonPlaybookPhaseAction` (P1→P2 compose); daemon e2e proves
+   start→P1 pause→resume→P2 fan-out→P3 stub (core 317 + daemon 208 green). **Next:** **executor P3**
+   (fresh dedicated session) — `p3-action.ts` cross-check convergence loop + e2e P2→P3 advance; then
+   Atoms 8–11 + tech-stack-template build; live CoPublisher Takeover + dogfood Drift Audit proofs remain
+   gated on executor end-to-end on fakes. **Absorbs `workspace-onboarding`.** Phase 5 ("first external repo").
 
 **Queued after `new-primary-root` (founder go-ahead 2026-06-16, priority-audit run_106 — in `order.json`):**
 - `hybrid-plays` — deterministic code spine inside a Play (promotes "verify, don't assert — evidence over

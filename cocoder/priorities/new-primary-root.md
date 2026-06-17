@@ -45,6 +45,55 @@ CoPublisher).
 
 ## Build progress — disposition: `continue` (ratified 2026-06-17 — build released)
 
+### Executor build progress (run_127, 2026-06-17)
+Seventh build session — **executor P2c — P2 ACTION integration** landed (one atom;
+verified-on-evidence: diff read end-to-end + `pnpm --filter @cocoder/core test` +
+`pnpm --filter @cocoder/daemon test` + `pnpm -w typecheck` + `node scripts/check-topology.mjs`):
+- ✅ **Executor P2c — P2 ACTION integration** (`022d774`). New `packages/core/src/playbooks/p2-action.ts`
+  (exported from `playbooks/index.ts` + core index) mirroring `p1-action.ts`: loads
+  `playbook/P1/{subsystems,estimate}.json`; per subsystem resolves the two adversarial sources via
+  `resolveDeepReadAssignments` (builder=Bob, orchestrator=Oscar), builds two `DeepReadTurn`s via
+  `createDeepReadTurn`, runs `runDeepReadSource` (p2-fanout) for both, then `combineSourcePair`; mkdirs +
+  writes `playbook/P2/findings/<id>/{builder,orchestrator}.md` AND
+  `playbook/P2/convergence/<subsystem-id>.json`; emits `playbook-fanout-result` events. `now`/`dispatch`/
+  `resolveTopTier` all injected (no Date.now/random/network/subprocess in core). `launcher.ts`:
+  `createDaemonPlaybookPhaseAction` exported and composes P1 then P2; binds real `dispatchPlay` into the
+  deep-read seam + `createDaemonTopTierResolver` (reads `ctx.cliTestCache`; fails clearly when no model
+  cached); `launchRun` passes `run.id` through. `recon-pass.ts`: added/exported `parseSubsystemsJsonPayload`
+  (version-checked); refactored `parseReconPassResult` to reuse it — behavior-preserving. Tests:
+  `playbook-p2-action.test.ts` (unit: 4 dispatches, distinct top-tier models, findings+convergence written,
+  disagreement preserved, repoDir/cocoder absent) + daemon `mutations.test.ts` e2e (POST /runs
+  cocoder-takeover → awaiting-founder at P1 → resume → P2 dual-source fan-out → P3 stub → P4 gate;
+  findings+convergence+fanout events written; `home/cocoder/AGENTS.md` never created). Gates: core 317,
+  daemon 208, typecheck clean, topology green.
+
+**Sequencing note (Oscar):** wrapped at this boundary deliberately. The next critical-path atom is **P3 —
+cross-check convergence ACTION integration** — the next heaviest executor atom (capped convergence loop
+over P2 outputs, bounded follow-up deep-reads, non-gameable exit predicate); give it its own
+super-thoughtful fresh session (run_111 anti-pattern: do not start P3 under a context already spent on
+the P2c verify cycle).
+
+**Next-run sequence (executor critical path; build released, no founder gate needed for these):**
+- **NEXT → Executor P3 — cross-check convergence ACTION integration** (fresh dedicated session). Build
+  `packages/core/src/playbooks/p3-action.ts` implementing the run_109 Atom-B design (ADR-0020 addendum
+  §P3 Cross-Check): capped convergence loop over P2 `convergence/<id>.json` outputs — rounds until NO
+  new contradiction/coverage gap surfaces, non-gameable executor-checkable exit predicate (cannot pass by
+  omission), bounded named follow-up deep-read reads (≤3/round via injected `dispatch` seam) feeding the
+  next round, on-cap honesty (`converged:false`, gaps preserved to P5), caps 3 rounds / 30 min /
+  min(125k tokens, remaining P3 allocation from estimate.json), write `playbook/P3/convergence.json`.
+  Mirror the `p2-action.ts`/`p2-fanout.ts` split (pure engine + action + injected dispatch/now). Wire into
+  executor's P3 phase via `launcher.ts` `createDaemonPlaybookPhaseAction` (compose P1→P2→P3). Verify:
+  extend fake-agent e2e so resume advances P2→P3 (real cross-check, not stub) → P4 gate; core+daemon
+  tests+typecheck+topology stay green; HARD INVARIANTS unchanged (P3 writes only under
+  `runDir/playbook/P3/**`; ordinary priority runs unchanged; two distinct sources; pure core).
+- **Then** Atoms 8–11 (P4 founder-question checkpoint → P5 synthesis + `cocoder/**`-only audit
+  write-boundary ENFORCEMENT → P6 ratify → end-to-end fixture proof). Parallel/independent: New-Primary
+  tech-stack-starter template BUILD from Atom E — per-starter non-negotiables and the "if-unsure" fallback
+  question remain draft-pending-ratification in `new-primary-tech-stack.md`; confirm with founder first or
+  scope to ratified parts only.
+- **Still gated:** Live CoPublisher Takeover proof and the dogfood Drift Audit remain gated until the
+  P1→P5 executor path runs end-to-end on fakes.
+
 ### Executor build progress (run_126, 2026-06-17)
 Sixth build session — **executor P2b — dual-source assignment resolution + `deepReadTurn` dispatch
 seam** landed (one atom; verified-on-evidence: diff read end-to-end + `pnpm --filter @cocoder/core test`
@@ -316,7 +365,7 @@ First build session after ratification. Three atoms landed (verified-on-evidence
    files (assignments, adhoc priority, CLAUDE pointer) are now committed to trunk with their verified
    canonical contents; the run_86 strand below is closed (recovery executed). Scaffold is complete on a
    fresh clone again and CI is green.
-2. **P2→P5 fan-out executor** — **✅ DESIGNED run_107, ratified run_110, BUILD IN PROGRESS run_111–126**
+2. **P2→P5 fan-out executor** — **✅ DESIGNED run_107, ratified run_110, BUILD IN PROGRESS run_111–127**
    ([ADR-0020 addendum](../decisions/0020-addendum-phase-executor.md)). Concrete P1→P5 execution design:
    new runner mode (not a forked loop), phase metadata from shipped Playbook tables, founder gates at
    P1/P5, P2 deep-read fan-out via `dispatchPlay`, P3 cross-check → P4 synthesize → P5 ratify through the
@@ -328,8 +377,11 @@ First build session after ratification. Three atoms landed (verified-on-evidence
    wired, launcher drives headless Bob, daemon e2e proves start→P1→pause@gate with artifacts. **Landed
    run_125:** executor P2a pure convergence engine (`a47bd8b`) — `p2-fanout.ts` with `runDeepReadSource` +
    `combineSourcePair` (6 tests; core 311 green). **Landed run_126:** executor P2b dispatch seam (`66b5038`)
-   — `p2-dispatch.ts` with `resolveDeepReadAssignments` + `createDeepReadTurn` (core 314 green); integration
-   deferred. **Next:** P2c ACTION integration → Atoms 7–11 + tech-stack template build from E.
+   — `p2-dispatch.ts` with `resolveDeepReadAssignments` + `createDeepReadTurn` (core 314 green). **Landed
+   run_127:** executor P2c ACTION integration (`022d774`) — `p2-action.ts` end-to-end dual-source fan-out
+   wired through `launcher.ts` (P1→P2 compose; daemon e2e proves resume→P2 fan-out; core 317 + daemon 208
+   green). **Next:** P3 cross-check convergence ACTION integration → Atoms 8–11 + tech-stack template build
+   from E.
 3. **Live CoPublisher Takeover proof** (Phase-5 entry) — Objective verification (a). **BLOCKED on executor
    build** (#2 above).
 4. **Dogfood Drift Audit run** — Objective verification (b). **BLOCKED on executor build** (#2 above).
@@ -465,8 +517,12 @@ directives now recorded in [addendum §Founder Ratification — RESOLVED](../dec
   `runDeepReadSource` + `combineSourcePair`; 6 tests; integration seam deferred.
 - ✅ **Executor P2b — dispatch seam** (`66b5038`, run_126). `p2-dispatch.ts`:
   `resolveDeepReadAssignments` + `createDeepReadTurn`; 3 verify criteria in tests; core 314 green.
-- **NEXT → Executor P2c — P2 ACTION integration** (fresh session; see §Executor build progress run_126).
-- **Then Atoms 7–11** + New-Primary tech-stack-template build from E.
+- ✅ **Executor P2c — P2 ACTION integration** (`022d774`, run_127). `p2-action.ts` end-to-end dual-source
+  fan-out wired through `launcher.ts` `createDaemonPlaybookPhaseAction` (P1→P2 compose); daemon e2e proves
+  resume→P2 fan-out→P3 stub; core 317 + daemon 208 green.
+- **NEXT → Executor P3 — cross-check convergence ACTION integration** (fresh session; see §Executor build
+  progress run_127).
+- **Then Atoms 8–11** + New-Primary tech-stack-template build from E.
 
 **Still gated:** Live Takeover (#3) and Drift Audit (#4) proofs remain gated on the executor shipping — do
 not attempt live onboarding until then.
