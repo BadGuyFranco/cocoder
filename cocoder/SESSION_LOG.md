@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-17 — **Ticket 0011 teardown fix verified — archive-candidate (run_120)**
+
+**Persona:** Oscar (0 atoms delegated) | **Priority:** [fix-ticket-0011](./priorities/fix-ticket-0011.md) | **Run:** run_120
+**Outcomes:**
+- **Verification wrap-up only:** no build atoms — fix already landed (`6d05475`, receiver-preserving `closeWorkspace` call at `launcher.ts:377`).
+- **Regression proven:** `mutations.test.ts` fake host reads `this`/receiverToken; reverting the fix reproduces the exact `#cli` error, restore passes.
+- **Gates green:** `pnpm -w typecheck`; `@cocoder/session-hosts` 17/17; `@cocoder/daemon` 200/200 (mutations 83/83).
+- **Ticket 0011 closed** in `tickets/closed/`; `INDEX.md` row points to closed/.
+- **Disposition: archive-candidate** — all four Objective verified-when clauses met; no remaining gaps.
+**Next:** Reply `archive fix-ticket-0011` in Oz, then launch `new-primary-root`.
+
 ## 2026-06-17 — **Adhoc diagnosis: ticket 0011 teardown `#cli` undefined (run_119)**
 
 **Persona:** Oscar (0 atoms delegated) | **Priority:** [adhoc-session](./priorities/adhoc-session.md) | **Run:** run_119
