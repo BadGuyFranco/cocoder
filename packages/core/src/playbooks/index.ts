@@ -95,6 +95,7 @@ export {
 } from './intent.js'
 export {
   combineSourcePair,
+  parseDeepReadIterationResult,
   runDeepReadSource,
   type CoverageStatus,
   type DeepReadAssignment,
@@ -119,6 +120,16 @@ export {
   type SourcePairConvergencePayload,
   type SourcePairConvergenceRecord,
 } from './p2-fanout.js'
+export {
+  createDeepReadTurn,
+  resolveDeepReadAssignments,
+  type CreateDeepReadTurnInput,
+  type DeepReadAssignments,
+  type DeepReadDispatch,
+  type ResolveDeepReadAssignmentsInput,
+  type ResolveTopTier,
+  type ResolveTopTierInput,
+} from './p2-dispatch.js'
 export {
   defaultIntentGitReader,
   enumerateIntentArtifacts,

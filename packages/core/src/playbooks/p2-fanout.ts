@@ -224,7 +224,7 @@ function evaluatePredicate(subsystem: Subsystem, priorTheory: DeepReadTheory | n
   }
 }
 
-function parseDeepReadIterationResult(raw: unknown): DeepReadIterationResult {
+export function parseDeepReadIterationResult(raw: unknown): DeepReadIterationResult {
   const value = parseRawObject(raw)
   return {
     theory: parseTheory(readRecord(value, 'theory')),
