@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-17 — **new-primary-root: executor P2b dispatch seam landed — P2c ACTION integration is next (run_126)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 1 atom delegated/verified-on-evidence) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_126
+**Outcomes:**
+- **Executor P2b — dual-source assignment resolution + `deepReadTurn` dispatch seam (`66b5038`):** new pure-core `packages/core/src/playbooks/p2-dispatch.ts` (exported from `playbooks/index.ts`) + `packages/core/tests/playbook-p2-dispatch.test.ts`. `resolveDeepReadAssignments({assignments, modelPin, resolveTopTier?})` resolves Bob (builder) + Oscar (orchestrator) via `resolvePlayAssignment`, applies injected `resolveTopTier` only when `modelPin==='top-tier'`, fails clearly on empty-top-tier and collapse-to-identical `{cli,model}`. `createDeepReadTurn({assignment, source, play, repoDir, runDir, dispatch, signal?})` builds the per-turn adapter calling injected `dispatchPlay` with persona mapped from source, `cwd=repoDir`, `outPath=<runDir>/playbook/P2/findings/<subsystem.id>/<source>.md`, throws on non-zero exitCode, parses via exported `parseDeepReadIterationResult` with refuse-on-malformed. Module is fs-free/deterministic (mkdir deferred to P2c). Held scope as intended: NO edits to `executor.ts`/`p1-action.ts`/`plays/dispatch.ts`/`launcher.ts`/base `deep-read.md`.
+- **Gates:** `pnpm --filter @cocoder/core test` 314 pass (+3), `pnpm -w typecheck` clean, `node scripts/check-topology.mjs` green.
+- **Disposition: `continue`** — P2b committed and verified on evidence; P2c (executor P2 ACTION integration — crosses pure-core boundary into `executor.ts` + `launcher.ts` + daemon e2e) is the next heaviest atom and gets its own fresh dedicated session (run_111 anti-pattern).
+**Next:** Launch **`new-primary-root`** in Oz for **Executor P2c — P2 ACTION integration** — build `p2-action.ts` mirroring `p1-action.ts`, wire `resolveDeepReadAssignments` + `createDeepReadTurn` through `runDeepReadSource`/`combineSourcePair`, write findings + convergence JSON, mkdir dirs, emit fanout events, wire into `executor.ts` via `launcher.ts` with real `dispatchPlay` + `resolveTopTier`; fake-agent e2e proving start→P1 pause@gate→resume→P2 dual-source fan-out→P3 stub. Then Atoms 7–11 + tech-stack template build.
+
 ## 2026-06-17 — **new-primary-root: executor P2a pure convergence engine landed — P2b dispatch seam is next (run_125)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 1 atom delegated/verified-on-evidence) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_125
