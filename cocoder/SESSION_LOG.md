@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-17 — **Oz dashboard design tweaks (run_115): Round-3 visual polish — archive-candidate**
+
+**Persona:** Oscar (3 atoms delegated, 1 verified + committed) | **Priority:** [oz-dashboard-design-tweaks](./priorities/oz-dashboard-design-tweaks.md) | **Run:** run_115
+**Outcomes:**
+- **Atom 2 committed (`1afcb33`)** — all four Round-3 founder visual refinements (UI-only): persona cards on one consistent `var(--cb-surface-solid)` with Oz distinguished by accent border only; `.oz-priorities-panel` container bg differentiated from priority cards; priority boxes with stacked status/launch, roomier title, tighter padding; legible scrollbar thumb/track/hover in both themes. Tokens + design-ref mirrored.
+- **Rejected atoms:** atom-0 (correct visuals but rewrote green test files — out of scope); atom-1 (bulk `git restore` wiped tree).
+- **Evidence:** `pnpm -w typecheck` clean; UI suite 113/113 green; 8-file scope exactly as declared.
+- **Disposition: archive-candidate** — Rounds 1–3 code-complete; only founder eye-check on auto-rebuilt bundle remains.
+**Next:** Reload the Oz dashboard after run finalization, confirm dark + light themes, then reply `archive oz-dashboard-design-tweaks` if all four Round-3 items look right.
+
 ## 2026-06-17 — **Oz dashboard design tweaks (run_114): round-2 contrast refinements — archive-candidate**
 
 **Persona:** Oscar (1 atom delegated + verified) | **Priority:** [oz-dashboard-design-tweaks](./priorities/oz-dashboard-design-tweaks.md) | **Run:** run_114

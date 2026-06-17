@@ -70,53 +70,37 @@ Dark-mode reversal, light-mode nudge, and Oz-card de-gradient confirmed in the r
 darker dark-mode surface exposed four follow-on visual issues (the surface tones are now intentional, so
 the remaining work is making the *separation between* surfaces correct). Captured as Round-3 below.
 
-## Round-3 — founder visual refinements (NOT yet built — needs a fresh build run)
-UI-only (`packages/ui` + `design-ref` mirror); no run/orchestration behavior. The contrast/surface items
-remain a **founder visual check on a rebuilt app** (the bundle must be rebuilt after commit before the
-eye check — ticket 0010; Oscar can run the build meanwhile). Keep `fusion.css` ↔
-`design-ref/design-system/colors_and_type.css` in sync for any token edit.
+## Round-3 outcome (run_115, committed on `main`)
+All four founder visual refinements shipped in one atom (`1afcb33`); typecheck clean, UI suite 113/113
+green. UI-only (`packages/ui` + `design-ref` mirror); no run/orchestration behavior; tests/adapter
+untouched. Scope: 8 files (app sections/styles + design-ref); `fusion.css` ↔
+`design-ref/design-system/colors_and_type.css` kept in sync.
 
-1. **Persona card backgrounds inconsistent — all render light except Oz.** Root cause: non-Oz persona
-   cards use the `Card` primitive default `var(--cb-surface-glass)` (`packages/ui/app/ui/primitives.tsx`
-   L54, with `backdropFilter` blur), while the Oz card uses solid `var(--cb-surface)`
-   (`packages/ui/app/sections/Personas.tsx` ~L70); the `--cb-surface-solid` (#1E1A16) / `--cb-surface-raised`
-   (#221E19) tokens were also left lighter in round-2. Net effect: Oz reads dark/recessed, every other
-   persona reads light. **Make all persona cards share ONE consistent recessed surface in dark mode** —
-   Oz distinguished by its `--cb-accent-15` border ONLY, not by a different fill. Diagnose the exact
-   token (and the glass-vs-solid + backdrop-blur compositing) on the running app.
+1. **Persona card backgrounds — one consistent recessed surface.** All persona cards now use solid
+   `var(--cb-surface-solid)` (darkened tokens: `--cb-surface-solid` #1E1A16→#16120F,
+   `--cb-surface-raised` #221E19→#1B1713); backdrop-blur/shadow off. Oz distinguished by
+   `--cb-accent-15` border ONLY (`Personas.tsx`).
+2. **Priority rows — container differentiated from cards.** New `.oz-priorities-panel` gives the
+   container/panel-body `var(--cb-bg-soft)` so rows read as distinct tiles; priority card bg unchanged
+   per founder steer (`oz.css` + `Priorities.tsx`; mirrored in `AdhocPriorityRow`).
+3. **Priority box layout — stacked actions, roomier title, shorter height.** Title is standalone
+   `flex:1`; `StatusChip` + Launch stacked vertically in `.oz-priority-actions`; padding tightened
+   11/12→9/10; status chip shrunk (font 9px).
+4. **Scrollbar legibility.** Thumb `var(--cb-text-muted)` + faint `var(--cb-hover)` track +
+   `var(--cb-text-secondary)` hover, legible in both themes (`oz.css`).
 
-2. **Priorities blend into one panel — no separation between rows.** In
-   `packages/ui/app/sections/dashboard/Priorities.tsx`, each `PriorityRow` (~L24–37) AND its container
-   `oz-panel-body` / `oz-panel` (`packages/ui/app/styles/oz.css` L329 / L297) both use
-   `var(--cb-surface-glass)`, so the queue reads as one undifferentiated block. **Founder steer: KEEP the
-   priority *card* background as-is; dramatically differentiate the *panel/container* background behind
-   the cards** so each row stands out as a distinct tile. (A clearly different panel-body bg is the
-   primary lever; stronger per-card border/shadow or more inter-card gap are secondary — but anchor on
-   changing the container background per the founder.) Apply consistently to `AdhocPriorityRow`.
+**Run note:** atom-0 was rejected (rewrote green test files, out of scope); atom-1 rejected (bulk git
+restore wiped the tree); atom-2 landed cleanly with a no-tests/no-bulk-revert guardrail.
 
-3. **Priority card layout — stack Status + Launch; give the title more room; shorter boxes.** In
-   `PriorityRow` (Priorities.tsx ~L45–51) the title, `StatusChip`, and `Launch` button share ONE
-   horizontal row (status+launch pushed right via `marginLeft:'auto'`), squeezing the title. **Stack the
-   status chip and Launch button vertically in the right-hand column** so the title gets more horizontal
-   width; **shrink the status chip a bit**; and **tighten vertical padding so the boxes are a little
-   shorter.** Layout only — no behavior change. Mirror the same treatment in `AdhocPriorityRow` where it
-   shares the pattern.
+**Verified when (Round-3):** rebuilt app shows (1)–(4) above — **founder eye-check on the auto-rebuilt
+bundle** (ticket 0010 rebuilds `packages/ui/out/` at run finalization); `pnpm -w typecheck` and the UI
+suite green; token files in sync.
 
-4. **Scrollbar blends into the background.** `packages/ui/app/styles/oz.css` L16–19: the thumb is
-   `var(--cb-border)` on a transparent track — invisible against the panel. **Give the thumb a more
-   visible/contrasting tone** (e.g. `--cb-border-strong` or a muted text token) and optionally a faint
-   track, so the scrollbar is legible without being loud, in BOTH themes.
+## Status — archive-candidate (run_115, 2026-06-17)
 
-**Verified when (Round-3):** rebuilt app shows (1) all persona cards on one consistent surface with Oz
-set apart only by its accent border, (2) priority rows visually distinct as separate tiles via a
-differentiated container background (card bg unchanged), (3) priority boxes with stacked status/launch,
-roomier title, and shorter height, and (4) a legible scrollbar — all confirmed by the founder's eye;
-`pnpm -w typecheck` and the UI suite green; token files in sync.
-
-## Status — Round-3 queued; needs a fresh build run (run_114, 2026-06-17)
-
-Rounds 1–2 shipped and were directionally confirmed. Founder reviewed the rebuilt bundle and raised the
-four Round-3 refinements above (persona-card consistency, priority-row separation, priority-box layout,
-scrollbar legibility). **These are concrete, scoped, UI-only build atoms — not an archive.** Founder will
-launch a fresh build run to implement them; verify each diff, rebuild the bundle, then founder eye-checks.
-Do **not** archive — this priority has live, specified work remaining.
+Rounds 1–3 code-complete. Round-1 items 2–3 and Round-2 contrast direction founder-confirmed; Round-3
+all four visual items shipped (`1afcb33`). **Only gate:** founder visual confirmation on the rebuilt Oz
+dashboard in **both** dark and light themes. If all four Round-3 items look right → archive-ready. If
+any needs a nudge, it is a one-atom token/layout tweak (e.g. push container bg further from card bg if
+rows still blend; surface-solid/glass split if dark cards look uneven) — not a re-architecture. Do
+**not** self-archive; founder confirms.
