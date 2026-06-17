@@ -22,12 +22,12 @@
   --cb-font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --cb-font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
 
-  --cb-bg: #14110E;
-  --cb-bg-soft: #1A1714;
-  --cb-surface: rgba(34, 30, 25, 0.92);
+  --cb-bg: #2A251F;
+  --cb-bg-soft: #25211C;
+  --cb-surface: rgba(20, 17, 14, 0.96);
   --cb-surface-solid: #1E1A16;
   --cb-surface-raised: #221E19;
-  --cb-surface-glass: rgba(34, 30, 25, 0.92);
+  --cb-surface-glass: rgba(20, 17, 14, 0.96);
 
   --cb-text: #E5DCD0;
   --cb-text-secondary: #8E8477;
@@ -84,8 +84,8 @@
 /* LIGHT THEME — "Warm Linen" */
 [data-theme='light'] {
   color-scheme: light;
-  --cb-bg: #F3EEE6;
-  --cb-bg-soft: #EDE8DF;
+  --cb-bg: #F0E9DF;
+  --cb-bg-soft: #EAE3D8;
   --cb-surface: #FAF6EE;
   --cb-surface-solid: #EDE8DF;
   --cb-surface-raised: #FAF6EE;

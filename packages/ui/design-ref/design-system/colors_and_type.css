@@ -45,12 +45,12 @@
   --cb-font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
 
   /* —— Backgrounds & surfaces —— */
-  --cb-bg: #14110E;                       /* espresso */
-  --cb-bg-soft: #1A1714;                  /* one step up */
-  --cb-surface: rgba(34, 30, 25, 0.92);   /* glass — needs backdrop-filter */
+  --cb-bg: #2A251F;                       /* espresso */
+  --cb-bg-soft: #25211C;                  /* one step up */
+  --cb-surface: rgba(20, 17, 14, 0.96);   /* glass — needs backdrop-filter */
   --cb-surface-solid: #1E1A16;            /* solid fallback */
   --cb-surface-raised: #221E19;
-  --cb-surface-glass: rgba(34, 30, 25, 0.92);
+  --cb-surface-glass: rgba(20, 17, 14, 0.96);
 
   /* —— Text foregrounds —— */
   --cb-text: #E5DCD0;                     /* warm parchment */
@@ -144,8 +144,8 @@
    Warm cream paper, near-black warm text, deep gold accent.
    ────────────────────────────────────────────────────────────── */
 [data-theme='light'] {
-  --cb-bg: #F3EEE6;                       /* warm linen */
-  --cb-bg-soft: #EDE8DF;
+  --cb-bg: #F0E9DF;                       /* warm linen */
+  --cb-bg-soft: #EAE3D8;
   --cb-surface: #FAF6EE;                  /* warm cream */
   --cb-surface-solid: #EDE8DF;
   --cb-surface-raised: #FAF6EE;
