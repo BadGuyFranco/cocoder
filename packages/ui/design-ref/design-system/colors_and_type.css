@@ -47,10 +47,10 @@
   /* —— Backgrounds & surfaces —— */
   --cb-bg: #14110E;                       /* espresso */
   --cb-bg-soft: #1A1714;                  /* one step up */
-  --cb-surface: rgba(30, 26, 22, 0.55);   /* glass — needs backdrop-filter */
+  --cb-surface: rgba(34, 30, 25, 0.92);   /* glass — needs backdrop-filter */
   --cb-surface-solid: #1E1A16;            /* solid fallback */
   --cb-surface-raised: #221E19;
-  --cb-surface-glass: rgba(30, 26, 22, 0.55);
+  --cb-surface-glass: rgba(34, 30, 25, 0.92);
 
   /* —— Text foregrounds —— */
   --cb-text: #E5DCD0;                     /* warm parchment */
@@ -86,8 +86,8 @@
   /* —— Glass & ambient —— */
   --cb-glass-blur: 22px;
   --cb-glass-highlight: rgba(255, 245, 230, 0.04);   /* top inset highlight */
-  --cb-ambient-1: rgba(201, 169, 110, 0.07);
-  --cb-ambient-2: rgba(201, 169, 110, 0.05);
+  --cb-ambient-1: rgba(201, 169, 110, 0.025);
+  --cb-ambient-2: rgba(201, 169, 110, 0.018);
 
   /* —— Radii — minimal, sharp Deco geometry —— */
   --cb-radius-xs: 2px;     /* tags, badges */
@@ -146,10 +146,10 @@
 [data-theme='light'] {
   --cb-bg: #F3EEE6;                       /* warm linen */
   --cb-bg-soft: #EDE8DF;
-  --cb-surface: #EDE8DF;                  /* warm cream */
+  --cb-surface: #FAF6EE;                  /* warm cream */
   --cb-surface-solid: #EDE8DF;
   --cb-surface-raised: #FAF6EE;
-  --cb-surface-glass: rgba(255, 252, 248, 0.65);
+  --cb-surface-glass: rgba(255, 252, 248, 0.94);
 
   --cb-text: #1E1B17;                     /* near-black warm */
   --cb-text-secondary: #6B6358;           /* driftwood */
@@ -178,8 +178,8 @@
   --cb-active: rgba(140, 115, 65, 0.10);
 
   --cb-glass-highlight: rgba(255, 255, 255, 0.60);
-  --cb-ambient-1: rgba(139, 117, 69, 0.06);
-  --cb-ambient-2: rgba(139, 117, 69, 0.04);
+  --cb-ambient-1: rgba(139, 117, 69, 0.020);
+  --cb-ambient-2: rgba(139, 117, 69, 0.014);
 
   --background: 34 28% 93%;
   --foreground: 30 12% 10%;
