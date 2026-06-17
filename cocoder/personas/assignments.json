@@ -20,7 +20,7 @@
     },
     "oscar": {
       "cli": "claude",
-      "model": "opus",
+      "model": "",
       "mode": "visible",
       "plays": {
         "wrap-up": {
