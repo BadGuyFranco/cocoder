@@ -4,6 +4,8 @@ export {
   MissingObjectiveError,
   DirtyWorkingTreeError,
   type RunnerDeps,
+  type CriterionResult,
+  type UiBundleBuildInput,
   type RunInput,
   type RunResult,
   type MakeJudge,

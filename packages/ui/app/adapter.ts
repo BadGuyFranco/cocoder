@@ -224,7 +224,16 @@ export function adaptRuns(runs: readonly RunSummary[], priorityNames: Record<str
 
 // ── Transcript ── every event → a humanized line (never raw JSON). role = the persona if the event has
 // one, else "system"; attention events carry flag:'decision' (used by callout styling).
-const DECISION_EVENTS = new Set(['out-of-scope', 'out-of-scope-committed', 'run-error', 'verify-fail', 'wrapup-stale-abort', 'daemon-stale'])
+const DECISION_EVENTS = new Set([
+  'out-of-scope',
+  'out-of-scope-committed',
+  'run-error',
+  'verify-fail',
+  'wrapup-stale-abort',
+  'daemon-stale',
+  'ui-bundle-rebuild-failed',
+  'ui-bundle-rebuild-clobber-blocked',
+])
 
 export function eventToLine(e: RunEvent): TranscriptLine {
   const d = (e.data ?? {}) as Record<string, unknown>
@@ -288,6 +297,18 @@ export function eventToLine(e: RunEvent): TranscriptLine {
       break
     case 'branch-push-failed':
       body = `Push of ${str('branch')} failed (non-gating)${str('detail') ? ` — ${trunc(str('detail'), 160)}` : ''}.`
+      break
+    case 'ui-bundle-rebuild-started':
+      body = `Rebuilding Oz UI bundle: ${str('command') || 'pnpm --dir packages/ui build'}.`
+      break
+    case 'ui-bundle-rebuild-succeeded':
+      body = 'Oz UI bundle rebuilt.'
+      break
+    case 'ui-bundle-rebuild-failed':
+      body = `Oz UI bundle rebuild FAILED${d.exitCode ? ` — exit ${String(d.exitCode)}` : ''}${str('output') ? ` — ${trunc(str('output'), 180)}` : ''}.`
+      break
+    case 'ui-bundle-rebuild-clobber-blocked':
+      body = `Oz UI bundle rebuild blocked because it dirtied app source: ${arr('files').join(', ')}.`
       break
     case 'run-error':
       body = `Run error — ${trunc(str('message'), 200)}`

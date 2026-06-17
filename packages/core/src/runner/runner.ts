@@ -58,6 +58,12 @@ export interface CriterionResult {
   readonly output: string
 }
 
+export interface UiBundleBuildInput {
+  readonly cwd: string
+  readonly timeoutMs: number
+  readonly signal?: AbortSignal
+}
+
 export interface RunnerDeps {
   readonly store: RunStore
   readonly sessionHost: SessionHost
@@ -71,6 +77,9 @@ export interface RunnerDeps {
   readonly makeJudge?: MakeJudge
   /** Executes a loop directive's scripted criterion in the run worktree. Non-zero means "keep iterating". */
   readonly execCriterion?: (command: string, cwd: string) => Promise<CriterionResult>
+  /** Rebuilds the launched Oz UI bundle after a run lands packages/ui changes. Tests inject this; the
+   *  default runs `pnpm --dir packages/ui build` in the workspace repo. */
+  readonly buildUiBundle?: (input: UiBundleBuildInput) => Promise<CriterionResult>
   /** Clock injected for deterministic loop wall-clock budget tests. */
   readonly now?: () => number
   readonly timeouts?: {
@@ -170,6 +179,8 @@ const DEFAULTS = {
 const LIMITS = { maxAtoms: 12, maxConsecutiveRejects: 3, stuckAfter: 4 }
 const OSCAR_IDLE_NUDGE = "You've gone quiet — write the next directive (or your verify verdict), or wrap up."
 const CRITERION_TIMEOUT_MS = 900_000
+const UI_BUNDLE_BUILD_COMMAND = 'pnpm --dir packages/ui build'
+const MAX_UI_BUILD_OUTPUT = 12_000
 
 const defaultMakeJudge =
   (stuckAfter: number): MakeJudge =>
@@ -192,6 +203,27 @@ async function defaultExecCriterion(command: string, cwd: string): Promise<Crite
   }
 }
 
+async function defaultBuildUiBundle(input: UiBundleBuildInput): Promise<CriterionResult> {
+  try {
+    const result = await exec(UI_BUNDLE_BUILD_COMMAND, {
+      cwd: input.cwd,
+      timeout: input.timeoutMs,
+      maxBuffer: 20 * 1024 * 1024,
+      signal: input.signal,
+    })
+    return { exitCode: 0, output: `${result.stdout}${result.stderr}` }
+  } catch (error) {
+    const err = error as { code?: unknown; stdout?: unknown; stderr?: unknown; message?: unknown }
+    const code = typeof err.code === 'number' ? err.code : 1
+    const output = `${typeof err.stdout === 'string' ? err.stdout : ''}${typeof err.stderr === 'string' ? err.stderr : ''}${err.message === undefined ? '' : `\n${String(err.message)}`}`
+    return { exitCode: code === 0 ? 1 : code, output }
+  }
+}
+
+const isPackagesUiPath = (file: string): boolean => file === 'packages/ui' || file.startsWith('packages/ui/')
+const isUiAppPath = (file: string): boolean => file === 'packages/ui/app' || file.startsWith('packages/ui/app/')
+const clipped = (text: string, max = MAX_UI_BUILD_OUTPUT): string => (text.length > max ? `${text.slice(0, max)}\n…truncated…` : text)
+
 export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResult> {
   if (input.priority.objective === null) throw new MissingObjectiveError(input.priority.id)
 
@@ -200,6 +232,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const limits = { ...LIMITS, ...deps.limits }
   const makeJudge = deps.makeJudge ?? defaultMakeJudge(limits.stuckAfter)
   const execCriterion = deps.execCriterion ?? defaultExecCriterion
+  const buildUiBundle = deps.buildUiBundle ?? defaultBuildUiBundle
   const now = deps.now ?? Date.now
   const log = deps.log ?? (() => {})
   const { workspace, priority, oscar, bob, deb, sharedStandards, runsRoot } = input
@@ -379,6 +412,47 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     await triageFault(type, atomIndex, message)
     store.setRunStatus(run.id, 'failed')
     throw new Error(message)
+  }
+
+  const rebuildUiBundleIfNeeded = async (): Promise<void> => {
+    const touchedUi = committedFiles.some(isPackagesUiPath)
+    if (!touchedUi) return
+
+    const before = new Set(await git.changedFiles(workspaceRepo))
+    store.recordEvent({ runId: run.id, type: 'ui-bundle-rebuild-started', data: { command: UI_BUNDLE_BUILD_COMMAND } })
+    log(`packages/ui changed; rebuilding launched UI bundle (${UI_BUNDLE_BUILD_COMMAND})`)
+
+    const result = await buildUiBundle({ cwd: workspaceRepo, timeoutMs: t.buildMs, signal: deps.signal })
+    if (result.exitCode !== 0) {
+      const output = clipped(result.output)
+      store.recordEvent({ runId: run.id, type: 'ui-bundle-rebuild-failed', data: { command: UI_BUNDLE_BUILD_COMMAND, exitCode: result.exitCode, output } })
+      return await fail('ui-bundle-rebuild-failed', `Oz UI bundle rebuild failed: \`${UI_BUNDLE_BUILD_COMMAND}\` exited ${result.exitCode}.\n${output}`)
+    }
+
+    const after = await git.changedFiles(workspaceRepo)
+    const newlyChanged = after.filter((file) => !before.has(file))
+    const appClobber = newlyChanged.filter(isUiAppPath)
+    if (appClobber.length > 0) {
+      let restored = false
+      let restoreError: string | null = null
+      try {
+        await git.restoreToHead(workspaceRepo, appClobber)
+        restored = true
+      } catch (err) {
+        restoreError = err instanceof Error ? err.message : String(err)
+      }
+      store.recordEvent({
+        runId: run.id,
+        type: 'ui-bundle-rebuild-clobber-blocked',
+        data: { command: UI_BUNDLE_BUILD_COMMAND, files: appClobber, restored, restoreError },
+      })
+      return await fail(
+        'ui-bundle-rebuild-clobber-blocked',
+        `Oz UI bundle rebuild was blocked because \`${UI_BUNDLE_BUILD_COMMAND}\` dirtied committed app source: ${appClobber.join(', ')}.${restored ? ' The source files were restored to HEAD.' : restoreError ? ` Restore failed: ${restoreError}` : ''}`,
+      )
+    }
+
+    store.recordEvent({ runId: run.id, type: 'ui-bundle-rebuild-succeeded', data: { command: UI_BUNDLE_BUILD_COMMAND, output: clipped(result.output) } })
   }
 
   // Deb (tier 2): when present, the runner hands her each fault to triage. She READS the fault context +
@@ -672,6 +746,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     }
     const status: RunStatus = 'stopped'
     store.setRunStatus(run.id, status)
+    await rebuildUiBundleIfNeeded()
     // Any commits already made are on the active branch; push them (non-gating) so a shared remote sees them.
     await pushActiveBranchIfRemote()
     store.recordEvent({
@@ -833,6 +908,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
   // ── Wrap-up: pickup brief (continuation; F8) + run record ───────────────────────────────────────
   const pickupPath = pickup ? await io.writePickup(runDir, pickup) : null
+  await rebuildUiBundleIfNeeded()
   const status: RunStatus = 'completed'
   store.setRunStatus(run.id, status)
 

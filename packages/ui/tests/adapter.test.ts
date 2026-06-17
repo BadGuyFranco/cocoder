@@ -194,6 +194,14 @@ describe('transcript from events', () => {
     // Single mode: the settled outcome + non-gating push are humanized (no integration/landing events).
     expect(eventToLine({ id: 'e', runId: 'r', type: 'landing-outcome', data: { outcome: '✅ COMMITTED on `main`' }, at: 0 }).body).toContain('COMMITTED')
     expect(eventToLine({ id: 'e', runId: 'r', type: 'branch-pushed', data: { branch: 'feature/x' }, at: 0 }).body).toContain('feature/x')
+    expect(eventToLine({ id: 'e', runId: 'r', type: 'ui-bundle-rebuild-failed', data: { exitCode: 2, output: 'vite failed' }, at: 0 })).toMatchObject({
+      body: expect.stringContaining('Oz UI bundle rebuild FAILED'),
+      flag: 'decision',
+    })
+    expect(eventToLine({ id: 'e', runId: 'r', type: 'ui-bundle-rebuild-clobber-blocked', data: { files: ['packages/ui/app/App.tsx'] }, at: 0 })).toMatchObject({
+      body: expect.stringContaining('packages/ui/app/App.tsx'),
+      flag: 'decision',
+    })
   })
 })
 
