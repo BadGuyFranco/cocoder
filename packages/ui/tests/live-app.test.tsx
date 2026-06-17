@@ -125,6 +125,9 @@ function mockOz(opts: {
       opts.creates?.push({ workspaceId, priority })
       return opts.createResult ?? { ok: true, status: 201, data: { id: 'created-priority', title: priority.title, scopeNarrowing: null, goal: priority.goal ?? '' } }
     },
+    ticketsCreate: async (_workspaceId: string, ticket: { title: string; type?: string; priority?: string; description?: string }) => (
+      { ok: true, status: 201, data: { id: '0001', title: ticket.title, type: ticket.type ?? 'task', status: 'Open', priority: ticket.priority ?? 'none', owner: 'founder-session', created: '2026-06-17', state: 'open', body: ticket.description ?? '' } }
+    ),
     chatSend: async () => ({ role: 'oz', text: '', at: 0 }),
     prioritiesReorder: async (workspaceId: string, order: readonly string[]) => {
       opts.reorders?.push({ workspaceId, order })

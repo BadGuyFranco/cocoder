@@ -12,6 +12,7 @@ import {
   listEffectivePersonas,
   loadAssignments,
   loadPriority,
+  nextTicketId,
   parseFrontmatter,
   scaffoldCocoderZone,
   truncate,
@@ -122,6 +123,17 @@ interface CreatePriorityInput {
 
 type ParsedCreatePriorityBody = { readonly ok: true; readonly input: CreatePriorityInput } | { readonly ok: false; readonly error: string }
 
+type TicketKind = 'bug' | 'task' | 'question' | 'spike'
+
+interface CreateTicketInput {
+  readonly title: string
+  readonly type: TicketKind
+  readonly priority: string
+  readonly description: string
+}
+
+type ParsedCreateTicketBody = { readonly ok: true; readonly input: CreateTicketInput } | { readonly ok: false; readonly error: string }
+
 interface CreateWorkspaceInput {
   readonly id: string
   readonly folders: ReadonlyArray<WorkspaceFolderInput>
@@ -132,6 +144,8 @@ type ParsedCreateWorkspaceBody = { readonly ok: true; readonly input: CreateWork
 
 const PRIORITY_ID_RE = /^[a-z0-9][a-z0-9-]*$/
 const CONTROL_CHARS_RE = /[\u0000-\u001f\u007f]/
+const TICKET_TYPES: readonly TicketKind[] = ['bug', 'task', 'question', 'spike']
+const TICKET_OWNER = 'founder-session'
 
 function slugifyTitle(title: string): string {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').replace(/-+/g, '-')
@@ -162,6 +176,45 @@ function createPriorityBody(body: unknown): ParsedCreatePriorityBody {
     if (goal.length > 20_000) return { ok: false, error: 'goal too long' }
   }
   return { ok: true, input: { id, title, goal } }
+}
+
+function createTicketBody(body: unknown): ParsedCreateTicketBody {
+  const record = bodyRecord(body)
+  if (typeof record.title !== 'string') return { ok: false, error: 'title must be a non-empty string' }
+  const title = record.title.trim()
+  if (title === '') return { ok: false, error: 'title must be a non-empty string' }
+  if (title.length > 200) return { ok: false, error: 'title too long' }
+  if (CONTROL_CHARS_RE.test(title)) return { ok: false, error: 'title must not contain control characters' }
+
+  let type: TicketKind = 'task'
+  if (Object.prototype.hasOwnProperty.call(record, 'type') && record.type !== undefined) {
+    if (typeof record.type !== 'string' || !TICKET_TYPES.includes(record.type as TicketKind)) {
+      return { ok: false, error: 'type must be one of bug, task, question, spike' }
+    }
+    type = record.type as TicketKind
+  }
+
+  let priority = 'none'
+  if (Object.prototype.hasOwnProperty.call(record, 'priority') && record.priority !== undefined) {
+    if (typeof record.priority !== 'string') return { ok: false, error: 'priority must be a string' }
+    priority = record.priority.trim() || 'none'
+    if (priority.length > 200) return { ok: false, error: 'priority too long' }
+    if (CONTROL_CHARS_RE.test(priority)) return { ok: false, error: 'priority must not contain control characters' }
+    if (priority !== 'none' && !PRIORITY_ID_RE.test(priority)) return { ok: false, error: 'priority must match /^[a-z0-9][a-z0-9-]*$/' }
+  }
+
+  let description = ''
+  if (Object.prototype.hasOwnProperty.call(record, 'description') && record.description !== undefined) {
+    if (typeof record.description !== 'string') return { ok: false, error: 'description must be a string' }
+    description = record.description.trim()
+    if (description.length > 20_000) return { ok: false, error: 'description too long' }
+  } else if (Object.prototype.hasOwnProperty.call(record, 'body') && record.body !== undefined) {
+    if (typeof record.body !== 'string') return { ok: false, error: 'body must be a string' }
+    description = record.body.trim()
+    if (description.length > 20_000) return { ok: false, error: 'body too long' }
+  }
+
+  return { ok: true, input: { title, type, priority, description } }
 }
 
 function validateWorkspaceRootRules(roots: ReadonlyArray<RegistryRoot>, cocoderHome: string): string | null {
@@ -196,6 +249,66 @@ function validateCreatedPriority(markdown: string, priority: Priority, input: Cr
   if (priority.id !== input.id) throw new Error('priority id did not round-trip')
   if (priority.title !== input.title) throw new Error('priority title did not round-trip')
   if (priority.scopeNarrowing !== null) throw new Error('priority scopeNarrowing must not be set by create')
+}
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function composeTicketMarkdown(id: string, input: CreateTicketInput, created: string): string {
+  const body = input.description === '' ? '## Context\n' : `${input.description}\n`
+  return `---\nid: ${id}\ntitle: ${input.title}\ntype: ${input.type}\nstatus: Open\npriority: ${input.priority}\nowner: ${TICKET_OWNER}\ncreated: ${created}\n---\n\n# ${id} — ${input.title}\n\n${body}`
+}
+
+function validateCreatedTicket(ticket: Awaited<ReturnType<typeof readTickets>>[number] | undefined, id: string, input: CreateTicketInput): void {
+  if (!ticket) throw new Error('ticket did not round-trip')
+  if (ticket.id !== id) throw new Error('ticket id did not round-trip')
+  if (ticket.title !== input.title) throw new Error('ticket title did not round-trip')
+  if (ticket.type !== input.type) throw new Error('ticket type did not round-trip')
+  if (ticket.state !== 'open') throw new Error('ticket state did not round-trip as open')
+}
+
+function ticketIndexSkeleton(): string {
+  return [
+    '# Tickets — Index',
+    '',
+    '## Open',
+    '',
+    '| ID | Title | Type | Priority | Owner |',
+    '|---|---|---|---|---|',
+    '',
+    '## Recently Closed',
+    '',
+    '| ID | Title | Type | Closed | Resolution |',
+    '|---|---|---|---|---|',
+    '',
+  ].join('\n')
+}
+
+async function readTicketIndex(path: string): Promise<string> {
+  try {
+    return await readFile(path, 'utf8')
+  } catch (err) {
+    if (errorCode(err) === 'ENOENT') return ticketIndexSkeleton()
+    throw err
+  }
+}
+
+function tableCell(value: string): string {
+  return value.replace(/\|/g, '\\|')
+}
+
+function insertOpenTicketIndexRow(indexMarkdown: string, row: string, id: string): string {
+  if (indexMarkdown.includes(`| [${id}](`)) throw new Error(`ticket ${id} is already present in INDEX.md`)
+  const lines = indexMarkdown.split(/\r?\n/)
+  const openIndex = lines.findIndex((line) => line.trim() === '## Open')
+  if (openIndex === -1) throw new Error('tickets INDEX.md is missing ## Open')
+  const nextHeading = lines.findIndex((line, index) => index > openIndex && line.startsWith('## '))
+  const openEnd = nextHeading === -1 ? lines.length : nextHeading
+  const separatorIndex = lines.findIndex((line, index) => index > openIndex && index < openEnd && /^\|\s*-{3,}/.test(line.trim()))
+  if (separatorIndex === -1) throw new Error('tickets INDEX.md Open table is missing a separator row')
+  lines.splice(separatorIndex + 1, 0, row)
+  return lines.join('\n')
 }
 
 function isSamePath(a: string, b: string): boolean {
@@ -517,6 +630,53 @@ async function createPriority(ctx: OzContext, res: ServerResponse, workspaceId: 
   }
 }
 
+async function createTicket(ctx: OzContext, res: ServerResponse, workspaceId: string, input: CreateTicketInput): Promise<void> {
+  const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
+  if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
+  const dir = ticketsDir(ws.path)
+  const openDir = join(dir, 'open')
+  await mkdir(openDir, { recursive: true })
+
+  const id = await nextTicketId(dir)
+  const slug = slugifyTitle(input.title) || 'ticket'
+  const fileName = `${id}-${slug}.md`
+  const target = join(openDir, fileName)
+  const indexPath = join(dir, 'INDEX.md')
+  const ticketRel = relative(ws.path, target)
+  const indexRel = relative(ws.path, indexPath)
+  const created = todayIso()
+  const markdown = composeTicketMarkdown(id, input, created)
+  const tmpRoot = join(dir, `.ticket-create-${id}-${process.pid}-${Date.now()}`)
+  const tmpOpen = join(tmpRoot, 'open')
+  const tmpTicket = join(tmpOpen, fileName)
+  const tmpIndex = join(dir, `.INDEX.${id}.${process.pid}.${Date.now()}.tmp`)
+
+  try {
+    parseFrontmatter(markdown)
+    await mkdir(tmpOpen, { recursive: true })
+    await writeFile(tmpTicket, markdown)
+    validateCreatedTicket((await readTickets(tmpRoot)).find((ticket) => ticket.id === id), id, input)
+    await rename(tmpTicket, target)
+    const tickets = await readTickets(dir)
+    const ticket = tickets.find((item) => item.id === id && item.state === 'open')
+    validateCreatedTicket(ticket, id, input)
+    const row = `| [${id}](./open/${fileName}) | ${tableCell(input.title)} | ${input.type} | ${tableCell(input.priority)} | ${TICKET_OWNER} |`
+    const updatedIndex = insertOpenTicketIndexRow(await readTicketIndex(indexPath), row, id)
+    await writeFile(tmpIndex, updatedIndex)
+    await rename(tmpIndex, indexPath)
+    await rm(tmpRoot, { recursive: true, force: true })
+    const receipt = await commitGovernance(ctx, ws.path, [ticketRel, indexRel], `governance: create ticket ${id}`)
+    void appendAudit(ctx.cocoderHome, { action: 'ticket-create', workspaceId, ticketId: id, committedSha: receipt.committedSha, committed: receipt.committed })
+    if (governanceCommitFailed(res, receipt)) return
+    sendJson(res, 201, { ok: true, ticket, committedSha: receipt.committedSha })
+  } catch (err) {
+    await rm(tmpRoot, { recursive: true, force: true })
+    await rm(tmpIndex, { force: true })
+    await rm(target, { force: true })
+    sendJson(res, 500, { error: err instanceof Error ? err.message : String(err) })
+  }
+}
+
 async function updateWorkspace(ctx: OzContext, res: ServerResponse, workspaceId: string, body: unknown): Promise<void> {
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
   if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
@@ -699,6 +859,18 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
     const parsed = createPriorityBody(body)
     if (!parsed.ok) return sendJson(res, 400, { error: parsed.error }), true
     await createPriority(ctx, res, decodeURIComponent(seg[1]!), parsed.input)
+    return true
+  }
+  if (method === 'POST' && seg[0] === 'workspaces' && seg.length === 3 && seg[2] === 'tickets') {
+    let body: unknown
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      return sendJson(res, 400, { error: 'invalid JSON body' }), true
+    }
+    const parsed = createTicketBody(body)
+    if (!parsed.ok) return sendJson(res, 400, { error: parsed.error }), true
+    await createTicket(ctx, res, decodeURIComponent(seg[1]!), parsed.input)
     return true
   }
   if (method === 'PUT' && pathname === '/settings') {

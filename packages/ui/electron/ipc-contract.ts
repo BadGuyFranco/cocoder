@@ -13,6 +13,7 @@ export const CHANNELS = {
   chatSend: 'oz:chat:send',
   personasAssignmentsSave: 'oz:personas:assignments:save',
   prioritiesCreate: 'oz:priorities:create',
+  ticketsCreate: 'oz:tickets:create',
   prioritiesReorder: 'oz:priorities:reorder',
   prioritiesOrder: 'oz:priorities:order',
   workspacesUpdate: 'oz:workspaces:update',
@@ -242,6 +243,7 @@ export interface OzApi {
   chatSend(workspaceId: string, text: string): Promise<ChatMessage>
   personasAssignmentsSave(workspaceId: string, assignments: Record<string, PersonaAssignment>): Promise<DaemonResult<Record<string, PersonaAssignment>>>
   prioritiesCreate(workspaceId: string, priority: { title: string; goal?: string }): Promise<DaemonResult<Priority>>
+  ticketsCreate(workspaceId: string, ticket: { title: string; type?: string; priority?: string; description?: string }): Promise<DaemonResult<Ticket>>
   prioritiesReorder(workspaceId: string, order: readonly string[]): Promise<readonly string[]>
   prioritiesOrder(workspaceId: string): Promise<readonly string[]>
   workspacesUpdate(workspaceId: string, folders: readonly WorkspaceFolder[]): Promise<DaemonResult<Workspace>>

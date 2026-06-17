@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { loadAssignments, loadPriority, makeGit, openRunStore, StopRequestedError, type Adapter, type Git, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
+import { loadAssignments, loadPriority, makeGit, openRunStore, readTickets, StopRequestedError, type Adapter, type Git, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
 import { basePrioritiesDir } from '@cocoder/personas'
 import { createOzServer, OZ_CSRF_HEADER, type OzServer } from '../src/index.js'
 
@@ -280,6 +280,36 @@ async function fixtures(home: string): Promise<void> {
     join(home, 'cocoder', 'personas', 'assignments.json'),
     JSON.stringify({ personas: { oscar: { cli: 'claude', model: '' }, bob: { cli: 'codex', model: '' } } }),
   )
+}
+
+function ticketFile(id: string, title: string, state: 'Open' | 'Closed' = 'Open'): string {
+  return `---\nid: ${id}\ntitle: ${title}\ntype: task\nstatus: ${state}\npriority: none\nowner: founder-session\ncreated: 2026-06-17\n---\n\n# ${id} — ${title}\n\n## Context\n`
+}
+
+async function writeTicketIndex(home: string): Promise<void> {
+  await mkdir(join(home, 'cocoder', 'tickets', 'open'), { recursive: true })
+  await mkdir(join(home, 'cocoder', 'tickets', 'closed'), { recursive: true })
+  await writeFile(
+    join(home, 'cocoder', 'tickets', 'INDEX.md'),
+    [
+      '# Tickets — Index',
+      '',
+      '## Open',
+      '',
+      '| ID | Title | Type | Priority | Owner |',
+      '|---|---|---|---|---|',
+      '| [0003](./open/0003-existing-open.md) | Existing open | task | none | founder-session |',
+      '',
+      '## Recently Closed',
+      '',
+      '| ID | Title | Type | Closed | Resolution |',
+      '|---|---|---|---|---|',
+      '| [0012](./closed/0012-existing-closed.md) | Existing closed | task | 2026-06-17 | Done |',
+      '',
+    ].join('\n'),
+  )
+  await writeFile(join(home, 'cocoder', 'tickets', 'open', '0003-existing-open.md'), ticketFile('0003', 'Existing open'))
+  await writeFile(join(home, 'cocoder', 'tickets', 'closed', '0012-existing-closed.md'), ticketFile('0012', 'Existing closed', 'Closed'))
 }
 
 async function initRepo(path: string): Promise<void> {
@@ -1319,6 +1349,59 @@ describe('Oz mutations + lifecycle', () => {
     const r = await call(oz!, 'POST', '/workspaces/cocoder/priorities', { csrf: false, body: { title: 'Blocked' } })
 
     expect(r.status).toBe(403)
+  })
+
+  test('POST /workspaces/:id/tickets creates an open ticket, indexes it first, and commits both files', async () => {
+    await writeTicketIndex(home)
+    const commits: GovernanceCommitCall[] = []
+    await startServer(recordingGovernanceGit(commits))
+
+    const post = await call(oz!, 'POST', '/workspaces/cocoder/tickets', {
+      body: {
+        title: 'Fix Backend Ticket',
+        type: 'bug',
+        priority: 'oz-dashboard-bugs',
+        description: '## Context\nBuild the ticket backend.',
+      },
+    })
+
+    expect(post.status).toBe(201)
+    expect(post.json.committedSha).toBe('sha-governance')
+    expect(post.json.ticket).toMatchObject({
+      id: '0013',
+      title: 'Fix Backend Ticket',
+      type: 'bug',
+      status: 'Open',
+      priority: 'oz-dashboard-bugs',
+      owner: 'founder-session',
+      state: 'open',
+    })
+    const ticketPath = join(home, 'cocoder', 'tickets', 'open', '0013-fix-backend-ticket.md')
+    expect(await exists(ticketPath)).toBe(true)
+    const parsed = await readTickets(join(home, 'cocoder', 'tickets'))
+    expect(parsed.find((ticket) => ticket.id === '0013')).toMatchObject({ title: 'Fix Backend Ticket', type: 'bug', state: 'open' })
+    const index = await readFile(join(home, 'cocoder', 'tickets', 'INDEX.md'), 'utf8')
+    const row = '| [0013](./open/0013-fix-backend-ticket.md) | Fix Backend Ticket | bug | oz-dashboard-bugs | founder-session |'
+    expect(index.match(/\| \[0013\]\(\.\/open\/0013-fix-backend-ticket\.md\) \|/g)?.length).toBe(1)
+    expect(index.split('\n').slice(0, index.split('\n').indexOf('| [0003](./open/0003-existing-open.md) | Existing open | task | none | founder-session |'))).toContain(row)
+    expect(index).toContain('| [0012](./closed/0012-existing-closed.md) | Existing closed | task | 2026-06-17 | Done |')
+    expect(commits).toEqual([
+      {
+        cwd: home,
+        files: ['cocoder/tickets/open/0013-fix-backend-ticket.md', 'cocoder/tickets/INDEX.md'],
+        message: 'governance: create ticket 0013',
+        author: COCODER_GOVERNANCE,
+      },
+    ])
+  })
+
+  test('POST /workspaces/:id/tickets rejects invalid ticket create bodies', async () => {
+    await writeTicketIndex(home)
+    await startServer()
+
+    expect((await call(oz!, 'POST', '/workspaces/cocoder/tickets', { body: {} })).status).toBe(400)
+    expect((await call(oz!, 'POST', '/workspaces/cocoder/tickets', { body: { title: '   ' } })).status).toBe(400)
+    expect((await call(oz!, 'POST', '/workspaces/cocoder/tickets', { body: { title: 'Bad type', type: 'feature' } })).status).toBe(400)
   })
 
   test('POST /daemon/restart → 202 and triggers the (injected) restart action when idle', async () => {

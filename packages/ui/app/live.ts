@@ -134,6 +134,14 @@ export async function createPriority(
   return oz.prioritiesCreate(workspaceId, priority)
 }
 
+export async function createTicket(
+  oz: OzApi,
+  workspaceId: string,
+  ticket: { title: string; type?: string; priority?: string; description?: string },
+): Promise<{ ok: true; status: number; data: DTicket } | { ok: false; status: number; error: string }> {
+  return oz.ticketsCreate(workspaceId, ticket)
+}
+
 export function workspaceFolders(workspace: Workspace): WorkspaceFolder[] {
   return workspace.roots.map((root) => ({
     ...(root.name.trim() ? { name: root.name.trim() } : {}),

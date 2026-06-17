@@ -85,3 +85,21 @@ export async function readTickets(ticketsDir: string): Promise<Ticket[]> {
   const closed = await readStateDir(ticketsDir, 'closed')
   return [...open, ...closed]
 }
+
+export async function nextTicketId(ticketsDir: string): Promise<string> {
+  let max = 0
+  for (const state of ['open', 'closed'] as const) {
+    let names: string[]
+    try {
+      names = await readdir(join(ticketsDir, state))
+    } catch {
+      continue
+    }
+    for (const name of names) {
+      if (!name.endsWith('.md')) continue
+      const n = Number(name.match(/^(\d{4})/)?.[1] ?? 0)
+      if (n > max) max = n
+    }
+  }
+  return String(max + 1).padStart(4, '0')
+}

@@ -11,6 +11,7 @@ import { initStore, getPriorityOrder } from './store.ts'
 import { sendChatMessage } from './chat-send.ts'
 import { getSettingsViaDaemon, setSettingsViaDaemon } from './settings-sync.ts'
 import { createPriorityViaDaemon } from './priorities-create.ts'
+import { createTicketViaDaemon } from './tickets-create.ts'
 import { reorderPrioritiesViaDaemon } from './priorities-sync.ts'
 import { savePersonaAssignmentsViaDaemon } from './personas-sync.ts'
 import { createWorkspaceViaDaemon, deleteWorkspaceViaDaemon, updateWorkspaceViaDaemon } from './workspaces-sync.ts'
@@ -27,6 +28,7 @@ function registerIpc(): void {
   ipcMain.handle(CHANNELS.chatSend, (_e, ws: string, text: string) => sendChatMessage(ws, text))
   ipcMain.handle(CHANNELS.personasAssignmentsSave, (_e, ws: string, assignments: Record<string, PersonaAssignment>) => savePersonaAssignmentsViaDaemon(ws, assignments))
   ipcMain.handle(CHANNELS.prioritiesCreate, (_e, ws: string, priority: { title: string; goal?: string }) => createPriorityViaDaemon(ws, priority))
+  ipcMain.handle(CHANNELS.ticketsCreate, (_e, ws: string, ticket: { title: string; type?: string; priority?: string; description?: string }) => createTicketViaDaemon(ws, ticket))
   ipcMain.handle(CHANNELS.prioritiesReorder, (_e, ws: string, order: string[]) => reorderPrioritiesViaDaemon(ws, order))
   ipcMain.handle(CHANNELS.prioritiesOrder, (_e, ws: string) => getPriorityOrder(ws))
   ipcMain.handle(CHANNELS.workspacesUpdate, (_e, ws: string, folders) => updateWorkspaceViaDaemon(ws, folders))

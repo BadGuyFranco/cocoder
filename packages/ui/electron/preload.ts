@@ -18,6 +18,7 @@ const api: OzApi = {
   chatSend: (ws, text) => ipcRenderer.invoke(CHANNELS.chatSend, ws, text),
   personasAssignmentsSave: (ws, assignments) => ipcRenderer.invoke(CHANNELS.personasAssignmentsSave, ws, assignments),
   prioritiesCreate: (ws, priority) => ipcRenderer.invoke(CHANNELS.prioritiesCreate, ws, priority),
+  ticketsCreate: (ws, ticket) => ipcRenderer.invoke(CHANNELS.ticketsCreate, ws, ticket),
   prioritiesReorder: (ws, order) => ipcRenderer.invoke(CHANNELS.prioritiesReorder, ws, order),
   prioritiesOrder: (ws) => ipcRenderer.invoke(CHANNELS.prioritiesOrder, ws),
   workspacesUpdate: (ws, folders) => ipcRenderer.invoke(CHANNELS.workspacesUpdate, ws, folders),

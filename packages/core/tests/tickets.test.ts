@@ -1,25 +1,24 @@
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { readTickets } from '../src/index.js'
+import { nextTicketId } from '../src/index.js'
 
-const repoTicketsDir = join(dirname(fileURLToPath(import.meta.url)), '../../../cocoder/tickets')
+describe('ticket id allocation', () => {
+  test('allocates after the highest four-digit ticket id across open and closed', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'tickets-'))
+    await mkdir(join(dir, 'open'), { recursive: true })
+    await mkdir(join(dir, 'closed'), { recursive: true })
+    await writeFile(join(dir, 'open', '0003-open.md'), 'open')
+    await writeFile(join(dir, 'closed', '0012-closed.md'), 'closed')
+    await writeFile(join(dir, 'open', 'notes.md'), 'ignored')
 
-describe('ticket loading', () => {
-  test('reads real open tickets before closed tickets from canonical ticket files', async () => {
-    const tickets = await readTickets(repoTicketsDir)
-    const open = tickets.filter((ticket) => ticket.state === 'open')
-    const closed = tickets.filter((ticket) => ticket.state === 'closed')
+    await expect(nextTicketId(dir)).resolves.toBe('0013')
+  })
 
-    expect(open.map((ticket) => ticket.id)).toEqual(['0003', '0005', '0012'])
-    expect(open.map((ticket) => [ticket.id, ticket.type, ticket.status])).toEqual([
-      ['0003', 'task', 'Open'],
-      ['0005', 'task', 'Open'],
-      ['0012', 'task', 'Open'],
-    ])
-    expect(open.find((ticket) => ticket.id === '0003')?.body).toContain('# 0003')
-    expect(closed.length).toBeGreaterThan(0)
-    expect(closed.every((ticket) => ticket.state === 'closed')).toBe(true)
-    expect(tickets.find((ticket) => ticket.id === '0008')).toMatchObject({ type: 'bug', status: 'Closed', state: 'closed' })
+  test('starts at 0001 when ticket state directories are absent', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'tickets-empty-'))
+
+    await expect(nextTicketId(dir)).resolves.toBe('0001')
   })
 })
