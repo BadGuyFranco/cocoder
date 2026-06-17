@@ -1,6 +1,10 @@
 # ADR-0020 Addendum — Playbook phase executor for P1→P5 onboarding runs
 
-**Status:** Proposed implementation addendum (2026-06-16). This does not change ADR-0020's accepted
+**Status:** Accepted 2026-06-17 (run_110). The founder ratified the deepened design (Atoms A–D) and the
+model policy in *Founder Ratification — RESOLVED* below. Three additional founder directives recorded
+there (adversarial dual-agent audit, multi-session founder-question checkpoint, and the cocoder-only
+trust invariant) require a focused design-amendment pass to P2/P3 and `cocoder-takeover.md` **before** the
+P2/P3 build atoms land. (Proposed 2026-06-16.) This does not change ADR-0020's accepted
 product decision; it specifies the runner/daemon design needed to execute the shipped Playbooks.
 **Extends:** [0020](./0020-primary-root-audit.md).
 **Builds on:** [0005](./0005-personas-and-subtasks.md) (Plays), [0013](./0013-orchestration-observation.md)
@@ -307,9 +311,12 @@ assignment `{cli, model}`, iteration count, `understood`, cap status, and whethe
 unverified findings.
 
 ADR-0018 is honored by resolving a per-persona Play assignment for `deep-read`; no `subAgents` field is
-introduced. For a brand-new root that has only template assignments, the implementation needs a shipped
-top-tier default for Playbook `modelPin: top-tier`, with workspace overrides still coming from
-`cocoder/personas/assignments.json`.
+introduced. For `modelPin: top-tier`, the resolver does **NOT** hard-code a model id (founder decision,
+2026-06-17): `top-tier` is a *capability tier that tracks the frontier*, not a pinned `{cli, model}`. The
+resolver selects the **latest, most-capable available model** across our connected CLIs (multi-model) and
+honors **persona/Play focus** (ADR-0018), with workspace overrides still coming from
+`cocoder/personas/assignments.json`. It must **fail clearly** if no top-tier-capable assignment can be
+resolved, rather than silently dropping to a weaker model.
 
 Build-time follow-up: the `deep-read` Play contract will need a matching iteration input/output clause
 when the executor is implemented; this addendum intentionally does not edit the base Play now.
@@ -510,19 +517,48 @@ Net-new:
     Exit: a fixture Takeover run exercises P1 gate → P2 fan-out → P3 → P4 → P5 gate without real CLIs
     via fakes; ordinary `pnpm typecheck`, package tests, and `node scripts/check-topology.mjs` stay green.
 
-## Founder Ratification Required
+## Founder Ratification — RESOLVED 2026-06-17 (run_110)
 
-ADR-0020 already ratified the product structure. This addendum leaves one implementation policy for the
-founder before live proof:
+ADR-0020 already ratified the product structure. The founder reviewed the deepened design and ratified:
 
-- **Top-tier default for P2/P3:** choose the shipped `{cli, model}` fallback for `modelPin: top-tier`
-  when a brand-new target has not yet overridden `deep-read` in `assignments.json`. This is a cost and
-  quality judgment, so the code should support overrides but the default should be founder-approved.
+- **Phase-executor deepening (Atoms A–D): APPROVED.**
+- **New-Primary tech-stack starter (Atom E): APPROVED.**
+- **Model policy — RESOLVED: do NOT hard-code a model.** The prior "choose a shipped `{cli, model}`
+  default for `modelPin: top-tier`" question is retired. `top-tier` tracks the **latest, most-capable
+  available model**, resolved at runtime across our connected CLIs (multi-model) and honoring
+  **persona/Play focus** (ADR-0018). See the P2 Fan-Out model-resolution note above; fail clearly when no
+  top-tier-capable assignment resolves, never silently fall back to a weaker model.
 
-During each Playbook run, the founder gates are mandatory runtime decisions:
+### Ratified design direction the build must implement (refines P2/P3 + `cocoder-takeover.md`)
 
-- approve/edit P1 subsystem map before P2 fan-out;
+These founder directives (2026-06-17) require a focused design-amendment pass **before** the P2/P3 build
+atoms land:
+
+1. **Adversarial dual-agent audit — orchestrator AND builder sub-agents.** The audit is not a single
+   fan-out. **Builder (Bob) sub-agents** deep-read subsystems while an independent set of **orchestrator
+   (Oscar) sub-agents** adversarially re-audits and cross-checks those reads. The two sources must use
+   **different models/personas** (multi-model — no single-model groupthink); their disagreement is the
+   signal P3 converges on. This expands P2's `deep-read` fan-out and P3's adversarial cross-check from one
+   reviewer into a dual-source adversarial structure.
+2. **Multi-session by design, with a founder-question checkpoint.** A real Takeover is expected to span
+   **multiple sessions.** At least one session surfaces founder questions for (a) areas needing
+   clarification, (b) conflicting findings, and (c) code issues that should become their own priority to
+   resolve later. This is a distinct founder gate between audit and synthesis — not a silent pause/resume.
+3. **HARD TRUST INVARIANT — the audit NEVER touches repo code, only `cocoder/**`.** The entire audit
+   (P0–P5) writes **only** the target's `cocoder/**` and never the repo's product code. This is a
+   founder-mandated *trust* boundary, not merely a scope rule: the audit is the user's **first**
+   interaction with CoCoder, so CoCoder must earn trust by reviewing-and-proposing before it is ever
+   allowed to edit real code. Any actual code change is deferred to an ordinary, founder-ratified priority
+   run **after** the audit. The executor must **enforce** this (refuse any write outside `cocoder/**`
+   during a Takeover/Drift audit), and `cocoder-takeover.md` must state it as a user-facing promise.
+
+During each Playbook run, the founder gates remain mandatory runtime decisions:
+
+- approve/edit P1 subsystem map + the P1 spend decision before P2 fan-out;
+- the new founder-question checkpoint after the audit (directive 2 above);
 - ratify P5 Objectives before candidate priorities become runnable;
 - for Drift, select P5 amendments/tickets before P6 apply.
 
-No founder decision is needed to add the executor scaffolding itself if this addendum is accepted.
+The executor scaffolding is released to build; the P2/P3 build atoms must implement the dual-agent +
+multi-session + trust-invariant design above (captured first by the design-amendment atom in the
+priority's next-run plan).

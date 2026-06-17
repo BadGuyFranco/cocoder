@@ -43,7 +43,7 @@ extension (ADR-0020 §7); the `deep-read` audit Play (the Takeover P2 unit, adve
 deterministic scaffold init op; and a **live Takeover proof on a real external repo** (the Phase-5 entry,
 CoPublisher).
 
-## Build progress — disposition: `blocked`
+## Build progress — disposition: `continue` (ratified 2026-06-17 — build released)
 
 ### Cumulative engine state (run_83 + run_86)
 - ✅ **Loader extension (§7)** — core reads the three shipped Playbooks (`loadOnboardingPlaybooks`, `082fa48`)
@@ -176,15 +176,37 @@ Atoms 1–10) follow **after the founder ratification gate**, re-sequenced so th
   per-starter non-negotiables and the "if unsure" fallback question are draft recommendations in that note's
   founder-gate table — **pending ratification**, not yet decided.
 
-**Founder ratification gate (after A–E — NOW):** design atoms A–E are complete. Founder ratifies the
-deepened addendum (A–D) + the New-Primary tech-stack approach (E), and names the top-tier `deep-read`
-default `{cli, model}` (addendum §Founder Ratification Required; recommendation `{cli: "claude", model:
-"claude-opus-4-8"}`). **This gate releases the build.** Reply `ratify` in Oz to proceed.
+**Founder ratification gate (after A–E) — ✅ CLEARED 2026-06-17 (run_110).** The founder ratified the
+deepened addendum (A–D) **and** the New-Primary tech-stack approach (E), and **resolved the model policy:
+do NOT hard-code a model** — `top-tier` tracks the latest most-capable available model, resolved at
+runtime (multi-model) honoring persona/Play focus (ADR-0018). The recommendation to pin
+`{cli: "claude", model: "claude-opus-4-8"}` is **withdrawn/retired**. The founder added three design
+directives now recorded in [addendum §Founder Ratification — RESOLVED](../decisions/0020-addendum-phase-executor.md):
+1. **Adversarial dual-agent audit** — builder (Bob) sub-agents deep-read while orchestrator (Oscar)
+   sub-agents adversarially re-audit/cross-check, using *different* models/personas (multi-model);
+   disagreement is the P3 convergence signal.
+2. **Multi-session with a founder-question checkpoint** — a real Takeover spans multiple sessions; a
+   dedicated founder gate surfaces clarifications, conflicting findings, and code issues that should
+   become their own priority.
+3. **HARD TRUST INVARIANT — the audit NEVER touches repo code, only `cocoder/**`** — the audit is the
+   user's first interaction with CoCoder, so it reviews-and-proposes only; any real code edit is deferred
+   to a later founder-ratified priority run. The executor must enforce this and `cocoder-takeover.md`
+   must state it as a user-facing promise.
 
-**Build (after ratification):** the addendum's Ordered Implementation Atoms 1–10, re-sequenced so P1
-implements C+D, P2 implements A, P3 implements B; plus a New-Primary tech-stack-template build atom from E.
-First build atom remains **Phase metadata loader** (extend `loadOnboardingPlaybooks()` with ordered
-executable phases; pin phase lists in `packages/core/tests/playbooks.test.ts`).
+**Build (released) — next-run sequence:**
+
+- **Atom F — design-amendment for the dual-agent + multi-session + trust-invariant (its own session,
+  super-thoughtful, FIRST).** Work the three ratified directives above into the addendum's P2/P3 design
+  (dual-source adversarial fan-out + cross-check), add the founder-question checkpoint phase to the
+  Takeover phase model, and specify the enforced cocoder-only write invariant. Output: amended addendum
+  P2/P3 + Takeover phase table + the no-touch-repo-code enforcement spec. This is `packages/**` +
+  `cocoder/decisions/**` work; the takeover-skeleton edit (`packages/personas/base/playbooks/cocoder-takeover.md`)
+  is Bob-scope and lands this atom. One-shot, no founder gate inside.
+- **Then the addendum's Ordered Implementation Atoms 1–10**, re-sequenced so P1 implements C+D, P2
+  implements A **+ the dual-agent structure (F)**, P3 implements B **+ the adversarial cross-check (F)**;
+  plus a New-Primary tech-stack-template build atom from E. First build atom remains **Phase metadata
+  loader** (extend `loadOnboardingPlaybooks()` with ordered executable phases; pin phase lists in
+  `packages/core/tests/playbooks.test.ts`).
 
 **Still gated:** Live Takeover (#3) and Drift Audit (#4) proofs remain gated on the executor shipping — do
 not attempt live onboarding until then.
