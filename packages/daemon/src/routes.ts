@@ -73,7 +73,8 @@ const priorityOrderFile = (workspacePath: string): string => join(prioritiesDir(
 
 interface LaunchBody {
   readonly workspaceId: string
-  readonly priorityId: string
+  readonly priorityId?: string
+  readonly playbookId?: string
   readonly resumeFromRunId?: string
   readonly task?: string
 }
@@ -86,9 +87,14 @@ type ParsedLaunchBody = { readonly ok: true; readonly input: LaunchBody } | { re
 
 function launchBody(body: unknown): ParsedLaunchBody {
   const record = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {}
+  const priorityId = typeof record.priorityId === 'string' ? record.priorityId : ''
+  const playbookId = typeof record.playbookId === 'string' ? record.playbookId : ''
+  const hasPriority = priorityId.trim() !== ''
+  const hasPlaybook = playbookId.trim() !== ''
+  if (hasPriority === hasPlaybook) return { ok: false, error: 'exactly one of priorityId or playbookId is required' }
   const input: LaunchBody = {
     workspaceId: typeof record.workspaceId === 'string' ? record.workspaceId : '',
-    priorityId: typeof record.priorityId === 'string' ? record.priorityId : '',
+    ...(hasPriority ? { priorityId } : { playbookId }),
     resumeFromRunId: typeof record.resumeFromRunId === 'string' ? record.resumeFromRunId : undefined,
   }
   if (Object.prototype.hasOwnProperty.call(record, 'task')) {
@@ -479,7 +485,8 @@ async function runDetail(ctx: OzContext, res: ServerResponse, runId: string): Pr
     }
   }
 
-  sendJson(res, 200, { run, sessions, workItems, commitLinks, events, files, diffs })
+  const target = run.playbookId ? { kind: 'playbook', id: run.playbookId } : { kind: 'priority', id: run.priorityId }
+  sendJson(res, 200, { run, target, sessions, workItems, commitLinks, events, files, diffs })
 }
 
 function writeSseFrame(res: ServerResponse, event: OzEvent): void {
@@ -794,7 +801,8 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
     const parsed = launchBody(body)
     if (!parsed.ok) return sendJson(res, 400, { error: parsed.error }), true
     const input = parsed.input
-    const { status, body: out } = await launchRun(ctx, input.workspaceId, input.priorityId, { resumeFromRunId: input.resumeFromRunId, task: input.task })
+    const target = input.playbookId ? { kind: 'playbook' as const, playbookId: input.playbookId } : { kind: 'priority' as const, priorityId: input.priorityId ?? '' }
+    const { status, body: out } = await launchRun(ctx, input.workspaceId, target, { resumeFromRunId: input.resumeFromRunId, task: input.task })
     return sendJson(res, status, out), true
   }
   if (method === 'POST' && seg[0] === 'runs' && seg.length === 3 && seg[2] === 'show') {

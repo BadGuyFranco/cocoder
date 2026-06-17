@@ -27,6 +27,7 @@ interface RunRow {
   id: string
   workspace_id: string
   priority_id: string
+  playbook_id: string | null
   status: string
   created_at: number
   ended_at: number | null
@@ -71,6 +72,7 @@ const toRun = (r: RunRow): Run => ({
   id: r.id,
   workspaceId: r.workspace_id,
   priorityId: r.priority_id,
+  playbookId: r.playbook_id ?? null,
   status: r.status as RunStatus,
   createdAt: r.created_at,
   endedAt: r.ended_at,
@@ -134,7 +136,7 @@ class SqliteRunStore implements RunStore {
       .run(ws.id, ws.path, ws.name)
   }
 
-  createRun(input: { workspaceId: string; priorityId: string }): Run {
+  createRun(input: { workspaceId: string; priorityId: string; playbookId?: string | null }): Run {
     // Sequential, human-typeable session ids (run_1, run_2, …) from a monotonic counter — easy to type
     // for teardown/deep-links, and the number is the running total of sessions launched. One atomic
     // UPDATE allocates the next value (no read-then-write race), and it never reuses a number even if a
@@ -144,16 +146,17 @@ class SqliteRunStore implements RunStore {
       id: `run_${seq}`,
       workspaceId: input.workspaceId,
       priorityId: input.priorityId,
+      playbookId: input.playbookId ?? null,
       status: 'running',
       createdAt: this.#now(),
       endedAt: null,
     }
     this.#db
       .prepare(
-        `INSERT INTO run (id, workspace_id, priority_id, status, created_at, ended_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO run (id, workspace_id, priority_id, playbook_id, status, created_at, ended_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(run.id, run.workspaceId, run.priorityId, run.status, run.createdAt, run.endedAt)
+      .run(run.id, run.workspaceId, run.priorityId, run.playbookId, run.status, run.createdAt, run.endedAt)
     return run
   }
 

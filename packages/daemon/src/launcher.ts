@@ -14,6 +14,7 @@ import {
   isPersonaEnabled,
   gateCommitRepair,
   loadAssignments,
+  loadOnboardingPlaybooks,
   loadEffectivePlay,
   loadPriority,
   runCommitGate,
@@ -22,13 +23,15 @@ import {
   resolveEffectivePersona,
   runHeadlessProcess,
   runRun,
+  startPlaybookExecutor,
   type PersonaSources,
+  type PlaybookPhaseAction,
   type RunInput,
   type RunnerDeps,
   type SessionHost,
   type Workspace,
 } from '@cocoder/core'
-import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
+import { basePersonasDir, basePlaybooksDir, basePlaysDir } from '@cocoder/personas'
 import type { DashboardLaunchHandle, OzContext, OzEvent } from './context.js'
 import { findWorkspace } from './registry.js'
 import { appendAudit } from './audit.js'
@@ -146,13 +149,78 @@ export interface LaunchResult {
 }
 
 const ADHOC_PRIORITY_ID = 'adhoc-session'
+const PLAYBOOK_PRIORITY_SENTINEL = 'onboarding-playbook'
 
-/** Launch a run for {workspaceId, priorityId}. Async (fire-and-forget); returns 202 with the runId,
- *  409 if a run is already in flight for the workspace, or 400 if the request can't be assembled. */
-export async function launchRun(ctx: OzContext, workspaceId: string, priorityId: string, opts: { readonly resumeFromRunId?: string; readonly task?: string | null } = {}): Promise<LaunchResult> {
-  if (!workspaceId || !priorityId) return { status: 400, body: { error: 'workspaceId and priorityId are required' } }
+export type LaunchRunTarget = { readonly kind: 'priority'; readonly priorityId: string } | { readonly kind: 'playbook'; readonly playbookId: string }
+
+function normalizeLaunchTarget(target: string | LaunchRunTarget): LaunchRunTarget {
+  return typeof target === 'string' ? { kind: 'priority', priorityId: target } : target
+}
+
+function launchTargetId(target: LaunchRunTarget): string {
+  return target.kind === 'priority' ? target.priorityId : target.playbookId
+}
+
+function appendLaunchAudit(ctx: OzContext, workspaceId: string, target: LaunchRunTarget, runId: string | null): void {
+  if (target.kind === 'priority') void appendAudit(ctx.cocoderHome, { action: 'launch', workspaceId, priorityId: target.priorityId, runId })
+  else void appendAudit(ctx.cocoderHome, { action: 'launch', workspaceId, playbookId: target.playbookId, runId })
+}
+
+function appendStaleLaunchAudit(ctx: OzContext, workspaceId: string, target: LaunchRunTarget, headSha: string, idle: boolean): void {
+  const common = { action: 'launch-refused-stale', workspaceId, bootSha: ctx.bootSha, headSha, selfRestart: idle } as const
+  if (target.kind === 'priority') void appendAudit(ctx.cocoderHome, { ...common, priorityId: target.priorityId })
+  else void appendAudit(ctx.cocoderHome, { ...common, playbookId: target.playbookId })
+}
+
+function attachRunLifecycle(ctx: OzContext, workspaceId: string, stopController: AbortController, getRunId: () => string | null, running: Promise<unknown>): void {
+  running
+    .catch((err: unknown) => {
+      const runId = getRunId()
+      if (runId) {
+        try {
+          ctx.store.recordEvent({ runId, type: 'run-error', data: { message: err instanceof Error ? err.message : String(err) } })
+          ctx.store.setRunStatus(runId, 'failed')
+        } catch {
+          // Shutdown/test teardown may close the store before a fire-and-forget run rejects. The
+          // background error is already contained here; never let the containment path throw.
+        }
+      }
+    })
+    .finally(async () => {
+      const runId = getRunId()
+      ctx.inFlight.delete(workspaceId)
+      if (runId) ctx.stopControllers.delete(runId)
+      if (runId && stopController.signal.aborted) {
+        try {
+          const result = await closeRunSurfaces(ctx, runId)
+          ctx.store.recordEvent({ runId, type: 'stop-teardown', data: result })
+        } catch {
+          /* shutdown/test teardown may close the store before post-stop cleanup finishes */
+        }
+      }
+      if (runId) {
+        let status: string | undefined
+        try {
+          status = ctx.store.getRun(runId)?.status
+        } catch {
+          status = undefined
+        }
+        emitOzEvent(ctx, { type: 'run-settled', runId, workspaceId, status })
+      }
+    })
+}
+
+/** Launch a run for either {workspaceId, priorityId} or {workspaceId, playbookId}. Async
+ *  (fire-and-forget); returns 202 with the runId, 409 if a run is already in flight for the workspace,
+ *  or 400 if the request can't be assembled. The string target preserves ordinary priority callers. */
+export async function launchRun(ctx: OzContext, workspaceId: string, targetInput: string | LaunchRunTarget, opts: { readonly resumeFromRunId?: string; readonly task?: string | null } = {}): Promise<LaunchResult> {
+  const target = normalizeLaunchTarget(targetInput)
+  const targetId = launchTargetId(target)
+  if (!workspaceId || !targetId) {
+    return { status: 400, body: { error: target.kind === 'priority' ? 'workspaceId and priorityId are required' : 'workspaceId and playbookId are required' } }
+  }
   const task = typeof opts.task === 'string' ? opts.task.trim() : ''
-  if (priorityId === ADHOC_PRIORITY_ID && task === '') {
+  if (target.kind === 'priority' && target.priorityId === ADHOC_PRIORITY_ID && task === '') {
     return { status: 400, body: { error: 'adhoc-session requires a task; use adhoc <task> or pass task in POST /runs' } }
   }
   if (ctx.inFlight.has(workspaceId)) {
@@ -160,12 +228,27 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
   }
   ctx.inFlight.set(workspaceId, 'pending') // reserve synchronously — closes the concurrent-POST race
 
-  let input: RunInput
-  try {
-    input = await buildRunInput(ctx, workspaceId, priorityId, opts)
-  } catch (err) {
-    ctx.inFlight.delete(workspaceId)
-    return { status: 400, body: { error: err instanceof Error ? err.message : String(err) } }
+  let input: RunInput | null = null
+  let playbook: ReturnType<typeof loadOnboardingPlaybooks>[number] | null = null
+  let workspace: Awaited<ReturnType<typeof findWorkspace>> | null = null
+  if (target.kind === 'priority') {
+    try {
+      input = await buildRunInput(ctx, workspaceId, target.priorityId, opts)
+    } catch (err) {
+      ctx.inFlight.delete(workspaceId)
+      return { status: 400, body: { error: err instanceof Error ? err.message : String(err) } }
+    }
+  } else {
+    workspace = await findWorkspace(ctx.cocoderHome, workspaceId)
+    if (!workspace) {
+      ctx.inFlight.delete(workspaceId)
+      return { status: 400, body: { error: `unknown workspace "${workspaceId}"` } }
+    }
+    playbook = loadOnboardingPlaybooks(basePlaybooksDir()).find((candidate) => candidate.id === target.playbookId) ?? null
+    if (!playbook) {
+      ctx.inFlight.delete(workspaceId)
+      return { status: 400, body: { error: `unknown onboarding playbook "${target.playbookId}"` } }
+    }
   }
   // Fail-fast on a STALE daemon (serving code older than repo HEAD) BEFORE creating a run or spawning any
   // agents. Earned from a live incident: a stale daemon used to run a whole build that could only abort at
@@ -187,7 +270,7 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
       `[oz] STALE DAEMON: refusing launch — serving ${ctx.bootSha.slice(0, 8)} but repo HEAD is ${headNow.slice(0, 8)}.` +
         (idle ? ' Idle → self-restarting onto current code; re-launch in a few seconds.' : ' Restart (scripts/oz.sh restart) once the in-flight run finishes.'),
     )
-    void appendAudit(ctx.cocoderHome, { action: 'launch-refused-stale', workspaceId, priorityId, bootSha: ctx.bootSha, headSha: headNow, selfRestart: idle })
+    appendStaleLaunchAudit(ctx, workspaceId, target, headNow, idle)
     if (idle) ctx.restartDaemon()
     return {
       status: 425,
@@ -221,44 +304,38 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
     },
   }
 
-  // onRunCreated fires synchronously inside this call (before runRun's first await), so runId is set.
-  const running = runRun(deps, input)
-  running
-    .catch((err: unknown) => {
-      if (runId) {
-        try {
-          ctx.store.recordEvent({ runId, type: 'run-error', data: { message: err instanceof Error ? err.message : String(err) } })
-          ctx.store.setRunStatus(runId, 'failed')
-        } catch {
-          // Shutdown/test teardown may close the store before a fire-and-forget run rejects. The
-          // background error is already contained here; never let the containment path throw.
-        }
-      }
-    })
-    .finally(async () => {
-      ctx.inFlight.delete(workspaceId)
-      if (runId) ctx.stopControllers.delete(runId)
-      if (runId && stopController.signal.aborted) {
-        try {
-          const result = await closeRunSurfaces(ctx, runId)
-          ctx.store.recordEvent({ runId, type: 'stop-teardown', data: result })
-        } catch {
-          /* shutdown/test teardown may close the store before post-stop cleanup finishes */
-        }
-      }
-      if (runId) {
-        let status: string | undefined
-        try {
-          status = ctx.store.getRun(runId)?.status
-        } catch {
-          status = undefined
-        }
-        emitOzEvent(ctx, { type: 'run-settled', runId, workspaceId, status })
-      }
-    })
+  let running: Promise<unknown>
+  if (target.kind === 'priority') {
+    // onRunCreated fires synchronously inside this call (before runRun's first await), so runId is set.
+    running = runRun(deps, input!)
+  } else {
+    const ws = workspace!
+    const pb = playbook!
+    const runPhase: PlaybookPhaseAction = async () => {
+      // Atoms 5b-11 replace this no-op seam with real phase work; this atom wires launch → executor.
+    }
+    ctx.store.upsertWorkspace({ id: ws.id, path: ws.path, name: ws.name })
+    const run = ctx.store.createRun({ workspaceId: ws.id, priorityId: PLAYBOOK_PRIORITY_SENTINEL, playbookId: pb.id })
+    runId = run.id
+    ctx.inFlight.set(workspaceId, run.id)
+    ctx.stopControllers.set(run.id, stopController)
+    emitOzEvent(ctx, { type: 'run-created', runId: run.id, workspaceId })
+    running = (async () => {
+      const runDir = join(ctx.runsRoot, run.id)
+      ctx.store.recordEvent({ runId: run.id, type: 'run-start', data: { playbook: pb.id, runDir } })
+      const result = await startPlaybookExecutor({ playbook: pb, runDir, now: Date.now, runPhase })
+      ctx.store.recordEvent({
+        runId: run.id,
+        type: 'playbook-executor',
+        data: { playbookId: pb.id, status: result.state.status, currentPhaseId: result.state.currentPhaseId, statePath: result.statePath },
+      })
+      ctx.store.setRunStatus(run.id, result.state.status === 'done' ? 'completed' : 'awaiting-founder')
+    })()
+  }
+  attachRunLifecycle(ctx, workspaceId, stopController, () => runId, running)
 
-  void appendAudit(ctx.cocoderHome, { action: 'launch', workspaceId, priorityId, runId })
-  return { status: 202, body: { runId } }
+  appendLaunchAudit(ctx, workspaceId, target, runId)
+  return { status: 202, body: { runId, target: { kind: target.kind, id: targetId } } }
 }
 
 /** Close ALL of a run's tracked cmux surfaces by their DURABLE stored sessionRef (ADR-0015). This is

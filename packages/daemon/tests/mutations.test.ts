@@ -399,6 +399,47 @@ describe('Oz mutations + lifecycle', () => {
     expect(audit).toContain('"action":"launch"')
   })
 
+  test('POST /runs rejects both-set and neither-set targets before creating a run', async () => {
+    await startServer()
+
+    const both = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo', playbookId: 'drift-audit' } })
+    const neither = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder' } })
+
+    expect(both).toEqual({ status: 400, json: { error: 'exactly one of priorityId or playbookId is required' } })
+    expect(neither).toEqual({ status: 400, json: { error: 'exactly one of priorityId or playbookId is required' } })
+    expect(store.listRuns()).toEqual([])
+  })
+
+  test('POST /runs rejects an unknown onboarding playbook', async () => {
+    await startServer()
+
+    const r = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', playbookId: 'missing-playbook' } })
+
+    expect(r).toEqual({ status: 400, json: { error: 'unknown onboarding playbook "missing-playbook"' } })
+    expect(store.listRuns()).toEqual([])
+  })
+
+  test('POST /runs launches an onboarding playbook, records its target, and invokes the executor seam', async () => {
+    await startServer()
+
+    const r = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', playbookId: 'drift-audit' } })
+
+    expect(r.status).toBe(202)
+    expect(r.json).toMatchObject({ runId: expect.stringMatching(/^run_/), target: { kind: 'playbook', id: 'drift-audit' } })
+    const runId = String(r.json.runId)
+    let detail: Resp | null = null
+    for (let i = 0; i < 50; i++) {
+      detail = await call(oz!, 'GET', `/runs/${runId}`)
+      if (detail.json.run.status !== 'running') break
+      await sleep(10)
+    }
+    expect(detail?.json.run).toMatchObject({ id: runId, priorityId: 'onboarding-playbook', playbookId: 'drift-audit', status: 'awaiting-founder' })
+    expect(detail?.json.target).toEqual({ kind: 'playbook', id: 'drift-audit' })
+    const state = JSON.parse(await readFile(join(home, 'local', 'runs', runId, 'playbook-state.json'), 'utf8')) as { readonly playbookId: string; readonly status: string }
+    expect(state).toMatchObject({ playbookId: 'drift-audit', status: 'awaiting-founder' })
+    expect(store.listEvents(runId).some((event) => event.type === 'playbook-executor')).toBe(true)
+  })
+
   test('POST /runs rejects adhoc-session without a task before creating a run', async () => {
     await startServer()
 

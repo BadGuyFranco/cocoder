@@ -22,6 +22,7 @@ describe('RunStore (:memory:)', () => {
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'p-1' })
     expect(run.status).toBe('running')
     expect(run.endedAt).toBeNull()
+    expect(run.playbookId).toBeNull()
 
     store.setRunStatus(run.id, 'completed')
     const fetched = store.getRun(run.id)
@@ -81,6 +82,16 @@ describe('RunStore (:memory:)', () => {
     expect(store.listRuns({ workspaceId: 'other' }).map((r) => r.id)).toEqual([c.id])
     // Limit.
     expect(store.listRuns({ limit: 1 }).map((r) => r.id)).toEqual([c.id])
+  })
+
+  test('run target discriminator distinguishes priority and playbook runs', () => {
+    const priority = store.createRun({ workspaceId: 'cocoder', priorityId: 'p-1' })
+    const playbook = store.createRun({ workspaceId: 'cocoder', priorityId: 'onboarding-playbook', playbookId: 'new-primary' })
+
+    expect(store.getRun(priority.id)).toMatchObject({ priorityId: 'p-1', playbookId: null })
+    expect(store.getRun(playbook.id)).toMatchObject({ priorityId: 'onboarding-playbook', playbookId: 'new-primary' })
+    expect(store.getRun(priority.id)?.playbookId === null ? 'priority' : 'playbook').toBe('priority')
+    expect(store.getRun(playbook.id)?.playbookId === null ? 'priority' : 'playbook').toBe('playbook')
   })
 
   test('events store JSON data and read back in order', () => {
@@ -155,12 +166,14 @@ describe('schema compatibility — existing dbs open and hydrate without data lo
     const store = openRunStore(dbPath, { now: clock() })
 
     // The legacy run + commit_link hydrate coherently — no data loss.
-    expect(store.getRun('run_legacy')).toMatchObject({ id: 'run_legacy', status: 'completed' })
+    expect(store.getRun('run_legacy')).toMatchObject({ id: 'run_legacy', status: 'completed', playbookId: null })
     expect(store.listCommitLinks('run_legacy')[0]).toMatchObject({ commitSha: 'oldsha', files: ['a.ts'], workItemId: null })
 
     // A new commit link round-trips (every commit lands directly on the branch — no kind/merge metadata).
     const link = store.recordCommitLink({ runId: 'run_legacy', commitSha: 'newsha', message: 'm', files: ['b.ts'] })
     expect(link).toMatchObject({ commitSha: 'newsha', files: ['b.ts'], workItemId: null })
+    const playbook = store.createRun({ workspaceId: 'cocoder', priorityId: 'onboarding-playbook', playbookId: 'new-primary' })
+    expect(store.getRun(playbook.id)).toMatchObject({ playbookId: 'new-primary' })
 
     store.close()
   })

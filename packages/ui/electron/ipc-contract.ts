@@ -97,6 +97,7 @@ export interface RunSummary {
   readonly id: string
   readonly workspaceId: string
   readonly priorityId: string
+  readonly playbookId?: string | null
   readonly status: RunStatus | string
   readonly createdAt: number
   readonly endedAt: number | null
@@ -150,6 +151,7 @@ export interface RunDiff {
 }
 export interface RunDetail {
   readonly run: RunSummary
+  readonly target?: { readonly kind: 'priority' | 'playbook'; readonly id: string }
   readonly sessions: readonly RunSession[]
   readonly workItems: readonly WorkItem[]
   readonly commitLinks: readonly CommitLink[]

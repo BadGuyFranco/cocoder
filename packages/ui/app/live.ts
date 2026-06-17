@@ -99,6 +99,10 @@ export async function launchRun(oz: OzApi, workspaceId: string, priorityId: stri
   return oz.daemonPost('/runs', body)
 }
 
+export async function launchPlaybookRun(oz: OzApi, workspaceId: string, playbookId: string): Promise<MutationResult> {
+  return oz.daemonPost('/runs', { workspaceId, playbookId })
+}
+
 export async function attachRun(oz: OzApi, runId: string): Promise<MutationResult> {
   return oz.daemonPost(`/runs/${runId}/show`)
 }

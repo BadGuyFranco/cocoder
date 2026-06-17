@@ -21,7 +21,11 @@ export interface Workspace {
 export interface Run {
   readonly id: string
   readonly workspaceId: string
+  /** `playbookId` is the target discriminator: null means an ordinary priority run; non-null means an
+   *  onboarding Playbook run. `priorityId` stays required for SQLite compatibility, but consumers must
+   *  never infer run kind from it. */
   readonly priorityId: string
+  readonly playbookId: string | null
   readonly status: RunStatus
   readonly createdAt: number // epoch ms
   readonly endedAt: number | null
@@ -83,7 +87,7 @@ export interface FaultRecord {
 export interface RunStore {
   upsertWorkspace(ws: Workspace): void
 
-  createRun(input: { workspaceId: string; priorityId: string }): Run
+  createRun(input: { workspaceId: string; priorityId: string; playbookId?: string | null }): Run
   setRunStatus(runId: string, status: RunStatus): void
   getRun(runId: string): Run | null
   /** Cross-run read (newest-first), optionally scoped to a workspace (ADR-0003: one WHERE).
