@@ -58,10 +58,20 @@ to decomposition — do not re-open without a new founder decision.
   missing from `INDEX.md`'s Open table, and the active design-ref ticket conflicted with closed
   `post-wrap-orchestration-commit-gap`. Reconciled by run_121 atom 0 as the **first build atom**.
 
-## Recommended decomposition (post-ratification)
-1. **Ticket-index hygiene** (`cocoder/tickets/**`): add `0005` to `INDEX.md` Open table; resolve the
-   duplicate active/closed ID. Prereq for clean Tickets-tab data.
-2. **Tabs refactor** (read-only, `packages/ui/**`): Priorities/Tickets/Runs in-panel tabs; Runs replaces
-   the history button+modal; contextual add button per tab (decision 4). Priorities unchanged.
-3. **Ticket-fix launch** — **gated on `new-primary-root` Addendum Atom 2** (decision 2). Reuses the
-   generalized run-target; from the Tickets tab, launches a fix run that closes the ticket via the spine.
+## Decomposition — status (run_121, 2026-06-17)
+1. ✅ **DONE (`6aa5f60`) — Ticket-index hygiene** (`cocoder/tickets/**`): `0005` added to `INDEX.md` Open
+   table; duplicate ID `0007` resolved by renumbering the active design-ref ticket `0007 → 0012` (closed
+   historical `0007` left intact). Open tickets now `0003 / 0005 / 0012`.
+2. ✅ **DONE — Tickets data layer** (`5da8926`, `packages/core` + `packages/daemon` + `packages/ui`) and
+   the **Tabs refactor** (`70940a1`, `packages/ui/**`): core `readTickets` → daemon
+   `GET /workspaces/:id/tickets` → UI adapter/fixture, then the in-panel **Priorities/Tickets/Runs** tabs
+   (Runs replaced the history button **and** modal; contextual add per tab; Priorities byte-for-byte
+   unchanged). **The original "tabs refactor" was split into a data-layer atom + a UI atom** because
+   listing real tickets required new read plumbing (no ticket reader/type/endpoint existed). Deliverable 1
+   (three working tabs) complete + verified.
+3. ⛔ **GATED — Ticket-fix launch** — **on `new-primary-root` Addendum Atom 2** (decision 2). Verified
+   run_121: `RunInput`/`buildRunInput`/`launchRun` are still hard-typed to `priorityId` and no
+   `target = ticket | priority | playbook` abstraction exists. From the Tickets tab, launches a fix run
+   that closes the ticket via the spine — but must **reuse** the generalized run-target, not fork. Relaunch
+   `tickets-review` for this atom only after `new-primary-root` Addendum Atom 2 lands; proof ticket = one
+   of `0003 / 0005 / 0012`.

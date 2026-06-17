@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-17 — **Tickets-review: index hygiene + tickets data layer + 3-tab dashboard landed; atom 3 gated (run_121)**
+
+**Persona:** Oscar (3 atoms delegated/verified) | **Priority:** [tickets-review](./priorities/tickets-review.md) | **Run:** run_121
+**Outcomes:**
+- **Atom 0 — ticket-index hygiene (`6aa5f60`):** `0005` added to `INDEX.md` Open table; duplicate ID `0007` resolved by renumbering the *active* design-ref ticket `0007 → 0012` (closed historical `0007` left intact — it is a permanent failure-catalog referent). All cross-refs updated coherently (SESSION_LOG, failure-catalog F21, PLAYBOOK, archived oz-dashboard Playbook, this priority brief); `ADR-0007` untouched. Open tickets now **0003 / 0005 / 0012**.
+- **Atom 1 — tickets data layer (`5da8926`):** new `loadTicket`/`readTickets` in `packages/core/src/tickets/` (reuses `parseFrontmatter`, mirrors `readPriorities`), daemon `GET /workspaces/:id/tickets` (mirrors `listPriorities`), UI `Ticket` types + `adaptTickets` + live fetch + fixture/seed. No UI rendering. Typecheck clean; core 283, daemon 201 (real-dir test asserts open `0003/0005/0012` + endpoint), ui 114 — all green.
+- **Atom 2 — 3-tab dashboard panel (`70940a1`):** left panel now cycles **Priorities / Tickets / Runs** in place. Priorities behavior byte-for-byte intact (PrioritiesPanel reduced to a fragment under the shared header — no double chrome). **Tickets** lists open tickets with an in-panel detail view; **Runs** replaces the removed run-history button **and** modal (grep clean in the live tree — only the frozen `design-ref/` retains the old modal, which ticket 0012 warns against regenerating from). Contextual `+` per tab (Priorities→add priority, Tickets→draft-ticket via existing `chatPrefill`, Runs→none). Typecheck clean; ui 118/118 incl. 4 new tab tests.
+- **Deliverable 1 (three working tabs) COMPLETE + verified.** Deliverable 2 (ticket-fix launch) is **atom 3 — GATED**.
+- **Atom 3 gate (verified this run):** `RunInput`/`buildRunInput`/`launchRun` are still hard-typed to `priorityId` (`launcher.ts:79/152`, `priority: loadPriority(...)`); no `target = ticket | priority | playbook` abstraction exists. Ratified decision 2 forbids forking a parallel ticket-launch lane — the ticket target must reuse `new-primary-root` **Addendum Atom 2 (run target + daemon launch surface)**, which is that priority's *next open atom* and has not landed.
+**Next:** Founder sequencing call — launch **`new-primary-root`** to land Addendum Atom 2 (the run-target generalization), then relaunch **`tickets-review`** for atom 3 (ticket-fix run that closes a ticket via the spine, proof ticket one of `0003/0005/0012`). Atom 3 is not delegable until the generalized run-target exists.
+
 ## 2026-06-17 — **Ticket 0011 teardown fix verified — archive-candidate (run_120)**
 
 **Persona:** Oscar (0 atoms delegated) | **Priority:** [fix-ticket-0011](./priorities/fix-ticket-0011.md) | **Run:** run_120
