@@ -45,6 +45,72 @@ CoPublisher).
 
 ## Build progress — disposition: `continue` (ratified 2026-06-17 — build released)
 
+### Executor build progress (run_128, 2026-06-17)
+Eighth build session — **executor P3 — cross-check convergence ACTION integration** landed (one atom;
+verified-on-evidence: diff read end-to-end + `pnpm --filter @cocoder/core test` (322) +
+`pnpm --filter @cocoder/daemon test` (208) + `pnpm -w typecheck` + `node scripts/check-topology.mjs`):
+- ✅ **Executor P3 — cross-check convergence ACTION integration** (`775bf55`). Mirrors the
+  `p2-action.ts`/`p2-fanout.ts` split across four new core modules + launcher wiring:
+  - `packages/core/src/playbooks/p3-cross-check.ts` — **pure engine**. `buildRound(...)` derives the
+    unresolved-item set *deterministically* from the P2 convergence artifacts (cross-source
+    disagreements, residual gaps, P1 coverage gaps via `uncoveredTargets`, missing/UNVERIFIED P2
+    findings, P2 source-cap carryover) and computes the four-clause exit predicate. **Non-gameable:**
+    items come from real P2 data (cannot pass by omission); `noNewContradictionOrDisagreement` /
+    `noNewCoverageGap` are `false` when `previous === null`, so the loop **structurally requires ≥2
+    rounds**; follow-up resolution (`resolvedByFollowUps`) demands `decision:'converged'` + zero residual
+    gaps + ≥1 non-`UNVERIFIED` cited evidence.
+  - `packages/core/src/playbooks/p3-input.ts` — refuse-on-malformed readers for
+    `playbook/P1/{subsystems,estimate}.json` + per-subsystem `playbook/P2/convergence/<id>.json` and the
+    optional `findings/<id>/{builder,orchestrator}.md`.
+  - `packages/core/src/playbooks/p3-action.ts` — the capped loop + artifact writer. Caps from
+    `P3_CAPS` (`estimate.ts`): **3 rounds / 30 min (injected `now`) / min(125k, p3Allocation.tokenBudget)**.
+    Round + wall-clock are live-enforced; token is a precondition gate (`tokenCap <= 0` → cap, no
+    dispatch) — consistent with P2c, since the `dispatch` seam returns no token metadata and work is
+    hard-bounded at ≤3 rounds × ≤3 follow-ups. ≤3 named follow-up `deep-read` reads/round through the
+    **injected `dispatch` seam** (`resolveDeepReadAssignments` orchestrator source). On any cap →
+    `converged:false`, cap reason named, all unresolved items preserved for P5. Writes
+    `playbook/P3/convergence.json` + `cross-check.md`; emits `playbook-cross-check-result`.
+  - `packages/core/src/playbooks/p3-render.ts` — `cross-check.md` human render.
+  - `launcher.ts` `createDaemonPlaybookPhaseAction` now **composes P1→P2→P3** (real `dispatchPlay` +
+    `createDaemonTopTierResolver` bound into the P3 follow-up seam; `Date.now` injected as `now`).
+  - Tests: `playbook-p3-action.test.ts` (5 unit: full loop + named follow-up + convergence record;
+    token-cap honesty with gaps preserved + zero dispatch; ≤3 follow-ups/round; refuse-on-malformed P2
+    input; **writes only under `runDir/playbook/P3/**`**, `repoDir/cocoder` never created) + daemon
+    `mutations.test.ts` e2e rewritten so resume advances **P2 → real P3 cross-check (not stub) → P4
+    gate**, asserting `convergence.json` `"converged": true`, the cross-check event `roundsRun:2`, and
+    `home/cocoder/AGENTS.md` never created. Pure-core invariant confirmed (no
+    Date.now/Math.random/network/subprocess in the new core modules).
+
+**Sequencing note (Oscar):** wrapped at this boundary deliberately. The next critical-path atom is **P4 —
+founder-question checkpoint ACTION integration** — a delicate atom sitting at the HARD multi-session
+founder gate that must surface three distinct question classes; give it its own super-thoughtful fresh
+session (run_111 anti-pattern: do not start P4 under a context already spent on the P3 verify cycle).
+
+**Next-run sequence (executor critical path; build released, no founder gate needed to build these):**
+- **NEXT → Executor P4 — founder-question checkpoint ACTION integration** (fresh dedicated session). Per
+  [ADR-0020 addendum](../decisions/0020-addendum-phase-executor.md) §Founder Ratification directive 2 +
+  the Atom F renumbering (Takeover P0–P7, `founder-question` gate kind): the executor already PAUSES at
+  the P4 `awaiting-founder` gate (run_112 cursor) and the daemon e2e already reaches it — this atom builds
+  the **content** the gate surfaces. Build a `p4-action.ts` (mirror the p3-action split) that consumes
+  `playbook/P3/convergence.json` (final unresolved items, cap status, disagreements) + `playbook/P1/intent.json`
+  and produces a `playbook/P4/questions.json` (+ founder-readable `questions.md`) partitioning into the
+  **three question classes**: (a) *clarifications* (ambiguities/open questions intent couldn't resolve);
+  (b) *conflicting findings* (P3 cross-source disagreements + on-cap unconverged items needing a founder
+  call); (c) *code issues that should become their own future priority* (material/high severity items the
+  audit must NOT fix itself — trust invariant). Wire into `createDaemonPlaybookPhaseAction` so the P4 phase
+  action runs *before* the gate pause (executor already runs the phase action then pauses at a
+  `founderGate` — confirm that order holds for P4 as it did P1). Verify: extend the fake-agent e2e so the
+  P4 gate pause now carries the questions artifact; the three classes are populated from the fixture's P3
+  disagreement + intent open-questions; **enforce that P4 writes only under `runDir/playbook/P4/**`** and
+  never touches repo code (`cocoder/**` trust invariant); core+daemon+typecheck+topology stay green;
+  ordinary priority runs unchanged.
+- **Then** Atoms 9–11 (P5 synthesis + `cocoder/**`-only audit write-boundary ENFORCEMENT → P6 ratify →
+  end-to-end fixture proof). Parallel/independent: New-Primary tech-stack-starter template BUILD from Atom
+  E — per-starter non-negotiables and the "if-unsure" fallback question remain draft-pending-ratification
+  in `new-primary-tech-stack.md`; confirm with founder first or scope to ratified parts only.
+- **Still gated:** Live CoPublisher Takeover proof and the dogfood Drift Audit remain gated until the
+  P1→P5 executor path runs end-to-end on fakes.
+
 ### Executor build progress (run_127, 2026-06-17)
 Seventh build session — **executor P2c — P2 ACTION integration** landed (one atom;
 verified-on-evidence: diff read end-to-end + `pnpm --filter @cocoder/core test` +
@@ -380,7 +446,11 @@ First build session after ratification. Three atoms landed (verified-on-evidence
    — `p2-dispatch.ts` with `resolveDeepReadAssignments` + `createDeepReadTurn` (core 314 green). **Landed
    run_127:** executor P2c ACTION integration (`022d774`) — `p2-action.ts` end-to-end dual-source fan-out
    wired through `launcher.ts` (P1→P2 compose; daemon e2e proves resume→P2 fan-out; core 317 + daemon 208
-   green). **Next:** P3 cross-check convergence ACTION integration → Atoms 8–11 + tech-stack template build
+   green). **Landed run_128:** executor P3 cross-check convergence ACTION integration (`775bf55`) —
+   `p3-cross-check.ts`/`p3-input.ts`/`p3-action.ts`/`p3-render.ts` capped convergence loop (3/30min/min(125k,alloc)),
+   non-gameable ≥2-round predicate over real P2 artifacts, ≤3 injected follow-up reads/round, on-cap gaps
+   preserved; launcher composes P1→P2→P3; daemon e2e proves resume→P2→real P3→P4 gate; core 322 + daemon 208
+   green. **Next:** P4 founder-question checkpoint ACTION integration → Atoms 9–11 + tech-stack template build
    from E.
 3. **Live CoPublisher Takeover proof** (Phase-5 entry) — Objective verification (a). **BLOCKED on executor
    build** (#2 above).
@@ -520,9 +590,14 @@ directives now recorded in [addendum §Founder Ratification — RESOLVED](../dec
 - ✅ **Executor P2c — P2 ACTION integration** (`022d774`, run_127). `p2-action.ts` end-to-end dual-source
   fan-out wired through `launcher.ts` `createDaemonPlaybookPhaseAction` (P1→P2 compose); daemon e2e proves
   resume→P2 fan-out→P3 stub; core 317 + daemon 208 green.
-- **NEXT → Executor P3 — cross-check convergence ACTION integration** (fresh session; see §Executor build
-  progress run_127).
-- **Then Atoms 8–11** + New-Primary tech-stack-template build from E.
+- ✅ **Executor P3 — cross-check convergence ACTION integration** (`775bf55`, run_128).
+  `p3-cross-check.ts` (pure engine, non-gameable ≥2-round predicate over real P2 artifacts) +
+  `p3-input.ts` + `p3-action.ts` (capped loop 3/30min/min(125k,alloc), ≤3 injected follow-up reads/round,
+  on-cap gaps preserved) + `p3-render.ts`; launcher composes P1→P2→P3; daemon e2e proves resume→P2→real
+  P3→P4 gate; core 322 + daemon 208 green.
+- **NEXT → Executor P4 — founder-question checkpoint ACTION integration** (fresh session; see §Executor
+  build progress run_128).
+- **Then Atoms 9–11** + New-Primary tech-stack-template build from E.
 
 **Still gated:** Live Takeover (#3) and Drift Audit (#4) proofs remain gated on the executor shipping — do
 not attempt live onboarding until then.
