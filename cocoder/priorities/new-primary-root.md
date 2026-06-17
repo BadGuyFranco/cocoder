@@ -131,15 +131,14 @@ First build session after ratification. Three atoms landed (verified-on-evidence
    files (assignments, adhoc priority, CLAUDE pointer) are now committed to trunk with their verified
    canonical contents; the run_86 strand below is closed (recovery executed). Scaffold is complete on a
    fresh clone again and CI is green.
-2. **P2→P5 fan-out executor** — **✅ DESIGNED run_107** ([ADR-0020 addendum](../decisions/0020-addendum-phase-executor.md),
-   commit `aee464b`, status **Proposed**). Concrete P1→P5 execution design: new runner mode (not a forked
-   loop), phase metadata from shipped Playbook tables, founder gates at P1/P5, P2 deep-read fan-out via
-   `dispatchPlay`, P3 cross-check → P4 synthesize → P5 ratify through the ADR-0023 spine. Code-traceable to
-   existing modules (`loadOnboardingPlaybooks`, `dispatchPlay`, `runCommitGate`, `requestAuthoringPlay`).
-   **Build gated on founder ratification** of the addendum plus one policy call: the default `{cli, model}` for
-   `modelPin: top-tier` P2/P3 deep-read when a brand-new target has not overridden `deep-read` in
-   `assignments.json` (see addendum §Founder Ratification Required). **Not yet built** — Atoms 1–10 in the
-   addendum's ordered plan remain open.
+2. **P2→P5 fan-out executor** — **✅ DESIGNED run_107, ratified run_110, BUILD IN PROGRESS run_111**
+   ([ADR-0020 addendum](../decisions/0020-addendum-phase-executor.md)). Concrete P1→P5 execution design:
+   new runner mode (not a forked loop), phase metadata from shipped Playbook tables, founder gates at
+   P1/P5, P2 deep-read fan-out via `dispatchPlay`, P3 cross-check → P4 synthesize → P5 ratify through the
+   ADR-0023 spine. **Landed run_111:** Atom F (`35eb066`), Atom 1 phase loader (`af48ddd`), Atom 5a recon
+   helper (`a2c7195`). **Next:** Atom 3 runner primitive extraction → Atom 4 (executor state/cursor) →
+   Atom 2 (launch surface, resequenced after executor) → Atom 5b (agentic recon) → Atoms 6–11 + tech-stack
+   template build from E. Addendum Atoms 3–11 remain open.
 3. **Live CoPublisher Takeover proof** (Phase-5 entry) — Objective verification (a). **BLOCKED on executor
    build** (#2 above).
 4. **Dogfood Drift Audit run** — Objective verification (b). **BLOCKED on executor build** (#2 above).
@@ -196,8 +195,8 @@ Atoms 1–10) follow **after the founder ratification gate**, re-sequenced so th
   (static-publishing→Cloudflare Workers, dynamic-web-app→Vercel, backend-service→Google Cloud); portability
   reasoning + founder-gate open questions/recommendations (recommend no universal fallback default). Additive
   **P1a · Optional stack starter** beat in [`new-primary.md`](../../packages/personas/base/playbooks/new-primary.md).
-  Status **Proposed — pending founder ratification** (design INPUT from run_109 capture is now formalized, not
-  yet ratified).
+  Status **Proposed — ratified run_110** (design INPUT from run_109 capture formalized; build atom from E
+  still pending in executor sequence).
 
   **↳ Captured founder input for Atom E (run_109 post-wrap, 2026-06-16).** The founder provided an example
   stack via the **CoPublisher Playbook** — source: `/Volumes/NAS LOCAL/CoPublisher/Playbook.md` (note: that
@@ -248,20 +247,18 @@ directives now recorded in [addendum §Founder Ratification — RESOLVED](../dec
    to a later founder-ratified priority run. The executor must enforce this and `cocoder-takeover.md`
    must state it as a user-facing promise.
 
-**Build (released) — next-run sequence:**
+**Build (released) — progress and next-run sequence:**
 
-- **Atom F — design-amendment for the dual-agent + multi-session + trust-invariant (its own session,
-  super-thoughtful, FIRST).** Work the three ratified directives above into the addendum's P2/P3 design
-  (dual-source adversarial fan-out + cross-check), add the founder-question checkpoint phase to the
-  Takeover phase model, and specify the enforced cocoder-only write invariant. Output: amended addendum
-  P2/P3 + Takeover phase table + the no-touch-repo-code enforcement spec. This is `packages/**` +
-  `cocoder/decisions/**` work; the takeover-skeleton edit (`packages/personas/base/playbooks/cocoder-takeover.md`)
-  is Bob-scope and lands this atom. One-shot, no founder gate inside.
-- **Then the addendum's Ordered Implementation Atoms 1–10**, re-sequenced so P1 implements C+D, P2
-  implements A **+ the dual-agent structure (F)**, P3 implements B **+ the adversarial cross-check (F)**;
-  plus a New-Primary tech-stack-template build atom from E. First build atom remains **Phase metadata
-  loader** (extend `loadOnboardingPlaybooks()` with ordered executable phases; pin phase lists in
-  `packages/core/tests/playbooks.test.ts`).
+- ✅ **Atom F — design-amendment** (`35eb066`, run_111). Dual-source P2 adversarial audit, P4
+  founder-question checkpoint (Takeover P0–P7), hard `cocoder/**`-only trust invariant in addendum +
+  `cocoder-takeover.md`.
+- ✅ **Atom 1 — Phase metadata loader** (`af48ddd`, run_111). `loadOnboardingPlaybooks()` parses baked
+  tables into ordered phases; P1a id grammar + `stack-starter` kind; phase lists pinned in tests.
+- ✅ **Atom 5a — deterministic recon helper** (`a2c7195`, run_111). `packages/core/src/playbooks/recon.ts`
+  — pure read-only `inventoryRepo()`; agentic pass deferred to Atom 5b.
+- **NEXT → Atom 3 — Runner primitive extraction** (fresh session; see §Executor build progress run_111).
+- **Then** Atom 4 (executor state/cursor) → Atom 2 (launch surface, resequenced after executor) → Atom 5b
+  (agentic recon) → Atoms 6–11 + New-Primary tech-stack-template build from E.
 
 **Still gated:** Live Takeover (#3) and Drift Audit (#4) proofs remain gated on the executor shipping — do
 not attempt live onboarding until then.
