@@ -7,11 +7,35 @@ import { App } from '../app/App.tsx'
 
 const HEADLESS_CLI_WARNING = 'Headless Play on an interactive-only CLI — would hang'
 
+function expandPersona(name: string): HTMLElement {
+  const toggle = screen.getByRole('button', { name: `Toggle ${name} persona details` })
+  if (toggle.getAttribute('aria-expanded') !== 'true') fireEvent.click(toggle)
+  expect(toggle.getAttribute('aria-expanded')).toBe('true')
+  return toggle
+}
+
 function bindBobPlay(playId: string): HTMLElement {
+  expandPersona('Bob')
   const picker = screen.getByLabelText('Bob Skill (Play)') as HTMLSelectElement
   fireEvent.change(picker, { target: { value: playId } })
   fireEvent.click(picker.parentElement!.querySelector('button')!)
+  return expandBoundPlay(playId)
+}
+
+function expandBoundPlay(playId: string): HTMLElement {
+  const toggle = screen.getByRole('button', { name: `Toggle ${playId} Skill (Play) details` })
+  if (toggle.getAttribute('aria-expanded') !== 'true') fireEvent.click(toggle)
+  expect(toggle.getAttribute('aria-expanded')).toBe('true')
   return boundPlayRow(playId)
+}
+
+function collapseBoundPlay(playId: string): HTMLElement {
+  const toggle = screen.getByRole('button', { name: `Toggle ${playId} Skill (Play) details` })
+  if (toggle.getAttribute('aria-expanded') !== 'false') fireEvent.click(toggle)
+  expect(toggle.getAttribute('aria-expanded')).toBe('false')
+  const row = toggle.closest('[data-testid="bound-play-row"]')
+  expect(row).toBeDefined()
+  return row as HTMLElement
 }
 
 function boundPlayRow(playId: string): HTMLElement {
@@ -111,6 +135,41 @@ describe('Oz — rebuilt Fusion renderer', () => {
     }
   })
 
+  it('Personas collapse internals by default and expand from the header toggle', () => {
+    render(<App />)
+    fireEvent.click(screen.getByText('Personas'))
+
+    const bobToggle = screen.getByRole('button', { name: 'Toggle Bob persona details' })
+    expect(bobToggle.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByLabelText('Bob Skill (Play)')).toBeNull()
+    expect(screen.queryAllByTestId('bound-play-row')).toHaveLength(0)
+
+    fireEvent.click(bobToggle)
+    expect(bobToggle.getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByLabelText('Bob Skill (Play)')).toBeDefined()
+
+    fireEvent.click(bobToggle)
+    expect(bobToggle.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByLabelText('Bob Skill (Play)')).toBeNull()
+  })
+
+  it('bound Play rows are collapsed by default and reveal detail on their toggle', () => {
+    render(<App />)
+    fireEvent.click(screen.getByText('Personas'))
+    expandPersona('Oscar')
+
+    const row = screen.getByRole('button', { name: 'Toggle oscar-research Skill (Play) details' }).closest('[data-testid="bound-play-row"]')
+    expect(row).toBeDefined()
+    expect(within(row as HTMLElement).getByText('oscar-research')).toBeDefined()
+    expect(screen.queryByDisplayValue('oscar-research')).toBeNull()
+
+    expandBoundPlay('oscar-research')
+    expect(screen.getByDisplayValue('oscar-research')).toBeDefined()
+
+    collapseBoundPlay('oscar-research')
+    expect(screen.queryByDisplayValue('oscar-research')).toBeNull()
+  })
+
   it('Skills (Plays) screen (top-level nav) shows the read-only catalog', () => {
     render(<App />)
     fireEvent.click(screen.getByText('Skills (Plays)'))
@@ -124,11 +183,13 @@ describe('Oz — rebuilt Fusion renderer', () => {
   it('Personas screen binds Skills (Plays) through the catalog picker', () => {
     render(<App />)
     fireEvent.click(screen.getByText('Personas'))
+    expandPersona('Bob')
     const picker = screen.getByLabelText('Bob Skill (Play)') as HTMLSelectElement
     const optionLabels = Array.from(picker.options).map((option) => option.textContent)
     expect(optionLabels).toContain('Deep read (deep-read)')
     fireEvent.change(picker, { target: { value: 'deep-read' } })
     fireEvent.click(picker.parentElement!.querySelector('button')!)
+    expandBoundPlay('deep-read')
     expect(screen.getByDisplayValue('deep-read')).toBeDefined()
     const updated = screen.getByLabelText('Bob Skill (Play)') as HTMLSelectElement
     expect(Array.from(updated.options).map((option) => option.value)).not.toContain('deep-read')

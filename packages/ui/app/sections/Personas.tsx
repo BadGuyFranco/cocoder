@@ -54,6 +54,7 @@ function PersonaRow({ persona, plays, clis, onChange, onAddSub, onRemoveSub, onU
 }) {
   const isOz = persona.id === 'oz'
   const cliEntry = clis.find((c) => c.id === persona.cli)
+  const [expanded, setExpanded] = useState(false)
   const [playId, setPlayId] = useState('')
   const boundPlayIds = new Set(persona.subAgents.map((sa) => sa.id))
   const availablePlays = plays.filter((play) => !boundPlayIds.has(play.id))
@@ -68,7 +69,13 @@ function PersonaRow({ persona, plays, clis, onChange, onAddSub, onRemoveSub, onU
   return (
     <Card style={{ marginBottom: 12, borderColor: isOz ? 'var(--cb-accent-15)' : 'var(--cb-border)', background: isOz ? 'linear-gradient(180deg, var(--cb-accent-subtle) 0%, var(--cb-surface-glass) 60%)' : undefined }}>
       <div style={{ padding: '16px 18px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+        <button
+          type="button"
+          aria-expanded={expanded}
+          aria-label={`Toggle ${persona.name} persona details`}
+          onClick={() => setExpanded((open) => !open)}
+          style={{ width: '100%', display: 'flex', alignItems: 'flex-start', gap: 14, padding: 0, border: 'none', background: 'transparent', color: 'inherit', textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--cb-font-body)' }}
+        >
           <div style={{ width: 44, height: 44, background: isOz ? 'var(--cb-accent-muted)' : 'var(--cb-bg-soft)', border: `1px solid ${isOz ? 'var(--cb-accent-15)' : 'var(--cb-border)'}`, borderRadius: 'var(--cb-radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isOz ? 'var(--cb-accent)' : 'var(--cb-text-secondary)', flexShrink: 0 }}>
             <Icon name={phicon(persona.icon)} size={22} />
           </div>
@@ -77,76 +84,109 @@ function PersonaRow({ persona, plays, clis, onChange, onAddSub, onRemoveSub, onU
               <span style={{ fontSize: 15, color: 'var(--cb-text)', fontWeight: 500 }}>{persona.name}</span>
               {isOz && <span className="oz-chip oz-chip-running"><span className="dot" />HEADLESS</span>}
               {persona.runMode === 'headless' && !isOz && <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 9.5, padding: '2px 6px', background: 'var(--cb-bg-soft)', color: 'var(--cb-text-muted)', borderRadius: 2 }}>HEADLESS</span>}
+              <span style={{ marginLeft: 'auto', fontFamily: 'var(--cb-font-display)', fontSize: 9.5, letterSpacing: 1.2, textTransform: 'uppercase', color: 'var(--cb-text-muted)' }}>Skills (Plays) · {persona.subAgents.length}</span>
+              <Icon name="caret-down" size={14} style={{ color: 'var(--cb-text-muted)', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform var(--cb-duration-fast) var(--cb-ease-default)' }} />
             </div>
             <div style={{ fontSize: 12, color: 'var(--cb-text-secondary)', marginBottom: 6 }}>{persona.role}</div>
             <div style={{ fontSize: 12, color: 'var(--cb-text-muted)', lineHeight: 1.55 }}>{persona.description}</div>
           </div>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--cb-border)' }}>
-          <div>
-            <label className="oz-field-label">CLI</label>
-            <select className="oz-select" value={persona.cli} onChange={(e) => onChange({ ...persona, cli: e.target.value, model: 'Default' })}>
-              {clis.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <ModelControl cli={cliEntry} model={persona.model} onChange={(model) => onChange({ ...persona, model })} />
-          </div>
-          <div>
-            <label className="oz-field-label">Run mode</label>
-            <div style={{ display: 'flex', gap: 6, padding: 2, background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)' }}>
-              {(['visible', 'headless'] as const).map((m) => (
-                <button key={m} aria-label={`${persona.name} ${m} run mode`} onClick={() => !isOz && onChange({ ...persona, runMode: m })} disabled={isOz && m === 'visible'} style={{ flex: 1, padding: '6px 10px', background: persona.runMode === m ? 'var(--cb-accent-muted)' : 'transparent', color: persona.runMode === m ? 'var(--cb-accent)' : 'var(--cb-text-muted)', border: 'none', borderRadius: 3, fontSize: 11.5, fontWeight: persona.runMode === m ? 500 : 400, cursor: isOz ? 'not-allowed' : 'pointer', textTransform: 'capitalize', opacity: isOz && m === 'visible' ? 0.4 : 1 }}>{m}</button>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div style={{ marginTop: 18 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--cb-font-display)', fontSize: 9.5, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--cb-text-muted)', marginBottom: 10 }}>
-            <Icon name="tree-structure" size={12} />Skills (Plays) · {persona.subAgents.length}
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <select className="oz-select" aria-label={`${persona.name} Skill (Play)`} value={playId} disabled={availablePlays.length === 0} onChange={(e) => setPlayId(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addPlay() }} style={{ width: 190, padding: '4px 24px 4px 7px', fontSize: 11 }}>
-                <option value="">{pickerHint}</option>
-                {availablePlays.map((play) => <option key={play.id} value={play.id}>{play.label} ({play.id})</option>)}
-              </select>
-              <button onClick={addPlay} disabled={!canAddPlay} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', border: '1px solid var(--cb-border)', borderRadius: 3, color: canAddPlay ? 'var(--cb-text-muted)' : 'var(--cb-text-disabled)', cursor: canAddPlay ? 'pointer' : 'not-allowed', fontFamily: 'var(--cb-font-body)', letterSpacing: 0, textTransform: 'none', fontWeight: 400 }}>+ Add</button>
-            </div>
-          </div>
-          {persona.subAgents.length === 0 ? (
-            <div style={{ padding: '10px 14px', background: 'var(--cb-bg-soft)', border: '1px dashed var(--cb-border)', borderRadius: 'var(--cb-radius-md)', fontSize: 11.5, color: 'var(--cb-text-muted)', textAlign: 'center' }}>No Skills (Plays) bound. {persona.name} runs everything itself. (A Play is a shared procedure — binding one here grants {persona.name} permission to run it.)</div>
-          ) : persona.subAgents.map((sa) => {
-            const subCli = clis.find((c) => c.id === sa.cli)
-            const play = plays.find((p) => p.id === sa.id)
-            const cliCanHeadless = subCli?.headlessCapable ?? true
-            const misconfigured = play?.kind === 'headless' && subCli !== undefined && !cliCanHeadless
-            return (
-              <div key={sa.id} data-testid="bound-play-row" style={{ padding: '10px 12px', background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', marginBottom: 6 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '20px 1.5fr 1fr 1fr 30px', gap: 10, alignItems: 'center' }}>
-                  <Icon name="git-fork" size={12} style={{ color: 'var(--cb-text-muted)', transform: 'rotate(180deg)' }} />
-                  <input className="oz-input" value={sa.id} readOnly style={{ padding: '5px 8px', fontSize: 12, background: 'transparent', border: 'none', fontFamily: 'var(--cb-font-mono)' }} />
-                  <select className="oz-select" value={sa.cli} style={{ padding: '5px 24px 5px 8px', fontSize: 11.5 }} onChange={(e) => onUpdateSub(persona.id, sa.id, { ...sa, cli: e.target.value, model: 'Default' })}>
-                    {clis.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                  <ModelControl cli={subCli} model={sa.model} compact onChange={(model) => onUpdateSub(persona.id, sa.id, { ...sa, model })} />
-                  <button className="oz-iconbtn" style={{ width: 24, height: 24 }} onClick={() => onRemoveSub(persona.id, sa.id)}><Icon name="x" size={11} /></button>
-                </div>
-                {play && (
-                  <div style={{ marginTop: 8, paddingLeft: 30 }}>
-                    <ScopeChips writeScope={play.writeScope} />
-                  </div>
-                )}
-                {misconfigured && (
-                  <div style={{ marginTop: 8, marginLeft: 30, padding: '7px 9px', background: 'var(--cb-highlight-muted)', border: '1px solid rgba(212,118,110,0.2)', borderRadius: 3, fontSize: 11.5, color: 'var(--cb-highlight)', display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <Icon name="warning-circle" size={13} />
-                    <span>{HEADLESS_CLI_WARNING}</span>
-                  </div>
-                )}
+        </button>
+        {expanded && (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--cb-border)' }}>
+              <div>
+                <label className="oz-field-label">CLI</label>
+                <select className="oz-select" value={persona.cli} onChange={(e) => onChange({ ...persona, cli: e.target.value, model: 'Default' })}>
+                  {clis.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
               </div>
-            )
-          })}
-        </div>
+              <div>
+                <ModelControl cli={cliEntry} model={persona.model} onChange={(model) => onChange({ ...persona, model })} />
+              </div>
+              <div>
+                <label className="oz-field-label">Run mode</label>
+                <div style={{ display: 'flex', gap: 6, padding: 2, background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)' }}>
+                  {(['visible', 'headless'] as const).map((m) => (
+                    <button key={m} aria-label={`${persona.name} ${m} run mode`} onClick={() => !isOz && onChange({ ...persona, runMode: m })} disabled={isOz && m === 'visible'} style={{ flex: 1, padding: '6px 10px', background: persona.runMode === m ? 'var(--cb-accent-muted)' : 'transparent', color: persona.runMode === m ? 'var(--cb-accent)' : 'var(--cb-text-muted)', border: 'none', borderRadius: 3, fontSize: 11.5, fontWeight: persona.runMode === m ? 500 : 400, cursor: isOz ? 'not-allowed' : 'pointer', textTransform: 'capitalize', opacity: isOz && m === 'visible' ? 0.4 : 1 }}>{m}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div style={{ marginTop: 18 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--cb-font-display)', fontSize: 9.5, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--cb-text-muted)', marginBottom: 10 }}>
+                <Icon name="tree-structure" size={12} />Skills (Plays) · {persona.subAgents.length}
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <select className="oz-select" aria-label={`${persona.name} Skill (Play)`} value={playId} disabled={availablePlays.length === 0} onChange={(e) => setPlayId(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addPlay() }} style={{ width: 190, padding: '4px 24px 4px 7px', fontSize: 11 }}>
+                    <option value="">{pickerHint}</option>
+                    {availablePlays.map((play) => <option key={play.id} value={play.id}>{play.label} ({play.id})</option>)}
+                  </select>
+                  <button onClick={addPlay} disabled={!canAddPlay} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', border: '1px solid var(--cb-border)', borderRadius: 3, color: canAddPlay ? 'var(--cb-text-muted)' : 'var(--cb-text-disabled)', cursor: canAddPlay ? 'pointer' : 'not-allowed', fontFamily: 'var(--cb-font-body)', letterSpacing: 0, textTransform: 'none', fontWeight: 400 }}>+ Add</button>
+                </div>
+              </div>
+              {persona.subAgents.length === 0 ? (
+                <div style={{ padding: '10px 14px', background: 'var(--cb-bg-soft)', border: '1px dashed var(--cb-border)', borderRadius: 'var(--cb-radius-md)', fontSize: 11.5, color: 'var(--cb-text-muted)', textAlign: 'center' }}>No Skills (Plays) bound. {persona.name} runs everything itself. (A Play is a shared procedure — binding one here grants {persona.name} permission to run it.)</div>
+              ) : persona.subAgents.map((sa) => {
+                const subCli = clis.find((c) => c.id === sa.cli)
+                const play = plays.find((p) => p.id === sa.id)
+                return <BoundPlayRow key={sa.id} persona={persona} subAgent={sa} play={play} clis={clis} subCli={subCli} onRemoveSub={onRemoveSub} onUpdateSub={onUpdateSub} />
+              })}
+            </div>
+          </>
+        )}
       </div>
     </Card>
+  )
+}
+
+function BoundPlayRow({ persona, subAgent, play, clis, subCli, onRemoveSub, onUpdateSub }: {
+  persona: Persona; subAgent: SubAgent; play: Play | undefined; clis: Cli[]; subCli: Cli | undefined
+  onRemoveSub: (pid: string, sid: string) => void; onUpdateSub: (pid: string, sid: string, sa: SubAgent) => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const cliCanHeadless = subCli?.headlessCapable ?? true
+  const misconfigured = play?.kind === 'headless' && subCli !== undefined && !cliCanHeadless
+  return (
+    <div data-testid="bound-play-row" style={{ padding: '10px 12px', background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', marginBottom: 6 }}>
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-label={`Toggle ${subAgent.id} Skill (Play) details`}
+        onClick={() => setExpanded((open) => !open)}
+        style={{ width: '100%', display: 'grid', gridTemplateColumns: '20px 1fr auto 16px', gap: 10, alignItems: 'center', padding: 0, border: 'none', background: 'transparent', color: 'inherit', textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--cb-font-body)' }}
+      >
+        <Icon name="git-fork" size={12} style={{ color: 'var(--cb-text-muted)', transform: 'rotate(180deg)' }} />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 12, color: 'var(--cb-text)' }}>{subAgent.id}</div>
+          {play && <div style={{ marginTop: 2, fontSize: 11.5, color: 'var(--cb-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{play.label}</div>}
+        </div>
+        {misconfigured && <Icon name="warning-circle" size={13} style={{ color: 'var(--cb-highlight)' }} />}
+        <Icon name="caret-down" size={13} style={{ color: 'var(--cb-text-muted)', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform var(--cb-duration-fast) var(--cb-ease-default)' }} />
+      </button>
+      {expanded && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '20px 1.5fr 1fr 1fr 30px', gap: 10, alignItems: 'center', marginTop: 10 }}>
+            <div />
+            <input className="oz-input" value={subAgent.id} readOnly style={{ padding: '5px 8px', fontSize: 12, background: 'transparent', border: 'none', fontFamily: 'var(--cb-font-mono)' }} />
+            <select className="oz-select" value={subAgent.cli} style={{ padding: '5px 24px 5px 8px', fontSize: 11.5 }} onChange={(e) => onUpdateSub(persona.id, subAgent.id, { ...subAgent, cli: e.target.value, model: 'Default' })}>
+              {clis.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <ModelControl cli={subCli} model={subAgent.model} compact onChange={(model) => onUpdateSub(persona.id, subAgent.id, { ...subAgent, model })} />
+            <button className="oz-iconbtn" style={{ width: 24, height: 24 }} onClick={() => onRemoveSub(persona.id, subAgent.id)}><Icon name="x" size={11} /></button>
+          </div>
+          {play && (
+            <div style={{ marginTop: 8, paddingLeft: 30 }}>
+              <ScopeChips writeScope={play.writeScope} />
+            </div>
+          )}
+          {misconfigured && (
+            <div style={{ marginTop: 8, marginLeft: 30, padding: '7px 9px', background: 'var(--cb-highlight-muted)', border: '1px solid rgba(212,118,110,0.2)', borderRadius: 3, fontSize: 11.5, color: 'var(--cb-highlight)', display: 'flex', alignItems: 'center', gap: 7 }}>
+              <Icon name="warning-circle" size={13} />
+              <span>{HEADLESS_CLI_WARNING}</span>
+            </div>
+          )}
+        </>
+      )}
+    </div>
   )
 }
 

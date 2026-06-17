@@ -146,6 +146,12 @@ const clickFirstText = async (text: string): Promise<void> => {
   const matches = await screen.findAllByText(text)
   fireEvent.click(matches[0])
 }
+
+const expandPersona = async (name: string): Promise<void> => {
+  const toggle = await screen.findByRole('button', { name: `Toggle ${name} persona details` })
+  if (toggle.getAttribute('aria-expanded') !== 'true') fireEvent.click(toggle)
+  expect(toggle.getAttribute('aria-expanded')).toBe('true')
+}
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
 function runSummary(id: string, status: RunSummary['status'], priorityId = 'base-and-extension-personas'): RunSummary {
@@ -416,6 +422,7 @@ describe('Oz renderer — live daemon path', () => {
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
 
     fireEvent.click(screen.getByText('Personas'))
+    await expandPersona('Bob')
     const playId = await screen.findByLabelText('Bob Skill (Play)')
     fireEvent.change(playId, { target: { value: 'documentation' } })
     const add = playId.parentElement?.querySelector('button')
@@ -438,6 +445,7 @@ describe('Oz renderer — live daemon path', () => {
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
 
     fireEvent.click(screen.getByText('Personas'))
+    await expandPersona('Oscar')
     fireEvent.click(await screen.findByRole('button', { name: 'Oscar headless run mode' }))
 
     await waitFor(() => expect(puts.length).toBe(1))
@@ -453,6 +461,7 @@ describe('Oz renderer — live daemon path', () => {
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
 
     fireEvent.click(screen.getByText('Personas'))
+    await expandPersona('Bob')
     fireEvent.click(await screen.findByRole('button', { name: 'Bob headless run mode' }))
 
     await waitFor(() => expect(puts.length).toBe(1))
