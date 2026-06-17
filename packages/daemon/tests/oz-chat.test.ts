@@ -3,7 +3,7 @@ import { openRunStore, type RunStore } from '@cocoder/core'
 import type { OzContext } from '../src/context.js'
 import { executeOzCommand, handleOzMessage, parseOzCommand, type OzChatOps } from '../src/oz-chat.js'
 
-const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, stop <runId>, teardown <runId>, status [runId], help.'
+const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
 
 function testCtx(store: RunStore = openRunStore(':memory:')): OzContext {
   return {
@@ -160,7 +160,7 @@ describe('handleOzMessage', () => {
     expect(calls).toEqual(['run_45'])
     expect(result).toMatchObject({
       status: 200,
-      body: { ok: true, command: 'teardown', reply: 'Stopped run_45 (closed 2 panes).', action: { type: 'teardown', runId: 'run_45' } },
+      body: { ok: true, command: 'teardown', reply: 'Tore down run_45 (closed 2 sessions).', action: { type: 'teardown', runId: 'run_45' } },
     })
   })
 

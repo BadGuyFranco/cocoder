@@ -119,7 +119,7 @@ export function RunDetail({ run, parentPriority, parentPriorityIndex, onClose, o
           <>
             <Button variant="destructive" size="sm" icon="stop" onClick={() => onAction('stop', run.id)}>Stop run</Button>
             <Button variant="ghost" size="sm" icon="terminal-window" onClick={() => onAction('attach', run.id)}>Attach</Button>
-            <Button variant="ghost" size="sm" icon="x-square" onClick={() => onAction('teardown', run.id)} title="Close the run's cmux panes (does not stop the run)">Close panes</Button>
+            <Button variant="ghost" size="sm" icon="x-square" onClick={() => onAction('teardown', run.id)} title="Terminate this run's personas and close their cmux panes">Teardown</Button>
             <Button variant="ghost" size="sm" icon="chat-circle-text" onClick={() => onAction('ask-oz', run.id)} style={{ marginLeft: 'auto' }}>Ask Oz</Button>
           </>
         ) : isParked ? (

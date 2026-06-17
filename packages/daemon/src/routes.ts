@@ -76,6 +76,10 @@ interface LaunchBody {
   readonly task?: string
 }
 
+interface TeardownBody {
+  readonly initiatorPersona?: string
+}
+
 type ParsedLaunchBody = { readonly ok: true; readonly input: LaunchBody } | { readonly ok: false; readonly error: string }
 
 function launchBody(body: unknown): ParsedLaunchBody {
@@ -92,6 +96,12 @@ function launchBody(body: unknown): ParsedLaunchBody {
     if (task !== '') return { ok: true, input: { ...input, task } }
   }
   return { ok: true, input }
+}
+
+function teardownBody(body: unknown): TeardownBody {
+  const record = bodyRecord(body)
+  const initiator = typeof record.initiatorPersona === 'string' ? record.initiatorPersona.trim().toLowerCase() : ''
+  return initiator ? { initiatorPersona: initiator } : {}
 }
 
 function reorderBody(body: unknown): readonly string[] | null {
@@ -620,7 +630,13 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
     return sendJson(res, status, out), true
   }
   if (method === 'POST' && seg[0] === 'runs' && seg.length === 3 && seg[2] === 'teardown') {
-    const { status, body: out } = await teardownRun(ctx, decodeURIComponent(seg[1]!))
+    let body: unknown
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      return sendJson(res, 400, { error: 'invalid JSON body' }), true
+    }
+    const { status, body: out } = await teardownRun(ctx, decodeURIComponent(seg[1]!), teardownBody(body))
     return sendJson(res, status, out), true
   }
   if (method === 'POST' && seg[0] === 'runs' && seg.length === 3 && seg[2] === 'stop') {

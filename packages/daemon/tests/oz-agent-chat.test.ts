@@ -6,7 +6,7 @@ import { openRunStore, parseNudgeRequest, type Adapter, type BuildInput, type He
 import { createOzEventBus, type OzContext } from '../src/context.js'
 import { handleOzMessage, type OzChatOps } from '../src/oz-chat.js'
 
-const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, stop <runId>, teardown <runId>, status [runId], help.'
+const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
 
 interface Fixture {
   readonly home: string

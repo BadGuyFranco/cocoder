@@ -149,9 +149,9 @@ uncommitted.
 If you are asked to tear down this run, invoke the provided mechanism — do NOT kill processes or windows
 by hand, and never touch the Oz daemon:
 
-    pnpm --dir ${shellSingleQuote(input.cocoderHome)} exec cocoder oz teardown ${input.runId}
+    pnpm --dir ${shellSingleQuote(input.cocoderHome)} exec cocoder oz teardown ${input.runId} --initiator oscar
 
-That safely closes only this run's panes (the same operation Oz's teardown button uses).`
+That terminates and closes only this run's sessions (the same operation Oz's teardown button uses).`
 }
 
 export function buildHeadlessOscarTurnPrompt(input: {
@@ -213,7 +213,7 @@ ${oscarScope}
 
 Teardown, if explicitly requested, must use:
 
-    cocoder oz teardown ${input.runId}
+    cocoder oz teardown ${input.runId} --initiator oscar
 
 ---
 # Dispatch
@@ -332,9 +332,9 @@ to make progress.
 If you are asked to tear down this run, invoke the provided mechanism — do NOT kill processes or windows
 by hand, and never touch the Oz daemon:
 
-    pnpm --dir ${shellSingleQuote(input.cocoderHome)} exec cocoder oz teardown ${input.runId}
+    pnpm --dir ${shellSingleQuote(input.cocoderHome)} exec cocoder oz teardown ${input.runId} --initiator deb
 
-That safely closes only this run's panes (the same operation Oz's teardown button uses).`
+That terminates and closes only this run's sessions (the same operation Oz's teardown button uses).`
 }
 
 export function buildWrapupDelivery(runId: string, brief: string): string {

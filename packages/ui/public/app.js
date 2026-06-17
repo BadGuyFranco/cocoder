@@ -144,7 +144,7 @@ async function viewRun(runId) {
     .filter(Boolean)
     .join('\n\n')
   app.innerHTML = `<h2>Run ${esc(runId)} ${statusBadge(d.run.status)}
-      <button class="secondary" id="teardown" title="Close this run's cmux panes (safe — never the daemon)">Teardown</button></h2>
+      <button class="secondary" id="teardown" title="Terminate this run's personas and close their cmux panes (safe — never the daemon)">Teardown</button></h2>
     <p class="muted mono">${esc(d.run.workspaceId)} / ${esc(d.run.priorityId)}</p>
     <div class="card"><strong>Sessions</strong>${d.sessions
       .map(

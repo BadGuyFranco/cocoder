@@ -47,6 +47,8 @@ export interface DispatchPlayInput {
   readonly outPath: string
   readonly group?: string
   readonly timeoutMs?: number
+  /** Cooperative run teardown/stop signal for headless Play subprocesses. */
+  readonly signal?: AbortSignal
 }
 
 export interface DispatchPlayResult {
@@ -113,7 +115,7 @@ export async function dispatchPlay(deps: DispatchPlayDeps, input: DispatchPlayIn
     // Codex owns input.outPath via --output-last-message; keep its verbose stdout in a sidecar.
     const adapterOwnsOutput = !cmd.stdoutPath && cmd.args.includes(input.outPath)
     const stdoutPath = cmd.stdoutPath ?? (adapterOwnsOutput ? `${input.outPath}.stdout` : input.outPath)
-    const result = await run({ command: cmd.command, args: cmd.args, cwd: input.cwd, outPath: stdoutPath, timeoutMs: input.timeoutMs })
+    const result = await run({ command: cmd.command, args: cmd.args, cwd: input.cwd, outPath: stdoutPath, timeoutMs: input.timeoutMs, signal: input.signal })
     if (cmd.stdoutPath) return result
     if (!adapterOwnsOutput) return result
     const output = existsSync(input.outPath) ? readFileSync(input.outPath, 'utf8') : result.output

@@ -226,4 +226,32 @@ describe('createHeadlessBuilderDriver', () => {
     expect(calls[0]?.signal?.aborted).toBe(true)
     await vi.waitFor(async () => expect(await killed.alive()).toBe(false))
   })
+
+  test('external run abort signal kills a headless builder turn', async () => {
+    const controller = new AbortController()
+    const aborted = deferred<DispatchPlayResult>()
+    const calls: HeadlessRunInput[] = []
+    const driver = createHeadlessBuilderDriver({
+      getAdapter: () => adapter(),
+      bob,
+      cwd: '/repo',
+      runDir: '/runs/run_1',
+      scope: ['packages/**'],
+      sharedStandards: 'STANDARDS',
+      runBranch: 'cocoder/run_1',
+      signal: controller.signal,
+      runHeadless: async (input) => {
+        calls.push(input)
+        input.signal?.addEventListener('abort', () => aborted.resolve({ exitCode: -1, output: 'aborted' }), { once: true })
+        return aborted.promise
+      },
+    })
+
+    await driver.dispatch('long running')
+    await vi.waitFor(() => expect(calls).toHaveLength(1))
+    expect(await driver.alive()).toBe(true)
+    controller.abort()
+    expect(calls[0]?.signal?.aborted).toBe(true)
+    await vi.waitFor(async () => expect(await driver.alive()).toBe(false))
+  })
 })

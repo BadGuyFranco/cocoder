@@ -208,4 +208,23 @@ describe('createHeadlessOscarDriver', () => {
 
     expect(calls).toHaveLength(1)
   })
+
+  test('passes the run abort signal to headless invocations', async () => {
+    const controller = new AbortController()
+    const calls: HeadlessRunInput[] = []
+    const driver = createHeadlessOscarDriver(headlessOptions({
+      signal: controller.signal,
+      runHeadless: async (input) => {
+        calls.push(input)
+        return { exitCode: 0, output: 'done' }
+      },
+    }))
+
+    await vi.waitFor(() => expect(calls).toHaveLength(1))
+    expect(calls[0]?.signal).toBe(controller.signal)
+    controller.abort()
+    await driver.send('next turn')
+    await vi.waitFor(() => expect(calls).toHaveLength(2))
+    expect(calls[1]?.signal?.aborted).toBe(true)
+  })
 })

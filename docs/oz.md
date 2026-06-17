@@ -21,8 +21,8 @@ The v0.1 dashboard covers:
 - settings surfaced through the shared configuration resolver
 - **Oz Terminal** — a bounded chat command interface (`POST /oz/messages`) that maps a fixed verb
   vocabulary (`launch`, `show`, `stop`, `teardown`, `status`, `help`) to existing run-lifecycle ops.
-  `stop` requests cooperative run termination (`POST /runs/:id/stop`); `teardown` closes run panes
-  without stopping the orchestration loop.
+  `stop` requests cooperative run termination (`POST /runs/:id/stop`); `teardown` aborts that run's
+  live controller and closes only the sessions recorded for that run.
   This is **not** an in-daemon LLM agent; ambiguous or unknown input executes nothing. GUI controls
   remain the primary path; chat is parity for the same actions. Streaming (`GET /oz/stream` SSE) is
   not yet wired.
@@ -87,5 +87,7 @@ That is expected. Stop actions should leave run directories, event logs, and lan
 `stop` (chat or dashboard) requests a **cooperative** halt: the runner honors it at wait seams
 (directive/verify/triage polls), records a first-class `stopped` status, and skips integration —
 it does not masquerade as a builder fault or trigger Deb triage. A stop arriving during wrap-up or
-integration may let the run finish so merges are not corrupted. `teardown` closes Oscar/Bob/Deb
+integration may let the run finish so merges are not corrupted. `teardown` terminates Oscar/Bob/Deb
+for that run only: the daemon aborts the run controller, closes the stored cmux surfaces, and never
+enumerates unrelated sessions.
 panes and reclaims worktree surfaces; it is not a substitute for cooperative stop.

@@ -276,9 +276,9 @@ function showReply(runId: string, out: LaunchResult): OzChatReply {
 
 function teardownReply(runId: string, out: LaunchResult): OzChatReply {
   const closed = Array.isArray(out.body.closed) ? out.body.closed.filter((item): item is string => typeof item === 'string') : []
-  if (!isOk(out.status)) return failedReply('teardown', `Could not stop ${runId}`, out)
-  const paneText = closed.length === 0 ? 'no panes were open' : `closed ${closed.length} pane${closed.length === 1 ? '' : 's'}`
-  return { reply: `Stopped ${runId} (${paneText}).`, command: 'teardown', ok: true, action: { type: 'teardown', runId, closed } }
+  if (!isOk(out.status)) return failedReply('teardown', `Could not tear down ${runId}`, out)
+  const sessionText = closed.length === 0 ? 'no sessions were open' : `closed ${closed.length} session${closed.length === 1 ? '' : 's'}`
+  return { reply: `Tore down ${runId} (${sessionText}).`, command: 'teardown', ok: true, action: { type: 'teardown', runId, closed } }
 }
 
 function stopReply(runId: string, out: LaunchResult): OzChatReply {

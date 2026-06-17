@@ -41,6 +41,7 @@ export interface HeadlessBuilderDriverOptions {
   readonly runBranch: string
   readonly runHeadless?: (input: HeadlessRunInput) => Promise<DispatchPlayResult>
   readonly timeoutMs?: number
+  readonly signal?: AbortSignal
   readonly now?: () => number
 }
 
@@ -54,6 +55,10 @@ export function createHeadlessBuilderDriver(opts: HeadlessBuilderDriverOptions):
   let lastExitCode: number | null = null
   let failed = false
   let killed = false
+  opts.signal?.addEventListener('abort', () => {
+    killed = true
+    inFlight?.controller.abort()
+  }, { once: true })
 
   const invoke = async (dispatch: string, currentTurn: number): Promise<void> => {
     if (killed) {

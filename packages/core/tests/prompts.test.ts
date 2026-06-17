@@ -61,7 +61,7 @@ describe('buildBuilderDispatch', () => {
 
   test('renders teardown through the install root so pane PATH does not matter', () => {
     const prompt = buildOrchestratorPrompt(orchestratorInput)
-    expect(prompt).toContain("pnpm --dir '/Volumes/NAS LOCAL/CoCoder' exec cocoder oz teardown run_1")
+    expect(prompt).toContain("pnpm --dir '/Volumes/NAS LOCAL/CoCoder' exec cocoder oz teardown run_1 --initiator oscar")
   })
 
   test('tells Oscar to continue by default while concrete priority work remains', () => {

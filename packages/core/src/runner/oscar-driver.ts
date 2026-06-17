@@ -51,6 +51,7 @@ export interface HeadlessOscarDriverOptions {
   readonly turnPrompt: HeadlessOscarTurnPromptInput
   readonly runHeadless?: (input: HeadlessRunInput) => Promise<DispatchPlayResult>
   readonly timeoutMs?: number
+  readonly signal?: AbortSignal
   readonly now?: () => number
 }
 
@@ -75,7 +76,14 @@ export function createHeadlessOscarDriver(opts: HeadlessOscarDriverOptions): Osc
         cwd: opts.cwd,
         outPath: join(opts.runDir, `oscar-turn-${currentTurn}.out`),
       })
-      const result = await run({ command: cmd.command, args: cmd.args, cwd: opts.cwd, outPath: join(opts.runDir, `oscar-turn-${currentTurn}.out`), timeoutMs: opts.timeoutMs ?? HEADLESS_OSCAR_TIMEOUT_MS })
+      const result = await run({
+        command: cmd.command,
+        args: cmd.args,
+        cwd: opts.cwd,
+        outPath: join(opts.runDir, `oscar-turn-${currentTurn}.out`),
+        timeoutMs: opts.timeoutMs ?? HEADLESS_OSCAR_TIMEOUT_MS,
+        signal: opts.signal,
+      })
       outputs.push(result.output)
       lastExitCode = result.exitCode
       failed = result.exitCode !== 0

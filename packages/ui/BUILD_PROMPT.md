@@ -97,7 +97,7 @@ EXISTING endpoints (build real against these):
        diffs:[{sha,diff}]}
   POST /runs {workspaceId, priorityId, resumeFromRunId?} → 202 {runId} · 409 in-flight · 400 bad
   POST /runs/:id/show → {shown,sessionRef} · 409 not live · 404   (focus the cmux pane = "Attach")
-  POST /runs/:id/teardown → {closed:[...]} · 404                  (close the run's panes; NOT a kill)
+  POST /runs/:id/teardown → {closed:[...],failed:[...]} · 404     (abort/close only that run's sessions)
 REALITY (wire to these, not assumptions): run.id is an OPAQUE string (mixed run_17 / hex — never parse).
 status ∈ {running, completed, pending-scope-decision, failed} (no blocked/stopped). Ad-hoc run = launch
 the existing `adhoc-session` priority (no free-text task field yet). Transcript is POLLED (no SSE/WS);
@@ -214,7 +214,7 @@ HOUSE RULES · DONE · ENDPOINTS OWED
     GET/PUT /settings                                — settings read/write (+ the deferred C-S5 redaction)
     extend POST /runs with {task?}                   — ad-hoc free-text run (today: priorityId only)
     extend personas assignment with {mode, subAgents}— visible/headless + sub-agent hierarchy (core change)
-    POST /runs/:id/stop                              — actually stop a RUNNING run (today only teardown panes)
+    POST /runs/:id/stop                              — cooperative stop for a RUNNING run
 
 Begin by cd-ing into the worktree, confirming the branch + daemon health, re-capturing fixtures (ws id
 `cocoder`), reading the orientation files, then building Slice 0.

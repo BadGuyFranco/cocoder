@@ -66,8 +66,8 @@ pnpm exec cocoder launch \
 - Oz Terminal: `stop <runId>` (same cooperative path).
 
 Cooperative stop honors the runner's wait seams; a stop during wrap-up or integration may let the
-run finish rather than corrupting a merge. To close panes without stopping the loop, use `teardown
-<runId>` (chat) or the existing teardown surfaces.
+run finish rather than corrupting a merge. To terminate the run's own personas and close their
+surfaces, use `teardown <runId>` (chat) or the existing teardown surfaces.
 
 ## Oz Terminal (bounded chat commands)
 
@@ -79,7 +79,7 @@ vocabulary** — it is not an LLM agent. Supported commands (workspace context r
 | `launch` | `launch full-oz-dashboard` | Launches the named priority in the active workspace |
 | `show` | `show run_45` | Attaches/show panes for the run |
 | `stop` | `stop run_45` | Cooperative run stop (`POST /runs/:id/stop`) |
-| `teardown` | `teardown run_45` | Closes run panes (surface teardown; does not cooperative-stop) |
+| `teardown` | `teardown run_45` | Aborts that run's live controller and closes only that run's sessions |
 | `status` | `status` or `status run_45` | Lists runs or shows one run's status |
 | `help` | `help` | Prints the supported command list |
 

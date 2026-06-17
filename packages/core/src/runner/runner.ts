@@ -320,6 +320,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         runBranch,
       },
       runHeadless: deps.runHeadless,
+      signal: deps.signal,
     })
     store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: oscar.id, ref: oscarDriver.refId, mode: 'headless' } })
   } else {
@@ -346,7 +347,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
   let bobDriver: BuilderDriver
   if (bob.mode === 'headless') {
-    bobDriver = createHeadlessBuilderDriver({ getAdapter, bob, cwd: worktreePath, runDir, scope, sharedStandards, runBranch, runHeadless: deps.runHeadless })
+    bobDriver = createHeadlessBuilderDriver({ getAdapter, bob, cwd: worktreePath, runDir, scope, sharedStandards, runBranch, runHeadless: deps.runHeadless, signal: deps.signal })
     store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: bob.id, ref: bobDriver.refId, mode: 'headless' } })
   } else {
     const bobCmd = getAdapter(bob.cli).build({
@@ -739,6 +740,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
             outPath: wrapOut,
             group: run.id,
             timeoutMs: t.wrapupMs,
+            signal: deps.signal,
           },
         )
         const wrapGate = await runCommitGate({

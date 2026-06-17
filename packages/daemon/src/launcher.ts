@@ -234,8 +234,8 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
       if (runId) ctx.stopControllers.delete(runId)
       if (runId && stopController.signal.aborted) {
         try {
-          const closed = await closeRunSurfaces(ctx, runId)
-          ctx.store.recordEvent({ runId, type: 'stop-teardown', data: { closed } })
+          const result = await closeRunSurfaces(ctx, runId)
+          ctx.store.recordEvent({ runId, type: 'stop-teardown', data: result })
         } catch {
           /* shutdown/test teardown may close the store before post-stop cleanup finishes */
         }
@@ -262,9 +262,45 @@ export async function launchRun(ctx: OzContext, workspaceId: string, priorityId:
  *  loop closed nothing — every pane a prior daemon spawned (Deb's especially) leaked. Killing by
  *  stored ref is idempotent (an already-gone pane throws and is ignored) and only ever targets a
  *  surface CoCoder spawned for THIS run — never the Oz daemon, the cmux app, or a founder window. */
-async function closeRunSurfaces(ctx: OzContext, runId: string): Promise<string[]> {
+interface TeardownFailure {
+  readonly persona: string
+  readonly sessionRef: string
+  readonly error: string
+}
+
+interface CloseRunSurfacesResult {
+  readonly closed: string[]
+  readonly failed: TeardownFailure[]
+}
+
+interface TeardownOptions {
+  readonly initiatorPersona?: string | null
+}
+
+function normalizePersona(input?: string | null): string | null {
+  const value = input?.trim().toLowerCase()
+  return value ? value : null
+}
+
+function orderSessionsForTeardown<T extends { readonly persona: string }>(sessions: readonly T[], initiatorPersona?: string | null): T[] {
+  const initiator = normalizePersona(initiatorPersona) ?? 'oscar'
+  const nonInitiators = sessions.filter((session) => normalizePersona(session.persona) !== initiator)
+  const initiators = sessions.filter((session) => normalizePersona(session.persona) === initiator)
+  return [...nonInitiators, ...initiators]
+}
+
+async function legacySessionStillRunning(ctx: OzContext, sessionRef: string): Promise<boolean> {
+  try {
+    return (await ctx.sessionHost.status({ id: sessionRef, driver: 'cmux' })).state === 'running'
+  } catch {
+    return false
+  }
+}
+
+async function closeRunSurfaces(ctx: OzContext, runId: string, opts: TeardownOptions = {}): Promise<CloseRunSurfacesResult> {
   const closed: string[] = []
-  for (const s of ctx.store.listSessions(runId)) {
+  const failed: TeardownFailure[] = []
+  for (const s of orderSessionsForTeardown(ctx.store.listSessions(runId), opts.initiatorPersona)) {
     try {
       if (s.workspaceRef) {
         // Durable path: close by stored {workspaceRef, surfaceRef} — works even for a pane spawned by a
@@ -275,12 +311,20 @@ async function closeRunSurfaces(ctx: OzContext, runId: string): Promise<string[]
         await ctx.sessionHost.kill({ id: s.sessionRef, driver: 'cmux' })
       }
       closed.push(s.sessionRef)
-    } catch {
-      /* already gone (closed by hand, or a pane this process never tracked) — nothing to close */
+    } catch (err) {
+      if (!s.workspaceRef && !(await legacySessionStillRunning(ctx, s.sessionRef))) {
+        ctx.liveRefs.delete(s.sessionRef)
+        continue
+      }
+      failed.push({
+        persona: s.persona,
+        sessionRef: s.sessionRef,
+        error: err instanceof Error ? err.message : String(err),
+      })
     }
     ctx.liveRefs.delete(s.sessionRef) // prune any stale deep-link regardless of kill outcome
   }
-  return closed
+  return { closed, failed }
 }
 
 /** Teardown (safe, daemon-mediated): close this run's tracked cmux surfaces. Closing is by durable
@@ -288,14 +332,26 @@ async function closeRunSurfaces(ctx: OzContext, runId: string): Promise<string[]
  *  physically cannot touch the Oz daemon, the cmux app, or any window CoCoder didn't spawn for this run.
  *  There is no worktree to GC — runs commit directly to the active branch (founder directive 2026-06-15).
  *  Invoked by Oz (button → POST /runs/:id/teardown) AND by Oscar (`cocoder oz teardown`) — the same op. */
-export async function teardownRun(ctx: OzContext, runId: string): Promise<LaunchResult> {
+export async function teardownRun(ctx: OzContext, runId: string, opts: TeardownOptions = {}): Promise<LaunchResult> {
   const run = ctx.store.getRun(runId)
   if (!run) return { status: 404, body: { error: 'unknown run' } }
-  const closed = await closeRunSurfaces(ctx, runId)
-  ctx.store.recordEvent({ runId, type: 'teardown', data: { closed } })
-  void appendAudit(ctx.cocoderHome, { action: 'teardown', runId, closed })
+  ctx.stopControllers.get(runId)?.abort()
+  const { closed, failed } = await closeRunSurfaces(ctx, runId, opts)
+  const data = { closed, failed, initiatorPersona: normalizePersona(opts.initiatorPersona) }
+  ctx.store.recordEvent({ runId, type: 'teardown', data })
+  void appendAudit(ctx.cocoderHome, { action: 'teardown', runId, closed, failed })
   emitOzEvent(ctx, { type: 'run-torn-down', runId, workspaceId: run.workspaceId })
-  return { status: 200, body: { closed } }
+  if (failed.length > 0) {
+    return {
+      status: 500,
+      body: {
+        closed,
+        failed,
+        error: `teardown left ${failed.length} run session${failed.length === 1 ? '' : 's'} open`,
+      },
+    }
+  }
+  return { status: 200, body: { closed, failed } }
 }
 
 /** Request a COOPERATIVE stop for a live run driven by THIS daemon process. The runner only observes

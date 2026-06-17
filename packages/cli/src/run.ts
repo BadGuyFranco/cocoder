@@ -36,7 +36,13 @@ async function main(): Promise<void> {
   if (cmd === 'oz' && arg1 === 'teardown') {
     const runId = process.argv[4]
     if (!runId) {
-      console.error('usage: cocoder oz teardown <runId>')
+      console.error('usage: cocoder oz teardown <runId> [--initiator <persona>]')
+      process.exit(2)
+    }
+    const initiatorIdx = process.argv.indexOf('--initiator')
+    const initiatorPersona = initiatorIdx >= 0 ? process.argv[initiatorIdx + 1] : undefined
+    if (initiatorIdx >= 0 && !initiatorPersona) {
+      console.error('usage: cocoder oz teardown <runId> [--initiator <persona>]')
       process.exit(2)
     }
     const live = await probeDaemon({ port: DEFAULT_OZ_PORT })
@@ -44,7 +50,7 @@ async function main(): Promise<void> {
       console.error('cocoder: no Oz daemon running — nothing to tear down')
       process.exit(1)
     }
-    const { closed } = await teardownViaDaemon(`http://127.0.0.1:${live.port}`, runId)
+    const { closed } = await teardownViaDaemon(`http://127.0.0.1:${live.port}`, runId, { initiatorPersona })
     console.log(`torn down ${runId}: closed ${closed.length} pane(s)`)
     return
   }
@@ -70,7 +76,7 @@ async function main(): Promise<void> {
     return
   }
   if (cmd !== 'run' || !arg1) {
-    console.error('usage: cocoder run <priorityId> [--resume <runId>]   |   cocoder oz start   |   cocoder oz commit-support <runId>   |   cocoder oz teardown <runId>')
+    console.error('usage: cocoder run <priorityId> [--resume <runId>]   |   cocoder oz start   |   cocoder oz commit-support <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]')
     process.exit(2)
   }
   const priorityId = arg1

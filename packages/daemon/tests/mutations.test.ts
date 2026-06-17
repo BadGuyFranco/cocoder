@@ -932,6 +932,25 @@ describe('Oz mutations + lifecycle', () => {
     expect(store.listEvents(run.id).some((e) => e.type === 'teardown')).toBe(true)
   })
 
+  test('teardown closes the initiating persona last during self-teardown', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.createSession({ runId: run.id, persona: 'oscar', sessionRef: 'surface:oscar' })
+    store.createSession({ runId: run.id, persona: 'bob', sessionRef: 'surface:bob' })
+    store.createSession({ runId: run.id, persona: 'deb', sessionRef: 'surface:deb' })
+    await startServer()
+
+    const r = await call(oz!, 'POST', `/runs/${run.id}/teardown`, { body: { initiatorPersona: 'oscar' } })
+
+    expect(r.status).toBe(200)
+    expect(killed.map((k) => k.id)).toEqual(['surface:bob', 'surface:deb', 'surface:oscar'])
+    expect(store.listEvents(run.id).find((e) => e.type === 'teardown')?.data).toMatchObject({
+      closed: ['surface:bob', 'surface:deb', 'surface:oscar'],
+      failed: [],
+      initiatorPersona: 'oscar',
+    })
+  })
+
   test('teardown closes a prior-instance pane via durable workspaceRef (closeSurface, not kill)', async () => {
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
@@ -957,7 +976,7 @@ describe('Oz mutations + lifecycle', () => {
     expect(killedHere).toEqual([])
   })
 
-  test('teardown does not report a durable surface as closed when closeSurface fails', async () => {
+  test('teardown reports a durable still-open surface as failed when closeSurface fails', async () => {
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
     store.createSession({ runId: run.id, persona: 'deb', sessionRef: 'surface:deb', workspaceRef: 'workspace:9' })
@@ -975,9 +994,15 @@ describe('Oz mutations + lifecycle', () => {
 
     const r = await call(oz, 'POST', `/runs/${run.id}/teardown`)
 
-    expect(r.status).toBe(200)
+    expect(r.status).toBe(500)
     expect(r.json.closed).toEqual([])
-    expect(store.listEvents(run.id).find((e) => e.type === 'teardown')?.data).toEqual({ closed: [] })
+    expect(r.json.failed).toEqual([{ persona: 'deb', sessionRef: 'surface:deb', error: 'cmux refused close' }])
+    expect(r.json.error).toMatch(/left 1 run session open/)
+    expect(store.listEvents(run.id).find((e) => e.type === 'teardown')?.data).toEqual({
+      closed: [],
+      failed: [{ persona: 'deb', sessionRef: 'surface:deb', error: 'cmux refused close' }],
+      initiatorPersona: null,
+    })
   })
 
   test('teardown prunes a stale ref even when kill fails (pane closed by hand)', async () => {
