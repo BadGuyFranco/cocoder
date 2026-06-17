@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-17 — **Oz dashboard design tweaks (run_114): round-2 contrast refinements — archive-candidate**
+
+**Persona:** Oscar (1 atom delegated + verified) | **Priority:** [oz-dashboard-design-tweaks](./priorities/oz-dashboard-design-tweaks.md) | **Run:** run_114
+**Outcomes:**
+- **Atom 1 committed (`97bc3a4`)** — round-2 founder-confirmed contrast refinements (UI-only): dark mode panel↔background **reversed** (lighter `--cb-bg`/`--cb-bg-soft`, darker `--cb-surface`/`--cb-surface-glass`); light mode background nudged darker; Oz persona card gradient removed → solid `var(--cb-surface)` with accent border kept. Tokens mirrored in `fusion.css` and `design-ref/design-system/colors_and_type.css`.
+- **Evidence:** `pnpm -w typecheck` clean; UI suite 113/113 green.
+- **Disposition: archive-candidate** — round-1 items 2–3 founder-confirmed; item 1 contrast direction now coded. No build atom remains; only founder visual check on rebuilt app.
+**Next:** `pnpm --dir packages/ui dev` — confirm dark panels recessed vs lighter background, light panels separate, Oz card solid; reply `archive oz-dashboard-design-tweaks` if satisfied.
+
 ## 2026-06-17 — **Oz dashboard design tweaks (run_113): three polish atoms shipped — archive-candidate**
 
 **Persona:** Oscar (3 atoms delegated + verified) | **Priority:** [oz-dashboard-design-tweaks](./priorities/oz-dashboard-design-tweaks.md) | **Run:** run_113

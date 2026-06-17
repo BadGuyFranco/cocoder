@@ -45,25 +45,31 @@ All three atoms shipped and committed: settings trim (`f3d55dd`), collapsible pe
 Founder rebuilt the bundle and visually reviewed — items 2 (collapsible) and 3 (settings trim)
 confirmed good. Item 1 (contrast) needs another pass; see below.
 
-## Round-2 — founder visual refinements (NOT yet built — needs a fresh build run)
-The round-1 contrast pass over-corrected / mis-read the intended direction. The founder's actual
-target, confirmed by eye on the running app:
+## Round-2 outcome (run_114, committed on `main`)
+All three founder-confirmed refinements shipped in one atom (`97bc3a4`); typecheck clean, UI suite
+113/113 green. UI-only (`packages/ui` + `design-ref` mirror); no run/orchestration behavior.
 
-1. **Dark mode — REVERSE the panel↔background relationship.** Currently the background is dark and
-   panels are the lighter surface; the founder wants this reversed — **panels should read darker than
-   the background** (background the lighter tone, panels recessed/darker). Tune `--cb-bg`/`--cb-bg-soft`
-   and the panel surfaces (`--cb-surface` / `--cb-surface-glass`) in the dark theme accordingly
-   (`packages/ui/app/styles/fusion.css`, mirror to `design-ref/design-system/colors_and_type.css`).
-   Watch that text/border tokens still read against the new panel tone.
-2. **Light mode — background a touch darker.** Nudge `--cb-bg` (and `--cb-bg-soft` as needed) slightly
-   darker in the light theme so panels (already brighter post-round-1) separate more cleanly.
-3. **Oz persona card gradient — remove it.** `packages/ui/app/sections/Personas.tsx` L70: the Oz
-   (`isOz`) Card uses `background: 'linear-gradient(180deg, var(--cb-accent-subtle) 0%,
-   var(--cb-surface-glass) 60%)'`, which makes the Oz panel hard to read. Replace with a solid,
-   readable surface (e.g. `var(--cb-surface)`), keeping the accent border (`--cb-accent-15`) so Oz is
-   still visually distinguished without the unreadable wash.
+1. **Dark mode — panel↔background reversed.** `--cb-bg` #14110E→#2A251F (lighter ambient),
+   `--cb-bg-soft` #1A1714→#25211C; `--cb-surface`/`--cb-surface-glass` rgba(34,30,25,0.92)→rgba(20,17,14,0.96)
+   (darker panels). Panels now read recessed/darker than the background.
+2. **Light mode — background nudged darker.** `--cb-bg` #F3EEE6→#F0E9DF, `--cb-bg-soft` #EDE8DF→#EAE3D8
+   so brighter panels separate from the slightly-darker ambient.
+3. **Oz persona card — gradient removed.** `Personas.tsx` Oz Card: solid `var(--cb-surface)` with accent
+   border `--cb-accent-15` retained (no wash).
 
-Boundary unchanged: UI-only (`packages/ui`); no run/orchestration behavior. Item 1 verify remains a
-**founder visual check on the running app** (rebuild required to see it — see ticket 0010). After this
-round lands, founder rebuilds (or the runner auto-rebuilds once 0010 is done) and confirms; if good,
-archive.
+Token values mirrored identically in `packages/ui/app/styles/fusion.css` and
+`packages/ui/design-ref/design-system/colors_and_type.css`.
+
+**Known follow-up if dark panels look uneven:** `--cb-surface-solid` (#1E1A16) and `--cb-surface-raised`
+(#221E19) were left unchanged this round — the non-glass fallback is slightly lighter than the new glass
+`--cb-surface`. If spots look inconsistent, darkening surface-solid toward rgb(20,17,14) is a one-atom
+fix, not a re-architecture.
+
+## Status — archive-candidate (run_114, 2026-06-17)
+
+Round-1 items 2 (collapsible personas/plays) and 3 (settings trim) were founder-confirmed in run_113.
+Round-2 closes item 1 (contrast direction) in code. **Only gate:** founder visual confirmation on a
+rebuilt/running app — dark panels recessed vs lighter background, light panels separate, Oz card solid
+and readable. No build atom remains until that look-see happens (or a third pass if the eye says no).
+
+Awaiting founder `archive` confirmation — never self-archive.

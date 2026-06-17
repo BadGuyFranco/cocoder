@@ -231,12 +231,12 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   (Bob-only vs small Oscar↔Bob vs reuse `adhoc-session`, possibly by ticket type) is the open design
   question resolved at the start alignment beat. Draft Objective pending founder ratification (filed
   run_111, founder-directed).
-- `oz-dashboard-design-tweaks` — **archive-candidate (run_113):** all three atoms committed —
-  settings trim (`f3d55dd`, Compact density + Reduce motion removed grep-clean), collapsible personas/plays
-  (`2995b1b`, collapsed by default + BoundPlayRow), contrast/gradient soften (`87fe8bc`, ambient alphas
-  ~64% down + near-opaque panel surfaces in `fusion.css` / design-ref). `pnpm -w typecheck` + UI suite
-  113/113 green. **Only gate:** founder visual confirmation of comfortable panel↔background contrast in
-  **both** themes (subjective; no build atom remains).
+- `oz-dashboard-design-tweaks` — **archive-candidate (run_114):** round-1 atoms (settings trim, collapsible
+  personas/plays, contrast soften — run_113) plus round-2 contrast refinements (`97bc3a4`): dark mode
+  panel↔background reversed (lighter ambient, darker recessed panels), light mode background nudged darker,
+  Oz persona card gradient → solid surface. `fusion.css` + design-ref mirrored; typecheck + UI suite
+  113/113 green. **Only gate:** founder visual confirmation on the running app (items 2–3 already
+  confirmed; item 1 contrast direction now coded — eyeball both themes, then archive).
 - ~~`play-dispatch-boundary`~~ — **RESOLVED 2026-06-15, ARCHIVED 2026-06-16** (run_106): one-level dispatch
   stands; no engine reversal. Decision record now at `priorities/archive/play-dispatch-boundary.md`.
 
