@@ -145,6 +145,31 @@ Atoms 1–10) follow **after the founder ratification gate**, re-sequenced so th
   **Founder-gated:** this atom pauses to collect the founder's stack before finalizing. One-shot,
   founder-gated.
 
+  **↳ Captured founder input for Atom E (run_109 post-wrap, 2026-06-16).** The founder provided an example
+  stack via the **CoPublisher Playbook** — source: `/Volumes/NAS LOCAL/CoPublisher/Playbook.md` (note: that
+  same repo is also the priority's intended **first Takeover proof target**, #3 below — so this Playbook
+  doubles as a real example of the kind of governance a New-Primary/Takeover run should produce). Founder
+  framed it as a *start, may be incomplete*. Two distinct stacks are present in it:
+
+  - **CoPublisher v1 stack (specialized — static content publishing):** Node 22.12+ · TypeScript (strict
+    everywhere) · pnpm workspaces + Turborepo monorepo · **Astro 6.x** (6.4+, Content Layer API, MDX) ·
+    Tailwind CSS with design tokens as CSS custom properties · **Cloudflare Workers** static-assets hosting,
+    deployed via `wrangler` from GitHub Actions · **Pages CMS** (stateless, GitHub-API-backed; not TinaCMS) ·
+    GitHub as the content store (no isomorphic-git in v1) · **Pagefind** search · GitHub Actions CI/CD
+    (`turbo --affected`, `wrangler-action`, concurrency groups) · **Resend** newsletter · **Cloudflare Web
+    Analytics** · **Zod** at every external boundary · `AGENTS.md`-per-directory convention · **OKF (Open
+    Knowledge Format)** knowledge bundle.
+  - **"CoBuilder service pattern" (generic SaaS app — CoPublisher Playbook Phase 8, explicitly NOT v1):**
+    Fastify + tRPC + Zod on **Cloud Run** · **Neon Postgres + Drizzle** · pg-boss · **BetterAuth** · Stripe ·
+    Resend · GitHub Actions + WIF.
+
+  **Open judgment call for the Atom E session (founder decides):** which stack ships as *the* default
+  New-Primary starter, and which become pluggable options? The CoPublisher v1 stack is highly specialized
+  for content/SEO publishing; the CoBuilder service pattern is the more generic SaaS shape. Likely answer is
+  the pluggable registry ships >1 starter with one marked default — but the *default* choice + the
+  non-negotiables list are the founder's call, to be confirmed when Atom E runs. This capture is design
+  INPUT, not a ratified decision.
+
 **Founder ratification gate (after A–E):** founder ratifies the deepened addendum (A–D) + the New-Primary
 tech-stack approach (E), and names the top-tier `deep-read` default `{cli, model}` (addendum §Founder
 Ratification Required). **This gate releases the build.**
