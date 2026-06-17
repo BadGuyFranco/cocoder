@@ -70,6 +70,15 @@ export {
   type SubsystemSizeSignals,
 } from './estimate.js'
 export {
+  createPlaybookPhaseAction,
+  runPlaybookP1Action,
+  type PlaybookP1AgentPurpose,
+  type PlaybookP1AgentTurn,
+  type PlaybookP1AgentTurnInput,
+  type PlaybookP1Artifacts,
+  type RunPlaybookP1ActionInput,
+} from './p1-action.js'
+export {
   buildIntentIntakePrompt,
   runIntentIntake,
   type FounderAssertedIntent,

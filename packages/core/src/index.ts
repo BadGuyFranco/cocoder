@@ -84,6 +84,8 @@ export {
   readPlaybookExecutorState,
   resumePlaybookExecutor,
   startPlaybookExecutor,
+  createPlaybookPhaseAction,
+  runPlaybookP1Action,
   type OnboardingPlaybook,
   type OnboardingPlaybookMode,
   type OnboardingPlaybookPhase,
@@ -97,6 +99,11 @@ export {
   type PlaybookPhaseActionInput,
   type FounderApproval,
   type LoadedPlaybookExecutor,
+  type PlaybookP1AgentPurpose,
+  type PlaybookP1AgentTurn,
+  type PlaybookP1AgentTurnInput,
+  type PlaybookP1Artifacts,
+  type RunPlaybookP1ActionInput,
 } from './playbooks/index.js'
 
 export {

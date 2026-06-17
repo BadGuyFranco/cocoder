@@ -7,10 +7,12 @@
 //     and never becomes an unhandled rejection that takes the always-on daemon down;
 //   - track spawned surfaceRefs in ctx.liveRefs so deep-links are decidable without throwing.
 import { execFile } from 'node:child_process'
+import { existsSync, readFileSync } from 'node:fs'
 import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { promisify } from 'node:util'
 import {
+  createPlaybookPhaseAction,
   isPersonaEnabled,
   gateCommitRepair,
   loadAssignments,
@@ -25,6 +27,7 @@ import {
   runRun,
   startPlaybookExecutor,
   type PersonaSources,
+  type PlaybookP1AgentTurn,
   type PlaybookPhaseAction,
   type RunInput,
   type RunnerDeps,
@@ -38,6 +41,7 @@ import { appendAudit } from './audit.js'
 
 const OZ_REPAIR_TIMEOUT_MS = 120_000
 const AUTHORING_PLAY_TIMEOUT_MS = 120_000
+const PLAYBOOK_P1_AGENT_TIMEOUT_MS = 120_000
 const AUTHORING_PLAY_IDS = ['create-priority', 'edit-priority', 'archive-priority'] as const
 const execFileAsync = promisify(execFile)
 
@@ -170,6 +174,45 @@ function appendStaleLaunchAudit(ctx: OzContext, workspaceId: string, target: Lau
   const common = { action: 'launch-refused-stale', workspaceId, bootSha: ctx.bootSha, headSha, selfRestart: idle } as const
   if (target.kind === 'priority') void appendAudit(ctx.cocoderHome, { ...common, priorityId: target.priorityId })
   else void appendAudit(ctx.cocoderHome, { ...common, playbookId: target.playbookId })
+}
+
+function createDaemonPlaybookPhaseAction(ctx: OzContext, workspacePath: string, runDir: string, modelTier: string, agent: { readonly cli: string; readonly model: string }, signal: AbortSignal): PlaybookPhaseAction {
+  return createPlaybookPhaseAction({
+    repoDir: workspacePath,
+    runDir,
+    model: { modelTier, cli: agent.cli, model: agent.model },
+    agentTurn: createDaemonP1AgentTurn(ctx, workspacePath, runDir, agent, signal),
+  })
+}
+
+function createDaemonP1AgentTurn(ctx: OzContext, workspacePath: string, runDir: string, agent: { readonly cli: string; readonly model: string }, signal: AbortSignal): PlaybookP1AgentTurn {
+  let turn = 0
+  return async ({ purpose, prompt }) => {
+    turn += 1
+    const outPath = join(runDir, 'playbook', 'P1', `${purpose}-agent-${turn}.out`)
+    const command = ctx.getAdapter(agent.cli).build({
+      persona: 'bob',
+      prompt,
+      model: agent.model,
+      cwd: workspacePath,
+      outPath,
+      headless: true,
+    })
+    const adapterOwnsOutput = !command.stdoutPath && command.args.includes(outPath)
+    const stdoutPath = command.stdoutPath ?? (adapterOwnsOutput ? `${outPath}.stdout` : outPath)
+    const run = ctx.runHeadless ?? runHeadlessProcess
+    const result = await run({
+      command: command.command,
+      args: command.args,
+      cwd: workspacePath,
+      outPath: stdoutPath,
+      timeoutMs: PLAYBOOK_P1_AGENT_TIMEOUT_MS,
+      signal,
+    })
+    if (result.exitCode !== 0) throw new Error(`P1 ${purpose} agent failed with exit ${result.exitCode}`)
+    if (command.stdoutPath) return result.output
+    return adapterOwnsOutput && existsSync(outPath) ? readFileSync(outPath, 'utf8') : result.output
+  }
 }
 
 function attachRunLifecycle(ctx: OzContext, workspaceId: string, stopController: AbortController, getRunId: () => string | null, running: Promise<unknown>): void {
@@ -311,9 +354,10 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
   } else {
     const ws = workspace!
     const pb = playbook!
-    const runPhase: PlaybookPhaseAction = async () => {
-      // Atoms 5b-11 replace this no-op seam with real phase work; this atom wires launch → executor.
-    }
+    const personasDir = join(ws.path, 'cocoder', 'personas')
+    const sources: PersonaSources = { baseDir: basePersonasDir(), deltaDir: join(personasDir, 'deltas'), repoPersonaDir: personasDir }
+    const assignments = loadAssignments(join(personasDir, 'assignments.json'))
+    const bob = resolveEffectivePersona(sources, assignments, 'bob')
     ctx.store.upsertWorkspace({ id: ws.id, path: ws.path, name: ws.name })
     const run = ctx.store.createRun({ workspaceId: ws.id, priorityId: PLAYBOOK_PRIORITY_SENTINEL, playbookId: pb.id })
     runId = run.id
@@ -322,6 +366,7 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
     emitOzEvent(ctx, { type: 'run-created', runId: run.id, workspaceId })
     running = (async () => {
       const runDir = join(ctx.runsRoot, run.id)
+      const runPhase = createDaemonPlaybookPhaseAction(ctx, ws.path, runDir, pb.modelPin, { cli: bob.cli, model: bob.model }, stopController.signal)
       ctx.store.recordEvent({ runId: run.id, type: 'run-start', data: { playbook: pb.id, runDir } })
       const result = await startPlaybookExecutor({ playbook: pb, runDir, now: Date.now, runPhase })
       ctx.store.recordEvent({

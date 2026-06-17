@@ -126,6 +126,8 @@ async function drive(playbook: OnboardingPlaybook, deps: PlaybookExecutorDeps, i
       return { state, statePath: statePath(deps.runDir) }
     }
 
+    await deps.runPhase({ playbook, phase, phaseIndex: state.currentPhaseIndex, state })
+
     if (phase.founderGate) {
       const reachedAt = deps.now()
       state = stateFor({
@@ -139,7 +141,6 @@ async function drive(playbook: OnboardingPlaybook, deps: PlaybookExecutorDeps, i
       return { state, statePath: statePath(deps.runDir) }
     }
 
-    await deps.runPhase({ playbook, phase, phaseIndex: state.currentPhaseIndex, state })
     state = stateFor({ playbook, currentPhaseIndex: state.currentPhaseIndex + 1, status: 'running', gate: null, updatedAt: deps.now() })
     await persist(deps.runDir, state)
   }

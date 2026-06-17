@@ -244,6 +244,12 @@ const fakeIO = (): RunnerIO => ({
   async writePickup(runDir) {
     return `${runDir}/pickup.md`
   },
+  async writeRunArtifact(runDir, fileName, contents) {
+    await mkdir(runDir, { recursive: true })
+    const path = join(runDir, fileName)
+    await writeFile(path, contents, 'utf8')
+    return path
+  },
   async writeRunRecord(runDir) {
     return `${runDir}/record.md`
   },
@@ -438,6 +444,77 @@ describe('Oz mutations + lifecycle', () => {
     const state = JSON.parse(await readFile(join(home, 'local', 'runs', runId, 'playbook-state.json'), 'utf8')) as { readonly playbookId: string; readonly status: string }
     expect(state).toMatchObject({ playbookId: 'drift-audit', status: 'awaiting-founder' })
     expect(store.listEvents(runId).some((event) => event.type === 'playbook-executor')).toBe(true)
+  })
+
+  test('POST /runs launches takeover P1 through the daemon phase dispatcher and writes P1 artifacts', async () => {
+    await writeFile(join(home, 'README.md'), '# CoCoder Fixture\nTakeover onboarding fixture.\n', 'utf8')
+    const prompts: string[] = []
+    const outputs = [
+      JSON.stringify({
+        subsystems: [
+          {
+            id: 'governance',
+            name: 'Governance',
+            pathGlobs: ['cocoder/**'],
+            entryPoints: [],
+            validationCommands: [],
+            boundaryReason: 'Fixture governance root.',
+            allowedAdjacency: [],
+          },
+        ],
+        humanMap: 'Governance covers the fixture cocoder root.',
+        complexitySignals: {
+          crossSubsystemCoupling: [],
+          unclearOwnership: [],
+          stackHeterogeneity: [],
+          weakValidation: [],
+          broadEntryPoints: [],
+          highRiskSurfaces: [],
+        },
+      }),
+      JSON.stringify({
+        claims: [{ claim: 'The fixture exists for takeover onboarding.', provenance: ['README.md'] }],
+        openQuestions: ['What should P2 inspect first?'],
+      }),
+    ]
+    const p1Adapter: Adapter = {
+      ...okAdapter,
+      build: (input) => {
+        prompts.push(input.prompt)
+        return { command: 'fake-agent', args: [] }
+      },
+    }
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit(),
+      sessionHost: fakeHost(),
+      getAdapter: () => p1Adapter,
+      io: fakeIO(),
+      runHeadless: async () => ({ exitCode: 0, output: outputs.shift() ?? '{}' }),
+    })
+
+    const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', playbookId: 'cocoder-takeover' } })
+
+    expect(r.status).toBe(202)
+    const runId = String(r.json.runId)
+    let detail: Resp | null = null
+    for (let i = 0; i < 50; i++) {
+      detail = await call(oz, 'GET', `/runs/${runId}`)
+      if (detail.json.run.status !== 'running') break
+      await sleep(10)
+    }
+    expect(detail?.json.run).toMatchObject({ id: runId, playbookId: 'cocoder-takeover', status: 'awaiting-founder' })
+    expect(prompts).toHaveLength(2)
+    expect(prompts[0]).toContain('# P1 Agentic Recon Pass')
+    expect(prompts[1]).toContain('# P1 Takeover Intent Intake')
+    const p1Dir = join(home, 'local', 'runs', runId, 'playbook', 'P1')
+    await expect(readFile(join(p1Dir, 'inventory.json'), 'utf8')).resolves.toContain('"fileCount"')
+    await expect(readFile(join(p1Dir, 'subsystems.json'), 'utf8')).resolves.toContain('"governance"')
+    await expect(readFile(join(p1Dir, 'intent.json'), 'utf8')).resolves.toContain('takeover onboarding')
+    await expect(readFile(join(p1Dir, 'estimate.json'), 'utf8')).resolves.toContain('"subsystemCount": 1')
+    await expect(readFile(join(p1Dir, 'pickup.md'), 'utf8')).resolves.toContain('## Spend Decision')
   })
 
   test('POST /runs rejects adhoc-session without a task before creating a run', async () => {
