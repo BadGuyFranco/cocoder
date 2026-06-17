@@ -41,43 +41,47 @@ say "kill" / "tear down" afterward.
    "follow up as needed", "run the live-proof checklist", or a menu of equally weighted options as the
    next action. If there are no buildable atoms AND no runnable verification, say so and name the next
    priority to launch instead.
-5. Emit, as your final output, a founder-readable closeout. It **must lead with the `Run Handoff`
-   block below** — a scannable answer to "what do I do next?" that a solo non-developer reads in five
-   seconds. The detail sections follow it, for reference. A run that ends without leaving the founder
-   one obvious move is a failed wrap (the F18/F20 class) — the handoff exists to make that impossible.
+5. Emit, as your final output, a founder-readable closeout in the exact section order below. Use
+   Markdown bold headings, not HTML. The first screen must be enough for a solo non-developer to know
+   what happened, why the run stopped, what remains, and what to run next. Keep the detail concise; the
+   founder can ask follow-up questions after wrap-up.
 
    ```
-   ── Run Handoff ──────────────────────────────
-   Priority worked:   <priority id>
-   Disposition:       continue | blocked | archive-candidate — <one clause why>
-   This run:          <one line: what changed + what you committed this session>
-   Held back:         <out-of-scope files + "reply `expand scope` to commit them, or `discard`">  | none
-   Next priority:     <a LAUNCHABLE priority id, or "this one (continue)">
-   ► Your move:       <exactly ONE runnable action — see the rules below>
+   **What Landed**
+   <plain English summary of what changed and was committed this run, 2 sentences max>
+
+   **Disposition**
+   <continue | blocked | archive ready>
+   <one brief plain-English sentence explaining the disposition, only if useful>
+
+   **What's Left To Close Priority**
+   <short bullet list of the remaining proof/gaps; write "Nothing obvious." only if archive ready>
+
+   **Judgement**
+   <plain-English call Oscar made to close now instead of continuing, plus any controversial calls if appropriate>
+
+   **Next**
+   <exactly one next priority or ticket to run, or "this priority" if continuing here>
+
+   I'm standing by...
    ```
 
-   - **`Disposition`** is the single lifecycle verdict (§3). If `archive-candidate`, the `► Your move`
-     is to confirm archive — never self-archive.
-   - **`This run`** states plainly **what you committed this session**. Do NOT assert whether it *landed*
-     on trunk (F19) — CoCoder delivers the **authoritative landing outcome** right after this wrap; that
-     line, not your prediction, is the source of truth.
-   - **`Held back`** — name any out-of-scope files the gate surfaced this run and the exact reply that
-     resolves them; write `none` if there were none. Never imply held-back work was lost — it is safe in
-     the working tree awaiting the founder's call.
-   - **`Next priority`** must be **launchable** (an existing `cocoder/priorities/*.md`) or "this one". If
-     the best next step is new work with no priority yet, run the create-priority flow (draft a limited
-     Objective → founder approval) so a launchable priority **exists before this run ends** (F1/F20).
-   - **`► Your move`** is exactly ONE **runnable** action (F18): a pasteable command, "launch `<id>` in
-     Oz", "reply `archive <id>`", or "reply `expand scope`" — never a bare doc/checklist pointer, never a
-     menu of equally-weighted options, never "awaiting questions". The test: could a solo non-developer
-     DO it from this one line? If the only remaining work is verification the founder can't run, the move
-     is your offer to automate it into a one-command harness.
-
-   Then the detail sections (for the founder who wants more — keep each tight):
-   - `Summary` — plain English, what was accomplished + the concrete reason for the disposition.
-   - `Archive Estimate` — how close to archive and the remaining proof/gap.
-   - `Founder Options` — the founder may ask questions, request a priority update, or say `kill` /
-     `tear down` (teardown runs one final safety pass, then closes this run's Oscar/Bob/Deb windows
-     through the runner-provided mechanism — never the Oz daemon).
+   - **`What Landed`** states plainly what changed and what CoCoder committed this session. Do not add
+     a long commit log. Do not predict push/remote/PR status; CoCoder delivers the authoritative commit
+     outcome right after this wrap.
+   - **`Disposition`** is the single lifecycle verdict (§3). Use founder-facing wording:
+     `continue`, `blocked`, or `archive ready`. `archive ready` means the existing archive-candidate
+     lifecycle judgment: ask for founder archive confirmation; never self-archive.
+   - **`What's Left To Close Priority`** is the short version of the remaining gaps across product
+     behavior, architecture, tests, documentation, founder decisions, and missing evidence. Use short
+     bullets. Do not bury the next move here.
+   - **`Judgement`** explains why Oscar stopped now instead of continuing in this same run. If Oscar made
+     a debatable call (scope cut, deferral, risk tradeoff, founder-gated decision), state it plainly.
+   - **`Next`** is exactly one next priority or ticket to run. It must be launchable or trackable: an
+     existing `cocoder/priorities/*.md`, an existing ticket, or "this priority" if the current priority
+     should continue. If the best next step is new work with no priority or ticket yet, run the
+     create-priority flow before wrap-up so a launchable next item exists (F1/F20).
+   - End with exactly `I'm standing by...` so the founder knows the run remains available for questions,
+     priority updates, or explicit `kill` / `tear down`.
 
 The runner persists this output as the run's pickup brief — do NOT write `pickup.md` yourself.
