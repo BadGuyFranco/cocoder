@@ -84,3 +84,12 @@ export {
   type IntentProvenance,
   type RunIntentIntakeInput,
 } from './intent.js'
+export {
+  defaultIntentGitReader,
+  enumerateIntentArtifacts,
+  type EnumerateIntentArtifactsInput,
+  type IntentArtifactLimits,
+  type IntentCommitArtifactInput,
+  type IntentGitReader,
+  type IntentTagArtifactInput,
+} from './intent-artifacts.js'
