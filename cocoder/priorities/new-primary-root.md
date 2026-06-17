@@ -45,6 +45,66 @@ CoPublisher).
 
 ## Build progress — disposition: `continue` (ratified 2026-06-17 — build released)
 
+### Executor build progress (run_130, 2026-06-17)
+Tenth build session — **executor P5 — synthesis + `cocoder/**`-only audit write-boundary ENFORCEMENT**
+landed (one atom; verified-on-evidence: diff read end-to-end + `pnpm --filter @cocoder/core test` (332) +
+`pnpm --filter @cocoder/daemon test` (208) + `pnpm -w typecheck` + `node scripts/check-topology.mjs`):
+- ✅ **Executor P5 — synthesis + audit write-boundary ENFORCEMENT** (`39f8019`). Builds the **content**
+  the P5 phase surfaces and the HARD trust invariant enforcement seam. Mirrors the p3/p4 action split across
+  four new core modules + launcher wiring:
+  - `packages/core/src/playbooks/p5-synthesis.ts` — **pure engine** `buildSynthesis({intent, convergence,
+    founderAnswers})` drafting proposed governance from verified P3 material/high unresolved items only;
+    every drafted Objective carries traceable `sourceRef` + `evidence` (no laundering); empty inputs → empty
+    arrays (never omitted, never fabricated). Pure: no fs/clock/random/network/subprocess (asserted by a
+    determinism guard test).
+  - `packages/core/src/playbooks/p5-input.ts` — refuse-on-malformed reader for `playbook/P1/intent.json` +
+    `playbook/P3/convergence.json` + `playbook/P4/questions.json` (+ founder answers when present).
+  - `packages/core/src/playbooks/p5-action.ts` — `runPlaybookP5Action`/`createPlaybookP5PhaseAction`
+    (no-ops unless `phase.id==='P5'`). Writes ONLY `playbook/P5/{synthesis.json,synthesis.md}` AND staged
+    `playbook/P5/proposed-cocoder/**` (memory/architecture-notes.md, priorities/<id>.md, INDEX.md); **never
+    touches `repoDir/cocoder`** (staging only). Emits `playbook-synthesis-result` with per-artifact counts.
+  - `packages/core/src/playbooks/p5-render.ts` — `synthesis.md` human render.
+  - **`auditWriteBoundary` on `runCommitGate` (`gate.ts`)** — optional param on the single spine
+    chokepoint that throws `AuditWriteBoundaryError` BEFORE any commit on an out-of-`cocoder/**` path (and
+    on self-commit). Ordinary runs omit it; whole-tree default untouched. Wired into the takeover
+    support-commit path in `launcher.ts`.
+  - `launcher.ts` `createDaemonPlaybookPhaseAction` now **composes P1→P2→P3→P4→P5** (`await p5(input)` after
+    p4; synthesis-result event wired to the store).
+  - Tests: `playbook-p5-synthesis.test.ts` (unit: Objectives traceable from crafted P3 fixture; empty-input →
+    empty arrays; refuse-on-malformed BEFORE any write; **writes only under `runDir/playbook/P5/**`**,
+    `repoDir/cocoder` never created; determinism guard) + `commit-gate.test.ts` proves refuse-before-commit
+    (`commits===[]` + `audit-write-boundary-refused` event) + daemon `mutations.test.ts` e2e extended so
+    resume advances P4→P5→P6 gate, asserts `synthesis.json`/`synthesis.md`/`proposed-cocoder/**`, a single
+    `playbook-synthesis-result` event, and `home/cocoder/AGENTS.md` never created. **Trust invariant held
+    two ways:** (1) P5 action stages only under `runDir/playbook/P5/**`; (2) boundary lives at the commit
+    spine for when P6 applies for real. Ordinary priority runs unchanged (all existing core/daemon tests green).
+
+**Sequencing note (Oscar):** wrapped at this boundary deliberately. The next critical-path atom is **P6 —
+ratify ACTION** — where staged `proposed-cocoder/**` is applied into the target repo's `cocoder/**` on
+founder ratification AND the `auditWriteBoundary` is exercised on a REAL apply-commit (not just a unit test).
+Give it its own super-thoughtful fresh session (run_111 anti-pattern: do NOT start P6 under a context already
+spent on the P5 verify cycle). **Before scoping, READ:** [ADR-0020 addendum](../decisions/0020-addendum-phase-executor.md)
+(the Takeover P0–P7 phase model + ratify semantics) and
+[`cocoder-takeover.md`](../../packages/personas/base/playbooks/cocoder-takeover.md) (the baked plan + the
+`cocoder/**`-only user-facing promise) — do not guess P6 vs P7 semantics.
+
+**Next-run sequence (executor critical path; build released, no founder gate needed to build these):**
+- **NEXT → Executor P6 — ratify ACTION** (fresh dedicated session). Per addendum §Founder Ratification
+  directive 3 + the P6 phase model: P6 consumes `playbook/P5/synthesis.json` + the staged
+  `proposed-cocoder/**` and, on founder ratification, APPLIES the staged governance into the target repo's
+  `cocoder/**` through the commit spine WITH `auditWriteBoundary` now firing on a REAL apply-commit — the
+  first place the boundary is exercised for real, not just in a unit test. Mirror the p4/p5 action split
+  (input reader + action + render). Verify: extend the fake-agent e2e so resume past the P6 gate applies
+  `proposed-cocoder/**` into the repo's `cocoder/**` (and a deliberate out-of-`cocoder/**` path in the
+  apply set is REFUSED with `AuditWriteBoundaryError`, not flagged); core+daemon+typecheck+topology stay
+  green; ordinary priority runs unchanged.
+- **Then** Atom 11 (P0→P6 end-to-end fixture proof) — closes the executor critical path.
+  Parallel/independent: New-Primary tech-stack-starter template BUILD from Atom E — per-starter
+  non-negotiables and the "if-unsure" fallback question remain draft-pending-ratification in
+  `new-primary-tech-stack.md`; confirm with founder first or scope to ratified parts only.
+- **Still gated:** Live CoPublisher Takeover proof and the dogfood Drift Audit remain gated until the
+  P0→P6 executor path runs end-to-end on fakes.
+
 ### Executor build progress (run_129, 2026-06-17)
 Ninth build session — **executor P4 — founder-question checkpoint ACTION integration** landed (one atom;
 verified-on-evidence: diff read end-to-end + `pnpm --filter @cocoder/core test` (327) +
@@ -498,7 +558,7 @@ First build session after ratification. Three atoms landed (verified-on-evidence
    files (assignments, adhoc priority, CLAUDE pointer) are now committed to trunk with their verified
    canonical contents; the run_86 strand below is closed (recovery executed). Scaffold is complete on a
    fresh clone again and CI is green.
-2. **P2→P5 fan-out executor** — **✅ DESIGNED run_107, ratified run_110, BUILD IN PROGRESS run_111–127**
+2. **P2→P5 fan-out executor** — **✅ DESIGNED run_107, ratified run_110, BUILD IN PROGRESS run_111–130**
    ([ADR-0020 addendum](../decisions/0020-addendum-phase-executor.md)). Concrete P1→P5 execution design:
    new runner mode (not a forked loop), phase metadata from shipped Playbook tables, founder gates at
    P1/P5, P2 deep-read fan-out via `dispatchPlay`, P3 cross-check → P4 synthesize → P5 ratify through the
@@ -523,8 +583,13 @@ First build session after ratification. Three atoms landed (verified-on-evidence
    priorities) from P3 convergence + P1 intent, each item traceable; launcher composes P1→P2→P3→P4; daemon
    e2e proves the P4 gate carries `questions.json`/`questions.md` + a `playbook-questions-result` event;
    trust invariant held structurally (P4 ignores repo code, writes only `playbook/P4/**`); core 327 + daemon
-   208 green. **Next:** P5 synthesis + `cocoder/**`-only audit write-boundary ENFORCEMENT → Atoms 10–11
-   (P6 ratify → e2e fixture proof) + tech-stack template build from E.
+   208 green. **Landed run_130:** executor P5 synthesis + `cocoder/**`-only audit write-boundary ENFORCEMENT
+   (`39f8019`) — `p5-synthesis.ts`/`p5-input.ts`/`p5-action.ts`/`p5-render.ts` draft proposed governance
+   under `playbook/P5/proposed-cocoder/**` + `synthesis.json`/`synthesis.md` (Objectives traceable to
+   verified P3 findings; staging only); `auditWriteBoundary` on `runCommitGate` throws before any
+   out-of-`cocoder/**` commit; launcher composes P1→P2→P3→P4→P5; daemon e2e proves P4→P5→P6 gate; core 332
+   + daemon 208 green. **Next:** P6 ratify ACTION → Atom 11 (P0→P6 end-to-end fixture proof) + tech-stack
+   template build from E.
 3. **Live CoPublisher Takeover proof** (Phase-5 entry) — Objective verification (a). **BLOCKED on executor
    build** (#2 above).
 4. **Dogfood Drift Audit run** — Objective verification (b). **BLOCKED on executor build** (#2 above).
@@ -674,9 +739,14 @@ directives now recorded in [addendum §Founder Ratification — RESOLVED](../dec
   `p4-action.ts` (writes only `playbook/P4/{questions.json,questions.md}`; `repoDir` unused) + `p4-render.ts`;
   launcher composes P1→P2→P3→P4; daemon e2e proves the P4 gate carries the questions artifact + a
   `playbook-questions-result` event; trust invariant held structurally; core 327 + daemon 208 green.
-- **NEXT → Executor P5 — synthesis + `cocoder/**`-only audit write-boundary ENFORCEMENT** (fresh session;
-  see §Executor build progress run_129).
-- **Then Atoms 10–11** (P6 ratify → e2e fixture proof) + New-Primary tech-stack-template build from E.
+- ✅ **Executor P5 — synthesis + `cocoder/**`-only audit write-boundary ENFORCEMENT** (`39f8019`, run_130).
+  `p5-synthesis.ts` (pure engine, Objectives traceable to verified P3 material/high items) + `p5-input.ts` +
+  `p5-action.ts` (writes only `playbook/P5/**` + staged `proposed-cocoder/**`; never touches repo) +
+  `p5-render.ts`; `auditWriteBoundary` on `runCommitGate` throws `AuditWriteBoundaryError` before any
+  out-of-`cocoder/**` commit; launcher composes P1→P2→P3→P4→P5; daemon e2e proves P4→P5→P6 gate; core 332
+  + daemon 208 green.
+- **NEXT → Executor P6 — ratify ACTION** (fresh session; see §Executor build progress run_130).
+- **Then Atom 11** (P0→P6 end-to-end fixture proof) + New-Primary tech-stack-template build from E.
 
 **Still gated:** Live Takeover (#3) and Drift Audit (#4) proofs remain gated on the executor shipping — do
 not attempt live onboarding until then.

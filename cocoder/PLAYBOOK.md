@@ -211,23 +211,25 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    the explicit `archive` go-ahead. Playbook moved to `priorities/archive/`. Open follow-ons (do NOT
    reopen this priority): ticket 0006 closed via `headless-adapter-lane` (run_104, archive-candidate) ·
    ticket 0012 (design-ref rebuild guard).
-4. `new-primary-root` — **ACTIVE (run_129, 2026-06-17).** Onboard a primary root via the
+4. `new-primary-root` — **ACTIVE (run_130, 2026-06-17).** Onboard a primary root via the
    bootstrap/takeover/drift onboarding Playbooks (ADR-0020 Accepted). **Engine foundation built and
    live-wired** (run_83 + run_86): loader extension (§7), `scaffoldCocoderZone` + `createWorkspace`
    wiring (D1 complete), `deep-read` hardened for P3. **Executor design ratified** (run_110 cleared
    founder gate; addendum A–E + tech-stack approach accepted). **Executor build in progress**
-   (run_111–129): Atoms F/1/5a/3/4 (run_111–112); run_123 landed the full P1 input layer; run_124
+   (run_111–130): Atoms F/1/5a/3/4 (run_111–112); run_123 landed the full P1 input layer; run_124
    landed executor P1 ACTION integration (`94de715`); run_125 landed P2a (`a47bd8b`); run_126 landed
-   P2b (`66b5038`); run_127 landed P2c (`022d774`); run_128 landed P3 (`775bf55`); **run_129 landed
-   P4** (`4a3ee42`) — `p4-questions.ts`/`p4-input.ts`/`p4-action.ts`/`p4-render.ts` partition the
-   P4 gate content into three founder-question classes (clarifications / conflicting findings /
-   material-or-high code-issues-as-future-priorities) from P3 convergence + P1 intent; launcher
-   composes P1→P2→P3→P4; daemon e2e proves the P4 gate carries `questions.json`/`questions.md` +
-   `playbook-questions-result` event (core 327 + daemon 208 green). **Next:** **executor P5** (fresh
-   dedicated session) — synthesis + `cocoder/**`-only audit write-boundary ENFORCEMENT; then Atoms
-   10–11 + tech-stack-template build; live CoPublisher Takeover + dogfood Drift Audit proofs remain
-   gated on executor end-to-end on fakes. **Absorbs `workspace-onboarding`.** Phase 5 ("first external
-   repo").
+   P2b (`66b5038`); run_127 landed P2c (`022d774`); run_128 landed P3 (`775bf55`); run_129 landed
+   P4 (`4a3ee42`); **run_130 landed P5** (`39f8019`) — `p5-synthesis.ts`/`p5-input.ts`/`p5-action.ts`/
+   `p5-render.ts` draft proposed governance under `playbook/P5/proposed-cocoder/**` + `synthesis.json`/
+   `synthesis.md` (Objectives traceable to verified P3 findings; staging only — never touches
+   `repoDir/cocoder`); **`auditWriteBoundary` on `runCommitGate`** throws `AuditWriteBoundaryError`
+   before any out-of-`cocoder/**` commit (ordinary runs unchanged); launcher composes P1→P2→P3→P4→P5;
+   daemon e2e proves P4→P5→P6 gate + `playbook-synthesis-result` event (core 332 + daemon 208 green).
+   **Next:** **executor P6** (fresh dedicated session) — ratify ACTION (apply staged `proposed-cocoder/**`
+   on founder ratification WITH the audit boundary on a real apply-commit); then Atom 11 (P0→P6 end-to-end
+   fixture proof) + tech-stack-template build; live CoPublisher Takeover + dogfood Drift Audit proofs
+   remain gated on executor end-to-end on fakes. **Absorbs `workspace-onboarding`.** Phase 5 ("first
+   external repo").
 
 **Queued after `new-primary-root` (founder go-ahead 2026-06-16, priority-audit run_106 — in `order.json`):**
 - `hybrid-plays` — deterministic code spine inside a Play (promotes "verify, don't assert — evidence over

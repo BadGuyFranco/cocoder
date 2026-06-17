@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-17 — **new-primary-root: executor P5 synthesis + audit write-boundary ENFORCEMENT landed — P6 ratify ACTION is next (run_130)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 1 atom delegated/verified-on-evidence) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_130
+**Outcomes:**
+- **Executor P5 — synthesis + `cocoder/**`-only audit write-boundary ENFORCEMENT (`39f8019`):** four new pure-core modules — `p5-synthesis.ts` (pure engine: drafts proposed governance from P3 convergence + P4 founder answers + P1 intent; material/high unresolved items only; every Objective traceable via `sourceRef` + `evidence`; empty inputs → empty arrays), `p5-input.ts` (refuse-on-malformed reader), `p5-action.ts` (writes only `runDir/playbook/P5/{synthesis.json,synthesis.md}` + staged `proposed-cocoder/**` — memory/architecture-notes.md, priorities/<id>.md, INDEX.md; never touches `repoDir/cocoder`), `p5-render.ts` (human `synthesis.md`). **`auditWriteBoundary` on `runCommitGate` (`gate.ts`):** optional param on the single spine chokepoint that throws `AuditWriteBoundaryError` BEFORE any commit on an out-of-`cocoder/**` path (ordinary runs omit it; whole-tree default untouched). Wired into the takeover support-commit path in `launcher.ts`. `createDaemonPlaybookPhaseAction` now composes P1→P2→P3→P4→P5.
+- **Tests:** `commit-gate.test.ts` proves refuse-before-commit (`commits===[]` + `audit-write-boundary-refused` event) + daemon `mutations.test.ts` e2e extended so resume advances P4→P5→P6 gate (asserts `synthesis.json`/`synthesis.md`/`proposed-cocoder/**` + single `playbook-synthesis-result` event; `home/cocoder/AGENTS.md` never created).
+- **Gates:** core 332 pass, daemon 208 pass, `pnpm -w typecheck` clean, `node scripts/check-topology.mjs` pass.
+- **Disposition: `continue`** — P5 committed and verified on evidence; P6 (ratify ACTION — the first place the audit boundary is exercised on a real apply-commit) is the next delicate atom and gets its own fresh dedicated session (run_111 anti-pattern).
+**Next:** Launch **`new-primary-root`** in Oz for **Executor P6 — ratify ACTION** — read `decisions/0020-addendum-phase-executor.md` + `cocoder-takeover.md` first; build P6 input/action/render so founder ratification applies staged `proposed-cocoder/**` into the target repo's `cocoder/**` through the commit spine WITH `auditWriteBoundary`; extend fake-agent e2e so resume past the P6 gate applies proposed governance and a deliberate out-of-`cocoder/**` path is REFUSED (not flagged). Then Atom 11 (P0→P6 end-to-end fixture proof).
+
 ## 2026-06-17 — **new-primary-root: executor P4 founder-question checkpoint ACTION integration landed — P5 synthesis + audit boundary enforcement is next (run_129)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 1 atom delegated/verified-on-evidence) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_129
