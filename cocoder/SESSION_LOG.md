@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-17 — **Oz dashboard design tweaks (run_113): three polish atoms shipped — archive-candidate**
+
+**Persona:** Oscar (3 atoms delegated + verified) | **Priority:** [oz-dashboard-design-tweaks](./priorities/oz-dashboard-design-tweaks.md) | **Run:** run_113
+**Outcomes:**
+- **Atom 0 committed (`f3d55dd`)** — settings trim: removed Compact density + Reduce motion entirely (`model.ts`, `Settings.tsx`, `App.tsx` data-attr wiring, dead `oz.css` blocks, seed.json/design-ref). Grep-clean — zero `compactMode`/`reduceMotion`/`data-compact`/`data-reduce-motion` in `packages/ui`.
+- **Atom 1 committed (`2995b1b`)** — collapsible personas/plays: each persona is an `aria-expanded` header button (collapsed by default); bound plays extracted to `BoundPlayRow`, individually collapsible (collapsed by default, id+label summary, warning icon when collapsed). Existing persona-internal tests updated expand-first; +2 collapse/expand tests.
+- **Atom 2 committed (`87fe8bc`)** — contrast/gradient: ambient radial wash softened ~64% (dark `--cb-ambient-1/2` 0.07/0.05→0.025/0.018; light 0.06/0.04→0.020/0.014); panel surfaces made near-opaque (dark `--cb-surface`/`--cb-surface-glass` 0.55→0.92; light `--cb-surface` #EDE8DF→#FAF6EE, `--cb-surface-glass` 0.65→0.94). Mirrored into design-ref token file. Gradient rules retained, only token alphas reduced.
+- **Evidence:** `pnpm -w typecheck` clean; UI suite 113/113 green after every atom; each diff confined to `packages/ui`.
+- **Disposition: archive-candidate** — items 2–3 objectively met; item 1 (contrast) awaits founder eye in both themes. No build atom remains.
+**Next:** `pnpm --dir packages/ui dev` — toggle Settings → Appearance → Theme (dark + light); confirm panels read clearly distinct from background, personas/plays collapse, Compact/Reduce-motion gone; reply `archive oz-dashboard-design-tweaks` if satisfied.
+
 ## 2026-06-17 — **Executor core lands (run_112): runner primitive extraction + playbook executor state/cursor**
 
 **Persona:** Oscar (2 atoms delegated + verified) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_112
