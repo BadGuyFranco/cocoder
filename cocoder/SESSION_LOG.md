@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-17 — **Adhoc session on-ramp (run_118): launched, awaiting founder path**
+
+**Persona:** Oscar (0 atoms delegated) | **Priority:** [adhoc-session](./priorities/adhoc-session.md) | **Run:** run_118
+**Outcomes:**
+- **On-ramp only:** no founder instruction at launch — Oscar held delegation; zero atoms, zero commits.
+- **Session purpose restated:** (a) draft a new priority via create-priority flow, or (b) bounded read-only support (code review / research) ending in a written report — never commits product code.
+- **Disposition: blocked** — cannot scope or delegate until the founder names a path and target/topic.
+**Next:** Reply in Oz: `draft priority — <your goal in plain English> — done when <one sentence on how you'll know it's done>`
+
 ## 2026-06-17 — **Adhoc session on-ramp (run_117): launched, awaiting founder topic**
 
 **Persona:** Oscar (0 atoms delegated) | **Priority:** [adhoc-session](./priorities/adhoc-session.md) | **Run:** run_117
