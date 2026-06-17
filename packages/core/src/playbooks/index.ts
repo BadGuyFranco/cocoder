@@ -7,6 +7,21 @@ export {
   type PlaybookPhaseKind,
 } from './loader.js'
 export {
+  loadPlaybookExecutor,
+  readPlaybookExecutorState,
+  resumePlaybookExecutor,
+  startPlaybookExecutor,
+  type FounderApproval,
+  type LoadedPlaybookExecutor,
+  type PlaybookExecutorDeps,
+  type PlaybookExecutorResult,
+  type PlaybookExecutorState,
+  type PlaybookExecutorStatus,
+  type PlaybookGateState,
+  type PlaybookPhaseAction,
+  type PlaybookPhaseActionInput,
+} from './executor.js'
+export {
   inventoryRepo,
   type ExtensionCount,
   type LocGroup,

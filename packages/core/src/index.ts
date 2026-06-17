@@ -79,8 +79,23 @@ export { loadPriority, type Priority } from './priorities/index.js'
 
 export {
   loadOnboardingPlaybooks,
+  loadPlaybookExecutor,
+  readPlaybookExecutorState,
+  resumePlaybookExecutor,
+  startPlaybookExecutor,
   type OnboardingPlaybook,
   type OnboardingPlaybookMode,
+  type OnboardingPlaybookPhase,
+  type OnboardingPlaybookPhaseId,
+  type PlaybookExecutorDeps,
+  type PlaybookExecutorResult,
+  type PlaybookExecutorState,
+  type PlaybookExecutorStatus,
+  type PlaybookGateState,
+  type PlaybookPhaseAction,
+  type PlaybookPhaseActionInput,
+  type FounderApproval,
+  type LoadedPlaybookExecutor,
 } from './playbooks/index.js'
 
 export {
@@ -162,6 +177,8 @@ export {
   renderDebStatus,
   type DebStatus,
   type RunnerPhase,
+  type PlaybookStatus,
+  type PlaybookGateStatus,
   type OscarState,
   type BobState,
   type VerifyState,

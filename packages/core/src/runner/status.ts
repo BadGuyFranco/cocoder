@@ -8,10 +8,19 @@ import type { RunEvent, RunStore } from '../store/index.js'
 
 /** What the runner is doing w.r.t. Oscar right now — the runner passes its precise wait-phase (it knows
  *  it exactly); the projection refines it to `stalled`/`blocked` from the event stream. */
-export type RunnerPhase = 'awaiting-directive' | 'building' | 'verifying' | 'wrapped' | 'faulted'
+export type RunnerPhase = 'awaiting-directive' | 'building' | 'verifying' | 'wrapped' | 'faulted' | 'awaiting-founder'
 export type OscarState = 'waiting' | 'running' | 'verifying' | 'stalled' | 'blocked' | 'wrapped'
 export type BobState = 'standby' | 'running' | 'done' | 'failed'
 export type VerifyState = 'idle' | 'pending' | 'pass' | 'fail'
+export type PlaybookStatus = 'running' | 'awaiting-founder' | 'done'
+
+export interface PlaybookGateStatus {
+  readonly playbookId: string
+  readonly phaseIndex: number
+  readonly phaseId: string
+  readonly status: PlaybookStatus
+  readonly reachedAt: number | null
+}
 
 export interface DebStatus {
   readonly runId: string
@@ -118,7 +127,7 @@ export function renderDebStatus(input: {
         ? 'verifying'
         : phase === 'wrapped'
           ? 'wrapped'
-          : phase === 'faulted'
+          : phase === 'faulted' || phase === 'awaiting-founder'
             ? 'blocked'
             : 'running'
   if (outstandingFaults.length > 0) oscar = 'blocked'

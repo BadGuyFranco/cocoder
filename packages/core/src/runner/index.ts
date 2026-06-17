@@ -31,6 +31,8 @@ export {
   renderDebStatus,
   type DebStatus,
   type RunnerPhase,
+  type PlaybookStatus,
+  type PlaybookGateStatus,
   type OscarState,
   type BobState,
   type VerifyState,

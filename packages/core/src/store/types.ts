@@ -9,7 +9,7 @@
 // the checked-out branch, always — so committed work is on that branch by construction and no code path
 // can hold it off-branch. There is no strand state for anything to wait on. RunStatus is therefore the
 // whole story; every terminal outcome below is final.
-export type RunStatus = 'running' | 'completed' | 'failed' | 'stopped'
+export type RunStatus = 'running' | 'awaiting-founder' | 'completed' | 'failed' | 'stopped'
 export type WorkItemStatus = 'open' | 'done' | 'abandoned'
 
 export interface Workspace {
