@@ -184,6 +184,16 @@ export class CmuxSessionHost implements SessionHost {
     this.#sessions.delete(args.surfaceRef) // prune if this instance happened to know it
   }
 
+  async closeWorkspace(args: { workspaceRef: string }): Promise<void> {
+    await this.#cli.run(['close-workspace', '--workspace', args.workspaceRef])
+    for (const [surfaceRef, session] of this.#sessions) {
+      if (session.workspaceRef === args.workspaceRef) this.#sessions.delete(surfaceRef)
+    }
+    for (const [group, workspaceRef] of this.#groups) {
+      if (workspaceRef === args.workspaceRef) this.#groups.delete(group)
+    }
+  }
+
   #session(ref: SessionRef): Session {
     const s = this.#sessions.get(ref.id)
     if (!s) throw new Error(`cmux: unknown session ref "${ref.id}" (not spawned by this driver)`)

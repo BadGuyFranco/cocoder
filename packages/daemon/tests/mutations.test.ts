@@ -157,6 +157,7 @@ const fakeHost = (
   onShow?: (ref: SessionRef) => void,
   onKill?: (ref: SessionRef) => void,
   onClose?: (args: { workspaceRef: string; surfaceRef: string }) => void,
+  onCloseWorkspace?: (args: { workspaceRef: string }) => void,
 ): SessionHost => {
   let n = 0
   return {
@@ -181,6 +182,9 @@ const fakeHost = (
     },
     async closeSurface(args) {
       onClose?.(args)
+    },
+    async closeWorkspace(args) {
+      onCloseWorkspace?.(args)
     },
   }
 }
@@ -951,12 +955,13 @@ describe('Oz mutations + lifecycle', () => {
     })
   })
 
-  test('teardown closes a prior-instance pane via durable workspaceRef (closeSurface, not kill)', async () => {
+  test('teardown closes a prior-instance final pane via durable workspaceRef (closeWorkspace, not kill)', async () => {
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
     // A session persisted WITH its workspaceRef (the durable data a prior daemon recorded).
     store.createSession({ runId: run.id, persona: 'deb', sessionRef: 'surface:deb', workspaceRef: 'workspace:9' })
     const closes: { workspaceRef: string; surfaceRef: string }[] = []
+    const workspaceCloses: { workspaceRef: string }[] = []
     const killedHere: SessionRef[] = []
     // Fresh daemon (empty liveRefs, empty driver spawn-map) — the post-restart state.
     oz = await createOzServer({
@@ -964,19 +969,60 @@ describe('Oz mutations + lifecycle', () => {
       port: 0,
       store,
       git: fakeGit(),
-      sessionHost: fakeHost(undefined, (r) => killedHere.push(r), (a) => closes.push(a)),
+      sessionHost: fakeHost(undefined, (r) => killedHere.push(r), (a) => closes.push(a), (a) => workspaceCloses.push(a)),
       getAdapter: () => okAdapter,
       io: fakeIO(),
     })
     const r = await call(oz, 'POST', `/runs/${run.id}/teardown`)
     expect(r.status).toBe(200)
     expect(r.json.closed).toEqual(['surface:deb'])
-    // Closed via the DURABLE closeSurface path (cross-instance), NOT kill() (which would throw here).
-    expect(closes).toEqual([{ workspaceRef: 'workspace:9', surfaceRef: 'surface:deb' }])
+    // Closed via the DURABLE workspace path (cross-instance), NOT kill() or last-surface closeSurface.
+    expect(closes).toEqual([])
+    expect(workspaceCloses).toEqual([{ workspaceRef: 'workspace:9' }])
     expect(killedHere).toEqual([])
   })
 
-  test('teardown reports a durable still-open surface as failed when closeSurface fails', async () => {
+  test('teardown closes the shared run workspace for the final durable surface', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.createSession({ runId: run.id, persona: 'oscar', sessionRef: 'surface:oscar', workspaceRef: 'workspace:run' })
+    store.createSession({ runId: run.id, persona: 'bob', sessionRef: 'surface:bob', workspaceRef: 'workspace:run' })
+    store.createSession({ runId: run.id, persona: 'deb', sessionRef: 'surface:deb', workspaceRef: 'workspace:run' })
+    const closes: { workspaceRef: string; surfaceRef: string }[] = []
+    const workspaceCloses: { workspaceRef: string }[] = []
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit(),
+      sessionHost: {
+        ...fakeHost(undefined, undefined, (a) => closes.push(a), (a) => workspaceCloses.push(a)),
+        async closeSurface(args) {
+          closes.push(args)
+          if (args.surfaceRef === 'surface:oscar') throw new Error('invalid_state: Cannot close the last surface')
+        },
+      },
+      getAdapter: () => okAdapter,
+      io: fakeIO(),
+    })
+
+    const r = await call(oz, 'POST', `/runs/${run.id}/teardown`, { body: { initiatorPersona: 'oscar' } })
+
+    expect(r.status).toBe(200)
+    expect(r.json).toEqual({ closed: ['surface:bob', 'surface:deb', 'surface:oscar'], failed: [] })
+    expect(closes).toEqual([
+      { workspaceRef: 'workspace:run', surfaceRef: 'surface:bob' },
+      { workspaceRef: 'workspace:run', surfaceRef: 'surface:deb' },
+    ])
+    expect(workspaceCloses).toEqual([{ workspaceRef: 'workspace:run' }])
+    expect(store.listEvents(run.id).find((e) => e.type === 'teardown')?.data).toMatchObject({
+      closed: ['surface:bob', 'surface:deb', 'surface:oscar'],
+      failed: [],
+      initiatorPersona: 'oscar',
+    })
+  })
+
+  test('teardown reports a durable still-open workspace as failed when closeWorkspace fails', async () => {
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
     store.createSession({ runId: run.id, persona: 'deb', sessionRef: 'surface:deb', workspaceRef: 'workspace:9' })
@@ -985,7 +1031,7 @@ describe('Oz mutations + lifecycle', () => {
       port: 0,
       store,
       git: fakeGit(),
-      sessionHost: { ...fakeHost(), async closeSurface() {
+      sessionHost: { ...fakeHost(), async closeWorkspace() {
         throw new Error('cmux refused close')
       } },
       getAdapter: () => okAdapter,

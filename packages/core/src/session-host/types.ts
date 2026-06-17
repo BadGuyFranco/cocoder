@@ -76,4 +76,8 @@ export interface SessionHost {
    *  PRIOR daemon instance can still be closed after a restart (ADR-0015 teardown; the Deb-pane leak).
    *  Must tolerate an already-gone surface as success. */
   closeSurface(args: { readonly workspaceRef: string; readonly surfaceRef: string }): Promise<void>
+  /** Close a shared workspace/container by its DURABLE ref. Optional because not every future host has
+   *  a workspace concept; cmux teardown uses this for the final surface because cmux refuses
+   *  close-surface on a workspace's last remaining surface. */
+  closeWorkspace?(args: { readonly workspaceRef: string }): Promise<void>
 }

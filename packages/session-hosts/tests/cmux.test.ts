@@ -227,6 +227,15 @@ describe('CmuxSessionHost driver (fake cli)', () => {
     expect(calls).toContainEqual(['read-screen', '--workspace', 'workspace:7', '--surface', 'surface:7', '--lines', '1'])
   })
 
+  test('closeWorkspace closes the durable cmux workspace for teardown final-surface cleanup', async () => {
+    const { cli, calls } = makeFakeCli()
+    const host = new CmuxSessionHost({ cli, scriptDir: await mkdtemp(join(tmpdir(), 'cmux-test-')), pollMs: 1 })
+
+    await host.closeWorkspace({ workspaceRef: 'workspace:7' })
+
+    expect(calls).toContainEqual(['close-workspace', '--workspace', 'workspace:7'])
+  })
+
   test('spawn auto-launches cmux when the socket is down, then proceeds', async () => {
     let socketUp = false
     let launched = 0

@@ -277,6 +277,12 @@ interface TeardownOptions {
   readonly initiatorPersona?: string | null
 }
 
+interface StoredSession {
+  readonly persona: string
+  readonly sessionRef: string
+  readonly workspaceRef?: string | null
+}
+
 function normalizePersona(input?: string | null): string | null {
   const value = input?.trim().toLowerCase()
   return value ? value : null
@@ -300,21 +306,27 @@ async function legacySessionStillRunning(ctx: OzContext, sessionRef: string): Pr
 async function closeRunSurfaces(ctx: OzContext, runId: string, opts: TeardownOptions = {}): Promise<CloseRunSurfacesResult> {
   const closed: string[] = []
   const failed: TeardownFailure[] = []
-  for (const s of orderSessionsForTeardown(ctx.store.listSessions(runId), opts.initiatorPersona)) {
+  const ordered = orderSessionsForTeardown(ctx.store.listSessions(runId), opts.initiatorPersona)
+  const workspaceGroups = new Map<string, StoredSession[]>()
+  const legacySessions: StoredSession[] = []
+  for (const s of ordered) {
+    if (s.workspaceRef) {
+      const group = workspaceGroups.get(s.workspaceRef) ?? []
+      group.push(s)
+      workspaceGroups.set(s.workspaceRef, group)
+    } else {
+      legacySessions.push(s)
+    }
+  }
+
+  const closeLegacy = async (s: StoredSession): Promise<void> => {
     try {
-      if (s.workspaceRef) {
-        // Durable path: close by stored {workspaceRef, surfaceRef} — works even for a pane spawned by a
-        // PRIOR daemon instance (the actual Deb-leak fix; no in-memory spawn-map lookup).
-        await ctx.sessionHost.closeSurface({ workspaceRef: s.workspaceRef, surfaceRef: s.sessionRef })
-      } else {
-        // Legacy rows (pre-workspace_ref): best-effort same-instance kill.
-        await ctx.sessionHost.kill({ id: s.sessionRef, driver: 'cmux' })
-      }
+      await ctx.sessionHost.kill({ id: s.sessionRef, driver: 'cmux' })
       closed.push(s.sessionRef)
     } catch (err) {
-      if (!s.workspaceRef && !(await legacySessionStillRunning(ctx, s.sessionRef))) {
+      if (!(await legacySessionStillRunning(ctx, s.sessionRef))) {
         ctx.liveRefs.delete(s.sessionRef)
-        continue
+        return
       }
       failed.push({
         persona: s.persona,
@@ -322,7 +334,69 @@ async function closeRunSurfaces(ctx: OzContext, runId: string, opts: TeardownOpt
         error: err instanceof Error ? err.message : String(err),
       })
     }
+    ctx.liveRefs.delete(s.sessionRef)
+  }
+
+  const closeDurableSurface = async (s: StoredSession & { readonly workspaceRef: string }): Promise<{ ok: true } | { ok: false; error: string }> => {
+    try {
+      // Durable path: close by stored {workspaceRef, surfaceRef} — works even for a pane spawned by a
+      // PRIOR daemon instance (the actual Deb-leak fix; no in-memory spawn-map lookup).
+      await ctx.sessionHost.closeSurface({ workspaceRef: s.workspaceRef, surfaceRef: s.sessionRef })
+      closed.push(s.sessionRef)
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) }
+    }
     ctx.liveRefs.delete(s.sessionRef) // prune any stale deep-link regardless of kill outcome
+    return { ok: true }
+  }
+
+  const closeDurableWorkspace = async (workspaceRef: string, sessions: ReadonlyArray<StoredSession & { closeSurfaceError?: string }>): Promise<void> => {
+    const closeWorkspace = ctx.sessionHost.closeWorkspace
+    if (!closeWorkspace) {
+      // Non-cmux/fake host without a workspace primitive: preserve the old behavior rather than lying.
+      for (const s of sessions) {
+        if (!s.workspaceRef) continue
+        const result = await closeDurableSurface(s as StoredSession & { readonly workspaceRef: string })
+        if (!result.ok) {
+          failed.push({
+            persona: s.persona,
+            sessionRef: s.sessionRef,
+            error: result.error,
+          })
+          ctx.liveRefs.delete(s.sessionRef)
+        }
+      }
+      return
+    }
+    try {
+      await closeWorkspace({ workspaceRef })
+      for (const s of sessions) {
+        closed.push(s.sessionRef)
+        ctx.liveRefs.delete(s.sessionRef)
+      }
+    } catch (err) {
+      for (const s of sessions) {
+        failed.push({
+          persona: s.persona,
+          sessionRef: s.sessionRef,
+          error: err instanceof Error ? err.message : String(err),
+        })
+        ctx.liveRefs.delete(s.sessionRef)
+      }
+    }
+  }
+
+  for (const s of legacySessions) await closeLegacy(s)
+  for (const [workspaceRef, sessions] of workspaceGroups) {
+    const finalSession = sessions.at(-1)
+    const prefix = finalSession ? sessions.slice(0, -1) : sessions
+    const workspaceRemainder: Array<StoredSession & { closeSurfaceError?: string }> = []
+    for (const s of prefix) {
+      const result = await closeDurableSurface(s as StoredSession & { readonly workspaceRef: string })
+      if (!result.ok) workspaceRemainder.push({ ...s, closeSurfaceError: result.error })
+    }
+    if (finalSession) workspaceRemainder.push(finalSession)
+    if (workspaceRemainder.length > 0) await closeDurableWorkspace(workspaceRef, workspaceRemainder)
   }
   return { closed, failed }
 }

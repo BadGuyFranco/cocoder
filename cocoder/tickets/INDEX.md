@@ -15,12 +15,12 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 |---|---|---|---|---|
 | [0003](./open/0003-public-docs-v1-stale.md) | Public docs/ tree is v1-stale (commands, PRIORITIES.md, cocoder/local, routes) | task | none | founder-session |
 | [0007](./open/0007-design-ref-rebuild-clobber-guard.md) | Guard against design-ref rebuilds reverting committed packages/ui/app fixes | task | oz-dashboard-bugs | oscar run_94 |
-| [0009](./open/0009-teardown-cannot-close-last-surface.md) | Teardown fails to close the run's last surface (cmux last-surface invariant) | bug | none | oscar run_111 |
 
 ## Recently Closed
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0009](./closed/0009-teardown-cannot-close-last-surface.md) | Teardown fails to close the run's last surface (cmux last-surface invariant) | bug | 2026-06-17 | Added cmux workspace-close support and changed teardown to close the final run surface via the stored workspace ref |
 | [0010](./closed/0010-auto-rebuild-ui-bundle-after-dashboard-changes.md) | Auto-rebuild the Oz UI bundle after a run changes packages/ui (no manual `pnpm build`) | task | 2026-06-17 | Runner rebuilds `packages/ui/out/` once at finalization when committed files touch `packages/ui/**`; build/clobber failures surface plainly |
 | [0008](./closed/0008-post-wrap-founder-interaction-contract.md) | Wrapped Oscar is reachable but lacks a committed post-wrap action path | bug | 2026-06-16 | Added `commit-support <runId>` / `POST /runs/:id/support-commit`; wrapped Oscar can make Surface-A edits and the daemon commits them with a run-linked receipt |
 | [0006](./closed/0006-headless-adapter-lane-claude-codex.md) | Headless adapter lane for claude/codex (Oz-on-claude; fixes headless Plays pinned to interactive CLIs) | bug | 2026-06-16 | Headless lane built (claude print mode + codex exec), `headlessCapable=true`, flags verified vs real binaries, `scripts/proof-headless-lane.mjs` re-proves; latent pins no longer hang (`dd2f518`+`336fb20`) |
