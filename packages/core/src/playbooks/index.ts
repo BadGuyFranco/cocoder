@@ -69,3 +69,18 @@ export {
   type SubsystemEstimate,
   type SubsystemSizeSignals,
 } from './estimate.js'
+export {
+  buildIntentIntakePrompt,
+  runIntentIntake,
+  type FounderAssertedIntent,
+  type FounderAssertion,
+  type FounderIntentAnswers,
+  type InferredPurposeClaim,
+  type IntentAgentTurn,
+  type IntentAgentTurnInput,
+  type IntentArtifact,
+  type IntentArtifactKind,
+  type IntentJson,
+  type IntentProvenance,
+  type RunIntentIntakeInput,
+} from './intent.js'
