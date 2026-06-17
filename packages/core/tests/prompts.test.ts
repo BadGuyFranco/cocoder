@@ -4,6 +4,7 @@ import { buildBuilderDispatch, buildNextOrWrapDispatch, buildObserverPrompt, bui
 const orchestratorInput = {
   sharedStandards: '# Standards',
   oscarBody: 'Oscar body',
+  priorityId: 'demo',
   priorityTitle: 'Demo priority',
   priorityGoal: 'Do the base goal.',
   firstDirectivePath: '/runs/run_1/directive-0.json',
@@ -52,6 +53,33 @@ describe('buildBuilderDispatch', () => {
       expect(prompt).toContain(task)
       expect(prompt.indexOf('Do the base goal.')).toBeLessThan(prompt.indexOf("## Founder's ad-hoc instruction (this run)"))
     }
+  })
+
+  test('treats pasted adhoc-session instructions as the work before wrap-up', () => {
+    const prompt = buildOrchestratorPrompt({
+      ...orchestratorInput,
+      priorityId: 'adhoc-session',
+      priorityTitle: 'Session without a named priority',
+      task: 'Review this traceback and tell me what happened.',
+    })
+
+    expect(prompt).toContain('# Adhoc support mode')
+    expect(prompt).toContain("the founder pasted a specific instruction")
+    expect(prompt).toContain('Do not treat "no concrete builder atom" as an immediate reason to\nwrap up')
+    expect(prompt).toContain('First perform the bounded read-only support/drafting task')
+    expect(prompt).toContain('Do not\nwrite an immediate wrap-up merely because there is no builder atom')
+    expect(prompt).not.toContain('your FIRST action in this run is to write the required\ndirective JSON')
+  })
+
+  test('keeps the strict artifact-first rule for normal priority tasks', () => {
+    const prompt = buildOrchestratorPrompt({
+      ...orchestratorInput,
+      task: 'Implement the next scoped atom.',
+    })
+
+    expect(prompt).toContain('Artifact-first rule')
+    expect(prompt).toContain('your FIRST action in this run is to write the required\ndirective JSON')
+    expect(prompt).not.toContain('# Adhoc support mode')
   })
 
   test('renders prompts identically when task is absent or null', () => {

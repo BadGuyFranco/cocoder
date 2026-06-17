@@ -16,6 +16,49 @@ function adHocInstruction(task?: string | null): string {
   return typeof task === 'string' && task.trim() !== '' ? `\n## Founder's ad-hoc instruction (this run)\n\n${task}\n` : ''
 }
 
+function hasAdHocTask(task?: string | null): boolean {
+  return typeof task === 'string' && task.trim() !== ''
+}
+
+function isAdHocSupportRun(input: { priorityId: string; task?: string | null }): boolean {
+  return input.priorityId === 'adhoc-session' && hasAdHocTask(input.task)
+}
+
+function adHocSupportMode(input: { priorityId: string; task?: string | null }): string {
+  if (!isAdHocSupportRun(input)) return ''
+  return `
+# Adhoc support mode
+
+This is the standing "no named priority" on-ramp, and the founder pasted a specific instruction. That
+instruction is the work for this run. Do not treat "no concrete builder atom" as an immediate reason to
+wrap up.
+
+Handle the pasted instruction before wrap-up:
+- If it asks for thinking, research, review, diagnosis, or a draft priority, do that read-mostly work
+  yourself and produce the written report or draft in the founder-visible conversation.
+- If it reveals product-code work, do not delegate or commit product code from this session; draft the
+  needed priority/objective or name the exact founder approval needed.
+- Wrap only after you have delivered the report/draft or identified the one missing founder input. The
+  pickup brief must include that concrete result, not just "ready" or "no atom".
+`
+}
+
+function artifactFirstRule(input: { priorityId: string; task?: string | null; firstDirectivePath: string }): string {
+  if (isAdHocSupportRun(input)) {
+    return `**Artifact rule for this adhoc support run:** the runner still needs a directive JSON at
+\`${input.firstDirectivePath}\` before the run can close, but the founder's pasted instruction is the
+actual work. First perform the bounded read-only support/drafting task in the conversation. Then write a
+wrap-up directive whose pickup contains the report/draft or the exact missing founder input. Do not
+write an immediate wrap-up merely because there is no builder atom.`
+  }
+  return `**Artifact-first rule (non-negotiable):** your FIRST action in this run is to write the required
+directive JSON to \`${input.firstDirectivePath}\`. Do not answer in chat, finish the session, or wait
+for founder follow-up before that artifact exists — the runner is polling for the FILE; a chat reply
+is invisible to it, and exiting without the file faults the whole run (\`directive-timeout\`, the
+loop's most-recurred failure). If the priority does not contain enough concrete work to delegate yet,
+write a wrap-up directive whose pickup says exactly what founder input is needed — never just exit.`
+}
+
 function shellSingleQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`
 }
@@ -23,6 +66,7 @@ function shellSingleQuote(value: string): string {
 export function buildOrchestratorPrompt(input: {
   sharedStandards: string
   oscarBody: string
+  priorityId: string
   priorityTitle: string
   priorityGoal: string
   task?: string | null
@@ -60,7 +104,7 @@ ${input.oscarBody}
 
 Priority: **${input.priorityTitle}**
 
-${input.priorityGoal}${adHocInstruction(input.task)}
+${input.priorityGoal}${adHocInstruction(input.task)}${adHocSupportMode(input)}
 ${resume}
 # Working state (this run)
 
@@ -70,12 +114,7 @@ switch branches by hand; just do the work and let the runner commit it.
 
 # How this run works — you orchestrate the builder through a LOOP
 
-**Artifact-first rule (non-negotiable):** your FIRST action in this run is to write the required
-directive JSON to \`${input.firstDirectivePath}\`. Do not answer in chat, finish the session, or wait
-for founder follow-up before that artifact exists — the runner is polling for the FILE; a chat reply
-is invisible to it, and exiting without the file faults the whole run (\`directive-timeout\`, the
-loop's most-recurred failure). If the priority does not contain enough concrete work to delegate yet,
-write a wrap-up directive whose pickup says exactly what founder input is needed — never just exit.
+${artifactFirstRule(input)}
 
 You drive the builder (${input.builderLabel}, a \`${input.builderCli}\` CLI) through a SEQUENCE of small
 atoms. One atom at a time:

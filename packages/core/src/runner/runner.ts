@@ -314,6 +314,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const oscarLaunchPrompt = buildOrchestratorPrompt({
     sharedStandards,
     oscarBody: oscar.body,
+    priorityId: priority.id,
     priorityTitle: priority.title,
     priorityGoal: priority.goal,
     task: input.task ?? null,
