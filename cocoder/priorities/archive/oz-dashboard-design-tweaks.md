@@ -96,11 +96,15 @@ restore wiped the tree); atom-2 landed cleanly with a no-tests/no-bulk-revert gu
 bundle** (ticket 0010 rebuilds `packages/ui/out/` at run finalization); `pnpm -w typecheck` and the UI
 suite green; token files in sync.
 
-## Status — archive-candidate (run_115, 2026-06-17)
+## Status — ARCHIVED · founder-confirmed · code-complete (run_115, 2026-06-17)
 
-Rounds 1–3 code-complete. Round-1 items 2–3 and Round-2 contrast direction founder-confirmed; Round-3
-all four visual items shipped (`1afcb33`). **Only gate:** founder visual confirmation on the rebuilt Oz
-dashboard in **both** dark and light themes. If all four Round-3 items look right → archive-ready. If
-any needs a nudge, it is a one-atom token/layout tweak (e.g. push container bg further from card bg if
-rows still blend; surface-solid/glass split if dark cards look uneven) — not a re-architecture. Do
-**not** self-archive; founder confirms.
+**Archived 2026-06-17 on the founder's explicit `archive` go-ahead** (the founder-owned acceptance gate).
+All three rounds are complete and on `main`: Round-1 items 2–3 and Round-2 contrast direction
+founder-confirmed; Round-3's four visual items shipped (`1afcb33`) and confirmed by the founder's eye on
+the rebuilt bundle in both dark and light themes. `pnpm -w typecheck` clean, UI suite 113/113.
+
+**Disposition:** `archived` (founder-confirmed). The three Round-3 verify atoms: atom-0 rejected (rewrote
+green test files, out of scope); atom-1 rejected (bulk git restore wiped the tree); atom-2 landed cleanly
+with a no-tests/no-bulk-revert guardrail. The contrast/surface items were an irreducibly-visual founder
+acceptance gate, cleared by the explicit `archive` go-ahead. No follow-ons reopen this priority; a future
+nudge to any token/layout value would be a fresh one-atom polish, not a reopening.
