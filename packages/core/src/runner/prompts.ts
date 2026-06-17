@@ -389,6 +389,10 @@ that command is unavailable or fails, report the exact blocker and the edited pa
 ${brief}`
 }
 
+export function buildArtifactDispatch(kind: string, path: string): string {
+  return `${kind}: read ${path} and follow it now.`
+}
+
 /** The AUTHORITATIVE landing outcome (F19), delivered AFTER integration so it cannot misreport. The
  *  narrative wrap is a prediction; this is the verified result — whether work reached trunk, what is
  *  held back, and how to recover if it did not. Derived from settled run state, never asserted. */

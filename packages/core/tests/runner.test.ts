@@ -164,6 +164,7 @@ const fakeIO = (opts: {
   /** Status snapshots captured each time the runner refreshes the feed. */
   statusWrites?: DebStatus[]
   pickupWrites?: string[]
+  artifactWrites?: Array<{ runDir: string; fileName: string; contents: string }>
   recordWrites?: string[]
 }): RunnerIO => {
   let di = 0
@@ -197,6 +198,10 @@ const fakeIO = (opts: {
     async writePickup(runDir, markdown) {
       opts.pickupWrites?.push(markdown)
       return `${runDir}/pickup.md`
+    },
+    async writeRunArtifact(runDir, fileName, contents) {
+      opts.artifactWrites?.push({ runDir, fileName, contents })
+      return `${runDir}/${fileName}`
     },
     async writeRunRecord(runDir) {
       opts.recordWrites?.push(runDir)
@@ -686,6 +691,38 @@ describe('runRun (multi-atom loop)', () => {
     expect(store.listCommitLinks(result.runId)).toEqual([])
     const wrap = store.listEvents(result.runId).find((e) => e.type === 'wrapup')
     expect(wrap?.data).toEqual({ atoms: 0, forced: false })
+  })
+
+  test('visible Oscar wrap and landing delivery use short artifact pointers, not multiline pane sends', async () => {
+    const store = openRunStore(':memory:')
+    const artifactWrites: Array<{ runDir: string; fileName: string; contents: string }> = []
+    const sends: string[] = []
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        io: fakeIO({ directives: [wrapup('Founder closeout\nwith detail')], artifactWrites }),
+        sessionHost: fakeSessionHost({
+          async sendInput(_ref, text) {
+            sends.push(text)
+          },
+        }),
+      }),
+      input,
+    )
+
+    expect(result.status).toBe('completed')
+    expect(sends).toEqual([
+      'WRAP-UP READY: read /runs/run_1/wrapup-delivery.md and follow it now.',
+      'LANDING OUTCOME: read /runs/run_1/landing-outcome-delivery.md and follow it now.',
+    ])
+    expect(sends.every((text) => !text.includes('\n'))).toBe(true)
+    expect(artifactWrites.map((w) => w.fileName)).toEqual(['wrapup-delivery.md', 'landing-outcome-delivery.md'])
+    expect(artifactWrites[0]?.contents).toContain('WRAP-UP READY for run_1.')
+    expect(artifactWrites[0]?.contents).toContain('Founder closeout\nwith detail')
+    expect(artifactWrites[1]?.contents).toContain('LANDING OUTCOME for run_1')
+    const delivery = store.listEvents(result.runId).find((e) => e.type === 'wrapup-delivery-dispatch')
+    expect(delivery?.data).toMatchObject({ ref: 'surface:1', path: '/runs/run_1/wrapup-delivery.md' })
   })
 
   test('gate-commits Oscar support files at wrap (no holdback to clear — nothing is held)', async () => {

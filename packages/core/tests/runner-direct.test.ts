@@ -71,6 +71,9 @@ const fakeIO = (directives: Directive[], verdicts?: { verdict: 'pass' | 'fail'; 
     async writePickup(d) {
       return `${d}/pickup.md`
     },
+    async writeRunArtifact(d, name) {
+      return `${d}/${name}`
+    },
     async writeRunRecord(d) {
       return `${d}/record.md`
     },

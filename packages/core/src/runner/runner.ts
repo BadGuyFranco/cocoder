@@ -33,6 +33,7 @@ import { createHeadlessOscarDriver, createPaneOscarDriver, type OscarDriver } fr
 import { spawnObserver } from './observer.js'
 import {
   buildBuilderStandbyPrompt,
+  buildArtifactDispatch,
   buildDebTriageDispatch,
   buildLandingOutcome,
   buildNextOrWrapDispatch,
@@ -836,9 +837,10 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         if (oscarDriver.kind === 'headless') {
           store.recordEvent({ runId: run.id, type: 'wrapup-delivery-skipped', data: { reason: 'headless-oscar' } })
         } else {
+          const deliveryPath = await io.writeRunArtifact(runDir, 'wrapup-delivery.md', buildWrapupDelivery(run.id, pickup))
           await oscarDriver.show().catch(() => {})
-          await oscarDriver.send(buildWrapupDelivery(run.id, pickup)).catch(() => {})
-          store.recordEvent({ runId: run.id, type: 'wrapup-delivery-dispatch', data: { ref: oscarDriver.refId } })
+          await oscarDriver.send(buildArtifactDispatch('WRAP-UP READY', deliveryPath)).catch(() => {})
+          store.recordEvent({ runId: run.id, type: 'wrapup-delivery-dispatch', data: { ref: oscarDriver.refId, path: deliveryPath } })
         }
       }
       await refreshStatus('wrapped', n, null, 'wrap-up delivered; Oscar remains reachable for founder questions and in-scope Surface-A edits until explicit teardown')
@@ -929,8 +931,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     const outcome = `✅ COMMITTED on \`${runBranch}\` — ${nCommits} commit(s) on the active branch (no landing step; work is on the branch by construction). ${flagged}`
     store.recordEvent({ runId: run.id, type: 'landing-outcome', data: { landed: true, status, outOfScope, outcome } })
     if (pickup && pickup.trim() !== '' && oscarDriver.kind !== 'headless') {
+      const outcomePath = await io.writeRunArtifact(runDir, 'landing-outcome-delivery.md', buildLandingOutcome(run.id, outcome))
       await oscarDriver.show().catch(() => {})
-      await oscarDriver.send(buildLandingOutcome(run.id, outcome)).catch(() => {})
+      await oscarDriver.send(buildArtifactDispatch('LANDING OUTCOME', outcomePath)).catch(() => {})
     }
   }
 

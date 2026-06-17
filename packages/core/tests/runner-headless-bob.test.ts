@@ -142,6 +142,9 @@ function fakeIO(): RunnerIO {
     async writePickup(runDir) {
       return `${runDir}/pickup.md`
     },
+    async writeRunArtifact(runDir, fileName) {
+      return `${runDir}/${fileName}`
+    },
     async writeRunRecord(runDir) {
       return `${runDir}/record.md`
     },

@@ -35,6 +35,8 @@ export interface RunnerIO {
   ): Promise<{ verdict: 'pass' | 'fail'; reason: string | null }>
   /** Write the run's pickup brief (the resumable continuation artifact; ADR-0002 C1 / F8). */
   writePickup(runDir: string, markdown: string): Promise<string>
+  /** Write a runner-owned support artifact and return the absolute path agents can read. */
+  writeRunArtifact(runDir: string, fileName: string, contents: string): Promise<string>
   writeRunRecord(runDir: string, markdown: string): Promise<string>
   /** Write the fault context the runner hands Deb to triage (ADR-0013 tier 2). */
   writeFaultContext(faultPath: string, ctx: unknown): Promise<void>
@@ -136,6 +138,11 @@ export function makeRunnerIO(): RunnerIO {
     async writePickup(runDir, markdown) {
       const path = join(runDir, 'pickup.md')
       await writeFile(path, markdown, 'utf8')
+      return path
+    },
+    async writeRunArtifact(runDir, fileName, contents) {
+      const path = join(runDir, fileName)
+      await writeFile(path, contents, 'utf8')
       return path
     },
     async writeRunRecord(runDir, markdown) {
