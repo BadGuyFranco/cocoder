@@ -3,7 +3,7 @@
 // control flow but structurally cannot catch a wrong `git` invocation (the F7 lesson: load-bearing
 // path handling gets discovered at runtime unless exercised end-to-end).
 import { execFile } from 'node:child_process'
-import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
@@ -40,6 +40,27 @@ afterEach(async () => {
 })
 
 describe('Git worktree/merge primitives (ADR-0015, live git)', () => {
+  test('addAndCommit stages deleted rename sources without pathspec failure', async () => {
+    await writeFile(join(main, 'priority.md'), 'active\n')
+    await writeFile(join(main, 'order.json'), '["priority"]\n')
+    await g(main, ['add', 'priority.md', 'order.json'])
+    await g(main, ['commit', '-q', '-m', 'seed priority'])
+
+    await mkdir(join(main, 'archive'))
+    await rename(join(main, 'priority.md'), join(main, 'archive', 'priority.md'))
+    await writeFile(join(main, 'archive', 'priority.md'), 'archived\n')
+    await writeFile(join(main, 'order.json'), '[]\n')
+
+    const changed = await git.changedFiles(main)
+    expect(changed).toEqual(expect.arrayContaining(['archive/priority.md', 'priority.md', 'order.json']))
+
+    const sha = await git.addAndCommit(main, changed, 'archive priority')
+
+    expect(sha).toBeTruthy()
+    expect(await g(main, ['status', '--porcelain'])).toBe('')
+    expect(await g(main, ['show', '--name-status', '--format=', sha])).toContain('priority.md')
+  })
+
   test('worktreeAdd creates an isolated branch+checkout; listWorktrees reports it', async () => {
     const wt = join(main, 'wt-run')
     await git.worktreeAdd(main, wt, 'cocoder/run_x', trunkSha)

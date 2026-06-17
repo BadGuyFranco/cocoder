@@ -1,6 +1,8 @@
 // Git operations the commit-gate needs (ADR-0007). Injectable so the gate is unit-testable
 // without a real repo; the default impl shells out to git in the target cwd.
 import { execFile } from 'node:child_process'
+import { lstat } from 'node:fs/promises'
+import { join } from 'node:path'
 import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
@@ -91,6 +93,8 @@ const git = async (cwd: string, args: string[]): Promise<string> => {
   return stdout
 }
 
+const pathExists = (cwd: string, file: string): Promise<boolean> => lstat(join(cwd, file)).then(() => true, () => false)
+
 /** Parse `git status --porcelain -z` output into a list of changed paths. The `-z` form is the sound
  *  one for an integrity boundary: paths are emitted VERBATIM (no quoting/escaping), so spaces and other
  *  special characters can't corrupt the partition. Records are NUL-separated; each is `XY␠PATH`. A
@@ -137,7 +141,13 @@ export function makeGit(): Git {
       return parsePorcelain(await git(cwd, ['status', '--porcelain', '-z', '--untracked-files=all']))
     },
     async addAndCommit(cwd, files, message, author) {
-      await git(cwd, ['add', '--', ...files])
+      const existing: string[] = []
+      const missing: string[] = []
+      for (const file of files) {
+        ;(await pathExists(cwd, file) ? existing : missing).push(file)
+      }
+      if (existing.length > 0) await git(cwd, ['add', '--', ...existing])
+      if (missing.length > 0) await git(cwd, ['rm', '--ignore-unmatch', '--', ...missing])
       const authorArgs = author
         ? ['-c', `user.name=${author.name}`, '-c', `user.email=${author.email}`, 'commit', '-m', message, `--author=${author.name} <${author.email}>`]
         : ['commit', '-m', message]
