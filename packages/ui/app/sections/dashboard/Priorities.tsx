@@ -28,7 +28,7 @@ function PriorityRow({ priority, index, onLaunch, onDrag, isDragging, isDropTarg
         borderLeft: `1px solid ${borderColor}`,
         borderRight: `1px solid ${isSelected ? 'var(--cb-accent)' : borderColor}`,
         borderRadius: isSelected ? 'var(--cb-radius-md) 0 0 var(--cb-radius-md)' : 'var(--cb-radius-md)',
-        padding: '11px 12px 12px', marginBottom: 8, marginRight: isSelected ? -17 : 0, paddingRight: isSelected ? 24 : 12,
+        padding: '9px 10px', marginBottom: 8, marginRight: isSelected ? -17 : 0, paddingRight: isSelected ? 24 : 10,
         opacity: isDragging ? 0.4 : 1,
         boxShadow: isDropTarget ? '0 0 0 2px var(--cb-accent-30)' : isSelected ? '0 4px 16px rgba(201,169,110,0.18)' : 'none',
         cursor: isActive ? 'pointer' : 'grab',
@@ -37,17 +37,15 @@ function PriorityRow({ priority, index, onLaunch, onDrag, isDragging, isDropTarg
       }}>
       {isSelected && <div style={{ position: 'absolute', right: -8, top: '50%', transform: 'translateY(-50%) rotate(45deg)', width: 14, height: 14, background: 'var(--cb-accent-muted)', borderTop: '1px solid var(--cb-accent)', borderRight: '1px solid var(--cb-accent)', zIndex: 6, pointerEvents: 'none' }} />}
       {isActive && !isSelected && <div data-run-accent={linkedRun?.status} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: isBlocked ? 'var(--cb-highlight)' : 'var(--cb-accent)', animation: isBlocked ? 'none' : 'ozPulse 1.8s infinite' }} />}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 1 }}>
           <Icon name="dots-six-vertical" size={14} style={{ color: 'var(--cb-text-muted)', cursor: 'grab' }} />
           <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: index === 0 ? 'var(--cb-accent)' : 'var(--cb-text-muted)', minWidth: 18, textAlign: 'right' }}>{String(index + 1).padStart(2, '0')}</span>
         </div>
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--cb-text)', lineHeight: 1.4 }}>{priority.name}</div>
-          <div style={{ marginLeft: 'auto', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-            {linkedRun ? <StatusChip status={linkedRun.status} /> : <StatusChip status={priority.status} label={priority.status === 'ready' ? 'Ready' : priority.status} />}
-            {!isActive && <Button variant="secondary" size="sm" icon="play" disabled={launchBlocked} title={launchBlocked ? LAUNCH_BLOCKED_HINT : undefined} onClick={(e) => { e.stopPropagation(); onLaunch(priority) }}>Launch</Button>}
-          </div>
+        <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 500, color: 'var(--cb-text)', lineHeight: 1.4, paddingTop: 1 }}>{priority.name}</div>
+        <div className="oz-priority-actions">
+          {linkedRun ? <StatusChip status={linkedRun.status} /> : <StatusChip status={priority.status} label={priority.status === 'ready' ? 'Ready' : priority.status} />}
+          {!isActive && <Button variant="secondary" size="sm" icon="play" disabled={launchBlocked} title={launchBlocked ? LAUNCH_BLOCKED_HINT : undefined} onClick={(e) => { e.stopPropagation(); onLaunch(priority) }}>Launch</Button>}
         </div>
       </div>
       {isActive && linkedRun && (
@@ -71,8 +69,8 @@ function AdhocPriorityRow({ adhocRuns, onLaunch, onSelectRun, selectedRunId, lau
   const hasSelected = adhocRuns.some((r) => r.id === selectedRunId)
   const borderColor = hasSelected ? 'var(--cb-accent)' : adhocRuns.length > 0 ? 'var(--cb-accent-30)' : 'var(--cb-border)'
   return (
-    <div style={{ background: hasSelected ? 'var(--cb-accent-muted)' : 'var(--cb-surface-glass)', borderTop: `1px solid ${borderColor}`, borderBottom: `1px solid ${borderColor}`, borderLeft: `1px solid ${borderColor}`, borderRight: `1px solid ${hasSelected ? 'var(--cb-accent)' : borderColor}`, borderRadius: hasSelected ? 'var(--cb-radius-md) 0 0 var(--cb-radius-md)' : 'var(--cb-radius-md)', padding: '11px 12px 12px', marginBottom: 8, marginRight: hasSelected ? -17 : 0, paddingRight: hasSelected ? 24 : 12, position: 'relative', transition: 'all 200ms ease-out', boxShadow: hasSelected ? '0 4px 16px rgba(201,169,110,0.18)' : 'none', zIndex: hasSelected ? 5 : 1 }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
+    <div style={{ background: hasSelected ? 'var(--cb-accent-muted)' : 'var(--cb-surface-glass)', borderTop: `1px solid ${borderColor}`, borderBottom: `1px solid ${borderColor}`, borderLeft: `1px solid ${borderColor}`, borderRight: `1px solid ${hasSelected ? 'var(--cb-accent)' : borderColor}`, borderRadius: hasSelected ? 'var(--cb-radius-md) 0 0 var(--cb-radius-md)' : 'var(--cb-radius-md)', padding: '9px 10px', marginBottom: 8, marginRight: hasSelected ? -17 : 0, paddingRight: hasSelected ? 24 : 10, position: 'relative', transition: 'all 200ms ease-out', boxShadow: hasSelected ? '0 4px 16px rgba(201,169,110,0.18)' : 'none', zIndex: hasSelected ? 5 : 1 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 1 }}><Icon name="push-pin" size={12} style={{ color: 'var(--cb-text-muted)' }} /><Icon name="lightning" size={14} style={{ color: 'var(--cb-accent)' }} /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -81,10 +79,10 @@ function AdhocPriorityRow({ adhocRuns, onLaunch, onSelectRun, selectedRunId, lau
           </div>
           <div style={{ fontSize: 11.5, color: 'var(--cb-text-muted)', lineHeight: 1.5 }}>Refactors · code reviews · research · audits — work that doesn't fit a priority.</div>
         </div>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 36 }}>
-        {activeCount > 0 ? <span className="oz-chip oz-chip-running"><span className="dot" />{activeCount} active</span> : <StatusChip status="ready" label="Ready" />}
-        <div style={{ marginLeft: 'auto' }}><Button variant="secondary" size="sm" icon="play" disabled={launchBlocked} title={launchBlocked ? LAUNCH_BLOCKED_HINT : undefined} onClick={(e) => { e.stopPropagation(); onLaunch() }}>Launch run</Button></div>
+        <div className="oz-priority-actions">
+          {activeCount > 0 ? <span className="oz-chip oz-chip-running"><span className="dot" />{activeCount} active</span> : <StatusChip status="ready" label="Ready" />}
+          <Button variant="secondary" size="sm" icon="play" disabled={launchBlocked} title={launchBlocked ? LAUNCH_BLOCKED_HINT : undefined} onClick={(e) => { e.stopPropagation(); onLaunch() }}>Launch run</Button>
+        </div>
       </div>
       {adhocRuns.length > 0 && (
         <div style={{ marginTop: 10, marginLeft: 36, paddingTop: 10, borderTop: '1px solid var(--cb-border)' }}>
@@ -124,7 +122,7 @@ export function PrioritiesPanel({ priorities, runs, onReorder, onLaunch, onAdhoc
   // truly in-flight ('running') run holds the lock — settled runs have ended.
   const launchBlocked = runs.some((r) => r.status === 'running')
   return (
-    <div className="oz-panel" style={{ height: '100%' }}>
+    <div className="oz-panel oz-priorities-panel" style={{ height: '100%' }}>
       <div className="oz-panel-header">
         <Icon name="list-numbers" size={15} style={{ color: 'var(--cb-accent)' }} />
         <div className="oz-panel-title">Priorities</div>

@@ -48,8 +48,8 @@
   --cb-bg: #2A251F;                       /* espresso */
   --cb-bg-soft: #25211C;                  /* one step up */
   --cb-surface: rgba(20, 17, 14, 0.96);   /* glass — needs backdrop-filter */
-  --cb-surface-solid: #1E1A16;            /* solid fallback */
-  --cb-surface-raised: #221E19;
+  --cb-surface-solid: #16120F;            /* solid fallback */
+  --cb-surface-raised: #1B1713;
   --cb-surface-glass: rgba(20, 17, 14, 0.96);
 
   /* —— Text foregrounds —— */

@@ -22,10 +22,10 @@ const PriorityRow = ({ priority, index, onLaunch, onDrag, isDragging, isDropTarg
         border: `1px solid ${isSelected ? 'var(--cb-accent)' : isBlocked ? 'rgba(212,118,110,0.30)' : isRunning ? 'var(--cb-accent-30)' : 'var(--cb-border)'}`,
         borderRight: isSelected ? '1px solid var(--cb-accent)' : undefined,
         borderRadius: isSelected ? 'var(--cb-radius-md) 0 0 var(--cb-radius-md)' : 'var(--cb-radius-md)',
-        padding: '11px 12px 12px',
+        padding: '9px 10px',
         marginBottom: 8,
         marginRight: isSelected ? -17 : 0,
-        paddingRight: isSelected ? 24 : 12,
+        paddingRight: isSelected ? 24 : 10,
         opacity: isDragging ? 0.4 : 1,
         boxShadow: isDropTarget ? '0 0 0 2px var(--cb-accent-30)' :
                     isSelected ? '0 4px 16px rgba(201,169,110,0.18)' : 'none',
@@ -57,7 +57,7 @@ const PriorityRow = ({ priority, index, onLaunch, onDrag, isDragging, isDropTarg
         }}></div>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 6,
           paddingTop: 1,
@@ -77,23 +77,12 @@ const PriorityRow = ({ priority, index, onLaunch, onDrag, isDragging, isDropTarg
             {priority.summary}
           </div>
         </div>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 36, flexWrap: 'wrap' }}>
-        {linkedRun ? (
-          <D.StatusChip status={linkedRun.status} />
-        ) : (
-          <D.StatusChip status={priority.status} label={priority.status === "ready" ? "Ready" : priority.status} />
-        )}
-        {priority.labels.map(l => (
-          <span key={l} style={{
-            fontFamily: 'var(--cb-font-mono)', fontSize: 9.5,
-            color: 'var(--cb-text-muted)',
-            padding: '2px 6px', border: '1px solid var(--cb-border)',
-            borderRadius: 2,
-          }}>{l}</span>
-        ))}
-        <div style={{ marginLeft: 'auto' }}>
+        <div className="oz-priority-actions">
+          {linkedRun ? (
+            <D.StatusChip status={linkedRun.status} />
+          ) : (
+            <D.StatusChip status={priority.status} label={priority.status === "ready" ? "Ready" : priority.status} />
+          )}
           {!isRunning && (
             <D.Button variant="secondary" size="sm" icon="play" onClick={(e) => { e.stopPropagation(); onLaunch(priority); }}>
               Launch
@@ -163,17 +152,17 @@ const AdhocPriorityRow = ({ adhocRuns, onLaunch, onSelectRun, selectedRunId }) =
       border: `1px solid ${hasSelected ? 'var(--cb-accent)' : adhocRuns.length > 0 ? 'var(--cb-accent-30)' : 'var(--cb-border)'}`,
       borderRight: hasSelected ? '1px solid var(--cb-accent)' : undefined,
       borderRadius: hasSelected ? 'var(--cb-radius-md) 0 0 var(--cb-radius-md)' : 'var(--cb-radius-md)',
-      padding: '11px 12px 12px',
+      padding: '9px 10px',
       marginBottom: 8,
       marginRight: hasSelected ? -17 : 0,
-      paddingRight: hasSelected ? 24 : 12,
+      paddingRight: hasSelected ? 24 : 10,
       position: 'relative',
       transition: 'all 200ms ease-out',
       boxShadow: hasSelected ? '0 4px 16px rgba(201,169,110,0.18)' : 'none',
       zIndex: hasSelected ? 5 : 1,
     }}>
       <D.DevNote n={4} anchor="top-right" />
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 1 }}>
           <D.Icon name="push-pin" size={12} style={{ color: 'var(--cb-text-muted)' }} />
           <D.Icon name="lightning" size={14} style={{ color: 'var(--cb-accent)' }} />
@@ -193,17 +182,14 @@ const AdhocPriorityRow = ({ adhocRuns, onLaunch, onSelectRun, selectedRunId }) =
             Refactors · code reviews · research · audits — work that doesn't fit a priority.
           </div>
         </div>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 36 }}>
-        {activeCount > 0 ? (
-          <span className="oz-chip oz-chip-running">
-            <span className="dot"></span>{activeCount} active
-          </span>
-        ) : (
-          <D.StatusChip status="ready" label="Ready" />
-        )}
-        <div style={{ marginLeft: 'auto' }}>
+        <div className="oz-priority-actions">
+          {activeCount > 0 ? (
+            <span className="oz-chip oz-chip-running">
+              <span className="dot"></span>{activeCount} active
+            </span>
+          ) : (
+            <D.StatusChip status="ready" label="Ready" />
+          )}
           <D.Button variant="secondary" size="sm" icon="play" onClick={(e) => { e.stopPropagation(); onLaunch(); }}>
             Launch run
           </D.Button>
@@ -283,7 +269,7 @@ const PrioritiesPanel = ({ priorities, runs, onReorder, onLaunch, onAdhoc, onAdd
   const totalRuns = runs.length;
 
   return (
-    <div className="oz-panel" style={{ height: '100%' }}>
+    <div className="oz-panel oz-priorities-panel" style={{ height: '100%' }}>
       <D.DevNote n={3} anchor="top-right" />
       <div className="oz-panel-header">
         <D.Icon name="list-numbers" size={15} style={{ color: 'var(--cb-accent)' }} />

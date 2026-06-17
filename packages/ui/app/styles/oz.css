@@ -14,9 +14,9 @@ html, body {
 button { font-family: inherit; }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--cb-border); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: var(--cb-border-strong); }
+::-webkit-scrollbar-track { background: var(--cb-hover); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: var(--cb-text-muted); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--cb-text-secondary); }
 
 /* ───────── App shell ───────── */
 .oz-app {
@@ -327,6 +327,20 @@ button { font-family: inherit; }
   padding: 2px 6px; border-radius: 10px;
 }
 .oz-panel-body { padding: 12px; overflow-y: auto; flex: 1; min-height: 0; }
+.oz-priorities-panel {
+  background: var(--cb-bg-soft);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.oz-priorities-panel .oz-panel-body { background: var(--cb-bg-soft); }
+.oz-priority-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.oz-priority-actions .oz-chip { font-size: 9px; padding: 2px 6px; }
 
 /* ───────── Status chips ───────── */
 .oz-chip {

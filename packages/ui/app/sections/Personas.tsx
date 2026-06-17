@@ -67,7 +67,7 @@ function PersonaRow({ persona, plays, clis, onChange, onAddSub, onRemoveSub, onU
     setPlayId('')
   }
   return (
-    <Card style={{ marginBottom: 12, borderColor: isOz ? 'var(--cb-accent-15)' : 'var(--cb-border)', background: isOz ? 'var(--cb-surface)' : undefined }}>
+    <Card style={{ marginBottom: 12, borderColor: isOz ? 'var(--cb-accent-15)' : 'var(--cb-border)', background: 'var(--cb-surface-solid)', backdropFilter: 'none', WebkitBackdropFilter: 'none', boxShadow: 'none' }}>
       <div style={{ padding: '16px 18px' }}>
         <button
           type="button"

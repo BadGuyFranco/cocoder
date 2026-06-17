@@ -776,7 +776,10 @@ const PersonaRow = ({ persona, clis, onChange, onAddSub, onRemoveSub, onUpdateSu
     <Card style={{
       marginBottom: 12,
       borderColor: isOz ? 'var(--cb-accent-15)' : 'var(--cb-border)',
-      background: isOz ? 'linear-gradient(180deg, var(--cb-accent-subtle) 0%, var(--cb-surface-glass) 60%)' : undefined,
+      background: 'var(--cb-surface-solid)',
+      backdropFilter: 'none',
+      WebkitBackdropFilter: 'none',
+      boxShadow: 'none',
     }}>
       <div style={{ padding: '16px 18px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
