@@ -18,15 +18,36 @@ orchestrator (Oscar) surface `surface:66`, leaving 1 run session open. Observed 
 teardown (founder-explicit). The lingering Oscar surface must be closed by hand by the founder until
 this is fixed — the orchestrator must NOT close it itself (host/process-safety guardrail).
 
-## Suspected Root Cause (not yet verified — needs the builder to confirm)
-This is the **same final-surface step** that ticket [0009](../closed/0009-teardown-cannot-close-last-surface.md)
-fixed, but a **new** failure mode. 0009 changed teardown to close the final remaining run surface via the
-run's stored **workspace ref** (new `closeWorkspace({ workspaceRef })` → `cmux close-workspace`). The error
-`Cannot read properties of undefined (reading '#cli')` reads like the cmux client (`#cli` private field)
-or the resolved host is **undefined** on the `closeWorkspace` path — e.g. the stored `workspaceRef` is
-missing/unresolved for the initiator surface, or the host instance isn't constructed before the private
-`#cli` field is dereferenced. Likely a gap/regression in the 0009 resolution rather than the old
-last-surface invariant. Also re-check the 0010 finalization (UI bundle rebuild) for ordering interplay.
+## Root Cause — CONFIRMED by code inspection (still verify by running the repro before closing)
+**An unbound-method `this` regression introduced by [0009](../closed/0009-teardown-cannot-close-last-surface.md).**
+It is NOT a missing/unresolved `workspaceRef` and NOT the old last-surface invariant.
+
+- `packages/daemon/src/launcher.ts:354` does `const closeWorkspace = ctx.sessionHost.closeWorkspace`, which
+  **detaches the method from its receiver** (the host instance).
+- `packages/daemon/src/launcher.ts:372` then calls `await closeWorkspace({ workspaceRef })` as a *free
+  function*, so inside the method `this` is `undefined`.
+- `CmuxDriver.closeWorkspace` (`packages/session-hosts/src/cmux/driver.ts:187-188`) dereferences
+  `this.#cli` → throws **`Cannot read properties of undefined (reading '#cli')`** (`#cli` is the private
+  field declared at driver.ts:43).
+
+Why only the initiator/final surface fails: Bob/Deb (the *prefix* surfaces) are closed via
+`closeDurableSurface` → `ctx.sessionHost.closeSurface({...})` (`launcher.ts:344`), which is called as a
+**bound** method and works. Only the **final remaining surface** is closed through the detached
+`closeWorkspace` reference in `closeDurableWorkspace` (`launcher.ts:353-372`) — so it alone throws. This
+exactly matches the symptom (prefix surfaces `closed`, final Oscar surface `failed` with the `#cli` error).
+0010 (UI bundle rebuild) is unrelated — no ordering interplay.
+
+### Fix (minimal, preserves the 0009 design)
+Stop detaching the method. Either keep the guard/call on the receiver:
+`if (!ctx.sessionHost.closeWorkspace) { … }` then `await ctx.sessionHost.closeWorkspace({ workspaceRef })`,
+or bind it: `const closeWorkspace = ctx.sessionHost.closeWorkspace?.bind(ctx.sessionHost)`. Do NOT swallow
+the error or weaken the teardown-only-touches-this-run boundary.
+
+### Regression must catch the `this` binding
+The current fake host's `closeWorkspace` is likely a plain closure that doesn't depend on `this`, so it
+won't reproduce this. The regression needs a host whose `closeWorkspace` reads an instance/private field
+via `this` (or asserts `this` is the host) so the daemon's *unbound* call path fails the test before the fix
+and passes after.
 
 ## Acceptance / Verified When
 - `cocoder oz teardown <runId> --initiator oscar` closes **all** of the run's surfaces — including the
