@@ -92,9 +92,10 @@ pin the exact phase lists for all three shipped skeletons.
 Runtime state lives in:
 
 - `local/runs/<runId>/playbook-state.json` — current phase, gate id, artifact paths, subsystem ids,
-  and resume token.
+  P2 convergence state, and resume token.
 - `local/runs/<runId>/playbook/<phase-id>/...` — phase artifacts such as `inventory.json`,
-  `subsystems.json`, `findings/<subsystem>.md`, `cross-check.md`, `drafts/`, and `ratification.json`.
+  `subsystems.json`, `findings/<subsystem>.md`, `convergence/<subsystem>.json`,
+  `cross-check.md`, `drafts/`, and `ratification.json`.
 - `RunEvent` rows — `playbook-phase-start`, `playbook-phase-complete`, `playbook-founder-gate`,
   `playbook-resume`, `playbook-fanout-dispatch`, `playbook-fanout-result`, and
   `playbook-phase-commit`.
@@ -158,25 +159,85 @@ New Primary's intake/ratify gates can use the same gate mechanism with lighter a
 
 ## P2 Fan-Out
 
-P2 Takeover dispatches one `deep-read` Play invocation per subsystem in the founder-approved
-`subsystems.json`:
+P2 Takeover dispatches one bounded `deep-read` loop per subsystem in the founder-approved
+`subsystems.json`. The executor may run subsystem loops concurrently, but each loop owns exactly one
+subsystem context and never mixes cross-subsystem review into P2.
+
+The per-iteration invocation contract is:
 
 - play definition: `packages/personas/base/plays/deep-read.md`;
 - dispatch primitive: `dispatchPlay()` in `packages/core/src/plays/dispatch.ts`;
 - output path: `playbook/P2/findings/<subsystem-id>.md`;
-- task text: subsystem id, path globs, entry points, allowed adjacency reads, and the fixed output
-  contract from the Play;
+- task text: subsystem id, path globs, entry points, tests or validation commands from P1, allowed
+  adjacency reads, the iteration number, the prior theory and residual gap list if any, and the fixed
+  output contract from the Play;
 - mode: headless captured subprocess;
 - write scope: empty/read-only.
 
-The fan-out may run with bounded concurrency, but the contract is still "one Play invocation per
-subsystem." Each result records `playbook-fanout-result` with exit code, output path, subsystem id,
-assignment `{cli, model}`, and whether the result contains unverified findings.
+Each subsystem loop is hypothesis-driven:
+
+1. form or refine an explicit theory of the subsystem: purpose, key behaviors, data/control flow, and
+   risk surface;
+2. verify that theory against the actual code using the existing `axis`/`claim`/`evidence`/`confidence`
+   finding shape, where evidence cites concrete files, lines, symbols, commands, or
+   `evidence: UNVERIFIED`;
+3. emit the residual gap list: open questions, surprises, low-confidence claims, contradictions, and
+   entry points or validation commands not yet covered by verified claims;
+4. decide whether the subsystem has converged or needs another read.
+
+The loop keeps reading until the subsystem is understood or a hard cap trips. "Understood" is not an
+agent feeling; it is this executor-checkable predicate:
+
+- the latest iteration added no new material claim compared with the prior iteration's theory, where
+  material means a claim that changes purpose, key behavior, data/control flow, risk surface, or
+  coverage status;
+- the latest residual gap list contains no open gap with confidence below `high` or severity
+  `material`;
+- every P1-named entry point and every P1-named test or validation command for the subsystem is covered
+  by at least one verified claim where `evidence != UNVERIFIED`;
+- the final findings contain no unresolved contradiction between verified claims inside the subsystem.
+
+This predicate is honest because it depends on positive coverage and preserved gaps, not on silence. An
+agent cannot pass by omitting gaps: uncovered P1 entry points or validation commands fail the coverage
+clause, unresolved contradictions fail the contradiction clause, and a final iteration that newly
+changes the theory fails the no-new-material-claim clause.
+
+Caps are spend controls, not quality signals:
+
+- max iterations per subsystem: 4;
+- wall-clock cap per subsystem loop: 45 minutes;
+- cost/token cap per subsystem loop: the smaller of 250k captured model tokens or the run's remaining
+  P2 budget allocation for that subsystem.
+
+If any cap trips before convergence, the executor records that subsystem as `understood: false`, keeps
+the latest findings and residual gaps, records which cap tripped, and continues or completes P2 only as
+"read attempted with unresolved gaps." It never silently passes the subsystem as complete. P3 must
+surface those residual gaps in `cross-check.md`, and the founder-facing P5 package must preserve any
+material unresolved gap instead of burying it in run logs. The per-subsystem cap data is also recorded
+so a later complexity-scaled estimate can use actual P2 spend without this addendum designing that
+estimate.
+
+P2 accumulates artifacts on disk:
+
+- `playbook/P2/findings/<subsystem-id>.md` is the rolling human-readable finding file. Each iteration
+  appends or replaces a clearly marked iteration section containing the theory, verified claims, residual
+  gaps, and read-more/converged decision.
+- `playbook/P2/convergence/<subsystem-id>.json` is the machine-readable convergence record:
+  `iterationsRun`, the hypotheses/theories tried, what each iteration closed, final predicate clause
+  results, `understood: true | false`, cap status, assignment `{cli, model}` history, output paths, and
+  the final residual gap list.
+
+Each subsystem completion records `playbook-fanout-result` with exit code, output path, subsystem id,
+assignment `{cli, model}`, iteration count, `understood`, cap status, and whether the result contains
+unverified findings.
 
 ADR-0018 is honored by resolving a per-persona Play assignment for `deep-read`; no `subAgents` field is
 introduced. For a brand-new root that has only template assignments, the implementation needs a shipped
 top-tier default for Playbook `modelPin: top-tier`, with workspace overrides still coming from
 `cocoder/personas/assignments.json`.
+
+Build-time follow-up: the `deep-read` Play contract will need a matching iteration input/output clause
+when the executor is implemented; this addendum intentionally does not edit the base Play now.
 
 ## P3 Cross-Check
 
@@ -293,8 +354,10 @@ Net-new:
 6. **P2 deep-read fan-out.**
    Files: `packages/core/src/playbooks/executor.ts`, `packages/core/src/plays/dispatch.ts` tests as
    needed, template or assignment defaults for `deep-read`.
-   Exit: approved subsystems dispatch one headless `deep-read` Play each, write findings under the run
-   dir, record assignment/model evidence, and fail clearly on missing top-tier assignment.
+   Exit: approved subsystems dispatch one bounded, hypothesis-driven headless `deep-read` loop each,
+   write rolling findings plus convergence records under the run dir, record assignment/model and
+   iteration/cap evidence, emit `understood: true | false`, preserve residual gaps on non-convergence,
+   and fail clearly on missing top-tier assignment.
 
 7. **P3 cross-check.**
    Files: new base Play or executor prompt under `packages/personas/base/plays/`, executor tests.
