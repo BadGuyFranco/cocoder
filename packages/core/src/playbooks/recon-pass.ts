@@ -79,11 +79,17 @@ export function buildAgenticReconPrompt(inventory: RepoInventory): string {
 
 function parseReconPassResult(raw: unknown): ReconPassResult {
   const value = parseRawObject(raw)
-  const subsystems = parseSubsystems(value.subsystems)
+  const { subsystems } = parseSubsystemsJsonPayload({ version: 1, subsystems: value.subsystems })
   const ids = new Set(subsystems.map((subsystem) => subsystem.id))
   const humanMap = readNonEmptyString(value, 'humanMap')
   const complexitySignals = parseComplexitySignals(value.complexitySignals, ids)
   return { subsystemProposal: { version: 1, subsystems }, humanMap, complexitySignals }
+}
+
+export function parseSubsystemsJsonPayload(raw: unknown): SubsystemsJsonPayload {
+  const value = parseRawObject(raw)
+  if (value.version !== 1) throw new Error('subsystems.json version must be 1')
+  return { version: 1, subsystems: parseSubsystems(value.subsystems) }
 }
 
 function parseRawObject(raw: unknown): Record<string, unknown> {

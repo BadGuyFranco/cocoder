@@ -79,6 +79,13 @@ export {
   type RunPlaybookP1ActionInput,
 } from './p1-action.js'
 export {
+  createPlaybookP2PhaseAction,
+  runPlaybookP2Action,
+  type PlaybookFanoutResultEvent,
+  type PlaybookP2Artifacts,
+  type RunPlaybookP2ActionInput,
+} from './p2-action.js'
+export {
   buildIntentIntakePrompt,
   runIntentIntake,
   type FounderAssertedIntent,

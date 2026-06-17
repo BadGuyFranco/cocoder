@@ -13,6 +13,8 @@ import { dirname, join } from 'node:path'
 import { promisify } from 'node:util'
 import {
   createPlaybookPhaseAction,
+  createPlaybookP2PhaseAction,
+  dispatchPlay,
   isPersonaEnabled,
   gateCommitRepair,
   loadAssignments,
@@ -29,6 +31,7 @@ import {
   type PersonaSources,
   type PlaybookP1AgentTurn,
   type PlaybookPhaseAction,
+  type ResolveTopTier,
   type RunInput,
   type RunnerDeps,
   type SessionHost,
@@ -42,6 +45,7 @@ import { appendAudit } from './audit.js'
 const OZ_REPAIR_TIMEOUT_MS = 120_000
 const AUTHORING_PLAY_TIMEOUT_MS = 120_000
 const PLAYBOOK_P1_AGENT_TIMEOUT_MS = 120_000
+const PLAYBOOK_P2_AGENT_TIMEOUT_MS = 120_000
 const AUTHORING_PLAY_IDS = ['create-priority', 'edit-priority', 'archive-priority'] as const
 const execFileAsync = promisify(execFile)
 
@@ -176,13 +180,42 @@ function appendStaleLaunchAudit(ctx: OzContext, workspaceId: string, target: Lau
   else void appendAudit(ctx.cocoderHome, { ...common, playbookId: target.playbookId })
 }
 
-function createDaemonPlaybookPhaseAction(ctx: OzContext, workspacePath: string, runDir: string, modelTier: string, agent: { readonly cli: string; readonly model: string }, signal: AbortSignal): PlaybookPhaseAction {
-  return createPlaybookPhaseAction({
+export function createDaemonPlaybookPhaseAction(ctx: OzContext, workspacePath: string, runDir: string, runId: string, modelTier: string, agent: { readonly cli: string; readonly model: string }, signal: AbortSignal): PlaybookPhaseAction {
+  const p1 = createPlaybookPhaseAction({
     repoDir: workspacePath,
     runDir,
     model: { modelTier, cli: agent.cli, model: agent.model },
     agentTurn: createDaemonP1AgentTurn(ctx, workspacePath, runDir, agent, signal),
   })
+  const assignments = loadAssignments(join(workspacePath, 'cocoder', 'personas', 'assignments.json'))
+  const deepReadPlay = loadEffectivePlay(basePlaysDir(), join(workspacePath, 'cocoder', 'plays', 'deltas'), 'deep-read')
+  const p2 = createPlaybookP2PhaseAction({
+    repoDir: workspacePath,
+    runDir,
+    assignments,
+    modelPin: modelTier,
+    play: deepReadPlay,
+    now: Date.now,
+    signal,
+    resolveTopTier: createDaemonTopTierResolver(ctx),
+    dispatch: (input) => dispatchPlay(
+      { sessionHost: trackingHost(ctx), getAdapter: ctx.getAdapter, runHeadless: ctx.runHeadless },
+      { ...input, group: runId, timeoutMs: PLAYBOOK_P2_AGENT_TIMEOUT_MS, signal },
+    ),
+    onFanoutResult: (event) => ctx.store.recordEvent({ runId, type: 'playbook-fanout-result', data: event }),
+  })
+  return async (input) => {
+    await p1(input)
+    await p2(input)
+  }
+}
+
+function createDaemonTopTierResolver(ctx: OzContext): ResolveTopTier {
+  return ({ cli, persona }) => {
+    const model = ctx.cliTestCache.get(cli)?.models.models.find((candidate) => candidate.trim() !== '')?.trim()
+    if (!model) throw new Error(`top-tier model discovery has no cached model for ${persona} on ${cli}`)
+    return model
+  }
 }
 
 function createDaemonP1AgentTurn(ctx: OzContext, workspacePath: string, runDir: string, agent: { readonly cli: string; readonly model: string }, signal: AbortSignal): PlaybookP1AgentTurn {
@@ -366,7 +399,7 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
     emitOzEvent(ctx, { type: 'run-created', runId: run.id, workspaceId })
     running = (async () => {
       const runDir = join(ctx.runsRoot, run.id)
-      const runPhase = createDaemonPlaybookPhaseAction(ctx, ws.path, runDir, pb.modelPin, { cli: bob.cli, model: bob.model }, stopController.signal)
+      const runPhase = createDaemonPlaybookPhaseAction(ctx, ws.path, runDir, run.id, pb.modelPin, { cli: bob.cli, model: bob.model }, stopController.signal)
       ctx.store.recordEvent({ runId: run.id, type: 'run-start', data: { playbook: pb.id, runDir } })
       const result = await startPlaybookExecutor({ playbook: pb, runDir, now: Date.now, runPhase })
       ctx.store.recordEvent({

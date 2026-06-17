@@ -85,7 +85,9 @@ export {
   resumePlaybookExecutor,
   startPlaybookExecutor,
   createPlaybookPhaseAction,
+  createPlaybookP2PhaseAction,
   runPlaybookP1Action,
+  runPlaybookP2Action,
   type OnboardingPlaybook,
   type OnboardingPlaybookMode,
   type OnboardingPlaybookPhase,
@@ -104,6 +106,10 @@ export {
   type PlaybookP1AgentTurnInput,
   type PlaybookP1Artifacts,
   type RunPlaybookP1ActionInput,
+  type PlaybookFanoutResultEvent,
+  type PlaybookP2Artifacts,
+  type RunPlaybookP2ActionInput,
+  type ResolveTopTier,
 } from './playbooks/index.js'
 
 export {
