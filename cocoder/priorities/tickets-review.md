@@ -59,6 +59,11 @@ to decomposition — do not re-open without a new founder decision.
   `post-wrap-orchestration-commit-gap`. Reconciled by run_121 atom 0 as the **first build atom**.
 
 ## Decomposition — status (run_121, 2026-06-17)
+
+**Disposition:** `continue` — Deliverable 1 (three dashboard tabs) complete and verified; atom 3
+(ticket-fix launch) gated on `new-primary-root` Addendum Atom 2 (run-target generalization). Not
+archive-ready until one open ticket is fixed end-to-end via a launched run.
+
 1. ✅ **DONE (`6aa5f60`) — Ticket-index hygiene** (`cocoder/tickets/**`): `0005` added to `INDEX.md` Open
    table; duplicate ID `0007` resolved by renumbering the active design-ref ticket `0007 → 0012` (closed
    historical `0007` left intact). Open tickets now `0003 / 0005 / 0012`.
