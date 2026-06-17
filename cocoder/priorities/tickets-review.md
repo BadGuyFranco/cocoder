@@ -40,6 +40,12 @@ to decomposition — do not re-open without a new founder decision.
    the Runs tab fully **replaces** the run-history *button* (button removed, not duplicated). The
    panel-header **"+ / add" button is contextual per tab**: Priorities → *add a priority* (existing
    `onAddPriority`); Tickets → *add a ticket* (new); Runs → **no add button**.
+   **Refined (founder, 2026-06-17 live review):** the per-tab add uses a **modal dialog for BOTH** tabs
+   (founder enters the details), and the item is **actually created by Oz** via a daemon create endpoint —
+   **not** a chat-prefill. Priorities already does this (`NewPriorityModal` → `createPriority` POST →
+   daemon writes the file, `routes.ts:485`). Tickets must get the parallel: a `NewTicketModal` + a
+   create-ticket endpoint that writes `cocoder/tickets/open/NNNN-slug.md` + updates `INDEX.md` via the
+   spine. The run_121 chat-prefill stub for add-ticket is **superseded** by this.
 
 ## Conflict-scan (light — first pass; re-verify at start)
 - **Dashboard is live** (`packages/ui/app/sections/dashboard/Dashboard.tsx` — Run History is currently a
@@ -58,11 +64,40 @@ to decomposition — do not re-open without a new founder decision.
   missing from `INDEX.md`'s Open table, and the active design-ref ticket conflicted with closed
   `post-wrap-orchestration-commit-gap`. Reconciled by run_121 atom 0 as the **first build atom**.
 
+## Live-review bugs (founder, 2026-06-17 — fix in the NEXT session, before atom 3)
+The run_121 tabs passed automated tests but the founder found three defects in the running build. These
+are the next session's first atoms (UI/data fixes), ahead of the still-gated atom 3.
+
+1. **Double header above the tabs.** The left panel renders BOTH the old `oz-panel-header`
+   (icon + title + count) AND the tab strip beneath it — redundant. **Fix:** remove the icon/title/count
+   header row; promote the **tab strip to be the header** and make the tabs larger/primary. Keep the
+   contextual add button. (UI only — `packages/ui/app/sections/dashboard/Dashboard.tsx`, the shared
+   header block built around `headerIcon`/`headerTitle`/`oz-panel-count`.)
+2. **Tickets count shows 0 in the live build** despite real open tickets (`0003/0005/0012`). The data
+   layer is unit-test-green (core `readTickets` against the real dir, the daemon route, `adaptTickets`),
+   so the renderer code is not the suspect. **Leading hypothesis (verify FIRST):** the running daemon
+   predates atom 1 — the UI bundle auto-rebuilds (ticket 0010) but the **daemon binary/process does
+   not**, so `GET /workspaces/:id/tickets` 404s on the live daemon and `loadWsData` degrades the fetch to
+   `[]` (`live.ts`: `ti.ok ? ti.data.tickets : []`). **Next session:** authenticate to the live daemon
+   (bearer token) and curl `/workspaces/<id>/tickets`; if it 404s/empties, the daemon needs a
+   rebuild+restart (a founder/runner lifecycle action — Oscar does not restart the daemon) and we should
+   file an infra follow-on so **daemon-touching runs auto-rebuild like the UI does** (extend ticket 0010's
+   mechanism to `packages/daemon/**`). Only if the route IS served and still returns empty, debug the
+   workspace-path/adapter join.
+3. **Inconsistent add-button behavior → RESOLVED by founder.** Priorities "Add" opens a modal that
+   creates the priority via Oz; Tickets "Add" only drops a prompt into Oz chat. **Decision:** make BOTH a
+   modal that collects details and has **Oz actually create** the item (see Design decision 4 refinement
+   above). Build a `NewTicketModal` + a create-ticket daemon endpoint mirroring `createPriority`
+   (`routes.ts:485` + `createPriorityBody` at `:140`), writing `cocoder/tickets/open/NNNN-slug.md` and
+   updating `INDEX.md` through the ADR-0023 spine; replace the run_121 chat-prefill stub.
+
 ## Decomposition — status (run_121, 2026-06-17)
 
-**Disposition:** `continue` — Deliverable 1 (three dashboard tabs) complete and verified; atom 3
-(ticket-fix launch) gated on `new-primary-root` Addendum Atom 2 (run-target generalization). Not
-archive-ready until one open ticket is fixed end-to-end via a launched run.
+**Disposition:** `continue` — Deliverable 1 (three dashboard tabs) shipped and unit-verified, but the
+founder live review found three build defects (above) that must be fixed next session; atom 3
+(ticket-fix launch) remains gated on `new-primary-root` Addendum Atom 2 (run-target generalization). Not
+archive-ready until the three live-review bugs are fixed AND one open ticket is fixed end-to-end via a
+launched run.
 
 1. ✅ **DONE (`6aa5f60`) — Ticket-index hygiene** (`cocoder/tickets/**`): `0005` added to `INDEX.md` Open
    table; duplicate ID `0007` resolved by renumbering the active design-ref ticket `0007 → 0012` (closed
