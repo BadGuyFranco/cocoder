@@ -225,12 +225,14 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   claims" to first-class structure; e.g. `integration-verify` *runs* the real check instead of prompting an
   agent to). Step 1 is an **ADR-0010 taxonomy amendment** the founder confirms at launch (the Play-component
   shape); then schema (`Play` type) + dispatch + reimplement `integration-verify` as the hybrid proof.
-- `tickets-review` — real dashboard tabs (**Priorities** / **Tickets** / **Runs**, replacing the
-  pseudo-tabs + run-history button) + a **ticket-fix run** that proposes/applies a fix and closes the
-  ticket (`open/ → closed/` + `INDEX.md`) through the spine. The "how do we fix a ticket" run shape
-  (Bob-only vs small Oscar↔Bob vs reuse `adhoc-session`, possibly by ticket type) is the open design
-  question resolved at the start alignment beat. Draft Objective pending founder ratification (filed
-  run_111, founder-directed).
+- `tickets-review` — **BLOCKED (run_116 alignment, 2026-06-17).** Real dashboard tabs (**Priorities** /
+  **Tickets** / **Runs**, replacing the pseudo-tabs + run-history button) + a **ticket-fix run** that
+  closes the ticket through the spine. Alignment verified dashboard state and ticket inventory; proof
+  ticket `0009` is closed — use **0003**, **0005**, or **0007**. Index hygiene needed before Tickets tab
+  (`0005` missing from `INDEX.md`; duplicate ID 0007). **Founder gate:** ratify the DRAFT Objective +
+  Q1 run shape (Oscar rec: Oscar↔Bob for code tickets) + **Q2 sequencing** (Oscar rec: wait for
+  `new-primary-root` Addendum Atom 2 run-target generalization, don't fork). Q3/Q4 Oscar-rec confirmed.
+  No build until founder go-ahead.
 - `oz-dashboard-design-tweaks` — **archive-candidate (run_115):** rounds 1–3 code-complete — settings
   trim + collapsible personas/plays + contrast (run_113), panel↔background reversal + Oz-card de-gradient
   (run_114, `97bc3a4`), Round-3 persona-card consistency + priority-row separation + stacked priority

@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-17 — **Tickets review (run_116): priority-start alignment beat — blocked on founder ratification**
+
+**Persona:** Oscar (0 atoms delegated) | **Priority:** [tickets-review](./priorities/tickets-review.md) | **Run:** run_116
+**Outcomes:**
+- **Alignment beat only (ADR-0010):** Objective is still a DRAFT; four design questions were founder-deferred to this beat — no decomposition or build until ratified.
+- **Verified live state:** `Dashboard.tsx` — Run History is a Modal from a button; Priorities panel is live; tab refactor is contained UI work. Proof ticket `0009` in the Objective is **already closed** (2026-06-17); real open tickets today: **0003**, **0005**, **0007**.
+- **Ticket index gaps (blocks clean Tickets tab):** `0005` exists in `open/` but is missing from `INDEX.md` Open table; ID **0007 is duplicated** (open `design-ref-rebuild-clobber-guard` vs closed `post-wrap-orchestration-commit-gap`) — reconcile before or as first build atom.
+- **Run-target coupling (Q2):** `RunInput` is hard-typed to `priority:Priority`; ticket-fix launch needs the same generalization as `new-primary-root` **Addendum Atom 2** (run target + daemon launch surface) — Oscar recommends sequencing after Atom 2, not a parallel lane.
+- **Oscar recommendations for founder call:** Q1 → small Oscar↔Bob run for code-touching tickets (b), allow lighter paths by ticket type; Q2 → reuse launch surface via Atom 2 sequencing; Q3/Q4 → confirm (close via spine in write-scope; in-panel tabs, Priorities unchanged, Runs replaces button).
+**Next:** Founder reply with go/no-go, Q1/Q2 calls, proof-ticket pick (0003/0005/0007), and whether to fix index hygiene first — then relaunch `tickets-review` for decomposition.
+
 ## 2026-06-17 — **Oz dashboard design tweaks (run_115): Round-3 visual polish — archive-candidate**
 
 **Persona:** Oscar (3 atoms delegated, 1 verified + committed) | **Priority:** [oz-dashboard-design-tweaks](./priorities/oz-dashboard-design-tweaks.md) | **Run:** run_115
