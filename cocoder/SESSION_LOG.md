@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-16 — **Design deepen Atoms B+C+D (run_109): P3 convergence, P1 complexity-scaled spend gate, P1 intent capture**
+
+**Persona:** Oscar (3 atoms delegated + verified) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_109
+**Outcomes:**
+- **Atom B committed (`fafa369`)** — [0020 addendum](./decisions/0020-addendum-phase-executor.md) `## P3 Cross-Check` rewritten from a single reviewer pass to a capped convergence loop: rounds until no *new* contradiction/coverage gap surfaces; non-gameable executor-checkable exit predicate (can't pass by omission); bounded named follow-up `deep-read` reads (≤3/round via `dispatchPlay`) feeding the next round; on-cap honesty (`converged:false`, gaps preserved to P5); caps (3 rounds / 30 min / min(125k tokens, remaining P3 budget)); `playbook/P3/convergence.json` artifact. Mirrors the Atom-A P2 model.
+- **Atom C committed (`81f59d7`)** — P1 derives per-subsystem complexity tiers → a P2/P3 budget *allocation* that scales depth UP TO (never above) the Atom-A/B caps, defining the "remaining P2/P3 budget allocation" those caps referenced. Adds `playbook/P1/estimate.json` (per-phase/per-subsystem token+time, assumptions incl. `{cli,model}`, low/expected/high bands, derivable dollar cost, `multiDay` signal) + `pickup.md` summary; the Takeover P1 gate now requires an explicit founder **spend decision** (approve / edit-scope / shallower-tier) before any P2 dispatch.
+- **Atom D committed (`39de963`)** — Takeover intent capture folded INTO P1 (no skeleton renumbering; `intake` kind stays for New Primary, Drift gets none): purpose-from-artifacts + a bounded founder interview at the existing P1 gate → `playbook/P1/intent.json` separating `founderAsserted` from `inferredFromArtifacts`; P4 synthesis now consumes intent so drafted Objectives reflect direction grounded in verified P3 findings.
+- **All three verified on the actual diff** (addendum-only, caps/predicates preserved, Status still Proposed, no `packages/` edits, no test/typecheck surface). Design-deepening axes A–D from the run_107 brief are now COMPLETE.
+- **Founder-gate stop** — the only remaining design atom (E, New-Primary tech-stack starter) is **founder-gated** (must ask the founder for an example default stack), and the founder ratification gate (after A–E) must approve the deepened addendum + name the top-tier `deep-read` default `{cli,model}` before any build atom. No delegatable atom without founder input → wrap.
+**Next:** Founder provides (1) an example default tech stack for the New-Primary starter (framework/language/DB/hosting/non-negotiables) so Atom E can be delegated, and (2) ratifies the deepened addendum + names the top-tier `deep-read` default `{cli,model}`. Then relaunch `new-primary-root` for Atom E, then the founder ratification gate releases the build (Ordered Implementation Atoms 1–10).
+
 ## 2026-06-16 — **Design deepen Atom A (run_108): P2 iterative hypothesis-driven deep-read loop in addendum**
 
 **Persona:** Oscar (wrap-up; 1 atom delegated) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_108

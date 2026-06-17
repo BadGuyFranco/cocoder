@@ -110,20 +110,27 @@ Atoms 1–10) follow **after the founder ratification gate**, re-sequenced so th
   `understood:false` + gaps preserved to P3/P5, and artifacts (`convergence/<id>.json` +
   `playbook-fanout-result` carrying iteration/understood/cap status). In lane: deferred cost estimate to
   Atom C, left base `deep-read.md` untouched, Status stays Proposed.
-- **Atom B — Convergence-based cross-check (P3 depth).** P3 loops until no *new* contradictions/coverage
-  gaps surface (capped), instead of a single pass; bounded named follow-up reads feed the next round.
-  *Exit:* addendum P3 specifies the convergence loop, its exit signal, caps, and how follow-up reads close
-  named gaps. One-shot, judgment-gated.
+- **Atom B — Convergence-based cross-check (P3 depth).** ✅ **DONE run_109 (commit `fafa369`).** Addendum
+  `## P3 Cross-Check` rewritten from a single reviewer pass to a capped convergence loop: rounds until no
+  *new* contradiction/coverage gap surfaces, a non-gameable executor-checkable exit predicate (can't pass
+  by omission), bounded named follow-up `deep-read` reads (≤3/round via `dispatchPlay`) feeding the next
+  round, on-cap honesty (`converged:false`, gaps preserved to P5), caps (3 rounds / 30 min / min(125k
+  tokens, remaining P3 budget)), and a `playbook/P3/convergence.json` artifact. Mirrors the P2 model.
 - **Atom C — Complexity-scaled depth + cost/time estimate at the recon gate (P1 depth + spend control).**
-  P1 produces a *complexity-scaled* audit plan and a **cost/time estimate** that the founder sees and
-  approves at the P1 gate, so a takeover can legitimately be long/multi-day when the repo warrants it — and
-  the founder decides whether to spend it. *Exit:* addendum P1 + founder-gate sections specify the scaling
-  inputs, the estimate artifact, and the gate's spend decision. One-shot, judgment-gated.
-- **Atom D — Intent/intake beat (so authored governance reflects purpose, not just structure).** Add an
-  intake phase that captures the repo's *purpose* and the founder's *intent* (README/docs/issues/git
-  history + a short founder interview) and feeds P4, so authored Objectives reflect where the repo is going,
-  not only what the code currently is. *Exit:* addendum gains an intake phase with its inputs/outputs and
-  its founder touchpoint. One-shot, judgment-gated.
+  ✅ **DONE run_109 (commit `81f59d7`).** P1 now derives per-subsystem complexity tiers
+  (`small`/`standard`/`large`/`high-risk`) → a P2/P3 budget *allocation* that scales depth UP TO (never
+  above) the Atom-A/B caps — this defines the "remaining P2/P3 budget allocation" those caps referenced.
+  Adds `playbook/P1/estimate.json` (per-phase/per-subsystem token+time, assumptions incl. `{cli,model}`,
+  low/expected/high bands, derivable dollar cost, `multiDay` signal) + a `pickup.md` summary; the Takeover
+  P1 gate now requires an explicit founder **spend decision** (approve / edit scope / shallower tier)
+  before any P2 dispatch.
+- **Atom D — Intent/intake beat (so authored governance reflects purpose, not just structure).** ✅ **DONE
+  run_109 (commit `39de963`).** Takeover intent capture folded INTO P1 (no skeleton renumbering; the
+  `intake` kind stays for New Primary, Drift gets none): purpose-from-artifacts (README/docs/changelog/
+  issues/git history) + a bounded founder interview at the existing P1 gate → `playbook/P1/intent.json`
+  that separates `founderAsserted` from `inferredFromArtifacts` (so P4 can't launder a guess into a
+  founder decision). P4 synthesis now consumes intent so drafted Objectives reflect direction grounded in
+  verified P3 findings.
 
 **New-Primary feature atom (its own session):**
 
