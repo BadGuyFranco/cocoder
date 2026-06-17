@@ -35,3 +35,17 @@ export {
   type ScriptInventory,
   type WorkspaceInventory,
 } from './recon.js'
+export {
+  buildAgenticReconPrompt,
+  runAgenticRecon,
+  type AgenticReconTurn,
+  type AgenticReconTurnInput,
+  type ReconComplexitySignal,
+  type ReconComplexitySignals,
+  type ReconPassResult,
+  type ReconSignalKey,
+  type ReconSignalSeverity,
+  type RunAgenticReconInput,
+  type Subsystem,
+  type SubsystemsJsonPayload,
+} from './recon-pass.js'
