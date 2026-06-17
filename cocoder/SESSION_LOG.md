@@ -12,6 +12,19 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-17 — **new-primary-root: P1 input layer + producers complete — 5 atoms landed; executor P1 integration is next (run_123)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 5 atoms delegated/verified-on-evidence) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_123
+**Outcomes:**
+- **Atom 2 (`9f76e98`) — run-target + daemon launch surface:** additive `Run.playbookId` discriminator (nullable column + migration; kind = `playbook_id IS NOT NULL`); `launchRun` takes a priority\|playbook target, playbook branch drives `startPlaybookExecutor` via a no-op `runPhase` seam; `POST /runs` exactly-one-of priorityId/playbookId; receipt surfaces target kind. **Priority runs provably unchanged** (hard invariant). core 285 + daemon 206 + typecheck green.
+- **Atom 5b (`c165778`) — agentic recon pass:** `recon-pass.ts` `runAgenticRecon` → full subsystems.json + 6 complexity signals + humanMap over 5a inventory, injected agent seam, refuse-on-malformed.
+- **Atom C (`7b9395f`) — estimate.json:** `estimate.ts` per-subsystem complexity tiers + P2/P3 allocations **capped in code** at addendum ceilings, bands, conditional dollar cost (pricing/model injected), multiDay, summarizeEstimate.
+- **Atom D (`2080437`) — intent.json:** `intent.ts` with structurally-enforced inferred-vs-founder separation + provenance-or-refuse + absent→openQuestions.
+- **Atom (`28ba44a`) — intent-artifact enumerator:** `intent-artifacts.ts` read-only `enumerateIntentArtifacts` (file/`commit:`/`tag:`; injected `IntentGitReader`; bounded/deterministic), round-trip-proven into intent.ts.
+- **Gates each atom:** core 285→303, daemon 206, `pnpm -w typecheck` clean throughout.
+- **Disposition: `continue`** — P1 input layer + producers complete and committed; the delicate executor P1 ACTION integration is deliberately handed to a fresh dedicated session (run_111 anti-pattern: don't start it under spent context).
+**Next:** Launch **`new-primary-root`** for the **executor P1 ACTION integration** — wire fs/git enumeration + recon/estimate/intent through `executeAgentStep`, write `playbook/P1/*.json` + `pickup.md`, pause at the P1 `awaiting-founder` gate (real `runPhase` in `launcher.ts`'s playbook branch); prove start→P1→pause→resume on a fake-agent fixture. Then Atoms 6–11 (P2–P6 + e2e). Live Takeover/Drift proofs stay gated on the executor running end-to-end on fakes.
+
 ## 2026-06-17 — **Tickets-review: live-review bugs 1+3 fixed; add-ticket POST landed; atom 4 gated (run_122)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 4 atoms delegated/verified) | **Priority:** [tickets-review](./priorities/tickets-review.md) | **Run:** run_122

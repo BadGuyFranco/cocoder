@@ -45,6 +45,62 @@ CoPublisher).
 
 ## Build progress — disposition: `continue` (ratified 2026-06-17 — build released)
 
+### Executor build progress (run_123, 2026-06-17)
+Third build session — the entire **P1 input layer + producers** landed (five atoms; verified-on-evidence
+per atom: diff read + `pnpm --filter @cocoder/core test` + `pnpm -w typecheck`, plus `@cocoder/daemon test`
+for the launch-surface atom):
+- ✅ **Addendum Atom 2 — Run target + daemon launch surface** (`9f76e98`). Additive run-target
+  discriminator: `Run.playbookId: string \| null` (+ nullable `playbook_id` column via `COLUMN_MIGRATIONS`,
+  kind keyed off `playbook_id IS NOT NULL`, `priority_id` keeps a documented sentinel for Playbook runs).
+  `launchRun` accepts a `LaunchRunTarget` (priority \| playbook); the playbook branch reuses the same
+  lifecycle scaffolding (extracted behavior-preserving into `attachRunLifecycle`) and drives
+  `startPlaybookExecutor` with an explicit no-op `runPhase` seam. `POST /runs` enforces exactly-one-of
+  priorityId/playbookId; receipt surfaces `target` kind. **Priority runs provably unchanged** (hard
+  invariant held — all existing core/daemon tests green, the two test edits are additive `playbookId`
+  field assertions). core 285 + daemon 206 + typecheck green.
+- ✅ **Atom 5b — agentic recon pass** (`c165778`). `packages/core/src/playbooks/recon-pass.ts`:
+  `runAgenticRecon({inventory, agentTurn})` over 5a's `RepoInventory` → full `subsystems.json` proposal
+  (id/name/globs/entry-points/validation/reason/P2-adjacency) + 6 structured judgment complexity signals +
+  humanMap, via an INJECTED agent seam (no real LLM); pure/deterministic with thorough refuse-on-malformed.
+- ✅ **Atom C — complexity tiers + estimate.json** (`7b9395f`). `packages/core/src/playbooks/estimate.ts`:
+  pure `buildEstimate(...)` → per-subsystem tier (monotone documented policy) + P2/P3 allocations **capped
+  in code** at the addendum ceilings (P2 4/45min/250k, P3 3/30min/125k), per-phase & per-subsystem
+  projections, low/expected/high bands, conditional dollar cost (pricing + model `{cli,model}` INJECTED —
+  ADR-0018 runtime resolution stays out), `multiDay` signal, `summarizeEstimate()`.
+- ✅ **Atom D — intent.json** (`2080437`). `packages/core/src/playbooks/intent.ts`: `runIntentIntake(...)`
+  with **structurally-enforced** `inferredFromArtifacts` vs `founderAsserted` separation (distinct
+  discriminated types/fields — no laundering a guess into a founder decision), **provenance-or-refuse** on
+  every inferred claim (empty + unknown-artifact throw), absent answers → `openQuestions` (never
+  fabricated). Pure, injected seam.
+- ✅ **Atom — intent-artifact enumerator** (`28ba44a`). `packages/core/src/playbooks/intent-artifacts.ts`:
+  read-only `enumerateIntentArtifacts(...)` → `IntentArtifact[]` (file paths, `commit:<sha>`, `tag:<name>`;
+  no branch kind; no network) via direct fs + an injected read-only `IntentGitReader` seam (keeps recon.ts
+  subprocess-free, central `Git` port untouched); fully bounded/deterministic/deduped; proven round-trip
+  into intent.ts's provenance guard.
+
+**Sequencing note (Oscar):** the run was wrapped at this boundary deliberately. The next atom is the
+**executor P1 ACTION integration** — the largest, integration-heavy atom — and the priority mandates such
+an atom get its own dedicated super-thoughtful session; starting it under a context already spent across
+five atom cycles is the run_111-recorded anti-pattern. All P1 inputs + producers are now committed, so a
+fresh session can wire them cleanly.
+
+**Next-run sequence (executor critical path; build released, no founder gate needed for these):**
+- **NEXT → Executor P1 ACTION integration** (its own fresh session — delicate). Replace the executor's
+  no-op `runPhase` stub for the P1 phase with the real action: call `enumerateIntentArtifacts` (fs/git) +
+  `inventoryRepo`, drive `runAgenticRecon` / `buildEstimate` / `runIntentIntake` through the runner's real
+  agent-turn primitive (`executeAgentStep`, `packages/core/src/runner/agent-step.ts`) instead of injected
+  fakes, WRITE the `playbook/P1/{inventory,subsystems,intent,estimate}.json` artifacts + assemble
+  `pickup.md` (intent interview + estimate summary + spend decision) under `<runDir>`, and PAUSE at the P1
+  `awaiting-founder` gate. Wire the launcher's real `runPhase` (currently a no-op in `launcher.ts`'s
+  playbook branch) to dispatch per-phase. Keep `cocoder/**`-only write boundary in mind (it is enforced at
+  P2+, but P1 only writes under `<runDir>`/`playbook/P1`). Verify: a fixture/fake-agent e2e drives
+  start→P1→pause@gate, artifacts written, resume past the gate works.
+- **Then** Atoms 6–11 (P2 dual-source fan-out, P3 cross-check, P4 founder-question checkpoint, P5 synthesis
+  + `cocoder/**` audit boundary, P6 ratify, end-to-end fixture proof) + New-Primary tech-stack-starter
+  template build from E.
+- **Still gated:** Live CoPublisher Takeover proof and the dogfood Drift Audit remain gated on the executor
+  shipping end-to-end on fakes — do not attempt live onboarding until the P1→P5 path runs on fixtures.
+
 ### Executor build progress (run_112, 2026-06-17)
 Second build session. Two atoms landed (verified-on-evidence per atom: diff read +
 `pnpm --filter @cocoder/core test` + `pnpm -w typecheck` + topology each time):
