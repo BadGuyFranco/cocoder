@@ -12,7 +12,7 @@ runs *button*) — selecting a tab cycles the panel content in place; and (2) a 
 from the Tickets tab the founder can launch a **ticket-fix run** that proposes/applies the fix and, on
 success, **closes the ticket** (moves it `open/ → closed/`, updates `INDEX.md`) through the ADR-0023
 commit spine. **Verified when:** the dashboard renders the three working tabs (Priorities behaves as
-before; Tickets lists open tickets incl. real ones (e.g. `0003`/`0005`/`0007`) with a readable detail; Runs shows the
+before; Tickets lists open tickets incl. real ones (e.g. `0003`/`0005`/`0012`) with a readable detail; Runs shows the
 same history the button did); AND one real open ticket is fixed end-to-end via a launched run whose
 result is committed and whose ticket is moved to `closed/` with `INDEX.md` updated — traceable to the
 actual change. **Boundary:** does not change the ticket *governance model* (ADR-0003 flat files +
@@ -54,14 +54,13 @@ to decomposition — do not re-open without a new founder decision.
   above. Ready to decompose on the next launch.
 - **Stale-data found at start (re-verified):** the Objective originally named ticket `0009` as a proof
   example, but `0009` is already **closed** (2026-06-17) — proof ticket will be one of the real open
-  tickets (`0003`/`0005`/`0007`). The ticket **index is inconsistent**: `0005` exists in `open/` but is
-  missing from `INDEX.md`'s Open table, and ID `0007` is **duplicated** (one open
-  `design-ref-rebuild-clobber-guard`, one closed `post-wrap-orchestration-commit-gap`). Reconcile this
-  as the **first build atom** (it's a prerequisite for the Tickets tab to render correct data).
+  tickets (`0003`/`0005`/`0012`). The ticket **index was inconsistent**: `0005` existed in `open/` but was
+  missing from `INDEX.md`'s Open table, and the active design-ref ticket conflicted with closed
+  `post-wrap-orchestration-commit-gap`. Reconciled by run_121 atom 0 as the **first build atom**.
 
 ## Recommended decomposition (post-ratification)
 1. **Ticket-index hygiene** (`cocoder/tickets/**`): add `0005` to `INDEX.md` Open table; resolve the
-   duplicate `0007` ID. Prereq for clean Tickets-tab data.
+   duplicate active/closed ID. Prereq for clean Tickets-tab data.
 2. **Tabs refactor** (read-only, `packages/ui/**`): Priorities/Tickets/Runs in-panel tabs; Runs replaces
    the history button+modal; contextual add button per tab (decision 4). Priorities unchanged.
 3. **Ticket-fix launch** — **gated on `new-primary-root` Addendum Atom 2** (decision 2). Reuses the

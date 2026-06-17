@@ -58,11 +58,11 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Persona:** Oscar (0 atoms delegated) | **Priority:** [tickets-review](./priorities/tickets-review.md) | **Run:** run_116
 **Outcomes:**
 - **Alignment beat only (ADR-0010):** Objective is still a DRAFT; four design questions were founder-deferred to this beat — no decomposition or build until ratified.
-- **Verified live state:** `Dashboard.tsx` — Run History is a Modal from a button; Priorities panel is live; tab refactor is contained UI work. Proof ticket `0009` in the Objective is **already closed** (2026-06-17); real open tickets today: **0003**, **0005**, **0007**.
-- **Ticket index gaps (blocks clean Tickets tab):** `0005` exists in `open/` but is missing from `INDEX.md` Open table; ID **0007 is duplicated** (open `design-ref-rebuild-clobber-guard` vs closed `post-wrap-orchestration-commit-gap`) — reconcile before or as first build atom.
+- **Verified live state:** `Dashboard.tsx` — Run History is a Modal from a button; Priorities panel is live; tab refactor is contained UI work. Proof ticket `0009` in the Objective is **already closed** (2026-06-17); real open tickets today: **0003**, **0005**, **0012**.
+- **Ticket index gaps (blocks clean Tickets tab):** Reconciled in atom 0: `0005` is indexed, and the active design-ref ticket is **0012**; closed historical ticket `0007` remains unchanged.
 - **Run-target coupling (Q2):** `RunInput` is hard-typed to `priority:Priority`; ticket-fix launch needs the same generalization as `new-primary-root` **Addendum Atom 2** (run target + daemon launch surface) — Oscar recommends sequencing after Atom 2, not a parallel lane.
 - **Oscar recommendations for founder call:** Q1 → small Oscar↔Bob run for code-touching tickets (b), allow lighter paths by ticket type; Q2 → reuse launch surface via Atom 2 sequencing; Q3/Q4 → confirm (close via spine in write-scope; in-panel tabs, Priorities unchanged, Runs replaces button).
-**Next:** Founder reply with go/no-go, Q1/Q2 calls, proof-ticket pick (0003/0005/0007), and whether to fix index hygiene first — then relaunch `tickets-review` for decomposition.
+**Next:** Founder reply with go/no-go, Q1/Q2 calls, proof-ticket pick (0003/0005/0012), and whether to fix index hygiene first — then relaunch `tickets-review` for decomposition.
 
 ## 2026-06-17 — **Oz dashboard design tweaks (run_115): Round-3 visual polish — archive-candidate**
 
@@ -188,7 +188,7 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 - **#11/#12 lineage closed** — capability data matches adapter reality (only `cursor-agent` headless today); #12 resolved by `governance-authoring-plays` (one-tool `author` action, run_98). The founder's "any CLI headless" ask is the unbuilt adapter lane → `headless-adapter-lane` + ticket 0006, not a data flip.
 - **Machine proof rerun green this run** — `node scripts/proof-oz-surfaces.mjs`: daemon 194/194, UI 111/111, ENDPOINTS_OWED 8/10 served, remainder bounded to the three live founder proofs.
 - **ARCHIVED on the founder's explicit `archive` go-ahead** (founder-owned acceptance gate; no self-archive). Playbook moved `priorities/ → priorities/archive/`; dropped from `order.json`; PLAYBOOK roadmap updated. Followed the `archive-priority` convention (945eb45).
-**Next:** Launch **`headless-adapter-lane`** (now top of `order.json`) — the real follow-on that makes "any CLI headless" true and retires two of the three live gaps. Open tickets 0006/0007 do not reopen this priority.
+**Next:** Launch **`headless-adapter-lane`** (now top of `order.json`) — the real follow-on that makes "any CLI headless" true and retires two of the three live gaps. Open tickets 0006/0012 do not reopen this priority.
 
 ## 2026-06-16 — **Governance authoring as atomic Plays (run_99): grants + proof all green (archive-ready)**
 
@@ -226,10 +226,10 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Outcomes:**
 - **All 12 bugs addressed.** Landed this run: **#2** (priority rows → number+name+chip, Launch restored with disabled-with-reason), **#5/#7/#8** (canonical persona order via single-source `orderPersonas`; "Skills (Plays)" relabel; honest banners), **#11** (CLI `headlessCapable` single-sourced to the adapter id — seed `claude-code`→`claude` — values kept honest: only `cursor-agent` headless), **#12** (Oz tool-action budget 3→10 + graceful degradation: hitting the cap now forces a final plain-English answer instead of a 500). Gates green per atom (renderer 111/111, daemon 181/181, builds).
 - **#1/#3/#4/#6/#9/#10 verified surviving** in the live tree (Oz live persona + NL path, launch-lock legibility, curated models + dropdown, density/reduce-motion wiring, Restart Oz control).
-- **Governance finding (F21):** #2/#5/#7/#8 had ALREADY been fixed 2026-06-14, then silently reverted by the "Fusion" renderer rebuild (`2ccff89`) regenerating `packages/ui/app` from the frozen `design-ref/`. Cost two atoms to re-fix. Still-live risk: `design-ref/` retains `claude-code`, exposing #11's rename to the next rebuild → filed **ticket 0007** (design-ref rebuild guard).
+- **Governance finding (F21):** #2/#5/#7/#8 had ALREADY been fixed 2026-06-14, then silently reverted by the "Fusion" renderer rebuild (`2ccff89`) regenerating `packages/ui/app` from the frozen `design-ref/`. Cost two atoms to re-fix. Still-live risk: `design-ref/` retains `claude-code`, exposing #11's rename to the next rebuild → filed **ticket 0012** (design-ref rebuild guard).
 - **#11 honesty:** the founder's "any CLI should run headless" needs the unbuilt headless-adapter lane (**ticket 0006**), NOT a data flip — marking claude/codex headless would cause real hangs. Capability data now matches adapter reality; the warning correctly stays for interactive-only adapters.
 - **Verify discipline:** rejected atom 0 (bug #2 removed the Launch feature — global #1) and atom 4 (bundled unrelated `not-landed` test rewrites — global #10); both re-scoped and re-landed clean.
-**Next:** Reply **`archive oz-dashboard-bugs`** to close (archive-candidate — all 12 fixed, gates green; live-on-daemon eyeball optional). Follow-ups: ticket 0006 (headless lanes), ticket 0007 (design-ref guard).
+**Next:** Reply **`archive oz-dashboard-bugs`** to close (archive-candidate — all 12 fixed, gates green; live-on-daemon eyeball optional). Follow-ups: ticket 0006 (headless lanes), ticket 0012 (design-ref guard).
 
 ## 2026-06-15 — **plays-first-class archive-readiness confirmed (run_90): stale ADR pointer corrected**
 

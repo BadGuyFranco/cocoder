@@ -14,7 +14,8 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 | ID | Title | Type | Priority | Owner |
 |---|---|---|---|---|
 | [0003](./open/0003-public-docs-v1-stale.md) | Public docs/ tree is v1-stale (commands, PRIORITIES.md, cocoder/local, routes) | task | none | founder-session |
-| [0007](./open/0007-design-ref-rebuild-clobber-guard.md) | Guard against design-ref rebuilds reverting committed packages/ui/app fixes | task | oz-dashboard-bugs | oscar run_94 |
+| [0005](./open/0005-persona-file-memory-migrations.md) | Migrate orchestrator session memory into persona/standards files | task | none | founder-session |
+| [0012](./open/0012-design-ref-rebuild-clobber-guard.md) | Guard against design-ref rebuilds reverting committed packages/ui/app fixes | task | oz-dashboard-bugs | oscar run_94 |
 
 ## Recently Closed
 

@@ -210,7 +210,7 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    real CLI, one headless Oscar + Bob run, Q/A acceptance) were the founder's acceptance gate, cleared by
    the explicit `archive` go-ahead. Playbook moved to `priorities/archive/`. Open follow-ons (do NOT
    reopen this priority): ticket 0006 closed via `headless-adapter-lane` (run_104, archive-candidate) ·
-   ticket 0007 (design-ref rebuild guard).
+   ticket 0012 (design-ref rebuild guard).
 4. `new-primary-root` — **ACTIVE (run_112, 2026-06-17).** Onboard a primary root via the
    bootstrap/takeover/drift onboarding Playbooks (ADR-0020 Accepted). **Engine foundation built and
    live-wired** (run_83 + run_86): loader extension (§7), `scaffoldCocoderZone` + `createWorkspace`
@@ -232,8 +232,8 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
 - `tickets-review` — **BLOCKED (run_116 alignment, 2026-06-17).** Real dashboard tabs (**Priorities** /
   **Tickets** / **Runs**, replacing the pseudo-tabs + run-history button) + a **ticket-fix run** that
   closes the ticket through the spine. Alignment verified dashboard state and ticket inventory; proof
-  ticket `0009` is closed — use **0003**, **0005**, or **0007**. Index hygiene needed before Tickets tab
-  (`0005` missing from `INDEX.md`; duplicate ID 0007). **Founder gate:** ratify the DRAFT Objective +
+  ticket `0009` is closed — use **0003**, **0005**, or **0012**. Index hygiene completed by run_121 atom 0.
+  **Founder gate:** ratify the DRAFT Objective +
   Q1 run shape (Oscar rec: Oscar↔Bob for code tickets) + **Q2 sequencing** (Oscar rec: wait for
   `new-primary-root` Addendum Atom 2 run-target generalization, don't fork). Q3/Q4 Oscar-rec confirmed.
   No build until founder go-ahead.

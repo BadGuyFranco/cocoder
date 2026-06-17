@@ -1,5 +1,5 @@
 ---
-id: 0007
+id: 0012
 title: Guard against design-ref rebuilds reverting committed packages/ui/app fixes
 type: task
 status: Open
@@ -8,7 +8,7 @@ owner: oscar run_94
 created: 2026-06-15
 ---
 
-# 0007 — design-ref rebuild-clobber guard
+# 0012 — design-ref rebuild-clobber guard
 
 ## Context
 Found in run_94 (failure-catalog **F21**). Six Oz dashboard bug fixes were committed 2026-06-14, but a
