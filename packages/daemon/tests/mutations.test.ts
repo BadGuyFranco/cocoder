@@ -518,7 +518,7 @@ describe('Oz mutations + lifecycle', () => {
     await expect(readFile(join(p1Dir, 'pickup.md'), 'utf8')).resolves.toContain('## Spend Decision')
   })
 
-  test('takeover playbook resumes from P1 gate into P2 dual-source fanout and reaches the P3 stub', async () => {
+  test('takeover playbook resumes from P1 gate through P2 and real P3 cross-check to the P4 gate', async () => {
     await writeFile(join(home, 'README.md'), '# CoCoder Fixture\nTakeover onboarding fixture.\n', 'utf8')
     const builds: Array<{ readonly persona: string; readonly model: string; readonly prompt: string }> = []
     const reconOutput = {
@@ -578,11 +578,12 @@ describe('Oz mutations + lifecycle', () => {
       io: fakeIO(),
       runHeadless: async (input) => {
         const prompt = String(input.args[1] ?? '')
-        if (prompt.includes('# P1 Agentic Recon Pass')) return { exitCode: 0, output: JSON.stringify(reconOutput) }
-        if (prompt.includes('# P1 Takeover Intent Intake')) return { exitCode: 0, output: JSON.stringify(intentOutput) }
-        const source = prompt.includes('Deep-read source: builder') ? 'builder' : 'orchestrator'
-        const iteration = prompt.includes('Iteration: 2') ? 2 : 1
-        return { exitCode: 0, output: deepReadOutput(source, iteration) }
+      if (prompt.includes('# P1 Agentic Recon Pass')) return { exitCode: 0, output: JSON.stringify(reconOutput) }
+      if (prompt.includes('# P1 Takeover Intent Intake')) return { exitCode: 0, output: JSON.stringify(intentOutput) }
+      if (prompt.includes('P3 follow-up')) return { exitCode: 0, output: deepReadOutput('orchestrator', 2) }
+      const source = prompt.includes('Deep-read source: builder') ? 'builder' : 'orchestrator'
+      const iteration = prompt.includes('Iteration: 2') ? 2 : 1
+      return { exitCode: 0, output: deepReadOutput(source, iteration) }
       },
     })
 
@@ -629,13 +630,20 @@ describe('Oz mutations + lifecycle', () => {
     expect(resumed.state).toMatchObject({ status: 'awaiting-founder', currentPhaseId: 'P4', gate: { phaseId: 'P4' } })
     expect(resumedPhases).toEqual(['P2', 'P3', 'P4'])
     expect(builds.filter((build) => build.prompt.includes('Deep-read source: builder')).map((build) => build.model)).toEqual(['gpt-top', 'gpt-top'])
-    expect(builds.filter((build) => build.prompt.includes('Deep-read source: orchestrator')).map((build) => build.model)).toEqual(['opus-top', 'opus-top'])
+    expect(builds.filter((build) => build.prompt.includes('Deep-read source: orchestrator') && !build.prompt.includes('P3 follow-up')).map((build) => build.model)).toEqual(['opus-top', 'opus-top'])
+    expect(builds.filter((build) => build.prompt.includes('P3 follow-up')).map((build) => build.model)).toEqual(['opus-top'])
     const p2Dir = join(runDir, 'playbook', 'P2')
     await expect(readFile(join(p2Dir, 'findings', 'governance', 'builder.md'), 'utf8')).resolves.toContain('## Iteration 2')
     await expect(readFile(join(p2Dir, 'findings', 'governance', 'orchestrator.md'), 'utf8')).resolves.toContain('stale validation')
     await expect(readFile(join(p2Dir, 'convergence', 'governance.json'), 'utf8')).resolves.toContain('"agreementIndex"')
     const fanoutEvents = store.listEvents(runId).filter((event) => event.type === 'playbook-fanout-result')
     expect(fanoutEvents.map((event) => (event.data as { source: string }).source).sort()).toEqual(['builder', 'orchestrator'])
+    const p3Dir = join(runDir, 'playbook', 'P3')
+    await expect(readFile(join(p3Dir, 'convergence.json'), 'utf8')).resolves.toContain('"converged": true')
+    await expect(readFile(join(p3Dir, 'cross-check.md'), 'utf8')).resolves.toContain('Converged: true')
+    const crossCheckEvents = store.listEvents(runId).filter((event) => event.type === 'playbook-cross-check-result')
+    expect(crossCheckEvents).toHaveLength(1)
+    expect(crossCheckEvents[0]?.data).toMatchObject({ roundsRun: 2, converged: true })
     await expect(stat(join(home, 'cocoder', 'AGENTS.md'))).rejects.toThrow()
   })
 

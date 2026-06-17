@@ -14,6 +14,7 @@ import { promisify } from 'node:util'
 import {
   createPlaybookPhaseAction,
   createPlaybookP2PhaseAction,
+  createPlaybookP3PhaseAction,
   dispatchPlay,
   isPersonaEnabled,
   gateCommitRepair,
@@ -46,6 +47,7 @@ const OZ_REPAIR_TIMEOUT_MS = 120_000
 const AUTHORING_PLAY_TIMEOUT_MS = 120_000
 const PLAYBOOK_P1_AGENT_TIMEOUT_MS = 120_000
 const PLAYBOOK_P2_AGENT_TIMEOUT_MS = 120_000
+const PLAYBOOK_P3_AGENT_TIMEOUT_MS = 120_000
 const AUTHORING_PLAY_IDS = ['create-priority', 'edit-priority', 'archive-priority'] as const
 const execFileAsync = promisify(execFile)
 
@@ -204,9 +206,25 @@ export function createDaemonPlaybookPhaseAction(ctx: OzContext, workspacePath: s
     ),
     onFanoutResult: (event) => ctx.store.recordEvent({ runId, type: 'playbook-fanout-result', data: event }),
   })
+  const p3 = createPlaybookP3PhaseAction({
+    repoDir: workspacePath,
+    runDir,
+    assignments,
+    modelPin: modelTier,
+    play: deepReadPlay,
+    now: Date.now,
+    signal,
+    resolveTopTier: createDaemonTopTierResolver(ctx),
+    dispatch: (input) => dispatchPlay(
+      { sessionHost: trackingHost(ctx), getAdapter: ctx.getAdapter, runHeadless: ctx.runHeadless },
+      { ...input, group: runId, timeoutMs: PLAYBOOK_P3_AGENT_TIMEOUT_MS, signal },
+    ),
+    onCrossCheckResult: (event) => ctx.store.recordEvent({ runId, type: 'playbook-cross-check-result', data: event }),
+  })
   return async (input) => {
     await p1(input)
     await p2(input)
+    await p3(input)
   }
 }
 

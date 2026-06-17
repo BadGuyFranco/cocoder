@@ -86,6 +86,22 @@ export {
   type RunPlaybookP2ActionInput,
 } from './p2-action.js'
 export {
+  createPlaybookP3PhaseAction,
+  runPlaybookP3Action,
+  type P3CapReason,
+  type P3CapStatus,
+  type P3ConvergencePayload,
+  type P3FollowUpRead,
+  type P3PredicateClauses,
+  type P3ResolvedItem,
+  type P3RoundRecord,
+  type P3UnresolvedItem,
+  type P3UnresolvedItemKind,
+  type PlaybookCrossCheckResultEvent,
+  type PlaybookP3Artifacts,
+  type RunPlaybookP3ActionInput,
+} from './p3-action.js'
+export {
   buildIntentIntakePrompt,
   runIntentIntake,
   type FounderAssertedIntent,
