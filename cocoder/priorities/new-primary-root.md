@@ -89,11 +89,62 @@ CoPublisher).
    build** (#2 above).
 4. **Dogfood Drift Audit run** — Objective verification (b). **BLOCKED on executor build** (#2 above).
 
-**Relaunch guidance (2026-06-16, run_107):** Founder accepts the [0020 addendum](../decisions/0020-addendum-phase-executor.md)
-and names the top-tier deep-read default → launch **Atom 1** (Phase metadata loader: extend
-`loadOnboardingPlaybooks()` with ordered executable phases parsed from each Playbook's baked table; pin exact
-phase lists in `packages/core/tests/playbooks.test.ts`). Then Atoms 2–10 per the addendum. Live Takeover and
-Drift Audit proofs (#3–#4) remain gated on the executor shipping — do not attempt live onboarding until then.
+## Next-run atom plan (briefed run_107, 2026-06-16 — founder-directed)
+
+Founder review of the run_107 executor design surfaced a real concern: the design nails the phase
+**structure** but under-delivers the audit **depth** our own Objective demands ("world-class… never one
+cheap pass"). Before building, we **deepen the design** along the axes below, then build. **Each atom gets
+its own dedicated session and is to be super-thoughtful** (one concern, deep attention — not a checklist
+sweep). Atoms A–E are **design/spec** atoms that amend the [0020 addendum](../decisions/0020-addendum-phase-executor.md)
+(or, for E, add a small New-Primary design note/ADR); the build atoms (addendum §Ordered Implementation
+Atoms 1–10) follow **after the founder ratification gate**, re-sequenced so they implement the deepened design.
+
+**Design-deepening atoms (amend the addendum; each its own session):**
+
+- **Atom A — Iterative, hypothesis-driven subsystem reads (P2 depth).** Replace "one `deep-read` per
+  subsystem" with *read-until-understood*: form a theory of the subsystem, verify it against the code,
+  re-read to close gaps. Define the per-subsystem "understood" exit signal and hard iteration + cost caps.
+  *Exit:* addendum P2 section rewritten to specify the iteration model, the convergence/"understood" signal,
+  and caps. One-shot, judgment-gated at verify.
+- **Atom B — Convergence-based cross-check (P3 depth).** P3 loops until no *new* contradictions/coverage
+  gaps surface (capped), instead of a single pass; bounded named follow-up reads feed the next round.
+  *Exit:* addendum P3 specifies the convergence loop, its exit signal, caps, and how follow-up reads close
+  named gaps. One-shot, judgment-gated.
+- **Atom C — Complexity-scaled depth + cost/time estimate at the recon gate (P1 depth + spend control).**
+  P1 produces a *complexity-scaled* audit plan and a **cost/time estimate** that the founder sees and
+  approves at the P1 gate, so a takeover can legitimately be long/multi-day when the repo warrants it — and
+  the founder decides whether to spend it. *Exit:* addendum P1 + founder-gate sections specify the scaling
+  inputs, the estimate artifact, and the gate's spend decision. One-shot, judgment-gated.
+- **Atom D — Intent/intake beat (so authored governance reflects purpose, not just structure).** Add an
+  intake phase that captures the repo's *purpose* and the founder's *intent* (README/docs/issues/git
+  history + a short founder interview) and feeds P4, so authored Objectives reflect where the repo is going,
+  not only what the code currently is. *Exit:* addendum gains an intake phase with its inputs/outputs and
+  its founder touchpoint. One-shot, judgment-gated.
+
+**New-Primary feature atom (its own session):**
+
+- **Atom E — Tech-stack starter for New Primary (pluggable; ships a founder default).** Today New Primary
+  scaffolds only the `cocoder/` governance zone and says nothing about the *app* stack — a hole for a
+  non-developer founder starting from empty. This atom must **(1) contemplate HOW we add additional
+  tech-stack templates** — the pluggable mechanism/registry, where starter templates live, how the
+  New-Primary flow selects one, and how a user brings their own — keeping it an **option, not a mandate**;
+  and **(2) ASK the founder for an example stack** to ship as *the* default starter (framework, language,
+  DB, hosting, non-negotiables). *Exit:* a design note (likely a small ADR or New-Primary addendum)
+  specifying the template-add seam + the pluggable contract + the founder-provided default captured.
+  **Founder-gated:** this atom pauses to collect the founder's stack before finalizing. One-shot,
+  founder-gated.
+
+**Founder ratification gate (after A–E):** founder ratifies the deepened addendum (A–D) + the New-Primary
+tech-stack approach (E), and names the top-tier `deep-read` default `{cli, model}` (addendum §Founder
+Ratification Required). **This gate releases the build.**
+
+**Build (after ratification):** the addendum's Ordered Implementation Atoms 1–10, re-sequenced so P1
+implements C+D, P2 implements A, P3 implements B; plus a New-Primary tech-stack-template build atom from E.
+First build atom remains **Phase metadata loader** (extend `loadOnboardingPlaybooks()` with ordered
+executable phases; pin phase lists in `packages/core/tests/playbooks.test.ts`).
+
+**Still gated:** Live Takeover (#3) and Drift Audit (#4) proofs remain gated on the executor shipping — do
+not attempt live onboarding until then.
 
 ### Founder decision + outcome (2026-06-14, run_86 post-wrap) — D3 + a STRAND
 - **D3 — EXPAND SCOPE APPROVED.** The founder explicitly approved expand-scope to **land the three
