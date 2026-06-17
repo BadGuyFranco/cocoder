@@ -4,10 +4,10 @@
 // This exercises the whole live chain — health switch → loadWsData → adapter → renderer, and the
 // launch/attach mutation path — without ever touching a real daemon.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { act, render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react'
+import { act, render, screen, waitFor, cleanup, fireEvent, within } from '@testing-library/react'
 import { App } from '../app/App.tsx'
 import { stopRun } from '../app/live.ts'
-import type { ConnectionState, OzApi, OzEventHint, PersonasResponse, PlaysResponse, Priority as DPriority, RunDetail, RunSummary } from '../electron/ipc-contract.ts'
+import type { ConnectionState, OzApi, OzEventHint, PersonasResponse, PlaysResponse, Priority as DPriority, Ticket as DTicket, RunDetail, RunSummary } from '../electron/ipc-contract.ts'
 import workspacesFx from '../fixtures/workspaces.json'
 import prioritiesFx from '../fixtures/priorities.json'
 import ticketsFx from '../fixtures/tickets.json'
@@ -64,6 +64,7 @@ const playsFx: PlaysResponse = {
 interface PostCall { path: string; body?: unknown }
 interface PutCall { workspaceId: string; assignments: unknown }
 interface CreateCall { workspaceId: string; priority: { title: string; goal?: string } }
+interface TicketCreateCall { workspaceId: string; ticket: { title: string; type?: string; priority?: string; description?: string } }
 interface ReorderCall { workspaceId: string; order: readonly string[] }
 interface WorkspaceUpdateCall { workspaceId: string; folders: unknown }
 interface WorkspaceCreateCall { workspaceId: string; folders: unknown }
@@ -74,12 +75,14 @@ function mockOz(opts: {
   posts?: PostCall[]
   puts?: PutCall[]
   creates?: CreateCall[]
+  ticketCreates?: TicketCreateCall[]
   reorders?: ReorderCall[]
   workspaceUpdates?: WorkspaceUpdateCall[]
   workspaceCreates?: WorkspaceCreateCall[]
   postResult?: any
   putResult?: any
   createResult?: any
+  ticketCreateResult?: any
   workspaceUpdateResult?: any
   workspaceCreateResult?: any
   priorities?: { priorities: DPriority[] }
@@ -126,7 +129,8 @@ function mockOz(opts: {
       return opts.createResult ?? { ok: true, status: 201, data: { id: 'created-priority', title: priority.title, scopeNarrowing: null, goal: priority.goal ?? '' } }
     },
     ticketsCreate: async (_workspaceId: string, ticket: { title: string; type?: string; priority?: string; description?: string }) => (
-      { ok: true, status: 201, data: { id: '0001', title: ticket.title, type: ticket.type ?? 'task', status: 'Open', priority: ticket.priority ?? 'none', owner: 'founder-session', created: '2026-06-17', state: 'open', body: ticket.description ?? '' } }
+      opts.ticketCreates?.push({ workspaceId: _workspaceId, ticket }),
+      opts.ticketCreateResult ?? { ok: true, status: 201, data: { id: '0001', title: ticket.title, type: ticket.type ?? 'task', status: 'Open', priority: ticket.priority ?? 'none', owner: 'founder-session', created: '2026-06-17', state: 'open', body: ticket.description ?? '' } as DTicket }
     ),
     chatSend: async () => ({ role: 'oz', text: '', at: 0 }),
     prioritiesReorder: async (workspaceId: string, order: readonly string[]) => {
@@ -513,6 +517,36 @@ describe('Oz renderer — live daemon path', () => {
     expect(reorders.length).toBe(0)
     fireEvent.click(screen.getByTitle('Close (Esc)'))
     expect(screen.queryByText('Rejected Priority')).toBeNull()
+  })
+
+  it('Dashboard Add ticket opens the live ticket modal, creates through the typed bridge, and refreshes tickets', async () => {
+    const getPaths: string[] = []
+    const ticketCreates: TicketCreateCall[] = []
+    setOz(mockOz({ getPaths, ticketCreates }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(screen.getByRole('button', { name: /Tickets \d+/i }))
+    fireEvent.click(screen.getByTitle('Add ticket'))
+
+    const heading = await screen.findByText('New ticket')
+    const modalRoot = heading.closest('body > div') as HTMLElement
+    const modal = within(modalRoot)
+    const submit = modal.getByText('Create ticket') as HTMLButtonElement
+    expect(submit.disabled).toBe(true)
+
+    fireEvent.change(modal.getByPlaceholderText('e.g. Dashboard count is stale'), { target: { value: 'Fix ticket modal' } })
+    fireEvent.change(modal.getByRole('combobox'), { target: { value: 'bug' } })
+    fireEvent.change(modal.getByPlaceholderText('Why does this ticket exist?'), { target: { value: 'File tickets without chat prefill.' } })
+    fireEvent.click(submit)
+
+    await waitFor(() => expect(ticketCreates.length).toBe(1))
+    expect(ticketCreates[0]).toEqual({
+      workspaceId: 'cocoder',
+      ticket: { title: 'Fix ticket modal', type: 'bug', description: 'File tickets without chat prefill.' },
+    })
+    await waitFor(() => expect(getPaths.filter((path) => /\/tickets$/.test(path)).length).toBeGreaterThanOrEqual(2))
+    await waitFor(() => expect(screen.queryByText('New ticket')).toBeNull())
   })
 
   it('Craft persona files its priority through the typed create bridge in live mode', async () => {

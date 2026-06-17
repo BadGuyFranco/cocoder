@@ -4,7 +4,7 @@
 // the design-faithful view-model from the ported seed (fixture parity, fully interactive); the daemon
 // adapter is wired in the next slice (the existing electron/ plumbing is untouched).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, sendOzMessage, launchRun, attachRun, teardownRun, stopRun, testCli, createPriority, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, saveAssignments, restartDaemon, type ConnectionState } from './live.ts'
+import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, sendOzMessage, launchRun, attachRun, teardownRun, stopRun, testCli, createPriority, createTicket, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, saveAssignments, restartDaemon, type ConnectionState } from './live.ts'
 import { ADHOC_PRIORITY_ID, MODE_HONORED_PERSONAS, applyOrder, isActiveRun, mergeRunsWithEnrichment, orderPersonas, personasToAssignments } from './adapter.ts'
 import { Sidebar, type Route } from './ui/Sidebar.tsx'
 import { TopBar } from './ui/TopBar.tsx'
@@ -14,7 +14,7 @@ import { CLIsScreen } from './sections/CLIs.tsx'
 import { PersonasScreen } from './sections/Personas.tsx'
 import { PlaysScreen } from './sections/Plays.tsx'
 import { SettingsScreen } from './sections/Settings.tsx'
-import { NewWorkspaceModal, CraftPersonaModal, NewPriorityModal } from './sections/modals.tsx'
+import { NewWorkspaceModal, CraftPersonaModal, NewPriorityModal, NewTicketModal } from './sections/modals.tsx'
 import { seed, DEFAULT_SETTINGS, type ChatMessage, type Cli, type Dependency, type Persona, type Play, type Priority, type Ticket, type Run, type Settings, type SubAgent, type Workspace } from './model.ts'
 import type { OzEventHint, PersonaAssignment } from '../electron/ipc-contract.ts'
 
@@ -90,6 +90,7 @@ export function App() {
   const [newWsOpen, setNewWsOpen] = useState(false)
   const [craftOpen, setCraftOpen] = useState(false)
   const [newPriorityOpen, setNewPriorityOpen] = useState(false)
+  const [newTicketOpen, setNewTicketOpen] = useState(false)
   const [navCollapsed, setNavCollapsed] = useState(false)
 
   // ── Live daemon wiring ── source is decided by window.oz.health(): 'fixtures' (or no bridge, e.g.
@@ -428,6 +429,29 @@ export function App() {
     setRoute('dashboard')
     return true
   }
+  async function handleCreateTicket(t: { title: string; type: string; priority?: string; description?: string }): Promise<boolean> {
+    if (!live) return false
+    const oz = ozApi()
+    if (!oz) {
+      notify('err', 'Ticket create failed: daemon bridge unavailable.')
+      return false
+    }
+    const priority = t.priority?.trim()
+    const description = t.description?.trim()
+    const res = await createTicket(oz, activeId, {
+      title: t.title,
+      type: t.type,
+      ...(priority ? { priority } : {}),
+      ...(description ? { description } : {}),
+    })
+    if (!res.ok) {
+      notify('err', res.error)
+      return false
+    }
+    notify('ok', 'Ticket created.')
+    await refreshActiveWs()
+    return true
+  }
   // POST /runs launches a REAL run — only ever reached from a live user click, never in tests/CI.
   async function doLaunch(priorityId: string, label: string, resumeFromRunId?: string) {
     const oz = ozApi()
@@ -571,7 +595,7 @@ export function App() {
               selectedRunId={selectedRunId} setSelectedRunId={setSelectedRunId}
               onReorder={reorder} onLaunch={handleLaunch} onAdhoc={handleAdhoc}
               onAddPriority={() => { if (live) setNewPriorityOpen(true); else onSend('Draft a new priority.') }}
-              onAddTicket={() => setChatPrefill('Draft a new ticket for ')}
+              onAddTicket={() => { if (live) setNewTicketOpen(true); else onSend('Draft a new ticket.') }}
               onSend={onSend} onDecision={(c: string) => onSend(`Decision: replay ${c} plan.`)} onRunAction={handleRunAction}
               ozTyping={ozTyping} live={live}
               chatPrefill={chatPrefill} onChatPrefillConsumed={() => setChatPrefill(null)}
@@ -590,6 +614,7 @@ export function App() {
 
       <NewWorkspaceModal open={newWsOpen} onClose={() => setNewWsOpen(false)} onCreate={(input) => { void handleCreateWorkspace(input) }} />
       <NewPriorityModal open={newPriorityOpen} onClose={() => setNewPriorityOpen(false)} onSubmit={handleCreatePriority} />
+      <NewTicketModal open={newTicketOpen} onClose={() => setNewTicketOpen(false)} onSubmit={handleCreateTicket} />
       <CraftPersonaModal open={craftOpen} onClose={() => setCraftOpen(false)} clis={clis} onSubmit={({ name, summary, placeAtTop }) => handleCreatePriority({ title: name, goal: summary, placeAtTop })} />
     </div>
   )
