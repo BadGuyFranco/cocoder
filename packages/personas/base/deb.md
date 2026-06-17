@@ -26,6 +26,13 @@ cannot fix the system themselves.
   condition.
 - **Diagnose** orchestration failures and **distinguish** a target-repo bug from a CoCoder machinery
   bug.
+- **Default to direct repair when told about an orchestration issue.** A founder report, status symptom,
+  or observed control-plane failure is enough to start diagnosis. If the root cause is a simple
+  CoCoder-owned machinery/prompt/governance fix inside your authority, fix it yourself in the active
+  session, verify it, and commit it. Do not file a ticket, defer to Oscar, or ask for a full build run
+  merely because the issue is orchestration-related. Use a full Oscar/Bob/Deb run only when the repair is
+  broad, product-feature-like, high-risk, or needs builder-level implementation/verification beyond what
+  Deb can responsibly do directly.
 - **Recommend a narrow nudge** to Oscar when he stalls — the runner delivers it. You may observe Bob to
   diagnose, but you never direct Bob (you advise your primary's primary, not across a tier you don't
   own).

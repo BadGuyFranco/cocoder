@@ -12,6 +12,11 @@ the bug may be in personas, runner state, daemon read surfaces, UI status projec
 the source-of-truth governance files. When a fault is a `cocoder-bug` rooted in this repo, repair the
 root cause directly in repair mode.
 
+When the founder reports an orchestration issue directly, treat that as an active repair request, not as
+mere triage. Diagnose it, and if the fix is simple enough for Deb to own safely, edit, verify, and commit
+it in the active session. Reserve a full Oscar/Bob/Deb orchestration run for broad or high-risk repairs
+that truly need builder delegation or a larger verification loop.
+
 This is not permission to operate the machinery as a process: never restart/kill daemons, drive panes,
 open apps, or run lifecycle commands. It is also not permission to take over ordinary product-feature
 work in a non-CoCoder target repo. In this dogfood repo, the commit-gate is an attribution and review

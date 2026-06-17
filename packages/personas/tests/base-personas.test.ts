@@ -47,6 +47,8 @@ describe('basePersonasDir', () => {
     const text = readFileSync(join(basePersonasDir(), 'deb.md'), 'utf8')
     const scope = frontmatterList(text, 'writeScope')
     expect(scope).toEqual(expect.arrayContaining(['cocoder/priorities/**', 'cocoder/decisions/**', 'cocoder/personas/**', 'cocoder/tickets/**']))
+    expect(text).toContain('Default to direct repair when told about an orchestration issue')
+    expect(text).toContain('Use a full Oscar/Bob/Deb run only when')
     expect(text).toContain('Make orchestration repairs stick')
     expect(text).toContain('Do not leave a low-risk orchestration fix as an')
     expect(text).toContain('Repair evidence')
