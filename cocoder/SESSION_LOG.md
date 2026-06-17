@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-17 — **new-primary-root: executor P4 founder-question checkpoint ACTION integration landed — P5 synthesis + audit boundary enforcement is next (run_129)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 1 atom delegated/verified-on-evidence) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_129
+**Outcomes:**
+- **Executor P4 — founder-question checkpoint ACTION integration (`4a3ee42`):** four new pure-core modules — `p4-questions.ts` (partitions P4 gate content into three founder-question classes — clarifications from intent open-questions + unconfirmed inferred claims, conflicting findings from P3 disagreements + on-cap unconverged items, material/high code-issues-as-future-priorities — each item traceable via `sourceRef` + `evidence`), `p4-input.ts` (refuse-on-malformed reader; consumes P1 intent + P3 convergence only), `p4-action.ts` (writes only `playbook/P4/{questions.json,questions.md}`; `repoDir` accepted-but-unused), `p4-render.ts` (human `questions.md`). `launcher.ts` `createDaemonPlaybookPhaseAction` now composes P1→P2→P3→P4.
+- **Tests:** `playbook-p4-questions.test.ts` (5 unit: all three classes populated + traceable, empty-input → three empty arrays, refuse-on-malformed, write-boundary under `runDir/playbook/P4/**` only, determinism guard) + daemon `mutations.test.ts` e2e extended so the P4 gate carries `questions.json`/`questions.md`, asserts three class keys, class (a) populated from fixture open-question, single `playbook-questions-result` event, `home/cocoder/AGENTS.md` never created.
+- **Gates:** core 327 pass, daemon 208 pass, `pnpm -w typecheck` clean, `node scripts/check-topology.mjs` pass.
+- **Disposition: `continue`** — P4 committed and verified on evidence; P5 (synthesis + `cocoder/**`-only audit write-boundary ENFORCEMENT) is the next delicate atom where the hard trust invariant moves from structurally avoided to commit-boundary enforced, and gets its own fresh dedicated session (run_111 anti-pattern).
+**Next:** Launch **`new-primary-root`** in Oz for **Executor P5 — synthesis + `cocoder/**`-only audit write-boundary ENFORCEMENT** — build P5 synthesis (consume P3 convergence + P4 founder answers + P1 intent → author proposed `cocoder/**` governance) AND the enforcement seam so any audit commit outside `cocoder/**` REFUSES with a clear error; mirror p3/p4 action split; extend fake-agent e2e so resume advances P4→P5 and outside-`cocoder/**` writes are refused. Then Atoms 10–11 + tech-stack template build.
+
 ## 2026-06-17 — **new-primary-root: executor P3 cross-check ACTION integration landed — P4 founder-question checkpoint is next (run_128)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 1 atom delegated/verified-on-evidence) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_128
