@@ -145,10 +145,16 @@ export interface LaunchResult {
   readonly body: Record<string, unknown>
 }
 
+const ADHOC_PRIORITY_ID = 'adhoc-session'
+
 /** Launch a run for {workspaceId, priorityId}. Async (fire-and-forget); returns 202 with the runId,
  *  409 if a run is already in flight for the workspace, or 400 if the request can't be assembled. */
 export async function launchRun(ctx: OzContext, workspaceId: string, priorityId: string, opts: { readonly resumeFromRunId?: string; readonly task?: string | null } = {}): Promise<LaunchResult> {
   if (!workspaceId || !priorityId) return { status: 400, body: { error: 'workspaceId and priorityId are required' } }
+  const task = typeof opts.task === 'string' ? opts.task.trim() : ''
+  if (priorityId === ADHOC_PRIORITY_ID && task === '') {
+    return { status: 400, body: { error: 'adhoc-session requires a task; use adhoc <task> or pass task in POST /runs' } }
+  }
   if (ctx.inFlight.has(workspaceId)) {
     return { status: 409, body: { error: `a run is already in flight for workspace "${workspaceId}"` } }
   }

@@ -365,6 +365,18 @@ describe('Oz mutations + lifecycle', () => {
     expect(audit).toContain('"action":"launch"')
   })
 
+  test('POST /runs rejects adhoc-session without a task before creating a run', async () => {
+    await startServer()
+
+    const r = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'adhoc-session' } })
+
+    expect(r).toEqual({
+      status: 400,
+      json: { error: 'adhoc-session requires a task; use adhoc <task> or pass task in POST /runs' },
+    })
+    expect(store.listRuns()).toEqual([])
+  })
+
   test('POST /runs/:id/stop cooperatively stops a live launched run and cleans up panes', async () => {
     shown = []
     killed = []
