@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-17 — **new-primary-root: executor P2a pure convergence engine landed — P2b dispatch seam is next (run_125)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 1 atom delegated/verified-on-evidence) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_125
+**Outcomes:**
+- **Executor P2a — pure dual-source deep-read convergence engine (`a47bd8b`):** new `packages/core/src/playbooks/p2-fanout.ts` (exported from `playbooks/index.ts`) + `packages/core/tests/playbook-p2-fanout.test.ts` (6 tests). `runDeepReadSource` drives one source's hypothesis loop (form-theory → verify-with-cited-evidence → residual-gaps → converge-or-read-more) with a non-gameable 4-clause `understood` predicate (structurally requires ≥2 iterations), hard caps (4 iters / 45 min / min(250k, allocation.tokenBudget)), on-cap honesty, pure/deterministic (no Date.now/fs/network/subprocess). `combineSourcePair` builds agreement/disagreement index + machine-readable `convergencePayload` without adjudicating. Integration deferred — no edits to `executor.ts`/`p1-action.ts`/`dispatch.ts`/base `deep-read.md`.
+- **Gates:** `pnpm --filter @cocoder/core test` 311 pass (+6), `pnpm -w typecheck` clean, `node scripts/check-topology.mjs` green.
+- **Disposition: `continue`** — P2a committed and verified on evidence; P2b (assignment resolution + `dispatchPlay`-backed `deepReadTurn` seam) is the next delicate atom and gets its own fresh dedicated session (run_111 anti-pattern).
+**Next:** Launch **`new-primary-root`** in Oz for **Executor P2b** — dual-source ADR-0018 assignment resolution (Bob builder + Oscar orchestrator, fail-clear on collapse/same-model) + `deepReadTurn` adapter calling injectable `dispatchPlay` with base `deep-read.md`, empty write scope, captured-output → `DeepReadIterationResult` parse; prove two different assignments dispatch, collapse fails clearly, malformed output refused. Then P2c ACTION integration → Atoms 7–11 + tech-stack template build.
+
 ## 2026-06-17 — **new-primary-root: executor P1 ACTION integration landed — P2 dual-source fan-out is next (run_124)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 1 atom delegated/verified-on-evidence) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_124
