@@ -78,6 +78,7 @@ type PlaybookPhaseKind =
   | 'cross-check'
   | 'founder-question'
   | 'synthesize'
+  | 'stack-starter'
   | 'ratify'
   | 'prove'
   | 'drift-read-claims'
@@ -86,14 +87,19 @@ type PlaybookPhaseKind =
   | 'drift-report'
   | 'drift-apply'
 
+type MajorPhaseId = 'P0' | 'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6' | 'P7'
+type LowercaseLetter = 'a' | 'b' | 'c' | /* ... */ | 'z'
+
 interface OnboardingPlaybookPhase {
-  readonly id: 'P0' | 'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6' | 'P7'
+  readonly id: MajorPhaseId | `${MajorPhaseId}${LowercaseLetter}`
   readonly title: string
   readonly kind: PlaybookPhaseKind
   readonly founderGate: boolean
   readonly output: string
 }
 ```
+
+`packages/core/src/playbooks/loader.ts` is the authoritative source for these executable metadata types.
 
 The source of truth stays the Playbook markdown files. The loader parses the `## The baked Playbook`
 table and maps the known phase titles to the `kind` enum. If a shipped Playbook row cannot be mapped,
