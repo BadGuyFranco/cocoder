@@ -241,19 +241,70 @@ when the executor is implemented; this addendum intentionally does not edit the 
 
 ## P3 Cross-Check
 
-P3 consumes all P2 findings plus P1 `subsystems.json` and emits `playbook/P3/cross-check.md`.
+P3 consumes all P2 findings plus P1 `subsystems.json` and emits `playbook/P3/cross-check.md`. It is a
+convergence-based reviewer loop over the P2 record, not another repo read from scratch.
 
-The cross-check is a reviewer pass, not another repo read from scratch. It must:
+Each round cross-checks the complete P2 set:
 
-- verify every claimed subsystem has a P2 finding file;
-- flag findings with `evidence: UNVERIFIED`;
-- detect contradictory claims across subsystems;
-- detect missing coverage for entry points/tests named in P1;
-- produce a "verified findings" section and a "blocked/uncertain" section.
+- verify every subsystem claimed by P1 has a P2 finding file;
+- flag every finding with `evidence: UNVERIFIED`;
+- detect contradictory claims across subsystems using the same `axis`/`claim`/`evidence`/`confidence`
+  finding shape from P2;
+- detect missing coverage for every P1-named entry point and every P1-named test or validation command;
+- carry forward prior contradictions and coverage gaps until they are explicitly resolved or preserved
+  as unresolved.
 
-P3 may dispatch a small number of targeted follow-up `deep-read` invocations only for gaps it names
-concretely. That follow-up is still P3-owned and bounded; it is not a founder gate and not an
-open-ended loop.
+The loop keeps running rounds until the cross-check has converged or a hard cap trips. "Cross-checked"
+is not a reviewer feeling; it is this executor-checkable predicate for the latest round:
+
+- no new contradiction was found compared with the prior round;
+- no new coverage gap was found compared with the prior round;
+- every contradiction or coverage gap raised in any prior round is now either resolved with cited
+  evidence where `evidence != UNVERIFIED`, or explicitly carried as an unresolved item with severity and
+  confidence;
+- every P1-named subsystem, entry point, test, and validation command is represented in the current
+  cross-check state as verified, unresolved, or blocked by a named missing artifact.
+
+This predicate is honest because it depends on positive coverage and preserved unresolved items, not on
+silence. A round cannot pass by omission: an absent P2 finding file fails the subsystem clause, an
+unmentioned P1 entry point or validation command fails the coverage clause, a newly discovered conflict
+fails the no-new-contradiction clause, and a prior contradiction or gap remains open unless the record
+either cites resolving evidence or carries it forward with severity and confidence.
+
+P3 may dispatch targeted follow-up reads between rounds. Each follow-up uses `dispatchPlay()` with
+`packages/personas/base/plays/deep-read.md`, mode `headless captured subprocess`, empty/read-only write
+scope, and a task naming one concrete subsystem id plus one concrete question raised by the current
+round. A P3 round may dispatch at most 3 follow-up reads, and only for named contradictions or coverage
+gaps in `playbook/P3/cross-check.md`. The follow-up results are appended to the P3 record and become
+inputs to the next round's cross-check; they do not close anything until the next round applies the
+predicate. These reads are P3-owned and bounded; they are not a founder gate and not an open-ended loop.
+
+Caps are spend controls, not quality signals:
+
+- max rounds: 3;
+- wall-clock cap for the P3 loop: 30 minutes;
+- cost/token cap for the P3 loop: the smaller of 125k captured model tokens or the run's remaining P3
+  budget allocation.
+
+P3 uses fewer rounds and a smaller budget than P2 because it reviews already-produced findings and
+dispatches only named follow-up reads, instead of independently reading every subsystem to convergence.
+
+If any cap trips before convergence, the executor records `converged: false`, keeps the latest
+cross-check state, records which cap tripped, and preserves every unresolved contradiction and coverage
+gap. It never silently marks P3 clean. Material unresolved items must be carried into the
+founder-facing P5 package instead of being buried in run logs, matching the P2 to P3 to P5
+gap-preservation chain.
+
+P3 accumulates artifacts on disk:
+
+- `playbook/P3/cross-check.md` is the rolling human-readable output. Each round updates a verified
+  findings section and a blocked/uncertain section, with unresolved contradictions, missing coverage,
+  unverified evidence, and follow-up reads named explicitly.
+- `playbook/P3/convergence.json` is the machine-readable convergence record: `roundsRun`,
+  contradictions found and closed per round, coverage gaps found and closed per round, final predicate
+  clause results, `converged: true | false`, cap status, follow-up reads dispatched with their
+  `{cli, model}` assignment, output paths, and the final unresolved-items list with severity and
+  confidence.
 
 ## P4 Synthesis Into `cocoder/**`
 
