@@ -106,16 +106,25 @@ screen scraping.
 
 ## P1 Recon And Subsystem Enumeration
 
-P1 Takeover recon produces `playbook/P1/inventory.json` and `playbook/P1/subsystems.json`.
+P1 Takeover recon produces `playbook/P1/inventory.json`, `playbook/P1/subsystems.json`, and
+`playbook/P1/estimate.json`.
 
 The recon has two layers:
 
 1. **Deterministic inventory helper** in `packages/core/src/playbooks/recon.ts`:
    read package manifests, lockfiles, workspace files, source roots, test roots, app entry points,
-   build/test scripts, and file counts. It should use structured parsers where available
-   (`package.json`, workspace manifests) and `rg --files` style file enumeration for the rest.
+   build/test scripts, and file counts. It also records cheap complexity signals: file and approximate
+   LOC counts per proposed path group, monorepo package count, dependency fan-out from manifests,
+   language and framework indicators, whether each subsystem has a known test or validation command, and
+   high-risk surface hints that can be detected mechanically such as migrations, auth, payments,
+   deployment, persistence, generated outputs, and public API entry points. It should use structured
+   parsers where available (`package.json`, workspace manifests) and `rg --files` style file enumeration
+   for the rest.
 2. **Agent recon pass** lowered through the existing runner step primitive:
-   given the deterministic inventory, produce a human-readable map and propose subsystem boundaries.
+   given the deterministic inventory, produce a human-readable map, propose subsystem boundaries, and
+   add judgment-based complexity signals: cross-subsystem coupling, unclear ownership, stack
+   heterogeneity not obvious from manifests, missing or weak validation, unusually broad entry points,
+   and high-risk surfaces that need deeper audit attention.
 
 Subsystems are the smallest reviewable areas that make sense for one context window. P1 must include:
 
@@ -127,8 +136,42 @@ Subsystems are the smallest reviewable areas that make sense for one context win
 - reason the boundary exists;
 - known adjacency reads allowed for P2.
 
-P1 must not spend P2 money. It samples enough to define boundaries and command inventory, then pauses.
-The P1 founder gate approves or edits `subsystems.json` before P2 fan-out begins.
+P1 turns the recon signals into a complexity-scaled audit plan. The plan assigns each subsystem a
+complexity tier (`small`, `standard`, `large`, or `high-risk`) and maps that tier to a P2 allocation:
+target iterations, projected wall-clock, and token budget for that subsystem. Larger or riskier
+subsystems receive more allocation, but scaling only moves toward the existing P2 ceilings: max 4
+iterations, 45 minutes, and 250k captured model tokens per subsystem loop. The "remaining P2 budget
+allocation for that subsystem" consumed by P2 is this approved per-subsystem allocation minus captured
+P2 spend already recorded for that subsystem.
+
+The same plan allocates P3 review depth from the approved P2 total: expected P3 rounds, wall-clock, and
+token budget based on subsystem count, unresolved P2 risk, cross-subsystem coupling, and the number of
+named entry points/tests to check. Scaling only moves toward the existing P3 ceilings: max 3 rounds, 30
+minutes, and 125k captured model tokens for the P3 loop. The "remaining P3 budget allocation" consumed
+by P3 is this approved P3 allocation minus captured P3 spend.
+
+P1 accumulates estimate artifacts on disk:
+
+- `playbook/P1/estimate.json` is the machine-readable estimate and approved-plan candidate:
+  complexity signals by subsystem, selected complexity tier by subsystem, P2 allocation by subsystem,
+  P3 allocation, projected token cost and projected wall-clock per phase and per subsystem, assumptions
+  used for model tier and `{cli, model}` from `modelPin`, iteration and round caps, subsystem count,
+  low/expected/high token and time bands, projected dollar cost when pricing is derivable from the
+  resolved model assignment, and a `multiDay: true | false` signal when the high band crosses a working
+  day or the expected plan requires staged execution.
+- `pickup.md` includes a human-readable estimate summary for the gate: subsystem count, expected and
+  high-band time/cost, the depth tier implied by the plan, the assumptions behind any dollar figure, the
+  multi-day signal when present, and the concrete spend decision needed to resume.
+
+Estimate bands are honest uncertainty, not guarantees. Post-hoc P2 cap/spend data recorded in
+`playbook/P2/convergence/<subsystem-id>.json` can refine future estimates, but the current run is
+bounded by the founder-approved allocation and the hard phase caps.
+
+P1 must not spend P2 money. It samples enough to define boundaries, command inventory, complexity
+signals, and the spend plan, then pauses. The P1 founder gate approves or edits `subsystems.json` and
+approves the spend decision from `estimate.json` before P2 fan-out begins. Drift and New Primary can use
+the same estimate shape with lighter inputs and a lighter or optional spend gate; Takeover always
+requires the explicit P1 spend decision.
 
 ## Founder Gate Interleave
 
@@ -149,8 +192,13 @@ and P5 ratification cannot be confused with ordinary free-text pickup.
 
 Required gates:
 
-- **Takeover P1 gate:** founder approves or edits the subsystem map. The executor does not dispatch any
-  P2 deep-read job until this gate resumes.
+- **Takeover P1 gate:** founder approves or edits the subsystem map and makes an explicit spend
+  decision over `estimate.json`. The gate presents both `subsystems.json` and `estimate.json`, with the
+  estimate summary in `pickup.md`. The typed resume payload must carry the approved subsystem map
+  revision and one spend decision: approve the plan and spend as-is, edit scope by dropping or merging
+  subsystems to reduce cost, or choose a shallower depth tier that lowers allocations beneath the hard
+  caps. The executor records the approved allocation in `playbook-state.json` and does not dispatch any
+  P2 deep-read job until this gate resumes with both subsystem-map approval and spend approval.
 - **Takeover P5 gate:** founder ratifies each drafted Objective. The executor does not mark candidate
   priorities runnable, and does not launch P6, until this gate resumes with ratified Objectives.
 - **Drift P5 gate:** founder selects which amendments/tickets to apply. P1-P4 remain propose-only.
@@ -214,8 +262,7 @@ the latest findings and residual gaps, records which cap tripped, and continues 
 "read attempted with unresolved gaps." It never silently passes the subsystem as complete. P3 must
 surface those residual gaps in `cross-check.md`, and the founder-facing P5 package must preserve any
 material unresolved gap instead of burying it in run logs. The per-subsystem cap data is also recorded
-so a later complexity-scaled estimate can use actual P2 spend without this addendum designing that
-estimate.
+so later P1 estimates can use actual P2 spend as calibration evidence.
 
 P2 accumulates artifacts on disk:
 
