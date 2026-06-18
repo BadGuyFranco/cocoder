@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-18 — **tickets-review: card Launch + drag-reorder + create-ticket Play — all build items done (run_143)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 5 atoms delegated, 1 rejected-then-redone, all verified-on-evidence) | **Priority:** [tickets-review](./priorities/tickets-review.md) | **Run:** run_143
+**Outcomes:**
+- **Atom 0 (`d74a45f`) — Inline Launch on ticket card:** card-level Launch mirroring `PriorityRow` (`stopPropagation`, keyboard-safe `role=button` card).
+- **Atom 1 (`94ef1d9`) — Ticket order backend:** shared `applyManifestOrder`/`writeOrder` helpers (one impl, no fork); `readTickets` applies `cocoder/tickets/order.json` to open tickets; `POST .../tickets/reorder` via spine with `ticket-reorder` audit.
+- **Atoms 2/3 (`318e34a`) — Drag-reorder UI:** mirrors priorities drag path across electron IPC + `persistTicketOrder` + `TicketsTab`; rejected once for shared `didDrag` swallowing first click after drag — re-scoped to index-keyed `draggedIndex` + regression test.
+- **Atom 4 (`1aac8d7`) — `create-ticket` authoring Play:** extracted `composeTicketMarkdown`+`TICKET_OWNER` to `@cocoder/core` as single ticket-format owner (route refactored byte-identical); Play in `AUTHORING_PLAY_IDS` with full frontmatter round-trip via `loadTicket`/`readTickets` (0015 guard).
+- **Disposition: `continue`** — every in-scope build item code-complete + verified; sole remaining gap is founder live end-to-end proof (launch ticket 0003 from dashboard Tickets tab → fix run closes on trunk).
+**Next:** From the live dashboard Tickets tab, click **Launch** on ticket **0003** (restart Oz first only if the daemon is stale); on success confirm archive of `tickets-review`.
+
 ## 2026-06-18 — **new-primary-root: onboarding rebuild COMPLETE — trust invariant + scaffold seeding + runnable proof (run_141)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 4 atoms delegated, 1 rejected-then-redone, all verified-on-evidence) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_141

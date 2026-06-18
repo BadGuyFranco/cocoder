@@ -236,15 +236,14 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   claims" to first-class structure; e.g. `integration-verify` *runs* the real check instead of prompting an
   agent to). Step 1 is an **ADR-0010 taxonomy amendment** the founder confirms at launch (the Play-component
   shape); then schema (`Play` type) + dispatch + reimplement `integration-verify` as the hybrid proof.
-- `tickets-review` — **CODE-COMPLETE; archive-candidate (run_132, 2026-06-17).** Objective ratified
-  2026-06-17. Landed run_121–122: index hygiene, tickets data layer, 3-tab panel, live-review fixes
-  (`POST /tickets` + `NewTicketModal`). Landed run_132: ticket loader surfaces (0015), `Run.ticketId` +
-  `launchRun` ticket branch, Tickets-tab card→modal parity, close-on-success spine writer, **Launch fix**
-  button live. **Only archive gate:** founder live proof — click **Launch fix** on ticket **0003** from the
-  dashboard Tickets tab; confirm fix run completes and 0003 moves to `closed/` with INDEX updated on trunk.
-  Daemon must serve current code (`scripts/oz.sh restart` if stale self-restart does not activate). Deferred
-  extensions (not blocking archive): reorderable tickets, create-ticket Play for all personas, durable
-  unparseable-ticket surface beyond 0015 tolerance.
+- `tickets-review` — **CONTINUE (run_143, 2026-06-18).** All in-scope build items code-complete. Landed
+  run_121–122: index hygiene, tickets data layer, 3-tab panel, live-review fixes (`POST /tickets` +
+  `NewTicketModal`). Landed run_132: ticket loader (0015), `Run.ticketId` + `launchRun` ticket branch,
+  card→modal parity, close-on-success spine, in-modal **Launch fix**. Landed run_143: card-level inline
+  Launch, drag-reorder (`order.json` + UI), `create-ticket` authoring Play for all personas
+  (`composeTicketMarkdown` in `@cocoder/core`). **Only archive gate:** founder live proof — from the
+  dashboard Tickets tab click **Launch** on ticket **0003**; confirm fix run completes and 0003 moves to
+  `closed/` with INDEX updated on trunk (`scripts/oz.sh restart` if daemon is stale).
 - `oz-dashboard-ux` — **CODE-COMPLETE; archive-candidate (run_134, 2026-06-18).** Items 1, 2, 4 landed
   run_133 (`e22b2a0`, `c58b77e`); run_133 founder polish run_134 (`c355c40`: ad-hoc **Launch** label,
   Oz hint removed). Item 3 (ticket UI) folded into `tickets-review` (founder, run_131). UI suite 124/124
