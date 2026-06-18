@@ -158,11 +158,16 @@ export interface RunResult {
 }
 
 const FOUNDER_CLOSEOUT_SECTIONS = [
-  '**What Landed**',
-  '**Disposition**',
-  "**What's Left To Close Priority**",
-  '**Judgement**',
-  '**Next**',
+  '**Founder Completion Brief**',
+  '**Atom Complete:**',
+  '**Run Status:**',
+  '**What Changed:**',
+  '**What Remains:**',
+  '**Recommended Next Step:**',
+  '**Founder Decision Needed:**',
+  '**Commit State:**',
+  '**Teardown Readiness:**',
+  '**Judgment:**',
 ] as const
 
 function founderCloseoutSection(markdown: string, section: (typeof FOUNDER_CLOSEOUT_SECTIONS)[number]): string | null {
@@ -180,27 +185,27 @@ function launchableNextIssue(cwd: string, next: string): string | null {
   if (priority) {
     const slug = priority[1]
     const focus = priority[2]?.trim() ?? ''
-    if (focus.length < 12) return '**Next** priority focus is too vague'
-    return existsSync(join(cwd, 'cocoder', 'priorities', `${slug}.md`)) ? null : `**Next** priority "${slug}" is not launchable`
+    if (focus.length < 12) return '**Recommended Next Step:** priority focus is too vague'
+    return existsSync(join(cwd, 'cocoder', 'priorities', `${slug}.md`)) ? null : `**Recommended Next Step:** priority "${slug}" is not launchable`
   }
 
   const barePriority = line.match(/^Priority:\s*`([a-z0-9][a-z0-9-]*)`$/i)
-  if (barePriority) return '**Next** must name the concrete focus after the priority slug'
+  if (barePriority) return '**Recommended Next Step:** must name the concrete focus after the priority slug'
 
   const ticket = line.match(/^Ticket:\s*`([0-9]{4})`\s+[-–—]\s+(.+)$/)
   if (ticket) {
     const id = ticket[1]
     const focus = ticket[2]?.trim() ?? ''
-    if (focus.length < 12) return '**Next** ticket focus is too vague'
+    if (focus.length < 12) return '**Recommended Next Step:** ticket focus is too vague'
     const openDir = join(cwd, 'cocoder', 'tickets', 'open')
     const exists = existsSync(openDir) && readdirSync(openDir).some((file) => file.startsWith(`${id}-`) && file.endsWith('.md'))
-    return exists ? null : `**Next** ticket "${id}" is not open/ready to run`
+    return exists ? null : `**Recommended Next Step:** ticket "${id}" is not open/ready to run`
   }
 
   const bareTicket = line.match(/^Ticket:\s*`([0-9]{4})`$/)
-  if (bareTicket) return '**Next** must name the concrete focus after the ticket id'
+  if (bareTicket) return '**Recommended Next Step:** must name the concrete focus after the ticket id'
 
-  return '**Next** must be exactly Priority: `slug` — <focus> or Ticket: `NNNN` — <focus>'
+  return '**Recommended Next Step:** must be exactly Priority: `slug` — <focus> or Ticket: `NNNN` — <focus>'
 }
 
 function sentenceCount(text: string): number {
@@ -222,36 +227,40 @@ function founderCloseoutFormatIssues(markdown: string, cwd: string): string[] {
   }
   if (!markdown.trimEnd().endsWith("I'm standing by...")) issues.push('missing final "I\'m standing by..." line')
 
-  const whatLanded = founderCloseoutSection(markdown, '**What Landed**')
-  if (whatLanded && whatLanded.length > 180) issues.push('**What Landed** is too long for a founder brief')
-  if (whatLanded && sentenceCount(whatLanded) > 1) issues.push('**What Landed** must be one sentence')
-  if (whatLanded && /\b(atom\s+\d+|[0-9a-f]{7,40}|core\s+\d+\/\d+|daemon\s+\d+\/\d+|ui\s+\d+\/\d+)\b/i.test(whatLanded)) {
-    issues.push('**What Landed** contains ledger/test-matrix detail')
+  if (!markdown.trimStart().startsWith('**Founder Completion Brief**')) {
+    issues.push('**Founder Completion Brief** must be first')
   }
 
-  const disposition = founderCloseoutSection(markdown, '**Disposition**')
-  if (disposition && /\b(roughly|about|around)?\s*\d+%|\b\d+\s*percent\b/i.test(disposition)) {
-    issues.push('**Disposition** must not estimate percentage complete')
+  const whatChanged = founderCloseoutSection(markdown, '**What Changed:**')
+  if (whatChanged && whatChanged.length > 180) issues.push('**What Changed:** is too long for a founder brief')
+  if (whatChanged && sentenceCount(whatChanged) > 1) issues.push('**What Changed:** must be one sentence')
+  if (whatChanged && /\b(atom\s+\d+|[0-9a-f]{7,40}|core\s+\d+\/\d+|daemon\s+\d+\/\d+|ui\s+\d+\/\d+)\b/i.test(whatChanged)) {
+    issues.push('**What Changed:** contains ledger/test-matrix detail')
   }
 
-  const whatsLeft = founderCloseoutSection(markdown, "**What's Left To Close Priority**")
-  if (whatsLeft && /^[*-]\s*optional\b/im.test(whatsLeft)) {
-    issues.push("**What's Left To Close Priority** includes optional work instead of required gaps")
+  const runStatus = founderCloseoutSection(markdown, '**Run Status:**')
+  if (runStatus && /\b(roughly|about|around)?\s*\d+%|\b\d+\s*percent\b/i.test(runStatus)) {
+    issues.push('**Run Status:** must not estimate percentage complete')
   }
-  if (whatsLeft) {
-    const bulletLines = whatsLeft.split(/\r?\n/).map((line) => line.trim()).filter((line) => /^[-*]\s+/.test(line))
-    if (bulletLines.length > 3) issues.push("**What's Left To Close Priority** has too many bullets")
+
+  const whatRemains = founderCloseoutSection(markdown, '**What Remains:**')
+  if (whatRemains && /^[*-]\s*optional\b/im.test(whatRemains)) {
+    issues.push('**What Remains:** includes optional work instead of required gaps')
+  }
+  if (whatRemains) {
+    const bulletLines = whatRemains.split(/\r?\n/).map((line) => line.trim()).filter((line) => /^[-*]\s+/.test(line))
+    if (bulletLines.length > 3) issues.push('**What Remains:** has too many bullets')
     if (bulletLines.some((line) => /^[-*]\s+\*\*/.test(line) || /\b[A-Z]?\d+[a-z]?\b/.test(line))) {
-      issues.push("**What's Left To Close Priority** contains atom/implementation labels")
+      issues.push('**What Remains:** contains atom/implementation labels')
     }
   }
 
-  const next = founderCloseoutSection(markdown, '**Next**')
+  const next = founderCloseoutSection(markdown, '**Recommended Next Step:**')
   if (next) {
     const nextWithoutStandingBy = next.replace(/\n*I'm standing by\.\.\.\s*$/i, '').trim()
     const nonEmptyLines = nextWithoutStandingBy.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
-    if (nonEmptyLines.length !== 1) issues.push('**Next** must be exactly one action line')
-    if (/\b(optionally|and\/or)\b/i.test(nextWithoutStandingBy)) issues.push('**Next** must not offer optional or multi-choice actions')
+    if (nonEmptyLines.length !== 1) issues.push('**Recommended Next Step:** must be exactly one action line')
+    if (/\b(optionally|and\/or)\b/i.test(nextWithoutStandingBy)) issues.push('**Recommended Next Step:** must not offer optional or multi-choice actions')
     const issue = launchableNextIssue(cwd, next)
     if (issue) issues.push(issue)
   }
@@ -266,21 +275,28 @@ function formatInvalidFounderCloseoutFallback(input: {
 }): string {
   const issueLines = input.issues.map((issue) => `- ${issue}`).join('\n')
   const commitText = input.commits.length === 0 ? 'No commits were recorded before wrap-up.' : `${input.commits.length} commit(s) were recorded before wrap-up.`
-  return `**What Landed**
-CoCoder completed ${input.atoms} atom(s) for \`${input.priorityId}\`. ${commitText}
+  return `**Founder Completion Brief**
 
-**Disposition**
-blocked
-The wrap-up Play returned a malformed founder brief, so the runner blocked delivery of that malformed shape.
+**Atom Complete:** No — the closeout brief needs repair before this can be treated as a clean completion.
 
-**What's Left To Close Priority**
+**Run Status:** blocked
+
+**What Changed:** The runner blocked a malformed wrap-up brief instead of delivering a non-template closeout.
+
+**What Remains:**
 ${issueLines}
 
-**Judgement**
-The runner preserved the founder-facing format instead of passing through a nonconforming wrap-up.
-
-**Next**
+**Recommended Next Step:**
 Priority: \`${input.priorityId}\` — repair the malformed wrap-up brief
+
+**Founder Decision Needed:** None.
+
+**Commit State:** ${commitText} The runner reports the authoritative commit outcome after this brief.
+
+**Teardown Readiness:** Standing by; teardown requires an explicit founder request.
+
+**Judgment:**
+The runner preserved the founder-facing template instead of passing through a nonconforming wrap-up.
 
 I'm standing by...`
 }

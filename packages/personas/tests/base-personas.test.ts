@@ -134,11 +134,11 @@ describe('basePlaysDir', () => {
     }
   })
 
-  test('wrap-up keeps the Next section to one runnable action (F18)', () => {
+  test('wrap-up keeps the Recommended Next Step label to one runnable action (F18)', () => {
     const text = readFileSync(join(basePlaysDir(), 'wrap-up.md'), 'utf8')
 
-    expect(text).toContain('**Next**')
-    expect(text).toContain('exactly one next priority or ticket to run')
+    expect(text).toContain('**Recommended Next Step:**')
+    expect(text).toContain('It is exactly one ready')
     expect(text).toContain('Name exactly one `Next Action`')
     expect(text).toContain('could a solo non-developer DO it from this one line')
     expect(text).toContain('Do not use "awaiting questions"')
@@ -150,11 +150,16 @@ describe('basePlaysDir', () => {
     const text = readFileSync(join(basePlaysDir(), 'wrap-up.md'), 'utf8')
 
     const sections = [
-      '**What Landed**',
-      '**Disposition**',
-      "**What's Left To Close Priority**",
-      '**Judgement**',
-      '**Next**',
+      '**Founder Completion Brief**',
+      '**Atom Complete:**',
+      '**Run Status:**',
+      '**What Changed:**',
+      '**What Remains:**',
+      '**Recommended Next Step:**',
+      '**Founder Decision Needed:**',
+      '**Commit State:**',
+      '**Teardown Readiness:**',
+      '**Judgment:**',
       "I'm standing by...",
     ]
     for (const section of sections) {

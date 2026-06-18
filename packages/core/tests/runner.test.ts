@@ -282,20 +282,28 @@ const wrapPlay: Play = {
   body: 'Wrap-up Play body.\n\nProduce the closeout.',
 }
 const wrapPlayAssignment: PlayAssignment = { cli: 'cursor-agent', model: 'cheap-wrap' }
-const validFounderCloseout = (summary = 'The requested work was completed and committed.'): string => `**What Landed**
-${summary}
+const validFounderCloseout = (summary = 'The requested work was completed.'): string => `**Founder Completion Brief**
 
-**Disposition**
-continue
+**Atom Complete:** Yes
 
-**What's Left To Close Priority**
+**Run Status:** continue
+
+**What Changed:** ${summary}
+
+**What Remains:**
 - Continue the remaining priority atoms.
 
-**Judgement**
-Oscar stopped at a clean wrap-up point.
-
-**Next**
+**Recommended Next Step:**
 Priority: \`demo\` — continue the remaining priority atoms
+
+**Founder Decision Needed:** None.
+
+**Commit State:** The runner reports the authoritative commit outcome after this brief.
+
+**Teardown Readiness:** Standing by; teardown requires an explicit founder request.
+
+**Judgment:**
+Oscar stopped at a clean wrap-up point.
 
 I'm standing by...
 `
@@ -829,32 +837,40 @@ describe('runRun (multi-atom loop)', () => {
 
     expect(result.status).toBe('completed')
     expect(pickupWrites).toHaveLength(1)
-    expect(pickupWrites[0]).toContain('**What Landed**')
-    expect(pickupWrites[0]).toContain('**Disposition**\nblocked')
-    expect(pickupWrites[0]).toContain('missing **What Landed**')
+    expect(pickupWrites[0]).toContain('**Founder Completion Brief**')
+    expect(pickupWrites[0]).toContain('**Run Status:** blocked')
+    expect(pickupWrites[0]).toContain('missing **Founder Completion Brief**')
     expect(pickupWrites[0]?.trimEnd().endsWith("I'm standing by...")).toBe(true)
     const invalid = store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')
-    expect(invalid?.data).toMatchObject({ play: 'wrap-up', issues: expect.arrayContaining(['missing **What Landed**']) })
+    expect(invalid?.data).toMatchObject({ play: 'wrap-up', issues: expect.arrayContaining(['missing **Founder Completion Brief**']) })
   })
 
   test('wrap-up Play rejects ledger-shaped founder briefs even with the right headings', async () => {
     const store = openRunStore(':memory:')
     const pickupWrites: string[] = []
-    const ledgerCloseout = `**What Landed**
-Atom 0 (8449d5e) aligned read consumers and Atom 1 (c11d90a) proved concurrency; core 370/370, daemon 215/215, UI 126/126, and typecheck are all green, with the exact run ledger and implementation inventory included here even though the founder asked for a decision brief.
+    const ledgerCloseout = `**Founder Completion Brief**
 
-**Disposition**
-archive ready
+**Atom Complete:** Yes
 
-**What's Left To Close Priority**
+**Run Status:** archive ready
+
+**What Changed:** Atom 0 (8449d5e) aligned read consumers and Atom 1 (c11d90a) proved concurrency; core 370/370, daemon 215/215, UI 126/126, and typecheck are all green, with the exact run ledger and implementation inventory included here even though the founder asked for a decision brief.
+
+**What Remains:**
 - Founder confirms the visual split.
 - Optional: run a migration command before archive.
 
-**Judgement**
-Oscar stopped because the priority is code-complete.
-
-**Next**
+**Recommended Next Step:**
 Confirm the UI and/or optionally run the migration command.
+
+**Founder Decision Needed:** None.
+
+**Commit State:** The runner reports the authoritative commit outcome after this brief.
+
+**Teardown Readiness:** Standing by; teardown requires an explicit founder request.
+
+**Judgment:**
+Oscar stopped because the priority is code-complete.
 
 I'm standing by...
 `
@@ -872,17 +888,17 @@ I'm standing by...
 
     expect(result.status).toBe('completed')
     expect(pickupWrites).toHaveLength(1)
-    expect(pickupWrites[0]).toContain('**Disposition**\nblocked')
-    expect(pickupWrites[0]).toContain('**What Landed** contains ledger/test-matrix detail')
-    expect(pickupWrites[0]).toContain("**What's Left To Close Priority** includes optional work")
-    expect(pickupWrites[0]).toContain('**Next** must not offer optional or multi-choice actions')
+    expect(pickupWrites[0]).toContain('**Run Status:** blocked')
+    expect(pickupWrites[0]).toContain('**What Changed:** contains ledger/test-matrix detail')
+    expect(pickupWrites[0]).toContain('**What Remains:** includes optional work')
+    expect(pickupWrites[0]).toContain('**Recommended Next Step:** must not offer optional or multi-choice actions')
     const invalid = store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')
     expect(invalid?.data).toMatchObject({
       play: 'wrap-up',
       issues: expect.arrayContaining([
-        '**What Landed** contains ledger/test-matrix detail',
-        "**What's Left To Close Priority** includes optional work instead of required gaps",
-        '**Next** must not offer optional or multi-choice actions',
+        '**What Changed:** contains ledger/test-matrix detail',
+        '**What Remains:** includes optional work instead of required gaps',
+        '**Recommended Next Step:** must not offer optional or multi-choice actions',
       ]),
     })
   })
@@ -890,25 +906,33 @@ I'm standing by...
   test('wrap-up Play rejects priority-ledger briefs that point back to a bare priority', async () => {
     const store = openRunStore(':memory:')
     const pickupWrites: string[] = []
-    const priorityLedgerCloseout = `**What Landed**
-The existing-repo onboarding rebuild retired the standalone executor and loader discovery surface, and authored \`onboard-existing\` as an ordinary Oscar-driven priority. ADR-0020 §7 now records scaffold-seeded onboarding priorities.
+    const priorityLedgerCloseout = `**Founder Completion Brief**
 
-**Disposition**
-continue
+**Atom Complete:** Yes
+
+**Run Status:** continue
 Rebuild is roughly 60% done; the hard trust invariant and scaffold seeding still need wiring before onboard-existing can run safely.
 
-**What's Left To Close Priority**
+**What Changed:** The existing-repo onboarding rebuild retired the standalone executor and loader discovery surface, and authored \`onboard-existing\` as an ordinary Oscar-driven priority. ADR-0020 §7 now records scaffold-seeded onboarding priorities.
+
+**What Remains:**
 - **Trust invariant (A3a):** wire the cocoder-only refuse-boundary
 - **Scaffold seeding (A3b):** conditionally seed onboard-existing for existing repos
 - **Proof harness (A4):** replace the retired executor proof script
 - **Live external-repo onboarding proof:** founder must authorize the billable run
 - **Dogfood Drift Audit:** needs its own seeded priority
 
-**Judgement**
-Stopped after five green atoms because the executor-to-priority pivot is structurally complete, but A3a is a delicate atom that deserves a fresh session.
-
-**Next**
+**Recommended Next Step:**
 Priority: \`demo\`
+
+**Founder Decision Needed:** None.
+
+**Commit State:** The runner reports the authoritative commit outcome after this brief.
+
+**Teardown Readiness:** Standing by; teardown requires an explicit founder request.
+
+**Judgment:**
+Stopped after five green atoms because the executor-to-priority pivot is structurally complete, but A3a is a delicate atom that deserves a fresh session.
 
 I'm standing by...
 `
@@ -926,23 +950,23 @@ I'm standing by...
 
     expect(result.status).toBe('completed')
     expect(pickupWrites).toHaveLength(1)
-    expect(pickupWrites[0]).toContain('**Disposition**\nblocked')
-    expect(pickupWrites[0]).toContain('**What Landed** is too long for a founder brief')
-    expect(pickupWrites[0]).toContain('**What Landed** must be one sentence')
-    expect(pickupWrites[0]).toContain('**Disposition** must not estimate percentage complete')
-    expect(pickupWrites[0]).toContain("**What's Left To Close Priority** has too many bullets")
-    expect(pickupWrites[0]).toContain("**What's Left To Close Priority** contains atom/implementation labels")
-    expect(pickupWrites[0]).toContain('**Next** must name the concrete focus after the priority slug')
+    expect(pickupWrites[0]).toContain('**Run Status:** blocked')
+    expect(pickupWrites[0]).toContain('**What Changed:** is too long for a founder brief')
+    expect(pickupWrites[0]).toContain('**What Changed:** must be one sentence')
+    expect(pickupWrites[0]).toContain('**Run Status:** must not estimate percentage complete')
+    expect(pickupWrites[0]).toContain('**What Remains:** has too many bullets')
+    expect(pickupWrites[0]).toContain('**What Remains:** contains atom/implementation labels')
+    expect(pickupWrites[0]).toContain('**Recommended Next Step:** must name the concrete focus after the priority slug')
     const invalid = store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')
     expect(invalid?.data).toMatchObject({
       play: 'wrap-up',
       issues: expect.arrayContaining([
-        '**What Landed** is too long for a founder brief',
-        '**What Landed** must be one sentence',
-        '**Disposition** must not estimate percentage complete',
-        "**What's Left To Close Priority** has too many bullets",
-        "**What's Left To Close Priority** contains atom/implementation labels",
-        '**Next** must name the concrete focus after the priority slug',
+        '**What Changed:** is too long for a founder brief',
+        '**What Changed:** must be one sentence',
+        '**Run Status:** must not estimate percentage complete',
+        '**What Remains:** has too many bullets',
+        '**What Remains:** contains atom/implementation labels',
+        '**Recommended Next Step:** must name the concrete focus after the priority slug',
       ]),
     })
   })
@@ -968,7 +992,7 @@ I'm standing by...
     expect(store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')).toBeUndefined()
   })
 
-  test('wrap-up Play blocks a Next priority that is not launchable', async () => {
+  test('wrap-up Play blocks a Recommended Next Step priority that is not launchable', async () => {
     const store = openRunStore(':memory:')
     const pickupWrites: string[] = []
     const missingPriorityCloseout = validFounderCloseout().replace('Priority: `demo`', 'Priority: `missing-priority`')
@@ -986,12 +1010,12 @@ I'm standing by...
 
     expect(result.status).toBe('completed')
     expect(pickupWrites).toHaveLength(1)
-    expect(pickupWrites[0]).toContain('**Disposition**\nblocked')
-    expect(pickupWrites[0]).toContain('**Next** priority "missing-priority" is not launchable')
+    expect(pickupWrites[0]).toContain('**Run Status:** blocked')
+    expect(pickupWrites[0]).toContain('**Recommended Next Step:** priority "missing-priority" is not launchable')
     const invalid = store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')
     expect(invalid?.data).toMatchObject({
       play: 'wrap-up',
-      issues: expect.arrayContaining(['**Next** priority "missing-priority" is not launchable']),
+      issues: expect.arrayContaining(['**Recommended Next Step:** priority "missing-priority" is not launchable']),
     })
   })
 
