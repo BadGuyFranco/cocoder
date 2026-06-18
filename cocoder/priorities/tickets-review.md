@@ -113,6 +113,47 @@ The run_121 tabs passed automated tests but the founder found three defects in t
    not fork. Relaunch `tickets-review` for this atom only after `new-primary-root` Addendum Atom 2 lands;
    proof ticket = one of `0003 / 0005 / 0012`.
 
+## Decomposition — status (run_132, 2026-06-17) — CODE-COMPLETE
+
+**Disposition:** `archive-candidate` — Deliverable 2 is now code-complete and the gate is RESOLVED.
+The run-target generalization (`new-primary-root` Addendum Atom 2) was found already landed (`9f76e98`,
+run_123), so atom 4 extended that discriminator with a `ticket` kind instead of forking. **All five build
+atoms verified-on-evidence (diff read + suites + typecheck per atom) and committed this run.** The ONE
+remaining archive criterion is the *live* end-to-end proof — a founder-launched fix run that closes a real
+ticket on trunk — which is a founder action, not a build atom (relaunching code-complete work as a build
+run only yields an empty reaffirmation wrap, F18).
+
+- ✅ **Atom 0 — Ticket loader: surface, don't swallow** (`1f15bac`, `packages/core/src/tickets/**`).
+  `loadTicket` tolerates frontmatter-less tickets (null metadata, id/title fallbacks) without weakening
+  `parseFrontmatter` for persona/play/playbook callers; `readStateDir` warns instead of silently
+  dropping. Resolves ticket **0015**. Backfills `0009`/`0011`/`0014` into the loaded set.
+- ✅ **Atom 1 — Ticket run-target backend** (`a59610c`, `packages/core/src/store/**` + `daemon`).
+  `Run.ticketId` store discriminator mirroring `playbookId` (precedence ticket→playbook→priority);
+  `LaunchRunTarget` gains `ticket`; `launchRun` ticket branch validates unknown/closed (400) and runs the
+  PRIORITY lifecycle via a shared `assembleRunInput` (no `buildRunInput` fork) using a synthetic in-memory
+  Priority whose Objective is seeded from the ticket body (no priorities file written); `POST /runs`
+  enforces exactly-one-of-three.
+- ✅ **Atom 2 — Tickets-tab UI parity** (`c7bb787`, `packages/ui/**`). Compact id+title cards (type/status
+  chips off the card face); click → shared `Modal` (metadata + pre-wrap body); old in-panel detail view
+  removed.
+- ✅ **Atom 3 — Close-on-success** (`899d8bd`, `packages/core/src/tickets/{close,index-helpers}.ts` +
+  `daemon`). Core `closeTicket` writer + shared INDEX helpers (create & close de-duplicated to one source):
+  `open/ → closed/` move, `status: Closed`, a `## Resolution` line traceable to runId+sha, INDEX row
+  Open→Recently-Closed. Daemon fires it ONLY on a `completed` ticket run via `commitGovernance`/the spine
+  (audited `ticket-close`); no-ops/audits on missing-or-already-closed; leaves the ticket open on a
+  non-success run.
+- ✅ **Atom 4 — 'Launch fix' wired live** (`1c0d160`, `packages/ui/**`). `launchTicketRun` (POST /runs
+  {ticketId}) + `handleLaunchTicket` mirror the priority Launch path; `onLaunchTicket` + `launchBlocked`
+  threaded to the modal button (`disabled={!live || launchBlocked}`, click → launch + close modal).
+
+**ONLY remaining for archive (founder live action):** launch a fix run for ticket **0003** from the live
+dashboard Tickets tab → confirm it executes and closes (`0003` moves `open/ → closed/`, `INDEX.md` updated,
+commit on trunk, traceable to the change). The daemon must be serving current code: atom 1's launch path
+self-restarts an *idle* stale daemon; otherwise a founder `scripts/oz.sh restart` is needed before the
+launch. **Folded-in extensions NOT built this run** (deferred, not blocking archive of the core Objective):
+reorderable tickets (generalize `order.json`), the `create-ticket` authoring Play for all personas, and the
+durable loader-surface for unparseable tickets beyond 0015's tolerance.
+
 ## Folded in (founder, 2026-06-17 run_131) — ticket↔priority UI parity + create-ticket Play
 The founder folded the Oz-dashboard **ticket** items here (they belong to the ticket surface this
 priority owns; `oz-dashboard-ux` keeps the priority-card / priority-modal / run-modal items and points
