@@ -54,7 +54,7 @@ const QUICK_PROMPTS = [
   { label: 'Reorder priorities', prompt: 'Promote #4 to the top.' },
 ]
 
-export function OzChatPanel({ messages, runs, workspaceName, onSend, onSelectRun, onDecision, ozTyping, live = false, prefill = null, onPrefillConsumed }: {
+export function OzChatPanel({ messages, runs, workspaceName, onSend, onSelectRun, onDecision, ozTyping, prefill = null, onPrefillConsumed }: {
   messages: ChatMessage[]; runs: Run[]; workspaceName: string; onSend: (text: string) => void
   onSelectRun: (id: string) => void; onDecision: (choice: string) => void; ozTyping: boolean; live?: boolean
   prefill?: string | null; onPrefillConsumed?: () => void
@@ -96,12 +96,6 @@ export function OzChatPanel({ messages, runs, workspaceName, onSend, onSelectRun
         )}
       </div>
       <div style={{ borderTop: '1px solid var(--cb-border)', padding: '12px 24px 14px' }}>
-        {live && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '7px 10px', background: 'var(--cb-highlight-muted)', border: '1px solid rgba(212,118,110,0.25)', borderRadius: 'var(--cb-radius-md)', fontSize: 10.5, color: 'var(--cb-text-secondary)', lineHeight: 1.5 }}>
-            <Icon name="warning-circle" size={13} style={{ color: 'var(--cb-highlight)', flexShrink: 0 }} />
-            <span>Oz commands run through the daemon. Use <code>launch &lt;priorityId&gt;</code>, <code>adhoc &lt;task&gt;</code>, <code>status</code>, or the dashboard shortcuts.</span>
-          </div>
-        )}
         <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
           {QUICK_PROMPTS.map((qp) => (
             <button key={qp.label} onClick={() => fillPrompt(qp.prompt)} style={{ background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border)', color: 'var(--cb-text-secondary)', padding: '4px 10px', borderRadius: 'var(--cb-radius-pill)', fontSize: 11, cursor: 'pointer', fontFamily: 'var(--cb-font-body)' }}

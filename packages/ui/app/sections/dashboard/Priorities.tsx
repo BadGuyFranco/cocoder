@@ -86,7 +86,7 @@ function AdhocPriorityRow({ adhocRuns, onLaunch, onSelectRun, selectedRunId, lau
         </div>
         <div className="oz-priority-actions">
           {activeCount > 0 ? <span className="oz-chip oz-chip-running"><span className="dot" />{activeCount} active</span> : <StatusChip status="ready" label="Ready" />}
-          <Button variant="secondary" size="sm" icon="play" disabled={launchBlocked} title={launchBlocked ? LAUNCH_BLOCKED_HINT : undefined} onClick={(e) => { e.stopPropagation(); onLaunch() }}>Launch run</Button>
+          <Button variant="secondary" size="sm" icon="play" aria-label="Launch ad-hoc run" disabled={launchBlocked} title={launchBlocked ? LAUNCH_BLOCKED_HINT : undefined} onClick={(e) => { e.stopPropagation(); onLaunch() }}>Launch</Button>
         </div>
       </div>
       {adhocRuns.length > 0 && (

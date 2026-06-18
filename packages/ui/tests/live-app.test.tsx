@@ -53,6 +53,13 @@ const clisFx = {
   ],
 }
 
+const rowForText = (text: string): HTMLElement => {
+  const label = screen.getByText(text)
+  const row = label.closest('[draggable="true"]') ?? label.closest('div')?.parentElement?.parentElement?.parentElement
+  if (!(row instanceof HTMLElement)) throw new Error(`Could not find row for ${text}`)
+  return row
+}
+
 const playsFx: PlaysResponse = {
   workspace: (workspacesFx as { workspaces: PlaysResponse['workspace'][] }).workspaces[0],
   plays: [
@@ -329,7 +336,7 @@ describe('Oz renderer — live daemon path', () => {
     setOz(mockOz({ posts }))
     render(<App />)
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
-    const launch = await waitFor(() => screen.getAllByText('Launch')[0])
+    const launch = await waitFor(() => within(rowForText('Living base personas + repo extensions')).getByText('Launch'))
     fireEvent.click(launch)
     await waitFor(() => expect(posts.length).toBeGreaterThan(0))
     const call = posts.find((p) => p.path === '/runs')!
@@ -346,7 +353,7 @@ describe('Oz renderer — live daemon path', () => {
     setOz(mockOz({ posts }))
     render(<App />)
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
-    fireEvent.click(screen.getByText('Launch run'))
+    fireEvent.click(within(rowForText('Ad-hoc')).getByText('Launch'))
     const box = screen.getByLabelText('Message Oz') as HTMLTextAreaElement
     await waitFor(() => expect(box.value).toBe('adhoc '))
     await waitFor(() => expect(document.activeElement).toBe(box))
@@ -357,7 +364,7 @@ describe('Oz renderer — live daemon path', () => {
     setOz(mockOz({ postResult: { ok: false, status: 409, error: 'in flight' } }))
     render(<App />)
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
-    fireEvent.click(screen.getAllByText('Launch')[0])
+    fireEvent.click(within(rowForText('Living base personas + repo extensions')).getByText('Launch'))
     await waitFor(() => expect(screen.getByText(/already in flight/i)).toBeDefined())
   })
 
