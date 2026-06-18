@@ -20,8 +20,10 @@ import {
   DirtyWorkingTreeError,
   type MakeJudge,
   type RunnerIO,
+  type RunStore,
   type SessionHost,
   type SessionRef,
+  StopRequestedError,
   makeGit,
   openRunStore,
   runRun,
@@ -95,6 +97,29 @@ const portableRunFiles = (runId: string, displayNumber = 1): string[] => [
   'cocoder/workspace.json',
 ]
 
+async function expectPortableTerminalHistory(input: {
+  runId: string
+  status: 'completed' | 'failed' | 'stopped'
+  sessions: number
+  workItems: number
+  commits: number
+}): Promise<void> {
+  const portableRun = await readPortableRun(home, 1, input.runId)
+  expect(portableRun?.status).toBe(input.status)
+  expect(portableRun?.endedAt).toEqual(expect.any(Number))
+  expect(await readPortableCounters(home)).toMatchObject({ nextRunDisplayNumber: 2, nextSessionDisplayNumber: input.sessions + 1 })
+  expect(await readPortableSessions(home, 1, input.runId)).toHaveLength(input.sessions)
+  expect(await readPortableWorkItems(home, 1, input.runId)).toHaveLength(input.workItems)
+  expect(await readPortableCommits(home, 1, input.runId)).toHaveLength(input.commits)
+  expect((await readPortableEvents(home, 1, input.runId)).map((e) => e.type)).toContain('run-end')
+  const paths = portableRunPaths(home, 1, input.runId)
+  expect(await readFile(paths.sessionsFile, 'utf8')).not.toContain('surface:')
+  expect(await readFile(paths.eventsFile, 'utf8')).not.toContain('runDir')
+  expect(await readFile(paths.eventsFile, 'utf8')).not.toContain('"ref"')
+  expect(await g(home, ['show', '--name-only', '--format=', 'HEAD'])).toEqual(expect.stringContaining(`cocoder/runs/1-${input.runId}/run.json`))
+  expect(await g(home, ['status', '--porcelain', '--untracked-files=all'])).toBe('')
+}
+
 let home: string
 let runsRoot: string
 const dirs: string[] = []
@@ -120,7 +145,11 @@ afterEach(async () => {
 async function runDirect(opts: {
   bobWrites: (cwd: string) => Promise<void>
   bobScope?: string[]
+  io?: RunnerIO
+  makeJudge?: MakeJudge
   oscarScope?: string[]
+  sessionHost?: SessionHost
+  store?: RunStore
   verdicts?: { verdict: 'pass' | 'fail'; reason: string }[]
   directives?: Directive[]
 }) {
@@ -151,15 +180,15 @@ async function runDirect(opts: {
     async kill() {},
     async closeSurface() {},
   }
-  const store = openRunStore(':memory:')
+  const store = opts.store ?? openRunStore(':memory:')
   const result = await runRun(
     {
       store,
-      sessionHost,
+      sessionHost: opts.sessionHost ?? sessionHost,
       git: makeGit(),
       getAdapter: () => okAdapter,
-      io: fakeIO(opts.directives ?? [delegate('add the feature'), wrapup('done')], opts.verdicts),
-      makeJudge: doneJudge,
+      io: opts.io ?? fakeIO(opts.directives ?? [delegate('add the feature'), wrapup('done')], opts.verdicts),
+      makeJudge: opts.makeJudge ?? doneJudge,
       timeouts: { pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 },
     },
     {
@@ -213,18 +242,69 @@ describe('runRun direct mode — the default (ADR-0023 §2, live git)', () => {
     expect(types).not.toContain('worktree-created')
     expect(types).not.toContain('stranded-commits-detected')
 
-    const portableRun = await readPortableRun(home, 1, result.runId)
-    expect(portableRun?.status).toBe('completed')
-    expect(portableRun?.endedAt).toEqual(expect.any(Number))
-    expect(await readPortableCounters(home)).toMatchObject({ nextRunDisplayNumber: 2, nextSessionDisplayNumber: 3 })
-    expect(await readPortableSessions(home, 1, result.runId)).toHaveLength(2)
-    expect(await readPortableWorkItems(home, 1, result.runId)).toHaveLength(1)
-    expect(await readPortableCommits(home, 1, result.runId)).toHaveLength(1)
+    await expectPortableTerminalHistory({ runId: result.runId, status: 'completed', sessions: 2, workItems: 1, commits: 1 })
     expect((await readPortableEvents(home, 1, result.runId)).map((e) => e.type)).toEqual(expect.arrayContaining(['landing-outcome', 'run-end']))
-    const paths = portableRunPaths(home, 1, result.runId)
-    expect(await readFile(paths.sessionsFile, 'utf8')).not.toContain('surface:')
-    expect(await readFile(paths.eventsFile, 'utf8')).not.toContain('runDir')
-    expect(await readFile(paths.eventsFile, 'utf8')).not.toContain('"ref"')
+  })
+
+  test('a stopped run commits terminal portable history before returning', async () => {
+    const io: RunnerIO = {
+      ...fakeIO([]),
+      async awaitDirective() {
+        throw new StopRequestedError()
+      },
+    }
+
+    const { result, store } = await runDirect({
+      bobWrites: async () => {},
+      io,
+    })
+
+    expect(result.status).toBe('stopped')
+    expect(result.committedShas).toHaveLength(0)
+    expect(store.getRun(result.runId)?.status).toBe('stopped')
+    await expectPortableTerminalHistory({ runId: result.runId, status: 'stopped', sessions: 2, workItems: 0, commits: 0 })
+    expect((await readPortableEvents(home, 1, result.runId)).map((e) => e.type)).toEqual(expect.arrayContaining(['run-stopped', 'run-end']))
+  })
+
+  test('a mid-run failure commits failed portable history while preserving the original fault', async () => {
+    const store = openRunStore(':memory:')
+    let bobRefId: string | null = null
+    const sessionHost: SessionHost = {
+      async spawn(o: { persona: string }) {
+        const ref: SessionRef = { id: `surface:${o.persona}`, driver: 'fake' }
+        if (o.persona === 'bob') bobRefId = ref.id
+        return ref
+      },
+      async readScreen() {
+        return ''
+      },
+      async status(ref) {
+        return ref.id === bobRefId ? { state: 'exited', code: 1 } : { state: 'running' }
+      },
+      async waitForExit() {
+        return { state: 'exited', code: 1 }
+      },
+      async sendInput() {},
+      async show() {},
+      async kill() {},
+      async closeSurface() {},
+    }
+
+    await expect(
+      runDirect({
+        bobWrites: async () => {},
+        directives: [delegate('fail mid-run')],
+        makeJudge: () => async () => ({ state: 'progressing' }),
+        sessionHost,
+        store,
+      }),
+    ).rejects.toThrow('builder dead on atom 0')
+
+    const run = store.listRuns()[0]
+    expect(run?.status).toBe('failed')
+    if (!run) throw new Error('expected failed run')
+    await expectPortableTerminalHistory({ runId: run.id, status: 'failed', sessions: 2, workItems: 1, commits: 0 })
+    expect((await readPortableEvents(home, 1, run.id)).map((e) => e.type)).toEqual(expect.arrayContaining(['builder-failed', 'run-end']))
   })
 
   test('scoped dirty guard refuses the launch on uncommitted in-scope WIP; commits nothing', async () => {

@@ -499,6 +499,16 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     store.recordEvent({ runId: run.id, type, data: atomIndex !== null ? { message, atom: atomIndex } : { message } })
     await triageFault(type, atomIndex, message)
     store.setRunStatus(run.id, 'failed')
+    store.recordEvent({
+      runId: run.id,
+      type: 'run-end',
+      data: { status: 'failed', atoms: atomIndex === null ? n : Math.max(n, atomIndex + 1), committedShas, outOfScope, selfCommitted },
+    })
+    try {
+      await projectAndCommitPortableRunHistory({ status: 'failed', endedAt: now() })
+    } catch (err) {
+      store.recordEvent({ runId: run.id, type: 'portable-history-commit-failed', data: { message: err instanceof Error ? err.message : String(err) } })
+    }
     throw new Error(message)
   }
 
@@ -818,6 +828,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     const message = `run-history: ${run.id} via CoCoder run ${run.id}`
     const files = [
       'cocoder/counters.json',
+      'cocoder/workspace.json',
       `cocoder/runs/${portableRunDisplayNumber}-${run.id}/run.json`,
       `cocoder/runs/${portableRunDisplayNumber}-${run.id}/commits.jsonl`,
       `cocoder/runs/${portableRunDisplayNumber}-${run.id}/events.jsonl`,
@@ -875,15 +886,17 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       await quarantineAtom(stoppedAtom.index, stoppedAtom.headBefore, 'atom-self-committed-stopped')
     }
     const status: RunStatus = 'stopped'
-    store.setRunStatus(run.id, status)
+    const endedAt = now()
     await rebuildUiBundleIfNeeded()
-    // Any commits already made are on the active branch; push them (non-gating) so a shared remote sees them.
-    await pushActiveBranchIfRemote()
     store.recordEvent({
       runId: run.id,
       type: 'run-end',
       data: { status, atoms, committedShas, outOfScope, selfCommitted },
     })
+    await projectAndCommitPortableRunHistory({ status, endedAt })
+    store.setRunStatus(run.id, status)
+    // Any commits already made are on the active branch; push them (non-gating) so a shared remote sees them.
+    await pushActiveBranchIfRemote()
     const recordPath = await io.writeRunRecord(runDir, renderRunRecord(store, run.id, { workspace, priority }))
     log(`run ${run.id} stopped; ${committedShas.length} commit(s) over ${atoms} atom(s); record at ${recordPath}`)
     return {

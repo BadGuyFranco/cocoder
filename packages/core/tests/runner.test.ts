@@ -565,7 +565,8 @@ describe('runRun (multi-atom loop)', () => {
         let first = true
         return async () => (first ? ((first = false), []) : ['packages/half-built.ts']) // call 0 = run-start (clean)
       })(),
-      async addAndCommit() {
+      async addAndCommit(_cwd, files) {
+        if (files.every((file) => file.startsWith('cocoder/'))) return 'sha-history'
         throw new Error('stopped atom should not commit')
       },
       async restoreToHead(_cwd, files) {
@@ -618,7 +619,8 @@ describe('runRun (multi-atom loop)', () => {
         let first = true
         return async () => (first ? ((first = false), []) : ['packages/unverified.ts']) // call 0 = run-start (clean)
       })(),
-      async addAndCommit() {
+      async addAndCommit(_cwd, files) {
+        if (files.every((file) => file.startsWith('cocoder/'))) return 'sha-history'
         throw new Error('stopped atom should not commit')
       },
       async restoreToHead(_cwd, files) {
@@ -1422,6 +1424,35 @@ describe('runRun (multi-atom loop)', () => {
     expect(types).not.toContain('triage-dispatch')
   })
 
+  test('portable history commit failure on a run fault does not mask the original fault', async () => {
+    const store = openRunStore(':memory:')
+    const git: Git = {
+      ...scriptedGit([]),
+      async addAndCommit() {
+        throw new Error('history commit exploded')
+      },
+    }
+
+    await expect(
+      runRun(
+        baseDeps({
+          store,
+          git,
+          makeJudge: () => async () => ({ state: 'progressing' }),
+          sessionHost: fakeSessionHost({ async status() {
+            return { state: 'exited', code: 1 }
+          } }),
+          io: fakeIO({ directives: [delegate('do it')] }),
+        }),
+        input,
+      ),
+    ).rejects.toThrow(/builder dead/)
+
+    const runId = store.listRuns()[0]!.id
+    expect(store.getRun(runId)?.status).toBe('failed')
+    expect(store.listEvents(runId).find((e) => e.type === 'portable-history-commit-failed')?.data).toMatchObject({ message: 'run-history commit failed: history commit exploded' })
+  })
+
   test('builder pane dying mid-atom fails the run', async () => {
     const store = openRunStore(':memory:')
     await expect(
@@ -1758,7 +1789,10 @@ describe('runRun (multi-atom loop)', () => {
     expect(repair?.data).toMatchObject({ committedSha: 'sha-repair', files: ['cocoder/priorities/x.md', 'packages/app/product.ts'], outOfScope: ['packages/app/product.ts'] })
     // The commit-gate committed BOTH files and flagged the out-of-lane one (scope advisory, never withheld).
     expect((events.find((e) => e.type === 'out-of-scope-committed')?.data as { files?: string[] })?.files).toEqual(['packages/app/product.ts'])
-    expect(store.listCommitLinks(runId).flatMap((c) => c.files)).toEqual(['cocoder/priorities/x.md', 'packages/app/product.ts'])
+    expect(store.listCommitLinks(runId).filter((c) => c.message !== `run-history: ${runId} via CoCoder run ${runId}`).flatMap((c) => c.files)).toEqual([
+      'cocoder/priorities/x.md',
+      'packages/app/product.ts',
+    ])
     expect(store.getRun(runId)?.status).toBe('failed') // a repair never rescues the run
   })
 
@@ -1829,7 +1863,7 @@ describe('runRun (multi-atom loop)', () => {
     const evs = store.listEvents(r2)
     expect((evs.find((e) => e.type === 'fault-recurrence')?.data as { occurrence?: number })?.occurrence).toBe(2)
     expect(evs.find((e) => e.type === 'deb-repair')?.data).toMatchObject({ escalation: 'ticket', ticketId: '0002', committedSha: 'sha-ticket', files: [ticketFile] })
-    expect(store.listCommitLinks(r2).flatMap((c) => c.files)).toEqual([ticketFile])
+    expect(store.listCommitLinks(r2).filter((c) => c.message !== `run-history: ${r2} via CoCoder run ${r2}`).flatMap((c) => c.files)).toEqual([ticketFile])
     expect(store.getRun(r2)?.status).toBe('failed') // escalation tracks it; the run still fails
   })
 
