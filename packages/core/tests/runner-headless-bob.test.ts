@@ -1,4 +1,7 @@
-import { describe, expect, test } from 'vitest'
+import { rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterAll, describe, expect, test } from 'vitest'
 import {
   atomSentinel,
   type Adapter,
@@ -26,7 +29,12 @@ const persona = (over: Partial<ResolvedPersona> & { id: string; cli: string }): 
 const oscar = persona({ id: 'oscar', cli: 'claude', writeScope: [] })
 const bob = persona({ id: 'bob', cli: 'codex', writeScope: ['packages/**'], mode: 'headless' })
 const priority = { id: 'demo', title: 'Demo', scopeNarrowing: null, goal: 'do the small thing', objective: 'do the small thing' }
-const workspace = { id: 'cocoder', path: '/repo', name: 'CoCoder' }
+const workspaceRoot = join(tmpdir(), `cocoder-runner-headless-repo-${process.pid}`)
+const workspace = { id: 'cocoder', path: workspaceRoot, name: 'CoCoder' }
+
+afterAll(async () => {
+  await rm(workspaceRoot, { recursive: true, force: true })
+})
 
 function fakeSessionHost(spawns: string[]): SessionHost {
   let n = 0
@@ -178,7 +186,7 @@ describe('runRun with headless Bob', () => {
           return { exitCode: 0, output }
         },
       }),
-      { workspace, priority, oscar, bob, sharedStandards: 'STANDARDS', engineHome: '/repo', runsRoot: '/runs' },
+      { workspace, priority, oscar, bob, sharedStandards: 'STANDARDS', engineHome: workspaceRoot, runsRoot: '/runs' },
     )
 
     expect(result.status).toBe('completed')

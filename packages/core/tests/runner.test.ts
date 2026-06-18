@@ -1,7 +1,7 @@
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { describe, expect, test } from 'vitest'
+import { afterAll, describe, expect, test } from 'vitest'
 import {
   type Adapter,
   type DebStatus,
@@ -39,7 +39,12 @@ const oscar = persona({ id: 'oscar', cli: 'claude', writeScope: [] })
 const bob = persona({ id: 'bob', cli: 'codex', writeScope: ['packages/**'] })
 const deb = persona({ id: 'deb', cli: 'claude', writeScope: [] })
 const priority = { id: 'demo', title: 'Demo', scopeNarrowing: null, goal: 'do the small thing', objective: 'do the small thing' }
-const workspace = { id: 'cocoder', path: '/repo', name: 'CoCoder' }
+const workspaceRoot = join(tmpdir(), `cocoder-runner-unit-repo-${process.pid}`)
+const workspace = { id: 'cocoder', path: workspaceRoot, name: 'CoCoder' }
+
+afterAll(async () => {
+  await rm(workspaceRoot, { recursive: true, force: true })
+})
 
 function fakeSessionHost(over: Partial<SessionHost> = {}): SessionHost {
   let n = 0
@@ -269,7 +274,7 @@ const baseDeps = (over: Partial<RunnerDeps>): RunnerDeps => ({
 // This suite drives the runner with a FAKE git over the OPT-IN isolation path (ADR-0023 §4 / ADR-0015):
 // worktree create/land are stubbed, so the loop/verify/commit machinery is exercised without a real repo.
 // The new direct-mode DEFAULT (ADR-0023 §2) is proven against LIVE git in runner-direct.test.ts.
-const input = { workspace, priority, oscar, bob, sharedStandards: 'STANDARDS', engineHome: '/repo', runsRoot: '/runs' }
+const input = { workspace, priority, oscar, bob, sharedStandards: 'STANDARDS', engineHome: workspaceRoot, runsRoot: '/runs' }
 const stopFaultEvents = new Set(['directive-timeout', 'builder-failed', 'verify-failed', 'triage-dispatch', 'fault-triaged', 'triage-skipped'])
 
 describe('runRun (multi-atom loop)', () => {
@@ -365,7 +370,7 @@ describe('runRun (multi-atom loop)', () => {
     )
 
     expect(result.status).toBe('completed')
-    expect(builds).toEqual(['/repo'])
+    expect(builds).toEqual([workspaceRoot])
     const types = store.listEvents(result.runId).map((e) => e.type)
     expect(types.filter((type) => type === 'ui-bundle-rebuild-started')).toHaveLength(1)
     expect(types.filter((type) => type === 'ui-bundle-rebuild-succeeded')).toHaveLength(1)
@@ -1023,7 +1028,7 @@ describe('runRun (multi-atom loop)', () => {
     )
 
     expect(result.committedShas).toHaveLength(1)
-    expect(calls).toEqual([{ command: 'pnpm test', cwd: expect.stringContaining('/repo') }])
+    expect(calls).toEqual([{ command: 'pnpm test', cwd: workspaceRoot }])
     const types = store.listEvents(result.runId).map((e) => e.type)
     expect(types.indexOf('loop-criterion-rerun')).toBeLessThan(types.indexOf('verify-dispatch'))
     const event = store.listEvents(result.runId).find((e) => e.type === 'loop-criterion-rerun')

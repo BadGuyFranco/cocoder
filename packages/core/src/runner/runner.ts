@@ -18,7 +18,7 @@ import type { Priority } from '../priorities/index.js'
 import type { PersonaRunMode, PlayAssignment, ResolvedPersona } from '../personas/index.js'
 import { dispatchPlay, type DispatchPlayResult, type HeadlessRunInput } from '../plays/index.js'
 import type { Play } from '../plays/index.js'
-import type { Run, RunStatus, RunStore, Workspace } from '../store/index.js'
+import { recordPortableRunCreation, type Run, type RunStatus, type RunStore, type Workspace } from '../store/index.js'
 import { effectiveScope, partitionByScope } from '../write-scope/index.js'
 import type { SessionHost, SessionRef } from '../session-host/index.js'
 import { exec as execChildProcess } from 'node:child_process'
@@ -281,6 +281,8 @@ async function defaultBuildUiBundle(input: UiBundleBuildInput): Promise<Criterio
 const isPackagesUiPath = (file: string): boolean => file === 'packages/ui' || file.startsWith('packages/ui/')
 const isUiAppPath = (file: string): boolean => file === 'packages/ui/app' || file.startsWith('packages/ui/app/')
 const clipped = (text: string, max = MAX_UI_BUILD_OUTPUT): string => (text.length > max ? `${text.slice(0, max)}\n…truncated…` : text)
+const PORTABLE_RUN_HISTORY_SCOPE = ['cocoder/workspace.json', 'cocoder/counters.json', 'cocoder/runs/**'] as const
+const withPortableRunHistoryScope = (scope: readonly string[]): readonly string[] => [...scope, ...PORTABLE_RUN_HISTORY_SCOPE]
 
 const defaultRunLabelTarget = (input: RunInput): RunLabelTarget => {
   if (input.target) return input.target
@@ -341,7 +343,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   // Launch guard, SCOPED to the union of everything that will commit this run. Builder-scope dirt is
   // still refused because the atom commit-gate/quarantine could sweep up or destroy founder WIP.
   // Governance-only dirt is self-healed with a pre-run snapshot (ADR-0024) before quarantine baseline.
-  const committingScopes = [scope, oscar.writeScope, deb?.writeScope ?? [], input.wrapPlay?.writeScope ?? []].flat()
+  const committingScopes = [scope, oscar.writeScope, deb?.writeScope ?? [], input.wrapPlay?.writeScope ?? [], PORTABLE_RUN_HISTORY_SCOPE].flat()
   const changedAtStart = await git.changedFiles(workspaceRepo)
   const { inScope: dirtyInScope } = partitionByScope(changedAtStart, committingScopes)
   const { inScope: builderDirt, outOfScope: governanceDirt } = partitionByScope(dirtyInScope, scope)
@@ -364,7 +366,19 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     store.recordEvent({ runId: run.id, type: 'governance-presnapshot', data: { files: receipt.committedFiles, sha: receipt.committedSha } })
     dirtyAtStartFiles = await git.changedFiles(workspaceRepo)
   }
-  const dirtyAtStart = new Set(dirtyAtStartFiles)
+  let portableRunDisplayNumber: number
+  try {
+    portableRunDisplayNumber = await recordPortableRunCreation({ primaryRoot: workspace.path, workspace, run })
+  } catch (err) {
+    store.setRunStatus(run.id, 'failed')
+    throw err
+  }
+  const dirtyAtStart = new Set([
+    ...dirtyAtStartFiles,
+    'cocoder/workspace.json',
+    'cocoder/counters.json',
+    `cocoder/runs/${portableRunDisplayNumber}-${run.id}/run.json`,
+  ])
   // Bound to the active checkout/branch; kept as named locals so the prompts/drivers/observer (which take
   // a cwd + branch name) need no change — they always describe the one real branch the run commits to.
   const worktreePath = workspaceRepo
@@ -612,7 +626,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           cwd: worktreePath,
           runId: run.id,
           workItemId: null,
-          scope: deb.writeScope,
+          scope: withPortableRunHistoryScope(deb.writeScope),
           message: `deb-${kind}: ${faultType}${atomIndex !== null ? ` (atom ${atomIndex})` : ''} occurrence ${occurrence}${verdict.ticketId ? ` → ticket ${verdict.ticketId}` : ''} via CoCoder run ${run.id}`,
           headBefore: headBeforeRepair,
         })
@@ -748,7 +762,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       cwd: worktreePath,
       runId: run.id,
       workItemId: null,
-      scope: oscar.writeScope,
+      scope: withPortableRunHistoryScope(oscar.writeScope),
       message: `oscar-support: ${priority.id} via CoCoder run ${run.id}`,
       headBefore,
     })
@@ -888,7 +902,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           cwd: worktreePath,
           runId: run.id,
           workItemId: null,
-          scope: input.wrapPlay.writeScope,
+          scope: withPortableRunHistoryScope(input.wrapPlay.writeScope),
           message: commitMessage(priority.id, run.id, n),
           headBefore: headBeforeWrap,
         })
@@ -936,6 +950,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       runDir,
       worktreePath,
       scope,
+      commitScope: withPortableRunHistoryScope(scope),
       store,
       git,
       io,

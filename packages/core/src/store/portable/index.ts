@@ -17,7 +17,7 @@ export {
   type PortableCounterName,
   type PortableCountersFile,
 } from './counters.js'
-export { readPortableWorkspace, writePortableWorkspace, type PortableWorkspaceFile } from './workspace.js'
+export { ensurePortableWorkspace, readPortableWorkspace, writePortableWorkspace, type PortableWorkspaceFile } from './workspace.js'
 export {
   appendPortableCommits,
   appendPortableEvents,
@@ -41,4 +41,5 @@ export {
   type MigrateWorkspacePortableHistoryInput,
   type MigrateWorkspacePortableHistoryResult,
 } from './migrate.js'
+export { recordPortableRunCreation, type RecordPortableRunCreationInput } from './run-creation.js'
 export type { JsonPrimitive, JsonValue } from './json.js'

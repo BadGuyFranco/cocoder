@@ -59,6 +59,7 @@ export interface ExecuteAgentStepInput {
   readonly runDir: string
   readonly worktreePath: string
   readonly scope: readonly string[]
+  readonly commitScope: readonly string[]
   readonly store: RunStore
   readonly git: Git
   readonly io: RunnerIO
@@ -91,6 +92,7 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
     runDir,
     worktreePath,
     scope,
+    commitScope,
     store,
     git,
     io,
@@ -252,7 +254,7 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
       cwd: worktreePath,
       runId,
       workItemId: workItem.id,
-      scope,
+      scope: commitScope,
       message: commitMessage(priorityId, runId, atomIndex),
       headBefore,
     })

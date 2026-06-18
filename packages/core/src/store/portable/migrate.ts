@@ -1,7 +1,7 @@
 import { readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { portableRunPaths } from './paths.js'
-import { readPortableWorkspace, writePortableWorkspace } from './workspace.js'
+import { ensurePortableWorkspace } from './workspace.js'
 import { writePortableCounters } from './counters.js'
 import {
   writePortableRun,
@@ -33,7 +33,7 @@ export interface MigrateWorkspacePortableHistoryResult {
 export async function migrateWorkspacePortableHistory(
   input: MigrateWorkspacePortableHistoryInput,
 ): Promise<MigrateWorkspacePortableHistoryResult> {
-  await ensureWorkspaceFile(input)
+  await ensurePortableWorkspace(input.primaryRoot, input.workspace)
 
   const runs = input.store.listRuns({ workspaceId: input.workspace.id }).sort(compareRunsForDisplay)
   const sessionNumbers = sessionDisplayNumbers(input.store, runs)
@@ -60,17 +60,6 @@ export async function migrateWorkspacePortableHistory(
   })
 
   return { runsExported: runs.length, sessionsExported }
-}
-
-async function ensureWorkspaceFile(input: MigrateWorkspacePortableHistoryInput): Promise<void> {
-  const existing = await readPortableWorkspace(input.primaryRoot)
-  if (existing === null) {
-    await writePortableWorkspace(input.primaryRoot, { schemaVersion: 1, id: input.workspace.id, name: input.workspace.name })
-    return
-  }
-  if (existing.id !== input.workspace.id) {
-    throw new Error(`Portable workspace id mismatch: expected ${input.workspace.id}, found ${existing.id}`)
-  }
 }
 
 function portableRunFile(run: Run, displayNumber: number): PortableRunFile {

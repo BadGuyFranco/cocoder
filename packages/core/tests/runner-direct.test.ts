@@ -80,6 +80,12 @@ const fakeIO = (directives: Directive[], verdicts?: { verdict: 'pass' | 'fail'; 
   }
 }
 
+const portableRunFiles = (runId: string, displayNumber = 1): string[] => [
+  'cocoder/counters.json',
+  `cocoder/runs/${displayNumber}-${runId}/run.json`,
+  'cocoder/workspace.json',
+]
+
 let home: string
 let runsRoot: string
 const dirs: string[] = []
@@ -172,7 +178,7 @@ describe('runRun direct mode — the default (ADR-0023 §2, live git)', () => {
 
     expect(result.status).toBe('completed')
     expect(result.committedShas).toHaveLength(1)
-    expect(result.committedFiles).toEqual(['packages/feature.ts'])
+    expect(result.committedFiles).toEqual([...portableRunFiles(result.runId), 'packages/feature.ts'])
 
     // The commit is on the active branch (main) of the REAL repo — directly, no merge commit.
     const log = await g(home, ['log', '--oneline', 'main'])
@@ -230,12 +236,12 @@ describe('runRun direct mode — the default (ADR-0023 §2, live git)', () => {
 
     expect(result.status).toBe('completed')
     expect(await g(home, ['rev-parse', 'HEAD'])).not.toBe(headBefore)
-    expect(await g(home, ['log', '-1', '--format=%s'])).toBe('governance: pre-run snapshot')
-    expect(await g(home, ['show', '--stat', 'HEAD'])).toContain('cocoder/PLAYBOOK.md')
-    expect(await g(home, ['status', '--porcelain', '--untracked-files=all'])).toBe('')
-
     const event = store.listEvents(result.runId).find((e) => e.type === 'governance-presnapshot')!
-    expect(event.data).toEqual({ files: ['cocoder/PLAYBOOK.md'], sha: await g(home, ['rev-parse', 'HEAD']) })
+    const snapshotSha = (event.data as { sha: string }).sha
+    expect(await g(home, ['log', '-1', '--format=%s', snapshotSha])).toBe('governance: pre-run snapshot')
+    expect(await g(home, ['show', '--stat', snapshotSha])).toContain('cocoder/PLAYBOOK.md')
+    expect(await g(home, ['status', '--porcelain', '--untracked-files=all'])).toBe('')
+    expect(event.data).toEqual({ files: ['cocoder/PLAYBOOK.md'], sha: snapshotSha })
   })
 
   test('mixed builder and governance dirt still refuses the launch and snapshots nothing', async () => {
@@ -320,7 +326,7 @@ describe('runRun direct mode — the default (ADR-0023 §2, live git)', () => {
       },
     })
 
-    expect(result.committedFiles).toEqual(['packages/good.ts'])
+    expect(result.committedFiles).toEqual([...portableRunFiles(result.runId), 'packages/good.ts'])
     expect(await exists(join(home, 'packages', 'bad.ts'))).toBe(false)
     expect(await exists(join(home, 'packages', 'good.ts'))).toBe(true)
     const event = store.listEvents(result.runId).find((e) => e.type === 'atom-quarantined')!

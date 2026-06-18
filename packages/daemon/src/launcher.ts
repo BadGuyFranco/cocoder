@@ -32,6 +32,7 @@ import {
   loadPriority,
   readTickets,
   runCommitGate,
+  recordPortableRunCreation,
   resolvePlayAssignment,
   resolvePersonaMode,
   resolveEffectivePersona,
@@ -602,6 +603,12 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
     const bob = resolveEffectivePersona(sources, assignments, 'bob')
     ctx.store.upsertWorkspace({ id: ws.id, path: ws.path, name: ws.name })
     const run = ctx.store.createRun({ workspaceId: ws.id, priorityId: PLAYBOOK_PRIORITY_SENTINEL, playbookId: pb.id })
+    try {
+      await recordPortableRunCreation({ primaryRoot: ws.path, workspace: ws, run })
+    } catch (err) {
+      ctx.store.setRunStatus(run.id, 'failed')
+      throw err
+    }
     runId = run.id
     ctx.inFlight.set(workspaceId, run.id)
     ctx.stopControllers.set(run.id, stopController)
