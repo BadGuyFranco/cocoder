@@ -1,7 +1,8 @@
 # ADR-0026 — Existing-repo onboarding runs as an Oscar-driven priority, not a standalone phase-executor (renames "Takeover" → "Onboard existing repo")
 
-**Status:** **Proposed (founder-directed, 2026-06-17, run_131).** The founder directed this reframe and
-the rename; this record captures it for founder acceptance. **No rebuild proceeds until this is Accepted.**
+**Status:** **Accepted (founder, 2026-06-17, run_131).** The founder directed this reframe and the rename
+and accepted this record. The rebuild is launchable as a normal build run on
+[`new-primary-root`](../priorities/new-primary-root.md).
 **Supersedes:** the **phase-executor runner-mode** specified in
 [0020-addendum-phase-executor](./0020-addendum-phase-executor.md) (the standalone Playbook executor,
 its phase cursor, and its `awaiting-founder` gate/typed-resume mechanism). It does **not** change

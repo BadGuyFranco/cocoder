@@ -1,6 +1,20 @@
 # ADR-0020 — Onboarding Playbooks: bootstrap, takeover, and drift as shipped baked-plan Playbooks
 
-**Status:** **Accepted (founder, 2026-06-14).** Co-designed with the founder (this redraft supersedes the
+> **⚠ AMENDED by [ADR-0026](./0026-onboard-existing-as-oscar-priority.md) (Accepted 2026-06-17) — read
+> 0026 for the current model.** Two changes: **(1) Rename** — the "**Takeover**" situation is now
+> **"Onboard (existing repo)"** (the word wrongly implied seizing the founder's existing build process;
+> the act is review-and-propose only). Read every "takeover" in this ADR's body as "onboard existing
+> repo" (the full term-purge across docs + code happens in the `new-primary-root` rebuild). **(2)
+> Execution model** — the standalone **phase-executor** (the
+> [addendum](./0020-addendum-phase-executor.md)) is **superseded**: the existing-repo audit runs as an
+> **Oscar-driven priority**, not a runner-mode (the executor reached its founder gates but had no
+> founder-facing interaction surface, so a real audit would freeze). **0020's product structure STANDS**
+> — three onboarding situations, deep multi-agent audit, founder ratifies every Objective, propose-only
+> drift, and the `cocoder/**`-only trust boundary are all unchanged. Only the *driver* and the *term*
+> changed.
+
+**Status:** **Accepted (founder, 2026-06-14)** — product structure current; **execution model amended by
+[0026](./0026-onboard-existing-as-oscar-priority.md)** (2026-06-17, see banner). Co-designed with the founder (this redraft supersedes the
 2026-06-10 draft; the founder set the high-quality bar, the three-template split, and the mid-process
 checkpoints) and accepted to proceed with the [`new-primary-root`](../priorities/new-primary-root.md)
 build. The three skeletons under `packages/personas/base/playbooks/` remain inert until that build wires

@@ -27,16 +27,16 @@ their still-live content was absorbed into [ADR-0019](./0019-multi-root-workspac
 | [0018](./0018-persona-run-mode-and-sub-agents.md) | Persona run-mode + sub-agents: sub-agents ARE per-persona Play assignments; `mode` honored the slice it lands (refines 0005) | Accepted |
 | [0019](./0019-multi-root-workspaces.md) | Multi-root workspaces: `.code-workspace` files in `local/workspace/`, three root roles, no nesting (absorbs live v1-0007/0006) | Accepted |
 | [0023](./0023-workspace-commit-spine.md) | **The workspace commit spine: direct-to-branch by default, isolation opt-in** — one commit service for all actors; collapses the three divergent commit paths; dissolves the run-branch strand class (supersedes 0015/0021/0022, reconciles 0007) | Accepted |
-| [0020](./0020-primary-root-audit.md) | **Onboarding Playbooks** — bootstrap / takeover / drift as shipped baked-plan Playbooks (multi-agent takeover, propose-only drift, top-tier pins, founder checkpoints; extends 0010) | Accepted (2026-06-14) |
+| [0020](./0020-primary-root-audit.md) | **Onboarding Playbooks** — bootstrap / **onboard-existing** (was "takeover") / drift as shipped baked-plan Playbooks (multi-agent audit, propose-only drift, top-tier pins, founder checkpoints; extends 0010) — **execution amended by [0026](./0026-onboard-existing-as-oscar-priority.md)** (Oscar-driven priority, not phase-executor); product structure current | Accepted (2026-06-14) |
 | [0024](./0024-governance-pre-run-snapshot.md) | **Launch self-heals governance dirt** — the launch guard partitions dirty-in-scope by builder vs. governance scope; governance-only dirt is auto-committed as a `governance: pre-run snapshot` and the launch proceeds, while builder/product WIP still refuses (amends 0023 §2/§3) | Accepted (2026-06-16) |
 | [0025](./0025-atomic-authoring-plays.md) | **Atomic authoring Plays** — `create`/`edit`/`archive-priority` Plays validate→write→commit through the one spine in a single dispatch (`requestAuthoringPlay`, generalizing `requestOzRepair` with `commitOnlyScope`); Oz authors as one `OZ_TOOL author` action (resolves `oz-dashboard-bugs` #12); create/Objective-edits stay founder-approved (ADR-0010); pairs with 0024's hand-edit backstop | Accepted (2026-06-16) |
+| [0026](./0026-onboard-existing-as-oscar-priority.md) | **Onboard (existing repo) runs as an Oscar-driven priority, not a standalone phase-executor** — the executor had no founder-facing interaction surface (a real audit would freeze at the first gate); reframe onto the proven Oscar↔founder loop (questions/status/multi-session/ratify), reuse the audit Plays/convergence/trust-boundary/scaffold as tooling; renames "Takeover" → "Onboard (existing repo)" (supersedes the 0020-addendum executor runner-mode; amends 0020 — execution only) | Accepted (2026-06-17) |
 
 ## Proposed (founder review owed)
 
 | ADR | Title | Status |
 |---|---|---|
-| [0026](./0026-onboard-existing-as-oscar-priority.md) | **Existing-repo onboarding runs as an Oscar-driven priority, not a standalone phase-executor** — the executor reaches its founder gates but has no founder-facing interaction surface (would freeze a real audit); reframe onto the proven Oscar↔founder loop (questions/status/multi-session/ratify), reuse the audit Plays/convergence/trust-boundary/scaffold as tooling; renames "Takeover" → "Onboard (existing repo)" (supersedes the 0020-addendum executor runner-mode) | Proposed (founder-directed run_131; acceptance owed) |
-| [0020 Addendum](./0020-addendum-phase-executor.md) | **Playbook phase executor** — concrete P1→P5 execution design for onboarding Playbooks: phase state, founder gates, P2 deep-read fan-out, P3 cross-check, P4/P5 governance synthesis and ratification through the commit spine — **proposed supersession by [0026](./0026-onboard-existing-as-oscar-priority.md)** | Proposed implementation addendum |
+| _(none currently — 0026 accepted 2026-06-17; the 0020 addendum it superseded moved to history below)_ | | |
 
 ## Retired to history (superseded — not in the live tree)
 
@@ -49,6 +49,12 @@ moved to history so none sits in "Accepted" while contradicting reality (founder
   invariant. ADR-0023 (the commit spine) replaces all three — its principles inherit 0022's
   broad-by-default/two-surface/derived-receipt; the worktree+merge machinery survives only as 0023's
   opt-in isolation lane.
+- **0020 Addendum (phase executor) → superseded by 0026** (run_131). The standalone executor runner-mode
+  had no founder-facing interaction surface (a real audit would freeze at the first gate); 0026 reframes
+  the existing-repo audit onto an Oscar-driven priority. The addendum file is **kept in place** (not
+  moved to `zArchive/`) because many docs link it and it is **retained as the historical design of the
+  reused audit tooling** (`deep-read`/convergence/trust-boundary/scaffold) — its `Status:` is flipped to
+  Superseded with a forward-pointer, so it no longer claims current truth.
 
 Two **merged** ADRs remain in the live tree as one-line redirect signposts (their decisions live wholly
 inside their target, ~70 citations resolve through them): **0009 → 0008 §Extensibility**, **0011 → 0013**.
@@ -105,3 +111,10 @@ are the space to explore, not recommendations. Order is rough priority.
 - ADRs are numbered sequentially from 0002. One decision per ADR.
 - An ADR is added to **Accepted** only after founder review.
 - A seam graduates from this table to an ADR when resolved; the table row then links to it.
+- **HARD RULE — no stale decisions (founder directive 2026-06-14, reaffirmed 2026-06-17).** An accepted
+  ADR must never sit in the live tree claiming current truth while a later decision contradicts it. So
+  **whenever a new ADR supersedes or amends an existing one, that same change MUST update the
+  superseded/amended ADR** — flip its `Status:` to Superseded/Amended, add a forward-pointer banner to
+  the superseding ADR, and update this index (move it to *Retired to history*, or note the amendment).
+  Never land the superseding ADR alone. Prefer status-flip + forward-pointer over rewriting an ADR's body
+  (preserve the historical record); a body that would actively mislead gets a banner reframing it.

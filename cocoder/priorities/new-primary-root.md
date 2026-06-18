@@ -70,12 +70,13 @@ kept), and the **scaffold (P0)**. **Retired:** the standalone `executor.ts` phas
 `awaiting-founder`/typed-resume-payload mechanism that duplicated the ordinary loop and never got a UI.
 The run_111–131 commits stand as **reusable tooling**, not wasted.
 
-**ADR-GATED (do not build before this lands).** This **supersedes the executor runner-mode** in
-[ADR-0020](../decisions/0020-primary-root-audit.md) + its
-[addendum](../decisions/0020-addendum-phase-executor.md) — an accepted-ADR reversal that requires a
-**new founder-approved ADR** first (ADR-gated-reversals standard). The audit *product structure*
-(scaffold → deep multi-agent audit → founder ratifies → first run) is unchanged; only the **driver**
-changes (Oscar-priority, not phase-executor).
+**ADR ACCEPTED — rebuild launchable.** [ADR-0026](../decisions/0026-onboard-existing-as-oscar-priority.md)
+is **Accepted (founder, 2026-06-17)**; it **supersedes the executor runner-mode** in the
+[0020 addendum](../decisions/0020-addendum-phase-executor.md) (now marked Superseded) and **amends
+[ADR-0020](../decisions/0020-primary-root-audit.md)** (rename + execution model; product structure stands).
+The audit *product structure* (scaffold → deep multi-agent audit → founder ratifies → first run) is
+unchanged; only the **driver** changes (Oscar-priority, not phase-executor). The rebuild is now a normal
+build run on this priority — no further gate.
 
 **RENAME "Takeover" → "Onboard (existing repo)" (founder pick, run_131).** The word "takeover" wrongly
 implied CoCoder **seizes/negates the founder's existing build process**; the act is the opposite — CoCoder
@@ -85,11 +86,14 @@ rename threads through the ADR title, this priority, `cocoder-takeover.md` → `
 equivalent), and code identifiers (`cocoder-takeover` id, `takeover` mode, etc.).
 
 **Next work for this priority (replaces the executor critical path):**
-1. **Write the superseding ADR** (reframe existing-repo audit: executor runner-mode → Oscar-driven
-   priority; preserve audit Plays/convergence/trust-boundary/scaffold as tooling; record the rename).
-   Founder approves before any rebuild.
-2. **Rebuild** the existing-repo audit as the Oscar-driven first-priority flow against the new ADR.
-3. **Apply the rename** across docs + code.
+1. ✅ **Write the superseding ADR** — [ADR-0026](../decisions/0026-onboard-existing-as-oscar-priority.md)
+   written + **Accepted (founder, 2026-06-17)**; 0020 amended, addendum Superseded, index updated (run_131).
+2. **Rebuild** the existing-repo audit as the Oscar-driven first-priority flow against ADR-0026 (reuse the
+   `deep-read` Play / convergence engine / trust-boundary / scaffold as tooling; loop-shaped atoms carry
+   the deterministic caps). **This is the next build run** on this priority.
+3. **Apply the rename** "Takeover" → "Onboard (existing repo)" across docs + code (`cocoder-takeover.md`
+   → `onboard-existing.md`, the `cocoder-takeover` id / `takeover` mode identifiers, remaining doc
+   mentions) — part of, or alongside, the rebuild.
 
 The §below "Executor build progress (run_111–131)" is **retained as the historical build record of the
 now-reused tooling** — read it as "what tooling exists," not "the shipping design." The live external-repo
