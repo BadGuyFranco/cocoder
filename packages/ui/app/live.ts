@@ -190,6 +190,9 @@ export async function loadOrder(oz: OzApi, wsId: string): Promise<string[]> {
 export async function persistOrder(oz: OzApi, wsId: string, ids: readonly string[]): Promise<void> {
   try { await oz.prioritiesReorder(wsId, ids) } catch { /* best-effort; UI already reordered locally */ }
 }
+export async function persistTicketOrder(oz: OzApi, wsId: string, ids: readonly string[]): Promise<void> {
+  try { await oz.ticketsReorder(wsId, ids) } catch { /* best-effort; UI already reordered locally */ }
+}
 
 // PUT replaces the WHOLE assignments map — the caller must hand a full, merged map (preserving fields
 // like plays/enabled it didn't edit), never a partial patch.

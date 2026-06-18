@@ -10,3 +10,8 @@ export async function reorderPrioritiesViaDaemon(workspaceId: string, order: rea
   if (!res.ok) return setPriorityOrder(workspaceId, order)
   return setPriorityOrder(workspaceId, res.data.order)
 }
+
+export async function reorderTicketsViaDaemon(workspaceId: string, order: readonly string[]): Promise<string[]> {
+  const res = await daemonPost<PriorityOrderResponse>(`/workspaces/${encodeURIComponent(workspaceId)}/tickets/reorder`, { order })
+  return [...(res.ok ? res.data.order : order)]
+}

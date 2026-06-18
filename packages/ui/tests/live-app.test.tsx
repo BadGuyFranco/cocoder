@@ -85,6 +85,7 @@ function mockOz(opts: {
   creates?: CreateCall[]
   ticketCreates?: TicketCreateCall[]
   reorders?: ReorderCall[]
+  ticketReorders?: ReorderCall[]
   workspaceUpdates?: WorkspaceUpdateCall[]
   workspaceCreates?: WorkspaceCreateCall[]
   chatSends?: ChatCall[]
@@ -154,6 +155,10 @@ function mockOz(opts: {
     },
     prioritiesReorder: async (workspaceId: string, order: readonly string[]) => {
       opts.reorders?.push({ workspaceId, order })
+      return order
+    },
+    ticketsReorder: async (workspaceId: string, order: readonly string[]) => {
+      opts.ticketReorders?.push({ workspaceId, order })
       return order
     },
     prioritiesOrder: async () => [],
@@ -628,6 +633,31 @@ describe('Oz renderer — live daemon path', () => {
     })
     await waitFor(() => expect(getPaths.filter((path) => /\/tickets$/.test(path)).length).toBeGreaterThanOrEqual(2))
     await waitFor(() => expect(screen.queryByText('New ticket')).toBeNull())
+  })
+
+  it('Dashboard ticket drag reorder persists the open ticket order through the typed bridge', async () => {
+    const ticketReorders: ReorderCall[] = []
+    setOz(mockOz({ ticketReorders }))
+    const { container } = render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(screen.getByRole('button', { name: /Tickets \d+/i }))
+    const firstTitle = 'Public docs/ tree is v1-stale (commands, PRIORITIES.md, cocoder/local, routes)'
+    const secondTitle = 'Guard against design-ref rebuilds reverting committed packages/ui/app fixes'
+    const first = screen.getByText(firstTitle).closest('[draggable="true"]') as HTMLElement | null
+    const second = screen.getByText(secondTitle).closest('[draggable="true"]') as HTMLElement | null
+    if (!first || !second) throw new Error('ticket cards must be draggable')
+
+    fireEvent.dragStart(first)
+    fireEvent.dragOver(second)
+    fireEvent.drop(second)
+    fireEvent.dragEnd(first)
+    fireEvent.click(first)
+
+    await waitFor(() => expect(ticketReorders.length).toBe(1))
+    expect(ticketReorders[0]).toEqual({ workspaceId: 'cocoder', order: ['0012', '0003'] })
+    const text = container.textContent ?? ''
+    expect(text.indexOf(secondTitle)).toBeLessThan(text.indexOf(firstTitle))
   })
 
   it('Craft persona files its priority through the typed create bridge in live mode', async () => {

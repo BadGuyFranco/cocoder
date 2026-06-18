@@ -4,7 +4,7 @@
 // the design-faithful view-model from the ported seed (fixture parity, fully interactive); the daemon
 // adapter is wired in the next slice (the existing electron/ plumbing is untouched).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, sendOzMessage, launchRun, launchTicketRun, attachRun, teardownRun, stopRun, testCli, createPriority, createTicket, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, saveAssignments, restartDaemon, type ConnectionState } from './live.ts'
+import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, sendOzMessage, launchRun, launchTicketRun, attachRun, teardownRun, stopRun, testCli, createPriority, createTicket, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, persistTicketOrder, saveAssignments, restartDaemon, type ConnectionState } from './live.ts'
 import { ADHOC_PRIORITY_ID, MODE_HONORED_PERSONAS, applyOrder, isActiveRun, mergeRunsWithEnrichment, orderPersonas, personasToAssignments } from './adapter.ts'
 import { Sidebar, type Route } from './ui/Sidebar.tsx'
 import { TopBar } from './ui/TopBar.tsx'
@@ -321,6 +321,16 @@ export function App() {
     setPrioritiesByWs((cur) => ({ ...cur, [activeId]: list }))
     // Persist the order through the daemon-backed main-process seam, with local cache fallback.
     if (live) { const oz = ozApi(); if (oz) void persistOrder(oz, activeId, list.map((p) => p.id)) }
+  }
+  function reorderTickets(from: number, to: number) {
+    const list = ticketsByWs[activeId] ?? []
+    const open = list.filter((ticket) => ticket.state === 'open')
+    const closed = list.filter((ticket) => ticket.state === 'closed')
+    const [moved] = open.splice(from, 1)
+    if (!moved) return
+    open.splice(to, 0, moved)
+    setTicketsByWs((cur) => ({ ...cur, [activeId]: [...open, ...closed] }))
+    if (live) { const oz = ozApi(); if (oz) void persistTicketOrder(oz, activeId, open.map((ticket) => ticket.id)) }
   }
   function addPriority(name: string, summary: string, placeAtTop: boolean) {
     const p: Priority = { id: `p${Date.now()}`, name, summary, status: 'ready', labels: ['persona-build'] }
@@ -641,7 +651,7 @@ export function App() {
               workspace={workspace} priorities={priorities} tickets={tickets} runs={runs} ozMessages={messages}
               workspaceConfigured={live ? configuredByWs[activeId] : undefined}
               selectedRunId={selectedRunId} setSelectedRunId={setSelectedRunId}
-              onReorder={reorder} onLaunch={handleLaunch} onAdhoc={handleAdhoc}
+              onReorder={reorder} onReorderTickets={reorderTickets} onLaunch={handleLaunch} onAdhoc={handleAdhoc}
               onAddPriority={() => { if (live) setNewPriorityOpen(true); else onSend('Draft a new priority.') }}
               onAddTicket={() => { if (live) setNewTicketOpen(true); else onSend('Draft a new ticket.') }}
               onLaunchTicket={handleLaunchTicket}

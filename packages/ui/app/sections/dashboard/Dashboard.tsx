@@ -84,8 +84,10 @@ function TabStrip({ active, onChange, priorities, tickets, runs }: { active: Das
   )
 }
 
-function TicketsTab({ tickets, onLaunchTicket, launchBlocked, live }: { tickets: Ticket[]; onLaunchTicket: (ticket: Ticket) => void; launchBlocked: boolean; live: boolean }) {
+function TicketsTab({ tickets, onLaunchTicket, onReorderTickets, launchBlocked, live }: { tickets: Ticket[]; onLaunchTicket: (ticket: Ticket) => void; onReorderTickets: (from: number, to: number) => void; launchBlocked: boolean; live: boolean }) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [drag, setDrag] = useState<{ from: number | null; over: number | null }>({ from: null, over: null })
+  const draggedIndex = useRef<number | null>(null)
   const openTickets = tickets.filter((ticket) => ticket.state === 'open')
   const selected = selectedId ? openTickets.find((ticket) => ticket.id === selectedId) ?? null : null
   const launchDisabled = !live || launchBlocked
@@ -99,6 +101,12 @@ function TicketsTab({ tickets, onLaunchTicket, launchBlocked, live }: { tickets:
       ['created', selected.created],
     ].filter(([, value]) => value)
     : []
+  const handleDrag = (type: string, index: number) => {
+    if (type === 'start') setDrag({ from: index, over: null })
+    else if (type === 'over') setDrag((d) => ({ ...d, over: index }))
+    else if (type === 'drop') { if (drag.from !== null && drag.from !== index) onReorderTickets(drag.from, index); setDrag({ from: null, over: null }) }
+    else if (type === 'end') setDrag({ from: null, over: null })
+  }
   if (openTickets.length === 0) {
     return (
       <div className="oz-empty" style={{ padding: '32px 16px' }}>
@@ -111,22 +119,28 @@ function TicketsTab({ tickets, onLaunchTicket, launchBlocked, live }: { tickets:
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {openTickets.map((ticket) => (
+        {openTickets.map((ticket, index) => (
           <div
             key={ticket.id}
+            draggable
             role="button"
             tabIndex={0}
-            onClick={() => setSelectedId(ticket.id)}
+            onDragStart={() => { draggedIndex.current = index; handleDrag('start', index) }}
+            onDragOver={(e) => { e.preventDefault(); handleDrag('over', index) }}
+            onDragEnd={() => handleDrag('end', index)}
+            onDrop={(e) => { e.preventDefault(); handleDrag('drop', index) }}
+            onClick={() => { if (draggedIndex.current === index) { draggedIndex.current = null; return } setSelectedId(ticket.id) }}
             onKeyDown={(e) => {
               if (e.key !== 'Enter' && e.key !== ' ') return
               e.preventDefault()
               setSelectedId(ticket.id)
             }}
-            style={{ width: '100%', textAlign: 'left', padding: '9px 10px', background: 'var(--cb-surface-glass)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', cursor: 'pointer', fontFamily: 'var(--cb-font-body)', color: 'var(--cb-text)', transition: 'box-shadow 120ms ease-out, background 120ms ease-out, border-color 120ms ease-out' }}
+            style={{ width: '100%', textAlign: 'left', padding: '9px 10px', background: 'var(--cb-surface-glass)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', cursor: 'grab', fontFamily: 'var(--cb-font-body)', color: 'var(--cb-text)', transition: 'box-shadow 120ms ease-out, background 120ms ease-out, border-color 120ms ease-out, opacity 120ms ease-out', opacity: drag.from === index ? 0.4 : 1, boxShadow: drag.over === index && drag.from !== index ? '0 0 0 2px var(--cb-accent-30)' : 'none' }}
             onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--cb-accent-30)'; e.currentTarget.style.background = 'var(--cb-hover)' }}
             onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--cb-border)'; e.currentTarget.style.background = 'var(--cb-surface-glass)' }}
           >
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <Icon name="dots-six-vertical" size={14} style={{ color: 'var(--cb-text-muted)', cursor: 'grab', marginTop: 1 }} />
               <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-accent)', minWidth: 34, paddingTop: 2 }}>{ticket.id}</span>
               <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 500, lineHeight: 1.4, paddingTop: 1 }}>{ticket.title}</div>
               <Button variant="secondary" size="sm" icon="play" disabled={launchDisabled} title={launchTitle} onClick={(e) => { e.stopPropagation(); onLaunchTicket(ticket) }}>Launch</Button>
@@ -208,11 +222,11 @@ function RunsTab({ runs, onSelectRun, priorities }: { runs: Run[]; onSelectRun: 
   )
 }
 
-export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, selectedRunId, setSelectedRunId, onReorder, onLaunch, onAdhoc, onAddPriority, onAddTicket, onLaunchTicket, onSend, onDecision, onRunAction, ozTyping, live = false, workspaceConfigured, chatPrefill = null, onChatPrefillConsumed, workspaces, activeId, loadedIds, runsMap, onSelectWs, onCloseWs, onLoadWs, onCreateWs, theme = 'dark', setTheme = () => undefined, conn = 'fixtures', onRestartOz, chatTarget = workspace.id, chatTargets, onChatTargetChange = () => undefined, chatTargetName = workspace.name, chatRuns, panelRatio = DEFAULT_PANEL_RATIO, onPanelRatioChange = () => undefined }: {
+export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, selectedRunId, setSelectedRunId, onReorder, onReorderTickets, onLaunch, onAdhoc, onAddPriority, onAddTicket, onLaunchTicket, onSend, onDecision, onRunAction, ozTyping, live = false, workspaceConfigured, chatPrefill = null, onChatPrefillConsumed, workspaces, activeId, loadedIds, runsMap, onSelectWs, onCloseWs, onLoadWs, onCreateWs, theme = 'dark', setTheme = () => undefined, conn = 'fixtures', onRestartOz, chatTarget = workspace.id, chatTargets, onChatTargetChange = () => undefined, chatTargetName = workspace.name, chatRuns, panelRatio = DEFAULT_PANEL_RATIO, onPanelRatioChange = () => undefined }: {
   workspace: Workspace; priorities: Priority[]; tickets: Ticket[]; runs: Run[]; ozMessages: ChatMessage[]
   workspaceConfigured?: boolean
   selectedRunId: string | null; setSelectedRunId: (id: string | null) => void
-  onReorder: (from: number, to: number) => void; onLaunch: (p: Priority) => void; onAdhoc: () => void; onAddPriority: () => void
+  onReorder: (from: number, to: number) => void; onReorderTickets: (from: number, to: number) => void; onLaunch: (p: Priority) => void; onAdhoc: () => void; onAddPriority: () => void
   onAddTicket: () => void; onLaunchTicket: (ticket: Ticket) => void
   onSend: (text: string) => void; onDecision: (choice: string) => void; onRunAction: (action: string, id: string) => void
   ozTyping: boolean; live?: boolean
@@ -262,7 +276,7 @@ export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, se
           </div>
           <div className="oz-panel-body">
             {activeTab === 'priorities' && <PrioritiesPanel priorities={priorities} runs={runs} onReorder={onReorder} onLaunch={onLaunch} onAdhoc={onAdhoc} onAddPriority={onAddPriority} onSelectRun={setSelectedRunId} selectedRunId={selectedRunId} />}
-            {activeTab === 'tickets' && <TicketsTab tickets={tickets} onLaunchTicket={onLaunchTicket} launchBlocked={launchBlocked} live={live} />}
+            {activeTab === 'tickets' && <TicketsTab tickets={tickets} onLaunchTicket={onLaunchTicket} onReorderTickets={onReorderTickets} launchBlocked={launchBlocked} live={live} />}
             {activeTab === 'runs' && <RunsTab runs={runs} priorities={priorities} onSelectRun={setSelectedRunId} />}
           </div>
         </div>

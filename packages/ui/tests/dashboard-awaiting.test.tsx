@@ -46,6 +46,7 @@ function DashboardHarness({
   onAddPriority = vi.fn(),
   onAddTicket = vi.fn(),
   onLaunchTicket = vi.fn(),
+  onReorderTickets = vi.fn(),
   live = false,
 }: {
   runs: Run[]
@@ -54,6 +55,7 @@ function DashboardHarness({
   onAddPriority?: () => void
   onAddTicket?: () => void
   onLaunchTicket?: (ticket: Ticket) => void
+  onReorderTickets?: (from: number, to: number) => void
   live?: boolean
 }) {
   const [selectedRunId, setSelectedRunId] = useState<string | null>(initialSelectedRunId)
@@ -67,6 +69,7 @@ function DashboardHarness({
       selectedRunId={selectedRunId}
       setSelectedRunId={setSelectedRunId}
       onReorder={vi.fn()}
+      onReorderTickets={onReorderTickets}
       onLaunch={vi.fn()}
       onAdhoc={vi.fn()}
       onAddPriority={onAddPriority}
@@ -200,6 +203,50 @@ describe('Dashboard layout', () => {
     fireEvent.click(column.getByText('Public docs/ tree is v1-stale'))
     expect(screen.getByText('0003 - Public docs/ tree is v1-stale')).toBeDefined()
     expect(screen.getByText(/Docs need reconciliation/)).toBeDefined()
+  })
+
+  it('drags ticket cards to reorder without opening the dragged card detail modal', () => {
+    const onReorderTickets = vi.fn()
+    const { container } = render(<DashboardHarness runs={[]} onReorderTickets={onReorderTickets} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /Tickets 3/i }))
+    const column = within(container.firstElementChild!.children[0] as HTMLElement)
+    const first = column.getByText('0003').closest('[draggable="true"]') as HTMLElement | null
+    const last = column.getByText('0012').closest('[draggable="true"]') as HTMLElement | null
+    if (!first || !last) throw new Error('ticket cards must be draggable')
+
+    fireEvent.dragStart(first)
+    fireEvent.dragOver(last)
+    fireEvent.drop(last)
+    fireEvent.dragEnd(first)
+    fireEvent.click(first)
+
+    expect(onReorderTickets).toHaveBeenCalledTimes(1)
+    expect(onReorderTickets).toHaveBeenCalledWith(0, 2)
+    expect(screen.queryByText('0003 - Public docs/ tree is v1-stale')).toBeNull()
+    expect(screen.queryByText(/Docs need reconciliation/)).toBeNull()
+  })
+
+  it('opens a different ticket on the first click after another card was dragged', () => {
+    const onReorderTickets = vi.fn()
+    const { container } = render(<DashboardHarness runs={[]} onReorderTickets={onReorderTickets} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /Tickets 3/i }))
+    const column = within(container.firstElementChild!.children[0] as HTMLElement)
+    const first = column.getByText('0003').closest('[draggable="true"]') as HTMLElement | null
+    const last = column.getByText('0012').closest('[draggable="true"]') as HTMLElement | null
+    if (!first || !last) throw new Error('ticket cards must be draggable')
+
+    fireEvent.dragStart(first)
+    fireEvent.dragOver(last)
+    fireEvent.drop(last)
+    fireEvent.dragEnd(first)
+    fireEvent.click(column.getByText('Migrate orchestrator session memory into persona/standards files'))
+
+    expect(onReorderTickets).toHaveBeenCalledTimes(1)
+    expect(onReorderTickets).toHaveBeenCalledWith(0, 2)
+    expect(screen.getByText('0005 - Migrate orchestrator session memory into persona/standards files')).toBeDefined()
+    expect(screen.getByText(/Move memory into governed files/)).toBeDefined()
   })
 
   it('disables ticket fix launch while a run is in flight', () => {

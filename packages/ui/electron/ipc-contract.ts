@@ -15,6 +15,7 @@ export const CHANNELS = {
   prioritiesCreate: 'oz:priorities:create',
   ticketsCreate: 'oz:tickets:create',
   prioritiesReorder: 'oz:priorities:reorder',
+  ticketsReorder: 'oz:tickets:reorder',
   prioritiesOrder: 'oz:priorities:order',
   workspacesUpdate: 'oz:workspaces:update',
   workspacesCreate: 'oz:workspaces:create',
@@ -259,6 +260,7 @@ export interface OzApi {
   prioritiesCreate(workspaceId: string, priority: { title: string; goal?: string }): Promise<DaemonResult<Priority>>
   ticketsCreate(workspaceId: string, ticket: { title: string; type?: string; priority?: string; description?: string }): Promise<DaemonResult<Ticket>>
   prioritiesReorder(workspaceId: string, order: readonly string[]): Promise<readonly string[]>
+  ticketsReorder(workspaceId: string, order: readonly string[]): Promise<readonly string[]>
   prioritiesOrder(workspaceId: string): Promise<readonly string[]>
   workspacesUpdate(workspaceId: string, folders: readonly WorkspaceFolder[]): Promise<DaemonResult<Workspace>>
   workspacesCreate(workspaceId: string, folders: readonly WorkspaceFolder[]): Promise<DaemonResult<{ workspace: Workspace; legacyHidden: readonly string[] }>>

@@ -20,6 +20,7 @@ const api: OzApi = {
   prioritiesCreate: (ws, priority) => ipcRenderer.invoke(CHANNELS.prioritiesCreate, ws, priority),
   ticketsCreate: (ws, ticket) => ipcRenderer.invoke(CHANNELS.ticketsCreate, ws, ticket),
   prioritiesReorder: (ws, order) => ipcRenderer.invoke(CHANNELS.prioritiesReorder, ws, order),
+  ticketsReorder: (ws, order) => ipcRenderer.invoke(CHANNELS.ticketsReorder, ws, order),
   prioritiesOrder: (ws) => ipcRenderer.invoke(CHANNELS.prioritiesOrder, ws),
   workspacesUpdate: (ws, folders) => ipcRenderer.invoke(CHANNELS.workspacesUpdate, ws, folders),
   workspacesCreate: (ws, folders) => ipcRenderer.invoke(CHANNELS.workspacesCreate, ws, folders),
