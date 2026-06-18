@@ -12,6 +12,18 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-18 — **Workspace-segmentation: read alignment + concurrency proof + runnable migration + proof harness — archive-candidate (run_138)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 4 atoms delegated) | **Priority:** [workspace-segmentation](./priorities/workspace-segmentation.md) | **Run:** run_138
+**Outcomes:**
+- **Atom 0 (`8449d5e`) — read-consumer alignment:** new `readPortableRunById(primaryRoot, runId)` (suffix-discovers the `<n>-<runId>` dir); daemon `/runs` + `/runs/:id` surface the workspace-local `displayNumber` from the portable `run.json` (source of truth; SQLite stays the rebuildable index); UI has one `runDisplayName` owner in `model.ts` rendering `Run N` across runs tab / OzChat / Priorities / modal / RunDetail. `run.id` preserved as the addressing/deep-link key; legacy runs with no portable file degrade to `null`, never throw.
+- **Atom 1 (`c11d90a`) — concurrency proven by construction (Objective 6):** audit found the shared resources already isolated (per-workspace `inFlight` lock, globally-unique run IDs, per-workspace portable trees/counters, `workspaceId`-tagged events) — no production change needed; landed a daemon regression test holding two cross-workspace runs in-flight that asserts independent locks (same-workspace 3rd launch → 409), separate run dirs + portable trees with cross-contamination checks, both DB writes succeed, and workspace-attributed events.
+- **Atom 2 (`b73b2b3`) — backfill migration runnable + idempotent (Objective 4):** hardened `migrateWorkspacePortableHistory` to reconcile with existing portable history (preserve existing display numbers, append missing runs above max, delegate counters to `rebuildPortableCounters`); wired `cocoder oz migrate-history <workspaceId>` → CSRF-gated daemon route. Tests: fresh / idempotent-noop / partial-state. NOT executed on the live repo (operational/founder call).
+- **Atom 3 (`4ec6038`) — proof-last harness:** `scripts/proof-workspace-segmentation.mjs` + `pnpm proof:workspace-segmentation` drives real core/daemon APIs against throwaway temp workspaces and prints an objective→evidence map for Obj 3/4/5/6/7 (exit 0); has a real negative self-check (`PROOF_WORKSPACE_SEGMENTATION_INJECT_REGRESSION=display-number` → exit 1); leaves git clean; Obj 1/2 listed as honest founder-eyeball checks citing the run_136 UI tests.
+- Verified each atom on the actual diff + reran suites: core 370/370, daemon 215/215, UI 126/126, typecheck green throughout.
+- **Disposition: `archive-candidate`** — all 8 objectives implemented; the machine-checkable 7 are runnable-proof-backed. Residual is non-build only: founder eyeball on the visual split (Obj 1) + chat target picker (Obj 2) in the running app, and the optional one-time live `cocoder oz migrate-history cocoder` to materialize this repo's pre-run_137 history.
+**Next:** Founder confirms Obj 1/2 by eye in the dashboard and (optionally) runs `pnpm --dir '/Volumes/NAS LOCAL/CoCoder' exec cocoder oz migrate-history cocoder`; then **archive `workspace-segmentation`**. Re-running `pnpm proof:workspace-segmentation` reproduces the machine-checkable evidence on demand.
+
 ## 2026-06-18 — **Workspace-segmentation: portable-history WRITE side end-to-end (run_137)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 5 atoms delegated) | **Priority:** [workspace-segmentation](./priorities/workspace-segmentation.md) | **Run:** run_137

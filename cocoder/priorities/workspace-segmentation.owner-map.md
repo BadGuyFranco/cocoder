@@ -5,8 +5,13 @@ Atom 0, run_135 (analysis). Run_136 partially implemented concerns **2** (chat t
 **Run_137 (5 atoms):** portable-history **WRITE** side landed per [ADR-0027](../decisions/0027-workspace-storage-contract.md)
 — file ports (`packages/core/src/store/portable/`), BACKFILL migration code (`migrate.ts`, not executed
 on live repo), run-creation dual-write (`run-creation.ts`), SETTLE/stop/fail projection (`projection.ts`).
-Consumers in rows **6** and **8** still read DB-only; read alignment is the next atom. Concurrency rows
-below remain open.
+**Run_138 (4 atoms) — archive-candidate:** read alignment closed (rows **6**/**8** — daemon `/runs` + `/runs/:id`
+and UI now surface the portable `displayNumber` via `readPortableRunById`; `run.id` stays the addressing key);
+concurrency rows proven isolated by construction (Objective 6, daemon regression test — no production change
+needed); BACKFILL migration hardened to reconcile + made runnable as `cocoder oz migrate-history` (still not
+executed on the live repo); proof-last harness `scripts/proof-workspace-segmentation.mjs` (`pnpm proof:workspace-segmentation`)
+asserts Obj 3/4/5/6/7 against real APIs. Residual is non-build: founder eyeball on Obj 1/2 in the running app,
+and the optional one-time live `migrate-history` for pre-run_137 history.
 
 Evidence searched: `rg` over `packages/daemon`, `packages/core`, `packages/ui`, `packages/session-hosts`; `sqlite3 local/cocoder.db '.schema'`; `PRAGMA table_info(...)` for `workspace`, `run`, `session`, `work_item`, `commit_link`, `event`, and `run_counter`.
 
