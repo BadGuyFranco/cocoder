@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-18 — **new-primary-root: onboarding rebuild COMPLETE — trust invariant + scaffold seeding + runnable proof (run_141)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 4 atoms delegated, 1 rejected-then-redone, all verified-on-evidence) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_141
+**Outcomes:**
+- **A3a — trust invariant restored (`d386ba7`):** optional priority frontmatter `auditWriteBoundary: ["cocoder/**"]` parsed by `loadPriority`, derived into an `AuditWriteBoundary` inside `runRun` (priority already in `RunInput`), passed to `runCommitGate` at all four commit sites (agent-step + deb-repair + oscar-support + wrap), reusing the existing `AuditWriteBoundaryError`. Onboarding runs now REFUSE out-of-`cocoder/**` commits; ordinary runs still commit-and-flag (ADR-0023 §3). Proven through the real runner. core 371 + daemon 211 green.
+- **A3b — conditional scaffold seeding (`b1abafa`):** `scaffoldCocoderZone` seeds `onboard-existing.md` into `cocoder/priorities/` only when `targetRoot` already has source outside `cocoder`/`.git` (existing repo); empty/`.git`-only repos do not get it; create-only/idempotent. Template is byte-identical to the base priority (carries the A3a boundary frontmatter). core 374 green.
+- **A4 — runnable proof (`76cc802`):** `scripts/proof-onboard-existing.mjs` runs the real named tests via vitest JSON reporter, maps each to one of the three rebuilt invariants, prints a PASS/FAIL/MISSING table (renamed-away test ⇒ red row). `node scripts/proof-onboard-existing.mjs` → exit 0, all 3 PASS (89/89). Retired the dead `proof-takeover-executor.mjs`.
+- **Gate caught a doc-correctness defect:** the first A4 attempt was REJECTED — its proof script was correct/green, but the same diff rewrote append-only history (run_131 SESSION_LOG entry, a verify line made to cite a script that didn't exist then, owner-map file:line evidence stripped). Re-scoped to script+deletion with zero doc edits; historical records left verbatim.
+- **Disposition: `archive-candidate` on the rebuild** — the three rebuilt invariants are proven in one command; remaining Objective items (live external-repo onboarding proof; dogfood Drift proof) are founder-gated and need a different launch surface, not more build atoms.
+**Next:** Founder decision — **(a)** authorize a LIVE onboard-existing run against an external repo copy (CoBuilder/CoPublisher) to prove the flow end-to-end (Objective verification (a)), or **(b)** scope the **Drift Audit** capability as its own build (Objective verification (b), still unbuilt). No further onboard-existing rebuild atoms are warranted.
+
 ## 2026-06-18 — **new-primary-root: executor retired; onboard-existing priority authored — rebuild ~60%, trust invariant gap (run_140)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 5 atoms delegated) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_140

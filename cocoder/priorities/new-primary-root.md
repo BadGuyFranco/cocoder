@@ -43,7 +43,7 @@ extension (ADR-0020 §7); the `deep-read` audit Play (the Takeover P2 unit, adve
 deterministic scaffold init op; and a **live Takeover proof on a real external repo** (the Phase-5 entry,
 CoPublisher).
 
-## Build progress — disposition: `continue` (rebuild ~60% done, run_140 — executor retired; onboard-existing priority authored; trust invariant + scaffold seeding remain)
+## Build progress — disposition: `archive-candidate on the rebuild` (rebuild COMPLETE, run_141 — A3a trust invariant + A3b scaffold seeding + A4 runnable proof landed; the three rebuilt invariants are proven in one command; only founder-gated LIVE proofs remain)
 
 ## ⚠ ARCHITECTURE PIVOT — founder-directed (run_131, 2026-06-17): the existing-repo audit is NOT a standalone executor
 **Decision (founder):** the existing-repo onboarding audit will **not** ship as the standalone Playbook
@@ -140,25 +140,36 @@ ADR-0026) as part of A2/A3. New Primary + Drift adopt the same seeded-priority m
    superseded by scaffold-seeded onboarding priorities. (`base/priorities/` is NOT auto-surfaced — daemon
    lists only the workspace's `cocoder/priorities/` — so authoring there is zero behavior change; scaffold
    seeding is A3b.)
-5. **(A3a) Restore the trust invariant (FIRST — delicate atom).** ⚠ **GAP SURFACED run_140:** the
-   `cocoder/**`-only REFUSE-boundary lived ONLY in the deleted executor's P7 hook; ordinary-run commit gates
-   pass `scope` but never `auditWriteBoundary` (`agent-step.ts:251`, `runner.ts:692/828/1008`). An
-   onboard-existing run today would commit-and-flag product-code edits (ADR-0023 §3), not REFUSE — violating
-   the promise in `onboard-existing.md`. **Design (derivable):** optional priority frontmatter field
-   `auditWriteBoundary: ["cocoder/**"]` parsed by `loadPriority`, threaded through `RunInput`, passed to
-   `runCommitGate` at every agent-step + oscar/deb/wrap gate; set on `onboard-existing.md`. Verify: fake
-   onboarding run writing a product path → `AuditWriteBoundaryError`, zero commit; ordinary priorities
-   unchanged. Rename deferred `cocoder-takeover` label literals in `commit-gate.test.ts` +
-   `read-surfaces.test.ts` to `onboard-existing`.
-6. **(A3b) Scaffold seeding** — conditional seed of `onboard-existing.md` for existing repos (source outside
-   `cocoder/`); empty/new repos do NOT get it (new-primary later). Add
-   `templates/workspace-cocoder/cocoder/priorities/onboard-existing.md` behind the conditional in
-   `scaffoldCocoderZone`. Verify: existing-repo scaffold seeds it; empty-repo scaffold does not.
-7. **(A4) New proof of the Oscar-driven flow** (replaces retired `scripts/proof-takeover-executor.mjs`) —
-   one-command proof that onboarding refuses product-code writes, ordinary runs do not, and scaffold seeding
-   is conditional.
-Still gated after the rebuild: the live external-repo onboarding proof (CoBuilder/CoPublisher copy) and the
-dogfood Drift proof.
+5. ✅ **(A3a) Restore the trust invariant** (run_141 atom 0, committed `d386ba7`). Derived the boundary from
+   `priority.auditWriteBoundary` INSIDE `runRun` (the priority is already in `RunInput`, so no separate
+   threading) and reused the existing `AuditWriteBoundary`/`AuditWriteBoundaryError` from the retired P5/P6
+   work — wired at all four commit sites (agent-step + deb-repair + oscar-support + wrap gates). `loadPriority`
+   parses optional frontmatter `auditWriteBoundary: ["cocoder/**"]` (absent ⇒ ordinary behavior); set on
+   `onboard-existing.md`. Proven through the REAL runner: an onboarding priority writing a product path is
+   REFUSED (`AuditWriteBoundaryError`, zero commit, refused event); an ordinary priority still commits-and-flags
+   out-of-lane files (ADR-0023 §3 intact). Renamed `cocoder-takeover` label literals → `onboard-existing` in
+   `commit-gate.test.ts` + `read-surfaces.test.ts`. core 371 + daemon 211 + typecheck + topology green.
+6. ✅ **(A3b) Scaffold seeding** (run_141 atom 1, committed `b1abafa`). Conditional seed inside
+   `scaffoldCocoderZone`: `seedOnboarding` computed BEFORE `copyTree` (detect: `targetRoot` has ≥1 entry
+   outside `cocoder`/`.git` ⇒ existing repo); the conditional path is skipped in the unconditional copy and
+   seeded only when existing, via create-only/idempotent `copyFileCreateOnly`. Added template
+   `templates/workspace-cocoder/cocoder/priorities/onboard-existing.md` BYTE-IDENTICAL to the base priority
+   (carries the `auditWriteBoundary` frontmatter, so A3a holds in real workspaces). Proven: existing-repo
+   seeds; `.git`-only/empty repo does not (rest of zone still scaffolds); idempotent. core 374 + daemon 211 +
+   typecheck + topology green.
+7. ✅ **(A4) New proof of the Oscar-driven flow** (run_141 atom 3, committed `76cc802`; replaces the retired
+   `proof-takeover-executor.mjs`). `scripts/proof-onboard-existing.mjs` — one-command founder-runnable proof
+   in the `proof-direct-spine.mjs` style: runs the REAL named tests via vitest's JSON reporter and maps each
+   to one of the three rebuilt invariants (onboarding refuses product-code writes / ordinary runs unchanged /
+   scaffold seeding conditional), printing a PASS/FAIL/MISSING table (a renamed-away test ⇒ red MISSING row, so
+   it can't silently pass). `node scripts/proof-onboard-existing.mjs` → exit 0, all 3 invariants PASS (89/89
+   backing tests). Deleted the dead executor proof. (First A4 attempt was REJECTED at the gate for rewriting
+   append-only history — the run_131 SESSION_LOG/verify records and owner-map file:line evidence; re-scoped to
+   script+deletion only, zero doc edits — the gate catching a documentation-correctness defect test-green can't
+   see.)
+**Rebuild COMPLETE.** The three rebuilt invariants are proven in one command (`proof-onboard-existing.mjs`).
+Still gated (founder-only, different launch surface — NOT buildable in an ordinary build loop): the live
+external-repo onboarding proof (CoBuilder/CoPublisher copy) and the dogfood Drift proof.
 
 The §below "Executor build progress (run_111–131)" is **retained as the historical build record of the
 now-reused tooling** — read it as "what tooling exists," not "the shipping design." The live external-repo
