@@ -30,7 +30,10 @@ Do this:
    `cocoder/priorities/archive/<id>.md`.
 4. Remove the archived id from `cocoder/priorities/order.json` if that file exists and contains it.
    Preserve the JSON shape and every other priority id.
-5. Validate the archived priority still parses with `parseFrontmatter` and `loadPriority` from its new
+5. Run the elegance checkpoint before finishing: preserve the live archive convention, avoid creating a
+   second archive mechanism, touch only the priority file and order surface required for the move, and do
+   not remove evidence a fresh agent needs to understand why the priority was archived.
+6. Validate the archived priority still parses with `parseFrontmatter` and `loadPriority` from its new
    directory, and validate `order.json` remains valid JSON if edited.
 
 Do not run git and do not commit. The dispatch harness commits the move and order update through the

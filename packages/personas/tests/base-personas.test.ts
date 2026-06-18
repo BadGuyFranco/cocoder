@@ -70,6 +70,7 @@ describe('basePersonasDir', () => {
     expect(text).toContain('The elegance standard')
     expect(text).toContain('correctness first, clarity second, elegance third')
     expect(text).toContain('maximum effect with minimum surface area')
+    expect(text).toContain('Elegance is not brevity at the expense of')
     expect(text).toContain('Order work so the next agent can run it')
   })
 

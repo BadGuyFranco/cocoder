@@ -40,13 +40,15 @@ Build atoms, in dependency order:
    Founder accepts before any schema change.
 2. **Play contract schema (metadata only):** extend the `Play` type (`packages/core/src/plays/types.ts`) with optional
    contract metadata: purpose summary, allowed callers, trigger class, input schema, output validator,
-   deterministic step, commit mode, and capability-manifest fields. Keep existing prompt-only Plays valid
-   during migration (additive, non-breaking). Loader/tests prove old prompt-only Plays still parse.
+   deterministic step, commit mode, required checkpoints such as the shared elegance checkpoint, and
+   capability-manifest fields. Keep existing prompt-only Plays valid during migration (additive,
+   non-breaking). Loader/tests prove old prompt-only Plays still parse.
 3. **Existing Play migration to contract metadata:** update every shipped base Play and relevant repo delta
    to the new format before changing invocation behavior: `wrap-up`, `create-priority`, `edit-priority`,
    `archive-priority`, `code-review`, `documentation`, `deep-read`, `electron-test`, and any live repo-only
-   Play. Each migrated Play declares capability metadata and any input/output contract; prompt-only Plays
-   explicitly mark themselves prompt-only.
+   Play. Each migrated Play declares capability metadata, any input/output contract, and whether the
+   shared elegance checkpoint is required before output/write; prompt-only Plays explicitly mark
+   themselves prompt-only.
 4. **Capability manifest:** generate a small per-persona "Available Plays" section for launch prompts:
    Play id, one-line purpose, allowed caller, trigger class, required input shape, write behavior, and
    whether it is mandatory or optional. Do **not** inject full Play bodies into normal persona prompts;
@@ -72,8 +74,9 @@ Build atoms, in dependency order:
 **Verified when:** persona launch prompts expose only compact Play capability manifests; a persona can
 request an optional Play through a typed handoff; a mandatory Play is invoked by the runner/daemon without
 persona discretion; one hybrid Play runs deterministic code whose result demonstrably drives/gates its LLM
-layer; every existing shipped Play is migrated or explicitly marked prompt-only under the new schema; and
-existing prompt-only behavior remains backward-compatible during the migration.
+layer; every existing shipped Play is migrated or explicitly marked prompt-only under the new schema;
+authoring Plays enforce the shared elegance checkpoint before writing governance artifacts; and existing
+prompt-only behavior remains backward-compatible during the migration.
 
 **Boundary:** does NOT reopen the dispatch reversal (one-level stands). Does not make the deterministic
 runner the probabilistic chooser for all Plays: personas may judge when optional Plays are useful, but

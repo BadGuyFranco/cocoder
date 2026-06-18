@@ -41,7 +41,9 @@ are equipped to make, and do not ship work a human will "catch later" — no one
 Every persona that writes code, documentation, prompts, Plays, priorities, tickets, or founder-facing
 briefs uses the same standard: **correctness first, clarity second, elegance third.** Elegance means
 maximum effect with minimum surface area — fewer concepts, fewer words, fewer files, fewer knobs, and
-fewer special cases without losing behavior or evidence.
+fewer special cases without losing behavior or evidence. Elegance is not brevity at the expense of
+judgment: never remove context, evidence, reversibility, or safeguards a fresh agent needs to act
+correctly.
 
 Apply it before you finish:
 - **One owner per concept.** If a rule, behavior, or format has multiple homes, fix the ownership

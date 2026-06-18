@@ -36,4 +36,19 @@ describe('priority authoring Plays', () => {
     expect(play.body).toMatch(/proof\/verification\s+last/)
     expect(play.body).toContain('independently delegable')
   })
+
+  test.each(authoringPlayIds)('%s requires the elegance checkpoint before writing or finishing', (id) => {
+    const play = loadEffectivePlay(sources().baseDir, sources().deltaDir, id)
+
+    expect(play.body).toContain('elegance checkpoint')
+  })
+
+  test('Architect Play System priority includes elegance checkpoint contract migration', async () => {
+    const { readFile } = await import('node:fs/promises')
+    const text = await readFile(join(repoRoot(), 'cocoder', 'priorities', 'hybrid-plays.md'), 'utf8')
+
+    expect(text).toContain('required checkpoints such as the shared elegance checkpoint')
+    expect(text).toContain('whether the\n   shared elegance checkpoint is required')
+    expect(text).toContain('authoring Plays enforce the shared elegance checkpoint')
+  })
 })

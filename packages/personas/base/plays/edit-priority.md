@@ -29,8 +29,11 @@ Do this:
    before new runtime behavior, runtime behavior before UI or broad consumers, and proof/verification
    last. Keep each atom independently delegable with its own acceptance evidence and avoid ordering that
    requires a later atom to make an earlier atom valid.
-5. Write the modified priority file.
-6. Validate the result with `parseFrontmatter` and `loadPriority`: frontmatter id must match the
+5. Run the elegance checkpoint before writing: preserve correctness, evidence, reversibility, and needed
+   safeguards; remove prose that does not carry weight; avoid duplicating a rule that already has an
+   owner; and keep the resulting priority readable by a fresh agent in one pass.
+6. Write the modified priority file.
+7. Validate the result with `parseFrontmatter` and `loadPriority`: frontmatter id must match the
    filename id, title must be non-empty, and the file must still parse with the expected Objective
    state after the edit.
 

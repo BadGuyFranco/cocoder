@@ -26,8 +26,11 @@ Do this:
 3. Compose the markdown using the same shape as the dashboard create route's
    `composePriorityMarkdown`: exactly `id` and `title` frontmatter, followed by the priority body,
    ending with one newline.
-4. Write `cocoder/priorities/<id>.md`.
-5. Validate the written file round-trips through `parseFrontmatter` and `loadPriority`: the parsed id
+4. Run the elegance checkpoint before writing: preserve the founder-approved Objective and verification
+   evidence, remove prose that does not carry weight, keep one owner for each rule/format, and order any
+   implementation atoms so a future LLM-run builder can execute them systematically.
+5. Write `cocoder/priorities/<id>.md`.
+6. Validate the written file round-trips through `parseFrontmatter` and `loadPriority`: the parsed id
    and title must match the invocation, `scopeNarrowing` must remain unset, and `objective` must be
    non-null.
 
