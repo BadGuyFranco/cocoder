@@ -177,21 +177,36 @@ function founderCloseoutSection(markdown: string, section: (typeof FOUNDER_CLOSE
 
 function launchableNextIssue(cwd: string, next: string): string | null {
   const line = next.replace(/\n*I'm standing by\.\.\.\s*$/i, '').trim()
-  const priority = line.match(/^Priority:\s*`([a-z0-9][a-z0-9-]*)`$/i)
+  const priority = line.match(/^Priority:\s*`([a-z0-9][a-z0-9-]*)`\s+[-–—]\s+(.+)$/i)
   if (priority) {
     const slug = priority[1]
+    const focus = priority[2]?.trim() ?? ''
+    if (focus.length < 12) return '**Next** priority focus is too vague'
     return existsSync(join(cwd, 'cocoder', 'priorities', `${slug}.md`)) ? null : `**Next** priority "${slug}" is not launchable`
   }
 
-  const ticket = line.match(/^Ticket:\s*`([0-9]{4})`$/)
+  const barePriority = line.match(/^Priority:\s*`([a-z0-9][a-z0-9-]*)`$/i)
+  if (barePriority) return '**Next** must name the concrete focus after the priority slug'
+
+  const ticket = line.match(/^Ticket:\s*`([0-9]{4})`\s+[-–—]\s+(.+)$/)
   if (ticket) {
     const id = ticket[1]
+    const focus = ticket[2]?.trim() ?? ''
+    if (focus.length < 12) return '**Next** ticket focus is too vague'
     const openDir = join(cwd, 'cocoder', 'tickets', 'open')
     const exists = existsSync(openDir) && readdirSync(openDir).some((file) => file.startsWith(`${id}-`) && file.endsWith('.md'))
     return exists ? null : `**Next** ticket "${id}" is not open/ready to run`
   }
 
-  return '**Next** must be exactly Priority: `slug` or Ticket: `NNNN`'
+  const bareTicket = line.match(/^Ticket:\s*`([0-9]{4})`$/)
+  if (bareTicket) return '**Next** must name the concrete focus after the ticket id'
+
+  return '**Next** must be exactly Priority: `slug` — <focus> or Ticket: `NNNN` — <focus>'
+}
+
+function sentenceCount(text: string): number {
+  const matches = text.match(/[.!?](?=\s|$)/g)
+  return matches?.length ?? (text.trim() === '' ? 0 : 1)
 }
 
 function founderCloseoutFormatIssues(markdown: string, cwd: string): string[] {
@@ -209,14 +224,27 @@ function founderCloseoutFormatIssues(markdown: string, cwd: string): string[] {
   if (!markdown.trimEnd().endsWith("I'm standing by...")) issues.push('missing final "I\'m standing by..." line')
 
   const whatLanded = founderCloseoutSection(markdown, '**What Landed**')
-  if (whatLanded && whatLanded.length > 350) issues.push('**What Landed** is too long for a founder brief')
+  if (whatLanded && whatLanded.length > 180) issues.push('**What Landed** is too long for a founder brief')
+  if (whatLanded && sentenceCount(whatLanded) > 1) issues.push('**What Landed** must be one sentence')
   if (whatLanded && /\b(atom\s+\d+|[0-9a-f]{7,40}|core\s+\d+\/\d+|daemon\s+\d+\/\d+|ui\s+\d+\/\d+)\b/i.test(whatLanded)) {
     issues.push('**What Landed** contains ledger/test-matrix detail')
+  }
+
+  const disposition = founderCloseoutSection(markdown, '**Disposition**')
+  if (disposition && /\b(roughly|about|around)?\s*\d+%|\b\d+\s*percent\b/i.test(disposition)) {
+    issues.push('**Disposition** must not estimate percentage complete')
   }
 
   const whatsLeft = founderCloseoutSection(markdown, "**What's Left To Close Priority**")
   if (whatsLeft && /^[*-]\s*optional\b/im.test(whatsLeft)) {
     issues.push("**What's Left To Close Priority** includes optional work instead of required gaps")
+  }
+  if (whatsLeft) {
+    const bulletLines = whatsLeft.split(/\r?\n/).map((line) => line.trim()).filter((line) => /^[-*]\s+/.test(line))
+    if (bulletLines.length > 3) issues.push("**What's Left To Close Priority** has too many bullets")
+    if (bulletLines.some((line) => /^[-*]\s+\*\*/.test(line) || /\b[A-Z]?\d+[a-z]?\b/.test(line))) {
+      issues.push("**What's Left To Close Priority** contains atom/implementation labels")
+    }
   }
 
   const next = founderCloseoutSection(markdown, '**Next**')
@@ -253,7 +281,7 @@ ${issueLines}
 The runner preserved the founder-facing format instead of passing through a nonconforming wrap-up.
 
 **Next**
-Priority: \`${input.priorityId}\`
+Priority: \`${input.priorityId}\` — repair the malformed wrap-up brief
 
 I'm standing by...`
 }

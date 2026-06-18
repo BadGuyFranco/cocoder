@@ -262,7 +262,7 @@ continue
 Oscar stopped at a clean wrap-up point.
 
 **Next**
-Priority: \`demo\`
+Priority: \`demo\` — continue the remaining priority atoms
 
 I'm standing by...
 `
@@ -811,10 +811,70 @@ I'm standing by...
     })
   })
 
+  test('wrap-up Play rejects priority-ledger briefs that point back to a bare priority', async () => {
+    const store = openRunStore(':memory:')
+    const pickupWrites: string[] = []
+    const priorityLedgerCloseout = `**What Landed**
+The existing-repo onboarding rebuild retired the standalone executor and loader discovery surface, and authored \`onboard-existing\` as an ordinary Oscar-driven priority. ADR-0020 §7 now records scaffold-seeded onboarding priorities.
+
+**Disposition**
+continue
+Rebuild is roughly 60% done; the hard trust invariant and scaffold seeding still need wiring before onboard-existing can run safely.
+
+**What's Left To Close Priority**
+- **Trust invariant (A3a):** wire the cocoder-only refuse-boundary
+- **Scaffold seeding (A3b):** conditionally seed onboard-existing for existing repos
+- **Proof harness (A4):** replace the retired executor proof script
+- **Live external-repo onboarding proof:** founder must authorize the billable run
+- **Dogfood Drift Audit:** needs its own seeded priority
+
+**Judgement**
+Stopped after five green atoms because the executor-to-priority pivot is structurally complete, but A3a is a delicate atom that deserves a fresh session.
+
+**Next**
+Priority: \`demo\`
+
+I'm standing by...
+`
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([['packages/atom.ts']]),
+        io: fakeIO({ directives: [delegate('atom 0'), wrapup('Oscar seed closeout')], pickupWrites }),
+        getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
+        runHeadless: async () => ({ exitCode: 0, output: priorityLedgerCloseout }),
+      }),
+      { ...input, wrapPlay, wrapPlayAssignment },
+    )
+
+    expect(result.status).toBe('completed')
+    expect(pickupWrites).toHaveLength(1)
+    expect(pickupWrites[0]).toContain('**Disposition**\nblocked')
+    expect(pickupWrites[0]).toContain('**What Landed** is too long for a founder brief')
+    expect(pickupWrites[0]).toContain('**What Landed** must be one sentence')
+    expect(pickupWrites[0]).toContain('**Disposition** must not estimate percentage complete')
+    expect(pickupWrites[0]).toContain("**What's Left To Close Priority** has too many bullets")
+    expect(pickupWrites[0]).toContain("**What's Left To Close Priority** contains atom/implementation labels")
+    expect(pickupWrites[0]).toContain('**Next** must name the concrete focus after the priority slug')
+    const invalid = store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')
+    expect(invalid?.data).toMatchObject({
+      play: 'wrap-up',
+      issues: expect.arrayContaining([
+        '**What Landed** is too long for a founder brief',
+        '**What Landed** must be one sentence',
+        '**Disposition** must not estimate percentage complete',
+        "**What's Left To Close Priority** has too many bullets",
+        "**What's Left To Close Priority** contains atom/implementation labels",
+        '**Next** must name the concrete focus after the priority slug',
+      ]),
+    })
+  })
+
   test('wrap-up Play accepts an open ticket as the ready-to-run next item', async () => {
     const store = openRunStore(':memory:')
     const pickupWrites: string[] = []
-    const ticketCloseout = validFounderCloseout().replace('Priority: `demo`', 'Ticket: `0015`')
+    const ticketCloseout = validFounderCloseout().replace('Priority: `demo` — continue the remaining priority atoms', 'Ticket: `0015` — repair the listed orchestration bug')
 
     const result = await runRun(
       baseDeps({

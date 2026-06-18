@@ -51,26 +51,26 @@ say "kill" / "tear down" afterward.
 
    ```
    **What Landed**
-   <plain English summary of what changed and was committed this run, 2 sentences max>
+   <plain English summary of what changed and was committed this run, 1 sentence max>
 
    **Disposition**
    <continue | blocked | archive ready>
    <one brief plain-English sentence explaining the disposition, only if useful>
 
    **What's Left To Close Priority**
-   <short bullet list of the remaining proof/gaps; write "Nothing obvious." only if archive ready>
+   <up to 3 short bullets naming only required remaining gaps; write "Nothing obvious." only if archive ready>
 
    **Judgement**
    <plain-English call Oscar made to close now instead of continuing, plus any controversial calls if appropriate>
 
    **Next**
-   <exactly one launchable item: Priority: `slug` or Ticket: `NNNN`>
+   <exactly one launchable item with its concrete focus: Priority: `slug` — <next run focus> or Ticket: `NNNN` — <next run focus>>
 
    I'm standing by...
    ```
 
    - **`What Landed`** states plainly what changed and what CoCoder committed this session. Maximum:
-     two short sentences, 350 characters total. Do not add atom history, commit SHAs, test-matrix
+     one short sentence, 180 characters total. Do not add atom history, commit SHAs, test-matrix
      counts, command transcripts, or implementation-file inventories. Do not predict push/remote/PR
      status; CoCoder delivers the authoritative commit outcome right after this wrap.
    - **`Disposition`** is the single lifecycle verdict (§3). Use founder-facing wording:
@@ -78,7 +78,8 @@ say "kill" / "tear down" afterward.
      lifecycle judgment: ask for founder archive confirmation; never self-archive.
    - **`What's Left To Close Priority`** is the short version of the required remaining gaps across
      product behavior, architecture, tests, documentation, founder decisions, and missing evidence. Use
-     short bullets. Do not include optional nice-to-have work here, and do not bury the next move here.
+     at most three short bullets. Do not include optional nice-to-have work, percentage-complete claims,
+     atom labels, implementation labels, or proof-matrix detail here, and do not bury the next move here.
    - **`Judgement`** explains why Oscar stopped now instead of continuing in this same run. If Oscar made
      a debatable call (scope cut, deferral, risk tradeoff, founder-gated decision), state it plainly.
    - **`Next`** is not a task list or confirmation request. It is the founder's confirmation that all
@@ -86,18 +87,20 @@ say "kill" / "tear down" afterward.
      one of these two forms:
 
      ```
-     Priority: `slug`
+     Priority: `slug` — <the concrete next atom/proof/founder decision this launch should handle>
      ```
 
      ```
-     Ticket: `NNNN`
+     Ticket: `NNNN` — <the concrete fix or decision this launch should handle>
      ```
 
      The priority must be an existing launchable file at `cocoder/priorities/slug.md`; the ticket must
-     be an existing open ticket file under `cocoder/tickets/open/`. Do not give a menu, do not say
-     "optionally", do not combine unrelated actions with "and/or", and do not name archive confirmation
-     as the next item. If the right next item does not exist yet, create or update the priority/ticket
-     before wrap-up so `Next` points at something ready to run (F1/F20).
+     be an existing open ticket file under `cocoder/tickets/open/`. The focus after the dash is required:
+     a bare slug like `Priority: new-primary-root` is not enough because it sends the founder back to the
+     priority file to infer the next move. Do not give a menu, do not say "optionally", do not combine
+     unrelated actions with "and/or", and do not name archive confirmation as the next item. If the right
+     next item does not exist yet, create or update the priority/ticket before wrap-up so `Next` points at
+     something ready to run (F1/F20).
    - End with exactly `I'm standing by...` so the founder knows the run remains available for questions,
      priority updates, or explicit `kill` / `tear down`.
 
