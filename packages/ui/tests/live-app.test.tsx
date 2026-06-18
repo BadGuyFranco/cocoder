@@ -155,6 +155,10 @@ const clickFirstText = async (text: string): Promise<void> => {
   const matches = await screen.findAllByText(text)
   fireEvent.click(matches[0])
 }
+const openRunFromPriority = async (priority: string, runId: string): Promise<void> => {
+  await clickFirstText(priority)
+  fireEvent.click(await screen.findByRole('button', { name: new RegExp(runId, 'i') }))
+}
 
 const expandPersona = async (name: string): Promise<void> => {
   const toggle = await screen.findByRole('button', { name: `Toggle ${name} persona details` })
@@ -369,7 +373,7 @@ describe('Oz renderer — live daemon path', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
 
-    await clickFirstText('Living base personas + repo extensions')
+    await openRunFromPriority('Living base personas + repo extensions', 'run_17')
     fireEvent.click(await screen.findByRole('button', { name: 'Stop run' }))
 
     await waitFor(() => expect(posts.find((p) => p.path === '/runs/run_17/stop')).toBeDefined())
@@ -403,7 +407,7 @@ describe('Oz renderer — live daemon path', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
 
-    await clickFirstText('Living base personas + repo extensions')
+    await openRunFromPriority('Living base personas + repo extensions', 'run_17')
     await waitFor(() => expect(screen.getByText('Transcript')).toBeDefined())
     await waitFor(() => expect(handler).toBeTypeOf('function'))
     paths.length = 0

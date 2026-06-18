@@ -1,26 +1,28 @@
 // Priorities panel — the workspace's ordered queue (top = next up), drag-reorderable. A run IS a
-// priority being executed: a running priority expands to an inline run summary, and clicking it opens
-// the run drawer. Ad-hoc is a pinned, always-first row that can hold many concurrent runs. Ported
-// faithfully from design-ref/dashboard.jsx (dev pins dropped).
-import { useState } from 'react'
+// priority being executed: a running priority expands to an inline run summary; priority cards open
+// detail first, and the inline run summary opens the run drawer. Ad-hoc is a pinned, always-first row
+// that can hold many concurrent runs. Ported faithfully from design-ref/dashboard.jsx (dev pins dropped).
+import { useRef, useState } from 'react'
 import { Icon, StatusChip, Button } from '../../ui/primitives.tsx'
 import { isActiveRun } from '../../adapter.ts'
 import type { Priority, Run } from '../../model.ts'
+import { PriorityDetailModal } from './PriorityDetailModal.tsx'
 
 const LAUNCH_BLOCKED_HINT = 'A run is active in this workspace — only one run executes at a time (single-writer lock). It frees up when the run finishes.'
 
-function PriorityRow({ priority, index, onLaunch, onDrag, isDragging, isDropTarget, onSelectRun, runs, selectedRunId, launchBlocked }: {
+function PriorityRow({ priority, index, onLaunch, onOpenDetails, onDrag, isDragging, isDropTarget, onSelectRun, runs, selectedRunId, launchBlocked }: {
   priority: Priority; index: number; onLaunch: (p: Priority) => void; onDrag: (type: string, index: number) => void
-  isDragging: boolean; isDropTarget: boolean; onSelectRun: (id: string) => void; runs: Run[]; selectedRunId: string | null; launchBlocked: boolean
+  onOpenDetails: (p: Priority) => void; isDragging: boolean; isDropTarget: boolean; onSelectRun: (id: string) => void; runs: Run[]; selectedRunId: string | null; launchBlocked: boolean
 }) {
+  const didDrag = useRef(false)
   const linkedRun = priority.runId ? runs.find((r) => r.id === priority.runId) : null
   const isActive = !!linkedRun && isActiveRun(linkedRun.status)
   const isBlocked = !!linkedRun && linkedRun.status === 'blocked'
   const isSelected = !!linkedRun && linkedRun.id === selectedRunId
   const borderColor = isSelected ? 'var(--cb-accent)' : isBlocked ? 'rgba(212,118,110,0.30)' : isActive ? 'var(--cb-accent-30)' : 'var(--cb-border)'
   return (
-    <div draggable onDragStart={() => onDrag('start', index)} onDragOver={(e) => { e.preventDefault(); onDrag('over', index) }} onDragEnd={() => onDrag('end', index)} onDrop={(e) => { e.preventDefault(); onDrag('drop', index) }}
-      onClick={() => isActive && linkedRun && onSelectRun(linkedRun.id)}
+    <div draggable onDragStart={() => { didDrag.current = true; onDrag('start', index) }} onDragOver={(e) => { e.preventDefault(); onDrag('over', index) }} onDragEnd={() => onDrag('end', index)} onDrop={(e) => { e.preventDefault(); onDrag('drop', index) }}
+      onClick={() => { if (didDrag.current) { didDrag.current = false; return } onOpenDetails(priority) }}
       style={{
         background: isSelected ? 'var(--cb-accent-muted)' : isActive ? 'var(--cb-accent-subtle)' : 'var(--cb-surface-glass)',
         borderTop: `1px solid ${borderColor}`,
@@ -31,7 +33,7 @@ function PriorityRow({ priority, index, onLaunch, onDrag, isDragging, isDropTarg
         padding: '9px 10px', marginBottom: 8, marginRight: isSelected ? -17 : 0, paddingRight: isSelected ? 24 : 10,
         opacity: isDragging ? 0.4 : 1,
         boxShadow: isDropTarget ? '0 0 0 2px var(--cb-accent-30)' : isSelected ? '0 4px 16px rgba(201,169,110,0.18)' : 'none',
-        cursor: isActive ? 'pointer' : 'grab',
+        cursor: 'grab',
         transition: 'box-shadow 120ms ease-out, background 120ms ease-out, margin-right 200ms ease-out, padding-right 200ms ease-out, border-radius 200ms ease-out',
         position: 'relative', zIndex: isSelected ? 5 : 1,
       }}>
@@ -42,14 +44,17 @@ function PriorityRow({ priority, index, onLaunch, onDrag, isDragging, isDropTarg
           <Icon name="dots-six-vertical" size={14} style={{ color: 'var(--cb-text-muted)', cursor: 'grab' }} />
           <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: index === 0 ? 'var(--cb-accent)' : 'var(--cb-text-muted)', minWidth: 18, textAlign: 'right' }}>{String(index + 1).padStart(2, '0')}</span>
         </div>
-        <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 500, color: 'var(--cb-text)', lineHeight: 1.4, paddingTop: 1 }}>{priority.name}</div>
+        <div style={{ flex: 1, minWidth: 0, paddingTop: 1 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--cb-text)', lineHeight: 1.4 }}>{priority.name}</div>
+          <div style={{ marginTop: 2, fontFamily: 'var(--cb-font-mono)', fontSize: 10.5, color: 'var(--cb-text-muted)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{priority.id}</div>
+        </div>
         <div className="oz-priority-actions">
           {linkedRun ? <StatusChip status={linkedRun.status} /> : <StatusChip status={priority.status} label={priority.status === 'ready' ? 'Ready' : priority.status} />}
           {!isActive && <Button variant="secondary" size="sm" icon="play" disabled={launchBlocked} title={launchBlocked ? LAUNCH_BLOCKED_HINT : undefined} onClick={(e) => { e.stopPropagation(); onLaunch(priority) }}>Launch</Button>}
         </div>
       </div>
       {isActive && linkedRun && (
-        <div style={{ marginTop: 10, marginLeft: 36, paddingTop: 10, borderTop: '1px solid var(--cb-border)', position: 'relative' }}>
+        <div onClick={(e) => { e.stopPropagation(); onSelectRun(linkedRun.id) }} style={{ marginTop: 10, marginLeft: 36, paddingTop: 10, borderTop: '1px solid var(--cb-border)', position: 'relative', cursor: 'pointer' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-text-muted)' }}>{linkedRun.id} · {linkedRun.startedAt}</span>
             <div style={{ display: 'flex', gap: 4, marginLeft: 4 }}>{linkedRun.personas.slice(0, 4).map((p) => <span key={p} style={{ fontSize: 9.5, fontFamily: 'var(--cb-font-mono)', color: 'var(--cb-text-secondary)', padding: '1px 5px', background: 'var(--cb-bg-soft)', borderRadius: 2 }}>{p}</span>)}</div>
@@ -110,6 +115,9 @@ export function PrioritiesPanel({ priorities, runs, onReorder, onLaunch, onAdhoc
   onAdhoc: () => void; onAddPriority: () => void; onSelectRun: (id: string) => void; selectedRunId: string | null
 }) {
   const [drag, setDrag] = useState<{ from: number | null; over: number | null }>({ from: null, over: null })
+  const [selectedPriorityId, setSelectedPriorityId] = useState<string | null>(null)
+  const selectedPriority = selectedPriorityId ? priorities.find((priority) => priority.id === selectedPriorityId) ?? null : null
+  const selectedPriorityRun = selectedPriority?.runId ? runs.find((run) => run.id === selectedPriority.runId) ?? null : null
   const handleDrag = (type: string, index: number) => {
     if (type === 'start') setDrag({ from: index, over: null })
     else if (type === 'over') setDrag((d) => ({ ...d, over: index }))
@@ -136,8 +144,18 @@ export function PrioritiesPanel({ priorities, runs, onReorder, onLaunch, onAdhoc
           <div style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 9.5, color: 'var(--cb-text-muted)', letterSpacing: 0.5, padding: '4px 4px 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
             <span>QUEUE · ↑ TOP = NEXT UP</span><span style={{ flex: 1, height: 1, background: 'var(--cb-border)' }} />
           </div>
-          {priorities.map((p, i) => <PriorityRow key={p.id} priority={p} index={i} onLaunch={onLaunch} onSelectRun={onSelectRun} onDrag={handleDrag} isDragging={drag.from === i} isDropTarget={drag.over === i && drag.from !== i} runs={runs} selectedRunId={selectedRunId} launchBlocked={launchBlocked} />)}
+          {priorities.map((p, i) => <PriorityRow key={p.id} priority={p} index={i} onLaunch={onLaunch} onOpenDetails={(priority) => setSelectedPriorityId(priority.id)} onSelectRun={onSelectRun} onDrag={handleDrag} isDragging={drag.from === i} isDropTarget={drag.over === i && drag.from !== i} runs={runs} selectedRunId={selectedRunId} launchBlocked={launchBlocked} />)}
         </>
+      )}
+      {selectedPriority && (
+        <PriorityDetailModal
+          priority={selectedPriority}
+          linkedRun={selectedPriorityRun}
+          launchBlocked={launchBlocked}
+          onClose={() => setSelectedPriorityId(null)}
+          onLaunch={onLaunch}
+          onSelectRun={onSelectRun}
+        />
       )}
     </>
   )

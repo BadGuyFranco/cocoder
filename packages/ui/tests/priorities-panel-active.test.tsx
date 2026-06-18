@@ -79,7 +79,7 @@ describe('PrioritiesPanel active run semantics', () => {
     expect(screen.getByText('Needs a founder decision.')).toBeDefined()
     expect(screen.queryByRole('button', { name: 'Launch' })).toBeNull()
 
-    fireEvent.click(screen.getByText('Landing priority'))
+    fireEvent.click(screen.getByText(/run-landing/))
 
     expect(onSelectRun).toHaveBeenCalledWith('run-landing')
   })
@@ -166,6 +166,7 @@ describe('PrioritiesPanel active run semantics', () => {
 
     expect(within(row).getByText('01')).toBeDefined()
     expect(within(row).getByText('Ready priority')).toBeDefined()
+    expect(within(row).getByText('p-ready')).toBeDefined()
     expect(within(row).getByText('Ready')).toBeDefined()
     expect(within(row).queryByText('Priority summary.')).toBeNull()
     expect(within(row).queryByText('scope-narrowed')).toBeNull()
@@ -173,6 +174,33 @@ describe('PrioritiesPanel active run semantics', () => {
     fireEvent.click(within(row).getByRole('button', { name: 'Launch' }))
 
     expect(onLaunch).toHaveBeenCalledWith(expect.objectContaining({ id: 'p-ready' }))
+  })
+
+  it('opens a priority detail modal with summary, run pointer, and launch-and-close', () => {
+    const onLaunch = vi.fn()
+    const onSelectRun = vi.fn()
+    renderPanel({
+      priorities: [priority({ id: 'p-ready', name: 'Ready priority', labels: ['scope-narrowed'], runId: 'run-ready' })],
+      runs: [run({ id: 'run-ready', title: 'Previous run', priorityId: 'p-ready', status: 'complete', lastEvent: 'Finished.' })],
+      onLaunch,
+      onSelectRun,
+    })
+
+    fireEvent.click(screen.getByText('Ready priority'))
+
+    expect(screen.getByText('Priority summary.')).toBeDefined()
+    expect(screen.getAllByText('p-ready').length).toBeGreaterThan(1)
+    expect(screen.getByText('scope-narrowed')).toBeDefined()
+    expect(screen.getByText('Previous run')).toBeDefined()
+
+    fireEvent.click(screen.getByRole('button', { name: /run-ready/i }))
+    expect(onSelectRun).toHaveBeenCalledWith('run-ready')
+
+    fireEvent.click(screen.getByText('Ready priority'))
+    const launchButtons = screen.getAllByRole('button', { name: 'Launch' })
+    fireEvent.click(launchButtons[launchButtons.length - 1])
+    expect(onLaunch).toHaveBeenCalledWith(expect.objectContaining({ id: 'p-ready' }))
+    expect(screen.queryByText('Previous run')).toBeNull()
   })
 
   it('disables queued priority Launch with the single-writer reason while a run is active', () => {

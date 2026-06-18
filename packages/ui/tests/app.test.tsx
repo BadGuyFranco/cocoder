@@ -62,9 +62,12 @@ describe('Oz — rebuilt Fusion renderer', () => {
     expect(screen.getByText(/Persona sub-agent fallback/)).toBeDefined()
   })
 
-  it('a run IS a priority: clicking a running priority opens the run-detail drawer in place', async () => {
+  it('a run IS a priority: a running priority exposes detail before opening the run drawer', async () => {
     render(<App />)
     fireEvent.click(screen.getByText(/Persona sub-agent fallback/))
+    expect((await screen.findAllByText('p1')).length).toBeGreaterThan(1)
+    expect(screen.getByText(/fall back to a designated sub-agent persona/)).toBeDefined()
+    fireEvent.click(await screen.findByRole('button', { name: /run-1/i }))
     await waitFor(() => expect(screen.getByText('Transcript')).toBeDefined())
     expect(screen.getByText('Evidence (3)')).toBeDefined()
     expect(screen.getByText(/Decomposing priority/)).toBeDefined()

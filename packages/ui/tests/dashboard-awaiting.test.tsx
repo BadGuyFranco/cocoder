@@ -110,7 +110,7 @@ describe('Dashboard layout', () => {
     expect(column.queryByText('Run blocked')).toBeNull()
     expect(column.queryByText('Run not-landed')).toBeNull()
 
-    fireEvent.click(column.getByText('Blocked priority'))
+    fireEvent.click(column.getByText(/blocked · now/))
 
     expect(screen.getByText('PRIORITY · RUN OF')).toBeDefined()
     expect(screen.getAllByText('Blocked priority').length).toBeGreaterThan(1)
