@@ -37,7 +37,7 @@ import { listClis, testCli } from './clis.js'
 import { commitGovernance, launchRun, requestDaemonRestart, requestDashboardLaunch, requestStopRun, requestSupportCommitRun, showRun, teardownRun } from './launcher.js'
 import { handleOzMessage } from './oz-chat.js'
 import { mergeWriteSettings, readSettings } from './settings.js'
-import { readOnboardingPlaybooks, readPriorities, readTickets, writePriorityOrder } from './priority-order.js'
+import { readPriorities, readTickets, writePriorityOrder } from './priority-order.js'
 
 export type { OzContext } from './context.js'
 
@@ -352,7 +352,7 @@ async function listWorkspaces(ctx: OzContext, res: ServerResponse): Promise<void
 async function listPriorities(ctx: OzContext, res: ServerResponse, workspaceId: string): Promise<void> {
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
   if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
-  sendJson(res, 200, { workspace: ws, priorities: await readPriorities(prioritiesDir(ws.path), CAP), onboarding: readOnboardingPlaybooks() })
+  sendJson(res, 200, { workspace: ws, priorities: await readPriorities(prioritiesDir(ws.path), CAP) })
 }
 
 /** GET /workspaces/:id/tickets — ticket files are canonical; INDEX.md is not parsed. */

@@ -180,11 +180,7 @@ describe('Oz read surfaces', () => {
     expect(priorityIds).not.toContain('cocoder-takeover')
     expect(priorityIds).not.toContain('drift-audit')
     expect(priorityIds).not.toContain('new-primary')
-    expect(r.json.onboarding).toEqual([
-      expect.objectContaining({ id: 'cocoder-takeover', mode: 'takeover', modelPin: 'top-tier' }),
-      expect.objectContaining({ id: 'drift-audit', mode: 'drift', modelPin: 'top-tier' }),
-      expect.objectContaining({ id: 'new-primary', mode: 'bootstrap', modelPin: 'standard' }),
-    ])
+    expect(r.json).not.toHaveProperty('onboarding')
   })
 
   test('GET /workspaces/:id/tickets serves open and closed ticket files', async () => {

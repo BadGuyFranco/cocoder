@@ -103,7 +103,6 @@ export {
 } from './tickets/index.js'
 
 export {
-  loadOnboardingPlaybooks,
   applyP6Governance,
   runPlaybookP1Action,
   runPlaybookP2Action,
@@ -119,10 +118,6 @@ export {
   renderP6RatificationMarkdown,
   renderP6RatificationRecordMarkdown,
   synthesizeP5Governance,
-  type OnboardingPlaybook,
-  type OnboardingPlaybookMode,
-  type OnboardingPlaybookPhase,
-  type OnboardingPlaybookPhaseId,
   type PlaybookP1AgentPurpose,
   type PlaybookP1AgentTurn,
   type PlaybookP1AgentTurnInput,

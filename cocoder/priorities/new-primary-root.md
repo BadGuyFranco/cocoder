@@ -113,20 +113,35 @@ engines are currently reachable **only** through the retired executor compositio
   map shows a standalone rename would churn doomed executor code and risk a red build mid-rename). Where a
   surface is being deleted, deletion subsumes the rename (don't rename doomed code).
 
+**Onboarding-delivery decision (run_140, founder pick = Option A):** now that the playbook launch surface
+is gone (atom 1), onboarding reaches a workspace as an **ordinary scaffold-seeded priority** — the scaffold
+copies an `onboard-existing` template into `cocoder/priorities/` as the repo's first priority (exactly as it
+already seeds `adhoc-session.md`); `loadOnboardingPlaybooks` + the daemon `onboarding` field **retire**. One
+mechanism (priorities), matches ADR-0026's "first priority" language. **This amends ADR-0020 §7** (templates
+ARE copied into the repo, not surfaced via a discovery field) — record a §7 amendment on ADR-0020 (or in
+ADR-0026) as part of A2/A3. New Primary + Drift adopt the same seeded-priority model later.
+
 **Atom sequence (forced green-at-every-commit order; daemon consumes core, so consumers go first):**
-1. **Remove the daemon executor driver** (run_140 atom 1, in flight) — `launchRun` playbook branch,
-   `createDaemonPlaybookPhaseAction`, P7-apply + awaiting-founder/typed-resume plumbing, takeover-keyed
-   hooks, the playbook-target route acceptance, and the daemon executor e2e tests. Core untouched; build green.
-2. **Delete core `executor.ts`** + the `createPlaybookP*PhaseAction` phase-protocol wrappers + executor
-   re-exports + `executor.test.ts`, keeping the pure `runPlaybookP*Action`/engine functions + their unit tests.
-3. **Reshape/retire the loader discovery surface + skeleton rename** — `cocoder-takeover.md` →
-   `onboard-existing.md`; decide whether `loadOnboardingPlaybooks`/the `onboarding` daemon field survive or
-   fold into ordinary priorities seeded by the scaffold; rename `takeover` mode identifiers on whatever
-   survives; update loader/read-surface tests.
-4. **Author the `onboard-existing` ordinary priority** (Objective + decomposed plan Oscar reads) and seed it
-   via the scaffold for existing-repo onboarding; re-add the `cocoder/**` audit write-boundary application on
-   the p6-apply atom path.
-5. **New proof of the Oscar-driven flow** (replaces the retired `scripts/proof-takeover-executor.mjs`).
+1. ✅ **Remove the daemon executor driver** (run_140 atom 1, committed `b163ec5`) — `launchRun` playbook
+   branch, `createDaemonPlaybookPhaseAction`, P7-apply + awaiting-founder/typed-resume plumbing,
+   takeover-keyed hooks, the playbook-target route acceptance, and the daemon executor e2e tests. Build green.
+2. ✅ **Delete core `executor.ts`** (run_140 atom 2, committed `1a76f0f`) + the `createPlaybookP*PhaseAction`
+   phase-protocol wrappers + the `approvalFromP6Gate`/`founderCheckpointFromGate` gate adapters + executor
+   re-exports + `executor.test.ts`; pure `runPlaybookP*Action`/engines preserved with identical signatures.
+3. **(A1) Retire the loader discovery surface** (run_140 atom 3, in flight) — delete `loader.ts`
+   (`loadOnboardingPlaybooks` + phase-table parser + Onboarding* types), the loader re-exports, the daemon
+   `onboarding` field (`priority-order.ts` + `routes.ts`), and `playbooks.test.ts` + the read-surface
+   onboarding assertions. Skeleton `.md` files stay on disk for A2. Build green.
+4. **(A2) Transform + rename the skeleton into a seedable priority template** — `cocoder-takeover.md` →
+   `onboard-existing.md`, rewriting its content from an executor baked-phase-table into an **ordinary
+   priority** Objective + the atom-decomposition Oscar follows (P1 intent/spend → P2/P3 deep-read atoms
+   reusing the engines → P4 founder questions → P5/P6 synthesize+ratify), stating the `cocoder/**`-only
+   trust promise. Bundled rename of remaining surviving `takeover` identifiers + doc mentions. Record the
+   ADR-0020 §7 amendment.
+5. **(A3) Wire scaffold seeding** — the scaffold seeds the `onboard-existing` priority into an existing-repo
+   workspace; re-add the `cocoder/**` audit write-boundary application on the p6-apply atom path used by the
+   Oscar-driven flow.
+6. **(A4) New proof of the Oscar-driven flow** (replaces the retired `scripts/proof-takeover-executor.mjs`).
 Still gated after the rebuild: the live external-repo onboarding proof (CoBuilder/CoPublisher copy) and the
 dogfood Drift proof.
 
