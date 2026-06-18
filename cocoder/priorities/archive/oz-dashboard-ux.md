@@ -3,6 +3,13 @@ id: oz-dashboard-ux
 title: "Oz dashboard — consistent card → modal → launch interaction for priorities, tickets, runs"
 ---
 
+> **ARCHIVED 2026-06-18 (founder decision, run_134).** Items 1, 2, 4 + the run_133 follow-up polish are
+> code-complete and committed (run_133: `e22b2a0`, `c58b77e`; run_134: `c355c40`), UI suite green 124/124.
+> Archived on founder call **without the Objective's live-visual-proof clause recorded** — behavior is
+> pinned by tests, but no run-through/screenshots of the running app were captured. If a visual regression
+> surfaces, reopen and finish that proof. Item 3 (ticket UI) was folded into `tickets-review` (founder,
+> run_131) and is owned there.
+
 ## Objective
 The Oz dashboard presents **priorities and runs** through **one consistent interaction pattern**: a
 compact **card** (name + slug only — no description), a **detail modal** on click (full info + where it
