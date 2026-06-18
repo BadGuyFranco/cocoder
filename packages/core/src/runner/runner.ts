@@ -31,6 +31,7 @@ import {
 import { effectiveScope, partitionByScope } from '../write-scope/index.js'
 import type { SessionHost, SessionRef } from '../session-host/index.js'
 import { exec as execChildProcess } from 'node:child_process'
+import { existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import type { RunnerIO } from './io.js'
@@ -165,7 +166,35 @@ const FOUNDER_CLOSEOUT_SECTIONS = [
   '**Next**',
 ] as const
 
-function founderCloseoutFormatIssues(markdown: string): string[] {
+function founderCloseoutSection(markdown: string, section: (typeof FOUNDER_CLOSEOUT_SECTIONS)[number]): string | null {
+  const start = markdown.indexOf(section)
+  if (start < 0) return null
+  const contentStart = start + section.length
+  const nextStarts = FOUNDER_CLOSEOUT_SECTIONS.map((candidate) => markdown.indexOf(candidate, contentStart)).filter((index) => index >= 0)
+  const contentEnd = nextStarts.length > 0 ? Math.min(...nextStarts) : markdown.length
+  return markdown.slice(contentStart, contentEnd).trim()
+}
+
+function launchableNextIssue(cwd: string, next: string): string | null {
+  const line = next.replace(/\n*I'm standing by\.\.\.\s*$/i, '').trim()
+  const priority = line.match(/^Priority:\s*`([a-z0-9][a-z0-9-]*)`$/i)
+  if (priority) {
+    const slug = priority[1]
+    return existsSync(join(cwd, 'cocoder', 'priorities', `${slug}.md`)) ? null : `**Next** priority "${slug}" is not launchable`
+  }
+
+  const ticket = line.match(/^Ticket:\s*`([0-9]{4})`$/)
+  if (ticket) {
+    const id = ticket[1]
+    const openDir = join(cwd, 'cocoder', 'tickets', 'open')
+    const exists = existsSync(openDir) && readdirSync(openDir).some((file) => file.startsWith(`${id}-`) && file.endsWith('.md'))
+    return exists ? null : `**Next** ticket "${id}" is not open/ready to run`
+  }
+
+  return '**Next** must be exactly Priority: `slug` or Ticket: `NNNN`'
+}
+
+function founderCloseoutFormatIssues(markdown: string, cwd: string): string[] {
   const issues: string[] = []
   let priorIndex = -1
   for (const section of FOUNDER_CLOSEOUT_SECTIONS) {
@@ -178,6 +207,27 @@ function founderCloseoutFormatIssues(markdown: string): string[] {
     priorIndex = index
   }
   if (!markdown.trimEnd().endsWith("I'm standing by...")) issues.push('missing final "I\'m standing by..." line')
+
+  const whatLanded = founderCloseoutSection(markdown, '**What Landed**')
+  if (whatLanded && whatLanded.length > 350) issues.push('**What Landed** is too long for a founder brief')
+  if (whatLanded && /\b(atom\s+\d+|[0-9a-f]{7,40}|core\s+\d+\/\d+|daemon\s+\d+\/\d+|ui\s+\d+\/\d+)\b/i.test(whatLanded)) {
+    issues.push('**What Landed** contains ledger/test-matrix detail')
+  }
+
+  const whatsLeft = founderCloseoutSection(markdown, "**What's Left To Close Priority**")
+  if (whatsLeft && /^[*-]\s*optional\b/im.test(whatsLeft)) {
+    issues.push("**What's Left To Close Priority** includes optional work instead of required gaps")
+  }
+
+  const next = founderCloseoutSection(markdown, '**Next**')
+  if (next) {
+    const nextWithoutStandingBy = next.replace(/\n*I'm standing by\.\.\.\s*$/i, '').trim()
+    const nonEmptyLines = nextWithoutStandingBy.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
+    if (nonEmptyLines.length !== 1) issues.push('**Next** must be exactly one action line')
+    if (/\b(optionally|and\/or)\b/i.test(nextWithoutStandingBy)) issues.push('**Next** must not offer optional or multi-choice actions')
+    const issue = launchableNextIssue(cwd, next)
+    if (issue) issues.push(issue)
+  }
   return issues
 }
 
@@ -203,7 +253,7 @@ ${issueLines}
 The runner preserved the founder-facing format instead of passing through a nonconforming wrap-up.
 
 **Next**
-this priority
+Priority: \`${input.priorityId}\`
 
 I'm standing by...`
 }
@@ -967,7 +1017,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         })
         absorbGateResult(wrapGate)
         const candidatePickup = res.output && res.output.trim() ? res.output : (directive.pickup ?? null)
-        const formatIssues = candidatePickup ? founderCloseoutFormatIssues(candidatePickup) : ['empty wrap-up output']
+        const formatIssues = candidatePickup ? founderCloseoutFormatIssues(candidatePickup, worktreePath) : ['empty wrap-up output']
         if (formatIssues.length > 0) {
           store.recordEvent({ runId: run.id, type: 'wrapup-format-invalid', data: { play: input.wrapPlay.id, issues: formatIssues, outPath: wrapOut } })
           pickup = formatInvalidFounderCloseoutFallback({ priorityId: priority.id, atoms: n, commits: committedShas, issues: formatIssues })

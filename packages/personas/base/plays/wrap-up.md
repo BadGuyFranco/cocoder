@@ -42,9 +42,12 @@ say "kill" / "tear down" afterward.
    next action. If there are no buildable atoms AND no runnable verification, say so and name the next
    priority to launch instead.
 5. Emit, as your final output, a founder-readable closeout in the exact section order below. Use
-   Markdown bold headings, not HTML. The first screen must be enough for a solo non-developer to know
-   what happened, why the run stopped, what remains, and what to run next. Keep the detail concise; the
-   founder can ask follow-up questions after wrap-up.
+   Markdown bold headings, not HTML. This is a decision brief, not a run ledger. The first screen must
+   be enough for a solo non-developer to know what happened, why the run stopped, what remains, and
+   which priority or ticket is ready to run next. Keep proof detail, atom-by-atom history, commit lists,
+   suite counts, and optional
+   operational notes out of the founder brief; those belong in SESSION_LOG, run records, or follow-up
+   answers if the founder asks.
 
    ```
    **What Landed**
@@ -61,26 +64,40 @@ say "kill" / "tear down" afterward.
    <plain-English call Oscar made to close now instead of continuing, plus any controversial calls if appropriate>
 
    **Next**
-   <exactly one next priority or ticket to run, or "this priority" if continuing here>
+   <exactly one launchable item: Priority: `slug` or Ticket: `NNNN`>
 
    I'm standing by...
    ```
 
-   - **`What Landed`** states plainly what changed and what CoCoder committed this session. Do not add
-     a long commit log. Do not predict push/remote/PR status; CoCoder delivers the authoritative commit
-     outcome right after this wrap.
+   - **`What Landed`** states plainly what changed and what CoCoder committed this session. Maximum:
+     two short sentences, 350 characters total. Do not add atom history, commit SHAs, test-matrix
+     counts, command transcripts, or implementation-file inventories. Do not predict push/remote/PR
+     status; CoCoder delivers the authoritative commit outcome right after this wrap.
    - **`Disposition`** is the single lifecycle verdict (§3). Use founder-facing wording:
      `continue`, `blocked`, or `archive ready`. `archive ready` means the existing archive-candidate
      lifecycle judgment: ask for founder archive confirmation; never self-archive.
-   - **`What's Left To Close Priority`** is the short version of the remaining gaps across product
-     behavior, architecture, tests, documentation, founder decisions, and missing evidence. Use short
-     bullets. Do not bury the next move here.
+   - **`What's Left To Close Priority`** is the short version of the required remaining gaps across
+     product behavior, architecture, tests, documentation, founder decisions, and missing evidence. Use
+     short bullets. Do not include optional nice-to-have work here, and do not bury the next move here.
    - **`Judgement`** explains why Oscar stopped now instead of continuing in this same run. If Oscar made
      a debatable call (scope cut, deferral, risk tradeoff, founder-gated decision), state it plainly.
-   - **`Next`** is exactly one next priority or ticket to run. It must be launchable or trackable: an
-     existing `cocoder/priorities/*.md`, an existing ticket, or "this priority" if the current priority
-     should continue. If the best next step is new work with no priority or ticket yet, run the
-     create-priority flow before wrap-up so a launchable next item exists (F1/F20).
+   - **`Next`** is not a task list or confirmation request. It is the founder's confirmation that all
+     current work is briefed/committed and one next work item is ready to run. Use exactly one line in
+     one of these two forms:
+
+     ```
+     Priority: `slug`
+     ```
+
+     ```
+     Ticket: `NNNN`
+     ```
+
+     The priority must be an existing launchable file at `cocoder/priorities/slug.md`; the ticket must
+     be an existing open ticket file under `cocoder/tickets/open/`. Do not give a menu, do not say
+     "optionally", do not combine unrelated actions with "and/or", and do not name archive confirmation
+     as the next item. If the right next item does not exist yet, create or update the priority/ticket
+     before wrap-up so `Next` points at something ready to run (F1/F20).
    - End with exactly `I'm standing by...` so the founder knows the run remains available for questions,
      priority updates, or explicit `kill` / `tear down`.
 

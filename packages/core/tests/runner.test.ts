@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { afterAll, describe, expect, test } from 'vitest'
+import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import {
   type Adapter,
   type DebStatus,
@@ -41,6 +41,13 @@ const deb = persona({ id: 'deb', cli: 'claude', writeScope: [] })
 const priority = { id: 'demo', title: 'Demo', scopeNarrowing: null, goal: 'do the small thing', objective: 'do the small thing' }
 const workspaceRoot = join(tmpdir(), `cocoder-runner-unit-repo-${process.pid}`)
 const workspace = { id: 'cocoder', path: workspaceRoot, name: 'CoCoder' }
+
+beforeAll(async () => {
+  await mkdir(join(workspaceRoot, 'cocoder', 'priorities'), { recursive: true })
+  await mkdir(join(workspaceRoot, 'cocoder', 'tickets', 'open'), { recursive: true })
+  await writeFile(join(workspaceRoot, 'cocoder', 'priorities', 'demo.md'), '# Demo\n')
+  await writeFile(join(workspaceRoot, 'cocoder', 'tickets', 'open', '0015-demo-ticket.md'), '# Demo ticket\n')
+})
 
 afterAll(async () => {
   await rm(workspaceRoot, { recursive: true, force: true })
@@ -255,7 +262,7 @@ continue
 Oscar stopped at a clean wrap-up point.
 
 **Next**
-this priority
+Priority: \`demo\`
 
 I'm standing by...
 `
@@ -752,6 +759,104 @@ describe('runRun (multi-atom loop)', () => {
     expect(pickupWrites[0]?.trimEnd().endsWith("I'm standing by...")).toBe(true)
     const invalid = store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')
     expect(invalid?.data).toMatchObject({ play: 'wrap-up', issues: expect.arrayContaining(['missing **What Landed**']) })
+  })
+
+  test('wrap-up Play rejects ledger-shaped founder briefs even with the right headings', async () => {
+    const store = openRunStore(':memory:')
+    const pickupWrites: string[] = []
+    const ledgerCloseout = `**What Landed**
+Atom 0 (8449d5e) aligned read consumers and Atom 1 (c11d90a) proved concurrency; core 370/370, daemon 215/215, UI 126/126, and typecheck are all green, with the exact run ledger and implementation inventory included here even though the founder asked for a decision brief.
+
+**Disposition**
+archive ready
+
+**What's Left To Close Priority**
+- Founder confirms the visual split.
+- Optional: run a migration command before archive.
+
+**Judgement**
+Oscar stopped because the priority is code-complete.
+
+**Next**
+Confirm the UI and/or optionally run the migration command.
+
+I'm standing by...
+`
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([['packages/atom.ts']]),
+        io: fakeIO({ directives: [delegate('atom 0'), wrapup('Oscar seed closeout')], pickupWrites }),
+        getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
+        runHeadless: async () => ({ exitCode: 0, output: ledgerCloseout }),
+      }),
+      { ...input, wrapPlay, wrapPlayAssignment },
+    )
+
+    expect(result.status).toBe('completed')
+    expect(pickupWrites).toHaveLength(1)
+    expect(pickupWrites[0]).toContain('**Disposition**\nblocked')
+    expect(pickupWrites[0]).toContain('**What Landed** contains ledger/test-matrix detail')
+    expect(pickupWrites[0]).toContain("**What's Left To Close Priority** includes optional work")
+    expect(pickupWrites[0]).toContain('**Next** must not offer optional or multi-choice actions')
+    const invalid = store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')
+    expect(invalid?.data).toMatchObject({
+      play: 'wrap-up',
+      issues: expect.arrayContaining([
+        '**What Landed** contains ledger/test-matrix detail',
+        "**What's Left To Close Priority** includes optional work instead of required gaps",
+        '**Next** must not offer optional or multi-choice actions',
+      ]),
+    })
+  })
+
+  test('wrap-up Play accepts an open ticket as the ready-to-run next item', async () => {
+    const store = openRunStore(':memory:')
+    const pickupWrites: string[] = []
+    const ticketCloseout = validFounderCloseout().replace('Priority: `demo`', 'Ticket: `0015`')
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([['packages/atom.ts']]),
+        io: fakeIO({ directives: [delegate('atom 0'), wrapup('Oscar seed closeout')], pickupWrites }),
+        getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
+        runHeadless: async () => ({ exitCode: 0, output: ticketCloseout }),
+      }),
+      { ...input, wrapPlay, wrapPlayAssignment },
+    )
+
+    expect(result.status).toBe('completed')
+    expect(pickupWrites).toEqual([ticketCloseout])
+    expect(store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')).toBeUndefined()
+  })
+
+  test('wrap-up Play blocks a Next priority that is not launchable', async () => {
+    const store = openRunStore(':memory:')
+    const pickupWrites: string[] = []
+    const missingPriorityCloseout = validFounderCloseout().replace('Priority: `demo`', 'Priority: `missing-priority`')
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([['packages/atom.ts']]),
+        io: fakeIO({ directives: [delegate('atom 0'), wrapup('Oscar seed closeout')], pickupWrites }),
+        getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
+        runHeadless: async () => ({ exitCode: 0, output: missingPriorityCloseout }),
+      }),
+      { ...input, wrapPlay, wrapPlayAssignment },
+    )
+
+    expect(result.status).toBe('completed')
+    expect(pickupWrites).toHaveLength(1)
+    expect(pickupWrites[0]).toContain('**Disposition**\nblocked')
+    expect(pickupWrites[0]).toContain('**Next** priority "missing-priority" is not launchable')
+    const invalid = store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')
+    expect(invalid?.data).toMatchObject({
+      play: 'wrap-up',
+      issues: expect.arrayContaining(['**Next** priority "missing-priority" is not launchable']),
+    })
   })
 
   // NOTE: stale-daemon handling moved OUT of the runner (ADR-0016 incident fix). A stale daemon is now
