@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-18 — **Workspace-segmentation: owner map landed; ADR-0027 storage contract blocked on founder approval (run_135)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 2 atoms delegated) | **Priority:** [workspace-segmentation](./priorities/workspace-segmentation.md) | **Run:** run_135
+**Outcomes:**
+- **Atom 0 (`1565b3e`) — owner map:** `workspace-segmentation.owner-map.md` names 13 concern owners/consumers (registry, chat selection, priorities/tickets, counters, durable history, live state, run IDs, run dirs, feeds, events, git guards, cmux labels), a field-level DB classification table with portable-path proposals, and a collision/concurrency audit table. Analysis only — no runtime/UI/storage changes.
+- **Atom 1 — ADR-0027 draft verify-failed by design:** portable storage contract (`cocoder/runs/**`, optional `cocoder/workspace.json`) amends ADR-0003 + ADR-0019; ADR-0014 forbids persona approval — draft kept in working tree, **not committed**.
+- **Disposition: `blocked`** — two founder decisions required before the contract can land: (1) re-accept repo-tracked portable run/session history (Objective #4, reverses ADR-0003's install-local run history); (2) keep vs drop portable `cocoder/workspace.json` identity (Oscar recommends keep).
+**Next:** Reply **`approve workspace storage`** with both decisions (history: yes; identity: **keep** or **drop**) and relaunch **`workspace-segmentation`** — I'll delegate the atom that lands ADR-0027 with amended-ADR banners and index reconciliation.
+
 ## 2026-06-18 — **Oz-dashboard-ux: run_133 polish tweaks landed — archive-candidate, live visual proof only (run_134)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 2 atoms delegated/verified-on-evidence) | **Priority:** [oz-dashboard-ux](./priorities/oz-dashboard-ux.md) | **Run:** run_134
