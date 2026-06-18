@@ -12,7 +12,7 @@
   "priorityId": "workspace-segmentation",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "completed",
   "createdAt": 1781812281451,
-  "endedAt": null
+  "endedAt": 1781814583835
 }
