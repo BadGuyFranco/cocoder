@@ -1,6 +1,6 @@
 ---
 id: hybrid-plays
-title: Hybrid Plays — a deterministic code spine behind the LLM procedure
+title: Architect Play System — triggers, contracts, and hybrid execution
 ---
 
 > **Spawned 2026-06-15 from a founder design dive (post run_88).** Replaces the queued
@@ -22,23 +22,56 @@ model only interprets the captured result.
 
 ## Objective (DRAFT — founder confirms at launch, ADR-0010 owns the taxonomy)
 
-A Play can carry an optional **deterministic step** — a command/script that runs as real code — whose
-captured result is structured input to (and/or a gate on) the Play's LLM layer. Concretely, when built:
+CoCoder has a real **Play system**, not a pile of prompt snippets: personas can discover which Plays are
+available, request optional Plays through a typed handoff, and rely on the runner/daemon to invoke,
+validate, commit, and record mandatory Plays at the right lifecycle points. A Play may remain prompt-only
+or carry an optional deterministic code spine whose captured result gates or feeds the LLM layer. Existing
+Plays are migrated into the new contract format instead of being left as legacy markdown blobs.
+
+Build atoms:
 
 1. **Taxonomy decision first (decision-before-code):** amend **ADR-0010** (it owns the Play taxonomy;
-   living/conflict-audited per ADR-0014) to admit a deterministic Play component — its shape, when it
-   runs (before the LLM layer, as a gate, or both), and how its output is handed to the prompt. Founder
-   accepts before any schema change.
-2. **Schema:** extend the `Play` type (`packages/core/src/plays/types.ts`) with the agreed optional
-   deterministic field; keep existing prompt-only Plays valid (additive, non-breaking).
-3. **Dispatch:** `dispatchPlay` (`packages/core/src/plays/dispatch.ts`) runs the deterministic step,
-   captures its result, and feeds/gates the LLM invocation on it — staying one-level (no new delegation).
-4. **Proof:** reimplement one existing Play (candidate: `integration-verify`) as a hybrid that runs its
-   real check deterministically, with a test proving the deterministic step executes and gates the LLM
-   layer (not just prose claiming it would).
+   living/conflict-audited per ADR-0014) to define Play classes:
+   - prompt-only Play;
+   - hybrid Play with deterministic precheck/gate;
+   - lifecycle-triggered Play;
+   - persona-requested Play;
+   - tool/API-triggered Play.
+   Founder accepts before any schema change.
+2. **Play contract schema:** extend the `Play` type (`packages/core/src/plays/types.ts`) with optional
+   contract metadata: purpose summary, allowed callers, trigger class, input schema, output validator,
+   deterministic step, commit mode, and capability-manifest fields. Keep existing prompt-only Plays valid
+   during migration (additive, non-breaking).
+3. **Capability manifest:** generate a small per-persona "Available Plays" section for launch prompts:
+   Play id, one-line purpose, allowed caller, trigger class, required input shape, write behavior, and
+   whether it is mandatory or optional. Do **not** inject full Play bodies into normal persona prompts;
+   full Play markdown stays lazy-loaded only at dispatch.
+4. **Typed Play request lane:** personas request optional Plays by writing a structured handoff such as
+   `{"kind":"play","play":"create-ticket","input":{...}}`. The runner/daemon validates the persona,
+   Play id, trigger class, input schema, assignment, and write scope before dispatch. Personas do not
+   execute Play procedures from memory.
+5. **Mandatory trigger registry:** hard-wire lifecycle/policy triggers where a persona should not decide:
+   wrap-up, ticket close-on-success, authoring actions, and any risk-gated review/verify Plays selected
+   by the taxonomy. The runner/daemon owns those triggers; personas own only optional judgment calls.
+6. **Hybrid deterministic execution:** `dispatchPlay` (`packages/core/src/plays/dispatch.ts`) runs an
+   optional deterministic step, captures structured output, and feeds or gates the LLM invocation while
+   staying one-level (no recursive Play delegation).
+7. **Existing Play migration:** update every shipped base Play and relevant repo delta to the new format:
+   `wrap-up`, `create-priority`, `edit-priority`, `archive-priority`, `code-review`, `documentation`,
+   `deep-read`, `electron-test`, and any live repo-only Play. Each migrated Play declares its capability
+   metadata and any input/output contract; prompt-only Plays explicitly remain prompt-only.
+8. **Proof:** migrate at least two real Plays end to end:
+   - one mandatory/lifecycle Play (`wrap-up` or ticket close-on-success) proves trigger + output validation;
+   - one hybrid Play (candidate: `integration-verify` or `code-review`) proves a deterministic step runs
+     and gates/feeds the LLM layer.
 
-**Verified when:** a real Play runs a deterministic code spine whose result demonstrably drives/gates its
-LLM layer, proven by a test — and existing prompt-only Plays still work unchanged.
+**Verified when:** persona launch prompts expose only compact Play capability manifests; a persona can
+request an optional Play through a typed handoff; a mandatory Play is invoked by the runner/daemon without
+persona discretion; one hybrid Play runs deterministic code whose result demonstrably drives/gates its LLM
+layer; every existing shipped Play is migrated or explicitly marked prompt-only under the new schema; and
+existing prompt-only behavior remains backward-compatible during the migration.
 
-**Boundary:** does NOT reopen the dispatch reversal (one-level stands). Stays additive to the Play model;
-no builder-recursion, no `PlayAssignment[]` multi-binding.
+**Boundary:** does NOT reopen the dispatch reversal (one-level stands). Does not make the deterministic
+runner the probabilistic chooser for all Plays: personas may judge when optional Plays are useful, but
+dispatch/validation/commit/mandatory triggers are owned by the runner or daemon. No builder-recursion, no
+`PlayAssignment[]` multi-binding, and no full Play-body injection into every persona prompt.
