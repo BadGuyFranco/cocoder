@@ -36,4 +36,9 @@ export {
   type PortableTargetKind,
   type PortableWorkItemRow,
 } from './runs.js'
+export {
+  migrateWorkspacePortableHistory,
+  type MigrateWorkspacePortableHistoryInput,
+  type MigrateWorkspacePortableHistoryResult,
+} from './migrate.js'
 export type { JsonPrimitive, JsonValue } from './json.js'

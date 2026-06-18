@@ -36,6 +36,12 @@ export async function appendJsonLine(path: string, value: unknown): Promise<void
   await appendFile(path, `${JSON.stringify(value)}\n`, 'utf8')
 }
 
+export async function writeJsonLines(path: string, rows: readonly unknown[]): Promise<void> {
+  await mkdir(dirname(path), { recursive: true })
+  const text = rows.map((row) => JSON.stringify(row)).join('\n')
+  await writeFile(path, text === '' ? '' : `${text}\n`, 'utf8')
+}
+
 export async function readJsonLines<T>(path: string): Promise<T[]> {
   let text: string
   try {
