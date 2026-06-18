@@ -44,10 +44,10 @@ import { appendAudit } from './audit.js'
 
 const OZ_REPAIR_TIMEOUT_MS = 120_000
 const AUTHORING_PLAY_TIMEOUT_MS = 120_000
-const AUTHORING_PLAY_IDS = ['create-priority', 'edit-priority', 'archive-priority'] as const
+const AUTHORING_PLAY_IDS = ['create-priority', 'edit-priority', 'archive-priority', 'create-ticket'] as const
 const execFileAsync = promisify(execFile)
 
-type AuthoringPersona = 'oz' | 'oscar' | 'deb'
+type AuthoringPersona = 'oz' | 'oscar' | 'bob' | 'deb'
 type AuthoringPlayId = typeof AUTHORING_PLAY_IDS[number]
 
 export interface AuthoringPlayInput {

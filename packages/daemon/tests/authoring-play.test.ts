@@ -4,7 +4,25 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { describe, expect, test } from 'vitest'
-import { makeGit, openRunStore, type Adapter, type BuildInput, type HeadlessRunInput, type Run, type RunnerIO, type RunStore, type SessionHost } from '@cocoder/core'
+import {
+  composeTicketMarkdown,
+  insertOpenTicketIndexRow,
+  makeGit,
+  nextTicketId,
+  openRunStore,
+  readTicketIndex,
+  readTickets,
+  ticketIndexSkeleton,
+  ticketTableCell,
+  TICKET_OWNER,
+  type Adapter,
+  type BuildInput,
+  type HeadlessRunInput,
+  type Run,
+  type RunnerIO,
+  type RunStore,
+  type SessionHost,
+} from '@cocoder/core'
 import { createOzEventBus, type OzContext, type OzEvent } from '../src/context.js'
 import { launchRun, requestAuthoringPlay } from '../src/launcher.js'
 
@@ -63,6 +81,66 @@ describe('requestAuthoringPlay', () => {
     const audit = await readFile(join(fixture.home, 'local', 'oz-audit.log'), 'utf8')
     expect(audit).toContain('"action":"authoring-play"')
     expect(audit).toContain('"committedPaths":["cocoder/priorities/alpha.md"]')
+  })
+
+  test('dispatches create-ticket and commits a valid ticket plus INDEX row through the repair spine', async () => {
+    const fixture = await makeFixture({
+      runHeadless: async (input) => {
+        fixture.headlessInputs.push(input)
+        const ticketsDir = join(fixture.home, 'cocoder', 'tickets')
+        const openDir = join(ticketsDir, 'open')
+        await mkdir(openDir, { recursive: true })
+        const id = await nextTicketId(ticketsDir)
+        const title = 'Agent Ticket'
+        const type = 'bug'
+        const priority = 'tickets-review'
+        const fileName = `${id}-agent-ticket.md`
+        const markdown = composeTicketMarkdown(id, { title, type, priority, description: '## Context\nFiled by the authoring Play.' }, '2026-06-18')
+        await writeFile(join(openDir, fileName), markdown)
+        const row = `| [${id}](./open/${fileName}) | ${ticketTableCell(title)} | ${type} | ${ticketTableCell(priority)} | ${TICKET_OWNER} |`
+        const indexPath = join(ticketsDir, 'INDEX.md')
+        await writeFile(indexPath, insertOpenTicketIndexRow(await readTicketIndex(indexPath), row, id))
+        return { exitCode: 0, output: 'created ticket' }
+      },
+    })
+    const headBefore = await git(fixture.home, ['rev-parse', 'HEAD'])
+
+    const result = await requestAuthoringPlay(fixture.ctx, {
+      workspaceId: 'cocoder',
+      persona: 'oz',
+      playId: 'create-ticket',
+      invocation: { title: 'Agent Ticket', type: 'bug', priority: 'tickets-review', description: 'Filed by the authoring Play.' },
+    })
+
+    expect(result.status).toBe(200)
+    expect(result.body).toMatchObject({ ok: true, outOfLanePaths: [], exitCode: 0 })
+    expect(result.body.committedPaths).toHaveLength(2)
+    expect(result.body.committedPaths).toEqual(expect.arrayContaining(['cocoder/tickets/INDEX.md', 'cocoder/tickets/open/0001-agent-ticket.md']))
+    expect(typeof result.body.commitSha).toBe('string')
+    expect(await git(fixture.home, ['rev-parse', 'HEAD'])).not.toBe(headBefore)
+    await expect(git(fixture.home, ['cat-file', '-e', 'HEAD:cocoder/tickets/open/0001-agent-ticket.md'])).resolves.toBeDefined()
+
+    const tickets = await readTickets(join(fixture.home, 'cocoder', 'tickets'))
+    expect(tickets).toHaveLength(1)
+    expect(tickets[0]).toMatchObject({
+      id: '0001',
+      title: 'Agent Ticket',
+      type: 'bug',
+      status: 'Open',
+      priority: 'tickets-review',
+      owner: TICKET_OWNER,
+      created: '2026-06-18',
+      state: 'open',
+    })
+    const index = await readFile(join(fixture.home, 'cocoder', 'tickets', 'INDEX.md'), 'utf8')
+    expect(index).toContain('| [0001](./open/0001-agent-ticket.md) | Agent Ticket | bug | tickets-review | founder-session |')
+    expect(fixture.prompts[0]).toMatchObject({ persona: 'oz', model: 'author-model', cwd: fixture.home })
+    expect(fixture.prompts[0]?.prompt).toContain('# Create Ticket Play')
+    expect(fixture.prompts[0]?.prompt).toContain('"priority": "tickets-review"')
+    expect(fixture.headlessInputs[0]?.cwd).toBe(fixture.home)
+    const audit = await readFile(join(fixture.home, 'local', 'oz-audit.log'), 'utf8')
+    expect(audit).toContain('"action":"authoring-play"')
+    expect(audit).toContain('cocoder/tickets/open/0001-agent-ticket.md')
   })
 
   test('refuses while any run is in flight and commits nothing', async () => {
@@ -244,11 +322,14 @@ async function makeFixture(options: {
 async function initRepo(home: string): Promise<void> {
   await mkdir(join(home, 'cocoder', 'personas'), { recursive: true })
   await mkdir(join(home, 'cocoder', 'priorities'), { recursive: true })
+  await mkdir(join(home, 'cocoder', 'tickets', 'open'), { recursive: true })
+  await mkdir(join(home, 'cocoder', 'tickets', 'closed'), { recursive: true })
   await mkdir(join(home, 'local'), { recursive: true })
   await writeFile(join(home, '.gitignore'), '/local/*\n!/local/README.md\n')
   await writeFile(join(home, 'local', 'README.md'), 'local signage\n')
   await writeFile(join(home, 'local', 'workspaces.json'), JSON.stringify({ workspaces: [{ id: 'cocoder', name: 'CoCoder', path: '${COCODER_HOME}' }] }))
   await writeFile(join(home, 'cocoder', 'PLAYBOOK.md'), 'initial governance\n')
+  await writeFile(join(home, 'cocoder', 'tickets', 'INDEX.md'), ticketIndexSkeleton())
   await writeFile(
     join(home, 'cocoder', 'personas', 'assignments.json'),
     JSON.stringify({
@@ -260,10 +341,11 @@ async function initRepo(home: string): Promise<void> {
             'create-priority': { cli: 'fake', model: 'author-model' },
             'edit-priority': { cli: 'fake', model: 'author-model' },
             'archive-priority': { cli: 'fake', model: 'author-model' },
+            'create-ticket': { cli: 'fake', model: 'author-model' },
           },
         },
-        oscar: { cli: 'fake', model: '', mode: 'visible', plays: { 'wrap-up': { cli: 'fake', model: '' } } },
-        bob: { cli: 'fake', model: '' },
+        oscar: { cli: 'fake', model: '', mode: 'visible', plays: { 'wrap-up': { cli: 'fake', model: '' }, 'create-ticket': { cli: 'fake', model: '' } } },
+        bob: { cli: 'fake', model: '', plays: { 'create-ticket': { cli: 'fake', model: '' } } },
         deb: {
           cli: 'fake',
           model: '',
@@ -272,6 +354,7 @@ async function initRepo(home: string): Promise<void> {
             'create-priority': { cli: 'fake', model: '' },
             'edit-priority': { cli: 'fake', model: '' },
             'archive-priority': { cli: 'fake', model: '' },
+            'create-ticket': { cli: 'fake', model: '' },
           },
         },
       },

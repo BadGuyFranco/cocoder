@@ -88,6 +88,7 @@ export {
 export { loadPriority, type Priority } from './priorities/index.js'
 export {
   closeTicket,
+  composeTicketMarkdown,
   insertOpenTicketIndexRow,
   loadTicket,
   moveTicketIndexRowToClosed,
@@ -96,8 +97,10 @@ export {
   readTickets,
   ticketIndexSkeleton,
   ticketTableCell,
+  TICKET_OWNER,
   type CloseTicketInput,
   type CloseTicketResult,
+  type ComposeTicketMarkdownInput,
   type Ticket,
   type TicketState,
 } from './tickets/index.js'

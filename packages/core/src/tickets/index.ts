@@ -1,5 +1,6 @@
 export { loadTicket, nextTicketId, readTickets, type Ticket, type TicketState } from './loader.js'
 export { closeTicket, type CloseTicketInput, type CloseTicketResult } from './close.js'
+export { composeTicketMarkdown, TICKET_OWNER, type ComposeTicketMarkdownInput } from './compose.js'
 export {
   insertOpenTicketIndexRow,
   moveTicketIndexRowToClosed,

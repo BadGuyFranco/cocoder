@@ -6,6 +6,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 import {
   installRoot as cocoderInstallRoot,
+  composeTicketMarkdown,
   listEffectivePlays,
   listEffectivePersonas,
   loadAssignments,
@@ -18,6 +19,7 @@ import {
   readTicketIndex,
   scaffoldCocoderZone,
   ticketTableCell,
+  TICKET_OWNER,
   truncate,
   workspaceTemplateDir,
   type CommitReceipt,
@@ -158,7 +160,6 @@ type ParsedCreateWorkspaceBody = { readonly ok: true; readonly input: CreateWork
 const PRIORITY_ID_RE = /^[a-z0-9][a-z0-9-]*$/
 const CONTROL_CHARS_RE = /[\u0000-\u001f\u007f]/
 const TICKET_TYPES: readonly TicketKind[] = ['bug', 'task', 'question', 'spike']
-const TICKET_OWNER = 'founder-session'
 
 function slugifyTitle(title: string): string {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').replace(/-+/g, '-')
@@ -266,11 +267,6 @@ function validateCreatedPriority(markdown: string, priority: Priority, input: Cr
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
-}
-
-function composeTicketMarkdown(id: string, input: CreateTicketInput, created: string): string {
-  const body = input.description === '' ? '## Context\n' : `${input.description}\n`
-  return `---\nid: ${id}\ntitle: ${input.title}\ntype: ${input.type}\nstatus: Open\npriority: ${input.priority}\nowner: ${TICKET_OWNER}\ncreated: ${created}\n---\n\n# ${id} — ${input.title}\n\n${body}`
 }
 
 function validateCreatedTicket(ticket: Awaited<ReturnType<typeof readTickets>>[number] | undefined, id: string, input: CreateTicketInput): void {

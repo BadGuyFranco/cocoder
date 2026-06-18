@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, test, vi } from 'vitest'
-import { moveTicketIndexRowToClosed, nextTicketId, readTickets } from '../src/index.js'
+import { composeTicketMarkdown, loadTicket, moveTicketIndexRowToClosed, nextTicketId, readTickets, TICKET_OWNER } from '../src/index.js'
 
 const repoRoot = (): string => join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
 
@@ -27,6 +27,31 @@ describe('ticket id allocation', () => {
 })
 
 describe('ticket loading', () => {
+  test('composed ticket markdown round-trips with complete metadata', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'tickets-compose-'))
+    await mkdir(join(dir, 'open'), { recursive: true })
+    const markdown = composeTicketMarkdown(
+      '0015',
+      { title: 'Fix dropped ticket metadata', type: 'bug', priority: 'tickets-review', description: '## Context\nPreserve frontmatter.' },
+      '2026-06-18',
+    )
+    await writeFile(join(dir, 'open', '0015-fix-dropped-ticket-metadata.md'), markdown)
+
+    const ticket = loadTicket(join(dir, 'open'), '0015-fix-dropped-ticket-metadata.md')
+
+    expect(ticket).toMatchObject({
+      id: '0015',
+      title: 'Fix dropped ticket metadata',
+      type: 'bug',
+      status: 'Open',
+      priority: 'tickets-review',
+      owner: TICKET_OWNER,
+      created: '2026-06-18',
+      state: 'open',
+    })
+    expect(ticket.body).toContain('Preserve frontmatter.')
+  })
+
   test('loads frontmatter-less tickets and warns about malformed tickets', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'tickets-load-'))
     await mkdir(join(dir, 'open'), { recursive: true })
