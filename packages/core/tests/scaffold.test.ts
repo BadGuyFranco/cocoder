@@ -7,6 +7,7 @@ import { installRoot, loadAssignments, loadPriority, scaffoldCocoderZone, worksp
 
 const repoRoot = (): string => join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
 const templateDir = (): string => join(repoRoot(), 'templates', 'workspace-cocoder', 'cocoder')
+const basePrioritiesDir = (): string => join(repoRoot(), 'packages', 'personas', 'base', 'priorities')
 const exists = (path: string): Promise<boolean> => stat(path).then(() => true, () => false)
 
 const dirs: string[] = []
@@ -52,6 +53,33 @@ describe('scaffoldCocoderZone', () => {
       id: 'adhoc-session',
       title: 'Session without a named priority',
     })
+    expect(await exists(join(targetRoot, 'cocoder', 'priorities', 'onboard-existing.md'))).toBe(false)
+  })
+
+  test('seeds onboard-existing only when target already has source content', async () => {
+    const targetRoot = await tempTarget('cocoder-scaffold-existing-')
+    await mkdir(join(targetRoot, 'src'), { recursive: true })
+    await writeFile(join(targetRoot, 'src', 'app.ts'), 'export const app = true\n')
+
+    const result = scaffoldCocoderZone({ templateDir: templateDir(), targetRoot, installRoot: repoRoot() })
+
+    expect(result.created).toContain('cocoder/priorities/onboard-existing.md')
+    const seeded = await readFile(join(targetRoot, 'cocoder', 'priorities', 'onboard-existing.md'), 'utf8')
+    expect(seeded).toBe(await readFile(join(basePrioritiesDir(), 'onboard-existing.md'), 'utf8'))
+    expect(seeded).toContain('auditWriteBoundary: ["cocoder/**"]')
+    expect(loadPriority(join(targetRoot, 'cocoder', 'priorities'), 'onboard-existing').auditWriteBoundary).toEqual(['cocoder/**'])
+  })
+
+  test('does not seed onboard-existing into a .git-only new repo', async () => {
+    const targetRoot = await tempTarget('cocoder-scaffold-git-only-')
+    await mkdir(join(targetRoot, '.git'), { recursive: true })
+
+    const result = scaffoldCocoderZone({ templateDir: templateDir(), targetRoot, installRoot: repoRoot() })
+
+    expect(result.created).not.toContain('cocoder/priorities/onboard-existing.md')
+    expect(result.created).toContain('cocoder/priorities/adhoc-session.md')
+    expect(result.created).toContain('cocoder/personas/assignments.json')
+    expect(await exists(join(targetRoot, 'cocoder', 'priorities', 'onboard-existing.md'))).toBe(false)
   })
 
   test('resolves the shipped template from the running package location', async () => {
@@ -75,6 +103,16 @@ describe('scaffoldCocoderZone', () => {
     const targetRoot = await tempTarget('cocoder-scaffold-idempotent-')
 
     scaffoldCocoderZone({ templateDir: templateDir(), targetRoot, installRoot: repoRoot() })
+    expect(scaffoldCocoderZone({ templateDir: templateDir(), targetRoot, installRoot: repoRoot() })).toEqual({ created: [] })
+  })
+
+  test('is idempotent after seeding onboard-existing into an existing repo', async () => {
+    const targetRoot = await tempTarget('cocoder-scaffold-existing-idempotent-')
+    await writeFile(join(targetRoot, 'package.json'), '{"private":true}\n')
+
+    expect(scaffoldCocoderZone({ templateDir: templateDir(), targetRoot, installRoot: repoRoot() }).created).toContain(
+      'cocoder/priorities/onboard-existing.md',
+    )
     expect(scaffoldCocoderZone({ templateDir: templateDir(), targetRoot, installRoot: repoRoot() })).toEqual({ created: [] })
   })
 

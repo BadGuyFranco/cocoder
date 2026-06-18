@@ -4,6 +4,9 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+const CONDITIONAL_ONBOARDING_PRIORITY = 'priorities/onboard-existing.md'
+const COCODER_ZONE_ENTRIES = new Set(['.git', 'cocoder'])
+
 export interface ScaffoldCocoderZoneResult {
   readonly created: readonly string[]
 }
@@ -23,22 +26,35 @@ function posixPath(path: string): string {
   return path.split(sep).join('/')
 }
 
-function copyTree(templateDir: string, targetDir: string, targetRoot: string, created: string[]): void {
+function copyFileCreateOnly(from: string, to: string, targetRoot: string, created: string[]): void {
+  if (existsSync(to)) return
+  mkdirSync(dirname(to), { recursive: true })
+  copyFileSync(from, to)
+  created.push(posixPath(relative(targetRoot, to)))
+}
+
+function copyTree(templateDir: string, targetDir: string, targetRoot: string, created: string[], skip: ReadonlySet<string>, templateRoot = templateDir): void {
   mkdirSync(targetDir, { recursive: true })
   const entries = readdirSync(templateDir, { withFileTypes: true })
   for (const entry of entries) {
     const from = join(templateDir, entry.name)
+    const templatePath = posixPath(relative(templateRoot, from))
     const to = join(targetDir, entry.name)
     if (entry.isDirectory()) {
-      copyTree(from, to, targetRoot, created)
+      copyTree(from, to, targetRoot, created, skip, templateRoot)
       continue
     }
     if (!entry.isFile()) continue
-    if (existsSync(to)) continue
-    mkdirSync(dirname(to), { recursive: true })
-    copyFileSync(from, to)
-    created.push(posixPath(relative(targetRoot, to)))
+    if (skip.has(templatePath)) continue
+    copyFileCreateOnly(from, to, targetRoot, created)
   }
+}
+
+function hasExistingRepoContent(targetRoot: string): boolean {
+  if (!existsSync(targetRoot)) return false
+  // Existing repos have source/content at the primary root before scaffold time. A root containing only
+  // Git metadata and/or the cocoder/ governance zone is treated as new, so it never gets the audit seed.
+  return readdirSync(targetRoot, { withFileTypes: true }).some((entry) => !COCODER_ZONE_ENTRIES.has(entry.name))
 }
 
 export function installRoot(): string {
@@ -64,7 +80,17 @@ export function scaffoldCocoderZone(opts: ScaffoldCocoderZoneOptions): ScaffoldC
   }
 
   const created: string[] = []
-  copyTree(resolve(opts.templateDir), join(targetRoot, 'cocoder'), targetRoot, created)
+  const templateDir = resolve(opts.templateDir)
+  const seedOnboarding = hasExistingRepoContent(targetRoot)
+  copyTree(templateDir, join(targetRoot, 'cocoder'), targetRoot, created, new Set([CONDITIONAL_ONBOARDING_PRIORITY]))
+  if (seedOnboarding) {
+    copyFileCreateOnly(
+      join(templateDir, CONDITIONAL_ONBOARDING_PRIORITY),
+      join(targetRoot, 'cocoder', CONDITIONAL_ONBOARDING_PRIORITY),
+      targetRoot,
+      created,
+    )
+  }
   created.sort()
   return { created }
 }
