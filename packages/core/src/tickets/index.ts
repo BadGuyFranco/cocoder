@@ -1,1 +1,9 @@
 export { loadTicket, nextTicketId, readTickets, type Ticket, type TicketState } from './loader.js'
+export { closeTicket, type CloseTicketInput, type CloseTicketResult } from './close.js'
+export {
+  insertOpenTicketIndexRow,
+  moveTicketIndexRowToClosed,
+  readTicketIndex,
+  ticketIndexSkeleton,
+  ticketTableCell,
+} from './index-helpers.js'

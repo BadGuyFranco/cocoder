@@ -12,6 +12,9 @@ import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { promisify } from 'node:util'
 import {
+  COCODER_GOVERNANCE_AUTHOR,
+  closeTicket,
+  commitFiles,
   createPlaybookPhaseAction,
   createPlaybookP2PhaseAction,
   createPlaybookP3PhaseAction,
@@ -35,12 +38,14 @@ import {
   runHeadlessProcess,
   runRun,
   startPlaybookExecutor,
+  type CommitReceipt,
   type PersonaSources,
   type PlaybookP1AgentTurn,
   type PlaybookPhaseAction,
   type Priority,
   type ResolveTopTier,
   type RunInput,
+  type RunResult,
   type RunnerDeps,
   type SessionHost,
   type Ticket,
@@ -236,6 +241,57 @@ function ticketPriority(ticket: Ticket): Priority {
     scopeNarrowing: null,
     goal: `## Objective\n\n${objective}`,
     objective,
+  }
+}
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+export async function commitGovernance(ctx: OzContext, repoPath: string, files: readonly string[], message: string): Promise<CommitReceipt> {
+  const receipt = await commitFiles(ctx.git, repoPath, files, message, COCODER_GOVERNANCE_AUTHOR)
+  if (receipt.error !== null) {
+    await appendAudit(ctx.cocoderHome, { action: 'governance-commit-failed', repoPath, message, reason: receipt.error })
+  }
+  return receipt
+}
+
+async function closeTicketAfterSuccessfulRun(ctx: OzContext, workspacePath: string, ticketId: string, result: RunResult): Promise<void> {
+  if (result.status !== 'completed') return
+  const run = ctx.store.getRun(result.runId)
+  if (run?.status !== 'completed') return
+  try {
+    const close = await closeTicket({
+      ticketsDir: ticketsDir(workspacePath),
+      repoPath: workspacePath,
+      ticketId,
+      runId: result.runId,
+      committedSha: result.committedSha,
+      closedDate: todayIso(),
+      resolution: 'Ticket fix run completed successfully.',
+    })
+    if (!close.closed) {
+      await appendAudit(ctx.cocoderHome, { action: 'ticket-close-skipped', ticketId, runId: result.runId, reason: close.reason })
+      return
+    }
+    const receipt = await commitGovernance(ctx, workspacePath, close.files, `governance: close ticket ${ticketId} via run ${result.runId}`)
+    await appendAudit(ctx.cocoderHome, {
+      action: 'ticket-close',
+      ticketId,
+      runId: result.runId,
+      committedSha: receipt.committedSha,
+      committed: receipt.committed,
+      runCommittedSha: result.committedSha,
+      files: close.files,
+      error: receipt.error,
+    })
+  } catch (error) {
+    await appendAudit(ctx.cocoderHome, {
+      action: 'ticket-close-failed',
+      ticketId,
+      runId: result.runId,
+      error: error instanceof Error ? error.message : String(error),
+    })
   }
 }
 
@@ -520,7 +576,15 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
   let running: Promise<unknown>
   if (target.kind === 'priority' || target.kind === 'ticket') {
     // onRunCreated fires synchronously inside this call (before runRun's first await), so runId is set.
-    running = runRun(deps, input!)
+    const runPromise = runRun(deps, input!)
+    running = runPromise
+    if (target.kind === 'ticket') {
+      const ws = workspace!
+      running = runPromise.then(async (result) => {
+        await closeTicketAfterSuccessfulRun(ctx, ws.path, target.ticketId, result)
+        return result
+      })
+    }
   } else {
     const ws = workspace!
     const pb = playbook!

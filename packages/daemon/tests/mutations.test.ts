@@ -451,12 +451,13 @@ describe('Oz mutations + lifecycle', () => {
 
   test('POST /runs launches an open ticket through the priority lifecycle and records its target', async () => {
     await writeTicketIndex(home)
+    const commits: GovernanceCommitCall[] = []
     const prompts: string[] = []
     oz = await createOzServer({
       cocoderHome: home,
       port: 0,
       store,
-      git: fakeGit(),
+      git: recordingGovernanceGit(commits),
       sessionHost: fakeHost(),
       getAdapter: () => ({ ...okAdapter, build: (input) => {
         prompts.push(input.prompt)
@@ -482,6 +483,68 @@ describe('Oz mutations + lifecycle', () => {
     expect(store.listEvents(runId).some((event) => event.type === 'playbook-executor')).toBe(false)
     expect(prompts[0]).toContain('Priority: **Ticket 0003: Existing open**')
     expect(prompts[0]).toContain('Fix ticket 0003: Existing open.')
+
+    const ticketDir = join(home, 'cocoder', 'tickets')
+    expect(await exists(join(ticketDir, 'open', '0003-existing-open.md'))).toBe(false)
+    const closedPath = join(ticketDir, 'closed', '0003-existing-open.md')
+    expect(await exists(closedPath)).toBe(true)
+    const closedMarkdown = await readFile(closedPath, 'utf8')
+    expect(closedMarkdown).toContain('status: Closed')
+    expect(closedMarkdown).toContain('## Resolution')
+    expect(closedMarkdown).toContain(`Resolved by run ${runId}`)
+    const loaded = (await readTickets(ticketDir)).find((ticket) => ticket.id === '0003')
+    expect(loaded).toMatchObject({ id: '0003', state: 'closed', status: 'Closed' })
+
+    const index = await readFile(join(ticketDir, 'INDEX.md'), 'utf8')
+    const openSection = index.slice(index.indexOf('## Open'), index.indexOf('## Recently Closed'))
+    const closedSection = index.slice(index.indexOf('## Recently Closed'))
+    expect(openSection).not.toContain('0003')
+    expect(closedSection).toContain('| [0003](./closed/0003-existing-open.md) | Existing open | task |')
+    expect(closedSection).toContain('Ticket fix run completed successfully.')
+    expect(commits).toContainEqual(expect.objectContaining({
+      cwd: home,
+      files: ['cocoder/tickets/closed/0003-existing-open.md', 'cocoder/tickets/open/0003-existing-open.md', 'cocoder/tickets/INDEX.md'],
+      message: `governance: close ticket 0003 via run ${runId}`,
+      author: COCODER_GOVERNANCE,
+    }))
+    const audit = await readFile(join(home, 'local', 'oz-audit.log'), 'utf8')
+    expect(audit).toContain('"action":"ticket-close"')
+    expect(audit).toContain('"ticketId":"0003"')
+  })
+
+  test('POST /runs leaves a ticket open when the ticket run does not succeed', async () => {
+    await writeTicketIndex(home)
+    const commits: GovernanceCommitCall[] = []
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: recordingGovernanceGit(commits),
+      sessionHost: fakeHost(),
+      getAdapter: () => ({
+        ...okAdapter,
+        preflight: async () => ({ ok: false, checks: [{ name: 'model', ok: false, detail: 'no model' }] }),
+      }),
+      io: fakeIO(),
+      runHeadless: async () => ({ exitCode: 0, output: 'wrap closeout' }),
+    })
+    const beforeIndex = await readFile(join(home, 'cocoder', 'tickets', 'INDEX.md'), 'utf8')
+
+    const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', ticketId: '0003' } })
+
+    expect(r.status).toBe(202)
+    const runId = String(r.json.runId)
+    let detail: Resp | null = null
+    for (let i = 0; i < 50; i++) {
+      detail = await call(oz, 'GET', `/runs/${runId}`)
+      if (detail.json.run.status !== 'running') break
+      await sleep(10)
+    }
+    expect(detail?.json.run.status).toBe('failed')
+    expect(await exists(join(home, 'cocoder', 'tickets', 'open', '0003-existing-open.md'))).toBe(true)
+    expect(await exists(join(home, 'cocoder', 'tickets', 'closed', '0003-existing-open.md'))).toBe(false)
+    expect(await readFile(join(home, 'cocoder', 'tickets', 'INDEX.md'), 'utf8')).toBe(beforeIndex)
+    expect(commits).toEqual([])
   })
 
   test('POST /runs rejects unknown and closed ticket targets', async () => {

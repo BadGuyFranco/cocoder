@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, test, vi } from 'vitest'
-import { nextTicketId, readTickets } from '../src/index.js'
+import { moveTicketIndexRowToClosed, nextTicketId, readTickets } from '../src/index.js'
 
 const repoRoot = (): string => join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
 
@@ -92,5 +92,38 @@ describe('ticket loading', () => {
     expect(ids).toContain('0009')
     expect(ids).toContain('0011')
     expect(ids).toContain('0014')
+  })
+})
+
+describe('ticket index surgery', () => {
+  test('moves a ticket row from open to recently closed and no-ops when absent', () => {
+    const index = [
+      '# Tickets - Index',
+      '',
+      '## Open',
+      '',
+      '| ID | Title | Type | Priority | Owner |',
+      '|---|---|---|---|---|',
+      '| [0003](./open/0003-existing-open.md) | Existing open | task | none | founder-session |',
+      '',
+      '## Recently Closed',
+      '',
+      '| ID | Title | Type | Closed | Resolution |',
+      '|---|---|---|---|---|',
+      '| [0012](./closed/0012-existing-closed.md) | Existing closed | task | 2026-06-17 | Done |',
+      '',
+    ].join('\n')
+
+    const moved = moveTicketIndexRowToClosed(index, {
+      id: '0003',
+      closedRow: '| [0003](./closed/0003-existing-open.md) | Existing open | task | 2026-06-18 | Fixed |',
+    })
+
+    const openSection = moved.slice(moved.indexOf('## Open'), moved.indexOf('## Recently Closed'))
+    const closedSection = moved.slice(moved.indexOf('## Recently Closed'))
+    expect(openSection).not.toContain('0003')
+    expect(closedSection).toContain('| [0003](./closed/0003-existing-open.md) | Existing open | task | 2026-06-18 | Fixed |')
+    expect(moveTicketIndexRowToClosed(moved, { id: '9999', closedRow: '| [9999](./closed/9999-missing.md) | Missing | task | 2026-06-18 | Fixed |' })).toBe(moved)
+    expect(moveTicketIndexRowToClosed(moved, { id: '0003', closedRow: '| [0003](./closed/0003-existing-open.md) | Existing open | task | 2026-06-18 | Fixed |' })).toBe(moved)
   })
 })

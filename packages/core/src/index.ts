@@ -76,7 +76,21 @@ export {
 } from './plays/index.js'
 
 export { loadPriority, type Priority } from './priorities/index.js'
-export { loadTicket, nextTicketId, readTickets, type Ticket, type TicketState } from './tickets/index.js'
+export {
+  closeTicket,
+  insertOpenTicketIndexRow,
+  loadTicket,
+  moveTicketIndexRowToClosed,
+  nextTicketId,
+  readTicketIndex,
+  readTickets,
+  ticketIndexSkeleton,
+  ticketTableCell,
+  type CloseTicketInput,
+  type CloseTicketResult,
+  type Ticket,
+  type TicketState,
+} from './tickets/index.js'
 
 export {
   loadOnboardingPlaybooks,

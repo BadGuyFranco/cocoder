@@ -5,8 +5,6 @@ import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/p
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 import {
-  COCODER_GOVERNANCE_AUTHOR,
-  commitFiles,
   installRoot as cocoderInstallRoot,
   listEffectivePlays,
   listEffectivePersonas,
@@ -14,7 +12,10 @@ import {
   loadPriority,
   nextTicketId,
   parseFrontmatter,
+  insertOpenTicketIndexRow,
+  readTicketIndex,
   scaffoldCocoderZone,
+  ticketTableCell,
   truncate,
   workspaceTemplateDir,
   type CommitReceipt,
@@ -30,7 +31,7 @@ import { findWorkspace, readWorkspaces, validateWorkspaceFolders, workspaceDirec
 import { readRunDir } from './rundir.js'
 import { appendAudit } from './audit.js'
 import { listClis, testCli } from './clis.js'
-import { launchRun, requestDaemonRestart, requestDashboardLaunch, requestStopRun, requestSupportCommitRun, showRun, teardownRun } from './launcher.js'
+import { commitGovernance, launchRun, requestDaemonRestart, requestDashboardLaunch, requestStopRun, requestSupportCommitRun, showRun, teardownRun } from './launcher.js'
 import { handleOzMessage } from './oz-chat.js'
 import { mergeWriteSettings, readSettings } from './settings.js'
 import { readOnboardingPlaybooks, readPriorities, readTickets, writePriorityOrder } from './priority-order.js'
@@ -279,49 +280,6 @@ function validateCreatedTicket(ticket: Awaited<ReturnType<typeof readTickets>>[n
   if (ticket.state !== 'open') throw new Error('ticket state did not round-trip as open')
 }
 
-function ticketIndexSkeleton(): string {
-  return [
-    '# Tickets — Index',
-    '',
-    '## Open',
-    '',
-    '| ID | Title | Type | Priority | Owner |',
-    '|---|---|---|---|---|',
-    '',
-    '## Recently Closed',
-    '',
-    '| ID | Title | Type | Closed | Resolution |',
-    '|---|---|---|---|---|',
-    '',
-  ].join('\n')
-}
-
-async function readTicketIndex(path: string): Promise<string> {
-  try {
-    return await readFile(path, 'utf8')
-  } catch (err) {
-    if (errorCode(err) === 'ENOENT') return ticketIndexSkeleton()
-    throw err
-  }
-}
-
-function tableCell(value: string): string {
-  return value.replace(/\|/g, '\\|')
-}
-
-function insertOpenTicketIndexRow(indexMarkdown: string, row: string, id: string): string {
-  if (indexMarkdown.includes(`| [${id}](`)) throw new Error(`ticket ${id} is already present in INDEX.md`)
-  const lines = indexMarkdown.split(/\r?\n/)
-  const openIndex = lines.findIndex((line) => line.trim() === '## Open')
-  if (openIndex === -1) throw new Error('tickets INDEX.md is missing ## Open')
-  const nextHeading = lines.findIndex((line, index) => index > openIndex && line.startsWith('## '))
-  const openEnd = nextHeading === -1 ? lines.length : nextHeading
-  const separatorIndex = lines.findIndex((line, index) => index > openIndex && index < openEnd && /^\|\s*-{3,}/.test(line.trim()))
-  if (separatorIndex === -1) throw new Error('tickets INDEX.md Open table is missing a separator row')
-  lines.splice(separatorIndex + 1, 0, row)
-  return lines.join('\n')
-}
-
 function isSamePath(a: string, b: string): boolean {
   return resolve(a) === resolve(b)
 }
@@ -362,18 +320,6 @@ async function directoryGate(path: string): Promise<string | null> {
     return `primary root does not exist or is not a directory: ${path}`
   }
   return info.isDirectory() ? null : `primary root does not exist or is not a directory: ${path}`
-}
-
-/** Commit a daemon-authored governance file set to the workspace branch through the one commit spine
- *  (ADR-0023 §1, core `commitFiles`). Authored as `cocoder-governance` for auditability (ADR-0022 §4).
- *  NEVER swallows: a commit failure is returned in the receipt + audited, and the caller surfaces it to
- *  the founder (a 502) rather than reporting a false success with the file left uncommitted on disk. */
-async function commitGovernance(ctx: OzContext, repoPath: string, files: readonly string[], message: string): Promise<CommitReceipt> {
-  const receipt = await commitFiles(ctx.git, repoPath, files, message, COCODER_GOVERNANCE_AUTHOR)
-  if (receipt.error !== null) {
-    await appendAudit(ctx.cocoderHome, { action: 'governance-commit-failed', repoPath, message, reason: receipt.error })
-  }
-  return receipt
 }
 
 /** If a governance commit FAILED (file written but not committed), surface it truthfully and tell the
@@ -676,7 +622,7 @@ async function createTicket(ctx: OzContext, res: ServerResponse, workspaceId: st
     const tickets = await readTickets(dir)
     const ticket = tickets.find((item) => item.id === id && item.state === 'open')
     validateCreatedTicket(ticket, id, input)
-    const row = `| [${id}](./open/${fileName}) | ${tableCell(input.title)} | ${input.type} | ${tableCell(input.priority)} | ${TICKET_OWNER} |`
+    const row = `| [${id}](./open/${fileName}) | ${ticketTableCell(input.title)} | ${input.type} | ${ticketTableCell(input.priority)} | ${TICKET_OWNER} |`
     const updatedIndex = insertOpenTicketIndexRow(await readTicketIndex(indexPath), row, id)
     await writeFile(tmpIndex, updatedIndex)
     await rename(tmpIndex, indexPath)
