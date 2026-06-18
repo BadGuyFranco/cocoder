@@ -43,7 +43,56 @@ extension (ADR-0020 §7); the `deep-read` audit Play (the Takeover P2 unit, adve
 deterministic scaffold init op; and a **live Takeover proof on a real external repo** (the Phase-5 entry,
 CoPublisher).
 
-## Build progress — disposition: `continue` (ratified 2026-06-17 — Takeover executor code-complete on fakes; live proofs founder-gated)
+## Build progress — disposition: `continue` (PIVOT 2026-06-17 run_131 — reframe the existing-repo audit off the standalone executor onto an Oscar-driven priority; ADR-gated)
+
+## ⚠ ARCHITECTURE PIVOT — founder-directed (run_131, 2026-06-17): the existing-repo audit is NOT a standalone executor
+**Decision (founder):** the existing-repo onboarding audit will **not** ship as the standalone Playbook
+**phase-executor** (the runner-mode built run_111–131). It is **reframed to run as an ordinary
+Oscar-driven priority** — the repo's first priority is *"audit this repo and author its `cocoder/`
+governance; the founder ratifies every drafted Objective before anything is runnable."*
+
+**Why (the gap the founder caught, verified run_131):** the phase-executor reaches its founder gates
+(P1 spend / P4 questions / P6 ratify) and pauses with `status: awaiting-founder`, but **there is no
+founder-facing interaction surface** — **no daemon resume route** (grep of `routes.ts`: none), **no UI**
+surfacing the gate `pickup.md`/questions/drafted Objectives, and the only thing that ever advanced a gate
+was the **test harness** calling `resume()` directly. So a real audit launched today would scaffold, run
+P1 recon, hit the P1 gate, and **freeze forever** — no questions asked, no status given, no way in. The
+executor optimized mechanical determinism (caps, dual-source, convergence predicates) but never built the
+founder-INTERACTION half — which is exactly what a repo's *first* interaction with CoCoder most needs.
+
+**The reframe (best of both):** drive the audit through the **proven Oscar↔founder loop**, which already
+delivers founder questions, decision-first status (wrap-ups), **multi-session** (wrap → resume via pickup
+briefs), and the no-human-backstop verify gate — all the things the executor lacked. **Reused as tooling
+(NOT discarded):** the `deep-read` Play, the dual-source convergence engine (`p2-fanout`/`p3-cross-check`),
+recon/intent/estimate producers, the deterministic caps (now as loop-shaped atom exit criteria per
+`loop-packets.md`), the **`cocoder/**`-only trust boundary** (enforced at the commit spine — orthogonal,
+kept), and the **scaffold (P0)**. **Retired:** the standalone `executor.ts` phase-cursor + the
+`awaiting-founder`/typed-resume-payload mechanism that duplicated the ordinary loop and never got a UI.
+The run_111–131 commits stand as **reusable tooling**, not wasted.
+
+**ADR-GATED (do not build before this lands).** This **supersedes the executor runner-mode** in
+[ADR-0020](../decisions/0020-primary-root-audit.md) + its
+[addendum](../decisions/0020-addendum-phase-executor.md) — an accepted-ADR reversal that requires a
+**new founder-approved ADR** first (ADR-gated-reversals standard). The audit *product structure*
+(scaffold → deep multi-agent audit → founder ratifies → first run) is unchanged; only the **driver**
+changes (Oscar-priority, not phase-executor).
+
+**RENAME "Takeover" (founder-directed).** The word wrongly implies CoCoder **seizes/negates the founder's
+existing build process**; the act is the opposite — CoCoder reviews-and-proposes only, never touches
+product code until a ratified priority. New name **pending founder pick** (Oscar recommends `Adoption`;
+alternatives `Onboard (existing repo)`, `Orientation`). The rename threads through the ADR title, this
+priority, `cocoder-takeover.md` → renamed Playbook/flow, and code identifiers.
+
+**Next work for this priority (replaces the executor critical path):**
+1. **Write the superseding ADR** (reframe existing-repo audit: executor runner-mode → Oscar-driven
+   priority; preserve audit Plays/convergence/trust-boundary/scaffold as tooling; record the rename).
+   Founder approves before any rebuild.
+2. **Rebuild** the existing-repo audit as the Oscar-driven first-priority flow against the new ADR.
+3. **Apply the rename** across docs + code.
+
+The §below "Executor build progress (run_111–131)" is **retained as the historical build record of the
+now-reused tooling** — read it as "what tooling exists," not "the shipping design." The live external-repo
+proof (CoBuilder copy) and dogfood Drift proof remain gated, now on the reframed flow.
 
 ### Executor build progress (run_131, 2026-06-17)
 Eleventh build session — **executor P6 ratify ACTION + Atom 11 runnable proof** landed (two atoms;
