@@ -3,10 +3,8 @@ import { join } from 'node:path'
 import { buildEstimate, summarizeEstimate, type EstimateJson, type ModelEstimateAssumptions, type EstimatePricingInput } from './estimate.js'
 import { enumerateIntentArtifacts, type IntentArtifactLimits, type IntentGitReader } from './intent-artifacts.js'
 import { runIntentIntake, type FounderIntentAnswers, type IntentJson } from './intent.js'
-import type { OnboardingPlaybookPhase } from './loader.js'
 import { runAgenticRecon, type ReconPassResult, type SubsystemsJsonPayload } from './recon-pass.js'
 import { inventoryRepo, type RepoInventory } from './recon.js'
-import type { PlaybookPhaseAction } from './executor.js'
 
 export type PlaybookP1AgentPurpose = 'recon' | 'intent'
 
@@ -38,13 +36,6 @@ export interface PlaybookP1Artifacts {
 
 const p1Dir = (runDir: string): string => join(runDir, 'playbook', 'P1')
 
-export function createPlaybookPhaseAction(input: RunPlaybookP1ActionInput): PlaybookPhaseAction {
-  return async ({ phase }) => {
-    if (!isP1ActionPhase(phase)) return
-    await runPlaybookP1Action(input)
-  }
-}
-
 export async function runPlaybookP1Action(input: RunPlaybookP1ActionInput): Promise<PlaybookP1Artifacts> {
   const dir = p1Dir(input.runDir)
   await mkdir(dir, { recursive: true })
@@ -74,10 +65,6 @@ export async function runPlaybookP1Action(input: RunPlaybookP1ActionInput): Prom
   ])
 
   return { inventory, subsystems: recon.subsystemProposal, intent, estimate, pickup }
-}
-
-function isP1ActionPhase(phase: OnboardingPlaybookPhase): boolean {
-  return phase.id === 'P1' && (phase.kind === 'recon' || phase.kind === 'intake')
 }
 
 function renderP1Pickup(input: { readonly recon: ReconPassResult; readonly intent: IntentJson; readonly estimate: EstimateJson }): string {

@@ -1,7 +1,5 @@
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { dirname, join, relative, sep } from 'node:path'
-import type { PlaybookGateState, PlaybookPhaseAction } from './executor.js'
-import type { OnboardingPlaybookPhase } from './loader.js'
 import type { P5ArchitectureNote, P5CandidatePriority, P5DraftObjective, P5SynthesisPayload } from './p5-synthesis.js'
 import { readP6Synthesis } from './p6-input.js'
 import { renderP6RatificationMarkdown, renderP6RatificationRecordMarkdown } from './p6-render.js'
@@ -59,13 +57,6 @@ export interface ApplyP6GovernanceResult {
 const p6Dir = (runDir: string): string => join(runDir, 'playbook', 'P6')
 const proposedCocoderDir = (runDir: string): string => join(runDir, 'playbook', 'P5', 'proposed-cocoder')
 
-export function createPlaybookP6PhaseAction(input: RunPlaybookP6ActionInput): PlaybookPhaseAction {
-  return async ({ phase }) => {
-    if (!isP6PresentPhase(phase)) return
-    await runPlaybookP6Action(input)
-  }
-}
-
 export async function runPlaybookP6Action(input: RunPlaybookP6ActionInput): Promise<PlaybookP6Artifacts> {
   void input.repoDir
   const synthesis = await readP6Synthesis(input.runDir)
@@ -121,11 +112,6 @@ export async function applyP6Governance(input: ApplyP6GovernanceInput): Promise<
   }
 }
 
-export function approvalFromP6Gate(gate: PlaybookGateState | null): P6FounderApproval | null {
-  if (gate?.phaseId !== 'P6' || gate.approvedAt === null || gate.approvedBy === null) return null
-  return { approvedBy: gate.approvedBy, note: gate.note }
-}
-
 function ratificationPackageFromSynthesis(synthesis: P5SynthesisPayload): P6RatificationPackage {
   return {
     version: 1,
@@ -161,10 +147,6 @@ function isPriorityMarkdown(path: string): boolean {
 
 function materializePriority(content: string): string {
   return content.replace(/^status:\s*future\s*\n/im, '')
-}
-
-function isP6PresentPhase(phase: OnboardingPlaybookPhase): boolean {
-  return phase.id === 'P6' && phase.kind === 'ratify'
 }
 
 async function writeJson(path: string, payload: unknown): Promise<void> {

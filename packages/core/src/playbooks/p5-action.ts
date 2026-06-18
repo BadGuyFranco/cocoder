@@ -1,7 +1,5 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { PlaybookGateState, PlaybookPhaseAction } from './executor.js'
-import type { OnboardingPlaybookPhase } from './loader.js'
 import { readP5InputArtifacts } from './p5-input.js'
 import { renderP5ArchitectureNotesMarkdown, renderP5PriorityMarkdown, renderP5SynthesisMarkdown } from './p5-render.js'
 import { synthesizeP5Governance, type P5FounderCheckpoint, type P5SynthesisPayload } from './p5-synthesis.js'
@@ -25,13 +23,6 @@ export interface PlaybookP5Artifacts {
 
 const p5Dir = (runDir: string): string => join(runDir, 'playbook', 'P5')
 const proposedCocoderDir = (runDir: string): string => join(p5Dir(runDir), 'proposed-cocoder')
-
-export function createPlaybookP5PhaseAction(input: RunPlaybookP5ActionInput): PlaybookPhaseAction {
-  return async ({ phase, state }) => {
-    if (!isP5ActionPhase(phase)) return
-    await runPlaybookP5Action(input, founderCheckpointFromGate(state.gate))
-  }
-}
 
 export async function runPlaybookP5Action(input: RunPlaybookP5ActionInput, founderCheckpoint: P5FounderCheckpoint | null = null): Promise<PlaybookP5Artifacts> {
   void input.repoDir
@@ -66,11 +57,6 @@ export async function runPlaybookP5Action(input: RunPlaybookP5ActionInput, found
   return { synthesis, synthesisMarkdown }
 }
 
-function founderCheckpointFromGate(gate: PlaybookGateState | null): P5FounderCheckpoint | null {
-  if (gate?.phaseId !== 'P4' || gate.approvedAt === null) return null
-  return { approvedBy: gate.approvedBy, note: gate.note }
-}
-
 function renderPriorityIndex(synthesis: P5SynthesisPayload): string {
   return [
     '# Candidate Future Priorities',
@@ -80,10 +66,6 @@ function renderPriorityIndex(synthesis: P5SynthesisPayload): string {
       : synthesis.candidatePriorities.map((priority) => `- [${priority.id}](./${priority.id}.md) - ${priority.title}`)),
     '',
   ].join('\n')
-}
-
-function isP5ActionPhase(phase: OnboardingPlaybookPhase): boolean {
-  return phase.id === 'P5' && phase.kind === 'synthesize'
 }
 
 async function writeJson(path: string, payload: unknown): Promise<void> {

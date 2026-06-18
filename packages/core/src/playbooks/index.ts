@@ -7,21 +7,6 @@ export {
   type PlaybookPhaseKind,
 } from './loader.js'
 export {
-  loadPlaybookExecutor,
-  readPlaybookExecutorState,
-  resumePlaybookExecutor,
-  startPlaybookExecutor,
-  type FounderApproval,
-  type LoadedPlaybookExecutor,
-  type PlaybookExecutorDeps,
-  type PlaybookExecutorResult,
-  type PlaybookExecutorState,
-  type PlaybookExecutorStatus,
-  type PlaybookGateState,
-  type PlaybookPhaseAction,
-  type PlaybookPhaseActionInput,
-} from './executor.js'
-export {
   inventoryRepo,
   type ExtensionCount,
   type LocGroup,
@@ -70,7 +55,6 @@ export {
   type SubsystemSizeSignals,
 } from './estimate.js'
 export {
-  createPlaybookPhaseAction,
   runPlaybookP1Action,
   type PlaybookP1AgentPurpose,
   type PlaybookP1AgentTurn,
@@ -79,14 +63,12 @@ export {
   type RunPlaybookP1ActionInput,
 } from './p1-action.js'
 export {
-  createPlaybookP2PhaseAction,
   runPlaybookP2Action,
   type PlaybookFanoutResultEvent,
   type PlaybookP2Artifacts,
   type RunPlaybookP2ActionInput,
 } from './p2-action.js'
 export {
-  createPlaybookP3PhaseAction,
   runPlaybookP3Action,
   type P3CapReason,
   type P3CapStatus,
@@ -102,14 +84,12 @@ export {
   type RunPlaybookP3ActionInput,
 } from './p3-action.js'
 export {
-  createPlaybookP4PhaseAction,
   runPlaybookP4Action,
   type PlaybookFounderQuestionsResultEvent,
   type PlaybookP4Artifacts,
   type RunPlaybookP4ActionInput,
 } from './p4-action.js'
 export {
-  createPlaybookP5PhaseAction,
   runPlaybookP5Action,
   type PlaybookP5Artifacts,
   type PlaybookSynthesisResultEvent,
@@ -117,8 +97,6 @@ export {
 } from './p5-action.js'
 export {
   applyP6Governance,
-  approvalFromP6Gate,
-  createPlaybookP6PhaseAction,
   runPlaybookP6Action,
   type ApplyP6GovernanceInput,
   type ApplyP6GovernanceResult,

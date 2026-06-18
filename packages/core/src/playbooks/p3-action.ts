@@ -3,8 +3,6 @@ import { join } from 'node:path'
 import type { Assignments } from '../personas/index.js'
 import type { Play } from '../plays/index.js'
 import { P3_CAPS } from './estimate.js'
-import type { PlaybookPhaseAction } from './executor.js'
-import type { OnboardingPlaybookPhase } from './loader.js'
 import { parseDeepReadIterationResult, type DeepReadAssignment, type DeepReadIterationResult, type FindingConfidence, type FindingSeverity, type SourcePairComparison } from './p2-fanout.js'
 import { resolveDeepReadAssignments, type DeepReadDispatch, type ResolveTopTier } from './p2-dispatch.js'
 import { buildRound } from './p3-cross-check.js'
@@ -106,13 +104,6 @@ export interface P3ConvergencePayload {
 
 const p3Dir = (runDir: string): string => join(runDir, 'playbook', 'P3')
 const maxWallClockMs = P3_CAPS.maxMinutes * 60 * 1000
-
-export function createPlaybookP3PhaseAction(input: RunPlaybookP3ActionInput): PlaybookPhaseAction {
-  return async ({ phase }) => {
-    if (!isP3ActionPhase(phase)) return
-    await runPlaybookP3Action(input)
-  }
-}
 
 export async function runPlaybookP3Action(input: RunPlaybookP3ActionInput): Promise<PlaybookP3Artifacts> {
   const { subsystems, allocation, p2Records } = await readP3InputArtifacts(input.runDir)
@@ -233,10 +224,6 @@ function capStatus(reasons: readonly P3CapReason[], tokenCap: number): P3CapStat
 
 function allClausesPass(clauses: P3PredicateClauses): boolean {
   return clauses.noNewContradictionOrDisagreement && clauses.noNewCoverageGap && clauses.priorItemsResolvedOrCarried && clauses.p1SurfaceRepresented
-}
-
-function isP3ActionPhase(phase: OnboardingPlaybookPhase): boolean {
-  return phase.id === 'P3' && phase.kind === 'cross-check'
 }
 
 async function writeJson(path: string, payload: unknown): Promise<void> {

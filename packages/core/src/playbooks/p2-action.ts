@@ -2,8 +2,6 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Assignments } from '../personas/index.js'
 import type { Play } from '../plays/index.js'
-import type { OnboardingPlaybookPhase } from './loader.js'
-import type { PlaybookPhaseAction } from './executor.js'
 import type { P2Allocation } from './estimate.js'
 import { combineSourcePair, runDeepReadSource, type DeepReadCapStatus, type DeepReadSource, type SourcePairConvergencePayload } from './p2-fanout.js'
 import { createDeepReadTurn, resolveDeepReadAssignments, type DeepReadDispatch, type ResolveTopTier } from './p2-dispatch.js'
@@ -37,13 +35,6 @@ export interface PlaybookP2Artifacts {
 
 const p1Dir = (runDir: string): string => join(runDir, 'playbook', 'P1')
 const p2Dir = (runDir: string): string => join(runDir, 'playbook', 'P2')
-
-export function createPlaybookP2PhaseAction(input: RunPlaybookP2ActionInput): PlaybookPhaseAction {
-  return async ({ phase }) => {
-    if (!isP2ActionPhase(phase)) return
-    await runPlaybookP2Action(input)
-  }
-}
 
 export async function runPlaybookP2Action(input: RunPlaybookP2ActionInput): Promise<PlaybookP2Artifacts> {
   const subsystems = parseSubsystemsJsonPayload(await readJson(join(p1Dir(input.runDir), 'subsystems.json')))
@@ -106,10 +97,6 @@ async function runSubsystemDeepRead(input: RunPlaybookP2ActionInput, subsystem: 
 
 function emitFanout(input: RunPlaybookP2ActionInput, source: DeepReadSource, subsystemId: string, iteration: number, understood: boolean, capStatus: DeepReadCapStatus): void {
   input.onFanoutResult?.({ subsystemId, source, iteration, understood, capStatus })
-}
-
-function isP2ActionPhase(phase: OnboardingPlaybookPhase): boolean {
-  return phase.id === 'P2' && phase.kind === 'deep-read-fanout'
 }
 
 async function readJson(path: string): Promise<unknown> {

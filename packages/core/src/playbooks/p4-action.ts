@@ -1,7 +1,5 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { PlaybookPhaseAction } from './executor.js'
-import type { OnboardingPlaybookPhase } from './loader.js'
 import { readP4InputArtifacts } from './p4-input.js'
 import { buildFounderQuestions, type P4QuestionsPayload } from './p4-questions.js'
 import { renderFounderQuestionsMarkdown } from './p4-render.js'
@@ -25,13 +23,6 @@ export interface PlaybookP4Artifacts {
 
 const p4Dir = (runDir: string): string => join(runDir, 'playbook', 'P4')
 
-export function createPlaybookP4PhaseAction(input: RunPlaybookP4ActionInput): PlaybookPhaseAction {
-  return async ({ phase }) => {
-    if (!isP4ActionPhase(phase)) return
-    await runPlaybookP4Action(input)
-  }
-}
-
 export async function runPlaybookP4Action(input: RunPlaybookP4ActionInput): Promise<PlaybookP4Artifacts> {
   void input.repoDir
   const artifacts = await readP4InputArtifacts(input.runDir)
@@ -48,10 +39,6 @@ export async function runPlaybookP4Action(input: RunPlaybookP4ActionInput): Prom
     futurePriorityCount: questions.futurePriorities.length,
   })
   return { questions, questionsMarkdown }
-}
-
-function isP4ActionPhase(phase: OnboardingPlaybookPhase): boolean {
-  return phase.id === 'P4' && phase.kind === 'founder-question'
 }
 
 async function writeJson(path: string, payload: unknown): Promise<void> {
