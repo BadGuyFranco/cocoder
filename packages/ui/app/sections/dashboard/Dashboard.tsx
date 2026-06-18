@@ -189,7 +189,7 @@ function RunsTab({ runs, onSelectRun, priorities }: { runs: Run[]; onSelectRun: 
   )
 }
 
-export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, selectedRunId, setSelectedRunId, onReorder, onLaunch, onAdhoc, onAddPriority, onAddTicket, onLaunchTicket, onSend, onDecision, onRunAction, ozTyping, live = false, workspaceConfigured, chatPrefill = null, onChatPrefillConsumed, workspaces, activeId, loadedIds, runsMap, onSelectWs, onCloseWs, onLoadWs, onCreateWs, theme = 'dark', setTheme = () => undefined, conn = 'fixtures', onRestartOz }: {
+export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, selectedRunId, setSelectedRunId, onReorder, onLaunch, onAdhoc, onAddPriority, onAddTicket, onLaunchTicket, onSend, onDecision, onRunAction, ozTyping, live = false, workspaceConfigured, chatPrefill = null, onChatPrefillConsumed, workspaces, activeId, loadedIds, runsMap, onSelectWs, onCloseWs, onLoadWs, onCreateWs, theme = 'dark', setTheme = () => undefined, conn = 'fixtures', onRestartOz, chatTarget = workspace.id, chatTargets, onChatTargetChange = () => undefined, chatTargetName = workspace.name, chatRuns }: {
   workspace: Workspace; priorities: Priority[]; tickets: Ticket[]; runs: Run[]; ozMessages: ChatMessage[]
   workspaceConfigured?: boolean
   selectedRunId: string | null; setSelectedRunId: (id: string | null) => void
@@ -201,6 +201,8 @@ export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, se
   workspaces?: Workspace[]; activeId?: string; loadedIds?: string[]; runsMap?: Record<string, Run[]>
   onSelectWs?: (id: string) => void; onCloseWs?: (id: string) => void; onLoadWs?: (id: string) => void; onCreateWs?: () => void
   theme?: ShellTheme; setTheme?: (fn: (t: ShellTheme) => ShellTheme) => void; conn?: string; onRestartOz?: () => void
+  chatTarget?: string | null; chatTargets?: Workspace[]; onChatTargetChange?: (target: string | null) => void
+  chatTargetName?: string; chatRuns?: Run[]
 }) {
   const [prioWidth, setPrioWidth] = useState(PRIO_DEFAULT)
   const [activeTab, setActiveTab] = useState<DashboardTab>('priorities')
@@ -245,7 +247,7 @@ export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, se
         </div>
       </div>
       <ResizeHandle width={prioWidth} onResizeTo={onResizeTo} />
-      <OzChatPanel messages={ozMessages} runs={runs} workspaceName={workspace.name} onSend={onSend} onSelectRun={setSelectedRunId} onDecision={onDecision} ozTyping={ozTyping} live={live} prefill={chatPrefill} onPrefillConsumed={onChatPrefillConsumed} theme={theme} setTheme={setTheme} conn={conn} onRestartOz={onRestartOz} />
+      <OzChatPanel messages={ozMessages} runs={chatRuns ?? runs} workspaceName={chatTargetName} onSend={onSend} onSelectRun={setSelectedRunId} onDecision={onDecision} ozTyping={ozTyping} live={live} prefill={chatPrefill} onPrefillConsumed={onChatPrefillConsumed} theme={theme} setTheme={setTheme} conn={conn} onRestartOz={onRestartOz} chatTarget={chatTarget} chatTargets={chatTargets ?? [workspace]} onChatTargetChange={onChatTargetChange} />
       {selectedRun && <RunDetail run={selectedRun} parentPriority={selectedRun.priorityId ? priorities.find((p) => p.id === selectedRun.priorityId) || null : null} parentPriorityIndex={selectedRun.priorityId ? priorities.findIndex((p) => p.id === selectedRun.priorityId) : -1} onClose={() => setSelectedRunId(null)} onAction={onRunAction} />}
     </div>
   )

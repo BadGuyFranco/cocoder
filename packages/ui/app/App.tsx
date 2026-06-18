@@ -21,6 +21,7 @@ import type { OzEventHint, PersonaAssignment } from '../electron/ipc-contract.ts
 const USER = seed.workspaces.length ? { initials: 'AF', name: 'Anthony Franco', role: 'founder' } : { initials: 'AF', name: 'Anthony Franco', role: 'founder' }
 const ROUTE_TITLE: Record<Route, string> = { dashboard: 'Dashboard', workspaces: 'Workspaces', clis: 'CLIs', personas: 'Personas', plays: 'Skills (Plays)', settings: 'Settings' }
 const ACTIVE_DETAIL_FETCH_LIMIT = 6
+const GLOBAL_CHAT_KEY = ''
 
 const seedSettings = (): Settings => {
   // The prototype settings nest extra keys; map onto our typed shape, falling back to defaults.
@@ -67,6 +68,7 @@ export function App() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>(seed.workspaces)
   const [activeId, setActiveId] = useState(workspaces[0]?.id ?? '')
   const [loadedIds, setLoadedIds] = useState<string[]>(workspaces[0] ? [workspaces[0].id] : [])
+  const [chatTarget, setChatTarget] = useState<string | null>(workspaces[0]?.id ?? null)
 
   const seedPriorities = (seed as unknown as { priorities?: Record<string, Priority[]> }).priorities ?? {}
   const seedTickets = (seed as unknown as { tickets?: Record<string, Ticket[]> }).tickets ?? {}
@@ -109,6 +111,10 @@ export function App() {
   useEffect(() => { document.documentElement.setAttribute('data-theme', theme) }, [theme])
   useEffect(() => { setTheme(settings.preferences.theme) }, [settings.preferences.theme])
   useEffect(() => { activeIdRef.current = activeId }, [activeId])
+  useEffect(() => { setChatTarget(activeId || null) }, [activeId])
+  useEffect(() => {
+    if (chatTarget && !loadedIds.includes(chatTarget)) setChatTarget(activeId || null)
+  }, [activeId, chatTarget, loadedIds])
   useEffect(() => { selectedRunIdRef.current = selectedRunId }, [selectedRunId])
   useEffect(() => { runsByWsRef.current = runsByWs }, [runsByWs])
 
@@ -247,18 +253,24 @@ export function App() {
   const priorities = prioritiesByWs[activeId] ?? []
   const tickets = ticketsByWs[activeId] ?? []
   const runs = useMemo(() => runsByWs[activeId] ?? [], [runsByWs, activeId])
-  const messages = (msgsByWs[activeId] && msgsByWs[activeId].length ? msgsByWs[activeId] : [greeting(workspace?.name ?? '')])
+  const chatKey = chatTarget ?? GLOBAL_CHAT_KEY
+  const chatWorkspace = chatTarget ? workspaces.find((w) => w.id === chatTarget) ?? null : null
+  const chatTargetName = chatTarget ? chatWorkspace?.name ?? chatTarget : 'Global Oz'
+  const chatRuns = chatTarget ? runsByWs[chatTarget] ?? [] : []
+  const loadedWorkspaces = loadedIds.map((id) => workspaces.find((w) => w.id === id)).filter(Boolean) as Workspace[]
+  const messages = (msgsByWs[chatKey] && msgsByWs[chatKey].length ? msgsByWs[chatKey] : [greeting(chatTargetName)])
 
   function selectWs(id: string) { setActiveId(id); setSelectedRunId(null) }
   function loadWs(id: string) { setLoadedIds((ids) => (ids.includes(id) ? ids : [...ids, id])); selectWs(id) }
   function closeWs(id: string) { setLoadedIds((ids) => ids.filter((x) => x !== id)); if (activeId === id) { const next = loadedIds.find((x) => x !== id); if (next) selectWs(next) } }
 
-  function pushMsg(m: ChatMessage) { setMsgsByWs((cur) => ({ ...cur, [activeId]: [...(cur[activeId] ?? []), m] })) }
+  function pushMsg(targetKey: string, m: ChatMessage) { setMsgsByWs((cur) => ({ ...cur, [targetKey]: [...(cur[targetKey] ?? []), m] })) }
   function onSend(text: string) {
-    pushMsg({ id: `u${Date.now()}`, role: 'user', time: 'now', body: text })
+    const targetKey = chatTarget ?? GLOBAL_CHAT_KEY
+    pushMsg(targetKey, { id: `u${Date.now()}`, role: 'user', time: 'now', body: text })
     setOzTyping(true)
     if (!live) {
-      setTimeout(() => { setOzTyping(false); pushMsg(ozReply(text)) }, 650)
+      setTimeout(() => { setOzTyping(false); pushMsg(targetKey, ozReply(text)) }, 650)
       return
     }
     const oz = ozApi()
@@ -269,8 +281,8 @@ export function App() {
     }
     void (async () => {
       try {
-        pushMsg(await sendOzMessage(oz, activeId, text))
-        await refreshActiveWs()
+        pushMsg(targetKey, await sendOzMessage(oz, targetKey, text))
+        if (chatTarget) await refreshWorkspace(chatTarget)
       } catch {
         notify('err', 'Oz chat failed.')
       } finally {
@@ -615,6 +627,8 @@ export function App() {
               workspaces={workspaces} activeId={activeId} loadedIds={loadedIds} runsMap={runsByWs}
               onSelectWs={selectWs} onCloseWs={closeWs} onLoadWs={loadWs} onCreateWs={() => setNewWsOpen(true)}
               theme={theme} setTheme={setTheme} conn={conn} onRestartOz={() => void handleRestartOz()}
+              chatTarget={chatTarget} chatTargets={loadedWorkspaces} onChatTargetChange={setChatTarget}
+              chatTargetName={chatTargetName} chatRuns={chatRuns}
             />
           )}
           {route === 'workspaces' && (

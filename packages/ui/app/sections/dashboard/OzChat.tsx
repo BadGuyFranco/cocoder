@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon, Button, StatusChip } from '../../ui/primitives.tsx'
 import { OzGlobalControls, type ShellTheme } from '../../ui/ShellControls.tsx'
-import type { ChatMessage, Run } from '../../model.ts'
+import type { ChatMessage, Run, Workspace } from '../../model.ts'
 
 function ChatMessageView({ msg, runs, onSelectRun, onDecision }: { msg: ChatMessage; runs: Run[]; onSelectRun: (id: string) => void; onDecision: (choice: string) => void }) {
   const isOz = msg.role === 'oz', isUser = msg.role === 'user'
@@ -55,11 +55,29 @@ const QUICK_PROMPTS = [
   { label: 'Reorder priorities', prompt: 'Promote #4 to the top.' },
 ]
 
-export function OzChatPanel({ messages, runs, workspaceName, onSend, onSelectRun, onDecision, ozTyping, prefill = null, onPrefillConsumed, theme = 'dark', setTheme = () => undefined, conn = 'fixtures', onRestartOz }: {
+function ChatTargetPicker({ targets, value, onChange }: { targets: Workspace[]; value: string | null; onChange: (target: string | null) => void }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, minWidth: 0 }}>
+      <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-text-muted)', textTransform: 'uppercase', letterSpacing: 0.8, flexShrink: 0 }}>Target</span>
+      <select
+        aria-label="Oz chat target"
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value ? e.target.value : null)}
+        style={{ flex: '0 1 280px', minWidth: 180, maxWidth: '100%', background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', color: 'var(--cb-text)', padding: '6px 9px', fontFamily: 'var(--cb-font-body)', fontSize: 12.5 }}
+      >
+        <option value="">Global Oz · no workspace</option>
+        {targets.map((target) => <option key={target.id} value={target.id}>{target.name}</option>)}
+      </select>
+    </div>
+  )
+}
+
+export function OzChatPanel({ messages, runs, workspaceName, onSend, onSelectRun, onDecision, ozTyping, prefill = null, onPrefillConsumed, theme = 'dark', setTheme = () => undefined, conn = 'fixtures', onRestartOz, chatTarget = null, chatTargets = [], onChatTargetChange = () => undefined }: {
   messages: ChatMessage[]; runs: Run[]; workspaceName: string; onSend: (text: string) => void
   onSelectRun: (id: string) => void; onDecision: (choice: string) => void; ozTyping: boolean; live?: boolean
   prefill?: string | null; onPrefillConsumed?: () => void
   theme?: ShellTheme; setTheme?: (fn: (t: ShellTheme) => ShellTheme) => void; conn?: string; onRestartOz?: () => void
+  chatTarget?: string | null; chatTargets?: Workspace[]; onChatTargetChange?: (target: string | null) => void
 }) {
   const [text, setText] = useState('')
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -106,6 +124,7 @@ export function OzChatPanel({ messages, runs, workspaceName, onSend, onSelectRun
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--cb-accent-15)'; e.currentTarget.style.color = 'var(--cb-accent)' }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--cb-border)'; e.currentTarget.style.color = 'var(--cb-text-secondary)' }}>{qp.label}</button>
           ))}
         </div>
+        <ChatTargetPicker targets={chatTargets} value={chatTarget} onChange={onChatTargetChange} />
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', padding: '10px 12px' }}>
           <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 12, color: 'var(--cb-accent)', userSelect: 'none' }}>›</span>
           <textarea ref={inputRef} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }} placeholder="Tell Oz what to do — launch a run, reorder, ask for status…" rows={1} aria-label="Message Oz" style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', color: 'var(--cb-text)', resize: 'none', fontFamily: 'var(--cb-font-body)', fontSize: 13.5, lineHeight: 1.5, maxHeight: 120 }} />

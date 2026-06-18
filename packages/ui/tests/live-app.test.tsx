@@ -75,6 +75,7 @@ interface TicketCreateCall { workspaceId: string; ticket: { title: string; type?
 interface ReorderCall { workspaceId: string; order: readonly string[] }
 interface WorkspaceUpdateCall { workspaceId: string; folders: unknown }
 interface WorkspaceCreateCall { workspaceId: string; folders: unknown }
+interface ChatCall { workspaceId: string; text: string }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mockOz(opts: {
   getPaths?: string[]
@@ -86,12 +87,14 @@ function mockOz(opts: {
   reorders?: ReorderCall[]
   workspaceUpdates?: WorkspaceUpdateCall[]
   workspaceCreates?: WorkspaceCreateCall[]
+  chatSends?: ChatCall[]
   postResult?: any
   putResult?: any
   createResult?: any
   ticketCreateResult?: any
   workspaceUpdateResult?: any
   workspaceCreateResult?: any
+  chatReply?: (workspaceId: string, text: string) => { role: 'oz'; text: string; at: number }
   priorities?: { priorities: DPriority[] }
   personasResult?: { ok: false; status: number; error: string }
   personasResponse?: PersonasResponse
@@ -139,7 +142,10 @@ function mockOz(opts: {
       opts.ticketCreates?.push({ workspaceId: _workspaceId, ticket }),
       opts.ticketCreateResult ?? { ok: true, status: 201, data: { id: '0001', title: ticket.title, type: ticket.type ?? 'task', status: 'Open', priority: ticket.priority ?? 'none', owner: 'founder-session', created: '2026-06-17', state: 'open', body: ticket.description ?? '' } as DTicket }
     ),
-    chatSend: async () => ({ role: 'oz', text: '', at: 0 }),
+    chatSend: async (workspaceId: string, text: string) => {
+      opts.chatSends?.push({ workspaceId, text })
+      return opts.chatReply ? opts.chatReply(workspaceId, text) : { role: 'oz' as const, text: '', at: 0 }
+    },
     prioritiesReorder: async (workspaceId: string, order: readonly string[]) => {
       opts.reorders?.push({ workspaceId, order })
       return order
@@ -358,6 +364,39 @@ describe('Oz renderer — live daemon path', () => {
     await waitFor(() => expect(box.value).toBe('adhoc '))
     await waitFor(() => expect(document.activeElement).toBe(box))
     expect(posts.find((p) => p.path === '/runs')).toBeUndefined()
+  })
+
+  it('Oz chat target picker defaults to the active workspace and can send to Global Oz', async () => {
+    const chatSends: ChatCall[] = []
+    setOz(mockOz({
+      chatSends,
+      chatReply: (workspaceId) => ({
+        role: 'oz',
+        text: workspaceId ? `Workspace reply for ${workspaceId}` : 'Pick a workspace first, then use launch <priorityId>, adhoc <task>, show <runId>, stop <runId>, teardown <runId>, or status.',
+        at: chatSends.length + 1,
+      }),
+    }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    const target = screen.getByLabelText('Oz chat target') as HTMLSelectElement
+    expect(screen.getByRole('option', { name: 'Global Oz · no workspace' })).toBeDefined()
+    expect(screen.getByRole('option', { name: 'CoCoder (dogfood)' })).toBeDefined()
+    expect(target.value).toBe('cocoder')
+
+    const box = screen.getByLabelText('Message Oz') as HTMLTextAreaElement
+    fireEvent.change(box, { target: { value: 'status please' } })
+    fireEvent.keyDown(box, { key: 'Enter' })
+    await waitFor(() => expect(chatSends).toHaveLength(1))
+    expect(chatSends[0]).toEqual({ workspaceId: 'cocoder', text: 'status please' })
+
+    fireEvent.change(target, { target: { value: '' } })
+    await waitFor(() => expect(screen.getAllByText('Global Oz').length).toBeGreaterThan(0))
+    fireEvent.change(box, { target: { value: 'launch demo' } })
+    fireEvent.keyDown(box, { key: 'Enter' })
+    await waitFor(() => expect(chatSends).toHaveLength(2))
+    expect(chatSends[1]).toEqual({ workspaceId: '', text: 'launch demo' })
+    await waitFor(() => expect(screen.getByText(/Pick a workspace first/)).toBeDefined())
   })
 
   it('a 409 from /runs surfaces an honest "already in flight" banner (not an error)', async () => {
