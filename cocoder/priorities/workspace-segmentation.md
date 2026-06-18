@@ -4,52 +4,66 @@ title: "Workspace segmentation — Oz watches across workspaces while work stays
 ---
 
 ## Objective
-CoCoder makes the workspace boundary explicit and durable: **Oz is the cross-workspace watcher and
-controller**, while each workspace owns its own priorities, tickets, durable session/run history,
-numbering, and terminal labels. The dashboard must visually communicate that split, the orchestration
-machinery must not assume a single active workspace, and a managed repo must remain portable to another
-machine with CoCoder installed. **Verified when** the following are proven in the running app and/or
-targeted tests, with an owner map for every workspace-scoped surface touched:
+CoCoder makes the workspace boundary explicit, portable, and concurrency-safe. **Oz is the
+cross-workspace watcher/controller**; each workspace owns its own priorities, tickets, durable
+run/session history, counters, and launch context. The dashboard must visually communicate that split,
+and the machinery must support sessions in multiple workspaces without assuming one active workspace.
 
-1. **Oz is visually separate from the workspace panel.** The dashboard no longer reads as if Oz lives
-   inside one workspace. The workspace switcher/add control belongs to the workspace panel; that panel
-   contains workspace-local sub-tabs for **Priorities**, **Tickets**, and **Runs/Sessions**. Search is
-   either removed for now or moved inside the workspace panel. The workspace panel is widened by roughly
-   50%. The Oz terminal panel matches its height, reads as a separate watcher/control surface, and owns
-   controls such as refresh, live status, notifications, and theme. Oz chat has an explicit workspace
-   target control above the chat input, including a **no workspace / global Oz** state; commands that
-   require a workspace either use the selected workspace or stop with a clear target-needed response.
-2. **Workspace-local state is actually local.** Priorities, tickets, sessions/runs, and their displayed
-   numbers are scoped to a workspace rather than CoCoder globally. A workspace can have its own ticket
-   numbers, priority ordering, run/session list, and launch history without leaking another workspace's
-   identifiers or state.
-3. **Durable history is portable with the repo.** The workspace's durable run/session record lives under
-   that repo's `cocoder/` governance area (exact path and format decided by the owner map), so moving the
-   repo to a new machine with CoCoder installed preserves the history needed to understand prior work.
-   Machine-local live state such as process ids, sockets, cmux surface refs, transient status feeds, and
-   caches remains in the install's `local/` zone and is never written to the repo.
-4. **Concurrent workspace sessions are supported by design.** The architecture and implementation allow
-   sessions in two different workspaces at the same time because they operate in different codebases.
-   Any shared local storage, run IDs, status feeds, session-host names, locks, or daemon routes are
-   audited and fixed so concurrent runs cannot collide.
-5. **Terminal/session labels include the workspace.** Cmux/session labels include the workspace identity
-   plus the launched target (priority/ticket/playbook/ad-hoc) and run/session id, so a human can tell at
-   a glance which workspace and work item a terminal belongs to.
-6. **No parallel workspace contract is introduced.** The final implementation names the source of truth
-   for workspace identity, workspace-local numbering/state, portable run/session records, dashboard data
-   loading, live run state, and session-host labels; consumers are aligned to those owners instead of
-   adding one-off UI or prompt assumptions.
+**Verified when** the running app and targeted tests prove all of the following, with an owner map
+completed before implementation:
 
-This priority intentionally shares visual territory with `oz-dashboard-ux` and `tickets-review`, but it
-owns the broader workspace/Oz boundary. Existing card/modal/ticket behaviors stay with those priorities;
-this priority only changes them where necessary to make the workspace segmentation coherent.
+1. **Oz is visually separate from workspace work.** The workspace switcher/add controls belong to the
+   workspace panel; that panel contains workspace-local tabs for **Priorities**, **Tickets**, and
+   **Runs/Sessions**. Search is removed for now or moved inside the workspace panel. The workspace panel
+   is roughly 50% wider. The Oz terminal panel matches its height and visibly owns Oz/global controls:
+   refresh, live status, notifications, and theme.
+2. **Oz chat has an explicit target.** A workspace picker sits above the chat input and includes a
+   **no workspace / global Oz** state. Commands that need a workspace use the selected workspace or stop
+   with a clear target-needed response.
+3. **Workspace state is actually workspace-local.** Priorities, tickets, priority order, ticket numbers,
+   run/session display numbers, run/session lists, and launch history are scoped to the workspace and do
+   not leak across workspaces.
+4. **Durable history travels with the repo.** A managed repo can move to a new machine with CoCoder
+   installed and still show the workspace history needed to understand prior work. Durable run/session
+   records and workspace-history counters live under that repo's tracked `cocoder/` tree. The exact path
+   and format are decided by the owner map.
+5. **`local/cocoder.db` is classified, not trusted blindly.** The SQLite DB remains valid for
+   machine-local coordination and indexing, but it is not the sole owner of portable workspace history.
+   Audit every table/field touched by runs, sessions, counters, events, and workspace routing. Classify
+   each as either **machine-local operational state** or **workspace-portable history**. Portable history
+   gets a tracked file owner under the workspace `cocoder/`; live state such as process ids, sockets,
+   cmux surface refs, transient status feeds, stop controllers, and caches stays in the install's
+   `local/` zone.
+6. **Concurrent workspace sessions are supported by construction.** Sessions in two different
+   workspaces can run at the same time because they operate in different codebases. Shared local
+   resources, locks, run IDs, run directories, status feeds, event streams, daemon routes, and git
+   working-tree guards are audited and fixed so different workspaces cannot collide.
+7. **Terminal/session labels include the workspace.** Cmux/session labels include workspace identity,
+   launched target type (`priority`, `ticket`, `playbook`, or `ad-hoc`), target slug/id, and run/session
+   identity, so a human can tell at a glance which workspace and work item a terminal belongs to.
+8. **No parallel workspace contract is introduced.** The final implementation names the source of truth
+   for workspace identity, workspace-local counters, portable run/session records, dashboard data
+   loading, live run state, and session-host labels; every consumer is aligned to those owners.
 
-## Founder clarifications
+## Fixed Decisions
 
-- Internal run IDs may stay globally unique if that keeps teardown/deep links/storage simple; workspace
-  local numbering can be a display ordinal or durable workspace ledger entry. Do not sacrifice reliable
-  addressing just to make the internal ID pretty.
-- Priority/ticket/session counters that represent workspace history should be owned by the workspace's
-  `cocoder/` tree, not by CoCoder globally.
-- The Oz controls listed above belong visually inside the Oz terminal panel because they are Oz/global
-  controls, not workspace-tab controls.
+- Internal run IDs may remain globally unique if that keeps teardown, deep links, run artifacts, and
+  live coordination reliable. Workspace-local numbering can be a display ordinal or durable workspace
+  ledger entry; do not sacrifice reliable addressing to make the internal ID pretty.
+- Workspace-history counters belong to the workspace's tracked `cocoder/` tree, not to CoCoder globally.
+  This includes ticket numbering and whatever session/run numbering is shown as workspace-local.
+- The install has one shared `local/` zone. Do not create per-workspace machine-local folders inside a
+  repo. Namespace shared local state by workspace where needed, and keep portable history in the repo.
+- Visual ownership matters: refresh/live/notifications/theme live inside the Oz terminal panel because
+  they are Oz/global controls, not workspace-tab controls.
+
+## Required First Step
+
+Before changing UI or storage, produce the owner map. It must name the owner and consumers for:
+workspace identity, workspace selection in chat, priority/ticket reads, ticket numbering, priority
+ordering, run/session durable history, run/session live state, run IDs and display numbers, run
+directories, status feeds, event hints, git locks/dirty-tree guards, and cmux labels.
+
+This priority intentionally overlaps visual territory with `oz-dashboard-ux` and `tickets-review`, but
+it owns the broader workspace/Oz boundary. Existing card/modal/ticket behavior stays with those
+priorities; change those surfaces here only where workspace segmentation requires it.
