@@ -12,6 +12,18 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-18 — **Workspace-segmentation: portable-history WRITE side end-to-end (run_137)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 5 atoms delegated) | **Priority:** [workspace-segmentation](./priorities/workspace-segmentation.md) | **Run:** run_137
+**Outcomes:**
+- **Atom 0 (`cb1fbe2`) — portable file ports:** typed readers/writers for `cocoder/workspace.json`, `cocoder/counters.json`, and per-run `cocoder/runs/<display>-<run-id>/{run.json,sessions,work-items,commits,events}.jsonl` in `packages/core/src/store/portable/`; atomic counter alloc (lock-dir), rebuild-from-max, trailing-newline-safe JSONL.
+- **Atom 1 (`ccbc6d6`) — BACKFILL migration:** idempotent `migrate.ts` exports existing DB runs into portable files with per-workspace display numbering + event redaction; code+tests only (not executed against live repo).
+- **Atom 2 (`1a9a230e`) — run-creation dual-write:** `recordPortableRunCreation()` bootstraps workspace.json, allocates workspace-local display number, writes `run.json='running'` alongside unchanged DB row; portable paths added to committing scopes.
+- **Atom 3 (`71809a52`) — SETTLE projection:** shared `projection.ts` writes terminal `run.json` + four JSONL streams at successful completion as the run's own `run-history:` commit; session display numbers from `counters.json`.
+- **Atom 4 (`b4e85624`) — stop/fail wiring:** same projection on `stopRun` (`stopped`) and `fail` (`failed`, best-effort); pre-run-creation failures commit nothing portable.
+- **Disposition: `continue`** — write side is a verified milestone; read-consumer alignment, concurrency guards, stale-`running` reconciliation, and proof harness remain.
+**Next:** Say **`launch workspace-segmentation`** in Oz — first atom is read-consumer alignment (daemon/UI surface workspace-local display numbers from portable `run.json`; do not redo the write side).
+
 ## 2026-06-18 — **Workspace-segmentation: dashboard Oz/workspace split, chat target picker, cmux labels (run_136)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 3 atoms delegated) | **Priority:** [workspace-segmentation](./priorities/workspace-segmentation.md) | **Run:** run_136
