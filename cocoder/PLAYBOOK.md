@@ -222,22 +222,16 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    the explicit `archive` go-ahead. Playbook moved to `priorities/archive/`. Open follow-ons (do NOT
    reopen this priority): ticket 0006 closed via `headless-adapter-lane` (run_104, archive-candidate) ·
    ticket 0012 (design-ref rebuild guard).
-4. `new-primary-root` — **ACTIVE (run_131, 2026-06-17).** Onboard a primary root via the
-   bootstrap/takeover/drift onboarding Playbooks (ADR-0020 Accepted). **Engine foundation built and
-   live-wired** (run_83 + run_86): loader extension (§7), `scaffoldCocoderZone` + `createWorkspace`
-   wiring (D1 complete), `deep-read` hardened for P3. **Executor design ratified** (run_110 cleared
-   founder gate; addendum A–E + tech-stack approach accepted). **Takeover executor P1→P6 code-complete
-   on fakes** (run_111–131): Atoms F/1/5a/3/4 (run_111–112); run_123 landed the full P1 input layer;
-   run_124–130 landed executor P1→P5; **run_131 landed P6 ratify ACTION** (`c5f272d`) — present beat
-   writes `playbook/P6/ratification.{json,md}`; apply beat materializes staged `proposed-cocoder/**` into
-   `repoDir/cocoder/**` through `runCommitGate` WITH `auditWriteBoundary` (first real apply-commit;
-   poisoned paths REFUSED); launcher composes P1→P6; daemon e2e resumes P6→P7 apply; **Atom 11 runnable
-   proof** (`4a156fe`) — `node scripts/proof-takeover-executor.mjs` (16 checks, exit 0; core 337 + daemon
-   208 green). P7 `prove` is intentionally a no-op in the executor loop (live proof, not a fake atom).
-   **Next (founder decision):** authorize a **live `cocoder-takeover` playbook run against CoPublisher**
-   (Objective (a)) OR relaunch for the **Drift executor sub-build** (Objective (b), unbuilt). Parallel:
-   New-Primary tech-stack-starter template (Atom E non-negotiables pending founder ratification). **Absorbs
-   `workspace-onboarding`.** Phase 5 ("first external repo").
+4. `new-primary-root` — **ACTIVE (run_140, 2026-06-18).** Onboard a primary root (ADR-0020 Accepted,
+   execution model amended by ADR-0026). **Pivot complete (run_140):** standalone phase-executor retired;
+   existing-repo audit reframed as Oscar-driven ordinary priority. **Landed run_140:** owner map
+   (`docs/onboarding-rebuild-ownermap.md`); daemon executor driver + core `executor.ts` deleted; loader
+   discovery surface retired; `onboard-existing.md` authored as the ordinary first-priority template;
+   ADR-0020 §7 amended (scaffold-seeded priorities, not loader discovery). Audit engines (P1–P6 tooling)
+   preserved. **Rebuild ~60% — next atoms:** A3a restore `cocoder/**`-only refuse-boundary on ordinary-run
+   commit gates (gap surfaced — currently unwired); A3b conditional scaffold seeding; A4 one-command proof.
+   Still gated: live external-repo onboarding proof; dogfood Drift (needs its own seeded priority). **Absorbs
+   `workspace-onboarding`.**
 
 **Queued after `new-primary-root` (founder go-ahead 2026-06-16, priority-audit run_106 — in `order.json`):**
 - `hybrid-plays` — deterministic code spine inside a Play (promotes "verify, don't assert — evidence over

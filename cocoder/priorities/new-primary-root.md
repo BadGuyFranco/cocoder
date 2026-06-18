@@ -43,7 +43,7 @@ extension (ADR-0020 §7); the `deep-read` audit Play (the Takeover P2 unit, adve
 deterministic scaffold init op; and a **live Takeover proof on a real external repo** (the Phase-5 entry,
 CoPublisher).
 
-## Build progress — disposition: `continue` (PIVOT 2026-06-17 run_131 — reframe the existing-repo audit off the standalone executor onto an Oscar-driven priority; ADR-gated)
+## Build progress — disposition: `continue` (rebuild ~60% done, run_140 — executor retired; onboard-existing priority authored; trust invariant + scaffold seeding remain)
 
 ## ⚠ ARCHITECTURE PIVOT — founder-directed (run_131, 2026-06-17): the existing-repo audit is NOT a standalone executor
 **Decision (founder):** the existing-repo onboarding audit will **not** ship as the standalone Playbook
@@ -132,19 +132,31 @@ ADR-0026) as part of A2/A3. New Primary + Drift adopt the same seeded-priority m
    `loader.ts` (`loadOnboardingPlaybooks` + phase-table parser + Onboarding* types), the loader re-exports,
    the daemon `onboarding` field (`priority-order.ts` + `routes.ts`), and `playbooks.test.ts` + the
    read-surface onboarding assertions. Skeleton `.md` files left on disk for A2. Build green.
-4. **(A2) Transform the skeleton into an ordinary onboard-existing priority** (run_140 atom 4, in flight) —
-   author `packages/personas/base/priorities/onboard-existing.md` (ordinary-priority Objective + the
-   atom-decomposition Oscar follows: recon/spend → dual-source deep-read → cross-check → founder questions
-   → synthesize → ratify → prove, reusing the engines; `cocoder/**`-only trust promise); delete
-   `base/playbooks/cocoder-takeover.md`; bundled rename of the live `takeover` cross-refs in the README +
-   new-primary docs. ✅ **ADR-0020 §7 amendment recorded** (run_140, this session): the loader-extension
-   discovery surface is superseded by scaffold-seeded onboarding priorities. (`base/priorities/` is NOT
-   auto-surfaced — daemon lists only the workspace's `cocoder/priorities/` — so authoring there is zero
-   behavior change; scaffold seeding is A3.)
-5. **(A3) Wire scaffold seeding** — the scaffold seeds the `onboard-existing` priority into an existing-repo
-   workspace; re-add the `cocoder/**` audit write-boundary application on the p6-apply atom path used by the
-   Oscar-driven flow.
-6. **(A4) New proof of the Oscar-driven flow** (replaces the retired `scripts/proof-takeover-executor.mjs`).
+4. ✅ **(A2) Transform the skeleton into an ordinary onboard-existing priority** (run_140 atom 4,
+   committed `d14bfd3`) — authored `packages/personas/base/priorities/onboard-existing.md` (ordinary-priority
+   Objective + 8-step Oscar decomposition reusing the engines; `cocoder/**`-only trust promise); deleted
+   `base/playbooks/cocoder-takeover.md`; bundled rename of live `takeover` cross-refs in README +
+   new-primary docs. ✅ **ADR-0020 §7 amendment recorded** (run_140 wrap): loader-extension discovery
+   superseded by scaffold-seeded onboarding priorities. (`base/priorities/` is NOT auto-surfaced — daemon
+   lists only the workspace's `cocoder/priorities/` — so authoring there is zero behavior change; scaffold
+   seeding is A3b.)
+5. **(A3a) Restore the trust invariant (FIRST — delicate atom).** ⚠ **GAP SURFACED run_140:** the
+   `cocoder/**`-only REFUSE-boundary lived ONLY in the deleted executor's P7 hook; ordinary-run commit gates
+   pass `scope` but never `auditWriteBoundary` (`agent-step.ts:251`, `runner.ts:692/828/1008`). An
+   onboard-existing run today would commit-and-flag product-code edits (ADR-0023 §3), not REFUSE — violating
+   the promise in `onboard-existing.md`. **Design (derivable):** optional priority frontmatter field
+   `auditWriteBoundary: ["cocoder/**"]` parsed by `loadPriority`, threaded through `RunInput`, passed to
+   `runCommitGate` at every agent-step + oscar/deb/wrap gate; set on `onboard-existing.md`. Verify: fake
+   onboarding run writing a product path → `AuditWriteBoundaryError`, zero commit; ordinary priorities
+   unchanged. Rename deferred `cocoder-takeover` label literals in `commit-gate.test.ts` +
+   `read-surfaces.test.ts` to `onboard-existing`.
+6. **(A3b) Scaffold seeding** — conditional seed of `onboard-existing.md` for existing repos (source outside
+   `cocoder/`); empty/new repos do NOT get it (new-primary later). Add
+   `templates/workspace-cocoder/cocoder/priorities/onboard-existing.md` behind the conditional in
+   `scaffoldCocoderZone`. Verify: existing-repo scaffold seeds it; empty-repo scaffold does not.
+7. **(A4) New proof of the Oscar-driven flow** (replaces retired `scripts/proof-takeover-executor.mjs`) —
+   one-command proof that onboarding refuses product-code writes, ordinary runs do not, and scaffold seeding
+   is conditional.
 Still gated after the rebuild: the live external-repo onboarding proof (CoBuilder/CoPublisher copy) and the
 dogfood Drift proof.
 

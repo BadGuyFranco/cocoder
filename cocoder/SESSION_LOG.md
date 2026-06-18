@@ -12,6 +12,20 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-18 — **new-primary-root: executor retired; onboard-existing priority authored — rebuild ~60%, trust invariant gap (run_140)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 5 atoms delegated) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_140
+**Outcomes:**
+- **Atom 0 (`1ec489a`) — owner map:** `docs/onboarding-rebuild-ownermap.md` classifies every executor/tooling unit + 26 takeover-bearing files (RETIRE / KEEP / RENAME) with file:line evidence and break-edges.
+- **Atom 1 (`b163ec5`) — daemon executor driver retired:** `launchRun` playbook branch, `createDaemonPlaybookPhaseAction`, P7-apply/awaiting-founder plumbing, takeover-keyed hooks, playbook-target route. Ordinary priority/ticket runs unchanged.
+- **Atom 2 (`1a76f0f`) — core executor deleted:** `executor.ts` + phase-protocol wrappers + gate adapters + `executor.test.ts`; pure `runPlaybookP*Action`/engines preserved with identical signatures.
+- **Atom 3 (`d660a8f`) — loader discovery retired:** `loadOnboardingPlaybooks`, Onboarding* types, daemon `onboarding` field, related tests. Skeleton `.md` files left for reference.
+- **Atom 4 (`d14bfd3`) — onboard-existing priority authored:** `packages/personas/base/priorities/onboard-existing.md` (ordinary priority + 8-step Oscar decomposition); `cocoder-takeover.md` skeleton deleted; live README/new-primary cross-refs renamed. **ADR-0020 §7 amended** (scaffold-seeded onboarding priorities; founder Option A).
+- **Founder decision:** onboarding = ordinary scaffold-seeded priority (not loader discovery).
+- **Gap surfaced:** `cocoder/**`-only REFUSE-boundary unwired on ordinary-run commit gates — onboard-existing would commit-and-flag product code today, not refuse. Must land A3a before safe execution.
+- **Disposition: `continue`** — rebuild ~60%; A3a (trust invariant), A3b (scaffold seeding), A4 (proof) remain.
+**Next:** Launch **`new-primary-root`** for atom A3a — restore priority-declared `auditWriteBoundary` at every commit gate.
+
 ## 2026-06-18 — **Workspace-segmentation: Objective 9 layout persistence — archive-candidate (run_139)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 1 atom delegated) | **Priority:** [workspace-segmentation](./priorities/workspace-segmentation.md) | **Run:** run_139
