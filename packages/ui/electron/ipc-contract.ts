@@ -228,11 +228,23 @@ export interface OzChatReply {
 }
 
 // --- local settings (slice 7, client-only prefs) ---
+export interface RendererPreferences {
+  readonly theme: 'dark' | 'light'
+  readonly sound: boolean
+  readonly sendOnEnter: boolean
+  readonly panelRatio: number
+}
 export interface Settings {
   readonly pollIntervalMs: number
   readonly defaultWorkspaceId: string | null
+  readonly preferences: RendererPreferences
 }
-export const DEFAULT_SETTINGS: Settings = { pollIntervalMs: 2500, defaultWorkspaceId: null }
+export type SettingsPatch = Partial<Omit<Settings, 'preferences'>> & { readonly preferences?: Partial<RendererPreferences> }
+export const DEFAULT_SETTINGS: Settings = {
+  pollIntervalMs: 2500,
+  defaultWorkspaceId: null,
+  preferences: { theme: 'dark', sound: false, sendOnEnter: true, panelRatio: 0.45 },
+}
 
 // --- the typed surface preload exposes on window.oz and the renderer consumes ---
 export interface OzApi {
@@ -252,5 +264,5 @@ export interface OzApi {
   workspacesCreate(workspaceId: string, folders: readonly WorkspaceFolder[]): Promise<DaemonResult<{ workspace: Workspace; legacyHidden: readonly string[] }>>
   workspacesDelete(workspaceId: string): Promise<DaemonResult<true>>
   settingsGet(): Promise<Settings>
-  settingsSet(patch: Partial<Settings>): Promise<Settings>
+  settingsSet(patch: SettingsPatch): Promise<Settings>
 }

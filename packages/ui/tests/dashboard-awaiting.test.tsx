@@ -233,7 +233,7 @@ describe('Dashboard layout', () => {
     const grid = container.firstElementChild as HTMLElement
     const children = Array.from(grid.children) as HTMLElement[]
 
-    expect(grid.style.gridTemplateColumns).toBe('570px 6px 1fr')
+    expect(grid.style.gridTemplateColumns).toBe('45% 6px 1fr')
     expect(within(children[0]).getByRole('button', { pressed: true }).textContent).toContain('Priorities')
     expect(children[1].className).toBe('oz-resize-handle')
     expect(within(children[2]).getByText('Oz Terminal')).toBeDefined()
@@ -246,7 +246,7 @@ describe('Dashboard layout', () => {
     const grid = container.firstElementChild as HTMLElement
     const children = Array.from(grid.children) as HTMLElement[]
 
-    expect(grid.style.gridTemplateColumns).toBe('570px 6px 1fr')
+    expect(grid.style.gridTemplateColumns).toBe('45% 6px 1fr')
     expect(within(children[0]).getByRole('button', { pressed: true }).textContent).toContain('Priorities')
     expect(children[1].className).toBe('oz-resize-handle')
     expect(within(children[2]).getByText('Oz Terminal')).toBeDefined()

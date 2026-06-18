@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { act, render, screen, waitFor, cleanup, fireEvent, within } from '@testing-library/react'
 import { App } from '../app/App.tsx'
 import { stopRun } from '../app/live.ts'
-import type { ConnectionState, OzApi, OzEventHint, PersonasResponse, PlaysResponse, Priority as DPriority, Ticket as DTicket, RunDetail, RunSummary } from '../electron/ipc-contract.ts'
+import { DEFAULT_SETTINGS, type ConnectionState, type OzApi, type OzEventHint, type PersonasResponse, type PlaysResponse, type Priority as DPriority, type Ticket as DTicket, type RunDetail, type RunSummary, type Settings, type SettingsPatch } from '../electron/ipc-contract.ts'
 import workspacesFx from '../fixtures/workspaces.json'
 import prioritiesFx from '../fixtures/priorities.json'
 import ticketsFx from '../fixtures/tickets.json'
@@ -102,13 +102,19 @@ function mockOz(opts: {
   runs?: { runs: RunSummary[] }
   runDetails?: Record<string, RunDetail>
   pollIntervalMs?: number
+  settings?: Settings
+  settingsSets?: SettingsPatch[]
   onOzEvent?: (cb: (event: OzEventHint) => void) => () => void
 } = {}) {
   return {
     health: async () => ({ state: opts.healthState ?? 'connected', sha: 'deadbeef' }),
     onOzEvent: opts.onOzEvent,
-    settingsGet: async () => ({ pollIntervalMs: opts.pollIntervalMs ?? 2500, defaultWorkspaceId: null }),
-    settingsSet: async (p: unknown) => p,
+    settingsGet: async () => opts.settings ?? { ...DEFAULT_SETTINGS, pollIntervalMs: opts.pollIntervalMs ?? 2500 },
+    settingsSet: async (p: SettingsPatch) => {
+      opts.settingsSets?.push(p)
+      opts.settings = { ...(opts.settings ?? DEFAULT_SETTINGS), ...p, preferences: { ...(opts.settings ?? DEFAULT_SETTINGS).preferences, ...(p.preferences ?? {}) } }
+      return opts.settings
+    },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     daemonGet: async (path: string): Promise<any> => {
       opts.getPaths?.push(path)
@@ -237,6 +243,31 @@ describe('Oz renderer — live daemon path', () => {
     const realTitle = (prioritiesFx as any).priorities.find((p: any) => p.id !== 'adhoc-session').title as string
     await waitFor(() => expect(screen.getAllByText(realTitle).length).toBeGreaterThan(0))
     expect(screen.getByText('Ad-hoc')).toBeDefined()
+  })
+
+  it('defaults panelRatio to 0.45 and restores the dragged ratio through settings save/load', async () => {
+    const settingsSets: SettingsPatch[] = []
+    const opts = { settings: DEFAULT_SETTINGS, settingsSets }
+    setOz(mockOz(opts))
+    const first = render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+    const grid = first.container.querySelector('.oz-content > div[style*="grid-template-columns"]') as HTMLElement
+    expect(grid.style.gridTemplateColumns).toBe('45% 6px 1fr')
+    Object.defineProperty(grid, 'clientWidth', { configurable: true, value: 1200 })
+
+    const handle = first.container.querySelector('.oz-resize-handle') as HTMLElement
+    fireEvent.mouseDown(handle, { clientX: 600 })
+    fireEvent.mouseMove(document, { clientX: 660 })
+    fireEvent.mouseUp(document, { clientX: 660 })
+
+    await waitFor(() => expect(settingsSets.at(-1)?.preferences?.panelRatio).toBeCloseTo(0.5, 4))
+    cleanup()
+
+    setOz(mockOz(opts))
+    const second = render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+    const restored = second.container.querySelector('.oz-content > div[style*="grid-template-columns"]') as HTMLElement
+    expect(restored.style.gridTemplateColumns).toBe('50% 6px 1fr')
   })
 
   it('shows first-run setup for a live empty workspace with no persona assignments', async () => {

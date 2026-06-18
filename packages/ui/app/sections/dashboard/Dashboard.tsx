@@ -1,36 +1,48 @@
 // Dashboard root — built AROUND the Oz conversation; priorities + runs are panels, never pages. Run
 // detail opens as a modal over the dashboard so cards, priorities, and runs share one detail pattern.
 // Ported from design-ref/dashboard.jsx, with the left panel now cycling Priorities/Tickets/Runs in place.
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { Button, Icon, Modal, StatusChip } from '../../ui/primitives.tsx'
 import { WorkspaceTabs, type ShellTheme } from '../../ui/ShellControls.tsx'
 
 const PRIO_MIN = 300
 const PRIO_MAX = 860
-const PRIO_DEFAULT = 570
+const PRIO_MIN_RATIO = 0.25
+const PRIO_MAX_RATIO = 0.75
 const LAUNCH_BLOCKED_HINT = 'A run is active in this workspace — only one run executes at a time (single-writer lock). It frees up when the run finishes.'
 const TICKET_LAUNCH_OFFLINE_HINT = 'Ticket-fix launch is available only when the dashboard is connected to Oz.'
 
-// Thin draggable divider that resizes the Priorities column. Width is owned by the Dashboard and
-// clamped; dragging attaches window listeners so the cursor can leave the 6px handle without dropping.
-function ResizeHandle({ width, onResizeTo }: { width: number; onResizeTo: (px: number) => void }) {
+function clampPanelRatio(ratio: number, containerWidth: number): number {
+  if (!Number.isFinite(ratio)) return 0.45
+  if (containerWidth <= 0) return Math.max(PRIO_MIN_RATIO, Math.min(PRIO_MAX_RATIO, ratio))
+  const min = Math.max(PRIO_MIN_RATIO, Math.min(PRIO_MIN / containerWidth, 0.45))
+  const max = Math.min(PRIO_MAX_RATIO, PRIO_MAX / containerWidth, 1 - min)
+  return Math.max(min, Math.min(max, ratio))
+}
+
+// Thin draggable divider that resizes the workspace panel by ratio. Dragging attaches window
+// listeners so the cursor can leave the 6px handle without dropping.
+function ResizeHandle({ ratio, containerWidth, onResizeTo }: { ratio: number; containerWidth: () => number; onResizeTo: (ratio: number) => void }) {
   const onMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     const startX = e.clientX
-    const startWidth = width
-    const move = (ev: MouseEvent) => onResizeTo(startWidth + (ev.clientX - startX))
+    const startRatio = ratio
+    const width = containerWidth()
+    const move = (ev: MouseEvent) => {
+      if (width > 0) onResizeTo(startRatio + (ev.clientX - startX) / width)
+    }
     const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); document.body.style.cursor = '' }
     document.addEventListener('mousemove', move)
     document.addEventListener('mouseup', up)
     document.body.style.cursor = 'col-resize'
-  }, [width, onResizeTo])
+  }, [containerWidth, ratio, onResizeTo])
   return <div className="oz-resize-handle" onMouseDown={onMouseDown} title="Drag to resize" />
 }
 import { PrioritiesPanel } from './Priorities.tsx'
 import { OzChatPanel } from './OzChat.tsx'
 import { RunDetail } from './RunDetail.tsx'
 import { FirstRun } from './FirstRun.tsx'
-import { runDisplayName, type ChatMessage, type Priority, type Run, type Ticket, type Workspace } from '../../model.ts'
+import { DEFAULT_PANEL_RATIO, runDisplayName, type ChatMessage, type Priority, type Run, type Ticket, type Workspace } from '../../model.ts'
 
 type DashboardTab = 'priorities' | 'tickets' | 'runs'
 type RunFilter = 'all' | 'active' | 'complete' | 'failed'
@@ -189,7 +201,7 @@ function RunsTab({ runs, onSelectRun, priorities }: { runs: Run[]; onSelectRun: 
   )
 }
 
-export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, selectedRunId, setSelectedRunId, onReorder, onLaunch, onAdhoc, onAddPriority, onAddTicket, onLaunchTicket, onSend, onDecision, onRunAction, ozTyping, live = false, workspaceConfigured, chatPrefill = null, onChatPrefillConsumed, workspaces, activeId, loadedIds, runsMap, onSelectWs, onCloseWs, onLoadWs, onCreateWs, theme = 'dark', setTheme = () => undefined, conn = 'fixtures', onRestartOz, chatTarget = workspace.id, chatTargets, onChatTargetChange = () => undefined, chatTargetName = workspace.name, chatRuns }: {
+export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, selectedRunId, setSelectedRunId, onReorder, onLaunch, onAdhoc, onAddPriority, onAddTicket, onLaunchTicket, onSend, onDecision, onRunAction, ozTyping, live = false, workspaceConfigured, chatPrefill = null, onChatPrefillConsumed, workspaces, activeId, loadedIds, runsMap, onSelectWs, onCloseWs, onLoadWs, onCreateWs, theme = 'dark', setTheme = () => undefined, conn = 'fixtures', onRestartOz, chatTarget = workspace.id, chatTargets, onChatTargetChange = () => undefined, chatTargetName = workspace.name, chatRuns, panelRatio = DEFAULT_PANEL_RATIO, onPanelRatioChange = () => undefined }: {
   workspace: Workspace; priorities: Priority[]; tickets: Ticket[]; runs: Run[]; ozMessages: ChatMessage[]
   workspaceConfigured?: boolean
   selectedRunId: string | null; setSelectedRunId: (id: string | null) => void
@@ -203,17 +215,19 @@ export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, se
   theme?: ShellTheme; setTheme?: (fn: (t: ShellTheme) => ShellTheme) => void; conn?: string; onRestartOz?: () => void
   chatTarget?: string | null; chatTargets?: Workspace[]; onChatTargetChange?: (target: string | null) => void
   chatTargetName?: string; chatRuns?: Run[]
+  panelRatio?: number; onPanelRatioChange?: (ratio: number) => void
 }) {
-  const [prioWidth, setPrioWidth] = useState(PRIO_DEFAULT)
+  const gridRef = useRef<HTMLDivElement>(null)
   const [activeTab, setActiveTab] = useState<DashboardTab>('priorities')
   const selectedRun = selectedRunId ? runs.find((r) => r.id === selectedRunId) : null
+  const containerWidth = useCallback(() => gridRef.current ? gridRef.current.clientWidth || gridRef.current.getBoundingClientRect().width : 0, [])
   // Fresh workspace (nothing queued, nothing run yet) → the first-run setup ladder, not a blank grid.
   if (priorities.length === 0 && runs.length === 0 && (!live || workspaceConfigured === false)) {
     return <FirstRun wsName={workspace.name} onBegin={() => onSend('Walk me through setting up this workspace.')} />
   }
-  // The Priorities column is user-resizable via the drag handle; clamp to keep both sides usable.
-  const onResizeTo = (px: number) => setPrioWidth(Math.max(PRIO_MIN, Math.min(PRIO_MAX, px)))
-  const gridTemplateColumns = `${prioWidth}px 6px 1fr`
+  const ratio = clampPanelRatio(panelRatio, containerWidth())
+  const onResizeTo = (nextRatio: number) => onPanelRatioChange(clampPanelRatio(nextRatio, containerWidth()))
+  const gridTemplateColumns = `${Number((ratio * 100).toFixed(4))}% 6px 1fr`
   const openTicketCount = tickets.filter((ticket) => ticket.state === 'open').length
   const launchBlocked = runs.some((r) => r.status === 'running')
   const addTitle = activeTab === 'priorities' ? 'Add priority' : activeTab === 'tickets' ? 'Add ticket' : ''
@@ -229,7 +243,7 @@ export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, se
     onCreate: onCreateWs ?? (() => undefined),
   }
   return (
-    <div style={{ display: 'grid', gridTemplateColumns, gap: 16, padding: 16, height: '100%', overflow: 'hidden' }}>
+    <div ref={gridRef} style={{ display: 'grid', gridTemplateColumns, gap: 16, padding: 16, height: '100%', overflow: 'hidden' }}>
       <div style={{ minHeight: 0 }}>
         <div className="oz-panel oz-priorities-panel" style={{ height: '100%' }}>
           <div className="oz-panel-header" style={{ gap: 10, alignItems: 'stretch', flexDirection: 'column' }}>
@@ -246,7 +260,7 @@ export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, se
           </div>
         </div>
       </div>
-      <ResizeHandle width={prioWidth} onResizeTo={onResizeTo} />
+      <ResizeHandle ratio={ratio} containerWidth={containerWidth} onResizeTo={onResizeTo} />
       <OzChatPanel messages={ozMessages} runs={chatRuns ?? runs} workspaceName={chatTargetName} onSend={onSend} onSelectRun={setSelectedRunId} onDecision={onDecision} ozTyping={ozTyping} live={live} prefill={chatPrefill} onPrefillConsumed={onChatPrefillConsumed} theme={theme} setTheme={setTheme} conn={conn} onRestartOz={onRestartOz} chatTarget={chatTarget} chatTargets={chatTargets ?? [workspace]} onChatTargetChange={onChatTargetChange} />
       {selectedRun && <RunDetail run={selectedRun} parentPriority={selectedRun.priorityId ? priorities.find((p) => p.id === selectedRun.priorityId) || null : null} parentPriorityIndex={selectedRun.priorityId ? priorities.findIndex((p) => p.id === selectedRun.priorityId) : -1} onClose={() => setSelectedRunId(null)} onAction={onRunAction} />}
     </div>

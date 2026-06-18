@@ -7,7 +7,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { CHANNELS, type PersonaAssignment } from './ipc-contract.ts'
 import { daemonDelete, daemonGet, daemonPost, daemonPut, health } from './daemon-client.ts'
-import { initStore, getPriorityOrder } from './store.ts'
+import { initStore, getPriorityOrder, getWindowBounds, setWindowBounds } from './store.ts'
 import { sendChatMessage } from './chat-send.ts'
 import { getSettingsViaDaemon, setSettingsViaDaemon } from './settings-sync.ts'
 import { createPriorityViaDaemon } from './priorities-create.ts'
@@ -39,9 +39,9 @@ function registerIpc(): void {
 }
 
 function createWindow(): BrowserWindow {
+  const bounds = getWindowBounds()
   const win = new BrowserWindow({
-    width: 1280,
-    height: 860,
+    ...(bounds ?? { width: 1280, height: 860 }),
     title: 'Oz — CoCoder',
     backgroundColor: '#0b0d12',
     show: process.env.OZ_SMOKE !== '1',
@@ -55,6 +55,13 @@ function createWindow(): BrowserWindow {
   const devUrl = process.env.ELECTRON_RENDERER_URL
   if (devUrl) void win.loadURL(devUrl)
   else void win.loadFile(join(HERE, '../renderer/index.html'))
+  const saveBounds = () => {
+    if (win.isDestroyed() || win.isMinimized() || win.isFullScreen()) return
+    setWindowBounds(win.getBounds())
+  }
+  win.on('resize', saveBounds)
+  win.on('move', saveBounds)
+  win.on('close', saveBounds)
   return win
 }
 

@@ -15,7 +15,7 @@ import { PersonasScreen } from './sections/Personas.tsx'
 import { PlaysScreen } from './sections/Plays.tsx'
 import { SettingsScreen } from './sections/Settings.tsx'
 import { NewWorkspaceModal, CraftPersonaModal, NewPriorityModal, NewTicketModal } from './sections/modals.tsx'
-import { seed, DEFAULT_SETTINGS, type ChatMessage, type Cli, type Dependency, type Persona, type Play, type Priority, type Ticket, type Run, type Settings, type SubAgent, type Workspace } from './model.ts'
+import { seed, DEFAULT_SETTINGS, DEFAULT_PANEL_RATIO, type ChatMessage, type Cli, type Dependency, type Persona, type Play, type Priority, type Ticket, type Run, type Settings, type SubAgent, type Workspace } from './model.ts'
 import type { OzEventHint, PersonaAssignment } from '../electron/ipc-contract.ts'
 
 const USER = seed.workspaces.length ? { initials: 'AF', name: 'Anthony Franco', role: 'founder' } : { initials: 'AF', name: 'Anthony Franco', role: 'founder' }
@@ -32,6 +32,12 @@ const seedSettings = (): Settings => {
     advanced: { ...DEFAULT_SETTINGS.advanced, ...(s?.advanced ?? {}) },
   }
 }
+
+const mergeSettings = (base: Settings, patch: Partial<Settings>): Settings => ({
+  preferences: { ...base.preferences, ...(patch.preferences ?? {}) },
+  watching: { ...base.watching, ...(patch.watching ?? {}) },
+  advanced: { ...base.advanced, ...(patch.advanced ?? {}) },
+})
 
 const greeting = (wsName: string): ChatMessage => ({ id: 'm0', role: 'oz', time: 'now', body: `Watching **${wsName}**. Ask me to launch a priority, reorder the queue, kick off an ad-hoc run, or just ask for status. Everything on this dashboard is something you can also ask me here.` })
 
@@ -64,7 +70,6 @@ function ConnectionPanel({ conn, onRetry }: { conn: ConnectionState; onRetry: ()
 
 export function App() {
   const [route, setRoute] = useState<Route>('dashboard')
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [workspaces, setWorkspaces] = useState<Workspace[]>(seed.workspaces)
   const [activeId, setActiveId] = useState(workspaces[0]?.id ?? '')
   const [loadedIds, setLoadedIds] = useState<string[]>(workspaces[0] ? [workspaces[0].id] : [])
@@ -89,6 +94,7 @@ export function App() {
   const [clis, setClis] = useState<Cli[]>(seed.clis)
   const [dependencies, setDependencies] = useState(seed.dependencies)
   const [settings, setSettings] = useState<Settings>(seedSettings)
+  const theme = settings.preferences.theme
   const [newWsOpen, setNewWsOpen] = useState(false)
   const [craftOpen, setCraftOpen] = useState(false)
   const [newPriorityOpen, setNewPriorityOpen] = useState(false)
@@ -109,7 +115,6 @@ export function App() {
   const runStatusRef = useRef<Record<string, Run['status']>>({})
 
   useEffect(() => { document.documentElement.setAttribute('data-theme', theme) }, [theme])
-  useEffect(() => { setTheme(settings.preferences.theme) }, [settings.preferences.theme])
   useEffect(() => { activeIdRef.current = activeId }, [activeId])
   useEffect(() => { setChatTarget(activeId || null) }, [activeId])
   useEffect(() => {
@@ -130,13 +135,19 @@ export function App() {
     }
     void (async () => {
       setConn('connecting')
+      try {
+        const s = await oz.settingsGet()
+        if (!cancelled) {
+          setPollMs(s.pollIntervalMs)
+          setSettings((cur) => mergeSettings(cur, s as Partial<Settings>))
+        }
+      } catch { /* keep seed-backed renderer settings */ }
       let health
       try { health = await oz.health() } catch { if (!cancelled) goOffline('offline'); return }
       if (cancelled) return
       if (health.state === 'fixtures') { setConn('fixtures'); return }
       if (health.state !== 'connected') { goOffline(health.state); return }
-      setConn('connected'); setLive(true)
-      try { const s = await oz.settingsGet(); if (!cancelled && s?.pollIntervalMs) setPollMs(s.pollIntervalMs) } catch { /* keep default */ }
+      setConn('connected')
       const cs = await loadClis(oz)
       if (!cancelled && cs.length) setClis(cs)
       const wss = await loadWorkspaces(oz)
@@ -159,6 +170,7 @@ export function App() {
         setPersonas(orderPersonas(data.personas))
         setPersonaAssignments(data.assignments)
       }
+      setLive(true)
     })()
     return () => { cancelled = true }
   }, [reloadNonce])
@@ -265,6 +277,18 @@ export function App() {
   function closeWs(id: string) { setLoadedIds((ids) => ids.filter((x) => x !== id)); if (activeId === id) { const next = loadedIds.find((x) => x !== id); if (next) selectWs(next) } }
 
   function pushMsg(targetKey: string, m: ChatMessage) { setMsgsByWs((cur) => ({ ...cur, [targetKey]: [...(cur[targetKey] ?? []), m] })) }
+  function saveSettings(next: Settings): void {
+    setSettings(next)
+    const oz = ozApi()
+    if (oz) void oz.settingsSet({ preferences: next.preferences }).then((saved) => setSettings((cur) => mergeSettings(cur, saved as Partial<Settings>))).catch(() => undefined)
+  }
+  function setTheme(fn: (t: 'dark' | 'light') => 'dark' | 'light'): void {
+    const nextTheme = fn(settings.preferences.theme)
+    saveSettings({ ...settings, preferences: { ...settings.preferences, theme: nextTheme } })
+  }
+  function setPanelRatio(panelRatio: number): void {
+    saveSettings({ ...settings, preferences: { ...settings.preferences, panelRatio } })
+  }
   function onSend(text: string) {
     const targetKey = chatTarget ?? GLOBAL_CHAT_KEY
     pushMsg(targetKey, { id: `u${Date.now()}`, role: 'user', time: 'now', body: text })
@@ -629,6 +653,8 @@ export function App() {
               theme={theme} setTheme={setTheme} conn={conn} onRestartOz={() => void handleRestartOz()}
               chatTarget={chatTarget} chatTargets={loadedWorkspaces} onChatTargetChange={setChatTarget}
               chatTargetName={chatTargetName} chatRuns={chatRuns}
+              panelRatio={settings.preferences.panelRatio ?? DEFAULT_PANEL_RATIO}
+              onPanelRatioChange={setPanelRatio}
             />
           )}
           {route === 'workspaces' && (
@@ -637,7 +663,7 @@ export function App() {
           {route === 'clis' && <CLIsScreen clis={clis} onTest={handleCliTest} onAdd={() => onSend('Register a new CLI.')} />}
           {route === 'personas' && <PersonasScreen personas={personas} plays={plays} clis={clis} onChange={setPersona} onAddSub={addSub} onRemoveSub={removeSub} onUpdateSub={updateSub} onNewPersonaAsPriority={() => setCraftOpen(true)} live={live} />}
           {route === 'plays' && <PlaysScreen plays={plays} />}
-          {route === 'settings' && <SettingsScreen settings={settings} dependencies={dependencies} onRecheckDep={(id: string) => setDependencies((ds: Dependency[]) => ds.map((d: Dependency) => (d.id === id ? { ...d, lastChecked: 'just now' } : d)))} onChange={setSettings} live={live} />}
+          {route === 'settings' && <SettingsScreen settings={settings} dependencies={dependencies} onRecheckDep={(id: string) => setDependencies((ds: Dependency[]) => ds.map((d: Dependency) => (d.id === id ? { ...d, lastChecked: 'just now' } : d)))} onChange={saveSettings} live={live} />}
           </>)}
         </div>
       </div>
