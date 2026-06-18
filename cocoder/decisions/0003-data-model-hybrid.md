@@ -1,6 +1,12 @@
 # ADR-0003 — Data model: hybrid files + central Oz-owned SQLite (seam S2)
 
 **Status:** Accepted (founder + Claude, 2026-05-28)
+**Amended by:** [0027](./0027-workspace-storage-contract.md) (founder, 2026-06-18) — portable workspace
+run/session/work/commit/event history relocates out of *sole* SQLite ownership into git-tracked
+`<workspace>/cocoder/runs/**`; the DB is demoted to a rebuildable **machine-local** index/coordination
+cache. The hybrid model, single-writer discipline, and the one-source-of-truth/reference-by-ID rule below
+all stand — only the owner of *portable run history* changes (the "run history is install-local, not
+git-tracked" consequence is the specific point 0027 supersedes).
 **Seam:** S2 — Core data model
 **Charter:** [0001](./0001-rebuild-charter.md) · **Builds on:** [0002](./0002-substrate-oz-and-cmux.md) (C1: run-state durable, owned by Oz) · **Touches seams:** S3 (topology), S4 (Oz↔runner), S7 (write-scope/commit checks)
 

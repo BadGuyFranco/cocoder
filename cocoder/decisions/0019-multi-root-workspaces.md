@@ -6,6 +6,11 @@
 **Builds on:** [0008](./0008-repository-topology.md) (storage zones), [0003](./0003-data-model-hybrid.md)
 (governance files vs operational DB). **Relates to:** [0017](./0017-oz-orchestration-persona.md) (Oz),
 the `full-oz-dashboard` Workspaces slice (#2), and the `new-primary-root` priority (bootstrap/audit).
+**Amended by:** [0027](./0027-workspace-storage-contract.md) (founder, 2026-06-18) — workspace **identity**
+is split out to a portable, git-tracked `<workspace>/cocoder/workspace.json` (stable id + display name).
+The `local/workspace/*.code-workspace` directory below remains the SSOT for **machine-local routing**:
+roots, the three role assignments, and per-install paths. Decisions 1–7 stand; only portable identity
+moves out of the install-local file so durable history can travel with a repo across machines.
 
 ## Context
 
