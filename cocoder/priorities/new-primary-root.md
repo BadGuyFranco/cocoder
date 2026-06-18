@@ -89,6 +89,52 @@ sub-build.
 - **Resume guard:** if relaunched as a build run, do NOT re-build Takeover phases — either build the Drift
   executor or the tech-stack-starter (after founder confirms draft non-negotiables).
 
+### Onboarding UX — new-workspace path to the live Takeover (briefed run_131; assumes ticket 0014 picker done)
+Founder prep before the live CoBuilder Takeover. The founder is closing out usability items first;
+**ticket [0014](../tickets/open/0014-oz-workspace-path-picker.md)** (add-workspace folder icon does not open
+an OS directory picker) is one of them. Briefing the onboarding flow **assuming 0014 is fixed.**
+
+**Founder's mental model — and the correction (verified against the code this run):** the founder described
+new-workspace setup as "(1) make the template `cocoder/` folder, (2) draft the takeover priority, (3) pop a
+dialog to run that priority as its first run." Step 1 is right; steps 2–3 conflate the **Takeover Playbook**
+(the audit engine) with the **priorities it produces**:
+- **(1) Scaffold the template `cocoder/` — ✅ REAL, already automatic.** `POST /workspaces`
+  (`routes.ts` `createWorkspace` → `scaffoldWorkspaceGovernance` → `scaffoldCocoderZone`) copies
+  `templates/workspace-cocoder/cocoder/**` into the picked primary root **and commits it to that repo's
+  branch**, create-only/non-destructive. Requires the primary path + the install root (`${COCODER_HOME}`)
+  in the body; the path picker (0014) is the missing UX that feeds it. The scaffold creates only
+  `adhoc-session.md` under `priorities/` — **no takeover priority.**
+- **(2) "Draft the takeover priority" — ✗ NOT how it works.** Takeover is a **shipped meta-Playbook**
+  (`cocoder-takeover`), surfaced per-workspace via `GET /workspaces/:id/priorities` →
+  `onboarding: readOnboardingPlaybooks()` (ADR-0020 §7; never copied into the repo). It is **launched as a
+  playbook run**, not drafted as a priority. What gets **drafted** are the **output** priorities the audit
+  authors at **P5 synthesis**, staged under `playbook/P5/proposed-cocoder/**`, applied into
+  `cocoder/priorities/**` only on **P6 founder ratification** (run_130/131).
+- **(3) "Run it as the first run" — partially; two distinct launches, no dialog yet.** (a) Launch the
+  `cocoder-takeover` Playbook (the audit, with founder gates P1 spend / P4 questions / P6 ratify); (b)
+  **P7 Prove** = launch a *first ordinary run* against a **ratified output priority**. P7 is intentionally a
+  no-op in the executor today; there is **no "offer to launch" dialog** — that affordance is unbuilt.
+
+**Accurate end-to-end onboarding flow for an existing repo (assumes 0014 done):**
+1. **Add workspace** — OS picker → pick the repo (the CoBuilder *copy*) → `POST /workspaces` scaffolds +
+   commits the `cocoder/` skeleton into it. (Repo must be a clean, committed git repo; primary must be
+   outside the install root.)
+2. **Launch the `cocoder-takeover` Playbook** against that workspace → P0 scaffold (already done) → P1
+   recon (founder approves map + spend) → P2/P3 audit → P4 founder questions → P5 synthesis drafts
+   candidate priorities → **P6 founder ratifies** → they land runnable in `cocoder/priorities/**`.
+3. **P7 Prove** — launch a first ordinary run against a ratified priority.
+
+**Desired UX affordance (founder intent, NOT yet built — candidate follow-up):** after scaffolding a
+workspace for an *existing* repo, **offer to launch the Takeover** (the "pop a dialog" idea). This would make
+onboarding one smooth flow (pick repo → scaffold → "Run the CoCoder Takeover audit now?"). Capture as a
+future affordance distinct from current reality; pairs with 0014. New-Primary (empty repo) has an analogous
+"offer to run the first build" beat. **Not a build atom this run** — recorded so the next session/founder can
+scope it.
+
+**Sequencing:** the live CoBuilder Takeover proof stays **deferred** until the founder closes his prep items
+(0014 picker + the other items he flagged). The engine is proven on fakes (run_131) and ready; the gate is
+founder readiness, not engine readiness.
+
 ### Executor build progress (run_130, 2026-06-17)
 Tenth build session — **executor P5 — synthesis + `cocoder/**`-only audit write-boundary ENFORCEMENT**
 landed (one atom; verified-on-evidence: diff read end-to-end + `pnpm --filter @cocoder/core test` (332) +
