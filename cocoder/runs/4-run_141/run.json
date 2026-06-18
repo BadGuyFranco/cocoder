@@ -12,7 +12,7 @@
   "priorityId": "new-primary-root",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "completed",
   "createdAt": 1781821646768,
-  "endedAt": null
+  "endedAt": 1781823255926
 }
