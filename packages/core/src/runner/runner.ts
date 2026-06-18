@@ -13,7 +13,7 @@
 // adapters, IO, the Judge) so the orchestration is unit-testable without real cmux/CLIs/models.
 import type { Adapter } from '../adapter/index.js'
 import { COCODER_GOVERNANCE_AUTHOR, commitFiles, runCommitGate } from '../commit-gate/index.js'
-import type { Git } from '../commit-gate/index.js'
+import type { AuditWriteBoundary, CommitGateResult, Git } from '../commit-gate/index.js'
 import type { Priority } from '../priorities/index.js'
 import type { PersonaRunMode, PlayAssignment, ResolvedPersona } from '../personas/index.js'
 import { dispatchPlay, type DispatchPlayResult, type HeadlessRunInput } from '../plays/index.js'
@@ -55,7 +55,6 @@ import { renderRunRecord } from './record.js'
 import { type RunnerPhase, renderDebStatus } from './status.js'
 import { isStopRequestedError } from './stop.js'
 import { faultFingerprint } from './fingerprint.js'
-import type { CommitGateResult } from '../commit-gate/index.js'
 import type { Triage } from './triage.js'
 
 const exec = promisify(execChildProcess)
@@ -412,6 +411,8 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   }
 
   const scope = effectiveScope(bob.writeScope, priority.scopeNarrowing) // known at launch (constant per run)
+  const auditWriteBoundary: AuditWriteBoundary | undefined =
+    priority.auditWriteBoundary === undefined ? undefined : { label: priority.id, scope: priority.auditWriteBoundary }
 
   // Execution context — ONE mode (founder directive 2026-06-15, correcting ADR-0015/0023): agents run in
   // the active checkout on the active branch and the commit-gate commits straight onto it, so committed
@@ -726,6 +727,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           scope: withPortableRunHistoryScope(deb.writeScope),
           message: `deb-${kind}: ${faultType}${atomIndex !== null ? ` (atom ${atomIndex})` : ''} occurrence ${occurrence}${verdict.ticketId ? ` → ticket ${verdict.ticketId}` : ''} via CoCoder run ${run.id}`,
           headBefore: headBeforeRepair,
+          auditWriteBoundary,
         })
         store.recordEvent({ runId: run.id, type: 'deb-repair', data: { fault: faultType, atom: atomIndex, occurrence, escalation: verdict.escalation ?? null, ticketId: verdict.ticketId ?? null, committedSha: gate.committedSha, files: gate.committedFiles, outOfScope: gate.outOfScope } })
       }
@@ -862,6 +864,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       scope: withPortableRunHistoryScope(oscar.writeScope),
       message: `oscar-support: ${priority.id} via CoCoder run ${run.id}`,
       headBefore,
+      auditWriteBoundary,
     })
     absorbGateResult(gate)
     if (gate.committedSha || gate.outOfScope.length > 0 || gate.selfCommitted) {
@@ -1042,6 +1045,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           scope: withPortableRunHistoryScope(input.wrapPlay.writeScope),
           message: commitMessage(priority.id, run.id, n),
           headBefore: headBeforeWrap,
+          auditWriteBoundary,
         })
         absorbGateResult(wrapGate)
         const candidatePickup = res.output && res.output.trim() ? res.output : (directive.pickup ?? null)
@@ -1088,6 +1092,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       worktreePath,
       scope,
       commitScope: withPortableRunHistoryScope(scope),
+      auditWriteBoundary,
       store,
       git,
       io,

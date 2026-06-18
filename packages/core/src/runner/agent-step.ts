@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { runCommitGate, type CommitGateResult, type Git } from '../commit-gate/index.js'
+import { runCommitGate, type AuditWriteBoundary, type CommitGateResult, type Git } from '../commit-gate/index.js'
 import type { RunStore } from '../store/index.js'
 import type { Directive } from './directive.js'
 import type { RunnerIO } from './io.js'
@@ -60,6 +60,7 @@ export interface ExecuteAgentStepInput {
   readonly worktreePath: string
   readonly scope: readonly string[]
   readonly commitScope: readonly string[]
+  readonly auditWriteBoundary?: AuditWriteBoundary
   readonly store: RunStore
   readonly git: Git
   readonly io: RunnerIO
@@ -93,6 +94,7 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
     worktreePath,
     scope,
     commitScope,
+    auditWriteBoundary,
     store,
     git,
     io,
@@ -257,6 +259,7 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
       scope: commitScope,
       message: commitMessage(priorityId, runId, atomIndex),
       headBefore,
+      auditWriteBoundary,
     })
     store.setWorkItemStatus(workItem.id, 'done')
     absorbGateResult(gate)

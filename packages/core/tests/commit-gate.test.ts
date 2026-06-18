@@ -175,10 +175,10 @@ describe('runCommitGate', () => {
     expect(store.listEvents(run.id).some((e) => e.type === 'agent-self-commit')).toBe(true)
   })
 
-  test('refuses takeover audit commits outside cocoder/** before committing', async () => {
+  test('refuses onboard-existing audit commits outside cocoder/** before committing', async () => {
     const store = openRunStore(':memory:')
     store.upsertWorkspace({ id: 'cocoder', path: '/repo', name: 'CoCoder' })
-    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'onboarding-playbook', playbookId: 'cocoder-takeover' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'onboarding-playbook', playbookId: 'onboard-existing' })
     const { git, commits } = makeFakeGit({
       changed: ['cocoder/memory/codebase-map.md', 'packages/app/product.ts'],
       headBefore: 'h0',
@@ -193,18 +193,18 @@ describe('runCommitGate', () => {
       scope: ['cocoder/**'],
       message: 'audit: synthesize governance',
       headBefore: 'h0',
-      auditWriteBoundary: { label: 'cocoder-takeover', scope: ['cocoder/**'] },
+      auditWriteBoundary: { label: 'onboard-existing', scope: ['cocoder/**'] },
     })).rejects.toThrow(AuditWriteBoundaryError)
 
     expect(commits).toEqual([])
     const event = store.listEvents(run.id).find((item) => item.type === 'audit-write-boundary-refused')
-    expect(event?.data).toMatchObject({ label: 'cocoder-takeover', files: ['packages/app/product.ts'] })
+    expect(event?.data).toMatchObject({ label: 'onboard-existing', files: ['packages/app/product.ts'] })
   })
 
   test('refuses P6 ratification apply-commit when any product path is changed', async () => {
     const store = openRunStore(':memory:')
     store.upsertWorkspace({ id: 'external', path: '/repo', name: 'External' })
-    const run = store.createRun({ workspaceId: 'external', priorityId: 'onboarding-playbook', playbookId: 'cocoder-takeover' })
+    const run = store.createRun({ workspaceId: 'external', priorityId: 'onboarding-playbook', playbookId: 'onboard-existing' })
     const { git, commits } = makeFakeGit({
       changed: ['cocoder/priorities/objective-1.md', 'src/product.ts'],
       headBefore: 'h0',
@@ -219,13 +219,13 @@ describe('runCommitGate', () => {
       scope: ['cocoder/**'],
       message: `takeover-ratify: apply governance via CoCoder run ${run.id}`,
       headBefore: 'h0',
-      auditWriteBoundary: { label: 'cocoder-takeover', scope: ['cocoder/**'] },
+      auditWriteBoundary: { label: 'onboard-existing', scope: ['cocoder/**'] },
     })).rejects.toThrow(AuditWriteBoundaryError)
 
     expect(commits).toEqual([])
     expect(store.listCommitLinks(run.id)).toEqual([])
     const event = store.listEvents(run.id).find((item) => item.type === 'audit-write-boundary-refused')
-    expect(event?.data).toMatchObject({ label: 'cocoder-takeover', files: ['src/product.ts'] })
+    expect(event?.data).toMatchObject({ label: 'onboard-existing', files: ['src/product.ts'] })
   })
 })
 

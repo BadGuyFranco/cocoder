@@ -1,6 +1,7 @@
 ---
 id: onboard-existing
 title: "Onboard an existing repo — deep multi-agent audit that authors its cocoder/ governance"
+auditWriteBoundary: ["cocoder/**"]
 ---
 
 ## Objective

@@ -177,7 +177,7 @@ describe('Oz read surfaces', () => {
     const priorityIds = r.json.priorities.map((p: any) => p.id)
     expect(priorityIds).toEqual(['demo'])
     expect(r.json.priorities[0]).toMatchObject({ title: 'Demo priority' })
-    expect(priorityIds).not.toContain('cocoder-takeover')
+    expect(priorityIds).not.toContain('onboard-existing')
     expect(priorityIds).not.toContain('drift-audit')
     expect(priorityIds).not.toContain('new-primary')
     expect(r.json).not.toHaveProperty('onboarding')

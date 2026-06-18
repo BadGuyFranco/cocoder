@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { loadPriority } from '../src/index.js'
 
-const priority = (id: string, body: string): string => ['---', `id: ${id}`, `title: ${id}`, '---', body].join('\n')
+const priority = (id: string, body: string, frontmatter: readonly string[] = []): string => ['---', `id: ${id}`, `title: ${id}`, ...frontmatter, '---', body].join('\n')
 
 describe('priority Objective loading', () => {
   test('reads the trimmed Objective section without replacing the full goal', async () => {
@@ -37,5 +37,14 @@ describe('priority Objective loading', () => {
     await writeFile(join(dir, 'demo.md'), priority('demo', ['## Objective', '', '   ', '', '# Next', 'Details.'].join('\n')))
 
     expect(loadPriority(dir, 'demo').objective).toBeNull()
+  })
+
+  test('round-trips optional auditWriteBoundary from frontmatter', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'priorities-'))
+    await writeFile(join(dir, 'demo.md'), priority('demo', 'Audit the repo.', ['auditWriteBoundary: ["cocoder/**"]']))
+    await writeFile(join(dir, 'bare.md'), priority('bare', 'Ordinary work.'))
+
+    expect(loadPriority(dir, 'demo').auditWriteBoundary).toEqual(['cocoder/**'])
+    expect(loadPriority(dir, 'bare').auditWriteBoundary).toBeUndefined()
   })
 })

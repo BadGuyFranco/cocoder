@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import {
   type Adapter,
+  AuditWriteBoundaryError,
   type DebStatus,
   type Directive,
   type Git,
@@ -143,6 +144,38 @@ function scriptedGit(changedPerAtom: string[][]): Git {
     async restoreToHead() {},
     async show() {
       return ''
+    },
+  }
+}
+
+function recordingScriptedGit(changedPerAtom: string[][]): { readonly git: Git; readonly commits: string[][] } {
+  const commits: string[][] = []
+  let head = 'h0'
+  let call = 0
+  let started = false
+  return {
+    commits,
+    git: {
+      ...worktreeStubs,
+      async headSha() {
+        return head
+      },
+      async changedFiles() {
+        if (!started) {
+          started = true
+          return []
+        }
+        return changedPerAtom[call++] ?? []
+      },
+      async addAndCommit(_cwd, files) {
+        commits.push([...files])
+        head = `sha-${call}`
+        return head
+      },
+      async restoreToHead() {},
+      async show() {
+        return ''
+      },
     },
   }
 }
@@ -357,6 +390,49 @@ describe('runRun (multi-atom loop)', () => {
     expect(store.listCommitLinks(result.runId).filter((c) => c.workItemId !== null).map((c) => c.files)).toEqual([['packages/a.ts'], ['packages/b.ts']])
     const types = store.listEvents(result.runId).map((e) => e.type)
     expect(types).toEqual(expect.arrayContaining(['run-start', 'spawn', 'delegation', 'builder-done', 'verify-pass', 'commit', 'wrapup', 'run-end']))
+  })
+
+  test('refuses onboard-existing product-code writes before the ordinary atom gate commits', async () => {
+    const store = openRunStore(':memory:')
+    const { git, commits } = recordingScriptedGit([['packages/core/src/foo.ts']])
+    const onboardingPriority = { ...priority, id: 'onboard-existing', auditWriteBoundary: ['cocoder/**'] }
+
+    await expect(runRun(
+      baseDeps({
+        store,
+        git,
+        io: fakeIO({ directives: [delegate('audit the repo'), wrapup('done')] }),
+      }),
+      { ...input, priority: onboardingPriority },
+    )).rejects.toBeInstanceOf(AuditWriteBoundaryError)
+
+    const runId = store.listRuns()[0]?.id
+    expect(runId).toBeDefined()
+    expect(commits).toEqual([])
+    expect(store.listCommitLinks(runId!)).toEqual([])
+    const event = store.listEvents(runId!).find((item) => item.type === 'audit-write-boundary-refused')
+    expect(event?.data).toMatchObject({ label: 'onboard-existing', files: ['packages/core/src/foo.ts'] })
+  })
+
+  test('ordinary priorities keep whole-tree commit behavior and only flag out-of-lane files', async () => {
+    const store = openRunStore(':memory:')
+    const { git, commits } = recordingScriptedGit([['packages/core/src/foo.ts']])
+    const governanceBob = { ...bob, writeScope: ['cocoder/**'] }
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git,
+        io: fakeIO({ directives: [delegate('ordinary work'), wrapup('done')] }),
+      }),
+      { ...input, bob: governanceBob },
+    )
+
+    expect(result.status).toBe('completed')
+    expect(commits[0]).toEqual(['packages/core/src/foo.ts'])
+    expect(result.committedFiles).toEqual(['packages/core/src/foo.ts'])
+    expect(result.outOfScope).toEqual(['packages/core/src/foo.ts'])
+    expect(store.listEvents(result.runId).some((item) => item.type === 'audit-write-boundary-refused')).toBe(false)
   })
 
   test('rebuilds the Oz UI bundle once at landing when committed files touch packages/ui', async () => {
