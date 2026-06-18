@@ -207,7 +207,7 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    `dispatchPlay` + `oz-host`, `headlessCapable=true` (single source). Flags verified vs real binaries;
    `node scripts/proof-headless-lane.mjs` re-proves (PASS claude, PASS codex). Oz-on-claude and latent
    headless-Play pins no longer hang. Closes ticket 0006. Playbook moved to `priorities/archive/`; dropped
-   from `order.json` (next launchable: `new-primary-root`).
+   from `order.json` (next launchable: `tickets-review`).
 2. `governance-authoring-plays` — **ARCHIVE-READY (run_99, 2026-06-16).** Founder-directed: never leave
    launch-blocking governance dirt. Parts 1 & 2 are done: launch self-heal ([ADR-0024](./decisions/0024-governance-pre-run-snapshot.md),
    `5842e32`); three authoring Plays (`8492d32`); dispatch harness (`85f3a0a`); one-tool-action
@@ -222,16 +222,14 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    the explicit `archive` go-ahead. Playbook moved to `priorities/archive/`. Open follow-ons (do NOT
    reopen this priority): ticket 0006 closed via `headless-adapter-lane` (run_104, archive-candidate) ·
    ticket 0012 (design-ref rebuild guard).
-4. `new-primary-root` — **ACTIVE (run_140, 2026-06-18).** Onboard a primary root (ADR-0020 Accepted,
-   execution model amended by ADR-0026). **Pivot complete (run_140):** standalone phase-executor retired;
-   existing-repo audit reframed as Oscar-driven ordinary priority. **Landed run_140:** owner map
-   (`docs/onboarding-rebuild-ownermap.md`); daemon executor driver + core `executor.ts` deleted; loader
-   discovery surface retired; `onboard-existing.md` authored as the ordinary first-priority template;
-   ADR-0020 §7 amended (scaffold-seeded priorities, not loader discovery). Audit engines (P1–P6 tooling)
-   preserved. **Rebuild ~60% — next atoms:** A3a restore `cocoder/**`-only refuse-boundary on ordinary-run
-   commit gates (gap surfaced — currently unwired); A3b conditional scaffold seeding; A4 one-command proof.
-   Still gated: live external-repo onboarding proof; dogfood Drift (needs its own seeded priority). **Absorbs
-   `workspace-onboarding`.**
+4. `new-primary-root` — **ARCHIVE-CANDIDATE (run_141, 2026-06-18).** Onboard a primary root (ADR-0020
+   Accepted, execution model amended by ADR-0026). **Onboarding rebuild COMPLETE (run_140–141):** standalone
+   phase-executor retired; existing-repo audit reframed as Oscar-driven ordinary priority
+   (`onboard-existing.md`); trust invariant restored (`auditWriteBoundary` at all commit gates); conditional
+   scaffold seeding for existing repos; one-command proof (`node scripts/proof-onboard-existing.mjs`, exit 0).
+   Audit engines (P1–P6 tooling) preserved as library calls. **Only founder-gated live proofs remain:**
+   external-repo onboard-existing end-to-end (Objective (a)); dogfood Drift Audit (Objective (b) — capability
+   unbuilt, needs its own priority). **Absorbs `workspace-onboarding`.**
 
 **Queued after `new-primary-root` (founder go-ahead 2026-06-16, priority-audit run_106 — in `order.json`):**
 - `hybrid-plays` — deterministic code spine inside a Play (promotes "verify, don't assert — evidence over

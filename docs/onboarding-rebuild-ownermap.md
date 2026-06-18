@@ -2,6 +2,11 @@
 
 Scope: analysis only for ADR-0026's rebuild of existing-repo onboarding as an Oscar-driven priority. This file maps the current owner surfaces so the rebuild can delete the standalone executor without deleting reusable audit tooling.
 
+> **Rebuild status (run_141):** RETIRE items landed — executor, loader discovery, and
+> `proof-takeover-executor.mjs` deleted. Replacement proof: `scripts/proof-onboard-existing.mjs` (exit 0,
+> three invariants). Trust boundary derives from priority frontmatter `auditWriteBoundary` at all commit
+> gates. Scaffold seeds `onboard-existing.md` for existing repos only.
+
 ## Evidence Commands
 
 - `git ls-files | grep -i takeover` returned `packages/personas/base/playbooks/cocoder-takeover.md` and `scripts/proof-takeover-executor.mjs`.
