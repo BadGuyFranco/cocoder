@@ -65,5 +65,23 @@ into one type. A ticket-fix run is a small adhoc/focused run; a priority run is 
   is in scope here: the Tickets surface should reflect newly-committed tickets on reload.
 
 ## Status
-**Draft — founder-directed, filed run_131 (2026-06-17).** Not yet launched. Needs an Objective
-confirmation + the item-3 boundary decision above before a build run.
+**Code-complete (items 1, 2, 4) — archive-candidate, gated on live visual proof.** Built in run_133
+(2026-06-18); item-3 boundary already resolved (founder, run_131 — folded into `tickets-review`).
+
+- **Item 1 — priority card = name + slug** ✓ committed `e22b2a0`. `PriorityRow` shows the title plus a
+  muted-mono slug (`priority.id`); the description no longer renders on the card.
+- **Item 2 — priority detail modal + in-modal launch** ✓ committed `e22b2a0`. New
+  `PriorityDetailModal.tsx` (reuses the `Modal` primitive) shows summary/status/labels and a recent-run
+  pointer; a footer **Launch** fires the existing launch path and closes the modal; respects the
+  single-writer `launchBlocked` guard.
+- **Item 4 — run detail as modal** ✓ committed `c58b77e`. `RunDetail` now renders inside `Modal`
+  (width 840); the dead 460px side-panel grid column was removed; all three run-open triggers and the
+  status-adaptive footer actions (stop/attach/teardown/ask-oz/retry/re-run) preserved.
+
+**Evidence so far:** full UI suite green (124/124) across both atoms, verified by Oscar on the actual
+diffs. **Remaining gap to archive:** the Objective's live-proof clause — screenshots / a run-through in
+the running app — which is a founder/live step (Oscar does not launch the app; host-safety).
+
+**Known follow-up (pre-existing, out of this priority's scope):** `tsc` is red on `main` because
+`RunStatus` (`packages/ui/app/model.ts`) lacks `'not-landed'` while three test files reference it; this
+predates run_133 and was not introduced here. Worth a ticket.
