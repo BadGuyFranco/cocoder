@@ -113,15 +113,19 @@ The run_121 tabs passed automated tests but the founder found three defects in t
    not fork. Relaunch `tickets-review` for this atom only after `new-primary-root` Addendum Atom 2 lands;
    proof ticket = one of `0003 / 0005 / 0012`.
 
-## Decomposition — status (run_132, 2026-06-17) — CODE-COMPLETE
+## Decomposition — status (run_132, 2026-06-18) — CONTINUE (core deliverables done; folded-in scope remains)
 
-**Disposition:** `archive-candidate` — Deliverable 2 is now code-complete and the gate is RESOLVED.
-The run-target generalization (`new-primary-root` Addendum Atom 2) was found already landed (`9f76e98`,
-run_123), so atom 4 extended that discriminator with a `ticket` kind instead of forking. **All five build
-atoms verified-on-evidence (diff read + suites + typecheck per atom) and committed this run.** The ONE
-remaining archive criterion is the *live* end-to-end proof — a founder-launched fix run that closes a real
-ticket on trunk — which is a founder action, not a build atom (relaunching code-complete work as a build
-run only yields an empty reaffirmation wrap, F18).
+**Disposition:** `continue` — NOT archive-ready. **Correction (founder challenge, 2026-06-18):** an
+earlier run_132 note wrongly marked this `archive-candidate` / "code-complete" by treating the run_131
+folded-in items as optional. They are **in-scope requirements of this priority** (the founder folded them
+in; single owner per surface, global #7) — the priority cannot archive with them unresolved unless the
+founder explicitly de-scopes them. Deliverables 1 + 2 ARE complete (the two original deliverables + the
+ticket↔priority card/modal/launch parity + the 0015 loader fix). **Still in-scope and UNBUILT, blocking
+archive:** (a) reorderable tickets, and (b) the `create-ticket` authoring Play for all personas. Plus the
+live end-to-end proof (founder action). The run-target gate was found already landed (`9f76e98`, run_123),
+so atom 4 extended that discriminator rather than forking.
+
+**Built + verified-on-evidence this run (diff read + suites + typecheck per atom, committed):**
 
 - ✅ **Atom 0 — Ticket loader: surface, don't swallow** (`1f15bac`, `packages/core/src/tickets/**`).
   `loadTicket` tolerates frontmatter-less tickets (null metadata, id/title fallbacks) without weakening
@@ -146,13 +150,26 @@ run only yields an empty reaffirmation wrap, F18).
   {ticketId}) + `handleLaunchTicket` mirror the priority Launch path; `onLaunchTicket` + `launchBlocked`
   threaded to the modal button (`disabled={!live || launchBlocked}`, click → launch + close modal).
 
-**ONLY remaining for archive (founder live action):** launch a fix run for ticket **0003** from the live
-dashboard Tickets tab → confirm it executes and closes (`0003` moves `open/ → closed/`, `INDEX.md` updated,
-commit on trunk, traceable to the change). The daemon must be serving current code: atom 1's launch path
-self-restarts an *idle* stale daemon; otherwise a founder `scripts/oz.sh restart` is needed before the
-launch. **Folded-in extensions NOT built this run** (deferred, not blocking archive of the core Objective):
-reorderable tickets (generalize `order.json`), the `create-ticket` authoring Play for all personas, and the
-durable loader-surface for unparseable tickets beyond 0015's tolerance.
+**REMAINING IN-SCOPE WORK BLOCKING ARCHIVE** (all from this priority's scope — NOT optional):
+1. **Reorderable tickets** (net-new product, needs a build run). Generalize the priority order mechanism
+   (`order.json` + `writePriorityOrder` / `priority-order.ts`) to a ticket order applied to the open-tickets
+   list — do NOT add a parallel mechanism. Decompose: a core/daemon ticket-order primitive + endpoint, then
+   UI drag-reorder on the ticket cards mirroring `PriorityRow`.
+2. **`create-ticket` authoring Play for ALL personas** (net-new product, needs a build run). Add a
+   `create-ticket` authoring Play (analogous to `create-priority`/`edit-priority` in `AUTHORING_PLAY_IDS`,
+   `daemon/launcher.ts`) so any persona (Oz/Oscar/Bob/Deb) can file a ticket mid-run, reusing the SAME
+   ticket-write path as the founder modal (`POST /workspaces/:id/tickets`). MUST template proper YAML
+   frontmatter (id/title/type/status/priority/owner/created) so created tickets are not silently dropped.
+3. **Live end-to-end proof** (founder action, not a build atom): launch a fix run for ticket **0003** from
+   the live dashboard Tickets tab → confirm it executes and closes (`0003` moves `open/ → closed/`,
+   `INDEX.md` updated, commit on trunk, traceable to the change). Daemon must serve current code: atom 1's
+   launch path self-restarts an *idle* stale daemon; otherwise a founder `scripts/oz.sh restart` is needed.
+
+Items 1–2 are **net-new product code (Surface-B)** and need a build run (relaunch `tickets-review`) — they
+were not built this run and were briefly mis-labeled "deferred / not blocking." **Already RESOLVED, not
+remaining:** the ticket↔priority card/modal/launch parity (atoms 2+4), the launch-fix-closes-modal behavior
+(atom 4), and the 0015 silent-drop loader defect (atom 0 — durable fix, already landed; do not re-list as a
+gap).
 
 ## Folded in (founder, 2026-06-17 run_131) — ticket↔priority UI parity + create-ticket Play
 The founder folded the Oz-dashboard **ticket** items here (they belong to the ticket surface this
