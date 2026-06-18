@@ -14,9 +14,11 @@ completed before implementation:
 
 1. **Oz is visually separate from workspace work.** The workspace switcher/add controls belong to the
    workspace panel; that panel contains workspace-local tabs for **Priorities**, **Tickets**, and
-   **Runs/Sessions**. Search is removed for now or moved inside the workspace panel. The workspace panel
-   is roughly 50% wider. The Oz terminal panel matches its height and visibly owns Oz/global controls:
-   refresh, live status, notifications, and theme.
+   **Runs/Sessions**. Search is removed for now or moved inside the workspace panel. On a fresh launch the
+   split is **45% workspace panel / 55% Oz panel** (a ratio, so it holds as the window changes size); the
+   user can drag the divider to any ratio and their chosen ratio then holds (persistence across launches is
+   Objective 9). The Oz terminal panel matches its height and visibly owns Oz/global controls: refresh,
+   live status, notifications, and theme.
 2. **Oz chat has an explicit target.** A workspace picker sits above the chat input and includes a
    **no workspace / global Oz** state. Commands that need a workspace use the selected workspace or stop
    with a clear target-needed response.
@@ -44,6 +46,14 @@ completed before implementation:
 8. **No parallel workspace contract is introduced.** The final implementation names the source of truth
    for workspace identity, workspace-local counters, portable run/session records, dashboard data
    loading, live run state, and session-host labels; every consumer is aligned to those owners.
+9. **Dashboard layout persists across launches.** The full Oz dashboard window size *and* the
+   workspace/Oz panel split ratio are remembered for every Oz launch. The first-ever launch uses the
+   45% / 55% default (Objective 1); once the user resizes the window or drags the panel divider, that
+   window size and ratio are restored on the next launch. Today the divider owns a fixed-pixel,
+   non-persisted default (`prioWidth` in `packages/ui/app/sections/dashboard/Dashboard.tsx`) and the
+   Electron window saves no bounds — both need a durable owner (panel ratio persisted by the renderer,
+   e.g. a stored fraction; window bounds persisted by the Electron main process). Pick the owners in the
+   implementing atom and name them so no parallel layout-state contract appears (Objective 8).
 
 ## Fixed Decisions
 
