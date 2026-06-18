@@ -410,10 +410,12 @@ describe('Oz mutations + lifecycle', () => {
     await startServer()
 
     const both = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo', playbookId: 'drift-audit' } })
+    const priorityAndTicket = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo', ticketId: '0003' } })
     const neither = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder' } })
 
-    expect(both).toEqual({ status: 400, json: { error: 'exactly one of priorityId or playbookId is required' } })
-    expect(neither).toEqual({ status: 400, json: { error: 'exactly one of priorityId or playbookId is required' } })
+    expect(both).toEqual({ status: 400, json: { error: 'exactly one of priorityId, playbookId, or ticketId is required' } })
+    expect(priorityAndTicket).toEqual({ status: 400, json: { error: 'exactly one of priorityId, playbookId, or ticketId is required' } })
+    expect(neither).toEqual({ status: 400, json: { error: 'exactly one of priorityId, playbookId, or ticketId is required' } })
     expect(store.listRuns()).toEqual([])
   })
 
@@ -445,6 +447,53 @@ describe('Oz mutations + lifecycle', () => {
     const state = JSON.parse(await readFile(join(home, 'local', 'runs', runId, 'playbook-state.json'), 'utf8')) as { readonly playbookId: string; readonly status: string }
     expect(state).toMatchObject({ playbookId: 'drift-audit', status: 'awaiting-founder' })
     expect(store.listEvents(runId).some((event) => event.type === 'playbook-executor')).toBe(true)
+  })
+
+  test('POST /runs launches an open ticket through the priority lifecycle and records its target', async () => {
+    await writeTicketIndex(home)
+    const prompts: string[] = []
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit(),
+      sessionHost: fakeHost(),
+      getAdapter: () => ({ ...okAdapter, build: (input) => {
+        prompts.push(input.prompt)
+        return { command: 'x', args: [] }
+      } }),
+      io: fakeIO(),
+      runHeadless: async () => ({ exitCode: 0, output: 'wrap closeout' }),
+    })
+
+    const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', ticketId: '0003' } })
+
+    expect(r.status).toBe(202)
+    expect(r.json).toMatchObject({ runId: expect.stringMatching(/^run_/), target: { kind: 'ticket', id: '0003' } })
+    const runId = String(r.json.runId)
+    let detail: Resp | null = null
+    for (let i = 0; i < 50; i++) {
+      detail = await call(oz, 'GET', `/runs/${runId}`)
+      if (detail.json.run.status !== 'running') break
+      await sleep(10)
+    }
+    expect(detail?.json.run).toMatchObject({ id: runId, priorityId: 'ticket-fix', ticketId: '0003', playbookId: null, status: 'completed' })
+    expect(detail?.json.target).toEqual({ kind: 'ticket', id: '0003' })
+    expect(store.listEvents(runId).some((event) => event.type === 'playbook-executor')).toBe(false)
+    expect(prompts[0]).toContain('Priority: **Ticket 0003: Existing open**')
+    expect(prompts[0]).toContain('Fix ticket 0003: Existing open.')
+  })
+
+  test('POST /runs rejects unknown and closed ticket targets', async () => {
+    await writeTicketIndex(home)
+    await startServer()
+
+    const unknown = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', ticketId: '9999' } })
+    const closed = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', ticketId: '0012' } })
+
+    expect(unknown).toEqual({ status: 400, json: { error: 'unknown ticket "9999"' } })
+    expect(closed).toEqual({ status: 400, json: { error: 'ticket "0012" is not open' } })
+    expect(store.listRuns()).toEqual([])
   })
 
   test('POST /runs launches takeover P1 through the daemon phase dispatcher and writes P1 artifacts', async () => {

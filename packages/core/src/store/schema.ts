@@ -19,10 +19,12 @@ CREATE TABLE IF NOT EXISTS run (
   status             TEXT NOT NULL,
   created_at         INTEGER NOT NULL,
   ended_at           INTEGER,
-  playbook_id        TEXT
+  playbook_id        TEXT,
+  ticket_id          TEXT
   -- priority_id remains NOT NULL for additive migration compatibility: SQLite cannot relax it without
-  -- a table rebuild, and this schema deliberately avoids rebuilds. Onboarding Playbook runs therefore
-  -- store a compatibility sentinel in priority_id, but run kind is ONLY playbook_id IS NOT NULL.
+  -- a table rebuild, and this schema deliberately avoids rebuilds. Onboarding Playbook and ticket-fix
+  -- runs therefore store compatibility sentinels in priority_id, but run kind is determined by target
+  -- discriminator precedence: ticket_id IS NOT NULL, else playbook_id IS NOT NULL, else priority.
   -- Single mode: every run commits straight to the checked-out branch (founder directive 2026-06-15).
   -- The isolation lane (worktree_path / run_branch / integration_status) was removed; pre-existing dbs
   -- retain those columns inert (no reader/writer references them).
@@ -115,4 +117,5 @@ export interface ColumnMigration {
 export const COLUMN_MIGRATIONS: readonly ColumnMigration[] = [
   { table: 'session', column: 'workspace_ref', ddl: 'TEXT' },
   { table: 'run', column: 'playbook_id', ddl: 'TEXT' },
+  { table: 'run', column: 'ticket_id', ddl: 'TEXT' },
 ]

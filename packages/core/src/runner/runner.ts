@@ -115,6 +115,10 @@ export interface RunInput {
   readonly runsRoot: string
   /** Optional founder-provided free-text instruction for this run; not persisted in the store. */
   readonly task?: string | null
+  /** Optional compatibility priority id for synthetic targets whose real discriminator is another field. */
+  readonly storePriorityId?: string | null
+  /** Optional open ticket target; stored on the run row while the synthetic priority drives Oscar. */
+  readonly ticketId?: string | null
   /** A prior run's pickup brief to resume from (ADR-0002 C1 / F8), woven into Oscar's prompt. */
   readonly pickup?: string | null
   /** Resolved wrap-up Play + per-(persona, Play) assignment; when present, the runner dispatches the Play to author closeout. */
@@ -240,7 +244,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const engineHome = input.engineHome ?? workspace.path
 
   store.upsertWorkspace(workspace)
-  const run = store.createRun({ workspaceId: workspace.id, priorityId: priority.id })
+  const run = store.createRun({ workspaceId: workspace.id, priorityId: input.storePriorityId ?? priority.id, ticketId: input.ticketId ?? null })
   deps.onRunCreated?.(run) // synchronous, before the first await — the daemon captures runId here
   const runDir = join(runsRoot, run.id)
   await io.ensureRunDir(runDir)

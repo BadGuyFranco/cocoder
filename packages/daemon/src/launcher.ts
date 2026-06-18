@@ -27,6 +27,7 @@ import {
   loadOnboardingPlaybooks,
   loadEffectivePlay,
   loadPriority,
+  readTickets,
   runCommitGate,
   resolvePlayAssignment,
   resolvePersonaMode,
@@ -37,10 +38,12 @@ import {
   type PersonaSources,
   type PlaybookP1AgentTurn,
   type PlaybookPhaseAction,
+  type Priority,
   type ResolveTopTier,
   type RunInput,
   type RunnerDeps,
   type SessionHost,
+  type Ticket,
   type Workspace,
 } from '@cocoder/core'
 import { basePersonasDir, basePlaybooksDir, basePlaysDir } from '@cocoder/personas'
@@ -92,14 +95,18 @@ function trackingHost(ctx: OzContext): SessionHost {
   }
 }
 
-/** Assemble RunInput from governance on disk (mirrors cli/src/run.ts). Throws on unknown ids. When
- *  resuming, reads the prior run's pickup brief so a fresh session continues it (ADR-0013 / F8). */
-export async function buildRunInput(ctx: Pick<OzContext, 'cocoderHome' | 'runsRoot'>, workspaceId: string, priorityId: string, opts: { readonly resumeFromRunId?: string; readonly task?: string | null } = {}): Promise<RunInput> {
-  const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
-  if (!ws) throw new Error(`unknown workspace "${workspaceId}"`)
+type WorkspaceRegistryEntry = NonNullable<Awaited<ReturnType<typeof findWorkspace>>>
+
+const ticketsDir = (workspacePath: string): string => join(workspacePath, 'cocoder', 'tickets')
+
+async function assembleRunInput(
+  ctx: Pick<OzContext, 'cocoderHome' | 'runsRoot'>,
+  ws: WorkspaceRegistryEntry,
+  priority: Priority,
+  opts: { readonly resumeFromRunId?: string; readonly task?: string | null; readonly storePriorityId?: string | null; readonly ticketId?: string | null } = {},
+): Promise<RunInput> {
   const personasDir = join(ws.path, 'cocoder', 'personas')
   const playDeltaDir = join(ws.path, 'cocoder', 'plays', 'deltas')
-  const prioritiesDir = join(ws.path, 'cocoder', 'priorities')
   const baseDir = basePersonasDir()
   const sources: PersonaSources = { baseDir, deltaDir: join(personasDir, 'deltas'), repoPersonaDir: personasDir }
   const sharedStandards = await readFile(join(baseDir, 'shared-standards.md'), 'utf8')
@@ -115,7 +122,7 @@ export async function buildRunInput(ctx: Pick<OzContext, 'cocoderHome' | 'runsRo
   }
   return {
     workspace,
-    priority: loadPriority(prioritiesDir, priorityId),
+    priority,
     oscar: resolveEffectivePersona(sources, assignments, 'oscar'),
     bob: resolveEffectivePersona(sources, assignments, 'bob'),
     deb: isPersonaEnabled(assignments, 'deb') ? resolveEffectivePersona(sources, assignments, 'deb') : undefined,
@@ -126,8 +133,19 @@ export async function buildRunInput(ctx: Pick<OzContext, 'cocoderHome' | 'runsRo
     engineHome: ctx.cocoderHome,
     runsRoot: ctx.runsRoot,
     task: opts.task ?? null,
+    storePriorityId: opts.storePriorityId ?? null,
+    ticketId: opts.ticketId ?? null,
     pickup,
   }
+}
+
+/** Assemble RunInput from governance on disk (mirrors cli/src/run.ts). Throws on unknown ids. When
+ *  resuming, reads the prior run's pickup brief so a fresh session continues it (ADR-0013 / F8). */
+export async function buildRunInput(ctx: Pick<OzContext, 'cocoderHome' | 'runsRoot'>, workspaceId: string, priorityId: string, opts: { readonly resumeFromRunId?: string; readonly task?: string | null } = {}): Promise<RunInput> {
+  const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
+  if (!ws) throw new Error(`unknown workspace "${workspaceId}"`)
+  const prioritiesDir = join(ws.path, 'cocoder', 'priorities')
+  return assembleRunInput(ctx, ws, loadPriority(prioritiesDir, priorityId), opts)
 }
 
 async function headShaOrUnknown(ctx: OzContext, cwd: string): Promise<string> {
@@ -165,26 +183,60 @@ export interface LaunchResult {
 
 const ADHOC_PRIORITY_ID = 'adhoc-session'
 const PLAYBOOK_PRIORITY_SENTINEL = 'onboarding-playbook'
+const TICKET_PRIORITY_SENTINEL = 'ticket-fix'
 
-export type LaunchRunTarget = { readonly kind: 'priority'; readonly priorityId: string } | { readonly kind: 'playbook'; readonly playbookId: string }
+export type LaunchRunTarget =
+  | { readonly kind: 'priority'; readonly priorityId: string }
+  | { readonly kind: 'playbook'; readonly playbookId: string }
+  | { readonly kind: 'ticket'; readonly ticketId: string }
 
 function normalizeLaunchTarget(target: string | LaunchRunTarget): LaunchRunTarget {
   return typeof target === 'string' ? { kind: 'priority', priorityId: target } : target
 }
 
 function launchTargetId(target: LaunchRunTarget): string {
-  return target.kind === 'priority' ? target.priorityId : target.playbookId
+  if (target.kind === 'priority') return target.priorityId
+  if (target.kind === 'playbook') return target.playbookId
+  return target.ticketId
+}
+
+function missingTargetError(target: LaunchRunTarget): string {
+  if (target.kind === 'priority') return 'workspaceId and priorityId are required'
+  if (target.kind === 'playbook') return 'workspaceId and playbookId are required'
+  return 'workspaceId and ticketId are required'
 }
 
 function appendLaunchAudit(ctx: OzContext, workspaceId: string, target: LaunchRunTarget, runId: string | null): void {
   if (target.kind === 'priority') void appendAudit(ctx.cocoderHome, { action: 'launch', workspaceId, priorityId: target.priorityId, runId })
-  else void appendAudit(ctx.cocoderHome, { action: 'launch', workspaceId, playbookId: target.playbookId, runId })
+  else if (target.kind === 'playbook') void appendAudit(ctx.cocoderHome, { action: 'launch', workspaceId, playbookId: target.playbookId, runId })
+  else void appendAudit(ctx.cocoderHome, { action: 'launch', workspaceId, ticketId: target.ticketId, runId })
 }
 
 function appendStaleLaunchAudit(ctx: OzContext, workspaceId: string, target: LaunchRunTarget, headSha: string, idle: boolean): void {
   const common = { action: 'launch-refused-stale', workspaceId, bootSha: ctx.bootSha, headSha, selfRestart: idle } as const
   if (target.kind === 'priority') void appendAudit(ctx.cocoderHome, { ...common, priorityId: target.priorityId })
-  else void appendAudit(ctx.cocoderHome, { ...common, playbookId: target.playbookId })
+  else if (target.kind === 'playbook') void appendAudit(ctx.cocoderHome, { ...common, playbookId: target.playbookId })
+  else void appendAudit(ctx.cocoderHome, { ...common, ticketId: target.ticketId })
+}
+
+function ticketPriority(ticket: Ticket): Priority {
+  const body = ticket.body.trim() || `# ${ticket.id} - ${ticket.title}`
+  const objective = [
+    `Fix ticket ${ticket.id}: ${ticket.title}.`,
+    '',
+    'On a verified fix, close this ticket through the ticket-close path.',
+    '',
+    'Ticket body:',
+    '',
+    body,
+  ].join('\n')
+  return {
+    id: `ticket-fix-${ticket.id}`,
+    title: `Ticket ${ticket.id}: ${ticket.title}`,
+    scopeNarrowing: null,
+    goal: `## Objective\n\n${objective}`,
+    objective,
+  }
 }
 
 export function createDaemonPlaybookPhaseAction(ctx: OzContext, workspacePath: string, runDir: string, runId: string, modelTier: string, agent: { readonly cli: string; readonly model: string }, signal: AbortSignal): PlaybookPhaseAction {
@@ -345,14 +397,14 @@ function attachRunLifecycle(ctx: OzContext, workspaceId: string, stopController:
     })
 }
 
-/** Launch a run for either {workspaceId, priorityId} or {workspaceId, playbookId}. Async
+/** Launch a run for {workspaceId, priorityId}, {workspaceId, playbookId}, or {workspaceId, ticketId}. Async
  *  (fire-and-forget); returns 202 with the runId, 409 if a run is already in flight for the workspace,
  *  or 400 if the request can't be assembled. The string target preserves ordinary priority callers. */
 export async function launchRun(ctx: OzContext, workspaceId: string, targetInput: string | LaunchRunTarget, opts: { readonly resumeFromRunId?: string; readonly task?: string | null } = {}): Promise<LaunchResult> {
   const target = normalizeLaunchTarget(targetInput)
   const targetId = launchTargetId(target)
   if (!workspaceId || !targetId) {
-    return { status: 400, body: { error: target.kind === 'priority' ? 'workspaceId and priorityId are required' : 'workspaceId and playbookId are required' } }
+    return { status: 400, body: { error: missingTargetError(target) } }
   }
   const task = typeof opts.task === 'string' ? opts.task.trim() : ''
   if (target.kind === 'priority' && target.priorityId === ADHOC_PRIORITY_ID && task === '') {
@@ -369,6 +421,32 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
   if (target.kind === 'priority') {
     try {
       input = await buildRunInput(ctx, workspaceId, target.priorityId, opts)
+    } catch (err) {
+      ctx.inFlight.delete(workspaceId)
+      return { status: 400, body: { error: err instanceof Error ? err.message : String(err) } }
+    }
+  } else if (target.kind === 'ticket') {
+    workspace = await findWorkspace(ctx.cocoderHome, workspaceId)
+    if (!workspace) {
+      ctx.inFlight.delete(workspaceId)
+      return { status: 400, body: { error: `unknown workspace "${workspaceId}"` } }
+    }
+    const ticket = (await readTickets(ticketsDir(workspace.path))).find((candidate) => candidate.id === target.ticketId) ?? null
+    if (!ticket) {
+      ctx.inFlight.delete(workspaceId)
+      return { status: 400, body: { error: `unknown ticket "${target.ticketId}"` } }
+    }
+    if (ticket.state !== 'open') {
+      ctx.inFlight.delete(workspaceId)
+      return { status: 400, body: { error: `ticket "${target.ticketId}" is not open` } }
+    }
+    try {
+      input = await assembleRunInput(ctx, workspace, ticketPriority(ticket), {
+        resumeFromRunId: opts.resumeFromRunId,
+        task: opts.task,
+        storePriorityId: TICKET_PRIORITY_SENTINEL,
+        ticketId: ticket.id,
+      })
     } catch (err) {
       ctx.inFlight.delete(workspaceId)
       return { status: 400, body: { error: err instanceof Error ? err.message : String(err) } }
@@ -440,7 +518,7 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
   }
 
   let running: Promise<unknown>
-  if (target.kind === 'priority') {
+  if (target.kind === 'priority' || target.kind === 'ticket') {
     // onRunCreated fires synchronously inside this call (before runRun's first await), so runId is set.
     running = runRun(deps, input!)
   } else {

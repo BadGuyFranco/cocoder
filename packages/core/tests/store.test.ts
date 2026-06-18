@@ -23,6 +23,7 @@ describe('RunStore (:memory:)', () => {
     expect(run.status).toBe('running')
     expect(run.endedAt).toBeNull()
     expect(run.playbookId).toBeNull()
+    expect(run.ticketId).toBeNull()
 
     store.setRunStatus(run.id, 'completed')
     const fetched = store.getRun(run.id)
@@ -84,14 +85,21 @@ describe('RunStore (:memory:)', () => {
     expect(store.listRuns({ limit: 1 }).map((r) => r.id)).toEqual([c.id])
   })
 
-  test('run target discriminator distinguishes priority and playbook runs', () => {
+  test('run target discriminator distinguishes priority, playbook, and ticket runs', () => {
     const priority = store.createRun({ workspaceId: 'cocoder', priorityId: 'p-1' })
     const playbook = store.createRun({ workspaceId: 'cocoder', priorityId: 'onboarding-playbook', playbookId: 'new-primary' })
+    const ticket = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0003' })
 
-    expect(store.getRun(priority.id)).toMatchObject({ priorityId: 'p-1', playbookId: null })
-    expect(store.getRun(playbook.id)).toMatchObject({ priorityId: 'onboarding-playbook', playbookId: 'new-primary' })
-    expect(store.getRun(priority.id)?.playbookId === null ? 'priority' : 'playbook').toBe('priority')
-    expect(store.getRun(playbook.id)?.playbookId === null ? 'priority' : 'playbook').toBe('playbook')
+    expect(store.getRun(priority.id)).toMatchObject({ priorityId: 'p-1', playbookId: null, ticketId: null })
+    expect(store.getRun(playbook.id)).toMatchObject({ priorityId: 'onboarding-playbook', playbookId: 'new-primary', ticketId: null })
+    expect(store.getRun(ticket.id)).toMatchObject({ priorityId: 'ticket-fix', playbookId: null, ticketId: '0003' })
+    const kind = (runId: string): string => {
+      const run = store.getRun(runId)
+      return run?.ticketId ? 'ticket' : run?.playbookId ? 'playbook' : 'priority'
+    }
+    expect(kind(priority.id)).toBe('priority')
+    expect(kind(playbook.id)).toBe('playbook')
+    expect(kind(ticket.id)).toBe('ticket')
   })
 
   test('events store JSON data and read back in order', () => {
@@ -166,7 +174,7 @@ describe('schema compatibility — existing dbs open and hydrate without data lo
     const store = openRunStore(dbPath, { now: clock() })
 
     // The legacy run + commit_link hydrate coherently — no data loss.
-    expect(store.getRun('run_legacy')).toMatchObject({ id: 'run_legacy', status: 'completed', playbookId: null })
+    expect(store.getRun('run_legacy')).toMatchObject({ id: 'run_legacy', status: 'completed', playbookId: null, ticketId: null })
     expect(store.listCommitLinks('run_legacy')[0]).toMatchObject({ commitSha: 'oldsha', files: ['a.ts'], workItemId: null })
 
     // A new commit link round-trips (every commit lands directly on the branch — no kind/merge metadata).
@@ -174,6 +182,8 @@ describe('schema compatibility — existing dbs open and hydrate without data lo
     expect(link).toMatchObject({ commitSha: 'newsha', files: ['b.ts'], workItemId: null })
     const playbook = store.createRun({ workspaceId: 'cocoder', priorityId: 'onboarding-playbook', playbookId: 'new-primary' })
     expect(store.getRun(playbook.id)).toMatchObject({ playbookId: 'new-primary' })
+    const ticket = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0003' })
+    expect(store.getRun(ticket.id)).toMatchObject({ ticketId: '0003', playbookId: null })
 
     store.close()
   })
