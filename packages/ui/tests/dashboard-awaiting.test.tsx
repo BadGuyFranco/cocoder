@@ -180,10 +180,38 @@ describe('Dashboard layout', () => {
     expect(column.getByText('Public docs/ tree is v1-stale')).toBeDefined()
   })
 
-  it('disables ticket fix launch while a run is in flight', () => {
-    render(<DashboardHarness runs={[run('running', 'running')]} live />)
+  it('launches a ticket fix from the inline ticket card action without opening details', () => {
+    const onLaunchTicket = vi.fn()
+    const { container } = render(<DashboardHarness runs={[]} live onLaunchTicket={onLaunchTicket} />)
 
     fireEvent.click(screen.getByRole('button', { name: /Tickets 3/i }))
+    const column = within(container.firstElementChild!.children[0] as HTMLElement)
+    const inlineLaunch = column.getAllByRole('button', { name: /^Launch$/ })[0] as HTMLButtonElement
+    expect(inlineLaunch.disabled).toBe(false)
+    expect(inlineLaunch.getAttribute('title')).toBeNull()
+
+    fireEvent.click(inlineLaunch)
+
+    expect(onLaunchTicket).toHaveBeenCalledTimes(1)
+    expect(onLaunchTicket).toHaveBeenCalledWith(expect.objectContaining({ id: '0003' }))
+    expect(screen.queryByText('0003 - Public docs/ tree is v1-stale')).toBeNull()
+    expect(screen.queryByText(/Docs need reconciliation/)).toBeNull()
+
+    fireEvent.click(column.getByText('Public docs/ tree is v1-stale'))
+    expect(screen.getByText('0003 - Public docs/ tree is v1-stale')).toBeDefined()
+    expect(screen.getByText(/Docs need reconciliation/)).toBeDefined()
+  })
+
+  it('disables ticket fix launch while a run is in flight', () => {
+    const { container } = render(<DashboardHarness runs={[run('running', 'running')]} live />)
+
+    fireEvent.click(screen.getByRole('button', { name: /Tickets 3/i }))
+    const column = within(container.firstElementChild!.children[0] as HTMLElement)
+    for (const button of column.getAllByRole('button', { name: /^Launch$/ }) as HTMLButtonElement[]) {
+      expect(button.disabled).toBe(true)
+      expect(button.getAttribute('title')).toContain('A run is active in this workspace')
+    }
+
     fireEvent.click(screen.getByText('Public docs/ tree is v1-stale'))
 
     const button = screen.getByRole('button', { name: /Launch fix/i }) as HTMLButtonElement

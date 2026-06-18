@@ -112,10 +112,16 @@ function TicketsTab({ tickets, onLaunchTicket, launchBlocked, live }: { tickets:
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {openTickets.map((ticket) => (
-          <button
+          <div
             key={ticket.id}
-            type="button"
+            role="button"
+            tabIndex={0}
             onClick={() => setSelectedId(ticket.id)}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter' && e.key !== ' ') return
+              e.preventDefault()
+              setSelectedId(ticket.id)
+            }}
             style={{ width: '100%', textAlign: 'left', padding: '9px 10px', background: 'var(--cb-surface-glass)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', cursor: 'pointer', fontFamily: 'var(--cb-font-body)', color: 'var(--cb-text)', transition: 'box-shadow 120ms ease-out, background 120ms ease-out, border-color 120ms ease-out' }}
             onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--cb-accent-30)'; e.currentTarget.style.background = 'var(--cb-hover)' }}
             onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--cb-border)'; e.currentTarget.style.background = 'var(--cb-surface-glass)' }}
@@ -123,9 +129,10 @@ function TicketsTab({ tickets, onLaunchTicket, launchBlocked, live }: { tickets:
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
               <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-accent)', minWidth: 34, paddingTop: 2 }}>{ticket.id}</span>
               <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 500, lineHeight: 1.4, paddingTop: 1 }}>{ticket.title}</div>
+              <Button variant="secondary" size="sm" icon="play" disabled={launchDisabled} title={launchTitle} onClick={(e) => { e.stopPropagation(); onLaunchTicket(ticket) }}>Launch</Button>
               <Icon name="arrow-right" size={12} style={{ color: 'var(--cb-text-muted)', marginTop: 3 }} />
             </div>
-          </button>
+          </div>
         ))}
       </div>
       {selected && (
