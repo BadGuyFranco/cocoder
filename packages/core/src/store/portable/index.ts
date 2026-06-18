@@ -41,5 +41,11 @@ export {
   type MigrateWorkspacePortableHistoryInput,
   type MigrateWorkspacePortableHistoryResult,
 } from './migrate.js'
+export {
+  buildPortableSessionDisplayNumbers,
+  listPortableRunSessions,
+  writePortableRunHistory,
+  type WritePortableRunHistoryInput,
+} from './projection.js'
 export { recordPortableRunCreation, type RecordPortableRunCreationInput } from './run-creation.js'
 export type { JsonPrimitive, JsonValue } from './json.js'

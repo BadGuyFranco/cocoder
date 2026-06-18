@@ -347,7 +347,7 @@ describe('runRun (multi-atom loop)', () => {
     const wis = store.listWorkItems(result.runId)
     expect(wis.map((w) => w.task)).toEqual(['atom 0', 'atom 1'])
     expect(wis.every((w) => w.status === 'done')).toBe(true)
-    expect(store.listCommitLinks(result.runId).map((c) => c.files)).toEqual([['packages/a.ts'], ['packages/b.ts']])
+    expect(store.listCommitLinks(result.runId).filter((c) => c.workItemId !== null).map((c) => c.files)).toEqual([['packages/a.ts'], ['packages/b.ts']])
     const types = store.listEvents(result.runId).map((e) => e.type)
     expect(types).toEqual(expect.arrayContaining(['run-start', 'spawn', 'delegation', 'builder-done', 'verify-pass', 'commit', 'wrapup', 'run-end']))
   })
@@ -721,7 +721,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(result.committedFiles).toEqual(['packages/atom.ts', 'docs/wrap.md', 'packages/not-wrap.ts'])
     expect(result.outOfScope).toEqual(['packages/not-wrap.ts'])
     expect(result.status).toBe('completed')
-    const links = store.listCommitLinks(result.runId)
+    const links = store.listCommitLinks(result.runId).filter((c) => c.message !== `run-history: ${result.runId} via CoCoder run ${result.runId}`)
     expect(links.map((c) => c.files)).toEqual([['packages/atom.ts'], ['docs/wrap.md', 'packages/not-wrap.ts']])
     expect(links.map((c) => c.workItemId)).toEqual([store.listWorkItems(result.runId)[0]?.id, null])
     const wrap = store.listEvents(result.runId).find((e) => e.type === 'wrapup')
@@ -778,7 +778,8 @@ describe('runRun (multi-atom loop)', () => {
     expect(result.committedShas).toEqual([])
     expect(pickupWrites).toEqual(['Oscar hand-authored pickup'])
     expect(adapterCalls).not.toContain('cursor-agent')
-    expect(store.listCommitLinks(result.runId)).toEqual([])
+    expect(store.listCommitLinks(result.runId)).toHaveLength(1)
+    expect(store.listCommitLinks(result.runId)[0]).toMatchObject({ commitSha: 'sha-0', workItemId: null })
     const wrap = store.listEvents(result.runId).find((e) => e.type === 'wrapup')
     expect(wrap?.data).toEqual({ atoms: 0, forced: false })
   })
@@ -836,7 +837,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(result.committedFiles).toEqual(['packages/atom.ts', 'cocoder/priorities/full-oz-dashboard.md'])
     expect(result.outOfScope).toEqual([])
 
-    const links = store.listCommitLinks(result.runId)
+    const links = store.listCommitLinks(result.runId).filter((c) => c.message !== `run-history: ${result.runId} via CoCoder run ${result.runId}`)
     expect(links.map((c) => c.files)).toEqual([['packages/atom.ts'], ['cocoder/priorities/full-oz-dashboard.md']])
     expect(links.map((c) => c.workItemId)).toEqual([store.listWorkItems(result.runId)[0]?.id, null])
 
@@ -858,7 +859,10 @@ describe('runRun (multi-atom loop)', () => {
       }),
       input,
     )
-    expect(store.listCommitLinks(result.runId).map((c) => c.files)).toEqual([['packages/a.ts', 'docs/leak.md'], ['packages/b.ts', 'docs/leak.md']])
+    expect(store.listCommitLinks(result.runId).filter((c) => c.workItemId !== null).map((c) => c.files)).toEqual([
+      ['packages/a.ts', 'docs/leak.md'],
+      ['packages/b.ts', 'docs/leak.md'],
+    ])
     expect(result.outOfScope).toEqual(['docs/leak.md']) // flagged once (unioned), committed both atoms
     expect(result.status).toBe('completed')
   })
@@ -898,7 +902,7 @@ describe('runRun (multi-atom loop)', () => {
       input,
     )
     expect(restored).toEqual([['packages/bad.ts']]) // the rejected atom's in-scope work was discarded
-    expect(store.listCommitLinks(result.runId).map((c) => c.files)).toEqual([['packages/good.ts']]) // only the passing atom committed
+    expect(store.listCommitLinks(result.runId).filter((c) => c.workItemId !== null).map((c) => c.files)).toEqual([['packages/good.ts']]) // only the passing atom committed
     const quarantine = store.listEvents(result.runId).find((e) => e.type === 'atom-quarantined')!
     expect(quarantine.data).toEqual({
       atom: 0,
@@ -926,7 +930,7 @@ describe('runRun (multi-atom loop)', () => {
       }),
       input,
     )
-    expect(committed).toHaveLength(1) // only the passing atom committed
+    expect(result.committedShas).toHaveLength(1) // only the passing atom is included in the run result
     expect(result.atoms).toBe(2)
     const types = store.listEvents(result.runId).map((e) => e.type)
     expect(types).toContain('verify-rejected')

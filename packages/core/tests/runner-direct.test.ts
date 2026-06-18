@@ -26,6 +26,15 @@ import {
   openRunStore,
   runRun,
 } from '../src/index.js'
+import {
+  portableRunPaths,
+  readPortableCommits,
+  readPortableCounters,
+  readPortableEvents,
+  readPortableRun,
+  readPortableSessions,
+  readPortableWorkItems,
+} from '../src/store/index.js'
 
 const exec = promisify(execFile)
 const g = (cwd: string, args: string[]): Promise<string> => exec('git', ['-C', cwd, ...args]).then((r) => r.stdout.trim())
@@ -182,8 +191,9 @@ describe('runRun direct mode — the default (ADR-0023 §2, live git)', () => {
 
     // The commit is on the active branch (main) of the REAL repo — directly, no merge commit.
     const log = await g(home, ['log', '--oneline', 'main'])
-    expect(log.split('\n')).toHaveLength(2) // init + the atom commit
-    expect(await g(home, ['show', '--stat', 'HEAD'])).toContain('packages/feature.ts')
+    expect(log.split('\n')).toHaveLength(3) // init + atom commit + run-history commit
+    expect(await g(home, ['show', '--stat', 'HEAD~1'])).toContain('packages/feature.ts')
+    expect(await g(home, ['show', '--stat', 'HEAD'])).toContain('cocoder/runs/1-run_')
     expect(await g(home, ['rev-parse', '--abbrev-ref', 'HEAD'])).toBe('main')
 
     // Single mode: the run committed straight to the active branch — there is no worktree, no run branch,
@@ -202,6 +212,19 @@ describe('runRun direct mode — the default (ADR-0023 §2, live git)', () => {
     expect(types).toContain('direct-mode')
     expect(types).not.toContain('worktree-created')
     expect(types).not.toContain('stranded-commits-detected')
+
+    const portableRun = await readPortableRun(home, 1, result.runId)
+    expect(portableRun?.status).toBe('completed')
+    expect(portableRun?.endedAt).toEqual(expect.any(Number))
+    expect(await readPortableCounters(home)).toMatchObject({ nextRunDisplayNumber: 2, nextSessionDisplayNumber: 3 })
+    expect(await readPortableSessions(home, 1, result.runId)).toHaveLength(2)
+    expect(await readPortableWorkItems(home, 1, result.runId)).toHaveLength(1)
+    expect(await readPortableCommits(home, 1, result.runId)).toHaveLength(1)
+    expect((await readPortableEvents(home, 1, result.runId)).map((e) => e.type)).toEqual(expect.arrayContaining(['landing-outcome', 'run-end']))
+    const paths = portableRunPaths(home, 1, result.runId)
+    expect(await readFile(paths.sessionsFile, 'utf8')).not.toContain('surface:')
+    expect(await readFile(paths.eventsFile, 'utf8')).not.toContain('runDir')
+    expect(await readFile(paths.eventsFile, 'utf8')).not.toContain('"ref"')
   })
 
   test('scoped dirty guard refuses the launch on uncommitted in-scope WIP; commits nothing', async () => {
@@ -279,8 +302,8 @@ describe('runRun direct mode — the default (ADR-0023 §2, live git)', () => {
     expect(result.committedFiles).toEqual(expect.arrayContaining(['packages/feature.ts', 'OUTSIDE.md']))
     expect(result.outOfScope).toEqual(['OUTSIDE.md']) // visibility flag
     expect(result.status).toBe('completed') // never held back — nothing is withheld
-    expect(await g(home, ['show', '--stat', 'HEAD'])).toContain('packages/feature.ts')
-    expect(await g(home, ['show', '--stat', 'HEAD'])).toContain('OUTSIDE.md')
+    expect(await g(home, ['show', '--stat', 'HEAD~1'])).toContain('packages/feature.ts')
+    expect(await g(home, ['show', '--stat', 'HEAD~1'])).toContain('OUTSIDE.md')
     // Nothing held back — the working tree is clean (everything the actor produced committed).
     expect(await g(home, ['status', '--porcelain'])).toBe('')
   })
@@ -333,7 +356,8 @@ describe('runRun direct mode — the default (ADR-0023 §2, live git)', () => {
     const data = event.data as { quarantineDir: string; files: string[] }
     expect(data.files).toEqual(['packages/bad.ts'])
     expect(await readFile(join(data.quarantineDir, 'packages', 'bad.ts'), 'utf8')).toBe('export const bad = 1\n')
-    expect(await g(home, ['show', '--name-only', '--format=', 'HEAD'])).not.toContain('packages/bad.ts')
+    expect(await g(home, ['show', '--name-only', '--format=', 'HEAD~1'])).toContain('packages/good.ts')
+    expect(await g(home, ['show', '--name-only', '--format=', 'HEAD~1'])).not.toContain('packages/bad.ts')
     expect(await g(home, ['status', '--porcelain', '--untracked-files=all'])).toBe('')
   })
 })

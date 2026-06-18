@@ -18,7 +18,16 @@ import type { Priority } from '../priorities/index.js'
 import type { PersonaRunMode, PlayAssignment, ResolvedPersona } from '../personas/index.js'
 import { dispatchPlay, type DispatchPlayResult, type HeadlessRunInput } from '../plays/index.js'
 import type { Play } from '../plays/index.js'
-import { recordPortableRunCreation, type Run, type RunStatus, type RunStore, type Workspace } from '../store/index.js'
+import {
+  allocatePortableSessionDisplayNumber,
+  listPortableRunSessions,
+  recordPortableRunCreation,
+  writePortableRunHistory,
+  type Run,
+  type RunStatus,
+  type RunStore,
+  type Workspace,
+} from '../store/index.js'
 import { effectiveScope, partitionByScope } from '../write-scope/index.js'
 import type { SessionHost, SessionRef } from '../session-host/index.js'
 import { exec as execChildProcess } from 'node:child_process'
@@ -792,6 +801,43 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     }
   }
 
+  const projectAndCommitPortableRunHistory = async (terminal: { readonly status: RunStatus; readonly endedAt: number }): Promise<void> => {
+    const sessionDisplayNumbers = new Map<string, number>()
+    for (const session of listPortableRunSessions(store, run.id)) {
+      sessionDisplayNumbers.set(session.id, await allocatePortableSessionDisplayNumber(workspace.path))
+    }
+    const headBefore = await git.headSha(worktreePath)
+    await writePortableRunHistory({
+      primaryRoot: workspace.path,
+      store,
+      run,
+      displayNumber: portableRunDisplayNumber,
+      sessionDisplayNumbers,
+      terminal,
+    })
+    const message = `run-history: ${run.id} via CoCoder run ${run.id}`
+    const files = [
+      'cocoder/counters.json',
+      `cocoder/runs/${portableRunDisplayNumber}-${run.id}/run.json`,
+      `cocoder/runs/${portableRunDisplayNumber}-${run.id}/commits.jsonl`,
+      `cocoder/runs/${portableRunDisplayNumber}-${run.id}/events.jsonl`,
+      `cocoder/runs/${portableRunDisplayNumber}-${run.id}/sessions.jsonl`,
+      `cocoder/runs/${portableRunDisplayNumber}-${run.id}/work-items.jsonl`,
+    ]
+    const headNow = await git.headSha(worktreePath)
+    const historySelfCommitted = headNow !== headBefore
+    if (historySelfCommitted) {
+      store.recordEvent({ runId: run.id, type: 'agent-self-commit', data: { headBefore, headNow } })
+    }
+    const receipt = await commitFiles(git, worktreePath, files, message, COCODER_GOVERNANCE_AUTHOR)
+    if (receipt.error) throw new Error(`run-history commit failed: ${receipt.error}`)
+    if (receipt.committedSha) {
+      store.recordCommitLink({ runId: run.id, workItemId: null, commitSha: receipt.committedSha, message, files: receipt.committedFiles })
+      store.recordEvent({ runId: run.id, type: 'commit', data: { sha: receipt.committedSha, files: receipt.committedFiles } })
+    }
+    if (historySelfCommitted) selfCommitted = true
+  }
+
   const quarantineAtom = async (atomIndex: number, headBefore: string, selfCommitEvent: string): Promise<void> => {
     // If the atom SELF-committed (HEAD moved under trust-the-CLI), the working-tree quarantine can't
     // undo it — surface that so it isn't silently carried in history.
@@ -1003,13 +1049,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const pickupPath = pickup ? await io.writePickup(runDir, pickup) : null
   await rebuildUiBundleIfNeeded()
   const status: RunStatus = 'completed'
-  store.setRunStatus(run.id, status)
-
-  // Every atom + Oscar-support commit already landed on the active branch as it was made (the commit-gate
-  // ran with cwd = the active checkout). There is no run branch to integrate, no landing step, and nothing
-  // that can strand — committed work is on the branch BY CONSTRUCTION. Push to a shared remote if one
-  // exists (non-gating); the merge to a shared main is GitHub's PR review, not the engine's.
-  await pushActiveBranchIfRemote()
+  const endedAt = now()
 
   // ── Authoritative outcome ─────────────────────────────────────────────────────────────────────────
   // The founder-facing TRUTH, DERIVED from settled state. Work is on the active branch by construction —
@@ -1032,6 +1072,12 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     type: 'run-end',
     data: { status, atoms: n, committedShas, outOfScope, selfCommitted },
   })
+  await projectAndCommitPortableRunHistory({ status, endedAt })
+  store.setRunStatus(run.id, status)
+  // Every atom + Oscar-support + run-history commit already landed on the active branch as it was made
+  // (the commit-gate ran with cwd = the active checkout). There is no run branch to integrate, no landing
+  // step, and nothing that can strand. Push to a shared remote if one exists (non-gating).
+  await pushActiveBranchIfRemote()
   const recordPath = await io.writeRunRecord(runDir, renderRunRecord(store, run.id, { workspace, priority }))
   log(`run ${run.id} ${status}; ${committedShas.length} commit(s) over ${n} atom(s); record at ${recordPath}`)
 
