@@ -94,6 +94,13 @@ async function writePriority(home: string, id: string, title = id): Promise<void
   await writeFile(join(home, 'cocoder', 'priorities', `${id}.md`), `---\nid: ${id}\ntitle: ${title}\n---\nDo ${id}.`)
 }
 
+async function writeTicket(home: string, state: 'open' | 'closed', id: string, title = id): Promise<void> {
+  await writeFile(
+    join(home, 'cocoder', 'tickets', state, `${id}-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.md`),
+    `---\nid: ${id}\ntitle: ${title}\ntype: task\nstatus: ${state === 'open' ? 'Open' : 'Closed'}\npriority: none\nowner: founder-session\ncreated: 2026-06-10\n---\n# ${id}\n\n${title}.`,
+  )
+}
+
 async function priorityIdsByDirOrder(home: string): Promise<string[]> {
   const names = await readdir(join(home, 'cocoder', 'priorities'))
   return names.filter((name) => name.endsWith('.md') && name !== 'AGENTS.md').map((name) => name.slice(0, -3))
@@ -193,6 +200,24 @@ describe('Oz read surfaces', () => {
     ])
     expect(r.json.tickets[0]).toMatchObject({ title: 'Docs stale', type: 'task', status: 'Open', body: expect.stringContaining('Fix docs') })
     expect(r.json.tickets[1]).toMatchObject({ title: 'Closed historical ticket', type: 'bug', status: 'Closed' })
+  })
+
+  test('GET /workspaces/:id/tickets applies order.json to open tickets only and ignores stale ids', async () => {
+    await writeTicket(home, 'open', '0001', 'First open')
+    await writeTicket(home, 'open', '0005', 'Later open')
+    await writeTicket(home, 'closed', '0002', 'Closed early')
+    await writeFile(join(home, 'cocoder', 'tickets', 'order.json'), JSON.stringify(['0005', 'missing', '0003', '0005']))
+
+    const r = await get(oz!, '/workspaces/cocoder/tickets')
+
+    expect(r.status).toBe(200)
+    expect(r.json.tickets.map((ticket: any) => [ticket.id, ticket.state])).toEqual([
+      ['0005', 'open'],
+      ['0003', 'open'],
+      ['0001', 'open'],
+      ['0002', 'closed'],
+      ['0007', 'closed'],
+    ])
   })
 
   test('GET /workspaces/:id/priorities applies order.json, appends unlisted priorities, and ignores stale ids', async () => {

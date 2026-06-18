@@ -37,7 +37,7 @@ import { listClis, testCli } from './clis.js'
 import { commitGovernance, launchRun, requestDaemonRestart, requestDashboardLaunch, requestStopRun, requestSupportCommitRun, showRun, teardownRun } from './launcher.js'
 import { handleOzMessage } from './oz-chat.js'
 import { mergeWriteSettings, readSettings } from './settings.js'
-import { readPriorities, readTickets, writePriorityOrder } from './priority-order.js'
+import { readPriorities, readTickets, writePriorityOrder, writeTicketOrder } from './priority-order.js'
 
 export type { OzContext } from './context.js'
 
@@ -74,6 +74,7 @@ const personasDir = (workspacePath: string): string => join(workspacePath, 'coco
 const prioritiesDir = (workspacePath: string): string => join(workspacePath, 'cocoder', 'priorities')
 const ticketsDir = (workspacePath: string): string => join(workspacePath, 'cocoder', 'tickets')
 const priorityOrderFile = (workspacePath: string): string => join(prioritiesDir(workspacePath), 'order.json')
+const ticketOrderFile = (workspacePath: string): string => join(ticketsDir(workspacePath), 'order.json')
 
 interface LaunchBody {
   readonly workspaceId: string
@@ -566,6 +567,16 @@ async function reorderPriorities(ctx: OzContext, res: ServerResponse, workspaceI
   sendJson(res, 200, { order: written, committedSha: receipt.committedSha })
 }
 
+async function reorderTickets(ctx: OzContext, res: ServerResponse, workspaceId: string, order: readonly string[]): Promise<void> {
+  const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
+  if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
+  const written = await writeTicketOrder(ticketsDir(ws.path), order)
+  const receipt = await commitGovernance(ctx, ws.path, [relative(ws.path, ticketOrderFile(ws.path))], `governance: reorder tickets (${workspaceId})`)
+  void appendAudit(ctx.cocoderHome, { action: 'ticket-reorder', workspaceId, committedSha: receipt.committedSha, committed: receipt.committed })
+  if (governanceCommitFailed(res, receipt)) return
+  sendJson(res, 200, { order: written, committedSha: receipt.committedSha })
+}
+
 async function createPriority(ctx: OzContext, res: ServerResponse, workspaceId: string, input: CreatePriorityInput): Promise<void> {
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
   if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
@@ -836,6 +847,18 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
     const order = reorderBody(body)
     if (!order) return sendJson(res, 400, { error: 'order must be an array of strings' }), true
     await reorderPriorities(ctx, res, decodeURIComponent(seg[1]!), order)
+    return true
+  }
+  if (method === 'POST' && seg[0] === 'workspaces' && seg.length === 4 && seg[2] === 'tickets' && seg[3] === 'reorder') {
+    let body: unknown
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      return sendJson(res, 400, { error: 'invalid JSON body' }), true
+    }
+    const order = reorderBody(body)
+    if (!order) return sendJson(res, 400, { error: 'order must be an array of strings' }), true
+    await reorderTickets(ctx, res, decodeURIComponent(seg[1]!), order)
     return true
   }
   if (method === 'POST' && seg[0] === 'workspaces' && seg.length === 3 && seg[2] === 'priorities') {

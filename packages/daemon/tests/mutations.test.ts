@@ -1456,6 +1456,58 @@ describe('Oz mutations + lifecycle', () => {
     expect(r.status).toBe(404)
   })
 
+  test('POST /workspaces/:id/tickets/reorder writes order.json, commits, audits, and subsequent GET reflects it', async () => {
+    await writeTicketIndex(home)
+    await writeFile(join(home, 'cocoder', 'tickets', 'open', '0004-second-open.md'), ticketFile('0004', 'Second open'))
+    const commits: GovernanceCommitCall[] = []
+    await startServer(recordingGovernanceGit(commits))
+
+    const post = await call(oz!, 'POST', '/workspaces/cocoder/tickets/reorder', { body: { order: ['0004', 'missing', '0012', '0003'] } })
+
+    expect(post.status).toBe(200)
+    expect(post.json).toEqual({ order: ['0004', '0003'], committedSha: 'sha-governance' })
+    expect(JSON.parse(await readFile(join(home, 'cocoder', 'tickets', 'order.json'), 'utf8'))).toEqual(['0004', '0003'])
+    expect(commits).toEqual([
+      {
+        cwd: home,
+        files: ['cocoder/tickets/order.json'],
+        message: 'governance: reorder tickets (cocoder)',
+        author: COCODER_GOVERNANCE,
+      },
+    ])
+
+    const get = await call(oz!, 'GET', '/workspaces/cocoder/tickets')
+    expect(get.status).toBe(200)
+    expect(get.json.tickets.map((ticket: any) => [ticket.id, ticket.state])).toEqual([
+      ['0004', 'open'],
+      ['0003', 'open'],
+      ['0012', 'closed'],
+    ])
+
+    let audit = ''
+    for (let i = 0; i < 20 && !audit.includes('ticket-reorder'); i++) {
+      audit = await readFile(join(home, 'local', 'oz-audit.log'), 'utf8').catch(() => '')
+      if (!audit.includes('ticket-reorder')) await sleep(10)
+    }
+    expect(audit).toContain('"action":"ticket-reorder"')
+    expect(audit).toContain('"committedSha":"sha-governance"')
+  })
+
+  test('POST /workspaces/:id/tickets/reorder rejects invalid bodies', async () => {
+    await startServer()
+
+    expect((await call(oz!, 'POST', '/workspaces/cocoder/tickets/reorder', { body: { order: '0003' } })).status).toBe(400)
+    expect((await call(oz!, 'POST', '/workspaces/cocoder/tickets/reorder', { body: { order: ['0003', 1] } })).status).toBe(400)
+  })
+
+  test('POST /workspaces/:id/tickets/reorder returns 404 for an unknown workspace', async () => {
+    await startServer()
+
+    const r = await call(oz!, 'POST', '/workspaces/nope/tickets/reorder', { body: { order: ['0003'] } })
+
+    expect(r.status).toBe(404)
+  })
+
   test('POST /workspaces/:id/priorities creates a priority with a derived slug and GET returns it', async () => {
     const commits: GovernanceCommitCall[] = []
     await startServer(recordingGovernanceGit(commits))
