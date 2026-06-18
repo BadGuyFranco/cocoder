@@ -1,5 +1,5 @@
-// Dashboard root — built AROUND the Oz conversation; priorities + runs are panels, never pages. The
-// run-detail drawer opens BETWEEN the priorities column and the chat (3-col when a run is selected).
+// Dashboard root — built AROUND the Oz conversation; priorities + runs are panels, never pages. Run
+// detail opens as a modal over the dashboard so cards, priorities, and runs share one detail pattern.
 // Ported from design-ref/dashboard.jsx, with the left panel now cycling Priorities/Tickets/Runs in place.
 import { useState, useCallback } from 'react'
 import { Button, Icon, Modal, StatusChip } from '../../ui/primitives.tsx'
@@ -207,7 +207,7 @@ export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, se
   }
   // The Priorities column is user-resizable via the drag handle; clamp to keep both sides usable.
   const onResizeTo = (px: number) => setPrioWidth(Math.max(PRIO_MIN, Math.min(PRIO_MAX, px)))
-  const gridTemplateColumns = selectedRun ? `${prioWidth}px 460px 6px 1fr` : `${prioWidth}px 6px 1fr`
+  const gridTemplateColumns = `${prioWidth}px 6px 1fr`
   const openTicketCount = tickets.filter((ticket) => ticket.state === 'open').length
   const launchBlocked = runs.some((r) => r.status === 'running')
   const addTitle = activeTab === 'priorities' ? 'Add priority' : activeTab === 'tickets' ? 'Add ticket' : ''
@@ -229,9 +229,9 @@ export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, se
           </div>
         </div>
       </div>
-      {selectedRun && <RunDetail run={selectedRun} parentPriority={selectedRun.priorityId ? priorities.find((p) => p.id === selectedRun.priorityId) || null : null} parentPriorityIndex={selectedRun.priorityId ? priorities.findIndex((p) => p.id === selectedRun.priorityId) : -1} onClose={() => setSelectedRunId(null)} onAction={onRunAction} />}
       <ResizeHandle width={prioWidth} onResizeTo={onResizeTo} />
       <OzChatPanel messages={ozMessages} runs={runs} workspaceName={workspace.name} onSend={onSend} onSelectRun={setSelectedRunId} onDecision={onDecision} ozTyping={ozTyping} live={live} prefill={chatPrefill} onPrefillConsumed={onChatPrefillConsumed} />
+      {selectedRun && <RunDetail run={selectedRun} parentPriority={selectedRun.priorityId ? priorities.find((p) => p.id === selectedRun.priorityId) || null : null} parentPriorityIndex={selectedRun.priorityId ? priorities.findIndex((p) => p.id === selectedRun.priorityId) : -1} onClose={() => setSelectedRunId(null)} onAction={onRunAction} />}
     </div>
   )
 }

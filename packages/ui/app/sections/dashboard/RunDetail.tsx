@@ -1,8 +1,8 @@
-// Run Detail drawer — opens in-place between Priorities and the Oz chat (the gold notch on the
-// priority row points into it). Tabs: Transcript (read-only window into the externally-running
-// session) · Evidence · Attach. Footer actions adapt to status. Ported from design-ref/dashboard.jsx.
+// Run Detail modal — selected runs open over the dashboard. Tabs: Transcript (read-only window into
+// the externally-running session) · Evidence · Attach. Footer actions adapt to status. Ported from
+// design-ref/dashboard.jsx.
 import { useState } from 'react'
-import { Icon, StatusChip, Button } from '../../ui/primitives.tsx'
+import { Icon, StatusChip, Button, Modal } from '../../ui/primitives.tsx'
 import type { Priority, Run } from '../../model.ts'
 
 export function RunDetail({ run, parentPriority, parentPriorityIndex, onClose, onAction }: {
@@ -12,8 +12,40 @@ export function RunDetail({ run, parentPriority, parentPriorityIndex, onClose, o
   const isRunning = run.status === 'running'
   const isParked = run.status === 'blocked'
   const isStreaming = run.status === 'running' || run.status === 'blocked'
+  const footer = isRunning ? (
+    <>
+      <Button variant="destructive" size="sm" icon="stop" onClick={() => onAction('stop', run.id)}>Stop run</Button>
+      <Button variant="ghost" size="sm" icon="terminal-window" onClick={() => onAction('attach', run.id)}>Attach</Button>
+      <Button variant="ghost" size="sm" icon="x-square" onClick={() => onAction('teardown', run.id)} title="Terminate this run's personas and close their cmux panes">Teardown</Button>
+      <Button variant="ghost" size="sm" icon="chat-circle-text" onClick={() => onAction('ask-oz', run.id)} style={{ marginLeft: 'auto' }}>Ask Oz</Button>
+    </>
+  ) : isParked ? (
+    <>
+      <Button variant="ghost" size="sm" icon="chat-circle-text" onClick={() => onAction('ask-oz', run.id)} style={{ marginLeft: 'auto' }}>Ask Oz</Button>
+    </>
+  ) : run.status === 'failed' ? (
+    <>
+      <Button variant="secondary" size="sm" icon="arrow-clockwise" onClick={() => onAction('retry', run.id)}>Retry</Button>
+      <Button variant="ghost" size="sm" icon="chat-circle-text" onClick={() => onAction('ask-oz', run.id)}>Ask Oz why</Button>
+      <div style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--cb-text-muted)' }}>Last event: {run.lastEvent}</div>
+    </>
+  ) : (
+    <>
+      <Button variant="ghost" size="sm" icon="arrow-clockwise" onClick={() => onAction('retry', run.id)}>Re-run</Button>
+      <Button variant="ghost" size="sm" icon="chat-circle-text" onClick={() => onAction('ask-oz', run.id)} style={{ marginLeft: 'auto' }}>Ask Oz</Button>
+    </>
+  )
   return (
-    <div className="oz-panel" style={{ height: '100%', animation: 'ozSlideIn 250ms ease-out', borderLeft: '2px solid var(--cb-accent)', position: 'relative' }}>
+    <Modal
+      open
+      onClose={onClose}
+      title={run.title}
+      subtitle={`${run.id} · started ${run.startedAt} · cli: ${run.cli}`}
+      icon="terminal-window"
+      width={840}
+      footer={footer}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <div style={{ padding: '10px 20px', background: 'var(--cb-accent-muted)', borderBottom: '1px solid var(--cb-accent-15)', display: 'flex', alignItems: 'center', gap: 10 }}>
         {parentPriority ? (
           <>
@@ -40,7 +72,6 @@ export function RunDetail({ run, parentPriority, parentPriorityIndex, onClose, o
           <div style={{ fontSize: 13.5, color: 'var(--cb-text)', fontWeight: 500, lineHeight: 1.3 }}>{run.title}</div>
           <div style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10.5, color: 'var(--cb-text-muted)', marginTop: 3 }}>{run.id} · started {run.startedAt} · cli: {run.cli}</div>
         </div>
-        <button className="oz-iconbtn" onClick={onClose} title="Close"><Icon name="x" size={14} /></button>
       </div>
       <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--cb-border)', display: 'flex', flexWrap: 'wrap', gap: 16, background: 'var(--cb-bg-soft)' }}>
         <div>
@@ -114,31 +145,7 @@ export function RunDetail({ run, parentPriority, parentPriorityIndex, onClose, o
           </div>
         )}
       </div>
-      <div style={{ borderTop: '1px solid var(--cb-border)', padding: '12px 20px', display: 'flex', gap: 8 }}>
-        {isRunning ? (
-          <>
-            <Button variant="destructive" size="sm" icon="stop" onClick={() => onAction('stop', run.id)}>Stop run</Button>
-            <Button variant="ghost" size="sm" icon="terminal-window" onClick={() => onAction('attach', run.id)}>Attach</Button>
-            <Button variant="ghost" size="sm" icon="x-square" onClick={() => onAction('teardown', run.id)} title="Terminate this run's personas and close their cmux panes">Teardown</Button>
-            <Button variant="ghost" size="sm" icon="chat-circle-text" onClick={() => onAction('ask-oz', run.id)} style={{ marginLeft: 'auto' }}>Ask Oz</Button>
-          </>
-        ) : isParked ? (
-          <>
-            <Button variant="ghost" size="sm" icon="chat-circle-text" onClick={() => onAction('ask-oz', run.id)} style={{ marginLeft: 'auto' }}>Ask Oz</Button>
-          </>
-        ) : run.status === 'failed' ? (
-          <>
-            <Button variant="secondary" size="sm" icon="arrow-clockwise" onClick={() => onAction('retry', run.id)}>Retry</Button>
-            <Button variant="ghost" size="sm" icon="chat-circle-text" onClick={() => onAction('ask-oz', run.id)}>Ask Oz why</Button>
-            <div style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--cb-text-muted)' }}>Last event: {run.lastEvent}</div>
-          </>
-        ) : (
-          <>
-            <Button variant="ghost" size="sm" icon="arrow-clockwise" onClick={() => onAction('retry', run.id)}>Re-run</Button>
-            <Button variant="ghost" size="sm" icon="chat-circle-text" onClick={() => onAction('ask-oz', run.id)} style={{ marginLeft: 'auto' }}>Ask Oz</Button>
-          </>
-        )}
       </div>
-    </div>
+    </Modal>
   )
 }

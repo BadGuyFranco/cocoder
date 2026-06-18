@@ -1,5 +1,5 @@
 // Component tests for the rebuilt Fusion renderer. It renders from the ported design seed (no daemon),
-// so these assert the V1 mental models are present: 5-section nav, run-IS-a-priority drawer with the
+// so these assert the V1 mental models are present: 5-section nav, run-IS-a-priority modal with the
 // gold handoff, Oz chat decision callout + round-trip, and the four screens.
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react'
@@ -62,7 +62,7 @@ describe('Oz — rebuilt Fusion renderer', () => {
     expect(screen.getByText(/Persona sub-agent fallback/)).toBeDefined()
   })
 
-  it('a run IS a priority: a running priority exposes detail before opening the run drawer', async () => {
+  it('a run IS a priority: a running priority exposes detail before opening the run modal', async () => {
     render(<App />)
     fireEvent.click(screen.getByText(/Persona sub-agent fallback/))
     expect((await screen.findAllByText('p1')).length).toBeGreaterThan(1)

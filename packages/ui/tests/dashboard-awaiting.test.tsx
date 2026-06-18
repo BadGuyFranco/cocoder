@@ -228,16 +228,17 @@ describe('Dashboard layout', () => {
     expect(screen.queryByTitle('Add ticket')).toBeNull()
   })
 
-  it('places the selected run drawer between priorities and chat, with the resize handle on the drawer far edge', () => {
+  it('opens the selected run as a modal without adding a dashboard grid column', () => {
     const { container } = render(<DashboardHarness runs={[run('running', 'running')]} initialSelectedRunId="running" />)
     const grid = container.firstElementChild as HTMLElement
     const children = Array.from(grid.children) as HTMLElement[]
 
-    expect(grid.style.gridTemplateColumns).toBe('380px 460px 6px 1fr')
+    expect(grid.style.gridTemplateColumns).toBe('380px 6px 1fr')
     expect(within(children[0]).getByRole('button', { pressed: true }).textContent).toContain('Priorities')
-    expect(within(children[1]).getByText('Transcript')).toBeDefined()
-    expect(children[2].className).toBe('oz-resize-handle')
-    expect(within(children[3]).getByText('Oz Terminal')).toBeDefined()
+    expect(children[1].className).toBe('oz-resize-handle')
+    expect(within(children[2]).getByText('Oz Terminal')).toBeDefined()
+    expect(screen.getByText('Transcript')).toBeDefined()
+    expect(screen.getAllByText('Run running').length).toBeGreaterThan(1)
   })
 
   it('keeps the resize handle between priorities and chat when no run is selected', () => {
