@@ -1,7 +1,7 @@
 import { readdir } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
-import { parseFrontmatter } from '../personas/frontmatter.js'
+import { parseFrontmatter, type Frontmatter } from '../personas/frontmatter.js'
 
 export type TicketState = 'open' | 'closed'
 
@@ -37,11 +37,24 @@ function titleFromBody(body: string, fallback: string): string {
   return body.match(/^#\s+(.+)$/m)?.[1]?.trim() || fallback
 }
 
+function hasFrontmatterBlock(raw: string): boolean {
+  return /^---\r?\n[\s\S]*?\r?\n---\r?\n?/.test(raw.replace(/^﻿/, ''))
+}
+
+function parseTicketMarkdown(raw: string): Frontmatter {
+  if (hasFrontmatterBlock(raw)) return parseFrontmatter(raw)
+  return { data: {}, body: raw.replace(/^﻿/, '').trim() }
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
 export function loadTicket(dir: string, file: string): Ticket {
   const path = join(dir, file)
   const state = stateFromDir(dir)
   const fallbackId = idFromFile(file)
-  const { data, body } = parseFrontmatter(readFileSync(path, 'utf8'))
+  const { data, body } = parseTicketMarkdown(readFileSync(path, 'utf8'))
   const frontmatterId = scalar(data.id)
   if (frontmatterId !== null && frontmatterId !== fallbackId) {
     throw new Error(`ticket ${path}: frontmatter id "${frontmatterId}" != filename id "${fallbackId}"`)
@@ -71,10 +84,11 @@ async function readStateDir(ticketsDir: string, state: TicketState): Promise<Tic
   const tickets: Ticket[] = []
   for (const name of names) {
     if (!name.endsWith('.md') || name === 'INDEX.md') continue
+    if (!/^\d{4}.*\.md$/.test(name)) continue
     try {
       tickets.push(loadTicket(dir, name))
-    } catch {
-      /* not a ticket file */
+    } catch (error) {
+      console.warn(`ticket loader: failed to load ${join(dir, name)}: ${errorMessage(error)}`)
     }
   }
   return tickets.sort((a, b) => a.id.localeCompare(b.id))
