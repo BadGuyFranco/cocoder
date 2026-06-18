@@ -211,3 +211,40 @@ decompose into atoms when this priority next launches.
   (no-frontmatter tickets silently dropped) is in this priority's scope; the Tickets surface should
   **surface**, not swallow, an unparseable ticket. Worked around run_131 (gave `0014` frontmatter);
   the loader fix is the durable resolution.
+
+## Decomposition — status (run_143, 2026-06-18) — CONTINUE (all build items code-complete; live proof remains)
+
+**Disposition:** `continue` — every in-scope BUILD item is now code-complete + verified-on-evidence and
+committed this run. The ONLY remaining gap to archive is the **live end-to-end proof** (founder action,
+not a build atom): launch a fix run for an open ticket from the live dashboard Tickets tab and confirm it
+closes on trunk. Do **not** relaunch this priority as a build run for that proof (it would only produce an
+empty reaffirmation wrap, F18) — it is a dashboard action the founder runs.
+
+All four folded-in run_131/run_133 items are DONE this run (each diff read + suites + typecheck per atom,
+committed):
+
+- ✅ **Atom 0 — Inline 'Launch fix' on the ticket CARD** (`d74a45f`, `packages/ui/**`). Card-level Launch
+  mirroring `PriorityRow:53` (reuses `onLaunchTicket`/`launchDisabled`/`launchTitle`, `stopPropagation`);
+  outer card became a valid `role=button` div with keyboard handling.
+- ✅ **Atom 1 — Ticket order backend** (`94ef1d9`, `packages/daemon/**`). Generalized the priority order
+  mechanism via shared `applyManifestOrder`/`writeOrder` helpers (ONE impl, no fork); `readTickets` applies
+  `cocoder/tickets/order.json` to OPEN tickets only; `POST .../tickets/reorder` commits via the spine with
+  a `ticket-reorder` audit. Core reader stayed pure.
+- ✅ **Atoms 2/3 — Ticket drag-reorder UI** (`318e34a`, `packages/ui/**`). Mirrors the priorities drag path
+  end-to-end across all four electron IPC layers + `persistTicketOrder` + App optimistic `reorderTickets` +
+  `TicketsTab` drag UI. Rejected once at verify for a shared `didDrag` boolean that swallowed the first
+  click on any card after a drag; re-scoped to an index-keyed `draggedIndex` (isolates to the dragged card,
+  matching `PriorityRow`) with a regression test pinning the cross-card first-click-opens behavior.
+- ✅ **Atom 4 — `create-ticket` authoring Play for ALL personas** (`1aac8d7`, `packages/core/**` +
+  `daemon` + `personas/base/plays/create-ticket.md`). Extracted `composeTicketMarkdown`+`TICKET_OWNER` to
+  `@cocoder/core` as the SINGLE ticket-format owner (route refactored, byte-identical — tickets-create test
+  green); added `create-ticket` to `AUTHORING_PLAY_IDS` and `bob` to the persona union; the Play mirrors
+  `create-priority`, templates full frontmatter via the core writer, and round-trip-validates via
+  `loadTicket`/`readTickets` (the durable 0015 guard). New authoring-play + core round-trip tests.
+
+**REMAINING (not a build atom):** Live end-to-end proof — from the live dashboard Tickets tab, launch a fix
+run for an open ticket (`0003`/`0005`/`0012`) and confirm it closes (`open/ → closed/`, `INDEX.md` updated,
+commit on trunk, traceable to the change). The daemon must serve current code: atom 1's launch path
+self-restarts an *idle* stale daemon; otherwise a founder `scripts/oz.sh restart` activates this run's code
+first. On a successful ticket run the close-on-success path (atom 3, run_132 — `closeTicket` via the spine)
+performs the move + INDEX update automatically.
