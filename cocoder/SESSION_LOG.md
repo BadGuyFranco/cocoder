@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-17 — **new-primary-root: Takeover executor P1→P6 code-complete on fakes + runnable proof — live Takeover or Drift build next (run_131)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 2 atoms delegated/verified-on-evidence) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_131
+**Outcomes:**
+- **Executor P6 — ratify ACTION (`c5f272d`):** two beats mirroring P5 — present (pre-gate, `phase.id==='P6'/'ratify'` writes `playbook/P6/ratification.{json,md}`) + apply (fires at P7/`prove` with the APPROVED P6 gate, idempotency-guarded on `playbook-ratify-result`). New pure-core `p6-apply.ts`/`p6-input.ts`/`p6-render.ts` read `synthesis.json`, materialize staged `playbook/P5/proposed-cocoder/**` into `repoDir/cocoder/**`, strip `status: future` draft markers. `createDaemonPlaybookPhaseAction` composes P1→P6; apply runs `runCommitGate({auditWriteBoundary:{label:'cocoder-takeover',scope:['cocoder/**']}})` — the **first real apply-commit** through the boundary. `commit-gate.test.ts` proves a product path in the changed set is REFUSED (`AuditWriteBoundaryError`, zero commit); daemon `mutations.test.ts` e2e resumes through P6→P7 apply.
+- **Atom 11 — runnable proof (`4a156fe`):** `scripts/proof-takeover-executor.mjs` — one-command founder-runnable proof (fakes + temp dir only). `node scripts/proof-takeover-executor.mjs` → exit 0, 16 checks: P1→P6→done across all 3 founder gates; happy apply commits ONLY `cocoder/**`; poisoned apply REFUSED with `AuditWriteBoundaryError` + nothing committed; nothing runnable until ratified (priorities absent pre-P6, present + status-stripped post); ratify event once (`appliedFileCount` 5, `objectiveCount` 3); P0 scaffold primitive exercised honestly (`scaffoldCocoderZone`, INFO line that executor loop does not own P0).
+- **Gates:** core 337 pass, daemon 208 pass, `pnpm -w typecheck` clean, `node scripts/check-topology.mjs` pass; proof script green exit 0.
+- **Disposition: `continue`** — Takeover executor P1→P6 is code-complete and proven on fakes; remaining Objective items are live-only (CoPublisher Takeover) or a separate Drift executor build — both founder decisions, not more Takeover build atoms.
+**Next:** Reply **`authorize live takeover`** to launch the `cocoder-takeover` playbook against CoPublisher (Objective verification (a)). Alternative build path: relaunch **`new-primary-root`** for the Drift executor sub-build (Objective verification (b)).
+
 ## 2026-06-17 — **new-primary-root: executor P5 synthesis + audit write-boundary ENFORCEMENT landed — P6 ratify ACTION is next (run_130)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 1 atom delegated/verified-on-evidence) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_130

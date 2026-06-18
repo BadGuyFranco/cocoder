@@ -43,7 +43,51 @@ extension (ADR-0020 §7); the `deep-read` audit Play (the Takeover P2 unit, adve
 deterministic scaffold init op; and a **live Takeover proof on a real external repo** (the Phase-5 entry,
 CoPublisher).
 
-## Build progress — disposition: `continue` (ratified 2026-06-17 — build released)
+## Build progress — disposition: `continue` (ratified 2026-06-17 — Takeover executor code-complete on fakes; live proofs founder-gated)
+
+### Executor build progress (run_131, 2026-06-17)
+Eleventh build session — **executor P6 ratify ACTION + Atom 11 runnable proof** landed (two atoms;
+verified-on-evidence: diff read end-to-end + `pnpm --filter @cocoder/core test` (337) +
+`pnpm --filter @cocoder/daemon test` (208) + `pnpm -w typecheck` + `node scripts/check-topology.mjs` +
+`node scripts/proof-takeover-executor.mjs` exit 0):
+- ✅ **Executor P6 — ratify ACTION** (`c5f272d`). Two beats mirroring P5 — present (pre-gate,
+  `phase.id==='P6'/'ratify'` writes `playbook/P6/ratification.{json,md}`) + apply (fires at P7/`prove`
+  with the APPROVED P6 gate, idempotency-guarded on the `playbook-ratify-result` event). Core
+  `p6-apply.ts`/`p6-input.ts`/`p6-render.ts` (pure: read `synthesis.json`, materialize staged
+  `playbook/P5/proposed-cocoder/**` into `repoDir/cocoder/**`, strip the `status: future` draft marker).
+  `createDaemonPlaybookPhaseAction` composes P1→P6 and runs the apply then
+  `runCommitGate({auditWriteBoundary:{label:'cocoder-takeover',scope:['cocoder/**']}})` — the **FIRST
+  real apply-commit** through the boundary. `commit-gate.test.ts` proves a product path in the changed set
+  is REFUSED (`AuditWriteBoundaryError`, zero commit); daemon `mutations.test.ts` e2e resumes through
+  P6→P7 apply. Core 332→337 green after runs.
+- ✅ **Atom 11 — runnable proof** (`4a156fe`). `scripts/proof-takeover-executor.mjs` — one-command
+  founder-runnable proof (fakes + temp dir only). `node scripts/proof-takeover-executor.mjs` → exit 0,
+  16 checks: P1→P6→done across all 3 founder gates; happy apply commits ONLY `cocoder/**`; poisoned apply
+  REFUSED with `AuditWriteBoundaryError` + nothing committed; nothing runnable until ratified (priorities
+  absent pre-P6, present + status-stripped post); ratify event once (`appliedFileCount` 5,
+  `objectiveCount` 3); P0 scaffold primitive exercised honestly (`scaffoldCocoderZone`, with an INFO line
+  that the executor loop does not own P0).
+
+**Sequencing note (Oscar):** wrapped at this boundary deliberately. The Takeover executor critical path
+(P1→P6 on fakes) is **code-complete** — further Takeover build atoms would only reaffirm what the proof
+script already covers (F18). P7 `prove` is intentionally a no-op in the executor loop today; it is the
+**live proof**, not a fake atom. What remains for this priority's Objective is founder-gated: (a) a live
+`cocoder-takeover` playbook run against CoPublisher, or (b) building the separate Drift executor
+sub-build.
+
+**Next-run sequence (founder decision — NOT more Takeover build atoms):**
+- **RECOMMENDED → Authorize live CoPublisher Takeover proof** — launch a `cocoder-takeover` playbook run
+  against the CoPublisher repo (Objective verification (a)). Billable, multi-agent, top-tier; a different
+  launch surface from this build loop. Reply **`authorize live takeover`** to proceed.
+- **ALTERNATIVE → Drift executor sub-build** — relaunch **`new-primary-root`** for the Drift phase kinds
+  (`drift-read-claims`, `drift-read-reality`, `drift-compare`, `drift-report`, P5 ratify gate,
+  `drift-apply`); design in `drift-audit.md` + addendum; substantial multi-session build (~5 phase kinds),
+  not a single atom.
+- **Parallel/independent:** New-Primary tech-stack-starter template BUILD from Atom E — per-starter
+  non-negotiables and the "if-unsure" fallback question remain draft-pending-ratification in
+  `new-primary-tech-stack.md`; confirm with founder first or scope to ratified parts only.
+- **Resume guard:** if relaunched as a build run, do NOT re-build Takeover phases — either build the Drift
+  executor or the tech-stack-starter (after founder confirms draft non-negotiables).
 
 ### Executor build progress (run_130, 2026-06-17)
 Tenth build session — **executor P5 — synthesis + `cocoder/**`-only audit write-boundary ENFORCEMENT**
@@ -558,41 +602,30 @@ First build session after ratification. Three atoms landed (verified-on-evidence
    files (assignments, adhoc priority, CLAUDE pointer) are now committed to trunk with their verified
    canonical contents; the run_86 strand below is closed (recovery executed). Scaffold is complete on a
    fresh clone again and CI is green.
-2. **P2→P5 fan-out executor** — **✅ DESIGNED run_107, ratified run_110, BUILD IN PROGRESS run_111–130**
-   ([ADR-0020 addendum](../decisions/0020-addendum-phase-executor.md)). Concrete P1→P5 execution design:
+2. **P0→P6 Takeover executor** — **✅ CODE-COMPLETE ON FAKES run_111–131**
+   ([ADR-0020 addendum](../decisions/0020-addendum-phase-executor.md)). Concrete P1→P6 execution design:
    new runner mode (not a forked loop), phase metadata from shipped Playbook tables, founder gates at
-   P1/P5, P2 deep-read fan-out via `dispatchPlay`, P3 cross-check → P4 synthesize → P5 ratify through the
-   ADR-0023 spine. **Landed run_111:** Atom F (`35eb066`), Atom 1 phase loader (`af48ddd`), Atom 5a recon
-   helper (`a2c7195`). **Landed run_112:** Atom 3 runner primitive (`ffcce7d`), Atom 4 executor state/cursor
-   (`87cec58`). **Landed run_123:** Atom 2 launch surface (`9f76e98`), Atom 5b agentic recon (`c165778`),
-   Atoms C/D estimate + intent (`7b9395f`/`2080437`), intent-artifact enumerator (`28ba44a`) — the full P1
-   input layer + producers. **Landed run_124:** executor P1 ACTION integration (`94de715`) — real P1 phase
-   wired, launcher drives headless Bob, daemon e2e proves start→P1→pause@gate with artifacts. **Landed
-   run_125:** executor P2a pure convergence engine (`a47bd8b`) — `p2-fanout.ts` with `runDeepReadSource` +
-   `combineSourcePair` (6 tests; core 311 green). **Landed run_126:** executor P2b dispatch seam (`66b5038`)
-   — `p2-dispatch.ts` with `resolveDeepReadAssignments` + `createDeepReadTurn` (core 314 green). **Landed
-   run_127:** executor P2c ACTION integration (`022d774`) — `p2-action.ts` end-to-end dual-source fan-out
-   wired through `launcher.ts` (P1→P2 compose; daemon e2e proves resume→P2 fan-out; core 317 + daemon 208
-   green). **Landed run_128:** executor P3 cross-check convergence ACTION integration (`775bf55`) —
-   `p3-cross-check.ts`/`p3-input.ts`/`p3-action.ts`/`p3-render.ts` capped convergence loop (3/30min/min(125k,alloc)),
-   non-gameable ≥2-round predicate over real P2 artifacts, ≤3 injected follow-up reads/round, on-cap gaps
-   preserved; launcher composes P1→P2→P3; daemon e2e proves resume→P2→real P3→P4 gate; core 322 + daemon 208
-   green. **Landed run_129:** executor P4 founder-question checkpoint ACTION integration (`4a3ee42`) —
-   `p4-questions.ts`/`p4-input.ts`/`p4-action.ts`/`p4-render.ts` partition the P4 gate content into three
-   founder-question classes (clarifications / conflicting findings / material-or-high code-issues-as-future-
-   priorities) from P3 convergence + P1 intent, each item traceable; launcher composes P1→P2→P3→P4; daemon
-   e2e proves the P4 gate carries `questions.json`/`questions.md` + a `playbook-questions-result` event;
-   trust invariant held structurally (P4 ignores repo code, writes only `playbook/P4/**`); core 327 + daemon
-   208 green. **Landed run_130:** executor P5 synthesis + `cocoder/**`-only audit write-boundary ENFORCEMENT
-   (`39f8019`) — `p5-synthesis.ts`/`p5-input.ts`/`p5-action.ts`/`p5-render.ts` draft proposed governance
-   under `playbook/P5/proposed-cocoder/**` + `synthesis.json`/`synthesis.md` (Objectives traceable to
-   verified P3 findings; staging only); `auditWriteBoundary` on `runCommitGate` throws before any
-   out-of-`cocoder/**` commit; launcher composes P1→P2→P3→P4→P5; daemon e2e proves P4→P5→P6 gate; core 332
-   + daemon 208 green. **Next:** P6 ratify ACTION → Atom 11 (P0→P6 end-to-end fixture proof) + tech-stack
-   template build from E.
-3. **Live CoPublisher Takeover proof** (Phase-5 entry) — Objective verification (a). **BLOCKED on executor
-   build** (#2 above).
-4. **Dogfood Drift Audit run** — Objective verification (b). **BLOCKED on executor build** (#2 above).
+   P1/P4/P6, P2 deep-read fan-out via `dispatchPlay`, P3 cross-check → P4 founder-question checkpoint →
+   P5 synthesis → P6 ratify through the ADR-0023 spine. **Landed run_111:** Atom F (`35eb066`), Atom 1
+   phase loader (`af48ddd`), Atom 5a recon helper (`a2c7195`). **Landed run_112:** Atom 3 runner
+   primitive (`ffcce7d`), Atom 4 executor state/cursor (`87cec58`). **Landed run_123:** Atom 2 launch
+   surface (`9f76e98`), Atom 5b agentic recon (`c165778`), Atoms C/D estimate + intent
+   (`7b9395f`/`2080437`), intent-artifact enumerator (`28ba44a`) — the full P1 input layer + producers.
+   **Landed run_124:** executor P1 ACTION integration (`94de715`). **Landed run_125:** executor P2a pure
+   convergence engine (`a47bd8b`). **Landed run_126:** executor P2b dispatch seam (`66b5038`). **Landed
+   run_127:** executor P2c ACTION integration (`022d774`). **Landed run_128:** executor P3 cross-check
+   (`775bf55`). **Landed run_129:** executor P4 founder-question checkpoint (`4a3ee42`). **Landed
+   run_130:** executor P5 synthesis + audit write-boundary ENFORCEMENT (`39f8019`). **Landed run_131:**
+   executor P6 ratify ACTION (`c5f272d`) + Atom 11 runnable proof (`4a156fe`) —
+   `node scripts/proof-takeover-executor.mjs` (16 checks, exit 0; core 337 + daemon 208 green). P7
+   `prove` is a no-op in the executor loop (live proof). **No further Takeover build atoms warranted.**
+3. **Live CoPublisher Takeover proof** (Phase-5 entry) — Objective verification (a). **READY TO
+   ATTEMPT** — engine proven on fakes (run_131). **GATED:** founder must authorize (billable,
+   multi-agent, top-tier) and launch a real `cocoder-takeover` playbook run against CoPublisher — a
+   different launch surface from this build loop.
+4. **Dogfood Drift Audit run** — Objective verification (b). **BLOCKED:** the Drift executor is UNBUILT
+   (phase kinds exist only as loader metadata; launcher composes only Takeover P1→P6). Substantial
+   separate sub-build (~5 phase kinds); design in `drift-audit.md` + addendum.
 
 ## Next-run atom plan (briefed run_107, 2026-06-16 — founder-directed)
 
@@ -745,11 +778,19 @@ directives now recorded in [addendum §Founder Ratification — RESOLVED](../dec
   `p5-render.ts`; `auditWriteBoundary` on `runCommitGate` throws `AuditWriteBoundaryError` before any
   out-of-`cocoder/**` commit; launcher composes P1→P2→P3→P4→P5; daemon e2e proves P4→P5→P6 gate; core 332
   + daemon 208 green.
-- **NEXT → Executor P6 — ratify ACTION** (fresh session; see §Executor build progress run_130).
-- **Then Atom 11** (P0→P6 end-to-end fixture proof) + New-Primary tech-stack-template build from E.
+- ✅ **Executor P6 — ratify ACTION** (`c5f272d`, run_131). `p6-apply.ts`/`p6-input.ts`/`p6-render.ts` —
+  present beat writes `playbook/P6/ratification.{json,md}`; apply beat materializes staged
+  `proposed-cocoder/**` into `repoDir/cocoder/**` through `runCommitGate` WITH `auditWriteBoundary` (first
+  real apply-commit; poisoned paths REFUSED); launcher composes P1→P6; daemon e2e resumes P6→P7 apply;
+  core 337 + daemon 208 green.
+- ✅ **Atom 11 — runnable proof** (`4a156fe`, run_131). `scripts/proof-takeover-executor.mjs` — 16 checks,
+  `node scripts/proof-takeover-executor.mjs` exit 0.
+- **NEXT (founder decision) → Live CoPublisher Takeover proof** OR **Drift executor sub-build** — see
+  §Executor build progress run_131. Parallel: New-Primary tech-stack-template build from E (founder confirms
+  draft non-negotiables first).
 
-**Still gated:** Live Takeover (#3) and Drift Audit (#4) proofs remain gated on the executor shipping — do
-not attempt live onboarding until then.
+**Still gated:** Live Takeover (#3) requires founder authorization for a real playbook run; Drift Audit (#4)
+requires the Drift executor sub-build — do NOT relaunch for more Takeover build atoms.
 
 ### Founder decision + outcome (2026-06-14, run_86 post-wrap) — D3 + a STRAND
 - **D3 — EXPAND SCOPE APPROVED.** The founder explicitly approved expand-scope to **land the three
