@@ -4,11 +4,11 @@ title: "Oz dashboard — consistent card → modal → launch interaction for pr
 ---
 
 ## Objective
-The Oz dashboard presents **priorities, tickets, and runs** through **one consistent interaction
-pattern**: a compact **card** (name + slug only — no description), a **detail modal** on click (full
-info + where it stands), and a **launch affordance inside the modal** that closes the modal when fired.
-Tickets gain **parity with priorities** — they are **reorderable** and **launchable** (a "launch fix"
-button). **Verified when** all four behaviors below work in the running app, demonstrated on evidence
+The Oz dashboard presents **priorities and runs** through **one consistent interaction pattern**: a
+compact **card** (name + slug only — no description), a **detail modal** on click (full info + where it
+stands), and a **launch affordance inside the modal** that closes the modal when fired. (Tickets adopt
+the *same* pattern but are owned by [`tickets-review`](./tickets-review.md) — folded out per the founder,
+run_131.) **Verified when** the behaviors below work in the running app, demonstrated on evidence
 (screenshots or a run-through), with no regression to the existing run/launch plumbing:
 
 1. **Priority cards show name + slug, not the description.** The card surfaces the identifier (title +
@@ -16,13 +16,11 @@ button). **Verified when** all four behaviors below work in the running app, dem
 2. **Clicking a priority opens a detail modal** (not just a card) containing enough to understand *what
    it is and where it stands* (objective/summary, status/disposition, recent run pointer if any) and a
    **Launch** button **inside** the modal; clicking Launch starts the run **and closes the modal**.
-3. **Tickets reach parity with priorities:** a ticket card (name + slug), click → **detail modal** with
-   the ticket body + status, a **"Launch fix"** button inside the modal (closes the modal on launch),
-   and tickets are **reorderable** the same way priorities are (an `order.json`-style list for the
-   tickets surface). *Boundary — see below:* the **ticket-fix run semantics** (what the fix run does,
-   and moving the ticket `open/ → closed/` + `INDEX.md` on success) are owned by **`tickets-review`**;
-   this priority owns the **card/modal/reorder/launch-button presentation**, and consumes
-   `tickets-review`'s run trigger.
+3. **Tickets** — **FOLDED into `tickets-review`** (founder decision, run_131). Ticket↔priority UI parity
+   (card + slug, detail modal, in-modal "Launch fix" button that closes on launch, reorderable tickets)
+   and the **create-ticket Play** now live in
+   [`tickets-review`](./tickets-review.md). Tickets reuse the **same** card/modal/reorder pattern this
+   priority establishes for priorities — they just aren't owned here. No ticket work in this priority.
 4. **Clicking a run opens a modal**, not the side panel. The run detail (currently `RunDetail.tsx`
    rendered as a side panel) renders in the **same modal pattern** as priorities/tickets.
 
@@ -46,9 +44,10 @@ with the founder whether ticket-fix should be a first-class run target or ride `
   in-modal launch button that closes on click, run-detail-as-modal, and ticket **reorder**. Where they
   intersect (the "launch fix" button inside the ticket modal), this priority provides the button +
   modal and *invokes* `tickets-review`'s run trigger.
-- **Open governance question for the founder:** items 1/2/4 are clearly new; item 3 overlaps
-  `tickets-review`. Either keep the split above, or **fold** item 3's UI into `tickets-review` and scope
-  this priority to 1/2/4. Founder decides (recorded as the launch-time call).
+- **RESOLVED (founder, run_131):** item 3 (all ticket UI: card/modal/launch-fix/reorder) **+ a
+  create-ticket Play** are **folded into `tickets-review`**. This priority is scoped to items **1, 2, 4**
+  (priority card slug, priority detail modal, run-detail-as-modal). Tickets reuse the card/modal/reorder
+  pattern defined here but are owned there.
 
 ## Conceptual note — are tickets just single-atom priorities? (founder's framing)
 There is real truth to it: both are **launchable work items** that fit the same card → modal → launch

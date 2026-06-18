@@ -13,6 +13,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Owner |
 |---|---|---|---|---|
+| [0015](./open/0015-tickets-silently-dropped-without-frontmatter.md) | Ticket files without YAML frontmatter are silently dropped by the loader | bug | tickets-review | oscar run_131 |
 | [0014](./open/0014-oz-workspace-path-picker.md) | Add-workspace path field has no OS-native directory picker | bug | new-primary-root | founder-session run_131 |
 | [0013](./open/0013-daemon-auto-rebuild-after-runs.md) | Auto-rebuild + reload the Oz daemon after a run changes packages/daemon (no manual restart) | task | tickets-review | oscar run_122 |
 | [0003](./open/0003-public-docs-v1-stale.md) | Public docs/ tree is v1-stale (commands, PRIORITIES.md, cocoder/local, routes) | task | none | founder-session |

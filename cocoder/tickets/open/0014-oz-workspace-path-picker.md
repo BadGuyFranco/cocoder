@@ -1,7 +1,14 @@
-# 0014 — Add-workspace path field has no OS-native directory picker
+---
+id: 0014
+title: Add-workspace path field has no OS-native directory picker
+type: bug
+status: Open
+priority: new-primary-root
+owner: founder-session run_131
+created: 2026-06-17
+---
 
-**Status:** Open | **Type:** bug | **Priority:** new-primary-root | **Owner:** founder-session (filed run_131)
-**Filed:** 2026-06-17
+# 0014 — Add-workspace path field has no OS-native directory picker
 
 ## Symptom
 In the Oz add-workspace surface, the folder icon next to the repo-path field does **not** open an

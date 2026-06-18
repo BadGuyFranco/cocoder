@@ -112,3 +112,36 @@ The run_121 tabs passed automated tests but the founder found three defects in t
    launches a fix run that closes the ticket via the spine — but must **reuse** the generalized run-target,
    not fork. Relaunch `tickets-review` for this atom only after `new-primary-root` Addendum Atom 2 lands;
    proof ticket = one of `0003 / 0005 / 0012`.
+
+## Folded in (founder, 2026-06-17 run_131) — ticket↔priority UI parity + create-ticket Play
+The founder folded the Oz-dashboard **ticket** items here (they belong to the ticket surface this
+priority owns; `oz-dashboard-ux` keeps the priority-card / priority-modal / run-modal items and points
+here for tickets — single owner per surface, global #7). These are **deliverable extensions**, to
+decompose into atoms when this priority next launches.
+
+- **Ticket↔priority interaction parity (same card → modal → launch pattern).** Today tickets render in a
+  tab with a detail *view*; bring them to the **same pattern as priorities**: a compact **card (name +
+  slug only**, no description), click → **detail modal** showing the ticket body + status + where it
+  stands, with a **launch affordance inside the modal**. This reuses whatever card/modal pattern
+  `oz-dashboard-ux` establishes for priorities — do not invent a second pattern.
+- **"Launch fix" button inside the ticket modal — closes the modal on launch.** This is the founder-facing
+  UI for **atom 4** (ticket-fix launch). The button + modal can be built now; the *launch it triggers*
+  stays **gated on Addendum Atom 2** (run-target generalization). Wire the button to atom-4's launch path
+  once it exists; until then it is disabled/clearly pending, never a fork.
+- **Reorderable tickets.** Tickets get a persisted order like priorities — **generalize** the priority
+  `order.json` + `writePriorityOrder` (`priority-order.ts`) to a ticket order, rather than a parallel
+  mechanism. Order applies to the open-tickets list.
+- **Create-ticket Play — runnable by ALL personas.** A `create-ticket` **authoring Play** (analogous to
+  the existing `create-priority` / `edit-priority` / `archive-priority` authoring Plays in
+  `AUTHORING_PLAY_IDS`, `daemon/launcher.ts`) so **any persona (Oz, Oscar, Bob, Deb)** can file a ticket
+  during a run, not only the founder via the dashboard modal. **Reuse the existing ticket-write path**
+  (`POST /workspaces/:id/tickets` / the core ticket-write primitive that allocates the next `NNNN`,
+  writes `cocoder/tickets/open/NNNN-slug.md`, and updates `INDEX.md` via the ADR-0023 spine — Bug 3,
+  run_122) — the Play is the **agent-facing entry**, the modal is the **founder-facing entry**, both land
+  through the **same** writer. **MUST template proper YAML frontmatter** (`id/title/type/status/priority/
+  owner/created`) so created tickets are not silently dropped by the loader — see ticket
+  [0015](../tickets/open/0015-tickets-silently-dropped-without-frontmatter.md).
+- **Related defect:** ticket [0015](../tickets/open/0015-tickets-silently-dropped-without-frontmatter.md)
+  (no-frontmatter tickets silently dropped) is in this priority's scope; the Tickets surface should
+  **surface**, not swallow, an unparseable ticket. Worked around run_131 (gave `0014` frontmatter);
+  the loader fix is the durable resolution.
