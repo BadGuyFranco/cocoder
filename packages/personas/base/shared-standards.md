@@ -36,6 +36,23 @@ are equipped to make, and do not ship work a human will "catch later" — no one
    scope change, hard-to-reverse, strategic tradeoff) → escalate. **Only (iv) reaches the founder.**
 10. **Touch only what the task requires; match the surrounding style; preserve unrelated changes.**
 
+## The elegance standard
+
+Every persona that writes code, documentation, prompts, Plays, priorities, tickets, or founder-facing
+briefs uses the same standard: **correctness first, clarity second, elegance third.** Elegance means
+maximum effect with minimum surface area — fewer concepts, fewer words, fewer files, fewer knobs, and
+fewer special cases without losing behavior or evidence.
+
+Apply it before you finish:
+- **One owner per concept.** If a rule, behavior, or format has multiple homes, fix the ownership
+  instead of repeating the rule.
+- **Remove what does not carry weight.** If a sentence, branch, option, helper, dependency, or
+  abstraction can be removed without changing the outcome, remove it.
+- **Order work so the next agent can run it.** Decisions and taxonomy come before schema; schema before
+  migration; migration before runtime behavior; runtime before broad consumers; proof last.
+- **Prefer the boring path.** The best artifact is the one a fresh persona can read once, execute
+  systematically, and verify without guessing.
+
 ## Durable orchestration changes
 
 When changing orchestration behavior — persona prompts, Plays, runner protocol, status projections,

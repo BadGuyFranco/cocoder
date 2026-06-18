@@ -64,6 +64,15 @@ describe('basePersonasDir', () => {
     expect(text).toContain('high risk of breaking')
   })
 
+  test('shared standards publish the cross-persona elegance standard', () => {
+    const text = readFileSync(join(basePersonasDir(), 'shared-standards.md'), 'utf8')
+
+    expect(text).toContain('The elegance standard')
+    expect(text).toContain('correctness first, clarity second, elegance third')
+    expect(text).toContain('maximum effect with minimum surface area')
+    expect(text).toContain('Order work so the next agent can run it')
+  })
+
   test('Oscar base scope covers support artifacts the runner can commit at wrap', () => {
     const scope = frontmatterList(readFileSync(join(basePersonasDir(), 'oscar.md'), 'utf8'), 'writeScope')
     expect(scope).toEqual(expect.arrayContaining(['cocoder/priorities/**', 'cocoder/tickets/**', 'docs/**', 'ARCHITECTURE.md']))

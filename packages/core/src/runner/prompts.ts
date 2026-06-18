@@ -59,6 +59,33 @@ loop's most-recurred failure). If the priority does not contain enough concrete 
 write a wrap-up directive whose pickup says exactly what founder input is needed — never just exit.`
 }
 
+function orchestratorLaunchCard(input: {
+  priorityId: string
+  task?: string | null
+  firstDirectivePath: string
+  priorityTitle: string
+  builderLabel: string
+  runBranch: string
+}): string {
+  const firstAction = isAdHocSupportRun(input)
+    ? `Handle the founder's bounded support request first, then write the required directive JSON to \`${input.firstDirectivePath}\`.`
+    : `Write the required directive JSON to \`${input.firstDirectivePath}\` before chat or waiting.`
+  return `# Oscar launch card
+
+Priority: **${input.priorityTitle}**
+
+First action: ${firstAction}
+
+Run order:
+1. Confirm the objective is launchable; if not, wrap with the exact founder decision needed.
+2. Delegate one concrete atom to ${input.builderLabel}; do not build it yourself.
+3. Verify the actual diff and command evidence before passing the atom.
+4. Continue by default while concrete in-priority work remains; wrap only at a real stop condition.
+
+Branch: \`${input.runBranch}\`. Do not run git; the runner commits verified in-scope work.
+`
+}
+
 function shellSingleQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`
 }
@@ -93,6 +120,11 @@ export function buildOrchestratorPrompt(input: {
       ? input.oscarWriteScope.map((s) => `  - ${s}`).join('\n')
       : '  (none — direct edits are surfaced for a scope decision, not committed)'
   return `${input.sharedStandards}
+
+---
+# Launch summary
+
+${orchestratorLaunchCard(input)}
 
 ---
 # Your role

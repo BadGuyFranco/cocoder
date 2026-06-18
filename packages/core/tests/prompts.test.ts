@@ -77,6 +77,9 @@ describe('buildBuilderDispatch', () => {
       task: 'Implement the next scoped atom.',
     })
 
+    expect(prompt).toContain('# Oscar launch card')
+    expect(prompt.indexOf('# Oscar launch card')).toBeLessThan(prompt.indexOf('# Your role'))
+    expect(prompt).toContain('First action: Write the required directive JSON to `/runs/run_1/directive-0.json` before chat or waiting.')
     expect(prompt).toContain('Artifact-first rule')
     expect(prompt).toContain('your FIRST action in this run is to write the required\ndirective JSON')
     expect(prompt).not.toContain('# Adhoc support mode')
