@@ -26,6 +26,7 @@ export {
   readPortableCommits,
   readPortableEvents,
   readPortableRun,
+  readPortableRunById,
   readPortableSessions,
   readPortableWorkItems,
   writePortableRun,

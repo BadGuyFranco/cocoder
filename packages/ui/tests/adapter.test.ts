@@ -177,6 +177,15 @@ describe('runs list', () => {
     expect(newest.id).toBe(RUNS.runs[0].id)
     expect(newest.startedAt).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/)
   })
+
+  it('labels runs with the workspace-local display number when the daemon provides it', () => {
+    const summary = { id: 'run_global_42', displayNumber: 3, workspaceId: 'cocoder', priorityId: 'p', status: 'running', createdAt: 1780153227239, endedAt: null } as const
+    const run = adaptRunSummary(summary, { p: 'Priority' })
+
+    expect(run.id).toBe('run_global_42')
+    expect(run.displayNumber).toBe(3)
+    expect(run.displayName).toBe('Run 3')
+  })
 })
 
 describe('run enrichment merging', () => {

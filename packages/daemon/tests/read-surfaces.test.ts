@@ -5,7 +5,7 @@ import { request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
-import { openRunStore, type Git, type RunStore, type SessionHost } from '@cocoder/core'
+import { openRunStore, writePortableRun, type Git, type RunStore, type SessionHost } from '@cocoder/core'
 import { createOzServer, type OzServer } from '../src/index.js'
 
 const fakeGit = (): Git => ({
@@ -284,6 +284,43 @@ describe('Oz read surfaces', () => {
     expect(r.status).toBe(200)
     expect(r.json.runs.find((x: any) => x.id === a.id)).toMatchObject({ status: 'completed' })
     expect((await get(oz!, '/runs?workspace=other')).json.runs).toEqual([])
+  })
+
+  test('GET /runs and /runs/:id surface displayNumber from portable run.json', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    await writePortableRun(home, {
+      run: { id: run.id, displayNumber: 7 },
+      workspace: { id: 'cocoder' },
+      target: { kind: 'priority' },
+      priorityId: 'demo',
+      playbookId: null,
+      ticketId: null,
+      status: 'running',
+      createdAt: run.createdAt,
+      endedAt: null,
+    })
+
+    const list = await get(oz!, '/runs?workspace=cocoder')
+    const detail = await get(oz!, `/runs/${run.id}`)
+
+    expect(list.status).toBe(200)
+    expect(list.json.runs.find((x: any) => x.id === run.id)).toMatchObject({ id: run.id, displayNumber: 7 })
+    expect(detail.status).toBe(200)
+    expect(detail.json.run).toMatchObject({ id: run.id, displayNumber: 7 })
+  })
+
+  test('GET /runs and /runs/:id tolerate a legacy run with no portable run.json', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+
+    const list = await get(oz!, '/runs?workspace=cocoder')
+    const detail = await get(oz!, `/runs/${run.id}`)
+
+    expect(list.status).toBe(200)
+    expect(list.json.runs.find((x: any) => x.id === run.id)).toMatchObject({ id: run.id, displayNumber: null })
+    expect(detail.status).toBe(200)
+    expect(detail.json.run).toMatchObject({ id: run.id, displayNumber: null })
   })
 
   test('GET /runs/:id assembles rows + diff + deepLinkable from the live-ref set', async () => {

@@ -33,11 +33,14 @@ export interface TranscriptLine { role: string; body: string; flag?: string }
 export interface EvidenceItem { kind: string; label: string; body?: string; lines?: string }
 export interface Run {
   id: string; title: string; status: RunStatus
+  displayNumber?: number | null; displayName?: string
   priorityId?: string | null
   personas: string[]; cli: string; startedAt: string
   progress?: number | null; lastEvent?: string; attachCmd?: string
   transcript?: TranscriptLine[]; evidence?: EvidenceItem[]
 }
+
+export const runDisplayName = (run: Pick<Run, 'id' | 'displayName'>): string => run.displayName?.trim() || run.id
 export interface Play {
   id: string; label: string; kind: 'headless' | 'interactive'; writeScope: readonly string[]
 }

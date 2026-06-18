@@ -3,7 +3,7 @@
 // design-ref/dashboard.jsx.
 import { useState } from 'react'
 import { Icon, StatusChip, Button, Modal } from '../../ui/primitives.tsx'
-import type { Priority, Run } from '../../model.ts'
+import { runDisplayName, type Priority, type Run } from '../../model.ts'
 
 export function RunDetail({ run, parentPriority, parentPriorityIndex, onClose, onAction }: {
   run: Run; parentPriority: Priority | null; parentPriorityIndex: number; onClose: () => void; onAction: (action: string, id: string) => void
@@ -12,6 +12,7 @@ export function RunDetail({ run, parentPriority, parentPriorityIndex, onClose, o
   const isRunning = run.status === 'running'
   const isParked = run.status === 'blocked'
   const isStreaming = run.status === 'running' || run.status === 'blocked'
+  const displayName = runDisplayName(run)
   const footer = isRunning ? (
     <>
       <Button variant="destructive" size="sm" icon="stop" onClick={() => onAction('stop', run.id)}>Stop run</Button>
@@ -40,7 +41,7 @@ export function RunDetail({ run, parentPriority, parentPriorityIndex, onClose, o
       open
       onClose={onClose}
       title={run.title}
-      subtitle={`${run.id} · started ${run.startedAt} · cli: ${run.cli}`}
+      subtitle={`${displayName} · started ${run.startedAt} · cli: ${run.cli}`}
       icon="terminal-window"
       width={840}
       footer={footer}
@@ -70,7 +71,7 @@ export function RunDetail({ run, parentPriority, parentPriorityIndex, onClose, o
         <StatusChip status={run.status} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13.5, color: 'var(--cb-text)', fontWeight: 500, lineHeight: 1.3 }}>{run.title}</div>
-          <div style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10.5, color: 'var(--cb-text-muted)', marginTop: 3 }}>{run.id} · started {run.startedAt} · cli: {run.cli}</div>
+          <div style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10.5, color: 'var(--cb-text-muted)', marginTop: 3 }}>{displayName} · started {run.startedAt} · cli: {run.cli}</div>
         </div>
       </div>
       <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--cb-border)', display: 'flex', flexWrap: 'wrap', gap: 16, background: 'var(--cb-bg-soft)' }}>

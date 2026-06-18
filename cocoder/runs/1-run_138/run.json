@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_138",
+    "displayNumber": 1
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "priority"
+  },
+  "priorityId": "workspace-segmentation",
+  "playbookId": null,
+  "ticketId": null,
+  "status": "running",
+  "createdAt": 1781812281451,
+  "endedAt": null
+}

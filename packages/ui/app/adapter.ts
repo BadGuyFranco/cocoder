@@ -68,6 +68,11 @@ export function mapRunStatus(status: string): RunStatus {
 
 export const isActiveRun = (s: RunStatus): boolean => s === 'running' || s === 'blocked'
 
+function runDisplayNumber(run: RunSummary): number | null {
+  const value = (run as { readonly displayNumber?: unknown }).displayNumber
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : null
+}
+
 const CLI_META: Record<string, { name: string; vendor: string }> = {
   claude: { name: 'Claude Code', vendor: 'Anthropic' },
   codex: { name: 'Codex', vendor: 'OpenAI' },
@@ -224,8 +229,11 @@ function summaryLastEvent(status: RunStatus): string | undefined {
 export function adaptRunSummary(r: RunSummary, priorityNames: Record<string, string>): Run {
   const status = mapRunStatus(r.status)
   const adhoc = r.priorityId === ADHOC_PRIORITY_ID
+  const displayNumber = runDisplayNumber(r)
   return {
     id: r.id,
+    displayNumber,
+    displayName: displayNumber === null ? r.id : `Run ${displayNumber}`,
     title: priorityNames[r.priorityId] ?? r.priorityId,
     status,
     priorityId: adhoc ? null : r.priorityId,

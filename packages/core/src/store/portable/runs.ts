@@ -1,5 +1,6 @@
-import { portableRunPaths } from './paths.js'
-import { appendJsonLine, type JsonValue, readJsonLines, readOptionalJson, writeJson } from './json.js'
+import { readdir } from 'node:fs/promises'
+import { portableRunDirName, portableRunPaths, portableWorkspacePaths } from './paths.js'
+import { appendJsonLine, isMissingFile, type JsonValue, readJsonLines, readOptionalJson, writeJson } from './json.js'
 import type { RunStatus, WorkItemStatus } from '../types.js'
 
 export type PortableTargetKind = 'priority' | 'playbook' | 'ticket'
@@ -67,6 +68,27 @@ type JsonlName = 'sessions' | 'workItems' | 'commits' | 'events'
 
 export async function readPortableRun(primaryRoot: string, displayNumber: number, runId: string): Promise<PortableRunFile | null> {
   return readOptionalJson<PortableRunFile>(portableRunPaths(primaryRoot, displayNumber, runId).runFile)
+}
+
+export async function readPortableRunById(primaryRoot: string, runId: string): Promise<PortableRunFile | null> {
+  const { runsDir } = portableWorkspacePaths(primaryRoot)
+  let entries: string[]
+  try {
+    entries = await readdir(runsDir)
+  } catch (error: unknown) {
+    if (isMissingFile(error)) return null
+    throw error
+  }
+
+  for (const name of entries) {
+    if (!name.endsWith(`-${runId}`)) continue
+    const displayNumber = Number.parseInt(name.slice(0, name.length - runId.length - 1), 10)
+    if (!Number.isSafeInteger(displayNumber) || displayNumber < 1) continue
+    if (name !== portableRunDirName(displayNumber, runId)) continue
+    const run = await readPortableRun(primaryRoot, displayNumber, runId)
+    if (run?.run.id === runId) return run
+  }
+  return null
 }
 
 export async function writePortableRun(primaryRoot: string, run: PortableRunFile): Promise<void> {

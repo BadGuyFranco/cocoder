@@ -30,7 +30,7 @@ import { PrioritiesPanel } from './Priorities.tsx'
 import { OzChatPanel } from './OzChat.tsx'
 import { RunDetail } from './RunDetail.tsx'
 import { FirstRun } from './FirstRun.tsx'
-import type { ChatMessage, Priority, Run, Ticket, Workspace } from '../../model.ts'
+import { runDisplayName, type ChatMessage, type Priority, type Run, type Ticket, type Workspace } from '../../model.ts'
 
 type DashboardTab = 'priorities' | 'tickets' | 'runs'
 type RunFilter = 'all' | 'active' | 'complete' | 'failed'
@@ -177,7 +177,7 @@ function RunsTab({ runs, onSelectRun, priorities }: { runs: Run[]; onSelectRun: 
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 12.5, color: 'var(--cb-text)', fontWeight: 500, lineHeight: 1.4 }}>{run.title}</div>
                   <div style={{ fontSize: 11, color: 'var(--cb-text-muted)', marginTop: 3 }}>{parentPriority ? <>priority · <span style={{ color: 'var(--cb-text-secondary)' }}>{parentPriority.name}</span></> : <span style={{ color: 'var(--cb-accent)' }}>ad-hoc</span>}</div>
-                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>{run.personas.slice(0, 3).map((p) => <span key={p} style={{ fontSize: 9.5, fontFamily: 'var(--cb-font-mono)', color: 'var(--cb-text-secondary)', padding: '1px 5px', background: 'var(--cb-bg-soft)', borderRadius: 2, border: '1px solid var(--cb-border)' }}>{p}</span>)}<span style={{ marginLeft: 'auto', fontFamily: 'var(--cb-font-mono)', fontSize: 10.5, color: 'var(--cb-text-muted)' }}>{run.startedAt}</span></div>
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>{run.personas.slice(0, 3).map((p) => <span key={p} style={{ fontSize: 9.5, fontFamily: 'var(--cb-font-mono)', color: 'var(--cb-text-secondary)', padding: '1px 5px', background: 'var(--cb-bg-soft)', borderRadius: 2, border: '1px solid var(--cb-border)' }}>{p}</span>)}<span style={{ marginLeft: 'auto', fontFamily: 'var(--cb-font-mono)', fontSize: 10.5, color: 'var(--cb-text-muted)' }}>{runDisplayName(run)} · {run.startedAt}</span></div>
                 </div>
                 <Icon name="arrow-right" size={12} style={{ color: 'var(--cb-text-muted)' }} />
               </div>

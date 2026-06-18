@@ -30,7 +30,15 @@ export type {
   CommitLink,
   RunEvent,
 } from './store/index.js'
-export { openRunStore, recordPortableRunCreation, type OpenRunStoreOptions, type RecordPortableRunCreationInput, SCHEMA_SQL } from './store/index.js'
+export {
+  openRunStore,
+  readPortableRunById,
+  recordPortableRunCreation,
+  writePortableRun,
+  type OpenRunStoreOptions,
+  type RecordPortableRunCreationInput,
+  SCHEMA_SQL,
+} from './store/index.js'
 
 export { probeDaemon, DEFAULT_OZ_PORT, type ProbeResult, type ProbeOptions } from './liveness/index.js'
 

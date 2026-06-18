@@ -14,6 +14,7 @@ import {
   readPortableCounters,
   readPortableEvents,
   readPortableRun,
+  readPortableRunById,
   readPortableSessions,
   readPortableWorkspace,
   readPortableWorkItems,
@@ -122,6 +123,29 @@ describe('portable run files', () => {
     await writePortableRun(root, run)
 
     await expect(readPortableRun(root, 4, 'run_abc')).resolves.toEqual(run)
+  })
+
+  test('readPortableRunById discovers the display-number directory and reads run.json', async () => {
+    const root = await tempRoot()
+    const run: PortableRunFile = {
+      run: { id: 'run_suffix', displayNumber: 12 },
+      workspace: { id: 'cocoder' },
+      target: { kind: 'priority' },
+      priorityId: 'portable-display',
+      playbookId: null,
+      ticketId: null,
+      status: 'running',
+      createdAt: 100,
+      endedAt: null,
+    }
+
+    await writePortableRun(root, run)
+
+    await expect(readPortableRunById(root, 'run_suffix')).resolves.toEqual(run)
+  })
+
+  test('readPortableRunById returns null when a legacy run has no portable run.json', async () => {
+    await expect(readPortableRunById(await tempRoot(), 'run_legacy')).resolves.toBeNull()
   })
 
   test('JSONL streams append across calls and read back in order with trailing newlines', async () => {

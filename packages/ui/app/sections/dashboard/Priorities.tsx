@@ -5,7 +5,7 @@
 import { useRef, useState } from 'react'
 import { Icon, StatusChip, Button } from '../../ui/primitives.tsx'
 import { isActiveRun } from '../../adapter.ts'
-import type { Priority, Run } from '../../model.ts'
+import { runDisplayName, type Priority, type Run } from '../../model.ts'
 import { PriorityDetailModal } from './PriorityDetailModal.tsx'
 
 const LAUNCH_BLOCKED_HINT = 'A run is active in this workspace — only one run executes at a time (single-writer lock). It frees up when the run finishes.'
@@ -56,7 +56,7 @@ function PriorityRow({ priority, index, onLaunch, onOpenDetails, onDrag, isDragg
       {isActive && linkedRun && (
         <div onClick={(e) => { e.stopPropagation(); onSelectRun(linkedRun.id) }} style={{ marginTop: 10, marginLeft: 36, paddingTop: 10, borderTop: '1px solid var(--cb-border)', position: 'relative', cursor: 'pointer' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-text-muted)' }}>{linkedRun.id} · {linkedRun.startedAt}</span>
+            <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-text-muted)' }}>{runDisplayName(linkedRun)} · {linkedRun.startedAt}</span>
             <div style={{ display: 'flex', gap: 4, marginLeft: 4 }}>{linkedRun.personas.slice(0, 4).map((p) => <span key={p} style={{ fontSize: 9.5, fontFamily: 'var(--cb-font-mono)', color: 'var(--cb-text-secondary)', padding: '1px 5px', background: 'var(--cb-bg-soft)', borderRadius: 2 }}>{p}</span>)}</div>
           </div>
           <div style={{ fontSize: 11.5, color: isBlocked ? 'var(--cb-highlight)' : 'var(--cb-text-secondary)', lineHeight: 1.5, marginBottom: 8, fontStyle: 'italic' }}>
@@ -98,7 +98,7 @@ function AdhocPriorityRow({ adhocRuns, onLaunch, onSelectRun, selectedRunId, lau
                 onMouseEnter={(e) => { if (!isSel) e.currentTarget.style.background = 'var(--cb-hover)' }}
                 onMouseLeave={(e) => { if (!isSel) e.currentTarget.style.background = 'transparent' }}>
                 {isLive && <div data-run-accent={r.status} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 2, background: isBlocked ? 'var(--cb-highlight)' : 'var(--cb-accent)', animation: isBlocked ? 'none' : 'ozPulse 1.8s infinite' }} />}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}><StatusChip status={r.status} /><span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-text-muted)' }}>{r.id}</span><span style={{ marginLeft: 'auto', fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-text-muted)' }}>{r.startedAt}</span></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}><StatusChip status={r.status} /><span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-text-muted)' }}>{runDisplayName(r)}</span><span style={{ marginLeft: 'auto', fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-text-muted)' }}>{r.startedAt}</span></div>
                 <div style={{ fontSize: 12, color: 'var(--cb-text)', fontWeight: 500, marginBottom: 4, lineHeight: 1.4 }}>{r.title}</div>
                 {r.lastEvent && <div style={{ fontSize: 11, color: isBlocked ? 'var(--cb-highlight)' : 'var(--cb-text-muted)', lineHeight: 1.5, fontStyle: 'italic' }}>{r.lastEvent}</div>}
               </div>

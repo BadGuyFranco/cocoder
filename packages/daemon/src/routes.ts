@@ -13,6 +13,7 @@ import {
   nextTicketId,
   parseFrontmatter,
   insertOpenTicketIndexRow,
+  readPortableRunById,
   readTicketIndex,
   scaffoldCocoderZone,
   ticketTableCell,
@@ -23,6 +24,7 @@ import {
   type PersonaSources,
   type PlaySources,
   type Priority,
+  type Run,
 } from '@cocoder/core'
 import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import type { OzContext, OzEvent } from './context.js'
@@ -406,9 +408,18 @@ async function listPlays(ctx: OzContext, res: ServerResponse, workspaceId: strin
   sendJson(res, 200, { workspace: ws, plays })
 }
 
+type RunWithDisplayNumber = Run & { readonly displayNumber: number | null }
+
+async function withPortableDisplayNumber(ctx: OzContext, run: Run): Promise<RunWithDisplayNumber> {
+  const workspace = await findWorkspace(ctx.cocoderHome, run.workspaceId)
+  if (!workspace) return { ...run, displayNumber: null }
+  const portable = await readPortableRunById(workspace.path, run.id)
+  return { ...run, displayNumber: portable?.run.displayNumber ?? null }
+}
+
 /** GET /runs (optionally ?workspace=) — surface 4 list. */
-function listRuns(ctx: OzContext, res: ServerResponse, workspaceId: string | null): void {
-  const runs = ctx.store.listRuns(workspaceId ? { workspaceId } : undefined)
+async function listRuns(ctx: OzContext, res: ServerResponse, workspaceId: string | null): Promise<void> {
+  const runs = await Promise.all(ctx.store.listRuns(workspaceId ? { workspaceId } : undefined).map((run) => withPortableDisplayNumber(ctx, run)))
   sendJson(res, 200, { runs })
 }
 
@@ -441,7 +452,7 @@ async function runDetail(ctx: OzContext, res: ServerResponse, runId: string): Pr
     : run.playbookId
       ? { kind: 'playbook', id: run.playbookId }
       : { kind: 'priority', id: run.priorityId }
-  sendJson(res, 200, { run, target, sessions, workItems, commitLinks, events, files, diffs })
+  sendJson(res, 200, { run: await withPortableDisplayNumber(ctx, run), target, sessions, workItems, commitLinks, events, files, diffs })
 }
 
 function writeSseFrame(res: ServerResponse, event: OzEvent): void {
@@ -514,7 +525,7 @@ export async function dispatchReads(ctx: OzContext, method: string, pathname: st
     return true
   }
   if (method === 'GET' && pathname === '/runs') {
-    listRuns(ctx, res, query.get('workspace'))
+    await listRuns(ctx, res, query.get('workspace'))
     return true
   }
   if (method === 'GET' && seg[0] === 'runs' && seg.length === 2) {

@@ -1,5 +1,5 @@
 import { isActiveRun } from '../../adapter.ts'
-import type { Priority, Run } from '../../model.ts'
+import { runDisplayName, type Priority, type Run } from '../../model.ts'
 import { Button, Icon, Modal, StatusChip } from '../../ui/primitives.tsx'
 
 const LAUNCH_BLOCKED_HINT = 'A run is active in this workspace — only one run executes at a time (single-writer lock). It frees up when the run finishes.'
@@ -52,7 +52,7 @@ export function PriorityDetailModal({ priority, linkedRun, launchBlocked, onClos
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
             <StatusChip status={linkedRun.status} />
-            <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10.5, color: 'var(--cb-text-muted)' }}>{linkedRun.id}</span>
+            <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10.5, color: 'var(--cb-text-muted)' }}>{runDisplayName(linkedRun)}</span>
             <Icon name="arrow-right" size={12} style={{ marginLeft: 'auto', color: 'var(--cb-text-muted)' }} />
           </div>
           <div style={{ fontSize: 11.5, color: 'var(--cb-text-secondary)', lineHeight: 1.5 }}>{linkedRun.title}</div>
