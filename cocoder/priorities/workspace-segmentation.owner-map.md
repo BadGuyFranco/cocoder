@@ -12,6 +12,13 @@ needed); BACKFILL migration hardened to reconcile + made runnable as `cocoder oz
 executed on the live repo); proof-last harness `scripts/proof-workspace-segmentation.mjs` (`pnpm proof:workspace-segmentation`)
 asserts Obj 3/4/5/6/7 against real APIs. Residual is non-build: founder eyeball on Obj 1/2 in the running app,
 and the optional one-time live `migrate-history` for pre-run_137 history.
+**Run_139 (1 atom) — Objective 9 closed:** dashboard layout now persists across launches. Panel split is a
+persisted **ratio** (`preferences.panelRatio`, default **0.45** = 45% workspace / 55% Oz) owned by the renderer
+in the existing `oz-store.json` via `settingsSet` — the daemon `/settings` contract is unchanged (still owns only
+`pollIntervalMs`/`defaultWorkspaceId`), so no parallel layout-state contract (Obj 8). Window bounds are owned by the
+Electron main process via `getWindowBounds`/`setWindowBounds` in `packages/ui/electron/store.ts` and restored in
+`createWindow()`. Proven by `tsc` + 130/130 UI tests incl. new disk-round-trip tests in `packages/ui/tests/store.test.ts`
+and a default-0.45/drag-persist test in `live-app.test.tsx`. Committed `85ab999`. All 9 objectives now implemented.
 
 Evidence searched: `rg` over `packages/daemon`, `packages/core`, `packages/ui`, `packages/session-hosts`; `sqlite3 local/cocoder.db '.schema'`; `PRAGMA table_info(...)` for `workspace`, `run`, `session`, `work_item`, `commit_link`, `event`, and `run_counter`.
 
@@ -99,7 +106,7 @@ These are the current shared resources and single-workspace assumptions that wor
 
 ## Notes For Next Design Step
 
-- **Archive-candidate (run_138):** all 8 objectives implemented; machine-checkable 7 backed by `pnpm proof:workspace-segmentation`. Residual is non-build: founder eyeball on Obj 1/2 in the running app; optional one-time `cocoder oz migrate-history cocoder` for pre-run_137 history (mutates tracked files — founder call only).
+- **Archive-candidate (run_139):** all **9** objectives implemented (run_139 closed Obj 9 — dashboard layout persistence). Machine-checkable 3/4/5/6/7 backed by `pnpm proof:workspace-segmentation`; Obj 9 durable owners backed by `packages/ui/tests/store.test.ts` + `live-app.test.tsx`. Residual is non-build / founder-decidable: (a) founder eyeball on Obj 1/2/9 visuals in the running app; (b) optional one-time `cocoder oz migrate-history cocoder` for pre-run_137 history (mutates tracked files — founder call only); (c) deferred non-blocking polish below — founder decides whether any blocks archive.
 - ADR-0027 accepted (run_135): internal run ids stay globally unique; workspace-local **display** numbers live in tracked `cocoder/counters.json` + per-run `run.json`. Portable-history **write** path landed run_137; **read** alignment landed run_138 (daemon/UI surface portable `displayNumber`; DB remains rebuildable index).
 - Objective 6 concurrency: audit found shared resources already isolated (per-workspace `inFlight`, globally-unique run IDs, per-workspace portable trees/counters, `workspaceId`-tagged events) — proven by daemon regression test, no production change needed.
-- Known deferred (not blocking archive): daemon playbook create path still DB-only; Deb recurrence + run record still DB-sourced; cmux group label numeric suffix still from `run.id` not portable display number.
+- Known deferred (run_138/run_139 judged not blocking archive; founder decides if any blocks): (1) cmux group label run number still derives from `run.id` suffix (`labels.ts:groupLabel`), so a terminal reads `#139` while the UI reads `Run 2` — a real Obj 7/8 cosmetic inconsistency. The priority/ticket path (`runner.ts:448`) is a trivial fix (`portableRunDisplayNumber` already in scope at `runner.ts:430`), but the **playbook** path (`launcher.ts:618`) has no portable display number because (2) the daemon playbook create path is still DB-only at create — so a fully-aligned label fix is entangled with adding portable run-creation to the playbook launch path. (3) Deb recurrence + run record still DB-sourced. None are user-data-loss risks; all are alignment/polish.
