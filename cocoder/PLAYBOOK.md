@@ -187,15 +187,14 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   `zArchive/priorities/v2/plays-first-class.md`.
 
 **Active build priorities (launchable; the `priorities/` directory is the live index):**
-- `workspace-segmentation` — **BLOCKED (run_135, 2026-06-18).** Oz watches across workspaces while work
-  stays workspace-local. Required first step (owner map) **landed** (`1565b3e` —
-  `workspace-segmentation.owner-map.md`: 13 concern owners, DB field classification, collision audit).
-  **Atom 1 blocked at verify:** draft ADR-0027 (portable history under `cocoder/runs/**`, amends
-  ADR-0003 + ADR-0019) awaits founder approval per ADR-0014 — two decisions: (1) re-accept
-  repo-tracked portable run/session history (Objective #4); (2) keep vs drop `cocoder/workspace.json`
-  portable identity (Oscar recommends keep). Draft held in working tree, not committed. After contract
-  lands: migration → consumer re-pointing → UI segmentation → concurrency fixes → cmux labels → proof
-  harness (Objective verification 1–8). **#1 in `order.json`.**
+- `workspace-segmentation` — **CONTINUE (run_136, 2026-06-18).** Oz watches across workspaces while work
+  stays workspace-local. Owner map **landed** (`1565b3e`); storage contract **Accepted** as
+  [ADR-0027](./decisions/0027-workspace-storage-contract.md) (`b60d010`, run_135). **Run_136 UI/labels
+  slice:** dashboard visual split (`d83403b` — workspace panel owns switcher + local tabs; Oz panel owns
+  refresh/live/notifications/theme; search removed; panel wider), Oz chat target picker with Global Oz
+  (`07a29e5`), cmux group labels `workspace · target:slug #run` (`20d6670`). **Remaining:** portable
+  history migration, workspace-local run/session display numbers, DB field re-pointing, concurrency
+  guards (owner map + ADR-0027), proof harness (Objectives 3–6, 8). **#1 in `order.json`.**
 - `fix-ticket-0011` — **archive-candidate (run_120, 2026-06-17).** Teardown receiver fix shipped
   (`6d05475` — `ctx.sessionHost.closeWorkspace({ workspaceRef })` preserves `this`); receiver-sensitive
   regression in `mutations.test.ts` catches the unbound path; [ticket 0011](./tickets/closed/0011-teardown-cli-undefined-on-final-oscar-surface.md)

@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-18 — **Workspace-segmentation: dashboard Oz/workspace split, chat target picker, cmux labels (run_136)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 3 atoms delegated) | **Priority:** [workspace-segmentation](./priorities/workspace-segmentation.md) | **Run:** run_136
+**Outcomes:**
+- **Atom 0 (`d83403b`) — visual ownership split:** workspace switcher + Priorities/Tickets/Runs-Sessions tabs live in the workspace panel (`ShellControls.tsx` `WorkspaceTabs`); refresh, live status, notifications, and theme moved into the Oz panel (`OzGlobalControls`); search removed; workspace panel ~50% wider.
+- **Atom 1 (`07a29e5`) — Oz chat target picker:** workspace picker above chat input with **Global Oz** / no-workspace state; mutating commands use the selected target or stop with target-needed handling (`App.tsx` `chatTarget`, `OzChat.tsx` `ChatTargetPicker`).
+- **Atom 2 (`20d6670`) — cmux/session labels:** `groupLabel()` owns `workspace · target-type:slug #run` on both runner and playbook spawn paths (`labels.ts`, `launcher.ts`); pane labels stay persona/LLM/model only.
+- **Disposition: `continue`** — ADR-0027 storage contract accepted run_135 (`b60d010`); remaining objectives are migration, workspace-local display counters, concurrency guards, and proof harness (owner map sequences the atoms).
+**Next:** Relaunch **`workspace-segmentation`** — next atoms: portable-history migration + workspace-local run display numbers + concurrency fixes per the owner map and ADR-0027.
+
 ## 2026-06-18 — **Workspace-segmentation: owner map landed; ADR-0027 storage contract blocked on founder approval (run_135)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 2 atoms delegated) | **Priority:** [workspace-segmentation](./priorities/workspace-segmentation.md) | **Run:** run_135
