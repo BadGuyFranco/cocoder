@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-18 — **Workspace-segmentation: Objective 9 layout persistence — archive-candidate (run_139)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 1 atom delegated) | **Priority:** [workspace-segmentation](./priorities/workspace-segmentation.md) | **Run:** run_139
+**Outcomes:**
+- **Atom 0 (`85ab999`) — Objective 9 closed:** Oz dashboard persists the workspace/Oz panel split as a **ratio** (`preferences.panelRatio`, default **0.45**) via the existing renderer `oz-store.json` / `settingsSet`; Electron main process persists window bounds via `getWindowBounds` / `setWindowBounds` in `store.ts`, restored in `createWindow()`. No parallel layout-state contract — daemon `/settings` unchanged (Obj 8).
+- **Gates:** `tsc` clean; UI **130/130** incl. disk-round-trip tests in `store.test.ts` and default-0.45 / drag-persist coverage in `live-app.test.tsx`.
+- **Disposition: `archive-candidate`** — all **9** objectives implemented; Obj 3–7 remain machine-checkable via `pnpm proof:workspace-segmentation`. Residual is founder-only: eyeball Obj 1/2/9 in the running app (45/55 split, divider + window bounds across relaunch, chat workspace picker); optional one-time `cocoder oz migrate-history cocoder`; deferred cosmetic cmux label polish (`#run.id` vs `Run N`) judged non-blocking.
+**Next:** Priority: `tickets-review` — then founder archive confirmation on `workspace-segmentation` after visual check.
+
 ## 2026-06-18 — **Workspace-segmentation: read alignment + concurrency proof + runnable migration + proof harness — archive-candidate (run_138)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 4 atoms delegated) | **Priority:** [workspace-segmentation](./priorities/workspace-segmentation.md) | **Run:** run_138

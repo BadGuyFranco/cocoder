@@ -187,15 +187,17 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   `zArchive/priorities/v2/plays-first-class.md`.
 
 **Active build priorities (launchable; the `priorities/` directory is the live index):**
-- `workspace-segmentation` — **ARCHIVE-CANDIDATE (run_138, 2026-06-18).** Oz watches across workspaces
-  while work stays workspace-local — all 8 objectives implemented. Owner map + [ADR-0027](./decisions/0027-workspace-storage-contract.md)
+- `workspace-segmentation` — **ARCHIVE-CANDIDATE (run_139, 2026-06-18).** Oz watches across workspaces
+  while work stays workspace-local — all **9** objectives implemented. Owner map + [ADR-0027](./decisions/0027-workspace-storage-contract.md)
   storage contract landed run_135–137; run_136 UI/labels slice; run_137 portable-history WRITE side;
   **run_138 (4 atoms):** read-consumer alignment (`readPortableRunById`, daemon/UI `Run N` display),
   concurrency proven by construction (daemon regression test, no prod change), idempotent BACKFILL
   migration runnable as `cocoder oz migrate-history <workspaceId>`, proof harness
-  `pnpm proof:workspace-segmentation` (Obj 3–7 machine-checkable). **Only gates:** founder eyeball on
-  Obj 1 (visual Oz/workspace split) + Obj 2 (chat target picker incl. Global Oz) in the running app;
-  optional one-time `cocoder oz migrate-history cocoder` for pre-run_137 history. **#1 in `order.json`.**
+  `pnpm proof:workspace-segmentation` (Obj 3–7 machine-checkable); **run_139 (1 atom):** Objective 9 —
+  panel split ratio (default 45/55) + window bounds persist across launches (renderer `panelRatio` +
+  Electron main-process bounds; no parallel layout contract). **Only gates:** founder eyeball on Obj 1/2/9
+  in the running app; optional one-time `cocoder oz migrate-history cocoder` for pre-run_137 history;
+  deferred cmux `Run N` vs `#run.id` label polish (non-blocking). **#1 in `order.json`.**
 - `fix-ticket-0011` — **archive-candidate (run_120, 2026-06-17).** Teardown receiver fix shipped
   (`6d05475` — `ctx.sessionHost.closeWorkspace({ workspaceRef })` preserves `this`); receiver-sensitive
   regression in `mutations.test.ts` catches the unbound path; [ticket 0011](./tickets/closed/0011-teardown-cli-undefined-on-final-oscar-surface.md)
