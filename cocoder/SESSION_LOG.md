@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-18 — **Oz-dashboard-ux: run_133 polish tweaks landed — archive-candidate, live visual proof only (run_134)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 2 atoms delegated/verified-on-evidence) | **Priority:** [oz-dashboard-ux](./priorities/oz-dashboard-ux.md) | **Run:** run_134
+**Outcomes:**
+- **Atom 0 (`c355c40`) — ad-hoc Launch label:** `AdhocPriorityRow` button relabeled `Launch run` → `Launch` (`Priorities.tsx`); added `aria-label` for the now-generic button text.
+- **Atom 1 (`c355c40`) — Oz hint removed:** persistent Oz daemon-commands footer hint block removed from `OzChat.tsx` (orphaned `live` default dropped).
+- **Test fix (honest):** `live-app.test.tsx` scopes `getByText('Launch')` to the correct row via a `rowForText` helper — a prior verify-0 attempt that hid `Launch run` in a `display:none` span was rejected.
+- **Gates:** UI suite 124/124 green, verified on actual diff.
+- **Disposition: `archive-candidate`** — all build work (items 1, 2, 4 + run_133 polish) code-complete and committed; only archive gate is Objective live visual proof (founder/host-safety). Pre-existing `RunStatus`/`not-landed` typecheck breakage remains out-of-scope for a ticket.
+**Next:** Say **`craft oz-dashboard proof`** and I'll delegate `node scripts/proof-oz-dashboard.mjs` — one command to capture the three behaviors before you reply **`archive oz-dashboard-ux`**.
+
 ## 2026-06-18 — **Oz-dashboard-ux: card → modal → launch pattern for priorities and runs — archive-candidate, live visual proof only (run_133)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 2 atoms delegated/verified-on-evidence) | **Priority:** [oz-dashboard-ux](./priorities/oz-dashboard-ux.md) | **Run:** run_133

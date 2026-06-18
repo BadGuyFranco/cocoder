@@ -65,8 +65,9 @@ into one type. A ticket-fix run is a small adhoc/focused run; a priority run is 
   is in scope here: the Tickets surface should reflect newly-committed tickets on reload.
 
 ## Status
-**Code-complete (items 1, 2, 4) — archive-candidate, gated on live visual proof.** Built in run_133
-(2026-06-18); item-3 boundary already resolved (founder, run_131 — folded into `tickets-review`).
+**Code-complete (items 1, 2, 4 + run_133 polish) — archive-candidate, gated on live visual proof.** Built
+in run_133 (2026-06-18); polish in run_134 (`c355c40`); item-3 boundary already resolved (founder,
+run_131 — folded into `tickets-review`).
 
 - **Item 1 — priority card = name + slug** ✓ committed `e22b2a0`. `PriorityRow` shows the title plus a
   muted-mono slug (`priority.id`); the description no longer renders on the card.
@@ -78,24 +79,14 @@ into one type. A ticket-fix run is a small adhoc/focused run; a priority run is 
   (width 840); the dead 460px side-panel grid column was removed; all three run-open triggers and the
   status-adaptive footer actions (stop/attach/teardown/ask-oz/retry/re-run) preserved.
 
-**Evidence so far:** full UI suite green (124/124) across both atoms, verified by Oscar on the actual
-diffs. **Remaining gap to archive:** the Objective's live-proof clause — screenshots / a run-through in
-the running app — which is a founder/live step (Oscar does not launch the app; host-safety).
+- **Run_133 polish (founder) — ad-hoc Launch label + Oz hint removal** ✓ committed `c355c40` (run_134).
+  `AdhocPriorityRow` button relabeled `Launch run` → `Launch` with an `aria-label`; persistent Oz
+  daemon-commands footer hint removed from `OzChat.tsx`.
+
+**Evidence so far:** full UI suite green (124/124) across all atoms, verified by Oscar on the actual diffs.
+**Remaining gap to archive:** the Objective's live-proof clause — screenshots / a run-through in the
+running app — which is a founder/live step (Oscar does not launch the app; host-safety).
 
 **Known follow-up (pre-existing, out of this priority's scope):** `tsc` is red on `main` because
 `RunStatus` (`packages/ui/app/model.ts`) lacks `'not-landed'` while three test files reference it; this
 predates run_133 and was not introduced here. Worth a ticket.
-
-### Follow-up polish (founder, run_133) — net-new product (Surface-B), needs a build run
-Two small dashboard tweaks the founder flagged after reviewing the landed work. Both are this surface's
-scope; bundle into one quick follow-up atom (good to pair with the proof harness below).
-1. **Ad-hoc button label "Launch run" → "Launch".** `AdhocPriorityRow` in
-   `packages/ui/app/sections/dashboard/Priorities.tsx:89` — change the button text to just `Launch` for
-   consistency with the priority/modal Launch buttons.
-2. **Remove the persistent Oz-terminal hint line.** `OzChat.tsx:102` renders a permanent footer hint
-   ("Oz commands run through the daemon. Use `launch <priorityId>`, `adhoc <task>`, `status`, or the
-   dashboard shortcuts.") the founder finds unnecessary clutter. Remove it (or make it a one-time/
-   dismissible affordance — founder's intent is to stop showing it persistently).
-
-(Item: a card-level inline "Launch fix" button on **ticket** cards was also requested run_133 — that is
-ticket UI, owned by [`tickets-review`](./tickets-review.md) item 3, not this priority.)
