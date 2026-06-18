@@ -35,7 +35,8 @@ their still-live content was absorbed into [ADR-0019](./0019-multi-root-workspac
 
 | ADR | Title | Status |
 |---|---|---|
-| [0020 Addendum](./0020-addendum-phase-executor.md) | **Playbook phase executor** — concrete P1→P5 execution design for onboarding Playbooks: phase state, founder gates, P2 deep-read fan-out, P3 cross-check, P4/P5 governance synthesis and ratification through the commit spine | Proposed implementation addendum |
+| [0026](./0026-onboard-existing-as-oscar-priority.md) | **Existing-repo onboarding runs as an Oscar-driven priority, not a standalone phase-executor** — the executor reaches its founder gates but has no founder-facing interaction surface (would freeze a real audit); reframe onto the proven Oscar↔founder loop (questions/status/multi-session/ratify), reuse the audit Plays/convergence/trust-boundary/scaffold as tooling; renames "Takeover" → "Onboard (existing repo)" (supersedes the 0020-addendum executor runner-mode) | Proposed (founder-directed run_131; acceptance owed) |
+| [0020 Addendum](./0020-addendum-phase-executor.md) | **Playbook phase executor** — concrete P1→P5 execution design for onboarding Playbooks: phase state, founder gates, P2 deep-read fan-out, P3 cross-check, P4/P5 governance synthesis and ratification through the commit spine — **proposed supersession by [0026](./0026-onboard-existing-as-oscar-priority.md)** | Proposed implementation addendum |
 
 ## Retired to history (superseded — not in the live tree)
 

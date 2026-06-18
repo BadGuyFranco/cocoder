@@ -77,11 +77,12 @@ The run_111–131 commits stand as **reusable tooling**, not wasted.
 (scaffold → deep multi-agent audit → founder ratifies → first run) is unchanged; only the **driver**
 changes (Oscar-priority, not phase-executor).
 
-**RENAME "Takeover" (founder-directed).** The word wrongly implies CoCoder **seizes/negates the founder's
-existing build process**; the act is the opposite — CoCoder reviews-and-proposes only, never touches
-product code until a ratified priority. New name **pending founder pick** (Oscar recommends `Adoption`;
-alternatives `Onboard (existing repo)`, `Orientation`). The rename threads through the ADR title, this
-priority, `cocoder-takeover.md` → renamed Playbook/flow, and code identifiers.
+**RENAME "Takeover" → "Onboard (existing repo)" (founder pick, run_131).** The word "takeover" wrongly
+implied CoCoder **seizes/negates the founder's existing build process**; the act is the opposite — CoCoder
+reviews-and-proposes only, never touches product code until a ratified priority. The chosen frame is
+**onboarding an existing repo** (CoCoder joins the project like a new developer getting up to speed). The
+rename threads through the ADR title, this priority, `cocoder-takeover.md` → `onboard-existing.md` (or
+equivalent), and code identifiers (`cocoder-takeover` id, `takeover` mode, etc.).
 
 **Next work for this priority (replaces the executor critical path):**
 1. **Write the superseding ADR** (reframe existing-repo audit: executor runner-mode → Oscar-driven

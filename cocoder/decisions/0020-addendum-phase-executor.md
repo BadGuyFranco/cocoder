@@ -1,5 +1,14 @@
 # ADR-0020 Addendum — Playbook phase executor for P1→P7 onboarding runs
 
+> **⚠ PROPOSED SUPERSESSION — [ADR-0026](./0026-onboard-existing-as-oscar-priority.md) (run_131).** The
+> standalone phase-executor runner-mode specified here reaches its founder gates but has **no
+> founder-facing interaction surface** (no resume route, no UI; only tests resume it), so a real audit
+> would freeze at the first gate. ADR-0026 reframes the existing-repo audit to run as an **Oscar-driven
+> priority** (reusing this addendum's `deep-read`/convergence/trust-boundary/scaffold as *tooling*) and
+> renames "Takeover" → "Onboard (existing repo)". **Pending founder acceptance of 0026 — do not build
+> further against this executor runner-mode until that's resolved.** The run_111–131 build stands as
+> reusable tooling.
+
 **Status:** Accepted 2026-06-17 (run_110). The founder ratified the deepened design (Atoms A–D) and the
 model policy in *Founder Ratification — RESOLVED* below. The three additional founder directives recorded
 there are now folded into this addendum and `cocoder-takeover.md`: adversarial dual-source audit,
