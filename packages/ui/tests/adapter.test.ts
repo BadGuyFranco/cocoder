@@ -122,14 +122,12 @@ describe('priorities joined with runs', () => {
   it('a priority with a live run adopts the run id + status; others are "ready"', () => {
     const runs = adaptRuns(RUNS.runs, priorityNames)
     const out = adaptPriorities(P.priorities, runs)
-    // run_24 (plays-mechanism) is failed; run_17 (base-and-extension) is pending-landing → not-landed.
+    // run_24 (plays-mechanism) is failed; run_17 (base-and-extension) is completed.
     const active = out.find((p) => p.id === 'base-and-extension-personas')
-    const liveRun = runs.find((r) => r.priorityId === 'base-and-extension-personas' && r.status === 'not-landed')
-    if (liveRun) {
-      expect(active!.runId).toBe(liveRun.id)
-      expect(active!.status).toBe('not-landed')
-    }
-    const dormant = out.find((p) => !runs.some((r) => r.priorityId === p.id && (r.status === 'running' || r.status === 'not-landed')))
+    const settledRun = runs.find((r) => r.priorityId === 'base-and-extension-personas')
+    expect(settledRun?.status).toBe('complete')
+    expect(active!.runId).toBeUndefined()
+    const dormant = out.find((p) => !runs.some((r) => r.priorityId === p.id && (r.status === 'running' || r.status === 'blocked')))
     expect(dormant!.status).toBe('ready')
   })
   it('does NOT adopt a settled (completed) run as the priority’s active run — only active runs attach', () => {

@@ -3,10 +3,11 @@
 // Ported from design-ref/dashboard.jsx, with the left panel now cycling Priorities/Tickets/Runs in place.
 import { useState, useCallback } from 'react'
 import { Button, Icon, Modal, StatusChip } from '../../ui/primitives.tsx'
+import { WorkspaceTabs, type ShellTheme } from '../../ui/ShellControls.tsx'
 
 const PRIO_MIN = 300
-const PRIO_MAX = 640
-const PRIO_DEFAULT = 380
+const PRIO_MAX = 860
+const PRIO_DEFAULT = 570
 const LAUNCH_BLOCKED_HINT = 'A run is active in this workspace — only one run executes at a time (single-writer lock). It frees up when the run finishes.'
 const TICKET_LAUNCH_OFFLINE_HINT = 'Ticket-fix launch is available only when the dashboard is connected to Oz.'
 
@@ -38,7 +39,7 @@ function TabStrip({ active, onChange, priorities, tickets, runs }: { active: Das
   const tabs: Array<{ id: DashboardTab; label: string; count: number }> = [
     { id: 'priorities', label: 'Priorities', count: priorities },
     { id: 'tickets', label: 'Tickets', count: tickets },
-    { id: 'runs', label: 'Runs', count: runs },
+    { id: 'runs', label: 'Runs/Sessions', count: runs },
   ]
   return (
     <div style={{ display: 'flex', gap: 2, padding: 2, background: 'var(--cb-bg)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', minWidth: 0 }}>
@@ -188,7 +189,7 @@ function RunsTab({ runs, onSelectRun, priorities }: { runs: Run[]; onSelectRun: 
   )
 }
 
-export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, selectedRunId, setSelectedRunId, onReorder, onLaunch, onAdhoc, onAddPriority, onAddTicket, onLaunchTicket, onSend, onDecision, onRunAction, ozTyping, live = false, workspaceConfigured, chatPrefill = null, onChatPrefillConsumed }: {
+export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, selectedRunId, setSelectedRunId, onReorder, onLaunch, onAdhoc, onAddPriority, onAddTicket, onLaunchTicket, onSend, onDecision, onRunAction, ozTyping, live = false, workspaceConfigured, chatPrefill = null, onChatPrefillConsumed, workspaces, activeId, loadedIds, runsMap, onSelectWs, onCloseWs, onLoadWs, onCreateWs, theme = 'dark', setTheme = () => undefined, conn = 'fixtures', onRestartOz }: {
   workspace: Workspace; priorities: Priority[]; tickets: Ticket[]; runs: Run[]; ozMessages: ChatMessage[]
   workspaceConfigured?: boolean
   selectedRunId: string | null; setSelectedRunId: (id: string | null) => void
@@ -197,6 +198,9 @@ export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, se
   onSend: (text: string) => void; onDecision: (choice: string) => void; onRunAction: (action: string, id: string) => void
   ozTyping: boolean; live?: boolean
   chatPrefill?: string | null; onChatPrefillConsumed?: () => void
+  workspaces?: Workspace[]; activeId?: string; loadedIds?: string[]; runsMap?: Record<string, Run[]>
+  onSelectWs?: (id: string) => void; onCloseWs?: (id: string) => void; onLoadWs?: (id: string) => void; onCreateWs?: () => void
+  theme?: ShellTheme; setTheme?: (fn: (t: ShellTheme) => ShellTheme) => void; conn?: string; onRestartOz?: () => void
 }) {
   const [prioWidth, setPrioWidth] = useState(PRIO_DEFAULT)
   const [activeTab, setActiveTab] = useState<DashboardTab>('priorities')
@@ -212,12 +216,23 @@ export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, se
   const launchBlocked = runs.some((r) => r.status === 'running')
   const addTitle = activeTab === 'priorities' ? 'Add priority' : activeTab === 'tickets' ? 'Add ticket' : ''
   const addAction = activeTab === 'priorities' ? onAddPriority : activeTab === 'tickets' ? onAddTicket : null
+  const workspaceTabs = {
+    workspaces: workspaces ?? [workspace],
+    activeId: activeId ?? workspace.id,
+    loadedIds: loadedIds ?? [workspace.id],
+    runsMap: runsMap ?? { [workspace.id]: runs },
+    onSelect: onSelectWs ?? (() => undefined),
+    onClose: onCloseWs ?? (() => undefined),
+    onLoad: onLoadWs ?? (() => undefined),
+    onCreate: onCreateWs ?? (() => undefined),
+  }
   return (
     <div style={{ display: 'grid', gridTemplateColumns, gap: 16, padding: 16, height: '100%', overflow: 'hidden' }}>
       <div style={{ minHeight: 0 }}>
         <div className="oz-panel oz-priorities-panel" style={{ height: '100%' }}>
-          <div className="oz-panel-header" style={{ gap: 10, flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0 }}>
+          <div className="oz-panel-header" style={{ gap: 10, alignItems: 'stretch', flexDirection: 'column' }}>
+            <WorkspaceTabs {...workspaceTabs} />
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0, flexWrap: 'wrap' }}>
               <TabStrip active={activeTab} onChange={setActiveTab} priorities={priorities.length} tickets={openTicketCount} runs={runs.length} />
               {addAction && <button className="oz-iconbtn" title={addTitle} onClick={addAction} style={{ width: 26, height: 26, flexShrink: 0 }}><Icon name="plus" size={13} /></button>}
             </div>
@@ -230,7 +245,7 @@ export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, se
         </div>
       </div>
       <ResizeHandle width={prioWidth} onResizeTo={onResizeTo} />
-      <OzChatPanel messages={ozMessages} runs={runs} workspaceName={workspace.name} onSend={onSend} onSelectRun={setSelectedRunId} onDecision={onDecision} ozTyping={ozTyping} live={live} prefill={chatPrefill} onPrefillConsumed={onChatPrefillConsumed} />
+      <OzChatPanel messages={ozMessages} runs={runs} workspaceName={workspace.name} onSend={onSend} onSelectRun={setSelectedRunId} onDecision={onDecision} ozTyping={ozTyping} live={live} prefill={chatPrefill} onPrefillConsumed={onChatPrefillConsumed} theme={theme} setTheme={setTheme} conn={conn} onRestartOz={onRestartOz} />
       {selectedRun && <RunDetail run={selectedRun} parentPriority={selectedRun.priorityId ? priorities.find((p) => p.id === selectedRun.priorityId) || null : null} parentPriorityIndex={selectedRun.priorityId ? priorities.findIndex((p) => p.id === selectedRun.priorityId) : -1} onClose={() => setSelectedRunId(null)} onAction={onRunAction} />}
     </div>
   )

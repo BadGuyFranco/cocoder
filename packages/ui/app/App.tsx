@@ -589,7 +589,7 @@ export function App() {
     <div className="oz-app" style={{ gridTemplateColumns: `${navCollapsed ? 64 : 220}px 1fr` }}>
       <Sidebar route={route} setRoute={setRoute} runs={runs} user={USER} collapsed={navCollapsed} onToggleCollapsed={() => setNavCollapsed((c) => !c)} />
       <div className="oz-main">
-        <TopBar title={ROUTE_TITLE[route]} route={route} workspaces={workspaces} activeId={activeId} loadedIds={loadedIds} runsMap={runsByWs} onSelectWs={selectWs} onCloseWs={closeWs} onLoadWs={loadWs} onCreateWs={() => setNewWsOpen(true)} theme={theme} setTheme={setTheme} conn={conn} onRestartOz={() => void handleRestartOz()} />
+        <TopBar title={ROUTE_TITLE[route]} route={route} theme={theme} setTheme={setTheme} conn={conn} onRestartOz={() => void handleRestartOz()} />
         <div className="oz-content">
           {actionMsg && (
             <div role="status" style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 80, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 'var(--cb-radius-md)', fontSize: 12, color: 'var(--cb-text)', background: 'var(--cb-surface-raised)', border: `1px solid ${actionMsg.kind === 'err' ? 'var(--cb-highlight)' : actionMsg.kind === 'ok' ? 'var(--cb-success)' : 'var(--cb-border-strong)'}`, boxShadow: '0 8px 24px rgba(0,0,0,0.45)' }}>
@@ -612,6 +612,9 @@ export function App() {
               onSend={onSend} onDecision={(c: string) => onSend(`Decision: replay ${c} plan.`)} onRunAction={handleRunAction}
               ozTyping={ozTyping} live={live}
               chatPrefill={chatPrefill} onChatPrefillConsumed={() => setChatPrefill(null)}
+              workspaces={workspaces} activeId={activeId} loadedIds={loadedIds} runsMap={runsByWs}
+              onSelectWs={selectWs} onCloseWs={closeWs} onLoadWs={loadWs} onCreateWs={() => setNewWsOpen(true)}
+              theme={theme} setTheme={setTheme} conn={conn} onRestartOz={() => void handleRestartOz()}
             />
           )}
           {route === 'workspaces' && (

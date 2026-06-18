@@ -3,6 +3,7 @@
 // without leaving the thread). Quick-prompt pills pre-fill common ops. Ported from design-ref.
 import { useEffect, useRef, useState } from 'react'
 import { Icon, Button, StatusChip } from '../../ui/primitives.tsx'
+import { OzGlobalControls, type ShellTheme } from '../../ui/ShellControls.tsx'
 import type { ChatMessage, Run } from '../../model.ts'
 
 function ChatMessageView({ msg, runs, onSelectRun, onDecision }: { msg: ChatMessage; runs: Run[]; onSelectRun: (id: string) => void; onDecision: (choice: string) => void }) {
@@ -54,10 +55,11 @@ const QUICK_PROMPTS = [
   { label: 'Reorder priorities', prompt: 'Promote #4 to the top.' },
 ]
 
-export function OzChatPanel({ messages, runs, workspaceName, onSend, onSelectRun, onDecision, ozTyping, prefill = null, onPrefillConsumed }: {
+export function OzChatPanel({ messages, runs, workspaceName, onSend, onSelectRun, onDecision, ozTyping, prefill = null, onPrefillConsumed, theme = 'dark', setTheme = () => undefined, conn = 'fixtures', onRestartOz }: {
   messages: ChatMessage[]; runs: Run[]; workspaceName: string; onSend: (text: string) => void
   onSelectRun: (id: string) => void; onDecision: (choice: string) => void; ozTyping: boolean; live?: boolean
   prefill?: string | null; onPrefillConsumed?: () => void
+  theme?: ShellTheme; setTheme?: (fn: (t: ShellTheme) => ShellTheme) => void; conn?: string; onRestartOz?: () => void
 }) {
   const [text, setText] = useState('')
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -84,7 +86,9 @@ export function OzChatPanel({ messages, runs, workspaceName, onSend, onSelectRun
           <div style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-text-muted)', marginTop: 2 }}>headless oz · bound to <span style={{ color: 'var(--cb-accent)' }}>{workspaceName}</span></div>
         </div>
         <span className="oz-chip oz-chip-running" style={{ marginLeft: 'auto' }}><span className="dot" />watching</span>
-        <button className="oz-iconbtn" title="Conversation menu" style={{ width: 28, height: 28 }}><Icon name="dots-three" size={14} /></button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <OzGlobalControls theme={theme} setTheme={setTheme} conn={conn} onRestartOz={onRestartOz} />
+        </div>
       </div>
       <div ref={bodyRef} style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         {messages.map((m) => <ChatMessageView key={m.id} msg={m} runs={runs} onSelectRun={onSelectRun} onDecision={onDecision} />)}
