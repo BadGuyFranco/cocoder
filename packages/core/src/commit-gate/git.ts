@@ -1,8 +1,8 @@
 // Git operations the commit-gate needs (ADR-0007). Injectable so the gate is unit-testable
 // without a real repo; the default impl shells out to git in the target cwd.
 import { execFile } from 'node:child_process'
-import { lstat } from 'node:fs/promises'
-import { join } from 'node:path'
+import { copyFile, lstat, mkdir, rename, rm } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
@@ -26,9 +26,10 @@ export interface Git {
   /** Stage + commit exactly `files` (pathspec --only semantics); return the new HEAD sha. */
   addAndCommit(cwd: string, files: readonly string[], message: string, author?: { readonly name: string; readonly email: string }): Promise<string>
   /** Discard `files`' working-tree changes back to HEAD: tracked files are restored, untracked
-   *  additions removed. Used to QUARANTINE a verify-rejected atom's changes so they cannot ride into
-   *  a later passing atom's commit (ADR-0013 atom isolation). */
-  restoreToHead(cwd: string, files: readonly string[]): Promise<void>
+   *  additions are moved to `quarantineDir` when supplied, otherwise removed. Used to QUARANTINE a
+   *  verify-rejected atom's changes so they cannot ride into a later passing atom's commit (ADR-0013
+   *  atom isolation). */
+  restoreToHead(cwd: string, files: readonly string[], opts?: { readonly quarantineDir?: string }): Promise<void>
   /** `git show <sha>` — the committed diff for a run's commit_link (read-only; Oz run detail). */
   show(cwd: string, sha: string): Promise<string>
 
@@ -95,6 +96,16 @@ const git = async (cwd: string, args: string[]): Promise<string> => {
 
 const pathExists = (cwd: string, file: string): Promise<boolean> => lstat(join(cwd, file)).then(() => true, () => false)
 
+const moveFile = async (src: string, dest: string): Promise<void> => {
+  try {
+    await rename(src, dest)
+  } catch (err) {
+    if ((err as { code?: string }).code !== 'EXDEV') throw err
+    await copyFile(src, dest)
+    await rm(src, { force: true })
+  }
+}
+
 /** Parse `git status --porcelain -z` output into a list of changed paths. The `-z` form is the sound
  *  one for an integrity boundary: paths are emitted VERBATIM (no quoting/escaping), so spaces and other
  *  special characters can't corrupt the partition. Records are NUL-separated; each is `XY␠PATH`. A
@@ -154,18 +165,23 @@ export function makeGit(): Git {
       await git(cwd, [...authorArgs, '--', ...files])
       return (await git(cwd, ['rev-parse', 'HEAD'])).trim()
     },
-    async restoreToHead(cwd, files) {
+    async restoreToHead(cwd, files, opts) {
       // Per file, decided by tracked-ness FIRST (never a blind checkout→clean fallback — that could
       // delete a file a transient checkout error left behind). Tracked → restore from HEAD (a real
       // failure SURFACES, so the caller can record a failed quarantine instead of a bogus success).
-      // Untracked → remove. Pathspec-scoped, so only these files are touched.
+      // Untracked → move to the caller's quarantine dir when present, otherwise remove. Pathspec-scoped,
+      // so only these files are touched.
       for (const f of files) {
         const tracked = await git(cwd, ['ls-files', '--error-unmatch', '--', f]).then(
           () => true,
           () => false,
         )
         if (tracked) await git(cwd, ['checkout', 'HEAD', '--', f])
-        else await git(cwd, ['clean', '-f', '--', f])
+        else if (opts?.quarantineDir) {
+          const dest = join(opts.quarantineDir, f)
+          await mkdir(dirname(dest), { recursive: true })
+          await moveFile(join(cwd, f), dest)
+        } else await git(cwd, ['clean', '-f', '--', f])
       }
     },
     async show(cwd, sha) {

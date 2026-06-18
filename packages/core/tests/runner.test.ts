@@ -850,7 +850,13 @@ describe('runRun (multi-atom loop)', () => {
     )
     expect(restored).toEqual([['packages/bad.ts']]) // the rejected atom's in-scope work was discarded
     expect(store.listCommitLinks(result.runId).map((c) => c.files)).toEqual([['packages/good.ts']]) // only the passing atom committed
-    expect(store.listEvents(result.runId).some((e) => e.type === 'atom-quarantined')).toBe(true)
+    const quarantine = store.listEvents(result.runId).find((e) => e.type === 'atom-quarantined')!
+    expect(quarantine.data).toEqual({
+      atom: 0,
+      files: ['packages/bad.ts'],
+      quarantineDir: '/runs/run_1/quarantine/atom-0',
+      recovery: { tracked: 'HEAD', untracked: '/runs/run_1/quarantine/atom-0' },
+    })
   })
 
   test('a rejected atom commits nothing, then Oscar can delegate the next atom', async () => {

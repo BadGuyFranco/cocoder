@@ -9,7 +9,7 @@
 // are held back (uncommitted, surfaced) while in-scope work still lands; (4) a rejected atom is
 // quarantined in place without touching the founder's pre-existing out-of-scope file.
 import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
@@ -279,7 +279,7 @@ describe('runRun direct mode — the default (ADR-0023 §2, live git)', () => {
     expect(await g(home, ['status', '--porcelain'])).toBe('')
   })
 
-  test('a rejected atom is quarantined in place without touching the founder’s out-of-scope file', async () => {
+  test('a rejected atom is recoverably quarantined without touching the founder’s out-of-scope file', async () => {
     // Founder has a pre-existing OUT-OF-SCOPE file (allowed — only in-scope WIP blocks a direct launch).
     await writeFile(join(home, 'NOTES.md'), 'founder notes\n')
 
@@ -293,12 +293,41 @@ describe('runRun direct mode — the default (ADR-0023 §2, live git)', () => {
       },
     })
 
-    // Atom rejected → nothing committed; the atom's own change was restored in place (quarantine).
+    // Atom rejected → bad.ts left the worktree but remains recoverable from the run quarantine.
     expect(result.committedShas).toHaveLength(0)
     expect(await exists(join(home, 'packages', 'bad.ts'))).toBe(false)
+    const event = store.listEvents(result.runId).find((e) => e.type === 'atom-quarantined')!
+    const data = event.data as { quarantineDir: string; files: string[]; recovery: { tracked: string; untracked: string } }
+    expect(data.files).toEqual(['packages/bad.ts'])
+    expect(data.recovery).toEqual({ tracked: 'HEAD', untracked: data.quarantineDir })
+    expect(await readFile(join(data.quarantineDir, 'packages', 'bad.ts'), 'utf8')).toBe('export const bad = 1\n')
     // The founder's PRE-EXISTING file is untouched — quarantine reverts only what the atom produced
     // (dirty-after minus dirty-before), never pre-existing dirt.
     expect(await g(home, ['status', '--porcelain'])).toContain('NOTES.md')
-    expect(store.listEvents(result.runId).map((e) => e.type)).toContain('atom-quarantined')
+  })
+
+  test('a later passing atom cannot commit a rejected atom’s quarantined untracked file', async () => {
+    let bobTurn = 0
+
+    const { result, store } = await runDirect({
+      bobScope: ['packages/**'],
+      verdicts: [{ verdict: 'fail', reason: 'no good' }, { verdict: 'pass', reason: 'good' }],
+      directives: [delegate('try the feature'), delegate('clean follow-up'), wrapup('done')],
+      bobWrites: async (cwd) => {
+        await mkdir(join(cwd, 'packages'), { recursive: true })
+        if (bobTurn++ === 0) await writeFile(join(cwd, 'packages', 'bad.ts'), 'export const bad = 1\n')
+        else await writeFile(join(cwd, 'packages', 'good.ts'), 'export const good = 1\n')
+      },
+    })
+
+    expect(result.committedFiles).toEqual(['packages/good.ts'])
+    expect(await exists(join(home, 'packages', 'bad.ts'))).toBe(false)
+    expect(await exists(join(home, 'packages', 'good.ts'))).toBe(true)
+    const event = store.listEvents(result.runId).find((e) => e.type === 'atom-quarantined')!
+    const data = event.data as { quarantineDir: string; files: string[] }
+    expect(data.files).toEqual(['packages/bad.ts'])
+    expect(await readFile(join(data.quarantineDir, 'packages', 'bad.ts'), 'utf8')).toBe('export const bad = 1\n')
+    expect(await g(home, ['show', '--name-only', '--format=', 'HEAD'])).not.toContain('packages/bad.ts')
+    expect(await g(home, ['status', '--porcelain', '--untracked-files=all'])).toBe('')
   })
 })

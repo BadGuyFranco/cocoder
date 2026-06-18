@@ -782,11 +782,16 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     // (dirty at run start) is not the atom's work — exclude it so quarantine never destroys it.
     const produced = (await git.changedFiles(worktreePath)).filter((f) => !dirtyAtStart.has(f))
     if (produced.length === 0) return
+    const quarantineDir = join(runDir, 'quarantine', `atom-${atomIndex}`)
     try {
-      await git.restoreToHead(worktreePath, produced)
-      store.recordEvent({ runId: run.id, type: 'atom-quarantined', data: { atom: atomIndex, files: produced } })
+      await git.restoreToHead(worktreePath, produced, { quarantineDir })
+      store.recordEvent({
+        runId: run.id,
+        type: 'atom-quarantined',
+        data: { atom: atomIndex, files: produced, quarantineDir, recovery: { tracked: 'HEAD', untracked: quarantineDir } },
+      })
     } catch (err) {
-      store.recordEvent({ runId: run.id, type: 'atom-quarantine-failed', data: { atom: atomIndex, files: produced, reason: String(err) } })
+      store.recordEvent({ runId: run.id, type: 'atom-quarantine-failed', data: { atom: atomIndex, files: produced, quarantineDir, reason: String(err) } })
     }
   }
 

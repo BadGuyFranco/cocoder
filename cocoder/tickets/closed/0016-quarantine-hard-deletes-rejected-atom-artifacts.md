@@ -2,10 +2,11 @@
 id: 0016
 title: Atom quarantine hard-deletes a rejected atom's untracked files with no recovery path
 type: bug
-status: Open
+status: Closed
 priority: workspace-segmentation
-owner: oscar run_135
+owner: deb
 created: 2026-06-18
+closed: 2026-06-18
 ---
 
 # 0016 — Atom quarantine hard-deletes a rejected atom's untracked files with no recovery path
@@ -67,3 +68,9 @@ ADR-0027 was reconstructed from Oscar's session context and landed with founder 
 identity: keep) plus the ADR-0014 banners on 0003/0019 and the index update. This ticket tracks the
 underlying engine defect so the next governance-hold (or any rejected-but-valuable atom) isn't lost the
 same way.
+
+## Resolution
+Implemented non-destructive quarantine. Rejected atoms now move untracked files to
+`<runDir>/quarantine/atom-<n>/<path>` and record that directory in the `atom-quarantined` event. Tracked
+files still restore from `HEAD`. Regression coverage proves recovery from the quarantine path and that a
+later passing atom's whole-tree commit excludes quarantined files.
