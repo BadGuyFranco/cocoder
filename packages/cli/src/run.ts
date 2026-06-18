@@ -20,7 +20,7 @@ import {
 import { getAdapter, makeAdapterRegistry } from '@cocoder/adapters'
 import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import { CmuxSessionHost } from '@cocoder/session-hosts'
-import { runViaDaemon, startOzDaemon, supportCommitViaDaemon, teardownViaDaemon } from './client.js'
+import { migrateHistoryViaDaemon, runViaDaemon, startOzDaemon, supportCommitViaDaemon, teardownViaDaemon } from './client.js'
 
 const log = (m: string): void => console.error(`[cocoder] ${m}`)
 
@@ -75,8 +75,23 @@ async function main(): Promise<void> {
     }
     return
   }
+  if (cmd === 'oz' && arg1 === 'migrate-history') {
+    const workspaceId = process.argv[4]
+    if (!workspaceId) {
+      console.error('usage: cocoder oz migrate-history <workspaceId>')
+      process.exit(2)
+    }
+    const live = await probeDaemon({ port: DEFAULT_OZ_PORT })
+    if (!live.alive) {
+      console.error('cocoder: no Oz daemon running — cannot migrate portable history')
+      process.exit(1)
+    }
+    const result = await migrateHistoryViaDaemon(`http://127.0.0.1:${live.port}`, workspaceId)
+    console.log(`migrated portable history for ${workspaceId}: exported ${result.runsExported} run(s), ${result.sessionsExported} session(s)`)
+    return
+  }
   if (cmd !== 'run' || !arg1) {
-    console.error('usage: cocoder run <priorityId> [--resume <runId>]   |   cocoder oz start   |   cocoder oz commit-support <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]')
+    console.error('usage: cocoder run <priorityId> [--resume <runId>]   |   cocoder oz start   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz commit-support <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]')
     process.exit(2)
   }
   const priorityId = arg1

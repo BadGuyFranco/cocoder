@@ -65,6 +65,22 @@ export async function supportCommitViaDaemon(baseUrl: string, runId: string): Pr
   return (await res.json()) as SupportCommitResult
 }
 
+export interface MigrateHistoryResult {
+  readonly runsExported: number
+  readonly sessionsExported: number
+}
+
+/** Backfill tracked portable run history for one workspace via the daemon-owned store. */
+export async function migrateHistoryViaDaemon(baseUrl: string, workspaceId: string): Promise<MigrateHistoryResult> {
+  const session = (await (await fetch(`${baseUrl}/auth/session`)).json()) as { bearerToken: string; csrfToken: string }
+  const res = await fetch(`${baseUrl}/workspaces/${encodeURIComponent(workspaceId)}/migrate-portable-history`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${session.bearerToken}`, [CSRF_HEADER]: session.csrfToken },
+  })
+  if (!res.ok) throw new Error(`portable history migration failed (${res.status}): ${await res.text()}`)
+  return (await res.json()) as MigrateHistoryResult
+}
+
 export interface ClientRunResult {
   readonly runId: string
   readonly status: string

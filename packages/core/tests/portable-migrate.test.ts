@@ -14,6 +14,7 @@ import {
   readPortableSessions,
   readPortableWorkspace,
   readPortableWorkItems,
+  writePortableRunHistory,
   type RunStore,
 } from '../src/store/index.js'
 
@@ -27,7 +28,7 @@ function clock(): () => number {
 }
 
 describe('migrateWorkspacePortableHistory', () => {
-  test('exports portable history idempotently with per-workspace numbering and redaction', async () => {
+  test('fresh backfill materializes DB-only runs with createdAt-ordered display numbers and correct counters', async () => {
     const store = populatedStore()
     const rootA = await tempRoot('portable-migrate-a-')
     const rootB = await tempRoot('portable-migrate-b-')
@@ -97,10 +98,50 @@ describe('migrateWorkspacePortableHistory', () => {
 
     await expect(readPortableCounters(rootA)).resolves.toEqual({ schemaVersion: 1, nextTicketNumber: 13, nextRunDisplayNumber: 3, nextSessionDisplayNumber: 3 })
     await expect(readPortableCounters(rootB)).resolves.toEqual({ schemaVersion: 1, nextTicketNumber: 1, nextRunDisplayNumber: 2, nextSessionDisplayNumber: 2 })
+    store.close()
+  })
 
+  test('running backfill twice is a no-op with unchanged portable tree and counters', async () => {
+    const store = populatedStore()
+    const rootA = await tempRoot('portable-migrate-idempotent-')
+
+    await expect(
+      migrateWorkspacePortableHistory({ primaryRoot: rootA, workspace: { id: 'alpha', name: 'Alpha' }, store }),
+    ).resolves.toEqual({ runsExported: 2, sessionsExported: 2 })
     const before = await snapshotFiles(join(rootA, 'cocoder'))
-    await migrateWorkspacePortableHistory({ primaryRoot: rootA, workspace: { id: 'alpha', name: 'Ignored Existing Name' }, store })
+    await expect(
+      migrateWorkspacePortableHistory({ primaryRoot: rootA, workspace: { id: 'alpha', name: 'Ignored Existing Name' }, store }),
+    ).resolves.toEqual({ runsExported: 0, sessionsExported: 0 })
     await expect(snapshotFiles(join(rootA, 'cocoder'))).resolves.toEqual(before)
+    await expect(readPortableCounters(rootA)).resolves.toEqual({ schemaVersion: 1, nextTicketNumber: 1, nextRunDisplayNumber: 3, nextSessionDisplayNumber: 3 })
+    store.close()
+  })
+
+  test('partial backfill preserves existing display numbers and fills missing runs above the current max', async () => {
+    const store = populatedStore()
+    const root = await tempRoot('portable-migrate-partial-')
+    const existingRun = store.getRun('run_3')
+    const existingSession = store.listSessions('run_3')[0]
+    if (!existingRun || !existingSession) throw new Error('test fixture missing run_3 history')
+    await writePortableRunHistory({
+      primaryRoot: root,
+      store,
+      run: existingRun,
+      displayNumber: 7,
+      sessionDisplayNumbers: new Map([[existingSession.id, 11]]),
+    })
+
+    await expect(
+      migrateWorkspacePortableHistory({ primaryRoot: root, workspace: { id: 'alpha', name: 'Alpha' }, store }),
+    ).resolves.toEqual({ runsExported: 1, sessionsExported: 1 })
+
+    await expect(readPortableRun(root, 7, 'run_3')).resolves.toMatchObject({ run: { id: 'run_3', displayNumber: 7 } })
+    await expect(readPortableSessions(root, 7, 'run_3')).resolves.toEqual([
+      expect.objectContaining({ session: { id: existingSession.id, displayNumber: 11 }, runId: 'run_3' }),
+    ])
+    await expect(readPortableRun(root, 8, 'run_1')).resolves.toMatchObject({ run: { id: 'run_1', displayNumber: 8 } })
+    await expect(readPortableRun(root, 1, 'run_1')).resolves.toBeNull()
+    await expect(readPortableCounters(root)).resolves.toEqual({ schemaVersion: 1, nextTicketNumber: 1, nextRunDisplayNumber: 9, nextSessionDisplayNumber: 13 })
     store.close()
   })
 

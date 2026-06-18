@@ -32,9 +32,11 @@ export type {
 } from './store/index.js'
 export {
   openRunStore,
+  migrateWorkspacePortableHistory,
   readPortableRunById,
   recordPortableRunCreation,
   writePortableRun,
+  type MigrateWorkspacePortableHistoryResult,
   type OpenRunStoreOptions,
   type RecordPortableRunCreationInput,
   SCHEMA_SQL,

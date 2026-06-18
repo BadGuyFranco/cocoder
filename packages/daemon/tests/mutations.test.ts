@@ -1940,6 +1940,19 @@ describe('Oz mutations + lifecycle', () => {
     expect((await call(oz!, 'POST', '/workspaces/cocoder/tickets', { body: { title: 'Bad type', type: 'feature' } })).status).toBe(400)
   })
 
+  test('POST /workspaces/:id/migrate-portable-history exports DB history counts', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.createSession({ runId: run.id, persona: 'bob', sessionRef: 'surface:1' })
+    store.recordEvent({ runId: run.id, type: 'test-event', data: { keep: true } })
+    await startServer()
+
+    const res = await call(oz!, 'POST', '/workspaces/cocoder/migrate-portable-history')
+
+    expect(res).toEqual({ status: 200, json: { runsExported: 1, sessionsExported: 1 } })
+    await expect(readFile(join(home, 'cocoder', 'runs', `1-${run.id}`, 'run.json'), 'utf8')).resolves.toContain(`"id": "${run.id}"`)
+  })
+
   test('POST /daemon/restart → 202 and triggers the (injected) restart action when idle', async () => {
     let restarts = 0
     oz = await createOzServer({

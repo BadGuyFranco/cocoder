@@ -10,6 +10,7 @@ import {
   listEffectivePersonas,
   loadAssignments,
   loadPriority,
+  migrateWorkspacePortableHistory,
   nextTicketId,
   parseFrontmatter,
   insertOpenTicketIndexRow,
@@ -742,6 +743,17 @@ async function deleteWorkspace(ctx: OzContext, res: ServerResponse, workspaceId:
   sendJson(res, 200, { ok: true })
 }
 
+async function migratePortableHistory(ctx: OzContext, res: ServerResponse, workspaceId: string): Promise<void> {
+  const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
+  if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
+  const result = await migrateWorkspacePortableHistory({
+    primaryRoot: ws.path,
+    workspace: { id: ws.id, name: ws.name },
+    store: ctx.store,
+  })
+  sendJson(res, 200, result)
+}
+
 /** Mutation dispatch (stage 4). Returns true if handled. The security gate already required CSRF. */
 export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pathname: string, res: ServerResponse): Promise<boolean> {
   const method = req.method ?? 'GET'
@@ -804,6 +816,10 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
   if (method === 'POST' && pathname === '/oz/dashboard/launch') {
     const { status, body: out } = await requestDashboardLaunch(ctx)
     return sendJson(res, status, out), true
+  }
+  if (method === 'POST' && seg[0] === 'workspaces' && seg.length === 3 && seg[2] === 'migrate-portable-history') {
+    await migratePortableHistory(ctx, res, decodeURIComponent(seg[1]!))
+    return true
   }
   if (method === 'POST' && pathname === '/workspaces') {
     let body: unknown
