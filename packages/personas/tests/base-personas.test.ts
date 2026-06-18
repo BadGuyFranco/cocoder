@@ -111,28 +111,36 @@ describe('basePlaysDir', () => {
     }
   })
 
-  test('wrap-up leads with a scannable Run Handoff whose "Your move" is one runnable action (F18)', () => {
+  test('wrap-up keeps the Next section to one runnable action (F18)', () => {
     const text = readFileSync(join(basePlaysDir(), 'wrap-up.md'), 'utf8')
 
-    expect(text).toContain('Run Handoff')
-    expect(text).toContain('► Your move')
-    expect(text).toContain('exactly ONE **runnable** action')
+    expect(text).toContain('**Next**')
+    expect(text).toContain('exactly one next priority or ticket to run')
+    expect(text).toContain('Name exactly one `Next Action`')
     expect(text).toContain('could a solo non-developer DO it from this one line')
-    expect(text).toMatch(/never "awaiting questions"/)
+    expect(text).toContain('Do not use "awaiting questions"')
   })
 
   // ADR-0022 proof #2: the wrap-up Play is the SINGLE owner of the founder closeout format.
-  // Pin the Run Handoff fields + the detail sections so no surface can silently drift a parallel shape.
-  test('wrap-up Play pins the canonical Run Handoff + detail contract (single owner)', () => {
+  // Pin the founder-facing section contract so no surface can silently drift a parallel shape.
+  test('wrap-up Play pins the canonical founder closeout contract (single owner)', () => {
     const text = readFileSync(join(basePlaysDir(), 'wrap-up.md'), 'utf8')
-    // The handoff block answers "what do I do next?" at a glance.
-    for (const field of ['Priority worked', 'Disposition', 'This run', 'Held back', 'Next priority', '► Your move']) {
-      expect(text).toContain(field)
+
+    const sections = [
+      '**What Landed**',
+      '**Disposition**',
+      "**What's Left To Close Priority**",
+      '**Judgement**',
+      '**Next**',
+      "I'm standing by...",
+    ]
+    for (const section of sections) {
+      expect(text).toContain(section)
     }
-    // The detail sections it solely owns follow the handoff.
-    for (const s of ['Summary', 'Archive Estimate', 'Founder Options']) {
-      expect(text).toContain(`- \`${s}\``)
+    for (let i = 1; i < sections.length; i += 1) {
+      expect(text.indexOf(sections[i])).toBeGreaterThan(text.indexOf(sections[i - 1]))
     }
+    expect(text).toContain('End with exactly `I\'m standing by...`')
   })
 
   // ADR-0022 proof #2: Oscar must defer to the wrap-up Play's contract, not restate a parallel format.

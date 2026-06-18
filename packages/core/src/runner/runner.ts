@@ -146,6 +146,57 @@ export interface RunResult {
   readonly recordPath: string
 }
 
+const FOUNDER_CLOSEOUT_SECTIONS = [
+  '**What Landed**',
+  '**Disposition**',
+  "**What's Left To Close Priority**",
+  '**Judgement**',
+  '**Next**',
+] as const
+
+function founderCloseoutFormatIssues(markdown: string): string[] {
+  const issues: string[] = []
+  let priorIndex = -1
+  for (const section of FOUNDER_CLOSEOUT_SECTIONS) {
+    const index = markdown.indexOf(section)
+    if (index < 0) {
+      issues.push(`missing ${section}`)
+      continue
+    }
+    if (index <= priorIndex) issues.push(`${section} is out of order`)
+    priorIndex = index
+  }
+  if (!markdown.trimEnd().endsWith("I'm standing by...")) issues.push('missing final "I\'m standing by..." line')
+  return issues
+}
+
+function formatInvalidFounderCloseoutFallback(input: {
+  readonly priorityId: string
+  readonly atoms: number
+  readonly commits: readonly string[]
+  readonly issues: readonly string[]
+}): string {
+  const issueLines = input.issues.map((issue) => `- ${issue}`).join('\n')
+  const commitText = input.commits.length === 0 ? 'No commits were recorded before wrap-up.' : `${input.commits.length} commit(s) were recorded before wrap-up.`
+  return `**What Landed**
+CoCoder completed ${input.atoms} atom(s) for \`${input.priorityId}\`. ${commitText}
+
+**Disposition**
+blocked
+The wrap-up Play returned a malformed founder brief, so the runner blocked delivery of that malformed shape.
+
+**What's Left To Close Priority**
+${issueLines}
+
+**Judgement**
+The runner preserved the founder-facing format instead of passing through a nonconforming wrap-up.
+
+**Next**
+this priority
+
+I'm standing by...`
+}
+
 export class PreflightError extends Error {
   constructor(persona: string, detail: string) {
     super(`preflight failed for "${persona}": ${detail}`)
@@ -829,7 +880,14 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           headBefore: headBeforeWrap,
         })
         absorbGateResult(wrapGate)
-        pickup = res.output && res.output.trim() ? res.output : (directive.pickup ?? null)
+        const candidatePickup = res.output && res.output.trim() ? res.output : (directive.pickup ?? null)
+        const formatIssues = candidatePickup ? founderCloseoutFormatIssues(candidatePickup) : ['empty wrap-up output']
+        if (formatIssues.length > 0) {
+          store.recordEvent({ runId: run.id, type: 'wrapup-format-invalid', data: { play: input.wrapPlay.id, issues: formatIssues, outPath: wrapOut } })
+          pickup = formatInvalidFounderCloseoutFallback({ priorityId: priority.id, atoms: n, commits: committedShas, issues: formatIssues })
+        } else {
+          pickup = candidatePickup
+        }
         store.recordEvent({ runId: run.id, type: 'wrapup', data: { atoms: n, forced: false, play: input.wrapPlay.id } })
         log(`wrap-up play ${input.wrapPlay.id} ran after ${n} atom(s)`)
       } else {

@@ -235,6 +235,23 @@ const wrapPlay: Play = {
   body: 'Wrap-up Play body.\n\nProduce the closeout.',
 }
 const wrapPlayAssignment: PlayAssignment = { cli: 'cursor-agent', model: 'cheap-wrap' }
+const validFounderCloseout = (summary = 'The requested work was completed and committed.'): string => `**What Landed**
+${summary}
+
+**Disposition**
+continue
+
+**What's Left To Close Priority**
+- Continue the remaining priority atoms.
+
+**Judgement**
+Oscar stopped at a clean wrap-up point.
+
+**Next**
+this priority
+
+I'm standing by...
+`
 
 const baseDeps = (over: Partial<RunnerDeps>): RunnerDeps => ({
   store: openRunStore(':memory:'),
@@ -632,7 +649,7 @@ describe('runRun (multi-atom loop)', () => {
         }),
         runHeadless: async (i) => {
           headlessCalls.push(i)
-          return { exitCode: 0, output: 'PLAY CLOSEOUT\n' }
+          return { exitCode: 0, output: validFounderCloseout('PLAY CLOSEOUT') }
         },
       }),
       { ...input, runsRoot, wrapPlay, wrapPlayAssignment },
@@ -649,7 +666,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(headlessCalls[0]?.command).toBe('cursor-agent')
     expect(headlessCalls[0]?.args.join('\n')).toContain('Wrap-up Play body.')
     expect(paneSpawns).not.toContain('cursor-agent')
-    expect(pickupWrites).toEqual(['PLAY CLOSEOUT\n'])
+    expect(pickupWrites).toEqual([validFounderCloseout('PLAY CLOSEOUT')])
     expect(result.committedShas).toEqual(['sha-1', 'sha-2'])
     // Scope advisory: the wrap commit includes the out-of-lane file too; it's flagged, not withheld.
     expect(result.committedFiles).toEqual(['packages/atom.ts', 'docs/wrap.md', 'packages/not-wrap.ts'])
@@ -660,6 +677,30 @@ describe('runRun (multi-atom loop)', () => {
     expect(links.map((c) => c.workItemId)).toEqual([store.listWorkItems(result.runId)[0]?.id, null])
     const wrap = store.listEvents(result.runId).find((e) => e.type === 'wrapup')
     expect((wrap?.data as { play?: string }).play).toBe('wrap-up')
+  })
+
+  test('wrap-up Play output is format-checked before pickup delivery', async () => {
+    const store = openRunStore(':memory:')
+    const pickupWrites: string[] = []
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([['packages/atom.ts']]),
+        io: fakeIO({ directives: [delegate('atom 0'), wrapup('Oscar seed closeout')], pickupWrites }),
+        getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
+        runHeadless: async () => ({ exitCode: 0, output: 'PLAY CLOSEOUT\n' }),
+      }),
+      { ...input, wrapPlay, wrapPlayAssignment },
+    )
+
+    expect(result.status).toBe('completed')
+    expect(pickupWrites).toHaveLength(1)
+    expect(pickupWrites[0]).toContain('**What Landed**')
+    expect(pickupWrites[0]).toContain('**Disposition**\nblocked')
+    expect(pickupWrites[0]).toContain('missing **What Landed**')
+    expect(pickupWrites[0]?.trimEnd().endsWith("I'm standing by...")).toBe(true)
+    const invalid = store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')
+    expect(invalid?.data).toMatchObject({ play: 'wrap-up', issues: expect.arrayContaining(['missing **What Landed**']) })
   })
 
   // NOTE: stale-daemon handling moved OUT of the runner (ADR-0016 incident fix). A stale daemon is now
