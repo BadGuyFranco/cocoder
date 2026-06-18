@@ -12,6 +12,19 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-17 — **Tickets-review: ticket-fix launch + close-on-success code-complete — live proof on 0003 is the only archive gate (run_132)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 5 atoms delegated/verified-on-evidence) | **Priority:** [tickets-review](./priorities/tickets-review.md) | **Run:** run_132
+**Outcomes:**
+- **Atom 0 (`1f15bac`) — ticket loader surfaces, doesn't swallow:** `loadTicket` tolerates frontmatter-less tickets; `readStateDir` warns instead of silently dropping. Resolves ticket 0015; backfills 0009/0011/0014.
+- **Atom 1 (`a59610c`) — ticket run-target backend:** `Run.ticketId` store discriminator; `LaunchRunTarget` gains `ticket`; `launchRun` ticket branch validates unknown/closed (400), runs PRIORITY lifecycle via shared `assembleRunInput` with synthetic in-memory Priority from ticket body; `POST /runs` exactly-one-of-three.
+- **Atom 2 (`c7bb787`) — Tickets-tab UI parity:** compact id+title cards; click → shared Modal (metadata + body); in-panel detail view removed.
+- **Atom 3 (`899d8bd`) — close-on-success:** core `closeTicket` + shared INDEX helpers; completed ticket run moves `open/→closed/`, sets Closed, appends `## Resolution` traceable to runId+sha, INDEX Open→Recently-Closed via ADR-0023 spine; no-op on missing/already-closed; non-success leaves ticket open.
+- **Atom 4 (`1c0d160`) — 'Launch fix' wired live:** `launchTicketRun` (POST /runs `{ticketId}`) mirrors priority Launch; modal button disabled when offline or run in flight; click launches + closes modal. Gate note: run-target generalization already landed (`9f76e98`, run_123); atom 4 extended that discriminator.
+- **Gates:** core 340, daemon 211, ui 123, workspace typecheck clean.
+- **Disposition: `archive-candidate`** — all five build atoms code-complete and verified-on-evidence; only remaining archive criterion is founder-launched live end-to-end proof (fix run closes a real ticket on trunk).
+**Next:** From the live dashboard **Tickets** tab, click **Launch fix** on ticket **0003** (public docs v1-stale). If the daemon is stale and idle self-restart does not activate, run `scripts/oz.sh restart` once first — then launch.
+
 ## 2026-06-17 — **new-primary-root: Takeover executor P1→P6 code-complete on fakes + runnable proof — live Takeover or Drift build next (run_131)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 2 atoms delegated/verified-on-evidence) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_131

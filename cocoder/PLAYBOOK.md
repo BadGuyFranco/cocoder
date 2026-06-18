@@ -233,13 +233,15 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   claims" to first-class structure; e.g. `integration-verify` *runs* the real check instead of prompting an
   agent to). Step 1 is an **ADR-0010 taxonomy amendment** the founder confirms at launch (the Play-component
   shape); then schema (`Play` type) + dispatch + reimplement `integration-verify` as the hybrid proof.
-- `tickets-review` — **DELIVERABLE 1 CODE-COMPLETE; atom 4 UNBLOCKED (run_122, 2026-06-17).** Objective
-  ratified 2026-06-17. Landed: ticket-index hygiene + tickets data layer + 3-tab panel (run_121); live-review
-  fixes (`0266172`/`bdddf29`/`efb9714` — tab header, `POST /tickets` + `NewTicketModal`). **Founder:
-  `scripts/oz.sh restart`** to activate tickets GET+POST on the live daemon (Bug 2 count=0 is stale-process,
-  not code). **Remaining = atom 4, a ticket-fix run** that closes a ticket through the spine — run-target
-  dependency **cleared** (`new-primary-root` Atom 2 landed run_123, `9f76e98`). **Queued after** executor
-  P2 on `new-primary-root`; then relaunch for atom 4 (proof ticket one of `0003/0005/0012`).
+- `tickets-review` — **CODE-COMPLETE; archive-candidate (run_132, 2026-06-17).** Objective ratified
+  2026-06-17. Landed run_121–122: index hygiene, tickets data layer, 3-tab panel, live-review fixes
+  (`POST /tickets` + `NewTicketModal`). Landed run_132: ticket loader surfaces (0015), `Run.ticketId` +
+  `launchRun` ticket branch, Tickets-tab card→modal parity, close-on-success spine writer, **Launch fix**
+  button live. **Only archive gate:** founder live proof — click **Launch fix** on ticket **0003** from the
+  dashboard Tickets tab; confirm fix run completes and 0003 moves to `closed/` with INDEX updated on trunk.
+  Daemon must serve current code (`scripts/oz.sh restart` if stale self-restart does not activate). Deferred
+  extensions (not blocking archive): reorderable tickets, create-ticket Play for all personas, durable
+  unparseable-ticket surface beyond 0015 tolerance.
 - `oz-dashboard-design-tweaks` — **archive-candidate (run_115):** rounds 1–3 code-complete — settings
   trim + collapsible personas/plays + contrast (run_113), panel↔background reversal + Oz-card de-gradient
   (run_114, `97bc3a4`), Round-3 persona-card consistency + priority-row separation + stacked priority
