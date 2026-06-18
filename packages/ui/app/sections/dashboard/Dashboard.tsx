@@ -2,7 +2,7 @@
 // run-detail drawer opens BETWEEN the priorities column and the chat (3-col when a run is selected).
 // Ported from design-ref/dashboard.jsx, with the left panel now cycling Priorities/Tickets/Runs in place.
 import { useState, useCallback } from 'react'
-import { Icon, StatusChip } from '../../ui/primitives.tsx'
+import { Button, Icon, Modal, StatusChip } from '../../ui/primitives.tsx'
 
 const PRIO_MIN = 300
 const PRIO_MAX = 640
@@ -73,36 +73,15 @@ function TicketsTab({ tickets }: { tickets: Ticket[] }) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const openTickets = tickets.filter((ticket) => ticket.state === 'open')
   const selected = selectedId ? openTickets.find((ticket) => ticket.id === selectedId) ?? null : null
-  if (selected) {
-    const meta = [
+  const meta = selected
+    ? [
       ['type', selected.type],
       ['status', selected.status],
       ['priority', selected.priority],
       ['owner', selected.owner],
       ['created', selected.created],
     ].filter(([, value]) => value)
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <button type="button" onClick={() => setSelectedId(null)} style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', background: 'transparent', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', color: 'var(--cb-text-muted)', fontSize: 11, fontFamily: 'var(--cb-font-body)', cursor: 'pointer' }}>
-          <Icon name="arrow-left" size={12} />Back to tickets
-        </button>
-        <div style={{ padding: '12px 12px 14px', background: 'var(--cb-surface-glass)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
-            <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 11, color: 'var(--cb-accent)', paddingTop: 2 }}>{selected.id}</span>
-            <div style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 600, lineHeight: 1.45, color: 'var(--cb-text)' }}>{selected.title}</div>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-            {meta.map(([label, value]) => (
-              <span key={label} style={{ display: 'inline-flex', gap: 5, alignItems: 'center', padding: '2px 6px', border: '1px solid var(--cb-border)', borderRadius: 3, background: 'var(--cb-bg-soft)', fontSize: 10.5, color: 'var(--cb-text-secondary)' }}>
-                <span style={{ fontFamily: 'var(--cb-font-mono)', color: 'var(--cb-text-muted)' }}>{label}</span>{value}
-              </span>
-            ))}
-          </div>
-          <div style={{ whiteSpace: 'pre-wrap', fontSize: 12, lineHeight: 1.65, color: 'var(--cb-text-secondary)', borderTop: '1px solid var(--cb-border)', paddingTop: 12 }}>{selected.body}</div>
-        </div>
-      </div>
-    )
-  }
+    : []
   if (openTickets.length === 0) {
     return (
       <div className="oz-empty" style={{ padding: '32px 16px' }}>
@@ -113,30 +92,46 @@ function TicketsTab({ tickets }: { tickets: Ticket[] }) {
     )
   }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {openTickets.map((ticket) => (
-        <button
-          key={ticket.id}
-          type="button"
-          onClick={() => setSelectedId(ticket.id)}
-          style={{ width: '100%', textAlign: 'left', padding: '10px 10px', background: 'var(--cb-surface-glass)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', cursor: 'pointer', fontFamily: 'var(--cb-font-body)', color: 'var(--cb-text)' }}
-          onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--cb-accent-30)'; e.currentTarget.style.background = 'var(--cb-hover)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--cb-border)'; e.currentTarget.style.background = 'var(--cb-surface-glass)' }}
-        >
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-            <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10.5, color: 'var(--cb-accent)', paddingTop: 2 }}>{ticket.id}</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 500, lineHeight: 1.45 }}>{ticket.title}</div>
-              <div style={{ display: 'flex', gap: 6, marginTop: 7, alignItems: 'center' }}>
-                {ticket.type && <span style={{ fontSize: 10, color: 'var(--cb-text-secondary)', padding: '1px 6px', background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border)', borderRadius: 2 }}>{ticket.type}</span>}
-                {ticket.status && <StatusChip status={ticket.status.toLowerCase()} label={ticket.status} />}
-              </div>
+    <>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {openTickets.map((ticket) => (
+          <button
+            key={ticket.id}
+            type="button"
+            onClick={() => setSelectedId(ticket.id)}
+            style={{ width: '100%', textAlign: 'left', padding: '9px 10px', background: 'var(--cb-surface-glass)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', cursor: 'pointer', fontFamily: 'var(--cb-font-body)', color: 'var(--cb-text)', transition: 'box-shadow 120ms ease-out, background 120ms ease-out, border-color 120ms ease-out' }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--cb-accent-30)'; e.currentTarget.style.background = 'var(--cb-hover)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--cb-border)'; e.currentTarget.style.background = 'var(--cb-surface-glass)' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-accent)', minWidth: 34, paddingTop: 2 }}>{ticket.id}</span>
+              <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 500, lineHeight: 1.4, paddingTop: 1 }}>{ticket.title}</div>
+              <Icon name="arrow-right" size={12} style={{ color: 'var(--cb-text-muted)', marginTop: 3 }} />
             </div>
-            <Icon name="arrow-right" size={12} style={{ color: 'var(--cb-text-muted)', marginTop: 3 }} />
+          </button>
+        ))}
+      </div>
+      {selected && (
+        <Modal
+          open
+          onClose={() => setSelectedId(null)}
+          title={`${selected.id} - ${selected.title}`}
+          subtitle="Ticket detail"
+          icon="ticket"
+          width={680}
+          footer={<Button variant="secondary" icon="play" disabled title="Ticket-fix launch — wiring lands in the next atom">Launch fix</Button>}
+        >
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+            {meta.map(([label, value]) => (
+              <span key={label} style={{ display: 'inline-flex', gap: 5, alignItems: 'center', padding: '2px 6px', border: '1px solid var(--cb-border)', borderRadius: 3, background: 'var(--cb-bg-soft)', fontSize: 10.5, color: 'var(--cb-text-secondary)' }}>
+                <span style={{ fontFamily: 'var(--cb-font-mono)', color: 'var(--cb-text-muted)' }}>{label}</span>{value}
+              </span>
+            ))}
           </div>
-        </button>
-      ))}
-    </div>
+          <div style={{ whiteSpace: 'pre-wrap', fontSize: 12, lineHeight: 1.65, color: 'var(--cb-text-secondary)', borderTop: '1px solid var(--cb-border)', paddingTop: 12 }}>{selected.body}</div>
+        </Modal>
+      )}
+    </>
   )
 }
 

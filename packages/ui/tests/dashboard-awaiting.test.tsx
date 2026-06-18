@@ -124,22 +124,33 @@ describe('Dashboard layout', () => {
     expect(screen.getByText('Run running')).toBeDefined()
   })
 
-  it('lists open tickets and opens a readable in-panel detail view', () => {
-    render(<DashboardHarness runs={[run('running', 'running')]} />)
+  it('lists compact open-ticket cards and opens a readable detail modal', () => {
+    const { container } = render(<DashboardHarness runs={[run('running', 'running')]} />)
 
     fireEvent.click(screen.getByRole('button', { name: /Tickets 3/i }))
+    const column = within(container.firstElementChild!.children[0] as HTMLElement)
 
-    expect(screen.getByText('0003')).toBeDefined()
-    expect(screen.getByText('0005')).toBeDefined()
-    expect(screen.getByText('0012')).toBeDefined()
-    expect(screen.queryByText('0008')).toBeNull()
+    expect(column.getByText('0003')).toBeDefined()
+    expect(column.getByText('0005')).toBeDefined()
+    expect(column.getByText('0012')).toBeDefined()
+    expect(column.getByText('Guard against design-ref rebuilds reverting committed packages/ui/app fixes')).toBeDefined()
+    expect(column.queryByText('0008')).toBeNull()
+    expect(column.queryByText('task')).toBeNull()
+    expect(column.queryByText('Open')).toBeNull()
 
-    fireEvent.click(screen.getByText('Guard against design-ref rebuilds reverting committed packages/ui/app fixes'))
+    fireEvent.click(column.getByText('Guard against design-ref rebuilds reverting committed packages/ui/app fixes'))
 
-    expect(screen.getByRole('button', { name: /Back to tickets/i })).toBeDefined()
+    expect(screen.queryByRole('button', { name: /Back to tickets/i })).toBeNull()
+    expect(screen.getByText('0012 - Guard against design-ref rebuilds reverting committed packages/ui/app fixes')).toBeDefined()
     expect(screen.getByText('owner')).toBeDefined()
     expect(screen.getByText('oscar run_94')).toBeDefined()
     expect(screen.getByText(/Prevent rebuild clobbers/)).toBeDefined()
+    expect((screen.getByRole('button', { name: /Launch fix/i }) as HTMLButtonElement).disabled).toBe(true)
+
+    fireEvent.click(screen.getByTitle('Close (Esc)'))
+
+    expect(screen.queryByText(/Prevent rebuild clobbers/)).toBeNull()
+    expect(column.getByText('Guard against design-ref rebuilds reverting committed packages/ui/app fixes')).toBeDefined()
   })
 
   it('shows runs in-panel with filters and opens a run row', () => {
