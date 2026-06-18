@@ -271,6 +271,28 @@ const stopAwaitingDirectiveIO = (): RunnerIO => ({
   },
 })
 
+function controlledDirectiveIO(): { readonly io: RunnerIO; release(): void } {
+  let releaseAll: (() => void) | null = null
+  const released = new Promise<void>((resolve) => {
+    releaseAll = resolve
+  })
+  return {
+    io: {
+      ...fakeIO(),
+      async ensureRunDir(runDir) {
+        await mkdir(runDir, { recursive: true })
+      },
+      async awaitDirective() {
+        await released
+        return { kind: 'wrapup' as const, pickup: 'nothing further this run' }
+      },
+    },
+    release() {
+      releaseAll?.()
+    },
+  }
+}
+
 async function fixtures(home: string): Promise<void> {
   await mkdir(join(home, 'cocoder', 'priorities'), { recursive: true })
   await mkdir(join(home, 'cocoder', 'personas'), { recursive: true })
@@ -404,6 +426,87 @@ describe('Oz mutations + lifecycle', () => {
     // C-S6 audit: a launch line was appended.
     const audit = await readFile(join(home, 'local', 'oz-audit.log'), 'utf8')
     expect(audit).toContain('"action":"launch"')
+  })
+
+  test('POST /runs allows concurrent runs in different workspaces without shared-resource collisions', async () => {
+    const externalPath = await writeExternalWorkspace(home)
+    await writeFile(
+      join(home, 'local', 'workspaces.json'),
+      JSON.stringify({
+        workspaces: [
+          { id: 'cocoder', name: 'CoCoder', path: '${COCODER_HOME}' },
+          { id: 'external', name: 'External', path: externalPath },
+        ],
+      }),
+    )
+    const events: Array<{ type: string; runId?: string; workspaceId?: string; status?: string }> = []
+    const controlled = controlledDirectiveIO()
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit(),
+      sessionHost: fakeHost(),
+      getAdapter: () => okAdapter,
+      io: controlled.io,
+      runHeadless: async () => ({ exitCode: 0, output: 'wrap closeout' }),
+    })
+    const unsubscribe = oz.ctx.events.subscribe((event) => events.push(event))
+    try {
+      const [a, b] = await Promise.all([
+        call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } }),
+        call(oz, 'POST', '/runs', { body: { workspaceId: 'external', priorityId: 'demo' } }),
+      ])
+      expect(a.status).toBe(202)
+      expect(b.status).toBe(202)
+      const aRunId = a.json.runId as string
+      const bRunId = b.json.runId as string
+      expect(aRunId).toMatch(/^run_/)
+      expect(bRunId).toMatch(/^run_/)
+      expect(aRunId).not.toBe(bRunId)
+      expect(oz.ctx.inFlight.get('cocoder')).toBe(aRunId)
+      expect(oz.ctx.inFlight.get('external')).toBe(bRunId)
+
+      const sameWorkspace = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
+      expect(sameWorkspace.status).toBe(409)
+      expect(sameWorkspace.json.error).toContain('workspace "cocoder"')
+      expect(store.listRuns({ workspaceId: 'cocoder' })).toHaveLength(1)
+      expect(store.listRuns({ workspaceId: 'external' })).toHaveLength(1)
+      for (let i = 0; i < 50 && (store.listEvents(aRunId).length === 0 || store.listEvents(bRunId).length === 0); i++) {
+        await sleep(10)
+      }
+      expect(store.listEvents(aRunId).map((event) => event.type)).toContain('run-start')
+      expect(store.listEvents(bRunId).map((event) => event.type)).toContain('run-start')
+      expect(join(home, 'local', 'runs', aRunId)).not.toBe(join(home, 'local', 'runs', bRunId))
+
+      controlled.release()
+      for (let i = 0; i < 50 && (oz.ctx.inFlight.has('cocoder') || oz.ctx.inFlight.has('external')); i++) {
+        await sleep(10)
+      }
+
+      expect(store.getRun(aRunId)?.status).toBe('completed')
+      expect(store.getRun(bRunId)?.status).toBe('completed')
+      expect(oz.ctx.inFlight.has('cocoder')).toBe(false)
+      expect(oz.ctx.inFlight.has('external')).toBe(false)
+      expect(await exists(join(home, 'local', 'runs', aRunId))).toBe(true)
+      expect(await exists(join(home, 'local', 'runs', bRunId))).toBe(true)
+
+      const aPortable = JSON.parse(await readFile(join(home, 'cocoder', 'runs', `1-${aRunId}`, 'run.json'), 'utf8')) as { run: { id: string; displayNumber: number }; workspace: { id: string } }
+      const bPortable = JSON.parse(await readFile(join(externalPath, 'cocoder', 'runs', `1-${bRunId}`, 'run.json'), 'utf8')) as { run: { id: string; displayNumber: number }; workspace: { id: string } }
+      expect(aPortable).toMatchObject({ run: { id: aRunId, displayNumber: 1 }, workspace: { id: 'cocoder' } })
+      expect(bPortable).toMatchObject({ run: { id: bRunId, displayNumber: 1 }, workspace: { id: 'external' } })
+      expect(await exists(join(home, 'cocoder', 'runs', `1-${bRunId}`, 'run.json'))).toBe(false)
+      expect(await exists(join(externalPath, 'cocoder', 'runs', `1-${aRunId}`, 'run.json'))).toBe(false)
+
+      expect(events).toEqual(expect.arrayContaining([
+        expect.objectContaining({ type: 'run-created', runId: aRunId, workspaceId: 'cocoder' }),
+        expect.objectContaining({ type: 'run-created', runId: bRunId, workspaceId: 'external' }),
+        expect.objectContaining({ type: 'run-settled', runId: aRunId, workspaceId: 'cocoder', status: 'completed' }),
+        expect.objectContaining({ type: 'run-settled', runId: bRunId, workspaceId: 'external', status: 'completed' }),
+      ]))
+    } finally {
+      unsubscribe()
+    }
   })
 
   test('POST /runs rejects both-set and neither-set targets before creating a run', async () => {
