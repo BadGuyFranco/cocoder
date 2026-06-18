@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-18 — **Oz-dashboard-ux: card → modal → launch pattern for priorities and runs — archive-candidate, live visual proof only (run_133)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 2 atoms delegated/verified-on-evidence) | **Priority:** [oz-dashboard-ux](./priorities/oz-dashboard-ux.md) | **Run:** run_133
+**Outcomes:**
+- **Atom 0 (`e22b2a0`) — priority card + detail modal:** `PriorityRow` shows title + muted slug only (description off-card); new `PriorityDetailModal.tsx` (shared `Modal` primitive) shows summary/status/labels + recent-run pointer; footer **Launch** fires existing launch path and closes modal; `launchBlocked` guard preserved.
+- **Atom 1 (`c58b77e`) — run detail as modal:** `RunDetail` renders inside `Modal` (840px); dead 460px side-panel grid column removed; all three run-open triggers + status-adaptive footer actions (stop/attach/teardown/ask-oz/retry/re-run) preserved.
+- **Gates:** UI suite 124/124 green across both atoms, verified on actual diffs.
+- **Disposition: `archive-candidate`** — items 1, 2, 4 code-complete; item 3 (ticket UI) folded into `tickets-review` (founder, run_131). Only archive gate is Objective live visual proof (founder/host-safety). Pre-existing `RunStatus`/`not-landed` typecheck breakage flagged out-of-scope for a ticket.
+**Next:** Say **`craft oz-dashboard proof`** and I'll delegate `node scripts/proof-oz-dashboard.mjs` — one command to capture the three behaviors before you reply **`archive oz-dashboard-ux`**.
+
 ## 2026-06-17 — **Tickets-review: ticket-fix launch + close-on-success code-complete — live proof on 0003 is the only archive gate (run_132)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 5 atoms delegated/verified-on-evidence) | **Priority:** [tickets-review](./priorities/tickets-review.md) | **Run:** run_132

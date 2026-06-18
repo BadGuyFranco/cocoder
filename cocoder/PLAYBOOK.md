@@ -242,6 +242,13 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   Daemon must serve current code (`scripts/oz.sh restart` if stale self-restart does not activate). Deferred
   extensions (not blocking archive): reorderable tickets, create-ticket Play for all personas, durable
   unparseable-ticket surface beyond 0015 tolerance.
+- `oz-dashboard-ux` — **CODE-COMPLETE; archive-candidate (run_133, 2026-06-18).** Items 1, 2, 4 landed:
+  priority cards show name+slug only (`e22b2a0`); priority detail modal with in-modal **Launch** that
+  closes on fire (`e22b2a0`); run detail as centered modal, side panel removed (`c58b77e`). Item 3 (ticket
+  UI) folded into `tickets-review` (founder, run_131). UI suite 124/124 green. **Only archive gate:**
+  Objective live visual proof (priority slug card, priority modal+launch-and-close, run detail modal) —
+  founder eye-check or one-command harness (`craft oz-dashboard proof` → `node scripts/proof-oz-dashboard.mjs`).
+  Out-of-scope follow-on: pre-existing `RunStatus`/`not-landed` typecheck breakage (worth a ticket).
 - `oz-dashboard-design-tweaks` — **archive-candidate (run_115):** rounds 1–3 code-complete — settings
   trim + collapsible personas/plays + contrast (run_113), panel↔background reversal + Oz-card de-gradient
   (run_114, `97bc3a4`), Round-3 persona-card consistency + priority-row separation + stacked priority
