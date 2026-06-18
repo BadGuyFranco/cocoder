@@ -17,6 +17,9 @@ import {
   createPlaybookP3PhaseAction,
   createPlaybookP4PhaseAction,
   createPlaybookP5PhaseAction,
+  createPlaybookP6PhaseAction,
+  applyP6Governance,
+  approvalFromP6Gate,
   dispatchPlay,
   isPersonaEnabled,
   gateCommitRepair,
@@ -233,12 +236,36 @@ export function createDaemonPlaybookPhaseAction(ctx: OzContext, workspacePath: s
     runDir,
     onSynthesisResult: (event) => ctx.store.recordEvent({ runId, type: 'playbook-synthesis-result', data: event }),
   })
+  const p6 = createPlaybookP6PhaseAction({
+    repoDir: workspacePath,
+    runDir,
+  })
   return async (input) => {
     await p1(input)
     await p2(input)
     await p3(input)
     await p4(input)
     await p5(input)
+    await p6(input)
+    if (input.playbook.id === 'cocoder-takeover' && input.phase.id === 'P7' && input.phase.kind === 'prove') {
+      if (ctx.store.listEvents(runId).some((event) => event.type === 'playbook-ratify-result')) return
+      const approval = approvalFromP6Gate(input.state.gate)
+      if (approval === null) return
+      const headBefore = await ctx.git.headSha(workspacePath)
+      const result = await applyP6Governance({ repoDir: workspacePath, runDir, approval })
+      await runCommitGate({
+        git: ctx.git,
+        store: ctx.store,
+        cwd: workspacePath,
+        runId,
+        workItemId: null,
+        scope: ['cocoder/**'],
+        message: `takeover-ratify: apply governance via CoCoder run ${runId}`,
+        headBefore,
+        auditWriteBoundary: { label: 'cocoder-takeover', scope: ['cocoder/**'] },
+      })
+      ctx.store.recordEvent({ runId, type: 'playbook-ratify-result', data: result.event })
+    }
   }
 }
 

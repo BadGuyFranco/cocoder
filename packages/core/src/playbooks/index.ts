@@ -116,6 +116,20 @@ export {
   type RunPlaybookP5ActionInput,
 } from './p5-action.js'
 export {
+  applyP6Governance,
+  approvalFromP6Gate,
+  createPlaybookP6PhaseAction,
+  runPlaybookP6Action,
+  type ApplyP6GovernanceInput,
+  type ApplyP6GovernanceResult,
+  type P6FounderApproval,
+  type P6RatificationPackage,
+  type P6RatificationRecord,
+  type PlaybookP6Artifacts,
+  type PlaybookRatifyResultEvent,
+  type RunPlaybookP6ActionInput,
+} from './p6-apply.js'
+export {
   buildFounderQuestions,
   type P4QuestionItem,
   type P4QuestionsInput,
@@ -132,6 +146,7 @@ export {
   type P5SynthesisPayload,
 } from './p5-synthesis.js'
 export { renderP5ArchitectureNotesMarkdown, renderP5PriorityMarkdown, renderP5SynthesisMarkdown } from './p5-render.js'
+export { renderP6RatificationMarkdown, renderP6RatificationRecordMarkdown } from './p6-render.js'
 export {
   buildIntentIntakePrompt,
   runIntentIntake,

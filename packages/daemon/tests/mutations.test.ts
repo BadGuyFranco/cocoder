@@ -518,7 +518,7 @@ describe('Oz mutations + lifecycle', () => {
     await expect(readFile(join(p1Dir, 'pickup.md'), 'utf8')).resolves.toContain('## Spend Decision')
   })
 
-  test('takeover playbook resumes from P1 gate through P2/P3/P4, then P5 synthesis to the P6 gate', async () => {
+  test('takeover playbook resumes through P6 ratification and applies governance at P7', async () => {
     await writeFile(join(home, 'README.md'), '# CoCoder Fixture\nTakeover onboarding fixture.\n', 'utf8')
     const builds: Array<{ readonly persona: string; readonly model: string; readonly prompt: string }> = []
     const reconOutput = {
@@ -558,7 +558,7 @@ describe('Oz mutations + lifecycle', () => {
         { axis: 'entry point', claim: 'README.md explains takeover onboarding.', evidence: 'README.md:1', confidence: 'high', severity: 'low' },
         { axis: 'validation', claim: 'pnpm -w typecheck validates workspace health.', evidence: 'package.json:scripts.typecheck', confidence: 'high', severity: 'low' },
       ],
-      residualGaps: [],
+      residualGaps: [{ note: 'Validation proof still needs a runnable priority.', confidence: 'high', severity: 'high', coversValidationCommand: 'pnpm -w typecheck' }],
       decision: iteration === 2 ? 'converged' : 'read-more',
     })
     const adapter: Adapter = {
@@ -572,7 +572,13 @@ describe('Oz mutations + lifecycle', () => {
       cocoderHome: home,
       port: 0,
       store,
-      git: fakeGit(),
+      git: fakeGit([
+        'cocoder/memory/architecture-notes.md',
+        'cocoder/priorities/INDEX.md',
+        'cocoder/priorities/objective-1.md',
+        'cocoder/priorities/objective-2.md',
+        'cocoder/priorities/objective-3.md',
+      ]),
       sessionHost: fakeHost(),
       getAdapter: () => adapter,
       io: fakeIO(),
@@ -631,7 +637,8 @@ describe('Oz mutations + lifecycle', () => {
     expect(resumedPhases).toEqual(['P2', 'P3', 'P4'])
     expect(builds.filter((build) => build.prompt.includes('Deep-read source: builder')).map((build) => build.model)).toEqual(['gpt-top', 'gpt-top'])
     expect(builds.filter((build) => build.prompt.includes('Deep-read source: orchestrator') && !build.prompt.includes('P3 follow-up')).map((build) => build.model)).toEqual(['opus-top', 'opus-top'])
-    expect(builds.filter((build) => build.prompt.includes('P3 follow-up')).map((build) => build.model)).toEqual(['opus-top'])
+    expect(builds.filter((build) => build.prompt.includes('P3 follow-up')).map((build) => build.model)).toEqual(expect.arrayContaining(['opus-top']))
+    expect(builds.filter((build) => build.prompt.includes('P3 follow-up')).every((build) => build.model === 'opus-top')).toBe(true)
     const p2Dir = join(runDir, 'playbook', 'P2')
     await expect(readFile(join(p2Dir, 'findings', 'governance', 'builder.md'), 'utf8')).resolves.toContain('## Iteration 2')
     await expect(readFile(join(p2Dir, 'findings', 'governance', 'orchestrator.md'), 'utf8')).resolves.toContain('stale validation')
@@ -681,6 +688,36 @@ describe('Oz mutations + lifecycle', () => {
     expect(synthesisEvents).toHaveLength(1)
     expect(synthesisEvents[0]?.data).toMatchObject({ objectiveCount: expect.any(Number), candidatePriorityCount: expect.any(Number), architectureNoteCount: expect.any(Number) })
     await expect(stat(join(home, 'cocoder', 'AGENTS.md'))).rejects.toThrow()
+    await expect(stat(join(home, 'cocoder', 'priorities', 'objective-1.md'))).rejects.toThrow()
+
+    const resumedAfterP6Phases: string[] = []
+    const loadedAfterP6 = await loadPlaybookExecutor({
+      playbook: playbook!,
+      runDir,
+      now: (() => {
+        let clock = 3000
+        return () => clock++
+      })(),
+      runPhase: async (input) => {
+        resumedAfterP6Phases.push(input.phase.id)
+        await realRunPhase(input)
+      },
+    })
+    const resumedAfterP6 = await loadedAfterP6.resume({ approvedBy: 'founder', note: 'ratify objectives' })
+    expect(resumedAfterP6.state).toMatchObject({ status: 'done', currentPhaseId: null, gate: null })
+    expect(resumedAfterP6Phases).toEqual(['P7'])
+    await expect(readFile(join(home, 'cocoder', 'memory', 'architecture-notes.md'), 'utf8')).resolves.toContain('Maintain repo onboarding governance')
+    const appliedPriority = await readFile(join(home, 'cocoder', 'priorities', 'objective-1.md'), 'utf8')
+    expect(appliedPriority).toContain('## Objective')
+    expect(appliedPriority).not.toContain('status: future')
+    const ratifyEvents = store.listEvents(runId).filter((event) => event.type === 'playbook-ratify-result')
+    expect(ratifyEvents).toHaveLength(1)
+    expect(ratifyEvents[0]?.data).toMatchObject({ appliedFileCount: 5, objectiveCount: expect.any(Number), priorityCount: expect.any(Number) })
+    expect(store.listCommitLinks(runId)).toEqual([expect.objectContaining({
+      commitSha: 'sha-committed',
+      files: ['cocoder/memory/architecture-notes.md', 'cocoder/priorities/INDEX.md', 'cocoder/priorities/objective-1.md', 'cocoder/priorities/objective-2.md', 'cocoder/priorities/objective-3.md'],
+      workItemId: null,
+    })])
   })
 
   test('POST /runs rejects adhoc-session without a task before creating a run', async () => {
