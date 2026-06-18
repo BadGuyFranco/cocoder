@@ -160,16 +160,24 @@ so atom 4 extended that discriminator rather than forking.
    `daemon/launcher.ts`) so any persona (Oz/Oscar/Bob/Deb) can file a ticket mid-run, reusing the SAME
    ticket-write path as the founder modal (`POST /workspaces/:id/tickets`). MUST template proper YAML
    frontmatter (id/title/type/status/priority/owner/created) so created tickets are not silently dropped.
-3. **Live end-to-end proof** (founder action, not a build atom): launch a fix run for ticket **0003** from
+3. **Inline "Launch fix" button on the ticket CARD** (net-new product, needs a build run — founder,
+   run_133). Today launch lives only inside the ticket detail modal; the founder wants a card-level
+   Launch button mirroring `PriorityRow`'s inline Launch (Priorities.tsx — card keeps an inline Launch
+   alongside the in-modal one), so a fix can be launched straight from the Tickets list without opening
+   the modal. Reuse the existing `onLaunchTicket` path + `launchBlocked` guard; `e.stopPropagation()` so
+   the card Launch does not also open the modal. Surface: `TicketsTab` card in
+   `packages/ui/app/sections/dashboard/Dashboard.tsx`.
+4. **Live end-to-end proof** (founder action, not a build atom): launch a fix run for ticket **0003** from
    the live dashboard Tickets tab → confirm it executes and closes (`0003` moves `open/ → closed/`,
    `INDEX.md` updated, commit on trunk, traceable to the change). Daemon must serve current code: atom 1's
    launch path self-restarts an *idle* stale daemon; otherwise a founder `scripts/oz.sh restart` is needed.
 
-Items 1–2 are **net-new product code (Surface-B)** and need a build run (relaunch `tickets-review`) — they
+Items 1–3 are **net-new product code (Surface-B)** and need a build run (relaunch `tickets-review`) — they
 were not built this run and were briefly mis-labeled "deferred / not blocking." **Already RESOLVED, not
-remaining:** the ticket↔priority card/modal/launch parity (atoms 2+4), the launch-fix-closes-modal behavior
-(atom 4), and the 0015 silent-drop loader defect (atom 0 — durable fix, already landed; do not re-list as a
-gap).
+remaining:** the ticket card + detail modal + in-modal launch-fix (atoms 2+4), the
+launch-fix-closes-modal behavior (atom 4), and the 0015 silent-drop loader defect (atom 0 — durable fix,
+already landed; do not re-list as a gap). Note: full priority-parity also needs the **card-level inline
+Launch button** (item 3 above) and **reorderable cards** (item 1) — those are the still-open parity gaps.
 
 ## Folded in (founder, 2026-06-17 run_131) — ticket↔priority UI parity + create-ticket Play
 The founder folded the Oz-dashboard **ticket** items here (they belong to the ticket surface this

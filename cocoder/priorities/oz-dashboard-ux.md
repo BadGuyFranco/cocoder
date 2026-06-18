@@ -85,3 +85,17 @@ the running app — which is a founder/live step (Oscar does not launch the app;
 **Known follow-up (pre-existing, out of this priority's scope):** `tsc` is red on `main` because
 `RunStatus` (`packages/ui/app/model.ts`) lacks `'not-landed'` while three test files reference it; this
 predates run_133 and was not introduced here. Worth a ticket.
+
+### Follow-up polish (founder, run_133) — net-new product (Surface-B), needs a build run
+Two small dashboard tweaks the founder flagged after reviewing the landed work. Both are this surface's
+scope; bundle into one quick follow-up atom (good to pair with the proof harness below).
+1. **Ad-hoc button label "Launch run" → "Launch".** `AdhocPriorityRow` in
+   `packages/ui/app/sections/dashboard/Priorities.tsx:89` — change the button text to just `Launch` for
+   consistency with the priority/modal Launch buttons.
+2. **Remove the persistent Oz-terminal hint line.** `OzChat.tsx:102` renders a permanent footer hint
+   ("Oz commands run through the daemon. Use `launch <priorityId>`, `adhoc <task>`, `status`, or the
+   dashboard shortcuts.") the founder finds unnecessary clutter. Remove it (or make it a one-time/
+   dismissible affordance — founder's intent is to stop showing it persistently).
+
+(Item: a card-level inline "Launch fix" button on **ticket** cards was also requested run_133 — that is
+ticket UI, owned by [`tickets-review`](./tickets-review.md) item 3, not this priority.)

@@ -18,6 +18,8 @@ const frontmatterList = (text: string, key: string): string[] => {
   return match?.[1]?.split(/\r?\n/).filter(Boolean).map((line) => line.replace(/^\s*-\s+/, '')) ?? []
 }
 
+const singleLine = (text: string): string => text.replace(/\s+/g, ' ')
+
 describe('basePersonasDir', () => {
   test('resolves to the shipped base persona directory', () => {
     const dir = basePersonasDir()
@@ -56,22 +58,33 @@ describe('basePersonasDir', () => {
 
   test('shared standards require owner-mapped durable orchestration changes', () => {
     const text = readFileSync(join(basePersonasDir(), 'shared-standards.md'), 'utf8')
+    const normalized = singleLine(text)
 
-    expect(text).toContain('Durable orchestration changes')
-    expect(text).toContain('do an owner map before editing')
-    expect(text).toContain('A prompt-only change is incomplete')
-    expect(text).toContain('commit the verified in-scope fix yourself')
-    expect(text).toContain('high risk of breaking')
+    expect(text).toContain('Durable Orchestration Changes')
+    expect(normalized).toContain('Before changing orchestration behavior, do an owner map')
+    expect(normalized).toContain('A prompt-only change is incomplete')
+    expect(normalized).toContain('commit the verified in-scope fix yourself')
+    expect(text).toContain('high-risk')
   })
 
   test('shared standards publish the cross-persona elegance standard', () => {
     const text = readFileSync(join(basePersonasDir(), 'shared-standards.md'), 'utf8')
+    const normalized = singleLine(text)
 
-    expect(text).toContain('The elegance standard')
+    expect(text).toContain('Elegance Standard')
     expect(text).toContain('correctness first, clarity second, elegance third')
     expect(text).toContain('maximum effect with minimum surface area')
-    expect(text).toContain('Elegance is not brevity at the expense of')
+    expect(normalized).toContain('without losing behavior, evidence, reversibility, or safeguards')
     expect(text).toContain('Order work so the next agent can run it')
+  })
+
+  test('shared standards stay role-neutral and avoid raw decision shorthand', () => {
+    const text = readFileSync(join(basePersonasDir(), 'shared-standards.md'), 'utf8')
+
+    expect(text).toContain("You are accountable for your role's output")
+    expect(text).toContain('There is no human backstop')
+    expect(text).not.toContain('You ARE the developer')
+    expect(text).not.toMatch(/\bADR-\d{4}\b/)
   })
 
   test('Oscar base scope covers support artifacts the runner can commit at wrap', () => {
