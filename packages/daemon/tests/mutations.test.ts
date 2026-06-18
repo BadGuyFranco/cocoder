@@ -7,10 +7,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { loadAssignments, loadOnboardingPlaybooks, loadPlaybookExecutor, loadPriority, makeGit, openRunStore, readTickets, StopRequestedError, type Adapter, type Git, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
-import { basePlaybooksDir, basePrioritiesDir } from '@cocoder/personas'
+import { loadAssignments, loadPriority, makeGit, openRunStore, readTickets, StopRequestedError, type Adapter, type Git, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
+import { basePrioritiesDir } from '@cocoder/personas'
 import { createOzServer, OZ_CSRF_HEADER, type OzServer } from '../src/index.js'
-import { createDaemonPlaybookPhaseAction } from '../src/launcher.js'
 
 const exec = promisify(execFile)
 const g = (cwd: string, args: string[]): Promise<string> => exec('git', ['-C', cwd, ...args]).then((r) => r.stdout.trim())
@@ -509,47 +508,17 @@ describe('Oz mutations + lifecycle', () => {
     }
   })
 
-  test('POST /runs rejects both-set and neither-set targets before creating a run', async () => {
+  test('POST /runs rejects invalid targets before creating a run', async () => {
     await startServer()
 
-    const both = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo', playbookId: 'drift-audit' } })
+    const playbookOnly = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', playbookId: 'drift-audit' } })
     const priorityAndTicket = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo', ticketId: '0003' } })
     const neither = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder' } })
 
-    expect(both).toEqual({ status: 400, json: { error: 'exactly one of priorityId, playbookId, or ticketId is required' } })
-    expect(priorityAndTicket).toEqual({ status: 400, json: { error: 'exactly one of priorityId, playbookId, or ticketId is required' } })
-    expect(neither).toEqual({ status: 400, json: { error: 'exactly one of priorityId, playbookId, or ticketId is required' } })
+    expect(playbookOnly).toEqual({ status: 400, json: { error: 'exactly one of priorityId or ticketId is required' } })
+    expect(priorityAndTicket).toEqual({ status: 400, json: { error: 'exactly one of priorityId or ticketId is required' } })
+    expect(neither).toEqual({ status: 400, json: { error: 'exactly one of priorityId or ticketId is required' } })
     expect(store.listRuns()).toEqual([])
-  })
-
-  test('POST /runs rejects an unknown onboarding playbook', async () => {
-    await startServer()
-
-    const r = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', playbookId: 'missing-playbook' } })
-
-    expect(r).toEqual({ status: 400, json: { error: 'unknown onboarding playbook "missing-playbook"' } })
-    expect(store.listRuns()).toEqual([])
-  })
-
-  test('POST /runs launches an onboarding playbook, records its target, and invokes the executor seam', async () => {
-    await startServer()
-
-    const r = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', playbookId: 'drift-audit' } })
-
-    expect(r.status).toBe(202)
-    expect(r.json).toMatchObject({ runId: expect.stringMatching(/^run_/), target: { kind: 'playbook', id: 'drift-audit' } })
-    const runId = String(r.json.runId)
-    let detail: Resp | null = null
-    for (let i = 0; i < 50; i++) {
-      detail = await call(oz!, 'GET', `/runs/${runId}`)
-      if (detail.json.run.status !== 'running') break
-      await sleep(10)
-    }
-    expect(detail?.json.run).toMatchObject({ id: runId, priorityId: 'onboarding-playbook', playbookId: 'drift-audit', status: 'awaiting-founder' })
-    expect(detail?.json.target).toEqual({ kind: 'playbook', id: 'drift-audit' })
-    const state = JSON.parse(await readFile(join(home, 'local', 'runs', runId, 'playbook-state.json'), 'utf8')) as { readonly playbookId: string; readonly status: string }
-    expect(state).toMatchObject({ playbookId: 'drift-audit', status: 'awaiting-founder' })
-    expect(store.listEvents(runId).some((event) => event.type === 'playbook-executor')).toBe(true)
   })
 
   test('POST /runs launches an open ticket through the priority lifecycle and records its target', async () => {
@@ -660,279 +629,6 @@ describe('Oz mutations + lifecycle', () => {
     expect(unknown).toEqual({ status: 400, json: { error: 'unknown ticket "9999"' } })
     expect(closed).toEqual({ status: 400, json: { error: 'ticket "0012" is not open' } })
     expect(store.listRuns()).toEqual([])
-  })
-
-  test('POST /runs launches takeover P1 through the daemon phase dispatcher and writes P1 artifacts', async () => {
-    await writeFile(join(home, 'README.md'), '# CoCoder Fixture\nTakeover onboarding fixture.\n', 'utf8')
-    const prompts: string[] = []
-    const outputs = [
-      JSON.stringify({
-        subsystems: [
-          {
-            id: 'governance',
-            name: 'Governance',
-            pathGlobs: ['cocoder/**'],
-            entryPoints: [],
-            validationCommands: [],
-            boundaryReason: 'Fixture governance root.',
-            allowedAdjacency: [],
-          },
-        ],
-        humanMap: 'Governance covers the fixture cocoder root.',
-        complexitySignals: {
-          crossSubsystemCoupling: [],
-          unclearOwnership: [],
-          stackHeterogeneity: [],
-          weakValidation: [],
-          broadEntryPoints: [],
-          highRiskSurfaces: [],
-        },
-      }),
-      JSON.stringify({
-        claims: [{ claim: 'The fixture exists for takeover onboarding.', provenance: ['README.md'] }],
-        openQuestions: ['What should P2 inspect first?'],
-      }),
-    ]
-    const p1Adapter: Adapter = {
-      ...okAdapter,
-      build: (input) => {
-        prompts.push(input.prompt)
-        return { command: 'fake-agent', args: [] }
-      },
-    }
-    oz = await createOzServer({
-      cocoderHome: home,
-      port: 0,
-      store,
-      git: fakeGit(),
-      sessionHost: fakeHost(),
-      getAdapter: () => p1Adapter,
-      io: fakeIO(),
-      runHeadless: async () => ({ exitCode: 0, output: outputs.shift() ?? '{}' }),
-    })
-
-    const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', playbookId: 'cocoder-takeover' } })
-
-    expect(r.status).toBe(202)
-    const runId = String(r.json.runId)
-    let detail: Resp | null = null
-    for (let i = 0; i < 50; i++) {
-      detail = await call(oz, 'GET', `/runs/${runId}`)
-      if (detail.json.run.status !== 'running') break
-      await sleep(10)
-    }
-    expect(detail?.json.run).toMatchObject({ id: runId, playbookId: 'cocoder-takeover', status: 'awaiting-founder' })
-    expect(prompts).toHaveLength(2)
-    expect(prompts[0]).toContain('# P1 Agentic Recon Pass')
-    expect(prompts[1]).toContain('# P1 Takeover Intent Intake')
-    const p1Dir = join(home, 'local', 'runs', runId, 'playbook', 'P1')
-    await expect(readFile(join(p1Dir, 'inventory.json'), 'utf8')).resolves.toContain('"fileCount"')
-    await expect(readFile(join(p1Dir, 'subsystems.json'), 'utf8')).resolves.toContain('"governance"')
-    await expect(readFile(join(p1Dir, 'intent.json'), 'utf8')).resolves.toContain('takeover onboarding')
-    await expect(readFile(join(p1Dir, 'estimate.json'), 'utf8')).resolves.toContain('"subsystemCount": 1')
-    await expect(readFile(join(p1Dir, 'pickup.md'), 'utf8')).resolves.toContain('## Spend Decision')
-  })
-
-  test('takeover playbook resumes through P6 ratification and applies governance at P7', async () => {
-    await writeFile(join(home, 'README.md'), '# CoCoder Fixture\nTakeover onboarding fixture.\n', 'utf8')
-    const builds: Array<{ readonly persona: string; readonly model: string; readonly prompt: string }> = []
-    const reconOutput = {
-      subsystems: [
-        {
-          id: 'governance',
-          name: 'Governance',
-          pathGlobs: ['cocoder/**'],
-          entryPoints: ['README.md'],
-          validationCommands: ['pnpm -w typecheck'],
-          boundaryReason: 'Fixture governance root.',
-          allowedAdjacency: [],
-        },
-      ],
-      humanMap: 'Governance covers the fixture repo instructions.',
-      complexitySignals: {
-        crossSubsystemCoupling: [],
-        unclearOwnership: [],
-        stackHeterogeneity: [],
-        weakValidation: [],
-        broadEntryPoints: [],
-        highRiskSurfaces: [],
-      },
-    }
-    const intentOutput = {
-      claims: [{ claim: 'The fixture exists for takeover onboarding.', provenance: ['README.md'] }],
-      openQuestions: ['What should P2 inspect first?'],
-    }
-    const deepReadOutput = (source: 'builder' | 'orchestrator', iteration: number): string => JSON.stringify({
-      theory: {
-        purpose: 'Maintain repo onboarding governance.',
-        keyBehaviors: ['Explain takeover onboarding', 'Validate workspace health'],
-        dataControlFlow: 'README.md describes the fixture and pnpm -w typecheck validates workspace health.',
-        riskSurface: source === 'builder' ? 'Governance drift.' : 'Governance drift plus stale validation.',
-      },
-      findings: [
-        { axis: 'entry point', claim: 'README.md explains takeover onboarding.', evidence: 'README.md:1', confidence: 'high', severity: 'low' },
-        { axis: 'validation', claim: 'pnpm -w typecheck validates workspace health.', evidence: 'package.json:scripts.typecheck', confidence: 'high', severity: 'low' },
-      ],
-      residualGaps: [{ note: 'Validation proof still needs a runnable priority.', confidence: 'high', severity: 'high', coversValidationCommand: 'pnpm -w typecheck' }],
-      decision: iteration === 2 ? 'converged' : 'read-more',
-    })
-    const adapter: Adapter = {
-      ...okAdapter,
-      build: (input) => {
-        builds.push({ persona: input.persona, model: input.model, prompt: input.prompt })
-        return { command: 'fake-agent', args: [input.persona, input.prompt] }
-      },
-    }
-    oz = await createOzServer({
-      cocoderHome: home,
-      port: 0,
-      store,
-      git: fakeGit([
-        'cocoder/memory/architecture-notes.md',
-        'cocoder/priorities/INDEX.md',
-        'cocoder/priorities/objective-1.md',
-        'cocoder/priorities/objective-2.md',
-        'cocoder/priorities/objective-3.md',
-      ]),
-      sessionHost: fakeHost(),
-      getAdapter: () => adapter,
-      io: fakeIO(),
-      runHeadless: async (input) => {
-        const prompt = String(input.args[1] ?? '')
-      if (prompt.includes('# P1 Agentic Recon Pass')) return { exitCode: 0, output: JSON.stringify(reconOutput) }
-      if (prompt.includes('# P1 Takeover Intent Intake')) return { exitCode: 0, output: JSON.stringify(intentOutput) }
-      if (prompt.includes('P3 follow-up')) return { exitCode: 0, output: deepReadOutput('orchestrator', 2) }
-      const source = prompt.includes('Deep-read source: builder') ? 'builder' : 'orchestrator'
-      const iteration = prompt.includes('Iteration: 2') ? 2 : 1
-      return { exitCode: 0, output: deepReadOutput(source, iteration) }
-      },
-    })
-
-    const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', playbookId: 'cocoder-takeover' } })
-    expect(r.status).toBe(202)
-    const runId = String(r.json.runId)
-    let detail: Resp | null = null
-    for (let i = 0; i < 50; i++) {
-      detail = await call(oz, 'GET', `/runs/${runId}`)
-      if (detail.json.run.status !== 'running') break
-      await sleep(10)
-    }
-    expect(detail?.json.run).toMatchObject({ id: runId, playbookId: 'cocoder-takeover', status: 'awaiting-founder' })
-
-    oz.ctx.cliTestCache.set('codex', {
-      preflight: { ok: true, checks: [] },
-      models: { canEnumerate: true, models: ['gpt-top'], detail: 'codex models' },
-      testedAt: 1,
-    })
-    oz.ctx.cliTestCache.set('claude', {
-      preflight: { ok: true, checks: [] },
-      models: { canEnumerate: true, models: ['opus-top'], detail: 'claude models' },
-      testedAt: 1,
-    })
-    const playbook = loadOnboardingPlaybooks(basePlaybooksDir()).find((candidate) => candidate.id === 'cocoder-takeover')
-    expect(playbook).toBeDefined()
-    const runDir = join(home, 'local', 'runs', runId)
-    const realRunPhase = createDaemonPlaybookPhaseAction(oz.ctx, home, runDir, runId, playbook!.modelPin, { cli: 'codex', model: '' }, new AbortController().signal)
-    const resumedPhases: string[] = []
-    const loaded = await loadPlaybookExecutor({
-      playbook: playbook!,
-      runDir,
-      now: (() => {
-        let clock = 1000
-        return () => clock++
-      })(),
-      runPhase: async (input) => {
-        resumedPhases.push(input.phase.id)
-        await realRunPhase(input)
-      },
-    })
-    const resumed = await loaded.resume({ approvedBy: 'founder', note: 'continue into P2' })
-
-    expect(resumed.state).toMatchObject({ status: 'awaiting-founder', currentPhaseId: 'P4', gate: { phaseId: 'P4' } })
-    expect(resumedPhases).toEqual(['P2', 'P3', 'P4'])
-    expect(builds.filter((build) => build.prompt.includes('Deep-read source: builder')).map((build) => build.model)).toEqual(['gpt-top', 'gpt-top'])
-    expect(builds.filter((build) => build.prompt.includes('Deep-read source: orchestrator') && !build.prompt.includes('P3 follow-up')).map((build) => build.model)).toEqual(['opus-top', 'opus-top'])
-    expect(builds.filter((build) => build.prompt.includes('P3 follow-up')).map((build) => build.model)).toEqual(expect.arrayContaining(['opus-top']))
-    expect(builds.filter((build) => build.prompt.includes('P3 follow-up')).every((build) => build.model === 'opus-top')).toBe(true)
-    const p2Dir = join(runDir, 'playbook', 'P2')
-    await expect(readFile(join(p2Dir, 'findings', 'governance', 'builder.md'), 'utf8')).resolves.toContain('## Iteration 2')
-    await expect(readFile(join(p2Dir, 'findings', 'governance', 'orchestrator.md'), 'utf8')).resolves.toContain('stale validation')
-    await expect(readFile(join(p2Dir, 'convergence', 'governance.json'), 'utf8')).resolves.toContain('"agreementIndex"')
-    const fanoutEvents = store.listEvents(runId).filter((event) => event.type === 'playbook-fanout-result')
-    expect(fanoutEvents.map((event) => (event.data as { source: string }).source).sort()).toEqual(['builder', 'orchestrator'])
-    const p3Dir = join(runDir, 'playbook', 'P3')
-    await expect(readFile(join(p3Dir, 'convergence.json'), 'utf8')).resolves.toContain('"converged": true')
-    await expect(readFile(join(p3Dir, 'cross-check.md'), 'utf8')).resolves.toContain('Converged: true')
-    const crossCheckEvents = store.listEvents(runId).filter((event) => event.type === 'playbook-cross-check-result')
-    expect(crossCheckEvents).toHaveLength(1)
-    expect(crossCheckEvents[0]?.data).toMatchObject({ roundsRun: 2, converged: true })
-    const p4Dir = join(runDir, 'playbook', 'P4')
-    const questions = JSON.parse(await readFile(join(p4Dir, 'questions.json'), 'utf8')) as {
-      readonly clarifications: readonly { readonly note: string }[]
-      readonly conflictingFindings: readonly unknown[]
-      readonly futurePriorities: readonly unknown[]
-    }
-    expect(Object.keys(questions).sort()).toEqual(['clarifications', 'conflictingFindings', 'futurePriorities', 'version'])
-    expect(questions.clarifications.map((item) => item.note)).toContain('What should P2 inspect first?')
-    await expect(readFile(join(p4Dir, 'questions.md'), 'utf8')).resolves.toContain('## Clarifications')
-    const questionsEvents = store.listEvents(runId).filter((event) => event.type === 'playbook-questions-result')
-    expect(questionsEvents).toHaveLength(1)
-    expect(questionsEvents[0]?.data).toMatchObject({ clarificationCount: expect.any(Number), conflictingFindingCount: expect.any(Number), futurePriorityCount: expect.any(Number) })
-
-    const resumedAfterP4Phases: string[] = []
-    const loadedAfterP4 = await loadPlaybookExecutor({
-      playbook: playbook!,
-      runDir,
-      now: (() => {
-        let clock = 2000
-        return () => clock++
-      })(),
-      runPhase: async (input) => {
-        resumedAfterP4Phases.push(input.phase.id)
-        await realRunPhase(input)
-      },
-    })
-    const resumedAfterP4 = await loadedAfterP4.resume({ approvedBy: 'founder', note: 'synthesize proposed governance' })
-    expect(resumedAfterP4.state).toMatchObject({ status: 'awaiting-founder', currentPhaseId: 'P6', gate: { phaseId: 'P6' } })
-    expect(resumedAfterP4Phases).toEqual(['P5', 'P6'])
-    const p5Dir = join(runDir, 'playbook', 'P5')
-    await expect(readFile(join(p5Dir, 'synthesis.json'), 'utf8')).resolves.toContain('"candidatePriorities"')
-    await expect(readFile(join(p5Dir, 'synthesis.md'), 'utf8')).resolves.toContain('# P5 Synthesis')
-    await expect(readFile(join(p5Dir, 'proposed-cocoder', 'memory', 'architecture-notes.md'), 'utf8')).resolves.toContain('Maintain repo onboarding governance')
-    const synthesisEvents = store.listEvents(runId).filter((event) => event.type === 'playbook-synthesis-result')
-    expect(synthesisEvents).toHaveLength(1)
-    expect(synthesisEvents[0]?.data).toMatchObject({ objectiveCount: expect.any(Number), candidatePriorityCount: expect.any(Number), architectureNoteCount: expect.any(Number) })
-    await expect(stat(join(home, 'cocoder', 'AGENTS.md'))).rejects.toThrow()
-    await expect(stat(join(home, 'cocoder', 'priorities', 'objective-1.md'))).rejects.toThrow()
-
-    const resumedAfterP6Phases: string[] = []
-    const loadedAfterP6 = await loadPlaybookExecutor({
-      playbook: playbook!,
-      runDir,
-      now: (() => {
-        let clock = 3000
-        return () => clock++
-      })(),
-      runPhase: async (input) => {
-        resumedAfterP6Phases.push(input.phase.id)
-        await realRunPhase(input)
-      },
-    })
-    const resumedAfterP6 = await loadedAfterP6.resume({ approvedBy: 'founder', note: 'ratify objectives' })
-    expect(resumedAfterP6.state).toMatchObject({ status: 'done', currentPhaseId: null, gate: null })
-    expect(resumedAfterP6Phases).toEqual(['P7'])
-    await expect(readFile(join(home, 'cocoder', 'memory', 'architecture-notes.md'), 'utf8')).resolves.toContain('Maintain repo onboarding governance')
-    const appliedPriority = await readFile(join(home, 'cocoder', 'priorities', 'objective-1.md'), 'utf8')
-    expect(appliedPriority).toContain('## Objective')
-    expect(appliedPriority).not.toContain('status: future')
-    const ratifyEvents = store.listEvents(runId).filter((event) => event.type === 'playbook-ratify-result')
-    expect(ratifyEvents).toHaveLength(1)
-    expect(ratifyEvents[0]?.data).toMatchObject({ appliedFileCount: 5, objectiveCount: expect.any(Number), priorityCount: expect.any(Number) })
-    expect(store.listCommitLinks(runId)).toEqual([expect.objectContaining({
-      commitSha: 'sha-committed',
-      files: ['cocoder/memory/architecture-notes.md', 'cocoder/priorities/INDEX.md', 'cocoder/priorities/objective-1.md', 'cocoder/priorities/objective-2.md', 'cocoder/priorities/objective-3.md'],
-      workItemId: null,
-    })])
   })
 
   test('POST /runs rejects adhoc-session without a task before creating a run', async () => {

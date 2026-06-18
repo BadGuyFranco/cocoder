@@ -78,7 +78,6 @@ const priorityOrderFile = (workspacePath: string): string => join(prioritiesDir(
 interface LaunchBody {
   readonly workspaceId: string
   readonly priorityId?: string
-  readonly playbookId?: string
   readonly ticketId?: string
   readonly resumeFromRunId?: string
   readonly task?: string
@@ -93,17 +92,15 @@ type ParsedLaunchBody = { readonly ok: true; readonly input: LaunchBody } | { re
 function launchBody(body: unknown): ParsedLaunchBody {
   const record = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {}
   const priorityId = typeof record.priorityId === 'string' ? record.priorityId : ''
-  const playbookId = typeof record.playbookId === 'string' ? record.playbookId : ''
   const ticketId = typeof record.ticketId === 'string' ? record.ticketId : ''
   const hasPriority = priorityId.trim() !== ''
-  const hasPlaybook = playbookId.trim() !== ''
   const hasTicket = ticketId.trim() !== ''
-  if ([hasPriority, hasPlaybook, hasTicket].filter(Boolean).length !== 1) {
-    return { ok: false, error: 'exactly one of priorityId, playbookId, or ticketId is required' }
+  if ([hasPriority, hasTicket].filter(Boolean).length !== 1) {
+    return { ok: false, error: 'exactly one of priorityId or ticketId is required' }
   }
   const input: LaunchBody = {
     workspaceId: typeof record.workspaceId === 'string' ? record.workspaceId : '',
-    ...(hasPriority ? { priorityId } : hasPlaybook ? { playbookId } : { ticketId }),
+    ...(hasPriority ? { priorityId } : { ticketId }),
     resumeFromRunId: typeof record.resumeFromRunId === 'string' ? record.resumeFromRunId : undefined,
   }
   if (Object.prototype.hasOwnProperty.call(record, 'task')) {
@@ -781,9 +778,7 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
     const input = parsed.input
     const target = input.ticketId
       ? { kind: 'ticket' as const, ticketId: input.ticketId }
-      : input.playbookId
-        ? { kind: 'playbook' as const, playbookId: input.playbookId }
-        : { kind: 'priority' as const, priorityId: input.priorityId ?? '' }
+      : { kind: 'priority' as const, priorityId: input.priorityId ?? '' }
     const { status, body: out } = await launchRun(ctx, input.workspaceId, target, { resumeFromRunId: input.resumeFromRunId, task: input.task })
     return sendJson(res, status, out), true
   }

@@ -7,7 +7,6 @@
 //     and never becomes an unhandled rejection that takes the always-on daemon down;
 //   - track spawned surfaceRefs in ctx.liveRefs so deep-links are decidable without throwing.
 import { execFile } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
 import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { promisify } from 'node:util'
@@ -15,37 +14,21 @@ import {
   COCODER_GOVERNANCE_AUTHOR,
   closeTicket,
   commitFiles,
-  createPlaybookPhaseAction,
-  createPlaybookP2PhaseAction,
-  createPlaybookP3PhaseAction,
-  createPlaybookP4PhaseAction,
-  createPlaybookP5PhaseAction,
-  createPlaybookP6PhaseAction,
-  applyP6Governance,
-  approvalFromP6Gate,
-  dispatchPlay,
   isPersonaEnabled,
   gateCommitRepair,
   loadAssignments,
-  loadOnboardingPlaybooks,
   loadEffectivePlay,
   loadPriority,
   readTickets,
   runCommitGate,
-  recordPortableRunCreation,
   resolvePlayAssignment,
   resolvePersonaMode,
   resolveEffectivePersona,
-  groupLabel as formatGroupLabel,
   runHeadlessProcess,
   runRun,
-  startPlaybookExecutor,
   type CommitReceipt,
   type PersonaSources,
-  type PlaybookP1AgentTurn,
-  type PlaybookPhaseAction,
   type Priority,
-  type ResolveTopTier,
   type RunInput,
   type RunLabelTarget,
   type RunResult,
@@ -54,16 +37,13 @@ import {
   type Ticket,
   type Workspace,
 } from '@cocoder/core'
-import { basePersonasDir, basePlaybooksDir, basePlaysDir } from '@cocoder/personas'
+import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import type { DashboardLaunchHandle, OzContext, OzEvent } from './context.js'
 import { findWorkspace } from './registry.js'
 import { appendAudit } from './audit.js'
 
 const OZ_REPAIR_TIMEOUT_MS = 120_000
 const AUTHORING_PLAY_TIMEOUT_MS = 120_000
-const PLAYBOOK_P1_AGENT_TIMEOUT_MS = 120_000
-const PLAYBOOK_P2_AGENT_TIMEOUT_MS = 120_000
-const PLAYBOOK_P3_AGENT_TIMEOUT_MS = 120_000
 const AUTHORING_PLAY_IDS = ['create-priority', 'edit-priority', 'archive-priority'] as const
 const execFileAsync = promisify(execFile)
 
@@ -191,7 +171,6 @@ export interface LaunchResult {
 }
 
 const ADHOC_PRIORITY_ID = 'adhoc-session'
-const PLAYBOOK_PRIORITY_SENTINEL = 'onboarding-playbook'
 const TICKET_PRIORITY_SENTINEL = 'ticket-fix'
 
 const priorityTarget = (priorityId: string): RunLabelTarget => (
@@ -200,7 +179,6 @@ const priorityTarget = (priorityId: string): RunLabelTarget => (
 
 export type LaunchRunTarget =
   | { readonly kind: 'priority'; readonly priorityId: string }
-  | { readonly kind: 'playbook'; readonly playbookId: string }
   | { readonly kind: 'ticket'; readonly ticketId: string }
 
 function normalizeLaunchTarget(target: string | LaunchRunTarget): LaunchRunTarget {
@@ -209,26 +187,22 @@ function normalizeLaunchTarget(target: string | LaunchRunTarget): LaunchRunTarge
 
 function launchTargetId(target: LaunchRunTarget): string {
   if (target.kind === 'priority') return target.priorityId
-  if (target.kind === 'playbook') return target.playbookId
   return target.ticketId
 }
 
 function missingTargetError(target: LaunchRunTarget): string {
   if (target.kind === 'priority') return 'workspaceId and priorityId are required'
-  if (target.kind === 'playbook') return 'workspaceId and playbookId are required'
   return 'workspaceId and ticketId are required'
 }
 
 function appendLaunchAudit(ctx: OzContext, workspaceId: string, target: LaunchRunTarget, runId: string | null): void {
   if (target.kind === 'priority') void appendAudit(ctx.cocoderHome, { action: 'launch', workspaceId, priorityId: target.priorityId, runId })
-  else if (target.kind === 'playbook') void appendAudit(ctx.cocoderHome, { action: 'launch', workspaceId, playbookId: target.playbookId, runId })
   else void appendAudit(ctx.cocoderHome, { action: 'launch', workspaceId, ticketId: target.ticketId, runId })
 }
 
 function appendStaleLaunchAudit(ctx: OzContext, workspaceId: string, target: LaunchRunTarget, headSha: string, idle: boolean): void {
   const common = { action: 'launch-refused-stale', workspaceId, bootSha: ctx.bootSha, headSha, selfRestart: idle } as const
   if (target.kind === 'priority') void appendAudit(ctx.cocoderHome, { ...common, priorityId: target.priorityId })
-  else if (target.kind === 'playbook') void appendAudit(ctx.cocoderHome, { ...common, playbookId: target.playbookId })
   else void appendAudit(ctx.cocoderHome, { ...common, ticketId: target.ticketId })
 }
 
@@ -303,126 +277,6 @@ async function closeTicketAfterSuccessfulRun(ctx: OzContext, workspacePath: stri
   }
 }
 
-export function createDaemonPlaybookPhaseAction(ctx: OzContext, workspacePath: string, runDir: string, runId: string, modelTier: string, agent: { readonly cli: string; readonly model: string }, signal: AbortSignal, groupLabel?: string): PlaybookPhaseAction {
-  const p1 = createPlaybookPhaseAction({
-    repoDir: workspacePath,
-    runDir,
-    model: { modelTier, cli: agent.cli, model: agent.model },
-    agentTurn: createDaemonP1AgentTurn(ctx, workspacePath, runDir, agent, signal),
-  })
-  const assignments = loadAssignments(join(workspacePath, 'cocoder', 'personas', 'assignments.json'))
-  const deepReadPlay = loadEffectivePlay(basePlaysDir(), join(workspacePath, 'cocoder', 'plays', 'deltas'), 'deep-read')
-  const p2 = createPlaybookP2PhaseAction({
-    repoDir: workspacePath,
-    runDir,
-    assignments,
-    modelPin: modelTier,
-    play: deepReadPlay,
-    now: Date.now,
-    signal,
-    resolveTopTier: createDaemonTopTierResolver(ctx),
-    dispatch: (input) => dispatchPlay(
-      { sessionHost: trackingHost(ctx), getAdapter: ctx.getAdapter, runHeadless: ctx.runHeadless },
-      { ...input, group: runId, groupLabel, timeoutMs: PLAYBOOK_P2_AGENT_TIMEOUT_MS, signal },
-    ),
-    onFanoutResult: (event) => ctx.store.recordEvent({ runId, type: 'playbook-fanout-result', data: event }),
-  })
-  const p3 = createPlaybookP3PhaseAction({
-    repoDir: workspacePath,
-    runDir,
-    assignments,
-    modelPin: modelTier,
-    play: deepReadPlay,
-    now: Date.now,
-    signal,
-    resolveTopTier: createDaemonTopTierResolver(ctx),
-    dispatch: (input) => dispatchPlay(
-      { sessionHost: trackingHost(ctx), getAdapter: ctx.getAdapter, runHeadless: ctx.runHeadless },
-      { ...input, group: runId, groupLabel, timeoutMs: PLAYBOOK_P3_AGENT_TIMEOUT_MS, signal },
-    ),
-    onCrossCheckResult: (event) => ctx.store.recordEvent({ runId, type: 'playbook-cross-check-result', data: event }),
-  })
-  const p4 = createPlaybookP4PhaseAction({
-    repoDir: workspacePath,
-    runDir,
-    onFounderQuestionsResult: (event) => ctx.store.recordEvent({ runId, type: 'playbook-questions-result', data: event }),
-  })
-  const p5 = createPlaybookP5PhaseAction({
-    repoDir: workspacePath,
-    runDir,
-    onSynthesisResult: (event) => ctx.store.recordEvent({ runId, type: 'playbook-synthesis-result', data: event }),
-  })
-  const p6 = createPlaybookP6PhaseAction({
-    repoDir: workspacePath,
-    runDir,
-  })
-  return async (input) => {
-    await p1(input)
-    await p2(input)
-    await p3(input)
-    await p4(input)
-    await p5(input)
-    await p6(input)
-    if (input.playbook.id === 'cocoder-takeover' && input.phase.id === 'P7' && input.phase.kind === 'prove') {
-      if (ctx.store.listEvents(runId).some((event) => event.type === 'playbook-ratify-result')) return
-      const approval = approvalFromP6Gate(input.state.gate)
-      if (approval === null) return
-      const headBefore = await ctx.git.headSha(workspacePath)
-      const result = await applyP6Governance({ repoDir: workspacePath, runDir, approval })
-      await runCommitGate({
-        git: ctx.git,
-        store: ctx.store,
-        cwd: workspacePath,
-        runId,
-        workItemId: null,
-        scope: ['cocoder/**'],
-        message: `takeover-ratify: apply governance via CoCoder run ${runId}`,
-        headBefore,
-        auditWriteBoundary: { label: 'cocoder-takeover', scope: ['cocoder/**'] },
-      })
-      ctx.store.recordEvent({ runId, type: 'playbook-ratify-result', data: result.event })
-    }
-  }
-}
-
-function createDaemonTopTierResolver(ctx: OzContext): ResolveTopTier {
-  return ({ cli, persona }) => {
-    const model = ctx.cliTestCache.get(cli)?.models.models.find((candidate) => candidate.trim() !== '')?.trim()
-    if (!model) throw new Error(`top-tier model discovery has no cached model for ${persona} on ${cli}`)
-    return model
-  }
-}
-
-function createDaemonP1AgentTurn(ctx: OzContext, workspacePath: string, runDir: string, agent: { readonly cli: string; readonly model: string }, signal: AbortSignal): PlaybookP1AgentTurn {
-  let turn = 0
-  return async ({ purpose, prompt }) => {
-    turn += 1
-    const outPath = join(runDir, 'playbook', 'P1', `${purpose}-agent-${turn}.out`)
-    const command = ctx.getAdapter(agent.cli).build({
-      persona: 'bob',
-      prompt,
-      model: agent.model,
-      cwd: workspacePath,
-      outPath,
-      headless: true,
-    })
-    const adapterOwnsOutput = !command.stdoutPath && command.args.includes(outPath)
-    const stdoutPath = command.stdoutPath ?? (adapterOwnsOutput ? `${outPath}.stdout` : outPath)
-    const run = ctx.runHeadless ?? runHeadlessProcess
-    const result = await run({
-      command: command.command,
-      args: command.args,
-      cwd: workspacePath,
-      outPath: stdoutPath,
-      timeoutMs: PLAYBOOK_P1_AGENT_TIMEOUT_MS,
-      signal,
-    })
-    if (result.exitCode !== 0) throw new Error(`P1 ${purpose} agent failed with exit ${result.exitCode}`)
-    if (command.stdoutPath) return result.output
-    return adapterOwnsOutput && existsSync(outPath) ? readFileSync(outPath, 'utf8') : result.output
-  }
-}
-
 function attachRunLifecycle(ctx: OzContext, workspaceId: string, stopController: AbortController, getRunId: () => string | null, running: Promise<unknown>): void {
   running
     .catch((err: unknown) => {
@@ -461,7 +315,7 @@ function attachRunLifecycle(ctx: OzContext, workspaceId: string, stopController:
     })
 }
 
-/** Launch a run for {workspaceId, priorityId}, {workspaceId, playbookId}, or {workspaceId, ticketId}. Async
+/** Launch a run for {workspaceId, priorityId} or {workspaceId, ticketId}. Async
  *  (fire-and-forget); returns 202 with the runId, 409 if a run is already in flight for the workspace,
  *  or 400 if the request can't be assembled. The string target preserves ordinary priority callers. */
 export async function launchRun(ctx: OzContext, workspaceId: string, targetInput: string | LaunchRunTarget, opts: { readonly resumeFromRunId?: string; readonly task?: string | null } = {}): Promise<LaunchResult> {
@@ -480,7 +334,6 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
   ctx.inFlight.set(workspaceId, 'pending') // reserve synchronously — closes the concurrent-POST race
 
   let input: RunInput | null = null
-  let playbook: ReturnType<typeof loadOnboardingPlaybooks>[number] | null = null
   let workspace: Awaited<ReturnType<typeof findWorkspace>> | null = null
   if (target.kind === 'priority') {
     try {
@@ -489,7 +342,7 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
       ctx.inFlight.delete(workspaceId)
       return { status: 400, body: { error: err instanceof Error ? err.message : String(err) } }
     }
-  } else if (target.kind === 'ticket') {
+  } else {
     workspace = await findWorkspace(ctx.cocoderHome, workspaceId)
     if (!workspace) {
       ctx.inFlight.delete(workspaceId)
@@ -515,17 +368,6 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
     } catch (err) {
       ctx.inFlight.delete(workspaceId)
       return { status: 400, body: { error: err instanceof Error ? err.message : String(err) } }
-    }
-  } else {
-    workspace = await findWorkspace(ctx.cocoderHome, workspaceId)
-    if (!workspace) {
-      ctx.inFlight.delete(workspaceId)
-      return { status: 400, body: { error: `unknown workspace "${workspaceId}"` } }
-    }
-    playbook = loadOnboardingPlaybooks(basePlaybooksDir()).find((candidate) => candidate.id === target.playbookId) ?? null
-    if (!playbook) {
-      ctx.inFlight.delete(workspaceId)
-      return { status: 400, body: { error: `unknown onboarding playbook "${target.playbookId}"` } }
     }
   }
   // Fail-fast on a STALE daemon (serving code older than repo HEAD) BEFORE creating a run or spawning any
@@ -582,50 +424,15 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
     },
   }
 
-  let running: Promise<unknown>
-  if (target.kind === 'priority' || target.kind === 'ticket') {
-    // onRunCreated fires synchronously inside this call (before runRun's first await), so runId is set.
-    const runPromise = runRun(deps, input!)
-    running = runPromise
-    if (target.kind === 'ticket') {
-      const ws = workspace!
-      running = runPromise.then(async (result) => {
-        await closeTicketAfterSuccessfulRun(ctx, ws.path, target.ticketId, result)
-        return result
-      })
-    }
-  } else {
+  // onRunCreated fires synchronously inside this call (before runRun's first await), so runId is set.
+  const runPromise = runRun(deps, input!)
+  let running: Promise<unknown> = runPromise
+  if (target.kind === 'ticket') {
     const ws = workspace!
-    const pb = playbook!
-    const personasDir = join(ws.path, 'cocoder', 'personas')
-    const sources: PersonaSources = { baseDir: basePersonasDir(), deltaDir: join(personasDir, 'deltas'), repoPersonaDir: personasDir }
-    const assignments = loadAssignments(join(personasDir, 'assignments.json'))
-    const bob = resolveEffectivePersona(sources, assignments, 'bob')
-    ctx.store.upsertWorkspace({ id: ws.id, path: ws.path, name: ws.name })
-    const run = ctx.store.createRun({ workspaceId: ws.id, priorityId: PLAYBOOK_PRIORITY_SENTINEL, playbookId: pb.id })
-    try {
-      await recordPortableRunCreation({ primaryRoot: ws.path, workspace: ws, run })
-    } catch (err) {
-      ctx.store.setRunStatus(run.id, 'failed')
-      throw err
-    }
-    runId = run.id
-    ctx.inFlight.set(workspaceId, run.id)
-    ctx.stopControllers.set(run.id, stopController)
-    emitOzEvent(ctx, { type: 'run-created', runId: run.id, workspaceId })
-    running = (async () => {
-      const runDir = join(ctx.runsRoot, run.id)
-      const playbookGroupLabel = formatGroupLabel({ workspaceName: ws.name || ws.id, target: { type: 'playbook', slug: pb.id }, runId: run.id })
-      const runPhase = createDaemonPlaybookPhaseAction(ctx, ws.path, runDir, run.id, pb.modelPin, { cli: bob.cli, model: bob.model }, stopController.signal, playbookGroupLabel)
-      ctx.store.recordEvent({ runId: run.id, type: 'run-start', data: { playbook: pb.id, runDir } })
-      const result = await startPlaybookExecutor({ playbook: pb, runDir, now: Date.now, runPhase })
-      ctx.store.recordEvent({
-        runId: run.id,
-        type: 'playbook-executor',
-        data: { playbookId: pb.id, status: result.state.status, currentPhaseId: result.state.currentPhaseId, statePath: result.statePath },
-      })
-      ctx.store.setRunStatus(run.id, result.state.status === 'done' ? 'completed' : 'awaiting-founder')
-    })()
+    running = runPromise.then(async (result) => {
+      await closeTicketAfterSuccessfulRun(ctx, ws.path, target.ticketId, result)
+      return result
+    })
   }
   attachRunLifecycle(ctx, workspaceId, stopController, () => runId, running)
 
@@ -885,7 +692,6 @@ export async function requestSupportCommitRun(ctx: OzContext, runId: string): Pr
     scope,
     message: `oscar-post-wrap: ${run.priorityId} via CoCoder run ${runId}`,
     headBefore,
-    ...(run.playbookId === 'cocoder-takeover' ? { auditWriteBoundary: { label: 'cocoder-takeover', scope: ['cocoder/**'] } } : {}),
   })
   const liveOscar = ctx.store.listSessions(runId).some((s) => s.persona === 'oscar' && ctx.liveRefs.has(s.sessionRef))
   ctx.store.recordEvent({

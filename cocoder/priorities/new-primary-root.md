@@ -95,6 +95,41 @@ equivalent), and code identifiers (`cocoder-takeover` id, `takeover` mode, etc.)
    → `onboard-existing.md`, the `cocoder-takeover` id / `takeover` mode identifiers, remaining doc
    mentions) — part of, or alongside, the rebuild.
 
+### Rebuild decomposition (run_140 — owner map + two founder decisions)
+**Owner map (run_140, atom 0, committed `1ec489a`):** [`docs/onboarding-rebuild-ownermap.md`](../../docs/onboarding-rebuild-ownermap.md)
+classifies every executor/tooling unit and all 26 `takeover`-bearing files into RETIRE / KEEP-AS-TOOLING /
+KEEP-AS-IS / RENAME with file:line evidence, and lists the lockstep break-edges. Key finding: the kept P1–P6
+engines are currently reachable **only** through the retired executor composition
+(`createDaemonPlaybookPhaseAction`), so the rebuild must give them a new Oscar-driven caller or they orphan.
+
+**Founder decisions (run_140):**
+- **Driver = Oscar atoms call the engines directly.** Drop the executor + phase protocol entirely. The
+  onboard-existing flow becomes an ordinary priority whose Objective + plan Oscar decomposes into atoms;
+  each atom delegates to Bob and (where useful) invokes the kept core engines (`recon`/`intent`/`estimate`/
+  `deep-read`/`p2-fanout`/`p3-cross-check`/`p4-questions`/`p5-synthesis`/`p6-apply`) as plain library calls.
+  Founder gates (P1 spend / P4 questions / P6 ratify) become normal Oscar wrap/verify beats. Biggest deletion.
+- **Rename = bundled with the retire/rebuild atoms.** Rename each surviving surface in the same lockstep
+  change that deletes/replaces the executor it is entangled with — no separate rename-only pass (the owner
+  map shows a standalone rename would churn doomed executor code and risk a red build mid-rename). Where a
+  surface is being deleted, deletion subsumes the rename (don't rename doomed code).
+
+**Atom sequence (forced green-at-every-commit order; daemon consumes core, so consumers go first):**
+1. **Remove the daemon executor driver** (run_140 atom 1, in flight) — `launchRun` playbook branch,
+   `createDaemonPlaybookPhaseAction`, P7-apply + awaiting-founder/typed-resume plumbing, takeover-keyed
+   hooks, the playbook-target route acceptance, and the daemon executor e2e tests. Core untouched; build green.
+2. **Delete core `executor.ts`** + the `createPlaybookP*PhaseAction` phase-protocol wrappers + executor
+   re-exports + `executor.test.ts`, keeping the pure `runPlaybookP*Action`/engine functions + their unit tests.
+3. **Reshape/retire the loader discovery surface + skeleton rename** — `cocoder-takeover.md` →
+   `onboard-existing.md`; decide whether `loadOnboardingPlaybooks`/the `onboarding` daemon field survive or
+   fold into ordinary priorities seeded by the scaffold; rename `takeover` mode identifiers on whatever
+   survives; update loader/read-surface tests.
+4. **Author the `onboard-existing` ordinary priority** (Objective + decomposed plan Oscar reads) and seed it
+   via the scaffold for existing-repo onboarding; re-add the `cocoder/**` audit write-boundary application on
+   the p6-apply atom path.
+5. **New proof of the Oscar-driven flow** (replaces the retired `scripts/proof-takeover-executor.mjs`).
+Still gated after the rebuild: the live external-repo onboarding proof (CoBuilder/CoPublisher copy) and the
+dogfood Drift proof.
+
 The §below "Executor build progress (run_111–131)" is **retained as the historical build record of the
 now-reused tooling** — read it as "what tooling exists," not "the shipping design." The live external-repo
 proof (CoBuilder copy) and dogfood Drift proof remain gated, now on the reframed flow.
