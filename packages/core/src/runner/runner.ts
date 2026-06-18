@@ -27,7 +27,7 @@ import { promisify } from 'node:util'
 import type { RunnerIO } from './io.js'
 import { createHeadlessBuilderDriver, createPaneBuilderDriver, type BuilderDriver } from './builder-driver.js'
 import { executeAgentStep, type AgentStepActiveAtom } from './agent-step.js'
-import { paneLabel } from './labels.js'
+import { groupLabel as formatGroupLabel, paneLabel, type RunLabelTarget } from './labels.js'
 import { type Judge, makeHeuristicJudge, runMonitor } from './monitor.js'
 import { createHeadlessOscarDriver, createPaneOscarDriver, type OscarDriver } from './oscar-driver.js'
 import { spawnObserver } from './observer.js'
@@ -119,6 +119,8 @@ export interface RunInput {
   readonly storePriorityId?: string | null
   /** Optional open ticket target; stored on the run row while the synthetic priority drives Oscar. */
   readonly ticketId?: string | null
+  /** Display target for the run's cmux group label. Optional so direct callers retain compatibility. */
+  readonly target?: RunLabelTarget
   /** A prior run's pickup brief to resume from (ADR-0002 C1 / F8), woven into Oscar's prompt. */
   readonly pickup?: string | null
   /** Resolved wrap-up Play + per-(persona, Play) assignment; when present, the runner dispatches the Play to author closeout. */
@@ -280,6 +282,13 @@ const isPackagesUiPath = (file: string): boolean => file === 'packages/ui' || fi
 const isUiAppPath = (file: string): boolean => file === 'packages/ui/app' || file.startsWith('packages/ui/app/')
 const clipped = (text: string, max = MAX_UI_BUILD_OUTPUT): string => (text.length > max ? `${text.slice(0, max)}\n…truncated…` : text)
 
+const defaultRunLabelTarget = (input: RunInput): RunLabelTarget => {
+  if (input.target) return input.target
+  if (input.ticketId) return { type: 'ticket', slug: input.ticketId }
+  if (input.priority.id === 'adhoc-session') return { type: 'ad-hoc', slug: input.priority.id }
+  return { type: 'priority', slug: input.priority.id }
+}
+
 export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResult> {
   if (input.priority.objective === null) throw new MissingObjectiveError(input.priority.id)
 
@@ -362,9 +371,8 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const runBranch = trunkBranch
   store.recordEvent({ runId: run.id, type: 'direct-mode', data: { branch: trunkBranch, trunkSha } })
   log(`committing directly to ${trunkBranch} (${trunkSha.slice(0, 8)})`)
-  // The run's cmux workspace is named for the run: "<priority> #<session number>" (the numeric part of
-  // the sequential run id), so the founder identifies it by priority + session, not by a persona.
-  const groupLabel = `${priority.id} #${run.id.replace(/^run_/, '')}`
+  // Display-only cmux workspace label. The grouping key below remains the durable run id.
+  const groupLabel = formatGroupLabel({ workspaceName: workspace.name || workspace.id, target: defaultRunLabelTarget(input), runId: run.id })
 
   // Spawn Oscar (full loop prompt → writes the first directive), Bob on standby beside it, optional Deb.
   const oscarLaunchPrompt = buildOrchestratorPrompt({

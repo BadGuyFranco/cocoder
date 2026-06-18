@@ -17,6 +17,8 @@ import {
   type ResolvedPersona,
   type RunnerDeps,
   type RunnerIO,
+  type RunInput,
+  type SpawnOptions,
   type SessionHost,
   type SessionRef,
   StopRequestedError,
@@ -275,6 +277,48 @@ describe('runRun (multi-atom loop)', () => {
     const store = openRunStore(':memory:')
     await expect(runRun(baseDeps({ store }), { ...input, priority: { ...priority, objective: null } })).rejects.toBeInstanceOf(MissingObjectiveError)
     expect(store.listRuns()).toEqual([])
+  })
+
+  test('cmux group label carries workspace, target, and run while group key stays the run id', async () => {
+    const spawns: SpawnOptions[] = []
+    await runRun(
+      baseDeps({
+        sessionHost: fakeSessionHost({
+          async spawn(opts) {
+            spawns.push(opts)
+            return { id: `surface:${spawns.length}`, driver: 'fake' }
+          },
+        }),
+      }),
+      { ...input, ticketId: '0003', target: { type: 'ticket', slug: '0003' } },
+    )
+
+    expect(spawns).toHaveLength(2)
+    expect(spawns.map((spawn) => spawn.group)).toEqual(['run_1', 'run_1'])
+    expect(spawns.map((spawn) => spawn.groupLabel)).toEqual(['CoCoder · ticket:0003 #1', 'CoCoder · ticket:0003 #1'])
+    expect(spawns.map((spawn) => spawn.label)).toEqual(['oscar | Claude | Opus 4.8', 'bob | Codex | default'])
+  })
+
+  test('cmux group label derives compatibility targets when RunInput.target is absent', async () => {
+    const groupLabelsFor = async (overrides: Partial<RunInput>): Promise<Array<string | undefined>> => {
+      const spawns: SpawnOptions[] = []
+      await runRun(
+        baseDeps({
+          sessionHost: fakeSessionHost({
+            async spawn(opts) {
+              spawns.push(opts)
+              return { id: `surface:${spawns.length}`, driver: 'fake' }
+            },
+          }),
+        }),
+        { ...input, ...overrides },
+      )
+      return spawns.map((spawn) => spawn.groupLabel)
+    }
+
+    await expect(groupLabelsFor({})).resolves.toEqual(['CoCoder · priority:demo #1', 'CoCoder · priority:demo #1'])
+    await expect(groupLabelsFor({ ticketId: '0003' })).resolves.toEqual(['CoCoder · ticket:0003 #1', 'CoCoder · ticket:0003 #1'])
+    await expect(groupLabelsFor({ priority: { ...priority, id: 'adhoc-session' } })).resolves.toEqual(['CoCoder · ad-hoc:adhoc-session #1', 'CoCoder · ad-hoc:adhoc-session #1'])
   })
 
   test('drives Bob through MULTIPLE atoms, commits each, ends on Oscar wrap-up', async () => {

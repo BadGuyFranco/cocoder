@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import type { ResolvedPersona } from '../src/index.js'
-import { llmName, modelName, paneLabel } from '../src/runner/labels.js'
+import { groupLabel, llmName, modelName, paneLabel } from '../src/runner/labels.js'
 
 const persona = (over: Partial<ResolvedPersona> & { id: string }): ResolvedPersona => ({
   label: over.id,
@@ -33,5 +33,23 @@ describe('paneLabel', () => {
     expect(modelName('claude', 'gpt-x')).toBe('gpt-x')
     expect(modelName('claude', '')).toBe('Opus 4.8') // claude's default display
     expect(modelName('codex', '')).toBe('default') // no default mapping → truthful "default"
+  })
+})
+
+describe('groupLabel', () => {
+  test('includes workspace, priority target, and run identity', () => {
+    expect(groupLabel({ workspaceName: 'CoCoder', target: { type: 'priority', slug: 'demo' }, runId: 'run_42' })).toBe('CoCoder · priority:demo #42')
+  })
+
+  test('includes workspace, ticket target, and run identity', () => {
+    expect(groupLabel({ workspaceName: 'CoCoder', target: { type: 'ticket', slug: '0003' }, runId: 'run_42' })).toBe('CoCoder · ticket:0003 #42')
+  })
+
+  test('includes workspace, ad-hoc target, and run identity', () => {
+    expect(groupLabel({ workspaceName: 'CoCoder', target: { type: 'ad-hoc', slug: 'adhoc-session' }, runId: 'run_42' })).toBe('CoCoder · ad-hoc:adhoc-session #42')
+  })
+
+  test('includes workspace, playbook target, and run identity for visible playbook sessions', () => {
+    expect(groupLabel({ workspaceName: 'CoCoder', target: { type: 'playbook', slug: 'drift-audit' }, runId: 'run_42' })).toBe('CoCoder · playbook:drift-audit #42')
   })
 })

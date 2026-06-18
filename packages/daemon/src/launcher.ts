@@ -35,6 +35,7 @@ import {
   resolvePlayAssignment,
   resolvePersonaMode,
   resolveEffectivePersona,
+  groupLabel as formatGroupLabel,
   runHeadlessProcess,
   runRun,
   startPlaybookExecutor,
@@ -45,6 +46,7 @@ import {
   type Priority,
   type ResolveTopTier,
   type RunInput,
+  type RunLabelTarget,
   type RunResult,
   type RunnerDeps,
   type SessionHost,
@@ -108,7 +110,7 @@ async function assembleRunInput(
   ctx: Pick<OzContext, 'cocoderHome' | 'runsRoot'>,
   ws: WorkspaceRegistryEntry,
   priority: Priority,
-  opts: { readonly resumeFromRunId?: string; readonly task?: string | null; readonly storePriorityId?: string | null; readonly ticketId?: string | null } = {},
+  opts: { readonly resumeFromRunId?: string; readonly task?: string | null; readonly storePriorityId?: string | null; readonly ticketId?: string | null; readonly target?: RunLabelTarget } = {},
 ): Promise<RunInput> {
   const personasDir = join(ws.path, 'cocoder', 'personas')
   const playDeltaDir = join(ws.path, 'cocoder', 'plays', 'deltas')
@@ -140,6 +142,7 @@ async function assembleRunInput(
     task: opts.task ?? null,
     storePriorityId: opts.storePriorityId ?? null,
     ticketId: opts.ticketId ?? null,
+    target: opts.target,
     pickup,
   }
 }
@@ -150,7 +153,7 @@ export async function buildRunInput(ctx: Pick<OzContext, 'cocoderHome' | 'runsRo
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
   if (!ws) throw new Error(`unknown workspace "${workspaceId}"`)
   const prioritiesDir = join(ws.path, 'cocoder', 'priorities')
-  return assembleRunInput(ctx, ws, loadPriority(prioritiesDir, priorityId), opts)
+  return assembleRunInput(ctx, ws, loadPriority(prioritiesDir, priorityId), { ...opts, target: priorityTarget(priorityId) })
 }
 
 async function headShaOrUnknown(ctx: OzContext, cwd: string): Promise<string> {
@@ -189,6 +192,10 @@ export interface LaunchResult {
 const ADHOC_PRIORITY_ID = 'adhoc-session'
 const PLAYBOOK_PRIORITY_SENTINEL = 'onboarding-playbook'
 const TICKET_PRIORITY_SENTINEL = 'ticket-fix'
+
+const priorityTarget = (priorityId: string): RunLabelTarget => (
+  priorityId === ADHOC_PRIORITY_ID ? { type: 'ad-hoc', slug: priorityId } : { type: 'priority', slug: priorityId }
+)
 
 export type LaunchRunTarget =
   | { readonly kind: 'priority'; readonly priorityId: string }
@@ -295,7 +302,7 @@ async function closeTicketAfterSuccessfulRun(ctx: OzContext, workspacePath: stri
   }
 }
 
-export function createDaemonPlaybookPhaseAction(ctx: OzContext, workspacePath: string, runDir: string, runId: string, modelTier: string, agent: { readonly cli: string; readonly model: string }, signal: AbortSignal): PlaybookPhaseAction {
+export function createDaemonPlaybookPhaseAction(ctx: OzContext, workspacePath: string, runDir: string, runId: string, modelTier: string, agent: { readonly cli: string; readonly model: string }, signal: AbortSignal, groupLabel?: string): PlaybookPhaseAction {
   const p1 = createPlaybookPhaseAction({
     repoDir: workspacePath,
     runDir,
@@ -315,7 +322,7 @@ export function createDaemonPlaybookPhaseAction(ctx: OzContext, workspacePath: s
     resolveTopTier: createDaemonTopTierResolver(ctx),
     dispatch: (input) => dispatchPlay(
       { sessionHost: trackingHost(ctx), getAdapter: ctx.getAdapter, runHeadless: ctx.runHeadless },
-      { ...input, group: runId, timeoutMs: PLAYBOOK_P2_AGENT_TIMEOUT_MS, signal },
+      { ...input, group: runId, groupLabel, timeoutMs: PLAYBOOK_P2_AGENT_TIMEOUT_MS, signal },
     ),
     onFanoutResult: (event) => ctx.store.recordEvent({ runId, type: 'playbook-fanout-result', data: event }),
   })
@@ -330,7 +337,7 @@ export function createDaemonPlaybookPhaseAction(ctx: OzContext, workspacePath: s
     resolveTopTier: createDaemonTopTierResolver(ctx),
     dispatch: (input) => dispatchPlay(
       { sessionHost: trackingHost(ctx), getAdapter: ctx.getAdapter, runHeadless: ctx.runHeadless },
-      { ...input, group: runId, timeoutMs: PLAYBOOK_P3_AGENT_TIMEOUT_MS, signal },
+      { ...input, group: runId, groupLabel, timeoutMs: PLAYBOOK_P3_AGENT_TIMEOUT_MS, signal },
     ),
     onCrossCheckResult: (event) => ctx.store.recordEvent({ runId, type: 'playbook-cross-check-result', data: event }),
   })
@@ -502,6 +509,7 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
         task: opts.task,
         storePriorityId: TICKET_PRIORITY_SENTINEL,
         ticketId: ticket.id,
+        target: { type: 'ticket', slug: ticket.id },
       })
     } catch (err) {
       ctx.inFlight.delete(workspaceId)
@@ -600,7 +608,8 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
     emitOzEvent(ctx, { type: 'run-created', runId: run.id, workspaceId })
     running = (async () => {
       const runDir = join(ctx.runsRoot, run.id)
-      const runPhase = createDaemonPlaybookPhaseAction(ctx, ws.path, runDir, run.id, pb.modelPin, { cli: bob.cli, model: bob.model }, stopController.signal)
+      const playbookGroupLabel = formatGroupLabel({ workspaceName: ws.name || ws.id, target: { type: 'playbook', slug: pb.id }, runId: run.id })
+      const runPhase = createDaemonPlaybookPhaseAction(ctx, ws.path, runDir, run.id, pb.modelPin, { cli: bob.cli, model: bob.model }, stopController.signal, playbookGroupLabel)
       ctx.store.recordEvent({ runId: run.id, type: 'run-start', data: { playbook: pb.id, runDir } })
       const result = await startPlaybookExecutor({ playbook: pb, runDir, now: Date.now, runPhase })
       ctx.store.recordEvent({

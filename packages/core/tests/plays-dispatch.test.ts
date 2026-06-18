@@ -181,10 +181,10 @@ describe('dispatchPlay', () => {
 
     const result = await dispatchPlay(
       { sessionHost, getAdapter: () => adapter },
-      { play: interactivePlay, assignment, persona: 'oscar', task: 'Do it.', cwd: '/repo', outPath: out, group: 'run_1' },
+      { play: interactivePlay, assignment, persona: 'oscar', task: 'Do it.', cwd: '/repo', outPath: out, group: 'run_1', groupLabel: 'CoCoder · playbook:drift-audit #1' },
     )
 
-    expect(spawns[0]).toMatchObject({ command: 'cursor-agent', args: ['-p'], label: 'Wrap-up', group: 'run_1' })
+    expect(spawns[0]).toMatchObject({ command: 'cursor-agent', args: ['-p'], label: 'Wrap-up', group: 'run_1', groupLabel: 'CoCoder · playbook:drift-audit #1' })
     expect(result).toEqual({ exitCode: 0, output: 'closeout complete' })
   })
 

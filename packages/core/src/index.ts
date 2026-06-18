@@ -217,6 +217,7 @@ export {
 
 export {
   runRun,
+  groupLabel,
   PreflightError,
   MissingObjectiveError,
   DirtyWorkingTreeError,
@@ -226,6 +227,8 @@ export {
   type UiBundleBuildInput,
   type RunInput,
   type RunResult,
+  type RunLabelTarget,
+  type RunLabelTargetType,
   type MakeJudge,
   makeRunnerIO,
   type RunnerIO,

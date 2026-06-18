@@ -10,6 +10,7 @@ export {
   type RunResult,
   type MakeJudge,
 } from './runner.js'
+export { groupLabel, type RunLabelTarget, type RunLabelTargetType } from './labels.js'
 export { StopRequestedError } from './stop.js'
 export { makeRunnerIO, type RunnerIO, type RunnerPollOptions } from './io.js'
 export {

@@ -46,6 +46,8 @@ export interface DispatchPlayInput {
   readonly cwd: string
   readonly outPath: string
   readonly group?: string
+  /** Optional display label for the shared group/workspace. The group key remains `group`. */
+  readonly groupLabel?: string
   readonly timeoutMs?: number
   /** Cooperative run teardown/stop signal for headless Play subprocesses. */
   readonly signal?: AbortSignal
@@ -133,6 +135,7 @@ export async function dispatchPlay(deps: DispatchPlayDeps, input: DispatchPlayIn
     stdoutPath: cmd.stdoutPath ?? input.outPath,
     label: input.play.label,
     group: input.group,
+    groupLabel: input.groupLabel,
   })
   const exited = await deps.sessionHost.waitForExit(ref, input.timeoutMs ? { timeoutMs: input.timeoutMs } : undefined)
   const output = existsSync(input.outPath) ? readFileSync(input.outPath, 'utf8') : ''
