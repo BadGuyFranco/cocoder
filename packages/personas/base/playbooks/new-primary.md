@@ -32,4 +32,4 @@ template — it does **not** deep-audit (there is nothing to audit).
 **Discipline:** stay lean. The risk here is authoring confident governance about a project that does not
 exist yet — seed the minimum the founder ratifies, let real governance accrete as code lands. The stack
 starter is optional; declining it is a complete valid path and leaves New Primary as governance-only.
-Do NOT import the Takeover deep-audit machinery; there is nothing to deep-read.
+Do NOT import the onboard-existing audit machinery; there is nothing to deep-read.

@@ -128,16 +128,19 @@ ADR-0026) as part of A2/A3. New Primary + Drift adopt the same seeded-priority m
 2. ✅ **Delete core `executor.ts`** (run_140 atom 2, committed `1a76f0f`) + the `createPlaybookP*PhaseAction`
    phase-protocol wrappers + the `approvalFromP6Gate`/`founderCheckpointFromGate` gate adapters + executor
    re-exports + `executor.test.ts`; pure `runPlaybookP*Action`/engines preserved with identical signatures.
-3. **(A1) Retire the loader discovery surface** (run_140 atom 3, in flight) — delete `loader.ts`
-   (`loadOnboardingPlaybooks` + phase-table parser + Onboarding* types), the loader re-exports, the daemon
-   `onboarding` field (`priority-order.ts` + `routes.ts`), and `playbooks.test.ts` + the read-surface
-   onboarding assertions. Skeleton `.md` files stay on disk for A2. Build green.
-4. **(A2) Transform + rename the skeleton into a seedable priority template** — `cocoder-takeover.md` →
-   `onboard-existing.md`, rewriting its content from an executor baked-phase-table into an **ordinary
-   priority** Objective + the atom-decomposition Oscar follows (P1 intent/spend → P2/P3 deep-read atoms
-   reusing the engines → P4 founder questions → P5/P6 synthesize+ratify), stating the `cocoder/**`-only
-   trust promise. Bundled rename of remaining surviving `takeover` identifiers + doc mentions. Record the
-   ADR-0020 §7 amendment.
+3. ✅ **(A1) Retire the loader discovery surface** (run_140 atom 3, committed `d660a8f`) — deleted
+   `loader.ts` (`loadOnboardingPlaybooks` + phase-table parser + Onboarding* types), the loader re-exports,
+   the daemon `onboarding` field (`priority-order.ts` + `routes.ts`), and `playbooks.test.ts` + the
+   read-surface onboarding assertions. Skeleton `.md` files left on disk for A2. Build green.
+4. **(A2) Transform the skeleton into an ordinary onboard-existing priority** (run_140 atom 4, in flight) —
+   author `packages/personas/base/priorities/onboard-existing.md` (ordinary-priority Objective + the
+   atom-decomposition Oscar follows: recon/spend → dual-source deep-read → cross-check → founder questions
+   → synthesize → ratify → prove, reusing the engines; `cocoder/**`-only trust promise); delete
+   `base/playbooks/cocoder-takeover.md`; bundled rename of the live `takeover` cross-refs in the README +
+   new-primary docs. ✅ **ADR-0020 §7 amendment recorded** (run_140, this session): the loader-extension
+   discovery surface is superseded by scaffold-seeded onboarding priorities. (`base/priorities/` is NOT
+   auto-surfaced — daemon lists only the workspace's `cocoder/priorities/` — so authoring there is zero
+   behavior change; scaffold seeding is A3.)
 5. **(A3) Wire scaffold seeding** — the scaffold seeds the `onboard-existing` priority into an existing-repo
    workspace; re-add the `cocoder/**` audit write-boundary application on the p6-apply atom path used by the
    Oscar-driven flow.

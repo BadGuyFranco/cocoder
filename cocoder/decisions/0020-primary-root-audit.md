@@ -116,6 +116,18 @@ The priority loader is extended to ALSO offer **install-shipped onboarding Playb
 Primary/Takeover run as the first run in a new root, seeded at scaffold). One home: shipped Playbooks
 live with the base; a workspace's own priorities stay the repo's.
 
+> **Amendment (2026-06-18, run_140 — supersedes the loader-extension mechanism; founder-approved Option A).**
+> Following [ADR-0026](./0026-onboard-existing-as-oscar-priority.md) (onboarding runs as an ordinary
+> Oscar-driven priority, not a phase-executor), the **loader-extension discovery surface is retired**:
+> `loadOnboardingPlaybooks` and the daemon `onboarding` field are deleted (run_140 atom 3). Onboarding
+> templates are no longer *surfaced from `base/playbooks/` and never copied in* — instead each onboarding
+> situation is an **ordinary priority the scaffold seeds into the target's `cocoder/priorities/`** (the
+> existing-repo one is `packages/personas/base/priorities/onboard-existing.md`, seeded for an existing
+> repo; New Primary / Drift adopt the same seeded-priority model). The **"never copied into the repo"**
+> rule in this section is thereby reversed for onboarding templates: they ARE copied in, as the repo's
+> first priority, exactly as `adhoc-session.md` is seeded today. The §8 `cocoder/**`-only write-scope and
+> the deep multi-agent audit *product* structure are unchanged; only the delivery mechanism changes.
+
 ### 8. Write-scope: the target's `cocoder/**` only
 
 A Playbook authors only the target primary root's `cocoder/**` — never product code, never the engine

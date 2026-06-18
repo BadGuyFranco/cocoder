@@ -99,7 +99,7 @@ New Primary selects by project type, not by a universal default stack:
 8. On confirmation only, the runner copies the starter `template/` into the fresh primary root,
    create-only by default, then emits `postScaffoldNotes`.
 
-This does not import the Takeover deep-audit machinery. A fresh root has nothing to deep-read. The
+This does not import the Onboard (existing repo) audit machinery. A fresh root has nothing to deep-read. The
 selection beat is an intake-and-confirmation step, followed by deterministic template copy.
 
 ## Bring-Your-Own Starter
