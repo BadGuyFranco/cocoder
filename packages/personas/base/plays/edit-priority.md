@@ -24,8 +24,13 @@ Do this:
    frontmatter and body content.
 3. If changing the Objective, verify the invocation explicitly carries the founder-approved new
    Objective. Do not invent or broaden an Objective.
-4. Write the modified priority file.
-5. Validate the result with `parseFrontmatter` and `loadPriority`: frontmatter id must match the
+4. If the edit adds or changes implementation atoms, order them so a future LLM-run builder can execute
+   them systematically: decision/taxonomy work before schema changes, schema before migration, migration
+   before new runtime behavior, runtime behavior before UI or broad consumers, and proof/verification
+   last. Keep each atom independently delegable with its own acceptance evidence and avoid ordering that
+   requires a later atom to make an earlier atom valid.
+5. Write the modified priority file.
+6. Validate the result with `parseFrontmatter` and `loadPriority`: frontmatter id must match the
    filename id, title must be non-empty, and the file must still parse with the expected Objective
    state after the edit.
 

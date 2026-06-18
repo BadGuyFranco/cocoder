@@ -27,4 +27,13 @@ describe('priority authoring Plays', () => {
 
     expect(ids).toEqual(expect.arrayContaining([...authoringPlayIds]))
   })
+
+  test('edit-priority instructs atom edits to preserve systematic execution order', () => {
+    const play = loadEffectivePlay(sources().baseDir, sources().deltaDir, 'edit-priority')
+
+    expect(play.body).toContain('If the edit adds or changes implementation atoms')
+    expect(play.body).toContain('decision/taxonomy work before schema changes')
+    expect(play.body).toMatch(/proof\/verification\s+last/)
+    expect(play.body).toContain('independently delegable')
+  })
 })

@@ -12,13 +12,13 @@ title: Architect Play System — triggers, contracts, and hybrid execution
 
 ## Why this matters
 
-Today determinism lives *around* a Play (the commit-gate ADR-0007, scripted exit-criteria, `scripts/proof-*.mjs`),
-never *inside* it. A Play is a pure LLM instruction. In a no-backstop system our deepest standard is
-"verify, don't assert — evidence over claims" (and F18, "make verification runnable"). A Play that runs
-real code as a deterministic spine and uses the model only for the judgment layer promotes that principle
-to first-class structure — it raises the trust floor. Example: `integration-verify` today is a *prompt
-asking an agent to verify*; the hybrid version *runs the real test command deterministically* and the
-model only interprets the captured result.
+Today a Play is mostly markdown injected into a model prompt. That creates three distinct failure modes:
+the persona may not know the Play exists, may execute the procedure from memory instead of invoking it, or
+may return output/files that do not satisfy the Play's contract. Determinism also lives *around* a Play
+(the commit-gate, scripted exit criteria, `scripts/proof-*.mjs`), never *inside* it. In a no-backstop
+system our deepest standard is "verify, don't assert — evidence over claims" (and F18, "make verification
+runnable"). A real Play system needs both halves: compact capability discovery so personas know what to
+request, and deterministic/validated dispatch so the runner or daemon enforces the boundary.
 
 ## Objective (DRAFT — founder confirms at launch, ADR-0010 owns the taxonomy)
 
@@ -28,7 +28,7 @@ validate, commit, and record mandatory Plays at the right lifecycle points. A Pl
 or carry an optional deterministic code spine whose captured result gates or feeds the LLM layer. Existing
 Plays are migrated into the new contract format instead of being left as legacy markdown blobs.
 
-Build atoms:
+Build atoms, in dependency order:
 
 1. **Taxonomy decision first (decision-before-code):** amend **ADR-0010** (it owns the Play taxonomy;
    living/conflict-audited per ADR-0014) to define Play classes:
@@ -38,28 +38,32 @@ Build atoms:
    - persona-requested Play;
    - tool/API-triggered Play.
    Founder accepts before any schema change.
-2. **Play contract schema:** extend the `Play` type (`packages/core/src/plays/types.ts`) with optional
+2. **Play contract schema (metadata only):** extend the `Play` type (`packages/core/src/plays/types.ts`) with optional
    contract metadata: purpose summary, allowed callers, trigger class, input schema, output validator,
    deterministic step, commit mode, and capability-manifest fields. Keep existing prompt-only Plays valid
-   during migration (additive, non-breaking).
-3. **Capability manifest:** generate a small per-persona "Available Plays" section for launch prompts:
+   during migration (additive, non-breaking). Loader/tests prove old prompt-only Plays still parse.
+3. **Existing Play migration to contract metadata:** update every shipped base Play and relevant repo delta
+   to the new format before changing invocation behavior: `wrap-up`, `create-priority`, `edit-priority`,
+   `archive-priority`, `code-review`, `documentation`, `deep-read`, `electron-test`, and any live repo-only
+   Play. Each migrated Play declares capability metadata and any input/output contract; prompt-only Plays
+   explicitly mark themselves prompt-only.
+4. **Capability manifest:** generate a small per-persona "Available Plays" section for launch prompts:
    Play id, one-line purpose, allowed caller, trigger class, required input shape, write behavior, and
    whether it is mandatory or optional. Do **not** inject full Play bodies into normal persona prompts;
-   full Play markdown stays lazy-loaded only at dispatch.
-4. **Typed Play request lane:** personas request optional Plays by writing a structured handoff such as
+   full Play markdown stays lazy-loaded only at dispatch. Tests prove prompts include the compact manifest
+   and do not include full Play bodies.
+5. **Typed Play request lane:** personas request optional Plays by writing a structured handoff such as
    `{"kind":"play","play":"create-ticket","input":{...}}`. The runner/daemon validates the persona,
    Play id, trigger class, input schema, assignment, and write scope before dispatch. Personas do not
    execute Play procedures from memory.
-5. **Mandatory trigger registry:** hard-wire lifecycle/policy triggers where a persona should not decide:
+6. **Mandatory trigger registry:** hard-wire lifecycle/policy triggers where a persona should not decide:
    wrap-up, ticket close-on-success, authoring actions, and any risk-gated review/verify Plays selected
-   by the taxonomy. The runner/daemon owns those triggers; personas own only optional judgment calls.
-6. **Hybrid deterministic execution:** `dispatchPlay` (`packages/core/src/plays/dispatch.ts`) runs an
+   by the taxonomy. The runner/daemon owns those triggers; personas own only optional judgment calls. This
+   atom should start with one existing trigger (wrap-up or authoring) and then generalize, not rewrite all
+   dispatch paths at once.
+7. **Hybrid deterministic execution:** `dispatchPlay` (`packages/core/src/plays/dispatch.ts`) runs an
    optional deterministic step, captures structured output, and feeds or gates the LLM invocation while
    staying one-level (no recursive Play delegation).
-7. **Existing Play migration:** update every shipped base Play and relevant repo delta to the new format:
-   `wrap-up`, `create-priority`, `edit-priority`, `archive-priority`, `code-review`, `documentation`,
-   `deep-read`, `electron-test`, and any live repo-only Play. Each migrated Play declares its capability
-   metadata and any input/output contract; prompt-only Plays explicitly remain prompt-only.
 8. **Proof:** migrate at least two real Plays end to end:
    - one mandatory/lifecycle Play (`wrap-up` or ticket close-on-success) proves trigger + output validation;
    - one hybrid Play (candidate: `integration-verify` or `code-review`) proves a deterministic step runs
