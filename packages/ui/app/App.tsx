@@ -4,7 +4,7 @@
 // the design-faithful view-model from the ported seed (fixture parity, fully interactive); the daemon
 // adapter is wired in the next slice (the existing electron/ plumbing is untouched).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, sendOzMessage, launchRun, attachRun, teardownRun, stopRun, testCli, createPriority, createTicket, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, saveAssignments, restartDaemon, type ConnectionState } from './live.ts'
+import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, sendOzMessage, launchRun, launchTicketRun, attachRun, teardownRun, stopRun, testCli, createPriority, createTicket, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, saveAssignments, restartDaemon, type ConnectionState } from './live.ts'
 import { ADHOC_PRIORITY_ID, MODE_HONORED_PERSONAS, applyOrder, isActiveRun, mergeRunsWithEnrichment, orderPersonas, personasToAssignments } from './adapter.ts'
 import { Sidebar, type Route } from './ui/Sidebar.tsx'
 import { TopBar } from './ui/TopBar.tsx'
@@ -465,6 +465,18 @@ export function App() {
     if (!live) { onSend(`Launch the priority “${p.name}”.`); return }
     void doLaunch(p.id, `Launching “${p.name}”`)
   }
+  async function doLaunchTicket(ticketId: string, label: string) {
+    const oz = ozApi()
+    if (!oz) return
+    const res = await launchTicketRun(oz, activeId, ticketId)
+    if (res.ok) { notify('ok', `${label}…`); await refreshActiveWs() }
+    else if (res.status === 409) notify('info', 'A run is already in flight for this workspace.')
+    else notify('err', res.error || `Launch failed (${res.status}).`)
+  }
+  function handleLaunchTicket(ticket: Ticket) {
+    if (!live) { onSend(`Launch a fix run for ticket ${ticket.id}.`); return }
+    void doLaunchTicket(ticket.id, `Launching fix for ${ticket.id}`)
+  }
   function handleAdhoc() {
     if (!live) { onSend('Run an ad-hoc task: '); return }
     setChatPrefill('adhoc ')
@@ -596,6 +608,7 @@ export function App() {
               onReorder={reorder} onLaunch={handleLaunch} onAdhoc={handleAdhoc}
               onAddPriority={() => { if (live) setNewPriorityOpen(true); else onSend('Draft a new priority.') }}
               onAddTicket={() => { if (live) setNewTicketOpen(true); else onSend('Draft a new ticket.') }}
+              onLaunchTicket={handleLaunchTicket}
               onSend={onSend} onDecision={(c: string) => onSend(`Decision: replay ${c} plan.`)} onRunAction={handleRunAction}
               ozTyping={ozTyping} live={live}
               chatPrefill={chatPrefill} onChatPrefillConsumed={() => setChatPrefill(null)}

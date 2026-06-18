@@ -45,12 +45,16 @@ function DashboardHarness({
   queuePriorities = priorities,
   onAddPriority = vi.fn(),
   onAddTicket = vi.fn(),
+  onLaunchTicket = vi.fn(),
+  live = false,
 }: {
   runs: Run[]
   initialSelectedRunId?: string | null
   queuePriorities?: Priority[]
   onAddPriority?: () => void
   onAddTicket?: () => void
+  onLaunchTicket?: (ticket: Ticket) => void
+  live?: boolean
 }) {
   const [selectedRunId, setSelectedRunId] = useState<string | null>(initialSelectedRunId)
   return (
@@ -67,10 +71,12 @@ function DashboardHarness({
       onAdhoc={vi.fn()}
       onAddPriority={onAddPriority}
       onAddTicket={onAddTicket}
+      onLaunchTicket={onLaunchTicket}
       onSend={vi.fn()}
       onDecision={vi.fn()}
       onRunAction={vi.fn()}
       ozTyping={false}
+      live={live}
     />
   )
 }
@@ -125,7 +131,7 @@ describe('Dashboard layout', () => {
   })
 
   it('lists compact open-ticket cards and opens a readable detail modal', () => {
-    const { container } = render(<DashboardHarness runs={[run('running', 'running')]} />)
+    const { container } = render(<DashboardHarness runs={[]} />)
 
     fireEvent.click(screen.getByRole('button', { name: /Tickets 3/i }))
     const column = within(container.firstElementChild!.children[0] as HTMLElement)
@@ -146,11 +152,43 @@ describe('Dashboard layout', () => {
     expect(screen.getByText('oscar run_94')).toBeDefined()
     expect(screen.getByText(/Prevent rebuild clobbers/)).toBeDefined()
     expect((screen.getByRole('button', { name: /Launch fix/i }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByRole('button', { name: /Launch fix/i }).getAttribute('title')).toContain('available only when the dashboard is connected')
 
     fireEvent.click(screen.getByTitle('Close (Esc)'))
 
     expect(screen.queryByText(/Prevent rebuild clobbers/)).toBeNull()
     expect(column.getByText('Guard against design-ref rebuilds reverting committed packages/ui/app fixes')).toBeDefined()
+  })
+
+  it('launches a ticket fix from the modal in live mode and closes the modal', () => {
+    const onLaunchTicket = vi.fn()
+    const { container } = render(<DashboardHarness runs={[]} live onLaunchTicket={onLaunchTicket} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /Tickets 3/i }))
+    const column = within(container.firstElementChild!.children[0] as HTMLElement)
+    fireEvent.click(column.getByText('Public docs/ tree is v1-stale'))
+
+    const button = screen.getByRole('button', { name: /Launch fix/i }) as HTMLButtonElement
+    expect(button.disabled).toBe(false)
+    expect(button.getAttribute('title')).toBeNull()
+
+    fireEvent.click(button)
+
+    expect(onLaunchTicket).toHaveBeenCalledTimes(1)
+    expect(onLaunchTicket).toHaveBeenCalledWith(expect.objectContaining({ id: '0003' }))
+    expect(screen.queryByText(/Docs need reconciliation/)).toBeNull()
+    expect(column.getByText('Public docs/ tree is v1-stale')).toBeDefined()
+  })
+
+  it('disables ticket fix launch while a run is in flight', () => {
+    render(<DashboardHarness runs={[run('running', 'running')]} live />)
+
+    fireEvent.click(screen.getByRole('button', { name: /Tickets 3/i }))
+    fireEvent.click(screen.getByText('Public docs/ tree is v1-stale'))
+
+    const button = screen.getByRole('button', { name: /Launch fix/i }) as HTMLButtonElement
+    expect(button.disabled).toBe(true)
+    expect(button.getAttribute('title')).toContain('A run is active in this workspace')
   })
 
   it('shows runs in-panel with filters and opens a run row', () => {

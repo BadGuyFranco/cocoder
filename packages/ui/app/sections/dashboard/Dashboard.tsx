@@ -7,6 +7,8 @@ import { Button, Icon, Modal, StatusChip } from '../../ui/primitives.tsx'
 const PRIO_MIN = 300
 const PRIO_MAX = 640
 const PRIO_DEFAULT = 380
+const LAUNCH_BLOCKED_HINT = 'A run is active in this workspace — only one run executes at a time (single-writer lock). It frees up when the run finishes.'
+const TICKET_LAUNCH_OFFLINE_HINT = 'Ticket-fix launch is available only when the dashboard is connected to Oz.'
 
 // Thin draggable divider that resizes the Priorities column. Width is owned by the Dashboard and
 // clamped; dragging attaches window listeners so the cursor can leave the 6px handle without dropping.
@@ -69,10 +71,12 @@ function TabStrip({ active, onChange, priorities, tickets, runs }: { active: Das
   )
 }
 
-function TicketsTab({ tickets }: { tickets: Ticket[] }) {
+function TicketsTab({ tickets, onLaunchTicket, launchBlocked, live }: { tickets: Ticket[]; onLaunchTicket: (ticket: Ticket) => void; launchBlocked: boolean; live: boolean }) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const openTickets = tickets.filter((ticket) => ticket.state === 'open')
   const selected = selectedId ? openTickets.find((ticket) => ticket.id === selectedId) ?? null : null
+  const launchDisabled = !live || launchBlocked
+  const launchTitle = launchBlocked ? LAUNCH_BLOCKED_HINT : !live ? TICKET_LAUNCH_OFFLINE_HINT : undefined
   const meta = selected
     ? [
       ['type', selected.type],
@@ -119,7 +123,7 @@ function TicketsTab({ tickets }: { tickets: Ticket[] }) {
           subtitle="Ticket detail"
           icon="ticket"
           width={680}
-          footer={<Button variant="secondary" icon="play" disabled title="Ticket-fix launch — wiring lands in the next atom">Launch fix</Button>}
+          footer={<Button variant="secondary" icon="play" disabled={launchDisabled} title={launchTitle} onClick={() => { onLaunchTicket(selected); setSelectedId(null) }}>Launch fix</Button>}
         >
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
             {meta.map(([label, value]) => (
@@ -184,12 +188,12 @@ function RunsTab({ runs, onSelectRun, priorities }: { runs: Run[]; onSelectRun: 
   )
 }
 
-export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, selectedRunId, setSelectedRunId, onReorder, onLaunch, onAdhoc, onAddPriority, onAddTicket, onSend, onDecision, onRunAction, ozTyping, live = false, workspaceConfigured, chatPrefill = null, onChatPrefillConsumed }: {
+export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, selectedRunId, setSelectedRunId, onReorder, onLaunch, onAdhoc, onAddPriority, onAddTicket, onLaunchTicket, onSend, onDecision, onRunAction, ozTyping, live = false, workspaceConfigured, chatPrefill = null, onChatPrefillConsumed }: {
   workspace: Workspace; priorities: Priority[]; tickets: Ticket[]; runs: Run[]; ozMessages: ChatMessage[]
   workspaceConfigured?: boolean
   selectedRunId: string | null; setSelectedRunId: (id: string | null) => void
   onReorder: (from: number, to: number) => void; onLaunch: (p: Priority) => void; onAdhoc: () => void; onAddPriority: () => void
-  onAddTicket: () => void
+  onAddTicket: () => void; onLaunchTicket: (ticket: Ticket) => void
   onSend: (text: string) => void; onDecision: (choice: string) => void; onRunAction: (action: string, id: string) => void
   ozTyping: boolean; live?: boolean
   chatPrefill?: string | null; onChatPrefillConsumed?: () => void
@@ -205,6 +209,7 @@ export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, se
   const onResizeTo = (px: number) => setPrioWidth(Math.max(PRIO_MIN, Math.min(PRIO_MAX, px)))
   const gridTemplateColumns = selectedRun ? `${prioWidth}px 460px 6px 1fr` : `${prioWidth}px 6px 1fr`
   const openTicketCount = tickets.filter((ticket) => ticket.state === 'open').length
+  const launchBlocked = runs.some((r) => r.status === 'running')
   const addTitle = activeTab === 'priorities' ? 'Add priority' : activeTab === 'tickets' ? 'Add ticket' : ''
   const addAction = activeTab === 'priorities' ? onAddPriority : activeTab === 'tickets' ? onAddTicket : null
   return (
@@ -219,7 +224,7 @@ export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, se
           </div>
           <div className="oz-panel-body">
             {activeTab === 'priorities' && <PrioritiesPanel priorities={priorities} runs={runs} onReorder={onReorder} onLaunch={onLaunch} onAdhoc={onAdhoc} onAddPriority={onAddPriority} onSelectRun={setSelectedRunId} selectedRunId={selectedRunId} />}
-            {activeTab === 'tickets' && <TicketsTab tickets={tickets} />}
+            {activeTab === 'tickets' && <TicketsTab tickets={tickets} onLaunchTicket={onLaunchTicket} launchBlocked={launchBlocked} live={live} />}
             {activeTab === 'runs' && <RunsTab runs={runs} priorities={priorities} onSelectRun={setSelectedRunId} />}
           </div>
         </div>
