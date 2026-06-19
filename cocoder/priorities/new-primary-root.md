@@ -43,7 +43,41 @@ extension (ADR-0020 §7); the `deep-read` audit Play (the Takeover P2 unit, adve
 deterministic scaffold init op; and a **live Takeover proof on a real external repo** (the Phase-5 entry,
 CoPublisher).
 
-## Build progress — disposition: `archive-candidate` (rebuild COMPLETE run_141; re-confirmed run_159 — zero build atoms warranted; `node scripts/proof-onboard-existing.mjs` proves the three rebuilt invariants; only founder-gated LIVE proofs remain: external-repo onboard-existing end-to-end + dogfood Drift Audit reframe)
+## Build progress — disposition: `continue` (rebuild COMPLETE run_141; but run_159 founder-reported TWO new-workspace first-run model defects that RE-OPEN buildable work — see "⚠ NEW DEFECTS" below. `node scripts/proof-onboard-existing.mjs` still proves the three rebuilt invariants; the founder-gated LIVE proofs remain blocked behind these defects since the live first-run is exactly what fails)
+
+## ⚠ NEW DEFECTS — founder-reported (run_159, 2026-06-19): new-workspace first-run launches with a model error
+When launching and running the **first priority in the first session of a new workspace** (new primary
+root == new workspace), the persona CLIs — Oscar and Bob, here both **claude** CLIs — launch with a
+**model error: "model opus not available."** This blocks the live onboarding first-run (Objective (a)),
+so the priority is back to `continue`. The founder named two distinct root issues to fix:
+
+**Issue 1 — "default" model must pass NO `--model` at launch.** When a persona's model is set to
+*default*, no model should EVER be named in the launch; the persona must launch with whatever the CLI's
+own settings/default are. Today the seeded `templates/workspace-cocoder/cocoder/personas/assignments.json`
+uses `"model": ""` for every persona, and `ClaudeAdapter.build()`
+(`packages/adapters/src/claude.ts:32,39`) correctly skips `--model` when `input.model` is falsy — so the
+empty-string path is right. **The defect is upstream:** something on the new-workspace launch path is
+resolving "default" into a concrete `opus` alias and passing `--model opus`. Find where a fresh-workspace
+launch injects a model (UI launch payload / model-dropdown default / `top-tier` resolution /
+`resolveEffectivePersona` / `resolvePlayAssignment` in `packages/daemon/src/launcher.ts`) and make
+"default" pass through as *no model* end-to-end. Acceptance: a brand-new workspace's first run launches
+claude with NO `--model` flag (verify the built argv), and the persona uses the CLI's configured default.
+
+**Issue 2 — CLI "test" must validate model formatting / passthrough.** Model pass-throughs are not
+properly labeled/validated for claude (at least). When **testing a CLI** (`testCli` in
+`packages/daemon/src/clis.ts`; `ClaudeAdapter.preflight`/`listModels` in
+`packages/adapters/src/claude.ts:44,70`), the test must include **testing the model formatting** — i.e.
+verify that the `--model <alias>` form the adapter would actually pass resolves and launches, so a "model
+X not available" surfaces at **test time**, not on the founder's first live run. Today `preflight` only
+records the model string (`checks.push({ name: 'model', ok: true, detail: model || '(claude default)' })`,
+`claude.ts:65`) and never exercises it. Acceptance: testing the claude CLI exercises the real model-arg
+form and fails the test (with a clear detail) when the configured/aliased model is not available.
+
+**Sequencing for relaunch:** root-cause Issue 1 first (it is what actually breaks the first run); Issue 2
+is the guardrail that would have caught it at test time. Both are concrete, in-scope build atoms — start
+here on relaunch rather than the live-proof path, which stays blocked until the first run launches clean.
+Note: Issue 2 overlaps `first-class-model-tiers.md` (model-tier/test surface) — cross-check that priority
+when scoping so the CLI-test change has one owner.
 
 ## ⚠ ARCHITECTURE PIVOT — founder-directed (run_131, 2026-06-17): the existing-repo audit is NOT a standalone executor
 **Decision (founder):** the existing-repo onboarding audit will **not** ship as the standalone Playbook
