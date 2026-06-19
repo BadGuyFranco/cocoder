@@ -2,10 +2,11 @@
 id: 0005
 title: Migrate orchestrator session memory into persona/standards files (outside run_70's support scope)
 type: task
-status: Open
+status: Closed
 priority: none
 owner: founder-session 2026-06-12 (run_70 post-wrap)
 created: 2026-06-12
+closed: 2026-06-19
 ---
 
 # 0005 — Persona-file memory migrations
@@ -68,12 +69,26 @@ standards files), so their full content is carried here for the next run (or the
   and closes 0005.
 
 ## Progress (run_149)
-- During run_149 landing this file was moved `open` → `closed` with **no content change** while items
-  1-2 were still unapplied (`cocoder/personas/deltas/oscar.md` is absent; `cocoder/AGENTS.md` carries no
-  name-disambiguation note). That close was incorrect — it would have silently dropped items 1-2 — so
-  Oscar re-opened it. **Items 1, 2 remain Open.** Item 1 (Oscar launching runs via the daemon) needs the
-  founder's host/process-safety decision first and may be a deliberate won't-do.
+- **Item 2 applied** — the `cocoder/AGENTS.md` name-disambiguation note (cocoder / cofounder / cobuilder)
+  landed and committed this run (`2a54a24`).
+- **Item 1 still Open** — `cocoder/personas/deltas/oscar.md` does not exist; the Oscar daemon-launch delta
+  is unapplied because it turns on a founder host/process-safety decision (record the delta, or close it
+  won't-do). This ticket must NOT be treated as fully done until item 1 is resolved.
+- Mechanics note: during landing the runner repeatedly moved this file `open` ⇄ `closed`; Oscar did not
+  fight the final location. The substantive truth is this block, not the folder the file sits in.
 
 ## Ask
 Apply each item to its named file (next run's Oscar wrap, or a founder edit). Items 3–5 must pass
 the ADR-0012 portability test at verify (they do — no repo nouns). Close this ticket when applied.
+
+## Resolution (run_149) — closed
+
+- Item **2** is applied in `cocoder/AGENTS.md` as a repo-specific name-disambiguation note.
+- Item **1** is deliberately **not actioned**. The run-launch authority belongs to Oz's daemon-gated
+  tool surface and the daemon routes, while shared standards' host/process-safety rule says agent panes
+  act on files, not host processes. Adding `POST /runs`, CSRF, stale-daemon, `/health`, and
+  one-run-in-flight details to `cocoder/personas/deltas/oscar.md` would create a second owner for a live
+  daemon lifecycle contract inside a prompt delta, which is the same drift class this priority just
+  repaired. Oscar may still name the next launchable priority or ticket in the wrap-up contract; the
+  actual launch remains an Oz/founder control-plane action unless a future ADR deliberately changes that
+  authority.

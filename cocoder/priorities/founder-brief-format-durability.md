@@ -52,7 +52,7 @@ the pattern to copy: one owner (the wrap-up Play's fenced contract), the runtime
 and an end-to-end test fails when an old format reappears. Use it as the template for every other
 occurrence; do not re-diagnose or re-fix it.
 
-## Repair progress — disposition: `continue` (reaffirmed run_149)
+## Repair progress — disposition: `archive-ready` (run_149)
 
 Structural class repair is **complete and proven** through the verify gate (run_148; run_149
 reaffirmed with zero buildable atoms remaining). Owner inventory:
@@ -63,22 +63,19 @@ migrated to base personas/standards (`d06ae45`); governance reconciled — dupli
 tickets 0012/0015/0017 closed (`297f703`). The run_145/run_147 gate-bypass observation was reconsidered
 and closed **not actioned** (ticket 0018; F23 removed) — see "Related observation" below.
 
-### Remaining → then archive
-**Ticket 0005 items 1-2** — the founder will run this in a fresh session scoped to reach the files.
-- Item 2 (`cocoder/AGENTS.md` name disambiguation) is benign housekeeping.
-- Item 1 (`cocoder/personas/deltas/oscar.md` — Oscar launching runs via the daemon) needs a
-  host/process-safety judgment first and may be a deliberate **won't-do**, not a routine apply.
-
-Once 0005 items 1-2 are resolved (applied, or closed won't-do), this priority is **archive-ready** —
-nothing else in the single-source contract repair remains.
+run_149 resolved the final ticket 0005 tail: item 2 is applied to `cocoder/AGENTS.md`; item 1 is closed
+**not actioned** because adding daemon `POST /runs` details to an Oscar prompt delta would duplicate the
+daemon run-launch/process contract that belongs to Oz's daemon-gated tool surface. Ticket 0005 is now
+closed, so this priority is **archive-ready**.
 
 ## Required Ticket Review
 Review related tickets before proposing fixes and fold each into the owner inventory:
 
 - [0017](../tickets/closed/0017-promote-founder-brief-single-source-rule-to-shared-standards.md) — **closed
   run_148** by repair (`aa7addc`).
-- [0005](../tickets/open/0005-persona-file-memory-migrations.md) — items 3-5 migrated run_148; items 1-2
-  remain open (repo-specific, outside Oscar support scope).
+- [0005](../tickets/closed/0005-persona-file-memory-migrations.md) — **closed run_149**: items 3-5 migrated
+  run_148; item 2 applied to `cocoder/AGENTS.md`; item 1 not actioned to avoid duplicating the daemon
+  run-launch contract in an Oscar prompt delta.
 - [0012](../tickets/closed/0012-design-ref-rebuild-clobber-guard.md) — **closed run_148** (Option A:
   design-ref historical).
 - [0015](../tickets/closed/0015-tickets-silently-dropped-without-frontmatter.md) — **closed run_148**
