@@ -27,6 +27,15 @@ export function mergePlay(base: Play, delta: PlayDelta): Play {
     id: base.id,
     label: delta.label ?? base.label,
     kind: delta.kind ?? base.kind,
+    executionModel: delta.executionModel ?? base.executionModel,
+    triggerClass: delta.triggerClass ?? base.triggerClass,
+    purpose: delta.purpose ?? base.purpose,
+    allowedCallers: mergeOptionalList(base.allowedCallers, delta.allowedCallers),
+    inputSchema: delta.inputSchema ?? base.inputSchema,
+    outputValidator: delta.outputValidator ?? base.outputValidator,
+    deterministicStep: delta.deterministicStep ?? base.deterministicStep,
+    commitMode: delta.commitMode ?? base.commitMode,
+    requiredCheckpoints: mergeOptionalList(base.requiredCheckpoints, delta.requiredCheckpoints),
     writeScope: mergeWriteScope(base.writeScope, delta.writeScope),
     body: mergeBody(base.body, delta.body),
   }
@@ -42,6 +51,12 @@ function mergeWriteScope(base: readonly string[], delta: readonly string[] | und
     }
   }
   return merged
+}
+
+function mergeOptionalList(base: readonly string[] | undefined, delta: readonly string[] | undefined): readonly string[] | undefined {
+  if (delta === undefined) return base
+  if (base === undefined) return delta
+  return mergeWriteScope(base, delta)
 }
 
 function mergeBody(base: string, delta: string | undefined): string {

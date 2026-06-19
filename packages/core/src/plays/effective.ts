@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseFrontmatter } from '../personas/frontmatter.js'
+import { parsePlayContractFrontmatter, withOptional } from './frontmatter.js'
 import { loadPlay } from './loader.js'
 import { mergePlay } from './merge.js'
 import type { Play, PlayDelta } from './types.js'
@@ -34,6 +35,11 @@ export function loadPlayDelta(deltaDir: string, id: string): PlayDelta {
     id,
     ...withOptional('label', optionalString(data.label, 'label', file)),
     ...withOptional('kind', optionalKind(data.kind, file)),
+    ...parsePlayContractFrontmatter(data, {
+      file,
+      owner: 'play delta',
+      createError: (message: string) => new PlayDeltaLoadError(message, file),
+    }),
     ...withOptional('writeScope', normalizeWriteScope(data.writeScope)),
     body,
   }
@@ -96,11 +102,4 @@ function listMarkdownIds(dir: string): readonly string[] {
   return readdirSync(dir)
     .filter((name) => name.endsWith('.md'))
     .map((name) => name.slice(0, -3))
-}
-
-function withOptional<K extends keyof PlayDelta>(
-  key: K,
-  value: PlayDelta[K] | undefined,
-): Pick<PlayDelta, K> | Record<string, never> {
-  return value === undefined ? {} : { [key]: value } as Pick<PlayDelta, K>
 }

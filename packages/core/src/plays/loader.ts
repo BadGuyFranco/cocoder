@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseFrontmatter } from '../personas/frontmatter.js'
+import { parsePlayContractFrontmatter } from './frontmatter.js'
 import type { Play } from './types.js'
 
 const asString = (v: string | string[] | undefined, field: string, file: string): string => {
@@ -26,6 +27,7 @@ export function loadPlay(playsDir: string, id: string): Play {
     id,
     label: asString(data.label, 'label', file),
     kind: asKind(data.kind, file),
+    ...parsePlayContractFrontmatter(data, { file, owner: 'play' }),
     writeScope,
     body,
   }

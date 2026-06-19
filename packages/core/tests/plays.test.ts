@@ -32,6 +32,81 @@ describe('play loading', () => {
     expect(play.body).toBe('Produce the closeout.')
   })
 
+  test('loadPlay leaves additive contract metadata undefined when absent', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'plays-'))
+    await writeFile(join(dir, 'wrap-up.md'), '---\nid: wrap-up\nlabel: Wrap-up\nkind: headless\n---\nProduce the closeout.')
+
+    const play = loadPlay(dir, 'wrap-up')
+
+    expect(play.executionModel).toBeUndefined()
+    expect(play.triggerClass).toBeUndefined()
+    expect(play.purpose).toBeUndefined()
+    expect(play.allowedCallers).toBeUndefined()
+    expect(play.inputSchema).toBeUndefined()
+    expect(play.outputValidator).toBeUndefined()
+    expect(play.deterministicStep).toBeUndefined()
+    expect(play.commitMode).toBeUndefined()
+    expect(play.requiredCheckpoints).toBeUndefined()
+  })
+
+  test('loadPlay parses additive contract metadata when present', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'plays-'))
+    await writeFile(
+      join(dir, 'code-review.md'),
+      [
+        '---',
+        'id: code-review',
+        'label: Code Review',
+        'kind: headless',
+        'executionModel: hybrid',
+        'triggerClass: persona-requested',
+        'purpose: Review a completed implementation against its contract.',
+        'allowedCallers:',
+        '  - oscar',
+        '  - deb',
+        'inputSchema: schemas/code-review.input',
+        'outputValidator: validators/code-review.output',
+        'deterministicStep: checks/code-review-preflight',
+        'commitMode: gated',
+        'requiredCheckpoints:',
+        '  - shared elegance checkpoint',
+        '  - tests green',
+        '---',
+        'Review the diff.',
+      ].join('\n'),
+    )
+
+    const play = loadPlay(dir, 'code-review')
+
+    expect(play).toMatchObject({
+      executionModel: 'hybrid',
+      triggerClass: 'persona-requested',
+      purpose: 'Review a completed implementation against its contract.',
+      allowedCallers: ['oscar', 'deb'],
+      inputSchema: { ref: 'schemas/code-review.input' },
+      outputValidator: { ref: 'validators/code-review.output' },
+      deterministicStep: { ref: 'checks/code-review-preflight' },
+      commitMode: 'gated',
+      requiredCheckpoints: ['shared elegance checkpoint', 'tests green'],
+    })
+  })
+
+  test.each([
+    ['executionModel', 'daemon', /frontmatter "executionModel" must be "prompt-only" or "hybrid"/],
+    [
+      'triggerClass',
+      'daemon',
+      /frontmatter "triggerClass" must be "lifecycle-triggered", "persona-requested", or "tool\/API-triggered"/,
+    ],
+  ])('invalid %s throws a file and field named error', async (field, value, message) => {
+    const dir = await mkdtemp(join(tmpdir(), 'plays-'))
+    const file = join(dir, 'x.md')
+    await writeFile(file, ['---', 'id: x', 'label: X', 'kind: headless', `${field}: ${value}`, '---', 'b'].join('\n'))
+
+    expect(() => loadPlay(dir, 'x')).toThrow(message)
+    expect(() => loadPlay(dir, 'x')).toThrow(new RegExp(`play ${file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:`))
+  })
+
   test('id/filename mismatch throws clearly', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'plays-'))
     await writeFile(join(dir, 'x.md'), '---\nid: y\nlabel: Y\nkind: headless\n---\nb')
