@@ -9,8 +9,10 @@ revert), because the work is sound and green and a revert would not clean histor
 each through the verify gate: the standalone red→green enforcer proof harness
 (`scripts/proof-orchestration-enforcer.mjs`, `dfe5477`) and the migration of ticket 0005's portable
 persona/standards rules (`d06ae45`). The work queue below is shipped behavior except where a row marks an
-explicit deferral. The run_145/run_147 gate-bypass observation is now tracked as a separate sibling
-reliability priority (ticket `0018`, failure-catalog `F23`).
+explicit deferral. The run_145/run_147 gate-bypass observation was considered and **deliberately not
+actioned** (ticket `0018`, closed): the bypassed commits were correct, green, and founder-kept — not a
+failure — and any guard that enforces routing-through-the-gate reintroduces commit-withholding, the
+ADR-0023 anti-pattern we removed.
 
 Diagnostic status: this is the owner inventory for the priority
 `founder-brief-format-durability`, whose objective is the broader "Single-source orchestration
@@ -66,9 +68,12 @@ State values are exactly `aligned`, `drifting`, or `already-fixed`.
 
 ## Run_145 Direct-Commit Observation
 
-Disposition (run_148): filed as sibling ticket `0018` and failure-catalog `F23`. Per the founder's
-run_147 decision the guard is a separately-launchable reliability priority, not folded into this
-format/contract repair (a real guard may touch git workflow, commit-spine policy, or host controls).
+Disposition (run_148): **considered and deliberately not actioned** (ticket `0018`, closed). The
+triggering commits (`90599db`, `aa7addc`) were correct, green, and founder-kept — not a correctness
+failure — so this is not a catalogued failure (the earlier F23 row was removed). And any guard strong
+enough to enforce routing-through-the-gate would have to block or strand a commit, reintroducing
+commit-withholding — the ADR-0023 / F21 anti-pattern the rebuilds removed. A detection-only version is
+governance-of-governance (F5). No guard is warranted.
 
 Recommendation: `IN-CLASS`, but the enforcement shape is a founder scoping call.
 

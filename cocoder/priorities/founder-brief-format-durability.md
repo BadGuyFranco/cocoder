@@ -59,14 +59,13 @@ Structural class repair is **complete and proven** through the verify gate. Owne
 updated run_148). Governing rule + enforcer kept from run_147 fix-forward decision (`aa7addc`); red→green
 proof harness `node scripts/proof-orchestration-enforcer.mjs` (`dfe5477`); ticket 0005 portable rules
 migrated to base personas/standards (`d06ae45`); governance reconciled — duplicate inventory deleted,
-tickets 0012/0015/0017 closed, gate-bypass filed as sibling ticket 0018 + failure-catalog F23 (`297f703`).
+tickets 0012/0015/0017 closed (`297f703`). The run_145/run_147 gate-bypass observation was reconsidered
+and closed **not actioned** (ticket 0018; F23 removed) — see "Related observation" below.
 
 ### Remaining (outside this priority's closeout)
 1. **Ticket 0005 items 1-2** — repo-specific only (`cocoder/personas/deltas/oscar.md` daemon-launch delta,
    `cocoder/AGENTS.md` name disambiguation); outside run_148 Oscar support write-scope. Applying them closes
    0005.
-2. **Ticket 0018** — gate-enforcement guard (sibling reliability priority; not part of this format/contract
-   repair).
 
 ## Required Ticket Review
 Review related tickets before proposing fixes and fold each into the owner inventory:
@@ -79,8 +78,9 @@ Review related tickets before proposing fixes and fold each into the owner inven
   design-ref historical).
 - [0015](../tickets/closed/0015-tickets-silently-dropped-without-frontmatter.md) — **closed run_148**
   (loader defect already fixed).
-- [0018](../tickets/open/0018-enforce-verify-gate-commit-contract.md) — sibling gate-bypass guard (filed
-  run_148); separately launchable, not part of this repair.
+- [0018](../tickets/closed/0018-enforce-verify-gate-commit-contract.md) — **closed run_148, not actioned**:
+  bypassed commits were correct/green/founder-kept (not a failure), and any enforcement reintroduces
+  commit-withholding (ADR-0023 anti-pattern); F23 removed.
 - [0008](../tickets/closed/0008-post-wrap-founder-interaction-contract.md) — (closed) prior
   durable-orchestration repair that aligned prompts, wrap delivery, Deb status, daemon, and tests around one
   contract: the precedent pattern to copy.
@@ -90,9 +90,12 @@ brief/wrap/closeout behavior, Play output, persona/standards memory, or generate
 closeout must say, per ticket, whether it was folded in, fixed/closed by the repair, or left a sibling, and
 why.
 
-## Related observation — DECIDED: sibling ticket (run_147, filed run_148)
-The run_145 direct commit (`90599db`) and the run_147 builder self-commit (`aa7addc`) are the same in-class
-defect: an unenforced contract — "agent edits land only through the verify gate" — lets ungoverned changes
-reach the branch. The founder scoped this as a **sibling reliability issue**: tracked as
-[ticket 0018](../tickets/open/0018-enforce-verify-gate-commit-contract.md) + failure-catalog F23; the guard
-build is separately-launchable work, not folded into this format/contract repair.
+## Related observation — DECIDED: not actioned (run_148)
+The run_145 direct commit (`90599db`) and the run_147 builder self-commit (`aa7addc`) both put work on the
+branch without passing the verify gate. Initially scoped (run_147) as a sibling reliability ticket, this
+was **reconsidered and closed not-actioned (run_148, founder decision)**: both commits were correct, green,
+and founder-kept — not a correctness failure — and any guard strong enough to enforce
+routing-through-the-gate would have to block or strand a commit, reintroducing commit-withholding (the
+ADR-0023 / F21 anti-pattern the rebuilds removed). A detection-only version is governance-of-governance
+(F5). See [ticket 0018](../tickets/closed/0018-enforce-verify-gate-commit-contract.md) (closed) for the
+full reasoning.

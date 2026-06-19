@@ -18,7 +18,8 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Outcomes:**
 - **Atom 1 (`dfe5477`):** standalone red→green enforcer proof harness `node scripts/proof-orchestration-enforcer.mjs` — clean pass, deliberate duplicate fails named test, restore passes.
 - **Atom 2 (`d06ae45`):** ticket 0005 items 3-5 migrated to governed base files (`oscar.md`, `shared-standards.md`, `bob.md`), ADR-0012-portable, base-persona-test-pinned.
-- **Oscar-support (`297f703`):** duplicate owner-inventory deleted; tickets 0012/0015/0017 closed; gate-bypass filed as ticket 0018 + F23; owner doc reconciled.
+- **Oscar-support (`297f703`):** duplicate owner-inventory deleted; tickets 0012/0015/0017 closed; owner doc reconciled.
+- **Post-wrap correction:** the run_145/run_147 gate-bypass was reconsidered and closed **not actioned** (ticket 0018; F23 removed) — bypassed commits were correct/green/founder-kept and any guard reintroduces commit-withholding (ADR-0023).
 - **Disposition: `continue`** — structural class repair complete; ticket 0005 items 1-2 (repo-specific persona delta + AGENTS disambiguation) remain outside Oscar support write-scope.
 **Next:** Ticket: `0005` — apply items 1-2 in a run whose scope includes `cocoder/personas/**` and `cocoder/AGENTS.md`, or direct founder instruction to apply them now.
 
