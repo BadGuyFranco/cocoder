@@ -23,10 +23,11 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
   accepted ADR-0010 sections untouched. Verified diff + scope, committed `2289e6a`.
 - Boundary held: no reopening of one-level dispatch, no PlayAssignment multi-binding, no full Play-body
   injection.
-- **Disposition: `blocked`** — founder acceptance of the taxonomy amendment gates atom 2 (Play schema).
-**Next:** Founder accepts the ADR-0010 taxonomy amendment (or sends edits). On acceptance, relaunch
-`hybrid-plays` for atom 2: extend `Play` in `packages/core/src/plays/types.ts` with additive optional
-contract metadata; loader/tests prove existing prompt-only Plays still parse.
+- **Disposition: `blocked` → cleared.** Founder **accepted the ADR-0010 taxonomy amendment 2026-06-19**
+  (this conversation, post-wrap); the atom-2 gate is now open.
+**Next:** Relaunch `hybrid-plays` for atom 2 — extend `Play` in `packages/core/src/plays/types.ts` with
+additive optional contract metadata; loader/tests prove existing prompt-only Plays still parse. No
+further founder gate until the schema is in hand.
 
 ---
 
