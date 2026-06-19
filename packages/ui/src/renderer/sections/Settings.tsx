@@ -5,6 +5,8 @@ import { useState } from 'react'
 import { Icon, Button, Card, ScreenHeader } from '../ui/primitives.tsx'
 import type { Dependency, Settings } from '../model.ts'
 
+type SettingsSectionKey = { [K in keyof Settings]: Settings[K] extends object ? K : never }[keyof Settings]
+
 function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
   return (
     <button onClick={() => onChange(!on)} style={{ width: 38, height: 22, padding: 2, background: on ? 'var(--cb-accent)' : 'var(--cb-bg-soft)', border: `1px solid ${on ? 'var(--cb-accent)' : 'var(--cb-border)'}`, borderRadius: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'background 120ms ease-out' }}>
@@ -84,7 +86,7 @@ function clampOzAutoCompactRuns(value: number): number {
 
 export function SettingsScreen({ settings, dependencies, onRecheckDep, onChange, live = false }: { settings: Settings; dependencies: Dependency[]; onRecheckDep: (id: string) => void; onChange: (s: Settings) => void; live?: boolean }) {
   const [tab, setTab] = useState('preferences')
-  const update = <S extends keyof Settings>(section: S, key: keyof Settings[S], value: unknown) =>
+  const update = <S extends SettingsSectionKey>(section: S, key: keyof Settings[S], value: unknown) =>
     onChange({ ...settings, [section]: { ...settings[section], [key]: value } })
   const updateSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => onChange({ ...settings, [key]: value })
 
