@@ -67,6 +67,13 @@ standards files), so their full content is carried here for the next run (or the
   stays **Open** for them; a run (or direct founder edit) whose scope includes those paths applies them
   and closes 0005.
 
+## Progress (run_149)
+- During run_149 landing this file was moved `open` → `closed` with **no content change** while items
+  1-2 were still unapplied (`cocoder/personas/deltas/oscar.md` is absent; `cocoder/AGENTS.md` carries no
+  name-disambiguation note). That close was incorrect — it would have silently dropped items 1-2 — so
+  Oscar re-opened it. **Items 1, 2 remain Open.** Item 1 (Oscar launching runs via the daemon) needs the
+  founder's host/process-safety decision first and may be a deliberate won't-do.
+
 ## Ask
 Apply each item to its named file (next run's Oscar wrap, or a founder edit). Items 3–5 must pass
 the ADR-0012 portability test at verify (they do — no repo nouns). Close this ticket when applied.

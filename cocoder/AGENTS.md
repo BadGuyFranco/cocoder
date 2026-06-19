@@ -37,6 +37,16 @@ README/INDEX standing in for it). Every directory below is live — frozen histo
 | `spikes/` | (sibling files) | Exploration notes that informed ADRs |
 | `zArchive/` | [`zArchive/README.md`](./zArchive/README.md) | Frozen history (v1 tree, v1 decisions, archived priorities, rebuild-era notes) — never read by the engine |
 
+## Names That Look Related But Are Not Repo Concepts
+
+- `cocoder` is this project: the agentic-coding harness, and the only product built in this repo.
+- `cofounder` is the founder's separate knowledge-work skills repo.
+- `cobuilder` is the founder's separate commercial product that inspired parts of CoCoder.
+
+`cofounder` and `cobuilder` are never directories, packages, personas, storage zones, or work orders in
+this repo. If one appears in an ADR or founder message, treat it as outside context and confirm before
+building on it. The per-repo governance zone here and in managed repos is always `cocoder/`.
+
 ## Conventions
 
 - **One concept, one home (D4).** Canonical sources win; indexes mirror. ADR front-matter is
