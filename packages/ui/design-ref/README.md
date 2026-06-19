@@ -1,8 +1,8 @@
 # Oz — Control Plane Prototype
 
 Historical reference for **Oz**, the CoCoder control plane. This is a high-fidelity working mock, not
-production code and not a regeneration source for `packages/ui/app`. Open `Oz.html` in a browser to run
-the archived prototype.
+production code and not a regeneration source for `packages/ui/src/renderer`. Open `Oz.html` in a
+browser to run the archived prototype.
 
 ---
 
@@ -14,9 +14,9 @@ the archived prototype.
 - Behavioral reference: clicking through the prototype demonstrates the intended flows.
 - A spec embedded in the UI itself — **turn on dev annotations** (see below).
 
-`packages/ui/app` is now the maintained implementation. Do not wholesale copy or regenerate it from
-`design-ref/`; if a design idea here is revived, port the specific behavior intentionally and verify it
-against the maintained app tests.
+`packages/ui/src/renderer` is now the maintained implementation. Do not wholesale copy or regenerate it
+from `design-ref/`; if a design idea here is revived, port the specific behavior intentionally and
+verify it against the maintained app tests.
 
 ---
 

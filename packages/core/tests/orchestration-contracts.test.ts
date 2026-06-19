@@ -56,7 +56,7 @@ describe('orchestration contract ownership', () => {
     const readme = read('packages/ui/design-ref/README.md')
 
     expect(readme).toContain('Historical reference')
-    expect(readme).toContain('packages/ui/app')
+    expect(readme).toContain('packages/ui/src/renderer')
     expect(readme).not.toMatch(/source of truth for \*what\* to build/i)
   })
 })

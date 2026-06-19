@@ -1,3 +1,12 @@
+# HISTORICAL / SUPERSEDED — DO NOT REGENERATE
+
+The Oz dashboard is already built and maintained under `packages/ui/src/`: renderer in
+`packages/ui/src/renderer`, Electron main in `packages/ui/src/main`, and preload in
+`packages/ui/src/preload`. This prompt is preserved only as historical F21 context. Do **not** paste it
+into a coding session to wholesale-regenerate the renderer; that failure mode caused F21. Future changes
+must be intentional, one-directional ports into the maintained `src/` tree, verified against the UI
+tests and topology guard.
+
 # Oz Dashboard — Build Prompt (review-hardened)
 
 > Paste the block below into a fresh Claude Code session. It realizes the **delivered v1 Oz
@@ -164,15 +173,15 @@ HARD CONSTRAINTS (the build cannot drift past these)
 ═══════════════════════════════════════════════════════════════════════════
 ENGINEERING (so it compiles, launches, and keeps the monorepo green)
 ═══════════════════════════════════════════════════════════════════════════
-  - LAYOUT: keep ALL DOM/React/Electron code OUT of packages/ui/src (the root typecheck globs
-    packages/*/src/**/*.ts with types:["node"] — DOM/JSX there goes red). Put renderer in
-    packages/ui/app/ (*.tsx) and main+preload in packages/ui/electron/. packages/ui/src/index.ts stays
-    Node-compilable (its only consumer is the root typecheck). Give the app its own tsconfig.app.json:
-    extends tsconfig.base.json but OVERRIDE moduleResolution:"Bundler", module:"ESNext",
-    lib:["ES2022","DOM","DOM.Iterable"], jsx:"react-jsx", types:["node","electron"], include
-    ["app","electron"]. Leave packages/ui/tsconfig.json as-is (include ["src","tests"], types ["node"]).
-    Add a ui `typecheck` script running BOTH tsconfigs, and a `test` script (`vitest run`, not watch).
-    Add `out/` `.vite/` to .gitignore (worktree-local). Stack: electron-vite + React + TS.
+  - LAYOUT: the maintained app lives under packages/ui/src with three explicit targets. Renderer code,
+    assets, styles, and index.html live in packages/ui/src/renderer. Electron main-process code lives in
+    packages/ui/src/main. The sandbox preload lives in packages/ui/src/preload. packages/ui/src/index.ts
+    remains the Node-compilable package export stub. packages/ui/tsconfig.json is Node-only and includes
+    ["src/index.ts"]. packages/ui/tsconfig.app.json owns the real app and keeps moduleResolution:"Bundler",
+    module:"ESNext", lib:["ES2022","DOM","DOM.Iterable"], jsx:"react-jsx", types:["node","electron"],
+    and include ["src/renderer","src/main","src/preload","tests"]. The ui `typecheck` script must run
+    BOTH tsconfigs, and the `test` script is `vitest run`, not watch. Keep `out/` `.vite/` ignored.
+    Stack: electron-vite + React + TS.
   - ELECTRON BINARY: pnpm 10 ignores build scripts, so electron's postinstall (the ~100MB binary
     download from github) is skipped → a non-launching electron. Fix (founder-sanctioned): add `"pnpm":
     {"onlyBuiltDependencies":["electron"]}` to ROOT package.json, then `pnpm install`. If the binary still
