@@ -12,6 +12,20 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-19 — **founder-brief-format-durability: ticket 0005 tail resolved — archive-ready (run_149 Deb repair)**
+
+**Persona:** Deb direct repair | **Priority:** [founder-brief-format-durability](./priorities/founder-brief-format-durability.md) | **Run:** run_149
+**Outcomes:**
+- Applied ticket 0005 item 2 in [`cocoder/AGENTS.md`](./AGENTS.md): disambiguates `cocoder`,
+  `cofounder`, and `cobuilder` so external project names are not mistaken for repo directories,
+  packages, personas, zones, or work orders.
+- Closed ticket 0005. Item 1 is deliberately not actioned: putting daemon `POST /runs`, stale-daemon,
+  CSRF, and one-run-in-flight details into `cocoder/personas/deltas/oscar.md` would create a second owner
+  for Oz/daemon run-launch authority and conflict with host/process safety.
+- Reconciled the owner inventory and roadmap status: ticket 0005 is closed, tickets 0012/0015 are
+  represented as already-fixed/closed, and the priority is archive-ready.
+**Next:** Founder archive confirmation for `founder-brief-format-durability`.
+
 ## 2026-06-19 — **founder-brief-format-durability: reaffirmed complete — no buildable atoms (run_149)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 0 atoms delegated) | **Priority:** [founder-brief-format-durability](./priorities/founder-brief-format-durability.md) | **Run:** run_149
