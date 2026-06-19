@@ -59,6 +59,14 @@ standards files), so their full content is carried here for the next run (or the
    NOTE: ADR-0012 already claims lesson (i) "went to base" — it never did; applying this makes
    that claim true.
 
+## Progress (run_148)
+- Items **3, 4, 5** applied to the governed base files (`packages/personas/base/oscar.md`,
+  `shared-standards.md`, `bob.md`), ADR-0012-portable and base-persona-test-pinned — committed `d06ae45`.
+- Items **1, 2** remain: they are repo-specific (`cocoder/personas/deltas/oscar.md` daemon-launch delta
+  and `cocoder/AGENTS.md` name disambiguation), outside run_148's Oscar support write-scope. This ticket
+  stays **Open** for them; a run (or direct founder edit) whose scope includes those paths applies them
+  and closes 0005.
+
 ## Ask
 Apply each item to its named file (next run's Oscar wrap, or a founder edit). Items 3–5 must pass
 the ADR-0012 portability test at verify (they do — no repo nouns). Close this ticket when applied.
