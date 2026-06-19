@@ -12,7 +12,7 @@
   "priorityId": "scaffold-template-reconciliation",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "completed",
   "createdAt": 1781899708609,
-  "endedAt": null
+  "endedAt": 1781900380782
 }
