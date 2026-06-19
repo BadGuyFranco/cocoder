@@ -81,11 +81,6 @@ Build atoms, in dependency order:
    - one hybrid Play (candidate: `integration-verify` or `code-review`) proves a real deterministic step
      runs and its captured result demonstrably gates (blocks) or feeds the LLM layer, by finalizing the
      `deterministicStep` `ref`→command convention that atom 7 left as a minimal default.
-   - **Founder decision applied (2026-06-19):** also add the shared elegance checkpoint to the
-     `documentation` Play (`packages/personas/base/plays/documentation.md`) — it writes `docs/**`/`**/*.md`
-     and so falls under the same authoring bar — and pin it by adding `documentation` to
-     `governanceCheckpointPlayIds` in `packages/core/tests/plays-migration.test.ts`. This run already holds
-     that write-scope and the verify gate, so land it here rather than as a separate run.
 
 **Verified when:** persona launch prompts expose only compact Play capability manifests; a persona can
 request an optional Play through a typed handoff; a mandatory Play is invoked by the runner/daemon without
