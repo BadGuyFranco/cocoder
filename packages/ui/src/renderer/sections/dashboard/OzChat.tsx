@@ -1,10 +1,143 @@
 // Oz Terminal — THE command center. A live conversation with the workspace's headless Oz. Messages
 // can carry inline run cards (pivot to inspection) and a decision callout (resolve a blocked run
 // without leaving the thread). Quick-prompt pills pre-fill common ops. Ported from design-ref.
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Icon, Button, StatusChip } from '../../ui/primitives.tsx'
 import { OzGlobalControls, type ShellTheme } from '../../ui/ShellControls.tsx'
 import { runDisplayName, type ChatMessage, type Run, type Workspace } from '../../model.ts'
+
+const markdownTextStyle = { fontSize: 13.5, color: 'var(--cb-text)', lineHeight: 1.65 } as const
+const inlineCodeStyle = { fontFamily: 'var(--cb-font-mono)', fontSize: '0.92em', background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border)', borderRadius: 3, padding: '1px 4px' } as const
+
+function safeHref(raw: string): string | null {
+  try {
+    const url = new URL(raw)
+    return url.protocol === 'http:' || url.protocol === 'https:' || url.protocol === 'mailto:' ? url.href : null
+  } catch {
+    return null
+  }
+}
+
+function renderInline(text: string, keyPrefix: string): ReactNode[] {
+  const out: ReactNode[] = []
+  let i = 0
+  const pushText = (end: number) => {
+    if (end > i) out.push(text.slice(i, end))
+    i = end
+  }
+  while (i < text.length) {
+    if (text[i] === '`') {
+      const end = text.indexOf('`', i + 1)
+      if (end > i) {
+        out.push(<code key={`${keyPrefix}-code-${i}`} style={inlineCodeStyle}>{text.slice(i + 1, end)}</code>)
+        i = end + 1
+        continue
+      }
+    }
+    if (text.startsWith('**', i) || text.startsWith('__', i)) {
+      const marker = text.slice(i, i + 2)
+      const end = text.indexOf(marker, i + 2)
+      if (end > i) {
+        out.push(<strong key={`${keyPrefix}-strong-${i}`} style={{ color: 'var(--cb-text)', fontWeight: 600 }}>{renderInline(text.slice(i + 2, end), `${keyPrefix}-strong-${i}`)}</strong>)
+        i = end + 2
+        continue
+      }
+    }
+    if (text[i] === '[') {
+      const labelEnd = text.indexOf(']', i + 1)
+      const hrefStart = labelEnd >= 0 && text[labelEnd + 1] === '(' ? labelEnd + 2 : -1
+      const hrefEnd = hrefStart >= 0 ? text.indexOf(')', hrefStart) : -1
+      if (labelEnd > i && hrefEnd > hrefStart) {
+        const label = renderInline(text.slice(i + 1, labelEnd), `${keyPrefix}-link-${i}`)
+        const href = safeHref(text.slice(hrefStart, hrefEnd).trim())
+        out.push(href
+          ? <a key={`${keyPrefix}-link-${i}`} href={href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--cb-accent)', textDecoration: 'underline' }}>{label}</a>
+          : <span key={`${keyPrefix}-link-${i}`}>{label}</span>)
+        i = hrefEnd + 1
+        continue
+      }
+    }
+    if (text[i] === '*' || text[i] === '_') {
+      const marker = text[i]!
+      if (text[i + 1] !== marker) {
+        const end = text.indexOf(marker, i + 1)
+        if (end > i) {
+          out.push(<em key={`${keyPrefix}-em-${i}`}>{renderInline(text.slice(i + 1, end), `${keyPrefix}-em-${i}`)}</em>)
+          i = end + 1
+          continue
+        }
+      }
+    }
+    const next = ['`', '*', '_', '['].map((marker) => text.indexOf(marker, i + 1)).filter((idx) => idx >= 0).sort((a, b) => a - b)[0] ?? text.length
+    pushText(next)
+  }
+  return out
+}
+
+function heading(level: number, children: ReactNode, key: string): ReactNode {
+  const style = { margin: '12px 0 6px', color: 'var(--cb-text)', fontWeight: 600, lineHeight: 1.3, fontSize: level === 1 ? 17 : level === 2 ? 15.5 : 14 } as const
+  if (level === 1) return <h1 key={key} style={style}>{children}</h1>
+  if (level === 2) return <h2 key={key} style={style}>{children}</h2>
+  if (level === 3) return <h3 key={key} style={style}>{children}</h3>
+  if (level === 4) return <h4 key={key} style={style}>{children}</h4>
+  if (level === 5) return <h5 key={key} style={style}>{children}</h5>
+  return <h6 key={key} style={style}>{children}</h6>
+}
+
+function MarkdownBody({ body }: { body: string }) {
+  const lines = body.replace(/\r\n/g, '\n').split('\n')
+  const blocks: ReactNode[] = []
+  let i = 0
+  while (i < lines.length) {
+    const line = lines[i]!
+    if (!line.trim()) {
+      i += 1
+      continue
+    }
+    if (line.trimStart().startsWith('```')) {
+      const code: string[] = []
+      i += 1
+      while (i < lines.length && !lines[i]!.trimStart().startsWith('```')) {
+        code.push(lines[i]!)
+        i += 1
+      }
+      if (i < lines.length) i += 1
+      blocks.push(<pre key={`pre-${i}`} style={{ margin: '10px 0', overflowX: 'auto', background: 'var(--cb-bg)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', padding: '10px 12px' }}><code style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 12, color: 'var(--cb-text)' }}>{code.join('\n')}</code></pre>)
+      continue
+    }
+    const h = line.match(/^(#{1,6})\s+(.+)$/)
+    if (h) {
+      blocks.push(heading(h[1]!.length, renderInline(h[2]!, `h-${i}`), `h-${i}`))
+      i += 1
+      continue
+    }
+    const list = line.match(/^(\s*)([-*+]|\d+[.)])\s+(.+)$/)
+    if (list) {
+      const ordered = /^\d/.test(list[2]!)
+      const items: ReactNode[] = []
+      while (i < lines.length) {
+        const item = lines[i]!.match(/^(\s*)([-*+]|\d+[.)])\s+(.+)$/)
+        if (!item || /^\d/.test(item[2]!) !== ordered) break
+        items.push(<li key={`li-${i}`}>{renderInline(item[3]!, `li-${i}`)}</li>)
+        i += 1
+      }
+      const style = { margin: '8px 0', paddingLeft: 22 } as const
+      blocks.push(ordered ? <ol key={`ol-${i}`} style={style}>{items}</ol> : <ul key={`ul-${i}`} style={style}>{items}</ul>)
+      continue
+    }
+    const paragraph: string[] = []
+    while (i < lines.length && lines[i]!.trim() && !lines[i]!.trimStart().startsWith('```') && !/^(#{1,6})\s+/.test(lines[i]!) && !/^(\s*)([-*+]|\d+[.)])\s+/.test(lines[i]!)) {
+      paragraph.push(lines[i]!)
+      i += 1
+    }
+    blocks.push(<p key={`p-${i}`} style={{ margin: blocks.length === 0 ? 0 : '8px 0 0', whiteSpace: 'pre-wrap' }}>{renderInline(paragraph.join('\n'), `p-${i}`)}</p>)
+  }
+  return <div style={markdownTextStyle}>{blocks}</div>
+}
+
+function PlainBody({ body }: { body: string }) {
+  return <div style={{ ...markdownTextStyle, whiteSpace: 'pre-wrap' }}>{body}</div>
+}
 
 function ChatMessageView({ msg, runs, onSelectRun, onDecision }: { msg: ChatMessage; runs: Run[]; onSelectRun: (id: string) => void; onDecision: (choice: string) => void }) {
   const isOz = msg.role === 'oz', isUser = msg.role === 'user'
@@ -17,7 +150,7 @@ function ChatMessageView({ msg, runs, onSelectRun, onDecision }: { msg: ChatMess
         {isOz && <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 9.5, color: 'var(--cb-text-muted)', padding: '1px 6px', border: '1px solid var(--cb-border)', borderRadius: 2 }}>orchestrator · headless</span>}
         <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-text-muted)', marginLeft: 'auto' }}>{msg.time}</span>
       </div>
-      <div style={{ fontSize: 13.5, color: 'var(--cb-text)', lineHeight: 1.65 }} dangerouslySetInnerHTML={{ __html: msg.body.replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--cb-text);font-weight:600">$1</strong>') }} />
+      {isOz ? <MarkdownBody body={msg.body} /> : <PlainBody body={msg.body} />}
       {msg.attachments?.map((a, i) => {
         if (a.kind !== 'run-card') return null
         const run = runs.find((r) => r.id === a.runId)

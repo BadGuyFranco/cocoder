@@ -24,22 +24,26 @@ const messages: ChatMessage[] = [
   },
 ]
 
+function renderChat(messagesToRender: ChatMessage[], opts: { onSelectRun?: (id: string) => void; onDecision?: (choice: string) => void } = {}) {
+  render(
+    <OzChatPanel
+      messages={messagesToRender}
+      runs={[run]}
+      workspaceName="CoCoder"
+      onSend={vi.fn()}
+      onSelectRun={opts.onSelectRun ?? vi.fn()}
+      onDecision={opts.onDecision ?? vi.fn()}
+      ozTyping={false}
+    />,
+  )
+}
+
 describe('OzChatPanel run cards', () => {
   afterEach(() => cleanup())
 
   it('shows the run status chip and keeps click-to-select behavior', () => {
     const onSelectRun = vi.fn()
-    render(
-      <OzChatPanel
-        messages={messages}
-        runs={[run]}
-        workspaceName="CoCoder"
-        onSend={vi.fn()}
-        onSelectRun={onSelectRun}
-        onDecision={vi.fn()}
-        ozTyping={false}
-      />,
-    )
+    renderChat(messages, { onSelectRun })
 
     expect(screen.getByText('Running')).toBeDefined()
     expect(screen.getByText(run.id)).toBeDefined()
@@ -47,5 +51,77 @@ describe('OzChatPanel run cards', () => {
     fireEvent.click(screen.getByText(run.title))
 
     expect(onSelectRun).toHaveBeenCalledWith(run.id)
+  })
+
+  it('keeps decision callout behavior', () => {
+    const onDecision = vi.fn()
+    renderChat([{ id: 'm-decision', role: 'oz', time: 'now', body: 'Pick a path.', flag: 'decision' }], { onDecision })
+
+    fireEvent.click(screen.getByText('Replay full plan'))
+
+    expect(onDecision).toHaveBeenCalledWith('full')
+  })
+})
+
+describe('OzChatPanel markdown rendering', () => {
+  afterEach(() => cleanup())
+
+  it('renders headings, lists, code, links, bold, and italic for Oz messages', () => {
+    renderChat([{
+      id: 'm-markdown',
+      role: 'oz',
+      time: 'now',
+      body: [
+        '## Current status',
+        '',
+        '- first item',
+        '- second item with `inline code`',
+        '',
+        '1. ordered item',
+        '2. next ordered item',
+        '',
+        '```ts',
+        'const answer = 42',
+        'console.log(answer)',
+        '```',
+        '',
+        'See [docs](https://example.com/docs) with **bold text** and *italic text*.',
+      ].join('\n'),
+    }])
+
+    expect(screen.getByRole('heading', { name: 'Current status', level: 2 })).toBeDefined()
+    expect(screen.getByText('first item').tagName).toBe('LI')
+    expect(screen.getByText(/second item/).tagName).toBe('LI')
+    expect(screen.getByText('inline code').tagName).toBe('CODE')
+    expect(screen.getByText(/const answer = 42/).tagName).toBe('CODE')
+    expect(screen.getByText(/const answer = 42/).parentElement?.tagName).toBe('PRE')
+    expect(screen.getByText(/const answer = 42/).textContent).toContain('console.log(answer)')
+    const link = screen.getByRole('link', { name: 'docs' })
+    expect(link.getAttribute('href')).toBe('https://example.com/docs')
+    expect(link.getAttribute('target')).toBe('_blank')
+    expect(link.getAttribute('rel')).toBe('noopener noreferrer')
+    expect(screen.getByText('bold text').tagName).toBe('STRONG')
+    expect(screen.getByText('italic text').tagName).toBe('EM')
+  })
+
+  it('escapes raw HTML instead of injecting live DOM', () => {
+    renderChat([{
+      id: 'm-xss',
+      role: 'oz',
+      time: 'now',
+      body: '<img src=x onerror="window.__xss = true"> <script>window.__xss = true</script>',
+    }])
+
+    expect(screen.getByText(/<img src=x/)).toBeDefined()
+    expect(document.querySelector('img')).toBeNull()
+    expect(document.querySelector('script')).toBeNull()
+  })
+
+  it('keeps non-Oz messages plain and escaped', () => {
+    renderChat([{ id: 'm-user', role: 'user', time: 'now', body: '## Not a heading\n<script>alert(1)</script>' }])
+
+    expect(screen.queryByRole('heading', { name: 'Not a heading' })).toBeNull()
+    expect(screen.getByText(/## Not a heading/)).toBeDefined()
+    expect(document.querySelector('script')).toBeNull()
   })
 })
