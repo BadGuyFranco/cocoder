@@ -12,6 +12,33 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-19 — **Oz hardening: item 1 markdown + drag-to-ask UI landed; streaming proven NO-GO on codex (run_157)**
+
+**Persona:** Oscar (lead) + Bob (builder, codex) | **Priority:** [oz-hardening](./priorities/oz-hardening.md) | **Run:** run_157
+**Outcomes:**
+- **Owner map refreshed (atom 0, `620325f`):** `docs/oz-hardening-owner-map.md` — re-confirmed `projectOzAwareness()`
+  as the shared items-2&4 owner and reframed remaining work around item 1 render quality + item 3 drag-to-ask.
+- **Item 1 markdown (atom 1, `c0301c4`):** `OzChat.tsx` `ChatMessageView` now renders rich markdown
+  (headings/lists/fenced code/inline code/links/bold/italic) via React elements — **removed
+  `dangerouslySetInnerHTML` (latent XSS fix)**; links whitelisted to http/https/mailto; non-Oz messages stay
+  plain + escaped.
+- **Pre-existing typecheck regression fixed (atom 2, `63c7040`):** `Settings.tsx` TS2698 — run_156's flat
+  `ozAutoCompactRuns` field broke the sectioned `update` generic; narrowed it to a `SettingsSectionKey` mapped
+  type. `packages/ui` typecheck green again on both tsconfig projects.
+- **Streaming design + capability probe (atoms 3–5, `ffb1808`/`186556f`):** `docs/oz-streaming-design.md`.
+  **DECISIVE FINDING: codex-cli 0.137.0 `--json` does NOT stream** — a 1023-char answer arrives as ONE
+  `item.completed` 8.5s after `turn.started`, zero deltas; `reasoning_output_tokens` is a count, not a text
+  stream. Item 1's streaming + show-thinking clauses are NO-GO on this runtime. Captured fixture:
+  `packages/adapters/tests/fixtures/codex-jsonl-stream.jsonl`.
+- **Item 3 drag-to-ask UI half (atom 6, `a14b93c`):** priority/ticket/run rows drag an
+  `application/x-oz-item` pointer into the Oz composer → removable chip → send prepends
+  `[context: <type> <id> — <label>]` through the existing `onSend` seam (no daemon/IPC change). Distinct MIME
+  preserves reorder/click. 155 UI tests + typecheck green.
+
+**Next:** Founder decision on streaming (defer message-level-only vs. pursue a streaming-capable runtime); then
+relaunch `oz-hardening` for drag-to-ask daemon-side pointer resolution + a runnable proof harness for items 2 & 4,
+plus running-app demos of items 1 & 3.
+
 ## 2026-06-19 — **Oz hardening: items 2 & 4 landed on one shared awareness projection (run_156)**
 
 **Persona:** Oscar (lead) + Bob (builder, codex) | **Priority:** [oz-hardening](./priorities/oz-hardening.md) | **Run:** run_156
