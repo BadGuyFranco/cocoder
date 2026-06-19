@@ -189,6 +189,52 @@ CoCoder/                          # the engine install AND the dogfood workspace
 | **Quinn** | Experience layer — exercises the running product like a user (browser/UI/scripts) |
 | **Phil** | Custom/extension pattern — domain "primitives" on any project |
 
+## Play system
+
+A **Play** is a typed orchestration contract, not just markdown pasted into a prompt. The taxonomy owner
+is [ADR-0010](./cocoder/decisions/0010-taxonomy-and-authoring.md): execution model is either
+prompt-only or hybrid, and trigger class is lifecycle-triggered, persona-requested, or
+tool/API-triggered. The schema owner is
+[`packages/core/src/plays/types.ts`](./packages/core/src/plays/types.ts), which defines the contract
+metadata surface: `executionModel`, `triggerClass`, `purpose`, `allowedCallers`, `inputSchema`,
+`outputValidator`, `deterministicStep`, `commitMode`, `requiredCheckpoints`, and `writeScope`.
+
+Prompt-only Plays run the Play body through the assigned CLI/model. Hybrid Plays add an optional
+deterministic precheck/gate before that LLM layer. The execution owner is
+[`packages/core/src/plays/dispatch.ts`](./packages/core/src/plays/dispatch.ts): a `deterministicStep.ref`
+is a repo-root-relative script path, `.mjs` refs run through Node, other refs run as executable files,
+refs may not escape the repo root, and captured output either gates the Play (non-zero exit means no LLM
+invocation) or feeds the Play prompt under the deterministic precheck section.
+
+Launch prompts receive a compact per-persona capability manifest, not every Play body. The manifest
+owner is [`packages/core/src/plays/manifest.ts`](./packages/core/src/plays/manifest.ts): it renders the
+visible Play id, purpose, caller, trigger, input, write behavior, and mandatory/optional status for that
+persona. Full Play bodies stay lazy-loaded and enter the prompt only at dispatch.
+
+Optional Play requests use a typed handoff lane. The validation owner is
+[`packages/core/src/plays/request.ts`](./packages/core/src/plays/request.ts): it parses the handoff and
+validates caller, Play id, mandatory-vs-optional availability, required input schema, and returned write
+scope. Per-persona CLI/model assignment is resolved by runner/daemon dispatch plumbing, such as
+[`packages/daemon/src/launcher.ts`](./packages/daemon/src/launcher.ts). Mandatory lifecycle/policy
+triggers are not persona discretion; the registry owner is
+[`packages/core/src/plays/triggers.ts`](./packages/core/src/plays/triggers.ts), with daemon launch wiring
+and runner wrap-up dispatch in [`packages/core/src/runner/runner.ts`](./packages/core/src/runner/runner.ts).
+
+Output validation is selected by the Play's declared `outputValidator.ref`. The production selector is
+the exported `validatePlayOutput` in [`packages/core/src/runner/runner.ts`](./packages/core/src/runner/runner.ts);
+for example, the wrap-up Play declares `validators/founder-closeout`, and the runner derives validation
+from that ref instead of hardcoding a wrap-up-only path. The founder closeout label contract itself is
+not duplicated here; its owner/consumer map lives in
+[`docs/orchestration-contract-ownership.md`](./docs/orchestration-contract-ownership.md).
+
+Plays are one-level procedures: no recursive Play delegation, no `PlayAssignment[]` multi-binding, and no
+full Play-body injection into every prompt. ADR-0010 preserves that boundary and points back to the
+[dispatch-boundary archive](./cocoder/priorities/archive/play-dispatch-boundary.md) as historical
+context. The real-path proof is [`scripts/proof-hybrid-play.mjs`](./scripts/proof-hybrid-play.mjs): it
+exercises the shipped dispatch path with a real deterministic script, a real LLM invocation for a hybrid
+Play, the deterministic gate case where no LLM is invoked, and the runner-owned wrap-up trigger validated
+through the declared `outputValidator.ref`.
+
 ## Oz vs Debugger
 
 CoBuilder's **ORCH DEBUGGER** binds to one run, collects evidence, launches Codex for orchestration repair. **Oz** generalizes that into:
@@ -261,6 +307,7 @@ Normal adopters get workspace customization by default. CoCoder product improvem
 ## References
 
 - Design language: [`packages/ui/design-ref/`](./packages/ui/design-ref/) — the authoritative Oz V1 design (the preserved claude.ai/design prototype). `docs/oz-design-brief.md` is only the historical *input brief*, not the design.
+- Play system: taxonomy owner [`ADR-0010`](./cocoder/decisions/0010-taxonomy-and-authoring.md); schema owner [`packages/core/src/plays/types.ts`](./packages/core/src/plays/types.ts); hybrid execution owner [`packages/core/src/plays/dispatch.ts`](./packages/core/src/plays/dispatch.ts); real-path proof [`scripts/proof-hybrid-play.mjs`](./scripts/proof-hybrid-play.mjs).
 - ADR index (authoritative for v2): [`cocoder/decisions/README.md`](./cocoder/decisions/README.md)
 - Attribution / prior art: `NOTICE`
 - Dogfood meta-project: `cocoder/AGENTS.md`
