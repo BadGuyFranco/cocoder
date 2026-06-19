@@ -62,10 +62,14 @@ migrated to base personas/standards (`d06ae45`); governance reconciled — dupli
 tickets 0012/0015/0017 closed (`297f703`). The run_145/run_147 gate-bypass observation was reconsidered
 and closed **not actioned** (ticket 0018; F23 removed) — see "Related observation" below.
 
-### Remaining (outside this priority's closeout)
-1. **Ticket 0005 items 1-2** — repo-specific only (`cocoder/personas/deltas/oscar.md` daemon-launch delta,
-   `cocoder/AGENTS.md` name disambiguation); outside run_148 Oscar support write-scope. Applying them closes
-   0005.
+### Remaining → then archive
+**Ticket 0005 items 1-2** — the founder will run this in a fresh session scoped to reach the files.
+- Item 2 (`cocoder/AGENTS.md` name disambiguation) is benign housekeeping.
+- Item 1 (`cocoder/personas/deltas/oscar.md` — Oscar launching runs via the daemon) needs a
+  host/process-safety judgment first and may be a deliberate **won't-do**, not a routine apply.
+
+Once 0005 items 1-2 are resolved (applied, or closed won't-do), this priority is **archive-ready** —
+nothing else in the single-source contract repair remains.
 
 ## Required Ticket Review
 Review related tickets before proposing fixes and fold each into the owner inventory:
