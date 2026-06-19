@@ -306,7 +306,7 @@ Normal adopters get workspace customization by default. CoCoder product improvem
 
 ## References
 
-- Design language: [`packages/ui/design-ref/`](./packages/ui/design-ref/) — the authoritative Oz V1 design (the preserved claude.ai/design prototype). `docs/oz-design-brief.md` is only the historical *input brief*, not the design.
+- Design language: [`packages/ui/design-ref/`](./packages/ui/design-ref/) — historical Oz V1 visual reference (the preserved claude.ai/design prototype; not a regeneration source). The maintained UI lives under [`packages/ui/src/`](./packages/ui/src/). `docs/oz-design-brief.md` is only the historical *input brief*, not the design.
 - Play system: taxonomy owner [`ADR-0010`](./cocoder/decisions/0010-taxonomy-and-authoring.md); schema owner [`packages/core/src/plays/types.ts`](./packages/core/src/plays/types.ts); hybrid execution owner [`packages/core/src/plays/dispatch.ts`](./packages/core/src/plays/dispatch.ts); real-path proof [`scripts/proof-hybrid-play.mjs`](./scripts/proof-hybrid-play.mjs).
 - ADR index (authoritative for v2): [`cocoder/decisions/README.md`](./cocoder/decisions/README.md)
 - Attribution / prior art: `NOTICE`

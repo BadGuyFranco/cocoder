@@ -187,6 +187,12 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   `zArchive/priorities/v2/plays-first-class.md`.
 
 **Active build priorities (launchable; the `priorities/` directory is the live index):**
+- `ui-package-layout-stabilization` — **ARCHIVE-CANDIDATE (run_154, 2026-06-19).** `packages/ui` moved to
+  standard `src/` layout (`src/renderer`, `src/main`, `src/preload`); topology guard clean (0
+  `packages/ui` warnings); `design-ref/` locked as historical non-regeneration reference (F21). Proof:
+  `node scripts/check-topology.mjs && pnpm --dir packages/ui typecheck && pnpm --dir packages/ui test &&
+  pnpm --dir packages/ui build` (146/146, clean build). **Only gate:** founder archive confirmation.
+  **#1 in `order.json`.**
 - `workspace-segmentation` — **ARCHIVE-CANDIDATE (run_139, 2026-06-18).** Oz watches across workspaces
   while work stays workspace-local — all **9** objectives implemented. Owner map + [ADR-0027](./decisions/0027-workspace-storage-contract.md)
   storage contract landed run_135–137; run_136 UI/labels slice; run_137 portable-history WRITE side;
