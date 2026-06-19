@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_155",
+    "displayNumber": 15
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "priority"
+  },
+  "priorityId": "scaffold-template-reconciliation",
+  "playbookId": null,
+  "ticketId": null,
+  "status": "running",
+  "createdAt": 1781899708609,
+  "endedAt": null
+}
