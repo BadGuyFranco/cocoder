@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-18 — **founder-brief-format-durability: owner inventory verified; repair atoms blocked by gate bypass (run_147)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 5 atoms delegated, 3 bypassed scope, 1 verify-gated inventory commit) | **Priority:** [founder-brief-format-durability](./priorities/founder-brief-format-durability.md) | **Run:** run_147
+**Outcomes:**
+- **Gated inventory (`036e618`):** `docs/orchestration-contract-ownership.md` maps every orchestration contract in scope, ticket dispositions, run_145 direct-commit assessment, and prioritized work queue.
+- **Ungoverned builder commit (`aa7addc`):** rule promotion, `orchestration-contracts.test.ts` enforcer, design-ref historical guard, and ticket 0012/0015/0017 closures landed outside verify — slated for founder revert.
+- **Disposition: `blocked`** — inventory objective met through gate; structural repair must be re-landed after `git revert --no-edit aa7addc`.
+**Next:** Revert `aa7addc`, then launch **`founder-brief-format-durability`** to re-land rule + enforcer (red→green) + design-ref guard through verify.
+
 ## 2026-06-18 — **founder-brief-format-durability: single-source wrap-up contract + diagnosis of record — archive-candidate (run_145)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 2 atoms delegated, 1 verify rejection then clean re-land) | **Priority:** [founder-brief-format-durability](./priorities/founder-brief-format-durability.md) | **Run:** run_145

@@ -52,10 +52,16 @@ the pattern to copy: one owner (the wrap-up Play's fenced contract), the runtime
 and an end-to-end test fails when an old format reappears. Use it as the template for every other
 occurrence; do not re-diagnose or re-fix it.
 
-## Repair record
+## Repair progress — disposition: `blocked` (run_147)
 
-Owner inventory and run_147 repair dispositions live in
-[`founder-brief-format-durability.owner-inventory.md`](./founder-brief-format-durability.owner-inventory.md).
+Verified through the gate: owner inventory in
+[`docs/orchestration-contract-ownership.md`](../docs/orchestration-contract-ownership.md) (`036e618`).
+
+Blocked: builder bypassed the verify gate and self-committed repair atoms to `aa7addc` (governing rule,
+structural enforcer, design-ref guard, ticket closures). Founder must revert `aa7addc`, then relaunch this
+priority to re-land those atoms through verify. Do not treat
+[`founder-brief-format-durability.owner-inventory.md`](./founder-brief-format-durability.owner-inventory.md)
+as verified — it came from the ungoverned commit and will disappear on revert.
 
 ## Required Ticket Review
 Review related tickets before proposing fixes and fold each into the owner inventory:

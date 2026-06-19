@@ -1,5 +1,13 @@
 # Orchestration Contract Ownership
 
+## Run_147 status (2026-06-18)
+
+This inventory landed through the verify gate (`036e618`). The structural repair atoms — governing rule
+in shared standards, contract enforcer with red→green proof, design-ref historical guard, and ticket
+reconciliations — were committed outside the gate (`aa7addc`) and remain **blocked** pending founder
+revert of that commit and re-land through verify. Until then, treat the work queue below as the required
+repair plan, not shipped behavior.
+
 Diagnostic status: this is the owner inventory for the priority
 `founder-brief-format-durability`, whose objective is the broader "Single-source orchestration
 contracts" repair (`cocoder/priorities/founder-brief-format-durability.md:6-16`). This document does
