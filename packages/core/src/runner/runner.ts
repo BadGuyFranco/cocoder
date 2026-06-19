@@ -302,13 +302,13 @@ function founderCloseoutFormatIssues(markdown: string, cwd: string, contract: Fo
   return issues
 }
 
-interface PlayOutputValidationInput {
+export interface PlayOutputValidationInput {
   readonly play: Play
   readonly output: string | null
   readonly cwd: string
 }
 
-interface PlayOutputValidationResult {
+export interface PlayOutputValidationResult {
   readonly issues: readonly string[]
   readonly founderCloseoutContract?: FounderCloseoutContract
 }
@@ -325,7 +325,7 @@ const PLAY_OUTPUT_VALIDATORS: Readonly<Partial<Record<string, PlayOutputValidato
   },
 }
 
-function validatePlayOutput(input: PlayOutputValidationInput): PlayOutputValidationResult | null {
+export function validatePlayOutput(input: PlayOutputValidationInput): PlayOutputValidationResult | null {
   const ref = input.play.outputValidator?.ref
   if (!ref) return null
   const validator = PLAY_OUTPUT_VALIDATORS[ref]

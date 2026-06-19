@@ -9,6 +9,9 @@ export {
   type RunInput,
   type RunResult,
   type MakeJudge,
+  validatePlayOutput,
+  type PlayOutputValidationInput,
+  type PlayOutputValidationResult,
 } from './runner.js'
 export { groupLabel, type RunLabelTarget, type RunLabelTargetType } from './labels.js'
 export { StopRequestedError } from './stop.js'
