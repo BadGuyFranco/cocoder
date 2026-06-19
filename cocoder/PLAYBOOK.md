@@ -222,10 +222,10 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   stands; no engine reversal. Decision record at `priorities/archive/play-dispatch-boundary.md`.
 
 **Active build priorities (launchable; `order.json` order — the `priorities/` directory is the live index):**
-1. `oz-hardening` — **NEXT (run_134 design calls resolved; #1 run_155 re-rank).** First-class Oz chat
-   (markdown, streaming, thinking-if-available), self-compacting awareness from durable run state, drag-to-ask,
-   and automatic post-wrap/ticket status pickup. **Start with the ADR-0010 owner map** (run-state projection
-   source of truth + every Oz message/status surface + pinning tests). Items 2 & 4 share one projection engine.
+1. `oz-hardening` — **CONTINUE (run_156).** Items 2 & 4 landed: shared `projectOzAwareness()` projection,
+   `ozAutoCompactRuns` setting (default 3, range 2–10), auto-compact on `run-settled`, and `ticket-created`
+   event pickup without a manual nudge. **Next:** item 1 (OzChat markdown + streaming + thinking-if-available)
+   then item 3 (drag-to-ask pointer). Owner map at `docs/oz-hardening-owner-map.md`.
 2. `tickets-review` — **CONTINUE (run_143).** Build code-complete; ticket launch plumbing satisfied
    (`LaunchRunTarget {kind:'ticket'}`, `RunInput.ticketId`, `ticket-fix` sentinel in `launcher.ts`).
    **Archive gate:** founder live proof — Tickets tab **Launch** on ticket **0003**; confirm fix run completes

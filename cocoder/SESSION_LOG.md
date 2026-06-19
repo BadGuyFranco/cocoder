@@ -36,10 +36,8 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
   test-mock typecheck debt and repo-wide `packages/ui` TS5097 `.ts`-import-extension typecheck errors. None
   touched this run — candidates for a follow-up ticket.
 
-**Next:** Relaunch `oz-hardening` for **item 1** (OzChat.tsx markdown + streaming + best-effort thinking
-rendering, coordinating the `workspace-segmentation` panel boundary) and **item 3** (drag-to-ask pointer:
-Dashboard drag/drop → `ChatMessage.attachments` pointer → projection pointer resolution). Both are UI-heavy;
-the owner map pre-maps exactly what each touches.
+**Next:** Relaunch `oz-hardening` for **item 1** — OzChat.tsx markdown + streaming + best-effort thinking
+rendering inside `ChatMessageView`/message-list (panel boundary per owner map §5; do not touch Dashboard layout).
 
 ## 2026-06-19 — **scaffold-template-reconciliation: divergence already reconciled — proven + ARCHIVED; priority set re-ranked (run_155)**
 

@@ -1,6 +1,8 @@
 # Oz Hardening Owner Map
 
-This is the pre-implementation owner map for `cocoder/priorities/oz-hardening.md`. It names the current owners found in code and the single state/projection seam item 2 and item 4 must share.
+Owner map for `cocoder/priorities/oz-hardening.md`. Names the source-of-truth owners and the single
+state/projection seam items 2 & 4 share. **Updated run_156:** items 2 (auto-compact) and 4 (auto status
+pickup) are landed on `packages/daemon/src/oz-awareness.ts` `projectOzAwareness()`; items 1 and 3 remain.
 
 ## 1. Run-State Projection Source Of Truth
 
@@ -11,7 +13,9 @@ Name this once as the **Oz awareness state source**:
 - Durable ticket state is file-backed, not DB-backed. The workspace ticket root is `cocoder/tickets/`; open tickets are `cocoder/tickets/open/*.md`. The owning loader is `packages/core/src/tickets/loader.ts` (`Ticket`, `loadTicket`, `readTickets`, `nextTicketId`). The daemon ticket read surface wraps it in `packages/daemon/src/priority-order.ts` (`readTickets`) to apply `cocoder/tickets/order.json` to open tickets only.
 - Existing portable run history is a derived artifact, not the source of truth. `packages/core/src/store/portable/projection.ts` (`writePortableRunHistory`, `listPortableRunSessions`) derives from `RunStore` into tracked `cocoder/runs/**`.
 
-Implementation note: there is not yet one named "Oz awareness projection" function. Item 2 and item 4 must create or extract one daemon-side projection over `OzContext.store` plus `readTickets(ticketsDir(ws.path))`, then have both compact/refresh reads and change-detection refetch use that same owner. Do not make a separate chat-memory summary contract.
+**Landed (run_156):** `packages/daemon/src/oz-awareness.ts` `projectOzAwareness()` is the named projection
+over priorities + `RunStore` runs + open tickets. Consumers: `oz-host.ts` `factsDigest` (compact/refresh
+read path) and `oz-chat.ts` `status` (status read path). Do not add a parallel chat-memory summary contract.
 
 ## 2. Oz Message/Status Render Surfaces
 
@@ -19,14 +23,14 @@ Implementation note: there is not yet one named "Oz awareness projection" functi
 
 - File: `packages/daemon/src/oz-chat.ts`.
 - Owners: `handleOzMessage`, `executeOzCommand`, reply helpers (`launchReply`, `showReply`, `teardownReply`, `stopReply`, `supportCommitReply`, `nudgeReply`, `repairReply`, `authoringReply`, `refreshReply`, `runSummary`, `runsSummary`).
-- Contract consumed: request body `{ text, workspaceId? }`; command contract `OzCommand`; output contract `OzChatResult` / `OzChatReply` / `OzChatAction`. `status` reads `ctx.store.getRun()` or `ctx.store.listRuns()` directly.
+- Contract consumed: request body `{ text, workspaceId? }`; command contract `OzCommand`; output contract `OzChatResult` / `OzChatReply` / `OzChatAction`. **Landed (run_156):** `status` reads via `projectOzAwareness()`.
 
 ### Headless Oz Agent Loop
 
 - File: `packages/daemon/src/oz-host.ts`.
 - Owners: `tryHandleOzAgentTurn`, `runToolLoop`, `runTurn`, `buildPrompt`, `factsDigest`, `formatRun`, `parseToolLine`, `validateToolCall`.
 - Contract consumed: effective Oz persona assignment from `resolveOzTarget`; prompt facts from `readPriorities(prioritiesDir(...))` and `ctx.store.listRuns({ workspaceId })`; tool handoff line `OZ_TOOL { ... }`; in-process transcript map `sessions`.
-- Gap: the facts digest only includes priorities and runs. It does not use tickets, sessions, run detail rows, or a shared Oz awareness projection.
+- **Landed (run_156):** `factsDigest` now builds from `projectOzAwareness()` (priorities, runs, open tickets).
 
 ### HTTP Status/Read Projection
 
@@ -55,9 +59,9 @@ Single durable settings owner for "Oz Auto Compact at N Runs" should be the daem
 - Main-process bridge: `packages/ui/src/main/ipc-contract.ts` (`Settings`, `SettingsPatch`, `OzApi.settingsGet`, `OzApi.settingsSet`), `packages/ui/src/main/settings-sync.ts` (`getSettingsViaDaemon`, `setSettingsViaDaemon`, `daemonPatch`), `packages/ui/src/main/store.ts` (`getSettings`, `setSettings`) as local fallback cache.
 - Preload/UI surface: `packages/ui/src/preload/preload.ts` (`settingsGet`, `settingsSet`); `packages/ui/src/renderer/App.tsx` (`settings`, `saveSettings`, `setTheme`, `setPanelRatio`); `packages/ui/src/renderer/sections/Settings.tsx` (`SettingsScreen`, `SettingsRow`, `Toggle`).
 
-Current split: daemon settings persist only `pollIntervalMs` and `defaultWorkspaceId`; renderer settings include `preferences.theme`, `preferences.sound`, `preferences.sendOnEnter`, and `preferences.panelRatio` in `packages/ui/src/renderer/model.ts` (`Settings`, `DEFAULT_SETTINGS`). `settings-sync.ts` intentionally keeps `preferences` local. The new `ozAutoCompactRuns` field must be daemon-owned and round-tripped through `daemonPatch`, not introduced as a renderer-only preference.
+Current split: renderer settings include `preferences.theme`, `preferences.sound`, `preferences.sendOnEnter`, and `preferences.panelRatio` in `packages/ui/src/renderer/model.ts` (`Settings`, `DEFAULT_SETTINGS`). `settings-sync.ts` intentionally keeps `preferences` local.
 
-Recommended field: `ozAutoCompactRuns: number`, default `3`, range `2..10`, validated in `saneSettings`/`sanePatch`, exposed through the existing `/settings` and `OzApi.settings*` path.
+**Landed (run_156):** `ozAutoCompactRuns: number` (default `3`, range `2..10`, clamped in `saneSettings`/`sanePatch`) is daemon-owned in `settings.ts`, round-trips through `/settings` and `daemonPatch`. Compaction trigger: `recordOrchestratedRun` in `oz-host.ts`, wired from `attachRunLifecycle` `run-settled` in `launcher.ts`.
 
 ## 4. Tests And Fixtures Pinning These Surfaces
 
@@ -88,21 +92,21 @@ Do not rework `Dashboard`'s grid, `ResizeHandle`, workspace tabs, or global cont
    - Message model/adapter owners: `packages/ui/src/renderer/model.ts` (`ChatMessage`), `packages/ui/src/renderer/live.ts` (`sendOzMessage`), `packages/ui/src/main/ipc-contract.ts` (`ChatMessage`, `OzChatReply`), `packages/ui/src/main/daemon-client.ts` (`ozChat`).
    - Daemon owner if streaming becomes protocol-level: `packages/daemon/src/oz-chat.ts` (`OzChatReply`) and `packages/daemon/src/oz-host.ts` (`runTurn`) currently return whole replies, not streams.
 
-2. Compact-on-N-runs:
-   - Durable settings owner: `packages/daemon/src/settings.ts` (`Settings`, `DEFAULT_SETTINGS`, `saneSettings`, `sanePatch`, `readSettings`, `mergeWriteSettings`).
-   - Awareness read owner: the new shared daemon projection over `OzContext.store` plus `readTickets`, replacing duplicated direct reads in `oz-host.ts` facts and `oz-chat.ts` status.
-   - Trigger inputs: run lifecycle emits in `packages/daemon/src/launcher.ts` (`emitOzEvent`, `attachRunLifecycle`, `run-created`, `run-settled`) and durable run rows in `RunStore`.
+2. Compact-on-N-runs — **LANDED (run_156):**
+   - Settings: `packages/daemon/src/settings.ts` (`ozAutoCompactRuns`).
+   - Awareness read: `packages/daemon/src/oz-awareness.ts` `projectOzAwareness()`.
+   - Trigger: `recordOrchestratedRun` ← `attachRunLifecycle` `run-settled` in `launcher.ts`.
 
 3. Drag-to-ask pointer:
    - UI drag/drop owners: `packages/ui/src/renderer/sections/dashboard/Dashboard.tsx` (`PrioritiesPanel`, `TicketsTab`, `RunsTab`, `OzChatPanel` integration) and `packages/ui/src/renderer/sections/dashboard/OzChat.tsx` input/attachment area.
    - Pointer contract owners: `packages/ui/src/renderer/model.ts` (`ChatMessage.attachments` currently supports only `{ kind, runId }`), `packages/ui/src/renderer/live.ts` (`sendOzMessage`) and `packages/ui/src/main/ipc-contract.ts` if pointer metadata crosses IPC.
    - Daemon/Oz read owner: the shared awareness projection must resolve priority/run/ticket pointers by path/id; do not inject full file bodies into chat state.
 
-4. Auto status pickup:
-   - Change detection owners: `packages/daemon/src/launcher.ts` (`emitOzEvent`, `attachRunLifecycle`) and `packages/daemon/src/context.ts` (`OzEventBus`).
-   - HTTP stream owner: `packages/daemon/src/routes.ts` (`streamOzEvents`, `dispatchReads` for `GET /oz/events`).
-   - UI refetch owner: `packages/ui/src/main/events-stream.ts` (`startOzEventStream`) and `packages/ui/src/renderer/App.tsx` (`onOzEvent` effect -> `refreshWorkspace` / `refreshRunDetail`).
-   - Data owner for new tickets: `packages/core/src/tickets/loader.ts` plus `packages/daemon/src/routes.ts` (`listTickets`). Current daemon create-ticket path in `routes.ts` (`createTicket`) commits a ticket but does not emit an Oz event; agentic commits under `cocoder/tickets/open/` have no current file-watch/diff-driven event path.
+4. Auto status pickup — **LANDED (run_156):**
+   - Change detection: `emitOzEvent` consolidated in `context.ts`; `createTicket` in `routes.ts` emits `ticket-created`; run lifecycle emits via `launcher.ts` `attachRunLifecycle`.
+   - HTTP stream: `routes.ts` `streamOzEvents` (`GET /oz/events`).
+   - UI refetch: `events-stream.ts` + `App.tsx` `onOzEvent` → `refreshWorkspace` / `refreshRunDetail` (unchanged path; now receives ticket-created).
+   - Ticket data: `projectOzAwareness()` includes open tickets from `readTickets`; closes run_131 ticket-0014 symptom.
 
 Tickets:
 
