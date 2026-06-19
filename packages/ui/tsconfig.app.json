@@ -10,5 +10,5 @@
     "allowImportingTsExtensions": true,
     "types": ["node", "electron"]
   },
-  "include": ["app", "electron", "tests"]
+  "include": ["src/renderer", "src/main", "src/preload", "tests"]
 }

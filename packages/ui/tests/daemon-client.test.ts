@@ -43,7 +43,7 @@ afterAll(() => server.close())
 
 describe('daemon client security headers', () => {
   it('sends Bearer + loopback Host and no Origin on a GET', async () => {
-    const { daemonGet } = await import('../electron/daemon-client.ts')
+    const { daemonGet } = await import('../src/main/daemon-client.ts')
     const r = await daemonGet('/workspaces')
     expect(r.ok).toBe(true)
     const get = seen.find((s) => s.url === '/workspaces')!
@@ -53,7 +53,7 @@ describe('daemon client security headers', () => {
   })
 
   it('echoes x-oz-csrf-token on a mutation and surfaces 202 as ok', async () => {
-    const { daemonPost } = await import('../electron/daemon-client.ts')
+    const { daemonPost } = await import('../src/main/daemon-client.ts')
     const r = await daemonPost('/runs', { workspaceId: 'cocoder', priorityId: 'adhoc-session' })
     expect(r.ok).toBe(true)
     expect(r.status).toBe(202)
@@ -65,7 +65,7 @@ describe('daemon client security headers', () => {
 
   it('re-bootstraps the session and retries once on a 403 (stale CSRF after a daemon restart)', async () => {
     const sessionsBefore = seen.filter((s) => s.url === '/auth/session').length
-    const { daemonPost } = await import('../electron/daemon-client.ts')
+    const { daemonPost } = await import('../src/main/daemon-client.ts')
     const r = await daemonPost('/runs-flaky', { workspaceId: 'cocoder', priorityId: 'adhoc-session' })
     expect(r.ok).toBe(true) // the stale-CSRF 403 self-healed instead of surfacing as an error
     expect(r.status).toBe(202)

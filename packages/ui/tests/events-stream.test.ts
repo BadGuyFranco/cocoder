@@ -12,7 +12,7 @@ describe('Oz event stream parser', () => {
   })
 
   it('reassembles partial chunks, ignores comments/retry, supports multi-line data, and skips bad JSON', async () => {
-    const { SseParser } = await import('../electron/events-stream.ts')
+    const { SseParser } = await import('../src/main/events-stream.ts')
     const frames: unknown[] = []
     const parser = new SseParser((frame) => frames.push(frame))
 
@@ -92,7 +92,7 @@ describe('Oz event stream connector', () => {
     const addr = server.address()
     process.env.OZ_DAEMON = `http://127.0.0.1:${typeof addr === 'object' && addr ? addr.port : 0}`
 
-    const { startOzEventStream } = await import('../electron/events-stream.ts')
+    const { startOzEventStream } = await import('../src/main/events-stream.ts')
     const stream = startOzEventStream({
       backoffMs: 10,
       getWindows: () => [{ webContents: { send: (_channel, event) => sent.push(event) } }],
@@ -108,7 +108,7 @@ describe('Oz event stream connector', () => {
   })
 
   it('does not connect in fixtures mode', async () => {
-    const { startOzEventStream } = await import('../electron/events-stream.ts')
+    const { startOzEventStream } = await import('../src/main/events-stream.ts')
     let fetches = 0
 
     const stream = startOzEventStream({

@@ -23,10 +23,10 @@ import {
   summarize,
   fmtTime,
   ADHOC_PRIORITY_ID,
-} from '../app/adapter.ts'
-import type { CliCheckView, CliModelsView, CliRunReadinessView, CliView } from '../electron/ipc-contract.ts'
-import type { Persona } from '../app/model.ts'
-import { seed } from '../app/model.ts'
+} from '../src/renderer/adapter.ts'
+import type { CliCheckView, CliModelsView, CliRunReadinessView, CliView } from '../src/main/ipc-contract.ts'
+import type { Persona } from '../src/renderer/model.ts'
+import { seed } from '../src/renderer/model.ts'
 import workspacesFx from '../fixtures/workspaces.json'
 import prioritiesFx from '../fixtures/priorities.json'
 import ticketsFx from '../fixtures/tickets.json'

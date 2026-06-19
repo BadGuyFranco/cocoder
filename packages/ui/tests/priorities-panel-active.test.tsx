@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { PrioritiesPanel } from '../app/sections/dashboard/Priorities.tsx'
-import type { Priority, Run } from '../app/model.ts'
+import { PrioritiesPanel } from '../src/renderer/sections/dashboard/Priorities.tsx'
+import type { Priority, Run } from '../src/renderer/model.ts'
 
 const LAUNCH_BLOCKED_HINT = 'A run is active in this workspace — only one run executes at a time (single-writer lock). It frees up when the run finishes.'
 

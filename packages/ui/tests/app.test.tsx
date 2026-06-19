@@ -3,7 +3,7 @@
 // gold handoff, Oz chat decision callout + round-trip, and the four screens.
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react'
-import { App } from '../app/App.tsx'
+import { App } from '../src/renderer/App.tsx'
 
 const HEADLESS_CLI_WARNING = 'Headless Play on an interactive-only CLI — would hang'
 

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { OzChatPanel } from '../app/sections/dashboard/OzChat.tsx'
-import type { ChatMessage, Run } from '../app/model.ts'
+import { OzChatPanel } from '../src/renderer/sections/dashboard/OzChat.tsx'
+import type { ChatMessage, Run } from '../src/renderer/model.ts'
 
 const run: Run = {
   id: 'run-chat',

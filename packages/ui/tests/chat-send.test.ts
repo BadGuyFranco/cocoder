@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createServer, type RequestListener, type Server } from 'node:http'
-import { ozReply } from '../electron/chat.ts'
+import { ozReply } from '../src/main/chat.ts'
 
 let server: Server | undefined
 
@@ -30,7 +30,7 @@ async function loadSender(env: { fixtures?: boolean; base?: string }) {
   else delete process.env.OZ_FIXTURES
   if (env.base) process.env.OZ_DAEMON = env.base
   else delete process.env.OZ_DAEMON
-  return import('../electron/chat-send.ts')
+  return import('../src/main/chat-send.ts')
 }
 
 afterEach(async () => {

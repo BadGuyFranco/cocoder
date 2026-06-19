@@ -3,7 +3,7 @@
 // modal dialog as a direct descendant of document.body, not inside .oz-app.
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
-import { App } from '../app/App.tsx'
+import { App } from '../src/renderer/App.tsx'
 
 describe('Modal portals above the glass panels', () => {
   beforeEach(() => cleanup())

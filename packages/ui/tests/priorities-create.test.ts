@@ -5,11 +5,11 @@ const mocks = vi.hoisted(() => ({
   daemonPost: vi.fn(),
 }))
 
-vi.mock('../electron/daemon-client.ts', () => ({
+vi.mock('../src/main/daemon-client.ts', () => ({
   daemonPost: mocks.daemonPost,
 }))
 
-import { createPriorityViaDaemon } from '../electron/priorities-create.ts'
+import { createPriorityViaDaemon } from '../src/main/priorities-create.ts'
 
 describe('main-process priorities create seam', () => {
   beforeEach(() => {

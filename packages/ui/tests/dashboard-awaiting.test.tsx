@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, fireEvent, cleanup, within } from '@testing-library/react'
 import { useState } from 'react'
-import { Dashboard } from '../app/sections/dashboard/Dashboard.tsx'
-import type { ChatMessage, Priority, Run, Ticket, Workspace } from '../app/model.ts'
+import { Dashboard } from '../src/renderer/sections/dashboard/Dashboard.tsx'
+import type { ChatMessage, Priority, Run, Ticket, Workspace } from '../src/renderer/model.ts'
 
 const workspace: Workspace = {
   id: 'ws',

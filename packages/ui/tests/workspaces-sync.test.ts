@@ -7,13 +7,13 @@ const mocks = vi.hoisted(() => ({
   daemonDelete: vi.fn(),
 }))
 
-vi.mock('../electron/daemon-client.ts', () => ({
+vi.mock('../src/main/daemon-client.ts', () => ({
   daemonPut: mocks.daemonPut,
   daemonPost: mocks.daemonPost,
   daemonDelete: mocks.daemonDelete,
 }))
 
-import { createWorkspaceViaDaemon, deleteWorkspaceViaDaemon, updateWorkspaceViaDaemon } from '../electron/workspaces-sync.ts'
+import { createWorkspaceViaDaemon, deleteWorkspaceViaDaemon, updateWorkspaceViaDaemon } from '../src/main/workspaces-sync.ts'
 
 const folders = [
   { name: 'CoCoder', path: '${COCODER_HOME}', role: 'primary' as const },

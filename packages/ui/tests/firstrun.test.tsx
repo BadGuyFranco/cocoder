@@ -2,7 +2,7 @@
 // dashboard grid. Seed's Vault workspace is empty, so switching to its tab triggers it.
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
-import { App } from '../app/App.tsx'
+import { App } from '../src/renderer/App.tsx'
 
 describe('Dashboard first-run state', () => {
   beforeEach(() => cleanup())

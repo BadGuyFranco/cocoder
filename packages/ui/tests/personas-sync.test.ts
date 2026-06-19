@@ -5,11 +5,11 @@ const mocks = vi.hoisted(() => ({
   daemonPut: vi.fn(),
 }))
 
-vi.mock('../electron/daemon-client.ts', () => ({
+vi.mock('../src/main/daemon-client.ts', () => ({
   daemonPut: mocks.daemonPut,
 }))
 
-import { savePersonaAssignmentsViaDaemon } from '../electron/personas-sync.ts'
+import { savePersonaAssignmentsViaDaemon } from '../src/main/personas-sync.ts'
 
 describe('main-process personas assignments seam', () => {
   beforeEach(() => {

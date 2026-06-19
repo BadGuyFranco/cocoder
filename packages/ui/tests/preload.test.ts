@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { OzApi, OzEventHint } from '../electron/ipc-contract.ts'
+import type { OzApi, OzEventHint } from '../src/main/ipc-contract.ts'
 
 const mocks = vi.hoisted(() => ({
   exposed: {} as { api?: OzApi },
@@ -30,11 +30,11 @@ describe('preload bridge', () => {
     mocks.listeners.clear()
     mocks.invoke.mockClear()
     mocks.off.mockClear()
-    await import('../electron/preload.ts')
+    await import('../src/preload/preload.ts')
   })
 
   it('exposes Oz event callbacks with only the sanitized data argument', async () => {
-    const { CHANNELS } = await import('../electron/ipc-contract.ts')
+    const { CHANNELS } = await import('../src/main/ipc-contract.ts')
     const received: OzEventHint[] = []
 
     const unsubscribe = mocks.exposed.api!.onOzEvent!((event) => received.push(event))
@@ -47,7 +47,7 @@ describe('preload bridge', () => {
   })
 
   it('routes workspace picker and validation through typed IPC channels', async () => {
-    const { CHANNELS } = await import('../electron/ipc-contract.ts')
+    const { CHANNELS } = await import('../src/main/ipc-contract.ts')
 
     await mocks.exposed.api!.workspaceDirectoryPick()
     await mocks.exposed.api!.workspacePrimaryRootValidate('/repo')

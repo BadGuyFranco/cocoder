@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, describe, expect, it } from 'vitest'
-import { pickWorkspaceDirectory, resolveCocoderHome, validateWorkspacePrimaryRoot, type DirectoryPickerDialog } from '../electron/workspace-picker.ts'
+import { pickWorkspaceDirectory, resolveCocoderHome, validateWorkspacePrimaryRoot, type DirectoryPickerDialog } from '../src/main/workspace-picker.ts'
 
 const tempDirs: string[] = []
 

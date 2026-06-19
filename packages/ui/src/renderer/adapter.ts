@@ -1,5 +1,5 @@
 // daemon → view-model adapter. The renderer consumes ONE shape (app/model.ts); the live daemon speaks
-// its own (electron/ipc-contract.ts). These pure functions translate the daemon's reality onto the V1
+// its own (src/main/ipc-contract.ts). These pure functions translate the daemon's reality onto the V1
 // design's view-model so surfaces don't care which backend filled them. NEVER render raw daemon JSON —
 // every field here is humanized. Run ids are OPAQUE (never parsed); timestamps are epoch ms.
 //
@@ -15,7 +15,7 @@ import type {
   PersonasResponse,
   PersonaAssignment,
   CliView,
-} from '../electron/ipc-contract.ts'
+} from '../main/ipc-contract.ts'
 import type { Workspace, Priority, Ticket, Run, RunStatus, Persona, TranscriptLine, EvidenceItem, SubAgent, Cli } from './model.ts'
 
 // The pinned "Ad-hoc" row is a real daemon priority but the design renders it specially (a pinned row

@@ -3,8 +3,8 @@ import { mkdtemp, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { DEFAULT_SETTINGS } from '../electron/ipc-contract.ts'
-import { getSettings, getWindowBounds, initStore, setSettings, setWindowBounds } from '../electron/store.ts'
+import { DEFAULT_SETTINGS } from '../src/main/ipc-contract.ts'
+import { getSettings, getWindowBounds, initStore, setSettings, setWindowBounds } from '../src/main/store.ts'
 
 describe('main-process JSON store', () => {
   let dir: string

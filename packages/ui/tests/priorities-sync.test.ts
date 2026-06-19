@@ -7,17 +7,17 @@ const mocks = vi.hoisted(() => ({
   setPriorityOrder: vi.fn(),
 }))
 
-vi.mock('../electron/daemon-client.ts', () => ({
+vi.mock('../src/main/daemon-client.ts', () => ({
   daemonPost: mocks.daemonPost,
 }))
 
-vi.mock('../electron/store.ts', () => ({
+vi.mock('../src/main/store.ts', () => ({
   getPriorityOrder: mocks.getPriorityOrder,
   setPriorityOrder: mocks.setPriorityOrder,
 }))
 
-import { getPriorityOrder } from '../electron/store.ts'
-import { reorderPrioritiesViaDaemon } from '../electron/priorities-sync.ts'
+import { getPriorityOrder } from '../src/main/store.ts'
+import { reorderPrioritiesViaDaemon } from '../src/main/priorities-sync.ts'
 
 describe('main-process priorities reorder seam', () => {
   let cached: Record<string, string[]>

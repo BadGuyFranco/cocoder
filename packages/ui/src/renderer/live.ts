@@ -16,7 +16,7 @@ import type {
   CliTestResponse,
   ChatMessage as DaemonChatMessage,
   WorkspaceFolder,
-} from '../electron/ipc-contract.ts'
+} from '../main/ipc-contract.ts'
 import { adaptWorkspace, adaptRuns, adaptPriorities, adaptTickets, adaptRunDetail, adaptPersonas, adaptCli } from './adapter.ts'
 import type { Workspace, Priority, Ticket, Run, Persona, Play, Cli, ChatMessage } from './model.ts'
 

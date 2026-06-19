@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { DEFAULT_SETTINGS, type Settings, type SettingsPatch } from '../electron/ipc-contract.ts'
+import { DEFAULT_SETTINGS, type Settings, type SettingsPatch } from '../src/main/ipc-contract.ts'
 
 const mocks = vi.hoisted(() => ({
   daemonGet: vi.fn(),
@@ -9,17 +9,17 @@ const mocks = vi.hoisted(() => ({
   setSettings: vi.fn(),
 }))
 
-vi.mock('../electron/daemon-client.ts', () => ({
+vi.mock('../src/main/daemon-client.ts', () => ({
   daemonGet: mocks.daemonGet,
   daemonPut: mocks.daemonPut,
 }))
 
-vi.mock('../electron/store.ts', () => ({
+vi.mock('../src/main/store.ts', () => ({
   getSettings: mocks.getSettings,
   setSettings: mocks.setSettings,
 }))
 
-import { getSettingsViaDaemon, setSettingsViaDaemon } from '../electron/settings-sync.ts'
+import { getSettingsViaDaemon, setSettingsViaDaemon } from '../src/main/settings-sync.ts'
 
 describe('main-process settings seam', () => {
   let cached: Settings

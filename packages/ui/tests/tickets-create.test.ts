@@ -5,11 +5,11 @@ const mocks = vi.hoisted(() => ({
   daemonPost: vi.fn(),
 }))
 
-vi.mock('../electron/daemon-client.ts', () => ({
+vi.mock('../src/main/daemon-client.ts', () => ({
   daemonPost: mocks.daemonPost,
 }))
 
-import { createTicketViaDaemon } from '../electron/tickets-create.ts'
+import { createTicketViaDaemon } from '../src/main/tickets-create.ts'
 
 describe('main-process tickets create seam', () => {
   beforeEach(() => {

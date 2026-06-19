@@ -5,9 +5,9 @@
 // launch/attach mutation path — without ever touching a real daemon.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { act, render, screen, waitFor, cleanup, fireEvent, within } from '@testing-library/react'
-import { App } from '../app/App.tsx'
-import { stopRun } from '../app/live.ts'
-import { DEFAULT_SETTINGS, type ConnectionState, type OzApi, type OzEventHint, type PersonasResponse, type PlaysResponse, type Priority as DPriority, type Ticket as DTicket, type RunDetail, type RunSummary, type Settings, type SettingsPatch } from '../electron/ipc-contract.ts'
+import { App } from '../src/renderer/App.tsx'
+import { stopRun } from '../src/renderer/live.ts'
+import { DEFAULT_SETTINGS, type ConnectionState, type OzApi, type OzEventHint, type PersonasResponse, type PlaysResponse, type Priority as DPriority, type Ticket as DTicket, type RunDetail, type RunSummary, type Settings, type SettingsPatch } from '../src/main/ipc-contract.ts'
 import workspacesFx from '../fixtures/workspaces.json'
 import prioritiesFx from '../fixtures/priorities.json'
 import ticketsFx from '../fixtures/tickets.json'

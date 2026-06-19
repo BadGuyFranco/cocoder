@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { WorkspacesScreen } from '../app/sections/Workspaces.tsx'
-import type { Workspace } from '../app/model.ts'
+import { WorkspacesScreen } from '../src/renderer/sections/Workspaces.tsx'
+import type { Workspace } from '../src/renderer/model.ts'
 
 type PickRoot = () => Promise<{ readonly path: string | null; readonly error?: string }>
 
