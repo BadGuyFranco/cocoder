@@ -15,6 +15,50 @@ raised → 1 confirmed blocker + 1 heeded F1/F2 refinement folded in; rest misre
 
 > **2026-06-09 amendment (founder, run_46) — priority ordering is a per-workspace order-only manifest, not the DB.** Priorities stay exactly as decided: one human-authored Playbook `.md` per priority in `cocoder/priorities/` (the SSOT for *what exists*). Their **sequence** lives in a small git-tracked **`cocoder/priorities/order.json`** per workspace — an **order-only overlay**: a JSON array of priority ids, nothing else. It does **not** define existence (that would be two owners of "which priorities exist", an F1/F4 trap) — it only sorts. Deterministic reconciliation: a `.md` not named in `order.json` still appears (appended, e.g. alphabetically); an id in `order.json` with no `.md` is ignored. The dashboard's drag-reorder **rewrites `order.json`** (atomic tmp+rename); Oz reads it to sequence the queue. This is a **registry-like overlay the system may write** — distinct from the Playbook bodies, which an agent still **never** rewrites (the rule in *Authoring lifecycle* below is unchanged). Order is **intent**, so it is git-tracked (diffable, travels with the repo on clone) rather than per-machine operational state — which is why it is a file, not a DB row. This **retires** the "ordering source-of-truth migration off `backlog/`+roadmap into the DB" framing (Full Oz dashboard owed slice #8): there is no migration, just a manifest. The `backlog/` directory and roadmap are no longer an ordering source.
 
+> **2026-06-19 amendment (founder, run_151) — Play taxonomy: trigger class × execution model.** A Play
+> now has three independent axes. The existing `kind: headless | interactive` attribute survives
+> unchanged as the **write-authority/interactivity axis**: headless Plays do not require founder
+> interaction or governance-writing authority; interactive Plays may require founder gates and may write
+> governance inside their declared scope. Two additive axes define how a Play starts and whether it has a
+> deterministic spine. **Execution model** is `prompt-only` (markdown injected to the LLM; no code spine)
+> or `hybrid` (an optional deterministic precheck/gate whose captured result gates or feeds the LLM
+> layer). **Trigger class** is `lifecycle-triggered` (runner/daemon invokes at a lifecycle point, no
+> persona discretion), `persona-requested` (a persona asks via a typed handoff; the runner validates
+> before dispatch), or **tool/API-triggered** (a tool/API call invokes it). These axes are orthogonal, not
+> one flat mutually-exclusive class list: a single Play has one trigger class, one execution model, and
+> one write-authority/interactivity kind. For example, wrap-up is lifecycle-triggered + prompt-only, while
+> code-review is persona-requested + potentially hybrid. This is backward-compatible: existing
+> prompt-only Plays remain valid, and no schema change may force a Play to add deterministic code.
+>
+> The five named Play classes are defined by those axes:
+>
+> - **Prompt-only Play:** allowed callers are whichever lifecycle, persona, or tool/API surfaces its
+>   trigger class permits; its trigger is not defined by being prompt-only; its execution model is
+>   LLM-driven markdown with no deterministic precheck/gate; its output is validated by the existing
+>   runner, persona, and commit-gate checks for that Play's trigger class and write-authority kind, then
+>   committed or returned only through that same path.
+> - **Hybrid Play (deterministic precheck/gate):** allowed callers are whichever lifecycle, persona, or
+>   tool/API surfaces its trigger class permits; its trigger is not defined by being hybrid; its execution
+>   model runs deterministic code first and captures the result as a gate or input to the LLM layer; its
+>   output is valid only when the deterministic result is present, accepted by that Play's contract, and
+>   the normal runner/commit validation for its write-authority kind also passes.
+> - **Lifecycle-triggered Play:** allowed callers are runner/daemon lifecycle points only, not persona
+>   discretion; its trigger class is a named lifecycle event; its execution model may be prompt-only or
+>   hybrid; its output is validated by the runner against the lifecycle contract and committed only
+>   through the normal write-scope and commit-gate path.
+> - **Persona-requested Play:** allowed callers are personas authorized by the Play registry and their
+>   current scope; its trigger class is a typed persona handoff that the runner validates before dispatch;
+>   its execution model may be prompt-only or hybrid; its output is validated against the handoff,
+>   declared Play contract, write-scope, and commit-gate before any state is accepted.
+> - **Tool/API-triggered Play:** allowed callers are explicitly registered tools or API entry points; its
+>   trigger class is the tool/API invocation; its execution model may be prompt-only or hybrid; its output
+>   is validated against the request contract, deterministic result when present, declared write authority,
+>   and commit-gate before it is committed or returned as authoritative state.
+>
+> This amendment does not reopen one-level dispatch, does not introduce PlayAssignment multi-binding,
+> and does not move full Play-body injection into every prompt. Later schema, manifest, and dispatch work
+> must derive labels and contracts from these axes instead of copying a second taxonomy.
+
 ## Context
 
 We revisited terminology and how priorities are authored, against *The WISER Method* / AI First
