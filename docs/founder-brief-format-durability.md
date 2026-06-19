@@ -1,5 +1,43 @@
 # Founder Brief Format Durability
 
+Repair status: shipped in commit `90599db`; this document is the diagnosis of record for the completed
+single-source repair, not a proposal for future runner work.
+
+## Evidence pack — six observed occurrences
+
+I confirmed six real founder-brief / closeout-format drift occurrences from durable records and, where
+still present, the original run artifacts:
+
+1. **run_76 ended with un-runnable fault-injection homework.** The wrap told the founder to restart the
+   daemon and run the Proof-4 checklist by hand (`local/runs/run_76/wrapup-out.txt:13-15`). The durable
+   catalog records this as F18: a run finished the build but left the founder with a doc/checklist pointer,
+   not a runnable next action (`cocoder/failure-catalog.md:47`).
+2. **run_77 repeated the same checklist handoff after run_76.** Its wrap again made the founder run the
+   Proof-4 checklist and produce event evidence (`local/runs/run_77/wrapup-out.txt:19-21`). The session log
+   records the same live-proof checklist handoff for run_77 (`cocoder/SESSION_LOG.md:726-734`).
+3. **full-oz-dashboard kept producing empty reaffirmation wraps instead of a runnable next step.** run_75
+   was the fifth zero-atom reaffirmation and still told the founder to run a live ladder by hand
+   (`local/runs/run_75/wrapup-out.txt:1-3`, `local/runs/run_75/wrapup-out.txt:13-19`). The catalog records
+   the repeated run_68/70/74/75 stall under F18 (`cocoder/failure-catalog.md:47`).
+4. **run_78 claimed landing truth before settlement.** Its `Committed` section said the atoms were
+   "verified for landing" and "Nothing held back" (`local/runs/run_78/wrapup-out.txt:21-23`), while the
+   actual run record says `pending-landing`, integration `escalated`, not landed
+   (`local/runs/run_78/record.md:5-8`). F19 records the same false "verified for landing" / "Nothing held
+   back" drift (`cocoder/failure-catalog.md:48`).
+5. **run_79 named a next build run that was not launchable.** The wrap told the founder the next fresh
+   build run should "launch a priority audit" (`local/runs/run_79/wrapup-out.txt:17-19`) while the proof
+   artifact it depended on was held back (`local/runs/run_79/wrapup-out.txt:21-26`). F20 records the
+   non-existent `priority-audit` handoff and founder-stuck outcome (`cocoder/failure-catalog.md:49`).
+6. **run_94 emitted a `Run Handoff` box and options menu, not the canonical founder brief.** The wrap starts
+   with `Priority worked`, `Disposition`, `This run`, and `Your move` fields
+   (`local/runs/run_94/wrapup-out.txt:1-9`) and ends with a multi-option `Founder Options` menu
+   (`local/runs/run_94/wrapup-out.txt:35-41`). The durable session log records run_94's design-ref
+   rebuild-clobber source-of-truth finding and follow-up ticket (`cocoder/SESSION_LOG.md:470-476`), and F21
+   records the same single-source drift class (`cocoder/failure-catalog.md:50`).
+
+Evidence count: six confirmed occurrences. I did not invent any missing sixth item; every item above cites
+a file opened and confirmed during this consolidation.
+
 ## Owner map
 
 - Source of truth: `packages/personas/base/plays/wrap-up.md` owns the founder-visible closeout format.
@@ -22,11 +60,11 @@
   output is blocked, old labels fail after a Play-label change, updated labels pass, and the observed
   drift classes are rejected (`packages/core/tests/runner.test.ts:855-980`).
 
-## Six observed mismatch classes
+## Enforcement-rule classes now covered
 
-The recurring problem was not one bad sentence. The Play, persona prompt, runner validator, fallback
-brief, and tests could each preserve a different copy of the expected shape. The six drift classes now
-covered are:
+The historical evidence above proves the drift happened. This section is the forward-looking enforcement
+view: the Play, persona prompt, runner validator, fallback brief, and tests could each preserve a different
+copy of the expected shape, so the shipped runner now blocks these rule classes:
 
 1. Missing or non-first `Founder Completion Brief` title.
 2. Ledger/test-matrix detail in `What Changed`.
