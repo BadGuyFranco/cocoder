@@ -185,29 +185,6 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   (592 tests). **Archived 2026-06-15** (founder-confirmed, run_90) — verified-when met; deferred boundary
   resolved (one-level dispatch stands — see `priorities/archive/play-dispatch-boundary.md`). File moved to
   `zArchive/priorities/v2/plays-first-class.md`.
-
-**Active build priorities (launchable; the `priorities/` directory is the live index):**
-- `ui-package-layout-stabilization` — **ARCHIVE-CANDIDATE (run_154, 2026-06-19).** `packages/ui` moved to
-  standard `src/` layout (`src/renderer`, `src/main`, `src/preload`); topology guard clean (0
-  `packages/ui` warnings); `design-ref/` locked as historical non-regeneration reference (F21). Proof:
-  `node scripts/check-topology.mjs && pnpm --dir packages/ui typecheck && pnpm --dir packages/ui test &&
-  pnpm --dir packages/ui build` (146/146, clean build). **Only gate:** founder archive confirmation.
-  **#1 in `order.json`.**
-- `workspace-segmentation` — **ARCHIVE-CANDIDATE (run_139, 2026-06-18).** Oz watches across workspaces
-  while work stays workspace-local — all **9** objectives implemented. Owner map + [ADR-0027](./decisions/0027-workspace-storage-contract.md)
-  storage contract landed run_135–137; run_136 UI/labels slice; run_137 portable-history WRITE side;
-  **run_138 (4 atoms):** read-consumer alignment (`readPortableRunById`, daemon/UI `Run N` display),
-  concurrency proven by construction (daemon regression test, no prod change), idempotent BACKFILL
-  migration runnable as `cocoder oz migrate-history <workspaceId>`, proof harness
-  `pnpm proof:workspace-segmentation` (Obj 3–7 machine-checkable); **run_139 (1 atom):** Objective 9 —
-  panel split ratio (default 45/55) + window bounds persist across launches (renderer `panelRatio` +
-  Electron main-process bounds; no parallel layout contract). **Only gates:** founder eyeball on Obj 1/2/9
-  in the running app; optional one-time `cocoder oz migrate-history cocoder` for pre-run_137 history;
-  deferred cmux `Run N` vs `#run.id` label polish (non-blocking). **#1 in `order.json`.**
-- `fix-ticket-0011` — **archive-candidate (run_120, 2026-06-17).** Teardown receiver fix shipped
-  (`6d05475` — `ctx.sessionHost.closeWorkspace({ workspaceRef })` preserves `this`); receiver-sensitive
-  regression in `mutations.test.ts` catches the unbound path; [ticket 0011](./tickets/closed/0011-teardown-cli-undefined-on-final-oscar-surface.md)
-  closed. All verify gates green. **Only gate:** founder archive confirmation.
 - `founder-brief-format-durability` — **ARCHIVED (run_149, founder-confirmed 2026-06-19).** Structural class
   repair complete and proven (run_148): owner inventory
   ([`docs/orchestration-contract-ownership.md`](../docs/orchestration-contract-ownership.md)), governing
@@ -216,64 +193,50 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   closed. Final run_149 tail: ticket 0005 item 2 applied to `cocoder/AGENTS.md`; item 1 closed not-actioned
   so Oscar does not duplicate Oz/daemon run-launch authority in a prompt delta. Playbook moved to
   `priorities/archive/`; dropped from `order.json`.
-1. `headless-adapter-lane` — **ARCHIVED (run_104, founder-confirmed 2026-06-16).** Claude Code + Codex real
-   headless invocation built (`BuildInput.headless`, claude print mode + codex exec), wired through
-   `dispatchPlay` + `oz-host`, `headlessCapable=true` (single source). Flags verified vs real binaries;
-   `node scripts/proof-headless-lane.mjs` re-proves (PASS claude, PASS codex). Oz-on-claude and latent
-   headless-Play pins no longer hang. Closes ticket 0006. Playbook moved to `priorities/archive/`; dropped
-   from `order.json` (next launchable: `tickets-review`).
-2. `governance-authoring-plays` — **ARCHIVE-READY (run_99, 2026-06-16).** Founder-directed: never leave
-   launch-blocking governance dirt. Parts 1 & 2 are done: launch self-heal ([ADR-0024](./decisions/0024-governance-pre-run-snapshot.md),
-   `5842e32`); three authoring Plays (`8492d32`); dispatch harness (`85f3a0a`); one-tool-action
-   (`f7d16e0`, resolves `oz-dashboard-bugs` #12); [ADR-0025](./decisions/0025-atomic-authoring-plays.md).
-   Deb granted the three Plays to oz/oscar/deb, fixed the governance-commit daemon-stale edge needed for
-   immediate launch, and reran `node scripts/proof-governance-authoring.mjs`: **8/8 clauses green**.
-3. `oz-dashboard-bugs` — **ARCHIVED (run_103, founder-confirmed 2026-06-16).** All 12 founder-reported
-   Oz dashboard defects fixed at the cause (run_94; renderer/daemon vitest + UI build green). #12 closed
-   via `governance-authoring-plays` (one-tool `author`, run_98). Machine proof
-   (`node scripts/proof-oz-surfaces.mjs`) green; the three irreducibly-live founder proofs (Oz chat with
-   real CLI, one headless Oscar + Bob run, Q/A acceptance) were the founder's acceptance gate, cleared by
-   the explicit `archive` go-ahead. Playbook moved to `priorities/archive/`. Open follow-ons (do NOT
-   reopen this priority): ticket 0006 closed via `headless-adapter-lane` (run_104, archive-candidate) ·
-   ticket 0012 (design-ref rebuild guard).
-4. `new-primary-root` — **ARCHIVE-CANDIDATE (run_141, 2026-06-18).** Onboard a primary root (ADR-0020
-   Accepted, execution model amended by ADR-0026). **Onboarding rebuild COMPLETE (run_140–141):** standalone
-   phase-executor retired; existing-repo audit reframed as Oscar-driven ordinary priority
-   (`onboard-existing.md`); trust invariant restored (`auditWriteBoundary` at all commit gates); conditional
-   scaffold seeding for existing repos; one-command proof (`node scripts/proof-onboard-existing.mjs`, exit 0).
-   Audit engines (P1–P6 tooling) preserved as library calls. **Only founder-gated live proofs remain:**
-   external-repo onboard-existing end-to-end (Objective (a)); dogfood Drift Audit (Objective (b) — capability
-   unbuilt, needs its own priority). **Absorbs `workspace-onboarding`.**
-
-**Queued after `new-primary-root` (founder go-ahead 2026-06-16, priority-audit run_106 — in `order.json`):**
 - `hybrid-plays` — **ARCHIVED 2026-06-19 (founder-confirmed, run_153).** All 8 atoms complete: ADR-0010
   taxonomy (founder-accepted), Play contract schema, base-Play migration, capability manifest, typed
   request lane, mandatory trigger registry (wrap-up), hybrid `dispatchPlay`, real-path proof
   (`node scripts/proof-hybrid-play.mjs`), ARCHITECTURE.md Play-system section. Suite 410/410 green. File
   moved to `cocoder/priorities/archive/hybrid-plays.md`; removed from `order.json`.
-- `tickets-review` — **CONTINUE (run_143, 2026-06-18).** All in-scope build items code-complete. Landed
-  run_121–122: index hygiene, tickets data layer, 3-tab panel, live-review fixes (`POST /tickets` +
-  `NewTicketModal`). Landed run_132: ticket loader (0015), `Run.ticketId` + `launchRun` ticket branch,
-  card→modal parity, close-on-success spine, in-modal **Launch fix**. Landed run_143: card-level inline
-  Launch, drag-reorder (`order.json` + UI), `create-ticket` authoring Play for all personas
-  (`composeTicketMarkdown` in `@cocoder/core`). **Only archive gate:** founder live proof — from the
-  dashboard Tickets tab click **Launch** on ticket **0003**; confirm fix run completes and 0003 moves to
-  `closed/` with INDEX updated on trunk (`scripts/oz.sh restart` if daemon is stale).
-- `oz-dashboard-ux` — **CODE-COMPLETE; archive-candidate (run_134, 2026-06-18).** Items 1, 2, 4 landed
-  run_133 (`e22b2a0`, `c58b77e`); run_133 founder polish run_134 (`c355c40`: ad-hoc **Launch** label,
-  Oz hint removed). Item 3 (ticket UI) folded into `tickets-review` (founder, run_131). UI suite 124/124
-  green. **Only archive gate:** Objective live visual proof (priority slug card, priority modal+launch-and-close,
-  run detail modal) — founder eye-check or one-command harness (`craft oz-dashboard proof` →
-  `node scripts/proof-oz-dashboard.mjs`). Out-of-scope follow-on: pre-existing `RunStatus`/`not-landed`
-  typecheck breakage (worth a ticket).
-- `oz-dashboard-design-tweaks` — **archive-candidate (run_115):** rounds 1–3 code-complete — settings
-  trim + collapsible personas/plays + contrast (run_113), panel↔background reversal + Oz-card de-gradient
-  (run_114, `97bc3a4`), Round-3 persona-card consistency + priority-row separation + stacked priority
-  actions + scrollbar legibility (run_115, `1afcb33`). `fusion.css` + design-ref mirrored; typecheck + UI
-  suite 113/113 green. **Only gate:** founder eye-check on the auto-rebuilt Oz dashboard (dark + light);
-  then archive.
+- `ui-package-layout-stabilization` — **ARCHIVED (run_155, 2026-06-19).** `packages/ui` moved to standard
+  `src/` layout; topology guard clean; `design-ref/` locked as historical non-regeneration reference (F21).
+  Proof: `node scripts/check-topology.mjs && pnpm --dir packages/ui typecheck && pnpm --dir packages/ui test &&
+  pnpm --dir packages/ui build`. Playbook moved to `priorities/archive/` (run_154 built; run_155 archived).
+- `scaffold-template-reconciliation` — **ARCHIVED (run_155, 2026-06-19).** Divergence already reconciled
+  (run_141): `scaffoldWorkspaceGovernance` is a thin call to `scaffoldCocoderZone` (pure template copier).
+  Standing proof: `node scripts/proof-scaffold-reconciliation.mjs`. Playbook moved to `priorities/archive/`.
+- `workspace-segmentation` — **ARCHIVED (run_139+, founder-confirmed).** All 9 objectives implemented;
+  owner map + [ADR-0027](./decisions/0027-workspace-storage-contract.md); proof harness
+  `pnpm proof:workspace-segmentation`. Playbook moved to `priorities/archive/`.
+- `headless-adapter-lane` — **ARCHIVED (run_104, founder-confirmed 2026-06-16).** Claude Code + Codex real
+  headless invocation built; `node scripts/proof-headless-lane.mjs` re-proves. Closes ticket 0006.
+- `governance-authoring-plays` — **ARCHIVED (run_99, 2026-06-16).** Launch self-heal + three authoring
+  Plays + dispatch harness; `node scripts/proof-governance-authoring.mjs` 8/8 green.
+- `oz-dashboard-bugs` — **ARCHIVED (run_103, founder-confirmed 2026-06-16).** All 12 founder-reported
+  Oz dashboard defects fixed; machine proof green.
+- `fix-ticket-0011` — **ARCHIVED (run_120, 2026-06-17).** Teardown receiver fix shipped; ticket 0011 closed.
+- `oz-dashboard-ux` — **ARCHIVED (run_134, 2026-06-18).** Items 1, 2, 4 code-complete; item 3 folded into
+  `tickets-review`.
+- `oz-dashboard-design-tweaks` — **ARCHIVED (run_115).** Rounds 1–3 code-complete; design-ref mirrored.
 - ~~`play-dispatch-boundary`~~ — **RESOLVED 2026-06-15, ARCHIVED 2026-06-16** (run_106): one-level dispatch
-  stands; no engine reversal. Decision record now at `priorities/archive/play-dispatch-boundary.md`.
+  stands; no engine reversal. Decision record at `priorities/archive/play-dispatch-boundary.md`.
+
+**Active build priorities (launchable; `order.json` order — the `priorities/` directory is the live index):**
+1. `oz-hardening` — **NEXT (run_134 design calls resolved; #1 run_155 re-rank).** First-class Oz chat
+   (markdown, streaming, thinking-if-available), self-compacting awareness from durable run state, drag-to-ask,
+   and automatic post-wrap/ticket status pickup. **Start with the ADR-0010 owner map** (run-state projection
+   source of truth + every Oz message/status surface + pinning tests). Items 2 & 4 share one projection engine.
+2. `tickets-review` — **CONTINUE (run_143).** Build code-complete; ticket launch plumbing satisfied
+   (`LaunchRunTarget {kind:'ticket'}`, `RunInput.ticketId`, `ticket-fix` sentinel in `launcher.ts`).
+   **Archive gate:** founder live proof — Tickets tab **Launch** on ticket **0003**; confirm fix run completes
+   and 0003 moves to `closed/` with INDEX updated.
+3. `first-class-model-tiers` — **Grok draft; requires founder ownership beat before launch.** General model
+   tier vocabulary across assignments, dispatch, and UI.
+4. `adapter-abstraction-hardening` — **Grok draft; requires founder ownership beat before launch.** Reduce
+   duplication in the CLI adapter layer (ADR-0006).
+5. `new-primary-root` — **ARCHIVE-CANDIDATE (run_141).** Onboarding rebuild complete; one-command proof
+   (`node scripts/proof-onboard-existing.mjs`). **Founder-gated live proofs remain:** external-repo
+   onboard-existing end-to-end; dogfood Drift Audit (unbuilt capability).
 
 **Standing tools (always available — not build work):** `priority-audit` (assess the priority set for
 staleness → a founder-decision table; the pruning tool) · `adhoc-session` (no named priority — draft one,

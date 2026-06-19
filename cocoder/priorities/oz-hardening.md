@@ -4,8 +4,8 @@ title: "Oz hardening — first-class chat, self-refreshing run-state awareness, 
 ---
 
 > **Drafted 2026-06-18 (founder request, run_134); design calls resolved by founder same day.** The three
-> open design questions are answered and folded into the Objective below. Still pending: the founder's
-> explicit **launch go-ahead** and final **rank** (currently #2, behind `workspace-segmentation`).
+> open design questions are answered and folded into the Objective below. **#1 in `order.json`**
+> (run_155 re-rank; `workspace-segmentation` archived).
 
 ## Objective
 Oz becomes a reliable, first-class operator surface. Its terminal reads like a real chat; its situational
@@ -45,9 +45,9 @@ completed before implementation**:
   the tests/fixtures that pin them. Fix the owner and align consumers — do not add a parallel contract.
 - **Items 2 & 4 share one engine.** Oz's awareness is a projection of durable run/ticket state. Build
   that projection **once**: item 2 is the refresh/compact read path, item 4 is the change-detection path.
-- **Coordinate item 1 with `workspace-segmentation`.** That priority owns the Oz terminal **panel layout
-  and global controls**; THIS priority owns the chat **rendering quality** (markdown, thinking, streaming)
-  inside that panel. Both touch `OzChat.tsx` — sequence them so they don't clobber each other.
+- **Item 1 touches `OzChat.tsx`.** `workspace-segmentation` (archived run_139) owns the Oz terminal **panel
+  layout and global controls**; THIS priority owns the chat **rendering quality** (markdown, thinking,
+  streaming) inside that panel. Coordinate at owner-map time so they don't clobber each other.
 
 ## Related
 - Ticket [0013](../tickets/open/0013-daemon-auto-rebuild-after-runs.md) and
