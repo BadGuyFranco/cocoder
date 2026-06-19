@@ -900,6 +900,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const outOfScope: string[] = []
   let selfCommitted = false
   let pickup: string | null = null
+  let terminalStatus: RunStatus = 'completed'
   let n = 0
   let consecutiveRejects = 0
   let activeAtom: AgentStepActiveAtom | null = null
@@ -1118,6 +1119,8 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         if (formatIssues.length > 0) {
           store.recordEvent({ runId: run.id, type: 'wrapup-format-invalid', data: { play: input.wrapPlay.id, issues: formatIssues, outPath: wrapOut } })
           pickup = formatInvalidFounderCloseoutFallback({ priorityId: priority.id, atoms: n, commits: committedShas, issues: formatIssues, contract: closeoutContract })
+          terminalStatus = 'failed'
+          await triageFault('wrapup-format-invalid', n, `wrap-up Play "${input.wrapPlay.id}" produced malformed founder closeout: ${formatIssues.join('; ')}`)
         } else {
           pickup = candidatePickup
         }
@@ -1209,7 +1212,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   // ── Wrap-up: pickup brief (continuation; F8) + run record ───────────────────────────────────────
   const pickupPath = pickup ? await io.writePickup(runDir, pickup) : null
   await rebuildUiBundleIfNeeded()
-  const status: RunStatus = 'completed'
+  const status: RunStatus = terminalStatus
   const endedAt = now()
 
   // ── Authoritative outcome ─────────────────────────────────────────────────────────────────────────

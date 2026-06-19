@@ -450,6 +450,7 @@ describe('runRun (multi-atom loop)', () => {
     )
 
     expect(result.status).toBe('completed')
+    expect(store.getRun(result.runId)?.status).toBe('completed')
     expect(result.atoms).toBe(2)
     expect(result.committedShas).toHaveLength(2)
     expect(result.committedFiles).toEqual(['packages/a.ts', 'packages/b.ts'])
@@ -501,6 +502,7 @@ describe('runRun (multi-atom loop)', () => {
     )
 
     expect(result.status).toBe('completed')
+    expect(store.getRun(result.runId)?.status).toBe('completed')
     expect(commits[0]).toEqual(['packages/core/src/foo.ts'])
     expect(result.committedFiles).toEqual(['packages/core/src/foo.ts'])
     expect(result.outOfScope).toEqual(['packages/core/src/foo.ts'])
@@ -901,7 +903,7 @@ describe('runRun (multi-atom loop)', () => {
       { ...input, wrapPlay, wrapPlayAssignment },
     )
 
-    expect(result.status).toBe('completed')
+    expect(result.status).toBe('failed')
     expect(pickupWrites).toHaveLength(1)
     expect(pickupWrites[0]).toContain(label('title'))
     expect(pickupWrites[0]).toContain(`${label('runStatus')} blocked`)
@@ -909,6 +911,33 @@ describe('runRun (multi-atom loop)', () => {
     expect(pickupWrites[0]?.trimEnd().endsWith(closeoutContract.finalLine)).toBe(true)
     const invalid = store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')
     expect(invalid?.data).toMatchObject({ play: 'wrap-up', issues: expect.arrayContaining([`missing ${label('title')}`]) })
+  })
+
+  test('malformed wrap-up output is dispatched to Deb when she is present', async () => {
+    const store = openRunStore(':memory:')
+    const pickupWrites: string[] = []
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([['packages/atom.ts']]),
+        io: fakeIO({
+          directives: [delegate('atom 0'), wrapup('Oscar seed closeout')],
+          pickupWrites,
+          triage: { disposition: 'cocoder-bug', summary: 'wrap-up Play emitted a malformed founder closeout', proposal: 'tighten the closeout owner' },
+        }),
+        getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
+        runHeadless: async () => ({ exitCode: 0, output: 'PLAY CLOSEOUT\n' }),
+      }),
+      { ...input, deb, wrapPlay, wrapPlayAssignment },
+    )
+
+    expect(result.status).toBe('failed')
+    expect(pickupWrites[0]).toContain(`${label('runStatus')} blocked`)
+    const events = store.listEvents(result.runId)
+    expect(events.map((e) => e.type)).toEqual(expect.arrayContaining(['wrapup-format-invalid', 'triage-dispatch', 'fault-triaged', 'wrapup', 'run-end']))
+    expect(events.find((e) => e.type === 'triage-dispatch')?.data).toMatchObject({ fault: 'wrapup-format-invalid', atom: 1 })
+    expect(events.find((e) => e.type === 'fault-triaged')?.data).toMatchObject({ fault: 'wrapup-format-invalid', disposition: 'cocoder-bug' })
+    expect((events.find((e) => e.type === 'run-end')?.data as { status?: string }).status).toBe('failed')
   })
 
   test('wrap-up Play label changes are enforced from the Play contract', async () => {
@@ -931,7 +960,7 @@ describe('runRun (multi-atom loop)', () => {
       { ...input, wrapPlay: renamedPlay, wrapPlayAssignment },
     )
 
-    expect(staleResult.status).toBe('completed')
+    expect(staleResult.status).toBe('failed')
     expect(stalePickupWrites).toHaveLength(1)
     expect(stalePickupWrites[0]).toContain(`missing ${renamedDecisionLabel}`)
     const staleInvalid = staleStore.listEvents(staleResult.runId).find((e) => e.type === 'wrapup-format-invalid')
@@ -981,7 +1010,7 @@ describe('runRun (multi-atom loop)', () => {
       { ...input, wrapPlay, wrapPlayAssignment },
     )
 
-    expect(result.status).toBe('completed')
+    expect(result.status).toBe('failed')
     expect(pickupWrites).toHaveLength(1)
     expect(pickupWrites[0]).toContain(`${label('runStatus')} blocked`)
     expect(pickupWrites[0]).toContain(issue('whatChanged', 'contains ledger/test-matrix detail'))
@@ -1028,7 +1057,7 @@ describe('runRun (multi-atom loop)', () => {
       { ...input, wrapPlay, wrapPlayAssignment },
     )
 
-    expect(result.status).toBe('completed')
+    expect(result.status).toBe('failed')
     expect(pickupWrites).toHaveLength(1)
     expect(pickupWrites[0]).toContain(`${label('runStatus')} blocked`)
     expect(pickupWrites[0]).toContain(issue('whatChanged', 'is too long for a founder brief'))
@@ -1088,7 +1117,7 @@ describe('runRun (multi-atom loop)', () => {
       { ...input, wrapPlay, wrapPlayAssignment },
     )
 
-    expect(result.status).toBe('completed')
+    expect(result.status).toBe('failed')
     expect(pickupWrites).toHaveLength(1)
     expect(pickupWrites[0]).toContain(`${label('runStatus')} blocked`)
     expect(pickupWrites[0]).toContain(issue('nextStep', 'priority "missing-priority" is not launchable'))
