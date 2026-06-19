@@ -75,13 +75,12 @@ copy of the expected shape, so the shipped runner now blocks these rule classes:
 
 ## Ticket review
 
-- `0005` folded in as evidence, not closed. It is the same governed-file-versus-side-channel-memory
-  failure mode: durable behavior must live in governed persona/standards files and be read by runtime
-  surfaces.
-- `0012` left as a sibling. It covers generated UI/design-reference clobbering, the generated-source
-  version of the same source-of-truth problem; this repair does not decide the design-ref direction.
-- `0015` left as a sibling. It covers ticket authoring format and loader enforcement drift; this repair
-  uses the same pattern but does not fix ticket loader behavior.
+- `0005` partially fixed (run_148): portable items 3-5 migrated to governed base files; repo-specific
+  items 1-2 (`cocoder/personas/deltas/oscar.md`, `cocoder/AGENTS.md`) remain open.
+- `0012` closed (run_148): design-ref marked historical (Option A); enforcer guards against re-describing
+  it as the app source of truth.
+- `0015` closed (run_148): loader defect already fixed; ticket reconciled by closure.
+- `0017` closed (run_148): single-source orchestration rule promoted to `shared-standards.md` via `aa7addc`.
 - `0008` folded in as precedent and remains closed. It showed the durable-orchestration repair shape:
   map every prompt/runtime/status surface, align the owner, and pin the contract with tests.
 
@@ -94,9 +93,8 @@ smallest durable rule is: when a founder-facing orchestration format is owned by
 persona file, runtime validators and fallback emitters must parse or import that owner; they must not
 copy the format into a second local contract.
 
-## Follow-on (run_145)
+## Follow-on (run_145, closed run_148)
 
-The runtime repair above is complete and test-pinned. Promoting the rule from this docs explainer into
-the governed standard (`packages/personas/base/shared-standards.md`) is tracked as
-[ticket 0017](../cocoder/tickets/open/0017-promote-founder-brief-single-source-rule-to-shared-standards.md)
-so the next runtime author reads it from the same home as other durable-orchestration rules.
+The runtime repair above is complete and test-pinned. The single-source orchestration rule now lives in
+the governed standard (`packages/personas/base/shared-standards.md`, `aa7addc`); ticket 0017 is closed.
+The structural enforcer has a standalone red→green proof: `node scripts/proof-orchestration-enforcer.mjs`.

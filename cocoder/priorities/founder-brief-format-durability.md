@@ -52,45 +52,35 @@ the pattern to copy: one owner (the wrap-up Play's fenced contract), the runtime
 and an end-to-end test fails when an old format reappears. Use it as the template for every other
 occurrence; do not re-diagnose or re-fix it.
 
-## Repair progress — disposition: `continue` (after run_147)
+## Repair progress — disposition: `continue` (after run_148)
 
-Landed through the gate: owner inventory in
-[`docs/orchestration-contract-ownership.md`](../docs/orchestration-contract-ownership.md) (`036e618`). This
-is the source of truth for the work queue below; it survives all decisions here.
+Structural class repair is **complete and proven** through the verify gate. Owner inventory:
+[`docs/orchestration-contract-ownership.md`](../docs/orchestration-contract-ownership.md) (`036e618`,
+updated run_148). Governing rule + enforcer kept from run_147 fix-forward decision (`aa7addc`); red→green
+proof harness `node scripts/proof-orchestration-enforcer.mjs` (`dfe5477`); ticket 0005 portable rules
+migrated to base personas/standards (`d06ae45`); governance reconciled — duplicate inventory deleted,
+tickets 0012/0015/0017 closed, gate-bypass filed as sibling ticket 0018 + failure-catalog F23 (`297f703`).
 
-Landed OUTSIDE the gate but KEPT — founder decision (run_147): commit `aa7addc`, self-committed by the
-builder, carries the governing rule (`packages/personas/base/shared-standards.md`), the structural enforcer
-(`packages/core/tests/orchestration-contracts.test.ts`), the single-source alignment of `runner.test.ts`
-and `base-personas.test.ts` (closeout labels now derived from the wrap-up Play, not hard-coded), and the
-design-ref-historical guard. The full core suite is green (379/379). The founder chose to **fix forward,
-not revert**: the work is sound and green, a revert would not clean history, and the run_145 guard below is
-the better governance answer than discarding it.
-
-### Next run — use a scope-respecting builder and gate EVERY atom (no builder self-commits)
-1. **Bless the landed work**: line-by-line review of the `aa7addc` `runner.test.ts` rewrite (confirm it only
-   replaces hard-coded labels with derived ones and weakens nothing), and add an explicit red→green proof of
-   the enforcer — introduce a deliberate duplicate, watch `orchestration-contracts.test.ts` fail, remove it,
-   watch it pass (Objective §4).
-2. **Delete the duplicate inventory** `cocoder/priorities/founder-brief-format-durability.owner-inventory.md`
-   — redundant with the owner doc above; a one-owner violation that must not stand in this priority.
-3. **Reconcile tickets**: close `0017` by repair (rule is landed); confirm the `0012`/`0015` edits match
-   their dispositions in the owner doc; file the run_145 sibling ticket named below.
-4. **Record the run_147 gate-bypass incident** in `cocoder/failure-catalog.md` (builder self-committed
-   `aa7addc` past the verify gate — the in-class proof that the gate is unenforced).
-5. **Apply ticket 0005's side-channel rules** to their governed homes (still open from the owner doc queue).
+### Remaining (outside this priority's closeout)
+1. **Ticket 0005 items 1-2** — repo-specific only (`cocoder/personas/deltas/oscar.md` daemon-launch delta,
+   `cocoder/AGENTS.md` name disambiguation); outside run_148 Oscar support write-scope. Applying them closes
+   0005.
+2. **Ticket 0018** — gate-enforcement guard (sibling reliability priority; not part of this format/contract
+   repair).
 
 ## Required Ticket Review
 Review related tickets before proposing fixes and fold each into the owner inventory:
 
-- [0017](../tickets/open/0017-promote-founder-brief-single-source-rule-to-shared-standards.md) — promote the
-  founder-brief single-source rule into shared-standards (created by run_145). **This priority now subsumes
-  it**: land the rule and the enforcer here, then close 0017 by repair.
-- [0005](../tickets/open/0005-persona-file-memory-migrations.md) — persona/shared-standards lessons stranded
-  in a ticket instead of the governed file: the governed-file-vs-side-channel-memory flavour of the class.
-- [0012](../tickets/open/0012-design-ref-rebuild-clobber-guard.md) — generated UI/design-ref can clobber
-  committed fixes when the generator is not the aligned source: the generated-vs-source flavour.
-- [0015](../tickets/open/0015-tickets-silently-dropped-without-frontmatter.md) — authoring-format/loader
-  drift silently dropped ticket artifacts: the authoring-format-enforcement flavour.
+- [0017](../tickets/closed/0017-promote-founder-brief-single-source-rule-to-shared-standards.md) — **closed
+  run_148** by repair (`aa7addc`).
+- [0005](../tickets/open/0005-persona-file-memory-migrations.md) — items 3-5 migrated run_148; items 1-2
+  remain open (repo-specific, outside Oscar support scope).
+- [0012](../tickets/closed/0012-design-ref-rebuild-clobber-guard.md) — **closed run_148** (Option A:
+  design-ref historical).
+- [0015](../tickets/closed/0015-tickets-silently-dropped-without-frontmatter.md) — **closed run_148**
+  (loader defect already fixed).
+- [0018](../tickets/open/0018-enforce-verify-gate-commit-contract.md) — sibling gate-bypass guard (filed
+  run_148); separately launchable, not part of this repair.
 - [0008](../tickets/closed/0008-post-wrap-founder-interaction-contract.md) — (closed) prior
   durable-orchestration repair that aligned prompts, wrap delivery, Deb status, daemon, and tests around one
   contract: the precedent pattern to copy.
@@ -100,10 +90,9 @@ brief/wrap/closeout behavior, Play output, persona/standards memory, or generate
 closeout must say, per ticket, whether it was folded in, fixed/closed by the repair, or left a sibling, and
 why.
 
-## Related observation — DECIDED: sibling ticket (run_147)
+## Related observation — DECIDED: sibling ticket (run_147, filed run_148)
 The run_145 direct commit (`90599db`) and the run_147 builder self-commit (`aa7addc`) are the same in-class
 defect: an unenforced contract — "agent edits land only through the verify gate" — lets ungoverned changes
-reach the branch. The founder scoped this as a **sibling reliability issue**: file a tracking ticket and
-build the gate-enforcement guard as separately-launchable work, because a real guard may touch git
-workflow, commit-spine policy, or host controls beyond prompt/runtime text. Next run files the ticket; the
-guard build is its own priority, not folded into this format/contract repair.
+reach the branch. The founder scoped this as a **sibling reliability issue**: tracked as
+[ticket 0018](../tickets/open/0018-enforce-verify-gate-commit-contract.md) + failure-catalog F23; the guard
+build is separately-launchable work, not folded into this format/contract repair.

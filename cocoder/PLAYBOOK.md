@@ -202,12 +202,13 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   (`6d05475` — `ctx.sessionHost.closeWorkspace({ workspaceRef })` preserves `this`); receiver-sensitive
   regression in `mutations.test.ts` catches the unbound path; [ticket 0011](./tickets/closed/0011-teardown-cli-undefined-on-final-oscar-surface.md)
   closed. All verify gates green. **Only gate:** founder archive confirmation.
-- `founder-brief-format-durability` — **BLOCKED (run_147, 2026-06-18).** Expanded from run_145's
-  founder-brief fix to the full single-source orchestration-contract class. Founder-brief instance still
-  shipped (`90599db`); run_147 verified the owner inventory
-  ([`docs/orchestration-contract-ownership.md`](../docs/orchestration-contract-ownership.md), `036e618`).
-  **Blocked:** builder self-committed repair atoms outside verify (`aa7addc`) — revert, then relaunch to
-  re-land rule + enforcer + design-ref guard through the gate.
+- `founder-brief-format-durability` — **CONTINUE (run_148, 2026-06-18).** Structural class repair complete
+  and proven: owner inventory
+  ([`docs/orchestration-contract-ownership.md`](../docs/orchestration-contract-ownership.md)), governing
+  rule + enforcer (`aa7addc`, kept fix-forward), red→green harness
+  (`node scripts/proof-orchestration-enforcer.mjs`), 0005 portable rules migrated, tickets 0012/0015/0017
+  closed, gate-bypass filed as sibling ticket 0018. **Remaining:** ticket 0005 items 1-2 (repo-specific
+  persona delta + AGENTS disambiguation) outside Oscar support scope; ticket 0018 guard is separate work.
 1. `headless-adapter-lane` — **ARCHIVED (run_104, founder-confirmed 2026-06-16).** Claude Code + Codex real
    headless invocation built (`BuildInput.headless`, claude print mode + codex exec), wired through
    `dispatchPlay` + `oz-host`, `headlessCapable=true` (single source). Flags verified vs real binaries;
