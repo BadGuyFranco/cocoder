@@ -25,6 +25,8 @@ const api: OzApi = {
   workspacesUpdate: (ws, folders) => ipcRenderer.invoke(CHANNELS.workspacesUpdate, ws, folders),
   workspacesCreate: (ws, folders) => ipcRenderer.invoke(CHANNELS.workspacesCreate, ws, folders),
   workspacesDelete: (ws) => ipcRenderer.invoke(CHANNELS.workspacesDelete, ws),
+  workspaceDirectoryPick: () => ipcRenderer.invoke(CHANNELS.workspaceDirectoryPick),
+  workspacePrimaryRootValidate: (path) => ipcRenderer.invoke(CHANNELS.workspacePrimaryRootValidate, path),
   settingsGet: () => ipcRenderer.invoke(CHANNELS.settingsGet),
   settingsSet: (patch) => ipcRenderer.invoke(CHANNELS.settingsSet, patch),
 }

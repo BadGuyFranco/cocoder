@@ -20,6 +20,8 @@ export const CHANNELS = {
   workspacesUpdate: 'oz:workspaces:update',
   workspacesCreate: 'oz:workspaces:create',
   workspacesDelete: 'oz:workspaces:delete',
+  workspaceDirectoryPick: 'oz:workspace:directory:pick',
+  workspacePrimaryRootValidate: 'oz:workspace:primary-root:validate',
   settingsGet: 'oz:settings:get',
   settingsSet: 'oz:settings:set',
 } as const
@@ -74,6 +76,9 @@ export interface WorkspaceFolder {
   readonly path: string
   readonly role: WorkspaceRole
   readonly description?: string
+}
+export interface DirectoryPickResult {
+  readonly path: string | null
 }
 export interface Priority {
   readonly id: string
@@ -265,6 +270,8 @@ export interface OzApi {
   workspacesUpdate(workspaceId: string, folders: readonly WorkspaceFolder[]): Promise<DaemonResult<Workspace>>
   workspacesCreate(workspaceId: string, folders: readonly WorkspaceFolder[]): Promise<DaemonResult<{ workspace: Workspace; legacyHidden: readonly string[] }>>
   workspacesDelete(workspaceId: string): Promise<DaemonResult<true>>
+  workspaceDirectoryPick(): Promise<DaemonResult<DirectoryPickResult>>
+  workspacePrimaryRootValidate(path: string): Promise<DaemonResult<{ readonly path: string }>>
   settingsGet(): Promise<Settings>
   settingsSet(patch: SettingsPatch): Promise<Settings>
 }

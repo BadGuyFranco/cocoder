@@ -1,31 +1,35 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { OzApi, OzEventHint } from '../electron/ipc-contract.ts'
 
-const exposed: { api?: OzApi } = {}
-const listeners = new Map<string, (...args: unknown[]) => void>()
-const off = vi.fn()
+const mocks = vi.hoisted(() => ({
+  exposed: {} as { api?: OzApi },
+  listeners: new Map<string, (...args: unknown[]) => void>(),
+  invoke: vi.fn(),
+  off: vi.fn(),
+}))
 
 vi.mock('electron', () => ({
   contextBridge: {
     exposeInMainWorld: (_name: string, api: OzApi) => {
-      exposed.api = api
+      mocks.exposed.api = api
     },
   },
   ipcRenderer: {
-    invoke: vi.fn(),
+    invoke: mocks.invoke,
     on: (channel: string, listener: (...args: unknown[]) => void) => {
-      listeners.set(channel, listener)
+      mocks.listeners.set(channel, listener)
     },
-    off,
+    off: mocks.off,
   },
 }))
 
 describe('preload bridge', () => {
   beforeEach(async () => {
     vi.resetModules()
-    exposed.api = undefined
-    listeners.clear()
-    off.mockClear()
+    mocks.exposed.api = undefined
+    mocks.listeners.clear()
+    mocks.invoke.mockClear()
+    mocks.off.mockClear()
     await import('../electron/preload.ts')
   })
 
@@ -33,12 +37,22 @@ describe('preload bridge', () => {
     const { CHANNELS } = await import('../electron/ipc-contract.ts')
     const received: OzEventHint[] = []
 
-    const unsubscribe = exposed.api!.onOzEvent!((event) => received.push(event))
+    const unsubscribe = mocks.exposed.api!.onOzEvent!((event) => received.push(event))
     const hint: OzEventHint = { type: 'run-created', runId: 'run_1', workspaceId: 'cocoder', ts: '2026-06-12T00:00:00.000Z' }
-    listeners.get(CHANNELS.ozEvent)!({ sender: 'ipc-event' }, hint)
+    mocks.listeners.get(CHANNELS.ozEvent)!({ sender: 'ipc-event' }, hint)
 
     expect(received).toEqual([hint])
     unsubscribe()
-    expect(off).toHaveBeenCalledWith(CHANNELS.ozEvent, listeners.get(CHANNELS.ozEvent))
+    expect(mocks.off).toHaveBeenCalledWith(CHANNELS.ozEvent, mocks.listeners.get(CHANNELS.ozEvent))
+  })
+
+  it('routes workspace picker and validation through typed IPC channels', async () => {
+    const { CHANNELS } = await import('../electron/ipc-contract.ts')
+
+    await mocks.exposed.api!.workspaceDirectoryPick()
+    await mocks.exposed.api!.workspacePrimaryRootValidate('/repo')
+
+    expect(mocks.invoke).toHaveBeenCalledWith(CHANNELS.workspaceDirectoryPick)
+    expect(mocks.invoke).toHaveBeenCalledWith(CHANNELS.workspacePrimaryRootValidate, '/repo')
   })
 })

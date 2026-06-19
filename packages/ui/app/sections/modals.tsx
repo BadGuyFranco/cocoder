@@ -4,19 +4,57 @@ import { useEffect, useState } from 'react'
 import { Icon, Button, Modal } from '../ui/primitives.tsx'
 import type { Cli } from '../model.ts'
 
-export function NewWorkspaceModal({ open, onClose, onCreate }: { open: boolean; onClose: () => void; onCreate: (w: { name: string; description: string; root: { name: string; path: string } }) => void }) {
+export function NewWorkspaceModal({
+  open,
+  onClose,
+  onCreate,
+  onPickRoot,
+  onValidateRoot,
+}: {
+  open: boolean
+  onClose: () => void
+  onCreate: (w: { name: string; description: string; root: { name: string; path: string } }) => boolean | Promise<boolean>
+  onPickRoot?: () => Promise<{ readonly path: string | null; readonly error?: string }>
+  onValidateRoot?: (path: string) => Promise<string | null>
+}) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [rootName, setRootName] = useState('')
   const [rootPath, setRootPath] = useState('')
-  useEffect(() => { if (open) { setName(''); setDescription(''); setRootName(''); setRootPath('') } }, [open])
-  const valid = name.trim() && rootName.trim() && rootPath.trim()
+  const [rootError, setRootError] = useState<string | null>(null)
+  const [picking, setPicking] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  useEffect(() => { if (open) { setName(''); setDescription(''); setRootName(''); setRootPath(''); setRootError(null); setPicking(false); setSubmitting(false) } }, [open])
+  const valid = Boolean(name.trim() && rootName.trim() && rootPath.trim() && !rootError)
+  const pickRoot = async () => {
+    if (!onPickRoot || picking || submitting) return
+    setPicking(true)
+    setRootError(null)
+    const picked = await onPickRoot()
+    setPicking(false)
+    if (picked.error) setRootError(picked.error)
+    else if (picked.path) setRootPath(picked.path)
+  }
+  const submit = async () => {
+    if (!name.trim() || !rootName.trim() || !rootPath.trim() || submitting) return
+    setSubmitting(true)
+    setRootError(null)
+    const validationError = onValidateRoot ? await onValidateRoot(rootPath.trim()) : null
+    if (validationError) {
+      setRootError(validationError)
+      setSubmitting(false)
+      return
+    }
+    const ok = await onCreate({ name: name.trim(), description: description.trim(), root: { name: rootName.trim(), path: rootPath.trim() } })
+    setSubmitting(false)
+    if (ok) onClose()
+  }
   return (
     <Modal open={open} onClose={onClose} title="New workspace" subtitle="A workspace bundles one or more root folders and runs its own Oz, priorities, and runs." icon="cube" width={620}
       footer={<>
         <div style={{ flex: 1, fontSize: 11, color: 'var(--cb-text-muted)' }}>You can add more roots and assign Writable / Read-only roles after creating it.</div>
         <Button variant="ghost" onClick={onClose}>Cancel</Button>
-        <Button variant="primary" icon="cube" disabled={!valid} onClick={() => { onCreate({ name: name.trim(), description: description.trim(), root: { name: rootName.trim(), path: rootPath.trim() } }); onClose() }}>Create & open</Button>
+        <Button variant="primary" icon="cube" disabled={!valid || submitting} onClick={() => void submit()}>{submitting ? 'Creating...' : 'Create & open'}</Button>
       </>}>
       <div style={{ marginBottom: 16 }}><label className="oz-field-label">Workspace name</label><input className="oz-input" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. AcmeCRM, Vault, Internal Tools" /></div>
       <div style={{ marginBottom: 20 }}><label className="oz-field-label">Description</label><textarea className="oz-textarea" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What's this workspace for? Oz reads this on every conversation." rows={2} /></div>
@@ -24,7 +62,14 @@ export function NewWorkspaceModal({ open, onClose, onCreate }: { open: boolean; 
       <div style={{ fontSize: 11.5, color: 'var(--cb-text-muted)', marginBottom: 12, lineHeight: 1.55 }}>The main working repo. Where CoCoder picks up and writes freely. Exactly one Primary per workspace.</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
         <div><label className="oz-field-label">Name</label><input className="oz-input" value={rootName} onChange={(e) => setRootName(e.target.value)} placeholder="cocoder-cli" /></div>
-        <div><label className="oz-field-label">Path</label><div style={{ display: 'flex', gap: 6 }}><input className="oz-input" value={rootPath} style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 12 }} onChange={(e) => setRootPath(e.target.value)} placeholder="~/dev/cocoder-cli" /><button className="oz-iconbtn" title="Pick folder" onClick={() => setRootPath('~/dev/' + (rootName || 'new-root'))}><Icon name="folder-notch-open" size={14} /></button></div></div>
+        <div>
+          <label className="oz-field-label">Path</label>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input className="oz-input" value={rootPath} style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 12 }} onChange={(e) => { setRootPath(e.target.value); setRootError(null) }} placeholder="~/dev/cocoder-cli" />
+            <button className="oz-iconbtn" type="button" title="Pick folder" aria-label="Pick primary root folder" disabled={!onPickRoot || picking || submitting} onClick={() => void pickRoot()}><Icon name="folder-notch-open" size={14} /></button>
+          </div>
+          {rootError && <div className="oz-field-help" style={{ color: 'var(--cb-error)', marginTop: 6 }}>{rootError}</div>}
+        </div>
       </div>
     </Modal>
   )

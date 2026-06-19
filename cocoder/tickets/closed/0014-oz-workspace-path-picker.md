@@ -2,10 +2,11 @@
 id: 0014
 title: Add-workspace path field has no OS-native directory picker
 type: bug
-status: Open
+status: Closed
 priority: new-primary-root
-owner: founder-session run_131
+owner: deb
 created: 2026-06-17
+closed: 2026-06-18
 ---
 
 # 0014 — Add-workspace path field has no OS-native directory picker
@@ -53,3 +54,12 @@ skeleton into the chosen primary root); this ticket is only the picker that feed
   with a clear inline message (mirrors the API's `validateWorkspaceRootRules`).
 - Verified on evidence: a screenshot or run-through of picking a folder and the workspace appearing in
   `GET /workspaces`, plus the scaffolded `cocoder/` committed on the picked repo's branch.
+
+## Resolution
+The new-workspace modal now calls an Electron main-process IPC seam backed by
+`dialog.showOpenDialog({ properties: ['openDirectory'] })`. The picked path is validated in the main
+process before it reaches the renderer, and typed paths are validated again before `POST /workspaces`.
+Invalid primary roots stay in the modal with an inline error instead of closing into a daemon 400.
+
+Regression coverage pins the picker channel, preload bridge, renderer path-fill flow, inline picker
+errors, and pre-submit validation for missing/file/inside-install-root paths.

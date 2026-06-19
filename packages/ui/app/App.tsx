@@ -426,28 +426,43 @@ export function App() {
     }
     notify('ok', 'Workspace deleted.')
   }
-  async function handleCreateWorkspace(input: { name: string; description: string; root: { name: string; path: string } }): Promise<void> {
+  async function handlePickWorkspaceRoot(): Promise<{ readonly path: string | null; readonly error?: string }> {
+    const oz = ozApi()
+    if (!oz) return { path: `~/dev/new-root` }
+    const res = await oz.workspaceDirectoryPick()
+    if (!res.ok) return { path: null, error: res.error }
+    return { path: res.data.path }
+  }
+  async function handleValidateWorkspaceRoot(path: string): Promise<string | null> {
+    if (!live) return null
+    const oz = ozApi()
+    if (!oz) return 'Workspace create failed: daemon bridge unavailable.'
+    const res = await oz.workspacePrimaryRootValidate(path)
+    return res.ok ? null : res.error
+  }
+  async function handleCreateWorkspace(input: { name: string; description: string; root: { name: string; path: string } }): Promise<boolean> {
     if (!live) {
       const id = `ws-${Date.now()}`
       const ws: Workspace = { id, name: input.name, description: input.description, icon: 'ph-thin ph-cube', created: 'just now', roots: [{ id: `r${Date.now()}`, name: input.root.name, path: input.root.path, role: 'primary' }] }
       setWorkspaces((all) => [...all, ws]); setPrioritiesByWs((cur) => ({ ...cur, [id]: [] })); loadWs(id); setRoute('dashboard')
-      return
+      return true
     }
     const oz = ozApi()
-    if (!oz) { notify('err', 'Workspace create failed: daemon bridge unavailable.'); return }
+    if (!oz) { notify('err', 'Workspace create failed: daemon bridge unavailable.'); return false }
     const id = workspaceSlug(input.name)
     const folders = [
       { name: input.root.name, path: input.root.path, role: 'primary' as const, ...(input.description ? { description: input.description } : {}) },
       ...(input.root.path === '${COCODER_HOME}' ? [] : [{ name: 'CoCoder', path: '${COCODER_HOME}', role: 'readonly' as const }]),
     ]
     const res = await createWorkspace(oz, id, folders)
-    if (!res.ok) { notify('err', res.error); return }
+    if (!res.ok) { notify('err', res.error); return false }
     await refreshWorkspaces()
     setPrioritiesByWs((cur) => ({ ...cur, [res.data.workspace.id]: [] }))
     loadWs(res.data.workspace.id)
     setRoute('dashboard')
     if (res.data.legacyHidden.length) notify('info', `Legacy workspaces no longer served: ${res.data.legacyHidden.join(', ')}`)
     else notify('ok', 'Workspace created.')
+    return true
   }
   async function handleCreatePriority(p: { title: string; goal?: string; placeAtTop: boolean }): Promise<boolean> {
     const goal = p.goal?.trim() ? p.goal.trim() : undefined
@@ -678,7 +693,7 @@ export function App() {
         </div>
       </div>
 
-      <NewWorkspaceModal open={newWsOpen} onClose={() => setNewWsOpen(false)} onCreate={(input) => { void handleCreateWorkspace(input) }} />
+      <NewWorkspaceModal open={newWsOpen} onClose={() => setNewWsOpen(false)} onCreate={handleCreateWorkspace} onPickRoot={handlePickWorkspaceRoot} onValidateRoot={handleValidateWorkspaceRoot} />
       <NewPriorityModal open={newPriorityOpen} onClose={() => setNewPriorityOpen(false)} onSubmit={handleCreatePriority} />
       <NewTicketModal open={newTicketOpen} onClose={() => setNewTicketOpen(false)} onSubmit={handleCreateTicket} />
       <CraftPersonaModal open={craftOpen} onClose={() => setCraftOpen(false)} clis={clis} onSubmit={({ name, summary, placeAtTop }) => handleCreatePriority({ title: name, goal: summary, placeAtTop })} />

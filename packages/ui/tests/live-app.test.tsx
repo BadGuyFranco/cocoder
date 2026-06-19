@@ -76,6 +76,7 @@ interface ReorderCall { workspaceId: string; order: readonly string[] }
 interface WorkspaceUpdateCall { workspaceId: string; folders: unknown }
 interface WorkspaceCreateCall { workspaceId: string; folders: unknown }
 interface ChatCall { workspaceId: string; text: string }
+interface ValidateRootCall { path: string }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mockOz(opts: {
   getPaths?: string[]
@@ -88,6 +89,7 @@ function mockOz(opts: {
   ticketReorders?: ReorderCall[]
   workspaceUpdates?: WorkspaceUpdateCall[]
   workspaceCreates?: WorkspaceCreateCall[]
+  validateRootCalls?: ValidateRootCall[]
   chatSends?: ChatCall[]
   postResult?: any
   putResult?: any
@@ -95,6 +97,8 @@ function mockOz(opts: {
   ticketCreateResult?: any
   workspaceUpdateResult?: any
   workspaceCreateResult?: any
+  workspacePickResult?: any
+  workspaceValidateResult?: any
   chatReply?: (workspaceId: string, text: string) => { role: 'oz'; text: string; at: number }
   priorities?: { priorities: DPriority[] }
   personasResult?: { ok: false; status: number; error: string }
@@ -171,6 +175,11 @@ function mockOz(opts: {
       return opts.workspaceCreateResult ?? ok({ workspace: { id: workspaceId, name: workspaceId, path: '/new', roots: folders }, legacyHidden: [] })
     },
     workspacesDelete: async () => ok(true),
+    workspaceDirectoryPick: async () => opts.workspacePickResult ?? ok({ path: '/picked-root' }),
+    workspacePrimaryRootValidate: async (path: string) => {
+      opts.validateRootCalls?.push({ path })
+      return opts.workspaceValidateResult ?? ok({ path })
+    },
   }
 }
 
@@ -743,6 +752,64 @@ describe('Oz renderer — live daemon path', () => {
       ],
     })
     await waitFor(() => expect(screen.getByText('Legacy workspaces no longer served: legacy-only')).toBeDefined())
+  })
+
+  it('New workspace folder button fills the primary root from the native picker seam', async () => {
+    const workspaceCreates: WorkspaceCreateCall[] = []
+    const validateRootCalls: ValidateRootCall[] = []
+    setOz(mockOz({ workspaceCreates, validateRootCalls, workspacePickResult: ok({ path: '/picked/root' }) }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(screen.getByText('Workspaces'))
+    fireEvent.click(await screen.findByText('New workspace'))
+    fireEvent.change(await screen.findByPlaceholderText('e.g. AcmeCRM, Vault, Internal Tools'), { target: { value: 'Picked Workspace' } })
+    fireEvent.change(screen.getByPlaceholderText('cocoder-cli'), { target: { value: 'Picked Root' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Pick primary root folder' }))
+
+    await waitFor(() => expect(screen.getByDisplayValue('/picked/root')).toBeDefined())
+    fireEvent.click(screen.getByText('Create & open'))
+
+    await waitFor(() => expect(workspaceCreates.length).toBe(1))
+    expect(validateRootCalls).toEqual([{ path: '/picked/root' }])
+    expect(workspaceCreates[0]).toEqual({
+      workspaceId: 'picked-workspace',
+      folders: [
+        { name: 'Picked Root', path: '/picked/root', role: 'primary' },
+        { name: 'CoCoder', path: '${COCODER_HOME}', role: 'readonly' },
+      ],
+    })
+  })
+
+  it('New workspace shows picker validation errors inline', async () => {
+    const workspaceCreates: WorkspaceCreateCall[] = []
+    setOz(mockOz({ workspaceCreates, workspacePickResult: { ok: false, status: 400, error: 'primary root must not be inside the CoCoder install root' } }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(screen.getByText('Workspaces'))
+    fireEvent.click(await screen.findByText('New workspace'))
+    fireEvent.click(screen.getByRole('button', { name: 'Pick primary root folder' }))
+
+    await waitFor(() => expect(screen.getByText('primary root must not be inside the CoCoder install root')).toBeDefined())
+    expect(workspaceCreates).toEqual([])
+  })
+
+  it('New workspace validates a typed primary root before create', async () => {
+    const workspaceCreates: WorkspaceCreateCall[] = []
+    setOz(mockOz({ workspaceCreates, workspaceValidateResult: { ok: false, status: 400, error: 'primary root does not exist or is not a directory: /missing' } }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(screen.getByText('Workspaces'))
+    fireEvent.click(await screen.findByText('New workspace'))
+    fireEvent.change(await screen.findByPlaceholderText('e.g. AcmeCRM, Vault, Internal Tools'), { target: { value: 'Bad Workspace' } })
+    fireEvent.change(screen.getByPlaceholderText('cocoder-cli'), { target: { value: 'Bad Root' } })
+    fireEvent.change(screen.getByPlaceholderText('~/dev/cocoder-cli'), { target: { value: '/missing' } })
+    fireEvent.click(screen.getByText('Create & open'))
+
+    await waitFor(() => expect(screen.getByText('primary root does not exist or is not a directory: /missing')).toBeDefined())
+    expect(workspaceCreates).toEqual([])
   })
 })
 

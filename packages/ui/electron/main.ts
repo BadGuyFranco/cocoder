@@ -1,7 +1,7 @@
 // Electron MAIN: app lifecycle + the one secure window + the typed IPC handlers. The renderer is
 // sandboxed (contextIsolation:true, sandbox:true, nodeIntegration:false) and can ONLY reach the daemon
 // through these handlers, which attach auth in daemon-client.ts. No remote content is loaded.
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import { dirname, join } from 'node:path'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -16,6 +16,7 @@ import { reorderPrioritiesViaDaemon, reorderTicketsViaDaemon } from './prioritie
 import { savePersonaAssignmentsViaDaemon } from './personas-sync.ts'
 import { createWorkspaceViaDaemon, deleteWorkspaceViaDaemon, updateWorkspaceViaDaemon } from './workspaces-sync.ts'
 import { startOzEventStream } from './events-stream.ts'
+import { pickWorkspaceDirectory, validateWorkspacePrimaryRoot } from './workspace-picker.ts'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 
@@ -35,6 +36,8 @@ function registerIpc(): void {
   ipcMain.handle(CHANNELS.workspacesUpdate, (_e, ws: string, folders) => updateWorkspaceViaDaemon(ws, folders))
   ipcMain.handle(CHANNELS.workspacesCreate, (_e, ws: string, folders) => createWorkspaceViaDaemon(ws, folders))
   ipcMain.handle(CHANNELS.workspacesDelete, (_e, ws: string) => deleteWorkspaceViaDaemon(ws))
+  ipcMain.handle(CHANNELS.workspaceDirectoryPick, () => pickWorkspaceDirectory({ showOpenDialog: (options) => dialog.showOpenDialog({ ...options, properties: [...options.properties] }) }))
+  ipcMain.handle(CHANNELS.workspacePrimaryRootValidate, (_e, path: string) => validateWorkspacePrimaryRoot(path))
   ipcMain.handle(CHANNELS.settingsGet, () => getSettingsViaDaemon())
   ipcMain.handle(CHANNELS.settingsSet, (_e, patch) => setSettingsViaDaemon(patch))
 }
