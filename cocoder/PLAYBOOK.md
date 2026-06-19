@@ -234,9 +234,9 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    tier vocabulary across assignments, dispatch, and UI.
 4. `adapter-abstraction-hardening` — **Grok draft; requires founder ownership beat before launch.** Reduce
    duplication in the CLI adapter layer (ADR-0006).
-5. `new-primary-root` — **ARCHIVE-CANDIDATE (run_141).** Onboarding rebuild complete; one-command proof
+5. `new-primary-root` — **ARCHIVE-CANDIDATE (run_159).** Onboarding rebuild complete; one-command proof
    (`node scripts/proof-onboard-existing.mjs`). **Founder-gated live proofs remain:** external-repo
-   onboard-existing end-to-end; dogfood Drift Audit (unbuilt capability).
+   onboard-existing end-to-end; dogfood Drift Audit reframe (unbuilt — separate sub-build).
 
 **Standing tools (always available — not build work):** `priority-audit` (assess the priority set for
 staleness → a founder-decision table; the pruning tool) · `adhoc-session` (no named priority — draft one,

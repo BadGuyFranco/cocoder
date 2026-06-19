@@ -43,7 +43,7 @@ extension (ADR-0020 §7); the `deep-read` audit Play (the Takeover P2 unit, adve
 deterministic scaffold init op; and a **live Takeover proof on a real external repo** (the Phase-5 entry,
 CoPublisher).
 
-## Build progress — disposition: `archive-candidate on the rebuild` (rebuild COMPLETE, run_141 — A3a trust invariant + A3b scaffold seeding + A4 runnable proof landed; the three rebuilt invariants are proven in one command; only founder-gated LIVE proofs remain)
+## Build progress — disposition: `archive-candidate` (rebuild COMPLETE run_141; re-confirmed run_159 — zero build atoms warranted; `node scripts/proof-onboard-existing.mjs` proves the three rebuilt invariants; only founder-gated LIVE proofs remain: external-repo onboard-existing end-to-end + dogfood Drift Audit reframe)
 
 ## ⚠ ARCHITECTURE PIVOT — founder-directed (run_131, 2026-06-17): the existing-repo audit is NOT a standalone executor
 **Decision (founder):** the existing-repo onboarding audit will **not** ship as the standalone Playbook

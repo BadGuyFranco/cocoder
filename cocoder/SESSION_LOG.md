@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-19 — **new-primary-root: archive-candidate re-confirmed — no build atoms warranted (run_159)**
+
+**Persona:** Oscar (wrap-up only; 0 atoms delegated) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_159
+**Outcomes:**
+- **Disposition: `archive-candidate`** — onboarding engine code-complete since run_141; relaunching for build atoms would only reaffirm `node scripts/proof-onboard-existing.mjs` (F18).
+- **Founder-gated gaps unchanged:** (a) live external-repo onboard-existing end-to-end (CoPublisher/CoBuilder copy); (b) dogfood Drift Audit reframe — substantial separate sub-build under ADR-0026 scaffold-seeded-priority model, not a single atom.
+- **No code changes this run** — confirmation wrap only; engine proof remains one command.
+
+**Next:** Founder confirms archive of `new-primary-root`, OR launch `adhoc-session` for live onboard-existing proof (Objective a), OR scope Drift reframe as its own priority (Objective b).
+
 ## 2026-06-19 — **Oz hardening: drag-to-ask daemon half + items 2 & 4 proof harness landed (run_158)**
 
 **Persona:** Oscar (lead) + Bob (builder, codex) | **Priority:** [oz-hardening](./priorities/oz-hardening.md) | **Run:** run_158
