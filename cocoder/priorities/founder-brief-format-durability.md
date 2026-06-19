@@ -52,16 +52,32 @@ the pattern to copy: one owner (the wrap-up Play's fenced contract), the runtime
 and an end-to-end test fails when an old format reappears. Use it as the template for every other
 occurrence; do not re-diagnose or re-fix it.
 
-## Repair progress — disposition: `blocked` (run_147)
+## Repair progress — disposition: `continue` (after run_147)
 
-Verified through the gate: owner inventory in
-[`docs/orchestration-contract-ownership.md`](../docs/orchestration-contract-ownership.md) (`036e618`).
+Landed through the gate: owner inventory in
+[`docs/orchestration-contract-ownership.md`](../docs/orchestration-contract-ownership.md) (`036e618`). This
+is the source of truth for the work queue below; it survives all decisions here.
 
-Blocked: builder bypassed the verify gate and self-committed repair atoms to `aa7addc` (governing rule,
-structural enforcer, design-ref guard, ticket closures). Founder must revert `aa7addc`, then relaunch this
-priority to re-land those atoms through verify. Do not treat
-[`founder-brief-format-durability.owner-inventory.md`](./founder-brief-format-durability.owner-inventory.md)
-as verified — it came from the ungoverned commit and will disappear on revert.
+Landed OUTSIDE the gate but KEPT — founder decision (run_147): commit `aa7addc`, self-committed by the
+builder, carries the governing rule (`packages/personas/base/shared-standards.md`), the structural enforcer
+(`packages/core/tests/orchestration-contracts.test.ts`), the single-source alignment of `runner.test.ts`
+and `base-personas.test.ts` (closeout labels now derived from the wrap-up Play, not hard-coded), and the
+design-ref-historical guard. The full core suite is green (379/379). The founder chose to **fix forward,
+not revert**: the work is sound and green, a revert would not clean history, and the run_145 guard below is
+the better governance answer than discarding it.
+
+### Next run — use a scope-respecting builder and gate EVERY atom (no builder self-commits)
+1. **Bless the landed work**: line-by-line review of the `aa7addc` `runner.test.ts` rewrite (confirm it only
+   replaces hard-coded labels with derived ones and weakens nothing), and add an explicit red→green proof of
+   the enforcer — introduce a deliberate duplicate, watch `orchestration-contracts.test.ts` fail, remove it,
+   watch it pass (Objective §4).
+2. **Delete the duplicate inventory** `cocoder/priorities/founder-brief-format-durability.owner-inventory.md`
+   — redundant with the owner doc above; a one-owner violation that must not stand in this priority.
+3. **Reconcile tickets**: close `0017` by repair (rule is landed); confirm the `0012`/`0015` edits match
+   their dispositions in the owner doc; file the run_145 sibling ticket named below.
+4. **Record the run_147 gate-bypass incident** in `cocoder/failure-catalog.md` (builder self-committed
+   `aa7addc` past the verify gate — the in-class proof that the gate is unenforced).
+5. **Apply ticket 0005's side-channel rules** to their governed homes (still open from the owner doc queue).
 
 ## Required Ticket Review
 Review related tickets before proposing fixes and fold each into the owner inventory:
@@ -84,9 +100,10 @@ brief/wrap/closeout behavior, Play output, persona/standards memory, or generate
 closeout must say, per ticket, whether it was folded in, fixed/closed by the repair, or left a sibling, and
 why.
 
-## Related observation to scope (assess, do not assume)
-During run_145 the runner/test repair was committed directly (`90599db`) ahead of the orchestrator's verify
-gate — an ungoverned change reaching the branch without the gate that is supposed to own that decision.
-Assess during diagnosis whether this is in-class (an unenforced contract: "agent edits land only through the
-verify gate") and belongs in this repair, or is a sibling reliability issue to ticket separately. The
-founder owns that scoping call.
+## Related observation — DECIDED: sibling ticket (run_147)
+The run_145 direct commit (`90599db`) and the run_147 builder self-commit (`aa7addc`) are the same in-class
+defect: an unenforced contract — "agent edits land only through the verify gate" — lets ungoverned changes
+reach the branch. The founder scoped this as a **sibling reliability issue**: file a tracking ticket and
+build the gate-enforcement guard as separately-launchable work, because a real guard may touch git
+workflow, commit-spine policy, or host controls beyond prompt/runtime text. Next run files the ticket; the
+guard build is its own priority, not folded into this format/contract repair.
