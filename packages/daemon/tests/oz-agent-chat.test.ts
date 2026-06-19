@@ -55,6 +55,33 @@ describe('Oz agent chat turns', () => {
     expect(fixture.prompts[0]?.prompt).toContain('- 0014: New Ticket type=bug priority=demo owner=founder-session created=2026-06-19')
   })
 
+  test('dragged priority context injects a file reference without embedding the file body', async () => {
+    const fixture = await makeFixture({ outputs: ['Scoped answer.'] })
+
+    await handleOzMessage(fixture.ctx, { text: '[context: priority demo — Demo priority]\nWhat should I know before launching?', workspaceId: 'cocoder' })
+
+    const prompt = fixture.prompts[0]?.prompt ?? ''
+    expect(prompt).toContain('## Requested context')
+    expect(prompt).toContain('Type: priority')
+    expect(prompt).toContain('ID: demo')
+    expect(prompt).toContain('Slug/label: demo — Demo priority')
+    expect(prompt).toContain(`File path: ${join(fixture.home, 'cocoder', 'priorities', 'demo.md')}`)
+    expect(prompt).toContain('## Founder message\n\nWhat should I know before launching?\n\n## Turn instructions')
+    expect(prompt).not.toContain('Do the demo.')
+  })
+
+  test('founder text without a context pointer keeps the baseline prompt shape', async () => {
+    const fixture = await makeFixture({ outputs: ['Plain answer.'] })
+
+    await handleOzMessage(fixture.ctx, { text: 'What should I know before launching?', workspaceId: 'cocoder' })
+
+    const prompt = fixture.prompts[0]?.prompt ?? ''
+    expect(prompt).not.toContain('## Requested context')
+    expect(prompt).toContain('## Facts digest\n\n')
+    expect(prompt).toContain('## Recent transcript\n\n- none')
+    expect(prompt).toContain('## Founder message\n\nWhat should I know before launching?\n\n## Turn instructions')
+  })
+
   test('compacts transcript after configured run-settled records without counting founder chat turns', async () => {
     const fixture = await makeFixture({ outputs: ['Founder one answer', 'Founder two answer', 'Still has transcript', 'Fresh after compaction'] })
     const secondRun = fixture.store.createRun({ workspaceId: 'cocoder', priorityId: 'demo-two' })

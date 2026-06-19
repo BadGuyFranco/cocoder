@@ -12,6 +12,7 @@ import { basePersonasDir } from '@cocoder/personas'
 import type { OzContext } from './context.js'
 import { projectOzAwareness, type OzAwarenessRun, type OzAwarenessSnapshot } from './oz-awareness.js'
 import type { OzChatAction, OzChatResult, OzCommandExecutor, OzExecutableCommand } from './oz-chat.js'
+import { parsePromptInput } from './oz-context-pointer.js'
 import { readPriorities, readTickets } from './priority-order.js'
 import { findWorkspace, type RegistryWorkspace } from './registry.js'
 import { readSettings } from './settings.js'
@@ -194,16 +195,21 @@ async function buildPrompt(ctx: OzContext, target: OzTarget, transcript: readonl
     runs: ctx.store.listRuns({ workspaceId: target.workspace.id }),
     tickets: await readTickets(ticketsDir(target.workspace.path)),
   })
-  const body = input.kind === 'founder' ? input.text.trim() : input.result
+  const parsed = parsePromptInput(input, awareness, {
+    prioritiesDir: prioritiesDir(target.workspace.path),
+    ticketsDir: ticketsDir(target.workspace.path),
+    runsRoot: ctx.runsRoot,
+  })
   return [
     '## Oz persona',
     target.persona.body.trim(),
     '## Facts digest',
     factsDigest(awareness),
+    ...(parsed.requestedContext ? ['## Requested context', parsed.requestedContext] : []),
     '## Recent transcript',
     formatTranscript(transcript),
     turnInputHeading(input),
-    body,
+    parsed.body,
     '## Turn instructions',
     turnInstructions(input),
   ].join('\n\n')
