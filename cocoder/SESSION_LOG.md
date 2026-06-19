@@ -12,6 +12,33 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-19 — **ui-package-layout-stabilization: topology denoise + src/ move + design-ref retirement — archive-candidate (run_154)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [ui-package-layout-stabilization](./priorities/ui-package-layout-stabilization.md) | **Run:** run_154
+**Outcomes:**
+- Atom 0 (`ebc002b`): `scripts/check-topology.mjs` denoised — skip `out/` build artifacts, recognize `.tsx/.jsx`
+  test/spec files, exclude `design-ref/`; the ~52 `packages/ui` warnings drop to only the real `app/`+`electron/`
+  source (the founder layout decision), no other package's output changed.
+- Atom 1 (`3a14bf3`): founder-approved `src/` move via `git mv` — `app/`→`src/renderer`, `electron/preload.ts`→
+  `src/preload`, rest of `electron/`→`src/main`; `electron.vite.config.ts`, both tsconfigs (Node-only stub vs
+  app), cross-boundary imports + test globs repointed. Evidence: topology **0 `packages/ui` warnings**, typecheck
+  exit 0, UI suite 146/146, clean `electron-vite build` with fresh main.js/preload.cjs/index.html + bundled assets.
+  (`electron-vite dev` needs a display; build + jsdom suite are the standing proof.)
+- Atom 3 (`59b8053`): design-ref/regeneration clause closed (ticket 0012 was already Option A) — README maintained-
+  tree path + the `orchestration-contracts` guard assertion repointed to `src/renderer`; `BUILD_PROMPT.md` got a
+  HISTORICAL/do-not-regenerate banner + a LAYOUT rewrite to the real `src/` partition (was instructing the old
+  `app/`+`electron/` layout that re-triggers F21). First attempt rejected for over-reach (rewrote ticket 0012's
+  historical title across seed/fixtures/tests/audit doc); redone comments-only, archival titles left verbatim.
+- Support (this wrap): `cocoder/decisions/0027` owner-map UI paths updated `app/`→`src/renderer`, `electron/`→
+  `src/main`; filed **ticket 0020** (pre-existing `priority-authoring-plays` test reads archived
+  `cocoder/priorities/hybrid-plays.md` — fails at clean HEAD, unrelated to this run).
+- **Disposition: `archive-candidate`** — every objective clause met and verified; the only non-headless check is
+  `electron-vite dev` (needs a display).
+**Next:** Founder archive confirmation for `ui-package-layout-stabilization`; the layout convention is now `src/`
+and the topology guard enforces it for new UI work.
+
+---
+
 ## 2026-06-19 — **hybrid-plays: capstone proof + ARCHITECTURE.md Play system — archive-candidate (run_153)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [hybrid-plays](./priorities/hybrid-plays.md) | **Run:** run_153

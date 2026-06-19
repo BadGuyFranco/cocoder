@@ -70,7 +70,7 @@ Consumers to align:
 - `packages/daemon/src/registry.ts:21` `RegistryWorkspace`, `readWorkspaces()`, `findWorkspace()`;
 - workspace-scoped daemon routes in `packages/daemon/src/routes.ts`;
 - launcher input assembly in `packages/daemon/src/launcher.ts`;
-- UI workspace loading in `packages/ui/app/live.ts` and `packages/ui/app/App.tsx`;
+- UI workspace loading in `packages/ui/src/renderer/live.ts` and `packages/ui/src/renderer/App.tsx`;
 - `SqliteRunStore.upsertWorkspace()` as cache population, not identity ownership.
 
 ### 2. Portable durable run/session/work-item/commit/event records
@@ -110,7 +110,7 @@ Consumers to align:
 - run record projection `packages/core/src/runner/record.ts`;
 - daemon run list/detail routes in `packages/daemon/src/routes.ts`;
 - Deb recurrence reads in `packages/core/src/runner/runner.ts`;
-- UI run summaries/details in `packages/ui/app/live.ts` and adapters.
+- UI run summaries/details in `packages/ui/src/renderer/live.ts` and adapters.
 
 ### 3. Run identity and workspace-local display numbers
 
@@ -144,7 +144,7 @@ Consumers to align:
 
 - run creation in `SqliteRunStore.createRun()` and daemon playbook run creation;
 - cmux label construction in `packages/core/src/runner/runner.ts`;
-- UI run displays in `packages/ui/app/**`;
+- UI run displays in `packages/ui/src/renderer/**`;
 - run-detail and teardown routes that currently address runs by internal id.
 
 ### 4. Workspace-local counters
@@ -166,8 +166,8 @@ Consumers to align:
 
 - ticket allocator `packages/core/src/tickets/loader.ts:103`;
 - daemon ticket create route `packages/daemon/src/routes.ts`;
-- Electron ticket create bridge `packages/ui/electron/tickets-create.ts`;
-- renderer ticket create flow `packages/ui/app/App.tsx`;
+- Electron ticket create bridge `packages/ui/src/main/tickets-create.ts`;
+- renderer ticket create flow `packages/ui/src/renderer/App.tsx`;
 - future run/session display allocation in the runner and daemon launcher.
 
 ### 5. Role of `local/cocoder.db` after the split
