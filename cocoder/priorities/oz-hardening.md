@@ -74,20 +74,30 @@ completed before implementation**:
    Oz adopts a streaming-capable runtime. Item 1's streaming clause is satisfied on this runtime by
    message-level progress.
 
-## Build progress — disposition: `continue` (run_157)
+## Build progress — disposition: `continue` (run_158)
 
-**Disposition:** `continue` — NOT archive-ready.
+**Disposition:** `continue` — NOT archive-ready. All remaining gaps are live-app demos (founder-eyes
+acceptance); every scriptable piece is now landed and proven.
 
 **Landed:** items 2 & 4 (run_156, shared `projectOzAwareness()` + auto-compact + ticket-created pickup);
 item 1 markdown rendering in `OzChat.tsx` (run_157, React elements — removed latent XSS);
-item 3 UI half (run_157, `application/x-oz-item` drag from priority/ticket/run rows → removable chip →
-`[context: <type> <id> — <label>]` prepended on send through existing `onSend`).
+item 3 UI half (run_157, `application/x-oz-item` drag → removable chip → `[context: <type> <id> — <label>]`
+prepended on send);
+item 3 **daemon half** (run_158, `oz-context-pointer.ts` parses the pointer in `buildPrompt()`, resolves
+id → file path + slug via the loaded awareness snapshot, injects a `## Requested context` section — path
+not body — and degrades gracefully when unresolved; daemon tests green);
+items 2 & 4 **proof harness** (run_158, `scripts/proof-oz-awareness.mjs` / `pnpm proof:oz-awareness` —
+drives the real compaction + projection engine hermetically; exits 0 with 5 PASS lines).
 
-**Gaps blocking archive:**
-1. **Streaming/thinking (item 1): RESOLVED (founder, run_157) → message-level progress only; true token
-   streaming deferred.** No JSONL/SSE delta build. Remaining = confirm message-level progress (typing →
-   whole markdown answer) reads acceptably in the running app; thinking stays absent (design call #4).
-2. **Drag-to-ask daemon half (item 3):** pointer resolution (id → file/run state via loaders) + running-app
-   demonstration still needed.
-3. **Items 2 & 4 proof:** code landed run_156 but no independent runnable harness yet.
-4. **Running-app demos:** item 1 markdown and item 3 drag-to-ask acceptance criteria require the live app.
+**Gaps blocking archive (all live-only — no buildable atoms remain):**
+1. **Item 1 markdown/message-level progress:** confirm in the running app that an Oz reply renders rich
+   markdown and the typing → whole-markdown-answer progression reads acceptably (thinking stays absent —
+   design call #4).
+2. **Item 3 drag-to-ask end-to-end:** in the running app, drag a priority/run/ticket into Oz and confirm
+   Oz answers scoped to that item (the daemon now resolves the pointer; this is the live demonstration).
+
+**Runnable proof available now:** `pnpm proof:oz-awareness` (items 2 & 4).
+
+**Unrelated red tests flagged (not in scope here):** `packages/daemon/tests/mutations.test.ts` has 3
+pre-existing failures (run-lifecycle `status: failed` vs `completed`) present on baseline — file a ticket
+so they are not mistaken for an archive blocker on this priority.
