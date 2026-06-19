@@ -700,6 +700,25 @@ export async function requestSupportCommitRun(ctx: OzContext, runId: string): Pr
   }
   if (scope.length === 0) return { status: 409, body: { error: 'Oscar has no support-write scope for this workspace' } }
 
+  const changed = await ctx.git.changedFiles(workspace.path)
+  const archiveBypass = await postWrapArchiveBypass(workspace.path, run.priorityId, changed)
+  if (archiveBypass) {
+    ctx.store.recordEvent({
+      runId,
+      type: 'post-wrap-support-commit-refused',
+      data: { reason: 'archive-priority-required', files: archiveBypass.files },
+    })
+    return {
+      status: 409,
+      body: {
+        error:
+          `post-wrap support edits cannot archive the active priority "${run.priorityId}" directly; ` +
+          'use the archive-priority authoring Play after an archive-ready founder confirmation',
+        refusedPaths: archiveBypass.files,
+      },
+    }
+  }
+
   const headBefore = await ctx.git.headSha(workspace.path)
   const gate = await runCommitGate({
     git: ctx.git,
@@ -731,6 +750,15 @@ export async function requestSupportCommitRun(ctx: OzContext, runId: string): Pr
       liveOscar,
     },
   }
+}
+
+async function postWrapArchiveBypass(workspacePath: string, priorityId: string, changed: readonly string[]): Promise<{ readonly files: readonly string[] } | null> {
+  const livePath = `cocoder/priorities/${priorityId}.md`
+  const archivePath = `cocoder/priorities/archive/${priorityId}.md`
+  const touched = changed.filter((f) => f === livePath || f === archivePath)
+  if (touched.length === 0) return null
+  if (touched.includes(archivePath)) return { files: touched }
+  return (await isFile(join(workspacePath, livePath))) ? null : { files: touched }
 }
 
 async function readNudgeSeq(path: string): Promise<number> {

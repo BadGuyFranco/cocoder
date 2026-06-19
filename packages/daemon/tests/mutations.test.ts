@@ -1166,6 +1166,24 @@ describe('Oz mutations + lifecycle', () => {
     expect(store.listEvents(run.id).some((e) => e.type === 'post-wrap-support-commit')).toBe(true)
   })
 
+  test('POST /runs/:id/support-commit refuses to archive the active priority directly', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.createSession({ runId: run.id, persona: 'oscar', sessionRef: 'surface:oscar' })
+    store.setRunStatus(run.id, 'completed')
+    await startServer(fakeGit(['cocoder/priorities/archive/demo.md', 'cocoder/priorities/demo.md']))
+
+    const r = await call(oz!, 'POST', `/runs/${run.id}/support-commit`)
+
+    expect(r.status).toBe(409)
+    expect(r.json).toMatchObject({
+      refusedPaths: ['cocoder/priorities/archive/demo.md', 'cocoder/priorities/demo.md'],
+    })
+    expect(String(r.json.error)).toContain('use the archive-priority authoring Play')
+    expect(store.listCommitLinks(run.id)).toEqual([])
+    expect(store.listEvents(run.id).some((e) => e.type === 'post-wrap-support-commit-refused')).toBe(true)
+  })
+
   test('POST /runs/:id/support-commit allows the same wrapped run while Oscar remains live', async () => {
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
