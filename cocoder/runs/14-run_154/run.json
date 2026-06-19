@@ -12,7 +12,7 @@
   "priorityId": "ui-package-layout-stabilization",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "failed",
   "createdAt": 1781897852182,
-  "endedAt": null
+  "endedAt": 1781899440625
 }
