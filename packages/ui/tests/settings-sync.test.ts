@@ -35,12 +35,12 @@ describe('main-process settings seam', () => {
   })
 
   it('prefers daemon settings and mirrors successful reads into the local fallback cache', async () => {
-    mocks.daemonGet.mockResolvedValue({ ok: true, status: 200, data: { pollIntervalMs: 4000, defaultWorkspaceId: 'cocoder' } })
+    mocks.daemonGet.mockResolvedValue({ ok: true, status: 200, data: { pollIntervalMs: 4000, defaultWorkspaceId: 'cocoder', ozAutoCompactRuns: 5 } })
 
-    await expect(getSettingsViaDaemon()).resolves.toEqual({ ...DEFAULT_SETTINGS, pollIntervalMs: 4000, defaultWorkspaceId: 'cocoder' })
+    await expect(getSettingsViaDaemon()).resolves.toEqual({ ...DEFAULT_SETTINGS, pollIntervalMs: 4000, defaultWorkspaceId: 'cocoder', ozAutoCompactRuns: 5 })
 
     expect(mocks.daemonGet).toHaveBeenCalledWith('/settings')
-    expect(mocks.setSettings).toHaveBeenCalledWith({ pollIntervalMs: 4000, defaultWorkspaceId: 'cocoder' })
+    expect(mocks.setSettings).toHaveBeenCalledWith({ pollIntervalMs: 4000, defaultWorkspaceId: 'cocoder', ozAutoCompactRuns: 5 })
   })
 
   it('falls back to the local store when daemon settings calls fail', async () => {
@@ -53,6 +53,15 @@ describe('main-process settings seam', () => {
 
     expect(mocks.getSettings).toHaveBeenCalled()
     expect(mocks.setSettings).toHaveBeenCalledWith({ pollIntervalMs: 6000 })
+  })
+
+  it('sends Oz auto compact runs to the daemon-owned settings path', async () => {
+    mocks.daemonPut.mockResolvedValue({ ok: true, status: 200, data: { pollIntervalMs: 2500, defaultWorkspaceId: null, ozAutoCompactRuns: 7 } })
+
+    await expect(setSettingsViaDaemon({ ozAutoCompactRuns: 7 })).resolves.toEqual({ ...DEFAULT_SETTINGS, ozAutoCompactRuns: 7 })
+
+    expect(mocks.daemonPut).toHaveBeenCalledWith('/settings', { ozAutoCompactRuns: 7 })
+    expect(mocks.setSettings).toHaveBeenLastCalledWith({ pollIntervalMs: 2500, defaultWorkspaceId: null, ozAutoCompactRuns: 7 })
   })
 
   it('keeps renderer preferences local while preserving the durable settings round-trip', async () => {

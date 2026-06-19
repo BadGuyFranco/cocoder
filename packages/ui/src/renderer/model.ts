@@ -69,12 +69,18 @@ export interface ChatMessage {
   flag?: 'decision'; attachments?: { kind: string; runId: string }[]
 }
 export interface Settings {
+  pollIntervalMs: number
+  defaultWorkspaceId: string | null
+  ozAutoCompactRuns: number
   preferences: { theme: 'dark' | 'light'; sound: boolean; sendOnEnter: boolean; panelRatio: number }
   watching: { notifyOnDecisionNeeded: boolean; notifyOnRunFailed: boolean; notifyOnRunComplete: boolean; desktopNotifications: boolean; slackWebhook: string }
   advanced: { transcriptRetention: number; autoAttach: boolean }
 }
 export const DEFAULT_PANEL_RATIO = 0.45
 export const DEFAULT_SETTINGS: Settings = {
+  pollIntervalMs: 2500,
+  defaultWorkspaceId: null,
+  ozAutoCompactRuns: 3,
   preferences: { theme: 'dark', sound: false, sendOnEnter: true, panelRatio: DEFAULT_PANEL_RATIO },
   watching: { notifyOnDecisionNeeded: true, notifyOnRunFailed: true, notifyOnRunComplete: false, desktopNotifications: true, slackWebhook: '' },
   advanced: { transcriptRetention: 7, autoAttach: true },
@@ -91,7 +97,7 @@ interface Seed {
   clis: Cli[]
   dependencies: Dependency[]
   ozChat: Record<string, ChatMessage[]>
-  settings: { preferences?: Partial<Settings['preferences']>; watching?: Partial<Settings['watching']>; advanced?: Partial<Settings['advanced']> }
+  settings: Partial<Pick<Settings, 'pollIntervalMs' | 'defaultWorkspaceId' | 'ozAutoCompactRuns'>> & { preferences?: Partial<Settings['preferences']>; watching?: Partial<Settings['watching']>; advanced?: Partial<Settings['advanced']> }
 }
 export const seed = seedJson as unknown as Seed
 

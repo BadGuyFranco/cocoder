@@ -77,10 +77,16 @@ const TABS = [
   { id: 'about', label: 'About', icon: 'info' },
 ]
 
+function clampOzAutoCompactRuns(value: number): number {
+  if (!Number.isFinite(value)) return 3
+  return Math.min(10, Math.max(2, Math.round(value)))
+}
+
 export function SettingsScreen({ settings, dependencies, onRecheckDep, onChange, live = false }: { settings: Settings; dependencies: Dependency[]; onRecheckDep: (id: string) => void; onChange: (s: Settings) => void; live?: boolean }) {
   const [tab, setTab] = useState('preferences')
   const update = <S extends keyof Settings>(section: S, key: keyof Settings[S], value: unknown) =>
     onChange({ ...settings, [section]: { ...settings[section], [key]: value } })
+  const updateSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => onChange({ ...settings, [key]: value })
 
   return (
     <div style={{ height: '100%', overflow: 'hidden', display: 'grid', gridTemplateRows: 'auto 1fr' }}>
@@ -133,6 +139,18 @@ export function SettingsScreen({ settings, dependencies, onRecheckDep, onChange,
                   <select className="oz-select" style={{ width: 120 }} value={settings.advanced.transcriptRetention} onChange={(e) => update('advanced', 'transcriptRetention', parseInt(e.target.value))}>
                     {[7, 14, 30, 60, 90].map((d) => <option key={d} value={d}>{d} days</option>)}
                   </select>
+                </SettingsRow>
+                <SettingsRow label="Oz Auto Compact at N Runs" help="Number of completed runs before Oz compacts its working context.">
+                  <input
+                    className="oz-input"
+                    type="number"
+                    min={2}
+                    max={10}
+                    step={1}
+                    style={{ width: 88, fontFamily: 'var(--cb-font-mono)', fontSize: 12 }}
+                    value={settings.ozAutoCompactRuns}
+                    onChange={(e) => updateSetting('ozAutoCompactRuns', clampOzAutoCompactRuns(e.currentTarget.valueAsNumber))}
+                  />
                 </SettingsRow>
                 <SettingsRow label="Auto-attach Oz to new runs" help="Oz watches every run by default. Off if you want explicit watchers."><Toggle on={settings.advanced.autoAttach} onChange={(v) => update('advanced', 'autoAttach', v)} /></SettingsRow>
               </>

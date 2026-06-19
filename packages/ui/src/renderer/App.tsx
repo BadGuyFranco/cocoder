@@ -27,6 +27,9 @@ const seedSettings = (): Settings => {
   // The prototype settings nest extra keys; map onto our typed shape, falling back to defaults.
   const s = (seed as unknown as { settings?: Partial<Settings> }).settings
   return {
+    pollIntervalMs: s?.pollIntervalMs ?? DEFAULT_SETTINGS.pollIntervalMs,
+    defaultWorkspaceId: s?.defaultWorkspaceId ?? DEFAULT_SETTINGS.defaultWorkspaceId,
+    ozAutoCompactRuns: s?.ozAutoCompactRuns ?? DEFAULT_SETTINGS.ozAutoCompactRuns,
     preferences: { ...DEFAULT_SETTINGS.preferences, ...(s?.preferences ?? {}) },
     watching: { ...DEFAULT_SETTINGS.watching, ...(s?.watching ?? {}) },
     advanced: { ...DEFAULT_SETTINGS.advanced, ...(s?.advanced ?? {}) },
@@ -34,6 +37,9 @@ const seedSettings = (): Settings => {
 }
 
 const mergeSettings = (base: Settings, patch: Partial<Settings>): Settings => ({
+  pollIntervalMs: patch.pollIntervalMs ?? base.pollIntervalMs,
+  defaultWorkspaceId: patch.defaultWorkspaceId ?? base.defaultWorkspaceId,
+  ozAutoCompactRuns: patch.ozAutoCompactRuns ?? base.ozAutoCompactRuns,
   preferences: { ...base.preferences, ...(patch.preferences ?? {}) },
   watching: { ...base.watching, ...(patch.watching ?? {}) },
   advanced: { ...base.advanced, ...(patch.advanced ?? {}) },
@@ -280,7 +286,7 @@ export function App() {
   function saveSettings(next: Settings): void {
     setSettings(next)
     const oz = ozApi()
-    if (oz) void oz.settingsSet({ preferences: next.preferences }).then((saved) => setSettings((cur) => mergeSettings(cur, saved as Partial<Settings>))).catch(() => undefined)
+    if (oz) void oz.settingsSet({ ozAutoCompactRuns: next.ozAutoCompactRuns, preferences: next.preferences }).then((saved) => setSettings((cur) => mergeSettings(cur, saved as Partial<Settings>))).catch(() => undefined)
   }
   function setTheme(fn: (t: 'dark' | 'light') => 'dark' | 'light'): void {
     const nextTheme = fn(settings.preferences.theme)

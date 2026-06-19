@@ -242,6 +242,8 @@ describe('Oz — rebuilt Fusion renderer', () => {
     // cmux is the only system dependency; iTerm2 was dropped (cmux is the sole terminal host, ADR-0002)
     expect(screen.getByText('cmux')).toBeDefined()
     expect(screen.queryByText('iTerm2')).toBeNull()
+    fireEvent.click(screen.getByText('Advanced'))
+    expect(screen.getByText('Oz Auto Compact at N Runs')).toBeDefined()
   })
 
   it('CoCoder is a root in every workspace (writable elsewhere, primary in the cocoder workspace)', () => {

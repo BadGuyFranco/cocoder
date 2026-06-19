@@ -1427,9 +1427,9 @@ describe('Oz mutations + lifecycle', () => {
     const put = await call(oz!, 'PUT', '/settings', { body: { pollIntervalMs: 5000, ignored: true } })
 
     expect(put.status).toBe(200)
-    expect(put.json).toEqual({ pollIntervalMs: 5000, defaultWorkspaceId: null })
+    expect(put.json).toEqual({ pollIntervalMs: 5000, defaultWorkspaceId: null, ozAutoCompactRuns: 3 })
     const persisted = JSON.parse(await readFile(join(home, 'local', 'settings.json'), 'utf8'))
-    expect(persisted).toEqual({ pollIntervalMs: 5000, defaultWorkspaceId: null })
+    expect(persisted).toEqual({ pollIntervalMs: 5000, defaultWorkspaceId: null, ozAutoCompactRuns: 3 })
     const get = await call(oz!, 'GET', '/settings')
     expect(get.status).toBe(200)
     expect(get.json).toEqual(put.json)

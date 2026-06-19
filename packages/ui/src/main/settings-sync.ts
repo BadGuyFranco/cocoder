@@ -5,12 +5,14 @@ import { getSettings, setSettings } from './store.ts'
 interface DaemonSettings {
   pollIntervalMs: number
   defaultWorkspaceId: string | null
+  ozAutoCompactRuns: number
 }
 
 function daemonPatch(patch: SettingsPatch): Partial<DaemonSettings> {
   const next: Partial<DaemonSettings> = {}
   if (patch.pollIntervalMs !== undefined) next.pollIntervalMs = patch.pollIntervalMs
   if (patch.defaultWorkspaceId !== undefined) next.defaultWorkspaceId = patch.defaultWorkspaceId
+  if (patch.ozAutoCompactRuns !== undefined) next.ozAutoCompactRuns = patch.ozAutoCompactRuns
   return next
 }
 

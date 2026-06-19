@@ -243,12 +243,14 @@ export interface RendererPreferences {
 export interface Settings {
   readonly pollIntervalMs: number
   readonly defaultWorkspaceId: string | null
+  readonly ozAutoCompactRuns: number
   readonly preferences: RendererPreferences
 }
 export type SettingsPatch = Partial<Omit<Settings, 'preferences'>> & { readonly preferences?: Partial<RendererPreferences> }
 export const DEFAULT_SETTINGS: Settings = {
   pollIntervalMs: 2500,
   defaultWorkspaceId: null,
+  ozAutoCompactRuns: 3,
   preferences: { theme: 'dark', sound: false, sendOnEnter: true, panelRatio: 0.45 },
 }
 
