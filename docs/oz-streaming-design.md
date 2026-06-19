@@ -36,8 +36,8 @@ commands, but no `codex exec` reasoning/thinking flag.
 
 Verdict:
 
-- `codex exec` can emit a stdout JSONL event stream (`--json`). That is the viable streaming
-  capability to probe deeper and consume.
+- `codex exec` can emit a stdout JSONL event stream (`--json`), but the long-answer timing probe below
+  shows it does not emit incremental answer deltas on `codex-cli 0.137.0`.
 - The installed CLI does not expose reasoning/thinking tokens as a distinct stream. Thinking must be
   modeled as optional and absent for this Codex version.
 - Do not fake streaming by chunking the completed `reply` after `POST /oz/messages` returns. That would
@@ -67,28 +67,26 @@ Reliability tradeoff:
 
 - The final committed transcript source should remain the clean `--output-last-message` artifact.
   It is already the answer source and avoids Codex stdout transcript/footer noise.
-- The in-progress UI can stream from JSONL stdout while the process runs. That stream is presentation
-  state, not the durable answer. If JSONL parsing drops a malformed event, the final artifact still
-  wins on completion.
-- Streaming requires a parser and schema fixture for the installed Codex JSONL event shape. Until that
-  fixture exists, treating raw stdout text as answer deltas would be brittle because non-answer events,
-  transcript entries, stderr, and token/footer data can appear in the captured stream.
+- The in-progress UI cannot stream answer text from this Codex JSONL shape. It can show lifecycle
+  progress (`thread.started`, `turn.started`) and then the whole answer when `item.completed` arrives.
+- If a future Codex version or alternate runtime emits true answer deltas, the final committed
+  transcript source should still remain `--output-last-message`; streaming events should be
+  presentation state only.
 
 ## Delivery Design
 
-Reuse existing owners. Do not create a second chat/event transport.
+Reuse existing owners if a founder chooses to build message-level progress now or later adopts a
+streaming-capable runtime. Do not create a second chat/event transport.
 
 1. Adapter owner: `packages/core/src/adapter/types.ts` and `packages/adapters/src/codex.ts`.
-   Add an opt-in `BuiltCommand.stream?: { format: 'codex-jsonl'; finalArtifact: true }`.
-   `CodexAdapter.build({ headless: true })` keeps `--output-last-message <outPath>` and adds `--json`
-   only when streaming is requested. Normal builder/Play behavior stays unchanged until the JSONL parser
-   is proven.
+   A future opt-in JSONL mode would keep `--output-last-message <outPath>` and add `--json`, but this is
+   not answer streaming on `codex-cli 0.137.0`; it is lifecycle plus whole-message completion.
 
 2. Subprocess owner: `packages/core/src/plays/dispatch.ts`.
 
-   `HeadlessRunInput.onData` already fires per stdout/stderr chunk. For JSONL reliability, extend the
-   owner to `onData(chunk, stream: 'stdout' | 'stderr')`; existing consumers can ignore the second
-   argument. The Codex parser consumes stdout only and keeps stderr as diagnostics.
+   `HeadlessRunInput.onData` already fires per stdout/stderr chunk. If this path is built for
+   message-level progress, extend the owner to `onData(chunk, stream: 'stdout' | 'stderr')`; consume
+   stdout JSONL only and keep stderr as diagnostics.
 
 3. Daemon Oz chat owner: `packages/daemon/src/oz-host.ts`, `packages/daemon/src/oz-chat.ts`, and
    `packages/daemon/src/context.ts`.
@@ -100,9 +98,10 @@ Reuse existing owners. Do not create a second chat/event transport.
    types:
 
    - `oz-chat-start`: `{ workspaceId, messageId, turnId }`
-   - `oz-chat-delta`: `{ workspaceId, messageId, turnId, seq, channel: 'answer', delta }`
-   - `oz-chat-thinking-delta`: same shape, but `channel: 'thinking'`; emitted only if an adapter truly
-     supplies a separated thinking stream
+   - `oz-chat-message`: `{ workspaceId, messageId, turnId, text }`, emitted when the whole
+     `agent_message` arrives
+   - `oz-chat-delta` / `oz-chat-thinking-delta`: reserved for a runtime that truly supplies separated
+     answer/thinking deltas; do not synthesize them from a completed message
    - `oz-chat-complete`: `{ workspaceId, messageId, turnId, done: true }`
    - `oz-chat-error`: `{ workspaceId, messageId, turnId, error }`
 
@@ -126,49 +125,56 @@ Reuse existing owners. Do not create a second chat/event transport.
    `packages/ui/src/renderer/model.ts`, and
    `packages/ui/src/renderer/sections/dashboard/OzChat.tsx`.
 
-   Extend renderer `ChatMessage` with optional `stream: { messageId, answer, thinking?, done }`.
-   `App.tsx` handles `oz-chat-*` events in its existing `onOzEvent` subscription before the refetch
-   debounce path, updates one Oz message keyed by `messageId`, applies deltas by `seq`, and marks
-   complete when either `oz-chat-complete` arrives or the final `OzChatReply` returns. `OzChat.tsx`
-   renders `stream.thinking` only when present.
+   Extend renderer `ChatMessage` with optional in-flight state keyed by `messageId`. `App.tsx` handles
+   `oz-chat-*` events in its existing `onOzEvent` subscription before the refetch debounce path, updates
+   one Oz message when the whole `agent_message` arrives, and marks complete when `oz-chat-complete` or
+   the final `OzChatReply` returns. `OzChat.tsx` renders thinking only when a future runtime supplies it.
 
 ## Go/No-Go
 
-GO for answer streaming behind a Codex JSONL parser. NO-GO for show-thinking on current Codex unless a
-future CLI exposes a distinct reasoning/thinking event. The founder decision is whether to ship answer
-streaming first with thinking absent, or wait for an upstream thinking-capable interface. My
-recommendation is to ship answer streaming first and keep thinking optional.
+NO-GO for token-level or line-level answer streaming on `codex-cli 0.137.0`. The long probe produced a
+single whole `item.completed`/`agent_message` after generation, not multiple answer delta events over
+wall-clock time. NO-GO for show-thinking as well: `turn.completed.usage.reasoning_output_tokens` is a
+count, not reasoning text.
 
-Ordered sub-atoms:
-
-1. Capture Codex JSONL schema fixture.
-   Run one bounded `codex exec --json --output-last-message <tmp>` probe in a temp workspace, commit a
-   redacted fixture, and document which JSONL fields contain answer deltas. Exit criterion: fixture
-   proves answer deltas arrive before completion and the final artifact still matches the last-message
-   file.
-
-2. Add adapter and parser capability.
-   Extend `BuiltCommand`/`CodexAdapter` for opt-in `--json`, add a parser that emits only answer
-   deltas, and keep `--output-last-message` as final source. Exit criterion: adapter/core tests prove
-   non-streaming commands are unchanged and streaming commands parse the fixture.
-
-3. Add daemon stream events.
-   Thread `messageId`/`turnId` through `tryHandleOzAgentTurn()` and `runTurn()`, emit `oz-chat-*` via
-   `OzEventBus`, and keep `OzChatReply` as final HTTP completion. Exit criterion: daemon tests observe
-   ordered `/oz/events` SSE frames while final reply still comes from the artifact.
-
-4. Add UI bridge and renderer state.
-   Extend `OzEventHint`, `sanitizeOzEventHint()`, preload typing, `App.tsx`, and `OzChat.tsx`.
-   Exit criterion: UI tests prove deltas update one Oz message keyed by `messageId`, completion
-   reconciles with `OzChatReply`, and thinking is hidden when absent.
-
-5. Run end-to-end smoke.
-   Use a bounded live Oz chat turn with `--json` enabled and verify visible incremental answer text,
-   final artifact reconciliation, no duplicate final message, and graceful fallback when streaming is
-   disabled or malformed. Exit criterion: typecheck, topology, relevant tests, and bounded launch smoke
-   pass with artifact/path evidence.
+Founder decision: either build only message-level progress for Codex (`started` -> waiting -> whole
+message -> complete) and defer true streaming, or pursue an alternate streaming-capable runtime before
+building parser/runtime/UI streaming. Do not fake streaming by chunking the completed reply.
 
 ## Scope Note
 
 This design does not touch the archived workspace-segmentation panel-layout seam, `packages/ui/design-ref`,
 or dashboard panel layout. Streaming belongs to the existing Oz chat/event/IPC path only.
+
+## Codex JSONL Event Schema
+
+Observed with one bounded long-answer probe in a temp directory:
+`codex exec --skip-git-repo-check --dangerously-bypass-approvals-and-sandbox --disable apps --json -o "$tmp/last.txt" "Count from 1 to 60, printing each number on its own line, then write a 10-sentence paragraph about the ocean. Do not use markdown."`.
+The run exited 0, wrote 4 JSONL events, and wrote a 1023-character final artifact. Redacted fixture:
+`packages/adapters/tests/fixtures/codex-jsonl-stream.jsonl`.
+
+Timestamped capture:
+
+```text
+1781904778.855 {"type":"thread.started","thread_id":"019ee1cd-263d-7d50-9f66-bad0f43e7693"}
+1781904778.857 {"type":"turn.started"}
+1781904787.344 {"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"1\n2\n3\n..."}}
+1781904787.390 {"type":"turn.completed","usage":{"input_tokens":10542,"cached_input_tokens":2432,"output_tokens":318,"reasoning_output_tokens":30}}
+```
+
+Observed event counts: `thread.started:1`, `turn.started:1`, `item.completed:1`,
+`turn.completed:1`. No `item.delta`, `item.updated`, repeated `agent_message`, or other partial-answer
+event appeared.
+
+| Event discriminator | Role | Parser fields |
+| --- | --- | --- |
+| `thread.started` | other | `thread_id` is session metadata; ignore for answer text. |
+| `turn.started` | other | Turn boundary; ignore for answer text. |
+| `item.completed` with `item.type === "agent_message"` | whole-answer | Read `item.text` as the whole answer. This is not an incremental delta. |
+| `turn.completed` | completion | Completion marker. `usage.reasoning_output_tokens` is a token count only, not a reasoning/thinking text stream. |
+
+Reconciliation proof: `answer-event-count=1`, `answer-time=1781904787.344`,
+`completion-time=1781904787.390`, `answer-to-completion-seconds=0.046`,
+`total-event-span-seconds=8.535`, `answer-char-length=1023`, `artifact-char-length=1023`, and
+`reconstructs-artifact=true`. The message-level answer event arrives before process completion, but only
+by 0.046 seconds and only as a complete 1023-character message.
