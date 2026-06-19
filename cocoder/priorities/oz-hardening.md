@@ -66,6 +66,13 @@ completed before implementation**:
    audit the settings surface at owner-map time so it is one owner, not a parallel toggle.
 3. **Drag-to-ask attaches a pointer, not the body.** The dropped priority/run/ticket is injected as its
    **file path with the slug visibly shown**; Oz reads the item by reference. Keeps Oz's context cheap.
+4. **Streaming = message-level progress only; true token streaming deferred (founder, run_157).** The
+   probe proved codex-cli 0.137.0 cannot stream (one whole `item.completed` ~8.5s in; no token deltas, no
+   reasoning stream — `docs/oz-streaming-design.md`). Decision: ship Oz with **message-level progress**
+   (lifecycle state → typing affordance → whole markdown answer on completion) and **do not build** the
+   JSONL/SSE delta plumbing now. Thinking stays absent (per #1). Revisit true token streaming only if/when
+   Oz adopts a streaming-capable runtime. Item 1's streaming clause is satisfied on this runtime by
+   message-level progress.
 
 ## Build progress — disposition: `continue` (run_157)
 
@@ -77,9 +84,9 @@ item 3 UI half (run_157, `application/x-oz-item` drag from priority/ticket/run r
 `[context: <type> <id> — <label>]` prepended on send through existing `onSend`).
 
 **Gaps blocking archive:**
-1. **Streaming/thinking (item 1):** codex-cli 0.137.0 `--json` delivers one `item.completed` event — no token
-   deltas, no reasoning stream (`docs/oz-streaming-design.md`). Founder must choose message-level-only vs
-   alternate streaming-capable runtime before any streaming build.
+1. **Streaming/thinking (item 1): RESOLVED (founder, run_157) → message-level progress only; true token
+   streaming deferred.** No JSONL/SSE delta build. Remaining = confirm message-level progress (typing →
+   whole markdown answer) reads acceptably in the running app; thinking stays absent (design call #4).
 2. **Drag-to-ask daemon half (item 3):** pointer resolution (id → file/run state via loaders) + running-app
    demonstration still needed.
 3. **Items 2 & 4 proof:** code landed run_156 but no independent runnable harness yet.

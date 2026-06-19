@@ -94,6 +94,9 @@ say "kill" / "tear down" afterward.
      product behavior, architecture, tests, documentation, founder decisions, and missing evidence. Use
      at most three short bullets. Do not include optional nice-to-have work, percentage-complete claims,
      atom labels, implementation labels, or proof-matrix detail here, and do not bury the next move here.
+     Start each bullet with the missing founder-facing capability or proof, not a label. Forbidden
+     openings include `Atom 3:`, `Item 2:`, `A3a:`, `UI 2/4:`, and bold label bullets like
+     `**Proof harness:**`.
    - **`Recommended Next Step`** is not a task list or confirmation request. It is exactly one ready
      work item. Use one of these two forms:
 

@@ -242,6 +242,16 @@ function sentenceCount(text: string): number {
   return matches?.length ?? (text.trim() === '' ? 0 : 1)
 }
 
+function hasAtomOrImplementationLabel(line: string): boolean {
+  const bulletText = line.replace(/^[-*]\s+/, '').trim()
+  return (
+    /^\*\*[^*\n]+:\*\*/.test(bulletText) ||
+    /^(?:atom|item)\s+\d+[a-z]?\b\s*[:(-]/i.test(bulletText) ||
+    /^[A-Z]\d+[a-z]?\b\s*[:)-]/.test(bulletText) ||
+    /^(?:core|daemon|ui|docs|runner|adapter|ipc)\s+\d+(?:\/\d+)?\b\s*[:(-]/i.test(bulletText)
+  )
+}
+
 function founderCloseoutFormatIssues(markdown: string, cwd: string, contract: FounderCloseoutContract): string[] {
   const issues: string[] = []
   let priorIndex = -1
@@ -283,7 +293,7 @@ function founderCloseoutFormatIssues(markdown: string, cwd: string, contract: Fo
   if (whatRemains) {
     const bulletLines = whatRemains.split(/\r?\n/).map((line) => line.trim()).filter((line) => /^[-*]\s+/.test(line))
     if (bulletLines.length > 3) issues.push(`${whatRemainsLabel} has too many bullets`)
-    if (bulletLines.some((line) => /^[-*]\s+\*\*/.test(line) || /\b[A-Z]?\d+[a-z]?\b/.test(line))) {
+    if (bulletLines.some(hasAtomOrImplementationLabel)) {
       issues.push(`${whatRemainsLabel} contains atom/implementation labels`)
     }
   }

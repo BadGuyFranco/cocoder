@@ -1130,6 +1130,32 @@ describe('runRun (multi-atom loop)', () => {
     expect(store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')).toBeUndefined()
   })
 
+  test('wrap-up Play permits founder-facing numerals in What Remains', async () => {
+    const store = openRunStore(':memory:')
+    const pickupWrites: string[] = []
+    const numericGapCloseout = renderFounderCloseout({
+      whatRemains: [
+        '- Ticket 0015 needs a follow-up launch proof.',
+        '- The Oz compact setting still needs the default 3-run smoke.',
+      ].join('\n'),
+    })
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([['packages/atom.ts']]),
+        io: fakeIO({ directives: [delegate('atom 0'), wrapup('Oscar seed closeout')], pickupWrites }),
+        getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
+        runHeadless: async () => ({ exitCode: 0, output: numericGapCloseout }),
+      }),
+      { ...input, wrapPlay, wrapPlayAssignment },
+    )
+
+    expect(result.status).toBe('completed')
+    expect(pickupWrites).toEqual([numericGapCloseout])
+    expect(store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')).toBeUndefined()
+  })
+
   test('wrap-up Play blocks a Recommended Next Step priority that is not launchable', async () => {
     const store = openRunStore(':memory:')
     const pickupWrites: string[] = []

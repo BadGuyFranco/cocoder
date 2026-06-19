@@ -141,6 +141,12 @@ Founder decision: either build only message-level progress for Codex (`started` 
 message -> complete) and defer true streaming, or pursue an alternate streaming-capable runtime before
 building parser/runtime/UI streaming. Do not fake streaming by chunking the completed reply.
 
+**RESOLVED (founder, run_157): message-level progress only; true token streaming deferred.** Ship Oz with
+lifecycle progress + the existing typing affordance + the whole markdown answer on completion. Do NOT build
+the JSONL parser, the daemon `oz-chat-*` delta events, or the SSE/IPC delta plumbing now. The
+`--output-last-message` artifact remains the durable answer. Revisit true token streaming and
+show-thinking only if/when Oz adopts a streaming-capable runtime that emits real answer/reasoning deltas.
+
 ## Scope Note
 
 This design does not touch the archived workspace-segmentation panel-layout seam, `packages/ui/design-ref`,

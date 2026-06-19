@@ -35,9 +35,9 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
   `[context: <type> <id> — <label>]` through the existing `onSend` seam (no daemon/IPC change). Distinct MIME
   preserves reorder/click. 155 UI tests + typecheck green.
 
-**Next:** Founder decision on streaming (defer message-level-only vs. pursue a streaming-capable runtime); then
-relaunch `oz-hardening` for drag-to-ask daemon-side pointer resolution + a runnable proof harness for items 2 & 4,
-plus running-app demos of items 1 & 3.
+**Next:** Streaming **resolved (founder, run_157): message-level progress only, true token streaming deferred**
+— no JSONL/SSE delta build. Relaunch `oz-hardening` for drag-to-ask daemon-side pointer resolution + a runnable
+proof harness for items 2 & 4, plus running-app demos of items 1 & 3.
 
 ## 2026-06-19 — **Oz hardening: items 2 & 4 landed on one shared awareness projection (run_156)**
 
