@@ -12,6 +12,35 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-19 — **Oz hardening: items 2 & 4 landed on one shared awareness projection (run_156)**
+
+**Persona:** Oscar (lead) + Bob (builder, codex) | **Priority:** [oz-hardening](./priorities/oz-hardening.md) | **Run:** run_156
+**Outcomes:**
+- **Owner map first (atom 0, `a35b8ff`):** `docs/oz-hardening-owner-map.md` — found there was no single Oz
+  awareness projection; named the one seam items 2 & 4 must share, the lone daemon settings owner
+  (`packages/daemon/src/settings.ts`), and the `OzChat.tsx` vs archived `workspace-segmentation` panel boundary.
+- **Shared projection spine (atom 1, `5d650a6`):** new `packages/daemon/src/oz-awareness.ts` `projectOzAwareness()`;
+  `factsDigest` (oz-host) and the `status` path (oz-chat) both consume it — pure consolidation, byte-equivalent.
+- **Item 4 — auto status pickup (atom 2, `cf555ae`):** open tickets now surface in the facts digest from the
+  projection; `routes.ts createTicket` emits `ticket-created` through the existing `OzEventBus` (no parallel
+  contract) so Oz/UI refresh without a manual nudge. Closes the run_131 ticket-0014 symptom. `emitOzEvent`
+  consolidated into `context.ts` (launcher reuses it).
+- **Item 2 — auto-compact (atoms 3–5, `cd8d1fc`/`d0cbc13`/`1e8e397`):** daemon-owned `ozAutoCompactRuns` setting
+  (default 3, range 2–10, clamped, round-trips via `daemonPatch`); per-session compaction that resets the
+  transcript every N orchestrated runs, with awareness rebuilt from `projectOzAwareness` (no LLM). Wired to the
+  real `run-settled` signal in `attachRunLifecycle` via `recordOrchestratedRun` — single counting owner, no
+  double-count; the speculative result-turn machinery was removed once `run-settled` became the producer.
+- **Verification:** each atom verified against the real diff; the 4 Oz-pinning daemon test files stay green.
+  Pre-existing, unrelated: 5 env-baseline daemon failures (`mutations`/`authoring-play` `POST /runs` lifecycle:
+  headless run can't spawn → 'failed' vs 'completed'), confirmed identical on HEAD; plus stale `OzChatOps`/`Git`
+  test-mock typecheck debt and repo-wide `packages/ui` TS5097 `.ts`-import-extension typecheck errors. None
+  touched this run — candidates for a follow-up ticket.
+
+**Next:** Relaunch `oz-hardening` for **item 1** (OzChat.tsx markdown + streaming + best-effort thinking
+rendering, coordinating the `workspace-segmentation` panel boundary) and **item 3** (drag-to-ask pointer:
+Dashboard drag/drop → `ChatMessage.attachments` pointer → projection pointer resolution). Both are UI-heavy;
+the owner map pre-maps exactly what each touches.
+
 ## 2026-06-19 — **scaffold-template-reconciliation: divergence already reconciled — proven + ARCHIVED; priority set re-ranked (run_155)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [scaffold-template-reconciliation](./priorities/archive/scaffold-template-reconciliation.md) | **Run:** run_155
