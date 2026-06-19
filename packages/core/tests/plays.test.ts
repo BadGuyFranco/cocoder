@@ -1,6 +1,7 @@
 import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
 import { loadPlay } from '../src/index.js'
 
@@ -88,6 +89,17 @@ describe('play loading', () => {
       deterministicStep: { ref: 'checks/code-review-preflight' },
       commitMode: 'gated',
       requiredCheckpoints: ['shared elegance checkpoint', 'tests green'],
+    })
+  })
+
+  test('base code-review Play is hybrid and declares its deterministic preflight ref', () => {
+    const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
+    const play = loadPlay(join(repoRoot, 'packages', 'personas', 'base', 'plays'), 'code-review')
+
+    expect(play).toMatchObject({
+      id: 'code-review',
+      executionModel: 'hybrid',
+      deterministicStep: { ref: 'scripts/checks/code-review-preflight.mjs' },
     })
   })
 

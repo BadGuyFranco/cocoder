@@ -2,9 +2,10 @@
 id: code-review
 label: Code review
 kind: headless
-executionModel: prompt-only
+executionModel: hybrid
 triggerClass: persona-requested
 purpose: Review a provided diff or change as a read-only independent reviewer.
+deterministicStep: scripts/checks/code-review-preflight.mjs
 allowedCallers:
   - oscar
   - deb

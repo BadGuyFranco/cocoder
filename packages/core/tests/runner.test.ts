@@ -75,8 +75,9 @@ function fakeSessionHost(over: Partial<SessionHost> = {}): SessionHost {
     async sendInput() {},
     async show() {},
     async kill() {},
+    async closeSurface() {},
     ...over,
-  }
+  } as SessionHost
 }
 
 // The worktree/merge port methods (ADR-0015) the runner doesn't exercise in these fake-git unit
@@ -283,6 +284,7 @@ const wrapPlay: Play = {
   id: 'wrap-up',
   label: 'Wrap-up',
   kind: 'headless',
+  outputValidator: { ref: 'validators/founder-closeout' },
   writeScope: ['docs/**'],
   body: wrapPlayBody,
 }
@@ -911,6 +913,33 @@ describe('runRun (multi-atom loop)', () => {
     expect(pickupWrites[0]?.trimEnd().endsWith(closeoutContract.finalLine)).toBe(true)
     const invalid = store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')
     expect(invalid?.data).toMatchObject({ play: 'wrap-up', issues: expect.arrayContaining([`missing ${label('title')}`]) })
+  })
+
+  test('wrap-up Play output validation is disabled when no outputValidator is declared', async () => {
+    const store = openRunStore(':memory:')
+    const pickupWrites: string[] = []
+    const unvalidatedWrapPlay: Play = {
+      id: wrapPlay.id,
+      label: wrapPlay.label,
+      kind: wrapPlay.kind,
+      writeScope: wrapPlay.writeScope,
+      body: wrapPlay.body,
+    }
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([['packages/atom.ts']]),
+        io: fakeIO({ directives: [delegate('atom 0'), wrapup('Oscar seed closeout')], pickupWrites }),
+        getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
+        runHeadless: async () => ({ exitCode: 0, output: 'PLAY CLOSEOUT\n' }),
+      }),
+      { ...input, wrapPlay: unvalidatedWrapPlay, wrapPlayAssignment },
+    )
+
+    expect(result.status).toBe('completed')
+    expect(pickupWrites).toEqual(['PLAY CLOSEOUT\n'])
+    expect(store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')).toBeUndefined()
   })
 
   test('malformed wrap-up output is dispatched to Deb when she is present', async () => {

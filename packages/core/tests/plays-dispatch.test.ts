@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { describe, expect, test } from 'vitest'
@@ -86,8 +86,9 @@ function fakeSessionHost(over: Partial<SessionHost> = {}): { sessionHost: Sessio
       async sendInput() {},
       async show() {},
       async kill() {},
+      async closeSurface() {},
       ...over,
-    },
+    } as SessionHost,
   }
 }
 
@@ -238,6 +239,93 @@ describe('dispatchPlay', () => {
         { play, assignment, persona: 'oscar', task: 'Do it.', cwd: '/repo', outPath: out },
       ),
     ).resolves.toEqual({ exitCode: 0, output: 'plain closeout' })
+  })
+
+  test('default deterministic runner executes .mjs refs through node and maps exit code to ok', async () => {
+    const cwd = await mkdtemp(join(tmpdir(), 'plays-dispatch-repo-'))
+    const script = join(cwd, 'scripts', 'checks', 'pass.mjs')
+    await mkdir(dirname(script), { recursive: true })
+    await writeFile(script, "process.stdout.write(`node:${process.argv[0]}\\n`)\n", 'utf8')
+    const out = await outPath()
+    const hybridPlay: Play = { ...play, deterministicStep: { ref: 'scripts/checks/pass.mjs' } }
+    const { adapter } = fakeAdapter()
+    const { sessionHost } = fakeSessionHost()
+    const { runHeadless } = fakeRunHeadless({ exitCode: 0, output: 'review closeout' })
+
+    const result = await dispatchPlay(
+      { sessionHost, getAdapter: () => adapter, runHeadless },
+      { play: hybridPlay, assignment, persona: 'oscar', task: 'Do it.', cwd, outPath: out },
+    )
+
+    expect(result.deterministic).toEqual({ ok: true, output: `node:${process.execPath}\n` })
+    expect(result.output).toBe('review closeout')
+  })
+
+  test('default deterministic runner gates when a .mjs ref exits non-zero', async () => {
+    const cwd = await mkdtemp(join(tmpdir(), 'plays-dispatch-repo-'))
+    const script = join(cwd, 'scripts', 'checks', 'fail.mjs')
+    await mkdir(dirname(script), { recursive: true })
+    await writeFile(script, "process.stderr.write('preflight failed\\n')\nprocess.exit(7)\n", 'utf8')
+    const out = await outPath()
+    const hybridPlay: Play = { ...play, deterministicStep: { ref: 'scripts/checks/fail.mjs' } }
+    const { sessionHost } = fakeSessionHost()
+
+    const result = await dispatchPlay(
+      {
+        sessionHost,
+        getAdapter: () => {
+          throw new Error('adapter must not be called')
+        },
+      },
+      { play: hybridPlay, assignment, persona: 'oscar', task: 'Do it.', cwd, outPath: out },
+    )
+
+    expect(result).toEqual({ exitCode: 1, output: 'preflight failed\n', deterministic: { ok: false, output: 'preflight failed\n' }, gated: true })
+  })
+
+  test('default deterministic runner executes non-.mjs refs directly', async () => {
+    const cwd = await mkdtemp(join(tmpdir(), 'plays-dispatch-repo-'))
+    const script = join(cwd, 'scripts', 'checks', 'direct-preflight')
+    await mkdir(dirname(script), { recursive: true })
+    await writeFile(script, "#!/usr/bin/env node\nprocess.stdout.write('direct preflight\\n')\n", 'utf8')
+    await chmod(script, 0o755)
+    const out = await outPath()
+    const hybridPlay: Play = { ...play, deterministicStep: { ref: 'scripts/checks/direct-preflight' } }
+    const { adapter } = fakeAdapter()
+    const { sessionHost } = fakeSessionHost()
+    const { runHeadless } = fakeRunHeadless({ exitCode: 0, output: 'review closeout' })
+
+    const result = await dispatchPlay(
+      { sessionHost, getAdapter: () => adapter, runHeadless },
+      { play: hybridPlay, assignment, persona: 'oscar', task: 'Do it.', cwd, outPath: out },
+    )
+
+    expect(result.deterministic).toEqual({ ok: true, output: 'direct preflight\n' })
+    expect(result.output).toBe('review closeout')
+  })
+
+  test('default deterministic runner rejects refs that escape the repo root', async () => {
+    const cwd = await mkdtemp(join(tmpdir(), 'plays-dispatch-repo-'))
+    const out = await outPath()
+    const hybridPlay: Play = { ...play, deterministicStep: { ref: '../outside.mjs' } }
+    const { sessionHost } = fakeSessionHost()
+
+    const result = await dispatchPlay(
+      {
+        sessionHost,
+        getAdapter: () => {
+          throw new Error('adapter must not be called')
+        },
+      },
+      { play: hybridPlay, assignment, persona: 'oscar', task: 'Do it.', cwd, outPath: out },
+    )
+
+    expect(result).toEqual({
+      exitCode: 1,
+      output: 'deterministicStep ref "../outside.mjs" escapes repo root\n',
+      deterministic: { ok: false, output: 'deterministicStep ref "../outside.mjs" escapes repo root\n' },
+      gated: true,
+    })
   })
 
   test('an INTERACTIVE Play spawns a cmux pane and reads its captured output file', async () => {

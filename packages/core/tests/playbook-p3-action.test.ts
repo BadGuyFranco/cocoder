@@ -7,10 +7,8 @@ import {
   type DispatchPlayInput,
   type Play,
   type PlaybookCrossCheckResultEvent,
-  type SourcePairConvergencePayload,
-  type Subsystem,
 } from '../src/index.js'
-import type { DeepReadIterationResult } from '../src/playbooks/index.js'
+import type { DeepReadIterationResult, SourcePairConvergencePayload, Subsystem } from '../src/playbooks/index.js'
 
 const subsystem: Subsystem = {
   id: 'api',

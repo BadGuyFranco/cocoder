@@ -57,6 +57,7 @@ function fakeSessionHost(spawns: string[]): SessionHost {
     async show() {},
     async kill() {},
     async closeSurface() {},
+    async closeWorkspace() {},
   }
 }
 
@@ -89,6 +90,12 @@ const worktreeStubs = {
     return 'trunk'
   },
   async resetHard() {},
+  async hasUpstream() {
+    return false
+  },
+  async push() {
+    return { ok: true, detail: '' }
+  },
 }
 
 function scriptedGit(): Git {
@@ -118,7 +125,7 @@ const adapter: Adapter = {
   id: 'any',
   runReadiness: { mechanism: 'launch-flags', flags: [], managesUserConfig: false, detail: 'test adapter' },
   headlessCapable: false,
-  build: (input) => ({ command: input.persona, args: ['--prompt', input.prompt] }),
+  build: (input) => ({ command: input.persona ?? 'agent', args: ['--prompt', input.prompt] }),
   preflight: async () => ({ ok: true, checks: [{ name: 'installed', ok: true, detail: 'ok' }] }),
   listModels: async () => ({ canEnumerate: false, models: [], detail: 'test adapter' }),
 }
@@ -137,7 +144,7 @@ function fakeIO(): RunnerIO {
       return { verdict: 'pass', reason: 'marker observed and diff checked' }
     },
     async awaitTriage() {
-      return { disposition: 'one-off', summary: 'not used' }
+      return { mode: 'propose', disposition: 'one-off', summary: 'not used' }
     },
     async writeFaultContext() {},
     async writeDisposition(runDir, index) {

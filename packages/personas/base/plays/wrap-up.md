@@ -5,6 +5,7 @@ kind: headless
 executionModel: prompt-only
 triggerClass: lifecycle-triggered
 purpose: Produce the founder-visible run closeout and lifecycle disposition.
+outputValidator: validators/founder-closeout
 allowedCallers:
   - runner wrap-up lifecycle
   - daemon run lifecycle

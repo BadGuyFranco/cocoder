@@ -302,6 +302,37 @@ function founderCloseoutFormatIssues(markdown: string, cwd: string, contract: Fo
   return issues
 }
 
+interface PlayOutputValidationInput {
+  readonly play: Play
+  readonly output: string | null
+  readonly cwd: string
+}
+
+interface PlayOutputValidationResult {
+  readonly issues: readonly string[]
+  readonly founderCloseoutContract?: FounderCloseoutContract
+}
+
+type PlayOutputValidatorFn = (input: PlayOutputValidationInput) => PlayOutputValidationResult
+
+const PLAY_OUTPUT_VALIDATORS: Readonly<Partial<Record<string, PlayOutputValidatorFn>>> = {
+  'validators/founder-closeout': (input) => {
+    const contract = parseFounderCloseoutContract(input.play)
+    return {
+      issues: input.output ? founderCloseoutFormatIssues(input.output, input.cwd, contract) : ['empty wrap-up output'],
+      founderCloseoutContract: contract,
+    }
+  },
+}
+
+function validatePlayOutput(input: PlayOutputValidationInput): PlayOutputValidationResult | null {
+  const ref = input.play.outputValidator?.ref
+  if (!ref) return null
+  const validator = PLAY_OUTPUT_VALIDATORS[ref]
+  if (!validator) throw new Error(`Play "${input.play.id}" declares unknown outputValidator "${ref}"`)
+  return validator(input)
+}
+
 function formatInvalidFounderCloseoutFallback(input: {
   readonly priorityId: string
   readonly atoms: number
@@ -1081,7 +1112,6 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       const headBeforeOscarSupport = await git.headSha(worktreePath)
       await commitOscarSupport(headBeforeOscarSupport)
       if (input.wrapPlay && input.wrapPlayAssignment) {
-        const closeoutContract = parseFounderCloseoutContract(input.wrapPlay)
         const headBeforeWrap = await git.headSha(worktreePath)
         const task =
           `Run ${run.id} on priority ${priority.id}. ${n} atom(s) were delegated; commits so far: ${committedShas.join(', ') || 'none'}.\n\n` +
@@ -1115,12 +1145,14 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         })
         absorbGateResult(wrapGate)
         const candidatePickup = res.output && res.output.trim() ? res.output : (directive.pickup ?? null)
-        const formatIssues = candidatePickup ? founderCloseoutFormatIssues(candidatePickup, worktreePath, closeoutContract) : ['empty wrap-up output']
-        if (formatIssues.length > 0) {
-          store.recordEvent({ runId: run.id, type: 'wrapup-format-invalid', data: { play: input.wrapPlay.id, issues: formatIssues, outPath: wrapOut } })
-          pickup = formatInvalidFounderCloseoutFallback({ priorityId: priority.id, atoms: n, commits: committedShas, issues: formatIssues, contract: closeoutContract })
+        const outputValidation = validatePlayOutput({ play: input.wrapPlay, output: candidatePickup, cwd: worktreePath })
+        if (outputValidation && outputValidation.issues.length > 0) {
+          const contract = outputValidation.founderCloseoutContract
+          if (!contract) throw new Error(`Play "${input.wrapPlay.id}" outputValidator "${input.wrapPlay.outputValidator?.ref}" cannot format a founder closeout fallback`)
+          store.recordEvent({ runId: run.id, type: 'wrapup-format-invalid', data: { play: input.wrapPlay.id, issues: outputValidation.issues, outPath: wrapOut } })
+          pickup = formatInvalidFounderCloseoutFallback({ priorityId: priority.id, atoms: n, commits: committedShas, issues: outputValidation.issues, contract })
           terminalStatus = 'failed'
-          await triageFault('wrapup-format-invalid', n, `wrap-up Play "${input.wrapPlay.id}" produced malformed founder closeout: ${formatIssues.join('; ')}`)
+          await triageFault('wrapup-format-invalid', n, `wrap-up Play "${input.wrapPlay.id}" produced malformed founder closeout: ${outputValidation.issues.join('; ')}`)
         } else {
           pickup = candidatePickup
         }

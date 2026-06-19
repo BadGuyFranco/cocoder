@@ -7,9 +7,8 @@ import {
   type DispatchPlayInput,
   type Play,
   type PlaybookFanoutResultEvent,
-  type Subsystem,
 } from '../src/index.js'
-import type { DeepReadIterationResult } from '../src/playbooks/index.js'
+import type { DeepReadIterationResult, Subsystem } from '../src/playbooks/index.js'
 
 const subsystem: Subsystem = {
   id: 'api',

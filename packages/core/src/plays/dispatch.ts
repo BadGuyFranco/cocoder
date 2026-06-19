@@ -10,7 +10,7 @@
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { extname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import type { Adapter } from '../adapter/types.js'
 import type { PersonaRunMode, PlayAssignment } from '../personas/types.js'
 import type { SessionHost } from '../session-host/types.js'
@@ -118,19 +118,40 @@ export function runHeadlessProcess(input: HeadlessRunInput): Promise<DispatchPla
   })
 }
 
-/** Default deterministic runner. Atom 8 owns the durable ref->script convention; for now the ref is
- *  treated as an executable command and captured through the same bounded subprocess primitive. */
+/** Default deterministic runner.
+ *  A deterministicStep ref is a repo-root-relative script path resolved against the run cwd. `.mjs`
+ *  refs run through this Node executable; other refs run as executable files. Refs must stay inside
+ *  the repo root so Play metadata cannot launch arbitrary host paths. */
 async function runDeterministicProcess(input: DeterministicStepInput): Promise<DeterministicStepResult> {
+  const command = resolveDeterministicCommand(input.cwd, input.ref)
+  if (!command.ok) return { ok: false, output: command.output }
   const outPath = join(tmpdir(), `cocoder-deterministic-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}.out`)
   const result = await runHeadlessProcess({
-    command: input.ref,
-    args: [],
+    command: command.command,
+    args: command.args,
     cwd: input.cwd,
     outPath,
     timeoutMs: input.timeoutMs,
     signal: input.signal,
   })
   return { ok: result.exitCode === 0, output: result.output }
+}
+
+type ResolvedDeterministicCommand =
+  | { readonly ok: true; readonly command: string; readonly args: readonly string[] }
+  | { readonly ok: false; readonly output: string }
+
+function resolveDeterministicCommand(cwd: string, ref: string): ResolvedDeterministicCommand {
+  if (isAbsolute(ref)) return { ok: false, output: `deterministicStep ref "${ref}" must be repo-root-relative\n` }
+  const root = resolve(cwd)
+  const script = resolve(root, ref)
+  const rel = relative(root, script)
+  if (rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
+    return { ok: false, output: `deterministicStep ref "${ref}" escapes repo root\n` }
+  }
+  return extname(script) === '.mjs'
+    ? { ok: true, command: process.execPath, args: [script] }
+    : { ok: true, command: script, args: [] }
 }
 
 export async function dispatchPlay(deps: DispatchPlayDeps, input: DispatchPlayInput): Promise<DispatchPlayResult> {

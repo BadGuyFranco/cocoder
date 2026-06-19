@@ -5,11 +5,9 @@ import { describe, expect, test } from 'vitest'
 import {
   buildFounderQuestions,
   runPlaybookP4Action,
-  type IntentJson,
-  type P3ConvergencePayload,
   type P4QuestionsPayload,
-  type SourcePairComparison,
 } from '../src/index.js'
+import type { IntentJson, P3ConvergencePayload, SourcePairComparison } from '../src/playbooks/index.js'
 
 const predicateClauses = {
   noNewContradictionOrDisagreement: true,

@@ -152,19 +152,26 @@ describe('agentic recon pass', () => {
   })
 
   test('refuses malformed or incomplete agent output', async () => {
-    await expect(runAgenticRecon({ inventory, agentTurn: async () => ({ ...agentOutput(), humanMap: '' }) })).rejects.toThrow('humanMap must be a non-empty string')
+    const output = agentOutput() as {
+      readonly subsystems: readonly Record<string, unknown>[]
+      readonly complexitySignals: Record<string, unknown>
+    }
+    const firstSubsystem = output.subsystems[0]
+    if (!firstSubsystem) throw new Error('test fixture missing first subsystem')
+
+    await expect(runAgenticRecon({ inventory, agentTurn: async () => ({ ...output, humanMap: '' }) })).rejects.toThrow('humanMap must be a non-empty string')
     await expect(runAgenticRecon({
       inventory,
       agentTurn: async () => ({
-        ...agentOutput(),
-        subsystems: [{ ...(agentOutput() as { readonly subsystems: readonly Record<string, unknown>[] }).subsystems[0], id: 'Bad Id' }],
+        ...output,
+        subsystems: [{ ...firstSubsystem, id: 'Bad Id' }],
       }),
     })).rejects.toThrow('filename-safe stable slug')
     await expect(runAgenticRecon({
       inventory,
       agentTurn: async () => ({
-        ...agentOutput(),
-        complexitySignals: { ...(agentOutput() as { readonly complexitySignals: Record<string, unknown> }).complexitySignals, weakValidation: [{ subsystemId: 'missing', severity: 'low', evidence: ['x'], note: 'bad ref' }] },
+        ...output,
+        complexitySignals: { ...output.complexitySignals, weakValidation: [{ subsystemId: 'missing', severity: 'low', evidence: ['x'], note: 'bad ref' }] },
       }),
     })).rejects.toThrow('references unknown subsystem "missing"')
   })

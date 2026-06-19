@@ -109,6 +109,12 @@ function makeFakeGit(opts: { changed: string[]; headBefore: string; headNow?: st
       return 'trunk'
     },
     async resetHard() {},
+    async hasUpstream() {
+      return false
+    },
+    async push() {
+      return { ok: true, detail: '' }
+    },
   }
   return { git, commits }
 }
