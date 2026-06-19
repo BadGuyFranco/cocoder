@@ -18,6 +18,11 @@ export {
   type PlayRequestValidationResult,
 } from './request.js'
 export {
+  MANDATORY_PLAY_TRIGGERS,
+  resolveMandatoryPlay,
+  type MandatoryPlayTriggerPoint,
+} from './triggers.js'
+export {
   dispatchPlay,
   runHeadlessProcess,
   type DispatchPlayDeps,

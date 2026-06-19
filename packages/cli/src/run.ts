@@ -5,12 +5,13 @@ import {
   DEFAULT_OZ_PORT,
   isPersonaEnabled,
   loadAssignments,
-  loadPlay,
+  listEffectivePlays,
   loadPriority,
   makeGit,
   makeRunnerIO,
   openRunStore,
   probeDaemon,
+  resolveMandatoryPlay,
   resolveEffectivePersona,
   resolvePlayAssignment,
   runRun,
@@ -125,6 +126,7 @@ async function runStandalone(priorityId: string, resumeFromRunId?: string): Prom
   const runsRoot = join(root, 'local', 'runs')
   const baseDir = basePersonasDir()
   const sources: PersonaSources = { baseDir, deltaDir: join(personasDir, 'deltas'), repoPersonaDir: personasDir }
+  const playSources = { baseDir: basePlaysDir(), deltaDir: join(root, 'cocoder', 'plays', 'deltas'), repoPlayDir: join(root, 'cocoder', 'plays') }
   const sharedStandards = readFileSync(join(baseDir, 'shared-standards.md'), 'utf8')
   const assignments = loadAssignments(join(personasDir, 'assignments.json'))
 
@@ -133,6 +135,7 @@ async function runStandalone(priorityId: string, resumeFromRunId?: string): Prom
   const bob = resolveEffectivePersona(sources, assignments, 'bob')
   const deb = isPersonaEnabled(assignments, 'deb') ? resolveEffectivePersona(sources, assignments, 'deb') : undefined
   const priority = loadPriority(prioritiesDir, priorityId)
+  const wrapPlay = resolveMandatoryPlay('run-wrap', listEffectivePlays(playSources))
 
   // Resume: continue from a prior run's pickup brief (ADR-0013 / F8).
   let pickup: string | null = null
@@ -163,8 +166,9 @@ async function runStandalone(priorityId: string, resumeFromRunId?: string): Prom
       oscar,
       bob,
       deb,
-      wrapPlay: loadPlay(basePlaysDir(), 'wrap-up'),
-      wrapPlayAssignment: resolvePlayAssignment(assignments, 'oscar', 'wrap-up'),
+      playSources,
+      wrapPlay,
+      wrapPlayAssignment: resolvePlayAssignment(assignments, 'oscar', wrapPlay.id),
       sharedStandards,
       runsRoot,
       pickup,

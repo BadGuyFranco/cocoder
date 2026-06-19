@@ -16,11 +16,13 @@ import {
   commitFiles,
   isPersonaEnabled,
   gateCommitRepair,
+  listEffectivePlays,
   loadAssignments,
   loadEffectivePlay,
   loadPriority,
   readTickets,
   runCommitGate,
+  resolveMandatoryPlay,
   resolvePlayAssignment,
   resolvePersonaMode,
   resolveEffectivePersona,
@@ -95,6 +97,7 @@ async function assembleRunInput(
 ): Promise<RunInput> {
   const personasDir = join(ws.path, 'cocoder', 'personas')
   const playDeltaDir = join(ws.path, 'cocoder', 'plays', 'deltas')
+  const playSources = { baseDir: basePlaysDir(), deltaDir: playDeltaDir, repoPlayDir: join(ws.path, 'cocoder', 'plays') }
   const baseDir = basePersonasDir()
   const sources: PersonaSources = { baseDir, deltaDir: join(personasDir, 'deltas'), repoPersonaDir: personasDir }
   const sharedStandards = await readFile(join(baseDir, 'shared-standards.md'), 'utf8')
@@ -108,14 +111,16 @@ async function assembleRunInput(
       throw new Error(`cannot resume: no pickup brief for run "${opts.resumeFromRunId}"`)
     }
   }
+  const wrapPlay = resolveMandatoryPlay('run-wrap', listEffectivePlays(playSources))
   return {
     workspace,
     priority,
     oscar: resolveEffectivePersona(sources, assignments, 'oscar'),
     bob: resolveEffectivePersona(sources, assignments, 'bob'),
     deb: isPersonaEnabled(assignments, 'deb') ? resolveEffectivePersona(sources, assignments, 'deb') : undefined,
-    wrapPlay: loadEffectivePlay(basePlaysDir(), playDeltaDir, 'wrap-up'),
-    wrapPlayAssignment: resolvePlayAssignment(assignments, 'oscar', 'wrap-up'),
+    playSources,
+    wrapPlay,
+    wrapPlayAssignment: resolvePlayAssignment(assignments, 'oscar', wrapPlay.id),
     wrapPlayPersonaMode: resolvePersonaMode(assignments, 'oscar'),
     sharedStandards,
     engineHome: ctx.cocoderHome,
