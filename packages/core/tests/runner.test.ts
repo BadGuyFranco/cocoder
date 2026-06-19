@@ -274,12 +274,43 @@ const loopDelegate = (task: string, over: Partial<NonNullable<Extract<Directive,
 })
 const wrapup = (pickup: string): Directive => ({ kind: 'wrapup', pickup })
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+const wrapPlayBody = `Wrap-up Play body.
+
+Emit the founder closeout in this exact contract:
+
+\`\`\`
+**Founder Completion Brief**
+
+**Atom Complete:** <Yes | No>
+
+**Run Status:** <continue | blocked | archive ready>
+
+**What Changed:** <plain English summary>
+
+**What Remains:**
+<up to 3 bullets>
+
+**Recommended Next Step:** <one launchable item>
+
+**Founder Decision Needed:** <None. | one decision>
+
+**Commit State:** <runner reports outcome after this brief>
+
+**Teardown Readiness:** <standing by>
+
+**Judgment:**
+<why Oscar stopped>
+
+I'm standing by...
+\`\`\`
+
+Produce the closeout.`
 const wrapPlay: Play = {
   id: 'wrap-up',
   label: 'Wrap-up',
   kind: 'headless',
   writeScope: ['docs/**'],
-  body: 'Wrap-up Play body.\n\nProduce the closeout.',
+  body: wrapPlayBody,
 }
 const wrapPlayAssignment: PlayAssignment = { cli: 'cursor-agent', model: 'cheap-wrap' }
 const validFounderCloseout = (summary = 'The requested work was completed.'): string => `**Founder Completion Brief**
@@ -843,6 +874,52 @@ describe('runRun (multi-atom loop)', () => {
     expect(pickupWrites[0]?.trimEnd().endsWith("I'm standing by...")).toBe(true)
     const invalid = store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')
     expect(invalid?.data).toMatchObject({ play: 'wrap-up', issues: expect.arrayContaining(['missing **Founder Completion Brief**']) })
+  })
+
+  test('wrap-up Play label changes are enforced from the Play contract', async () => {
+    const renamedPlay: Play = {
+      ...wrapPlay,
+      body: wrapPlay.body.replace('**Founder Decision Needed:** <None. | one decision>', '**Founder Decision Required:** <None. | one decision>'),
+    }
+
+    const staleStore = openRunStore(':memory:')
+    const stalePickupWrites: string[] = []
+    const staleResult = await runRun(
+      baseDeps({
+        store: staleStore,
+        git: scriptedGit([['packages/atom.ts']]),
+        io: fakeIO({ directives: [delegate('atom 0'), wrapup('Oscar seed closeout')], pickupWrites: stalePickupWrites }),
+        getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
+        runHeadless: async () => ({ exitCode: 0, output: validFounderCloseout('PLAY CLOSEOUT') }),
+      }),
+      { ...input, wrapPlay: renamedPlay, wrapPlayAssignment },
+    )
+
+    expect(staleResult.status).toBe('completed')
+    expect(stalePickupWrites).toHaveLength(1)
+    expect(stalePickupWrites[0]).toContain('missing **Founder Decision Required:**')
+    const staleInvalid = staleStore.listEvents(staleResult.runId).find((e) => e.type === 'wrapup-format-invalid')
+    expect(staleInvalid?.data).toMatchObject({
+      play: 'wrap-up',
+      issues: expect.arrayContaining(['missing **Founder Decision Required:**']),
+    })
+
+    const updatedCloseout = validFounderCloseout('PLAY CLOSEOUT').replace('**Founder Decision Needed:** None.', '**Founder Decision Required:** None.')
+    const updatedStore = openRunStore(':memory:')
+    const updatedPickupWrites: string[] = []
+    const updatedResult = await runRun(
+      baseDeps({
+        store: updatedStore,
+        git: scriptedGit([['packages/atom.ts']]),
+        io: fakeIO({ directives: [delegate('atom 0'), wrapup('Oscar seed closeout')], pickupWrites: updatedPickupWrites }),
+        getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
+        runHeadless: async () => ({ exitCode: 0, output: updatedCloseout }),
+      }),
+      { ...input, wrapPlay: renamedPlay, wrapPlayAssignment },
+    )
+
+    expect(updatedPickupWrites).toEqual([updatedCloseout])
+    expect(updatedStore.listEvents(updatedResult.runId).find((e) => e.type === 'wrapup-format-invalid')).toBeUndefined()
   })
 
   test('wrap-up Play rejects ledger-shaped founder briefs even with the right headings', async () => {

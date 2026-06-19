@@ -157,55 +157,83 @@ export interface RunResult {
   readonly recordPath: string
 }
 
-const FOUNDER_CLOSEOUT_SECTIONS = [
-  '**Founder Completion Brief**',
-  '**Atom Complete:**',
-  '**Run Status:**',
-  '**What Changed:**',
-  '**What Remains:**',
-  '**Recommended Next Step:**',
-  '**Founder Decision Needed:**',
-  '**Commit State:**',
-  '**Teardown Readiness:**',
-  '**Judgment:**',
-] as const
+const FOUNDER_CLOSEOUT_ROLE = {
+  title: 0,
+  atomComplete: 1,
+  runStatus: 2,
+  whatChanged: 3,
+  whatRemains: 4,
+  nextStep: 5,
+  decisionNeeded: 6,
+  commitState: 7,
+  teardownReadiness: 8,
+  judgment: 9,
+} as const
 
-function founderCloseoutSection(markdown: string, section: (typeof FOUNDER_CLOSEOUT_SECTIONS)[number]): string | null {
+interface FounderCloseoutContract {
+  readonly sections: readonly string[]
+  readonly finalLine: string
+}
+
+function section(contract: FounderCloseoutContract, role: keyof typeof FOUNDER_CLOSEOUT_ROLE): string {
+  return contract.sections[FOUNDER_CLOSEOUT_ROLE[role]]
+}
+
+function parseFounderCloseoutContract(play: Play): FounderCloseoutContract {
+  const fences = [...play.body.matchAll(/```(?:[a-zA-Z0-9_-]+)?\n([\s\S]*?)```/g)]
+  for (const fence of fences) {
+    const body = fence[1] ?? ''
+    const sections = body.match(/\*\*[^*\n]+?\*\*/g) ?? []
+    const finalLine = body
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .at(-1)
+    if (sections.length >= 10 && finalLine && !finalLine.startsWith('**')) {
+      return { sections: sections.slice(0, 10), finalLine }
+    }
+  }
+  throw new Error(`wrap-up Play "${play.id}" does not contain a fenced founder closeout contract`)
+}
+
+function founderCloseoutSection(markdown: string, contract: FounderCloseoutContract, section: string): string | null {
   const start = markdown.indexOf(section)
   if (start < 0) return null
   const contentStart = start + section.length
-  const nextStarts = FOUNDER_CLOSEOUT_SECTIONS.map((candidate) => markdown.indexOf(candidate, contentStart)).filter((index) => index >= 0)
+  const nextStarts = contract.sections.map((candidate) => markdown.indexOf(candidate, contentStart)).filter((index) => index >= 0)
   const contentEnd = nextStarts.length > 0 ? Math.min(...nextStarts) : markdown.length
   return markdown.slice(contentStart, contentEnd).trim()
 }
 
-function launchableNextIssue(cwd: string, next: string): string | null {
-  const line = next.replace(/\n*I'm standing by\.\.\.\s*$/i, '').trim()
+function launchableNextIssue(cwd: string, next: string, contract: FounderCloseoutContract): string | null {
+  const label = section(contract, 'nextStep')
+  const escapedFinal = contract.finalLine.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const line = next.replace(new RegExp(`\\n*${escapedFinal}\\s*$`, 'i'), '').trim()
   const priority = line.match(/^Priority:\s*`([a-z0-9][a-z0-9-]*)`\s+[-–—]\s+(.+)$/i)
   if (priority) {
     const slug = priority[1]
     const focus = priority[2]?.trim() ?? ''
-    if (focus.length < 12) return '**Recommended Next Step:** priority focus is too vague'
-    return existsSync(join(cwd, 'cocoder', 'priorities', `${slug}.md`)) ? null : `**Recommended Next Step:** priority "${slug}" is not launchable`
+    if (focus.length < 12) return `${label} priority focus is too vague`
+    return existsSync(join(cwd, 'cocoder', 'priorities', `${slug}.md`)) ? null : `${label} priority "${slug}" is not launchable`
   }
 
   const barePriority = line.match(/^Priority:\s*`([a-z0-9][a-z0-9-]*)`$/i)
-  if (barePriority) return '**Recommended Next Step:** must name the concrete focus after the priority slug'
+  if (barePriority) return `${label} must name the concrete focus after the priority slug`
 
   const ticket = line.match(/^Ticket:\s*`([0-9]{4})`\s+[-–—]\s+(.+)$/)
   if (ticket) {
     const id = ticket[1]
     const focus = ticket[2]?.trim() ?? ''
-    if (focus.length < 12) return '**Recommended Next Step:** ticket focus is too vague'
+    if (focus.length < 12) return `${label} ticket focus is too vague`
     const openDir = join(cwd, 'cocoder', 'tickets', 'open')
     const exists = existsSync(openDir) && readdirSync(openDir).some((file) => file.startsWith(`${id}-`) && file.endsWith('.md'))
-    return exists ? null : `**Recommended Next Step:** ticket "${id}" is not open/ready to run`
+    return exists ? null : `${label} ticket "${id}" is not open/ready to run`
   }
 
   const bareTicket = line.match(/^Ticket:\s*`([0-9]{4})`$/)
-  if (bareTicket) return '**Recommended Next Step:** must name the concrete focus after the ticket id'
+  if (bareTicket) return `${label} must name the concrete focus after the ticket id`
 
-  return '**Recommended Next Step:** must be exactly Priority: `slug` — <focus> or Ticket: `NNNN` — <focus>'
+  return `${label} must be exactly Priority: \`slug\` — <focus> or Ticket: \`NNNN\` — <focus>`
 }
 
 function sentenceCount(text: string): number {
@@ -213,55 +241,61 @@ function sentenceCount(text: string): number {
   return matches?.length ?? (text.trim() === '' ? 0 : 1)
 }
 
-function founderCloseoutFormatIssues(markdown: string, cwd: string): string[] {
+function founderCloseoutFormatIssues(markdown: string, cwd: string, contract: FounderCloseoutContract): string[] {
   const issues: string[] = []
   let priorIndex = -1
-  for (const section of FOUNDER_CLOSEOUT_SECTIONS) {
-    const index = markdown.indexOf(section)
+  for (const label of contract.sections) {
+    const index = markdown.indexOf(label)
     if (index < 0) {
-      issues.push(`missing ${section}`)
+      issues.push(`missing ${label}`)
       continue
     }
-    if (index <= priorIndex) issues.push(`${section} is out of order`)
+    if (index <= priorIndex) issues.push(`${label} is out of order`)
     priorIndex = index
   }
-  if (!markdown.trimEnd().endsWith("I'm standing by...")) issues.push('missing final "I\'m standing by..." line')
+  if (!markdown.trimEnd().endsWith(contract.finalLine)) issues.push(`missing final "${contract.finalLine}" line`)
 
-  if (!markdown.trimStart().startsWith('**Founder Completion Brief**')) {
-    issues.push('**Founder Completion Brief** must be first')
+  const title = section(contract, 'title')
+  if (!markdown.trimStart().startsWith(title)) {
+    issues.push(`${title} must be first`)
   }
 
-  const whatChanged = founderCloseoutSection(markdown, '**What Changed:**')
-  if (whatChanged && whatChanged.length > 180) issues.push('**What Changed:** is too long for a founder brief')
-  if (whatChanged && sentenceCount(whatChanged) > 1) issues.push('**What Changed:** must be one sentence')
+  const whatChangedLabel = section(contract, 'whatChanged')
+  const whatChanged = founderCloseoutSection(markdown, contract, whatChangedLabel)
+  if (whatChanged && whatChanged.length > 180) issues.push(`${whatChangedLabel} is too long for a founder brief`)
+  if (whatChanged && sentenceCount(whatChanged) > 1) issues.push(`${whatChangedLabel} must be one sentence`)
   if (whatChanged && /\b(atom\s+\d+|[0-9a-f]{7,40}|core\s+\d+\/\d+|daemon\s+\d+\/\d+|ui\s+\d+\/\d+)\b/i.test(whatChanged)) {
-    issues.push('**What Changed:** contains ledger/test-matrix detail')
+    issues.push(`${whatChangedLabel} contains ledger/test-matrix detail`)
   }
 
-  const runStatus = founderCloseoutSection(markdown, '**Run Status:**')
+  const runStatusLabel = section(contract, 'runStatus')
+  const runStatus = founderCloseoutSection(markdown, contract, runStatusLabel)
   if (runStatus && /\b(roughly|about|around)?\s*\d+%|\b\d+\s*percent\b/i.test(runStatus)) {
-    issues.push('**Run Status:** must not estimate percentage complete')
+    issues.push(`${runStatusLabel} must not estimate percentage complete`)
   }
 
-  const whatRemains = founderCloseoutSection(markdown, '**What Remains:**')
+  const whatRemainsLabel = section(contract, 'whatRemains')
+  const whatRemains = founderCloseoutSection(markdown, contract, whatRemainsLabel)
   if (whatRemains && /^[*-]\s*optional\b/im.test(whatRemains)) {
-    issues.push('**What Remains:** includes optional work instead of required gaps')
+    issues.push(`${whatRemainsLabel} includes optional work instead of required gaps`)
   }
   if (whatRemains) {
     const bulletLines = whatRemains.split(/\r?\n/).map((line) => line.trim()).filter((line) => /^[-*]\s+/.test(line))
-    if (bulletLines.length > 3) issues.push('**What Remains:** has too many bullets')
+    if (bulletLines.length > 3) issues.push(`${whatRemainsLabel} has too many bullets`)
     if (bulletLines.some((line) => /^[-*]\s+\*\*/.test(line) || /\b[A-Z]?\d+[a-z]?\b/.test(line))) {
-      issues.push('**What Remains:** contains atom/implementation labels')
+      issues.push(`${whatRemainsLabel} contains atom/implementation labels`)
     }
   }
 
-  const next = founderCloseoutSection(markdown, '**Recommended Next Step:**')
+  const nextStepLabel = section(contract, 'nextStep')
+  const next = founderCloseoutSection(markdown, contract, nextStepLabel)
   if (next) {
-    const nextWithoutStandingBy = next.replace(/\n*I'm standing by\.\.\.\s*$/i, '').trim()
+    const escapedFinal = contract.finalLine.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const nextWithoutStandingBy = next.replace(new RegExp(`\\n*${escapedFinal}\\s*$`, 'i'), '').trim()
     const nonEmptyLines = nextWithoutStandingBy.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
-    if (nonEmptyLines.length !== 1) issues.push('**Recommended Next Step:** must be exactly one action line')
-    if (/\b(optionally|and\/or)\b/i.test(nextWithoutStandingBy)) issues.push('**Recommended Next Step:** must not offer optional or multi-choice actions')
-    const issue = launchableNextIssue(cwd, next)
+    if (nonEmptyLines.length !== 1) issues.push(`${nextStepLabel} must be exactly one action line`)
+    if (/\b(optionally|and\/or)\b/i.test(nextWithoutStandingBy)) issues.push(`${nextStepLabel} must not offer optional or multi-choice actions`)
+    const issue = launchableNextIssue(cwd, next, contract)
     if (issue) issues.push(issue)
   }
   return issues
@@ -272,33 +306,35 @@ function formatInvalidFounderCloseoutFallback(input: {
   readonly atoms: number
   readonly commits: readonly string[]
   readonly issues: readonly string[]
+  readonly contract: FounderCloseoutContract
 }): string {
+  const labels = input.contract.sections
   const issueLines = input.issues.map((issue) => `- ${issue}`).join('\n')
   const commitText = input.commits.length === 0 ? 'No commits were recorded before wrap-up.' : `${input.commits.length} commit(s) were recorded before wrap-up.`
-  return `**Founder Completion Brief**
+  return `${labels[FOUNDER_CLOSEOUT_ROLE.title]}
 
-**Atom Complete:** No — the closeout brief needs repair before this can be treated as a clean completion.
+${labels[FOUNDER_CLOSEOUT_ROLE.atomComplete]} No — the closeout brief needs repair before this can be treated as a clean completion.
 
-**Run Status:** blocked
+${labels[FOUNDER_CLOSEOUT_ROLE.runStatus]} blocked
 
-**What Changed:** The runner blocked a malformed wrap-up brief instead of delivering a non-template closeout.
+${labels[FOUNDER_CLOSEOUT_ROLE.whatChanged]} The runner blocked a malformed wrap-up brief instead of delivering a non-template closeout.
 
-**What Remains:**
+${labels[FOUNDER_CLOSEOUT_ROLE.whatRemains]}
 ${issueLines}
 
-**Recommended Next Step:**
+${labels[FOUNDER_CLOSEOUT_ROLE.nextStep]}
 Priority: \`${input.priorityId}\` — repair the malformed wrap-up brief
 
-**Founder Decision Needed:** None.
+${labels[FOUNDER_CLOSEOUT_ROLE.decisionNeeded]} None.
 
-**Commit State:** ${commitText} The runner reports the authoritative commit outcome after this brief.
+${labels[FOUNDER_CLOSEOUT_ROLE.commitState]} ${commitText} The runner reports the authoritative commit outcome after this brief.
 
-**Teardown Readiness:** Standing by; teardown requires an explicit founder request.
+${labels[FOUNDER_CLOSEOUT_ROLE.teardownReadiness]} Standing by; teardown requires an explicit founder request.
 
-**Judgment:**
+${labels[FOUNDER_CLOSEOUT_ROLE.judgment]}
 The runner preserved the founder-facing template instead of passing through a nonconforming wrap-up.
 
-I'm standing by...`
+${input.contract.finalLine}`
 }
 
 export class PreflightError extends Error {
@@ -1032,6 +1068,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       const headBeforeOscarSupport = await git.headSha(worktreePath)
       await commitOscarSupport(headBeforeOscarSupport)
       if (input.wrapPlay && input.wrapPlayAssignment) {
+        const closeoutContract = parseFounderCloseoutContract(input.wrapPlay)
         const headBeforeWrap = await git.headSha(worktreePath)
         const task =
           `Run ${run.id} on priority ${priority.id}. ${n} atom(s) were delegated; commits so far: ${committedShas.join(', ') || 'none'}.\n\n` +
@@ -1065,10 +1102,10 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         })
         absorbGateResult(wrapGate)
         const candidatePickup = res.output && res.output.trim() ? res.output : (directive.pickup ?? null)
-        const formatIssues = candidatePickup ? founderCloseoutFormatIssues(candidatePickup, worktreePath) : ['empty wrap-up output']
+        const formatIssues = candidatePickup ? founderCloseoutFormatIssues(candidatePickup, worktreePath, closeoutContract) : ['empty wrap-up output']
         if (formatIssues.length > 0) {
           store.recordEvent({ runId: run.id, type: 'wrapup-format-invalid', data: { play: input.wrapPlay.id, issues: formatIssues, outPath: wrapOut } })
-          pickup = formatInvalidFounderCloseoutFallback({ priorityId: priority.id, atoms: n, commits: committedShas, issues: formatIssues })
+          pickup = formatInvalidFounderCloseoutFallback({ priorityId: priority.id, atoms: n, commits: committedShas, issues: formatIssues, contract: closeoutContract })
         } else {
           pickup = candidatePickup
         }
