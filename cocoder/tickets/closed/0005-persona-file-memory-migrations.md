@@ -68,19 +68,6 @@ standards files), so their full content is carried here for the next run (or the
   stays **Open** for them; a run (or direct founder edit) whose scope includes those paths applies them
   and closes 0005.
 
-## Progress (run_149)
-- **Item 2 applied** — the `cocoder/AGENTS.md` name-disambiguation note (cocoder / cofounder / cobuilder)
-  landed and committed this run (`2a54a24`).
-- **Item 1 still Open** — `cocoder/personas/deltas/oscar.md` does not exist; the Oscar daemon-launch delta
-  is unapplied because it turns on a founder host/process-safety decision (record the delta, or close it
-  won't-do). This ticket must NOT be treated as fully done until item 1 is resolved.
-- Mechanics note: during landing the runner repeatedly moved this file `open` ⇄ `closed`; Oscar did not
-  fight the final location. The substantive truth is this block, not the folder the file sits in.
-
-## Ask
-Apply each item to its named file (next run's Oscar wrap, or a founder edit). Items 3–5 must pass
-the ADR-0012 portability test at verify (they do — no repo nouns). Close this ticket when applied.
-
 ## Resolution (run_149) — closed
 
 - Item **2** is applied in `cocoder/AGENTS.md` as a repo-specific name-disambiguation note.
