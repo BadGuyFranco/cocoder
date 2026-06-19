@@ -12,7 +12,7 @@
   "priorityId": "hybrid-plays",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "completed",
   "createdAt": 1781892671213,
-  "endedAt": null
+  "endedAt": 1781894966142
 }
