@@ -12,6 +12,30 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-19 — **hybrid-plays: atoms 2–7 — Play contract, manifest, request lane, triggers, hybrid dispatch (run_152)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [hybrid-plays](./priorities/hybrid-plays.md) | **Run:** run_152
+**Outcomes:**
+- Atom 2 (`22803af`): optional additive Play contract metadata on `Play`/`PlayDelta`; loader validates only
+  when present; prompt-only Plays still parse.
+- Atom 3 (`5394445`): all 9 base Plays migrated frontmatter-only; five authoring/lifecycle Plays declare the
+  shared elegance checkpoint; completeness test guards un-migrated Plays.
+- Atom 4 (`c0c7e36`): compact per-persona Available Plays manifest in Oscar/Bob/Deb launch+turn prompts via
+  `listEffectivePlays`; full Play bodies absent from launch prompts; `playAvailability` projects
+  mandatory|optional from `triggerClass`.
+- Atom 5 (`a7905fa`): `parsePlayRequest`/`validatePlayRequest` enforce exists, authorized, optional-lane-only,
+  input-present-when-schema, and surface writeScope.
+- Atom 6 (`5aa9358`): declarative run-wrap→wrap-up mandatory trigger registry; cli/run.ts and
+  daemon/launcher.ts resolve wrap Play through it (hardcoded literal removed); behavior identical.
+- Atom 7 (`bfb592d`): hybrid `dispatchPlay` with injectable `runDeterministic` seam; precheck-fail gates,
+  precheck-ok feeds output into prompt; non-hybrid behavior unchanged. Full suite green at each gate.
+- **Disposition: `continue`** — atom 8 (capstone end-to-end proof) deferred to fresh context.
+**Next:** Relaunch `hybrid-plays` for atom 8 — mandatory trigger + output-validation proof (wrap-up or
+ticket close-on-success) and one hybrid Play with a real `scripts/*` deterministic step; finalize
+`deterministicStep` ref→command convention (`scripts/proof-hybrid-play.mjs`).
+
+---
+
 ## 2026-06-19 — **play-system: ADR-0010 amended with the Play taxonomy (atom 1) — blocked on founder acceptance before schema (atom 2)**
 
 **Persona:** Oscar (lead) + Bob (builder, codex) | **Priority:** [hybrid-plays](./priorities/hybrid-plays.md) | **Run:** run_151
