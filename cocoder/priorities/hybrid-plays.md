@@ -69,17 +69,27 @@ Build atoms, in dependency order:
 7. **Hybrid deterministic execution:** `dispatchPlay` (`packages/core/src/plays/dispatch.ts`) runs an
    optional deterministic step, captures structured output, and feeds or gates the LLM invocation while
    staying one-level (no recursive Play delegation).
-8. **Proof:** migrate at least two real Plays end to end:
-   - one mandatory/lifecycle Play (`wrap-up` or ticket close-on-success) proves trigger + output validation;
-   - one hybrid Play (candidate: `integration-verify` or `code-review`) proves a deterministic step runs
-     and gates/feeds the LLM layer.
+8. **Proof (real-path, runnable — not mocked):** migrate at least two real Plays end to end and prove them
+   through a single re-runnable harness (`node scripts/proof-hybrid-play.mjs`, F18) that exercises the
+   REAL dispatch path: a real runner-owned trigger, a real `scripts/*` deterministic step, and a real LLM
+   invocation for the hybrid Play. Injected/mocked runners (as in atom 7's unit tests) do NOT satisfy this
+   atom — green unit tests are necessary but not sufficient, and runtime behavior must not be inferred from
+   them.
+   - one mandatory/lifecycle Play (`wrap-up` or ticket close-on-success) proves the runner/daemon invokes
+     it without persona discretion AND its output is validated against the Play's declared `outputValidator`
+     contract — wire that metadata field to drive the validation rather than leaving the check bespoke;
+   - one hybrid Play (candidate: `integration-verify` or `code-review`) proves a real deterministic step
+     runs and its captured result demonstrably gates (blocks) or feeds the LLM layer, by finalizing the
+     `deterministicStep` `ref`→command convention that atom 7 left as a minimal default.
 
 **Verified when:** persona launch prompts expose only compact Play capability manifests; a persona can
 request an optional Play through a typed handoff; a mandatory Play is invoked by the runner/daemon without
 persona discretion; one hybrid Play runs deterministic code whose result demonstrably drives/gates its LLM
 layer; every existing shipped Play is migrated or explicitly marked prompt-only under the new schema;
-authoring Plays enforce the shared elegance checkpoint before writing governance artifacts; and existing
-prompt-only behavior remains backward-compatible during the migration.
+authoring Plays enforce the shared elegance checkpoint before writing governance artifacts; existing
+prompt-only behavior remains backward-compatible during the migration; and the mandatory-trigger and
+hybrid proofs are demonstrated through a real-path, re-runnable harness (real trigger, real deterministic
+script, real LLM call) — never mocked runners or passing unit tests alone.
 
 **Boundary:** does NOT reopen the dispatch reversal (one-level stands). Does not make the deterministic
 runner the probabilistic chooser for all Plays: personas may judge when optional Plays are useful, but
