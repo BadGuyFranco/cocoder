@@ -12,6 +12,14 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-19 — **founder-brief-format-durability: reaffirmed complete — no buildable atoms (run_149)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 0 atoms delegated) | **Priority:** [founder-brief-format-durability](./priorities/founder-brief-format-durability.md) | **Run:** run_149
+**Outcomes:**
+- **Reaffirmation only:** structural single-source contract repair from run_148 remains complete and gate-proven; no in-scope build atom remained to launch.
+- **Disposition: `continue`** — ticket 0005 items 1-2 (repo-specific persona delta + AGENTS disambiguation) still open and outside this run's write scope; item 1 needs a founder process-safety decision.
+**Next:** Ticket: `0005` — from the dashboard Tickets tab click **Launch**; apply item 2 (AGENTS.md name note), resolve item 1 per founder decision (Oscar daemon-launch delta or won't-do), close 0005, then archive the contracts priority.
+
 ## 2026-06-18 — **founder-brief-format-durability: enforcer proof + 0005 portable migration + governance reconcile — continue (run_148)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 3 atoms delegated, all verify-gated) | **Priority:** [founder-brief-format-durability](./priorities/founder-brief-format-durability.md) | **Run:** run_148

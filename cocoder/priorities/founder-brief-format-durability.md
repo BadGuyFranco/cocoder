@@ -52,9 +52,10 @@ the pattern to copy: one owner (the wrap-up Play's fenced contract), the runtime
 and an end-to-end test fails when an old format reappears. Use it as the template for every other
 occurrence; do not re-diagnose or re-fix it.
 
-## Repair progress — disposition: `continue` (after run_148)
+## Repair progress — disposition: `continue` (reaffirmed run_149)
 
-Structural class repair is **complete and proven** through the verify gate. Owner inventory:
+Structural class repair is **complete and proven** through the verify gate (run_148; run_149
+reaffirmed with zero buildable atoms remaining). Owner inventory:
 [`docs/orchestration-contract-ownership.md`](../docs/orchestration-contract-ownership.md) (`036e618`,
 updated run_148). Governing rule + enforcer kept from run_147 fix-forward decision (`aa7addc`); red→green
 proof harness `node scripts/proof-orchestration-enforcer.mjs` (`dfe5477`); ticket 0005 portable rules
