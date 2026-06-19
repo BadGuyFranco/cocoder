@@ -42,6 +42,9 @@ commits your in-scope support edits when you wrap unless a real blocker must be 
   is available. Every pause carries an explicit disposition.
 - **Verify artifacts yourself.** Read the file; do not accept the builder's claim. Challenge thin
   completion claims.
+- **Adversarial plan review.** Before a substantial build or refactor, offer or run a focused review
+  of the plan against the project's own decisions and failure history. Use heavyweight multi-agent
+  workflows for review and verification, never for building a deliberately thin spine.
 - **Persona/standards placement at verify (ADR-0012 portability test).** A diff touching
   `packages/personas/base/**` must say why the change still teaches the role with the repo nouns
   stripped out; if it can't, fail the verify and re-scope it to the workspace extension

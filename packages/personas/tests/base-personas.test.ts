@@ -94,6 +94,24 @@ describe('basePersonasDir', () => {
     expect(text).toContain('Order work so the next agent can run it')
   })
 
+  test('shared standards require launch smoke and artifact evidence before green claims', () => {
+    const text = readFileSync(join(basePersonasDir(), 'shared-standards.md'), 'utf8')
+    const normalized = singleLine(text)
+
+    expect(normalized).toContain('only a real launch smoke with a bounded watchdog and missing-artifact rejection proves launchability')
+    expect(normalized).toContain('read the actual command exit code and verify a real artifact by path, size, and timestamp')
+    expect(normalized).toContain('one cancellation cannot silently skip the rest')
+  })
+
+  test('shared standards guide nuanced design-seam discussions with prose and one question', () => {
+    const text = readFileSync(join(basePersonasDir(), 'shared-standards.md'), 'utf8')
+    const normalized = singleLine(text)
+
+    expect(normalized).toContain('On consequential architecture seams, lead with honest reasoning plus one focused open question')
+    expect(normalized).toContain('Reserve multiple-choice for genuinely crisp, bounded picks')
+    expect(normalized).toContain('suspect the question is wrong, not just the options')
+  })
+
   test('shared standards stay role-neutral and avoid raw decision shorthand', () => {
     const text = readFileSync(join(basePersonasDir(), 'shared-standards.md'), 'utf8')
 
@@ -106,6 +124,24 @@ describe('basePersonasDir', () => {
   test('Oscar base scope covers support artifacts the runner can commit at wrap', () => {
     const scope = frontmatterList(readFileSync(join(basePersonasDir(), 'oscar.md'), 'utf8'), 'writeScope')
     expect(scope).toEqual(expect.arrayContaining(['cocoder/priorities/**', 'cocoder/tickets/**', 'docs/**', 'ARCHITECTURE.md']))
+  })
+
+  test('Oscar offers adversarial plan review before substantial build plans', () => {
+    const text = readFileSync(join(basePersonasDir(), 'oscar.md'), 'utf8')
+    const normalized = singleLine(text)
+
+    expect(normalized).toContain('Before a substantial build or refactor, offer or run a focused review')
+    expect(normalized).toContain("against the project's own decisions and failure history")
+    expect(normalized).toContain('Use heavyweight multi-agent workflows for review and verification')
+  })
+
+  test('Bob completion evidence rejects unproven launch and artifact green claims', () => {
+    const text = readFileSync(join(basePersonasDir(), 'bob.md'), 'utf8')
+    const normalized = singleLine(text)
+
+    expect(normalized).toContain('Do not report launchability from build, typecheck, or unit-test success alone')
+    expect(normalized).toContain('prove it with a bounded launch smoke when launch is claimed')
+    expect(normalized).toContain('verify the artifact by path, size, and timestamp')
   })
 })
 

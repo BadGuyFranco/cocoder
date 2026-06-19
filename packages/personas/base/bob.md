@@ -45,4 +45,7 @@ may narrow it further. Work inside it.
 ## Completion evidence
 
 State assumptions and scope before editing. Run the appropriate tests and static checks. Report the
-files changed, the evidence (commands + output), and any residual risk.
+files changed, the evidence (commands + output), and any residual risk. Do not report launchability
+from build, typecheck, or unit-test success alone; prove it with a bounded launch smoke when launch is
+claimed. Before calling a build, smoke, or generated artifact green, read the command exit code and
+verify the artifact by path, size, and timestamp.
