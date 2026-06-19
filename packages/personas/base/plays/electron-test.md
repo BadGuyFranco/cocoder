@@ -2,6 +2,12 @@
 id: electron-test
 label: Electron test
 kind: headless
+executionModel: prompt-only
+triggerClass: persona-requested
+purpose: Drive an Electron app user path and return observed QA evidence without editing code.
+allowedCallers:
+  - quinn
+  - oscar
 writeScope: []
 ---
 

@@ -2,6 +2,15 @@
 id: create-priority
 label: Create priority
 kind: headless
+executionModel: prompt-only
+triggerClass: persona-requested
+purpose: Create one founder-approved priority file through the governance authoring lane.
+allowedCallers:
+  - oz
+  - oscar
+  - deb
+requiredCheckpoints:
+  - shared elegance checkpoint
 writeScope:
   - cocoder/priorities/**
 ---

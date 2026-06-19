@@ -2,6 +2,15 @@
 id: edit-priority
 label: Edit priority
 kind: headless
+executionModel: prompt-only
+triggerClass: persona-requested
+purpose: Edit one existing priority while preserving founder-approved Objective boundaries.
+allowedCallers:
+  - oz
+  - oscar
+  - deb
+requiredCheckpoints:
+  - shared elegance checkpoint
 writeScope:
   - cocoder/priorities/**
 ---

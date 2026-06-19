@@ -2,6 +2,16 @@
 id: create-ticket
 label: Create ticket
 kind: headless
+executionModel: prompt-only
+triggerClass: persona-requested
+purpose: Create one open ticket from persona-provided follow-up input.
+allowedCallers:
+  - oz
+  - oscar
+  - bob
+  - deb
+requiredCheckpoints:
+  - shared elegance checkpoint
 writeScope:
   - cocoder/tickets/**
 ---

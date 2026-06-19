@@ -2,6 +2,13 @@
 id: documentation
 label: Documentation
 kind: headless
+executionModel: prompt-only
+triggerClass: persona-requested
+purpose: Update documentation narrowly so it reflects a real change or named target area.
+allowedCallers:
+  - oscar
+  - bob
+  - deb
 writeScope:
   - docs/**
   - **/*.md

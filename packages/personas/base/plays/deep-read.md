@@ -2,6 +2,12 @@
 id: deep-read
 label: Deep read
 kind: headless
+executionModel: prompt-only
+triggerClass: persona-requested
+purpose: Deep-read one assigned subsystem and return structured evidence-backed findings.
+allowedCallers:
+  - bob
+  - oscar
 writeScope: []
 ---
 

@@ -2,6 +2,14 @@
 id: wrap-up
 label: Wrap-up
 kind: headless
+executionModel: prompt-only
+triggerClass: lifecycle-triggered
+purpose: Produce the founder-visible run closeout and lifecycle disposition.
+allowedCallers:
+  - runner wrap-up lifecycle
+  - daemon run lifecycle
+requiredCheckpoints:
+  - shared elegance checkpoint
 writeScope:
   - cocoder/priorities/**
   - cocoder/PLAYBOOK.md

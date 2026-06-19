@@ -2,6 +2,12 @@
 id: code-review
 label: Code review
 kind: headless
+executionModel: prompt-only
+triggerClass: persona-requested
+purpose: Review a provided diff or change as a read-only independent reviewer.
+allowedCallers:
+  - oscar
+  - deb
 writeScope: []
 ---
 

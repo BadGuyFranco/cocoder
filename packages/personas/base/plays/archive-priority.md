@@ -2,6 +2,15 @@
 id: archive-priority
 label: Archive priority
 kind: headless
+executionModel: prompt-only
+triggerClass: persona-requested
+purpose: Archive one existing priority while preserving the live priority archive convention.
+allowedCallers:
+  - oz
+  - oscar
+  - deb
+requiredCheckpoints:
+  - shared elegance checkpoint
 writeScope:
   - cocoder/priorities/**
 ---
