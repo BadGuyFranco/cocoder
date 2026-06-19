@@ -222,10 +222,11 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   stands; no engine reversal. Decision record at `priorities/archive/play-dispatch-boundary.md`.
 
 **Active build priorities (launchable; `order.json` order — the `priorities/` directory is the live index):**
-1. `oz-hardening` — **CONTINUE (run_156).** Items 2 & 4 landed: shared `projectOzAwareness()` projection,
-   `ozAutoCompactRuns` setting (default 3, range 2–10), auto-compact on `run-settled`, and `ticket-created`
-   event pickup without a manual nudge. **Next:** item 1 (OzChat markdown + streaming + thinking-if-available)
-   then item 3 (drag-to-ask pointer). Owner map at `docs/oz-hardening-owner-map.md`.
+1. `oz-hardening` — **CONTINUE (run_157).** Items 2 & 4 landed (run_156); item 1 markdown landed (run_157,
+   XSS fix); item 3 UI half landed (drag pointer chip + `[context: …]` send seam). **Blocked on founder:**
+   codex-cli 0.137.0 cannot stream — message-level-only vs alternate runtime (`docs/oz-streaming-design.md`).
+   **Next:** drag-to-ask daemon-side pointer resolution + `scripts/proof-oz-awareness.mjs` for items 2 & 4;
+   running-app demos for items 1 & 3. Owner map at `docs/oz-hardening-owner-map.md`.
 2. `tickets-review` — **CONTINUE (run_143).** Build code-complete; ticket launch plumbing satisfied
    (`LaunchRunTarget {kind:'ticket'}`, `RunInput.ticketId`, `ticket-fix` sentinel in `launcher.ts`).
    **Archive gate:** founder live proof — Tickets tab **Launch** on ticket **0003**; confirm fix run completes

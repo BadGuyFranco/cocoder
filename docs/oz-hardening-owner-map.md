@@ -55,10 +55,12 @@ implemented by `streamOzEvents()` (`packages/daemon/src/routes.ts:459`) over `Oz
 
 Renderer chat surface: `packages/ui/src/renderer/sections/dashboard/OzChat.tsx`.
 `OzChatPanel` renders shell controls, target picker, messages, typing affordance, quick prompts, and the
-input (`packages/ui/src/renderer/sections/dashboard/OzChat.tsx:75`). `ChatMessageView` renders the message
-body by applying one bold regex to `msg.body` and injecting HTML (`packages/ui/src/renderer/sections/dashboard/OzChat.tsx:9`,
-`packages/ui/src/renderer/sections/dashboard/OzChat.tsx:20`). Attachments currently support run cards only
-through the renderer `ChatMessage` shape (`packages/ui/src/renderer/model.ts:67`).
+input (`packages/ui/src/renderer/sections/dashboard/OzChat.tsx:75`). `ChatMessageView` renders Oz messages
+through `MarkdownBody` (headings, lists, fenced/inline code, links, bold/italic) as React elements — no
+`dangerouslySetInnerHTML` (run_157 XSS fix). Non-Oz messages stay plain escaped text. Attachments support run
+cards through the renderer `ChatMessage` shape (`packages/ui/src/renderer/model.ts:67`). Drag-to-ask UI half
+(run_157): `OZ_ITEM_MIME` (`application/x-oz-item`) pointer chip on the composer, drop handlers on the input
+area, send prepends `[context: <type> <id> — <label>]` through the existing `onSend` seam.
 
 Renderer/main refresh path: `packages/ui/src/renderer/App.tsx`, `packages/ui/src/renderer/live.ts`,
 `packages/ui/src/main/daemon-client.ts`, `packages/ui/src/main/chat-send.ts`, and
@@ -74,9 +76,14 @@ in `App.tsx` (`packages/ui/src/renderer/App.tsx:215`).
 ## 3. STREAMING & THINKING CAPABILITY
 
 Current answer: the Oz runtime does not expose incremental final-answer tokens, and it does not expose
-separate reasoning/thinking tokens.
+separate reasoning/thinking tokens. **Run_157 probe (codex-cli 0.137.0):** `codex exec --json` delivers a
+1023-char answer as ONE `item.completed` event ~8.5s after `turn.started` — zero deltas; `reasoning_output_tokens`
+is a count, not a text stream. Fixture: `packages/adapters/tests/fixtures/codex-jsonl-stream.jsonl`. Full
+design + verdict: `docs/oz-streaming-design.md`. **Founder decision required** before any streaming build:
+ship message-level-only vs pursue an alternate streaming-capable runtime. Faking streaming by chunking a
+finished reply is off the table.
 
-Evidence:
+Evidence (pre-probe architecture):
 
 - `runTurn()` builds an adapter command, waits for `runHeadlessProcess`, then reads `result.output.trim()`
   as a complete reply (`packages/daemon/src/oz-host.ts:148`, `packages/daemon/src/oz-host.ts:168`,
@@ -143,17 +150,14 @@ They are also `draggable`, but only for ticket-order reorder; no pointer payload
 Run rows live in `RunsTab` in `packages/ui/src/renderer/sections/dashboard/Dashboard.tsx:176`. They are
 clickable, not draggable (`packages/ui/src/renderer/sections/dashboard/Dashboard.tsx:203`).
 
-The Oz terminal has no drop-target plumbing today. `OzChatPanel` owns the input area at
-`packages/ui/src/renderer/sections/dashboard/OzChat.tsx:120`, but there are no `onDrop` / `onDragOver`
-handlers in that component. Existing chat attachments only render run cards (`packages/ui/src/renderer/sections/dashboard/OzChat.tsx:21`)
-and the model carries only `{ kind, runId }` (`packages/ui/src/renderer/model.ts:69`).
+**UI half landed (run_157):** priority/ticket/run rows set `application/x-oz-item` JSON
+(`{ itemType, id, label }`) on drag; `OzChatPanel` accepts drops on the composer, shows a removable chip,
+and prepends `[context: <type> <id> — <label>]` on send through the existing `onSend` seam (no daemon/IPC
+change yet). Distinct MIME preserves reorder/click drag on the same rows.
 
-Implementation should add one lightweight pointer contract in the renderer model, for example
-`kind`, `workspaceId`, `itemType`, `slug`, and `path`, then pass the pointer through the existing
-`OzChatPanel` input/send seam. Priority pointers should refer to the workspace-relative priority markdown
-file derived from the slug; ticket pointers should refer to the actual ticket file under the workspace ticket loader; run pointers should
-refer to the durable run identity and, when available, portable run history. The daemon side should resolve
-the pointer through the shared awareness/read owners, not by injecting full file bodies into chat state.
+**Daemon half still needed:** resolve the pointer through the shared awareness/read owners — priority slug →
+workspace-relative markdown path; ticket id → ticket loader path; run id → durable run state — and answer
+scoped to that item. Do not inject full file bodies into chat state.
 
 ## 6. TESTS/FIXTURES THAT PIN THESE
 
@@ -220,34 +224,14 @@ Run_156 records that `ticket-created` events and the shared awareness projection
 (`cocoder/SESSION_LOG.md:24`). The remaining risk is not ticket parsing; it is ensuring all future status
 read paths keep using `projectOzAwareness()` and the existing SSE/refetch path.
 
-## 8. PROPOSED ATOM SEQUENCE
+## 8. PROPOSED ATOM SEQUENCE (status after run_157)
 
-1. Decisions/taxonomy check.
-Exit criterion: update this owner map only if the priority or source changed; otherwise explicitly carry
-forward `projectOzAwareness()` as the shared owner and `settings.ts` as settings owner. Loop-amenable: yes,
-read-only.
-
-2. Shared projection engine preservation for items 2 and 4.
-Exit criterion: tests prove `factsDigest`, Oz `status`, and ticket-created/event-refresh paths still consume
-`projectOzAwareness()`; no second awareness contract appears. Loop-amenable: yes.
-
-3. Render quality for item 1.
-Exit criterion: `OzChat.tsx` renders markdown safely for headings, lists, fenced code, inline code, and links;
-single-shot replies still work; optional thinking blocks render only when present. If streaming is added, the
-protocol extension starts at daemon/main IPC contracts, not inside layout code. Loop-amenable: yes, but split
-streaming protocol from markdown if the diff grows.
-
-4. Streaming/thinking plumbing for item 1.
-Exit criterion: daemon, main IPC, renderer model, and `OzChatPanel` support incremental reply updates and
-optional reasoning chunks, with graceful absence when adapters provide none. Loop-amenable: likely no; keep
-as a focused protocol atom.
-
-5. Drag-to-ask pointer for item 3.
-Exit criterion: priority, ticket, and run rows set one pointer payload; `OzChatPanel` accepts drops and shows a
-visible slug/path attachment; send path passes pointer metadata; Oz resolves by reference through the shared
-read owners. Loop-amenable: yes if split UI payload from daemon resolution.
-
-6. Proof.
-Exit criterion: targeted tests plus a bounded running-app proof demonstrate markdown, streaming or explicit
-single-shot fallback, show-thinking-if-available, compact/status accuracy, auto pickup, and drag-to-ask. Do
-not claim launchability from unit/type/build checks alone. Loop-amenable: no; proof should be one bounded pass.
+1. ✅ Decisions/taxonomy check (run_157 atom 0).
+2. ✅ Shared projection engine for items 2 & 4 (run_156).
+3. ✅ Render quality for item 1 markdown (run_157 atom 1) — `MarkdownBody` in `OzChat.tsx`; 155 UI tests green.
+4. ⛔ Streaming/thinking plumbing for item 1 — **founder-gated.** Codex 0.137.0 probe proves no incremental
+   deltas (`docs/oz-streaming-design.md`). Build only after founder chooses message-level-only vs alternate
+   runtime.
+5. 🔄 Drag-to-ask pointer for item 3 — **UI half done (run_157);** daemon resolution + running-app demo remain.
+6. ⛔ Proof — `scripts/proof-oz-awareness.mjs` harness for items 2 & 4; running-app demos for items 1 & 3.
+   Do not claim launchability from unit/type checks alone.

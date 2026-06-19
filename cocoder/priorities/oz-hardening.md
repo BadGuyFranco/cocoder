@@ -66,3 +66,21 @@ completed before implementation**:
    audit the settings surface at owner-map time so it is one owner, not a parallel toggle.
 3. **Drag-to-ask attaches a pointer, not the body.** The dropped priority/run/ticket is injected as its
    **file path with the slug visibly shown**; Oz reads the item by reference. Keeps Oz's context cheap.
+
+## Build progress — disposition: `continue` (run_157)
+
+**Disposition:** `continue` — NOT archive-ready.
+
+**Landed:** items 2 & 4 (run_156, shared `projectOzAwareness()` + auto-compact + ticket-created pickup);
+item 1 markdown rendering in `OzChat.tsx` (run_157, React elements — removed latent XSS);
+item 3 UI half (run_157, `application/x-oz-item` drag from priority/ticket/run rows → removable chip →
+`[context: <type> <id> — <label>]` prepended on send through existing `onSend`).
+
+**Gaps blocking archive:**
+1. **Streaming/thinking (item 1):** codex-cli 0.137.0 `--json` delivers one `item.completed` event — no token
+   deltas, no reasoning stream (`docs/oz-streaming-design.md`). Founder must choose message-level-only vs
+   alternate streaming-capable runtime before any streaming build.
+2. **Drag-to-ask daemon half (item 3):** pointer resolution (id → file/run state via loaders) + running-app
+   demonstration still needed.
+3. **Items 2 & 4 proof:** code landed run_156 but no independent runnable harness yet.
+4. **Running-app demos:** item 1 markdown and item 3 drag-to-ask acceptance criteria require the live app.
