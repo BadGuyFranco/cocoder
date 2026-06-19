@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "pnpm -r test",
     "check:topology": "node scripts/check-topology.mjs",
+    "proof:oz-awareness": "node scripts/proof-oz-awareness.mjs",
     "proof:queue": "node scripts/proof-priorities-queue.mjs",
     "proof:workspace-segmentation": "node scripts/proof-workspace-segmentation.mjs"
   },
