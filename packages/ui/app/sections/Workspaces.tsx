@@ -11,9 +11,22 @@ const ROLE_META: Record<string, { label: string; color: string; bg: string; bord
   readonly: { label: 'Read-only', color: 'var(--cb-text-muted)', bg: 'var(--cb-bg-soft)', border: 'var(--cb-border)', body: 'Reference repo. Never written to.' },
 }
 
-function RootRow({ root, hasPrimary, onChange, onDelete }: { root: Root; hasPrimary: boolean; onChange: (r: Root) => void; onDelete: () => void }) {
+type PickRoot = () => Promise<{ readonly path: string | null; readonly error?: string }>
+
+function RootRow({ root, hasPrimary, onChange, onDelete, onPickRoot }: { root: Root; hasPrimary: boolean; onChange: (r: Root) => void; onDelete: () => void; onPickRoot?: PickRoot }) {
+  const [picking, setPicking] = useState(false)
+  const [pickError, setPickError] = useState<string | null>(null)
   const meta = ROLE_META[root.role]
   const showResolved = root.resolvedPath && root.resolvedPath !== root.path
+  const pickRoot = async () => {
+    if (!onPickRoot || picking) return
+    setPicking(true)
+    setPickError(null)
+    const picked = await onPickRoot()
+    setPicking(false)
+    if (picked.error) setPickError(picked.error)
+    else if (picked.path) onChange({ ...root, path: picked.path })
+  }
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 2fr 200px 32px', gap: 12, alignItems: 'center', padding: '12px 14px', background: 'var(--cb-surface-glass)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', marginBottom: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
@@ -22,9 +35,10 @@ function RootRow({ root, hasPrimary, onChange, onDelete }: { root: Root; hasPrim
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '13px 1fr 24px', columnGap: 6, rowGap: 3, alignItems: 'center', minWidth: 0 }}>
         <Icon name="folder" size={13} style={{ color: 'var(--cb-text-muted)' }} />
-        <input value={root.path} onChange={(e) => onChange({ ...root, path: e.target.value })} className="oz-input" style={{ padding: '5px 8px', fontSize: 11.5, fontFamily: 'var(--cb-font-mono)', background: 'transparent', border: 'none', minWidth: 0 }} />
-        <button className="oz-iconbtn" style={{ width: 24, height: 24, flexShrink: 0 }} title="Pick folder"><Icon name="folder-notch-open" size={11} /></button>
+        <input value={root.path} onChange={(e) => { setPickError(null); onChange({ ...root, path: e.target.value }) }} className="oz-input" style={{ padding: '5px 8px', fontSize: 11.5, fontFamily: 'var(--cb-font-mono)', background: 'transparent', border: 'none', minWidth: 0 }} />
+        <button className="oz-iconbtn" type="button" style={{ width: 24, height: 24, flexShrink: 0 }} title="Pick folder" disabled={!onPickRoot || picking} onClick={() => void pickRoot()}><Icon name="folder-notch-open" size={11} /></button>
         {showResolved && <div style={{ gridColumn: '2 / 4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-text-muted)' }}>{root.resolvedPath}</div>}
+        {pickError && <div className="oz-field-help" style={{ gridColumn: '2 / 4', color: 'var(--cb-error)', marginTop: 2 }}>{pickError}</div>}
       </div>
       <select className="oz-select" value={root.role} onChange={(e) => onChange({ ...root, role: e.target.value as Root['role'] })} style={{ fontSize: 12 }}>
         <option value="primary" disabled={hasPrimary && root.role !== 'primary'}>Primary{hasPrimary && root.role !== 'primary' ? ' (taken)' : ''}</option>
@@ -36,8 +50,8 @@ function RootRow({ root, hasPrimary, onChange, onDelete }: { root: Root; hasPrim
   )
 }
 
-export function WorkspacesScreen({ workspaces, activeId, onChange, onSetActive, onCreate, onDelete, onSave, onGotoDashboard }: {
-  workspaces: Workspace[]; activeId: string; onChange: (ws: Workspace) => void; onSetActive: (id: string) => void; onCreate: () => void; onDelete: (id: string) => void; onSave: (ws: Workspace) => void; onGotoDashboard: () => void
+export function WorkspacesScreen({ workspaces, activeId, onChange, onSetActive, onCreate, onDelete, onSave, onGotoDashboard, onPickRoot }: {
+  workspaces: Workspace[]; activeId: string; onChange: (ws: Workspace) => void; onSetActive: (id: string) => void; onCreate: () => void; onDelete: (id: string) => void; onSave: (ws: Workspace) => void; onGotoDashboard: () => void; onPickRoot?: PickRoot
 }) {
   const [editId, setEditId] = useState(activeId)
   const editing = workspaces.find((w) => w.id === editId)
@@ -107,7 +121,7 @@ export function WorkspacesScreen({ workspaces, activeId, onChange, onSetActive, 
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 2fr 200px 32px', gap: 12, padding: '0 14px 8px', fontFamily: 'var(--cb-font-display)', fontSize: 9.5, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--cb-text-muted)' }}>
                 <span>Name</span><span>Path</span><span>Role</span><span />
               </div>
-              {editing.roots.map((r) => <RootRow key={r.id} root={r} hasPrimary={hasPrimary} onChange={(next) => updateRoot(r.id, next)} onDelete={() => removeRoot(r.id)} />)}
+              {editing.roots.map((r) => <RootRow key={r.id} root={r} hasPrimary={hasPrimary} onChange={(next) => updateRoot(r.id, next)} onDelete={() => removeRoot(r.id)} onPickRoot={onPickRoot} />)}
               <button onClick={addRoot} style={{ width: '100%', padding: 12, background: 'transparent', border: '1px dashed var(--cb-border-strong)', borderRadius: 'var(--cb-radius-md)', cursor: 'pointer', color: 'var(--cb-text-secondary)', fontSize: 12, fontFamily: 'var(--cb-font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 <Icon name="plus" size={13} /> Add root folder
               </button>

@@ -683,7 +683,7 @@ export function App() {
             />
           )}
           {route === 'workspaces' && (
-            <WorkspacesScreen workspaces={workspaces} activeId={activeId} onChange={(ws) => setWorkspaces((all) => all.map((w) => (w.id === ws.id ? ws : w)))} onSetActive={loadWs} onCreate={() => setNewWsOpen(true)} onDelete={(id) => void handleDeleteWorkspace(id)} onSave={(ws) => void handleSaveWorkspace(ws)} onGotoDashboard={() => setRoute('dashboard')} />
+            <WorkspacesScreen workspaces={workspaces} activeId={activeId} onChange={(ws) => setWorkspaces((all) => all.map((w) => (w.id === ws.id ? ws : w)))} onSetActive={loadWs} onCreate={() => setNewWsOpen(true)} onDelete={(id) => void handleDeleteWorkspace(id)} onSave={(ws) => void handleSaveWorkspace(ws)} onGotoDashboard={() => setRoute('dashboard')} onPickRoot={handlePickWorkspaceRoot} />
           )}
           {route === 'clis' && <CLIsScreen clis={clis} onTest={handleCliTest} onAdd={() => onSend('Register a new CLI.')} />}
           {route === 'personas' && <PersonasScreen personas={personas} plays={plays} clis={clis} onChange={setPersona} onAddSub={addSub} onRemoveSub={removeSub} onUpdateSub={updateSub} onNewPersonaAsPriority={() => setCraftOpen(true)} live={live} />}
