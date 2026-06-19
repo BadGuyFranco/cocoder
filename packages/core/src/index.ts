@@ -83,6 +83,8 @@ export type {
   DispatchPlayDeps,
   DispatchPlayInput,
   DispatchPlayResult,
+  DeterministicStepInput,
+  DeterministicStepResult,
   HeadlessRunInput,
 } from './plays/index.js'
 export {

@@ -166,6 +166,80 @@ describe('dispatchPlay', () => {
     ).resolves.toEqual({ exitCode: 2, output: 'partial closeout' })
   })
 
+  test('hybrid Play feeds a successful deterministic precheck into the LLM prompt', async () => {
+    const out = await outPath()
+    const hybridPlay: Play = { ...play, deterministicStep: { ref: 'checks/preflight' } }
+    const { adapter, builtInputs } = fakeAdapter()
+    const { sessionHost } = fakeSessionHost()
+    const { runHeadless, calls } = fakeRunHeadless({ exitCode: 0, output: 'hybrid closeout' })
+
+    const result = await dispatchPlay(
+      {
+        sessionHost,
+        getAdapter: () => adapter,
+        runHeadless,
+        runDeterministic: async (input) => {
+          expect(input).toMatchObject({ ref: 'checks/preflight', cwd: '/repo', timeoutMs: 5000 })
+          return { ok: true, output: 'precheck: clean' }
+        },
+      },
+      { play: hybridPlay, assignment, persona: 'oscar', task: 'Do it.', cwd: '/repo', outPath: out, timeoutMs: 5000 },
+    )
+
+    expect(calls).toHaveLength(1)
+    expect(builtInputs[0]?.prompt).toContain('## Deterministic precheck result')
+    expect(builtInputs[0]?.prompt).toContain('precheck: clean')
+    expect(result).toEqual({ exitCode: 0, output: 'hybrid closeout', deterministic: { ok: true, output: 'precheck: clean' } })
+  })
+
+  test('hybrid Play gates the LLM invocation when deterministic precheck fails', async () => {
+    const out = await outPath()
+    const hybridPlay: Play = { ...play, deterministicStep: { ref: 'checks/preflight' } }
+    const { sessionHost } = fakeSessionHost()
+    const { runHeadless, calls } = fakeRunHeadless()
+
+    const result = await dispatchPlay(
+      {
+        sessionHost,
+        getAdapter: () => {
+          throw new Error('adapter must not be called')
+        },
+        runHeadless,
+        runDeterministic: async () => ({ ok: false, output: 'precheck failed' }),
+      },
+      { play: hybridPlay, assignment, persona: 'oscar', task: 'Do it.', cwd: '/repo', outPath: out },
+    )
+
+    expect(calls).toHaveLength(0)
+    expect(result).toEqual({
+      exitCode: 1,
+      output: 'precheck failed',
+      deterministic: { ok: false, output: 'precheck failed' },
+      gated: true,
+    })
+  })
+
+  test('non-hybrid Play never runs the deterministic precheck seam', async () => {
+    const out = await outPath()
+    const { adapter } = fakeAdapter()
+    const { sessionHost } = fakeSessionHost()
+    const { runHeadless } = fakeRunHeadless({ exitCode: 0, output: 'plain closeout' })
+
+    await expect(
+      dispatchPlay(
+        {
+          sessionHost,
+          getAdapter: () => adapter,
+          runHeadless,
+          runDeterministic: async () => {
+            throw new Error('deterministic step must not run')
+          },
+        },
+        { play, assignment, persona: 'oscar', task: 'Do it.', cwd: '/repo', outPath: out },
+      ),
+    ).resolves.toEqual({ exitCode: 0, output: 'plain closeout' })
+  })
+
   test('an INTERACTIVE Play spawns a cmux pane and reads its captured output file', async () => {
     const out = await outPath()
     await mkdir(dirname(out), { recursive: true })

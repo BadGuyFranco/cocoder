@@ -28,5 +28,7 @@ export {
   type DispatchPlayDeps,
   type DispatchPlayInput,
   type DispatchPlayResult,
+  type DeterministicStepInput,
+  type DeterministicStepResult,
   type HeadlessRunInput,
 } from './dispatch.js'

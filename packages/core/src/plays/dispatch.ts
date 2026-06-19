@@ -9,6 +9,8 @@
 // `kind: interactive` Plays still spawn a real, watchable cmux pane.
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import type { Adapter } from '../adapter/types.js'
 import type { PersonaRunMode, PlayAssignment } from '../personas/types.js'
 import type { SessionHost } from '../session-host/types.js'
@@ -35,6 +37,20 @@ export interface DispatchPlayDeps {
   readonly getAdapter: (cli: string) => Adapter
   /** Override the headless subprocess runner (tests inject a fake). Default spawns the real command. */
   readonly runHeadless?: (input: HeadlessRunInput) => Promise<DispatchPlayResult>
+  /** Override deterministic precheck execution for hybrid Plays. Default runs the step ref as a command. */
+  readonly runDeterministic?: (input: DeterministicStepInput) => Promise<DeterministicStepResult>
+}
+
+export interface DeterministicStepInput {
+  readonly ref: string
+  readonly cwd: string
+  readonly timeoutMs?: number
+  readonly signal?: AbortSignal
+}
+
+export interface DeterministicStepResult {
+  readonly ok: boolean
+  readonly output: string
 }
 
 export interface DispatchPlayInput {
@@ -56,6 +72,8 @@ export interface DispatchPlayInput {
 export interface DispatchPlayResult {
   readonly exitCode: number
   readonly output: string
+  readonly deterministic?: DeterministicStepResult
+  readonly gated?: boolean
 }
 
 /** Default headless runner: spawn the command, capture stdout+stderr → outPath, resolve on real exit.
@@ -100,8 +118,35 @@ export function runHeadlessProcess(input: HeadlessRunInput): Promise<DispatchPla
   })
 }
 
+/** Default deterministic runner. Atom 8 owns the durable ref->script convention; for now the ref is
+ *  treated as an executable command and captured through the same bounded subprocess primitive. */
+async function runDeterministicProcess(input: DeterministicStepInput): Promise<DeterministicStepResult> {
+  const outPath = join(tmpdir(), `cocoder-deterministic-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}.out`)
+  const result = await runHeadlessProcess({
+    command: input.ref,
+    args: [],
+    cwd: input.cwd,
+    outPath,
+    timeoutMs: input.timeoutMs,
+    signal: input.signal,
+  })
+  return { ok: result.exitCode === 0, output: result.output }
+}
+
 export async function dispatchPlay(deps: DispatchPlayDeps, input: DispatchPlayInput): Promise<DispatchPlayResult> {
-  const prompt = `${input.play.body.trim()}\n\n## This invocation\n${input.task.trim()}`
+  const deterministic = input.play.deterministicStep
+    ? await (deps.runDeterministic ?? runDeterministicProcess)({
+      ref: input.play.deterministicStep.ref,
+      cwd: input.cwd,
+      timeoutMs: input.timeoutMs,
+      signal: input.signal,
+    })
+    : undefined
+  if (deterministic && !deterministic.ok) {
+    return { exitCode: 1, output: deterministic.output, deterministic, gated: true }
+  }
+
+  const prompt = buildPrompt(input.play, input.task, deterministic)
   const headless = input.personaMode === 'headless' || input.play.kind === 'headless'
   const cmd = deps.getAdapter(input.assignment.cli).build({
     persona: input.persona,
@@ -118,10 +163,10 @@ export async function dispatchPlay(deps: DispatchPlayDeps, input: DispatchPlayIn
     const adapterOwnsOutput = !cmd.stdoutPath && cmd.args.includes(input.outPath)
     const stdoutPath = cmd.stdoutPath ?? (adapterOwnsOutput ? `${input.outPath}.stdout` : input.outPath)
     const result = await run({ command: cmd.command, args: cmd.args, cwd: input.cwd, outPath: stdoutPath, timeoutMs: input.timeoutMs, signal: input.signal })
-    if (cmd.stdoutPath) return result
-    if (!adapterOwnsOutput) return result
+    if (cmd.stdoutPath) return attachDeterministic(result, deterministic)
+    if (!adapterOwnsOutput) return attachDeterministic(result, deterministic)
     const output = existsSync(input.outPath) ? readFileSync(input.outPath, 'utf8') : result.output
-    return { exitCode: result.exitCode, output }
+    return attachDeterministic({ exitCode: result.exitCode, output }, deterministic)
   }
 
   // visible mode leaves the Play kind in control: kind:headless must stay a captured subprocess because
@@ -139,5 +184,19 @@ export async function dispatchPlay(deps: DispatchPlayDeps, input: DispatchPlayIn
   })
   const exited = await deps.sessionHost.waitForExit(ref, input.timeoutMs ? { timeoutMs: input.timeoutMs } : undefined)
   const output = existsSync(input.outPath) ? readFileSync(input.outPath, 'utf8') : ''
-  return { exitCode: exited.code, output }
+  return attachDeterministic({ exitCode: exited.code, output }, deterministic)
+}
+
+function buildPrompt(play: Play, task: string, deterministic: DeterministicStepResult | undefined): string {
+  const base = `${play.body.trim()}\n\n## This invocation\n${task.trim()}`
+  if (!deterministic) return base
+  const output = deterministic.output.trim() === '' ? '(empty)' : deterministic.output.trim()
+  return `${base}\n\n## Deterministic precheck result\n${output}`
+}
+
+function attachDeterministic(
+  result: DispatchPlayResult,
+  deterministic: DeterministicStepResult | undefined,
+): DispatchPlayResult {
+  return deterministic ? { ...result, deterministic } : result
 }
