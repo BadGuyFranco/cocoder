@@ -50,7 +50,7 @@ export interface Persona {
   cli: string; model: string; runMode: 'visible' | 'headless'
   subAgents: SubAgent[]; headless?: boolean
 }
-export type CliStatus = 'ok' | 'auth-failed' | 'not-installed'
+export type CliStatus = 'ok' | 'auth-failed' | 'model-failed' | 'not-installed'
 export interface CliRunReadiness {
   mechanism: string; flags: string[]; managesUserConfig: boolean; detail: string
 }

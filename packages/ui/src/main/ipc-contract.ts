@@ -209,6 +209,7 @@ export interface CliView {
   readonly testedAt: number | null
   readonly install: CliCheckView
   readonly auth: CliCheckView
+  readonly model: CliCheckView
   readonly models: CliModelsView
   readonly configManaged: CliRunReadinessView
   readonly headlessCapable: boolean

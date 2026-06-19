@@ -60,9 +60,29 @@ export class ClaudeAdapter implements Adapter {
       checks.push({ name: 'authenticated', ok: false, detail: 'skipped (claude not installed)' })
     }
 
-    // Model availability isn't cheaply verifiable without a call; recorded, not hard-checked.
-    // The deterministic capability probe (ADR-0006 §4) is a Phase-2 Oz feature.
-    checks.push({ name: 'model', ok: true, detail: model || '(claude default)' })
+    if (!installed) {
+      checks.push({ name: 'model', ok: false, detail: 'skipped (claude not installed)' })
+    } else if (model.trim() !== '') {
+      const probe = this.build({
+        persona: 'preflight',
+        prompt: 'Reply exactly: OK',
+        model,
+        cwd: process.cwd(),
+        outPath: '',
+        headless: true,
+      })
+      const result = await this.#exec(probe.command, probe.args)
+      const output = `${result.stdout}${result.stderr}`.trim()
+      checks.push({
+        name: 'model',
+        ok: result.code === 0,
+        detail: result.code === 0
+          ? `validated --model ${model}`
+          : `--model ${model} failed (code ${result.code})${output ? `: ${output}` : ''}`,
+      })
+    } else {
+      checks.push({ name: 'model', ok: true, detail: '(claude default; no --model)' })
+    }
 
     return { ok: checks.every((c) => c.ok), checks }
   }

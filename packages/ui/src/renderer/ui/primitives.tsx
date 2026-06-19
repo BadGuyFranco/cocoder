@@ -12,16 +12,16 @@ export const Icon = ({ name, size, style }: { name: string; size?: number; style
 const STATUS_LABEL: Record<string, string> = {
   running: 'Running', blocked: 'Needs decision', complete: 'Complete', failed: 'Failed',
   stopped: 'Stopped', queued: 'Queued', ready: 'Ready', 'in-progress': 'In progress',
-  ok: 'Ready', 'auth-failed': 'Auth failed', 'not-installed': 'Not installed',
+  ok: 'Ready', 'auth-failed': 'Auth failed', 'model-failed': 'Model failed', 'not-installed': 'Not installed',
 }
 const STATUS_ICON: Record<string, string | null> = {
   running: null, blocked: 'warning-circle', complete: 'check-circle', failed: 'x-circle',
   stopped: 'stop-circle', queued: 'circle-dashed', ready: 'circle', 'in-progress': null,
-  ok: 'check-circle', 'auth-failed': 'warning-circle', 'not-installed': 'minus-circle',
+  ok: 'check-circle', 'auth-failed': 'warning-circle', 'model-failed': 'warning-circle', 'not-installed': 'minus-circle',
 }
 const STATUS_VARIANT: Record<string, string> = {
   running: 'running', 'in-progress': 'running', blocked: 'blocked', complete: 'complete',
-  ok: 'complete', failed: 'failed', 'auth-failed': 'failed', stopped: 'stopped',
+  ok: 'complete', failed: 'failed', 'auth-failed': 'failed', 'model-failed': 'failed', stopped: 'stopped',
   'not-installed': 'stopped', queued: 'queued', ready: 'queued',
 }
 export { STATUS_LABEL, STATUS_VARIANT }

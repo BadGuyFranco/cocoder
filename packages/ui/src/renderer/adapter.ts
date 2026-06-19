@@ -88,7 +88,9 @@ export function adaptCli(view: CliView): Cli {
       ? 'not-installed'
       : !view.auth.ok
         ? 'auth-failed'
-        : 'ok'
+        : !view.model.ok
+          ? 'model-failed'
+          : 'ok'
   return {
     id: view.id,
     name: meta.name,
@@ -107,7 +109,7 @@ export function adaptCli(view: CliView): Cli {
       detail: view.configManaged.detail,
     },
     tested: view.tested,
-    errorDetail: !view.tested ? null : !view.install.ok ? view.install.detail : !view.auth.ok ? view.auth.detail : null,
+    errorDetail: !view.tested ? null : !view.install.ok ? view.install.detail : !view.auth.ok ? view.auth.detail : !view.model.ok ? view.model.detail : null,
   }
 }
 

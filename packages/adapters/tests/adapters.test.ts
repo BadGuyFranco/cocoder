@@ -146,6 +146,32 @@ describe('preflight() (injected exec)', () => {
     const r = await new ClaudeAdapter(exec).preflight('')
     expect(r.ok).toBe(true)
     expect(r.checks.find((c) => c.name === 'authenticated')?.ok).toBe(true)
+    expect(r.checks.find((c) => c.name === 'model')?.detail).toBe('(claude default; no --model)')
+  })
+
+  test('claude: configured model is validated through the real --model launch shape', async () => {
+    const exec = fakeExec({
+      'claude --version': { code: 0, stdout: '2.1.156', stderr: '' },
+      'claude auth status': { code: 0, stdout: '{"loggedIn": true}', stderr: '' },
+      'claude -p --output-format text --permission-mode acceptEdits --model opus Reply exactly: OK': { code: 0, stdout: 'OK\n', stderr: '' },
+    })
+    const r = await new ClaudeAdapter(exec).preflight('opus')
+
+    expect(r.ok).toBe(true)
+    expect(r.checks.find((c) => c.name === 'model')).toEqual({ name: 'model', ok: true, detail: 'validated --model opus' })
+  })
+
+  test('claude: unavailable configured model fails preflight before a live run spawns', async () => {
+    const exec = fakeExec({
+      'claude --version': { code: 0, stdout: '2.1.156', stderr: '' },
+      'claude auth status': { code: 0, stdout: '{"loggedIn": true}', stderr: '' },
+      'claude -p --output-format text --permission-mode acceptEdits --model opus Reply exactly: OK': { code: 1, stdout: '', stderr: 'model opus not available' },
+    })
+    const r = await new ClaudeAdapter(exec).preflight('opus')
+
+    expect(r.ok).toBe(false)
+    expect(r.checks.find((c) => c.name === 'model')?.detail).toContain('--model opus failed')
+    expect(r.checks.find((c) => c.name === 'model')?.detail).toContain('model opus not available')
   })
 
   test('claude: not logged in → not ok with a clear reason', async () => {

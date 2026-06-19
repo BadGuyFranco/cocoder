@@ -27,19 +27,21 @@ interface CliAdapterCalls {
   preflight: number
   listModels: number
 }
-const cliAdapter = (id: string, detail: string, calls?: CliAdapterCalls, headlessCapable = false): Adapter => ({
+const cliAdapter = (id: string, detail: string, calls?: CliAdapterCalls, headlessCapable = false, failingModels: readonly string[] = []): Adapter => ({
   id,
   runReadiness: { mechanism: 'launch-flags', flags: [`--${id}`], managesUserConfig: false, detail },
   headlessCapable,
   build: () => ({ command: id, args: [] }),
-  preflight: async () => {
+  preflight: async (model) => {
     if (calls) calls.preflight += 1
+    const modelDetail = model ? `validated --model ${model}` : `(${id} default)`
+    const modelOk = model === '' || !failingModels.includes(model)
     return {
-      ok: true,
+      ok: modelOk,
       checks: [
         { name: 'installed', ok: true, detail: `${id} installed` },
         { name: 'authenticated', ok: true, detail: `${id} authenticated` },
-        { name: 'model', ok: true, detail: `(${id} default)` },
+        { name: 'model', ok: modelOk, detail: modelOk ? modelDetail : `--model ${model} failed (code 1): model ${model} not available` },
       ],
     }
   },
@@ -425,6 +427,65 @@ describe('Oz mutations + lifecycle', () => {
     // C-S6 audit: a launch line was appended.
     const audit = await readFile(join(home, 'local', 'oz-audit.log'), 'utf8')
     expect(audit).toContain('"action":"launch"')
+  })
+
+  test('fresh workspace default Claude assignment launches without --model, while a pinned model is passed', async () => {
+    const workspaceRoot = await mkdtemp(join(tmpdir(), 'cocoder-fresh-launch-'))
+    const spawned: Array<Parameters<SessionHost['spawn']>[0]> = []
+    let surface = 0
+    const baseHost = fakeHost()
+    const sessionHost: SessionHost = {
+      ...baseHost,
+      async spawn(opts) {
+        spawned.push(opts)
+        return { id: `surface:${++surface}`, driver: 'fake' }
+      },
+    }
+    const claude = new ClaudeAdapter(claudeExecOk)
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit(),
+      sessionHost,
+      getAdapter: (cli) => cli === 'claude' ? claude : okAdapter,
+      io: fakeIO(),
+      runHeadless: async () => ({ exitCode: 0, output: 'wrap closeout' }),
+    })
+    const workspace = await call(oz, 'POST', '/workspaces', {
+      body: {
+        id: 'fresh-product',
+        folders: [
+          { path: workspaceRoot, role: 'primary' },
+          { path: '${COCODER_HOME}', role: 'readonly' },
+        ],
+      },
+    })
+    expect(workspace.status).toBe(201)
+    expect(loadAssignments(join(workspaceRoot, 'cocoder', 'personas', 'assignments.json')).personas.oscar?.model).toBe('')
+
+    const defaultLaunch = await call(oz, 'POST', '/runs', { body: { workspaceId: 'fresh-product', priorityId: 'adhoc-session', task: 'First run smoke' } })
+    expect(defaultLaunch.status).toBe(202)
+    for (let i = 0; i < 50 && spawned.length === 0; i++) await sleep(10)
+    const defaultOscar = spawned.find((spawn) => spawn.persona === 'oscar')
+    expect(defaultOscar?.command).toBe('claude')
+    expect(defaultOscar?.args).not.toContain('--model')
+
+    for (let i = 0; i < 50 && oz.ctx.inFlight.has('fresh-product'); i++) await sleep(10)
+    const assignmentsPath = join(workspaceRoot, 'cocoder', 'personas', 'assignments.json')
+    const assignments = loadAssignments(assignmentsPath)
+    await writeFile(
+      assignmentsPath,
+      `${JSON.stringify({ personas: { ...assignments.personas, oscar: { ...assignments.personas.oscar!, model: 'sonnet' } } }, null, 2)}\n`,
+    )
+    spawned.length = 0
+
+    const pinnedLaunch = await call(oz, 'POST', '/runs', { body: { workspaceId: 'fresh-product', priorityId: 'adhoc-session', task: 'Pinned model smoke' } })
+    expect(pinnedLaunch.status).toBe(202)
+    for (let i = 0; i < 50 && spawned.length === 0; i++) await sleep(10)
+    const pinnedOscar = spawned.find((spawn) => spawn.persona === 'oscar')
+    expect(pinnedOscar?.command).toBe('claude')
+    expect(pinnedOscar?.args).toEqual(expect.arrayContaining(['--model', 'sonnet']))
   })
 
   test('POST /runs surfaces a 422 (not 202 + null runId) when the priority Objective is unparseable/draft', async () => {
@@ -942,6 +1003,7 @@ describe('Oz mutations + lifecycle', () => {
         testedAt: null,
         install: { ok: false, detail: 'not yet tested' },
         auth: { ok: false, detail: 'not yet tested' },
+        model: { ok: false, detail: 'not yet tested' },
         models: { canEnumerate: false, models: [], detail: 'not yet tested' },
         configManaged: adapters[0]!.runReadiness,
         headlessCapable: false,
@@ -952,6 +1014,7 @@ describe('Oz mutations + lifecycle', () => {
         testedAt: null,
         install: { ok: false, detail: 'not yet tested' },
         auth: { ok: false, detail: 'not yet tested' },
+        model: { ok: false, detail: 'not yet tested' },
         models: { canEnumerate: false, models: [], detail: 'not yet tested' },
         configManaged: adapters[1]!.runReadiness,
         headlessCapable: false,
@@ -1046,6 +1109,7 @@ describe('Oz mutations + lifecycle', () => {
       tested: true,
       install: { ok: true, detail: 'alpha installed' },
       auth: { ok: true, detail: 'alpha authenticated' },
+      model: { ok: true, detail: '(alpha default)' },
       models: { canEnumerate: true, models: ['alpha-model-a', 'alpha-model-b'], detail: 'alpha model list' },
       configManaged: adapters[0]!.runReadiness,
       headlessCapable: false,
@@ -1055,6 +1119,44 @@ describe('Oz mutations + lifecycle', () => {
     const cached = await call(oz, 'GET', '/clis')
     expect(cached.status).toBe(200)
     expect(cached.json.clis[0]).toEqual(tested.json.cli)
+  })
+
+  test('POST /clis/:id/test validates non-default configured models for that CLI', async () => {
+    await writeFile(
+      join(home, 'cocoder', 'personas', 'assignments.json'),
+      JSON.stringify({ personas: { oscar: { cli: 'claude', model: 'opus' }, bob: { cli: 'codex', model: '' } } }),
+    )
+    const calls: CliAdapterCalls = { preflight: 0, listModels: 0 }
+    const adapters = [cliAdapter('claude', 'managed claude', calls, false, ['opus'])]
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit(),
+      sessionHost: fakeHost(),
+      getAdapter: (cli) => {
+        const adapter = adapters.find((a) => a.id === cli)
+        if (!adapter) throw new Error('unknown cli')
+        return adapter
+      },
+      listAdapters: () => adapters,
+      io: fakeIO(),
+    })
+
+    const tested = await call(oz, 'POST', '/clis/claude/test')
+
+    expect(tested.status).toBe(200)
+    expect(calls).toEqual({ preflight: 2, listModels: 1 })
+    expect(tested.json.cli.auth).toEqual({ ok: true, detail: 'claude authenticated' })
+    expect(tested.json.cli.install).toEqual({ ok: true, detail: 'claude installed' })
+    expect(tested.json.cli.model).toEqual({ ok: false, detail: '--model opus failed (code 1): model opus not available' })
+    expect(tested.json.cli.tested).toBe(true)
+    expect(tested.json.cli.models.models).toEqual(['claude-model-a', 'claude-model-b'])
+    expect(tested.json.cli.auth.ok).toBe(true)
+    const cached = await call(oz, 'GET', '/clis')
+    expect(cached.json.clis[0].tested).toBe(true)
+    expect(cached.json.clis[0].auth.ok).toBe(true)
+    expect(cached.json.clis[0].model.ok).toBe(false)
   })
 
   test('POST /clis/:id/test → 404 for an unknown CLI', async () => {

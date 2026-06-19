@@ -418,6 +418,44 @@ describe('runRun (multi-atom loop)', () => {
     expect(spawns.map((spawn) => spawn.label)).toEqual(['oscar | Claude | Opus 4.8', 'bob | Codex | default'])
   })
 
+  test('default model assignments launch Claude without a --model flag', async () => {
+    const spawns: SpawnOptions[] = []
+    const preflightModels: string[] = []
+    const launchedModels: string[] = []
+    const claudeAdapter: Adapter = {
+      ...okAdapter,
+      id: 'claude',
+      build: (buildInput) => {
+        launchedModels.push(buildInput.model)
+        const args = ['run']
+        if (buildInput.model) args.push('--model', buildInput.model)
+        args.push(buildInput.prompt)
+        return { command: 'claude', args }
+      },
+      preflight: async (model) => {
+        preflightModels.push(model)
+        return { ok: true, checks: [{ name: 'installed', ok: true, detail: 'ok' }, { name: 'model', ok: true, detail: model || '(default)' }] }
+      },
+    }
+    await runRun(
+      baseDeps({
+        getAdapter: () => claudeAdapter,
+        sessionHost: fakeSessionHost({
+          async spawn(opts) {
+            spawns.push(opts)
+            return { id: `surface:${spawns.length}`, driver: 'fake' }
+          },
+        }),
+      }),
+      { ...input, bob: { ...bob, cli: 'claude', model: '' } },
+    )
+
+    expect(preflightModels.slice(0, 2)).toEqual(['', ''])
+    expect(launchedModels.slice(0, 2)).toEqual(['', ''])
+    expect(spawns).toHaveLength(2)
+    expect(spawns.flatMap((spawn) => spawn.args)).not.toContain('--model')
+  })
+
   test('cmux group label derives compatibility targets when RunInput.target is absent', async () => {
     const groupLabelsFor = async (overrides: Partial<RunInput>): Promise<Array<string | undefined>> => {
       const spawns: SpawnOptions[] = []

@@ -7,7 +7,7 @@ import type { Cli } from '../model.ts'
 function CliRow({ cli, onTest, testing, expanded, onToggle }: { cli: Cli; onTest: (id: string) => Promise<void>; testing: boolean; expanded: boolean; onToggle: (id: string) => void }) {
   // Status-colored left accent + a solid raised surface + stronger border, so cards read as distinct
   // panels (the glassy default was too low-contrast against the espresso background).
-  const accent = !cli.tested ? 'var(--cb-text-muted)' : cli.status === 'ok' ? 'var(--cb-success)' : cli.status === 'auth-failed' ? 'var(--cb-highlight)' : 'var(--cb-text-muted)'
+  const accent = !cli.tested ? 'var(--cb-text-muted)' : cli.status === 'ok' ? 'var(--cb-success)' : cli.status === 'auth-failed' || cli.status === 'model-failed' ? 'var(--cb-highlight)' : 'var(--cb-text-muted)'
   const iconBg = !cli.tested ? 'var(--cb-bg-soft)' : cli.status === 'ok' ? 'var(--cb-accent-muted)' : cli.status === 'not-installed' ? 'var(--cb-bg-soft)' : 'var(--cb-highlight-muted)'
   const iconBorder = !cli.tested ? 'var(--cb-border)' : cli.status === 'ok' ? 'var(--cb-accent-15)' : 'var(--cb-border)'
   const iconColor = !cli.tested ? 'var(--cb-text-muted)' : cli.status === 'ok' ? 'var(--cb-accent)' : 'var(--cb-text-muted)'
@@ -83,7 +83,7 @@ export function CLIsScreen({ clis, onTest, onAdd }: { clis: Cli[]; onTest: (id: 
   }
   const summary = [
     { label: 'Ready', count: clis.filter((c) => c.tested && c.status === 'ok').length, color: 'var(--cb-success)', icon: 'check-circle' },
-    { label: 'Auth issues', count: clis.filter((c) => c.tested && c.status === 'auth-failed').length, color: 'var(--cb-highlight)', icon: 'warning-circle' },
+    { label: 'Config issues', count: clis.filter((c) => c.tested && (c.status === 'auth-failed' || c.status === 'model-failed')).length, color: 'var(--cb-highlight)', icon: 'warning-circle' },
     { label: 'Not installed', count: clis.filter((c) => c.tested && c.status === 'not-installed').length, color: 'var(--cb-text-muted)', icon: 'minus-circle' },
     { label: 'Not tested', count: clis.filter((c) => !c.tested).length, color: 'var(--cb-text-muted)', icon: 'circle-dashed' },
   ]
