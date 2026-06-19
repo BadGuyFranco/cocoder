@@ -20,7 +20,10 @@ system our deepest standard is "verify, don't assert — evidence over claims" (
 runnable"). A real Play system needs both halves: compact capability discovery so personas know what to
 request, and deterministic/validated dispatch so the runner or daemon enforces the boundary.
 
-## Objective (DRAFT — founder confirms at launch, ADR-0010 owns the taxonomy)
+## Objective
+
+> _Draft objective — ADR-0010 owns the Play taxonomy and finalizes the classes below. Founder
+> confirmed launchability 2026-06-19; the taxonomy decision (atom 1) is still the first gated step._
 
 CoCoder has a real **Play system**, not a pile of prompt snippets: personas can discover which Plays are
 available, request optional Plays through a typed handoff, and rely on the runner/daemon to invoke,
