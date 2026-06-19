@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { openRunStore, parseNudgeRequest, type Adapter, type BuildInput, type HeadlessRunInput, type RunStore } from '@cocoder/core'
+import { composeTicketMarkdown, openRunStore, parseNudgeRequest, type Adapter, type BuildInput, type HeadlessRunInput, type RunStore } from '@cocoder/core'
 import { createOzEventBus, type OzContext } from '../src/context.js'
 import { handleOzMessage, type OzChatOps } from '../src/oz-chat.js'
 
@@ -37,6 +37,20 @@ describe('Oz agent chat turns', () => {
     expect(fixture.prompts[1]?.prompt).toContain('First answer')
     expect(fixture.prompts[1]?.prompt).toContain('second question')
     expect(await readFile(fixture.headlessInputs[0]!.outPath, 'utf8')).toBe('  First answer\n')
+  })
+
+  test('facts digest includes newly present open tickets from the shared projection', async () => {
+    const fixture = await makeFixture({ outputs: ['I see the ticket.'] })
+    await mkdir(join(fixture.home, 'cocoder', 'tickets', 'open'), { recursive: true })
+    await writeFile(
+      join(fixture.home, 'cocoder', 'tickets', 'open', '0014-new-ticket.md'),
+      composeTicketMarkdown('0014', { title: 'New Ticket', type: 'bug', priority: 'demo', description: 'Freshly committed.' }, '2026-06-19'),
+    )
+
+    await handleOzMessage(fixture.ctx, { text: 'what changed?', workspaceId: 'cocoder' })
+
+    expect(fixture.prompts[0]?.prompt).toContain('Open tickets (1):')
+    expect(fixture.prompts[0]?.prompt).toContain('- 0014: New Ticket type=bug priority=demo owner=founder-session created=2026-06-19')
   })
 
   test('exact verbs do not invoke the agent runner even with an Oz assignment', async () => {

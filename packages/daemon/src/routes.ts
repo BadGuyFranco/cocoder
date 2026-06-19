@@ -30,7 +30,7 @@ import {
   type Run,
 } from '@cocoder/core'
 import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
-import type { OzContext, OzEvent } from './context.js'
+import { emitOzEvent, type OzContext, type OzEvent } from './context.js'
 import { sendJson } from './server.js'
 import { findWorkspace, readWorkspaces, validateWorkspaceFolders, workspaceDirectory, workspaceFilePath, type RegistryRoot, type WorkspaceFolderInput } from './registry.js'
 import { readRunDir } from './rundir.js'
@@ -646,6 +646,7 @@ async function createTicket(ctx: OzContext, res: ServerResponse, workspaceId: st
     const receipt = await commitGovernance(ctx, ws.path, [ticketRel, indexRel], `governance: create ticket ${id}`)
     void appendAudit(ctx.cocoderHome, { action: 'ticket-create', workspaceId, ticketId: id, committedSha: receipt.committedSha, committed: receipt.committed })
     if (governanceCommitFailed(res, receipt)) return
+    emitOzEvent(ctx, { type: 'ticket-created', workspaceId, ticketId: id, status: 'committed' })
     sendJson(res, 201, { ok: true, ticket, committedSha: receipt.committedSha })
   } catch (err) {
     await rm(tmpRoot, { recursive: true, force: true })

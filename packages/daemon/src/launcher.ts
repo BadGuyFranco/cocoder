@@ -40,7 +40,7 @@ import {
   type Workspace,
 } from '@cocoder/core'
 import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
-import type { DashboardLaunchHandle, OzContext, OzEvent } from './context.js'
+import { emitOzEvent, type DashboardLaunchHandle, type OzContext } from './context.js'
 import { findWorkspace } from './registry.js'
 import { appendAudit } from './audit.js'
 
@@ -57,10 +57,6 @@ export interface AuthoringPlayInput {
   readonly persona: AuthoringPersona
   readonly playId: AuthoringPlayId
   readonly invocation: unknown
-}
-
-function emitOzEvent(ctx: OzContext, event: Omit<OzEvent, 'ts'>): void {
-  ctx.events.emit({ ...event, ts: new Date().toISOString() })
 }
 
 /** Wrap the shared session host so each spawned/killed surfaceRef is mirrored into ctx.liveRefs. */

@@ -1,15 +1,18 @@
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { openRunStore, type RunStore } from '@cocoder/core'
+import { composeTicketMarkdown, openRunStore, type RunStore } from '@cocoder/core'
 import type { OzContext } from '../src/context.js'
 import { executeOzCommand, handleOzMessage, parseOzCommand, type OzChatOps } from '../src/oz-chat.js'
 
 const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
 
-function testCtx(store: RunStore = openRunStore(':memory:')): OzContext {
+function testCtx(store: RunStore = openRunStore(':memory:'), cocoderHome = '/tmp/cocoder'): OzContext {
   return {
     store,
-    cocoderHome: '/tmp/cocoder',
-    runsRoot: '/tmp/cocoder/local/runs',
+    cocoderHome,
+    runsRoot: join(cocoderHome, 'local', 'runs'),
     liveRefs: new Set<string>(),
     inFlight: new Map<string, string>(),
     stopControllers: new Map<string, AbortController>(),
@@ -211,6 +214,25 @@ describe('handleOzMessage', () => {
     expect(result.body.reply).toContain(b.id)
     expect(result.body.action).toMatchObject({ type: 'status', runs: expect.arrayContaining([a, b]) })
     expect(result.body.action?.workspaceId).toBeUndefined()
+    store.close()
+  })
+
+  test('workspace status includes newly present open tickets', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'cocoder-oz-status-'))
+    await mkdir(join(home, 'local'), { recursive: true })
+    await mkdir(join(home, 'cocoder', 'tickets', 'open'), { recursive: true })
+    await writeFile(join(home, 'local', 'workspaces.json'), JSON.stringify({ workspaces: [{ id: 'cocoder', name: 'CoCoder', path: '${COCODER_HOME}' }] }))
+    await writeFile(
+      join(home, 'cocoder', 'tickets', 'open', '0014-new-ticket.md'),
+      composeTicketMarkdown('0014', { title: 'New Ticket', type: 'bug', priority: 'demo', description: 'Freshly committed.' }, '2026-06-19'),
+    )
+    const store = openRunStore(':memory:')
+
+    const result = await handleOzMessage(testCtx(store, home), { text: 'status', workspaceId: 'cocoder' })
+
+    expect(result).toMatchObject({ status: 200, body: { ok: true, command: 'status' } })
+    expect(result.body.reply).toContain('No runs found.')
+    expect(result.body.reply).toContain('1 open ticket: 0014 bug New Ticket.')
     store.close()
   })
 

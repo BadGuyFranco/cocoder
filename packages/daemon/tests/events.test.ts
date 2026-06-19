@@ -1,10 +1,10 @@
-import { mkdtemp } from 'node:fs/promises'
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { request, type ClientRequest, type IncomingMessage } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, test } from 'vitest'
 import { type Git, type SessionHost } from '@cocoder/core'
-import { createOzServer, type OzServer } from '../src/index.js'
+import { createOzServer, OZ_CSRF_HEADER, type OzServer } from '../src/index.js'
 import type { OzEvent } from '../src/context.js'
 
 const fakeGit = (): Git => ({
@@ -89,6 +89,38 @@ function getJson(port: number, headers: Record<string, string> = {}): Promise<Js
     })
     req.on('error', reject)
     req.end()
+  })
+}
+
+function postJson(oz: OzServer, path: string, body: unknown): Promise<JsonResp> {
+  return new Promise((resolve, reject) => {
+    const payload = JSON.stringify(body)
+    const req = request(
+      {
+        host: '127.0.0.1',
+        port: oz.port,
+        path,
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${oz.token}`,
+          [OZ_CSRF_HEADER]: oz.csrfToken,
+          'content-type': 'application/json',
+          'content-length': Buffer.byteLength(payload).toString(),
+        },
+      },
+      (res) => {
+        let data = ''
+        res.setEncoding('utf8')
+        res.on('data', (chunk) => {
+          data += chunk
+        })
+        res.on('end', () => {
+          resolve({ status: res.statusCode ?? 0, json: data ? JSON.parse(data) : null })
+        })
+      },
+    )
+    req.on('error', reject)
+    req.end(payload)
   })
 }
 
@@ -189,6 +221,36 @@ describe('Oz event stream', () => {
 
       const body = await stream.waitForText('event: run-created')
       expect(body).toContain(`data: ${JSON.stringify(event)}\n\n`)
+    } finally {
+      stream.close()
+    }
+  })
+
+  test('POST /workspaces/:id/tickets emits a ticket-created event after the governance commit', async () => {
+    const server = await start()
+    await mkdir(join(server.ctx.cocoderHome, 'local'), { recursive: true })
+    await writeFile(
+      join(server.ctx.cocoderHome, 'local', 'workspaces.json'),
+      JSON.stringify({ workspaces: [{ id: 'cocoder', name: 'CoCoder', path: '${COCODER_HOME}' }] }),
+    )
+    const stream = await openSse(server)
+    try {
+      await stream.waitForText(': connected')
+
+      const created = await postJson(server, '/workspaces/cocoder/tickets', {
+        title: 'New Ticket',
+        type: 'bug',
+        priority: 'none',
+        description: 'Freshly committed.',
+      })
+
+      expect(created.status).toBe(201)
+      expect(created.json).toMatchObject({ ok: true, ticket: { id: '0001', title: 'New Ticket', state: 'open' }, committedSha: 'sha' })
+      const body = await stream.waitForText('event: ticket-created')
+      expect(body).toContain('"type":"ticket-created"')
+      expect(body).toContain('"workspaceId":"cocoder"')
+      expect(body).toContain('"ticketId":"0001"')
+      expect(body).toContain('"status":"committed"')
     } finally {
       stream.close()
     }

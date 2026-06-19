@@ -28,6 +28,7 @@ export interface DashboardLauncher {
 export interface OzEvent {
   readonly type: string
   readonly runId?: string
+  readonly ticketId?: string
   readonly workspaceId?: string
   readonly ts: string
   readonly status?: string
@@ -62,6 +63,10 @@ export function createOzEventBus(): OzEventBus {
       return subscribers.size
     },
   }
+}
+
+export function emitOzEvent(ctx: { readonly events: OzEventBus }, event: Omit<OzEvent, 'ts'>): void {
+  ctx.events.emit({ ...event, ts: new Date().toISOString() })
 }
 
 export interface OzContext {

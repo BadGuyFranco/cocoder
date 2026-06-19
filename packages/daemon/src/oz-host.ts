@@ -378,12 +378,26 @@ function factsDigest(awareness: OzAwarenessSnapshot): string {
     ? ['- none']
     : awareness.priorities.slice(0, 10).map((priority) => `- ${priority.id}: ${priority.title}`)
   const runLines = awareness.recentRuns.length === 0 ? ['- none'] : awareness.recentRuns.slice(0, 10).map(formatRun)
-  return [`Priorities (${awareness.priorities.length}):`, ...priorityLines, '', `Runs (${awareness.recentRuns.length}):`, ...runLines].join('\n')
+  const ticketLines = awareness.openTickets.length === 0 ? ['- none'] : awareness.openTickets.slice(0, 10).map(formatTicket)
+  return [
+    `Priorities (${awareness.priorities.length}):`,
+    ...priorityLines,
+    '',
+    `Runs (${awareness.recentRuns.length}):`,
+    ...runLines,
+    '',
+    `Open tickets (${awareness.openTickets.length}):`,
+    ...ticketLines,
+  ].join('\n')
 }
 
 function formatRun(run: OzAwarenessRun): string {
   const endedAt = run.endedAt === null ? 'null' : new Date(run.endedAt).toISOString()
   return `- ${run.id}: ${run.status} priority=${run.priorityId} createdAt=${new Date(run.createdAt).toISOString()} endedAt=${endedAt}`
+}
+
+function formatTicket(ticket: OzAwarenessSnapshot['openTickets'][number]): string {
+  return `- ${ticket.id}: ${ticket.title} type=${ticket.type ?? 'null'} priority=${ticket.priority ?? 'null'} owner=${ticket.owner ?? 'null'} created=${ticket.created ?? 'null'}`
 }
 
 function formatTranscript(transcript: readonly TranscriptEntry[]): string {
