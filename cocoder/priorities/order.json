@@ -1,8 +1,11 @@
 [
+  "ui-package-layout-stabilization",
+  "scaffold-template-reconciliation",
+  "adapter-abstraction-hardening",
+  "first-class-model-tiers",
   "new-primary-root",
-  "tickets-review",
-  "founder-brief-format-durability",
   "hybrid-plays",
   "oz-hardening",
+  "tickets-review",
   "priority-audit"
 ]
