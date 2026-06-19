@@ -35,13 +35,23 @@ const POLICY = {
 
 const SRC_EXT = /\.(ts|mts|cts|tsx|js|mjs|cjs)$/
 const IMPORT_RE = /(?:import|export)\s[^'"]*?from\s*['"]([^'"]+)['"]|(?:import|require)\s*\(\s*['"]([^'"]+)['"]\s*\)/g
+const SOURCE_DIR_SKIP_NAMES = new Set([
+  'node_modules', // dependency installs are not package source.
+  'dist', // emitted package builds are not package source.
+  'public', // static browser assets are not importable source.
+  'out', // Electron/Vite build output is gitignored and not package source.
+])
+const SOURCE_TREE_SKIP_PATHS = new Set([
+  join(PKGS_DIR, 'ui', 'design-ref'), // historical unpkg browser mock, not generated or built source.
+])
 
 function listSourceFiles(dir) {
   const out = []
   if (!existsSync(dir)) return out
   for (const entry of readdirSync(dir)) {
-    if (entry === 'node_modules' || entry === 'dist' || entry === 'public') continue
+    if (SOURCE_DIR_SKIP_NAMES.has(entry)) continue
     const full = join(dir, entry)
+    if (SOURCE_TREE_SKIP_PATHS.has(full)) continue
     const st = statSync(full)
     if (st.isDirectory()) out.push(...listSourceFiles(full))
     else if (SRC_EXT.test(entry)) out.push(full)
@@ -97,7 +107,7 @@ for (const { dir } of dirs) {
   for (const file of listSourceFiles(dir)) {
     const inSrc = knownSrcDirs.some((s) => file.startsWith(s + '/'))
     const isConfig =
-      /\.(config|test|spec)\.(ts|mts|js|mjs)$/.test(file) ||
+      /\.(config|test|spec)\.(ts|mts|cts|tsx|js|mjs|cjs|jsx)$/.test(file) || // config and test files are tool inputs, not package source.
       /\/(vitest|tsconfig)/.test(file) ||
       /\/bin\//.test(file) // executable entrypoint shims live outside src by design
     if (!inSrc && !isConfig && SRC_EXT.test(file)) {
