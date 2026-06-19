@@ -219,10 +219,11 @@ sub-build.
 - **Resume guard:** if relaunched as a build run, do NOT re-build Takeover phases — either build the Drift
   executor or the tech-stack-starter (after founder confirms draft non-negotiables).
 
-### Onboarding UX — new-workspace path to the live Takeover (briefed run_131; assumes ticket 0014 picker done)
-Founder prep before the live CoBuilder Takeover. The founder is closing out usability items first;
-**ticket [0014](../tickets/open/0014-oz-workspace-path-picker.md)** (add-workspace folder icon does not open
-an OS directory picker) is one of them. Briefing the onboarding flow **assuming 0014 is fixed.**
+### Onboarding UX — new-workspace path to the live Takeover (briefed run_131; ticket 0014 picker ✅ run_144)
+Founder prep before the live CoBuilder Takeover. **Ticket [0014](../tickets/closed/0014-oz-workspace-path-picker.md)**
+(add-workspace folder icon → native OS directory picker) is **closed** — both add-workspace surfaces wired
+(new-workspace modal + workspace editor), inline validation, and `node scripts/proof-workspace-picker.mjs`
+(all green). Briefing the onboarding flow with the picker done.
 
 **Founder's mental model — and the correction (verified against the code this run):** the founder described
 new-workspace setup as "(1) make the template `cocoder/` folder, (2) draft the takeover priority, (3) pop a
@@ -232,7 +233,7 @@ dialog to run that priority as its first run." Step 1 is right; steps 2–3 conf
   (`routes.ts` `createWorkspace` → `scaffoldWorkspaceGovernance` → `scaffoldCocoderZone`) copies
   `templates/workspace-cocoder/cocoder/**` into the picked primary root **and commits it to that repo's
   branch**, create-only/non-destructive. Requires the primary path + the install root (`${COCODER_HOME}`)
-  in the body; the path picker (0014) is the missing UX that feeds it. The scaffold creates only
+  in the body; the path picker (0014, closed run_144) feeds it. The scaffold creates only
   `adhoc-session.md` under `priorities/` — **no takeover priority.**
 - **(2) "Draft the takeover priority" — ✗ NOT how it works.** Takeover is a **shipped meta-Playbook**
   (`cocoder-takeover`), surfaced per-workspace via `GET /workspaces/:id/priorities` →
@@ -261,9 +262,9 @@ future affordance distinct from current reality; pairs with 0014. New-Primary (e
 "offer to run the first build" beat. **Not a build atom this run** — recorded so the next session/founder can
 scope it.
 
-**Sequencing:** the live CoBuilder Takeover proof stays **deferred** until the founder closes his prep items
-(0014 picker + the other items he flagged). The engine is proven on fakes (run_131) and ready; the gate is
-founder readiness, not engine readiness.
+**Sequencing:** the **0014 picker blocker is cleared** (run_144). The live CoBuilder Takeover proof stays
+**deferred** until the founder closes his remaining prep items. The engine is proven on fakes (run_131) and
+ready; the gate is founder readiness, not engine readiness.
 
 ### Executor build progress (run_130, 2026-06-17)
 Tenth build session — **executor P5 — synthesis + `cocoder/**`-only audit write-boundary ENFORCEMENT**

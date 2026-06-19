@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-18 — **ticket-fix-0014: workspace picker on both add-workspace surfaces + runnable proof — archive-candidate (run_144)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 2 atoms delegated, verified-on-evidence) | **Priority:** ticket-fix / [0014](./tickets/closed/0014-oz-workspace-path-picker.md) | **Run:** run_144
+**Outcomes:**
+- **Prior commit (`8d49ab9`) — new-workspace modal picker + ticket close:** Electron `showOpenDialog` IPC seam, creation-modal folder button, inline validation, regression tests; ticket **0014** moved to `closed/` with `INDEX.md` updated.
+- **Atom 0 (`5d70fcc`) — workspace editor surface:** `Workspaces.tsx` folder button wired through shared `onPickRoot` handler (fills row path, inline picker errors, inert without Electron); `workspaces-screen.test.tsx` pins the detail-editor seam.
+- **Atom 1 (`54e689e`) — proof harness:** `node scripts/proof-workspace-picker.mjs` maps four evidence rows (native dialog contract, detail editor, creation modal, create→scaffold→registry); exit 0, all green.
+- **Disposition: `archive-candidate`** — every automatable acceptance criterion proven in one command; sole residual is founder-only live OS dialog observation (~30s click in Electron).
+**Next:** Priority: `new-primary-root` — add an external repo workspace via the live folder picker, then launch onboard-existing for end-to-end onboarding proof.
+
 ## 2026-06-18 — **tickets-review: card Launch + drag-reorder + create-ticket Play — all build items done (run_143)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 5 atoms delegated, 1 rejected-then-redone, all verified-on-evidence) | **Priority:** [tickets-review](./priorities/tickets-review.md) | **Run:** run_143
