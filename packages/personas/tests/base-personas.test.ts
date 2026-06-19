@@ -20,6 +20,21 @@ const frontmatterList = (text: string, key: string): string[] => {
 
 const singleLine = (text: string): string => text.replace(/\s+/g, ' ')
 
+const founderCloseoutContract = (text: string): { sections: string[]; finalLine: string } => {
+  const fence = text.match(/```(?:[a-zA-Z0-9_-]+)?\n([\s\S]*?)```/)
+  if (!fence?.[1]) throw new Error('wrap-up Play is missing a fenced founder closeout contract')
+  const sections = fence[1].match(/\*\*[^*\n]+?\*\*/g) ?? []
+  const finalLine = fence[1]
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .at(-1)
+  if (sections.length < 10 || !finalLine || finalLine.startsWith('**')) {
+    throw new Error('wrap-up Play founder closeout contract is malformed')
+  }
+  return { sections: sections.slice(0, 10), finalLine }
+}
+
 describe('basePersonasDir', () => {
   test('resolves to the shipped base persona directory', () => {
     const dir = basePersonasDir()
@@ -63,6 +78,7 @@ describe('basePersonasDir', () => {
     expect(text).toContain('Durable Orchestration Changes')
     expect(normalized).toContain('Before changing orchestration behavior, do an owner map')
     expect(normalized).toContain('A prompt-only change is incomplete')
+    expect(normalized).toContain('must not copy its labels, fields, allowed values, or section order into a second local contract')
     expect(normalized).toContain('commit the verified in-scope fix yourself')
     expect(text).toContain('high-risk')
   })
@@ -148,27 +164,16 @@ describe('basePlaysDir', () => {
   // Pin the founder-facing section contract so no surface can silently drift a parallel shape.
   test('wrap-up Play pins the canonical founder closeout contract (single owner)', () => {
     const text = readFileSync(join(basePlaysDir(), 'wrap-up.md'), 'utf8')
+    const contract = founderCloseoutContract(text)
 
-    const sections = [
-      '**Founder Completion Brief**',
-      '**Atom Complete:**',
-      '**Run Status:**',
-      '**What Changed:**',
-      '**What Remains:**',
-      '**Recommended Next Step:**',
-      '**Founder Decision Needed:**',
-      '**Commit State:**',
-      '**Teardown Readiness:**',
-      '**Judgment:**',
-      "I'm standing by...",
-    ]
-    for (const section of sections) {
+    expect(contract.sections).toHaveLength(10)
+    for (const section of contract.sections) {
       expect(text).toContain(section)
     }
-    for (let i = 1; i < sections.length; i += 1) {
-      expect(text.indexOf(sections[i])).toBeGreaterThan(text.indexOf(sections[i - 1]))
+    for (let i = 1; i < contract.sections.length; i += 1) {
+      expect(text.indexOf(contract.sections[i])).toBeGreaterThan(text.indexOf(contract.sections[i - 1]))
     }
-    expect(text).toContain('End with exactly `I\'m standing by...`')
+    expect(text).toContain(`End with exactly \`${contract.finalLine}\``)
   })
 
   // ADR-0022 proof #2: Oscar must defer to the wrap-up Play's contract, not restate a parallel format.

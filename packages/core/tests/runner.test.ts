@@ -1,6 +1,8 @@
+import { readFileSync } from 'node:fs'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import {
   type Adapter,
@@ -274,37 +276,9 @@ const loopDelegate = (task: string, over: Partial<NonNullable<Extract<Directive,
 })
 const wrapup = (pickup: string): Directive => ({ kind: 'wrapup', pickup })
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
-const wrapPlayBody = `Wrap-up Play body.
-
-Emit the founder closeout in this exact contract:
-
-\`\`\`
-**Founder Completion Brief**
-
-**Atom Complete:** <Yes | No>
-
-**Run Status:** <continue | blocked | archive ready>
-
-**What Changed:** <plain English summary>
-
-**What Remains:**
-<up to 3 bullets>
-
-**Recommended Next Step:** <one launchable item>
-
-**Founder Decision Needed:** <None. | one decision>
-
-**Commit State:** <runner reports outcome after this brief>
-
-**Teardown Readiness:** <standing by>
-
-**Judgment:**
-<why Oscar stopped>
-
-I'm standing by...
-\`\`\`
-
-Produce the closeout.`
+const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
+const wrapPlayRaw = readFileSync(join(repoRoot, 'packages', 'personas', 'base', 'plays', 'wrap-up.md'), 'utf8')
+const wrapPlayBody = wrapPlayRaw.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '').trim()
 const wrapPlay: Play = {
   id: 'wrap-up',
   label: 'Wrap-up',
@@ -313,31 +287,90 @@ const wrapPlay: Play = {
   body: wrapPlayBody,
 }
 const wrapPlayAssignment: PlayAssignment = { cli: 'cursor-agent', model: 'cheap-wrap' }
-const validFounderCloseout = (summary = 'The requested work was completed.'): string => `**Founder Completion Brief**
 
-**Atom Complete:** Yes
+type FounderCloseoutRole =
+  | 'title'
+  | 'atomComplete'
+  | 'runStatus'
+  | 'whatChanged'
+  | 'whatRemains'
+  | 'nextStep'
+  | 'decisionNeeded'
+  | 'commitState'
+  | 'teardownReadiness'
+  | 'judgment'
 
-**Run Status:** continue
+const FOUNDER_CLOSEOUT_ROLES: readonly FounderCloseoutRole[] = [
+  'title',
+  'atomComplete',
+  'runStatus',
+  'whatChanged',
+  'whatRemains',
+  'nextStep',
+  'decisionNeeded',
+  'commitState',
+  'teardownReadiness',
+  'judgment',
+]
 
-**What Changed:** ${summary}
+const founderCloseoutContract = (playBody: string): { labels: Record<FounderCloseoutRole, string>; finalLine: string } => {
+  const fence = playBody.match(/```(?:[a-zA-Z0-9_-]+)?\n([\s\S]*?)```/)
+  if (!fence?.[1]) throw new Error('test wrap-up Play is missing a fenced founder closeout contract')
+  const sections = fence[1].match(/\*\*[^*\n]+?\*\*/g) ?? []
+  const finalLine = fence[1]
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .at(-1)
+  if (sections.length < FOUNDER_CLOSEOUT_ROLES.length || !finalLine || finalLine.startsWith('**')) {
+    throw new Error('test wrap-up Play founder closeout contract is malformed')
+  }
+  return {
+    labels: Object.fromEntries(FOUNDER_CLOSEOUT_ROLES.map((role, index) => [role, sections[index] as string])) as Record<FounderCloseoutRole, string>,
+    finalLine,
+  }
+}
 
-**What Remains:**
-- Continue the remaining priority atoms.
+const closeoutContract = founderCloseoutContract(wrapPlayBody)
+const label = (role: FounderCloseoutRole): string => closeoutContract.labels[role]
+const issue = (role: FounderCloseoutRole, text: string): string => `${label(role)} ${text}`
+const renderFounderCloseout = (input: {
+  summary?: string
+  atomComplete?: string
+  runStatus?: string
+  whatRemains?: string
+  nextStep?: string
+  decisionNeeded?: string
+  commitState?: string
+  teardownReadiness?: string
+  judgment?: string
+  finalLine?: string
+} = {}): string => `${label('title')}
 
-**Recommended Next Step:**
-Priority: \`demo\` — continue the remaining priority atoms
+${label('atomComplete')} ${input.atomComplete ?? 'Yes'}
 
-**Founder Decision Needed:** None.
+${label('runStatus')} ${input.runStatus ?? 'continue'}
 
-**Commit State:** The runner reports the authoritative commit outcome after this brief.
+${label('whatChanged')} ${input.summary ?? 'The requested work was completed.'}
 
-**Teardown Readiness:** Standing by; teardown requires an explicit founder request.
+${label('whatRemains')}
+${input.whatRemains ?? '- Continue the remaining priority atoms.'}
 
-**Judgment:**
-Oscar stopped at a clean wrap-up point.
+${label('nextStep')}
+${input.nextStep ?? 'Priority: `demo` — continue the remaining priority atoms'}
 
-I'm standing by...
+${label('decisionNeeded')} ${input.decisionNeeded ?? 'None.'}
+
+${label('commitState')} ${input.commitState ?? 'The runner reports the authoritative commit outcome after this brief.'}
+
+${label('teardownReadiness')} ${input.teardownReadiness ?? 'Standing by; teardown requires an explicit founder request.'}
+
+${label('judgment')}
+${input.judgment ?? 'Oscar stopped at a clean wrap-up point.'}
+
+${input.finalLine ?? closeoutContract.finalLine}
 `
+const validFounderCloseout = (summary = 'The requested work was completed.'): string => renderFounderCloseout({ summary })
 
 const baseDeps = (over: Partial<RunnerDeps>): RunnerDeps => ({
   store: openRunStore(':memory:'),
@@ -831,13 +864,15 @@ describe('runRun (multi-atom loop)', () => {
     expect(adapterCalls).toContain('cursor-agent')
     expect(wrapBuilds).toHaveLength(1)
     expect(wrapBuilds[0]).toMatchObject({ model: 'cheap-wrap' })
-    expect(wrapBuilds[0]?.prompt).toContain('Wrap-up Play body.')
+    expect(wrapBuilds[0]?.prompt).toContain('# Wrap-up Play')
+    expect(wrapBuilds[0]?.prompt).toContain(label('title'))
     expect(wrapBuilds[0]?.prompt).toContain('Run run_1 on priority demo. 1 atom(s) were delegated; commits so far: sha-1.')
     expect(wrapBuilds[0]?.prompt).toContain('Oscar seed closeout')
     // Ran headless (captured subprocess) carrying the built prompt — and NO cmux pane was spawned for it.
     expect(headlessCalls).toHaveLength(1)
     expect(headlessCalls[0]?.command).toBe('cursor-agent')
-    expect(headlessCalls[0]?.args.join('\n')).toContain('Wrap-up Play body.')
+    expect(headlessCalls[0]?.args.join('\n')).toContain('# Wrap-up Play')
+    expect(headlessCalls[0]?.args.join('\n')).toContain(label('title'))
     expect(paneSpawns).not.toContain('cursor-agent')
     expect(pickupWrites).toEqual([validFounderCloseout('PLAY CLOSEOUT')])
     expect(result.committedShas).toEqual(['sha-1', 'sha-2'])
@@ -868,18 +903,19 @@ describe('runRun (multi-atom loop)', () => {
 
     expect(result.status).toBe('completed')
     expect(pickupWrites).toHaveLength(1)
-    expect(pickupWrites[0]).toContain('**Founder Completion Brief**')
-    expect(pickupWrites[0]).toContain('**Run Status:** blocked')
-    expect(pickupWrites[0]).toContain('missing **Founder Completion Brief**')
-    expect(pickupWrites[0]?.trimEnd().endsWith("I'm standing by...")).toBe(true)
+    expect(pickupWrites[0]).toContain(label('title'))
+    expect(pickupWrites[0]).toContain(`${label('runStatus')} blocked`)
+    expect(pickupWrites[0]).toContain(`missing ${label('title')}`)
+    expect(pickupWrites[0]?.trimEnd().endsWith(closeoutContract.finalLine)).toBe(true)
     const invalid = store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')
-    expect(invalid?.data).toMatchObject({ play: 'wrap-up', issues: expect.arrayContaining(['missing **Founder Completion Brief**']) })
+    expect(invalid?.data).toMatchObject({ play: 'wrap-up', issues: expect.arrayContaining([`missing ${label('title')}`]) })
   })
 
   test('wrap-up Play label changes are enforced from the Play contract', async () => {
+    const renamedDecisionLabel = '**Founder Decision Required:**'
     const renamedPlay: Play = {
       ...wrapPlay,
-      body: wrapPlay.body.replace('**Founder Decision Needed:** <None. | one decision>', '**Founder Decision Required:** <None. | one decision>'),
+      body: wrapPlay.body.replace(label('decisionNeeded'), renamedDecisionLabel),
     }
 
     const staleStore = openRunStore(':memory:')
@@ -897,14 +933,14 @@ describe('runRun (multi-atom loop)', () => {
 
     expect(staleResult.status).toBe('completed')
     expect(stalePickupWrites).toHaveLength(1)
-    expect(stalePickupWrites[0]).toContain('missing **Founder Decision Required:**')
+    expect(stalePickupWrites[0]).toContain(`missing ${renamedDecisionLabel}`)
     const staleInvalid = staleStore.listEvents(staleResult.runId).find((e) => e.type === 'wrapup-format-invalid')
     expect(staleInvalid?.data).toMatchObject({
       play: 'wrap-up',
-      issues: expect.arrayContaining(['missing **Founder Decision Required:**']),
+      issues: expect.arrayContaining([`missing ${renamedDecisionLabel}`]),
     })
 
-    const updatedCloseout = validFounderCloseout('PLAY CLOSEOUT').replace('**Founder Decision Needed:** None.', '**Founder Decision Required:** None.')
+    const updatedCloseout = validFounderCloseout('PLAY CLOSEOUT').replace(`${label('decisionNeeded')} None.`, `${renamedDecisionLabel} None.`)
     const updatedStore = openRunStore(':memory:')
     const updatedPickupWrites: string[] = []
     const updatedResult = await runRun(
@@ -925,32 +961,14 @@ describe('runRun (multi-atom loop)', () => {
   test('wrap-up Play rejects ledger-shaped founder briefs even with the right headings', async () => {
     const store = openRunStore(':memory:')
     const pickupWrites: string[] = []
-    const ledgerCloseout = `**Founder Completion Brief**
-
-**Atom Complete:** Yes
-
-**Run Status:** archive ready
-
-**What Changed:** Atom 0 (8449d5e) aligned read consumers and Atom 1 (c11d90a) proved concurrency; core 370/370, daemon 215/215, UI 126/126, and typecheck are all green, with the exact run ledger and implementation inventory included here even though the founder asked for a decision brief.
-
-**What Remains:**
-- Founder confirms the visual split.
-- Optional: run a migration command before archive.
-
-**Recommended Next Step:**
-Confirm the UI and/or optionally run the migration command.
-
-**Founder Decision Needed:** None.
-
-**Commit State:** The runner reports the authoritative commit outcome after this brief.
-
-**Teardown Readiness:** Standing by; teardown requires an explicit founder request.
-
-**Judgment:**
-Oscar stopped because the priority is code-complete.
-
-I'm standing by...
-`
+    const ledgerCloseout = renderFounderCloseout({
+      runStatus: 'archive ready',
+      summary:
+        'Atom 0 (8449d5e) aligned read consumers and Atom 1 (c11d90a) proved concurrency; core 370/370, daemon 215/215, UI 126/126, and typecheck are all green, with the exact run ledger and implementation inventory included here even though the founder asked for a decision brief.',
+      whatRemains: ['- Founder confirms the visual split.', '- Optional: run a migration command before archive.'].join('\n'),
+      nextStep: 'Confirm the UI and/or optionally run the migration command.',
+      judgment: 'Oscar stopped because the priority is code-complete.',
+    })
 
     const result = await runRun(
       baseDeps({
@@ -965,17 +983,17 @@ I'm standing by...
 
     expect(result.status).toBe('completed')
     expect(pickupWrites).toHaveLength(1)
-    expect(pickupWrites[0]).toContain('**Run Status:** blocked')
-    expect(pickupWrites[0]).toContain('**What Changed:** contains ledger/test-matrix detail')
-    expect(pickupWrites[0]).toContain('**What Remains:** includes optional work')
-    expect(pickupWrites[0]).toContain('**Recommended Next Step:** must not offer optional or multi-choice actions')
+    expect(pickupWrites[0]).toContain(`${label('runStatus')} blocked`)
+    expect(pickupWrites[0]).toContain(issue('whatChanged', 'contains ledger/test-matrix detail'))
+    expect(pickupWrites[0]).toContain(issue('whatRemains', 'includes optional work'))
+    expect(pickupWrites[0]).toContain(issue('nextStep', 'must not offer optional or multi-choice actions'))
     const invalid = store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')
     expect(invalid?.data).toMatchObject({
       play: 'wrap-up',
       issues: expect.arrayContaining([
-        '**What Changed:** contains ledger/test-matrix detail',
-        '**What Remains:** includes optional work instead of required gaps',
-        '**Recommended Next Step:** must not offer optional or multi-choice actions',
+        issue('whatChanged', 'contains ledger/test-matrix detail'),
+        issue('whatRemains', 'includes optional work instead of required gaps'),
+        issue('nextStep', 'must not offer optional or multi-choice actions'),
       ]),
     })
   })
@@ -983,36 +1001,21 @@ I'm standing by...
   test('wrap-up Play rejects priority-ledger briefs that point back to a bare priority', async () => {
     const store = openRunStore(':memory:')
     const pickupWrites: string[] = []
-    const priorityLedgerCloseout = `**Founder Completion Brief**
-
-**Atom Complete:** Yes
-
-**Run Status:** continue
-Rebuild is roughly 60% done; the hard trust invariant and scaffold seeding still need wiring before onboard-existing can run safely.
-
-**What Changed:** The existing-repo onboarding rebuild retired the standalone executor and loader discovery surface, and authored \`onboard-existing\` as an ordinary Oscar-driven priority. ADR-0020 §7 now records scaffold-seeded onboarding priorities.
-
-**What Remains:**
-- **Trust invariant (A3a):** wire the cocoder-only refuse-boundary
-- **Scaffold seeding (A3b):** conditionally seed onboard-existing for existing repos
-- **Proof harness (A4):** replace the retired executor proof script
-- **Live external-repo onboarding proof:** founder must authorize the billable run
-- **Dogfood Drift Audit:** needs its own seeded priority
-
-**Recommended Next Step:**
-Priority: \`demo\`
-
-**Founder Decision Needed:** None.
-
-**Commit State:** The runner reports the authoritative commit outcome after this brief.
-
-**Teardown Readiness:** Standing by; teardown requires an explicit founder request.
-
-**Judgment:**
-Stopped after five green atoms because the executor-to-priority pivot is structurally complete, but A3a is a delicate atom that deserves a fresh session.
-
-I'm standing by...
-`
+    const priorityLedgerCloseout = renderFounderCloseout({
+      runStatus: 'continue\nRebuild is roughly 60% done; the hard trust invariant and scaffold seeding still need wiring before onboard-existing can run safely.',
+      summary:
+        'The existing-repo onboarding rebuild retired the standalone executor and loader discovery surface, and authored `onboard-existing` as an ordinary Oscar-driven priority. ADR-0020 section 7 now records scaffold-seeded onboarding priorities.',
+      whatRemains: [
+        '- **Trust invariant (A3a):** wire the cocoder-only refuse-boundary',
+        '- **Scaffold seeding (A3b):** conditionally seed onboard-existing for existing repos',
+        '- **Proof harness (A4):** replace the retired executor proof script',
+        '- **Live external-repo onboarding proof:** founder must authorize the billable run',
+        '- **Dogfood Drift Audit:** needs its own seeded priority',
+      ].join('\n'),
+      nextStep: 'Priority: `demo`',
+      judgment:
+        'Stopped after five green atoms because the executor-to-priority pivot is structurally complete, but A3a is a delicate atom that deserves a fresh session.',
+    })
 
     const result = await runRun(
       baseDeps({
@@ -1027,23 +1030,23 @@ I'm standing by...
 
     expect(result.status).toBe('completed')
     expect(pickupWrites).toHaveLength(1)
-    expect(pickupWrites[0]).toContain('**Run Status:** blocked')
-    expect(pickupWrites[0]).toContain('**What Changed:** is too long for a founder brief')
-    expect(pickupWrites[0]).toContain('**What Changed:** must be one sentence')
-    expect(pickupWrites[0]).toContain('**Run Status:** must not estimate percentage complete')
-    expect(pickupWrites[0]).toContain('**What Remains:** has too many bullets')
-    expect(pickupWrites[0]).toContain('**What Remains:** contains atom/implementation labels')
-    expect(pickupWrites[0]).toContain('**Recommended Next Step:** must name the concrete focus after the priority slug')
+    expect(pickupWrites[0]).toContain(`${label('runStatus')} blocked`)
+    expect(pickupWrites[0]).toContain(issue('whatChanged', 'is too long for a founder brief'))
+    expect(pickupWrites[0]).toContain(issue('whatChanged', 'must be one sentence'))
+    expect(pickupWrites[0]).toContain(issue('runStatus', 'must not estimate percentage complete'))
+    expect(pickupWrites[0]).toContain(issue('whatRemains', 'has too many bullets'))
+    expect(pickupWrites[0]).toContain(issue('whatRemains', 'contains atom/implementation labels'))
+    expect(pickupWrites[0]).toContain(issue('nextStep', 'must name the concrete focus after the priority slug'))
     const invalid = store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')
     expect(invalid?.data).toMatchObject({
       play: 'wrap-up',
       issues: expect.arrayContaining([
-        '**What Changed:** is too long for a founder brief',
-        '**What Changed:** must be one sentence',
-        '**Run Status:** must not estimate percentage complete',
-        '**What Remains:** has too many bullets',
-        '**What Remains:** contains atom/implementation labels',
-        '**Recommended Next Step:** must name the concrete focus after the priority slug',
+        issue('whatChanged', 'is too long for a founder brief'),
+        issue('whatChanged', 'must be one sentence'),
+        issue('runStatus', 'must not estimate percentage complete'),
+        issue('whatRemains', 'has too many bullets'),
+        issue('whatRemains', 'contains atom/implementation labels'),
+        issue('nextStep', 'must name the concrete focus after the priority slug'),
       ]),
     })
   })
@@ -1087,12 +1090,12 @@ I'm standing by...
 
     expect(result.status).toBe('completed')
     expect(pickupWrites).toHaveLength(1)
-    expect(pickupWrites[0]).toContain('**Run Status:** blocked')
-    expect(pickupWrites[0]).toContain('**Recommended Next Step:** priority "missing-priority" is not launchable')
+    expect(pickupWrites[0]).toContain(`${label('runStatus')} blocked`)
+    expect(pickupWrites[0]).toContain(issue('nextStep', 'priority "missing-priority" is not launchable'))
     const invalid = store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')
     expect(invalid?.data).toMatchObject({
       play: 'wrap-up',
-      issues: expect.arrayContaining(['**Recommended Next Step:** priority "missing-priority" is not launchable']),
+      issues: expect.arrayContaining([issue('nextStep', 'priority "missing-priority" is not launchable')]),
     })
   })
 

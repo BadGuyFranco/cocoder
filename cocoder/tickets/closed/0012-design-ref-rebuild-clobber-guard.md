@@ -2,10 +2,11 @@
 id: 0012
 title: Guard against design-ref rebuilds reverting committed packages/ui/app fixes
 type: task
-status: Open
+status: Closed
 priority: oz-dashboard-bugs
 owner: oscar run_94
 created: 2026-06-15
+closed: 2026-06-19
 ---
 
 # 0012 — design-ref rebuild-clobber guard
@@ -40,3 +41,15 @@ source; a guard + a "design-ref is historical" note is cheaper and prevents recu
 ## Boundary
 Tooling/governance + a possible `packages/ui` note. Does not change shipped dashboard behavior.
 Founder decides A vs B (architecture call).
+
+## Resolution — 2026-06-19
+
+Closed with Option A:
+
+- `packages/ui/design-ref/README.md` now marks `design-ref/` as a historical reference, not a live
+  regeneration source for `packages/ui/app`.
+- `packages/core/tests/orchestration-contracts.test.ts` fails if the README again describes
+  `design-ref/` as the implementation source of truth.
+
+The stale `design-ref/` prototype content is intentionally left as archive/reference material; the
+maintained app remains `packages/ui/app`.

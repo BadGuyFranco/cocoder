@@ -52,6 +52,11 @@ the pattern to copy: one owner (the wrap-up Play's fenced contract), the runtime
 and an end-to-end test fails when an old format reappears. Use it as the template for every other
 occurrence; do not re-diagnose or re-fix it.
 
+## Repair record
+
+Owner inventory and run_147 repair dispositions live in
+[`founder-brief-format-durability.owner-inventory.md`](./founder-brief-format-durability.owner-inventory.md).
+
 ## Required Ticket Review
 Review related tickets before proposing fixes and fold each into the owner inventory:
 

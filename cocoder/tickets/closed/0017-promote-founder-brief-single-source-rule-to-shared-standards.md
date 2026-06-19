@@ -2,10 +2,11 @@
 id: 0017
 title: Promote the founder-brief single-source rule into shared-standards (out of run_145 write scope)
 type: task
-status: Open
+status: Closed
 priority: founder-brief-format-durability
 owner: oscar run_145
 created: 2026-06-18
+closed: 2026-06-19
 ---
 
 # 0017 — Promote the founder-brief single-source rule into shared-standards
@@ -53,3 +54,14 @@ Per the 0005 pattern, the lesson is carried here for a run with persona/standard
 Governance/standards text only. Does not change runner behavior — that repair already shipped in `90599db`
 and is verified. This ticket only moves the *rule* from a docs explainer into a governed file the next
 runtime author will actually read.
+
+## Resolution — 2026-06-19
+
+Closed by the `founder-brief-format-durability` repair:
+
+- `packages/personas/base/shared-standards.md` now carries the portable rule under **Durable
+  Orchestration Changes**.
+- `packages/core/tests/orchestration-contracts.test.ts` fails if the founder closeout contract is
+  restated in live prompt/runtime/status/test consumers instead of deriving from the wrap-up Play.
+- `packages/personas/tests/base-personas.test.ts` derives its closeout-contract assertions from the
+  wrap-up Play's fenced owner instead of hard-coding the section list.

@@ -13,16 +13,17 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Owner |
 |---|---|---|---|---|
-| [0015](./open/0015-tickets-silently-dropped-without-frontmatter.md) | Ticket files without YAML frontmatter are silently dropped by the loader | bug | tickets-review | oscar run_131 |
 | [0013](./open/0013-daemon-auto-rebuild-after-runs.md) | Auto-rebuild + reload the Oz daemon after a run changes packages/daemon (no manual restart) | task | tickets-review | oscar run_122 |
 | [0003](./open/0003-public-docs-v1-stale.md) | Public docs/ tree is v1-stale (commands, PRIORITIES.md, cocoder/local, routes) | task | none | founder-session |
 | [0005](./open/0005-persona-file-memory-migrations.md) | Migrate orchestrator session memory into persona/standards files | task | none | founder-session |
-| [0012](./open/0012-design-ref-rebuild-clobber-guard.md) | Guard against design-ref rebuilds reverting committed packages/ui/app fixes | task | oz-dashboard-bugs | oscar run_94 |
 
 ## Recently Closed
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0017](./closed/0017-promote-founder-brief-single-source-rule-to-shared-standards.md) | Promote the founder-brief single-source rule into shared-standards | task | 2026-06-19 | Rule promoted to shared standards; contract enforcer prevents live prompt/runtime/test restatements |
+| [0015](./closed/0015-tickets-silently-dropped-without-frontmatter.md) | Ticket files without YAML frontmatter are silently dropped by the loader | bug | 2026-06-19 | Loader fallback/warning behavior and ticket composer ownership are test-pinned |
+| [0012](./closed/0012-design-ref-rebuild-clobber-guard.md) | Guard against design-ref rebuilds reverting committed packages/ui/app fixes | task | 2026-06-19 | design-ref marked historical and guarded against becoming the app source of truth again |
 | [0016](./closed/0016-quarantine-hard-deletes-rejected-atom-artifacts.md) | Atom quarantine hard-deletes a rejected atom's untracked files with no recovery path | bug | 2026-06-18 | Rejected atom untracked files are moved to run-scoped quarantine and the event records the recovery location |
 | [0014](./closed/0014-oz-workspace-path-picker.md) | Add-workspace path field has no OS-native directory picker | bug | 2026-06-18 | New-workspace folder button opens an Electron directory picker, fills the primary-root path, and shows inline validation errors before create |
 | [0011](./closed/0011-teardown-cli-undefined-on-final-oscar-surface.md) | Teardown throws `#cli` undefined closing the run's final (Oscar) surface | bug | 2026-06-17 | Preserved the session-host receiver when closing the final workspace and added a receiver-sensitive Oscar self-teardown regression |

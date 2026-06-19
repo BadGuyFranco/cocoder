@@ -78,10 +78,11 @@ copy of the expected shape, so the shipped runner now blocks these rule classes:
 - `0005` folded in as evidence, not closed. It is the same governed-file-versus-side-channel-memory
   failure mode: durable behavior must live in governed persona/standards files and be read by runtime
   surfaces.
-- `0012` left as a sibling. It covers generated UI/design-reference clobbering, the generated-source
-  version of the same source-of-truth problem; this repair does not decide the design-ref direction.
-- `0015` left as a sibling. It covers ticket authoring format and loader enforcement drift; this repair
-  uses the same pattern but does not fix ticket loader behavior.
+- `0012` left as a sibling in run_145. It covers generated UI/design-reference clobbering, the
+  generated-source version of the same source-of-truth problem; run_147 later closed it with the
+  design-ref historical-reference guard.
+- `0015` left as a sibling in run_145. It covers ticket authoring format and loader enforcement drift;
+  run_147 later closed it by pinning loader fallback behavior and ticket authoring ownership.
 - `0008` folded in as precedent and remains closed. It showed the durable-orchestration repair shape:
   map every prompt/runtime/status surface, align the owner, and pin the contract with tests.
 
@@ -90,13 +91,11 @@ copy of the expected shape, so the shipped runner now blocks these rule classes:
 The prior change was hard to make stick because the Play text was treated as the owner in prose while
 the runner still kept its own section list, fallback brief, and validation messages. A future founder
 change to the Play could leave the runtime accepting the old labels or emitting the old fallback. The
-smallest durable rule is: when a founder-facing orchestration format is owned by a Play or governed
-persona file, runtime validators and fallback emitters must parse or import that owner; they must not
-copy the format into a second local contract.
+durable rule now lives in `packages/personas/base/shared-standards.md` under **Durable Orchestration
+Changes**; this document remains the run-specific diagnosis of record.
 
 ## Follow-on (run_145)
 
-The runtime repair above is complete and test-pinned. Promoting the rule from this docs explainer into
-the governed standard (`packages/personas/base/shared-standards.md`) is tracked as
-[ticket 0017](../cocoder/tickets/open/0017-promote-founder-brief-single-source-rule-to-shared-standards.md)
-so the next runtime author reads it from the same home as other durable-orchestration rules.
+The runtime repair above is complete and test-pinned. The rule was promoted from this docs explainer
+into the governed standard in run_147, closing
+[ticket 0017](../cocoder/tickets/closed/0017-promote-founder-brief-single-source-rule-to-shared-standards.md).

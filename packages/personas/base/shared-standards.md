@@ -74,6 +74,11 @@ Fix the owner and align its consumers. Do not create a parallel contract in a ne
 change is incomplete when the old behavior can also come from runner status, daemon/UI text, stored
 pickup briefs, or tests that still assert it.
 
+When a Play or governed file owns an orchestration format or contract, every runtime surface that emits
+it must parse, import, or derive from that owner. Validators, fallback emitters, prompt surfaces, status
+projections, and tests must not copy its labels, fields, allowed values, or section order into a second
+local contract; an automated check must fail when a second copy appears.
+
 ## Commit And Scope
 
 Within declared authority, the default is to make verified low-risk fixes land instead of leaving cleanup

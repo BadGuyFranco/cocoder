@@ -2,10 +2,11 @@
 id: 0015
 title: Ticket files without YAML frontmatter are silently dropped by the loader
 type: bug
-status: Open
+status: Closed
 priority: tickets-review
 owner: oscar run_131
 created: 2026-06-17
+closed: 2026-06-19
 ---
 
 # 0015 — Ticket files without YAML frontmatter are silently dropped by the loader
@@ -58,3 +59,15 @@ don't have; (b) the failure is silent, so a dropped ticket is indistinguishable 
 ## Workaround applied run_131
 `0014` was given proper YAML frontmatter so it loads now; this ticket tracks the underlying
 silent-drop defect so the next inline-format ticket doesn't vanish the same way.
+
+## Resolution — 2026-06-19
+
+Closed by existing loader repair plus this durability pass:
+
+- `packages/core/src/tickets/loader.ts` loads no-frontmatter ticket files via filename/H1 fallbacks and
+  warns instead of silently swallowing malformed `NNNN-*.md` tickets.
+- `packages/core/tests/tickets.test.ts` proves a mixed good/no-frontmatter/malformed fixture loads the
+  good and fallback tickets, warns on the malformed one, and includes real fallback tickets `0009`,
+  `0011`, and `0014`.
+- `packages/core/tests/orchestration-contracts.test.ts` pins ticket authoring to core
+  `composeTicketMarkdown` so a second markdown template is not introduced in the create-ticket Play.

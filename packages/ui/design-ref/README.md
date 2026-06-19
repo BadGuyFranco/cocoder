@@ -1,17 +1,22 @@
 # Oz — Control Plane Prototype
 
-The interactive prototype for **Oz**, the CoCoder control plane. This is a high-fidelity working mock — not production code — meant to anchor the dev team's implementation. Open `Oz.html` in a browser to run it.
+Historical reference for **Oz**, the CoCoder control plane. This is a high-fidelity working mock, not
+production code and not a regeneration source for `packages/ui/app`. Open `Oz.html` in a browser to run
+the archived prototype.
 
 ---
 
 ## What this is
 
-- A single-page React prototype (no build step) demonstrating every screen, state, and interaction described in the design brief.
+- A single-page React prototype (no build step) demonstrating the original screen, state, and interaction
+  intent from the design brief.
 - Stable visual reference: type, color, spacing, components, and copy are committed.
 - Behavioral reference: clicking through the prototype demonstrates the intended flows.
 - A spec embedded in the UI itself — **turn on dev annotations** (see below).
 
-This is the source of truth for *what* to build. The dev team owns *how*.
+`packages/ui/app` is now the maintained implementation. Do not wholesale copy or regenerate it from
+`design-ref/`; if a design idea here is revived, port the specific behavior intentionally and verify it
+against the maintained app tests.
 
 ---
 
