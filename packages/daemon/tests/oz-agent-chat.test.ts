@@ -4,7 +4,9 @@ import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { composeTicketMarkdown, openRunStore, parseNudgeRequest, type Adapter, type BuildInput, type HeadlessRunInput, type RunStore } from '@cocoder/core'
 import { createOzEventBus, type OzContext } from '../src/context.js'
-import { handleOzMessage, type OzChatOps } from '../src/oz-chat.js'
+import { handleOzMessage, type OzChatOps, type OzCommandExecutor } from '../src/oz-chat.js'
+import { tryHandleOzAgentTurn } from '../src/oz-host.js'
+import { mergeWriteSettings } from '../src/settings.js'
 
 const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
 
@@ -51,6 +53,33 @@ describe('Oz agent chat turns', () => {
 
     expect(fixture.prompts[0]?.prompt).toContain('Open tickets (1):')
     expect(fixture.prompts[0]?.prompt).toContain('- 0014: New Ticket type=bug priority=demo owner=founder-session created=2026-06-19')
+  })
+
+  test('compacts transcript after configured run-result turns without counting founder chat turns', async () => {
+    const fixture = await makeFixture({ outputs: ['Founder one answer', 'Founder two answer', 'Run one noted', 'Run two noted', 'Fresh after compaction'] })
+    const secondRun = fixture.store.createRun({ workspaceId: 'cocoder', priorityId: 'demo-two' })
+    await mergeWriteSettings(fixture.home, { ozAutoCompactRuns: 2 })
+    const execute: OzCommandExecutor = async (command) => ({ status: 200, body: { reply: `Tool ${command.kind} ok.`, command: command.kind, ok: true } })
+
+    await handleOzMessage(fixture.ctx, { text: 'founder one', workspaceId: 'cocoder' })
+    await handleOzMessage(fixture.ctx, { text: 'founder two', workspaceId: 'cocoder' })
+    await expect(tryHandleOzAgentTurn(fixture.ctx, { kind: 'result', text: 'run alpha settled' }, 'cocoder', execute)).resolves.toMatchObject({ status: 200 })
+
+    expect(fixture.prompts[2]?.prompt).toContain('founder one')
+    expect(fixture.prompts[2]?.prompt).toContain('founder two')
+
+    await expect(tryHandleOzAgentTurn(fixture.ctx, { kind: 'result', text: 'run beta settled' }, 'cocoder', execute)).resolves.toMatchObject({ status: 200 })
+    expect(fixture.prompts[3]?.prompt).toContain('Run result')
+    expect(fixture.prompts[3]?.prompt).toContain('run alpha settled')
+
+    const status = await handleOzMessage(fixture.ctx, { text: 'status', workspaceId: 'cocoder' })
+    expect(status.body.reply).toContain(fixture.runId)
+    expect(status.body.reply).toContain(secondRun.id)
+
+    await handleOzMessage(fixture.ctx, { text: 'what is current after compaction?', workspaceId: 'cocoder' })
+    expect(fixture.prompts[4]?.prompt).toContain('## Recent transcript\n\n- none')
+    expect(fixture.prompts[4]?.prompt).toContain(fixture.runId)
+    expect(fixture.prompts[4]?.prompt).toContain(secondRun.id)
   })
 
   test('exact verbs do not invoke the agent runner even with an Oz assignment', async () => {

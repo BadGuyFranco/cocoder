@@ -14,6 +14,7 @@ import { projectOzAwareness, type OzAwarenessRun, type OzAwarenessSnapshot } fro
 import type { OzChatAction, OzChatResult, OzCommandExecutor, OzExecutableCommand } from './oz-chat.js'
 import { readPriorities, readTickets } from './priority-order.js'
 import { findWorkspace, type RegistryWorkspace } from './registry.js'
+import { readSettings } from './settings.js'
 
 const TRANSCRIPT_LIMIT = 20
 const TURN_TIMEOUT_MS = 120_000
@@ -21,7 +22,7 @@ const PRIORITIES_CAP = 1_000
 const TOOL_ROUND_LIMIT = 10
 
 interface TranscriptEntry {
-  readonly role: 'founder' | 'oz' | 'tool'
+  readonly role: 'founder' | 'oz' | 'tool' | 'result'
   readonly text: string
   readonly ts: string
 }
@@ -30,6 +31,7 @@ interface OzSession {
   transcript: TranscriptEntry[]
   nextTurn: number
   inFlight: boolean
+  orchestratedRunCount: number
 }
 
 interface OzTarget {
@@ -57,14 +59,17 @@ interface ToolResult {
 
 type AuthoringPlayId = 'create-priority' | 'edit-priority' | 'archive-priority'
 type ToolName = 'launch' | 'adhoc' | 'show' | 'stop' | 'nudge' | 'repair' | 'author' | 'teardown' | 'status' | 'refresh'
+type OzAgentTurnInput = string | { readonly kind: 'founder' | 'result'; readonly text: string }
+type NormalizedOzAgentTurn = { readonly kind: 'founder' | 'result'; readonly text: string }
 
 // Daemon-local by design: Refresh Oz means a fresh daemon-owned session, so restart drops transcript.
 const sessions = new Map<string, OzSession>()
 
-export async function tryHandleOzAgentTurn(ctx: OzContext, text: string, workspaceId: string, execute: OzCommandExecutor): Promise<OzChatResult | null> {
+export async function tryHandleOzAgentTurn(ctx: OzContext, input: OzAgentTurnInput, workspaceId: string, execute: OzCommandExecutor): Promise<OzChatResult | null> {
   const target = await resolveOzTarget(ctx, workspaceId)
   if (!target) return null
 
+  const turn = normalizeOzAgentTurn(input)
   const session = getSession(ctx, workspaceId)
   if (session.inFlight) {
     return chatResult(409, {
@@ -76,10 +81,17 @@ export async function tryHandleOzAgentTurn(ctx: OzContext, text: string, workspa
 
   session.inFlight = true
   try {
-    return await runToolLoop(ctx, target, session, text, execute)
+    const compactEveryRuns = (await readSettings(ctx.cocoderHome)).ozAutoCompactRuns
+    const result = await runToolLoop(ctx, target, session, turn, execute)
+    if (turn.kind === 'result' && result.status < 500) compactAfterOrchestratedRun(session, compactEveryRuns)
+    return result
   } finally {
     session.inFlight = false
   }
+}
+
+function normalizeOzAgentTurn(input: OzAgentTurnInput): NormalizedOzAgentTurn {
+  return typeof input === 'string' ? { kind: 'founder', text: input } : input
 }
 
 async function resolveOzTarget(ctx: OzContext, workspaceId: string): Promise<OzTarget | null> {
@@ -102,18 +114,18 @@ async function resolveOzTarget(ctx: OzContext, workspaceId: string): Promise<OzT
   return { workspace, persona }
 }
 
-async function runToolLoop(ctx: OzContext, target: OzTarget, session: OzSession, text: string, execute: OzCommandExecutor): Promise<OzChatResult> {
+async function runToolLoop(ctx: OzContext, target: OzTarget, session: OzSession, input: NormalizedOzAgentTurn, execute: OzCommandExecutor): Promise<OzChatResult> {
   const founderTs = new Date().toISOString()
   let lastAction: OzChatAction | undefined
   let toolResult: ToolResult | null = null
 
   for (let round = 0; round < TOOL_ROUND_LIMIT; round += 1) {
-    const output = await runTurn(ctx, target, session, round === 0 ? { kind: 'founder', text } : { kind: 'tool-result', result: toolResult!.summary })
+    const output = await runTurn(ctx, target, session, round === 0 ? initialTurnInput(input) : { kind: 'tool-result', result: toolResult!.summary })
     if ('status' in output) return output
 
     const parsed = parseToolLine(output.text)
     if (!parsed) {
-      appendTranscript(session, { role: 'founder', text, ts: founderTs })
+      appendTranscript(session, { role: input.kind, text: input.text, ts: founderTs })
       appendTranscript(session, { role: 'oz', text: output.text, ts: new Date().toISOString() })
       return chatResult(200, { reply: output.text, command: 'chat', ok: true, ...(lastAction ? { action: lastAction } : {}) })
     }
@@ -133,15 +145,20 @@ async function runToolLoop(ctx: OzContext, target: OzTarget, session: OzSession,
   }
 
   const reply = finalFounderReply(finalOutput.text, toolResult?.summary)
-  appendTranscript(session, { role: 'founder', text, ts: founderTs })
+  appendTranscript(session, { role: input.kind, text: input.text, ts: founderTs })
   appendTranscript(session, { role: 'oz', text: reply, ts: new Date().toISOString() })
   return chatResult(200, { reply, command: 'chat', ok: true, ...(lastAction ? { action: lastAction } : {}) })
 }
 
 type TurnInput =
   | { readonly kind: 'founder'; readonly text: string }
+  | { readonly kind: 'result'; readonly result: string }
   | { readonly kind: 'tool-result'; readonly result: string }
   | { readonly kind: 'tool-budget-exhausted'; readonly result: string }
+
+function initialTurnInput(input: NormalizedOzAgentTurn): TurnInput {
+  return input.kind === 'founder' ? { kind: 'founder', text: input.text } : { kind: 'result', result: input.text }
+}
 
 async function runTurn(ctx: OzContext, target: OzTarget, session: OzSession, input: TurnInput): Promise<TurnOutput | OzChatResult> {
   const turn = session.nextTurn
@@ -239,12 +256,13 @@ function finalAnswerInstructions(): string {
 
 function turnInputHeading(input: TurnInput): string {
   if (input.kind === 'founder') return '## Founder message'
+  if (input.kind === 'result') return '## Run result'
   if (input.kind === 'tool-result') return '## Tool result'
   return '## Final tool result'
 }
 
 function turnInstructions(input: TurnInput): string {
-  if (input.kind === 'founder') return toolInstructions()
+  if (input.kind === 'founder' || input.kind === 'result') return toolInstructions()
   if (input.kind === 'tool-result') return followUpInstructions()
   return finalAnswerInstructions()
 }
@@ -408,12 +426,20 @@ function formatTranscript(transcript: readonly TranscriptEntry[]): string {
 function labelForRole(role: TranscriptEntry['role']): string {
   if (role === 'founder') return 'Founder'
   if (role === 'oz') return 'Oz'
+  if (role === 'result') return 'Run result'
   return 'Tool'
 }
 
 function appendTranscript(session: OzSession, entry: TranscriptEntry): void {
   session.transcript.push(entry)
   if (session.transcript.length > TRANSCRIPT_LIMIT) session.transcript.splice(0, session.transcript.length - TRANSCRIPT_LIMIT)
+}
+
+function compactAfterOrchestratedRun(session: OzSession, compactEveryRuns: number): void {
+  session.orchestratedRunCount += 1
+  if (session.orchestratedRunCount < compactEveryRuns) return
+  session.transcript = []
+  session.orchestratedRunCount = 0
 }
 
 function failedTurn(reply: string): OzChatResult {
@@ -424,7 +450,7 @@ function getSession(ctx: OzContext, workspaceId: string): OzSession {
   const key = `${ctx.cocoderHome}\0${workspaceId}`
   const existing = sessions.get(key)
   if (existing) return existing
-  const session: OzSession = { transcript: [], nextTurn: 1, inFlight: false }
+  const session: OzSession = { transcript: [], nextTurn: 1, inFlight: false, orchestratedRunCount: 0 }
   sessions.set(key, session)
   return session
 }
