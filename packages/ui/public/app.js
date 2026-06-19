@@ -84,6 +84,7 @@ async function viewPriorities(wsId) {
         b.disabled = true
         try {
           const r = await api('POST', '/runs', { workspaceId: wsId, priorityId: b.dataset.launch })
+          if (!r || !r.runId) throw new Error('launch did not return a run id') // never navigate to #/run/null
           go(`#/run/${r.runId}`)
         } catch (e) {
           banner(e.message)

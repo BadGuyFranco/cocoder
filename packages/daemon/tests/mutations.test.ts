@@ -427,6 +427,24 @@ describe('Oz mutations + lifecycle', () => {
     expect(audit).toContain('"action":"launch"')
   })
 
+  test('POST /runs surfaces a 422 (not 202 + null runId) when the priority Objective is unparseable/draft', async () => {
+    // Regression: a priority whose heading is annotated (e.g. "## Objective (DRAFT …)") parses to a null
+    // objective, so runRun throws MissingObjectiveError BEFORE creating the run row — onRunCreated never
+    // fires. The daemon used to return 202 with runId:null, which navigated the dashboard to #/run/null and
+    // read as "the dashboard is broken". It must instead refuse with a clear reason and create no run.
+    await writeFile(
+      join(home, 'cocoder', 'priorities', 'draft.md'),
+      `---\nid: draft\ntitle: Draft\n---\n## Objective (DRAFT — founder confirms at launch)\nDo the thing.`,
+    )
+    await startServer()
+    const r = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'draft' } })
+    expect(r.status).toBe(422)
+    expect(String(r.json.error)).toMatch(/no Objective/i)
+    expect(r.json.runId).toBeUndefined()
+    expect(store.listRuns()).toHaveLength(0) // no orphan run row
+    expect(oz!.ctx.inFlight.has('cocoder')).toBe(false) // reservation released
+  })
+
   test('POST /runs allows concurrent runs in different workspaces without shared-resource collisions', async () => {
     const externalPath = await writeExternalWorkspace(home)
     await writeFile(

@@ -424,8 +424,23 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
     },
   }
 
-  // onRunCreated fires synchronously inside this call (before runRun's first await), so runId is set.
+  // onRunCreated fires synchronously inside this call (before runRun's first await), so on the success
+  // path runId is set by the time control returns here. If it is still null, runRun threw BEFORE creating
+  // the run row (e.g. a priority whose Objective section is missing or still a draft → MissingObjectiveError,
+  // which is checked before store.createRun). The run does not exist, so surface the reason as a 422 rather
+  // than a 202 with a null runId — the latter navigated the dashboard to #/run/null and read as "the
+  // dashboard is broken" instead of "this priority isn't launchable". Awaiting the already-rejected promise
+  // both extracts the message and consumes the rejection so it never surfaces as an unhandled rejection.
   const runPromise = runRun(deps, input!)
+  if (runId === null) {
+    ctx.inFlight.delete(workspaceId)
+    const reason = await runPromise.then(
+      () => 'run was not created',
+      (err: unknown) => (err instanceof Error ? err.message : String(err)),
+    )
+    appendLaunchAudit(ctx, workspaceId, target, null)
+    return { status: 422, body: { error: reason } }
+  }
   let running: Promise<unknown> = runPromise
   if (target.kind === 'ticket') {
     const ws = workspace!
