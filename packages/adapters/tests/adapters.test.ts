@@ -138,15 +138,32 @@ describe('runReadiness profiles', () => {
 })
 
 describe('preflight() (injected exec)', () => {
-  test('claude: installed + authed → ok', async () => {
+  test('claude: installed + authed + default model probe succeeds → ok', async () => {
     const exec = fakeExec({
       'claude --version': { code: 0, stdout: '2.1.156', stderr: '' },
       'claude auth status': { code: 0, stdout: '{"loggedIn": true}', stderr: '' },
+      'claude -p --output-format text --permission-mode acceptEdits Reply exactly: OK': { code: 0, stdout: 'OK\n', stderr: '' },
     })
     const r = await new ClaudeAdapter(exec).preflight('')
     expect(r.ok).toBe(true)
     expect(r.checks.find((c) => c.name === 'authenticated')?.ok).toBe(true)
-    expect(r.checks.find((c) => c.name === 'model')?.detail).toBe('(claude default; no --model)')
+    expect(r.checks.find((c) => c.name === 'model')).toEqual({ name: 'model', ok: true, detail: 'validated claude default (no --model)' })
+  })
+
+  test('claude: unavailable CLI default model fails preflight before a live run spawns', async () => {
+    const exec = fakeExec({
+      'claude --version': { code: 0, stdout: '2.1.156', stderr: '' },
+      'claude auth status': { code: 0, stdout: '{"loggedIn": true}', stderr: '' },
+      'claude -p --output-format text --permission-mode acceptEdits Reply exactly: OK': { code: 1, stdout: '', stderr: 'model opus not available' },
+    })
+    const r = await new ClaudeAdapter(exec).preflight('')
+
+    expect(r.ok).toBe(false)
+    expect(r.checks.find((c) => c.name === 'model')).toEqual({
+      name: 'model',
+      ok: false,
+      detail: 'claude default (no --model) failed (code 1): model opus not available',
+    })
   })
 
   test('claude: configured model is validated through the real --model launch shape', async () => {
@@ -175,13 +192,35 @@ describe('preflight() (injected exec)', () => {
   })
 
   test('claude: not logged in → not ok with a clear reason', async () => {
-    const exec = fakeExec({
-      'claude --version': { code: 0, stdout: '2.1.156', stderr: '' },
-      'claude auth status': { code: 0, stdout: '{"loggedIn": false}', stderr: '' },
-    })
+    const calls: string[] = []
+    const exec: Exec = async (command, args) => {
+      calls.push([command, ...args].join(' '))
+      return fakeExec({
+        'claude --version': { code: 0, stdout: '2.1.156', stderr: '' },
+        'claude auth status': { code: 0, stdout: '{"loggedIn": false}', stderr: '' },
+      })(command, args)
+    }
     const r = await new ClaudeAdapter(exec).preflight('')
     expect(r.ok).toBe(false)
     expect(r.checks.find((c) => c.name === 'authenticated')?.detail).toMatch(/not logged in/)
+    expect(r.checks.find((c) => c.name === 'model')).toEqual({ name: 'model', ok: false, detail: 'skipped (claude not authenticated)' })
+    expect(calls).not.toContain('claude -p --output-format text --permission-mode acceptEdits Reply exactly: OK')
+  })
+
+  test('claude: not installed skips auth and model probes', async () => {
+    const calls: string[] = []
+    const exec: Exec = async (command, args) => {
+      calls.push([command, ...args].join(' '))
+      return fakeExec({
+        'claude --version': { code: 127, stdout: '', stderr: 'not found' },
+      })(command, args)
+    }
+    const r = await new ClaudeAdapter(exec).preflight('')
+
+    expect(r.ok).toBe(false)
+    expect(r.checks.find((c) => c.name === 'authenticated')?.detail).toBe('skipped (claude not installed)')
+    expect(r.checks.find((c) => c.name === 'model')?.detail).toBe('skipped (claude not installed)')
+    expect(calls).toEqual(['claude --version'])
   })
 
   test('codex: not installed → not ok, auth skipped', async () => {

@@ -48,13 +48,14 @@ export class ClaudeAdapter implements Adapter {
     const installed = v.code === 0
     checks.push({ name: 'installed', ok: installed, detail: installed ? v.stdout.trim() : `'claude --version' failed (code ${v.code})` })
 
+    let authenticated = false
     if (installed) {
       const auth = await this.#exec('claude', ['auth', 'status'])
-      const loggedIn = auth.code === 0 && /"loggedIn"\s*:\s*true/.test(auth.stdout)
+      authenticated = auth.code === 0 && /"loggedIn"\s*:\s*true/.test(auth.stdout)
       checks.push({
         name: 'authenticated',
-        ok: loggedIn,
-        detail: loggedIn ? 'logged in (claude auth status)' : 'not logged in — run `claude auth login`',
+        ok: authenticated,
+        detail: authenticated ? 'logged in (claude auth status)' : 'not logged in — run `claude auth login`',
       })
     } else {
       checks.push({ name: 'authenticated', ok: false, detail: 'skipped (claude not installed)' })
@@ -62,26 +63,30 @@ export class ClaudeAdapter implements Adapter {
 
     if (!installed) {
       checks.push({ name: 'model', ok: false, detail: 'skipped (claude not installed)' })
-    } else if (model.trim() !== '') {
+    } else if (!authenticated) {
+      checks.push({ name: 'model', ok: false, detail: 'skipped (claude not authenticated)' })
+    } else {
+      // ADR-0006 §4 / Issue 2: exercise the exact headless launch form so both pinned models and the
+      // CLI's own configured default fail during Test, before the founder's first live run.
+      const trimmed = model.trim()
       const probe = this.build({
         persona: 'preflight',
         prompt: 'Reply exactly: OK',
-        model,
+        model: trimmed,
         cwd: process.cwd(),
         outPath: '',
         headless: true,
       })
       const result = await this.#exec(probe.command, probe.args)
-      const output = `${result.stdout}${result.stderr}`.trim()
+      const output = `${result.stdout}\n${result.stderr}`.trim()
+      const label = trimmed === '' ? 'claude default (no --model)' : `--model ${trimmed}`
       checks.push({
         name: 'model',
         ok: result.code === 0,
         detail: result.code === 0
-          ? `validated --model ${model}`
-          : `--model ${model} failed (code ${result.code})${output ? `: ${output}` : ''}`,
+          ? `validated ${label}`
+          : `${label} failed (code ${result.code})${output ? `: ${output}` : ''}`,
       })
-    } else {
-      checks.push({ name: 'model', ok: true, detail: '(claude default; no --model)' })
     }
 
     return { ok: checks.every((c) => c.ok), checks }
