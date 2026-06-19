@@ -1,13 +1,41 @@
 // Oz Terminal — THE command center. A live conversation with the workspace's headless Oz. Messages
 // can carry inline run cards (pivot to inspection) and a decision callout (resolve a blocked run
 // without leaving the thread). Quick-prompt pills pre-fill common ops. Ported from design-ref.
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react'
 import { Icon, Button, StatusChip } from '../../ui/primitives.tsx'
 import { OzGlobalControls, type ShellTheme } from '../../ui/ShellControls.tsx'
 import { runDisplayName, type ChatMessage, type Run, type Workspace } from '../../model.ts'
 
 const markdownTextStyle = { fontSize: 13.5, color: 'var(--cb-text)', lineHeight: 1.65 } as const
 const inlineCodeStyle = { fontFamily: 'var(--cb-font-mono)', fontSize: '0.92em', background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border)', borderRadius: 3, padding: '1px 4px' } as const
+const OZ_ITEM_MIME = 'application/x-oz-item'
+
+type OzItemPointer = {
+  readonly itemType: 'priority' | 'ticket' | 'run'
+  readonly id: string
+  readonly label: string
+}
+
+function hasOzItem(dataTransfer: DataTransfer): boolean {
+  return Array.from(dataTransfer.types).includes(OZ_ITEM_MIME)
+}
+
+function parseOzItem(raw: string): OzItemPointer | null {
+  try {
+    const value = JSON.parse(raw) as Record<string, unknown>
+    const itemType = value.itemType
+    if (itemType !== 'priority' && itemType !== 'ticket' && itemType !== 'run') return null
+    if (typeof value.id !== 'string' || typeof value.label !== 'string') return null
+    if (!value.id.trim() || !value.label.trim()) return null
+    return { itemType, id: value.id, label: value.label }
+  } catch {
+    return null
+  }
+}
+
+function contextLine(pointer: OzItemPointer): string {
+  return `[context: ${pointer.itemType} ${pointer.id} — ${pointer.label}]`
+}
 
 function safeHref(raw: string): string | null {
   try {
@@ -213,6 +241,8 @@ export function OzChatPanel({ messages, runs, workspaceName, onSend, onSelectRun
   chatTarget?: string | null; chatTargets?: Workspace[]; onChatTargetChange?: (target: string | null) => void
 }) {
   const [text, setText] = useState('')
+  const [attachedPointer, setAttachedPointer] = useState<OzItemPointer | null>(null)
+  const [dropActive, setDropActive] = useState(false)
   const bodyRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   useEffect(() => { if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight }, [messages.length, ozTyping])
@@ -225,7 +255,27 @@ export function OzChatPanel({ messages, runs, workspaceName, onSend, onSelectRun
     fillPrompt(prefill)
     onPrefillConsumed?.()
   }, [prefill, onPrefillConsumed])
-  const send = () => { if (!text.trim()) return; onSend(text); setText('') }
+  const onPointerDragOver = (e: DragEvent<HTMLDivElement>) => {
+    if (!hasOzItem(e.dataTransfer)) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+    setDropActive(true)
+  }
+  const onPointerDrop = (e: DragEvent<HTMLDivElement>) => {
+    if (!hasOzItem(e.dataTransfer)) return
+    e.preventDefault()
+    setDropActive(false)
+    const pointer = parseOzItem(e.dataTransfer.getData(OZ_ITEM_MIME))
+    if (pointer) setAttachedPointer(pointer)
+  }
+  const send = () => {
+    const trimmed = text.trim()
+    if (!trimmed && !attachedPointer) return
+    const outgoing = attachedPointer ? `${contextLine(attachedPointer)}${trimmed ? `\n${text}` : ''}` : text
+    onSend(outgoing)
+    setText('')
+    setAttachedPointer(null)
+  }
   return (
     <div className="oz-panel" style={{ height: '100%', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', top: -1, left: -1, width: 14, height: 14, borderTop: '1px solid var(--cb-accent)', borderLeft: '1px solid var(--cb-accent)', pointerEvents: 'none' }} />
@@ -258,10 +308,18 @@ export function OzChatPanel({ messages, runs, workspaceName, onSend, onSelectRun
           ))}
         </div>
         <ChatTargetPicker targets={chatTargets} value={chatTarget} onChange={onChatTargetChange} />
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, background: 'var(--cb-bg-soft)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', padding: '10px 12px' }}>
+        {attachedPointer && (
+          <div style={{ display: 'inline-flex', maxWidth: '100%', alignItems: 'center', gap: 7, marginBottom: 8, padding: '4px 8px', border: '1px solid var(--cb-accent-30)', borderRadius: 4, background: 'var(--cb-accent-muted)', color: 'var(--cb-text)', fontSize: 11.5 }}>
+            <span style={{ fontFamily: 'var(--cb-font-mono)', color: 'var(--cb-accent)' }}>{attachedPointer.itemType}</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attachedPointer.label}</span>
+            <span style={{ fontFamily: 'var(--cb-font-mono)', color: 'var(--cb-text-muted)' }}>{attachedPointer.id}</span>
+            <button type="button" aria-label="Remove attached context" onClick={() => setAttachedPointer(null)} style={{ border: 'none', background: 'transparent', color: 'var(--cb-text-muted)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+          </div>
+        )}
+        <div aria-label="Oz message composer" onDragEnter={onPointerDragOver} onDragOver={onPointerDragOver} onDragLeave={() => setDropActive(false)} onDrop={onPointerDrop} style={{ display: 'flex', alignItems: 'flex-end', gap: 10, background: 'var(--cb-bg-soft)', border: `1px solid ${dropActive ? 'var(--cb-accent)' : 'var(--cb-border)'}`, boxShadow: dropActive ? '0 0 0 2px var(--cb-accent-30)' : 'none', borderRadius: 'var(--cb-radius-md)', padding: '10px 12px', transition: 'border-color 120ms ease-out, box-shadow 120ms ease-out' }}>
           <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 12, color: 'var(--cb-accent)', userSelect: 'none' }}>›</span>
           <textarea ref={inputRef} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }} placeholder="Tell Oz what to do — launch a run, reorder, ask for status…" rows={1} aria-label="Message Oz" style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', color: 'var(--cb-text)', resize: 'none', fontFamily: 'var(--cb-font-body)', fontSize: 13.5, lineHeight: 1.5, maxHeight: 120 }} />
-          <button onClick={send} className="oz-btn oz-btn-primary oz-btn-sm" style={{ padding: '6px 10px' }} disabled={!text.trim()}><Icon name="paper-plane-tilt" size={13} />Send</button>
+          <button onClick={send} className="oz-btn oz-btn-primary oz-btn-sm" style={{ padding: '6px 10px' }} disabled={!text.trim() && !attachedPointer}><Icon name="paper-plane-tilt" size={13} />Send</button>
         </div>
         <div style={{ display: 'flex', gap: 12, marginTop: 8, fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-text-muted)' }}>
           <span><span className="oz-kbd" style={{ fontSize: 9 }}>⏎</span> send</span>

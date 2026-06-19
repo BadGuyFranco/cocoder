@@ -2,13 +2,18 @@
 // priority being executed: a running priority expands to an inline run summary; priority cards open
 // detail first, and the inline run summary opens the run drawer. Ad-hoc is a pinned, always-first row
 // that can hold many concurrent runs. Ported faithfully from design-ref/dashboard.jsx (dev pins dropped).
-import { useRef, useState } from 'react'
+import { useRef, useState, type DragEvent } from 'react'
 import { Icon, StatusChip, Button } from '../../ui/primitives.tsx'
 import { isActiveRun } from '../../adapter.ts'
 import { runDisplayName, type Priority, type Run } from '../../model.ts'
 import { PriorityDetailModal } from './PriorityDetailModal.tsx'
 
 const LAUNCH_BLOCKED_HINT = 'A run is active in this workspace — only one run executes at a time (single-writer lock). It frees up when the run finishes.'
+const OZ_ITEM_MIME = 'application/x-oz-item'
+
+function setOzItemDragData(e: DragEvent, itemType: 'priority' | 'run', id: string, label: string): void {
+  e.dataTransfer?.setData(OZ_ITEM_MIME, JSON.stringify({ itemType, id, label }))
+}
 
 function PriorityRow({ priority, index, onLaunch, onOpenDetails, onDrag, isDragging, isDropTarget, onSelectRun, runs, selectedRunId, launchBlocked }: {
   priority: Priority; index: number; onLaunch: (p: Priority) => void; onDrag: (type: string, index: number) => void
@@ -21,7 +26,7 @@ function PriorityRow({ priority, index, onLaunch, onOpenDetails, onDrag, isDragg
   const isSelected = !!linkedRun && linkedRun.id === selectedRunId
   const borderColor = isSelected ? 'var(--cb-accent)' : isBlocked ? 'rgba(212,118,110,0.30)' : isActive ? 'var(--cb-accent-30)' : 'var(--cb-border)'
   return (
-    <div draggable onDragStart={() => { didDrag.current = true; onDrag('start', index) }} onDragOver={(e) => { e.preventDefault(); onDrag('over', index) }} onDragEnd={() => onDrag('end', index)} onDrop={(e) => { e.preventDefault(); onDrag('drop', index) }}
+    <div draggable onDragStart={(e) => { didDrag.current = true; setOzItemDragData(e, 'priority', priority.id, priority.name); onDrag('start', index) }} onDragOver={(e) => { e.preventDefault(); onDrag('over', index) }} onDragEnd={() => onDrag('end', index)} onDrop={(e) => { e.preventDefault(); onDrag('drop', index) }}
       onClick={() => { if (didDrag.current) { didDrag.current = false; return } onOpenDetails(priority) }}
       style={{
         background: isSelected ? 'var(--cb-accent-muted)' : isActive ? 'var(--cb-accent-subtle)' : 'var(--cb-surface-glass)',
@@ -94,7 +99,7 @@ function AdhocPriorityRow({ adhocRuns, onLaunch, onSelectRun, selectedRunId, lau
           {adhocRuns.map((r, idx) => {
             const isSel = r.id === selectedRunId, isBlocked = r.status === 'blocked', isLive = isActiveRun(r.status)
             return (
-              <div key={r.id} onClick={() => onSelectRun(r.id)} style={{ padding: '8px 10px', background: isSel ? 'var(--cb-accent-15)' : 'transparent', border: `1px solid ${isSel ? 'var(--cb-accent-30)' : 'var(--cb-border)'}`, borderRadius: 'var(--cb-radius-sm)', marginBottom: idx === adhocRuns.length - 1 ? 0 : 6, cursor: 'pointer', transition: 'all 120ms ease-out', position: 'relative', overflow: 'hidden' }}
+              <div key={r.id} draggable onDragStart={(e) => setOzItemDragData(e, 'run', r.id, runDisplayName(r))} onClick={() => onSelectRun(r.id)} style={{ padding: '8px 10px', background: isSel ? 'var(--cb-accent-15)' : 'transparent', border: `1px solid ${isSel ? 'var(--cb-accent-30)' : 'var(--cb-border)'}`, borderRadius: 'var(--cb-radius-sm)', marginBottom: idx === adhocRuns.length - 1 ? 0 : 6, cursor: 'pointer', transition: 'all 120ms ease-out', position: 'relative', overflow: 'hidden' }}
                 onMouseEnter={(e) => { if (!isSel) e.currentTarget.style.background = 'var(--cb-hover)' }}
                 onMouseLeave={(e) => { if (!isSel) e.currentTarget.style.background = 'transparent' }}>
                 {isLive && <div data-run-accent={r.status} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 2, background: isBlocked ? 'var(--cb-highlight)' : 'var(--cb-accent)', animation: isBlocked ? 'none' : 'ozPulse 1.8s infinite' }} />}

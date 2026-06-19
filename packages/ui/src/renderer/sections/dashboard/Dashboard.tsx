@@ -1,7 +1,7 @@
 // Dashboard root — built AROUND the Oz conversation; priorities + runs are panels, never pages. Run
 // detail opens as a modal over the dashboard so cards, priorities, and runs share one detail pattern.
 // Ported from design-ref/dashboard.jsx, with the left panel now cycling Priorities/Tickets/Runs in place.
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, type DragEvent } from 'react'
 import { Button, Icon, Modal, StatusChip } from '../../ui/primitives.tsx'
 import { WorkspaceTabs, type ShellTheme } from '../../ui/ShellControls.tsx'
 
@@ -11,6 +11,11 @@ const PRIO_MIN_RATIO = 0.25
 const PRIO_MAX_RATIO = 0.75
 const LAUNCH_BLOCKED_HINT = 'A run is active in this workspace — only one run executes at a time (single-writer lock). It frees up when the run finishes.'
 const TICKET_LAUNCH_OFFLINE_HINT = 'Ticket-fix launch is available only when the dashboard is connected to Oz.'
+const OZ_ITEM_MIME = 'application/x-oz-item'
+
+function setOzItemDragData(e: DragEvent, itemType: 'ticket' | 'run', id: string, label: string): void {
+  e.dataTransfer?.setData(OZ_ITEM_MIME, JSON.stringify({ itemType, id, label }))
+}
 
 function clampPanelRatio(ratio: number, containerWidth: number): number {
   if (!Number.isFinite(ratio)) return 0.45
@@ -125,7 +130,7 @@ function TicketsTab({ tickets, onLaunchTicket, onReorderTickets, launchBlocked, 
             draggable
             role="button"
             tabIndex={0}
-            onDragStart={() => { draggedIndex.current = index; handleDrag('start', index) }}
+            onDragStart={(e) => { draggedIndex.current = index; setOzItemDragData(e, 'ticket', ticket.id, ticket.title); handleDrag('start', index) }}
             onDragOver={(e) => { e.preventDefault(); handleDrag('over', index) }}
             onDragEnd={() => handleDrag('end', index)}
             onDrop={(e) => { e.preventDefault(); handleDrag('drop', index) }}
@@ -204,7 +209,7 @@ function RunsTab({ runs, onSelectRun, priorities }: { runs: Run[]; onSelectRun: 
           {filtered.map((run) => {
             const parentPriority = run.priorityId ? priorities.find((p) => p.id === run.priorityId) : null
             return (
-              <div key={run.id} onClick={() => onSelectRun(run.id)} style={{ padding: '12px 4px', borderBottom: '1px solid var(--cb-border)', cursor: 'pointer', display: 'grid', gridTemplateColumns: '92px minmax(0,1fr) 20px', gap: 12, alignItems: 'center' }}
+              <div key={run.id} draggable onDragStart={(e) => setOzItemDragData(e, 'run', run.id, runDisplayName(run))} onClick={() => onSelectRun(run.id)} style={{ padding: '12px 4px', borderBottom: '1px solid var(--cb-border)', cursor: 'pointer', display: 'grid', gridTemplateColumns: '92px minmax(0,1fr) 20px', gap: 12, alignItems: 'center' }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--cb-hover)')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
                 <StatusChip status={run.status} />
                 <div style={{ minWidth: 0 }}>

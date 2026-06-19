@@ -24,18 +24,27 @@ const messages: ChatMessage[] = [
   },
 ]
 
-function renderChat(messagesToRender: ChatMessage[], opts: { onSelectRun?: (id: string) => void; onDecision?: (choice: string) => void } = {}) {
+function renderChat(messagesToRender: ChatMessage[], opts: { onSelectRun?: (id: string) => void; onDecision?: (choice: string) => void; onSend?: (text: string) => void } = {}) {
   render(
     <OzChatPanel
       messages={messagesToRender}
       runs={[run]}
       workspaceName="CoCoder"
-      onSend={vi.fn()}
+      onSend={opts.onSend ?? vi.fn()}
       onSelectRun={opts.onSelectRun ?? vi.fn()}
       onDecision={opts.onDecision ?? vi.fn()}
       ozTyping={false}
     />,
   )
+}
+
+function ozItemDataTransfer(item: { itemType: 'priority' | 'ticket' | 'run'; id: string; label: string }): DataTransfer {
+  return {
+    types: ['application/x-oz-item'],
+    getData: (type: string) => type === 'application/x-oz-item' ? JSON.stringify(item) : '',
+    setData: vi.fn(),
+    dropEffect: 'copy',
+  } as unknown as DataTransfer
 }
 
 describe('OzChatPanel run cards', () => {
@@ -123,5 +132,58 @@ describe('OzChatPanel markdown rendering', () => {
     expect(screen.queryByRole('heading', { name: 'Not a heading' })).toBeNull()
     expect(screen.getByText(/## Not a heading/)).toBeDefined()
     expect(document.querySelector('script')).toBeNull()
+  })
+})
+
+describe('OzChatPanel drag-to-ask pointers', () => {
+  afterEach(() => cleanup())
+
+  it('renders a chip after dropping an Oz item pointer', () => {
+    renderChat([])
+
+    fireEvent.drop(screen.getByLabelText('Oz message composer'), {
+      dataTransfer: ozItemDataTransfer({ itemType: 'priority', id: 'p-123', label: 'Launch hardening' }),
+    })
+
+    expect(screen.getByText('priority')).toBeDefined()
+    expect(screen.getByText('Launch hardening')).toBeDefined()
+    expect(screen.getByText('p-123')).toBeDefined()
+  })
+
+  it('removes an attached pointer from the chip', () => {
+    renderChat([])
+
+    fireEvent.drop(screen.getByLabelText('Oz message composer'), {
+      dataTransfer: ozItemDataTransfer({ itemType: 'ticket', id: 't-7', label: 'Fix stale status' }),
+    })
+    fireEvent.click(screen.getByLabelText('Remove attached context'))
+
+    expect(screen.queryByText('Fix stale status')).toBeNull()
+  })
+
+  it('sends an attached pointer without typed text', () => {
+    const onSend = vi.fn()
+    renderChat([], { onSend })
+
+    fireEvent.drop(screen.getByLabelText('Oz message composer'), {
+      dataTransfer: ozItemDataTransfer({ itemType: 'run', id: 'run-42', label: 'run #42' }),
+    })
+    fireEvent.click(screen.getByText('Send'))
+
+    expect(onSend).toHaveBeenCalledWith('[context: run run-42 — run #42]')
+    expect(screen.queryByText('run #42')).toBeNull()
+  })
+
+  it('sends both the attached pointer and typed text', () => {
+    const onSend = vi.fn()
+    renderChat([], { onSend })
+
+    fireEvent.drop(screen.getByLabelText('Oz message composer'), {
+      dataTransfer: ozItemDataTransfer({ itemType: 'priority', id: 'p-9', label: 'Improve Oz' }),
+    })
+    fireEvent.change(screen.getByLabelText('Message Oz'), { target: { value: 'What is next?' } })
+    fireEvent.click(screen.getByText('Send'))
+
+    expect(onSend).toHaveBeenCalledWith('[context: priority p-9 — Improve Oz]\nWhat is next?')
   })
 })
