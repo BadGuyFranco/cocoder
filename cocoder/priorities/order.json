@@ -1,8 +1,8 @@
 [
   "oz-hardening",
-  "tickets-review",
-  "first-class-model-tiers",
-  "adapter-abstraction-hardening",
   "new-primary-root",
-  "priority-audit"
+  "tickets-review",
+  "priority-audit",
+  "first-class-model-tiers",
+  "adapter-abstraction-hardening"
 ]
