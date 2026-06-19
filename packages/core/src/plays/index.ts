@@ -10,6 +10,14 @@ export {
 } from './effective.js'
 export { renderPlayManifest, playAvailability, type PlayAvailability } from './manifest.js'
 export {
+  parsePlayRequest,
+  validatePlayRequest,
+  MalformedPlayRequestError,
+  type PlayRequest,
+  type PlayRequestRejectionCode,
+  type PlayRequestValidationResult,
+} from './request.js'
+export {
   dispatchPlay,
   runHeadlessProcess,
   type DispatchPlayDeps,

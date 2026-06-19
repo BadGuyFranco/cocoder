@@ -72,7 +72,18 @@ export {
   PersonaDeltaLoadError,
 } from './personas/index.js'
 
-export type { Play, PlayDelta, PlaySources, DispatchPlayDeps, DispatchPlayInput, DispatchPlayResult, HeadlessRunInput } from './plays/index.js'
+export type {
+  Play,
+  PlayDelta,
+  PlaySources,
+  PlayRequest,
+  PlayRequestRejectionCode,
+  PlayRequestValidationResult,
+  DispatchPlayDeps,
+  DispatchPlayInput,
+  DispatchPlayResult,
+  HeadlessRunInput,
+} from './plays/index.js'
 export {
   loadPlay,
   mergePlay,
@@ -83,6 +94,9 @@ export {
   PlayDeltaLoadError,
   renderPlayManifest,
   playAvailability,
+  parsePlayRequest,
+  validatePlayRequest,
+  MalformedPlayRequestError,
   dispatchPlay,
   runHeadlessProcess,
   type PlayAvailability,
