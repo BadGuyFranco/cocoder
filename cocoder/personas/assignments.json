@@ -2,7 +2,7 @@
   "personas": {
     "oz": {
       "cli": "claude",
-      "model": "sonnet",
+      "model": "",
       "plays": {
         "create-priority": {
           "cli": "claude",
