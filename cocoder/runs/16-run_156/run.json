@@ -12,7 +12,7 @@
   "priorityId": "oz-hardening",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "failed",
   "createdAt": 1781900458460,
-  "endedAt": null
+  "endedAt": 1781902865393
 }
