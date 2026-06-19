@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_147",
+    "displayNumber": 8
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "priority"
+  },
+  "priorityId": "founder-brief-format-durability",
+  "playbookId": null,
+  "ticketId": null,
+  "status": "running",
+  "createdAt": 1781830867293,
+  "endedAt": null
+}
