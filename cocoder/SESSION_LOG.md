@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-18 — **founder-brief-format-durability: single-source wrap-up contract + diagnosis of record — archive-candidate (run_145)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 2 atoms delegated, 1 verify rejection then clean re-land) | **Priority:** [founder-brief-format-durability](./priorities/founder-brief-format-durability.md) | **Run:** run_145
+**Outcomes:**
+- **Runner repair (`90599db`):** founder-closeout labels and fallback brief now parse from the effective `wrap-up` Play fenced contract; validator rejects the six observed drift classes; Play-label change propagates end-to-end in tests.
+- **Atom 1 (`80f496f`) — diagnosis of record:** `docs/founder-brief-format-durability.md` consolidates the six-occurrence evidence pack, owner map, ticket dispositions, and why-it-drifted rule.
+- **Oscar-support (`0b1d5a5`) — follow-on ticket:** [0017](./tickets/open/0017-promote-founder-brief-single-source-rule-to-shared-standards.md) carries the durability rule into `shared-standards.md` (outside this run's persona/standards write scope).
+- **Disposition: `archive-candidate`** — objective met; repair verified green; sole optional sibling is ticket 0017 (governance text, not runtime behavior).
+**Next:** Ticket: `0017` — promote the founder-brief single-source rule into shared-standards.
+
 ## 2026-06-18 — **ticket-fix-0014: workspace picker on both add-workspace surfaces + runnable proof — archive-candidate (run_144)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 2 atoms delegated, verified-on-evidence) | **Priority:** ticket-fix / [0014](./tickets/closed/0014-oz-workspace-path-picker.md) | **Run:** run_144

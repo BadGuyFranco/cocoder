@@ -93,3 +93,10 @@ change to the Play could leave the runtime accepting the old labels or emitting 
 smallest durable rule is: when a founder-facing orchestration format is owned by a Play or governed
 persona file, runtime validators and fallback emitters must parse or import that owner; they must not
 copy the format into a second local contract.
+
+## Follow-on (run_145)
+
+The runtime repair above is complete and test-pinned. Promoting the rule from this docs explainer into
+the governed standard (`packages/personas/base/shared-standards.md`) is tracked as
+[ticket 0017](../cocoder/tickets/open/0017-promote-founder-brief-single-source-rule-to-shared-standards.md)
+so the next runtime author reads it from the same home as other durable-orchestration rules.

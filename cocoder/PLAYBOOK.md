@@ -202,9 +202,13 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   (`6d05475` — `ctx.sessionHost.closeWorkspace({ workspaceRef })` preserves `this`); receiver-sensitive
   regression in `mutations.test.ts` catches the unbound path; [ticket 0011](./tickets/closed/0011-teardown-cli-undefined-on-final-oscar-surface.md)
   closed. All verify gates green. **Only gate:** founder archive confirmation.
-- `founder-brief-format-durability` — founder-escalated investigation into six repeated founder-brief
-  format mismatches; map and collapse competing brief/Play-output contracts so orchestration format changes
-  become small, direct, and test-pinned.
+- `founder-brief-format-durability` — **ARCHIVE-CANDIDATE (run_145, 2026-06-18).** Founder-escalated
+  repair for six repeated founder-brief format mismatches. Runner now parses the closeout contract from
+  the effective `wrap-up` Play (`90599db`); diagnosis of record in
+  [`docs/founder-brief-format-durability.md`](../docs/founder-brief-format-durability.md); tests prove
+  Play-label changes propagate and old labels fail. **Only gates:** founder archive confirmation; optional
+  sibling [ticket 0017](./tickets/open/0017-promote-founder-brief-single-source-rule-to-shared-standards.md)
+  to promote the durability rule into `shared-standards.md` (out of run_145 write scope).
 1. `headless-adapter-lane` — **ARCHIVED (run_104, founder-confirmed 2026-06-16).** Claude Code + Codex real
    headless invocation built (`BuildInput.headless`, claude print mode + codex exec), wired through
    `dispatchPlay` + `oz-host`, `headlessCapable=true` (single source). Flags verified vs real binaries;
