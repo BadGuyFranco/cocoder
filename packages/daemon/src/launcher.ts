@@ -43,6 +43,7 @@ import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import { emitOzEvent, type DashboardLaunchHandle, type OzContext } from './context.js'
 import { findWorkspace } from './registry.js'
 import { appendAudit } from './audit.js'
+import { recordOrchestratedRun } from './oz-host.js'
 
 const OZ_REPAIR_TIMEOUT_MS = 120_000
 const AUTHORING_PLAY_TIMEOUT_MS = 120_000
@@ -311,6 +312,7 @@ function attachRunLifecycle(ctx: OzContext, workspaceId: string, stopController:
         } catch {
           status = undefined
         }
+        await recordOrchestratedRun(ctx, workspaceId)
         emitOzEvent(ctx, { type: 'run-settled', runId, workspaceId, status })
       }
     })
