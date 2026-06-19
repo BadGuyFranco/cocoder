@@ -240,10 +240,10 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    unbuilt, needs its own priority). **Absorbs `workspace-onboarding`.**
 
 **Queued after `new-primary-root` (founder go-ahead 2026-06-16, priority-audit run_106 — in `order.json`):**
-- `hybrid-plays` — deterministic code spine inside a Play (promotes "verify, don't assert — evidence over
-  claims" to first-class structure; e.g. `integration-verify` *runs* the real check instead of prompting an
-  agent to). Step 1 is an **ADR-0010 taxonomy amendment** the founder confirms at launch (the Play-component
-  shape); then schema (`Play` type) + dispatch + reimplement `integration-verify` as the hybrid proof.
+- `hybrid-plays` — **BLOCKED (run_151, 2026-06-19).** Atom 1 done: ADR-0010 amended with the three-axis Play
+  taxonomy (execution × trigger × write-authority). Founder acceptance gates atom 2 (Play contract schema in
+  `packages/core/src/plays/types.ts`). Remaining: migrate shipped Plays, capability manifest, typed request
+  lane, mandatory trigger registry, hybrid dispatch, and two end-to-end proofs.
 - `tickets-review` — **CONTINUE (run_143, 2026-06-18).** All in-scope build items code-complete. Landed
   run_121–122: index hygiene, tickets data layer, 3-tab panel, live-review fixes (`POST /tickets` +
   `NewTicketModal`). Landed run_132: ticket loader (0015), `Run.ticketId` + `launchRun` ticket branch,

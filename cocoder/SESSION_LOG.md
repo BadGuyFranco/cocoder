@@ -14,7 +14,7 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 
 ## 2026-06-19 — **play-system: ADR-0010 amended with the Play taxonomy (atom 1) — blocked on founder acceptance before schema (atom 2)**
 
-**Persona:** Oscar (lead) + Bob (builder, codex) | **Priority:** [architect-play-system](./priorities/architect-play-system.md) | **Run:** run_151
+**Persona:** Oscar (lead) + Bob (builder, codex) | **Priority:** [hybrid-plays](./priorities/hybrid-plays.md) | **Run:** run_151
 **Outcomes:**
 - Atom 1 (decision-before-code): amended **ADR-0010** with a dated living-ADR amendment defining the
   five Play classes across **three orthogonal axes** — execution model (`prompt-only` | `hybrid`),
@@ -23,9 +23,10 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
   accepted ADR-0010 sections untouched. Verified diff + scope, committed `2289e6a`.
 - Boundary held: no reopening of one-level dispatch, no PlayAssignment multi-binding, no full Play-body
   injection.
-**Next:** **Founder accepts the taxonomy amendment** (priority gates atom 2 — the `Play` schema
-extension in `packages/core/src/plays/types.ts` — on this). On acceptance, relaunch `architect-play-system`
-for atom 2 (additive optional contract metadata; loader/tests prove old prompt-only Plays still parse).
+- **Disposition: `blocked`** — founder acceptance of the taxonomy amendment gates atom 2 (Play schema).
+**Next:** Founder accepts the ADR-0010 taxonomy amendment (or sends edits). On acceptance, relaunch
+`hybrid-plays` for atom 2: extend `Play` in `packages/core/src/plays/types.ts` with additive optional
+contract metadata; loader/tests prove existing prompt-only Plays still parse.
 
 ---
 

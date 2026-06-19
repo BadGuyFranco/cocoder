@@ -85,3 +85,8 @@ prompt-only behavior remains backward-compatible during the migration.
 runner the probabilistic chooser for all Plays: personas may judge when optional Plays are useful, but
 dispatch/validation/commit/mandatory triggers are owned by the runner or daemon. No builder-recursion, no
 `PlayAssignment[]` multi-binding, and no full Play-body injection into every persona prompt.
+
+## Build progress — disposition: `blocked` (run_151)
+
+Atom 1 (ADR-0010 taxonomy amendment) committed; founder acceptance required before atom 2 (Play contract
+schema). Atoms 2–8 unbuilt.
