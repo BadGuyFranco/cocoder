@@ -1,9 +1,10 @@
 import { describe, expect, test } from 'vitest'
-import { buildBuilderDispatch, buildNextOrWrapDispatch, buildObserverPrompt, buildOrchestratorPrompt } from '../src/index.js'
+import { buildBuilderDispatch, buildBuilderStandbyPrompt, buildNextOrWrapDispatch, buildObserverPrompt, buildOrchestratorPrompt, renderPlayManifest, type Play } from '../src/index.js'
 
 const orchestratorInput = {
   sharedStandards: '# Standards',
   oscarBody: 'Oscar body',
+  playManifest: '(none)',
   priorityId: 'demo',
   priorityTitle: 'Demo priority',
   priorityGoal: 'Do the base goal.',
@@ -19,6 +20,7 @@ const orchestratorInput = {
 const observerInput = {
   sharedStandards: '# Standards',
   debBody: 'Deb body',
+  playManifest: '(none)',
   priorityTitle: 'Demo priority',
   priorityGoal: 'Do the base goal.',
   runId: 'run_1',
@@ -28,6 +30,19 @@ const observerInput = {
   nudgePath: '/runs/run_1/deb-nudge.json',
   writeScope: [],
 }
+
+const manifestPlay = (overrides: Partial<Play>): Play => ({
+  id: 'code-review',
+  label: 'Code review',
+  kind: 'headless',
+  executionModel: 'prompt-only',
+  triggerClass: 'persona-requested',
+  purpose: 'Review a provided diff.',
+  allowedCallers: ['oscar'],
+  writeScope: [],
+  body: 'SECRET FULL BODY PHRASE',
+  ...overrides,
+})
 
 describe('buildBuilderDispatch', () => {
   test('keeps non-loop dispatch text unchanged', () => {
@@ -113,5 +128,76 @@ describe('buildBuilderDispatch', () => {
     expect(dispatch).toContain('A clean commit boundary alone is not a reason to stop')
     expect(dispatch).toContain('founder approval needed')
     expect(dispatch).not.toContain('builder has had enough')
+  })
+
+  test('renders only Plays available to the caller with compact contract metadata', () => {
+    const manifest = renderPlayManifest([
+      manifestPlay({
+        id: 'code-review',
+        purpose: 'Review a provided diff.',
+        triggerClass: 'persona-requested',
+        allowedCallers: ['oscar'],
+        inputSchema: { ref: 'schemas/code-review.input' },
+      }),
+      manifestPlay({
+        id: 'electron-test',
+        purpose: 'Drive the app as QA.',
+        triggerClass: 'persona-requested',
+        allowedCallers: ['quinn'],
+      }),
+    ], 'oscar')
+
+    expect(manifest).toContain('code-review')
+    expect(manifest).toContain('Review a provided diff.')
+    expect(manifest).toContain('trigger: persona-requested')
+    expect(manifest).toContain('optional')
+    expect(manifest).toContain('writes: read-only')
+    expect(manifest).toContain('input: schemas/code-review.input')
+    expect(manifest).not.toContain('electron-test')
+  })
+
+  test('derives mandatory and optional labels from trigger class', () => {
+    const manifest = renderPlayManifest([
+      manifestPlay({
+        id: 'wrap-up',
+        purpose: 'Produce the founder closeout.',
+        triggerClass: 'lifecycle-triggered',
+        allowedCallers: ['runner wrap-up lifecycle'],
+        writeScope: ['cocoder/SESSION_LOG.md'],
+      }),
+      manifestPlay({
+        id: 'create-ticket',
+        purpose: 'Create one open ticket.',
+        triggerClass: 'persona-requested',
+        allowedCallers: ['runner wrap-up lifecycle'],
+      }),
+    ], 'runner wrap-up lifecycle')
+
+    expect(manifest).toContain('wrap-up: Produce the founder closeout. | trigger: lifecycle-triggered | mandatory')
+    expect(manifest).toContain('create-ticket: Create one open ticket. | trigger: persona-requested | optional')
+    expect(manifest).toContain('writes: cocoder/SESSION_LOG.md')
+  })
+
+  test('launch prompts include compact Play manifest without injecting Play bodies', () => {
+    const manifest = renderPlayManifest([
+      manifestPlay({
+        id: 'create-ticket',
+        purpose: 'Create one open ticket from persona-provided follow-up input.',
+        allowedCallers: ['bob'],
+      }),
+    ], 'bob')
+
+    const prompt = buildBuilderStandbyPrompt({
+      sharedStandards: '# Standards',
+      bobBody: 'Bob body',
+      playManifest: manifest,
+      scope: ['packages/**'],
+      runBranch: 'cocoder/run_1',
+    })
+
+    expect(prompt).toContain('# Available Plays')
+    expect(prompt).toContain('create-ticket')
+    expect(prompt).toContain('Create one open ticket from persona-provided follow-up input.')
+    expect(prompt).not.toContain('SECRET FULL BODY PHRASE')
   })
 })

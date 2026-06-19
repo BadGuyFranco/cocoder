@@ -38,6 +38,7 @@ export interface HeadlessBuilderDriverOptions {
   readonly runDir: string
   readonly scope: readonly string[]
   readonly sharedStandards: string
+  readonly playManifest?: string
   readonly runBranch: string
   readonly runHeadless?: (input: HeadlessRunInput) => Promise<DispatchPlayResult>
   readonly timeoutMs?: number
@@ -71,6 +72,7 @@ export function createHeadlessBuilderDriver(opts: HeadlessBuilderDriverOptions):
       const prompt = buildHeadlessBuilderTurnPrompt({
         sharedStandards: opts.sharedStandards,
         bobBody: opts.bob.body,
+        playManifest: opts.playManifest ?? '(none)',
         scope: opts.scope,
         runBranch: opts.runBranch,
         dispatch,

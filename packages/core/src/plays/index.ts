@@ -8,6 +8,7 @@ export {
   PlayDeltaLoadError,
   type PlaySources,
 } from './effective.js'
+export { renderPlayManifest, playAvailability, type PlayAvailability } from './manifest.js'
 export {
   dispatchPlay,
   runHeadlessProcess,

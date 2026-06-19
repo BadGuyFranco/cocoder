@@ -32,6 +32,7 @@ export function createPaneOscarDriver(sessionHost: SessionHost, ref: SessionRef)
 export interface HeadlessOscarTurnPromptInput {
   readonly sharedStandards: string
   readonly oscarBody: string
+  readonly playManifest?: string
   readonly priorityTitle: string
   readonly priorityGoal: string
   readonly task?: string | null
@@ -109,7 +110,7 @@ export function createHeadlessOscarDriver(opts: HeadlessOscarDriverOptions): Osc
     kind: 'headless',
     refId: `headless:${opts.oscar.id}`,
     send(text) {
-      const prompt = buildHeadlessOscarTurnPrompt({ ...opts.turnPrompt, runDir: opts.runDir, dispatch: text })
+      const prompt = buildHeadlessOscarTurnPrompt({ ...opts.turnPrompt, playManifest: opts.turnPrompt.playManifest ?? '(none)', runDir: opts.runDir, dispatch: text })
       return start(prompt)
     },
     async nudge() {

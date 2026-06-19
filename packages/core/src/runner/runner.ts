@@ -16,8 +16,8 @@ import { COCODER_GOVERNANCE_AUTHOR, commitFiles, runCommitGate } from '../commit
 import type { AuditWriteBoundary, CommitGateResult, Git } from '../commit-gate/index.js'
 import type { Priority } from '../priorities/index.js'
 import type { PersonaRunMode, PlayAssignment, ResolvedPersona } from '../personas/index.js'
-import { dispatchPlay, type DispatchPlayResult, type HeadlessRunInput } from '../plays/index.js'
-import type { Play } from '../plays/index.js'
+import { dispatchPlay, listEffectivePlays, renderPlayManifest, type DispatchPlayResult, type HeadlessRunInput } from '../plays/index.js'
+import type { Play, PlaySources } from '../plays/index.js'
 import {
   allocatePortableSessionDisplayNumber,
   listPortableRunSessions,
@@ -133,6 +133,7 @@ export interface RunInput {
   /** A prior run's pickup brief to resume from (ADR-0002 C1 / F8), woven into Oscar's prompt. */
   readonly pickup?: string | null
   /** Resolved wrap-up Play + per-(persona, Play) assignment; when present, the runner dispatches the Play to author closeout. */
+  readonly playSources?: PlaySources
   readonly wrapPlay?: Play
   readonly wrapPlayAssignment?: PlayAssignment
   readonly wrapPlayPersonaMode?: PersonaRunMode
@@ -527,11 +528,21 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   log(`committing directly to ${trunkBranch} (${trunkSha.slice(0, 8)})`)
   // Display-only cmux workspace label. The grouping key below remains the durable run id.
   const groupLabel = formatGroupLabel({ workspaceName: workspace.name || workspace.id, target: defaultRunLabelTarget(input), runId: run.id })
+  const playSources = input.playSources ?? {
+    baseDir: join(engineHome, 'packages', 'personas', 'base', 'plays'),
+    deltaDir: join(workspace.path, 'cocoder', 'plays', 'deltas'),
+    repoPlayDir: join(workspace.path, 'cocoder', 'plays'),
+  }
+  const effectivePlays = listEffectivePlays(playSources)
+  const oscarPlayManifest = renderPlayManifest(effectivePlays, oscar.id)
+  const bobPlayManifest = renderPlayManifest(effectivePlays, bob.id)
+  const debPlayManifest = deb ? renderPlayManifest(effectivePlays, deb.id) : '(none)'
 
   // Spawn Oscar (full loop prompt → writes the first directive), Bob on standby beside it, optional Deb.
   const oscarLaunchPrompt = buildOrchestratorPrompt({
     sharedStandards,
     oscarBody: oscar.body,
+    playManifest: oscarPlayManifest,
     priorityId: priority.id,
     priorityTitle: priority.title,
     priorityGoal: priority.goal,
@@ -556,6 +567,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       turnPrompt: {
         sharedStandards,
         oscarBody: oscar.body,
+        playManifest: oscarPlayManifest,
         priorityTitle: priority.title,
         priorityGoal: priority.goal,
         task: input.task ?? null,
@@ -593,12 +605,12 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
   let bobDriver: BuilderDriver
   if (bob.mode === 'headless') {
-    bobDriver = createHeadlessBuilderDriver({ getAdapter, bob, cwd: worktreePath, runDir, scope, sharedStandards, runBranch, runHeadless: deps.runHeadless, signal: deps.signal })
+    bobDriver = createHeadlessBuilderDriver({ getAdapter, bob, cwd: worktreePath, runDir, scope, sharedStandards, playManifest: bobPlayManifest, runBranch, runHeadless: deps.runHeadless, signal: deps.signal })
     store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: bob.id, ref: bobDriver.refId, mode: 'headless' } })
   } else {
     const bobCmd = getAdapter(bob.cli).build({
       persona: bob.id,
-      prompt: buildBuilderStandbyPrompt({ sharedStandards, bobBody: bob.body, scope, runBranch }),
+      prompt: buildBuilderStandbyPrompt({ sharedStandards, bobBody: bob.body, playManifest: bobPlayManifest, scope, runBranch }),
       model: bob.model,
       cwd: worktreePath,
       outPath: join(runDir, 'bob.out'),
@@ -617,7 +629,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     bobDriver = createPaneBuilderDriver(sessionHost, bobRef)
   }
   const debRef = deb
-    ? await spawnObserver({ store, sessionHost, getAdapter, run, workspace, priority, task: input.task ?? null, deb, sharedStandards, runDir, groupLabel, cwd: worktreePath, runBranch })
+    ? await spawnObserver({ store, sessionHost, getAdapter, run, workspace, priority, task: input.task ?? null, deb, sharedStandards, playManifest: debPlayManifest, runDir, groupLabel, cwd: worktreePath, runBranch })
     : null
   await oscarDriver.show()
   log(`oscar + bob spawned (${oscarDriver.refId}, ${bobDriver.refId}); awaiting first directive, bob on standby`)

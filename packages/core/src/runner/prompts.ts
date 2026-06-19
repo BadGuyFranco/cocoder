@@ -16,6 +16,13 @@ function adHocInstruction(task?: string | null): string {
   return typeof task === 'string' && task.trim() !== '' ? `\n## Founder's ad-hoc instruction (this run)\n\n${task}\n` : ''
 }
 
+function availablePlaysSection(manifest: string): string {
+  return `---
+# Available Plays
+
+${manifest}`
+}
+
 function hasAdHocTask(task?: string | null): boolean {
   return typeof task === 'string' && task.trim() !== ''
 }
@@ -93,6 +100,7 @@ function shellSingleQuote(value: string): string {
 export function buildOrchestratorPrompt(input: {
   sharedStandards: string
   oscarBody: string
+  playManifest: string
   priorityId: string
   priorityTitle: string
   priorityGoal: string
@@ -130,6 +138,8 @@ ${orchestratorLaunchCard(input)}
 # Your role
 
 ${input.oscarBody}
+
+${availablePlaysSection(input.playManifest)}
 
 ---
 # This run
@@ -228,6 +238,7 @@ That terminates and closes only this run's sessions (the same operation Oz's tea
 export function buildHeadlessOscarTurnPrompt(input: {
   sharedStandards: string
   oscarBody: string
+  playManifest: string
   priorityTitle: string
   priorityGoal: string
   task?: string | null
@@ -250,6 +261,8 @@ export function buildHeadlessOscarTurnPrompt(input: {
 # Your role
 
 ${input.oscarBody}
+
+${availablePlaysSection(input.playManifest)}
 
 ---
 # This run
@@ -295,6 +308,7 @@ ${input.dispatch}`
 export function buildObserverPrompt(input: {
   sharedStandards: string
   debBody: string
+  playManifest: string
   priorityTitle: string
   priorityGoal: string
   task?: string | null
@@ -317,6 +331,8 @@ export function buildObserverPrompt(input: {
 # Your role
 
 ${input.debBody}
+
+${availablePlaysSection(input.playManifest)}
 
 ---
 # This run
@@ -440,6 +456,7 @@ ${outcome}`
 export function buildBuilderStandbyPrompt(input: {
   sharedStandards: string
   bobBody: string
+  playManifest: string
   scope: readonly string[]
   /** The branch this run commits to (ADR-0023) — Bob works on it; the runner commits for him. */
   runBranch: string
@@ -451,6 +468,8 @@ export function buildBuilderStandbyPrompt(input: {
 # Your role
 
 ${input.bobBody}
+
+${availablePlaysSection(input.playManifest)}
 
 ---
 # Standby — do NOT act yet
@@ -477,6 +496,7 @@ The orchestrator watches your pane live and may nudge you if you stall; keep wor
 export function buildHeadlessBuilderTurnPrompt(input: {
   sharedStandards: string
   bobBody: string
+  playManifest: string
   scope: readonly string[]
   /** The branch this run commits to (ADR-0023) — Bob works on it; the runner commits for him. */
   runBranch: string
@@ -489,6 +509,8 @@ export function buildHeadlessBuilderTurnPrompt(input: {
 # Your role
 
 ${input.bobBody}
+
+${availablePlaysSection(input.playManifest)}
 
 ---
 # One-shot builder turn

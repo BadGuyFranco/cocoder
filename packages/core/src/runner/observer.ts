@@ -17,6 +17,7 @@ export async function spawnObserver(input: {
   readonly task?: string | null
   readonly deb: ResolvedPersona
   readonly sharedStandards: string
+  readonly playManifest: string
   readonly runDir: string
   readonly groupLabel: string
   /** The run's isolated worktree dir — Deb runs here, not the founder's checkout (ADR-0015). */
@@ -24,7 +25,7 @@ export async function spawnObserver(input: {
   /** The run's isolated branch (ADR-0015) — surfaced in Deb's prompt. */
   readonly runBranch: string
 }): Promise<SessionRef | null> {
-  const { store, sessionHost, getAdapter, run, workspace, priority, task, deb, sharedStandards, runDir, groupLabel, cwd, runBranch } = input
+  const { store, sessionHost, getAdapter, run, workspace, priority, task, deb, sharedStandards, playManifest, runDir, groupLabel, cwd, runBranch } = input
   try {
     const adapter = getAdapter(deb.cli)
     const pf = await adapter.preflight(deb.model)
@@ -39,6 +40,7 @@ export async function spawnObserver(input: {
       prompt: buildObserverPrompt({
         sharedStandards,
         debBody: deb.body,
+        playManifest,
         priorityTitle: priority.title,
         priorityGoal: priority.goal,
         task: task ?? null,

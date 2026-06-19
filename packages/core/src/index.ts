@@ -81,8 +81,11 @@ export {
   loadEffectivePlay,
   listEffectivePlays,
   PlayDeltaLoadError,
+  renderPlayManifest,
+  playAvailability,
   dispatchPlay,
   runHeadlessProcess,
+  type PlayAvailability,
 } from './plays/index.js'
 
 export { loadPriority, type Priority } from './priorities/index.js'
