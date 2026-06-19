@@ -55,6 +55,7 @@ type CliViewOverrides = {
   testedAt?: number | null
   install?: Partial<CliCheckView>
   auth?: Partial<CliCheckView>
+  model?: Partial<CliCheckView>
   models?: Partial<CliModelsView>
   configManaged?: Partial<CliRunReadinessView>
   headlessCapable?: boolean
@@ -68,6 +69,7 @@ function cliView(overrides: CliViewOverrides = {}): CliView {
     testedAt: overrides.testedAt === undefined ? 1780153227239 : overrides.testedAt,
     install: { ok: true, detail: 'installed', ...(overrides.install ?? {}) },
     auth: { ok: true, detail: 'authenticated', ...(overrides.auth ?? {}) },
+    model: { ok: true, detail: 'default model', ...(overrides.model ?? {}) },
     models: { canEnumerate: true, models: ['opus', 'sonnet'], detail: 'listed models', ...(overrides.models ?? {}) },
     configManaged: { mechanism: 'env', flags: ['--model'], managesUserConfig: false, detail: 'ready', ...(overrides.configManaged ?? {}) },
     headlessCapable: overrides.headlessCapable ?? (id === 'claude' || id === 'codex' || id === 'cursor-agent'),

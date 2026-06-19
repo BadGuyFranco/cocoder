@@ -82,13 +82,14 @@ const CLI_META: Record<string, { name: string; vendor: string }> = {
 // ── CLIs ── daemon probes/reporting → the renderer's design view-model.
 export function adaptCli(view: CliView): Cli {
   const meta = CLI_META[view.id] ?? { name: humanize(view.id), vendor: '—' }
+  const model = view.model
   const status = !view.tested
     ? 'not-installed'
     : !view.install.ok
       ? 'not-installed'
       : !view.auth.ok
         ? 'auth-failed'
-        : !view.model.ok
+        : !model.ok
           ? 'model-failed'
           : 'ok'
   return {
@@ -109,7 +110,7 @@ export function adaptCli(view: CliView): Cli {
       detail: view.configManaged.detail,
     },
     tested: view.tested,
-    errorDetail: !view.tested ? null : !view.install.ok ? view.install.detail : !view.auth.ok ? view.auth.detail : !view.model.ok ? view.model.detail : null,
+    errorDetail: !view.tested ? null : !view.install.ok ? view.install.detail : !view.auth.ok ? view.auth.detail : !model.ok ? model.detail : null,
   }
 }
 

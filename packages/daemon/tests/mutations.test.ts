@@ -7,9 +7,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { ClaudeAdapter, type Exec } from '@cocoder/adapters'
 import { loadAssignments, loadPriority, makeGit, openRunStore, readTickets, StopRequestedError, type Adapter, type Git, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
 import { basePrioritiesDir } from '@cocoder/personas'
 import { createOzServer, OZ_CSRF_HEADER, type OzServer } from '../src/index.js'
+import { validFounderCloseout } from './helpers/founder-closeout.js'
 
 const exec = promisify(execFile)
 const g = (cwd: string, args: string[]): Promise<string> => exec('git', ['-C', cwd, ...args]).then((r) => r.stdout.trim())
@@ -22,6 +24,12 @@ const okAdapter: Adapter = {
   build: () => ({ command: 'x', args: [] }),
   preflight: async () => ({ ok: true, checks: [{ name: 'installed', ok: true, detail: 'ok' }] }),
   listModels: async () => ({ canEnumerate: false, models: [], detail: 'test adapter' }),
+}
+const claudeExecOk: Exec = async (command, args) => {
+  const key = [command, ...args].join(' ')
+  if (key === 'claude --version') return { code: 0, stdout: '2.1.156', stderr: '' }
+  if (key === 'claude auth status') return { code: 0, stdout: '{"loggedIn": true}', stderr: '' }
+  return { code: 0, stdout: 'OK\n', stderr: '' }
 }
 interface CliAdapterCalls {
   preflight: number
@@ -394,7 +402,7 @@ describe('Oz mutations + lifecycle', () => {
       ),
       getAdapter: () => okAdapter,
       io: fakeIO(),
-      runHeadless: async () => ({ exitCode: 0, output: 'wrap closeout' }), // headless wrap-up Play: don't shell out in tests
+      runHeadless: async () => ({ exitCode: 0, output: validFounderCloseout() }), // headless wrap-up Play: don't shell out in tests
     })
     return oz
   }
@@ -450,7 +458,7 @@ describe('Oz mutations + lifecycle', () => {
       sessionHost,
       getAdapter: (cli) => cli === 'claude' ? claude : okAdapter,
       io: fakeIO(),
-      runHeadless: async () => ({ exitCode: 0, output: 'wrap closeout' }),
+      runHeadless: async () => ({ exitCode: 0, output: validFounderCloseout() }),
     })
     const workspace = await call(oz, 'POST', '/workspaces', {
       body: {
@@ -527,7 +535,7 @@ describe('Oz mutations + lifecycle', () => {
       sessionHost: fakeHost(),
       getAdapter: () => okAdapter,
       io: controlled.io,
-      runHeadless: async () => ({ exitCode: 0, output: 'wrap closeout' }),
+      runHeadless: async () => ({ exitCode: 0, output: validFounderCloseout() }),
     })
     const unsubscribe = oz.ctx.events.subscribe((event) => events.push(event))
     try {
@@ -615,7 +623,7 @@ describe('Oz mutations + lifecycle', () => {
         return { command: 'x', args: [] }
       } }),
       io: fakeIO(),
-      runHeadless: async () => ({ exitCode: 0, output: 'wrap closeout' }),
+      runHeadless: async () => ({ exitCode: 0, output: validFounderCloseout() }),
     })
 
     const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', ticketId: '0003' } })
@@ -677,7 +685,7 @@ describe('Oz mutations + lifecycle', () => {
         preflight: async () => ({ ok: false, checks: [{ name: 'model', ok: false, detail: 'no model' }] }),
       }),
       io: fakeIO(),
-      runHeadless: async () => ({ exitCode: 0, output: 'wrap closeout' }),
+      runHeadless: async () => ({ exitCode: 0, output: validFounderCloseout() }),
     })
     const beforeIndex = await readFile(join(home, 'cocoder', 'tickets', 'INDEX.md'), 'utf8')
 
@@ -737,7 +745,7 @@ describe('Oz mutations + lifecycle', () => {
       ),
       getAdapter: () => okAdapter,
       io: stopAwaitingDirectiveIO(),
-      runHeadless: async () => ({ exitCode: 0, output: 'wrap closeout' }),
+      runHeadless: async () => ({ exitCode: 0, output: validFounderCloseout() }),
     })
 
     const launch = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
@@ -823,7 +831,7 @@ describe('Oz mutations + lifecycle', () => {
         return { command: 'x', args: [] }
       } }),
       io: fakeIO(),
-      runHeadless: async () => ({ exitCode: 0, output: 'wrap closeout' }),
+      runHeadless: async () => ({ exitCode: 0, output: validFounderCloseout() }),
     })
 
     const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo', task: '  check the launch prompt  ' } })
@@ -848,7 +856,7 @@ describe('Oz mutations + lifecycle', () => {
         return { command: 'x', args: [] }
       } }),
       io: fakeIO(),
-      runHeadless: async () => ({ exitCode: 0, output: 'wrap closeout' }),
+      runHeadless: async () => ({ exitCode: 0, output: validFounderCloseout() }),
     })
 
     const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo', task: '   \n\t  ' } })

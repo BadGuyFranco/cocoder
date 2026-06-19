@@ -45,7 +45,7 @@ describe('priority authoring Plays', () => {
 
   test('Architect Play System priority includes elegance checkpoint contract migration', async () => {
     const { readFile } = await import('node:fs/promises')
-    const text = await readFile(join(repoRoot(), 'cocoder', 'priorities', 'hybrid-plays.md'), 'utf8')
+    const text = await readFile(join(repoRoot(), 'cocoder', 'priorities', 'archive', 'hybrid-plays.md'), 'utf8')
 
     expect(text).toContain('required checkpoints such as the shared elegance checkpoint')
     expect(text).toContain('whether the\n   shared elegance checkpoint is required')

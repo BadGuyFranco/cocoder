@@ -25,6 +25,7 @@ import {
 } from '@cocoder/core'
 import { createOzEventBus, type OzContext, type OzEvent } from '../src/context.js'
 import { launchRun, requestAuthoringPlay } from '../src/launcher.js'
+import { validFounderCloseout } from './helpers/founder-closeout.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -233,7 +234,7 @@ describe('requestAuthoringPlay', () => {
           await writePriority(fixture.home, 'agent-alpha', 'Agent Alpha', 'Launch the agent-authored priority.')
           return { exitCode: 0, output: 'created agent-alpha' }
         }
-        return { exitCode: 0, output: 'wrap closeout' }
+        return { exitCode: 0, output: validFounderCloseout('The requested work was completed.', 'Priority: `agent-alpha` - continue the remaining priority atoms') }
       },
     })
     const bootSha = fixture.ctx.bootSha
@@ -313,7 +314,7 @@ async function makeFixture(options: {
     dashboardLauncher: { current: null, spawn: () => { throw new Error('dashboard must not launch in tests') } },
     runHeadless: options.runHeadless ?? (async (input: HeadlessRunInput) => {
       headlessInputs.push(input)
-      return { exitCode: 0, output: 'no changes' }
+      return { exitCode: 0, output: validFounderCloseout('The requested work was completed.', 'Priority: `human-alpha` - continue the remaining priority atoms') }
     }),
   } as unknown as OzContext
   return { home, store, prompts, headlessInputs, ctx }
