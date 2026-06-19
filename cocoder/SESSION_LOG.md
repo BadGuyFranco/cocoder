@@ -12,6 +12,36 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-19 — **scaffold-template-reconciliation: divergence already reconciled — proven + ARCHIVED; priority set re-ranked (run_155)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [scaffold-template-reconciliation](./priorities/archive/scaffold-template-reconciliation.md) | **Run:** run_155
+**Outcomes:**
+- **Finding (no product change needed):** the divergence the Grok-drafted priority targeted is **already
+  reconciled.** `scaffoldWorkspaceGovernance` (`packages/daemon/src/routes.ts:337`) calls `scaffoldCocoderZone`,
+  a pure create-only copier of `templates/workspace-cocoder/cocoder/` (`packages/core/src/scaffold/scaffold.ts`).
+  The "minimal inline file set" the run_83 note at SESSION_LOG.md:810 warned about is **gone** — the only
+  `writeFile` left in `createWorkspace` is the install-local `.code-workspace` registry, not governance content.
+  That :810 thread (run_83, atom 2 `658f931`) was **closed by the run_141 rewire** (`b1abafa`); it is now stale.
+- **Atom 0 (`5fcaafe`): runnable proof** `node scripts/proof-scaffold-reconciliation.mjs` — scaffolds a throwaway
+  zone with the real primitive and asserts (7/7 PASS, exit 0) that scaffold output **byte-matches** the template
+  (15 governance files, both directions), the conditional onboarding seed is exercised, and the hard-required
+  launch files (`personas/assignments.json`, `priorities/adhoc-session.md`, `AGENTS.md`, `CLAUDE.md`→AGENTS pointer)
+  parse through the **real loaders** (`loadAssignments`, `loadPriority`). Oscar ran it himself; scope respected
+  (scripts/** only).
+- **Disposition: ARCHIVED** → `priorities/archive/scaffold-template-reconciliation.md`. Objective met; single-source
+  invariant now has a one-command standing proof. (F18: a build relaunch would only reaffirm — the remaining value
+  was the runnable proof, now landed.)
+- **Support (this run, founder-directed cleanup pass):** also archived **ui-package-layout-stabilization** (run_154
+  archive-candidate, all clauses met). Re-ranked `order.json` to
+  `[oz-hardening, tickets-review, first-class-model-tiers, adapter-abstraction-hardening, new-primary-root, priority-audit]`.
+  Confirmed `tickets-review`'s run-target dependency is **satisfied** — ticket launch plumbing
+  (`LaunchRunTarget {kind:'ticket'}`, `RunInput.ticketId`, `ticket-fix` sentinel) already exists in
+  `packages/daemon/src/launcher.ts`.
+**Next:** Launch **oz-hardening** (#1) — founder-requested, design calls resolved (run_134), no blocking dependency
+(its workspace-segmentation coordination note is moot now that priority is archived); start with the required owner map.
+
+---
+
 ## 2026-06-19 — **ui-package-layout-stabilization: topology denoise + src/ move + design-ref retirement — archive-candidate (run_154)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [ui-package-layout-stabilization](./priorities/ui-package-layout-stabilization.md) | **Run:** run_154

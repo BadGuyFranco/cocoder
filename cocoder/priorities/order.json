@@ -1,10 +1,8 @@
 [
-  "ui-package-layout-stabilization",
-  "scaffold-template-reconciliation",
-  "adapter-abstraction-hardening",
-  "first-class-model-tiers",
-  "new-primary-root",
   "oz-hardening",
   "tickets-review",
+  "first-class-model-tiers",
+  "adapter-abstraction-hardening",
+  "new-primary-root",
   "priority-audit"
 ]
