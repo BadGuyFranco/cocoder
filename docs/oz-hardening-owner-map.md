@@ -44,7 +44,10 @@ It owns natural-language Oz responses and tool turns. `tryHandleOzAgentTurn()` g
 workspace session (`packages/daemon/src/oz-host.ts:66`). `runToolLoop()` calls `runTurn()` until Oz either
 answers or emits an `OZ_TOOL` line (`packages/daemon/src/oz-host.ts:107`). `buildPrompt()` rebuilds facts
 from priorities, `ctx.store.listRuns()`, and `readTickets()` through `projectOzAwareness()`
-(`packages/daemon/src/oz-host.ts:190`).
+(`packages/daemon/src/oz-host.ts:190`). Drag-to-ask daemon half (run_158):
+`packages/daemon/src/oz-context-pointer.ts` `parsePromptInput()` strips the UI `[context: <type> <id> — <label>]`
+prefix, resolves the pointer to a file path + slug via the loaded awareness snapshot (not body), and injects a
+`## Requested context` section into the prompt — degrading gracefully when unresolved.
 
 Daemon status/feed projection: `packages/daemon/src/routes.ts` and `packages/daemon/src/context.ts`.
 `GET /runs` reads `ctx.store.listRuns()` in `listRuns()` (`packages/daemon/src/routes.ts:415`).
@@ -224,14 +227,13 @@ Run_156 records that `ticket-created` events and the shared awareness projection
 (`cocoder/SESSION_LOG.md:24`). The remaining risk is not ticket parsing; it is ensuring all future status
 read paths keep using `projectOzAwareness()` and the existing SSE/refetch path.
 
-## 8. PROPOSED ATOM SEQUENCE (status after run_157)
+## 8. PROPOSED ATOM SEQUENCE (status after run_158)
 
 1. ✅ Decisions/taxonomy check (run_157 atom 0).
 2. ✅ Shared projection engine for items 2 & 4 (run_156).
 3. ✅ Render quality for item 1 markdown (run_157 atom 1) — `MarkdownBody` in `OzChat.tsx`; 155 UI tests green.
-4. ⛔ Streaming/thinking plumbing for item 1 — **founder-gated.** Codex 0.137.0 probe proves no incremental
-   deltas (`docs/oz-streaming-design.md`). Build only after founder chooses message-level-only vs alternate
-   runtime.
-5. 🔄 Drag-to-ask pointer for item 3 — **UI half done (run_157);** daemon resolution + running-app demo remain.
-6. ⛔ Proof — `scripts/proof-oz-awareness.mjs` harness for items 2 & 4; running-app demos for items 1 & 3.
-   Do not claim launchability from unit/type checks alone.
+4. ✅ Streaming/thinking for item 1 — **resolved (founder, run_157):** message-level progress only; true token
+   streaming deferred (`docs/oz-streaming-design.md`). Thinking stays absent by design.
+5. ✅ Drag-to-ask pointer for item 3 — **code complete (run_157 UI + run_158 daemon).** Running-app demo remains.
+6. ✅ Proof harness for items 2 & 4 (run_158) — `pnpm proof:oz-awareness` (5 PASS, exit 0). Running-app demos
+   for items 1 & 3 remain (founder-eyes only; no buildable atoms left).

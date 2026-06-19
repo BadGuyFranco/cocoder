@@ -12,6 +12,21 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-19 — **Oz hardening: drag-to-ask daemon half + items 2 & 4 proof harness landed (run_158)**
+
+**Persona:** Oscar (lead) + Bob (builder, codex) | **Priority:** [oz-hardening](./priorities/oz-hardening.md) | **Run:** run_158
+**Outcomes:**
+- **Item 3 daemon half (atom 0, `426809a`):** new `packages/daemon/src/oz-context-pointer.ts` — `buildPrompt()`
+  parses `[context: <type> <id> — <label>]` from the UI send seam, resolves id → file path + slug via the loaded
+  `OzAwarenessSnapshot` (not body), injects a `## Requested context` section, degrades gracefully when unresolved;
+  wired through `oz-host.ts`; daemon `oz-agent-chat.test.ts` green.
+- **Items 2 & 4 proof harness (atom 1, `0302df1`):** `scripts/proof-oz-awareness.mjs` / `pnpm proof:oz-awareness` —
+  drives the real compaction + projection engine hermetically; exits 0 with 5 PASS lines.
+- **Disposition:** `continue` — all scriptable atoms landed; only founder-eyes live-app demos remain (items 1 & 3).
+
+**Next:** Launch `new-primary-root` for the onboarding ENGINE (ADR-0020); founder runs two live Oz checks and
+confirms archive when satisfied. Re-run `pnpm proof:oz-awareness` anytime to re-confirm items 2 & 4.
+
 ## 2026-06-19 — **Oz hardening: item 1 markdown + drag-to-ask UI landed; streaming proven NO-GO on codex (run_157)**
 
 **Persona:** Oscar (lead) + Bob (builder, codex) | **Priority:** [oz-hardening](./priorities/oz-hardening.md) | **Run:** run_157
