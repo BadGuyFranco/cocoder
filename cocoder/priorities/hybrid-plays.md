@@ -96,10 +96,10 @@ runner the probabilistic chooser for all Plays: personas may judge when optional
 dispatch/validation/commit/mandatory triggers are owned by the runner or daemon. No builder-recursion, no
 `PlayAssignment[]` multi-binding, and no full Play-body injection into every persona prompt.
 
-## Build progress — disposition: `continue` (run_152)
+## Build progress — disposition: `archive-candidate` (run_153)
 
-Atoms 1–7 done (run_151–152): ADR-0010 taxonomy (founder-accepted), Play contract schema, full base-Play
-migration, per-persona capability manifest, typed Play request lane, mandatory trigger registry
-(wrap-up), and hybrid `dispatchPlay` with injectable deterministic step. Atom 8 remaining: end-to-end
-proof — mandatory trigger + output validation for wrap-up (or ticket close-on-success) and one hybrid
-Play with a real `scripts/*` deterministic step; finalize `deterministicStep` ref→command convention.
+All 8 build atoms complete (run_151–153): ADR-0010 taxonomy (founder-accepted), Play contract schema,
+full base-Play migration, per-persona capability manifest, typed Play request lane, mandatory trigger
+registry (wrap-up), hybrid `dispatchPlay` with injectable deterministic step, and end-to-end real-path
+proof (`node scripts/proof-hybrid-play.mjs`). ARCHITECTURE.md Play-system section added (atom 9). Suite
+410/410 green. **Only gate:** founder archive confirmation.

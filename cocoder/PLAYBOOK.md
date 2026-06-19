@@ -240,11 +240,11 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    unbuilt, needs its own priority). **Absorbs `workspace-onboarding`.**
 
 **Queued after `new-primary-root` (founder go-ahead 2026-06-16, priority-audit run_106 — in `order.json`):**
-- `hybrid-plays` — **CONTINUE (run_152, 2026-06-19).** Atoms 1–7 done: ADR-0010 taxonomy (founder-accepted),
-  Play contract schema, base-Play migration, capability manifest, typed request lane, mandatory trigger registry
-  (wrap-up), hybrid `dispatchPlay`. **Remaining (atom 8):** end-to-end proof — mandatory lifecycle trigger +
-  output validation (wrap-up or ticket close-on-success) and one hybrid Play with a real `scripts/*`
-  deterministic step; finalize `deterministicStep` ref→command convention.
+- `hybrid-plays` — **ARCHIVE-CANDIDATE (run_153, 2026-06-19).** All 8 atoms complete: ADR-0010 taxonomy
+  (founder-accepted), Play contract schema, base-Play migration, capability manifest, typed request lane,
+  mandatory trigger registry (wrap-up), hybrid `dispatchPlay`, real-path proof
+  (`node scripts/proof-hybrid-play.mjs`), ARCHITECTURE.md Play-system section. Suite 410/410 green.
+  **Only gate:** founder archive confirmation.
 - `tickets-review` — **CONTINUE (run_143, 2026-06-18).** All in-scope build items code-complete. Landed
   run_121–122: index hygiene, tickets data layer, 3-tab panel, live-review fixes (`POST /tickets` +
   `NewTicketModal`). Landed run_132: ticket loader (0015), `Run.ticketId` + `launchRun` ticket branch,

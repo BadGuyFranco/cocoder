@@ -12,6 +12,22 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-19 — **hybrid-plays: capstone proof + ARCHITECTURE.md Play system — archive-candidate (run_153)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [hybrid-plays](./priorities/hybrid-plays.md) | **Run:** run_153
+**Outcomes:**
+- Atom 0 (`b497920`): `code-review` hybrid preflight (`scripts/checks/code-review-preflight.mjs`), `deterministicStep`
+  ref→command convention, `outputValidator` wiring on the wrap-up validation path.
+- Atom 2 (`6a68d74`): real-path proof harness `node scripts/proof-hybrid-play.mjs` — mandatory wrap-up trigger +
+  hybrid code-review gate through a real adapter/LLM (not mocked runners).
+- Atom 9/doc (`91c1c53`): ARCHITECTURE.md Play-system section (derive-from-owners).
+- **Disposition: `archive-candidate`** — all 8 build atoms + architecture doc landed; suite 410/410; end-to-end
+  proven via the proof harness.
+**Next:** Founder archive confirmation for `hybrid-plays`; then launch `ui-package-layout-stabilization` for
+founder/Oscar Objective scoping (#1 in `order.json`).
+
+---
+
 ## 2026-06-19 — **hybrid-plays: atoms 2–7 — Play contract, manifest, request lane, triggers, hybrid dispatch (run_152)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [hybrid-plays](./priorities/hybrid-plays.md) | **Run:** run_152
