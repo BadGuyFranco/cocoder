@@ -2,7 +2,7 @@
   "oz-hardening",
   "new-primary-root",
   "first-class-model-tiers",
+  "adapter-abstraction-hardening",
   "tickets-review",
-  "priority-audit",
-  "adapter-abstraction-hardening"
+  "priority-audit"
 ]
