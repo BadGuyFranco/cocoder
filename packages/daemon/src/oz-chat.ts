@@ -1,6 +1,6 @@
-import type { Run } from '@cocoder/core'
 import type { OzContext } from './context.js'
 import { launchRun as launchRunOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestNudgeRun as nudgeRunOp, requestOzRepair as repairOzOp, requestStopRun as stopRunOp, requestSupportCommitRun as supportCommitRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
+import { projectOzAwareness, type OzAwarenessRun } from './oz-awareness.js'
 import { tryHandleOzAgentTurn } from './oz-host.js'
 
 const ADHOC_PRIORITY_ID = 'adhoc-session'
@@ -28,8 +28,8 @@ export interface OzChatAction {
   readonly workspaceId?: string
   readonly priorityId?: string
   readonly runId?: string
-  readonly run?: Run
-  readonly runs?: readonly Run[]
+  readonly run?: OzAwarenessRun
+  readonly runs?: readonly OzAwarenessRun[]
   readonly closed?: readonly string[]
   readonly sessionRef?: string
   readonly committedPaths?: readonly string[]
@@ -205,7 +205,8 @@ export async function executeOzCommand(ctx: OzContext, workspaceId: string | und
   }
 
   if (command.runId) {
-    const run = ctx.store.getRun(command.runId)
+    const awareness = projectOzAwareness({ priorities: [], runs: ctx.store.listRuns(), tickets: [] })
+    const run = awareness.recentRuns.find((candidate) => candidate.id === command.runId)
     if (!run) {
       return chatResult(404, { reply: `Could not find ${command.runId}.`, command: 'status', ok: false })
     }
@@ -217,7 +218,8 @@ export async function executeOzCommand(ctx: OzContext, workspaceId: string | und
     })
   }
 
-  const runs = ctx.store.listRuns(workspaceId ? { workspaceId } : undefined)
+  const awareness = projectOzAwareness({ priorities: [], runs: ctx.store.listRuns(workspaceId ? { workspaceId } : undefined), tickets: [] })
+  const runs = awareness.recentRuns
   return chatResult(200, {
     reply: runsSummary(runs),
     command: 'status',
@@ -388,11 +390,11 @@ function stringArray(input: unknown): string[] {
   return Array.isArray(input) ? input.filter((item): item is string => typeof item === 'string') : []
 }
 
-function runSummary(run: Run): string {
+function runSummary(run: OzAwarenessRun): string {
   return `${run.id} is ${run.status} on ${run.priorityId}.`
 }
 
-function runsSummary(runs: readonly Run[]): string {
+function runsSummary(runs: readonly OzAwarenessRun[]): string {
   if (runs.length === 0) return 'No runs found.'
   const shown = runs.slice(0, 5).map((run) => `${run.id} ${run.status} ${run.priorityId}`)
   const more = runs.length > shown.length ? `; +${runs.length - shown.length} more` : ''

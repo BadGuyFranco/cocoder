@@ -7,12 +7,12 @@ import {
   runHeadlessProcess,
   type Assignments,
   type ResolvedPersona,
-  type Run,
 } from '@cocoder/core'
 import { basePersonasDir } from '@cocoder/personas'
 import type { OzContext } from './context.js'
+import { projectOzAwareness, type OzAwarenessRun, type OzAwarenessSnapshot } from './oz-awareness.js'
 import type { OzChatAction, OzChatResult, OzCommandExecutor, OzExecutableCommand } from './oz-chat.js'
-import { readPriorities, type PrioritySummary } from './priority-order.js'
+import { readPriorities, readTickets } from './priority-order.js'
 import { findWorkspace, type RegistryWorkspace } from './registry.js'
 
 const TRANSCRIPT_LIMIT = 20
@@ -187,13 +187,17 @@ async function runTurn(ctx: OzContext, target: OzTarget, session: OzSession, inp
 
 async function buildPrompt(ctx: OzContext, target: OzTarget, transcript: readonly TranscriptEntry[], input: TurnInput): Promise<string> {
   const priorities = await readPriorities(prioritiesDir(target.workspace.path), PRIORITIES_CAP)
-  const runs = ctx.store.listRuns({ workspaceId: target.workspace.id })
+  const awareness = projectOzAwareness({
+    priorities,
+    runs: ctx.store.listRuns({ workspaceId: target.workspace.id }),
+    tickets: await readTickets(ticketsDir(target.workspace.path)),
+  })
   const body = input.kind === 'founder' ? input.text.trim() : input.result
   return [
     '## Oz persona',
     target.persona.body.trim(),
     '## Facts digest',
-    factsDigest(priorities, runs),
+    factsDigest(awareness),
     '## Recent transcript',
     formatTranscript(transcript),
     turnInputHeading(input),
@@ -369,15 +373,15 @@ async function executeTool(command: OzExecutableCommand, execute: OzCommandExecu
   }
 }
 
-function factsDigest(priorities: readonly PrioritySummary[], runs: readonly Run[]): string {
-  const priorityLines = priorities.length === 0
+function factsDigest(awareness: OzAwarenessSnapshot): string {
+  const priorityLines = awareness.priorities.length === 0
     ? ['- none']
-    : priorities.slice(0, 10).map((priority) => `- ${priority.id}: ${priority.title}`)
-  const runLines = runs.length === 0 ? ['- none'] : runs.slice(0, 10).map(formatRun)
-  return [`Priorities (${priorities.length}):`, ...priorityLines, '', `Runs (${runs.length}):`, ...runLines].join('\n')
+    : awareness.priorities.slice(0, 10).map((priority) => `- ${priority.id}: ${priority.title}`)
+  const runLines = awareness.recentRuns.length === 0 ? ['- none'] : awareness.recentRuns.slice(0, 10).map(formatRun)
+  return [`Priorities (${awareness.priorities.length}):`, ...priorityLines, '', `Runs (${awareness.recentRuns.length}):`, ...runLines].join('\n')
 }
 
-function formatRun(run: Run): string {
+function formatRun(run: OzAwarenessRun): string {
   const endedAt = run.endedAt === null ? 'null' : new Date(run.endedAt).toISOString()
   return `- ${run.id}: ${run.status} priority=${run.priorityId} createdAt=${new Date(run.createdAt).toISOString()} endedAt=${endedAt}`
 }
@@ -417,6 +421,10 @@ function personasDir(workspacePath: string): string {
 
 function prioritiesDir(workspacePath: string): string {
   return join(workspacePath, 'cocoder', 'priorities')
+}
+
+function ticketsDir(workspacePath: string): string {
+  return join(workspacePath, 'cocoder', 'tickets')
 }
 
 function chatResult(status: number, body: OzChatResult['body']): OzChatResult {
