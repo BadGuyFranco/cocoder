@@ -1173,17 +1173,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         store.recordEvent({ runId: run.id, type: 'wrapup', data: { atoms: n, forced: false } })
         log(`oscar wrapped up after ${n} atom(s)`)
       }
-      if (pickup && pickup.trim() !== '') {
-        if (oscarDriver.kind === 'headless') {
-          store.recordEvent({ runId: run.id, type: 'wrapup-delivery-skipped', data: { reason: 'headless-oscar' } })
-        } else {
-          const deliveryPath = await io.writeRunArtifact(runDir, 'wrapup-delivery.md', buildWrapupDelivery(run.id, pickup))
-          await oscarDriver.show().catch(() => {})
-          await oscarDriver.send(buildArtifactDispatch('WRAP-UP READY', deliveryPath)).catch(() => {})
-          store.recordEvent({ runId: run.id, type: 'wrapup-delivery-dispatch', data: { ref: oscarDriver.refId, path: deliveryPath } })
-        }
-      }
-      await refreshStatus('wrapped', n, null, 'wrap-up delivered; Oscar remains reachable for founder questions and in-scope Surface-A edits until explicit teardown')
+      await refreshStatus('wrapped', n, null, 'wrap-up prepared; final delivery pending landing outcome')
       break
     }
 
@@ -1266,10 +1256,17 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     const nCommits = committedShas.length
     const outcome = `✅ COMMITTED on \`${runBranch}\` — ${nCommits} commit(s) on the active branch (no landing step; work is on the branch by construction). ${flagged}`
     store.recordEvent({ runId: run.id, type: 'landing-outcome', data: { landed: true, status, outOfScope, outcome } })
-    if (pickup && pickup.trim() !== '' && oscarDriver.kind !== 'headless') {
-      const outcomePath = await io.writeRunArtifact(runDir, 'landing-outcome-delivery.md', buildLandingOutcome(run.id, outcome))
-      await oscarDriver.show().catch(() => {})
-      await oscarDriver.send(buildArtifactDispatch('LANDING OUTCOME', outcomePath)).catch(() => {})
+    if (pickup && pickup.trim() !== '') {
+      await io.writeRunArtifact(runDir, 'landing-outcome-delivery.md', buildLandingOutcome(run.id, outcome))
+      if (oscarDriver.kind === 'headless') {
+        store.recordEvent({ runId: run.id, type: 'wrapup-delivery-skipped', data: { reason: 'headless-oscar' } })
+      } else {
+        const deliveryPath = await io.writeRunArtifact(runDir, 'wrapup-delivery.md', buildWrapupDelivery(run.id, pickup, outcome))
+        await oscarDriver.show().catch(() => {})
+        await oscarDriver.send(buildArtifactDispatch('WRAP-UP READY', deliveryPath)).catch(() => {})
+        store.recordEvent({ runId: run.id, type: 'wrapup-delivery-dispatch', data: { ref: oscarDriver.refId, path: deliveryPath } })
+      }
+      await refreshStatus('wrapped', n, null, 'wrap-up delivered after landing outcome; Oscar remains reachable for founder questions and in-scope Surface-A edits until explicit teardown')
     }
   }
 

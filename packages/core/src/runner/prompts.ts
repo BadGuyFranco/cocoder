@@ -424,16 +424,21 @@ by hand, and never touch the Oz daemon:
 That terminates and closes only this run's sessions (the same operation Oz's teardown button uses).`
 }
 
-export function buildWrapupDelivery(runId: string, brief: string): string {
+export function buildWrapupDelivery(runId: string, brief: string, landingOutcome?: string): string {
+  const landingSection = landingOutcome
+    ? `\n**Landing Outcome**\n\n${landingOutcome}\n`
+    : ''
   return `WRAP-UP READY for ${runId}.
 
-Deliver this founder-facing wrap-up now, in plain English, then wait. Do not close panes, do not run
-teardown, and do not ask for teardown. The founder may ask questions, request a priority update or other
-governance/doc edit, or say "kill" / "tear down" explicitly. If the founder asks for a Surface-A edit
-after this wrap-up, make it within your support scope; do not refuse because the run already wrapped.
-After such an edit, run \`cocoder oz commit-support ${runId}\` yourself to commit it with a receipt; if
-that command is unavailable or fails, report the exact blocker and the edited paths.
+Deliver this founder-facing wrap-up now, in plain English, including the landing outcome below when
+present. Then wait. Do not close panes, do not run teardown, and do not ask for teardown. The founder may
+ask questions, request a priority update or other governance/doc edit, or say "kill" / "tear down"
+explicitly. If the founder asks for a Surface-A edit after this wrap-up, make it within your support
+scope; do not refuse because the run already wrapped. After such an edit, run
+\`cocoder oz commit-support ${runId}\` yourself to commit it with a receipt; if that command is
+unavailable or fails, report the exact blocker and the edited paths.
 
+${landingSection}
 ${brief}`
 }
 
@@ -441,11 +446,10 @@ export function buildArtifactDispatch(kind: string, path: string): string {
   return `${kind}: read ${path} and follow it now.`
 }
 
-/** The AUTHORITATIVE landing outcome (F19), delivered AFTER integration so it cannot misreport. The
- *  narrative wrap is a prediction; this is the verified result — whether work reached trunk, what is
- *  held back, and how to recover if it did not. Derived from settled run state, never asserted. */
+/** The AUTHORITATIVE landing outcome (F19), written AFTER integration so it cannot misreport. The
+ *  narrative wrap is a prediction until this is known; final founder delivery includes this receipt. */
 export function buildLandingOutcome(runId: string, outcome: string): string {
-  return `LANDING OUTCOME for ${runId} — verified by CoCoder after integration. This is the authoritative result (not the wrap's prediction); relay it to the founder plainly:
+  return `LANDING OUTCOME for ${runId} — verified by CoCoder after integration. This is the authoritative commit outcome:
 
 ${outcome}`
 }

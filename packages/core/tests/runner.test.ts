@@ -1253,7 +1253,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(wrap?.data).toEqual({ atoms: 0, forced: false })
   })
 
-  test('visible Oscar wrap and landing delivery use short artifact pointers, not multiline pane sends', async () => {
+  test('visible Oscar wrap is delivered after landing outcome as the final short artifact pointer', async () => {
     const store = openRunStore(':memory:')
     const artifactWrites: Array<{ runDir: string; fileName: string; contents: string }> = []
     const sends: string[] = []
@@ -1272,15 +1272,14 @@ describe('runRun (multi-atom loop)', () => {
     )
 
     expect(result.status).toBe('completed')
-    expect(sends).toEqual([
-      'WRAP-UP READY: read /runs/run_1/wrapup-delivery.md and follow it now.',
-      'LANDING OUTCOME: read /runs/run_1/landing-outcome-delivery.md and follow it now.',
-    ])
+    expect(sends).toEqual(['WRAP-UP READY: read /runs/run_1/wrapup-delivery.md and follow it now.'])
     expect(sends.every((text) => !text.includes('\n'))).toBe(true)
-    expect(artifactWrites.map((w) => w.fileName)).toEqual(['wrapup-delivery.md', 'landing-outcome-delivery.md'])
-    expect(artifactWrites[0]?.contents).toContain('WRAP-UP READY for run_1.')
-    expect(artifactWrites[0]?.contents).toContain('Founder closeout\nwith detail')
-    expect(artifactWrites[1]?.contents).toContain('LANDING OUTCOME for run_1')
+    expect(artifactWrites.map((w) => w.fileName)).toEqual(['landing-outcome-delivery.md', 'wrapup-delivery.md'])
+    expect(artifactWrites[0]?.contents).toContain('LANDING OUTCOME for run_1')
+    expect(artifactWrites[1]?.contents).toContain('WRAP-UP READY for run_1.')
+    expect(artifactWrites[1]?.contents).toContain('**Landing Outcome**')
+    expect(artifactWrites[1]?.contents).toContain('COMMITTED on `trunk`')
+    expect(artifactWrites[1]?.contents).toContain('Founder closeout\nwith detail')
     const delivery = store.listEvents(result.runId).find((e) => e.type === 'wrapup-delivery-dispatch')
     expect(delivery?.data).toMatchObject({ ref: 'surface:1', path: '/runs/run_1/wrapup-delivery.md' })
   })
