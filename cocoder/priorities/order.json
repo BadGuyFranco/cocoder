@@ -1,5 +1,6 @@
 [
   "orchestration-pipeline-simplification",
+  "deb-follows-oscar",
   "drift-audit",
   "new-primary-root",
   "first-class-model-tiers",

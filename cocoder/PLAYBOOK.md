@@ -226,19 +226,21 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    landed including the all-persona Routing Guide (`docs/oz-improvement-routing.md`); owner map, priority
    composer merge, overlap closeout, and enforcer pins green. Founder archive confirmation pending;
    follow-on overlaps tracked as tickets 0020/0021/0022.
-2. `drift-audit` — **CONTINUE (run_163).** Build complete (run_161); run_163 re-verified proof green and 25
+2. `deb-follows-oscar` — **NEW.** Make Deb a first-class, runner-driven watcher of Oscar: event-awakened,
+   non-blocking, Oscar-only nudge authority, and no second orchestration lane.
+3. `drift-audit` — **CONTINUE (run_163).** Build complete (run_161); run_163 re-verified proof green and 25
    stale-path findings unchanged. **Founder-gated:** ratify a subset + apply materialization choice (new records
    vs in-place fixes) + ratify→apply landing in `cocoder/**`. Owner map at `docs/drift-audit-ownermap.md`.
-3. `new-primary-root` — **CONTINUE (run_160).** Onboarding rebuild complete; one-command proof
+4. `new-primary-root` — **CONTINUE (run_160).** Onboarding rebuild complete; one-command proof
    (`node scripts/proof-onboard-existing.mjs`); run_159 model defects resolved + `main` fully green.
    **Founder-gated live proof remains:** external-repo onboard-existing end-to-end (Objective a). Drift
    reframe split to `drift-audit` (run_160/161); report half of Objective (b) done there — apply half
    founder-gated on that priority. No buildable atoms in an ordinary loop here.
-4. `first-class-model-tiers` — **Grok draft; requires founder ownership beat before launch.** General model
+5. `first-class-model-tiers` — **Grok draft; requires founder ownership beat before launch.** General model
    tier vocabulary across assignments, dispatch, and UI.
-5. `adapter-abstraction-hardening` — **Grok draft; requires founder ownership beat before launch.** Reduce
+6. `adapter-abstraction-hardening` — **Grok draft; requires founder ownership beat before launch.** Reduce
    duplication in the CLI adapter layer (ADR-0006).
-6. `tickets-review` — **CONTINUE (run_143).** Build code-complete; ticket launch plumbing satisfied
+7. `tickets-review` — **CONTINUE (run_143).** Build code-complete; ticket launch plumbing satisfied
    (`LaunchRunTarget {kind:'ticket'}`, `RunInput.ticketId`, `ticket-fix` sentinel in `launcher.ts`).
    **Archive gate:** founder live proof — Tickets tab **Launch** on ticket **0003**; confirm fix run completes
    and 0003 moves to `closed/` with INDEX updated.
