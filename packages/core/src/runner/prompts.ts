@@ -430,11 +430,12 @@ export function buildWrapupDelivery(runId: string, brief: string, landingOutcome
     : ''
   return `WRAP-UP READY for ${runId}.
 
-Deliver this founder-facing wrap-up now, in plain English, including the landing outcome below when
-present. Then wait. Do not close panes, do not run teardown, and do not ask for teardown. The founder may
-ask questions, request a priority update or other governance/doc edit, or say "kill" / "tear down"
-explicitly. If the founder asks for a Surface-A edit after this wrap-up, make it within your support
-scope; do not refuse because the run already wrapped. After such an edit, run
+Deliver the validated founder-facing wrap-up below now. Preserve the closeout headings, order, and final
+\`I'm standing by...\` line exactly; do not summarize, reformat, or paraphrase the closeout brief. Include
+the landing outcome section when present. Then wait. Do not close panes, do not run teardown, and do not
+ask for teardown. The founder may ask questions, request a priority update or other governance/doc edit,
+or say "kill" / "tear down" explicitly. If the founder asks for a Surface-A edit after this wrap-up, make
+it within your support scope; do not refuse because the run already wrapped. After such an edit, run
 \`cocoder oz commit-support ${runId}\` yourself to commit it with a receipt; if that command is
 unavailable or fails, report the exact blocker and the edited paths.
 
