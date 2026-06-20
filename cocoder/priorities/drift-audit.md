@@ -67,11 +67,13 @@ founder gate, scope, and outputs; the per-phase engine logic + the ordinary-prio
   build, distinct from this build priority.
 
 ## Suggested Next Action
-**Disposition: `continue` (run_161).** Atoms 0–7 complete — deterministic pipeline shipped, proof-harnessed
-(`node scripts/proof-drift-audit.mjs`), live dogfood report with **25 verified stale-path findings**
+**Disposition: `continue` (run_162).** Build complete since run_161 — no build atoms this run; re-verified
+`node scripts/proof-drift-audit.mjs` green and live dogfood still yields **25 verified stale-path findings**
 (Objective verification (b) report half).
 
-**Next launch:** founder decides apply materialization (new amendment/ticket records under `cocoder/**` vs
-precise in-place edits to stale governance files), ratifies a subset of the 25 dogfood findings, then one
-ratify→apply atom lands them via `applyRatifiedDriftWrites`. **Deferred (not blocking):** agentic ADR-content
-drift (retired *patterns*, not just gone paths) — needs deep-read reality enrichment, out of scope here.
+**Next launch:** founder ratifies a subset of the 25 dogfood findings and chooses apply materialization
+(new amendment/ticket records under `cocoder/**` vs precise in-place edits to stale governance files), then
+one ratify→apply atom lands them via `applyRatifiedDriftWrites`. Regenerate the report with
+`node scripts/run-drift-audit.mjs "/Volumes/NAS LOCAL/CoCoder" /tmp/drift-report`. **Deferred (not blocking):**
+agentic ADR-content drift (retired *patterns*, not just gone paths) — needs deep-read reality enrichment, out
+of scope here.

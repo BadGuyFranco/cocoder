@@ -222,10 +222,9 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   stands; no engine reversal. Decision record at `priorities/archive/play-dispatch-boundary.md`.
 
 **Active build priorities (launchable; `order.json` order — the `priorities/` directory is the live index):**
-1. `drift-audit` — **CONTINUE (run_161).** Deterministic P1–P6 pipeline built in `packages/core/src/drift/`;
-   `node scripts/proof-drift-audit.mjs` green; live dogfood produced 25 verified stale-path findings (Objective
-   verification (b) report half). **Founder-gated:** apply materialization choice (new records vs in-place fixes)
-   + ratify→apply landing in `cocoder/**`. Owner map at `docs/drift-audit-ownermap.md`.
+1. `drift-audit` — **CONTINUE (run_162).** Build complete (run_161); run_162 re-verified proof green and 25
+   stale-path findings unchanged. **Founder-gated:** ratify a subset + apply materialization choice (new records
+   vs in-place fixes) + ratify→apply landing in `cocoder/**`. Owner map at `docs/drift-audit-ownermap.md`.
 2. `new-primary-root` — **CONTINUE (run_160).** Onboarding rebuild complete; one-command proof
    (`node scripts/proof-onboard-existing.mjs`); run_159 model defects resolved + `main` fully green.
    **Founder-gated live proof remains:** external-repo onboard-existing end-to-end (Objective a). Drift
