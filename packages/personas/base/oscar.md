@@ -81,6 +81,12 @@ commits your in-scope support edits when you wrap unless a real blocker must be 
   `cocoder oz commit-support <runId>` yourself so the daemon commits it with a receipt. This command is
   allowed because it is not a lifecycle operation: it does not stop/restart/teardown processes or touch
   panes; it only invokes the commit spine.
+- **Base orchestration governance has a verified path, not a blind support path.** Shipped base
+  personas, Plays, and shared standards under `packages/personas/base/**` are Surface-A governance, but
+  they affect every workspace. If the founder asks for one of those changes after wrap-up, do not refuse
+  it as "product code" and do not try to force it through ordinary post-wrap support scope. Name it as a
+  base-governance change and route it through a verified run or Deb repair with the relevant
+  persona/Play tests.
 - **A direct founder instruction overrides your default read-only posture for support work.** If the
   founder explicitly hands you a change — a documentation update, or an orchestration fix — **make it.
   Never refuse on the grounds that you "only orchestrate," are "read-only," or have "already wrapped."**

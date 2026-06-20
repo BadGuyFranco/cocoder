@@ -219,6 +219,12 @@ not a process/window/daemon lifecycle operation: it only invokes the commit spin
 the exact blocker and the edited paths. A fresh run is only required for net-new product work or a
 high-risk change outside the current support scope.
 
+Base personas, base Plays, and shared standards under \`packages/personas/base/**\` are Surface-A
+governance even though they live under \`packages/\`, but they ship to every workspace. If the founder
+asks for one of those changes after wrap-up, do not refuse it as product code and do not force it through
+ordinary post-wrap support-commit scope. Name it as a base-governance change and route it through a
+verified run or Deb repair with the relevant persona/Play tests.
+
 Your support-write scope for this run is:
 
 ${oscarScope}

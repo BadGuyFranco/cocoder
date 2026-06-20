@@ -126,6 +126,16 @@ describe('basePersonasDir', () => {
     expect(scope).toEqual(expect.arrayContaining(['cocoder/priorities/**', 'cocoder/tickets/**', 'docs/**', 'ARCHITECTURE.md']))
   })
 
+  test('Oscar routes base persona and Play governance through verified repair, not blind support scope', () => {
+    const text = readFileSync(join(basePersonasDir(), 'oscar.md'), 'utf8')
+    const normalized = singleLine(text)
+
+    expect(normalized).toContain('packages/personas/base/**')
+    expect(normalized).toContain('are Surface-A governance')
+    expect(normalized).toContain('do not refuse it as "product code"')
+    expect(normalized).toContain('route it through a verified run or Deb repair')
+  })
+
   test('Oscar offers adversarial plan review before substantial build plans', () => {
     const text = readFileSync(join(basePersonasDir(), 'oscar.md'), 'utf8')
     const normalized = singleLine(text)

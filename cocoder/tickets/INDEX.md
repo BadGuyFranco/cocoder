@@ -14,7 +14,6 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 | ID | Title | Type | Priority | Owner |
 |---|---|---|---|---|
 | [0020](./open/0020-stale-governance-test-archived-hybrid-plays.md) | priority-authoring-plays test reads an archived priority path (hybrid-plays.md) and fails | bug | tickets-review | oscar run_154 |
-| [0019](./open/0019-support-scope-excludes-base-play-governance.md) | Support scope excludes base persona/Play governance | task | tickets-review | oscar run_152 |
 | [0013](./open/0013-daemon-auto-rebuild-after-runs.md) | Auto-rebuild + reload the Oz daemon after a run changes packages/daemon (no manual restart) | task | tickets-review | oscar run_122 |
 | [0003](./open/0003-public-docs-v1-stale.md) | Public docs/ tree is v1-stale (commands, PRIORITIES.md, cocoder/local, routes) | task | none | founder-session |
 
@@ -22,6 +21,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0019](./closed/0019-support-scope-excludes-base-play-governance.md) | Support scope excludes base persona/Play governance | task | 2026-06-20 | `documentation` Play now requires the shared elegance checkpoint; base persona/Play governance routes through verified run or Deb repair, not blind support scope |
 | [0005](./closed/0005-persona-file-memory-migrations.md) | Migrate orchestrator session memory into persona/standards files | task | 2026-06-19 | Items 3-5 migrated to governed base files in run_148; item 2 added to `cocoder/AGENTS.md`; item 1 not actioned because Oscar prompt deltas must not duplicate daemon run-launch/process contracts |
 | [0018](./closed/0018-enforce-verify-gate-commit-contract.md) | Enforce the agent-edits-land-only-through-the-verify-gate contract (gate-bypass guard) | task | 2026-06-19 | Not actioned: triggering commits were correct/green/founder-kept (not a failure); any enforcement reintroduces commit-withholding (ADR-0023/F21 anti-pattern); detection-only is governance-of-governance (F5). No guard warranted |
 | [0017](./closed/0017-promote-founder-brief-single-source-rule-to-shared-standards.md) | Promote the founder-brief single-source rule into shared-standards | task | 2026-06-19 | Rule promoted to shared standards; contract enforcer prevents live prompt/runtime/test restatements |

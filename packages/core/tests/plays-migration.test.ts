@@ -22,6 +22,7 @@ const governanceCheckpointPlayIds = [
   'archive-priority',
   'create-priority',
   'create-ticket',
+  'documentation',
   'edit-priority',
   'wrap-up',
 ] as const

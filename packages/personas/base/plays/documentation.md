@@ -9,6 +9,8 @@ allowedCallers:
   - oscar
   - bob
   - deb
+requiredCheckpoints:
+  - shared elegance checkpoint
 writeScope:
   - docs/**
   - **/*.md
