@@ -1,10 +1,24 @@
-import { readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { readdirSync, readFileSync } from 'node:fs'
+import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const read = (rel: string): string => readFileSync(join(repoRoot, rel), 'utf8')
+
+const liveMarkdownFiles = (rel = ''): string[] => {
+  const skipDirs = new Set(['.git', 'local', 'node_modules', 'dist', 'coverage', 'zArchive'])
+  const walk = (absDir: string): string[] =>
+    readdirSync(absDir, { withFileTypes: true }).flatMap((entry) => {
+      if (entry.isDirectory()) {
+        return skipDirs.has(entry.name) ? [] : walk(join(absDir, entry.name))
+      }
+      if (!entry.isFile() || !entry.name.endsWith('.md')) return []
+      return relative(repoRoot, join(absDir, entry.name))
+    })
+
+  return walk(join(repoRoot, rel)).map((path) => path.replaceAll('\\', '/'))
+}
 
 const founderCloseoutContract = (): { sections: string[]; finalLine: string } => {
   const text = read('packages/personas/base/plays/wrap-up.md')
@@ -90,6 +104,42 @@ describe('orchestration contract ownership', () => {
     expect(routes).toContain('composePriorityMarkdown')
     expect(routes).not.toMatch(/function\s+composePriorityMarkdown/)
     expect(routes).not.toMatch(/return `---\\nid: \$\{input\.id\}\\ntitle: \$\{input\.title\}\\n---/)
+  })
+
+  test('the all-persona routing guide owns the live target taxonomy', () => {
+    const guide = read('docs/oz-improvement-routing.md')
+    const targets = [
+      'cocoder-product',
+      'workspace-shared',
+      'workspace-local',
+      'install-local',
+      'upstream-candidate',
+    ]
+
+    expect(guide).toContain('# Routing Guide')
+    expect(guide).toContain('Oz, Oscar, Deb, and Bob')
+    expect(guide).toContain('## First Cut: Product Or Workspace')
+    expect(guide).toContain('## Kind Of Change')
+    expect(guide).toContain('Product')
+    expect(guide).toContain('Workspace')
+    expect(targets.filter((target) => guide.includes(`\`${target}\``))).toEqual(targets)
+    expect(guide).toContain('ADR-0012 portability test')
+  })
+
+  test('shared standards point at the single live routing guide instead of restating it', () => {
+    const sharedStandards = read('packages/personas/base/shared-standards.md')
+    const routingGuideOwners = liveMarkdownFiles()
+      .filter((rel) => !rel.startsWith('cocoder/zArchive/'))
+      .filter((rel) => {
+        const text = read(rel)
+        return /^# .*Routing Guide\b/m.test(text) || /routing[-_ ]guide/i.test(rel)
+      })
+
+    expect(routingGuideOwners).toEqual(['docs/oz-improvement-routing.md'])
+    expect(sharedStandards).toContain('docs/oz-improvement-routing.md')
+    expect(sharedStandards).toContain('the single Routing Guide')
+    expect(sharedStandards).not.toContain('| `cocoder-product` |')
+    expect(sharedStandards).not.toContain('| `workspace-shared` |')
   })
 
   test('design-ref is guarded as a historical reference, not a live app source', () => {

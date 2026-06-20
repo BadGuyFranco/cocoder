@@ -79,6 +79,8 @@ surface that can emit the behavior, and the tests or fixtures that pin it. This 
 prompts, Plays, runner protocol, status projections, handoff text, daemon/UI control surfaces, and
 founder-facing closeout.
 
+Route product/workspace placement through `docs/oz-improvement-routing.md`, the single Routing Guide.
+
 Fix the owner and align its consumers. Do not create a parallel contract in a new prompt. A prompt-only
 change is incomplete when the old behavior can also come from runner status, daemon/UI text, stored
 pickup briefs, or tests that still assert it.

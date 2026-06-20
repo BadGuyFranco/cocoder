@@ -1,5 +1,7 @@
 # Orchestration Contract Ownership
 
+Routing note: [`docs/oz-improvement-routing.md`](./oz-improvement-routing.md) is the runtime routing layer; this owner map is its drill-down.
+
 ## Status (run_149, 2026-06-19)
 
 This inventory landed through the verify gate (`036e618`). The structural repair atoms — governing rule
