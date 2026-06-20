@@ -4,9 +4,10 @@
 // fake "Bob" that writes real files into the active checkout (no worktree).
 //
 // Proves: (1) a verified atom commits directly onto the active branch — no worktree dir, run row has
-// null worktree/branch, integration is vacuously `merged`, status `completed`; (2) the scoped dirty
-// guard refuses a launch when in-scope WIP is uncommitted, committing nothing; (3) out-of-scope changes
-// are held back (uncommitted, surfaced) while in-scope work still lands; (4) a rejected atom is
+// null worktree/branch, integration is vacuously `merged`, status `completed`; (2) by default the founder
+// is trusted — uncommitted in-scope WIP is snapshotted to its own founder-attributed commit and the
+// launch PROCEEDS (strictPreRunDirt restores the old hard-stop refusal); (3) out-of-scope changes are
+// committed and flagged (scope is advisory — the spine never withholds); (4) a rejected atom is
 // quarantined in place without touching the founder's pre-existing out-of-scope file.
 import { execFile } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
@@ -152,6 +153,7 @@ async function runDirect(opts: {
   store?: RunStore
   verdicts?: { verdict: 'pass' | 'fail'; reason: string }[]
   directives?: Directive[]
+  strictPreRunDirt?: boolean
 }) {
   let bobRefId: string | null = null
   let bobCwd: string | null = null
@@ -199,6 +201,7 @@ async function runDirect(opts: {
       sharedStandards: 'STANDARDS',
       engineHome: home,
       runsRoot,
+      strictPreRunDirt: opts.strictPreRunDirt,
       // no `isolation` → direct mode (the new default)
     },
   )
@@ -307,14 +310,40 @@ describe('runRun direct mode — the default (ADR-0023 §2, live git)', () => {
     expect((await readPortableEvents(home, 1, run.id)).map((e) => e.type)).toEqual(expect.arrayContaining(['builder-failed', 'run-end']))
   })
 
-  test('scoped dirty guard refuses the launch on uncommitted in-scope WIP; commits nothing', async () => {
-    // Founder has uncommitted in-scope WIP in the active checkout.
+  test('founder WIP (in-scope dirt) is snapshotted to its own commit and the launch PROCEEDS', async () => {
+    // Founder has uncommitted in-scope WIP in the active checkout (the default: trusted, never blocked).
+    await mkdir(join(home, 'packages'), { recursive: true })
+    await writeFile(join(home, 'packages', 'wip.ts'), 'export const wip = true\n')
+
+    const { result, store } = await runDirect({
+      bobWrites: async (cwd) => {
+        await writeFile(join(cwd, 'packages', 'feature.ts'), 'export const feature = 42\n')
+      },
+    })
+
+    // The launch proceeded and the agent's atom landed.
+    expect(result.status).toBe('completed')
+    // The founder's WIP was preserved as its OWN founder-attributed snapshot commit (not refused, not
+    // folded into the agent's atom commit).
+    const event = store.listEvents(result.runId).find((e) => e.type === 'founder-presnapshot')!
+    const snapshotSha = (event.data as { sha: string }).sha
+    expect(await g(home, ['log', '-1', '--format=%s', snapshotSha])).toBe('founder: pre-run WIP snapshot')
+    expect(await g(home, ['show', '--stat', snapshotSha])).toContain('packages/wip.ts')
+    // wip.ts is committed by the snapshot, feature.ts by the agent atom — never mixed.
+    expect(await g(home, ['log', '-1', '--format=%s', snapshotSha, '--', 'packages/feature.ts'])).toBe('')
+    // Clean tree after the run; the founder's file content survives.
+    expect(await g(home, ['status', '--porcelain', '--untracked-files=all'])).toBe('')
+    expect(await exists(join(home, 'packages', 'wip.ts'))).toBe(true)
+  })
+
+  test('strictPreRunDirt restores the hard-stop: refuses on in-scope WIP and commits nothing', async () => {
     await mkdir(join(home, 'packages'), { recursive: true })
     await writeFile(join(home, 'packages', 'wip.ts'), 'export const wip = true\n')
     const headBefore = await g(home, ['rev-parse', 'HEAD'])
 
     await expect(
       runDirect({
+        strictPreRunDirt: true,
         bobWrites: async (cwd) => {
           await writeFile(join(cwd, 'packages', 'feature.ts'), 'export const feature = 42\n')
         },
@@ -347,7 +376,29 @@ describe('runRun direct mode — the default (ADR-0023 §2, live git)', () => {
     expect(event.data).toEqual({ files: ['cocoder/PLAYBOOK.md'], sha: snapshotSha })
   })
 
-  test('mixed builder and governance dirt still refuses the launch and snapshots nothing', async () => {
+  test('mixed builder and governance dirt: each is snapshotted to its own commit and the launch PROCEEDS', async () => {
+    await mkdir(join(home, 'packages'), { recursive: true })
+    await mkdir(join(home, 'cocoder'), { recursive: true })
+    await writeFile(join(home, 'packages', 'wip.ts'), 'export const wip = true\n')
+    await writeFile(join(home, 'cocoder', 'PLAYBOOK.md'), '# Playbook\n')
+
+    const { result, store } = await runDirect({
+      oscarScope: ['cocoder/**'],
+      bobWrites: async () => {},
+    })
+
+    expect(result.status).toBe('completed')
+    // Founder WIP → founder-attributed commit; governance dirt → cocoder-governance commit. Distinct.
+    const founderEvent = store.listEvents(result.runId).find((e) => e.type === 'founder-presnapshot')!
+    const govEvent = store.listEvents(result.runId).find((e) => e.type === 'governance-presnapshot')!
+    expect(await g(home, ['log', '-1', '--format=%s', (founderEvent.data as { sha: string }).sha])).toBe('founder: pre-run WIP snapshot')
+    expect(await g(home, ['log', '-1', '--format=%s', (govEvent.data as { sha: string }).sha])).toBe('governance: pre-run snapshot')
+    expect(await g(home, ['show', '--stat', (founderEvent.data as { sha: string }).sha])).toContain('packages/wip.ts')
+    expect(await g(home, ['show', '--stat', (govEvent.data as { sha: string }).sha])).toContain('cocoder/PLAYBOOK.md')
+    expect(await g(home, ['status', '--porcelain', '--untracked-files=all'])).toBe('')
+  })
+
+  test('strictPreRunDirt: mixed dirt still refuses the launch and snapshots nothing', async () => {
     await mkdir(join(home, 'packages'), { recursive: true })
     await mkdir(join(home, 'cocoder'), { recursive: true })
     await writeFile(join(home, 'packages', 'wip.ts'), 'export const wip = true\n')
@@ -356,6 +407,7 @@ describe('runRun direct mode — the default (ADR-0023 §2, live git)', () => {
 
     await expect(
       runDirect({
+        strictPreRunDirt: true,
         oscarScope: ['cocoder/**'],
         bobWrites: async () => {},
       }),
@@ -363,6 +415,7 @@ describe('runRun direct mode — the default (ADR-0023 §2, live git)', () => {
 
     expect(await g(home, ['rev-parse', 'HEAD'])).toBe(headBefore)
     expect(await g(home, ['log', '--format=%s'])).not.toContain('governance: pre-run snapshot')
+    expect(await g(home, ['log', '--format=%s'])).not.toContain('founder: pre-run WIP snapshot')
     const status = await g(home, ['status', '--porcelain', '--untracked-files=all'])
     expect(status).toContain('packages/wip.ts')
     expect(status).toContain('cocoder/PLAYBOOK.md')

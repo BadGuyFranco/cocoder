@@ -137,6 +137,13 @@ export interface RunInput {
   readonly wrapPlay?: Play
   readonly wrapPlayAssignment?: PlayAssignment
   readonly wrapPlayPersonaMode?: PersonaRunMode
+  /** Pre-run dirt policy for the FOUNDER's own uncommitted work (founder directive 2026-06-20).
+   *  Default (false): the founder is a trusted actor — builder-scope dirt they left in the tree is
+   *  snapshotted to its own founder-authored commit and the launch proceeds (never blocked, never lost,
+   *  never mixed into an agent's atom commit). True restores the old hard-stop: refuse the launch and make
+   *  the founder commit/stash by hand — for shared repos or CI that want a manual gate. Agent governance
+   *  (the verify gate, quarantine, write-scope flagging) is unaffected either way. */
+  readonly strictPreRunDirt?: boolean
 }
 
 export interface RunResult {
@@ -454,9 +461,11 @@ export class MissingObjectiveError extends Error {
   }
 }
 
-/** A direct-mode run (ADR-0023 §2) refuses to launch when the active checkout has uncommitted changes
- *  that overlap the run's commit scope — committing or quarantining in place could otherwise sweep up or
- *  destroy the founder's WIP. The fix is one of: commit/stash the WIP, or launch with isolation. */
+/** Thrown for the two cases a direct-mode run (ADR-0023 §2) genuinely cannot start: a detached HEAD (no
+ *  branch to commit to), or — only under `strictPreRunDirt` — uncommitted founder WIP that overlaps the
+ *  run's commit scope. By default founder WIP is no longer a refusal: it is snapshotted to the founder's
+ *  own commit before the run (see the launch guard), so an ordinary launch is never blocked by the
+ *  founder's own uncommitted work. Also thrown if a pre-run snapshot itself fails to commit. */
 export class DirtyWorkingTreeError extends Error {
   constructor(repo: string, detail: string) {
     super(`refusing direct-mode launch in "${repo}": ${detail}`)
@@ -583,22 +592,39 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     store.recordEvent({ runId: run.id, type: 'direct-mode-refused', data: { reason: 'detached-head' } })
     throw new DirtyWorkingTreeError(workspaceRepo, 'the checkout is on a detached HEAD; a run needs a branch. Check out a branch first.')
   }
-  // Launch guard, SCOPED to the union of everything that will commit this run. Builder-scope dirt is
-  // still refused because the atom commit-gate/quarantine could sweep up or destroy founder WIP.
-  // Governance-only dirt is self-healed with a pre-run snapshot (ADR-0024) before quarantine baseline.
+  // Launch guard, SCOPED to the union of everything that will commit this run. FOUNDER vs AGENT (founder
+  // directive 2026-06-20): the founder is a TRUSTED actor — their uncommitted work is PRESERVED, never
+  // refused and never mixed into an agent's atom commit. Both builder-scope dirt (founder WIP) and
+  // governance-only dirt are self-healed with their own pre-run snapshot (ADR-0024 lineage) before the
+  // quarantine baseline, so the whole-tree gate and quarantine only ever see AGENT-produced changes.
+  // (Quarantine already excludes dirtyAtStart — line ~1110 — so the old "refuse to protect founder WIP"
+  // rationale was stale; the real residual risk was the gate folding founder WIP into an atom commit,
+  // which the founder snapshot removes. strictPreRunDirt restores the hard-stop for shared repos / CI.)
   const committingScopes = [scope, oscar.writeScope, deb?.writeScope ?? [], input.wrapPlay?.writeScope ?? [], PORTABLE_RUN_HISTORY_SCOPE].flat()
   const changedAtStart = await git.changedFiles(workspaceRepo)
   const { inScope: dirtyInScope } = partitionByScope(changedAtStart, committingScopes)
   const { inScope: builderDirt, outOfScope: governanceDirt } = partitionByScope(dirtyInScope, scope)
-  if (builderDirt.length > 0) {
-    store.setRunStatus(run.id, 'failed')
-    store.recordEvent({ runId: run.id, type: 'dirty-working-tree', data: { files: dirtyInScope } })
-    throw new DirtyWorkingTreeError(
-      workspaceRepo,
-      `${dirtyInScope.length} uncommitted in-scope file(s) (${dirtyInScope.slice(0, 5).join(', ')}${dirtyInScope.length > 5 ? ', …' : ''}). Commit or stash them first.`,
-    )
-  }
   let dirtyAtStartFiles = changedAtStart
+  if (builderDirt.length > 0) {
+    if (input.strictPreRunDirt) {
+      store.setRunStatus(run.id, 'failed')
+      store.recordEvent({ runId: run.id, type: 'dirty-working-tree', data: { files: dirtyInScope } })
+      throw new DirtyWorkingTreeError(
+        workspaceRepo,
+        `${dirtyInScope.length} uncommitted in-scope file(s) (${dirtyInScope.slice(0, 5).join(', ')}${dirtyInScope.length > 5 ? ', …' : ''}). Commit or stash them first (strictPreRunDirt).`,
+      )
+    }
+    // The founder's own work → their own commit. Omit the author so it lands under the founder's git
+    // identity (it is genuinely theirs), distinct from the cocoder-governance author used just below.
+    const receipt = await commitFiles(git, workspaceRepo, builderDirt, 'founder: pre-run WIP snapshot')
+    if (!receipt.committed || receipt.committedSha === null) {
+      store.setRunStatus(run.id, 'failed')
+      store.recordEvent({ runId: run.id, type: 'founder-presnapshot-failed', data: { files: builderDirt, reason: receipt.error } })
+      throw new DirtyWorkingTreeError(workspaceRepo, `unable to snapshot founder WIP before launch: ${receipt.error ?? 'no commit created'}`)
+    }
+    store.recordEvent({ runId: run.id, type: 'founder-presnapshot', data: { files: receipt.committedFiles, sha: receipt.committedSha } })
+    dirtyAtStartFiles = await git.changedFiles(workspaceRepo)
+  }
   if (governanceDirt.length > 0) {
     const receipt = await commitFiles(git, workspaceRepo, governanceDirt, 'governance: pre-run snapshot', COCODER_GOVERNANCE_AUTHOR)
     if (!receipt.committed || receipt.committedSha === null) {
