@@ -67,5 +67,20 @@ founder gate, scope, and outputs; the per-phase engine logic + the ordinary-prio
   build, distinct from this build priority.
 
 ## Suggested Next Action
-Launch a fresh run against this priority. Atom 0 = the owner map (no product edit), so the first commit is
-low-risk and pins exactly what is REUSE vs NEW before any engine work begins.
+**Build complete (run_161, atoms 0–7).** The full deterministic pipeline is shipped, unit-tested, and
+proof-harnessed in `@cocoder/core` under `packages/core/src/drift/`: `readGovernanceClaims` (P1),
+`readRepoReality` (P2, reuses `inventoryRepo`), `compareDrift` (P3, both-sides-evidenced findings),
+`buildDriftReport` (P4, artifacts-only), `applyRatifiedDriftWrites` (P5/P6, `cocoder/**`-only
+refuse-not-flag, all-or-nothing), and `runDriftAudit` (end-to-end compose). Runnable surfaces:
+`node scripts/proof-drift-audit.mjs` (invariant proof, all green) and
+`node scripts/run-drift-audit.mjs <repoRoot> <outDir>` (generate a real report). The live CoCoder dogfood
+produced **25 verified `stale-path-reference` findings** (memory `codebase-map.md`/`tech-stack.md` still
+describe the pre-rebuild architecture) — Objective verification (b)'s report half.
+
+**Remaining (founder-gated):** (1) decide apply materialization — new amendment/ticket *records* under
+`cocoder/**` vs. precise *in-place edits* to the stale governance files; (2) founder ratifies a subset of
+the dogfood findings and `apply` lands them in `cocoder/**` (Objective verification (b), apply half). Once
+the materialization is chosen, the ratify→apply wiring is one buildable atom on top of the existing
+`applyRatifiedDriftWrites` primitive. **Deferred (not blocking):** agentic ADR-content drift (governance
+describing retired *patterns*, not just gone paths) needs the deep-read fan-out reality enrichment, which
+this build intentionally scoped out.
