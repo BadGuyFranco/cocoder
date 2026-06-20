@@ -22,3 +22,10 @@ export {
   type DriftFindingSeverity,
   type DriftSuggestedKind,
 } from './compare.js'
+export {
+  buildDriftReport,
+  type BuildDriftReportOptions,
+  type DriftDraft,
+  type DriftReportArtifact,
+  type DriftReportPackage,
+} from './report.js'

@@ -127,6 +127,11 @@ export {
   type DriftFindingKind,
   type DriftFindingSeverity,
   type DriftSuggestedKind,
+  buildDriftReport,
+  type BuildDriftReportOptions,
+  type DriftDraft,
+  type DriftReportArtifact,
+  type DriftReportPackage,
 } from './drift/index.js'
 export {
   closeTicket,
