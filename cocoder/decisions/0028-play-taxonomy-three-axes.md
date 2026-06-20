@@ -48,8 +48,8 @@ This ADR does **not** delete enum values, narrow the schema, or remove future ca
 the governance vocabulary from "five named classes" to "three axes plus reserved values."
 
 The one behavior change ratified with this slice — a per-persona manifest guard that hides reserved
-values from personas until the runtime can actually honor them — lands in a separate follow-up atom
-(3b), not in this ADR-only atom.
+values from personas until the runtime can actually honor them — landed in run_167 atom 3b
+(`packages/core/src/plays/manifest.ts`, `packages/core/src/plays/request.ts`).
 
 ## Consequences
 

@@ -225,11 +225,9 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   as tickets 0020/0021/0022.
 
 **Active build priorities (launchable; `order.json` order — the `priorities/` directory is the live index):**
-1. `orchestration-audit-and-refactor` — **CONTINUE (run_166).** Predecessor archived; architecture map
-   linearized; Play behavior tests pinned (41 green); load-bearing verdicts landed (Play taxonomy `suspect`,
-   ten distinctions `real`). **Founder-gated:** reduce Play taxonomy to three observable axes (park unused
-   classes) vs keep-and-document five named classes — then ratified ADR-0010 amendment + bounded collapse.
-   Follow-ups: tickets 0020/0023.
+1. `orchestration-audit-and-refactor` — **ARCHIVE-CANDIDATE (run_167).** ADR-0028 reframe landed; manifest
+   guard hides reserved Play values from personas; behavior-pinning net green. All five Verified-when criteria
+   met. **Founder gate:** confirm archive. Follow-ups survive archive: tickets 0020/0023.
 2. `deb-follows-oscar` — **NEW.** Make Deb a first-class, runner-driven watcher of Oscar: event-awakened,
    non-blocking, Oscar-only nudge authority, and no second orchestration lane.
 3. `drift-audit` — **CONTINUE (run_163).** Build complete (run_161); run_163 re-verified proof green and 25

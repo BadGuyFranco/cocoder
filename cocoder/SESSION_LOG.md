@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-20 — **orchestration-audit-and-refactor: Play taxonomy reframe + manifest guard — archive-candidate (run_167)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [orchestration-audit-and-refactor](./priorities/orchestration-audit-and-refactor.md) | **Run:** run_167
+**Outcomes:**
+- **ADR-0028 landed (`9195cd6`).** Play taxonomy reframed as three orthogonal axes plus reserved future values; amends ADR-0010's five-class framing; owner map aligned.
+- **Manifest guard landed (`8adaef29`).** Reserved `tool/API-triggered` and `interactive` values hidden from persona Play manifests; request validation rejects reserved Plays; Play behavior-pinning tests extended and green.
+- **All five Verified-when criteria met.** One suspect distinction collapsed; remaining suspects exit as named follow-ups (tickets 0020/0023).
+- **Disposition: `archive-candidate`** — objective complete; founder archive confirmation required.
+
+**Next:** Confirm archive of `orchestration-audit-and-refactor`, then launch ticket `0023` — out-of-run dispatch for the archive-priority Play.
+
 ## 2026-06-20 — **orchestration-audit-and-refactor: groundwork landed — Play taxonomy collapse founder-gated (run_166)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [orchestration-audit-and-refactor](./priorities/orchestration-audit-and-refactor.md) | **Run:** run_166

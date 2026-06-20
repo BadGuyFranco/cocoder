@@ -3,7 +3,7 @@ id: 0023
 title: archive-priority Play has no out-of-run dispatch surface; founder-confirmed post-wrap archive is a dead end
 type: bug
 status: Open
-priority: orchestration-audit-and-refactor
+priority: none
 owner: founder-session
 created: 2026-06-20
 ---
@@ -52,6 +52,6 @@ successor priority's authoring-surface work:
   the reachable Play path named.
 
 ## Notes
-Sequenced under `orchestration-audit-and-refactor` (the authoring-surface reachability is part of that
-priority's owner-map simplification). Until fixed, archiving a met priority is done by launching the
-successor run, whose Oscar runs `archive-priority` as its first beat (see that priority's Atom 0).
+Opened under `orchestration-audit-and-refactor` (now archive-candidate, run_167). Until fixed, archiving
+a met priority is done by launching a run whose Oscar runs `archive-priority` as its first beat, or by
+launching this ticket directly once ticket-fix dispatch is wired.

@@ -324,5 +324,6 @@ future runtime paths, and keeps the tests above as the behavior contract.
 
 **Resolved collapse:** ADR-0028 preserves the pinned behavior axes, replaces the Play taxonomy class list
 with three orthogonal axes plus the existing `kind` field, and reserves the unexercised
-`tool/API-triggered` and `interactive` values for their named future runtime paths before any behavior
-change lands.
+`tool/API-triggered` and `interactive` values for their named future runtime paths. The manifest guard
+(run_167) hides reserved values from persona Play manifests and rejects reserved Play requests so personas
+cannot request dispatch paths that do not exist yet.

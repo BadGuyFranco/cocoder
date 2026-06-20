@@ -99,10 +99,18 @@ standard is mandatory: fewer concepts, not a new lane to describe the old ones.
    pinned; the other three taxonomy behaviors were already pinned; 4 Play suites green (c61b929).
 2. **[DONE — run_166]** Load-bearing verdicts. 10 of 11 distinctions `real`; Play taxonomy the one
    `suspect` (008db5b).
-3. **[NEXT — ratified slice]** Reframe-and-reserve the Play taxonomy per **Founder Ratified Decisions**
-   above: atom 3a — new founder-approved ADR amending ADR-0010 (three axes; `tool/API-triggered` +
-   `interactive` reserved/forward-declared); atom 3b — manifest guard so reserved values are not
-   advertised to personas, plus surface alignment, with the Play behavior tests green and extended to
-   cover the guard. No enum deletion.
-4. **Closeout.** What got simpler (vocabulary → three axes; honest reserved-value labeling), what stayed
-   and why (reserved values are committed future scope), the next launchable slice.
+3. **[DONE — run_167]** Reframe-and-reserve the Play taxonomy per **Founder Ratified Decisions**
+   above: atom 3a — ADR-0028 amending ADR-0010 (three axes; `tool/API-triggered` + `interactive`
+   reserved/forward-declared); atom 3b — manifest guard so reserved values are not advertised to
+   personas, plus surface alignment, with the Play behavior tests green and extended to cover the guard.
+   No enum deletion.
+4. **[DONE — run_167]** Closeout. Vocabulary → three axes; reserved values labeled honestly; Oz vs Deb
+   repair kept distinct.
+
+## Suggested Next Action
+**Disposition: `archive-candidate` (run_167).** All five Verified-when criteria are met; the one ratified
+refactor slice is built, test-protected, and committed. Remaining suspect distinctions exit as named
+follow-ups (tickets 0020/0023), not unowned intentions.
+
+**Founder gate:** confirm archive of this priority. **Next launch after archive:** ticket `0023` — give
+the archive-priority Play an out-of-run dispatch surface so founder-confirmed archive is not a dead end.
