@@ -7,3 +7,9 @@ export {
   type DriftClaimsInventory,
   type ReadGovernanceClaimsOptions,
 } from './read-claims.js'
+export {
+  readRepoReality,
+  type DriftRealityInventory,
+  type DriftRealityPathEntry,
+  type ReadRepoRealityOptions,
+} from './read-reality.js'

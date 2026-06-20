@@ -116,6 +116,10 @@ export {
   type DriftClaimEvidence,
   type DriftClaimsInventory,
   type ReadGovernanceClaimsOptions,
+  readRepoReality,
+  type DriftRealityInventory,
+  type DriftRealityPathEntry,
+  type ReadRepoRealityOptions,
 } from './drift/index.js'
 export {
   closeTicket,
