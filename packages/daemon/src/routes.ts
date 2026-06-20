@@ -151,7 +151,6 @@ interface CreateTicketInput {
 type ParsedCreateTicketBody = { readonly ok: true; readonly input: CreateTicketInput } | { readonly ok: false; readonly error: string }
 
 type ParsedAuthoringPlayBody = { readonly ok: true; readonly input: { readonly persona: AuthoringPlayInput['persona']; readonly invocation: unknown } } | { readonly ok: false; readonly error: string }
-type ParsedAuthorBody = { readonly playId: string; readonly persona: AuthoringPlayInput['persona']; readonly invocation: unknown }
 
 interface CreateWorkspaceInput {
   readonly id: string
@@ -248,16 +247,6 @@ function authoringPlayBody(body: unknown): ParsedAuthoringPlayBody {
   }
   const invocation = Object.prototype.hasOwnProperty.call(record, 'invocation') ? record.invocation : record
   return { ok: true, input: { persona, invocation } }
-}
-
-function authorBody(body: unknown): ParsedAuthorBody {
-  const record = bodyRecord(body)
-  const persona = typeof record.persona === 'string' && (AUTHORING_PERSONAS as readonly string[]).includes(record.persona)
-    ? record.persona as AuthoringPlayInput['persona']
-    : 'oscar'
-  const playId = typeof record.playId === 'string' ? record.playId : ''
-  const invocation = Object.prototype.hasOwnProperty.call(record, 'invocation') ? record.invocation : {}
-  return { playId, persona, invocation }
 }
 
 function validateWorkspaceRootRules(roots: ReadonlyArray<RegistryRoot>, cocoderHome: string): string | null {
@@ -905,22 +894,6 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
     if (!parsed.ok) return sendJson(res, 400, { error: parsed.error }), true
     await createTicket(ctx, res, decodeURIComponent(seg[1]!), parsed.input)
     return true
-  }
-  if (method === 'POST' && seg[0] === 'workspaces' && seg.length === 3 && seg[2] === 'author') {
-    let body: unknown
-    try {
-      body = await readJsonBody(req)
-    } catch {
-      return sendJson(res, 400, { error: 'invalid JSON body' }), true
-    }
-    const parsed = authorBody(body)
-    const { status, body: out } = await requestAuthoringPlay(ctx, {
-      workspaceId: decodeURIComponent(seg[1]!),
-      persona: parsed.persona,
-      playId: parsed.playId as AuthoringPlayInput['playId'],
-      invocation: parsed.invocation,
-    })
-    return sendJson(res, status, out), true
   }
   if (method === 'POST' && seg[0] === 'workspaces' && seg.length === 4 && seg[2] === 'authoring-plays') {
     const playId = decodeURIComponent(seg[3] ?? '')

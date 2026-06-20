@@ -5,6 +5,7 @@ import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ClaudeAdapter, type Exec } from '@cocoder/adapters'
@@ -1330,6 +1331,10 @@ describe('Oz mutations + lifecycle', () => {
       runHeadless: async () => ({ exitCode: 0, output: 'archived demo' }),
     })
 
+    // Ticket 0023: the orphan /author route must stay gone; only authoring-plays dispatches.
+    expect(await call(oz!, 'POST', '/workspaces/cocoder/author', { body: { playId: 'archive-priority', invocation: { id: 'demo' } } }))
+      .toEqual({ status: 404, json: { error: 'not found' } })
+
     const r = await call(oz!, 'POST', '/workspaces/cocoder/authoring-plays/archive-priority', { body: { invocation: { id: 'demo' } } })
 
     expect(r).toMatchObject({
@@ -1346,6 +1351,13 @@ describe('Oz mutations + lifecycle', () => {
     expect(prompts[0]).toContain('"id": "demo"')
     const audit = await readFile(join(home, 'local', 'oz-audit.log'), 'utf8')
     expect(audit).toContain('"action":"authoring-play"')
+  })
+
+  test('routes source keeps exactly one authoring HTTP dispatch path', async () => {
+    const routes = await readFile(fileURLToPath(new URL('../src/routes.ts', import.meta.url)), 'utf8')
+
+    expect([...routes.matchAll(/seg\[2\] === 'authoring-plays'/g)]).toHaveLength(1)
+    expect(routes).not.toContain("seg[2] === 'author'")
   })
 
   test('POST /workspaces/:id/authoring-plays/:playId can dispatch through the one authoring Play owner as Oscar', async () => {

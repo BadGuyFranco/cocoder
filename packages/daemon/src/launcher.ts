@@ -713,7 +713,7 @@ export async function requestSupportCommitRun(ctx: OzContext, runId: string): Pr
       body: {
         error:
           `post-wrap support edits cannot archive the active priority "${run.priorityId}" directly; ` +
-          `run "cocoder oz archive-priority ${run.priorityId}" after an archive-ready founder confirmation`,
+          `use the archive-priority authoring Play after an archive-ready founder confirmation — run \`cocoder oz archive-priority ${run.priorityId}\` (the one archive-priority Play; no raw file move).`,
         refusedPaths: archiveBypass.files,
       },
     }
