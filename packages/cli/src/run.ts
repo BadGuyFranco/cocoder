@@ -24,7 +24,7 @@ import { CmuxSessionHost } from '@cocoder/session-hosts'
 import { authoringPlayViaDaemon, migrateHistoryViaDaemon, runViaDaemon, startOzDaemon, supportCommitViaDaemon, teardownViaDaemon } from './client.js'
 
 const log = (m: string): void => console.error(`[cocoder] ${m}`)
-const usage = 'usage: cocoder run <priorityId> [--resume <runId>]   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz commit-support <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]'
+const usage = 'usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt]   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz commit-support <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]'
 
 function authorInvocationFromArgv(): unknown {
   const jsonIdx = process.argv.indexOf('--json')
@@ -173,10 +173,14 @@ async function main(): Promise<void> {
     console.error('usage: cocoder run <priorityId> --resume <runId>')
     process.exit(2)
   }
+  // Optional `--strict-dirt` (ADR-0029): refuse the launch on uncommitted founder WIP instead of the
+  // default founder pre-run snapshot. For shared repos / CI that want a hard manual gate.
+  const strictPreRunDirt = process.argv.includes('--strict-dirt')
 
   const live = await probeDaemon({ port: DEFAULT_OZ_PORT })
   if (live.alive) {
     log(`daemon live on :${live.port} → client mode (daemon owns the DB writer + cmux)`)
+    if (strictPreRunDirt) log('note: --strict-dirt is honored only in standalone mode; the daemon launch path uses the default founder snapshot')
     const result = await runViaDaemon(`http://127.0.0.1:${live.port}`, 'cocoder', priorityId, { log, resumeFromRunId })
     console.log(`\nRun ${result.runId}: ${result.status}`)
     if (result.commits.length) console.log(`  committed: ${result.commits.join(', ')}`)
@@ -184,12 +188,12 @@ async function main(): Promise<void> {
     return
   }
   log('no daemon → standalone mode (cli takes the SQLite write-lock)')
-  await runStandalone(priorityId, resumeFromRunId)
+  await runStandalone(priorityId, resumeFromRunId, strictPreRunDirt)
 }
 
 // Standalone: the cli is the composition root — opens the operational DB (acquiring the
 // single-writer lock), wires the concrete drivers into core's ports, loads governance, runs.
-async function runStandalone(priorityId: string, resumeFromRunId?: string): Promise<void> {
+async function runStandalone(priorityId: string, resumeFromRunId?: string, strictPreRunDirt?: boolean): Promise<void> {
   const root = process.cwd() // dogfood: run from the CoCoder repo root
   const personasDir = join(root, 'cocoder', 'personas')
   const prioritiesDir = join(root, 'cocoder', 'priorities')
@@ -242,6 +246,7 @@ async function runStandalone(priorityId: string, resumeFromRunId?: string): Prom
       sharedStandards,
       runsRoot,
       pickup,
+      strictPreRunDirt,
     })
     console.log(`\nRun ${result.runId}: ${result.status}`)
     if (result.committedSha) console.log(`  committed ${result.committedSha} (${result.committedFiles.length} file(s))`)

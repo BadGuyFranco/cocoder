@@ -73,19 +73,27 @@ paths are committed and **flagged**, never withheld; applies **verification in p
 **one durable receipt** (commit-link + event: branch, SHA(s), changed files, out-of-lane flagged files,
 verification evidence).
 
-**Launch self-heals governance dirt ([ADR-0024](./cocoder/decisions/0024-governance-pre-run-snapshot.md)).**
-The direct-mode launch guard partitions uncommitted in-scope files by owner: **builder/product** dirt
-(`packages/**`) still **refuses** the launch (protecting the founder's product WIP), but **governance-only**
-dirt (the `cocoder/**` / docs / `ARCHITECTURE.md` surfaces) is auto-committed as a single
-`governance: pre-run snapshot` through the spine and the launch proceeds. So authoring a priority and
-immediately launching it can never be blocked by the governance edit it just made (the run_91–96 strand
-class). Mixed dirt refuses and snapshots nothing.
+**Launch self-heals ALL founder dirt — the founder is a trusted actor
+([ADR-0029](./cocoder/decisions/0029-founder-trusted-pre-run-snapshot.md), superseding
+[ADR-0024](./cocoder/decisions/0024-governance-pre-run-snapshot.md)'s builder-dirt refusal).**
+The direct-mode launch guard partitions uncommitted in-scope files by owner and snapshots each to its own
+attributed commit before the run, then proceeds: **builder/product** dirt (`packages/**`) →
+`founder: pre-run WIP snapshot` (founder's git identity); **governance** dirt (the `cocoder/**` / docs /
+`ARCHITECTURE.md` surfaces) → `governance: pre-run snapshot` (cocoder-governance). Mixed dirt produces both
+snapshots and still proceeds. So neither authoring-then-launch nor hand-editing product code can ever be
+blocked by the founder's own uncommitted work (the run_91–96 strand class *and* the founder-WIP block are
+both gone). The guard never destroys or mixes founder work: quarantine already excludes launch-time dirt,
+and the snapshot keeps founder WIP out of agent atom commits. The pre-`0029` hard-stop refusal is preserved
+behind the explicit `strictPreRunDirt` opt-in (CLI `cocoder run … --strict-dirt`) for shared repos / CI.
+This is the **founder-vs-agent boundary**: governance gates bind *agents* (verify gate, quarantine,
+out-of-lane flagging stay hard); the *founder's* work is preserved, never blocked.
 
 **Atomic authoring Plays ([ADR-0025](./cocoder/decisions/0025-atomic-authoring-plays.md))** use the same
 spine for `create` / `edit` / `archive-priority`: authoring validates, writes, and commits as one
 governed action instead of creating a second mutation path. For the commit lineage, read ADR-0023 plus
-its amendments ADR-0024 and ADR-0025 as current truth; ADR-0015/0021/0022 are retired history tracked in
-the [ADR index](./cocoder/decisions/README.md).
+its amendments ADR-0024 (governance self-heal), ADR-0025 (authoring Plays), and ADR-0029 (founder WIP
+self-heal, superseding 0024's builder-dirt refusal) as current truth; ADR-0015/0021/0022 are retired
+history tracked in the [ADR index](./cocoder/decisions/README.md).
 
 | Change kind | Path | Verification |
 |---|---|---|

@@ -90,7 +90,7 @@ async function assembleRunInput(
   ctx: Pick<OzContext, 'cocoderHome' | 'runsRoot'>,
   ws: WorkspaceRegistryEntry,
   priority: Priority,
-  opts: { readonly resumeFromRunId?: string; readonly task?: string | null; readonly storePriorityId?: string | null; readonly ticketId?: string | null; readonly target?: RunLabelTarget } = {},
+  opts: { readonly resumeFromRunId?: string; readonly task?: string | null; readonly storePriorityId?: string | null; readonly ticketId?: string | null; readonly target?: RunLabelTarget; readonly strictPreRunDirt?: boolean } = {},
 ): Promise<RunInput> {
   const personasDir = join(ws.path, 'cocoder', 'personas')
   const playDeltaDir = join(ws.path, 'cocoder', 'plays', 'deltas')
@@ -127,12 +127,13 @@ async function assembleRunInput(
     ticketId: opts.ticketId ?? null,
     target: opts.target,
     pickup,
+    strictPreRunDirt: opts.strictPreRunDirt,
   }
 }
 
 /** Assemble RunInput from governance on disk (mirrors cli/src/run.ts). Throws on unknown ids. When
  *  resuming, reads the prior run's pickup brief so a fresh session continues it (ADR-0013 / F8). */
-export async function buildRunInput(ctx: Pick<OzContext, 'cocoderHome' | 'runsRoot'>, workspaceId: string, priorityId: string, opts: { readonly resumeFromRunId?: string; readonly task?: string | null } = {}): Promise<RunInput> {
+export async function buildRunInput(ctx: Pick<OzContext, 'cocoderHome' | 'runsRoot'>, workspaceId: string, priorityId: string, opts: { readonly resumeFromRunId?: string; readonly task?: string | null; readonly strictPreRunDirt?: boolean } = {}): Promise<RunInput> {
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
   if (!ws) throw new Error(`unknown workspace "${workspaceId}"`)
   const prioritiesDir = join(ws.path, 'cocoder', 'priorities')
@@ -321,7 +322,7 @@ function attachRunLifecycle(ctx: OzContext, workspaceId: string, stopController:
 /** Launch a run for {workspaceId, priorityId} or {workspaceId, ticketId}. Async
  *  (fire-and-forget); returns 202 with the runId, 409 if a run is already in flight for the workspace,
  *  or 400 if the request can't be assembled. The string target preserves ordinary priority callers. */
-export async function launchRun(ctx: OzContext, workspaceId: string, targetInput: string | LaunchRunTarget, opts: { readonly resumeFromRunId?: string; readonly task?: string | null } = {}): Promise<LaunchResult> {
+export async function launchRun(ctx: OzContext, workspaceId: string, targetInput: string | LaunchRunTarget, opts: { readonly resumeFromRunId?: string; readonly task?: string | null; readonly strictPreRunDirt?: boolean } = {}): Promise<LaunchResult> {
   const target = normalizeLaunchTarget(targetInput)
   const targetId = launchTargetId(target)
   if (!workspaceId || !targetId) {
@@ -367,6 +368,7 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
         storePriorityId: TICKET_PRIORITY_SENTINEL,
         ticketId: ticket.id,
         target: { type: 'ticket', slug: ticket.id },
+        strictPreRunDirt: opts.strictPreRunDirt,
       })
     } catch (err) {
       ctx.inFlight.delete(workspaceId)
