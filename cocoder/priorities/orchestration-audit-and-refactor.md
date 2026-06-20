@@ -66,10 +66,14 @@ standard is mandatory: fewer concepts, not a new lane to describe the old ones.
   `packages/daemon/src/oz-chat.ts`, `packages/personas/base/`
 - `cocoder/priorities/archive/orchestration-pipeline-simplification.md` — predecessor; absorb its dispositions.
 - Open tickets 0020/0021/0022 — predecessor follow-ups.
+- Open ticket 0023 — `archive-priority` Play has no out-of-run dispatch surface (authoring-surface
+  reachability defect found this run; fix is owner-preserving, not a second archive path).
 
 ## Proposed Atom Sequence
-0. **Architecture linearization + ADR index.** Produce the canonical current-state map; mark superseded
-   ADRs. Docs only.
+0. **Launch housekeeping + architecture linearization.** First run the `archive-priority` Play on the met
+   predecessor `orchestration-pipeline-simplification` (it could not be archived post-wrap in run_165 —
+   ticket 0023). Then produce the canonical current-state map and mark superseded ADRs. Docs only beyond
+   the governed archive.
 1. **Behavior-pinning test harness (with Talia).** Black-box tests over the real contracts, green on `main`.
 2. **Load-bearing verdicts.** One-line evidence-backed real/suspect verdict per guarded distinction.
 3. **One bounded refactor.** Collapse the top suspect (Play taxonomy first candidate) behind a new ADR,
