@@ -336,6 +336,7 @@ const founderCloseoutContract = (playBody: string): { labels: Record<FounderClos
 const closeoutContract = founderCloseoutContract(wrapPlayBody)
 const label = (role: FounderCloseoutRole): string => closeoutContract.labels[role]
 const issue = (role: FounderCloseoutRole, text: string): string => `${label(role)} ${text}`
+const block = (role: FounderCloseoutRole, text: string): string => `${label(role)}\n${text}`
 const renderFounderCloseout = (input: {
   summary?: string
   atomComplete?: string
@@ -349,11 +350,11 @@ const renderFounderCloseout = (input: {
   finalLine?: string
 } = {}): string => `${label('title')}
 
-${label('atomComplete')} ${input.atomComplete ?? 'Yes'}
+${block('atomComplete', input.atomComplete ?? 'Yes')}
 
-${label('runStatus')} ${input.runStatus ?? 'continue'}
+${block('runStatus', input.runStatus ?? 'continue')}
 
-${label('whatChanged')} ${input.summary ?? 'The requested work was completed.'}
+${block('whatChanged', input.summary ?? 'The requested work was completed.')}
 
 ${label('whatRemains')}
 ${input.whatRemains ?? '- Continue the remaining priority atoms.'}
@@ -361,11 +362,11 @@ ${input.whatRemains ?? '- Continue the remaining priority atoms.'}
 ${label('nextStep')}
 ${input.nextStep ?? 'Priority: `demo` — continue the remaining priority atoms'}
 
-${label('decisionNeeded')} ${input.decisionNeeded ?? 'None.'}
+${block('decisionNeeded', input.decisionNeeded ?? 'None.')}
 
-${label('commitState')} ${input.commitState ?? 'The runner reports the authoritative commit outcome after this brief.'}
+${block('commitState', input.commitState ?? 'The runner reports the authoritative commit outcome after this brief.')}
 
-${label('teardownReadiness')} ${input.teardownReadiness ?? 'Standing by; teardown requires an explicit founder request.'}
+${block('teardownReadiness', input.teardownReadiness ?? 'Standing by; teardown requires an explicit founder request.')}
 
 ${label('judgment')}
 ${input.judgment ?? 'Oscar stopped at a clean wrap-up point.'}
@@ -946,7 +947,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(result.status).toBe('failed')
     expect(pickupWrites).toHaveLength(1)
     expect(pickupWrites[0]).toContain(label('title'))
-    expect(pickupWrites[0]).toContain(`${label('runStatus')} blocked`)
+    expect(pickupWrites[0]).toContain(block('runStatus', 'blocked'))
     expect(pickupWrites[0]).toContain(`missing ${label('title')}`)
     expect(pickupWrites[0]?.trimEnd().endsWith(closeoutContract.finalLine)).toBe(true)
     const invalid = store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')
@@ -999,7 +1000,7 @@ describe('runRun (multi-atom loop)', () => {
     )
 
     expect(result.status).toBe('failed')
-    expect(pickupWrites[0]).toContain(`${label('runStatus')} blocked`)
+    expect(pickupWrites[0]).toContain(block('runStatus', 'blocked'))
     const events = store.listEvents(result.runId)
     expect(events.map((e) => e.type)).toEqual(expect.arrayContaining(['wrapup-format-invalid', 'triage-dispatch', 'fault-triaged', 'wrapup', 'run-end']))
     expect(events.find((e) => e.type === 'triage-dispatch')?.data).toMatchObject({ fault: 'wrapup-format-invalid', atom: 1 })
@@ -1008,7 +1009,7 @@ describe('runRun (multi-atom loop)', () => {
   })
 
   test('wrap-up Play label changes are enforced from the Play contract', async () => {
-    const renamedDecisionLabel = '**Founder Decision Required:**'
+    const renamedDecisionLabel = '**Founder Decision Required**'
     const renamedPlay: Play = {
       ...wrapPlay,
       body: wrapPlay.body.replace(label('decisionNeeded'), renamedDecisionLabel),
@@ -1036,7 +1037,7 @@ describe('runRun (multi-atom loop)', () => {
       issues: expect.arrayContaining([`missing ${renamedDecisionLabel}`]),
     })
 
-    const updatedCloseout = validFounderCloseout('PLAY CLOSEOUT').replace(`${label('decisionNeeded')} None.`, `${renamedDecisionLabel} None.`)
+    const updatedCloseout = validFounderCloseout('PLAY CLOSEOUT').replace(block('decisionNeeded', 'None.'), `${renamedDecisionLabel}\nNone.`)
     const updatedStore = openRunStore(':memory:')
     const updatedPickupWrites: string[] = []
     const updatedResult = await runRun(
@@ -1079,7 +1080,7 @@ describe('runRun (multi-atom loop)', () => {
 
     expect(result.status).toBe('failed')
     expect(pickupWrites).toHaveLength(1)
-    expect(pickupWrites[0]).toContain(`${label('runStatus')} blocked`)
+    expect(pickupWrites[0]).toContain(block('runStatus', 'blocked'))
     expect(pickupWrites[0]).toContain(issue('whatChanged', 'contains ledger/test-matrix detail'))
     expect(pickupWrites[0]).toContain(issue('whatRemains', 'includes optional work'))
     expect(pickupWrites[0]).toContain(issue('nextStep', 'must not offer optional or multi-choice actions'))
@@ -1126,7 +1127,7 @@ describe('runRun (multi-atom loop)', () => {
 
     expect(result.status).toBe('failed')
     expect(pickupWrites).toHaveLength(1)
-    expect(pickupWrites[0]).toContain(`${label('runStatus')} blocked`)
+    expect(pickupWrites[0]).toContain(block('runStatus', 'blocked'))
     expect(pickupWrites[0]).toContain(issue('whatChanged', 'is too long for a founder brief'))
     expect(pickupWrites[0]).toContain(issue('whatChanged', 'must be one sentence'))
     expect(pickupWrites[0]).toContain(issue('runStatus', 'must not estimate percentage complete'))
@@ -1212,7 +1213,7 @@ describe('runRun (multi-atom loop)', () => {
 
     expect(result.status).toBe('failed')
     expect(pickupWrites).toHaveLength(1)
-    expect(pickupWrites[0]).toContain(`${label('runStatus')} blocked`)
+    expect(pickupWrites[0]).toContain(block('runStatus', 'blocked'))
     expect(pickupWrites[0]).toContain(issue('nextStep', 'priority "missing-priority" is not launchable'))
     const invalid = store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')
     expect(invalid?.data).toMatchObject({

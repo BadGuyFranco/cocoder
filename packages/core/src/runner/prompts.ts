@@ -5,12 +5,6 @@
 // watches Bob live (the monitor), and Oscar ends the run on his own wrap-up decision. The default
 // next-turn bias is to continue while concrete in-priority work remains; wrap-up is for real stop
 // conditions, not merely for a clean commit boundary.
-import { readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-
-const runnerDir = dirname(fileURLToPath(import.meta.url))
-const wrapupDeliveryTemplate = readFileSync(join(runnerDir, 'wrapup-delivery-template.md'), 'utf8')
 
 /** The per-atom completion sentinel Bob prints when an atom is done. Per-atom-unique so a prior atom's
  *  sentinel still on screen cannot falsely complete the next one (the monitor matches it deterministically). */
@@ -434,10 +428,18 @@ export function buildWrapupDelivery(runId: string, brief: string, landingOutcome
   const landingSection = landingOutcome
     ? `\n**Landing Outcome**\n\n${landingOutcome}\n`
     : ''
-  return wrapupDeliveryTemplate
-    .replaceAll('{{RUN_ID}}', runId)
-    .replace('{{LANDING_SECTION}}', landingSection)
-    .replace('{{BRIEF}}', brief)
+  return `WRAP-UP READY for ${runId}.
+
+Deliver this founder-facing wrap-up now, in plain English, including the landing outcome below when
+present. Then wait. Do not close panes, do not run teardown, and do not ask for teardown. The founder may
+ask questions, request a priority update or other governance/doc edit, or say "kill" / "tear down"
+explicitly. If the founder asks for a Surface-A edit after this wrap-up, make it within your support
+scope; do not refuse because the run already wrapped. After such an edit, run
+\`cocoder oz commit-support ${runId}\` yourself to commit it with a receipt; if that command is
+unavailable or fails, report the exact blocker and the edited paths.
+
+${landingSection}
+${brief}`
 }
 
 export function buildArtifactDispatch(kind: string, path: string): string {

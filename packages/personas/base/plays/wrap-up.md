@@ -50,8 +50,9 @@ say "kill" / "tear down" afterward.
    "follow up as needed", "run the live-proof checklist", or a menu of equally weighted options as the
    next action. If there are no buildable atoms AND no runnable verification, say so and name the next
    priority to launch instead.
-5. Emit, as your final output, a founder-readable closeout in the exact label order below. Use
-   Markdown bold labels, not HTML. This is a decision brief, not a run ledger. The first screen must
+5. Emit, as your final output, a founder-readable closeout in the exact heading order below. Use
+   the heading-block format shown in the fenced contract: Markdown bold heading, then that section's
+   content on the following line(s). This is a decision brief, not a run ledger. The first screen must
    be enough for a solo non-developer to know what happened, why the run stopped, what remains, and
    which priority or ticket is ready to run next. Keep proof detail, atom-by-atom history, commit lists,
    suite counts, and optional operational notes out of the founder brief; those belong in SESSION_LOG,
@@ -60,22 +61,29 @@ say "kill" / "tear down" afterward.
    ```
    **Founder Completion Brief**
 
-   **Atom Complete:** <Yes | No — one brief reason>
+   **Atom Complete**
+   <Yes | No — one brief reason>
 
-   **Run Status:** <continue | blocked | archive ready>
+   **Run Status**
+   <continue | blocked | archive ready>
 
-   **What Changed:** <plain English summary of what changed this run, 1 sentence max>
+   **What Changed**
+   <plain English summary of what changed this run, 1 sentence max>
 
-   **What Remains:**
+   **What Remains**
    <up to 3 short bullets naming only required remaining gaps; write "Nothing obvious." only if archive ready>
 
-   **Recommended Next Step:** <exactly one launchable item with its concrete focus: Priority: `slug` — <next run focus> or Ticket: `NNNN` — <next run focus>>
+   **Recommended Next Step**
+   <exactly one launchable item with its concrete focus: Priority: `slug` — <next run focus> or Ticket: `NNNN` — <next run focus>>
 
-   **Founder Decision Needed:** <None. | the one decision the founder can veto or must answer>
+   **Founder Decision Needed**
+   <None. | the one decision the founder can veto or must answer>
 
-   **Commit State:** <do not assert landing; say the runner reports the authoritative commit outcome after this brief>
+   **Commit State**
+   <do not assert landing; say the runner reports the authoritative commit outcome after this brief>
 
-   **Teardown Readiness:** <standing by; teardown only on explicit founder request>
+   **Teardown Readiness**
+   <standing by; teardown only on explicit founder request>
 
    **Judgment:**
    <plain-English call Oscar made to close now instead of continuing, plus any controversial calls if appropriate>

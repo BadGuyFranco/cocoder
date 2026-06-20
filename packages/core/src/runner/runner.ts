@@ -355,11 +355,14 @@ function formatInvalidFounderCloseoutFallback(input: {
   const commitText = input.commits.length === 0 ? 'No commits were recorded before wrap-up.' : `${input.commits.length} commit(s) were recorded before wrap-up.`
   return `${labels[FOUNDER_CLOSEOUT_ROLE.title]}
 
-${labels[FOUNDER_CLOSEOUT_ROLE.atomComplete]} No — the closeout brief needs repair before this can be treated as a clean completion.
+${labels[FOUNDER_CLOSEOUT_ROLE.atomComplete]}
+No — the closeout brief needs repair before this can be treated as a clean completion.
 
-${labels[FOUNDER_CLOSEOUT_ROLE.runStatus]} blocked
+${labels[FOUNDER_CLOSEOUT_ROLE.runStatus]}
+blocked
 
-${labels[FOUNDER_CLOSEOUT_ROLE.whatChanged]} The runner blocked a malformed wrap-up brief instead of delivering a non-template closeout.
+${labels[FOUNDER_CLOSEOUT_ROLE.whatChanged]}
+The runner blocked a malformed wrap-up brief instead of delivering a non-template closeout.
 
 ${labels[FOUNDER_CLOSEOUT_ROLE.whatRemains]}
 ${issueLines}
@@ -367,11 +370,14 @@ ${issueLines}
 ${labels[FOUNDER_CLOSEOUT_ROLE.nextStep]}
 Priority: \`${input.priorityId}\` — repair the malformed wrap-up brief
 
-${labels[FOUNDER_CLOSEOUT_ROLE.decisionNeeded]} None.
+${labels[FOUNDER_CLOSEOUT_ROLE.decisionNeeded]}
+None.
 
-${labels[FOUNDER_CLOSEOUT_ROLE.commitState]} ${commitText} The runner reports the authoritative commit outcome after this brief.
+${labels[FOUNDER_CLOSEOUT_ROLE.commitState]}
+${commitText} The runner reports the authoritative commit outcome after this brief.
 
-${labels[FOUNDER_CLOSEOUT_ROLE.teardownReadiness]} Standing by; teardown requires an explicit founder request.
+${labels[FOUNDER_CLOSEOUT_ROLE.teardownReadiness]}
+Standing by; teardown requires an explicit founder request.
 
 ${labels[FOUNDER_CLOSEOUT_ROLE.judgment]}
 The runner preserved the founder-facing template instead of passing through a nonconforming wrap-up.
