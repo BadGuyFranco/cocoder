@@ -14,12 +14,12 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 | ID | Title | Type | Priority | Owner |
 |---|---|---|---|---|
 | [0013](./open/0013-daemon-auto-rebuild-after-runs.md) | Auto-rebuild + reload the Oz daemon after a run changes packages/daemon (no manual restart) | task | tickets-review | oscar run_122 |
-| [0003](./open/0003-public-docs-v1-stale.md) | Public docs/ tree is v1-stale (commands, PRIORITIES.md, cocoder/local, routes) | task | none | founder-session |
 
 ## Recently Closed
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0003](./closed/0003-public-docs-v1-stale.md) | Public docs/ tree is v1-stale (commands, PRIORITIES.md, cocoder/local, routes) | task | 2026-06-20 | All adopter-facing docs rewritten to v2 against code; tmux fully scrubbed (cmux); v1 constructs + fictional commands (`cocoder init/config/launch/oz register/oz status\|stop/validate-contracts`, cli `build`) removed; real registration = dashboard Add Workspace, lifecycle = `scripts/oz.sh`; ADR-0029 `--strict-dirt` documented. Deep internal diagnostic docs left out of scope |
 | [0021](./closed/0021-daemon-typecheck-stale-test-mocks.md) | Daemon package typecheck is red on stale test mocks | bug | 2026-06-20 | Mocks refreshed to match production types (26→0 errors), no tests weakened (vitest 236/236). Silent-rot root cause fixed: every non-ui package gets a `typecheck` script and root runs `pnpm -r typecheck`, so CI now covers test files. Commit `0487b8e` |
 | [0022](./closed/0022-wrap-up-contract-fixture-drift-daemon-suite.md) | Wrap-up contract fixture drift left daemon suite red on main | bug | 2026-06-20 | Symptom fixed — daemon suite green (236/236), fixture repaired in `198ae88` (run_164). Process-guard (test-pin the wrap-up-contract verification set) deferred as governance-of-governance. The remaining daemon *test typecheck* red is 0021, now also closed |
 | [0020](./closed/0020-stale-governance-test-archived-hybrid-plays.md) | priority-authoring-plays test reads an archived priority path (hybrid-plays.md) and fails | bug | 2026-06-20 | Already fixed — test repointed to `cocoder/priorities/archive/hybrid-plays.md` (exists); `priority-authoring-plays.test.ts` green (9/9) at clean HEAD. `archive-priority` stale-path warning sub-ask deferred |

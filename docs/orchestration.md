@@ -1,21 +1,21 @@
 # CoCoder Orchestration
 
 **Status:** Draft, implemented by Sub-Playbook D Solve  
-**Last verified:** 2026-05-27 (docs pass only; no runtime behavior changed)
+**Last verified:** 2026-06-20 (scrubbed stale v1 session-host prose; aligned launch/attach with cmux + ADR-0002/0029)
 
 CoCoder launches visible, bounded agent lanes around one selected priority. A run is a working record: launch prompt, startup packet, lane panes, evidence paths, and result artifacts.
 
-## Tmux model
+## Session model
 
-Each lane runs in its own tmux session. The launch command creates the sessions, writes lane prompts under the run directory, and starts the configured adapter in each pane.
+The terminal host is cmux (ADR-0002). A run gets its own cmux *workspace*, and the run's lanes run as split panes inside it — the founder watches them side by side. Run-state durability lives in Oz's data model, not in the terminal; the panes are a disposable view onto the run. See [`ARCHITECTURE.md`](../ARCHITECTURE.md) for the per-run isolation model.
 
 Common shapes:
 
 - **Lead lane** - usually Oscar. Reconciles priority fit, dispatches bounded packets, and owns closeout status updates.
 - **Builder lane** - usually Bob. Edits files only inside its write boundary, verifies the packet, then writes result artifacts.
-- **Verifier or QA lanes** - optional route members for test building, browser automation, or review.
+- **Verifier or QA lanes** - optional members (e.g. Talia, Quinn) for test building, browser automation, or review.
 
-Detached runs are normal. Use the launch output's attach commands, or `--attach iterm`, to open panes for a human operator. See [`oz-launch.md`](./oz-launch.md) for the dashboard launch path.
+To watch a run, use the **Attach** action in the Oz dashboard's run drawer — it focuses the run's live cmux pane (Oscar by preference). See [`oz-launch.md`](./oz-launch.md) for the dashboard launch path.
 
 ## Runs
 

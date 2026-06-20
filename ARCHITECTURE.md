@@ -314,11 +314,11 @@ The rule is enforced by a deterministic guardrail: `node scripts/check-topology.
 
 ## Multi-workspace concurrency (plain language)
 
-tmux names sessions globally on your Mac unless you isolate them. If Workspace A and Workspace B both create a session named `oscar-priority-foo`, they can collide.
+The terminal host is cmux (ADR-0002), driven over its Unix-socket control API. Isolation is **per run**, not per global session name: each launched run gets its own cmux *workspace*, created and named for the run (`new-workspace --name <run label>`). The run's personas — Oscar, Bob, optionally Deb — share that one cmux workspace as **split panes** (`new-split right`), so the founder watches them side by side, while a different run lives in a different cmux workspace entirely.
 
-**Fix:** give each registered workspace its own tmux *namespace* (a named socket, e.g. `cocoder-myapp`). Oz launches into that namespace. Sessions in one repo cannot see or kill sessions in another.
+Because every pane is addressed by a cmux ref scoped to its workspace (`--workspace <ref> --surface <ref>`), and operations target an individual surface, one run can never read, focus, or close another run's panes. Teardown closes only the surfaces (or the single workspace) recorded for that run; it never enumerates unrelated sessions. There is no shared global namespace to collide in — the cmux workspace ref *is* the boundary.
 
-Analogy: one building (your Mac) with separate floors (workspace sockets) instead of everyone sharing one open-plan room (default tmux).
+The control socket must be reachable (cmux running in automation mode). If it isn't, the driver opens cmux (`open -a cmux`) and waits for the socket before stepping into the run. See `packages/session-hosts/src/cmux/driver.ts`.
 
 ## Multi-machine path portability
 

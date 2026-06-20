@@ -6,9 +6,9 @@ Use it when you want AI coding sessions to start from explicit priorities, bound
 
 ## What v0.1 includes
 
-- A `cocoder` CLI for workspace setup, launch composition, lane startup, contract validation, and local audit checks.
-- A tracked `cocoder/` workspace structure for priorities, session logs, ADRs, tickets, memory, standards, routes, profiles, and personas.
-- A workspace template created by `cocoder init`.
+- A `cocoder` CLI to launch runs (`cocoder run`) and drive the Oz daemon (`cocoder oz start | author | archive-priority | migrate-history | commit-support | teardown`).
+- A tracked `cocoder/` workspace structure for priorities, session logs, ADRs, tickets, memory, standards, and personas.
+- A workspace template (`templates/workspace-cocoder/`) scaffolded into a repo when you add it as a workspace in the Oz dashboard.
 - Oz, a loopback-only browser dashboard for workspace registration, priority launch, run listing, and run inspection.
 - Public docs for first launch, orchestration, personas, configuration, Oz, freshness policy, and FAQ.
 - Apache-2.0 licensing with CoBuilder extraction attribution in `NOTICE`.
@@ -18,7 +18,7 @@ Use it when you want AI coding sessions to start from explicit priorities, bound
 - macOS first for v0.1
 - Node.js version from `.nvmrc`
 - pnpm 10.x
-- tmux
+- cmux — the native macOS terminal host where agent panes run and the founder watches them (ADR-0002; AGPL-3.0, macOS-only). Install it separately and enable its socket control (automation mode); CoCoder drives it over that Unix socket and will `open -a cmux` if it isn't already running. It is not bundled or vendored.
 - At least one configured model CLI adapter named by the selected profile
 
 ## Quick Start
@@ -29,23 +29,21 @@ Install CoCoder:
 git clone <CoCoder-repo-url> ~/dev/CoCoder
 cd ~/dev/CoCoder
 pnpm install
-pnpm -F @cocoder/cli build
 node scripts/check-topology.mjs
 export COCODER_HOME="$PWD"
 ```
 
-Initialize an application workspace outside the CoCoder install:
+The `cocoder` CLI runs TypeScript directly via `tsx` — there is no build step.
+
+Add an application repo as a workspace. Start the Oz daemon and add it from the dashboard — that
+scaffolds the repo's tracked `cocoder/` governance tree and registers it (there is no `cocoder init`):
 
 ```sh
-mkdir -p ~/dev/my-app
-cd ~/dev/my-app
-git init
-pnpm --dir "$COCODER_HOME" exec cocoder init \
-  --workspace-root "$PWD" \
-  --cocoder-home "$COCODER_HOME"
+scripts/oz.sh start   # starts the daemon detached on :7878 and prints the dashboard URL
 ```
 
-Then follow [`docs/getting-started.md`](./docs/getting-started.md) for the full path from clean clone to first CLI or Oz launch.
+Open the dashboard, go to **Workspaces → Add workspace**, and pick your repo's primary-root folder.
+Then follow [`docs/getting-started.md`](./docs/getting-started.md) for the full path from clean clone to first run.
 
 ## Mental Model
 
@@ -75,16 +73,15 @@ For the full storage-zone model, see [`ARCHITECTURE.md`](./ARCHITECTURE.md). For
 
 ```sh
 pnpm install
-pnpm -F @cocoder/core test
-pnpm -F @cocoder/ui test
+pnpm test                      # all package suites (pnpm -r test)
+pnpm typecheck                 # src + tests, every package
 node scripts/check-topology.mjs
 ```
 
-The public CLI package builds a `cocoder` binary:
+The `cocoder` CLI needs no build — it runs via `tsx`. Invoke it from the install root:
 
 ```sh
-pnpm -F @cocoder/cli build
-pnpm exec cocoder config get
+pnpm exec cocoder --help
 ```
 
 ## Contributing

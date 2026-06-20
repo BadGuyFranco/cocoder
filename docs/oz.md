@@ -1,7 +1,7 @@
 # Oz
 
 **Status:** Draft, implemented by Sub-Playbook D Solve  
-**Last verified:** 2026-06-11 (run_58 cooperative stop slice)
+**Last verified:** 2026-06-20 (scrubbed stale v1 session-host/iterm prose; aligned attach with cmux + ADR-0002)
 
 Oz is CoCoder's local browser control surface. In v0.1 it helps an operator register workspaces, inspect priorities, launch runs, watch run status, and stop runs without hand-copying long CLI commands.
 
@@ -15,7 +15,7 @@ The v0.1 dashboard covers:
 
 - workspace registration
 - priority selection
-- run launch through `cocoder launch`
+- run launch (via `POST /runs`; the CLI equivalent is `cocoder run <priorityId>`)
 - run listing and stop actions
 - a run inspector with minimum viable evidence paths
 - settings surfaced through the shared configuration resolver
@@ -59,20 +59,14 @@ If the default port is occupied, set `COCODER_OZ_PORT` and restart.
 
 ### Dashboard cannot see a workspace
 
-Register the workspace with the install-local registry:
+Register it from the **Workspaces** page (`#/workspaces`) → **Add workspace** → pick the repo's
+primary-root folder → create. The daemon writes the workspace's `.code-workspace` file under
+`<CoCoder>/local/workspace/` (the install-local registry, ADR-0019). Then refresh the Workspaces or
+Priorities page. (There is no `cocoder oz register` CLI command — registration is dashboard-only.)
 
-```bash
-pnpm exec cocoder oz register \
-  --id my-app \
-  --path /path/to/my-app \
-  --tmux-socket cocoder-my-app
-```
+### Launch starts but no cmux pane opens
 
-Then refresh the Workspaces or Priorities page.
-
-### Launch starts but no terminal opens
-
-Visible panes are best-effort. If macOS does not open iTerm2 or Terminal.app, use the attach commands from the launch output or inspect the run directory under `<CoCoder>/local/workspaces/<workspace-id>/runs/`.
+The run opens in a cmux workspace; the driver will `open -a cmux` if the app isn't already running. If the cmux control socket never becomes reachable, the launch fails with a clear error — open cmux manually and ensure socket control (automation mode) is enabled, then relaunch (ADR-0002). To re-focus a live run's pane, use the **Attach** action in the run drawer (`POST /runs/:id/show`); it returns a 409 if the run is no longer live in the current daemon process. You can also inspect the run record under `<CoCoder>/local/runs/`.
 
 ### Mutating requests return 401 or 403
 

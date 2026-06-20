@@ -1,118 +1,93 @@
-# CoCoder Configuration
+# CoCoder configuration
 
-**Status:** Draft, implemented by Sub-Playbook A Solve  
-**Last verified:** 2026-05-23 (Sub-Playbook E dogfood exercised the workspace-root path end-to-end across 7 autonomous runs)
+**Status:** v2 (rebuild) — live
+**Last verified:** 2026-06-20
 
-CoCoder configuration is split across tracked defaults and private `local/` overrides. Git can update the engine and templates without overwriting user preferences because real preferences live only in ignored `local/` paths.
+All machine-local configuration lives in the install's single gitignored zone, `<CoCoder>/local/`.
+Git updates the engine and templates; nothing under `local/` is tracked (only its signage
+`README.md`), so `git pull` never touches your settings or secrets. The canonical zone model and
+ignore matrix are in [`ARCHITECTURE.md`](../ARCHITECTURE.md) — this page is the operator's view of
+where each file lives.
 
-## Invocation
+## The three storage zones
 
-CoCoder v0.1 is **terminal-only**. Every CLI flow runs through `pnpm exec cocoder <subcommand> [...]` from a shell — there are no double-click `.command` wrappers, Finder shortcuts, or GUI launchers in this release. The decision to ship terminal-only (rather than restoring CoBuilder's `.command` wrappers) is recorded in [ticket 0001](../cocoder/tickets/closed/0001-cocoder-command-wrapper-decision.md). If your workflow needs a one-click entry point, wrap the relevant `pnpm exec cocoder ...` invocation in a personal shell alias, Raycast script, or Automator action.
+| Zone | Location | Tracked? | What it holds |
+|------|----------|----------|---------------|
+| Install (public) | `<CoCoder>/` — `packages/`, `docs/`, `templates/`, `scripts/`, `cocoder/` | Yes | engine, docs, templates, dogfood governance |
+| Install (private) | `<CoCoder>/local/` | **Never** (only its `README.md`) | `cocoder.db`, `runs/`, `workspace/` defs, `settings.json`, `secrets/`, audit logs — spans **all** workspaces |
+| Workspace (tracked) | `<primary-root>/cocoder/` | Yes (in that repo) | priorities, decisions, tickets, memory, standards, persona/play extensions |
 
-## Load Order
+There is **no** per-workspace `local/` zone — all machine state lives in the install's one `local/`.
+See [ARCHITECTURE.md → Mental Model](../ARCHITECTURE.md#mental-model).
 
-The resolver loads files in this order, with later files overriding earlier files:
+## Where configuration lives
 
-1. Built-in defaults from `packages/core/lib/config.mjs`
-2. Install template: `<CoCoder>/templates/install-local/config.example.yaml`
-3. Install-private files: `<CoCoder>/local/config.yaml`, `config.json`, `overrides.yaml`, `overrides.json`
-4. Workspace-shared files: `<workspace>/cocoder/config.yaml`, `config.json`
-5. Workspace-private files: `<workspace>/cocoder/local/config.yaml`, `config.json`, `overrides.yaml`, `overrides.json`
-
-## `cocoder config get` / `cocoder config set`
-
-By default, both subcommands resolve the CoCoder install root by walking up from the current directory looking for `cocoder/AGENTS.md` + `ARCHITECTURE.md`. If no install root is found in the ancestor chain, the command fails closed with a friendly error — there is no silent `process.cwd()` fallback. Pass `--cocoder-home=<path>` to override the resolved install root explicitly.
-
-- **`cocoder config get [key]`** — reads the merged configuration. Without `--workspace-root` it shows install + defaults only; with `--workspace-root <path>` it folds in that workspace's shared and private overrides per the load order above.
-- **`cocoder config set <key> <value>`** — writes to `<CoCoder>/local/config.yaml` (install-local zone). This is the dominant case: account, model, default editor, theme.
-- **`cocoder config set <key> <value> --workspace-root <path>`** — writes to `<path>/cocoder/local/config.yaml` (workspace-private zone). Use this when the preference is specific to a single workspace.
-- **`cocoder config set ... --install`** — accepted as a no-op alias for the default zone.
-
-Oz settings route through the same resolver path. Use `--workspace-root` whenever you want a setting to live with one workspace; otherwise it survives in install-local across all workspaces.
-
-## Workspaces and the install repo
-
-**CoCoder does not support workspaces nested inside its own install repository** (see [ADR-0006](../cocoder/zArchive/v1/decisions/0006-no-nested-workspaces-inside-install.md)).
-
-The install repo already contains exactly one workspace — the dogfood meta-project at `<CoCoder>/cocoder/`. Any other CoCoder workspace must live **outside** the install tree. Running `cocoder init` inside an existing install (or anywhere under it) refuses with a clear error and asks you to move the target directory out, or pass `--workspace-root` pointing at an out-of-tree path.
-
-Why: `findCocoderHome()` resolves the install root via an ancestor walk, and a nested workspace would cause CLI defaults, run paths, and orchestrator-commit surfaces to silently bind to install state. The constraint is enforced at `cocoder init` and at every workspace-scoped command in v0.1. The v0.2 plan is to lift this restriction via a workspaces registry; see ADR-0005 + Sub-Playbook C.
-
-If you need to run CoCoder against its own dogfood (the one legitimate "workspace inside install" instance), pass `--workspace-root="<CoCoder>"` AND `--workspace-slug=cocoder-dogfood` explicitly — never rely on cwd resolution.
-
-**Important:** the workspace-root for the dogfood case is the **install root itself**, not `<CoCoder>/cocoder/`. The config resolver expects `<workspaceRoot>/cocoder/<file>`, so passing `<CoCoder>/cocoder` would make every workspace-tracked lookup miss. The install's own `cocoder/` subdirectory IS the meta-project workspace per ADR-0006; the workspace root is therefore one level up. The Sub-Playbook E dogfood invocations confirm the working shape:
-
-```sh
-cd <CoCoder>
-pnpm exec cocoder launch \
-  --profile cocoder/profiles/cocoder-dogfood.profile.json \
-  --route cocoder/routes/dogfood-port-tests.json \
-  --priority-slug v0.1-foundation \
-  --workspace-root "<CoCoder>" \
-  --workspace-slug cocoder-dogfood \
-  --developer-mode \
-  --execute true
+```text
+<CoCoder>/local/
+├── settings.json                 Oz daemon settings (poll interval, default workspace, auto-compact)
+├── secrets/
+│   └── oz-token                  per-install Bearer token (0600, gitignored) — auto-minted
+├── cocoder.db                    Oz-owned operational SQLite (ADR-0003)
+├── runs/                         per-run artifacts
+├── workspace/
+│   └── <id>.code-workspace       one workspace definition per managed workspace (ADR-0019)
+└── workspaces.json               legacy registry (superseded by workspace/, ADR-0019)
 ```
 
-## File Formats
+Tracked example/starter files ship under
+[`templates/install-local/`](../templates/install-local/): `config.example.yaml`,
+`roots.example.yaml`, and `workspaces.example.json` (reference samples — copy what you need into
+`local/`).
 
-YAML is the primary user format. JSON is accepted for generated tools or sync systems. YAML and JSON are interchangeable as long as the content matches `packages/schemas/dist/config.schema.json`.
+### Oz daemon settings
 
-## Merge Semantics
+`local/settings.json` is owned and written by the Oz daemon
+([`packages/daemon/src/settings.ts`](../packages/daemon/src/settings.ts)). The live keys are
+`pollIntervalMs`, `defaultWorkspaceId`, and `ozAutoCompactRuns`; missing or invalid values fall back
+to defaults. Edit these through the **dashboard Settings panel** (the daemon persists them); there is
+no `cocoder config` CLI command.
 
-Objects deep-merge. Scalars replace. Arrays replace by default so profile, adapter, or route lists do not unexpectedly concatenate.
+### Secrets
 
-Advanced array merges can use an explicit directive:
+`local/secrets/oz-token` is the per-install loopback Bearer token, minted on first daemon start
+(owner-only `0600`, gitignored) and required on every state-changing daemon endpoint
+([`packages/daemon/src/secrets.ts`](../packages/daemon/src/secrets.ts)). Settings endpoints never
+return secret values. Provider/model API keys are supplied to the underlying CLI adapters
+(`claude`, `codex`, `cursor-agent`) through their own auth — CoCoder does not store them. For the
+full daemon security posture see
+[ARCHITECTURE.md → Oz daemon security model](../ARCHITECTURE.md#oz-daemon-security-model) and
+[`oz-security-checklist.md`](./oz-security-checklist.md).
 
-```yaml
-someArray:
-  __merge: append
-  items:
-    - new-value
+## Workspace definitions and path resolution
+
+Each managed workspace is a `local/workspace/<id>.code-workspace` JSON file listing its `folders`,
+each with a `path` and a `role` (`primary` | `writable` | `readonly`); exactly one folder must be
+`primary` ([`packages/daemon/src/registry.ts`](../packages/daemon/src/registry.ts),
+[ADR-0019](../cocoder/decisions/0019-multi-root-workspaces.md)).
+
+Paths may carry `${VAR}` tokens, expanded at read time. The supported portable token is
+`${COCODER_HOME}` (the install root); other `${NAME}` tokens fall back to `process.env`. Relative
+paths resolve against the workspace-file directory; absolute paths are taken as-is. This is
+path-token expansion only — not secret resolution. Use `${COCODER_HOME}/...` to keep a workspace
+entry portable across machines that sync the CoCoder folder to different absolute roots.
+
+```jsonc
+// local/workspace/my-app.code-workspace
+{
+  "folders": [
+    { "path": "${COCODER_HOME}/../my-app", "role": "primary" }
+  ]
+}
 ```
 
-Use `__merge: replace` with `items` to make replacement explicit.
+For the multi-machine sync model (sync the whole CoCoder folder; git handles the engine, your sync
+tool handles `local/`), see
+[ARCHITECTURE.md → Multi-machine sync](../ARCHITECTURE.md#multi-machine-sync).
 
-## Secret References
+## The dogfood workspace
 
-Config files may reference secrets without storing secret values:
-
-```yaml
-secrets:
-  openai: ${env:OPENAI_API_KEY}
-  localToken: ${file:secrets/oz-token}
-  futureKeychain: ${keychain:service/account}
-```
-
-`${env:NAME}` resolves from the process environment. `${file:relative/path}` resolves relative to the configured base directory. `${keychain:service/account}` is reserved for v0.2 and fails gracefully in v0.1.
-
-## Path Tokens
-
-Workspace registry paths may use portable tokens:
-
-```yaml
-roots:
-  nas: "/path/to/your/synced-drive"
-  dev: "~/dev"
-```
-
-(For a complete working example, see [`templates/install-local/roots.example.yaml`](../templates/install-local/roots.example.yaml).)
-
-Supported path forms:
-
-- `${COCODER_HOME}/relative/path`
-- `${root:nas}/CoBuilder`
-- Absolute paths as a fallback
-
-When a path cannot be expressed through `${COCODER_HOME}` or a named root, CoCoder stores the absolute path and returns a warning. This keeps behavior explicit instead of silently creating a non-portable registry entry.
-
-## Validation Failures
-
-CoCoder validates config through JSON Schema generated from the Zod schemas in `packages/schemas/src/`. Invalid config refuses to start and reports the failing JSON Pointer plus the violated constraint.
-
-Run:
-
-```sh
-pnpm -F schemas build
-pnpm -F core test config-resolver
-```
+The CoCoder repo is itself one managed workspace — the dogfood, id `cocoder`, whose primary root is
+the install root and whose governance is `<CoCoder>/cocoder/`. `cocoder run <priorityId>` standalone
+mode runs against this workspace from the repo root
+([`packages/cli/src/run.ts`](../packages/cli/src/run.ts)). See
+[ARCHITECTURE.md → The dual nature](../ARCHITECTURE.md#the-dual-nature-cocoder-building-itself).

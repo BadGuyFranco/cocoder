@@ -9,6 +9,7 @@ order:
 1. Is this a CoCoder product change or a workspace change?
 2. What kind of change is it, and which single owner may write it?
 
+It reconciles with [ARCHITECTURE.md "Oz improvement routing"](../ARCHITECTURE.md#oz-improvement-routing).
 If a change fits no row, spans owners, or reverses an Accepted ADR, surface the decision to the founder.
 Do not improvise a new path.
 
@@ -30,16 +31,19 @@ after CoCoder-specific nouns are stripped, it belongs in the product/base surfac
 in the workspace delta for that repo.
 
 Product work is guarded by ADR-0012 portability plus the relevant verified run, ADR, and tests. Workspace
-work changes only that workspace's `cocoder/**` governance.
+work changes only that workspace's tracked `cocoder/**` governance. Machine-local state never lives in a
+workspace — it lives only in the install's ignored `local/` zone (see
+[ARCHITECTURE.md storage zones](../ARCHITECTURE.md)). There is no `cocoder/local/` zone.
 
 ## Targets
 
+The four zones, matching ARCHITECTURE.md:
+
 | Target | Meaning |
 |---|---|
-| `cocoder-product` | A product change to CoCoder itself: `packages/**`, `templates/**`, public `docs/**`, schemas, shipped prompts, or `packages/personas/base/**` |
-| `workspace-shared` | A tracked change to the active repo's `<ws.path>/cocoder/**` folder |
-| `workspace-local` | A private change to the active repo's `<ws.path>/cocoder/local/**` folder |
-| `install-local` | A private change to the install's `<CoCoder>/local/**` folder |
+| `cocoder-product` | A product change to CoCoder itself: `packages/**`, `templates/**`, public `docs/**`, schemas, shipped prompts, or `packages/personas/base/**`. Contributor-only developer-mode work; in the dogfood it is the ADR-0012 portability-test call |
+| `workspace-shared` | A tracked change to the active repo's `<ws.path>/cocoder/**` governance folder |
+| `install-local` | A private change to the install's ignored `<CoCoder>/local/**` zone — the only machine-local zone, spanning all workspaces (DB, runs, secrets, workspace definition files) |
 | `upstream-candidate` | A workspace finding that may belong in CoCoder product, but needs contributor review before product files change |
 
 ## Kind Of Change
@@ -48,9 +52,8 @@ work changes only that workspace's `cocoder/**` governance.
 |---|---|---|---|
 | Portable persona behavior, shared runtime standards, base Plays, shipped priorities, runner-facing prompt contracts | CoCoder product governance and accepted ADRs | `packages/personas/base/**` | `cocoder-product` |
 | Runner, commit gate, persona loader, Play loader, daemon, UI, schemas, templates, public docs | CoCoder product code/docs owner named by the relevant subsystem or ADR | `packages/**`, `templates/**`, public `docs/**` | `cocoder-product` |
-| Repo-specific persona extension, local standards, workspace memory, priorities, tickets, ADRs, run records meant to travel with the repo | That workspace's governed `cocoder/**` tree | `<ws.path>/cocoder/**` | `workspace-shared` |
-| Machine-private workspace override, local scratch config, secrets, cache, transient helper output for one repo | That workspace's local-only governance area | `<ws.path>/cocoder/local/**` | `workspace-local` |
-| Install-wide machine state, run directories, workspace registry, install config, secrets, caches | The CoCoder install's ignored local state | `<CoCoder>/local/**` | `install-local` |
+| Repo-specific persona delta, local standards, workspace memory, priorities, tickets, ADRs, run records meant to travel with the repo | That workspace's governed `cocoder/**` tree | `<ws.path>/cocoder/**` | `workspace-shared` |
+| Install-wide machine state, run directories, workspace definition files, install config, secrets, caches | The CoCoder install's ignored local state | `<CoCoder>/local/**` | `install-local` |
 | A workspace-specific observation that appears portable but has not passed ADR-0012 portability and product review | Contributor review queue, ticket, or founder decision | Workspace record first; no product write until accepted | `upstream-candidate` |
 
 ## Routing Rules
@@ -59,8 +62,9 @@ work changes only that workspace's `cocoder/**` governance.
   a dogfood governance delta is workspace even though the workspace lives inside the CoCoder repo.
 - Keep one owner per concept. If a Play, ADR, prompt, runner surface, status projection, or guide owns a
   contract, consumers must derive from it instead of copying its table, labels, fields, or section order.
-- Map ADR-0012, ADR-0023, and ADR-0026 distinctions; do not reverse them through routing prose. ADR-0012
-  owns base-vs-delta portability, ADR-0023 owns the commit spine, and ADR-0026 owns onboard/drift tooling
-  as tooling under ordinary Oscar priorities.
-- Normal workspace customization stays in `workspace-shared` or `workspace-local`. Generalizable product
-  findings start as `upstream-candidate` until contributor review routes them to `cocoder-product`.
+- Map ADR-0012, ADR-0008, and ADR-0009 distinctions; do not reverse them through routing prose. ADR-0012
+  owns base-vs-delta portability, ADR-0008 owns repository topology and the storage zones, and ADR-0009
+  owns extensibility.
+- Normal workspace customization stays in `workspace-shared`. Generalizable product findings start as
+  `upstream-candidate` until contributor review routes them to `cocoder-product`. Machine-only state is
+  `install-local`.

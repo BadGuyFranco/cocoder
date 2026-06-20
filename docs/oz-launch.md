@@ -7,58 +7,54 @@ CoCoder is **terminal-only** in v0.1. Ticket 0001 retires macOS `.command` doubl
 From the CoCoder install root:
 
 ```bash
-pnpm exec cocoder oz start
+pnpm exec cocoder oz start   # runs the daemon in the FOREGROUND
+```
+
+Or run it detached with the lifecycle script (start/stop/status/restart):
+
+```bash
+scripts/oz.sh start
 ```
 
 Default URL: `http://127.0.0.1:7878/` (override with `COCODER_OZ_PORT`).
 
-Check status or stop:
+Check status or stop the detached daemon:
 
 ```bash
-pnpm exec cocoder oz status
-pnpm exec cocoder oz stop
+scripts/oz.sh status
+scripts/oz.sh stop
 ```
 
 ## Register a workspace
 
-Before launching runs from the dashboard, register each workspace Oz should manage:
-
-```bash
-pnpm exec cocoder oz register \
-  --id my-app \
-  --path /path/to/my-app \
-  --tmux-socket cocoder-my-app
-```
-
-Or use the **Workspaces** page in the dashboard (`#/workspaces`).
+Before launching runs from the dashboard, register each workspace Oz should manage from the
+**Workspaces** page (`#/workspaces`): **Add workspace**, pick the repo's primary-root folder, and create.
+The daemon writes a `.code-workspace` registry file under `<CoCoder>/local/workspace/` — the one home for
+workspace identity (ADR-0019); there is no `cocoder oz register` CLI command. Each run is then isolated in
+its own cmux workspace automatically — no per-workspace socket to configure (ADR-0002; see
+[`ARCHITECTURE.md`](../ARCHITECTURE.md)).
 
 ## Launch a run
 
 1. Open **Priorities** (`#/priorities`) and pick a registered workspace.
-2. Confirm profile and route paths (relative to workspace root).
-3. Click **Launch** on a priority row. Oz calls `POST /runs`, which spawns `cocoder launch` as an argv subprocess (PC-Q4=A).
+2. Confirm the priority you want (its summary and scope) — the per-persona CLI/model assignment comes from the workspace's `cocoder/personas/assignments.json`.
+3. Click **Launch** on a priority row. Oz calls `POST /runs`; the daemon runs it through the core runner, spawning each lane's configured model CLI as an argv subprocess. (The `--strict-dirt` opt-out is the `strictPreRunDirt` field on the `POST /runs` body and a checkbox in the priority's launch dialog; see [ADR-0029](../cocoder/decisions/0029-founder-trusted-pre-run-snapshot.md).)
 
-### Visible launch (iTerm2/Terminal split pane)
+### Watching a run (cmux panes)
 
-By default a launched run's tmux sessions are **detached** — nothing pops open. Pass `--attach iterm` (the dashboard does this automatically) to open one terminal window split into a pane per lane, each attached to its lane's tmux session:
+A launched run opens in its own cmux workspace, with each lane as a split pane (ADR-0002). The driver brings the active pane to the front when the run starts, and will `open -a cmux` if the app isn't already running. There are no `--attach`/`--execute` flags and no iTerm/Terminal auto-open — that was a v1 behavior and no longer exists.
 
-```bash
-pnpm exec cocoder launch ... --execute true --attach iterm
-```
+To re-focus a run's pane later, use the **Attach** action in the dashboard run drawer (`POST /runs/:id/show`). It focuses the run's live cmux pane — Oscar by preference, since Oscar stays the founder-facing surface after wrap-up. If the run is no longer live in the current daemon process (torn down, or the daemon restarted), Attach returns a 409 and nothing opens.
 
-This is **best-effort**: it opens iTerm2 if present (else Terminal.app), and the run still proceeds headless if no GUI terminal is available — attach manually with the `attachCommands` from the launch output. macOS may show a one-time Automation permission prompt the first time. *(For-now behavior; to be superseded by the planned Electron terminal harness + Oz window.)*
-
-Alternatively from the terminal (CLI path):
+From the terminal, launch a run directly:
 
 ```bash
-pnpm exec cocoder launch \
-  --profile cocoder/profiles/your.profile.json \
-  --route cocoder/routes/your.route.json \
-  --priority-slug your-slug \
-  --workspace-root /path/to/my-app \
-  --execute true \
-  --attach iterm
+pnpm exec cocoder run <priorityId> [--resume <runId>] [--strict-dirt]
 ```
+
+### Uncommitted work at launch (ADR-0029)
+
+A launch no longer refuses on uncommitted founder WIP. The founder is a trusted actor: by default the launch takes a **pre-run snapshot** — it commits the dirty tree to its own labeled commit so the commit-gate and quarantine only ever see agent-produced changes — and then proceeds. Pass `--strict-dirt` to opt back into the old hard gate: with it set, an uncommitted in-scope tree **refuses** the launch instead of snapshotting. See [`ARCHITECTURE.md`](../ARCHITECTURE.md) and [ADR-0029](../cocoder/decisions/0029-founder-trusted-pre-run-snapshot.md).
 
 ## Stop a run
 

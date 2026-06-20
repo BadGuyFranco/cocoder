@@ -1,178 +1,122 @@
 # Getting started with CoCoder
 
-This is the shortest v0.1 path from a clean clone to a first orchestrated launch. It assumes you want to run CoCoder against an application repository that lives outside the CoCoder install tree.
+**Last verified:** 2026-06-20
 
-Target time: 30 minutes or less on a machine that already has Node.js and pnpm.
+The shortest path from a clean clone to a first orchestrated run. CoCoder v2 ships and dogfoods
+itself: the repo is both the engine install and one managed workspace (the **dogfood**, whose
+governance lives at `<CoCoder>/cocoder/`). The commands below drive that dogfood workspace. For the
+storage-zone model and the launch/commit machinery, the single source of truth is
+[`ARCHITECTURE.md`](../ARCHITECTURE.md); this page only gets you running.
 
-## 1. Install CoCoder
+## 1. Install
 
 Prerequisites:
 
 - Node.js version from `.nvmrc`
 - pnpm 10.x
-- tmux
-- At least one configured CLI adapter named by the selected profile
+- [cmux](https://github.com/cmux) (the session host — CoCoder runs agents in cmux panes)
+- At least one configured CLI adapter (`claude`, `codex`, or `cursor-agent`)
 
-```bash
+```sh
 git clone <CoCoder-repo-url> ~/dev/CoCoder
 cd ~/dev/CoCoder
 pnpm install
-pnpm -F cocoder-cli build
-pnpm exec cocoder validate-contracts
-```
-
-Keep the install path handy:
-
-```bash
+node scripts/check-topology.mjs
 export COCODER_HOME="$PWD"
 ```
 
-## 2. Choose an out-of-tree workspace
+The `cocoder` CLI runs TypeScript directly via `tsx` — there is no build step.
 
-Do not initialize a normal application workspace inside the CoCoder install. The install repo already contains its own dogfood workspace at `<CoCoder>/cocoder/`; your app should be elsewhere.
+`check-topology.mjs` is the inward-only dependency guardrail; a clean clone should pass it.
 
-Example:
+## 2. Storage zones
 
-```bash
-mkdir -p ~/dev/my-app
-cd ~/dev/my-app
-git init
-```
-
-## 3. Initialize CoCoder in the workspace
-
-Run `cocoder init` from the application repo root:
-
-```bash
-pnpm --dir "$COCODER_HOME" exec cocoder init \
-  --workspace-root "$PWD" \
-  --cocoder-home "$COCODER_HOME"
-```
-
-This creates `<app>/cocoder/` from `templates/workspace-cocoder/`. Re-run with `--merge true` after CoCoder updates; user-edited tracked files are preserved.
-
-Storage zones:
+CoCoder has **three** zones ([ARCHITECTURE.md](../ARCHITECTURE.md), [ADR-0008](../cocoder/decisions/0008-repository-topology.md)).
+You do not create any of them by hand:
 
 ```text
-CoCoder install repo
-  <CoCoder>/
-    packages/                  tracked engine code
-    docs/                      tracked public docs
-    templates/                 tracked workspace templates
-    local/                     ignored install-level state
-      workspaces/              Oz registry, run records, audit files
-      secrets/                 install-level private secrets
-
-Application workspace
-  <app>/
-    cocoder/                   tracked workspace governance
-      PRIORITIES.md            priorities you can launch
-      SESSION_LOG.md           recent run notes
-      decisions/               workspace decisions
-      memory/                  onboarding notes and codebase map
-      local/                   ignored workspace-local state
-        config.yaml            private per-workspace config
-        playbooks/             private operator notes
-        secrets/               do not commit or sync broadly
+<CoCoder>/                  install repo (tracked): packages/, docs/, templates/, scripts/,
+                            and cocoder/ — the dogfood workspace's governance
+<CoCoder>/local/            the ONE machine-local zone (gitignored), spanning every workspace:
+                            cocoder.db, runs/, workspace/ defs, settings.json, secrets/, audit
+<primary-root>/cocoder/     each managed repo's tracked governance dir (here: the dogfood cocoder/)
 ```
 
-Commit the tracked workspace governance files. Do not commit either `local/` zone.
+There is no per-workspace `local/` — all machine state lives in the install's single `local/`. The
+config/secrets locations are covered in [`configuration.md`](./configuration.md).
 
-## 4. Run the workspace audit stubs
+## 3. Pick (or add) a priority
 
-```bash
-pnpm --dir "$COCODER_HOME" exec cocoder audit-workspace --workspace-root "$PWD"
-pnpm --dir "$COCODER_HOME" exec cocoder refresh-memory --workspace-root "$PWD"
+Launchable priorities are one flat `.md` per priority under `cocoder/priorities/`, ordered by
+`cocoder/priorities/order.json`. The directory listing is the index — there is no `PRIORITIES.md`.
+Run id is the priority's filename stem. List them:
+
+```sh
+ls cocoder/priorities/
 ```
 
-Read and edit the generated memory files enough that a first run has context:
+## 4. First run from the CLI
 
-- the onboarding questions file under `cocoder/memory/`
-- `cocoder/memory/codebase-map.md`
-- `cocoder/memory/tech-stack.md`
-
-Full stack detection is v0.2 scope; in v0.1 these are starter files for the operator to refine.
-
-## 5. Add a first launch priority
-
-For the first v0.1 smoke launch, add an active priority row to `cocoder/PRIORITIES.md` using the starter route's supported slug:
-
-```markdown
-| v0.1-foundation | First CoCoder launch smoke test | Active | Oscar |
+```sh
+cocoder run <priorityId>
 ```
 
-After your own routes and priority boundaries exist, replace this with project-specific slugs. See [`custom-personas.md`](./custom-personas.md) for route and persona extension conventions.
+What happens (see [ARCHITECTURE.md → commit spine](../ARCHITECTURE.md#how-work-reaches-trunk--the-commit-spine-adr-0023)):
+Oscar orchestrates the priority as a multi-atom loop, delegating to Bob, verifying each atom before
+the commit spine lands it on the active branch.
 
-## 6. Dry-run composition
+If a daemon is running it owns the DB writer and cmux; the CLI routes the launch through it (client
+mode). Otherwise the CLI runs standalone and takes the SQLite write-lock. Either way the launch
+emits a run id and the commits it landed.
 
-From the application workspace root:
+Useful flags ([`packages/cli/src/run.ts`](../packages/cli/src/run.ts)):
 
-```bash
-pnpm --dir "$COCODER_HOME" exec cocoder compose-launch \
-  --profile "$COCODER_HOME/cocoder/profiles/cocoder-oscar.profile.json" \
-  --route "$COCODER_HOME/cocoder/routes/oscar-lead.json" \
-  --priority-slug v0.1-foundation \
-  --priority-file "$PWD/cocoder/PRIORITIES.md" \
-  --session-log "$PWD/cocoder/SESSION_LOG.md" \
-  --workspace-root "$PWD" \
-  --workspace-slug my-app
+- `--resume <runId>` — continue from a prior run's pickup brief.
+- `--strict-dirt` — see [§6](#6-launching-with-uncommitted-changes).
+
+## 5. View / attach to a run (the dashboard)
+
+CoCoder's run surface is the **Oz dashboard** (an Electron app served by the Oz daemon). Start the
+daemon and open the dashboard:
+
+```sh
+scripts/oz.sh start        # starts the daemon detached on :7878, prints the dashboard URL
 ```
 
-The dry run should return `"ok": true`. Fix validation errors before launching. Common causes are a missing active priority row, an unavailable adapter, or a route/profile mismatch.
+(`cocoder oz start` runs the daemon in the foreground instead.) In the dashboard, a run's **attach**
+action focuses that run's live cmux pane — under the hood it posts `/runs/:id/show`, which calls the
+cmux host's `show()` to bring the agent pane to the front
+([`packages/daemon/src/launcher.ts`](../packages/daemon/src/launcher.ts) `showRun`,
+[`packages/session-hosts/src/cmux/driver.ts`](../packages/session-hosts/src/cmux/driver.ts) `show`).
+There is no CLI attach command and no auto-opened terminal. If the run is not live, attach is a no-op.
 
-## 7. First launch from CLI
+For the daemon security posture, see
+[ARCHITECTURE.md → Oz daemon security model](../ARCHITECTURE.md#oz-daemon-security-model) and
+[`oz-security-checklist.md`](./oz-security-checklist.md).
 
-Start a visible terminal launch:
+## 6. Launching with uncommitted changes
 
-```bash
-pnpm --dir "$COCODER_HOME" exec cocoder launch \
-  --profile "$COCODER_HOME/cocoder/profiles/cocoder-oscar.profile.json" \
-  --route "$COCODER_HOME/cocoder/routes/oscar-lead.json" \
-  --priority-slug v0.1-foundation \
-  --priority-file "$PWD/cocoder/PRIORITIES.md" \
-  --session-log "$PWD/cocoder/SESSION_LOG.md" \
-  --workspace-root "$PWD" \
-  --workspace-slug my-app \
-  --socket-name cocoder-my-app \
-  --execute true \
-  --attach iterm
+By default a launch with uncommitted **founder** work in scope is **not** refused. The founder is a
+trusted actor ([ADR-0029](../cocoder/decisions/0029-founder-trusted-pre-run-snapshot.md)): the launch
+guard snapshots that WIP to its own attributed commit and proceeds — product/builder dirt →
+`founder: pre-run WIP snapshot`, governance dirt → `governance: pre-run snapshot`. Mixed dirt
+produces both snapshots and still proceeds. Agent governance gates (verify, quarantine, out-of-lane
+flagging) stay hard; only the founder's own work is preserved rather than blocked.
+
+To restore the old hard-stop refusal (shared repos, CI), opt in:
+
+```sh
+cocoder run <priorityId> --strict-dirt
 ```
 
-`--attach iterm` is best-effort on macOS. If no GUI terminal opens, use the `attachCommands` in the JSON output to attach to the tmux sessions manually.
+The same opt-out is `strictPreRunDirt` on `POST /runs` and the dashboard's strict-dirt checkbox
+([`packages/daemon/src/routes.ts`](../packages/daemon/src/routes.ts)).
 
-The first run is successful when the launcher creates a run directory under `<CoCoder>/local/workspaces/my-app/runs/` and both lanes receive their launch prompts. If a lane reports a blocker, keep the result artifacts and use the reported evidence instead of deleting the run directory.
+## 7. What to commit
 
-## 8. First launch from Oz
+A `cocoder/` governance directory is fully git-tracked — priorities, decisions, tickets, memory,
+standards, persona/play extensions. Never commit anything under `<CoCoder>/local/` (only its signage
+`README.md` is tracked). The canonical ignore matrix is in
+[ARCHITECTURE.md → Ignore matrix](../ARCHITECTURE.md#ignore-matrix-canonical).
 
-Oz is the browser launch surface for v0.1.
-
-```bash
-pnpm --dir "$COCODER_HOME" exec cocoder oz start --cocoder-home "$COCODER_HOME"
-pnpm --dir "$COCODER_HOME" exec cocoder oz register \
-  --id my-app \
-  --workspace-root "$PWD" \
-  --tmux-socket cocoder-my-app \
-  --cocoder-home "$COCODER_HOME"
-```
-
-Open `http://127.0.0.1:7878/`, then use **Priorities** to launch the active priority for `my-app`. The dashboard launch path opens visible panes by default when possible.
-
-For the full dashboard operator flow, see [`oz-launch.md`](./oz-launch.md). For local daemon security expectations before regular use, see [`oz-security-checklist.md`](./oz-security-checklist.md).
-
-## 9. What to commit
-
-Commit:
-
-- `<app>/cocoder/PRIORITIES.md`
-- `<app>/cocoder/SESSION_LOG.md`
-- `<app>/cocoder/decisions/`
-- `<app>/cocoder/memory/`
-- Public persona, route, boundary, and prompt files you intentionally add under `<app>/cocoder/`
-
-Do not commit:
-
-- `<CoCoder>/local/`
-- `<app>/cocoder/local/`
-- Secret files, `.env*`, run transcripts containing private material, or generated dependency/build/cache directories
-
-See [`faq.md`](./faq.md) for commercial-use, trademark, telemetry, and sync cautions.
+See [`faq.md`](./faq.md) for commercial-use, trademark, telemetry, and sync guidance.
