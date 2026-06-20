@@ -35,3 +35,4 @@ export {
   type DriftApplyResult,
   type DriftWrite,
 } from './apply.js'
+export { runDriftAudit, type RunDriftAuditOptions } from './run.js'

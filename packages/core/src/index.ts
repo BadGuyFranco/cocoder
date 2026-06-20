@@ -136,6 +136,8 @@ export {
   type ApplyRatifiedDriftWritesInput,
   type DriftApplyResult,
   type DriftWrite,
+  runDriftAudit,
+  type RunDriftAuditOptions,
 } from './drift/index.js'
 export {
   closeTicket,
