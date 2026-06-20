@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-20 — **orchestration-pipeline-simplification: all-persona Routing Guide landed — archive-candidate (run_165)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [orchestration-pipeline-simplification](./priorities/orchestration-pipeline-simplification.md) | **Run:** run_165
+**Outcomes:**
+- **Atom 6 landed (verified, `61c3f4f`).** Generalized `docs/oz-improvement-routing.md` into the single all-persona Routing Guide (product-vs-workspace first cut + kind-of-change → owner → write-path); trigger line in `shared-standards.md`; one-line pointer in owner-map doc; enforcer extended in `orchestration-contracts.test.ts` (target taxonomy + single-owner pin).
+- **Objective Verified-when #1–7 satisfied.** Atoms 0–2 from run_164 (`73e311c`, `198ae88`, `6a022e7`); atoms 3–5 collapsed into atom 0's map. Every overlap exits as GUARDED-BY-ADR, LANDED-GUARD, or NAMED-FOLLOW-UP (tickets 0020/0021/0022).
+- **Disposition: `archive-candidate`** — no in-priority build atoms remain; only founder archive confirmation.
+
+**Next:** Confirm archive of `orchestration-pipeline-simplification`, then launch ticket `0020` (stale governance test refs archived hybrid-plays path).
+
 ## 2026-06-20 — **orchestration-pipeline-simplification: owner map + priority composer merge + closeout (run_164)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [orchestration-pipeline-simplification](./priorities/orchestration-pipeline-simplification.md) | **Run:** run_164

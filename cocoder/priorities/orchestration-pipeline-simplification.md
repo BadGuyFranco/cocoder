@@ -89,10 +89,9 @@ behavior, evidence, reversibility, or safeguards.
 - `scripts/proof-orchestration-enforcer.mjs` and `packages/core/tests/orchestration-contracts.test.ts` — **existing enforcers; extend these rather than add a parallel one.**
 
 ## Proposed Atom Sequence
-> **Status (run_164):** atoms 0–2 landed (`73e311c`, `198ae88`, `6a022e7`); the planned atoms 3–5
-> collapsed into atom 0's map and the closeout. The ONLY remaining forward work is **Atom 6 — Routing
-> Guide** (see its section above and **Suggested Next Action**). The list below is retained as historical
-> record, not pending work.
+> **Status (run_165):** all atoms complete. Atoms 0–2 landed run_164 (`73e311c`, `198ae88`, `6a022e7`);
+> atoms 3–5 collapsed into atom 0's map; atom 6 (Routing Guide) landed run_165 (`61c3f4f`). The list
+> below is retained as historical record.
 
 0. **Owner/objective map first.** Read the required inputs and **extend the existing
    `docs/orchestration-contract-ownership.md`** into the full pipeline owner map — do not create a second
@@ -134,8 +133,7 @@ behavior, evidence, reversibility, or safeguards.
 Run_164 landed atom 0 (owner map, `73e311c`), atom 1 (priority-markdown merged under one core composer
 `composePriorityMarkdown` + duplicate-path detector, `198ae88`), and the closeout (overlap dispositions +
 follow-up tickets 0020/0021/0022 + failure-catalog F23, `6a022e7`). Atoms 1–5 collapsed because atom 0's
-map produced the decisions. This atom 6 is the founder-added final deliverable; after it, the priority is
-archive-ready.
+map produced the decisions. **Run_165 landed atom 6 (`61c3f4f`)** — the founder-added final deliverable.
 
 **Goal.** A single, all-persona **Routing Guide** so Oz/Oscar/Deb/Bob know WHERE to route any change and
 never invent a second path — the runtime layer the long owner-map inventory cannot serve mid-task.
@@ -170,7 +168,10 @@ Verify green: `packages/personas/tests/base-personas.test.ts`, `packages/core/te
 and the core suite.
 
 ## Suggested Next Action
-Launch a fresh **verified run** on this priority to build **Atom 6 — the Routing Guide** per the
-founder-approved decisions above. Atoms 0–5 are complete (`73e311c`, `198ae88`, `6a022e7`); atom 6 is the
-last deliverable before archive. It edits base governance, so it cannot be a post-wrap support edit — a
-fresh verified run is required.
+**Disposition: `archive-candidate` (run_165).** All Objective deliverables (Verified-when #1–7) are landed
+and green. Every overlap in `docs/orchestration-contract-ownership.md` exits as a guarded distinction,
+landed enforcer, or named follow-up ticket (0020/0021/0022). No in-priority build atoms remain.
+
+**Founder gate:** confirm archive of this priority. **Next launch after archive:** ticket `0020` — retire
+or repoint the stale `priority-authoring-plays` test that still reads the archived `hybrid-plays.md` live
+path.
