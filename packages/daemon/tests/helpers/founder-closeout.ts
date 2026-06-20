@@ -3,8 +3,35 @@ import { join } from 'node:path'
 import { basePlaysDir } from '@cocoder/personas'
 
 interface FounderCloseoutContract {
-  readonly sections: readonly string[]
+  readonly labels: Readonly<Record<FounderCloseoutRole, string>>
   readonly finalLine: string
+}
+
+type FounderCloseoutRole =
+  | 'title'
+  | 'atomComplete'
+  | 'runStatus'
+  | 'whatChanged'
+  | 'judgment'
+  | 'whatRemains'
+  | 'decisionNeeded'
+  | 'commitState'
+  | 'nextStep'
+  | 'teardownReadiness'
+
+function roleFor(label: string): FounderCloseoutRole | null {
+  const normalized = label.replace(/\*/g, '').replace(/:/g, '').trim().toLowerCase()
+  if (normalized === 'founder completion brief') return 'title'
+  if (normalized === 'atom complete') return 'atomComplete'
+  if (normalized === 'run status') return 'runStatus'
+  if (normalized === 'what changed') return 'whatChanged'
+  if (normalized === 'judgment') return 'judgment'
+  if (normalized === 'what remains') return 'whatRemains'
+  if (normalized === 'founder decision needed') return 'decisionNeeded'
+  if (normalized === 'commit state') return 'commitState'
+  if (normalized === 'recommended next step') return 'nextStep'
+  if (normalized === 'teardown readiness') return 'teardownReadiness'
+  return null
 }
 
 const contract: FounderCloseoutContract = (() => {
@@ -12,22 +39,28 @@ const contract: FounderCloseoutContract = (() => {
   const fence = text.match(/```(?:[a-zA-Z0-9_-]+)?\n([\s\S]*?)```/)
   if (!fence?.[1]) throw new Error('wrap-up Play is missing a fenced founder closeout contract')
   const sections = fence[1].match(/\*\*[^*\n]+?\*\*/g) ?? []
+  const labels = Object.fromEntries(sections.flatMap((section): readonly [FounderCloseoutRole, string][] => {
+    const role = roleFor(section)
+    return role ? [[role, section]] : []
+  })) as Partial<Record<FounderCloseoutRole, string>>
   const finalLine = fence[1]
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
     .at(-1)
-  if (sections.length < 10 || !finalLine || finalLine.startsWith('**')) {
+  const required: readonly FounderCloseoutRole[] = ['title', 'atomComplete', 'runStatus', 'whatChanged', 'judgment', 'whatRemains', 'decisionNeeded', 'commitState', 'nextStep', 'teardownReadiness']
+  if (required.some((role) => !labels[role]) || !finalLine || finalLine.startsWith('**')) {
     throw new Error('wrap-up Play founder closeout contract is malformed')
   }
-  return { sections: sections.slice(0, 10), finalLine }
+  return { labels: labels as Record<FounderCloseoutRole, string>, finalLine }
 })()
 
+function normalizeNextStep(nextStep: string): string {
+  return nextStep.replace(/ (`[^`]+`) - /, ' $1 — ')
+}
+
 export function validFounderCloseout(summary = 'The requested work was completed.', nextStep = 'Priority: `demo` - continue the remaining priority atoms'): string {
-  const [title, atomComplete, runStatus, whatChanged, whatRemains, next, decisionNeeded, commitState, teardownReadiness, judgment] = contract.sections
-  if (!title || !atomComplete || !runStatus || !whatChanged || !whatRemains || !next || !decisionNeeded || !commitState || !teardownReadiness || !judgment) {
-    throw new Error('wrap-up Play founder closeout contract is incomplete')
-  }
+  const { title, atomComplete, runStatus, whatChanged, judgment, whatRemains, decisionNeeded, commitState, nextStep: next, teardownReadiness } = contract.labels
   return `${title}
 
 ${atomComplete} Yes
@@ -36,20 +69,20 @@ ${runStatus} continue
 
 ${whatChanged} ${summary}
 
+${judgment}
+Oscar stopped at a clean wrap-up point.
+
 ${whatRemains}
 - Continue the next launchable work item.
-
-${next}
-${nextStep}
 
 ${decisionNeeded} None.
 
 ${commitState} The runner reports the authoritative commit outcome after this brief.
 
-${teardownReadiness} Standing by; teardown requires an explicit founder request.
+${next}
+${normalizeNextStep(nextStep)}
 
-${judgment}
-Oscar stopped at a clean wrap-up point.
+${teardownReadiness} Standing by; teardown requires an explicit founder request.
 
 ${contract.finalLine}
 `

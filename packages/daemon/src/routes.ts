@@ -6,6 +6,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 import {
   installRoot as cocoderInstallRoot,
+  composePriorityMarkdown,
   composeTicketMarkdown,
   listEffectivePlays,
   listEffectivePersonas,
@@ -249,11 +250,6 @@ function createWorkspaceBody(body: unknown, cocoderHome: string): ParsedCreateWo
   const rootError = validateWorkspaceRootRules(parsed.roots, cocoderHome)
   if (rootError) return { ok: false, error: rootError }
   return { ok: true, input: { id, folders: parsed.folders, roots: parsed.roots } }
-}
-
-function composePriorityMarkdown(input: CreatePriorityInput): string {
-  const body = input.goal.endsWith('\n') ? input.goal : `${input.goal}\n`
-  return `---\nid: ${input.id}\ntitle: ${input.title}\n---\n${body}`
 }
 
 function validateCreatedPriority(markdown: string, priority: Priority, input: CreatePriorityInput): void {

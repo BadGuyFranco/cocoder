@@ -107,7 +107,7 @@ export {
   type PlayAvailability,
 } from './plays/index.js'
 
-export { loadPriority, type Priority } from './priorities/index.js'
+export { composePriorityMarkdown, loadPriority, type ComposePriorityMarkdownInput, type Priority } from './priorities/index.js'
 export {
   readGovernanceClaims,
   type DriftClaim,

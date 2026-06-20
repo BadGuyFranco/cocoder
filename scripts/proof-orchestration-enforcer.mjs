@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// Proof - orchestration-contract enforcer: the founder closeout contract has one owner.
+// Proof - orchestration-contract enforcer: orchestration contracts have one owner.
 //
 // Turns the structural enforcer into a one-command red/green proof:
 // 1. the clean tree passes,
-// 2. a deliberately re-encoded founder closeout contract in a live consumer fails the named test,
-// 3. the consumer is restored byte-for-byte and the test passes again.
+// 2. deliberately re-encoded contracts in live consumers fail the named tests,
+// 3. consumers are restored byte-for-byte and the tests pass again.
 //
 //   node scripts/proof-orchestration-enforcer.mjs
 
@@ -19,9 +19,11 @@ const exec = promisify(execFile)
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 const TEST_FILE = 'tests/orchestration-contracts.test.ts'
-const TARGET_TEST = 'live prompt/runtime/test consumers do not restate the founder closeout contract'
+const CLOSEOUT_TEST = 'live prompt/runtime/test consumers do not restate the founder closeout contract'
+const PRIORITY_TEST = 'priority authoring surfaces derive markdown from the core priority composer'
 const OWNER_PLAY = 'packages/personas/base/plays/wrap-up.md'
-const CONSUMER = 'packages/core/src/runner/prompts.ts'
+const CLOSEOUT_CONSUMER = 'packages/core/src/runner/prompts.ts'
+const PRIORITY_CONSUMER = 'packages/daemon/src/routes.ts'
 
 function rel(path) {
   return join(repoRoot, path)
@@ -67,8 +69,8 @@ function countPassed(result) {
   return [...result.assertions.values()].filter((status) => status === 'passed').length
 }
 
-function requirePass(label, result) {
-  const target = result.assertions.get(TARGET_TEST)
+function requirePass(label, result, targetTest) {
+  const target = result.assertions.get(targetTest)
   if (result.exitCode !== 0 || target !== 'passed') {
     throw new Error(`${label} expected PASS, got exit ${result.exitCode}, target=${target ?? 'missing'}\n${firstOutputLine(result.output)}`)
   }
@@ -79,20 +81,20 @@ function requirePass(label, result) {
   }
 }
 
-function requireTargetFailure(label, result) {
-  const target = result.assertions.get(TARGET_TEST)
-  const unrelated = [...result.assertions.entries()].filter(([title, status]) => title !== TARGET_TEST && status !== 'passed')
+function requireTargetFailure(label, result, targetTest) {
+  const target = result.assertions.get(targetTest)
+  const unrelated = [...result.assertions.entries()].filter(([title, status]) => title !== targetTest && status !== 'passed')
   if (result.exitCode === 0 || target !== 'failed' || unrelated.length > 0) {
     const unrelatedText = unrelated.map(([title, status]) => `${title}=${status}`).join('; ') || 'none'
     throw new Error(
-      `${label} expected only the founder-closeout-restatement test to fail, got exit ${result.exitCode}, ` +
+      `${label} expected only ${targetTest} to fail, got exit ${result.exitCode}, ` +
         `target=${target ?? 'missing'}, unrelated=${unrelatedText}\n${firstOutputLine(result.output)}`,
     )
   }
   return {
     step: label,
     status: 'PASS',
-    evidence: `${TARGET_TEST} failed; ${countPassed(result)}/${result.assertions.size} tests still passed`,
+    evidence: `${targetTest} failed; ${countPassed(result)}/${result.assertions.size} tests still passed`,
   }
 }
 
@@ -102,6 +104,17 @@ function injectedDuplicate(labels) {
     '/* proof-orchestration-enforcer temporary duplicate - restored before exit',
     ...labels.slice(0, 3).map((label) => ` * ${label} proof duplicate`),
     ' */',
+    '',
+  ].join('\n')
+}
+
+function injectedPriorityDuplicate() {
+  return [
+    '',
+    '/* proof-orchestration-enforcer temporary duplicate - restored before exit */',
+    'function composePriorityMarkdown(input: CreatePriorityInput): string {',
+    "  return `---\\nid: ${input.id}\\ntitle: ${input.title}\\n---\\n${input.goal.endsWith('\\n') ? input.goal : `${input.goal}\\n`}`",
+    '}',
     '',
   ].join('\n')
 }
@@ -120,42 +133,76 @@ function printTable(rows) {
 }
 
 const tmp = await mkdtemp(join(tmpdir(), 'proof-orchestration-enforcer-'))
-const consumerPath = rel(CONSUMER)
-const original = await readFile(consumerPath)
+const closeoutConsumerPath = rel(CLOSEOUT_CONSUMER)
+const priorityConsumerPath = rel(PRIORITY_CONSUMER)
+const originalCloseout = await readFile(closeoutConsumerPath)
+const originalPriority = await readFile(priorityConsumerPath)
 const rows = []
 let failure = null
 let restoreFailure = null
-let mutated = false
+let closeoutMutated = false
+let priorityMutated = false
 
 try {
-  console.log('Proof - orchestration-contract enforcer: single owner for founder closeout sections')
+  console.log('Proof - orchestration-contract enforcer: single owner for orchestration contracts')
   console.log('Running GREEN baseline...')
-  rows.push(requirePass('GREEN baseline', await runEnforcer(join(tmp, 'baseline.json'))))
+  rows.push(requirePass('GREEN baseline', await runEnforcer(join(tmp, 'baseline.json')), CLOSEOUT_TEST))
 
   const sections = await founderCloseoutSections()
-  await writeFile(consumerPath, Buffer.concat([original, Buffer.from(injectedDuplicate(sections))]))
-  mutated = true
+  await writeFile(closeoutConsumerPath, Buffer.concat([originalCloseout, Buffer.from(injectedDuplicate(sections))]))
+  closeoutMutated = true
 
-  console.log('Running RED duplicate injection...')
-  rows.push(requireTargetFailure('RED duplicate injected', await runEnforcer(join(tmp, 'red.json'))))
+  console.log('Running RED closeout duplicate injection...')
+  rows.push(requireTargetFailure('RED closeout duplicate injected', await runEnforcer(join(tmp, 'red-closeout.json')), CLOSEOUT_TEST))
 } catch (error) {
   failure = error
 } finally {
   try {
-    await writeFile(consumerPath, original)
-    const restored = await readFile(consumerPath)
-    if (!restored.equals(original)) throw new Error(`${CONSUMER} was not restored to its original bytes`)
+    await writeFile(closeoutConsumerPath, originalCloseout)
+    const restored = await readFile(closeoutConsumerPath)
+    if (!restored.equals(originalCloseout)) throw new Error(`${CLOSEOUT_CONSUMER} was not restored to its original bytes`)
   } catch (error) {
     restoreFailure = error
   }
 }
 
-if (!restoreFailure && mutated) {
+if (!restoreFailure && closeoutMutated) {
   try {
-    console.log('Running GREEN restored...')
-    rows.push(requirePass('GREEN restored', await runEnforcer(join(tmp, 'restored.json'))))
-    const restored = await readFile(consumerPath)
-    if (!restored.equals(original)) throw new Error(`${CONSUMER} changed after the restored green run`)
+    console.log('Running GREEN closeout restored...')
+    rows.push(requirePass('GREEN closeout restored', await runEnforcer(join(tmp, 'restored-closeout.json')), CLOSEOUT_TEST))
+    const restored = await readFile(closeoutConsumerPath)
+    if (!restored.equals(originalCloseout)) throw new Error(`${CLOSEOUT_CONSUMER} changed after the restored green run`)
+  } catch (error) {
+    failure ??= error
+  }
+}
+
+if (!restoreFailure && !failure) {
+  try {
+    await writeFile(priorityConsumerPath, Buffer.concat([originalPriority, Buffer.from(injectedPriorityDuplicate())]))
+    priorityMutated = true
+
+    console.log('Running RED priority duplicate injection...')
+    rows.push(requireTargetFailure('RED priority duplicate injected', await runEnforcer(join(tmp, 'red-priority.json')), PRIORITY_TEST))
+  } catch (error) {
+    failure ??= error
+  } finally {
+    try {
+      await writeFile(priorityConsumerPath, originalPriority)
+      const restored = await readFile(priorityConsumerPath)
+      if (!restored.equals(originalPriority)) throw new Error(`${PRIORITY_CONSUMER} was not restored to its original bytes`)
+    } catch (error) {
+      restoreFailure = error
+    }
+  }
+}
+
+if (!restoreFailure && priorityMutated) {
+  try {
+    console.log('Running GREEN priority restored...')
+    rows.push(requirePass('GREEN priority restored', await runEnforcer(join(tmp, 'restored-priority.json')), PRIORITY_TEST))
+    const restored = await readFile(priorityConsumerPath)
+    if (!restored.equals(originalPriority)) throw new Error(`${PRIORITY_CONSUMER} changed after the restored green run`)
   } catch (error) {
     failure ??= error
   }
@@ -173,5 +220,5 @@ if (restoreFailure) {
   console.log(`FAIL: ${failure.message}`)
   process.exitCode = 1
 } else {
-  console.log('PASS: enforcer proved GREEN -> RED -> GREEN and the consumer was restored byte-for-byte.')
+  console.log('PASS: enforcer proved GREEN -> RED -> GREEN for closeout and priority contracts; consumers were restored byte-for-byte.')
 }

@@ -80,6 +80,18 @@ describe('orchestration contract ownership', () => {
     expect(routes).toContain('composeTicketMarkdown')
   })
 
+  test('priority authoring surfaces derive markdown from the core priority composer', () => {
+    const play = read('packages/personas/base/plays/create-priority.md')
+    const routes = read('packages/daemon/src/routes.ts')
+
+    expect(play).toContain('composePriorityMarkdown')
+    expect(play).not.toMatch(/exactly `id` and `title` frontmatter/i)
+    expect(play).not.toMatch(/followed by the priority body/i)
+    expect(routes).toContain('composePriorityMarkdown')
+    expect(routes).not.toMatch(/function\s+composePriorityMarkdown/)
+    expect(routes).not.toMatch(/return `---\\nid: \$\{input\.id\}\\ntitle: \$\{input\.title\}\\n---/)
+  })
+
   test('design-ref is guarded as a historical reference, not a live app source', () => {
     const readme = read('packages/ui/design-ref/README.md')
 

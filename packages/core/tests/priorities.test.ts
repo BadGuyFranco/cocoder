@@ -2,7 +2,7 @@ import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { loadPriority } from '../src/index.js'
+import { composePriorityMarkdown, loadPriority } from '../src/index.js'
 
 const priority = (id: string, body: string, frontmatter: readonly string[] = []): string => ['---', `id: ${id}`, `title: ${id}`, ...frontmatter, '---', body].join('\n')
 
@@ -46,5 +46,23 @@ describe('priority Objective loading', () => {
 
     expect(loadPriority(dir, 'demo').auditWriteBoundary).toEqual(['cocoder/**'])
     expect(loadPriority(dir, 'bare').auditWriteBoundary).toBeUndefined()
+  })
+
+  test('composePriorityMarkdown emits loadable priority markdown', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'priorities-'))
+    const markdown = composePriorityMarkdown({
+      id: 'demo',
+      title: 'Demo Priority',
+      goal: ['## Objective', '', 'Ship the shared priority composer.', '', '## Evidence', '', 'Round-trip through the loader.'].join('\n'),
+    })
+    await writeFile(join(dir, 'demo.md'), markdown)
+
+    expect(markdown).toBe('---\nid: demo\ntitle: Demo Priority\n---\n## Objective\n\nShip the shared priority composer.\n\n## Evidence\n\nRound-trip through the loader.\n')
+    expect(loadPriority(dir, 'demo')).toMatchObject({
+      id: 'demo',
+      title: 'Demo Priority',
+      scopeNarrowing: null,
+      objective: 'Ship the shared priority composer.',
+    })
   })
 })
