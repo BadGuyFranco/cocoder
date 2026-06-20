@@ -81,6 +81,12 @@ dirt (the `cocoder/**` / docs / `ARCHITECTURE.md` surfaces) is auto-committed as
 immediately launching it can never be blocked by the governance edit it just made (the run_91–96 strand
 class). Mixed dirt refuses and snapshots nothing.
 
+**Atomic authoring Plays ([ADR-0025](./cocoder/decisions/0025-atomic-authoring-plays.md))** use the same
+spine for `create` / `edit` / `archive-priority`: authoring validates, writes, and commits as one
+governed action instead of creating a second mutation path. For the commit lineage, read ADR-0023 plus
+its amendments ADR-0024 and ADR-0025 as current truth; ADR-0015/0021/0022 are retired history tracked in
+the [ADR index](./cocoder/decisions/README.md).
+
 | Change kind | Path | Verification |
 |---|---|---|
 | Governance / docs / ADRs / priorities / personas / standards | **Direct to the active branch** — commit in place | light / none (can't break a build) |
@@ -93,6 +99,43 @@ quarantine (`restoreToHead`) can only ever touch the one actor's own uncommitted
 undo." **Why it ends the drift for good:** there is no run branch on *any* path — so no off-trunk place for
 committed work to strand. The F14/F17/F19/F20/**F22** strand class is gone by construction. There is no
 `pending-landing`, no held-back queue, no manual recovery: work commits to the checked-out branch, always.
+
+## How a run executes — the orchestration loop (ADR-0013 lineage)
+
+The current run loop is ADR-0013 plus its live refinements; superseded predecessors such as the
+0020-addendum phase-executor are history, with status owned by the
+[ADR index](./cocoder/decisions/README.md). This section is the current-state narrative; the per-contract
+owner drill-down lives in
+[`docs/orchestration-contract-ownership.md`](./docs/orchestration-contract-ownership.md), and landing
+flows through the [commit spine](#how-work-reaches-trunk--the-commit-spine-adr-0023).
+
+Oscar drives an ordinary priority as a multi-atom loop: scope the next atom, delegate it to Bob, wait for
+Bob's completion marker, run the verify gate on the real diff and evidence, then either reject the atom
+or let the spine commit it and continue to the next atom or wrap. The old verify-gate ADR-0011 is folded
+into [ADR-0013](./cocoder/decisions/0013-orchestration-observation.md): no Oscar pass means no atom
+commit, and "green" means evidence from the actual artifact, not a builder summary.
+
+Observation is tiered by the **direct your primary** rule. Oscar monitors and directs Bob for the active
+run. Deb monitors Oscar, may observe Bob to diagnose, and nudges Oscar only. Oz monitors sessions across
+workspaces and directs Oscars through daemon tools; it may observe deeper status but does not bypass the
+session manager to steer Bob.
+
+Deb is the scoped in-run repair fallback defined by
+[ADR-0016](./cocoder/decisions/0016-deb-scoped-repair-fallback.md): a live status feed, an Oscar-only
+nudge channel, and gate-enforced repair mode for CoCoder-owned faults. Deb advises or repairs the
+machinery; Deb does not rescue a failed product run, and any repair lands as its own spine-mediated
+commit.
+
+Oz is the idle cross-session control-plane persona from
+[ADR-0017](./cocoder/decisions/0017-oz-orchestration-persona.md). The daemon hosts Oz's bounded tool
+surface for launch, status, lifecycle, authoring, refresh, nudge, and Oz-level repair. Oz repair is for
+idle control-plane or system-level issues and never reaches into a live Bob pane.
+
+Existing-repo onboarding and drift now run as ordinary Oscar priorities under
+[ADR-0026](./cocoder/decisions/0026-onboard-existing-as-oscar-priority.md). The retired standalone
+phase-executor is not the shipping path; its audit machinery is reused as atom-level tooling inside the
+same Oscar loop, with founder questions, ratification, wrap-up, and resume handled by the ordinary run
+model.
 
 ## Why Git Will Not Destroy User Preferences
 
@@ -235,16 +278,15 @@ exercises the shipped dispatch path with a real deterministic script, a real LLM
 Play, the deterministic gate case where no LLM is invoked, and the runner-owned wrap-up trigger validated
 through the declared `outputValidator.ref`.
 
-## Oz vs Debugger
+## Oz vs Deb
 
-CoBuilder's **ORCH DEBUGGER** binds to one run, collects evidence, launches Codex for orchestration repair. **Oz** generalizes that into:
-
-- Registry of all workspaces and runs (isolated tmux namespace per workspace — see Multi-workspace below)
-- Interactive dashboard (launch priority, model map, concurrency flags)
-- Run Inspector (debugger evidence views)
-- Settings editor for global + per-workspace overrides
-
-The Oz daemon owns run state and evidence without forking the engine's business logic — it drives `packages/core` through the `SessionHost`/adapter ports rather than reimplementing orchestration.
+Deb and Oz are adjacent observation tiers, not two debuggers for the same run. Deb is the in-run
+escalation engineer for Oscar-facing faults: she reads the runner's status feed, nudges Oscar, and can
+land scoped CoCoder repairs through the spine. Oz is the idle cross-workspace control plane: it owns the
+workspace/run registry, dashboard chat, launch/status/lifecycle tools, settings surface, and Oz-level
+repair/refresh. The boundary and run-loop mechanics are summarized in
+[How a run executes](#how-a-run-executes--the-orchestration-loop-adr-0013-lineage); the daemon keeps both
+tiers on `packages/core` ports instead of reimplementing orchestration.
 
 ## Package topology and dependency rule
 
