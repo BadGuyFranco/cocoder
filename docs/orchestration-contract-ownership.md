@@ -251,3 +251,77 @@ landed behind an enforcer or named as a concrete follow-up.
 
 Ticket `0020` - retire or repoint stale archived hybrid/playbook governance test references so the
 drift/onboarding overlap exits as a clean ADR-0026 tooling distinction with no stale test path.
+
+## Load-Bearing Verdicts (run_166)
+
+This section judges whether each guarded distinction still carries behavior, evidence, reversibility, or
+a safeguard. ADR acceptance is not treated as proof by itself; each `real` verdict names what would be
+lost if the distinction collapsed.
+
+### Play Taxonomy Verdict
+
+Actual shipped Play set, including the one workspace delta:
+
+| Play | Source | Trigger class | Execution model | Write authority |
+|---|---|---|---|---|
+| `archive-priority` | `packages/personas/base/plays/archive-priority.md` | `persona-requested` | `prompt-only` | `cocoder/priorities/**` |
+| `code-review` | `packages/personas/base/plays/code-review.md` | `persona-requested` | `hybrid` | read-only (`[]`) |
+| `create-priority` | `packages/personas/base/plays/create-priority.md` | `persona-requested` | `prompt-only` | `cocoder/priorities/**` |
+| `create-ticket` | `packages/personas/base/plays/create-ticket.md` | `persona-requested` | `prompt-only` | `cocoder/tickets/**` |
+| `deep-read` | `packages/personas/base/plays/deep-read.md` | `persona-requested` | `prompt-only` | read-only (`[]`) |
+| `documentation` | `packages/personas/base/plays/documentation.md` | `persona-requested` | `prompt-only` | `docs/**`, `**/*.md`, `README*`, `ARCHITECTURE*` |
+| `edit-priority` | `packages/personas/base/plays/edit-priority.md` | `persona-requested` | `prompt-only` | `cocoder/priorities/**` |
+| `electron-test` | `packages/personas/base/plays/electron-test.md` plus empty delta `cocoder/plays/deltas/electron-test.md` | `persona-requested` | `prompt-only` | read-only (`[]`) |
+| `wrap-up` | `packages/personas/base/plays/wrap-up.md` | `lifecycle-triggered` | `prompt-only` | `cocoder/priorities/**`, `cocoder/PLAYBOOK.md`, `cocoder/SESSION_LOG.md`, `docs/**`, `ARCHITECTURE.md`, `cocoder/decisions/**` |
+
+Axis/class exercise matrix:
+
+| Axis / named class | Exercised by shipped Plays? | Evidence |
+|---|---|---|
+| Trigger class: `lifecycle-triggered` | Yes | `wrap-up`; mandatory registry resolves `run-wrap` and rejects a non-mandatory binding (`packages/core/tests/plays-triggers.test.ts:17-37`). |
+| Trigger class: `persona-requested` | Yes | Eight base Plays; request validation accepts authorized optional requests and rejects mandatory Plays through the persona lane (`packages/core/tests/plays-request.test.ts:77-88`, `packages/core/tests/plays-request.test.ts:159-175`). |
+| Trigger class / class: `tool/API-triggered` | No | No shipped base Play or workspace delta declares it; authoring APIs call daemon harnesses around persona-requested Plays (`packages/daemon/src/launcher.ts:930-974`). |
+| Execution model / class: `prompt-only` | Yes | Eight prompt-only Plays; dispatch sends Play body/task through the adapter model path (`packages/core/tests/plays-dispatch.test.ts:100-168`). |
+| Execution model / class: `hybrid` | Yes, one Play | `code-review`; deterministic success feeds the LLM prompt and deterministic failure gates model invocation (`packages/core/tests/plays-dispatch.test.ts:170-221`). |
+| Write-authority: declared `writeScope` | Yes | Read-only and writing scopes both ship; accepted Play request scope is used for commit behavior (`packages/core/tests/plays-request.test.ts:90-135`). |
+| Interactivity kind: `interactive` | No | Every shipped Play has `kind: headless`; dispatch supports interactive spawning, but no real Play exercises the class (`packages/core/tests/plays-dispatch.test.ts:320-348`). |
+
+Per-axis verdicts:
+
+- **Trigger class: real for `lifecycle-triggered` vs `persona-requested`; suspect for `tool/API-triggered`.**
+  Collapsing lifecycle and persona request would lose the mandatory-run-wrap registry and the request-lane
+  rejection that keeps `wrap-up` out of persona discretion. Dropping or parking the unshipped
+  `tool/API-triggered` class would lose no current behavior.
+- **Execution model: real.** Collapsing prompt-only and hybrid would lose deterministic precheck gating:
+  a failed precheck currently prevents any model invocation, while a successful one feeds evidence into
+  the prompt.
+- **Write authority: real as `writeScope`; suspect as `interactive` class language.** Declared
+  `writeScope` controls observable commit receipts and scoped authoring commits; the `interactive` kind
+  has no shipped Play and currently carries no catalog behavior.
+
+**Overall taxonomy verdict: `suspect`.** The observable contract is load-bearing as three fields
+(`triggerClass`, `executionModel`, `writeScope`/hosting kind), but the five named classes overstate the
+real system: `tool/API-triggered` and `interactive` are modeled but unused, and prompt-only/hybrid are
+execution behaviors rather than launch classes. **Best next collapse:** a founder-approved ADR should
+replace the five named class list with the three observable axes, park `tool/API-triggered` and
+`interactive` until a real Play ships, and keep the tests above as the behavior contract.
+
+### Guarded Distinction Verdicts
+
+| Distinction | Verdict | Evidence-backed basis | Follow-up |
+|---|---|---|---|
+| Priority launch vs ticket-fix launch vs ad-hoc support launch target handling. | `real` | Collapsing the work-target adapters would lose ticket-to-priority assembly and success auto-close (`packages/daemon/src/launcher.ts:211-229`, `packages/daemon/src/launcher.ts:448-452`) or the ad-hoc prompt boundary (`packages/core/src/runner/prompts.ts:30-50`), while all still share one `launchRun`. | None; optional hardening is targeted ticket/ad-hoc launch coverage if this becomes risky. |
+| Mandatory lifecycle Play triggers vs optional Play requests vs persona-authored Play-like behavior. | `real` | Mandatory registry behavior and persona-request validation are distinct effects: `run-wrap` resolution fails for non-mandatory Plays, and persona requests reject mandatory Plays (`packages/core/tests/plays-triggers.test.ts:17-37`, `packages/core/tests/plays-request.test.ts:159-175`). | Taxonomy collapse should keep these behaviors while retiring unused class labels. |
+| Base persona/Play governance (`packages/personas/base/**`) vs workspace governance (`cocoder/**`). | `real` | Collapsing base into workspace would lose propagation of portable base behavior; loaders merge base plus deltas and tests pin base propagation (`packages/core/tests/personas-propagation.test.ts:7-33`, `packages/personas/tests/base-personas.test.ts:74-84`). | None. |
+| Wrap-up vs support-commit vs Deb repair vs ordinary verify-gated atom commits. | `real` | The four callers preserve different safeguards: atom verify before commit, lifecycle wrap validation/delivery, post-wrap founder support, and Deb fault repair (`packages/core/src/runner/agent-step.ts:252-266`, `packages/core/src/runner/runner.ts:868-898`, `packages/core/src/runner/runner.ts:1206-1217`, `packages/daemon/src/launcher.ts:678-753`). | None; keep one spine, distinct callers. |
+| Ticket/priorities authoring through daemon endpoints vs authoring Plays vs direct persona edits. | `real` | Routes provide deterministic dashboard mutations, authoring Plays provide model-mediated governed authoring with `commitOnlyScope`, and direct persona edits cover in-run support rather than primary creation (`packages/daemon/src/routes.ts:576-650`, `packages/daemon/src/launcher.ts:930-974`, `packages/core/src/runner/runner.ts:1023-1045`). | No new collapse; priority markdown composition was already collapsed into `composePriorityMarkdown`. |
+| Drift/onboarding phase libraries vs ordinary Oscar priorities vs the retired phase-executor. | `real` | Collapsing libraries into ordinary priorities would lose deterministic audit tooling/proofs; reviving the executor would lose the ordinary founder-interaction loop, so ADR-0026 keeps engines as tooling (`scripts/proof-onboard-existing.mjs:25-55`, `scripts/proof-drift-audit.mjs:25-79`). | Existing named follow-up: ticket `0020` for stale retired-path references. |
+| Founder closeout format vs visible closeout delivery. | `real` | Format is parsed/validated from `wrap-up.md`; delivery is the runner's exactly-once `WRAP-UP READY` artifact, and tests reject prompt/runtime restatements (`packages/core/tests/orchestration-contracts.test.ts:25-72`, `packages/core/tests/runner.test.ts:881-972`). | None. |
+| Direct daemon priority/ticket routes vs authoring Plays. | `real` | Collapsing entry points would lose either deterministic UI/API mutations or model-mediated authoring with scoped commit receipts; both now derive artifact formats from core helpers (`packages/daemon/tests/mutations.test.ts:1657-1745`, `packages/daemon/tests/authoring-play.test.ts:46-145`). | None. |
+| Oz repair vs Deb repair. | `real` | Oz repair is idle control-plane repair through daemon/Oz tools; Deb repair is in-run fault triage and cannot rescue the failed run (`packages/daemon/tests/oz-chat.test.ts:350-368`, `packages/core/tests/runner.test.ts:1970-1995`). | None; Deb full repair e2e remains a coverage gap, not a collapse candidate. |
+| Ticket launch auto-close vs archive-priority Play. | `real` | Ticket close follows successful ticket-fix runs; priority archive is founder-confirmed governance authoring and direct post-wrap archive is refused (`packages/core/tests/tickets.test.ts:123-150`, `packages/daemon/tests/mutations.test.ts:1279-1295`). | Ticket `0023` remains open for the archive-priority out-of-run dispatch defect; do not treat raw archive moves as the fix. |
+| Governance pre-run snapshot vs ordinary governance authoring. | `real` | Pre-run snapshot is launch-guard cleanup for existing governance dirt, while routes/authoring Plays intentionally create or edit governance (`packages/core/tests/runner-direct.test.ts:208-220`, `packages/daemon/tests/mutations.test.ts:1657-1745`). | None. |
+
+**Recommended next collapse:** the Play taxonomy class list is the single best candidate: preserve the
+pinned behavior axes, but remove the unexercised `tool/API-triggered` and `interactive` class promises
+from the current contract through a founder-approved ADR before changing code.
