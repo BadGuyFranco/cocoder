@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_166",
+    "displayNumber": 25
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "priority"
+  },
+  "priorityId": "orchestration-audit-and-refactor",
+  "playbookId": null,
+  "ticketId": null,
+  "status": "running",
+  "createdAt": 1781965569035,
+  "endedAt": null
+}
