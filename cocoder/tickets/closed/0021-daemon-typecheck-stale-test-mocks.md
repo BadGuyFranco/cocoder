@@ -2,11 +2,19 @@
 id: 0021
 title: Daemon package typecheck is red on stale test mocks
 type: bug
-status: Open
+status: Closed
 priority: tickets-review
 owner: founder-session
 created: 2026-06-20
+closed: 2026-06-20
 ---
+
+> **Closed 2026-06-20.** Daemon test typecheck 26→0 errors; mocks refreshed to match
+> production types (Git `hasUpstream`/`push`, SessionHost `sendInput`/`closeSurface`, full
+> `OzChatOps` via a shared `mockOps` factory, `LaunchRunTarget`-widened `calls`, wrapPlay guard).
+> No tests weakened (vitest still 236/236). **Root cause of the silent rot also fixed:** every
+> non-ui package now has a `typecheck` script over its tests-inclusive tsconfig and root
+> `typecheck` runs `pnpm -r typecheck`, so CI's `pnpm typecheck` now covers test files. Commit `0487b8e`.
 
 # 0021 — Daemon package typecheck is red on stale test mocks
 
