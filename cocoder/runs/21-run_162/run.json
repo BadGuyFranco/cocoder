@@ -12,7 +12,7 @@
   "priorityId": "drift-audit",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "failed",
   "createdAt": 1781955520504,
-  "endedAt": null
+  "endedAt": 1781956005914
 }
