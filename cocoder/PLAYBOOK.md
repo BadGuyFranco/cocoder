@@ -222,22 +222,23 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   stands; no engine reversal. Decision record at `priorities/archive/play-dispatch-boundary.md`.
 
 **Active build priorities (launchable; `order.json` order — the `priorities/` directory is the live index):**
-1. `oz-hardening` — **CONTINUE (run_158).** Code-complete and scriptably proven: items 2 & 4 (run_156 + proof
-   harness `pnpm proof:oz-awareness`); item 1 markdown + message-level progress (run_157); item 3 UI + daemon
-   pointer resolution (run_157/158). **Archive gate:** founder-eyes live-app demos only — rich-markdown Oz replies
-   and drag-to-ask end-to-end. Owner map at `docs/oz-hardening-owner-map.md`.
-2. `tickets-review` — **CONTINUE (run_143).** Build code-complete; ticket launch plumbing satisfied
-   (`LaunchRunTarget {kind:'ticket'}`, `RunInput.ticketId`, `ticket-fix` sentinel in `launcher.ts`).
-   **Archive gate:** founder live proof — Tickets tab **Launch** on ticket **0003**; confirm fix run completes
-   and 0003 moves to `closed/` with INDEX updated.
+1. `drift-audit` — **CONTINUE (run_161).** Deterministic P1–P6 pipeline built in `packages/core/src/drift/`;
+   `node scripts/proof-drift-audit.mjs` green; live dogfood produced 25 verified stale-path findings (Objective
+   verification (b) report half). **Founder-gated:** apply materialization choice (new records vs in-place fixes)
+   + ratify→apply landing in `cocoder/**`. Owner map at `docs/drift-audit-ownermap.md`.
+2. `new-primary-root` — **CONTINUE (run_160).** Onboarding rebuild complete; one-command proof
+   (`node scripts/proof-onboard-existing.mjs`); run_159 model defects resolved + `main` fully green.
+   **Founder-gated live proof remains:** external-repo onboard-existing end-to-end (Objective a). Drift
+   reframe split to `drift-audit` (run_160/161); report half of Objective (b) done there — apply half
+   founder-gated on that priority. No buildable atoms in an ordinary loop here.
 3. `first-class-model-tiers` — **Grok draft; requires founder ownership beat before launch.** General model
    tier vocabulary across assignments, dispatch, and UI.
 4. `adapter-abstraction-hardening` — **Grok draft; requires founder ownership beat before launch.** Reduce
    duplication in the CLI adapter layer (ADR-0006).
-5. `new-primary-root` — **CONTINUE (run_160).** Onboarding rebuild complete; one-command proof
-   (`node scripts/proof-onboard-existing.mjs`); run_159 model defects resolved + `main` fully green.
-   **Founder-gated live proofs remain:** external-repo onboard-existing end-to-end; dogfood Drift Audit
-   reframe (unbuilt — separate sub-build). No buildable atoms in an ordinary loop.
+5. `tickets-review` — **CONTINUE (run_143).** Build code-complete; ticket launch plumbing satisfied
+   (`LaunchRunTarget {kind:'ticket'}`, `RunInput.ticketId`, `ticket-fix` sentinel in `launcher.ts`).
+   **Archive gate:** founder live proof — Tickets tab **Launch** on ticket **0003**; confirm fix run completes
+   and 0003 moves to `closed/` with INDEX updated.
 
 **Standing tools (always available — not build work):** `priority-audit` (assess the priority set for
 staleness → a founder-decision table; the pruning tool) · `adhoc-session` (no named priority — draft one,

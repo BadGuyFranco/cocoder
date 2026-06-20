@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-19 — **drift-audit: full deterministic pipeline built + live dogfood report (run_161)**
+
+**Persona:** Oscar (lead) + Bob (builder, codex) | **Priority:** [drift-audit](./priorities/drift-audit.md) | **Run:** run_161
+**Outcomes:**
+- **Atoms 0–7 complete.** Owner map (`docs/drift-audit-ownermap.md`); P1–P6 engines under `packages/core/src/drift/` (`readGovernanceClaims`, `readRepoReality`, `compareDrift`, `buildDriftReport`, `applyRatifiedDriftWrites`, `runDriftAudit`); unit tests + `node scripts/proof-drift-audit.mjs` all green; `node scripts/run-drift-audit.mjs` for real reports.
+- **Live CoCoder dogfood:** 25 verified `stale-path-reference` findings (memory `codebase-map.md`/`tech-stack.md` still describe pre-rebuild architecture) — Objective verification (b) report half.
+- **Disposition: `continue`** — build complete; founder-gated apply materialization decision + ratify→apply landing remain.
+
+**Next:** Relaunch `drift-audit` after founder chooses apply materialization (new amendment/ticket records vs in-place governance fixes) and ratifies a subset of the 25 findings for the ratify→apply atom.
+
 ## 2026-06-19 — **new-primary-root: run_159 model defects resolved + `main` repaired to fully green (run_160)**
 
 **Persona:** Oscar (lead) + Bob (builder, codex) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_160
