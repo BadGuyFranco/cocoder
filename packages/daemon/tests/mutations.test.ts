@@ -8,7 +8,7 @@ import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ClaudeAdapter, type Exec } from '@cocoder/adapters'
-import { loadAssignments, loadPriority, makeGit, openRunStore, readTickets, StopRequestedError, type Adapter, type Git, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
+import { loadAssignments, loadPriority, makeGit, openRunStore, readTickets, StopRequestedError, type Adapter, type Git, type HeadlessRunInput, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
 import { basePrioritiesDir } from '@cocoder/personas'
 import { createOzServer, OZ_CSRF_HEADER, type OzServer } from '../src/index.js'
 import { validFounderCloseout } from './helpers/founder-closeout.js'
@@ -388,7 +388,10 @@ describe('Oz mutations + lifecycle', () => {
   let shown: SessionRef[]
   let killed: SessionRef[]
 
-  const startServer = async (git: Git = fakeGit()): Promise<OzServer> => {
+  const startServer = async (
+    git: Git = fakeGit(),
+    runHeadless: (input: HeadlessRunInput) => Promise<{ readonly exitCode: number; readonly output: string }> = async () => ({ exitCode: 0, output: validFounderCloseout() }),
+  ): Promise<OzServer> => {
     shown = []
     killed = []
     oz = await createOzServer({
@@ -402,7 +405,7 @@ describe('Oz mutations + lifecycle', () => {
       ),
       getAdapter: () => okAdapter,
       io: fakeIO(),
-      runHeadless: async () => ({ exitCode: 0, output: validFounderCloseout() }), // headless wrap-up Play: don't shell out in tests
+      runHeadless, // headless wrap-up/authoring Play: don't shell out in tests
     })
     return oz
   }
@@ -1289,9 +1292,125 @@ describe('Oz mutations + lifecycle', () => {
     expect(r.json).toMatchObject({
       refusedPaths: ['cocoder/priorities/archive/demo.md', 'cocoder/priorities/demo.md'],
     })
-    expect(String(r.json.error)).toContain('use the archive-priority authoring Play')
+    expect(String(r.json.error)).toContain(`cocoder oz archive-priority ${run.priorityId}`)
     expect(store.listCommitLinks(run.id)).toEqual([])
     expect(store.listEvents(run.id).some((e) => e.type === 'post-wrap-support-commit-refused')).toBe(true)
+  })
+
+  test('POST /workspaces/:id/authoring-plays/archive-priority dispatches the one archive Play lane', async () => {
+    await writeFile(
+      join(home, 'cocoder', 'personas', 'assignments.json'),
+      JSON.stringify({
+        personas: {
+          oz: {
+            cli: 'fake',
+            model: 'oz-model',
+            plays: { 'archive-priority': { cli: 'fake', model: 'author-model' } },
+          },
+          oscar: { cli: 'claude', model: '' },
+          bob: { cli: 'codex', model: '' },
+        },
+      }),
+    )
+    const prompts: string[] = []
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit(['cocoder/priorities/archive/demo.md', 'cocoder/priorities/demo.md']),
+      sessionHost: fakeHost(),
+      getAdapter: () => ({
+        ...okAdapter,
+        build: (input) => {
+          prompts.push(input.prompt)
+          return { command: 'fake-cli', args: ['authoring'] }
+        },
+      }),
+      io: fakeIO(),
+      runHeadless: async () => ({ exitCode: 0, output: 'archived demo' }),
+    })
+
+    const r = await call(oz!, 'POST', '/workspaces/cocoder/authoring-plays/archive-priority', { body: { invocation: { id: 'demo' } } })
+
+    expect(r).toMatchObject({
+      status: 200,
+      json: {
+        ok: true,
+        committedPaths: ['cocoder/priorities/archive/demo.md', 'cocoder/priorities/demo.md'],
+        commitSha: 'sha-committed',
+        outOfLanePaths: [],
+        exitCode: 0,
+      },
+    })
+    expect(prompts[0]).toContain('# Archive Priority Play')
+    expect(prompts[0]).toContain('"id": "demo"')
+    const audit = await readFile(join(home, 'local', 'oz-audit.log'), 'utf8')
+    expect(audit).toContain('"action":"authoring-play"')
+  })
+
+  test('POST /workspaces/:id/authoring-plays/:playId can dispatch through the one authoring Play owner as Oscar', async () => {
+    await writeFile(
+      join(home, 'cocoder', 'personas', 'assignments.json'),
+      JSON.stringify({
+        personas: {
+          oscar: {
+            cli: 'fake',
+            model: 'oscar-model',
+            plays: { 'archive-priority': { cli: 'fake', model: 'author-model' } },
+          },
+          bob: { cli: 'codex', model: '' },
+        },
+      }),
+    )
+    const builds: Array<{ readonly persona: string; readonly model: string; readonly prompt: string }> = []
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit(['cocoder/priorities/archive/demo.md', 'cocoder/priorities/demo.md']),
+      sessionHost: fakeHost(),
+      getAdapter: () => ({
+        ...okAdapter,
+        build: (input) => {
+          builds.push({ persona: input.persona, model: input.model, prompt: input.prompt })
+          return { command: 'fake-cli', args: ['authoring'] }
+        },
+      }),
+      io: fakeIO(),
+      runHeadless: async () => ({ exitCode: 0, output: 'archived demo' }),
+    })
+
+    const r = await call(oz!, 'POST', '/workspaces/cocoder/authoring-plays/archive-priority', { body: { persona: 'oscar', invocation: { id: 'demo' } } })
+
+    expect(r).toMatchObject({
+      status: 200,
+      json: {
+        ok: true,
+        committedPaths: ['cocoder/priorities/archive/demo.md', 'cocoder/priorities/demo.md'],
+        commitSha: 'sha-committed',
+        outOfLanePaths: [],
+        exitCode: 0,
+      },
+    })
+    expect(builds[0]).toMatchObject({ persona: 'oscar', model: 'author-model' })
+    expect(builds[0]?.prompt).toContain('# Archive Priority Play')
+    expect(builds[0]?.prompt).toContain('"id": "demo"')
+  })
+
+  test('POST /workspaces/:id/authoring-plays/:playId surfaces unknown workspace from the authoring owner', async () => {
+    await startServer()
+
+    const r = await call(oz!, 'POST', '/workspaces/missing/authoring-plays/archive-priority', { body: { invocation: { id: 'demo' } } })
+
+    expect(r).toEqual({ status: 404, json: { error: 'unknown workspace' } })
+  })
+
+  test('POST /workspaces/:id/authoring-plays/:playId surfaces unsupported play before dispatch', async () => {
+    await startServer()
+
+    const r = await call(oz!, 'POST', '/workspaces/cocoder/authoring-plays/rename-priority', { body: { invocation: { id: 'demo' } } })
+
+    expect(r).toEqual({ status: 400, json: { error: 'unsupported authoring Play "rename-priority"' } })
   })
 
   test('POST /runs/:id/support-commit allows the same wrapped run while Oscar remains live', async () => {

@@ -2,10 +2,11 @@
 id: 0023
 title: archive-priority Play has no out-of-run dispatch surface; founder-confirmed post-wrap archive is a dead end
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-20
+closed: 2026-06-20
 ---
 
 # 0023 — archive-priority Play is unreachable outside a run
@@ -55,3 +56,12 @@ successor priority's authoring-surface work:
 Opened under `orchestration-audit-and-refactor` (now archive-candidate, run_167). Until fixed, archiving
 a met priority is done by launching a run whose Oscar runs `archive-priority` as its first beat, or by
 launching this ticket directly once ticket-fix dispatch is wired.
+
+## Resolution
+Closed by direct Deb repair on 2026-06-20:
+
+- Added `cocoder oz archive-priority <priorityId> [--workspace <workspaceId>]` as a thin CLI dispatcher.
+- Added `POST /workspaces/:id/authoring-plays/:playId`, which routes to the existing
+  `requestAuthoringPlay` harness instead of moving files directly.
+- Updated post-wrap support-commit refusal text to name the reachable CLI command.
+- Updated the orchestration owner map and tests so the archive owner remains the `archive-priority` Play.

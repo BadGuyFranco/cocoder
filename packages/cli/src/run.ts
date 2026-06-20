@@ -21,9 +21,23 @@ import {
 import { getAdapter, makeAdapterRegistry } from '@cocoder/adapters'
 import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import { CmuxSessionHost } from '@cocoder/session-hosts'
-import { migrateHistoryViaDaemon, runViaDaemon, startOzDaemon, supportCommitViaDaemon, teardownViaDaemon } from './client.js'
+import { authoringPlayViaDaemon, migrateHistoryViaDaemon, runViaDaemon, startOzDaemon, supportCommitViaDaemon, teardownViaDaemon } from './client.js'
 
 const log = (m: string): void => console.error(`[cocoder] ${m}`)
+const usage = 'usage: cocoder run <priorityId> [--resume <runId>]   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz commit-support <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]'
+
+function authorInvocationFromArgv(): unknown {
+  const jsonIdx = process.argv.indexOf('--json')
+  if (jsonIdx < 0) return {}
+  const raw = process.argv[jsonIdx + 1]
+  if (!raw) throw new Error('usage: cocoder oz author <playId> [--json <invocation-json>]')
+  try {
+    return JSON.parse(raw) as unknown
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err)
+    throw new Error(`invalid --json invocation: ${detail}`)
+  }
+}
 
 // `cocoder run <priorityId>` (ADR-0004). The probe decides the writer: if a daemon is live it owns
 // the DB writer + cmux connection, so the cli routes the launch through it (client mode) and never
@@ -31,6 +45,10 @@ const log = (m: string): void => console.error(`[cocoder] ${m}`)
 async function main(): Promise<void> {
   const [cmd, arg1] = process.argv.slice(2)
 
+  if (!cmd || cmd === '--help' || cmd === '-h' || cmd === 'help') {
+    console.error(usage)
+    process.exit(cmd ? 0 : 2)
+  }
   if (cmd === 'oz' && arg1 === 'start') {
     process.exit(await startOzDaemon(DEFAULT_OZ_PORT))
   }
@@ -76,6 +94,58 @@ async function main(): Promise<void> {
     }
     return
   }
+  if (cmd === 'oz' && arg1 === 'archive-priority') {
+    const priorityId = process.argv[4]
+    if (!priorityId) {
+      console.error('usage: cocoder oz archive-priority <priorityId> [--workspace <workspaceId>]')
+      process.exit(2)
+    }
+    const workspaceIdx = process.argv.indexOf('--workspace')
+    const workspaceId = workspaceIdx >= 0 ? process.argv[workspaceIdx + 1] : 'cocoder'
+    if (workspaceIdx >= 0 && !workspaceId) {
+      console.error('usage: cocoder oz archive-priority <priorityId> [--workspace <workspaceId>]')
+      process.exit(2)
+    }
+    const live = await probeDaemon({ port: DEFAULT_OZ_PORT })
+    if (!live.alive) {
+      console.error('cocoder: no Oz daemon running — cannot dispatch archive-priority')
+      process.exit(1)
+    }
+    const result = await authoringPlayViaDaemon(`http://127.0.0.1:${live.port}`, workspaceId, 'archive-priority', { id: priorityId })
+    if (result.commitSha) {
+      console.log(`archived priority ${priorityId} for ${workspaceId}: ${result.commitSha}`)
+      if (result.committedPaths.length) console.log(`  files: ${result.committedPaths.join(', ')}`)
+      if (result.turnLogPath) console.log(`  turn log: ${result.turnLogPath}`)
+    } else {
+      console.log(`archive-priority completed for ${priorityId}, but no commit was created`)
+      if (result.outOfLanePaths.length) console.log(`  held back outside the Play lane: ${result.outOfLanePaths.join(', ')}`)
+    }
+    return
+  }
+  if (cmd === 'oz' && arg1 === 'author') {
+    const playId = process.argv[4]
+    if (!playId) {
+      console.error('usage: cocoder oz author <playId> [--json <invocation-json>]')
+      process.exit(2)
+    }
+    const live = await probeDaemon({ port: DEFAULT_OZ_PORT })
+    if (!live.alive) {
+      console.error('cocoder: no Oz daemon running — cannot dispatch authoring Play')
+      process.exit(1)
+    }
+    const result = await authoringPlayViaDaemon(`http://127.0.0.1:${live.port}`, 'cocoder', playId, authorInvocationFromArgv(), 'oscar')
+    if (result.commitSha) {
+      console.log(`committed authoring Play ${playId}: ${result.commitSha}`)
+      if (result.committedPaths.length) console.log(`  files: ${result.committedPaths.join(', ')}`)
+      if (result.outOfLanePaths.length) console.log(`  out of lane, flagged not withheld: ${result.outOfLanePaths.join(', ')}`)
+      if (result.turnLogPath) console.log(`  turn log: ${result.turnLogPath}`)
+    } else {
+      console.log(`authoring Play ${playId} completed, but no commit was created`)
+      if (result.outOfLanePaths.length) console.log(`  held back outside the Play lane: ${result.outOfLanePaths.join(', ')}`)
+      if (result.turnLogPath) console.log(`  turn log: ${result.turnLogPath}`)
+    }
+    return
+  }
   if (cmd === 'oz' && arg1 === 'migrate-history') {
     const workspaceId = process.argv[4]
     if (!workspaceId) {
@@ -92,7 +162,7 @@ async function main(): Promise<void> {
     return
   }
   if (cmd !== 'run' || !arg1) {
-    console.error('usage: cocoder run <priorityId> [--resume <runId>]   |   cocoder oz start   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz commit-support <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]')
+    console.error(usage)
     process.exit(2)
   }
   const priorityId = arg1

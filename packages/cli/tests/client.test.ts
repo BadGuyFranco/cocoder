@@ -3,7 +3,7 @@
 // dependency, so the cli stays daemon-import-free).
 import { createServer, type Server } from 'node:http'
 import { afterEach, describe, expect, test } from 'vitest'
-import { runViaDaemon, supportCommitViaDaemon } from '../src/client.js'
+import { authoringPlayViaDaemon, runViaDaemon, supportCommitViaDaemon } from '../src/client.js'
 
 interface Captured {
   launchAuth?: string
@@ -11,6 +11,9 @@ interface Captured {
   launchBody?: any
   supportAuth?: string
   supportCsrf?: string | string[]
+  authorAuth?: string
+  authorCsrf?: string | string[]
+  authorBody?: any
 }
 
 function fakeDaemon(): { server: Server; captured: Captured; ready: Promise<number> } {
@@ -50,6 +53,23 @@ function fakeDaemon(): { server: Server; captured: Captured; ready: Promise<numb
         committedPaths: ['cocoder/SESSION_LOG.md'],
         outOfLanePaths: [],
         liveOscar: true,
+      })
+    }
+    if (req.method === 'POST' && req.url === '/workspaces/cocoder/authoring-plays/archive-priority') {
+      captured.authorAuth = req.headers.authorization
+      captured.authorCsrf = req.headers['x-oz-csrf-token']
+      let body = ''
+      req.on('data', (c) => (body += c))
+      return req.on('end', () => {
+        captured.authorBody = JSON.parse(body)
+        json({
+          ok: true,
+          commitSha: 'abc999',
+          committedPaths: ['cocoder/priorities/archive/demo.md', 'cocoder/priorities/order.json'],
+          outOfLanePaths: [],
+          exitCode: 0,
+          turnLogPath: '/tmp/authoring.log',
+        })
       })
     }
     res.writeHead(404)
@@ -100,6 +120,25 @@ describe('runViaDaemon (client mode)', () => {
     })
     expect(d.captured.supportAuth).toBe('Bearer tok')
     expect(d.captured.supportCsrf).toBe('csrf')
+  })
+
+  test('authoring Play posts with Bearer + CSRF and returns the daemon receipt', async () => {
+    const d = fakeDaemon()
+    server = d.server
+    const port = await d.ready
+
+    const result = await authoringPlayViaDaemon(`http://127.0.0.1:${port}`, 'cocoder', 'archive-priority', { id: 'demo' })
+
+    expect(result).toMatchObject({
+      ok: true,
+      commitSha: 'abc999',
+      committedPaths: ['cocoder/priorities/archive/demo.md', 'cocoder/priorities/order.json'],
+      outOfLanePaths: [],
+      exitCode: 0,
+    })
+    expect(d.captured.authorAuth).toBe('Bearer tok')
+    expect(d.captured.authorCsrf).toBe('csrf')
+    expect(d.captured.authorBody).toEqual({ persona: 'oz', invocation: { id: 'demo' } })
   })
 
   test('throws a clear error when the daemon rejects the launch', async () => {

@@ -53,6 +53,15 @@ export interface SupportCommitResult {
   readonly liveOscar?: boolean
 }
 
+export interface AuthoringPlayResult {
+  readonly ok: boolean
+  readonly committedPaths: readonly string[]
+  readonly commitSha?: string | null
+  readonly outOfLanePaths: readonly string[]
+  readonly exitCode?: number
+  readonly turnLogPath?: string
+}
+
 /** Commit post-wrap Oscar support edits through the daemon-owned commit spine. This is not a
  *  lifecycle operation: it does not stop/restart/teardown processes or touch panes. */
 export async function supportCommitViaDaemon(baseUrl: string, runId: string): Promise<SupportCommitResult> {
@@ -63,6 +72,18 @@ export async function supportCommitViaDaemon(baseUrl: string, runId: string): Pr
   })
   if (!res.ok) throw new Error(`support commit failed (${res.status}): ${await res.text()}`)
   return (await res.json()) as SupportCommitResult
+}
+
+/** Dispatch one governance authoring Play through the daemon-owned authoring harness. */
+export async function authoringPlayViaDaemon(baseUrl: string, workspaceId: string, playId: string, invocation: unknown, persona = 'oz'): Promise<AuthoringPlayResult> {
+  const session = (await (await fetch(`${baseUrl}/auth/session`)).json()) as { bearerToken: string; csrfToken: string }
+  const res = await fetch(`${baseUrl}/workspaces/${encodeURIComponent(workspaceId)}/authoring-plays/${encodeURIComponent(playId)}`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${session.bearerToken}`, [CSRF_HEADER]: session.csrfToken, 'content-type': 'application/json' },
+    body: JSON.stringify({ persona, invocation }),
+  })
+  if (!res.ok) throw new Error(`authoring Play failed (${res.status}): ${await res.text()}`)
+  return (await res.json()) as AuthoringPlayResult
 }
 
 export interface MigrateHistoryResult {

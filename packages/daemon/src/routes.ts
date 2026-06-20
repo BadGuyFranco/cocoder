@@ -37,7 +37,7 @@ import { findWorkspace, readWorkspaces, validateWorkspaceFolders, workspaceDirec
 import { readRunDir } from './rundir.js'
 import { appendAudit } from './audit.js'
 import { listClis, testCli } from './clis.js'
-import { commitGovernance, launchRun, requestDaemonRestart, requestDashboardLaunch, requestStopRun, requestSupportCommitRun, showRun, teardownRun } from './launcher.js'
+import { commitGovernance, launchRun, requestAuthoringPlay, requestDaemonRestart, requestDashboardLaunch, requestStopRun, requestSupportCommitRun, showRun, teardownRun, type AuthoringPlayInput } from './launcher.js'
 import { handleOzMessage } from './oz-chat.js'
 import { mergeWriteSettings, readSettings } from './settings.js'
 import { readPriorities, readTickets, writePriorityOrder, writeTicketOrder } from './priority-order.js'
@@ -150,6 +150,9 @@ interface CreateTicketInput {
 
 type ParsedCreateTicketBody = { readonly ok: true; readonly input: CreateTicketInput } | { readonly ok: false; readonly error: string }
 
+type ParsedAuthoringPlayBody = { readonly ok: true; readonly input: { readonly persona: AuthoringPlayInput['persona']; readonly invocation: unknown } } | { readonly ok: false; readonly error: string }
+type ParsedAuthorBody = { readonly playId: string; readonly persona: AuthoringPlayInput['persona']; readonly invocation: unknown }
+
 interface CreateWorkspaceInput {
   readonly id: string
   readonly folders: ReadonlyArray<WorkspaceFolderInput>
@@ -161,6 +164,8 @@ type ParsedCreateWorkspaceBody = { readonly ok: true; readonly input: CreateWork
 const PRIORITY_ID_RE = /^[a-z0-9][a-z0-9-]*$/
 const CONTROL_CHARS_RE = /[\u0000-\u001f\u007f]/
 const TICKET_TYPES: readonly TicketKind[] = ['bug', 'task', 'question', 'spike']
+const AUTHORING_PLAY_IDS = ['create-priority', 'edit-priority', 'archive-priority', 'create-ticket'] as const
+const AUTHORING_PERSONAS = ['oz', 'oscar', 'bob', 'deb'] as const
 
 function slugifyTitle(title: string): string {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').replace(/-+/g, '-')
@@ -230,6 +235,29 @@ function createTicketBody(body: unknown): ParsedCreateTicketBody {
   }
 
   return { ok: true, input: { title, type, priority, description } }
+}
+
+function authoringPlayBody(body: unknown): ParsedAuthoringPlayBody {
+  const record = bodyRecord(body)
+  let persona: AuthoringPlayInput['persona'] = 'oz'
+  if (Object.prototype.hasOwnProperty.call(record, 'persona') && record.persona !== undefined) {
+    if (typeof record.persona !== 'string' || !(AUTHORING_PERSONAS as readonly string[]).includes(record.persona)) {
+      return { ok: false, error: 'persona must be one of oz, oscar, bob, deb' }
+    }
+    persona = record.persona as AuthoringPlayInput['persona']
+  }
+  const invocation = Object.prototype.hasOwnProperty.call(record, 'invocation') ? record.invocation : record
+  return { ok: true, input: { persona, invocation } }
+}
+
+function authorBody(body: unknown): ParsedAuthorBody {
+  const record = bodyRecord(body)
+  const persona = typeof record.persona === 'string' && (AUTHORING_PERSONAS as readonly string[]).includes(record.persona)
+    ? record.persona as AuthoringPlayInput['persona']
+    : 'oscar'
+  const playId = typeof record.playId === 'string' ? record.playId : ''
+  const invocation = Object.prototype.hasOwnProperty.call(record, 'invocation') ? record.invocation : {}
+  return { playId, persona, invocation }
 }
 
 function validateWorkspaceRootRules(roots: ReadonlyArray<RegistryRoot>, cocoderHome: string): string | null {
@@ -877,6 +905,43 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
     if (!parsed.ok) return sendJson(res, 400, { error: parsed.error }), true
     await createTicket(ctx, res, decodeURIComponent(seg[1]!), parsed.input)
     return true
+  }
+  if (method === 'POST' && seg[0] === 'workspaces' && seg.length === 3 && seg[2] === 'author') {
+    let body: unknown
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      return sendJson(res, 400, { error: 'invalid JSON body' }), true
+    }
+    const parsed = authorBody(body)
+    const { status, body: out } = await requestAuthoringPlay(ctx, {
+      workspaceId: decodeURIComponent(seg[1]!),
+      persona: parsed.persona,
+      playId: parsed.playId as AuthoringPlayInput['playId'],
+      invocation: parsed.invocation,
+    })
+    return sendJson(res, status, out), true
+  }
+  if (method === 'POST' && seg[0] === 'workspaces' && seg.length === 4 && seg[2] === 'authoring-plays') {
+    const playId = decodeURIComponent(seg[3] ?? '')
+    if (!(AUTHORING_PLAY_IDS as readonly string[]).includes(playId)) {
+      return sendJson(res, 400, { error: `unsupported authoring Play "${playId}"` }), true
+    }
+    let body: unknown
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      return sendJson(res, 400, { error: 'invalid JSON body' }), true
+    }
+    const parsed = authoringPlayBody(body)
+    if (!parsed.ok) return sendJson(res, 400, { error: parsed.error }), true
+    const { status, body: out } = await requestAuthoringPlay(ctx, {
+      workspaceId: decodeURIComponent(seg[1]!),
+      persona: parsed.input.persona,
+      playId: playId as AuthoringPlayInput['playId'],
+      invocation: parsed.input.invocation,
+    })
+    return sendJson(res, status, out), true
   }
   if (method === 'PUT' && pathname === '/settings') {
     let body: unknown
