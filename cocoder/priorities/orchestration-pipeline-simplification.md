@@ -54,6 +54,11 @@ sequence that:
    run** — not merely plans it. For every remaining overlap, either land a guarded-distinction enforcer
    or create a named, sequenced follow-up priority file, so no retirement is left as an unowned
    intention (the analysis-only loop this priority exists to break).
+7. Ships a single, all-persona **Routing Guide** (generalizing `docs/oz-improvement-routing.md`, not a
+   new file) encoding both the **product-vs-workspace** target axis and the **kind-of-change → owner →
+   write-path** axis, reached from `packages/personas/base/shared-standards.md` by one trigger line, and
+   pinned by an extension of `packages/core/tests/orchestration-contracts.test.ts` so it cannot drift or
+   gain a second owner. (Founder-added 2026-06-20; see **Atom 6** below.)
 
 ## Boundary
 This priority is allowed to edit governance, docs, tests, and narrow orchestration enforcers needed to
@@ -84,6 +89,11 @@ behavior, evidence, reversibility, or safeguards.
 - `scripts/proof-orchestration-enforcer.mjs` and `packages/core/tests/orchestration-contracts.test.ts` — **existing enforcers; extend these rather than add a parallel one.**
 
 ## Proposed Atom Sequence
+> **Status (run_164):** atoms 0–2 landed (`73e311c`, `198ae88`, `6a022e7`); the planned atoms 3–5
+> collapsed into atom 0's map and the closeout. The ONLY remaining forward work is **Atom 6 — Routing
+> Guide** (see its section above and **Suggested Next Action**). The list below is retained as historical
+> record, not pending work.
+
 0. **Owner/objective map first.** Read the required inputs and **extend the existing
    `docs/orchestration-contract-ownership.md`** into the full pipeline owner map — do not create a second
    owner-map doc (that would be the duplication anti-pattern this priority condemns). Fold in its
