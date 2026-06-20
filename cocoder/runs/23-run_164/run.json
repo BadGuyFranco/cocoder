@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_164",
+    "displayNumber": 23
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "priority"
+  },
+  "priorityId": "orchestration-pipeline-simplification",
+  "playbookId": null,
+  "ticketId": null,
+  "status": "running",
+  "createdAt": 1781959476132,
+  "endedAt": null
+}
