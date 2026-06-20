@@ -5,5 +5,6 @@
     "resolveJsonModule": true,
     "types": ["node"]
   },
-  "include": ["packages/*/src/**/*.ts", "scripts/**/*.mjs"]
+  "include": ["packages/*/src/**/*.ts", "scripts/**/*.mjs"],
+  "exclude": ["packages/ui/**"]
 }

@@ -11,7 +11,7 @@
     "onlyBuiltDependencies": ["electron"]
   },
   "scripts": {
-    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json && pnpm --filter @cocoder/ui typecheck",
     "test": "pnpm -r test",
     "check:topology": "node scripts/check-topology.mjs",
     "proof:oz-awareness": "node scripts/proof-oz-awareness.mjs",
