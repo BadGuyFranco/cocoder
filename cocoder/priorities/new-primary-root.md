@@ -43,41 +43,50 @@ extension (ADR-0020 §7); the `deep-read` audit Play (the Takeover P2 unit, adve
 deterministic scaffold init op; and a **live Takeover proof on a real external repo** (the Phase-5 entry,
 CoPublisher).
 
-## Build progress — disposition: `continue` (rebuild COMPLETE run_141; but run_159 founder-reported TWO new-workspace first-run model defects that RE-OPEN buildable work — see "⚠ NEW DEFECTS" below. `node scripts/proof-onboard-existing.mjs` still proves the three rebuilt invariants; the founder-gated LIVE proofs remain blocked behind these defects since the live first-run is exactly what fails)
+## Build progress — disposition: `continue` (rebuild COMPLETE run_141; run_159 model defects RESOLVED run_160 — see "✅ RESOLVED run_160" below; `main` repaired to fully green. `node scripts/proof-onboard-existing.mjs` proves the three rebuilt invariants. The ONLY remaining Objective work is the founder-gated LIVE proofs — live Takeover + dogfood Drift — which need a different launch surface + founder authorization; no buildable atoms remain in an ordinary loop.)
 
-## ⚠ NEW DEFECTS — founder-reported (run_159, 2026-06-19): new-workspace first-run launches with a model error
-When launching and running the **first priority in the first session of a new workspace** (new primary
-root == new workspace), the persona CLIs — Oscar and Bob, here both **claude** CLIs — launch with a
-**model error: "model opus not available."** This blocks the live onboarding first-run (Objective (a)),
-so the priority is back to `continue`. The founder named two distinct root issues to fix:
+## ✅ RESOLVED run_160 (2026-06-19): the run_159 model defects + a broadly red `main`
+The run_159 report was: a new-workspace first run launches the persona claude CLIs with **"model opus
+not available."** run_160 resolved both named issues and, in the process, found and repaired a `main`
+that was broadly red from earlier unrelated landings.
 
-**Issue 1 — "default" model must pass NO `--model` at launch.** When a persona's model is set to
-*default*, no model should EVER be named in the launch; the persona must launch with whatever the CLI's
-own settings/default are. Today the seeded `templates/workspace-cocoder/cocoder/personas/assignments.json`
-uses `"model": ""` for every persona, and `ClaudeAdapter.build()`
-(`packages/adapters/src/claude.ts:32,39`) correctly skips `--model` when `input.model` is falsy — so the
-empty-string path is right. **The defect is upstream:** something on the new-workspace launch path is
-resolving "default" into a concrete `opus` alias and passing `--model opus`. Find where a fresh-workspace
-launch injects a model (UI launch payload / model-dropdown default / `top-tier` resolution /
-`resolveEffectivePersona` / `resolvePlayAssignment` in `packages/daemon/src/launcher.ts`) and make
-"default" pass through as *no model* end-to-end. Acceptance: a brand-new workspace's first run launches
-claude with NO `--model` flag (verify the built argv), and the persona uses the CLI's configured default.
+**Issue 1 — NOT a CoCoder code bug (root cause pinned 3 ways).** CoCoder's launch/resolution path is
+already correct: a default (empty) persona model passes through unchanged and `ClaudeAdapter.build()`
+emits NO `--model`. Proven by (a) a code trace of `assembleRunInput`→`resolveEffectivePersona`→
+`build()`, (b) a new regression test, and (c) reading the actual environment. The `--model opus` came
+from the **`claude` CLI's OWN user config** (`~/.claude/settings.json` → `"model": "opus[1m]"`,
+`~/.claude.json` → `claude-opus-4-7`): CoCoder correctly passes no `--model`, the CLI falls back to its
+own default, and *that* default was the unavailable model — exactly the "use the CLI's own default"
+behavior the directive asked for. **Founder remedy:** set `~/.claude/settings.json` `model` to an
+available alias (or remove it) and the first run launches clean today. Guarded by
+`packages/daemon/tests/fresh-workspace-model-launch.test.ts` (default → no `--model`; pin `sonnet` →
+`--model sonnet`). Committed `930d52b`.
 
-**Issue 2 — CLI "test" must validate model formatting / passthrough.** Model pass-throughs are not
-properly labeled/validated for claude (at least). When **testing a CLI** (`testCli` in
-`packages/daemon/src/clis.ts`; `ClaudeAdapter.preflight`/`listModels` in
-`packages/adapters/src/claude.ts:44,70`), the test must include **testing the model formatting** — i.e.
-verify that the `--model <alias>` form the adapter would actually pass resolves and launches, so a "model
-X not available" surfaces at **test time**, not on the founder's first live run. Today `preflight` only
-records the model string (`checks.push({ name: 'model', ok: true, detail: model || '(claude default)' })`,
-`claude.ts:65`) and never exercises it. Acceptance: testing the claude CLI exercises the real model-arg
-form and fails the test (with a clear detail) when the configured/aliased model is not available.
+**Issue 2 — FIXED.** `ClaudeAdapter.preflight` now runs a minimal real headless probe in the EXACT
+launch form (no `--model` for default → exercises the CLI's own default and catches `opus[1m]`;
+`--model X` for pins), guarded behind install+auth, failing the `model` check with a clear detail when
+the model/default is unavailable. So an unavailable model surfaces at **Test time**, not the founder's
+first live run. Tests in `packages/adapters/tests/adapters.test.ts`. Committed `930d52b`. (Ownership
+cross-check done: `first-class-model-tiers.md` owns model *tier selection/resolution*, a different
+surface from the preflight/test path — no parallel contract.)
 
-**Sequencing for relaunch:** root-cause Issue 1 first (it is what actually breaks the first run); Issue 2
-is the guardrail that would have caught it at test time. Both are concrete, in-scope build atoms — start
-here on relaunch rather than the live-proof path, which stays blocked until the first run launches clean.
-Note: Issue 2 overlaps `first-class-model-tiers.md` (model-tier/test surface) — cross-check that priority
-when scoping so the CLI-test change has one owner.
+**`main` repaired to fully green (founder-authorized).** Diagnosed as four independent half-finished
+landings, none from this priority: (1) wrap-up closeout validator (run_153/157) left lifecycle test
+fakes emitting placeholder `'wrap closeout'` → 6 daemon failures; (2) a manual commit `dd35601`
+("fix: preserve default model launches") added a `model` CliView field without updating the ui
+consumer/tests → 4 ui failures + a missing-import test; (3) `hybrid-plays.md` archival left a core test
+reading a stale path → 1 failure; (4) `ui-package-layout-stabilization` (run_154) left the **root**
+`tsconfig.json` globbing `packages/ui/src/**` under NodeNext while the UI is a Bundler/dual-config
+package → 31 typecheck errors. Fixes: conform stale consumers/tests to the shipped contracts (committed
+`627a134`) and a 2-line root-tsconfig wiring fix — exclude `packages/ui/**` from the root typecheck and
+chain the UI's own dual-config typecheck into `pnpm -w typecheck` (zero UI source changes; committed
+`674c2dc`). Result: `pnpm -w typecheck` 0 errors; core 412, ui 155, daemon 231, adapters 24, topology
+all green. (Note: a blind `.ts`→`.js` UI source sweep would have gone green on typecheck while breaking
+the vite/Electron build — avoided.)
+
+**Remaining for this priority:** only the **founder-gated LIVE proofs** — live external-repo Takeover
+(CoBuilder/CoPublisher copy) and the dogfood Drift Audit. Different launch surface + founder
+authorization; not buildable in an ordinary build loop.
 
 ## ⚠ ARCHITECTURE PIVOT — founder-directed (run_131, 2026-06-17): the existing-repo audit is NOT a standalone executor
 **Decision (founder):** the existing-repo onboarding audit will **not** ship as the standalone Playbook

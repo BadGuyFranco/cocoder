@@ -12,6 +12,18 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-19 — **new-primary-root: run_159 model defects resolved + `main` repaired to fully green (run_160)**
+
+**Persona:** Oscar (lead) + Bob (builder, codex) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_160
+**Outcomes:**
+- **Issue 1 — not a CoCoder bug.** Root-caused 3 ways (code trace + new regression test + env read): CoCoder already passes NO `--model` for a default persona; the `--model opus` came from the **claude CLI's own** `~/.claude/settings.json` default (`opus[1m]`). Founder remedy: set that default to an available alias. Guarded by `fresh-workspace-model-launch.test.ts` (`930d52b`).
+- **Issue 2 — fixed (`930d52b`).** `ClaudeAdapter.preflight` now runs a real headless probe in the exact launch form (default → no `--model` exercises the CLI's own default; pins → `--model X`), so an unavailable model/default fails at **Test time**, not first live run. Ownership cross-checked vs `first-class-model-tiers.md` (different surface).
+- **`main` was broadly RED from 4 prior unrelated landings; repaired to fully green (founder-authorized).** 11 test reds fixed by conforming stale consumers/tests to shipped contracts (`627a134`); 31 UI typecheck errors fixed via a 2-line root-tsconfig wiring change (exclude `packages/ui/**`, chain the UI's own dual-config typecheck) with ZERO UI source edits (`674c2dc`). Now: `pnpm -w typecheck` 0 errors; core 412 / ui 155 / daemon 231 / adapters 24 / topology all green.
+- **Two Bob attempts rejected at the gate** for scope drift (a `.ts`→`.js` UI sweep + unrelated churn) before the disciplined fixes landed — the sweep would have broken the vite/Electron build while greening typecheck.
+- **Disposition: `continue`** — defect-reopened buildable work complete; only the founder-gated LIVE proofs remain.
+
+**Next:** Founder authorizes the live external-repo onboard-existing/Takeover proof (Objective a) OR the dogfood Drift Audit reframe (Objective b) — both need a different launch surface; not buildable in an ordinary loop.
+
 ## 2026-06-19 — **new-primary-root: archive-candidate re-confirmed — no build atoms warranted (run_159)**
 
 **Persona:** Oscar (wrap-up only; 0 atoms delegated) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_159
