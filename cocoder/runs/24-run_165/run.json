@@ -12,7 +12,7 @@
   "priorityId": "orchestration-pipeline-simplification",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "completed",
   "createdAt": 1781963042377,
-  "endedAt": null
+  "endedAt": 1781963441897
 }
