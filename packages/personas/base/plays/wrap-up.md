@@ -50,88 +50,65 @@ say "kill" / "tear down" afterward.
    "follow up as needed", "run the live-proof checklist", or a menu of equally weighted options as the
    next action. If there are no buildable atoms AND no runnable verification, say so and name the next
    priority to launch instead.
-5. Emit, as your final output, a founder-readable closeout in the exact heading order below. Use
-   the heading-block format shown in the fenced contract: Markdown bold heading, then that section's
-   content on the following line(s). This is a decision brief, not a run ledger. The first screen must
-   be enough for a solo non-developer to know what happened, why the run stopped, what remains, and
-   which priority or ticket is ready to run next. Keep proof detail, atom-by-atom history, commit lists,
-   suite counts, and optional operational notes out of the founder brief; those belong in SESSION_LOG,
-   run records, or follow-up answers if the founder asks.
+5. Emit, as your final output, a founder-readable closeout in exactly the heading-block format below:
+   Markdown bold heading, then that section's content on the following line(s). This is a decision brief,
+   not a run ledger. The first screen must be enough for a solo non-developer to know what happened, why
+   the run stopped, what remains, and which priority or ticket is ready to run next. Keep proof detail,
+   atom-by-atom history, commit lists, suite counts, and optional operational notes out of the founder
+   brief; those belong in SESSION_LOG, run records, or follow-up answers if the founder asks.
 
    ```
    **Founder Completion Brief**
 
    **Atom Complete**
-   <Yes | No — one brief reason>
+   Yes | No — one brief reason.
 
    **Run Status**
-   <continue | blocked | archive ready>
+   continue | blocked | archive ready. This is the single lifecycle verdict. `archive ready` means ask
+   for founder archive confirmation; never self-archive.
 
    **What Changed**
-   <plain English summary of what changed this run, 1 sentence max>
+   Plain English summary of what changed this run. Maximum: one short sentence, 180 characters total. Do
+   not include atom history, commit SHAs, test-matrix counts, command transcripts, implementation-file
+   inventories, push/remote status, or PR status.
 
    **What Remains**
-   <up to 3 short bullets naming only required remaining gaps; write "Nothing obvious." only if archive ready>
+   Up to 3 short bullets naming only required remaining gaps across product behavior, architecture,
+   tests, documentation, founder decisions, and missing evidence. Write `Nothing obvious.` only if archive
+   ready. Do not include optional work, percentage-complete claims, atom labels, implementation labels, or
+   proof-matrix detail. Start each bullet with the missing founder-facing capability or proof, not a
+   label. Forbidden openings include `Atom 3:`, `Item 2:`, `A3a:`, `UI 2/4:`, and bold label bullets like
+   `**Proof harness:**`.
 
    **Recommended Next Step**
-   <exactly one launchable item with its concrete focus: Priority: `slug` — <next run focus> or Ticket: `NNNN` — <next run focus>>
+   Exactly one ready work item, not a task list, confirmation request, menu, optional action, or
+   multi-choice action. Use exactly one of these forms, including a concrete focus after the dash:
+   `Priority: slug - <the concrete next atom/proof/founder decision this launch should handle>` or
+   `Ticket: NNNN - <the concrete fix or decision this launch should handle>`. In the actual closeout,
+   wrap the slug or ticket id in backticks and use an em dash before the focus. The priority must be an
+   existing launchable file at `cocoder/priorities/slug.md`; the ticket must be an existing open ticket
+   under `cocoder/tickets/open/`. Do not name archive confirmation as the next item. If the right next
+   item does not exist yet, create or update the priority/ticket before wrap-up so this points at
+   something ready to run.
 
    **Founder Decision Needed**
-   <None. | the one decision the founder can veto or must answer>
+   None. | The one founder judgment call, if any.
 
    **Commit State**
-   <do not assert landing; say the runner reports the authoritative commit outcome after this brief>
+   Do not claim final landing, push, remote, or PR status. Say the runner reports the authoritative
+   commit outcome after this brief.
 
    **Teardown Readiness**
-   <standing by; teardown only on explicit founder request>
+   Say the run is standing by and teardown requires an explicit founder request.
 
    **Judgment:**
-   <plain-English call Oscar made to close now instead of continuing, plus any controversial calls if appropriate>
+   Explain why Oscar stopped now instead of continuing in this same run. If Oscar made a debatable call
+   such as a scope cut, deferral, risk tradeoff, or founder-gated decision, state it plainly.
 
    I'm standing by...
    ```
 
-   - **`What Changed`** states plainly what changed this session. Maximum: one short sentence,
-     180 characters total. Do not add atom history, commit SHAs, test-matrix
-     counts, command transcripts, or implementation-file inventories. Do not predict push/remote/PR
-     status; CoCoder delivers the authoritative commit outcome right after this wrap.
-   - **`Run Status`** is the single lifecycle verdict (§3). Use founder-facing wording:
-     `continue`, `blocked`, or `archive ready`. `archive ready` means the existing archive-candidate
-     lifecycle judgment: ask for founder archive confirmation; never self-archive.
-   - **`What Remains`** is the short version of the required remaining gaps across
-     product behavior, architecture, tests, documentation, founder decisions, and missing evidence. Use
-     at most three short bullets. Do not include optional nice-to-have work, percentage-complete claims,
-     atom labels, implementation labels, or proof-matrix detail here, and do not bury the next move here.
-     Start each bullet with the missing founder-facing capability or proof, not a label. Forbidden
-     openings include `Atom 3:`, `Item 2:`, `A3a:`, `UI 2/4:`, and bold label bullets like
-     `**Proof harness:**`.
-   - **`Recommended Next Step`** is not a task list or confirmation request. It is exactly one ready
-     work item. Use one of these two forms:
-
-     ```
-     Priority: `slug` — <the concrete next atom/proof/founder decision this launch should handle>
-     ```
-
-     ```
-     Ticket: `NNNN` — <the concrete fix or decision this launch should handle>
-     ```
-
-     The priority must be an existing launchable file at `cocoder/priorities/slug.md`; the ticket must
-     be an existing open ticket file under `cocoder/tickets/open/`. The focus after the dash is required:
-     a bare slug like `Priority: new-primary-root` is not enough because it sends the founder back to the
-     priority file to infer the next move. Do not give a menu, do not say "optionally", do not combine
-     unrelated actions with "and/or", and do not name archive confirmation as the next item. If the right
-     next item does not exist yet, create or update the priority/ticket before wrap-up so
-     `Recommended Next Step` points at something ready to run (F1/F20).
-   - **`Founder Decision Needed`** names the one founder judgment call, if any. Use `None.` when there is
-     no decision.
-   - **`Commit State`** must not claim final landing, push, remote, or PR status. The runner delivers the
-     authoritative commit outcome after this brief, so write that.
-   - **`Teardown Readiness`** must say the run is standing by and teardown requires an explicit founder
-     request.
-   - **`Judgment`** explains why Oscar stopped now instead of continuing in this same run. If Oscar made a
-     debatable call (scope cut, deferral, risk tradeoff, founder-gated decision), state it plainly.
-   - End with exactly `I'm standing by...` so the founder knows the run remains available for questions,
-     priority updates, or explicit `kill` / `tear down`.
+   End with exactly `I'm standing by...` so the founder knows the run remains available for questions,
+   priority updates, or explicit `kill` / `tear down`.
 
 The runner persists this output as the run's pickup brief — do NOT write `pickup.md` yourself.
