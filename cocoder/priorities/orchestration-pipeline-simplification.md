@@ -31,6 +31,13 @@ For each component, name the source of truth, every live emitter/consumer, the a
 the tests or proof that pin it. Then identify every duplicated or overlapping path and decide one of:
 **retire**, **merge**, **derive from owner**, or **keep with a named distinction and automated guard**.
 
+A distinction recorded in an **Accepted ADR** is a guarded distinction by default; retiring or merging it
+requires a new founder-approved ADR. ADR-0023 (commit spine) and ADR-0026 (reframe) are in scope to
+**map**, not to reverse — e.g. the four commit/landing paths (verify-gate, Deb repair, post-wrap
+support-commit, audit-apply) are distinct jobs already examined in
+`docs/orchestration-contract-ownership.md`; ingest that prior disposition rather than re-deriving it, and
+do not treat an ADR-accepted distinction as duplication to retire.
+
 **Verified when:** the run produces a founder-readable architecture report plus a launchable refactor
 sequence that:
 
@@ -39,8 +46,14 @@ sequence that:
 2. Marks each overlap with a disposition: retire / merge / derive / guarded distinction.
 3. Names the exact files, owners, and tests affected by each proposed simplification.
 4. Separates quick Deb-sized repairs from multi-atom build work and founder decisions.
-5. Adds or updates at least one automated duplicate-path detector when the analysis finds an obvious
-   enforceable invariant.
+5. Adds or updates an automated duplicate-path detector for the single highest-risk recurrence found in
+   atom 0 — extending `scripts/proof-orchestration-enforcer.mjs` /
+   `packages/core/tests/orchestration-contracts.test.ts`, not a parallel enforcer. This detector is
+   required, not conditional.
+6. **Actually retires, merges, or derives at least the single highest-confidence duplicate path this
+   run** — not merely plans it. For every remaining overlap, either land a guarded-distinction enforcer
+   or create a named, sequenced follow-up priority file, so no retirement is left as an unowned
+   intention (the analysis-only loop this priority exists to break).
 
 ## Boundary
 This priority is allowed to edit governance, docs, tests, and narrow orchestration enforcers needed to
@@ -54,10 +67,10 @@ behavior, evidence, reversibility, or safeguards.
 
 ## Required Inputs
 - `ARCHITECTURE.md`
-- `docs/orchestration-contract-ownership.md`
+- `docs/orchestration-contract-ownership.md` — **predecessor owner inventory; extend it, do not duplicate it.**
 - `cocoder/decisions/0010-taxonomy-and-authoring.md`
 - `cocoder/decisions/0012-living-base-personas.md`
-- `cocoder/decisions/0013-runner-resident-monitoring.md`
+- `cocoder/decisions/0013-orchestration-observation.md`
 - `cocoder/decisions/0023-workspace-commit-spine.md`
 - `cocoder/decisions/0026-onboard-existing-as-oscar-priority.md`
 - `packages/core/src/runner/`
@@ -66,27 +79,35 @@ behavior, evidence, reversibility, or safeguards.
 - `packages/daemon/src/oz-chat.ts`
 - `packages/personas/base/`
 - `cocoder/tickets/open/`
-- `cocoder/priorities/archive/founder-brief-format-durability.md`
+- `cocoder/priorities/archive/founder-brief-format-durability.md` — **predecessor priority whose shipped owner map this run absorbs.**
 - `cocoder/tickets/closed/0008-post-wrap-founder-interaction-contract.md`
+- `scripts/proof-orchestration-enforcer.mjs` and `packages/core/tests/orchestration-contracts.test.ts` — **existing enforcers; extend these rather than add a parallel one.**
 
 ## Proposed Atom Sequence
-0. **Owner/objective map first.** Read the required inputs and produce
-   `docs/orchestration-pipeline-owner-map.md`: one table for objectives, one for components, one for
-   live pathways, one for duplicated/overlapping paths. No code edits beyond the doc.
+0. **Owner/objective map first.** Read the required inputs and **extend the existing
+   `docs/orchestration-contract-ownership.md`** into the full pipeline owner map — do not create a second
+   owner-map doc (that would be the duplication anti-pattern this priority condemns). Fold in its
+   existing contract inventory and Run_163 closeout-delivery row as already-owned rows, then add the
+   missing tables: one for objectives, one for components, one for live pathways, one for
+   duplicated/overlapping paths. No code edits beyond the doc.
 1. **Taxonomy decision pass.** Reduce the map into a small vocabulary and authority model: what is a
    work target, what is a Play, what is a support edit, what is a repair, what is a commit path, and what
    is forbidden duplication. Update only governance/docs unless a tiny enforcer is obvious.
-2. **Duplicate-path detector.** Add one or more focused tests/lints that fail on the highest-risk
-   recurrence found in atom 0. Examples: two surfaces that can launch the same target through different
-   request shapes, two prompt sources that issue the same lifecycle instruction, or two composers for the
-   same governance artifact.
+2. **Duplicate-path detector.** Add one or more focused tests/lints — **extending the existing
+   `scripts/proof-orchestration-enforcer.mjs` / `packages/core/tests/orchestration-contracts.test.ts`,
+   not a parallel enforcer** — that fail on the highest-risk recurrence found in atom 0. Examples: two
+   surfaces that can launch the same target through different request shapes, two prompt sources that
+   issue the same lifecycle instruction, or two composers for the same governance artifact.
 3. **Retirement plan.** Produce a sequenced refactor plan that deletes or merges legacy paths before
    adding replacement behavior. Each item names owner, files, tests, risk, and rollback.
 4. **First simplification slice.** Implement only the lowest-risk, highest-confidence deletion/merge from
    the accepted map. Verify with targeted tests and an owner-map update.
 5. **Closeout decision.** Report what was simplified, what remains duplicated, and the one next
-   launchable refactor atom. Do not claim the architecture is clean until duplicate paths are actually
-   removed or guarded.
+   launchable refactor atom. At least one real duplicate path must be retired/merged/derived this
+   priority (Verified-when #6) — a report plus a single trivial slice does not satisfy the Objective.
+   Every remaining overlap must exit as either a landed guarded-distinction enforcer or a named,
+   sequenced follow-up priority file, never an unowned intention. Do not claim the architecture is clean
+   until duplicate paths are actually removed or guarded.
 
 ## Known Suspect Overlaps
 - Priority launch vs ticket-fix launch vs ad-hoc support launch target handling.
@@ -100,5 +121,6 @@ behavior, evidence, reversibility, or safeguards.
 - Drift/onboarding phase libraries vs ordinary Oscar priorities vs retired executor/playbook concepts.
 
 ## Suggested Next Action
-Launch atom 0 only. The first deliverable is the owner/objective map; no runner/daemon/UI behavior should
-change until the duplicate paths are visible and classified.
+Launch atom 0 only. The first deliverable is the owner/objective map produced by **extending
+`docs/orchestration-contract-ownership.md`** (not a new doc); no runner/daemon/UI behavior should change
+until the duplicate paths are visible and classified.
