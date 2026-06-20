@@ -135,41 +135,47 @@ function parseCloseoutContract(play) {
   const fenceMarker = String.fromCharCode(96, 96, 96)
   const fence = play.body.match(new RegExp(fenceMarker + '(?:[a-zA-Z0-9_-]+)?\\n([\\s\\S]*?)' + fenceMarker))
   if (!fence?.[1]) throw new Error('wrap-up Play has no fenced closeout contract')
-  const labels = fence[1].match(/\*\*[^*\n]+?\*\*/g) ?? []
+  const labels = [...fence[1].matchAll(/^\*\*[^*\n]+?\*\*\s*$/gm)].map((match) => match[0].trim())
+  const roleEntries = labels.flatMap((label) => {
+    const normalized = label.replace(/\*/g, '').replace(/:/g, '').trim().toLowerCase()
+    const role =
+      normalized === 'founder completion brief' ? 'title' :
+      normalized === 'atom complete' ? 'atomComplete' :
+      normalized === 'run status' ? 'runStatus' :
+      normalized === 'what changed' ? 'whatChanged' :
+      normalized === 'what remains' ? 'whatRemains' :
+      normalized === 'recommended next step' ? 'nextStep' :
+      normalized === 'founder decision needed' ? 'decisionNeeded' :
+      normalized === 'commit state' ? 'commitState' :
+      normalized === 'teardown readiness' ? 'teardownReadiness' :
+      normalized === 'judgment' ? 'judgment' :
+      null
+    return role ? [[role, label]] : []
+  })
+  const byRole = Object.fromEntries(roleEntries)
   const finalLine = fence[1].split(/\r?\n/).map((line) => line.trim()).filter(Boolean).at(-1)
-  if (labels.length < 10 || !finalLine || finalLine.startsWith('**')) throw new Error('wrap-up Play closeout contract is malformed')
-  return { labels: labels.slice(0, 10), finalLine }
+  const required = ['title', 'atomComplete', 'runStatus', 'whatChanged', 'whatRemains', 'nextStep', 'decisionNeeded', 'commitState', 'teardownReadiness', 'judgment']
+  if (required.some((role) => !byRole[role]) || !finalLine || finalLine.startsWith('**')) throw new Error('wrap-up Play closeout contract is malformed')
+  return { labels, byRole, orderedRoles: roleEntries.map(([role]) => role), finalLine }
 }
 
 function validCloseout(play) {
   const c = parseCloseoutContract(play)
   const tick = String.fromCharCode(96)
-  return [
-    c.labels[0],
-    '',
-    c.labels[1] + ' Yes',
-    '',
-    c.labels[2] + ' continue',
-    '',
-    c.labels[3] + ' The hybrid Play proof completed the real-path validation.',
-    '',
-    c.labels[4],
-    '- Continue the remaining verification work.',
-    '',
-    c.labels[5],
-    'Priority: ' + tick + 'demo' + tick + ' - continue the real-path proof review',
-    '',
-    c.labels[6] + ' None.',
-    '',
-    c.labels[7] + ' The runner reports the authoritative commit outcome after this brief.',
-    '',
-    c.labels[8] + ' Standing by; teardown requires an explicit founder request.',
-    '',
-    c.labels[9],
-    'The proof stopped after validating the declared Play contract through the runner.',
-    '',
-    c.finalLine,
-  ].join('\n')
+  const content = {
+    title: '',
+    atomComplete: 'Yes',
+    runStatus: 'continue',
+    whatChanged: 'The hybrid Play proof completed the real-path validation.',
+    whatRemains: '- Continue the remaining verification work.',
+    nextStep: 'Priority: ' + tick + 'demo' + tick + ' - continue the real-path proof review',
+    decisionNeeded: 'None.',
+    commitState: 'The runner reports the authoritative commit outcome after this brief.',
+    teardownReadiness: 'Standing by; teardown requires an explicit founder request.',
+    judgment: 'The proof stopped after validating the declared Play contract through the runner.',
+  }
+  const body = c.orderedRoles.map((role) => (role === 'title' ? c.byRole[role] : c.byRole[role] + '\n' + content[role])).join('\n\n')
+  return body + '\n\n' + c.finalLine
 }
 
 function proofIo(pickup, written) {

@@ -31,7 +31,7 @@ async function founderCloseoutSections() {
   const text = await readFile(rel(OWNER_PLAY), 'utf8')
   const fence = text.match(/```(?:[a-zA-Z0-9_-]+)?\n([\s\S]*?)```/)
   if (!fence?.[1]) throw new Error(`${OWNER_PLAY} is missing the fenced founder closeout contract`)
-  const sections = fence[1].match(/\*\*[^*\n]+?\*\*/g) ?? []
+  const sections = [...fence[1].matchAll(/^\*\*[^*\n]+?\*\*\s*$/gm)].map((match) => match[0].trim())
   if (sections.length < 3) throw new Error(`${OWNER_PLAY} has fewer than three founder closeout labels`)
   return sections
 }

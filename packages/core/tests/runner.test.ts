@@ -302,33 +302,58 @@ type FounderCloseoutRole =
   | 'teardownReadiness'
   | 'judgment'
 
-const FOUNDER_CLOSEOUT_ROLES: readonly FounderCloseoutRole[] = [
-  'title',
-  'atomComplete',
-  'runStatus',
-  'whatChanged',
-  'whatRemains',
-  'nextStep',
-  'decisionNeeded',
-  'commitState',
-  'teardownReadiness',
-  'judgment',
-]
+const founderCloseoutRole = (labelText: string): FounderCloseoutRole | null => {
+  const normalized = labelText
+    .replace(/\*/g, '')
+    .replace(/:/g, '')
+    .trim()
+    .toLowerCase()
+  if (normalized === 'founder completion brief') return 'title'
+  if (normalized === 'atom complete') return 'atomComplete'
+  if (normalized === 'run status') return 'runStatus'
+  if (normalized === 'what changed') return 'whatChanged'
+  if (normalized === 'what remains') return 'whatRemains'
+  if (normalized === 'recommended next step') return 'nextStep'
+  if (normalized === 'founder decision needed') return 'decisionNeeded'
+  if (normalized === 'commit state') return 'commitState'
+  if (normalized === 'teardown readiness') return 'teardownReadiness'
+  if (normalized === 'judgment') return 'judgment'
+  return null
+}
 
-const founderCloseoutContract = (playBody: string): { labels: Record<FounderCloseoutRole, string>; finalLine: string } => {
+const founderCloseoutContract = (playBody: string): { labels: Record<FounderCloseoutRole, string>; orderedRoles: readonly FounderCloseoutRole[]; finalLine: string } => {
   const fence = playBody.match(/```(?:[a-zA-Z0-9_-]+)?\n([\s\S]*?)```/)
   if (!fence?.[1]) throw new Error('test wrap-up Play is missing a fenced founder closeout contract')
-  const sections = fence[1].match(/\*\*[^*\n]+?\*\*/g) ?? []
+  const sections = [...fence[1].matchAll(/^\*\*[^*\n]+?\*\*\s*$/gm)].map((match) => match[0].trim())
+  const roleEntries = sections.flatMap((section): readonly [FounderCloseoutRole, string][] => {
+    const role = founderCloseoutRole(section)
+    return role ? [[role, section]] : []
+  })
+  const labels = Object.fromEntries(roleEntries) as Partial<Record<FounderCloseoutRole, string>>
   const finalLine = fence[1]
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
     .at(-1)
-  if (sections.length < FOUNDER_CLOSEOUT_ROLES.length || !finalLine || finalLine.startsWith('**')) {
+  if (
+    !labels.title ||
+    !labels.atomComplete ||
+    !labels.runStatus ||
+    !labels.whatChanged ||
+    !labels.whatRemains ||
+    !labels.nextStep ||
+    !labels.decisionNeeded ||
+    !labels.commitState ||
+    !labels.teardownReadiness ||
+    !labels.judgment ||
+    !finalLine ||
+    finalLine.startsWith('**')
+  ) {
     throw new Error('test wrap-up Play founder closeout contract is malformed')
   }
   return {
-    labels: Object.fromEntries(FOUNDER_CLOSEOUT_ROLES.map((role, index) => [role, sections[index] as string])) as Record<FounderCloseoutRole, string>,
+    labels: labels as Record<FounderCloseoutRole, string>,
+    orderedRoles: roleEntries.map(([role]) => role),
     finalLine,
   }
 }
@@ -348,31 +373,24 @@ const renderFounderCloseout = (input: {
   teardownReadiness?: string
   judgment?: string
   finalLine?: string
-} = {}): string => `${label('title')}
-
-${block('atomComplete', input.atomComplete ?? 'Yes')}
-
-${block('runStatus', input.runStatus ?? 'continue')}
-
-${block('whatChanged', input.summary ?? 'The requested work was completed.')}
-
-${label('whatRemains')}
-${input.whatRemains ?? '- Continue the remaining priority atoms.'}
-
-${label('nextStep')}
-${input.nextStep ?? 'Priority: `demo` — continue the remaining priority atoms'}
-
-${block('decisionNeeded', input.decisionNeeded ?? 'None.')}
-
-${block('commitState', input.commitState ?? 'The runner reports the authoritative commit outcome after this brief.')}
-
-${block('teardownReadiness', input.teardownReadiness ?? 'Standing by; teardown requires an explicit founder request.')}
-
-${label('judgment')}
-${input.judgment ?? 'Oscar stopped at a clean wrap-up point.'}
-
-${input.finalLine ?? closeoutContract.finalLine}
-`
+} = {}): string => {
+  const content: Record<FounderCloseoutRole, string> = {
+    title: '',
+    atomComplete: input.atomComplete ?? 'Yes',
+    runStatus: input.runStatus ?? 'continue',
+    whatChanged: input.summary ?? 'The requested work was completed.',
+    whatRemains: input.whatRemains ?? '- Continue the remaining priority atoms.',
+    nextStep: input.nextStep ?? 'Priority: `demo` — continue the remaining priority atoms',
+    decisionNeeded: input.decisionNeeded ?? 'None.',
+    commitState: input.commitState ?? 'The runner reports the authoritative commit outcome after this brief.',
+    teardownReadiness: input.teardownReadiness ?? 'Standing by; teardown requires an explicit founder request.',
+    judgment: input.judgment ?? 'Oscar stopped at a clean wrap-up point.',
+  }
+  const body = closeoutContract.orderedRoles
+    .map((role) => (role === 'title' ? label(role) : block(role, content[role])))
+    .join('\n\n')
+  return `${body}\n\n${input.finalLine ?? closeoutContract.finalLine}\n`
+}
 const validFounderCloseout = (summary = 'The requested work was completed.'): string => renderFounderCloseout({ summary })
 
 const baseDeps = (over: Partial<RunnerDeps>): RunnerDeps => ({

@@ -158,40 +158,110 @@ export interface RunResult {
   readonly recordPath: string
 }
 
-const FOUNDER_CLOSEOUT_ROLE = {
-  title: 0,
-  atomComplete: 1,
-  runStatus: 2,
-  whatChanged: 3,
-  whatRemains: 4,
-  nextStep: 5,
-  decisionNeeded: 6,
-  commitState: 7,
-  teardownReadiness: 8,
-  judgment: 9,
-} as const
+type FounderCloseoutRole =
+  | 'title'
+  | 'atomComplete'
+  | 'runStatus'
+  | 'whatChanged'
+  | 'whatRemains'
+  | 'nextStep'
+  | 'decisionNeeded'
+  | 'commitState'
+  | 'teardownReadiness'
+  | 'judgment'
+
+const FOUNDER_CLOSEOUT_ROLES: readonly FounderCloseoutRole[] = [
+  'title',
+  'atomComplete',
+  'runStatus',
+  'whatChanged',
+  'whatRemains',
+  'nextStep',
+  'decisionNeeded',
+  'commitState',
+  'teardownReadiness',
+  'judgment',
+]
 
 interface FounderCloseoutContract {
   readonly sections: readonly string[]
+  readonly labels: Readonly<Record<FounderCloseoutRole, string>>
+  readonly orderedRoles: readonly FounderCloseoutRole[]
   readonly finalLine: string
 }
 
-function section(contract: FounderCloseoutContract, role: keyof typeof FOUNDER_CLOSEOUT_ROLE): string {
-  return contract.sections[FOUNDER_CLOSEOUT_ROLE[role]]
+function section(contract: FounderCloseoutContract, role: FounderCloseoutRole): string {
+  return contract.labels[role]
+}
+
+function founderCloseoutRole(label: string): FounderCloseoutRole | null {
+  const normalized = label
+    .replace(/\*/g, '')
+    .replace(/:/g, '')
+    .trim()
+    .toLowerCase()
+  if (normalized === 'founder completion brief') return 'title'
+  if (normalized === 'atom complete') return 'atomComplete'
+  if (normalized === 'run status') return 'runStatus'
+  if (normalized === 'what changed') return 'whatChanged'
+  if (normalized === 'what remains') return 'whatRemains'
+  if (normalized === 'recommended next step') return 'nextStep'
+  if (normalized === 'founder decision needed') return 'decisionNeeded'
+  if (normalized === 'commit state') return 'commitState'
+  if (normalized === 'teardown readiness') return 'teardownReadiness'
+  if (normalized === 'judgment') return 'judgment'
+  return null
 }
 
 function parseFounderCloseoutContract(play: Play): FounderCloseoutContract {
   const fences = [...play.body.matchAll(/```(?:[a-zA-Z0-9_-]+)?\n([\s\S]*?)```/g)]
   for (const fence of fences) {
     const body = fence[1] ?? ''
-    const sections = body.match(/\*\*[^*\n]+?\*\*/g) ?? []
+    const sections = [...body.matchAll(/^\*\*[^*\n]+?\*\*\s*$/gm)].map((match) => match[0].trim())
+    const unknownSections: string[] = []
+    const roleEntries = sections.flatMap((label): readonly [FounderCloseoutRole, string][] => {
+      const role = founderCloseoutRole(label)
+      if (!role) unknownSections.push(label)
+      return role ? [[role, label]] : []
+    })
+    const labels = Object.fromEntries(roleEntries) as Partial<Record<FounderCloseoutRole, string>>
+    const missingRoles = FOUNDER_CLOSEOUT_ROLES.filter((role) => !labels[role])
+    if (missingRoles.length === unknownSections.length) {
+      for (const [index, role] of missingRoles.entries()) {
+        labels[role] = unknownSections[index]
+      }
+    }
+    const orderedRoles = sections.flatMap((label): FounderCloseoutRole[] => {
+      const role = founderCloseoutRole(label)
+      if (role) return [role]
+      const fallback = Object.entries(labels).find(([, candidateLabel]) => candidateLabel === label)?.[0] as FounderCloseoutRole | undefined
+      return fallback ? [fallback] : []
+    })
     const finalLine = body
       .split(/\r?\n/)
       .map((line) => line.trim())
       .filter(Boolean)
       .at(-1)
-    if (sections.length >= 10 && finalLine && !finalLine.startsWith('**')) {
-      return { sections: sections.slice(0, 10), finalLine }
+    if (
+      labels.title &&
+      labels.atomComplete &&
+      labels.runStatus &&
+      labels.whatChanged &&
+      labels.whatRemains &&
+      labels.nextStep &&
+      labels.decisionNeeded &&
+      labels.commitState &&
+      labels.teardownReadiness &&
+      labels.judgment &&
+      finalLine &&
+      !finalLine.startsWith('**')
+    ) {
+      return {
+        sections,
+        labels: labels as Record<FounderCloseoutRole, string>,
+        orderedRoles,
+        finalLine,
+      }
     }
   }
   throw new Error(`wrap-up Play "${play.id}" does not contain a fenced founder closeout contract`)
@@ -350,39 +420,24 @@ function formatInvalidFounderCloseoutFallback(input: {
   readonly issues: readonly string[]
   readonly contract: FounderCloseoutContract
 }): string {
-  const labels = input.contract.sections
   const issueLines = input.issues.map((issue) => `- ${issue}`).join('\n')
   const commitText = input.commits.length === 0 ? 'No commits were recorded before wrap-up.' : `${input.commits.length} commit(s) were recorded before wrap-up.`
-  return `${labels[FOUNDER_CLOSEOUT_ROLE.title]}
-
-${labels[FOUNDER_CLOSEOUT_ROLE.atomComplete]}
-No — the closeout brief needs repair before this can be treated as a clean completion.
-
-${labels[FOUNDER_CLOSEOUT_ROLE.runStatus]}
-blocked
-
-${labels[FOUNDER_CLOSEOUT_ROLE.whatChanged]}
-The runner blocked a malformed wrap-up brief instead of delivering a non-template closeout.
-
-${labels[FOUNDER_CLOSEOUT_ROLE.whatRemains]}
-${issueLines}
-
-${labels[FOUNDER_CLOSEOUT_ROLE.nextStep]}
-Priority: \`${input.priorityId}\` — repair the malformed wrap-up brief
-
-${labels[FOUNDER_CLOSEOUT_ROLE.decisionNeeded]}
-None.
-
-${labels[FOUNDER_CLOSEOUT_ROLE.commitState]}
-${commitText} The runner reports the authoritative commit outcome after this brief.
-
-${labels[FOUNDER_CLOSEOUT_ROLE.teardownReadiness]}
-Standing by; teardown requires an explicit founder request.
-
-${labels[FOUNDER_CLOSEOUT_ROLE.judgment]}
-The runner preserved the founder-facing template instead of passing through a nonconforming wrap-up.
-
-${input.contract.finalLine}`
+  const content: Record<FounderCloseoutRole, string> = {
+    title: '',
+    atomComplete: 'No — the closeout brief needs repair before this can be treated as a clean completion.',
+    runStatus: 'blocked',
+    whatChanged: 'The runner blocked a malformed wrap-up brief instead of delivering a non-template closeout.',
+    whatRemains: issueLines,
+    nextStep: `Priority: \`${input.priorityId}\` — repair the malformed wrap-up brief`,
+    decisionNeeded: 'None.',
+    commitState: `${commitText} The runner reports the authoritative commit outcome after this brief.`,
+    teardownReadiness: 'Standing by; teardown requires an explicit founder request.',
+    judgment: 'The runner preserved the founder-facing template instead of passing through a nonconforming wrap-up.',
+  }
+  const body = input.contract.orderedRoles
+    .map((role) => (role === 'title' ? section(input.contract, role) : `${section(input.contract, role)}\n${content[role]}`))
+    .join('\n\n')
+  return `${body}\n\n${input.contract.finalLine}`
 }
 
 export class PreflightError extends Error {
