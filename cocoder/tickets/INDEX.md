@@ -13,6 +13,8 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Owner |
 |---|---|---|---|---|
+| [0022](./open/0022-wrap-up-contract-fixture-drift-daemon-suite.md) | Wrap-up contract fixture drift left daemon suite red on main | bug | orchestration-pipeline-simplification | founder-session |
+| [0021](./open/0021-daemon-typecheck-stale-test-mocks.md) | Daemon package typecheck is red on stale test mocks | bug | tickets-review | founder-session |
 | [0020](./open/0020-stale-governance-test-archived-hybrid-plays.md) | priority-authoring-plays test reads an archived priority path (hybrid-plays.md) and fails | bug | tickets-review | oscar run_154 |
 | [0013](./open/0013-daemon-auto-rebuild-after-runs.md) | Auto-rebuild + reload the Oz daemon after a run changes packages/daemon (no manual restart) | task | tickets-review | oscar run_122 |
 | [0003](./open/0003-public-docs-v1-stale.md) | Public docs/ tree is v1-stale (commands, PRIORITIES.md, cocoder/local, routes) | task | none | founder-session |

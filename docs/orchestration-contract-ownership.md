@@ -212,3 +212,40 @@ and by the tables below; it remains the historical record, not a parallel owner
 | Oz repair vs Deb repair. | Confirmed as similar "repair" words; guarded distinction by persona/tool boundary. Oz repair is idle-only control-plane repair (`packages/personas/base/oz.md:23-30`, `packages/daemon/src/launcher.ts:885-928`); Deb repair is in-run fault triage and never rescues the run (`packages/personas/base/deb.md:39-49`, `packages/personas/base/deb.md:62-65`; `packages/core/src/runner/runner.ts:868-898`). | Guarded distinction. | Oz owns idle control-plane tool actions; Deb owns live-run observed machinery faults. Both should keep using the same commit spine, not merge authority. | Owners: Oz authority (`packages/personas/base/oz.md:23-30`), Deb authority (`packages/personas/base/deb.md:39-49`), Oz repair (`packages/daemon/src/launcher.ts:885-928`), Deb prompt (`packages/core/src/runner/prompts.ts:574-584`). Tests: `packages/daemon/tests/oz-chat.test.ts:350-368`; Deb full repair e2e remains UNPINNED. |
 | Ticket launch auto-close vs archive-priority Play. | Confirmed as both "close work item" paths; guarded distinction. Ticket close follows successful ticket-fix run (`packages/daemon/src/launcher.ts:243-280`); priority archive requires founder archive confirmation and authoring Play, with post-wrap direct archive refused (`packages/daemon/src/launcher.ts:703-720`). | Guarded distinction. | Tickets represent faults/tasks and can close on successful fix; priorities are launchable objectives and must not self-archive from support edits. | Owners: ticket close helper (`packages/core/src/tickets/close.ts:51-82`), daemon close/refusal (`packages/daemon/src/launcher.ts:243-280`, `packages/daemon/src/launcher.ts:703-720`), archive Play (`packages/personas/base/plays/archive-priority.md:1-50`). Tests: `packages/daemon/tests/mutations.test.ts:1279-1295`; full ticket auto-close e2e UNPINNED. |
 | Governance pre-run snapshot vs ordinary governance authoring. | Confirmed as similar commit of governance dirt; guarded distinction. Launch self-heals pre-existing governance-only dirt (`ARCHITECTURE.md:76-82`; `packages/core/src/runner/runner.ts:586-610`); authoring routes intentionally create/change governance (`packages/daemon/src/routes.ts:576-650`). | Guarded distinction. | Pre-run snapshot is a launch guard cleanup, not an authoring path. It must not become a general background author. | Owners: ADR-0024 summary in Architecture (`ARCHITECTURE.md:76-82`), launch guard (`packages/core/src/runner/runner.ts:586-610`), daemon authoring routes (`packages/daemon/src/routes.ts:576-650`). Tests: direct launch guard coverage (`packages/core/tests/runner-direct.test.ts:208-220`); route authoring tests (`packages/daemon/tests/mutations.test.ts:1657-1745`). |
+
+## Run_164 Closeout
+
+### What Was Simplified This Run
+
+- Atom 0 shipped the full owner map above in commit `73e311c`.
+- Atom 1 landed the mandatory simplification in commit `198ae88`: priority markdown now derives from
+  the single owner `composePriorityMarkdown` in `packages/core/src/priorities/compose.ts`; the daemon
+  route's inline priority composer is retired; `create-priority.md` references the helper instead of
+  restating the markdown template.
+- Atom 1 also extended the existing detector, not a parallel one: `packages/core/tests/orchestration-contracts.test.ts`
+  now guards priority authoring surfaces, and `scripts/proof-orchestration-enforcer.mjs` proves the
+  priority duplicate path RED -> GREEN.
+
+### Overlap Dispositions
+
+| Overlap | Disposition | Owner / proof |
+|---|---|---|
+| Priority launch vs ticket-fix launch vs ad-hoc support launch target handling. | GUARDED-BY-ADR - ADR-0010 and ADR-0013. | Work targets stay distinct while one ordinary runner loop owns execution; labels derive from `RunLabelTarget`. No retirement proposed. |
+| Mandatory lifecycle Play triggers vs optional Play requests vs persona-authored Play-like behavior. | GUARDED-BY-ADR - ADR-0010. | Trigger class x execution model is the accepted taxonomy; mandatory registry and optional request validation remain separate. |
+| Base persona/Play governance under `packages/personas/base/**` vs workspace governance under `cocoder/**`. | GUARDED-BY-ADR - ADR-0012. | Living base plus additive workspace deltas is the owner model; no duplicate store is created. |
+| Wrap-up, support-commit, Deb repair, and ordinary verify-gated commits as separate landing paths. | GUARDED-BY-ADR - ADR-0023. | These are distinct callers of the one commit spine, not duplicate spines. The four commit/landing paths remain guarded distinctions. |
+| Ticket/priorities authoring through daemon endpoints, authoring Plays, direct persona edits, and repair sessions. | LANDED-GUARD - `priority authoring surfaces derive markdown from the core priority composer`. | Atom 1 created `composePriorityMarkdown`, rewired the daemon route, updated `create-priority.md`, and extended the orchestration-contract enforcer. |
+| Drift/onboarding phase libraries vs ordinary Oscar priorities vs retired executor/playbook concepts. | NAMED-FOLLOW-UP - `cocoder/tickets/open/0020-stale-governance-test-archived-hybrid-plays.md`. | ADR-0026 guards the shipping distinction; ticket 0020 owns the remaining stale archived-hybrid/playbook reference cleanup. |
+| Founder closeout format vs visible closeout delivery. | LANDED-GUARD - `live prompt/runtime/test consumers do not restate the founder closeout contract` and runner-delivery tests. | The wrap-up Play owns format; runner `WRAP-UP READY` owns delivery. The proof harness still proves the closeout duplicate path RED -> GREEN. |
+| Direct daemon priority/ticket routes vs authoring Plays. | LANDED-GUARD - `priority authoring surfaces derive markdown from the core priority composer`. | Entry points remain distinct, but priority and ticket markdown formats now derive from core helpers. |
+| Oz repair vs Deb repair. | GUARDED-BY-ADR - ADR-0016, ADR-0017, and ADR-0023. | Deb owns in-run fault triage; Oz owns idle control-plane repair; both use the commit spine. |
+| Ticket launch auto-close vs archive-priority Play. | GUARDED-BY-ADR - ADR-0010. | Ticket close follows successful ticket repair; priority archive remains founder-confirmed authoring work. |
+| Governance pre-run snapshot vs ordinary governance authoring. | GUARDED-BY-ADR - ADR-0024. | Pre-run snapshot is a launch guard backstop; dashboard routes and authoring Plays remain intentional governance authoring paths. |
+
+No overlap row remains an unowned intention. Any row that is not protected by an Accepted ADR is either
+landed behind an enforcer or named as a concrete follow-up.
+
+### Single Next Launchable Refactor Atom
+
+Ticket `0020` - retire or repoint stale archived hybrid/playbook governance test references so the
+drift/onboarding overlap exits as a clean ADR-0026 tooling distinction with no stale test path.

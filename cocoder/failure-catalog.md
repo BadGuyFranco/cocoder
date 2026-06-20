@@ -107,6 +107,16 @@ strand class is dissolved *structurally*, not patched. Proof: `node scripts/proo
   very thing you're removing. Proof: `scripts/proof-direct-spine.mjs` (green), full suite green.
   Ticket [0007](./tickets/closed/0007-post-wrap-orchestration-commit-gap.md).
 
+- **F23 — Test fixture drifted from the owner contract and silently reddened a consuming suite
+  (run_164, 2026-06-20).** The wrap-up Play closeout contract changed, but
+  `packages/daemon/tests/helpers/founder-closeout.ts` carried a hand-maintained copy of the old section
+  order and next-step separator. Core closeout guards stayed green, while the daemon launched-run suite
+  was red on main because its fixture emitted malformed wrap-up output. **Root cause:** a consuming test
+  fixture re-encoded an owner contract instead of deriving from it, and the owner-contract change was not
+  verified against every package that consumes that contract. **Fix pattern:** derive fixtures from the
+  owner contract, and run the consuming package's suite whenever the owner contract changes. Follow-up:
+  ticket [0022](./tickets/open/0022-wrap-up-contract-fixture-drift-daemon-suite.md).
+
 ## Cross-cutting lessons (feed the charter)
 
 - **L1.** Nearly all failures above are *coordination/state* failures, not algorithm failures —
