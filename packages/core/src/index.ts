@@ -109,6 +109,15 @@ export {
 
 export { loadPriority, type Priority } from './priorities/index.js'
 export {
+  readGovernanceClaims,
+  type DriftClaim,
+  type DriftClaimCategory,
+  type DriftClaimCategoryCount,
+  type DriftClaimEvidence,
+  type DriftClaimsInventory,
+  type ReadGovernanceClaimsOptions,
+} from './drift/index.js'
+export {
   closeTicket,
   composeTicketMarkdown,
   insertOpenTicketIndexRow,
