@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-20 — **orchestration-pipeline-simplification: owner map + priority composer merge + closeout (run_164)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [orchestration-pipeline-simplification](./priorities/orchestration-pipeline-simplification.md) | **Run:** run_164
+**Outcomes:**
+- **Atoms 0–2 landed (verified).** Full pipeline owner map in `docs/orchestration-contract-ownership.md`; mandatory simplification — `composePriorityMarkdown` is the single priority-markdown owner (daemon inline composer retired); duplicate-path detector extended; Run_164 closeout dispositions every overlap (GUARDED-BY-ADR / LANDED-GUARD / NAMED-FOLLOW-UP → ticket 0020).
+- **Pre-existing breakage repaired:** daemon suite red on main — `founder-closeout.ts` fixture drifted from wrap-up Play contract; helper now derives labels from the Play owner.
+- **Follow-up tickets opened:** 0020 (stale archived hybrid/playbook test refs), 0021 (daemon tsc stale mocks), 0022 (wrap-up fixture-drift process guard); failure-catalog F23 added.
+- **Disposition: `continue`** — original Objective satisfied pending one founder-added atom: compact self-aware routing guide (classify → owner → path) at head of owner-map doc; **blocked on founder decision** — pointer (trigger line in shared-standards) vs resident (5-row tree in every persona prompt).
+
+**Next:** Reply **pointer** or **resident** to Oscar in this session, then launch `orchestration-pipeline-simplification` to land the routing-guide atom; after that atom the priority is archive-ready.
+
 ## 2026-06-20 — **drift-audit: re-verified green at founder ratify gate — no build atoms (run_163)**
 
 **Persona:** Oscar (wrap-up only; 0 atoms delegated) | **Priority:** [drift-audit](./priorities/drift-audit.md) | **Run:** run_163
