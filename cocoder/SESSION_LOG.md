@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-20 — **drift-audit: re-verified green at founder ratify gate — no build atoms (run_163)**
+
+**Persona:** Oscar (wrap-up only; 0 atoms delegated) | **Priority:** [drift-audit](./priorities/drift-audit.md) | **Run:** run_163
+**Outcomes:**
+- **No code changes** — build complete since run_161; relaunching for build atoms would only produce an empty reaffirmation wrap (F18).
+- **Re-verified:** `node scripts/proof-drift-audit.mjs` 21/21 green; live dogfood still yields 25 traceable stale-path findings (Objective verification (b) report half).
+- **Disposition: `continue`** — founder must ratify a subset of the 25 findings and choose apply materialization before the ratify→apply atom can land changes in `cocoder/**`.
+
+**Next:** Launch `drift-audit` after founder ratifies findings + picks apply materialization (new amendment/ticket records vs in-place governance edits); regenerate report with `node scripts/run-drift-audit.mjs "/Volumes/NAS LOCAL/CoCoder" /tmp/drift-report`.
+
 ## 2026-06-20 — **drift-audit: re-verified green at founder ratify gate — no build atoms (run_162)**
 
 **Persona:** Oscar (wrap-up only; 0 atoms delegated) | **Priority:** [drift-audit](./priorities/drift-audit.md) | **Run:** run_162

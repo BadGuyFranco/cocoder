@@ -67,7 +67,7 @@ founder gate, scope, and outputs; the per-phase engine logic + the ordinary-prio
   build, distinct from this build priority.
 
 ## Suggested Next Action
-**Disposition: `continue` (run_162).** Build complete since run_161 — no build atoms this run; re-verified
+**Disposition: `continue` (run_163).** Build complete since run_161 — no build atoms this run; re-verified
 `node scripts/proof-drift-audit.mjs` green and live dogfood still yields **25 verified stale-path findings**
 (Objective verification (b) report half).
 
