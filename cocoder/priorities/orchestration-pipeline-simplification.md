@@ -120,7 +120,47 @@ behavior, evidence, reversibility, or safeguards.
   sessions.
 - Drift/onboarding phase libraries vs ordinary Oscar priorities vs retired executor/playbook concepts.
 
+## Atom 6 — Self-aware Routing Guide (founder-approved 2026-06-20)
+Run_164 landed atom 0 (owner map, `73e311c`), atom 1 (priority-markdown merged under one core composer
+`composePriorityMarkdown` + duplicate-path detector, `198ae88`), and the closeout (overlap dispositions +
+follow-up tickets 0020/0021/0022 + failure-catalog F23, `6a022e7`). Atoms 1–5 collapsed because atom 0's
+map produced the decisions. This atom 6 is the founder-added final deliverable; after it, the priority is
+archive-ready.
+
+**Goal.** A single, all-persona **Routing Guide** so Oz/Oscar/Deb/Bob know WHERE to route any change and
+never invent a second path — the runtime layer the long owner-map inventory cannot serve mid-task.
+
+**Founder-approved decisions:**
+- ONE guide owning TWO axes: (a) **product-vs-workspace target**, (b) **kind-of-change → single owner →
+  write path**.
+- **Reuse, don't add:** generalize the existing `docs/oz-improvement-routing.md` from Oz-only to
+  all-persona; do NOT create a new routing file (that would be the duplication this priority condemns).
+  Keep its target vocabulary (`cocoder-product`, `workspace-shared`, `workspace-local`, `install-local`,
+  `upstream-candidate`); retire the Oz-only scoping.
+- **Product-vs-workspace is the first cut.** Product = `packages/**` (incl. `packages/personas/base/**`,
+  templates, public docs, schemas, shipped prompts) → ships to EVERY repo; guarded by ADR-0012
+  portability + verified run/ADR/tests. Workspace = `<ws.path>/cocoder/**` → that repo only. Self-host
+  (`CoCoder/cocoder/`) and consumer (`[repo]/cocoder/`) are the SAME mechanism (`<ws.path>/cocoder/**`);
+  the only discriminator is product-vs-workspace, NOT "am I sitting in the CoCoder repo." The ADR-0012
+  portability test is the discriminator rule (if the rule still teaches the role with CoCoder nouns
+  stripped, it is product/base; else it is a workspace delta).
+- **Pointer model:** add ONE trigger line to `packages/personas/base/shared-standards.md` ("Durable
+  Orchestration Changes") pointing at the guide; `docs/orchestration-contract-ownership.md` gets a
+  one-line pointer too (it is the drill-down). No routing table inlined into prompts.
+- **Escape hatch:** a change that fits no row, spans owners, or would reverse an Accepted ADR → surface
+  to the founder; do not improvise a new path.
+- **Enforcer pin:** extend `packages/core/tests/orchestration-contracts.test.ts` so the guide's target
+  taxonomy/category names cannot silently drift and a second routing owner cannot reappear.
+
+**Landing.** Edits `docs/oz-improvement-routing.md` (generalized), `docs/orchestration-contract-ownership.md`
+(one-line pointer), `packages/personas/base/shared-standards.md` (trigger line), and
+`packages/core/tests/orchestration-contracts.test.ts` (pin). Because it edits base governance
+(`packages/personas/base/**`), it MUST land via a fresh **verified run** (NOT post-wrap support-commit).
+Verify green: `packages/personas/tests/base-personas.test.ts`, `packages/core/tests/orchestration-contracts.test.ts`,
+and the core suite.
+
 ## Suggested Next Action
-Launch atom 0 only. The first deliverable is the owner/objective map produced by **extending
-`docs/orchestration-contract-ownership.md`** (not a new doc); no runner/daemon/UI behavior should change
-until the duplicate paths are visible and classified.
+Launch a fresh **verified run** on this priority to build **Atom 6 — the Routing Guide** per the
+founder-approved decisions above. Atoms 0–5 are complete (`73e311c`, `198ae88`, `6a022e7`); atom 6 is the
+last deliverable before archive. It edits base governance, so it cannot be a post-wrap support edit — a
+fresh verified run is required.
