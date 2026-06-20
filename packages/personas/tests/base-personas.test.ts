@@ -189,8 +189,8 @@ describe('basePlaysDir', () => {
   test('wrap-up keeps the Recommended Next Step label to one runnable action (F18)', () => {
     const text = readFileSync(join(basePlaysDir(), 'wrap-up.md'), 'utf8')
 
-    expect(text).toContain('**Recommended Next Step:**')
-    expect(text).toContain('It is exactly one ready')
+    expect(text).toContain('**Recommended Next Step**')
+    expect(text).toContain('Exactly one ready work item')
     expect(text).toContain('Name exactly one `Next Action`')
     expect(text).toContain('could a solo non-developer DO it from this one line')
     expect(text).toContain('Do not use "awaiting questions"')
@@ -216,7 +216,10 @@ describe('basePlaysDir', () => {
   test('oscar defers to the wrap-up Play as the closeout-brief owner', () => {
     const text = readFileSync(join(basePersonasDir(), 'oscar.md'), 'utf8')
     expect(text).toContain("wrap-up Play's closeout-brief contract")
+    expect(text).toContain('wait for the runner\'s `WRAP-UP READY`')
+    expect(text).toContain('Do not manually deliver a\n   founder closeout before that runner delivery')
     expect(text).not.toContain('Report back to the founder in the standardized format')
+    expect(text).not.toContain('Report back to the founder using the wrap-up Play')
   })
 })
 

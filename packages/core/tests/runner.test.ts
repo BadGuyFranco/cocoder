@@ -2015,6 +2015,9 @@ describe('runRun (multi-atom loop)', () => {
     )
     const oscarPrompt = prompts[0]!
     expect(oscarPrompt).toContain('After wrap-up delivery, you are still reachable until explicit teardown')
+    expect(oscarPrompt).toContain('When you choose `wrapup`, only write the\n   directive file at this stage')
+    expect(oscarPrompt).toContain('do not also deliver a founder closeout in the pane')
+    expect(oscarPrompt).toContain('send you a `WRAP-UP READY` artifact to deliver\n   exactly once')
     expect(oscarPrompt).toContain('make founder-directed Surface-A edits')
     expect(oscarPrompt).toContain('Do not say the run is too wrapped, read-only, or needs a new\nrun for those edits')
     expect(oscarPrompt).toContain('exec cocoder oz commit-support')

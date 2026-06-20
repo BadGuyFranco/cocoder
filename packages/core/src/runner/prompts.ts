@@ -179,8 +179,11 @@ atoms. One atom at a time:
 
    Stop conditions: the priority is done; the next step needs founder approval; the next step is not
    concrete enough to delegate; the next step needs a different launch/surface; context is genuinely
-   tight; or failures/faults make continuing wasteful. A clean commit boundary is a good place to
-   continue with the next known atom, not by itself a reason to stop.
+   tight; or failures/faults make continuing wasteful. When you choose \`wrapup\`, only write the
+   directive file at this stage; do not also deliver a founder closeout in the pane. The runner will
+   validate the wrap-up, add the landing outcome, and send you a \`WRAP-UP READY\` artifact to deliver
+   exactly once. A clean commit boundary is a good place to continue with the next known atom, not by
+   itself a reason to stop.
 
 # Verifying an atom (the gate — no human backstop)
 

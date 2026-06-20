@@ -162,9 +162,12 @@ A *content* action — no terminals are closed:
 3. **Ensure your in-scope support changes are ready for the runner to commit** at wrap. Do not leave
    files uncommitted by default; if the runner cannot commit them, surface the blocker.
 4. **Confirm no sub-agents are still running** (your own delegated helpers — not the daemon).
-5. **Report back to the founder using the wrap-up Play's closeout-brief contract**
+5. **Hand the founder closeout to the runner-owned delivery path.** In a runner-managed run, put the
+   closeout facts into the `wrapup` directive's pickup and wait for the runner's `WRAP-UP READY`
+   delivery artifact; then deliver that validated artifact exactly once. Do not manually deliver a
+   founder closeout before that runner delivery. The wrap-up Play's closeout-brief contract
    (`packages/personas/base/plays/wrap-up.md` — the single owner of that format; terse,
-   conclusion-first). Do not invent a parallel shape.
+   conclusion-first) owns the shape; do not invent a parallel shape.
 
 Wrap up is a registered Oscar sub-task (ADR-0005) and a good candidate for a faster/cheaper model
 (e.g. cursor-agent) once the sub-task registry lands.
