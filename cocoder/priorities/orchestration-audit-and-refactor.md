@@ -51,6 +51,28 @@ This is NOT a hunt for duplicate runtime paths (ADR-0023 already drained that we
   the table (would need a new ADR).
 - **How aggressive on the Play taxonomy.** Reduce axes/classes, or keep and document.
 
+## Founder Ratified Decisions (run_166, 2026-06-20)
+Both judgment calls above are now resolved by founder decision:
+- **Two repair engines: KEEP BOTH.** The run_166 load-bearing verdict found Oz-repair vs Deb-repair
+  `real` (distinct authority boundaries — Oz idle control-plane never touches a live Bob; Deb in-run
+  triage never rescues the run). No merge.
+- **Play taxonomy: REDUCE — reframe-and-reserve, do NOT delete.** The verdict found the taxonomy is the
+  single over-modeled concept, but the founder confirms `tool/API-triggered` dispatch and `interactive`
+  (browser control) **are committed future scope**, so the unused values are *forward-declared*, not dead.
+  The ratified slice is therefore a **vocabulary/governance reframe, not a code deletion**:
+  1. Amend ADR-0010 to describe the taxonomy as **three orthogonal axes** (`triggerClass`,
+     `executionModel`, `writeScope` + the `kind` field) rather than "five named classes."
+  2. Mark `tool/API-triggered` and `interactive` as explicitly **reserved / forward-declared** (named
+     future use: API-triggered dispatch; interactive browser control) — declared in the contract,
+     not yet exercised.
+  3. Align any surface that restates the 5-class framing (ARCHITECTURE.md already uses axes — small).
+  4. **Founder-approved manifest guard (in scope):** the per-persona Play manifest must NOT advertise
+     reserved values to personas, so a persona cannot request a `tool/API-triggered` Play that no
+     dispatch path honors yet (prevents a "looks supported, isn't" trap). This is the one behavior
+     change in the slice; the Play behavior-pinning tests must stay green and gain coverage for it.
+  No deletion of enum values. The reframe reverses ADR-0010's "five named classes" amendment via a new
+  founder-approved ADR (this ratification authorizes it).
+
 ## Boundary
 Audit and tests first; exactly one bounded refactor. May edit governance, docs, ADRs, and tests freely;
 may touch runner/daemon/persona code ONLY for the one ratified refactor slice, protected by the
@@ -70,12 +92,17 @@ standard is mandatory: fewer concepts, not a new lane to describe the old ones.
   reachability defect found this run; fix is owner-preserving, not a second archive path).
 
 ## Proposed Atom Sequence
-0. **Launch housekeeping + architecture linearization.** First run the `archive-priority` Play on the met
-   predecessor `orchestration-pipeline-simplification` (it could not be archived post-wrap in run_165 —
-   ticket 0023). Then produce the canonical current-state map and mark superseded ADRs. Docs only beyond
-   the governed archive.
-1. **Behavior-pinning test harness (with Talia).** Black-box tests over the real contracts, green on `main`.
-2. **Load-bearing verdicts.** One-line evidence-backed real/suspect verdict per guarded distinction.
-3. **One bounded refactor.** Collapse the top suspect (Play taxonomy first candidate) behind a new ADR,
-   tests staying green. Other suspects → sequenced follow-up files.
-4. **Closeout.** What got simpler, what stayed (and why it is load-bearing), the next launchable slice.
+0. **[DONE — run_166]** Launch housekeeping + architecture linearization. Predecessor archived (90436db);
+   canonical current-state map landed in `ARCHITECTURE.md` (abedaf9); ADR index already marked the
+   superseded set.
+1. **[DONE — run_166]** Behavior-pinning test net (Play taxonomy slice). Write-authority commit boundary
+   pinned; the other three taxonomy behaviors were already pinned; 4 Play suites green (c61b929).
+2. **[DONE — run_166]** Load-bearing verdicts. 10 of 11 distinctions `real`; Play taxonomy the one
+   `suspect` (008db5b).
+3. **[NEXT — ratified slice]** Reframe-and-reserve the Play taxonomy per **Founder Ratified Decisions**
+   above: atom 3a — new founder-approved ADR amending ADR-0010 (three axes; `tool/API-triggered` +
+   `interactive` reserved/forward-declared); atom 3b — manifest guard so reserved values are not
+   advertised to personas, plus surface alignment, with the Play behavior tests green and extended to
+   cover the guard. No enum deletion.
+4. **Closeout.** What got simpler (vocabulary → three axes; honest reserved-value labeling), what stayed
+   and why (reserved values are committed future scope), the next launchable slice.
