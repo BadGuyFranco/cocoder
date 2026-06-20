@@ -7,6 +7,10 @@
 > repeatable and high-stakes (improvising it badly is expensive). That exception is scoped to onboarding
 > and does not loosen the stub rule for anything else.
 
+> **Amended by [ADR-0028](./0028-play-taxonomy-three-axes.md) (2026-06-20).** The 2026-06-19 "five named
+> Play classes" framing below is superseded; the current Play taxonomy is three orthogonal axes
+> (`triggerClass`, `executionModel`, `writeScope`) plus the existing `kind` field, with no enum deletion.
+
 **Status:** Accepted (founder + Claude, 2026-05-29). Preceded by a 6-lens adversarial review (30 findings
 raised → 1 confirmed blocker + 1 heeded F1/F2 refinement folded in; rest misread/overstated). See
 [`../taxonomy-and-authoring.md`](../zArchive/rebuild-notes/taxonomy-and-authoring.md).
