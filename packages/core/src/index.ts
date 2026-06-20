@@ -132,6 +132,10 @@ export {
   type DriftDraft,
   type DriftReportArtifact,
   type DriftReportPackage,
+  applyRatifiedDriftWrites,
+  type ApplyRatifiedDriftWritesInput,
+  type DriftApplyResult,
+  type DriftWrite,
 } from './drift/index.js'
 export {
   closeTicket,

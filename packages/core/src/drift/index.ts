@@ -29,3 +29,9 @@ export {
   type DriftReportArtifact,
   type DriftReportPackage,
 } from './report.js'
+export {
+  applyRatifiedDriftWrites,
+  type ApplyRatifiedDriftWritesInput,
+  type DriftApplyResult,
+  type DriftWrite,
+} from './apply.js'
