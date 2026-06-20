@@ -110,7 +110,8 @@ standard is mandatory: fewer concepts, not a new lane to describe the old ones.
 ## Suggested Next Action
 **Disposition: `archive-candidate` (run_167).** All five Verified-when criteria are met; the one ratified
 refactor slice is built, test-protected, and committed. Remaining suspect distinctions exit as named
-follow-ups (tickets 0020/0023), not unowned intentions.
+follow-ups (ticket 0020), not unowned intentions. Ticket `0023` closed run_168 (single archive dispatch
+owner; orphan `/author` route removed).
 
-**Founder gate:** confirm archive of this priority. **Next launch after archive:** ticket `0023` — give
-the archive-priority Play an out-of-run dispatch surface so founder-confirmed archive is not a dead end.
+**Founder gate:** confirm archive of this priority. **Next launch after archive:** `drift-audit` — atom 0
+owner map confirming reuse-map symbols before P1 read-claims.

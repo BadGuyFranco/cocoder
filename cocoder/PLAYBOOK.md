@@ -227,7 +227,7 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
 **Active build priorities (launchable; `order.json` order — the `priorities/` directory is the live index):**
 1. `orchestration-audit-and-refactor` — **ARCHIVE-CANDIDATE (run_167).** ADR-0028 reframe landed; manifest
    guard hides reserved Play values from personas; behavior-pinning net green. All five Verified-when criteria
-   met. **Founder gate:** confirm archive. Follow-ups survive archive: tickets 0020/0023.
+   met. **Founder gate:** confirm archive. Follow-ups survive archive: ticket 0020 (0023 closed run_168).
 2. `deb-follows-oscar` — **NEW.** Make Deb a first-class, runner-driven watcher of Oscar: event-awakened,
    non-blocking, Oscar-only nudge authority, and no second orchestration lane.
 3. `drift-audit` — **CONTINUE (run_163).** Build complete (run_161); run_163 re-verified proof green and 25

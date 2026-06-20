@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-20 — **ticket-fix-0023: orphan /author route removed — single archive dispatch owner pinned (run_168)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0023](./tickets/closed/0023-archive-priority-play-no-out-of-run-dispatch.md) | **Run:** run_168
+**Outcomes:**
+- **Consolidation landed (`6042d5e`).** Removed orphan `POST /workspaces/:id/author`; only `authoring-plays/:playId` dispatches `requestAuthoringPlay`. Enforcer test pins single-owner HTTP surface; support-commit refusal names the one CLI verb.
+- **Ticket 0023 resolution now true.** Hand commit `13eecfa` added `cocoder oz archive-priority` but left a duplicate authoring path; run_168 closes that gap so acceptance criteria are actually met.
+- **Disposition: `archive-candidate`** — ticket-fix objective complete; no in-priority atoms remain.
+
+**Next:** Launch `drift-audit` — atom 0 owner map confirming reuse-map symbols (recon/p2-fanout/p6-apply, AuditWriteBoundary) before P1 read-claims.
+
 ## 2026-06-20 — **orchestration-audit-and-refactor: Play taxonomy reframe + manifest guard — archive-candidate (run_167)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [orchestration-audit-and-refactor](./priorities/orchestration-audit-and-refactor.md) | **Run:** run_167
