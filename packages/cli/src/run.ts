@@ -180,8 +180,7 @@ async function main(): Promise<void> {
   const live = await probeDaemon({ port: DEFAULT_OZ_PORT })
   if (live.alive) {
     log(`daemon live on :${live.port} → client mode (daemon owns the DB writer + cmux)`)
-    if (strictPreRunDirt) log('note: --strict-dirt is honored only in standalone mode; the daemon launch path uses the default founder snapshot')
-    const result = await runViaDaemon(`http://127.0.0.1:${live.port}`, 'cocoder', priorityId, { log, resumeFromRunId })
+    const result = await runViaDaemon(`http://127.0.0.1:${live.port}`, 'cocoder', priorityId, { log, resumeFromRunId, strictPreRunDirt })
     console.log(`\nRun ${result.runId}: ${result.status}`)
     if (result.commits.length) console.log(`  committed: ${result.commits.join(', ')}`)
     process.exitCode = result.status === 'completed' ? 0 : 1

@@ -93,9 +93,10 @@ export async function sendOzMessage(oz: OzApi, workspaceId: string, text: string
 // auth. POST /runs LAUNCHES A REAL RUN — only ever called from a live user action, never in tests/CI.
 export type MutationResult = { ok: true; status: number; data: unknown } | { ok: false; status: number; error: string }
 
-export async function launchRun(oz: OzApi, workspaceId: string, priorityId: string, resumeFromRunId?: string): Promise<MutationResult> {
-  const body: Record<string, string> = { workspaceId, priorityId }
+export async function launchRun(oz: OzApi, workspaceId: string, priorityId: string, resumeFromRunId?: string, strictPreRunDirt?: boolean): Promise<MutationResult> {
+  const body: Record<string, string | boolean> = { workspaceId, priorityId }
   if (resumeFromRunId) body.resumeFromRunId = resumeFromRunId
+  if (strictPreRunDirt) body.strictPreRunDirt = true
   return oz.daemonPost('/runs', body)
 }
 

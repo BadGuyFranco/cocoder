@@ -85,6 +85,9 @@ interface LaunchBody {
   readonly ticketId?: string
   readonly resumeFromRunId?: string
   readonly task?: string
+  /** ADR-0029 opt-out: refuse the launch on uncommitted founder WIP instead of self-healing it with a
+   *  pre-run snapshot. Default (absent/false) is the founder-trusted snapshot path. */
+  readonly strictPreRunDirt?: boolean
 }
 
 interface TeardownBody {
@@ -102,10 +105,14 @@ function launchBody(body: unknown): ParsedLaunchBody {
   if ([hasPriority, hasTicket].filter(Boolean).length !== 1) {
     return { ok: false, error: 'exactly one of priorityId or ticketId is required' }
   }
+  if (Object.prototype.hasOwnProperty.call(record, 'strictPreRunDirt') && typeof record.strictPreRunDirt !== 'boolean') {
+    return { ok: false, error: 'strictPreRunDirt must be a boolean' }
+  }
   const input: LaunchBody = {
     workspaceId: typeof record.workspaceId === 'string' ? record.workspaceId : '',
     ...(hasPriority ? { priorityId } : { ticketId }),
     resumeFromRunId: typeof record.resumeFromRunId === 'string' ? record.resumeFromRunId : undefined,
+    strictPreRunDirt: record.strictPreRunDirt === true,
   }
   if (Object.prototype.hasOwnProperty.call(record, 'task')) {
     if (typeof record.task !== 'string') return { ok: false, error: 'task must be a string' }
@@ -800,7 +807,7 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
     const target = input.ticketId
       ? { kind: 'ticket' as const, ticketId: input.ticketId }
       : { kind: 'priority' as const, priorityId: input.priorityId ?? '' }
-    const { status, body: out } = await launchRun(ctx, input.workspaceId, target, { resumeFromRunId: input.resumeFromRunId, task: input.task })
+    const { status, body: out } = await launchRun(ctx, input.workspaceId, target, { resumeFromRunId: input.resumeFromRunId, task: input.task, strictPreRunDirt: input.strictPreRunDirt })
     return sendJson(res, status, out), true
   }
   if (method === 'POST' && seg[0] === 'runs' && seg.length === 3 && seg[2] === 'show') {

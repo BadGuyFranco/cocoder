@@ -231,7 +231,7 @@ export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, se
   workspace: Workspace; priorities: Priority[]; tickets: Ticket[]; runs: Run[]; ozMessages: ChatMessage[]
   workspaceConfigured?: boolean
   selectedRunId: string | null; setSelectedRunId: (id: string | null) => void
-  onReorder: (from: number, to: number) => void; onReorderTickets: (from: number, to: number) => void; onLaunch: (p: Priority) => void; onAdhoc: () => void; onAddPriority: () => void
+  onReorder: (from: number, to: number) => void; onReorderTickets: (from: number, to: number) => void; onLaunch: (p: Priority, strictPreRunDirt?: boolean) => void; onAdhoc: () => void; onAddPriority: () => void
   onAddTicket: () => void; onLaunchTicket: (ticket: Ticket) => void
   onSend: (text: string) => void; onDecision: (choice: string) => void; onRunAction: (action: string, id: string) => void
   ozTyping: boolean; live?: boolean

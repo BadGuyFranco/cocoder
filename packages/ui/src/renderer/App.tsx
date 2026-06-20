@@ -520,17 +520,17 @@ export function App() {
     return true
   }
   // POST /runs launches a REAL run — only ever reached from a live user click, never in tests/CI.
-  async function doLaunch(priorityId: string, label: string, resumeFromRunId?: string) {
+  async function doLaunch(priorityId: string, label: string, resumeFromRunId?: string, strictPreRunDirt?: boolean) {
     const oz = ozApi()
     if (!oz) return
-    const res = await launchRun(oz, activeId, priorityId, resumeFromRunId)
+    const res = await launchRun(oz, activeId, priorityId, resumeFromRunId, strictPreRunDirt)
     if (res.ok) { notify('ok', `${label}…`); await refreshActiveWs() }
     else if (res.status === 409) notify('info', 'A run is already in flight for this workspace.')
     else notify('err', res.error || `Launch failed (${res.status}).`)
   }
-  function handleLaunch(p: Priority) {
+  function handleLaunch(p: Priority, strictPreRunDirt?: boolean) {
     if (!live) { onSend(`Launch the priority “${p.name}”.`); return }
-    void doLaunch(p.id, `Launching “${p.name}”`)
+    void doLaunch(p.id, `Launching “${p.name}”`, undefined, strictPreRunDirt)
   }
   async function doLaunchTicket(ticketId: string, label: string) {
     const oz = ozApi()

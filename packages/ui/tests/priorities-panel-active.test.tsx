@@ -199,8 +199,21 @@ describe('PrioritiesPanel active run semantics', () => {
     fireEvent.click(screen.getByText('Ready priority'))
     const launchButtons = screen.getAllByRole('button', { name: 'Launch' })
     fireEvent.click(launchButtons[launchButtons.length - 1])
-    expect(onLaunch).toHaveBeenCalledWith(expect.objectContaining({ id: 'p-ready' }))
+    // ADR-0029: the modal passes the strict-pre-run-dirt toggle (default off) as the second arg.
+    expect(onLaunch).toHaveBeenCalledWith(expect.objectContaining({ id: 'p-ready' }), false)
     expect(screen.queryByText('Previous run')).toBeNull()
+  })
+
+  it('ADR-0029: the strict-pre-run-dirt toggle launches with strictPreRunDirt=true', () => {
+    const onLaunch = vi.fn()
+    renderPanel({ priorities: [priority({ id: 'p-ready', name: 'Ready priority' })], onLaunch })
+
+    fireEvent.click(screen.getByText('Ready priority'))
+    fireEvent.click(screen.getByRole('checkbox', { name: /strict pre-run dirt/i }))
+    const launchButtons = screen.getAllByRole('button', { name: 'Launch' })
+    fireEvent.click(launchButtons[launchButtons.length - 1])
+
+    expect(onLaunch).toHaveBeenCalledWith(expect.objectContaining({ id: 'p-ready' }), true)
   })
 
   it('disables queued priority Launch with the single-writer reason while a run is active', () => {
