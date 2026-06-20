@@ -159,6 +159,37 @@ describe('buildBuilderDispatch', () => {
     expect(manifest).not.toContain('electron-test')
   })
 
+  test('omits reserved Plays from caller manifests while rendering normal Plays unchanged', () => {
+    const manifest = renderPlayManifest([
+      manifestPlay({
+        id: 'create-ticket',
+        purpose: 'Create one open ticket.',
+        triggerClass: 'persona-requested',
+        allowedCallers: ['bob'],
+        writeScope: ['cocoder/tickets/**'],
+        inputSchema: { ref: 'schemas/create-ticket.input' },
+      }),
+      manifestPlay({
+        id: 'api-repair',
+        purpose: 'Dispatch through an API.',
+        triggerClass: 'tool/API-triggered',
+        allowedCallers: ['bob'],
+      }),
+      manifestPlay({
+        id: 'browser-control',
+        purpose: 'Drive browser control.',
+        kind: 'interactive',
+        allowedCallers: ['bob'],
+      }),
+    ], 'bob')
+
+    expect(manifest).toBe(
+      '- create-ticket: Create one open ticket. | trigger: persona-requested | optional | writes: cocoder/tickets/** | input: schemas/create-ticket.input',
+    )
+    expect(manifest).not.toContain('api-repair')
+    expect(manifest).not.toContain('browser-control')
+  })
+
   test('derives mandatory and optional labels from trigger class', () => {
     const manifest = renderPlayManifest([
       manifestPlay({

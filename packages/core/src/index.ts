@@ -95,6 +95,7 @@ export {
   loadEffectivePlay,
   listEffectivePlays,
   PlayDeltaLoadError,
+  isReservedPlay,
   renderPlayManifest,
   playAvailability,
   parsePlayRequest,

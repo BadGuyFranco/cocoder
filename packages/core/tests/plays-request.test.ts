@@ -156,6 +156,25 @@ describe('Play request lane', () => {
     })
   })
 
+  test('rejects persona requests for reserved Play runtime paths', () => {
+    const result = validatePlayRequest(parsePlayRequest(JSON.stringify({ kind: 'play', play: 'api-repair' })), {
+      caller: 'bob',
+      plays: [
+        play({
+          id: 'api-repair',
+          triggerClass: 'tool/API-triggered',
+          allowedCallers: ['bob'],
+        }),
+      ],
+    })
+
+    expect(result).toEqual({
+      accepted: false,
+      code: 'reserved-play',
+      reason: 'Play "api-repair" uses a reserved runtime path and cannot be requested yet',
+    })
+  })
+
   test('rejects persona requests for mandatory lifecycle-triggered Plays', () => {
     const result = validatePlayRequest(parsePlayRequest(JSON.stringify({ kind: 'play', play: 'wrap-up' })), {
       caller: 'oscar',

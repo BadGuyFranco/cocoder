@@ -1,5 +1,5 @@
 import { playAvailability } from './manifest.js'
-import type { Play } from './types.js'
+import { isReservedPlay, type Play } from './types.js'
 
 export interface PlayRequest {
   readonly kind: 'play'
@@ -10,6 +10,7 @@ export interface PlayRequest {
 export type PlayRequestRejectionCode =
   | 'unknown-play'
   | 'unauthorized-caller'
+  | 'reserved-play'
   | 'mandatory-play'
   | 'missing-input'
 
@@ -66,6 +67,10 @@ export function validatePlayRequest(
 
   if (!play.allowedCallers?.includes(input.caller)) {
     return reject('unauthorized-caller', `caller "${input.caller}" is not authorized for Play "${play.id}"`)
+  }
+
+  if (isReservedPlay(play)) {
+    return reject('reserved-play', `Play "${play.id}" uses a reserved runtime path and cannot be requested yet`)
   }
 
   if (playAvailability(play) === 'mandatory') {

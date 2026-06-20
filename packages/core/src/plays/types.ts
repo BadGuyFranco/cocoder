@@ -82,3 +82,7 @@ export interface PlayDelta {
   /** Markdown appended after the base Play body. Blank/whitespace-only means no body delta. */
   readonly body?: string
 }
+
+export function isReservedPlay(play: Pick<Play, 'kind' | 'triggerClass'>): boolean {
+  return play.triggerClass === 'tool/API-triggered' || play.kind === 'interactive'
+}

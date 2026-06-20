@@ -1,4 +1,5 @@
 export type { Play, PlayDelta } from './types.js'
+export { isReservedPlay } from './types.js'
 export { loadPlay } from './loader.js'
 export { mergePlay, PlayMergeError } from './merge.js'
 export {

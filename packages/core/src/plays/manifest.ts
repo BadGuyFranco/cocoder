@@ -1,4 +1,4 @@
-import type { Play } from './types.js'
+import { isReservedPlay, type Play } from './types.js'
 
 export type PlayAvailability = 'mandatory' | 'optional'
 
@@ -7,7 +7,7 @@ export function playAvailability(play: Pick<Play, 'triggerClass'>): PlayAvailabi
 }
 
 export function renderPlayManifest(plays: readonly Play[], caller: string): string {
-  const visible = plays.filter((play) => play.allowedCallers?.includes(caller))
+  const visible = plays.filter((play) => !isReservedPlay(play) && play.allowedCallers?.includes(caller))
   if (visible.length === 0) return '(none)'
 
   return visible
