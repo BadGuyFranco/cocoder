@@ -3,6 +3,11 @@ id: tickets-review
 title: "Tickets review — browse and fix tickets from the dashboard"
 ---
 
+> **Archived 2026-06-20 (founder).** All in-scope build items are code-complete (run_143): real
+> Tickets/Runs tabs and ticket-fix launch-and-close through the ADR-0023 spine. The remaining
+> end-to-end live proof is a founder action, not a build atom; the stale internal "GATED on
+> new-primary-root" log was superseded when that run-target gate landed (`9f76e98`, run_123).
+
 ## Objective
 A founder can **review and fix tickets** from the CoCoder dashboard. Two deliverables: (1) the dashboard
 panel that today shows **Priorities** and **Run History** as pseudo-tabs becomes **real tabs** —

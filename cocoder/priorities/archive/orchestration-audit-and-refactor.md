@@ -3,6 +3,10 @@ id: orchestration-audit-and-refactor
 title: "Orchestration: ADR audit, behavior-pinning tests, bounded refactor"
 ---
 
+> **Archived 2026-06-20 (founder).** All five Verified-when criteria met; the ratified refactor slice
+> (Play taxonomy reframe → [ADR-0028](../../decisions/0028-play-taxonomy-three-axes.md)) is built,
+> test-protected, and committed (run_167/run_168). Self-declared `archive-candidate` at line 111.
+
 > **Founder-ratified 2026-06-20.** Successor to `orchestration-pipeline-simplification` (archived:
 > analysis + first slice done). That run proved the
 > runtime largely already converged onto one commit spine (ADR-0023) and one authoring composer

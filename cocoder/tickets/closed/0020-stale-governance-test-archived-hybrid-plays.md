@@ -2,11 +2,17 @@
 id: 0020
 title: priority-authoring-plays test reads cocoder/priorities/hybrid-plays.md after that priority was archived
 type: bug
-status: Open
+status: Closed
 priority: tickets-review
 owner: oscar run_154
 created: 2026-06-19
+closed: 2026-06-20
 ---
+
+> **Closed 2026-06-20 (already fixed).** The test was repointed to the archive path —
+> `priority-authoring-plays.test.ts:48` now reads `cocoder/priorities/archive/hybrid-plays.md`, which
+> exists; `tests/priority-authoring-plays.test.ts` is green (9/9) at clean HEAD. Secondary ask (make
+> `archive-priority` warn when a moved path is still test-referenced) deferred — not worth keeping open.
 
 # 0020 — Governance test bitrots on an archived priority path
 

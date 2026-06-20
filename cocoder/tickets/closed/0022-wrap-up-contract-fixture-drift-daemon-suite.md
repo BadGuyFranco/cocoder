@@ -2,11 +2,19 @@
 id: 0022
 title: Wrap-up contract fixture drift left daemon suite red on main
 type: bug
-status: Open
+status: Closed
 priority: orchestration-pipeline-simplification
 owner: founder-session
 created: 2026-06-20
+closed: 2026-06-20
 ---
+
+> **Closed 2026-06-20 (symptom fixed; guard deferred).** The red daemon suite no longer reproduces —
+> `packages/daemon` vitest is green (236/236); `founder-closeout.ts` fixture repaired in `198ae88`
+> (run_164). The process-guard ask (test-pin the wrap-up-contract verification set so contract edits
+> can't land with drift) is deferred as governance-of-governance; reopen if drift recurs. NOTE: the
+> daemon *test typecheck* is still red, but that is [0021](./0021-daemon-typecheck-stale-test-mocks.md),
+> a separate ticket — not this suite.
 
 # 0022 — Wrap-up contract fixture drift left daemon suite red on main
 
