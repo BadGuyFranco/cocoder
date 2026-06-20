@@ -12,6 +12,18 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-20 — **orchestration-audit-and-refactor: groundwork landed — Play taxonomy collapse founder-gated (run_166)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [orchestration-audit-and-refactor](./priorities/orchestration-audit-and-refactor.md) | **Run:** run_166
+**Outcomes:**
+- **Predecessor archived (`90436db`).** `orchestration-pipeline-simplification` moved to `priorities/archive/`; ticket 0023 kept open (archive-priority Play still lacks out-of-run dispatch).
+- **Architecture linearized (`abedaf9`).** `ARCHITECTURE.md` gained current-state orchestration loop section (0013→0016→0017→0026); commit-spine tightened with ADR-0025 pointer; stale Oz/Debugger framing replaced with Oz vs Deb.
+- **Behavior-pinning net extended (`c61b929`).** `plays-request.test.ts` now pins write-authority commit boundary; four Play suites green (41 tests).
+- **Load-bearing verdicts (`008db5b`).** Ten of eleven guarded distinctions verdicted `real`; Play taxonomy overall `suspect` — five named classes overstate three observable axes; Oz vs Deb repair confirmed distinct and kept.
+- **Disposition: `continue`** — Objective #4 bounded collapse blocked on founder reduce-vs-keep Play taxonomy decision.
+
+**Next:** Launch `orchestration-audit-and-refactor` after replying **REDUCE** or **KEEP-AND-DOCUMENT** on Play taxonomy aggressiveness.
+
 ## 2026-06-20 — **orchestration-pipeline-simplification: all-persona Routing Guide landed — archive-candidate (run_165)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [orchestration-pipeline-simplification](./priorities/orchestration-pipeline-simplification.md) | **Run:** run_165

@@ -220,12 +220,16 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
 - `oz-dashboard-design-tweaks` — **ARCHIVED (run_115).** Rounds 1–3 code-complete; design-ref mirrored.
 - ~~`play-dispatch-boundary`~~ — **RESOLVED 2026-06-15, ARCHIVED 2026-06-16** (run_106): one-level dispatch
   stands; no engine reversal. Decision record at `priorities/archive/play-dispatch-boundary.md`.
+- ~~`orchestration-pipeline-simplification`~~ — **ARCHIVED (run_166).** Successor
+  `orchestration-audit-and-refactor` carries the conceptual-surface reduction; follow-on overlaps tracked
+  as tickets 0020/0021/0022.
 
 **Active build priorities (launchable; `order.json` order — the `priorities/` directory is the live index):**
-1. `orchestration-pipeline-simplification` — **ARCHIVE-CANDIDATE (run_165).** All Objective deliverables
-   landed including the all-persona Routing Guide (`docs/oz-improvement-routing.md`); owner map, priority
-   composer merge, overlap closeout, and enforcer pins green. Founder archive confirmation pending;
-   follow-on overlaps tracked as tickets 0020/0021/0022.
+1. `orchestration-audit-and-refactor` — **CONTINUE (run_166).** Predecessor archived; architecture map
+   linearized; Play behavior tests pinned (41 green); load-bearing verdicts landed (Play taxonomy `suspect`,
+   ten distinctions `real`). **Founder-gated:** reduce Play taxonomy to three observable axes (park unused
+   classes) vs keep-and-document five named classes — then ratified ADR-0010 amendment + bounded collapse.
+   Follow-ups: tickets 0020/0023.
 2. `deb-follows-oscar` — **NEW.** Make Deb a first-class, runner-driven watcher of Oscar: event-awakened,
    non-blocking, Oscar-only nudge authority, and no second orchestration lane.
 3. `drift-audit` — **CONTINUE (run_163).** Build complete (run_161); run_163 re-verified proof green and 25
