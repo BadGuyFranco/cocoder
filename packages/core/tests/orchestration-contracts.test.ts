@@ -43,6 +43,34 @@ describe('orchestration contract ownership', () => {
     expect(offenders).toEqual([])
   })
 
+  test('only the runner delivery artifact may instruct Oscar to deliver the founder closeout', () => {
+    const deliveryOwner = read('packages/core/src/runner/prompts.ts')
+    expect(deliveryOwner.match(/Deliver the validated founder-facing wrap-up below now/g)).toHaveLength(1)
+
+    const nonDeliverySurfaces = [
+      'packages/personas/base/oscar.md',
+      'packages/core/src/runner/status.ts',
+    ]
+    const forbidden = [
+      /Report back to the founder using the wrap-up Play/i,
+      /Report back to the founder in the standardized format/i,
+      /Deliver the validated founder-facing wrap-up below now/i,
+      /Deliver this founder-facing wrap-up now/i,
+    ]
+
+    const offenders = nonDeliverySurfaces.flatMap((rel) => {
+      const text = read(rel)
+      return forbidden
+        .filter((pattern) => pattern.test(text))
+        .map((pattern) => `${rel}: ${pattern}`)
+    })
+
+    expect(offenders).toEqual([])
+    expect(read('packages/personas/base/oscar.md')).toContain('wait for the runner\'s `WRAP-UP READY`')
+    expect(read('packages/core/src/runner/prompts.ts')).toContain('do not also deliver a founder closeout in the pane')
+    expect(read('packages/core/src/runner/prompts.ts')).toContain('WRAP-UP READY artifact for exactly-once delivery')
+  })
+
   test('ticket authoring surfaces derive markdown from the core ticket composer', () => {
     const play = read('packages/personas/base/plays/create-ticket.md')
     const routes = read('packages/daemon/src/routes.ts')

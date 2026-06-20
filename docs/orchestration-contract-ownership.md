@@ -16,6 +16,16 @@ gate-bypass observation was considered and **deliberately not actioned** (ticket
 bypassed commits were correct, green, and founder-kept — not a failure — and any guard that enforces
 routing-through-the-gate reintroduces commit-withholding, the ADR-0023 anti-pattern we removed.
 
+### Run_163 Addendum - Closeout Delivery Ownership
+
+The run_163 duplicate wrap-up report exposed a narrower contract the original enforcer missed:
+`wrap-up.md` owns the closeout **format**, but the runner's `WRAP-UP READY` artifact owns the visible
+closeout **delivery action**. Oscar and the launch/next-turn prompts may tell Oscar to write the
+`wrapup` directive and then wait for runner delivery; they must not also tell Oscar to report/deliver a
+founder closeout directly. The enforcer now pins that separation by allowing exactly one delivery
+instruction in `buildWrapupDelivery()` and rejecting manual founder-closeout delivery language in the
+live persona/status surfaces.
+
 Diagnostic status: this is the owner inventory for the priority
 `founder-brief-format-durability`, whose objective is the broader "Single-source orchestration
 contracts" repair (`cocoder/priorities/founder-brief-format-durability.md:6-16`). This document does
