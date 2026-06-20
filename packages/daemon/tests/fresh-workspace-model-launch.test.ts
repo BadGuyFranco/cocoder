@@ -25,8 +25,8 @@ describe('fresh workspace Claude model launch', () => {
     if (oscarModel) {
       const assignmentsPath = join(primary, 'cocoder', 'personas', 'assignments.json')
       const assignments = loadAssignments(assignmentsPath)
-      assignments.personas.oscar = { ...assignments.personas.oscar, model: oscarModel }
-      await writeFile(assignmentsPath, `${JSON.stringify(assignments, null, 2)}\n`)
+      const personas = { ...assignments.personas, oscar: { ...assignments.personas.oscar, model: oscarModel } }
+      await writeFile(assignmentsPath, `${JSON.stringify({ ...assignments, personas }, null, 2)}\n`)
     }
     await writeFile(
       join(install, 'local', 'workspace', `${WORKSPACE_ID}.code-workspace`),

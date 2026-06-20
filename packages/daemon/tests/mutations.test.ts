@@ -134,6 +134,12 @@ const fakeGit = (changed: string[] = [], shas: readonly string[] = ['h0']): Git 
       return 'trunk'
     },
     async resetHard() {},
+    async hasUpstream() {
+      return false
+    },
+    async push() {
+      return { ok: true, detail: '' }
+    },
   }
 }
 interface GovernanceCommitCall {
@@ -1384,7 +1390,7 @@ describe('Oz mutations + lifecycle', () => {
       getAdapter: () => ({
         ...okAdapter,
         build: (input) => {
-          builds.push({ persona: input.persona, model: input.model, prompt: input.prompt })
+          builds.push({ persona: input.persona!, model: input.model, prompt: input.prompt })
           return { command: 'fake-cli', args: ['authoring'] }
         },
       }),

@@ -49,6 +49,12 @@ const fakeGit = (): Git => ({
     return 'trunk'
   },
   async resetHard() {},
+  async hasUpstream() {
+    return false
+  },
+  async push() {
+    return { ok: true, detail: '' }
+  },
 })
 
 const fakeHost = (): SessionHost => ({

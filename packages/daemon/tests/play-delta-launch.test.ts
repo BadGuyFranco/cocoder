@@ -63,11 +63,13 @@ describe('daemon run launch Play deltas', () => {
 
     const input = await runInput(true)
 
-    expect(input.wrapPlay.id).toBe('wrap-up')
-    expect(input.wrapPlay.label).toBe('Workspace Wrap-up')
-    expect(input.wrapPlay.body).toContain(base.body.trimEnd())
-    expect(input.wrapPlay.body).toContain('\n\n---\n\n# Workspace addition')
-    expect(input.wrapPlay.body).toContain('This text came from the repo Play delta.')
+    const wrapPlay = input.wrapPlay
+    if (!wrapPlay) throw new Error('expected input.wrapPlay to be defined')
+    expect(wrapPlay.id).toBe('wrap-up')
+    expect(wrapPlay.label).toBe('Workspace Wrap-up')
+    expect(wrapPlay.body).toContain(base.body.trimEnd())
+    expect(wrapPlay.body).toContain('\n\n---\n\n# Workspace addition')
+    expect(wrapPlay.body).toContain('This text came from the repo Play delta.')
   })
 
   test('uses the unchanged base Play when the repo has no matching delta', async () => {

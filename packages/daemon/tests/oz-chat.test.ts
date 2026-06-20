@@ -5,8 +5,32 @@ import { describe, expect, test } from 'vitest'
 import { composeTicketMarkdown, openRunStore, type RunStore } from '@cocoder/core'
 import type { OzContext } from '../src/context.js'
 import { executeOzCommand, handleOzMessage, parseOzCommand, type OzChatOps } from '../src/oz-chat.js'
+import type { LaunchRunTarget } from '../src/launcher.js'
 
 const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
+
+// A stub for an op a test does NOT expect to be called: returns a 500 so an unexpected dispatch fails
+// loudly instead of looking like a real success. Narrowly cast to the specific op's type.
+const unexpected =
+  (name: string) =>
+  async (): Promise<{ readonly status: number; readonly body: { readonly error: string } }> => ({ status: 500, body: { error: `unexpected ${name}` } })
+
+// Shared OzChatOps factory: every op defaults to an `unexpected` stub; tests override only the ops they
+// exercise. Keeps the 9-op interface in one place so adding an op doesn't break every inline mock.
+function mockOps(overrides: Partial<OzChatOps>): OzChatOps {
+  return {
+    launchRun: unexpected('launch') as OzChatOps['launchRun'],
+    showRun: unexpected('show') as OzChatOps['showRun'],
+    stopRun: unexpected('stop') as OzChatOps['stopRun'],
+    teardownRun: unexpected('teardown') as OzChatOps['teardownRun'],
+    restartDaemon: unexpected('restart') as OzChatOps['restartDaemon'],
+    nudgeRun: unexpected('nudge') as OzChatOps['nudgeRun'],
+    repairOz: unexpected('repair') as OzChatOps['repairOz'],
+    requestAuthoringPlay: unexpected('author') as OzChatOps['requestAuthoringPlay'],
+    supportCommitRun: unexpected('support-commit') as OzChatOps['supportCommitRun'],
+    ...overrides,
+  }
+}
 
 function testCtx(store: RunStore = openRunStore(':memory:'), cocoderHome = '/tmp/cocoder'): OzContext {
   return {
@@ -54,16 +78,13 @@ describe('parseOzCommand', () => {
 
 describe('handleOzMessage', () => {
   test('launch maps to launchRun', async () => {
-    const calls: Array<{ workspaceId: string; priorityId: string }> = []
-    const ops: OzChatOps = {
+    const calls: Array<{ workspaceId: string; priorityId: string | LaunchRunTarget }> = []
+    const ops = mockOps({
       launchRun: async (_ctx, workspaceId, priorityId) => {
         calls.push({ workspaceId, priorityId })
         return { status: 202, body: { runId: 'run_47' } }
       },
-      showRun: async () => ({ status: 500, body: { error: 'unexpected show' } }),
-      stopRun: async () => ({ status: 500, body: { error: 'unexpected stop' } }),
-      teardownRun: async () => ({ status: 500, body: { error: 'unexpected teardown' } }),
-    }
+    })
 
     const result = await handleOzMessage(testCtx(), { text: 'launch demo', workspaceId: 'cocoder' }, ops)
 
@@ -75,16 +96,13 @@ describe('handleOzMessage', () => {
   })
 
   test('adhoc maps to launchRun with the ad-hoc priority and task', async () => {
-    const calls: Array<{ workspaceId: string; priorityId: string; task?: string | null }> = []
-    const ops: OzChatOps = {
+    const calls: Array<{ workspaceId: string; priorityId: string | LaunchRunTarget; task?: string | null }> = []
+    const ops = mockOps({
       launchRun: async (_ctx, workspaceId, priorityId, opts) => {
         calls.push({ workspaceId, priorityId, task: opts?.task })
         return { status: 202, body: { runId: 'run_adhoc' } }
       },
-      showRun: async () => ({ status: 500, body: { error: 'unexpected show' } }),
-      stopRun: async () => ({ status: 500, body: { error: 'unexpected stop' } }),
-      teardownRun: async () => ({ status: 500, body: { error: 'unexpected teardown' } }),
-    }
+    })
 
     const result = await handleOzMessage(testCtx(), { text: 'adhoc fix the flaky test', workspaceId: 'cocoder' }, ops)
 
@@ -97,15 +115,12 @@ describe('handleOzMessage', () => {
 
   test('bare adhoc returns usage without launching', async () => {
     let launches = 0
-    const ops: OzChatOps = {
+    const ops = mockOps({
       launchRun: async () => {
         launches += 1
         return { status: 202, body: { runId: 'run_adhoc' } }
       },
-      showRun: async () => ({ status: 500, body: { error: 'unexpected show' } }),
-      stopRun: async () => ({ status: 500, body: { error: 'unexpected stop' } }),
-      teardownRun: async () => ({ status: 500, body: { error: 'unexpected teardown' } }),
-    }
+    })
 
     const result = await handleOzMessage(testCtx(), { text: 'adhoc', workspaceId: 'cocoder' }, ops)
 
@@ -127,15 +142,12 @@ describe('handleOzMessage', () => {
 
   test('stop maps to stopRun', async () => {
     const calls: string[] = []
-    const ops: OzChatOps = {
-      launchRun: async () => ({ status: 500, body: { error: 'unexpected launch' } }),
-      showRun: async () => ({ status: 500, body: { error: 'unexpected show' } }),
+    const ops = mockOps({
       stopRun: async (_ctx, runId) => {
         calls.push(runId)
         return { status: 202, body: { stopping: true, runId } }
       },
-      teardownRun: async () => ({ status: 500, body: { error: 'unexpected teardown' } }),
-    }
+    })
 
     const result = await handleOzMessage(testCtx(), { text: 'stop run_45', workspaceId: 'cocoder' }, ops)
 
@@ -148,15 +160,12 @@ describe('handleOzMessage', () => {
 
   test('teardown still maps to teardownRun', async () => {
     const calls: string[] = []
-    const ops: OzChatOps = {
-      launchRun: async () => ({ status: 500, body: { error: 'unexpected launch' } }),
-      showRun: async () => ({ status: 500, body: { error: 'unexpected show' } }),
-      stopRun: async () => ({ status: 500, body: { error: 'unexpected stop' } }),
+    const ops = mockOps({
       teardownRun: async (_ctx, runId) => {
         calls.push(runId)
         return { status: 200, body: { closed: ['surface:1', 'surface:2'] } }
       },
-    }
+    })
 
     const result = await handleOzMessage(testCtx(), { text: 'teardown run_45', workspaceId: 'cocoder' }, ops)
 
@@ -168,12 +177,9 @@ describe('handleOzMessage', () => {
   })
 
   test('stop surfaces daemon 409 errors verbatim', async () => {
-    const ops: OzChatOps = {
-      launchRun: async () => ({ status: 500, body: { error: 'unexpected launch' } }),
-      showRun: async () => ({ status: 500, body: { error: 'unexpected show' } }),
+    const ops = mockOps({
       stopRun: async () => ({ status: 409, body: { error: 'run is not live in this daemon process' } }),
-      teardownRun: async () => ({ status: 500, body: { error: 'unexpected teardown' } }),
-    }
+    })
 
     const result = await handleOzMessage(testCtx(), { text: 'stop run_45', workspaceId: 'cocoder' }, ops)
 
@@ -262,7 +268,7 @@ describe('handleOzMessage', () => {
 
   test('unknown command and missing workspace execute nothing', async () => {
     const calls = { launch: 0, show: 0, teardown: 0 }
-    const ops: OzChatOps = {
+    const ops = mockOps({
       launchRun: async () => {
         calls.launch += 1
         return { status: 202, body: { runId: 'run_47' } }
@@ -271,12 +277,11 @@ describe('handleOzMessage', () => {
         calls.show += 1
         return { status: 200, body: { shown: true } }
       },
-      stopRun: async () => ({ status: 500, body: { error: 'unexpected stop' } }),
       teardownRun: async () => {
         calls.teardown += 1
         return { status: 200, body: { closed: [] } }
       },
-    }
+    })
 
     const unknown = await handleOzMessage(testCtx(), { text: 'please launch demo', workspaceId: 'cocoder' }, ops)
     const missingWorkspace = await handleOzMessage(testCtx(), { text: 'launch demo' }, ops)
@@ -287,12 +292,9 @@ describe('handleOzMessage', () => {
   })
 
   test('operation errors are returned as chat replies', async () => {
-    const ops: OzChatOps = {
+    const ops = mockOps({
       launchRun: async () => ({ status: 400, body: { error: 'unknown priority "missing"' } }),
-      showRun: async () => ({ status: 500, body: { error: 'unexpected show' } }),
-      stopRun: async () => ({ status: 500, body: { error: 'unexpected stop' } }),
-      teardownRun: async () => ({ status: 500, body: { error: 'unexpected teardown' } }),
-    }
+    })
 
     const result = await handleOzMessage(testCtx(), { text: 'launch missing', workspaceId: 'cocoder' }, ops)
 
@@ -462,19 +464,12 @@ describe('handleOzMessage', () => {
 })
 
 function repairOps(result: { readonly status: number; readonly body: Record<string, unknown> }): OzChatOps {
-  return {
-    launchRun: async () => ({ status: 500, body: { error: 'unexpected launch' } }),
-    showRun: async () => ({ status: 500, body: { error: 'unexpected show' } }),
-    stopRun: async () => ({ status: 500, body: { error: 'unexpected stop' } }),
-    nudgeRun: async () => ({ status: 500, body: { error: 'unexpected nudge' } }),
+  return mockOps({
     repairOz: async (_ctx, input) => {
       expect(input).toMatchObject({ workspaceId: 'cocoder' })
       return result
     },
-    requestAuthoringPlay: async () => ({ status: 500, body: { error: 'unexpected author' } }),
-    teardownRun: async () => ({ status: 500, body: { error: 'unexpected teardown' } }),
-    restartDaemon: async () => ({ status: 500, body: { error: 'unexpected restart' } }),
-  }
+  })
 }
 
 function authorOps(
@@ -482,18 +477,11 @@ function authorOps(
   calls: unknown[] = [],
   onCall?: () => void,
 ): OzChatOps {
-  return {
-    launchRun: async () => ({ status: 500, body: { error: 'unexpected launch' } }),
-    showRun: async () => ({ status: 500, body: { error: 'unexpected show' } }),
-    stopRun: async () => ({ status: 500, body: { error: 'unexpected stop' } }),
-    nudgeRun: async () => ({ status: 500, body: { error: 'unexpected nudge' } }),
-    repairOz: async () => ({ status: 500, body: { error: 'unexpected repair' } }),
+  return mockOps({
     requestAuthoringPlay: async (_ctx, input) => {
       onCall?.()
       calls.push(input)
       return result
     },
-    teardownRun: async () => ({ status: 500, body: { error: 'unexpected teardown' } }),
-    restartDaemon: async () => ({ status: 500, body: { error: 'unexpected restart' } }),
-  }
+  })
 }

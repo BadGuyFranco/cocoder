@@ -5,6 +5,7 @@ import { describe, expect, test } from 'vitest'
 import { composeTicketMarkdown, openRunStore, parseNudgeRequest, type Adapter, type BuildInput, type HeadlessRunInput, type RunStore } from '@cocoder/core'
 import { createOzEventBus, type OzContext } from '../src/context.js'
 import { handleOzMessage, type OzChatOps } from '../src/oz-chat.js'
+import type { LaunchRunTarget } from '../src/launcher.js'
 import { recordOrchestratedRun } from '../src/oz-host.js'
 import { mergeWriteSettings } from '../src/settings.js'
 
@@ -181,7 +182,7 @@ describe('Oz agent chat turns', () => {
         'Launched it.',
       ],
     })
-    const calls: Array<{ readonly workspaceId: string; readonly priorityId: string }> = []
+    const calls: Array<{ readonly workspaceId: string; readonly priorityId: string | LaunchRunTarget }> = []
     const ops: OzChatOps = {
       ...fakeOps(),
       launchRun: async (_ctx, workspaceId, priorityId) => {
@@ -542,7 +543,7 @@ describe('Oz agent chat turns', () => {
     const ops: OzChatOps = {
       ...fakeOps(),
       launchRun: async (_ctx, _workspaceId, priorityId) => {
-        calls.push(priorityId)
+        calls.push(typeof priorityId === 'string' ? priorityId : priorityId.kind === 'priority' ? priorityId.priorityId : priorityId.ticketId)
         return { status: 202, body: { runId: 'never' } }
       },
     }
@@ -708,5 +709,6 @@ function fakeOps(): OzChatOps {
     requestAuthoringPlay: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0 } }),
     teardownRun: async () => ({ status: 200, body: { closed: [] } }),
     restartDaemon: async () => ({ status: 202, body: { restarting: true } }),
+    supportCommitRun: async () => ({ status: 202, body: { runId: 'run_support' } }),
   }
 }

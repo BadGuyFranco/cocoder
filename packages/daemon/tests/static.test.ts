@@ -23,6 +23,8 @@ const fakeHost = (): SessionHost =>
     },
     async show() {},
     async kill() {},
+    async sendInput() {},
+    async closeSurface() {},
   }) as SessionHost
 
 interface Resp {
