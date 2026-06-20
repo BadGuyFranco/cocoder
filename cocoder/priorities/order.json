@@ -1,10 +1,10 @@
 [
   "orchestration-audit-and-refactor",
-  "deb-follows-oscar",
   "drift-audit",
   "new-primary-root",
   "first-class-model-tiers",
   "adapter-abstraction-hardening",
   "tickets-review",
-  "priority-audit"
+  "priority-audit",
+  "deb-follows-oscar"
 ]
