@@ -47,12 +47,14 @@ describe('drift governance claims reader', () => {
             category: 'memory',
             claim: 'codebase-map references packages/core/src/index.ts',
             evidence: { file: 'cocoder/memory/codebase-map.md', line: 1 },
+            references: [{ kind: 'path', value: 'packages/core/src/index.ts' }],
           },
           {
             id: 'priority:demo',
             category: 'priority',
             claim: 'demo: Demo priority (scopeNarrowing=[packages/core/**]; auditWriteBoundary=[cocoder/**])',
             evidence: { file: 'cocoder/priorities/demo.md', line: 2 },
+            references: [{ kind: 'glob', value: 'packages/core/**' }],
           },
           {
             id: 'scope:cocoder/PLAYBOOK.md:1',

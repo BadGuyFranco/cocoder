@@ -4,11 +4,13 @@ import { parseFrontmatter } from '../personas/frontmatter.js'
 
 export type DriftClaimCategory = 'adr' | 'priority' | 'memory' | 'standards-scope'
 export type DriftClaimEvidence = { readonly file: string; readonly line: number }
+export type DriftClaimReference = { readonly kind: 'path' | 'glob'; readonly value: string }
 export interface DriftClaim {
   readonly id: string
   readonly category: DriftClaimCategory
   readonly claim: string
   readonly evidence: DriftClaimEvidence
+  readonly references?: readonly DriftClaimReference[]
 }
 export type DriftClaimCategoryCount = { readonly category: DriftClaimCategory; readonly count: number }
 export interface DriftClaimsInventory {
@@ -70,7 +72,8 @@ function readPriorityClaims(repoRoot: string, prioritiesDir: string): readonly D
       scopeNarrowing.length > 0 ? `scopeNarrowing=[${scopeNarrowing.join(',')}]` : null,
       auditWriteBoundary.length > 0 ? `auditWriteBoundary=[${auditWriteBoundary.join(',')}]` : null,
     ].filter((item): item is string => item !== null)
-    return claim(`priority:${id}`, 'priority', `${id}: ${title}${suffix.length > 0 ? ` (${suffix.join('; ')})` : ''}`, repoRoot, file, idLine?.line ?? 1)
+    const priorityText = `${id}: ${title}${suffix.length > 0 ? ` (${suffix.join('; ')})` : ''}`
+    return claim(`priority:${id}`, 'priority', priorityText, repoRoot, file, idLine?.line ?? 1, scopeNarrowing.map((value) => ({ kind: 'glob', value })))
   })
 }
 function readMemoryClaims(repoRoot: string, memoryDir: string): readonly DriftClaim[] {
@@ -79,7 +82,9 @@ function readMemoryClaims(repoRoot: string, memoryDir: string): readonly DriftCl
     if (!existsSync(file)) return []
     const lines = splitLines(readRequiredText(file))
     const source = basename(name, '.md')
-    return lines.flatMap((line, index) => extractPathRefs(line).map((ref) => claim(`memory:${source}:${index + 1}:${slug(ref)}`, 'memory', `${source} references ${ref}`, repoRoot, file, index + 1)))
+    return lines.flatMap((line, index) => extractPathRefs(line).map((ref) =>
+      claim(`memory:${source}:${index + 1}:${slug(ref)}`, 'memory', `${source} references ${ref}`, repoRoot, file, index + 1, [{ kind: 'path', value: ref }]),
+    ))
   })
 }
 function readStandardsScopeClaims(repoRoot: string, cocoderDir: string): readonly DriftClaim[] {
@@ -143,8 +148,8 @@ function inventory(claims: readonly DriftClaim[]): DriftClaimsInventory {
     .filter((entry) => entry.count > 0)
   return { version: 1, claims, summary: { total: claims.length, byCategory } }
 }
-function claim(id: string, category: DriftClaimCategory, text: string, repoRoot: string, file: string, line: number): DriftClaim {
-  return { id, category, claim: text, evidence: { file: repoPath(repoRoot, file), line } }
+function claim(id: string, category: DriftClaimCategory, text: string, repoRoot: string, file: string, line: number, references: readonly DriftClaimReference[] = []): DriftClaim {
+  return { id, category, claim: text, evidence: { file: repoPath(repoRoot, file), line }, ...(references.length > 0 ? { references } : {}) }
 }
 function assertUniqueIds(claims: readonly DriftClaim[]): void {
   const seen = new Set<string>()
