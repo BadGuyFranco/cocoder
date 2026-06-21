@@ -261,8 +261,20 @@ product call (which QA modality you actually want), so it is founder-gated.
 | Oscar | Tier-1 in-run orchestrator; verify gate + atom loop + wrap (`packages/personas/base/oscar.md:4`; ADR-0013) | `cocoder/**`, `docs/**`, `ARCHITECTURE.md` | per-run, `packages/core/src/runner/runner.ts:720-731` | **real** |
 | Bob | Tier-1 builder; only persona that writes net-new product code through the verify gate (`packages/personas/base/bob.md:4`) | `[]` (granted per atom) | per-run, `packages/core/src/runner/runner.ts:734-758` | **real** |
 | Deb | Tier-2 escalation/repair; in-run machinery faults, advises Oscar only (`packages/personas/base/deb.md:4`; ADR-0016) | `cocoder/**` + machinery | optional per-run, `packages/core/src/runner/observer.ts:58-68` | **real** (predecessor + owner map row 214) |
-| Quinn | User-simulation QA, drives the running app, read-only (`packages/personas/base/quinn.md:4`) | `[]` | **none** — `assignments.json` `cli:""/model:""`; only an `allowedCaller` in `electron-test.md:9` | **suspect** |
-| Talia | Acceptance QA against code contracts; owns the verdict (`packages/personas/base/talia.md:4`) | `tests/**`, `specs/**` | **none** — `assignments.json` `cli:""/model:""`; no live Play names her as caller | **suspect** |
+| Quinn | User-simulation QA, drives the running app, read-only (`packages/personas/base/quinn.md:4`) | `[]` | **none** — `assignments.json` `cli:""/model:""`; only an `allowedCaller` in `electron-test.md:9` | **real** (FOUNDER OVERRIDE 2026-06-21) |
+| Talia | Acceptance QA against code contracts; owns the verdict (`packages/personas/base/talia.md:4`) | `tests/**`, `specs/**` | **none** — `assignments.json` `cli:""/model:""`; no live Play names her as caller | **folded → Plays** (FOUNDER-RESOLVED 2026-06-21) |
+
+> **FOUNDER OVERRIDE 2026-06-21 (supersedes run_172's fold-both verdict above).** The founder splits the
+> two QA personas rather than folding both:
+> - **Quinn = `real`, retained.** Not aspirational surface: Quinn is autonomous experience-QA that
+>   *exercises the running app, tracks bugs, and runs cross-machine (Mac + Windows-over-SSH)* QA whose
+>   findings feed priorities/tickets/personas — token-heavy LLM judgment, a distinct authority the others
+>   don't carry. The "unstaffed" reading was a staffing gap, not a missing boundary. Quinn stays a persona.
+> - **Talia = folded.** Testing becomes a *capability any persona can invoke*, not a persona. Talia's
+>   acceptance-QA function is expressed as **function-named Plays** (NOT named "Talia"), and the persona
+>   file is retired. This is §B option (a) applied to Talia only.
+> Net base persona count after the GO PERSONAS run: **5** (Oz / Oscar / Bob / Deb / Quinn). Ian/Phil remain
+> custom-persona examples (`cocoder/personas/custom/`-style), not base.
 
 2. **Load-bearing test.** No safeguard depends on Quinn or Talia: the verify gate is Oscar's
 (`docs/orchestration-contract-ownership.md:186`), Bob self-reviews, and Deb owns in-run repair. Quinn's one
@@ -389,11 +401,13 @@ green behavior-pinning tests).
 
 ## Boundary
 Verdict + behavior-pinning tests first. **Pre-authorized code/governance mutations:** §A (spike retirement,
-DONE), §B ADR-graph reading-contract collapse (DONE), and §B `playbooks/` dead-genre freeze (DONE via
-ADR-0032). All *other* §B cuts (Quinn/Talia personas, etc.)
-still require a per-cut founder go-ahead and a new founder-approved ADR before touching runner/daemon/persona
-code (reversing an Accepted ADR needs a new ADR — ADR-0010). Do not weaken a load-bearing safeguard. Elegance
-standard: fewer concepts, never a new lane to describe the old ones.
+DONE), §B ADR-graph reading-contract collapse (DONE), §B `playbooks/` dead-genre freeze (DONE via
+ADR-0032), and — **FOUNDER-AUTHORIZED 2026-06-21 (GO PERSONAS)** — the Talia retirement + testing-as-a-Play
+fold (scope in the Suggested Next Action below). All *other* §B cuts still require a per-cut founder
+go-ahead and a new founder-approved ADR before touching runner/daemon/persona code (reversing an Accepted
+ADR needs a new ADR — ADR-0010). Do not weaken a load-bearing safeguard; the deterministic verify-gate /
+`execCriterion` path is preserved — `run-tests` wraps it, never replaces it. Elegance standard: fewer
+concepts, never a new lane to describe the old ones.
 
 ## Required Inputs
 - This Research section (the pre-seeded audit).
@@ -404,14 +418,48 @@ standard: fewer concepts, never a new lane to describe the old ones.
 - Behavior nets: `packages/core/tests/**`, `scripts/proof-orchestration-enforcer.mjs`, `scripts/proof-*.mjs`.
 
 ## Suggested Next Action
-**Disposition: `archive-candidate` (run_172).** §A complete; all §B verdicts complete; ADR-graph reading-contract
-collapse EXECUTED (run_171); `playbooks/` dead-genre freeze EXECUTED (run_172, ADR-0032). Verified-when #1–#5
-met for all executed cuts. No authorized build atoms remain without an explicit founder go.
+**Disposition: `continue` — FOUNDER-AUTHORIZED GO PERSONAS 2026-06-21.** §A complete; all §B verdicts
+complete; ADR-graph reading-contract collapse EXECUTED (run_171); `playbooks/` dead-genre freeze EXECUTED
+(run_172, ADR-0032). The founder has now authorized the persona cut, **split** from run_172's fold-both
+verdict: **retire Talia, fold testing into Plays, keep Quinn (= real).**
 
-**Optional founder gate — Quinn/Talia persona collapse** (§B option (a): fold UI-sim + contract-acceptance
-into existing Plays, delete unstaffed persona files). Requires **GO PERSONAS** + new founder-approved ADR
-before touching `packages/personas/base/**`. Relaunch this priority with GO PERSONAS to execute; otherwise
-confirm archive and leave Quinn/Talia as accepted standing follow-up.
+**This is a fresh VERIFIED run** (touches `packages/personas/base/**` + the Play schema), NOT post-wrap
+support scope — relaunch `surface-reduction`. Atom order is ADR-first (gate order, like ADR-0031):
+
+- **Atom 0 — ADR first.** Author a founder-approved ADR: *"Testing is a Play capability available to all
+  personas; the Talia persona is retired; Quinn is retained as the autonomous experience-QA persona."*
+  It supersedes the relevant line of the persona model. **Do not edit `packages/personas/base/**` before
+  this ADR exists.**
+- **Atom 1 — the Plays.** Verify the exact schema in `packages/core/src/plays/types.ts` first, then create
+  two **function-named** base Plays (general `run-tests`/`write-tests`, NOT `unit-`prefixed — avoid a
+  unit/integration genre split; finalize naming in the ADR):
+  - **`write-tests`** — authoring. `executionModel: prompt` (or hybrid); `writeScope:
+    ['tests/**','**/*.test.*','**/*.spec.*']`; `allowedCallers` = every persona (wildcard if the schema
+    supports it, else enumerate oz/oscar/bob/deb/quinn + note custom); per-(persona,Play) model assignment
+    so it can run on a cheaper model.
+  - **`run-tests`** — execution + triage. `executionModel: hybrid` with a `deterministicStep` that runs
+    the repo's test command (**reuse the existing exec path; do not fork a second runner**), then an LLM
+    step only to triage failures into a structured pass/fail + evidence. `writeScope: []`; `allowedCallers`
+    = every persona. **Reconcile with the existing `integration-verify` Play** — merge it in or clearly
+    delineate unit-vs-integration; do NOT leave two overlapping test-run Plays (single-home, G3).
+- **Atom 2 — retire Talia.** Delete `packages/personas/base/talia.md`; remove the `talia` entry from
+  `cocoder/personas/assignments.json`; fix the ARCHITECTURE persona table (now Oz/Oscar/Bob/Deb + Quinn =
+  **5** personas; Ian/Phil remain custom-persona examples, not base). Retarget any reference to Talia → the
+  test Plays.
+
+**Verified when:** (1) `talia.md` gone, no live references, assignments + ARCHITECTURE table updated;
+(2) `write-tests` + `run-tests` exist, function-named, `allowedCallers` = all personas, model-assignable,
+`integration-verify` reconciled (no overlap); (3) the deterministic test-run still works and every suite is
+green; (4) the ADR records the capability + Talia retirement + Quinn-retained-as-real; (5) Quinn persona
+untouched and marked `real` in the verdict record (done above). Behavior pins: `packages/core/tests/**`,
+base-persona/Play tests, `scripts/proof-*.mjs`, `pnpm -r typecheck`, `node scripts/check-topology.mjs` green.
+
+**Named follow-up (do NOT execute in the GO PERSONAS run):** wiring `run-tests` as a *required checkpoint*
+for code atoms (the durability upgrade) is a behavior change — surface it as a separate founder-gated item,
+do not bundle it.
+
+**Disjoint pre-existing red (separate ticket/run):** `scripts/proof-governance-authoring.mjs` clause E
+still asserts pre-ADR-0029 builder-dirt refusal; retarget to ADR-0029.
 
 **Disjoint pre-existing red (NOT this priority):** `scripts/proof-governance-authoring.mjs` clause E still
 asserts pre-ADR-0029 builder-dirt refusal; retarget to ADR-0029 in a separate run/ticket.
