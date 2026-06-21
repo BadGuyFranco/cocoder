@@ -57,7 +57,7 @@ Explain why Oscar stopped now instead of continuing in this same run. If Oscar m
 Up to 3 short bullets naming only required remaining gaps across product behavior, architecture, tests, documentation, founder decisions, and missing evidence. Write `Nothing obvious.` only if archive ready. Do not include optional work, percentage-complete claims, atom labels, implementation labels, or proof-matrix detail. Start each bullet with the missing founder-facing capability or proof, not a label. Forbidden openings include `Atom 3:`, `Item 2:`, `A3a:`, `UI 2/4:`, and bold label bullets like `**Proof harness:**`.
 
 **Founder Decision Needed**
-None. | The one founder judgment call, if any.
+None. | The founder decisions that need to be made with discerned options and a recommendation, if any.
 
 **Commit State**
 Do not claim final landing, push, remote, or PR status from your own judgment. Say commit status is supplied by the runner’s landing outcome in the delivered wrap-up.
@@ -75,6 +75,5 @@ Say the run is standing by and teardown requires an explicit founder request.
 ```
 
 End with exactly `I'm standing by...` so the founder knows the run remains available for questions, priority updates, or explicit `kill` / `tear down`.
-
 
 The runner persists this output as the run's pickup brief — do NOT write `pickup.md` yourself.
