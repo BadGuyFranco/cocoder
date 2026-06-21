@@ -13,6 +13,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Owner |
 |---|---|---|---|---|
+| [0024](./open/0024-drift-audit-detector-false-positives-and-crash.md) | drift-audit path detector is false-positive-prone and crashes on a same-line duplicate claim id | bug | drift-audit | founder-session |
 | [0013](./open/0013-daemon-auto-rebuild-after-runs.md) | Auto-rebuild + reload the Oz daemon after a run changes packages/daemon (no manual restart) | task | tickets-review | oscar run_122 |
 
 ## Recently Closed

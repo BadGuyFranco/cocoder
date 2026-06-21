@@ -1,56 +1,42 @@
 # Tech Stack — CoCoder
 
-**Status:** Locked via ADR-0004
-**Last verified:** 2026-05-22
+**Last verified:** 2026-06-21 (drift-audit apply: rewritten from v1-stale to v2 reality).
+
+Orientation only; [ARCHITECTURE](../../ARCHITECTURE.md) is current-truth (ADR-0031).
 
 ## Runtime
 
-| Layer | Choice | Source |
-|---|---|---|
-| OS target (v0.1) | macOS-first (iTerm2 + tmux); Linux/Windows best-effort | ADR-0001 |
-| Node | 20 LTS pinned (`.nvmrc`, `engines.node: ">=20.10 <21"`) | ADR-0004 |
-| Package manager | pnpm with workspaces | ADR-0004 |
-| Lockfile | `pnpm-lock.yaml` committed | ADR-0004 |
-
-Note: local verification on 2026-05-22 ran under Node v25.1.0 and emitted engine warnings. The repo remains pinned to Node 20 LTS via `.nvmrc` and `engines`.
+| Layer | Choice |
+|---|---|
+| OS target | macOS-first |
+| Terminal host | **cmux** (ADR-0002), driven over its Unix socket — not tmux (tmux is v1-only) |
+| Node | per `.nvmrc` (`engines.node: ">=22"`) |
+| Package manager | pnpm 10.x with workspaces; `pnpm-lock.yaml` committed |
 
 ## Languages
 
-| Package | Language | Why |
-|---|---|---|
-| `packages/core` | `.mjs` (preserved verbatim from CoBuilder) | Behavior preservation during port; ADR-0004 |
-| `packages/cocoder-cli` | TypeScript | Public CLI surface |
-| `packages/schemas` | TypeScript (Zod) | Single source of truth for config + contracts |
-| `packages/oz-daemon` | TypeScript | Public HTTP API |
-| `packages/oz-dashboard` | TypeScript + React | UI |
+**TypeScript across all seven packages** — this is a clean v2 build, *not* an `.mjs` extraction from
+CoBuilder (the historical v1 `.mjs` core no longer applies). Each package exports `./src/index.ts`. The
+`cocoder` CLI runs TypeScript directly via `tsx`; there is no build step (the Electron `ui` is the
+exception — `electron-vite build`).
 
 ## Validation
 
-- **Source of truth:** Zod schemas in `packages/schemas/src/*.ts`
-- **Build artifact:** JSON Schema files via `zod-to-json-schema`, published under `packages/schemas/dist/*.schema.json`
-- **Runtime consumers:**
-  - TS packages → Zod directly (gives inferred types)
-  - `.mjs` core → AJV reading the generated `.schema.json`
-  - End-user config files → `$schema` reference for editor autocomplete
+Hand-written TypeScript where needed — **no external validation library** (zod/ajv/yup/joi/valibot) is a
+direct dependency or imported (ADR-0004 language policy). There is no `packages/schemas`.
 
 ## Tooling
 
 | Tool | Purpose |
 |---|---|
-| `tsc` | TS build (no bundler for core packages) |
-| `vitest` | Test runner for TS packages |
-| `node --test` | Test runner for `.mjs` core |
-| GitHub Actions | CI (macos-14 Node 20 matrix) |
-| `gitleaks` | Secret scanning (Sub-Playbook D) |
+| `vitest` | test runner (every package; `pnpm test` = `pnpm -r test`) |
+| `tsc` | typecheck (`pnpm typecheck` = root + `pnpm -r typecheck`, covering `src` **and** `tests`) |
+| `scripts/check-topology.mjs` | enforces the inward-only package dependency rule (ADR-0008) |
+| `scripts/proof-*.mjs` | real-path proofs for shipped behaviors |
+| `scripts/oz.sh` | Oz daemon lifecycle (start/stop/status/restart) |
+| GitHub Actions | thin CI: install · typecheck · test · topology |
 
-## Naming conventions
+## Conventions
 
-- Binary: `cocoder` (ADR-0003)
-- Env prefix: `COCODER_*` (ADR-0003)
-- Orchestration vars: `COCODER_ORCH_*` (ADR-0003)
-
-## Deferred to v0.2
-
-- TypeScript migration of `packages/core` (ADR-0004 explicit deferral)
-- Linux/Windows CI parity
-- Keychain integration for secrets (currently file-based)
+- CLI binary: `cocoder`; env prefix: `COCODER_*` (e.g. `COCODER_HOME`, `COCODER_OZ_PORT`).
+- Machine-local state lives only in the install's gitignored `local/`; a workspace's `cocoder/` is fully tracked.

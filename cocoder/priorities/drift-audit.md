@@ -67,13 +67,18 @@ history; the live delivery path is this ordinary priority's engine logic + ordin
   build, distinct from this build priority.
 
 ## Suggested Next Action
-**Disposition: `continue` (run_163).** Build complete since run_161 — no build atoms this run; re-verified
-`node scripts/proof-drift-audit.mjs` green and live dogfood still yields **25 verified stale-path findings**
-(Objective verification (b) report half).
+**Disposition: `refine-before-apply` (founder session 2026-06-21).** The "25 findings" were regenerated and
+turned out to be a *wholesale v1-staleness* of two memory files (`cocoder/memory/codebase-map.md` +
+`tech-stack.md` — `.mjs` extraction, `packages/schemas`/Zod, tmux, Node 20, `oz-daemon`/`oz-dashboard`).
+That **real drift is now fixed** by a manual rewrite to v2 reality (the correct apply for wholesale-stale
+files; the tool's per-line apply would have been lipstick). Re-running the audit against the corrected files
+then exposed two defects in the detector itself — **[ticket 0024](../tickets/open/0024-drift-audit-detector-false-positives-and-crash.md)**:
+it **crashes on a same-line duplicate claim id**, and its path detector is **false-positive-prone** (flags
+package names, `ADR-NNNN` refs, slash-lists, globs, negations, and unresolved `../` links — 16 false
+positives against the corrected files).
 
-**Next launch:** founder ratifies a subset of the 25 dogfood findings and chooses apply materialization
-(new amendment/ticket records under `cocoder/**` vs precise in-place edits to stale governance files), then
-one ratify→apply atom lands them via `applyRatifiedDriftWrites`. Regenerate the report with
-`node scripts/run-drift-audit.mjs "/Volumes/NAS LOCAL/CoCoder" /tmp/drift-report`. **Deferred (not blocking):**
-agentic ADR-content drift (retired *patterns*, not just gone paths) — needs deep-read reality enrichment, out
-of scope here.
+**Next launch:** fix ticket 0024 first (detector precision + no-crash, pinned in the drift suite) so a
+correct governance file yields ~zero findings — the **prerequisite for a trustworthy ratify→apply**. Until
+then apply stays manual. **Still deferred:** agentic ADR-content drift (retired *patterns*, not gone paths) —
+e.g. the dead ADR-0015 merge/landing machinery (`mergeFastForwardOnly`/`mergeInto`/`completeMerge`/… no live
+caller) that path-detection will never catch.
