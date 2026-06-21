@@ -108,10 +108,13 @@ describe('orchestration contract ownership', () => {
 
   test('the all-persona routing guide owns the live target taxonomy', () => {
     const guide = read('docs/oz-improvement-routing.md')
+    // The live routing taxonomy is the FOUR zones in ARCHITECTURE.md "Oz improvement routing".
+    // `workspace-local` was retired (no live home in ARCHITECTURE/ADRs/code); the doc and this test
+    // dropped it together. (The lingering `workspace-local` in ADR-0027 is the unrelated display-number
+    // concept, not a routing zone.)
     const targets = [
       'cocoder-product',
       'workspace-shared',
-      'workspace-local',
       'install-local',
       'upstream-candidate',
     ]

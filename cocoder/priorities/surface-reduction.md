@@ -148,5 +148,8 @@ founder-approved **`type: spike` → `question` fold** as one verified atom: fol
 This is a verify-gated change (code SSOT + base governance), not a support edit. Then §B verdicts
 (ADR-graph first, per founder lean) before any further cut.
 
-Note: the `orchestration-contracts` suite carries a pre-existing red (routing guide missing the
-`workspace-local` target) owned by the `drift-audit` priority — not a regression from this priority.
+Correction (2026-06-20, founder session): the `orchestration-contracts` red was **misattributed** above.
+It was not pre-existing or `drift-audit`'s — it was introduced by the 0003 docs commit (`269230a`), which
+correctly aligned `docs/oz-improvement-routing.md` to ARCHITECTURE's canonical **four** routing zones but
+left the stale test asserting a retired fifth (`workspace-local`). Fixed by updating the stale test to the
+four-zone taxonomy; full core suite green (446/446).
