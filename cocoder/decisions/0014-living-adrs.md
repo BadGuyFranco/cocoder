@@ -41,6 +41,15 @@ between live decisions, not an append-only record of edits. When an ADR is rewri
 cross-refs are updated to the new truth; superseded phrasing leaves the body (optionally captured in
 a brief History note).
 
+### ADRs feed one current-truth surface per scope
+ADRs preserve the decision and its rationale, but they are not always the fastest current-truth read.
+When an architectural scope has a current-truth surface, ADRs feed that surface. Superseded detail is
+demoted to history that explains the current surface instead of forcing readers to chase an ADR chain.
+
+A narrower scope earns its own current-truth surface, with exactly one parent link, only when it is
+independently shipped or owned, or when its current-truth section no longer fits on one screen. The
+default is one surface per scope; split only when the narrower surface is earned.
+
 ### Who proposes; who approves
 Any persona may **propose** an ADR change with the briefing — commonly Deb (base-vs-repo fixes) or
 Oscar. Only the founder **approves**. A base/product ADR change ships to all installs, so it lands
@@ -50,6 +59,14 @@ review-gated (consistent with ADR-0012's propagation gate).
 
 - The ADR set stays readable as **current truth** — the right shape for loading into an agent's
   context, and the reason this departs from append-only convention.
+- Architectural readers get one current-truth surface per earned scope, with ADRs as rationale/history
+  rather than a chain the reader must resolve.
 - The cost moves from "scan a changelog" to "trust the body + a focused conflict audit at change
   time" — paid by judgment (D3), never by a governance validator (D5).
 - v1 ADRs remain frozen history (ADR-0001); this lifecycle governs the **rebuild** ADR tree only.
+
+## History
+
+- **2026-06-21:** Founder-approved amendment: ADRs now explicitly feed one current-truth surface per
+  architectural scope, and superseded detail is demoted to history once the current surface owns the
+  read.

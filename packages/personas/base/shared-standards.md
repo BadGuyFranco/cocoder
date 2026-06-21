@@ -64,7 +64,10 @@ losing behavior, evidence, reversibility, or safeguards.
 Apply it before you finish:
 
 - **One owner per concept.** If a rule, behavior, or format has multiple homes, fix the ownership
-  instead of repeating the rule.
+  instead of repeating the rule. Where architectural decisions need a current-truth read, keep one
+  current-truth surface per scope and make superseded detail history that feeds it. A narrower scope
+  earns its own surface, with one parent link, only when it is independently shipped or owned, or when
+  its current-truth section outgrows one screen; default to one surface and split only when earned.
 - **Remove what does not carry weight.** Delete any sentence, branch, option, helper, dependency, or
   abstraction that can disappear without changing the outcome.
 - **Order work so the next agent can run it.** Decisions and taxonomy come before schema; schema before
