@@ -3,11 +3,10 @@ id: new-primary-root
 title: "Onboard a primary root — New Primary + Onboard-existing (ADR-0020/0026)"
 ---
 
-> **Refreshed 2026-06-21 (founder).** The onboarding *machinery* is built, but a **confirmed defect** was
-> found this day (run_174, workspace `job-hunt`): a primary root that is **not a git repository** is
-> unlaunchable — the commit spine assumes git, so scaffold can't commit the zone and any run dies at
-> `run-start` on `git rev-parse HEAD`. So there is now **concrete buildable work** (the non-git-root atoms in
-> Remaining work) ahead of the **founder-gated live proof** (onboard a real external repo end-to-end). The
+> **Refreshed 2026-06-21 (run_176).** The onboarding *machinery* is built; the **non-git primary root defect**
+> (run_174, workspace `job-hunt`) is **fixed** — fail-fast preflight (920abe30) plus scaffold-time local
+> `git init` (817d2e3f). Only the **founder-gated live proof** (onboard a real external repo end-to-end)
+> remains. The
 > third situation,
 > **Drift Audit**, was split out into the `drift-audit` priority and **completed + archived 2026-06-21**, so
 > it is no longer in this priority's scope. Vocabulary updated to current truth: "Takeover" → **Onboard
@@ -52,11 +51,10 @@ phase protocol were retired, the engines kept as library tooling:
 - **Proof:** `node scripts/proof-onboard-existing.mjs` → exit 0, three invariants green (onboarding refuses
   product-code writes / ordinary runs unchanged / scaffold seeding is conditional on an existing repo).
 
-**New Primary** scaffolds a fresh `cocoder/` zone via the dashboard **Add Workspace** flow — **but only a
-git-backed root is actually launchable today.** Confirmed 2026-06-21 (run_174): a non-git primary root scaffolds
-the zone yet leaves it uncommittable (`workspace-create` logs `governanceCommitted: false`) and unlaunchable
-(run errors at `run-start` on `git rev-parse HEAD`), with no `git init` and no preflight guard. Fixed by the
-non-git-root atoms below. A per-language **tech-stack-starter template** (non-negotiables + "if-unsure"
+**New Primary** scaffolds a fresh `cocoder/` zone via the dashboard **Add Workspace** flow. A non-git primary
+root is now onboarded cleanly: **Add Workspace** runs local `git init` + commits the `cocoder/` zone (817d2e3f);
+launch preflight refuses any root that still isn't git-backed with a clear founder message (920abe30). A
+per-language **tech-stack-starter template** (non-negotiables + "if-unsure"
 fallback) was sketched as a
 playbook skeleton, now frozen design history at `cocoder/zArchive/playbooks/new-primary-tech-stack.md`
 (genre retired, ADR-0032). It is an optional future enhancement — not required for the core New Primary
@@ -64,34 +62,23 @@ path; revive as its own priority if wanted.
 
 ## Remaining work
 
-### Build atoms — non-git primary root (confirmed defect, run_174)
-A primary root that is not a git repo must onboard cleanly instead of half-scaffolding and dying mid-run.
-**Only a local git repo is required; a remote is optional.** The commit spine
-(`packages/core/src/commit-gate/git.ts`) runs only `add`/`commit`/`rev-parse` and **never pushes**, so a remote
-is never a requirement — but a GitHub remote MAY already exist or the founder MAY add one later, and the spine
-behaves identically either way (it just won't push for you). CoCoder neither requires nor adds a remote.
+### Build atoms — non-git primary root (DONE, run_176)
+Both atoms committed; no further buildable backlog for this defect.
 
-- **Atom A — fail-fast preflight guard.** Before launch, detect a non-git primary root and refuse with a clear
-  founder-facing message (e.g. "primary root is not a git repository — initialize it first"), instead of the
-  cryptic `git rev-parse HEAD` crash at `run-start`. *Exit criterion:* a launch against a non-git root surfaces
-  the guarded message at preflight, zero run started; covered by a test. *Loop:* one-shot.
-- **Atom B — scaffold initializes local git.** During workspace-create / `scaffoldCocoderZone` on a non-git
-  root, run a **local** `git init` (no remote) plus a starter `.gitignore` (ignore `.DS_Store`, common
-  binaries/large files), then commit the scaffolded `cocoder/` zone through the spine so the root is
-  launch-ready. Existing git roots (with or without a remote) are untouched. *Exit criterion:* scaffolding a
-  fresh non-git root yields a committed `cocoder/` zone on a local branch and a launchable workspace; the
-  `git init` adds no remote (a remote stays the founder's optional later choice); covered by a test.
-  *Loop:* one-shot.
+- **Atom A — fail-fast preflight guard (DONE, 920abe30).** Non-git primary roots are refused at launch
+  preflight with a clear founder message before any run starts; `runner.test.ts` covers it.
+- **Atom B — scaffold initializes local git (DONE, 817d2e3f).** **Add Workspace** on a non-git root runs local
+  `git init -b main` (no remote), create-only root `.gitignore`, and commits the scaffolded `cocoder/` zone via
+  the spine; existing git roots untouched. Daemon real-git tests prove `governanceCommitted` + branch `main`.
 
-**Immediate unblock for `job-hunt`:** founder runs `git init` in `/Volumes/NAS LOCAL/Anthony/Job Hunt`; the
-already-written `cocoder/` zone then becomes committable and the run launches.
+**`job-hunt` unblock:** no manual `git init` needed — re-add or recreate the workspace via **Add Workspace** on
+the non-git root and the scaffold path self-inits git + commits the zone.
 
-### Founder-gated live proof
+### Founder-gated live proof (only remaining gap)
 Onboard a real external repo (CoPublisher / a CoBuilder copy) end-to-end through the rebuilt Oscar-driven
 flow: scaffold → multi-agent audit → founder ratifies the drafted Objectives → first ratified run lands,
 with findings traceable to repo reality (Objective verification). This is **billable, multi-agent, founder-
-authorized**, on a different launch surface than an ordinary build loop. Run it after Atoms A/B land (a
-non-git external repo would otherwise hit the same defect).
+authorized**, on a different launch surface than an ordinary build loop.
 
 ## First-run operational note (run_160)
 A fresh-workspace first run launches the persona CLIs with **no `--model`** (CoCoder passes the persona's
