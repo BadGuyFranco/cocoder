@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_173",
+    "displayNumber": 32
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "priority"
+  },
+  "priorityId": "surface-reduction",
+  "playbookId": null,
+  "ticketId": null,
+  "status": "running",
+  "createdAt": 1782044201165,
+  "endedAt": null
+}
