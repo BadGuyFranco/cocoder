@@ -34,7 +34,6 @@ README/INDEX standing in for it). Every directory below is live — frozen histo
 | `personas/` | [`personas/AGENTS.md`](./personas/AGENTS.md) | **Extensions only** — deltas + repo-specific personas; base behavior ships in `packages/personas/base/` (ADR-0012) |
 | `memory/` | [`memory/AGENTS.md`](./memory/AGENTS.md) | Codebase map, tech stack, onboarding |
 | `standards/` | [`standards/AGENTS.md`](./standards/AGENTS.md) | Workspace-specific **extensions** of the shipped base standard (`packages/personas/base/shared-standards.md`) |
-| `spikes/` | (sibling files) | Exploration notes that informed ADRs |
 | `zArchive/` | [`zArchive/README.md`](./zArchive/README.md) | Frozen history (v1 tree, v1 decisions, archived priorities, rebuild-era notes) — never read by the engine |
 
 ## Names That Look Related But Are Not Repo Concepts

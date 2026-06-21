@@ -4,14 +4,17 @@
 **Seam:** S3 — topology / one concept, one home
 **Charter:** [0001](./0001-rebuild-charter.md) · **Builds on:** all prior ADRs · **Relates to:** [0005](./0005-personas-and-subtasks.md) (persona home) · **Resolves S8 / absorbs** [ADR-0009](./0009-extensibility.md) (extensibility, merged here 2026-05-30)
 **Amended by:** [0012](./0012-living-base-personas.md) — the default persona set is no longer *copied* on `cocoder init`; it is a **living base** referenced from the install (improvements propagate to all installs), with repos layering deltas merged at load.
+**Amended by:** [0030](./0030-retire-spike-genre.md) — the standalone `spikes/` directory genre is
+retired. Historical spike notes move to `cocoder/zArchive/spikes/`; new research belongs inside a
+priority's research/plan phase or `adhoc-session`.
 **Amended (founder, 2026-06-10 — the reorg):** the zone model collapses **four → three** — the
 workspace-private zone (`cocoder/local/`) is **eliminated**. A workspace governance directory is
 fully git-tracked and *never* contains machine-local state; the install's `local/` is the **only**
 local zone, one per machine, spanning ALL managed workspaces (DB, runs, worktrees, secrets,
 settings, and the `local/workspace/` definition files per [0019](./0019-multi-root-workspaces.md)).
 Same reorg: **one live decisions tree** (this one, at `cocoder/decisions/` — the v1 tree archived to
-`cocoder/zArchive/v1/decisions/`), the `rebuild/` directory dissolved (PLAYBOOK/failure-catalog/
-spikes live directly under `cocoder/`), **one archive home** (`cocoder/zArchive/`), and dead v1
+`cocoder/zArchive/v1/decisions/`), the `rebuild/` directory dissolved (PLAYBOOK/failure-catalog
+live directly under `cocoder/`), **one archive home** (`cocoder/zArchive/`), and dead v1
 machinery (plans/profiles/routes/priority-boundaries/personas-prompts/playbooks) archived.
 
 ## Context

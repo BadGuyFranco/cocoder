@@ -29,7 +29,7 @@ reviewed together. Surface the eventual vision *only* to locate seams (G1). No v
 - **Design implication discovered:** v2 needs a **shared-standards layer** — ~10 cross-persona
   global rules (root-cause-fix, verify-don't-assert, decision-classifier, the "you ARE the
   developer" premise) that personas *reference* rather than duplicate. Author alongside personas.
-- **cmux socket-API spike — ✅ PASSED** ([`spikes/2026-05-28-cmux-socket-api.md`](./spikes/2026-05-28-cmux-socket-api.md)).
+- **cmux socket-API spike — ✅ PASSED** ([`zArchive/spikes/2026-05-28-cmux-socket-api.md`](./zArchive/spikes/2026-05-28-cmux-socket-api.md)).
   SessionHost is satisfiable; needs `password` socket mode + `cd`-prepend for cwd. **Phase 0 is
   fully complete — Phase 1 (the spine) is unblocked.**
 - **Follow-up surfaced:** cmux offers far more out-of-the-box than a pane host (workspaces, split
@@ -53,8 +53,8 @@ the CoCoder repo, producing commit `57c0781` (3 files in `packages/**`) with a l
 (`local/runs/<runId>/record.md`) and DB rows (run/session×2/work_item/commit_link/event). Six
 packages with an inward-only topology check (with teeth); cmux `SessionHost` driver; node:sqlite
 `RunStore`; flat-file personas + shared-standards; claude/codex adapters with deterministic
-preflight; the commit-gate. Build notes in `decisions/` + spikes; the headless-CLI spike caught
-two F10-class traps (codex stdin hang; codex auth on stderr).
+preflight; the commit-gate. Build notes in `decisions/` + archived spike notes; the headless-CLI
+spike caught two F10-class traps (codex stdin hang; codex auth on stderr).
 
 ### Phase 2 — Oz thin (the feedback instrument)  ✅ built (2026-05-28)
 Keep the v1 daemon security posture (loopback, token, Origin/Host, CSRF, argv-only) if/where

@@ -209,7 +209,6 @@ CoCoder/                          # the engine install AND the dogfood workspace
 │   │                             #   packages/personas/base/plays/ — same base+delta model as personas)
 │   ├── memory/                   # codebase-map, tech-stack, onboarding
 │   ├── standards/                # workspace extensions of the shipped base standard
-│   ├── spikes/                   # exploration notes that informed ADRs
 │   └── zArchive/                 # ALL frozen history (v1 tree, v1 decisions, archived priorities)
 └── local/                        # ← the ONE machine-local zone (gitignored; spans ALL workspaces)
     ├── cocoder.db                # Oz-owned operational SQLite (ADR-0003)
