@@ -12,6 +12,18 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-21 — **surface-reduction: Talia retired, testing-as-a-Play — archive-candidate (run_173)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [surface-reduction](./priorities/surface-reduction.md) | **Run:** run_173
+**Outcomes:**
+- **GO PERSONAS landed** (3 atoms, ADR-first). ADR-0033: testing is a Play capability, not a base persona; Talia retired; Quinn retained as `real`; base count → 5. New Plays `write-tests` + `run-tests` (function-named, all five base personas as callers; `integration-verify` delineated, not merged).
+- **Talia surface removed** from live base (`talia.md` deleted, assignments.json 5 personas, ARCHITECTURE/deb/quinn/runner/UI/docs/AGENTS retargeted). Live `rg -li talia` gate empty; history/examples intact.
+- **Verified-when #1–#5 met; overall Objective met.** Spike genre retired (§A); all §B verdicts complete; three suspect surfaces beyond spikes collapsed with new ADRs + green behavior-pinning nets; no load-bearing safeguard weakened.
+- **Behavior pins green:** personas 23/23, core 447/447, daemon 236/236, UI 156/156, `pnpm -r typecheck`, topology, `proof-plays.mjs` all PASS.
+- **Disposition: `archive-candidate`** — no in-priority atoms remain; named founder-gated follow-ups exit as sequenced items (run-tests checkpoint wiring, proof-governance clause E, playbooks module liveness, priority composer cleanup).
+
+**Next:** Confirm **archive** of `surface-reduction`, then launch `drift-audit` for founder ratify→apply on the 25 dogfood drift findings.
+
 ## 2026-06-21 — **surface-reduction: playbooks/ dead-genre freeze executed — archive-candidate (run_172)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [surface-reduction](./priorities/surface-reduction.md) | **Run:** run_172
