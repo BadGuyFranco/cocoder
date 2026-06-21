@@ -754,6 +754,67 @@ describe('Oz renderer — live daemon path', () => {
     await waitFor(() => expect(screen.getByText('Legacy workspaces no longer served: legacy-only')).toBeDefined())
   })
 
+  it('shows and launches a seeded onboarding priority after recreating the same workspace id', async () => {
+    const getPaths: string[] = []
+    const posts: PostCall[] = []
+    const workspaceCreates: WorkspaceCreateCall[] = []
+    const initialPriorities: { priorities: DPriority[] } = {
+      priorities: [{ id: 'adhoc-session', title: 'Ad-hoc', scopeNarrowing: null, goal: 'Run one-off work.' }],
+    }
+    const onboardPriority: DPriority & { readonly auditWriteBoundary: readonly string[] } = {
+      id: 'onboard-existing',
+      title: 'Onboard existing repo',
+      scopeNarrowing: null,
+      goal: 'Audit and seed the workspace governance.',
+      auditWriteBoundary: ['cocoder/**'],
+    }
+    const opts = {
+      getPaths,
+      posts,
+      workspaceCreates,
+      priorities: initialPriorities,
+      runs: { runs: [] },
+      personasResponse: personasResponse({ oscar: { cli: 'claude', model: '' } }),
+    }
+    const oz = mockOz(opts)
+    oz.workspacesCreate = async (workspaceId: string, folders: unknown) => {
+      workspaceCreates.push({ workspaceId, folders })
+      opts.priorities = { priorities: [initialPriorities.priorities[0], onboardPriority] }
+      return ok({
+        workspace: {
+          id: workspaceId,
+          name: workspaceId,
+          path: '/recreated',
+          roots: [{ name: 'CoCoder', path: '/recreated', rawPath: '/recreated', role: 'primary' }],
+        },
+        legacyHidden: [],
+      })
+    }
+    setOz(oz)
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+    await waitFor(() => expect(screen.getByText('Nothing queued')).toBeDefined())
+
+    fireEvent.click(screen.getByText('Workspaces'))
+    fireEvent.click(await screen.findByText('New workspace'))
+    fireEvent.change(await screen.findByPlaceholderText('e.g. AcmeCRM, Vault, Internal Tools'), { target: { value: 'CoCoder' } })
+    fireEvent.change(screen.getByPlaceholderText('cocoder-cli'), { target: { value: 'CoCoder' } })
+    fireEvent.change(screen.getByPlaceholderText('~/dev/cocoder-cli'), { target: { value: '/recreated' } })
+    fireEvent.click(screen.getByText('Create & open'))
+
+    await waitFor(() => expect(workspaceCreates).toHaveLength(1))
+    await waitFor(() => expect(screen.getByText('Onboard existing repo')).toBeDefined())
+
+    fireEvent.click(within(rowForText('Onboard existing repo')).getByText('Launch'))
+
+    await waitFor(() => expect(posts.find((p) => p.path === '/runs')).toBeDefined())
+    expect(posts.find((p) => p.path === '/runs')?.body).toMatchObject({
+      workspaceId: 'cocoder',
+      priorityId: 'onboard-existing',
+    })
+    expect(getPaths.filter((path) => path === '/workspaces/cocoder/priorities').length).toBeGreaterThan(1)
+  })
+
   it('New workspace folder button fills the primary root from the native picker seam', async () => {
     const workspaceCreates: WorkspaceCreateCall[] = []
     const validateRootCalls: ValidateRootCall[] = []

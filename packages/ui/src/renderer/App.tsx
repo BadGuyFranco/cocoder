@@ -463,7 +463,7 @@ export function App() {
     const res = await createWorkspace(oz, id, folders)
     if (!res.ok) { notify('err', res.error); return false }
     await refreshWorkspaces()
-    setPrioritiesByWs((cur) => ({ ...cur, [res.data.workspace.id]: [] }))
+    await refreshWorkspace(res.data.workspace.id)
     loadWs(res.data.workspace.id)
     setRoute('dashboard')
     if (res.data.legacyHidden.length) notify('info', `Legacy workspaces no longer served: ${res.data.legacyHidden.join(', ')}`)
