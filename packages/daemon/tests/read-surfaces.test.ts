@@ -9,6 +9,9 @@ import { openRunStore, writePortableRun, type Git, type RunStore, type SessionHo
 import { createOzServer, type OzServer } from '../src/index.js'
 
 const fakeGit = (): Git => ({
+  async isGitRepo() {
+    return true
+  },
   async headSha() {
     return 'h0'
   },

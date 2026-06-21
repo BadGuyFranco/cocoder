@@ -474,11 +474,12 @@ export class MissingObjectiveError extends Error {
   }
 }
 
-/** Thrown for the two cases a direct-mode run (ADR-0023 §2) genuinely cannot start: a detached HEAD (no
- *  branch to commit to), or — only under `strictPreRunDirt` — uncommitted founder WIP that overlaps the
- *  run's commit scope. By default founder WIP is no longer a refusal: it is snapshotted to the founder's
- *  own commit before the run (see the launch guard), so an ordinary launch is never blocked by the
- *  founder's own uncommitted work. Also thrown if a pre-run snapshot itself fails to commit. */
+/** Thrown for cases a direct-mode run (ADR-0023 §2) genuinely cannot start: a non-git primary root, a
+ *  detached HEAD (no branch to commit to), or — only under `strictPreRunDirt` — uncommitted founder WIP
+ *  that overlaps the run's commit scope. By default founder WIP is no longer a refusal: it is
+ *  snapshotted to the founder's own commit before the run (see the launch guard), so an ordinary launch
+ *  is never blocked by the founder's own uncommitted work. Also thrown if a pre-run snapshot itself
+ *  fails to commit. */
 export class DirtyWorkingTreeError extends Error {
   constructor(repo: string, detail: string) {
     super(`refusing direct-mode launch in "${repo}": ${detail}`)
@@ -598,6 +599,11 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   // shared (a GitHub collaboration repo), the founder checks out a feature branch; the engine commits to
   // it and pushes (non-gating, below) — the merge to the shared main is GitHub's PR review, not the engine's.
   const workspaceRepo = workspace.path
+  if (!(await git.isGitRepo(workspaceRepo))) {
+    store.setRunStatus(run.id, 'failed')
+    store.recordEvent({ runId: run.id, type: 'direct-mode-refused', data: { reason: 'not-a-git-repo' } })
+    throw new DirtyWorkingTreeError(workspaceRepo, 'primary root is not a git repository - initialize it first (run `git init`)')
+  }
   const trunkSha = await git.headSha(workspaceRepo)
   const trunkBranch = await git.currentBranch(workspaceRepo)
   if (trunkBranch === null) {

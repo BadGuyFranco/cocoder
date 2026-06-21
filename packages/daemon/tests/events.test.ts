@@ -8,6 +8,9 @@ import { createOzServer, OZ_CSRF_HEADER, type OzServer } from '../src/index.js'
 import type { OzEvent } from '../src/context.js'
 
 const fakeGit = (): Git => ({
+  async isGitRepo() {
+    return true
+  },
   async headSha() {
     return 'h0'
   },

@@ -65,6 +65,9 @@ function makeFakeGit(opts: { changed: string[]; headBefore: string; headNow?: st
   const commits: { files: string[]; message: string }[] = []
   let head = opts.headNow ?? opts.headBefore
   const git: Git = {
+    async isGitRepo() {
+      return true
+    },
     async headSha() {
       return head
     },

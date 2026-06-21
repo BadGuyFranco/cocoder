@@ -15,6 +15,8 @@ export interface WorktreeInfo {
 }
 
 export interface Git {
+  /** True iff `cwd` is inside a git work tree. */
+  isGitRepo(cwd: string): Promise<boolean>
   /** Current HEAD sha (snapshot before spawning, to detect agent self-commits). */
   headSha(cwd: string): Promise<string>
   /** The short name of the branch checked out at `cwd`, or null if HEAD is detached. Used by the
@@ -101,6 +103,12 @@ export function parsePorcelain(porcelainZ: string): string[] {
 
 export function makeGit(): Git {
   return {
+    async isGitRepo(cwd) {
+      return git(cwd, ['rev-parse', '--is-inside-work-tree']).then(
+        (out) => out.trim() === 'true',
+        () => false,
+      )
+    },
     async headSha(cwd) {
       return (await git(cwd, ['rev-parse', 'HEAD'])).trim()
     },

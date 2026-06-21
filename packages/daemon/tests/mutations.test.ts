@@ -89,6 +89,9 @@ const expectedScaffoldFiles = [
 const fakeGit = (changed: string[] = [], shas: readonly string[] = ['h0']): Git => {
   let headCalls = 0
   return {
+    async isGitRepo() {
+      return true
+    },
     async headSha() {
       const sha = shas[Math.min(headCalls, shas.length - 1)] ?? shas[0] ?? 'h0'
       headCalls += 1

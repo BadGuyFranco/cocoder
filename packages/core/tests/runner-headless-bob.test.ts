@@ -62,6 +62,9 @@ function fakeSessionHost(spawns: string[]): SessionHost {
 }
 
 const worktreeStubs = {
+  async isGitRepo() {
+    return true
+  },
   async worktreeAdd() {},
   async worktreeRemove() {},
   async listWorktrees() {
