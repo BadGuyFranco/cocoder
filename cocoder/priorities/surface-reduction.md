@@ -370,6 +370,27 @@ top-level surface owning system/cross-cutting truth and routing down. CoCoder al
 This is a verified run (base `packages/personas/base/**` + `decisions/` + `ARCHITECTURE.md`), not post-wrap
 support scope.
 
+### EXECUTED — run_171 (2026-06-21)
+The founder-ratified ADR-graph reading-contract collapse landed across two verified atoms (the dogfood
+instance of the ADR-0014 rule):
+- **Atom 1 — decision layer** (`2d5667a`): portable rule folded into the Elegance Standard in
+  `packages/personas/base/shared-standards.md` (no new section/noun); ADR-0014 extended in place to own
+  the meta-statement ("ADRs feed one current-truth surface per scope; superseded detail is demoted");
+  new `ADR-0031 — architecture reading contract` (ARCHITECTURE.md = current-truth entry point,
+  `docs/orchestration-contract-ownership.md` = orchestration owner map, `decisions/README.md` =
+  index/history router) + README index entry.
+- **Atom 2 — mechanics** (`cd343dc`): ADR-0024 banner = partially-superseded-by-0029 (governance
+  remainder live); ARCHITECTURE.md tightened so spine=0023+0029, loop=0013+0016+0017+0026,
+  topology=0008+0012+0019+0027+0030 read without chasing chains (anchor fixed); retired-ADR runtime/proof
+  comments retargeted to current owners (0015→0023§4, 0011→0013, 0022→historical) across
+  `packages/core`, `packages/daemon`, tests; 0009/0011 already clean "Merged into" signposts.
+- **Behavior pins green** (Verified-when #5, no safeguard weakened): `@cocoder/core` 446/446,
+  runner-direct 11/11, `proof-orchestration-enforcer` / `proof-onboard-existing` / `proof-drift-audit`
+  all PASS, `pnpm -r typecheck` + topology green. Collapse is label/comment/routing-only ⇒ reversible.
+
+**This satisfies Verified-when #3** (a suspect surface beyond spikes actually collapsed, with new ADR +
+green behavior-pinning tests).
+
 ## Boundary
 Verdict + behavior-pinning tests first. The **only** pre-authorized code/governance mutation is §A (spike
 retirement). §B cuts require a per-cut founder go-ahead and a new founder-approved ADR before touching
@@ -385,10 +406,22 @@ load-bearing safeguard. Elegance standard: fewer concepts, never a new lane to d
 - Behavior nets: `packages/core/tests/**`, `scripts/proof-orchestration-enforcer.mjs`, `scripts/proof-*.mjs`.
 
 ## Suggested Next Action
-**§A is complete.** **§B ADR-graph verdict is `suspect`** — see §B Verdict — ADR graph above for the
-evidence map and 5-step sequenced collapse proposal. **Founder go/no-go required** before any collapse code:
-authorize the reading-contract collapse (new founder-approved ADR + verified atom) or decline and name the
-next §B verdict target (personas or vocabulary). Remaining §B verdicts (personas, vocabulary) still owe
-load-bearing maps before either can be cut. Pre-existing red: `scripts/proof-governance-authoring.mjs`
-clause E expects pre-ADR-0029 builder-dirt refusal; retarget to ADR-0029 snapshot-and-proceed behavior
-(disjoint from this priority's cuts).
+**§A complete. All §B verdicts complete. The founder-ratified ADR-graph reading-contract collapse is
+EXECUTED + committed (run_171 — see §B → durable rule, EXECUTED).** Verified-when #1, #2, #3, #5 are met;
+#4 is met for the collapsed surface and the two remaining suspects below exit as named follow-ups.
+
+**Two founder-gated cuts remain teed up** (each needs an explicit founder go-ahead + a new founder-approved
+ADR before any code — both touch `packages/personas/base/**` and/or topology, so verified runs, not support
+edits):
+1. **`playbooks/` dead-genre freeze** (vocabulary verdict, cleanest next subtraction) — symmetric to §A:
+   the `packages/personas/base/playbooks/` loader was retired by ADR-0026; freeze the skeletons to
+   `zArchive/` and drop the genre from ADR-0008 topology + ARCHITECTURE Directory Layout. Do **not**
+   conflate with the live code module `packages/core/src/playbooks/` (separate, stays).
+2. **Persona-count collapse (Quinn/Talia)** — recommended option (a): fold UI-sim + contract-acceptance
+   into the two existing Plays callable by Oscar, delete the two unstaffed persona files (−2 concepts, no
+   safeguard lost).
+
+**Disjoint pre-existing red (NOT this priority; file a ticket):** `scripts/proof-governance-authoring.mjs`
+clause E still asserts the pre-ADR-0029 builder-dirt refusal that ADR-0029 deliberately reversed
+(runner-direct now proves snapshot-and-proceed). Retarget clause E to ADR-0029 behavior in a separate
+run — it is in `scripts/` (outside this priority's cuts and Oscar support scope) and was red before run_171.
