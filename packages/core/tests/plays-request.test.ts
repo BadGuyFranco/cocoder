@@ -30,6 +30,7 @@ function fakeGit(changed: readonly string[]): { readonly git: Git; readonly comm
   const noop = async (): Promise<void> => {}
   const git: Git = {
     isGitRepo: async () => true,
+    initRepo: noop,
     headSha: async () => head,
     changedFiles: async () => [...changed],
     async addAndCommit(_cwd, files, message) {

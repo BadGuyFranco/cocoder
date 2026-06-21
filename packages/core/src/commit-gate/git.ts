@@ -17,6 +17,8 @@ export interface WorktreeInfo {
 export interface Git {
   /** True iff `cwd` is inside a git work tree. */
   isGitRepo(cwd: string): Promise<boolean>
+  /** Initialize a local git repository with CoCoder's deterministic default branch. Never configures a remote. */
+  initRepo(cwd: string): Promise<void>
   /** Current HEAD sha (snapshot before spawning, to detect agent self-commits). */
   headSha(cwd: string): Promise<string>
   /** The short name of the branch checked out at `cwd`, or null if HEAD is detached. Used by the
@@ -108,6 +110,9 @@ export function makeGit(): Git {
         (out) => out.trim() === 'true',
         () => false,
       )
+    },
+    async initRepo(cwd) {
+      await git(cwd, ['init', '-b', 'main'])
     },
     async headSha(cwd) {
       return (await git(cwd, ['rev-parse', 'HEAD'])).trim()

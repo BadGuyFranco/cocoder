@@ -1,9 +1,15 @@
+import { execFile } from 'node:child_process'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { promisify } from 'node:util'
 import { describe, expect, test } from 'vitest'
 import {
   AuditWriteBoundaryError,
   effectiveScope,
   type Git,
   matchesAny,
+  makeGit,
   openRunStore,
   parsePorcelain,
   partitionByScope,
@@ -12,6 +18,9 @@ import {
   commitFiles,
   commitScoped,
 } from '../src/index.js'
+
+const exec = promisify(execFile)
+const gitOut = (cwd: string, args: readonly string[]): Promise<string> => exec('git', ['-C', cwd, ...args]).then((result) => result.stdout.trim())
 
 describe('glob matcher', () => {
   test('** crosses segments, * stays within one, literals are exact', () => {
@@ -57,6 +66,21 @@ test('parsePorcelain (-z): a copy records only the new path, consuming the uncha
   expect(parsePorcelain(z)).toEqual(['packages/copy.ts', 'packages/b.ts'])
 })
 
+test('makeGit initRepo creates a local main-branch repo without a remote', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'cocoder-git-init-'))
+  try {
+    const git = makeGit()
+
+    await git.initRepo(dir)
+
+    expect(await git.isGitRepo(dir)).toBe(true)
+    expect(await git.currentBranch(dir)).toBe('main')
+    expect(await gitOut(dir, ['remote'])).toBe('')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
 /** Fake Git recording commits, with a programmable changed-file set + HEAD movement. */
 function makeFakeGit(opts: { changed: string[]; headBefore: string; headNow?: string }): {
   git: Git
@@ -68,6 +92,7 @@ function makeFakeGit(opts: { changed: string[]; headBefore: string; headNow?: st
     async isGitRepo() {
       return true
     },
+    async initRepo() {},
     async headSha() {
       return head
     },

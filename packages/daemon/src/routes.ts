@@ -46,6 +46,7 @@ export type { OzContext } from './context.js'
 
 const CAP = 50_000
 const ADHOC_PRIORITY_ID = 'adhoc-session'
+const STARTER_ROOT_GITIGNORE = ['.DS_Store', 'node_modules/', 'dist/', 'build/', 'coverage/', '*.log', '*.zip', '*.tar', '*.tar.gz', '*.tgz'].join('\n') + '\n'
 
 /** Read + JSON-parse a request body with a hard size cap (mutation handlers). */
 function readJsonBody(req: IncomingMessage): Promise<unknown> {
@@ -358,6 +359,17 @@ async function scaffoldWorkspaceGovernance(root: string): Promise<readonly strin
   loadAssignments(join(personaDir, 'assignments.json'))
   loadPriority(priorityDir, ADHOC_PRIORITY_ID)
   return created.map((path) => join(root, path))
+}
+
+async function seedStarterRootGitignore(root: string): Promise<string | null> {
+  const target = join(root, '.gitignore')
+  try {
+    await writeFile(target, STARTER_ROOT_GITIGNORE, { flag: 'wx' })
+    return target
+  } catch (err) {
+    if (errorCode(err) === 'EEXIST') return null
+    throw err
+  }
 }
 
 /** GET /workspaces — surface 1. */
@@ -735,7 +747,13 @@ async function createWorkspace(ctx: OzContext, res: ServerResponse, body: unknow
   const legacyHidden = (await legacyWorkspaceIds(ctx.cocoderHome)).filter((legacyId) => legacyId !== id && servedBefore.has(legacyId))
   let scaffolded: readonly string[]
   try {
+    const initializedRepo = !(await ctx.git.isGitRepo(primaryRoot))
+    if (initializedRepo) await ctx.git.initRepo(primaryRoot)
     scaffolded = await scaffoldWorkspaceGovernance(primaryRoot)
+    if (initializedRepo) {
+      const gitignore = await seedStarterRootGitignore(primaryRoot)
+      if (gitignore) scaffolded = [...scaffolded, gitignore]
+    }
   } catch (err) {
     return sendJson(res, 400, { error: err instanceof Error ? err.message : String(err) })
   }

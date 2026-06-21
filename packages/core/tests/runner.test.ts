@@ -88,6 +88,7 @@ const worktreeStubs = {
   async isGitRepo() {
     return true
   },
+  async initRepo() {},
   async worktreeAdd() {},
   async worktreeRemove() {},
   async listWorktrees() {

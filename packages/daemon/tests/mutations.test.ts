@@ -92,6 +92,7 @@ const fakeGit = (changed: string[] = [], shas: readonly string[] = ['h0']): Git 
     async isGitRepo() {
       return true
     },
+    async initRepo() {},
     async headSha() {
       const sha = shas[Math.min(headCalls, shas.length - 1)] ?? shas[0] ?? 'h0'
       headCalls += 1
@@ -2180,7 +2181,7 @@ describe('Oz mutations + lifecycle', () => {
     ])
   })
 
-  test('POST /workspaces succeeds and audits governance commit failure for a non-git primary root', async () => {
+  test('POST /workspaces initializes and commits governance for a non-git primary root', async () => {
     await startServer(makeGit())
     const workspaceRoot = await mkdtemp(join(tmpdir(), 'cocoder-nongit-workspace-'))
 
@@ -2195,12 +2196,57 @@ describe('Oz mutations + lifecycle', () => {
     })
 
     expect(r.status).toBe(201)
-    expect(r.json.governanceCommittedSha).toBeNull()
+    expect(r.json.governanceCommitted).toBe(true)
+    expect(r.json.governanceCommittedSha).toMatch(/^[0-9a-f]{40}$/)
+    expect(await g(workspaceRoot, ['rev-parse', '--is-inside-work-tree'])).toBe('true')
+    expect(await g(workspaceRoot, ['symbolic-ref', '--short', 'HEAD'])).toBe('main')
+    expect(await g(workspaceRoot, ['rev-parse', 'HEAD'])).toBe(r.json.governanceCommittedSha)
+    expect(await g(workspaceRoot, ['remote'])).toBe('')
     expect(loadAssignments(join(workspaceRoot, 'cocoder', 'personas', 'assignments.json')).personas).toEqual(expectedScaffoldAssignments)
+    const gitignore = await readFile(join(workspaceRoot, '.gitignore'), 'utf8')
+    expect(gitignore).toContain('.DS_Store')
+    expect(gitignore).toContain('*.zip')
+    const committedFiles = (await g(workspaceRoot, ['ls-tree', '-r', '--name-only', 'HEAD'])).split('\n')
+    expect(committedFiles).toEqual(expect.arrayContaining(['.gitignore', 'cocoder/AGENTS.md', 'cocoder/personas/assignments.json']))
     const audit = await readFile(join(home, 'local', 'oz-audit.log'), 'utf8')
-    expect(audit).toContain('"action":"governance-commit-failed"')
-    expect(audit).toContain('"repoPath"')
+    expect(audit).not.toContain('"action":"governance-commit-failed"')
     expect(audit).toContain('nongit-product')
+  })
+
+  test('POST /workspaces leaves an existing git root remote and root gitignore untouched', async () => {
+    const workspaceRoot = await mkdtemp(join(tmpdir(), 'cocoder-existing-git-workspace-'))
+    await exec('git', ['-C', workspaceRoot, 'init', '-b', 'main'])
+    await exec('git', ['-C', workspaceRoot, 'remote', 'add', 'origin', 'https://example.invalid/product.git'])
+    const git = makeGit()
+    let initCalls = 0
+    await startServer({
+      ...git,
+      async initRepo(cwd) {
+        initCalls += 1
+        await git.initRepo(cwd)
+      },
+    })
+
+    const r = await call(oz!, 'POST', '/workspaces', {
+      body: {
+        id: 'existing-git-product',
+        folders: [
+          { path: workspaceRoot, role: 'primary' },
+          { path: '${COCODER_HOME}', role: 'readonly' },
+        ],
+      },
+    })
+
+    expect(r.status).toBe(201)
+    expect(r.json.governanceCommitted).toBe(true)
+    expect(r.json.governanceCommittedSha).toMatch(/^[0-9a-f]{40}$/)
+    expect(initCalls).toBe(0)
+    expect(await g(workspaceRoot, ['symbolic-ref', '--short', 'HEAD'])).toBe('main')
+    expect(await g(workspaceRoot, ['remote', 'get-url', 'origin'])).toBe('https://example.invalid/product.git')
+    expect(await exists(join(workspaceRoot, '.gitignore'))).toBe(false)
+    const committedFiles = (await g(workspaceRoot, ['ls-tree', '-r', '--name-only', 'HEAD'])).split('\n')
+    expect(committedFiles).toEqual(expect.arrayContaining(['cocoder/AGENTS.md', 'cocoder/personas/assignments.json']))
+    expect(committedFiles).not.toContain('.gitignore')
   })
 
   test('base ad-hoc priority template parses and stays product-generic', async () => {

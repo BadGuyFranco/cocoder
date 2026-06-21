@@ -12,6 +12,7 @@ const fakeGit = (): Git => ({
   async isGitRepo() {
     return true
   },
+  async initRepo() {},
   async headSha() {
     return 'h0'
   },
