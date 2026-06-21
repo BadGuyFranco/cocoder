@@ -96,24 +96,17 @@ dependency.
   a spike is research-and-decide — a priority's research/plan phase, or, ticket-sized, a `question`
   ("should we proceed / is X feasible"). The earlier "it runs via ticket-fix" defense missed the thesis:
   the disease is conceptual surface, not runtime-reachability, and `spike` is residual vocabulary whose
-  real home is `question`. This is **not yet executed** — it touches a code SSOT, base governance, and the
-  ADR, so it runs as a verified atom (next), not the committed §A directory cut.
+  real home is `question`. **Executed run_170** — ADR-0030 extended; see §A status.
 
-#### §A status (this session)
-- **Directory genre `spikes/` — DONE & COMMITTED** (`0e195ef`): directory removed, both notes frozen under
+#### §A status
+- **Directory genre `spikes/` — DONE & COMMITTED** (`0e195ef`, run_169): directory removed, both notes frozen under
   `cocoder/zArchive/spikes/`, `ADR-0030` recorded (non-destructively amends ADR-0008), topology/architecture/
-  AGENTS/PLAYBOOK/decisions-README reconciled. Ticket `type: spike` was deliberately left untouched in that
-  cut and is the founder-resolved item above.
-- **Ticket `type: spike` fold → `question` — NEXT ATOM (verified run, not yet executed).** Owner-map of the
-  live surfaces that emit the type (fold all, no second copy left behind):
-  - `packages/daemon/src/routes.ts:149,172` — `TicketKind` union + `TICKET_TYPES` array (**the SSOT**).
-  - `packages/personas/base/plays/create-ticket.md:24,31` — base authoring contract enum (**base governance**).
-  - `cocoder/tickets/AGENTS.md:11,33` and `cocoder/tickets/INDEX.md:9` — workspace docs.
-  - **Extend `ADR-0030`** (do NOT spawn 0031) to "retire the spike concept" covering both the directory genre
-    and the ticket type — one concept, one ADR. ADR-0030 currently states the taxonomy is unchanged; that
-    line must be replaced by the fold record. (Founder-approved 2026-06-20: extend, don't add a new ADR.)
-  - Note: the `spike` in `packages/adapters/tests/adapters.test.ts` is unrelated (headless-CLI invocation
-    pinning) — out of scope.
+  AGENTS/PLAYBOOK/decisions-README reconciled.
+- **Ticket `type: spike` fold → `question` — DONE & COMMITTED** (`befeaf9`, run_170): daemon SSOT
+  (`packages/daemon/src/routes.ts`), base `create-ticket.md`, `cocoder/tickets/AGENTS.md`, `tickets/INDEX.md`,
+  UI modal, and **ADR-0030 extended** (one concept, one ADR — no 0031). Verified-when #1 satisfied.
+  Note: the `spike` in `packages/adapters/tests/adapters.test.ts` is unrelated (headless-CLI invocation
+  pinning) — out of scope.
 
 ### §B Candidate cuts — VERDICT FIRST, each founder-gated before any code (NOT yet ratified)
 These come from the Research; they are proposals, not decisions. Give each a load-bearing verdict, then the
@@ -266,15 +259,10 @@ load-bearing safeguard. Elegance standard: fewer concepts, never a new lane to d
 - Behavior nets: `packages/core/tests/**`, `scripts/proof-orchestration-enforcer.mjs`, `scripts/proof-*.mjs`.
 
 ## Suggested Next Action
-**Atom 0 (directory genre) is done & committed (`0e195ef`).** Next atom — relaunch and execute the
-founder-approved **`type: spike` → `question` fold** as one verified atom: fold the SSOT
-(`packages/daemon/src/routes.ts`) + base `create-ticket.md` + `tickets/AGENTS.md` + `tickets/INDEX.md`,
-**extend ADR-0030** (not a new ADR) to record the fold, and keep `scripts/proof-*.mjs` + the suites green.
-This is a verify-gated change (code SSOT + base governance), not a support edit. Then §B verdicts
-(ADR-graph first, per founder lean) before any further cut.
-
-Correction (2026-06-20, founder session): the `orchestration-contracts` red was **misattributed** above.
-It was not pre-existing or `drift-audit`'s — it was introduced by the 0003 docs commit (`269230a`), which
-correctly aligned `docs/oz-improvement-routing.md` to ARCHITECTURE's canonical **four** routing zones but
-left the stale test asserting a retired fifth (`workspace-local`). Fixed by updating the stale test to the
-four-zone taxonomy; full core suite green (446/446).
+**§A is complete.** **§B ADR-graph verdict is `suspect`** — see §B Verdict — ADR graph above for the
+evidence map and 5-step sequenced collapse proposal. **Founder go/no-go required** before any collapse code:
+authorize the reading-contract collapse (new founder-approved ADR + verified atom) or decline and name the
+next §B verdict target (personas or vocabulary). Remaining §B verdicts (personas, vocabulary) still owe
+load-bearing maps before either can be cut. Pre-existing red: `scripts/proof-governance-authoring.mjs`
+clause E expects pre-ADR-0029 builder-dirt refusal; retarget to ADR-0029 snapshot-and-proceed behavior
+(disjoint from this priority's cuts).

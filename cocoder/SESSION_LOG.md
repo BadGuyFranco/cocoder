@@ -12,6 +12,18 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-20 — **surface-reduction: spike concept retired end-to-end; §B ADR-graph verdict `suspect` (run_170)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [surface-reduction](./priorities/surface-reduction.md) | **Run:** run_170
+**Outcomes:**
+- **§A complete (`befeaf9`).** Ticket `type: spike` folded → `question` across daemon SSOT, base `create-ticket` Play, ticket docs, UI modal; ADR-0030 extended to record the full spike-concept retirement (directory + taxonomy).
+- **§B ADR-graph verdict landed (`1f9ede3`).** Evidence-backed load-bearing map: collapsible as a reading graph only; 5-step sequenced collapse proposal appended to the priority; nothing load-bearing reads a superseded ADR as current truth.
+- **Verified-when #1 met** for the spike concept end-to-end; Verified-when #2 partially met (one of three §B verdicts done); Verified-when #3 blocked on founder go-ahead for ADR-graph collapse.
+- **Pre-existing red noted (out of scope):** `scripts/proof-governance-authoring.mjs` clause E still expects pre-ADR-0029 builder-dirt refusal; guard now snapshot-and-proceed per ADR-0029.
+- **Disposition: `continue`** — ADR-graph collapse and remaining §B verdicts are founder-gated; no self-authorized collapse on this document's authority (ADR-0010).
+
+**Next:** Founder replies **GO** or **NO-GO** on §B ADR-graph collapse in this session; if GO, relaunch `surface-reduction` to execute the sequenced 5-step proposal as one verified atom with a new founder-approved ADR.
+
 ## 2026-06-20 — **surface-reduction: spike directory genre retired — §B founder-gated (run_169)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [surface-reduction](./priorities/surface-reduction.md) | **Run:** run_169
