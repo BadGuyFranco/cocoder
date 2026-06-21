@@ -244,6 +244,54 @@ Because the verdict is `suspect`, collapse by founder-approved ADR only:
   whether each is a guarded distinction or foldable alias, using the same owner-map rows rather than a new
   taxonomy method (`docs/orchestration-contract-ownership.md:202-216`).
 
+## §B Verdict — persona count
+
+**Verdict:** `suspect`, but narrowly — the Research's "8 personas" is stale. The live base count is **6**
+(Ian and Phil exist only under `cocoder/zArchive/v1/**`, not live). Of the 6, **four are `real`** (distinct,
+actively-dispatched authority boundaries) and **two — Quinn and Talia — are the suspect surface**: their
+boundary is genuine but both are **unstaffed and never dispatched** (designed-but-not-deployed). The
+collapsible thing is the *unused QA-persona surface*, not a fake distinction; the specific cut is a founder
+product call (which QA modality you actually want), so it is founder-gated.
+
+1. **Inventory + dispatch evidence** (extends the predecessor owner map; does not invent a method)
+
+| Persona | Tier / authority | writeScope | Live dispatch site | Verdict |
+|---|---|---|---|---|
+| Oz | Tier-3 control-plane, cross-run daemon lifecycle/oversight (`packages/personas/base/oz.md:4`; ADR-0017) | `[]` | daemon-owned, `packages/daemon/src/oz-host.ts:100-105` | **real** |
+| Oscar | Tier-1 in-run orchestrator; verify gate + atom loop + wrap (`packages/personas/base/oscar.md:4`; ADR-0013) | `cocoder/**`, `docs/**`, `ARCHITECTURE.md` | per-run, `packages/core/src/runner/runner.ts:720-731` | **real** |
+| Bob | Tier-1 builder; only persona that writes net-new product code through the verify gate (`packages/personas/base/bob.md:4`) | `[]` (granted per atom) | per-run, `packages/core/src/runner/runner.ts:734-758` | **real** |
+| Deb | Tier-2 escalation/repair; in-run machinery faults, advises Oscar only (`packages/personas/base/deb.md:4`; ADR-0016) | `cocoder/**` + machinery | optional per-run, `packages/core/src/runner/observer.ts:58-68` | **real** (predecessor + owner map row 214) |
+| Quinn | User-simulation QA, drives the running app, read-only (`packages/personas/base/quinn.md:4`) | `[]` | **none** — `assignments.json` `cli:""/model:""`; only an `allowedCaller` in `electron-test.md:9` | **suspect** |
+| Talia | Acceptance QA against code contracts; owns the verdict (`packages/personas/base/talia.md:4`) | `tests/**`, `specs/**` | **none** — `assignments.json` `cli:""/model:""`; no live Play names her as caller | **suspect** |
+
+2. **Load-bearing test.** No safeguard depends on Quinn or Talia: the verify gate is Oscar's
+(`docs/orchestration-contract-ownership.md:186`), Bob self-reviews, and Deb owns in-run repair. Quinn's one
+capability (`electron-test`) is already invocable by Oscar directly (`packages/personas/base/plays/electron-test.md:9`
+lists `oscar` as a caller). Talia's `tests/**` write scope is currently exercised by no live dispatch. So
+collapsing the QA-persona surface loses **no live safeguard**. The four `real` personas each fail the
+collapse test — removing any one loses an actively-used tier authority (control-plane / orchestration /
+build / in-run repair); the predecessor already ruled Oz-repair vs Deb-repair `real` and ADR-0010 gates
+reversing that.
+
+3. **Concrete options (proposal only; founder-gated, needs a new ADR — touches `packages/personas/base/**`)**
+   The QA layer is aspirational surface modeled before a solo founder has a workflow that dispatches it.
+   Three reductions, in increasing aggressiveness — founder picks which (if any):
+   - **(a) Keep the capabilities, retire the persona framing.** Fold "UI-sim" and "contract-acceptance" into
+     the two existing Plays (`electron-test`, an acceptance check) callable by Oscar, and delete the two
+     standalone persona files + their boundary prose. Net: −2 persona concepts, QA stays reachable as Plays.
+     Check: `electron-test` still dispatches; base-persona tests green.
+   - **(b) Merge to one `verifier` persona with a mode.** Trades 2 personas for 1 persona + 1 mode knob, but
+     reintroduces a mode distinction and unifies the `[]` vs `tests/**` write scopes — weaker elegance; only
+     if you foresee staffing QA soon.
+   - **(c) Retire one, keep the modality you actually use.** If you want only contract QA, keep Talia (drop
+     Quinn) or vice-versa.
+   Recommended: **(a)** — fewest concepts, no safeguard lost, capabilities preserved as Plays. All three need
+   a founder-approved ADR before touching `packages/personas/base/**` (verified run, not support edit).
+
+4. **Remaining-suspect follow-up.** Vocabulary / genres beyond spikes — still owed a verdict (next): inventory
+   nouns with two homes and test each as guarded distinction vs foldable alias, using the owner-map rows
+   (`docs/orchestration-contract-ownership.md:202-216`), not a new taxonomy method.
+
 ## Boundary
 Verdict + behavior-pinning tests first. The **only** pre-authorized code/governance mutation is §A (spike
 retirement). §B cuts require a per-cut founder go-ahead and a new founder-approved ADR before touching
