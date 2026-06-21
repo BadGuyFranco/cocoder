@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-21 — **new-primary-root: panel-display defect fixed — code-complete, deploy + founder verification remain (run_177)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_177
+**Outcomes:**
+- **Atom C landed (528f51f2).** After workspace create, the UI seeded an empty priorities list and never re-fetched, so a daemon-returned `onboard-existing` priority did not appear in the panel. Fix: `handleCreateWorkspace` live path now calls `refreshWorkspace(id)` instead of `prioritiesByWs[newId] = []`. Pinned in `live-app.test.tsx` (fail-before/pass-after); UI suite 157/157 green.
+- **Non-git primary root path complete in code** (Atoms A/B from run_176: preflight guard 920abe30, scaffold `git init` 817d2e3f). No further buildable atoms in this priority.
+- **Disposition: `continue`.** Remaining gaps are deploy + founder beats: running daemon predates the fixes (ticket `0013`); founder reset-and-retest of `job-hunt` after rebuild; founder-gated Verified-when live proof on a real external repo (separate launch surface).
+
+**Next:** Land ticket `0013` (daemon auto-rebuild) or founder runs `scripts/oz.sh restart`, then reset-and-retest `job-hunt` via Add Workspace to confirm git-init + panel display live.
+
 ## 2026-06-21 — **new-primary-root: NOT code-complete — non-git-root defect found, fix atoms briefed (run_175)**
 
 **Persona:** Oscar (diagnosis + Surface-A edits; 0 build atoms delegated) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_175

@@ -233,11 +233,11 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    Talia retired + testing-as-a-Play (run_173, ADR-0033 — `write-tests`/`run-tests`, Quinn retained, base
    count 5). Verified-when #1–#5 met; overall Objective met. **Founder gate:** confirm **archive** (follow-ups
    1–4 are named, sequenced, and founder-gated outside this priority).
-3. `new-primary-root` — **CONTINUE (run_175).** Onboarding rebuild complete since run_141; one-command proof
-   (`node scripts/proof-onboard-existing.mjs`) re-verified green (run_175). **Founder-gated live proof
-   remains:** external-repo onboard-existing end-to-end (scaffold → audit → ratify → first run lands).
-   Drift Audit objective (b) satisfied via archived `drift-audit` priority. No buildable atoms in an
-   ordinary loop here.
+3. `new-primary-root` — **CONTINUE (run_177).** Onboarding machinery + non-git-root fixes + panel-display
+   defect (Atom C, 528f51f2) **code-complete**; unit proof green. **Blocked on deploy:** running daemon
+   predates the fixes (ticket `0013` or manual `scripts/oz.sh restart`). **Founder verification remains:**
+   reset-and-retest `job-hunt` after rebuild; then Verified-when live proof on a real external repo
+   (billable, multi-agent, separate surface). No buildable atoms — do not relaunch for an empty build loop.
 4. `first-class-model-tiers` — **Grok draft; requires founder ownership beat before launch.** General model
    tier vocabulary across assignments, dispatch, and UI.
 5. `adapter-abstraction-hardening` — **Grok draft; requires founder ownership beat before launch.** Reduce

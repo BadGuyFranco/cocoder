@@ -96,15 +96,13 @@ re-fetched). **Fix:** replace that empty-list seed with `await refreshWorkspace(
 on recreate and asserts it renders + launches and that priorities are re-fetched; confirmed fail-before/pass-after,
 full UI suite 157/157 green, `tsc --noEmit` exit 0.
 
-**Still to do for Atom C's real-world acceptance:** the unit test proves the render/refresh path, but the *live*
-Add-Workspace verification is still masked by the deployment gap (daemon predates `817d2e3f`/`528f51f2`). It is
-covered by the founder reset-and-retest below, after the daemon rebuild.
+**Live acceptance (founder, after daemon rebuild):** unit proof covers the render/refresh path; Add Workspace
+end-to-end on a non-git root still requires a post-fix daemon. Reset `job-hunt` — delete its `cocoder/`
+folder, remove the workspace from CoCoder, re-add via **Add Workspace** — and confirm `git init`, governance
+commit, and `onboard-existing` in the panel.
 
-**Founder action — gated on Atom C completion (do NOT do this before):** reset `job-hunt` to retest the full
-fix from clean — delete its `cocoder/` folder and remove the `job-hunt` workspace from CoCoder, then re-add it
-via **Add Workspace** on the (rebuilt) daemon. Expected after the rebuild + Atom C: `git init` runs, the
-`cocoder/` zone commits, and `onboard-existing` appears in the panel and launches. **Next session's Oscar: when
-Atom C is verified + committed, remind the founder to perform this reset-and-retest.**
+**Disposition: `continue`.** Build backlog empty; archive blocked until deploy + founder verification +
+Verified-when live proof (external repo) complete.
 
 ### Founder-gated live proof (only remaining gap)
 Onboard a real external repo (CoPublisher / a CoBuilder copy) end-to-end through the rebuilt Oscar-driven
