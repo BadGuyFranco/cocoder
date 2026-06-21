@@ -335,6 +335,41 @@ nits that are **not** load-bearing surface and not worth their churn.
 Two concrete founder-gated cuts are now teed up beyond spikes — the ADR reading-graph collapse and the
 `playbooks/` dead-genre freeze — either satisfies Verified-when #3 once founder-approved.
 
+## §B → durable rule (FOUNDER-RATIFIED 2026-06-21)
+
+The founder ratified the ADR-graph collapse **and** elevated its principle to a portable standard for both
+CoCoder dogfooding and any repo CoCoder manages. The collapse is no longer a one-off cleanup; it is the
+**first instance** of a rule we always follow.
+
+**The rule (minimal — adds no new vocabulary; it is the Elegance Standard's "one owner per concept"
+recursed + "earn it"/D2):**
+
+> **One current-truth surface per architectural scope** (not per repo). Within a scope you never chase
+> chains — that surface is the live read; superseded detail is demoted to history that *feeds* it. A
+> sub-scope earns **its own** surface (with exactly one parent link) when it is independently shipped/owned
+> (its own service/package/deployable) **or** its current-truth section outgrows a single screen. Default
+> to one surface; **split when earned, never pre-shard.** The rule is conditional: it binds only where a
+> repo keeps decisions/architecture worth a current-truth read.
+
+Why scope, not repo (founder pushback, accepted): a single `ARCHITECTURE.md` on a large repo recreates the
+disease — it becomes the next unmaintainable, context-bloating pile. The unit is the architectural scope;
+large repos carry several nested current-truth surfaces, each owning its component's decisions, with a
+top-level surface owning system/cross-cutting truth and routing down. CoCoder already models this
+(`ARCHITECTURE.md` entry → owner-map drill-down → `decisions/` as feeding history).
+
+**Placement + gate (all in ONE verified run — base governance, NOT a support edit):**
+- Portable rule → `packages/personas/base/shared-standards.md` (folded into the existing Elegance Standard
+  section, no new section), pinned by base-persona/Play tests. Ships to every workspace.
+- Extend **ADR-0014 (living-adrs)** to own the meta-statement ("ADRs feed one current-truth surface per
+  scope and are demoted when superseded") — one owner per concept; do not spawn a new ADR for the rule.
+- CoCoder dogfood instance = the §B ADR-graph collapse (the 5-step reading-contract proposal above),
+  recorded in its own reading-contract ADR.
+- **Enforcement = standard-only (judgment), by founder choice.** Earn an automated check only if drift
+  actually recurs (D2) — no pre-built governance-of-governance check.
+
+This is a verified run (base `packages/personas/base/**` + `decisions/` + `ARCHITECTURE.md`), not post-wrap
+support scope.
+
 ## Boundary
 Verdict + behavior-pinning tests first. The **only** pre-authorized code/governance mutation is §A (spike
 retirement). §B cuts require a per-cut founder go-ahead and a new founder-approved ADR before touching
