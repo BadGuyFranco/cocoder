@@ -3,6 +3,14 @@ id: first-class-model-tiers
 title: "Make model strength / tier selection first-class across assignments, playbooks, and UI"
 ---
 
+> **Archived 2026-06-21 (founder) — merged into [[model-layer]].** Combined with
+> `adapter-abstraction-hardening` (they meet at model metadata, producer→consumer). A grounded code map
+> corrected this draft: the tier resolve logic it cites (`resolveDeepReadAssignments`/`resolveTopTier`) has
+> **zero live callers** and `resolveTopTier` is only a type seam — so the work is *build the resolver fresh
+> at the live dispatch seam*, on **tier metadata added to the adapter contract** (which doesn't exist yet).
+> Its valid core (tier vocabulary, concrete-pin-wins, collapse detection, UI selector) lives on in
+> `model-layer`. (Also: it cited `integration-verify`, which was merged into `run-tests` — ADR-0033.)
+
 > **Drafted by Grok** — This priority was initially constructed by Grok (Grok Build AI coding harness) during a structured codebase review. It requires further review, validation, refinement, and explicit ownership by the founder / Oscar as the **first step** before any scoping or implementation work.
 
 ## Objective

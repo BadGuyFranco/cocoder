@@ -1,7 +1,6 @@
 [
   "new-primary-root",
-  "first-class-model-tiers",
-  "adapter-abstraction-hardening",
+  "model-layer",
   "priority-audit",
   "deb-follows-oscar",
   "ripgrep-dependency-research"

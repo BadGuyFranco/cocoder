@@ -3,6 +3,15 @@ id: adapter-abstraction-hardening
 title: "Harden and reduce duplication in the CLI adapter layer (ADR-0006)"
 ---
 
+> **Archived 2026-06-21 (founder) — superseded by [[model-layer]].** A grounded code map found this draft's
+> core premise **overstated**: the three adapters' `build`/`preflight`/`listModels` bodies are mostly
+> *genuinely different* per CLI (flags, completion strategy, auth parsing); the real shared surface is ~a
+> class skeleton + a `--version` check. A shared base class at N=3 would **add** surface, not remove it —
+> premature-DRY, against the subtraction thesis. The one genuinely-needed piece — **richer model
+> capability/tier metadata in the adapter contract** — is absorbed into `model-layer` (Phase 0), with the
+> small honest cleanup (a shared `installedCheck` helper) demoted to its optional Phase 4. The speculative
+> de-duplication refactor is **dropped**.
+
 > **Drafted by Grok** — This priority was initially constructed by Grok (Grok Build AI coding harness) during a structured codebase review. It requires further review, validation, refinement, and explicit ownership by the founder / Oscar as the **first step** before any scoping or implementation work.
 
 ## Objective
