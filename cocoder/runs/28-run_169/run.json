@@ -12,7 +12,7 @@
   "priorityId": "surface-reduction",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "completed",
   "createdAt": 1782006888573,
-  "endedAt": null
+  "endedAt": 1782007527818
 }
