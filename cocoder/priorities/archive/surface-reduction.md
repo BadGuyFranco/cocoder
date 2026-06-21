@@ -3,6 +3,16 @@ id: surface-reduction
 title: "Surface reduction — shrink CoCoder to one-person maintainable (subtract, don't migrate)"
 ---
 
+> **Archived 2026-06-21 (founder).** Complete. Executed cuts: spike genre retired (ADR-0030, runs 169-170),
+> ADR reading-contract collapse (ADR-0031, run 171), `playbooks/` dead-genre freeze (ADR-0032, run 172),
+> and **testing folded from the Talia persona into all-persona Plays** `write-tests`/`run-tests`
+> (ADR-0033, run 173 — `integration-verify` merged in; Talia retired; **Quinn kept as `real`** by founder
+> override — autonomous multi-machine experience-QA). Closeout (founder session): `assignments.json`
+> reconciled (integration-verify→run-tests, write-tests on a cheap model) and the ARCHITECTURE persona
+> table corrected to the five live base personas. Named follow-ups carried forward:
+> [[run-tests-required-checkpoint]] (the Q1 durability upgrade) and the dangling `merge-conflict` Play
+> assignment (decide: restore the Play or drop the assignment).
+
 > **Founder-ratified 2026-06-20.** Successor to `orchestration-audit-and-refactor` (archived: it proved
 > the duplicate-code well is dry and named **conceptual surface** as the real complexity, then collapsed
 > one slice — the Play taxonomy). This priority carries that finding forward with a **comprehensive

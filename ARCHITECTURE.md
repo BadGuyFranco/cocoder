@@ -244,10 +244,11 @@ CoCoder/                          # the engine install AND the dogfood workspace
 |---------|-------|
 | **Oz** | Cross-workspace runs, settings, launch/stop, health — not product code |
 | **Oscar** | Product priority orchestration inside one workspace |
-| **Ian** | Ops/backoffice queue — CRM, copy, integrations |
 | **Bob** | Implementation, architecture, ADRs for product code |
+| **Deb** | Scoped in-run repair fallback — monitors Oscar, nudges, lands scoped CoCoder repairs via the spine (ADR-0016) |
 | **Quinn** | Experience layer — exercises the running product like a user (browser/UI/scripts) |
-| **Phil** | Custom/extension pattern — domain "primitives" on any project |
+
+*Ian and Phil are illustrative **custom-persona** patterns (ops/backoffice queue; domain "primitives"), not shipped base personas — see [`docs/custom-personas.md`](./docs/custom-personas.md).*
 
 The live base persona set is five: Oz, Oscar, Bob, Deb, and Quinn. Testing is a Play capability
 (`write-tests` / `run-tests`) that any persona can invoke; see

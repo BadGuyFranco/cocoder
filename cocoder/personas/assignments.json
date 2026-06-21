@@ -27,9 +27,13 @@
           "cli": "cursor-agent",
           "model": ""
         },
-        "integration-verify": {
+        "run-tests": {
           "cli": "codex",
           "model": ""
+        },
+        "write-tests": {
+          "cli": "claude",
+          "model": "sonnet"
         },
         "merge-conflict": {
           "cli": "cursor-agent",
