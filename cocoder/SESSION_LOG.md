@@ -12,15 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
-## 2026-06-21 — **new-primary-root: code-complete re-confirmed — founder-gated live proof only (run_175)**
+## 2026-06-21 — **new-primary-root: NOT code-complete — non-git-root defect found, fix atoms briefed (run_175)**
 
-**Persona:** Oscar (wrap-up only; 0 atoms delegated) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_175
+**Persona:** Oscar (diagnosis + Surface-A edits; 0 build atoms delegated) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_175
 **Outcomes:**
-- **No build atoms delegated** — priority is code-complete since run_141; relaunching for build atoms would only produce empty reaffirmation wraps (F18).
-- **In-process proof re-verified:** `node scripts/proof-onboard-existing.mjs` → exit 0, all 3 invariants green.
-- **Disposition: `continue`** — Verified-when (external-repo onboard-existing end-to-end) remains; billable, multi-agent, founder-authorized on a launch surface distinct from an ordinary build loop.
+- **Founder evidence overturned the "build complete" claim.** Founder created workspace `job-hunt` over `/Volumes/NAS LOCAL/Anthony/Job Hunt` (a non-git folder); first launch failed. Diagnosed: run_174 errored at `run-start` on `git -C … rev-parse HEAD` → `fatal: not a git repository`; both preflights passed (model was a red herring). Same cause logged `governanceCommitted: false` at workspace-create — scaffold wrote the zone but couldn't commit it.
+- **Root cause:** onboarding has no handling for a non-git primary root — no `git init`, no preflight guard — so a non-git root half-scaffolds and dies mid-run. The commit spine (ADR-0023) assumes git.
+- **Corrected the priority** (killed false "Build is COMPLETE" / "New Primary is live today" claims) and **added two build atoms**: Atom A (fail-fast preflight guard for non-git root) + Atom B (scaffold runs a **local** `git init` — no remote — and commits the zone). Clarified: only a local repo is required; a GitHub remote is optional (may exist or be added later; CoCoder never pushes and never adds one).
+- **Founder deleted the `job-hunt` workspace** (clean: zone + `.code-workspace` removed; folder still non-git) to retry onboarding from scratch once the fix lands.
 
-**Next:** Add a CoBuilder copy via Oz **Add Workspace**, then launch **onboard-existing** for the end-to-end audit-and-ratify proof (recommended target; CoPublisher is the alternate).
+**Next:** Fresh `new-primary-root` run builds **Atom A then Atom B** (both one-shot, test-backed) — see the priority's Remaining-work section for exit criteria. Then re-onboard a non-git root end-to-end with no manual `git init` as the real proof.
 
 ## 2026-06-21 — **surface-reduction: Talia retired, testing-as-a-Play — archive-candidate (run_173)**
 
