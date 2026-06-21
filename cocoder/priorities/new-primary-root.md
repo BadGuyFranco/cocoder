@@ -3,15 +3,15 @@ id: new-primary-root
 title: "Onboard a primary root — New Primary + Onboard-existing (ADR-0020/0026)"
 ---
 
-> **Refreshed 2026-06-21 (run_176 post-wrap).** The onboarding *machinery* is built; the **non-git primary
-> root defect** (run_174, workspace `job-hunt`) is **fixed in code** — fail-fast preflight (920abe30) plus
-> scaffold-time local `git init` (817d2e3f). **Two follow-ups remain before this is real for the founder:**
-> (1) the committed git-init fix is **not yet effective** because the running daemon predates it (booted at
-> SHA `1a2b68d`) — a *deployment* gap, not a code bug, tracked by ticket `0013` (daemon auto-rebuild); and
-> (2) a **new display defect**: a freshly onboarded existing repo's seeded `onboard-existing` priority does
-> **not appear in the workspace priorities panel** even though the daemon API returns it (confirmed live for
-> `job-hunt`). Atom C below chases the display defect. Then the **founder-gated live proof** (onboard a real
-> external repo end-to-end) remains. The
+> **Refreshed 2026-06-21 (run_177).** The onboarding *machinery* is built; the **non-git primary root defect**
+> (run_174, workspace `job-hunt`) is **fixed in code** — fail-fast preflight (920abe30), scaffold-time local
+> `git init` (817d2e3f), and the **panel-display defect fixed (Atom C, 528f51f2)**: workspace-create now
+> re-fetches priorities instead of seeding an empty list, so a seeded `onboard-existing` priority renders +
+> launches (unit-proven). **The remaining gaps are now founder/deploy beats, not code:** (1) the committed
+> code is **not yet effective** because the running daemon predates it — a *deployment* gap tracked by ticket
+> `0013` (daemon auto-rebuild); (2) after that rebuild, the **founder reset-and-retest of `job-hunt`** confirms
+> git-init + commit + panel-display end-to-end live; (3) the **founder-gated live proof** (onboard a real
+> external repo end-to-end) — billable, multi-agent, separate launch surface. The
 > third situation,
 > **Drift Audit**, was split out into the `drift-audit` priority and **completed + archived 2026-06-21**, so
 > it is no longer in this priority's scope. Vocabulary updated to current truth: "Takeover" → **Onboard
@@ -83,22 +83,22 @@ will only take effect once the daemon is rebuilt + restarted on a post-`817d2e3f
 "committed fix not deployed" pain — tracked by ticket `0013` (daemon auto-rebuild after runs); strengthen
 that ticket rather than re-patching here.
 
-### Atom C — seeded onboarding priority must appear in the panel and launch (NEW, open)
-**Defect (run_176 post-wrap, `job-hunt`):** the scaffold seeds `cocoder/priorities/onboard-existing.md` and the
-daemon API returns it (`GET /workspaces/job-hunt/priorities` lists both `adhoc-session` and `onboard-existing`,
-parsed clean by `loadPriority`), yet the priority does **not show in the workspace priorities panel**. So the
-gap is in the render/refresh path, not the file or the API.
+### Atom C — seeded onboarding priority must appear in the panel and launch (DONE, run_177, 528f51f2)
+**Defect was (run_176 post-wrap, `job-hunt`):** the scaffold seeds `cocoder/priorities/onboard-existing.md` and
+the daemon API returns it, yet the priority did **not show in the workspace priorities panel** — a render/refresh
+bug, not the file or the API.
 
-- **Scope:** root-cause why a freshly onboarded existing repo's seeded onboarding priority is absent from the
-  panel while the daemon returns it. Prime suspects: (a) the UI caches the workspace's priority list and does
-  not re-fetch after workspace create/recreate; (b) the UI gates priority rendering on a "healthy"/committed
-  workspace, so a workspace whose governance failed to commit (the non-git state above) renders empty; (c) a
-  filter that drops a priority with `auditWriteBoundary` frontmatter. Confirm which, fix the real cause.
-- **Acceptance:** a freshly onboarded existing repo shows its seeded onboarding priority in the panel and can
-  launch it; covered by a test/repro that pins the render (or fetch-refresh) path so it can't silently regress.
-  Verify against the real Add-Workspace flow once the daemon runs post-`817d2e3f` code (so git-init + commit
-  succeed and the test isn't masked by the deployment gap).
-- **Loop:** one-shot.
+**Root cause (suspect a, proven):** `handleCreateWorkspace`'s *live* path in `packages/ui/src/renderer/App.tsx`
+explicitly set `prioritiesByWs[newId] = []` right after create, masking the daemon-returned list (it never
+re-fetched). **Fix:** replace that empty-list seed with `await refreshWorkspace(id)`, which fetches priorities via
+`loadWsData`. The `!live` demo branch correctly keeps `[]` (no daemon to fetch from). Pinned by a new
+`packages/ui/tests/live-app.test.tsx` case that seeds an `onboard-existing` priority *carrying `auditWriteBoundary`*
+on recreate and asserts it renders + launches and that priorities are re-fetched; confirmed fail-before/pass-after,
+full UI suite 157/157 green, `tsc --noEmit` exit 0.
+
+**Still to do for Atom C's real-world acceptance:** the unit test proves the render/refresh path, but the *live*
+Add-Workspace verification is still masked by the deployment gap (daemon predates `817d2e3f`/`528f51f2`). It is
+covered by the founder reset-and-retest below, after the daemon rebuild.
 
 **Founder action — gated on Atom C completion (do NOT do this before):** reset `job-hunt` to retest the full
 fix from clean — delete its `cocoder/` folder and remove the `job-hunt` workspace from CoCoder, then re-add it
