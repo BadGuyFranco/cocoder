@@ -406,22 +406,19 @@ load-bearing safeguard. Elegance standard: fewer concepts, never a new lane to d
 - Behavior nets: `packages/core/tests/**`, `scripts/proof-orchestration-enforcer.mjs`, `scripts/proof-*.mjs`.
 
 ## Suggested Next Action
-**§A complete. All §B verdicts complete. The founder-ratified ADR-graph reading-contract collapse is
-EXECUTED + committed (run_171 — see §B → durable rule, EXECUTED).** Verified-when #1, #2, #3, #5 are met;
-#4 is met for the collapsed surface and the two remaining suspects below exit as named follow-ups.
+**Disposition: `continue`.** §A complete; all §B verdicts complete; ADR-graph reading-contract collapse
+EXECUTED (run_171 — see §B → durable rule, EXECUTED). Verified-when #1, #2, #3, #5 met; #4 met for the
+collapsed surface.
 
-**Two founder-gated cuts remain teed up** (each needs an explicit founder go-ahead + a new founder-approved
-ADR before any code — both touch `packages/personas/base/**` and/or topology, so verified runs, not support
-edits):
-1. **`playbooks/` dead-genre freeze** (vocabulary verdict, cleanest next subtraction) — symmetric to §A:
-   the `packages/personas/base/playbooks/` loader was retired by ADR-0026; freeze the skeletons to
-   `zArchive/` and drop the genre from ADR-0008 topology + ARCHITECTURE Directory Layout. Do **not**
-   conflate with the live code module `packages/core/src/playbooks/` (separate, stays).
-2. **Persona-count collapse (Quinn/Talia)** — recommended option (a): fold UI-sim + contract-acceptance
-   into the two existing Plays callable by Oscar, delete the two unstaffed persona files (−2 concepts, no
-   safeguard lost).
+**Recommended next cut — `playbooks/` dead-genre freeze** (cleanest subtraction; symmetric to §A spike
+retirement): freeze `packages/personas/base/playbooks/` skeletons to `zArchive/`, drop the genre from
+ADR-0008 topology + ARCHITECTURE Directory Layout. Do **not** conflate with live `packages/core/src/playbooks/`
+(separate, stays). Requires founder **GO PLAYBOOKS** + new ADR + verified run.
 
-**Disjoint pre-existing red (NOT this priority; file a ticket):** `scripts/proof-governance-authoring.mjs`
-clause E still asserts the pre-ADR-0029 builder-dirt refusal that ADR-0029 deliberately reversed
-(runner-direct now proves snapshot-and-proceed). Retarget clause E to ADR-0029 behavior in a separate
-run — it is in `scripts/` (outside this priority's cuts and Oscar support scope) and was red before run_171.
+**Alternate cut — Quinn/Talia persona collapse** (option (a): fold QA into Plays, delete unstaffed persona
+files). Requires founder **GO PERSONAS** instead.
+
+Reply **GO PLAYBOOKS** (recommended) or **GO PERSONAS** in this session, then relaunch this priority.
+
+**Disjoint pre-existing red (NOT this priority):** `scripts/proof-governance-authoring.mjs` clause E still
+asserts pre-ADR-0029 builder-dirt refusal; retarget to ADR-0029 in a separate run/ticket.

@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-21 — **surface-reduction: ADR-graph reading-contract collapse executed (run_171)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [surface-reduction](./priorities/surface-reduction.md) | **Run:** run_171
+**Outcomes:**
+- **ADR-graph collapse landed** (`2d5667a`, `cd343dc`, `0e7cd63`). Portable one-current-truth-surface rule in `shared-standards.md`; ADR-0014 extended; new ADR-0031 reading contract; ARCHITECTURE.md tightened (spine/loop/topology without chain-chasing); ADR-0024 partially-superseded banner; retired-ADR runtime/proof comments retargeted to current owners.
+- **Verified-when #1, #2, #3, #5 met** for completed work; #4 met for the collapsed surface — two remaining §B suspects exit as named founder-gated follow-ups.
+- **Pre-existing red noted (out of scope):** `scripts/proof-governance-authoring.mjs` clause E still asserts pre-ADR-0029 builder-dirt refusal; retarget in a separate run/ticket.
+- **Disposition: `continue`** — two founder-gated §B cuts remain (playbooks/ dead-genre freeze recommended; Quinn/Talia persona collapse alternate).
+
+**Next:** Reply **GO PLAYBOOKS** (recommended) or **GO PERSONAS** in this session, then relaunch `surface-reduction` for the authorized verified cut.
+
 ## 2026-06-20 — **surface-reduction: spike concept retired end-to-end; §B ADR-graph verdict `suspect` (run_170)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [surface-reduction](./priorities/surface-reduction.md) | **Run:** run_170
