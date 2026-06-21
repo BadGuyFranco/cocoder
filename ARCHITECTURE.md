@@ -1,11 +1,17 @@
 # CoCoder Architecture
 
 **Status:** v2 (rebuild) — live  
-**Last verified:** 2026-06-16 (launch self-heals governance dirt — [ADR-0024](./cocoder/decisions/0024-governance-pre-run-snapshot.md); the one commit spine remains direct-to-branch, **single mode** ([ADR-0023](./cocoder/decisions/0023-workspace-commit-spine.md) Amendment 2 / failure-catalog F22); `main` is the canonical trunk and committed work is on the checked-out branch by construction)
+**Last verified:** 2026-06-21 (architecture reading contract — [ADR-0031](./cocoder/decisions/0031-architecture-reading-contract.md); the live commit spine is [ADR-0023](./cocoder/decisions/0023-workspace-commit-spine.md) plus [ADR-0029](./cocoder/decisions/0029-founder-trusted-pre-run-snapshot.md): direct-to-branch, one mode, founder WIP snapshotted before launch; committed work is on the checked-out branch by construction)
 
 ## Mental Model
 
-CoCoder has **three storage zones** ([ADR-0008](./cocoder/decisions/0008-repository-topology.md), amended 2026-06-10) that must never be conflated.
+CoCoder has **three storage zones** that must never be conflated. The current topology read is
+[ADR-0008](./cocoder/decisions/0008-repository-topology.md) plus
+[ADR-0012](./cocoder/decisions/0012-living-base-personas.md),
+[ADR-0019](./cocoder/decisions/0019-multi-root-workspaces.md),
+[ADR-0027](./cocoder/decisions/0027-workspace-storage-contract.md), and
+[ADR-0030](./cocoder/decisions/0030-retire-spike-genre.md): repository homes, living base personas,
+multi-root workspace identity, workspace storage, and the retired standalone `spikes/` genre.
 
 ```mermaid
 flowchart TB
@@ -57,7 +63,7 @@ decisions" are the same set, so they share one `cocoder/decisions/` tree. An ado
 
 `local/` is not in git, but it **lives inside your CoCoder folder**. Sync the CoCoder directory across machines the same way you sync any dev environment (Syncthing, iCloud Drive, a private dotfiles repo, etc.). Git updates the engine; your sync tool keeps `local/` aligned across laptops.
 
-## How work reaches trunk — the commit spine (ADR-0023)
+## How work reaches trunk — the commit spine (ADR-0023 + ADR-0029)
 
 There is exactly **one** way tracked files reach the active workspace branch: the **commit spine**, a
 single `core` service every actor calls — Oscar's wrap edits, Bob's verified atom, Deb's repair, Oz's
@@ -90,10 +96,10 @@ out-of-lane flagging stay hard); the *founder's* work is preserved, never blocke
 
 **Atomic authoring Plays ([ADR-0025](./cocoder/decisions/0025-atomic-authoring-plays.md))** use the same
 spine for `create` / `edit` / `archive-priority`: authoring validates, writes, and commits as one
-governed action instead of creating a second mutation path. For the commit lineage, read ADR-0023 plus
-its amendments ADR-0024 (governance self-heal), ADR-0025 (authoring Plays), and ADR-0029 (founder WIP
-self-heal, superseding 0024's builder-dirt refusal) as current truth; ADR-0015/0021/0022 are retired
-history tracked in the [ADR index](./cocoder/decisions/README.md).
+governed action instead of creating a second mutation path. For the current commit-spine read, use
+ADR-0023 and ADR-0029. ADR-0024 still owns the governance pre-run snapshot remainder; ADR-0025 owns
+authoring Plays. ADR-0015/0021/0022 are retired history tracked in the
+[ADR index](./cocoder/decisions/README.md).
 
 | Change kind | Path | Verification |
 |---|---|---|
@@ -108,14 +114,17 @@ undo." **Why it ends the drift for good:** there is no run branch on *any* path 
 committed work to strand. The F14/F17/F19/F20/**F22** strand class is gone by construction. There is no
 `pending-landing`, no held-back queue, no manual recovery: work commits to the checked-out branch, always.
 
-## How a run executes — the orchestration loop (ADR-0013 lineage)
+## How a run executes — the orchestration loop (ADR-0013 + ADR-0016 + ADR-0017 + ADR-0026)
 
-The current run loop is ADR-0013 plus its live refinements; superseded predecessors such as the
-0020-addendum phase-executor are history, with status owned by the
+The current run loop is [ADR-0013](./cocoder/decisions/0013-orchestration-observation.md) plus
+[ADR-0016](./cocoder/decisions/0016-deb-scoped-repair-fallback.md),
+[ADR-0017](./cocoder/decisions/0017-oz-orchestration-persona.md), and
+[ADR-0026](./cocoder/decisions/0026-onboard-existing-as-oscar-priority.md). Superseded predecessors
+such as the 0020-addendum phase-executor are history, with status owned by the
 [ADR index](./cocoder/decisions/README.md). This section is the current-state narrative; the per-contract
 owner drill-down lives in
 [`docs/orchestration-contract-ownership.md`](./docs/orchestration-contract-ownership.md), and landing
-flows through the [commit spine](#how-work-reaches-trunk--the-commit-spine-adr-0023).
+flows through the [commit spine](#how-work-reaches-trunk--the-commit-spine-adr-0023--adr-0029).
 
 Oscar drives an ordinary priority as a multi-atom loop: scope the next atom, delegate it to Bob, wait for
 Bob's completion marker, run the verify gate on the real diff and evidence, then either reject the atom

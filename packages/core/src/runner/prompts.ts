@@ -559,7 +559,7 @@ export function buildBuilderDispatch(directivePath: string, atomIndex: number, l
   return `${base} This is a loop atom: after each completed iteration, append one JSON line to ${loopLedgerPath} with at minimum {"iteration":<1-based int>,"result":"green"|"red","failed":"<what failed>","changed":"<what changed>","inScope":<bool>}.`
 }
 
-/** The verify dispatch into Oscar's pane once the monitor reports the atom done — the gate (ADR-0011),
+/** The verify dispatch into Oscar's pane once the monitor reports the atom done — ADR-0013 verify gate,
  *  per atom. The atom's commit does not run until Oscar writes a `pass` verdict to verifyPath. */
 export function buildVerifyDispatch(directivePath: string, verifyPath: string): string {
   return `VERIFY — the builder finished this atom. Verify the diff against the task you delegated in ${directivePath}: read the actual changes and run the tests/typecheck yourself (evidence, not the builder's word). Then write your verdict to ${verifyPath} as {"verdict":"pass"|"fail","reason":"<one line>"}. The commit happens ONLY on pass.`

@@ -169,7 +169,7 @@ export interface HeuristicJudgeOptions {
 
 /** The tier-1 judge: cheap + deterministic. It catches an IDLE/STUCK builder (no screen change) and a
  *  done-sentinel — the one thing Oscar's per-atom verify-gate cannot see mid-atom. Semantic "thin /
- *  drifting" judgment stays with the verify-gate (ADR-0011); a model-backed Judge is a later drop-in. */
+ *  drifting" judgment stays with the ADR-0013 verify gate; a model-backed Judge is a later drop-in. */
 export function makeHeuristicJudge(opts: HeuristicJudgeOptions): Judge {
   // Done-detection is echo-proof via a single rule: the marker must appear as a line BY ITSELF (the
   // builder prints it alone), so a substring — an instruction or narration that merely mentions it —

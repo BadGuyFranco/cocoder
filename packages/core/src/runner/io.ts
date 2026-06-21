@@ -28,7 +28,7 @@ export interface RunnerIO {
   ): Promise<Directive>
   /** Poll `verifyPath` until the orchestrator writes its verdict on the atom's diff
    *  (`{verdict:'pass'|'fail', reason?}`), or throw on timeout / if its session dies first. This is the
-   *  Oscar quality-gate (ADR-0011), now PER ATOM: the atom's commit runs only on `pass`. */
+   *  Oscar quality-gate (ADR-0013 verify gate): the atom's commit runs only on `pass`. */
   awaitVerification(
     verifyPath: string,
     opts: RunnerPollOptions,
@@ -69,7 +69,7 @@ function parseVerification(raw: string): Verification {
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
-// Shared poll-with-fast-fail-on-dead-session loop (the pattern ADR-0011 names). `parse` throws while
+// Shared poll-with-fast-fail-on-dead-session loop (ADR-0013 verify-gate lineage). `parse` throws while
 // the artifact is missing/partial/undecided; a throw is swallowed as "not ready yet".
 async function pollFile<T>(
   path: string,

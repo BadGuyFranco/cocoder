@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS session (
   started_at    INTEGER NOT NULL,
   exit_code     INTEGER,
   -- The session's container ref (cmux workspace), durable so teardown can close the pane after a
-  -- daemon restart (ADR-0015 — kill() needs it but its in-memory map is empty in a fresh process).
+  -- daemon restart (ADR-0013/0023 teardown lineage — kill() has no prior process's in-memory map).
   workspace_ref TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_session_run ON session(run_id);

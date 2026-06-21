@@ -1,6 +1,6 @@
 // The runner (ADR-0004 "runner · launch composition", refined by ADR-0013). No longer one-shot: Oscar
 // drives Bob through a MULTI-ATOM loop while the runner watches Bob's live progress (the monitor),
-// verifies each atom (ADR-0011), commits per atom, and ends on Oscar's own wrap-up decision with a
+// verifies each atom (ADR-0013 verify gate), commits per atom, and ends on Oscar's own wrap-up decision with a
 // resumable pickup brief (continuation; ADR-0002 C1 / F8).
 //
 //   load → preflight → spawn Oscar + standby Bob (+ optional Deb observer)
@@ -578,7 +578,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const auditWriteBoundary: AuditWriteBoundary | undefined =
     priority.auditWriteBoundary === undefined ? undefined : { label: priority.id, scope: priority.auditWriteBoundary }
 
-  // Execution context — ONE mode (founder directive 2026-06-15, correcting ADR-0015/0023): agents run in
+  // Execution context — ONE mode (founder directive 2026-06-15; ADR-0023 supersedes ADR-0015): agents run in
   // the active checkout on the active branch and the commit-gate commits straight onto it, so committed
   // work is on that branch BY CONSTRUCTION and no code path can hold it off-branch. There is no isolation
   // lane, no run worktree, no branch→trunk landing step — and therefore no strand class. If the repo is
@@ -595,7 +595,8 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   // Launch guard, SCOPED to the union of everything that will commit this run. FOUNDER vs AGENT (founder
   // directive 2026-06-20): the founder is a TRUSTED actor — their uncommitted work is PRESERVED, never
   // refused and never mixed into an agent's atom commit. Both builder-scope dirt (founder WIP) and
-  // governance-only dirt are self-healed with their own pre-run snapshot (ADR-0024 lineage) before the
+  // governance-only dirt are self-healed with their own pre-run snapshot (ADR-0029 founder-pre-run
+  // snapshot lineage, preserving ADR-0024's governance snapshot) before the
   // quarantine baseline, so the whole-tree gate and quarantine only ever see AGENT-produced changes.
   // (Quarantine already excludes dirtyAtStart — line ~1110 — so the old "refuse to protect founder WIP"
   // rationale was stale; the real residual risk was the gate folding founder WIP into an atom commit,

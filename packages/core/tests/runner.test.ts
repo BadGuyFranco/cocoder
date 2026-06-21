@@ -80,7 +80,7 @@ function fakeSessionHost(over: Partial<SessionHost> = {}): SessionHost {
   } as SessionHost
 }
 
-// The worktree/merge port methods (ADR-0015) the runner doesn't exercise in these fake-git unit
+// The worktree/merge port methods (ADR-0023 §4 lineage) the runner doesn't exercise in these fake-git unit
 // tests — spread into every fake so the Git interface stays satisfied (real git math is covered by
 // the live-git test in git-worktree.test.ts). Defaults model the happy path: clean fast-forward.
 const worktreeStubs = {
@@ -404,7 +404,7 @@ const baseDeps = (over: Partial<RunnerDeps>): RunnerDeps => ({
   ...over,
 })
 
-// This suite drives the runner with a FAKE git over the OPT-IN isolation path (ADR-0023 §4 / ADR-0015):
+// This suite drives the runner with a FAKE git over the historical opt-in isolation lineage (ADR-0023 §4):
 // worktree create/land are stubbed, so the loop/verify/commit machinery is exercised without a real repo.
 // The new direct-mode DEFAULT (ADR-0023 §2) is proven against LIVE git in runner-direct.test.ts.
 const input = { workspace, priority, oscar, bob, sharedStandards: 'STANDARDS', engineHome: workspaceRoot, runsRoot: '/runs' }

@@ -20,9 +20,9 @@ export async function spawnObserver(input: {
   readonly playManifest: string
   readonly runDir: string
   readonly groupLabel: string
-  /** The run's isolated worktree dir — Deb runs here, not the founder's checkout (ADR-0015). */
+  /** The run cwd. In historical ADR-0023 §4 worktree-lineage runs, Deb used the isolated checkout. */
   readonly cwd: string
-  /** The run's isolated branch (ADR-0015) — surfaced in Deb's prompt. */
+  /** The run branch name surfaced in Deb's prompt (ADR-0023 commit-spine lineage). */
   readonly runBranch: string
 }): Promise<SessionRef | null> {
   const { store, sessionHost, getAdapter, run, workspace, priority, task, deb, sharedStandards, playManifest, runDir, groupLabel, cwd, runBranch } = input

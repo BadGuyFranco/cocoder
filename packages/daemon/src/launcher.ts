@@ -460,7 +460,7 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
   return { status: 202, body: { runId, target: { kind: target.kind, id: targetId } } }
 }
 
-/** Close ALL of a run's tracked cmux surfaces by their DURABLE stored sessionRef (ADR-0015). This is
+/** Close ALL of a run's tracked cmux surfaces by their DURABLE stored sessionRef (ADR-0013/0023). This is
  *  the ONE home for the kill primitive — teardown AND the boot orphan-sweep both use it. It kills by
  *  the ref recorded in the store rather than only those in this process's `liveRefs`, which is what
  *  fixes the post-restart leak: after a daemon restart liveRefs is EMPTY, so the old liveRefs-gated

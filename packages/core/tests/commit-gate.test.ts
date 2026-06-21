@@ -80,7 +80,7 @@ function makeFakeGit(opts: { changed: string[]; headBefore: string; headNow?: st
     async show() {
       return ''
     },
-    // ADR-0015 worktree/merge methods — unused by the commit-gate; present to satisfy the port.
+    // ADR-0023 §4 worktree/merge lineage methods — unused by the commit-gate; present to satisfy the port.
     async worktreeAdd() {},
     async worktreeRemove() {},
     async listWorktrees() {

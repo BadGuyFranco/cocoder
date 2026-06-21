@@ -10,7 +10,7 @@ export interface SessionRef {
   /** Driver name that minted this ref (e.g. "cmux"), for diagnostics. */
   readonly driver: string
   /** The container ref this surface lives in (cmux workspace). PERSISTED with the session so the pane
-   *  can be closed by a LATER daemon instance (ADR-0015 teardown after restart) — kill() relies on an
+   *  can be closed by a LATER daemon instance (ADR-0013/0023 teardown lineage) — kill() relies on an
    *  in-memory map that is empty after a restart; closeSurface() uses these durable refs instead. */
   readonly workspaceRef?: string
 }
@@ -73,7 +73,7 @@ export interface SessionHost {
   /** Tear down the session (by a ref this driver INSTANCE spawned — uses its in-memory map). */
   kill(ref: SessionRef): Promise<void>
   /** Close a surface by its DURABLE refs, without the in-memory spawn map — so a pane spawned by a
-   *  PRIOR daemon instance can still be closed after a restart (ADR-0015 teardown; the Deb-pane leak).
+   *  PRIOR daemon instance can still be closed after a restart (ADR-0013/0023 teardown lineage).
    *  Must tolerate an already-gone surface as success. */
   closeSurface(args: { readonly workspaceRef: string; readonly surfaceRef: string }): Promise<void>
   /** Close a shared workspace/container by its DURABLE ref. Optional because not every future host has

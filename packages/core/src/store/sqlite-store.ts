@@ -328,7 +328,7 @@ class SqliteRunStore implements RunStore {
   }
 }
 
-/** Idempotently bring an EXISTING db up to the current column set (ADR-0015). `CREATE TABLE IF NOT
+/** Idempotently bring an EXISTING db up to the current column set (ADR-0003 storage lineage). `CREATE TABLE IF NOT
  *  EXISTS` (in SCHEMA_SQL) never alters an already-created table, so a db that predates a column
  *  silently lacks it; here we add any missing column via `ALTER TABLE … ADD COLUMN`. Idempotent: on
  *  a fresh db the CREATE TABLE already has the columns, so every PRAGMA check finds them and skips. */

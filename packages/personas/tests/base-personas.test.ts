@@ -206,7 +206,7 @@ describe('basePlaysDir', () => {
     expect(text).toContain('Do not use "awaiting questions"')
   })
 
-  // ADR-0022 proof #2: the wrap-up Play is the SINGLE owner of the founder closeout format.
+  // Historical ADR-0022 proof lineage: the wrap-up Play is the SINGLE owner of the founder closeout format.
   // Pin the founder-facing section contract so no surface can silently drift a parallel shape.
   test('wrap-up Play pins the canonical founder closeout contract (single owner)', () => {
     const text = readFileSync(join(basePlaysDir(), 'wrap-up.md'), 'utf8')
@@ -222,7 +222,7 @@ describe('basePlaysDir', () => {
     expect(text).toContain(`End with exactly \`${contract.finalLine}\``)
   })
 
-  // ADR-0022 proof #2: Oscar must defer to the wrap-up Play's contract, not restate a parallel format.
+  // Historical ADR-0022 proof lineage: Oscar must defer to the wrap-up Play's contract, not restate one.
   test('oscar defers to the wrap-up Play as the closeout-brief owner', () => {
     const text = readFileSync(join(basePersonasDir(), 'oscar.md'), 'utf8')
     expect(text).toContain("wrap-up Play's closeout-brief contract")

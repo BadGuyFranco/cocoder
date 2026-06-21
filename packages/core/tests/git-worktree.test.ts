@@ -1,4 +1,4 @@
-// LIVE git test (ADR-0015) — the worktree/merge port methods are pure git mechanics, so they are
+// LIVE git test (historical ADR-0015 lineage; current owner ADR-0023 §4) — the worktree/merge port methods are pure git mechanics, so they are
 // proven against a REAL temp repo, not the fake-git used elsewhere. Fake-git can assert the runner's
 // control flow but structurally cannot catch a wrong `git` invocation (the F7 lesson: load-bearing
 // path handling gets discovered at runtime unless exercised end-to-end).
@@ -39,7 +39,7 @@ afterEach(async () => {
   await Promise.all(dirs.splice(0).map((d) => rm(d, { recursive: true, force: true })))
 })
 
-describe('Git worktree/merge primitives (ADR-0015, live git)', () => {
+describe('Git worktree/merge primitives (ADR-0023 §4 lineage, live git)', () => {
   test('addAndCommit stages deleted rename sources without pathspec failure', async () => {
     await writeFile(join(main, 'priority.md'), 'active\n')
     await writeFile(join(main, 'order.json'), '["priority"]\n')
@@ -114,12 +114,12 @@ describe('Git worktree/merge primitives (ADR-0015, live git)', () => {
     await git.worktreeRemove(main, wt)
     expect(await exists(wt)).toBe(false)
     expect((await git.listWorktrees(main)).map((w) => w.branch)).not.toContain('cocoder/run_x')
-    // The branch ref survives removal — its un-integrated commit is NOT lost (ADR-0015 §5).
+    // The branch ref survives removal — its un-integrated commit is NOT lost (ADR-0023 §4 lineage).
     expect(await git.unmergedCommits(main, 'trunk', 'cocoder/run_x')).toHaveLength(1)
   })
 })
 
-describe('Git conflict-aware merge primitives (ADR-0015 §4, live git)', () => {
+describe('Git conflict-aware merge primitives (ADR-0023 §4 lineage, live git)', () => {
   test('mergeInto is clean when branch + trunk touch different files', async () => {
     const wt = join(main, 'wt-run')
     await git.worktreeAdd(main, wt, 'cocoder/run_x', trunkSha)

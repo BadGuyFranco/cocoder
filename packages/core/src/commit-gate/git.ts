@@ -7,7 +7,7 @@ import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
 
-/** One row of `git worktree list` (ADR-0015) — the on-disk checkout, its branch, and its HEAD. */
+/** One row of `git worktree list` (ADR-0023 §4 worktree lineage) — checkout, branch, and HEAD. */
 export interface WorktreeInfo {
   readonly path: string // absolute worktree directory
   readonly branch: string | null // short branch name, or null if detached / bare
@@ -17,9 +17,8 @@ export interface WorktreeInfo {
 export interface Git {
   /** Current HEAD sha (snapshot before spawning, to detect agent self-commits). */
   headSha(cwd: string): Promise<string>
-  /** The short name of the branch checked out at `cwd`, or null if HEAD is detached. Used to pin the
-   *  trunk branch at launch so the end-of-run land targets the SAME branch and never misroutes if the
-   *  founder switched branches mid-run (ADR-0015 §1). */
+  /** The short name of the branch checked out at `cwd`, or null if HEAD is detached. Used by the
+   *  ADR-0023 commit spine to prove the active checkout has a branch before committing or pushing. */
   currentBranch(cwd: string): Promise<string | null>
   /** Changed paths in the working tree (modified, added, untracked, deleted, renamed). */
   changedFiles(cwd: string): Promise<string[]>
@@ -33,9 +32,9 @@ export interface Git {
   /** `git show <sha>` — the committed diff for a run's commit_link (read-only; Oz run detail). */
   show(cwd: string, sha: string): Promise<string>
 
-  // ── Worktree isolation + integration (ADR-0015). `cwd` is any path inside the repo (object store
-  //    is shared across worktrees). These are the deterministic git mechanics; semantics (conflict
-  //    resolution, integration verify) live in Plays, never here. ──────────────────────────────────
+  // ── Worktree isolation + integration (ADR-0023 §4; formerly ADR-0015). `cwd` is any path inside the
+  //    repo (object store is shared across worktrees). These are deterministic git mechanics; semantics
+  //    (conflict resolution, integration verify) live in Plays, never here. ─────────────────────────
   /** Create a worktree at `dir` on a NEW branch `branch` starting at `baseSha`. Throws if `dir`
    *  exists or `branch` is already checked out elsewhere. */
   worktreeAdd(cwd: string, dir: string, branch: string, baseSha: string): Promise<void>
@@ -55,7 +54,7 @@ export interface Git {
    *  un-integrated commits. Empty ⇒ everything is already on `base`, so the branch is safe to GC. */
   unmergedCommits(cwd: string, base: string, branch: string): Promise<string[]>
 
-  // ── Conflict-aware integration (ADR-0015 §4). Used when trunk advanced since launch (non-ff): the
+  // ── Conflict-aware integration (ADR-0023 §4; ADR-0015 historical lineage). Used when trunk advanced:
   //    runner merges trunk INTO the run branch in the worktree; a clean merge commits, a conflicting
   //    one is left in progress for the merge-conflict Play to resolve, then completeMerge/abortMerge. ──
   /** Merge `ref` into the branch checked out at `cwd` (a REAL merge that may conflict — unlike
@@ -68,7 +67,7 @@ export interface Git {
    *  previously-conflicted files; git already staged the auto-merged ones) + commit. Returns the new
    *  HEAD sha. Staging just `paths` — never `git add -A` — keeps any stray out-of-scope file the
    *  resolver Play left in the worktree OUT of the merge commit that then lands on trunk. (The runner
-   *  owns this git step; the Play only edits file CONTENT — ADR-0015 §2.) */
+   *  owns this git step; the Play only edits file CONTENT — ADR-0023 §4 lineage.) */
   completeMerge(cwd: string, message: string, paths: readonly string[]): Promise<string>
   /** Abort an in-progress merge, restoring the pre-merge branch state (`git merge --abort`). Used when
    *  the Play judges a genuine semantic divergence — escalate rather than guess. */
