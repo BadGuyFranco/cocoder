@@ -34,9 +34,9 @@ founder ratifies Objectives → first run lands, findings traceable to repo real
 runs against the dogfood and produces an honest, ratify-then-apply report. Boundary: **founder acceptance
 of ADR-0020 gates any build**; no deployment, no multi-repo commit spine, no product code.
 
-The three template **skeletons are drafted** at `packages/personas/base/playbooks/{new-primary,
-cocoder-takeover,drift-audit}.md` (inert until built). They fix the phase structure, founder gates,
-scopes, and outputs; the per-phase agent prompts + the loader extension + the scaffold op are the build.
+The retired template skeletons are frozen under `cocoder/zArchive/playbooks/` as design history. The
+existing-repo path now ships as an ordinary scaffold-seeded priority; New Primary and Drift follow the
+same priority-based delivery model instead of a live base `playbooks/` genre.
 
 Build atoms (once the ADR is accepted): wire the three Playbooks as shipped meta-Playbooks + the loader
 extension (ADR-0020 §7); the `deep-read` audit Play (the Takeover P2 unit, adversarially reviewed); the

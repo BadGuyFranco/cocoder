@@ -7,8 +7,8 @@ writeScope: ["cocoder/**"]
 modelPin: standard
 ---
 
-> **DRAFT — pending [ADR-0020](../../../../cocoder/decisions/0020-primary-root-audit.md). Inert until the
-> loader reads `base/playbooks/`.**
+> **FROZEN — retired by [ADR-0032](../../decisions/0032-retire-playbooks-genre.md).** Historical design
+> note only; the loader no longer reads `base/playbooks/`.
 
 ## Objective
 A brand-new primary root (empty or near-empty — no meaningful code to audit yet) becomes a launch-ready

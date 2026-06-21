@@ -2,9 +2,9 @@
 
 **Status: Proposed -- pending founder ratification.**
 
-This note extends the [New Primary playbook](./new-primary.md) that was introduced by
-[ADR-0020](../../../../cocoder/decisions/0020-primary-root-audit.md). It is a design/spec note only:
-no registry code, starter templates, or runtime implementation exists yet.
+This note extends the frozen [New Primary playbook](./new-primary.md) design that was introduced by
+[ADR-0020](../../decisions/0020-primary-root-audit.md). It is a design/spec note only: no registry code,
+starter templates, or runtime implementation exists yet.
 
 ## Decision Shape
 

@@ -27,9 +27,9 @@ findings each trace to a concrete governance-vs-reality mismatch, and the founde
 writes; no new executor/runner-mode (the reframe explicitly retires that — ADR-0026); reuse the
 onboard-existing engines as library tooling rather than forking a parallel contract.
 
-The inert baked plan lives at `packages/personas/base/playbooks/drift-audit.md` (P1 read-claims → P2
-read-reality → P3 compare → P4 report → P5 ratify ▸hard gate → P6 apply). It fixes the phase structure,
-founder gate, scope, and outputs; the per-phase engine logic + the ordinary-priority wiring are the build.
+The retired baked-plan skeleton is frozen at `cocoder/zArchive/playbooks/drift-audit.md` (P1 read-claims
+→ P2 read-reality → P3 compare → P4 report → P5 ratify ▸hard gate → P6 apply). It remains design
+history; the live delivery path is this ordinary priority's engine logic + ordinary-priority wiring.
 
 ## Reuse map (from the onboard-existing rebuild — confirm exact symbols in atom 0)
 | Drift phase | Source |

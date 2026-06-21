@@ -7,8 +7,8 @@ writeScope: ["cocoder/**"]
 modelPin: top-tier
 ---
 
-> **DRAFT — pending [ADR-0020](../../../../cocoder/decisions/0020-primary-root-audit.md). Inert until the
-> loader reads `base/playbooks/`.**
+> **FROZEN — retired by [ADR-0032](../../decisions/0032-retire-playbooks-genre.md).** Historical design
+> note only; the loader no longer reads `base/playbooks/`.
 
 ## Objective
 An already-managed primary root is re-checked for **drift** — where its `cocoder/` governance no longer

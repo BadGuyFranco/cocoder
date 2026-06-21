@@ -7,6 +7,9 @@
 **Amended by:** [0030](./0030-retire-spike-genre.md) — the standalone `spikes/` directory genre is
 retired. Historical spike notes move to `cocoder/zArchive/spikes/`; new research belongs inside a
 priority's research/plan phase or `adhoc-session`.
+**Amended by:** [0032](./0032-retire-playbooks-genre.md) — the base-persona `playbooks/` skeleton
+genre is retired. Historical skeletons move to `cocoder/zArchive/playbooks/`; onboarding/drift work now
+runs through scaffold-seeded priorities and ordinary Oscar-driven priorities.
 **Amended (founder, 2026-06-10 — the reorg):** the zone model collapses **four → three** — the
 workspace-private zone (`cocoder/local/`) is **eliminated**. A workspace governance directory is
 fully git-tracked and *never* contains machine-local state; the install's `local/` is the **only**

@@ -12,13 +12,19 @@
 > — three onboarding situations, deep multi-agent audit, founder ratifies every Objective, propose-only
 > drift, and the `cocoder/**`-only trust boundary are all unchanged. Only the *driver* and the *term*
 > changed.
+>
+> **Amended by [ADR-0032](./0032-retire-playbooks-genre.md) (Accepted 2026-06-21):** the inert
+> `packages/personas/base/playbooks/` skeleton genre is retired and frozen under
+> `cocoder/zArchive/playbooks/`. Read references to the base `playbooks/` directory below as historical
+> design context, not current topology.
 
 **Status:** **Accepted (founder, 2026-06-14)** — product structure current; **execution model amended by
-[0026](./0026-onboard-existing-as-oscar-priority.md)** (2026-06-17, see banner). Co-designed with the founder (this redraft supersedes the
+[0026](./0026-onboard-existing-as-oscar-priority.md)** (2026-06-17, see banner); base `playbooks/`
+skeleton genre retired by [0032](./0032-retire-playbooks-genre.md) (2026-06-21). Co-designed with the founder (this redraft supersedes the
 2026-06-10 draft; the founder set the high-quality bar, the three-template split, and the mid-process
 checkpoints) and accepted to proceed with the [`new-primary-root`](../priorities/new-primary-root.md)
-build. The three skeletons under `packages/personas/base/playbooks/` remain inert until that build wires
-the loader extension (§7).
+build. Historical skeletons are frozen under `cocoder/zArchive/playbooks/`; they are no longer a live
+base-persona genre.
 **Builds on:** [0019](./0019-multi-root-workspaces.md) (primary root / workspace model),
 [0012](./0012-living-base-personas.md) (living base + portability), [0018](./0018-persona-run-mode-and-sub-agents.md)
 (per-Play model pinning + sub-agents), [0005](./0005-personas-and-subtasks.md) (Plays),

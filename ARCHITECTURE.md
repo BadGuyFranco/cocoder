@@ -9,9 +9,11 @@ CoCoder has **three storage zones** that must never be conflated. The current to
 [ADR-0008](./cocoder/decisions/0008-repository-topology.md) plus
 [ADR-0012](./cocoder/decisions/0012-living-base-personas.md),
 [ADR-0019](./cocoder/decisions/0019-multi-root-workspaces.md),
-[ADR-0027](./cocoder/decisions/0027-workspace-storage-contract.md), and
-[ADR-0030](./cocoder/decisions/0030-retire-spike-genre.md): repository homes, living base personas,
-multi-root workspace identity, workspace storage, and the retired standalone `spikes/` genre.
+[ADR-0027](./cocoder/decisions/0027-workspace-storage-contract.md),
+[ADR-0030](./cocoder/decisions/0030-retire-spike-genre.md), and
+[ADR-0032](./cocoder/decisions/0032-retire-playbooks-genre.md): repository homes, living base personas,
+multi-root workspace identity, workspace storage, and the retired standalone `spikes/` and base
+`playbooks/` genres.
 
 ```mermaid
 flowchart TB

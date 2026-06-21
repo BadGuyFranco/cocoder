@@ -199,8 +199,8 @@ Representative hits:
 - Proof/test comments still preserve lineage names: `packages/core/tests/git-worktree.test.ts:1` and
   `packages/personas/tests/base-personas.test.ts:209`.
 - 0020/phase-executor hits are history/tooling references: `ARCHITECTURE.md:114`, `ARCHITECTURE.md:142-145`,
-  `scripts/proof-onboard-existing.mjs:2`, and inert playbook docs such as
-  `packages/personas/base/playbooks/README.md:3`.
+  `scripts/proof-onboard-existing.mjs:2`, and inert playbook docs now frozen under
+  `cocoder/zArchive/playbooks/` by ADR-0032.
 
 Verdict from the hits: nothing load-bearing needs an agent to read a superseded ADR as current truth. The
 safeguards are pinned by current owners and tests: verify gate by ADR-0013 and runner-direct tests
@@ -300,16 +300,12 @@ has one home (extends owner-map rows 202-216, which already confirmed the commit
 surfaces, and Oz-vs-Deb repair as guarded distinctions). One genuine `suspect` cut, plus two clarity-only
 nits that are **not** load-bearing surface and not worth their churn.
 
-1. **The one real cut — a second dead genre (symmetric to spikes):** `packages/personas/base/playbooks/`.
-   Its loader was retired by ADR-0026 — `packages/personas/base/playbooks/README.md:1-10` states "the
-   retired loader no longer reads this directory"; the onboarding flow now runs as an ordinary Oscar
-   priority (`packages/personas/base/priorities/onboard-existing.md`). So this is exactly the spike
-   situation: a genre the runtime no longer reaches, sitting live. Verified loader-dead: no live code under
-   `packages/core/src` or `packages/daemon/src` loads the skeleton `.md` files. **Proposal (founder-gated,
-   new ADR):** freeze the skeletons to `cocoder/zArchive/` and remove `playbooks/` from the ADR-0008
-   topology + ARCHITECTURE Directory Layout — the same move §A made for `spikes/`, with the same
-   reversibility. Load-bearing test: nothing reads the directory; base-persona/Play tests + topology stay
-   green. This is the cleanest next subtraction after the ADR-graph collapse.
+1. **Executed cut — second dead genre (symmetric to spikes):** `packages/personas/base/playbooks/`.
+   Its loader was retired by ADR-0026, and the onboarding flow now runs as an ordinary Oscar priority
+   (`packages/personas/base/priorities/onboard-existing.md`). Run_172 / ADR-0032 froze the skeletons to
+   `cocoder/zArchive/playbooks/`, removed the live base directory, and removed the genre from ADR-0008's
+   topology model. Verified loader-dead: no live code under `packages/core/src` or `packages/daemon/src`
+   loads the skeleton `.md` files.
    - **Disambiguation (do not conflate):** the live code module `packages/core/src/playbooks/` (the p1–p6
      phase-executor + drift inventory, imported by `packages/core/src/drift/read-reality.ts:3`) is a
      *different thing* and stays. Whether that module is still fully dispatched after ADR-0026 superseded
@@ -332,8 +328,8 @@ nits that are **not** load-bearing surface and not worth their churn.
 
 **§B verdicts complete** (Objective #2): ADR-graph `suspect` (reading-graph collapse), persona-count
 `suspect` (Quinn/Talia unstaffed QA surface), vocabulary `real`-with-one-cut (retired `playbooks/` genre).
-Two concrete founder-gated cuts are now teed up beyond spikes — the ADR reading-graph collapse and the
-`playbooks/` dead-genre freeze — either satisfies Verified-when #3 once founder-approved.
+Two concrete founder-gated cuts beyond spikes have executed: the ADR reading-graph collapse and the
+`playbooks/` dead-genre freeze. Either satisfies Verified-when #3.
 
 ## §B → durable rule (FOUNDER-RATIFIED 2026-06-21)
 
@@ -393,8 +389,8 @@ green behavior-pinning tests).
 
 ## Boundary
 Verdict + behavior-pinning tests first. **Pre-authorized code/governance mutations:** §A (spike retirement,
-DONE) and — **FOUNDER-AUTHORIZED 2026-06-21 (GO PLAYBOOKS)** — the §B `playbooks/` dead-genre freeze (see
-§B vocabulary verdict cut #1 and the next-run scope below). All *other* §B cuts (Quinn/Talia personas, etc.)
+DONE), §B ADR-graph reading-contract collapse (DONE), and §B `playbooks/` dead-genre freeze (DONE via
+ADR-0032). All *other* §B cuts (Quinn/Talia personas, etc.)
 still require a per-cut founder go-ahead and a new founder-approved ADR before touching runner/daemon/persona
 code (reversing an Accepted ADR needs a new ADR — ADR-0010). Do not weaken a load-bearing safeguard. Elegance
 standard: fewer concepts, never a new lane to describe the old ones.
@@ -408,27 +404,9 @@ standard: fewer concepts, never a new lane to describe the old ones.
 - Behavior nets: `packages/core/tests/**`, `scripts/proof-orchestration-enforcer.mjs`, `scripts/proof-*.mjs`.
 
 ## Suggested Next Action
-**Disposition: `continue`.** §A complete; all §B verdicts complete; ADR-graph reading-contract collapse
-EXECUTED (run_171 — see §B → durable rule, EXECUTED). Verified-when #1, #2, #3, #5 met; #4 met for the
-collapsed surface.
-
-**FOUNDER-AUTHORIZED 2026-06-21 — GO PLAYBOOKS. Next run executes the `playbooks/` dead-genre freeze.**
-This is a **verified run** (touches `packages/personas/base/**` + topology + a new ADR + behavior-pinning
-tests), NOT a post-wrap support edit. Relaunch `surface-reduction`; the first/only authorized cut is:
-
-1. **Freeze the dead genre.** Move `packages/personas/base/playbooks/` skeletons to `cocoder/zArchive/`
-   (frozen history — do NOT delete), symmetric to §A's `spikes/` move. The loader was retired by ADR-0026;
-   verify no live code under `packages/core/src` or `packages/daemon/src` reads the skeleton `.md` files.
-2. **Drop the genre from the directory model.** Remove `playbooks/` from ADR-0008 topology + the
-   ARCHITECTURE.md Directory Layout tree + any AGENTS.md references.
-3. **Record in a new founder-approved ADR** (next free number; non-destructively amends ADR-0008 topology,
-   the same shape ADR-0030 used for `spikes/`); add the README index entry.
-4. **DO NOT conflate** with the live code module `packages/core/src/playbooks/` (the p1–p6 phase-executor /
-   drift inventory, imported by `packages/core/src/drift/read-reality.ts`) — that is a different thing and
-   **stays**. Whether *it* is still fully dispatched post-ADR-0026 is a separate, larger liveness question —
-   a named follow-up, NOT in this cut.
-5. **Behavior pins (Verified-when #5):** `pnpm -F @cocoder/personas test`, `node scripts/check-topology.mjs`,
-   `pnpm -r typecheck`, and the relevant `scripts/proof-*.mjs` stay green.
+**Disposition: `complete` after run_172 verification.** §A complete; all §B verdicts complete; ADR-graph
+reading-contract collapse EXECUTED (run_171); `playbooks/` dead-genre freeze EXECUTED (run_172,
+ADR-0032). Verified-when #1, #2, #3, #4, and #5 are met for the executed cuts.
 
 **Deferred (still founder-gated) — Quinn/Talia persona collapse** (option (a): fold QA into Plays, delete
 unstaffed persona files). Needs a separate **GO PERSONAS** + new ADR; not authorized by GO PLAYBOOKS.
