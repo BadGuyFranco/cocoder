@@ -3,6 +3,15 @@ id: drift-audit
 title: "Drift Audit reframe — build the propose→ratify→apply drift flow as an Oscar-driven priority (ADR-0026)"
 ---
 
+> **Archived 2026-06-21 (founder).** Verified-when met: the engine (read-claims→reality→compare→report→
+> apply, proof-tested) was run against the dogfood; the 25 findings traced to a concrete mismatch — two
+> **wholesale v1-stale memory files** — and the founder-ratified fix **landed in `cocoder/**`** (rewritten
+> to v2 reality). Running it then exposed and we fixed the detector itself ([ticket 0024]: no crash + precise
+> path detection), so corrected governance now yields **0 findings**. The apply was a manual rewrite (the
+> correct apply for wholesale-stale files; the tool's per-line `applyRatifiedDriftWrites` is built +
+> proof-green for the incremental case). **Deferred-as-always:** agentic *pattern* drift (retired flows, not
+> gone paths) → named follow-up [[agentic-pattern-drift-detection]].
+
 > **Build-launchable.** [ADR-0026](../decisions/0026-onboard-existing-as-oscar-priority.md) is **Accepted**
 > and established the reframe model (ordinary Oscar-driven priority — atoms calling engines directly, **not**
 > a standalone phase-executor). The onboard-existing flow was already rebuilt this way (run_140/141); this
