@@ -1,9 +1,10 @@
 [
-  "drift-audit",
   "surface-reduction",
+  "drift-audit",
   "new-primary-root",
   "first-class-model-tiers",
   "adapter-abstraction-hardening",
   "priority-audit",
-  "deb-follows-oscar"
+  "deb-follows-oscar",
+  "ripgrep-dependency-research"
 ]
