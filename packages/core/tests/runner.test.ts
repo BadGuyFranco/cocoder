@@ -953,6 +953,34 @@ describe('runRun (multi-atom loop)', () => {
     expect(invalid?.data).toMatchObject({ play: 'wrap-up', issues: expect.arrayContaining([`missing ${label('title')}`]) })
   })
 
+  test('validated wrap-up with a founder decision leaves the run awaiting-founder', async () => {
+    const store = openRunStore(':memory:')
+    const pickupWrites: string[] = []
+    const founderGateCloseout = renderFounderCloseout({
+      runStatus: 'continue',
+      decisionNeeded: 'Choose the external repo for the live onboarding proof. Recommendation: use the CoBuilder copy.',
+      nextStep: 'Priority: `demo` — founder chooses the live-proof target repo',
+      judgment: 'Oscar stopped because the next step is founder-gated and cannot be delegated as a build atom.',
+    })
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([['packages/atom.ts']]),
+        io: fakeIO({ directives: [delegate('atom 0'), wrapup('Oscar seed closeout')], pickupWrites }),
+        getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
+        runHeadless: async () => ({ exitCode: 0, output: founderGateCloseout }),
+      }),
+      { ...input, wrapPlay, wrapPlayAssignment },
+    )
+
+    expect(result.status).toBe('awaiting-founder')
+    expect(store.getRun(result.runId)?.status).toBe('awaiting-founder')
+    expect(pickupWrites).toEqual([founderGateCloseout])
+    expect((store.listEvents(result.runId).find((e) => e.type === 'landing-outcome')?.data as { status?: string }).status).toBe('awaiting-founder')
+    expect((store.listEvents(result.runId).find((e) => e.type === 'run-end')?.data as { status?: string }).status).toBe('awaiting-founder')
+  })
+
   test('wrap-up Play output validation is disabled when no outputValidator is declared', async () => {
     const store = openRunStore(':memory:')
     const pickupWrites: string[] = []

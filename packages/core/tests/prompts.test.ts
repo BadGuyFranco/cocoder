@@ -114,7 +114,7 @@ describe('buildBuilderDispatch', () => {
     const prompt = buildOrchestratorPrompt(orchestratorInput)
 
     expect(prompt).toContain('Continue by default when the next item is')
-    expect(prompt).toContain('A clean commit boundary is a good place to')
+    expect(prompt).toContain('A clean commit boundary is a good')
     expect(prompt).toContain('Stop conditions: the priority is done')
     expect(prompt).not.toContain('End the run when the builder has had enough')
   })
@@ -130,6 +130,7 @@ describe('buildBuilderDispatch', () => {
     expect(dispatch).toContain('WRAP-UP READY artifact for exactly-once delivery')
     expect(dispatch).toContain('A clean commit boundary alone is not a reason to stop')
     expect(dispatch).toContain('founder approval needed')
+    expect(dispatch).toContain('Founder Decision Needed is None')
     expect(dispatch).not.toContain('builder has had enough')
   })
 

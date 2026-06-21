@@ -283,6 +283,19 @@ function founderCloseoutSection(markdown: string, contract: FounderCloseoutContr
   return markdown.slice(contentStart, contentEnd).trim()
 }
 
+function founderDecisionNeeded(markdown: string, contract: FounderCloseoutContract): boolean {
+  const decision = founderCloseoutSection(markdown, contract, section(contract, 'decisionNeeded'))
+  if (!decision) return false
+  return !/^none\.?$/i.test(decision.trim())
+}
+
+function deriveWrapupRunStatus(markdown: string, contract: FounderCloseoutContract, current: RunStatus): RunStatus {
+  if (current !== 'completed') return current
+  const runStatus = founderCloseoutSection(markdown, contract, section(contract, 'runStatus')) ?? ''
+  if (founderDecisionNeeded(markdown, contract) || /^\s*archive ready\b/i.test(runStatus)) return 'awaiting-founder'
+  return current
+}
+
 function launchableNextIssue(cwd: string, next: string, contract: FounderCloseoutContract): string | null {
   const label = section(contract, 'nextStep')
   const escapedFinal = contract.finalLine.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -1253,6 +1266,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           await triageFault('wrapup-format-invalid', n, `wrap-up Play "${input.wrapPlay.id}" produced malformed founder closeout: ${outputValidation.issues.join('; ')}`)
         } else {
           pickup = candidatePickup
+          if (outputValidation?.founderCloseoutContract && pickup) {
+            terminalStatus = deriveWrapupRunStatus(pickup, outputValidation.founderCloseoutContract, terminalStatus)
+          }
         }
         store.recordEvent({ runId: run.id, type: 'wrapup', data: { atoms: n, forced: false, play: input.wrapPlay.id } })
         log(`wrap-up play ${input.wrapPlay.id} ran after ${n} atom(s)`)

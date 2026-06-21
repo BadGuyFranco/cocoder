@@ -182,8 +182,10 @@ atoms. One atom at a time:
    tight; or failures/faults make continuing wasteful. When you choose \`wrapup\`, only write the
    directive file at this stage; do not also deliver a founder closeout in the pane. The runner will
    validate the wrap-up, add the landing outcome, and send you a \`WRAP-UP READY\` artifact to deliver
-   exactly once. A clean commit boundary is a good place to continue with the next known atom, not by
-   itself a reason to stop.
+   exactly once. If you wrap because the next step needs founder approval, make that decision explicit
+   in the pickup so the wrap-up Play's Founder Decision Needed section is not "None"; the runner derives
+   the run's \`awaiting-founder\` status from that validated closeout. A clean commit boundary is a good
+   place to continue with the next known atom, not by itself a reason to stop.
 
 # Verifying an atom (the gate — no human backstop)
 
@@ -568,7 +570,7 @@ export function buildVerifyDispatch(directivePath: string, verifyPath: string): 
 /** Prompt Oscar for the next turn after an atom resolved: delegate another atom, or wrap up. Names the
  *  exact directive path so the numbered handshake is unambiguous (a re-delegation is simply the next n). */
 export function buildNextOrWrapDispatch(nextDirectivePath: string, outcome: string): string {
-  return `NEXT — ${outcome}. Write your next directive to ${nextDirectivePath}: delegate the next concrete in-priority atom by writing {"kind":"delegate","task":"…"} unless a real stop condition applies; otherwise write {"kind":"wrapup","pickup":"…"} to end the run with a resumable pickup brief. If you wrap, only write the directive file; do not also deliver a founder closeout in the pane. The runner will send a WRAP-UP READY artifact for exactly-once delivery after validation and landing outcome. Stop conditions are: priority done, founder approval needed, no concrete next atom, different launch/surface needed, context genuinely tight, or failures/faults make continuing wasteful. A clean commit boundary alone is not a reason to stop.`
+  return `NEXT — ${outcome}. Write your next directive to ${nextDirectivePath}: delegate the next concrete in-priority atom by writing {"kind":"delegate","task":"…"} unless a real stop condition applies; otherwise write {"kind":"wrapup","pickup":"…"} to end the run with a resumable pickup brief. If you wrap, only write the directive file; do not also deliver a founder closeout in the pane. The runner will send a WRAP-UP READY artifact for exactly-once delivery after validation and landing outcome. Stop conditions are: priority done, founder approval needed, no concrete next atom, different launch/surface needed, context genuinely tight, or failures/faults make continuing wasteful. If founder approval is the stop condition, make that decision explicit in the pickup; the validated closeout must not say Founder Decision Needed is None. A clean commit boundary alone is not a reason to stop.`
 }
 
 /** Dispatch a fault to Deb to triage (ADR-0013 tier 2, expanded by ADR-0016). Names the fault-context
