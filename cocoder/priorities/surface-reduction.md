@@ -392,10 +392,12 @@ instance of the ADR-0014 rule):
 green behavior-pinning tests).
 
 ## Boundary
-Verdict + behavior-pinning tests first. The **only** pre-authorized code/governance mutation is §A (spike
-retirement). §B cuts require a per-cut founder go-ahead and a new founder-approved ADR before touching
-runner/daemon/persona code (reversing an Accepted ADR needs a new ADR — ADR-0010). Do not weaken a
-load-bearing safeguard. Elegance standard: fewer concepts, never a new lane to describe the old ones.
+Verdict + behavior-pinning tests first. **Pre-authorized code/governance mutations:** §A (spike retirement,
+DONE) and — **FOUNDER-AUTHORIZED 2026-06-21 (GO PLAYBOOKS)** — the §B `playbooks/` dead-genre freeze (see
+§B vocabulary verdict cut #1 and the next-run scope below). All *other* §B cuts (Quinn/Talia personas, etc.)
+still require a per-cut founder go-ahead and a new founder-approved ADR before touching runner/daemon/persona
+code (reversing an Accepted ADR needs a new ADR — ADR-0010). Do not weaken a load-bearing safeguard. Elegance
+standard: fewer concepts, never a new lane to describe the old ones.
 
 ## Required Inputs
 - This Research section (the pre-seeded audit).
@@ -410,15 +412,26 @@ load-bearing safeguard. Elegance standard: fewer concepts, never a new lane to d
 EXECUTED (run_171 — see §B → durable rule, EXECUTED). Verified-when #1, #2, #3, #5 met; #4 met for the
 collapsed surface.
 
-**Recommended next cut — `playbooks/` dead-genre freeze** (cleanest subtraction; symmetric to §A spike
-retirement): freeze `packages/personas/base/playbooks/` skeletons to `zArchive/`, drop the genre from
-ADR-0008 topology + ARCHITECTURE Directory Layout. Do **not** conflate with live `packages/core/src/playbooks/`
-(separate, stays). Requires founder **GO PLAYBOOKS** + new ADR + verified run.
+**FOUNDER-AUTHORIZED 2026-06-21 — GO PLAYBOOKS. Next run executes the `playbooks/` dead-genre freeze.**
+This is a **verified run** (touches `packages/personas/base/**` + topology + a new ADR + behavior-pinning
+tests), NOT a post-wrap support edit. Relaunch `surface-reduction`; the first/only authorized cut is:
 
-**Alternate cut — Quinn/Talia persona collapse** (option (a): fold QA into Plays, delete unstaffed persona
-files). Requires founder **GO PERSONAS** instead.
+1. **Freeze the dead genre.** Move `packages/personas/base/playbooks/` skeletons to `cocoder/zArchive/`
+   (frozen history — do NOT delete), symmetric to §A's `spikes/` move. The loader was retired by ADR-0026;
+   verify no live code under `packages/core/src` or `packages/daemon/src` reads the skeleton `.md` files.
+2. **Drop the genre from the directory model.** Remove `playbooks/` from ADR-0008 topology + the
+   ARCHITECTURE.md Directory Layout tree + any AGENTS.md references.
+3. **Record in a new founder-approved ADR** (next free number; non-destructively amends ADR-0008 topology,
+   the same shape ADR-0030 used for `spikes/`); add the README index entry.
+4. **DO NOT conflate** with the live code module `packages/core/src/playbooks/` (the p1–p6 phase-executor /
+   drift inventory, imported by `packages/core/src/drift/read-reality.ts`) — that is a different thing and
+   **stays**. Whether *it* is still fully dispatched post-ADR-0026 is a separate, larger liveness question —
+   a named follow-up, NOT in this cut.
+5. **Behavior pins (Verified-when #5):** `pnpm -F @cocoder/personas test`, `node scripts/check-topology.mjs`,
+   `pnpm -r typecheck`, and the relevant `scripts/proof-*.mjs` stay green.
 
-Reply **GO PLAYBOOKS** (recommended) or **GO PERSONAS** in this session, then relaunch this priority.
+**Deferred (still founder-gated) — Quinn/Talia persona collapse** (option (a): fold QA into Plays, delete
+unstaffed persona files). Needs a separate **GO PERSONAS** + new ADR; not authorized by GO PLAYBOOKS.
 
 **Disjoint pre-existing red (NOT this priority):** `scripts/proof-governance-authoring.mjs` clause E still
 asserts pre-ADR-0029 builder-dirt refusal; retarget to ADR-0029 in a separate run/ticket.
