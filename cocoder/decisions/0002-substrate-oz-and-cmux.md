@@ -56,7 +56,7 @@ vendor, or link cmux's code. CoCoder remains cleanly Apache-2.0.
 
 Spiked cmux's socket API against the `SessionHost` port: **headless spawn, command run, screen
 capture, and exit/completion detection all confirmed.** See
-[`../spikes/2026-05-28-cmux-socket-api.md`](../spikes/2026-05-28-cmux-socket-api.md). Two
+[`../zArchive/spikes/2026-05-28-cmux-socket-api.md`](../zArchive/spikes/2026-05-28-cmux-socket-api.md). Two
 findings folded into the driver design:
 
 1. **External control needs a non-default socket mode** — default `socketControlMode: "cmuxOnly"`

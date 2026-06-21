@@ -225,27 +225,28 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   as tickets 0020/0021/0022.
 
 **Active build priorities (launchable; `order.json` order — the `priorities/` directory is the live index):**
-1. `orchestration-audit-and-refactor` — **ARCHIVE-CANDIDATE (run_167).** ADR-0028 reframe landed; manifest
-   guard hides reserved Play values from personas; behavior-pinning net green. All five Verified-when criteria
-   met. **Founder gate:** confirm archive. Follow-ups survive archive: ticket 0020 (0023 closed run_168).
-2. `deb-follows-oscar` — **NEW.** Make Deb a first-class, runner-driven watcher of Oscar: event-awakened,
-   non-blocking, Oscar-only nudge authority, and no second orchestration lane.
-3. `drift-audit` — **CONTINUE (run_163).** Build complete (run_161); run_163 re-verified proof green and 25
+1. `drift-audit` — **CONTINUE (run_163).** Build complete (run_161); run_163 re-verified proof green and 25
    stale-path findings unchanged. **Founder-gated:** ratify a subset + apply materialization choice (new records
    vs in-place fixes) + ratify→apply landing in `cocoder/**`. Owner map at `docs/drift-audit-ownermap.md`.
-4. `new-primary-root` — **CONTINUE (run_160).** Onboarding rebuild complete; one-command proof
+2. `surface-reduction` — **CONTINUE (run_169).** §A spike directory genre retired (ADR-0030; notes frozen under
+   `zArchive/spikes/`). **Founder-gated §B:** load-bearing verdict per candidate surface + at least one suspect
+   collapse with new ADR + green tests; ticket `type: spike` taxonomy ruling pending.
+3. `new-primary-root` — **CONTINUE (run_160).** Onboarding rebuild complete; one-command proof
    (`node scripts/proof-onboard-existing.mjs`); run_159 model defects resolved + `main` fully green.
    **Founder-gated live proof remains:** external-repo onboard-existing end-to-end (Objective a). Drift
    reframe split to `drift-audit` (run_160/161); report half of Objective (b) done there — apply half
    founder-gated on that priority. No buildable atoms in an ordinary loop here.
-5. `first-class-model-tiers` — **Grok draft; requires founder ownership beat before launch.** General model
+4. `first-class-model-tiers` — **Grok draft; requires founder ownership beat before launch.** General model
    tier vocabulary across assignments, dispatch, and UI.
-6. `adapter-abstraction-hardening` — **Grok draft; requires founder ownership beat before launch.** Reduce
+5. `adapter-abstraction-hardening` — **Grok draft; requires founder ownership beat before launch.** Reduce
    duplication in the CLI adapter layer (ADR-0006).
-7. `tickets-review` — **CONTINUE (run_143).** Build code-complete; ticket launch plumbing satisfied
-   (`LaunchRunTarget {kind:'ticket'}`, `RunInput.ticketId`, `ticket-fix` sentinel in `launcher.ts`).
-   **Archive gate:** founder live proof — Tickets tab **Launch** on ticket **0003**; confirm fix run completes
-   and 0003 moves to `closed/` with INDEX updated.
+6. `priority-audit` — standing pruning tool (assess priority set for staleness → founder-decision table).
+7. `deb-follows-oscar` — **NEW.** Make Deb a first-class, runner-driven watcher of Oscar: event-awakened,
+   non-blocking, Oscar-only nudge authority, and no second orchestration lane.
+
+**Other launchable (not in `order.json`):** `tickets-review` — **CONTINUE (run_143).** Build code-complete;
+   ticket launch plumbing satisfied. **Archive gate:** founder live proof — Tickets tab **Launch** on ticket
+   **0003**; confirm fix run completes and 0003 moves to `closed/` with INDEX updated.
 
 **Standing tools (always available — not build work):** `priority-audit` (assess the priority set for
 staleness → a founder-decision table; the pruning tool) · `adhoc-session` (no named priority — draft one,

@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-20 — **surface-reduction: spike directory genre retired — §B founder-gated (run_169)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [surface-reduction](./priorities/surface-reduction.md) | **Run:** run_169
+**Outcomes:**
+- **§A landed (`0e195ef`).** Retired live `cocoder/spikes/` genre; ADR-0030 Accepted; two historical spikes frozen under `zArchive/spikes/`; topology, ARCHITECTURE, PLAYBOOK, and AGENTS references reconciled.
+- **Verified-when #1 met** for the directory genre; ticket `type: spike` taxonomy explicitly deferred (ADR-0030 leaves it unchanged pending founder call).
+- **Pre-existing red surfaced:** orchestration-contracts suite missing `workspace-local` routing target — unrelated regression; owned by `drift-audit`, not this cut.
+- **Disposition: `continue`** — §B cuts require per-cut founder go-ahead + new ADR before any code.
+
+**Next:** Launch `surface-reduction` after founder rules on ticket `type: spike` (KEEP vs FOLD) and names the first §B verdict target (ADR graph recommended); Oscar runs read-only load-bearing verdict before any collapse code.
+
 ## 2026-06-20 — **ticket-fix-0023: orphan /author route removed — single archive dispatch owner pinned (run_168)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0023](./tickets/closed/0023-archive-priority-play-no-out-of-run-dispatch.md) | **Run:** run_168
