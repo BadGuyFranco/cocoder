@@ -26,25 +26,6 @@ const fakeGit = (): Git => ({
   async listWorktrees() {
     return []
   },
-  async isAncestor() {
-    return true
-  },
-  async mergeFastForwardOnly() {
-    return 'h0'
-  },
-  async unmergedCommits() {
-    return []
-  },
-  async mergeInto() {
-    return 'clean' as const
-  },
-  async conflictedFiles() {
-    return []
-  },
-  async completeMerge() {
-    return 'h0'
-  },
-  async abortMerge() {},
   async currentBranch() {
     return 'trunk'
   },

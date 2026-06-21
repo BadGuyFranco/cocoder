@@ -3,7 +3,7 @@
 // control flow but structurally cannot catch a wrong `git` invocation (the F7 lesson: load-bearing
 // path handling gets discovered at runtime unless exercised end-to-end).
 import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
@@ -72,40 +72,6 @@ describe('Git worktree/merge primitives (ADR-0023 §4 lineage, live git)', () =>
     expect(list.find((w) => w.branch === 'cocoder/run_x')?.path).toContain('wt-run')
   })
 
-  test('isAncestor + unmergedCommits track a branch ahead of trunk', async () => {
-    const wt = join(main, 'wt-run')
-    await git.worktreeAdd(main, wt, 'cocoder/run_x', trunkSha)
-    const aheadSha = await commitFile(wt, 'feature.txt', 'work\n', 'atom: feature')
-
-    // trunk is an ancestor of the run branch (a merge would fast-forward); not vice-versa.
-    expect(await git.isAncestor(main, trunkSha, aheadSha)).toBe(true)
-    expect(await git.isAncestor(main, aheadSha, trunkSha)).toBe(false)
-    // The run's un-integrated commit is exactly the one not on trunk.
-    expect(await git.unmergedCommits(main, 'trunk', 'cocoder/run_x')).toEqual([aheadSha])
-  })
-
-  test('mergeFastForwardOnly lands the branch on trunk; afterwards nothing is un-integrated', async () => {
-    const wt = join(main, 'wt-run')
-    await git.worktreeAdd(main, wt, 'cocoder/run_x', trunkSha)
-    const aheadSha = await commitFile(wt, 'feature.txt', 'work\n', 'atom: feature')
-
-    const merged = await git.mergeFastForwardOnly(main, 'cocoder/run_x') // main is on trunk
-    expect(merged).toBe(aheadSha) // ff ⇒ trunk now points at the run tip (no merge commit)
-    expect(await g(main, ['rev-parse', 'HEAD'])).toBe(aheadSha)
-    expect(await git.unmergedCommits(main, 'trunk', 'cocoder/run_x')).toEqual([]) // fully integrated → GC-safe
-  })
-
-  test('mergeFastForwardOnly THROWS on a diverged trunk (never a silent merge commit)', async () => {
-    const wt = join(main, 'wt-run')
-    await git.worktreeAdd(main, wt, 'cocoder/run_x', trunkSha)
-    await commitFile(wt, 'feature.txt', 'run work\n', 'atom: feature') // run advances
-    await commitFile(main, 'trunkonly.txt', 'trunk work\n', 'trunk: moved') // trunk advances → divergence
-
-    await expect(git.mergeFastForwardOnly(main, 'cocoder/run_x')).rejects.toThrow()
-    // The non-ff did NOT land: HEAD is still the trunk-only commit, no merge commit was created.
-    expect((await g(main, ['log', '--oneline'])).split('\n')).toHaveLength(2) // init + trunk:moved only
-  })
-
   test('worktreeRemove deletes a clean worktree dir and de-lists it', async () => {
     const wt = join(main, 'wt-run')
     await git.worktreeAdd(main, wt, 'cocoder/run_x', trunkSha)
@@ -114,53 +80,7 @@ describe('Git worktree/merge primitives (ADR-0023 §4 lineage, live git)', () =>
     await git.worktreeRemove(main, wt)
     expect(await exists(wt)).toBe(false)
     expect((await git.listWorktrees(main)).map((w) => w.branch)).not.toContain('cocoder/run_x')
-    // The branch ref survives removal — its un-integrated commit is NOT lost (ADR-0023 §4 lineage).
-    expect(await git.unmergedCommits(main, 'trunk', 'cocoder/run_x')).toHaveLength(1)
-  })
-})
-
-describe('Git conflict-aware merge primitives (ADR-0023 §4 lineage, live git)', () => {
-  test('mergeInto is clean when branch + trunk touch different files', async () => {
-    const wt = join(main, 'wt-run')
-    await git.worktreeAdd(main, wt, 'cocoder/run_x', trunkSha)
-    await commitFile(wt, 'a.txt', 'run\n', 'atom: a') // run edits a.txt
-    await commitFile(main, 'b.txt', 'trunk\n', 'trunk: b') // trunk edits b.txt (disjoint)
-
-    expect(await git.mergeInto(wt, 'trunk')).toBe('clean') // no overlap → merge commits cleanly
-    expect(await git.conflictedFiles(wt)).toEqual([])
-    // The run branch now contains trunk's commit, so trunk can fast-forward onto it.
-    expect(await git.isAncestor(main, await g(main, ['rev-parse', 'HEAD']), 'cocoder/run_x')).toBe(true)
-  })
-
-  test('mergeInto reports a conflict; completeMerge lands the resolution', async () => {
-    const wt = join(main, 'wt-run')
-    await git.worktreeAdd(main, wt, 'cocoder/run_x', trunkSha)
-    await commitFile(wt, 'shared.txt', 'run version\n', 'atom: shared') // both sides edit shared.txt…
-    await commitFile(main, 'shared.txt', 'trunk version\n', 'trunk: shared') // …differently → conflict
-
-    expect(await git.mergeInto(wt, 'trunk')).toBe('conflict')
-    expect(await git.conflictedFiles(wt)).toEqual(['shared.txt'])
-
-    // The Play resolves the CONTENT; the runner concludes the merge, staging only the conflicted path (§2).
-    await writeFile(join(wt, 'shared.txt'), 'reconciled\n')
-    const mergeSha = await git.completeMerge(wt, 'merge: trunk → cocoder/run_x', ['shared.txt'])
-    expect(mergeSha).toBeTruthy()
-    expect(await git.conflictedFiles(wt)).toEqual([]) // merge concluded, no unmerged paths
-    // trunk is now an ancestor of the resolved branch → a subsequent ff lands everything.
-    expect(await git.isAncestor(main, await g(main, ['rev-parse', 'HEAD']), 'cocoder/run_x')).toBe(true)
-  })
-
-  test('abortMerge restores the pre-merge branch state (escalate-without-guessing path)', async () => {
-    const wt = join(main, 'wt-run')
-    await git.worktreeAdd(main, wt, 'cocoder/run_x', trunkSha)
-    const runSha = await commitFile(wt, 'shared.txt', 'run version\n', 'atom: shared')
-    await commitFile(main, 'shared.txt', 'trunk version\n', 'trunk: shared')
-
-    expect(await git.mergeInto(wt, 'trunk')).toBe('conflict')
-    await git.abortMerge(wt)
-
-    expect(await git.conflictedFiles(wt)).toEqual([]) // no merge in progress
-    expect(await g(wt, ['rev-parse', 'HEAD'])).toBe(runSha) // branch tip unchanged — nothing guessed/landed
-    expect((await readFile(join(wt, 'shared.txt'), 'utf8'))).toBe('run version\n') // working tree restored
+    // The branch ref survives removal — its run-work commit is NOT lost (ADR-0023 §4 lineage).
+    expect(await g(main, ['rev-list', 'trunk..cocoder/run_x'])).not.toBe('')
   })
 })

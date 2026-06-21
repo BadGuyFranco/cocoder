@@ -80,34 +80,15 @@ function fakeSessionHost(over: Partial<SessionHost> = {}): SessionHost {
   } as SessionHost
 }
 
-// The worktree/merge port methods (ADR-0023 §4 lineage) the runner doesn't exercise in these fake-git unit
+// The worktree port methods (ADR-0023 §4 lineage) the runner doesn't exercise in these fake-git unit
 // tests — spread into every fake so the Git interface stays satisfied (real git math is covered by
-// the live-git test in git-worktree.test.ts). Defaults model the happy path: clean fast-forward.
+// the live-git test in git-worktree.test.ts).
 const worktreeStubs = {
   async worktreeAdd() {},
   async worktreeRemove() {},
   async listWorktrees() {
     return []
   },
-  async isAncestor() {
-    return true
-  },
-  async mergeFastForwardOnly() {
-    return 'merged'
-  },
-  async unmergedCommits() {
-    return []
-  },
-  async mergeInto() {
-    return 'clean' as const
-  },
-  async conflictedFiles() {
-    return []
-  },
-  async completeMerge() {
-    return 'merged'
-  },
-  async abortMerge() {},
   async currentBranch() {
     return 'trunk'
   },

@@ -67,25 +67,6 @@ const worktreeStubs = {
   async listWorktrees() {
     return []
   },
-  async isAncestor() {
-    return true
-  },
-  async mergeFastForwardOnly() {
-    return 'merged'
-  },
-  async unmergedCommits() {
-    return []
-  },
-  async mergeInto() {
-    return 'clean' as const
-  },
-  async conflictedFiles() {
-    return []
-  },
-  async completeMerge() {
-    return 'merged'
-  },
-  async abortMerge() {},
   async currentBranch() {
     return 'trunk'
   },

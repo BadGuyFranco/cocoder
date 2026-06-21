@@ -32,9 +32,10 @@ export interface Git {
   /** `git show <sha>` — the committed diff for a run's commit_link (read-only; Oz run detail). */
   show(cwd: string, sha: string): Promise<string>
 
-  // ── Worktree isolation + integration (ADR-0023 §4; formerly ADR-0015). `cwd` is any path inside the
-  //    repo (object store is shared across worktrees). These are deterministic git mechanics; semantics
-  //    (conflict resolution, integration verify) live in Plays, never here. ─────────────────────────
+  // ── Worktree isolation (ADR-0023 §4; formerly ADR-0015). `cwd` is any path inside the repo (object
+  //    store is shared across worktrees). These are deterministic git mechanics; any higher-level
+  //    semantics live in Plays, never here. (ADR-0015's run-branch merge/landing primitives were
+  //    removed as dead code — ADR-0034 — once the single-mode spine left no run-branch merge step.) ──
   /** Create a worktree at `dir` on a NEW branch `branch` starting at `baseSha`. Throws if `dir`
    *  exists or `branch` is already checked out elsewhere. */
   worktreeAdd(cwd: string, dir: string, branch: string, baseSha: string): Promise<void>
@@ -43,40 +44,7 @@ export interface Git {
   worktreeRemove(cwd: string, dir: string, opts?: { force?: boolean }): Promise<void>
   /** The repo's worktrees (`git worktree list --porcelain`). Used by the daemon-boot orphan sweep. */
   listWorktrees(cwd: string): Promise<WorktreeInfo[]>
-  /** True iff `ancestor` is an ancestor of `descendant` — i.e. merging `descendant` into `ancestor`
-   *  would be a clean fast-forward (no divergence). Maps to `git merge-base --is-ancestor`. */
-  isAncestor(cwd: string, ancestor: string, descendant: string): Promise<boolean>
-  /** Fast-forward-only merge of `ref` into the branch checked out at `cwd`; returns the new HEAD sha.
-   *  THROWS if it is not a fast-forward (trunk diverged). Never produces a merge commit; a non-ff never
-   *  lands silently. (ADR-0015 run-branch landing lineage — no live caller under the single-mode spine,
-   *  ADR-0023; retained pending the dead-machinery cut.) */
-  mergeFastForwardOnly(cwd: string, ref: string): Promise<string>
-  /** SHAs reachable from `branch` but not from `base` (`git rev-list base..branch`) — the run's
-   *  un-integrated commits. Empty ⇒ everything is already on `base`, so the branch is safe to GC. */
-  unmergedCommits(cwd: string, base: string, branch: string): Promise<string[]>
-
-  // ── Conflict-aware integration (ADR-0015 run-branch lineage; NO LIVE CALLER under the single-mode
-  //    spine, ADR-0023 — there is no run-branch merge step). Historically: merge trunk INTO the run
-  //    branch; clean ⇒ commit, conflict ⇒ left in progress, resolve → completeMerge / abortMerge.
-  //    Retained pending the dead-machinery cut (tracked as surface-reduction pattern-drift residue). ──
-  /** Merge `ref` into the branch checked out at `cwd` (a REAL merge that may conflict — unlike
-   *  mergeFastForwardOnly). 'clean' ⇒ merge committed; 'conflict' ⇒ merge left IN PROGRESS with
-   *  conflict markers (resolve → completeMerge, or abortMerge). Throws on a non-conflict error. */
-  mergeInto(cwd: string, ref: string): Promise<'clean' | 'conflict'>
-  /** The unmerged (conflicted) paths of an in-progress merge (`git diff --name-only --diff-filter=U`). */
-  conflictedFiles(cwd: string): Promise<string[]>
-  /** Conclude an in-progress merge once conflicts are resolved: stage ONLY the resolved `paths` (the
-   *  previously-conflicted files; git already staged the auto-merged ones) + commit. Returns the new
-   *  HEAD sha. Staging just `paths` — never `git add -A` — keeps any stray out-of-scope file the
-   *  resolver Play left in the worktree OUT of the merge commit that then lands on trunk. (The runner
-   *  owns this git step; the Play only edits file CONTENT — ADR-0023 §4 lineage.) */
-  completeMerge(cwd: string, message: string, paths: readonly string[]): Promise<string>
-  /** Abort an in-progress merge, restoring the pre-merge branch state (`git merge --abort`). Used when
-   *  the Play judges a genuine semantic divergence — escalate rather than guess. */
-  abortMerge(cwd: string): Promise<void>
-  /** Hard-reset the checked-out branch at `cwd` back to `sha` (`git reset --hard`). Used to undo a
-   *  trunk-into-branch merge commit when the post-merge integration verify fails, so the escalated
-   *  branch is left as the pure run-work line (symmetry with abortMerge). */
+  /** Hard-reset the checked-out branch at `cwd` back to `sha` (`git reset --hard`). */
   resetHard(cwd: string, sha: string): Promise<void>
 
   // ── Shared-remote push (founder directive 2026-06-15). The ONLY reason a branch matters: sharing on a
@@ -219,60 +187,6 @@ export function makeGit(): Git {
       }
       flush()
       return infos
-    },
-    async isAncestor(cwd, ancestor, descendant) {
-      // Exit 0 ⇒ ancestor; exit 1 ⇒ not. Any other failure (bad ref) must surface, not read as false.
-      try {
-        await git(cwd, ['merge-base', '--is-ancestor', ancestor, descendant])
-        return true
-      } catch (err) {
-        if ((err as { code?: number }).code === 1) return false
-        throw err
-      }
-    },
-    async mergeFastForwardOnly(cwd, ref) {
-      // --ff-only fast-forwards or FAILS (no merge commit) — a non-ff surfaces as a throw, never a
-      // silent merge commit. (ADR-0015 lineage; no live caller under the single-mode spine.)
-      await git(cwd, ['merge', '--ff-only', ref])
-      return (await git(cwd, ['rev-parse', 'HEAD'])).trim()
-    },
-    async unmergedCommits(cwd, base, branch) {
-      const out = await git(cwd, ['rev-list', `${base}..${branch}`])
-      return out
-        .split('\n')
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0)
-    },
-
-    async conflictedFiles(cwd) {
-      const out = await git(cwd, ['diff', '--name-only', '--diff-filter=U'])
-      return out
-        .split('\n')
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0)
-    },
-    async mergeInto(cwd, ref) {
-      try {
-        await git(cwd, ['merge', '--no-ff', '--no-edit', ref])
-        return 'clean'
-      } catch (err) {
-        // `git merge` exits non-zero on conflicts, leaving the merge in progress — distinguish that
-        // (unmerged paths exist) from a genuine error (bad ref, etc.), which we surface after cleanup.
-        const unmerged = (await git(cwd, ['diff', '--name-only', '--diff-filter=U'])).trim()
-        if (unmerged.length > 0) return 'conflict'
-        await git(cwd, ['merge', '--abort']).catch(() => {}) // not a conflict → don't leave partial state
-        throw err
-      }
-    },
-    async completeMerge(cwd, message, paths) {
-      // Stage ONLY the resolved (previously-conflicted) paths — the auto-merged files are already staged
-      // by the merge, and a `git add -A` would sweep in any stray file the resolver left behind.
-      if (paths.length > 0) await git(cwd, ['add', '--', ...paths])
-      await git(cwd, ['commit', '-m', message]) // concludes the in-progress merge
-      return (await git(cwd, ['rev-parse', 'HEAD'])).trim()
-    },
-    async abortMerge(cwd) {
-      await git(cwd, ['merge', '--abort'])
     },
     async resetHard(cwd, sha) {
       await git(cwd, ['reset', '--hard', sha])
