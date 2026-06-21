@@ -12,6 +12,18 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-21 — **surface-reduction: playbooks/ dead-genre freeze executed — archive-candidate (run_172)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [surface-reduction](./priorities/surface-reduction.md) | **Run:** run_172
+**Outcomes:**
+- **`playbooks/` dead-genre freeze landed** (`e128b80`). Four inert base skeletons frozen under `cocoder/zArchive/playbooks/`; live `packages/personas/base/playbooks/` removed; new ADR-0032 (non-destructive ADR-0008 amend); live references reconciled. Live code module `packages/core/src/playbooks/` untouched.
+- **Verified-when #1–#5 met** for all executed cuts. §B verdicts complete; two suspect surfaces beyond spikes collapsed (ADR-graph run_171, playbooks run_172). One optional founder-gated follow-up remains: Quinn/Talia unstaffed QA persona collapse (§B option a).
+- **Behavior pins green:** `pnpm -r typecheck` 7/7; `@cocoder/personas` 22/22; `proof-drift-audit` 5/5; topology check pass.
+- **Pre-existing red noted (out of scope):** `scripts/proof-governance-authoring.mjs` clause E still asserts pre-ADR-0029 builder-dirt refusal.
+- **Disposition: `archive-candidate`** — objective met for authorized cuts; optional GO PERSONAS or founder archive confirmation.
+
+**Next:** Reply **GO PERSONAS** to relaunch `surface-reduction` for Quinn/Talia Play fold, or confirm **archive** accepting Quinn/Talia as standing follow-up; otherwise launch `drift-audit` for founder-gated apply landing.
+
 ## 2026-06-21 — **surface-reduction: ADR-graph reading-contract collapse executed (run_171)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [surface-reduction](./priorities/surface-reduction.md) | **Run:** run_171

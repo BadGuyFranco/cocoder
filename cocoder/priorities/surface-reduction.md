@@ -404,12 +404,14 @@ standard: fewer concepts, never a new lane to describe the old ones.
 - Behavior nets: `packages/core/tests/**`, `scripts/proof-orchestration-enforcer.mjs`, `scripts/proof-*.mjs`.
 
 ## Suggested Next Action
-**Disposition: `complete` after run_172 verification.** §A complete; all §B verdicts complete; ADR-graph
-reading-contract collapse EXECUTED (run_171); `playbooks/` dead-genre freeze EXECUTED (run_172,
-ADR-0032). Verified-when #1, #2, #3, #4, and #5 are met for the executed cuts.
+**Disposition: `archive-candidate` (run_172).** §A complete; all §B verdicts complete; ADR-graph reading-contract
+collapse EXECUTED (run_171); `playbooks/` dead-genre freeze EXECUTED (run_172, ADR-0032). Verified-when #1–#5
+met for all executed cuts. No authorized build atoms remain without an explicit founder go.
 
-**Deferred (still founder-gated) — Quinn/Talia persona collapse** (option (a): fold QA into Plays, delete
-unstaffed persona files). Needs a separate **GO PERSONAS** + new ADR; not authorized by GO PLAYBOOKS.
+**Optional founder gate — Quinn/Talia persona collapse** (§B option (a): fold UI-sim + contract-acceptance
+into existing Plays, delete unstaffed persona files). Requires **GO PERSONAS** + new founder-approved ADR
+before touching `packages/personas/base/**`. Relaunch this priority with GO PERSONAS to execute; otherwise
+confirm archive and leave Quinn/Talia as accepted standing follow-up.
 
 **Disjoint pre-existing red (NOT this priority):** `scripts/proof-governance-authoring.mjs` clause E still
 asserts pre-ADR-0029 builder-dirt refusal; retarget to ADR-0029 in a separate run/ticket.

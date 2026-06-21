@@ -228,9 +228,10 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
 1. `drift-audit` — **CONTINUE (run_163).** Build complete (run_161); run_163 re-verified proof green and 25
    stale-path findings unchanged. **Founder-gated:** ratify a subset + apply materialization choice (new records
    vs in-place fixes) + ratify→apply landing in `cocoder/**`. Owner map at `docs/drift-audit-ownermap.md`.
-2. `surface-reduction` — **CONTINUE (run_171).** §A complete; ADR-graph reading-contract collapse **EXECUTED**
-   (ADR-0031, ADR-0014 extension, ARCHITECTURE + comment retarget). Verified-when #1–#3, #5 met. **Founder-gated:**
-   go on `playbooks/` dead-genre freeze (recommended) or Quinn/Talia persona collapse before archive.
+2. `surface-reduction` — **ARCHIVE-CANDIDATE (run_172).** §A complete; ADR-graph collapse **EXECUTED** (run_171);
+   `playbooks/` dead-genre freeze **EXECUTED** (run_172, ADR-0032). Verified-when #1–#5 met for all executed cuts.
+   **Optional founder gate:** reply **GO PERSONAS** for Quinn/Talia Play fold, or confirm **archive** with Quinn/Talia
+   as accepted standing follow-up.
 3. `new-primary-root` — **CONTINUE (run_160).** Onboarding rebuild complete; one-command proof
    (`node scripts/proof-onboard-existing.mjs`); run_159 model defects resolved + `main` fully green.
    **Founder-gated live proof remains:** external-repo onboard-existing end-to-end (Objective a). Drift
