@@ -3,8 +3,8 @@ import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { basePersonasDir, basePlaysDir, basePrioritiesDir } from '../src/index.js'
 
-const BASE_PERSONA_FILES = ['bob.md', 'deb.md', 'oscar.md', 'oz.md', 'quinn.md', 'talia.md', 'shared-standards.md'] as const
-const FRONTMATTER_PERSONA_FILES = ['bob.md', 'deb.md', 'oscar.md', 'oz.md', 'quinn.md', 'talia.md'] as const
+const BASE_PERSONA_FILES = ['bob.md', 'deb.md', 'oscar.md', 'oz.md', 'quinn.md', 'shared-standards.md'] as const
+const FRONTMATTER_PERSONA_FILES = ['bob.md', 'deb.md', 'oscar.md', 'oz.md', 'quinn.md'] as const
 const NEW_BASE_PLAY_FILES = ['documentation.md', 'code-review.md', 'electron-test.md', 'write-tests.md', 'run-tests.md'] as const
 const READ_ONLY_BASE_PLAY_FILES = ['code-review.md', 'electron-test.md', 'run-tests.md'] as const
 

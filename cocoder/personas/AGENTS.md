@@ -8,7 +8,7 @@ and [ADR-0012](../decisions/0012-living-base-personas.md) (base + extension mode
 
 ## Base vs extension (ADR-0012)
 
-- **Base personas** — the product's orchestration set (Oscar, Bob, Deb, Talia, Quinn, …) ship with the
+- **Base personas** — the product's orchestration set (Oz, Oscar, Bob, Deb, Quinn) ships with the
   CoCoder **install**, are the single source, and improve for *every* install (Deb proposes base fixes
   as reviewed PRs; they propagate on update). Referenced, never copied-and-frozen.
 - **Repo extensions** — a repo layers a **delta** onto a base persona (carrying only its delta, merged

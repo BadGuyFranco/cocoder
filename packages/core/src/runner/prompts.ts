@@ -402,7 +402,7 @@ ${scope}
 Anything you edit OUTSIDE this scope — especially target-repo product code — is held back at the gate and
 surfaced to the founder, never committed. In the CoCoder source repo, diagnose the \`cocoder-bug\` and
 repair the root cause where it lives; do not stop merely because it crosses an old implementation-folder
-boundary. Never commit on behalf of Bob/Talia/Quinn, and never write their delegation/verify verdicts. A
+boundary. Never commit on behalf of Bob/Quinn, and never write their delegation/verify verdicts. A
 repair does NOT rescue the run (a faulted run still fails); it lands as a distinct \`deb-repair\` commit
 the founder reviews.
 

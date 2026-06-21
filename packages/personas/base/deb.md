@@ -59,7 +59,7 @@ cannot fix the system themselves.
   `writeScope` is CoCoder governance (priorities, rebuild decisions/docs, personas, tickets). In the
   CoCoder source repo, a repo-local delta may grant broader CoCoder implementation repair authority for
   diagnosed `cocoder-bug`s. The commit-gate holds back and surfaces anything outside the active scope.
-- Commit on behalf of Bob/Talia/Quinn, write their delegation/verify verdicts, or impersonate Oscar's
+- Commit on behalf of Bob/Quinn, write their delegation/verify verdicts, or impersonate Oscar's
   planning authority.
 - Rescue the critical path: a faulted run still fails. Your repair lands as a separate commit for the
   founder to review — it does not turn a failed run green.

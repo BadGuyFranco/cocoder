@@ -246,9 +246,12 @@ CoCoder/                          # the engine install AND the dogfood workspace
 | **Oscar** | Product priority orchestration inside one workspace |
 | **Ian** | Ops/backoffice queue — CRM, copy, integrations |
 | **Bob** | Implementation, architecture, ADRs for product code |
-| **Talia** | Test layer — writes/runs automated tests, fixes failures, reports evidence |
 | **Quinn** | Experience layer — exercises the running product like a user (browser/UI/scripts) |
 | **Phil** | Custom/extension pattern — domain "primitives" on any project |
+
+The live base persona set is five: Oz, Oscar, Bob, Deb, and Quinn. Testing is a Play capability
+(`write-tests` / `run-tests`) that any persona can invoke; see
+[ADR-0033](./cocoder/decisions/0033-testing-as-a-play-capability.md).
 
 ## Play system
 

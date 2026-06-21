@@ -38,19 +38,20 @@ function check(id, label, fn) {
   }
 }
 
-check('clause-1', 'Clause 1: base QA roster exists + loads', () => {
+check('clause-1', 'Clause 1: five-persona base roster exists + loads', () => {
   const dir = basePersonasDir()
   const baseIds = readdirSync(dir)
     .filter((name) => name.endsWith('.md') && name !== 'shared-standards.md')
     .map((name) => name.slice(0, -3))
     .sort()
-  for (const id of ['quinn', 'talia']) {
+  assert.deepEqual(baseIds, ['bob', 'deb', 'oscar', 'oz', 'quinn'])
+  for (const id of baseIds) {
     assert.ok(baseIds.includes(id), \`base persona set does not enumerate \${id}\`)
     const persona = loadPersona(dir, id)
     assert.equal(persona.id, id)
     assert.ok(persona.body.trim().length > 0, \`\${id} body is empty\`)
   }
-  return \`loaded quinn/talia; base ids: \${baseIds.join(', ')}\`
+  return \`loaded five base personas: \${baseIds.join(', ')}\`
 })
 
 check('clause-2', 'Clause 2: no-brainer base Plays parse', () => {
@@ -58,6 +59,8 @@ check('clause-2', 'Clause 2: no-brainer base Plays parse', () => {
     ['documentation', { writeScope: 'non-empty' }],
     ['code-review', { writeScope: 'empty' }],
     ['electron-test', { writeScope: 'empty' }],
+    ['write-tests', { writeScope: 'non-empty' }],
+    ['run-tests', { writeScope: 'empty' }],
   ])
   const loaded = []
   for (const [id, rule] of expected.entries()) {

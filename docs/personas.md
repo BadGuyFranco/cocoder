@@ -1,7 +1,7 @@
 # CoCoder Personas
 
 **Status:** Draft, implemented by Sub-Playbook D Solve  
-**Last verified:** 2026-06-13 (Talia + Quinn added to the shipped base set, run_78)
+**Last verified:** 2026-06-21 (base set is Oz/Oscar/Bob/Deb/Quinn; testing moved to Plays, ADR-0033)
 
 Personas are role contracts for orchestration lanes. They describe what a lane is responsible for, how it receives work, what evidence it must return, and whether it can write.
 
@@ -11,7 +11,6 @@ Personas are role contracts for orchestration lanes. They describe what a lane i
 |---|---|
 | Oscar | Lead orchestrator. Selects the bounded packet, reconciles route fit, dispatches teammates, and owns priority closeout. |
 | Bob | Primary builder and architect. Implements scoped changes, keeps docs and behavior aligned, and reports verification evidence. |
-| Talia | Automated test builder and runner. Owns unit and integration test construction inside the assigned boundary. |
 | Quinn | User-interaction QA. Exercises browser, terminal, and IDE paths where scripted interaction is the right evidence. |
 | Ian | Operations orchestrator. Handles CRM, copy, and integration work outside product-code implementation. |
 | Oz | Global orchestration overseer. Provides the multi-workspace dashboard and control-plane surface. |
@@ -54,6 +53,8 @@ Evidence should be concrete enough for the lead to audit without reading the who
 
 Custom personas are tracked workspace artifacts, not private prompt hacks. A good custom persona adds a focused role, a validated contract, prompt fragments, route eligibility, and an evidence checklist.
 
-Use custom personas when a recurring job needs a different skill boundary than Bob, Talia, or Quinn. Do not create one for a one-off packet that the existing route can dispatch clearly.
+Use custom personas when a recurring job needs a different skill boundary than Bob, Quinn, or the
+testing Plays (`write-tests` / `run-tests`). Do not create one for a one-off packet that the existing
+route can dispatch clearly.
 
 See [`custom-personas.md`](./custom-personas.md) for schema requirements, directory conventions, prompt manifests, validation commands, and review gates.

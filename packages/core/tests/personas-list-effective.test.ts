@@ -12,7 +12,7 @@ describe('listEffectivePersonas', () => {
     const sources = await makeSources()
     const personas = listEffectivePersonas({ ...sources, baseDir: realBasePersonasDir() })
 
-    expect(personas.map((persona) => persona.id)).toEqual(['bob', 'deb', 'oscar', 'oz', 'quinn', 'talia'])
+    expect(personas.map((persona) => persona.id)).toEqual(['bob', 'deb', 'oscar', 'oz', 'quinn'])
   })
 
   test('lists base personas sorted and excludes shared-standards', async () => {

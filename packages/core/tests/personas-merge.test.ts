@@ -38,8 +38,8 @@ describe('mergePersona', () => {
   })
 
   test('throws a typed error when ids do not match', () => {
-    expect(() => mergePersona(base, { id: 'talia' })).toThrow(PersonaMergeError)
-    expect(() => mergePersona(base, { id: 'talia' })).toThrow(/does not match/)
+    expect(() => mergePersona(base, { id: 'quinn' })).toThrow(PersonaMergeError)
+    expect(() => mergePersona(base, { id: 'quinn' })).toThrow(/does not match/)
   })
 
   test('treats whitespace-only body as no body delta', () => {

@@ -63,5 +63,6 @@ building on it. The per-repo governance zone here and in managed repos is always
 ## Personas (staffed today)
 
 Oz (dashboard chat persona, ADR-0017) · Oscar (orchestrator) · Bob (builder) · Deb (escalation
-engineer, ADR-0016). Talia and Quinn are designed (ADR-0005) but not yet staffed. Base behavior:
+engineer, ADR-0016) · Quinn (experience QA). Testing is a Play capability (`write-tests` /
+`run-tests`) any persona can invoke (ADR-0033). Base behavior:
 `packages/personas/base/`; this workspace's exceptions: [`personas/`](./personas/AGENTS.md).

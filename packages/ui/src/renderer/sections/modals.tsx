@@ -163,7 +163,7 @@ export function CraftPersonaModal({ open, onClose, clis, onSubmit }: { open: boo
   return (
     <Modal open={open} onClose={onClose} title="Craft a new persona" subtitle="Sketch the role. Oz files it as a workspace priority — the team builds the persona itself (prompt, Skills (Plays), tests)." icon="hammer" width={680}
       footer={<>
-        <div style={{ fontSize: 11, color: 'var(--cb-text-muted)', flex: 1, lineHeight: 1.5 }}><Icon name="info" size={12} style={{ verticalAlign: '-2px', marginRight: 4 }} />Personas aren't configured — they're <span style={{ color: 'var(--cb-accent)' }}>built</span>. Once Bob ships and Talia / Quinn green-light, the persona appears here.</div>
+        <div style={{ fontSize: 11, color: 'var(--cb-text-muted)', flex: 1, lineHeight: 1.5 }}><Icon name="info" size={12} style={{ verticalAlign: '-2px', marginRight: 4 }} />Personas aren't configured — they're <span style={{ color: 'var(--cb-accent)' }}>built</span>. Once Bob ships and Quinn verifies the experience path, the persona appears here.</div>
         <Button variant="ghost" onClick={onClose}>Cancel</Button>
         <Button variant="primary" icon="plus" disabled={!valid || submitting} onClick={() => void submit()}>{submitting ? 'Filing…' : 'File as priority'}</Button>
       </>}>

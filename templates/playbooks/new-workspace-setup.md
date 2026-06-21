@@ -44,7 +44,8 @@ Operator onboarding playbook for the first seven days after `cocoder init`. Sub-
 ## Day 6 — First bounded build
 
 1. Launch with `--execute false` first; inspect rendered prompts under the run directory.
-2. Run one small atom with Bob or Talia inside a narrow write boundary.
+2. Run one small atom with Bob inside a narrow write boundary, then invoke `write-tests` or `run-tests`
+   when the atom needs test coverage or test evidence.
 3. Log outcome in `cocoder/SESSION_LOG.md`.
 
 ## Day 7 — Hardening

@@ -35,7 +35,7 @@ describe('effective persona loading', () => {
   test('throws when a present delta frontmatter id does not match the filename', async () => {
     const { baseDir, deltaDir } = await makePersonaDirs()
     await writeBase(baseDir, 'bob')
-    await writeFile(join(deltaDir, 'bob.md'), ['---', 'id: talia', '---', 'Repo rules.'].join('\n'))
+    await writeFile(join(deltaDir, 'bob.md'), ['---', 'id: quinn', '---', 'Repo rules.'].join('\n'))
 
     expect(() => loadEffectivePersona(baseDir, deltaDir, 'bob')).toThrow(/does not match filename id "bob"/)
   })

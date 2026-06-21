@@ -1,4 +1,4 @@
-// Personas screen — the AI team (Oz · Oscar · Bob · Deb · Talia · Quinn). Each persona has CLI + Model
+// Personas screen — the AI team (Oz · Oscar · Bob · Deb · Quinn). Each persona has CLI + Model
 // linked dropdowns, a visible/headless run-mode toggle (Oz locked headless), and a Skills (Plays) hierarchy
 // (each sub independently CLI+Model configurable). "Craft a new persona" files a priority. Ported from
 // design-ref/screens.jsx.

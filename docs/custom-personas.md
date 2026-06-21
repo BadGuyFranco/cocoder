@@ -2,11 +2,14 @@
 
 **Last verified:** 2026-06-20
 
-CoCoder ships its base personas (Oscar, Bob, Deb, Talia, Quinn, Oz, …) in the install at
+CoCoder ships its base personas (Oz, Oscar, Bob, Deb, Quinn) in the install at
 `packages/personas/base/` ([ADR-0012](../cocoder/decisions/0012-living-base-personas.md)). A workspace
 extends that base for its own roles — without forking the orchestration core. This is a concise adopter
 guide; the contract lives in
 [ARCHITECTURE.md "Persona Boundaries"](../ARCHITECTURE.md#persona-boundaries-cocoder) and ADR-0012.
+
+Testing is a Play capability (`write-tests` / `run-tests`) that any persona can invoke; see
+[ADR-0033](../cocoder/decisions/0033-testing-as-a-play-capability.md).
 
 ## The model: base + delta + custom, merged at load
 

@@ -132,7 +132,7 @@ describe('Oz — rebuilt Fusion renderer', () => {
     // Oz is rendered as a persona and is locked headless
     expect(screen.getAllByText('Oz').length).toBeGreaterThan(0)
     expect(screen.getAllByText(/HEADLESS/i).length).toBeGreaterThan(0)
-    const headings = ['Oz', 'Oscar', 'Bob', 'Deb', 'Talia', 'Quinn'].map((name) => screen.getAllByText(name)[0])
+    const headings = ['Oz', 'Oscar', 'Bob', 'Deb', 'Quinn'].map((name) => screen.getAllByText(name)[0])
     for (let i = 0; i < headings.length - 1; i++) {
       expect(headings[i].compareDocumentPosition(headings[i + 1]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     }

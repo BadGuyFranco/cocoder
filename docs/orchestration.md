@@ -13,7 +13,8 @@ Common shapes:
 
 - **Lead lane** - usually Oscar. Reconciles priority fit, dispatches bounded packets, and owns closeout status updates.
 - **Builder lane** - usually Bob. Edits files only inside its write boundary, verifies the packet, then writes result artifacts.
-- **Verifier or QA lanes** - optional members (e.g. Talia, Quinn) for test building, browser automation, or review.
+- **Verifier or QA lanes** - optional members and Plays for test building, browser automation, or
+  review. Testing is a Play capability (`write-tests` / `run-tests`); Quinn owns user-simulation QA.
 
 To watch a run, use the **Attach** action in the Oz dashboard's run drawer — it focuses the run's live cmux pane (Oscar by preference). See [`oz-launch.md`](./oz-launch.md) for the dashboard launch path.
 

@@ -424,7 +424,6 @@ const PERSONA_ICONS: Record<string, string> = {
   oscar: 'ph-thin ph-strategy',
   bob: 'ph-thin ph-hammer',
   deb: 'ph-thin ph-bug-beetle',
-  talia: 'ph-thin ph-test-tube',
   quinn: 'ph-thin ph-magnifying-glass',
   doc: 'ph-thin ph-book-open',
 }
@@ -434,9 +433,9 @@ const PERSONA_ICONS: Record<string, string> = {
 export const MODE_HONORED_PERSONAS = new Set(['oscar', 'bob'])
 
 // Canonical roster order — the orchestration pecking order (Oz oversees; Oscar orchestrates; Bob builds;
-// Deb repairs; Talia tests; Quinn QAs). Unknown personas sort after these, keeping their source order
+// Deb repairs; Quinn QAs). Unknown personas sort after these, keeping their source order
 // (Array.prototype.sort is stable). Daemon roster/assignment key order is otherwise nondeterministic.
-const PERSONA_ORDER = ['oz', 'oscar', 'bob', 'deb', 'talia', 'quinn']
+const PERSONA_ORDER = ['oz', 'oscar', 'bob', 'deb', 'quinn']
 const personaRank = (id: string): number => {
   const i = PERSONA_ORDER.indexOf(id)
   return i === -1 ? PERSONA_ORDER.length : i

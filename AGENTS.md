@@ -32,8 +32,10 @@ Persona **behavior ships with the install** at [`packages/personas/base/`](./pac
 | **Oscar** | Orchestrator per workspace priority — delegates atoms, verifies, never builds |
 | **Bob** | Primary builder and chief architect |
 | **Deb** | Escalation engineer — observes runs, triages faults, scoped machinery repair ([ADR-0016](./cocoder/decisions/0016-deb-scoped-repair-fallback.md)) |
-| **Talia** | Automated test builder/runner — [ADR-0005](./cocoder/decisions/0005-personas-and-subtasks.md) (not yet staffed) |
 | **Quinn** | User-interaction QA (browser/app automation) — [ADR-0005](./cocoder/decisions/0005-personas-and-subtasks.md) (not yet staffed) |
+
+Testing is a Play capability (`write-tests` / `run-tests`) any persona can invoke; see
+[ADR-0033](./cocoder/decisions/0033-testing-as-a-play-capability.md).
 
 ## Routing
 

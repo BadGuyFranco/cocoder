@@ -236,7 +236,7 @@
           },
           {
             "role": "Bob",
-            "body": "Step 1 complete. Added authPing() pre-flight in personaRunner. Talia's unit tests pass."
+            "body": "Step 1 complete. Added authPing() pre-flight in personaRunner. The test Plays pass."
           },
           {
             "role": "Bob",
@@ -297,7 +297,6 @@
         "personas": [
           "Bob",
           "Deb",
-          "Talia",
           "Quinn"
         ],
         "cli": "claude",
@@ -327,7 +326,7 @@
             "body": "Implemented streamingEvidenceWriter."
           },
           {
-            "role": "Talia",
+            "role": "Bob",
             "body": "Added 14 unit tests. Coverage +2.1%."
           },
           {
@@ -415,7 +414,7 @@
       "id": "oscar",
       "name": "Oscar",
       "role": "Build orchestrator",
-      "description": "Owns a run end-to-end. Reads the priority, drafts the plan, dispatches Bob / Deb / Talia / Quinn, and reports back to Oz when the work is done or stuck.",
+      "description": "Owns a run end-to-end. Reads the priority, drafts the plan, dispatches Bob / Deb / Quinn, and reports back to Oz when the work is done or stuck.",
       "cli": "claude",
       "model": "Claude Opus 4.5",
       "runMode": "visible",
@@ -433,7 +432,7 @@
       "id": "bob",
       "name": "Bob",
       "role": "Coder",
-      "description": "The hands. Executes Oscar's plan, edits files in the primary root, and owns the diff. Doesn't ship without Talia + Quinn green.",
+      "description": "The hands. Executes Oscar's plan, edits files in the primary root, and owns the diff. Doesn't ship without tests and Quinn evidence when required.",
       "cli": "claude",
       "model": "Default",
       "runMode": "visible",
@@ -457,17 +456,6 @@
       "runMode": "visible",
       "subAgents": [],
       "icon": "ph-thin ph-bug-beetle"
-    },
-    {
-      "id": "talia",
-      "name": "Talia",
-      "role": "Unit tester",
-      "description": "Trails Bob. Writes unit tests for new code, exercises edge cases, and flags coverage gaps before they reach Quinn.",
-      "cli": "claude",
-      "model": "Claude Sonnet 4.5",
-      "runMode": "visible",
-      "subAgents": [],
-      "icon": "ph-thin ph-test-tube"
     },
     {
       "id": "quinn",
@@ -671,7 +659,6 @@
       "defaultPersonas": [
         "oscar",
         "bob",
-        "talia",
         "quinn"
       ]
     },

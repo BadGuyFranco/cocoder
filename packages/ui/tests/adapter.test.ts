@@ -288,8 +288,8 @@ describe('personas from the assignments map + roster', () => {
   })
 
   it('uses the canonical persona order with unknown personas after the roster', () => {
-    const personas = orderPersonas([{ id: 'quinn' }, { id: 'doc' }, { id: 'bob' }, { id: 'oz' }, { id: 'deb' }, { id: 'oscar' }, { id: 'talia' }])
-    expect(personas.map((p) => p.id)).toEqual(['oz', 'oscar', 'bob', 'deb', 'talia', 'quinn', 'doc'])
+    const personas = orderPersonas([{ id: 'quinn' }, { id: 'doc' }, { id: 'bob' }, { id: 'oz' }, { id: 'deb' }, { id: 'oscar' }])
+    expect(personas.map((p) => p.id)).toEqual(['oz', 'oscar', 'bob', 'deb', 'quinn', 'doc'])
   })
 
   it('maps assignment plays to sub-agents and keeps absent plays as an empty hierarchy', () => {

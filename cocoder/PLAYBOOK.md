@@ -174,8 +174,8 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
   10/10; 626 tests; `main` promoted to canonical trunk + pushed. **Archived 2026-06-14** — the live
   end-to-end validation exercised on `oz-dashboard-priorities-pane` run_81 (first live run post-reset);
   re-opens only if a run surfaces a machinery defect.
-- `personas-and-plays` — one living-base+delta model for **personas AND Plays**; base QA roster (Quinn,
-  Talia) + the no-brainer Plays (`documentation`, `code-review`, `electron-test`) + Play deltas honored
+- `personas-and-plays` — one living-base+delta model for **personas AND Plays**; Quinn experience QA
+  + the no-brainer Plays (`documentation`, `code-review`, `electron-test`) + Play deltas honored
   at run-launch. ✅ CODE-COMPLETE run_78/79; `node scripts/proof-plays.mjs` 4/4. **Archived 2026-06-14**
   (priority audit) — buildable work done; the 2 founder-present live proofs (Plays dispatch on a real
   run; Quinn drives the Oz GUI) are opportunistic, not blocking.
@@ -230,8 +230,8 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    vs in-place fixes) + ratify→apply landing in `cocoder/**`. Owner map at `docs/drift-audit-ownermap.md`.
 2. `surface-reduction` — **ARCHIVE-CANDIDATE (run_172).** §A complete; ADR-graph collapse **EXECUTED** (run_171);
    `playbooks/` dead-genre freeze **EXECUTED** (run_172, ADR-0032). Verified-when #1–#5 met for all executed cuts.
-   **Optional founder gate:** reply **GO PERSONAS** for Quinn/Talia Play fold, or confirm **archive** with Quinn/Talia
-   as accepted standing follow-up.
+   **Optional founder gate:** reply **GO PERSONAS** for Quinn/testing-Play fold, or confirm **archive** with
+   Quinn and testing Plays as accepted standing follow-up.
 3. `new-primary-root` — **CONTINUE (run_160).** Onboarding rebuild complete; one-command proof
    (`node scripts/proof-onboard-existing.mjs`); run_159 model defects resolved + `main` fully green.
    **Founder-gated live proof remains:** external-repo onboard-existing end-to-end (Objective a). Drift
