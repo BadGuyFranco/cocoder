@@ -91,10 +91,29 @@ dependency.
 - Preserve the two existing spikes (`2026-05-28-cmux-socket-api.md`, `2026-05-28-headless-cli-invocations.md`)
   as **frozen history** — relocate under `cocoder/zArchive/` (they already fed ADR-0002; do not delete).
 - Record the retirement in a **new append-only ADR** (supersedes the spike line in ADR-0008's topology).
-- Resolve the adjacent sub-question the run will surface: the ticket **`type: spike`** (ticket taxonomy is
-  `bug | task | question | spike`). Decide whether the investigation ticket-type stays (it *has* an
-  execution path via ticket-fix runs) or folds into `question`/`task`. Founder call; surface it, don't
-  pre-decide.
+- Resolve the adjacent sub-question the run surfaced: the ticket **`type: spike`** (ticket taxonomy is
+  `bug | task | question | spike`). **FOUNDER-RESOLVED 2026-06-20: fold `spike` → `question`.** Reasoning:
+  a spike is research-and-decide — a priority's research/plan phase, or, ticket-sized, a `question`
+  ("should we proceed / is X feasible"). The earlier "it runs via ticket-fix" defense missed the thesis:
+  the disease is conceptual surface, not runtime-reachability, and `spike` is residual vocabulary whose
+  real home is `question`. This is **not yet executed** — it touches a code SSOT, base governance, and the
+  ADR, so it runs as a verified atom (next), not the committed §A directory cut.
+
+#### §A status (this session)
+- **Directory genre `spikes/` — DONE & COMMITTED** (`0e195ef`): directory removed, both notes frozen under
+  `cocoder/zArchive/spikes/`, `ADR-0030` recorded (non-destructively amends ADR-0008), topology/architecture/
+  AGENTS/PLAYBOOK/decisions-README reconciled. Ticket `type: spike` was deliberately left untouched in that
+  cut and is the founder-resolved item above.
+- **Ticket `type: spike` fold → `question` — NEXT ATOM (verified run, not yet executed).** Owner-map of the
+  live surfaces that emit the type (fold all, no second copy left behind):
+  - `packages/daemon/src/routes.ts:149,172` — `TicketKind` union + `TICKET_TYPES` array (**the SSOT**).
+  - `packages/personas/base/plays/create-ticket.md:24,31` — base authoring contract enum (**base governance**).
+  - `cocoder/tickets/AGENTS.md:11,33` and `cocoder/tickets/INDEX.md:9` — workspace docs.
+  - **Extend `ADR-0030`** (do NOT spawn 0031) to "retire the spike concept" covering both the directory genre
+    and the ticket type — one concept, one ADR. ADR-0030 currently states the taxonomy is unchanged; that
+    line must be replaced by the fold record. (Founder-approved 2026-06-20: extend, don't add a new ADR.)
+  - Note: the `spike` in `packages/adapters/tests/adapters.test.ts` is unrelated (headless-CLI invocation
+    pinning) — out of scope.
 
 ### §B Candidate cuts — VERDICT FIRST, each founder-gated before any code (NOT yet ratified)
 These come from the Research; they are proposals, not decisions. Give each a load-bearing verdict, then the
@@ -122,6 +141,12 @@ load-bearing safeguard. Elegance standard: fewer concepts, never a new lane to d
 - Behavior nets: `packages/core/tests/**`, `scripts/proof-orchestration-enforcer.mjs`, `scripts/proof-*.mjs`.
 
 ## Suggested Next Action
-Launch when sequenced (added to `order.json` at position 2, after `drift-audit`; reorder freely). Atom 0:
-confirm the §A reference sites, write the retirement ADR, relocate the two spikes, reconcile docs/template,
-keep proofs green. Then §B verdicts before any further cut.
+**Atom 0 (directory genre) is done & committed (`0e195ef`).** Next atom — relaunch and execute the
+founder-approved **`type: spike` → `question` fold** as one verified atom: fold the SSOT
+(`packages/daemon/src/routes.ts`) + base `create-ticket.md` + `tickets/AGENTS.md` + `tickets/INDEX.md`,
+**extend ADR-0030** (not a new ADR) to record the fold, and keep `scripts/proof-*.mjs` + the suites green.
+This is a verify-gated change (code SSOT + base governance), not a support edit. Then §B verdicts
+(ADR-graph first, per founder lean) before any further cut.
+
+Note: the `orchestration-contracts` suite carries a pre-existing red (routing guide missing the
+`workspace-local` target) owned by the `drift-audit` priority — not a regression from this priority.
