@@ -96,6 +96,28 @@ describe('drift governance claims reader', () => {
     }
   })
 
+  test('memory path detection: filters non-paths, resolves relative refs, and does not crash on a self-link (ticket 0024)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'cocoder-drift-claims-0024-'))
+    try {
+      writeFixtureFile(dir, 'cocoder/memory/codebase-map.md', [
+        'pkg `@cocoder/core`, adr `ADR-0010/0028`, libs `zod/ajv/yup/joi/valibot`', // all non-paths → 0
+        'list `start/stop/status/restart`, glob `scripts/proof-*.mjs`, ext `.mjs`, dir `cocoder/`', // slash-list + glob + bare-ext + dir-mention → 0
+        'real stale `packages/gone/thing.ts`',                                      // a real path ref → 1
+        '[`ARCHITECTURE.md`](../../ARCHITECTURE.md) self-link',                     // href only, resolved, no dup-crash → 1
+      ].join('\n'))
+
+      // The key regression: the self-link no longer throws "duplicate claim id".
+      const inventory = readGovernanceClaims({ repoRoot: dir })
+      const memoryRefs = inventory.claims
+        .filter((c) => c.category === 'memory')
+        .flatMap((c) => (c.references ?? []).map((r) => r.value))
+        .sort()
+      expect(memoryRefs).toEqual(['ARCHITECTURE.md', 'packages/gone/thing.ts'])
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   test('refuses an unreadable required governance file with a useful message', () => {
     const dir = mkdtempSync(join(tmpdir(), 'cocoder-drift-claims-unreadable-'))
     try {

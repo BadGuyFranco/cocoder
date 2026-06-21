@@ -16,14 +16,14 @@ Orientation only; [ARCHITECTURE](../../ARCHITECTURE.md) is current-truth (ADR-00
 ## Languages
 
 **TypeScript across all seven packages** — this is a clean v2 build, *not* an `.mjs` extraction from
-CoBuilder (the historical v1 `.mjs` core no longer applies). Each package exports `./src/index.ts`. The
-`cocoder` CLI runs TypeScript directly via `tsx`; there is no build step (the Electron `ui` is the
-exception — `electron-vite build`).
+CoBuilder (the historical v1 `.mjs` core no longer applies). Each package exposes its public API from a
+single src index module. The `cocoder` CLI runs TypeScript directly via `tsx`; there is no build step
+(the Electron `ui` is the exception — `electron-vite build`).
 
 ## Validation
 
 Hand-written TypeScript where needed — **no external validation library** (zod/ajv/yup/joi/valibot) is a
-direct dependency or imported (ADR-0004 language policy). There is no `packages/schemas`.
+direct dependency or imported (ADR-0004 language policy). There is no separate schemas package.
 
 ## Tooling
 

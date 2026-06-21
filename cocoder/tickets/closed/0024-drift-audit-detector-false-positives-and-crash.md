@@ -2,11 +2,22 @@
 id: 0024
 title: drift-audit path detector is false-positive-prone and crashes on a same-line duplicate claim id
 type: bug
-status: Open
+status: Closed
 priority: drift-audit
 owner: founder-session
 created: 2026-06-21
+closed: 2026-06-21
 ---
+
+> **Closed 2026-06-21.** Both defects fixed in `packages/core/src/drift/read-claims.ts`:
+> (1) **no more crash** — path refs come from markdown-link hrefs + standalone backtick spans (link text is
+> stripped before the backtick scan, so a self-link no longer double-counts), plus a per-line slug guard;
+> (2) **precise detection** — `isPathRef` rejects npm scopes (`@…`), `ADR-NNNN` refs, slash-delimited word
+> lists, globs (`*`), bare extensions (`.mjs`), and trailing-slash dir mentions, and resolves relative
+> (`../`) refs to repo-relative before the reality check. Result: the corrected dogfood governance now
+> yields **0 findings** (was 16 false positives). Pinned by a new case in `drift-read-claims.test.ts`.
+> Heuristic by nature (prose path detection can't be exhaustive), but a correct file is now clean — the
+> prerequisite for a trustworthy drift-audit ratify→apply.
 
 # 0024 — drift-audit detection needs refinement before it can drive apply
 
