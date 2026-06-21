@@ -35,10 +35,6 @@
           "cli": "claude",
           "model": "sonnet"
         },
-        "merge-conflict": {
-          "cli": "cursor-agent",
-          "model": ""
-        },
         "code-review": {
           "cli": "cursor-agent",
           "model": ""

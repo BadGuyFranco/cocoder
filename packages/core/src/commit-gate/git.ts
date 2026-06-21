@@ -47,16 +47,18 @@ export interface Git {
    *  would be a clean fast-forward (no divergence). Maps to `git merge-base --is-ancestor`. */
   isAncestor(cwd: string, ancestor: string, descendant: string): Promise<boolean>
   /** Fast-forward-only merge of `ref` into the branch checked out at `cwd`; returns the new HEAD sha.
-   *  THROWS if it is not a fast-forward (trunk diverged) — the caller then routes to the merge-conflict
-   *  Play. Never produces a merge commit; a non-ff never lands silently. */
+   *  THROWS if it is not a fast-forward (trunk diverged). Never produces a merge commit; a non-ff never
+   *  lands silently. (ADR-0015 run-branch landing lineage — no live caller under the single-mode spine,
+   *  ADR-0023; retained pending the dead-machinery cut.) */
   mergeFastForwardOnly(cwd: string, ref: string): Promise<string>
   /** SHAs reachable from `branch` but not from `base` (`git rev-list base..branch`) — the run's
    *  un-integrated commits. Empty ⇒ everything is already on `base`, so the branch is safe to GC. */
   unmergedCommits(cwd: string, base: string, branch: string): Promise<string[]>
 
-  // ── Conflict-aware integration (ADR-0023 §4; ADR-0015 historical lineage). Used when trunk advanced:
-  //    runner merges trunk INTO the run branch in the worktree; a clean merge commits, a conflicting
-  //    one is left in progress for the merge-conflict Play to resolve, then completeMerge/abortMerge. ──
+  // ── Conflict-aware integration (ADR-0015 run-branch lineage; NO LIVE CALLER under the single-mode
+  //    spine, ADR-0023 — there is no run-branch merge step). Historically: merge trunk INTO the run
+  //    branch; clean ⇒ commit, conflict ⇒ left in progress, resolve → completeMerge / abortMerge.
+  //    Retained pending the dead-machinery cut (tracked as surface-reduction pattern-drift residue). ──
   /** Merge `ref` into the branch checked out at `cwd` (a REAL merge that may conflict — unlike
    *  mergeFastForwardOnly). 'clean' ⇒ merge committed; 'conflict' ⇒ merge left IN PROGRESS with
    *  conflict markers (resolve → completeMerge, or abortMerge). Throws on a non-conflict error. */
@@ -230,7 +232,7 @@ export function makeGit(): Git {
     },
     async mergeFastForwardOnly(cwd, ref) {
       // --ff-only fast-forwards or FAILS (no merge commit) — a non-ff surfaces as a throw, never a
-      // silent merge commit, so the caller routes diverged trunk to the merge-conflict Play.
+      // silent merge commit. (ADR-0015 lineage; no live caller under the single-mode spine.)
       await git(cwd, ['merge', '--ff-only', ref])
       return (await git(cwd, ['rev-parse', 'HEAD'])).trim()
     },
