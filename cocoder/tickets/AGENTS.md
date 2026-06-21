@@ -8,7 +8,7 @@ Workspace-global tickets. Distinct from priorities (long-running goals) and Play
 |---|---|
 | A bug surfaces that needs tracking but isn't blocking current Playbook execution | Yes |
 | A question the founder needs to answer later | Yes |
-| A spike or research task to validate an assumption | Yes |
+| A research question to validate an assumption | Yes |
 | A task that belongs inside an active Playbook | No — add it to the Playbook |
 | A long-running goal | No — file as a priority |
 
@@ -30,7 +30,7 @@ tickets/
 ---
 id: NNNN
 title: <one-line title>
-type: bug | task | question | spike
+type: bug | task | question
 status: Open | In Progress | Blocked | Closed | Cancelled
 priority: <priority-slug or "none">
 owner: <persona-or-human>

@@ -6,7 +6,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 - One row per ticket. Keep title ≤80 chars.
 - Status: `Open | In Progress | Blocked | Closed | Cancelled`
-- Type: `bug | task | question | spike`
+- Type: `bug | task | question`
 - Priority slug: cross-reference into `../priorities/[slug]/`
 
 ## Open

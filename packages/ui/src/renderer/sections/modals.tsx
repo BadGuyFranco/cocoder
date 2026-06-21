@@ -124,13 +124,13 @@ export function NewTicketModal({ open, onClose, onSubmit }: { open: boolean; onC
   return (
     <Modal open={open} onClose={onClose} title="New ticket" subtitle="File a workspace ticket." icon="ticket" width={620}
       footer={<>
-        <div style={{ flex: 1, fontSize: 11, color: 'var(--cb-text-muted)' }}>Tickets track bugs, questions, spikes, and follow-up tasks outside the priority queue.</div>
+        <div style={{ flex: 1, fontSize: 11, color: 'var(--cb-text-muted)' }}>Tickets track bugs, questions, and follow-up tasks outside the priority queue.</div>
         <Button variant="ghost" onClick={onClose}>Cancel</Button>
         <Button variant="primary" icon="ticket" disabled={!valid || submitting} onClick={() => void submit()}>{submitting ? 'Creating…' : 'Create ticket'}</Button>
       </>}>
       <div style={{ marginBottom: 16 }}><label className="oz-field-label">Title</label><input className="oz-input" autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Dashboard count is stale" /></div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-        <div><label className="oz-field-label">Type</label><select className="oz-select" value={type} onChange={(e) => setType(e.target.value)}><option value="bug">bug</option><option value="task">task</option><option value="question">question</option><option value="spike">spike</option></select></div>
+        <div><label className="oz-field-label">Type</label><select className="oz-select" value={type} onChange={(e) => setType(e.target.value)}><option value="bug">bug</option><option value="task">task</option><option value="question">question</option></select></div>
         <div><label className="oz-field-label">Priority</label><input className="oz-input" value={priority} onChange={(e) => setPriority(e.target.value)} placeholder="priority slug (optional)" /></div>
       </div>
       <div><label className="oz-field-label">Description</label><textarea className="oz-textarea" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Why does this ticket exist?" rows={4} /></div>

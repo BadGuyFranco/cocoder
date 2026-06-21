@@ -146,7 +146,7 @@ interface CreatePriorityInput {
 
 type ParsedCreatePriorityBody = { readonly ok: true; readonly input: CreatePriorityInput } | { readonly ok: false; readonly error: string }
 
-type TicketKind = 'bug' | 'task' | 'question' | 'spike'
+type TicketKind = 'bug' | 'task' | 'question'
 
 interface CreateTicketInput {
   readonly title: string
@@ -169,7 +169,7 @@ type ParsedCreateWorkspaceBody = { readonly ok: true; readonly input: CreateWork
 
 const PRIORITY_ID_RE = /^[a-z0-9][a-z0-9-]*$/
 const CONTROL_CHARS_RE = /[\u0000-\u001f\u007f]/
-const TICKET_TYPES: readonly TicketKind[] = ['bug', 'task', 'question', 'spike']
+const TICKET_TYPES: readonly TicketKind[] = ['bug', 'task', 'question']
 const AUTHORING_PLAY_IDS = ['create-priority', 'edit-priority', 'archive-priority', 'create-ticket'] as const
 const AUTHORING_PERSONAS = ['oz', 'oscar', 'bob', 'deb'] as const
 
@@ -215,7 +215,7 @@ function createTicketBody(body: unknown): ParsedCreateTicketBody {
   let type: TicketKind = 'task'
   if (Object.prototype.hasOwnProperty.call(record, 'type') && record.type !== undefined) {
     if (typeof record.type !== 'string' || !TICKET_TYPES.includes(record.type as TicketKind)) {
-      return { ok: false, error: 'type must be one of bug, task, question, spike' }
+      return { ok: false, error: 'type must be one of bug, task, question' }
     }
     type = record.type as TicketKind
   }

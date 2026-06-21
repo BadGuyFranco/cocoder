@@ -21,14 +21,14 @@ writeScope:
 This Play runs headless on its per-(persona, Play) assigned model.
 
 Create exactly one open ticket from invocation input. Tickets are governance records for follow-up
-work, faults, questions, or spikes discovered mid-run. Use the same ticket file format as the
+work, faults, or questions discovered mid-run. Use the same ticket file format as the
 dashboard create-ticket route; do not invent a second ticket template.
 
 Do this:
 
 1. Validate the invocation before writing:
    - `title` must be a non-empty string.
-   - `type` must be one of `bug`, `task`, `question`, or `spike`; default to `task`.
+   - `type` must be one of `bug`, `task`, or `question`; default to `task`.
    - `priority` defaults to `none`.
    - `owner` is the core `TICKET_OWNER` constant.
    - `created` is today's ISO date (`YYYY-MM-DD`).

@@ -1,9 +1,10 @@
-# ADR-0030 — Retire the standalone `spikes/` directory genre
+# ADR-0030 — Retire the `spike` concept
 
 **Status:** Accepted (founder-directed, 2026-06-20).
 **Supersedes:** [0008](./0008-repository-topology.md)'s `spikes/` topology line — the standalone
 directory genre is retired from the live directory model. ADR-0008 remains the canonical topology ADR;
-this ADR supersedes only the line that treated `cocoder/spikes/` as a live home.
+this ADR supersedes only the line that treated `cocoder/spikes/` as a live home. As of 2026-06-20, this
+ADR also retires `spike` as a ticket type by folding that vocabulary into `question`.
 **Builds on:** [0008](./0008-repository-topology.md) (repository topology and one-home enforcement),
 [0010](./0010-taxonomy-and-authoring.md) (launchable priority model), and
 [0026](./0026-onboard-existing-as-oscar-priority.md) (work runs through Oscar-driven priorities rather
@@ -27,7 +28,7 @@ The two existing standalone spike notes are historical inputs to ADR-0002. They 
 
 ## Decision
 
-**Retire `cocoder/spikes/` as a live directory genre.**
+**Retire `spike` as a live CoCoder concept.**
 
 The live directory model has no standalone spike home. Research belongs inside the launchable work that
 needs it:
@@ -38,8 +39,8 @@ needs it:
 
 The historical files formerly in `cocoder/spikes/` move unchanged to `cocoder/zArchive/spikes/`.
 
-This does **not** change ticket taxonomy. A ticket may still have `type: spike`; that is a ticket kind,
-not a directory genre.
+The ticket taxonomy now follows the same concept boundary: `spike` is no longer a ticket type.
+Spike-shaped needs are research questions and use `type: question`.
 
 ## Consequences
 
@@ -47,5 +48,10 @@ not a directory genre.
 - Frozen spike notes remain available in `cocoder/zArchive/spikes/` for ADR archaeology.
 - New research work must be reachable through a priority, ticket, or `adhoc-session`; a standalone file in
   a live `spikes/` directory is no longer valid.
+- The ticket-create SSOT in `packages/daemon/src/routes.ts` accepts only `bug`, `task`, and `question`.
+- The base `create-ticket` Play in `packages/personas/base/plays/create-ticket.md` no longer emits
+  `spike` as a ticket kind.
+- The workspace ticket conventions in `cocoder/tickets/AGENTS.md` and `cocoder/tickets/INDEX.md` list
+  only `bug`, `task`, and `question`.
 - ADR-0008 continues to own repository topology except where this ADR supersedes the retired `spikes/`
   line.
