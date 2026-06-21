@@ -292,6 +292,49 @@ reversing that.
    nouns with two homes and test each as guarded distinction vs foldable alias, using the owner-map rows
    (`docs/orchestration-contract-ownership.md:202-216`), not a new taxonomy method.
 
+## §B Verdict — vocabulary / genres
+
+**Verdict:** mostly `real`. The concept-noun taxonomy is clean — ADR-0010 names exactly three
+(`Playbook`, `Play`, `Objective`) and every directory genre under `cocoder/` and `packages/personas/base/`
+has one home (extends owner-map rows 202-216, which already confirmed the commit-callers, authoring
+surfaces, and Oz-vs-Deb repair as guarded distinctions). One genuine `suspect` cut, plus two clarity-only
+nits that are **not** load-bearing surface and not worth their churn.
+
+1. **The one real cut — a second dead genre (symmetric to spikes):** `packages/personas/base/playbooks/`.
+   Its loader was retired by ADR-0026 — `packages/personas/base/playbooks/README.md:1-10` states "the
+   retired loader no longer reads this directory"; the onboarding flow now runs as an ordinary Oscar
+   priority (`packages/personas/base/priorities/onboard-existing.md`). So this is exactly the spike
+   situation: a genre the runtime no longer reaches, sitting live. Verified loader-dead: no live code under
+   `packages/core/src` or `packages/daemon/src` loads the skeleton `.md` files. **Proposal (founder-gated,
+   new ADR):** freeze the skeletons to `cocoder/zArchive/` and remove `playbooks/` from the ADR-0008
+   topology + ARCHITECTURE Directory Layout — the same move §A made for `spikes/`, with the same
+   reversibility. Load-bearing test: nothing reads the directory; base-persona/Play tests + topology stay
+   green. This is the cleanest next subtraction after the ADR-graph collapse.
+   - **Disambiguation (do not conflate):** the live code module `packages/core/src/playbooks/` (the p1–p6
+     phase-executor + drift inventory, imported by `packages/core/src/drift/read-reality.ts:3`) is a
+     *different thing* and stays. Whether that module is still fully dispatched after ADR-0026 superseded
+     the standalone phase-executor (ADR-0020 addendum) is a separate, larger liveness question — flagged
+     here as a named follow-up, **not** asserted dead and **not** in this terminology verdict's cut.
+
+2. **Clarity nits — NOT recommended as cuts** (flagged so they exit as named non-work, not silent gaps):
+   - **"Priority" vs "Playbook" overload.** "Priority" is not a formal ADR-0010 noun; it is the colloquial
+     name for a launchable Playbook (and the `cocoder/priorities/` dir, `priorityId` in the daemon). One
+     canonical owner (the Playbook `.md`), all else derives. Renaming for consistency would churn the
+     directory model + daemon data model + UI for a terminology-only gain — **net surface not reduced.**
+     Verdict: leave; do not collapse.
+   - **`PLAYBOOK.md` filename vs `Playbook` noun.** A surface-only collision (a roadmap file vs the noun);
+     the code owner is unambiguous. A `ROADMAP.md` rename is optional polish, not a load-bearing cut.
+
+3. **Already-owned follow-up (not new):** owner-map row 210 flags the priority-authoring composer as a
+   code-reuse opportunity (promote the daemon's local priority composer to a core helper like
+   `composeTicketMarkdown`, both callers derive). That is a `derive-from-owner` cleanup the owner map
+   already owns — not a vocabulary collapse; left to that map, not duplicated here.
+
+**§B verdicts complete** (Objective #2): ADR-graph `suspect` (reading-graph collapse), persona-count
+`suspect` (Quinn/Talia unstaffed QA surface), vocabulary `real`-with-one-cut (retired `playbooks/` genre).
+Two concrete founder-gated cuts are now teed up beyond spikes — the ADR reading-graph collapse and the
+`playbooks/` dead-genre freeze — either satisfies Verified-when #3 once founder-approved.
+
 ## Boundary
 Verdict + behavior-pinning tests first. The **only** pre-authorized code/governance mutation is §A (spike
 retirement). §B cuts require a per-cut founder go-ahead and a new founder-approved ADR before touching
