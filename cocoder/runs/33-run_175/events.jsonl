@@ -1,0 +1,15 @@
+{"id":"ev_bc1c5c0dc52b4724","runId":"run_175","type":"run-start","at":1782054429719,"data":{"priority":"new-primary-root"}}
+{"id":"ev_ef34c94d709545ed","runId":"run_175","type":"preflight","at":1782054435438,"data":{"persona":"oscar","cli":"claude","ok":true,"checks":[{"name":"installed","ok":true,"detail":"2.1.185 (Claude Code)"},{"name":"authenticated","ok":true,"detail":"logged in (claude auth status)"},{"name":"model","ok":true,"detail":"validated claude default (no --model)"}]}}
+{"id":"ev_bf8cd09b99a14b7c","runId":"run_175","type":"preflight","at":1782054435568,"data":{"persona":"bob","cli":"codex","ok":true,"checks":[{"name":"installed","ok":true,"detail":"codex-cli 0.141.0"},{"name":"authenticated","ok":true,"detail":"Logged in using ChatGPT"},{"name":"model","ok":true,"detail":"(codex default)"}]}}
+{"id":"ev_c1d040ef4afb4617","runId":"run_175","type":"direct-mode","at":1782054435608,"data":{"branch":"main","trunkSha":"a1102ba2fcf084e0c195bf31247ec3e0592c4194"}}
+{"id":"ev_8795de5426e142b8","runId":"run_175","type":"spawn","at":1782054435845,"data":{"persona":"oscar"}}
+{"id":"ev_61388761c1464c69","runId":"run_175","type":"spawn","at":1782054436092,"data":{"persona":"bob"}}
+{"id":"ev_3903b2aa485a4e67","runId":"run_175","type":"preflight","at":1782054436208,"data":{"persona":"deb","cli":"codex","ok":true,"checks":[{"name":"installed","ok":true,"detail":"codex-cli 0.141.0"},{"name":"authenticated","ok":true,"detail":"Logged in using ChatGPT"},{"name":"model","ok":true,"detail":"(codex default)"}]}}
+{"id":"ev_d0106c004c644804","runId":"run_175","type":"spawn","at":1782054436464,"data":{"persona":"deb"}}
+{"id":"ev_d976fd5eda354777","runId":"run_175","type":"commit","at":1782054480897,"data":{"sha":"86d51d54734416c8f7e0cd3f733417044e07f97d","files":["cocoder/counters.json","cocoder/runs/33-run_175/run.json"]}}
+{"id":"ev_dc1b9c61d6d94c62","runId":"run_175","type":"oscar-support-commit","at":1782054480897,"data":{"committedSha":"86d51d54734416c8f7e0cd3f733417044e07f97d","files":["cocoder/counters.json","cocoder/runs/33-run_175/run.json"],"outOfScope":[],"selfCommitted":false}}
+{"id":"ev_a63deeb7381d4b7b","runId":"run_175","type":"commit","at":1782054519902,"data":{"sha":"2377b66339b086f91a21c4af91c88333ac99c01d","files":["cocoder/PLAYBOOK.md","cocoder/SESSION_LOG.md"]}}
+{"id":"ev_beae5e15e41749c9","runId":"run_175","type":"wrapup","at":1782054519907,"data":{"atoms":0,"forced":false,"play":"wrap-up"}}
+{"id":"ev_1ba87e3a446340d2","runId":"run_175","type":"landing-outcome","at":1782054519908,"data":{"landed":true,"status":"completed","outOfScope":[],"outcome":"✅ COMMITTED on `main` — 2 commit(s) on the active branch (no landing step; work is on the branch by construction). Nothing out of lane."}}
+{"id":"ev_cedc7e757c634806","runId":"run_175","type":"wrapup-delivery-dispatch","at":1782054519974,"data":{}}
+{"id":"ev_196db4b2cb6349be","runId":"run_175","type":"run-end","at":1782054519975,"data":{"status":"completed","atoms":0,"committedShas":["86d51d54734416c8f7e0cd3f733417044e07f97d","2377b66339b086f91a21c4af91c88333ac99c01d"],"outOfScope":[],"selfCommitted":false}}
