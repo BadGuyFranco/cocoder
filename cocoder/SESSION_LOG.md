@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-21 — **new-primary-root: code-complete re-confirmed — founder-gated live proof only (run_175)**
+
+**Persona:** Oscar (wrap-up only; 0 atoms delegated) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_175
+**Outcomes:**
+- **No build atoms delegated** — priority is code-complete since run_141; relaunching for build atoms would only produce empty reaffirmation wraps (F18).
+- **In-process proof re-verified:** `node scripts/proof-onboard-existing.mjs` → exit 0, all 3 invariants green.
+- **Disposition: `continue`** — Verified-when (external-repo onboard-existing end-to-end) remains; billable, multi-agent, founder-authorized on a launch surface distinct from an ordinary build loop.
+
+**Next:** Add a CoBuilder copy via Oz **Add Workspace**, then launch **onboard-existing** for the end-to-end audit-and-ratify proof (recommended target; CoPublisher is the alternate).
+
 ## 2026-06-21 — **surface-reduction: Talia retired, testing-as-a-Play — archive-candidate (run_173)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [surface-reduction](./priorities/surface-reduction.md) | **Run:** run_173
