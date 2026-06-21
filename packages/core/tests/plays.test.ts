@@ -103,6 +103,20 @@ describe('play loading', () => {
     })
   })
 
+  test('base run-tests Play is hybrid and declares its deterministic preflight ref', () => {
+    const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
+    const play = loadPlay(join(repoRoot, 'packages', 'personas', 'base', 'plays'), 'run-tests')
+
+    expect(play).toMatchObject({
+      id: 'run-tests',
+      executionModel: 'hybrid',
+      triggerClass: 'persona-requested',
+      deterministicStep: { ref: 'scripts/checks/run-tests-preflight.mjs' },
+      allowedCallers: ['oz', 'oscar', 'bob', 'deb', 'quinn'],
+      writeScope: [],
+    })
+  })
+
   test.each([
     ['executionModel', 'daemon', /frontmatter "executionModel" must be "prompt-only" or "hybrid"/],
     [

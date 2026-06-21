@@ -5,8 +5,8 @@ import { basePersonasDir, basePlaysDir, basePrioritiesDir } from '../src/index.j
 
 const BASE_PERSONA_FILES = ['bob.md', 'deb.md', 'oscar.md', 'oz.md', 'quinn.md', 'talia.md', 'shared-standards.md'] as const
 const FRONTMATTER_PERSONA_FILES = ['bob.md', 'deb.md', 'oscar.md', 'oz.md', 'quinn.md', 'talia.md'] as const
-const NEW_BASE_PLAY_FILES = ['documentation.md', 'code-review.md', 'electron-test.md'] as const
-const READ_ONLY_BASE_PLAY_FILES = ['code-review.md', 'electron-test.md'] as const
+const NEW_BASE_PLAY_FILES = ['documentation.md', 'code-review.md', 'electron-test.md', 'write-tests.md', 'run-tests.md'] as const
+const READ_ONLY_BASE_PLAY_FILES = ['code-review.md', 'electron-test.md', 'run-tests.md'] as const
 
 const frontmatterValue = (text: string, key: string): string | null => {
   const match = text.match(new RegExp(`^${key}:\\s*(.+)$`, 'm'))
@@ -193,6 +193,17 @@ describe('basePlaysDir', () => {
 
       expect(frontmatterList(text, 'writeScope')).toEqual([])
       expect(frontmatterValue(text, 'writeScope')).toBe('[]')
+    }
+  })
+
+  test('testing plays are callable by every base persona except retired testing roles', () => {
+    for (const file of ['write-tests.md', 'run-tests.md']) {
+      const text = readFileSync(join(basePlaysDir(), file), 'utf8')
+      const callers = frontmatterList(text, 'allowedCallers')
+
+      expect(callers).toEqual(['oz', 'oscar', 'bob', 'deb', 'quinn'])
+      expect(callers).not.toContain('talia')
+      expect(callers).not.toContain('*')
     }
   })
 

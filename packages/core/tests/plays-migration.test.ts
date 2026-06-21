@@ -15,6 +15,8 @@ const shippedPlayIds = [
   'documentation',
   'edit-priority',
   'electron-test',
+  'run-tests',
+  'write-tests',
   'wrap-up',
 ] as const
 
