@@ -4,8 +4,8 @@
 // every field here is humanized. Run ids are OPAQUE (never parsed); timestamps are epoch ms.
 //
 // Type-only imports from electron/: erased at build, so the renderer bundle stays free of main-process
-// code (topology: packages/ui imports only @cocoder/core + node/electron/third-party).
-import { runDisplayName, runDisplayNumber } from '@cocoder/core'
+// code. Pure shared helpers come through browser-safe @cocoder/core subpaths, not the Node-backed barrel.
+import { runDisplayName, runDisplayNumber } from '@cocoder/core/display'
 import type {
   Workspace as DWorkspace,
   Priority as DPriority,
