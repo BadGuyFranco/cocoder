@@ -1,8 +1,8 @@
 [
+  "orchestration-loop-quality",
   "new-primary-root",
-  "model-layer",
   "priority-audit",
   "deb-follows-oscar",
   "ripgrep-dependency-research",
-  "orchestration-loop-quality"
+  "model-layer"
 ]
