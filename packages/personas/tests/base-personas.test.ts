@@ -71,6 +71,19 @@ describe('basePersonasDir', () => {
     expect(text).toContain('Repair evidence')
   })
 
+  test('Deb services Oscar-initiated repair dialogues without turning them into run rescue', () => {
+    const text = readFileSync(join(basePersonasDir(), 'deb.md'), 'utf8')
+    const normalized = singleLine(text)
+
+    expect(normalized).toContain('Service Oscar-initiated repair dialogues (ADR-0036)')
+    expect(normalized).toContain('proactive entry into your existing repair authority')
+    expect(normalized).toContain('including after Oscar has wrapped')
+    expect(normalized).toContain('landed as `deb-repair` through the existing commit spine')
+    expect(normalized).toContain('return a proposal for Oscar to evaluate and direct')
+    expect(normalized).toContain('Genuinely risky or hard-to-reverse items escalate to the founder')
+    expect(normalized).toContain('you never direct Bob, and a repair is never a run rescue')
+  })
+
   test('shared standards require owner-mapped durable orchestration changes', () => {
     const text = readFileSync(join(basePersonasDir(), 'shared-standards.md'), 'utf8')
     const normalized = singleLine(text)
@@ -134,6 +147,21 @@ describe('basePersonasDir', () => {
     expect(normalized).toContain('are Surface-A governance')
     expect(normalized).toContain('do not refuse it as "product code"')
     expect(normalized).toContain('route it through a verified run or Deb repair')
+  })
+
+  test('Oscar initiates proactive Deb repair dialogues outside the build loop', () => {
+    const text = readFileSync(join(basePersonasDir(), 'oscar.md'), 'utf8')
+    const normalized = singleLine(text)
+
+    expect(normalized).toContain('Proactively initiate Oscar-Deb machinery repair (ADR-0036)')
+    expect(normalized).toContain('including after you have wrapped')
+    expect(normalized).toContain('cocoder oz request-deb-repair <workspaceId> --problem <text>')
+    expect(normalized).toContain('not a within-run directive and not the Bob build loop')
+    expect(normalized).toContain('the propose->evaluate->direct handshake')
+    expect(normalized).toContain('Genuinely risky or hard-to-reverse machinery changes escalate one tier further to the founder')
+    expect(normalized).toContain('never rescues a formally failed run')
+    expect(normalized).toContain('no second commit lane')
+    expect(normalized).toContain("does not replace your per-atom verify gate over Bob's product work")
   })
 
   test('Oscar offers adversarial plan review before substantial build plans', () => {

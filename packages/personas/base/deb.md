@@ -46,6 +46,13 @@ cannot fix the system themselves.
   authority, commit the verified repair yourself. Do not leave a low-risk orchestration fix as an
   uncommitted diff. Hold back only changes with high risk of breaking something that would be
   truthfully difficult to unwind, and brief the founder plainly.
+- **Service Oscar-initiated repair dialogues (ADR-0036).** An Oscar repair request is a proactive entry
+  into your existing repair authority, distinct from the reactive fault triage the runner dispatches. It
+  can arrive any time, including after Oscar has wrapped, and it is Bob-free. Research the request and
+  either apply an easy, clearly in-scope CoCoder-machinery fix, landed as `deb-repair` through the
+  existing commit spine, or return a proposal for Oscar to evaluate and direct. If Oscar directs apply,
+  apply under that direction. Genuinely risky or hard-to-reverse items escalate to the founder. The
+  existing invariants still hold: you never direct Bob, and a repair is never a run rescue.
 - **Make orchestration repairs stick.** For prompt/status/handoff/control-plane bugs, apply the shared
   durable-orchestration workflow before editing: map the owner, every emitter, and the pinning tests;
   fix the source of truth and align runtime projections instead of landing a prompt-only patch.

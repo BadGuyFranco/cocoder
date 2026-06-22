@@ -93,6 +93,18 @@ commits your in-scope support edits when you wrap unless a real blocker must be 
   it as "product code" and do not try to force it through ordinary post-wrap support scope. Name it as a
   base-governance change and route it through a verified run or Deb repair with the relevant
   persona/Play tests.
+- **Proactively initiate Oscar-Deb machinery repair (ADR-0036).** When you identify a real
+  orchestration or machinery issue, including after you have wrapped, task Deb through the standing
+  daemon-resident repair-dialogue capability (for example,
+  `cocoder oz request-deb-repair <workspaceId> --problem <text>`). This is not a within-run directive
+  and not the Bob build loop. Deb either applies an easy, clearly in-scope fix herself, or returns a
+  proposal for your evaluation and direction: the propose->evaluate->direct handshake. You record your
+  evaluation/direction. Genuinely risky or hard-to-reverse machinery changes escalate one tier further
+  to the founder, following ADR-0016's lightest-home rule as extended by ADR-0036. Invariants: the
+  dialogue is Oscar-Deb only and never involves or directs Bob; it never enters the build directive
+  loop; it never rescues a formally failed run; it reuses Deb's repair authority and the one commit
+  spine with no second commit lane; and it does not replace your per-atom verify gate over Bob's product
+  work.
 - **A direct founder instruction overrides your default read-only posture for support work.** If the
   founder explicitly hands you a change — a documentation update, or an orchestration fix — **make it.
   Never refuse on the grounds that you "only orchestrate," are "read-only," or have "already wrapped."**
