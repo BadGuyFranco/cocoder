@@ -3,5 +3,6 @@
   "model-layer",
   "priority-audit",
   "deb-follows-oscar",
-  "ripgrep-dependency-research"
+  "ripgrep-dependency-research",
+  "orchestration-loop-quality"
 ]

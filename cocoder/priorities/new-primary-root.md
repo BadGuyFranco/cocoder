@@ -132,6 +132,34 @@ flow: scaffold → multi-agent audit → founder ratifies the drafted Objectives
 with findings traceable to repo reality (Objective verification). This is **billable, multi-agent, founder-
 authorized**, on a different launch surface than an ordinary build loop.
 
+### Build-quality flaws to research and properly fix (run_181 retro)
+Atoms D–G are correct and verified, but the run_181 self-audit surfaced design debt in the onboarding/scaffold
+code that was scoped-out at the time and must be **researched and properly fixed** (root cause, not band-aid)
+before this priority is archive-clean. None blocks the founder reset-retest; each is a future build atom.
+
+- **SSOT — two byte-identical copies of the seeded priority templates (highest priority).** `onboard-existing.md`
+  and `adhoc-session.md` exist twice: `templates/workspace-cocoder/cocoder/priorities/**` (what the scaffold
+  seeds) and `packages/personas/base/priorities/**` (the shipped base, `basePrioritiesDir()`). Atom F kept them
+  in sync with a **guard test** — a band-aid, not a fix. Proper fix: collapse to **one owner** (scaffold reads
+  through from `base/priorities`, or one dir is generated from the other at build) so a single edit is
+  impossible to half-apply. Research which copy is canonical and whether anything depends on both. *(Trips F4
+  config-fragmentation / the elegance "one owner per concept" rule; mind F5 — prefer removing the duplication
+  over keeping the checker.)*
+- **`counters.json` split ownership.** Atom E commits `cocoder/counters.json` in the scaffold governance commit,
+  but it is also in the runner's `PORTABLE_RUN_HISTORY_SCOPE` (run-history rewrites it every run). Two writers
+  to one tracked file. Decide one owner / one intended lifecycle (seed-then-run-history-owns, or document the
+  split deliberately) rather than leaving it incidental.
+- **`commitMessage(run: string | RunDisplayInput)` compat shim (from Atom G).** The union overload was left so
+  old string call-sites keep working; it is a footgun (pass a bare runId string → silently lose the
+  per-root number). Migrate all callers to `RunDisplayInput` and drop the string form.
+- **No runnable proof for the D/E behavior.** There is no `scripts/proof-*.mjs` proving "git-init a non-git root
+  → full-tree baseline commit + complete governance commit + clean status." Per F18, build one so this behavior
+  has runnable proof instead of relying on the manual founder reset-retest. *(This also partly discharges the
+  reset-retest gate.)*
+- **Resolution prose triplicated (elegance, low).** Each atom's resolution is restated in the ticket body, the
+  `tickets/INDEX.md` row, and this doc. INDEX-vs-body is the accepted slim-index convention; this doc could link
+  the closed tickets instead of restating them.
+
 ## First-run operational note (run_160)
 A fresh-workspace first run launches the persona CLIs with **no `--model`** (CoCoder passes the persona's
 default through unchanged), so the CLI uses *its own* configured default. If that default is an unavailable
