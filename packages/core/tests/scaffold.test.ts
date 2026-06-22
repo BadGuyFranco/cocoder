@@ -67,7 +67,18 @@ describe('scaffoldCocoderZone', () => {
     const seeded = await readFile(join(targetRoot, 'cocoder', 'priorities', 'onboard-existing.md'), 'utf8')
     expect(seeded).toBe(await readFile(join(basePrioritiesDir(), 'onboard-existing.md'), 'utf8'))
     expect(seeded).toContain('auditWriteBoundary: ["cocoder/**"]')
-    expect(loadPriority(join(targetRoot, 'cocoder', 'priorities'), 'onboard-existing').auditWriteBoundary).toEqual(['cocoder/**'])
+    expect(seeded).toContain('code, content, operations/docs, or a mix')
+    expect(seeded).toContain('type subsystems explicitly as code subsystems vs content/governance/ops subsystems')
+    expect(loadPriority(join(targetRoot, 'cocoder', 'priorities'), 'onboard-existing')).toMatchObject({
+      id: 'onboard-existing',
+      title: 'Onboard an existing repo — deep multi-agent audit that authors its cocoder/ governance',
+      auditWriteBoundary: ['cocoder/**'],
+    })
+    expect(loadPriority(basePrioritiesDir(), 'onboard-existing')).toMatchObject({
+      id: 'onboard-existing',
+      title: 'Onboard an existing repo — deep multi-agent audit that authors its cocoder/ governance',
+      auditWriteBoundary: ['cocoder/**'],
+    })
   })
 
   test('does not seed onboard-existing into a .git-only new repo', async () => {
