@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_182",
+    "displayNumber": 39
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "priority"
+  },
+  "priorityId": "orchestration-loop-quality",
+  "playbookId": null,
+  "ticketId": null,
+  "status": "running",
+  "createdAt": 1782140730166,
+  "endedAt": null
+}
