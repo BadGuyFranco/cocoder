@@ -47,6 +47,8 @@ import { recordOrchestratedRun } from './oz-host.js'
 
 const OZ_REPAIR_TIMEOUT_MS = 120_000
 const AUTHORING_PLAY_TIMEOUT_MS = 120_000
+const DAEMON_RELOAD_BUILD_COMMAND = 'pnpm --filter @cocoder/core --filter @cocoder/daemon typecheck'
+const MAX_DAEMON_RELOAD_OUTPUT = 12_000
 const AUTHORING_PLAY_IDS = ['create-priority', 'edit-priority', 'archive-priority', 'create-ticket'] as const
 const execFileAsync = promisify(execFile)
 
@@ -166,6 +168,57 @@ async function daemonRuntimeStale(ctx: OzContext, cwd: string, bootSha: string, 
 
 function isNonRuntimeBootDrift(file: string): boolean {
   return file === 'ARCHITECTURE.md' || file.startsWith('cocoder/') || file.startsWith('docs/')
+}
+
+function isDaemonRuntimePath(file: string): boolean {
+  return file === 'packages/daemon' || file.startsWith('packages/daemon/') || file === 'packages/core' || file.startsWith('packages/core/')
+}
+
+function clipped(text: string, max = MAX_DAEMON_RELOAD_OUTPUT): string {
+  return text.length > max ? `${text.slice(0, max)}\n…truncated…` : text
+}
+
+function mergePendingDaemonReload(current: OzContext['daemonReload']['pending'], next: { readonly runId: string; readonly files: readonly string[] }): OzContext['daemonReload']['pending'] {
+  if (!current) return { runId: next.runId, files: [...new Set(next.files)] }
+  return {
+    runId: next.runId,
+    files: [...new Set([...current.files, ...next.files])],
+  }
+}
+
+async function scheduleDaemonReloadForRun(ctx: OzContext, result: RunResult): Promise<void> {
+  const files = result.committedFiles.filter(isDaemonRuntimePath)
+  if (files.length === 0) return
+  ctx.daemonReload.pending = mergePendingDaemonReload(ctx.daemonReload.pending, { runId: result.runId, files })
+  ctx.store.recordEvent({ runId: result.runId, type: 'daemon-auto-reload-pending', data: { command: DAEMON_RELOAD_BUILD_COMMAND, files } })
+  await drainDaemonReload(ctx)
+}
+
+async function drainDaemonReload(ctx: OzContext): Promise<void> {
+  if (ctx.daemonReload.running || ctx.inFlight.size > 0 || !ctx.daemonReload.pending) return
+
+  const pending = ctx.daemonReload.pending
+  ctx.daemonReload.pending = null
+  ctx.daemonReload.running = true
+  try {
+    ctx.store.recordEvent({ runId: pending.runId, type: 'daemon-auto-reload-build-started', data: { command: DAEMON_RELOAD_BUILD_COMMAND, files: pending.files } })
+    const result = await ctx.buildDaemonForReload({ cwd: ctx.cocoderHome, timeoutMs: ctx.daemonReloadBuildTimeoutMs })
+    if (result.exitCode !== 0) {
+      const output = clipped(result.output)
+      ctx.store.recordEvent({ runId: pending.runId, type: 'daemon-auto-reload-build-failed', data: { command: DAEMON_RELOAD_BUILD_COMMAND, exitCode: result.exitCode, output, files: pending.files } })
+      await appendAudit(ctx.cocoderHome, { action: 'daemon-auto-reload-build-failed', runId: pending.runId, command: DAEMON_RELOAD_BUILD_COMMAND, exitCode: result.exitCode, files: pending.files })
+      return
+    }
+
+    ctx.store.recordEvent({ runId: pending.runId, type: 'daemon-auto-reload-build-succeeded', data: { command: DAEMON_RELOAD_BUILD_COMMAND, output: clipped(result.output), files: pending.files } })
+    await appendAudit(ctx.cocoderHome, { action: 'daemon-auto-reload', runId: pending.runId, command: DAEMON_RELOAD_BUILD_COMMAND, bootSha: ctx.bootSha, files: pending.files })
+    ctx.restartDaemon()
+    ctx.store.recordEvent({ runId: pending.runId, type: 'daemon-auto-reload-restart-queued', data: { command: DAEMON_RELOAD_BUILD_COMMAND, bootSha: ctx.bootSha, files: pending.files } })
+    emitOzEvent(ctx, { type: 'daemon-auto-reload-queued', runId: pending.runId, status: 'restarting' })
+  } finally {
+    ctx.daemonReload.running = false
+    if (ctx.inFlight.size === 0 && ctx.daemonReload.pending) await drainDaemonReload(ctx)
+  }
 }
 
 export interface LaunchResult {
@@ -315,6 +368,7 @@ function attachRunLifecycle(ctx: OzContext, workspaceId: string, stopController:
         }
         await recordOrchestratedRun(ctx, workspaceId)
         emitOzEvent(ctx, { type: 'run-settled', runId, workspaceId, status })
+        await drainDaemonReload(ctx)
       }
     })
 }
@@ -451,6 +505,12 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
     const ws = workspace!
     running = runPromise.then(async (result) => {
       await closeTicketAfterSuccessfulRun(ctx, ws.path, target.ticketId, result)
+      await scheduleDaemonReloadForRun(ctx, result)
+      return result
+    })
+  } else {
+    running = runPromise.then(async (result) => {
+      await scheduleDaemonReloadForRun(ctx, result)
       return result
     })
   }

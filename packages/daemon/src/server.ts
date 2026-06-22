@@ -2,10 +2,11 @@
 // createOzServer builds the shared OzContext (DB write-conn + cmux host + registry, all reusing
 // core's helpers — one home, two callers vs the cli) and wires the security gates ahead of route
 // dispatch, so every request passes Host→Origin→Bearer→CSRF before any handler runs.
-import { spawn } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { join } from 'node:path'
+import { promisify } from 'node:util'
 import {
   DEFAULT_OZ_PORT,
   makeGit,
@@ -44,6 +45,9 @@ export interface OzServerOptions {
   /** Override the daemon-restart action (tests inject a no-op/spy so they never restart the real
    *  daemon). Default spawns a detached, delayed `scripts/oz.sh restart`. */
   readonly restartDaemon?: () => void
+  /** Override automatic daemon reload validation (tests inject a fake so they never shell out). */
+  readonly buildDaemonForReload?: OzContext['buildDaemonForReload']
+  readonly daemonReloadBuildTimeoutMs?: number
   /** Override full-dashboard launch (tests inject a fake so they never spawn Electron). */
   readonly dashboardLauncher?: OzContext['dashboardLauncher']
   /** Probe every CLI once after boot so `/clis` + Personas model dropdowns show real status/models
@@ -51,6 +55,9 @@ export interface OzServerOptions {
    *  never spawn real CLI subprocesses. */
   readonly warmCliCacheOnBoot?: boolean
 }
+
+const execFileAsync = promisify(execFile)
+const DAEMON_RELOAD_BUILD_TIMEOUT_MS = 900_000
 
 /** Default restart action: spawn a DETACHED `scripts/oz.sh restart` after a short delay, so the HTTP
  *  202 flushes to the browser before `oz.sh stop` kills this daemon. Detached + unref'd so the child
@@ -64,6 +71,22 @@ function defaultRestartDaemon(cocoderHome: string): () => void {
       cwd: cocoderHome,
     })
     child.unref()
+  }
+}
+
+async function defaultBuildDaemonForReload(input: { readonly cwd: string; readonly timeoutMs: number }): Promise<{ readonly exitCode: number; readonly output: string }> {
+  try {
+    const result = await execFileAsync('pnpm', ['--filter', '@cocoder/core', '--filter', '@cocoder/daemon', 'typecheck'], {
+      cwd: input.cwd,
+      timeout: input.timeoutMs,
+      maxBuffer: 20 * 1024 * 1024,
+    })
+    return { exitCode: 0, output: `${result.stdout}${result.stderr}` }
+  } catch (error) {
+    const err = error as { code?: unknown; stdout?: unknown; stderr?: unknown; message?: unknown }
+    const code = typeof err.code === 'number' ? err.code : 1
+    const output = `${typeof err.stdout === 'string' ? err.stdout : ''}${typeof err.stderr === 'string' ? err.stderr : ''}${err.message === undefined ? '' : `\n${String(err.message)}`}`
+    return { exitCode: code === 0 ? 1 : code, output }
   }
 }
 
@@ -132,6 +155,9 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
     events: createOzEventBus(),
     runHeadless: opts.runHeadless,
     restartDaemon: opts.restartDaemon ?? defaultRestartDaemon(opts.cocoderHome),
+    buildDaemonForReload: opts.buildDaemonForReload ?? defaultBuildDaemonForReload,
+    daemonReloadBuildTimeoutMs: opts.daemonReloadBuildTimeoutMs ?? DAEMON_RELOAD_BUILD_TIMEOUT_MS,
+    daemonReload: { pending: null, running: false },
     dashboardLauncher: opts.dashboardLauncher ?? defaultDashboardLauncher(),
   }
 

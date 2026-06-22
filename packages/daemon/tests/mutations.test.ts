@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ClaudeAdapter, type Exec } from '@cocoder/adapters'
-import { loadAssignments, loadPriority, makeGit, openRunStore, readTickets, StopRequestedError, type Adapter, type Git, type HeadlessRunInput, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
+import { atomSentinel, loadAssignments, loadPriority, makeGit, openRunStore, readTickets, StopRequestedError, type Adapter, type Git, type HeadlessRunInput, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
 import { basePrioritiesDir } from '@cocoder/personas'
 import { createOzServer, OZ_CSRF_HEADER, type OzServer } from '../src/index.js'
 import { validFounderCloseout } from './helpers/founder-closeout.js'
@@ -154,6 +154,17 @@ const fakeGitByCwd = (shas: Readonly<Record<string, readonly string[] | string>>
     },
   }
 }
+const fakeGitChangedSequence = (changedByCall: readonly (readonly string[])[]): Git => {
+  let changedCalls = 0
+  return {
+    ...fakeGit(),
+    async changedFiles() {
+      const files = changedByCall[Math.min(changedCalls, changedByCall.length - 1)] ?? []
+      changedCalls += 1
+      return [...files]
+    },
+  }
+}
 const fakeHost = (
   onShow?: (ref: SessionRef) => void,
   onKill?: (ref: SessionRef) => void,
@@ -293,6 +304,31 @@ function controlledDirectiveIO(): { readonly io: RunnerIO; release(): void } {
   }
 }
 
+function committedAtomThenControlledWrapIO(): { readonly io: RunnerIO; release(): void } {
+  let releaseAll: (() => void) | null = null
+  let directiveCalls = 0
+  const released = new Promise<void>((resolve) => {
+    releaseAll = resolve
+  })
+  return {
+    io: {
+      ...fakeIO(),
+      async ensureRunDir(runDir) {
+        await mkdir(runDir, { recursive: true })
+      },
+      async awaitDirective() {
+        directiveCalls += 1
+        if (directiveCalls === 1) return { kind: 'delegate' as const, task: 'touch daemon runtime' }
+        await released
+        return { kind: 'wrapup' as const, pickup: 'nothing further this run' }
+      },
+    },
+    release() {
+      releaseAll?.()
+    },
+  }
+}
+
 async function fixtures(home: string): Promise<void> {
   await mkdir(join(home, 'cocoder', 'priorities'), { recursive: true })
   await mkdir(join(home, 'cocoder', 'personas'), { recursive: true })
@@ -370,6 +406,22 @@ async function writeExternalWorkspace(home: string, id = 'external'): Promise<st
   )
   await writeFile(join(home, 'local', 'workspaces.json'), JSON.stringify({ workspaces: [{ id, name: 'External', path: workspacePath }] }))
   return workspacePath
+}
+
+async function setBobHeadless(home: string): Promise<void> {
+  await writeFile(
+    join(home, 'cocoder', 'personas', 'assignments.json'),
+    JSON.stringify({ personas: { oscar: { cli: 'claude', model: '' }, bob: { cli: 'codex', model: '', mode: 'headless' } } }),
+  )
+}
+
+const headlessBobOk = async (input: HeadlessRunInput): Promise<{ readonly exitCode: number; readonly output: string }> => {
+  if (input.outPath.includes('bob-turn')) {
+    const output = `implemented daemon atom\n${atomSentinel(0)}`
+    input.onData?.(output)
+    return { exitCode: 0, output }
+  }
+  return { exitCode: 0, output: validFounderCloseout() }
 }
 
 describe('Oz mutations + lifecycle', () => {
@@ -587,6 +639,88 @@ describe('Oz mutations + lifecycle', () => {
     } finally {
       unsubscribe()
     }
+  })
+
+  test('daemon-touching commits reload only after the run is idle', async () => {
+    await setBobHeadless(home)
+    const controlled = committedAtomThenControlledWrapIO()
+    let restarts = 0
+    let builds = 0
+    const buildObservedInFlight: number[] = []
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGitChangedSequence([[], ['packages/daemon/src/routes.ts'], []]),
+      sessionHost: fakeHost(),
+      getAdapter: () => okAdapter,
+      io: controlled.io,
+      runHeadless: headlessBobOk,
+      buildDaemonForReload: async () => {
+        builds += 1
+        buildObservedInFlight.push(oz!.ctx.inFlight.size)
+        return { exitCode: 0, output: 'daemon typecheck ok' }
+      },
+      restartDaemon: () => {
+        restarts += 1
+      },
+    })
+
+    const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
+    expect(r.status).toBe(202)
+    const runId = r.json.runId as string
+    for (let i = 0; i < 50 && !store.listEvents(runId).some((event) => event.type === 'commit' && ((event.data as { files?: string[] } | null)?.files ?? []).includes('packages/daemon/src/routes.ts')); i++) {
+      await sleep(10)
+    }
+
+    expect(oz.ctx.inFlight.get('cocoder')).toBe(runId)
+    expect(builds).toBe(0)
+    expect(restarts).toBe(0)
+
+    controlled.release()
+    for (let i = 0; i < 50 && restarts === 0; i++) await sleep(10)
+
+    expect(builds).toBe(1)
+    expect(buildObservedInFlight).toEqual([0])
+    expect(restarts).toBe(1)
+    expect(oz.ctx.inFlight.has('cocoder')).toBe(false)
+    const types = store.listEvents(runId).map((event) => event.type)
+    expect(types).toEqual(expect.arrayContaining([
+      'daemon-auto-reload-pending',
+      'daemon-auto-reload-build-started',
+      'daemon-auto-reload-build-succeeded',
+      'daemon-auto-reload-restart-queued',
+    ]))
+  })
+
+  test('daemon reload build failure is surfaced and does not restart the daemon', async () => {
+    await setBobHeadless(home)
+    const controlled = committedAtomThenControlledWrapIO()
+    let restarts = 0
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGitChangedSequence([[], ['packages/core/src/runner/runner.ts'], []]),
+      sessionHost: fakeHost(),
+      getAdapter: () => okAdapter,
+      io: controlled.io,
+      runHeadless: headlessBobOk,
+      buildDaemonForReload: async () => ({ exitCode: 2, output: 'daemon typecheck failed' }),
+      restartDaemon: () => {
+        restarts += 1
+      },
+    })
+
+    const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
+    expect(r.status).toBe(202)
+    const runId = r.json.runId as string
+    controlled.release()
+    for (let i = 0; i < 50 && oz.ctx.inFlight.has('cocoder'); i++) await sleep(10)
+
+    expect(restarts).toBe(0)
+    const event = store.listEvents(runId).find((item) => item.type === 'daemon-auto-reload-build-failed')
+    expect(event?.data).toMatchObject({ command: 'pnpm --filter @cocoder/core --filter @cocoder/daemon typecheck', exitCode: 2, output: 'daemon typecheck failed', files: ['packages/core/src/runner/runner.ts'] })
   })
 
   test('POST /runs rejects invalid targets before creating a run', async () => {

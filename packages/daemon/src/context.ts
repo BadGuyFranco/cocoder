@@ -25,6 +25,26 @@ export interface DashboardLauncher {
   spawn(input: DashboardLaunchCommand): DashboardLaunchHandle
 }
 
+export interface DaemonReloadBuildInput {
+  readonly cwd: string
+  readonly timeoutMs: number
+}
+
+export interface DaemonReloadBuildResult {
+  readonly exitCode: number
+  readonly output: string
+}
+
+export interface PendingDaemonReload {
+  readonly runId: string
+  readonly files: readonly string[]
+}
+
+export interface DaemonReloadState {
+  pending: PendingDaemonReload | null
+  running: boolean
+}
+
 export interface OzEvent {
   readonly type: string
   readonly runId?: string
@@ -100,6 +120,13 @@ export interface OzContext {
    *  a detached `scripts/oz.sh restart`; injectable in tests so they never restart the real daemon.
    *  The daemon must NEVER restart itself in-process — a process can't cleanly respawn itself. */
   readonly restartDaemon: () => void
+  /** Bounded validation before an automatic daemon reload. The daemon runs TypeScript through tsx, so
+   *  the reload build gate is the daemon package typecheck rather than an emitted bundle. */
+  readonly buildDaemonForReload: (input: DaemonReloadBuildInput) => Promise<DaemonReloadBuildResult>
+  readonly daemonReloadBuildTimeoutMs: number
+  /** Process-local deferred reload state. A daemon-touching run may finish while another workspace's run
+   *  is still live; this holds one reload request until the global in-flight map drains to zero. */
+  readonly daemonReload: DaemonReloadState
   /** Launches the full dashboard as a detached process; injectable so tests never spawn Electron. */
   readonly dashboardLauncher: DashboardLauncher
 }

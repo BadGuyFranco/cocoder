@@ -263,6 +263,7 @@ const DECISION_EVENTS = new Set([
   'daemon-stale',
   'ui-bundle-rebuild-failed',
   'ui-bundle-rebuild-clobber-blocked',
+  'daemon-auto-reload-build-failed',
 ])
 
 export function eventToLine(e: RunEvent): TranscriptLine {
@@ -339,6 +340,21 @@ export function eventToLine(e: RunEvent): TranscriptLine {
       break
     case 'ui-bundle-rebuild-clobber-blocked':
       body = `Oz UI bundle rebuild blocked because it dirtied app source: ${arr('files').join(', ')}.`
+      break
+    case 'daemon-auto-reload-pending':
+      body = `Oz daemon reload pending after runtime changes: ${arr('files').join(', ')}.`
+      break
+    case 'daemon-auto-reload-build-started':
+      body = `Validating Oz daemon reload: ${str('command') || 'pnpm --filter @cocoder/core --filter @cocoder/daemon typecheck'}.`
+      break
+    case 'daemon-auto-reload-build-succeeded':
+      body = 'Oz daemon reload validation passed.'
+      break
+    case 'daemon-auto-reload-build-failed':
+      body = `Oz daemon reload validation FAILED${d.exitCode ? ` — exit ${String(d.exitCode)}` : ''}${str('output') ? ` — ${trunc(str('output'), 180)}` : ''}.`
+      break
+    case 'daemon-auto-reload-restart-queued':
+      body = 'Oz daemon reload queued; the daemon is restarting onto the current code.'
       break
     case 'run-error':
       body = `Run error — ${trunc(str('message'), 200)}`

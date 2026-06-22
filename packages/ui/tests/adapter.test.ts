@@ -236,6 +236,11 @@ describe('transcript from events', () => {
       body: expect.stringContaining('packages/ui/app/App.tsx'),
       flag: 'decision',
     })
+    expect(eventToLine({ id: 'e', runId: 'r', type: 'daemon-auto-reload-build-failed', data: { exitCode: 2, output: 'typecheck failed' }, at: 0 })).toMatchObject({
+      body: expect.stringContaining('Oz daemon reload validation FAILED'),
+      flag: 'decision',
+    })
+    expect(eventToLine({ id: 'e', runId: 'r', type: 'daemon-auto-reload-restart-queued', data: {}, at: 0 }).body).toContain('restarting')
   })
 })
 
