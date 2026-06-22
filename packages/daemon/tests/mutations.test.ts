@@ -1,7 +1,7 @@
 // Stage-4 mutations + run-lifecycle correctness: launch (202 / 409 in-flight), deep-link (200 / 409
 // non-live, never 500), assignments write (validate + atomic), startup orphan reconciliation.
 import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -75,6 +75,7 @@ const expectedScaffoldFiles = [
   'cocoder/AGENTS.md',
   'cocoder/CLAUDE.md',
   'cocoder/SESSION_LOG.md',
+  'cocoder/counters.json',
   'cocoder/decisions/README.md',
   'cocoder/memory/AGENTS.md',
   'cocoder/memory/codebase-map.md',
@@ -85,6 +86,7 @@ const expectedScaffoldFiles = [
   'cocoder/priorities/adhoc-session.md',
   'cocoder/standards/AGENTS.md',
   'cocoder/tickets/INDEX.md',
+  'cocoder/workspace.json',
 ]
 const fakeGit = (changed: string[] = [], shas: readonly string[] = ['h0']): Git => {
   let headCalls = 0
@@ -383,6 +385,16 @@ async function initRepo(path: string): Promise<void> {
   await g(path, ['config', 'user.name', 'Test'])
   await g(path, ['add', '-A'])
   await g(path, ['commit', '-q', '-m', 'init'])
+}
+
+async function listFiles(root: string, dir = root): Promise<string[]> {
+  const entries = await readdir(dir, { withFileTypes: true })
+  const files = await Promise.all(entries.map(async (entry) => {
+    const path = join(dir, entry.name)
+    if (entry.isDirectory()) return listFiles(root, path)
+    return entry.isFile() ? [path.slice(root.length + 1)] : []
+  }))
+  return files.flat().sort()
 }
 
 async function writeWorkspaceFile(home: string, id = 'cocoder', data: unknown = { folders: [{ path: '${COCODER_HOME}', role: 'primary' }], settings: {} }): Promise<string> {
@@ -2353,8 +2365,10 @@ describe('Oz mutations + lifecycle', () => {
     expect(await g(workspaceRoot, ['ls-files', '--', 'node_modules/left-pad/index.js'])).toBe('')
     expect(await g(workspaceRoot, ['status', '--porcelain', '--untracked-files=all'])).toBe('')
     const committedFiles = (await g(workspaceRoot, ['ls-tree', '-r', '--name-only', 'HEAD'])).split('\n')
-    expect(committedFiles).toEqual(expect.arrayContaining(['.gitignore', 'cocoder/AGENTS.md', 'cocoder/personas/assignments.json', 'package.json', 'src/app.ts']))
+    expect(committedFiles).toEqual(expect.arrayContaining(['.gitignore', 'cocoder/AGENTS.md', 'cocoder/counters.json', 'cocoder/personas/assignments.json', 'cocoder/workspace.json', 'package.json', 'src/app.ts']))
     await expect(g(workspaceRoot, ['cat-file', '-e', `${r.json.governanceCommittedSha}:cocoder/AGENTS.md`])).resolves.toBe('')
+    await expect(g(workspaceRoot, ['cat-file', '-e', `${r.json.governanceCommittedSha}:cocoder/counters.json`])).resolves.toBe('')
+    await expect(g(workspaceRoot, ['cat-file', '-e', `${r.json.governanceCommittedSha}:cocoder/workspace.json`])).resolves.toBe('')
     const audit = await readFile(join(home, 'local', 'oz-audit.log'), 'utf8')
     expect(audit).not.toContain('"action":"governance-commit-failed"')
     expect(audit).toContain('nongit-product')
@@ -2396,9 +2410,17 @@ describe('Oz mutations + lifecycle', () => {
     expect(await g(workspaceRoot, ['ls-files', '--', 'package.json'])).toBe('')
     expect(await g(workspaceRoot, ['status', '--porcelain', '--untracked-files=all'])).toContain('?? package.json')
     const committedFiles = (await g(workspaceRoot, ['ls-tree', '-r', '--name-only', 'HEAD'])).split('\n')
-    expect(committedFiles).toEqual(expect.arrayContaining(['cocoder/AGENTS.md', 'cocoder/personas/assignments.json']))
+    expect(committedFiles).toEqual(expect.arrayContaining(['cocoder/AGENTS.md', 'cocoder/counters.json', 'cocoder/personas/assignments.json', 'cocoder/workspace.json']))
     expect(committedFiles).not.toContain('.gitignore')
     expect(committedFiles).not.toContain('package.json')
+    const trackedCocoder = (await g(workspaceRoot, ['ls-files', '--', 'cocoder'])).split('\n').filter(Boolean).sort()
+    const ignoredCocoder = (await g(workspaceRoot, ['ls-files', '--others', '-i', '--exclude-standard', '--', 'cocoder'])).split('\n').filter(Boolean)
+    const expectedTrackedCocoder = (await listFiles(join(workspaceRoot, 'cocoder')))
+      .map((file) => `cocoder/${file}`)
+      .filter((file) => !ignoredCocoder.includes(file))
+      .sort()
+    expect(trackedCocoder).toEqual(expectedTrackedCocoder)
+    expect(trackedCocoder).toEqual(expect.arrayContaining(['cocoder/counters.json', 'cocoder/workspace.json']))
   })
 
   test('base ad-hoc priority template parses and stays product-generic', async () => {

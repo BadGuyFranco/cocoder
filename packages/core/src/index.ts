@@ -33,8 +33,12 @@ export type {
 export {
   openRunStore,
   migrateWorkspacePortableHistory,
+  DEFAULT_PORTABLE_COUNTERS,
+  ensurePortableWorkspace,
+  portableWorkspacePaths,
   readPortableRunById,
   recordPortableRunCreation,
+  writePortableCounters,
   writePortableRun,
   type MigrateWorkspacePortableHistoryResult,
   type OpenRunStoreOptions,

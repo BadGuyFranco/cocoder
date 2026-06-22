@@ -8,6 +8,8 @@ import {
   installRoot as cocoderInstallRoot,
   composePriorityMarkdown,
   composeTicketMarkdown,
+  DEFAULT_PORTABLE_COUNTERS,
+  ensurePortableWorkspace,
   listEffectivePlays,
   listEffectivePersonas,
   loadAssignments,
@@ -15,6 +17,7 @@ import {
   migrateWorkspacePortableHistory,
   nextTicketId,
   parseFrontmatter,
+  portableWorkspacePaths,
   insertOpenTicketIndexRow,
   readPortableRunById,
   readTicketIndex,
@@ -24,6 +27,7 @@ import {
   truncate,
   workspaceTemplateDir,
   COCODER_GOVERNANCE_AUTHOR,
+  writePortableCounters,
   type CommitReceipt,
   type PersonaAssignment,
   type PersonaSources,
@@ -359,12 +363,35 @@ function governanceCommitFailed(res: Parameters<typeof sendJson>[0], receipt: Co
   return true
 }
 
-async function scaffoldWorkspaceGovernance(root: string): Promise<readonly string[]> {
+async function missing(path: string): Promise<boolean> {
+  try {
+    await stat(path)
+    return false
+  } catch (err) {
+    if (errorCode(err) === 'ENOENT') return true
+    throw err
+  }
+}
+
+async function scaffoldWorkspaceGovernance(root: string, workspace: { readonly id: string; readonly name: string }): Promise<readonly string[]> {
   const personaDir = personasDir(root)
   const priorityDir = prioritiesDir(root)
-  const { created } = scaffoldCocoderZone({ templateDir: workspaceTemplateDir(), targetRoot: root, installRoot: cocoderInstallRoot() })
+  const created = [...scaffoldCocoderZone({ templateDir: workspaceTemplateDir(), targetRoot: root, installRoot: cocoderInstallRoot() }).created]
+  const paths = portableWorkspacePaths(root)
+  if (await missing(paths.workspaceFile)) {
+    await ensurePortableWorkspace(root, workspace)
+    created.push(relative(root, paths.workspaceFile))
+  } else {
+    await ensurePortableWorkspace(root, workspace)
+  }
+  // These counters are stable workspace state, not run churn; seed and commit the initial file.
+  if (await missing(paths.countersFile)) {
+    await writePortableCounters(root, DEFAULT_PORTABLE_COUNTERS)
+    created.push(relative(root, paths.countersFile))
+  }
   loadAssignments(join(personaDir, 'assignments.json'))
   loadPriority(priorityDir, ADHOC_PRIORITY_ID)
+  created.sort()
   return created.map((path) => join(root, path))
 }
 
@@ -762,7 +789,7 @@ async function createWorkspace(ctx: OzContext, res: ServerResponse, body: unknow
   try {
     initializedRepo = !(await ctx.git.isGitRepo(primaryRoot))
     if (initializedRepo) await ctx.git.initRepo(primaryRoot)
-    scaffolded = await scaffoldWorkspaceGovernance(primaryRoot)
+    scaffolded = await scaffoldWorkspaceGovernance(primaryRoot, { id, name: id })
     if (initializedRepo) {
       const gitignore = await seedStarterRootGitignore(primaryRoot)
       if (gitignore) scaffolded = [...scaffolded, gitignore]
