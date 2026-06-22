@@ -9,9 +9,9 @@ title: "Onboard a primary root — New Primary + Onboard-existing (ADR-0020/0026
 > succeeded** (git-init ran, governance committed `2ef1de1` on `main`, `onboard-existing` showed + launched) and
 > surfaced **four new code issues → Atoms D–G** (tickets 0025–0028; see "first live-onboarding reassessment"
 > below). So the remaining work is BOTH code and founder/deploy beats: **(code)** Atoms D–G — Surface-B, need a
-> verified build run; **(deploy)** the daemon must run post-fix code — ticket `0013`, **being fixed by the
-> founder now (2026-06-22) in a separate session**; **(founder)** after D–G land + daemon current, reset-and-
-> retest `job-hunt` from clean; **(proof)** the founder-gated live proof on a real external repo (billable,
+> verified build run; **(deploy)** ticket `0013` delivered (run_179) — daemon-touching commits idle-reload
+> without manual `scripts/oz.sh restart`; **(founder)** after D–G land, reset-and-retest `job-hunt` from
+> clean; **(proof)** the founder-gated live proof on a real external repo (billable,
 > multi-agent, separate surface). The
 > third situation,
 > **Drift Audit**, was split out into the `drift-audit` priority and **completed + archived 2026-06-21**, so
@@ -77,12 +77,10 @@ Both atoms committed; no further buildable backlog for this defect.
   `git init -b main` (no remote), create-only root `.gitignore`, and commits the scaffolded `cocoder/` zone via
   the spine; existing git roots untouched. Daemon real-git tests prove `governanceCommitted` + branch `main`.
 
-**Deployment gap (why `job-hunt` still failed):** the running daemon booted at SHA `1a2b68d`, *before* Atoms
-A/B landed, so it ran the old workspace-create path: `git init` never ran, governance never committed
-(`governanceCommitted:false`, "not a git repository" in `local/oz-audit.log`). The code fix is correct but
-will only take effect once the daemon is rebuilt + restarted on a post-`817d2e3f` SHA. This is the recurring
-"committed fix not deployed" pain — tracked by ticket `0013` (daemon auto-rebuild after runs); strengthen
-that ticket rather than re-patching here.
+**Deployment gap (historical; fixed by ticket `0013`, run_179):** early `job-hunt` attempts failed because the
+running daemon booted before Atoms A/B landed (`governanceCommitted:false`, "not a git repository" in
+`local/oz-audit.log`). Ticket `0013` now idle-reloads the daemon after daemon/core-touching commits — no
+founder `scripts/oz.sh restart` required. Live proof: `node scripts/proof-daemon-reload.mjs`.
 
 ### Atom C — seeded onboarding priority must appear in the panel and launch (DONE, run_177, 528f51f2)
 **Defect was (run_176 post-wrap, `job-hunt`):** the scaffold seeds `cocoder/priorities/onboard-existing.md` and
@@ -97,10 +95,10 @@ re-fetched). **Fix:** replace that empty-list seed with `await refreshWorkspace(
 on recreate and asserts it renders + launches and that priorities are re-fetched; confirmed fail-before/pass-after,
 full UI suite 157/157 green, `tsc --noEmit` exit 0.
 
-**Live acceptance (founder, after daemon rebuild):** unit proof covers the render/refresh path; Add Workspace
-end-to-end on a non-git root still requires a post-fix daemon. Reset `job-hunt` — delete its `cocoder/`
-folder, remove the workspace from CoCoder, re-add via **Add Workspace** — and confirm `git init`, governance
-commit, and `onboard-existing` in the panel.
+**Live acceptance (founder, after idle reload):** unit proof covers the render/refresh path; Add Workspace
+end-to-end on a non-git root still requires the daemon on post-fix code (now delivered via ticket `0013`
+idle-reload). Reset `job-hunt` — delete its `cocoder/` folder, remove the workspace from CoCoder, re-add
+via **Add Workspace** — and confirm `git init`, governance commit, and `onboard-existing` in the panel.
 
 ### Build atoms — first live-onboarding reassessment (NEW, run_177, from Job Hunt / run_178)
 The first real non-git onboarding (Job Hunt) surfaced four issues. Each is ticketed; each atom is a normal

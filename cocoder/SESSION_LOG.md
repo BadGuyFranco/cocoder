@@ -12,6 +12,18 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-22 — **ticket 0013: daemon idle-only auto-reload proven — archive-candidate (run_179)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Ticket:** [0013](./tickets/closed/0013-daemon-auto-rebuild-after-runs.md) | **Run:** run_179
+**Outcomes:**
+- **Mechanism verified (pre-existing + proof added).** Daemon/core-touching runs schedule idle-only rebuild+reload (`scheduleDaemonReloadForRun` / `drainDaemonReload` in `launcher.ts`): typecheck both packages, defer until `inFlight` drains, build-failure-safe (prior daemon keeps serving).
+- **Unit proof (56695e9).** `packages/daemon/tests/daemon-auto-reload.test.ts` — 5 cases including load-bearing idle-only deferral; daemon suite 244/244 green.
+- **Live proof (f0d12ca).** `node scripts/proof-daemon-reload.mjs` — isolated ephemeral daemon (ports 7900–7999); real run commits a new route, daemon self-reloads, curl 200, boot SHA changes; PROOF PASS exit 0.
+- **Docs (2a06d29).** `docs/oz-hardening-owner-map.md` + `cocoder/PLAYBOOK.md` mark 0013 delivered; ticket closed with INDEX updated.
+- **Disposition: `archive-candidate`.** Acceptance met; ticket auto-closes on successful ticket-fix completion.
+
+**Next:** Launch `new-primary-root` for founder reset-and-retest of Job Hunt onboarding now that deploy auto-reloads when idle.
+
 ## 2026-06-21 — **new-primary-root: panel-display defect fixed — code-complete, deploy + founder verification remain (run_177)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_177
