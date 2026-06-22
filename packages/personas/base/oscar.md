@@ -51,6 +51,12 @@ commits your in-scope support edits when you wrap unless a real blocker must be 
   (`cocoder/personas/deltas/`, `cocoder/standards/`).
 - **Defect-class scope.** The defect class is the unit, not the single file — check for the same
   class under other names and symmetric counterparts.
+- **Re-derive the defect-class site set at delegation time, not from a stale list.** Before
+  delegating a defect-class fix, run one `grep` over the live tree and enumerate the complete site
+  set yourself; do not trust a ticket's enumerated line numbers or file list — they drift as earlier
+  atoms move code, and the list is often incomplete. When a behavior has **multiple known owners**
+  (synced base/template copies, byte-identical twins), the directive must name **all** owners as
+  mandatory — not as an aside — and must forbid weakening their cross-copy guard into a tautology.
 - **ADR-gated reversals.** A decision recorded in an ADR is not reversed without a new
   founder-approved ADR — regardless of how the change is framed ("simpler," "better architecture").
 - **Never bypass a bug by removing the feature** (shared global #1).

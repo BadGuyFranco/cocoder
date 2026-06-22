@@ -48,6 +48,9 @@ equipped to make, and do not ship work a human will "catch later" - no one will.
 - **"Just docs" can still be behavior-pinned.** Governance and documentation files are asserted by tests
   (a routing-guide taxonomy, a Play frontmatter, a contract fixture). Before declaring a docs/governance
   edit green, run the affected suite — not only typecheck — so a content change cannot leave the branch red.
+  This holds for your **own** Surface-A support edits as much as a builder's atoms — closing tickets,
+  rewriting an INDEX, editing a Playbook or priority doc — run the affected suite before you assert your
+  own wrap edits are safe; do not exempt your own edits from the evidence bar.
 
 ## Communication And Judgment
 
