@@ -3,12 +3,17 @@ id: orchestration-loop-quality
 title: "Orchestration loop quality — catch avoidable rework and unproven wraps"
 ---
 
-> **Placed in the active stack; first gate is research + founder-ratify (ADR-0035 — no draft state).**
-> Founder-directed creation (run_181): "define where orchestration failed us and write a new priority to
-> research and fix." Oscar drafted the phrasing and the evidence below; the founder ratifies the informed
-> Objective at this priority's first research gate, not as a pre-run hold. The hard tension this priority
-> must respect is **F5 (governance-of-governance is itself a failure)** — the deliverable is *not*
-> reflexively "build a checker that polices the orchestrator."
+> **RESEARCH GATE CLEARED — founder ratified all four dispositions (run_182, 2026-06-22). This is now a
+> LANDING run.** Next session delegates the landing atoms in "Ratified fixes to land" below to Bob (a
+> verified base-governance run: edits under `packages/personas/base/**`, persona/Play suites green as the
+> exit criterion). Modes 1+2 and 3 land as prompt/standard text; mode 4 is a recorded founder-accepted
+> no-op (see below) — that satisfies the Objective's branch-2 for mode 4. The hard tension this priority
+> still respects is **F5 (governance-of-governance is itself a failure)** — none of the ratified fixes add a
+> docs/process-policing checker; they are prompt/standard text plus a reusable grep habit.
+>
+> Origin (run_181): founder-directed — "define where orchestration failed us and write a new priority to
+> research and fix." Oscar drafted the phrasing and the evidence below; the founder ratified at this
+> priority's research gate per ADR-0035 (no draft state).
 
 ## Objective
 The Oscar→Bob→verify loop stops burning round-trips on avoidable rework and stops wrapping on unproven
@@ -68,21 +73,43 @@ runnable proof. Defined failure modes:
    *refuses*. A hard wrap-blocking gate would recreate the founder-blocking anti-pattern (ADR-0029) and edge
    into F5 (policing the wrap's process). Require-justification, never refuse.
 
-## What the research must produce (not prejudge)
-For each failure mode, decide the *lightest* fix that actually prevents recurrence, explicitly weighing F5:
-- 1 & 2 likely → a tightened **delegation standard** (re-derive defect-class site sets from the live tree;
-  name all known owners as mandatory) in the Oscar persona / shared standards — possibly with a cheap,
-  reusable scan habit rather than a bespoke checker.
-- 3 likely → extend the **verify-with-evidence** standard to cover orchestrator support edits (run the affected
-  suite before declaring a governance/doc edit safe — this is already implied by "just docs can be
-  behavior-pinned"; the gap is it not being applied to Oscar's own edits).
-- 4 likely → make the **F18 runnable-proof** expectation a wrap precondition: a wrap that rests on a manual
-  founder gate must name the proof harness it built or the explicit reason one is not feasible.
+## Ratified fixes to land (run_182 — founder ratified all four, 2026-06-22)
+Research done from primary artifacts in run_182. Each disposition below is founder-ratified. Deliver as a
+verified base-governance run: Bob edits the named base files, exit criterion is the persona/Play suites green.
+No docs/process-policing checker (F5).
 
-Each conclusion is a founder beat: the research surfaces the recommendation; the founder ratifies whether to
-land it as prompt/standard text, a boundary check, or an accepted no-op. **Do not** add a docs-policing checker
-to enforce orchestrator discipline (F5); prefer prompt/standard changes and, where a check is warranted, point
-it at the agent→reality boundary (e.g. proof-harness existence), not at process conformance.
+**Atom 1 — Modes 1 & 2 combined (LAND): one delegation-discipline addition to the Oscar persona.**
+Owner: `packages/personas/base/oscar.md`, attach near *Defect-class scope* (currently line 52). Add a
+delegation-time discipline: before delegating a defect-class fix, **re-derive the complete site set from the
+live tree with one grep** rather than trusting an enumerated ticket list (the line numbers drift; the list is
+often incomplete). And when a behavior has **multiple known owners**, the directive must name **all** owners as
+mandatory (not as an aside) and forbid weakening their cross-copy guard.
+- Evidence it would have prevented run_181: `grep -rn "via CoCoder run" packages/*/src | grep -v test` returns
+  all five founder-facing run-label trailer sites — `core/src/runner/prompts.ts`, three in `core/src/runner/runner.ts`,
+  and `daemon/src/launcher.ts:851` — the exact site the ticket's enumerated list omitted and Atom G was rejected for.
+- Multi-owner case: the byte-identical twins `templates/workspace-cocoder/cocoder/priorities/onboard-existing.md`
+  and `packages/personas/base/priorities/onboard-existing.md`, guarded by the scaffold cross-copy sync test
+  (the one Atom F weakened into a tautology).
+- F5: this is a reusable grep *habit* in prompt text, not a bespoke checker.
+
+**Atom 2 — Mode 3 (LAND): one-line extension to the shared standard.**
+Owner: `packages/personas/base/shared-standards.md:48` — the *"'Just docs' can still be behavior-pinned"* bullet
+(`e0ced3f`). Extend it to state explicitly that the rule covers **Oscar's own Surface-A support edits** (closing
+tickets, rewriting `tickets/INDEX.md`, Playbook/priority-doc edits), not only builder atoms: run the affected
+suite before asserting your own wrap edits are safe. Closes the exact run_181 mode-3 gap (Oscar asserted
+"docs edits don't break tests" without running the suite).
+
+**Atom 3 — Mode 4 (FOUNDER-ACCEPTED NO-OP): no change.**
+Recorded decision (Objective branch-2): the F18 runnable-proof expectation is already carried by
+`packages/personas/base/plays/wrap-up.md:37`, which requires a RUNNABLE `Next Action` and to offer automation
+rather than hand over a checklist; and `scripts/proof-onboard-existing.mjs` already exists for the run_181 D/E
+onboarding behavior — the run_181 wrap should simply have named/extended it. Reason for no-op: adding a wrap
+precondition risks the founder-blocking anti-pattern (ADR-0029) and edges into F5 (policing the wrap's process);
+existing coverage is sufficient. An optional one-line *sharpen* (a wrap resting on a manual founder gate must
+name its proof harness or a justified reason none is feasible) remains available if a future run shows recurrence.
+
+After Atoms 1–2 land green and Atom 3 is recorded, all four failure modes satisfy the **Verified when** criteria
+above and the priority is archive-ready.
 
 ## Key references
 - [F5](../failure-catalog.md) — governance-of-governance is a tell of over-engineering (the binding constraint here).
