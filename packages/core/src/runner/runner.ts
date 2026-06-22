@@ -20,8 +20,10 @@ import { dispatchPlay, listEffectivePlays, renderPlayManifest, type DispatchPlay
 import type { Play, PlaySources } from '../plays/index.js'
 import {
   allocatePortableSessionDisplayNumber,
+  coCoderRunReference,
   listPortableRunSessions,
   recordPortableRunCreation,
+  runDisplayName,
   writePortableRunHistory,
   type Run,
   type RunStatus,
@@ -694,6 +696,8 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     store.setRunStatus(run.id, 'failed')
     throw err
   }
+  const runDisplay = { id: run.id, displayNumber: portableRunDisplayNumber }
+  const runReference = coCoderRunReference(runDisplay)
   const dirtyAtStart = new Set([
     ...dirtyAtStartFiles,
     'cocoder/workspace.json',
@@ -707,7 +711,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   store.recordEvent({ runId: run.id, type: 'direct-mode', data: { branch: trunkBranch, trunkSha } })
   log(`committing directly to ${trunkBranch} (${trunkSha.slice(0, 8)})`)
   // Display-only cmux workspace label. The grouping key below remains the durable run id.
-  const groupLabel = formatGroupLabel({ workspaceName: workspace.name || workspace.id, target: defaultRunLabelTarget(input), runId: run.id })
+  const groupLabel = formatGroupLabel({ workspaceName: workspace.name || workspace.id, target: defaultRunLabelTarget(input), run: runDisplay })
   const playSources = input.playSources ?? {
     baseDir: join(engineHome, 'packages', 'personas', 'base', 'plays'),
     deltaDir: join(workspace.path, 'cocoder', 'plays', 'deltas'),
@@ -969,7 +973,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           runId: run.id,
           workItemId: null,
           scope: withPortableRunHistoryScope(deb.writeScope),
-          message: `deb-${kind}: ${faultType}${atomIndex !== null ? ` (atom ${atomIndex})` : ''} occurrence ${occurrence}${verdict.ticketId ? ` → ticket ${verdict.ticketId}` : ''} via CoCoder run ${run.id}`,
+          message: `deb-${kind}: ${faultType}${atomIndex !== null ? ` (atom ${atomIndex})` : ''} occurrence ${occurrence}${verdict.ticketId ? ` → ticket ${verdict.ticketId}` : ''} via CoCoder run ${runReference}`,
           headBefore: headBeforeRepair,
           auditWriteBoundary,
         })
@@ -1107,7 +1111,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       runId: run.id,
       workItemId: null,
       scope: withPortableRunHistoryScope(oscar.writeScope),
-      message: `oscar-support: ${priority.id} via CoCoder run ${run.id}`,
+      message: `oscar-support: ${priority.id} via CoCoder run ${runReference}`,
       headBefore,
       auditWriteBoundary,
     })
@@ -1151,7 +1155,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       sessionDisplayNumbers,
       terminal,
     })
-    const message = `run-history: ${run.id} via CoCoder run ${run.id}`
+    const message = `run-history: ${run.id} via CoCoder run ${runReference}`
     const files = [
       'cocoder/counters.json',
       'cocoder/workspace.json',
@@ -1223,7 +1227,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     store.setRunStatus(run.id, status)
     // Any commits already made are on the active branch; push them (non-gating) so a shared remote sees them.
     await pushActiveBranchIfRemote()
-    const recordPath = await io.writeRunRecord(runDir, renderRunRecord(store, run.id, { workspace, priority }))
+    const recordPath = await io.writeRunRecord(runDir, renderRunRecord(store, run.id, { workspace, priority, displayNumber: portableRunDisplayNumber }))
     log(`run ${run.id} stopped; ${committedShas.length} commit(s) over ${atoms} atom(s); record at ${recordPath}`)
     return {
       runId: run.id,
@@ -1262,7 +1266,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       await commitOscarSupport(headBeforeOscarSupport)
       if (input.wrapPlay && input.wrapPlayAssignment) {
         const task =
-          `Run ${run.id} on priority ${priority.id}. ${n} atom(s) were delegated; commits so far: ${committedShas.join(', ') || 'none'}.\n\n` +
+          `${runDisplayName(runDisplay)} on priority ${priority.id}. ${n} atom(s) were delegated; commits so far: ${committedShas.join(', ') || 'none'}.\n\n` +
           `Oscar's notes for this wrap-up:\n${directive.pickup ?? ''}`
         const dispatchWrapPlay = async (wrapTask: string, outName: string): Promise<{ candidatePickup: string | null; outPath: string }> => {
           const headBeforeWrap = await git.headSha(worktreePath)
@@ -1289,7 +1293,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
             runId: run.id,
             workItemId: null,
             scope: withPortableRunHistoryScope(input.wrapPlay!.writeScope),
-            message: commitMessage(priority.id, run.id, n),
+            message: commitMessage(priority.id, runDisplay, n),
             headBefore: headBeforeWrap,
             auditWriteBoundary,
           })
@@ -1347,6 +1351,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       directive,
       runId: run.id,
       priorityId: priority.id,
+      runDisplayNumber: portableRunDisplayNumber,
       oscarId: oscar.id,
       bobId: bob.id,
       runDir,
@@ -1422,7 +1427,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       if (oscarDriver.kind === 'headless') {
         store.recordEvent({ runId: run.id, type: 'wrapup-delivery-skipped', data: { reason: 'headless-oscar' } })
       } else {
-        const deliveryPath = await io.writeRunArtifact(runDir, 'wrapup-delivery.md', buildWrapupDelivery(run.id, pickup, outcome))
+        const deliveryPath = await io.writeRunArtifact(runDir, 'wrapup-delivery.md', buildWrapupDelivery(runDisplay, pickup, outcome))
         await oscarDriver.show().catch(() => {})
         await oscarDriver.send(buildArtifactDispatch('WRAP-UP READY', deliveryPath)).catch(() => {})
         store.recordEvent({ runId: run.id, type: 'wrapup-delivery-dispatch', data: { ref: oscarDriver.refId, path: deliveryPath } })
@@ -1442,7 +1447,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   // (the commit-gate ran with cwd = the active checkout). There is no run branch to integrate, no landing
   // step, and nothing that can strand. Push to a shared remote if one exists (non-gating).
   await pushActiveBranchIfRemote()
-  const recordPath = await io.writeRunRecord(runDir, renderRunRecord(store, run.id, { workspace, priority }))
+  const recordPath = await io.writeRunRecord(runDir, renderRunRecord(store, run.id, { workspace, priority, displayNumber: portableRunDisplayNumber }))
   log(`run ${run.id} ${status}; ${committedShas.length} commit(s) over ${n} atom(s); record at ${recordPath}`)
 
   return {

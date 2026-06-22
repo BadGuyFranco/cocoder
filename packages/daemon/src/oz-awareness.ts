@@ -1,7 +1,9 @@
-import type { Run } from '@cocoder/core'
+import { runDisplayNumber, type Run } from '@cocoder/core'
 import type { PrioritySummary, TicketSummary } from './priority-order.js'
 
-export type OzAwarenessRun = Pick<Run, 'id' | 'workspaceId' | 'priorityId' | 'playbookId' | 'ticketId' | 'status' | 'createdAt' | 'endedAt'>
+export type OzAwarenessRun = Pick<Run, 'id' | 'workspaceId' | 'priorityId' | 'playbookId' | 'ticketId' | 'status' | 'createdAt' | 'endedAt'> & {
+  readonly displayNumber: number | null
+}
 
 export interface OzAwarenessSnapshot {
   readonly priorities: readonly PrioritySummary[]
@@ -36,5 +38,6 @@ function projectRun(run: Run): OzAwarenessRun {
     status: run.status,
     createdAt: run.createdAt,
     endedAt: run.endedAt,
+    displayNumber: runDisplayNumber(run),
   }
 }

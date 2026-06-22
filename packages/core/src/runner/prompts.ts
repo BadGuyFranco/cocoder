@@ -5,6 +5,7 @@
 // watches Bob live (the monitor), and Oscar ends the run on his own wrap-up decision. The default
 // next-turn bias is to continue while concrete in-priority work remains; wrap-up is for real stop
 // conditions, not merely for a clean commit boundary.
+import { coCoderRunReference, runDisplayName, type RunDisplayInput } from '../store/index.js'
 
 /** The per-atom completion sentinel Bob prints when an atom is done. Per-atom-unique so a prior atom's
  *  sentinel still on screen cannot falsely complete the next one (the monitor matches it deterministically). */
@@ -435,11 +436,11 @@ by hand, and never touch the Oz daemon:
 That terminates and closes only this run's sessions (the same operation Oz's teardown button uses).`
 }
 
-export function buildWrapupDelivery(runId: string, brief: string, landingOutcome?: string): string {
+export function buildWrapupDelivery(run: RunDisplayInput, brief: string, landingOutcome?: string): string {
   const landingSection = landingOutcome
     ? `\n**Landing Outcome**\n\n${landingOutcome}\n`
     : ''
-  return `WRAP-UP READY for ${runId}.
+  return `WRAP-UP READY for ${runDisplayName(run)}.
 
 Deliver the validated founder-facing wrap-up below now. Preserve the closeout headings, order, and final
 \`I'm standing by...\` line exactly; do not summarize, reformat, or paraphrase the closeout brief. Include
@@ -447,7 +448,7 @@ the landing outcome section when present. Then wait. Do not close panes, do not 
 ask for teardown. The founder may ask questions, request a priority update or other governance/doc edit,
 or say "kill" / "tear down" explicitly. If the founder asks for a Surface-A edit after this wrap-up, make
 it within your support scope; do not refuse because the run already wrapped. After such an edit, run
-\`cocoder oz commit-support ${runId}\` yourself to commit it with a receipt; if that command is
+\`cocoder oz commit-support ${run.id}\` yourself to commit it with a receipt; if that command is
 unavailable or fails, report the exact blocker and the edited paths.
 
 ${landingSection}
@@ -585,6 +586,7 @@ export function buildDebTriageDispatch(faultPath: string, triagePath: string, oc
   return `TRIAGE — a fault occurred in this run. Read the fault context from ${faultPath} (and the status feed for context), classify it to exactly one disposition (cocoder-bug | repo-bug | one-off), and write your verdict to ${triagePath}. For a cocoder-bug choose "mode":"propose" (a "proposal" diff, reviewed not applied) OR, only within your write-scope, "mode":"repair" (edit the files now, then report diagnosis/whyCocoderOwned/filesChanged/verification/remainingRisk). Out-of-scope edits — including any target-repo product code — are held back at the commit-gate, never committed. A repair does not rescue the run.${recurrence}`
 }
 
-export function commitMessage(priorityId: string, runId: string, atomIndex: number): string {
-  return `${priorityId}: atom ${atomIndex} via CoCoder run ${runId}`
+export function commitMessage(priorityId: string, run: string | RunDisplayInput, atomIndex: number): string {
+  const runRef = typeof run === 'string' ? run : coCoderRunReference(run)
+  return `${priorityId}: atom ${atomIndex} via CoCoder run ${runRef}`
 }

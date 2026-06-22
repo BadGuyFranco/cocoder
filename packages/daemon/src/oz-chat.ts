@@ -1,10 +1,12 @@
 import { join } from 'node:path'
+import { runDisplayName } from '@cocoder/core'
 import type { OzContext } from './context.js'
 import { launchRun as launchRunOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestNudgeRun as nudgeRunOp, requestOzRepair as repairOzOp, requestStopRun as stopRunOp, requestSupportCommitRun as supportCommitRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
 import { projectOzAwareness, type OzAwarenessRun, type OzAwarenessSnapshot } from './oz-awareness.js'
 import { tryHandleOzAgentTurn } from './oz-host.js'
 import { readTickets } from './priority-order.js'
 import { findWorkspace } from './registry.js'
+import { withPortableDisplayNumbers } from './run-display.js'
 
 const ADHOC_PRIORITY_ID = 'adhoc-session'
 const HELP_HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
@@ -208,7 +210,7 @@ export async function executeOzCommand(ctx: OzContext, workspaceId: string | und
   }
 
   if (command.runId) {
-    const awareness = projectOzAwareness({ priorities: [], runs: ctx.store.listRuns(), tickets: [] })
+    const awareness = projectOzAwareness({ priorities: [], runs: await withPortableDisplayNumbers(ctx, ctx.store.listRuns()), tickets: [] })
     const run = awareness.recentRuns.find((candidate) => candidate.id === command.runId)
     if (!run) {
       return chatResult(404, { reply: `Could not find ${command.runId}.`, command: 'status', ok: false })
@@ -223,7 +225,7 @@ export async function executeOzCommand(ctx: OzContext, workspaceId: string | und
 
   const awareness = projectOzAwareness({
     priorities: [],
-    runs: ctx.store.listRuns(workspaceId ? { workspaceId } : undefined),
+    runs: await withPortableDisplayNumbers(ctx, ctx.store.listRuns(workspaceId ? { workspaceId } : undefined)),
     tickets: workspaceId ? await readWorkspaceTickets(ctx, workspaceId) : [],
   })
   const runs = awareness.recentRuns
@@ -398,7 +400,7 @@ function stringArray(input: unknown): string[] {
 }
 
 function runSummary(run: OzAwarenessRun): string {
-  return `${run.id} is ${run.status} on ${run.priorityId}.`
+  return `${runDisplayName(run)} is ${run.status} on ${run.priorityId}.`
 }
 
 function runsSummary(runs: readonly OzAwarenessRun[], tickets: OzAwarenessSnapshot['openTickets'] = []): string {
@@ -409,7 +411,7 @@ function runsSummary(runs: readonly OzAwarenessRun[], tickets: OzAwarenessSnapsh
 
 function runListSummary(runs: readonly OzAwarenessRun[]): string {
   if (runs.length === 0) return 'No runs found.'
-  const shown = runs.slice(0, 5).map((run) => `${run.id} ${run.status} ${run.priorityId}`)
+  const shown = runs.slice(0, 5).map((run) => `${runDisplayName(run)} ${run.status} ${run.priorityId}`)
   const more = runs.length > shown.length ? `; +${runs.length - shown.length} more` : ''
   return `${runs.length} run${runs.length === 1 ? '' : 's'}: ${shown.join('; ')}${more}.`
 }

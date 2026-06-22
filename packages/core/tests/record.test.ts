@@ -10,7 +10,29 @@ function branchLine(record: string): string {
   return line
 }
 
+function heading(record: string): string {
+  const line = record.split('\n')[0]
+  if (!line) throw new Error('record did not include a heading')
+  return line
+}
+
 describe('renderRunRecord', () => {
+  test('uses the per-root run display number in the heading', () => {
+    const store = openRunStore(':memory:')
+    store.upsertWorkspace(workspace)
+    const run = store.createRun({ workspaceId: workspace.id, priorityId: priority.id })
+
+    expect(heading(renderRunRecord(store, run.id, { workspace, priority, displayNumber: 1 }))).toBe('# Run 1')
+  })
+
+  test('falls back to the durable run id in the heading when display number is absent', () => {
+    const store = openRunStore(':memory:')
+    store.upsertWorkspace(workspace)
+    const run = store.createRun({ workspaceId: workspace.id, priorityId: priority.id })
+
+    expect(heading(renderRunRecord(store, run.id, { workspace, priority, displayNumber: null }))).toBe(`# ${run.id}`)
+  })
+
   test('labels the branch from the direct-mode event (single mode — committed straight to the active branch)', () => {
     const store = openRunStore(':memory:')
     store.upsertWorkspace(workspace)

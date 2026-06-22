@@ -2,6 +2,7 @@
 // Write-once, never read back as truth — a rendering, not a source.
 import type { Priority } from '../priorities/index.js'
 import type { RunStore, Workspace } from '../store/index.js'
+import { runDisplayName } from '../store/index.js'
 
 const ts = (ms: number | null): string => (ms === null ? '—' : new Date(ms).toISOString())
 
@@ -14,7 +15,7 @@ function branchLabel(events: ReturnType<RunStore['listEvents']>): string {
 export function renderRunRecord(
   store: RunStore,
   runId: string,
-  meta: { workspace: Workspace; priority: Priority },
+  meta: { workspace: Workspace; priority: Priority; displayNumber?: number | null },
 ): string {
   const run = store.getRun(runId)
   if (!run) throw new Error(`renderRunRecord: run ${runId} not found`)
@@ -24,7 +25,7 @@ export function renderRunRecord(
   const events = store.listEvents(runId)
 
   const lines: string[] = []
-  lines.push(`# Run ${run.id}`, '')
+  lines.push(`# ${runDisplayName({ id: run.id, displayNumber: meta.displayNumber ?? null })}`, '')
   lines.push(`- **Workspace:** ${meta.workspace.name} (\`${meta.workspace.id}\`) — ${meta.workspace.path}`)
   lines.push(`- **Priority:** ${meta.priority.title} (\`${run.priorityId}\`)`)
   lines.push(`- **Status:** ${run.status}`)

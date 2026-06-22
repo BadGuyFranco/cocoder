@@ -5,6 +5,7 @@ import {
   loadAssignments,
   resolveEffectivePersona,
   runHeadlessProcess,
+  runDisplayName,
   type Assignments,
   type ResolvedPersona,
 } from '@cocoder/core'
@@ -15,6 +16,7 @@ import type { OzChatAction, OzChatResult, OzCommandExecutor, OzExecutableCommand
 import { parsePromptInput } from './oz-context-pointer.js'
 import { readPriorities, readTickets } from './priority-order.js'
 import { findWorkspace, type RegistryWorkspace } from './registry.js'
+import { withPortableDisplayNumberForPath, type RunWithDisplayNumber } from './run-display.js'
 import { readSettings } from './settings.js'
 
 const TRANSCRIPT_LIMIT = 20
@@ -190,9 +192,10 @@ async function runTurn(ctx: OzContext, target: OzTarget, session: OzSession, inp
 
 async function buildPrompt(ctx: OzContext, target: OzTarget, transcript: readonly TranscriptEntry[], input: TurnInput): Promise<string> {
   const priorities = await readPriorities(prioritiesDir(target.workspace.path), PRIORITIES_CAP)
+  const runs: RunWithDisplayNumber[] = await Promise.all(ctx.store.listRuns({ workspaceId: target.workspace.id }).map((run) => withPortableDisplayNumberForPath(run, target.workspace.path)))
   const awareness = projectOzAwareness({
     priorities,
-    runs: ctx.store.listRuns({ workspaceId: target.workspace.id }),
+    runs,
     tickets: await readTickets(ticketsDir(target.workspace.path)),
   })
   const parsed = parsePromptInput(input, awareness, {
@@ -401,7 +404,7 @@ function factsDigest(awareness: OzAwarenessSnapshot): string {
 
 function formatRun(run: OzAwarenessRun): string {
   const endedAt = run.endedAt === null ? 'null' : new Date(run.endedAt).toISOString()
-  return `- ${run.id}: ${run.status} priority=${run.priorityId} createdAt=${new Date(run.createdAt).toISOString()} endedAt=${endedAt}`
+  return `- ${runDisplayName(run)}: ${run.status} priority=${run.priorityId} createdAt=${new Date(run.createdAt).toISOString()} endedAt=${endedAt}`
 }
 
 function formatTicket(ticket: OzAwarenessSnapshot['openTickets'][number]): string {

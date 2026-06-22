@@ -19,7 +19,6 @@ import {
   parseFrontmatter,
   portableWorkspacePaths,
   insertOpenTicketIndexRow,
-  readPortableRunById,
   readTicketIndex,
   scaffoldCocoderZone,
   ticketTableCell,
@@ -33,7 +32,6 @@ import {
   type PersonaSources,
   type PlaySources,
   type Priority,
-  type Run,
 } from '@cocoder/core'
 import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import { emitOzEvent, type OzContext, type OzEvent } from './context.js'
@@ -46,6 +44,7 @@ import { commitGovernance, launchRun, requestAuthoringPlay, requestDaemonRestart
 import { handleOzMessage } from './oz-chat.js'
 import { mergeWriteSettings, readSettings } from './settings.js'
 import { readPriorities, readTickets, writePriorityOrder, writeTicketOrder } from './priority-order.js'
+import { withPortableDisplayNumber } from './run-display.js'
 
 export type { OzContext } from './context.js'
 
@@ -472,15 +471,6 @@ async function listPlays(ctx: OzContext, res: ServerResponse, workspaceId: strin
     writeScope: play.writeScope,
   }))
   sendJson(res, 200, { workspace: ws, plays })
-}
-
-type RunWithDisplayNumber = Run & { readonly displayNumber: number | null }
-
-async function withPortableDisplayNumber(ctx: OzContext, run: Run): Promise<RunWithDisplayNumber> {
-  const workspace = await findWorkspace(ctx.cocoderHome, run.workspaceId)
-  if (!workspace) return { ...run, displayNumber: null }
-  const portable = await readPortableRunById(workspace.path, run.id)
-  return { ...run, displayNumber: portable?.run.displayNumber ?? null }
 }
 
 /** GET /runs (optionally ?workspace=) — surface 4 list. */

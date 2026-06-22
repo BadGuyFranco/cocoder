@@ -13,6 +13,7 @@ import { promisify } from 'node:util'
 import {
   COCODER_GOVERNANCE_AUTHOR,
   closeTicket,
+  coCoderRunReference,
   commitFiles,
   isPersonaEnabled,
   gateCommitRepair,
@@ -45,6 +46,7 @@ import { emitOzEvent, type DashboardLaunchHandle, type OzContext } from './conte
 import { findWorkspace } from './registry.js'
 import { appendAudit } from './audit.js'
 import { recordOrchestratedRun } from './oz-host.js'
+import { withPortableDisplayNumber } from './run-display.js'
 
 const OZ_REPAIR_TIMEOUT_MS = 120_000
 const AUTHORING_PLAY_TIMEOUT_MS = 120_000
@@ -838,6 +840,7 @@ export async function requestSupportCommitRun(ctx: OzContext, runId: string): Pr
   }
 
   const headBefore = await ctx.git.headSha(workspace.path)
+  const runReference = coCoderRunReference(await withPortableDisplayNumber(ctx, run))
   const gate = await runCommitGate({
     git: ctx.git,
     store: ctx.store,
@@ -845,7 +848,7 @@ export async function requestSupportCommitRun(ctx: OzContext, runId: string): Pr
     runId,
     workItemId: null,
     scope,
-    message: `oscar-post-wrap: ${run.priorityId} via CoCoder run ${runId}`,
+    message: `oscar-post-wrap: ${run.priorityId} via CoCoder run ${runReference}`,
     headBefore,
   })
   const liveOscar = ctx.store.listSessions(runId).some((s) => s.persona === 'oscar' && ctx.liveRefs.has(s.sessionRef))

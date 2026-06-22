@@ -1,4 +1,5 @@
 import { join } from 'node:path'
+import { runDisplayName } from '@cocoder/core'
 import type { OzAwarenessSnapshot } from './oz-awareness.js'
 
 type ContextPointerType = 'priority' | 'ticket' | 'run'
@@ -87,7 +88,7 @@ function resolveContextPointer(awareness: OzAwarenessSnapshot, dirs: ContextPoin
   return run
     ? {
         pointer,
-        slugLabel: run.ticketId ? `${run.id} — ticket ${run.ticketId}` : run.playbookId ? `${run.id} — playbook ${run.playbookId}` : `${run.id} — priority ${run.priorityId}`,
+        slugLabel: run.ticketId ? `${runDisplayName(run)} — ticket ${run.ticketId}` : run.playbookId ? `${runDisplayName(run)} — playbook ${run.playbookId}` : `${runDisplayName(run)} — priority ${run.priorityId}`,
         filePath: join(dirs.runsRoot, run.id),
         note: 'Resolved from the loaded run digest.',
       }

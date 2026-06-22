@@ -5,6 +5,7 @@ export {
   type PortableRunPaths,
   type PortableWorkspacePaths,
 } from './paths.js'
+export { coCoderRunReference, runDisplayName, runDisplayNumber, type RunDisplayInput } from './display.js'
 export {
   DEFAULT_PORTABLE_COUNTERS,
   allocatePortableCounter,

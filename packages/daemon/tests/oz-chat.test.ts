@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { composeTicketMarkdown, openRunStore, type RunStore } from '@cocoder/core'
+import { composeTicketMarkdown, openRunStore, writePortableRun, type RunStore } from '@cocoder/core'
 import type { OzContext } from '../src/context.js'
 import { executeOzCommand, handleOzMessage, parseOzCommand, type OzChatOps } from '../src/oz-chat.js'
 import type { LaunchRunTarget } from '../src/launcher.js'
@@ -204,6 +204,35 @@ describe('handleOzMessage', () => {
     store.close()
   })
 
+  test('status returns the per-root run label when portable display number exists', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'cocoder-oz-status-display-'))
+    await mkdir(join(home, 'local'), { recursive: true })
+    await writeFile(join(home, 'local', 'workspaces.json'), JSON.stringify({ workspaces: [{ id: 'cocoder', name: 'CoCoder', path: '${COCODER_HOME}' }] }))
+    const store = openRunStore(':memory:')
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    await writePortableRun(home, {
+      run: { id: run.id, displayNumber: 1 },
+      workspace: { id: 'cocoder' },
+      target: { kind: 'priority' },
+      priorityId: 'demo',
+      playbookId: null,
+      ticketId: null,
+      status: 'running',
+      createdAt: run.createdAt,
+      endedAt: run.endedAt,
+    })
+
+    const result = await handleOzMessage(testCtx(store, home), { text: `status ${run.id}`, workspaceId: 'cocoder' })
+
+    expect(result).toMatchObject({
+      status: 200,
+      body: { ok: true, command: 'status', reply: 'Run 1 is running on demo.' },
+    })
+    expect(result.body.action).toMatchObject({ type: 'status', runId: run.id })
+    store.close()
+  })
+
   test('bare status without a workspace returns all runs', async () => {
     const store = openRunStore(':memory:')
     store.upsertWorkspace({ id: 'cocoder', path: '/tmp/cocoder', name: 'CoCoder' })
@@ -218,7 +247,13 @@ describe('handleOzMessage', () => {
     expect(result.body.reply).toContain('2 runs:')
     expect(result.body.reply).toContain(a.id)
     expect(result.body.reply).toContain(b.id)
-    expect(result.body.action).toMatchObject({ type: 'status', runs: expect.arrayContaining([a, b]) })
+    expect(result.body.action).toMatchObject({
+      type: 'status',
+      runs: expect.arrayContaining([
+        expect.objectContaining({ id: a.id, displayNumber: null }),
+        expect.objectContaining({ id: b.id, displayNumber: null }),
+      ]),
+    })
     expect(result.body.action?.workspaceId).toBeUndefined()
     store.close()
   })

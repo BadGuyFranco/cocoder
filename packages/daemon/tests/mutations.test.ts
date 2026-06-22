@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ClaudeAdapter, type Exec } from '@cocoder/adapters'
-import { atomSentinel, loadAssignments, loadPriority, makeGit, openRunStore, readTickets, StopRequestedError, type Adapter, type Git, type HeadlessRunInput, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
+import { atomSentinel, loadAssignments, loadPriority, makeGit, openRunStore, readTickets, StopRequestedError, writePortableRun, type Adapter, type Git, type HeadlessRunInput, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
 import { basePrioritiesDir } from '@cocoder/personas'
 import { createOzServer, OZ_CSRF_HEADER, type OzServer } from '../src/index.js'
 import { validFounderCloseout } from './helpers/founder-closeout.js'
@@ -1393,6 +1393,17 @@ describe('Oz mutations + lifecycle', () => {
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
     store.createSession({ runId: run.id, persona: 'oscar', sessionRef: 'surface:oscar' })
     store.setRunStatus(run.id, 'completed')
+    await writePortableRun(home, {
+      run: { id: run.id, displayNumber: 1 },
+      workspace: { id: 'cocoder' },
+      target: { kind: 'priority' },
+      priorityId: 'demo',
+      playbookId: null,
+      ticketId: null,
+      status: 'completed',
+      createdAt: run.createdAt,
+      endedAt: run.endedAt,
+    })
     await startServer(fakeGit(['cocoder/priorities/demo.md', 'packages/stray.ts']))
     oz!.ctx.liveRefs.add('surface:oscar')
 
@@ -1412,7 +1423,7 @@ describe('Oz mutations + lifecycle', () => {
     expect(store.listCommitLinks(run.id)).toEqual([
       expect.objectContaining({
         commitSha: 'sha-committed',
-        message: `oscar-post-wrap: demo via CoCoder run ${run.id}`,
+        message: `oscar-post-wrap: demo via CoCoder run 1 (${run.id})`,
         files: ['cocoder/priorities/demo.md', 'packages/stray.ts'],
       }),
     ])
@@ -1585,6 +1596,12 @@ describe('Oz mutations + lifecycle', () => {
         liveOscar: true,
       },
     })
+    expect(store.listCommitLinks(run.id)).toEqual([
+      expect.objectContaining({
+        commitSha: 'sha-committed',
+        message: `oscar-post-wrap: demo via CoCoder run ${run.id}`,
+      }),
+    ])
   })
 
   test('POST /oz/messages commit-support routes through the post-wrap support commit path', async () => {

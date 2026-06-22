@@ -22,8 +22,8 @@ describe('projectOzAwareness', () => {
     const snapshot = projectOzAwareness({ priorities, runs, tickets })
 
     expect(snapshot.priorities).toEqual(priorities)
-    expect(snapshot.recentRuns).toEqual(runs)
-    expect(snapshot.activeRuns).toEqual([runs[1]])
+    expect(snapshot.recentRuns).toEqual(runs.map((run) => ({ ...run, displayNumber: null })))
+    expect(snapshot.activeRuns).toEqual([{ ...runs[1], displayNumber: null }])
     expect(snapshot.openTickets).toEqual([tickets[0]])
   })
 })

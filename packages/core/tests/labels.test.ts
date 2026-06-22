@@ -38,18 +38,22 @@ describe('paneLabel', () => {
 
 describe('groupLabel', () => {
   test('includes workspace, priority target, and run identity', () => {
-    expect(groupLabel({ workspaceName: 'CoCoder', target: { type: 'priority', slug: 'demo' }, runId: 'run_42' })).toBe('CoCoder · priority:demo #42')
+    expect(groupLabel({ workspaceName: 'CoCoder', target: { type: 'priority', slug: 'demo' }, run: { id: 'run_42', displayNumber: 1 } })).toBe('CoCoder · priority:demo #1')
   })
 
   test('includes workspace, ticket target, and run identity', () => {
-    expect(groupLabel({ workspaceName: 'CoCoder', target: { type: 'ticket', slug: '0003' }, runId: 'run_42' })).toBe('CoCoder · ticket:0003 #42')
+    expect(groupLabel({ workspaceName: 'CoCoder', target: { type: 'ticket', slug: '0003' }, run: { id: 'run_42', displayNumber: 1 } })).toBe('CoCoder · ticket:0003 #1')
   })
 
   test('includes workspace, ad-hoc target, and run identity', () => {
-    expect(groupLabel({ workspaceName: 'CoCoder', target: { type: 'ad-hoc', slug: 'adhoc-session' }, runId: 'run_42' })).toBe('CoCoder · ad-hoc:adhoc-session #42')
+    expect(groupLabel({ workspaceName: 'CoCoder', target: { type: 'ad-hoc', slug: 'adhoc-session' }, run: { id: 'run_42', displayNumber: 1 } })).toBe('CoCoder · ad-hoc:adhoc-session #1')
   })
 
   test('includes workspace, playbook target, and run identity for visible playbook sessions', () => {
-    expect(groupLabel({ workspaceName: 'CoCoder', target: { type: 'playbook', slug: 'drift-audit' }, runId: 'run_42' })).toBe('CoCoder · playbook:drift-audit #42')
+    expect(groupLabel({ workspaceName: 'CoCoder', target: { type: 'playbook', slug: 'drift-audit' }, run: { id: 'run_42', displayNumber: 1 } })).toBe('CoCoder · playbook:drift-audit #1')
+  })
+
+  test('falls back to the global run id when no display number exists', () => {
+    expect(groupLabel({ workspaceName: 'CoCoder', target: { type: 'priority', slug: 'demo' }, run: { id: 'run_42', displayNumber: null } })).toBe('CoCoder · priority:demo #run_42')
   })
 })

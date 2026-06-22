@@ -5,6 +5,7 @@
 //
 // Type-only imports from electron/: erased at build, so the renderer bundle stays free of main-process
 // code (topology: packages/ui imports only @cocoder/core + node/electron/third-party).
+import { runDisplayName, runDisplayNumber } from '@cocoder/core'
 import type {
   Workspace as DWorkspace,
   Priority as DPriority,
@@ -67,11 +68,6 @@ export function mapRunStatus(status: string): RunStatus {
 }
 
 export const isActiveRun = (s: RunStatus): boolean => s === 'running' || s === 'blocked'
-
-function runDisplayNumber(run: RunSummary): number | null {
-  const value = (run as { readonly displayNumber?: unknown }).displayNumber
-  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : null
-}
 
 const CLI_META: Record<string, { name: string; vendor: string }> = {
   claude: { name: 'Claude Code', vendor: 'Anthropic' },
@@ -236,7 +232,7 @@ export function adaptRunSummary(r: RunSummary, priorityNames: Record<string, str
   return {
     id: r.id,
     displayNumber,
-    displayName: displayNumber === null ? r.id : `Run ${displayNumber}`,
+    displayName: runDisplayName({ id: r.id, displayNumber }),
     title: priorityNames[r.priorityId] ?? r.priorityId,
     status,
     priorityId: adhoc ? null : r.priorityId,

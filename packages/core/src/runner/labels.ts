@@ -1,6 +1,7 @@
 // Human labels for run sessions. The cmux group label owns workspace/target/run identity; pane labels
 // own only persona/LLM/model identity.
 import type { ResolvedPersona } from '../personas/index.js'
+import { runDisplayNumber, type RunDisplayInput } from '../store/index.js'
 
 export type RunLabelTargetType = 'priority' | 'ticket' | 'playbook' | 'ad-hoc'
 export interface RunLabelTarget {
@@ -27,9 +28,9 @@ export const modelName = (cli: string, model: string): string =>
   model.trim() !== '' ? (MODEL_NAMES[model] ?? model) : (DEFAULT_MODELS[cli] ?? 'default')
 
 /** "<Workspace> · <target-type>:<target-slug> #<run-number>" for a run's cmux group/workspace. */
-export const groupLabel = (input: { workspaceName: string; target: RunLabelTarget; runId: string }): string => {
+export const groupLabel = (input: { workspaceName: string; target: RunLabelTarget; run: RunDisplayInput }): string => {
   const workspace = input.workspaceName.trim() || 'workspace'
-  return `${workspace} · ${input.target.type}:${input.target.slug} #${input.runId.replace(/^run_/, '')}`
+  return `${workspace} · ${input.target.type}:${input.target.slug} #${runDisplayNumber(input.run) ?? input.run.id}`
 }
 
 /** "<Persona> | <LLM> | <Model>" for a persona's pane/tab. */

@@ -34,15 +34,19 @@ export {
   openRunStore,
   migrateWorkspacePortableHistory,
   DEFAULT_PORTABLE_COUNTERS,
+  coCoderRunReference,
   ensurePortableWorkspace,
   portableWorkspacePaths,
   readPortableRunById,
   recordPortableRunCreation,
+  runDisplayName,
+  runDisplayNumber,
   writePortableCounters,
   writePortableRun,
   type MigrateWorkspacePortableHistoryResult,
   type OpenRunStoreOptions,
   type RecordPortableRunCreationInput,
+  type RunDisplayInput,
   SCHEMA_SQL,
 } from './store/index.js'
 
@@ -322,5 +326,6 @@ export {
   buildVerifyDispatch,
   buildNextOrWrapDispatch,
   buildDebTriageDispatch,
+  buildWrapupDelivery,
   commitMessage,
 } from './runner/index.js'

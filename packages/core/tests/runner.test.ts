@@ -478,9 +478,18 @@ describe('runRun (multi-atom loop)', () => {
       return spawns.map((spawn) => spawn.groupLabel)
     }
 
-    await expect(groupLabelsFor({})).resolves.toEqual(['CoCoder · priority:demo #1', 'CoCoder · priority:demo #1'])
-    await expect(groupLabelsFor({ ticketId: '0003' })).resolves.toEqual(['CoCoder · ticket:0003 #1', 'CoCoder · ticket:0003 #1'])
-    await expect(groupLabelsFor({ priority: { ...priority, id: 'adhoc-session' } })).resolves.toEqual(['CoCoder · ad-hoc:adhoc-session #1', 'CoCoder · ad-hoc:adhoc-session #1'])
+    await expect(groupLabelsFor({})).resolves.toEqual([
+      expect.stringMatching(/^CoCoder · priority:demo #\d+$/),
+      expect.stringMatching(/^CoCoder · priority:demo #\d+$/),
+    ])
+    await expect(groupLabelsFor({ ticketId: '0003' })).resolves.toEqual([
+      expect.stringMatching(/^CoCoder · ticket:0003 #\d+$/),
+      expect.stringMatching(/^CoCoder · ticket:0003 #\d+$/),
+    ])
+    await expect(groupLabelsFor({ priority: { ...priority, id: 'adhoc-session' } })).resolves.toEqual([
+      expect.stringMatching(/^CoCoder · ad-hoc:adhoc-session #\d+$/),
+      expect.stringMatching(/^CoCoder · ad-hoc:adhoc-session #\d+$/),
+    ])
   })
 
   test('drives Bob through MULTIPLE atoms, commits each, ends on Oscar wrap-up', async () => {
@@ -913,7 +922,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(wrapBuilds[0]).toMatchObject({ model: 'cheap-wrap' })
     expect(wrapBuilds[0]?.prompt).toContain('# Wrap-up Play')
     expect(wrapBuilds[0]?.prompt).toContain(label('title'))
-    expect(wrapBuilds[0]?.prompt).toContain('Run run_1 on priority demo. 1 atom(s) were delegated; commits so far: sha-1.')
+    expect(wrapBuilds[0]?.prompt).toMatch(/Run \d+ on priority demo\. 1 atom\(s\) were delegated; commits so far: sha-1\./)
     expect(wrapBuilds[0]?.prompt).toContain('Oscar seed closeout')
     // Ran headless (captured subprocess) carrying the built prompt — and NO cmux pane was spawned for it.
     expect(headlessCalls).toHaveLength(1)
@@ -927,7 +936,11 @@ describe('runRun (multi-atom loop)', () => {
     expect(result.committedFiles).toEqual(['packages/atom.ts', 'docs/wrap.md', 'packages/not-wrap.ts'])
     expect(result.outOfScope).toEqual(['packages/not-wrap.ts'])
     expect(result.status).toBe('completed')
-    const links = store.listCommitLinks(result.runId).filter((c) => c.message !== `run-history: ${result.runId} via CoCoder run ${result.runId}`)
+    expect(store.listCommitLinks(result.runId).map((c) => c.message)).toEqual(expect.arrayContaining([
+      expect.stringMatching(new RegExp(`^demo: atom 0 via CoCoder run \\d+ \\(${result.runId}\\)$`)),
+      expect.stringMatching(new RegExp(`^run-history: ${result.runId} via CoCoder run \\d+ \\(${result.runId}\\)$`)),
+    ]))
+    const links = store.listCommitLinks(result.runId).filter((c) => !c.message.startsWith('run-history: '))
     expect(links.map((c) => c.files)).toEqual([['packages/atom.ts'], ['docs/wrap.md', 'packages/not-wrap.ts']])
     expect(links.map((c) => c.workItemId)).toEqual([store.listWorkItems(result.runId)[0]?.id, null])
     const wrap = store.listEvents(result.runId).find((e) => e.type === 'wrapup')
@@ -1312,7 +1325,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(sends.every((text) => !text.includes('\n'))).toBe(true)
     expect(artifactWrites.map((w) => w.fileName)).toEqual(['landing-outcome-delivery.md', 'wrapup-delivery.md'])
     expect(artifactWrites[0]?.contents).toContain('LANDING OUTCOME for run_1')
-    expect(artifactWrites[1]?.contents).toContain('WRAP-UP READY for run_1.')
+    expect(artifactWrites[1]?.contents).toMatch(/WRAP-UP READY for Run \d+\./)
     expect(artifactWrites[1]?.contents).toContain('Preserve the closeout headings, order, and final')
     expect(artifactWrites[1]?.contents).toContain('do not summarize, reformat, or paraphrase the closeout brief')
     expect(artifactWrites[1]?.contents).not.toContain('Deliver this founder-facing wrap-up now, in plain English')
@@ -1344,7 +1357,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(result.committedFiles).toEqual(['packages/atom.ts', 'cocoder/priorities/full-oz-dashboard.md'])
     expect(result.outOfScope).toEqual([])
 
-    const links = store.listCommitLinks(result.runId).filter((c) => c.message !== `run-history: ${result.runId} via CoCoder run ${result.runId}`)
+    const links = store.listCommitLinks(result.runId).filter((c) => !c.message.startsWith('run-history: '))
     expect(links.map((c) => c.files)).toEqual([['packages/atom.ts'], ['cocoder/priorities/full-oz-dashboard.md']])
     expect(links.map((c) => c.workItemId)).toEqual([store.listWorkItems(result.runId)[0]?.id, null])
 
@@ -2300,7 +2313,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(repair?.data).toMatchObject({ committedSha: 'sha-repair', files: ['cocoder/priorities/x.md', 'packages/app/product.ts'], outOfScope: ['packages/app/product.ts'] })
     // The commit-gate committed BOTH files and flagged the out-of-lane one (scope advisory, never withheld).
     expect((events.find((e) => e.type === 'out-of-scope-committed')?.data as { files?: string[] })?.files).toEqual(['packages/app/product.ts'])
-    expect(store.listCommitLinks(runId).filter((c) => c.message !== `run-history: ${runId} via CoCoder run ${runId}`).flatMap((c) => c.files)).toEqual([
+    expect(store.listCommitLinks(runId).filter((c) => !c.message.startsWith('run-history: ')).flatMap((c) => c.files)).toEqual([
       'cocoder/priorities/x.md',
       'packages/app/product.ts',
     ])
@@ -2374,7 +2387,7 @@ describe('runRun (multi-atom loop)', () => {
     const evs = store.listEvents(r2)
     expect((evs.find((e) => e.type === 'fault-recurrence')?.data as { occurrence?: number })?.occurrence).toBe(2)
     expect(evs.find((e) => e.type === 'deb-repair')?.data).toMatchObject({ escalation: 'ticket', ticketId: '0002', committedSha: 'sha-ticket', files: [ticketFile] })
-    expect(store.listCommitLinks(r2).filter((c) => c.message !== `run-history: ${r2} via CoCoder run ${r2}`).flatMap((c) => c.files)).toEqual([ticketFile])
+    expect(store.listCommitLinks(r2).filter((c) => !c.message.startsWith('run-history: ')).flatMap((c) => c.files)).toEqual([ticketFile])
     expect(store.getRun(r2)?.status).toBe('failed') // escalation tracks it; the run still fails
   })
 

@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import { runCommitGate, type AuditWriteBoundary, type CommitGateResult, type Git } from '../commit-gate/index.js'
-import type { RunStore } from '../store/index.js'
+import type { RunDisplayInput, RunStore } from '../store/index.js'
 import type { Directive } from './directive.js'
 import type { RunnerIO } from './io.js'
 import { readLoopLedger, type LoopLedgerEntry } from './loop-ledger.js'
@@ -53,6 +53,7 @@ export interface ExecuteAgentStepInput {
   readonly directivePath: string
   readonly directive: DelegateDirective
   readonly runId: string
+  readonly runDisplayNumber: RunDisplayInput['displayNumber']
   readonly priorityId: string
   readonly oscarId: string
   readonly bobId: string
@@ -87,6 +88,7 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
     directivePath,
     directive,
     runId,
+    runDisplayNumber,
     priorityId,
     oscarId,
     bobId,
@@ -257,7 +259,7 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
       runId,
       workItemId: workItem.id,
       scope: commitScope,
-      message: commitMessage(priorityId, runId, atomIndex),
+      message: commitMessage(priorityId, { id: runId, displayNumber: runDisplayNumber }, atomIndex),
       headBefore,
       auditWriteBoundary,
     })
