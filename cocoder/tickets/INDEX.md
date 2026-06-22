@@ -18,6 +18,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 | [0026](./open/0026-scaffold-governance-commit-incomplete.md) | Scaffold governance commit omits cocoder/workspace.json and cocoder/counters.json | bug | new-primary-root | oscar run_177 |
 | [0027](./open/0027-onboard-existing-template-supports-content-ops-repos.md) | onboard-existing template assumes a code repo; support content/ops repos as a first-class target | task | new-primary-root | oscar run_177 |
 | [0028](./open/0028-founder-facing-run-number-per-root-not-global.md) | Founder-facing run labels show the global runId (run_178) instead of the per-root run number (#1) | bug | new-primary-root | oscar run_177 |
+| [0029](./open/0029-working-tree-integrity-guard-sync-corruption.md) | Pre-run working-tree integrity guard — detect sync-conflict / corrupted governance before a run | task | none | founder-session |
 
 ## Recently Closed
 
