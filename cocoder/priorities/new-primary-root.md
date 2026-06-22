@@ -3,15 +3,16 @@ id: new-primary-root
 title: "Onboard a primary root — New Primary + Onboard-existing (ADR-0020/0026)"
 ---
 
-> **Refreshed 2026-06-21 (run_177).** The onboarding *machinery* is built; the **non-git primary root defect**
-> (run_174, workspace `job-hunt`) is **fixed in code** — fail-fast preflight (920abe30), scaffold-time local
-> `git init` (817d2e3f), and the **panel-display defect fixed (Atom C, 528f51f2)**: workspace-create now
-> re-fetches priorities instead of seeding an empty list, so a seeded `onboard-existing` priority renders +
-> launches (unit-proven). **The remaining gaps are now founder/deploy beats, not code:** (1) the committed
-> code is **not yet effective** because the running daemon predates it — a *deployment* gap tracked by ticket
-> `0013` (daemon auto-rebuild); (2) after that rebuild, the **founder reset-and-retest of `job-hunt`** confirms
-> git-init + commit + panel-display end-to-end live; (3) the **founder-gated live proof** (onboard a real
-> external repo end-to-end) — billable, multi-agent, separate launch surface. The
+> **Refreshed 2026-06-22 (run_177).** The onboarding *machinery* is built; the original non-git defect chain is
+> fixed in code — fail-fast preflight (920abe30), scaffold-time local `git init` (817d2e3f), and the
+> panel-display fix (Atom C, 528f51f2). **The first real live onboarding (Job Hunt / run_178, 2026-06-22) then
+> succeeded** (git-init ran, governance committed `2ef1de1` on `main`, `onboard-existing` showed + launched) and
+> surfaced **four new code issues → Atoms D–G** (tickets 0025–0028; see "first live-onboarding reassessment"
+> below). So the remaining work is BOTH code and founder/deploy beats: **(code)** Atoms D–G — Surface-B, need a
+> verified build run; **(deploy)** the daemon must run post-fix code — ticket `0013`, **being fixed by the
+> founder now (2026-06-22) in a separate session**; **(founder)** after D–G land + daemon current, reset-and-
+> retest `job-hunt` from clean; **(proof)** the founder-gated live proof on a real external repo (billable,
+> multi-agent, separate surface). The
 > third situation,
 > **Drift Audit**, was split out into the `drift-audit` priority and **completed + archived 2026-06-21**, so
 > it is no longer in this priority's scope. Vocabulary updated to current truth: "Takeover" → **Onboard
