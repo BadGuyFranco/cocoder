@@ -211,10 +211,12 @@ For item 1, touch chat rendering quality inside `OzChatPanel`: `ChatMessageView`
 streaming message state, and input send state. Do not rework the `Dashboard` grid, workspace tabs,
 `ResizeHandle`, panel-ratio persistence, or global controls.
 
-Ticket `cocoder/tickets/open/0013-daemon-auto-rebuild-after-runs.md` is not subsumed by item 4. Item 4 can
-make a running, current daemon emit and consume state-change hints; ticket 0013 is about rebuilding and
-reloading a stale daemon process after code changes to the daemon package or dependencies
-(`cocoder/tickets/open/0013-daemon-auto-rebuild-after-runs.md:13`). It remains adjacent infrastructure.
+Ticket `cocoder/tickets/closed/0013-daemon-auto-rebuild-after-runs.md` was delivered in run_179 and is not
+subsumed by item 4. Item 4 can make a running, current daemon emit and consume state-change hints; ticket
+0013 delivered idle-only daemon rebuild+reload after code changes to the daemon package or dependencies,
+on top of stale-daemon detection (`cocoder/tickets/closed/0013-daemon-auto-rebuild-after-runs.md:13`).
+The behavior is build-failure-safe, unit-proven in `packages/daemon/tests/daemon-auto-reload.test.ts`,
+and live-proven by `scripts/proof-daemon-reload.mjs`.
 
 Ticket `cocoder/tickets/closed/0015-tickets-silently-dropped-without-frontmatter.md` is functionally
 subsumed only as a dependency that is already closed. Its root cause was loader lossiness
