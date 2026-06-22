@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-22 — **new-primary-root: Atoms D–G landed — code-complete, founder verification blocks archive (run_181)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_181
+**Outcomes:**
+- **Atoms D–G landed and verified** (tickets 0025–0028 closed): full-tree baseline on git-init (D); complete scaffold governance commit incl. `workspace.json` + `counters.json` (E); `onboard-existing` template supports content/ops repos with cross-copy sync guard (F); founder-facing run labels derive from per-root `displayNumber` (G).
+- **Entire code backlog (Atoms A–G) now complete.** No buildable atoms remain in this priority.
+- **Disposition: `continue`.** Archive blocked on two founder-owned beats: reset-and-retest Job Hunt from clean via Add Workspace; then Verified-when external-repo live proof (billable, multi-agent, separate surface).
+- **Green at wrap:** core 462/462, daemon 245/245, core+daemon `tsc` clean.
+
+**Next:** Reset Job Hunt (delete `cocoder/`, remove workspace, re-add via dashboard Add Workspace) to confirm post-D–G onboarding; then authorize external-repo live proof and name target repo.
+
 ## 2026-06-22 — **ticket 0029: pre-run integrity guard landed out-of-gate — blocked on founder (run_180)**
 
 **Persona:** Oscar (lead; 1 atom delegated, rejected) | **Ticket:** [0029](./tickets/closed/0029-working-tree-integrity-guard-sync-corruption.md) | **Run:** run_180

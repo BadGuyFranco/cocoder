@@ -3,22 +3,16 @@ id: new-primary-root
 title: "Onboard a primary root — New Primary + Onboard-existing (ADR-0020/0026)"
 ---
 
-> **Refreshed 2026-06-22 (run_177).** The onboarding *machinery* is built; the original non-git defect chain is
-> fixed in code — fail-fast preflight (920abe30), scaffold-time local `git init` (817d2e3f), and the
-> panel-display fix (Atom C, 528f51f2). **The first real live onboarding (Job Hunt / run_178, 2026-06-22) then
-> succeeded** (git-init ran, governance committed `2ef1de1` on `main`, `onboard-existing` showed + launched) and
-> surfaced **four new code issues → Atoms D–G** (tickets 0025–0028; see "first live-onboarding reassessment"
-> below). So the remaining work is BOTH code and founder/deploy beats: **(code)** Atoms D–G — Surface-B, need a
-> verified build run; **(deploy)** ticket `0013` delivered (run_179) — daemon-touching commits idle-reload
-> without manual `scripts/oz.sh restart`; **(founder)** after D–G land, reset-and-retest `job-hunt` from
-> clean; **(proof)** the founder-gated live proof on a real external repo (billable,
-> multi-agent, separate surface). The
-> third situation,
-> **Drift Audit**, was split out into the `drift-audit` priority and **completed + archived 2026-06-21**, so
-> it is no longer in this priority's scope. Vocabulary updated to current truth: "Takeover" → **Onboard
-> (existing repo)** (ADR-0026); the baked-plan **`playbooks/` genre is retired** (ADR-0032) — onboarding
-> ships as **scaffold-seeded priorities**, not a live `playbooks/` genre. The detailed run-by-run build
-> history (runs 111–160) lives in `cocoder/SESSION_LOG_ARCHIVE.md` + git; this doc is current-state only.
+> **Refreshed 2026-06-22 (run_181).** The onboarding *machinery* is built and the entire code backlog (Atoms
+> A–G) is landed and verified — including the four first-live-onboarding fixes (Atoms D–G, run_181; tickets
+> 0025–0028 closed). **The first real live onboarding (Job Hunt / run_178)** succeeded and surfaced those
+> four issues; all are now fixed in code. **No buildable atoms remain.** Two founder-owned beats block archive:
+> **(founder)** reset-and-retest `job-hunt` from clean via **Add Workspace** (confirm git-init, full-tree
+> baseline, complete governance commit, `onboard-existing` in panel, Run 1 labels); **(proof)** the
+> Verified-when external-repo live proof (billable, multi-agent, separate surface). Deploy auto-reload is
+> delivered (ticket `0013`, run_179). **Drift Audit** was split to `drift-audit` and **archived 2026-06-21**.
+> Vocabulary: "Takeover" → **Onboard (existing repo)** (ADR-0026); **`playbooks/` genre retired** (ADR-0032).
+> Build history (runs 111–181) lives in `cocoder/SESSION_LOG.md` + git; this doc is current-state only.
 
 ## Objective
 CoCoder can onboard any primary root for **two situations**, each writing only the target's `cocoder/**`,
