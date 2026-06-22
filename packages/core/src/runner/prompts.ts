@@ -590,7 +590,7 @@ export function buildDebTriageDispatch(faultPath: string, triagePath: string, oc
   return `TRIAGE — a fault occurred in this run. Read the fault context from ${faultPath} (and the status feed for context), classify it to exactly one disposition (cocoder-bug | repo-bug | one-off), and write your verdict to ${triagePath}. For a cocoder-bug choose "mode":"propose" (a "proposal" diff, reviewed not applied) OR, only within your write-scope, "mode":"repair" (edit the files now, then report diagnosis/whyCocoderOwned/filesChanged/verification/remainingRisk). Out-of-scope edits — including any target-repo product code — are held back at the commit-gate, never committed. A repair does not rescue the run.${recurrence}`
 }
 
-export function commitMessage(priorityId: string, run: string | RunDisplayInput, atomIndex: number): string {
-  const runRef = typeof run === 'string' ? run : coCoderRunReference(run)
+export function commitMessage(priorityId: string, run: RunDisplayInput, atomIndex: number): string {
+  const runRef = coCoderRunReference(run)
   return `${priorityId}: atom ${atomIndex} via CoCoder run ${runRef}`
 }
