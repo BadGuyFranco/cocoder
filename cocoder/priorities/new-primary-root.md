@@ -100,44 +100,37 @@ end-to-end on a non-git root still requires the daemon on post-fix code (now del
 idle-reload). Reset `job-hunt` — delete its `cocoder/` folder, remove the workspace from CoCoder, re-add
 via **Add Workspace** — and confirm `git init`, governance commit, and `onboard-existing` in the panel.
 
-### Build atoms — first live-onboarding reassessment (NEW, run_177, from Job Hunt / run_178)
-The first real non-git onboarding (Job Hunt) surfaced four issues. Each is ticketed; each atom is a normal
-one-shot delegated to Bob with a verify gate. Suggested order: D and E first (commit correctness — they
-make every onboarded repo sound), then F (template), then G (numbering).
+### Build atoms — first live-onboarding reassessment (ALL DONE in code, run_181)
+The first real non-git onboarding (Job Hunt) surfaced four issues; all four landed as verified build atoms in
+run_181 (tickets 0025–0028 closed). No further buildable backlog remains for this defect set.
 
-- **Atom D — baseline-commit the full existing tree on git-init ([ticket 0025](../tickets/open/0025-git-init-baseline-commit-full-tree.md), bug).**
-  When `createWorkspace` itself git-inits a non-git primary root, commit the user's whole existing tree
-  (`git add -A`, honoring the seeded `.gitignore`) so git tracks the repo from a clean baseline — not just
-  the `cocoder/` zone. Do NOT re-baseline an already-git repo. Owner: `packages/daemon/src/routes.ts:748-763`.
-  Acceptance: non-git onboard tracks product files (excludes `node_modules/` etc.), already-git onboard
-  unchanged; daemon real-git test. *(This corrects the run_177 mis-call that leaving the tree untracked was
-  acceptable: the `cocoder/**` trust boundary limits what CoCoder MODIFIES, not what git TRACKS.)*
-- **Atom E — complete the scaffold governance commit list ([ticket 0026](../tickets/open/0026-scaffold-governance-commit-incomplete.md), bug).**
-  The governance commit omits `cocoder/workspace.json` and `cocoder/counters.json` that the scaffold writes;
-  include every scaffold-written `cocoder/**` file in the commit (or explicitly `.gitignore` true runtime
-  churn). Applies to both new-primary and onboard-existing paths. Owner: `routes.ts:752-763` +
-  `scaffoldWorkspaceGovernance`. Acceptance: no untracked scaffold-written `cocoder/**` after create; test
-  pins commit-set == written-set − ignored-set.
-- **Atom F — onboarding template supports content/ops repos ([ticket 0027](../tickets/open/0027-onboard-existing-template-supports-content-ops-repos.md), task).**
-  Generalize `templates/workspace-cocoder/cocoder/priorities/onboard-existing.md` so a non-code repo
-  (content/ops/docs) is a first-class target: subsystem typing (code vs content/ops) made explicit, evidence
-  rule generalized from "file:line" to "path (and line where it applies)". The live Oscar already adapted to
-  Job Hunt; this bakes that into the template. No regression for code repos.
-- **Atom G — founder-facing run numbering is per-root, not global ([ticket 0028](../tickets/open/0028-founder-facing-run-number-per-root-not-global.md), bug).**
-  Founder-facing surfaces show the global `run_178`; they should show the per-root `displayNumber` (#1). The
-  UI run row already does (`adapter.ts:238-239`); fix the leaks in `record.ts:27`, `runner.ts:940/1078/1122`
-  (commit trailers), `oz-chat.ts:401/412`, `oz-host.ts:404`, `oz-context-pointer.ts:90`. Keep `run_${seq}` as
-  the internal unique key. Acceptance: a fresh root's first run reads as #1 everywhere the founder sees it.
+- **Atom D — baseline-commit the full existing tree on git-init (DONE, run_181, ad457ebc; [ticket 0025](../tickets/closed/0025-git-init-baseline-commit-full-tree.md)).**
+  `createWorkspace` baseline-commits the user's full existing tree (`git add .`, honoring the seeded
+  `.gitignore`) only when it git-inits a non-git root; already-git repos get no re-import. Daemon real-git test
+  proves product files tracked, `node_modules/` excluded, cocoder zone committed, clean `git status`.
+- **Atom E — complete the scaffold governance commit list (DONE, run_181, 38e368e9; [ticket 0026](../tickets/closed/0026-scaffold-governance-commit-incomplete.md)).**
+  `scaffoldWorkspaceGovernance` now seeds and commits every `cocoder/**` file it writes (incl. `workspace.json`
+  + `counters.json`). An already-git test (no baseline backstop) pins committed == written − ignored.
+- **Atom F — onboarding template supports content/ops repos (DONE, run_181, ef093f95; [ticket 0027](../tickets/closed/0027-onboard-existing-template-supports-content-ops-repos.md)).**
+  The `onboard-existing` template now treats content/ops/docs repos as first-class (subsystem typing, evidence
+  rule "path (and line where it applies)"); applied to BOTH byte-identical copies (template + base) with a
+  restored cross-copy sync guard in `scaffold.test.ts`. No regression for code repos.
+- **Atom G — founder-facing run numbering is per-root, not global (DONE, run_181, b05027d1; [ticket 0028](../tickets/closed/0028-founder-facing-run-number-per-root-not-global.md)).**
+  All founder-facing labels derive from per-root `displayNumber` via one shared owner
+  (`runDisplayName`/`coCoderRunReference` in core + the daemon `withPortableDisplayNumber` accessor); trailers
+  read `run N (run_NNN)` keeping the global id parseable and as the internal key. "Run 1" everywhere on a fresh
+  root's first run; null fallback to `run.id` pinned.
 
-**Founder note (run_177):** the founder is NOT continuing run_178 and will **reset Job Hunt for a brand-new
-onboarding test once Atoms D–G land** (delete its `cocoder/` + the workspace, re-add via Add Workspace). The
-recon question in run_178 is intentionally left unanswered. These atoms touch `packages/**` product code, so
-they are **Surface-B** and require a verified build run (not post-wrap support) — launch this priority as a
-build run to execute D–G.
+**Founder note:** the founder is NOT continuing run_178 and will **reset Job Hunt for a brand-new onboarding
+test now that Atoms D–G have landed** (delete its `cocoder/` + the workspace, re-add via Add Workspace). The
+recon question in run_178 is intentionally left unanswered. Because D–G touched daemon/core, the running daemon
+must be on post-D–G code before the retest — ticket `0013` idle-reload should handle this once in-flight runs
+drain (verify with `node scripts/proof-daemon-reload.mjs` if in doubt).
 
-**Disposition: `continue`.** Build backlog re-opened with Atoms D–G (Surface-B, from the first live
-onboarding); archive blocked until D–G land, the founder reset-and-retest of Job Hunt passes, and the
-Verified-when external-repo live proof completes.
+**Disposition: `continue` (archive-blocked on founder action).** The entire code backlog (Atoms A–G) is now
+landed and verified. Two non-code beats remain before archive, both founder-owned and off this build surface:
+(1) the founder reset-and-retest of Job Hunt from clean, and (2) the Verified-when external-repo live proof
+below.
 
 ### Founder-gated live proof (separate, after D–G + reset retest)
 Onboard a real external repo (CoPublisher / a CoBuilder copy) end-to-end through the rebuilt Oscar-driven

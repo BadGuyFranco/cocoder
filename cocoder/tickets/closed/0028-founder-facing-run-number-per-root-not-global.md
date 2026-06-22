@@ -2,7 +2,7 @@
 id: 0028
 title: Founder-facing run labels show the global runId (run_178) instead of the per-root run number (#1)
 type: bug
-status: Open
+status: Closed
 priority: new-primary-root
 owner: oscar run_177
 created: 2026-06-22
@@ -46,3 +46,9 @@ uniqueness, e.g. `run 1 (run_178)`), not the bare global id.
 - Leaks to fix: `record.ts:27`; `runner.ts:940,1078,1122`; `oz-chat.ts:401,412`; `oz-host.ts:404`;
   `oz-context-pointer.ts:90`.
 - Discovered: Job Hunt onboarding (run_178), founder run_177.
+
+## Resolution
+
+Resolved by run run_181 (b05027d10475421f111c80c50298543812bc0611) on 2026-06-22 (Atom G).
+
+Founder-facing run labels now derive from the per-root `displayNumber` through a single shared owner (`runDisplayNumber`/`runDisplayName`/`coCoderRunReference` in core, plus the daemon `withPortableDisplayNumber` accessor) — reused by the run-record header, oz-chat replies, oz-host / context-pointer slug labels, the cmux group label, and the UI adapter (de-duped). Commit trailers read `run N (run_NNN)`, keeping the global `run_${seq}` parseable and intact as the internal key. A fresh root's first run reads as "Run 1" everywhere the founder sees it, with a run.id fallback when `displayNumber` is null; tests pin label derivation and the fallback.

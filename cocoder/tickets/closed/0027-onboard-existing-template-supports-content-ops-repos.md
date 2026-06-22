@@ -2,7 +2,7 @@
 id: 0027
 title: onboard-existing template Objective assumes a code repo; support content/ops repos as a first-class onboarding target
 type: task
-status: Open
+status: Closed
 priority: new-primary-root
 owner: oscar run_177
 created: 2026-06-22
@@ -44,3 +44,9 @@ Update the onboard-existing template so a non-code repo is a first-class case, n
 - Evidence the machinery already adapts: run_178 `directive-0.json` recon scope (markdown-OS + JS layer).
 - Decision context: ADR-0020 / ADR-0026 (onboard-existing as an ordinary Oscar priority).
 - Discovered: Job Hunt onboarding (run_178); reassessed run_177.
+
+## Resolution
+
+Resolved by run run_181 (ef093f950b80a65dc948250931733610022af245) on 2026-06-22 (Atom F).
+
+The `onboard-existing` priority template now treats a non-code repo (content / ops / docs, or a mix) as a first-class target: the Objective no longer presupposes product code, recon + deep-read type subsystems explicitly as code vs content/governance/ops and scope reads accordingly, and the evidence rule is generalized from `file:line` to "path (and line where it applies)". The `cocoder/**` trust boundary, founder gates, dual-source + cross-check, and the code-repo path are preserved. The edit was applied identically to both byte-identical copies (`templates/workspace-cocoder/...` and `packages/personas/base/priorities/...`), and `scaffold.test.ts` restores a genuine cross-copy sync guard (fails on drift).

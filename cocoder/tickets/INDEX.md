@@ -13,15 +13,17 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Owner |
 |---|---|---|---|---|
-| [0025](./open/0025-git-init-baseline-commit-full-tree.md) | git-init of a non-git primary root must baseline-commit the full existing tree, not only the cocoder zone | bug | new-primary-root | oscar run_177 |
-| [0026](./open/0026-scaffold-governance-commit-incomplete.md) | Scaffold governance commit omits cocoder/workspace.json and cocoder/counters.json | bug | new-primary-root | oscar run_177 |
-| [0027](./open/0027-onboard-existing-template-supports-content-ops-repos.md) | onboard-existing template assumes a code repo; support content/ops repos as a first-class target | task | new-primary-root | oscar run_177 |
-| [0028](./open/0028-founder-facing-run-number-per-root-not-global.md) | Founder-facing run labels show the global runId (run_178) instead of the per-root run number (#1) | bug | new-primary-root | oscar run_177 |
+
+_No open tickets._
 
 ## Recently Closed
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0025](./closed/0025-git-init-baseline-commit-full-tree.md) | git-init of a non-git primary root must baseline-commit the full existing tree, not only the cocoder zone | bug | 2026-06-22 | `createWorkspace` baseline-commits the full existing tree (`git add .`, honoring `.gitignore`) only when it git-inits a non-git root; already-git repos get no re-import. Daemon real-git test proves product files tracked, `node_modules/` excluded, cocoder zone committed, clean status (run_181, Atom D). |
+| [0026](./closed/0026-scaffold-governance-commit-incomplete.md) | Scaffold governance commit omits cocoder/workspace.json and cocoder/counters.json | bug | 2026-06-22 | Scaffold now commits every `cocoder/**` file it writes (incl. `workspace.json` + `counters.json`); already-git test pins tracked == written − ignored, no silent omissions (run_181, Atom E). |
+| [0027](./closed/0027-onboard-existing-template-supports-content-ops-repos.md) | onboard-existing template assumes a code repo; support content/ops repos as a first-class target | task | 2026-06-22 | Template generalized so content/ops/docs repos are first-class: subsystem typing (code vs content/ops), evidence rule `file:line` → "path (and line where it applies)"; applied to both byte-identical copies with a restored cross-copy sync guard (run_181, Atom F). |
+| [0028](./closed/0028-founder-facing-run-number-per-root-not-global.md) | Founder-facing run labels show the global runId (run_178) instead of the per-root run number (#1) | bug | 2026-06-22 | Founder-facing labels derive from per-root `displayNumber` via one shared owner; trailers read `run N (run_NNN)` keeping the global id parseable. Fresh root's first run reads "Run 1" everywhere; null fallback pinned (run_181, Atom G). |
 | [0029](./closed/0029-working-tree-integrity-guard-sync-corruption.md) | Pre-run working-tree integrity guard — detect sync-conflict / corrupted governance before a run | task | 2026-06-22 | Added the pre-run integrity guard to the existing launch path: sync-conflict/orig files and conflict markers surface as warning events while launch proceeds; loader-backed run-critical governance checks refuse with file-named errors by default; the CLI, daemon API, and dashboard expose allowPreRunIntegrityErrors as the founder override. Tests pin warning-only conflicts, fatal malformed governance, override behavior, and clean launch behavior. |
 | [0013](./closed/0013-daemon-auto-rebuild-after-runs.md) | Auto-rebuild + reload the Oz daemon after a run changes packages/daemon (no manual restart) | task | 2026-06-22 | Daemon/core-touching runs now schedule an idle-only daemon reload: the daemon validates @cocoder/core and @cocoder/daemon, surfaces build failures, and queues the existing daemon-owned restart only after all in-flight runs drain. |
 | [0024](./closed/0024-drift-audit-detector-false-positives-and-crash.md) | drift-audit path detector is false-positive-prone and crashes on a same-line duplicate claim id | bug | 2026-06-21 | Detector rewritten: no crash on self-link (href-only extraction + per-line slug guard); rejects @scopes/ADR-refs/slash-lists/globs/bare-exts/dir-mentions, resolves relative refs. Corrected dogfood now yields 0 findings (was 16 FPs); pinned in drift-read-claims.test.ts |

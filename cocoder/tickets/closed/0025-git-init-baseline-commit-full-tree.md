@@ -2,7 +2,7 @@
 id: 0025
 title: git-init of a non-git primary root must baseline-commit the full existing tree, not only the cocoder zone
 type: bug
-status: Open
+status: Closed
 priority: new-primary-root
 owner: oscar run_177
 created: 2026-06-22
@@ -61,3 +61,9 @@ history; only the `cocoder/**` governance commit applies there).
 - Owner: `packages/daemon/src/routes.ts:748-763` (`createWorkspace` init + commit).
 - Sibling gap in the same commit list: [0026](./0026-scaffold-governance-commit-incomplete.md).
 - Discovered: first live non-git onboarding (Job Hunt, run_178); reassessed in run_177.
+
+## Resolution
+
+Resolved by run run_181 (ad457ebcd3854d413d4e933c51842416b8e16342) on 2026-06-22 (Atom D).
+
+`createWorkspace` now baseline-commits the user's full existing tree (`git add .`, honoring the seeded `.gitignore`) when — and only when — it git-inits a non-git primary root; already-git repos get no baseline re-import (only the `cocoder/**` governance commit). A daemon real-git test proves product files are tracked, `node_modules/` is excluded, the cocoder zone is committed, and `git status` is clean; an existing-git test proves no re-import.

@@ -2,7 +2,7 @@
 id: 0026
 title: Scaffold governance commit omits cocoder/workspace.json and cocoder/counters.json
 type: bug
-status: Open
+status: Closed
 priority: new-primary-root
 owner: oscar run_177
 created: 2026-06-22
@@ -48,3 +48,9 @@ accidental-untracked.
   (`packages/core/src/scaffold/scaffold.ts`).
 - Sibling: [0025](./0025-git-init-baseline-commit-full-tree.md) (full-tree baseline on git-init).
 - Discovered: Job Hunt onboarding (run_178); reassessed run_177.
+
+## Resolution
+
+Resolved by run run_181 (38e368e92c6beb463451de5becefdbbca1128205) on 2026-06-22 (Atom E).
+
+`scaffoldWorkspaceGovernance` now seeds and includes every scaffold-written `cocoder/**` file in the governance commit — at minimum `cocoder/workspace.json` and `cocoder/counters.json` (previously written but left untracked). A daemon real-git test on the already-git path (no baseline backstop) pins the invariant that the tracked `cocoder/**` set equals the written set minus the `.gitignore`-ignored set, and explicitly asserts both files are committed in the governance SHA.
