@@ -23,6 +23,7 @@ import {
   TICKET_OWNER,
   truncate,
   workspaceTemplateDir,
+  COCODER_GOVERNANCE_AUTHOR,
   type CommitReceipt,
   type PersonaAssignment,
   type PersonaSources,
@@ -376,6 +377,11 @@ async function seedStarterRootGitignore(root: string): Promise<string | null> {
     if (errorCode(err) === 'EEXIST') return null
     throw err
   }
+}
+
+async function commitBaselineTree(ctx: OzContext, repoPath: string): Promise<void> {
+  if ((await ctx.git.changedFiles(repoPath)).length === 0) return
+  await ctx.git.addAndCommit(repoPath, ['.'], 'chore: import existing tree (baseline)', COCODER_GOVERNANCE_AUTHOR)
 }
 
 /** GET /workspaces — surface 1. */
@@ -752,8 +758,9 @@ async function createWorkspace(ctx: OzContext, res: ServerResponse, body: unknow
   const servedBefore = new Set((await readWorkspaces(ctx.cocoderHome)).map((workspace) => workspace.id))
   const legacyHidden = (await legacyWorkspaceIds(ctx.cocoderHome)).filter((legacyId) => legacyId !== id && servedBefore.has(legacyId))
   let scaffolded: readonly string[]
+  let initializedRepo = false
   try {
-    const initializedRepo = !(await ctx.git.isGitRepo(primaryRoot))
+    initializedRepo = !(await ctx.git.isGitRepo(primaryRoot))
     if (initializedRepo) await ctx.git.initRepo(primaryRoot)
     scaffolded = await scaffoldWorkspaceGovernance(primaryRoot)
     if (initializedRepo) {
@@ -767,6 +774,7 @@ async function createWorkspace(ctx: OzContext, res: ServerResponse, body: unknow
   // commit failed we report it truthfully in the receipt (never as a silent success) rather than bail
   // mid-scaffold and leave a half-created workspace.
   const receipt = await commitGovernance(ctx, primaryRoot, scaffolded.map((path) => relative(primaryRoot, path)), `governance: scaffold workspace governance (${id})`)
+  if (initializedRepo && receipt.committed) await commitBaselineTree(ctx, primaryRoot)
   await mkdir(dir, { recursive: true })
   const tmp = join(dir, `.${id}.${process.pid}.${Date.now()}.tmp`)
   await writeFile(tmp, `${JSON.stringify({ folders, settings: {} }, null, 2)}\n`)

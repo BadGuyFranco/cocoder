@@ -716,10 +716,13 @@ describe('Oz mutations + lifecycle', () => {
     expect(r.status).toBe(202)
     const runId = r.json.runId as string
     controlled.release()
-    for (let i = 0; i < 50 && oz.ctx.inFlight.has('cocoder'); i++) await sleep(10)
+    let event = store.listEvents(runId).find((item) => item.type === 'daemon-auto-reload-build-failed')
+    for (let i = 0; i < 50 && !event; i++) {
+      await sleep(10)
+      event = store.listEvents(runId).find((item) => item.type === 'daemon-auto-reload-build-failed')
+    }
 
     expect(restarts).toBe(0)
-    const event = store.listEvents(runId).find((item) => item.type === 'daemon-auto-reload-build-failed')
     expect(event?.data).toMatchObject({ command: 'pnpm --filter @cocoder/core --filter @cocoder/daemon typecheck', exitCode: 2, output: 'daemon typecheck failed', files: ['packages/core/src/runner/runner.ts'] })
   })
 
@@ -2318,6 +2321,11 @@ describe('Oz mutations + lifecycle', () => {
   test('POST /workspaces initializes and commits governance for a non-git primary root', async () => {
     await startServer(makeGit())
     const workspaceRoot = await mkdtemp(join(tmpdir(), 'cocoder-nongit-workspace-'))
+    await mkdir(join(workspaceRoot, 'src'), { recursive: true })
+    await mkdir(join(workspaceRoot, 'node_modules', 'left-pad'), { recursive: true })
+    await writeFile(join(workspaceRoot, 'package.json'), '{"name":"product"}\n')
+    await writeFile(join(workspaceRoot, 'src', 'app.ts'), 'export const app = true\n')
+    await writeFile(join(workspaceRoot, 'node_modules', 'left-pad', 'index.js'), 'module.exports = true\n')
 
     const r = await call(oz!, 'POST', '/workspaces', {
       body: {
@@ -2334,14 +2342,19 @@ describe('Oz mutations + lifecycle', () => {
     expect(r.json.governanceCommittedSha).toMatch(/^[0-9a-f]{40}$/)
     expect(await g(workspaceRoot, ['rev-parse', '--is-inside-work-tree'])).toBe('true')
     expect(await g(workspaceRoot, ['symbolic-ref', '--short', 'HEAD'])).toBe('main')
-    expect(await g(workspaceRoot, ['rev-parse', 'HEAD'])).toBe(r.json.governanceCommittedSha)
+    expect((await g(workspaceRoot, ['log', '-1', '--format=%s'])).trim()).toBe('chore: import existing tree (baseline)')
+    expect((await g(workspaceRoot, ['log', '-1', '--format=%s', r.json.governanceCommittedSha])).trim()).toBe('governance: scaffold workspace governance (nongit-product)')
     expect(await g(workspaceRoot, ['remote'])).toBe('')
     expect(loadAssignments(join(workspaceRoot, 'cocoder', 'personas', 'assignments.json')).personas).toEqual(expectedScaffoldAssignments)
     const gitignore = await readFile(join(workspaceRoot, '.gitignore'), 'utf8')
     expect(gitignore).toContain('.DS_Store')
     expect(gitignore).toContain('*.zip')
+    expect(await g(workspaceRoot, ['ls-files', '--', 'package.json', 'src/app.ts'])).toBe('package.json\nsrc/app.ts')
+    expect(await g(workspaceRoot, ['ls-files', '--', 'node_modules/left-pad/index.js'])).toBe('')
+    expect(await g(workspaceRoot, ['status', '--porcelain', '--untracked-files=all'])).toBe('')
     const committedFiles = (await g(workspaceRoot, ['ls-tree', '-r', '--name-only', 'HEAD'])).split('\n')
-    expect(committedFiles).toEqual(expect.arrayContaining(['.gitignore', 'cocoder/AGENTS.md', 'cocoder/personas/assignments.json']))
+    expect(committedFiles).toEqual(expect.arrayContaining(['.gitignore', 'cocoder/AGENTS.md', 'cocoder/personas/assignments.json', 'package.json', 'src/app.ts']))
+    await expect(g(workspaceRoot, ['cat-file', '-e', `${r.json.governanceCommittedSha}:cocoder/AGENTS.md`])).resolves.toBe('')
     const audit = await readFile(join(home, 'local', 'oz-audit.log'), 'utf8')
     expect(audit).not.toContain('"action":"governance-commit-failed"')
     expect(audit).toContain('nongit-product')
@@ -2351,6 +2364,7 @@ describe('Oz mutations + lifecycle', () => {
     const workspaceRoot = await mkdtemp(join(tmpdir(), 'cocoder-existing-git-workspace-'))
     await exec('git', ['-C', workspaceRoot, 'init', '-b', 'main'])
     await exec('git', ['-C', workspaceRoot, 'remote', 'add', 'origin', 'https://example.invalid/product.git'])
+    await writeFile(join(workspaceRoot, 'package.json'), '{"name":"existing-product"}\n')
     const git = makeGit()
     let initCalls = 0
     await startServer({
@@ -2378,9 +2392,13 @@ describe('Oz mutations + lifecycle', () => {
     expect(await g(workspaceRoot, ['symbolic-ref', '--short', 'HEAD'])).toBe('main')
     expect(await g(workspaceRoot, ['remote', 'get-url', 'origin'])).toBe('https://example.invalid/product.git')
     expect(await exists(join(workspaceRoot, '.gitignore'))).toBe(false)
+    expect((await g(workspaceRoot, ['log', '--format=%s'])).trim()).toBe('governance: scaffold workspace governance (existing-git-product)')
+    expect(await g(workspaceRoot, ['ls-files', '--', 'package.json'])).toBe('')
+    expect(await g(workspaceRoot, ['status', '--porcelain', '--untracked-files=all'])).toContain('?? package.json')
     const committedFiles = (await g(workspaceRoot, ['ls-tree', '-r', '--name-only', 'HEAD'])).split('\n')
     expect(committedFiles).toEqual(expect.arrayContaining(['cocoder/AGENTS.md', 'cocoder/personas/assignments.json']))
     expect(committedFiles).not.toContain('.gitignore')
+    expect(committedFiles).not.toContain('package.json')
   })
 
   test('base ad-hoc priority template parses and stays product-generic', async () => {
