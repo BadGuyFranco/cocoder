@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-22 — **orchestration-loop-quality: ratified loop fixes landed — archive-candidate (run_40/run_183)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [orchestration-loop-quality](./priorities/orchestration-loop-quality.md) | **Run:** run_183 (display 40)
+**Outcomes:**
+- **Modes 1+2 LAND (`oscar.md`).** Delegation discipline: re-derive the complete defect-class site set from the live tree with one grep; name all known owners mandatory; forbid weakening cross-copy guards into tautologies.
+- **Mode 3 LAND (`shared-standards.md`).** The "'just docs'" evidence bar now explicitly covers Oscar's own Surface-A support edits (tickets, INDEX, Playbook/priority doc).
+- **Mode 4 recorded no-op** — F18 runnable proof already carried by the wrap-up Play and `scripts/proof-onboard-existing.mjs`.
+- **Disposition: `archive-candidate`.** All four run_181 failure modes meet Verified-when; persona/Play suites green on landing commit.
+
+**Next:** Launch `new-primary-root` — founder reset-and-retest Job Hunt via Add Workspace, then external-repo live proof for Verified-when.
+
 ## 2026-06-22 — **orchestration-loop-quality: run_181 loop-failure research complete — founder ratification gates landing (run_39/run_182)**
 
 **Persona:** Oscar (lead; atom 0 rejected, research re-run from primary artifacts) | **Priority:** [orchestration-loop-quality](./priorities/orchestration-loop-quality.md) | **Run:** run_182 (display 39)

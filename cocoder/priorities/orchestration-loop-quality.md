@@ -3,13 +3,11 @@ id: orchestration-loop-quality
 title: "Orchestration loop quality — catch avoidable rework and unproven wraps"
 ---
 
-> **RESEARCH GATE CLEARED — founder ratified all four dispositions (run_182, 2026-06-22). This is now a
-> LANDING run.** Next session delegates the landing atoms in "Ratified fixes to land" below to Bob (a
-> verified base-governance run: edits under `packages/personas/base/**`, persona/Play suites green as the
-> exit criterion). Modes 1+2 and 3 land as prompt/standard text; mode 4 is a recorded founder-accepted
-> no-op (see below) — that satisfies the Objective's branch-2 for mode 4. The hard tension this priority
-> still respects is **F5 (governance-of-governance is itself a failure)** — none of the ratified fixes add a
-> docs/process-policing checker; they are prompt/standard text plus a reusable grep habit.
+> **LANDING COMPLETE (run_40/run_183, 2026-06-22).** Ratified base-text fixes landed green: modes 1+2 in
+> `oscar.md`, mode 3 in `shared-standards.md`, mode 4 the founder-accepted no-op recorded below. **Disposition:
+> `archive-candidate`** — all four run_181 failure modes meet Verified-when; persona/Play suites green; founder
+> archive confirmation only. F5 honored — no docs/process-policing checker; prompt/standard text plus a reusable
+> grep habit.
 >
 > Origin (run_181): founder-directed — "define where orchestration failed us and write a new priority to
 > research and fix." Oscar drafted the phrasing and the evidence below; the founder ratified at this
@@ -110,6 +108,9 @@ name its proof harness or a justified reason none is feasible) remains available
 
 After Atoms 1–2 land green and Atom 3 is recorded, all four failure modes satisfy the **Verified when** criteria
 above and the priority is archive-ready.
+
+**Disposition: `archive-candidate` (run_40/run_183).** Landing complete; no buildable atoms remain. Founder archive
+confirmation only.
 
 ## Key references
 - [F5](../failure-catalog.md) — governance-of-governance is a tell of over-engineering (the binding constraint here).

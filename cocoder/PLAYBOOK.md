@@ -246,10 +246,10 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
 6. `priority-audit` — standing pruning tool (assess priority set for staleness → founder-decision table).
 7. `deb-follows-oscar` — **NEW.** Make Deb a first-class, runner-driven watcher of Oscar: event-awakened,
    non-blocking, Oscar-only nudge authority, and no second orchestration lane.
-8. `orchestration-loop-quality` — **CONTINUE (run_39/run_182).** Research complete on four run_181
-   loop-failure modes; lightest fixes drafted (delegation re-derive + multi-owner mandate, Oscar support-edit
-   suite bar, optional wrap proof-harness sharpen). **Founder-gated:** ratify LAND vs NO-OP for each fix
-   before Bob lands ratified prompt/standard text in `packages/personas/base/**`.
+8. `orchestration-loop-quality` — **ARCHIVE-CANDIDATE (run_40/run_183).** All four run_181 loop-failure modes
+   satisfied: delegation re-derive + multi-owner mandate in `oscar.md`, Oscar support-edit suite bar in
+   `shared-standards.md`, mode 4 founder-accepted no-op (wrap-up F18 + existing proof scripts). Persona/Play
+   suites green. **Founder gate:** confirm archive.
 
 **Other launchable (not in `order.json`):** `tickets-review` — **CONTINUE (run_143).** Build code-complete;
    ticket launch plumbing satisfied. **Archive gate:** founder live proof — Tickets tab **Launch** on ticket
