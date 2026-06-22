@@ -12,7 +12,7 @@
   "priorityId": "deb-oscar-repair-loop",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "awaiting-founder",
   "createdAt": 1782156375310,
-  "endedAt": null
+  "endedAt": 1782160080968
 }
