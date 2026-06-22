@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_184",
+    "displayNumber": 41
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "priority"
+  },
+  "priorityId": "deb-follows-oscar",
+  "playbookId": null,
+  "ticketId": null,
+  "status": "running",
+  "createdAt": 1782146124964,
+  "endedAt": null
+}
