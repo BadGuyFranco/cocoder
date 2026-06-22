@@ -934,28 +934,28 @@ describe('runRun (multi-atom loop)', () => {
     expect((wrap?.data as { play?: string }).play).toBe('wrap-up')
   })
 
-  test('wrap-up Play output is format-checked before pickup delivery', async () => {
+  test('wrap-up Play output is repaired once before pickup delivery', async () => {
     const store = openRunStore(':memory:')
     const pickupWrites: string[] = []
+    const outputs = ['PLAY CLOSEOUT\n', validFounderCloseout('REPAIRED PLAY CLOSEOUT')]
     const result = await runRun(
       baseDeps({
         store,
         git: scriptedGit([['packages/atom.ts']]),
         io: fakeIO({ directives: [delegate('atom 0'), wrapup('Oscar seed closeout')], pickupWrites }),
         getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
-        runHeadless: async () => ({ exitCode: 0, output: 'PLAY CLOSEOUT\n' }),
+        runHeadless: async () => ({ exitCode: 0, output: outputs.shift() ?? '' }),
       }),
       { ...input, wrapPlay, wrapPlayAssignment },
     )
 
-    expect(result.status).toBe('failed')
-    expect(pickupWrites).toHaveLength(1)
-    expect(pickupWrites[0]).toContain(label('title'))
-    expect(pickupWrites[0]).toContain(block('runStatus', 'blocked'))
-    expect(pickupWrites[0]).toContain(`missing ${label('title')}`)
-    expect(pickupWrites[0]?.trimEnd().endsWith(closeoutContract.finalLine)).toBe(true)
-    const invalid = store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')
-    expect(invalid?.data).toMatchObject({ play: 'wrap-up', issues: expect.arrayContaining([`missing ${label('title')}`]) })
+    expect(result.status).toBe('completed')
+    expect(pickupWrites).toEqual([validFounderCloseout('REPAIRED PLAY CLOSEOUT')])
+    const events = store.listEvents(result.runId)
+    const repair = events.find((e) => e.type === 'wrapup-format-repair-attempt')
+    expect(repair?.data).toMatchObject({ play: 'wrap-up', issues: expect.arrayContaining([`missing ${label('title')}`]), outPath: expect.stringContaining('wrapup-out.txt') })
+    expect(events.find((e) => e.type === 'wrapup-format-invalid')).toBeUndefined()
+    expect(events.find((e) => e.type === 'triage-dispatch')).toBeUndefined()
   })
 
   test('validated wrap-up with a founder decision leaves the run awaiting-founder', async () => {
@@ -1013,7 +1013,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')).toBeUndefined()
   })
 
-  test('malformed wrap-up output is dispatched to Deb when she is present', async () => {
+  test('malformed wrap-up output falls back honestly and is dispatched to Deb when retry also fails', async () => {
     const store = openRunStore(':memory:')
     const pickupWrites: string[] = []
     const result = await runRun(
@@ -1033,8 +1033,11 @@ describe('runRun (multi-atom loop)', () => {
 
     expect(result.status).toBe('failed')
     expect(pickupWrites[0]).toContain(block('runStatus', 'blocked'))
+    expect(pickupWrites[0]).not.toContain(block('decisionNeeded', 'None.'))
+    expect(pickupWrites[0]).toContain('The orchestrator must repair and re-issue a conforming wrap-up.')
     const events = store.listEvents(result.runId)
-    expect(events.map((e) => e.type)).toEqual(expect.arrayContaining(['wrapup-format-invalid', 'triage-dispatch', 'fault-triaged', 'wrapup', 'run-end']))
+    expect(events.map((e) => e.type)).toEqual(expect.arrayContaining(['wrapup-format-repair-attempt', 'wrapup-format-invalid', 'triage-dispatch', 'fault-triaged', 'wrapup', 'run-end']))
+    expect(events.find((e) => e.type === 'wrapup-format-invalid')?.data).toMatchObject({ outPath: expect.stringContaining('wrapup-out-retry.txt') })
     expect(events.find((e) => e.type === 'triage-dispatch')?.data).toMatchObject({ fault: 'wrapup-format-invalid', atom: 1 })
     expect(events.find((e) => e.type === 'fault-triaged')?.data).toMatchObject({ fault: 'wrapup-format-invalid', disposition: 'cocoder-bug' })
     expect((events.find((e) => e.type === 'run-end')?.data as { status?: string }).status).toBe('failed')

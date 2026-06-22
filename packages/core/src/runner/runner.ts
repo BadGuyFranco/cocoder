@@ -460,7 +460,8 @@ function formatInvalidFounderCloseoutFallback(input: {
     whatChanged: 'The runner blocked a malformed wrap-up brief instead of delivering a non-template closeout.',
     whatRemains: issueLines,
     nextStep: `Priority: \`${input.priorityId}\` — repair the malformed wrap-up brief`,
-    decisionNeeded: 'None.',
+    decisionNeeded:
+      'Yes — this wrap-up brief FAILED format validation and is NOT a valid closeout. The orchestrator must repair and re-issue a conforming wrap-up. Do NOT treat this run as cleanly closed.',
     commitState: `${commitText} The runner reports the authoritative commit outcome after this brief.`,
     teardownReadiness: 'Standing by; teardown requires an explicit founder request.',
     judgment: 'The runner preserved the founder-facing template instead of passing through a nonconforming wrap-up.',
@@ -1260,40 +1261,59 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       const headBeforeOscarSupport = await git.headSha(worktreePath)
       await commitOscarSupport(headBeforeOscarSupport)
       if (input.wrapPlay && input.wrapPlayAssignment) {
-        const headBeforeWrap = await git.headSha(worktreePath)
         const task =
           `Run ${run.id} on priority ${priority.id}. ${n} atom(s) were delegated; commits so far: ${committedShas.join(', ') || 'none'}.\n\n` +
           `Oscar's notes for this wrap-up:\n${directive.pickup ?? ''}`
-        const wrapOut = join(runDir, 'wrapup-out.txt')
-        const res = await dispatchPlay(
-          { sessionHost, getAdapter, runHeadless: deps.runHeadless },
-          {
-            play: input.wrapPlay,
-            assignment: input.wrapPlayAssignment,
-            personaMode: input.wrapPlayPersonaMode,
-            persona: oscar.id,
-            task,
+        const dispatchWrapPlay = async (wrapTask: string, outName: string): Promise<{ candidatePickup: string | null; outPath: string }> => {
+          const headBeforeWrap = await git.headSha(worktreePath)
+          const outPath = join(runDir, outName)
+          const res = await dispatchPlay(
+            { sessionHost, getAdapter, runHeadless: deps.runHeadless },
+            {
+              play: input.wrapPlay!,
+              assignment: input.wrapPlayAssignment!,
+              personaMode: input.wrapPlayPersonaMode,
+              persona: oscar.id,
+              task: wrapTask,
+              cwd: worktreePath,
+              outPath,
+              group: run.id,
+              timeoutMs: t.wrapupMs,
+              signal: deps.signal,
+            },
+          )
+          const wrapGate = await runCommitGate({
+            git,
+            store,
             cwd: worktreePath,
-            outPath: wrapOut,
-            group: run.id,
-            timeoutMs: t.wrapupMs,
-            signal: deps.signal,
-          },
-        )
-        const wrapGate = await runCommitGate({
-          git,
-          store,
-          cwd: worktreePath,
-          runId: run.id,
-          workItemId: null,
-          scope: withPortableRunHistoryScope(input.wrapPlay.writeScope),
-          message: commitMessage(priority.id, run.id, n),
-          headBefore: headBeforeWrap,
-          auditWriteBoundary,
-        })
-        absorbGateResult(wrapGate)
-        const candidatePickup = res.output && res.output.trim() ? res.output : (directive.pickup ?? null)
-        const outputValidation = validatePlayOutput({ play: input.wrapPlay, output: candidatePickup, cwd: worktreePath })
+            runId: run.id,
+            workItemId: null,
+            scope: withPortableRunHistoryScope(input.wrapPlay!.writeScope),
+            message: commitMessage(priority.id, run.id, n),
+            headBefore: headBeforeWrap,
+            auditWriteBoundary,
+          })
+          absorbGateResult(wrapGate)
+          return { candidatePickup: res.output && res.output.trim() ? res.output : (directive.pickup ?? null), outPath }
+        }
+        let { candidatePickup, outPath: wrapOut } = await dispatchWrapPlay(task, 'wrapup-out.txt')
+        let outputValidation = validatePlayOutput({ play: input.wrapPlay, output: candidatePickup, cwd: worktreePath })
+        if (outputValidation && outputValidation.issues.length > 0) {
+          store.recordEvent({ runId: run.id, type: 'wrapup-format-repair-attempt', data: { play: input.wrapPlay.id, issues: outputValidation.issues, outPath: wrapOut } })
+          const retryTask = [
+            task,
+            '',
+            'The previous wrap-up output FAILED founder closeout format validation. Repair the same closeout content; do not start over blindly.',
+            '',
+            'Validation issues:',
+            ...outputValidation.issues.map((issue) => `- ${issue}`),
+            '',
+            'Previous invalid output:',
+            candidatePickup ?? '',
+          ].join('\n')
+          ;({ candidatePickup, outPath: wrapOut } = await dispatchWrapPlay(retryTask, 'wrapup-out-retry.txt'))
+          outputValidation = validatePlayOutput({ play: input.wrapPlay, output: candidatePickup, cwd: worktreePath })
+        }
         if (outputValidation && outputValidation.issues.length > 0) {
           const contract = outputValidation.founderCloseoutContract
           if (!contract) throw new Error(`Play "${input.wrapPlay.id}" outputValidator "${input.wrapPlay.outputValidator?.ref}" cannot format a founder closeout fallback`)
