@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-22 — **ticket 0029: pre-run integrity guard landed out-of-gate — blocked on founder (run_180)**
+
+**Persona:** Oscar (lead; 1 atom delegated, rejected) | **Ticket:** [0029](./tickets/closed/0029-working-tree-integrity-guard-sync-corruption.md) | **Run:** run_180
+**Outcomes:**
+- **Feature landed outside run_180's atom gate** (`dea12b9`, founder identity): `pre-run-integrity.ts` warns on sync-conflict/orig/marker files, refuses loader-backed run-critical governance with file-named errors, exposes `allowPreRunIntegrityErrors` on CLI/daemon/UI; core tests 6/6 + runner-direct 15/15 green on the committed code.
+- **Ticket closed in-place** (`d02b4a0`, founder identity) — `closed/` + INDEX; run_180 committed nothing through its atom gate (atom 0 rejected to avoid duplicate/colliding commit).
+- **Disposition: `blocked`.** Founder must confirm the out-of-gate landing was intentional, whether to accept as-is or demand end-to-end launcher proof (`scripts/proof-0029.mjs`), and reconcile any duplicate close convention if the tree diverges again.
+- **Gap (not proven in run):** real corrupt-governance fixture through `launcher.ts` (integration tests use fake thunks); daemon/CLI/UI suites not deep-run in this session.
+
+**Next:** Reply in run_180 with intent on the three founder gates; or launch `new-primary-root` for Atom D (ticket 0025) as the next build surface.
+
 ## 2026-06-22 — **ticket 0013: daemon idle-only auto-reload proven — archive-candidate (run_179)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Ticket:** [0013](./tickets/closed/0013-daemon-auto-rebuild-after-runs.md) | **Run:** run_179

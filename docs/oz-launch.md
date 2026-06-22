@@ -49,12 +49,21 @@ To re-focus a run's pane later, use the **Attach** action in the dashboard run d
 From the terminal, launch a run directly:
 
 ```bash
-pnpm exec cocoder run <priorityId> [--resume <runId>] [--strict-dirt]
+pnpm exec cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-integrity-errors]
 ```
 
 ### Uncommitted work at launch (ADR-0029)
 
 A launch no longer refuses on uncommitted founder WIP. The founder is a trusted actor: by default the launch takes a **pre-run snapshot** — it commits the dirty tree to its own labeled commit so the commit-gate and quarantine only ever see agent-produced changes — and then proceeds. Pass `--strict-dirt` to opt back into the old hard gate: with it set, an uncommitted in-scope tree **refuses** the launch instead of snapshotting. See [`ARCHITECTURE.md`](../ARCHITECTURE.md) and [ADR-0029](../cocoder/decisions/0029-founder-trusted-pre-run-snapshot.md).
+
+### Sync corruption and malformed governance (ticket 0029)
+
+Before launch, the runner scans for sync-conflict artifacts (`*.sync-conflict-*`, `*.orig`, conflict
+markers). Matches **warn** in the launch event stream; the launch still proceeds. If a persona, Play, or
+priority the run must load has unparseable frontmatter, launch **refuses with the file named** (the run
+would crash on it anyway). Pass `allowPreRunIntegrityErrors` on `POST /runs` (dashboard checkbox in the
+priority launch dialog) or `--allow-integrity-errors` on `cocoder run` to override even the refuse case —
+same founder-trusted override pattern as `--strict-dirt`.
 
 ## Stop a run
 
