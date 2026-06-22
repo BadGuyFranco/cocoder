@@ -13,8 +13,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Owner |
 |---|---|---|---|---|
-
-_No open tickets._
+| [0030](./open/0030-deb-escalation-fork-fault-vs-continue.md) | Deb escalation fork — formal fault (A) vs in-flight repair (B) | question | deb-follows-oscar | founder |
 
 ## Recently Closed
 

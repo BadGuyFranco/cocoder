@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-22 — **deb-follows-oscar: Deb watcher built green — blocked on escalation fork (run_41/run_184)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [deb-follows-oscar](./priorities/deb-follows-oscar.md) | **Run:** run_184 (display 41)
+**Outcomes:**
+- **Full priority implementation built and test-green in worktree** — runner-owned Deb watch loop across full lifecycle, owner-map row, directive/prompt/status alignment, Deb persona delta; core 465/465 incl. new Deb-watcher and Oz/Deb nudge-ordering tests.
+- **Atom 1 rejected — landing withheld.** Escalation contract (`deb-investigate` → fault/triage/repair, Option A) must not commit before founder rules on the orchestration fork.
+- **Disposition: `blocked`.** Objective tension: "continue after repair" vs "no second lane / no rescue of failed run." Ticket [0030](./tickets/open/0030-deb-escalation-fork-fault-vs-continue.md) captures Option A (recommended: formal fault + relaunch) vs Option B (in-flight repair, Oscar continues).
+- **Watcher/nudge halves need no rework** once fork is decided.
+
+**Next:** Reply in run_184 with **A** or **B** on ticket 0030; then relaunch `deb-follows-oscar` to land (A) or design-then-build (B).
+
 ## 2026-06-22 — **orchestration-loop-quality: ratified loop fixes landed — archive-candidate (run_40/run_183)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [orchestration-loop-quality](./priorities/orchestration-loop-quality.md) | **Run:** run_183 (display 40)

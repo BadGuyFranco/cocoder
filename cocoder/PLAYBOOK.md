@@ -244,8 +244,9 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
 5. `adapter-abstraction-hardening` — **Grok draft; requires founder ownership beat before launch.** Reduce
    duplication in the CLI adapter layer (ADR-0006).
 6. `priority-audit` — standing pruning tool (assess priority set for staleness → founder-decision table).
-7. `deb-follows-oscar` — **NEW.** Make Deb a first-class, runner-driven watcher of Oscar: event-awakened,
-   non-blocking, Oscar-only nudge authority, and no second orchestration lane.
+7. `deb-follows-oscar` — **BLOCKED (run_41/run_184).** Watcher implementation test-green in worktree but
+   unlanded; founder must pick escalation Option A (formal fault + relaunch, recommended) vs B (in-flight
+   repair, Oscar continues) — ticket `0030`. Watcher/nudge halves need no rework after the fork.
 8. `orchestration-loop-quality` — **ARCHIVE-CANDIDATE (run_40/run_183).** All four run_181 loop-failure modes
    satisfied: delegation re-derive + multi-owner mandate in `oscar.md`, Oscar support-edit suite bar in
    `shared-standards.md`, mode 4 founder-accepted no-op (wrap-up F18 + existing proof scripts). Persona/Play
