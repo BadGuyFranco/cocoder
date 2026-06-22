@@ -12,7 +12,7 @@
   "priorityId": "deb-follows-oscar",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "awaiting-founder",
   "createdAt": 1782146124964,
-  "endedAt": null
+  "endedAt": 1782146885194
 }
