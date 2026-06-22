@@ -101,10 +101,46 @@ end-to-end on a non-git root still requires a post-fix daemon. Reset `job-hunt` 
 folder, remove the workspace from CoCoder, re-add via **Add Workspace** — and confirm `git init`, governance
 commit, and `onboard-existing` in the panel.
 
-**Disposition: `continue`.** Build backlog empty; archive blocked until deploy + founder verification +
-Verified-when live proof (external repo) complete.
+### Build atoms — first live-onboarding reassessment (NEW, run_177, from Job Hunt / run_178)
+The first real non-git onboarding (Job Hunt) surfaced four issues. Each is ticketed; each atom is a normal
+one-shot delegated to Bob with a verify gate. Suggested order: D and E first (commit correctness — they
+make every onboarded repo sound), then F (template), then G (numbering).
 
-### Founder-gated live proof (only remaining gap)
+- **Atom D — baseline-commit the full existing tree on git-init ([ticket 0025](../tickets/open/0025-git-init-baseline-commit-full-tree.md), bug).**
+  When `createWorkspace` itself git-inits a non-git primary root, commit the user's whole existing tree
+  (`git add -A`, honoring the seeded `.gitignore`) so git tracks the repo from a clean baseline — not just
+  the `cocoder/` zone. Do NOT re-baseline an already-git repo. Owner: `packages/daemon/src/routes.ts:748-763`.
+  Acceptance: non-git onboard tracks product files (excludes `node_modules/` etc.), already-git onboard
+  unchanged; daemon real-git test. *(This corrects the run_177 mis-call that leaving the tree untracked was
+  acceptable: the `cocoder/**` trust boundary limits what CoCoder MODIFIES, not what git TRACKS.)*
+- **Atom E — complete the scaffold governance commit list ([ticket 0026](../tickets/open/0026-scaffold-governance-commit-incomplete.md), bug).**
+  The governance commit omits `cocoder/workspace.json` and `cocoder/counters.json` that the scaffold writes;
+  include every scaffold-written `cocoder/**` file in the commit (or explicitly `.gitignore` true runtime
+  churn). Applies to both new-primary and onboard-existing paths. Owner: `routes.ts:752-763` +
+  `scaffoldWorkspaceGovernance`. Acceptance: no untracked scaffold-written `cocoder/**` after create; test
+  pins commit-set == written-set − ignored-set.
+- **Atom F — onboarding template supports content/ops repos ([ticket 0027](../tickets/open/0027-onboard-existing-template-supports-content-ops-repos.md), task).**
+  Generalize `templates/workspace-cocoder/cocoder/priorities/onboard-existing.md` so a non-code repo
+  (content/ops/docs) is a first-class target: subsystem typing (code vs content/ops) made explicit, evidence
+  rule generalized from "file:line" to "path (and line where it applies)". The live Oscar already adapted to
+  Job Hunt; this bakes that into the template. No regression for code repos.
+- **Atom G — founder-facing run numbering is per-root, not global ([ticket 0028](../tickets/open/0028-founder-facing-run-number-per-root-not-global.md), bug).**
+  Founder-facing surfaces show the global `run_178`; they should show the per-root `displayNumber` (#1). The
+  UI run row already does (`adapter.ts:238-239`); fix the leaks in `record.ts:27`, `runner.ts:940/1078/1122`
+  (commit trailers), `oz-chat.ts:401/412`, `oz-host.ts:404`, `oz-context-pointer.ts:90`. Keep `run_${seq}` as
+  the internal unique key. Acceptance: a fresh root's first run reads as #1 everywhere the founder sees it.
+
+**Founder note (run_177):** the founder is NOT continuing run_178 and will **reset Job Hunt for a brand-new
+onboarding test once Atoms D–G land** (delete its `cocoder/` + the workspace, re-add via Add Workspace). The
+recon question in run_178 is intentionally left unanswered. These atoms touch `packages/**` product code, so
+they are **Surface-B** and require a verified build run (not post-wrap support) — launch this priority as a
+build run to execute D–G.
+
+**Disposition: `continue`.** Build backlog re-opened with Atoms D–G (Surface-B, from the first live
+onboarding); archive blocked until D–G land, the founder reset-and-retest of Job Hunt passes, and the
+Verified-when external-repo live proof completes.
+
+### Founder-gated live proof (separate, after D–G + reset retest)
 Onboard a real external repo (CoPublisher / a CoBuilder copy) end-to-end through the rebuilt Oscar-driven
 flow: scaffold → multi-agent audit → founder ratifies the drafted Objectives → first ratified run lands,
 with findings traceable to repo reality (Objective verification). This is **billable, multi-agent, founder-

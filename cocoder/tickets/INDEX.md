@@ -14,6 +14,10 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 | ID | Title | Type | Priority | Owner |
 |---|---|---|---|---|
 | [0013](./open/0013-daemon-auto-rebuild-after-runs.md) | Auto-rebuild + reload the Oz daemon after a run changes packages/daemon (no manual restart) | task | tickets-review | oscar run_122 |
+| [0025](./open/0025-git-init-baseline-commit-full-tree.md) | git-init of a non-git primary root must baseline-commit the full existing tree, not only the cocoder zone | bug | new-primary-root | oscar run_177 |
+| [0026](./open/0026-scaffold-governance-commit-incomplete.md) | Scaffold governance commit omits cocoder/workspace.json and cocoder/counters.json | bug | new-primary-root | oscar run_177 |
+| [0027](./open/0027-onboard-existing-template-supports-content-ops-repos.md) | onboard-existing template assumes a code repo; support content/ops repos as a first-class target | task | new-primary-root | oscar run_177 |
+| [0028](./open/0028-founder-facing-run-number-per-root-not-global.md) | Founder-facing run labels show the global runId (run_178) instead of the per-root run number (#1) | bug | new-primary-root | oscar run_177 |
 
 ## Recently Closed
 
