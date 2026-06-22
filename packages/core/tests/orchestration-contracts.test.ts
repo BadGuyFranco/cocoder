@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
+import { parseDirective } from '../src/runner/index.js'
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const read = (rel: string): string => readFileSync(join(repoRoot, rel), 'utf8')
@@ -151,5 +152,17 @@ describe('orchestration contract ownership', () => {
     expect(readme).toContain('Historical reference')
     expect(readme).toContain('packages/ui/src/renderer')
     expect(readme).not.toMatch(/source of truth for \*what\* to build/i)
+  })
+
+  test('build-loop directives expose no second Deb repair lane', () => {
+    expect(parseDirective(JSON.stringify({ kind: 'delegate', task: 'ship the atom' })).kind).toBe('delegate')
+    expect(parseDirective(JSON.stringify({ kind: 'wrapup', pickup: 'resume here' })).kind).toBe('wrapup')
+    expect(() => parseDirective(JSON.stringify({ kind: 'deb-investigate', blocker: 'Oscar found a machinery problem' }))).toThrow(
+      'directive: "kind" must be "delegate" or "wrapup"',
+    )
+
+    const directiveKinds = ['delegate', 'wrapup'] as const
+    expect(directiveKinds).toEqual(['delegate', 'wrapup'])
+    expect(read('packages/core/src/runner/prompts.ts')).not.toContain('deb-investigate')
   })
 })
