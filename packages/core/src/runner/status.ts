@@ -42,6 +42,14 @@ export interface DebStatus {
   readonly writeScopes: Readonly<Record<string, readonly string[]>>
   /** Current handoff/delegation files + their status (delivered / awaiting / pending / pass / fail). */
   readonly handoffs: ReadonlyArray<{ file: string; status: string }>
+  /** Runner-owned watcher evidence: Deb is informed by events, not pane scraping. */
+  readonly watch: {
+    readonly active: boolean
+    readonly lastDispatchAt: number | null
+    readonly lastDispatch: string | null
+    readonly lastAssessmentAt: number | null
+    readonly lastNudgeAt: number | null
+  }
   /** A bounded tail of the run's event log. */
   readonly recentEvents: ReadonlyArray<{ at: number; type: string; note: string | null }>
   readonly generatedAt: number
@@ -143,6 +151,14 @@ export function renderDebStatus(input: {
   }
   for (const f of outstandingFaults) handoffs.push({ file: `fault (${f.fault})`, status: 'awaiting-triage' })
 
+  // ── Deb watcher evidence ──
+  const watchStarted = last(events, ['deb-watch-started'])
+  const watchStopped = last(events, ['deb-watch-stopped', 'deb-watch-error'])
+  const lastWatchDispatch = last(events, ['deb-watch-dispatch'])
+  const lastWatchAssessment = [...events].reverse().find((e) => e.type === 'oscar-monitor-assessment' && (e.data as { stage?: unknown })?.stage === 'watch') ?? null
+  const lastDebNudge = [...events].reverse().find((e) => e.type === 'oscar-nudge' && (e.data as { source?: unknown })?.source === 'deb') ?? null
+  const lastDispatchDetail = (lastWatchDispatch?.data as { detail?: unknown } | undefined)?.detail
+
   const recentLimit = input.recentLimit ?? 12
   const recentEvents = events.slice(-recentLimit).map((e) => ({ at: e.at, type: e.type, note: noteOf(e) }))
 
@@ -162,6 +178,13 @@ export function renderDebStatus(input: {
     outstandingFaults,
     writeScopes: scopes,
     handoffs,
+    watch: {
+      active: watchStarted !== null && (watchStopped === null || watchStopped.at < watchStarted.at),
+      lastDispatchAt: lastWatchDispatch?.at ?? null,
+      lastDispatch: typeof lastDispatchDetail === 'string' ? lastDispatchDetail : null,
+      lastAssessmentAt: lastWatchAssessment?.at ?? null,
+      lastNudgeAt: lastDebNudge?.at ?? null,
+    },
     recentEvents,
     generatedAt: now,
   }
@@ -185,6 +208,11 @@ function renderMarkdown(s: DebStatus): string {
   lines.push(`- **Last directive:** ${ts(s.lastDirectiveAt, s.generatedAt)}`)
   lines.push(`- **Last builder activity:** ${ts(s.lastBuilderActivityAt, s.generatedAt)}`)
   lines.push(`- **Last verify:** ${ts(s.lastVerifyAt, s.generatedAt)}`, '')
+  lines.push('## Deb watcher', '')
+  lines.push(`- **Active:** ${s.watch.active ? 'yes' : 'no'}`)
+  lines.push(`- **Last dispatch:** ${s.watch.lastDispatch ?? '—'} — ${ts(s.watch.lastDispatchAt, s.generatedAt)}`)
+  lines.push(`- **Last watch assessment:** ${ts(s.watch.lastAssessmentAt, s.generatedAt)}`)
+  lines.push(`- **Last Deb nudge delivered:** ${ts(s.watch.lastNudgeAt, s.generatedAt)}`, '')
   if (s.outstandingFaults.length > 0) {
     lines.push('## Outstanding fault dispatches', '')
     for (const f of s.outstandingFaults) lines.push(`- ${f.fault}${f.atom !== null ? ` (atom ${f.atom})` : ''} — ${ts(f.at, s.generatedAt)}`)

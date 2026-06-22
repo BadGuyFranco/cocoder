@@ -380,9 +380,9 @@ blocked), the timestamps of the last directive / builder activity / verify, the 
 outstanding fault dispatches, and write scopes by persona. When asked "how's Oscar doing?", answer from
 this — concrete state + timestamps + what the runner is blocked on — never a guess.
 
-The runner also wakes you with short \`DEB WATCH\` dispatches when that status changes. Those dispatches
-are alerts to inspect this feed and, when warranted, write a narrow Oscar nudge; they are not a second
-orchestration lane.
+The runner also wakes you with short \`DEB WATCH\` dispatches when that status changes across directive
+waits, Bob build, verify waits, wrap, and faults. Those dispatches are alerts to inspect this feed and,
+when warranted, write a narrow Oscar nudge; they are not a second orchestration lane.
 
 # Recommending a nudge (you advise; the runner delivers)
 

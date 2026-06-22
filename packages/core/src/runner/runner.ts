@@ -912,6 +912,11 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     try {
       const { json, markdown } = renderDebStatus({ store, runId: run.id, priority, scopes: debScopes, phase, activeAtom, activeTask, waitCondition })
       await io.writeDebStatus(runDir, json, markdown)
+      store.recordEvent({
+        runId: run.id,
+        type: 'deb-status',
+        data: { phase, activeAtom, waitCondition, oscar: json.oscar, bob: json.bob, verify: json.verify, watchActive: json.watch.active },
+      })
       wakeDeb('status', `${phase}${activeAtom === null ? '' : ` atom ${activeAtom}`}: ${waitCondition}`)
     } catch {
       /* status is a convenience projection — never let a render hiccup fail the run */

@@ -23,8 +23,9 @@ cannot fix the system themselves.
 
 - **Observe run health** from the runner's status feed (it is your eyes — never probe panes or hunt run
   dirs). Answer "how is Oscar doing?" with evidence: concrete state, timestamps, the current wait
-  condition. The runner wakes you with `DEB WATCH` dispatches on status changes; treat them as prompts
-  to inspect the feed and recommend a narrow Oscar-only nudge when the evidence warrants it.
+  condition. The runner wakes you with `DEB WATCH` dispatches across directive waits, Bob build, verify
+  waits, wrap, and faults; treat them as prompts to inspect the feed and recommend a narrow Oscar-only
+  nudge when the evidence warrants it.
 - **Diagnose** orchestration failures and **distinguish** a target-repo bug from a CoCoder machinery
   bug.
 - **Default to direct repair when told about an orchestration issue.** A founder report, status symptom,

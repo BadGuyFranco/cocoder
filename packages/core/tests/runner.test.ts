@@ -2166,6 +2166,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(statusWrites[0]).toMatchObject({ oscar: 'waiting', bob: 'standby', waitCondition: 'awaiting first directive' })
     expect(statusWrites.some((s) => s.bob === 'running' && s.waitCondition.includes('monitoring builder'))).toBe(true)
     expect(statusWrites.some((s) => s.oscar === 'verifying' && s.verify === 'pending')).toBe(true)
+    expect(statusWrites.some((s) => s.watch.active)).toBe(true)
     expect(statusWrites.at(-1)?.oscar).toBe('wrapped')
     expect(statusWrites.at(-1)?.waitCondition).toContain('Oscar remains reachable')
     expect(statusWrites.at(-1)?.waitCondition).toContain('in-scope Surface-A edits')
@@ -2173,6 +2174,7 @@ describe('runRun (multi-atom loop)', () => {
     const events = store.listEvents(store.listRuns()[0]!.id)
     expect(events.some((e) => e.type === 'deb-watch-started')).toBe(true)
     expect(events.some((e) => e.type === 'deb-watch-dispatch')).toBe(true)
+    expect(events.some((e) => e.type === 'deb-status' && (e.data as { waitCondition?: string }).waitCondition === 'awaiting first directive')).toBe(true)
     expect(events.some((e) => e.type === 'deb-watch-stopped')).toBe(true)
 
     const noDebStore = openRunStore(':memory:')
@@ -2226,7 +2228,7 @@ describe('runRun (multi-atom loop)', () => {
     const store = openRunStore(':memory:')
     const debReq: NudgeRequest = { target: 'oscar', message: 'Oscar — clarify the acceptance evidence before verify', rationale: 'Bob is building and the blocker is in orchestration scope', seq: 1 }
     let samples = 0
-    const sent: string[] = []
+    const sent: Array<{ ref: string; text: string }> = []
     const io: RunnerIO = {
       ...fakeIO({
         directives: [delegate('slow atom'), wrapup('done')],
@@ -2251,8 +2253,8 @@ describe('runRun (multi-atom loop)', () => {
         io,
         makeJudge: makeSlowBuildJudge,
         sessionHost: fakeSessionHost({
-          async sendInput(_ref, text) {
-            sent.push(text)
+          async sendInput(ref, text) {
+            sent.push({ ref: ref.id, text })
           },
         }),
         timeouts: { orchestrationMs: 500, buildMs: 500, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 },
@@ -2260,7 +2262,8 @@ describe('runRun (multi-atom loop)', () => {
       { ...input, deb },
     )
     expect(result.status).toBe('completed')
-    expect(sent).toContain(debReq.message)
+    expect(sent).toContainEqual({ ref: 'surface:1', text: debReq.message })
+    expect(sent).not.toContainEqual({ ref: 'surface:2', text: debReq.message })
     const debNudge = store.listEvents(result.runId).find((e) => e.type === 'oscar-nudge' && (e.data as { source?: string }).source === 'deb')
     expect(debNudge?.data).toMatchObject({ stage: 'watch', text: debReq.message, rationale: debReq.rationale })
     expect(store.listEvents(result.runId).some((e) => e.type === 'nudge' && String((e.data as { text?: unknown }).text).includes(debReq.message))).toBe(false)
