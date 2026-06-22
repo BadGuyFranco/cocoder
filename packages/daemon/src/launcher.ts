@@ -7,7 +7,8 @@
 //     and never becomes an unhandled rejection that takes the always-on daemon down;
 //   - track spawned surfaceRefs in ctx.liveRefs so deep-links are decidable without throwing.
 import { execFile } from 'node:child_process'
-import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
+import { randomBytes } from 'node:crypto'
+import { appendFile, mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { promisify } from 'node:util'
 import {
@@ -47,8 +48,24 @@ import { findWorkspace } from './registry.js'
 import { appendAudit } from './audit.js'
 import { recordOrchestratedRun } from './oz-host.js'
 import { withPortableDisplayNumber } from './run-display.js'
+import {
+  makeDialogueId,
+  nextDialogueState,
+  parseDebRepairResponse,
+  parseFounderEscalation,
+  parseOscarEvaluation,
+  parseOscarRepairRequest,
+  repairDialoguePaths,
+  type DebRepairResponse,
+  type DialogueState,
+  type FounderEscalation,
+  type OscarEvaluation,
+  type OscarRepairRequest,
+  type RepairEvidenceItem,
+} from './oscar-deb-repair.js'
 
 const OZ_REPAIR_TIMEOUT_MS = 120_000
+const OSCAR_DEB_REPAIR_TIMEOUT_MS = 120_000
 const AUTHORING_PLAY_TIMEOUT_MS = 120_000
 const DAEMON_RELOAD_BUILD_COMMAND = 'pnpm --filter @cocoder/core --filter @cocoder/daemon typecheck'
 const MAX_DAEMON_RELOAD_OUTPUT = 12_000
@@ -63,6 +80,15 @@ export interface AuthoringPlayInput {
   readonly persona: AuthoringPersona
   readonly playId: AuthoringPlayId
   readonly invocation: unknown
+}
+
+export interface OscarDebRepairInput {
+  readonly workspaceId: string
+  readonly sourceRunId?: string
+  readonly problem: string
+  readonly evidence: readonly RepairEvidenceItem[]
+  readonly desiredOutcome?: string
+  readonly requestedBy: 'oscar'
 }
 
 /** Wrap the shared session host so each spawned/killed surfaceRef is mirrored into ctx.liveRefs. */
@@ -871,6 +897,254 @@ export async function requestSupportCommitRun(ctx: OzContext, runId: string): Pr
       liveOscar,
     },
   }
+}
+
+export async function requestOscarDebRepair(ctx: OzContext, input: OscarDebRepairInput): Promise<LaunchResult> {
+  const activeRunId = ctx.inFlight.get(input.workspaceId)
+  const sourceRun = input.sourceRunId ? ctx.store.getRun(input.sourceRunId) : null
+  if (input.sourceRunId && !sourceRun) return { status: 404, body: { error: 'unknown source run' } }
+  if (sourceRun && sourceRun.workspaceId !== input.workspaceId) return { status: 409, body: { error: `source run "${sourceRun.id}" belongs to workspace "${sourceRun.workspaceId}", not "${input.workspaceId}"` } }
+  if (sourceRun?.status === 'running' || (activeRunId && activeRunId !== input.sourceRunId)) {
+    return { status: 409, body: { error: 'workspace run is still active — Oscar-Deb repair dialogue waits until the run has wrapped or stopped' } }
+  }
+
+  const dialogueId = makeDialogueId(Date.now(), randomBytes(3).toString('hex'))
+  const paths = repairDialoguePaths(input.workspaceId, dialogueId)
+  let request: OscarRepairRequest
+  try {
+    request = parseOscarRepairRequest(JSON.stringify({
+      schemaVersion: 1,
+      dialogueId,
+      workspaceId: input.workspaceId,
+      ...(input.sourceRunId ? { sourceRunId: input.sourceRunId } : {}),
+      requestedBy: input.requestedBy,
+      createdAt: new Date().toISOString(),
+      problem: input.problem,
+      evidence: input.evidence,
+      ...(input.desiredOutcome ? { desiredOutcome: input.desiredOutcome } : {}),
+    }))
+  } catch (err) {
+    return { status: 400, body: { error: err instanceof Error ? err.message : String(err) } }
+  }
+
+  const workspace = await findWorkspace(ctx.cocoderHome, input.workspaceId)
+  if (!workspace) return { status: 404, body: { error: 'unknown workspace' } }
+  const deb = resolveDialoguePersona(workspace.path, 'deb')
+  if (!deb) return { status: 409, body: { error: `could not resolve Deb repair scope for workspace "${workspace.id}"` } }
+  if (deb.writeScope.length === 0) return { status: 409, body: { error: 'Deb has no repair-write scope for this workspace' } }
+
+  let state: DialogueState = 'requested'
+  await writeDialogueJson(ctx, paths.request, request)
+  await appendDialogueEvidence(ctx, paths, state, 'request.json', 'Oscar requested Deb repair.')
+  await appendAudit(ctx.cocoderHome, { action: 'oscar-deb-repair-requested', workspaceId: workspace.id, dialogueId, sourceRunId: request.sourceRunId ?? null })
+  emitOzEvent(ctx, { type: 'oscar-deb-repair-requested', workspaceId: workspace.id, runId: request.sourceRunId })
+
+  const failDialogue = async (summary: string): Promise<LaunchResult> => {
+    state = nextDialogueState(state, { type: 'fail' })
+    await appendDialogueEvidence(ctx, paths, state, 'evidence.jsonl', summary)
+    await appendAudit(ctx.cocoderHome, { action: 'oscar-deb-repair-failed', workspaceId: workspace.id, dialogueId, state, error: summary })
+    emitOzEvent(ctx, { type: 'oscar-deb-repair', workspaceId: workspace.id, runId: request.sourceRunId, status: 'failed' })
+    return { status: 500, body: { ok: false, error: summary, state, dialogueId, artifactPaths: paths, committedPaths: [], commitSha: null, outOfLanePaths: [] } }
+  }
+
+  state = nextDialogueState(state, { type: 'start-deb' })
+  await appendDialogueEvidence(ctx, paths, state, 'deb-turn.log', 'Deb repair turn started.')
+  const debTurn = await runRepairDialogueTurn(ctx, { persona: 'deb', cli: deb.cli, model: deb.model, cwd: workspace.path, outPath: join(ctx.cocoderHome, paths.debTurnLog), prompt: buildDebRepairDialoguePrompt(request, paths) })
+  if (!debTurn.ok) return await failDialogue(debTurn.error)
+  let debResponse: DebRepairResponse
+  try {
+    debResponse = parseDebTurnOutput(debTurn.output, dialogueId)
+  } catch (err) {
+    return await failDialogue(`Deb repair turn produced malformed artifact: ${err instanceof Error ? err.message : String(err)}`)
+  }
+
+  if (debResponse.kind === 'applied') {
+    state = nextDialogueState(state, { type: 'deb-applied' })
+    const committed = await commitDebRepair(ctx, workspace.path, deb.writeScope, 'deb-repair').catch((err: unknown) => err instanceof Error ? err : new Error(String(err)))
+    if (committed instanceof Error) return await failDialogue(`Deb repair commit failed: ${committed.message}`)
+    const response = parseDebRepairResponse(JSON.stringify({ ...debResponse, commit: responseCommit(committed) }))
+    await writeDialogueJson(ctx, paths.debResponse, response)
+    await appendDialogueEvidence(ctx, paths, state, 'deb-response.json', 'Deb applied an in-scope repair.')
+    state = nextDialogueState(state, { type: 'complete' })
+    await appendDialogueEvidence(ctx, paths, state, 'deb-response.json', 'Oscar-Deb repair dialogue completed.')
+    await appendAudit(ctx.cocoderHome, { action: 'oscar-deb-repair', workspaceId: workspace.id, dialogueId, state, committedSha: committed.sha, files: committed.committedPaths, outOfLanePaths: committed.outOfLanePaths })
+    emitOzEvent(ctx, { type: 'oscar-deb-repair', workspaceId: workspace.id, runId: request.sourceRunId, status: committed.sha ? 'committed' : 'no-commit' })
+    return { status: 200, body: { ok: true, state, outcome: 'applied', dialogueId, artifactPaths: paths, committedPaths: committed.committedPaths, commitSha: committed.sha, outOfLanePaths: committed.outOfLanePaths } }
+  }
+
+  state = nextDialogueState(state, { type: 'deb-proposed' })
+  await writeDialogueJson(ctx, paths.debResponse, debResponse)
+  await appendDialogueEvidence(ctx, paths, state, 'deb-response.json', 'Deb proposed a repair for Oscar evaluation.')
+
+  const oscar = resolveDialoguePersona(workspace.path, 'oscar')
+  if (!oscar) return { status: 409, body: { error: `could not resolve Oscar evaluation persona for workspace "${workspace.id}"`, state, dialogueId, artifactPaths: paths } }
+  state = nextDialogueState(state, { type: 'start-oscar-evaluation' })
+  await appendDialogueEvidence(ctx, paths, state, 'oscar-turn.log', 'Oscar evaluation turn started.')
+  const oscarTurn = await runRepairDialogueTurn(ctx, { persona: 'oscar', cli: oscar.cli, model: oscar.model, cwd: workspace.path, outPath: join(ctx.cocoderHome, paths.oscarTurnLog), prompt: buildOscarRepairEvaluationPrompt(request, debResponse, paths) })
+  if (!oscarTurn.ok) return await failDialogue(oscarTurn.error)
+  let evaluation: OscarEvaluation
+  try {
+    evaluation = parseOscarEvaluation(JSON.stringify({ ...(JSON.parse(oscarTurn.output) as Record<string, unknown>), dialogueId }))
+  } catch (err) {
+    return await failDialogue(`Oscar evaluation turn produced malformed artifact: ${err instanceof Error ? err.message : String(err)}`)
+  }
+  state = nextDialogueState(state, { type: 'oscar-directed' })
+  await writeDialogueJson(ctx, paths.oscarEvaluation, evaluation)
+  await appendDialogueEvidence(ctx, paths, state, 'oscar-evaluation.json', `Oscar evaluated Deb proposal: ${evaluation.verdict}.`)
+
+  if (evaluation.verdict === 'escalate-founder' || debResponse.needsFounder || debResponse.risk === 'high') {
+    state = nextDialogueState(state, { type: 'founder-escalated' })
+    const founderEscalation = buildFounderEscalation(request, debResponse, evaluation, paths)
+    await writeDialogueJson(ctx, paths.founderEscalation, founderEscalation)
+    await appendDialogueEvidence(ctx, paths, state, 'founder-escalation.json', 'Repair dialogue escalated to founder.')
+    state = nextDialogueState(state, { type: 'complete' })
+    await appendDialogueEvidence(ctx, paths, state, 'founder-escalation.json', 'Founder escalation recorded.')
+    await appendAudit(ctx.cocoderHome, { action: 'oscar-deb-repair-founder-escalation', workspaceId: workspace.id, dialogueId, state })
+    emitOzEvent(ctx, { type: 'oscar-deb-repair', workspaceId: workspace.id, runId: request.sourceRunId, status: 'founder-escalated' })
+    return { status: 200, body: { ok: true, state, outcome: 'founder-escalated', dialogueId, artifactPaths: paths, committedPaths: [], commitSha: null, outOfLanePaths: [] } }
+  }
+
+  if (evaluation.verdict !== 'direct-deb-to-apply') {
+    await appendAudit(ctx.cocoderHome, { action: 'oscar-deb-repair-evaluated', workspaceId: workspace.id, dialogueId, state, verdict: evaluation.verdict })
+    return { status: 200, body: { ok: true, state, outcome: evaluation.verdict, dialogueId, artifactPaths: paths, committedPaths: [], commitSha: null, outOfLanePaths: [] } }
+  }
+
+  state = nextDialogueState(state, { type: 'start-directed-deb' })
+  await appendDialogueEvidence(ctx, paths, state, 'deb-turn.log', 'Directed Deb repair turn started.')
+  const directedDebTurn = await runRepairDialogueTurn(ctx, { persona: 'deb', cli: deb.cli, model: deb.model, cwd: workspace.path, outPath: join(ctx.cocoderHome, paths.debTurnLog), prompt: buildDirectedDebRepairPrompt(request, debResponse, evaluation, paths) })
+  if (!directedDebTurn.ok) return await failDialogue(directedDebTurn.error)
+  let directedResponse: DebRepairResponse
+  try {
+    directedResponse = parseDebTurnOutput(directedDebTurn.output, dialogueId)
+  } catch (err) {
+    return await failDialogue(`Directed Deb repair turn produced malformed artifact: ${err instanceof Error ? err.message : String(err)}`)
+  }
+  if (directedResponse.kind !== 'applied') return await failDialogue('Directed Deb repair turn must return an applied repair artifact')
+  const committed = await commitDebRepair(ctx, workspace.path, deb.writeScope, 'deb-repair').catch((err: unknown) => err instanceof Error ? err : new Error(String(err)))
+  if (committed instanceof Error) return await failDialogue(`Directed Deb repair commit failed: ${committed.message}`)
+  const response = parseDebRepairResponse(JSON.stringify({ ...directedResponse, commit: responseCommit(committed) }))
+  await writeDialogueJson(ctx, paths.debResponse, response)
+  state = nextDialogueState(state, { type: 'complete' })
+  await appendDialogueEvidence(ctx, paths, state, 'deb-response.json', 'Directed Deb repair completed.')
+  await appendAudit(ctx.cocoderHome, { action: 'oscar-deb-repair', workspaceId: workspace.id, dialogueId, state, committedSha: committed.sha, files: committed.committedPaths, outOfLanePaths: committed.outOfLanePaths })
+  emitOzEvent(ctx, { type: 'oscar-deb-repair', workspaceId: workspace.id, runId: request.sourceRunId, status: committed.sha ? 'committed' : 'no-commit' })
+  return { status: 200, body: { ok: true, state, outcome: 'directed-applied', dialogueId, artifactPaths: paths, committedPaths: committed.committedPaths, commitSha: committed.sha, outOfLanePaths: committed.outOfLanePaths } }
+}
+
+function resolveDialoguePersona(workspacePath: string, persona: 'deb' | 'oscar'): { readonly cli: string; readonly model: string; readonly writeScope: readonly string[] } | null {
+  try {
+    const personasDir = join(workspacePath, 'cocoder', 'personas')
+    const assignments = loadAssignments(join(personasDir, 'assignments.json'))
+    if (!isPersonaEnabled(assignments, persona)) return null
+    const sources: PersonaSources = { baseDir: basePersonasDir(), deltaDir: join(personasDir, 'deltas'), repoPersonaDir: personasDir }
+    const resolved = resolveEffectivePersona(sources, assignments, persona)
+    if (!resolved.cli.trim()) return null
+    return { cli: resolved.cli, model: resolved.model, writeScope: resolved.writeScope }
+  } catch {
+    return null
+  }
+}
+
+async function runRepairDialogueTurn(
+  ctx: OzContext,
+  opts: { readonly persona: 'deb' | 'oscar'; readonly cli: string; readonly model: string; readonly cwd: string; readonly outPath: string; readonly prompt: string },
+): Promise<{ readonly ok: true; readonly output: string } | { readonly ok: false; readonly error: string }> {
+  try {
+    await mkdir(dirname(opts.outPath), { recursive: true })
+    const cmd = ctx.getAdapter(opts.cli).build({ persona: opts.persona, prompt: opts.prompt, model: opts.model, cwd: opts.cwd, outPath: opts.outPath })
+    const run = ctx.runHeadless ?? runHeadlessProcess
+    const turn = await run({ command: cmd.command, args: cmd.args, cwd: opts.cwd, outPath: opts.outPath, timeoutMs: OSCAR_DEB_REPAIR_TIMEOUT_MS })
+    await writeFile(opts.outPath, turn.output, 'utf8')
+    if (turn.exitCode !== 0) return { ok: false, error: `${opts.persona} repair dialogue turn failed with exit code ${turn.exitCode}` }
+    return { ok: true, output: turn.output }
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err)
+    await writeFile(opts.outPath, detail, 'utf8').catch(() => {})
+    return { ok: false, error: `${opts.persona} repair dialogue turn failed before artifact parse: ${detail}` }
+  }
+}
+
+function parseDebTurnOutput(output: string, dialogueId: string): DebRepairResponse {
+  const parsed = JSON.parse(output) as Record<string, unknown>
+  const normalized: Record<string, unknown> = { ...parsed, dialogueId }
+  if (normalized.kind === 'applied' && normalized.commit === undefined) {
+    return parseDebRepairResponse(JSON.stringify({ ...normalized, commit: { sha: 'pending', committedPaths: [], outOfLanePaths: [] } }))
+  }
+  return parseDebRepairResponse(JSON.stringify(normalized))
+}
+
+function responseCommit(committed: { readonly sha: string | null; readonly committedPaths: readonly string[]; readonly outOfLanePaths: readonly string[] }): { readonly sha: string; readonly committedPaths: readonly string[]; readonly outOfLanePaths: readonly string[] } {
+  return { sha: committed.sha ?? 'no-commit', committedPaths: committed.committedPaths, outOfLanePaths: committed.outOfLanePaths }
+}
+
+async function commitDebRepair(ctx: OzContext, cwd: string, scope: readonly string[], message: string): Promise<{ readonly sha: string | null; readonly committedPaths: readonly string[]; readonly outOfLanePaths: readonly string[] }> {
+  const result = await gateCommitRepair({
+    git: ctx.git,
+    cwd,
+    scope,
+    message,
+    author: { name: 'deb-repair', email: 'deb-repair@cocoder.local' },
+  })
+  return { sha: result.committedSha, committedPaths: result.committedFiles, outOfLanePaths: result.outOfLaneFiles }
+}
+
+async function writeDialogueJson(ctx: OzContext, relativePath: string, payload: unknown): Promise<void> {
+  await atomicWriteJson(join(ctx.cocoderHome, relativePath), payload)
+}
+
+async function appendDialogueEvidence(ctx: OzContext, paths: { readonly evidenceLog: string }, state: DialogueState, artifact: string, summary: string): Promise<void> {
+  const path = join(ctx.cocoderHome, paths.evidenceLog)
+  await mkdir(dirname(path), { recursive: true })
+  await appendFile(path, `${JSON.stringify({ ts: new Date().toISOString(), state, artifact, summary })}\n`, 'utf8')
+}
+
+function buildDebRepairDialoguePrompt(request: OscarRepairRequest, paths: { readonly request: string; readonly debResponse: string }): string {
+  return [
+    '## Oscar-Deb repair dialogue',
+    'You are Deb. ADR-0036 owns this dialogue: Oscar-Deb only, never Bob, never the build directive loop, no second commit lane.',
+    `Read the repair request at ${paths.request}.`,
+    'If the fix is easy, clearly in-scope CoCoder machinery, edit the files and print exactly one JSON object to stdout with kind "applied". Use commit {"sha":"pending","committedPaths":[],"outOfLanePaths":[]} as a placeholder; the daemon replaces it after gateCommitRepair.',
+    'If you are unsure, the change is risky, or it needs Oscar/founder direction, edit nothing and print exactly one JSON object to stdout with kind "proposal".',
+    `Request:\n${JSON.stringify(request, null, 2)}`,
+    `Write no files except the repair itself; the daemon writes ${paths.debResponse}.`,
+  ].join('\n\n')
+}
+
+function buildOscarRepairEvaluationPrompt(request: OscarRepairRequest, response: DebRepairResponse, paths: { readonly oscarEvaluation: string }): string {
+  return [
+    '## Oscar evaluation for Deb repair proposal',
+    'You are Oscar. Evaluate Deb proposal under ADR-0036. Do not involve Bob and do not use the build directive loop.',
+    'Print exactly one OscarEvaluation JSON object to stdout. Use verdict direct-deb-to-apply, revise, or escalate-founder.',
+    `Request:\n${JSON.stringify(request, null, 2)}`,
+    `Deb proposal:\n${JSON.stringify(response, null, 2)}`,
+    `The daemon writes ${paths.oscarEvaluation}.`,
+  ].join('\n\n')
+}
+
+function buildDirectedDebRepairPrompt(request: OscarRepairRequest, response: DebRepairResponse, evaluation: OscarEvaluation, paths: { readonly debResponse: string }): string {
+  return [
+    '## Directed Deb repair',
+    'You are Deb. Oscar evaluated your proposal and directed the next step. Apply only the directed CoCoder machinery repair.',
+    'Print exactly one applied DebRepairResponse JSON object to stdout. Use commit {"sha":"pending","committedPaths":[],"outOfLanePaths":[]} as a placeholder; the daemon replaces it after gateCommitRepair.',
+    `Request:\n${JSON.stringify(request, null, 2)}`,
+    `Original Deb proposal:\n${JSON.stringify(response, null, 2)}`,
+    `Oscar evaluation:\n${JSON.stringify(evaluation, null, 2)}`,
+    `The daemon writes ${paths.debResponse}.`,
+  ].join('\n\n')
+}
+
+function buildFounderEscalation(request: OscarRepairRequest, response: DebRepairResponse, evaluation: OscarEvaluation, paths: { readonly debResponse: string; readonly oscarEvaluation: string }): FounderEscalation {
+  return parseFounderEscalation(JSON.stringify({
+    schemaVersion: 1,
+    dialogueId: request.dialogueId,
+    kind: 'founder-escalation',
+    createdAt: new Date().toISOString(),
+    reason: evaluation.reason || response.summary,
+    lightestHome: 'founder-decision',
+    options: [{ label: 'Review Oscar-Deb repair proposal', effect: 'Founder reviews the proposal and can launch or request a narrower repair.' }],
+    recommendedOption: 'Review Oscar-Deb repair proposal',
+    evidenceRefs: [paths.debResponse, paths.oscarEvaluation],
+  }))
 }
 
 async function postWrapArchiveBypass(workspacePath: string, priorityId: string, changed: readonly string[]): Promise<{ readonly files: readonly string[] } | null> {
