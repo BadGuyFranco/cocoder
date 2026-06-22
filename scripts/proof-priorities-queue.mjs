@@ -28,7 +28,7 @@ import { join } from 'node:path'
 import { openRunStore } from '@cocoder/core'
 import { readPriorities } from './packages/daemon/src/priority-order.ts'
 import { findWorkspace, workspaceFilePath } from './packages/daemon/src/registry.ts'
-import { ADHOC_PRIORITY_ID, adaptPriorities, adaptRuns } from './packages/ui/app/adapter.ts'
+import { ADHOC_PRIORITY_ID, adaptPriorities, adaptRuns } from './packages/ui/src/renderer/adapter.ts'
 
 const repoRoot = ${JSON.stringify(repoRoot)}
 const workspaceId = ${JSON.stringify(WORKSPACE_ID)}

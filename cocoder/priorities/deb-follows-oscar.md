@@ -7,12 +7,15 @@ title: "Deb follows Oscar - first-class tier-2 watcher"
 Make Deb a first-class, runner-driven watcher of Oscar for live runs, matching the ADR-0013 tier model:
 the runner observes Oscar and run-health events on Deb's behalf, wakes Deb when there is something
 actionable, and lets Deb recommend narrow Oscar-only nudges through the existing `deb-nudge.json` path.
+Also cover the explicit escalation path: when Oscar hits a real orchestration blocker, Oscar can ask Deb
+through the runner to investigate and, for a CoCoder-owned machinery issue inside Deb's authority, repair it.
 **Verified when:** Deb can stay meaningfully informed across the full run lifecycle - directive wait,
 Bob build, verify wait, wrap, and fault - without pane scraping, run-dir hunting, or founder prompting;
 Oscar can receive runner-delivered, rate-limited Deb nudges to continue or clarify when Deb diagnoses a
-minor/non-blocking issue; and tests prove the watcher is non-blocking, authority-safe, and does not
-create a second orchestration lane. Boundary: this does not let Deb direct Bob, replace Oscar's verify
-judgment, operate host processes, rescue a formally failed run, or change the commit spine.
+minor/non-blocking issue; Oscar can request a Deb investigation/repair on a named orchestration blocker;
+and tests prove the watcher is non-blocking, authority-safe, and does not create a second orchestration
+lane. Boundary: this does not let Deb direct Bob, replace Oscar's verify judgment, operate host
+processes, rescue a formally failed run, or change the commit spine.
 
 ## Context
 ADR-0013 already defines Deb -> Oscar as the same monitor primitive one tier above Oscar -> Bob: Deb
@@ -32,6 +35,11 @@ Current implementation map:
 Recommended design call: Deb should be event-awakened and non-blocking, not converted into a
 self-polling agent that can stall the run. That matches ADR-0013's clarification that agents do not
 observe panes directly; the runner is their eyes and hands.
+
+Founder note from run_183: passive following and Oscar nudges are only half the loop. The missing half is
+Oscar-initiated repair escalation: if Oscar identifies a real orchestration blocker, the runner should let
+Oscar ask Deb to diagnose and fix the machinery issue. Deb still advises Oscar and repairs only
+CoCoder-owned orchestration faults; this is not a bypass around Oscar, Bob, or verify.
 
 ## Required Inputs
 - `cocoder/decisions/0013-orchestration-observation.md`
@@ -58,8 +66,9 @@ observe panes directly; the runner is their eyes and hands.
    Bob-building periods, not only directive/verify waits. It must be non-blocking: a slow or silent Deb
    cannot stall Bob or Oscar unless an actual fault/triage contract requires Deb's verdict.
 3. **Prompt/status alignment.** Update Deb prompt/status language so it describes active watch dispatches
-   plus the existing status/nudge files. Keep `deb-nudge.json` as the single nudge path, and keep
-   `target` fixed to `oscar`.
+   plus the existing status/nudge files and the Oscar-requested investigation/repair path. Keep
+   `deb-nudge.json` as the single nudge path, and keep `target` fixed to `oscar`.
 4. **Tests and guard.** Extend existing tests, not parallel enforcers, to prove Deb watcher
    instantiation, evidence-bearing watch/status events, Oscar-only rate-limited nudges, no Deb path to
-   Bob input, non-blocking behavior when Deb is silent, and no regression in Oscar -> Bob monitoring.
+   Bob input, Oscar-requested Deb investigation/repair on a real orchestration blocker, non-blocking
+   behavior when Deb is silent, and no regression in Oscar -> Bob monitoring.
