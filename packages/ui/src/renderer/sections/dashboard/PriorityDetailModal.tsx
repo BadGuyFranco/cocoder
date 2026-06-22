@@ -7,16 +7,18 @@ const LAUNCH_BLOCKED_HINT = 'A run is active in this workspace — only one run 
 // ADR-0029: by default the founder is trusted — uncommitted in-scope WIP is snapshotted to its own commit
 // and the launch proceeds. This opt-in restores the hard-stop refusal for shared repos / CI.
 const STRICT_DIRT_HINT = 'Refuse this launch if you have uncommitted in-scope work, instead of auto-snapshotting it to a "founder: pre-run WIP snapshot" commit. For shared repos / CI.'
+const INTEGRITY_OVERRIDE_HINT = 'Proceed even when a run-critical governance integrity check fails. Use only to get unstuck while repairing a known corruption.'
 
 export function PriorityDetailModal({ priority, linkedRun, launchBlocked, onClose, onLaunch, onSelectRun }: {
   priority: Priority
   linkedRun: Run | null
   launchBlocked: boolean
   onClose: () => void
-  onLaunch: (priority: Priority, strictPreRunDirt: boolean) => void
+  onLaunch: (priority: Priority, strictPreRunDirt: boolean, allowPreRunIntegrityErrors: boolean) => void
   onSelectRun: (id: string) => void
 }) {
   const [strictDirt, setStrictDirt] = useState(false)
+  const [allowIntegrityErrors, setAllowIntegrityErrors] = useState(false)
   const activeLinkedRun = linkedRun ? isActiveRun(linkedRun.status) : false
   const launchDisabled = launchBlocked || activeLinkedRun
   const launchTitle = launchBlocked
@@ -35,11 +37,17 @@ export function PriorityDetailModal({ priority, linkedRun, launchBlocked, onClos
       width={680}
       footer={
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
-          <label title={STRICT_DIRT_HINT} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--cb-text-secondary)', cursor: 'pointer', marginRight: 'auto' }}>
-            <input type="checkbox" checked={strictDirt} onChange={(e) => setStrictDirt(e.target.checked)} />
-            Strict pre-run dirt (refuse on uncommitted WIP)
-          </label>
-          <Button variant="secondary" icon="play" disabled={launchDisabled} title={launchTitle} onClick={() => { onLaunch(priority, strictDirt); onClose() }}>Launch</Button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginRight: 'auto' }}>
+            <label title={STRICT_DIRT_HINT} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--cb-text-secondary)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={strictDirt} onChange={(e) => setStrictDirt(e.target.checked)} />
+              Strict pre-run dirt (refuse on uncommitted WIP)
+            </label>
+            <label title={INTEGRITY_OVERRIDE_HINT} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--cb-text-secondary)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={allowIntegrityErrors} onChange={(e) => setAllowIntegrityErrors(e.target.checked)} />
+              Override governance integrity refusal
+            </label>
+          </div>
+          <Button variant="secondary" icon="play" disabled={launchDisabled} title={launchTitle} onClick={() => { onLaunch(priority, strictDirt, allowIntegrityErrors); onClose() }}>Launch</Button>
         </div>
       }
     >

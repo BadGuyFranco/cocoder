@@ -116,7 +116,7 @@ function AdhocPriorityRow({ adhocRuns, onLaunch, onSelectRun, selectedRunId, lau
 }
 
 export function PrioritiesPanel({ priorities, runs, onReorder, onLaunch, onAdhoc, onAddPriority, onSelectRun, selectedRunId }: {
-  priorities: Priority[]; runs: Run[]; onReorder: (from: number, to: number) => void; onLaunch: (p: Priority, strictPreRunDirt?: boolean) => void
+  priorities: Priority[]; runs: Run[]; onReorder: (from: number, to: number) => void; onLaunch: (p: Priority, strictPreRunDirt?: boolean, allowPreRunIntegrityErrors?: boolean) => void
   onAdhoc: () => void; onAddPriority: () => void; onSelectRun: (id: string) => void; selectedRunId: string | null
 }) {
   const [drag, setDrag] = useState<{ from: number | null; over: number | null }>({ from: null, over: null })

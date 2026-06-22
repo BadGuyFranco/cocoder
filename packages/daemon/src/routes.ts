@@ -89,6 +89,8 @@ interface LaunchBody {
   /** ADR-0029 opt-out: refuse the launch on uncommitted founder WIP instead of self-healing it with a
    *  pre-run snapshot. Default (absent/false) is the founder-trusted snapshot path. */
   readonly strictPreRunDirt?: boolean
+  /** Founder override for fatal pre-run governance integrity findings. */
+  readonly allowPreRunIntegrityErrors?: boolean
 }
 
 interface TeardownBody {
@@ -109,11 +111,15 @@ function launchBody(body: unknown): ParsedLaunchBody {
   if (Object.prototype.hasOwnProperty.call(record, 'strictPreRunDirt') && typeof record.strictPreRunDirt !== 'boolean') {
     return { ok: false, error: 'strictPreRunDirt must be a boolean' }
   }
+  if (Object.prototype.hasOwnProperty.call(record, 'allowPreRunIntegrityErrors') && typeof record.allowPreRunIntegrityErrors !== 'boolean') {
+    return { ok: false, error: 'allowPreRunIntegrityErrors must be a boolean' }
+  }
   const input: LaunchBody = {
     workspaceId: typeof record.workspaceId === 'string' ? record.workspaceId : '',
     ...(hasPriority ? { priorityId } : { ticketId }),
     resumeFromRunId: typeof record.resumeFromRunId === 'string' ? record.resumeFromRunId : undefined,
     strictPreRunDirt: record.strictPreRunDirt === true,
+    allowPreRunIntegrityErrors: record.allowPreRunIntegrityErrors === true,
   }
   if (Object.prototype.hasOwnProperty.call(record, 'task')) {
     if (typeof record.task !== 'string') return { ok: false, error: 'task must be a string' }
@@ -825,7 +831,12 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
     const target = input.ticketId
       ? { kind: 'ticket' as const, ticketId: input.ticketId }
       : { kind: 'priority' as const, priorityId: input.priorityId ?? '' }
-    const { status, body: out } = await launchRun(ctx, input.workspaceId, target, { resumeFromRunId: input.resumeFromRunId, task: input.task, strictPreRunDirt: input.strictPreRunDirt })
+    const { status, body: out } = await launchRun(ctx, input.workspaceId, target, {
+      resumeFromRunId: input.resumeFromRunId,
+      task: input.task,
+      strictPreRunDirt: input.strictPreRunDirt,
+      allowPreRunIntegrityErrors: input.allowPreRunIntegrityErrors,
+    })
     return sendJson(res, status, out), true
   }
   if (method === 'POST' && seg[0] === 'runs' && seg.length === 3 && seg[2] === 'show') {

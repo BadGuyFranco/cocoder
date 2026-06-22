@@ -115,6 +115,8 @@ export interface RunViaDaemonOptions {
   readonly resumeFromRunId?: string
   /** ADR-0029 opt-out: refuse the launch on uncommitted founder WIP instead of self-healing it. */
   readonly strictPreRunDirt?: boolean
+  /** Founder override for fatal pre-run governance integrity findings. */
+  readonly allowPreRunIntegrityErrors?: boolean
 }
 
 /** Submit a launch to a live daemon and poll the run to terminal. Never opens the DB. */
@@ -133,7 +135,13 @@ export async function runViaDaemon(
   const res = await fetch(`${baseUrl}/runs`, {
     method: 'POST',
     headers: { ...authGet, 'content-type': 'application/json', [CSRF_HEADER]: session.csrfToken },
-    body: JSON.stringify({ workspaceId, priorityId, resumeFromRunId: opts.resumeFromRunId, strictPreRunDirt: opts.strictPreRunDirt }),
+    body: JSON.stringify({
+      workspaceId,
+      priorityId,
+      resumeFromRunId: opts.resumeFromRunId,
+      strictPreRunDirt: opts.strictPreRunDirt,
+      allowPreRunIntegrityErrors: opts.allowPreRunIntegrityErrors,
+    }),
   })
   if (!res.ok) throw new Error(`daemon launch failed (${res.status}): ${await res.text()}`)
   const { runId } = (await res.json()) as { runId: string }

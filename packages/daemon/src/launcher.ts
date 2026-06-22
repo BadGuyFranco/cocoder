@@ -29,6 +29,7 @@ import {
   runHeadlessProcess,
   runRun,
   type CommitReceipt,
+  type PreRunGovernanceCheck,
   type PersonaSources,
   type Priority,
   type RunInput,
@@ -92,7 +93,16 @@ async function assembleRunInput(
   ctx: Pick<OzContext, 'cocoderHome' | 'runsRoot'>,
   ws: WorkspaceRegistryEntry,
   priority: Priority,
-  opts: { readonly resumeFromRunId?: string; readonly task?: string | null; readonly storePriorityId?: string | null; readonly ticketId?: string | null; readonly target?: RunLabelTarget; readonly strictPreRunDirt?: boolean } = {},
+  opts: {
+    readonly resumeFromRunId?: string
+    readonly task?: string | null
+    readonly storePriorityId?: string | null
+    readonly ticketId?: string | null
+    readonly target?: RunLabelTarget
+    readonly strictPreRunDirt?: boolean
+    readonly allowPreRunIntegrityErrors?: boolean
+    readonly priorityCheck?: PreRunGovernanceCheck
+  } = {},
 ): Promise<RunInput> {
   const personasDir = join(ws.path, 'cocoder', 'personas')
   const playDeltaDir = join(ws.path, 'cocoder', 'plays', 'deltas')
@@ -111,6 +121,39 @@ async function assembleRunInput(
     }
   }
   const wrapPlay = resolveMandatoryPlay('run-wrap', listEffectivePlays(playSources))
+  const preRunGovernanceChecks: PreRunGovernanceCheck[] = [
+    ...(opts.priorityCheck ? [opts.priorityCheck] : []),
+    {
+      label: 'oscar persona',
+      path: join(baseDir, 'oscar.md'),
+      check: () => {
+        resolveEffectivePersona(sources, assignments, 'oscar')
+      },
+    },
+    {
+      label: 'bob persona',
+      path: join(baseDir, 'bob.md'),
+      check: () => {
+        resolveEffectivePersona(sources, assignments, 'bob')
+      },
+    },
+    {
+      label: 'wrap-up Play',
+      path: playSources.baseDir,
+      check: () => {
+        resolveMandatoryPlay('run-wrap', listEffectivePlays(playSources))
+      },
+    },
+  ]
+  if (isPersonaEnabled(assignments, 'deb')) {
+    preRunGovernanceChecks.push({
+      label: 'deb persona',
+      path: join(baseDir, 'deb.md'),
+      check: () => {
+        resolveEffectivePersona(sources, assignments, 'deb')
+      },
+    })
+  }
   return {
     workspace,
     priority,
@@ -130,16 +173,28 @@ async function assembleRunInput(
     target: opts.target,
     pickup,
     strictPreRunDirt: opts.strictPreRunDirt,
+    allowPreRunIntegrityErrors: opts.allowPreRunIntegrityErrors,
+    preRunGovernanceChecks,
   }
 }
 
 /** Assemble RunInput from governance on disk (mirrors cli/src/run.ts). Throws on unknown ids. When
  *  resuming, reads the prior run's pickup brief so a fresh session continues it (ADR-0013 / F8). */
-export async function buildRunInput(ctx: Pick<OzContext, 'cocoderHome' | 'runsRoot'>, workspaceId: string, priorityId: string, opts: { readonly resumeFromRunId?: string; readonly task?: string | null; readonly strictPreRunDirt?: boolean } = {}): Promise<RunInput> {
+export async function buildRunInput(ctx: Pick<OzContext, 'cocoderHome' | 'runsRoot'>, workspaceId: string, priorityId: string, opts: { readonly resumeFromRunId?: string; readonly task?: string | null; readonly strictPreRunDirt?: boolean; readonly allowPreRunIntegrityErrors?: boolean } = {}): Promise<RunInput> {
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
   if (!ws) throw new Error(`unknown workspace "${workspaceId}"`)
   const prioritiesDir = join(ws.path, 'cocoder', 'priorities')
-  return assembleRunInput(ctx, ws, loadPriority(prioritiesDir, priorityId), { ...opts, target: priorityTarget(priorityId) })
+  return assembleRunInput(ctx, ws, loadPriority(prioritiesDir, priorityId), {
+    ...opts,
+    target: priorityTarget(priorityId),
+    priorityCheck: {
+      label: `priority "${priorityId}"`,
+      path: join(prioritiesDir, `${priorityId}.md`),
+      check: () => {
+        loadPriority(prioritiesDir, priorityId)
+      },
+    },
+  })
 }
 
 async function headShaOrUnknown(ctx: OzContext, cwd: string): Promise<string> {
@@ -376,7 +431,7 @@ function attachRunLifecycle(ctx: OzContext, workspaceId: string, stopController:
 /** Launch a run for {workspaceId, priorityId} or {workspaceId, ticketId}. Async
  *  (fire-and-forget); returns 202 with the runId, 409 if a run is already in flight for the workspace,
  *  or 400 if the request can't be assembled. The string target preserves ordinary priority callers. */
-export async function launchRun(ctx: OzContext, workspaceId: string, targetInput: string | LaunchRunTarget, opts: { readonly resumeFromRunId?: string; readonly task?: string | null; readonly strictPreRunDirt?: boolean } = {}): Promise<LaunchResult> {
+export async function launchRun(ctx: OzContext, workspaceId: string, targetInput: string | LaunchRunTarget, opts: { readonly resumeFromRunId?: string; readonly task?: string | null; readonly strictPreRunDirt?: boolean; readonly allowPreRunIntegrityErrors?: boolean } = {}): Promise<LaunchResult> {
   const target = normalizeLaunchTarget(targetInput)
   const targetId = launchTargetId(target)
   if (!workspaceId || !targetId) {
@@ -423,6 +478,7 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
         ticketId: ticket.id,
         target: { type: 'ticket', slug: ticket.id },
         strictPreRunDirt: opts.strictPreRunDirt,
+        allowPreRunIntegrityErrors: opts.allowPreRunIntegrityErrors,
       })
     } catch (err) {
       ctx.inFlight.delete(workspaceId)

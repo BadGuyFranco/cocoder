@@ -20,6 +20,8 @@ import {
   type Directive,
   DirtyWorkingTreeError,
   type MakeJudge,
+  PreRunIntegrityError,
+  type PreRunGovernanceCheck,
   type RunnerIO,
   type RunStore,
   type SessionHost,
@@ -154,6 +156,8 @@ async function runDirect(opts: {
   verdicts?: { verdict: 'pass' | 'fail'; reason: string }[]
   directives?: Directive[]
   strictPreRunDirt?: boolean
+  allowPreRunIntegrityErrors?: boolean
+  preRunGovernanceChecks?: readonly PreRunGovernanceCheck[]
 }) {
   let bobRefId: string | null = null
   let bobCwd: string | null = null
@@ -202,6 +206,8 @@ async function runDirect(opts: {
       engineHome: home,
       runsRoot,
       strictPreRunDirt: opts.strictPreRunDirt,
+      allowPreRunIntegrityErrors: opts.allowPreRunIntegrityErrors,
+      preRunGovernanceChecks: opts.preRunGovernanceChecks,
       // no `isolation` → direct mode (the new default)
     },
   )
@@ -354,6 +360,80 @@ describe('runRun direct mode — the default (ADR-0023 §2, live git)', () => {
     expect(await g(home, ['rev-parse', 'HEAD'])).toBe(headBefore)
     expect(await exists(join(home, 'packages', 'wip.ts'))).toBe(true)
     expect(await g(home, ['status', '--porcelain', '--untracked-files=all'])).toContain('packages/wip.ts')
+  })
+
+  test('pre-run integrity warns on sync-conflict files and still launches', async () => {
+    await mkdir(join(home, 'packages'), { recursive: true })
+    await writeFile(join(home, 'packages', 'feature.ts.sync-conflict-local'), 'conflicted copy\n')
+
+    const { result, store } = await runDirect({
+      bobWrites: async () => {},
+    })
+
+    expect(result.status).toBe('completed')
+    const warning = store.listEvents(result.runId).find((e) => e.type === 'pre-run-integrity-warning')!
+    expect(warning).toBeTruthy()
+    expect(warning.data).toMatchObject({
+      kind: 'sync-conflict',
+      file: 'packages/feature.ts.sync-conflict-local',
+      detail: 'packages/feature.ts.sync-conflict-local: feature.ts.sync-conflict-local',
+    })
+  })
+
+  test('pre-run integrity refuses malformed run-critical governance with the file named', async () => {
+    const store = openRunStore(':memory:')
+    const corruptFile = join(home, 'cocoder', 'priorities', 'demo.md')
+
+    await expect(
+      runDirect({
+        store,
+        bobWrites: async () => {},
+        preRunGovernanceChecks: [
+          {
+            label: 'priority "demo"',
+            path: corruptFile,
+            check: () => {
+              throw new Error(`frontmatter (${corruptFile}): cannot parse line "# id: demo"`)
+            },
+          },
+        ],
+      }),
+    ).rejects.toBeInstanceOf(PreRunIntegrityError)
+
+    const run = store.listRuns()[0]
+    expect(run?.status).toBe('failed')
+    const event = store.listEvents(run!.id).find((e) => e.type === 'pre-run-integrity-refused')!
+    expect(JSON.stringify(event.data)).toContain(corruptFile)
+  })
+
+  test('pre-run integrity override records the fatal issue and continues', async () => {
+    const corruptFile = join(home, 'cocoder', 'personas', 'deltas', 'bob.md')
+    const { result, store } = await runDirect({
+      allowPreRunIntegrityErrors: true,
+      bobWrites: async () => {},
+      preRunGovernanceChecks: [
+        {
+          label: 'bob persona',
+          path: corruptFile,
+          check: () => {
+            throw new Error(`frontmatter (${corruptFile}): missing \`---\` delimited block at top of file`)
+          },
+        },
+      ],
+    })
+
+    expect(result.status).toBe('completed')
+    const event = store.listEvents(result.runId).find((e) => e.type === 'pre-run-integrity-override')!
+    expect(JSON.stringify(event.data)).toContain(corruptFile)
+  })
+
+  test('clean pre-run integrity adds no warning friction', async () => {
+    const { result, store } = await runDirect({
+      bobWrites: async () => {},
+    })
+
+    expect(result.status).toBe('completed')
+    expect(store.listEvents(result.runId).some((e) => e.type.startsWith('pre-run-integrity-'))).toBe(false)
   })
 
   test('governance-only dirty guard self-heals with a pre-run snapshot and proceeds', async () => {

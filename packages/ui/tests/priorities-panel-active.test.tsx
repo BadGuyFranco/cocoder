@@ -199,8 +199,8 @@ describe('PrioritiesPanel active run semantics', () => {
     fireEvent.click(screen.getByText('Ready priority'))
     const launchButtons = screen.getAllByRole('button', { name: 'Launch' })
     fireEvent.click(launchButtons[launchButtons.length - 1])
-    // ADR-0029: the modal passes the strict-pre-run-dirt toggle (default off) as the second arg.
-    expect(onLaunch).toHaveBeenCalledWith(expect.objectContaining({ id: 'p-ready' }), false)
+    // ADR-0029: the modal passes launch guard toggles (default off) after the priority.
+    expect(onLaunch).toHaveBeenCalledWith(expect.objectContaining({ id: 'p-ready' }), false, false)
     expect(screen.queryByText('Previous run')).toBeNull()
   })
 
@@ -213,7 +213,19 @@ describe('PrioritiesPanel active run semantics', () => {
     const launchButtons = screen.getAllByRole('button', { name: 'Launch' })
     fireEvent.click(launchButtons[launchButtons.length - 1])
 
-    expect(onLaunch).toHaveBeenCalledWith(expect.objectContaining({ id: 'p-ready' }), true)
+    expect(onLaunch).toHaveBeenCalledWith(expect.objectContaining({ id: 'p-ready' }), true, false)
+  })
+
+  it('allows overriding a governance integrity refusal at launch', () => {
+    const onLaunch = vi.fn()
+    renderPanel({ priorities: [priority({ id: 'p-ready', name: 'Ready priority' })], onLaunch })
+
+    fireEvent.click(screen.getByText('Ready priority'))
+    fireEvent.click(screen.getByRole('checkbox', { name: /override governance integrity refusal/i }))
+    const launchButtons = screen.getAllByRole('button', { name: 'Launch' })
+    fireEvent.click(launchButtons[launchButtons.length - 1])
+
+    expect(onLaunch).toHaveBeenCalledWith(expect.objectContaining({ id: 'p-ready' }), false, true)
   })
 
   it('disables queued priority Launch with the single-writer reason while a run is active', () => {

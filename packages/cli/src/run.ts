@@ -15,6 +15,7 @@ import {
   resolveEffectivePersona,
   resolvePlayAssignment,
   runRun,
+  type PreRunGovernanceCheck,
   type PersonaSources,
   type RunnerDeps,
 } from '@cocoder/core'
@@ -24,7 +25,7 @@ import { CmuxSessionHost } from '@cocoder/session-hosts'
 import { authoringPlayViaDaemon, migrateHistoryViaDaemon, runViaDaemon, startOzDaemon, supportCommitViaDaemon, teardownViaDaemon } from './client.js'
 
 const log = (m: string): void => console.error(`[cocoder] ${m}`)
-const usage = 'usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt]   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz commit-support <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]'
+const usage = 'usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz commit-support <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]'
 
 function authorInvocationFromArgv(): unknown {
   const jsonIdx = process.argv.indexOf('--json')
@@ -176,23 +177,29 @@ async function main(): Promise<void> {
   // Optional `--strict-dirt` (ADR-0029): refuse the launch on uncommitted founder WIP instead of the
   // default founder pre-run snapshot. For shared repos / CI that want a hard manual gate.
   const strictPreRunDirt = process.argv.includes('--strict-dirt')
+  const allowPreRunIntegrityErrors = process.argv.includes('--allow-pre-run-integrity-errors')
 
   const live = await probeDaemon({ port: DEFAULT_OZ_PORT })
   if (live.alive) {
     log(`daemon live on :${live.port} → client mode (daemon owns the DB writer + cmux)`)
-    const result = await runViaDaemon(`http://127.0.0.1:${live.port}`, 'cocoder', priorityId, { log, resumeFromRunId, strictPreRunDirt })
+    const result = await runViaDaemon(`http://127.0.0.1:${live.port}`, 'cocoder', priorityId, {
+      log,
+      resumeFromRunId,
+      strictPreRunDirt,
+      allowPreRunIntegrityErrors,
+    })
     console.log(`\nRun ${result.runId}: ${result.status}`)
     if (result.commits.length) console.log(`  committed: ${result.commits.join(', ')}`)
     process.exitCode = result.status === 'completed' ? 0 : 1
     return
   }
   log('no daemon → standalone mode (cli takes the SQLite write-lock)')
-  await runStandalone(priorityId, resumeFromRunId, strictPreRunDirt)
+  await runStandalone(priorityId, resumeFromRunId, strictPreRunDirt, allowPreRunIntegrityErrors)
 }
 
 // Standalone: the cli is the composition root — opens the operational DB (acquiring the
 // single-writer lock), wires the concrete drivers into core's ports, loads governance, runs.
-async function runStandalone(priorityId: string, resumeFromRunId?: string, strictPreRunDirt?: boolean): Promise<void> {
+async function runStandalone(priorityId: string, resumeFromRunId?: string, strictPreRunDirt?: boolean, allowPreRunIntegrityErrors?: boolean): Promise<void> {
   const root = process.cwd() // dogfood: run from the CoCoder repo root
   const personasDir = join(root, 'cocoder', 'personas')
   const prioritiesDir = join(root, 'cocoder', 'priorities')
@@ -209,6 +216,45 @@ async function runStandalone(priorityId: string, resumeFromRunId?: string, stric
   const deb = isPersonaEnabled(assignments, 'deb') ? resolveEffectivePersona(sources, assignments, 'deb') : undefined
   const priority = loadPriority(prioritiesDir, priorityId)
   const wrapPlay = resolveMandatoryPlay('run-wrap', listEffectivePlays(playSources))
+  const preRunGovernanceChecks: PreRunGovernanceCheck[] = [
+    {
+      label: `priority "${priorityId}"`,
+      path: join(prioritiesDir, `${priorityId}.md`),
+      check: () => {
+        loadPriority(prioritiesDir, priorityId)
+      },
+    },
+    {
+      label: 'oscar persona',
+      path: join(baseDir, 'oscar.md'),
+      check: () => {
+        resolveEffectivePersona(sources, assignments, 'oscar')
+      },
+    },
+    {
+      label: 'bob persona',
+      path: join(baseDir, 'bob.md'),
+      check: () => {
+        resolveEffectivePersona(sources, assignments, 'bob')
+      },
+    },
+    {
+      label: 'wrap-up Play',
+      path: playSources.baseDir,
+      check: () => {
+        resolveMandatoryPlay('run-wrap', listEffectivePlays(playSources))
+      },
+    },
+  ]
+  if (deb) {
+    preRunGovernanceChecks.push({
+      label: 'deb persona',
+      path: join(baseDir, 'deb.md'),
+      check: () => {
+        resolveEffectivePersona(sources, assignments, 'deb')
+      },
+    })
+  }
 
   // Resume: continue from a prior run's pickup brief (ADR-0013 / F8).
   let pickup: string | null = null
@@ -246,6 +292,8 @@ async function runStandalone(priorityId: string, resumeFromRunId?: string, stric
       runsRoot,
       pickup,
       strictPreRunDirt,
+      allowPreRunIntegrityErrors,
+      preRunGovernanceChecks,
     })
     console.log(`\nRun ${result.runId}: ${result.status}`)
     if (result.committedSha) console.log(`  committed ${result.committedSha} (${result.committedFiles.length} file(s))`)

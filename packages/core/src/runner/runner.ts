@@ -56,6 +56,13 @@ import { type RunnerPhase, renderDebStatus } from './status.js'
 import { isStopRequestedError } from './stop.js'
 import { faultFingerprint } from './fingerprint.js'
 import type { Triage } from './triage.js'
+import {
+  PreRunIntegrityError,
+  preRunConflictWarnings,
+  runPreRunGovernanceChecks,
+  type PreRunGovernanceCheck,
+  type PreRunIntegrityIssue,
+} from './pre-run-integrity.js'
 
 const exec = promisify(execChildProcess)
 
@@ -144,6 +151,10 @@ export interface RunInput {
    *  the founder commit/stash by hand — for shared repos or CI that want a manual gate. Agent governance
    *  (the verify gate, quarantine, write-scope flagging) is unaffected either way. */
   readonly strictPreRunDirt?: boolean
+  /** Explicit founder override for fatal pre-run integrity findings. Warnings always proceed. */
+  readonly allowPreRunIntegrityErrors?: boolean
+  /** Loader-backed checks for governance files the assembled launch will depend on. */
+  readonly preRunGovernanceChecks?: readonly PreRunGovernanceCheck[]
 }
 
 export interface RunResult {
@@ -487,6 +498,8 @@ export class DirtyWorkingTreeError extends Error {
   }
 }
 
+export { PreRunIntegrityError, type PreRunGovernanceCheck, type PreRunIntegrityIssue }
+
 // Interactive sessions are human-watched, so an atom may take many minutes — these are generous
 // BACKSTOPS, not tight headless budgets. A dead pane is caught immediately by the monitor's liveness
 // check; a timeout only guards a run abandoned with a still-alive pane. Default 4h, matching CoBuilder.
@@ -622,6 +635,24 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   // which the founder snapshot removes. strictPreRunDirt restores the hard-stop for shared repos / CI.)
   const committingScopes = [scope, oscar.writeScope, deb?.writeScope ?? [], input.wrapPlay?.writeScope ?? [], PORTABLE_RUN_HISTORY_SCOPE].flat()
   const changedAtStart = await git.changedFiles(workspaceRepo)
+  const integrityWarnings = await preRunConflictWarnings(workspaceRepo, changedAtStart)
+  for (const warning of integrityWarnings) {
+    store.recordEvent({ runId: run.id, type: 'pre-run-integrity-warning', data: warning })
+    log(`pre-run integrity warning: ${warning.detail}`)
+  }
+  const fatalIntegrityIssues = runPreRunGovernanceChecks(input.preRunGovernanceChecks ?? [])
+  if (fatalIntegrityIssues.length > 0) {
+    store.recordEvent({
+      runId: run.id,
+      type: input.allowPreRunIntegrityErrors ? 'pre-run-integrity-override' : 'pre-run-integrity-refused',
+      data: { issues: fatalIntegrityIssues },
+    })
+    if (!input.allowPreRunIntegrityErrors) {
+      store.setRunStatus(run.id, 'failed')
+      throw new PreRunIntegrityError(fatalIntegrityIssues)
+    }
+    log(`pre-run integrity override: ${fatalIntegrityIssues.map((issue) => issue.detail).join('; ')}`)
+  }
   const { inScope: dirtyInScope } = partitionByScope(changedAtStart, committingScopes)
   const { inScope: builderDirt, outOfScope: governanceDirt } = partitionByScope(dirtyInScope, scope)
   let dirtyAtStartFiles = changedAtStart
