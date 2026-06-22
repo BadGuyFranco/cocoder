@@ -9,8 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ClaudeAdapter, type Exec } from '@cocoder/adapters'
-import { atomSentinel, loadAssignments, loadPriority, makeGit, openRunStore, readTickets, StopRequestedError, writePortableRun, type Adapter, type Git, type HeadlessRunInput, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
-import { basePrioritiesDir } from '@cocoder/personas'
+import { atomSentinel, loadAssignments, loadPriority, makeGit, openRunStore, readTickets, StopRequestedError, workspaceTemplateDir, writePortableRun, type Adapter, type Git, type HeadlessRunInput, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
 import { createOzServer, OZ_CSRF_HEADER, type OzServer } from '../src/index.js'
 import { validFounderCloseout } from './helpers/founder-closeout.js'
 
@@ -2511,8 +2510,8 @@ describe('Oz mutations + lifecycle', () => {
     expect(trackedCocoder).toEqual(expect.arrayContaining(['cocoder/counters.json', 'cocoder/workspace.json']))
   })
 
-  test('base ad-hoc priority template parses and stays product-generic', async () => {
-    const dir = basePrioritiesDir()
+  test('ad-hoc priority template parses and stays product-generic', async () => {
+    const dir = join(workspaceTemplateDir(), 'priorities')
     const text = await readFile(join(dir, 'adhoc-session.md'), 'utf8')
 
     expect(loadPriority(dir, 'adhoc-session')).toMatchObject({

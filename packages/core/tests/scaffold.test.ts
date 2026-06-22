@@ -7,7 +7,6 @@ import { installRoot, loadAssignments, loadPriority, scaffoldCocoderZone, worksp
 
 const repoRoot = (): string => join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
 const templateDir = (): string => join(repoRoot(), 'templates', 'workspace-cocoder', 'cocoder')
-const basePrioritiesDir = (): string => join(repoRoot(), 'packages', 'personas', 'base', 'priorities')
 const exists = (path: string): Promise<boolean> => stat(path).then(() => true, () => false)
 
 const dirs: string[] = []
@@ -65,16 +64,12 @@ describe('scaffoldCocoderZone', () => {
 
     expect(result.created).toContain('cocoder/priorities/onboard-existing.md')
     const seeded = await readFile(join(targetRoot, 'cocoder', 'priorities', 'onboard-existing.md'), 'utf8')
-    expect(seeded).toBe(await readFile(join(basePrioritiesDir(), 'onboard-existing.md'), 'utf8'))
+    expect(seeded).toContain('## Objective')
     expect(seeded).toContain('auditWriteBoundary: ["cocoder/**"]')
     expect(seeded).toContain('code, content, operations/docs, or a mix')
     expect(seeded).toContain('type subsystems explicitly as code subsystems vs content/governance/ops subsystems')
+    expect(seeded).not.toMatch(/CoBuilder|dogfood/i)
     expect(loadPriority(join(targetRoot, 'cocoder', 'priorities'), 'onboard-existing')).toMatchObject({
-      id: 'onboard-existing',
-      title: 'Onboard an existing repo — deep multi-agent audit that authors its cocoder/ governance',
-      auditWriteBoundary: ['cocoder/**'],
-    })
-    expect(loadPriority(basePrioritiesDir(), 'onboard-existing')).toMatchObject({
       id: 'onboard-existing',
       title: 'Onboard an existing repo — deep multi-agent audit that authors its cocoder/ governance',
       auditWriteBoundary: ['cocoder/**'],

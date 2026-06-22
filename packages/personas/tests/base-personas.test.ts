@@ -1,12 +1,13 @@
 import { statSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { basePersonasDir, basePlaysDir, basePrioritiesDir } from '../src/index.js'
+import { basePersonasDir, basePlaysDir } from '../src/index.js'
 
 const BASE_PERSONA_FILES = ['bob.md', 'deb.md', 'oscar.md', 'oz.md', 'quinn.md', 'shared-standards.md'] as const
 const FRONTMATTER_PERSONA_FILES = ['bob.md', 'deb.md', 'oscar.md', 'oz.md', 'quinn.md'] as const
 const NEW_BASE_PLAY_FILES = ['documentation.md', 'code-review.md', 'electron-test.md', 'write-tests.md', 'run-tests.md'] as const
 const READ_ONLY_BASE_PLAY_FILES = ['code-review.md', 'electron-test.md', 'run-tests.md'] as const
+const templatePrioritiesDir = (): string => join(basePersonasDir(), '..', '..', '..', 'templates', 'workspace-cocoder', 'cocoder', 'priorities')
 
 const frontmatterValue = (text: string, key: string): string | null => {
   const match = text.match(new RegExp(`^${key}:\\s*(.+)$`, 'm'))
@@ -272,15 +273,15 @@ describe('basePlaysDir', () => {
   })
 })
 
-describe('basePrioritiesDir', () => {
-  test('resolves to the shipped base priorities directory', () => {
-    const dir = basePrioritiesDir()
+describe('workspace priority templates', () => {
+  test('resolves to the shipped priority template directory', () => {
+    const dir = templatePrioritiesDir()
 
     expect(statSync(dir).isDirectory()).toBe(true)
   })
 
   test('ships a product-generic ad-hoc session template', () => {
-    const dir = basePrioritiesDir()
+    const dir = templatePrioritiesDir()
     const text = readFileSync(join(dir, 'adhoc-session.md'), 'utf8')
 
     expect(frontmatterValue(text, 'id')).toBe('adhoc-session')
