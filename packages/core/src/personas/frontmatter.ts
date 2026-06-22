@@ -11,10 +11,13 @@ export interface Frontmatter {
   readonly body: string
 }
 
-export function parseFrontmatter(md: string): Frontmatter {
+export function parseFrontmatter(md: string, file?: string): Frontmatter {
+  // `file` is optional context so a malformed governance file fails with its path, not an opaque message
+  // (a sync-corrupted frontmatter must name itself — see the wrap-up.md round-trip, 2026-06-21).
+  const where = file ? ` (${file})` : ''
   const text = md.replace(/^﻿/, '')
   const m = text.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/)
-  if (!m) throw new Error('frontmatter: missing `---` delimited block at top of file')
+  if (!m) throw new Error(`frontmatter${where}: missing \`---\` delimited block at top of file`)
   const [, yaml, body] = m
   const data: Record<string, string | string[]> = {}
   const lines = yaml!.split(/\r?\n/)
@@ -26,7 +29,7 @@ export function parseFrontmatter(md: string): Frontmatter {
       continue
     }
     const kv = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/)
-    if (!kv) throw new Error(`frontmatter: cannot parse line "${line}"`)
+    if (!kv) throw new Error(`frontmatter${where}: cannot parse line "${line}"`)
     const key = kv[1]!
     const rest = kv[2]!.trim()
     if (rest === '' || rest === '|') {

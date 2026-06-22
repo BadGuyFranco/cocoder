@@ -41,7 +41,7 @@ function parseOptionalStringList(value: string | readonly string[] | undefined):
 
 export function loadPriority(prioritiesDir: string, id: string): Priority {
   const file = join(prioritiesDir, `${id}.md`)
-  const { data, body } = parseFrontmatter(readFileSync(file, 'utf8'))
+  const { data, body } = parseFrontmatter(readFileSync(file, 'utf8'), file)
   if (data.id !== id) throw new Error(`priority ${file}: frontmatter id "${String(data.id)}" != filename id "${id}"`)
   if (typeof data.title !== 'string' || data.title === '') {
     throw new Error(`priority ${file}: frontmatter "title" must be a non-empty string`)

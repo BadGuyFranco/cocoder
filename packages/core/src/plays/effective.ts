@@ -25,7 +25,7 @@ export class PlayDeltaLoadError extends Error {
 export function loadPlayDelta(deltaDir: string, id: string): PlayDelta {
   const file = join(deltaDir, `${id}.md`)
   const raw = readFileSync(file, 'utf8')
-  const { data, body } = parseFrontmatter(raw)
+  const { data, body } = parseFrontmatter(raw, file)
   const fmId = asString(data.id, 'id', file)
   if (fmId !== id) {
     throw new PlayDeltaLoadError(`play delta ${file}: frontmatter id "${fmId}" does not match filename id "${id}"`, file)

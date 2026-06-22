@@ -14,7 +14,7 @@ const asString = (v: string | string[] | undefined, field: string, file: string)
 export function loadPersona(personasDir: string, id: string): Persona {
   const file = join(personasDir, `${id}.md`)
   const raw = readFileSync(file, 'utf8')
-  const { data, body } = parseFrontmatter(raw)
+  const { data, body } = parseFrontmatter(raw, file)
   const fmId = asString(data.id, 'id', file)
   if (fmId !== id) throw new Error(`persona ${file}: frontmatter id "${fmId}" does not match filename id "${id}"`)
   const writeScope = Array.isArray(data.writeScope) ? data.writeScope : data.writeScope ? [data.writeScope] : []

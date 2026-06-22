@@ -133,6 +133,16 @@ describe('play loading', () => {
     expect(() => loadPlay(dir, 'x')).toThrow(new RegExp(`play ${file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:`))
   })
 
+  test('corrupt frontmatter names the file (sync-corruption resilience)', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'plays-'))
+    const file = join(dir, 'x.md')
+    // A sync round-trip mangled the frontmatter: `id: x` became a markdown heading, breaking the block.
+    await writeFile(file, ['---', '', '## id: x', 'label: X', 'kind: headless', '---', 'b'].join('\n'))
+
+    // The error must name the file, not throw an opaque "cannot parse line" (the wrap-up.md class).
+    expect(() => loadPlay(dir, 'x')).toThrow(new RegExp(file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+  })
+
   test('id/filename mismatch throws clearly', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'plays-'))
     await writeFile(join(dir, 'x.md'), '---\nid: y\nlabel: Y\nkind: headless\n---\nb')

@@ -19,7 +19,7 @@ const asKind = (v: string | string[] | undefined, file: string): Play['kind'] =>
 export function loadPlay(playsDir: string, id: string): Play {
   const file = join(playsDir, `${id}.md`)
   const raw = readFileSync(file, 'utf8')
-  const { data, body } = parseFrontmatter(raw)
+  const { data, body } = parseFrontmatter(raw, file)
   const fmId = asString(data.id, 'id', file)
   if (fmId !== id) throw new Error(`play ${file}: frontmatter id "${fmId}" does not match filename id "${id}"`)
   const writeScope = Array.isArray(data.writeScope) ? data.writeScope : data.writeScope ? [data.writeScope] : []

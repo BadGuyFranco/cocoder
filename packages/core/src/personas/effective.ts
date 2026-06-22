@@ -24,7 +24,7 @@ export class PersonaDeltaLoadError extends Error {
 export function loadPersonaDelta(deltaDir: string, id: string): PersonaDelta {
   const file = join(deltaDir, `${id}.md`)
   const raw = readFileSync(file, 'utf8')
-  const { data, body } = parseFrontmatter(raw)
+  const { data, body } = parseFrontmatter(raw, file)
   const fmId = asString(data.id, 'id', file)
   if (fmId !== id) {
     throw new PersonaDeltaLoadError(`persona delta ${file}: frontmatter id "${fmId}" does not match filename id "${id}"`, file)
