@@ -188,7 +188,10 @@ const fakeIO = (opts: {
     proposal?: string
     mode?: 'propose' | 'repair'
     diagnosis?: string
+    whyCocoderOwned?: string
     filesChanged?: string[]
+    verification?: string
+    remainingRisk?: string
     escalation?: 'repair' | 'ticket' | 'recommend-priority'
     ticketId?: string
   }
@@ -2028,6 +2031,8 @@ describe('runRun (multi-atom loop)', () => {
     expect(oscarPrompt).toContain('Artifact-first rule')
     expect(oscarPrompt).toContain('your FIRST action in this run is to write the required\ndirective JSON')
     expect(oscarPrompt).toContain('never just exit')
+    expect(oscarPrompt).toContain('"kind": "deb-investigate"')
+    expect(oscarPrompt).toContain('formal run fault')
   })
 
   test("Oscar's launch prompt allows founder-directed Surface-A edits after wrap", async () => {
@@ -2165,11 +2170,32 @@ describe('runRun (multi-atom loop)', () => {
     expect(statusWrites.at(-1)?.waitCondition).toContain('Oscar remains reachable')
     expect(statusWrites.at(-1)?.waitCondition).toContain('in-scope Surface-A edits')
     expect(statusWrites.at(-1)?.waitCondition).not.toContain('file-changing follow-ups need a new committed run path')
+    const events = store.listEvents(store.listRuns()[0]!.id)
+    expect(events.some((e) => e.type === 'deb-watch-started')).toBe(true)
+    expect(events.some((e) => e.type === 'deb-watch-dispatch')).toBe(true)
+    expect(events.some((e) => e.type === 'deb-watch-stopped')).toBe(true)
 
     const noDebStore = openRunStore(':memory:')
     const noDebStatus: DebStatus[] = []
     await runRun(baseDeps({ store: noDebStore, io: fakeIO({ directives: [delegate('do x'), wrapup('done')], statusWrites: noDebStatus }) }), input)
     expect(noDebStatus).toHaveLength(0) // no status feed without Deb
+  })
+
+  test('Deb watch dispatches are non-blocking when Deb is silent', async () => {
+    const store = openRunStore(':memory:')
+    const result = await runRun(
+      baseDeps({
+        store,
+        sessionHost: fakeSessionHost({
+          async sendInput(_ref, text) {
+            if (text.startsWith('DEB WATCH')) return new Promise<void>(() => {})
+          },
+        }),
+      }),
+      { ...input, deb },
+    )
+    expect(result.status).toBe('completed')
+    expect(store.listEvents(result.runId).some((e) => e.type === 'deb-watch-dispatch')).toBe(true)
   })
 
   test('delivers a Deb-authored nudge to Oscar (Deb advises; the runner delivers — ADR-0016)', async () => {
@@ -2194,6 +2220,50 @@ describe('runRun (multi-atom loop)', () => {
     const debNudge = store.listEvents(result.runId).find((e) => e.type === 'oscar-nudge' && (e.data as { source?: string }).source === 'deb')
     expect(debNudge).toBeTruthy()
     expect(debNudge?.data).toMatchObject({ persona: 'deb', text: 'Oscar — ask Bob for a root-cause diagnosis', source: 'deb', seq: 1 })
+  })
+
+  test('full-run Deb watcher delivers a Deb-authored nudge during Bob build', async () => {
+    const store = openRunStore(':memory:')
+    const debReq: NudgeRequest = { target: 'oscar', message: 'Oscar — clarify the acceptance evidence before verify', rationale: 'Bob is building and the blocker is in orchestration scope', seq: 1 }
+    let samples = 0
+    const sent: string[] = []
+    const io: RunnerIO = {
+      ...fakeIO({
+        directives: [delegate('slow atom'), wrapup('done')],
+        readNudge: async (nudgePath) => {
+          if (!nudgePath.endsWith('deb-nudge.json')) return null
+          const runId = store.listRuns()[0]?.id
+          return runId && store.listEvents(runId).some((e) => e.type === 'builder-dispatch') ? debReq : null
+        },
+      }),
+    }
+    const makeSlowBuildJudge: MakeJudge = () => async () => {
+      samples += 1
+      if (samples < 8) {
+        await sleep(2)
+        return { state: 'progressing' }
+      }
+      return { state: 'done' }
+    }
+    const result = await runRun(
+      baseDeps({
+        store,
+        io,
+        makeJudge: makeSlowBuildJudge,
+        sessionHost: fakeSessionHost({
+          async sendInput(_ref, text) {
+            sent.push(text)
+          },
+        }),
+        timeouts: { orchestrationMs: 500, buildMs: 500, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 },
+      }),
+      { ...input, deb },
+    )
+    expect(result.status).toBe('completed')
+    expect(sent).toContain(debReq.message)
+    const debNudge = store.listEvents(result.runId).find((e) => e.type === 'oscar-nudge' && (e.data as { source?: string }).source === 'deb')
+    expect(debNudge?.data).toMatchObject({ stage: 'watch', text: debReq.message, rationale: debReq.rationale })
+    expect(store.listEvents(result.runId).some((e) => e.type === 'nudge' && String((e.data as { text?: unknown }).text).includes(debReq.message))).toBe(false)
   })
 
   test('delivers a fresh Oz-authored nudge to Oscar and does not redeliver the same seq', async () => {
@@ -2232,7 +2302,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(ozNudges[0]?.data).toMatchObject({ persona: 'oz', text: ozReq.message, source: 'oz', rationale: ozReq.rationale, seq: 1 })
   })
 
-  test('tracks Oz and Deb nudge seqs independently, with Oz winning a same-sample tie', async () => {
+  test('tracks Oz and Deb nudge seqs independently across their runner delivery loops', async () => {
     const store = openRunStore(':memory:')
     const directives = [delegate('do it'), wrapup('done')]
     const sent: string[] = []
@@ -2264,10 +2334,61 @@ describe('runRun (multi-atom loop)', () => {
     )
     expect(result.status).toBe('completed')
     const delivered = sent.filter((text) => text === ozReq.message || text === debReq.message)
-    expect(delivered).toEqual([ozReq.message, debReq.message])
+    expect(delivered).toEqual(expect.arrayContaining([ozReq.message, debReq.message]))
+    expect(delivered.filter((text) => text === ozReq.message)).toHaveLength(1)
+    expect(delivered.filter((text) => text === debReq.message)).toHaveLength(1)
     const nudgeEvents = store.listEvents(result.runId).filter((e) => e.type === 'oscar-nudge')
-    expect(nudgeEvents.map((e) => (e.data as { source?: string }).source).filter((source) => source === 'oz' || source === 'deb')).toEqual(['oz', 'deb'])
+    expect(nudgeEvents.map((e) => (e.data as { source?: string }).source).filter((source) => source === 'oz' || source === 'deb')).toEqual(expect.arrayContaining(['oz', 'deb']))
     expect(nudgeEvents.find((e) => (e.data as { source?: string }).source === 'deb')?.data).toMatchObject({ text: debReq.message, seq: 1 })
+  })
+
+  test('Oscar can request Deb investigation on a named orchestration blocker through the directive path', async () => {
+    const store = openRunStore(':memory:')
+    const debRepair = persona({ id: 'deb', cli: 'claude', writeScope: ['packages/core/**'] })
+    const blocker = 'runner handed Oscar a verify path that cannot be written'
+    const io = fakeIO({
+      directives: [{ kind: 'deb-investigate', blocker }],
+      triage: {
+        disposition: 'cocoder-bug',
+        summary: 'runner emitted an impossible verify handoff',
+        mode: 'repair',
+        diagnosis: blocker,
+        whyCocoderOwned: 'The runner owns directive and verify handoff paths.',
+        filesChanged: ['packages/core/src/runner/runner.ts'],
+        verification: 'runner tests',
+        remainingRisk: 'none',
+      },
+    })
+    let repairStarted = false
+    const git: Git = {
+      ...worktreeStubs,
+      async headSha() {
+        return 'h0'
+      },
+      async changedFiles() {
+        if (!repairStarted) {
+          repairStarted = true
+          return []
+        }
+        return ['packages/core/src/runner/runner.ts']
+      },
+      async addAndCommit() {
+        return 'sha-deb-investigation'
+      },
+      async restoreToHead() {},
+      async show() {
+        return ''
+      },
+    }
+
+    await expect(runRun(baseDeps({ store, io, git }), { ...input, deb: debRepair })).rejects.toThrow(blocker)
+    const runId = store.listRuns()[0]!.id
+    const events = store.listEvents(runId)
+    expect(events.find((e) => e.type === 'oscar-requested-deb-investigation')?.data).toMatchObject({ message: blocker })
+    expect(events.find((e) => e.type === 'triage-dispatch')?.data).toMatchObject({ fault: 'oscar-requested-deb-investigation' })
+    expect(events.find((e) => e.type === 'deb-repair')?.data).toMatchObject({ committedSha: 'sha-deb-investigation', files: ['packages/core/src/runner/runner.ts'] })
+    expect(events.some((e) => e.type === 'builder-dispatch')).toBe(false)
+    expect(store.getRun(runId)?.status).toBe('failed')
   })
 
   test('repair mode commits everything Deb touched; out-of-lane product code is flagged, not withheld (scope advisory)', async () => {

@@ -29,8 +29,12 @@ describe('parseDirective', () => {
     })
   })
 
-  test('keeps prose delegate and wrapup directives unchanged', () => {
+  test('keeps prose delegate, Deb investigation, and wrapup directives unchanged', () => {
     expect(parseDirective(JSON.stringify({ kind: 'delegate', task: 'do the thing' }))).toEqual({ kind: 'delegate', task: 'do the thing' })
+    expect(parseDirective(JSON.stringify({ kind: 'deb-investigate', blocker: 'Oscar cannot write the verify artifact because the runner named a missing path' }))).toEqual({
+      kind: 'deb-investigate',
+      blocker: 'Oscar cannot write the verify artifact because the runner named a missing path',
+    })
     expect(parseDirective(JSON.stringify({ kind: 'wrapup', pickup: 'resume here' }))).toEqual({ kind: 'wrapup', pickup: 'resume here' })
   })
 
