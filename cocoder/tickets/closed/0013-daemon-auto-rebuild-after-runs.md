@@ -2,7 +2,7 @@
 id: 0013
 title: Auto-rebuild + reload the Oz daemon after a run changes packages/daemon (no manual restart)
 type: task
-status: Open
+status: Closed
 priority: tickets-review
 owner: oscar run_122
 created: 2026-06-17
@@ -74,3 +74,9 @@ run before the next launch — that manual step is exactly what this ticket remo
 - Builds on closed ticket [0010](../closed/0010-auto-rebuild-ui-bundle-after-dashboard-changes.md).
 - Discovered as Bug 2 of the `tickets-review` priority live review (founder, 2026-06-17); recurred on
   `job-hunt` / `new-primary-root` (runs 174–177, founder 2026-06-22).
+
+## Resolution
+
+Resolved by run run_179 (586b505) on 2026-06-22.
+
+Daemon/core-touching runs now schedule an idle-only daemon reload: the daemon validates @cocoder/core and @cocoder/daemon, surfaces build failures, and queues the existing daemon-owned restart only after all in-flight runs drain.

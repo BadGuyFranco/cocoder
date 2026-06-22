@@ -13,7 +13,6 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Owner |
 |---|---|---|---|---|
-| [0013](./open/0013-daemon-auto-rebuild-after-runs.md) | Auto-rebuild + reload the Oz daemon after a run changes packages/daemon (no manual restart) | task | tickets-review | oscar run_122 |
 | [0025](./open/0025-git-init-baseline-commit-full-tree.md) | git-init of a non-git primary root must baseline-commit the full existing tree, not only the cocoder zone | bug | new-primary-root | oscar run_177 |
 | [0026](./open/0026-scaffold-governance-commit-incomplete.md) | Scaffold governance commit omits cocoder/workspace.json and cocoder/counters.json | bug | new-primary-root | oscar run_177 |
 | [0027](./open/0027-onboard-existing-template-supports-content-ops-repos.md) | onboard-existing template assumes a code repo; support content/ops repos as a first-class target | task | new-primary-root | oscar run_177 |
@@ -24,6 +23,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0013](./closed/0013-daemon-auto-rebuild-after-runs.md) | Auto-rebuild + reload the Oz daemon after a run changes packages/daemon (no manual restart) | task | 2026-06-22 | Daemon/core-touching runs now schedule an idle-only daemon reload: the daemon validates @cocoder/core and @cocoder/daemon, surfaces build failures, and queues the existing daemon-owned restart only after all in-flight runs drain. |
 | [0024](./closed/0024-drift-audit-detector-false-positives-and-crash.md) | drift-audit path detector is false-positive-prone and crashes on a same-line duplicate claim id | bug | 2026-06-21 | Detector rewritten: no crash on self-link (href-only extraction + per-line slug guard); rejects @scopes/ADR-refs/slash-lists/globs/bare-exts/dir-mentions, resolves relative refs. Corrected dogfood now yields 0 findings (was 16 FPs); pinned in drift-read-claims.test.ts |
 | [0003](./closed/0003-public-docs-v1-stale.md) | Public docs/ tree is v1-stale (commands, PRIORITIES.md, cocoder/local, routes) | task | 2026-06-20 | All adopter-facing docs rewritten to v2 against code; tmux fully scrubbed (cmux); v1 constructs + fictional commands (`cocoder init/config/launch/oz register/oz status\|stop/validate-contracts`, cli `build`) removed; real registration = dashboard Add Workspace, lifecycle = `scripts/oz.sh`; ADR-0029 `--strict-dirt` documented. Deep internal diagnostic docs left out of scope |
 | [0021](./closed/0021-daemon-typecheck-stale-test-mocks.md) | Daemon package typecheck is red on stale test mocks | bug | 2026-06-20 | Mocks refreshed to match production types (26→0 errors), no tests weakened (vitest 236/236). Silent-rot root cause fixed: every non-ui package gets a `typecheck` script and root runs `pnpm -r typecheck`, so CI now covers test files. Commit `0487b8e` |
