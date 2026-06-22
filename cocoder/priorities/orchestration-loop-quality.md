@@ -3,11 +3,12 @@ id: orchestration-loop-quality
 title: "Orchestration loop quality — catch avoidable rework and unproven wraps"
 ---
 
-> **DRAFT — awaiting founder ratification of the Objective (ADR-0010).** Founder-directed creation
-> (run_181): "define where orchestration failed us and write a new priority to research and fix." Oscar
-> drafted the phrasing and the evidence below; the founder owns the Objective and must ratify it before this
-> is runnable. The hard tension this priority must respect is **F5 (governance-of-governance is itself a
-> failure)** — the deliverable is *not* reflexively "build a checker that polices the orchestrator."
+> **Placed in the active stack; first gate is research + founder-ratify (ADR-0035 — no draft state).**
+> Founder-directed creation (run_181): "define where orchestration failed us and write a new priority to
+> research and fix." Oscar drafted the phrasing and the evidence below; the founder ratifies the informed
+> Objective at this priority's first research gate, not as a pre-run hold. The hard tension this priority
+> must respect is **F5 (governance-of-governance is itself a failure)** — the deliverable is *not*
+> reflexively "build a checker that polices the orchestrator."
 
 ## Objective
 The Oscar→Bob→verify loop stops burning round-trips on avoidable rework and stops wrapping on unproven

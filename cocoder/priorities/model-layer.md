@@ -101,5 +101,6 @@ when Grok drafted it.
 ## Notes
 - Predecessors archived: `first-class-model-tiers`, `adapter-abstraction-hardening` (both Grok-drafted; their
   valid cores are absorbed here, their overstated claims corrected by the map above).
-- **Founder gate:** this Objective is the merged, grounded scope; per ADR-0010 the founder ratifies it before
-  the first build run. The Grok "ownership pass owed" banner is discharged by the research above.
+- **Founder gate:** placed in the active stack; the founder ratifies this merged, grounded Objective at the
+  first-run research gate, not as a pre-run hold (ADR-0035). The Grok "ownership pass owed" banner is
+  discharged by the research above.
