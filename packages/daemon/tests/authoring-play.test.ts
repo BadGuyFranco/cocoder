@@ -311,6 +311,9 @@ async function makeFixture(options: {
     csrfToken: 'test-csrf',
     liveRefs: new Set(),
     restartDaemon: () => {},
+    buildDaemonForReload: async () => ({ exitCode: 0, output: 'ok' }),
+    daemonReloadBuildTimeoutMs: 900_000,
+    daemonReload: { pending: null, running: false },
     dashboardLauncher: { current: null, spawn: () => { throw new Error('dashboard must not launch in tests') } },
     runHeadless: options.runHeadless ?? (async (input: HeadlessRunInput) => {
       headlessInputs.push(input)
