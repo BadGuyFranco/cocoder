@@ -1,5 +1,4 @@
 [
-  "deb-follows-oscar",
   "deb-oscar-repair-loop",
   "new-primary-root",
   "priority-audit",
