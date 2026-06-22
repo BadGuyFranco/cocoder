@@ -244,10 +244,14 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
 5. `adapter-abstraction-hardening` — **Grok draft; requires founder ownership beat before launch.** Reduce
    duplication in the CLI adapter layer (ADR-0006).
 6. `priority-audit` — standing pruning tool (assess priority set for staleness → founder-decision table).
-7. `deb-follows-oscar` — **BLOCKED (run_41/run_184).** Watcher implementation test-green in worktree but
-   unlanded; founder must pick escalation Option A (formal fault + relaunch, recommended) vs B (in-flight
-   repair, Oscar continues) — ticket `0030`. Watcher/nudge halves need no rework after the fork.
-8. `orchestration-loop-quality` — **ARCHIVE-CANDIDATE (run_40/run_183).** All four run_181 loop-failure modes
+7. `deb-follows-oscar` — **ARCHIVE-CANDIDATE (run_42/run_185).** Watcher + Oscar-only nudge half complete
+   and test-proven: full-lifecycle Deb watch loop, `deb-status`/`watch` projection, owner-map row, prompt
+   alignment, runner.test.ts pins (465/465 green). Escalation fork resolved via ticket `0030` / ADR-0036 split;
+   repair dialogue moved to `deb-oscar-repair-loop`. **Founder gate:** confirm archive.
+8. `deb-oscar-repair-loop` — **CONTINUE (not yet launched).** Oscar↔Deb autonomous repair dialogue per
+   ADR-0036 — Oscar-initiated, post-wrap-capable, Bob-free; reuses ADR-0016 repair path + commit spine.
+   Split from `deb-follows-oscar` (ticket `0030`). **Next launch:** atom 0 — decision + owner-map extension.
+9. `orchestration-loop-quality` — **ARCHIVE-CANDIDATE (run_40/run_183).** All four run_181 loop-failure modes
    satisfied: delegation re-derive + multi-owner mandate in `oscar.md`, Oscar support-edit suite bar in
    `shared-standards.md`, mode 4 founder-accepted no-op (wrap-up F18 + existing proof scripts). Persona/Play
    suites green. **Founder gate:** confirm archive.

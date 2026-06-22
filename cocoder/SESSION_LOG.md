@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-22 — **deb-follows-oscar: watcher + evidence layer landed — archive-candidate (run_42/run_185)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [deb-follows-oscar](./priorities/deb-follows-oscar.md) | **Run:** run_185 (display 42)
+**Outcomes:**
+- **Watcher core was already in HEAD** from run_184 (`48de0d9`); run_185 added the evidence/docs/tests layer in one verified atom (`bd264549`): `deb-status` events per transition, `status.ts` `watch` projection, owner-map row, Deb/prompt full-lifecycle DEB WATCH wording, strengthened runner.test.ts pins (watch.active, Oscar-only nudge, non-blocking when silent).
+- **Atom 0 rejected** — gutted ADR-0016 repair/escalation machinery and removed `deb-investigate` (out of scope); atom 1 re-scoped additive-only and passed.
+- **Verified-when met:** Deb informed across full lifecycle; Oscar receives rate-limited `source:'deb'` nudges; non-blocking, authority-safe, no second lane, no Deb→Bob path; ADR-0016 boundary intact.
+- **Disposition: `archive-candidate`.** No buildable atoms remain; founder archive confirmation only. Repair dialogue split to `deb-oscar-repair-loop` (ADR-0036).
+
+**Next:** Founder confirms archive of `deb-follows-oscar`; then launch `deb-oscar-repair-loop` — atom 0 (ADR-0036 decision + owner-map row).
+
 ## 2026-06-22 — **deb-follows-oscar: Deb watcher built green — blocked on escalation fork (run_41/run_184)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [deb-follows-oscar](./priorities/deb-follows-oscar.md) | **Run:** run_184 (display 41)
