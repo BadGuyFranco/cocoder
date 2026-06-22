@@ -12,6 +12,18 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-22 — **deb-oscar-repair-loop: Oscar↔Deb repair dialogue landed — archive-candidate (run_43/run_186)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [deb-oscar-repair-loop](./priorities/deb-oscar-repair-loop.md) | **Run:** run_186 (display 43)
+**Outcomes:**
+- **ADR-0036 + owner-map row** — decision-of-record and `docs/orchestration-contract-ownership.md` repair-dialogue contract; design slice at `docs/oscar-deb-repair-dialogue-design.md`.
+- **Daemon-resident dialogue shipped** — `requestOscarDebRepair` state machine (propose→evaluate→direct; risky→founder); entry via HTTP, Oz `deb-repair`, and `cocoder oz request-deb-repair`; in-scope fixes through ADR-0016 + commit spine.
+- **`deb-investigate` lane removed** — within-run directive kind, runner fail path, and prompt language deleted; orchestration-contracts guard pins rejection.
+- **Persona alignment + proof** — Oscar/Deb base prompts updated; `node scripts/proof-oscar-deb-repair.mjs` green (8 atoms, 8 commits).
+- **Disposition: `archive-candidate`.** Verified-when met; no buildable atoms remain; founder archive confirmation only.
+
+**Next:** Launch `priority-audit` — ranked status-vs-reality table across the active set (incl. archive-ready priorities).
+
 ## 2026-06-22 — **deb-follows-oscar: watcher + evidence layer landed — archive-candidate (run_42/run_185)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [deb-follows-oscar](./priorities/deb-follows-oscar.md) | **Run:** run_185 (display 42)

@@ -248,9 +248,11 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    and test-proven: full-lifecycle Deb watch loop, `deb-status`/`watch` projection, owner-map row, prompt
    alignment, runner.test.ts pins (465/465 green). Escalation fork resolved via ticket `0030` / ADR-0036 split;
    repair dialogue moved to `deb-oscar-repair-loop`. **Founder gate:** confirm archive.
-8. `deb-oscar-repair-loop` — **CONTINUE (not yet launched).** Oscar↔Deb autonomous repair dialogue per
-   ADR-0036 — Oscar-initiated, post-wrap-capable, Bob-free; reuses ADR-0016 repair path + commit spine.
-   Split from `deb-follows-oscar` (ticket `0030`). **Next launch:** atom 0 — decision + owner-map extension.
+8. `deb-oscar-repair-loop` — **ARCHIVE-CANDIDATE (run_43/run_186).** Oscar↔Deb autonomous repair dialogue
+   per ADR-0036 — Oscar-initiated, post-wrap-capable, Bob-free; daemon-resident propose→evaluate→direct
+   handshake; in-scope fixes via ADR-0016 + commit spine; risky items escalate to founder; within-run
+   `deb-investigate` lane removed. Proof: `node scripts/proof-oscar-deb-repair.mjs`. **Founder gate:**
+   confirm archive.
 9. `orchestration-loop-quality` — **ARCHIVE-CANDIDATE (run_40/run_183).** All four run_181 loop-failure modes
    satisfied: delegation re-derive + multi-owner mandate in `oscar.md`, Oscar support-edit suite bar in
    `shared-standards.md`, mode 4 founder-accepted no-op (wrap-up F18 + existing proof scripts). Persona/Play
