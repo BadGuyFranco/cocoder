@@ -53,12 +53,19 @@ runnable proof. Defined failure modes:
    **without running the suite** — the exact "verify, don't assert" shortcut the loop forbids for builder
    atoms. (It happened to be safe; that was luck, confirmed only after the fact.) **Root cause:** the
    verify-with-evidence discipline is enforced on Bob's atoms but not on Oscar's own Surface-A support edits.
+   **Mostly already landed:** shared-standards now carries *"'just docs' can still be behavior-pinned — run
+   the affected suite, not only typecheck"* (`e0ced3f`). The **residual** is narrow — make that rule explicitly
+   cover *Oscar's own* support edits, not only builder atoms. A one-line standard extension, not a research arc.
 
 4. **Unproven wrap — a manual founder checklist where F18 demands runnable proof.** The run wrapped leaning on a
    manual "founder resets Job Hunt and re-tests" gate for the D/E onboarding behavior, with **no
    `scripts/proof-*.mjs`** making that behavior runnable. **Root cause:** the loop permitted a checklist handoff
    where F18 (make verification runnable / offer a one-command proof harness) requires either a proof artifact
-   or an explicit justified exception.
+   or an explicit justified exception. **Design constraint for the fix:** make this a wrap-content
+   *expectation* — a wrap resting on a manual founder gate must **name its proof harness or a justified
+   reason none is feasible** — enforced as prompt/standard text, NOT as a wrap-Play precondition that
+   *refuses*. A hard wrap-blocking gate would recreate the founder-blocking anti-pattern (ADR-0029) and edge
+   into F5 (policing the wrap's process). Require-justification, never refuse.
 
 ## What the research must produce (not prejudge)
 For each failure mode, decide the *lightest* fix that actually prevents recurrence, explicitly weighing F5:
