@@ -12,7 +12,7 @@
   "priorityId": "orchestration-loop-quality",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "failed",
   "createdAt": 1782140730166,
-  "endedAt": null
+  "endedAt": 1782141436700
 }
