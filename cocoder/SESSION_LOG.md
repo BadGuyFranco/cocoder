@@ -12,6 +12,18 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-22 — **orchestration-loop-quality: run_181 loop-failure research complete — founder ratification gates landing (run_39/run_182)**
+
+**Persona:** Oscar (lead; atom 0 rejected, research re-run from primary artifacts) | **Priority:** [orchestration-loop-quality](./priorities/orchestration-loop-quality.md) | **Run:** run_182 (display 39)
+**Outcomes:**
+- **Research complete for all four run_181 failure modes** — lightest fix drafted for each; no prompt/standard text landed (base-governance edits in `packages/personas/base/**` require founder ratification per ADR-0035).
+- **Atom 0 rejected** — read-only research report had no committable home under Bob's scope; Oscar re-derived conclusions from live tree (`grep -rn "via CoCoder run" packages/*/src`, twin-copy owners, shared-standards:48, wrap-up.md:37).
+- **Recommendations (founder-gated):** (1+2 LAND) delegation discipline in `oscar.md` — re-derive complete defect-class site set at delegation time, name all known owners mandatory; (3 LAND) one-line `shared-standards.md` extension for Oscar's own Surface-A support edits; (4 ACCEPT NO-OP or optional sharpen) wrap-up F18 proof-harness naming — existing line 37 may suffice.
+- **F5 honored:** no docs/process-policing checker proposed; grep habit + prompt/standard text only.
+- **Disposition: `continue`.** Landing atoms blocked on founder ratification beat.
+
+**Next:** Reply in run_182 with LAND/NO-OP for each of the four fixes; then relaunch `orchestration-loop-quality` for Bob to land ratified text with persona/Play suites green.
+
 ## 2026-06-22 — **new-primary-root: Atoms D–G landed — code-complete, founder verification blocks archive (run_181)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_181
