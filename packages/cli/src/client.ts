@@ -53,6 +53,28 @@ export interface SupportCommitResult {
   readonly liveOscar?: boolean
 }
 
+export interface DebRepairEvidenceItem {
+  readonly kind: string
+  readonly ref?: string
+  readonly summary: string
+}
+
+export interface RequestDebRepairInput {
+  readonly problem: string
+  readonly evidence: readonly DebRepairEvidenceItem[]
+  readonly sourceRunId?: string
+}
+
+export interface RequestDebRepairResult {
+  readonly ok: boolean
+  readonly state?: string
+  readonly outcome?: string
+  readonly dialogueId?: string
+  readonly committedPaths: readonly string[]
+  readonly commitSha?: string | null
+  readonly outOfLanePaths: readonly string[]
+}
+
 export interface AuthoringPlayResult {
   readonly ok: boolean
   readonly committedPaths: readonly string[]
@@ -72,6 +94,22 @@ export async function supportCommitViaDaemon(baseUrl: string, runId: string): Pr
   })
   if (!res.ok) throw new Error(`support commit failed (${res.status}): ${await res.text()}`)
   return (await res.json()) as SupportCommitResult
+}
+
+/** Request an Oscar-Deb repair dialogue through the daemon-owned repair operation. */
+export async function requestDebRepairViaDaemon(baseUrl: string, workspaceId: string, input: RequestDebRepairInput): Promise<RequestDebRepairResult> {
+  const session = (await (await fetch(`${baseUrl}/auth/session`)).json()) as { bearerToken: string; csrfToken: string }
+  const res = await fetch(`${baseUrl}/workspaces/${encodeURIComponent(workspaceId)}/oscar-deb-repairs`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${session.bearerToken}`, [CSRF_HEADER]: session.csrfToken, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      problem: input.problem,
+      evidence: input.evidence,
+      ...(input.sourceRunId ? { sourceRunId: input.sourceRunId } : {}),
+    }),
+  })
+  if (!res.ok) throw new Error(`Deb repair request failed (${res.status}): ${await res.text()}`)
+  return (await res.json()) as RequestDebRepairResult
 }
 
 /** Dispatch one governance authoring Play through the daemon-owned authoring harness. */

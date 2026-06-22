@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { runDisplayName } from '@cocoder/core'
 import type { OzContext } from './context.js'
-import { launchRun as launchRunOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestNudgeRun as nudgeRunOp, requestOzRepair as repairOzOp, requestStopRun as stopRunOp, requestSupportCommitRun as supportCommitRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
+import { launchRun as launchRunOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestNudgeRun as nudgeRunOp, requestOscarDebRepair as oscarDebRepairOp, requestOzRepair as repairOzOp, requestStopRun as stopRunOp, requestSupportCommitRun as supportCommitRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
 import { projectOzAwareness, type OzAwarenessRun, type OzAwarenessSnapshot } from './oz-awareness.js'
 import { tryHandleOzAgentTurn } from './oz-host.js'
 import { readTickets } from './priority-order.js'
@@ -9,13 +9,14 @@ import { findWorkspace } from './registry.js'
 import { withPortableDisplayNumbers } from './run-display.js'
 
 const ADHOC_PRIORITY_ID = 'adhoc-session'
-const HELP_HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
+const HELP_HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, deb-repair <problem> [--run <runId>], commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
 
 export type OzCommand =
   | { readonly kind: 'launch'; readonly priorityId: string }
   | { readonly kind: 'adhoc'; readonly task: string }
   | { readonly kind: 'show'; readonly runId: string }
   | { readonly kind: 'support-commit'; readonly runId: string }
+  | { readonly kind: 'oscar-deb-repair'; readonly problem: string; readonly sourceRunId?: string }
   | { readonly kind: 'stop'; readonly runId: string }
   | { readonly kind: 'nudge'; readonly runId: string; readonly message: string; readonly rationale?: string }
   | { readonly kind: 'repair'; readonly message: string; readonly rationale?: string }
@@ -29,7 +30,7 @@ export type OzExecutableCommand = Exclude<OzCommand, { readonly kind: 'help' } |
 export type OzCommandExecutor = (command: OzExecutableCommand) => Promise<OzChatResult>
 
 export interface OzChatAction {
-  readonly type: 'launch' | 'show' | 'support-commit' | 'stop' | 'nudge' | 'repair' | 'author' | 'teardown' | 'status' | 'refresh'
+  readonly type: 'launch' | 'show' | 'support-commit' | 'oscar-deb-repair' | 'stop' | 'nudge' | 'repair' | 'author' | 'teardown' | 'status' | 'refresh'
   readonly workspaceId?: string
   readonly priorityId?: string
   readonly runId?: string
@@ -41,6 +42,8 @@ export interface OzChatAction {
   readonly commitSha?: string | null
   readonly outOfLanePaths?: readonly string[]
   readonly turnLogPath?: string
+  readonly dialogueId?: string
+  readonly outcome?: string
 }
 export interface OzChatReply {
   readonly reply: string
@@ -60,6 +63,7 @@ export interface OzChatOps {
   readonly restartDaemon: typeof restartDaemonOp
   readonly nudgeRun: typeof nudgeRunOp
   readonly repairOz: typeof repairOzOp
+  readonly requestOscarDebRepair: typeof oscarDebRepairOp
   readonly requestAuthoringPlay: typeof authoringPlayOp
   readonly supportCommitRun: typeof supportCommitRunOp
 }
@@ -72,6 +76,7 @@ const defaultOps: OzChatOps = {
   restartDaemon: restartDaemonOp,
   nudgeRun: nudgeRunOp,
   repairOz: repairOzOp,
+  requestOscarDebRepair: oscarDebRepairOp,
   requestAuthoringPlay: authoringPlayOp,
   supportCommitRun: supportCommitRunOp,
 }
@@ -92,6 +97,7 @@ export function parseOzCommand(text: string): OzCommand {
     return { kind: 'adhoc', task }
   }
   if (verb === 'show') return args.length === 1 ? { kind: 'show', runId: args[0]! } : unknownCommand()
+  if (verb === 'deb-repair') return parseDebRepairCommand(args)
   if (verb === 'commit-support' || verb === 'support-commit') return args.length === 1 ? { kind: 'support-commit', runId: args[0]! } : unknownCommand()
   if (verb === 'stop') return args.length === 1 ? { kind: 'stop', runId: args[0]! } : unknownCommand()
   if (verb === 'teardown') return args.length === 1 ? { kind: 'teardown', runId: args[0]! } : unknownCommand()
@@ -173,6 +179,21 @@ export async function executeOzCommand(ctx: OzContext, workspaceId: string | und
     )
   }
 
+  if (command.kind === 'oscar-deb-repair') {
+    if (!workspaceId) return missingWorkspace()
+    return runOp(
+      'oscar-deb-repair',
+      () => ops.requestOscarDebRepair(ctx, {
+        workspaceId,
+        requestedBy: 'oscar',
+        problem: command.problem,
+        evidence: [{ kind: 'oz-chat', ref: 'oz-chat', summary: command.problem }],
+        ...(command.sourceRunId ? { sourceRunId: command.sourceRunId } : {}),
+      }),
+      (out) => oscarDebRepairReply(workspaceId, out),
+    )
+  }
+
   if (command.kind === 'stop') {
     if (!workspaceId) return missingWorkspace()
     return runOp(
@@ -251,6 +272,25 @@ function unknownCommand(): OzCommand {
   return { kind: 'unknown', hint: HELP_HINT }
 }
 
+function parseDebRepairCommand(args: readonly string[]): OzCommand {
+  let sourceRunId: string | undefined
+  const problemParts: string[] = []
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i]
+    if (arg === '--run') {
+      const runId = args[i + 1]
+      if (!runId || sourceRunId) return unknownCommand()
+      sourceRunId = runId
+      i += 1
+    } else if (arg) {
+      problemParts.push(arg)
+    }
+  }
+  const problem = problemParts.join(' ').trim()
+  if (!problem) return unknownCommand()
+  return { kind: 'oscar-deb-repair', problem, ...(sourceRunId ? { sourceRunId } : {}) }
+}
+
 function unknownReply(status: number, hint: string): OzChatResult {
   return chatResult(status, { reply: hint, command: 'unknown', ok: false })
 }
@@ -319,6 +359,39 @@ function supportCommitReply(runId: string, out: LaunchResult): OzChatReply {
     command: 'support-commit',
     ok: true,
     action: { type: 'support-commit', runId, committedPaths, commitSha, outOfLanePaths },
+  }
+}
+
+function oscarDebRepairReply(workspaceId: string, out: LaunchResult): OzChatReply {
+  const committedPaths = stringArray(out.body.committedPaths)
+  const outOfLanePaths = stringArray(out.body.outOfLanePaths)
+  const commitSha = typeof out.body.commitSha === 'string' ? out.body.commitSha : null
+  const dialogueId = typeof out.body.dialogueId === 'string' ? out.body.dialogueId : undefined
+  const outcome = typeof out.body.outcome === 'string' ? out.body.outcome : undefined
+  if (!isOk(out.status)) return failedReply('oscar-deb-repair', 'Could not request Deb repair', out)
+
+  const summary = outcome === 'applied'
+    ? commitSha
+      ? `Deb applied the repair as ${commitSha} (${committedPaths.join(', ') || 'no file list'}).`
+      : 'Deb completed the repair dialogue, but no commit was created.'
+    : outcome === 'directed-applied'
+      ? commitSha
+        ? `Oscar directed Deb to apply the proposal and committed it as ${commitSha} (${committedPaths.join(', ') || 'no file list'}).`
+        : 'Oscar directed Deb to apply the proposal, but no commit was created.'
+      : outcome === 'founder-escalated'
+        ? 'Deb repair dialogue escalated to the founder; no commit was created.'
+        : outcome
+          ? `Deb repair dialogue is ${out.body.state ?? 'complete'} with outcome ${outcome}.`
+          : 'Deb repair dialogue completed.'
+  const outOfLane = outOfLanePaths.length > 0
+    ? ` Committed out of Oscar-Deb repair lane (flagged for your visibility, NOT withheld): ${outOfLanePaths.join(', ')}.`
+    : ''
+  const id = dialogueId ? ` Dialogue: ${dialogueId}.` : ''
+  return {
+    reply: `${summary}${outOfLane}${id}`,
+    command: 'oscar-deb-repair',
+    ok: true,
+    action: { type: 'oscar-deb-repair', workspaceId, committedPaths, commitSha, outOfLanePaths, ...(dialogueId ? { dialogueId } : {}), ...(outcome ? { outcome } : {}) },
   }
 }
 

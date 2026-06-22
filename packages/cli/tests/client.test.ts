@@ -1,9 +1,14 @@
 // Client mode: runViaDaemon bootstraps a token, POSTs the launch with Bearer+CSRF, and polls the
 // run to terminal — WITHOUT opening the DB. Tested against a tiny fake daemon (no @cocoder/daemon
 // dependency, so the cli stays daemon-import-free).
+import { execFile } from 'node:child_process'
 import { createServer, type Server } from 'node:http'
+import { join } from 'node:path'
+import { promisify } from 'node:util'
 import { afterEach, describe, expect, test } from 'vitest'
-import { authoringPlayViaDaemon, runViaDaemon, supportCommitViaDaemon } from '../src/client.js'
+import { authoringPlayViaDaemon, requestDebRepairViaDaemon, runViaDaemon, supportCommitViaDaemon } from '../src/client.js'
+
+const execFileAsync = promisify(execFile)
 
 interface Captured {
   launchAuth?: string
@@ -11,6 +16,9 @@ interface Captured {
   launchBody?: any
   supportAuth?: string
   supportCsrf?: string | string[]
+  debRepairAuth?: string
+  debRepairCsrf?: string | string[]
+  debRepairBody?: unknown
   authorAuth?: string
   authorCsrf?: string | string[]
   authorBody?: any
@@ -53,6 +61,24 @@ function fakeDaemon(): { server: Server; captured: Captured; ready: Promise<numb
         committedPaths: ['cocoder/SESSION_LOG.md'],
         outOfLanePaths: [],
         liveOscar: true,
+      })
+    }
+    if (req.method === 'POST' && req.url === '/workspaces/cocoder/oscar-deb-repairs') {
+      captured.debRepairAuth = req.headers.authorization
+      captured.debRepairCsrf = req.headers['x-oz-csrf-token']
+      let body = ''
+      req.on('data', (c) => (body += c))
+      return req.on('end', () => {
+        captured.debRepairBody = JSON.parse(body)
+        json({
+          ok: true,
+          state: 'complete',
+          outcome: 'applied',
+          dialogueId: 'repair-1-abc',
+          commitSha: 'repair123',
+          committedPaths: ['packages/daemon/src/routes.ts'],
+          outOfLanePaths: [],
+        })
       })
     }
     if (req.method === 'POST' && req.url === '/workspaces/cocoder/authoring-plays/archive-priority') {
@@ -120,6 +146,43 @@ describe('runViaDaemon (client mode)', () => {
     })
     expect(d.captured.supportAuth).toBe('Bearer tok')
     expect(d.captured.supportCsrf).toBe('csrf')
+  })
+
+  test('request-deb-repair posts with Bearer + CSRF and returns the daemon receipt', async () => {
+    const d = fakeDaemon()
+    server = d.server
+    const port = await d.ready
+
+    const result = await requestDebRepairViaDaemon(`http://127.0.0.1:${port}`, 'cocoder', {
+      problem: 'fix stale route',
+      evidence: [{ kind: 'test', ref: 'client.test.ts', summary: 'Route is exposed.' }],
+      sourceRunId: 'run_xyz',
+    })
+
+    expect(result).toMatchObject({
+      ok: true,
+      state: 'complete',
+      outcome: 'applied',
+      dialogueId: 'repair-1-abc',
+      commitSha: 'repair123',
+      committedPaths: ['packages/daemon/src/routes.ts'],
+      outOfLanePaths: [],
+    })
+    expect(d.captured.debRepairAuth).toBe('Bearer tok')
+    expect(d.captured.debRepairCsrf).toBe('csrf')
+    expect(d.captured.debRepairBody).toEqual({
+      problem: 'fix stale route',
+      evidence: [{ kind: 'test', ref: 'client.test.ts', summary: 'Route is exposed.' }],
+      sourceRunId: 'run_xyz',
+    })
+  })
+
+  test('request-deb-repair CLI requires --problem', async () => {
+    const cli = join(process.cwd(), 'packages', 'cli', 'bin', 'cocoder.mjs')
+
+    const run = execFileAsync(process.execPath, [cli, 'oz', 'request-deb-repair', 'cocoder']).catch((err: unknown) => err)
+
+    await expect(run).resolves.toMatchObject({ code: 2, stderr: expect.stringContaining('usage: cocoder oz request-deb-repair <workspaceId> --problem <text>') })
   })
 
   test('authoring Play posts with Bearer + CSRF and returns the daemon receipt', async () => {

@@ -22,10 +22,11 @@ import {
 import { getAdapter, makeAdapterRegistry } from '@cocoder/adapters'
 import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import { CmuxSessionHost } from '@cocoder/session-hosts'
-import { authoringPlayViaDaemon, migrateHistoryViaDaemon, runViaDaemon, startOzDaemon, supportCommitViaDaemon, teardownViaDaemon } from './client.js'
+import { authoringPlayViaDaemon, migrateHistoryViaDaemon, requestDebRepairViaDaemon, runViaDaemon, startOzDaemon, supportCommitViaDaemon, teardownViaDaemon, type DebRepairEvidenceItem } from './client.js'
 
 const log = (m: string): void => console.error(`[cocoder] ${m}`)
-const usage = 'usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz commit-support <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]'
+const usage = 'usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]   |   cocoder oz commit-support <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]'
+const requestDebRepairUsage = 'usage: cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]'
 
 function authorInvocationFromArgv(): unknown {
   const jsonIdx = process.argv.indexOf('--json')
@@ -38,6 +39,36 @@ function authorInvocationFromArgv(): unknown {
     const detail = err instanceof Error ? err.message : String(err)
     throw new Error(`invalid --json invocation: ${detail}`)
   }
+}
+
+function optionValue(name: string): string | undefined {
+  const index = process.argv.indexOf(name)
+  return index >= 0 ? process.argv[index + 1] : undefined
+}
+
+function parseEvidence(raw: string | undefined, problem: string): readonly DebRepairEvidenceItem[] {
+  if (!raw) return [{ kind: 'cli', ref: 'request-deb-repair', summary: problem }]
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err)
+    throw new Error(`invalid --evidence JSON: ${detail}`)
+  }
+  if (!Array.isArray(parsed)) throw new Error('--evidence must be a JSON array')
+  const evidence = parsed.map((item): DebRepairEvidenceItem => {
+    if (typeof item !== 'object' || item === null) throw new Error('--evidence entries must be objects')
+    const record = item as Record<string, unknown>
+    if (typeof record.kind !== 'string' || record.kind.trim() === '') throw new Error('--evidence entries need a non-empty kind')
+    if (typeof record.summary !== 'string' || record.summary.trim() === '') throw new Error('--evidence entries need a non-empty summary')
+    return {
+      kind: record.kind,
+      ...(typeof record.ref === 'string' && record.ref.trim() ? { ref: record.ref } : {}),
+      summary: record.summary,
+    }
+  })
+  if (evidence.length === 0) throw new Error('--evidence must contain at least one entry')
+  return evidence
 }
 
 // `cocoder run <priorityId>` (ADR-0004). The probe decides the writer: if a daemon is live it owns
@@ -93,6 +124,36 @@ async function main(): Promise<void> {
     } else {
       console.log(`no support edits pending for ${runId}`)
     }
+    return
+  }
+  if (cmd === 'oz' && arg1 === 'request-deb-repair') {
+    const workspaceId = process.argv[4]
+    const problem = optionValue('--problem')
+    const sourceRunId = optionValue('--run')
+    const rawEvidence = optionValue('--evidence')
+    if (!workspaceId || !problem || !problem.trim() || (process.argv.includes('--run') && !sourceRunId) || (process.argv.includes('--evidence') && !rawEvidence)) {
+      console.error(requestDebRepairUsage)
+      process.exit(2)
+    }
+    let evidence: readonly DebRepairEvidenceItem[]
+    try {
+      evidence = parseEvidence(rawEvidence, problem.trim())
+    } catch (err) {
+      console.error(`cocoder: ${err instanceof Error ? err.message : String(err)}`)
+      console.error(requestDebRepairUsage)
+      process.exit(2)
+    }
+    const live = await probeDaemon({ port: DEFAULT_OZ_PORT })
+    if (!live.alive) {
+      console.error('cocoder: no Oz daemon running — cannot request Deb repair')
+      process.exit(1)
+    }
+    const result = await requestDebRepairViaDaemon(`http://127.0.0.1:${live.port}`, workspaceId, {
+      problem: problem.trim(),
+      evidence,
+      ...(sourceRunId ? { sourceRunId } : {}),
+    })
+    console.log(JSON.stringify(result, null, 2))
     return
   }
   if (cmd === 'oz' && arg1 === 'archive-priority') {

@@ -225,6 +225,18 @@ function call(oz: OzServer, method: string, path: string, opts: { body?: unknown
     req.end(opts.body ? JSON.stringify(opts.body) : undefined)
   })
 }
+function callRaw(oz: OzServer, method: string, path: string, body: string): Promise<Resp> {
+  const headers: Record<string, string> = { authorization: `Bearer ${oz.token}`, [OZ_CSRF_HEADER]: oz.csrfToken, 'content-type': 'application/json' }
+  return new Promise((resolve, reject) => {
+    const req = request({ host: '127.0.0.1', port: oz.port, path, method, headers }, (res) => {
+      let data = ''
+      res.on('data', (c) => (data += c))
+      res.on('end', () => resolve({ status: res.statusCode ?? 0, json: data ? JSON.parse(data) : null }))
+    })
+    req.on('error', reject)
+    req.end(body)
+  })
+}
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 const exists = async (path: string): Promise<boolean> => {
   try {
@@ -347,6 +359,31 @@ async function fixtures(home: string): Promise<void> {
     join(home, 'cocoder', 'personas', 'assignments.json'),
     JSON.stringify({ personas: { oscar: { cli: 'claude', model: '' }, bob: { cli: 'codex', model: '' } } }),
   )
+}
+
+async function enableDebRepairFixture(home: string): Promise<void> {
+  await mkdir(join(home, 'cocoder', 'personas', 'deltas'), { recursive: true })
+  await writeFile(
+    join(home, 'cocoder', 'personas', 'assignments.json'),
+    JSON.stringify({ personas: { oscar: { cli: 'claude', model: '' }, bob: { cli: 'codex', model: '' }, deb: { cli: 'codex', model: '', enabled: true } } }),
+  )
+  await writeFile(join(home, 'cocoder', 'personas', 'deltas', 'deb.md'), '---\nid: deb\nwriteScope:\n  - packages/**\n---\n')
+}
+
+function appliedDebRepairOutput(): string {
+  return JSON.stringify({
+    schemaVersion: 1,
+    dialogueId: 'repair-placeholder',
+    kind: 'applied',
+    disposition: 'cocoder-bug',
+    mode: 'repair',
+    summary: 'Applied route repair.',
+    diagnosis: 'Route was missing.',
+    whyCocoderOwned: 'Daemon route wiring is CoCoder-owned.',
+    filesChanged: ['packages/daemon/src/routes.ts'],
+    verification: 'mutation test',
+    remainingRisk: 'none',
+  })
 }
 
 function ticketFile(id: string, title: string, state: 'Open' | 'Closed' = 'Open'): string {
@@ -1602,6 +1639,40 @@ describe('Oz mutations + lifecycle', () => {
         message: `oscar-post-wrap: demo via CoCoder run ${run.id}`,
       }),
     ])
+  })
+
+  test('POST /workspaces/:id/oscar-deb-repairs routes through the Oscar-Deb repair operation', async () => {
+    await enableDebRepairFixture(home)
+    await startServer(fakeGit(['packages/daemon/src/routes.ts']), async () => ({ exitCode: 0, output: appliedDebRepairOutput() }))
+
+    const r = await call(oz!, 'POST', '/workspaces/cocoder/oscar-deb-repairs', {
+      body: {
+        problem: 'wire the route',
+        evidence: [{ kind: 'test', ref: 'mutations.test.ts', summary: 'Route should call requestOscarDebRepair.' }],
+        desiredOutcome: 'route receipt is returned',
+      },
+    })
+
+    expect(r).toMatchObject({
+      status: 200,
+      json: {
+        ok: true,
+        state: 'complete',
+        outcome: 'applied',
+        committedPaths: ['packages/daemon/src/routes.ts'],
+        commitSha: 'sha-committed',
+        outOfLanePaths: [],
+      },
+    })
+    expect(String(r.json.dialogueId)).toMatch(/^repair-/)
+  })
+
+  test('POST /workspaces/:id/oscar-deb-repairs rejects invalid JSON body', async () => {
+    await startServer()
+
+    const r = await callRaw(oz!, 'POST', '/workspaces/cocoder/oscar-deb-repairs', '{')
+
+    expect(r).toEqual({ status: 400, json: { error: 'invalid JSON body' } })
   })
 
   test('POST /oz/messages commit-support routes through the post-wrap support commit path', async () => {

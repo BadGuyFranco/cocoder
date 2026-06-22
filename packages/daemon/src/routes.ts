@@ -40,7 +40,7 @@ import { findWorkspace, readWorkspaces, validateWorkspaceFolders, workspaceDirec
 import { readRunDir } from './rundir.js'
 import { appendAudit } from './audit.js'
 import { listClis, testCli } from './clis.js'
-import { commitGovernance, launchRun, requestAuthoringPlay, requestDaemonRestart, requestDashboardLaunch, requestStopRun, requestSupportCommitRun, showRun, teardownRun, type AuthoringPlayInput } from './launcher.js'
+import { commitGovernance, launchRun, requestAuthoringPlay, requestDaemonRestart, requestDashboardLaunch, requestOscarDebRepair, requestStopRun, requestSupportCommitRun, showRun, teardownRun, type AuthoringPlayInput, type OscarDebRepairInput } from './launcher.js'
 import { handleOzMessage } from './oz-chat.js'
 import { mergeWriteSettings, readSettings } from './settings.js'
 import { readPriorities, readTickets, writePriorityOrder, writeTicketOrder } from './priority-order.js'
@@ -101,6 +101,8 @@ interface TeardownBody {
   readonly initiatorPersona?: string
 }
 
+type OscarDebRepairBody = Omit<OscarDebRepairInput, 'workspaceId' | 'requestedBy'>
+
 type ParsedLaunchBody = { readonly ok: true; readonly input: LaunchBody } | { readonly ok: false; readonly error: string }
 
 function launchBody(body: unknown): ParsedLaunchBody {
@@ -138,6 +140,20 @@ function teardownBody(body: unknown): TeardownBody {
   const record = bodyRecord(body)
   const initiator = typeof record.initiatorPersona === 'string' ? record.initiatorPersona.trim().toLowerCase() : ''
   return initiator ? { initiatorPersona: initiator } : {}
+}
+
+function oscarDebRepairBody(body: unknown): OscarDebRepairBody {
+  const record = bodyRecord(body)
+  const problem = typeof record.problem === 'string' ? record.problem : ''
+  const evidence = Array.isArray(record.evidence) && record.evidence.length > 0
+    ? record.evidence as OscarDebRepairInput['evidence']
+    : [{ kind: 'http', ref: 'oscar-deb-repairs', summary: problem }]
+  return {
+    problem,
+    evidence,
+    ...(typeof record.sourceRunId === 'string' && record.sourceRunId.trim() ? { sourceRunId: record.sourceRunId } : {}),
+    ...(typeof record.desiredOutcome === 'string' && record.desiredOutcome.trim() ? { desiredOutcome: record.desiredOutcome } : {}),
+  }
 }
 
 function reorderBody(body: unknown): readonly string[] | null {
@@ -884,6 +900,20 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
   }
   if (method === 'POST' && seg[0] === 'runs' && seg.length === 3 && seg[2] === 'support-commit') {
     const { status, body: out } = await requestSupportCommitRun(ctx, decodeURIComponent(seg[1]!))
+    return sendJson(res, status, out), true
+  }
+  if (method === 'POST' && seg[0] === 'workspaces' && seg.length === 3 && seg[2] === 'oscar-deb-repairs') {
+    let body: unknown
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      return sendJson(res, 400, { error: 'invalid JSON body' }), true
+    }
+    const { status, body: out } = await requestOscarDebRepair(ctx, {
+      workspaceId: decodeURIComponent(seg[1]!),
+      requestedBy: 'oscar',
+      ...oscarDebRepairBody(body),
+    })
     return sendJson(res, status, out), true
   }
   if (method === 'POST' && pathname === '/daemon/restart') {

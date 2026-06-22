@@ -7,7 +7,7 @@ import type { OzContext } from '../src/context.js'
 import { executeOzCommand, handleOzMessage, parseOzCommand, type OzChatOps } from '../src/oz-chat.js'
 import type { LaunchRunTarget } from '../src/launcher.js'
 
-const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
+const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, deb-repair <problem> [--run <runId>], commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
 
 // A stub for an op a test does NOT expect to be called: returns a 500 so an unexpected dispatch fails
 // loudly instead of looking like a real success. Narrowly cast to the specific op's type.
@@ -26,6 +26,7 @@ function mockOps(overrides: Partial<OzChatOps>): OzChatOps {
     restartDaemon: unexpected('restart') as OzChatOps['restartDaemon'],
     nudgeRun: unexpected('nudge') as OzChatOps['nudgeRun'],
     repairOz: unexpected('repair') as OzChatOps['repairOz'],
+    requestOscarDebRepair: unexpected('oscar-deb-repair') as OzChatOps['requestOscarDebRepair'],
     requestAuthoringPlay: unexpected('author') as OzChatOps['requestAuthoringPlay'],
     supportCommitRun: unexpected('support-commit') as OzChatOps['supportCommitRun'],
     ...overrides,
@@ -49,6 +50,7 @@ describe('parseOzCommand', () => {
     ['  LAUNCH PriorityA  ', { kind: 'launch', priorityId: 'PriorityA' }],
     ['adhoc fix the flaky test', { kind: 'adhoc', task: 'fix the flaky test' }],
     ['show run_45', { kind: 'show', runId: 'run_45' }],
+    ['deb-repair fix stale Deb routing --run run_45', { kind: 'oscar-deb-repair', problem: 'fix stale Deb routing', sourceRunId: 'run_45' }],
     ['stop run_45', { kind: 'stop', runId: 'run_45' }],
     ['teardown run_45', { kind: 'teardown', runId: 'run_45' }],
     ['status', { kind: 'status' }],
@@ -69,6 +71,10 @@ describe('parseOzCommand', () => {
 
   test('typed repair remains an unknown chat command', () => {
     expect(parseOzCommand('repair fix the Oz assignment drift')).toEqual({ kind: 'unknown', hint: HINT })
+  })
+
+  test('bare deb-repair is an unknown chat command', () => {
+    expect(parseOzCommand('deb-repair')).toEqual({ kind: 'unknown', hint: HINT })
   })
 
   test('bare adhoc is a bounded usage error', () => {
@@ -401,6 +407,71 @@ describe('handleOzMessage', () => {
     expect(failed).toMatchObject({
       status: 500,
       body: { ok: false, command: 'repair', reply: 'Could not repair: Oz repair turn failed with exit code 2; nothing was committed.' },
+    })
+  })
+
+  test('deb-repair executable dispatches Oscar request with synthesized evidence and renders commit receipt', async () => {
+    const calls: unknown[] = []
+    const ops = mockOps({
+      requestOscarDebRepair: async (_ctx, input) => {
+        calls.push(input)
+        return {
+          status: 200,
+          body: {
+            ok: true,
+            state: 'complete',
+            outcome: 'applied',
+            dialogueId: 'repair-1-abc',
+            committedPaths: ['packages/daemon/src/routes.ts'],
+            commitSha: 'sha-repair',
+            outOfLanePaths: ['packages/daemon/src/routes.ts'],
+          },
+        }
+      },
+    })
+
+    const result = await executeOzCommand(testCtx(), 'cocoder', { kind: 'oscar-deb-repair', problem: 'fix stale routing', sourceRunId: 'run_45' }, ops)
+
+    expect(calls).toEqual([{
+      workspaceId: 'cocoder',
+      requestedBy: 'oscar',
+      problem: 'fix stale routing',
+      evidence: [{ kind: 'oz-chat', ref: 'oz-chat', summary: 'fix stale routing' }],
+      sourceRunId: 'run_45',
+    }])
+    expect(result).toMatchObject({
+      status: 200,
+      body: {
+        ok: true,
+        command: 'oscar-deb-repair',
+        action: {
+          type: 'oscar-deb-repair',
+          workspaceId: 'cocoder',
+          committedPaths: ['packages/daemon/src/routes.ts'],
+          commitSha: 'sha-repair',
+          outOfLanePaths: ['packages/daemon/src/routes.ts'],
+          dialogueId: 'repair-1-abc',
+          outcome: 'applied',
+        },
+      },
+    })
+    expect(result.body.reply).toContain('Deb applied the repair as sha-repair')
+    expect(result.body.reply).toContain('Committed out of Oscar-Deb repair lane (flagged for your visibility, NOT withheld): packages/daemon/src/routes.ts.')
+  })
+
+  test('deb-repair executable requires a workspace', async () => {
+    let calls = 0
+    const result = await executeOzCommand(testCtx(), undefined, { kind: 'oscar-deb-repair', problem: 'fix stale routing' }, mockOps({
+      requestOscarDebRepair: async () => {
+        calls += 1
+        return { status: 200, body: { ok: true } }
+      },
+    }))
+
+    expect(calls).toBe(0)
+    expect(result).toMatchObject({
+      status: 400,
+      body: { ok: false, command: 'unknown', reply: expect.stringContaining('Pick a workspace first') },
     })
   })
 
