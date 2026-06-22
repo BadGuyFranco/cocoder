@@ -3,16 +3,17 @@ id: new-primary-root
 title: "Onboard a primary root — New Primary + Onboard-existing (ADR-0020/0026)"
 ---
 
-> **Refreshed 2026-06-22 (run_181).** The onboarding *machinery* is built and the entire code backlog (Atoms
-> A–G) is landed and verified — including the four first-live-onboarding fixes (Atoms D–G, run_181; tickets
-> 0025–0028 closed). **The first real live onboarding (Job Hunt / run_178)** succeeded and surfaced those
-> four issues; all are now fixed in code. **No buildable atoms remain.** Two founder-owned beats block archive:
-> **(founder)** reset-and-retest `job-hunt` from clean via **Add Workspace** (confirm git-init, full-tree
-> baseline, complete governance commit, `onboard-existing` in panel, Run 1 labels); **(proof)** the
-> Verified-when external-repo live proof (billable, multi-agent, separate surface). Deploy auto-reload is
-> delivered (ticket `0013`, run_179). **Drift Audit** was split to `drift-audit` and **archived 2026-06-21**.
-> Vocabulary: "Takeover" → **Onboard (existing repo)** (ADR-0026); **`playbooks/` genre retired** (ADR-0032).
-> Build history (runs 111–181) lives in `cocoder/SESSION_LOG.md` + git; this doc is current-state only.
+> **Refreshed 2026-06-22 (run_44).** The onboarding *machinery* is built and the entire code backlog (Atoms
+> A–G + run_181 retro fixes) is landed and verified — including the four first-live-onboarding fixes (Atoms
+> D–G, run_181; tickets 0025–0028 closed) and three run_181 retro build-quality fixes (SSOT collapse,
+> `commitMessage` shim removal, D/E runnable proof via `scripts/proof-nongit-onboard.mjs`). **The first real
+> live onboarding (Job Hunt / run_178)** succeeded and surfaced the D–G issues; all are now fixed in code.
+> **No buildable atoms remain.** Two founder-owned beats block archive: **(founder)** reset-and-retest
+> `job-hunt` from clean via **Add Workspace** (partly discharged by `node scripts/proof-nongit-onboard.mjs`);
+> **(proof)** the Verified-when external-repo live proof (billable, multi-agent, separate surface). Deploy
+> auto-reload is delivered (ticket `0013`, run_179). **Drift Audit** was split to `drift-audit` and **archived
+> 2026-06-21**. Vocabulary: "Takeover" → **Onboard (existing repo)** (ADR-0026); **`playbooks/` genre
+> retired** (ADR-0032). Build history lives in `cocoder/SESSION_LOG.md` + git; this doc is current-state only.
 
 ## Objective
 CoCoder can onboard any primary root for **two situations**, each writing only the target's `cocoder/**`,
@@ -121,10 +122,10 @@ recon question in run_178 is intentionally left unanswered. Because D–G touche
 must be on post-D–G code before the retest — ticket `0013` idle-reload should handle this once in-flight runs
 drain (verify with `node scripts/proof-daemon-reload.mjs` if in doubt).
 
-**Disposition: `continue` (archive-blocked on founder action).** The entire code backlog (Atoms A–G) is now
-landed and verified. Two non-code beats remain before archive, both founder-owned and off this build surface:
-(1) the founder reset-and-retest of Job Hunt from clean, and (2) the Verified-when external-repo live proof
-below.
+**Disposition: `blocked` (archive-blocked on founder action).** The entire code backlog (Atoms A–G + run_181
+retro fixes) is landed and verified. Two non-code beats remain before archive, both founder-owned and off
+this build surface: (1) the founder reset-and-retest of Job Hunt from clean (partly discharged by
+`node scripts/proof-nongit-onboard.mjs`), and (2) the Verified-when external-repo live proof below.
 
 ### Founder-gated live proof (separate, after D–G + reset retest)
 Onboard a real external repo (CoPublisher / a CoBuilder copy) end-to-end through the rebuilt Oscar-driven
@@ -133,32 +134,30 @@ with findings traceable to repo reality (Objective verification). This is **bill
 authorized**, on a different launch surface than an ordinary build loop.
 
 ### Build-quality flaws to research and properly fix (run_181 retro)
-Atoms D–G are correct and verified, but the run_181 self-audit surfaced design debt in the onboarding/scaffold
-code that was scoped-out at the time and must be **researched and properly fixed** (root cause, not band-aid)
-before this priority is archive-clean. None blocks the founder reset-retest; each is a future build atom.
+Atoms D–G are correct and verified. The run_181 self-audit surfaced design debt in the onboarding/scaffold
+code; three items were fixed in run_44; one was resolved-by-design; one optional elegance item remains.
 
-- **SSOT — two byte-identical copies of the seeded priority templates (highest priority).** `onboard-existing.md`
-  and `adhoc-session.md` exist twice: `templates/workspace-cocoder/cocoder/priorities/**` (what the scaffold
-  seeds) and `packages/personas/base/priorities/**` (the shipped base, `basePrioritiesDir()`). Atom F kept them
-  in sync with a **guard test** — a band-aid, not a fix. Proper fix: collapse to **one owner** (scaffold reads
-  through from `base/priorities`, or one dir is generated from the other at build) so a single edit is
-  impossible to half-apply. Research which copy is canonical and whether anything depends on both. *(Trips F4
-  config-fragmentation / the elegance "one owner per concept" rule; mind F5 — prefer removing the duplication
-  over keeping the checker.)*
-- **`counters.json` split ownership.** Atom E commits `cocoder/counters.json` in the scaffold governance commit,
-  but it is also in the runner's `PORTABLE_RUN_HISTORY_SCOPE` (run-history rewrites it every run). Two writers
-  to one tracked file. Decide one owner / one intended lifecycle (seed-then-run-history-owns, or document the
-  split deliberately) rather than leaving it incidental.
-- **`commitMessage(run: string | RunDisplayInput)` compat shim (from Atom G).** The union overload was left so
-  old string call-sites keep working; it is a footgun (pass a bare runId string → silently lose the
-  per-root number). Migrate all callers to `RunDisplayInput` and drop the string form.
-- **No runnable proof for the D/E behavior.** There is no `scripts/proof-*.mjs` proving "git-init a non-git root
-  → full-tree baseline commit + complete governance commit + clean status." Per F18, build one so this behavior
-  has runnable proof instead of relying on the manual founder reset-retest. *(This also partly discharges the
-  reset-retest gate.)*
-- **Resolution prose triplicated (elegance, low).** Each atom's resolution is restated in the ticket body, the
-  `tickets/INDEX.md` row, and this doc. INDEX-vs-body is the accepted slim-index convention; this doc could link
-  the closed tickets instead of restating them.
+- **SSOT — two byte-identical copies of the seeded priority templates (DONE, run_44, c2fdd2f).** Collapsed to
+  one owner: `templates/workspace-cocoder/cocoder/priorities/**` (what the scaffold seeds). Deleted the orphan
+  `packages/personas/base/priorities/**` copies (zero runtime consumers), removed `basePrioritiesDir()`, and
+  repointed scaffold/personas/daemon tests to the runtime-canonical template dir. Replaced the cross-copy guard
+  with real content assertions.
+- **`counters.json` split ownership (resolved-by-design; pinned by proof).** Lifecycle is seed-then-run-history-
+  owns: scaffold create-seeds `counters.json` into the governance commit only if missing
+  (`packages/daemon/src/routes.ts` ~402–406); run-history owns all subsequent mutations under a lock via
+  `PORTABLE_RUN_HISTORY_SCOPE`. Pinned by `node scripts/proof-nongit-onboard.mjs` invariant 2 (committed
+  governance set includes `counters.json`).
+- **`commitMessage(run: string | RunDisplayInput)` compat shim (DONE, run_44, 74ff532).** Param is now
+  `RunDisplayInput` only; the string branch is gone so a bare runId cannot silently drop the per-root display
+  number.
+- **No runnable proof for the D/E behavior (DONE, run_44, 451ba93).** `node scripts/proof-nongit-onboard.mjs`
+  wraps the two real daemon real-git tests proving Atom D (non-git root → git init + full-tree baseline commit +
+  `node_modules` excluded + clean status) and Atom E (already-git root → no re-import; committed == written −
+  ignored, incl. `counters.json` + `workspace.json`). Exit 0 today; partly discharges the founder reset-retest
+  gate.
+- **Resolution prose triplicated (elegance, optional, low).** Each atom's resolution is restated in the ticket
+  body, the `tickets/INDEX.md` row, and this doc. INDEX-vs-body is the accepted slim-index convention; this doc
+  could link the closed tickets instead of restating them. Not an archive blocker.
 
 ## First-run operational note (run_160)
 A fresh-workspace first run launches the persona CLIs with **no `--model`** (CoCoder passes the persona's
