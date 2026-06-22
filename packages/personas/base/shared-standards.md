@@ -40,6 +40,14 @@ equipped to make, and do not ship work a human will "catch later" - no one will.
   verification batches small enough that one cancellation cannot silently skip the rest.
 - **Every pause has a disposition.** Say whether the state is complete, blocked, closing, or waiting on
   a named decision. Do not end by passively listing options.
+- **Trace a red to its commit; never blame-shift.** When a check is failing on the active branch, find the
+  commit that introduced it (`git log`/blame/bisect on the failing path or test) before attributing the
+  failure. Do not pin a red on another priority, persona, or "pre-existing" state by assumption — that
+  hides regressions and misroutes the fix. State the introducing commit as evidence, or say you could not
+  find it; if your own recent change caused it, own that plainly.
+- **"Just docs" can still be behavior-pinned.** Governance and documentation files are asserted by tests
+  (a routing-guide taxonomy, a Play frontmatter, a contract fixture). Before declaring a docs/governance
+  edit green, run the affected suite — not only typecheck — so a content change cannot leave the branch red.
 
 ## Communication And Judgment
 
