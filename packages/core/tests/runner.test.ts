@@ -2031,8 +2031,8 @@ describe('runRun (multi-atom loop)', () => {
     expect(oscarPrompt).toContain('Artifact-first rule')
     expect(oscarPrompt).toContain('your FIRST action in this run is to write the required\ndirective JSON')
     expect(oscarPrompt).toContain('never just exit')
-    expect(oscarPrompt).toContain('"kind": "deb-investigate"')
-    expect(oscarPrompt).toContain('formal run fault')
+    expect(oscarPrompt).not.toContain('"kind": "deb-investigate"')
+    expect(oscarPrompt).not.toContain('formal run fault')
   })
 
   test("Oscar's launch prompt allows founder-directed Surface-A edits after wrap", async () => {
@@ -2343,55 +2343,6 @@ describe('runRun (multi-atom loop)', () => {
     const nudgeEvents = store.listEvents(result.runId).filter((e) => e.type === 'oscar-nudge')
     expect(nudgeEvents.map((e) => (e.data as { source?: string }).source).filter((source) => source === 'oz' || source === 'deb')).toEqual(expect.arrayContaining(['oz', 'deb']))
     expect(nudgeEvents.find((e) => (e.data as { source?: string }).source === 'deb')?.data).toMatchObject({ text: debReq.message, seq: 1 })
-  })
-
-  test('Oscar can request Deb investigation on a named orchestration blocker through the directive path', async () => {
-    const store = openRunStore(':memory:')
-    const debRepair = persona({ id: 'deb', cli: 'claude', writeScope: ['packages/core/**'] })
-    const blocker = 'runner handed Oscar a verify path that cannot be written'
-    const io = fakeIO({
-      directives: [{ kind: 'deb-investigate', blocker }],
-      triage: {
-        disposition: 'cocoder-bug',
-        summary: 'runner emitted an impossible verify handoff',
-        mode: 'repair',
-        diagnosis: blocker,
-        whyCocoderOwned: 'The runner owns directive and verify handoff paths.',
-        filesChanged: ['packages/core/src/runner/runner.ts'],
-        verification: 'runner tests',
-        remainingRisk: 'none',
-      },
-    })
-    let repairStarted = false
-    const git: Git = {
-      ...worktreeStubs,
-      async headSha() {
-        return 'h0'
-      },
-      async changedFiles() {
-        if (!repairStarted) {
-          repairStarted = true
-          return []
-        }
-        return ['packages/core/src/runner/runner.ts']
-      },
-      async addAndCommit() {
-        return 'sha-deb-investigation'
-      },
-      async restoreToHead() {},
-      async show() {
-        return ''
-      },
-    }
-
-    await expect(runRun(baseDeps({ store, io, git }), { ...input, deb: debRepair })).rejects.toThrow(blocker)
-    const runId = store.listRuns()[0]!.id
-    const events = store.listEvents(runId)
-    expect(events.find((e) => e.type === 'oscar-requested-deb-investigation')?.data).toMatchObject({ message: blocker })
-    expect(events.find((e) => e.type === 'triage-dispatch')?.data).toMatchObject({ fault: 'oscar-requested-deb-investigation' })
-    expect(events.find((e) => e.type === 'deb-repair')?.data).toMatchObject({ committedSha: 'sha-deb-investigation', files: ['packages/core/src/runner/runner.ts'] })
-    expect(events.some((e) => e.type === 'builder-dispatch')).toBe(false)
-    expect(store.getRun(runId)?.status).toBe('failed')
   })
 
   test('repair mode commits everything Deb touched; out-of-lane product code is flagged, not withheld (scope advisory)', async () => {

@@ -188,14 +188,6 @@ atoms. One atom at a time:
    the run's \`awaiting-founder\` status from that validated closeout. A clean commit boundary is a good
    place to continue with the next known atom, not by itself a reason to stop.
 
-If you hit a real CoCoder orchestration blocker that Deb should diagnose through the runner, use the
-same directive file instead of inventing a side channel:
-
-    {"kind": "deb-investigate", "blocker": "<named orchestration blocker and evidence>"}
-
-The runner dispatches that blocker to Deb through the existing fault/triage and repair path. It is a
-formal run fault, not a bypass around your verify judgment or the commit spine.
-
 # Verifying an atom (the gate — no human backstop)
 
 When the runner prompts you to VERIFY, read the ACTUAL diff and check it against the atom you delegated;
@@ -307,10 +299,7 @@ You drive the builder (${input.builderLabel}, a \`${input.builderCli}\` CLI) thr
 Write the exact directive or verify artifact named by the dispatch. Delegate builds to the builder by
 writing delegate directives; verify atoms yourself against the actual diff and evidence; continue by
 default while concrete in-priority work remains. Wrap only when a real stop condition applies, with a
-pickup brief a fresh session can resume from. If the dispatch asks for the next directive and you have a
-real CoCoder orchestration blocker for Deb, write \`{"kind":"deb-investigate","blocker":"<evidence>"}\`
-to that same directive path; the runner routes it through Deb's existing triage/repair path as a formal
-fault.
+pickup brief a fresh session can resume from.
 
 Oscar support edits and wrap commits follow the same rules as launch: documentation/support work is part
 of orchestration, and pending files inside your support-write scope are gate-committed at wrap. Your
@@ -586,7 +575,7 @@ export function buildVerifyDispatch(directivePath: string, verifyPath: string): 
 /** Prompt Oscar for the next turn after an atom resolved: delegate another atom, or wrap up. Names the
  *  exact directive path so the numbered handshake is unambiguous (a re-delegation is simply the next n). */
 export function buildNextOrWrapDispatch(nextDirectivePath: string, outcome: string): string {
-  return `NEXT — ${outcome}. Write your next directive to ${nextDirectivePath}: delegate the next concrete in-priority atom by writing {"kind":"delegate","task":"…"} unless a real stop condition applies; write {"kind":"deb-investigate","blocker":"…"} only for a named CoCoder orchestration blocker that Deb must diagnose through the runner; otherwise write {"kind":"wrapup","pickup":"…"} to end the run with a resumable pickup brief. If you wrap, only write the directive file; do not also deliver a founder closeout in the pane. The runner will send a WRAP-UP READY artifact for exactly-once delivery after validation and landing outcome. Stop conditions are: priority done, founder approval needed, no concrete next atom, different launch/surface needed, context genuinely tight, or failures/faults make continuing wasteful. If founder approval is the stop condition, make that decision explicit in the pickup; the validated closeout must not say Founder Decision Needed is None. A clean commit boundary alone is not a reason to stop.`
+  return `NEXT — ${outcome}. Write your next directive to ${nextDirectivePath}: delegate the next concrete in-priority atom by writing {"kind":"delegate","task":"…"} unless a real stop condition applies; otherwise write {"kind":"wrapup","pickup":"…"} to end the run with a resumable pickup brief. If you wrap, only write the directive file; do not also deliver a founder closeout in the pane. The runner will send a WRAP-UP READY artifact for exactly-once delivery after validation and landing outcome. Stop conditions are: priority done, founder approval needed, no concrete next atom, different launch/surface needed, context genuinely tight, or failures/faults make continuing wasteful. If founder approval is the stop condition, make that decision explicit in the pickup; the validated closeout must not say Founder Decision Needed is None. A clean commit boundary alone is not a reason to stop.`
 }
 
 /** Dispatch a fault to Deb to triage (ADR-0013 tier 2, expanded by ADR-0016). Names the fault-context

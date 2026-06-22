@@ -1346,10 +1346,6 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       return await fail('directive-timeout', String(err), n)
     }
 
-    if (directive.kind === 'deb-investigate') {
-      return await fail('oscar-requested-deb-investigation', directive.blocker, null)
-    }
-
     if (directive.kind === 'wrapup') {
       const headBeforeOscarSupport = await git.headSha(worktreePath)
       await commitOscarSupport(headBeforeOscarSupport)

@@ -14,7 +14,6 @@ export interface LoopDirective {
 
 export type Directive =
   | { readonly kind: 'delegate'; readonly task: string; readonly loop?: LoopDirective }
-  | { readonly kind: 'deb-investigate'; readonly blocker: string }
   | { readonly kind: 'wrapup'; readonly pickup: string }
 
 export class MalformedLoopDirectiveError extends Error {
@@ -79,18 +78,11 @@ export function parseDirective(json: string): Directive {
     }
     return { kind: 'delegate', task: d.task }
   }
-  if (d.kind === 'deb-investigate') {
-    const blocker = (d as { blocker?: unknown }).blocker
-    if (typeof blocker !== 'string' || blocker.trim() === '') {
-      throw new Error('directive: "deb-investigate" requires a non-empty "blocker"')
-    }
-    return { kind: 'deb-investigate', blocker }
-  }
   if (d.kind === 'wrapup') {
     if (typeof d.pickup !== 'string' || d.pickup.trim() === '') {
       throw new Error('directive: "wrapup" requires a non-empty "pickup" (the resumable brief)')
     }
     return { kind: 'wrapup', pickup: d.pickup }
   }
-  throw new Error('directive: "kind" must be "delegate", "deb-investigate", or "wrapup"')
+  throw new Error('directive: "kind" must be "delegate" or "wrapup"')
 }
