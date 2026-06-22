@@ -2,13 +2,32 @@
 id: 0030
 title: Deb escalation fork — formal fault (A) vs in-flight repair (B)
 type: question
-status: Open
+status: Closed
 priority: deb-follows-oscar
 owner: founder
 created: 2026-06-22
+closed: 2026-06-22
 ---
 
 # 0030 — Deb escalation fork — formal fault (A) vs in-flight repair (B)
+
+## Resolution (founder, 2026-06-22)
+
+Neither A nor B — the framing was wrong. The founder specified a third model: Oscar hits an orchestration
+issue and tasks Deb to research and **propose** a fix; Deb either applies an easy in-scope fix or hands the
+proposed fix back to **Oscar to evaluate**, and Oscar directs it. It is **Oscar↔Deb only (never Bob)**, can
+fire **any time including after Oscar has wrapped**, and escalates to the **founder** for genuinely risky
+items. It is the existing manual self-improvement pattern made autonomous — not a within-run watcher event.
+
+**Decision: split.** Because it is Bob-free and fires after wrap, it cannot live inside `runRun` (the
+watcher's home) and is a different capability (daemon-resident, propose→evaluate→direct handshake, founder
+tier). So:
+- `deb-follows-oscar` is narrowed to the **watcher + Oscar-only nudge** half (Objective amended; the green
+  run_184 watcher diff re-lands there with the `deb-investigate`/fault path stripped).
+- The **Oscar↔Deb autonomous repair loop** moves to a new priority `deb-oscar-repair-loop` governed by
+  `ADR-0036` (extends ADR-0016 / ADR-0013).
+
+This closes the question; the two follow-on priorities carry the work.
 
 ## Context
 

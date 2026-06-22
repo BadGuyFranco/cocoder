@@ -11,14 +11,13 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 ## Open
 
-| ID | Title | Type | Priority | Owner |
-|---|---|---|---|---|
-| [0030](./open/0030-deb-escalation-fork-fault-vs-continue.md) | Deb escalation fork — formal fault (A) vs in-flight repair (B) | question | deb-follows-oscar | founder |
+_(none)_
 
 ## Recently Closed
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0030](./closed/0030-deb-escalation-fork-fault-vs-continue.md) | Deb escalation fork — formal fault (A) vs in-flight repair (B) | question | 2026-06-22 | Neither A nor B — founder specified a third model (Oscar↔Deb propose→evaluate→direct repair dialogue, Bob-free, runnable post-wrap, founder tier for risky items). Decision: split — `deb-follows-oscar` narrowed to the watcher/nudge half; the autonomous repair loop moves to new priority `deb-oscar-repair-loop` + `ADR-0036`. |
 | [0025](./closed/0025-git-init-baseline-commit-full-tree.md) | git-init of a non-git primary root must baseline-commit the full existing tree, not only the cocoder zone | bug | 2026-06-22 | `createWorkspace` baseline-commits the full existing tree (`git add .`, honoring `.gitignore`) only when it git-inits a non-git root; already-git repos get no re-import. Daemon real-git test proves product files tracked, `node_modules/` excluded, cocoder zone committed, clean status (run_181, Atom D). |
 | [0026](./closed/0026-scaffold-governance-commit-incomplete.md) | Scaffold governance commit omits cocoder/workspace.json and cocoder/counters.json | bug | 2026-06-22 | Scaffold now commits every `cocoder/**` file it writes (incl. `workspace.json` + `counters.json`); already-git test pins tracked == written − ignored, no silent omissions (run_181, Atom E). |
 | [0027](./closed/0027-onboard-existing-template-supports-content-ops-repos.md) | onboard-existing template assumes a code repo; support content/ops repos as a first-class target | task | 2026-06-22 | Template generalized so content/ops/docs repos are first-class: subsystem typing (code vs content/ops), evidence rule `file:line` → "path (and line where it applies)"; applied to both byte-identical copies with a restored cross-copy sync guard (run_181, Atom F). |
