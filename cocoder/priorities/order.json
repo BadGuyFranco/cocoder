@@ -1,8 +1,8 @@
 [
+  "deb-follows-oscar",
   "new-primary-root",
   "deb-oscar-repair-loop",
   "priority-audit",
-  "deb-follows-oscar",
   "ripgrep-dependency-research",
   "model-layer"
 ]
