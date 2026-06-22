@@ -2,7 +2,7 @@
 id: 0029
 title: Pre-run working-tree integrity guard — detect sync-conflict / corrupted governance before a run
 type: task
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-22
@@ -53,3 +53,9 @@ guard must not reintroduce that anti-pattern. Therefore:
 A pre-run *detection/surface* guard only — does not repair files (the founder/source machine resolves the
 sync conflict), does not touch the commit spine, does not change what a run writes. Lower priority than
 ticket 0013 (deploy gap); it does not block onboarding work. Pairs with the loader hardening (`825e073`).
+
+## Resolution
+
+Resolved by run run_180 (dea12b91b6fd568f93e70412b9d02d4610137666) on 2026-06-22.
+
+Added the pre-run integrity guard to the existing launch path: sync-conflict/orig files and conflict markers surface as warning events while launch proceeds; loader-backed run-critical governance checks refuse with file-named errors by default; the CLI, daemon API, and dashboard expose allowPreRunIntegrityErrors as the founder override. Tests pin warning-only conflicts, fatal malformed governance, override behavior, and clean launch behavior.
