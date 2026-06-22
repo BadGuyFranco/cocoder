@@ -1,7 +1,7 @@
 # Oscar-Deb Repair Dialogue Design
 
-Status: design slice for `deb-oscar-repair-loop` atom 1. ADR-0036 is the source of truth for the
-contract; this document only specifies the build mechanism ADR-0036 deliberately deferred
+Status: shipped (run_43/run_186). ADR-0036 is the source of truth for the contract; this document
+records the build mechanism ADR-0036 deliberately deferred
 (`cocoder/decisions/0036-oscar-deb-repair-dialogue.md:53-56`). The owner-map row is
 `docs/orchestration-contract-ownership.md:59`.
 

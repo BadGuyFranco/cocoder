@@ -3,6 +3,11 @@ id: deb-oscar-repair-loop
 title: "Oscar↔Deb autonomous repair dialogue"
 ---
 
+> **LANDING COMPLETE (run_43/run_186, 2026-06-22).** Daemon-resident Oscar↔Deb repair dialogue per ADR-0036
+> (propose→evaluate→direct; risky→founder); within-run `deb-investigate` lane removed; owner-map aligned;
+> proof `node scripts/proof-oscar-deb-repair.mjs` green. **Disposition: `archive-candidate`** — Verified-when
+> met; no buildable atoms remain; founder archive confirmation only.
+
 ## Objective
 Make the Oscar↔Deb machinery-repair dialogue autonomous, per `ADR-0036`: Oscar tasks Deb to research and
 propose a fix for a real CoCoder orchestration/machinery issue; Deb either applies an easy in-scope fix
