@@ -10,6 +10,7 @@ contains machine-local state (that lives in the CoCoder install's `local/`, one 
 |---|---|
 | What are we working on? | `priorities/` — the directory listing IS the index (one `.md` per priority) |
 | Why was a decision made? | [`decisions/README.md`](./decisions/README.md) |
+| What does a domain term mean? | [`glossary.md`](./glossary.md) |
 | Recent session activity | [`SESSION_LOG.md`](./SESSION_LOG.md) |
 | Codebase map | [`memory/codebase-map.md`](./memory/codebase-map.md) |
 
