@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **ticket-fix-0039: Oz launch progress modal + delay diagnosis — archive-candidate (run_60/run_204)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0039](./tickets/open/0039-launch-status-in-oz-dashboard.md) | **Run:** run_204 (display 60)
+**Outcomes:**
+- **Diagnosis + instrumentation (`4a8b95c`).** ~6 s delay is serialized cmux CLI round-trips (not a built-in sleep); branch (c) modal path chosen. Per-stage launch events + `cmux-spawn-timing` on every live launch — `cocoder/runs/60-run_204/diagnosis-0039.md`.
+- **Launch progress modal (`b2f2c436`).** Oz dashboard opens staged status on live launch clicks, auto-closes when Oscar is ready, stays open on error with Close; non-live launches unchanged.
+- **Ticket 0039 auto-closes** via daemon `closeTicketAfterSuccessfulRun` on successful wrap-up landing.
+- **Disposition: `archive-candidate`.** Ticket acceptance met (diagnose + inform user during launch); optional branch-(b) latency reduction is founder-gated follow-up, not blocking close.
+
+**Next:** Founder go/no-go on optional launch-latency optimization (branch (b)); otherwise launch `founder-stop-control` for Phase 2 — resume from `held` at the parked atom.
+
 ## 2026-06-23 — **ticket-fix-0038: PLAYBOOK priority roadmap retired — archive-candidate (run_59/run_203)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0038](./tickets/closed/0038-retire-stale-playbook-priority-roadmap.md) | **Run:** run_203 (display 59)
