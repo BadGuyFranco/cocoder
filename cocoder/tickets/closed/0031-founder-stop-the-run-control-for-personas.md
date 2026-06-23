@@ -2,13 +2,26 @@
 id: 0031
 title: No way for a persona to stop the runner on a founder "stop the run" direction
 type: task
-status: Blocked
+status: Closed
 priority: unassigned
 owner: founder
 created: 2026-06-22
+closed: 2026-06-23
+resolution: Phase 1 of ADR-0037 landed; founder-stop artifacts now halt the runner into held at all Phase-1 boundaries, while resume remains Phase 2.
 ---
 
 # 0031 — No way for a persona to stop the runner on a founder "stop the run" direction
+
+## Resolution
+
+Phase 1 of ADR-0037 landed in commits `3308873`, `c9f7a3e`, and `6d39ecd`: a founder "stop the run"
+direction given to any persona, recorded as a file-based founder-stop artifact, halts the runner loop at
+the directive, during-exec, or verify boundary and parks the run resume-ready in the new non-terminal
+`held` disposition. Panes stay open, the in-flight atom is not abandoned or quarantined, and `held` is
+reachable only via the founder artifact. The terminal AbortSignal→`stopped` lane and teardown remain
+separate. Founder-explicit-only is enforced and tested.
+
+Phase 2, resume from `held`, remains open under ADR-0037 and is not closed by this ticket.
 
 ## Context
 

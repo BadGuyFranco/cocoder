@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -850,6 +850,25 @@ describe('runRun (multi-atom loop)', () => {
       )
       expect(headlessCalls, `mode ${mode ?? 'absent'}`).toBe(0)
     }
+  })
+
+  test('normal runs do not synthesize a founder-stop artifact or held status', async () => {
+    const store = openRunStore(':memory:')
+    const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-no-founder-stop-'))
+    const runDir = join(runsRoot, 'run_1')
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        io: fakeIO({ directives: [delegate('ordinary atom'), wrapup('done')] }),
+      }),
+      { ...input, runsRoot },
+    )
+
+    expect(result.status).toBe('completed')
+    expect(store.getRun(result.runId)?.status).toBe('completed')
+    expect(store.listEvents(result.runId).some((e) => e.type === 'run-held')).toBe(false)
+    expect(existsSync(founderStopSignalPath(runDir))).toBe(false)
   })
 
   test('abort while awaiting directive ends stopped without fault or triage', async () => {

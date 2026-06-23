@@ -13,14 +13,15 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
+| [0038](./open/0038-retire-stale-playbook-priority-roadmap.md) | Retire the stale PLAYBOOK "Priority roadmap"; order.json is the ordering SSOT | task | none | Open |
 | [0037](./open/0037-contributing-pr-template-stale-rg-ci-gate.md) | CONTRIBUTING and PR template still promise an rg CI gate that live ci.yml no longer runs | bug | none | Open |
 | [0034](./open/0034-priority-creation-must-auto-register-order-json.md) | Priority creation must auto-register in order.json (prevent orphans at source) | task | oz-autonomy | Open |
-| [0031](./open/0031-founder-stop-the-run-control-for-personas.md) | No way for a persona to stop the runner on a founder "stop the run" direction | task | unassigned | Blocked |
 
 ## Recently Closed
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0031](./closed/0031-founder-stop-the-run-control-for-personas.md) | No way for a persona to stop the runner on a founder "stop the run" direction | task | 2026-06-23 | ADR-0037 Phase 1 landed: founder-stop artifacts halt the runner into non-terminal `held` at directive, during-exec, or verify boundaries; Phase 2 resume remains open. |
 | [0036](./closed/0036-skills-plays-still-appears-in-the-oz-dashboard.md) | Skills (Plays) Still appears in the oz dashboard | bug | 2026-06-23 | Live dashboard nav is pinned to `Plays`, the rebuilt bundle no longer contains `Skills (Plays)`, and stale design-reference persona wording now says Plays. |
 | [0035](./closed/0035-elegance-checkpoint-explicit-step-in-ticket-and-doc-plays.md) | Elegance checkpoint: explicit step in create-ticket and documentation Plays | task | 2026-06-23 | Ticket fix run completed successfully. |
 | [0033](./closed/0033-deb-repair-dialogue-non-tty-failure.md) | Deb repair dialogue fails with "stdin is not a terminal" (non-TTY/headless invocation) | bug | 2026-06-23 | Repair-dialogue turns now build adapters with `headless: true` and preserve Codex-style adapter-owned response artifacts; daemon repair tests pin non-TTY `deb-response.json` production plus stdout sidecar handling. |

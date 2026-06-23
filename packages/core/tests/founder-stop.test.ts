@@ -75,11 +75,16 @@ describe('founder stop contract', () => {
   test('the module exposes no persona self-stop or auto-stop trigger', () => {
     const exportedNames = Object.keys(founderStop)
 
+    expect(exportedNames).toContain('readFounderStopSignal')
+    expect(exportedNames).toContain('writeResumeState')
     expect(exportedNames).not.toContain('requestFounderStop')
     expect(exportedNames).not.toContain('triggerFounderStop')
+    expect(exportedNames).not.toContain('writeFounderStopSignal')
+    expect(exportedNames).not.toContain('createFounderStopSignal')
+    expect(exportedNames).not.toContain('recordFounderStopSignal')
     expect(exportedNames).not.toContain('selfStop')
     expect(exportedNames).not.toContain('autoStop')
     expect(exportedNames.filter((name) => /self.*stop|stop.*self|auto.*stop|stop.*auto/i.test(name))).toEqual([])
-    expect(exportedNames.filter((name) => /^write.*stop/i.test(name))).toEqual([])
+    expect(exportedNames.filter((name) => /^(write|create|record).*founder.*stop/i.test(name))).toEqual([])
   })
 })
