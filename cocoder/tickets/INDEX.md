@@ -13,6 +13,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
+| [0036](./open/0036-skills-plays-still-appears-in-the-oz-dashboard.md) | Skills (Plays) Still appears in the oz dashboard | bug | none | founder-session |
 | [0034](./open/0034-priority-creation-must-auto-register-order-json.md) | Priority creation must auto-register in order.json (prevent orphans at source) | task | oz-autonomy | Open |
 | [0031](./open/0031-founder-stop-the-run-control-for-personas.md) | No way for a persona to stop the runner on a founder "stop the run" direction | task | unassigned | Blocked |
 
