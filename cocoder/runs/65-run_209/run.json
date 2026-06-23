@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_209",
+    "displayNumber": 65
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "priority"
+  },
+  "priorityId": "oz-autonomy",
+  "playbookId": null,
+  "ticketId": null,
+  "status": "stopped",
+  "createdAt": 1782242017570,
+  "endedAt": 1782244682407
+}
