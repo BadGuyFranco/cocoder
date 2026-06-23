@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_192",
+    "displayNumber": 48
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "priority"
+  },
+  "priorityId": "founder-stop-control",
+  "playbookId": null,
+  "ticketId": null,
+  "status": "running",
+  "createdAt": 1782208916630,
+  "endedAt": null
+}
