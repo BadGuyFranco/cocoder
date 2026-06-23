@@ -34,3 +34,19 @@ without launching an adhoc. Verified by a live demo exchange and, where Option B
 governed files through this surface (repair writes remain the existing repair verb). Scope does not extend to
 product code (`packages/core/src/`, `packages/daemon/src/`, etc.) or workspace-local state (run records,
 event streams).
+
+## Founder-added follow-up — surface the launch disposition in Oz (run_200, 2026-06-23)
+
+Carried here when `launch-disposition-first` was archived. That priority shipped a recorded
+`wrap-disposition` event (`archive-candidate` | `awaiting-founder` | `continue`) — see
+`deriveWrapDisposition` in `packages/core/src/runner/runner.ts`, proven by
+`node scripts/proof-launch-disposition.mjs`. The disposition is currently only legible through the wrap
+closeout; it is **not** surfaced in Oz's founder-facing run views.
+
+Follow-up: project the latest `wrap-disposition` event into Oz's run-list / `DebStatus` surface
+(`renderDebStatus` in `packages/core/src/runner/status.ts`) so the founder can see a priority's true
+disposition — and especially an `archive-candidate` — at a glance, without reading the closeout. Derive it
+from the recorded event; do not recompute the disposition in the projection (one owner). This is a read/display
+addition consistent with this priority's surfacing theme; it does not change the founder-approved Objective
+above. Verified when the disposition shows in the Oz run surface and a test pins the projection to the
+recorded event.
