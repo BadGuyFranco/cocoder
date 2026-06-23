@@ -8,8 +8,11 @@
 // REMOVED (founder directive 2026-06-15; ADR-0023 supersedes ADR-0015): there is ONE mode — commit straight to
 // the checked-out branch, always — so committed work is on that branch by construction and no code path
 // can hold it off-branch. There is no strand state for anything to wait on. RunStatus is therefore the
-// whole story; every terminal outcome below is final.
-export type RunStatus = 'running' | 'awaiting-founder' | 'completed' | 'failed' | 'stopped'
+// whole story. ADR-0037 owns the halt vocabulary: `held` means the loop paused mid-flight and resume
+// re-enters at the parked atom (non-terminal, panes open); `wrapup` is a logical close where this launch's
+// work is complete and resume is a fresh launch; `stopped` is terminal stopRun() (active atom abandoned +
+// quarantined); teardown is pane/session lifecycle, never a run disposition.
+export type RunStatus = 'running' | 'awaiting-founder' | 'completed' | 'failed' | 'stopped' | 'held'
 export type WorkItemStatus = 'open' | 'done' | 'abandoned'
 
 export interface Workspace {

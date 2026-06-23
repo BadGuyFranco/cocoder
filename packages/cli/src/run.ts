@@ -25,7 +25,7 @@ import { CmuxSessionHost } from '@cocoder/session-hosts'
 import { authoringPlayViaDaemon, migrateHistoryViaDaemon, requestDebRepairViaDaemon, runViaDaemon, startOzDaemon, supportCommitViaDaemon, teardownViaDaemon, type DebRepairEvidenceItem } from './client.js'
 
 const log = (m: string): void => console.error(`[cocoder] ${m}`)
-const usage = 'usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]   |   cocoder oz commit-support <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]'
+const usage = 'usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]   |   cocoder oz commit-support <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]'
 const requestDebRepairUsage = 'usage: cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]'
 
 function authorInvocationFromArgv(): unknown {
@@ -159,21 +159,31 @@ async function main(): Promise<void> {
   if (cmd === 'oz' && arg1 === 'archive-priority') {
     const priorityId = process.argv[4]
     if (!priorityId) {
-      console.error('usage: cocoder oz archive-priority <priorityId> [--workspace <workspaceId>]')
+      console.error('usage: cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]')
       process.exit(2)
     }
     const workspaceIdx = process.argv.indexOf('--workspace')
     const workspaceId = workspaceIdx >= 0 ? process.argv[workspaceIdx + 1] : 'cocoder'
     if (workspaceIdx >= 0 && !workspaceId) {
-      console.error('usage: cocoder oz archive-priority <priorityId> [--workspace <workspaceId>]')
+      console.error('usage: cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]')
       process.exit(2)
+    }
+    const archiveInvocation: Record<string, string> = { id: priorityId }
+    for (const key of ['verdict', 'findings', 'reason'] as const) {
+      const flag = `--${key}`
+      const value = optionValue(flag)
+      if (process.argv.includes(flag) && !value) {
+        console.error('usage: cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]')
+        process.exit(2)
+      }
+      if (value) archiveInvocation[key] = value
     }
     const live = await probeDaemon({ port: DEFAULT_OZ_PORT })
     if (!live.alive) {
       console.error('cocoder: no Oz daemon running — cannot dispatch archive-priority')
       process.exit(1)
     }
-    const result = await authoringPlayViaDaemon(`http://127.0.0.1:${live.port}`, workspaceId, 'archive-priority', { id: priorityId })
+    const result = await authoringPlayViaDaemon(`http://127.0.0.1:${live.port}`, workspaceId, 'archive-priority', archiveInvocation)
     if (result.commitSha) {
       console.log(`archived priority ${priorityId} for ${workspaceId}: ${result.commitSha}`)
       if (result.committedPaths.length) console.log(`  files: ${result.committedPaths.join(', ')}`)

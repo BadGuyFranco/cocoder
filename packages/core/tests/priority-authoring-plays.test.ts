@@ -49,6 +49,15 @@ describe('priority authoring Plays', () => {
     expect(play.body).toContain('elegance checkpoint')
   })
 
+  test('archive-priority owns archive disposition notes and archived-priority backfills', () => {
+    const play = loadEffectivePlay(sources().baseDir, sources().deltaDir, 'archive-priority')
+
+    expect(play.body).toContain('founder/Oscar disposition fields')
+    expect(play.body).toContain('> **Archived YYYY-MM-DD (founder) — <verdict>.**')
+    expect(play.body).toContain('backfill the disposition note')
+    expect(play.body).toContain('already-archived priority')
+  })
+
   test('Architect Play System priority includes elegance checkpoint contract migration', async () => {
     const { readFile } = await import('node:fs/promises')
     const text = await readFile(join(repoRoot(), 'cocoder', 'priorities', 'archive', 'hybrid-plays.md'), 'utf8')

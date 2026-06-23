@@ -3,7 +3,7 @@
 // dependency, so the cli stays daemon-import-free).
 import { execFile } from 'node:child_process'
 import { createServer, type Server } from 'node:http'
-import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { afterEach, describe, expect, test } from 'vitest'
 import { authoringPlayViaDaemon, requestDebRepairViaDaemon, runViaDaemon, supportCommitViaDaemon } from '../src/client.js'
@@ -178,7 +178,7 @@ describe('runViaDaemon (client mode)', () => {
   })
 
   test('request-deb-repair CLI requires --problem', async () => {
-    const cli = join(process.cwd(), 'packages', 'cli', 'bin', 'cocoder.mjs')
+    const cli = fileURLToPath(new URL('../bin/cocoder.mjs', import.meta.url))
 
     const run = execFileAsync(process.execPath, [cli, 'oz', 'request-deb-repair', 'cocoder']).catch((err: unknown) => err)
 
