@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **ticket-fix-0034: priority creation auto-registers order.json — archive-candidate (run_64/run_208)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0034](./tickets/open/0034-priority-creation-must-auto-register-order-json.md) | **Run:** run_208 (display 64)
+**Outcomes:**
+- **`registerLivePriorities` single owner.** `packages/daemon/src/priority-order.ts` registers new ids in `order.json` atomically; daemon `createPriority` route and authoring-Play gate-commit spine both call it before commit.
+- **Detect → prevent.** ADR-0038 amended: write spines register by construction; `findOrphanedPriorities` stays as a backstop that must not trip in normal operation. Tests prove route + Play paths cannot land a priority file without updating `order.json`.
+- **Ticket 0034 auto-closes** via daemon `closeTicketAfterSuccessfulRun` on successful wrap-up landing.
+- **Disposition: `archive-candidate`.** Acceptance met; ticket-fix objective complete.
+
+**Next:** Launch `oz-autonomy` — draft the founder-facing ADR amending ADR-0016/0017/0025 for Oz self-direct write scope (governance gate before build atoms).
+
 ## 2026-06-23 — **founder-stop-control: ADR-0037 Phase 2 resume from held — archive-candidate (run_63/run_207)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [founder-stop-control](./priorities/founder-stop-control.md) | **Run:** run_207 (display 63)

@@ -44,8 +44,10 @@ scopeNarrowing: <glob>     # optional — narrows the builder's persona write-sc
 - **Ordering is operational, not a file field.** Ordering lives in the order-only runtime overlay
   [`order.json`](./order.json) at this directory level, per
   [ADR-0035](../decisions/0035-priority-creation-always-placed-or-halted.md) and
-  [ADR-0038](../decisions/0038-priority-visibility-invariant.md). The directory listing is the index of
-  what's active; Playbook files carry **no rank** — identity stays stable (the F1 surface).
+  [ADR-0038](../decisions/0038-priority-visibility-invariant.md). New live priorities are registered in
+  `order.json` by construction at write time — do not edit `order.json` manually when authoring. The
+  directory listing is the index of what's active; Playbook files carry **no rank** — identity stays stable
+  (the F1 surface).
 
 ## Archived history
 
