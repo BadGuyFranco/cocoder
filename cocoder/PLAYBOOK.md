@@ -257,6 +257,11 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    satisfied: delegation re-derive + multi-owner mandate in `oscar.md`, Oscar support-edit suite bar in
    `shared-standards.md`, mode 4 founder-accepted no-op (wrap-up F18 + existing proof scripts). Persona/Play
    suites green. **Founder gate:** confirm archive.
+10. `founder-stop-control` — **READY TO LAUNCH (founder-approved, run_190).** New cross-persona stop-control
+   lane: a persona writes a file stop-signal; the runner halts the directive/verify/nudge loop into a
+   **held** state (stop ≠ teardown), founder-explicit-only. Two phases under one founder-approved ADR —
+   Phase 1 halt-and-hold (resume-ready `held` state, closes ticket `0031`); Phase 2 resume. ADR is the
+   first atom. Owner map at `cocoder/runs/46-run_190/owner-map-0031.md`.
 
 **Other launchable (not in `order.json`):** `tickets-review` — **CONTINUE (run_143).** Build code-complete;
    ticket launch plumbing satisfied. **Archive gate:** founder live proof — Tickets tab **Launch** on ticket
