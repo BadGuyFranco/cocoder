@@ -1,6 +1,6 @@
 # ADR-0017 — Oz orchestration: Oz is a CLI-backed persona in a window, with a bounded tool surface
 
-**Status:** Accepted (founder + Claude, 2026-06-09). **Amended 2026-06-12** (founder + Claude, run_59 post-wrap): hosting decided, verb surface extended, Refresh Oz added — see the Amendment section.
+**Status:** Accepted (founder + Claude, 2026-06-09). **Amended 2026-06-12** (founder + Claude, run_59 post-wrap): hosting decided, verb surface extended, Refresh Oz added — see the Amendment section. **Amended 2026-06-23 ([0040](./0040-oz-write-side-autonomy.md))**: the bounded tool surface gains the `oz-action` self-direct *write* actions (reversible edits to existing governance) and a conversational `author` round; the read-from-disk doctrine and lifecycle bounding are unchanged — the surface stays a fixed, gated vocabulary, not free rein.
 **Builds on:** [0005](./0005-personas-and-subtasks.md) (personas run as CLI sessions via an adapter), [0006](./0006-adapter-contract.md) (adapter contract), [0013](./0013-orchestration-observation.md) (the three-tier observation hierarchy; Oz = tier 3).
 **Relates to:** [ADR-0008 (v1 tree)](../zArchive/v1/decisions/0008-oz-control-plane-architecture.md) (Oz control plane). **Supersedes** the run_46 `parseOzCommand` daemon stub *as the human-facing interface* (that stub is retained as Oz's action layer — see Consequences).
 

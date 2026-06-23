@@ -1,6 +1,6 @@
 # ADR-0040 — Oz write-side autonomy: conversational authoring + self-directed governance edits
 
-**Status:** Proposed (Claude-drafted, awaiting founder approval — run_210, 2026-06-23)
+**Status:** Accepted (founder + Claude, 2026-06-23)
 **Seam:** the Oz control plane — how much Oz may *write* to governed flat files without per-action founder approval
 **Amends:** [0016](./0016-deb-scoped-repair-fallback.md) (repair is reactive/fault-triggered and Deb-owned) ·
 [0017](./0017-oz-orchestration-persona.md) (Oz's bounded tool surface was lifecycle + read only) ·

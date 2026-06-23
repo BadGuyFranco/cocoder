@@ -2,7 +2,10 @@
 
 **Status:** Accepted (founder-directed, 2026-06-16) — decided under the priority
 [`governance-authoring-plays`](../priorities/governance-authoring-plays.md), which names this ADR as a
-required outcome.
+required outcome. **Amended by [0040](./0040-oz-write-side-autonomy.md)** (2026-06-23): Oz may now reach
+the atomic `author` action **conversationally** (draft-with-founder-then-commit, no adhoc run); the
+founder-approval boundary for a net-new id/title/Objective (§4) is **preserved verbatim** — the Play still
+refuses to fabricate an Objective.
 **Builds on:** [0023](./0023-workspace-commit-spine.md) (the one commit spine — authoring commits through
 it, never a divergent path), [0024](./0024-governance-pre-run-snapshot.md) (the launch-time backstop for
 the path Plays don't cover — human hand-edits), [0013](./0013-multi-atom-delegation.md) /

@@ -9,7 +9,7 @@
 > commit lands in place. It still "does not rescue the run" — a faulted run still fails; the repair is a
 > distinct, reviewable commit.
 
-**Status:** Accepted (founder + Claude, 2026-06-02)
+**Status:** Accepted (founder + Claude, 2026-06-02) — **amended by [0040](./0040-oz-write-side-autonomy.md)** (2026-06-23): Deb's reactive, fault-triggered repair authority below is unchanged; ADR-0040 adds a *separate*, narrower, **proactive** self-direct write lane owned by Oz (`oz-action`, for reversible edits to existing governance) on the same ADR-0023 spine — not a folding of repair into Oz.
 **Seam:** the debugger tier — Deb's authority, visibility, and write scope
 **Refines:** [0013](./0013-orchestration-observation.md) (tier-2 Deb: was observe-and-triage; now observe,
 diagnose, nudge, **and repair within a fence**) · **Builds on:** [0007](./0007-write-scope-enforcement.md)
