@@ -136,13 +136,20 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
   } catch {
     /* non-git install roots still boot; stale-daemon signaling is observability only */
   }
+  const store = opts.store ?? openRunStore(join(opts.cocoderHome, 'local', 'cocoder.db'))
+  const sessionHost = opts.sessionHost ?? new CmuxSessionHost({
+    onSpawnTiming: (timing) => {
+      if (!timing.group) return
+      store.recordEvent({ runId: timing.group, type: 'cmux-spawn-timing', data: timing })
+    },
+  })
   const ctx: OzContext = {
     cocoderHome: opts.cocoderHome,
     runsRoot: join(opts.cocoderHome, 'local', 'runs'),
-    store: opts.store ?? openRunStore(join(opts.cocoderHome, 'local', 'cocoder.db')),
+    store,
     git,
     bootSha,
-    sessionHost: opts.sessionHost ?? new CmuxSessionHost(),
+    sessionHost,
     getAdapter: opts.getAdapter ?? ((cli) => resolveAdapter(cli, registry)),
     listAdapters: opts.listAdapters ?? (() => [...registry.values()]),
     cliTestCache: new Map(),

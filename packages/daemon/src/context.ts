@@ -100,6 +100,8 @@ export interface OzContext {
   readonly listAdapters: () => readonly Adapter[]
   readonly cliTestCache: Map<string, CliTestEntry>
   readonly io: RunnerIO
+  /** Clock injected for deterministic launcher timing instrumentation tests. */
+  readonly now?: () => number
   /** Runs a headless Play as a captured subprocess (passed to the runner). Default (undefined) =
    *  the real spawn; tests inject a fake so a launch that wraps up doesn't shell out. */
   readonly runHeadless?: (input: HeadlessRunInput) => Promise<DispatchPlayResult>

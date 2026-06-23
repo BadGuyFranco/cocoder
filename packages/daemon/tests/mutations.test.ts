@@ -653,7 +653,11 @@ describe('Oz mutations + lifecycle', () => {
       expect(sameWorkspace.json.error).toContain('workspace "cocoder"')
       expect(store.listRuns({ workspaceId: 'cocoder' })).toHaveLength(1)
       expect(store.listRuns({ workspaceId: 'external' })).toHaveLength(1)
-      for (let i = 0; i < 50 && (store.listEvents(aRunId).length === 0 || store.listEvents(bRunId).length === 0); i++) {
+      for (
+        let i = 0;
+        i < 50 && (!store.listEvents(aRunId).some((event) => event.type === 'run-start') || !store.listEvents(bRunId).some((event) => event.type === 'run-start'));
+        i++
+      ) {
         await sleep(10)
       }
       expect(store.listEvents(aRunId).map((event) => event.type)).toContain('run-start')

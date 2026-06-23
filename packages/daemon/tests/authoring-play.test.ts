@@ -282,10 +282,36 @@ describe('requestAuthoringPlay', () => {
     expect(snapshotSha).toBeTruthy()
     expect((await git(fixture.home, ['log', '-1', '--format=%s', snapshotSha!])).trim()).toBe('governance: pre-run snapshot')
   })
+
+  test('launch records setup and per-persona spawn timing events', async () => {
+    let time = 1_000
+    const fixture = await makeFixture({ now: () => (time += 10) })
+    await writePriority(fixture.home, 'timed-alpha', 'Timed Alpha', 'Launch with timing evidence.')
+
+    const launch = await launchRun(fixture.ctx, 'cocoder', 'timed-alpha')
+
+    expect(launch.status).toBe(202)
+    const run = await waitForTerminal(fixture.store, launch.body.runId)
+    const events = fixture.store.listEvents(run.id)
+    expect(events.map((event) => event.type)).toEqual(expect.arrayContaining([
+      'launch-entry',
+      'launch-run-input-assembled',
+      'launch-stale-check-finished',
+      'launch-run-created',
+      'launch-spawn-start',
+      'launch-spawn-end',
+    ]))
+    const created = events.find((event) => event.type === 'launch-run-created')?.data as { ms?: unknown } | undefined
+    expect(typeof created?.ms).toBe('number')
+    const spawnEnds = events.filter((event) => event.type === 'launch-spawn-end')
+    expect(spawnEnds.map((event) => (event.data as { persona?: unknown }).persona)).toEqual(expect.arrayContaining(['oscar', 'bob', 'deb']))
+    expect(spawnEnds.every((event) => typeof (event.data as { ms?: unknown }).ms === 'number')).toBe(true)
+  })
 })
 
 async function makeFixture(options: {
   readonly runHeadless?: (input: HeadlessRunInput) => Promise<{ readonly exitCode: number; readonly output: string }>
+  readonly now?: () => number
 } = {}): Promise<Fixture> {
   const home = await mkdtemp(join(tmpdir(), 'cocoder-authoring-play-'))
   await initRepo(home)
@@ -304,6 +330,7 @@ async function makeFixture(options: {
     listAdapters: () => [],
     cliTestCache: new Map(),
     io: fakeIO(),
+    now: options.now,
     inFlight: new Map<string, string>(),
     stopControllers: new Map<string, AbortController>(),
     events: createOzEventBus(),

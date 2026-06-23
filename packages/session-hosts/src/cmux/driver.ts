@@ -22,6 +22,10 @@ interface Session {
 export interface CmuxDriverOptions {
   /** Injectable cmux CLI (defaults to the real one); swapped in unit tests. */
   readonly cli?: CmuxCli
+  /** Clock injected for deterministic timing tests. */
+  readonly now?: () => number
+  /** Receives one aggregate timing payload per spawn. */
+  readonly onSpawnTiming?: (timing: CmuxSpawnTiming) => void
   /** Directory for generated launch scripts (defaults to the OS temp dir). */
   readonly scriptDir?: string
   /** Poll interval for waitForExit/status, ms. */
@@ -33,6 +37,24 @@ export interface CmuxDriverOptions {
   readonly hostReadyTimeoutMs?: number
 }
 
+export interface CmuxCliCallTiming {
+  readonly cmd: string
+  readonly ms: number
+}
+
+export interface CmuxSpawnTiming {
+  readonly persona: string
+  readonly group?: string
+  readonly workspaceRef?: string
+  readonly surfaceRef?: string
+  readonly ok: boolean
+  readonly error?: string
+  readonly hostLaunched: boolean
+  readonly hostReadyMs: number
+  readonly totalMs: number
+  readonly calls: readonly CmuxCliCallTiming[]
+}
+
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
 const openCmuxApp = async (): Promise<void> => {
@@ -41,6 +63,8 @@ const openCmuxApp = async (): Promise<void> => {
 
 export class CmuxSessionHost implements SessionHost {
   readonly #cli: CmuxCli
+  readonly #now: () => number
+  readonly #onSpawnTiming?: (timing: CmuxSpawnTiming) => void
   readonly #scriptDir: string
   readonly #pollMs: number
   readonly #launchApp: () => Promise<void>
@@ -51,6 +75,8 @@ export class CmuxSessionHost implements SessionHost {
 
   constructor(opts: CmuxDriverOptions = {}) {
     this.#cli = opts.cli ?? makeCmuxCli()
+    this.#now = opts.now ?? Date.now
+    this.#onSpawnTiming = opts.onSpawnTiming
     this.#scriptDir = opts.scriptDir ?? tmpdir()
     this.#pollMs = opts.pollMs ?? 1000
     this.#launchApp = opts.launchApp ?? openCmuxApp
@@ -58,53 +84,77 @@ export class CmuxSessionHost implements SessionHost {
   }
 
   async spawn(opts: SpawnOptions): Promise<SessionRef> {
-    await this.#ensureHost()
-    const existing = opts.group ? this.#groups.get(opts.group) : undefined
+    const startedAt = this.#now()
+    const calls: CmuxCliCallTiming[] = []
+    let hostLaunched = false
+    let hostReadyMs = 0
+    let workspaceRef: string | undefined
+    let surfaceRef: string | undefined
+    try {
+      const host = await this.#ensureHost(calls)
+      hostLaunched = host.launched
+      hostReadyMs = host.ms
+      const existing = opts.group ? this.#groups.get(opts.group) : undefined
 
-    let workspaceRef: string
-    let paneRef: string
-    let surfaceRef: string
-    if (existing) {
-      // A later persona of the same run → split a new pane beside the others (watch side-by-side).
-      const panesBefore = parsePaneRefs(await this.#cli.run(['list-panes', '--workspace', existing]))
-      await this.#cli.run(['new-split', 'right', '--workspace', existing, '--focus', 'true'])
-      workspaceRef = existing
-      const panesAfter = parsePaneRefs(await this.#cli.run(['list-panes', '--workspace', existing]))
-      paneRef = diffNewWorkspace(panesBefore, panesAfter) // reuse the single-new-ref differ
-      ;({ surfaceRef } = parseSurface(await this.#cli.run(['list-pane-surfaces', '--pane', paneRef, '--workspace', workspaceRef, '--json'])))
-    } else {
-      // First persona of the run → a fresh workspace named for the RUN (priority + session number via
-      // groupLabel), not for whichever persona spawned first; cwd set, brought to front.
-      const name = opts.groupLabel ?? opts.label ?? opts.group ?? 'cocoder'
-      const out = await this.#cli.run(['new-workspace', '--name', name, '--cwd', opts.cwd, '--focus', 'true'])
-      workspaceRef = parseOkRef(out, 'workspace')
-      ;({ paneRef, surfaceRef } = parseSurface(await this.#cli.run(['list-pane-surfaces', '--workspace', workspaceRef, '--json'])))
-      if (opts.group) this.#groups.set(opts.group, workspaceRef)
-    }
-
-    // Label the pane/tab with the persona so Oscar vs Bob is obvious.
-    if (opts.label) {
-      try {
-        await this.#cli.run(['rename-tab', '--workspace', workspaceRef, '--surface', surfaceRef, opts.label])
-      } catch {
-        /* labelling is cosmetic — never fail a spawn over it */
+      let paneRef: string
+      if (existing) {
+        // A later persona of the same run → split a new pane beside the others (watch side-by-side).
+        const panesBefore = parsePaneRefs(await this.#runCli(['list-panes', '--workspace', existing], calls))
+        await this.#runCli(['new-split', 'right', '--workspace', existing, '--focus', 'true'], calls)
+        workspaceRef = existing
+        const panesAfter = parsePaneRefs(await this.#runCli(['list-panes', '--workspace', existing], calls))
+        paneRef = diffNewWorkspace(panesBefore, panesAfter) // reuse the single-new-ref differ
+        ;({ surfaceRef } = parseSurface(await this.#runCli(['list-pane-surfaces', '--pane', paneRef, '--workspace', workspaceRef, '--json'], calls)))
+      } else {
+        // First persona of the run → a fresh workspace named for the RUN (priority + session number via
+        // groupLabel), not for whichever persona spawned first; cwd set, brought to front.
+        const name = opts.groupLabel ?? opts.label ?? opts.group ?? 'cocoder'
+        const out = await this.#runCli(['new-workspace', '--name', name, '--cwd', opts.cwd, '--focus', 'true'], calls)
+        workspaceRef = parseOkRef(out, 'workspace')
+        ;({ paneRef, surfaceRef } = parseSurface(await this.#runCli(['list-pane-surfaces', '--workspace', workspaceRef, '--json'], calls)))
+        if (opts.group) this.#groups.set(opts.group, workspaceRef)
       }
+
+      // Label the pane/tab with the persona so Oscar vs Bob is obvious.
+      if (opts.label) {
+        try {
+          await this.#runCli(['rename-tab', '--workspace', workspaceRef, '--surface', surfaceRef, opts.label], calls)
+        } catch {
+          /* labelling is cosmetic — never fail a spawn over it */
+        }
+      }
+
+      const scriptPath = join(this.#scriptDir, `cocoder-cmux-${randomUUID()}.sh`)
+      await writeFile(scriptPath, buildLaunchScript(opts), 'utf8')
+
+      // `send`/`read-screen`/`send-key` MUST carry --workspace: cmux 0.64.x resolves a bare --surface ref
+      // against the CALLER's workspace, so a surface in the run's own workspace reads as "not a terminal"
+      // (the daemon is not in that workspace). Scoping by workspace makes the ref resolve in every context.
+      await this.#runCli(['send', '--workspace', workspaceRef, '--surface', surfaceRef, `bash ${shquote(scriptPath)}`], calls)
+      await this.#runCli(['send-key', '--workspace', workspaceRef, '--surface', surfaceRef, 'Enter'], calls)
+
+      this.#sessions.set(surfaceRef, { workspaceRef, paneRef, surfaceRef, exitCode: null })
+      await this.#focusPane(paneRef, calls) // bring the active agent to the front
+      // workspaceRef rides on the ref so the runner can PERSIST it — closeSurface() then works across a
+      // daemon restart (kill() can't: its #sessions map is empty in a fresh process).
+      const ref: SessionRef = { id: surfaceRef, driver: 'cmux', workspaceRef }
+      this.#emitSpawnTiming({ persona: opts.persona, group: opts.group, workspaceRef, surfaceRef, ok: true, hostLaunched, hostReadyMs, totalMs: this.#now() - startedAt, calls })
+      return ref
+    } catch (err) {
+      this.#emitSpawnTiming({
+        persona: opts.persona,
+        group: opts.group,
+        workspaceRef,
+        surfaceRef,
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+        hostLaunched,
+        hostReadyMs,
+        totalMs: this.#now() - startedAt,
+        calls,
+      })
+      throw err
     }
-
-    const scriptPath = join(this.#scriptDir, `cocoder-cmux-${randomUUID()}.sh`)
-    await writeFile(scriptPath, buildLaunchScript(opts), 'utf8')
-
-    // `send`/`read-screen`/`send-key` MUST carry --workspace: cmux 0.64.x resolves a bare --surface ref
-    // against the CALLER's workspace, so a surface in the run's own workspace reads as "not a terminal"
-    // (the daemon is not in that workspace). Scoping by workspace makes the ref resolve in every context.
-    await this.#cli.run(['send', '--workspace', workspaceRef, '--surface', surfaceRef, `bash ${shquote(scriptPath)}`])
-    await this.#cli.run(['send-key', '--workspace', workspaceRef, '--surface', surfaceRef, 'Enter'])
-
-    this.#sessions.set(surfaceRef, { workspaceRef, paneRef, surfaceRef, exitCode: null })
-    await this.show({ id: surfaceRef, driver: 'cmux' }) // bring the active agent to the front
-    // workspaceRef rides on the ref so the runner can PERSIST it — closeSurface() then works across a
-    // daemon restart (kill() can't: its #sessions map is empty in a fresh process).
-    return { id: surfaceRef, driver: 'cmux', workspaceRef }
   }
 
   async readScreen(ref: SessionRef): Promise<string> {
@@ -128,11 +178,11 @@ export class CmuxSessionHost implements SessionHost {
 
   async waitForExit(ref: SessionRef, opts: { timeoutMs?: number } = {}): Promise<SessionExited> {
     const timeoutMs = opts.timeoutMs ?? 600_000
-    const deadline = Date.now() + timeoutMs
+    const deadline = this.#now() + timeoutMs
     for (;;) {
       const st = await this.status(ref)
       if (st.state === 'exited') return st
-      if (Date.now() >= deadline) {
+      if (this.#now() >= deadline) {
         throw new Error(`cmux: session ${ref.id} did not exit within ${timeoutMs}ms`)
       }
       await sleep(this.#pollMs)
@@ -150,9 +200,13 @@ export class CmuxSessionHost implements SessionHost {
 
   async show(ref: SessionRef): Promise<void> {
     const s = this.#session(ref)
+    await this.#focusPane(s.paneRef)
+  }
+
+  async #focusPane(paneRef: string, calls?: CmuxCliCallTiming[]): Promise<void> {
     // Best-effort: bring the session's pane to the foreground for the founder to watch.
     try {
-      await this.#cli.run(['focus-pane', '--pane', s.paneRef])
+      await this.#runCli(['focus-pane', '--pane', paneRef], calls)
     } catch {
       /* show is non-essential; never fail a run because focus failed */
     }
@@ -201,9 +255,9 @@ export class CmuxSessionHost implements SessionHost {
   }
 
   /** Is cmux's control socket reachable right now? (`cmux ping` rejects when the socket is absent.) */
-  async #hostUp(): Promise<boolean> {
+  async #hostUp(calls?: CmuxCliCallTiming[]): Promise<boolean> {
     try {
-      await this.#cli.run(['ping'])
+      await this.#runCli(['ping'], calls)
       return true
     } catch {
       return false
@@ -213,19 +267,37 @@ export class CmuxSessionHost implements SessionHost {
   /** Ensure the cmux app is running before driving it. If its socket isn't reachable, launch the
    *  app and poll until it is — so a closed cmux app no longer fails a step INTO the run (the
    *  dogfood failure that earned this). Throws a clear, actionable error if it never comes up. */
-  async #ensureHost(): Promise<void> {
-    if (await this.#hostUp()) return
+  async #ensureHost(calls?: CmuxCliCallTiming[]): Promise<{ readonly launched: boolean; readonly ms: number }> {
+    const startedAt = this.#now()
+    if (await this.#hostUp(calls)) return { launched: false, ms: this.#now() - startedAt }
     await this.#launchApp()
-    const deadline = Date.now() + this.#hostReadyTimeoutMs
+    const deadline = this.#now() + this.#hostReadyTimeoutMs
     for (;;) {
-      if (await this.#hostUp()) return
-      if (Date.now() >= deadline) {
+      if (await this.#hostUp(calls)) return { launched: true, ms: this.#now() - startedAt }
+      if (this.#now() >= deadline) {
         throw new Error(
           `cmux control socket did not become reachable within ${this.#hostReadyTimeoutMs}ms after launching the app. ` +
             `Open cmux manually and ensure socket control is enabled (automation mode) — ADR-0002.`,
         )
       }
       await sleep(this.#pollMs)
+    }
+  }
+
+  async #runCli(args: readonly string[], calls?: CmuxCliCallTiming[]): Promise<string> {
+    const startedAt = this.#now()
+    try {
+      return await this.#cli.run(args)
+    } finally {
+      calls?.push({ cmd: args[0] ?? '', ms: this.#now() - startedAt })
+    }
+  }
+
+  #emitSpawnTiming(timing: CmuxSpawnTiming): void {
+    try {
+      this.#onSpawnTiming?.(timing)
+    } catch {
+      /* timing instrumentation must not affect session behavior */
     }
   }
 }

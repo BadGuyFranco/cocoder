@@ -96,11 +96,34 @@ export interface OscarDebRepairInput {
 /** Wrap the shared session host so each spawned/killed surfaceRef is mirrored into ctx.liveRefs. */
 function trackingHost(ctx: OzContext): SessionHost {
   const h = ctx.sessionHost
+  const now = ctx.now ?? Date.now
   return {
     spawn: async (o) => {
-      const ref = await h.spawn(o)
-      ctx.liveRefs.add(ref.id)
-      return ref
+      const startedAt = now()
+      if (o.group) {
+        ctx.store.recordEvent({ runId: o.group, type: 'launch-spawn-start', data: { persona: o.persona, label: o.label ?? null } })
+      }
+      try {
+        const ref = await h.spawn(o)
+        ctx.liveRefs.add(ref.id)
+        if (o.group) {
+          ctx.store.recordEvent({
+            runId: o.group,
+            type: 'launch-spawn-end',
+            data: { persona: o.persona, ref: ref.id, workspaceRef: ref.workspaceRef ?? null, ms: now() - startedAt, ok: true },
+          })
+        }
+        return ref
+      } catch (err) {
+        if (o.group) {
+          ctx.store.recordEvent({
+            runId: o.group,
+            type: 'launch-spawn-end',
+            data: { persona: o.persona, ms: now() - startedAt, ok: false, message: err instanceof Error ? err.message : String(err) },
+          })
+        }
+        throw err
+      }
     },
     readScreen: (ref) => h.readScreen(ref),
     status: (ref) => h.status(ref),
@@ -462,6 +485,14 @@ function attachRunLifecycle(ctx: OzContext, workspaceId: string, stopController:
  *  (fire-and-forget); returns 202 with the runId, 409 if a run is already in flight for the workspace,
  *  or 400 if the request can't be assembled. The string target preserves ordinary priority callers. */
 export async function launchRun(ctx: OzContext, workspaceId: string, targetInput: string | LaunchRunTarget, opts: { readonly resumeFromRunId?: string; readonly task?: string | null; readonly strictPreRunDirt?: boolean; readonly allowPreRunIntegrityErrors?: boolean } = {}): Promise<LaunchResult> {
+  const now = ctx.now ?? Date.now
+  const launchStartedAt = now()
+  const pendingTimingEvents: Array<{ readonly type: string; readonly data: Record<string, unknown> }> = [
+    { type: 'launch-entry', data: { workspaceId, ms: 0 } },
+  ]
+  const markTiming = (type: string, data: Record<string, unknown> = {}): void => {
+    pendingTimingEvents.push({ type, data: { ...data, ms: now() - launchStartedAt } })
+  }
   const target = normalizeLaunchTarget(targetInput)
   const targetId = launchTargetId(target)
   if (!workspaceId || !targetId) {
@@ -515,6 +546,7 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
       return { status: 400, body: { error: err instanceof Error ? err.message : String(err) } }
     }
   }
+  markTiming('launch-run-input-assembled', { targetKind: target.kind, targetId })
   // Fail-fast on a STALE daemon (serving code older than repo HEAD) BEFORE creating a run or spawning any
   // agents. Earned from a live incident: a stale daemon used to run a whole build that could only abort at
   // wrap-up, leaving a "restart the daemon" pickup that an idle agent (Deb) then acted on — running
@@ -522,7 +554,9 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
   // workspace and replaced the agent panes. Refuse the launch instead: a FOUNDER restarts + re-launches;
   // nothing is spawned, so there is no session to hijack and no wasted build.
   const headNow = await headShaOrUnknown(ctx, ctx.cocoderHome)
-  if (await daemonRuntimeStale(ctx, ctx.cocoderHome, ctx.bootSha, headNow)) {
+  const stale = await daemonRuntimeStale(ctx, ctx.cocoderHome, ctx.bootSha, headNow)
+  markTiming('launch-stale-check-finished', { bootSha: ctx.bootSha, headSha: headNow, stale })
+  if (stale) {
     ctx.inFlight.delete(workspaceId)
     // Self-heal (daemon-side, per the 2026-05-30 headless-substrate decision): a stale daemon with
     // ZERO runs in flight restarts itself via the same detached mechanism as POST /daemon/restart —
@@ -560,11 +594,16 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
     getAdapter: ctx.getAdapter,
     io: ctx.io,
     runHeadless: ctx.runHeadless,
+    now,
     signal: stopController.signal,
     onRunCreated: (run) => {
       runId = run.id
       ctx.inFlight.set(workspaceId, run.id)
       ctx.stopControllers.set(run.id, stopController)
+      for (const event of pendingTimingEvents) {
+        ctx.store.recordEvent({ runId: run.id, type: event.type, data: event.data })
+      }
+      ctx.store.recordEvent({ runId: run.id, type: 'launch-run-created', data: { workspaceId, targetKind: target.kind, targetId, ms: now() - launchStartedAt } })
       emitOzEvent(ctx, { type: 'run-created', runId: run.id, workspaceId })
     },
   }

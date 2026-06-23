@@ -3,6 +3,7 @@
 export {
   CmuxSessionHost,
   type CmuxDriverOptions,
+  type CmuxSpawnTiming,
   makeCmuxCli,
   type CmuxCli,
 } from './cmux/index.js'

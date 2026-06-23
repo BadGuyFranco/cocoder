@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import type { SpawnOptions } from '@cocoder/core'
-import { CmuxSessionHost, type CmuxCli } from '../src/index.js'
+import { CmuxSessionHost, type CmuxCli, type CmuxSpawnTiming } from '../src/index.js'
 import { buildLaunchScript, diffNewWorkspace, shquote } from '../src/cmux/launch.js'
 import { parseOkRef, parsePaneRefs, parseSurface, parseWorkspaceRefs } from '../src/cmux/cmux-cli.js'
 
@@ -103,6 +103,43 @@ describe('CmuxSessionHost driver (fake cli)', () => {
     expect(sent).toEqual(expect.arrayContaining(['--workspace', 'workspace:2', '--surface', 'surface:2'])) // scoped by workspace (cmux 0.64.x ref resolution)
     expect(sent?.at(-1)).toMatch(/^bash '.*cocoder-cmux-.*\.sh'$/)
     expect(calls.some((c) => c[0] === 'send-key' && c.includes('--workspace') && c.includes('Enter'))).toBe(true)
+  })
+
+  test('spawn emits aggregate cmux CLI timing without changing call order', async () => {
+    const { cli } = makeFakeCli()
+    const timings: CmuxSpawnTiming[] = []
+    let time = 0
+    const scriptDir = await mkdtemp(join(tmpdir(), 'cmux-test-'))
+    const host = new CmuxSessionHost({
+      cli,
+      scriptDir,
+      pollMs: 1,
+      now: () => ++time,
+      onSpawnTiming: (timing) => timings.push(timing),
+    })
+
+    await host.spawn({ persona: 'oscar', label: 'Oscar', command: 'claude', args: [], cwd: '/repo', group: 'run_1' })
+
+    expect(timings).toHaveLength(1)
+    expect(timings[0]).toMatchObject({
+      persona: 'oscar',
+      group: 'run_1',
+      workspaceRef: 'workspace:2',
+      surfaceRef: 'surface:2',
+      ok: true,
+      hostLaunched: false,
+    })
+    expect(timings[0]?.totalMs).toBeGreaterThan(0)
+    expect(timings[0]?.calls.map((call) => call.cmd)).toEqual([
+      'ping',
+      'new-workspace',
+      'list-pane-surfaces',
+      'rename-tab',
+      'send',
+      'send-key',
+      'focus-pane',
+    ])
+    expect(timings[0]?.calls.every((call) => call.ms >= 0)).toBe(true)
   })
 
   test('groupLabel names the workspace (priority + session), while the pane keeps the persona label', async () => {
