@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **ticket-fix-0041: authoring-Play post-wrap in-flight guard aligned — archive-candidate (run_61/run_205)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0041](./tickets/open/0041-authoring-play-in-flight-guard-blocks-the-same-wrapped-run.md) | **Run:** run_205 (display 61)
+**Outcomes:**
+- **Guard aligned (`7f56460`).** `requestAuthoringPlay` now uses the same workspace-scoped, status-aware post-wrap in-flight policy as support-commit and Deb-repair: same wrapped run allowed, different/active run refused; cross-workspace false 409s removed.
+- **Tests pinned.** `authoring-play.test.ts` covers same-run allowance (including cross-workspace ignore), active-run refusal, and pending-reservation refusal (10/10 green).
+- **Ticket 0041 auto-closes** via daemon `closeTicketAfterSuccessfulRun` on successful wrap-up landing.
+- **Disposition: `archive-candidate`.** Acceptance met; machinery-only fix with daemon test coverage.
+
+**Next:** Launch ticket-fix on [0040](./tickets/open/0040-daemon-launches-stale-oz-dashboard-bundle-in-built-mode-no-rebuild-step.md) — stale built-mode Oz dashboard bundle rebuild-or-refuse before launch.
+
 ## 2026-06-23 — **ticket-fix-0039: Oz launch progress modal + delay diagnosis — archive-candidate (run_60/run_204)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0039](./tickets/open/0039-launch-status-in-oz-dashboard.md) | **Run:** run_204 (display 60)
