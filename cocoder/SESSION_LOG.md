@@ -12,6 +12,19 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **oz-autonomy: write layer complete — archive-candidate (run_68/run_212)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [oz-autonomy](./priorities/oz-autonomy.md) | **Run:** run_212 (display 68)
+**Outcomes:**
+- **Atom 1 — core scope guard (`96f98e4`).** Single-owner `OZ_ACTION_SCOPE` allow-list (ADR-0040 §1) + test proving §4 hard exclusions (`packages/*/src/`, secrets, install-local) are held back, reusing the existing `commitScoped`/`partitionByScope` spine — no second commit path.
+- **Atom 2 — oz-action lane (`89c61eb`).** Daemon `requestOzAction` + `oz-action` OZ_TOOL verb gate-commits reversible governance edits as an `oz-action` commit with `commitOnlyScope:true`; out-of-lane held back. Proven against a real git repo. Mirrors `requestOzRepair`.
+- **Atom 3 — Objective guard (`9acfaac`).** Code-level backstop in `requestAuthoringPlay`: refuses (422, nothing committed) a create/edit whose changed priority file has a missing/blanked `## Objective`, reusing core `loadPriority(...).objective` (no second approval field, ADR-0025); archive exempt.
+- **Atom 4 — runnable proof (`1f29cd6`).** `scripts/proof-oz-autonomy.mjs` — one-command F18 proof: 6/6 required clauses green (exit 0), citing real tests + ADR-0040 acceptance/pointers/index + a whole-repo `pnpm typecheck`.
+- **Governance gate was pre-cleared:** ADR-0040 Accepted (2026-06-23) with carry-forward pointers in ADR-0016/0017/0025 and the decisions index.
+- **Deb false-positive reconciled (ticket [0044](./tickets/open/0044-deb-nudge-fabricated-out-of-scope-event.md)).** A Deb nudge claimed an `out-of-scope-committed` feed event on atom 3; reconciliation found atom 3's commit is clean (only `scripts/proof-oz-autonomy.mjs`) and the event is absent from `deb-status.json`/audit — Deb fabricated and misattributed it. The only out-of-scope paths (atom 0: `counters.json` + run record) are expected runner run-history bookkeeping committed-and-flagged by the default gate. Not blocking.
+**Disposition: `archive-candidate`.** All five Verified-when bullets met with runnable proof; bullet 1 (conversational author-commit, no adhoc run) uses the existing `author` tool — no new code, proven by clause A.
+**Next:** Founder confirms archive of `oz-autonomy` (re-verify any time with `node scripts/proof-oz-autonomy.mjs` → exit 0), then archive via the archive-priority Play.
+
 ## 2026-06-23 — **oz-autonomy: governance gate verified cleared — continue (run_67/run_211)**
 
 **Persona:** Oscar | **Priority:** [oz-autonomy](./priorities/oz-autonomy.md) | **Run:** run_211 (display 67)
