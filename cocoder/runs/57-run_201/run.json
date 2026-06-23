@@ -12,7 +12,7 @@
   "priorityId": "ripgrep-dependency-research",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "awaiting-founder",
   "createdAt": 1782224143672,
-  "endedAt": null
+  "endedAt": 1782224666752
 }
