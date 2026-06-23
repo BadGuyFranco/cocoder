@@ -3,6 +3,8 @@ id: founder-stop-control
 title: Founder stop-control — halt-and-hold the runner on a founder "stop the run" (stop ≠ teardown)
 ---
 
+> **Archived 2026-06-23 (founder) — Archived: ADR-0037 Phase 1 + Phase 2 complete and verified; ticket 0031 closed.** Founder confirmed archive after Phase 2 (cocoder oz resume) landed end-to-end.
+
 ## Objective
 
 Give any persona (Bob, Oscar, or Deb) a sanctioned, file-based way to honor a founder "stop the run"
