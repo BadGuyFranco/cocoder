@@ -28,15 +28,17 @@ changed, stay inside this Play's write-scope, and do not edit product or source 
 
 Do this:
 
-1. Read the provided change, diff, or target area. Identify the behavior, architecture, workflow,
+1. Run the elegance checkpoint from the Elegance Standard in
+   `packages/personas/base/shared-standards.md` before updating documentation.
+2. Read the provided change, diff, or target area. Identify the behavior, architecture, workflow,
    command, or contract that changed.
-2. Find the documentation that now conflicts with that reality, is missing required context, or points
+3. Find the documentation that now conflicts with that reality, is missing required context, or points
    readers at stale instructions. Prefer existing owner documents over creating new ones.
-3. Update the stale documentation narrowly. Preserve surrounding style and avoid speculative roadmap,
+4. Update the stale documentation narrowly. Preserve surrounding style and avoid speculative roadmap,
    marketing, or implementation detail that is not supported by the current project state.
-4. Leave unrelated documentation untouched. If a nearby document looks stale but is outside the
+5. Leave unrelated documentation untouched. If a nearby document looks stale but is outside the
    supplied change or this Play's write-scope, report it instead of editing it.
-5. As your final output, report:
+6. As your final output, report:
    - Which documentation files changed and why.
    - What evidence you used from the diff, tests, code, or project instructions.
    - What you deliberately left untouched and why.

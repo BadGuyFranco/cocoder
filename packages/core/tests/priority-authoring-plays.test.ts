@@ -43,6 +43,12 @@ describe('priority authoring Plays', () => {
     expect(play.body).toContain('elegance checkpoint')
   })
 
+  test.each(['create-ticket', 'documentation'])('%s steps into the elegance checkpoint in its body', (id) => {
+    const play = loadEffectivePlay(sources().baseDir, sources().deltaDir, id)
+
+    expect(play.body).toContain('elegance checkpoint')
+  })
+
   test('Architect Play System priority includes elegance checkpoint contract migration', async () => {
     const { readFile } = await import('node:fs/promises')
     const text = await readFile(join(repoRoot(), 'cocoder', 'priorities', 'archive', 'hybrid-plays.md'), 'utf8')
