@@ -233,12 +233,12 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    Talia retired + testing-as-a-Play (run_173, ADR-0033 — `write-tests`/`run-tests`, Quinn retained, base
    count 5). Verified-when #1–#5 met; overall Objective met. **Founder gate:** confirm **archive** (follow-ups
    1–4 are named, sequenced, and founder-gated outside this priority).
-3. `new-primary-root` — **CONTINUE (run_181).** Entire code backlog (Atoms A–G) landed and verified;
-   tickets 0025–0028 closed. **No buildable atoms remain** — do not relaunch for an empty build loop.
-   **Founder verification blocks archive:** reset-and-retest `job-hunt` from clean via **Add Workspace**
-   (git-init, full-tree baseline, governance commit, panel + Run 1 labels); then Verified-when live proof
-   on a real external repo (billable, multi-agent, separate surface). Deploy auto-reload delivered (ticket
-   `0013`, run_179).
+3. `new-primary-root` — **BLOCKED (run_45).** Entire code backlog (Atoms A–G + onboarding hardening pass
+   Atoms 1–3) landed and verified; tickets 0025–0028 closed. **No buildable atoms remain** — do not relaunch
+   for an empty build loop. **Founder verification blocks archive:** reset-and-retest `job-hunt` from clean
+   via **Add Workspace** (partly discharged by `node scripts/proof-nongit-onboard.mjs`); then Verified-when
+   live proof on a real external repo (billable, multi-agent, separate surface). Deploy auto-reload delivered
+   (ticket `0013`, run_179).
 4. `first-class-model-tiers` — **Grok draft; requires founder ownership beat before launch.** General model
    tier vocabulary across assignments, dispatch, and UI.
 5. `adapter-abstraction-hardening` — **Grok draft; requires founder ownership beat before launch.** Reduce

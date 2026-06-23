@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-22 — **new-primary-root: onboarding hardening pass landed — blocked (run_45/run_45)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_45 (display 45)
+**Outcomes:**
+- **Onboarding hardening pass complete** — Atom 1 run identity & status clarity (f24d619); Atom 2 onboarding gates & scope (060208d); Atom 3 first-workspace setup defaults & disclosure (e56dc65).
+- **Verified green** — core 476/476, daemon 294/294, ui 159/159, `tsc` clean; `proof-onboard-existing` + `proof-nongit-onboard` exit 0.
+- **Disposition: `blocked`.** Code backlog exhausted; two founder-owned beats remain before archive (Job Hunt reset-retest via Add Workspace; billable external-repo Verified-when live proof).
+
+**Next:** Run `node scripts/proof-nongit-onboard.mjs` as the free pre-check; then reply here to authorize the billable external-repo live proof or hold until after the Job Hunt reset-retest.
+
 ## 2026-06-22 — **deb-oscar-repair-loop: Oscar↔Deb repair dialogue landed — archive-candidate (run_43/run_186)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [deb-oscar-repair-loop](./priorities/deb-oscar-repair-loop.md) | **Run:** run_186 (display 43)

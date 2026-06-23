@@ -3,17 +3,16 @@ id: new-primary-root
 title: "Onboard a primary root — New Primary + Onboard-existing (ADR-0020/0026)"
 ---
 
-> **Refreshed 2026-06-22 (run_44).** The onboarding *machinery* is built and the entire code backlog (Atoms
-> A–G + run_181 retro fixes) is landed and verified — including the four first-live-onboarding fixes (Atoms
-> D–G, run_181; tickets 0025–0028 closed) and three run_181 retro build-quality fixes (SSOT collapse,
-> `commitMessage` shim removal, D/E runnable proof via `scripts/proof-nongit-onboard.mjs`). **The first real
-> live onboarding (Job Hunt / run_178)** succeeded and surfaced the D–G issues; all are now fixed in code.
-> **New buildable work (run_188 evidence, founder-approved 2026-06-22):** the second live Job Hunt onboarding
-> (run_188 / Job Hunt run 1) surfaced an **Onboarding hardening pass** — 3 atoms (run identity & status
-> clarity; onboarding gates & scope; setup defaults & disclosure). It is launch-ready; see *Onboarding
-> hardening pass* below. Two founder-owned beats still block final archive: reset-and-retest `job-hunt` from
-> clean via **Add Workspace** (partly discharged by `node scripts/proof-nongit-onboard.mjs`) and the
-> Verified-when external-repo live proof (billable, multi-agent, separate surface). Deploy
+> **Refreshed 2026-06-22 (run_45).** The onboarding *machinery* is built and the entire code backlog (Atoms
+> A–G + run_181 retro fixes + **Onboarding hardening pass** Atoms 1–3, run_45) is landed and verified —
+> including the four first-live-onboarding fixes (Atoms D–G, run_181; tickets 0025–0028 closed), three
+> run_181 retro build-quality fixes (SSOT collapse, `commitMessage` shim removal, D/E runnable proof via
+> `scripts/proof-nongit-onboard.mjs`), and the run_188 hardening pass (f24d619 / 060208d / e56dc65). **The
+> first real live onboarding (Job Hunt / run_178)** succeeded and surfaced the D–G issues; all are now fixed
+> in code; run_188 surfaced six rough edges, all three hardening atoms now landed. **No buildable atoms
+> remain** — disposition **`blocked`** on two founder-owned beats: reset-and-retest `job-hunt` from clean via
+> **Add Workspace** (partly discharged by `node scripts/proof-nongit-onboard.mjs`) and the Verified-when
+> external-repo live proof (billable, multi-agent, separate surface). Deploy
 > auto-reload is delivered (ticket `0013`, run_179). **Drift Audit** was split to `drift-audit` and **archived
 > 2026-06-21**. Vocabulary: "Takeover" → **Onboard (existing repo)** (ADR-0026); **`playbooks/` genre
 > retired** (ADR-0032). Build history lives in `cocoder/SESSION_LOG.md` + git; this doc is current-state only.
@@ -66,15 +65,15 @@ path; revive as its own priority if wanted.
 
 ## Remaining work
 
-### Onboarding hardening pass (run_188 evidence, founder-approved 2026-06-22 — launch-ready)
+### Onboarding hardening pass (DONE, run_45 — f24d619 / 060208d / e56dc65)
 A focused **CoCoder onboarding product-quality repair** (not target-repo work) so a founder's first workspace
 onboarding feels legible, scoped, approval-gated, and safe. Triggered by the second live Job Hunt onboarding
 (run_188 / Job Hunt run 1), where scaffold → git-init → baseline commit → `onboard-existing` → recon atom 0 →
-`cocoder/audit/recon.md` all worked, but six rough edges showed. Three atoms; each verifies by judgment +
-the named suites. **Scope guard:** no target product code changes — only CoCoder's own source, tests,
-templates, and docs.
+`cocoder/audit/recon.md` all worked, but six rough edges showed. **All three atoms landed and verified in
+run_45** (core/daemon/ui suites green; `proof-onboard-existing` + `proof-nongit-onboard` exit 0). **Scope
+guard:** no target product code changes — only CoCoder's own source, tests, templates, and docs.
 
-**Atom 1 — run identity & status clarity.**
+**Atom 1 — run identity & status clarity (DONE, f24d619).**
 - Founder-facing run labels use the **workspace-local display number** when available ("Job Hunt run 1" /
   "run 1"), keeping the global engine id as a *technical* identifier ("technical id: run_188") only where
   needed for debugging/paths/support. Cover every founder-facing surface: UI + run detail, Deb status feed,
@@ -90,7 +89,7 @@ templates, and docs.
 - Tests: prove a run with global id `run_188` + workspace display number 1 renders founder-facing as
   "workspace run 1", and that Deb status does not attribute atom 0's verify pass to atom 1.
 
-**Atom 2 — onboarding gates & scope.**
+**Atom 2 — onboarding gates & scope (DONE, 060208d).**
 - Update the shipped `onboard-existing` priority/template so Bob's **normal effective write scope includes
   `cocoder/**`** for onboarding, and keep `auditWriteBoundary: ["cocoder/**"]` as the hard boundary — the two
   must **agree** so valid audit output (e.g. `cocoder/audit/recon.md`) is no longer recorded as
@@ -106,7 +105,7 @@ templates, and docs.
   wrap/pause with the recon map, spend estimate, and a populated Founder Decision Needed.
 - Tests/proof: atom 1 cannot start as deep-read until approval is recorded.
 
-**Atom 3 — first-workspace setup defaults & disclosure.**
+**Atom 3 — first-workspace setup defaults & disclosure (DONE, e56dc65).**
 - Newly added **non-primary folders default to `readonly`**; `writable` requires an explicit founder action.
   **Preserve existing saved roles** — do not silently downgrade `Anthony/About` or any already-configured
   writable folder. (Roles live in `packages/daemon/src/registry.ts`: `primary|writable|readonly`.)
@@ -186,12 +185,12 @@ recon question in run_178 is intentionally left unanswered. Because D–G touche
 must be on post-D–G code before the retest — ticket `0013` idle-reload should handle this once in-flight runs
 drain (verify with `node scripts/proof-daemon-reload.mjs` if in doubt).
 
-**Disposition: `continue` (buildable work scoped; relaunch to execute).** Atoms A–G + the run_181 retro
-fixes are landed and verified. The **Onboarding hardening pass** (3 atoms above, run_188 evidence) is
-founder-approved and launch-ready — relaunch `new-primary-root` to execute it as a fresh build run. Two
-non-code beats still remain before final archive, both founder-owned and off this build surface: (1) the
-founder reset-and-retest of Job Hunt from clean (partly discharged by `node scripts/proof-nongit-onboard.mjs`),
-and (2) the Verified-when external-repo live proof below.
+**Disposition: `blocked` (code backlog complete; founder-owned beats remain).** Atoms A–G, the run_181 retro
+fixes, and the **Onboarding hardening pass** (3 atoms, run_45) are all landed and verified. No buildable
+atoms remain — relaunching as a build run would only produce an empty reaffirmation. Two founder-owned beats
+still block final archive, both off this build surface: (1) reset-and-retest Job Hunt from clean via **Add
+Workspace** (partly discharged by `node scripts/proof-nongit-onboard.mjs`), and (2) the Verified-when
+external-repo live proof below.
 
 ### Founder-gated live proof (separate, after D–G + reset retest)
 Onboard a real external repo (CoPublisher / a CoBuilder copy) end-to-end through the rebuilt Oscar-driven
