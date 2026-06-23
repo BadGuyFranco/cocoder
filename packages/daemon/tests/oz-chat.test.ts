@@ -101,6 +101,19 @@ describe('handleOzMessage', () => {
     })
   })
 
+  test('launch reply uses display number when the launcher provides one', async () => {
+    const ops = mockOps({
+      launchRun: async () => ({ status: 202, body: { runId: 'run_188', displayNumber: 1 } }),
+    })
+
+    const result = await handleOzMessage(testCtx(), { text: 'launch demo', workspaceId: 'cocoder' }, ops)
+
+    expect(result).toMatchObject({
+      status: 202,
+      body: { ok: true, command: 'launch', reply: 'Launched demo as workspace run 1.', action: { type: 'launch', runId: 'run_188' } },
+    })
+  })
+
   test('adhoc maps to launchRun with the ad-hoc priority and task', async () => {
     const calls: Array<{ workspaceId: string; priorityId: string | LaunchRunTarget; task?: string | null }> = []
     const ops = mockOps({
@@ -233,7 +246,7 @@ describe('handleOzMessage', () => {
 
     expect(result).toMatchObject({
       status: 200,
-      body: { ok: true, command: 'status', reply: 'Run 1 is running on demo.' },
+      body: { ok: true, command: 'status', reply: 'workspace run 1 is running on demo.' },
     })
     expect(result.body.action).toMatchObject({ type: 'status', runId: run.id })
     store.close()

@@ -5,7 +5,7 @@
 // watches Bob live (the monitor), and Oscar ends the run on his own wrap-up decision. The default
 // next-turn bias is to continue while concrete in-priority work remains; wrap-up is for real stop
 // conditions, not merely for a clean commit boundary.
-import { coCoderRunReference, runDisplayName, type RunDisplayInput } from '../store/index.js'
+import { coCoderRunReference, runDisplayName, runDisplayNumber, type RunDisplayInput } from '../store/index.js'
 
 /** The per-atom completion sentinel Bob prints when an atom is done. Per-atom-unique so a prior atom's
  *  sentinel still on screen cannot falsely complete the next one (the monitor matches it deterministically). */
@@ -592,5 +592,7 @@ export function buildDebTriageDispatch(faultPath: string, triagePath: string, oc
 
 export function commitMessage(priorityId: string, run: RunDisplayInput, atomIndex: number): string {
   const runRef = coCoderRunReference(run)
-  return `${priorityId}: atom ${atomIndex} via CoCoder run ${runRef}`
+  return runDisplayNumber(run) === null
+    ? `${priorityId}: atom ${atomIndex} via CoCoder run ${runRef}`
+    : `${priorityId}: atom ${atomIndex} via CoCoder ${runRef}`
 }

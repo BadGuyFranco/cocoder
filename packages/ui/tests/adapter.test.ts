@@ -186,7 +186,7 @@ describe('runs list', () => {
 
     expect(run.id).toBe('run_global_42')
     expect(run.displayNumber).toBe(3)
-    expect(run.displayName).toBe('Run 3')
+    expect(run.displayName).toBe('workspace run 3')
   })
 })
 

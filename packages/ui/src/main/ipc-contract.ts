@@ -104,6 +104,7 @@ export interface RunSummary {
   readonly workspaceId: string
   readonly priorityId: string
   readonly playbookId?: string | null
+  readonly displayNumber?: number | null
   readonly status: RunStatus | string
   readonly createdAt: number
   readonly endedAt: number | null

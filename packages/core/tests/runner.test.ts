@@ -925,7 +925,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(wrapBuilds[0]).toMatchObject({ model: 'cheap-wrap' })
     expect(wrapBuilds[0]?.prompt).toContain('# Wrap-up Play')
     expect(wrapBuilds[0]?.prompt).toContain(label('title'))
-    expect(wrapBuilds[0]?.prompt).toMatch(/Run \d+ on priority demo\. 1 atom\(s\) were delegated; commits so far: sha-1\./)
+    expect(wrapBuilds[0]?.prompt).toMatch(/workspace run \d+ on priority demo\. 1 atom\(s\) were delegated; commits so far: sha-1\./)
     expect(wrapBuilds[0]?.prompt).toContain('Oscar seed closeout')
     // Ran headless (captured subprocess) carrying the built prompt — and NO cmux pane was spawned for it.
     expect(headlessCalls).toHaveLength(1)
@@ -940,8 +940,8 @@ describe('runRun (multi-atom loop)', () => {
     expect(result.outOfScope).toEqual(['packages/not-wrap.ts'])
     expect(result.status).toBe('completed')
     expect(store.listCommitLinks(result.runId).map((c) => c.message)).toEqual(expect.arrayContaining([
-      expect.stringMatching(new RegExp(`^demo: atom 0 via CoCoder run \\d+ \\(${result.runId}\\)$`)),
-      expect.stringMatching(new RegExp(`^run-history: ${result.runId} via CoCoder run \\d+ \\(${result.runId}\\)$`)),
+      expect.stringMatching(new RegExp(`^demo: atom 0 via CoCoder workspace run \\d+ \\(technical id: ${result.runId}\\)$`)),
+      expect.stringMatching(new RegExp(`^run-history: ${result.runId} via CoCoder workspace run \\d+ \\(technical id: ${result.runId}\\)$`)),
     ]))
     const links = store.listCommitLinks(result.runId).filter((c) => !c.message.startsWith('run-history: '))
     expect(links.map((c) => c.files)).toEqual([['packages/atom.ts'], ['docs/wrap.md', 'packages/not-wrap.ts']])
@@ -1328,7 +1328,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(sends.every((text) => !text.includes('\n'))).toBe(true)
     expect(artifactWrites.map((w) => w.fileName)).toEqual(['landing-outcome-delivery.md', 'wrapup-delivery.md'])
     expect(artifactWrites[0]?.contents).toContain('LANDING OUTCOME for run_1')
-    expect(artifactWrites[1]?.contents).toMatch(/WRAP-UP READY for Run \d+\./)
+    expect(artifactWrites[1]?.contents).toMatch(/WRAP-UP READY for workspace run \d+\./)
     expect(artifactWrites[1]?.contents).toContain('Preserve the closeout headings, order, and final')
     expect(artifactWrites[1]?.contents).toContain('do not summarize, reformat, or paraphrase the closeout brief')
     expect(artifactWrites[1]?.contents).not.toContain('Deliver this founder-facing wrap-up now, in plain English')

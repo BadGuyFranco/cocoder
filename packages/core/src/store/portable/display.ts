@@ -10,10 +10,10 @@ export function runDisplayNumber(run: RunDisplayInput): number | null {
 
 export function runDisplayName(run: RunDisplayInput): string {
   const displayNumber = runDisplayNumber(run)
-  return displayNumber === null ? run.id : `Run ${displayNumber}`
+  return displayNumber === null ? run.id : `workspace run ${displayNumber}`
 }
 
 export function coCoderRunReference(run: RunDisplayInput): string {
   const displayNumber = runDisplayNumber(run)
-  return displayNumber === null ? run.id : `${displayNumber} (${run.id})`
+  return displayNumber === null ? run.id : `workspace run ${displayNumber} (technical id: ${run.id})`
 }

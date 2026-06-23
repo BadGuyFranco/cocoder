@@ -1459,7 +1459,7 @@ describe('Oz mutations + lifecycle', () => {
     expect(store.listCommitLinks(run.id)).toEqual([
       expect.objectContaining({
         commitSha: 'sha-committed',
-        message: `oscar-post-wrap: demo via CoCoder run 1 (${run.id})`,
+        message: `oscar-post-wrap: demo via CoCoder workspace run 1 (technical id: ${run.id})`,
         files: ['cocoder/priorities/demo.md', 'packages/stray.ts'],
       }),
     ])

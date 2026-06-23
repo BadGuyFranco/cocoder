@@ -44,6 +44,47 @@ describe('renderDebStatus', () => {
     expect(s.handoffs).toContainEqual({ file: 'verify-0.json', status: 'pending' })
   })
 
+  test('active atom verify ignores a prior atom pass', () => {
+    const s = statusFor(
+      [
+        { type: 'delegation', data: { atom: 0 } },
+        { type: 'builder-dispatch', data: { atom: 0 } },
+        { type: 'builder-done', data: { atom: 0 } },
+        { type: 'verify-dispatch', data: { atom: 0 } },
+        { type: 'verify-pass', data: { atom: 0, reason: 'ok' } },
+        { type: 'delegation', data: { atom: 1 } },
+        { type: 'builder-dispatch', data: { atom: 1 } },
+      ],
+      'building',
+      { activeAtom: 1, activeTask: 'do y', waitCondition: 'building atom 1' },
+    )
+    expect(s.activeAtom).toBe(1)
+    expect(s.verify).toBe('idle')
+    expect(s.handoffs).not.toContainEqual({ file: 'verify-1.json', status: 'pass' })
+  })
+
+  test('status markdown uses display label and labels the technical id', () => {
+    const store = openRunStore(':memory:')
+    store.upsertWorkspace({ id: 'w', path: '/r', name: 'W' })
+    const run = store.createRun({ workspaceId: 'w', priorityId: 'demo' })
+
+    const markdown = renderDebStatus({
+      store,
+      runId: run.id,
+      runDisplay: { displayNumber: 1 },
+      priority,
+      scopes,
+      phase: 'awaiting-directive',
+      activeAtom: 0,
+      activeTask: 'do x',
+      waitCondition: 'awaiting directive 0',
+      now,
+    }).markdown
+
+    expect(markdown).toContain('# Run status — workspace run 1')
+    expect(markdown).toContain(`- **Technical id:** \`${run.id}\``)
+  })
+
   test('a current stuck assessment while awaiting Oscar → stalled', () => {
     const s = statusFor(
       [{ type: 'delegation', data: { atom: 0 } }, { type: 'oscar-monitor-assessment', data: { stage: 'directive', atom: 1, state: 'stuck' } }],

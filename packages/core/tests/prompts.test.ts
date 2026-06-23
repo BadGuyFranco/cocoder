@@ -237,7 +237,7 @@ describe('buildBuilderDispatch', () => {
   })
 
   test('commit messages use display number plus durable run id when available', () => {
-    expect(commitMessage('demo', { id: 'run_178', displayNumber: 1 }, 0)).toBe('demo: atom 0 via CoCoder run 1 (run_178)')
+    expect(commitMessage('demo', { id: 'run_178', displayNumber: 1 }, 0)).toBe('demo: atom 0 via CoCoder workspace run 1 (technical id: run_178)')
   })
 
   test('commit messages fall back to durable run id when display number is absent', () => {
@@ -247,7 +247,7 @@ describe('buildBuilderDispatch', () => {
   test('wrap-up delivery labels the run with display number but keeps command target durable', () => {
     const delivery = buildWrapupDelivery({ id: 'run_178', displayNumber: 1 }, 'Closeout')
 
-    expect(delivery).toContain('WRAP-UP READY for Run 1.')
+    expect(delivery).toContain('WRAP-UP READY for workspace run 1.')
     expect(delivery).toContain('cocoder oz commit-support run_178')
   })
 })

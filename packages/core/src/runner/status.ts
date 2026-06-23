@@ -4,7 +4,7 @@
 // timestamps, the current wait condition) instead of hunting cmux panes or run dirs (which her prompt
 // forbids). Pure: it derives everything from listEvents + the runner's precise wait-phase, so it is
 // unit-testable without a live run.
-import type { RunEvent, RunStore } from '../store/index.js'
+import { runDisplayName, type RunEvent, type RunDisplayInput, type RunStore } from '../store/index.js'
 
 /** What the runner is doing w.r.t. Oscar right now — the runner passes its precise wait-phase (it knows
  *  it exactly); the projection refines it to `stalled`/`blocked` from the event stream. */
@@ -24,6 +24,7 @@ export interface PlaybookGateStatus {
 
 export interface DebStatus {
   readonly runId: string
+  readonly displayName: string
   readonly priorityId: string
   readonly priorityTitle: string
   readonly activeAtom: number | null
@@ -59,6 +60,14 @@ const last = (events: readonly RunEvent[], types: readonly string[]): RunEvent |
   for (let i = events.length - 1; i >= 0; i--) if (types.includes(events[i]!.type)) return events[i]!
   return null
 }
+const lastForAtom = (events: readonly RunEvent[], types: readonly string[], atom: number | null): RunEvent | null => {
+  if (atom === null) return last(events, types)
+  for (let i = events.length - 1; i >= 0; i--) {
+    const event = events[i]!
+    if (types.includes(event.type) && atomOf(event) === atom) return event
+  }
+  return null
+}
 const atomOf = (e: RunEvent | null): number | null => {
   const a = (e?.data as { atom?: unknown } | undefined)?.atom
   return typeof a === 'number' ? a : null
@@ -76,6 +85,7 @@ export function renderDebStatus(input: {
   readonly store: RunStore
   readonly runId: string
   readonly priority: { readonly id: string; readonly title: string }
+  readonly runDisplay?: Pick<RunDisplayInput, 'displayNumber'> | null
   readonly scopes: Readonly<Record<string, readonly string[]>>
   readonly phase: RunnerPhase
   readonly activeAtom: number | null
@@ -87,6 +97,7 @@ export function renderDebStatus(input: {
   const { store, runId, priority, scopes, phase, activeAtom, activeTask, waitCondition } = input
   const now = (input.now ?? Date.now)()
   const events = store.listEvents(runId)
+  const displayName = runDisplayName({ id: runId, displayNumber: input.runDisplay?.displayNumber ?? null })
 
   // ── Bob ──
   const dispatch = last(events, ['builder-dispatch'])
@@ -100,8 +111,10 @@ export function renderDebStatus(input: {
         ? 'done'
         : 'standby'
 
-  // ── Verify (latest signal wins) ──
-  const lastVerifyEvt = last(events, ['verify-dispatch', 'verify-pass', 'verify-rejected', 'verify-failed'])
+  // ── Verify (latest signal for the active atom wins) ──
+  const verifyEvents = ['verify-dispatch', 'verify-pass', 'verify-rejected', 'verify-failed'] as const
+  const lastVerifyEvt = lastForAtom(events, verifyEvents, activeAtom)
+  const lastAnyVerifyEvt = last(events, verifyEvents)
   const verify: VerifyState =
     lastVerifyEvt?.type === 'verify-pass'
       ? 'pass'
@@ -123,11 +136,11 @@ export function renderDebStatus(input: {
   // ── Oscar (runner phase, refined by the live monitor stream) ──
   const lastStuck = last(events, ['oscar-monitor-assessment'])
   const lastDirectiveAt = last(events, ['delegation', 'wrapup'])?.at ?? null
-  const lastVerifyAt = lastVerifyEvt?.at ?? null
+  const lastVerifyAt = lastAnyVerifyEvt?.at ?? null
   const stuckIsCurrent =
     lastStuck != null &&
     (lastStuck.data as { state?: unknown })?.state === 'stuck' &&
-    lastStuck.at >= Math.max(lastDirectiveAt ?? 0, lastVerifyEvt?.type === 'verify-pass' ? lastVerifyAt ?? 0 : 0)
+    lastStuck.at >= Math.max(lastDirectiveAt ?? 0, lastAnyVerifyEvt?.type === 'verify-pass' ? lastVerifyAt ?? 0 : 0)
   let oscar: OscarState =
     phase === 'awaiting-directive'
       ? 'waiting'
@@ -164,6 +177,7 @@ export function renderDebStatus(input: {
 
   const json: DebStatus = {
     runId,
+    displayName,
     priorityId: priority.id,
     priorityTitle: priority.title,
     activeAtom,
@@ -200,7 +214,8 @@ const ts = (ms: number | null, now: number): string => {
 
 function renderMarkdown(s: DebStatus): string {
   const lines: string[] = []
-  lines.push(`# Run status — ${s.runId}`, '')
+  lines.push(`# Run status — ${s.displayName}`, '')
+  if (s.displayName !== s.runId) lines.push(`- **Technical id:** \`${s.runId}\``)
   lines.push(`- **Priority:** ${s.priorityTitle} (\`${s.priorityId}\`)`)
   lines.push(`- **Active atom:** ${s.activeAtom ?? '—'}${s.activeTask ? ` — ${s.activeTask}` : ''}`)
   lines.push(`- **Oscar:** ${s.oscar}  ·  **Bob:** ${s.bob}  ·  **Verify:** ${s.verify}`)

@@ -310,9 +310,11 @@ async function runOp(command: OzChatReply['command'], call: () => Promise<Launch
 
 function launchReply(workspaceId: string, priorityId: string, out: LaunchResult): OzChatReply {
   const runId = typeof out.body.runId === 'string' ? out.body.runId : undefined
+  const displayNumber = typeof out.body.displayNumber === 'number' ? out.body.displayNumber : null
+  const runLabel = runId ? runDisplayName({ id: runId, displayNumber }) : null
   if (!isOk(out.status)) return failedReply('launch', `Could not launch ${priorityId}`, out)
   return {
-    reply: runId ? `Launched ${priorityId} as ${runId}.` : `Launch accepted for ${priorityId}.`,
+    reply: runLabel ? `Launched ${priorityId} as ${runLabel}.` : runId ? `Launched ${priorityId}.` : `Launch accepted for ${priorityId}.`,
     command: 'launch',
     ok: true,
     action: { type: 'launch', workspaceId, priorityId, runId },

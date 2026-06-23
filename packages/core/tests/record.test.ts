@@ -22,7 +22,7 @@ describe('renderRunRecord', () => {
     store.upsertWorkspace(workspace)
     const run = store.createRun({ workspaceId: workspace.id, priorityId: priority.id })
 
-    expect(heading(renderRunRecord(store, run.id, { workspace, priority, displayNumber: 1 }))).toBe('# Run 1')
+    expect(heading(renderRunRecord(store, run.id, { workspace, priority, displayNumber: 1 }))).toBe('# workspace run 1')
   })
 
   test('falls back to the durable run id in the heading when display number is absent', () => {

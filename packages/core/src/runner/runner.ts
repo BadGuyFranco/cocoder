@@ -910,7 +910,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const refreshStatus = async (phase: RunnerPhase, activeAtom: number | null, activeTask: string | null, waitCondition: string): Promise<void> => {
     if (!debRef) return // status feed exists only for a Deb-backed run
     try {
-      const { json, markdown } = renderDebStatus({ store, runId: run.id, priority, scopes: debScopes, phase, activeAtom, activeTask, waitCondition })
+      const { json, markdown } = renderDebStatus({ store, runId: run.id, runDisplay, priority, scopes: debScopes, phase, activeAtom, activeTask, waitCondition })
       await io.writeDebStatus(runDir, json, markdown)
       store.recordEvent({
         runId: run.id,
@@ -1240,7 +1240,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       sessionDisplayNumbers,
       terminal,
     })
-    const message = `run-history: ${run.id} via CoCoder run ${runReference}`
+    const message = `run-history: ${run.id} via CoCoder ${runReference}`
     const files = [
       'cocoder/counters.json',
       'cocoder/workspace.json',

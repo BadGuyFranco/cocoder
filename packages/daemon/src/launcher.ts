@@ -24,6 +24,7 @@ import {
   loadPriority,
   readTickets,
   runCommitGate,
+  runDisplayNumber,
   resolveMandatoryPlay,
   resolvePlayAssignment,
   resolvePersonaMode,
@@ -866,7 +867,9 @@ export async function requestSupportCommitRun(ctx: OzContext, runId: string): Pr
   }
 
   const headBefore = await ctx.git.headSha(workspace.path)
-  const runReference = coCoderRunReference(await withPortableDisplayNumber(ctx, run))
+  const runDisplay = await withPortableDisplayNumber(ctx, run)
+  const runReference = coCoderRunReference(runDisplay)
+  const runMessageReference = runDisplayNumber(runDisplay) === null ? `run ${runReference}` : runReference
   const gate = await runCommitGate({
     git: ctx.git,
     store: ctx.store,
@@ -874,7 +877,7 @@ export async function requestSupportCommitRun(ctx: OzContext, runId: string): Pr
     runId,
     workItemId: null,
     scope,
-    message: `oscar-post-wrap: ${run.priorityId} via CoCoder run ${runReference}`,
+    message: `oscar-post-wrap: ${run.priorityId} via CoCoder ${runMessageReference}`,
     headBefore,
   })
   const liveOscar = ctx.store.listSessions(runId).some((s) => s.persona === 'oscar' && ctx.liveRefs.has(s.sessionRef))
