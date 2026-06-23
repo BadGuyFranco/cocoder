@@ -31,7 +31,7 @@ const SUITE = {
 const INVARIANTS = [
   {
     invariant: 'non-git root baseline + governance commit',
-    expect: 'git init, full existing tree baseline, junk excluded, clean status',
+    expect: 'git init, full existing tree baseline, domain glossary in committed governance set, junk excluded, clean status',
     tests: ['POST /workspaces initializes and commits governance for a non-git primary root'],
   },
   {

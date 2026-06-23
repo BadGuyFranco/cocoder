@@ -76,6 +76,7 @@ const expectedScaffoldFiles = [
   'cocoder/SESSION_LOG.md',
   'cocoder/counters.json',
   'cocoder/decisions/README.md',
+  'cocoder/glossary.md',
   'cocoder/memory/AGENTS.md',
   'cocoder/memory/codebase-map.md',
   'cocoder/memory/tech-stack.md',
@@ -2462,7 +2463,7 @@ describe('Oz mutations + lifecycle', () => {
     expect(await g(workspaceRoot, ['ls-files', '--', 'node_modules/left-pad/index.js'])).toBe('')
     expect(await g(workspaceRoot, ['status', '--porcelain', '--untracked-files=all'])).toBe('')
     const committedFiles = (await g(workspaceRoot, ['ls-tree', '-r', '--name-only', 'HEAD'])).split('\n')
-    expect(committedFiles).toEqual(expect.arrayContaining(['.gitignore', 'cocoder/AGENTS.md', 'cocoder/counters.json', 'cocoder/personas/assignments.json', 'cocoder/workspace.json', 'package.json', 'src/app.ts']))
+    expect(committedFiles).toEqual(expect.arrayContaining(['.gitignore', 'cocoder/AGENTS.md', 'cocoder/counters.json', 'cocoder/glossary.md', 'cocoder/personas/assignments.json', 'cocoder/workspace.json', 'package.json', 'src/app.ts']))
     await expect(g(workspaceRoot, ['cat-file', '-e', `${r.json.governanceCommittedSha}:cocoder/AGENTS.md`])).resolves.toBe('')
     await expect(g(workspaceRoot, ['cat-file', '-e', `${r.json.governanceCommittedSha}:cocoder/counters.json`])).resolves.toBe('')
     await expect(g(workspaceRoot, ['cat-file', '-e', `${r.json.governanceCommittedSha}:cocoder/workspace.json`])).resolves.toBe('')

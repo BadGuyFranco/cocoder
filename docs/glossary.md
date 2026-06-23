@@ -3,10 +3,14 @@
 Canonical vocabulary for CoCoder. This page summarizes live terms and links to the owning architecture
 or decision surface when one exists.
 
+This is the install-owned glossary for CoCoder framework terms. Each onboarded workspace additionally ships
+a per-repo domain glossary at its own `cocoder/glossary.md` for that product's terms-of-art.
+
 | Term | Definition | Owner |
 |---|---|---|
 | CoCoder | The AI coding orchestration system: engine, dashboard, runner, governance, and shipped persona/Play base. In this repo, `CoCoder/` is also the install root and the dogfood primary root. | [ARCHITECTURE.md](../ARCHITECTURE.md) |
 | `cocoder/` | A tracked workspace governance directory. In this dogfood repo, `CoCoder/cocoder/` is CoCoder's own workspace governance; in an adopted repo, `[repo]/cocoder/` has the same structure for that repo. | [ADR-0008](../cocoder/decisions/0008-repository-topology.md) |
+| Domain glossary | A per-workspace surface for a repo's product/domain terms-of-art, distinct from this engine glossary; one canonical gloss + owner link per term. | [ADR-0039](../cocoder/decisions/0039-domain-glossary-deliverable.md) |
 | Install root | The CoCoder engine checkout containing `packages/`, `docs/`, `templates/`, `scripts/`, and the one machine-local `local/` directory. | [ADR-0008](../cocoder/decisions/0008-repository-topology.md) |
 | Workspace | A managed project registered with CoCoder. A workspace has one primary root and may have secondary roots. | [ADR-0019](../cocoder/decisions/0019-multi-root-workspaces.md), [ADR-0027](../cocoder/decisions/0027-workspace-storage-contract.md) |
 | Primary root | The workspace root that owns the tracked `cocoder/` governance directory and defines the workspace's identity. | [ADR-0008](../cocoder/decisions/0008-repository-topology.md), [ADR-0019](../cocoder/decisions/0019-multi-root-workspaces.md) |

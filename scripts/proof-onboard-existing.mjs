@@ -24,8 +24,8 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 const SUITE = {
   pkg: '@cocoder/core',
-  files: ['tests/runner.test.ts', 'tests/commit-gate.test.ts', 'tests/scaffold.test.ts'],
-  label: 'onboard-existing runner, commit-gate, and scaffold tests',
+  files: ['tests/runner.test.ts', 'tests/commit-gate.test.ts', 'tests/scaffold.test.ts', 'tests/playbook-p5-synthesis.test.ts', 'tests/playbook-p6-apply.test.ts'],
+  label: 'onboard-existing runner, commit-gate, scaffold, and synthesis tests',
 }
 
 const INVARIANTS = [
@@ -50,6 +50,20 @@ const INVARIANTS = [
       'seeds onboard-existing only when target already has source content',
       'does not seed onboard-existing into a .git-only new repo',
       'is idempotent after seeding onboard-existing into an existing repo',
+    ],
+  },
+  {
+    invariant: 'domain glossary is a delivered, single-owner deliverable',
+    expect: 'scaffold delivers glossary; boundary remains owned by ADR-0039',
+    tests: ['copies the shipped template tree into an empty target', 'keeps the domain glossary boundary rule owned by ADR-0039'],
+  },
+  {
+    invariant: 'onboarding drafts live domain terms, not a dead stub',
+    expect: 'verified purpose agreement stages and applies real glossary rows',
+    tests: [
+      'drafts glossary terms only from agreeing purpose findings',
+      'does not stage a glossary when no purpose agreement yields terms',
+      'apply materializes staged governance under repoDir/cocoder with runnable priorities',
     ],
   },
 ]
@@ -109,8 +123,9 @@ try {
   const failed = rows.filter((row) => row.status !== 'PASS')
   console.log('\n' + '='.repeat(104))
   if (failed.length === 0) {
-    console.log('PASS VERDICT: all 3 invariants green. Onboarding is now proven through ordinary priority data,')
-    console.log('the ordinary commit spine default is unchanged, and scaffold seeding is conditional + idempotent.')
+    console.log('PASS VERDICT: all 5 invariants green. Onboarding is now proven through ordinary priority data,')
+    console.log('the ordinary commit spine default is unchanged, scaffold seeding is conditional + idempotent,')
+    console.log('and the domain glossary is delivered, single-owner, and alive on onboarding.')
   } else {
     console.log(`FAIL VERDICT: ${failed.length} invariant row(s) not green - fix the named test(s), then rerun this proof:`)
     for (const row of failed) {
