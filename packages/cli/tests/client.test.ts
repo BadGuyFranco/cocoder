@@ -6,7 +6,7 @@ import { createServer, type Server } from 'node:http'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { afterEach, describe, expect, test } from 'vitest'
-import { authoringPlayViaDaemon, requestDebRepairViaDaemon, runViaDaemon, supportCommitViaDaemon } from '../src/client.js'
+import { authoringPlayViaDaemon, requestDebRepairViaDaemon, resumeViaDaemon, runViaDaemon, supportCommitViaDaemon } from '../src/client.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -16,6 +16,8 @@ interface Captured {
   launchBody?: any
   supportAuth?: string
   supportCsrf?: string | string[]
+  resumeAuth?: string
+  resumeCsrf?: string | string[]
   debRepairAuth?: string
   debRepairCsrf?: string | string[]
   debRepairBody?: unknown
@@ -62,6 +64,11 @@ function fakeDaemon(): { server: Server; captured: Captured; ready: Promise<numb
         outOfLanePaths: [],
         liveOscar: true,
       })
+    }
+    if (req.method === 'POST' && req.url === '/runs/run_xyz/resume') {
+      captured.resumeAuth = req.headers.authorization
+      captured.resumeCsrf = req.headers['x-oz-csrf-token']
+      return json({ resuming: true, runId: 'run_xyz' })
     }
     if (req.method === 'POST' && req.url === '/workspaces/cocoder/oscar-deb-repairs') {
       captured.debRepairAuth = req.headers.authorization
@@ -148,6 +155,18 @@ describe('runViaDaemon (client mode)', () => {
     expect(d.captured.supportCsrf).toBe('csrf')
   })
 
+  test('resume posts with Bearer + CSRF and returns the daemon receipt', async () => {
+    const d = fakeDaemon()
+    server = d.server
+    const port = await d.ready
+
+    const result = await resumeViaDaemon(`http://127.0.0.1:${port}`, 'run_xyz')
+
+    expect(result).toEqual({ resuming: true, runId: 'run_xyz' })
+    expect(d.captured.resumeAuth).toBe('Bearer tok')
+    expect(d.captured.resumeCsrf).toBe('csrf')
+  })
+
   test('request-deb-repair posts with Bearer + CSRF and returns the daemon receipt', async () => {
     const d = fakeDaemon()
     server = d.server
@@ -183,6 +202,14 @@ describe('runViaDaemon (client mode)', () => {
     const run = execFileAsync(process.execPath, [cli, 'oz', 'request-deb-repair', 'cocoder']).catch((err: unknown) => err)
 
     await expect(run).resolves.toMatchObject({ code: 2, stderr: expect.stringContaining('usage: cocoder oz request-deb-repair <workspaceId> --problem <text>') })
+  })
+
+  test('resume CLI requires a run id', async () => {
+    const cli = fileURLToPath(new URL('../bin/cocoder.mjs', import.meta.url))
+
+    const run = execFileAsync(process.execPath, [cli, 'oz', 'resume']).catch((err: unknown) => err)
+
+    await expect(run).resolves.toMatchObject({ code: 2, stderr: expect.stringContaining('usage: cocoder oz resume <runId>') })
   })
 
   test('authoring Play posts with Bearer + CSRF and returns the daemon receipt', async () => {
@@ -221,5 +248,25 @@ describe('runViaDaemon (client mode)', () => {
       }),
     )
     await expect(runViaDaemon(`http://127.0.0.1:${port}`, 'cocoder', 'demo', { pollMs: 5 })).rejects.toThrow(/409/)
+  })
+
+  test('resume throws a clear error when the daemon rejects it', async () => {
+    const s = createServer((req, res) => {
+      if (req.url === '/auth/session') {
+        res.writeHead(200, { 'content-type': 'application/json' })
+        return res.end(JSON.stringify({ bearerToken: 't', csrfToken: 'c' }))
+      }
+      res.writeHead(409, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ error: 'only held runs can be resumed' }))
+    })
+    server = s
+    const port = await new Promise<number>((resolve) =>
+      s.listen(0, '127.0.0.1', () => {
+        const a = s.address()
+        resolve(typeof a === 'object' && a ? a.port : 0)
+      }),
+    )
+
+    await expect(resumeViaDaemon(`http://127.0.0.1:${port}`, 'run_xyz')).rejects.toThrow(/resume failed \(409\):/)
   })
 })

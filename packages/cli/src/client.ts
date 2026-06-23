@@ -53,6 +53,11 @@ export interface SupportCommitResult {
   readonly liveOscar?: boolean
 }
 
+export interface ResumeResult {
+  readonly resuming: boolean
+  readonly runId: string
+}
+
 export interface DebRepairEvidenceItem {
   readonly kind: string
   readonly ref?: string
@@ -94,6 +99,18 @@ export async function supportCommitViaDaemon(baseUrl: string, runId: string): Pr
   })
   if (!res.ok) throw new Error(`support commit failed (${res.status}): ${await res.text()}`)
   return (await res.json()) as SupportCommitResult
+}
+
+/** Resume a held run through the daemon lifecycle surface. This re-enters the parked run; it is
+ *  distinct from `runViaDaemon(..., { resumeFromRunId })`, which starts a fresh pickup launch. */
+export async function resumeViaDaemon(baseUrl: string, runId: string): Promise<ResumeResult> {
+  const session = (await (await fetch(`${baseUrl}/auth/session`)).json()) as { bearerToken: string; csrfToken: string }
+  const res = await fetch(`${baseUrl}/runs/${encodeURIComponent(runId)}/resume`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${session.bearerToken}`, [CSRF_HEADER]: session.csrfToken },
+  })
+  if (!res.ok) throw new Error(`resume failed (${res.status}): ${await res.text()}`)
+  return (await res.json()) as ResumeResult
 }
 
 /** Request an Oscar-Deb repair dialogue through the daemon-owned repair operation. */

@@ -22,10 +22,10 @@ import {
 import { getAdapter, makeAdapterRegistry } from '@cocoder/adapters'
 import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import { CmuxSessionHost } from '@cocoder/session-hosts'
-import { authoringPlayViaDaemon, migrateHistoryViaDaemon, requestDebRepairViaDaemon, runViaDaemon, startOzDaemon, supportCommitViaDaemon, teardownViaDaemon, type DebRepairEvidenceItem } from './client.js'
+import { authoringPlayViaDaemon, migrateHistoryViaDaemon, requestDebRepairViaDaemon, resumeViaDaemon, runViaDaemon, startOzDaemon, supportCommitViaDaemon, teardownViaDaemon, type DebRepairEvidenceItem } from './client.js'
 
 const log = (m: string): void => console.error(`[cocoder] ${m}`)
-const usage = 'usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]   |   cocoder oz commit-support <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]'
+const usage = 'usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]   |   cocoder oz commit-support <runId>   |   cocoder oz resume <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]'
 const requestDebRepairUsage = 'usage: cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]'
 
 function authorInvocationFromArgv(): unknown {
@@ -103,6 +103,21 @@ async function main(): Promise<void> {
     }
     const { closed } = await teardownViaDaemon(`http://127.0.0.1:${live.port}`, runId, { initiatorPersona })
     console.log(`torn down ${runId}: closed ${closed.length} pane(s)`)
+    return
+  }
+  if (cmd === 'oz' && arg1 === 'resume') {
+    const runId = process.argv[4]
+    if (!runId) {
+      console.error('usage: cocoder oz resume <runId>')
+      process.exit(2)
+    }
+    const live = await probeDaemon({ port: DEFAULT_OZ_PORT })
+    if (!live.alive) {
+      console.error('cocoder: no Oz daemon running — cannot resume')
+      process.exit(1)
+    }
+    await resumeViaDaemon(`http://127.0.0.1:${live.port}`, runId)
+    console.log(`resuming ${runId}`)
     return
   }
   if (cmd === 'oz' && (arg1 === 'commit-support' || arg1 === 'support-commit')) {
