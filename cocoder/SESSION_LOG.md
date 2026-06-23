@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **launch-disposition-first: assess-first disposition + proof harness — archive-candidate (run_56/run_200)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [launch-disposition-first](./priorities/launch-disposition-first.md) | **Run:** run_200 (display 56)
+**Outcomes:**
+- **`deriveWrapDisposition` + `wrap-disposition` event (`ca405c6`).** Launch wrap records disposition with no-fake-build invariant: runs that delegated ≥1 build atom cannot be archive-candidate.
+- **Checkable-signal gate (`bf6297f`).** Archive-candidate additionally requires the closeout to cite a runnable proof/test command; bare "archive ready" downgrades to continue.
+- **Proof harness (`b27898b`).** `node scripts/proof-launch-disposition.mjs` — obligations (a) archive-candidate+zero atoms+cited signal, (b) actionable still delegates first atom, (c) bare archive-ready downgrades; GREEN→RED→GREEN on both guards.
+- **Disposition: `archive-candidate`.** Verified-when met; this run correctly self-records as awaiting-founder (delegated build atoms).
+
+**Next:** Founder archive confirmation on `launch-disposition-first`; then launch ticket-fix on [0034](./tickets/open/0034-priority-creation-must-auto-register-order-json.md) — atomic priority registration at the write chokepoint.
+
 ## 2026-06-23 — **domain-glossary: per-repo glossary deliverable complete — archive-candidate (run_55/run_199)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [domain-glossary](./priorities/domain-glossary.md) | **Run:** run_199 (display 55)

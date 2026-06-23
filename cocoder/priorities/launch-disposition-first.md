@@ -30,3 +30,8 @@ Verified by: a runnable proof that (a) given a code-complete/archive-ready prior
 `archive-candidate` disposition wrap with **zero delegated build atoms**; (b) given an `actionable` priority,
 the loop still delegates its first atom; and (c) the archive-ready verdict cites a checkable signal rather
 than asserting completeness.
+
+**Disposition: `archive-candidate` (run_56/run_200).** Objective met and proven by
+`node scripts/proof-launch-disposition.mjs` (exit 0). No buildable atoms remain. Founder archive
+confirmation only. Optional out-of-scope follow-on (founder-gated): surface disposition in Oz run-list /
+DebStatus projection, or author an ADR.

@@ -267,11 +267,10 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    `cocoder/runs/46-run_190/owner-map-0031.md`. Run_193 rejected a stale duplicate-ADR atom (ADR already
    complete); no build atoms until ADR is accepted. ADR-0037 owns the `held`/`wrapup`/`stopped`/teardown
    disposition distinction. **Founder gate:** approve, revise, or reject ADR-0037 before any Phase-1 build atom.
-11. `launch-disposition-first` — **NEW (run_191).** A freshly launched priority assesses and reports its true
-   disposition (`archive-candidate` / `awaiting-founder` / `actionable`) before any build, wraps archive-ready
-   with a checkable signal when nothing is actionable (no fake-build / empty reaffirmation wrap, F18), and only
-   delegates when concrete work exists. **Founder gate:** confirm the Objective (esp. the assess-first-but-don't-
-   freeze-the-build-path boundary) before launch.
+11. `launch-disposition-first` — **ARCHIVE-CANDIDATE (run_56/run_200).** Runner records a `wrap-disposition`
+   event at launch wrap: archive-candidate requires zero delegated build atoms plus a cited runnable proof;
+   bare "archive ready" without a signal downgrades to continue; actionable priorities still delegate normally.
+   Proof: `node scripts/proof-launch-disposition.mjs`. **Founder gate:** confirm archive.
 12. `local-preferences` — **NEW (run_53).** Founder-owned local defaults applied when an onboarded workspace
     doesn't specify its own: (1) the preferred tech stack for new repos (today only a stub at
     `templates/.../cocoder/memory/tech-stack.md` — research + document the real default), and (2) a default
