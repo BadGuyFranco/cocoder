@@ -94,7 +94,11 @@ function prioritySection(prioritiesDir: string, file: string): string {
 }
 
 export async function findOrphanedPriorities(prioritiesDir: string): Promise<string[]> {
-  const manifest = new Set((await readManifest(prioritiesDir)) ?? [])
+  return liveUnlistedPriorityIds(prioritiesDir)
+}
+
+async function liveUnlistedPriorityIds(prioritiesDir: string, manifestIds?: ReadonlySet<string>): Promise<string[]> {
+  const manifest = manifestIds ?? new Set((await readManifest(prioritiesDir)) ?? [])
   const allowlist = new Set<string>(INTENTIONALLY_UNLISTED_PRIORITY_IDS)
   const orphans = new Set<string>()
 
@@ -113,6 +117,17 @@ export async function findOrphanedPriorities(prioritiesDir: string): Promise<str
   }
 
   return [...orphans].sort()
+}
+
+export async function registerLivePriorities(prioritiesDir: string): Promise<string[]> {
+  const manifest = (await readManifest(prioritiesDir)) ?? []
+  const manifestIds = new Set(manifest)
+  const liveUnlistedIds = await liveUnlistedPriorityIds(prioritiesDir, manifestIds)
+  const order = [...manifest, ...liveUnlistedIds.filter((id) => !manifestIds.has(id))]
+
+  if (order.length === manifest.length) return [...manifest]
+
+  return writeOrder(prioritiesDir, order, new Set(order))
 }
 
 export async function readPriorities(prioritiesDir: string, cap: number): Promise<PrioritySummary[]> {
