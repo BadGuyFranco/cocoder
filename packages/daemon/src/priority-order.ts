@@ -1,5 +1,5 @@
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { basename, dirname, join, relative } from 'node:path'
 import { loadPriority, readTickets as readTicketFiles, truncate, type Ticket } from '@cocoder/core'
 
 export interface PrioritySummary {
@@ -10,6 +10,9 @@ export interface PrioritySummary {
 }
 
 export type TicketSummary = Ticket
+
+// adhoc-session is the runtime no-named-priority pseudo-priority, not launch queue work.
+export const INTENTIONALLY_UNLISTED_PRIORITY_IDS = ['adhoc-session'] as const
 
 const orderPath = (dir: string): string => join(dir, 'order.json')
 
@@ -48,7 +51,7 @@ async function writeOrder(dir: string, requestedOrder: readonly string[], validI
   return order
 }
 
-export async function readPriorities(prioritiesDir: string, cap: number): Promise<PrioritySummary[]> {
+async function readPriorityFiles(prioritiesDir: string, cap: number): Promise<PrioritySummary[]> {
   let names: string[]
   try {
     names = await readdir(prioritiesDir)
@@ -67,7 +70,53 @@ export async function readPriorities(prioritiesDir: string, cap: number): Promis
       /* not a priority file */
     }
   }
+  return priorities
+}
 
+async function priorityMarkdownFiles(dir: string): Promise<string[]> {
+  const entries = await readdir(dir, { withFileTypes: true }).catch(() => null)
+  if (!entries) return []
+
+  const files: string[] = []
+  for (const entry of entries) {
+    const path = join(dir, entry.name)
+    if (entry.isDirectory()) {
+      files.push(...(await priorityMarkdownFiles(path)))
+    } else if (entry.isFile() && entry.name.endsWith('.md')) {
+      files.push(path)
+    }
+  }
+  return files
+}
+
+function prioritySection(prioritiesDir: string, file: string): string {
+  return relative(prioritiesDir, file).split(/[\\/]/)[0] ?? ''
+}
+
+export async function findOrphanedPriorities(prioritiesDir: string): Promise<string[]> {
+  const manifest = new Set((await readManifest(prioritiesDir)) ?? [])
+  const allowlist = new Set<string>(INTENTIONALLY_UNLISTED_PRIORITY_IDS)
+  const orphans = new Set<string>()
+
+  for (const file of await priorityMarkdownFiles(prioritiesDir)) {
+    const id = basename(file, '.md')
+    let priorityId: string
+    try {
+      priorityId = loadPriority(dirname(file), id).id
+    } catch {
+      continue
+    }
+
+    const section = prioritySection(prioritiesDir, file)
+    if (section === 'archive' || section === 'backlog' || manifest.has(priorityId) || allowlist.has(priorityId)) continue
+    orphans.add(priorityId)
+  }
+
+  return [...orphans].sort()
+}
+
+export async function readPriorities(prioritiesDir: string, cap: number): Promise<PrioritySummary[]> {
+  const priorities = await readPriorityFiles(prioritiesDir, cap)
   const manifest = await readManifest(prioritiesDir)
   if (!manifest) return priorities
   return applyManifestOrder(priorities, manifest)

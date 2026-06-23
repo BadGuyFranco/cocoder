@@ -19,6 +19,11 @@ raised → 1 confirmed blocker + 1 heeded F1/F2 refinement folded in; rest misre
 
 > **2026-06-09 amendment (founder, run_46) — priority ordering is a per-workspace order-only manifest, not the DB.** Priorities stay exactly as decided: one human-authored Playbook `.md` per priority in `cocoder/priorities/` (the SSOT for *what exists*). Their **sequence** lives in a small git-tracked **`cocoder/priorities/order.json`** per workspace — an **order-only overlay**: a JSON array of priority ids, nothing else. It does **not** define existence (that would be two owners of "which priorities exist", an F1/F4 trap) — it only sorts. Deterministic reconciliation: a `.md` not named in `order.json` still appears (appended, e.g. alphabetically); an id in `order.json` with no `.md` is ignored. The dashboard's drag-reorder **rewrites `order.json`** (atomic tmp+rename); Oz reads it to sequence the queue. This is a **registry-like overlay the system may write** — distinct from the Playbook bodies, which an agent still **never** rewrites (the rule in *Authoring lifecycle* below is unchanged). Order is **intent**, so it is git-tracked (diffable, travels with the repo on clone) rather than per-machine operational state — which is why it is a file, not a DB row. This **retires** the "ordering source-of-truth migration off `backlog/`+roadmap into the DB" framing (Full Oz dashboard owed slice #8): there is no migration, just a manifest. The `backlog/` directory and roadmap are no longer an ordering source.
 
+> **Amended by [ADR-0038](./0038-priority-visibility-invariant.md) (2026-06-23).** Runtime reconciliation
+> above still appends unlisted priority files, but commit-time governance now enforces the priority
+> visibility invariant: every loadable top-level priority must be in `order.json`, archived/backlogged,
+> or explicitly allowlisted.
+
 > **2026-06-19 amendment (founder, run_151) — Play taxonomy: trigger class × execution model.** A Play
 > now has three independent axes. The existing `kind: headless | interactive` attribute survives
 > unchanged as the **write-authority/interactivity axis**: headless Plays do not require founder
