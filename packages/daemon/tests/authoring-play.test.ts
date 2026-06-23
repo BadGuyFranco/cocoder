@@ -144,7 +144,7 @@ describe('requestAuthoringPlay', () => {
     expect(audit).toContain('cocoder/tickets/open/0001-agent-ticket.md')
   })
 
-  test('refuses while any run is in flight and commits nothing', async () => {
+  test('refuses an unknown same-workspace in-flight reservation and commits nothing', async () => {
     const fixture = await makeFixture()
     fixture.ctx.inFlight.set('cocoder', 'run_busy')
     const headBefore = await git(fixture.home, ['rev-parse', 'HEAD'])
@@ -156,7 +156,63 @@ describe('requestAuthoringPlay', () => {
       invocation: { id: 'alpha', title: 'Alpha', objective: 'Ship alpha.' },
     })).resolves.toMatchObject({
       status: 409,
-      body: { error: expect.stringContaining('run is in flight') },
+      body: { error: expect.stringContaining('still active on this workspace') },
+    })
+    expect(fixture.headlessInputs).toEqual([])
+    expect(await git(fixture.home, ['rev-parse', 'HEAD'])).toBe(headBefore)
+  })
+
+  test('allows authoring from the same wrapped run and ignores another workspace active run', async () => {
+    const fixture = await makeFixture({
+      runHeadless: async (input) => {
+        fixture.headlessInputs.push(input)
+        await writeFile(join(fixture.home, 'cocoder', 'priorities', 'alpha.md'), '---\nid: alpha\ntitle: Alpha\n---\n\n## Objective\n\nShip alpha.\n')
+        return { exitCode: 0, output: 'created alpha' }
+      },
+    })
+    fixture.store.upsertWorkspace({ id: 'elsewhere', path: fixture.home, name: 'Elsewhere' })
+    const wrapped = fixture.store.createRun({ workspaceId: 'cocoder', priorityId: 'wrapped-priority' })
+    fixture.store.setRunStatus(wrapped.id, 'awaiting-founder')
+    const activeElsewhere = fixture.store.createRun({ workspaceId: 'elsewhere', priorityId: 'busy-elsewhere' })
+    fixture.ctx.inFlight.set('cocoder', wrapped.id)
+    fixture.ctx.inFlight.set('elsewhere', activeElsewhere.id)
+    const headBefore = await git(fixture.home, ['rev-parse', 'HEAD'])
+
+    const result = await requestAuthoringPlay(fixture.ctx, {
+      workspaceId: 'cocoder',
+      persona: 'oz',
+      playId: 'create-priority',
+      invocation: { id: 'alpha', title: 'Alpha', objective: 'Ship alpha.' },
+    })
+
+    expect(result).toMatchObject({
+      status: 200,
+      body: {
+        ok: true,
+        committedPaths: ['cocoder/priorities/alpha.md'],
+        outOfLanePaths: [],
+        exitCode: 0,
+      },
+    })
+    expect(typeof result.body.commitSha).toBe('string')
+    expect(await git(fixture.home, ['rev-parse', 'HEAD'])).not.toBe(headBefore)
+    expect(fixture.headlessInputs).toHaveLength(1)
+  })
+
+  test('refuses a running same-workspace in-flight run and commits nothing', async () => {
+    const fixture = await makeFixture()
+    const running = fixture.store.createRun({ workspaceId: 'cocoder', priorityId: 'busy-priority' })
+    fixture.ctx.inFlight.set('cocoder', running.id)
+    const headBefore = await git(fixture.home, ['rev-parse', 'HEAD'])
+
+    await expect(requestAuthoringPlay(fixture.ctx, {
+      workspaceId: 'cocoder',
+      persona: 'oz',
+      playId: 'create-priority',
+      invocation: { id: 'alpha', title: 'Alpha', objective: 'Ship alpha.' },
+    })).resolves.toMatchObject({
+      status: 409,
+      body: { error: expect.stringContaining('still active on this workspace') },
     })
     expect(fixture.headlessInputs).toEqual([])
     expect(await git(fixture.home, ['rev-parse', 'HEAD'])).toBe(headBefore)

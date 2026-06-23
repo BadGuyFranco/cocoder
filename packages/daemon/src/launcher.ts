@@ -1369,8 +1369,12 @@ export async function requestOzRepair(ctx: OzContext, input: { readonly workspac
 }
 
 export async function requestAuthoringPlay(ctx: OzContext, input: AuthoringPlayInput): Promise<LaunchResult> {
-  if (ctx.inFlight.size > 0) {
-    return { status: 409, body: { error: 'refusing to run authoring Play: a run is in flight (would orphan it) — wait for it to finish' } }
+  // Post-wrap in-flight policy matches support-commit and Oscar-Deb repair: refuse only a pending or
+  // still-building run on this workspace; allow the same tracked wrapped run to author from post-wrap.
+  const activeRunId = ctx.inFlight.get(input.workspaceId)
+  const activeRun = activeRunId ? ctx.store.getRun(activeRunId) : null
+  if (activeRunId && (!activeRun || activeRun.status === 'running')) {
+    return { status: 409, body: { error: 'refusing to run authoring Play: a run is still active on this workspace (would orphan it) — wait for it to wrap or finish' } }
   }
   if (!AUTHORING_PLAY_IDS.includes(input.playId)) {
     return { status: 400, body: { error: `unsupported authoring Play "${input.playId}"` } }
