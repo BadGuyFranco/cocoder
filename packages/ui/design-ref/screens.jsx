@@ -848,7 +848,7 @@ const PersonaRow = ({ persona, clis, onChange, onAddSub, onRemoveSub, onUpdateSu
           </div>
         </div>
 
-        {/* Sub-agents */}
+        {/* Plays */}
         <div style={{ marginTop: 18, position: 'relative' }}>
           {persona.id === "bob" && <S.DevNote n={14} anchor="top-right" />}
           <div style={{
@@ -857,7 +857,7 @@ const PersonaRow = ({ persona, clis, onChange, onAddSub, onRemoveSub, onUpdateSu
             textTransform: 'uppercase', color: 'var(--cb-text-muted)', marginBottom: 10,
           }}>
             <S.Icon name="tree-structure" size={12} />
-            Sub-agents · {persona.subAgents.length}
+            Plays · {persona.subAgents.length}
             <button onClick={() => onAddSub(persona.id)} style={{
               marginLeft: 'auto', fontSize: 11, padding: '2px 8px',
               background: 'transparent', border: '1px solid var(--cb-border)',
@@ -875,7 +875,7 @@ const PersonaRow = ({ persona, clis, onChange, onAddSub, onRemoveSub, onUpdateSu
               fontSize: 11.5, color: 'var(--cb-text-muted)',
               textAlign: 'center',
             }}>
-              No sub-agents. {persona.name} runs everything itself.
+              No Plays bound. {persona.name} runs everything itself.
             </div>
           ) : (
             persona.subAgents.map(sa => {

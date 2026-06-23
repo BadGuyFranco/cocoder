@@ -52,6 +52,7 @@ describe('Oz — rebuilt Fusion renderer', () => {
     for (const label of ['Dashboard', 'Workspaces', 'CLIs', 'Personas', 'Plays', 'Settings']) {
       expect(screen.getByText(label)).toBeDefined()
     }
+    expect(screen.queryByText(/^Skills(?: \(Plays\))?$/)).toBeNull()
   })
 
   it('Dashboard is built around the Oz Terminal with the priorities queue', () => {

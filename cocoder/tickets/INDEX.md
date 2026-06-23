@@ -13,7 +13,6 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
-| [0036](./open/0036-skills-plays-still-appears-in-the-oz-dashboard.md) | Skills (Plays) Still appears in the oz dashboard | bug | none | founder-session |
 | [0034](./open/0034-priority-creation-must-auto-register-order-json.md) | Priority creation must auto-register in order.json (prevent orphans at source) | task | oz-autonomy | Open |
 | [0031](./open/0031-founder-stop-the-run-control-for-personas.md) | No way for a persona to stop the runner on a founder "stop the run" direction | task | unassigned | Blocked |
 
@@ -21,6 +20,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0036](./closed/0036-skills-plays-still-appears-in-the-oz-dashboard.md) | Skills (Plays) Still appears in the oz dashboard | bug | 2026-06-23 | Live dashboard nav is pinned to `Plays`, the rebuilt bundle no longer contains `Skills (Plays)`, and stale design-reference persona wording now says Plays. |
 | [0035](./closed/0035-elegance-checkpoint-explicit-step-in-ticket-and-doc-plays.md) | Elegance checkpoint: explicit step in create-ticket and documentation Plays | task | 2026-06-23 | Ticket fix run completed successfully. |
 | [0033](./closed/0033-deb-repair-dialogue-non-tty-failure.md) | Deb repair dialogue fails with "stdin is not a terminal" (non-TTY/headless invocation) | bug | 2026-06-23 | Repair-dialogue turns now build adapters with `headless: true` and preserve Codex-style adapter-owned response artifacts; daemon repair tests pin non-TTY `deb-response.json` production plus stdout sidecar handling. |
 | [0032](./closed/0032-hidden-priority-no-order-json-entry.md) | Created priority can be hidden — file exists with no order.json entry (ghost/"draft" priority) | bug | 2026-06-23 | Resolved by commit `4819767`: `findOrphanedPriorities` plus the daemon governance test enforce the priority visibility invariant recorded in ADR-0038; `oz-file-access` and `oz-autonomy` are registered in `order.json`. |
