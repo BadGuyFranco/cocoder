@@ -65,6 +65,7 @@ describe('scaffoldCocoderZone', () => {
     expect(result.created).toContain('cocoder/priorities/onboard-existing.md')
     const seeded = await readFile(join(targetRoot, 'cocoder', 'priorities', 'onboard-existing.md'), 'utf8')
     expect(seeded).toContain('## Objective')
+    expect(seeded).toContain('scopeNarrowing: ["cocoder/**"]')
     expect(seeded).toContain('auditWriteBoundary: ["cocoder/**"]')
     expect(seeded).toContain('code, content, operations/docs, or a mix')
     expect(seeded).toContain('type subsystems explicitly as code subsystems vs content/governance/ops subsystems')
@@ -72,6 +73,7 @@ describe('scaffoldCocoderZone', () => {
     expect(loadPriority(join(targetRoot, 'cocoder', 'priorities'), 'onboard-existing')).toMatchObject({
       id: 'onboard-existing',
       title: 'Onboard an existing repo — deep multi-agent audit that authors its cocoder/ governance',
+      scopeNarrowing: ['cocoder/**'],
       auditWriteBoundary: ['cocoder/**'],
     })
   })

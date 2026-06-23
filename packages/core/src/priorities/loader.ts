@@ -46,11 +46,7 @@ export function loadPriority(prioritiesDir: string, id: string): Priority {
   if (typeof data.title !== 'string' || data.title === '') {
     throw new Error(`priority ${file}: frontmatter "title" must be a non-empty string`)
   }
-  const scopeNarrowing = Array.isArray(data.scopeNarrowing)
-    ? data.scopeNarrowing
-    : typeof data.scopeNarrowing === 'string'
-      ? [data.scopeNarrowing]
-      : null
+  const scopeNarrowing = parseOptionalStringList(data.scopeNarrowing) ?? null
   const auditWriteBoundary = parseOptionalStringList(data.auditWriteBoundary)
   return { id, title: data.title, scopeNarrowing, auditWriteBoundary, goal: body, objective: parseObjective(body) }
 }

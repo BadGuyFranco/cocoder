@@ -33,7 +33,7 @@ import {
 import { effectiveScope, partitionByScope } from '../write-scope/index.js'
 import type { SessionHost, SessionRef } from '../session-host/index.js'
 import { exec as execChildProcess } from 'node:child_process'
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import type { RunnerIO } from './io.js'
@@ -569,6 +569,28 @@ const defaultRunLabelTarget = (input: RunInput): RunLabelTarget => {
   if (input.ticketId) return { type: 'ticket', slug: input.ticketId }
   if (input.priority.id === 'adhoc-session') return { type: 'ad-hoc', slug: input.priority.id }
   return { type: 'priority', slug: input.priority.id }
+}
+
+const ONBOARDING_RECON_PATH = 'cocoder/audit/recon.md'
+const ONBOARDING_SPEND_APPROVAL_PATH = 'cocoder/audit/spend-approval.json'
+const ONBOARDING_SPEND_BLOCK_MESSAGE =
+  `recon complete; spend approval required before expensive read — record approval at ${ONBOARDING_SPEND_APPROVAL_PATH}`
+
+function hasValidSpendApproval(worktreePath: string): boolean {
+  const path = join(worktreePath, ONBOARDING_SPEND_APPROVAL_PATH)
+  if (!existsSync(path)) return false
+  try {
+    const parsed = JSON.parse(readFileSync(path, 'utf8')) as unknown
+    return typeof parsed === 'object' && parsed !== null && (parsed as { approved?: unknown }).approved === true
+  } catch {
+    return false
+  }
+}
+
+function onboardingSpendBlockMessage(worktreePath: string, auditWriteBoundary: AuditWriteBoundary | undefined): string | null {
+  if (auditWriteBoundary === undefined) return null
+  if (!existsSync(join(worktreePath, ONBOARDING_RECON_PATH))) return null
+  return hasValidSpendApproval(worktreePath) ? null : ONBOARDING_SPEND_BLOCK_MESSAGE
 }
 
 export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResult> {
@@ -1430,41 +1452,58 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     // Delegate/monitor/verify/commit one atom. `atomIndex` is this atom's stable 0-based index; `n` is the
     // count of delegated atoms (and the NEXT directive index).
     const atomIndex = n
-    const step = await executeAgentStep({
-      atomIndex,
-      directivePath,
-      directive,
-      runId: run.id,
-      priorityId: priority.id,
-      runDisplayNumber: portableRunDisplayNumber,
-      oscarId: oscar.id,
-      bobId: bob.id,
-      runDir,
-      worktreePath,
-      scope,
-      commitScope: withPortableRunHistoryScope(scope),
-      auditWriteBoundary,
-      store,
-      git,
-      io,
-      bobDriver,
-      oscarDriver,
-      makeJudge,
-      execCriterion,
-      awaitOscarWithNudgeWatchdog,
-      oscarAlive,
-      refreshStatus,
-      quarantineAtom,
-      absorbGateResult,
-      fail,
-      setActiveAtom: (atom: AgentStepActiveAtom | null) => {
-        activeAtom = atom
-      },
-      now,
-      timeouts: t,
-      signal: deps.signal,
-      log,
-    })
+    const spendBlockMessage = onboardingSpendBlockMessage(worktreePath, auditWriteBoundary)
+    const step = spendBlockMessage === null
+      ? await executeAgentStep({
+          atomIndex,
+          directivePath,
+          directive,
+          runId: run.id,
+          priorityId: priority.id,
+          runDisplayNumber: portableRunDisplayNumber,
+          oscarId: oscar.id,
+          bobId: bob.id,
+          runDir,
+          worktreePath,
+          scope,
+          commitScope: withPortableRunHistoryScope(scope),
+          auditWriteBoundary,
+          store,
+          git,
+          io,
+          bobDriver,
+          oscarDriver,
+          makeJudge,
+          execCriterion,
+          awaitOscarWithNudgeWatchdog,
+          oscarAlive,
+          refreshStatus,
+          quarantineAtom,
+          absorbGateResult,
+          fail,
+          setActiveAtom: (atom: AgentStepActiveAtom | null) => {
+            activeAtom = atom
+          },
+          now,
+          timeouts: t,
+          signal: deps.signal,
+          log,
+        })
+      : await (async () => {
+          store.recordEvent({
+            runId: run.id,
+            type: 'onboarding-spend-approval-required',
+            data: {
+              atom: atomIndex,
+              message: spendBlockMessage,
+              reconPath: ONBOARDING_RECON_PATH,
+              approvalPath: ONBOARDING_SPEND_APPROVAL_PATH,
+            },
+          })
+          await refreshStatus('awaiting-founder', atomIndex, directive.task, spendBlockMessage)
+          log(`atom ${atomIndex} blocked before dispatch: ${spendBlockMessage}`)
+          return { kind: 'blocked' as const, outcomeLine: spendBlockMessage }
+        })()
     n += 1
     if (step.kind === 'verified') {
       consecutiveRejects = step.verdict === 'fail' ? consecutiveRejects + 1 : 0

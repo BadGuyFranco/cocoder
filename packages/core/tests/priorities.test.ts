@@ -41,9 +41,10 @@ describe('priority Objective loading', () => {
 
   test('round-trips optional auditWriteBoundary from frontmatter', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'priorities-'))
-    await writeFile(join(dir, 'demo.md'), priority('demo', 'Audit the repo.', ['auditWriteBoundary: ["cocoder/**"]']))
+    await writeFile(join(dir, 'demo.md'), priority('demo', 'Audit the repo.', ['scopeNarrowing: ["cocoder/**"]', 'auditWriteBoundary: ["cocoder/**"]']))
     await writeFile(join(dir, 'bare.md'), priority('bare', 'Ordinary work.'))
 
+    expect(loadPriority(dir, 'demo').scopeNarrowing).toEqual(['cocoder/**'])
     expect(loadPriority(dir, 'demo').auditWriteBoundary).toEqual(['cocoder/**'])
     expect(loadPriority(dir, 'bare').auditWriteBoundary).toBeUndefined()
   })
