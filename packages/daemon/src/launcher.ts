@@ -8,6 +8,7 @@
 //   - track spawned surfaceRefs in ctx.liveRefs so deep-links are decidable without throwing.
 import { execFile } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
+import { existsSync } from 'node:fs'
 import { appendFile, mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { promisify } from 'node:util'
@@ -1054,12 +1055,15 @@ async function runRepairDialogueTurn(
 ): Promise<{ readonly ok: true; readonly output: string } | { readonly ok: false; readonly error: string }> {
   try {
     await mkdir(dirname(opts.outPath), { recursive: true })
-    const cmd = ctx.getAdapter(opts.cli).build({ persona: opts.persona, prompt: opts.prompt, model: opts.model, cwd: opts.cwd, outPath: opts.outPath })
+    const cmd = ctx.getAdapter(opts.cli).build({ persona: opts.persona, prompt: opts.prompt, model: opts.model, cwd: opts.cwd, outPath: opts.outPath, headless: true })
     const run = ctx.runHeadless ?? runHeadlessProcess
-    const turn = await run({ command: cmd.command, args: cmd.args, cwd: opts.cwd, outPath: opts.outPath, timeoutMs: OSCAR_DEB_REPAIR_TIMEOUT_MS })
-    await writeFile(opts.outPath, turn.output, 'utf8')
+    const adapterOwnsOutput = !cmd.stdoutPath && cmd.args.includes(opts.outPath)
+    const stdoutPath = cmd.stdoutPath ?? (adapterOwnsOutput ? `${opts.outPath}.stdout` : opts.outPath)
+    const turn = await run({ command: cmd.command, args: cmd.args, cwd: opts.cwd, outPath: stdoutPath, timeoutMs: OSCAR_DEB_REPAIR_TIMEOUT_MS })
+    const output = adapterOwnsOutput && existsSync(opts.outPath) ? await readFile(opts.outPath, 'utf8') : turn.output
+    if (!adapterOwnsOutput) await writeFile(opts.outPath, output, 'utf8')
     if (turn.exitCode !== 0) return { ok: false, error: `${opts.persona} repair dialogue turn failed with exit code ${turn.exitCode}` }
-    return { ok: true, output: turn.output }
+    return { ok: true, output }
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err)
     await writeFile(opts.outPath, detail, 'utf8').catch(() => {})

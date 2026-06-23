@@ -2,13 +2,25 @@
 id: 0033
 title: Deb repair dialogue fails with "stdin is not a terminal" (non-TTY/headless invocation)
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: Deb
 created: 2026-06-23
+closed: 2026-06-23
 ---
 
 # 0033 — Deb repair dialogue fails with "stdin is not a terminal" (non-TTY/headless invocation)
+
+## Resolution
+
+Resolved by the daemon repair-dialogue turn using the existing headless adapter lane (`headless: true`) and
+preserving adapter-owned response artifacts such as Codex `exec --output-last-message` output. Regression
+coverage in `packages/daemon/tests/oscar-deb-repair-op.test.ts` proves a codex-like non-TTY turn produces a
+real `deb-response.json` while verbose stdout is kept in `deb-turn.log.stdout`.
+
+Verification:
+- `pnpm --filter @cocoder/daemon exec vitest run tests/oscar-deb-repair-op.test.ts tests/oscar-deb-repair.test.ts`
+- `pnpm --filter @cocoder/daemon exec tsc --noEmit -p tsconfig.json`
 
 ## Context
 

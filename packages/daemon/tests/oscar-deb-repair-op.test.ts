@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { describe, expect, test } from 'vitest'
-import { makeGit, openRunStore, type Adapter, type BuildInput, type HeadlessRunInput, type RunStore, type SessionHost } from '@cocoder/core'
+import { makeGit, openRunStore, runHeadlessProcess, type Adapter, type BuildInput, type HeadlessRunInput, type RunStore, type SessionHost } from '@cocoder/core'
 import { createOzEventBus, type OzContext } from '../src/context.js'
 import { requestOscarDebRepair } from '../src/launcher.js'
 
@@ -53,6 +53,34 @@ describe('requestOscarDebRepair', () => {
     expect(JSON.parse(await readFile(join(fixture.home, paths.request), 'utf8'))).toMatchObject({ problem: 'fix wrapped issue' })
     expect(JSON.parse(await readFile(join(fixture.home, paths.debResponse), 'utf8'))).toMatchObject({ kind: 'applied', commit: { committedPaths: ['packages/daemon/src/repair.ts'] } })
     expect(await readFile(join(fixture.home, paths.evidenceLog), 'utf8')).toContain('"state":"complete"')
+  })
+
+  test('runs Deb repair turn in a non-TTY subprocess and reads the adapter-owned response artifact', async () => {
+    let fixture!: Fixture
+    const scriptPath = join(tmpdir(), `cocoder-fake-codex-${process.pid}-${Date.now()}.mjs`)
+    await writeFile(scriptPath, fakeCodexScript(), 'utf8')
+    fixture = await makeFixture({
+      adapterMode: { kind: 'codex-like', scriptPath },
+      runHeadless: async (input) => {
+        fixture.headlessInputs.push(input)
+        expect(input.args).toContain('exec')
+        expect(input.command).toBe(process.execPath)
+        const debTurnLog = input.args[input.args.indexOf('--output-last-message') + 1]
+        expect(debTurnLog).toMatch(/deb-turn\.log$/)
+        expect(input.outPath).toBe(`${debTurnLog}.stdout`)
+        return await runHeadlessProcess(input)
+      },
+    })
+
+    const result = await requestOscarDebRepair(fixture.ctx, { workspaceId: 'cocoder', requestedBy: 'oscar', problem: 'non tty repair', evidence })
+
+    expect(result).toMatchObject({ status: 200, body: { ok: true, state: 'complete', outcome: 'applied' } })
+    expect(fixture.prompts).toHaveLength(1)
+    expect(fixture.prompts[0]).toMatchObject({ persona: 'deb', headless: true })
+    const paths = result.body.artifactPaths as { debResponse: string }
+    expect(JSON.parse(await readFile(join(fixture.home, paths.debResponse), 'utf8'))).toMatchObject({ kind: 'applied', summary: 'Applied repair.' })
+    expect(await readFile(join(fixture.home, 'local', 'oz', 'cocoder', 'repair-dialogues', String(result.body.dialogueId), 'deb-turn.log.stdout'), 'utf8')).toContain('codex transcript')
+    await expect(readFile(join(fixture.home, 'local', 'oz', 'cocoder', 'repair-dialogues', String(result.body.dialogueId), 'deb-turn.log.stdout'), 'utf8')).resolves.not.toContain('stdin is not a terminal')
   })
 
   test('returns 400 for invalid input before spawning', async () => {
@@ -130,7 +158,10 @@ describe('requestOscarDebRepair', () => {
   })
 })
 
-async function makeFixture(options: { readonly runHeadless?: (input: HeadlessRunInput) => Promise<{ readonly exitCode: number; readonly output: string }> } = {}): Promise<Fixture> {
+async function makeFixture(options: {
+  readonly runHeadless?: (input: HeadlessRunInput) => Promise<{ readonly exitCode: number; readonly output: string }>
+  readonly adapterMode?: { readonly kind: 'codex-like'; readonly scriptPath: string }
+} = {}): Promise<Fixture> {
   const home = await mkdtemp(join(tmpdir(), 'cocoder-oscar-deb-repair-'))
   await initRepo(home)
   const store = openRunStore(':memory:')
@@ -144,7 +175,7 @@ async function makeFixture(options: { readonly runHeadless?: (input: HeadlessRun
     git: makeGit(),
     bootSha: (await git(home, ['rev-parse', 'HEAD'])).trim(),
     sessionHost: throwingHost(),
-    getAdapter: () => fakeAdapter(prompts),
+    getAdapter: () => options.adapterMode?.kind === 'codex-like' ? codexLikeAdapter(prompts, options.adapterMode.scriptPath) : fakeAdapter(prompts),
     listAdapters: () => [],
     cliTestCache: new Map(),
     io: {},
@@ -205,6 +236,66 @@ function fakeAdapter(prompts: BuildInput[]): Adapter {
       return { canEnumerate: false, models: [], detail: 'fake' }
     },
   }
+}
+
+function codexLikeAdapter(prompts: BuildInput[], scriptPath: string): Adapter {
+  return {
+    id: 'codex',
+    runReadiness: { mechanism: 'launch-flags', flags: ['--dangerously-bypass-approvals-and-sandbox'], managesUserConfig: false, detail: 'codex-like test adapter' },
+    headlessCapable: true,
+    build(input) {
+      prompts.push(input)
+      if (!input.headless) {
+        return { command: process.execPath, args: [scriptPath, '--dangerously-bypass-approvals-and-sandbox', input.prompt] }
+      }
+      return { command: process.execPath, args: [scriptPath, 'exec', '--dangerously-bypass-approvals-and-sandbox', '--output-last-message', input.outPath, input.prompt] }
+    },
+    async preflight() {
+      return { ok: true, checks: [] }
+    },
+    async listModels() {
+      return { canEnumerate: false, models: [], detail: 'codex-like' }
+    },
+  }
+}
+
+function fakeCodexScript(): string {
+  return `
+import { mkdir, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
+
+const args = process.argv.slice(2)
+if (args[0] !== 'exec') {
+  if (!process.stdin.isTTY) {
+    console.error('Error: stdin is not a terminal')
+    process.exit(7)
+  }
+  process.exit(8)
+}
+
+const outPath = args[args.indexOf('--output-last-message') + 1]
+if (!outPath) {
+  console.error('missing --output-last-message')
+  process.exit(2)
+}
+
+await mkdir(dirname(outPath), { recursive: true })
+await writeFile(join(process.cwd(), 'packages', 'daemon', 'src', 'repair.ts'), 'export const repaired = true\\n')
+await writeFile(outPath, JSON.stringify({
+  schemaVersion: 1,
+  dialogueId: 'repair-placeholder',
+  kind: 'applied',
+  disposition: 'cocoder-bug',
+  mode: 'repair',
+  summary: 'Applied repair.',
+  diagnosis: 'CoCoder machinery bug.',
+  whyCocoderOwned: 'Daemon repair machinery is CoCoder-owned.',
+  filesChanged: ['packages/daemon/src/repair.ts'],
+  verification: 'daemon repair test',
+  remainingRisk: 'none'
+}))
+console.log('codex transcript that is not the JSON response')
+`
 }
 
 function throwingHost(): SessionHost {
