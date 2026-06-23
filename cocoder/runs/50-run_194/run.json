@@ -12,7 +12,7 @@
   "priorityId": "adhoc-session",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "awaiting-founder",
   "createdAt": 1782212073286,
-  "endedAt": null
+  "endedAt": 1782212250614
 }
