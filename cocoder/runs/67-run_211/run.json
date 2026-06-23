@@ -12,7 +12,7 @@
   "priorityId": "oz-autonomy",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "awaiting-founder",
   "createdAt": 1782248939096,
-  "endedAt": null
+  "endedAt": 1782249182770
 }
