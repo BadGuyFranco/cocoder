@@ -13,6 +13,8 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
+| [0033](./open/0033-deb-repair-dialogue-non-tty-failure.md) | Deb repair dialogue fails with "stdin is not a terminal" (non-TTY/headless invocation) | bug | none | Open |
+| [0032](./open/0032-hidden-priority-no-order-json-entry.md) | Created priority can be hidden — file exists with no order.json entry (ghost/"draft" priority) | bug | oz-autonomy | Open |
 | [0031](./open/0031-founder-stop-the-run-control-for-personas.md) | No way for a persona to stop the runner on a founder "stop the run" direction | task | unassigned | Blocked |
 
 ## Recently Closed
