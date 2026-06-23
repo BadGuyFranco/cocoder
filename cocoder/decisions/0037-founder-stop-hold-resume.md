@@ -73,6 +73,13 @@ parked atom without re-running or losing it:
 - no new atom number is allocated until the parked atom reaches its ordinary verified, blocked, or
   wrapped outcome.
 
+**Resume trigger surface (founder-approved 2026-06-23).** Resume is invoked through a dedicated lifecycle
+control — `cocoder oz resume <runId>` plus a matching daemon endpoint — parallel to `stop`/`teardown`. It is
+**not** folded into the existing `cocoder run <priority> --resume <runId>`, which weaves a prior run's pickup
+into a *fresh* Oscar launch (the `wrapup` fresh-launch shape) and is semantically distinct from re-entering a
+`held` run's loop at the parked atom. Keeping them separate preserves the one-owner `held`/`wrapup`
+distinction below: held-resume re-enters; pickup-`--resume` launches anew.
+
 Phase 2 is ordered after Phase 1 because `held` must first be represented as a durable, non-terminal,
 resume-ready state before the transition back to `running` can be correct.
 
