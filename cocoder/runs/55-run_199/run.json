@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_199",
+    "displayNumber": 55
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "priority"
+  },
+  "priorityId": "domain-glossary",
+  "playbookId": null,
+  "ticketId": null,
+  "status": "running",
+  "createdAt": 1782220401277,
+  "endedAt": null
+}
