@@ -39,6 +39,8 @@ import { promisify } from 'node:util'
 import type { RunnerIO } from './io.js'
 import { createHeadlessBuilderDriver, createPaneBuilderDriver, type BuilderDriver } from './builder-driver.js'
 import { executeAgentStep, type AgentStepActiveAtom } from './agent-step.js'
+import { FounderHeldError, isFounderHeldError, readFounderStopSignal, writeResumeState, type PreDispatchResumeState } from './founder-stop.js'
+import { parseDirective, type Directive } from './directive.js'
 import { groupLabel as formatGroupLabel, paneLabel, type RunLabelTarget } from './labels.js'
 import { type Judge, makeHeuristicJudge, runMonitor } from './monitor.js'
 import { createHeadlessOscarDriver, createPaneOscarDriver, type OscarDriver } from './oscar-driver.js'
@@ -67,6 +69,7 @@ import {
 } from './pre-run-integrity.js'
 
 const exec = promisify(execChildProcess)
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
 /** Build the per-atom Judge (ADR-0013). Injected so tests use a scripted fake and cli/daemon get the
  *  real heuristic. Tier 1 = a cheap idle/sentinel heuristic; semantic judgment stays at the verify-gate. */
@@ -301,6 +304,15 @@ function founderDecisionNeeded(markdown: string, contract: FounderCloseoutContra
   const decision = founderCloseoutSection(markdown, contract, section(contract, 'decisionNeeded'))
   if (!decision) return false
   return !/^none\.?$/i.test(decision.trim())
+}
+
+function readReadyDirective(path: string): Directive | undefined {
+  if (!existsSync(path)) return undefined
+  try {
+    return parseDirective(readFileSync(path, 'utf8'))
+  } catch {
+    return undefined
+  }
 }
 
 function deriveWrapupRunStatus(markdown: string, contract: FounderCloseoutContract, current: RunStatus): RunStatus {
@@ -1154,6 +1166,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         },
         judge: async (sample) => {
           if (stopped) return { state: 'done', note: 'oscar await settled' }
+          if (stage === 'directive' && (await readFounderStopSignal(runDir)) !== null) {
+            return { state: 'done', note: 'founder stop registered' }
+          }
           // Oz-authored nudges take priority over the generic idle prompt. Deb-authored nudges are
           // consumed by the full-run Deb watcher so they stay visible during Bob build too.
           const ozReq = await io.readNudgeRequest(ozNudgePath)
@@ -1207,6 +1222,43 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     } finally {
       stop()
       await monitor
+    }
+  }
+
+  const preDispatchPark = (atomNumber: number, directivePath: string, directive?: Directive): PreDispatchResumeState => {
+    const readyDirective = directive ?? readReadyDirective(directivePath)
+    return readyDirective === undefined ? { park: 'pre-dispatch', atomNumber } : { park: 'pre-dispatch', atomNumber, directive: readyDirective }
+  }
+
+  const throwIfFounderStopRegistered = async (atomNumber: number, directivePath: string, directive?: Directive): Promise<void> => {
+    const signal = await readFounderStopSignal(runDir)
+    if (signal !== null) throw new FounderHeldError(preDispatchPark(atomNumber, directivePath, directive))
+  }
+
+  const awaitDirectiveOrFounderHold = async (directivePath: string, atomNumber: number): Promise<Directive> => {
+    await throwIfFounderStopRegistered(atomNumber, directivePath)
+    let settled = false
+    let wake = (): void => {}
+    const settledPromise = new Promise<void>((resolve) => {
+      wake = resolve
+    })
+    const watchFounderStop = async (): Promise<never> => {
+      while (!settled) {
+        await throwIfFounderStopRegistered(atomNumber, directivePath)
+        await Promise.race([sleep(t.pollMs), settledPromise])
+      }
+      return await new Promise<never>(() => {})
+    }
+    try {
+      const directive = await Promise.race([
+        io.awaitDirective(directivePath, { timeoutMs: t.orchestrationMs, pollMs: t.pollMs, isAlive: oscarAlive, signal: deps.signal }),
+        watchFounderStop(),
+      ])
+      await throwIfFounderStopRegistered(atomNumber, directivePath, directive)
+      return directive
+    } finally {
+      settled = true
+      wake()
     }
   }
 
@@ -1375,6 +1427,37 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     }
   }
 
+  const holdRun = async (park: PreDispatchResumeState): Promise<RunResult> => {
+    const atoms = park.atomNumber
+    await writeResumeState(runDir, park)
+    store.recordEvent({ runId: run.id, type: 'run-held', data: { park: park.park, atom: park.atomNumber, directive: park.directive ?? null } })
+    const status: RunStatus = 'held'
+    const endedAt = now()
+    await rebuildUiBundleIfNeeded()
+    store.recordEvent({
+      runId: run.id,
+      type: 'run-end',
+      data: { status, atoms, committedShas, outOfScope, selfCommitted },
+    })
+    await projectAndCommitPortableRunHistory({ status, endedAt })
+    store.setRunStatus(run.id, status)
+    await pushActiveBranchIfRemote()
+    const recordPath = await io.writeRunRecord(runDir, renderRunRecord(store, run.id, { workspace, priority, displayNumber: portableRunDisplayNumber }))
+    log(`run ${run.id} held; ${committedShas.length} commit(s) over ${atoms} atom(s); record at ${recordPath}`)
+    return {
+      runId: run.id,
+      status,
+      committedSha: committedShas.at(-1) ?? null,
+      committedShas,
+      committedFiles,
+      outOfScope,
+      selfCommitted,
+      atoms,
+      pickupPath: null,
+      recordPath,
+    }
+  }
+
   try {
     await refreshStatus('awaiting-directive', 0, null, 'awaiting first directive')
 
@@ -1383,10 +1466,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     await refreshStatus('awaiting-directive', n, null, `awaiting directive ${n}`)
     let directive
     try {
-      directive = await awaitOscarWithNudgeWatchdog('directive', n, `awaiting directive ${n}`, () =>
-        io.awaitDirective(directivePath, { timeoutMs: t.orchestrationMs, pollMs: t.pollMs, isAlive: oscarAlive, signal: deps.signal }),
-      )
+      directive = await awaitOscarWithNudgeWatchdog('directive', n, `awaiting directive ${n}`, () => awaitDirectiveOrFounderHold(directivePath, n))
     } catch (err) {
+      if (isFounderHeldError(err)) throw err
       if (isStopRequestedError(err)) throw err
       // First directive failed → tear down the idle standby builder; KEEP Deb alive so she can triage.
       if (n === 0) await bobDriver.kill().catch(() => {})
@@ -1552,11 +1634,13 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     }
 
     // Ask Oscar for the next turn (names the exact next directive path — the numbered handshake).
+    await throwIfFounderStopRegistered(n, join(runDir, `directive-${n}.json`))
     await oscarDriver.show()
     await oscarDriver.send(buildNextOrWrapDispatch(join(runDir, `directive-${n}.json`), step.outcomeLine))
   }
   } catch (err) {
     await stopDebWatcher()
+    if (isFounderHeldError(err)) return await holdRun(err.park)
     if (isStopRequestedError(err)) return await stopRun()
     throw err
   }

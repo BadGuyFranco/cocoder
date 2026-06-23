@@ -42,6 +42,10 @@ describe('founder stop contract', () => {
     {
       park: 'pre-dispatch',
       atomNumber: 0,
+    },
+    {
+      park: 'pre-dispatch',
+      atomNumber: 1,
       directive: { kind: 'delegate', task: 'implement atom 0' },
     },
     {

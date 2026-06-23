@@ -25,7 +25,7 @@ export type ResumeParkMarker = 'pre-dispatch' | 'during-exec' | 'pre-verdict'
 export interface PreDispatchResumeState {
   readonly park: 'pre-dispatch'
   readonly atomNumber: number
-  readonly directive: Directive
+  readonly directive?: Directive
 }
 
 export interface DuringExecResumeState {
@@ -42,6 +42,17 @@ export interface PreVerdictResumeState {
 }
 
 export type ResumeState = PreDispatchResumeState | DuringExecResumeState | PreVerdictResumeState
+
+export class FounderHeldError extends Error {
+  constructor(readonly park: PreDispatchResumeState) {
+    super('founder stop requested')
+    this.name = 'FounderHeldError'
+  }
+}
+
+export function isFounderHeldError(error: unknown): error is FounderHeldError {
+  return error instanceof FounderHeldError
+}
 
 export function founderStopSignalPath(runDir: string): string {
   return join(runDir, STOP_SIGNAL_FILENAME)
@@ -138,11 +149,11 @@ function parseResumeDirective(value: unknown): Directive {
 function parseResumeState(value: unknown): ResumeState {
   if (!isRecord(value)) throw new MalformedFounderStopArtifactError('resume-state must be an object')
   if (value.park === 'pre-dispatch') {
-    return {
+    const state: PreDispatchResumeState = {
       park: 'pre-dispatch',
       atomNumber: requireAtomNumber(value.atomNumber, 'resume-state atomNumber'),
-      directive: parseResumeDirective(value.directive),
     }
+    return value.directive === undefined ? state : { ...state, directive: parseResumeDirective(value.directive) }
   }
   if (value.park === 'during-exec') {
     return {
