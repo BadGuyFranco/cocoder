@@ -12,7 +12,7 @@
   "priorityId": "launch-disposition-first",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "awaiting-founder",
   "createdAt": 1782222266456,
-  "endedAt": null
+  "endedAt": 1782223390010
 }
