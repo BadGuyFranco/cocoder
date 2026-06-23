@@ -2,7 +2,7 @@
 id: 0041
 title: Authoring-Play in-flight guard blocks the same wrapped run (inconsistent with sibling post-wrap ops)
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-23
@@ -55,3 +55,9 @@ the only post-wrap operation that cannot run for the same run.
   surfaced while wrapping ticket 0039 and could be fixed in one run or one Deb-repair pass.
 - Correction recorded here for the trail: a sibling claim ("Oscar cannot dispatch Deb post-wrap") was
   investigated and found FALSE — Deb-repair exempts the same run with `--run`; no ticket warranted there.
+
+## Resolution
+
+Resolved by run run_205 (7f564607d2080dc8face1ced81c957cc25866da2) on 2026-06-23.
+
+Ticket fix run completed successfully.
