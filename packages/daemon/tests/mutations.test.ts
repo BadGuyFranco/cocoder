@@ -416,6 +416,12 @@ async function writeTicketIndex(home: string): Promise<void> {
   await writeFile(join(home, 'cocoder', 'tickets', 'closed', '0012-existing-closed.md'), ticketFile('0012', 'Existing closed', 'Closed'))
 }
 
+async function writeResumeState(home: string, runId: string, state: unknown): Promise<void> {
+  const runDir = join(home, 'local', 'runs', runId)
+  await mkdir(runDir, { recursive: true })
+  await writeFile(join(runDir, 'resume-state.json'), `${JSON.stringify(state, null, 2)}\n`, 'utf8')
+}
+
 async function initRepo(path: string): Promise<void> {
   await g(path, ['init', '-q', '-b', 'trunk'])
   await g(path, ['config', 'user.email', 't@t.test'])
@@ -989,6 +995,53 @@ describe('Oz mutations + lifecycle', () => {
     expect(r.status).toBe(403)
   })
 
+  test('POST /runs/:id/resume resumes a held run through the same run id', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const held = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(held.id, 'held')
+    await writeResumeState(home, held.id, { park: 'pre-dispatch', atomNumber: 0 })
+    await startServer()
+
+    const r = await call(oz!, 'POST', `/runs/${held.id}/resume`)
+
+    expect(r).toEqual({ status: 202, json: { resuming: true, runId: held.id } })
+    expect(store.listRuns({ workspaceId: 'cocoder' }).map((run) => run.id)).toEqual([held.id])
+    for (let i = 0; i < 50 && store.getRun(held.id)?.status !== 'completed'; i++) await sleep(10)
+    expect(store.getRun(held.id)?.status).toBe('completed')
+    expect(store.listRuns({ workspaceId: 'cocoder' }).map((run) => run.id)).toEqual([held.id])
+    const events = store.listEvents(held.id)
+    expect(events.map((event) => event.type)).toEqual(expect.arrayContaining(['launch-run-resume', 'run-resumed', 'run-end']))
+    expect(events.find((event) => event.type === 'run-resumed')?.data).toEqual({ park: 'pre-dispatch', atom: 0 })
+    for (let i = 0; i < 50 && !(await exists(join(home, 'local', 'oz-audit.log'))); i++) await sleep(10)
+    const audit = await readFile(join(home, 'local', 'oz-audit.log'), 'utf8')
+    expect(audit).toContain('"action":"resume"')
+    expect(audit).toContain(`"runId":"${held.id}"`)
+  })
+
+  test('POST /runs/:id/resume rejects unknown, non-held, and workspace-busy runs', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const running = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    const completed = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(completed.id, 'completed')
+    const stopped = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(stopped.id, 'stopped')
+    const held = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(held.id, 'held')
+    await writeResumeState(home, held.id, { park: 'pre-dispatch', atomNumber: 0 })
+    await startServer()
+
+    expect((await call(oz!, 'POST', '/runs/nope/resume')).status).toBe(404)
+    expect((await call(oz!, 'POST', `/runs/${running.id}/resume`)).status).toBe(409)
+    expect((await call(oz!, 'POST', `/runs/${completed.id}/resume`)).status).toBe(409)
+    expect((await call(oz!, 'POST', `/runs/${stopped.id}/resume`)).status).toBe(409)
+
+    oz!.ctx.inFlight.set('cocoder', running.id)
+    const busy = await call(oz!, 'POST', `/runs/${held.id}/resume`)
+    expect(busy.status).toBe(409)
+    expect(busy.json.error).toContain('workspace "cocoder"')
+    expect(store.getRun(held.id)?.status).toBe('held')
+  })
+
   test('POST /runs --resume reads a prior run pickup (200/202); a missing pickup is a 400', async () => {
     await startServer()
     // Resuming a run with no pickup brief fails cleanly (400, not a 500) and releases the reservation.
@@ -997,11 +1050,16 @@ describe('Oz mutations + lifecycle', () => {
     expect(bad.json.error).toMatch(/cannot resume/)
 
     // A prior run left a pickup brief on disk (the continuation artifact; F8) → resume launches.
-    await mkdir(join(home, 'local', 'runs', 'run_prior'), { recursive: true })
-    await writeFile(join(home, 'local', 'runs', 'run_prior', 'pickup.md'), '# Pickup\nstart at the parser')
-    const ok = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo', resumeFromRunId: 'run_prior' } })
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const prior = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(prior.id, 'held')
+    await mkdir(join(home, 'local', 'runs', prior.id), { recursive: true })
+    await writeFile(join(home, 'local', 'runs', prior.id, 'pickup.md'), '# Pickup\nstart at the parser')
+    const ok = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo', resumeFromRunId: prior.id } })
     expect(ok.status).toBe(202)
     expect(ok.json.runId).toMatch(/^run_/)
+    expect(ok.json.runId).not.toBe(prior.id)
+    expect(store.getRun(prior.id)?.status).toBe('held')
   })
 
   test('POST /runs threads a trimmed task into the launch prompt', async () => {

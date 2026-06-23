@@ -148,6 +148,7 @@ async function assembleRunInput(
   priority: Priority,
   opts: {
     readonly resumeFromRunId?: string
+    readonly resumeHeldRunId?: string
     readonly task?: string | null
     readonly storePriorityId?: string | null
     readonly ticketId?: string | null
@@ -225,6 +226,7 @@ async function assembleRunInput(
     ticketId: opts.ticketId ?? null,
     target: opts.target,
     pickup,
+    resumeRunId: opts.resumeHeldRunId,
     strictPreRunDirt: opts.strictPreRunDirt,
     allowPreRunIntegrityErrors: opts.allowPreRunIntegrityErrors,
     preRunGovernanceChecks,
@@ -233,7 +235,18 @@ async function assembleRunInput(
 
 /** Assemble RunInput from governance on disk (mirrors cli/src/run.ts). Throws on unknown ids. When
  *  resuming, reads the prior run's pickup brief so a fresh session continues it (ADR-0013 / F8). */
-export async function buildRunInput(ctx: Pick<OzContext, 'cocoderHome' | 'runsRoot'>, workspaceId: string, priorityId: string, opts: { readonly resumeFromRunId?: string; readonly task?: string | null; readonly strictPreRunDirt?: boolean; readonly allowPreRunIntegrityErrors?: boolean } = {}): Promise<RunInput> {
+export async function buildRunInput(
+  ctx: Pick<OzContext, 'cocoderHome' | 'runsRoot'>,
+  workspaceId: string,
+  priorityId: string,
+  opts: {
+    readonly resumeFromRunId?: string
+    readonly resumeHeldRunId?: string
+    readonly task?: string | null
+    readonly strictPreRunDirt?: boolean
+    readonly allowPreRunIntegrityErrors?: boolean
+  } = {},
+): Promise<RunInput> {
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
   if (!ws) throw new Error(`unknown workspace "${workspaceId}"`)
   const prioritiesDir = join(ws.path, 'cocoder', 'priorities')
@@ -484,9 +497,21 @@ function attachRunLifecycle(ctx: OzContext, workspaceId: string, stopController:
 /** Launch a run for {workspaceId, priorityId} or {workspaceId, ticketId}. Async
  *  (fire-and-forget); returns 202 with the runId, 409 if a run is already in flight for the workspace,
  *  or 400 if the request can't be assembled. The string target preserves ordinary priority callers. */
-export async function launchRun(ctx: OzContext, workspaceId: string, targetInput: string | LaunchRunTarget, opts: { readonly resumeFromRunId?: string; readonly task?: string | null; readonly strictPreRunDirt?: boolean; readonly allowPreRunIntegrityErrors?: boolean } = {}): Promise<LaunchResult> {
+export async function launchRun(
+  ctx: OzContext,
+  workspaceId: string,
+  targetInput: string | LaunchRunTarget,
+  opts: {
+    readonly resumeFromRunId?: string
+    readonly resumeHeldRunId?: string
+    readonly task?: string | null
+    readonly strictPreRunDirt?: boolean
+    readonly allowPreRunIntegrityErrors?: boolean
+  } = {},
+): Promise<LaunchResult> {
   const now = ctx.now ?? Date.now
   const launchStartedAt = now()
+  const resumeHeldRunId = opts.resumeHeldRunId ?? null
   const pendingTimingEvents: Array<{ readonly type: string; readonly data: Record<string, unknown> }> = [
     { type: 'launch-entry', data: { workspaceId, ms: 0 } },
   ]
@@ -534,6 +559,7 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
     try {
       input = await assembleRunInput(ctx, workspace, ticketPriority(ticket), {
         resumeFromRunId: opts.resumeFromRunId,
+        resumeHeldRunId: opts.resumeHeldRunId,
         task: opts.task,
         storePriorityId: TICKET_PRIORITY_SENTINEL,
         ticketId: ticket.id,
@@ -597,6 +623,7 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
     now,
     signal: stopController.signal,
     onRunCreated: (run) => {
+      if (resumeHeldRunId !== null) return
       runId = run.id
       ctx.inFlight.set(workspaceId, run.id)
       ctx.stopControllers.set(run.id, stopController)
@@ -606,6 +633,16 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
       ctx.store.recordEvent({ runId: run.id, type: 'launch-run-created', data: { workspaceId, targetKind: target.kind, targetId, ms: now() - launchStartedAt } })
       emitOzEvent(ctx, { type: 'run-created', runId: run.id, workspaceId })
     },
+  }
+  if (resumeHeldRunId !== null) {
+    runId = resumeHeldRunId
+    ctx.inFlight.set(workspaceId, resumeHeldRunId)
+    ctx.stopControllers.set(resumeHeldRunId, stopController)
+    for (const event of pendingTimingEvents) {
+      ctx.store.recordEvent({ runId: resumeHeldRunId, type: event.type, data: event.data })
+    }
+    ctx.store.recordEvent({ runId: resumeHeldRunId, type: 'launch-run-resume', data: { workspaceId, targetKind: target.kind, targetId, ms: now() - launchStartedAt } })
+    emitOzEvent(ctx, { type: 'run-resume-started', runId: resumeHeldRunId, workspaceId })
   }
 
   // onRunCreated fires synchronously inside this call (before runRun's first await), so on the success
@@ -641,7 +678,7 @@ export async function launchRun(ctx: OzContext, workspaceId: string, targetInput
   }
   attachRunLifecycle(ctx, workspaceId, stopController, () => runId, running)
 
-  appendLaunchAudit(ctx, workspaceId, target, runId)
+  if (resumeHeldRunId === null) appendLaunchAudit(ctx, workspaceId, target, runId)
   return { status: 202, body: { runId, target: { kind: target.kind, id: targetId } } }
 }
 
@@ -831,6 +868,29 @@ export async function requestStopRun(ctx: OzContext, runId: string): Promise<Lau
   void appendAudit(ctx.cocoderHome, { action: 'stop', runId })
   emitOzEvent(ctx, { type: 'stop-requested', runId, workspaceId: run.workspaceId })
   return { status: 202, body: { stopping: true, runId } }
+}
+
+/** Resume a held run by re-entering its parked runner loop. Distinct from pickup-based
+ *  `resumeFromRunId`, which launches a fresh run using a prior pickup brief. */
+export async function resumeRun(ctx: OzContext, runId: string): Promise<LaunchResult> {
+  const run = ctx.store.getRun(runId)
+  if (!run) return { status: 404, body: { error: 'unknown run' } }
+  if (run.status !== 'held') {
+    return { status: 409, body: { error: `run is "${run.status}" — only a held run can be resumed` } }
+  }
+  if (ctx.inFlight.has(run.workspaceId)) {
+    return { status: 409, body: { error: `a run is already in flight for workspace "${run.workspaceId}"` } }
+  }
+
+  const target: LaunchRunTarget = run.ticketId !== null
+    ? { kind: 'ticket', ticketId: run.ticketId }
+    : { kind: 'priority', priorityId: run.priorityId }
+  const launched = await launchRun(ctx, run.workspaceId, target, { resumeHeldRunId: runId })
+  if (launched.status !== 202) return launched
+
+  void appendAudit(ctx.cocoderHome, { action: 'resume', runId })
+  emitOzEvent(ctx, { type: 'resume-requested', runId, workspaceId: run.workspaceId })
+  return { status: 202, body: { resuming: true, runId } }
 }
 
 /** Queue an Oz-authored nudge for this run's Oscar. The daemon writes the runner-owned channel; the
