@@ -12,13 +12,23 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **ticket-fix-0038: PLAYBOOK priority roadmap retired — archive-candidate (run_59/run_203)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0038](./tickets/closed/0038-retire-stale-playbook-priority-roadmap.md) | **Run:** run_203 (display 59)
+**Outcomes:**
+- **Roadmap retired (`cd5e7f6`).** Removed the drift-prone `## Priority roadmap` section from `PLAYBOOK.md`; replaced with a pointer to the live `priorities/` listing + `order.json` overlay; repointed `priorities/AGENTS.md` ordering home to `order.json` (ADR-0035/0038).
+- **Ticket 0038 closed (`e67db56`).** Lifecycle close via `git mv` to `closed/`, INDEX updated; grep confirms no live `Priority roadmap` references outside ticket history.
+- **Disposition: `archive-candidate`.** Acceptance met; governance-doc reconciliation only — no product/runtime change.
+
+**Next:** Launch `founder-stop-control` for Phase 2 — resume transition from `held` that re-enters the loop at the parked atom.
+
 ## 2026-06-23 — **founder-stop-control: ADR-0037 Phase 1 halt-and-hold — continue (run_58/run_202)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [founder-stop-control](./priorities/founder-stop-control.md) | **Run:** run_202 (display 58)
 **Outcomes:**
 - **Phase 1 complete.** `held` run disposition, founder-stop artifact contract, and `holdRun()` at pre-dispatch, during-exec, and pre-verdict boundaries; founder-explicit-only pinned; ticket [0031](./tickets/closed/0031-founder-stop-the-run-control-for-personas.md) closed.
 - **Disposition: `continue`.** Phase 2 resume from `held` remains; Objective not met until held-run resume test lands.
-- **Founder gates surfaced:** Phase-2 resume trigger surface (recommend dedicated `cocoder oz resume <runId>` vs overloading `--resume`); ticket [0038](./tickets/open/0038-retire-stale-playbook-priority-roadmap.md) filed out-of-scope — confirm stand or cancel.
+- **Founder gates surfaced:** Phase-2 resume trigger surface (recommend dedicated `cocoder oz resume <runId>` vs overloading `--resume`); ticket [0038](./tickets/closed/0038-retire-stale-playbook-priority-roadmap.md) filed out-of-scope and closed in run_59.
 
 **Next:** Relaunch `founder-stop-control` for Phase 2 — pre-dispatch resume re-entry (load held run, consume artifacts, re-dispatch parked directive without new atom number).
 
