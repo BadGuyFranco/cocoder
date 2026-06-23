@@ -76,6 +76,31 @@ parked atom without re-running or losing it:
 Phase 2 is ordered after Phase 1 because `held` must first be represented as a durable, non-terminal,
 resume-ready state before the transition back to `running` can be correct.
 
+### Resume-state contract (load-bearing)
+
+`held` is only safe if Phase 1 persists, at the moment the stop registers, exactly the state Phase 2 needs
+to re-enter. This is the load-bearing part of Phase 1 and is built before the resume transition. For each
+of the three registration points, Phase 1 records the following in the run directory alongside the
+stop-signal artifact, so a fresh runner process can reconstruct the park point without the original
+in-memory loop state:
+
+- **Stop before dispatch** — persist the parked atom's directive (unchanged), its atom number, and a
+  `pre-dispatch` park marker. Resume re-dispatches that same directive; no atom number is allocated.
+- **Stop during Bob execution** — persist the active atom number, the live directive, and the runner's
+  wait/monitor cursor (the same handle the loop would otherwise keep polling). Resume re-attaches to Bob's
+  in-flight work or, if that session is gone, re-dispatches the same directive; the atom number is reused.
+- **Stop during verify** — persist the active atom number, the diff/verify request already handed to
+  Oscar, and a `pre-verdict` park marker. Resume re-issues the same verify; no commit and no atom
+  allocation happen until a verdict lands.
+
+### Commit-boundary race
+
+Verify and commit are not atomic. If a founder stop registers after an atom verifies `pass` but before its
+commit lands, the runner finishes committing that already-verified atom, then holds before requesting the
+next directive. A founder halt never discards verified, about-to-commit work and never parks mid-commit:
+the park point is always a clean atom boundary — a verified atom is committed, an unverified or in-flight
+atom is parked uncommitted.
+
 ### Authority and scope
 
 Stop is founder-explicit-only, using the same authority bar as teardown from the F20 lineage. There is no
@@ -84,9 +109,10 @@ founder direction for that run.
 
 Stop is not teardown. This ADR does not change `cocoder oz teardown`, `POST /runs/:id/teardown`, or the
 pane-closing semantics of `teardownRun()`. It also does not redefine the existing dashboard/Oz
-`POST /runs/:id/stop` control as a persona command. Build work may align that endpoint's settled status
-with `held`, but the founder-stop control introduced here is the file-based persona-to-runner signal and
-its halt-only `held` disposition.
+`POST /runs/:id/stop` control. That operator control keeps its current **terminal** semantics and settles
+to `stopped`; it is the deliberate-terminate path. `held` is reachable **only** through the founder
+file-signal introduced here. The two are kept as separate owners on purpose — operator terminate
+(`stopped`) versus founder halt (`held`) — so neither endpoint carries two meanings.
 
 ### Disposition vocabulary (one owner)
 

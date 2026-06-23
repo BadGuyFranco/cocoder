@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_194",
+    "displayNumber": 50
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "priority"
+  },
+  "priorityId": "adhoc-session",
+  "playbookId": null,
+  "ticketId": null,
+  "status": "running",
+  "createdAt": 1782212073286,
+  "endedAt": null
+}
