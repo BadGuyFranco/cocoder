@@ -13,6 +13,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
+| [0042](./open/0042-deb-default-live-terminal-observation.md) | Deb should default to live Oscar/Bob terminal observation | bug | none | Open |
 | [0039](./open/0039-launch-status-in-oz-dashboard.md) | Launch Status in Oz Dashboard | task | none | founder-session |
 | [0037](./open/0037-contributing-pr-template-stale-rg-ci-gate.md) | CONTRIBUTING and PR template still promise an rg CI gate that live ci.yml no longer runs | bug | none | Open |
 | [0034](./open/0034-priority-creation-must-auto-register-order-json.md) | Priority creation must auto-register in order.json (prevent orphans at source) | task | oz-autonomy | Open |
