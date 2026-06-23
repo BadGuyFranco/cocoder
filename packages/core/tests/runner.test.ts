@@ -2680,6 +2680,47 @@ describe('runRun (multi-atom loop)', () => {
     expect(debNudge?.data).toMatchObject({ persona: 'deb', text: 'Oscar — ask Bob for a root-cause diagnosis', source: 'deb', seq: 1 })
   })
 
+  test('does not deliver a Deb-authored nudge during the boundary grace window', async () => {
+    const store = openRunStore(':memory:')
+    const debReq: NudgeRequest = {
+      target: 'oscar',
+      message: 'Oscar — provide the verify verdict now',
+      rationale: 'Deb reacted to the verify boundary too early',
+      seq: 1,
+    }
+    const sent: string[] = []
+    const io: RunnerIO = {
+      ...fakeIO({ directives: [delegate('do it'), wrapup('done')] }),
+      async awaitVerification(path, opts) {
+        await sleep(20)
+        return await fakeIO({ directives: [] }).awaitVerification(path, opts)
+      },
+      async readNudgeRequest(nudgePath) {
+        if (!nudgePath.endsWith('deb-nudge.json')) return null
+        const runId = store.listRuns()[0]?.id
+        return runId && store.listEvents(runId).some((e) => e.type === 'verify-dispatch') ? debReq : null
+      },
+    }
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        io,
+        sessionHost: fakeSessionHost({
+          async sendInput(_ref, text) {
+            sent.push(text)
+          },
+        }),
+        timeouts: { orchestrationMs: 500, buildMs: 500, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 50 },
+      }),
+      { ...input, deb },
+    )
+
+    expect(result.status).toBe('completed')
+    expect(sent).not.toContain(debReq.message)
+    expect(store.listEvents(result.runId).some((e) => e.type === 'oscar-nudge' && (e.data as { seq?: number }).seq === debReq.seq)).toBe(false)
+  })
+
   test('full-run Deb watcher delivers a Deb-authored nudge during Bob build', async () => {
     const store = openRunStore(':memory:')
     const debReq: NudgeRequest = { target: 'oscar', message: 'Oscar — clarify the acceptance evidence before verify', rationale: 'Bob is building and the blocker is in orchestration scope', seq: 1 }

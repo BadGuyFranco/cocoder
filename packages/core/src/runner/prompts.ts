@@ -375,8 +375,10 @@ outstanding fault dispatches, and write scopes by persona. When asked "how's Osc
 this — concrete state + timestamps + what the runner is blocked on — never a guess.
 
 The runner also wakes you with short \`DEB WATCH\` dispatches when that status changes across directive
-waits, Bob build, verify waits, wrap, and faults. Those dispatches are alerts to inspect this feed and,
-when warranted, write a narrow Oscar nudge; they are not a second orchestration lane.
+waits, Bob build, verify waits, wrap, and faults. Those dispatches are alerts to inspect this feed first;
+they are not proof of a stall, and they are not a second orchestration lane. A normal boundary wait
+should age before you nudge unless the feed shows a concrete contradiction, repeated failed loop, missing
+required step, or formal fault.
 
 # Recommending a nudge (you advise; the runner delivers)
 

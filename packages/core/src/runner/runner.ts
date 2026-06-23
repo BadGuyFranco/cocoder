@@ -958,11 +958,13 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   let lastDebNudgeSeq = 0
   let lastOzNudgeSeq = 0
   let lastDebWakeKey: string | null = null
+  let lastDebWakeAt = Number.NEGATIVE_INFINITY
   const wakeDeb = (kind: string, detail: string): void => {
     if (!debRef) return
     const key = `${kind}:${detail}`
     if (key === lastDebWakeKey) return
     lastDebWakeKey = key
+    lastDebWakeAt = now()
     store.recordEvent({ runId: run.id, type: 'deb-watch-dispatch', data: { kind, detail } })
     void sessionHost
       .sendInput(debRef, `DEB WATCH - ${detail}\nRead ${join(runDir, 'deb-status.json')} for current evidence. If you recommend a narrow Oscar intervention, write ${debNudgePath}.`)
@@ -1091,6 +1093,10 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           if (debWatcherStopped) return { state: 'done', note: 'deb watcher stopped' }
           const debReq = await io.readNudgeRequest(debNudgePath)
           if (debReq && debReq.seq > lastDebNudgeSeq) {
+            if (now() - lastDebWakeAt < t.minNudgeIntervalMs) {
+              pendingDebNudge = null
+              return { state: 'progressing', note: `deb nudge seq ${debReq.seq} waiting for boundary grace` }
+            }
             pendingDebNudge = { message: debReq.message, rationale: debReq.rationale, seq: debReq.seq }
             return { state: 'stuck', note: `deb recommends a nudge (seq ${debReq.seq})`, nudge: debReq.message }
           }
