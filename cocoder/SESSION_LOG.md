@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **ripgrep-dependency-research: evidence + optional-policy recommendation — archive-candidate (run_57/run_201)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [ripgrep-dependency-research](./priorities/ripgrep-dependency-research.md) | **Run:** run_201 (display 57)
+**Outcomes:**
+- **Evidence sweep (`8e75e1c`).** No live `rg` in packages/scripts/tests/CI; no ripgrep package in manifests; current reliance is docs/governance/manual-run only — `cocoder/runs/57-run_201/ripgrep-usage-evidence.md`.
+- **Recommendation (`927e6d6`).** Treat `rg` as optional developer convenience, not a declared dependency; cite evidence throughout — `cocoder/runs/57-run_201/ripgrep-recommendation.md`.
+- **Separate finding.** `CONTRIBUTING.md:26` and `.github/pull_request_template.md:24` still promise an `rg` CI gate removed from live `ci.yml`; ticket [0037](./tickets/open/0037-contributing-pr-template-stale-rg-ci-gate.md) opened for the Surface-A doc fix after founder policy confirmation.
+- **Disposition: `archive-candidate`.** Research Objective met; no policy/manifest/CI/doc enforcement changed (research-only).
+
+**Next:** Founder archive confirmation on `ripgrep-dependency-research` plus policy call (optional recommended); then launch ticket-fix on [0037](./tickets/open/0037-contributing-pr-template-stale-rg-ci-gate.md) — reconcile contributor docs with live ci.yml.
+
 ## 2026-06-23 — **launch-disposition-first: assess-first disposition + proof harness — archive-candidate (run_56/run_200)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [launch-disposition-first](./priorities/launch-disposition-first.md) | **Run:** run_200 (display 56)
