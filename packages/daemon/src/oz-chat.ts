@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { runDisplayName } from '@cocoder/core'
 import type { OzContext } from './context.js'
-import { launchRun as launchRunOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestNudgeRun as nudgeRunOp, requestOscarDebRepair as oscarDebRepairOp, requestOzRepair as repairOzOp, requestStopRun as stopRunOp, requestSupportCommitRun as supportCommitRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
+import { launchRun as launchRunOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestNudgeRun as nudgeRunOp, requestOscarDebRepair as oscarDebRepairOp, requestOzAction as ozActionOp, requestOzRepair as repairOzOp, requestStopRun as stopRunOp, requestSupportCommitRun as supportCommitRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
 import { projectOzAwareness, type OzAwarenessRun, type OzAwarenessSnapshot } from './oz-awareness.js'
 import { tryHandleOzAgentTurn } from './oz-host.js'
 import { readTickets } from './priority-order.js'
@@ -20,6 +20,7 @@ export type OzCommand =
   | { readonly kind: 'stop'; readonly runId: string }
   | { readonly kind: 'nudge'; readonly runId: string; readonly message: string; readonly rationale?: string }
   | { readonly kind: 'repair'; readonly message: string; readonly rationale?: string }
+  | { readonly kind: 'oz-action'; readonly instruction: string }
   | { readonly kind: 'author'; readonly playId: AuthoringPlayInput['playId']; readonly invocation: unknown }
   | { readonly kind: 'teardown'; readonly runId: string }
   | { readonly kind: 'status'; readonly runId?: string }
@@ -30,7 +31,7 @@ export type OzExecutableCommand = Exclude<OzCommand, { readonly kind: 'help' } |
 export type OzCommandExecutor = (command: OzExecutableCommand) => Promise<OzChatResult>
 
 export interface OzChatAction {
-  readonly type: 'launch' | 'show' | 'support-commit' | 'oscar-deb-repair' | 'stop' | 'nudge' | 'repair' | 'author' | 'teardown' | 'status' | 'refresh'
+  readonly type: 'launch' | 'show' | 'support-commit' | 'oscar-deb-repair' | 'stop' | 'nudge' | 'repair' | 'oz-action' | 'author' | 'teardown' | 'status' | 'refresh'
   readonly workspaceId?: string
   readonly priorityId?: string
   readonly runId?: string
@@ -63,6 +64,7 @@ export interface OzChatOps {
   readonly restartDaemon: typeof restartDaemonOp
   readonly nudgeRun: typeof nudgeRunOp
   readonly repairOz: typeof repairOzOp
+  readonly requestOzAction: typeof ozActionOp
   readonly requestOscarDebRepair: typeof oscarDebRepairOp
   readonly requestAuthoringPlay: typeof authoringPlayOp
   readonly supportCommitRun: typeof supportCommitRunOp
@@ -76,6 +78,7 @@ const defaultOps: OzChatOps = {
   restartDaemon: restartDaemonOp,
   nudgeRun: nudgeRunOp,
   repairOz: repairOzOp,
+  requestOzAction: ozActionOp,
   requestOscarDebRepair: oscarDebRepairOp,
   requestAuthoringPlay: authoringPlayOp,
   supportCommitRun: supportCommitRunOp,
@@ -218,6 +221,15 @@ export async function executeOzCommand(ctx: OzContext, workspaceId: string | und
       'repair',
       () => ops.repairOz(ctx, { workspaceId, message: command.message, ...(command.rationale ? { rationale: command.rationale } : {}) }),
       (out) => repairReply(workspaceId, out),
+    )
+  }
+
+  if (command.kind === 'oz-action') {
+    if (!workspaceId) return missingWorkspace()
+    return runOp(
+      'oz-action',
+      () => ops.requestOzAction(ctx, { workspaceId, instruction: command.instruction }),
+      (out) => ozActionReply(workspaceId, out),
     )
   }
 
@@ -428,6 +440,28 @@ function repairReply(workspaceId: string, out: LaunchResult): OzChatReply {
     command: 'repair',
     ok: true,
     action: { type: 'repair', workspaceId, committedPaths, commitSha, outOfLanePaths, ...(turnLogPath ? { turnLogPath } : {}) },
+  }
+}
+
+function ozActionReply(workspaceId: string, out: LaunchResult): OzChatReply {
+  const committedPaths = stringArray(out.body.committedPaths)
+  const outOfLanePaths = stringArray(out.body.outOfLanePaths)
+  const commitSha = typeof out.body.commitSha === 'string' ? out.body.commitSha : null
+  const turnLogPath = typeof out.body.turnLogPath === 'string' ? out.body.turnLogPath : undefined
+  if (!isOk(out.status)) return failedReply('oz-action', 'Could not apply Oz action', out)
+
+  const committed = commitSha
+    ? `Committed ${committedPaths.length === 0 ? 'the Oz action' : committedPaths.join(', ')} as ${commitSha}.`
+    : 'Nothing changed; no oz-action commit was created.'
+  const outOfLane = outOfLanePaths.length > 0
+    ? ` Held back outside the oz-action lane, NOT committed: ${outOfLanePaths.join(', ')}.`
+    : ''
+  const log = turnLogPath ? ` Turn log: ${turnLogPath}.` : ''
+  return {
+    reply: `${committed}${outOfLane}${log}`,
+    command: 'oz-action',
+    ok: true,
+    action: { type: 'oz-action', workspaceId, committedPaths, commitSha, outOfLanePaths, ...(turnLogPath ? { turnLogPath } : {}) },
   }
 }
 

@@ -14,6 +14,7 @@ import { dirname, join } from 'node:path'
 import { promisify } from 'node:util'
 import {
   COCODER_GOVERNANCE_AUTHOR,
+  OZ_ACTION_SCOPE,
   closeTicket,
   coCoderRunReference,
   commitFiles,
@@ -68,6 +69,7 @@ import {
 } from './oscar-deb-repair.js'
 
 const OZ_REPAIR_TIMEOUT_MS = 120_000
+const OZ_ACTION_TIMEOUT_MS = 120_000
 const OSCAR_DEB_REPAIR_TIMEOUT_MS = 120_000
 const AUTHORING_PLAY_TIMEOUT_MS = 120_000
 const DAEMON_RELOAD_BUILD_COMMAND = 'pnpm --filter @cocoder/core --filter @cocoder/daemon typecheck'
@@ -1476,6 +1478,46 @@ export async function requestOzRepair(ctx: OzContext, input: { readonly workspac
   })
 }
 
+export async function requestOzAction(ctx: OzContext, input: { readonly workspaceId: string; readonly instruction: string }): Promise<LaunchResult> {
+  if (ctx.inFlight.size > 0) {
+    return { status: 409, body: { error: 'refusing oz-action: a run is in flight (would orphan it) — wait for it to finish' } }
+  }
+
+  const instruction = input.instruction.trim()
+  if (!instruction) return { status: 400, body: { error: 'oz-action instruction is required' } }
+  if (instruction.length > 4000) return { status: 400, body: { error: 'oz-action instruction too long (max 4000 chars)' } }
+
+  const workspace = await findWorkspace(ctx.cocoderHome, input.workspaceId)
+  if (!workspace) return { status: 404, body: { error: 'unknown workspace' } }
+
+  const target = resolveOzRepairTarget(workspace.path)
+  if (!target) {
+    return { status: 409, body: { error: `no Oz CLI is assigned for workspace "${workspace.id}"` } }
+  }
+
+  const turnLogPath = join(ctx.cocoderHome, 'local', 'oz', workspace.id, `oz-action-${Date.now()}.log`)
+  await mkdir(dirname(turnLogPath), { recursive: true })
+
+  return runHeadlessThenGateCommit(ctx, {
+    workspaceId: workspace.id,
+    persona: 'oz',
+    cli: target.cli,
+    model: target.model,
+    cwd: workspace.path,
+    turnLogPath,
+    prompt: buildOzActionPrompt({ workspaceId: workspace.id, instruction }),
+    timeoutMs: OZ_ACTION_TIMEOUT_MS,
+    scope: OZ_ACTION_SCOPE,
+    commitMessage: 'oz-action',
+    author: { name: 'oz-action', email: 'oz-action@cocoder.local' },
+    commitOnlyScope: true,
+    auditAction: 'oz-action',
+    eventType: 'oz-action',
+    preTurnError: (detail) => `Oz action turn failed before diff/commit: ${detail}`,
+    exitError: (exitCode) => `Oz action turn failed with exit code ${exitCode}; nothing was committed.`,
+  })
+}
+
 export async function requestAuthoringPlay(ctx: OzContext, input: AuthoringPlayInput): Promise<LaunchResult> {
   // Post-wrap in-flight policy matches support-commit and Oscar-Deb repair: refuse only a pending or
   // still-building run on this workspace; allow the same tracked wrapped run to author from post-wrap.
@@ -1672,6 +1714,28 @@ function buildOzRepairPrompt(input: { readonly workspaceId: string; readonly mes
     'After an in-scope repair lands, the founder/Oz must Refresh Oz so the daemon reloads the changed state.',
     `Workspace id: ${input.workspaceId}`,
   ].filter((part): part is string => part !== null).join('\n\n')
+}
+
+function buildOzActionPrompt(input: { readonly workspaceId: string; readonly instruction: string }): string {
+  return [
+    '## Oz action turn',
+    'You are Oz running one headless self-directed governance edit against the current workspace checkout.',
+    'Founder instruction:',
+    input.instruction,
+    'Allowed edit class:',
+    '- Reorder priorities in cocoder/priorities/order.json.',
+    '- Open or close tickets under cocoder/tickets/.',
+    '- Make a narrow documentation fix under docs/ or a governed top-level markdown document.',
+    '- Edit an existing cocoder/priorities/*.md body only when the Objective section is unchanged.',
+    'Forbidden:',
+    '- Product or target code, including packages/*/src/.',
+    '- Secrets and install-local state such as run records, event streams, or machine-local coordination.',
+    '- Net-new priority Objectives or any Objective rewrite.',
+    '- Process, window, daemon, cmux, browser, or lifecycle actions.',
+    'Do not run git, commit, reset, checkout, daemon restart, process/window lifecycle commands, browser open commands, or cmux commands.',
+    'Make only the requested reversible governance edit. If the request needs a forbidden change, edit nothing and explain the refusal in stdout.',
+    `Workspace id: ${input.workspaceId}`,
+  ].join('\n\n')
 }
 
 function buildAuthoringPlayPrompt(input: { readonly workspaceId: string; readonly playId: string; readonly playBody: string; readonly invocation: unknown }): string {

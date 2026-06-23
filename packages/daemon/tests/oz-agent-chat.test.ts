@@ -417,6 +417,71 @@ describe('Oz agent chat turns', () => {
     expect(result).toMatchObject({ status: 200, body: { reply: 'I need a repair message before I can run repair.', command: 'chat', ok: true } })
   })
 
+  test('oz-action tool dispatches through ops and feeds committed plus held-back paths to the follow-up prompt', async () => {
+    const fixture = await makeFixture({
+      outputs: [
+        'Applying reversible governance edit.\nOZ_TOOL {"tool":"oz-action","args":{"instruction":" close ticket 0099 "}}',
+        'I closed the ticket and left the code edit uncommitted.',
+      ],
+    })
+    const calls: Array<{ readonly workspaceId: string; readonly instruction: string }> = []
+    const ops: OzChatOps = {
+      ...fakeOps(),
+      requestOzAction: async (_ctx, input) => {
+        calls.push(input)
+        return {
+          status: 200,
+          body: {
+            ok: true,
+            committedPaths: ['cocoder/tickets/open/0099-x.md'],
+            commitSha: 'sha-action',
+            outOfLanePaths: ['packages/daemon/src/foo.ts'],
+            exitCode: 0,
+            turnLogPath: '/tmp/cocoder/local/oz/cocoder/oz-action.log',
+          },
+        }
+      },
+    }
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'close ticket 0099', workspaceId: 'cocoder' }, ops)
+
+    expect(calls).toEqual([{ workspaceId: 'cocoder', instruction: 'close ticket 0099' }])
+    expect(fixture.headlessInputs).toHaveLength(2)
+    expect(fixture.prompts[0]?.prompt).toContain('oz-action {"instruction":"..."}')
+    expect(fixture.prompts[0]?.prompt).toContain('holds out-of-lane edits back uncommitted')
+    expect(fixture.prompts[1]?.prompt).toContain('Committed cocoder/tickets/open/0099-x.md as sha-action.')
+    expect(fixture.prompts[1]?.prompt).toContain('Held back outside the oz-action lane, NOT committed: packages/daemon/src/foo.ts.')
+    expect(result).toMatchObject({
+      status: 200,
+      body: { reply: 'I closed the ticket and left the code edit uncommitted.', command: 'chat', ok: true, action: { type: 'oz-action', workspaceId: 'cocoder', commitSha: 'sha-action' } },
+    })
+  })
+
+  test('malformed oz-action tool call feeds validation errors back without executing', async () => {
+    const fixture = await makeFixture({
+      outputs: [
+        'Bad action.\nOZ_TOOL {"tool":"oz-action","args":{}}',
+        'Bad action.\nOZ_TOOL {"tool":"oz-action","args":{"instruction":"   "}}',
+        'I need an instruction before I can make an Oz action edit.',
+      ],
+    })
+    let calls = 0
+    const ops: OzChatOps = {
+      ...fakeOps(),
+      requestOzAction: async () => {
+        calls += 1
+        return { status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0 } }
+      },
+    }
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'make a reversible edit', workspaceId: 'cocoder' }, ops)
+
+    expect(calls).toBe(0)
+    expect(fixture.prompts[1]?.prompt).toContain('Tool "oz-action" requires string arg "instruction".')
+    expect(fixture.prompts[2]?.prompt).toContain('Tool "oz-action" requires string arg "instruction".')
+    expect(result).toMatchObject({ status: 200, body: { reply: 'I need an instruction before I can make an Oz action edit.', command: 'chat', ok: true } })
+  })
+
   test('failed repair tool result reaches the follow-up prompt and does not short-circuit like refresh', async () => {
     const fixture = await makeFixture({
       outputs: [
@@ -706,6 +771,7 @@ function fakeOps(): OzChatOps {
     stopRun: async () => ({ status: 202, body: { stopping: true } }),
     nudgeRun: async () => ({ status: 202, body: { queued: true, seq: 1 } }),
     repairOz: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0 } }),
+    requestOzAction: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0 } }),
     requestOscarDebRepair: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], state: 'complete', outcome: 'applied' } }),
     requestAuthoringPlay: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0 } }),
     teardownRun: async () => ({ status: 200, body: { closed: [] } }),

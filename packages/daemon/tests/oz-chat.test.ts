@@ -26,6 +26,7 @@ function mockOps(overrides: Partial<OzChatOps>): OzChatOps {
     restartDaemon: unexpected('restart') as OzChatOps['restartDaemon'],
     nudgeRun: unexpected('nudge') as OzChatOps['nudgeRun'],
     repairOz: unexpected('repair') as OzChatOps['repairOz'],
+    requestOzAction: unexpected('oz-action') as OzChatOps['requestOzAction'],
     requestOscarDebRepair: unexpected('oscar-deb-repair') as OzChatOps['requestOscarDebRepair'],
     requestAuthoringPlay: unexpected('author') as OzChatOps['requestAuthoringPlay'],
     supportCommitRun: unexpected('support-commit') as OzChatOps['supportCommitRun'],
@@ -421,6 +422,48 @@ describe('handleOzMessage', () => {
       status: 500,
       body: { ok: false, command: 'repair', reply: 'Could not repair: Oz repair turn failed with exit code 2; nothing was committed.' },
     })
+  })
+
+  test('oz-action executable dispatches to the Oz action op and renders committed plus held-back paths', async () => {
+    const calls: unknown[] = []
+    const ops = mockOps({
+      requestOzAction: async (_ctx, input) => {
+        calls.push(input)
+        return {
+          status: 200,
+          body: {
+            ok: true,
+            committedPaths: ['cocoder/tickets/open/0099-x.md'],
+            commitSha: 'sha-action',
+            outOfLanePaths: ['packages/daemon/src/foo.ts'],
+            exitCode: 0,
+            turnLogPath: '/tmp/cocoder/local/oz/cocoder/oz-action.log',
+          },
+        }
+      },
+    })
+
+    const result = await executeOzCommand(testCtx(), 'cocoder', { kind: 'oz-action', instruction: 'Close ticket 0099.' }, ops)
+
+    expect(calls).toEqual([{ workspaceId: 'cocoder', instruction: 'Close ticket 0099.' }])
+    expect(result).toMatchObject({
+      status: 200,
+      body: {
+        ok: true,
+        command: 'oz-action',
+        action: {
+          type: 'oz-action',
+          workspaceId: 'cocoder',
+          committedPaths: ['cocoder/tickets/open/0099-x.md'],
+          commitSha: 'sha-action',
+          outOfLanePaths: ['packages/daemon/src/foo.ts'],
+          turnLogPath: '/tmp/cocoder/local/oz/cocoder/oz-action.log',
+        },
+      },
+    })
+    expect(result.body.reply).toContain('Committed cocoder/tickets/open/0099-x.md as sha-action.')
+    expect(result.body.reply).toContain('Held back outside the oz-action lane, NOT committed: packages/daemon/src/foo.ts.')
+    expect(result.body.reply).toContain('Turn log: /tmp/cocoder/local/oz/cocoder/oz-action.log.')
   })
 
   test('deb-repair executable dispatches Oscar request with synthesized evidence and renders commit receipt', async () => {
