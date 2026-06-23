@@ -112,10 +112,11 @@ export {
   type P5CandidatePriority,
   type P5DraftObjective,
   type P5FounderCheckpoint,
+  type P5GlossaryTerm,
   type P5SynthesisInput,
   type P5SynthesisPayload,
 } from './p5-synthesis.js'
-export { renderP5ArchitectureNotesMarkdown, renderP5PriorityMarkdown, renderP5SynthesisMarkdown } from './p5-render.js'
+export { renderP5ArchitectureNotesMarkdown, renderP5GlossaryMarkdown, renderP5PriorityMarkdown, renderP5SynthesisMarkdown } from './p5-render.js'
 export { renderP6RatificationMarkdown, renderP6RatificationRecordMarkdown } from './p6-render.js'
 export {
   buildIntentIntakePrompt,

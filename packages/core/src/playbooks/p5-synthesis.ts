@@ -36,12 +36,21 @@ export interface P5ArchitectureNote {
   readonly evidence: readonly string[]
 }
 
+export interface P5GlossaryTerm {
+  readonly term: string
+  readonly definition: string
+  readonly ownerLink: string
+  readonly sourceRef: string
+  readonly evidence: readonly string[]
+}
+
 export interface P5SynthesisPayload {
   readonly version: 1
   readonly founderCheckpoint: P5FounderCheckpoint | null
   readonly objectives: readonly P5DraftObjective[]
   readonly candidatePriorities: readonly P5CandidatePriority[]
   readonly architectureNotes: readonly P5ArchitectureNote[]
+  readonly glossaryTerms: readonly P5GlossaryTerm[]
 }
 
 export function synthesizeP5Governance(input: P5SynthesisInput): P5SynthesisPayload {
@@ -62,6 +71,7 @@ export function synthesizeP5Governance(input: P5SynthesisInput): P5SynthesisPayl
     objectives,
     candidatePriorities,
     architectureNotes: architectureNotes(input),
+    glossaryTerms: glossaryTerms(input),
   }
 }
 
@@ -89,6 +99,19 @@ function architectureNotes(input: P5SynthesisInput): readonly P5ArchitectureNote
     }
   }
   return notes
+}
+
+function glossaryTerms(input: P5SynthesisInput): readonly P5GlossaryTerm[] {
+  const terms: P5GlossaryTerm[] = []
+  for (const [subsystemId, comparison] of Object.entries(input.convergence.sourceAgreementBySubsystem).sort(([a], [b]) => a.localeCompare(b))) {
+    const purpose = comparison.purpose
+    if (!purpose.agrees) continue
+    const definition = agreementText(purpose.builder, purpose.orchestrator)
+    if (definition === null) continue
+    const sourceRef = `playbook/P3/convergence.json#sourceAgreementBySubsystem.${subsystemId}.purpose`
+    terms.push({ term: subsystemId, definition, ownerLink: './memory/architecture-notes.md', sourceRef, evidence: [sourceRef] })
+  }
+  return terms
 }
 
 function agreementText(builder: unknown, orchestrator: unknown): string | null {

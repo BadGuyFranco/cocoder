@@ -23,6 +23,8 @@ export function renderP6RatificationRecordMarkdown(payload: P6RatificationRecord
     `- Applied files: ${payload.appliedFiles.length}`,
     `- Objectives: ${payload.objectiveCount}`,
     `- Priorities: ${payload.priorityCount}`,
+    `- Architecture notes: ${payload.architectureNoteCount}`,
+    `- Glossary terms: ${payload.glossaryTermCount}`,
     '',
   ].join('\n')
 }

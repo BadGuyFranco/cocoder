@@ -34,6 +34,13 @@ const synthesis: P5SynthesisPayload = {
     sourceRef: 'playbook/P3/convergence.json#sourceAgreementBySubsystem.governance.purpose',
     evidence: ['playbook/P3/convergence.json#sourceAgreementBySubsystem.governance.purpose'],
   }],
+  glossaryTerms: [{
+    term: 'governance',
+    definition: 'Governance coordinates onboarding.',
+    ownerLink: './memory/architecture-notes.md',
+    sourceRef: 'playbook/P3/convergence.json#sourceAgreementBySubsystem.governance.purpose',
+    evidence: ['playbook/P3/convergence.json#sourceAgreementBySubsystem.governance.purpose'],
+  }],
 }
 
 async function writeFixture(root: string, payload: unknown = synthesis): Promise<{ readonly repoDir: string; readonly runDir: string }> {
@@ -43,6 +50,20 @@ async function writeFixture(root: string, payload: unknown = synthesis): Promise
   await mkdir(join(runDir, 'playbook', 'P5', 'proposed-cocoder', 'memory'), { recursive: true })
   await mkdir(join(runDir, 'playbook', 'P5', 'proposed-cocoder', 'priorities'), { recursive: true })
   await writeFile(join(runDir, 'playbook', 'P5', 'synthesis.json'), `${JSON.stringify(payload, null, 2)}\n`, 'utf8')
+  await writeFile(join(runDir, 'playbook', 'P5', 'proposed-cocoder', 'glossary.md'), [
+    '# Domain Glossary',
+    '',
+    "This file is this repository's glossary for product and domain terms-of-art.",
+    '',
+    '## Usage Convention',
+    '',
+    'Each row is one term: a one-line canonical gloss plus a link to the surface that owns the concept.',
+    '',
+    '| Term | Definition | Owner |',
+    '|---|---|---|',
+    '| governance | Governance coordinates onboarding. | [owner](./memory/architecture-notes.md) |',
+    '',
+  ].join('\n'), 'utf8')
   await writeFile(join(runDir, 'playbook', 'P5', 'proposed-cocoder', 'memory', 'architecture-notes.md'), '# Architecture Notes\n\n- Governance coordinates onboarding.\n', 'utf8')
   await writeFile(join(runDir, 'playbook', 'P5', 'proposed-cocoder', 'priorities', 'INDEX.md'), '# Candidate Future Priorities\n\n- objective-1\n', 'utf8')
   await writeFile(join(runDir, 'playbook', 'P5', 'proposed-cocoder', 'priorities', 'objective-1.md'), [
@@ -82,8 +103,9 @@ describe('P6 takeover ratification', () => {
 
       expect(artifacts.ratification.objectives).toHaveLength(1)
       expect(artifacts.ratification.candidatePriorities[0]?.sourceRef).toBe(synthesis.candidatePriorities[0]?.sourceRef)
+      expect(artifacts.ratification.glossaryTerms[0]?.term).toBe('governance')
       const ratification = JSON.parse(await readFile(join(runDir, 'playbook', 'P6', 'ratification.json'), 'utf8')) as P6RatificationPackage
-      expect(ratification).toMatchObject({ version: 1, objectives: [{ id: 'objective-1' }], candidatePriorities: [{ status: 'future' }] })
+      expect(ratification).toMatchObject({ version: 1, objectives: [{ id: 'objective-1' }], candidatePriorities: [{ status: 'future' }], glossaryTerms: [{ term: 'governance' }] })
       await expect(readFile(join(runDir, 'playbook', 'P6', 'ratification.md'), 'utf8')).resolves.toContain('# P6 Ratification')
       await expect(stat(join(repoDir, 'cocoder'))).rejects.toThrow()
     } finally {
@@ -95,21 +117,28 @@ describe('P6 takeover ratification', () => {
     const root = await mkdtemp(join(tmpdir(), 'cocoder-playbook-p6-apply-'))
     try {
       const { repoDir, runDir } = await writeFixture(root)
+      await mkdir(join(repoDir, 'cocoder'), { recursive: true })
+      await writeFile(join(repoDir, 'cocoder', 'glossary.md'), '# Domain Glossary\n\n| Example term | stub |\n', 'utf8')
 
       const result = await applyP6Governance({ repoDir, runDir, approval: { approvedBy: 'founder', note: 'ratified' } })
 
-      expect(result.event).toEqual({ appliedFileCount: 3, objectiveCount: 1, priorityCount: 1, architectureNoteCount: 1 })
+      expect(result.event).toEqual({ appliedFileCount: 4, objectiveCount: 1, priorityCount: 1, architectureNoteCount: 1, glossaryTermCount: 1 })
       expect(await listFiles(join(repoDir, 'cocoder'))).toEqual([
+        'glossary.md',
         join('memory', 'architecture-notes.md'),
         join('priorities', 'INDEX.md'),
         join('priorities', 'objective-1.md'),
       ])
+      const glossary = await readFile(join(repoDir, 'cocoder', 'glossary.md'), 'utf8')
+      expect(glossary).toContain('| governance | Governance coordinates onboarding. | [owner](./memory/architecture-notes.md) |')
+      expect(glossary).not.toContain('Example term')
       await expect(readFile(join(repoDir, 'cocoder', 'memory', 'architecture-notes.md'), 'utf8')).resolves.toContain('Governance coordinates onboarding')
       const priority = await readFile(join(repoDir, 'cocoder', 'priorities', 'objective-1.md'), 'utf8')
       expect(priority).toContain('## Objective')
       expect(priority).not.toContain('status: future')
       const record = await readFile(join(runDir, 'playbook', 'P6', 'ratification-record.json'), 'utf8')
       expect(record).toContain('"approvedBy": "founder"')
+      expect(record).toContain('"glossaryTermCount": 1')
       expect(result.appliedFiles.every((path) => path.startsWith('cocoder/'))).toBe(true)
     } finally {
       await rm(root, { recursive: true, force: true })

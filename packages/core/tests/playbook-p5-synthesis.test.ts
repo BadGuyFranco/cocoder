@@ -99,12 +99,51 @@ describe('P5 synthesis', () => {
     expect(payload.objectives[0]?.evidence).toContain(payload.objectives[0]?.sourceRef)
     expect(payload.candidatePriorities[0]?.status).toBe('future')
     expect(payload.architectureNotes.length).toBeGreaterThan(0)
+    expect(payload.glossaryTerms).toEqual([{
+      term: 'governance',
+      definition: 'Governance coordinates onboarding.',
+      ownerLink: './memory/architecture-notes.md',
+      sourceRef: 'playbook/P3/convergence.json#sourceAgreementBySubsystem.governance.purpose',
+      evidence: ['playbook/P3/convergence.json#sourceAgreementBySubsystem.governance.purpose'],
+    }])
 
     expect(synthesizeP5Governance({
       intent: { ...intent, inferredFromArtifacts: [], openQuestions: [] },
       convergence: { ...convergence, sourceAgreementBySubsystem: {}, finalUnresolvedItems: [] },
       founderQuestions: { version: 1, clarifications: [], conflictingFindings: [], futurePriorities: [] },
-    })).toMatchObject({ objectives: [], candidatePriorities: [], architectureNotes: [] })
+    })).toMatchObject({ objectives: [], candidatePriorities: [], architectureNotes: [], glossaryTerms: [] })
+  })
+
+  test('drafts glossary terms only from agreeing purpose findings', () => {
+    const withoutPurposeAgreement = synthesizeP5Governance({
+      intent,
+      convergence: {
+        ...convergence,
+        sourceAgreementBySubsystem: {
+          governance: {
+            ...agreedComparison,
+            purpose: { agrees: false, builder: 'Builder purpose.', orchestrator: 'Orchestrator purpose.' },
+          },
+        },
+      },
+      founderQuestions: questions,
+    })
+
+    expect(withoutPurposeAgreement.glossaryTerms).toEqual([])
+  })
+
+  test('does not stage a glossary when no purpose agreement yields terms', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'cocoder-playbook-p5-no-glossary-'))
+    try {
+      const { repoDir, runDir } = await writeFixture(root, intent, { ...convergence, sourceAgreementBySubsystem: {} }, questions)
+
+      const artifacts = await runPlaybookP5Action({ repoDir, runDir })
+
+      expect(artifacts.synthesis.glossaryTerms).toEqual([])
+      await expect(stat(join(runDir, 'playbook', 'P5', 'proposed-cocoder', 'glossary.md'))).rejects.toThrow()
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
   })
 
   test('writes proposed governance only under runDir/playbook/P5 staging', async () => {
@@ -112,7 +151,7 @@ describe('P5 synthesis', () => {
     try {
       const { repoDir, runDir } = await writeFixture(root)
       const before = new Set(await listFiles(runDir))
-      const events: Array<{ readonly objectiveCount: number; readonly candidatePriorityCount: number; readonly architectureNoteCount: number }> = []
+      const events: Array<{ readonly objectiveCount: number; readonly candidatePriorityCount: number; readonly architectureNoteCount: number; readonly glossaryTermCount: number }> = []
 
       const artifacts = await runPlaybookP5Action({
         repoDir,
@@ -121,9 +160,13 @@ describe('P5 synthesis', () => {
       }, { approvedBy: 'founder', note: 'continue' })
 
       expect(artifacts.synthesis.objectives).toHaveLength(1)
-      expect(events).toEqual([{ objectiveCount: 1, candidatePriorityCount: 1, architectureNoteCount: 4 }])
+      expect(events).toEqual([{ objectiveCount: 1, candidatePriorityCount: 1, architectureNoteCount: 4, glossaryTermCount: 1 }])
       const synthesis = JSON.parse(await readFile(join(runDir, 'playbook', 'P5', 'synthesis.json'), 'utf8')) as P5SynthesisPayload
       expect(synthesis.founderCheckpoint).toEqual({ approvedBy: 'founder', note: 'continue' })
+      expect(synthesis.glossaryTerms[0]?.sourceRef).toBe('playbook/P3/convergence.json#sourceAgreementBySubsystem.governance.purpose')
+      await expect(readFile(join(runDir, 'playbook', 'P5', 'proposed-cocoder', 'glossary.md'), 'utf8')).resolves.toContain(
+        '| governance | Governance coordinates onboarding. | [owner](./memory/architecture-notes.md) |',
+      )
       await expect(readFile(join(runDir, 'playbook', 'P5', 'proposed-cocoder', 'memory', 'architecture-notes.md'), 'utf8')).resolves.toContain('Governance coordinates onboarding')
       await expect(readFile(join(runDir, 'playbook', 'P5', 'proposed-cocoder', 'priorities', 'objective-1.md'), 'utf8')).resolves.toContain('## Objective')
       const created = (await listFiles(runDir)).filter((file) => !before.has(file))

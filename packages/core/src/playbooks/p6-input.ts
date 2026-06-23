@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { P5ArchitectureNote, P5CandidatePriority, P5DraftObjective, P5FounderCheckpoint, P5SynthesisPayload } from './p5-synthesis.js'
+import type { P5ArchitectureNote, P5CandidatePriority, P5DraftObjective, P5FounderCheckpoint, P5GlossaryTerm, P5SynthesisPayload } from './p5-synthesis.js'
 
 export async function readP6Synthesis(runDir: string): Promise<P5SynthesisPayload> {
   return parseP5SynthesisPayload(await readJson(join(runDir, 'playbook', 'P5', 'synthesis.json')), 'playbook/P5/synthesis.json')
@@ -12,6 +12,7 @@ function parseP5SynthesisPayload(raw: unknown, path: string): P5SynthesisPayload
   const objectives = readArray(record, `${path}.objectives`).map((item, index) => parseObjective(item, `${path}.objectives[${index}]`))
   const candidatePriorities = readArray(record, `${path}.candidatePriorities`).map((item, index) => parsePriority(item, `${path}.candidatePriorities[${index}]`))
   const architectureNotes = readArray(record, `${path}.architectureNotes`).map((item, index) => parseArchitectureNote(item, `${path}.architectureNotes[${index}]`))
+  const glossaryTerms = readArray(record, `${path}.glossaryTerms`).map((item, index) => parseGlossaryTerm(item, `${path}.glossaryTerms[${index}]`))
   const objectiveIds = new Set(objectives.map((objective) => objective.id))
   for (const priority of candidatePriorities) {
     if (!objectiveIds.has(priority.objectiveId)) throw new Error(`${path}.candidatePriorities.${priority.id} references missing objective "${priority.objectiveId}"`)
@@ -22,6 +23,7 @@ function parseP5SynthesisPayload(raw: unknown, path: string): P5SynthesisPayload
     objectives,
     candidatePriorities,
     architectureNotes,
+    glossaryTerms,
   }
 }
 
@@ -56,6 +58,17 @@ function parseArchitectureNote(value: unknown, path: string): P5ArchitectureNote
     subsystemId: readNonEmptyString(record, `${path}.subsystemId`),
     axis: readNonEmptyString(record, `${path}.axis`),
     note: readNonEmptyString(record, `${path}.note`),
+    sourceRef: readNonEmptyString(record, `${path}.sourceRef`),
+    evidence: readStringArray(record, `${path}.evidence`),
+  }
+}
+
+function parseGlossaryTerm(value: unknown, path: string): P5GlossaryTerm {
+  const record = assertRecord(value, path)
+  return {
+    term: readNonEmptyString(record, `${path}.term`),
+    definition: readNonEmptyString(record, `${path}.definition`),
+    ownerLink: readNonEmptyString(record, `${path}.ownerLink`),
     sourceRef: readNonEmptyString(record, `${path}.sourceRef`),
     evidence: readStringArray(record, `${path}.evidence`),
   }

@@ -1,13 +1,14 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { readP5InputArtifacts } from './p5-input.js'
-import { renderP5ArchitectureNotesMarkdown, renderP5PriorityMarkdown, renderP5SynthesisMarkdown } from './p5-render.js'
+import { renderP5ArchitectureNotesMarkdown, renderP5GlossaryMarkdown, renderP5PriorityMarkdown, renderP5SynthesisMarkdown } from './p5-render.js'
 import { synthesizeP5Governance, type P5FounderCheckpoint, type P5SynthesisPayload } from './p5-synthesis.js'
 
 export interface PlaybookSynthesisResultEvent {
   readonly objectiveCount: number
   readonly candidatePriorityCount: number
   readonly architectureNoteCount: number
+  readonly glossaryTermCount: number
 }
 
 export interface RunPlaybookP5ActionInput {
@@ -41,6 +42,7 @@ export async function runPlaybookP5Action(input: RunPlaybookP5ActionInput, found
     writeJson(join(dir, 'synthesis.json'), synthesis),
     writeFile(join(dir, 'synthesis.md'), synthesisMarkdown, 'utf8'),
     writeFile(join(memoryDir, 'architecture-notes.md'), renderP5ArchitectureNotesMarkdown(synthesis.architectureNotes), 'utf8'),
+    ...(synthesis.glossaryTerms.length > 0 ? [writeFile(join(proposedDir, 'glossary.md'), renderP5GlossaryMarkdown(synthesis.glossaryTerms), 'utf8')] : []),
     writeFile(join(prioritiesDir, 'INDEX.md'), renderPriorityIndex(synthesis), 'utf8'),
     ...synthesis.candidatePriorities.map((priority) => {
       const objective = objectiveById.get(priority.objectiveId)
@@ -53,6 +55,7 @@ export async function runPlaybookP5Action(input: RunPlaybookP5ActionInput, found
     objectiveCount: synthesis.objectives.length,
     candidatePriorityCount: synthesis.candidatePriorities.length,
     architectureNoteCount: synthesis.architectureNotes.length,
+    glossaryTermCount: synthesis.glossaryTerms.length,
   })
   return { synthesis, synthesisMarkdown }
 }

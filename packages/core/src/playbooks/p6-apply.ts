@@ -1,6 +1,6 @@
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { dirname, join, relative, sep } from 'node:path'
-import type { P5ArchitectureNote, P5CandidatePriority, P5DraftObjective, P5SynthesisPayload } from './p5-synthesis.js'
+import type { P5ArchitectureNote, P5CandidatePriority, P5DraftObjective, P5GlossaryTerm, P5SynthesisPayload } from './p5-synthesis.js'
 import { readP6Synthesis } from './p6-input.js'
 import { renderP6RatificationMarkdown, renderP6RatificationRecordMarkdown } from './p6-render.js'
 
@@ -14,6 +14,7 @@ export interface P6RatificationPackage {
   readonly objectives: readonly P5DraftObjective[]
   readonly candidatePriorities: readonly P5CandidatePriority[]
   readonly architectureNotes: readonly P5ArchitectureNote[]
+  readonly glossaryTerms: readonly P5GlossaryTerm[]
 }
 
 export interface P6RatificationRecord {
@@ -23,6 +24,7 @@ export interface P6RatificationRecord {
   readonly objectiveCount: number
   readonly priorityCount: number
   readonly architectureNoteCount: number
+  readonly glossaryTermCount: number
 }
 
 export interface PlaybookRatifyResultEvent {
@@ -30,6 +32,7 @@ export interface PlaybookRatifyResultEvent {
   readonly objectiveCount: number
   readonly priorityCount: number
   readonly architectureNoteCount: number
+  readonly glossaryTermCount: number
 }
 
 export interface RunPlaybookP6ActionInput {
@@ -93,6 +96,7 @@ export async function applyP6Governance(input: ApplyP6GovernanceInput): Promise<
     objectiveCount: synthesis.objectives.length,
     priorityCount: synthesis.candidatePriorities.length,
     architectureNoteCount: synthesis.architectureNotes.length,
+    glossaryTermCount: synthesis.glossaryTerms.length,
   }
   await mkdir(p6Dir(input.runDir), { recursive: true })
   await Promise.all([
@@ -108,6 +112,7 @@ export async function applyP6Governance(input: ApplyP6GovernanceInput): Promise<
       objectiveCount: record.objectiveCount,
       priorityCount: record.priorityCount,
       architectureNoteCount: record.architectureNoteCount,
+      glossaryTermCount: record.glossaryTermCount,
     },
   }
 }
@@ -118,6 +123,7 @@ function ratificationPackageFromSynthesis(synthesis: P5SynthesisPayload): P6Rati
     objectives: synthesis.objectives,
     candidatePriorities: synthesis.candidatePriorities,
     architectureNotes: synthesis.architectureNotes,
+    glossaryTerms: synthesis.glossaryTerms,
   }
 }
 
