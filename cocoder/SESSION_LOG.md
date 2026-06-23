@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **ticket-fix-0033: Deb repair dialogue headless lane — archive-candidate (run_52/run_196)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0033](./tickets/closed/0033-deb-repair-dialogue-non-tty-failure.md) | **Run:** run_196 (display 52)
+**Outcomes:**
+- **Headless repair turn landed (`85316b2`).** `runRepairDialogueTurn` builds adapters with `headless: true` and preserves Codex-style adapter-owned response artifacts; non-TTY regression pinned in `oscar-deb-repair-op.test.ts`.
+- **Ticket 0033 closed.** Moved to `closed/` with INDEX update; ADR-0036 Oscar↔Deb repair lane no longer dies on daemon-resident invocation.
+- **Disposition: `archive-candidate`.** Acceptance met — repair turn produces real `deb-response.json` without TTY; standing proof: `pnpm --filter @cocoder/daemon exec vitest run tests/oscar-deb-repair-op.test.ts`.
+
+**Next:** Launch ticket-fix on [0034](./tickets/open/0034-priority-creation-must-auto-register-order-json.md) — atomic priority registration at the single write chokepoint.
+
 ## 2026-06-23 — **ticket-fix-0032: orphan-priority visibility guard — archive-candidate (run_51/run_195)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0032](./tickets/closed/0032-hidden-priority-no-order-json-entry.md) | **Run:** run_195 (display 51)
