@@ -41,11 +41,11 @@ scopeNarrowing: <glob>     # optional — narrows the builder's persona write-sc
 - **Deferred priorities** live in [`backlog/`](./backlog/) — authored so the intent isn't lost, but
   outside the launch glob (no gating code needed). Promote one with a `git mv` up to this level when it
   unblocks; its `## Objective` names what it's blocked on.
-- **Ordering is operational, not a file field.** Priorities are resequenced often, and full-Oz's design
-  owns *drag-reorder*, so sequencing's real home is Oz/the DB. **Interim** until that ships: the ordered
-  roadmap lives in one place — [`PLAYBOOK.md`](../PLAYBOOK.md) "Priority roadmap"
-  section (one line each, derived not restated, no owner pointer — so no F1/F4). Playbook files carry
-  **no rank** — identity stays stable (the F1 surface).
+- **Ordering is operational, not a file field.** Ordering lives in the order-only runtime overlay
+  [`order.json`](./order.json) at this directory level, per
+  [ADR-0035](../decisions/0035-priority-creation-always-placed-or-halted.md) and
+  [ADR-0038](../decisions/0038-priority-visibility-invariant.md). The directory listing is the index of
+  what's active; Playbook files carry **no rank** — identity stays stable (the F1 surface).
 
 ## Archived history
 
