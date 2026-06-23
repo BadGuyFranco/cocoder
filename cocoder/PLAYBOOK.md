@@ -268,6 +268,13 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    with a checkable signal when nothing is actionable (no fake-build / empty reaffirmation wrap, F18), and only
    delegates when concrete work exists. **Founder gate:** confirm the Objective (esp. the assess-first-but-don't-
    freeze-the-build-path boundary) before launch.
+12. `local-preferences` — **NEW (run_53).** Founder-owned local defaults applied when an onboarded workspace
+    doesn't specify its own: (1) the preferred tech stack for new repos (today only a stub at
+    `templates/.../cocoder/memory/tech-stack.md` — research + document the real default), and (2) a default
+    design spec extracting the CoCoder dashboard's design/CSS (`packages/ui/src/renderer/styles/`) as the
+    inherited UI default. First gate: where the defaults live and how they resolve (installation-global vs
+    template-seed), reconciled with ADR-0027/0026 and the scaffold contract. **Founder gate:** confirm the
+    Objective + the storage-home seam before launch.
 
 **Other launchable (not in `order.json`):** `tickets-review` — **CONTINUE (run_143).** Build code-complete;
    ticket launch plumbing satisfied. **Archive gate:** founder live proof — Tickets tab **Launch** on ticket
