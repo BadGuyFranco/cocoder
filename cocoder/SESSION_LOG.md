@@ -12,6 +12,18 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **ticket-fix-0040: stale Oz dashboard bundle refused at launch — archive-candidate (run_62/run_206)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0040](./tickets/open/0040-daemon-launches-stale-oz-dashboard-bundle-in-built-mode-no-rebuild-step.md) | **Run:** run_206 (display 62)
+**Outcomes:**
+- **Stale-bundle gate (`38182b3`).** `resolveDashboardLaunch` compares `packages/ui` source mtimes against built entries; stale bundle → HTTP 409 naming `pnpm build:ui`, fresh bundle → built launch unchanged; dev-mode and partial-entry resolution untouched.
+- **Discoverable rebuild.** Root `package.json` adds `"build:ui": "pnpm --filter @cocoder/ui build"`.
+- **Tests pinned.** `dashboard-launch.test.ts` covers stale refuse (409 + no spawn) and fresh launch via deterministic `utimes` fixtures.
+- **Ticket 0040 auto-closes** via daemon `closeTicketAfterSuccessfulRun` on successful wrap-up landing.
+- **Disposition: `archive-candidate`.** REFUSE-WITH-MESSAGE chosen over auto-rebuild (deterministic, testable, no multi-second build on launch path).
+
+**Next:** Launch ticket-fix on [0034](./tickets/open/0034-priority-creation-must-auto-register-order-json.md) — atomic priority registration at the single write chokepoint.
+
 ## 2026-06-23 — **ticket-fix-0041: authoring-Play post-wrap in-flight guard aligned — archive-candidate (run_61/run_205)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0041](./tickets/open/0041-authoring-play-in-flight-guard-blocks-the-same-wrapped-run.md) | **Run:** run_205 (display 61)
