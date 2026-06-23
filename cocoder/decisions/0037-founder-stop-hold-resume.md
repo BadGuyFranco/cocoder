@@ -88,6 +88,23 @@ pane-closing semantics of `teardownRun()`. It also does not redefine the existin
 with `held`, but the founder-stop control introduced here is the file-based persona-to-runner signal and
 its halt-only `held` disposition.
 
+### Disposition vocabulary (one owner)
+
+`held` joins a disposition vocabulary that is already easy to conflate, so this ADR fixes one owner for the
+distinctions the runtime, prompts, and personas must use:
+
+- **`held`** — the loop is paused mid-flight at a known atom boundary; resume re-enters at the parked atom
+  (this ADR). Non-terminal, resume-ready, panes open.
+- **`wrapup`** (logical close) — the run's work for this launch is complete; there is no parked atom and
+  resume is a *fresh launch*, not a re-entry.
+- **`stopped`** — the existing terminal disposition from `stopRun()`: the run ends, the active atom is
+  abandoned and quarantined. Reserved for genuine termination, never for a founder halt that promises resume.
+- **teardown** — a pane/session lifecycle action, never a run disposition.
+
+This distinction is normative because run_192 showed the gap concretely: with no `held` available, a persona
+expressed a founder "stop" as a `wrapup` directive — the only non-terminal option — even though no work was
+in flight. After Phase 1, a founder halt mid-flight must route to `held`, not `wrapup` or `stopped`.
+
 ## Consequences
 
 - A founder can tell any active persona to stop the run and get an actual halt, without asking a persona

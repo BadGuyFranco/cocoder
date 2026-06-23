@@ -261,7 +261,13 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    stop-signal → runner halt into **held** (stop ≠ teardown), founder-explicit-only; Phase 1 halt-and-hold
    closes ticket `0031`; Phase 2 resume from parked atom. Owner map at
    `cocoder/runs/46-run_190/owner-map-0031.md`. Run_192 parked at founder stop before any atom delegated.
-   **Founder gate:** approve, revise, or reject ADR-0037 before any Phase-1 build atom.
+   ADR-0037 also now owns the `held`/`wrapup`/`stopped`/teardown disposition distinction (run_191, run_192
+   lesson). **Founder gate:** approve, revise, or reject ADR-0037 before any Phase-1 build atom.
+11. `launch-disposition-first` — **NEW (run_191).** A freshly launched priority assesses and reports its true
+   disposition (`archive-candidate` / `awaiting-founder` / `actionable`) before any build, wraps archive-ready
+   with a checkable signal when nothing is actionable (no fake-build / empty reaffirmation wrap, F18), and only
+   delegates when concrete work exists. **Founder gate:** confirm the Objective (esp. the assess-first-but-don't-
+   freeze-the-build-path boundary) before launch.
 
 **Other launchable (not in `order.json`):** `tickets-review` — **CONTINUE (run_143).** Build code-complete;
    ticket launch plumbing satisfied. **Archive gate:** founder live proof — Tickets tab **Launch** on ticket
