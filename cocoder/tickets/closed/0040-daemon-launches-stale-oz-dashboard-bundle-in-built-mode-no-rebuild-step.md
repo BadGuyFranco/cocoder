@@ -2,7 +2,7 @@
 id: 0040
 title: Daemon launches stale Oz dashboard bundle in built mode (no rebuild step)
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-23
@@ -55,3 +55,9 @@ specific to built mode.
 - Filed from run_204 (ticket 0039) where the staleness was diagnosed. Branch (b) of 0039 — actually
   shortening the ~6s launch via fewer serial cmux calls — remains a separate, founder-gated item and is
   NOT part of this ticket.
+
+## Resolution
+
+Resolved by run run_206 (38182b3) on 2026-06-23.
+
+Built-mode dashboard launch now refuses stale UI bundles with a pnpm build:ui rebuild message; root build:ui alias added; daemon tests and typecheck passed.

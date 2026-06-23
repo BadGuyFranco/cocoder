@@ -13,7 +13,6 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
-| [0040](./open/0040-daemon-launches-stale-oz-dashboard-bundle-in-built-mode-no-rebuild-step.md) | Daemon launches stale Oz dashboard bundle in built mode (no rebuild step) | bug | none | founder-session |
 | [0039](./open/0039-launch-status-in-oz-dashboard.md) | Launch Status in Oz Dashboard | task | none | founder-session |
 | [0037](./open/0037-contributing-pr-template-stale-rg-ci-gate.md) | CONTRIBUTING and PR template still promise an rg CI gate that live ci.yml no longer runs | bug | none | Open |
 | [0034](./open/0034-priority-creation-must-auto-register-order-json.md) | Priority creation must auto-register in order.json (prevent orphans at source) | task | oz-autonomy | Open |
@@ -22,6 +21,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0040](./closed/0040-daemon-launches-stale-oz-dashboard-bundle-in-built-mode-no-rebuild-step.md) | Daemon launches stale Oz dashboard bundle in built mode (no rebuild step) | bug | 2026-06-23 | Built-mode dashboard launch now refuses stale UI bundles with a pnpm build:ui rebuild message; root build:ui alias added; daemon tests and typecheck passed. |
 | [0041](./closed/0041-authoring-play-in-flight-guard-blocks-the-same-wrapped-run.md) | Authoring-Play in-flight guard blocks the same wrapped run (inconsistent with sibling post-wrap ops) | bug | 2026-06-23 | Ticket fix run completed successfully. |
 | [0038](./closed/0038-retire-stale-playbook-priority-roadmap.md) | Retire the stale PLAYBOOK "Priority roadmap"; order.json is the ordering SSOT | task | 2026-06-23 | Retired the hand-maintained, drift-prone `## Priority roadmap` section from `PLAYBOOK.md` and repointed `priorities/AGENTS.md` ordering to `order.json` (ADR-0035/0038); the `priorities/` directory listing is the index and `order.json` the order overlay. Governance-doc reconciliation only; landed cd5e7f6. |
 | [0031](./closed/0031-founder-stop-the-run-control-for-personas.md) | No way for a persona to stop the runner on a founder "stop the run" direction | task | 2026-06-23 | ADR-0037 Phase 1 landed: founder-stop artifacts halt the runner into non-terminal `held` at directive, during-exec, or verify boundaries; Phase 2 resume remains open. |
