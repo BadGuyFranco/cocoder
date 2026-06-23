@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **oz-autonomy: ADR-0040 drafted (governance gate) — blocked (run_66/run_210)**
+
+**Persona:** Oscar | **Priority:** [oz-autonomy](./priorities/oz-autonomy.md) | **Run:** run_210 (display 66)
+**Outcomes:**
+- **ADR-0040 Proposed.** Oscar authored `cocoder/decisions/0040-oz-write-side-autonomy.md` — Oz self-direct write lane (`oz-action`), conversational authoring via the existing `author` spine, and hard exclusions; amends ADR-0016/0017/0025 on founder approval.
+- **No build atoms delegated.** The priority hard-gates build behind a founder-approved ADR; run_209 showed Bob's `packages/**` lane cannot write `cocoder/decisions/**` (ticket [0043](./tickets/open/0043-bob-blocker-replies-unowned-after-runner-stall-nudges.md)).
+- **Disposition: `blocked`.** Awaiting founder approval (or change requests) on ADR-0040.
+
+**Next:** Founder approve ADR-0040, then relaunch `oz-autonomy` — carry-forward pointers to 0016/0017/0025 + index row, then build atom 1: daemon `oz-action` scope guard + exclusion test.
+
 ## 2026-06-23 — **ticket-fix-0034: priority creation auto-registers order.json — archive-candidate (run_64/run_208)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0034](./tickets/open/0034-priority-creation-must-auto-register-order-json.md) | **Run:** run_208 (display 64)
