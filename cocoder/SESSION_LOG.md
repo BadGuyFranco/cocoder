@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-22 — **ticket-fix-0031: founder stop-control owner map — blocked on ADR fork (run_46/run_190)**
+
+**Persona:** Oscar (lead) | **Priority:** ticket-fix / [0031](./tickets/open/0031-founder-stop-the-run-control-for-personas.md) | **Run:** run_190 (display 46)
+**Outcomes:**
+- **Owner map landed** — evidence-backed map at `cocoder/runs/46-run_190/owner-map-0031.md` (`8df5a95`): runner loop, stop/teardown surfaces, watcher/nudge owner, directive conventions, persona contracts, test surfaces, ADR landscape.
+- **Key finding:** cooperative stop already exists (`StopRequestedError` → `stopRun()` via `AbortSignal` / daemon stop); gap is persona file trigger + stop-vs-teardown semantics ADR.
+- **Disposition: `blocked`.** No build atoms launchable until founder authorizes ADR-grade priority and picks stop semantics (2A halt-only vs 2B stop-chains-teardown).
+
+**Next:** Reply in run_190 with YES to ADR authorization plus **2A** (halt loop, panes stay open) or **2B** (stop chains teardown); then relaunch ticket-fix on 0031 for ADR draft + build atoms.
+
 ## 2026-06-22 — **new-primary-root: onboarding hardening pass landed — blocked (run_45/run_45)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [new-primary-root](./priorities/new-primary-root.md) | **Run:** run_45 (display 45)

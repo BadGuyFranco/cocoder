@@ -13,7 +13,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
-| [0031](./open/0031-founder-stop-the-run-control-for-personas.md) | No way for a persona to stop the runner on a founder "stop the run" direction | task | unassigned | Open |
+| [0031](./open/0031-founder-stop-the-run-control-for-personas.md) | No way for a persona to stop the runner on a founder "stop the run" direction | task | unassigned | Blocked |
 
 ## Recently Closed
 

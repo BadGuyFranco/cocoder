@@ -2,7 +2,7 @@
 id: 0031
 title: No way for a persona to stop the runner on a founder "stop the run" direction
 type: task
-status: Open
+status: Blocked
 priority: unassigned
 owner: founder
 created: 2026-06-22
@@ -64,3 +64,10 @@ signal the runner to halt the loop cleanly:
   stop-signal artifact, tests) before building.
 - Related: the watcher/nudge behavior the founder saw is the `deb-follows-oscar` / `deb-oscar-repair-loop`
   lineage; teardown authority is F20 (founder-explicit-only). Reuse that authority bar for stop.
+- **Owner map complete (run_190, `8df5a95`):** [`cocoder/runs/46-run_190/owner-map-0031.md`](../../runs/46-run_190/owner-map-0031.md).
+  Key finding: a cooperative stop path already exists (`StopRequestedError` → `stopRun()` via `AbortSignal` /
+  daemon `POST /runs/:id/stop`). What is missing is (a) a persona-writable file-based trigger feeding that
+  path and (b) a founder ADR decision on stop semantics. Recommended wiring: `monitor.ts` / `io.ts` poll
+  boundary before nudges. **Blocked on founder:** (1) authorize this ticket as its own small priority + ADR;
+  (2) stop semantics — **2A (recommended):** halt the loop, leave panes open (distinct from today's daemon
+  stop which chains `stop-teardown`); **2B:** stop chains into teardown.
