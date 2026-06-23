@@ -13,6 +13,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
+| [0041](./open/0041-authoring-play-in-flight-guard-blocks-the-same-wrapped-run.md) | Authoring-Play in-flight guard blocks the same wrapped run (inconsistent with sibling post-wrap ops) | bug | none | founder-session |
 | [0040](./open/0040-daemon-launches-stale-oz-dashboard-bundle-in-built-mode-no-rebuild-step.md) | Daemon launches stale Oz dashboard bundle in built mode (no rebuild step) | bug | none | founder-session |
 | [0039](./open/0039-launch-status-in-oz-dashboard.md) | Launch Status in Oz Dashboard | task | none | founder-session |
 | [0037](./open/0037-contributing-pr-template-stale-rg-ci-gate.md) | CONTRIBUTING and PR template still promise an rg CI gate that live ci.yml no longer runs | bug | none | Open |
