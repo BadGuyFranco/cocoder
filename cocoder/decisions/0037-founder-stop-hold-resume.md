@@ -1,6 +1,6 @@
 # ADR-0037 — Founder stop control: halt-and-hold, then resume
 
-**Status:** Proposed — pending founder approval.
+**Status:** Accepted — founder-approved 2026-06-23.
 **Builds on:** [0013](./0013-orchestration-observation.md) (runner loop, monitor, and nudge ownership),
 [0017](./0017-oz-orchestration-persona.md) (Oz control surface), and
 [0023](./0023-workspace-commit-spine.md) (direct-to-branch run state and receipt model).
