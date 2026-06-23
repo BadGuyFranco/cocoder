@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **founder-stop-control: ADR-0037 Phase 1 halt-and-hold — continue (run_58/run_202)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [founder-stop-control](./priorities/founder-stop-control.md) | **Run:** run_202 (display 58)
+**Outcomes:**
+- **Phase 1 complete.** `held` run disposition, founder-stop artifact contract, and `holdRun()` at pre-dispatch, during-exec, and pre-verdict boundaries; founder-explicit-only pinned; ticket [0031](./tickets/closed/0031-founder-stop-the-run-control-for-personas.md) closed.
+- **Disposition: `continue`.** Phase 2 resume from `held` remains; Objective not met until held-run resume test lands.
+- **Founder gates surfaced:** Phase-2 resume trigger surface (recommend dedicated `cocoder oz resume <runId>` vs overloading `--resume`); ticket [0038](./tickets/open/0038-retire-stale-playbook-priority-roadmap.md) filed out-of-scope — confirm stand or cancel.
+
+**Next:** Relaunch `founder-stop-control` for Phase 2 — pre-dispatch resume re-entry (load held run, consume artifacts, re-dispatch parked directive without new atom number).
+
 ## 2026-06-23 — **ripgrep-dependency-research: evidence + optional-policy recommendation — archive-candidate (run_57/run_201)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [ripgrep-dependency-research](./priorities/ripgrep-dependency-research.md) | **Run:** run_201 (display 57)

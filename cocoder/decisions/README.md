@@ -42,13 +42,8 @@ their still-live content was absorbed into [ADR-0019](./0019-multi-root-workspac
 | [0035](./0035-priority-creation-always-placed-or-halted.md) | **Priority creation: always placed or halted — no "draft" state** — a created priority is placed in the active stack or halted-and-surfaced; open questions are the priority's first research gate (it may conclude no-op→archive), and founder ratification of the Objective moves from pre-creation to that first-run gate; the sole pre-creation gate is a **conflict/overlap halt** (overlap → recommend folding into the existing priority with a plain-English why; conflict with an Accepted ADR/priority → surface for supersede/reframe/drop). Amends ADR-0010 authoring lifecycle | Accepted (2026-06-22) |
 | [0036](./0036-oscar-deb-repair-dialogue.md) | **The Oscar↔Deb autonomous repair dialogue** — standing, Oscar-initiated, post-wrap-capable machinery repair between Oscar and Deb (propose→evaluate→direct; risky→founder); Bob-free and daemon-resident; reuses ADR-0016 repair authority and the ADR-0023 commit spine; replaces the rejected within-run `deb-investigate` lane (refines 0016/0013) | Accepted (2026-06-22) |
 | [0038](./0038-priority-visibility-invariant.md) | **Priority visibility invariant** — every loadable priority must be listed in `order.json`, archived/backlogged, or explicitly allowlisted; `findOrphanedPriorities` and the daemon governance test enforce it while `readPriorities` keeps ADR-0010 append behavior | Accepted (2026-06-23) |
+| [0037](./0037-founder-stop-hold-resume.md) | **Founder stop control: halt-and-hold, then resume** — Phase 1: persona-written founder-stop artifact halts the runner into non-terminal `held` (stop ≠ teardown, founder-explicit-only); Phase 2: resume re-enters at the parked atom; one-owner disposition vocabulary for `held`/`wrapup`/`stopped`/teardown | Accepted (2026-06-23) |
 | [0039](./0039-domain-glossary-deliverable.md) | **Domain glossary deliverable and boundary** — every onboarded primary root ships `cocoder/glossary.md` as a thin per-workspace terms-of-art surface; the two-tier model keeps CoCoder framework terms in `docs/glossary.md` and product/domain terms in `cocoder/glossary.md`; this ADR is the single owner of the boundary table and operating rules that templates reference | Accepted (2026-06-23) |
-
-## Proposed (founder review owed)
-
-| ADR | Title | Status |
-|---|---|---|
-| [0037](./0037-founder-stop-hold-resume.md) | Founder stop control: halt-and-hold, then resume | Proposed — pending founder approval |
 
 ## Retired to history (superseded — not in the live tree)
 

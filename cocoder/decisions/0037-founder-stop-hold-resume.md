@@ -5,7 +5,7 @@
 [0017](./0017-oz-orchestration-persona.md) (Oz control surface), and
 [0023](./0023-workspace-commit-spine.md) (direct-to-branch run state and receipt model).
 **Closes:** Phase 1 closes ticket
-[`0031`](../tickets/open/0031-founder-stop-the-run-control-for-personas.md) when implemented and landed.
+[`0031`](../tickets/closed/0031-founder-stop-the-run-control-for-personas.md) when implemented and landed.
 
 ## Context
 
