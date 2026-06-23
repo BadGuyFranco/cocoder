@@ -11,8 +11,10 @@ import { atomSentinel, buildBuilderDispatch, buildVerifyDispatch, commitMessage 
 import type { RunnerPhase } from './status.js'
 import { isStopRequestedError } from './stop.js'
 import type { MakeJudge } from './runner.js'
+import { FounderHeldError, isFounderHeldError, readFounderStopSignal, type ResumeState } from './founder-stop.js'
 
 const OUTPUT_TAIL_CHARS = 2_000
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
 const outputTail = (output: string): string => (output.length <= OUTPUT_TAIL_CHARS ? output : output.slice(-OUTPUT_TAIL_CHARS))
 
@@ -146,11 +148,42 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
   let monitorSamples = 0
   let completionAttempt = 0
 
+  const throwIfFounderStopRegistered = async (park: () => ResumeState): Promise<void> => {
+    if ((await readFounderStopSignal(runDir)) !== null) throw new FounderHeldError(park())
+  }
+
+  const withFounderStopRace = async <T>(awaited: Promise<T>, park: () => ResumeState): Promise<T> => {
+    let settled = false
+    let wake = (): void => {}
+    const settledPromise = new Promise<void>((resolve) => {
+      wake = resolve
+    })
+    const watch = async (): Promise<never> => {
+      while (!settled) {
+        await throwIfFounderStopRegistered(park)
+        await Promise.race([sleep(t.pollMs), settledPromise])
+      }
+      return await new Promise<never>(() => {})
+    }
+    try {
+      const result = await Promise.race([awaited, watch()])
+      await throwIfFounderStopRegistered(park)
+      return result
+    } finally {
+      settled = true
+      wake()
+    }
+  }
+
   for (;;) {
     const doneSentinel = atomSentinel(atomIndex, completionAttempt === 0 ? undefined : `R${completionAttempt}`)
     const remainingLoopMs =
       directive.loop === undefined || loopStartedAt === null ? undefined : Math.max(0, directive.loop.wallClockMs - (now() - loopStartedAt))
-    const outcome = await runMonitor(
+    const monitorAbort = new AbortController()
+    const abortMonitor = (): void => monitorAbort.abort()
+    if (signal?.aborted) abortMonitor()
+    signal?.addEventListener('abort', abortMonitor, { once: true })
+    const outcomePromise = runMonitor(
       {
         readScreen: () => bobDriver.readScreen(),
         judge: makeJudge({ atomIndex, doneSentinel, task: directive.task }),
@@ -169,9 +202,30 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
         timeoutMs: t.buildMs,
         minNudgeIntervalMs: t.minNudgeIntervalMs,
         loop: directive.loop === undefined ? undefined : { maxIterations: directive.loop.maxIterations, wallClockMs: remainingLoopMs ?? directive.loop.wallClockMs },
-        signal,
+        signal: monitorAbort.signal,
       },
     )
+    let outcome
+    try {
+      outcome = await withFounderStopRace(outcomePromise, () => ({
+        park: 'during-exec',
+        activeAtomNumber: atomIndex,
+        directive,
+        waitMonitorCursor: {
+          builderRef: bobDriver.refId,
+          monitorSamples,
+          completionAttempt,
+          doneSentinel,
+          loopLedgerPath: loopLedgerPath ?? null,
+        },
+      }))
+    } finally {
+      signal?.removeEventListener('abort', abortMonitor)
+      monitorAbort.abort()
+      await outcomePromise.catch((err: unknown) => {
+        if (!isStopRequestedError(err)) throw err
+      })
+    }
     monitorSamples += outcome.samples
     const finalLoopLedger = readAndRecordLoopLedger === null ? null : await readAndRecordLoopLedger()
     if (outcome.reason === 'loop-iteration-cap' || outcome.reason === 'loop-wall-clock-cap') {
@@ -235,9 +289,17 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
   let verdict
   try {
     verdict = await awaitOscarWithNudgeWatchdog('verify', atomIndex, directive.task, () =>
-      io.awaitVerification(verifyPath, { timeoutMs: t.orchestrationMs, pollMs: t.pollMs, isAlive: oscarAlive, signal }),
+      withFounderStopRace(
+        io.awaitVerification(verifyPath, { timeoutMs: t.orchestrationMs, pollMs: t.pollMs, isAlive: oscarAlive, signal }),
+        () => ({
+          park: 'pre-verdict',
+          activeAtomNumber: atomIndex,
+          verifyRequest: { verifyPath, directivePath, atom: atomIndex },
+        }),
+      ),
     )
   } catch (err) {
+    if (isFounderHeldError(err)) throw err
     if (isStopRequestedError(err)) throw err
     store.setWorkItemStatus(workItem.id, 'abandoned')
     return await fail('verify-failed', String(err), atomIndex)

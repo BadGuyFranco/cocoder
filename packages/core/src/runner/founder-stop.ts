@@ -44,7 +44,7 @@ export interface PreVerdictResumeState {
 export type ResumeState = PreDispatchResumeState | DuringExecResumeState | PreVerdictResumeState
 
 export class FounderHeldError extends Error {
-  constructor(readonly park: PreDispatchResumeState) {
+  constructor(readonly park: ResumeState) {
     super('founder stop requested')
     this.name = 'FounderHeldError'
   }

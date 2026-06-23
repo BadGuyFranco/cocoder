@@ -39,7 +39,7 @@ import { promisify } from 'node:util'
 import type { RunnerIO } from './io.js'
 import { createHeadlessBuilderDriver, createPaneBuilderDriver, type BuilderDriver } from './builder-driver.js'
 import { executeAgentStep, type AgentStepActiveAtom } from './agent-step.js'
-import { FounderHeldError, isFounderHeldError, readFounderStopSignal, writeResumeState, type PreDispatchResumeState } from './founder-stop.js'
+import { FounderHeldError, isFounderHeldError, readFounderStopSignal, writeResumeState, type PreDispatchResumeState, type ResumeState } from './founder-stop.js'
 import { parseDirective, type Directive } from './directive.js'
 import { groupLabel as formatGroupLabel, paneLabel, type RunLabelTarget } from './labels.js'
 import { type Judge, makeHeuristicJudge, runMonitor } from './monitor.js'
@@ -313,6 +313,10 @@ function readReadyDirective(path: string): Directive | undefined {
   } catch {
     return undefined
   }
+}
+
+function resumeStateAtomNumber(park: ResumeState): number {
+  return park.park === 'pre-dispatch' ? park.atomNumber : park.activeAtomNumber
 }
 
 function deriveWrapupRunStatus(markdown: string, contract: FounderCloseoutContract, current: RunStatus): RunStatus {
@@ -1166,7 +1170,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         },
         judge: async (sample) => {
           if (stopped) return { state: 'done', note: 'oscar await settled' }
-          if (stage === 'directive' && (await readFounderStopSignal(runDir)) !== null) {
+          if ((await readFounderStopSignal(runDir)) !== null) {
             return { state: 'done', note: 'founder stop registered' }
           }
           // Oz-authored nudges take priority over the generic idle prompt. Deb-authored nudges are
@@ -1427,10 +1431,10 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     }
   }
 
-  const holdRun = async (park: PreDispatchResumeState): Promise<RunResult> => {
-    const atoms = park.atomNumber
+  const holdRun = async (park: ResumeState): Promise<RunResult> => {
+    const atoms = resumeStateAtomNumber(park) + (park.park === 'pre-dispatch' ? 0 : 1)
     await writeResumeState(runDir, park)
-    store.recordEvent({ runId: run.id, type: 'run-held', data: { park: park.park, atom: park.atomNumber, directive: park.directive ?? null } })
+    store.recordEvent({ runId: run.id, type: 'run-held', data: { park: park.park, atom: resumeStateAtomNumber(park) } })
     const status: RunStatus = 'held'
     const endedAt = now()
     await rebuildUiBundleIfNeeded()
