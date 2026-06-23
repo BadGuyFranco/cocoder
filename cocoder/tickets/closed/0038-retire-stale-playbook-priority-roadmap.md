@@ -5,7 +5,8 @@ type: task
 priority: none
 owner: Bob
 created: 2026-06-23
-status: Open
+status: Closed
+closed: 2026-06-23
 ---
 
 # 0038 — Retire the stale PLAYBOOK "Priority roadmap"; order.json is the ordering SSOT
