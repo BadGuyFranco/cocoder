@@ -257,9 +257,10 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    satisfied: delegation re-derive + multi-owner mandate in `oscar.md`, Oscar support-edit suite bar in
    `shared-standards.md`, mode 4 founder-accepted no-op (wrap-up F18 + existing proof scripts). Persona/Play
    suites green. **Founder gate:** confirm archive.
-10. `founder-stop-control` — **BLOCKED (run_47/run_191).** ADR-0037 drafted: cross-persona file stop-signal
-   → runner halt into **held** (stop ≠ teardown), founder-explicit-only; Phase 1 halt-and-hold closes ticket
-   `0031`; Phase 2 resume from parked atom. Owner map at `cocoder/runs/46-run_190/owner-map-0031.md`.
+10. `founder-stop-control` — **BLOCKED (run_48/run_192).** ADR-0037 drafted (run_191): cross-persona file
+   stop-signal → runner halt into **held** (stop ≠ teardown), founder-explicit-only; Phase 1 halt-and-hold
+   closes ticket `0031`; Phase 2 resume from parked atom. Owner map at
+   `cocoder/runs/46-run_190/owner-map-0031.md`. Run_192 parked at founder stop before any atom delegated.
    **Founder gate:** approve, revise, or reject ADR-0037 before any Phase-1 build atom.
 
 **Other launchable (not in `order.json`):** `tickets-review` — **CONTINUE (run_143).** Build code-complete;

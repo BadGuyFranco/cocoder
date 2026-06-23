@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **founder-stop-control: founder stop before work — parked (run_48/run_192)**
+
+**Persona:** Oscar (lead) | **Priority:** [founder-stop-control](./priorities/founder-stop-control.md) | **Run:** run_192 (display 48)
+**Outcomes:**
+- **Founder directed stop** as the first action of run_192; no atom scoped or delegated, no ADR draft, no product diff.
+- **Disposition: `blocked` (unchanged).** ADR-0037 from run_191 still awaits founder approve/revise/reject before any Phase-1 build atom.
+
+**Next:** Reply in run_48 with approve, revise (with direction), or reject on ADR-0037 — or say redirect if this priority should pause.
+
 ## 2026-06-22 — **founder-stop-control: ADR-0037 drafted — blocked on founder approval (run_47/run_191)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [founder-stop-control](./priorities/founder-stop-control.md) | **Run:** run_191 (display 47)
