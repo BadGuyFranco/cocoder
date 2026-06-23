@@ -57,6 +57,6 @@ Do this:
    id and title must match the invocation, `scopeNarrowing` must remain unset, and `objective` must
    be non-null.
 
-Do not run git and do not commit. The dispatch harness commits the file through the one governance
-spine (`commitGovernance`) after this Play returns. Leave only the intended priority file changed so
-the post-dispatch tree is clean after that commit.
+Do not run git, commit, or edit `order.json`. After this Play returns, the dispatch spine reconciles
+`order.json` automatically and commits the priority file plus registration together. There is no
+orphan or draft state.

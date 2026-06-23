@@ -49,6 +49,7 @@ import { emitOzEvent, type DashboardLaunchHandle, type OzContext } from './conte
 import { findWorkspace } from './registry.js'
 import { appendAudit } from './audit.js'
 import { recordOrchestratedRun } from './oz-host.js'
+import { registerLivePriorities } from './priority-order.js'
 import { withPortableDisplayNumber } from './run-display.js'
 import {
   makeDialogueId,
@@ -76,6 +77,7 @@ const execFileAsync = promisify(execFile)
 
 type AuthoringPersona = 'oz' | 'oscar' | 'bob' | 'deb'
 type AuthoringPlayId = typeof AUTHORING_PLAY_IDS[number]
+const PRIORITY_AUTHORING_PLAY_IDS: ReadonlySet<AuthoringPlayId> = new Set(['create-priority', 'edit-priority', 'archive-priority'])
 
 export interface AuthoringPlayInput {
   readonly workspaceId: string
@@ -1518,6 +1520,13 @@ export async function requestAuthoringPlay(ctx: OzContext, input: AuthoringPlayI
     commitMessage: `governance: ${input.playId}`,
     author: { name: 'cocoder-governance', email: 'governance@cocoder.local' },
     commitOnlyScope: true,
+    ...(PRIORITY_AUTHORING_PLAY_IDS.has(input.playId)
+      ? {
+          beforeCommit: async () => {
+            await registerLivePriorities(join(workspace.path, 'cocoder', 'priorities'))
+          },
+        }
+      : {}),
     auditAction: 'authoring-play',
     eventType: 'authoring-play',
     preTurnError: (detail) => `Authoring Play turn failed before diff/commit: ${detail}`,
@@ -1538,6 +1547,7 @@ interface HeadlessCommitOptions {
   readonly commitMessage: string
   readonly author: { readonly name: string; readonly email: string }
   readonly commitOnlyScope?: boolean
+  readonly beforeCommit?: () => Promise<void>
   readonly auditAction: string
   readonly eventType: string
   readonly preTurnError: (detail: string) => string
@@ -1576,6 +1586,26 @@ async function runHeadlessThenGateCommit(ctx: OzContext, opts: HeadlessCommitOpt
     await appendAudit(ctx.cocoderHome, { action: opts.auditAction, workspaceId: opts.workspaceId, ...body })
     emitOzEvent(ctx, { type: opts.eventType, workspaceId: opts.workspaceId, status: 'failed' })
     return { status: 500, body }
+  }
+
+  if (opts.beforeCommit) {
+    try {
+      await opts.beforeCommit()
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err)
+      const body = {
+        ok: false,
+        error: `Authoring Play registration step failed: ${detail}`,
+        committedPaths: [],
+        commitSha: null,
+        outOfLanePaths: [],
+        exitCode: turn.exitCode,
+        turnLogPath: opts.turnLogPath,
+      }
+      await appendAudit(ctx.cocoderHome, { action: opts.auditAction, workspaceId: opts.workspaceId, ...body })
+      emitOzEvent(ctx, { type: opts.eventType, workspaceId: opts.workspaceId, status: 'failed' })
+      return { status: 500, body }
+    }
   }
 
   const gate = await gateCommitRepair({

@@ -25,6 +25,7 @@ import {
 } from '@cocoder/core'
 import { createOzEventBus, type OzContext, type OzEvent } from '../src/context.js'
 import { launchRun, requestAuthoringPlay } from '../src/launcher.js'
+import { findOrphanedPriorities } from '../src/priority-order.js'
 import { validFounderCloseout } from './helpers/founder-closeout.js'
 
 const execFileAsync = promisify(execFile)
@@ -32,6 +33,14 @@ const execFileAsync = promisify(execFile)
 async function git(cwd: string, args: readonly string[]): Promise<string> {
   const { stdout } = await execFileAsync('git', ['-C', cwd, ...args])
   return stdout
+}
+
+async function readPriorityOrder(home: string): Promise<string[]> {
+  const parsed: unknown = JSON.parse(await readFile(join(home, 'cocoder', 'priorities', 'order.json'), 'utf8'))
+  if (!Array.isArray(parsed) || !parsed.every((id) => typeof id === 'string')) {
+    throw new Error('priority order manifest did not contain a string array')
+  }
+  return parsed
 }
 
 interface Fixture {
@@ -66,7 +75,7 @@ describe('requestAuthoringPlay', () => {
       status: 200,
       body: {
         ok: true,
-        committedPaths: ['cocoder/priorities/alpha.md'],
+        committedPaths: ['cocoder/priorities/alpha.md', 'cocoder/priorities/order.json'],
         outOfLanePaths: [],
         exitCode: 0,
       },
@@ -74,6 +83,9 @@ describe('requestAuthoringPlay', () => {
     expect(typeof result.body.commitSha).toBe('string')
     expect(await git(fixture.home, ['rev-parse', 'HEAD'])).not.toBe(headBefore)
     await expect(git(fixture.home, ['cat-file', '-e', 'HEAD:cocoder/priorities/alpha.md'])).resolves.toBeDefined()
+    await expect(git(fixture.home, ['cat-file', '-e', 'HEAD:cocoder/priorities/order.json'])).resolves.toBeDefined()
+    expect(await readPriorityOrder(fixture.home)).toEqual(['alpha'])
+    expect(await findOrphanedPriorities(join(fixture.home, 'cocoder', 'priorities'))).toEqual([])
     expect(fixture.prompts[0]).toMatchObject({ persona: 'oz', model: 'author-model', cwd: fixture.home })
     expect(fixture.prompts[0]?.prompt).toContain('# Create Priority Play')
     expect(fixture.prompts[0]?.prompt).toContain('"objective": "Ship alpha."')
@@ -81,7 +93,7 @@ describe('requestAuthoringPlay', () => {
     expect(events.some((event) => event.type === 'authoring-play' && event.status === 'committed')).toBe(true)
     const audit = await readFile(join(fixture.home, 'local', 'oz-audit.log'), 'utf8')
     expect(audit).toContain('"action":"authoring-play"')
-    expect(audit).toContain('"committedPaths":["cocoder/priorities/alpha.md"]')
+    expect(audit).toContain('"committedPaths":["cocoder/priorities/alpha.md","cocoder/priorities/order.json"]')
   })
 
   test('dispatches create-ticket and commits a valid ticket plus INDEX row through the repair spine', async () => {
@@ -189,7 +201,7 @@ describe('requestAuthoringPlay', () => {
       status: 200,
       body: {
         ok: true,
-        committedPaths: ['cocoder/priorities/alpha.md'],
+        committedPaths: ['cocoder/priorities/alpha.md', 'cocoder/priorities/order.json'],
         outOfLanePaths: [],
         exitCode: 0,
       },
@@ -304,8 +316,9 @@ describe('requestAuthoringPlay', () => {
 
     expect(author).toMatchObject({
       status: 200,
-      body: { ok: true, committedPaths: ['cocoder/priorities/agent-alpha.md'], outOfLanePaths: [] },
+      body: { ok: true, committedPaths: ['cocoder/priorities/agent-alpha.md', 'cocoder/priorities/order.json'], outOfLanePaths: [] },
     })
+    expect(await readPriorityOrder(fixture.home)).toEqual(['agent-alpha'])
     expect(await git(fixture.home, ['rev-parse', 'HEAD'])).not.toBe(bootSha)
     expect(await git(fixture.home, ['status', '--porcelain', '--untracked-files=all'])).toBe('')
 
