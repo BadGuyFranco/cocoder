@@ -313,8 +313,25 @@ function deriveWrapupRunStatus(markdown: string, contract: FounderCloseoutContra
 export function deriveWrapDisposition(markdown: string, contract: FounderCloseoutContract, builderDispatchCount: number): WrapDisposition {
   if (founderDecisionNeeded(markdown, contract)) return 'awaiting-founder'
   const runStatus = founderCloseoutSection(markdown, contract, section(contract, 'runStatus')) ?? ''
-  if (/^\s*archive ready\b/i.test(runStatus) && builderDispatchCount === 0) return 'archive-candidate'
+  if (/^\s*archive ready\b/i.test(runStatus) && builderDispatchCount === 0 && closeoutCitesCheckableSignal(markdown)) return 'archive-candidate'
   return 'continue'
+}
+
+function closeoutCitesCheckableSignal(markdown: string): string | null {
+  const patterns = [
+    /```[\s\S]{0,1200}?```/i,
+    /\bnode\s+scripts\/[^\s`'")]+\.mjs\b/i,
+    /\bscripts\/[^\s`'")]+\.mjs\b/i,
+    /\bpnpm\s+[^\n`]*\b(?:test|vitest)\b[^\n`]*/i,
+    /\bvitest\b[^\n`]*/i,
+    /\bcocoder\s+[^\n`]*/i,
+    /\b[^\s`'")]+(?:\.test|\.spec)\.[^\s`'")]+\b/i,
+  ]
+  for (const pattern of patterns) {
+    const match = markdown.match(pattern)?.[0]?.trim()
+    if (match) return match.length > 300 ? match.slice(0, 300).trim() : match
+  }
+  return null
 }
 
 function launchableNextIssue(cwd: string, next: string, contract: FounderCloseoutContract): string | null {
@@ -1444,8 +1461,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           pickup = candidatePickup
           if (outputValidation?.founderCloseoutContract && pickup) {
             const buildAtoms = store.listEvents(run.id).filter((event) => event.type === 'builder-dispatch').length
+            const signal = closeoutCitesCheckableSignal(pickup)
             const disposition = deriveWrapDisposition(pickup, outputValidation.founderCloseoutContract, buildAtoms)
-            store.recordEvent({ runId: run.id, type: 'wrap-disposition', data: { disposition, buildAtoms } })
+            store.recordEvent({ runId: run.id, type: 'wrap-disposition', data: { disposition, buildAtoms, signal } })
             terminalStatus = deriveWrapupRunStatus(pickup, outputValidation.founderCloseoutContract, terminalStatus)
           }
         }

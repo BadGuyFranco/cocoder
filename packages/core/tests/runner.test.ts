@@ -1091,7 +1091,7 @@ describe('runRun (multi-atom loop)', () => {
       runStatus: 'Archive ready',
       whatRemains: '- Nothing remains for this priority.',
       nextStep: 'Ticket: `0015` — archive the completed priority record',
-      judgment: 'Oscar found no build atoms to delegate and the priority is ready to archive.',
+      judgment: 'Oscar found no build atoms to delegate and verified this with `node scripts/proof-launch-disposition.mjs`.',
     })
 
     const result = await runRun(
@@ -1106,7 +1106,36 @@ describe('runRun (multi-atom loop)', () => {
     )
 
     expect(store.listEvents(result.runId).filter((e) => e.type === 'builder-dispatch')).toHaveLength(0)
-    expect(store.listEvents(result.runId).find((e) => e.type === 'wrap-disposition')?.data).toEqual({ disposition: 'archive-candidate', buildAtoms: 0 })
+    expect(store.listEvents(result.runId).find((e) => e.type === 'wrap-disposition')?.data).toEqual({
+      disposition: 'archive-candidate',
+      buildAtoms: 0,
+      signal: 'node scripts/proof-launch-disposition.mjs',
+    })
+    expect(result.status).toBe('awaiting-founder')
+  })
+
+  test('archive-ready first-directive wrap without a runnable signal records continue disposition', async () => {
+    const store = openRunStore(':memory:')
+    const bareArchiveReadyCloseout = renderFounderCloseout({
+      runStatus: 'Archive ready',
+      whatRemains: '- Nothing remains for this priority.',
+      nextStep: 'Ticket: `0015` — archive the completed priority record',
+      judgment: 'Oscar found no build atoms to delegate and the priority is ready to archive.',
+    })
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([[]]),
+        io: fakeIO({ directives: [wrapup('Oscar seed closeout')] }),
+        getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
+        runHeadless: async () => ({ exitCode: 0, output: bareArchiveReadyCloseout }),
+      }),
+      { ...input, wrapPlay, wrapPlayAssignment },
+    )
+
+    expect(store.listEvents(result.runId).filter((e) => e.type === 'builder-dispatch')).toHaveLength(0)
+    expect(store.listEvents(result.runId).find((e) => e.type === 'wrap-disposition')?.data).toEqual({ disposition: 'continue', buildAtoms: 0, signal: null })
     expect(result.status).toBe('awaiting-founder')
   })
 
@@ -1131,7 +1160,7 @@ describe('runRun (multi-atom loop)', () => {
     )
 
     expect(result.status).toBe('awaiting-founder')
-    expect(store.listEvents(result.runId).find((e) => e.type === 'wrap-disposition')?.data).toEqual({ disposition: 'awaiting-founder', buildAtoms: 1 })
+    expect(store.listEvents(result.runId).find((e) => e.type === 'wrap-disposition')?.data).toEqual({ disposition: 'awaiting-founder', buildAtoms: 1, signal: null })
   })
 
   test('archive-ready wrap after a builder dispatch records continue disposition', async () => {
@@ -1155,7 +1184,7 @@ describe('runRun (multi-atom loop)', () => {
     )
 
     expect(store.listEvents(result.runId).filter((e) => e.type === 'builder-dispatch')).toHaveLength(1)
-    expect(store.listEvents(result.runId).find((e) => e.type === 'wrap-disposition')?.data).toEqual({ disposition: 'continue', buildAtoms: 1 })
+    expect(store.listEvents(result.runId).find((e) => e.type === 'wrap-disposition')?.data).toEqual({ disposition: 'continue', buildAtoms: 1, signal: null })
     expect(result.status).toBe('awaiting-founder')
   })
 
