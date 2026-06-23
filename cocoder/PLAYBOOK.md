@@ -223,55 +223,56 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
 - ~~`orchestration-pipeline-simplification`~~ — **ARCHIVED (run_166).** Successor
   `orchestration-audit-and-refactor` carries the conceptual-surface reduction; follow-on overlaps tracked
   as tickets 0020/0021/0022.
+- `domain-glossary` — **ARCHIVED (run_55/run_199, 2026-06-23).** Every onboarded primary root ships
+  `cocoder/glossary.md` (scaffold seed + onboard-existing P5/P6 synthesis); boundary owned solely by
+  ADR-0039; proof `node scripts/proof-onboard-existing.mjs` 5/5 green. Archived file at
+  `priorities/archive/domain-glossary.md`.
 
 **Active build priorities (launchable; `order.json` order — the `priorities/` directory is the live index):**
-1. `domain-glossary` — **ARCHIVE-CANDIDATE (run_55/run_199).** Every onboarded primary root ships
-   `cocoder/glossary.md` (scaffold seed + onboard-existing P5/P6 synthesis); boundary table owned solely by
-   ADR-0039; proof `node scripts/proof-onboard-existing.mjs` 5/5 green. **Founder gate:** confirm archive.
-2. `drift-audit` — **CONTINUE (run_163).** Build complete (run_161); run_163 re-verified proof green and 25
+1. `drift-audit` — **CONTINUE (run_163).** Build complete (run_161); run_163 re-verified proof green and 25
    stale-path findings unchanged. **Founder-gated:** ratify a subset + apply materialization choice (new records
    vs in-place fixes) + ratify→apply landing in `cocoder/**`. Owner map at `docs/drift-audit-ownermap.md`.
-3. `surface-reduction` — **ARCHIVE-CANDIDATE (run_173).** §A complete; three suspect surfaces collapsed:
+2. `surface-reduction` — **ARCHIVE-CANDIDATE (run_173).** §A complete; three suspect surfaces collapsed:
    ADR-graph reading-contract (run_171, ADR-0031); `playbooks/` dead-genre freeze (run_172, ADR-0032);
    Talia retired + testing-as-a-Play (run_173, ADR-0033 — `write-tests`/`run-tests`, Quinn retained, base
    count 5). Verified-when #1–#5 met; overall Objective met. **Founder gate:** confirm **archive** (follow-ups
    1–4 are named, sequenced, and founder-gated outside this priority).
-4. `new-primary-root` — **BLOCKED (run_45).** Entire code backlog (Atoms A–G + onboarding hardening pass
+3. `new-primary-root` — **BLOCKED (run_45).** Entire code backlog (Atoms A–G + onboarding hardening pass
    Atoms 1–3) landed and verified; tickets 0025–0028 closed. **No buildable atoms remain** — do not relaunch
    for an empty build loop. **Founder verification blocks archive:** reset-and-retest `job-hunt` from clean
    via **Add Workspace** (partly discharged by `node scripts/proof-nongit-onboard.mjs`); then Verified-when
    live proof on a real external repo (billable, multi-agent, separate surface). Deploy auto-reload delivered
    (ticket `0013`, run_179).
-5. `first-class-model-tiers` — **Grok draft; requires founder ownership beat before launch.** General model
+4. `first-class-model-tiers` — **Grok draft; requires founder ownership beat before launch.** General model
    tier vocabulary across assignments, dispatch, and UI.
-6. `adapter-abstraction-hardening` — **Grok draft; requires founder ownership beat before launch.** Reduce
+5. `adapter-abstraction-hardening` — **Grok draft; requires founder ownership beat before launch.** Reduce
    duplication in the CLI adapter layer (ADR-0006).
-7. `priority-audit` — standing pruning tool (assess priority set for staleness → founder-decision table).
-8. `deb-follows-oscar` — **ARCHIVE-CANDIDATE (run_42/run_185).** Watcher + Oscar-only nudge half complete
+6. `priority-audit` — standing pruning tool (assess priority set for staleness → founder-decision table).
+7. `deb-follows-oscar` — **ARCHIVE-CANDIDATE (run_42/run_185).** Watcher + Oscar-only nudge half complete
    and test-proven: full-lifecycle Deb watch loop, `deb-status`/`watch` projection, owner-map row, prompt
    alignment, runner.test.ts pins (465/465 green). Escalation fork resolved via ticket `0030` / ADR-0036 split;
    repair dialogue moved to `deb-oscar-repair-loop`. **Founder gate:** confirm archive.
-9. `deb-oscar-repair-loop` — **ARCHIVE-CANDIDATE (run_43/run_186).** Oscar↔Deb autonomous repair dialogue
+8. `deb-oscar-repair-loop` — **ARCHIVE-CANDIDATE (run_43/run_186).** Oscar↔Deb autonomous repair dialogue
    per ADR-0036 — Oscar-initiated, post-wrap-capable, Bob-free; daemon-resident propose→evaluate→direct
    handshake; in-scope fixes via ADR-0016 + commit spine; risky items escalate to founder; within-run
    `deb-investigate` lane removed. Proof: `node scripts/proof-oscar-deb-repair.mjs`. **Founder gate:**
    confirm archive.
-10. `orchestration-loop-quality` — **ARCHIVE-CANDIDATE (run_40/run_183).** All four run_181 loop-failure modes
+9. `orchestration-loop-quality` — **ARCHIVE-CANDIDATE (run_40/run_183).** All four run_181 loop-failure modes
    satisfied: delegation re-derive + multi-owner mandate in `oscar.md`, Oscar support-edit suite bar in
    `shared-standards.md`, mode 4 founder-accepted no-op (wrap-up F18 + existing proof scripts). Persona/Play
    suites green. **Founder gate:** confirm archive.
-11. `founder-stop-control` — **BLOCKED (run_49/run_193).** ADR-0037 drafted (run_191): cross-persona file
+10. `founder-stop-control` — **BLOCKED (run_49/run_193).** ADR-0037 drafted (run_191): cross-persona file
    stop-signal → runner halt into **held** (stop ≠ teardown), founder-explicit-only; Phase 1 halt-and-hold
    closes ticket `0031`; Phase 2 resume from parked atom. Owner map at
    `cocoder/runs/46-run_190/owner-map-0031.md`. Run_193 rejected a stale duplicate-ADR atom (ADR already
    complete); no build atoms until ADR is accepted. ADR-0037 owns the `held`/`wrapup`/`stopped`/teardown
    disposition distinction. **Founder gate:** approve, revise, or reject ADR-0037 before any Phase-1 build atom.
-12. `launch-disposition-first` — **NEW (run_191).** A freshly launched priority assesses and reports its true
+11. `launch-disposition-first` — **NEW (run_191).** A freshly launched priority assesses and reports its true
    disposition (`archive-candidate` / `awaiting-founder` / `actionable`) before any build, wraps archive-ready
    with a checkable signal when nothing is actionable (no fake-build / empty reaffirmation wrap, F18), and only
    delegates when concrete work exists. **Founder gate:** confirm the Objective (esp. the assess-first-but-don't-
    freeze-the-build-path boundary) before launch.
-13. `local-preferences` — **NEW (run_53).** Founder-owned local defaults applied when an onboarded workspace
+12. `local-preferences` — **NEW (run_53).** Founder-owned local defaults applied when an onboarded workspace
     doesn't specify its own: (1) the preferred tech stack for new repos (today only a stub at
     `templates/.../cocoder/memory/tech-stack.md` — research + document the real default), and (2) a default
     design spec extracting the CoCoder dashboard's design/CSS (`packages/ui/src/renderer/styles/`) as the
