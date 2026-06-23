@@ -3,6 +3,8 @@
 **Status:** v2 (rebuild) — live  
 **Last verified:** 2026-06-21 (architecture reading contract — [ADR-0031](./cocoder/decisions/0031-architecture-reading-contract.md); the live commit spine is [ADR-0023](./cocoder/decisions/0023-workspace-commit-spine.md) plus [ADR-0029](./cocoder/decisions/0029-founder-trusted-pre-run-snapshot.md): direct-to-branch, one mode, founder WIP snapshotted before launch; committed work is on the checked-out branch by construction)
 
+For canonical CoCoder vocabulary, see [`docs/glossary.md`](./docs/glossary.md).
+
 ## Mental Model
 
 CoCoder has **three storage zones** that must never be conflated. The current topology read is

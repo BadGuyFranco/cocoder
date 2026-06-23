@@ -15,6 +15,7 @@ structure. See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the canonical map.
 | What are we building / how is it laid out? | [`ARCHITECTURE.md`](./ARCHITECTURE.md) |
 | What's actively in flight (roadmap)? | [`cocoder/PLAYBOOK.md`](./cocoder/PLAYBOOK.md) |
 | The launchable priorities | `cocoder/priorities/*.md` — the listing IS the index |
+| CoCoder vocabulary / terms | [`docs/glossary.md`](./docs/glossary.md) |
 | Why was a decision made? | [`cocoder/decisions/README.md`](./cocoder/decisions/README.md) — the ONE live ADR tree |
 | How do I use CoCoder on my repo? | `docs/getting-started.md` |
 | Codebase map / tech stack | [`cocoder/memory/`](./cocoder/memory/) |
