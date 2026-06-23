@@ -18,6 +18,10 @@ export type CloseTicketResult =
   | { readonly closed: true; readonly files: readonly string[]; readonly closedPath: string }
   | { readonly closed: false; readonly reason: 'missing-open-ticket' | 'already-closed' }
 
+function unique<T>(items: readonly T[]): T[] {
+  return [...new Set(items)]
+}
+
 function replaceStatus(raw: string): string {
   const parsed = parseFrontmatter(raw)
   const replaced = raw.replace(/^status:\s*.*$/m, 'status: Closed')
@@ -48,6 +52,30 @@ async function findOpenTicketFile(ticketsDir: string, ticketId: string): Promise
   return names.find((name) => name.endsWith('.md') && name.startsWith(ticketId)) ?? null
 }
 
+async function pruneTicketOrder(ticketsDir: string, ticketId: string): Promise<string | null> {
+  const path = join(ticketsDir, 'order.json')
+  let raw: string
+  try {
+    raw = await readFile(path, 'utf8')
+  } catch {
+    return null
+  }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return null
+  }
+  if (!Array.isArray(parsed) || !parsed.every((id) => typeof id === 'string')) {
+    return null
+  }
+
+  if (!parsed.includes(ticketId)) return null
+  await writeFile(path, `${JSON.stringify(parsed.filter((id) => id !== ticketId), null, 2)}\n`)
+  return path
+}
+
 export async function closeTicket(input: CloseTicketInput): Promise<CloseTicketResult> {
   const openFile = await findOpenTicketFile(input.ticketsDir, input.ticketId)
   if (!openFile) {
@@ -64,6 +92,7 @@ export async function closeTicket(input: CloseTicketInput): Promise<CloseTicketR
   await mkdir(closedDir, { recursive: true })
   await writeFile(openPath, updatedMarkdown)
   await rename(openPath, closedPath)
+  const orderPath = await pruneTicketOrder(input.ticketsDir, input.ticketId)
 
   const ticket = (await readTickets(input.ticketsDir)).find((item) => item.id === input.ticketId && item.state === 'closed')
   if (!ticket) throw new Error(`ticket ${input.ticketId} did not round-trip as closed`)
@@ -77,6 +106,6 @@ export async function closeTicket(input: CloseTicketInput): Promise<CloseTicketR
   return {
     closed: true,
     closedPath,
-    files: [relative(input.repoPath, closedPath), relative(input.repoPath, openPath), relative(input.repoPath, indexPath)],
+    files: unique([closedPath, openPath, indexPath, ...(orderPath ? [orderPath] : [])].map((path) => relative(input.repoPath, path))),
   }
 }

@@ -1,9 +1,9 @@
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, test, vi } from 'vitest'
-import { composeTicketMarkdown, loadTicket, moveTicketIndexRowToClosed, nextTicketId, readTickets, TICKET_OWNER } from '../src/index.js'
+import { closeTicket, composeTicketMarkdown, loadTicket, moveTicketIndexRowToClosed, nextTicketId, readTickets, TICKET_OWNER } from '../src/index.js'
 
 const repoRoot = (): string => join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
 
@@ -150,5 +150,73 @@ describe('ticket index surgery', () => {
     expect(closedSection).toContain('| [0003](./closed/0003-existing-open.md) | Existing open | task | 2026-06-18 | Fixed |')
     expect(moveTicketIndexRowToClosed(moved, { id: '9999', closedRow: '| [9999](./closed/9999-missing.md) | Missing | task | 2026-06-18 | Fixed |' })).toBe(moved)
     expect(moveTicketIndexRowToClosed(moved, { id: '0003', closedRow: '| [0003](./closed/0003-existing-open.md) | Existing open | task | 2026-06-18 | Fixed |' })).toBe(moved)
+  })
+})
+
+describe('ticket close', () => {
+  test('closes the ticket and prunes it from the open-ticket order overlay', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'tickets-close-'))
+    await mkdir(join(dir, 'open'), { recursive: true })
+    await mkdir(join(dir, 'closed'), { recursive: true })
+    await writeFile(
+      join(dir, 'INDEX.md'),
+      [
+        '# Tickets - Index',
+        '',
+        '## Open',
+        '',
+        '| ID | Title | Type | Priority | Owner |',
+        '|---|---|---|---|---|',
+        '| [0003](./open/0003-existing-open.md) | Existing open | task | none | founder-session |',
+        '',
+        '## Recently Closed',
+        '',
+        '| ID | Title | Type | Closed | Resolution |',
+        '|---|---|---|---|---|',
+        '',
+      ].join('\n'),
+    )
+    await writeFile(join(dir, 'order.json'), `${JSON.stringify(['0003', '0004'], null, 2)}\n`)
+    await writeFile(
+      join(dir, 'open', '0003-existing-open.md'),
+      [
+        '---',
+        'id: 0003',
+        'title: Existing open',
+        'type: task',
+        'status: Open',
+        'priority: none',
+        'owner: founder-session',
+        'created: 2026-06-18',
+        '---',
+        '',
+        '# 0003 - Existing open',
+        '',
+        'Fix it.',
+      ].join('\n'),
+    )
+
+    const result = await closeTicket({
+      ticketsDir: dir,
+      repoPath: dir,
+      ticketId: '0003',
+      runId: 'run_123',
+      committedSha: 'abc123',
+      closedDate: '2026-06-23',
+      resolution: 'Fixed by test.',
+    })
+
+    expect(result).toMatchObject({
+      closed: true,
+      files: ['closed/0003-existing-open.md', 'open/0003-existing-open.md', 'INDEX.md', 'order.json'],
+    })
+    await expect(readFile(join(dir, 'open', '0003-existing-open.md'), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
+    expect(JSON.parse(await readFile(join(dir, 'order.json'), 'utf8'))).toEqual(['0004'])
+
+    const tickets = await readTickets(dir)
+    expect(tickets.find((ticket) => ticket.id === '0003')).toMatchObject({ state: 'closed', status: 'Closed' })
+    const index = await readFile(join(dir, 'INDEX.md'), 'utf8')
+    expect(index.slice(index.indexOf('## Open'), index.indexOf('## Recently Closed'))).not.toContain('0003')
+    expect(index.slice(index.indexOf('## Recently Closed'))).toContain('| [0003](./closed/0003-existing-open.md) | Existing open | task | 2026-06-23 | Fixed by test. |')
   })
 })

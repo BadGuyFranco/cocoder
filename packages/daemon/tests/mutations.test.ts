@@ -794,6 +794,7 @@ describe('Oz mutations + lifecycle', () => {
 
   test('POST /runs launches an open ticket through the priority lifecycle and records its target', async () => {
     await writeTicketIndex(home)
+    await writeFile(join(home, 'cocoder', 'tickets', 'order.json'), `${JSON.stringify(['0003', '0004'], null, 2)}\n`)
     const commits: GovernanceCommitCall[] = []
     const prompts: string[] = []
     oz = await createOzServer({
@@ -844,9 +845,10 @@ describe('Oz mutations + lifecycle', () => {
     expect(openSection).not.toContain('0003')
     expect(closedSection).toContain('| [0003](./closed/0003-existing-open.md) | Existing open | task |')
     expect(closedSection).toContain('Ticket fix run completed successfully.')
+    expect(JSON.parse(await readFile(join(ticketDir, 'order.json'), 'utf8'))).toEqual(['0004'])
     expect(commits).toContainEqual(expect.objectContaining({
       cwd: home,
-      files: ['cocoder/tickets/closed/0003-existing-open.md', 'cocoder/tickets/open/0003-existing-open.md', 'cocoder/tickets/INDEX.md'],
+      files: ['cocoder/tickets/closed/0003-existing-open.md', 'cocoder/tickets/open/0003-existing-open.md', 'cocoder/tickets/INDEX.md', 'cocoder/tickets/order.json'],
       message: `governance: close ticket 0003 via run ${runId}`,
       author: COCODER_GOVERNANCE,
     }))
