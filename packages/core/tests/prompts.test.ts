@@ -231,9 +231,41 @@ describe('buildBuilderDispatch', () => {
     })
 
     expect(prompt).toContain('# Available Plays')
+    expect(prompt).toContain('Available Plays are CoCoder workflows, not native harness Skills')
+    expect(prompt).toContain('Do not invoke them with\n`Skill(...)`, slash commands, or model-host skill syntax')
+    expect(prompt).toContain('Follow runner/daemon Play dispatches when they arrive')
     expect(prompt).toContain('create-ticket')
     expect(prompt).toContain('Create one open ticket from persona-provided follow-up input.')
     expect(prompt).not.toContain('SECRET FULL BODY PHRASE')
+  })
+
+  test('all persona launch prompts route Plays separately from native Skills', () => {
+    const manifest = renderPlayManifest([
+      manifestPlay({
+        id: 'create-priority',
+        purpose: 'Create one founder-approved priority file.',
+        allowedCallers: ['oscar', 'bob', 'deb'],
+        writeScope: ['cocoder/priorities/**'],
+      }),
+    ], 'oscar')
+    const prompts = [
+      buildOrchestratorPrompt({ ...orchestratorInput, playManifest: manifest }),
+      buildBuilderStandbyPrompt({
+        sharedStandards: '# Standards',
+        bobBody: 'Bob body',
+        playManifest: manifest,
+        scope: ['packages/**'],
+        runBranch: 'cocoder/run_1',
+      }),
+      buildObserverPrompt({ ...observerInput, playManifest: manifest }),
+    ]
+
+    for (const prompt of prompts) {
+      expect(prompt).toContain('# Available Plays')
+      expect(prompt).toContain('not native harness Skills')
+      expect(prompt).toContain('Do not invoke them with\n`Skill(...)`')
+      expect(prompt).toContain('direct founder-requested support\nedit inside your write scope')
+    }
   })
 
   test('commit messages use display number plus durable run id when available', () => {

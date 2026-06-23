@@ -21,6 +21,11 @@ function availablePlaysSection(manifest: string): string {
   return `---
 # Available Plays
 
+Available Plays are CoCoder workflows, not native harness Skills. Do not invoke them with
+\`Skill(...)\`, slash commands, or model-host skill syntax unless this prompt explicitly provides a
+bridge. Follow runner/daemon Play dispatches when they arrive; for a direct founder-requested support
+edit inside your write scope, edit the governed files directly and use the named commit path.
+
 ${manifest}`
 }
 
