@@ -44,3 +44,7 @@ first or concurrently for the read/answer path). Out of scope and explicitly for
 target/product code (`packages/*/src/`), secrets, install-local state, process/window/daemon lifecycle
 (unchanged — F20/teardown rules hold), and any net-new priority Objective without founder approval. This
 priority does not change teardown or stop semantics.
+
+**Disposition: `archive-candidate` (run_68/run_212).** All five Verified-when bullets met; proven by
+`node scripts/proof-oz-autonomy.mjs` (exit 0). No buildable atoms remain. Founder archive confirmation
+only.
