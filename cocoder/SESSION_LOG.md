@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **founder-stop-control: ADR-0037 Phase 2 resume from held — archive-candidate (run_63/run_207)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [founder-stop-control](./priorities/founder-stop-control.md) | **Run:** run_207 (display 63)
+**Outcomes:**
+- **Phase 2 complete.** Runner re-enters a `held` run at the parked atom (pre-dispatch and pre-verdict resume tests green); daemon `POST /runs/:id/resume` and `cocoder oz resume <runId>` wired with CLI/daemon tests.
+- **Stop → hold → resume closed.** ADR-0037 verified-when criteria met for both phases; ticket [0031](./tickets/closed/0031-founder-stop-the-run-control-for-personas.md) was already closed in Phase 1.
+- **Disposition: `archive-candidate`.** Priority Objective met; founder archive confirmation pending.
+
+**Next:** Launch ticket-fix on [0034](./tickets/open/0034-priority-creation-must-auto-register-order-json.md) — atomic priority registration at the single write chokepoint.
+
 ## 2026-06-23 — **ticket-fix-0040: stale Oz dashboard bundle refused at launch — archive-candidate (run_62/run_206)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0040](./tickets/open/0040-daemon-launches-stale-oz-dashboard-bundle-in-built-mode-no-rebuild-step.md) | **Run:** run_206 (display 62)

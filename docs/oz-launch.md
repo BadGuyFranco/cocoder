@@ -71,12 +71,18 @@ same founder-trusted override pattern as `--strict-dirt`.
 
 ## Stop a run
 
-- Dashboard run drawer → **Stop** on a running run (cooperative — `POST /runs/:id/stop`), or
-- Oz Terminal: `stop <runId>` (same cooperative path).
+Two stop paths — do not conflate them ([ADR-0037](../cocoder/decisions/0037-founder-stop-hold-resume.md)):
+
+- **Founder halt (mid-flight pause).** Tell an active persona to stop the run; the persona writes the
+  founder-stop artifact and the runner parks in **`held`** — panes stay open, the in-flight atom is parked
+  resume-ready (not abandoned). Resume with `cocoder oz resume <runId>` (see launch section above).
+- **Operator/cooperative stop (terminal).** Dashboard run drawer → **Stop** on a running run
+  (`POST /runs/:id/stop`), or Oz Terminal: `stop <runId>`. This settles the run to **`stopped`** — not
+  resume-ready.
 
 Cooperative stop honors the runner's wait seams; a stop during wrap-up or integration may let the
 run finish rather than corrupting a merge. To terminate the run's own personas and close their
-surfaces, use `teardown <runId>` (chat) or the existing teardown surfaces.
+surfaces, use `teardown <runId>` (chat) or the existing teardown surfaces — stop ≠ teardown.
 
 ## Oz Terminal (bounded chat commands)
 
@@ -88,6 +94,7 @@ vocabulary** — it is not an LLM agent. Supported commands (workspace context r
 | `launch` | `launch full-oz-dashboard` | Launches the named priority in the active workspace |
 | `show` | `show run_45` | Attaches/show panes for the run |
 | `stop` | `stop run_45` | Cooperative run stop (`POST /runs/:id/stop`) |
+| `resume` | `resume run_45` | Resume a **held** run at its parked atom (`POST /runs/:id/resume`) |
 | `teardown` | `teardown run_45` | Aborts that run's live controller and closes only that run's sessions |
 | `status` | `status` or `status run_45` | Lists runs or shows one run's status |
 | `help` | `help` | Prints the supported command list |
