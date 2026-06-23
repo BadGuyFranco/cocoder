@@ -6,5 +6,6 @@
   "ripgrep-dependency-research",
   "priority-audit",
   "oz-file-access",
-  "oz-autonomy"
+  "oz-autonomy",
+  "domain-glossary"
 ]
