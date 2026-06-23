@@ -1085,6 +1085,80 @@ describe('runRun (multi-atom loop)', () => {
     expect(events.find((e) => e.type === 'triage-dispatch')).toBeUndefined()
   })
 
+  test('archive-ready first-directive wrap records archive-candidate disposition with zero build atoms', async () => {
+    const store = openRunStore(':memory:')
+    const archiveReadyCloseout = renderFounderCloseout({
+      runStatus: 'Archive ready',
+      whatRemains: '- Nothing remains for this priority.',
+      nextStep: 'Ticket: `0015` — archive the completed priority record',
+      judgment: 'Oscar found no build atoms to delegate and the priority is ready to archive.',
+    })
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([[]]),
+        io: fakeIO({ directives: [wrapup('Oscar seed closeout')] }),
+        getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
+        runHeadless: async () => ({ exitCode: 0, output: archiveReadyCloseout }),
+      }),
+      { ...input, wrapPlay, wrapPlayAssignment },
+    )
+
+    expect(store.listEvents(result.runId).filter((e) => e.type === 'builder-dispatch')).toHaveLength(0)
+    expect(store.listEvents(result.runId).find((e) => e.type === 'wrap-disposition')?.data).toEqual({ disposition: 'archive-candidate', buildAtoms: 0 })
+    expect(result.status).toBe('awaiting-founder')
+  })
+
+  test('archive-ready wrap with a founder decision records awaiting-founder disposition', async () => {
+    const store = openRunStore(':memory:')
+    const founderGateCloseout = renderFounderCloseout({
+      runStatus: 'Archive ready',
+      decisionNeeded: 'Choose the external repo for the live onboarding proof. Recommendation: use the CoBuilder copy.',
+      nextStep: 'Priority: `demo` — founder chooses the live-proof target repo',
+      judgment: 'Oscar stopped because the next step is founder-gated and cannot be delegated as a build atom.',
+    })
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([['packages/atom.ts']]),
+        io: fakeIO({ directives: [delegate('atom 0'), wrapup('Oscar seed closeout')] }),
+        getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
+        runHeadless: async () => ({ exitCode: 0, output: founderGateCloseout }),
+      }),
+      { ...input, wrapPlay, wrapPlayAssignment },
+    )
+
+    expect(result.status).toBe('awaiting-founder')
+    expect(store.listEvents(result.runId).find((e) => e.type === 'wrap-disposition')?.data).toEqual({ disposition: 'awaiting-founder', buildAtoms: 1 })
+  })
+
+  test('archive-ready wrap after a builder dispatch records continue disposition', async () => {
+    const store = openRunStore(':memory:')
+    const archiveReadyCloseout = renderFounderCloseout({
+      runStatus: 'Archive ready',
+      whatRemains: '- Nothing remains for this priority.',
+      nextStep: 'Ticket: `0015` — archive the completed priority record',
+      judgment: 'Oscar completed a delegated build atom, so the runner cannot treat this as an archive candidate.',
+    })
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([['packages/atom.ts']]),
+        io: fakeIO({ directives: [delegate('atom 0'), wrapup('Oscar seed closeout')] }),
+        getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
+        runHeadless: async () => ({ exitCode: 0, output: archiveReadyCloseout }),
+      }),
+      { ...input, wrapPlay, wrapPlayAssignment },
+    )
+
+    expect(store.listEvents(result.runId).filter((e) => e.type === 'builder-dispatch')).toHaveLength(1)
+    expect(store.listEvents(result.runId).find((e) => e.type === 'wrap-disposition')?.data).toEqual({ disposition: 'continue', buildAtoms: 1 })
+    expect(result.status).toBe('awaiting-founder')
+  })
+
   test('validated wrap-up with a founder decision leaves the run awaiting-founder', async () => {
     const store = openRunStore(':memory:')
     const pickupWrites: string[] = []

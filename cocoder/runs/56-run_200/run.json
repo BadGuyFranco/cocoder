@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_200",
+    "displayNumber": 56
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "priority"
+  },
+  "priorityId": "launch-disposition-first",
+  "playbookId": null,
+  "ticketId": null,
+  "status": "running",
+  "createdAt": 1782222266456,
+  "endedAt": null
+}

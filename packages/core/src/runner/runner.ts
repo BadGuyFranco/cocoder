@@ -71,6 +71,7 @@ const exec = promisify(execChildProcess)
 /** Build the per-atom Judge (ADR-0013). Injected so tests use a scripted fake and cli/daemon get the
  *  real heuristic. Tier 1 = a cheap idle/sentinel heuristic; semantic judgment stays at the verify-gate. */
 export type MakeJudge = (ctx: { atomIndex: number; doneSentinel: string; task: string }) => Judge
+export type WrapDisposition = 'archive-candidate' | 'awaiting-founder' | 'continue'
 
 export interface CriterionResult {
   readonly exitCode: number
@@ -307,6 +308,13 @@ function deriveWrapupRunStatus(markdown: string, contract: FounderCloseoutContra
   const runStatus = founderCloseoutSection(markdown, contract, section(contract, 'runStatus')) ?? ''
   if (founderDecisionNeeded(markdown, contract) || /^\s*archive ready\b/i.test(runStatus)) return 'awaiting-founder'
   return current
+}
+
+export function deriveWrapDisposition(markdown: string, contract: FounderCloseoutContract, builderDispatchCount: number): WrapDisposition {
+  if (founderDecisionNeeded(markdown, contract)) return 'awaiting-founder'
+  const runStatus = founderCloseoutSection(markdown, contract, section(contract, 'runStatus')) ?? ''
+  if (/^\s*archive ready\b/i.test(runStatus) && builderDispatchCount === 0) return 'archive-candidate'
+  return 'continue'
 }
 
 function launchableNextIssue(cwd: string, next: string, contract: FounderCloseoutContract): string | null {
@@ -1435,6 +1443,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         } else {
           pickup = candidatePickup
           if (outputValidation?.founderCloseoutContract && pickup) {
+            const buildAtoms = store.listEvents(run.id).filter((event) => event.type === 'builder-dispatch').length
+            const disposition = deriveWrapDisposition(pickup, outputValidation.founderCloseoutContract, buildAtoms)
+            store.recordEvent({ runId: run.id, type: 'wrap-disposition', data: { disposition, buildAtoms } })
             terminalStatus = deriveWrapupRunStatus(pickup, outputValidation.founderCloseoutContract, terminalStatus)
           }
         }
