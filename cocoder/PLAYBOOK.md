@@ -257,12 +257,12 @@ F1/F4). Active priorities are flat files in `cocoder/priorities/`; deferred ones
    satisfied: delegation re-derive + multi-owner mandate in `oscar.md`, Oscar support-edit suite bar in
    `shared-standards.md`, mode 4 founder-accepted no-op (wrap-up F18 + existing proof scripts). Persona/Play
    suites green. **Founder gate:** confirm archive.
-10. `founder-stop-control` — **BLOCKED (run_48/run_192).** ADR-0037 drafted (run_191): cross-persona file
+10. `founder-stop-control` — **BLOCKED (run_49/run_193).** ADR-0037 drafted (run_191): cross-persona file
    stop-signal → runner halt into **held** (stop ≠ teardown), founder-explicit-only; Phase 1 halt-and-hold
    closes ticket `0031`; Phase 2 resume from parked atom. Owner map at
-   `cocoder/runs/46-run_190/owner-map-0031.md`. Run_192 parked at founder stop before any atom delegated.
-   ADR-0037 also now owns the `held`/`wrapup`/`stopped`/teardown disposition distinction (run_191, run_192
-   lesson). **Founder gate:** approve, revise, or reject ADR-0037 before any Phase-1 build atom.
+   `cocoder/runs/46-run_190/owner-map-0031.md`. Run_193 rejected a stale duplicate-ADR atom (ADR already
+   complete); no build atoms until ADR is accepted. ADR-0037 owns the `held`/`wrapup`/`stopped`/teardown
+   disposition distinction. **Founder gate:** approve, revise, or reject ADR-0037 before any Phase-1 build atom.
 11. `launch-disposition-first` — **NEW (run_191).** A freshly launched priority assesses and reports its true
    disposition (`archive-candidate` / `awaiting-founder` / `actionable`) before any build, wraps archive-ready
    with a checkable signal when nothing is actionable (no fake-build / empty reaffirmation wrap, F18), and only

@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **founder-stop-control: ADR duplicate atom rejected — still blocked on ADR-0037 (run_49/run_193)**
+
+**Persona:** Oscar (lead) | **Priority:** [founder-stop-control](./priorities/founder-stop-control.md) | **Run:** run_193 (display 49)
+**Outcomes:**
+- **Atom 0 rejected** — scoped on stale assumption that no ADR existed; ADR-0037 from run_191 already satisfies the Objective's six required elements; Bob correctly produced no duplicate.
+- **Disposition: `blocked` (unchanged).** Priority Objective forbids Phase-1 build until founder approves ADR-0037; ticket 0031 stays open by design.
+
+**Next:** Reply in run_49 with approve, revise (with direction), or reject on ADR-0037; on approve, relaunch `founder-stop-control` for Phase 1 halt-and-hold build.
+
 ## 2026-06-23 — **founder-stop-control: founder stop before work — parked (run_48/run_192)**
 
 **Persona:** Oscar (lead) | **Priority:** [founder-stop-control](./priorities/founder-stop-control.md) | **Run:** run_192 (display 48)
