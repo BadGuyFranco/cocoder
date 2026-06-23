@@ -10,7 +10,7 @@ import { execFile } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { existsSync, type Dirent } from 'node:fs'
 import { appendFile, mkdir, readFile, readdir, rename, stat, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { promisify } from 'node:util'
 import {
   COCODER_GOVERNANCE_AUTHOR,
@@ -24,6 +24,7 @@ import {
   loadAssignments,
   loadEffectivePlay,
   loadPriority,
+  matchesAny,
   readTickets,
   runCommitGate,
   runDisplayNumber,
@@ -76,6 +77,7 @@ const DAEMON_RELOAD_BUILD_COMMAND = 'pnpm --filter @cocoder/core --filter @cocod
 const MAX_DAEMON_RELOAD_OUTPUT = 12_000
 const AUTHORING_PLAY_IDS = ['create-priority', 'edit-priority', 'archive-priority', 'create-ticket'] as const
 const execFileAsync = promisify(execFile)
+const PRIORITY_OBJECTIVE_GUARD_SCOPE = ['cocoder/priorities/*.md'] as const
 
 type AuthoringPersona = 'oz' | 'oscar' | 'bob' | 'deb'
 type AuthoringPlayId = typeof AUTHORING_PLAY_IDS[number]
@@ -1565,7 +1567,11 @@ export async function requestAuthoringPlay(ctx: OzContext, input: AuthoringPlayI
     ...(PRIORITY_AUTHORING_PLAY_IDS.has(input.playId)
       ? {
           beforeCommit: async () => {
-            await registerLivePriorities(join(workspace.path, 'cocoder', 'priorities'))
+            const priorityDir = join(workspace.path, 'cocoder', 'priorities')
+            await registerLivePriorities(priorityDir)
+            if (input.playId === 'create-priority' || input.playId === 'edit-priority') {
+              return validateChangedPriorityObjectives(ctx, workspace.path, priorityDir, turnLogPath)
+            }
           },
         }
       : {}),
@@ -1589,7 +1595,7 @@ interface HeadlessCommitOptions {
   readonly commitMessage: string
   readonly author: { readonly name: string; readonly email: string }
   readonly commitOnlyScope?: boolean
-  readonly beforeCommit?: () => Promise<void>
+  readonly beforeCommit?: () => Promise<LaunchResult | void>
   readonly auditAction: string
   readonly eventType: string
   readonly preTurnError: (detail: string) => string
@@ -1632,7 +1638,12 @@ async function runHeadlessThenGateCommit(ctx: OzContext, opts: HeadlessCommitOpt
 
   if (opts.beforeCommit) {
     try {
-      await opts.beforeCommit()
+      const result = await opts.beforeCommit()
+      if (result) {
+        await appendAudit(ctx.cocoderHome, { action: opts.auditAction, workspaceId: opts.workspaceId, ...result.body })
+        emitOzEvent(ctx, { type: opts.eventType, workspaceId: opts.workspaceId, status: 'failed' })
+        return result
+      }
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err)
       const body = {
@@ -1669,6 +1680,30 @@ async function runHeadlessThenGateCommit(ctx: OzContext, opts: HeadlessCommitOpt
   await appendAudit(ctx.cocoderHome, { action: opts.auditAction, workspaceId: opts.workspaceId, ...body })
   emitOzEvent(ctx, { type: opts.eventType, workspaceId: opts.workspaceId, status: gate.committedSha ? 'committed' : 'no-commit' })
   return { status: 200, body }
+}
+
+async function validateChangedPriorityObjectives(ctx: OzContext, workspacePath: string, priorityDir: string, turnLogPath: string): Promise<LaunchResult | void> {
+  const changed = (await ctx.git.changedFiles(workspacePath))
+    .filter((file) => matchesAny(file, PRIORITY_OBJECTIVE_GUARD_SCOPE))
+    .sort()
+  for (const file of changed) {
+    const id = basename(file, '.md')
+    const priority = loadPriority(priorityDir, id)
+    if (priority.objective === null) {
+      return {
+        status: 422,
+        body: {
+          ok: false,
+          error: `refusing to commit priority "${id}": missing founder-approved Objective`,
+          committedPaths: [],
+          commitSha: null,
+          outOfLanePaths: [],
+          exitCode: 0,
+          turnLogPath,
+        },
+      }
+    }
+  }
 }
 
 function resolveOzRepairTarget(workspacePath: string): { readonly cli: string; readonly model: string } | null {

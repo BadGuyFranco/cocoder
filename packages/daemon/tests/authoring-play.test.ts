@@ -156,6 +156,110 @@ describe('requestAuthoringPlay', () => {
     expect(audit).toContain('cocoder/tickets/open/0001-agent-ticket.md')
   })
 
+  test('refuses create-priority when the written priority has no founder-approved Objective', async () => {
+    const fixture = await makeFixture({
+      runHeadless: async (input) => {
+        fixture.headlessInputs.push(input)
+        await writeFile(join(fixture.home, 'cocoder', 'priorities', 'alpha.md'), '---\nid: alpha\ntitle: Alpha\n---\n\n## Context\n\nNo Objective here.\n')
+        return { exitCode: 0, output: 'created alpha without objective' }
+      },
+    })
+    const headBefore = await git(fixture.home, ['rev-parse', 'HEAD'])
+
+    const result = await requestAuthoringPlay(fixture.ctx, {
+      workspaceId: 'cocoder',
+      persona: 'oz',
+      playId: 'create-priority',
+      invocation: { id: 'alpha', title: 'Alpha' },
+    })
+
+    expect(result).toMatchObject({
+      status: 422,
+      body: {
+        ok: false,
+        error: 'refusing to commit priority "alpha": missing founder-approved Objective',
+        committedPaths: [],
+        commitSha: null,
+        outOfLanePaths: [],
+        exitCode: 0,
+      },
+    })
+    expect(await git(fixture.home, ['rev-parse', 'HEAD'])).toBe(headBefore)
+    await expect(git(fixture.home, ['cat-file', '-e', 'HEAD:cocoder/priorities/alpha.md'])).rejects.toThrow()
+    const audit = await readFile(join(fixture.home, 'local', 'oz-audit.log'), 'utf8')
+    expect(audit).toContain('"action":"authoring-play"')
+    expect(audit).toContain('missing founder-approved Objective')
+  })
+
+  test('refuses edit-priority when the edit blanks an existing Objective', async () => {
+    const fixture = await makeFixture({
+      runHeadless: async (input) => {
+        fixture.headlessInputs.push(input)
+        await writeFile(join(fixture.home, 'cocoder', 'priorities', 'alpha.md'), '---\nid: alpha\ntitle: Alpha\n---\n\n## Objective\n\n')
+        return { exitCode: 0, output: 'blanked objective' }
+      },
+    })
+    await writePriority(fixture.home, 'alpha', 'Alpha', 'Keep the approved Objective.')
+    await git(fixture.home, ['add', 'cocoder/priorities/alpha.md'])
+    await git(fixture.home, ['commit', '-m', 'seed alpha'])
+    const headBefore = await git(fixture.home, ['rev-parse', 'HEAD'])
+
+    const result = await requestAuthoringPlay(fixture.ctx, {
+      workspaceId: 'cocoder',
+      persona: 'oz',
+      playId: 'edit-priority',
+      invocation: { id: 'alpha', objective: '' },
+    })
+
+    expect(result).toMatchObject({
+      status: 422,
+      body: {
+        ok: false,
+        error: 'refusing to commit priority "alpha": missing founder-approved Objective',
+        committedPaths: [],
+        commitSha: null,
+        outOfLanePaths: [],
+        exitCode: 0,
+      },
+    })
+    expect(await git(fixture.home, ['rev-parse', 'HEAD'])).toBe(headBefore)
+    expect(await git(fixture.home, ['show', 'HEAD:cocoder/priorities/alpha.md'])).toContain('Keep the approved Objective.')
+    expect(await readFile(join(fixture.home, 'cocoder', 'priorities', 'alpha.md'), 'utf8')).toBe('---\nid: alpha\ntitle: Alpha\n---\n\n## Objective\n\n')
+  })
+
+  test('archive-priority is exempt from the Objective guard and still commits', async () => {
+    const fixture = await makeFixture({
+      runHeadless: async (input) => {
+        fixture.headlessInputs.push(input)
+        await mkdir(join(fixture.home, 'cocoder', 'priorities', 'archive'), { recursive: true })
+        await writeFile(join(fixture.home, 'cocoder', 'priorities', 'archive', 'alpha.md'), '---\nid: alpha\ntitle: Alpha\n---\n\nArchived without a live Objective.\n')
+        return { exitCode: 0, output: 'archived alpha' }
+      },
+    })
+    const headBefore = await git(fixture.home, ['rev-parse', 'HEAD'])
+
+    const result = await requestAuthoringPlay(fixture.ctx, {
+      workspaceId: 'cocoder',
+      persona: 'oz',
+      playId: 'archive-priority',
+      invocation: { id: 'alpha' },
+    })
+
+    expect(result).toMatchObject({
+      status: 200,
+      body: {
+        ok: true,
+        committedPaths: ['cocoder/priorities/archive/alpha.md'],
+        outOfLanePaths: [],
+        exitCode: 0,
+      },
+    })
+    expect(typeof result.body.commitSha).toBe('string')
+    expect(await git(fixture.home, ['rev-parse', 'HEAD'])).not.toBe(headBefore)
+    expect((await git(fixture.home, ['log', '-1', '--pretty=%s'])).trim()).toBe('governance: archive-priority')
+    await expect(git(fixture.home, ['cat-file', '-e', 'HEAD:cocoder/priorities/archive/alpha.md'])).resolves.toBeDefined()
+  })
+
   test('refuses an unknown same-workspace in-flight reservation and commits nothing', async () => {
     const fixture = await makeFixture()
     fixture.ctx.inFlight.set('cocoder', 'run_busy')
