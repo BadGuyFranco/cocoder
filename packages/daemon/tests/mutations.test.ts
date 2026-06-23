@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ClaudeAdapter, type Exec } from '@cocoder/adapters'
 import { atomSentinel, loadAssignments, loadPriority, makeGit, openRunStore, readTickets, StopRequestedError, workspaceTemplateDir, writePortableRun, type Adapter, type Git, type HeadlessRunInput, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
 import { createOzServer, OZ_CSRF_HEADER, type OzServer } from '../src/index.js'
+import { findOrphanedPriorities } from '../src/priority-order.js'
 import { validFounderCloseout } from './helpers/founder-closeout.js'
 
 const exec = promisify(execFile)
@@ -2079,6 +2080,8 @@ describe('Oz mutations + lifecycle', () => {
   test('POST /workspaces/:id/priorities creates a priority with a derived slug and GET returns it', async () => {
     const commits: GovernanceCommitCall[] = []
     await startServer(recordingGovernanceGit(commits))
+    const orderPath = join(home, 'cocoder', 'priorities', 'order.json')
+    const beforeOrder = await readFile(orderPath, 'utf8').catch(() => '')
 
     const post = await call(oz!, 'POST', '/workspaces/cocoder/priorities', { body: { title: 'New Launch Priority', goal: '## Objective\nShip the create endpoint.' } })
 
@@ -2095,10 +2098,13 @@ describe('Oz mutations + lifecycle', () => {
     expect(parsed.objective).toBe('Ship the create endpoint.')
     const file = await readFile(join(home, 'cocoder', 'priorities', 'new-launch-priority.md'), 'utf8')
     expect(file).toBe('---\nid: new-launch-priority\ntitle: New Launch Priority\n---\n## Objective\nShip the create endpoint.\n')
+    expect(await readFile(orderPath, 'utf8')).not.toBe(beforeOrder)
+    expect(JSON.parse(await readFile(orderPath, 'utf8'))).toEqual(['demo', 'new-launch-priority'])
+    expect(await findOrphanedPriorities(join(home, 'cocoder', 'priorities'))).toEqual([])
     expect(commits).toEqual([
       {
         cwd: home,
-        files: ['cocoder/priorities/new-launch-priority.md'],
+        files: ['cocoder/priorities/new-launch-priority.md', 'cocoder/priorities/order.json'],
         message: 'governance: create priority new-launch-priority',
         author: COCODER_GOVERNANCE,
       },
@@ -2107,6 +2113,29 @@ describe('Oz mutations + lifecycle', () => {
     const get = await call(oz!, 'GET', '/workspaces/cocoder/priorities')
     expect(get.status).toBe(200)
     expect(get.json.priorities.map((p: any) => p.id)).toContain('new-launch-priority')
+  })
+
+  test('POST /workspaces/:id/priorities registers the created priority in order.json before committing', async () => {
+    const commits: GovernanceCommitCall[] = []
+    await startServer(recordingGovernanceGit(commits))
+    const orderPath = join(home, 'cocoder', 'priorities', 'order.json')
+    const beforeOrder = await readFile(orderPath, 'utf8').catch(() => '')
+
+    const post = await call(oz!, 'POST', '/workspaces/cocoder/priorities', { body: { id: 'registration-guard', title: 'Registration Guard' } })
+
+    expect(post.status).toBe(201)
+    expect(await exists(join(home, 'cocoder', 'priorities', 'registration-guard.md'))).toBe(true)
+    expect(await readFile(orderPath, 'utf8')).not.toBe(beforeOrder)
+    expect(JSON.parse(await readFile(orderPath, 'utf8'))).toEqual(['demo', 'registration-guard'])
+    expect(await findOrphanedPriorities(join(home, 'cocoder', 'priorities'))).toEqual([])
+    expect(commits).toEqual([
+      {
+        cwd: home,
+        files: ['cocoder/priorities/registration-guard.md', 'cocoder/priorities/order.json'],
+        message: 'governance: create priority registration-guard',
+        author: COCODER_GOVERNANCE,
+      },
+    ])
   })
 
   test('POST /workspaces/:id/priorities commits created priority files with the governance identity in a real repo', async () => {

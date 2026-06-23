@@ -43,7 +43,7 @@ import { listClis, testCli } from './clis.js'
 import { commitGovernance, launchRun, requestAuthoringPlay, requestDaemonRestart, requestDashboardLaunch, requestOscarDebRepair, requestStopRun, requestSupportCommitRun, resumeRun, showRun, teardownRun, type AuthoringPlayInput, type OscarDebRepairInput } from './launcher.js'
 import { handleOzMessage } from './oz-chat.js'
 import { mergeWriteSettings, readSettings } from './settings.js'
-import { readPriorities, readTickets, writePriorityOrder, writeTicketOrder } from './priority-order.js'
+import { readPriorities, readTickets, registerLivePriorities, writePriorityOrder, writeTicketOrder } from './priority-order.js'
 import { withPortableDisplayNumber } from './run-display.js'
 
 export type { OzContext } from './context.js'
@@ -682,7 +682,13 @@ async function createPriority(ctx: OzContext, res: ServerResponse, workspaceId: 
     const priority = loadPriority(dir, input.id)
     validateCreatedPriority(markdown, priority, input)
     await rm(tmpDir, { recursive: true, force: true })
-    const receipt = await commitGovernance(ctx, ws.path, [relative(ws.path, target)], `governance: create priority ${input.id}`)
+    await registerLivePriorities(prioritiesDir(ws.path))
+    const receipt = await commitGovernance(
+      ctx,
+      ws.path,
+      [relative(ws.path, target), relative(ws.path, priorityOrderFile(ws.path))],
+      `governance: create priority ${input.id}`,
+    )
     void appendAudit(ctx.cocoderHome, { action: 'priority-create', workspaceId, priorityId: input.id, committedSha: receipt.committedSha, committed: receipt.committed })
     if (governanceCommitFailed(res, receipt)) return
     sendJson(res, 201, { ok: true, priority, committedSha: receipt.committedSha })
