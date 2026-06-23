@@ -2,13 +2,22 @@
 id: 0032
 title: Created priority can be hidden — file exists with no order.json entry (ghost/"draft" priority)
 type: bug
-status: Open
+status: Closed
 priority: oz-autonomy
 owner: Deb
 created: 2026-06-23
+closed: 2026-06-23
 ---
 
 # 0032 — Created priority can be hidden — file exists with no order.json entry (ghost/"draft" priority)
+
+## Resolution
+
+Resolved by commit `4819767`: the orphan-priority visibility guard, `findOrphanedPriorities` in
+`packages/daemon/src/priority-order.ts`, plus the daemon governance test that fails when any loadable
+`cocoder/priorities/*.md` is unlisted, unarchived, and un-allowlisted. The invariant is recorded in
+ADR-0038. The two named orphans, `oz-file-access` and `oz-autonomy`, are already registered in
+`cocoder/priorities/order.json`.
 
 ## Context
 

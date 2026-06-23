@@ -14,13 +14,13 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
 | [0033](./open/0033-deb-repair-dialogue-non-tty-failure.md) | Deb repair dialogue fails with "stdin is not a terminal" (non-TTY/headless invocation) | bug | none | Open |
-| [0032](./open/0032-hidden-priority-no-order-json-entry.md) | Created priority can be hidden — file exists with no order.json entry (ghost/"draft" priority) | bug | oz-autonomy | Open |
 | [0031](./open/0031-founder-stop-the-run-control-for-personas.md) | No way for a persona to stop the runner on a founder "stop the run" direction | task | unassigned | Blocked |
 
 ## Recently Closed
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0032](./closed/0032-hidden-priority-no-order-json-entry.md) | Created priority can be hidden — file exists with no order.json entry (ghost/"draft" priority) | bug | 2026-06-23 | Resolved by commit `4819767`: `findOrphanedPriorities` plus the daemon governance test enforce the priority visibility invariant recorded in ADR-0038; `oz-file-access` and `oz-autonomy` are registered in `order.json`. |
 | [0030](./closed/0030-deb-escalation-fork-fault-vs-continue.md) | Deb escalation fork — formal fault (A) vs in-flight repair (B) | question | 2026-06-22 | Neither A nor B — founder specified a third model (Oscar↔Deb propose→evaluate→direct repair dialogue, Bob-free, runnable post-wrap, founder tier for risky items). Decision: split — `deb-follows-oscar` narrowed to the watcher/nudge half; the autonomous repair loop moves to new priority `deb-oscar-repair-loop` + `ADR-0036`. |
 | [0025](./closed/0025-git-init-baseline-commit-full-tree.md) | git-init of a non-git primary root must baseline-commit the full existing tree, not only the cocoder zone | bug | 2026-06-22 | `createWorkspace` baseline-commits the full existing tree (`git add .`, honoring `.gitignore`) only when it git-inits a non-git root; already-git repos get no re-import. Daemon real-git test proves product files tracked, `node_modules/` excluded, cocoder zone committed, clean status (run_181, Atom D). |
 | [0026](./closed/0026-scaffold-governance-commit-incomplete.md) | Scaffold governance commit omits cocoder/workspace.json and cocoder/counters.json | bug | 2026-06-22 | Scaffold now commits every `cocoder/**` file it writes (incl. `workspace.json` + `counters.json`); already-git test pins tracked == written − ignored, no silent omissions (run_181, Atom E). |
