@@ -12,6 +12,18 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **domain-glossary: per-repo glossary deliverable complete — archive-candidate (run_55/run_199)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [domain-glossary](./priorities/domain-glossary.md) | **Run:** run_199 (display 55)
+**Outcomes:**
+- **ADR-0039 landed.** Single owner for the domain glossary deliverable, boundary table, and two-tier model; indexed in `decisions/README.md`.
+- **Scaffold + guard.** `templates/workspace-cocoder/cocoder/glossary.md` (thin convention + example row); `cocoder/AGENTS.md` Start Here routes to it; single-owner guard test pins boundary phrase only in ADR-0039.
+- **Onboard-existing synthesis.** P5/P6 drafts real domain terms from `convergence.json` purpose refs; Playbook step 6 lists the deliverable; P6 test proves stub replaced with live rows.
+- **Runnable proof.** `node scripts/proof-onboard-existing.mjs` 5/5 green (glossary delivered, single-owner, live terms); daemon mutations test pins committed governance set; two-tier note in `docs/glossary.md` + `ARCHITECTURE.md`.
+- **Disposition: `archive-candidate`.** All four Objective verified-when clauses met; no buildable atoms remain.
+
+**Next:** Founder archive confirmation on `domain-glossary`; then launch ticket-fix on [0034](./tickets/open/0034-priority-creation-must-auto-register-order-json.md) — atomic priority registration at the write chokepoint.
+
 ## 2026-06-23 — **ticket-fix-0036: Oz dashboard Plays nav — stale bundle rebuilt — archive-candidate (run_54/run_198)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0036](./tickets/closed/0036-skills-plays-still-appears-in-the-oz-dashboard.md) | **Run:** run_198 (display 54)
