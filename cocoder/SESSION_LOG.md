@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **adhoc-session: default stack vs local install config research (run_50)**
+
+**Persona:** Oscar (wrap-up only; 0 atoms delegated) | **Priority:** [adhoc-session](./priorities/adhoc-session.md) | **Run:** run_50
+**Outcomes:**
+- **Read-only research complete** — founder asked whether a default tech stack or local install configuration is recorded in governed flat files.
+- **Finding:** no default stack for **new products** anywhere (only blank stub `templates/workspace-cocoder/cocoder/memory/tech-stack.md`; ADR-0008 extend-by-files). CoCoder **engine** stack is orientation-only in `cocoder/memory/tech-stack.md` (ARCHITECTURE.md is current-truth). **Local install** config **does** exist across `templates/install-local/config.example.yaml`, `local/config.yaml`, `local/settings.json`, `.nvmrc`, `package.json`, `cocoder/personas/assignments.json`.
+- **Founder decision offered (unanswered):** whether to draft a priority establishing a default-stack convention (stub or new ADR).
+- **Disposition: `continue`** — adhoc objective met (written research report); priority remains the standing on-ramp.
+**Next:** Reply in run_50 `yes — draft default-stack priority` or `no — done`; or launch `founder-stop-control` when ready to decide on ADR-0037.
+
 ## 2026-06-23 — **founder-stop-control: ADR duplicate atom rejected — still blocked on ADR-0037 (run_49/run_193)**
 
 **Persona:** Oscar (lead) | **Priority:** [founder-stop-control](./priorities/founder-stop-control.md) | **Run:** run_193 (display 49)
