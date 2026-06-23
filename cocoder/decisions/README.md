@@ -46,7 +46,7 @@ their still-live content was absorbed into [ADR-0019](./0019-multi-root-workspac
 
 | ADR | Title | Status |
 |---|---|---|
-| _(none currently — 0026 accepted 2026-06-17; the 0020 addendum it superseded moved to history below)_ | | |
+| [0037](./0037-founder-stop-hold-resume.md) | Founder stop control: halt-and-hold, then resume | Proposed — pending founder approval |
 
 ## Retired to history (superseded — not in the live tree)
 

@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-22 — **founder-stop-control: ADR-0037 drafted — blocked on founder approval (run_47/run_191)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [founder-stop-control](./priorities/founder-stop-control.md) | **Run:** run_191 (display 47)
+**Outcomes:**
+- **ADR-0037 landed** — halt-and-hold (Phase 1) + resume-from-held (Phase 2) design grounded in the run_190 owner map: file-based persona→runner stop signal, new `held` disposition (panes stay open; in-flight atom parked resume-ready, not abandoned/quarantined), founder-explicit-only (no persona self-stop).
+- **Disposition: `blocked`.** The priority Objective forbids any Phase-1 build atom until the founder approves ADR-0037.
+
+**Next:** Reply in run_47 with approve, revise (with direction), or reject on ADR-0037; on approve, relaunch `founder-stop-control` for Phase 1 build.
+
 ## 2026-06-22 — **ticket-fix-0031: founder stop-control owner map — blocked on ADR fork (run_46/run_190)**
 
 **Persona:** Oscar (lead) | **Priority:** ticket-fix / [0031](./tickets/open/0031-founder-stop-the-run-control-for-personas.md) | **Run:** run_190 (display 46)
