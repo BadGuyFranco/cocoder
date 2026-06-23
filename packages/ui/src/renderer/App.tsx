@@ -4,7 +4,7 @@
 // the design-faithful view-model from the ported seed (fixture parity, fully interactive); the daemon
 // adapter is wired in the next slice (the existing electron/ plumbing is untouched).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRunDetail, sendOzMessage, launchRun, launchTicketRun, attachRun, teardownRun, stopRun, testCli, createPriority, createTicket, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, persistTicketOrder, saveAssignments, restartDaemon, type ConnectionState } from './live.ts'
+import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRawRunDetail, loadRunDetail, sendOzMessage, launchRun, launchTicketRun, attachRun, teardownRun, stopRun, testCli, createPriority, createTicket, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, persistTicketOrder, saveAssignments, restartDaemon, type ConnectionState } from './live.ts'
 import { ADHOC_PRIORITY_ID, MODE_HONORED_PERSONAS, applyOrder, isActiveRun, mergeRunsWithEnrichment, orderPersonas, personasToAssignments } from './adapter.ts'
 import { Sidebar, type Route } from './ui/Sidebar.tsx'
 import { TopBar } from './ui/TopBar.tsx'
@@ -15,6 +15,7 @@ import { PersonasScreen } from './sections/Personas.tsx'
 import { PlaysScreen } from './sections/Plays.tsx'
 import { SettingsScreen } from './sections/Settings.tsx'
 import { NewWorkspaceModal, CraftPersonaModal, NewPriorityModal, NewTicketModal } from './sections/modals.tsx'
+import { LaunchProgressModal, launchFailure, launchIsUp, type LaunchProgressState } from './sections/LaunchProgressModal.tsx'
 import { seed, DEFAULT_SETTINGS, DEFAULT_PANEL_RATIO, type ChatMessage, type Cli, type Dependency, type Persona, type Play, type Priority, type Ticket, type Run, type Settings, type SubAgent, type Workspace } from './model.ts'
 import type { OzEventHint, PersonaAssignment, WorkspaceCreateDisclosure } from '../main/ipc-contract.ts'
 
@@ -22,6 +23,8 @@ const USER = seed.workspaces.length ? { initials: 'AF', name: 'Anthony Franco', 
 const ROUTE_TITLE: Record<Route, string> = { dashboard: 'Dashboard', workspaces: 'Workspaces', clis: 'CLIs', personas: 'Personas', plays: 'Plays', settings: 'Settings' }
 const ACTIVE_DETAIL_FETCH_LIMIT = 6
 const GLOBAL_CHAT_KEY = ''
+const LAUNCH_PROGRESS_POLL_MS = 600
+const CLOSED_LAUNCH_PROGRESS: LaunchProgressState = { open: false, title: '', runId: null, detail: null, error: null }
 
 function workspaceCreateMessage(disclosure: WorkspaceCreateDisclosure, legacyHidden: readonly string[]): string {
   const roots = disclosure.roots.map((root) => `${root.role}: ${root.rawPath ?? root.path}`).join('; ')
@@ -120,6 +123,7 @@ export function App() {
   const [newPriorityOpen, setNewPriorityOpen] = useState(false)
   const [newTicketOpen, setNewTicketOpen] = useState(false)
   const [navCollapsed, setNavCollapsed] = useState(false)
+  const [launchProgress, setLaunchProgress] = useState<LaunchProgressState>(CLOSED_LAUNCH_PROGRESS)
 
   // ── Live daemon wiring ── source is decided by window.oz.health(): 'fixtures' (or no bridge, e.g.
   // jsdom tests) keeps the ported seed; 'connected' loads real data through the adapter; otherwise we
@@ -225,6 +229,33 @@ export function App() {
     const id = setInterval(() => void tick(), pollMs)
     return () => { stop = true; clearInterval(id) }
   }, [live, selectedRunId, activeId, pollMs])
+
+  useEffect(() => {
+    if (!live || !launchProgress.open || !launchProgress.runId || launchProgress.error) return
+    const oz = ozApi()
+    if (!oz) return
+    let stopped = false
+    const tick = async () => {
+      const detail = await loadRawRunDetail(oz, launchProgress.runId!)
+      if (stopped || !detail) return
+      const failure = launchFailure(detail)
+      if (failure) {
+        setLaunchProgress((cur) => (cur.open && cur.runId === detail.run.id ? { ...cur, detail, error: failure } : cur))
+        return
+      }
+      if (launchIsUp(detail)) {
+        setLaunchProgress((cur) => (cur.open && cur.runId === detail.run.id ? CLOSED_LAUNCH_PROGRESS : cur))
+        return
+      }
+      setLaunchProgress((cur) => (cur.open && cur.runId === detail.run.id ? { ...cur, detail } : cur))
+    }
+    void tick()
+    const id = window.setInterval(() => void tick(), LAUNCH_PROGRESS_POLL_MS)
+    return () => {
+      stopped = true
+      window.clearInterval(id)
+    }
+  }, [live, launchProgress.open, launchProgress.runId, launchProgress.error])
 
   useEffect(() => {
     if (!live) return
@@ -361,6 +392,12 @@ export function App() {
   // test mode (`!live`) the actions keep the design's chat-stub behavior so the demo stays interactive.
   const [actionMsg, setActionMsg] = useState<{ kind: 'ok' | 'info' | 'err'; text: string } | null>(null)
   const notify = (kind: 'ok' | 'info' | 'err', text: string) => { setActionMsg({ kind, text }); window.setTimeout(() => setActionMsg(null), 6000) }
+  const openLaunchProgress = (title: string): void => setLaunchProgress({ open: true, title, runId: null, detail: null, error: null })
+  const closeLaunchProgress = (): void => setLaunchProgress(CLOSED_LAUNCH_PROGRESS)
+  const setLaunchProgressError = (text: string): void => setLaunchProgress((cur) => ({ ...cur, open: true, error: text }))
+  function launchedRunId(data: unknown): string | null {
+    return typeof data === 'object' && data !== null && typeof (data as { runId?: unknown }).runId === 'string' ? (data as { runId: string }).runId : null
+  }
   async function refreshActiveWs() {
     await refreshWorkspace(activeId)
   }
@@ -535,11 +572,30 @@ export function App() {
   // POST /runs launches a REAL run — only ever reached from a live user click, never in tests/CI.
   async function doLaunch(priorityId: string, label: string, resumeFromRunId?: string, strictPreRunDirt?: boolean, allowPreRunIntegrityErrors?: boolean) {
     const oz = ozApi()
-    if (!oz) return
+    openLaunchProgress(`${label}…`)
+    if (!oz) {
+      setLaunchProgressError('Launch failed: daemon bridge unavailable.')
+      return
+    }
     const res = await launchRun(oz, activeId, priorityId, resumeFromRunId, strictPreRunDirt, allowPreRunIntegrityErrors)
-    if (res.ok) { notify('ok', `${label}…`); await refreshActiveWs() }
-    else if (res.status === 409) notify('info', 'A run is already in flight for this workspace.')
-    else notify('err', res.error || `Launch failed (${res.status}).`)
+    if (res.ok) {
+      const runId = launchedRunId(res.data)
+      if (!runId) {
+        setLaunchProgressError('Launch started, but Oz did not return a run id.')
+        return
+      }
+      setLaunchProgress((cur) => ({ ...cur, runId }))
+      notify('ok', `${label}…`)
+      await refreshActiveWs()
+    } else if (res.status === 409) {
+      const message = 'A run is already in flight for this workspace.'
+      setLaunchProgressError(message)
+      notify('info', message)
+    } else {
+      const message = res.error || `Launch failed (${res.status}).`
+      setLaunchProgressError(message)
+      notify('err', message)
+    }
   }
   function handleLaunch(p: Priority, strictPreRunDirt?: boolean, allowPreRunIntegrityErrors?: boolean) {
     if (!live) { onSend(`Launch the priority “${p.name}”.`); return }
@@ -547,11 +603,30 @@ export function App() {
   }
   async function doLaunchTicket(ticketId: string, label: string) {
     const oz = ozApi()
-    if (!oz) return
+    openLaunchProgress(`${label}…`)
+    if (!oz) {
+      setLaunchProgressError('Launch failed: daemon bridge unavailable.')
+      return
+    }
     const res = await launchTicketRun(oz, activeId, ticketId)
-    if (res.ok) { notify('ok', `${label}…`); await refreshActiveWs() }
-    else if (res.status === 409) notify('info', 'A run is already in flight for this workspace.')
-    else notify('err', res.error || `Launch failed (${res.status}).`)
+    if (res.ok) {
+      const runId = launchedRunId(res.data)
+      if (!runId) {
+        setLaunchProgressError('Launch started, but Oz did not return a run id.')
+        return
+      }
+      setLaunchProgress((cur) => ({ ...cur, runId }))
+      notify('ok', `${label}…`)
+      await refreshActiveWs()
+    } else if (res.status === 409) {
+      const message = 'A run is already in flight for this workspace.'
+      setLaunchProgressError(message)
+      notify('info', message)
+    } else {
+      const message = res.error || `Launch failed (${res.status}).`
+      setLaunchProgressError(message)
+      notify('err', message)
+    }
   }
   function handleLaunchTicket(ticket: Ticket) {
     if (!live) { onSend(`Launch a fix run for ticket ${ticket.id}.`); return }
@@ -716,6 +791,7 @@ export function App() {
       <NewPriorityModal open={newPriorityOpen} onClose={() => setNewPriorityOpen(false)} onSubmit={handleCreatePriority} />
       <NewTicketModal open={newTicketOpen} onClose={() => setNewTicketOpen(false)} onSubmit={handleCreateTicket} />
       <CraftPersonaModal open={craftOpen} onClose={() => setCraftOpen(false)} clis={clis} onSubmit={({ name, summary, placeAtTop }) => handleCreatePriority({ title: name, goal: summary, placeAtTop })} />
+      <LaunchProgressModal state={launchProgress} onClose={closeLaunchProgress} />
     </div>
   )
 }

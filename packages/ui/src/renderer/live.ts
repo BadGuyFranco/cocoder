@@ -79,9 +79,14 @@ export async function loadWsData(oz: OzApi, wsId: string): Promise<WsData> {
 
 // Poll one run's detail → an enriched Run (transcript + evidence + personas). Null on a failed fetch
 // (network blip mid-poll) so the caller keeps the last good value.
-export async function loadRunDetail(oz: OzApi, runId: string, names: Record<string, string>): Promise<Run | null> {
+export async function loadRawRunDetail(oz: OzApi, runId: string): Promise<RunDetail | null> {
   const r = await oz.daemonGet<RunDetail>(`/runs/${runId}`)
-  return r.ok ? adaptRunDetail(r.data, names) : null
+  return r.ok ? r.data : null
+}
+
+export async function loadRunDetail(oz: OzApi, runId: string, names: Record<string, string>): Promise<Run | null> {
+  const detail = await loadRawRunDetail(oz, runId)
+  return detail ? adaptRunDetail(detail, names) : null
 }
 
 export async function sendOzMessage(oz: OzApi, workspaceId: string, text: string): Promise<ChatMessage> {

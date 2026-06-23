@@ -236,6 +236,22 @@ function detailFor(summary: RunSummary, latestEvent = 'Real latest event for the
   }
 }
 
+function launchDetail(summary: RunSummary, events: readonly RunDetail['events'][number][], sessions: RunDetail['sessions'] = []): RunDetail {
+  return {
+    run: summary,
+    sessions,
+    workItems: [],
+    commitLinks: [],
+    events,
+    files: { oscarOut: null, oscarErr: null, bobOut: null, bobErr: null, pickup: null, record: null },
+    diffs: [],
+  }
+}
+
+function launchEvent(runId: string, type: string, data: Record<string, unknown>, at = 1780112098510): RunDetail['events'][number] {
+  return { id: `${runId}-${type}-${String(at)}`, runId, type, data, at }
+}
+
 function personasResponse(assignments: PersonasResponse['assignments']): PersonasResponse {
   return {
     workspace: (workspacesFx as { workspaces: PersonasResponse['workspace'][] }).workspaces[0],
@@ -403,7 +419,56 @@ describe('Oz renderer — live daemon path', () => {
     expect(body.workspaceId).toBe('cocoder')
     expect(typeof body.priorityId).toBe('string')
     expect(body.priorityId).not.toBe('adhoc-session')
-    await waitFor(() => expect(screen.getByText(/Launching/i)).toBeDefined())
+    await waitFor(() => expect(screen.getAllByText(/Launching/i).length).toBeGreaterThan(0))
+  })
+
+  it('shows live launch progress from run events and auto-closes when Oscar is ready', async () => {
+    const posts: PostCall[] = []
+    const run = runSummary('run_launch_modal', 'running')
+    const runDetails: Record<string, RunDetail> = {
+      run_launch_modal: launchDetail(run, [
+        launchEvent(run.id, 'launch-entry', { workspaceId: 'cocoder', ms: 0 }),
+        launchEvent(run.id, 'launch-run-created', { ms: 10 }),
+        launchEvent(run.id, 'launch-spawn-start', { persona: 'oscar', label: 'Oscar' }, 1780112098520),
+      ]),
+    }
+    setOz(mockOz({ posts, postResult: { ok: true, status: 202, data: { runId: run.id } }, runDetails }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(within(rowForText('Living base personas + repo extensions')).getByText('Launch'))
+
+    await waitFor(() => expect(screen.getAllByText('Contacting Oz daemon…').length).toBeGreaterThan(0))
+    await waitFor(() => expect(posts.find((p) => p.path === '/runs')).toBeDefined())
+    await waitFor(() => expect(screen.getAllByText('Starting Oscar…').length).toBeGreaterThan(0))
+
+    runDetails.run_launch_modal = launchDetail(run, [
+      launchEvent(run.id, 'launch-entry', { workspaceId: 'cocoder', ms: 0 }),
+      launchEvent(run.id, 'launch-run-created', { ms: 10 }),
+      launchEvent(run.id, 'launch-spawn-start', { persona: 'oscar', label: 'Oscar' }, 1780112098520),
+      launchEvent(run.id, 'launch-spawn-end', { persona: 'oscar', ok: true, ms: 320 }, 1780112098560),
+    ])
+
+    await waitFor(() => expect(screen.queryByText('Starting Oscar…')).toBeNull(), { timeout: 1800 })
+  })
+
+  it('keeps launch progress open with the event reason when a spawn fails', async () => {
+    const run = runSummary('run_launch_failed', 'running')
+    const runDetails: Record<string, RunDetail> = {
+      run_launch_failed: launchDetail(run, [
+        launchEvent(run.id, 'launch-run-created', { ms: 10 }),
+        launchEvent(run.id, 'launch-spawn-start', { persona: 'oscar', label: 'Oscar' }, 1780112098520),
+        launchEvent(run.id, 'launch-spawn-end', { persona: 'oscar', ok: false, message: 'cmux refused the pane' }, 1780112098560),
+      ]),
+    }
+    setOz(mockOz({ postResult: { ok: true, status: 202, data: { runId: run.id } }, runDetails }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(within(rowForText('Living base personas + repo extensions')).getByText('Launch'))
+
+    await waitFor(() => expect(screen.getByText('cmux refused the pane')).toBeDefined())
+    expect(screen.getByRole('button', { name: 'Close' })).toBeDefined()
   })
 
   it('the Ad-hoc row prompts for a task instead of launching immediately', async () => {
@@ -456,7 +521,8 @@ describe('Oz renderer — live daemon path', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
     fireEvent.click(within(rowForText('Living base personas + repo extensions')).getByText('Launch'))
-    await waitFor(() => expect(screen.getByText(/already in flight/i)).toBeDefined())
+    await waitFor(() => expect(screen.getAllByText(/already in flight/i).length).toBeGreaterThan(0))
+    expect(screen.getByRole('button', { name: 'Close' })).toBeDefined()
   })
 
   it('Stop run posts to /runs/:id/stop and shows cooperative success text', async () => {
