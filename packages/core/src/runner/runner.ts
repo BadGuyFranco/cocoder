@@ -23,6 +23,7 @@ import {
   coCoderRunReference,
   listPortableRunSessions,
   recordPortableRunCreation,
+  readPortableRunById,
   runDisplayName,
   writePortableRunHistory,
   type Run,
@@ -34,12 +35,23 @@ import { effectiveScope, partitionByScope } from '../write-scope/index.js'
 import type { SessionHost, SessionRef } from '../session-host/index.js'
 import { exec as execChildProcess } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import type { RunnerIO } from './io.js'
 import { createHeadlessBuilderDriver, createPaneBuilderDriver, type BuilderDriver } from './builder-driver.js'
-import { executeAgentStep, type AgentStepActiveAtom } from './agent-step.js'
-import { FounderHeldError, isFounderHeldError, readFounderStopSignal, writeResumeState, type PreDispatchResumeState, type ResumeState } from './founder-stop.js'
+import { executeAgentStep, type AgentStepActiveAtom, type AgentStepResume } from './agent-step.js'
+import {
+  FounderHeldError,
+  founderStopSignalPath,
+  isFounderHeldError,
+  readFounderStopSignal,
+  readResumeState,
+  resumeStatePath,
+  writeResumeState,
+  type PreDispatchResumeState,
+  type ResumeState,
+} from './founder-stop.js'
 import { parseDirective, type Directive } from './directive.js'
 import { groupLabel as formatGroupLabel, paneLabel, type RunLabelTarget } from './labels.js'
 import { type Judge, makeHeuristicJudge, runMonitor } from './monitor.js'
@@ -161,6 +173,8 @@ export interface RunInput {
   readonly allowPreRunIntegrityErrors?: boolean
   /** Loader-backed checks for governance files the assembled launch will depend on. */
   readonly preRunGovernanceChecks?: readonly PreRunGovernanceCheck[]
+  /** Re-enter an existing held run at its durable resume-state marker. Runner-core only; callers choose when to pass it. */
+  readonly resumeRunId?: string
 }
 
 export interface RunResult {
@@ -213,6 +227,8 @@ interface FounderCloseoutContract {
   readonly orderedRoles: readonly FounderCloseoutRole[]
   readonly finalLine: string
 }
+
+type PreVerdictAgentStepResume = Extract<AgentStepResume, { readonly park: 'pre-verdict' }>
 
 function section(contract: FounderCloseoutContract, role: FounderCloseoutRole): string {
   return contract.labels[role]
@@ -649,12 +665,23 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const engineHome = input.engineHome ?? workspace.path
 
   store.upsertWorkspace(workspace)
-  const run = store.createRun({ workspaceId: workspace.id, priorityId: input.storePriorityId ?? priority.id, ticketId: input.ticketId ?? null })
-  deps.onRunCreated?.(run) // synchronous, before the first await — the daemon captures runId here
+  const resumeRunId = input.resumeRunId ?? null
+  const existingRun = resumeRunId === null ? null : store.getRun(resumeRunId)
+  if (resumeRunId !== null && existingRun === null) throw new Error(`Cannot resume missing run ${resumeRunId}`)
+  if (existingRun !== null && existingRun.status !== 'held') throw new Error(`Cannot resume run ${existingRun.id} from status ${existingRun.status}; expected held`)
+  const run = existingRun ?? store.createRun({ workspaceId: workspace.id, priorityId: input.storePriorityId ?? priority.id, ticketId: input.ticketId ?? null })
+  if (existingRun === null) deps.onRunCreated?.(run) // synchronous, before the first await — the daemon captures runId here
   const runDir = join(runsRoot, run.id)
   await io.ensureRunDir(runDir)
-  store.recordEvent({ runId: run.id, type: 'run-start', data: { priority: priority.id, runDir } })
-  log(`run ${run.id} started (priority ${priority.id})`)
+  const resumeState = existingRun === null ? null : await readResumeState(runDir)
+  if (existingRun !== null && resumeState === null) throw new Error(`Cannot resume run ${run.id}; missing resume-state.json`)
+  if (existingRun === null) {
+    store.recordEvent({ runId: run.id, type: 'run-start', data: { priority: priority.id, runDir } })
+    log(`run ${run.id} started (priority ${priority.id})`)
+  } else {
+    if (resumeState === null) throw new Error(`Cannot resume run ${run.id}; missing resume-state.json`)
+    log(`run ${run.id} resume requested at ${resumeState.park} atom ${resumeStateAtomNumber(resumeState)}`)
+  }
 
   // Preflight both CLIs — fail fast with a clear reason (kills the F10 mid-run class).
   for (const p of [oscar, bob]) {
@@ -700,7 +727,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   // rationale was stale; the real residual risk was the gate folding founder WIP into an atom commit,
   // which the founder snapshot removes. strictPreRunDirt restores the hard-stop for shared repos / CI.)
   const committingScopes = [scope, oscar.writeScope, deb?.writeScope ?? [], input.wrapPlay?.writeScope ?? [], PORTABLE_RUN_HISTORY_SCOPE].flat()
-  const changedAtStart = await git.changedFiles(workspaceRepo)
+  const changedAtStart = resumeState === null ? await git.changedFiles(workspaceRepo) : []
   const integrityWarnings = await preRunConflictWarnings(workspaceRepo, changedAtStart)
   for (const warning of integrityWarnings) {
     store.recordEvent({ runId: run.id, type: 'pre-run-integrity-warning', data: warning })
@@ -754,7 +781,12 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   }
   let portableRunDisplayNumber: number
   try {
-    portableRunDisplayNumber = await recordPortableRunCreation({ primaryRoot: workspace.path, workspace, run })
+    if (resumeState === null) {
+      portableRunDisplayNumber = await recordPortableRunCreation({ primaryRoot: workspace.path, workspace, run })
+    } else {
+      const portableRun = await readPortableRunById(workspace.path, run.id)
+      portableRunDisplayNumber = portableRun?.run.displayNumber ?? (await recordPortableRunCreation({ primaryRoot: workspace.path, workspace, run }))
+    }
   } catch (err) {
     store.setRunStatus(run.id, 'failed')
     throw err
@@ -1273,13 +1305,20 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   }
 
   // ── The multi-atom loop ───────────────────────────────────────────────────────────────────────
-  const committedShas: string[] = []
+  const lastHeldEnd = resumeState === null
+    ? null
+    : ([...store.listEvents(run.id)].reverse().find((event) => {
+        const data = event.data as { status?: unknown } | null
+        return event.type === 'run-end' && data !== null && data.status === 'held'
+      })?.data as { committedShas?: unknown; outOfScope?: unknown; selfCommitted?: unknown } | undefined) ?? null
+  const committedShas: string[] = Array.isArray(lastHeldEnd?.committedShas) ? lastHeldEnd.committedShas.filter((sha): sha is string => typeof sha === 'string') : []
   const committedFiles: string[] = []
-  const outOfScope: string[] = []
-  let selfCommitted = false
+  const outOfScope: string[] = Array.isArray(lastHeldEnd?.outOfScope) ? lastHeldEnd.outOfScope.filter((file): file is string => typeof file === 'string') : []
+  let selfCommitted = lastHeldEnd?.selfCommitted === true
   let pickup: string | null = null
   let terminalStatus: RunStatus = 'completed'
-  let n = 0
+  let n = resumeState === null ? 0 : resumeStateAtomNumber(resumeState)
+  let pendingResumeState: ResumeState | null = resumeState
   let consecutiveRejects = 0
   debWatcher = startDebWatcher()
   // `dirtyAtStart` (the founder's pre-existing uncommitted edits) was captured at launch from the same
@@ -1294,6 +1333,36 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     // No more "clear prior holdback" dance — nothing is held back, so there is nothing to clear.
     for (const f of gate.outOfScope) if (!outOfScope.includes(f)) outOfScope.push(f)
     selfCommitted = selfCommitted || gate.selfCommitted
+  }
+
+  const clearResumeArtifacts = async (park: ResumeState): Promise<void> => {
+    await rm(founderStopSignalPath(runDir), { force: true })
+    await rm(resumeStatePath(runDir), { force: true })
+    store.setRunStatus(run.id, 'running')
+    store.recordEvent({ runId: run.id, type: 'run-resumed', data: { park: park.park, atom: resumeStateAtomNumber(park) } })
+    log(`run ${run.id} resumed at ${park.park} atom ${resumeStateAtomNumber(park)}`)
+  }
+
+  const stringResumeField = (value: unknown, field: string): string => {
+    if (typeof value !== 'string' || value.length === 0) throw new Error(`Cannot resume run ${run.id}; resume-state ${field} must be a non-empty string`)
+    return value
+  }
+
+  const resumeVerifyRequest = (park: ResumeState): PreVerdictAgentStepResume | undefined => {
+    if (park.park !== 'pre-verdict') return undefined
+    return {
+      park: 'pre-verdict',
+      verifyPath: stringResumeField(park.verifyRequest.verifyPath, 'verifyRequest.verifyPath'),
+      directivePath: stringResumeField(park.verifyRequest.directivePath, 'verifyRequest.directivePath'),
+    }
+  }
+
+  const directiveForPreVerdictResume = (park: ResumeState): Extract<Directive, { readonly kind: 'delegate' }> => {
+    const verifyResume = resumeVerifyRequest(park)
+    const persisted = verifyResume === undefined ? undefined : readReadyDirective(verifyResume.directivePath)
+    if (persisted?.kind === 'delegate') return persisted
+    const openWorkItem = [...store.listWorkItems(run.id)].reverse().find((item) => item.status === 'open')
+    return { kind: 'delegate', task: openWorkItem?.task ?? `resume atom ${resumeStateAtomNumber(park)}` }
   }
 
   const commitOscarSupport = async (headBefore: string): Promise<CommitGateResult | null> => {
@@ -1469,14 +1538,32 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   }
 
   try {
-    await refreshStatus('awaiting-directive', 0, null, 'awaiting first directive')
+    if (pendingResumeState !== null) await clearResumeArtifacts(pendingResumeState)
+    await refreshStatus('awaiting-directive', n, null, pendingResumeState === null ? 'awaiting first directive' : `resuming atom ${n}`)
 
     for (;;) {
-    const directivePath = join(runDir, `directive-${n}.json`)
+    let directivePath = join(runDir, `directive-${n}.json`)
     await refreshStatus('awaiting-directive', n, null, `awaiting directive ${n}`)
-    let directive
+    let directive: Directive
+    let stepResume: AgentStepResume | undefined
     try {
-      directive = await awaitOscarWithNudgeWatchdog('directive', n, `awaiting directive ${n}`, () => awaitDirectiveOrFounderHold(directivePath, n))
+      if (pendingResumeState?.park === 'pre-dispatch' && pendingResumeState.directive !== undefined) {
+        directive = pendingResumeState.directive
+        store.recordEvent({ runId: run.id, type: 'directive-resumed', data: { atom: n, park: pendingResumeState.park, directivePath } })
+      } else if (pendingResumeState?.park === 'during-exec') {
+        directive = pendingResumeState.directive
+        stepResume = { park: 'during-exec' }
+        store.recordEvent({ runId: run.id, type: 'directive-resumed', data: { atom: n, park: pendingResumeState.park, directivePath } })
+      } else if (pendingResumeState?.park === 'pre-verdict') {
+        const verifyResume = resumeVerifyRequest(pendingResumeState)
+        if (verifyResume === undefined) throw new Error(`Cannot resume run ${run.id}; invalid pre-verdict resume marker`)
+        directivePath = verifyResume.directivePath
+        directive = directiveForPreVerdictResume(pendingResumeState)
+        stepResume = verifyResume
+        store.recordEvent({ runId: run.id, type: 'verify-resumed', data: { atom: n, park: pendingResumeState.park, verifyPath: verifyResume.verifyPath, directivePath } })
+      } else {
+        directive = await awaitOscarWithNudgeWatchdog('directive', n, `awaiting directive ${n}`, () => awaitDirectiveOrFounderHold(directivePath, n))
+      }
     } catch (err) {
       if (isFounderHeldError(err)) throw err
       if (isStopRequestedError(err)) throw err
@@ -1484,6 +1571,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       if (n === 0) await bobDriver.kill().catch(() => {})
       return await fail('directive-timeout', String(err), n)
     }
+    pendingResumeState = null
 
     if (directive.kind === 'wrapup') {
       const headBeforeOscarSupport = await git.headSha(worktreePath)
@@ -1609,6 +1697,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           timeouts: t,
           signal: deps.signal,
           log,
+          resume: stepResume,
         })
       : await (async () => {
           store.recordEvent({
