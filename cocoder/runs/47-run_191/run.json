@@ -12,7 +12,7 @@
   "priorityId": "founder-stop-control",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "awaiting-founder",
   "createdAt": 1782181135889,
-  "endedAt": null
+  "endedAt": 1782181498822
 }
