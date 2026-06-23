@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **ticket-fix-0036: Oz dashboard Plays nav — stale bundle rebuilt — archive-candidate (run_54/run_198)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0036](./tickets/closed/0036-skills-plays-still-appears-in-the-oz-dashboard.md) | **Run:** run_198 (display 54)
+**Outcomes:**
+- **Stale bundle rebuilt (`af197d6`).** Source rename and test guard were already landed (`0645573`, `4ebc1ca`); this run regenerated `packages/ui/out/renderer/assets/` so the served dashboard matches source — old `index-BygPGCCo.js` replaced by `index-DrLJ1fTV.js`.
+- **Ticket 0036 closed.** INDEX and resolution already updated in prior commit; grep + `pnpm --dir packages/ui test` (159 tests) confirm no `Skills` / `Skills (Plays)` in source or bundle.
+- **Disposition: `archive-candidate`.** Acceptance met; relaunch the running Oz dashboard process to pick up the fresh bundle (fix is on disk only until restart).
+
+**Next:** Launch `domain-glossary` — draft ADR for the per-repo domain glossary deliverable and boundary rules from the Objective.
+
 ## 2026-06-23 — **ticket-fix-0035: elegance checkpoint explicit step in ticket and doc Plays — archive-candidate (run_53/run_197)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0035](./tickets/open/0035-elegance-checkpoint-explicit-step-in-ticket-and-doc-plays.md) | **Run:** run_197 (display 53)
