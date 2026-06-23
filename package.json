@@ -13,6 +13,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json && pnpm -r typecheck",
     "test": "pnpm -r test",
+    "build:ui": "pnpm --filter @cocoder/ui build",
     "check:topology": "node scripts/check-topology.mjs",
     "proof:oz-awareness": "node scripts/proof-oz-awareness.mjs",
     "proof:queue": "node scripts/proof-priorities-queue.mjs",

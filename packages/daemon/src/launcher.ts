@@ -8,8 +8,8 @@
 //   - track spawned surfaceRefs in ctx.liveRefs so deep-links are decidable without throwing.
 import { execFile } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
-import { existsSync } from 'node:fs'
-import { appendFile, mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
+import { existsSync, type Dirent } from 'node:fs'
+import { appendFile, mkdir, readFile, readdir, rename, stat, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { promisify } from 'node:util'
 import {
@@ -1278,6 +1278,12 @@ async function resolveDashboardLaunch(cocoderHome: string): Promise<DashboardLau
   const manager = await packageManager(cocoderHome)
 
   if ((await isFile(builtEntry)) && (await isFile(builtRenderer))) {
+    if (await isDashboardBundleStale(uiDir, builtEntry, builtRenderer)) {
+      return {
+        ok: false,
+        error: 'built Oz dashboard bundle is stale relative to packages/ui source; run `pnpm build:ui` to rebuild it',
+      }
+    }
     return { ok: true, mode: 'built', command: manager, args: ['exec', 'electron', '.'], cwd: uiDir }
   }
 
@@ -1288,6 +1294,46 @@ async function resolveDashboardLaunch(cocoderHome: string): Promise<DashboardLau
     ok: false,
     error: `no launchable Oz dashboard entry found; looked for built entries ${builtEntry} and ${builtRenderer}, and dev script ${uiPackage}#scripts.dev`,
   }
+}
+
+async function isDashboardBundleStale(uiDir: string, builtEntry: string, builtRenderer: string): Promise<boolean> {
+  const [entry, renderer, sourceMtime] = await Promise.all([
+    stat(builtEntry),
+    stat(builtRenderer),
+    newestSourceMtime(uiDir),
+  ])
+  const bundleMtime = Math.min(entry.mtimeMs, renderer.mtimeMs)
+  return sourceMtime > bundleMtime
+}
+
+async function newestSourceMtime(dir: string): Promise<number> {
+  let newest = 0
+  let entries: Dirent<string>[]
+  try {
+    entries = await readdir(dir, { withFileTypes: true })
+  } catch {
+    return newest
+  }
+
+  for (const entry of entries) {
+    const path = join(dir, entry.name)
+    if (entry.isDirectory()) {
+      if (shouldSkipDashboardSourceDir(entry.name)) continue
+      newest = Math.max(newest, await newestSourceMtime(path))
+      continue
+    }
+    if (!entry.isFile()) continue
+    try {
+      newest = Math.max(newest, (await stat(path)).mtimeMs)
+    } catch {
+      /* Ignore files removed during the scan. */
+    }
+  }
+  return newest
+}
+
+function shouldSkipDashboardSourceDir(name: string): boolean {
+  return name === 'out' || name === 'node_modules' || name.startsWith('.')
 }
 
 async function packageManager(cocoderHome: string): Promise<string> {

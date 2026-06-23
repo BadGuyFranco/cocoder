@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events'
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
@@ -42,13 +42,25 @@ describe('requestDashboardLaunch', () => {
   })
 
   test('prefers the built dashboard entry when it exists', async () => {
-    const home = await makeHome({ dev: true, built: true })
+    const home = await makeHome({ dev: true, built: 'fresh' })
     const fixture = makeCtx(home)
 
     const result = await requestDashboardLaunch(fixture.ctx)
 
     expect(result).toEqual({ status: 202, body: { launched: true, launching: true, mode: 'built', command: 'pnpm exec electron .' } })
     expect(fixture.spawns[0]).toEqual({ mode: 'built', command: 'pnpm', args: ['exec', 'electron', '.'], cwd: join(home, 'packages', 'ui') })
+  })
+
+  test('refuses a stale built dashboard bundle without spawning', async () => {
+    const home = await makeHome({ dev: true, built: 'stale' })
+    const fixture = makeCtx(home)
+
+    const result = await requestDashboardLaunch(fixture.ctx)
+
+    expect(result.status).toBe(409)
+    expect(result.body.error).toContain('stale')
+    expect(result.body.error).toContain('pnpm build:ui')
+    expect(fixture.spawns).toEqual([])
   })
 
   test('falls back to the dev dashboard when the built tree is missing the renderer', async () => {
@@ -102,12 +114,17 @@ describe('requestDashboardLaunch', () => {
   })
 })
 
-async function makeHome(opts: { readonly dev?: boolean; readonly built?: boolean; readonly partialBuilt?: boolean }): Promise<string> {
+type BuiltBundleState = boolean | 'fresh' | 'stale'
+
+async function makeHome(opts: { readonly dev?: boolean; readonly built?: BuiltBundleState; readonly partialBuilt?: boolean }): Promise<string> {
   const home = await mkdtemp(join(tmpdir(), 'cocoder-dashboard-launch-'))
   await writeFile(join(home, 'package.json'), JSON.stringify({ packageManager: 'pnpm@10.30.3' }))
   const uiDir = join(home, 'packages', 'ui')
   await mkdir(uiDir, { recursive: true })
   await writeFile(join(uiDir, 'package.json'), JSON.stringify({ scripts: opts.dev ? { dev: 'electron-vite dev' } : {} }))
+  await mkdir(join(uiDir, 'src'), { recursive: true })
+  const sourceFile = join(uiDir, 'src', 'App.tsx')
+  await writeFile(sourceFile, 'export const app = "source"\n')
   if (opts.built || opts.partialBuilt) {
     await mkdir(join(uiDir, 'out', 'main'), { recursive: true })
     await writeFile(join(uiDir, 'out', 'main', 'main.js'), 'console.log("built")\n')
@@ -115,8 +132,18 @@ async function makeHome(opts: { readonly dev?: boolean; readonly built?: boolean
   if (opts.built) {
     await mkdir(join(uiDir, 'out', 'renderer'), { recursive: true })
     await writeFile(join(uiDir, 'out', 'renderer', 'index.html'), '<!doctype html>\n')
+    await setBundleMtimes(uiDir, sourceFile, opts.built)
   }
   return home
+}
+
+async function setBundleMtimes(uiDir: string, sourceFile: string, state: BuiltBundleState): Promise<void> {
+  const sourceTime = new Date('2026-01-01T00:00:00.000Z')
+  const builtTime = new Date(state === 'stale' ? '2025-01-01T00:00:00.000Z' : '2026-01-02T00:00:00.000Z')
+  await utimes(sourceFile, sourceTime, sourceTime)
+  await utimes(join(uiDir, 'package.json'), sourceTime, sourceTime)
+  await utimes(join(uiDir, 'out', 'main', 'main.js'), builtTime, builtTime)
+  await utimes(join(uiDir, 'out', 'renderer', 'index.html'), builtTime, builtTime)
 }
 
 function makeCtx(home: string, opts: { readonly failSpawn?: boolean } = {}): {
