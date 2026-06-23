@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **ticket-fix-0032: orphan-priority visibility guard — archive-candidate (run_51/run_195)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0032](./tickets/closed/0032-hidden-priority-no-order-json-entry.md) | **Run:** run_195 (display 51)
+**Outcomes:**
+- **Guard landed (`4819767`).** `findOrphanedPriorities` in `packages/daemon/src/priority-order.ts` is the single owner of the visibility rule; fixture + live-tree governance tests; ADR-0038 records the invariant (amends ADR-0010; runtime append behavior unchanged).
+- **Ticket 0032 closed (`81d154e`).** Moved to `closed/` with INDEX update; `oz-file-access` and `oz-autonomy` already registered in `order.json`.
+- **First atom rejected (verify-0).** Bundled out-of-scope `writeOrder`/endpoint changes — re-scoped to read-only guard only.
+- **Disposition: `archive-candidate`.** Acceptance met via guard path; optional authoring-time registration deferred as founder decision.
+
+**Next:** Launch `launch-disposition-first` for the disposition-first proof harness, or reply here `add registration` to draft the optional one-owner follow-up ticket.
+
 ## 2026-06-23 — **adhoc-session: default stack vs local install config research (run_50)**
 
 **Persona:** Oscar (wrap-up only; 0 atoms delegated) | **Priority:** [adhoc-session](./priorities/adhoc-session.md) | **Run:** run_50
