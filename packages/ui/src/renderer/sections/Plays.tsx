@@ -1,4 +1,4 @@
-// Skills (Plays) screen — a top-level, read-only catalog of the effective Play set (base packages/personas/base/plays
+// Plays screen — a top-level, read-only catalog of the effective Play set (base packages/personas/base/plays
 // + repo cocoder/plays/deltas, merged by GET /workspaces/:id/plays). Each Play shows its id, label, kind
 // (headless/interactive), and write-scope (its commit-gate allow-list, ADR-0007/0023). Binding a Play to a
 // persona happens on the Personas screen; this is the catalog you browse. ScopeChips lives here because both
@@ -23,10 +23,10 @@ export function PlaysCatalog({ plays }: { plays: Play[] }) {
     <Card style={{ marginBottom: 16 }}>
       <div style={{ padding: '14px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--cb-font-display)', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--cb-text-muted)', marginBottom: 10 }}>
-          <Icon name="tree-structure" size={13} />Skills (Plays) catalog · {plays.length}
+          <Icon name="tree-structure" size={13} />Plays catalog · {plays.length}
         </div>
         {plays.length === 0 ? (
-          <div style={{ padding: '10px 14px', background: 'var(--cb-bg-soft)', border: '1px dashed var(--cb-border)', borderRadius: 'var(--cb-radius-md)', fontSize: 11.5, color: 'var(--cb-text-muted)', textAlign: 'center' }}>No Skills (Plays) available for this workspace.</div>
+          <div style={{ padding: '10px 14px', background: 'var(--cb-bg-soft)', border: '1px dashed var(--cb-border)', borderRadius: 'var(--cb-radius-md)', fontSize: 11.5, color: 'var(--cb-text-muted)', textAlign: 'center' }}>No Plays available for this workspace.</div>
         ) : (
           <div style={{ display: 'grid', gap: 6 }}>
             {plays.map((play) => (
@@ -47,7 +47,7 @@ export function PlaysCatalog({ plays }: { plays: Play[] }) {
 export function PlaysScreen({ plays }: { plays: Play[] }) {
   return (
     <div style={{ height: '100%', overflow: 'hidden', display: 'grid', gridTemplateRows: 'auto 1fr' }}>
-      <ScreenHeader title="Skills (Plays)" subtitle="The shared procedures the team can run. A Play is a standalone capability; binding it to a persona (on the Personas screen) grants that persona permission to run it. Each Play shows what it may write and whether it runs headless or interactively." />
+      <ScreenHeader title="Plays" subtitle="The shared procedures the team can run. A Play is a standalone capability; binding it to a persona (on the Personas screen) grants that persona permission to run it. Each Play shows what it may write and whether it runs headless or interactively." />
       <div style={{ padding: '0 28px 24px', overflowY: 'auto', minHeight: 0 }}>
         <PlaysCatalog plays={plays} />
       </div>

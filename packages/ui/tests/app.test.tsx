@@ -16,21 +16,21 @@ function expandPersona(name: string): HTMLElement {
 
 function bindBobPlay(playId: string): HTMLElement {
   expandPersona('Bob')
-  const picker = screen.getByLabelText('Bob Skill (Play)') as HTMLSelectElement
+  const picker = screen.getByLabelText('Bob Play') as HTMLSelectElement
   fireEvent.change(picker, { target: { value: playId } })
   fireEvent.click(picker.parentElement!.querySelector('button')!)
   return expandBoundPlay(playId)
 }
 
 function expandBoundPlay(playId: string): HTMLElement {
-  const toggle = screen.getByRole('button', { name: `Toggle ${playId} Skill (Play) details` })
+  const toggle = screen.getByRole('button', { name: `Toggle ${playId} Play details` })
   if (toggle.getAttribute('aria-expanded') !== 'true') fireEvent.click(toggle)
   expect(toggle.getAttribute('aria-expanded')).toBe('true')
   return boundPlayRow(playId)
 }
 
 function collapseBoundPlay(playId: string): HTMLElement {
-  const toggle = screen.getByRole('button', { name: `Toggle ${playId} Skill (Play) details` })
+  const toggle = screen.getByRole('button', { name: `Toggle ${playId} Play details` })
   if (toggle.getAttribute('aria-expanded') !== 'false') fireEvent.click(toggle)
   expect(toggle.getAttribute('aria-expanded')).toBe('false')
   const row = toggle.closest('[data-testid="bound-play-row"]')
@@ -47,9 +47,9 @@ function boundPlayRow(playId: string): HTMLElement {
 describe('Oz — rebuilt Fusion renderer', () => {
   beforeEach(() => cleanup())
 
-  it('renders the nav sections (incl. top-level Skills (Plays))', () => {
+  it('renders the nav sections (incl. top-level Plays)', () => {
     render(<App />)
-    for (const label of ['Dashboard', 'Workspaces', 'CLIs', 'Personas', 'Skills (Plays)', 'Settings']) {
+    for (const label of ['Dashboard', 'Workspaces', 'CLIs', 'Personas', 'Plays', 'Settings']) {
       expect(screen.getByText(label)).toBeDefined()
     }
   })
@@ -121,14 +121,14 @@ describe('Oz — rebuilt Fusion renderer', () => {
     expect(screen.getAllByText(/token expired/i).length).toBeGreaterThan(0)
   })
 
-  it('Personas screen lists Oz + the roster with Skills (Plays) hierarchy', () => {
+  it('Personas screen lists Oz + the roster with Plays hierarchy', () => {
     render(<App />)
     fireEvent.click(screen.getByText('Personas'))
     expect(screen.getByText('Oscar')).toBeDefined()
     expect(screen.getByText('Bob')).toBeDefined()
-    // every persona card has a Skills (Plays) header — there are several (Bug 7 relabel: Plays are
+    // every persona card has a Plays header — there are several (Bug 7 relabel: Plays are
     // first-class procedures bound to a persona, not anonymous sub-workers.
-    expect(screen.getAllByText(/Skills \(Plays\)/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/^Plays ·/).length).toBeGreaterThan(0)
     // Oz is rendered as a persona and is locked headless
     expect(screen.getAllByText('Oz').length).toBeGreaterThan(0)
     expect(screen.getAllByText(/HEADLESS/i).length).toBeGreaterThan(0)
@@ -144,16 +144,16 @@ describe('Oz — rebuilt Fusion renderer', () => {
 
     const bobToggle = screen.getByRole('button', { name: 'Toggle Bob persona details' })
     expect(bobToggle.getAttribute('aria-expanded')).toBe('false')
-    expect(screen.queryByLabelText('Bob Skill (Play)')).toBeNull()
+    expect(screen.queryByLabelText('Bob Play')).toBeNull()
     expect(screen.queryAllByTestId('bound-play-row')).toHaveLength(0)
 
     fireEvent.click(bobToggle)
     expect(bobToggle.getAttribute('aria-expanded')).toBe('true')
-    expect(screen.getByLabelText('Bob Skill (Play)')).toBeDefined()
+    expect(screen.getByLabelText('Bob Play')).toBeDefined()
 
     fireEvent.click(bobToggle)
     expect(bobToggle.getAttribute('aria-expanded')).toBe('false')
-    expect(screen.queryByLabelText('Bob Skill (Play)')).toBeNull()
+    expect(screen.queryByLabelText('Bob Play')).toBeNull()
   })
 
   it('bound Play rows are collapsed by default and reveal detail on their toggle', () => {
@@ -161,7 +161,7 @@ describe('Oz — rebuilt Fusion renderer', () => {
     fireEvent.click(screen.getByText('Personas'))
     expandPersona('Oscar')
 
-    const row = screen.getByRole('button', { name: 'Toggle oscar-research Skill (Play) details' }).closest('[data-testid="bound-play-row"]')
+    const row = screen.getByRole('button', { name: 'Toggle oscar-research Play details' }).closest('[data-testid="bound-play-row"]')
     expect(row).toBeDefined()
     expect(within(row as HTMLElement).getByText('oscar-research')).toBeDefined()
     expect(screen.queryByDisplayValue('oscar-research')).toBeNull()
@@ -173,28 +173,28 @@ describe('Oz — rebuilt Fusion renderer', () => {
     expect(screen.queryByDisplayValue('oscar-research')).toBeNull()
   })
 
-  it('Skills (Plays) screen (top-level nav) shows the read-only catalog', () => {
+  it('Plays screen (top-level nav) shows the read-only catalog', () => {
     render(<App />)
-    fireEvent.click(screen.getByText('Skills (Plays)'))
-    expect(screen.getByText(/Skills \(Plays\) catalog/)).toBeDefined()
+    fireEvent.click(screen.getByText('Plays'))
+    expect(screen.getByText(/Plays catalog/)).toBeDefined()
     expect(screen.getAllByTestId('play-row').length).toBeGreaterThan(0)
     expect(screen.getByText('wrap-up')).toBeDefined()
     expect(screen.getAllByText(/headless/i).length).toBeGreaterThan(0)
     expect(screen.getByText('cocoder/SESSION_LOG.md')).toBeDefined()
   })
 
-  it('Personas screen binds Skills (Plays) through the catalog picker', () => {
+  it('Personas screen binds Plays through the catalog picker', () => {
     render(<App />)
     fireEvent.click(screen.getByText('Personas'))
     expandPersona('Bob')
-    const picker = screen.getByLabelText('Bob Skill (Play)') as HTMLSelectElement
+    const picker = screen.getByLabelText('Bob Play') as HTMLSelectElement
     const optionLabels = Array.from(picker.options).map((option) => option.textContent)
     expect(optionLabels).toContain('Deep read (deep-read)')
     fireEvent.change(picker, { target: { value: 'deep-read' } })
     fireEvent.click(picker.parentElement!.querySelector('button')!)
     expandBoundPlay('deep-read')
     expect(screen.getByDisplayValue('deep-read')).toBeDefined()
-    const updated = screen.getByLabelText('Bob Skill (Play)') as HTMLSelectElement
+    const updated = screen.getByLabelText('Bob Play') as HTMLSelectElement
     expect(Array.from(updated.options).map((option) => option.value)).not.toContain('deep-read')
   })
 
