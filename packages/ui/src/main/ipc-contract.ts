@@ -77,6 +77,18 @@ export interface WorkspaceFolder {
   readonly role: WorkspaceRole
   readonly description?: string
 }
+export interface WorkspaceCreateDisclosure {
+  readonly primaryRoot: string
+  readonly roots: readonly WorkspaceRoot[]
+  readonly initializedRepo: boolean
+  readonly baselineCommitted: boolean
+  readonly outsideCocoderFiles: readonly string[]
+}
+export interface WorkspaceCreateResult {
+  readonly workspace: Workspace
+  readonly legacyHidden: readonly string[]
+  readonly disclosure: WorkspaceCreateDisclosure
+}
 export interface DirectoryPickResult {
   readonly path: string | null
 }
@@ -272,7 +284,7 @@ export interface OzApi {
   ticketsReorder(workspaceId: string, order: readonly string[]): Promise<readonly string[]>
   prioritiesOrder(workspaceId: string): Promise<readonly string[]>
   workspacesUpdate(workspaceId: string, folders: readonly WorkspaceFolder[]): Promise<DaemonResult<Workspace>>
-  workspacesCreate(workspaceId: string, folders: readonly WorkspaceFolder[]): Promise<DaemonResult<{ workspace: Workspace; legacyHidden: readonly string[] }>>
+  workspacesCreate(workspaceId: string, folders: readonly WorkspaceFolder[]): Promise<DaemonResult<WorkspaceCreateResult>>
   workspacesDelete(workspaceId: string): Promise<DaemonResult<true>>
   workspaceDirectoryPick(): Promise<DaemonResult<DirectoryPickResult>>
   workspacePrimaryRootValidate(path: string): Promise<DaemonResult<{ readonly path: string }>>

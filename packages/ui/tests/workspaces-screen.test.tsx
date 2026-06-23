@@ -15,8 +15,8 @@ const workspace: Workspace = {
   roots: [{ id: 'r1', name: 'CoCoder', path: '/repo/root', role: 'primary' }],
 }
 
-function Harness({ onPickRoot }: { onPickRoot?: PickRoot }) {
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([workspace])
+function Harness({ initial = workspace, onPickRoot }: { initial?: Workspace; onPickRoot?: PickRoot }) {
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([initial])
   return (
     <WorkspacesScreen
       workspaces={workspaces}
@@ -63,5 +63,22 @@ describe('WorkspacesScreen root picker', () => {
     expect(button.disabled).toBe(true)
     fireEvent.click(button)
     expect(screen.getByDisplayValue('/repo/root')).toBeDefined()
+  })
+
+  it('defaults new non-primary roots to read-only without changing saved writable roots', () => {
+    const initial: Workspace = {
+      ...workspace,
+      roots: [
+        workspace.roots[0],
+        { id: 'r2', name: 'Tooling', path: '/repo/tooling', role: 'writable' },
+      ],
+    }
+
+    render(<Harness initial={initial} />)
+    fireEvent.click(screen.getByText('Add root folder'))
+
+    expect((screen.getAllByRole('combobox')[0] as HTMLSelectElement).value).toBe('primary')
+    expect((screen.getAllByRole('combobox')[1] as HTMLSelectElement).value).toBe('writable')
+    expect((screen.getAllByRole('combobox')[2] as HTMLSelectElement).value).toBe('readonly')
   })
 })

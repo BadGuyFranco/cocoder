@@ -16,12 +16,26 @@ import { PlaysScreen } from './sections/Plays.tsx'
 import { SettingsScreen } from './sections/Settings.tsx'
 import { NewWorkspaceModal, CraftPersonaModal, NewPriorityModal, NewTicketModal } from './sections/modals.tsx'
 import { seed, DEFAULT_SETTINGS, DEFAULT_PANEL_RATIO, type ChatMessage, type Cli, type Dependency, type Persona, type Play, type Priority, type Ticket, type Run, type Settings, type SubAgent, type Workspace } from './model.ts'
-import type { OzEventHint, PersonaAssignment } from '../main/ipc-contract.ts'
+import type { OzEventHint, PersonaAssignment, WorkspaceCreateDisclosure } from '../main/ipc-contract.ts'
 
 const USER = seed.workspaces.length ? { initials: 'AF', name: 'Anthony Franco', role: 'founder' } : { initials: 'AF', name: 'Anthony Franco', role: 'founder' }
 const ROUTE_TITLE: Record<Route, string> = { dashboard: 'Dashboard', workspaces: 'Workspaces', clis: 'CLIs', personas: 'Personas', plays: 'Skills (Plays)', settings: 'Settings' }
 const ACTIVE_DETAIL_FETCH_LIMIT = 6
 const GLOBAL_CHAT_KEY = ''
+
+function workspaceCreateMessage(disclosure: WorkspaceCreateDisclosure, legacyHidden: readonly string[]): string {
+  const roots = disclosure.roots.map((root) => `${root.role}: ${root.rawPath ?? root.path}`).join('; ')
+  const outside = disclosure.outsideCocoderFiles.length ? disclosure.outsideCocoderFiles.join(', ') : 'none'
+  const legacy = legacyHidden.length ? ` Legacy workspaces no longer served: ${legacyHidden.join(', ')}.` : ''
+  return [
+    'Workspace created.',
+    `Primary root: ${disclosure.primaryRoot}.`,
+    `Roots: ${roots}.`,
+    `Git initialized: ${disclosure.initializedRepo ? 'yes' : 'no'}.`,
+    `Baseline commit: ${disclosure.baselineCommitted ? 'yes' : 'no'}.`,
+    `Outside cocoder/: ${outside}.`,
+  ].join(' ') + legacy
+}
 
 const seedSettings = (): Settings => {
   // The prototype settings nest extra keys; map onto our typed shape, falling back to defaults.
@@ -466,8 +480,7 @@ export function App() {
     await refreshWorkspace(res.data.workspace.id)
     loadWs(res.data.workspace.id)
     setRoute('dashboard')
-    if (res.data.legacyHidden.length) notify('info', `Legacy workspaces no longer served: ${res.data.legacyHidden.join(', ')}`)
-    else notify('ok', 'Workspace created.')
+    notify(res.data.legacyHidden.length ? 'info' : 'ok', workspaceCreateMessage(res.data.disclosure, res.data.legacyHidden))
     return true
   }
   async function handleCreatePriority(p: { title: string; goal?: string; placeAtTop: boolean }): Promise<boolean> {

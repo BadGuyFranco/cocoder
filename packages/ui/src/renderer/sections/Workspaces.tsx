@@ -61,7 +61,7 @@ export function WorkspacesScreen({ workspaces, activeId, onChange, onSetActive, 
   const addRoot = () => {
     if (!editing) return
     const newId = 'r-' + Math.random().toString(36).slice(2, 8)
-    onChange({ ...editing, roots: [...editing.roots, { id: newId, name: 'new-root', path: '~/dev/', role: hasPrimary ? 'writable' : 'primary' }] })
+    onChange({ ...editing, roots: [...editing.roots, { id: newId, name: 'new-root', path: '~/dev/', role: hasPrimary ? 'readonly' : 'primary' }] })
   }
   const removeRoot = (id: string) => editing && onChange({ ...editing, roots: editing.roots.filter((r: Root) => r.id !== id) })
 

@@ -4,7 +4,7 @@ import { execFile } from 'node:child_process'
 import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { request } from 'node:http'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
@@ -2439,6 +2439,16 @@ describe('Oz mutations + lifecycle', () => {
     expect(r.status).toBe(201)
     expect(r.json.governanceCommitted).toBe(true)
     expect(r.json.governanceCommittedSha).toMatch(/^[0-9a-f]{40}$/)
+    expect(r.json.disclosure).toEqual({
+      primaryRoot: workspaceRoot,
+      roots: [
+        { name: basename(workspaceRoot), path: workspaceRoot, rawPath: workspaceRoot, role: 'primary' },
+        { name: basename(home), path: home, rawPath: '${COCODER_HOME}', role: 'readonly' },
+      ],
+      initializedRepo: true,
+      baselineCommitted: true,
+      outsideCocoderFiles: ['.gitignore'],
+    })
     expect(await g(workspaceRoot, ['rev-parse', '--is-inside-work-tree'])).toBe('true')
     expect(await g(workspaceRoot, ['symbolic-ref', '--short', 'HEAD'])).toBe('main')
     expect((await g(workspaceRoot, ['log', '-1', '--format=%s'])).trim()).toBe('chore: import existing tree (baseline)')
@@ -2489,6 +2499,16 @@ describe('Oz mutations + lifecycle', () => {
     expect(r.status).toBe(201)
     expect(r.json.governanceCommitted).toBe(true)
     expect(r.json.governanceCommittedSha).toMatch(/^[0-9a-f]{40}$/)
+    expect(r.json.disclosure).toEqual({
+      primaryRoot: workspaceRoot,
+      roots: [
+        { name: basename(workspaceRoot), path: workspaceRoot, rawPath: workspaceRoot, role: 'primary' },
+        { name: basename(home), path: home, rawPath: '${COCODER_HOME}', role: 'readonly' },
+      ],
+      initializedRepo: false,
+      baselineCommitted: false,
+      outsideCocoderFiles: [],
+    })
     expect(initCalls).toBe(0)
     expect(await g(workspaceRoot, ['symbolic-ref', '--short', 'HEAD'])).toBe('main')
     expect(await g(workspaceRoot, ['remote', 'get-url', 'origin'])).toBe('https://example.invalid/product.git')

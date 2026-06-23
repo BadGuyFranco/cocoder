@@ -194,6 +194,14 @@ interface CreateWorkspaceInput {
 
 type ParsedCreateWorkspaceBody = { readonly ok: true; readonly input: CreateWorkspaceInput } | { readonly ok: false; readonly error: string }
 
+interface WorkspaceCreateDisclosure {
+  readonly primaryRoot: string
+  readonly roots: ReadonlyArray<RegistryRoot>
+  readonly initializedRepo: boolean
+  readonly baselineCommitted: boolean
+  readonly outsideCocoderFiles: readonly string[]
+}
+
 const PRIORITY_ID_RE = /^[a-z0-9][a-z0-9-]*$/
 const CONTROL_CHARS_RE = /[\u0000-\u001f\u007f]/
 const TICKET_TYPES: readonly TicketKind[] = ['bug', 'task', 'question']
@@ -792,13 +800,17 @@ async function createWorkspace(ctx: OzContext, res: ServerResponse, body: unknow
   const legacyHidden = (await legacyWorkspaceIds(ctx.cocoderHome)).filter((legacyId) => legacyId !== id && servedBefore.has(legacyId))
   let scaffolded: readonly string[]
   let initializedRepo = false
+  let outsideCocoderFiles: readonly string[] = []
   try {
     initializedRepo = !(await ctx.git.isGitRepo(primaryRoot))
     if (initializedRepo) await ctx.git.initRepo(primaryRoot)
     scaffolded = await scaffoldWorkspaceGovernance(primaryRoot, { id, name: id })
     if (initializedRepo) {
       const gitignore = await seedStarterRootGitignore(primaryRoot)
-      if (gitignore) scaffolded = [...scaffolded, gitignore]
+      if (gitignore) {
+        scaffolded = [...scaffolded, gitignore]
+        outsideCocoderFiles = [relative(primaryRoot, gitignore)]
+      }
     }
   } catch (err) {
     return sendJson(res, 400, { error: err instanceof Error ? err.message : String(err) })
@@ -807,14 +819,16 @@ async function createWorkspace(ctx: OzContext, res: ServerResponse, body: unknow
   // commit failed we report it truthfully in the receipt (never as a silent success) rather than bail
   // mid-scaffold and leave a half-created workspace.
   const receipt = await commitGovernance(ctx, primaryRoot, scaffolded.map((path) => relative(primaryRoot, path)), `governance: scaffold workspace governance (${id})`)
-  if (initializedRepo && receipt.committed) await commitBaselineTree(ctx, primaryRoot)
+  const baselineCommitted = initializedRepo && receipt.committed
+  if (baselineCommitted) await commitBaselineTree(ctx, primaryRoot)
   await mkdir(dir, { recursive: true })
   const tmp = join(dir, `.${id}.${process.pid}.${Date.now()}.tmp`)
   await writeFile(tmp, `${JSON.stringify({ folders, settings: {} }, null, 2)}\n`)
   await rename(tmp, target)
   void appendAudit(ctx.cocoderHome, { action: 'workspace-create', workspaceId: id, legacyHidden, governanceCommittedSha: receipt.committedSha, governanceCommitted: receipt.committed })
   const workspace = await findWorkspace(ctx.cocoderHome, id)
-  sendJson(res, 201, { ok: true, workspace, legacyHidden, governanceCommittedSha: receipt.committedSha, governanceCommitted: receipt.committed, ...(receipt.error ? { governanceCommitError: receipt.error } : {}) })
+  const disclosure: WorkspaceCreateDisclosure = { primaryRoot, roots, initializedRepo, baselineCommitted, outsideCocoderFiles }
+  sendJson(res, 201, { ok: true, workspace, legacyHidden, disclosure, governanceCommittedSha: receipt.committedSha, governanceCommitted: receipt.committed, ...(receipt.error ? { governanceCommitError: receipt.error } : {}) })
 }
 
 async function deleteWorkspace(ctx: OzContext, res: ServerResponse, workspaceId: string): Promise<void> {

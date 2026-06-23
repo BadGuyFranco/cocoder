@@ -25,6 +25,13 @@ const workspace = {
   path: '/repo',
   roots: [{ name: 'CoCoder', path: '/repo', rawPath: '${COCODER_HOME}', role: 'primary' as const }],
 }
+const disclosure = {
+  primaryRoot: '/repo',
+  roots: workspace.roots,
+  initializedRepo: false,
+  baselineCommitted: false,
+  outsideCocoderFiles: [],
+}
 
 describe('main-process workspaces seam', () => {
   beforeEach(() => {
@@ -40,9 +47,9 @@ describe('main-process workspaces seam', () => {
   })
 
   it('posts create and preserves legacyHidden in the result', async () => {
-    mocks.daemonPost.mockResolvedValue({ ok: true, status: 201, data: { ok: true, workspace, legacyHidden: ['legacy-only'] } })
+    mocks.daemonPost.mockResolvedValue({ ok: true, status: 201, data: { ok: true, workspace, legacyHidden: ['legacy-only'], disclosure } })
 
-    await expect(createWorkspaceViaDaemon('cocoder', folders)).resolves.toEqual({ ok: true, status: 201, data: { workspace, legacyHidden: ['legacy-only'] } })
+    await expect(createWorkspaceViaDaemon('cocoder', folders)).resolves.toEqual({ ok: true, status: 201, data: { workspace, legacyHidden: ['legacy-only'], disclosure } })
 
     expect(mocks.daemonPost).toHaveBeenCalledWith('/workspaces', { id: 'cocoder', folders })
   })

@@ -15,6 +15,7 @@ import type {
   ClisResponse,
   CliTestResponse,
   ChatMessage as DaemonChatMessage,
+  WorkspaceCreateDisclosure,
   WorkspaceFolder,
 } from '../main/ipc-contract.ts'
 import { adaptWorkspace, adaptRuns, adaptPriorities, adaptTickets, adaptRunDetail, adaptPersonas, adaptCli } from './adapter.ts'
@@ -174,10 +175,10 @@ export async function createWorkspace(
   oz: OzApi,
   id: string,
   folders: readonly WorkspaceFolder[],
-): Promise<{ ok: true; status: number; data: { workspace: Workspace; legacyHidden: readonly string[] } } | { ok: false; status: number; error: string }> {
+): Promise<{ ok: true; status: number; data: { workspace: Workspace; legacyHidden: readonly string[]; disclosure: WorkspaceCreateDisclosure } } | { ok: false; status: number; error: string }> {
   const res = await oz.workspacesCreate(id, folders)
   if (!res.ok) return res
-  return { ok: true, status: res.status, data: { workspace: adaptWorkspace(res.data.workspace), legacyHidden: res.data.legacyHidden } }
+  return { ok: true, status: res.status, data: { workspace: adaptWorkspace(res.data.workspace), legacyHidden: res.data.legacyHidden, disclosure: res.data.disclosure } }
 }
 
 export async function deleteWorkspace(oz: OzApi, id: string): Promise<MutationResult> {

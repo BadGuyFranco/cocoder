@@ -17,6 +17,13 @@ import runDetailFx from '../fixtures/run-detail.json'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ok = (data: any) => ({ ok: true, status: 200, data })
+const workspaceDisclosure = (primaryRoot = '/new') => ({
+  primaryRoot,
+  roots: [{ name: 'New Root', path: primaryRoot, rawPath: primaryRoot, role: 'primary' as const }],
+  initializedRepo: false,
+  baselineCommitted: false,
+  outsideCocoderFiles: [] as string[],
+})
 
 const clisFx = {
   clis: [
@@ -172,7 +179,7 @@ function mockOz(opts: {
     },
     workspacesCreate: async (workspaceId: string, folders: unknown) => {
       opts.workspaceCreates?.push({ workspaceId, folders })
-      return opts.workspaceCreateResult ?? ok({ workspace: { id: workspaceId, name: workspaceId, path: '/new', roots: folders }, legacyHidden: [] })
+      return opts.workspaceCreateResult ?? ok({ workspace: { id: workspaceId, name: workspaceId, path: '/new', roots: folders }, legacyHidden: [], disclosure: workspaceDisclosure() })
     },
     workspacesDelete: async () => ok(true),
     workspaceDirectoryPick: async () => opts.workspacePickResult ?? ok({ path: '/picked-root' }),
@@ -731,6 +738,16 @@ describe('Oz renderer — live daemon path', () => {
           roots: [{ name: 'New Root', path: '/new', rawPath: '/new', role: 'primary' }],
         },
         legacyHidden: ['legacy-only'],
+        disclosure: {
+          primaryRoot: '/new',
+          roots: [
+            { name: 'New Root', path: '/new', rawPath: '/new', role: 'primary' },
+            { name: 'CoCoder', path: '/cocoder', rawPath: '${COCODER_HOME}', role: 'readonly' },
+          ],
+          initializedRepo: true,
+          baselineCommitted: true,
+          outsideCocoderFiles: ['.gitignore'],
+        },
       }),
     }))
     render(<App />)
@@ -751,7 +768,13 @@ describe('Oz renderer — live daemon path', () => {
         { name: 'CoCoder', path: '${COCODER_HOME}', role: 'readonly' },
       ],
     })
-    await waitFor(() => expect(screen.getByText('Legacy workspaces no longer served: legacy-only')).toBeDefined())
+    await waitFor(() => expect(screen.getByText(/Workspace created\./)).toBeDefined())
+    expect(screen.getByText(/Primary root: \/new\./)).toBeDefined()
+    expect(screen.getByText(/primary: \/new; readonly: \$\{COCODER_HOME\}/)).toBeDefined()
+    expect(screen.getByText(/Git initialized: yes\./)).toBeDefined()
+    expect(screen.getByText(/Baseline commit: yes\./)).toBeDefined()
+    expect(screen.getByText(/Outside cocoder\/: \.gitignore\./)).toBeDefined()
+    expect(screen.getByText(/Legacy workspaces no longer served: legacy-only\./)).toBeDefined()
   })
 
   it('shows and launches a seeded onboarding priority after recreating the same workspace id', async () => {
@@ -788,6 +811,7 @@ describe('Oz renderer — live daemon path', () => {
           roots: [{ name: 'CoCoder', path: '/recreated', rawPath: '/recreated', role: 'primary' }],
         },
         legacyHidden: [],
+        disclosure: workspaceDisclosure('/recreated'),
       })
     }
     setOz(oz)
