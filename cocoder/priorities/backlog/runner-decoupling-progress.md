@@ -29,6 +29,99 @@ next session. Do not start the following chunk in this session.
 
 ---
 
+## 2026-06-24 — WS3, step 4 (route the baseline import onto the spine — WS3 COMPLETE)
+
+- **Workstream/step:** WS3 (One commit spine), step 4 — route the LAST raw `git.addAndCommit` caller in the
+  codebase (`daemon/src/routes.ts:434`, `commitBaselineTree`) onto the spine's `commitFiles`. **WS3 is now
+  COMPLETE: every commit in the codebase funnels through `commit-gate/workspace-commit.ts`.** Re-grep
+  confirms the only `.addAndCommit(` call sites left in `packages/*/src` are the spine's own two
+  (`workspace-commit.ts:69`, `:92`); no raw caller remains.
+- **The swap (byte-identical args):** `await ctx.git.addAndCommit(repoPath, ['.'], 'chore: import existing
+  tree (baseline)', COCODER_GOVERNANCE_AUTHOR)` → `const receipt = await commitFiles(ctx.git, repoPath,
+  ['.'], 'chore: import existing tree (baseline)', COCODER_GOVERNANCE_AUTHOR); if (receipt.error !== null)
+  throw new Error(receipt.error)`. `commitFiles` passes `['.']` straight to `addAndCommit` — same repo, list,
+  message, author. The `changedFiles().length === 0` early-return guard above is byte-unchanged.
+- **Decision (resolved explicitly, per the prompt's DESIGN):**
+  - **`commitFiles`, NOT `commitScoped`.** `['.']` is a FIXED daemon-authored "commit everything as a baseline
+    import" argument — `git add .` captures UNTRACKED files (the new repo's whole tree). `commitScoped` would
+    (a) re-read `changedFiles` (a SECOND read after the guard) and (b) commit that specific list instead of
+    `['.']`, DROPPING untracked files `git add .` would have captured — a behavior change. The daemon authored
+    the `['.']` argument, so the controlled-list `commitFiles` is the contract-correct, behavior-preserving
+    primitive (no scope partition, no second read).
+  - **PRESERVE throw-on-failure.** The old direct `addAndCommit` THREW on failure; the throw propagates out of
+    `commitBaselineTree` (line 845 is OUTSIDE createWorkspace's try/catch, which ends at the scaffold step) →
+    `dispatchMutations` → `handle().catch()` (`server.ts:172`) → **500 "internal error"**. `commitFiles`
+    SURFACES a failure as `{committed:false, error}` WITHOUT throwing, so the swap re-throws on `receipt.error`
+    — a failed baseline import is NEVER swallowed into a 201 success. (Mirrors `commitGovernance`'s receipt
+    check, but that path audits + returns the receipt by design; baseline must THROW, so it re-throws.)
+  - **No recording.** Confirmed `commitBaselineTree` records NOTHING — no store event, no audit-log line (it
+    only calls the primitive). The daemon's durable home is the audit log/SSE, NOT the store event log, and
+    this path emits to neither, so the WS3.3 `recordSuccessfulCommit` helper does NOT apply (it is a core
+    store-event helper). Only the throw-on-failure propagation is preserved.
+- **Map (owner → primitive → callers → tests, re-grepped before editing):**
+  - *Owner / only remaining raw caller:* `commitBaselineTree` (`routes.ts:432`). Sole call site:
+    `createWorkspace` (`routes.ts:845`), gated by `baselineCommitted = initializedRepo && receipt.committed`
+    (so baseline runs only for a freshly-`initRepo`'d primary root whose governance commit succeeded).
+  - *Spine target (unchanged):* `commitFiles(git, repo, files, msg, author?)` (`workspace-commit.ts:60`) —
+    error XOR sha, records nothing. Import added to `routes.ts`'s `@cocoder/core` block.
+  - *Sibling already on the spine (the pattern mirrored):* `commitGovernance` (`launcher.ts:434`) wraps
+    `commitFiles`; the other daemon commit paths (`launcher.ts` `commitFiles:435`, `runCommitGate:1013`,
+    `gateCommitRepair:1234/1777`) already sit on the spine. This chunk finished the daemon side.
+  - *Tests pinning the behavior:* `mutations.test.ts` `POST /workspaces initializes and commits governance
+    for a non-git primary root` (real-git baseline SUCCESS pin — `git log -1` is `chore: import existing tree
+    (baseline)`, `package.json`/`src/app.ts` committed, `node_modules` gitignore-skipped) and `…leaves an
+    existing git root remote and root gitignore untouched` (baseline-SKIPPED pin, `baselineCommitted:false`).
+    Both pin the observable CONTRACT (git state / message / disclosure), not the raw primitive, so the swap
+    leaves them green with NO rewrite. NEW: `POST /workspaces surfaces a baseline-import commit failure as a
+    500 (never a silent success)`.
+- **Tests-first (the new pin):** added `mutations.test.ts` — a git that delegates to real `makeGit()` for
+  every call EXCEPT `addAndCommit(['.'])`, which throws. Governance commits really (real sha →
+  `baselineCommitted` true → baseline runs), the baseline `['.']` commit throws → asserts **500** AND that
+  the workspace is NOT surfaced by `GET /workspaces` (the registry write happens AFTER `commitBaselineTree`,
+  so the throw leaves it unregistered). This is NOT red→green (pre-swap the raw `addAndCommit` threw to the
+  same 500); like the WS3.1 pin its teeth are regression: if a future edit drops the `receipt.error` re-throw
+  and lets `commitFiles` swallow the failure, baseline would report a phantom 201 and this pin goes red.
+- **Why ADDITIVE / behavior-preserving:** byte-identical commit args, same `git add .` untracked-capture
+  semantics, same throw→500 on failure, no store/audit/SSE change, no surface shift. A fake git cannot
+  distinguish a direct `addAndCommit` from a `commitFiles` call (both invoke `addAndCommit`); the real-git
+  success pin asserts the resulting git state, which is identical.
+- **Commit:** `94dd410` — "commit-gate(spine): WS3.4 — route the baseline import onto the spine (last raw
+  addAndCommit caller removed)". (Ledger entry committed separately, matching WS1.3/1.4/2.1/3.1/3.2/3.3.)
+- **Files:** `packages/daemon/src/routes.ts` (import `commitFiles`; swap `addAndCommit`→spine + re-throw on
+  receipt.error), `packages/daemon/tests/mutations.test.ts` (+1 throw-on-failure pin). Both are mine and
+  NOT in the eslint foreign list, so `git add` staged them directly; no surgical apply needed.
+- **Tests/results:** `pnpm --filter @cocoder/daemon test mutations` → 120 passed (incl. +1 new); `pnpm
+  --filter @cocoder/daemon test` → **346 passed** (was 345; +1 new); `pnpm --filter @cocoder/daemon
+  typecheck` → clean; root `pnpm typecheck` → clean (7 pkgs); `node scripts/check-topology.mjs` → passed
+  (same 2 pre-existing daemon test-helper warnings); root `pnpm test` → ALL green in ONE run (personas 29,
+  core 582, adapters 24, session-hosts 18, ui 161, cli 9, daemon 346) — the known Deb-watcher timer-race
+  flake family did NOT trip (this chunk is daemon-package only and does not touch the Deb watcher or runner).
+- **Residual risk:** WS3 is COMPLETE — one module (`workspace-commit.ts`) owns "write tracked files + return
+  a receipt"; ALL callers use it; the in-run recording is centralized (WS3.3, except P5 by design); the
+  run_231 sweep-guard (`runner.test.ts:3688`/`:3819`) still holds (untouched this chunk). Each caller still
+  owns its own failure convention by design (re-throw / `deb-repair-commit-failed` / throw /
+  `DirtyWorkingTreeError` / baseline re-throw→500) — intended, not duplication. The unrelated eslint-adoption
+  dirt (`eslint.config.mjs`, `run.ts`, `read-claims.ts`, `p3-action.ts`, `frontmatter.ts`, `runner.ts`'s
+  `SessionRef` import hunk, `oz-host.ts`, `proof-daemon-reload.mjs`, `tsconfig.eslint.json`) was preserved,
+  NOT committed — routes.ts/mutations.test.ts are mine and staged directly; no surgical apply.
+- **Exact next step (WS4 — de-flake the Deb-watcher stall family):** WS3 is done; per the priority's ordering
+  WS4 is next, and its NAMED deliverable (the prerequisite all prior WS3 entries flagged "do BEFORE any
+  watcher change") is **de-flaking the Deb-watcher stall family**: at least `Deb-backed watchdog nudges an
+  idle Oscar`, `writes a live status feed so Deb can report concrete run state`, `actionable stall Deb watch
+  writes current lastDispatch before prompting Deb`, and `Deb watch dispatches are non-blocking …` (passes in
+  isolation, fails intermittently ~1 per several full-parallel `pnpm test` runs — NOT a regression). Root
+  cause (per WS spec): they exercise timer-based stall logic against REAL timers while the orchestration code
+  already injects its clock (`now`) — the tests just don't pin it, so stall timing races the suite's load.
+  Fix: inject/pin the clock (and `sleep`) in those tests so stall timing is deterministic, not wall-clock
+  dependent (the WS2.1 `ws2-prose-inert.test.ts` is the precedent — it drives `runMonitor` over a constant
+  frame with injected `sleep`/`now`). Map the Deb watcher (`startDebWatcher`, `runner.ts:~1295`) and its
+  injected clock seam first; tests-first; the full suite must be green across REPEATED full-parallel runs
+  (restoring "green at every commit" as a clean signal). Then WS5 (split `runner.ts`) is unblocked (it
+  requires WS4's test-hardening). This is a `@cocoder/core` runner-tests chunk — verify with the core +
+  full command set; run `pnpm test` MULTIPLE times to confirm the flake is gone.
+
+---
+
 ## 2026-06-24 — WS3, step 3 (centralize the SUCCESS-path recording onto one helper)
 
 - **Workstream/step:** WS3 (One commit spine), step 3 — CENTRALIZE THE SUCCESS-PATH RECORDING ONLY
