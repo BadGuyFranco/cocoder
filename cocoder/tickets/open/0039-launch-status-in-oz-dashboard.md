@@ -10,7 +10,24 @@ created: 2026-06-23
 
 # 0039 — Launch Status in Oz Dashboard
 
-When launching a priority or ticket - there's a 6 second wait. before the cmux session launches. First - diagnose why the delay. 
-a. if there's a built in delay, why is it there?
-b. if there's a genuine issue with launch, we need to understand and fix it
-c. if the delay is needed due to the launch process we need to pop up a modal window in oz while the launch is happening to inform the user of the process - then close the window when the launch is successful
+When launching a priority or ticket there is a ~6 second delay before the cmux session launches.
+
+## Original diagnostic tasks
+a. If there's a built-in delay, why is it there?
+b. If there's a genuine issue with launch, understand and fix it.
+c. If the delay is needed due to the launch process, surface a status modal while launch is happening.
+
+## Updated UX requirement (2026-06-24)
+
+A launch status modal was implemented with Oscar/Bob/Deb progress bars. This is **not working well**:
+- The progress bars are near-static — they load all at once at the end rather than showing real-time progress
+- The bars do not reflect where actual time is being spent
+- The pause still feels unexplained to the user
+
+**New direction:** Replace the Oscar/Bob/Deb progress bar UI with a simple spinning progress wheel (no per-agent bars). If real timing data is available, show a one-line status label describing the current launch phase. Otherwise a plain spinner is preferable to the static multi-bar display.
+
+**Acceptance criteria:**
+- Launch modal shows a spinner for the duration of the delay
+- No static progress bars that give false impression of activity
+- Modal closes when launch is confirmed successful
+- Optionally: a short status line (e.g. "Starting workspace…") if phase information is cheaply available
