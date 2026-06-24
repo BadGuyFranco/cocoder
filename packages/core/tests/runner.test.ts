@@ -2749,6 +2749,9 @@ describe('runRun (multi-atom loop)', () => {
     const statusWrites: DebStatus[] = []
     const sent: Array<{ ref: string; text: string }> = []
     const blockerReply = 'The atom requires creating `cocoder/decisions/0040-oz-write-side-autonomy.md`, but its declared write scope is `packages/**`. I need an explicit one-file override.'
+    // Bob reports the blocker the ONLY way the contract allows: a standalone, per-atom-numbered marker line
+    // (never free prose — that is the run_231 false-positive class the marker contract closes).
+    const blockerMarkerLine = `<<<COCODER-ATOM-0-BLOCKED: ${blockerReply}>>>`
     let judgeCalls = 0
     const stuckThenProgressing: MakeJudge = () => async () => {
       judgeCalls += 1
@@ -2767,7 +2770,7 @@ describe('runRun (multi-atom loop)', () => {
             async readScreen(ref) {
               if (ref.id !== 'surface:2') return ''
               return sent.some((item) => item.ref === 'surface:2' && item.text.includes('what is blocking you'))
-                ? blockerReply
+                ? blockerMarkerLine
                 : 'Working through the task.'
             },
             async sendInput(ref, text) {
@@ -3573,6 +3576,71 @@ describe('runRun (multi-atom loop)', () => {
     expect(commits).toContainEqual(['cocoder/priorities/x.md'])
     expect(events.find((e) => e.type === 'out-of-scope-committed')).toBeUndefined()
     expect(store.listCommitLinks(runId).filter((c) => !c.message.startsWith('run-history: ')).flatMap((c) => c.files)).toEqual(['cocoder/priorities/x.md'])
+    expect(store.getRun(runId)?.status).toBe('failed') // a repair never rescues the run
+  })
+
+  test('a builder fault quarantines the atom residue before Deb triages, so a deb-repair commit cannot sweep it (run_231)', async () => {
+    const store = openRunStore(':memory:')
+    const debRepair = persona({ id: 'deb', cli: 'claude', writeScope: ['cocoder/**'] })
+    const residue = ['eslint.config.mjs', 'package.json'] // the faulted builder's out-of-lane WIP, left dirty
+    const debEdit = ['cocoder/PLAYBOOK.md'] // Deb's actual repair, written during triage
+    // Repair mode with NO filesChanged → exercises the unbounded whole-tree repair gate (the exact path
+    // that swept the dirty ticket-0048 lint work in run_231). The fix is upstream: the runner quarantines
+    // the faulted atom's residue BEFORE the fault reaches Deb, so the gate can only ever see Deb's edit.
+    const io = fakeIO({
+      directives: [delegate('adopt the linter')],
+      triage: { disposition: 'cocoder-bug', summary: 'false blocker classification', mode: 'repair', diagnosis: 'd', whyCocoderOwned: 'runner-owned', verification: 'unit tests' },
+    })
+    let changedCalls = 0
+    const restored: string[] = []
+    const commits: string[][] = []
+    const git: Git = {
+      ...worktreeStubs,
+      async headSha() {
+        return 'h0'
+      },
+      async changedFiles() {
+        changedCalls += 1
+        if (changedCalls === 1) return [] // launch guard: clean tree
+        if (changedCalls === 2) return residue // quarantine sees the faulted atom's residue
+        return debEdit // after quarantine, only Deb's repair edit remains dirty
+      },
+      async restoreToHead(_cwd, files) {
+        restored.push(...files)
+      },
+      async addAndCommit(_cwd, files) {
+        commits.push([...files])
+        return 'sha-repair'
+      },
+      async show() {
+        return ''
+      },
+    }
+    await expect(
+      runRun(
+        baseDeps({
+          store,
+          io,
+          git,
+          sessionHost: fakeSessionHost({
+            async readScreen(ref) {
+              return ref.id === 'surface:2' ? '<<<COCODER-ATOM-0-BLOCKED: the atom needs creating files the builder cannot author>>>' : ''
+            },
+          }),
+          timeouts: { orchestrationMs: 200, buildMs: 200, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 },
+        }),
+        { ...input, deb: debRepair },
+      ),
+    ).rejects.toThrow(/builder reported/)
+    const runId = store.listRuns()[0]!.id
+    const events = store.listEvents(runId)
+    // The faulted atom's residue was quarantined (restored to HEAD) BEFORE the fault reached triage.
+    expect(events.find((e) => e.type === 'atom-quarantined')?.data).toMatchObject({ atom: 0, files: residue })
+    expect(restored).toEqual(expect.arrayContaining(residue))
+    // Deb's repair commit contains ONLY her edit — the residue was never swept into a deb-repair commit.
+    expect(events.find((e) => e.type === 'deb-repair')?.data).toMatchObject({ committedSha: 'sha-repair', files: debEdit })
+    expect(commits.flat()).not.toContain('eslint.config.mjs')
+    expect(commits.flat()).not.toContain('package.json')
     expect(store.getRun(runId)?.status).toBe('failed') // a repair never rescues the run
   })
 

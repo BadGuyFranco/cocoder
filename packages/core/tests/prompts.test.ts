@@ -48,8 +48,14 @@ const manifestPlay = (overrides: Partial<Play>): Play => ({
 describe('buildBuilderDispatch', () => {
   test('keeps non-loop dispatch text unchanged', () => {
     expect(buildBuilderDispatch('/runs/run_1/directive-2.json', 2)).toBe(
-      'PROCEED — this is atom 2. Read your task from /runs/run_1/directive-2.json and implement it now within your write-scope. When you are fully done (tests/typecheck run), print your completion marker for atom 2 on its own line, exactly as your standby instructions describe.',
+      'PROCEED — this is atom 2. Read your task from /runs/run_1/directive-2.json and implement it now within your write-scope. When you are fully done (tests/typecheck run), print your completion marker for atom 2 on its own line, exactly as your standby instructions describe. If you truly cannot proceed, print your blocker marker for atom 2 instead (the standby format) — never just narrate that you are stuck.',
     )
+  })
+
+  test('the dispatch text never contains a concrete BLOCKED marker (echo-proof: it points at the standby format)', () => {
+    const text = buildBuilderDispatch('/runs/run_1/directive-2.json', 2)
+    expect(text).not.toMatch(/<<<COCODER-ATOM-2-BLOCKED/)
+    expect(text).not.toMatch(/<<<COCODER-ATOM-2-DONE/)
   })
 
   test('adds the loop ledger contract only for loop atoms', () => {

@@ -214,7 +214,7 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
         {
           readScreen: () => bobDriver.readScreen(),
           judge: async (sample) => {
-            const blocker = detectBuilderBlocker(sample.frame)
+            const blocker = detectBuilderBlocker(sample.frame, atomIndex)
             if (blocker !== null) {
               latestBuilderBlocker = blocker
               return { state: 'blocked', note: `${blocker.category}: ${blocker.reply}` }
@@ -284,6 +284,12 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
       }
       if (outcome.reason !== 'done') {
         store.setWorkItemStatus(workItem.id, 'abandoned')
+        // Isolate this faulted atom's produced work BEFORE the fault funnels into triage. Without this the
+        // builder's incomplete, possibly out-of-lane residue stays dirty in the tree, and Deb's repair
+        // commit-gate would sweep it into a deb-repair commit (run_231). Quarantine is recoverable
+        // (restored to HEAD, untracked stashed under runDir) and matches the reject/loop-cap/stop paths.
+        await quarantineAtom(atomIndex, headBefore, 'atom-self-committed-faulted')
+        setActiveAtom(null)
         const blocker = latestBlocker()
         if (outcome.reason === 'blocked' && blocker !== null) {
           return await fail('builder-blocked', `builder reported ${blocker.category} on atom ${atomIndex}: ${blocker.reply}`, atomIndex)

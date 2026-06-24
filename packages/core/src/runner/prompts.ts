@@ -532,6 +532,13 @@ ${scope}
    dispatch names. That standalone line is how CoCoder knows the atom is done — your session stays open
    for the next atom; it does not exit. (Do not print the marker until the work is actually finished.)
 
+If you genuinely CANNOT proceed — the atom requires writing outside your write-scope, depends on a
+missing prerequisite, or is otherwise impossible as scoped — do NOT guess, improvise, or silently stop.
+Print a BLOCKER marker on its OWN line, nothing else on it: \`<<<COCODER-ATOM-#-BLOCKED: <one-line
+reason>>>\` with \`#\` replaced by the atom number. That standalone marker is the ONLY way to report a
+blocker — prose saying you are stuck is invisible to the runner, and the runner never infers a blocker
+from ordinary text (including this instruction). Print it ONLY when truly blocked, never to narrate.
+
 The orchestrator watches your pane live and may nudge you if you stall; keep working visibly.`
 }
 
@@ -572,6 +579,11 @@ that line: the literal text \`<<<COCODER-ATOM-#-DONE>>>\` with \`#\` replaced by
 dispatch names. That standalone line is how CoCoder knows the atom is done. Do not print the marker
 until the work is actually finished.
 
+If you genuinely CANNOT proceed (the atom needs writes outside your scope, a missing prerequisite, or is
+impossible as scoped), do NOT guess or silently stop: print a BLOCKER marker on its OWN line, nothing
+else on it — \`<<<COCODER-ATOM-#-BLOCKED: <one-line reason>>>\` with \`#\` the atom number. That marker is
+the ONLY way to report a blocker; prose is invisible to the runner. Print it ONLY when truly blocked.
+
 ---
 # Dispatch
 
@@ -582,7 +594,7 @@ ${input.dispatch}`
  *  read and the atom NUMBER — never the literal completion marker, so the monitor cannot match the
  *  marker from this instruction's own echo (dogfood bug). Bob forms the marker per the standby prompt. */
 export function buildBuilderDispatch(directivePath: string, atomIndex: number, loopLedgerPath?: string): string {
-  const base = `PROCEED — this is atom ${atomIndex}. Read your task from ${directivePath} and implement it now within your write-scope. When you are fully done (tests/typecheck run), print your completion marker for atom ${atomIndex} on its own line, exactly as your standby instructions describe.`
+  const base = `PROCEED — this is atom ${atomIndex}. Read your task from ${directivePath} and implement it now within your write-scope. When you are fully done (tests/typecheck run), print your completion marker for atom ${atomIndex} on its own line, exactly as your standby instructions describe. If you truly cannot proceed, print your blocker marker for atom ${atomIndex} instead (the standby format) — never just narrate that you are stuck.`
   if (loopLedgerPath === undefined) return base
   return `${base} This is a loop atom: after each completed iteration, append one JSON line to ${loopLedgerPath} with at minimum {"iteration":<1-based int>,"result":"green"|"red","failed":"<what failed>","changed":"<what changed>","inScope":<bool>}.`
 }
