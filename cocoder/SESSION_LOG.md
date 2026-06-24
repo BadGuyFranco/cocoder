@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-24 — **local-preferences: design-spec default landed; blocked on scope + seeding ratification (run_78)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [local-preferences](./priorities/local-preferences.md) | **Run:** run_222 (display 78)
+**Outcomes:**
+- **Atom 0 (`9a3e5e1`) — deliverable #2 (default design spec).** Single-owner doc `packages/ui/src/renderer/styles/design-spec.md` catalogs the dashboard `--cb-*` token system (color/surface, typography, spacing/radius, motion) plus core component patterns and the workspace-specified-wins resolution rule; values verified against `fusion.css`/`oz.css` (dark + light); no CSS modified; typecheck green.
+- **Decision-gate finding (evidence-backed, awaits founder).** `scaffoldCocoderZone` create-only copy from `templates/workspace-cocoder/cocoder/**` seeds per-repo defaults; workspace values never overwritten — satisfies "default when unspecified" with no new mechanism (reconciled ADR-0026/0027). Recommended: template-seed home; design-spec owner stays co-located with CSS; tech-stack owner is `templates/.../memory/tech-stack.md`.
+- **Disposition: `blocked`.** Deliverable #1 (tech-stack default) must write `templates/workspace-cocoder/**`, outside Bob's `packages/**` writeScope; scope mechanics need founder ratification before next atom.
+**Next:** Founder ratifies scope path (1a: widen Bob to `templates/workspace-cocoder/**` recommended) + design-spec template pointer seeding; relaunch `local-preferences` to author pinned tech-stack default.
+
 ## 2026-06-24 — **oz-file-access: denylist inversion shipped — archive-candidate pending live Oz proof (run_77)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [oz-file-access](./priorities/oz-file-access.md) | **Run:** run_77
