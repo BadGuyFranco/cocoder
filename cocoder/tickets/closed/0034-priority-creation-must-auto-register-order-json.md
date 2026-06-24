@@ -2,7 +2,7 @@
 id: 0034
 title: Priority creation must auto-register in order.json (prevent orphans at source)
 type: task
-status: Open
+status: Closed
 priority: oz-autonomy
 owner: Deb
 created: 2026-06-23
@@ -57,3 +57,9 @@ inherit it.
 - Relates to: ticket 0032 (closed), ADR-0038, ADR-0010, ADR-0025.
 - Surfaced by the founder at run_195 wrap: the guard alone is insufficient because "someone fixes the red CI"
   has no reliable owner here, and the orphan can still be created in the first place.
+
+## Resolution
+
+Resolved by run run_208 (163dcfa947f29fa591b96efbb13eb9000ce1fda0) on 2026-06-24.
+
+Priority creation now registers live priorities through registerLivePriorities before commit; daemon create-priority and authoring-Play paths commit order.json with the priority file, ADR-0038 records detect-to-prevent, and route/Play/orphan-guard tests are green.
