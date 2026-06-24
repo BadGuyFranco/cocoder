@@ -26,6 +26,7 @@ import {
   truncate,
   workspaceTemplateDir,
   COCODER_GOVERNANCE_AUTHOR,
+  commitFiles,
   writePortableCounters,
   type CommitReceipt,
   type PersonaAssignment,
@@ -431,7 +432,14 @@ async function seedStarterRootGitignore(root: string): Promise<string | null> {
 
 async function commitBaselineTree(ctx: OzContext, repoPath: string): Promise<void> {
   if ((await ctx.git.changedFiles(repoPath)).length === 0) return
-  await ctx.git.addAndCommit(repoPath, ['.'], 'chore: import existing tree (baseline)', COCODER_GOVERNANCE_AUTHOR)
+  // Route the baseline import through the commit spine (the last raw addAndCommit caller). ['.'] is a
+  // daemon-authored controlled list — `git add .` captures untracked files, so this is commitFiles, not
+  // commitScoped (which would re-read changedFiles and drop untracked paths). The spine surfaces a commit
+  // failure in the receipt instead of throwing, so re-throw on error to preserve commitBaselineTree's
+  // throw-on-failure contract (a failed baseline import propagates to the route's 500 handler, never
+  // reports a silent success).
+  const receipt = await commitFiles(ctx.git, repoPath, ['.'], 'chore: import existing tree (baseline)', COCODER_GOVERNANCE_AUTHOR)
+  if (receipt.error !== null) throw new Error(receipt.error)
 }
 
 /** GET /workspaces — surface 1. */

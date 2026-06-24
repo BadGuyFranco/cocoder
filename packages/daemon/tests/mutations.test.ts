@@ -2864,6 +2864,38 @@ describe('Oz mutations + lifecycle', () => {
     expect(audit).toContain('nongit-product')
   })
 
+  test('POST /workspaces surfaces a baseline-import commit failure as a 500 (never a silent success)', async () => {
+    // WS3 spine contract: commitBaselineTree routes ['.'] through commitFiles, which surfaces a commit
+    // failure in the receipt instead of throwing. The re-throw must preserve the old raw-addAndCommit
+    // behavior — a failed baseline import propagates to the 500 handler and is NEVER swallowed into a 201.
+    const git = makeGit()
+    await startServer({
+      ...git,
+      async addAndCommit(cwd, files, message, author) {
+        if (files.length === 1 && files[0] === '.') throw new Error('baseline import boom')
+        return git.addAndCommit(cwd, files, message, author)
+      },
+    })
+    const workspaceRoot = await mkdtemp(join(tmpdir(), 'cocoder-baseline-fail-workspace-'))
+    await writeFile(join(workspaceRoot, 'package.json'), '{"name":"product"}\n')
+
+    const r = await call(oz!, 'POST', '/workspaces', {
+      body: {
+        id: 'baseline-fail-product',
+        folders: [
+          { path: workspaceRoot, role: 'primary' },
+          { path: '${COCODER_HOME}', role: 'readonly' },
+        ],
+      },
+    })
+
+    expect(r.status).toBe(500)
+    // The workspace registry write happens AFTER commitBaselineTree, so the throw must leave the workspace
+    // unregistered — it is never surfaced as a created workspace.
+    const list = await call(oz!, 'GET', '/workspaces')
+    expect(list.json.workspaces.map((w: any) => w.id)).not.toContain('baseline-fail-product')
+  })
+
   test('POST /workspaces leaves an existing git root remote and root gitignore untouched', async () => {
     const workspaceRoot = await mkdtemp(join(tmpdir(), 'cocoder-existing-git-workspace-'))
     await exec('git', ['-C', workspaceRoot, 'init', '-b', 'main'])
