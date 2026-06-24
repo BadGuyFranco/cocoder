@@ -2914,9 +2914,23 @@ describe('runRun (multi-atom loop)', () => {
   test('writes a live status feed so Deb can report concrete run state (ADR-0016)', async () => {
     const store = openRunStore(':memory:')
     const statusWrites: DebStatus[] = []
-    await runRun(baseDeps({ store, io: fakeIO({ directives: [delegate('do x'), wrapup('done')], statusWrites }) }), { ...input, deb })
+    const terminalSnapshotWrites: DebTerminalSnapshot[] = []
+    const sent: string[] = []
+    await runRun(
+      baseDeps({
+        store,
+        io: fakeIO({ directives: [delegate('do x'), wrapup('done')], statusWrites, terminalSnapshotWrites }),
+        sessionHost: fakeSessionHost({
+          async sendInput(_ref, text) {
+            sent.push(text)
+          },
+        }),
+      }),
+      { ...input, deb },
+    )
     // The feed only exists for a Deb-backed run, and it carries evidence (state + wait condition).
     expect(statusWrites.length).toBeGreaterThan(0)
+    expect(terminalSnapshotWrites).toHaveLength(statusWrites.length)
     expect(statusWrites[0]).toMatchObject({ oscar: 'waiting', bob: 'standby', waitCondition: 'awaiting first directive' })
     expect(statusWrites.some((s) => s.bob === 'running' && s.waitCondition.includes('monitoring builder'))).toBe(true)
     expect(statusWrites.some((s) => s.oscar === 'verifying' && s.verify === 'pending')).toBe(true)
@@ -2927,9 +2941,11 @@ describe('runRun (multi-atom loop)', () => {
     expect(statusWrites.at(-1)?.waitCondition).not.toContain('file-changing follow-ups need a new committed run path')
     const events = store.listEvents(store.listRuns()[0]!.id)
     expect(events.some((e) => e.type === 'deb-watch-started')).toBe(true)
-    expect(events.some((e) => e.type === 'deb-watch-dispatch')).toBe(true)
+    expect(events.some((e) => e.type === 'deb-watch-dispatch')).toBe(false)
     expect(events.some((e) => e.type === 'deb-status' && (e.data as { waitCondition?: string }).waitCondition === 'awaiting first directive')).toBe(true)
+    expect(events.filter((e) => e.type === 'deb-status')).toHaveLength(statusWrites.length)
     expect(events.some((e) => e.type === 'deb-watch-stopped')).toBe(true)
+    expect(sent.some((text) => text.startsWith('DEB WATCH'))).toBe(false)
 
     const noDebStore = openRunStore(':memory:')
     const noDebStatus: DebStatus[] = []
@@ -2966,21 +2982,106 @@ describe('runRun (multi-atom loop)', () => {
     expect(noDebSnapshots).toHaveLength(0)
   })
 
-  test('Deb watch dispatches are non-blocking when Deb is silent', async () => {
+  test('Deb watch dispatches are non-blocking when Deb is silent on an actionable stall', async () => {
     const store = openRunStore(':memory:')
+    const directives = [delegate('do it'), wrapup('done')]
+    let i = 0
+    const io: RunnerIO = {
+      ...fakeIO({ directives }),
+      async awaitDirective() {
+        if (i === 0) await sleep(20)
+        const d = directives[i++]
+        if (!d) throw new Error('test: ran out of scripted directives')
+        return d
+      },
+    }
     const result = await runRun(
       baseDeps({
         store,
+        io,
         sessionHost: fakeSessionHost({
           async sendInput(_ref, text) {
             if (text.startsWith('DEB WATCH')) return new Promise<void>(() => {})
           },
         }),
+        timeouts: { orchestrationMs: 200, buildMs: 200, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 },
       }),
       { ...input, deb },
     )
     expect(result.status).toBe('completed')
-    expect(store.listEvents(result.runId).some((e) => e.type === 'deb-watch-dispatch')).toBe(true)
+    expect(store.listEvents(result.runId).filter((e) => e.type === 'deb-watch-dispatch')).toHaveLength(1)
+  })
+
+  test('actionable stall Deb watch writes current lastDispatch before prompting Deb', async () => {
+    const store = openRunStore(':memory:')
+    const directives = [delegate('do it'), wrapup('done')]
+    const statusWrites: DebStatus[] = []
+    const debWatchPrompts: string[] = []
+    let i = 0
+    const io: RunnerIO = {
+      ...fakeIO({ directives, statusWrites }),
+      async awaitDirective() {
+        if (i === 0) await sleep(20)
+        const d = directives[i++]
+        if (!d) throw new Error('test: ran out of scripted directives')
+        return d
+      },
+    }
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        io,
+        sessionHost: fakeSessionHost({
+          async sendInput(_ref, text) {
+            if (!text.startsWith('DEB WATCH')) return
+            const detail = text.slice('DEB WATCH - '.length).split('\n')[0]!
+            debWatchPrompts.push(detail)
+            expect(statusWrites.at(-1)?.watch.lastDispatch).toBe(detail)
+          },
+        }),
+        timeouts: { orchestrationMs: 200, buildMs: 200, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 },
+      }),
+      { ...input, deb },
+    )
+
+    expect(result.status).toBe('completed')
+    expect(debWatchPrompts).toHaveLength(1)
+    const dispatch = store.listEvents(result.runId).find((e) => e.type === 'deb-watch-dispatch')
+    expect(dispatch?.data).toMatchObject({ kind: 'stall', detail: debWatchPrompts[0] })
+    expect(statusWrites.some((status) => status.watch.lastDispatch === debWatchPrompts[0])).toBe(true)
+  })
+
+  test('actionable fault reaches Deb triage without a duplicate Deb watch prompt', async () => {
+    const store = openRunStore(':memory:')
+    const sent: string[] = []
+    const io: RunnerIO = {
+      ...fakeIO({ directives: [] }),
+      async awaitDirective() {
+        throw new Error('no valid directive within 1ms')
+      },
+    }
+
+    await expect(
+      runRun(
+        baseDeps({
+          store,
+          io,
+          sessionHost: fakeSessionHost({
+            async sendInput(_ref, text) {
+              sent.push(text)
+            },
+          }),
+          timeouts: { orchestrationMs: 50, buildMs: 50, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 },
+        }),
+        { ...input, deb },
+      ),
+    ).rejects.toThrow(/no valid directive/)
+    const runId = store.listRuns()[0]!.id
+    expect(sent.filter((text) => text.startsWith('TRIAGE'))).toHaveLength(1)
+    expect(sent.some((text) => text.startsWith('DEB WATCH'))).toBe(false)
+    expect(store.listEvents(runId).filter((e) => e.type === 'triage-dispatch')).toHaveLength(1)
+    expect(store.listEvents(runId).some((e) => e.type === 'deb-watch-dispatch')).toBe(false)
   })
 
   test('delivers a Deb-authored nudge to Oscar (Deb advises; the runner delivers — ADR-0016)', async () => {

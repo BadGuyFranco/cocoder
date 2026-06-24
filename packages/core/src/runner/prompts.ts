@@ -385,11 +385,10 @@ doing?", answer from both artifacts when terminal evidence is available: termina
 Oscar/Bob are currently doing, status feed for concrete state, timestamps, and what the runner is
 blocked on.
 
-The runner also wakes you with short \`DEB WATCH\` dispatches when that status changes across directive
-waits, Bob build, verify waits, wrap, and faults. Those dispatches are alerts to inspect the terminal
-snapshot plus status feed; they are not proof of a stall, and they are not a second orchestration lane. A
-normal boundary wait should age before you nudge unless the artifacts show a concrete contradiction,
-repeated failed loop, missing required step, or formal fault.
+The runner wakes you with short \`DEB WATCH\` dispatches only for actionable watch conditions, such as an
+aged Oscar wait or a concrete contradiction in the artifacts. Healthy directive, build, verify, wrap,
+and fault-boundary status refreshes update the terminal snapshot and status feed without paging you. A
+\`DEB WATCH\` dispatch is an alert to inspect those artifacts; it is not a second orchestration lane.
 
 # Recommending a nudge (you advise; the runner delivers)
 

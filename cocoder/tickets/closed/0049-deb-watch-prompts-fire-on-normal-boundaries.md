@@ -2,7 +2,7 @@
 id: 0049
 title: Deb watch prompts fire on normal run boundaries
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: deb
 created: 2026-06-24
@@ -51,3 +51,9 @@ state look stale or contradictory.
   `packages/core/tests/runner.test.ts`, and `packages/core/tests/status.test.ts`.
 - Related prior ticket: 0042 added Deb's terminal-snapshot evidence path. This ticket narrows when the
   runner should interrupt Deb, not whether Deb can read evidence.
+
+## Resolution
+
+Resolved by run run_226 (same repair commit) on 2026-06-24.
+
+Deb watch dispatches now stay decoupled from normal status refreshes. Healthy directive/build/verify/wrap boundary refreshes keep writing Deb status and terminal snapshots without pane prompts; actionable stall watch prompts record their dispatch before the status projection is written; fault handling remains the single triage prompt path.

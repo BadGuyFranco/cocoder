@@ -1120,14 +1120,47 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   let lastOzNudgeSeq = 0
   let lastDebWakeKey: string | null = null
   let lastDebWakeAt = Number.NEGATIVE_INFINITY
+  let lastDebBoundaryAt = Number.NEGATIVE_INFINITY
   let lastDebStatus: DebStatus | null = null
-  const wakeDeb = (kind: string, detail: string): void => {
-    if (!debRef) return
+  type DebWake = { readonly kind: string; readonly detail: string }
+  const writeDebEvidence = async (phase: RunnerPhase, activeAtom: number | null, activeTask: string | null, waitCondition: string): Promise<void> => {
+    const { json, markdown } = renderDebStatus({ store, runId: run.id, runDisplay, priority, scopes: debScopes, phase, activeAtom, activeTask, waitCondition })
+    await io.writeDebStatus(runDir, json, markdown)
+    const terminalSnapshot = await captureDebTerminalSnapshot({
+      runId: run.id,
+      readers: [
+        { label: 'oscar', refId: oscarDriver.refId, readScreen: () => oscarDriver.readScreen() },
+        { label: 'bob', refId: bobDriver.refId, readScreen: () => bobDriver.readScreen() },
+      ],
+    })
+    await io.writeDebTerminalSnapshot(runDir, terminalSnapshot, renderDebTerminalSnapshotMarkdown(terminalSnapshot))
+    lastDebStatus = json
+    store.recordEvent({
+      runId: run.id,
+      type: 'deb-status',
+      data: {
+        phase,
+        activeAtom,
+        waitCondition,
+        oscar: json.oscar,
+        bob: json.bob,
+        verify: json.verify,
+        watchActive: json.watch.active,
+        terminalSnapshot: 'deb-terminal-snapshot.json',
+      },
+    })
+  }
+  const recordDebWatchDispatch = (kind: string, detail: string): boolean => {
+    if (!debRef) return false
     const key = `${kind}:${detail}`
-    if (key === lastDebWakeKey) return
+    if (key === lastDebWakeKey) return false
     lastDebWakeKey = key
     lastDebWakeAt = now()
     store.recordEvent({ runId: run.id, type: 'deb-watch-dispatch', data: { kind, detail } })
+    return true
+  }
+  const sendDebWatch = (kind: string, detail: string): void => {
+    if (!debRef) return
     void sessionHost
       .sendInput(
         debRef,
@@ -1137,35 +1170,13 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         store.recordEvent({ runId: run.id, type: 'deb-watch-dispatch-failed', data: { kind, detail, message: err instanceof Error ? err.message : String(err) } })
       })
   }
-  const refreshStatus = async (phase: RunnerPhase, activeAtom: number | null, activeTask: string | null, waitCondition: string): Promise<void> => {
+  const refreshStatus = async (phase: RunnerPhase, activeAtom: number | null, activeTask: string | null, waitCondition: string, wake?: DebWake): Promise<void> => {
     if (!debRef) return // status feed exists only for a Deb-backed run
     try {
-      const { json, markdown } = renderDebStatus({ store, runId: run.id, runDisplay, priority, scopes: debScopes, phase, activeAtom, activeTask, waitCondition })
-      await io.writeDebStatus(runDir, json, markdown)
-      const terminalSnapshot = await captureDebTerminalSnapshot({
-        runId: run.id,
-        readers: [
-          { label: 'oscar', refId: oscarDriver.refId, readScreen: () => oscarDriver.readScreen() },
-          { label: 'bob', refId: bobDriver.refId, readScreen: () => bobDriver.readScreen() },
-        ],
-      })
-      await io.writeDebTerminalSnapshot(runDir, terminalSnapshot, renderDebTerminalSnapshotMarkdown(terminalSnapshot))
-      lastDebStatus = json
-      store.recordEvent({
-        runId: run.id,
-        type: 'deb-status',
-        data: {
-          phase,
-          activeAtom,
-          waitCondition,
-          oscar: json.oscar,
-          bob: json.bob,
-          verify: json.verify,
-          watchActive: json.watch.active,
-          terminalSnapshot: 'deb-terminal-snapshot.json',
-        },
-      })
-      wakeDeb('status', `${phase}${activeAtom === null ? '' : ` atom ${activeAtom}`}: ${waitCondition}`)
+      lastDebBoundaryAt = now()
+      const shouldWakeDeb = wake === undefined ? false : recordDebWatchDispatch(wake.kind, wake.detail)
+      await writeDebEvidence(phase, activeAtom, activeTask, waitCondition)
+      if (shouldWakeDeb && wake !== undefined) sendDebWatch(wake.kind, wake.detail)
     } catch {
       /* status is a convenience projection — never let a render hiccup fail the run */
     }
@@ -1293,7 +1304,8 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
               })
               return { state: 'progressing', note: `deb nudge seq ${debReq.seq} rejected: missing feed event ${evidence.missingEventTypes.join(', ')}` }
             }
-            if (now() - lastDebWakeAt < t.minNudgeIntervalMs) {
+            const lastDebGraceAt = Math.max(lastDebWakeAt, lastDebBoundaryAt)
+            if (now() - lastDebGraceAt < t.minNudgeIntervalMs) {
               pendingDebNudge = null
               return { state: 'progressing', note: `deb nudge seq ${debReq.seq} waiting for boundary grace` }
             }
@@ -1395,10 +1407,11 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         isAlive: oscarAlive,
         nudge: (text) => oscarDriver.nudge(text),
         onAssessment: (a) => {
+          const waitCondition = `awaiting Oscar's ${stage} for atom ${atomIndex}`
           if (a.state !== 'progressing') {
             store.recordEvent({ runId: run.id, type: 'oscar-monitor-assessment', data: { persona: hasDebWatcher ? debPersona : 'oz', stage, atom: atomIndex, state: a.state, note: a.note ?? null } })
           }
-          void refreshStatus(phase, atomIndex, task, `awaiting Oscar's ${stage} for atom ${atomIndex}`)
+          void refreshStatus(phase, atomIndex, task, waitCondition, hasDebWatcher && a.state === 'stuck' ? { kind: 'stall', detail: `${phase} atom ${atomIndex}: ${waitCondition}` } : undefined)
         },
         onNudge: (text) => {
           const authored = pendingNudgeReq !== null && text === pendingNudgeReq.message ? pendingNudgeReq : null

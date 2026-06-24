@@ -115,6 +115,8 @@ describe('buildBuilderDispatch', () => {
     expect(prompt).toContain('without giving you authority to start, stop, focus, close, type into, or otherwise drive')
     expect(prompt).toContain('/runs/run_1/deb-status.json')
     expect(prompt).toContain('status feed for concrete state, timestamps')
+    expect(prompt).toContain('wakes you with short `DEB WATCH` dispatches only for actionable watch conditions')
+    expect(prompt).toContain('Healthy directive, build, verify, wrap,\nand fault-boundary status refreshes update the terminal snapshot and status feed without paging you')
     expect(prompt).not.toContain('it is your eyes')
     expect(prompt).not.toContain('the feed replaces them')
   })
