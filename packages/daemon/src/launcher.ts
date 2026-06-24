@@ -10,11 +10,11 @@ import { execFile } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { existsSync, type Dirent } from 'node:fs'
 import { appendFile, mkdir, readFile, readdir, rename, stat, writeFile } from 'node:fs/promises'
-import { basename, dirname, isAbsolute, join, normalize } from 'node:path'
+import { basename, dirname, isAbsolute, join, normalize, relative, resolve, sep } from 'node:path'
 import { promisify } from 'node:util'
 import {
   COCODER_GOVERNANCE_AUTHOR,
-  GOVERNED_READ_SCOPE,
+  GOVERNED_READ_DENY,
   OZ_ACTION_SCOPE,
   closeTicket,
   coCoderRunReference,
@@ -1819,12 +1819,19 @@ export async function readGoverned(ctx: OzContext, workspaceId: string, requeste
 
   const normalizedPath = normalizeGovernedReadPath(requestedPath)
   if (!normalizedPath.ok) return { status: 400, body: { error: normalizedPath.error } }
-  if (!matchesAny(normalizedPath.path, GOVERNED_READ_SCOPE)) {
-    return { status: 403, body: { error: `Path "${normalizedPath.path}" is outside the governed zones Oz may read.` } }
+
+  const repoRoot = resolve(ws.path)
+  const targetPath = resolve(repoRoot, normalizedPath.path)
+  const relativeToRepo = relative(repoRoot, targetPath)
+  if (relativeToRepo === '..' || relativeToRepo.startsWith(`..${sep}`) || isAbsolute(relativeToRepo)) {
+    return { status: 400, body: { error: `Path "${normalizedPath.path}" escapes the repo root.` } }
+  }
+  if (matchesAny(normalizedPath.path, GOVERNED_READ_DENY)) {
+    return { status: 403, body: { error: `Path "${normalizedPath.path}" is refused because it is secrets, runtime state, or host-private data.` } }
   }
 
   try {
-    const content = await readFile(join(ws.path, normalizedPath.path), 'utf8')
+    const content = await readFile(targetPath, 'utf8')
     return { status: 200, body: { path: normalizedPath.path, content } satisfies GovernedReadResult }
   } catch (err) {
     if (isNodeError(err) && err.code === 'ENOENT') return { status: 404, body: { error: `Path "${normalizedPath.path}" does not exist.` } }

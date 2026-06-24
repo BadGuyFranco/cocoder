@@ -1,25 +1,30 @@
 import { describe, expect, test } from 'vitest'
-import { GOVERNED_READ_SCOPE, partitionByScope } from '../src/index.js'
+import { GOVERNED_READ_DENY, partitionByScope } from '../src/index.js'
 
-describe('GOVERNED_READ_SCOPE', () => {
-  test('allows governed flat-file zones and default-denies product and local state', () => {
-    const inLane = [
-      'cocoder/decisions/0017-oz-orchestration-persona.md',
-      'cocoder/priorities/full-oz-dashboard.md',
-      'cocoder/personas/deltas/oz.md',
-      'packages/personas/base/oscar.md',
-      'cocoder/standards/shared-standards.md',
-    ]
-    const hardExcluded = [
-      'packages/core/src/index.ts',
-      'packages/daemon/src/oz-host.ts',
+describe('GOVERNED_READ_DENY', () => {
+  test('default-allows repo files while denying secrets, runtime state, and host-private paths', () => {
+    const denied = [
       'local/runs/run_220/events.jsonl',
+      'local/secrets/oz-token',
+      '.env',
+      'packages/daemon/.env.local',
+      'secrets/oz-token',
+      'cocoder/secrets/oz-token',
+      '.quinn-credentials.json',
+      'packages/daemon/quinn-credentials.json',
+      '.git/config',
+      'node_modules/vitest/index.js',
+    ]
+    const allowed = [
+      'packages/core/src/index.ts',
+      'ARCHITECTURE.md',
+      'cocoder/decisions/0017-oz-orchestration-persona.md',
       'docs/getting-started.md',
     ]
 
-    expect(partitionByScope([...inLane, ...hardExcluded], GOVERNED_READ_SCOPE)).toEqual({
-      inScope: inLane,
-      outOfScope: hardExcluded,
+    expect(partitionByScope([...denied, ...allowed], GOVERNED_READ_DENY)).toEqual({
+      inScope: denied,
+      outOfScope: allowed,
     })
   })
 })

@@ -13,50 +13,68 @@ async function makeWorkspace(): Promise<{ readonly home: string; readonly ctx: O
 }
 
 describe('readGoverned', () => {
-  test('reads live content from an allowed governed file', async () => {
-    const { home, ctx } = await makeWorkspace()
-    const path = 'cocoder/decisions/0017-oz-orchestration-persona.md'
-    await mkdir(join(home, 'cocoder', 'decisions'), { recursive: true })
-    await writeFile(join(home, path), 'ADR-0017 live content\n')
-
-    const result = await readGoverned(ctx, 'cocoder', path)
-
-    expect(result).toEqual({ status: 200, body: { path, content: 'ADR-0017 live content\n' } })
-  })
-
-  test('rejects product code before returning file content', async () => {
+  test('reads live content from repo files by default', async () => {
     const { home, ctx } = await makeWorkspace()
     await mkdir(join(home, 'packages', 'core', 'src'), { recursive: true })
-    await writeFile(join(home, 'packages', 'core', 'src', 'index.ts'), 'product code content')
+    await writeFile(join(home, 'packages', 'core', 'src', 'index.ts'), 'core barrel live content\n')
+    await writeFile(join(home, 'ARCHITECTURE.md'), '# Architecture live content\n')
 
-    const result = await readGoverned(ctx, 'cocoder', 'packages/core/src/index.ts')
+    await expect(readGoverned(ctx, 'cocoder', 'packages/core/src/index.ts')).resolves.toEqual({
+      status: 200,
+      body: { path: 'packages/core/src/index.ts', content: 'core barrel live content\n' },
+    })
 
-    expect(result.status).toBe(403)
-    expect(result.body['error']).toBe('Path "packages/core/src/index.ts" is outside the governed zones Oz may read.')
-    expect(JSON.stringify(result.body)).not.toContain('product code content')
+    await expect(readGoverned(ctx, 'cocoder', 'ARCHITECTURE.md')).resolves.toEqual({
+      status: 200,
+      body: { path: 'ARCHITECTURE.md', content: '# Architecture live content\n' },
+    })
   })
 
-  test('rejects local run state before returning file content', async () => {
+  test('rejects local secrets before returning file content', async () => {
     const { home, ctx } = await makeWorkspace()
-    await mkdir(join(home, 'local', 'runs', 'run_220'), { recursive: true })
-    await writeFile(join(home, 'local', 'runs', 'run_220', 'events.jsonl'), 'run event content')
+    await mkdir(join(home, 'local', 'secrets'), { recursive: true })
+    await writeFile(join(home, 'local', 'secrets', 'oz-token'), 'local secret token')
 
-    const result = await readGoverned(ctx, 'cocoder', 'local/runs/run_220/events.jsonl')
+    const result = await readGoverned(ctx, 'cocoder', 'local/secrets/oz-token')
 
     expect(result.status).toBe(403)
-    expect(result.body['error']).toBe('Path "local/runs/run_220/events.jsonl" is outside the governed zones Oz may read.')
-    expect(JSON.stringify(result.body)).not.toContain('run event content')
+    expect(result.body['error']).toBe('Path "local/secrets/oz-token" is refused because it is secrets, runtime state, or host-private data.')
+    expect(JSON.stringify(result.body)).not.toContain('local secret token')
+  })
+
+  test('rejects env files before returning file content', async () => {
+    const { home, ctx } = await makeWorkspace()
+    await mkdir(join(home, 'packages', 'daemon'), { recursive: true })
+    await writeFile(join(home, 'packages', 'daemon', '.env.local'), 'env secret content')
+
+    const result = await readGoverned(ctx, 'cocoder', 'packages/daemon/.env.local')
+
+    expect(result.status).toBe(403)
+    expect(result.body['error']).toBe('Path "packages/daemon/.env.local" is refused because it is secrets, runtime state, or host-private data.')
+    expect(JSON.stringify(result.body)).not.toContain('env secret content')
   })
 
   test('rejects parent-directory traversal before returning escaped file content', async () => {
     const { home, ctx } = await makeWorkspace()
-    await mkdir(join(home, 'packages', 'daemon', 'src'), { recursive: true })
-    await writeFile(join(home, 'packages', 'daemon', 'src', 'oz-host.ts'), 'daemon source content')
+    await writeFile(join(home, '..', 'escaped-secret'), 'escaped secret content')
 
-    const result = await readGoverned(ctx, 'cocoder', 'cocoder/decisions/../../packages/daemon/src/oz-host.ts')
+    const result = await readGoverned(ctx, 'cocoder', '../escaped-secret')
 
     expect(result.status).toBe(400)
-    expect(result.body['error']).toBe('Path "cocoder/decisions/../../packages/daemon/src/oz-host.ts" uses parent-directory traversal, which Oz may not read.')
-    expect(JSON.stringify(result.body)).not.toContain('daemon source content')
+    expect(result.body['error']).toBe('Path "../escaped-secret" uses parent-directory traversal, which Oz may not read.')
+    expect(JSON.stringify(result.body)).not.toContain('escaped secret content')
+  })
+
+  test('rejects absolute paths before returning file content', async () => {
+    const { home, ctx } = await makeWorkspace()
+    const absoluteTarget = join(home, 'packages', 'core', 'src', 'index.ts')
+    await mkdir(join(home, 'packages', 'core', 'src'), { recursive: true })
+    await writeFile(absoluteTarget, 'absolute path content')
+
+    const result = await readGoverned(ctx, 'cocoder', absoluteTarget)
+
+    expect(result.status).toBe(400)
+    expect(result.body['error']).toBe(`Path "${absoluteTarget}" must be relative to the repo root.`)
+    expect(JSON.stringify(result.body)).not.toContain('absolute path content')
   })
 })

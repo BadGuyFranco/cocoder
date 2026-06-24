@@ -1,7 +1,11 @@
-export const GOVERNED_READ_SCOPE = [
-  'cocoder/decisions/**',
-  'cocoder/priorities/**',
-  'cocoder/personas/**',
-  'packages/personas/base/**',
-  'cocoder/standards/**',
+export const GOVERNED_READ_DENY = [
+  'local/**',
+  '.env*',
+  '**/.env*',
+  'secrets/**',
+  '**/secrets/**',
+  '*credentials*',
+  '**/*credentials*',
+  '.git/**',
+  'node_modules/**',
 ] as const satisfies readonly string[]
