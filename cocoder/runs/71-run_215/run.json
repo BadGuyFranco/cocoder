@@ -12,7 +12,7 @@
   "priorityId": "ticket-fix",
   "playbookId": null,
   "ticketId": "0045",
-  "status": "running",
+  "status": "awaiting-founder",
   "createdAt": 1782266040642,
-  "endedAt": null
+  "endedAt": 1782266290454
 }
