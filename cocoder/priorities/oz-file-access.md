@@ -1,60 +1,77 @@
 ---
 id: oz-file-access
-title: Oz flat-file access — answer config/ADR/playbook questions directly
+title: Oz repo read access — read broadly, write stays gated
 ---
 
 ## Objective
 
-Give Oz the ability to read governed flat files (Playbooks, ADRs, persona/standards, config) so it can
-answer founder questions about governance and configuration without requiring an adhoc session. Today Oz's
-context is populated at session start from runtime state; questions like "what does ADR-0017 say about the
-refresh verb?" or "what's in the Oscar persona definition?" require a separate adhoc launch to look them up.
+Give Oz broad read access to the CoCoder repo working tree so it can answer founder questions and craft
+priorities/tickets with real knowledge of the code, tests, docs, and governance — never working in the
+dark — while **write stays gated** (governance/repair verbs unchanged). The constraint on *read* is not
+"governance only"; it is **secrets and host-escape only**.
 
-**First research gate — choose and validate the delivery mechanism:**
+**Read model (founder-ratified, 2026-06-24, run_76):**
 
-- **Option A — Enrich the loaded digest.** At Oz session start (or Refresh), pull relevant governed-file
-  content into the prompt: summarized ADRs, persona definitions, active priority list, workspace config.
-  Advantage: no new tool surface, no request round-trip per question. Constraint: context budget grows with
-  the corpus; stale between refreshes.
-- **Option B — Scoped read-file tool.** Add a `readGoverned(path)` tool to Oz's bounded surface, accepting
-  only paths under the repo's governed zones (`cocoder/decisions/`, `cocoder/priorities/`,
-  `cocoder/personas/`, `cocoder/playbooks/`, `packages/personas/base/`). Advantage: Oz fetches on demand,
-  corpus growth does not inflate every session. Constraint: one more tool call per lookup; path surface must
-  be scope-checked.
+- **Default-allow** read of any path Oz requests inside the repo working tree: product code
+  (`packages/*/src/**`), tests, `docs/**`, `ARCHITECTURE.md`, ADRs, personas, standards, configs — the
+  whole tracked tree. Rule of thumb: **Oz may read anything git tracks.**
+- **Hard denylist** (the only things hidden — they are what `.gitignore` deliberately keeps out of the
+  repo, i.e. secrets and runtime state surfaced into a persisted chat transcript would leak):
+  - `local/**` — auth token (`local/secrets/oz-token`), sqlite DB, audit logs, PIDs, runtime state
+  - `**/.env*`, `**/secrets/**`, `**/*credentials*` (incl. `.quinn-credentials.json`)
+  - `.git/**`, `node_modules/**` — escape surface / noise
+- **Repo-root boundary stays hard.** Reject absolute paths, `..` traversal, and anything resolving
+  outside the repo root. Oz reading `~/.ssh/id_rsa`, `/etc/...`, or a sibling repo via `..` must remain
+  impossible — that guard is non-negotiable and already exists.
 
-The first run researches both, picks one (or a hybrid), and ratifies the mechanism with the founder before
-any build atom is delegated.
+The model is a **denylist, not an allowlist**: read is open by default and closes only for the named
+hazard classes. This deletes the drift surface — new doc dirs, packages, or ADRs become readable with no
+maintenance; the denylist only grows when a genuinely new *secret* class appears.
 
-**MECHANISM RATIFIED — Option B (founder, 2026-06-24, run_75).** The founder chose the scoped
-`readGoverned(path)` tool and explicitly **rejected a table-of-contents / index / digest-enrichment**
-(the hybrid "C" that research had floated): a TOC is a second copy that drifts, and **the repo is the
-single source of truth**. Implication for the build: **every lookup reads live from disk** — no cached
-index, no generated manifest, no digest enrichment. The research gate is CLOSED; the next session
-goes straight to the build atom below.
+**Verified when:** the founder can ask Oz about any tracked file — a governed doc ("what does ADR-0017
+say about the refresh verb?"), `ARCHITECTURE.md`, or product code — and Oz answers correctly in-session
+without an adhoc launch; **and** a proof shows a secret/runtime path (e.g. `local/secrets/oz-token`) and a
+host-escape attempt (`../`, absolute) are rejected without reading the file, while a product-code path
+(`packages/core/src/index.ts`) now reads successfully.
 
-### Build plan for `readGoverned` (Option B) — DONE (run_76, `18c5607`)
-Research established the pattern (run_75). One cohesive atom — **landed run_76:**
-1. **Scope constant.** `GOVERNED_READ_SCOPE` in `packages/core/src/write-scope/governed-read.ts`
-   (`cocoder/decisions/**`, `cocoder/priorities/**`, `cocoder/personas/**`,
-   `packages/personas/base/**`, `cocoder/standards/**`); exported from `@cocoder/core`.
-2. **Tool surface, end-to-end.** `read-governed` on Oz's bounded surface (`oz-host.ts` validation +
-   instructions; `oz-chat.ts` command dispatch).
-3. **Handler (read-only).** `readGoverned()` in `launcher.ts`: normalize repo-relative path, reject
-   traversal/absolute/NUL before any read, default-deny via `matchesAny(path, GOVERNED_READ_SCOPE)`,
-   read live from disk; no write/commit path.
-4. **Proof (automated).** Tests pin in-zone reads, out-of-zone rejection, and traversal rejection
-   (`governed-read-scope.test.ts`, `read-governed.test.ts`, dispatch coverage in `oz-chat.test.ts` /
-   `oz-agent-chat.test.ts`). **Live in-session demo** remains founder-driven (see disposition below).
+**Boundary:** read-only. Oz gains no write/commit access to any file through this surface (repair writes
+remain the existing repair verb). This Objective **deliberately supersedes** the earlier "read = governed
+flat files only; scope does not extend to product code" boundary (see History): the founder's call is that
+limiting *read* never made sense — only *write* warrants gating, and the sole read hazard is
+secret/host exfiltration, which the denylist + repo-root boundary close.
 
-**Verified when:** the founder can ask Oz a question about a governed flat file ("what does ADR-0017 say
-about information-source doctrine?" / "show me the Oscar base persona") and Oz answers correctly, in-session,
-without launching an adhoc. Verified by a live demo exchange and, where Option B is chosen, a proof that
-`readGoverned` rejects paths outside the governed zones.
+### Next atom — invert the read model (ready to delegate)
+1. **Replace the scope contract.** In `packages/core/src/write-scope/governed-read.ts`, replace the
+   `GOVERNED_READ_SCOPE` allowlist with a `GOVERNED_READ_DENY` denylist constant covering the hazard
+   classes above; export from `@cocoder/core`. Update `packages/core/src/index.ts` accordingly.
+2. **Flip the handler.** In `packages/daemon/src/launcher.ts` `readGoverned()`: keep the existing
+   repo-root/normalize/traversal/absolute/NUL guards, then **default-allow** and reject only when the
+   normalized path `matchesAny(path, GOVERNED_READ_DENY)`. Reuse the tested `matchesAny` helper; write no
+   new glob code. Still read-only — no write/commit path.
+3. **Flip the tests.** Rewrite `governed-read-scope.test.ts` + `read-governed.test.ts` so they prove the
+   new contract in both directions: product code (`packages/core/src/index.ts`) and `ARCHITECTURE.md`
+   now **read** live content; `local/secrets/oz-token`, `**/.env`, traversal (`../`), and absolute paths
+   are **rejected without reading** (assert the secret's content never appears in the result). Keep the
+   no-content-leak assertions.
+4. **Tool instructions.** Update the `read-governed` description in `oz-host.ts` so Oz knows it may read
+   any tracked repo file (not just governed zones), and that secrets/runtime/host paths are refused.
 
-**Boundary:** read-only access to governed flat files in the CoCoder repo. Oz does not gain write access to
-governed files through this surface (repair writes remain the existing repair verb). Scope does not extend to
-product code (`packages/core/src/`, `packages/daemon/src/`, etc.) or workspace-local state (run records,
-event streams).
+Mechanism: product-code change → delegate as a verified build atom (Oscar verifies the diff + reruns
+core/daemon typecheck and the flipped suites before commit). After commit, the founder refreshes the
+daemon so Oz loads it — **no dashboard rebuild** (UI is a thin HTTP client; daemon runs from TS source
+via tsx).
+
+## History — Option B (allowlist) shipped run_76, now superseded
+
+The first run (run_75) researched two delivery mechanisms and the founder ratified **Option B** — a
+scoped `read-governed(path)` tool reading **live from disk** (no TOC/index/digest enrichment; the repo is
+the single source of truth). Run_76 shipped it end-to-end (`18c5607`): a `GOVERNED_READ_SCOPE` allowlist
+(`cocoder/decisions|priorities|personas|standards/**`, `packages/personas/base/**`), the `read-governed`
+tool surface across `oz-host.ts`/`oz-chat.ts`, the `readGoverned()` handler in `launcher.ts`, and passing
+tests. The live test then exposed the design flaw: an allowlist hides too much (`ARCHITECTURE.md`,
+`docs/**`, product code) and drifts as governed files grow — which is why this Objective inverts it to a
+denylist. The tool surface, the repo-root guards, the live-from-disk principle, and the `matchesAny`
+reuse all carry forward; only the allowlist→denylist contract and its tests change.
 
 ## Founder-added follow-up — surface the launch disposition in Oz (run_200, 2026-06-23)
 
@@ -62,14 +79,9 @@ event streams).
 event into Oz's founder-facing run surface (`renderDebStatus` in `packages/core/src/runner/status.ts`);
 no recomputation — `deriveWrapDisposition` remains the single owner. Verified by status tests.
 
-Carried here when `launch-disposition-first` was archived. That priority shipped a recorded
-`wrap-disposition` event (`archive-candidate` | `awaiting-founder` | `continue`) — see
-`deriveWrapDisposition` in `packages/core/src/runner/runner.ts`, proven by
-`node scripts/proof-launch-disposition.mjs`. Run_75 projected the latest event into Oz's
-`DebStatus` / run-list surface via `wrapDisposition` (read from the event stream, not recomputed).
-
-**Disposition: `archive-candidate` (run_76).** Option B is code-complete and automated proof is green.
-The Objective's live acceptance gate — Oz answers a governed-file question in the dashboard chat without
-an adhoc launch — requires a founder-driven Oz session; Oscar cannot operate the daemon surface. On
-successful live confirmation, founder may archive this priority. Optional follow-on (founder choice only):
-record the `read-governed` surface in an ADR amendment before archive.
+**Disposition: `continue` (run_76).** The founder ratified the broadened read model on 2026-06-24; the
+shipped allowlist is superseded. Next session relaunches this priority as a build run and delegates the
+single **invert the read model** atom above. No remaining founder decision — the read-hazard boundary
+(secrets/runtime/host only) is settled. On a successful live exchange after the inversion lands (Oz reads
+a product-code file and a governed doc, and refuses `local/secrets/oz-token`), this priority is
+archive-ready. Optional follow-on (founder choice): record the read model in an ADR amendment.
