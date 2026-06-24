@@ -2,10 +2,11 @@
 id: 0044
 title: Deb nudge fabricated an out-of-scope-committed feed event that is absent from deb-status.json
 type: bug
-status: Open
+status: Closed
 priority: oz-autonomy
 owner: deb
 created: 2026-06-23
+closed: 2026-06-23
 ---
 
 # 0044 - Deb nudge fabricated an `out-of-scope-committed` feed event
@@ -62,6 +63,10 @@ round-trip and could have blocked a finished run on a non-issue.
 
 ## Notes
 
-Related: [0042](./0042-deb-default-live-terminal-observation.md) (Deb observation surface),
-[0043](./0043-bob-blocker-replies-unowned-after-runner-stall-nudges.md) (runner does not consume
+Related: [0042](../open/0042-deb-default-live-terminal-observation.md) (Deb observation surface),
+[0043](../open/0043-bob-blocker-replies-unowned-after-runner-stall-nudges.md) (runner does not consume
 structured blocker/observation replies). This is the same orchestration-observation reliability class.
+
+Closed 2026-06-23: runner-owned Deb nudge delivery now rejects and records `deb-nudge-rejected` when a
+Deb nudge message/rationale cites a named feed event absent from the current Deb status recent events.
+Regression coverage pins the fabricated `out-of-scope-committed` case.

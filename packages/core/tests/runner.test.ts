@@ -2822,6 +2822,52 @@ describe('runRun (multi-atom loop)', () => {
     expect(debNudge?.data).toMatchObject({ persona: 'deb', text: 'Oscar — ask Bob for a root-cause diagnosis', source: 'deb', seq: 1 })
   })
 
+  test('rejects a Deb nudge whose rationale cites a feed event absent from recent Deb status events', async () => {
+    const store = openRunStore(':memory:')
+    const directives = [delegate('do it'), wrapup('done')]
+    const debReq: NudgeRequest = {
+      target: 'oscar',
+      message: 'Before issuing directive 4, reconcile the atom 3 commit receipt with the feed event `out-of-scope-committed`.',
+      rationale: 'The status feed shows atom 3 verify-pass and commit, followed immediately by an `out-of-scope-committed` event.',
+      seq: 1,
+    }
+    const sent: string[] = []
+    let i = 0
+    const io: RunnerIO = {
+      ...fakeIO({ directives, nudges: { 'deb-nudge.json': debReq } }),
+      async awaitDirective() {
+        if (i === 0) await sleep(20)
+        const d = directives[i++]
+        if (!d) throw new Error('test: ran out of scripted directives')
+        return d
+      },
+    }
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        io,
+        sessionHost: fakeSessionHost({
+          async sendInput(_ref, text) {
+            sent.push(text)
+          },
+        }),
+        timeouts: { orchestrationMs: 200, buildMs: 200, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 },
+      }),
+      { ...input, deb },
+    )
+
+    expect(result.status).toBe('completed')
+    expect(sent).not.toContain(debReq.message)
+    expect(store.listEvents(result.runId).some((e) => e.type === 'oscar-nudge' && (e.data as { seq?: number }).seq === debReq.seq)).toBe(false)
+    const rejection = store.listEvents(result.runId).find((e) => e.type === 'deb-nudge-rejected')
+    expect(rejection?.data).toMatchObject({
+      seq: 1,
+      target: 'oscar',
+      missingEventTypes: ['out-of-scope-committed'],
+    })
+  })
+
   test('does not deliver a Deb-authored nudge during the boundary grace window', async () => {
     const store = openRunStore(':memory:')
     const debReq: NudgeRequest = {

@@ -68,7 +68,7 @@ import {
   commitMessage,
 } from './prompts.js'
 import { renderRunRecord } from './record.js'
-import { type RunnerPhase, renderDebStatus } from './status.js'
+import { type DebStatus, type RunnerPhase, renderDebStatus } from './status.js'
 import { isStopRequestedError } from './stop.js'
 import { faultFingerprint } from './fingerprint.js'
 import type { Triage } from './triage.js'
@@ -650,6 +650,24 @@ function onboardingSpendBlockMessage(worktreePath: string, auditWriteBoundary: A
   return hasValidSpendApproval(worktreePath) ? null : ONBOARDING_SPEND_BLOCK_MESSAGE
 }
 
+const referencedFeedEventTypes = (text: string): readonly string[] => {
+  const eventTypes = new Set<string>()
+  for (const match of text.matchAll(/`([a-z0-9]+(?:-[a-z0-9]+)+)`/gi)) {
+    const before = text.slice(Math.max(0, match.index - 48), match.index)
+    const after = text.slice(match.index + match[0].length, match.index + match[0].length + 48)
+    if (/\b(?:event|events|feed|status)\b/i.test(`${before} ${after}`)) eventTypes.add(match[1]!.toLowerCase())
+  }
+  return [...eventTypes]
+}
+
+const validateDebNudgeEvidence = (req: { readonly message: string; readonly rationale: string }, status: DebStatus | null): { readonly ok: true } | { readonly ok: false; readonly missingEventTypes: readonly string[] } => {
+  const referenced = referencedFeedEventTypes(`${req.message}\n${req.rationale}`)
+  if (referenced.length === 0) return { ok: true }
+  const recentTypes = new Set((status?.recentEvents ?? []).map((event) => event.type))
+  const missingEventTypes = referenced.filter((type) => !recentTypes.has(type))
+  return missingEventTypes.length === 0 ? { ok: true } : { ok: false, missingEventTypes }
+}
+
 export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResult> {
   if (input.priority.objective === null) throw new MissingObjectiveError(input.priority.id)
 
@@ -991,6 +1009,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   let lastOzNudgeSeq = 0
   let lastDebWakeKey: string | null = null
   let lastDebWakeAt = Number.NEGATIVE_INFINITY
+  let lastDebStatus: DebStatus | null = null
   const wakeDeb = (kind: string, detail: string): void => {
     if (!debRef) return
     const key = `${kind}:${detail}`
@@ -1009,6 +1028,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     try {
       const { json, markdown } = renderDebStatus({ store, runId: run.id, runDisplay, priority, scopes: debScopes, phase, activeAtom, activeTask, waitCondition })
       await io.writeDebStatus(runDir, json, markdown)
+      lastDebStatus = json
       store.recordEvent({
         runId: run.id,
         type: 'deb-status',
@@ -1125,6 +1145,23 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           if (debWatcherStopped) return { state: 'done', note: 'deb watcher stopped' }
           const debReq = await io.readNudgeRequest(debNudgePath)
           if (debReq && debReq.seq > lastDebNudgeSeq) {
+            const evidence = validateDebNudgeEvidence(debReq, lastDebStatus)
+            if (!evidence.ok) {
+              lastDebNudgeSeq = debReq.seq
+              pendingDebNudge = null
+              store.recordEvent({
+                runId: run.id,
+                type: 'deb-nudge-rejected',
+                data: {
+                  seq: debReq.seq,
+                  target: debReq.target,
+                  reason: 'rationale referenced feed event absent from recent Deb status events',
+                  missingEventTypes: evidence.missingEventTypes,
+                  recentEventTypes: (lastDebStatus?.recentEvents ?? []).map((event) => event.type),
+                },
+              })
+              return { state: 'progressing', note: `deb nudge seq ${debReq.seq} rejected: missing feed event ${evidence.missingEventTypes.join(', ')}` }
+            }
             if (now() - lastDebWakeAt < t.minNudgeIntervalMs) {
               pendingDebNudge = null
               return { state: 'progressing', note: `deb nudge seq ${debReq.seq} waiting for boundary grace` }
