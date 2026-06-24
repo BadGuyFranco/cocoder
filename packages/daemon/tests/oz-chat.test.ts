@@ -53,6 +53,7 @@ describe('parseOzCommand', () => {
     ['  LAUNCH PriorityA  ', { kind: 'launch', priorityId: 'PriorityA' }],
     ['adhoc fix the flaky test', { kind: 'adhoc', task: 'fix the flaky test' }],
     ['show run_45', { kind: 'show', runId: 'run_45' }],
+    ['archive run_7', { kind: 'archive-confirmation', runId: 'run_7', confirmation: 'archive' }],
     ['deb-repair fix stale Deb routing --run run_45', { kind: 'oscar-deb-repair', problem: 'fix stale Deb routing', sourceRunId: 'run_45' }],
     ['stop run_45', { kind: 'stop', runId: 'run_45' }],
     ['teardown run_45', { kind: 'teardown', runId: 'run_45' }],
@@ -64,7 +65,7 @@ describe('parseOzCommand', () => {
     expect(parseOzCommand(text)).toEqual(expected)
   })
 
-  test.each(['dance run_45', 'launch', 'show run_45 extra'])('does not guess for %j', (text) => {
+  test.each(['dance run_45', 'launch', 'show run_45 extra', 'archive'])('does not guess for %j', (text) => {
     expect(parseOzCommand(text)).toMatchObject({ kind: 'unknown', hint: expect.stringContaining('Supported commands') })
   })
 
@@ -195,6 +196,66 @@ describe('handleOzMessage', () => {
     expect(result).toMatchObject({
       status: 200,
       body: { ok: true, command: 'teardown', reply: 'Tore down run_45 (closed 2 sessions).', action: { type: 'teardown', runId: 'run_45' } },
+    })
+  })
+
+  test('archive confirmation maps to requestArchiveConfirmation and reports archived priority', async () => {
+    const calls: Array<{ readonly runId: string; readonly confirmation: string }> = []
+    const ops = mockOps({
+      requestArchiveConfirmation: async (_ctx, input) => {
+        calls.push({ runId: input.runId, confirmation: input.confirmation })
+        return {
+          status: 200,
+          body: {
+            ok: true,
+            archived: true,
+            runId: input.runId,
+            priorityId: 'demo',
+            commitSha: 'sha-archive',
+            committedPaths: ['cocoder/priorities/archive/demo.md', 'cocoder/priorities/order.json'],
+            outOfLanePaths: [],
+          },
+        }
+      },
+    })
+
+    const result = await handleOzMessage(testCtx(), { text: 'archive run_7', workspaceId: 'cocoder' }, ops)
+
+    expect(calls).toEqual([{ runId: 'run_7', confirmation: 'archive' }])
+    expect(result).toMatchObject({
+      status: 200,
+      body: {
+        ok: true,
+        command: 'archive-confirmation',
+        reply: 'Archived demo from run_7 as sha-archive (cocoder/priorities/archive/demo.md, cocoder/priorities/order.json).',
+        action: {
+          type: 'archive-confirmation',
+          runId: 'run_7',
+          priorityId: 'demo',
+          committedPaths: ['cocoder/priorities/archive/demo.md', 'cocoder/priorities/order.json'],
+          commitSha: 'sha-archive',
+          outOfLanePaths: [],
+        },
+      },
+    })
+  })
+
+  test('archive confirmation reply reports declined archive as still live', async () => {
+    const result = await executeOzCommand(testCtx(), 'cocoder', { kind: 'archive-confirmation', runId: 'run_8', confirmation: 'archive' }, mockOps({
+      requestArchiveConfirmation: async () => ({
+        status: 200,
+        body: { ok: true, archived: false, runId: 'run_8', priorityId: 'demo', status: 'awaiting-archive-confirmation' },
+      }),
+    }))
+
+    expect(result).toMatchObject({
+      status: 200,
+      body: {
+        ok: true,
+        command: 'archive-confirmation',
+        reply: 'Did not archive demo from run_8; the priority remains live.',
+        action: { type: 'archive-confirmation', runId: 'run_8', priorityId: 'demo' },
+      },
     })
   })
 
