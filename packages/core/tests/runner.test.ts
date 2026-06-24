@@ -2791,7 +2791,11 @@ describe('runRun (multi-atom loop)', () => {
       owner: 'runner-fault',
     })
     expect(store.listEvents(runId).find((event) => event.type === 'triage-dispatch')?.data).toMatchObject({ fault: 'builder-blocked', atom: 0 })
-    expect(statusWrites.at(-1)?.latestBuilderBlocker).toMatchObject({ reply: blockerReply, owner: 'deb-triage' })
+    expect(statusWrites.some((status) => status.latestBuilderBlocker?.reply === blockerReply && status.latestBuilderBlocker.owner === 'deb-triage')).toBe(true)
+    expect(statusWrites.at(-1)).toMatchObject({
+      waitCondition: 'run failed after builder-blocked; no WRAP-UP READY artifact will be emitted for this run',
+      outstandingFaults: [],
+    })
   })
 
   test('Deb-backed watchdog nudges an idle Oscar while awaiting a directive only when Deb is present', async () => {
@@ -2854,17 +2858,24 @@ describe('runRun (multi-atom loop)', () => {
 
   test('Deb triages a directive-timeout (orchestration fault), and is NOT killed before triaging', async () => {
     const store = openRunStore(':memory:')
+    const statusWrites: DebStatus[] = []
     const killed: string[] = []
     const failingIO: RunnerIO = { ...fakeIO({ directives: [], triage: { disposition: 'cocoder-bug', summary: 'oscar never delegated', proposal: 'd' } }), async awaitDirective() {
       throw new Error('no valid directive within 1ms')
     } }
     await expect(
-      runRun(baseDeps({ store, io: failingIO, sessionHost: fakeSessionHost({ async kill(ref) {
+      runRun(baseDeps({ store, io: { ...failingIO, async writeDebStatus(_dir, status) {
+        statusWrites.push(status)
+      } }, sessionHost: fakeSessionHost({ async kill(ref) {
         killed.push(ref.id)
       } }) }), { ...input, deb }),
     ).rejects.toThrow(/no valid directive/)
     const types = store.listEvents(store.listRuns()[0]!.id).map((e) => e.type)
     expect(types).toEqual(expect.arrayContaining(['directive-timeout', 'triage-dispatch', 'fault-triaged']))
+    expect(statusWrites.at(-1)).toMatchObject({
+      waitCondition: 'run failed after directive-timeout; no WRAP-UP READY artifact will be emitted for this run',
+      outstandingFaults: [],
+    })
   })
 
   test('Deb triages a verify-failed fault (Oscar verify died)', async () => {
@@ -3005,6 +3016,8 @@ describe('runRun (multi-atom loop)', () => {
     expect(oscarPrompt).toContain('When you choose `wrapup`, only write the\n   directive file at this stage')
     expect(oscarPrompt).toContain('do not also deliver a founder closeout in the pane')
     expect(oscarPrompt).toContain('send you a `WRAP-UP READY` artifact to deliver\n   exactly once')
+    expect(oscarPrompt).toContain('Directive files are live\n   only while the runner is waiting for that exact directive')
+    expect(oscarPrompt).toContain('do not write or\n   overwrite `directive-*.json`; no `WRAP-UP READY` artifact will arrive for that run')
     expect(oscarPrompt).toContain('make founder-directed Surface-A edits')
     expect(oscarPrompt).toContain('Do not say the run is too wrapped, read-only, or needs a new\nrun for those edits')
     expect(oscarPrompt).toContain('exec cocoder oz commit-support')

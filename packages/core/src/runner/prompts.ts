@@ -191,7 +191,11 @@ atoms. One atom at a time:
    exactly once. If you wrap because the next step needs founder approval, make that decision explicit
    in the pickup so the wrap-up Play's Founder Decision Needed section is not "None"; the runner derives
    the run's \`awaiting-founder\` or \`awaiting-archive-confirmation\` status from that validated closeout. A clean commit boundary is a good
-   place to continue with the next known atom, not by itself a reason to stop.
+   place to continue with the next known atom, not by itself a reason to stop. Directive files are live
+   only while the runner is waiting for that exact directive. If the run has already faulted or ended
+   (for example the status/feed/record shows \`run-end\`, \`failed\`, or a Deb disposition), do not write or
+   overwrite \`directive-*.json\`; no \`WRAP-UP READY\` artifact will arrive for that run. State the terminal
+   status plainly and use the next launch/repair path instead.
 
 # Verifying an atom (the gate — no human backstop)
 

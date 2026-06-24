@@ -1056,6 +1056,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       type: 'run-end',
       data: { status: 'failed', atoms: atomIndex === null ? n : Math.max(n, atomIndex + 1), committedShas, outOfScope, selfCommitted },
     })
+    await refreshStatus('faulted', atomIndex, null, `run failed after ${type}; no WRAP-UP READY artifact will be emitted for this run`)
     try {
       await projectAndCommitPortableRunHistory({ status: 'failed', endedAt: now() })
     } catch (err) {
