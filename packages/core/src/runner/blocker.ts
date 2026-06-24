@@ -29,6 +29,11 @@ function normalizePathToken(raw: string): string | null {
     .replace(/[),.;:]+$/g, '')
   if (value === '' || value.includes('://') || value.startsWith('/') || value.includes(' ')) return null
   if (value.startsWith('local/') || value.startsWith('node_modules/')) return null
+  const parts = value.split('/')
+  if (parts.length === 2 && !/[.*{}]/.test(value) && !parts[1]?.includes('.')) {
+    const root = parts[0]?.toLowerCase()
+    if (!['packages', 'docs', 'templates', 'cocoder', 'scripts', 'src', 'test', 'tests'].includes(root ?? '')) return null
+  }
   return value
 }
 

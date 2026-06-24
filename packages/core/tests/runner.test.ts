@@ -684,6 +684,22 @@ describe('runRun (multi-atom loop)', () => {
     expect(store.listEvents(result.runId).some((event) => event.type === 'builder-scope-conflict')).toBe(false)
   })
 
+  test('does not treat slash-separated prose as out-of-scope write paths', async () => {
+    const store = openRunStore(':memory:')
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([['packages/core/src/foo.ts']]),
+        io: fakeIO({ directives: [delegate('Implement the package fix. If a turn needs longer, raise/justify the cap. Add/extend tests.'), wrapup('done')] }),
+      }),
+      input,
+    )
+
+    expect(result.status).toBe('completed')
+    expect(store.listEvents(result.runId).some((event) => event.type === 'builder-dispatch')).toBe(true)
+    expect(store.listEvents(result.runId).some((event) => event.type === 'builder-scope-conflict')).toBe(false)
+  })
+
   test.each([
     ['declared in-scope writePaths', [writePathDelegate('Create product code.', ['packages/core/src/foo.ts']), wrapup('done')]],
     ['no writePaths', [delegate('Create product code.'), wrapup('done')]],
