@@ -16,7 +16,7 @@ export interface CloseTicketInput {
 
 export type CloseTicketResult =
   | { readonly closed: true; readonly files: readonly string[]; readonly closedPath: string }
-  | { readonly closed: false; readonly reason: 'missing-open-ticket' | 'already-closed' }
+  | { readonly closed: false; readonly reason: 'missing-open-ticket' | 'already-closed'; readonly files: readonly string[] }
 
 function unique<T>(items: readonly T[]): T[] {
   return [...new Set(items)]
@@ -79,8 +79,13 @@ async function pruneTicketOrder(ticketsDir: string, ticketId: string): Promise<s
 export async function closeTicket(input: CloseTicketInput): Promise<CloseTicketResult> {
   const openFile = await findOpenTicketFile(input.ticketsDir, input.ticketId)
   if (!openFile) {
+    const orderPath = await pruneTicketOrder(input.ticketsDir, input.ticketId)
     const existing = (await readTickets(input.ticketsDir)).find((ticket) => ticket.id === input.ticketId)
-    return { closed: false, reason: existing?.state === 'closed' ? 'already-closed' : 'missing-open-ticket' }
+    return {
+      closed: false,
+      reason: existing?.state === 'closed' ? 'already-closed' : 'missing-open-ticket',
+      files: orderPath ? [relative(input.repoPath, orderPath)] : [],
+    }
   }
 
   const openPath = join(input.ticketsDir, 'open', openFile)

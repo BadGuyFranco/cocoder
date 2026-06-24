@@ -219,4 +219,73 @@ describe('ticket close', () => {
     expect(index.slice(index.indexOf('## Open'), index.indexOf('## Recently Closed'))).not.toContain('0003')
     expect(index.slice(index.indexOf('## Recently Closed'))).toContain('| [0003](./closed/0003-existing-open.md) | Existing open | task | 2026-06-23 | Fixed by test. |')
   })
+
+  test('reconciles stale order entry when the ticket is already closed', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'tickets-close-stale-'))
+    await mkdir(join(dir, 'open'), { recursive: true })
+    await mkdir(join(dir, 'closed'), { recursive: true })
+    await writeFile(join(dir, 'order.json'), `${JSON.stringify(['0003', '0004'], null, 2)}\n`)
+    await writeFile(
+      join(dir, 'closed', '0003-existing-closed.md'),
+      [
+        '---',
+        'id: 0003',
+        'title: Existing closed',
+        'type: task',
+        'status: Closed',
+        'priority: none',
+        'owner: founder-session',
+        'created: 2026-06-18',
+        '---',
+        '',
+        '# 0003 - Existing closed',
+        '',
+        'Already fixed.',
+      ].join('\n'),
+    )
+
+    const result = await closeTicket({
+      ticketsDir: dir,
+      repoPath: dir,
+      ticketId: '0003',
+      runId: 'run_123',
+      committedSha: 'abc123',
+      closedDate: '2026-06-23',
+      resolution: 'Fixed by test.',
+    })
+
+    expect(result).toEqual({ closed: false, reason: 'already-closed', files: ['order.json'] })
+    expect(JSON.parse(await readFile(join(dir, 'order.json'), 'utf8'))).toEqual(['0004'])
+
+    const second = await closeTicket({
+      ticketsDir: dir,
+      repoPath: dir,
+      ticketId: '0003',
+      runId: 'run_124',
+      committedSha: 'def456',
+      closedDate: '2026-06-24',
+      resolution: 'Second pass.',
+    })
+    expect(second).toEqual({ closed: false, reason: 'already-closed', files: [] })
+  })
+
+  test('reconciles stale order entry when the ticket file is missing', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'tickets-close-missing-'))
+    await mkdir(join(dir, 'open'), { recursive: true })
+    await mkdir(join(dir, 'closed'), { recursive: true })
+    await writeFile(join(dir, 'order.json'), `${JSON.stringify(['0003', '0004'], null, 2)}\n`)
+
+    const result = await closeTicket({
+      ticketsDir: dir,
+      repoPath: dir,
+      ticketId: '0003',
+      runId: 'run_123',
+      committedSha: 'abc123',
+      closedDate: '2026-06-23',
+      resolution: 'Fixed by test.',
+    })
+
+    expect(result).toEqual({ closed: false, reason: 'missing-open-ticket', files: ['order.json'] })
+    expect(JSON.parse(await readFile(join(dir, 'order.json'), 'utf8'))).toEqual(['0004'])
+  })
 })

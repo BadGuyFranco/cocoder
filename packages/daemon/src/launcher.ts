@@ -436,6 +436,20 @@ async function closeTicketAfterSuccessfulRun(ctx: OzContext, workspacePath: stri
       resolution: 'Ticket fix run completed successfully.',
     })
     if (!close.closed) {
+      if (close.files.length > 0) {
+        const receipt = await commitGovernance(ctx, workspacePath, close.files, `governance: reconcile stale ticket ${ticketId} order entry via run ${result.runId}`)
+        await appendAudit(ctx.cocoderHome, {
+          action: 'ticket-order-reconciled',
+          ticketId,
+          runId: result.runId,
+          reason: close.reason,
+          committedSha: receipt.committedSha,
+          committed: receipt.committed,
+          files: close.files,
+          error: receipt.error,
+        })
+        return
+      }
       await appendAudit(ctx.cocoderHome, { action: 'ticket-close-skipped', ticketId, runId: result.runId, reason: close.reason })
       return
     }
