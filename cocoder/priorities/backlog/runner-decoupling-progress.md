@@ -75,6 +75,14 @@ next session. Do not start the following chunk in this session.
   `record.ts` / `writePortableRunHistory` are still imperative and untouched. The unrelated dirty working
   tree (eslint adoption: `eslint.config.mjs`, `run.ts`, `read-claims.ts`, `p3-action.ts`, `frontmatter.ts`,
   `runner.ts`, `oz-host.ts`, `proof-daemon-reload.mjs`, `tsconfig.eslint.json`) was preserved, NOT committed.
+- **Correction (progress-check follow-up, commit `885f839`):** WS1.1's "DebStatus rendered from the derived
+  pair matches the canonical one" test was non-deterministic — it built two `:memory:` stores and
+  deep-equalled the full `DebStatus`, but `recordEvent` stamps event `at` with real wall-clock (surfaced via
+  `lastDirectiveAt`/`recentEvents[].at`), so the two stores drifted and the deep-equal flaked under parallel
+  load (the "554 passed" self-report was a lucky run). Fixed by rendering both from ONE store/run. The core
+  suite is now stable across repeated full runs. NOTE: a SEPARATE pre-existing flake remains —
+  `runner.test.ts > Deb-backed watchdog nudges an idle Oscar …` (timer-sensitive, flagged in WS0, unrelated
+  to this refactor); treat it as known background noise, not a regression, until it gets its own fix.
 - **Exact next step (WS1, step 2):** Wire `deriveTerminalProjection` into the runner's terminal paths so
   `holdRun`/`stopRun`/`fail` no longer hand-feed `phase`/`activeAtom` — call `refreshStatus` in `holdRun` and
   `stopRun` (they currently don't) using the derived pair, and assert (test-first) the on-disk terminal
