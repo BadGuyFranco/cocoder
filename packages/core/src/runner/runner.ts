@@ -180,6 +180,7 @@ export interface RunInput {
 export interface RunResult {
   readonly runId: string
   readonly status: RunStatus
+  readonly ticketCloseDecision: TicketCloseDecision
   /** The last atom's commit sha (or null if nothing committed). */
   readonly committedSha: string | null
   /** Every atom commit sha, in order. */
@@ -208,6 +209,14 @@ type FounderCloseoutRole =
   | 'teardownReadiness'
   | 'judgment'
 
+export type CloseoutLaunchTarget = 'priority' | 'ticket'
+export type TicketCloseDecision = 'close' | 'ask' | 'none'
+
+export interface FounderCloseoutRunStatusVocabulary {
+  readonly priority: readonly string[]
+  readonly ticket: readonly string[]
+}
+
 const FOUNDER_CLOSEOUT_ROLES: readonly FounderCloseoutRole[] = [
   'title',
   'atomComplete',
@@ -221,11 +230,12 @@ const FOUNDER_CLOSEOUT_ROLES: readonly FounderCloseoutRole[] = [
   'judgment',
 ]
 
-interface FounderCloseoutContract {
+export interface FounderCloseoutContract {
   readonly sections: readonly string[]
   readonly labels: Readonly<Record<FounderCloseoutRole, string>>
   readonly orderedRoles: readonly FounderCloseoutRole[]
   readonly finalLine: string
+  readonly runStatusVocabulary: FounderCloseoutRunStatusVocabulary
 }
 
 type PreVerdictAgentStepResume = Extract<AgentStepResume, { readonly park: 'pre-verdict' }>
@@ -251,6 +261,35 @@ function founderCloseoutRole(label: string): FounderCloseoutRole | null {
   if (normalized === 'teardown readiness') return 'teardownReadiness'
   if (normalized === 'judgment') return 'judgment'
   return null
+}
+
+function founderCloseoutSectionFromBlock(block: string, sections: readonly string[], section: string): string | null {
+  const start = block.indexOf(section)
+  if (start < 0) return null
+  const contentStart = start + section.length
+  const nextStarts = sections.map((candidate) => block.indexOf(candidate, contentStart)).filter((index) => index >= 0)
+  const contentEnd = nextStarts.length > 0 ? Math.min(...nextStarts) : block.length
+  return block.slice(contentStart, contentEnd).trim()
+}
+
+function normalizeRunStatus(value: string): string {
+  return value.trim().replace(/[.。]+$/u, '').replace(/\s+/g, ' ').toLowerCase()
+}
+
+function parseRunStatusVocabulary(runStatusSection: string): FounderCloseoutRunStatusVocabulary | null {
+  const parseLine = (label: string): readonly string[] | null => {
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const match = runStatusSection.match(new RegExp(`^${escaped}:\\s*(.+)$`, 'im'))
+    const values = match?.[1]
+      ?.replace(/[.。]+$/u, '')
+      .split('|')
+      .map(normalizeRunStatus)
+      .filter(Boolean)
+    return values && values.length > 0 ? values : null
+  }
+  const priority = parseLine('Priority-launched run')
+  const ticket = parseLine('Ticket-launched run')
+  return priority && ticket ? { priority, ticket } : null
 }
 
 function parseFounderCloseoutContract(play: Play): FounderCloseoutContract {
@@ -296,11 +335,15 @@ function parseFounderCloseoutContract(play: Play): FounderCloseoutContract {
       finalLine &&
       !finalLine.startsWith('**')
     ) {
+      const runStatusSection = founderCloseoutSectionFromBlock(body, sections, labels.runStatus)
+      const runStatusVocabulary = runStatusSection ? parseRunStatusVocabulary(runStatusSection) : null
+      if (!runStatusVocabulary) continue
       return {
         sections,
         labels: labels as Record<FounderCloseoutRole, string>,
         orderedRoles,
         finalLine,
+        runStatusVocabulary,
       }
     }
   }
@@ -308,12 +351,7 @@ function parseFounderCloseoutContract(play: Play): FounderCloseoutContract {
 }
 
 function founderCloseoutSection(markdown: string, contract: FounderCloseoutContract, section: string): string | null {
-  const start = markdown.indexOf(section)
-  if (start < 0) return null
-  const contentStart = start + section.length
-  const nextStarts = contract.sections.map((candidate) => markdown.indexOf(candidate, contentStart)).filter((index) => index >= 0)
-  const contentEnd = nextStarts.length > 0 ? Math.min(...nextStarts) : markdown.length
-  return markdown.slice(contentStart, contentEnd).trim()
+  return founderCloseoutSectionFromBlock(markdown, contract.sections, section)
 }
 
 function founderDecisionNeeded(markdown: string, contract: FounderCloseoutContract): boolean {
@@ -335,17 +373,37 @@ function resumeStateAtomNumber(park: ResumeState): number {
   return park.park === 'pre-dispatch' ? park.atomNumber : park.activeAtomNumber
 }
 
-function deriveWrapupRunStatus(markdown: string, contract: FounderCloseoutContract, current: RunStatus): RunStatus {
+function closeoutRunStatus(markdown: string, contract: FounderCloseoutContract): string | null {
+  const content = founderCloseoutSection(markdown, contract, section(contract, 'runStatus'))
+  const firstLine = content?.split(/\r?\n/).map((line) => line.trim()).find(Boolean)
+  return firstLine ? normalizeRunStatus(firstLine) : null
+}
+
+export function deriveWrapupRunStatus(markdown: string, contract: FounderCloseoutContract, current: RunStatus, target: CloseoutLaunchTarget = 'priority'): RunStatus {
   if (current !== 'completed') return current
-  const runStatus = founderCloseoutSection(markdown, contract, section(contract, 'runStatus')) ?? ''
-  if (founderDecisionNeeded(markdown, contract) || /^\s*archive ready\b/i.test(runStatus)) return 'awaiting-founder'
+  const runStatus = closeoutRunStatus(markdown, contract)
+  if (target === 'ticket') {
+    if (runStatus === 'closed') return current
+    if (runStatus === 'needs closing') return 'awaiting-founder'
+    if (founderDecisionNeeded(markdown, contract)) return 'awaiting-founder'
+    return current
+  }
+  if (founderDecisionNeeded(markdown, contract) || runStatus === 'archive ready') return 'awaiting-founder'
   return current
 }
 
-export function deriveWrapDisposition(markdown: string, contract: FounderCloseoutContract, builderDispatchCount: number): WrapDisposition {
+export function deriveTicketCloseDecision(markdown: string, contract: FounderCloseoutContract, target: CloseoutLaunchTarget = 'priority'): TicketCloseDecision {
+  if (target !== 'ticket') return 'none'
+  const runStatus = closeoutRunStatus(markdown, contract)
+  if (runStatus === 'closed') return 'close'
+  if (runStatus === 'needs closing') return 'ask'
+  return 'none'
+}
+
+export function deriveWrapDisposition(markdown: string, contract: FounderCloseoutContract, builderDispatchCount: number, target: CloseoutLaunchTarget = 'priority'): WrapDisposition {
   if (founderDecisionNeeded(markdown, contract)) return 'awaiting-founder'
-  const runStatus = founderCloseoutSection(markdown, contract, section(contract, 'runStatus')) ?? ''
-  if (/^\s*archive ready\b/i.test(runStatus) && builderDispatchCount === 0 && closeoutCitesCheckableSignal(markdown)) return 'archive-candidate'
+  const runStatus = closeoutRunStatus(markdown, contract)
+  if (target === 'priority' && runStatus === 'archive ready' && builderDispatchCount === 0 && closeoutCitesCheckableSignal(markdown)) return 'archive-candidate'
   return 'continue'
 }
 
@@ -412,7 +470,7 @@ function hasAtomOrImplementationLabel(line: string): boolean {
   )
 }
 
-function founderCloseoutFormatIssues(markdown: string, cwd: string, contract: FounderCloseoutContract): string[] {
+function founderCloseoutFormatIssues(markdown: string, cwd: string, contract: FounderCloseoutContract, target: CloseoutLaunchTarget): string[] {
   const issues: string[] = []
   let priorIndex = -1
   for (const label of contract.sections) {
@@ -443,6 +501,14 @@ function founderCloseoutFormatIssues(markdown: string, cwd: string, contract: Fo
   const runStatus = founderCloseoutSection(markdown, contract, runStatusLabel)
   if (runStatus && /\b(roughly|about|around)?\s*\d+%|\b\d+\s*percent\b/i.test(runStatus)) {
     issues.push(`${runStatusLabel} must not estimate percentage complete`)
+  }
+  const runStatusValue = closeoutRunStatus(markdown, contract)
+  const allowedRunStatuses = contract.runStatusVocabulary[target]
+  if (!runStatusValue || !allowedRunStatuses.includes(runStatusValue)) {
+    issues.push(`${runStatusLabel} must be one of ${allowedRunStatuses.join(' | ')} for a ${target}-launched run`)
+  }
+  if (target === 'ticket' && runStatusValue === 'needs closing' && !founderDecisionNeeded(markdown, contract)) {
+    issues.push(`${runStatusLabel} needs closing requires a non-None ${section(contract, 'decisionNeeded')}`)
   }
 
   const whatRemainsLabel = section(contract, 'whatRemains')
@@ -476,6 +542,7 @@ export interface PlayOutputValidationInput {
   readonly play: Play
   readonly output: string | null
   readonly cwd: string
+  readonly isTicket?: boolean
 }
 
 export interface PlayOutputValidationResult {
@@ -488,8 +555,9 @@ type PlayOutputValidatorFn = (input: PlayOutputValidationInput) => PlayOutputVal
 const PLAY_OUTPUT_VALIDATORS: Readonly<Partial<Record<string, PlayOutputValidatorFn>>> = {
   'validators/founder-closeout': (input) => {
     const contract = parseFounderCloseoutContract(input.play)
+    const target: CloseoutLaunchTarget = input.isTicket ? 'ticket' : 'priority'
     return {
-      issues: input.output ? founderCloseoutFormatIssues(input.output, input.cwd, contract) : ['empty wrap-up output'],
+      issues: input.output ? founderCloseoutFormatIssues(input.output, input.cwd, contract, target) : ['empty wrap-up output'],
       founderCloseoutContract: contract,
     }
   },
@@ -505,6 +573,8 @@ export function validatePlayOutput(input: PlayOutputValidationInput): PlayOutput
 
 function formatInvalidFounderCloseoutFallback(input: {
   readonly priorityId: string
+  readonly ticketId?: string | null
+  readonly target: CloseoutLaunchTarget
   readonly atoms: number
   readonly commits: readonly string[]
   readonly issues: readonly string[]
@@ -512,13 +582,14 @@ function formatInvalidFounderCloseoutFallback(input: {
 }): string {
   const issueLines = input.issues.map((issue) => `- ${issue}`).join('\n')
   const commitText = input.commits.length === 0 ? 'No commits were recorded before wrap-up.' : `${input.commits.length} commit(s) were recorded before wrap-up.`
+  const nextStep = input.target === 'ticket' && input.ticketId ? `Ticket: \`${input.ticketId}\` — repair the malformed wrap-up brief` : `Priority: \`${input.priorityId}\` — repair the malformed wrap-up brief`
   const content: Record<FounderCloseoutRole, string> = {
     title: '',
     atomComplete: 'No — the closeout brief needs repair before this can be treated as a clean completion.',
     runStatus: 'blocked',
     whatChanged: 'The runner blocked a malformed wrap-up brief instead of delivering a non-template closeout.',
     whatRemains: issueLines,
-    nextStep: `Priority: \`${input.priorityId}\` — repair the malformed wrap-up brief`,
+    nextStep,
     decisionNeeded:
       'Yes — this wrap-up brief FAILED format validation and is NOT a valid closeout. The orchestrator must repair and re-issue a conforming wrap-up. Do NOT treat this run as cleanly closed.',
     commitState: `${commitText} The runner reports the authoritative commit outcome after this brief.`,
@@ -681,6 +752,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const log = deps.log ?? (() => {})
   const { workspace, priority, oscar, bob, deb, sharedStandards, runsRoot } = input
   const engineHome = input.engineHome ?? workspace.path
+  const closeoutTarget: CloseoutLaunchTarget = input.ticketId ? 'ticket' : 'priority'
 
   store.upsertWorkspace(workspace)
   const resumeRunId = input.resumeRunId ?? null
@@ -1354,6 +1426,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   let selfCommitted = lastHeldEnd?.selfCommitted === true
   let pickup: string | null = null
   let terminalStatus: RunStatus = 'completed'
+  let ticketCloseDecision: TicketCloseDecision = 'none'
   let n = resumeState === null ? 0 : resumeStateAtomNumber(resumeState)
   let pendingResumeState: ResumeState | null = resumeState
   let consecutiveRejects = 0
@@ -1533,6 +1606,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       runId: run.id,
       status,
       committedSha: committedShas.at(-1) ?? null,
+      ticketCloseDecision: 'none',
       committedShas,
       committedFiles,
       outOfScope,
@@ -1564,6 +1638,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       runId: run.id,
       status,
       committedSha: committedShas.at(-1) ?? null,
+      ticketCloseDecision: 'none',
       committedShas,
       committedFiles,
       outOfScope,
@@ -1650,7 +1725,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           return { candidatePickup: res.output && res.output.trim() ? res.output : (directive.pickup ?? null), outPath }
         }
         let { candidatePickup, outPath: wrapOut } = await dispatchWrapPlay(task, 'wrapup-out.txt')
-        let outputValidation = validatePlayOutput({ play: input.wrapPlay, output: candidatePickup, cwd: worktreePath })
+        let outputValidation = validatePlayOutput({ play: input.wrapPlay, output: candidatePickup, cwd: worktreePath, isTicket: closeoutTarget === 'ticket' })
         if (outputValidation && outputValidation.issues.length > 0) {
           store.recordEvent({ runId: run.id, type: 'wrapup-format-repair-attempt', data: { play: input.wrapPlay.id, issues: outputValidation.issues, outPath: wrapOut } })
           const retryTask = [
@@ -1665,23 +1740,25 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
             candidatePickup ?? '',
           ].join('\n')
           ;({ candidatePickup, outPath: wrapOut } = await dispatchWrapPlay(retryTask, 'wrapup-out-retry.txt'))
-          outputValidation = validatePlayOutput({ play: input.wrapPlay, output: candidatePickup, cwd: worktreePath })
+          outputValidation = validatePlayOutput({ play: input.wrapPlay, output: candidatePickup, cwd: worktreePath, isTicket: closeoutTarget === 'ticket' })
         }
         if (outputValidation && outputValidation.issues.length > 0) {
           const contract = outputValidation.founderCloseoutContract
           if (!contract) throw new Error(`Play "${input.wrapPlay.id}" outputValidator "${input.wrapPlay.outputValidator?.ref}" cannot format a founder closeout fallback`)
           store.recordEvent({ runId: run.id, type: 'wrapup-format-invalid', data: { play: input.wrapPlay.id, issues: outputValidation.issues, outPath: wrapOut } })
-          pickup = formatInvalidFounderCloseoutFallback({ priorityId: priority.id, atoms: n, commits: committedShas, issues: outputValidation.issues, contract })
+          pickup = formatInvalidFounderCloseoutFallback({ priorityId: priority.id, ticketId: input.ticketId ?? null, target: closeoutTarget, atoms: n, commits: committedShas, issues: outputValidation.issues, contract })
           terminalStatus = 'failed'
+          ticketCloseDecision = 'none'
           await triageFault('wrapup-format-invalid', n, `wrap-up Play "${input.wrapPlay.id}" produced malformed founder closeout: ${outputValidation.issues.join('; ')}`)
         } else {
           pickup = candidatePickup
           if (outputValidation?.founderCloseoutContract && pickup) {
             const buildAtoms = store.listEvents(run.id).filter((event) => event.type === 'builder-dispatch').length
             const signal = closeoutCitesCheckableSignal(pickup)
-            const disposition = deriveWrapDisposition(pickup, outputValidation.founderCloseoutContract, buildAtoms)
+            const disposition = deriveWrapDisposition(pickup, outputValidation.founderCloseoutContract, buildAtoms, closeoutTarget)
             store.recordEvent({ runId: run.id, type: 'wrap-disposition', data: { disposition, buildAtoms, signal } })
-            terminalStatus = deriveWrapupRunStatus(pickup, outputValidation.founderCloseoutContract, terminalStatus)
+            terminalStatus = deriveWrapupRunStatus(pickup, outputValidation.founderCloseoutContract, terminalStatus, closeoutTarget)
+            ticketCloseDecision = deriveTicketCloseDecision(pickup, outputValidation.founderCloseoutContract, closeoutTarget)
           }
         }
         store.recordEvent({ runId: run.id, type: 'wrapup', data: { atoms: n, forced: false, play: input.wrapPlay.id } })
@@ -1829,6 +1906,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     runId: run.id,
     status,
     committedSha: committedShas.at(-1) ?? null,
+    ticketCloseDecision,
     committedShas,
     committedFiles,
     outOfScope,

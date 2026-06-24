@@ -12,7 +12,7 @@ import { ClaudeAdapter, type Exec } from '@cocoder/adapters'
 import { atomSentinel, loadAssignments, loadPriority, makeGit, openRunStore, readTickets, StopRequestedError, workspaceTemplateDir, writePortableRun, type Adapter, type Git, type HeadlessRunInput, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
 import { createOzServer, OZ_CSRF_HEADER, type OzServer } from '../src/index.js'
 import { findOrphanedPriorities } from '../src/priority-order.js'
-import { validFounderCloseout } from './helpers/founder-closeout.js'
+import { validFounderCloseout, validTicketFounderCloseout } from './helpers/founder-closeout.js'
 
 const exec = promisify(execFile)
 const g = (cwd: string, args: string[]): Promise<string> => exec('git', ['-C', cwd, ...args]).then((r) => r.stdout.trim())
@@ -815,7 +815,7 @@ describe('Oz mutations + lifecycle', () => {
         return { command: 'x', args: [] }
       } }),
       io: fakeIO(),
-      runHeadless: async () => ({ exitCode: 0, output: validFounderCloseout() }),
+      runHeadless: async () => ({ exitCode: 0, output: validTicketFounderCloseout() }),
     })
 
     const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', ticketId: '0003' } })
@@ -846,7 +846,14 @@ describe('Oz mutations + lifecycle', () => {
     const loaded = (await readTickets(ticketDir)).find((ticket) => ticket.id === '0003')
     expect(loaded).toMatchObject({ id: '0003', state: 'closed', status: 'Closed' })
 
-    const index = await readFile(join(ticketDir, 'INDEX.md'), 'utf8')
+    let index = ''
+    for (let i = 0; i < 50; i++) {
+      index = await readFile(join(ticketDir, 'INDEX.md'), 'utf8')
+      const open = index.slice(index.indexOf('## Open'), index.indexOf('## Recently Closed'))
+      const closed = index.slice(index.indexOf('## Recently Closed'))
+      if (!open.includes('0003') && closed.includes('| [0003](./closed/0003-existing-open.md) |')) break
+      await sleep(10)
+    }
     const openSection = index.slice(index.indexOf('## Open'), index.indexOf('## Recently Closed'))
     const closedSection = index.slice(index.indexOf('## Recently Closed'))
     expect(openSection).not.toContain('0003')
@@ -877,7 +884,7 @@ describe('Oz mutations + lifecycle', () => {
       sessionHost: fakeHost(),
       getAdapter: () => okAdapter,
       io: controlled.io,
-      runHeadless: async () => ({ exitCode: 0, output: validFounderCloseout() }),
+      runHeadless: async () => ({ exitCode: 0, output: validTicketFounderCloseout('closed', 'None.', 'Priority: `demo` — continue the remaining priority atoms') }),
     })
 
     const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', ticketId: '0003' } })

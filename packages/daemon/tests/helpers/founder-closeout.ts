@@ -60,14 +60,32 @@ function normalizeNextStep(nextStep: string): string {
 }
 
 export function validFounderCloseout(summary = 'The requested work was completed.', nextStep = 'Priority: `demo` - continue the remaining priority atoms'): string {
+  return renderFounderCloseout({ summary, nextStep: normalizeNextStep(nextStep), runStatus: 'continue', decisionNeeded: 'None.' })
+}
+
+export function validTicketFounderCloseout(runStatus = 'closed', decisionNeeded = 'None.', nextStep = 'Ticket: `0003` — continue the ticket fix run'): string {
+  return renderFounderCloseout({
+    summary: 'The ticket fix was completed.',
+    nextStep,
+    runStatus,
+    decisionNeeded,
+  })
+}
+
+function renderFounderCloseout(input: {
+  readonly summary: string
+  readonly nextStep: string
+  readonly runStatus: string
+  readonly decisionNeeded: string
+}): string {
   const { title, atomComplete, runStatus, whatChanged, judgment, whatRemains, decisionNeeded, commitState, nextStep: next, teardownReadiness } = contract.labels
   return `${title}
 
 ${atomComplete} Yes
 
-${runStatus} continue
+${runStatus} ${input.runStatus}
 
-${whatChanged} ${summary}
+${whatChanged} ${input.summary}
 
 ${judgment}
 Oscar stopped at a clean wrap-up point.
@@ -75,12 +93,12 @@ Oscar stopped at a clean wrap-up point.
 ${whatRemains}
 - Continue the next launchable work item.
 
-${decisionNeeded} None.
+${decisionNeeded} ${input.decisionNeeded}
 
 ${commitState} The runner reports the authoritative commit outcome after this brief.
 
 ${next}
-${normalizeNextStep(nextStep)}
+${input.nextStep}
 
 ${teardownReadiness} Standing by; teardown requires an explicit founder request.
 

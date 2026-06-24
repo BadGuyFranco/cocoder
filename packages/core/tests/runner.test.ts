@@ -10,6 +10,7 @@ import {
   type DebStatus,
   type Directive,
   DirtyWorkingTreeError,
+  type FounderCloseoutContract,
   type Git,
   type HeadlessRunInput,
   type MakeJudge,
@@ -26,8 +27,11 @@ import {
   type SessionHost,
   type SessionRef,
   StopRequestedError,
+  deriveTicketCloseDecision,
+  deriveWrapupRunStatus,
   openRunStore,
   runRun,
+  validatePlayOutput,
 } from '../src/index.js'
 import { founderStopSignalPath, readResumeState } from '../src/runner/founder-stop.js'
 
@@ -389,6 +393,18 @@ const renderFounderCloseout = (input: {
   return `${body}\n\n${input.finalLine ?? closeoutContract.finalLine}\n`
 }
 const validFounderCloseout = (summary = 'The requested work was completed.'): string => renderFounderCloseout({ summary })
+const ticketFounderCloseout = (runStatus: string, decisionNeeded = 'None.'): string => renderFounderCloseout({
+  runStatus,
+  decisionNeeded,
+  nextStep: 'Ticket: `0015` — continue the ticket fix run',
+})
+
+const validatedCloseoutContract = (): FounderCloseoutContract => {
+  const result = validatePlayOutput({ play: wrapPlay, output: validFounderCloseout(), cwd: workspaceRoot })
+  if (!result?.founderCloseoutContract) throw new Error('wrap-up Play did not produce a founder closeout contract')
+  expect(result.issues).toEqual([])
+  return result.founderCloseoutContract
+}
 
 const baseDeps = (over: Partial<RunnerDeps>): RunnerDeps => ({
   store: openRunStore(':memory:'),
@@ -406,6 +422,57 @@ const baseDeps = (over: Partial<RunnerDeps>): RunnerDeps => ({
 // The new direct-mode DEFAULT (ADR-0023 §2) is proven against LIVE git in runner-direct.test.ts.
 const input = { workspace, priority, oscar, bob, sharedStandards: 'STANDARDS', engineHome: workspaceRoot, runsRoot: '/runs' }
 const stopFaultEvents = new Set(['directive-timeout', 'builder-failed', 'verify-failed', 'triage-dispatch', 'fault-triaged', 'triage-skipped'])
+
+describe('founder closeout target-aware Run Status', () => {
+  test('contract parser derives priority and ticket Run Status vocabularies from the wrap-up Play', () => {
+    const contract = validatedCloseoutContract()
+
+    expect(contract.runStatusVocabulary.priority).toEqual(['continue', 'blocked', 'archive ready'])
+    expect(contract.runStatusVocabulary.ticket).toEqual(['needs another run', 'closed', 'needs closing', 'blocked'])
+  })
+
+  test('validator enforces ticket Run Status vocabulary and close-or-ask decision semantics', () => {
+    const ticketArchive = validatePlayOutput({ play: wrapPlay, output: ticketFounderCloseout('archive ready'), cwd: workspaceRoot, isTicket: true })
+    expect(ticketArchive?.issues).toContain(issue('runStatus', 'must be one of needs another run | closed | needs closing | blocked for a ticket-launched run'))
+
+    const ticketClosed = validatePlayOutput({ play: wrapPlay, output: ticketFounderCloseout('closed'), cwd: workspaceRoot, isTicket: true })
+    expect(ticketClosed?.issues).toEqual([])
+
+    const ticketNeedsClosing = validatePlayOutput({
+      play: wrapPlay,
+      output: ticketFounderCloseout('needs closing', 'Yes — close ticket `0015` after the founder confirms this fix is complete.'),
+      cwd: workspaceRoot,
+      isTicket: true,
+    })
+    expect(ticketNeedsClosing?.issues).toEqual([])
+
+    const ticketNeedsClosingWithoutDecision = validatePlayOutput({ play: wrapPlay, output: ticketFounderCloseout('needs closing'), cwd: workspaceRoot, isTicket: true })
+    expect(ticketNeedsClosingWithoutDecision?.issues).toContain(issue('runStatus', `needs closing requires a non-None ${label('decisionNeeded')}`))
+  })
+
+  test('validator rejects ticket-only Run Status values for priority-launched closeouts', () => {
+    const priorityClosed = validatePlayOutput({ play: wrapPlay, output: renderFounderCloseout({ runStatus: 'closed' }), cwd: workspaceRoot })
+
+    expect(priorityClosed?.issues).toContain(issue('runStatus', 'must be one of continue | blocked | archive ready for a priority-launched run'))
+  })
+
+  test('ticket Run Status derives terminal run status and close decision separately', () => {
+    const contract = validatedCloseoutContract()
+
+    const closed = ticketFounderCloseout('closed')
+    expect(deriveWrapupRunStatus(closed, contract, 'completed', 'ticket')).toBe('completed')
+    expect(deriveTicketCloseDecision(closed, contract, 'ticket')).toBe('close')
+
+    const needsClosing = ticketFounderCloseout('needs closing', 'Yes — close ticket `0015` after the founder confirms this fix is complete.')
+    expect(deriveWrapupRunStatus(needsClosing, contract, 'completed', 'ticket')).toBe('awaiting-founder')
+    expect(deriveTicketCloseDecision(needsClosing, contract, 'ticket')).toBe('ask')
+
+    const needsAnotherRun = ticketFounderCloseout('needs another run')
+    expect(deriveWrapupRunStatus(needsAnotherRun, contract, 'completed', 'ticket')).toBe('completed')
+    expect(deriveTicketCloseDecision(needsAnotherRun, contract, 'ticket')).toBe('none')
+    expect(deriveTicketCloseDecision(renderFounderCloseout({ runStatus: 'archive ready' }), contract, 'priority')).toBe('none')
+  })
+})
 
 describe('runRun (multi-atom loop)', () => {
   test('missing Objective rejects before any store writes', async () => {
