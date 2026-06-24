@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-24 — **local-preferences: cross-repo best-of defaults complete — archive-candidate (run_80/run_224)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [local-preferences](./priorities/local-preferences.md) | **Run:** run_224 (display 80)
+**Outcomes:**
+- **Atom 0 (`606396a`) — layered tech-stack default.** Rewrote `templates/workspace-cocoder/cocoder/memory/tech-stack.md` as the ratified cross-repo best-of: shared toolchain (pnpm 10.30.3, TS 5.9.3 strict + extra flags, Node >=22, Vitest 4.1.0, Playwright 1.58.2, Turbo 2.8.12, knip 6.4.0, minimal ESLint 9.24.0 flat config) + desktop/web/services profiles with every pin traceable to live CoCoder/CoBuilder package.json or lockfile.
+- **Atom 1 (`60ba346`) — Fusion design-spec snapshot.** Rewrote `packages/ui/src/renderer/styles/design-spec.md` as a self-contained 2026-06-24 Fusion snapshot covering both token surfaces (web `--cb-*` + IDE shadcn-HSL), naming CoBuilder `infrastructure/design-system` as upstream SSOT; light accent drift resolved (live globals wins, divergence table recorded). Template pointer prose updated; not forked.
+- **Disposition: `archive-candidate`.** Objective fully met; scaffold/mutations create-only pins green on every `pnpm test`; only founder-explicit archive remains.
+**Next:** Founder confirms archive of `local-preferences`; otherwise launch `model-layer` for Phase 0 adapter tier metadata.
+
 ## 2026-06-24 — **local-preferences: tech-stack default + template seeds complete — archive-candidate (run_79/run_223)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [local-preferences](./priorities/local-preferences.md) | **Run:** run_223 (display 79)

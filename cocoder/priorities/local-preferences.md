@@ -108,3 +108,20 @@ language used across both the IDE and the website**, not just the Electron dashb
 - **Done when** both seeded defaults reflect the ratified cross-repo best-of, the design snapshot is
   self-contained + dated + SSOT-named, neither file forks its owner, and the scaffold/mutations test pins
   stay green.
+
+## Run 80 — cross-repo best-of defaults complete (run_224)
+
+**Cross-repo best-of defaults landed (run_224).** Both remaining atoms from run_79 are complete and
+verified against live source files (no invented pins or token values); `pnpm test` green at each gate
+including scaffold/mutations create-only seeding pins:
+- **Tech-stack** (`606396a`): layered best-of default at
+  `templates/workspace-cocoder/cocoder/memory/tech-stack.md`.
+- **Design-spec** (`60ba346`): dated Fusion snapshot at
+  `packages/ui/src/renderer/styles/design-spec.md` (both token surfaces; live-globals-wins accent
+  drift documented); template pointer prose-only update at
+  `templates/workspace-cocoder/cocoder/memory/design-spec.md`.
+
+**Disposition: `archive-candidate`.** The Objective is fully met — workspace-specified wins via
+create-only scaffold seeding (ADR-0026/0027); no new mechanism required. No concrete next atom remains
+in-priority. **Archive is founder-explicit-only** — confirm archive, then invoke the archive-priority
+Play; do not relaunch this priority for build work.
