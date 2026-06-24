@@ -9,7 +9,7 @@ import type { LaunchRunTarget } from '../src/launcher.js'
 import { recordOrchestratedRun } from '../src/oz-host.js'
 import { mergeWriteSettings } from '../src/settings.js'
 
-const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, deb-repair <problem> [--run <runId>], commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
+const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, deb-repair <problem> [--run <runId>], commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
 
 interface Fixture {
   readonly home: string
@@ -799,6 +799,7 @@ function fakeOps(): OzChatOps {
     readGoverned: async () => ({ status: 200, body: { path: 'cocoder/decisions/0017-oz-orchestration-persona.md', content: 'Governed file content.' } }),
     requestOscarDebRepair: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], state: 'complete', outcome: 'applied' } }),
     requestAuthoringPlay: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0 } }),
+    requestArchiveConfirmation: async () => ({ status: 200, body: { ok: true, archived: true, runId: 'run_archive', priorityId: 'demo' } }),
     teardownRun: async () => ({ status: 200, body: { closed: [] } }),
     restartDaemon: async () => ({ status: 202, body: { restarting: true } }),
     supportCommitRun: async () => ({ status: 202, body: { runId: 'run_support' } }),

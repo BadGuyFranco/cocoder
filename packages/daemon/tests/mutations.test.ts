@@ -482,6 +482,19 @@ const headlessBobOk = async (input: HeadlessRunInput): Promise<{ readonly exitCo
   return { exitCode: 0, output: validFounderCloseout() }
 }
 
+function recordArchiveConfirmationAction(store: RunStore, runId: string, priorityId = 'demo'): void {
+  store.recordEvent({
+    runId,
+    type: 'wrap-disposition',
+    data: {
+      disposition: 'archive-confirmation',
+      buildAtoms: 1,
+      signal: null,
+      action: { type: 'archive-priority-confirmation', runId, priorityId, endpoint: `/runs/${runId}/archive-confirmation`, method: 'POST', confirmWith: 'archive' },
+    },
+  })
+}
+
 describe('Oz mutations + lifecycle', () => {
   let home: string
   let store: RunStore
@@ -1751,16 +1764,7 @@ describe('Oz mutations + lifecycle', () => {
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
     store.setRunStatus(run.id, 'awaiting-archive-confirmation')
-    store.recordEvent({
-      runId: run.id,
-      type: 'wrap-disposition',
-      data: {
-        disposition: 'archive-confirmation',
-        buildAtoms: 1,
-        signal: null,
-        action: { type: 'archive-priority-confirmation', runId: run.id, priorityId: 'demo', endpoint: `/runs/${run.id}/archive-confirmation`, method: 'POST', confirmWith: 'archive' },
-      },
-    })
+    recordArchiveConfirmationAction(store, run.id)
     await startServer()
 
     const detail = await call(oz!, 'GET', `/runs/${run.id}`)
@@ -1770,6 +1774,26 @@ describe('Oz mutations + lifecycle', () => {
     expect(detail.json.actions).toEqual([
       { type: 'archive-priority-confirmation', method: 'POST', endpoint: `/runs/${run.id}/archive-confirmation`, priorityId: 'demo', confirmWith: 'archive' },
     ])
+  })
+
+  test('run detail hides archive confirmation action after the run leaves awaiting-archive-confirmation', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const completed = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(completed.id, 'completed')
+    recordArchiveConfirmationAction(store, completed.id)
+    const running = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    recordArchiveConfirmationAction(store, running.id)
+    await startServer()
+
+    const completedDetail = await call(oz!, 'GET', `/runs/${completed.id}`)
+    const runningDetail = await call(oz!, 'GET', `/runs/${running.id}`)
+
+    expect(completedDetail.status).toBe(200)
+    expect(completedDetail.json.run).toMatchObject({ id: completed.id, status: 'completed' })
+    expect(completedDetail.json.actions).toEqual([])
+    expect(runningDetail.status).toBe(200)
+    expect(runningDetail.json.run).toMatchObject({ id: running.id, status: 'failed' })
+    expect(runningDetail.json.actions).toEqual([])
   })
 
   test('POST /runs/:id/archive-confirmation archives through archive-priority and prunes order.json', async () => {
@@ -1791,16 +1815,7 @@ describe('Oz mutations + lifecycle', () => {
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
     store.setRunStatus(run.id, 'awaiting-archive-confirmation')
-    store.recordEvent({
-      runId: run.id,
-      type: 'wrap-disposition',
-      data: {
-        disposition: 'archive-confirmation',
-        buildAtoms: 1,
-        signal: null,
-        action: { type: 'archive-priority-confirmation', runId: run.id, priorityId: 'demo', endpoint: `/runs/${run.id}/archive-confirmation`, method: 'POST', confirmWith: 'archive' },
-      },
-    })
+    recordArchiveConfirmationAction(store, run.id)
     const prompts: string[] = []
     oz = await createOzServer({
       cocoderHome: home,
@@ -1850,16 +1865,7 @@ describe('Oz mutations + lifecycle', () => {
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
     store.setRunStatus(run.id, 'awaiting-archive-confirmation')
-    store.recordEvent({
-      runId: run.id,
-      type: 'wrap-disposition',
-      data: {
-        disposition: 'archive-confirmation',
-        buildAtoms: 1,
-        signal: null,
-        action: { type: 'archive-priority-confirmation', runId: run.id, priorityId: 'demo', endpoint: `/runs/${run.id}/archive-confirmation`, method: 'POST', confirmWith: 'archive' },
-      },
-    })
+    recordArchiveConfirmationAction(store, run.id)
     await startServer(fakeGit(['cocoder/priorities/archive/demo.md']), async () => {
       throw new Error('archive Play must not run for non-archive confirmation')
     })
@@ -1873,6 +1879,29 @@ describe('Oz mutations + lifecycle', () => {
     await expect(stat(join(home, 'cocoder', 'priorities', 'demo.md'))).resolves.toBeDefined()
     await expect(stat(join(home, 'cocoder', 'priorities', 'archive', 'demo.md'))).rejects.toThrow()
     expect(JSON.parse(await readFile(join(home, 'cocoder', 'priorities', 'order.json'), 'utf8'))).toEqual(['demo'])
+  })
+
+  test('POST /runs/:id/archive-confirmation rejects ticket runs, non-awaiting runs without an action, and empty confirmations', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const ticketRun = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0003' })
+    store.setRunStatus(ticketRun.id, 'awaiting-archive-confirmation')
+    recordArchiveConfirmationAction(store, ticketRun.id, 'ticket-fix')
+    const ordinaryRun = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(ordinaryRun.id, 'completed')
+    const awaitingRun = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(awaitingRun.id, 'awaiting-archive-confirmation')
+    await startServer()
+
+    const ticket = await call(oz!, 'POST', `/runs/${ticketRun.id}/archive-confirmation`, { body: { confirmation: 'archive' } })
+    const notAwaiting = await call(oz!, 'POST', `/runs/${ordinaryRun.id}/archive-confirmation`, { body: { confirmation: 'archive' } })
+    const missing = await call(oz!, 'POST', `/runs/${awaitingRun.id}/archive-confirmation`, { body: {} })
+    const empty = await call(oz!, 'POST', `/runs/${awaitingRun.id}/archive-confirmation`, { body: { confirmation: '   ' } })
+
+    expect(ticket).toEqual({ status: 409, json: { error: 'archive confirmation applies only to priority-launched runs' } })
+    expect(notAwaiting.status).toBe(409)
+    expect(notAwaiting.json.error).toBe('run is "completed" and is not awaiting priority archive confirmation')
+    expect(missing).toEqual({ status: 400, json: { error: 'archive confirmation requires string field "confirmation"' } })
+    expect(empty).toEqual({ status: 400, json: { error: 'archive confirmation requires string field "confirmation"' } })
   })
 
   test('routes source keeps exactly one authoring HTTP dispatch path', async () => {

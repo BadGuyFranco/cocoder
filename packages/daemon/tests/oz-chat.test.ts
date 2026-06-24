@@ -7,7 +7,7 @@ import type { OzContext } from '../src/context.js'
 import { executeOzCommand, handleOzMessage, parseOzCommand, type OzChatOps } from '../src/oz-chat.js'
 import type { LaunchRunTarget } from '../src/launcher.js'
 
-const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, deb-repair <problem> [--run <runId>], commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
+const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, deb-repair <problem> [--run <runId>], commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
 
 // A stub for an op a test does NOT expect to be called: returns a 500 so an unexpected dispatch fails
 // loudly instead of looking like a real success. Narrowly cast to the specific op's type.
@@ -31,6 +31,7 @@ function mockOps(overrides: Partial<OzChatOps>): OzChatOps {
     requestOscarDebRepair: unexpected('oscar-deb-repair') as OzChatOps['requestOscarDebRepair'],
     requestAuthoringPlay: unexpected('author') as OzChatOps['requestAuthoringPlay'],
     supportCommitRun: unexpected('support-commit') as OzChatOps['supportCommitRun'],
+    requestArchiveConfirmation: unexpected('archive-confirmation') as OzChatOps['requestArchiveConfirmation'],
     ...overrides,
   }
 }
@@ -318,7 +319,7 @@ describe('handleOzMessage', () => {
 
     expect(result).toMatchObject({
       status: 400,
-      body: { ok: false, command: 'unknown', reply: 'Pick a workspace first, then use launch <priorityId>, adhoc <task>, show <runId>, stop <runId>, teardown <runId>, or status.' },
+      body: { ok: false, command: 'unknown', reply: 'Pick a workspace first, then use launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, stop <runId>, teardown <runId>, or status.' },
     })
   })
 
