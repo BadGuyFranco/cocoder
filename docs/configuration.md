@@ -84,6 +84,35 @@ For the multi-machine sync model (sync the whole CoCoder folder; git handles the
 tool handles `local/`), see
 [ARCHITECTURE.md → Multi-machine sync](../ARCHITECTURE.md#multi-machine-sync).
 
+## Workspace defaults and the override rule
+
+CoCoder ships **local defaults** for a new workspace — things like the preferred tech stack and the
+default design spec — in the workspace template, `templates/workspace-cocoder/cocoder/**`. When a repo
+is scaffolded, `scaffoldCocoderZone`
+([`packages/core/src/scaffold/scaffold.ts`](../packages/core/src/scaffold/scaffold.ts)) copies that
+template into the repo's `cocoder/` zone with `copyFileCreateOnly` — it writes each template file
+**only if the repo does not already have one**.
+
+That create-only copy *is* the resolution rule, with no separate config knob:
+
+- **A workspace that specifies its own value wins.** If the repo already has its own
+  `cocoder/memory/tech-stack.md` (or its own CSS/design), the seeded file is skipped and never
+  overwritten.
+- **Otherwise the local default applies.** A repo that defines nothing receives the template default.
+
+**To set or change a default**, edit the file under `templates/workspace-cocoder/cocoder/...`. The two
+current defaults:
+
+| Default | Where you edit it |
+|---------|-------------------|
+| Preferred tech stack | `templates/workspace-cocoder/cocoder/memory/tech-stack.md` (the owner — no product-code source) |
+| Default design spec | owner is [`packages/ui/src/renderer/styles/design-spec.md`](../packages/ui/src/renderer/styles/design-spec.md); the template carries a pointer at `templates/workspace-cocoder/cocoder/memory/design-spec.md` |
+
+**Caveat — create-only is forward-only.** Editing a default changes what **newly scaffolded** repos
+receive. An already-onboarded workspace that already received the seeded file keeps its copy (the
+scaffold skips it), so it will *not* pick up your edit. Pushing a changed default into existing
+workspaces is a separate, deliberate migration — not something scaffolding does on its own.
+
 ## The dogfood workspace
 
 The CoCoder repo is itself one managed workspace — the dogfood, id `cocoder`, whose primary root is
