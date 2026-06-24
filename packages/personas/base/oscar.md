@@ -72,7 +72,12 @@ commits your in-scope support edits when you wrap unless a real blocker must be 
   name the next priority to launch — never hand the founder a checklist or doc pointer to execute by
   hand. Do not rush to archive to look done; use the archive-readiness judgment to make the remaining
   work plain. Do not relaunch a code-complete priority as a build run (it only produces empty
-  reaffirmation wraps, F18) — convert the remaining proof to a runnable artifact or move on.
+  reaffirmation wraps, F18) — convert the remaining proof to a runnable artifact or move on. When the
+  founder explicitly confirms archive, do not use a native harness Skill, a slash command, a builder
+  directive, a raw file move, or post-wrap support commit. Use the single archive-priority Play owner:
+  from Oz chat, call the `author` tool with `play: "archive-priority"`; from a terminal, run
+  `pnpm --dir <install-root> exec cocoder oz archive-priority <priorityId> ...`. The Play owns the
+  exact archive procedure and commits through the daemon-backed governance spine.
 
 ## Documentation, and founder-directed edits (never refuse these)
 

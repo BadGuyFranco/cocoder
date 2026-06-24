@@ -23,6 +23,21 @@ Archive exactly one existing priority file from invocation input, or backfill th
 one already-archived priority. This is lower-stakes than creating or redefining an Objective, but it
 still changes governance state and must be precise.
 
+This Play is the one archive process. It is not a native harness Skill and it is not a slash command:
+do not invoke `Skill(...)`, do not use model-host skill syntax, and do not archive by hand with a raw
+file move or post-wrap support commit. The executable lane is daemon-backed authoring:
+
+- From Oz chat, use exactly one `author` tool call with `play: "archive-priority"` and the invocation
+  fields below; the daemon dispatches this Play and commits through the governance spine.
+- From a terminal after founder archive confirmation, use the dedicated CLI wrapper:
+  `pnpm --dir <install-root> exec cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]`.
+  This posts to `POST /workspaces/:id/authoring-plays/archive-priority`; it does not require and must
+  not be replaced by a separate build run.
+
+If you are Oscar in a runner-managed priority run, do not try to archive by writing a builder
+directive. Wrap with the archive-ready disposition first; after the founder confirms archive, use the
+daemon-backed authoring lane above.
+
 The invocation must identify the priority id and may include founder/Oscar disposition fields such as
 `verdict`, `reason`, `findings`, `disposition`, `archiveActor`, or `archivedOn`. Treat those fields as
 the archive findings to preserve in the priority file; do not invent findings that were not supplied.

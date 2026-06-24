@@ -58,6 +58,19 @@ describe('priority authoring Plays', () => {
     expect(play.body).toContain('already-archived priority')
   })
 
+  test('archive-priority names the daemon-backed invocation lane and rejects skill/raw archive paths', () => {
+    const play = loadEffectivePlay(sources().baseDir, sources().deltaDir, 'archive-priority')
+
+    expect(play.body).toContain('This Play is the one archive process')
+    expect(play.body).toContain('not a native harness Skill')
+    expect(play.body).toContain('do not invoke `Skill(...)`')
+    expect(play.body).toContain('do not archive by hand with a raw\nfile move or post-wrap support commit')
+    expect(play.body).toContain('use exactly one `author` tool call with `play: "archive-priority"`')
+    expect(play.body).toContain('pnpm --dir <install-root> exec cocoder oz archive-priority <priorityId>')
+    expect(play.body).toContain('POST /workspaces/:id/authoring-plays/archive-priority')
+    expect(play.body).toContain('do not try to archive by writing a builder\ndirective')
+  })
+
   test('Architect Play System priority includes elegance checkpoint contract migration', async () => {
     const { readFile } = await import('node:fs/promises')
     const text = await readFile(join(repoRoot(), 'cocoder', 'priorities', 'archive', 'hybrid-plays.md'), 'utf8')

@@ -201,6 +201,19 @@ describe('basePersonasDir', () => {
     expect(normalized).toContain('Use heavyweight multi-agent workflows for review and verification')
   })
 
+  test('Oscar routes confirmed priority archives through the archive-priority Play owner', () => {
+    const text = readFileSync(join(basePersonasDir(), 'oscar.md'), 'utf8')
+    const normalized = singleLine(text)
+
+    expect(normalized).toContain('founder explicitly confirms archive')
+    expect(normalized).toContain('do not use a native harness Skill')
+    expect(normalized).toContain('a builder directive, a raw file move, or post-wrap support commit')
+    expect(normalized).toContain('Use the single archive-priority Play owner')
+    expect(normalized).toContain('call the `author` tool with `play: "archive-priority"`')
+    expect(normalized).toContain('pnpm --dir <install-root> exec cocoder oz archive-priority <priorityId>')
+    expect(normalized).toContain('commits through the daemon-backed governance spine')
+  })
+
   test('Bob completion evidence rejects unproven launch and artifact green claims', () => {
     const text = readFileSync(join(basePersonasDir(), 'bob.md'), 'utf8')
     const normalized = singleLine(text)
