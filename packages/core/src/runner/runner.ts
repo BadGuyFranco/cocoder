@@ -1210,7 +1210,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     if (gate) {
       if (gate.committedSha) lines.push(`Committed as \`${gate.committedSha}\` (files: ${gate.committedFiles.join(', ') || 'none'}) on branch \`${runBranch}\`. The run still fails — land it from that branch to bring the ${isTicket ? 'ticket' : 'repair'} to trunk.`, '')
       else lines.push('No in-scope changes were committed (nothing within Deb\'s write-scope changed).', '')
-      if (gate.outOfScope.length > 0) lines.push(`**Outside Deb's repair lane:** ${gate.outOfScope.join(', ')}`, '')
+      if (gate.outOfLane.length > 0) lines.push(`**Outside Deb's repair lane:** ${gate.outOfLane.join(', ')}`, '')
     }
     if (v.disposition === 'repo-bug') lines.push('## For the founder', '', v.summary, '')
     return lines.join('\n')
@@ -1262,7 +1262,11 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           }
           if (receipt.error) store.recordEvent({ runId: run.id, type: 'deb-repair-commit-failed', data: { fault: faultType, error: receipt.error, files: inScope } })
           if (outOfScope.length > 0) store.recordEvent({ runId: run.id, type: 'deb-repair-out-of-scope-held', data: { files: outOfScope } })
-          gate = { committedSha: receipt.committedSha, committedFiles: receipt.committedFiles, outOfScope, selfCommitted: selfCommittedRepair }
+          // The manual deb-repair path and the gate now return the SAME shape (CommitGateResult =
+          // CommitReceipt + selfCommitted), so this is no longer a hand-conversion between two shapes:
+          // spread the spine receipt, add gate-only selfCommitted, and surface the HELD-BACK out-of-scope
+          // files in `outOfLane` (commitFiles partitions nothing, so its receipt.outOfLane is []).
+          gate = { ...receipt, outOfLane: outOfScope, selfCommitted: selfCommittedRepair }
         } else {
           gate = await runCommitGate({
             git,
@@ -1276,7 +1280,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
             auditWriteBoundary,
           })
         }
-        store.recordEvent({ runId: run.id, type: 'deb-repair', data: { fault: faultType, atom: atomIndex, occurrence, escalation: verdict.escalation ?? null, ticketId: verdict.ticketId ?? null, committedSha: gate.committedSha, files: gate.committedFiles, outOfScope: gate.outOfScope } })
+        store.recordEvent({ runId: run.id, type: 'deb-repair', data: { fault: faultType, atom: atomIndex, occurrence, escalation: verdict.escalation ?? null, ticketId: verdict.ticketId ?? null, committedSha: gate.committedSha, files: gate.committedFiles, outOfScope: gate.outOfLane } })
       }
       await io.writeDisposition(runDir, i, renderDisposition(faultType, atomIndex, verdict, gate, occurrence))
     } catch (err) {
@@ -1531,9 +1535,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const absorbGateResult = (gate: CommitGateResult): void => {
     if (gate.committedSha) committedShas.push(gate.committedSha)
     committedFiles.push(...gate.committedFiles)
-    // outOfScope is now a pure visibility flag (the paths committed out of lane), unioned across atoms.
+    // outOfLane is now a pure visibility flag (the paths committed out of lane), unioned across atoms.
     // No more "clear prior holdback" dance — nothing is held back, so there is nothing to clear.
-    for (const f of gate.outOfScope) if (!outOfScope.includes(f)) outOfScope.push(f)
+    for (const f of gate.outOfLane) if (!outOfScope.includes(f)) outOfScope.push(f)
     selfCommitted = selfCommitted || gate.selfCommitted
   }
 
@@ -1581,11 +1585,11 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       auditWriteBoundary,
     })
     absorbGateResult(gate)
-    if (gate.committedSha || gate.outOfScope.length > 0 || gate.selfCommitted) {
+    if (gate.committedSha || gate.outOfLane.length > 0 || gate.selfCommitted) {
       store.recordEvent({
         runId: run.id,
         type: 'oscar-support-commit',
-        data: { committedSha: gate.committedSha, files: gate.committedFiles, outOfScope: gate.outOfScope, selfCommitted: gate.selfCommitted },
+        data: { committedSha: gate.committedSha, files: gate.committedFiles, outOfScope: gate.outOfLane, selfCommitted: gate.selfCommitted },
       })
     }
     return gate

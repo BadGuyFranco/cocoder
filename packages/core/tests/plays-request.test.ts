@@ -107,7 +107,8 @@ describe('Play request lane', () => {
     })
 
     expect(ordinaryReceipt.committedFiles).toEqual(['cocoder/tickets/open/0024-bug.md', 'packages/core/src/leak.ts'])
-    expect(ordinaryReceipt.outOfScope).toEqual(['packages/core/src/leak.ts'])
+    // WS3.2: gate result now carries the spine's `outOfLane` (was `outOfScope`).
+    expect(ordinaryReceipt.outOfLane).toEqual(['packages/core/src/leak.ts'])
     expect(store.listEvents(run.id).some((event) => event.type === 'out-of-scope-committed')).toBe(true)
 
     const scoped = fakeGit(['cocoder/tickets/open/0024-bug.md', 'packages/core/src/leak.ts'])

@@ -1024,9 +1024,9 @@ export async function requestSupportCommitRun(ctx: OzContext, runId: string): Pr
   ctx.store.recordEvent({
     runId,
     type: 'post-wrap-support-commit',
-    data: { committedSha: gate.committedSha, files: gate.committedFiles, outOfScope: gate.outOfScope, selfCommitted: gate.selfCommitted, liveOscar },
+    data: { committedSha: gate.committedSha, files: gate.committedFiles, outOfScope: gate.outOfLane, selfCommitted: gate.selfCommitted, liveOscar },
   })
-  await appendAudit(ctx.cocoderHome, { action: 'post-wrap-support-commit', workspaceId: run.workspaceId, runId, committedSha: gate.committedSha, files: gate.committedFiles, outOfScope: gate.outOfScope, liveOscar })
+  await appendAudit(ctx.cocoderHome, { action: 'post-wrap-support-commit', workspaceId: run.workspaceId, runId, committedSha: gate.committedSha, files: gate.committedFiles, outOfScope: gate.outOfLane, liveOscar })
   emitOzEvent(ctx, { type: 'post-wrap-support-commit', runId, workspaceId: run.workspaceId, status: gate.committedSha ? 'committed' : 'no-commit' })
   return {
     status: 200,
@@ -1035,7 +1035,7 @@ export async function requestSupportCommitRun(ctx: OzContext, runId: string): Pr
       runId,
       committedPaths: gate.committedFiles,
       commitSha: gate.committedSha,
-      outOfLanePaths: gate.outOfScope,
+      outOfLanePaths: gate.outOfLane,
       selfCommitted: gate.selfCommitted,
       liveOscar,
     },

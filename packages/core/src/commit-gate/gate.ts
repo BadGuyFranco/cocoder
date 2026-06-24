@@ -11,7 +11,7 @@
 import type { RunStore } from '../store/index.js'
 import { partitionByScope } from '../write-scope/partition.js'
 import type { Git } from './git.js'
-import { commitFiles } from './workspace-commit.js'
+import { commitFiles, type CommitReceipt } from './workspace-commit.js'
 
 export interface CommitGateInput {
   readonly git: Git
@@ -29,12 +29,11 @@ export interface CommitGateInput {
   readonly auditWriteBoundary?: AuditWriteBoundary
 }
 
-export interface CommitGateResult {
-  readonly committedSha: string | null
-  readonly committedFiles: readonly string[]
-  /** Paths committed that fell outside the (now advisory) allow-list — FLAGGED for visibility, NOT
-   *  withheld. They are included in `committedFiles`; this is the "out of lane" signal, not a hold-back. */
-  readonly outOfScope: readonly string[]
+/** The gate's receipt is the spine's CommitReceipt (one shape across spine + gate, WS3.2) EXTENDED with
+ *  gate-only `selfCommitted`. The spine (commitFiles) never sees `headBefore`, so it cannot carry
+ *  self-commit detection; the gate computes it and adds it here. For the gate's advisory commit-all,
+ *  `outOfLane` is the committed-but-flagged set (included in `committedFiles`, not held back). */
+export interface CommitGateResult extends CommitReceipt {
   /** True if the agent committed on its own (HEAD moved outside the gate). */
   readonly selfCommitted: boolean
 }
@@ -97,5 +96,7 @@ export async function runCommitGate(input: CommitGateInput): Promise<CommitGateR
     store.recordEvent({ runId, type: 'out-of-scope-committed', data: { files: outOfScope } })
   }
 
-  return { committedSha, committedFiles: changed, outOfScope, selfCommitted }
+  // The gate re-throws on commit failure (above), so on return `error` is always null and `committed`
+  // is exactly (a sha exists). `outOfLane` is the spine's vocabulary for the old `outOfScope` flag.
+  return { committed: committedSha !== null, committedSha, committedFiles: changed, outOfLane: outOfScope, error: null, selfCommitted }
 }

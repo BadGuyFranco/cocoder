@@ -150,9 +150,13 @@ describe('runCommitGate', () => {
     })
 
     // Scope is advisory: BOTH files commit; the out-of-lane one is flagged, not held back.
+    // WS3.2: the gate now speaks the spine's receipt vocabulary — `outOfLane` (was `outOfScope`),
+    // plus `committed`/`error` — and keeps gate-only `selfCommitted`.
     expect(res.committedFiles).toEqual(['packages/cli/src/run.ts', 'docs/leak.md'])
-    expect(res.outOfScope).toEqual(['docs/leak.md'])
+    expect(res.outOfLane).toEqual(['docs/leak.md'])
     expect(res.selfCommitted).toBe(false)
+    expect(res.committed).toBe(true)
+    expect(res.error).toBe(null)
     expect(commits).toHaveLength(1)
 
     // The commit_link records the whole commit (F6); the out-of-lane edit is surfaced (visible, committed).
@@ -172,7 +176,7 @@ describe('runCommitGate', () => {
       scope: [], message: 'x', headBefore: 'h0',
     })
     expect(res.committedFiles).toEqual(['packages/a.ts'])
-    expect(res.outOfScope).toEqual(['packages/a.ts'])
+    expect(res.outOfLane).toEqual(['packages/a.ts'])
     expect(commits).toHaveLength(1)
   })
 
@@ -188,6 +192,31 @@ describe('runCommitGate', () => {
     })
     expect(res.selfCommitted).toBe(true)
     expect(store.listEvents(run.id).some((e) => e.type === 'agent-self-commit')).toBe(true)
+  })
+
+  test('returns the spine receipt shape EXTENDED with selfCommitted (WS3.2 converged shape)', async () => {
+    // The gate now returns the spine's CommitReceipt vocabulary ({committed, committedSha, committedFiles,
+    // outOfLane, error}) PLUS gate-only selfCommitted — one receipt shape across the spine + gate. This
+    // pins that selfCommitted (load-bearing: absorbGateResult → run-end → deriveRunSummary → RunResult) is
+    // NOT dropped when the shapes converged, and that both a self-commit AND a gate commit can co-occur.
+    const store = openRunStore(':memory:')
+    store.upsertWorkspace({ id: 'cocoder', path: '/repo', name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'p' })
+    const { git } = makeFakeGit({ changed: ['packages/a.ts', 'docs/b.md'], headBefore: 'h0', headNow: 'h1-agent' })
+
+    const res = await runCommitGate({
+      git, store, cwd: '/repo', runId: run.id, workItemId: null,
+      scope: ['packages/**'], message: 'x', headBefore: 'h0',
+    })
+
+    expect(res).toEqual({
+      committed: true,
+      committedSha: expect.any(String),
+      committedFiles: ['packages/a.ts', 'docs/b.md'],
+      outOfLane: ['docs/b.md'],
+      error: null,
+      selfCommitted: true,
+    })
   })
 
   test('surfaces a spine commit failure by rejecting — no phantom commit link or commit event (WS3.1)', async () => {
