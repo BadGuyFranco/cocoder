@@ -2,10 +2,11 @@
 id: 0050
 title: Archive-ready wrap strands founder archive action
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: deb
 created: 2026-06-24
+closed: 2026-06-24
 ---
 
 # 0050 - Archive-ready wrap strands founder archive action
@@ -73,3 +74,9 @@ the founder to translate a closeout sentence into a separate command or authorin
 - Related closed tickets: 0023 made archive-priority reachable; 0041 exempted same wrapped/awaiting-founder
   runs from the authoring-Play in-flight guard. This ticket should build on those mechanisms, not replace
   them.
+
+## Resolution
+
+Resolved by run run_225 (6a29e22) on 2026-06-24.
+
+Archive-ready priority wraps now enter `awaiting-archive-confirmation` with a first-class in-context confirmation action routed through the single `archive-priority` Play lane; wrap-up recommends `archive`/`archive <runId>` with CLI fallback only; core and daemon tests cover the run_224 case including order.json pruning and non-archive decline.

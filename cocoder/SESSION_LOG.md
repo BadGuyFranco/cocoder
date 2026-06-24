@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-24 — **ticket 0050: archive-ready wrap in-context confirmation — closed (run_81/run_225)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Ticket:** [0050](./tickets/closed/0050-archive-ready-wrap-strands-founder-archive-action.md) | **Run:** run_225 (display 81)
+**Outcomes:**
+- **Atom 0 (`5dbf958`) — core wrap disposition.** Reconciled `deriveWrapDisposition`/`deriveWrapupRunStatus` so founder-decision wins over archive-ready; dropped obsolete build-atom/signal gates; collapsed dead `archive-candidate` into `archive-confirmation`; guarded brittle prefixed Run Status parsing via `normalizeCloseoutRunStatusLine`; core tests cover all four wrap cases.
+- **Atom 1 (`d5434a4`) — daemon archive-confirmation route.** `POST /runs/:id/archive-confirmation` archives through the archive-priority lane and prunes `order.json`; non-archive answers keep the priority live; 409/400 guards; status-feed action gated on `awaiting-archive-confirmation`.
+- **Atom 2 (`6a29e22`) — wrap-up Play + oz-chat dispatch.** In-context `archive`/`archive <runId>` is the recommended path (CLI fallback only); Founder Decision Needed must stay None for archive-ready wraps; oz-chat archive-dispatch tests added.
+- **Ticket closed** via `closeTicket()` at wrap; `order.json` pruned.
+**Next:** Launch ticket `0037` — align CONTRIBUTING and PR template with live CI (no stale rg gate promise).
+
 ## 2026-06-24 — **local-preferences: cross-repo best-of defaults complete — archive-candidate (run_80/run_224)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [local-preferences](./priorities/local-preferences.md) | **Run:** run_224 (display 80)

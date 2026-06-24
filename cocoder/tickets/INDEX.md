@@ -14,7 +14,6 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
 | [0049](./open/0049-deb-watch-prompts-fire-on-normal-boundaries.md) | Deb watch prompts fire on normal run boundaries | bug | none | Open |
-| [0050](./open/0050-archive-ready-wrap-strands-founder-archive-action.md) | Archive-ready wrap strands founder archive action | bug | none | Open |
 | [0048](./open/0048-adopt-eslint-in-cocoder-engine-repo.md) | Adopt a minimal ESLint 9 linter in CoCoder's own engine repo | task | none | Open |
 | [0047](./open/0047-oscar-deb-repair-dialogue-strands-a-valid-deb-proposal-when-the-oscar-evaluation-turn-times-out.md) | Headless governance turns are marked failed (exit -1, ~120s) even when the artifact was produced — stranding repair proposals and skipping authoring commits | bug | none | founder-session |
 | [0043](./open/0043-bob-blocker-replies-unowned-after-runner-stall-nudges.md) | Bob blocker replies are unowned after runner stall nudges | bug | oz-autonomy | Open |
@@ -26,6 +25,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0050](./closed/0050-archive-ready-wrap-strands-founder-archive-action.md) | Archive-ready wrap strands founder archive action | bug | 2026-06-24 | Archive-ready priority wraps now enter awaiting-archive-confirmation with a first-class in-context confirmation action routed through archive-priority; core and daemon tests cover the run_224 case. |
 | [0042](./closed/0042-deb-default-live-terminal-observation.md) | Deb should default to live Oscar/Bob terminal observation | bug | 2026-06-24 | Added a runner/session-host-owned read-only Deb terminal snapshot for Oscar/Bob, made it the default live-loop evidence path, aligned Deb/base/dogfood/shared prompt text, and pinned the behavior with core and persona tests. |
 | [0046](./closed/0046-ticket-launched-runs-must-close-or-ask-at-wrap-with-ticket-specific-wrap-up-run-status-vocabulary.md) | Ticket-launched runs must close-or-ask at wrap, with ticket-specific wrap-up Run Status vocabulary | task | 2026-06-24 | Ticket fix run completed successfully. |
 | [0045](./closed/0045-closed-ticket-lingers-in-order-json-relaunches.md) | A ticket closed off-spine lingers in tickets/order.json and gets relaunched as an active run | bug | 2026-06-23 | Fixed by run_214: closeTicket now prunes stale ticket order entries on already-closed or missing-open-ticket paths, closeTicketAfterSuccessfulRun commits that reconciliation through the governance spine, findStaleTicketOrderEntries guards order.json against closed or missing ids, and Deb base governance forbids off-spine tracked-ticket closure. |
