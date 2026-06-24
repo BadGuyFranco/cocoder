@@ -279,6 +279,54 @@ const loopDelegate = (task: string, over: Partial<NonNullable<Extract<Directive,
 })
 const wrapup = (pickup: string): Directive => ({ kind: 'wrapup', pickup })
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
+// ── WS4 Deb-watcher stall de-flake harness ──────────────────────────────────────────────────────
+// The stall family used to manufacture the stall window with `await sleep(20)` in awaitDirective and
+// HOPE the watcher's cadence loop (monitorCadenceMs: 1) sampled the idle Oscar screen ≥2 times inside
+// that real 20ms window before the directive resolved. That is a pure event-loop-SCHEDULING race (how
+// many ~1ms samples land in a real 20ms window under full-parallel load), so it flaked ~1/several
+// runs — not an unpinned logical clock. This harness GATES instead of timing: the first directive
+// parks until the watcher has visibly ACTED (caller-supplied predicate), and the fake Oscar screen is
+// held CONSTANT only while parked — so idleStreak climbs and the stall is detected exactly once — and
+// CHANGES otherwise, so no other await window (e.g. the wrap-up directive) can spuriously trip the
+// idle detector. The directive releases the instant the watcher acts, making the outcome deterministic
+// under any scheduling. Dispatch dedup (recordDebWatchDispatch keys by detail) guarantees the single
+// constant-frame window yields exactly one dispatch.
+const gatedStallHarness = (opts: {
+  directives: Directive[]
+  // Releases the parked first directive the moment this returns true — set it to the watcher's
+  // observable side effect (a recorded event, or a flag the sendInput hook flips), NEVER a timer.
+  watcherActed: () => boolean
+  statusWrites?: DebStatus[]
+  terminalSnapshotWrites?: DebTerminalSnapshot[]
+  sendInput?: SessionHost['sendInput']
+}): { io: RunnerIO; sessionHost: SessionHost } => {
+  let i = 0
+  let parked = false
+  let frame = 0
+  const io: RunnerIO = {
+    ...fakeIO({ directives: opts.directives, statusWrites: opts.statusWrites, terminalSnapshotWrites: opts.terminalSnapshotWrites }),
+    async awaitDirective() {
+      if (i === 0) {
+        parked = true
+        while (!opts.watcherActed()) await sleep(1)
+        parked = false
+      }
+      const d = opts.directives[i++]
+      if (!d) throw new Error('test: ran out of scripted directives')
+      return d
+    },
+  }
+  const sessionHost = fakeSessionHost({
+    async readScreen() {
+      // Constant ⇒ idleStreak climbs ⇒ stall detected (only while the first directive is parked);
+      // changing ⇒ Oscar looks like he's progressing ⇒ no other window trips the detector.
+      return parked ? 'oscar parked (awaiting first directive)' : `oscar working ${frame++}`
+    },
+    ...(opts.sendInput ? { sendInput: opts.sendInput } : {}),
+  })
+  return { io, sessionHost }
+}
 const writeFounderStopSignal = async (runDir: string): Promise<void> => {
   await mkdir(runDir, { recursive: true })
   const path = founderStopSignalPath(runDir)
@@ -2804,23 +2852,19 @@ describe('runRun (multi-atom loop)', () => {
   })
 
   test('Deb-backed watchdog nudges an idle Oscar while awaiting a directive only when Deb is present', async () => {
-    const slowDirectiveIO = (): RunnerIO => {
-      const directives = [delegate('do it'), wrapup('done')]
-      let i = 0
-      return {
-        ...fakeIO({ directives }),
-        async awaitDirective() {
-          if (i === 0) await sleep(20)
-          const d = directives[i++]
-          if (!d) throw new Error('test: ran out of scripted directives')
-          return d
-        },
-      }
-    }
     const timeouts = { orchestrationMs: 200, buildMs: 200, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 1000 }
 
+    // DE-FLAKED (WS4): park the first directive until the watcher has delivered the idle nudge (the
+    // observable side effect this test counts), instead of racing a real 20ms window against the
+    // monitor's 1ms cadence. The idle nudge is recorded by the awaited monitor loop (onNudge), so an
+    // oscar-nudge event is a reliable release signal. minNudgeIntervalMs:1000 caps the parked window
+    // to one nudge; the changing screen afterwards keeps the wrap-up window from nudging again.
     const storeWithDeb = openRunStore(':memory:')
-    const result = await runRun(baseDeps({ store: storeWithDeb, io: slowDirectiveIO(), timeouts }), { ...input, deb })
+    const debHarness = gatedStallHarness({
+      directives: [delegate('do it'), wrapup('done')],
+      watcherActed: () => storeWithDeb.listRuns().some((r) => storeWithDeb.listEvents(r.id).some((e) => e.type === 'oscar-nudge')),
+    })
+    const result = await runRun(baseDeps({ store: storeWithDeb, io: debHarness.io, sessionHost: debHarness.sessionHost, timeouts }), { ...input, deb })
     expect(result.status).toBe('completed')
     const withDebEvents = storeWithDeb.listEvents(result.runId).filter((e) => e.type === 'oscar-nudge')
     expect(withDebEvents).toHaveLength(1)
@@ -2832,8 +2876,10 @@ describe('runRun (multi-atom loop)', () => {
       source: 'idle',
     })
 
+    // Without Deb there is no watcher and the idle path is disabled (hasDebWatcher gates it), so no
+    // stall window is needed — a plain immediate IO completes the run and proves no nudge is emitted.
     const storeWithoutDeb = openRunStore(':memory:')
-    const noDebResult = await runRun(baseDeps({ store: storeWithoutDeb, io: slowDirectiveIO(), timeouts }), input)
+    const noDebResult = await runRun(baseDeps({ store: storeWithoutDeb, io: fakeIO({ directives: [delegate('do it'), wrapup('done')] }), timeouts }), input)
     expect(noDebResult.status).toBe('completed')
     expect(storeWithoutDeb.listEvents(noDebResult.runId).some((e) => e.type === 'oscar-nudge')).toBe(false)
   })
@@ -3132,11 +3178,19 @@ describe('runRun (multi-atom loop)', () => {
     const statusWrites: DebStatus[] = []
     const terminalSnapshotWrites: DebTerminalSnapshot[] = []
     const sent: string[] = []
+    let frame = 0
     await runRun(
       baseDeps({
         store,
         io: fakeIO({ directives: [delegate('do x'), wrapup('done')], statusWrites, terminalSnapshotWrites }),
         sessionHost: fakeSessionHost({
+          // DE-FLAKED (WS4): a healthy run = Oscar making progress = the screen changing, so idleStreak
+          // never climbs and the watcher never dispatches. The default constant '' screen let the 1ms
+          // cadence loop spuriously detect a stall whenever a directive await was slow under load,
+          // flaking the `deb-watch-dispatch` / `DEB WATCH` negative assertions below.
+          async readScreen() {
+            return `oscar working ${frame++}`
+          },
           async sendInput(_ref, text) {
             sent.push(text)
           },
@@ -3304,26 +3358,26 @@ describe('runRun (multi-atom loop)', () => {
 
   test('Deb watch dispatches are non-blocking when Deb is silent on an actionable stall', async () => {
     const store = openRunStore(':memory:')
-    const directives = [delegate('do it'), wrapup('done')]
-    let i = 0
-    const io: RunnerIO = {
-      ...fakeIO({ directives }),
-      async awaitDirective() {
-        if (i === 0) await sleep(20)
-        const d = directives[i++]
-        if (!d) throw new Error('test: ran out of scripted directives')
-        return d
+    // DE-FLAKED (WS4): park the first directive until the DEB WATCH prompt has actually been SENT (the
+    // sendInput hook flips `dispatched`), then release. The dispatch fires from a fire-and-forget
+    // refreshStatus, so gating on the prompt — not just the recorded event — guarantees the side
+    // effect happened before the run ends. The hung promise proves the run never awaits that send.
+    let dispatched = false
+    const harness = gatedStallHarness({
+      directives: [delegate('do it'), wrapup('done')],
+      watcherActed: () => dispatched,
+      sendInput: async (_ref, text) => {
+        if (text.startsWith('DEB WATCH')) {
+          dispatched = true
+          return new Promise<void>(() => {})
+        }
       },
-    }
+    })
     const result = await runRun(
       baseDeps({
         store,
-        io,
-        sessionHost: fakeSessionHost({
-          async sendInput(_ref, text) {
-            if (text.startsWith('DEB WATCH')) return new Promise<void>(() => {})
-          },
-        }),
+        io: harness.io,
+        sessionHost: harness.sessionHost,
         timeouts: { orchestrationMs: 200, buildMs: 200, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 },
       }),
       { ...input, deb },
@@ -3334,32 +3388,32 @@ describe('runRun (multi-atom loop)', () => {
 
   test('actionable stall Deb watch writes current lastDispatch before prompting Deb', async () => {
     const store = openRunStore(':memory:')
-    const directives = [delegate('do it'), wrapup('done')]
     const statusWrites: DebStatus[] = []
     const debWatchPrompts: string[] = []
-    let i = 0
-    const io: RunnerIO = {
-      ...fakeIO({ directives, statusWrites }),
-      async awaitDirective() {
-        if (i === 0) await sleep(20)
-        const d = directives[i++]
-        if (!d) throw new Error('test: ran out of scripted directives')
-        return d
+    // Capture the feed's lastDispatch AT the moment the prompt is sent, but assert it AFTER the run —
+    // the DEB WATCH send is fire-and-forget (`void sessionHost.sendInput(...).catch(...)`), so an
+    // assertion thrown inside the callback would be swallowed by that .catch and silently pass.
+    let lastDispatchAtPrompt: string | null | undefined
+    // DE-FLAKED (WS4): park the first directive until the prompt has been sent (the watcher acted),
+    // then release. The constant parked screen yields exactly one stall; the changing screen afterward
+    // keeps the wrap-up window from prompting again.
+    const harness = gatedStallHarness({
+      directives: [delegate('do it'), wrapup('done')],
+      statusWrites,
+      watcherActed: () => debWatchPrompts.length > 0,
+      sendInput: async (_ref, text) => {
+        if (!text.startsWith('DEB WATCH')) return
+        const detail = text.slice('DEB WATCH - '.length).split('\n')[0]!
+        lastDispatchAtPrompt = statusWrites.at(-1)?.watch.lastDispatch
+        debWatchPrompts.push(detail)
       },
-    }
+    })
 
     const result = await runRun(
       baseDeps({
         store,
-        io,
-        sessionHost: fakeSessionHost({
-          async sendInput(_ref, text) {
-            if (!text.startsWith('DEB WATCH')) return
-            const detail = text.slice('DEB WATCH - '.length).split('\n')[0]!
-            debWatchPrompts.push(detail)
-            expect(statusWrites.at(-1)?.watch.lastDispatch).toBe(detail)
-          },
-        }),
+        io: harness.io,
+        sessionHost: harness.sessionHost,
         timeouts: { orchestrationMs: 200, buildMs: 200, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 },
       }),
       { ...input, deb },
@@ -3367,6 +3421,9 @@ describe('runRun (multi-atom loop)', () => {
 
     expect(result.status).toBe('completed')
     expect(debWatchPrompts).toHaveLength(1)
+    // The status feed already carried this dispatch's detail when the prompt was sent (the
+    // "writes current lastDispatch before prompting Deb" contract, now asserted outside the callback).
+    expect(lastDispatchAtPrompt).toBe(debWatchPrompts[0])
     const dispatch = store.listEvents(result.runId).find((e) => e.type === 'deb-watch-dispatch')
     expect(dispatch?.data).toMatchObject({ kind: 'stall', detail: debWatchPrompts[0] })
     expect(statusWrites.some((status) => status.watch.lastDispatch === debWatchPrompts[0])).toBe(true)
