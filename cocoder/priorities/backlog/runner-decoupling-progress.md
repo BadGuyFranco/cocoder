@@ -29,6 +29,112 @@ next session. Do not start the following chunk in this session.
 
 ---
 
+## 2026-06-24 — WS5, step 1 (extract the founder-closeout contract parser into the Play layer)
+
+- **Workstream/step:** WS5 (split `runner.ts`), step 1 — extract the LOWEST-RISK target from the step-0
+  map (target 1: the founder-closeout contract parser), **behavior-preserving**. Moved the self-contained,
+  top-level closeout symbol set out of `runner.ts` into a NEW
+  `packages/core/src/plays/founder-closeout.ts`. `runner.ts` dropped from **2054 → 1625 lines** (−429,
+  exactly the extracted body); the new module is 440 lines. No `runRun`-local captured (all symbols were
+  top-level pure functions defined above `runRun`), so this was a near-pure move + import rewiring, as the
+  map predicted.
+- **Re-grep before cutting (line numbers HAD drifted — map ranges not trusted):** confirmed boundaries in
+  the live file: closeout symbols at `91-100`, `211-250`, `254-378`, `393-643`; the interleaved
+  NON-closeout helpers `readReadyDirective` (`:380`) and `resumeStateAtomNumber` (`:389`) and the runner
+  type `PreVerdictAgentStepResume` (`:252`) sat INSIDE the same band and were left in `runner.ts` (deleted
+  ranges were symbol-selective `91-100`/`211-251`/`254-379`/`392-643`, skipping the keepers — verified the
+  keepers survive and are still referenced at `runner.ts:384/1046/1096/1118/1556`).
+- **What moved (the unit):** public `deriveWrapupRunStatus`/`deriveTicketCloseDecision`/
+  `deriveWrapDisposition`/`validatePlayOutput`; `parseFounderCloseoutContract`/`founderCloseoutFormatIssues`/
+  `formatInvalidFounderCloseoutFallback`; the private helpers (`section`,
+  `founderCloseoutFromFirstContractHeading`, `founderCloseoutRole`, `founderCloseoutSectionFromBlock`,
+  `normalizeRunStatus`, `parseRunStatusVocabulary`, `founderCloseoutSection`, `founderDecisionNeeded`,
+  `normalizeCloseoutRunStatusLine`, `closeoutRunStatus`, `archiveConfirmationAction`,
+  `closeoutCitesCheckableSignal`, `launchableNextIssue`, `sentenceCount`, `hasAtomOrImplementationLabel`),
+  the `FOUNDER_CLOSEOUT_ROLES` const, the `PLAY_OUTPUT_VALIDATORS` registry, and all closeout types
+  (`FounderCloseoutRole`, `CloseoutLaunchTarget`, `TicketCloseDecision`, `FounderCloseoutRunStatusVocabulary`,
+  `FounderCloseoutContract`, `ArchiveConfirmationAction`, `WrapDisposition`, `PlayOutputValidationInput`,
+  `PlayOutputValidationResult`, `PlayOutputValidatorFn`).
+- **Decisions (resolved explicitly):**
+  - **`Play` imported from `../plays/types.js` (the source), NOT the plays barrel `./index.js`** — the new
+    module lives in `plays/`, so importing the barrel while being re-exportable from it would be a cycle.
+    `RunStatus` from `../store/index.js`; `existsSync`/`readdirSync` from `node:fs` + `join` from
+    `node:path` (the only fs/path deps the moved code uses — `readFileSync` was NOT needed; its only
+    runner.ts user was `readReadyDirective`, which stayed, so `readFileSync` stays imported in runner.ts
+    while `readdirSync` was DROPPED from runner.ts as now-unused).
+  - **Four previously-private helpers gained `export`** because `runner.ts` consumes them across the new
+    module boundary: `founderCloseoutFromFirstContractHeading`, `archiveConfirmationAction`,
+    `closeoutCitesCheckableSignal`, `formatInvalidFounderCloseoutFallback`. Truly-internal helpers stayed
+    unexported.
+  - **Re-export point = core `index.ts` ONLY (the existing public path).** founder-closeout is a Play-layer
+    module, so its closeout block was REMOVED from the runner barrel (`runner/index.ts` — those names no
+    longer exist in `runner.js`) and ADDED to core `index.ts` as a dedicated
+    `from './plays/founder-closeout.js'` block placed with the other plays exports. The plays barrel
+    (`plays/index.js`) was deliberately NOT touched (cycle-avoidance, per the prompt). Public surface is
+    byte-identical to before (validatePlayOutput, deriveTicketCloseDecision, deriveWrapupRunStatus + the
+    types) PLUS `deriveWrapDisposition` (newly surfaced, listed as a public name in the step-1 brief;
+    additive, no consumer relied on its absence). Verified nothing across `packages/*` imported these from
+    the runner barrel directly (only core `index.ts` did).
+- **Map (owner → emitters → consumers → tests):** *owner* was `runner.ts` top-level; *re-export chain* was
+  `runner.ts` → `runner/index.ts` → core `index.ts`, now `plays/founder-closeout.ts` → core `index.ts`;
+  *consumers* are all inside `runRun`'s wrap-up branch (`runner.ts:1837/1854/1856/1862/1870-1875`) + the
+  signatures at `:194` (`RunResult.ticketCloseDecision`), `:795` (`closeoutTarget`), `:1524`
+  (`ticketCloseDecision`); external consumer is `runner.test.ts` via `../src/index.js` (imports
+  `FounderCloseoutContract`, `deriveTicketCloseDecision`, `deriveWrapupRunStatus`, `validatePlayOutput`).
+  The daemon test helper `packages/daemon/tests/helpers/founder-closeout.ts` defines its OWN local
+  `FounderCloseoutContract` interface — NOT a consumer of ours (name collision only).
+- **Tests pinning it (the guard — NO rewrite needed):** `runner.test.ts` `describe('founder closeout
+  target-aware Run Status')` (the contract-parser/validator/derive assertions) — they import from
+  `../src/index.js`, which stayed valid, so a GREEN run with zero test edits proves the move is
+  behavior-preserving. Confirmed: focused `-t "founder closeout"` → **7 passed**, no import-source edit.
+- **Commit:** `fe6af31` — "refactor(runner): WS5.1 — extract the founder-closeout contract parser into the
+  Play layer". (Ledger entry committed separately, matching the WS1.3/1.4/2.1/3.x/WS4 convention.)
+- **Files:** `packages/core/src/plays/founder-closeout.ts` (NEW), `packages/core/src/runner/runner.ts`
+  (deletions + new import — staged surgically), `packages/core/src/runner/index.ts` (removed the closeout
+  re-export block), `packages/core/src/index.ts` (added the `from './plays/founder-closeout.js'` block,
+  removed the closeout names from the runner-barrel block). `runner.ts` was staged WITHOUT its foreign
+  `SessionRef` import hunk by restoring that line to HEAD in the working tree, `git add`-ing runner.ts
+  (capturing only my changes — verified SessionRef appears as a CONTEXT line, not a +/- change, in the
+  staged diff), then re-applying the foreign change so it remains unstaged dirt (equivalent to the
+  WS1.2/1.3/3.2/3.3 `git apply --cached` filter). The other three files are mine and `git add`-ed directly.
+- **Tests/results:** focused `pnpm --filter @cocoder/core test -t "founder closeout"` → 7 passed (no test
+  rewrite); `pnpm --filter @cocoder/core test` → **582 passed** (unchanged baseline); `pnpm --filter
+  @cocoder/core typecheck` → clean; staged-only snapshot typecheck (`git stash --keep-index`) → clean
+  (confirms the staged tree compiles without the foreign dirt — SessionRef is type-only-unused there but
+  tsconfig does not flag it, same as HEAD); root `pnpm typecheck` → clean (7 pkgs); `node
+  scripts/check-topology.mjs` → passed (7 pkgs; same 2 PRE-EXISTING daemon test-helper warnings —
+  `daemon-reload-fixture.ts`, `founder-closeout.ts` — the latter is the daemon TEST helper, NOT the new
+  `core/src/plays/founder-closeout.ts`, which is inside `src`); root `pnpm test` → **3/3 consecutive
+  full-parallel runs ALL green** (personas 29, core 582, adapters 24, session-hosts 18, ui 161, cli 9,
+  daemon 346) — stall family did not trip.
+- **Residual risk:** LOW. Pure structural move; the event log, run statuses, and founder-facing closeout
+  outputs are byte-unchanged (the validators/derive functions are identical, only their file home moved).
+  Carry-forward for the NEXT cut: (a) the remaining `runRun` closures (`triageFault`, the atom loop, the
+  terminal-projection consumers) are HIGH/HIGHEST capture — re-grep their line bands, the numbers have
+  drifted again after this −429-line cut; (b) `runner.ts` still carries the foreign `SessionRef` import
+  dirt — any future runner.ts edit must surgical-stage the same way; (c) the new `founder-closeout.ts`
+  must NOT import the plays barrel (`./index.js`) — keep it on `./types.js`/`../store` to avoid the cycle.
+  The unrelated eslint-adoption dirt (`eslint.config.mjs`, `run.ts`, `read-claims.ts`, `p3-action.ts`,
+  `frontmatter.ts`, `runner.ts`'s `SessionRef` import hunk, `oz-host.ts`, `proof-daemon-reload.mjs`,
+  `tsconfig.eslint.json`) was preserved, NOT committed.
+- **Exact next step (WS5, step 2 — extract the fault/triage funnel `triageFault` → `runner/triage.ts`,
+  HIGH risk):** Per the step-0 map's recommended order, target 2 (the terminal-projection consumer
+  closures) folds in with the atom loop (target 4) — it is NOT a standalone early step — so the next
+  STANDALONE cut is target 3, the fault/triage funnel. Extract `triageFault` (the run_231 cascade
+  epicentre), its render helper `renderDisposition`, and the `fail` closure into `runner/triage.ts` taking
+  an explicit deps record. CRITICAL specifics (re-grep first — line numbers drifted after this −429-line
+  cut): `faultSeq` is a MUTATED counter (`i = faultSeq++`) — pass a `nextFaultSeq()` accessor, NOT a value
+  copy; preserve the quarantine-before-fault + scope-partition guards from `bca1b27`/WS3.3 intact; the
+  deb-repair commit path (`commitFiles`/`runCommitGate`/`recordSuccessfulCommit`) must keep funneling
+  through the WS3 spine. Pinning tests: the run_231 sweep-guard (`runner.test.ts` `deb-repair commit cannot
+  sweep`), `recurring fault escalates`, `max-consecutive-rejects`, plus `commit-gate.test.ts`/
+  `status.test.ts`/`surface-agreement.test.ts`. Map owners/emitters/consumers/tests first; tests-first,
+  green-throughout; verify `pnpm --filter @cocoder/core test` + `typecheck` → root `pnpm typecheck`/
+  `pnpm test` (multiple times) → `node scripts/check-topology.mjs`. `runner.ts` is still in the preserved
+  eslint dirt — surgical-stage its edits (drop the `SessionRef` hunk) as this step did.
+
+---
+
 ## 2026-06-24 — WS5, step 0 (the extraction map — MAP ONLY, no source edit)
 
 - **Workstream/step:** WS5 (split `runner.ts`, highest-risk), step 0 — the protocol-mandated **map before
