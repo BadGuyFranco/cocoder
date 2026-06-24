@@ -3,6 +3,14 @@ id: oz-autonomy
 title: Oz autonomy — conversational authoring and self-directed governance edits (write layer)
 ---
 
+> **Archived 2026-06-23 (founder) — code-complete and proven.** All five "Verified when" bullets met
+> with runnable proof: `node scripts/proof-oz-autonomy.mjs` passes 6/6 clauses (exit 0). ADR-0040
+> Accepted (carry-forward pointers in ADR-0016/0017/0025 + index). Atoms: core scope guard `96f98e4`,
+> `oz-action` lane `89c61eb`, code-level Objective guard `9acfaac`, proof harness `1f29cd6`. Bullet 1
+> (conversational author-commit, no adhoc run) uses the existing `author` tool — no new code. Follow-up:
+> ticket [0044](../../tickets/open/0044-deb-nudge-fabricated-out-of-scope-event.md) (Deb nudge
+> reliability), not blocking.
+
 ## Objective
 
 Make Oz a genuinely autonomous control-plane agent on the **write** side, layered on the read/answer
