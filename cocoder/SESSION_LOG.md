@@ -12,9 +12,19 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **ticket-fix-0045: no-op relaunch — verified closed, suites green — archive-candidate (run_71/run_215)**
+
+**Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** ticket-fix / [0045](./tickets/closed/0045-closed-ticket-lingers-in-order-json-relaunches.md) | **Run:** run_215 (display 71)
+**Outcomes:**
+- **No build atoms delegated.** Ticket [0045](./tickets/closed/0045-closed-ticket-lingers-in-order-json-relaunches.md) was already Closed (run_214) before launch; fix landed in commits `80b4bd1`, `4928043`, `efe6a5d`.
+- **Run-success close path fired.** Governance commit closed 0045 through the spine, stamped `## Resolution`, and pruned 0045 from `order.json` (0046 now at queue head).
+- **Acceptance re-verified.** All three criteria pinned and green: daemon (320), core (509), personas (26).
+- **Disposition: `archive-candidate`.** Ticket objective met; no remaining build work on 0045. Relaunch was the F18 trap — closed ticket still at queue head before run_214's close landed.
+**Next:** Launch ticket `0046` — ticket-launched runs close-or-ask at wrap with ticket-specific Run Status vocabulary.
+
 ## 2026-06-23 — **ticket-fix-0045: stale ticket id in order.json — prevent, heal, detect — archive-candidate (run_70/run_214)**
 
-**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0045](./tickets/open/0045-closed-ticket-lingers-in-order-json-relaunches.md) | **Run:** run_214 (display 70)
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0045](./tickets/closed/0045-closed-ticket-lingers-in-order-json-relaunches.md) | **Run:** run_214 (display 70)
 **Outcomes:**
 - **Atom 0 (`80b4bd1`) — self-healing reconcile.** `closeTicket`/`closeTicketAfterSuccessfulRun` prune `order.json` idempotently on the already-closed and missing-file paths; audit `ticket-order-reconciled`; daemon test pins off-spine POST `/runs` scenario.
 - **Atom 1 (`4928043`) — stale queue guard.** `findStaleTicketOrderEntries` (tickets-side analog of `findOrphanedPriorities`) in `priority-order.ts` plus a live-repo governance guard test green against real `cocoder/tickets/order.json`.
