@@ -1,7 +1,7 @@
 [
   "oz-file-access",
-  "new-primary-root",
   "local-preferences",
+  "new-primary-root",
   "model-layer",
   "priority-audit"
 ]
