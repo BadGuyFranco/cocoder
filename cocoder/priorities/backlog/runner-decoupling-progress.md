@@ -29,6 +29,60 @@ next session. Do not start the following chunk in this session.
 
 ---
 
+## 2026-06-24 — WS1, step 1 (terminal projection seed + derivability test)
+
+- **Workstream/step:** WS1 (Surface unification), step 1 — treat `renderDebStatus` as canonical and prove a
+  terminal run's `DebStatus` is derivable from the event log alone; land the inventory + test before moving
+  any writes.
+- **Commit:** `9aa90e3` — "runner(status): WS1.1 — terminal DebStatus projection seed + derivability test".
+- **Files:** `packages/core/src/runner/status.ts` (added `deriveTerminalProjection` + inventory comment),
+  `packages/core/src/index.ts` + `packages/core/src/runner/index.ts` (re-export it),
+  `packages/core/tests/status.test.ts` (new `deriveTerminalProjection — WS1 terminal projection seed`
+  describe: 5 tests).
+- **Map (owners/emitters/consumers/tests):**
+  - *Owner/projection:* `renderDebStatus` in `status.ts` — pure over `store.listEvents`, but takes four
+    run-state inputs imperatively.
+  - *Sole emitter of those inputs:* `runner.ts` via `writeDebEvidence`/`refreshStatus`
+    (`runner.ts:1128,1175`); ~10 call sites pass `(phase, activeAtom, activeTask, waitCondition)`.
+  - *Terminal call sites:* `fail()` `runner.ts:1059` → `('faulted', atomIndex, null, prose)`. **`holdRun`
+    (`runner.ts:1712`) and `stopRun` (`runner.ts:1672`) call `refreshStatus` NOT AT ALL** — they only record
+    `run-held {park, atom}` / `run-stopped {atom}` + `run-end {status}`, so the status feed keeps a stale
+    pre-terminal phase. That stale-feed gap is the WS1 prize for held/stopped.
+  - *Consumer:* Deb's status feed (ADR-0016); `record.ts` / `writePortableRunHistory` are the sibling
+    surfaces WS1 will also re-base on events.
+  - *Tests:* `packages/core/tests/status.test.ts` (the renderDebStatus suite).
+- **WS1 inventory (the work-list) — the four imperative inputs for a terminal run:**
+  - `phase` — LOAD-BEARING (drives `oscar`, and `handoffs` via awaiting-directive/verifying). DERIVABLE from
+    `run-end {status}` / `run-held` / `run-stopped`.
+  - `activeAtom` — LOAD-BEARING (drives `verify` active-atom selection, `handoffs` file numbers, passthrough
+    `json.activeAtom`). DERIVABLE from the terminal marker's `atom`, else last atom-bearing event.
+  - `activeTask` — DISPLAY-ONLY pass-through (only `json.activeTask` + markdown); NOT derivable (free prose).
+  - `waitCondition` — DISPLAY-ONLY pass-through (only `json.waitCondition` + markdown); NOT derivable (free
+    prose). This is the "no runner-passed waitCondition the event log can't reproduce" edge the ledger named.
+  - Non-run-state inputs (legitimately injected, not part of the move): `store`, `runId`, `priority`,
+    `runDisplay`, `scopes`, `now`, `recentLimit`.
+  - Coarseness logged: `stopped` has no dedicated RunnerPhase/OscarState → projection maps it to `'faulted'`
+    (→ oscar `'blocked'`), the generic terminal-blocked state. A dedicated terminal OscarState is a later
+    refinement, not this step.
+- **Tests/results:** `pnpm --filter @cocoder/core test status` → 18 passed (13 existing + 5 new);
+  `pnpm --filter @cocoder/core test` → **554 passed** (was 549); `pnpm --filter @cocoder/core typecheck` →
+  clean; root `pnpm typecheck` → clean (7 pkgs); root `pnpm test` → all green (personas 29, core 554,
+  adapters 24, session-hosts 18, ui 161, cli 9, daemon 345); `node scripts/check-topology.mjs` → passed
+  (same 2 pre-existing daemon test-helper warnings as WS0). The WS0-noted timer-flaky idle-Oscar-nudge test
+  did not trip this run.
+- **Residual risk:** `deriveTerminalProjection` is a SEED only — nothing in `runner.ts` consumes it yet, so
+  no behavior changed and the held/stopped stale-feed bug still exists at runtime (now provably fixable).
+  `record.ts` / `writePortableRunHistory` are still imperative and untouched. The unrelated dirty working
+  tree (eslint adoption: `eslint.config.mjs`, `run.ts`, `read-claims.ts`, `p3-action.ts`, `frontmatter.ts`,
+  `runner.ts`, `oz-host.ts`, `proof-daemon-reload.mjs`, `tsconfig.eslint.json`) was preserved, NOT committed.
+- **Exact next step (WS1, step 2):** Wire `deriveTerminalProjection` into the runner's terminal paths so
+  `holdRun`/`stopRun`/`fail` no longer hand-feed `phase`/`activeAtom` — call `refreshStatus` in `holdRun` and
+  `stopRun` (they currently don't) using the derived pair, and assert (test-first) the on-disk terminal
+  `DebStatus` now matches the projection (closing the stale-feed gap). Keep `activeTask`/`waitCondition` as
+  the only remaining imperative inputs for now (free-text labels). Verify with the same command set.
+
+---
+
 ## 2026-06-24 — WS0 (pre-work, this audit session)
 
 - **Workstream/step:** Root-cause fix that motivated this priority (not part of WS1–WS5; the baseline).
