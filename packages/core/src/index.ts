@@ -318,6 +318,7 @@ export {
   parseNudgeRequest,
   faultFingerprint,
   renderDebStatus,
+  deriveTerminalProjection,
   captureDebTerminalSnapshot,
   renderDebTerminalSnapshotMarkdown,
   type DebStatus,

@@ -44,6 +44,7 @@ export { type NudgeRequest, parseNudgeRequest } from './nudge.js'
 export { faultFingerprint } from './fingerprint.js'
 export {
   renderDebStatus,
+  deriveTerminalProjection,
   type DebStatus,
   type RunnerPhase,
   type PlaybookStatus,

@@ -77,6 +77,42 @@ const last = (events: readonly RunEvent[], types: readonly string[]): RunEvent |
   for (let i = events.length - 1; i >= 0; i--) if (types.includes(events[i]!.type)) return events[i]!
   return null
 }
+
+// ── WS1 terminal projection (runner-decoupling, ADDITIVE; see runner-decoupling-refactor.md) ──────────
+// `renderDebStatus` takes four run-state inputs the runner currently feeds IMPERATIVELY from its own
+// locals: `phase`, `activeAtom`, `activeTask`, `waitCondition`. Of these, only `phase` and `activeAtom`
+// are load-bearing — they steer derived fields (`oscar`; `verify`'s active-atom selection; `handoffs`).
+// `activeTask` and `waitCondition` are free-text DISPLAY labels: pure pass-throughs that touch no derived
+// field, and (being prose) are NOT reproducible from the event log — that is the WS1 inventory's hard edge.
+//
+// For a TERMINAL run (failed / held / stopped) the load-bearing pair is fully recoverable from the event
+// log alone: the terminal markers (`run-end {status}`, `run-held {atom}`, `run-stopped {atom}`) plus the
+// last atom-bearing event pin both `phase` and `activeAtom` with no runner help. This function derives
+// that pair so a terminal run's DebStatus needs zero runner locals. It is the projection seed: nothing is
+// wired into the runner yet (no writes moved this step) — it exists to be asserted against the canonical
+// `renderDebStatus` output, which is the WS1 step-1 deliverable.
+//
+// Coarseness recorded for the work-list: `stopped` has no dedicated RunnerPhase/OscarState, so it maps to
+// `'faulted'` (→ oscar `'blocked'`), the generic terminal-blocked state. A dedicated terminal OscarState
+// is a later refinement, NOT this step.
+const lastAtomBearing = (events: readonly RunEvent[]): number | null => {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const a = atomOf(events[i]!)
+    if (a !== null) return a
+  }
+  return null
+}
+export function deriveTerminalProjection(
+  events: readonly RunEvent[],
+): { readonly phase: RunnerPhase; readonly activeAtom: number | null } | null {
+  const held = last(events, ['run-held'])
+  if (held) return { phase: 'awaiting-founder', activeAtom: atomOf(held) ?? lastAtomBearing(events) }
+  const stopped = last(events, ['run-stopped'])
+  if (stopped) return { phase: 'faulted', activeAtom: atomOf(stopped) ?? lastAtomBearing(events) }
+  const endStatus = (last(events, ['run-end'])?.data as { status?: unknown } | undefined)?.status
+  if (endStatus === 'failed') return { phase: 'faulted', activeAtom: lastAtomBearing(events) }
+  return null
+}
 const lastForAtom = (events: readonly RunEvent[], types: readonly string[], atom: number | null): RunEvent | null => {
   if (atom === null) return last(events, types)
   for (let i = events.length - 1; i >= 0; i--) {

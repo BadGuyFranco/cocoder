@@ -2,7 +2,7 @@
 // is driven here straight from recorded events (no live run): the same evidence Deb reads to answer
 // "how's Oscar doing?".
 import { describe, expect, test } from 'vitest'
-import { type RunnerPhase, openRunStore, renderDebStatus } from '../src/index.js'
+import { type RunnerPhase, deriveTerminalProjection, openRunStore, renderDebStatus } from '../src/index.js'
 
 const priority = { id: 'demo', title: 'Demo' }
 const scopes = { oscar: [], bob: ['packages/**'], deb: ['cocoder/**'] }
@@ -174,5 +174,83 @@ describe('renderDebStatus', () => {
     expect(s.recentEvents).toHaveLength(5)
     expect(s.recentEvents[4]?.note).toBe('n19')
     expect(s.generatedAt).toBe(1_000_000)
+  })
+})
+
+// ── WS1 step 1 (runner-decoupling-refactor.md): prove a TERMINAL run's DebStatus is derivable from the
+// event log alone. `renderDebStatus` takes four run-state inputs the runner feeds imperatively — `phase`,
+// `activeAtom`, `activeTask`, `waitCondition`. INVENTORY of those four for a terminal run:
+//   - `phase`        LOAD-BEARING, DERIVABLE — `run-end {status}` / `run-held` / `run-stopped` markers.
+//   - `activeAtom`   LOAD-BEARING, DERIVABLE — terminal marker's `atom`, else the last atom-bearing event.
+//   - `activeTask`   display-only, NOT derivable — free-text prose; touches no derived field (pass-through).
+//   - `waitCondition` display-only, NOT derivable — free-text prose; touches no derived field (pass-through).
+// `deriveTerminalProjection` recovers the load-bearing pair; this suite asserts that pair reproduces the
+// canonical `renderDebStatus` projection for every terminal path, modulo the two free-text labels. No
+// runner writes are moved yet — this is the projection seed the later WS1 swap is verified against.
+describe('deriveTerminalProjection — WS1 terminal projection seed', () => {
+  // The exact events the runner records on a fault (fail(): the fault-type event, the triage dispatch, then
+  // run-end status=failed). refreshStatus is called with ('faulted', atom, null, <prose>).
+  const faultedEvents = [
+    { type: 'delegation', data: { atom: 0, task: 'do x' } },
+    { type: 'builder-dispatch', data: { atom: 0 } },
+    { type: 'builder-scope-conflict', data: { atom: 0, message: 'writePaths out of scope' } },
+    { type: 'triage-dispatch', data: { fault: 'builder-scope-conflict', atom: 0 } },
+    { type: 'run-end', data: { status: 'failed', atoms: 1, committedShas: [], outOfScope: [] } },
+  ]
+  // holdRun(): run-held {park, atom} then run-end status=held — and it never calls refreshStatus, so the
+  // status feed today carries a STALE pre-hold phase. The projection closes that gap from events alone.
+  const heldEvents = [
+    { type: 'delegation', data: { atom: 2 } },
+    { type: 'builder-dispatch', data: { atom: 2 } },
+    { type: 'run-held', data: { park: 'pre-dispatch', atom: 2 } },
+    { type: 'run-end', data: { status: 'held', atoms: 2, committedShas: [], outOfScope: [] } },
+  ]
+  // stopRun(): run-stopped {atom} then run-end status=stopped — also no refreshStatus (same stale-feed gap).
+  const stoppedEvents = [
+    { type: 'delegation', data: { atom: 1 } },
+    { type: 'builder-dispatch', data: { atom: 1 } },
+    { type: 'run-stopped', data: { atom: 1 } },
+    { type: 'run-end', data: { status: 'stopped', atoms: 2, committedShas: [], outOfScope: [] } },
+  ]
+
+  const projectionFor = (events: { type: string; data?: unknown }[]) => {
+    const store = openRunStore(':memory:')
+    store.upsertWorkspace({ id: 'w', path: '/r', name: 'W' })
+    const run = store.createRun({ workspaceId: 'w', priorityId: 'demo' })
+    for (const e of events) store.recordEvent({ runId: run.id, type: e.type, data: e.data })
+    return deriveTerminalProjection(store.listEvents(run.id))
+  }
+
+  test('faulted: projection equals the inputs the runner feeds at fail()', () => {
+    expect(projectionFor(faultedEvents)).toEqual({ phase: 'faulted', activeAtom: 0 })
+  })
+
+  test('faulted: DebStatus rendered from the derived pair matches the canonical one (modulo display labels)', () => {
+    const derived = projectionFor(faultedEvents)!
+    // Canonical: what the runner passes today at fail() — phase 'faulted', the fault's atom, free-text label.
+    const canonical = statusFor(faultedEvents, 'faulted', { activeAtom: 0, activeTask: null, waitCondition: 'run failed after builder-scope-conflict' })
+    const fromEvents = statusFor(faultedEvents, derived.phase, { activeAtom: derived.activeAtom, activeTask: null, waitCondition: 'run failed after builder-scope-conflict' })
+    expect(fromEvents).toEqual(canonical)
+    expect(canonical.oscar).toBe('blocked')
+  })
+
+  test('held: projection recovers awaiting-founder + atom that the runner never refreshes', () => {
+    const derived = projectionFor(heldEvents)
+    expect(derived).toEqual({ phase: 'awaiting-founder', activeAtom: 2 })
+    const s = statusFor(heldEvents, derived!.phase, { activeAtom: derived!.activeAtom, activeTask: null, waitCondition: 'held by founder' })
+    expect(s.oscar).toBe('blocked')
+    expect(s.activeAtom).toBe(2)
+  })
+
+  test('stopped: projection recovers a terminal-blocked phase + atom from run-stopped', () => {
+    const derived = projectionFor(stoppedEvents)
+    expect(derived).toEqual({ phase: 'faulted', activeAtom: 1 })
+    const s = statusFor(stoppedEvents, derived!.phase, { activeAtom: derived!.activeAtom, activeTask: null, waitCondition: 'stopped' })
+    expect(s.oscar).toBe('blocked')
+    expect(s.activeAtom).toBe(1)
+  })
+
+  test('a still-running event log has no terminal projection', () => {
+    expect(projectionFor([{ type: 'delegation', data: { atom: 0 } }, { type: 'builder-dispatch', data: { atom: 0 } }])).toBeNull()
   })
 })
