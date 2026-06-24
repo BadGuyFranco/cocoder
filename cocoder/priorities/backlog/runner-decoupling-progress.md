@@ -29,6 +29,65 @@ next session. Do not start the following chunk in this session.
 
 ---
 
+## 2026-06-24 — WS1, step 2 (wire deriveTerminalProjection into the runner's terminal paths)
+
+- **Workstream/step:** WS1 (Surface unification), step 2 — wire `deriveTerminalProjection` into `holdRun`/
+  `stopRun` so the Deb status feed no longer keeps a STALE pre-terminal phase after a hold/stop (the
+  WS1.1-documented stale-feed gap). `fail()` already refreshed; `holdRun`/`stopRun` never called
+  `refreshStatus`. This is the ONE intended BEHAVIOR change in WS1.
+- **Commit:** `<fill after commit>` — "runner(status): WS1.2 — derive terminal status feed phase in hold/stop".
+- **Files:** `packages/core/src/runner/runner.ts` (import `deriveTerminalProjection`; add a `refreshStatus`
+  call in `stopRun` and `holdRun` sourcing `(phase, activeAtom)` from
+  `deriveTerminalProjection(store.listEvents(run.id))`, `activeTask=null` + a free-text `waitCondition`),
+  `packages/core/tests/runner.test.ts` (new `WS1 step 2 — terminal status feed derives its phase from the
+  event log (no stale phase)` describe: 2 tests — held + stopped).
+- **Map (owners/emitters/consumers/tests):**
+  - *Projection owner:* `deriveTerminalProjection` (`status.ts:105`) — pure over events. held → `awaiting-founder`,
+    stopped → `faulted`; both map to oscar `blocked` via the phase→oscar table (`status.ts:220`).
+  - *Feed emitter:* `refreshStatus` → `writeDebEvidence` (`runner.ts:1175/1128`) — writes `deb-status.json`
+    (+ terminal snapshot) and records a `deb-status` event. Only fires for a Deb-backed run (`if (!debRef) return`).
+  - *Terminal call sites fixed:* `stopRun` (`runner.ts:1672`), `holdRun` (`runner.ts:1712`). The new call is
+    placed AFTER `projectAndCommitPortableRunHistory` + `io.writeRunRecord` (just before the `log`/`return`).
+  - *Sibling surfaces (confirmed NOT shifted):* `writePortableRunHistory` (`store/portable/projection.ts:27`)
+    serializes ALL events via `listEvents` — so the new terminal `deb-status` event would land in portable
+    history if recorded earlier; placing the refresh AFTER the portable commit keeps that surface byte-identical.
+    `record.ts` reads only `direct-mode` + `out-of-scope-committed` events (`record.ts:10,58`), so `record.md`
+    is unaffected regardless of placement. Verified by event-ordering assertions in both new tests
+    (`lastIndexOf('deb-status') > indexOf('run-end')`).
+- **Behavior change (the intended one):** a held run's terminal feed was oscar `waiting` (stale
+  `awaiting-directive`); a stopped run's was oscar `running` — both now correctly read oscar `blocked` with the
+  terminal `activeAtom`. The tests pin the OLD stale values as the pre-fix baseline (red before the wire-up,
+  green after). No other surface changed.
+- **Determinism (WS1.1 rule honored):** the "matches the projection" assertion renders the canonical
+  `renderDebStatus` from the SAME post-run store/run as the on-disk feed (one store → identical event `at`),
+  and compares only the projection-controlled fields (`oscar`, `activeAtom`, `bob`, `verify`,
+  `outstandingFaults`, `handoffs`) — excluding render-time `generatedAt` and the still-imperative free-text
+  `waitCondition`/`activeTask`. No deep-equal of two independently-built `:memory:` stores.
+- **Tests/results:** `pnpm --filter @cocoder/core test runner -t "WS1 step 2"` → 2 passed (both red before the
+  runner edit: held `waiting`→`blocked`, stopped `running`→`blocked`); `pnpm --filter @cocoder/core test` →
+  **556 passed** (was 554; +2 new); `pnpm --filter @cocoder/core typecheck` → clean; root `pnpm typecheck` →
+  clean (7 pkgs); `node scripts/check-topology.mjs` → passed (same 2 pre-existing daemon test-helper warnings).
+  Root `pnpm test`: all packages green (personas 29, core 556, adapters 24, session-hosts 18, ui 161, cli 9)
+  EXCEPT one flaky daemon failure under full parallel load — `daemon-auto-reload.test.ts > daemon reload build
+  failure is recorded without restarting` — which PASSES in isolation (`pnpm --filter @cocoder/daemon test
+  daemon-auto-reload` → 5 passed) and exercises the dirty `scripts/proof-daemon-reload.mjs` (unrelated eslint
+  dirt); it is NOT a regression from this core-only change (cf. WS0/WS1.1's known timer-flake note).
+- **Residual risk:** `activeTask`/`waitCondition` remain the only imperative inputs to `renderDebStatus`
+  (free-text labels — by design, NOT derivable). `record.ts` and `writePortableRunHistory` are still imperative
+  surfaces (WS1 will re-base them on events in later steps). The unrelated eslint-adoption dirt
+  (`eslint.config.mjs`, `run.ts`, `read-claims.ts`, `p3-action.ts`, `frontmatter.ts`, `runner.ts`'s `SessionRef`
+  import hunk, `oz-host.ts`, `proof-daemon-reload.mjs`, `tsconfig.eslint.json`) was preserved, NOT committed —
+  runner.ts was staged hunk-by-hunk (`git apply --cached`) to exclude the `SessionRef` dirt hunk.
+- **Exact next step (WS1, step 3):** Re-base ONE of the remaining imperative sibling surfaces on the event log.
+  Recommended: `writePortableRunHistory` (`packages/core/src/store/portable/projection.ts`) — it already
+  serializes the full event log per session, but the run-level summary fields (status/atoms/committedShas/
+  outOfScope/selfCommitted) are passed in imperatively by the runner's `projectAndCommitPortableRunHistory`
+  (`runner.ts:1609`) rather than derived from the `run-end` event. Build a derivation, assert it equals the
+  current output on existing fixtures (the portable-projection tests), THEN swap the imperative inputs. Keep the
+  feed-after-portable-commit ordering established here. Verify with the same command set.
+
+---
+
 ## 2026-06-24 — WS1, step 1 (terminal projection seed + derivability test)
 
 - **Workstream/step:** WS1 (Surface unification), step 1 — treat `renderDebStatus` as canonical and prove a

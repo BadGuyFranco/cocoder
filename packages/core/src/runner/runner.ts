@@ -69,7 +69,7 @@ import {
   commitMessage,
 } from './prompts.js'
 import { renderRunRecord } from './record.js'
-import { type DebStatus, type RunnerPhase, renderDebStatus } from './status.js'
+import { type DebStatus, type RunnerPhase, deriveTerminalProjection, renderDebStatus } from './status.js'
 import { captureDebTerminalSnapshot, renderDebTerminalSnapshotMarkdown } from './terminal-snapshot.js'
 import { isStopRequestedError } from './stop.js'
 import { faultFingerprint } from './fingerprint.js'
@@ -1693,6 +1693,11 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     // Any commits already made are on the active branch; push them (non-gating) so a shared remote sees them.
     await pushActiveBranchIfRemote()
     const recordPath = await io.writeRunRecord(runDir, renderRunRecord(store, run.id, { workspace, priority, displayNumber: portableRunDisplayNumber }))
+    // WS1.2: derive the terminal (phase, activeAtom) from the event log so the Deb feed reflects the stop
+    // instead of its stale pre-stop phase. Done AFTER portable run-history + record.md are written so neither
+    // sibling surface picks up this terminal deb-status event — the feed is the only intended WS1 shift.
+    const terminalProjection = deriveTerminalProjection(store.listEvents(run.id))
+    if (terminalProjection) await refreshStatus(terminalProjection.phase, terminalProjection.activeAtom, null, 'run stopped')
     log(`run ${run.id} stopped; ${committedShas.length} commit(s) over ${atoms} atom(s); record at ${recordPath}`)
     return {
       runId: run.id,
@@ -1725,6 +1730,11 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     store.setRunStatus(run.id, status)
     await pushActiveBranchIfRemote()
     const recordPath = await io.writeRunRecord(runDir, renderRunRecord(store, run.id, { workspace, priority, displayNumber: portableRunDisplayNumber }))
+    // WS1.2: derive the terminal (phase, activeAtom) from the event log so the Deb feed reflects the hold
+    // instead of its stale pre-hold phase. Done AFTER portable run-history + record.md are written so neither
+    // sibling surface picks up this terminal deb-status event — the feed is the only intended WS1 shift.
+    const terminalProjection = deriveTerminalProjection(store.listEvents(run.id))
+    if (terminalProjection) await refreshStatus(terminalProjection.phase, terminalProjection.activeAtom, null, 'run held; awaiting a founder directive to resume')
     log(`run ${run.id} held; ${committedShas.length} commit(s) over ${atoms} atom(s); record at ${recordPath}`)
     return {
       runId: run.id,

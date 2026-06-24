@@ -28,9 +28,11 @@ import {
   type SessionHost,
   type SessionRef,
   StopRequestedError,
+  deriveTerminalProjection,
   deriveTicketCloseDecision,
   deriveWrapupRunStatus,
   openRunStore,
+  renderDebStatus,
   runRun,
   validatePlayOutput,
 } from '../src/index.js'
@@ -3165,6 +3167,110 @@ describe('runRun (multi-atom loop)', () => {
     const noDebStatus: DebStatus[] = []
     await runRun(baseDeps({ store: noDebStore, io: fakeIO({ directives: [delegate('do x'), wrapup('done')], statusWrites: noDebStatus }) }), input)
     expect(noDebStatus).toHaveLength(0) // no status feed without Deb
+  })
+
+  // ── WS1 step 2 (runner-decoupling-refactor.md): holdRun/stopRun never called refreshStatus, so the
+  // status feed kept a STALE pre-terminal phase after a hold/stop. Now they refresh from
+  // deriveTerminalProjection(events) AFTER recording the terminal markers, closing the stale-feed gap.
+  // This is the ONE intended behavior change in WS1 (held/stopped feed becomes correct, not stale).
+  describe('WS1 step 2 — terminal status feed derives its phase from the event log (no stale phase)', () => {
+    // The fields the terminal projection controls. generatedAt (render-time) and the free-text
+    // waitCondition/activeTask (still imperative) are intentionally excluded so the assertion is
+    // deterministic without deep-equalling two independently-built stores (WS1.1 determinism rule).
+    const projectionFields = (s: DebStatus) => ({
+      oscar: s.oscar,
+      activeAtom: s.activeAtom,
+      bob: s.bob,
+      verify: s.verify,
+      outstandingFaults: s.outstandingFaults,
+      handoffs: s.handoffs,
+    })
+
+    test('held run: on-disk terminal DebStatus matches deriveTerminalProjection (was a stale pre-hold phase)', async () => {
+      const store = openRunStore(':memory:')
+      const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-ws1-held-feed-'))
+      const runDir = join(runsRoot, 'run_1')
+      await writeFounderStopSignal(runDir)
+      const statusWrites: DebStatus[] = []
+      const result = await runRun(
+        baseDeps({ store, io: fakeIO({ directives: [delegate('should not dispatch')], statusWrites }) }),
+        { ...input, runsRoot, deb },
+      )
+      expect(result.status).toBe('held')
+
+      const events = store.listEvents(result.runId)
+      const derived = deriveTerminalProjection(events)!
+      expect(derived).toEqual({ phase: 'awaiting-founder', activeAtom: 0 })
+
+      // The feed is no longer stale: it reflects the held projection (oscar 'blocked'), not the pre-hold
+      // 'awaiting-directive'/'waiting' it carried before WS1.2.
+      const terminal = statusWrites.at(-1)!
+      expect(terminal.oscar).toBe('blocked')
+      // Render the canonical projection from the SAME post-run store (one store → identical event `at`),
+      // and confirm the projection-controlled fields agree.
+      const canonical = renderDebStatus({ store, runId: result.runId, priority, scopes: {}, phase: derived.phase, activeAtom: derived.activeAtom, activeTask: null, waitCondition: 'derived' }).json
+      expect(projectionFields(terminal)).toEqual(projectionFields(canonical))
+
+      // refreshStatus ran AFTER the terminal markers (so the projection saw run-end), and the recorded
+      // deb-status events still track the on-disk writes one-for-one.
+      const types = events.map((e) => e.type)
+      expect(types.lastIndexOf('deb-status')).toBeGreaterThan(types.indexOf('run-end'))
+      expect(events.filter((e) => e.type === 'deb-status')).toHaveLength(statusWrites.length)
+    })
+
+    test('stopped run: on-disk terminal DebStatus matches deriveTerminalProjection (was a stale pre-stop phase)', async () => {
+      const store = openRunStore(':memory:')
+      const signal = new AbortController()
+      const statusWrites: DebStatus[] = []
+      const git: Git = {
+        ...worktreeStubs,
+        async headSha() {
+          return 'h0'
+        },
+        changedFiles: (() => {
+          let first = true
+          return async () => (first ? ((first = false), []) : ['packages/half-built.ts'])
+        })(),
+        async addAndCommit(_cwd, files) {
+          if (files.every((file) => file.startsWith('cocoder/'))) return 'sha-history'
+          throw new Error('stopped atom should not commit')
+        },
+        async restoreToHead() {},
+        async show() {
+          return ''
+        },
+      }
+      const result = await runRun(
+        baseDeps({
+          store,
+          git,
+          io: fakeIO({ directives: [delegate('half build')], statusWrites }),
+          sessionHost: fakeSessionHost({
+            async readScreen() {
+              signal.abort()
+              return 'working'
+            },
+          }),
+          makeJudge: () => async () => ({ state: 'progressing' }),
+          signal: signal.signal,
+        }),
+        { ...input, deb },
+      )
+      expect(result.status).toBe('stopped')
+
+      const events = store.listEvents(result.runId)
+      const derived = deriveTerminalProjection(events)!
+      expect(derived).toEqual({ phase: 'faulted', activeAtom: 0 })
+
+      const terminal = statusWrites.at(-1)!
+      expect(terminal.oscar).toBe('blocked')
+      const canonical = renderDebStatus({ store, runId: result.runId, priority, scopes: {}, phase: derived.phase, activeAtom: derived.activeAtom, activeTask: null, waitCondition: 'derived' }).json
+      expect(projectionFields(terminal)).toEqual(projectionFields(canonical))
+
+      const types = events.map((e) => e.type)
+      expect(types.lastIndexOf('deb-status')).toBeGreaterThan(types.indexOf('run-end'))
+      expect(events.filter((e) => e.type === 'deb-status')).toHaveLength(statusWrites.length)
+    })
   })
 
   test('writes read-only Oscar/Bob terminal snapshots for Deb during an active run', async () => {
