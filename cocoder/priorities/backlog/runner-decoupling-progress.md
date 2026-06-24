@@ -29,6 +29,195 @@ next session. Do not start the following chunk in this session.
 
 ---
 
+## 2026-06-24 — WS5, step 0 (the extraction map — MAP ONLY, no source edit)
+
+- **Workstream/step:** WS5 (split `runner.ts`, highest-risk), step 0 — the protocol-mandated **map before
+  cutting**, exactly as WS3 step 0 did. INVENTORY ONLY: no source/test file touched, nothing changes
+  behavior, so nothing to pin. Ledger-only commit. `runner.ts` is 2054 lines; `runRun` alone spans
+  **782–2054** (~1270 lines). The first WS5 EDIT is the next session (exact-next-step below).
+- **Baseline (verified this session):** `pnpm --filter @cocoder/core typecheck` → clean;
+  `node scripts/check-topology.mjs` → passed (7 pkgs; same 2 pre-existing daemon test-helper warnings —
+  `daemon-reload-fixture.ts`, `founder-closeout.ts`). No test run (map-only step); test baselines remain
+  core 582 / daemon 346 from the WS4 entry.
+
+### The four extraction targets (owner → captures → tests → target module → risk)
+
+**(1) Founder-closeout contract parser — TOP-LEVEL, already exported, already tested. RISK: LOW.**
+- *What/where:* a self-contained block of **top-level pure functions defined BEFORE `runRun`**, not a
+  closure. Public (already core-exported via `index.ts`, imported by `runner.test.ts` from `../src/index.js`):
+  `deriveWrapupRunStatus` (`runner.ts:403`), `deriveTicketCloseDecision` (`:417`),
+  `deriveWrapDisposition` (`:425`), `validatePlayOutput` (`:606`). Internal but part of the unit:
+  `parseFounderCloseoutContract` (`:312`), `founderCloseoutFormatIssues` (`:513`),
+  `formatInvalidFounderCloseoutFallback` (`:614`), plus the private helpers
+  `section` (`:254`), `founderCloseoutFromFirstContractHeading` (`:258`), `founderCloseoutRole` (`:264`),
+  `founderCloseoutSectionFromBlock` (`:283`), `normalizeRunStatus` (`:292`),
+  `parseRunStatusVocabulary` (`:296`), `founderCloseoutSection` (`:370`), `founderDecisionNeeded` (`:374`),
+  `normalizeCloseoutRunStatusLine` (`:393`), `closeoutRunStatus` (`:397`),
+  `archiveConfirmationAction` (`:432`), `closeoutCitesCheckableSignal` (`:450`),
+  `launchableNextIssue` (`:467`), `sentenceCount` (`:498`), `hasAtomOrImplementationLabel` (`:503`),
+  and the `PLAY_OUTPUT_VALIDATORS` registry (`:~595`). Types: `FounderCloseoutRole` (`:211`),
+  `CloseoutLaunchTarget` (`:223`), `TicketCloseDecision` (`:224`),
+  `FounderCloseoutRunStatusVocabulary` (`:226`), `FounderCloseoutContract` (`:244`),
+  `ArchiveConfirmationAction` (`:92`), `WrapDisposition` (`:91`),
+  `PlayOutputValidationInput` (`:581`), `PlayOutputValidationResult` (`:588`),
+  `PlayOutputValidatorFn` (`:593`).
+- *Top-level vs closure:* **TOP-LEVEL.** Captures **NO `runRun`-local** — by construction (all defined
+  above `runRun` at `:782`). Every input arrives as a parameter (`markdown`, `contract`, `cwd`, `target`,
+  `current`, `play`, `input`). Module-level deps only: node `existsSync`/`readFileSync`/`readdirSync`,
+  path `join`, `parseDirective`, and types `Play`/`RunStatus`/`Directive`. So extraction is a near-pure
+  move + import rewiring — the lowest-capture target by far.
+- *⚠ Interleave hazard (the one real cut-care):* two **non-closeout** top-level helpers sit INSIDE the
+  same line band and must STAY in `runner.ts` — `readReadyDirective` (`:380`, reads a ready directive)
+  and `resumeStateAtomNumber` (`:389`, resume-state arithmetic). The extraction is symbol-selective, NOT
+  a blind `254–644` line-range cut.
+- *Consumers (all inside `runRun`, the wrap-up branch):* `validatePlayOutput` (`:1837`, `:1856`),
+  `founderCloseoutFromFirstContractHeading` (`:1854`), `formatInvalidFounderCloseoutFallback` (`:1862`),
+  `closeoutCitesCheckableSignal` (`:1870`), `deriveWrapDisposition` (`:1871`),
+  `archiveConfirmationAction` (`:1872`), `deriveWrapupRunStatus` (`:1874`),
+  `deriveTicketCloseDecision` (`:1875`); `parseFounderCloseoutContract` is called from
+  `validatePlayOutput` (`:597`). External consumers read these via core `index.ts` re-export.
+- *Tests pinning it:* `packages/core/tests/runner.test.ts` — `describe('founder closeout target-aware
+  Run Status')` (`:482`) with `test('contract parser derives priority and ticket Run Status
+  vocabularies …')`, `test('validator enforces ticket Run Status vocabulary and close-or-ask
+  decision semantics')`, `test('validator rejects ticket-only Run Status values for priority-launched
+  closeouts')`, `test('validator accepts target-prefixed Run Status lines by stripping the target
+  label')`, `test('ticket Run Status derives terminal run status and close decision separately')`; plus
+  the `validatePlayOutput`/`deriveWrapupRunStatus`/`deriveTicketCloseDecision` direct-call assertions at
+  `:459/491/494/497/505/510/516/525–536`. These pin the CONTRACT (parser output, validator verdicts,
+  derived status/decision) independent of `runner.ts`'s file path, so the move leaves them green with a
+  one-line import-source edit (they already import from `../src/index.js`, which stays valid).
+- *Proposed target module:* `packages/core/src/plays/founder-closeout.ts` (the "into the Play layer"
+  home named by the priority; `packages/core/src/plays/` already exists), re-exported through
+  `plays/index.ts` (if present) and core `index.ts` so the public names keep their existing path.
+- *RISK: LOW.* Pure, no capture, already exported, already tested; only hazard is the two interleaved
+  non-closeout helpers (handled by symbol-selective extraction).
+
+**(2) Terminal-state projection reducer (the WS1 `deriveTerminalProjection`/`deriveRunSummary` consumer). RISK: LOW–MEDIUM.**
+- *What/where:* the **pure reducers themselves ALREADY LEFT `runner.ts` in WS1** — `deriveTerminalProjection`
+  (`status.ts:105`) and `deriveRunSummary` (`status.ts:131`). What REMAINS in `runRun` is the CONSUMER
+  wiring: the three terminal-path closures that call them —
+  `projectAndCommitPortableRunHistory` (`:1617`, calls `deriveRunSummary` at `:1618`),
+  `stopRun` (`:1679`, calls `deriveTerminalProjection` at `:1706`),
+  `holdRun` (`:1724`, calls `deriveTerminalProjection` at `:1743`). The "reducer extraction" half of this
+  target is therefore DONE; only the thin consumer closures are still inline.
+- *Top-level vs closure:* **CLOSURES** inside `runRun`. Heavy capture:
+  - `projectAndCommitPortableRunHistory` captures: `store`, `run`, `git`, `worktreePath`, `workspace`,
+    `runReference`, `portableRunDisplayNumber`, `selfCommitted` (MUTATES → `:1651`), plus module deps
+    `deriveRunSummary`, `writePortableRunHistory`, `listPortableRunSessions`,
+    `allocatePortableSessionDisplayNumber`, `commitFiles`, `recordSuccessfulCommit`,
+    `COCODER_GOVERNANCE_AUTHOR`.
+  - `stopRun` captures: `bobDriver`, `activeAtom`, `n`, `store`, `run`, `quarantineAtom`, `now`,
+    `rebuildUiBundleIfNeeded`, `committedShas`, `committedFiles`, `outOfScope`, `selfCommitted`,
+    `projectAndCommitPortableRunHistory`, `pushActiveBranchIfRemote`, `io`, `runDir`, `renderRunRecord`,
+    `workspace`, `priority`, `portableRunDisplayNumber`, `deriveTerminalProjection`, `refreshStatus`, `log`.
+  - `holdRun` captures: `resumeStateAtomNumber`, `writeResumeState`, `store`, `run`, `now`,
+    `rebuildUiBundleIfNeeded`, the four result accumulators, `projectAndCommitPortableRunHistory`,
+    `pushActiveBranchIfRemote`, `io`, `runDir`, `renderRunRecord`, `deriveTerminalProjection`,
+    `refreshStatus`, `log`.
+- *Tests pinning it:* `status.test.ts` (the reducers directly), `record.test.ts` (run-record
+  projection), `surface-agreement.test.ts` (the WS1 "all terminal surfaces agree" guard — the strongest
+  pin for any motion here), `runner.test.ts` (`deriveTerminalProjection` imported at the top;
+  stop/hold integration paths).
+- *Proposed target module:* the reducers stay in `runner/status.ts`. The consumer closures, if extracted,
+  belong with the run-termination concern — a `runner/terminate.ts` taking an explicit deps record — but
+  because they capture nearly all of `runRun`'s state AND mutate the shared accumulators, they realistically
+  move TOGETHER WITH the atom-loop driver (target 4), not before it.
+- *RISK: LOW–MEDIUM.* The hard part (pure reducer) is already out (WS1). The leftover is small in surface
+  and strongly pinned by `surface-agreement.test.ts`, but the consumer closures are high-capture, so treat
+  them as a tail rider on target 4 rather than a standalone early step.
+
+**(3) Fault/triage funnel (`triageFault` closure). RISK: HIGH.**
+- *What/where:* `triageFault` (`runner.ts:1218–1289`), its render helper `renderDisposition`
+  (`:1187–1217`), and the `fail` closure (`:1050–1112`, which calls `triageFault` at `:1052`). All
+  **CLOSURES** inside `runRun`.
+- *`runRun`-locals it captures (each becomes a parameter/deps field):* `debRef`, `deb`, `faultSeq`
+  (MUTATES — `i = faultSeq++` at `:1220`), `refreshStatus`, `store`, `workspace`, `run`, `git`,
+  `worktreePath`, `io`, `runDir`, `sessionHost`, `debAlive`, `auditWriteBoundary`, `runReference`,
+  `renderDisposition` (which itself captures `runBranch`), and the timeouts/limits `t` + `deps.signal`.
+  Module deps: `faultFingerprint`, `buildDebTriageDispatch`, `withPortableRunHistoryScope`,
+  `partitionByScope`, `commitFiles`, `recordSuccessfulCommit`, `runCommitGate`, `isStopRequestedError`,
+  `COCODER_GOVERNANCE_AUTHOR`. `renderDisposition` capture is just `runBranch` (+ pure formatting).
+- *Why entangled:* this is the run_231 cascade epicentre — it owns fault fingerprinting/recurrence,
+  the Deb dispatch+triage await, AND a commit path (the deb-repair `commitFiles`/`runCommitGate` +
+  `recordSuccessfulCommit`, WS3.3). Extraction must keep `faultSeq`'s mutation and the
+  quarantine-before-fault/scope-partition guards intact.
+- *Tests pinning it:* `runner.test.ts` — the run_231 sweep-guard (`deb-repair commit cannot sweep`,
+  ~`:3688/:3819`), recurrence escalation (`recurring fault escalates`), `max-consecutive-rejects`,
+  and the deb-repair/triage integration paths; plus `commit-gate.test.ts`, `status.test.ts`,
+  `surface-agreement.test.ts` (fault surfaces agree).
+- *Proposed target module:* `runner/triage.ts` (taking an explicit deps record — `store`, `git`, `io`,
+  `sessionHost`, the personas, the commit primitives, a `nextFaultSeq()` accessor for the counter, and
+  `refreshStatus`/`renderDisposition`).
+- *RISK: HIGH.* Many runRun-local captures incl. a mutated counter; commit-gate + recurrence + Deb
+  dispatch entanglement; it is where the original cascade lived. Extract LATE, after the parser.
+
+**(4) Atom-loop driver. RISK: HIGHEST.**
+- *What/where:* the `for (;;)` loop (`runner.ts:1765–1989`), its `try/catch` (`:1761–1995`, which routes
+  to `holdRun`/`stopRun`), and the post-loop wrap-up/landing/return tail (`:1997–2052`). This IS the body
+  of `runRun` — not a named closure but the spine every other closure hangs off.
+- *`runRun`-locals it captures:* effectively ALL of them — the mutable loop state `n`,
+  `consecutiveRejects`, `pickup`, `terminalStatus`, `ticketCloseDecision`, `pendingResumeState`,
+  `activeAtom` (via `setActiveAtom`), the result accumulators `committedShas`/`committedFiles`/
+  `outOfScope`/`selfCommitted`; AND every other closure (`refreshStatus`, `triageFault`, `fail`,
+  `awaitOscarWithNudgeWatchdog`, `absorbGateResult`, `quarantineAtom`, `commitOscarSupport`,
+  `executeAgentStep` deps, `projectAndCommitPortableRunHistory`, `stopRun`, `holdRun`,
+  `pushActiveBranchIfRemote`, `rebuildUiBundleIfNeeded`, `throwIfFounderStopRegistered`,
+  `stopDebWatcher`); plus the whole injected world (`store`, `git`, `io`, `sessionHost`, `deps`,
+  `input`, personas, `scope`, `worktreePath`, `runDir`, `runBranch`, `priority`, `workspace`, `t`,
+  `limits`, `now`, `log`, and the closeout consumers from target 1).
+- *Tests pinning it:* `runner.test.ts` (the BULK — full `runRun` integration across directive/dispatch/
+  verify/commit/wrap-up/hold/stop), `surface-agreement.test.ts`, `record.test.ts`.
+- *Proposed target module:* this is the LAST cut — once targets 1–3 (and the target-2 consumer closures)
+  are out, what remains becomes the thin `runRun` composition the priority's done-when calls for; it may
+  stay in `runner.ts` as the orchestration shell rather than move to a new file.
+- *RISK: HIGHEST.* It captures every local and every sibling closure; extract it LAST, when most of its
+  body has already been lifted out.
+
+### Recommended extraction ORDER (lowest-risk first) — and step 1
+
+1. **Founder-closeout contract parser → `plays/founder-closeout.ts`** (LOW). Pure, exported, tested, no
+   capture. **This is step 1** — confirmed lowest-risk by the map (the prompt's expectation, verified, not
+   assumed).
+2. **Terminal-state projection consumer** (LOW–MEDIUM). The reducer is already in `status.ts` (WS1); the
+   leftover consumer closures are high-capture, so fold them in with — not before — the atom loop.
+3. **Fault/triage funnel `triageFault` → `runner/triage.ts`** (HIGH). High capture + a mutated counter +
+   commit-gate/recurrence/Deb entanglement (the cascade epicentre).
+4. **Atom-loop driver** (HIGHEST). Extract last; `runner.ts` collapses to thin composition once 1–3 are out.
+
+- **Commit:** `<LEDGER_SHA>` — "priority(backlog): map WS5 — the runner.ts extraction map (before cutting)".
+  (Sha backfilled in this same session, matching WS1.3/1.4/2.1/3.x/WS4's separate-ledger-commit convention.)
+- **Files:** `cocoder/priorities/backlog/runner-decoupling-progress.md` (this entry) ONLY. No source/test
+  file touched — map-only. The unrelated eslint-adoption dirt (`eslint.config.mjs`, `run.ts`,
+  `read-claims.ts`, `p3-action.ts`, `frontmatter.ts`, `runner.ts`'s `SessionRef` import hunk, `oz-host.ts`,
+  `proof-daemon-reload.mjs`, `tsconfig.eslint.json`) was preserved, NOT committed.
+- **Tests/results:** none (map-only). `pnpm --filter @cocoder/core typecheck` → clean;
+  `node scripts/check-topology.mjs` → passed (7 pkgs; same 2 pre-existing daemon test-helper warnings).
+- **Residual risk:** none from this session (no behavior change). The map's load-bearing claims a future
+  session must re-verify before cutting: (a) the closeout symbols capture no `runRun`-local (true because
+  they are top-level above `:782`) — but `readReadyDirective`/`resumeStateAtomNumber` are interleaved and
+  must NOT travel with them; (b) `surface-agreement.test.ts` remains the strongest guard for target 2;
+  (c) `triageFault`'s `faultSeq` is a MUTATED counter — its extraction needs a counter accessor, not a
+  value copy; (d) line numbers will drift once step 1 lands — re-grep symbols, don't trust the ranges.
+- **Exact next step (WS5, step 1 — extract the founder-closeout contract parser):** Move the closeout
+  symbol set (target 1 above — the public `deriveWrapupRunStatus`/`deriveTicketCloseDecision`/
+  `deriveWrapDisposition`/`validatePlayOutput` plus `parseFounderCloseoutContract`/
+  `founderCloseoutFormatIssues`/`formatInvalidFounderCloseoutFallback` and their private helpers + types +
+  `PLAY_OUTPUT_VALIDATORS`) from `runner.ts` into a NEW `packages/core/src/plays/founder-closeout.ts`,
+  behavior-preserving. Leave `readReadyDirective` and `resumeStateAtomNumber` in `runner.ts` (interleaved,
+  NOT closeout). Re-export the public names through core `index.ts` (and a `plays` barrel if one exists) so
+  the existing import path holds; `runner.ts` imports the internal ones it consumes in the wrap-up branch.
+  The existing closeout tests are the guard — they already import from `../src/index.js`, so a green run
+  with NO test rewrite proves the move is behavior-preserving (if a test needs a new import source, that is
+  a signal the re-export is incomplete — fix the barrel, don't edit the test). Map owners/emitters/
+  consumers/tests first (re-grep the symbols — line numbers WILL have drifted), tests-first/green-throughout,
+  verify with `pnpm --filter @cocoder/core test` + `typecheck` → root `pnpm typecheck`/`pnpm test` (run
+  multiple times now that the stall family is deterministic) → `node scripts/check-topology.mjs`. `runner.ts`
+  is in the preserved eslint dirt (its `SessionRef` import hunk) — any edit to it MUST surgical-stage via
+  `git apply --cached` of a content-filtered patch dropping that hunk (as WS1.2/1.3/3.2/3.3 did); the NEW
+  `founder-closeout.ts`, the test, and `index.ts` are yours → `git add` directly.
+
+---
+
 ## 2026-06-24 — WS4 (de-flake the Deb-watcher stall family — the named WS4 deliverable; WS5 unblocked)
 
 - **Workstream/step:** WS4 — de-flake the recurring Deb-watcher timer-race flakes. Made the four named
