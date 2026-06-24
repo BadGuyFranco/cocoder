@@ -29,6 +29,120 @@ next session. Do not start the following chunk in this session.
 
 ---
 
+## 2026-06-24 — WS5, step 2 (extract the fault/triage funnel `triageFault` → `runner/triage.ts`)
+
+- **Workstream/step:** WS5 (split `runner.ts`), step 2 — extract the TRIAGE FUNNEL (step-0 map target 3;
+  **HIGH risk**, the run_231 cascade epicentre), **behavior-preserving**. Moved `triageFault` and its render
+  helper `renderDisposition` (both `runRun` CLOSURES) out of `runner.ts` into the EXISTING
+  `packages/core/src/runner/triage.ts`, taking an explicit `TriageDeps` record. **`fail` was deliberately
+  NOT extracted** — it captures the run-summary accumulators (`n`, `committedShas`, `outOfScope`,
+  `selfCommitted`) + `projectAndCommitPortableRunHistory` (atom-loop state, target 4) and is run-LIFECYCLE
+  logic, not triage; it STAYS in `runner.ts` and calls the extracted `triageFault(triageDeps, …)`.
+  `runner.ts` dropped **1637 → 1559 lines** (−78: −103 closure body, +25 deps record); `triage.ts` grew
+  136 → 225 lines.
+- **`triage.ts` already existed (re-grep finding that changed the plan):** the prompt said "NEW
+  `runner/triage.ts`", but the file already exists as the home of the `Triage` type/`Disposition`/
+  `TriageMode`/`parseTriage` seam and is ALREADY re-exported through the runner barrel
+  (`runner/index.ts:33`). Per the prompt's "check before adding a new export point" note (faultFingerprint
+  precedent), I ADDED `triageFault`/`renderDisposition`/`TriageDeps` to the existing file rather than
+  creating a second one. `runner.ts` already imported `Triage` from `./triage.js`, so the seam was in place.
+- **Re-grep before cutting (line numbers HAD drifted after WS5.1's −429):** `renderDisposition` at
+  `:770–800`, `triageFault` at `:801–872` (NOT the step-0 map's `:1187`/`:1218`). `fail` at `:633–649`
+  (calls triageFault at `:635`); two more callers — wrapup-format-invalid (`:1448`) and
+  max-consecutive-rejects (`:1557`). `faultSeq` declared `:696` (`let faultSeq = 0`), mutated ONLY inside
+  triageFault (`i = faultSeq++`), used nowhere else.
+- **Decisions (resolved explicitly):**
+  - **`nextFaultSeq()` accessor, NOT a value copy** (the prompt's CRITICAL specific): `faultSeq` STAYS a
+    `runRun`-local; `triageDeps.nextFaultSeq = () => faultSeq++` closes over it, so the monotonic increment
+    survives across the 3 call paths. A value copy would reset the counter per call.
+  - **`triageFault`/`TriageDeps` are NOT added to the runner barrel.** They are internal orchestration
+    symbols consumed ONLY by `runner.ts` (same package, same dir) via a direct `./triage.js` import — no
+    external consumer (they were closures; no test imports them). The PUBLIC seam (`Triage`/`parseTriage`)
+    keeps its existing barrel export untouched. (Confirmed no `packages/*` file imports `triageFault`.)
+  - **`renderDisposition` → module-private pure fn taking `runBranch` as a parameter** (its only capture,
+    per the map; the rest is pure formatting). Not exported — only `triageFault` calls it.
+  - **`withPortableRunHistoryScope` threaded via `TriageDeps`, not moved.** It is a `runner.ts`-local
+    helper (`:316`) still used 3× there (`:1164/1411/1511`), so moving it would orphan those; duplicating
+    it would split one definition. Threading the pure function in is behavior-identical. The OTHER "module
+    deps" (`faultFingerprint`, `buildDebTriageDispatch`, `partitionByScope`, `commitFiles`,
+    `recordSuccessfulCommit`, `runCommitGate`, `isStopRequestedError`, `COCODER_GOVERNANCE_AUTHOR`) are
+    module-level imports → imported directly in `triage.ts`.
+  - **`fail`'s forward-reference to `triageDeps` is TDZ-safe** — same pattern the code already had (`fail`
+    at `:633` referenced `triageFault` declared at `:801`). `triageDeps` is declared at the old
+    renderDisposition site (after `faultSeq:696`/`refreshStatus`/`debAlive` — all its captures), and every
+    `fail()`/triageFault call executes later in the loop, after init.
+  - **No import cycle:** `io.ts` imports `parseTriage` (value) from `triage.ts`; `triage.ts` imports
+    `RunnerIO` from `io.ts` **type-only** (erased at runtime) → no runtime cycle. `prompts.ts`/`status.ts`
+    do NOT import `triage.ts`, so `buildDebTriageDispatch`/`RunnerPhase` imports are clean.
+  - **Dead-import prune in `runner.ts`:** `faultFingerprint`, `buildDebTriageDispatch`, and the `Triage`
+    type became unused after the move (each was used ONLY inside the extracted closures) → removed. All
+    commit/scope symbols (`commitFiles`/`runCommitGate`/`recordSuccessfulCommit`/`partitionByScope`/
+    `COCODER_GOVERNANCE_AUTHOR`/`isStopRequestedError`/`CommitGateResult`/`AuditWriteBoundary`) stay — still
+    used elsewhere in `runner.ts`.
+- **Guards preserved EXACTLY (byte-for-byte body move):** the quarantine-before-fault + declared-files-only
+  scope-partition guards (`bca1b27`/WS3.3) — `partitionByScope(verdict.filesChanged, commitScope)` →
+  commit ONLY `inScope`, record `outOfScope` as `deb-repair-out-of-scope-held`, surface in `outOfLane`;
+  the deb-repair commit path funnels through the WS3 spine (`commitFiles`/`runCommitGate` +
+  `recordSuccessfulCommit`, `COCODER_GOVERNANCE_AUTHOR`) — no raw commit re-inlined. `triageFault` stays
+  structurally incapable of sweeping non-declared work.
+- **Map (owner → emitters → consumers → tests):** *owner* was `runRun`'s closure scope; now `triage.ts`
+  module functions. *Emitters/callers* (3, all in `runRun`): `fail` (`:635`), wrapup-format-invalid
+  (`:1370` post-cut), max-consecutive-rejects (`:1479` post-cut) — all call `triageFault(triageDeps, …)`.
+  *Deps threaded* (`TriageDeps`): `debRef`, `deb`, `nextFaultSeq`, `refreshStatus`, `store`, `workspace`,
+  `run`, `git`, `worktreePath`, `io`, `runDir`, `sessionHost`, `debAlive`, `auditWriteBoundary`,
+  `runReference`, `runBranch`, `withPortableRunHistoryScope`, `timeouts` (`{orchestrationMs, pollMs}`),
+  `signal`. *Tests pinning it:* `runner.test.ts` run_231 sweep-guard (`deb-repair commit cannot sweep`),
+  `recurring fault escalates`, `backstop: too many consecutive rejects force-wraps …`, plus
+  `commit-gate.test.ts`/`status.test.ts`/`surface-agreement.test.ts` — all import via `../src/index.js`,
+  unaffected by an internal closure→module move, so GREEN with **zero** test rewrite proves the move is
+  behavior-preserving.
+- **Commit:** `772056b` — "refactor(runner): WS5.2 — extract the fault/triage funnel into runner/triage.ts".
+  (Ledger entry committed separately, per the WS1.3/1.4/2.1/3.x/WS4/WS5.1 convention.)
+- **Files:** `packages/core/src/runner/triage.ts` (added imports + `TriageDeps`/`renderDisposition`/
+  `triageFault`), `packages/core/src/runner/runner.ts` (removed both closures, added the `triageDeps`
+  record + 3 call-site args + dead-import prune — staged surgically). `runner.ts` was staged WITHOUT its
+  foreign `SessionRef` import hunk via the WS5.1 method: restored the `SessionRef` line to HEAD in the
+  working tree, `git add`-ed runner.ts (verified `SessionRef` falls outside every staged hunk — the staged
+  diff starts at `@@ -73`), then re-applied the `SessionRef` removal so it stays unstaged dirt. `triage.ts`
+  is mine → `git add`-ed directly.
+- **Tests/results:** focused guards — `deb-repair commit cannot sweep` → 1 passed; `recurring fault
+  escalates` → 1 passed; `too many consecutive rejects` → 1 passed (all NO rewrite); `pnpm --filter
+  @cocoder/core test` → **582 passed** (unchanged baseline); `pnpm --filter @cocoder/core typecheck` →
+  clean; root `pnpm typecheck` → clean (7 pkgs); `node scripts/check-topology.mjs` → passed (7 pkgs; same
+  2 PRE-EXISTING daemon test-helper warnings — `daemon-reload-fixture.ts`, `founder-closeout.ts`); root
+  `pnpm test` → **3/3 consecutive full-parallel runs ALL green** (personas 29, core 582, adapters 24,
+  session-hosts 18, ui 161, cli 9, daemon 346) — stall family did not trip.
+- **Residual risk:** LOW. Pure structural move; the body was relocated byte-for-byte with captures swapped
+  to `deps.*`, so the event log, fault fingerprinting/recurrence, Deb dispatch/triage, and the deb-repair
+  commit receipts are unchanged. Carry-forward for the NEXT cut: (a) line numbers drifted again after this
+  −78-line cut — re-grep; (b) `runner.ts` still carries the foreign `SessionRef` import dirt — any future
+  runner.ts edit must surgical-stage the same way; (c) `triage.ts` imports `RunnerIO` type-only from
+  `io.ts` (which value-imports `parseTriage` from `triage.ts`) — keep that import `type`-only or a runtime
+  cycle appears. The unrelated eslint-adoption dirt (`eslint.config.mjs`, `run.ts`, `read-claims.ts`,
+  `p3-action.ts`, `frontmatter.ts`, `runner.ts`'s `SessionRef` import hunk, `oz-host.ts`,
+  `proof-daemon-reload.mjs`, `tsconfig.eslint.json`) was preserved, NOT committed.
+- **Exact next step (WS5, step 3 — the atom-loop driver; HIGHEST risk, the LAST cut):** Targets 1
+  (founder-closeout, done WS5.1) and 3 (triage, done here) are out. The remaining standalone cut is the
+  atom-loop driver (step-0 map target 4) — the `for (;;)` loop + its `try/catch` (routes to
+  `holdRun`/`stopRun`) + the post-loop wrap-up/landing/return tail. It captures effectively ALL of
+  `runRun`'s state and every sibling closure, AND it PULLS `fail` (which owns the run-summary accumulators
+  `n`/`committedShas`/`outOfScope`/`selfCommitted` + `projectAndCommitPortableRunHistory`) and the
+  terminal-projection consumer closures (`stopRun`/`holdRun`, step-0 map target 2) WITH it — those were
+  deliberately deferred to ride with the loop, not extracted early. Once the loop is out, `runner.ts`
+  collapses to thin composition (the priority's done-when). Map owners/emitters/consumers/tests first
+  (re-grep — line numbers drifted after this cut); decide whether the loop body moves to a new
+  `runner/loop.ts` taking a deps record OR `runner.ts` stays the orchestration shell with the loop as its
+  body (the map suggests the latter — "it may stay in `runner.ts` as the orchestration shell"). Pinning
+  tests: the BULK of `runner.test.ts` (full `runRun` integration: directive/dispatch/verify/commit/wrap-up/
+  hold/stop), `surface-agreement.test.ts`, `record.test.ts`. tests-first, green-throughout, never weaken a
+  test. Verify: `pnpm --filter @cocoder/core test` → `typecheck` → root `pnpm typecheck` → root `pnpm test`
+  (MULTIPLE times) → `node scripts/check-topology.mjs` (baseline core 582, daemon 346; topology 7 pkgs, 2
+  pre-existing daemon warnings). `runner.ts` is in the preserved eslint dirt — surgical-stage its edits
+  (drop the `SessionRef` hunk) via the WS5.1 method. This is the highest-risk cut in the workstream — if it
+  can't land GREEN, leave the tree clean and hand back a prompt that says so; do NOT commit a red step.
+
+---
+
 ## 2026-06-24 — WS5, step 1 (extract the founder-closeout contract parser into the Play layer)
 
 - **Workstream/step:** WS5 (split `runner.ts`), step 1 — extract the LOWEST-RISK target from the step-0
