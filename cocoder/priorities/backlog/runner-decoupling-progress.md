@@ -29,6 +29,70 @@ next session. Do not start the following chunk in this session.
 
 ---
 
+## 2026-06-24 — WS1, step 5 (surface-agreement closeout test — CLOSES WS1)
+
+- **Workstream/step:** WS1 (Surface unification), step 5 — land the cross-surface agreement regression the
+  WS1 done-when names. TEST-ONLY (no surface swap): WS1.1–1.4 already made all THREE run-level surfaces
+  derive from the same `run-end` event; this PINS that they cannot disagree by construction.
+- **Commit:** `f540aca` — "runner(status): WS1.5 — surface-agreement closeout test (three run-level surfaces
+  provably agree)". (Single commit — the ledger entry rides with the prior chunk's convention; this entry's
+  own commit follows separately, matching WS1.3/1.4.)
+- **Files:** `packages/core/tests/surface-agreement.test.ts` (NEW, entirely mine — not in the eslint foreign
+  list, so `git add` staged it directly; no surgical apply needed). 4 tests: 3 terminal shapes
+  (faulted/held/stopped) + 1 negative control.
+- **Map (the three surfaces, terminal-status field, `run-end` field each reads):**
+  - *Deb status feed:* `deriveTerminalProjection(events)` (status.ts) → `{phase, activeAtom}` → `renderDebStatus`
+    → `oscar`. COARSE: held → `awaiting-founder`, stopped/failed → `faulted`; all three → oscar `blocked`.
+    Reads `run-held` / `run-stopped` / `run-end {status:failed}`.
+  - *portable run.json:* `deriveRunSummary(events).status` (status.ts) → fed to `writePortableRunHistory`'s
+    `terminal.status` (WS1.3). Carries the full `RunStatus`. Reads `run-end {status}`.
+  - *record.md:* `renderRunRecord` → `**Status**` line via `deriveRunSummary(events).status` (WS1.4). Full
+    `RunStatus`. Reads `run-end {status}`.
+- **Assertion shape (chosen per WS1.1 determinism rule):** ONE `:memory:` store/run per terminal shape;
+  record the terminal markers (`run-end` + `run-held`/`run-stopped`) ONCE; read all three surfaces from that
+  SINGLE event log. The two summary surfaces share full `RunStatus` granularity → asserted byte-equal on the
+  `run-end {status}` (`portableStatus === t.status`, record `**Status**` line === `- **Status:** ${status}`,
+  and the record line ends with the portable status). The coarser feed agrees at the granularity it shares —
+  `projection.phase === feedPhase` and `feed.oscar === 'blocked'` (the prompt's caution: assert at the
+  shared granularity, don't invent a finer distinction the feed doesn't make). Excluded by design: render-time
+  `generatedAt`, free-text `waitCondition`/`activeTask`, wall-clock `endedAt`/Started/Ended.
+- **By-construction proof (the regression teeth):** the run ROW is left at its default `running` (no
+  `setRunStatus`) in the three shape tests, so a passing assertion can ONLY mean each surface read the EVENT,
+  not the row. The 4th test is a NEGATIVE CONTROL: `run-end` says `stopped` but the row is forced to
+  `completed` — all three surfaces still report `stopped`/`blocked`, proving none follow a runner-local/row.
+  A future re-coupling of any surface to a runner local that drifts from the event log goes red here.
+- **Why it PASSES as written (NOT red→green):** the three derivations already agree on the current tree
+  (WS1.1–1.4 landed them); step 5's value is pinning the agreement, not flipping a behavior. Stated up front
+  in the test header and confirmed: 4 passed on first run, no initial failure expected.
+- **Tests/results:** `pnpm --filter @cocoder/core test surface-agreement` → 4 passed (first run, as
+  predicted); `pnpm --filter @cocoder/core test` → **571 passed** (was 567; +4 new); `pnpm --filter
+  @cocoder/core typecheck` → clean; root `pnpm typecheck` → clean (7 pkgs); `node scripts/check-topology.mjs`
+  → passed (same 2 pre-existing daemon test-helper warnings). Root `pnpm test`: ALL packages green this run
+  (personas 29, core 571, adapters 24, session-hosts 18, ui 161, cli 9, daemon 345) — the known Deb-watcher
+  timer-race flake family did not trip.
+- **Residual risk:** the test pins the THREE DERIVATIONS agreeing on a hand-built terminal store — it does NOT
+  drive a real run through the runner, so it cannot catch a re-coupling that lives ONLY in the runner's
+  wiring (e.g. the runner passing a stale local to `writePortableRunHistory` that disagrees with the event it
+  also recorded). The negative control narrows this — any surface reading the row instead of the event is
+  caught — but a runner-level wiring regression that bypasses the derivations would need the real-run
+  `expectPortableTerminalHistory` harness (runner-direct.test.ts) extended to also assert record.md/feed
+  agreement. Logged as a follow-up, NOT in scope for the WS1 done-when (which is about the derivations being
+  one source). **WS1 is now CLOSED** — all four imperative-write removals (WS1.2 feed phase) plus the three
+  re-basings (WS1.2 feed, WS1.3 portable, WS1.4 record) are pinned to agree. The unrelated eslint-adoption
+  dirt (`eslint.config.mjs`, `run.ts`, `read-claims.ts`, `p3-action.ts`, `frontmatter.ts`, `runner.ts`'s
+  `SessionRef` import hunk, `oz-host.ts`, `proof-daemon-reload.mjs`, `tsconfig.eslint.json`) was preserved,
+  NOT committed.
+- **Exact next step (WS2 — Introduce/standardize the structured agent→runner progress channel):** Per the
+  freshly sharpened WS2 spec, audit every `readScreen`/frame consumer — `monitor.ts`, `agent-step.ts`, the
+  Deb watcher, the Oscar nudge watchdog — and partition what each reads into liveness/idle (legitimate
+  heartbeat) vs. semantic verdict (must migrate). The terminal may drive ONLY liveness/idle; every semantic
+  signal (done/blocked/progress) migrates to a structured artifact the agent emits and the runner reads (the
+  WS0 markers `<<<COCODER-ATOM-N-BLOCKED: reason>>>` + done sentinel and the loop-ledger are the precedents
+  to extend — a missing channel like mid-atom progress is ADDED as a marker, never inferred from the screen).
+  Done-when: a test proves no terminal frame content can produce a fault or a state transition, AND any
+  remaining screen-read semantic signal has been migrated to an artifact (not replaced by a new heuristic).
+  Map the consumers first (per protocol); implement tests-first; verify with the same command set.
+
 ## 2026-06-24 — Spec amendment (no change to next step; WS1.5 still next)
 
 - Amended `runner-decoupling-refactor.md` (commit follows): **WS2** sharpened from "stop scraping" to
