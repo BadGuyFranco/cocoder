@@ -13,6 +13,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
+| [0045](./open/0045-closed-ticket-lingers-in-order-json-relaunches.md) | A ticket closed off-spine lingers in tickets/order.json and gets relaunched | bug | oz-autonomy | Open |
 | [0043](./open/0043-bob-blocker-replies-unowned-after-runner-stall-nudges.md) | Bob blocker replies are unowned after runner stall nudges | bug | oz-autonomy | Open |
 | [0042](./open/0042-deb-default-live-terminal-observation.md) | Deb should default to live Oscar/Bob terminal observation | bug | none | Open |
 | [0039](./open/0039-launch-status-in-oz-dashboard.md) | Launch Status in Oz Dashboard | task | none | founder-session |
