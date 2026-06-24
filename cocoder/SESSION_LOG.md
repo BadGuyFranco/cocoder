@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-24 — **ticket 0049: Deb watch prompts decoupled from healthy boundaries — closed (run_82/run_226)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Ticket:** [0049](./tickets/closed/0049-deb-watch-prompts-fire-on-normal-boundaries.md) | **Run:** run_226 (display 82)
+**Outcomes:**
+- **Atom 0 (`b4d1731`) — runner Deb watch gating.** `refreshStatus()` always writes deb status + terminal snapshot artifacts and records `deb-status`, but sends a `DEB WATCH` prompt only when given an actionable `wake` arg (stall watchdog onAssessment when `state==='stuck'`); faults keep their single triage dispatch; `recordDebWatchDispatch()` runs before `writeDebEvidence()` so `watch.lastDispatch` cannot lag the prompt; boundary refreshes fold into nudge grace via `lastDebBoundaryAt`; Deb prompt text aligned.
+- **Tests pin three sides.** Healthy directive/build/verify/wrap boundaries write artifacts with no pane prompt or `deb-watch-dispatch`; actionable stall sends exactly one prompt whose status file already carries current `watch.lastDispatch`; fault triages once with no duplicate `DEB WATCH`.
+- **Ticket closed** via `closeTicket()` at wrap; `order.json` pruned.
+**Next:** Launch ticket `0048` — adopt minimal ESLint 9 flat config in the engine repo.
+
 ## 2026-06-24 — **ticket 0050: archive-ready wrap in-context confirmation — closed (run_81/run_225)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Ticket:** [0050](./tickets/closed/0050-archive-ready-wrap-strands-founder-archive-action.md) | **Run:** run_225 (display 81)
