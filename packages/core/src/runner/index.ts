@@ -12,15 +12,6 @@ export {
   type PreRunGovernanceCheck,
   type PreRunIntegrityIssue,
   type MakeJudge,
-  validatePlayOutput,
-  deriveTicketCloseDecision,
-  deriveWrapupRunStatus,
-  type PlayOutputValidationInput,
-  type PlayOutputValidationResult,
-  type FounderCloseoutContract,
-  type FounderCloseoutRunStatusVocabulary,
-  type CloseoutLaunchTarget,
-  type TicketCloseDecision,
 } from './runner.js'
 export { groupLabel, type RunLabelTarget, type RunLabelTargetType } from './labels.js'
 export { StopRequestedError } from './stop.js'

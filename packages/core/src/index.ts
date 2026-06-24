@@ -115,6 +115,18 @@ export {
   runHeadlessProcess,
   type PlayAvailability,
 } from './plays/index.js'
+export {
+  validatePlayOutput,
+  deriveTicketCloseDecision,
+  deriveWrapupRunStatus,
+  deriveWrapDisposition,
+  type PlayOutputValidationInput,
+  type PlayOutputValidationResult,
+  type FounderCloseoutContract,
+  type FounderCloseoutRunStatusVocabulary,
+  type CloseoutLaunchTarget,
+  type TicketCloseDecision,
+} from './plays/founder-closeout.js'
 
 export { composePriorityMarkdown, loadPriority, type ComposePriorityMarkdownInput, type Priority } from './priorities/index.js'
 export {
@@ -284,15 +296,6 @@ export {
   type RunResult,
   type PreRunGovernanceCheck,
   type PreRunIntegrityIssue,
-  validatePlayOutput,
-  deriveTicketCloseDecision,
-  deriveWrapupRunStatus,
-  type PlayOutputValidationInput,
-  type PlayOutputValidationResult,
-  type FounderCloseoutContract,
-  type FounderCloseoutRunStatusVocabulary,
-  type CloseoutLaunchTarget,
-  type TicketCloseDecision,
   type RunLabelTarget,
   type RunLabelTargetType,
   type MakeJudge,
