@@ -9,12 +9,32 @@ export interface BuilderBlocker {
 
 const BLOCKER_LINE = /\b(?:blocked|blocker|cannot|can't|scope|authority|permission|write[- ]scope|out[- ]of[- ]scope|override)\b/i
 const AUTHORITY_SCOPE = /\b(?:authority|declared write scope|write[- ]scope|scope mismatch|out[- ]of[- ]scope|outside (?:the )?(?:declared )?scope|permission|override)\b/i
+const PROMPT_CONTINUATION = /^\s{2,}\S/
+const TERMINAL_CONTROL = /^(?:•|⏺|✢|────────────────|gpt[- ]|▐|▝|❯)/
+
+function candidateLines(frame: string): string[] {
+  const candidates: string[] = []
+  let inUserPrompt = false
+  for (const rawLine of frame.split(/\r?\n/)) {
+    const line = rawLine.trim()
+    if (line === '') {
+      inUserPrompt = false
+      continue
+    }
+    if (/^›\s/.test(rawLine)) {
+      inUserPrompt = true
+      continue
+    }
+    if (inUserPrompt && PROMPT_CONTINUATION.test(rawLine)) continue
+    inUserPrompt = false
+    if (TERMINAL_CONTROL.test(line)) continue
+    candidates.push(line)
+  }
+  return candidates
+}
 
 function lastBlockerReply(frame: string): string | null {
-  const lines = frame
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line !== '')
+  const lines = candidateLines(frame)
   const start = Math.max(0, lines.length - 8)
   for (let i = lines.length - 1; i >= start; i -= 1) {
     const line = lines[i]!

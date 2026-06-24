@@ -8,9 +8,12 @@
     "node": ">=22"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["electron"]
+    "onlyBuiltDependencies": [
+      "electron"
+    ]
   },
   "scripts": {
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json && pnpm -r typecheck",
     "test": "pnpm -r test",
     "build:ui": "pnpm --filter @cocoder/ui build",
@@ -22,8 +25,10 @@
   "devDependencies": {
     "@cocoder/cli": "workspace:*",
     "@types/node": "^24.0.0",
+    "eslint": "9.39.4",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
+    "typescript-eslint": "8.62.0",
     "vitest": "^3.1.4"
   }
 }
