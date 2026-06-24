@@ -113,6 +113,42 @@ describe('requestOscarDebRepair', () => {
     expect(JSON.parse(await readFile(join(fixture.home, paths.debResponse), 'utf8'))).toMatchObject({ kind: 'applied' })
   })
 
+  test('keeps a Deb proposal recoverable when Oscar evaluation exits nonzero without an artifact', async () => {
+    const fixture = await makeFixture({
+      runHeadless: async (input) => {
+        fixture.headlessInputs.push(input)
+        return input.args[0] === 'deb' ? { exitCode: 0, output: proposalOutput() } : { exitCode: -1, output: '' }
+      },
+    })
+
+    const result = await requestOscarDebRepair(fixture.ctx, { workspaceId: 'cocoder', requestedBy: 'oscar', problem: 'route through proposal', evidence })
+
+    expect(result).toMatchObject({ status: 202, body: { ok: true, state: 'needs-oscar', outcome: 'needs-oscar', committedPaths: [], commitSha: null } })
+    expect(fixture.prompts.map((p) => p.persona)).toEqual(['deb', 'oscar'])
+    const paths = result.body.artifactPaths as { debResponse: string; evidenceLog: string; oscarEvaluation: string }
+    expect(JSON.parse(await readFile(join(fixture.home, paths.debResponse), 'utf8'))).toMatchObject({ kind: 'proposal' })
+    await expect(readFile(join(fixture.home, paths.oscarEvaluation), 'utf8')).rejects.toThrow()
+    expect(await readFile(join(fixture.home, paths.evidenceLog), 'utf8')).toContain('"state":"needs-oscar"')
+  })
+
+  test('records Oscar evaluation when an adapter-owned artifact exists despite nonzero exit', async () => {
+    const fixture = await makeFixture({
+      runHeadless: async (input) => {
+        fixture.headlessInputs.push(input)
+        if (input.args[0] === 'deb') return { exitCode: 0, output: proposalOutput({ risk: 'high', needsFounder: true }) }
+        await writeFile(input.args[input.args.indexOf('--out') + 1] ?? input.outPath, evaluationOutput('escalate-founder'))
+        return { exitCode: -1, output: '' }
+      },
+      adapterMode: { kind: 'artifact-arg', arg: '--out' },
+    })
+
+    const result = await requestOscarDebRepair(fixture.ctx, { workspaceId: 'cocoder', requestedBy: 'oscar', problem: 'risky repair', evidence })
+
+    expect(result).toMatchObject({ status: 200, body: { state: 'complete', outcome: 'founder-escalated', committedPaths: [], commitSha: null } })
+    const paths = result.body.artifactPaths as { oscarEvaluation: string }
+    expect(JSON.parse(await readFile(join(fixture.home, paths.oscarEvaluation), 'utf8'))).toMatchObject({ verdict: 'escalate-founder' })
+  })
+
   test('records founder escalation without committing', async () => {
     const fixture = await makeFixture({
       runHeadless: async (input) => {
@@ -160,7 +196,7 @@ describe('requestOscarDebRepair', () => {
 
 async function makeFixture(options: {
   readonly runHeadless?: (input: HeadlessRunInput) => Promise<{ readonly exitCode: number; readonly output: string }>
-  readonly adapterMode?: { readonly kind: 'codex-like'; readonly scriptPath: string }
+  readonly adapterMode?: { readonly kind: 'codex-like'; readonly scriptPath: string } | { readonly kind: 'artifact-arg'; readonly arg: string }
 } = {}): Promise<Fixture> {
   const home = await mkdtemp(join(tmpdir(), 'cocoder-oscar-deb-repair-'))
   await initRepo(home)
@@ -175,7 +211,11 @@ async function makeFixture(options: {
     git: makeGit(),
     bootSha: (await git(home, ['rev-parse', 'HEAD'])).trim(),
     sessionHost: throwingHost(),
-    getAdapter: () => options.adapterMode?.kind === 'codex-like' ? codexLikeAdapter(prompts, options.adapterMode.scriptPath) : fakeAdapter(prompts),
+    getAdapter: () => {
+      if (options.adapterMode?.kind === 'codex-like') return codexLikeAdapter(prompts, options.adapterMode.scriptPath)
+      if (options.adapterMode?.kind === 'artifact-arg') return artifactArgAdapter(prompts, options.adapterMode.arg)
+      return fakeAdapter(prompts)
+    },
     listAdapters: () => [],
     cliTestCache: new Map(),
     io: {},
@@ -234,6 +274,24 @@ function fakeAdapter(prompts: BuildInput[]): Adapter {
     },
     async listModels() {
       return { canEnumerate: false, models: [], detail: 'fake' }
+    },
+  }
+}
+
+function artifactArgAdapter(prompts: BuildInput[], arg: string): Adapter {
+  return {
+    id: 'artifact-arg',
+    runReadiness: { mechanism: 'launch-flags', flags: [], managesUserConfig: false, detail: 'artifact arg fake' },
+    headlessCapable: true,
+    build(input) {
+      prompts.push(input)
+      return { command: 'fake-cli', args: [input.persona ?? 'unknown', arg, input.outPath] }
+    },
+    async preflight() {
+      return { ok: true, checks: [] }
+    },
+    async listModels() {
+      return { canEnumerate: false, models: [], detail: 'artifact arg fake' }
     },
   }
 }

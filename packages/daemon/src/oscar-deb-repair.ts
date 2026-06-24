@@ -88,6 +88,7 @@ export type DialogueState =
   | 'deb-applied'
   | 'deb-proposed'
   | 'oscar-evaluating'
+  | 'needs-oscar'
   | 'oscar-directed'
   | 'deb-directed-running'
   | 'founder-escalated'
@@ -105,6 +106,7 @@ export type DialogueEvent =
   | { readonly type: 'deb-applied' }
   | { readonly type: 'deb-proposed' }
   | { readonly type: 'start-oscar-evaluation' }
+  | { readonly type: 'needs-oscar' }
   | { readonly type: 'oscar-directed' }
   | { readonly type: 'start-directed-deb' }
   | { readonly type: 'founder-escalated' }
@@ -230,6 +232,8 @@ export function nextDialogueState(current: DialogueState, event: DialogueEvent):
     'deb-running:deb-proposed': 'deb-proposed',
     'deb-applied:complete': 'complete',
     'deb-proposed:start-oscar-evaluation': 'oscar-evaluating',
+    'oscar-evaluating:needs-oscar': 'needs-oscar',
+    'needs-oscar:start-oscar-evaluation': 'oscar-evaluating',
     'oscar-evaluating:oscar-directed': 'oscar-directed',
     'oscar-directed:start-directed-deb': 'deb-directed-running',
     'oscar-directed:founder-escalated': 'founder-escalated',

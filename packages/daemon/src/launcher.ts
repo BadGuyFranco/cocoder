@@ -70,10 +70,13 @@ import {
   type RepairEvidenceItem,
 } from './oscar-deb-repair.js'
 
-const OZ_REPAIR_TIMEOUT_MS = 120_000
-const OZ_ACTION_TIMEOUT_MS = 120_000
-const OSCAR_DEB_REPAIR_TIMEOUT_MS = 120_000
-const AUTHORING_PLAY_TIMEOUT_MS = 120_000
+// Governance LLM turns regularly exceed two minutes while still producing valid artifacts. Keep this
+// as a bounded wall-clock guard, not a liveness proxy; artifact-aware recovery below handles late exits.
+const GOVERNANCE_HEADLESS_TIMEOUT_MS = 10 * 60_000
+const OZ_REPAIR_TIMEOUT_MS = GOVERNANCE_HEADLESS_TIMEOUT_MS
+const OZ_ACTION_TIMEOUT_MS = GOVERNANCE_HEADLESS_TIMEOUT_MS
+const OSCAR_DEB_REPAIR_TIMEOUT_MS = GOVERNANCE_HEADLESS_TIMEOUT_MS
+const AUTHORING_PLAY_TIMEOUT_MS = GOVERNANCE_HEADLESS_TIMEOUT_MS
 const DAEMON_RELOAD_BUILD_COMMAND = 'pnpm --filter @cocoder/core --filter @cocoder/daemon typecheck'
 const MAX_DAEMON_RELOAD_OUTPUT = 12_000
 const AUTHORING_PLAY_IDS = ['create-priority', 'edit-priority', 'archive-priority', 'create-ticket'] as const
@@ -1086,6 +1089,13 @@ export async function requestOscarDebRepair(ctx: OzContext, input: OscarDebRepai
     emitOzEvent(ctx, { type: 'oscar-deb-repair', workspaceId: workspace.id, runId: request.sourceRunId, status: 'failed' })
     return { status: 500, body: { ok: false, error: summary, state, dialogueId, artifactPaths: paths, committedPaths: [], commitSha: null, outOfLanePaths: [] } }
   }
+  const needsOscar = async (summary: string): Promise<LaunchResult> => {
+    state = nextDialogueState(state, { type: 'needs-oscar' })
+    await appendDialogueEvidence(ctx, paths, state, 'deb-response.json', summary)
+    await appendAudit(ctx.cocoderHome, { action: 'oscar-deb-repair-needs-oscar', workspaceId: workspace.id, dialogueId, state, error: summary })
+    emitOzEvent(ctx, { type: 'oscar-deb-repair', workspaceId: workspace.id, runId: request.sourceRunId, status: 'needs-oscar' })
+    return { status: 202, body: { ok: true, error: summary, state, outcome: 'needs-oscar', dialogueId, artifactPaths: paths, committedPaths: [], commitSha: null, outOfLanePaths: [] } }
+  }
 
   state = nextDialogueState(state, { type: 'start-deb' })
   await appendDialogueEvidence(ctx, paths, state, 'deb-turn.log', 'Deb repair turn started.')
@@ -1121,7 +1131,7 @@ export async function requestOscarDebRepair(ctx: OzContext, input: OscarDebRepai
   state = nextDialogueState(state, { type: 'start-oscar-evaluation' })
   await appendDialogueEvidence(ctx, paths, state, 'oscar-turn.log', 'Oscar evaluation turn started.')
   const oscarTurn = await runRepairDialogueTurn(ctx, { persona: 'oscar', cli: oscar.cli, model: oscar.model, cwd: workspace.path, outPath: join(ctx.cocoderHome, paths.oscarTurnLog), prompt: buildOscarRepairEvaluationPrompt(request, debResponse, paths) })
-  if (!oscarTurn.ok) return await failDialogue(oscarTurn.error)
+  if (!oscarTurn.ok) return await needsOscar(oscarTurn.error)
   let evaluation: OscarEvaluation
   try {
     evaluation = parseOscarEvaluation(JSON.stringify({ ...(JSON.parse(oscarTurn.output) as Record<string, unknown>), dialogueId }))
@@ -1198,7 +1208,7 @@ async function runRepairDialogueTurn(
     const turn = await run({ command: cmd.command, args: cmd.args, cwd: opts.cwd, outPath: stdoutPath, timeoutMs: OSCAR_DEB_REPAIR_TIMEOUT_MS })
     const output = adapterOwnsOutput && existsSync(opts.outPath) ? await readFile(opts.outPath, 'utf8') : turn.output
     if (!adapterOwnsOutput) await writeFile(opts.outPath, output, 'utf8')
-    if (turn.exitCode !== 0) return { ok: false, error: `${opts.persona} repair dialogue turn failed with exit code ${turn.exitCode}` }
+    if (turn.exitCode !== 0 && output.trim() === '') return { ok: false, error: `${opts.persona} repair dialogue turn failed with exit code ${turn.exitCode}` }
     return { ok: true, output }
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err)
@@ -1666,6 +1676,7 @@ export async function requestAuthoringPlay(ctx: OzContext, input: AuthoringPlayI
     eventType: 'authoring-play',
     preTurnError: (detail) => `Authoring Play turn failed before diff/commit: ${detail}`,
     exitError: (exitCode) => `Authoring Play turn failed with exit code ${exitCode}; nothing was committed.`,
+    recoverCommitOnNonzero: true,
   })
 }
 
@@ -1687,6 +1698,7 @@ interface HeadlessCommitOptions {
   readonly eventType: string
   readonly preTurnError: (detail: string) => string
   readonly exitError: (exitCode: number) => string
+  readonly recoverCommitOnNonzero?: boolean
 }
 
 async function runHeadlessThenGateCommit(ctx: OzContext, opts: HeadlessCommitOptions): Promise<LaunchResult> {
@@ -1709,6 +1721,10 @@ async function runHeadlessThenGateCommit(ctx: OzContext, opts: HeadlessCommitOpt
   await writeFile(opts.turnLogPath, turn.output, 'utf8')
 
   if (turn.exitCode !== 0) {
+    if (opts.recoverCommitOnNonzero) {
+      const recovery = await recoverHeadlessCommit(ctx, opts, turn.exitCode)
+      if (recovery) return recovery
+    }
     const body = {
       ok: false,
       error: opts.exitError(turn.exitCode),
@@ -1723,6 +1739,16 @@ async function runHeadlessThenGateCommit(ctx: OzContext, opts: HeadlessCommitOpt
     return { status: 500, body }
   }
 
+  return await commitHeadlessDiff(ctx, opts, turn.exitCode)
+}
+
+async function recoverHeadlessCommit(ctx: OzContext, opts: HeadlessCommitOptions, exitCode: number): Promise<LaunchResult | null> {
+  const changed = await ctx.git.changedFiles(opts.cwd)
+  if (!changed.some((file) => matchesAny(file, opts.scope))) return null
+  return await commitHeadlessDiff(ctx, opts, exitCode, opts.exitError(exitCode))
+}
+
+async function commitHeadlessDiff(ctx: OzContext, opts: HeadlessCommitOptions, exitCode: number, recoveredFromError?: string): Promise<LaunchResult> {
   if (opts.beforeCommit) {
     try {
       const result = await opts.beforeCommit()
@@ -1739,7 +1765,7 @@ async function runHeadlessThenGateCommit(ctx: OzContext, opts: HeadlessCommitOpt
         committedPaths: [],
         commitSha: null,
         outOfLanePaths: [],
-        exitCode: turn.exitCode,
+        exitCode,
         turnLogPath: opts.turnLogPath,
       }
       await appendAudit(ctx.cocoderHome, { action: opts.auditAction, workspaceId: opts.workspaceId, ...body })
@@ -1761,8 +1787,9 @@ async function runHeadlessThenGateCommit(ctx: OzContext, opts: HeadlessCommitOpt
     committedPaths: gate.committedFiles,
     commitSha: gate.committedSha,
     outOfLanePaths: gate.outOfLaneFiles,
-    exitCode: turn.exitCode,
+    exitCode,
     turnLogPath: opts.turnLogPath,
+    ...(recoveredFromError ? { recoveredFromError } : {}),
   }
   await appendAudit(ctx.cocoderHome, { action: opts.auditAction, workspaceId: opts.workspaceId, ...body })
   emitOzEvent(ctx, { type: opts.eventType, workspaceId: opts.workspaceId, status: gate.committedSha ? 'committed' : 'no-commit' })

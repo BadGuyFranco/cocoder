@@ -387,7 +387,7 @@ describe('requestAuthoringPlay', () => {
       status: 500,
       body: {
         ok: false,
-        error: 'Authoring Play turn failed with exit code 2; nothing was committed.',
+        error: expect.stringContaining('Authoring Play registration step failed: frontmatter'),
         committedPaths: [],
         commitSha: null,
         outOfLanePaths: [],
@@ -396,6 +396,46 @@ describe('requestAuthoringPlay', () => {
     })
     expect(await git(fixture.home, ['rev-parse', 'HEAD'])).toBe(headBefore)
     expect(await readFile(join(fixture.home, 'cocoder', 'priorities', 'alpha.md'), 'utf8')).toBe('partial priority\n')
+  })
+
+  test('nonzero create-ticket authoring turn commits a produced valid artifact', async () => {
+    const fixture = await makeFixture({
+      runHeadless: async (input) => {
+        fixture.headlessInputs.push(input)
+        const ticketsDir = join(fixture.home, 'cocoder', 'tickets')
+        const openDir = join(ticketsDir, 'open')
+        await mkdir(openDir, { recursive: true })
+        const id = await nextTicketId(ticketsDir)
+        const fileName = `${id}-agent-ticket.md`
+        await writeFile(join(openDir, fileName), composeTicketMarkdown(id, { title: 'Agent Ticket', type: 'bug', priority: 'tickets-review', description: '## Context\nFiled by the authoring Play.' }, '2026-06-18'))
+        const row = `| [${id}](./open/${fileName}) | Agent Ticket | bug | tickets-review | ${TICKET_OWNER} |`
+        const indexPath = join(ticketsDir, 'INDEX.md')
+        await writeFile(indexPath, insertOpenTicketIndexRow(await readTicketIndex(indexPath), row, id))
+        return { exitCode: -1, output: '' }
+      },
+    })
+    const headBefore = await git(fixture.home, ['rev-parse', 'HEAD'])
+
+    const result = await requestAuthoringPlay(fixture.ctx, {
+      workspaceId: 'cocoder',
+      persona: 'oz',
+      playId: 'create-ticket',
+      invocation: { title: 'Agent Ticket', type: 'bug', priority: 'tickets-review', description: 'Filed by the authoring Play.' },
+    })
+
+    expect(result).toMatchObject({
+      status: 200,
+      body: {
+        ok: true,
+        committedPaths: ['cocoder/tickets/INDEX.md', 'cocoder/tickets/open/0001-agent-ticket.md'],
+        outOfLanePaths: [],
+        exitCode: -1,
+        recoveredFromError: 'Authoring Play turn failed with exit code -1; nothing was committed.',
+      },
+    })
+    expect(typeof result.body.commitSha).toBe('string')
+    expect(await git(fixture.home, ['rev-parse', 'HEAD'])).not.toBe(headBefore)
+    await expect(git(fixture.home, ['cat-file', '-e', 'HEAD:cocoder/tickets/open/0001-agent-ticket.md'])).resolves.toBeDefined()
   })
 
   test('agent authoring commits a priority and immediate launch succeeds with no manual commit', async () => {

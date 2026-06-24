@@ -123,6 +123,8 @@ describe('Oscar-Deb repair dialogue state machine', () => {
     ['deb-running', { type: 'deb-proposed' }, 'deb-proposed'],
     ['deb-applied', { type: 'complete' }, 'complete'],
     ['deb-proposed', { type: 'start-oscar-evaluation' }, 'oscar-evaluating'],
+    ['oscar-evaluating', { type: 'needs-oscar' }, 'needs-oscar'],
+    ['needs-oscar', { type: 'start-oscar-evaluation' }, 'oscar-evaluating'],
     ['oscar-evaluating', { type: 'oscar-directed' }, 'oscar-directed'],
     ['oscar-directed', { type: 'start-directed-deb' }, 'deb-directed-running'],
     ['oscar-directed', { type: 'founder-escalated' }, 'founder-escalated'],
@@ -132,7 +134,7 @@ describe('Oscar-Deb repair dialogue state machine', () => {
     expect(nextDialogueState(current, event)).toBe(expected)
   })
 
-  test.each(['requested', 'waiting-for-idle', 'deb-running', 'deb-applied', 'deb-proposed', 'oscar-evaluating', 'oscar-directed', 'deb-directed-running', 'founder-escalated'] satisfies readonly DialogueState[])(
+  test.each(['requested', 'waiting-for-idle', 'deb-running', 'deb-applied', 'deb-proposed', 'oscar-evaluating', 'needs-oscar', 'oscar-directed', 'deb-directed-running', 'founder-escalated'] satisfies readonly DialogueState[])(
     'allows active state %s to fail',
     (state) => {
       expect(nextDialogueState(state, { type: 'fail' })).toBe('failed')
