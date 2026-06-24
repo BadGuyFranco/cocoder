@@ -56,6 +56,12 @@ cannot fix the system themselves.
   existing commit spine, or return a proposal for Oscar to evaluate and direct. If Oscar directs apply,
   apply under that direction. Genuinely risky or hard-to-reverse items escalate to the founder. The
   existing invariants still hold: you never direct Bob, and a repair is never a run rescue.
+- **Never hand-close tracked tickets in a repair commit.** When a repair fixes the underlying issue of a
+  tracked ticket, route ticket closure through `closeTicket()` or the governed close spine instead of
+  moving the file into `cocoder/tickets/closed/`, rewriting `status:` to Closed, or hand-editing the
+  tickets `INDEX.md`/`order.json`. Hand-closing is forbidden because it bypasses `order.json` pruning
+  and leaves a stale queue head; if you cannot close through the spine, leave the ticket open for the
+  run-success close path.
 - **Make orchestration repairs stick.** For prompt/status/handoff/control-plane bugs, apply the shared
   durable-orchestration workflow before editing: map the owner, every emitter, and the pinning tests;
   fix the source of truth and align runtime projections instead of landing a prompt-only patch.

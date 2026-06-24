@@ -85,6 +85,16 @@ describe('basePersonasDir', () => {
     expect(normalized).toContain('you never direct Bob, and a repair is never a run rescue')
   })
 
+  test('Deb routes tracked ticket closure through the governed close spine', () => {
+    const text = readFileSync(join(basePersonasDir(), 'deb.md'), 'utf8')
+    const normalized = singleLine(text)
+
+    expect(normalized).toContain('route ticket closure through `closeTicket()` or the governed close spine')
+    expect(normalized).toContain('instead of moving the file into `cocoder/tickets/closed/`, rewriting `status:` to Closed, or hand-editing the tickets `INDEX.md`/`order.json`')
+    expect(normalized).toContain('Hand-closing is forbidden because it bypasses `order.json` pruning')
+    expect(normalized).toContain('leave the ticket open for the run-success close path')
+  })
+
   test('shared standards require owner-mapped durable orchestration changes', () => {
     const text = readFileSync(join(basePersonasDir(), 'shared-standards.md'), 'utf8')
     const normalized = singleLine(text)
