@@ -23,15 +23,40 @@ value wins; otherwise the local default applies):
    no CSS/design of its own. Verified by: a design-spec document with one owner (extracted as
    tokens/patterns, not a second hand-copy of the CSS) plus the stated default-resolution rule.
 
-**First research/decision gate (founder-ratified at launch):** where these local defaults live and how
-they resolve. The seam is whether "Local Preferences" is an **installation-global** surface (one home on
-the founder's machine, applied to every new/onboarded repo) or the **shipped workspace template**
-(`templates/workspace-cocoder/`) seeded per repo — and how "default when the workspace doesn't specify"
-is computed at scaffold/onboard time. Reconcile the chosen home with ADR-0027 (workspace storage
-contract), the `scaffoldCocoderZone` contract, and ADR-0026 (onboard-existing). This gate may conclude
-"document-only, no new mechanism" if the template-seed path already satisfies the need.
+**First research/decision gate — RESOLVED (run 78).** Home and resolution rule are settled by evidence
+and founder-ratified:
+
+- **Home = the shipped workspace template**, not an installation-global surface. `scaffoldCocoderZone`
+  (`packages/core/src/scaffold/scaffold.ts`) copies `templates/workspace-cocoder/cocoder/**` into each
+  repo's `cocoder/` zone **create-only** (`copyFileCreateOnly` skips any file that already exists).
+- **Resolution rule = that create-only copy.** A freshly scaffolded repo receives the default; if a
+  workspace later specifies its own value the seeded file is never overwritten, so **workspace-specified
+  wins; otherwise the template default applies.** This needs **no new mechanism** — it is reconciled
+  with ADR-0027 (workspace storage) and ADR-0026 (onboard-existing); the conclusion is **document-only**.
+- **Owners differ per concept under that one mechanism.** The design-spec's single owner is
+  `packages/ui/src/renderer/styles/design-spec.md` (co-located with its source CSS); the tech-stack has
+  no product-code source, so its owner is the seeded file itself,
+  `templates/workspace-cocoder/cocoder/memory/tech-stack.md`.
 
 **Boundary:** this priority defines, researches, and documents the two defaults and their resolution
 rule, and wires the default-resolution where a clear owner already exists. It does not restyle the
 dashboard, does not impose the stack/design on already-onboarded workspaces that specify their own, and
 does not rebuild scaffolding beyond what the resolution rule requires.
+
+## Execution status and remaining atoms (run 78)
+
+- **Scope gate fixed (Deb repair `2b598a7`).** Bob's writeScope now covers `packages/**`, `templates/**`,
+  `docs/**`, `ARCHITECTURE.md`, so Bob authors both defaults directly — no out-of-scope held-back path.
+- **DONE — Deliverable #2 (design spec), committed `9a3e5e1`.** `packages/ui/src/renderer/styles/design-spec.md`
+  is the single owner: it catalogs the dashboard's `--cb-*` tokens (color/surface, typography,
+  spacing/radius, motion) and component patterns, with the resolution rule. Do not re-author it.
+- **TODO — Deliverable #1 (tech stack).** Replace the `templates/workspace-cocoder/cocoder/memory/tech-stack.md`
+  stub with the canonical preferred stack as the local default — languages, frameworks, test runner,
+  build tooling, lint/format — with **pinned versions sourced from this repo's own** `package.json` /
+  `tsconfig` / vitest config / lockfile and a short rationale per choice, plus the resolution-rule note.
+  Verify the doc against the live config files (no invented versions).
+- **TODO — seed the design-spec into the template.** Add `templates/workspace-cocoder/cocoder/memory/design-spec.md`
+  as a **short pointer** to the `packages/ui` owner (not a second copy of the spec), so newly scaffolded
+  repos inherit the default by reference. Keep `packages/ui/.../design-spec.md` as the one owner.
+- **Done when** a freshly scaffolded repo receives both seeded memory files, each carries the
+  workspace-wins resolution note, and neither forks its owner.
