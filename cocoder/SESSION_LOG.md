@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **oz-file-access: research gate complete — continue pending mechanism ratification (run_74/run_218)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [oz-file-access](./priorities/oz-file-access.md) | **Run:** run_218 (display 74)
+**Outcomes:**
+- **Atom 0 (`f16fd77`) — delivery mechanism research memo.** `docs/research/oz-flat-file-access.md` compares Option A (digest enrichment) vs Option B (bounded `readGoverned` tool) with file:line citations spot-verified at build time.
+- **Key findings.** Oz's prompt is rebuilt every turn via `buildPrompt()` with a deliberately compact facts digest (no static digest artifact); Refresh restarts the daemon for a fresh session; a new read tool registers in ~4 places across `oz-host.ts` and `oz-chat.ts`; path-safety precedents exist in write-scope glob matching, `OZ_ACTION_SCOPE`, and the static-server traversal guard.
+- **`cocoder/playbooks/` zone absent.** The Objective lists a zone that does not exist in the current tree; Plays live under `packages/personas/base/plays/`.
+- **Recommendation: Option B** (`readGoverned(path)` on demand); optional hybrid discovery index later. Per the Objective, no build atom may run until the founder ratifies the mechanism and governed-zone list.
+**Next:** Founder ratifies mechanism (1–4) and playbooks-zone disposition on this run; then relaunch `oz-file-access` to build Option B (allow-list, read helper, tool registration, tests, proof script).
+
 ## 2026-06-23 — **ticket-fix-0042: Deb live terminal snapshot default — closed via spine (run_73/run_217)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0042](./tickets/closed/0042-deb-default-live-terminal-observation.md) | **Run:** run_217 (display 73)
