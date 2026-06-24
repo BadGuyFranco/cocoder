@@ -12,7 +12,7 @@
   "priorityId": "oz-file-access",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "awaiting-founder",
   "createdAt": 1782300326362,
-  "endedAt": null
+  "endedAt": 1782300955270
 }
