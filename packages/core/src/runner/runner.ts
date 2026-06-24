@@ -69,7 +69,7 @@ import {
   commitMessage,
 } from './prompts.js'
 import { renderRunRecord } from './record.js'
-import { type DebStatus, type RunnerPhase, deriveTerminalProjection, renderDebStatus } from './status.js'
+import { type DebStatus, type RunnerPhase, deriveRunSummary, deriveTerminalProjection, renderDebStatus } from './status.js'
 import { captureDebTerminalSnapshot, renderDebTerminalSnapshotMarkdown } from './terminal-snapshot.js'
 import { isStopRequestedError } from './stop.js'
 import { faultFingerprint } from './fingerprint.js'
@@ -1058,7 +1058,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     })
     await refreshStatus('faulted', atomIndex, null, `run failed after ${type}; no WRAP-UP READY artifact will be emitted for this run`)
     try {
-      await projectAndCommitPortableRunHistory({ status: 'failed', endedAt: now() })
+      await projectAndCommitPortableRunHistory({ endedAt: now() })
     } catch (err) {
       store.recordEvent({ runId: run.id, type: 'portable-history-commit-failed', data: { message: err instanceof Error ? err.message : String(err) } })
     }
@@ -1606,7 +1606,14 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     }
   }
 
-  const projectAndCommitPortableRunHistory = async (terminal: { readonly status: RunStatus; readonly endedAt: number }): Promise<void> => {
+  // WS1.3 (runner-decoupling): re-base the portable run-history surface on the event log. The terminal run
+  // status the `run.json` surface carries is DERIVED from the `run-end` event every caller records just
+  // above — not threaded in from a runner local — so the surface projects ONE source. `endedAt` stays
+  // imperative: the `run-end` event's wall-clock `at` differs from the captured `endedAt`, so deriving it
+  // would shift the surface (this step is behavior-preserving — no surface may move).
+  const projectAndCommitPortableRunHistory = async (terminal: { readonly endedAt: number }): Promise<void> => {
+    const summary = deriveRunSummary(store.listEvents(run.id))
+    if (!summary) throw new Error(`Cannot project portable run history for ${run.id}: no terminal run-end event`)
     const sessionDisplayNumbers = new Map<string, number>()
     for (const session of listPortableRunSessions(store, run.id)) {
       sessionDisplayNumbers.set(session.id, await allocatePortableSessionDisplayNumber(workspace.path))
@@ -1618,7 +1625,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       run,
       displayNumber: portableRunDisplayNumber,
       sessionDisplayNumbers,
-      terminal,
+      terminal: { status: summary.status, endedAt: terminal.endedAt },
     })
     const message = `run-history: ${run.id} via CoCoder ${runReference}`
     const files = [
@@ -1688,7 +1695,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       type: 'run-end',
       data: { status, atoms, committedShas, outOfScope, selfCommitted },
     })
-    await projectAndCommitPortableRunHistory({ status, endedAt })
+    await projectAndCommitPortableRunHistory({ endedAt })
     store.setRunStatus(run.id, status)
     // Any commits already made are on the active branch; push them (non-gating) so a shared remote sees them.
     await pushActiveBranchIfRemote()
@@ -1726,7 +1733,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       type: 'run-end',
       data: { status, atoms, committedShas, outOfScope, selfCommitted },
     })
-    await projectAndCommitPortableRunHistory({ status, endedAt })
+    await projectAndCommitPortableRunHistory({ endedAt })
     store.setRunStatus(run.id, status)
     await pushActiveBranchIfRemote()
     const recordPath = await io.writeRunRecord(runDir, renderRunRecord(store, run.id, { workspace, priority, displayNumber: portableRunDisplayNumber }))
@@ -2022,7 +2029,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     type: 'run-end',
     data: { status, atoms: n, committedShas, outOfScope, selfCommitted },
   })
-  await projectAndCommitPortableRunHistory({ status, endedAt })
+  await projectAndCommitPortableRunHistory({ endedAt })
   store.setRunStatus(run.id, status)
   // Every atom + Oscar-support + run-history commit already landed on the active branch as it was made
   // (the commit-gate ran with cwd = the active checkout). There is no run branch to integrate, no landing

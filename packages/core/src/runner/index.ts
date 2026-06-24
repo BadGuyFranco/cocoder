@@ -45,6 +45,8 @@ export { faultFingerprint } from './fingerprint.js'
 export {
   renderDebStatus,
   deriveTerminalProjection,
+  deriveRunSummary,
+  type RunSummary,
   type DebStatus,
   type RunnerPhase,
   type PlaybookStatus,

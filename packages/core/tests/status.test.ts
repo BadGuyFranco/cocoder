@@ -2,7 +2,7 @@
 // is driven here straight from recorded events (no live run): the same evidence Deb reads to answer
 // "how's Oscar doing?".
 import { describe, expect, test } from 'vitest'
-import { type RunnerPhase, deriveTerminalProjection, openRunStore, renderDebStatus } from '../src/index.js'
+import { type RunnerPhase, deriveRunSummary, deriveTerminalProjection, openRunStore, renderDebStatus } from '../src/index.js'
 
 const priority = { id: 'demo', title: 'Demo' }
 const scopes = { oscar: [], bob: ['packages/**'], deb: ['cocoder/**'] }
@@ -262,5 +262,62 @@ describe('deriveTerminalProjection — WS1 terminal projection seed', () => {
 
   test('a still-running event log has no terminal projection', () => {
     expect(projectionFor([{ type: 'delegation', data: { atom: 0 } }, { type: 'builder-dispatch', data: { atom: 0 } }])).toBeNull()
+  })
+})
+
+// WS1.3 — the portable run-history surface's run-level summary (`status`, `atoms`, `committedShas`,
+// `outOfScope`, `selfCommitted`) was threaded into `writePortableRunHistory` from runner LOCALS. The runner
+// records exactly that tuple into the terminal `run-end` event before projecting the portable history, so
+// `deriveRunSummary` recovers the whole summary from the event log alone — the proof the surface can project
+// ONE source instead of trusting a parallel runner copy. This suite asserts the derived summary equals the
+// tuple the runner imperatively builds for each of the four terminal shapes (completed / failed / held /
+// stopped). DETERMINISM (WS1.1): summary carries no event `at`, so one store per shape is enough and there is
+// no wall-clock field to drift — no two-store deep-equal.
+describe('deriveRunSummary — WS1.3 portable run-history summary projection', () => {
+  // Each tuple is the exact `data` the runner records at its matching exit:
+  //   completed → runner.ts:2020   failed → runner.ts:1054   held → runner.ts:1724   stopped → runner.ts:1686
+  const summaryFor = (events: { type: string; data?: unknown }[]) => {
+    const store = openRunStore(':memory:')
+    store.upsertWorkspace({ id: 'w', path: '/r', name: 'W' })
+    const run = store.createRun({ workspaceId: 'w', priorityId: 'demo' })
+    for (const e of events) store.recordEvent({ runId: run.id, type: e.type, data: e.data })
+    return deriveRunSummary(store.listEvents(run.id))
+  }
+
+  test('completed: derived summary equals the tuple the runner records at run end', () => {
+    const built = { status: 'completed', atoms: 3, committedShas: ['aaa111', 'bbb222'], outOfScope: [], selfCommitted: false }
+    expect(summaryFor([
+      { type: 'delegation', data: { atom: 0 } },
+      { type: 'builder-done', data: { atom: 2 } },
+      { type: 'run-end', data: built },
+    ])).toEqual(built)
+  })
+
+  test('failed: derived summary equals the tuple the runner records at fail()', () => {
+    const built = { status: 'failed', atoms: 1, committedShas: [], outOfScope: ['packages/ui/x.ts'], selfCommitted: true }
+    expect(summaryFor([
+      { type: 'builder-scope-conflict', data: { atom: 0, message: 'out of scope' } },
+      { type: 'run-end', data: built },
+    ])).toEqual(built)
+  })
+
+  test('held: derived summary equals the tuple the runner records at holdRun()', () => {
+    const built = { status: 'held', atoms: 2, committedShas: ['ccc333'], outOfScope: [], selfCommitted: false }
+    expect(summaryFor([
+      { type: 'run-held', data: { park: 'pre-dispatch', atom: 2 } },
+      { type: 'run-end', data: built },
+    ])).toEqual(built)
+  })
+
+  test('stopped: derived summary equals the tuple the runner records at stopRun()', () => {
+    const built = { status: 'stopped', atoms: 2, committedShas: [], outOfScope: [], selfCommitted: false }
+    expect(summaryFor([
+      { type: 'run-stopped', data: { atom: 1 } },
+      { type: 'run-end', data: built },
+    ])).toEqual(built)
+  })
+
+  test('a still-running event log (no run-end) has no derivable summary', () => {
+    expect(summaryFor([{ type: 'delegation', data: { atom: 0 } }, { type: 'builder-dispatch', data: { atom: 0 } }])).toBeNull()
   })
 })

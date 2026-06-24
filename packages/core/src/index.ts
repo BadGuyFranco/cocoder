@@ -319,6 +319,8 @@ export {
   faultFingerprint,
   renderDebStatus,
   deriveTerminalProjection,
+  deriveRunSummary,
+  type RunSummary,
   captureDebTerminalSnapshot,
   renderDebTerminalSnapshotMarkdown,
   type DebStatus,

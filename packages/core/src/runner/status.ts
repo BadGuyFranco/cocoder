@@ -4,7 +4,7 @@
 // timestamps, and wait conditions, while the snapshot carries current Oscar/Bob terminal evidence.
 // Pure: it derives everything from listEvents + the runner's precise wait-phase, so it is unit-testable
 // without a live run.
-import { runDisplayName, type RunEvent, type RunDisplayInput, type RunStore } from '../store/index.js'
+import { runDisplayName, type RunEvent, type RunDisplayInput, type RunStatus, type RunStore } from '../store/index.js'
 
 /** What the runner is doing w.r.t. Oscar right now — the runner passes its precise wait-phase (it knows
  *  it exactly); the projection refines it to `stalled`/`blocked` from the event stream. */
@@ -112,6 +112,33 @@ export function deriveTerminalProjection(
   const endStatus = (last(events, ['run-end'])?.data as { status?: unknown } | undefined)?.status
   if (endStatus === 'failed') return { phase: 'faulted', activeAtom: lastAtomBearing(events) }
   return null
+}
+// ── WS1.3 run-level summary projection (runner-decoupling, ADDITIVE; see runner-decoupling-refactor.md) ─
+// The portable run-history surface's run-level fields — `status`, `atoms`, `committedShas`, `outOfScope`,
+// `selfCommitted` — were threaded into `writePortableRunHistory` from runner LOCALS. But the runner records
+// exactly that tuple into the terminal `run-end` event's `data` at EVERY exit (completed / failed / held /
+// stopped), and does so BEFORE projecting the portable history — so the event log already carries the whole
+// summary. This derives it so the surface projects ONE source (the event log) instead of trusting a parallel
+// runner-local copy that could drift. Returns null when no terminal `run-end` event exists (a still-running
+// or pre-terminal store), mirroring `deriveTerminalProjection`'s null contract.
+export interface RunSummary {
+  readonly status: RunStatus
+  readonly atoms: number
+  readonly committedShas: readonly string[]
+  readonly outOfScope: readonly string[]
+  readonly selfCommitted: boolean
+}
+export function deriveRunSummary(events: readonly RunEvent[]): RunSummary | null {
+  const end = last(events, ['run-end'])
+  if (!end) return null
+  const d = (end.data ?? {}) as Partial<RunSummary>
+  return {
+    status: d.status as RunStatus,
+    atoms: typeof d.atoms === 'number' ? d.atoms : 0,
+    committedShas: Array.isArray(d.committedShas) ? [...d.committedShas] : [],
+    outOfScope: Array.isArray(d.outOfScope) ? [...d.outOfScope] : [],
+    selfCommitted: d.selfCommitted === true,
+  }
 }
 const lastForAtom = (events: readonly RunEvent[], types: readonly string[], atom: number | null): RunEvent | null => {
   if (atom === null) return last(events, types)
