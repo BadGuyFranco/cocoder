@@ -91,6 +91,15 @@ export interface AuthoringPlayInput {
   readonly invocation: unknown
 }
 
+export interface ArchiveConfirmationInput {
+  readonly runId: string
+  readonly confirmation: string
+  readonly reason?: string
+  readonly findings?: string
+  readonly verdict?: string
+  readonly persona?: AuthoringPersona
+}
+
 export interface OscarDebRepairInput {
   readonly workspaceId: string
   readonly sourceRunId?: string
@@ -1540,6 +1549,62 @@ export async function requestOzAction(ctx: OzContext, input: { readonly workspac
     preTurnError: (detail) => `Oz action turn failed before diff/commit: ${detail}`,
     exitError: (exitCode) => `Oz action turn failed with exit code ${exitCode}; nothing was committed.`,
   })
+}
+
+function hasArchiveConfirmationAction(ctx: OzContext, runId: string): boolean {
+  return ctx.store.listEvents(runId).some((event) => {
+    if (event.type !== 'wrap-disposition') return false
+    const data = event.data as { disposition?: unknown; action?: { type?: unknown } } | undefined
+    return data?.disposition === 'archive-confirmation' || data?.action?.type === 'archive-priority-confirmation'
+  })
+}
+
+export async function requestArchiveConfirmation(ctx: OzContext, input: ArchiveConfirmationInput): Promise<LaunchResult> {
+  const run = ctx.store.getRun(input.runId)
+  if (!run) return { status: 404, body: { error: 'unknown run' } }
+  if (run.ticketId !== null || run.playbookId !== null) {
+    return { status: 409, body: { error: 'archive confirmation applies only to priority-launched runs' } }
+  }
+  if (run.status !== 'awaiting-archive-confirmation' && !hasArchiveConfirmationAction(ctx, run.id)) {
+    return { status: 409, body: { error: `run is "${run.status}" and is not awaiting priority archive confirmation` } }
+  }
+
+  const confirmation = input.confirmation.trim().toLowerCase()
+  if (confirmation !== 'archive') {
+    ctx.store.recordEvent({ runId: run.id, type: 'archive-confirmation-declined', data: { confirmation: input.confirmation } })
+    await appendAudit(ctx.cocoderHome, { action: 'archive-confirmation-declined', workspaceId: run.workspaceId, runId: run.id, priorityId: run.priorityId, confirmation: input.confirmation })
+    emitOzEvent(ctx, { type: 'archive-confirmation-declined', runId: run.id, workspaceId: run.workspaceId })
+    return { status: 200, body: { ok: true, archived: false, runId: run.id, priorityId: run.priorityId, status: run.status } }
+  }
+
+  ctx.store.recordEvent({ runId: run.id, type: 'archive-confirmation-received', data: { priorityId: run.priorityId } })
+  const archive = await requestAuthoringPlay(ctx, {
+    workspaceId: run.workspaceId,
+    persona: input.persona ?? 'oz',
+    playId: 'archive-priority',
+    invocation: {
+      id: run.priorityId,
+      verdict: input.verdict?.trim() || 'archive confirmed',
+      reason: input.reason?.trim() || `Founder confirmed archive from run ${run.id}.`,
+      ...(input.findings?.trim() ? { findings: input.findings.trim() } : {}),
+      archiveActor: 'founder',
+    },
+  })
+  const archived = archive.status >= 200 && archive.status < 300 && archive.body.ok === true
+  if (archived) {
+    ctx.store.setRunStatus(run.id, 'completed')
+    ctx.store.recordEvent({ runId: run.id, type: 'archive-confirmation-archived', data: { priorityId: run.priorityId, commitSha: archive.body.commitSha ?? null } })
+    emitOzEvent(ctx, { type: 'archive-confirmation-archived', runId: run.id, workspaceId: run.workspaceId, status: 'completed' })
+  }
+  return {
+    status: archive.status,
+    body: {
+      ...archive.body,
+      archived,
+      runId: run.id,
+      priorityId: run.priorityId,
+    },
+  }
 }
 
 export async function requestAuthoringPlay(ctx: OzContext, input: AuthoringPlayInput): Promise<LaunchResult> {

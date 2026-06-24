@@ -110,7 +110,7 @@ export interface Ticket {
   readonly state: TicketState
   readonly body: string
 }
-export type RunStatus = 'running' | 'completed' | 'failed'
+export type RunStatus = 'running' | 'awaiting-founder' | 'awaiting-archive-confirmation' | 'completed' | 'failed'
 export interface RunSummary {
   readonly id: string
   readonly workspaceId: string
@@ -168,15 +168,23 @@ export interface RunDiff {
   readonly sha: string
   readonly diff: string
 }
+export interface RunAction {
+  readonly type: string
+  readonly method: string
+  readonly endpoint: string
+  readonly priorityId?: string
+  readonly confirmWith?: string
+}
 export interface RunDetail {
   readonly run: RunSummary
-  readonly target?: { readonly kind: 'priority' | 'playbook'; readonly id: string }
+  readonly target?: { readonly kind: 'priority' | 'playbook' | 'ticket'; readonly id: string }
   readonly sessions: readonly RunSession[]
   readonly workItems: readonly WorkItem[]
   readonly commitLinks: readonly CommitLink[]
   readonly events: readonly RunEvent[]
   readonly files: RunFiles
   readonly diffs: readonly RunDiff[]
+  readonly actions?: readonly RunAction[]
 }
 // personas[] is empty in reality; the live data is the assignments map.
 export interface PersonaAssignment {

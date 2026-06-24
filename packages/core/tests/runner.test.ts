@@ -461,6 +461,12 @@ describe('founder closeout target-aware Run Status', () => {
     expect(priorityClosed?.issues).toContain(issue('runStatus', 'must be one of continue | blocked | archive ready for a priority-launched run'))
   })
 
+  test('validator accepts target-prefixed Run Status lines by stripping the target label', () => {
+    const prefixed = validatePlayOutput({ play: wrapPlay, output: renderFounderCloseout({ runStatus: 'Priority-launched run: archive ready.' }), cwd: workspaceRoot })
+
+    expect(prefixed?.issues).toEqual([])
+  })
+
   test('ticket Run Status derives terminal run status and close decision separately', () => {
     const contract = validatedCloseoutContract()
 
@@ -476,6 +482,7 @@ describe('founder closeout target-aware Run Status', () => {
     expect(deriveWrapupRunStatus(needsAnotherRun, contract, 'completed', 'ticket')).toBe('completed')
     expect(deriveTicketCloseDecision(needsAnotherRun, contract, 'ticket')).toBe('none')
     expect(deriveTicketCloseDecision(renderFounderCloseout({ runStatus: 'archive ready' }), contract, 'priority')).toBe('none')
+    expect(deriveWrapupRunStatus(renderFounderCloseout({ runStatus: 'archive ready' }), contract, 'completed', 'priority')).toBe('awaiting-archive-confirmation')
   })
 })
 
@@ -1542,7 +1549,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(events.find((e) => e.type === 'triage-dispatch')).toBeUndefined()
   })
 
-  test('archive-ready first-directive wrap records archive-candidate disposition with zero build atoms', async () => {
+  test('archive-ready first-directive wrap records archive-confirmation disposition and action', async () => {
     const store = openRunStore(':memory:')
     const archiveReadyCloseout = renderFounderCloseout({
       runStatus: 'Archive ready',
@@ -1564,14 +1571,23 @@ describe('runRun (multi-atom loop)', () => {
 
     expect(store.listEvents(result.runId).filter((e) => e.type === 'builder-dispatch')).toHaveLength(0)
     expect(store.listEvents(result.runId).find((e) => e.type === 'wrap-disposition')?.data).toEqual({
-      disposition: 'archive-candidate',
+      disposition: 'archive-confirmation',
       buildAtoms: 0,
       signal: 'node scripts/proof-launch-disposition.mjs',
+      action: {
+        type: 'archive-priority-confirmation',
+        workspaceId: 'cocoder',
+        runId: result.runId,
+        priorityId: 'demo',
+        method: 'POST',
+        endpoint: `/runs/${result.runId}/archive-confirmation`,
+        confirmWith: 'archive',
+      },
     })
-    expect(result.status).toBe('awaiting-founder')
+    expect(result.status).toBe('awaiting-archive-confirmation')
   })
 
-  test('archive-ready first-directive wrap without a runnable signal records continue disposition', async () => {
+  test('archive-ready first-directive wrap without a runnable signal still records archive-confirmation disposition and action', async () => {
     const store = openRunStore(':memory:')
     const bareArchiveReadyCloseout = renderFounderCloseout({
       runStatus: 'Archive ready',
@@ -1592,11 +1608,61 @@ describe('runRun (multi-atom loop)', () => {
     )
 
     expect(store.listEvents(result.runId).filter((e) => e.type === 'builder-dispatch')).toHaveLength(0)
-    expect(store.listEvents(result.runId).find((e) => e.type === 'wrap-disposition')?.data).toEqual({ disposition: 'continue', buildAtoms: 0, signal: null })
-    expect(result.status).toBe('awaiting-founder')
+    expect(store.listEvents(result.runId).find((e) => e.type === 'wrap-disposition')?.data).toEqual({
+      disposition: 'archive-confirmation',
+      buildAtoms: 0,
+      signal: null,
+      action: {
+        type: 'archive-priority-confirmation',
+        workspaceId: 'cocoder',
+        runId: result.runId,
+        priorityId: 'demo',
+        method: 'POST',
+        endpoint: `/runs/${result.runId}/archive-confirmation`,
+        confirmWith: 'archive',
+      },
+    })
+    expect(result.status).toBe('awaiting-archive-confirmation')
   })
 
-  test('archive-ready wrap with a founder decision records awaiting-founder disposition', async () => {
+  test('target-prefixed archive-ready Run Status normalizes to archive-confirmation disposition and action', async () => {
+    const store = openRunStore(':memory:')
+    const prefixedArchiveReadyCloseout = renderFounderCloseout({
+      runStatus: 'Priority-launched run: archive ready.',
+      whatRemains: '- Nothing remains for this priority.',
+      nextStep: 'Ticket: `0015` — archive the completed priority record',
+      judgment: 'Oscar found no build atoms to delegate and the priority is ready to archive.',
+    })
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([[]]),
+        io: fakeIO({ directives: [wrapup('Oscar seed closeout')] }),
+        getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
+        runHeadless: async () => ({ exitCode: 0, output: prefixedArchiveReadyCloseout }),
+      }),
+      { ...input, wrapPlay, wrapPlayAssignment },
+    )
+
+    expect(store.listEvents(result.runId).find((e) => e.type === 'wrap-disposition')?.data).toEqual({
+      disposition: 'archive-confirmation',
+      buildAtoms: 0,
+      signal: null,
+      action: {
+        type: 'archive-priority-confirmation',
+        workspaceId: 'cocoder',
+        runId: result.runId,
+        priorityId: 'demo',
+        method: 'POST',
+        endpoint: `/runs/${result.runId}/archive-confirmation`,
+        confirmWith: 'archive',
+      },
+    })
+    expect(result.status).toBe('awaiting-archive-confirmation')
+  })
+
+  test('archive-ready wrap with a founder decision records awaiting-founder disposition and no action', async () => {
     const store = openRunStore(':memory:')
     const founderGateCloseout = renderFounderCloseout({
       runStatus: 'Archive ready',
@@ -1617,10 +1683,14 @@ describe('runRun (multi-atom loop)', () => {
     )
 
     expect(result.status).toBe('awaiting-founder')
-    expect(store.listEvents(result.runId).find((e) => e.type === 'wrap-disposition')?.data).toEqual({ disposition: 'awaiting-founder', buildAtoms: 1, signal: null })
+    expect(store.listEvents(result.runId).find((e) => e.type === 'wrap-disposition')?.data).toEqual({
+      disposition: 'awaiting-founder',
+      buildAtoms: 1,
+      signal: null,
+    })
   })
 
-  test('archive-ready wrap after a builder dispatch records continue disposition', async () => {
+  test('archive-ready wrap after a builder dispatch records archive-confirmation disposition and action', async () => {
     const store = openRunStore(':memory:')
     const archiveReadyCloseout = renderFounderCloseout({
       runStatus: 'Archive ready',
@@ -1641,8 +1711,21 @@ describe('runRun (multi-atom loop)', () => {
     )
 
     expect(store.listEvents(result.runId).filter((e) => e.type === 'builder-dispatch')).toHaveLength(1)
-    expect(store.listEvents(result.runId).find((e) => e.type === 'wrap-disposition')?.data).toEqual({ disposition: 'continue', buildAtoms: 1, signal: null })
-    expect(result.status).toBe('awaiting-founder')
+    expect(store.listEvents(result.runId).find((e) => e.type === 'wrap-disposition')?.data).toEqual({
+      disposition: 'archive-confirmation',
+      buildAtoms: 1,
+      signal: null,
+      action: {
+        type: 'archive-priority-confirmation',
+        workspaceId: 'cocoder',
+        runId: result.runId,
+        priorityId: 'demo',
+        method: 'POST',
+        endpoint: `/runs/${result.runId}/archive-confirmation`,
+        confirmWith: 'archive',
+      },
+    })
+    expect(result.status).toBe('awaiting-archive-confirmation')
   })
 
   test('validated wrap-up with a founder decision leaves the run awaiting-founder', async () => {

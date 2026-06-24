@@ -1,7 +1,7 @@
 // Stage-4 mutations + run-lifecycle correctness: launch (202 / 409 in-flight), deep-link (200 / 409
 // non-live, never 500), assignments write (validate + atomic), startup orphan reconciliation.
 import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
@@ -1745,6 +1745,134 @@ describe('Oz mutations + lifecycle', () => {
     expect(prompts[0]).toContain('"id": "demo"')
     const audit = await readFile(join(home, 'local', 'oz-audit.log'), 'utf8')
     expect(audit).toContain('"action":"authoring-play"')
+  })
+
+  test('archive-ready run detail exposes archive confirmation action', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(run.id, 'awaiting-archive-confirmation')
+    store.recordEvent({
+      runId: run.id,
+      type: 'wrap-disposition',
+      data: {
+        disposition: 'archive-confirmation',
+        buildAtoms: 1,
+        signal: null,
+        action: { type: 'archive-priority-confirmation', runId: run.id, priorityId: 'demo', endpoint: `/runs/${run.id}/archive-confirmation`, method: 'POST', confirmWith: 'archive' },
+      },
+    })
+    await startServer()
+
+    const detail = await call(oz!, 'GET', `/runs/${run.id}`)
+
+    expect(detail.status).toBe(200)
+    expect(detail.json.run).toMatchObject({ id: run.id, status: 'awaiting-archive-confirmation' })
+    expect(detail.json.actions).toEqual([
+      { type: 'archive-priority-confirmation', method: 'POST', endpoint: `/runs/${run.id}/archive-confirmation`, priorityId: 'demo', confirmWith: 'archive' },
+    ])
+  })
+
+  test('POST /runs/:id/archive-confirmation archives through archive-priority and prunes order.json', async () => {
+    await writeFile(
+      join(home, 'cocoder', 'personas', 'assignments.json'),
+      JSON.stringify({
+        personas: {
+          oz: {
+            cli: 'fake',
+            model: 'oz-model',
+            plays: { 'archive-priority': { cli: 'fake', model: 'author-model' } },
+          },
+          oscar: { cli: 'claude', model: '' },
+          bob: { cli: 'codex', model: '' },
+        },
+      }),
+    )
+    await writeFile(join(home, 'cocoder', 'priorities', 'order.json'), `${JSON.stringify(['demo'], null, 2)}\n`)
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(run.id, 'awaiting-archive-confirmation')
+    store.recordEvent({
+      runId: run.id,
+      type: 'wrap-disposition',
+      data: {
+        disposition: 'archive-confirmation',
+        buildAtoms: 1,
+        signal: null,
+        action: { type: 'archive-priority-confirmation', runId: run.id, priorityId: 'demo', endpoint: `/runs/${run.id}/archive-confirmation`, method: 'POST', confirmWith: 'archive' },
+      },
+    })
+    const prompts: string[] = []
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit(['cocoder/priorities/archive/demo.md', 'cocoder/priorities/demo.md', 'cocoder/priorities/order.json']),
+      sessionHost: fakeHost(),
+      getAdapter: () => ({
+        ...okAdapter,
+        build: (input) => {
+          prompts.push(input.prompt)
+          return { command: 'fake-cli', args: ['authoring'] }
+        },
+      }),
+      io: fakeIO(),
+      runHeadless: async () => {
+        await mkdir(join(home, 'cocoder', 'priorities', 'archive'), { recursive: true })
+        await rename(join(home, 'cocoder', 'priorities', 'demo.md'), join(home, 'cocoder', 'priorities', 'archive', 'demo.md'))
+        await writeFile(join(home, 'cocoder', 'priorities', 'order.json'), `${JSON.stringify([], null, 2)}\n`)
+        return { exitCode: 0, output: 'archived demo' }
+      },
+    })
+
+    const r = await call(oz!, 'POST', `/runs/${run.id}/archive-confirmation`, { body: { confirmation: 'archive' } })
+
+    expect(r).toMatchObject({
+      status: 200,
+      json: {
+        ok: true,
+        archived: true,
+        runId: run.id,
+        priorityId: 'demo',
+        committedPaths: ['cocoder/priorities/archive/demo.md', 'cocoder/priorities/demo.md', 'cocoder/priorities/order.json'],
+      },
+    })
+    expect(prompts[0]).toContain('# Archive Priority Play')
+    expect(prompts[0]).toContain('"id": "demo"')
+    expect(store.getRun(run.id)?.status).toBe('completed')
+    expect(store.listEvents(run.id).some((event) => event.type === 'archive-confirmation-archived')).toBe(true)
+    await expect(stat(join(home, 'cocoder', 'priorities', 'archive', 'demo.md'))).resolves.toBeDefined()
+    await expect(stat(join(home, 'cocoder', 'priorities', 'demo.md'))).rejects.toThrow()
+    expect(JSON.parse(await readFile(join(home, 'cocoder', 'priorities', 'order.json'), 'utf8'))).toEqual([])
+  })
+
+  test('POST /runs/:id/archive-confirmation with any non-archive answer leaves the priority live', async () => {
+    await writeFile(join(home, 'cocoder', 'priorities', 'order.json'), `${JSON.stringify(['demo'], null, 2)}\n`)
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(run.id, 'awaiting-archive-confirmation')
+    store.recordEvent({
+      runId: run.id,
+      type: 'wrap-disposition',
+      data: {
+        disposition: 'archive-confirmation',
+        buildAtoms: 1,
+        signal: null,
+        action: { type: 'archive-priority-confirmation', runId: run.id, priorityId: 'demo', endpoint: `/runs/${run.id}/archive-confirmation`, method: 'POST', confirmWith: 'archive' },
+      },
+    })
+    await startServer(fakeGit(['cocoder/priorities/archive/demo.md']), async () => {
+      throw new Error('archive Play must not run for non-archive confirmation')
+    })
+
+    const r = await call(oz!, 'POST', `/runs/${run.id}/archive-confirmation`, { body: { confirmation: 'not yet' } })
+
+    expect(r).toMatchObject({ status: 200, json: { ok: true, archived: false, runId: run.id, priorityId: 'demo', status: 'awaiting-archive-confirmation' } })
+    expect(store.getRun(run.id)?.status).toBe('awaiting-archive-confirmation')
+    expect(store.listCommitLinks(run.id)).toEqual([])
+    expect(store.listEvents(run.id).some((event) => event.type === 'archive-confirmation-declined')).toBe(true)
+    await expect(stat(join(home, 'cocoder', 'priorities', 'demo.md'))).resolves.toBeDefined()
+    await expect(stat(join(home, 'cocoder', 'priorities', 'archive', 'demo.md'))).rejects.toThrow()
+    expect(JSON.parse(await readFile(join(home, 'cocoder', 'priorities', 'order.json'), 'utf8'))).toEqual(['demo'])
   })
 
   test('routes source keeps exactly one authoring HTTP dispatch path', async () => {

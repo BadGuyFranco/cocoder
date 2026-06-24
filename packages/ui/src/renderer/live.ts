@@ -133,6 +133,10 @@ export async function stopRun(oz: OzApi, runId: string): Promise<MutationResult>
   return oz.daemonPost(`/runs/${runId}/stop`)
 }
 
+export async function confirmArchiveRun(oz: OzApi, runId: string): Promise<MutationResult> {
+  return oz.daemonPost(`/runs/${runId}/archive-confirmation`, { confirmation: 'archive' })
+}
+
 export async function testCli(oz: OzApi, id: string): Promise<Cli | null> {
   try {
     const r = await oz.daemonPost<CliTestResponse>(`/clis/${encodeURIComponent(id)}/test`)

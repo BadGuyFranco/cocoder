@@ -87,7 +87,16 @@ const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 /** Build the per-atom Judge (ADR-0013). Injected so tests use a scripted fake and cli/daemon get the
  *  real heuristic. Tier 1 = a cheap idle/sentinel heuristic; semantic judgment stays at the verify-gate. */
 export type MakeJudge = (ctx: { atomIndex: number; doneSentinel: string; task: string }) => Judge
-export type WrapDisposition = 'archive-candidate' | 'awaiting-founder' | 'continue'
+export type WrapDisposition = 'archive-confirmation' | 'awaiting-founder' | 'continue'
+export interface ArchiveConfirmationAction {
+  readonly type: 'archive-priority-confirmation'
+  readonly workspaceId: string
+  readonly runId: string
+  readonly priorityId: string
+  readonly method: 'POST'
+  readonly endpoint: string
+  readonly confirmWith: 'archive'
+}
 
 export interface CriterionResult {
   readonly exitCode: number
@@ -380,10 +389,14 @@ function resumeStateAtomNumber(park: ResumeState): number {
   return park.park === 'pre-dispatch' ? park.atomNumber : park.activeAtomNumber
 }
 
+function normalizeCloseoutRunStatusLine(line: string): string {
+  return line.replace(/^(?:priority|ticket)-launched run:\s*/i, '')
+}
+
 function closeoutRunStatus(markdown: string, contract: FounderCloseoutContract): string | null {
   const content = founderCloseoutSection(markdown, contract, section(contract, 'runStatus'))
   const firstLine = content?.split(/\r?\n/).map((line) => line.trim()).find(Boolean)
-  return firstLine ? normalizeRunStatus(firstLine) : null
+  return firstLine ? normalizeRunStatus(normalizeCloseoutRunStatusLine(firstLine)) : null
 }
 
 export function deriveWrapupRunStatus(markdown: string, contract: FounderCloseoutContract, current: RunStatus, target: CloseoutLaunchTarget = 'priority'): RunStatus {
@@ -395,7 +408,8 @@ export function deriveWrapupRunStatus(markdown: string, contract: FounderCloseou
     if (founderDecisionNeeded(markdown, contract)) return 'awaiting-founder'
     return current
   }
-  if (founderDecisionNeeded(markdown, contract) || runStatus === 'archive ready') return 'awaiting-founder'
+  if (founderDecisionNeeded(markdown, contract)) return 'awaiting-founder'
+  if (runStatus === 'archive ready') return 'awaiting-archive-confirmation'
   return current
 }
 
@@ -407,11 +421,29 @@ export function deriveTicketCloseDecision(markdown: string, contract: FounderClo
   return 'none'
 }
 
-export function deriveWrapDisposition(markdown: string, contract: FounderCloseoutContract, builderDispatchCount: number, target: CloseoutLaunchTarget = 'priority'): WrapDisposition {
-  if (founderDecisionNeeded(markdown, contract)) return 'awaiting-founder'
+export function deriveWrapDisposition(markdown: string, contract: FounderCloseoutContract, target: CloseoutLaunchTarget = 'priority'): WrapDisposition {
   const runStatus = closeoutRunStatus(markdown, contract)
-  if (target === 'priority' && runStatus === 'archive ready' && builderDispatchCount === 0 && closeoutCitesCheckableSignal(markdown)) return 'archive-candidate'
+  if (founderDecisionNeeded(markdown, contract)) return 'awaiting-founder'
+  if (target === 'priority' && runStatus === 'archive ready') return 'archive-confirmation'
   return 'continue'
+}
+
+function archiveConfirmationAction(input: {
+  readonly workspaceId: string
+  readonly runId: string
+  readonly priorityId: string
+  readonly disposition: WrapDisposition
+}): ArchiveConfirmationAction | null {
+  if (input.disposition !== 'archive-confirmation') return null
+  return {
+    type: 'archive-priority-confirmation',
+    workspaceId: input.workspaceId,
+    runId: input.runId,
+    priorityId: input.priorityId,
+    method: 'POST',
+    endpoint: `/runs/${input.runId}/archive-confirmation`,
+    confirmWith: 'archive',
+  }
 }
 
 function closeoutCitesCheckableSignal(markdown: string): string | null {
@@ -1786,8 +1818,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           if (outputValidation?.founderCloseoutContract && pickup) {
             const buildAtoms = store.listEvents(run.id).filter((event) => event.type === 'builder-dispatch').length
             const signal = closeoutCitesCheckableSignal(pickup)
-            const disposition = deriveWrapDisposition(pickup, outputValidation.founderCloseoutContract, buildAtoms, closeoutTarget)
-            store.recordEvent({ runId: run.id, type: 'wrap-disposition', data: { disposition, buildAtoms, signal } })
+            const disposition = deriveWrapDisposition(pickup, outputValidation.founderCloseoutContract, closeoutTarget)
+            const action = archiveConfirmationAction({ workspaceId: workspace.id, runId: run.id, priorityId: priority.id, disposition })
+            store.recordEvent({ runId: run.id, type: 'wrap-disposition', data: { disposition, buildAtoms, signal, ...(action ? { action } : {}) } })
             terminalStatus = deriveWrapupRunStatus(pickup, outputValidation.founderCloseoutContract, terminalStatus, closeoutTarget)
             ticketCloseDecision = deriveTicketCloseDecision(pickup, outputValidation.founderCloseoutContract, closeoutTarget)
           }

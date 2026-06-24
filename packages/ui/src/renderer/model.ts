@@ -38,6 +38,7 @@ export interface Run {
   personas: string[]; cli: string; startedAt: string
   progress?: number | null; lastEvent?: string; attachCmd?: string
   transcript?: TranscriptLine[]; evidence?: EvidenceItem[]
+  actions?: { type: string; method: string; endpoint: string; priorityId?: string; confirmWith?: string }[]
 }
 
 export const runDisplayName = (run: Pick<Run, 'id' | 'displayName'>): string => run.displayName?.trim() || run.id

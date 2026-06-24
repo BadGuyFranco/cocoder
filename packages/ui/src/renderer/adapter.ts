@@ -58,6 +58,9 @@ export function mapRunStatus(status: string): RunStatus {
   switch (status) {
     case 'running':
       return 'running'
+    case 'awaiting-founder':
+    case 'awaiting-archive-confirmation':
+      return 'blocked'
     case 'completed':
       return 'complete'
     case 'failed':
@@ -425,6 +428,7 @@ export function adaptRunDetail(detail: RunDetail, priorityNames: Record<string, 
     cli: clis.join(' · '),
     transcript,
     evidence: evidenceFromDetail(detail),
+    actions: [...(detail.actions ?? [])],
     lastEvent: last ? last.body : base.lastEvent,
     attachCmd: linkable ? `cmux show ${linkable.sessionRef}` : undefined,
   }

@@ -12,6 +12,7 @@ export function RunDetail({ run, parentPriority, parentPriorityIndex, onClose, o
   const isRunning = run.status === 'running'
   const isParked = run.status === 'blocked'
   const isStreaming = run.status === 'running' || run.status === 'blocked'
+  const archiveAction = run.actions?.find((action) => action.type === 'archive-priority-confirmation')
   const displayName = runDisplayName(run)
   const footer = isRunning ? (
     <>
@@ -22,6 +23,7 @@ export function RunDetail({ run, parentPriority, parentPriorityIndex, onClose, o
     </>
   ) : isParked ? (
     <>
+      {archiveAction && <Button variant="secondary" size="sm" icon="archive" onClick={() => onAction('archive', run.id)}>Archive priority</Button>}
       <Button variant="ghost" size="sm" icon="chat-circle-text" onClick={() => onAction('ask-oz', run.id)} style={{ marginLeft: 'auto' }}>Ask Oz</Button>
     </>
   ) : run.status === 'failed' ? (

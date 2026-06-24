@@ -190,7 +190,7 @@ atoms. One atom at a time:
    validate the wrap-up, add the landing outcome, and send you a \`WRAP-UP READY\` artifact to deliver
    exactly once. If you wrap because the next step needs founder approval, make that decision explicit
    in the pickup so the wrap-up Play's Founder Decision Needed section is not "None"; the runner derives
-   the run's \`awaiting-founder\` status from that validated closeout. A clean commit boundary is a good
+   the run's \`awaiting-founder\` or \`awaiting-archive-confirmation\` status from that validated closeout. A clean commit boundary is a good
    place to continue with the next known atom, not by itself a reason to stop.
 
 # Verifying an atom (the gate — no human backstop)

@@ -12,7 +12,7 @@
 // re-enters at the parked atom (non-terminal, panes open); `wrapup` is a logical close where this launch's
 // work is complete and resume is a fresh launch; `stopped` is terminal stopRun() (active atom abandoned +
 // quarantined); teardown is pane/session lifecycle, never a run disposition.
-export type RunStatus = 'running' | 'awaiting-founder' | 'completed' | 'failed' | 'stopped' | 'held'
+export type RunStatus = 'running' | 'awaiting-founder' | 'awaiting-archive-confirmation' | 'completed' | 'failed' | 'stopped' | 'held'
 export type WorkItemStatus = 'open' | 'done' | 'abandoned'
 
 export interface Workspace {

@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { runDisplayName } from '@cocoder/core'
 import type { OzContext } from './context.js'
-import { launchRun as launchRunOp, readGoverned as readGovernedOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestNudgeRun as nudgeRunOp, requestOscarDebRepair as oscarDebRepairOp, requestOzAction as ozActionOp, requestOzRepair as repairOzOp, requestStopRun as stopRunOp, requestSupportCommitRun as supportCommitRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
+import { launchRun as launchRunOp, readGoverned as readGovernedOp, requestArchiveConfirmation as archiveConfirmationOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestNudgeRun as nudgeRunOp, requestOscarDebRepair as oscarDebRepairOp, requestOzAction as ozActionOp, requestOzRepair as repairOzOp, requestStopRun as stopRunOp, requestSupportCommitRun as supportCommitRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
 import { projectOzAwareness, type OzAwarenessRun, type OzAwarenessSnapshot } from './oz-awareness.js'
 import { tryHandleOzAgentTurn } from './oz-host.js'
 import { readTickets } from './priority-order.js'
@@ -9,12 +9,13 @@ import { findWorkspace } from './registry.js'
 import { withPortableDisplayNumbers } from './run-display.js'
 
 const ADHOC_PRIORITY_ID = 'adhoc-session'
-const HELP_HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, deb-repair <problem> [--run <runId>], commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
+const HELP_HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, deb-repair <problem> [--run <runId>], commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
 
 export type OzCommand =
   | { readonly kind: 'launch'; readonly priorityId: string }
   | { readonly kind: 'adhoc'; readonly task: string }
   | { readonly kind: 'show'; readonly runId: string }
+  | { readonly kind: 'archive-confirmation'; readonly runId: string; readonly confirmation: string }
   | { readonly kind: 'support-commit'; readonly runId: string }
   | { readonly kind: 'oscar-deb-repair'; readonly problem: string; readonly sourceRunId?: string }
   | { readonly kind: 'stop'; readonly runId: string }
@@ -32,7 +33,7 @@ export type OzExecutableCommand = Exclude<OzCommand, { readonly kind: 'help' } |
 export type OzCommandExecutor = (command: OzExecutableCommand) => Promise<OzChatResult>
 
 export interface OzChatAction {
-  readonly type: 'launch' | 'show' | 'support-commit' | 'oscar-deb-repair' | 'stop' | 'nudge' | 'repair' | 'oz-action' | 'author' | 'teardown' | 'status' | 'refresh'
+  readonly type: 'launch' | 'show' | 'archive-confirmation' | 'support-commit' | 'oscar-deb-repair' | 'stop' | 'nudge' | 'repair' | 'oz-action' | 'author' | 'teardown' | 'status' | 'refresh'
   readonly workspaceId?: string
   readonly priorityId?: string
   readonly runId?: string
@@ -69,6 +70,7 @@ export interface OzChatOps {
   readonly readGoverned: typeof readGovernedOp
   readonly requestOscarDebRepair: typeof oscarDebRepairOp
   readonly requestAuthoringPlay: typeof authoringPlayOp
+  readonly requestArchiveConfirmation: typeof archiveConfirmationOp
   readonly supportCommitRun: typeof supportCommitRunOp
 }
 
@@ -84,6 +86,7 @@ const defaultOps: OzChatOps = {
   readGoverned: readGovernedOp,
   requestOscarDebRepair: oscarDebRepairOp,
   requestAuthoringPlay: authoringPlayOp,
+  requestArchiveConfirmation: archiveConfirmationOp,
   supportCommitRun: supportCommitRunOp,
 }
 
@@ -103,6 +106,7 @@ export function parseOzCommand(text: string): OzCommand {
     return { kind: 'adhoc', task }
   }
   if (verb === 'show') return args.length === 1 ? { kind: 'show', runId: args[0]! } : unknownCommand()
+  if (verb === 'archive' || verb === 'confirm-archive') return args.length === 1 ? { kind: 'archive-confirmation', runId: args[0]!, confirmation: 'archive' } : unknownCommand()
   if (verb === 'deb-repair') return parseDebRepairCommand(args)
   if (verb === 'commit-support' || verb === 'support-commit') return args.length === 1 ? { kind: 'support-commit', runId: args[0]! } : unknownCommand()
   if (verb === 'stop') return args.length === 1 ? { kind: 'stop', runId: args[0]! } : unknownCommand()
@@ -164,6 +168,15 @@ export async function executeOzCommand(ctx: OzContext, workspaceId: string | und
       'show',
       () => ops.showRun(ctx, command.runId),
       (out) => showReply(command.runId, out),
+    )
+  }
+
+  if (command.kind === 'archive-confirmation') {
+    if (!workspaceId) return missingWorkspace()
+    return runOp(
+      'archive-confirmation',
+      () => ops.requestArchiveConfirmation(ctx, { runId: command.runId, confirmation: command.confirmation }),
+      (out) => archiveConfirmationReply(command.runId, out),
     )
   }
 
@@ -320,7 +333,7 @@ function unknownReply(status: number, hint: string): OzChatResult {
 }
 
 function missingWorkspace(): OzChatResult {
-  return unknownReply(400, 'Pick a workspace first, then use launch <priorityId>, adhoc <task>, show <runId>, stop <runId>, teardown <runId>, or status.')
+  return unknownReply(400, 'Pick a workspace first, then use launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, stop <runId>, teardown <runId>, or status.')
 }
 
 async function runOp(command: OzChatReply['command'], call: () => Promise<LaunchResult>, reply: (out: LaunchResult) => OzChatReply): Promise<OzChatResult> {
@@ -349,6 +362,30 @@ function showReply(runId: string, out: LaunchResult): OzChatReply {
   const sessionRef = typeof out.body.sessionRef === 'string' ? out.body.sessionRef : undefined
   if (!isOk(out.status)) return failedReply('show', `Could not show ${runId}`, out)
   return { reply: `Showing ${runId}.`, command: 'show', ok: true, action: { type: 'show', runId, sessionRef } }
+}
+
+function archiveConfirmationReply(runId: string, out: LaunchResult): OzChatReply {
+  const archived = out.body.archived === true
+  const priorityId = typeof out.body.priorityId === 'string' ? out.body.priorityId : undefined
+  const committedPaths = stringArray(out.body.committedPaths)
+  const outOfLanePaths = stringArray(out.body.outOfLanePaths)
+  const commitSha = typeof out.body.commitSha === 'string' ? out.body.commitSha : null
+  if (!isOk(out.status)) return failedReply('archive-confirmation', `Could not archive from ${runId}`, out)
+  if (!archived) {
+    return {
+      reply: `Did not archive ${priorityId ?? 'the priority'} from ${runId}; the priority remains live.`,
+      command: 'archive-confirmation',
+      ok: true,
+      action: { type: 'archive-confirmation', runId, ...(priorityId ? { priorityId } : {}) },
+    }
+  }
+  const files = committedPaths.length > 0 ? ` (${committedPaths.join(', ')})` : ''
+  return {
+    reply: `Archived ${priorityId ?? 'the priority'} from ${runId}${commitSha ? ` as ${commitSha}` : ''}${files}.`,
+    command: 'archive-confirmation',
+    ok: true,
+    action: { type: 'archive-confirmation', runId, ...(priorityId ? { priorityId } : {}), committedPaths, commitSha, outOfLanePaths },
+  }
 }
 
 function teardownReply(runId: string, out: LaunchResult): OzChatReply {

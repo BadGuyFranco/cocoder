@@ -28,6 +28,14 @@ export interface DebStatus {
   readonly priorityId: string
   readonly priorityTitle: string
   readonly wrapDisposition: string | null
+  readonly nextAction: {
+    readonly type: string
+    readonly runId?: string
+    readonly priorityId?: string
+    readonly endpoint?: string
+    readonly method?: string
+    readonly confirmWith?: string
+  } | null
   readonly activeAtom: number | null
   readonly activeTask: string | null
   readonly oscar: OscarState
@@ -185,8 +193,20 @@ export function renderDebStatus(input: {
 
   const recentLimit = input.recentLimit ?? 12
   const recentEvents = events.slice(-recentLimit).map((e) => ({ at: e.at, type: e.type, note: noteOf(e) }))
-  const recordedWrapDisposition = (last(events, ['wrap-disposition'])?.data as { disposition?: unknown } | undefined)?.disposition
+  const wrapEventData = last(events, ['wrap-disposition'])?.data as { disposition?: unknown; action?: unknown } | undefined
+  const recordedWrapDisposition = wrapEventData?.disposition
   const wrapDisposition = typeof recordedWrapDisposition === 'string' && recordedWrapDisposition.trim() !== '' ? recordedWrapDisposition : null
+  const action = wrapEventData?.action as Record<string, unknown> | undefined
+  const nextAction = action && typeof action.type === 'string'
+    ? {
+        type: action.type,
+        ...(typeof action.runId === 'string' ? { runId: action.runId } : {}),
+        ...(typeof action.priorityId === 'string' ? { priorityId: action.priorityId } : {}),
+        ...(typeof action.endpoint === 'string' ? { endpoint: action.endpoint } : {}),
+        ...(typeof action.method === 'string' ? { method: action.method } : {}),
+        ...(typeof action.confirmWith === 'string' ? { confirmWith: action.confirmWith } : {}),
+      }
+    : null
 
   const json: DebStatus = {
     runId,
@@ -194,6 +214,7 @@ export function renderDebStatus(input: {
     priorityId: priority.id,
     priorityTitle: priority.title,
     wrapDisposition,
+    nextAction,
     activeAtom,
     activeTask,
     oscar,
@@ -232,6 +253,7 @@ function renderMarkdown(s: DebStatus): string {
   if (s.displayName !== s.runId) lines.push(`- **Technical id:** \`${s.runId}\``)
   lines.push(`- **Priority:** ${s.priorityTitle} (\`${s.priorityId}\`)`)
   lines.push(`- **Wrap disposition:** ${s.wrapDisposition ?? '—'}`)
+  lines.push(`- **Next action:** ${s.nextAction ? `${s.nextAction.type}${s.nextAction.endpoint ? ` via ${s.nextAction.endpoint}` : ''}` : '—'}`)
   lines.push(`- **Active atom:** ${s.activeAtom ?? '—'}${s.activeTask ? ` — ${s.activeTask}` : ''}`)
   lines.push(`- **Oscar:** ${s.oscar}  ·  **Bob:** ${s.bob}  ·  **Verify:** ${s.verify}`)
   lines.push(`- **Waiting on:** ${s.waitCondition}`)

@@ -40,7 +40,7 @@ import { findWorkspace, readWorkspaces, validateWorkspaceFolders, workspaceDirec
 import { readRunDir } from './rundir.js'
 import { appendAudit } from './audit.js'
 import { listClis, testCli } from './clis.js'
-import { commitGovernance, launchRun, requestAuthoringPlay, requestDaemonRestart, requestDashboardLaunch, requestOscarDebRepair, requestStopRun, requestSupportCommitRun, resumeRun, showRun, teardownRun, type AuthoringPlayInput, type OscarDebRepairInput } from './launcher.js'
+import { commitGovernance, launchRun, requestArchiveConfirmation, requestAuthoringPlay, requestDaemonRestart, requestDashboardLaunch, requestOscarDebRepair, requestStopRun, requestSupportCommitRun, resumeRun, showRun, teardownRun, type AuthoringPlayInput, type OscarDebRepairInput } from './launcher.js'
 import { handleOzMessage } from './oz-chat.js'
 import { mergeWriteSettings, readSettings } from './settings.js'
 import { readPriorities, readTickets, registerLivePriorities, writePriorityOrder, writeTicketOrder } from './priority-order.js'
@@ -532,7 +532,23 @@ async function runDetail(ctx: OzContext, res: ServerResponse, runId: string): Pr
     : run.playbookId
       ? { kind: 'playbook', id: run.playbookId }
       : { kind: 'priority', id: run.priorityId }
-  sendJson(res, 200, { run: await withPortableDisplayNumber(ctx, run), target, sessions, workItems, commitLinks, events, files, diffs })
+  sendJson(res, 200, { run: await withPortableDisplayNumber(ctx, run), target, sessions, workItems, commitLinks, events, files, diffs, actions: runActions(run, events) })
+}
+
+function runActions(
+  run: { readonly id: string; readonly status: string },
+  events: readonly { readonly type: string; readonly data: unknown }[],
+): Array<{ type: string; method: string; endpoint: string; priorityId?: string; confirmWith?: string }> {
+  const latestWrap = [...events].reverse().find((event) => event.type === 'wrap-disposition')
+  const action = (latestWrap?.data as { action?: unknown } | undefined)?.action as Record<string, unknown> | undefined
+  if (action?.type !== 'archive-priority-confirmation' || run.status !== 'awaiting-archive-confirmation') return []
+  return [{
+    type: 'archive-priority-confirmation',
+    method: typeof action.method === 'string' ? action.method : 'POST',
+    endpoint: typeof action.endpoint === 'string' ? action.endpoint : `/runs/${run.id}/archive-confirmation`,
+    ...(typeof action.priorityId === 'string' ? { priorityId: action.priorityId } : {}),
+    ...(typeof action.confirmWith === 'string' ? { confirmWith: action.confirmWith } : {}),
+  }]
 }
 
 function writeSseFrame(res: ServerResponse, event: OzEvent): void {
@@ -924,6 +940,26 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
   }
   if (method === 'POST' && seg[0] === 'runs' && seg.length === 3 && seg[2] === 'support-commit') {
     const { status, body: out } = await requestSupportCommitRun(ctx, decodeURIComponent(seg[1]!))
+    return sendJson(res, status, out), true
+  }
+  if (method === 'POST' && seg[0] === 'runs' && seg.length === 3 && seg[2] === 'archive-confirmation') {
+    let body: unknown
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      return sendJson(res, 400, { error: 'invalid JSON body' }), true
+    }
+    const record = typeof body === 'object' && body !== null ? body as Record<string, unknown> : {}
+    const confirmation = typeof record.confirmation === 'string' ? record.confirmation : ''
+    if (!confirmation.trim()) return sendJson(res, 400, { error: 'archive confirmation requires string field "confirmation"' }), true
+    const { status, body: out } = await requestArchiveConfirmation(ctx, {
+      runId: decodeURIComponent(seg[1]!),
+      confirmation,
+      ...(typeof record.reason === 'string' ? { reason: record.reason } : {}),
+      ...(typeof record.findings === 'string' ? { findings: record.findings } : {}),
+      ...(typeof record.verdict === 'string' ? { verdict: record.verdict } : {}),
+      ...(record.persona === 'oz' || record.persona === 'oscar' || record.persona === 'bob' || record.persona === 'deb' ? { persona: record.persona } : {}),
+    })
     return sendJson(res, status, out), true
   }
   if (method === 'POST' && seg[0] === 'workspaces' && seg.length === 3 && seg[2] === 'oscar-deb-repairs') {

@@ -106,11 +106,20 @@ describe('renderDebStatus', () => {
     const s = statusFor(
       [
         { type: 'wrap-disposition', data: { disposition: 'continue', buildAtoms: 1, signal: null } },
-        { type: 'wrap-disposition', data: { disposition: 'archive-candidate', buildAtoms: 0, signal: 'node scripts/proof-launch-disposition.mjs' } },
+        {
+          type: 'wrap-disposition',
+          data: {
+            disposition: 'archive-confirmation',
+            buildAtoms: 0,
+            signal: 'node scripts/proof-launch-disposition.mjs',
+            action: { type: 'archive-priority-confirmation', runId: 'run_x', priorityId: 'demo', endpoint: '/runs/run_x/archive-confirmation', method: 'POST', confirmWith: 'archive' },
+          },
+        },
       ],
       'wrapped',
     )
-    expect(s.wrapDisposition).toBe('archive-candidate')
+    expect(s.wrapDisposition).toBe('archive-confirmation')
+    expect(s.nextAction).toMatchObject({ type: 'archive-priority-confirmation', endpoint: '/runs/run_x/archive-confirmation', confirmWith: 'archive' })
   })
 
   test('wrap disposition remains absent without a recorded event', () => {

@@ -61,7 +61,7 @@ interface ToolResult {
 }
 
 type AuthoringPlayId = 'create-priority' | 'edit-priority' | 'archive-priority'
-type ToolName = 'launch' | 'adhoc' | 'show' | 'stop' | 'nudge' | 'repair' | 'oz-action' | 'read-governed' | 'author' | 'teardown' | 'status' | 'refresh'
+type ToolName = 'launch' | 'adhoc' | 'show' | 'confirm-archive' | 'stop' | 'nudge' | 'repair' | 'oz-action' | 'read-governed' | 'author' | 'teardown' | 'status' | 'refresh'
 
 // Daemon-local by design: Refresh Oz means a fresh daemon-owned session, so restart drops transcript.
 const sessions = new Map<string, OzSession>()
@@ -223,7 +223,7 @@ function toolInstructions(): string {
     'Reply in plain English for the founder, decision-first.',
     'Act only through these tools, and never claim an action succeeded unless the tool result says it did.',
     'Facts come from the digest above.',
-    'Available tools: `launch {"priorityId":"..."}`, `adhoc {"task":"..."}`, `show {"runId":"..."}`, `stop {"runId":"..."}`, `nudge {"runId":"...","message":"..."}` (optional `rationale`), `repair {"message":"..."}` (optional `rationale`), `oz-action {"instruction":"..."}`, `read-governed {"path":"cocoder/decisions/0017-oz-orchestration-persona.md"}`, `author {"play":"create-priority","id":"...","title":"...","objective":"..."}`, `teardown {"runId":"..."}`, `status {"runId":"..."}` or `status {}`, and `refresh {}`.',
+    'Available tools: `launch {"priorityId":"..."}`, `adhoc {"task":"..."}`, `show {"runId":"..."}`, `confirm-archive {"runId":"..."}`, `stop {"runId":"..."}`, `nudge {"runId":"...","message":"..."}` (optional `rationale`), `repair {"message":"..."}` (optional `rationale`), `oz-action {"instruction":"..."}`, `read-governed {"path":"cocoder/decisions/0017-oz-orchestration-persona.md"}`, `author {"play":"create-priority","id":"...","title":"...","objective":"..."}`, `teardown {"runId":"..."}`, `status {"runId":"..."}` or `status {}`, and `refresh {}`.',
     '`oz-action` makes one reversible governance edit, gate-commits allowed paths, and holds out-of-lane edits back uncommitted.',
     '`read-governed` reads any live git-tracked repo file from disk by repo-relative path. It is read-only; secrets, runtime state, host-escape paths, absolute paths, and paths containing `..` are refused.',
     '`author` runs exactly one priority authoring Play. `play` must be `create-priority`, `edit-priority`, or `archive-priority`; edit-priority and archive-priority take the same `play` key plus their own fields. create-priority and any Objective edit require the founder-approved id/title/Objective in the args. Do not fabricate them.',
@@ -301,6 +301,7 @@ function validateToolCall(call: ToolCall): ToolValidation {
 
   if (call.tool === 'launch') return requiredString(call, 'priorityId', (priorityId) => ({ kind: 'launch', priorityId }))
   if (call.tool === 'show') return requiredString(call, 'runId', (runId) => ({ kind: 'show', runId }))
+  if (call.tool === 'confirm-archive') return requiredString(call, 'runId', (runId) => ({ kind: 'archive-confirmation', runId, confirmation: 'archive' }))
   if (call.tool === 'stop') return requiredString(call, 'runId', (runId) => ({ kind: 'stop', runId }))
   if (call.tool === 'nudge') return validateNudgeTool(call)
   if (call.tool === 'repair') return validateRepairTool(call)
@@ -374,7 +375,7 @@ function isAuthoringPlayId(value: unknown): value is AuthoringPlayId {
 }
 
 function isToolName(tool: string): tool is ToolName {
-  return tool === 'launch' || tool === 'adhoc' || tool === 'show' || tool === 'stop' || tool === 'nudge' || tool === 'repair' || tool === 'oz-action' || tool === 'read-governed' || tool === 'author' || tool === 'teardown' || tool === 'status' || tool === 'refresh'
+  return tool === 'launch' || tool === 'adhoc' || tool === 'show' || tool === 'confirm-archive' || tool === 'stop' || tool === 'nudge' || tool === 'repair' || tool === 'oz-action' || tool === 'read-governed' || tool === 'author' || tool === 'teardown' || tool === 'status' || tool === 'refresh'
 }
 
 async function executeTool(command: OzExecutableCommand, execute: OzCommandExecutor): Promise<ToolResult> {

@@ -23,7 +23,7 @@ export function projectOzAwareness(input: OzAwarenessInput): OzAwarenessSnapshot
   return {
     priorities: [...input.priorities],
     recentRuns,
-    activeRuns: recentRuns.filter((run) => run.status === 'running' || run.status === 'awaiting-founder'),
+    activeRuns: recentRuns.filter((run) => run.status === 'running' || run.status === 'awaiting-founder' || run.status === 'awaiting-archive-confirmation'),
     openTickets: input.tickets.filter((ticket) => ticket.state === 'open'),
   }
 }

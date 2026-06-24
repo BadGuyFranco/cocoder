@@ -10,6 +10,7 @@ const priorities: PrioritySummary[] = [
 const runs: Run[] = [
   { id: 'run_2', workspaceId: 'cocoder', priorityId: 'demo', playbookId: null, ticketId: null, status: 'completed', createdAt: 20, endedAt: 30 },
   { id: 'run_1', workspaceId: 'cocoder', priorityId: 'ops', playbookId: null, ticketId: null, status: 'running', createdAt: 10, endedAt: null },
+  { id: 'run_archive', workspaceId: 'cocoder', priorityId: 'demo', playbookId: null, ticketId: null, status: 'awaiting-archive-confirmation', createdAt: 5, endedAt: 15 },
 ]
 
 const tickets: TicketSummary[] = [
@@ -23,7 +24,7 @@ describe('projectOzAwareness', () => {
 
     expect(snapshot.priorities).toEqual(priorities)
     expect(snapshot.recentRuns).toEqual(runs.map((run) => ({ ...run, displayNumber: null })))
-    expect(snapshot.activeRuns).toEqual([{ ...runs[1], displayNumber: null }])
+    expect(snapshot.activeRuns).toEqual([{ ...runs[1], displayNumber: null }, { ...runs[2], displayNumber: null }])
     expect(snapshot.openTickets).toEqual([tickets[0]])
   })
 })
