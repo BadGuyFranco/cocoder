@@ -1,97 +1,224 @@
-# CoCoder Dashboard Local-Default Design Spec
+# CoBuilder Fusion Design Spec Local Default
+
+Snapshot date: 2026-06-24.
+
+Upstream source of truth: `CoBuilder/infrastructure/design-system`, specifically
+`design/tokens-website.css`, `design/tokens-ide.css`, `README.md`, `AGENTS.md`,
+`ARCHITECTURE.md`, and the live website consumer at `cobuilder-website/app/globals.css`.
+Re-sync is mechanical against that upstream SSOT; the founder accepted the drift trade-off versus a
+live cross-repo reference.
 
 ## Resolution Rule
 
-Any new or onboarded workspace that defines no CSS or design language of its own inherits this local-default design spec. A workspace-specified design wins. This document is the single owner for the local-default design catalog; the `--cb-*` custom properties in `fusion.css` and their consumers in `oz.css` remain the runtime source of truth, so this document catalogs those values instead of forking them.
+A workspace that defines its own CSS or design language wins. Otherwise this local default applies.
+This file is the single owner for the seeded local-default design catalog; workspace copies are seeded
+create-only and are never overwritten once a workspace has its own.
 
-## Color & Surface Tokens
+## Design Language
 
-`fusion.css` defines the default dark theme on `:root` and light overrides on `[data-theme='light']`. Tokens not listed with a light override keep the default value.
+Fusion is CoBuilder's final cross-product visual language for the IDE and website: Art Deco x Liquid
+Glass, Warm Espresso dark mode, Warm Linen light mode, champagne/deep-gold accents, low radii, thin
+gold structure lines, and soft glass depth. It is a token system, not a component library.
 
-| Token | Default dark value | Light override | Role |
+## Web `--cb-*` Tokens
+
+The web surface uses hex and rgba `--cb-*` tokens for direct CSS consumption. The snapshot below uses
+the live website values from `cobuilder-website/app/globals.css` when that file diverges from
+`design/tokens-website.css`.
+
+| Token | Light value | Dark value | Role |
 |---|---:|---:|---|
-| `--cb-bg` | `#2A251F` | `#F0E9DF` | App canvas background. |
-| `--cb-bg-soft` | `#25211C` | `#EAE3D8` | Recessed controls, chips, and priority-panel fill. |
-| `--cb-surface` | `rgba(20, 17, 14, 0.96)` | `#FAF6EE` | General surface color. |
-| `--cb-surface-solid` | `#16120F` | `#EDE8DF` | Opaque surface base. |
-| `--cb-surface-raised` | `#1B1713` | `#FAF6EE` | Raised popovers and tooltips. |
-| `--cb-surface-glass` | `rgba(20, 17, 14, 0.96)` | `rgba(255, 252, 248, 0.94)` | Blurred shell and panel surfaces. |
-| `--cb-text` | `#E5DCD0` | `#1E1B17` | Primary readable text. |
-| `--cb-text-secondary` | `#8E8477` | `#6B6358` | Secondary labels and inactive navigation. |
-| `--cb-text-muted` | `#6B6358` | `#9E9689` | Metadata, helper text, and disabled-adjacent labels. |
-| `--cb-text-on-accent` | `#14110E` | `#FFFFFF` | Text placed on accent fills. |
-| `--cb-accent` | `#C9A96E` | `#8B7545` | Primary gold accent for active states and CTAs. |
-| `--cb-accent-hover` | `#D6B97D` | `#75623A` | Primary CTA hover fill. |
-| `--cb-accent-muted` | `rgba(201, 169, 110, 0.12)` | `rgba(139, 117, 69, 0.12)` | Soft accent backgrounds. |
-| `--cb-accent-subtle` | `rgba(201, 169, 110, 0.06)` | `rgba(139, 117, 69, 0.06)` | Very quiet accent backgrounds. |
-| `--cb-accent-30` | `rgba(201, 169, 110, 0.30)` | `rgba(139, 117, 69, 0.30)` | Strong translucent accent borders, focus cues, and handles. |
-| `--cb-accent-25` | `rgba(201, 169, 110, 0.25)` | `rgba(139, 117, 69, 0.25)` | Selection background strength. |
-| `--cb-accent-15` | `rgba(201, 169, 110, 0.15)` | `rgba(139, 117, 69, 0.15)` | Quiet accent borders and active badges. |
-| `--cb-highlight` | `#D4766E` | `#C0584F` | Highlight and destructive-state text. |
-| `--cb-highlight-muted` | `rgba(212, 118, 110, 0.15)` | `rgba(192, 88, 79, 0.12)` | Destructive button background. |
-| `--cb-error` | `#D4766E` | `#C0584F` | Error color alias. |
-| `--cb-success` | `#7DAF6E` | `#4A8040` | Success-state text. |
-| `--cb-success-muted` | `rgba(125, 175, 110, 0.12)` | `rgba(74, 128, 64, 0.10)` | Success chip background. |
-| `--cb-border` | `rgba(200, 170, 120, 0.08)` | `rgba(100, 85, 55, 0.10)` | Default hairline borders and dividers. |
-| `--cb-border-strong` | `rgba(200, 170, 120, 0.16)` | `rgba(100, 85, 55, 0.22)` | Stronger borders for hover or raised elements. |
-| `--cb-gold-line` | `rgba(201, 169, 110, 0.15)` | `rgba(139, 117, 69, 0.20)` | Decorative gold divider line. |
-| `--cb-hover` | `rgba(200, 170, 120, 0.06)` | `rgba(100, 85, 55, 0.06)` | Neutral hover fill. |
-| `--cb-active` | `rgba(200, 170, 120, 0.10)` | `rgba(140, 115, 65, 0.10)` | Neutral active or selected fill. |
-| `--cb-glass-blur` | `22px` | Same as default | Backdrop-filter blur radius for glass surfaces. |
-| `--cb-glass-highlight` | `rgba(255, 245, 230, 0.04)` | `rgba(255, 255, 255, 0.60)` | Inset highlight on glass panels. |
-| `--cb-ambient-1` | `rgba(201, 169, 110, 0.025)` | `rgba(139, 117, 69, 0.020)` | First ambient radial background wash. |
-| `--cb-ambient-2` | `rgba(201, 169, 110, 0.018)` | `rgba(139, 117, 69, 0.014)` | Second ambient radial background wash. |
+| `--cb-font-display` | `'Josefin Sans', sans-serif` | `'Josefin Sans', sans-serif` | Display headings, wordmarks, short labels. |
+| `--cb-font-body` | `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif` | `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif` | Body text and general UI. |
+| `--cb-font-mono` | `'JetBrains Mono', 'Fira Code', ui-monospace, monospace` | `'JetBrains Mono', 'Fira Code', ui-monospace, monospace` | Code, metadata, counters, IDs. |
+| `--cb-bg` | `#F3EEE6` | `#14110E` | Page/app canvas. |
+| `--cb-bg-soft` | `#EDE8DF` | `#1A1714` | Recessed surface fill. |
+| `--cb-surface` | `#EDE8DF` | `rgba(30, 26, 22, 0.55)` | Standard surface. |
+| `--cb-surface-solid` | `#EDE8DF` | `#1E1A16` | Opaque fallback surface. |
+| `--cb-surface-raised` | `#FAF6EE` | `#221E19` | Raised surface. |
+| `--cb-surface-glass` | `rgba(255, 252, 248, 0.65)` | `rgba(30, 26, 22, 0.55)` | Frosted glass panels. |
+| `--cb-text` | `#1E1B17` | `#E5DCD0` | Primary text. |
+| `--cb-text-secondary` | `#6B6358` | `#8E8477` | Secondary text. |
+| `--cb-text-muted` | `#6F685F` | `#6B6358` | Muted labels and helper text. |
+| `--cb-text-on-accent` | `#FFFFFF` | `#14110E` | Text on accent fills. |
+| `--cb-accent` | `#7A663B` | `#C9A96E` | Primary gold accent. |
+| `--cb-accent-hover` | `#75623A` | `#D6B97D` | Accent hover fill. |
+| `--cb-accent-muted` | `rgba(122, 102, 59, 0.12)` | `rgba(201, 169, 110, 0.12)` | Soft accent backgrounds. |
+| `--cb-accent-subtle` | `rgba(122, 102, 59, 0.06)` | `rgba(201, 169, 110, 0.06)` | Quiet accent backgrounds. |
+| `--cb-accent-30` | `rgba(122, 102, 59, 0.30)` | `rgba(201, 169, 110, 0.30)` | Strong accent borders and focus cues. |
+| `--cb-accent-25` | `rgba(122, 102, 59, 0.25)` | `rgba(201, 169, 110, 0.25)` | Selection fill. |
+| `--cb-accent-15` | `rgba(122, 102, 59, 0.15)` | `rgba(201, 169, 110, 0.15)` | Quiet accent borders and badges. |
+| `--cb-highlight` | `#C0584F` | `#D4766E` | Highlight/destructive text. |
+| `--cb-highlight-muted` | `rgba(192, 88, 79, 0.12)` | `rgba(212, 118, 110, 0.15)` | Muted highlight fill. |
+| `--cb-error` | `#C0584F` | `#D4766E` | Error alias. |
+| `--cb-success` | `#4A8040` | `#7DAF6E` | Success text. |
+| `--cb-success-muted` | `rgba(74, 128, 64, 0.10)` | `rgba(125, 175, 110, 0.12)` | Success chip fill. |
+| `--cb-border` | `rgba(100, 85, 55, 0.10)` | `rgba(200, 170, 120, 0.08)` | Default border. |
+| `--cb-border-strong` | `rgba(100, 85, 55, 0.22)` | `rgba(200, 170, 120, 0.16)` | Strong border. |
+| `--cb-gold-line` | `rgba(122, 102, 59, 0.20)` | `rgba(201, 169, 110, 0.15)` | Structural gold separator. |
+| `--cb-hover` | `rgba(100, 85, 55, 0.06)` | `rgba(200, 170, 120, 0.06)` | Neutral hover fill. |
+| `--cb-active` | `rgba(122, 102, 59, 0.10)` | `rgba(200, 170, 120, 0.10)` | Neutral active fill. |
+| `--cb-glass-blur` | `22px` | `22px` | Backdrop blur radius. |
+| `--cb-glass-highlight` | `rgba(255, 255, 255, 0.60)` | `rgba(255, 245, 230, 0.04)` | Inset glass highlight. |
+| `--cb-ambient-1` | `rgba(122, 102, 59, 0.06)` | `rgba(201, 169, 110, 0.07)` | First ambient radial wash. |
+| `--cb-ambient-2` | `rgba(122, 102, 59, 0.04)` | `rgba(201, 169, 110, 0.05)` | Second ambient radial wash. |
+| `--cb-radius-xs` | `2px` | `2px` | Tiny marks and tags. |
+| `--cb-radius-sm` | `3px` | `3px` | Badges and compact controls. |
+| `--cb-radius-md` | `4px` | `4px` | Buttons and inputs. |
+| `--cb-radius-lg` | `6px` | `6px` | Cards. |
+| `--cb-radius-xl` | `8px` | `8px` | Panels. |
+| `--cb-radius-pill` | `9999px` | `9999px` | Pills. |
+| `--cb-space-xs` | `4px` | `4px` | Tight spacing. |
+| `--cb-space-sm` | `8px` | `8px` | Compact spacing. |
+| `--cb-space-md` | `12px` | `12px` | Default local gap. |
+| `--cb-space-lg` | `16px` | `16px` | Panel/control spacing. |
+| `--cb-space-xl` | `24px` | `24px` | Section spacing. |
+| `--cb-space-2xl` | `32px` | `32px` | Broad section spacing. |
+| `--cb-space-3xl` | `48px` | `48px` | Large page rhythm. |
+| `--cb-space-4xl` | `64px` | `64px` | Maximum section rhythm. |
+| `--cb-duration-fast` | `150ms` | `150ms` | Hover/focus/control motion. |
+| `--cb-duration-normal` | `250ms` | `250ms` | Standard transitions. |
+| `--cb-duration-slow` | `400ms` | `400ms` | Slow expressive transitions. |
+| `--cb-ease-default` | `ease-out` | `ease-out` | Default easing. |
+| `--cb-ease-spring` | `cubic-bezier(0.34, 1.56, 0.64, 1)` | `cubic-bezier(0.34, 1.56, 0.64, 1)` | Expressive easing. |
+
+### Web Drift Notes
+
+Live `cobuilder-website/app/globals.css` wins over `design/tokens-website.css` for this snapshot.
+Recorded divergences:
+
+| Token | Theme | Token SSOT value | Snapshotted live value |
+|---|---|---:|---:|
+| `--cb-accent` | light | `#8B7545` | `#7A663B` |
+| `--cb-accent-muted` | light | `rgba(139, 117, 69, 0.12)` | `rgba(122, 102, 59, 0.12)` |
+| `--cb-accent-subtle` | light | `rgba(139, 117, 69, 0.06)` | `rgba(122, 102, 59, 0.06)` |
+| `--cb-accent-30` | light | `rgba(139, 117, 69, 0.3)` | `rgba(122, 102, 59, 0.30)` |
+| `--cb-accent-25` | light | `rgba(139, 117, 69, 0.25)` | `rgba(122, 102, 59, 0.25)` |
+| `--cb-active` | light | `rgba(140, 115, 65, 0.10)` | `rgba(122, 102, 59, 0.10)` |
+| `--cb-gold-line` | light | `rgba(139, 117, 69, 0.20)` | `rgba(122, 102, 59, 0.20)` |
+| `--cb-ambient-1` | light | `rgba(139, 117, 69, 0.06)` | `rgba(122, 102, 59, 0.06)` |
+| `--cb-ambient-2` | light | `rgba(139, 117, 69, 0.04)` | `rgba(122, 102, 59, 0.04)` |
+| `--cb-text-muted` | light | `#9E9689` | `#6F685F` |
+| `--cb-accent-30` | dark | `rgba(201, 169, 110, 0.3)` | `rgba(201, 169, 110, 0.30)` |
+| `--cb-glass-highlight` | light | `rgba(255, 255, 255, 0.6)` | `rgba(255, 255, 255, 0.60)` |
+
+Live website-only `--cb-*` additions are also snapshotted: `--cb-bg-soft`,
+`--cb-surface-solid`, `--cb-surface-raised`, `--cb-text-on-accent`, `--cb-accent-hover`,
+`--cb-accent-15`, `--cb-border-strong`, `--cb-radius-xs`, `--cb-radius-pill`, and the spacing tokens
+above.
+
+## IDE Shadcn HSL Tokens
+
+The IDE surface uses shadcn/Tailwind-compatible HSL components without an `hsl()` wrapper. Consumers
+wrap color values as `hsl(var(--token))`; opacity-bearing values include the slash component.
+
+| Token | Light `:root` value | Dark `.dark` value | Role |
+|---|---:|---:|---|
+| `--background` | `34 28% 93%` | `28 20% 7%` | App background. |
+| `--foreground` | `30 12% 10%` | `34 22% 87%` | Primary foreground. |
+| `--card` | `34 20% 93%` | `28 14% 9%` | Card background. |
+| `--card-foreground` | `30 12% 10%` | `34 22% 87%` | Card text. |
+| `--popover` | `34 25% 95%` | `28 14% 8%` | Popover background. |
+| `--popover-foreground` | `30 12% 10%` | `34 22% 87%` | Popover text. |
+| `--primary` | `40 32% 40%` | `38 40% 55%` | Gold primary. |
+| `--primary-foreground` | `0 0% 100%` | `28 20% 7%` | Text on primary. |
+| `--secondary` | `34 18% 90%` | `28 10% 12%` | Secondary surface. |
+| `--secondary-foreground` | `30 12% 15%` | `34 18% 85%` | Text on secondary. |
+| `--muted` | `34 14% 88%` | `28 10% 12%` | Muted surface. |
+| `--muted-foreground` | `30 8% 38%` | `30 6% 51%` | Muted text. |
+| `--accent` | `34 18% 90%` | `28 10% 14%` | Hover/active background tint. |
+| `--accent-foreground` | `40 32% 40%` | `34 18% 90%` | Accent foreground. |
+| `--destructive` | `5 52% 53%` | `5 45% 47%` | Destructive/coral. |
+| `--destructive-foreground` | `0 0% 100%` | `0 0% 100%` | Text on destructive. |
+| `--success` | `110 28% 33%` | `110 24% 55%` | Success. |
+| `--highlight` | `5 52% 53%` | `5 45% 47%` | Attention highlight. |
+| `--highlight-foreground` | `0 0% 100%` | `0 0% 100%` | Text on highlight. |
+| `--border` | `34 16% 84%` | `30 12% 14%` | Borders. |
+| `--input` | `34 16% 84%` | `30 12% 14%` | Input border/fill. |
+| `--ring` | `40 32% 40%` | `38 40% 55%` | Focus ring. |
+| `--radius` | `0.375rem` | `0.375rem` | shadcn radius base. |
+| `--surface` | `34 18% 91%` | `28 14% 10%` | Extended surface. |
+| `--surface-raised` | `34 25% 95%` | `28 12% 14%` | Extended raised surface. |
+| `--gold-line` | `40 32% 40% / 0.20` | `38 40% 55% / 0.15` | Gold separator. |
+| `--glass-bg` | `34 50% 99% / 0.65` | `28 14% 10% / 0.55` | Glass surface fill. |
+| `--glass-blur` | `22px` | `22px` | Glass blur. |
+| `--glass-highlight` | `0 0% 100% / 0.6` | `36 100% 95% / 0.04` | Inset glass highlight. |
+| `--glow` | `40 32% 40%` | `38 40% 55%` | Brand glow color. |
+| `--ambient-1` | `rgba(139,117,69,0.06)` | `rgba(201,169,110,0.07)` | First ambient radial wash. |
+| `--ambient-2` | `rgba(139,117,69,0.04)` | `rgba(201,169,110,0.05)` | Second ambient radial wash. |
+| `--duration-fast` | `150ms` | `150ms` | Fast motion. |
+| `--duration-normal` | `250ms` | `250ms` | Standard motion. |
+| `--duration-slow` | `400ms` | `400ms` | Slow motion. |
+| `--ease-default` | `ease-out` | `ease-out` | Default easing. |
+| `--ease-spring` | `cubic-bezier(0.34, 1.56, 0.64, 1)` | `cubic-bezier(0.34, 1.56, 0.64, 1)` | Expressive easing. |
 
 ## Typography
 
-| Token | Value | Role |
-|---|---:|---|
-| `--cb-font-display` | `'Josefin Sans', sans-serif` | Uppercase display headings, labels, brand marks, and section markers. |
-| `--cb-font-body` | `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif` | Body text, buttons, fields, and general UI copy. |
-| `--cb-font-mono` | `'JetBrains Mono', 'Fira Code', ui-monospace, monospace` | Metadata, badges, code, counters, shortcuts, and numeric UI. |
+| Family | Stack | Use |
+|---|---|---|
+| Display | `'Josefin Sans', sans-serif` | Wordmark, product marks, headers, section IDs, short eyebrows. |
+| Body/UI | `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif` | Paragraphs, forms, buttons, dense UI. |
+| Mono | `'JetBrains Mono', 'Fira Code', ui-monospace, monospace` | Code, metadata, IDs, counters, status numerals. |
 
-The semantic type rules in `fusion.css` set display headings as uppercase with positive letter spacing: `h1/.cb-h1` at `24px`, weight `600`, `1.5px` letter spacing, line-height `1.2`; `h2/.cb-h2` at `20px`, weight `600`, `1.2px`, line-height `1.25`; `h3/.cb-h3` at `18px`, weight `500`, `1px`, line-height `1.3`; and `h4/.cb-h4` at `13px`, weight `500`, `0.8px`, line-height `1.4`. Body text uses `14px`, weight `400`, line-height `1.7`, and `-0.011em` letter spacing; small text uses `12px`; mono text enables tabular numerals through `font-feature-settings: 'tnum'` and `font-variant-numeric: tabular-nums`.
+Type scale:
 
-`oz.css` repeats the same convention at component scale: brand and section labels use display uppercase with `0.5px` to `2.5px` letter spacing, metadata uses the mono stack, and dense controls usually sit in the `10px` to `13px` range.
+| Use | Size | Weight | Letter spacing | Notes |
+|---|---:|---:|---:|---|
+| Display stamp | `42px` | `700` | `2.5px` | Uppercase, accent colored. |
+| H1 | `24px` | `600` | `1.5px` | Uppercase, section header. |
+| H2 | `20px` | `600` | `1.2px` | Uppercase subsection. |
+| H3 | `18px` | `500` or `600` | `1px` | Canvas title/settings group. |
+| Body | `14px` | `400` | `-0.011em` in IDE, `0` on current website | Line-height `1.7`. |
+| UI label | `13px` | `500` | `0.2px` to `0.5px` | Buttons, nav, controls. |
+| Small text | `12px` | `400` | `0` | Secondary metadata. |
+| Micro/mono | `10px` to `11px` | `400` to `500` | `0.3px` to `0.5px` | IDs, counters, chips. |
 
-## Spacing & Radius Scale
+Display text is architectural: use uppercase plus positive tracking for short headers and section IDs.
+Do not use the display stack for long body copy. Mono text should use tabular numerals where numbers
+must scan or align.
 
-| Spacing token | Value | Role |
-|---|---:|---|
-| `--cb-space-xs` | `4px` | Small gaps and tight offsets. |
-| `--cb-space-sm` | `8px` | Compact control spacing. |
-| `--cb-space-md` | `12px` | Default inner spacing. |
-| `--cb-space-lg` | `16px` | Panel and toolbar spacing. |
-| `--cb-space-xl` | `24px` | Larger layout padding. |
-| `--cb-space-2xl` | `32px` | Broad section spacing. |
+## Spacing, Radius, Glass, Motion
 
-| Radius token | Value | Role |
-|---|---:|---|
-| `--cb-radius-xs` | `2px` | Tiny marks and active rails. |
-| `--cb-radius-sm` | `3px` | Chips, shortcuts, and compact controls. |
-| `--cb-radius-md` | `4px` | Default buttons, inputs, tabs, and nav items. |
-| `--cb-radius-lg` | `6px` | Larger icons and empty-state blocks. |
-| `--cb-radius-xl` | `8px` | Panels. |
-| `--cb-radius-pill` | `9999px` | Fully rounded pills. |
+Spacing uses a 4px grid: `4`, `8`, `12`, `16`, `24`, `32`, `48`, and `64px`. Keep local component
+gaps on this ladder unless the component is aligning to a fixed icon or native-control affordance.
 
-## Motion
+Radius ladder:
 
-| Token | Value | Role |
-|---|---:|---|
-| `--cb-duration-fast` | `150ms` | Hover, focus, tooltip, and control transitions. |
-| `--cb-duration-normal` | `250ms` | Standard transition duration. |
-| `--cb-duration-slow` | `400ms` | Slower transitions when needed. |
-| `--cb-ease-default` | `ease-out` | Default easing for interactive UI. |
-| `--cb-ease-spring` | `cubic-bezier(0.34, 1.56, 0.64, 1)` | Spring-like easing for expressive motion. |
+| Use | Radius |
+|---|---:|
+| Tags and badges | `2px` to `3px` |
+| Buttons and inputs | `3px` to `4px` |
+| Cards and small panels | `6px` |
+| Large panels | `8px` |
+| Avatars, dots, true pills | `50%` or `9999px` |
 
-`oz.css` primarily applies the fast/default pair to hover, focus, tab, icon-button, resize-handle, and form-control transitions. The named keyframes (`ozPulse`, `ozSlideIn`, `ozFadeIn`) are component animations, not `--cb-*` tokens.
+Glass recipe:
+
+| Part | Value |
+|---|---|
+| Surface fill | `--cb-surface-glass` or `hsl(var(--glass-bg))` |
+| Backdrop blur | `blur(22px)` |
+| Highlight | `inset 0 1px 0 0 var(--cb-glass-highlight)` or `hsl(var(--glass-highlight))` |
+| Border | soft tokenized gold/brown border, usually `--cb-border` |
+| Ambient depth | two radial gradients from ambient tokens on full-bleed backgrounds |
+
+Motion tokens are `150ms`, `250ms`, and `400ms` with `ease-out` or
+`cubic-bezier(0.34, 1.56, 0.64, 1)`. Use `150ms` for hover/focus/control transitions, `250ms` for
+standard theme or panel transitions, and `400ms` only for deliberate expressive movement.
 
 ## Core Component Patterns
 
-- Glass shell and panels: `.oz-sidebar`, `.oz-topbar`, `.oz-panel`, and active workspace tabs use `--cb-surface-glass`, `blur(var(--cb-glass-blur))`, `--cb-border`, and `--cb-glass-highlight`.
-- Ambient depth: `.oz-app` layers two radial gradients from `--cb-ambient-1` and `--cb-ambient-2` over `--cb-bg`.
-- Gold-line accents: `.oz-sidebar::after`, active nav rails, active workspace tabs, resize handles, brand dividers, selection color, and `.oz-frame` corners all use the accent ramp rather than separate decorative colors.
-- Compact radii: controls and nav surfaces cluster around `--cb-radius-md`; panels use `--cb-radius-xl`; pills and badges use small fixed radii or the pill token where a fully rounded shape is needed.
-- Hover and active treatment: neutral affordances use `--cb-hover` or `--cb-active`; accent affordances use `--cb-accent-muted`, `--cb-accent-15`, or `--cb-accent-30`; destructive affordances use the highlight tokens.
-- Status chips: `.oz-chip-*` uses uppercase compact body text with muted fills, tokenized success/accent states, and highlight-colored blocked/failed/pending states.
-- Forms and buttons: `.oz-input`, `.oz-textarea`, `.oz-select`, and `.oz-btn-*` use body typography, `--cb-bg-soft` or accent fills, `--cb-border`, `--cb-radius-md`, and tokenized focus or hover transitions.
+- Glass shell and panels: sidebars, top bars, popovers, cards, chat panels, and elevated panels use
+  glass fill plus 22px blur, an inset highlight, and a low-contrast tokenized border. Avoid heavy
+  drop shadows.
+- Gold-line accents: use thin structural separators, active rails, center dots, resize handles, focus
+  rings, and corner strokes from the gold/accent ramp. The line is structure, not decoration.
+- Ambient backgrounds: full-bleed pages may layer the two ambient radial gradients over the theme
+  background. Keep them subtle and never replace real content hierarchy with glow.
+- Status chips: compact, uppercase, low-radius chips use muted fills, mono or small UI text, and
+  semantic success/highlight/accent tokens. Numbered chips are preferred when an icon would be generic.
+- Forms and buttons: body/UI typography, `3px` to `4px` radii, tokenized focus rings, neutral fills
+  for secondary controls, and accent fills for primary actions. Hover changes should be short and
+  restrained.
+- Wordmark and brand marks: the live-text wordmark is lowercase Josefin Sans `300` with a thin gold
+  pipe. Use uppercase Josefin Sans for display stamps and section labels, not for body copy.

@@ -1,6 +1,6 @@
 # Design Spec Local Default
 
-The CoCoder dashboard design language is the local-default design spec for new UI, including color, type, spacing tokens, and component patterns.
+The CoBuilder Fusion design language is the local-default design spec for new UI, including color, type, spacing tokens, and component patterns across desktop and web surfaces.
 
 The authoritative owner is `packages/ui/src/renderer/styles/design-spec.md`. Keep token tables, CSS values, and component pattern details there; this template file is only a pointer so scaffolded workspaces know which default applies.
 
