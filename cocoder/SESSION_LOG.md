@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **ticket-fix-0042: Deb live terminal snapshot default — closed via spine (run_73/run_217)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0042](./tickets/closed/0042-deb-default-live-terminal-observation.md) | **Run:** run_217 (display 73)
+**Outcomes:**
+- **Atom 0 (`6cee965`) — read-only terminal evidence path.** Runner/session-host `terminal-snapshot.ts` captures Oscar/Bob via `readScreen()` thunks only; `deb-terminal-snapshot.json`(+`.md`) on every status refresh; DEB WATCH dispatch points Deb at it first; observer/prompts/io wiring.
+- **Prose alignment.** Base `deb.md`, dogfood delta, and shared-standards Host-And-Process-Safety reconciled: terminal snapshot is default first artifact for live-loop/stall diagnosis; status feed stays routing/timestamps/faults context; process-safety boundary preserved. Owner map updated in `docs/orchestration-contract-ownership.md`.
+- **Acceptance met and pinned.** Read-only capture cannot drive lifecycle; prompts default to snapshot; runner emits snapshot for Deb-backed runs only; status feed unchanged; core 517/517, personas 27/27, tsc clean.
+- **Ticket 0042 closes** via run-success `closeTicket()` path on wrap (Run Status `closed`).
+**Next:** Launch priority `oz-file-access` — first research gate (digest enrichment vs scoped `readGoverned` tool) with founder before build.
+
 ## 2026-06-23 — **ticket-fix-0046: ticket close-or-ask at wrap — closed via spine (run_72/run_216)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0046](./tickets/open/0046-ticket-launched-runs-must-close-or-ask-at-wrap-with-ticket-specific-wrap-up-run-status-vocabulary.md) | **Run:** run_216 (display 72)
