@@ -150,8 +150,9 @@ commit.
 
 Oz is the idle cross-session control-plane persona from
 [ADR-0017](./cocoder/decisions/0017-oz-orchestration-persona.md). The daemon hosts Oz's bounded tool
-surface for launch, status, lifecycle, authoring, refresh, nudge, and Oz-level repair. Oz repair is for
-idle control-plane or system-level issues and never reaches into a live Bob pane.
+surface for launch, status, lifecycle, authoring, refresh, nudge, Oz-level repair, and read-only
+governed-file lookup (`read-governed`, scoped by `GOVERNED_READ_SCOPE` — live from disk, no cache).
+Oz repair is for idle control-plane or system-level issues and never reaches into a live Bob pane.
 
 Existing-repo onboarding and drift now run as ordinary Oscar priorities under
 [ADR-0026](./cocoder/decisions/0026-onboard-existing-as-oscar-priority.md). The retired standalone

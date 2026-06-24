@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-24 — **oz-file-access: read-governed shipped — archive-candidate pending live Oz demo (run_76)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [oz-file-access](./priorities/oz-file-access.md) | **Run:** run_76
+**Outcomes:**
+- **Atom 0 (`18c5607`) — Option B `read-governed` end-to-end.** `GOVERNED_READ_SCOPE` in core; Oz tool surface + dispatch in daemon; `readGoverned()` handler reads live from disk with traversal/default-deny guards; no TOC/index/cache (repo SSOT per founder ratification run_75).
+- **Automated proof green.** Core + daemon tsc clean; governed-read-scope, read-governed, oz-chat, oz-agent-chat, authoring-play, mutations suites pass.
+- **Disposition: `archive-candidate`.** Code-complete; only remaining Objective proof is founder-driven live Oz chat demo (in-session ADR/persona question).
+**Next:** Founder confirms via one live Oz dashboard exchange; then archive `oz-file-access`. Meanwhile launch ticket `0047` (headless governance turn ~120s watchdog).
+
 ## 2026-06-24 — **oz-file-access: wrap disposition surfaced; mechanism gate awaits founder (run_75)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [oz-file-access](./priorities/oz-file-access.md) | **Run:** run_75
