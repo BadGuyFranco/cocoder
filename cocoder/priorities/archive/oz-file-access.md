@@ -3,6 +3,18 @@ id: oz-file-access
 title: Oz repo read access — read broadly, write stays gated
 ---
 
+> **Archived 2026-06-24 (founder) — Objective met and live-verified. Denylist inversion shipped
+> (3dd5871): GOVERNED_READ_DENY replaces the run_76 allowlist; readGoverned() default-allows tracked
+> paths and rejects only denylist matches, all repo-root/traversal/absolute guards preserved, still
+> read-only. Founder ran the live Oz proof in-session and it passed in all three dimensions.** Live:
+> Oz read ARCHITECTURE.md (three storage zones, core/daemon split) and packages/core/src/index.ts
+> (real exports runRun/dispatchPlay/runCommitGate/MANDATORY_PLAY_TRIGGERS, confirmed present in tree),
+> and refused local/secrets/oz-token without leaking it. Automated: core+daemon typecheck clean;
+> governed-read-scope.test.ts 1/1, read-governed.test.ts 5/5 covering product-code/doc read plus
+> secret/env/traversal/absolute rejection with no-content-leak. No ADR amendment authored (founder
+> choice; Objective records the model). Verified-when gate fully satisfied (live + automated); no
+> build atoms remain.
+
 ## Objective
 
 Give Oz broad read access to the CoCoder repo working tree so it can answer founder questions and craft
