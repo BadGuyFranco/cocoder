@@ -12,7 +12,7 @@
   "priorityId": "local-preferences",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "awaiting-founder",
   "createdAt": 1782303722556,
-  "endedAt": null
+  "endedAt": 1782304432404
 }
