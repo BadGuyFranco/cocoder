@@ -16,6 +16,24 @@ A verified ticket fix can wrap without closing the ticket or asking the founder.
 
 Root of the steer: the wrap-up Play Run Status vocabulary is priority-shaped (`continue | blocked | archive ready`) and has no ticket-close state, so a verified ticket fix has nowhere correct to land.
 
+## Root cause (confirmed on primary artifacts)
+
+`deriveWrapupRunStatus` (`packages/core/src/runner/runner.ts:338-342`): a wrap whose Run Status matches
+`archive ready` (or any non-None Founder Decision Needed) returns terminal run status `awaiting-founder`;
+otherwise it stays `completed`. The ticket close gate `closeTicketAfterSuccessfulRun`
+(`packages/daemon/src/launcher.ts:424-427`) fires ONLY when both `result.status === 'completed'` and the
+run row is `completed`. So a ticket run that honestly wraps `archive ready` resolves as `awaiting-founder`,
+the close gate skips, and the ticket stays open at the order head. Confirmed live: run_214 ended
+`status: awaiting-founder` with `endedAt` set, the close gate had already run and skipped, and 0045 stayed
+open — `teardownRun` (launcher.ts:855) only aborts + kills surfaces, it does NOT re-run the close gate, so
+teardown cannot recover it. There is no standalone ticket-close path; closure happens exclusively via a
+run resolving `completed`.
+
+Therefore the fix must make a ticket run's verified-complete wrap map to a `completed` terminal status
+(so the existing close gate fires) — i.e. a ticket `closed` Run Status must yield `completed`, distinct
+from a priority `archive ready` which correctly yields `awaiting-founder`. `needs closing` keeps
+`awaiting-founder` and carries the explicit founder close decision.
+
 Source: Oscar->Deb repair dialogue `repair-1782264419672-a2bb30` (Deb proposal, risk: high, do-not-apply-inline).
 
 ## Acceptance (Deb owner map — verified-run scope, per-atom verify gate; do not apply inline)
