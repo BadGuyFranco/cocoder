@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **ticket-fix-0046: ticket close-or-ask at wrap — closed via spine (run_72/run_216)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0046](./tickets/open/0046-ticket-launched-runs-must-close-or-ask-at-wrap-with-ticket-specific-wrap-up-run-status-vocabulary.md) | **Run:** run_216 (display 72)
+**Outcomes:**
+- **Atom 0 (`c983db6`) — wrap-up format owner.** Target-aware Run Status in `wrap-up.md`: priority runs keep `continue | blocked | archive ready`; ticket runs use `needs another run | closed | needs closing | blocked`; pinned in `base-personas.test.ts`.
+- **Atom 1 (`384aae6`) — runner enforcement.** `deriveWrapupRunStatus` + founder-closeout validator are launch-target-aware; ticket `closed` → terminal `completed` (close gate fires); ticket `needs closing` → `awaiting-founder`; ticket closeout rejects priority `archive ready`; pins in `runner.test.ts` + daemon closeout helper.
+- **Atom 2 (`baa3b664`) — launcher close timing.** `closeTicketAfterSuccessfulRun` keys off wrap `ticketCloseDecision` (`close` / `ask`); verified-complete ticket wrap closes through `closeTicket()` spine before standby; uncertain wrap surfaces founder close decision without leaving the id stranded at queue head; pinned in `mutations.test.ts`.
+- **Dogfood proof.** This run wraps Run Status `closed`, closing ticket 0046 through the spine just built.
+- **Suites green.** Core 513, daemon 322, personas 27.
+**Next:** Launch ticket `0047` — fix headless governance turns killed at ~120s after producing valid artifacts.
+
 ## 2026-06-23 — **ticket-fix-0045: no-op relaunch — verified closed, suites green — archive-candidate (run_71/run_215)**
 
 **Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** ticket-fix / [0045](./tickets/closed/0045-closed-ticket-lingers-in-order-json-relaunches.md) | **Run:** run_215 (display 71)

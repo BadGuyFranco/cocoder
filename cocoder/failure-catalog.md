@@ -107,6 +107,17 @@ strand class is dissolved *structurally*, not patched. Proof: `node scripts/proo
   very thing you're removing. Proof: `scripts/proof-direct-spine.mjs` (green), full suite green.
   Ticket [0007](./tickets/closed/0007-post-wrap-orchestration-commit-gap.md).
 
+- **F24 — Verified ticket fix wraps without closing the ticket (run_214, 2026-06-23).** Run_214 fixed
+  ticket 0045 across three atoms, then wrapped Run Status `archive ready` and stood by — yet 0045 stayed
+  open at the head of `cocoder/tickets/order.json`. The close gate (`closeTicketAfterSuccessfulRun`) only
+  fired when the run resolved `completed`, but priority-shaped `archive ready` correctly yields
+  `awaiting-founder` for ticket runs — so the gate skipped and teardown could not recover. **Root cause:**
+  wrap-up Run Status vocabulary was priority-only; a verified ticket fix had nowhere correct to land.
+  **FIXED run_216 (ticket 0046):** ticket-launched runs use ticket-specific Run Status (`closed |
+  needs closing | …`); runner maps ticket `closed` → `completed`; launcher closes through `closeTicket()`
+  at the verified-complete wrap boundary or surfaces an explicit founder close decision as `needs closing`.
+  Pins: `base-personas.test.ts`, `runner.test.ts`, `mutations.test.ts`.
+
 - **F23 — Test fixture drifted from the owner contract and silently reddened a consuming suite
   (run_164, 2026-06-20).** The wrap-up Play closeout contract changed, but
   `packages/daemon/tests/helpers/founder-closeout.ts` carried a hand-maintained copy of the old section
