@@ -53,6 +53,7 @@ import {
   type ResumeState,
 } from './founder-stop.js'
 import { parseDirective, type Directive } from './directive.js'
+import { declaredOutOfScopeWritePaths } from './dispatch-scope.js'
 import { groupLabel as formatGroupLabel, paneLabel, type RunLabelTarget } from './labels.js'
 import { type Judge, makeHeuristicJudge, runMonitor } from './monitor.js'
 import { createHeadlessOscarDriver, createPaneOscarDriver, type OscarDriver } from './oscar-driver.js'
@@ -1233,6 +1234,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       await sessionHost.show(debRef)
       await sessionHost.sendInput(debRef, buildDebTriageDispatch(join(runDir, `fault-${i}.json`), join(runDir, `triage-${i}.json`), occurrence))
       store.recordEvent({ runId: run.id, type: 'triage-dispatch', data: { fault: faultType, atom: atomIndex, occurrence } })
+      await refreshStatus('faulted', atomIndex, null, `fault: ${faultType}`)
       const verdict = await io.awaitTriage(join(runDir, `triage-${i}.json`), { timeoutMs: t.orchestrationMs, pollMs: t.pollMs, isAlive: debAlive, signal: deps.signal })
       // Record the fingerprint on the triaged event so FUTURE runs match this occurrence (closes the loop).
       store.recordEvent({ runId: run.id, type: 'fault-triaged', data: { fault: faultType, atom: atomIndex, disposition: verdict.disposition, mode: verdict.mode, summary: verdict.summary, fingerprint, occurrence } })
@@ -1852,6 +1854,28 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     // Delegate/monitor/verify/commit one atom. `atomIndex` is this atom's stable 0-based index; `n` is the
     // count of delegated atoms (and the NEXT directive index).
     const atomIndex = n
+    if (directive.writePaths !== undefined) {
+      const outOfScopeDeclaredPaths = declaredOutOfScopeWritePaths(directive.writePaths, scope)
+      if (outOfScopeDeclaredPaths.length > 0) {
+        const scopeLabel = scope.length > 0 ? scope.join(', ') : '(read-only)'
+        const message = `delegate writePaths out of Bob's effective scope: ${outOfScopeDeclaredPaths.join(', ')}; effective scope: ${scopeLabel}`
+        store.recordEvent({
+          runId: run.id,
+          type: 'builder-scope-conflict',
+          data: {
+            atom: atomIndex,
+            requiredPaths: directive.writePaths,
+            outOfScopePaths: outOfScopeDeclaredPaths,
+            scope,
+            owner: 'deb-triage',
+            message,
+          },
+        })
+        await refreshStatus('faulted', atomIndex, directive.task, message)
+        log(`atom ${atomIndex} blocked before dispatch: ${message}`)
+        return await fail('builder-scope-conflict', message, atomIndex)
+      }
+    }
     const spendBlockMessage = onboardingSpendBlockMessage(worktreePath, auditWriteBoundary)
     const step = spendBlockMessage === null
       ? await executeAgentStep({

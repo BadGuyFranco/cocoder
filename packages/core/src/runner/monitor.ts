@@ -13,7 +13,7 @@
 import type { LoopLedgerEntry } from './loop-ledger.js'
 import { throwIfStopRequested } from './stop.js'
 
-export type MonitorState = 'progressing' | 'stuck' | 'done'
+export type MonitorState = 'progressing' | 'stuck' | 'blocked' | 'done'
 
 export interface MonitorSample {
   /** Latest screen contents of the target. */
@@ -39,7 +39,7 @@ export interface Assessment {
 /** How the monitor judges a sample. Injected: a cheap heuristic (tier 1) or a model call (earned later). */
 export type Judge = (sample: MonitorSample) => Promise<Assessment>
 
-export type MonitorOutcomeReason = 'done' | 'dead' | 'timeout' | 'loop-iteration-cap' | 'loop-wall-clock-cap'
+export type MonitorOutcomeReason = 'done' | 'blocked' | 'dead' | 'timeout' | 'loop-iteration-cap' | 'loop-wall-clock-cap'
 
 export interface MonitorOutcome {
   readonly reason: MonitorOutcomeReason
@@ -120,6 +120,7 @@ export async function runMonitor(deps: MonitorDeps, opts: MonitorOptions): Promi
     deps.onAssessment?.(assessment, sample)
 
     if (assessment.state === 'done') return { reason: 'done', last, samples }
+    if (assessment.state === 'blocked') return { reason: 'blocked', last, samples }
 
     if (opts.loop !== undefined) {
       const checkedLedger = ledger ?? []

@@ -142,6 +142,24 @@ describe('renderDebStatus', () => {
     expect(s.outstandingFaults[0]?.fault).toBe('directive-timeout')
   })
 
+  test('latest Bob blocker reply is surfaced with owner and timestamp', () => {
+    const reply = 'The atom requires creating `cocoder/decisions/0040-oz-write-side-autonomy.md`, but its declared write scope is `packages/**`. I need an explicit one-file override.'
+    const s = statusFor(
+      [
+        { type: 'delegation', data: { atom: 0 } },
+        { type: 'builder-dispatch', data: { atom: 0 } },
+        { type: 'nudge', data: { atom: 0, text: 'You seem stalled — what is blocking you? Keep going, or say what you need.' } },
+        { type: 'builder-blocker', data: { atom: 0, reply, category: 'authority-scope-conflict', owner: 'runner-fault' } },
+        { type: 'builder-blocked', data: { atom: 0, message: 'builder reported authority-scope-conflict' } },
+        { type: 'triage-dispatch', data: { fault: 'builder-blocked', atom: 0 } },
+      ],
+      'faulted',
+    )
+    expect(s.bob).toBe('failed')
+    expect(s.latestBuilderBlocker).toMatchObject({ reply, atom: 0, category: 'authority-scope-conflict', owner: 'deb-triage' })
+    expect(s.latestBuilderBlocker?.at).not.toBeNull()
+  })
+
   test('a triaged fault is no longer outstanding', () => {
     const s = statusFor(
       [{ type: 'triage-dispatch', data: { fault: 'directive-timeout', atom: 0 } }, { type: 'fault-triaged', data: { fault: 'directive-timeout', disposition: 'cocoder-bug' } }],

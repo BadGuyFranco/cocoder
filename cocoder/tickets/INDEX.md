@@ -15,7 +15,6 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 |---|---|---|---|---|
 | [0048](./open/0048-adopt-eslint-in-cocoder-engine-repo.md) | Adopt a minimal ESLint 9 linter in CoCoder's own engine repo | task | none | Open |
 | [0047](./open/0047-oscar-deb-repair-dialogue-strands-a-valid-deb-proposal-when-the-oscar-evaluation-turn-times-out.md) | Headless governance turns are marked failed (exit -1, ~120s) even when the artifact was produced — stranding repair proposals and skipping authoring commits | bug | none | founder-session |
-| [0043](./open/0043-bob-blocker-replies-unowned-after-runner-stall-nudges.md) | Bob blocker replies are unowned after runner stall nudges | bug | oz-autonomy | Open |
 | [0039](./open/0039-launch-status-in-oz-dashboard.md) | Launch Status in Oz Dashboard | task | none | founder-session |
 | [0037](./open/0037-contributing-pr-template-stale-rg-ci-gate.md) | CONTRIBUTING and PR template still promise an rg CI gate that live ci.yml no longer runs | bug | none | Open |
 | [0034](./open/0034-priority-creation-must-auto-register-order-json.md) | Priority creation must auto-register in order.json (prevent orphans at source) | task | oz-autonomy | Open |
@@ -24,6 +23,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0043](./closed/0043-bob-blocker-replies-unowned-after-runner-stall-nudges.md) | Bob blocker replies are unowned after runner stall nudges | bug | 2026-06-24 | Fixed by direct Deb repair: Bob stall-blocker replies now become structured runner events and authority/scope conflicts fault instead of re-nudging; explicit out-of-scope ADR write atoms are refused before Bob dispatch. |
 | [0049](./closed/0049-deb-watch-prompts-fire-on-normal-boundaries.md) | Deb watch prompts fire on normal run boundaries | bug | 2026-06-24 | Deb watch dispatches now stay decoupled from normal status refreshes. Healthy directive/build/verify/wrap boundary refreshes keep writing Deb status and terminal snapshots without pane prompts; actionable stall watch prompts record their dispatch before the status projection is written; fault handling remains the single triage prompt path. |
 | [0050](./closed/0050-archive-ready-wrap-strands-founder-archive-action.md) | Archive-ready wrap strands founder archive action | bug | 2026-06-24 | Archive-ready priority wraps now enter awaiting-archive-confirmation with a first-class in-context confirmation action routed through archive-priority; core and daemon tests cover the run_224 case. |
 | [0042](./closed/0042-deb-default-live-terminal-observation.md) | Deb should default to live Oscar/Bob terminal observation | bug | 2026-06-24 | Added a runner/session-host-owned read-only Deb terminal snapshot for Oscar/Bob, made it the default live-loop evidence path, aligned Deb/base/dogfood/shared prompt text, and pinned the behavior with core and persona tests. |

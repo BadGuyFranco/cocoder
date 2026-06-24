@@ -34,6 +34,14 @@ describe('parseDirective', () => {
     expect(parseDirective(JSON.stringify({ kind: 'wrapup', pickup: 'resume here' }))).toEqual({ kind: 'wrapup', pickup: 'resume here' })
   })
 
+  test('parses delegate writePaths', () => {
+    expect(parseDirective(JSON.stringify({ kind: 'delegate', task: 'do the thing', writePaths: ['packages/core/src/foo.ts'] }))).toEqual({
+      kind: 'delegate',
+      task: 'do the thing',
+      writePaths: ['packages/core/src/foo.ts'],
+    })
+  })
+
   test('rejects the removed Deb investigation directive kind', () => {
     expect(() => parseDirective(JSON.stringify({ kind: 'deb-investigate', blocker: 'Oscar cannot write the verify artifact because the runner named a missing path' }))).toThrow(
       'directive: "kind" must be "delegate" or "wrapup"',
@@ -48,5 +56,15 @@ describe('parseDirective', () => {
     ['bad writeBoundary type', { goal: 'g', criterion: 'c', wallClockMs: 1000, writeBoundary: ['ok', ' '] }],
   ])('rejects malformed loop directives loudly: %s', (_name, loop) => {
     expect(() => parseDirective(JSON.stringify({ kind: 'delegate', task: 'do the thing', loop }))).toThrow(MalformedLoopDirectiveError)
+  })
+
+  test.each([
+    ['empty array', []],
+    ['non-string entry', ['packages/core/src/foo.ts', 3]],
+    ['empty string entry', ['packages/core/src/foo.ts', ' ']],
+  ])('rejects malformed delegate writePaths: %s', (_name, writePaths) => {
+    expect(() => parseDirective(JSON.stringify({ kind: 'delegate', task: 'do the thing', writePaths }))).toThrow(
+      'directive: "delegate" "writePaths" must be a non-empty string array',
+    )
   })
 })

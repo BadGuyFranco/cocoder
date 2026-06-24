@@ -263,6 +263,7 @@ const fakeIO = (opts: {
 const doneJudge: MakeJudge = () => async () => ({ state: 'done' })
 
 const delegate = (task: string): Directive => ({ kind: 'delegate', task })
+const writePathDelegate = (task: string, writePaths: readonly string[]): Directive => ({ kind: 'delegate', task, writePaths })
 const loopDelegate = (task: string, over: Partial<NonNullable<Extract<Directive, { kind: 'delegate' }>['loop']>> = {}): Directive => ({
   kind: 'delegate',
   task,
@@ -607,6 +608,99 @@ describe('runRun (multi-atom loop)', () => {
     expect(store.listCommitLinks(result.runId).filter((c) => c.workItemId !== null).map((c) => c.files)).toEqual([['packages/a.ts'], ['packages/b.ts']])
     const types = store.listEvents(result.runId).map((e) => e.type)
     expect(types).toEqual(expect.arrayContaining(['run-start', 'spawn', 'delegation', 'builder-done', 'verify-pass', 'commit', 'wrapup', 'run-end']))
+  })
+
+  test('refuses to dispatch a governance ADR atom to Bob when his write scope is packages only', async () => {
+    const store = openRunStore(':memory:')
+    const task = 'Draft `cocoder/decisions/0040-oz-write-side-autonomy.md` as a proposed ADR.'
+
+    await expect(
+      runRun(
+        baseDeps({
+          store,
+          io: fakeIO({ directives: [delegate(task)], triage: { disposition: 'cocoder-bug', summary: 'scope mismatch reached runner dispatch', proposal: 'd' } }),
+        }),
+        { ...input, deb },
+      ),
+    ).rejects.toThrow(/cocoder\/decisions\/0040-oz-write-side-autonomy\.md/)
+
+    const runId = store.listRuns()[0]!.id
+    const events = store.listEvents(runId)
+    expect(events.some((event) => event.type === 'builder-dispatch')).toBe(false)
+    expect(events.find((event) => event.type === 'builder-scope-conflict')?.data).toMatchObject({
+      atom: 0,
+      outOfScopePaths: ['cocoder/decisions/0040-oz-write-side-autonomy.md'],
+      scope: ['packages/**'],
+      owner: 'deb-triage',
+    })
+    expect(events.find((event) => event.type === 'triage-dispatch')?.data).toMatchObject({ fault: 'builder-scope-conflict', atom: 0 })
+  })
+
+  test('refuses to dispatch declared governance writePaths outside Bob scope', async () => {
+    const store = openRunStore(':memory:')
+    const statusWrites: DebStatus[] = []
+
+    await expect(
+      runRun(
+        baseDeps({
+          store,
+          io: fakeIO({
+            directives: [writePathDelegate('Draft the ADR.', ['cocoder/decisions/0040-oz-write-side-autonomy.md'])],
+            triage: { disposition: 'cocoder-bug', summary: 'scope mismatch reached runner dispatch', proposal: 'd' },
+            statusWrites,
+          }),
+        }),
+        { ...input, deb },
+      ),
+    ).rejects.toThrow(/delegate writePaths out of Bob's effective scope/)
+
+    const runId = store.listRuns()[0]!.id
+    const events = store.listEvents(runId)
+    expect(events.some((event) => event.type === 'builder-dispatch')).toBe(false)
+    expect(events.find((event) => event.type === 'builder-scope-conflict')?.data).toMatchObject({
+      atom: 0,
+      requiredPaths: ['cocoder/decisions/0040-oz-write-side-autonomy.md'],
+      outOfScopePaths: ['cocoder/decisions/0040-oz-write-side-autonomy.md'],
+      scope: ['packages/**'],
+      owner: 'deb-triage',
+    })
+    expect(events.find((event) => event.type === 'triage-dispatch')?.data).toMatchObject({ fault: 'builder-scope-conflict', atom: 0 })
+    expect(statusWrites.some((status) => status.recentEvents.some((event) => event.type === 'builder-scope-conflict'))).toBe(true)
+  })
+
+  test('dispatches a normal product-code atom to Bob normally', async () => {
+    const store = openRunStore(':memory:')
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([['packages/core/src/foo.ts']]),
+        io: fakeIO({ directives: [delegate('Create `packages/core/src/foo.ts` for the product fix.'), wrapup('done')] }),
+      }),
+      input,
+    )
+
+    expect(result.status).toBe('completed')
+    expect(store.listEvents(result.runId).some((event) => event.type === 'builder-dispatch')).toBe(true)
+    expect(store.listEvents(result.runId).some((event) => event.type === 'builder-scope-conflict')).toBe(false)
+  })
+
+  test.each([
+    ['declared in-scope writePaths', [writePathDelegate('Create product code.', ['packages/core/src/foo.ts']), wrapup('done')]],
+    ['no writePaths', [delegate('Create product code.'), wrapup('done')]],
+  ])('dispatches product-code atom with %s', async (_name, directives) => {
+    const store = openRunStore(':memory:')
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([['packages/core/src/foo.ts']]),
+        io: fakeIO({ directives }),
+      }),
+      input,
+    )
+
+    expect(result.status).toBe('completed')
+    expect(store.listEvents(result.runId).some((event) => event.type === 'builder-dispatch')).toBe(true)
+    expect(store.listEvents(result.runId).some((event) => event.type === 'builder-scope-conflict')).toBe(false)
   })
 
   test('onboard-existing audit recon writes are in-scope while product writes are still hard-refused', async () => {
@@ -2594,6 +2688,56 @@ describe('runRun (multi-atom loop)', () => {
     )
     expect(nudges).toEqual(['are you blocked?'])
     expect(store.listEvents(store.listRuns()[0]!.id).some((e) => e.type === 'nudge')).toBe(true)
+  })
+
+  test('Bob blocker reply after a stall nudge is faulted and not re-nudged indefinitely', async () => {
+    const store = openRunStore(':memory:')
+    const statusWrites: DebStatus[] = []
+    const sent: Array<{ ref: string; text: string }> = []
+    const blockerReply = 'The atom requires creating `cocoder/decisions/0040-oz-write-side-autonomy.md`, but its declared write scope is `packages/**`. I need an explicit one-file override.'
+    let judgeCalls = 0
+    const stuckThenProgressing: MakeJudge = () => async () => {
+      judgeCalls += 1
+      return judgeCalls === 1
+        ? { state: 'stuck', nudge: 'You seem stalled — what is blocking you? Keep going, or say what you need.' }
+        : { state: 'progressing' }
+    }
+
+    await expect(
+      runRun(
+        baseDeps({
+          store,
+          io: fakeIO({ directives: [delegate('Investigate the implementation blocker.'), wrapup('done')], statusWrites }),
+          makeJudge: stuckThenProgressing,
+          sessionHost: fakeSessionHost({
+            async readScreen(ref) {
+              if (ref.id !== 'surface:2') return ''
+              return sent.some((item) => item.ref === 'surface:2' && item.text.includes('what is blocking you'))
+                ? blockerReply
+                : 'Working through the task.'
+            },
+            async sendInput(ref, text) {
+              sent.push({ ref: ref.id, text })
+            },
+          }),
+          timeouts: { orchestrationMs: 200, buildMs: 200, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 },
+        }),
+        { ...input, deb },
+      ),
+    ).rejects.toThrow(/builder reported authority-scope-conflict/)
+
+    const runId = store.listRuns()[0]!.id
+    const bobNudges = sent.filter((item) => item.ref === 'surface:2' && item.text.includes('what is blocking you'))
+    expect(bobNudges).toHaveLength(1)
+    expect(store.listEvents(runId).filter((event) => event.type === 'builder-blocker')).toHaveLength(1)
+    expect(store.listEvents(runId).find((event) => event.type === 'builder-blocker')?.data).toMatchObject({
+      atom: 0,
+      reply: blockerReply,
+      category: 'authority-scope-conflict',
+      owner: 'runner-fault',
+    })
+    expect(store.listEvents(runId).find((event) => event.type === 'triage-dispatch')?.data).toMatchObject({ fault: 'builder-blocked', atom: 0 })
+    expect(statusWrites.at(-1)?.latestBuilderBlocker).toMatchObject({ reply: blockerReply, owner: 'deb-triage' })
   })
 
   test('Deb-backed watchdog nudges an idle Oscar while awaiting a directive only when Deb is present', async () => {

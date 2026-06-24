@@ -13,7 +13,7 @@ export interface LoopDirective {
 }
 
 export type Directive =
-  | { readonly kind: 'delegate'; readonly task: string; readonly loop?: LoopDirective }
+  | { readonly kind: 'delegate'; readonly task: string; readonly loop?: LoopDirective; readonly writePaths?: readonly string[] }
   | { readonly kind: 'wrapup'; readonly pickup: string }
 
 export class MalformedLoopDirectiveError extends Error {
@@ -68,15 +68,24 @@ function parseLoop(loop: unknown): LoopDirective {
 
 /** Validate a directive-<n>.json payload. Throws (treated as "not ready yet" while polling). */
 export function parseDirective(json: string): Directive {
-  const d = JSON.parse(json) as { kind?: unknown; task?: unknown; pickup?: unknown; loop?: unknown }
+  const d = JSON.parse(json) as { kind?: unknown; task?: unknown; pickup?: unknown; loop?: unknown; writePaths?: unknown }
   if (d.kind === 'delegate') {
     if (typeof d.task !== 'string' || d.task.trim() === '') {
       throw new Error('directive: "delegate" requires a non-empty "task"')
     }
-    if (d.loop !== undefined) {
-      return { kind: 'delegate', task: d.task, loop: parseLoop(d.loop) }
+    if (
+      d.writePaths !== undefined &&
+      (!Array.isArray(d.writePaths) ||
+        d.writePaths.length === 0 ||
+        !d.writePaths.every((entry): entry is string => typeof entry === 'string' && entry.trim() !== ''))
+    ) {
+      throw new Error('directive: "delegate" "writePaths" must be a non-empty string array')
     }
-    return { kind: 'delegate', task: d.task }
+    const writePaths = d.writePaths === undefined ? {} : { writePaths: d.writePaths }
+    if (d.loop !== undefined) {
+      return { kind: 'delegate', task: d.task, loop: parseLoop(d.loop), ...writePaths }
+    }
+    return { kind: 'delegate', task: d.task, ...writePaths }
   }
   if (d.kind === 'wrapup') {
     if (typeof d.pickup !== 'string' || d.pickup.trim() === '') {

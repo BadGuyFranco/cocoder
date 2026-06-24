@@ -5,6 +5,7 @@ import type { Directive } from './directive.js'
 import type { RunnerIO } from './io.js'
 import { readLoopLedger, type LoopLedgerEntry } from './loop-ledger.js'
 import { runMonitor } from './monitor.js'
+import { detectBuilderBlocker, detectDirectiveScopeConflict, type BuilderBlocker } from './blocker.js'
 import type { BuilderDriver } from './builder-driver.js'
 import type { OscarDriver } from './oscar-driver.js'
 import { atomSentinel, buildBuilderDispatch, buildVerifyDispatch, commitMessage } from './prompts.js'
@@ -136,6 +137,24 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
   } else {
     store.recordEvent({ runId, type: 'delegation-resumed', data: { workItemId: workItem.id, atom: atomIndex, task: workItem.task, park: resume?.park } })
   }
+  const scopeConflict = detectDirectiveScopeConflict(directive.task, scope)
+  if (scopeConflict !== null) {
+    store.setWorkItemStatus(workItem.id, 'abandoned')
+    store.recordEvent({
+      runId,
+      type: 'builder-scope-conflict',
+      data: {
+        atom: atomIndex,
+        requiredPaths: scopeConflict.requiredPaths,
+        outOfScopePaths: scopeConflict.outOfScopePaths,
+        scope: scopeConflict.scope,
+        owner: 'deb-triage',
+        message: scopeConflict.message,
+      },
+    })
+    await refreshStatus('faulted', atomIndex, directive.task, scopeConflict.message)
+    return await fail('builder-scope-conflict', scopeConflict.message, atomIndex)
+  }
   const headBefore = await git.headSha(worktreePath)
   setActiveAtom({ index: atomIndex, workItemId: workItem.id, headBefore })
   const loopLedgerPath = directive.loop === undefined ? null : join(runDir, `loop-ledger-${atomIndex}.jsonl`)
@@ -197,6 +216,9 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
   }
 
   if (resume?.park !== 'pre-verdict') {
+    let latestBuilderBlocker: BuilderBlocker | null = null
+    let lastRecordedBlockerReply: string | null = null
+    const latestBlocker = (): BuilderBlocker | null => latestBuilderBlocker
     for (;;) {
       const doneSentinel = atomSentinel(atomIndex, completionAttempt === 0 ? undefined : `R${completionAttempt}`)
       const remainingLoopMs =
@@ -205,14 +227,35 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
       const abortMonitor = (): void => monitorAbort.abort()
       if (signal?.aborted) abortMonitor()
       signal?.addEventListener('abort', abortMonitor, { once: true })
+      const builderJudge = makeJudge({ atomIndex, doneSentinel, task: directive.task })
       const outcomePromise = runMonitor(
         {
           readScreen: () => bobDriver.readScreen(),
-          judge: makeJudge({ atomIndex, doneSentinel, task: directive.task }),
+          judge: async (sample) => {
+            const blocker = detectBuilderBlocker(sample.frame)
+            if (blocker !== null) {
+              latestBuilderBlocker = blocker
+              return { state: 'blocked', note: `${blocker.category}: ${blocker.reply}` }
+            }
+            return await builderJudge(sample)
+          },
           isAlive: () => bobDriver.alive(),
           nudge: (text) => bobDriver.nudge(text),
           readLoopLedger: readAndRecordLoopLedger ?? undefined,
           onAssessment: (a) => {
+            if (a.state === 'blocked' && latestBuilderBlocker !== null && latestBuilderBlocker.reply !== lastRecordedBlockerReply) {
+              lastRecordedBlockerReply = latestBuilderBlocker.reply
+              store.recordEvent({
+                runId,
+                type: 'builder-blocker',
+                data: {
+                  atom: atomIndex,
+                  reply: latestBuilderBlocker.reply,
+                  category: latestBuilderBlocker.category,
+                  owner: latestBuilderBlocker.owner,
+                },
+              })
+            }
             if (a.state !== 'progressing') store.recordEvent({ runId, type: 'monitor-assessment', data: { atom: atomIndex, state: a.state, note: a.note ?? null } })
           },
           onNudge: (text) => store.recordEvent({ runId, type: 'nudge', data: { atom: atomIndex, text } }),
@@ -259,6 +302,10 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
       }
       if (outcome.reason !== 'done') {
         store.setWorkItemStatus(workItem.id, 'abandoned')
+        const blocker = latestBlocker()
+        if (outcome.reason === 'blocked' && blocker !== null) {
+          return await fail('builder-blocked', `builder reported ${blocker.category} on atom ${atomIndex}: ${blocker.reply}`, atomIndex)
+        }
         return await fail('builder-failed', `builder ${outcome.reason} on atom ${atomIndex}`, atomIndex)
       }
       if (directive.loop === undefined) break

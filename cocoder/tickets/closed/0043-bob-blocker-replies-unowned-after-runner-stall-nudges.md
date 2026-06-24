@@ -2,7 +2,7 @@
 id: 0043
 title: Bob blocker replies are unowned after runner stall nudges
 type: bug
-status: Open
+status: Closed
 priority: oz-autonomy
 owner: deb
 created: 2026-06-23
@@ -71,3 +71,9 @@ The original run_209 scope mismatch remains the required regression case:
   the runner asked Bob a blocking question, Bob answered, and no one owned the answer.
 - Related governance: ADR-0023 commit spine and scope advisory behavior, ADR-0016 Deb repair authority,
   ADR-0036 Oscar-Deb repair dialogue, and the `oz-autonomy` priority's mandatory ADR gate.
+
+## Resolution
+
+Resolved by run run_227 (no code change) on 2026-06-24.
+
+Fixed by direct Deb repair: Bob stall-blocker replies now become structured runner events and authority/scope conflicts fault instead of re-nudging; explicit out-of-scope ADR write atoms are refused before Bob dispatch.

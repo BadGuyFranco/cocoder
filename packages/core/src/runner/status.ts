@@ -48,6 +48,14 @@ export interface DebStatus {
   readonly lastVerifyAt: number | null
   /** Fault dispatches the runner handed Deb that have no recorded verdict yet. */
   readonly outstandingFaults: ReadonlyArray<{ fault: string; atom: number | null; at: number }>
+  /** Latest structured Bob blocker reply captured by the runner-owned builder monitor. */
+  readonly latestBuilderBlocker: {
+    readonly reply: string
+    readonly at: number
+    readonly atom: number | null
+    readonly category: string
+    readonly owner: string
+  } | null
   /** Write scopes by persona id (constant per run) — so Deb knows who is scoped to write what. */
   readonly writeScopes: Readonly<Record<string, readonly string[]>>
   /** Current handoff/delegation files + their status (delivered / awaiting / pending / pass / fail). */
@@ -111,7 +119,7 @@ export function renderDebStatus(input: {
   // ── Bob ──
   const dispatch = last(events, ['builder-dispatch'])
   const done = last(events, ['builder-done'])
-  const failed = last(events, ['builder-failed'])
+  const failed = last(events, ['builder-failed', 'builder-blocked', 'builder-scope-conflict'])
   const bob: BobState = failed
     ? 'failed'
     : dispatch && (!done || (atomOf(dispatch) ?? -1) > (atomOf(done) ?? -1))
@@ -141,13 +149,26 @@ export function renderDebStatus(input: {
     atom: atomOf(e),
     at: e.at,
   }))
+  const lastBuilderBlocker = last(events, ['builder-blocker'])
+  const lastBuilderBlockerData = lastBuilderBlocker?.data as { reply?: unknown; category?: unknown; owner?: unknown } | undefined
+  const latestBuilderBlocker = typeof lastBuilderBlockerData?.reply === 'string'
+    ? {
+        reply: lastBuilderBlockerData.reply,
+        at: lastBuilderBlocker!.at,
+        atom: atomOf(lastBuilderBlocker),
+        category: typeof lastBuilderBlockerData.category === 'string' ? lastBuilderBlockerData.category : 'reported-blocker',
+        owner: outstandingFaults.some((fault) => fault.fault === 'builder-blocked' && fault.atom === atomOf(lastBuilderBlocker))
+          ? 'deb-triage'
+          : (typeof lastBuilderBlockerData.owner === 'string' ? lastBuilderBlockerData.owner : 'runner'),
+      }
+    : null
 
   // ── Oscar (runner phase, refined by the live monitor stream) ──
   const lastDirective = last(events, ['delegation', 'wrapup'])
   const lastDirectiveAt = lastDirective?.at ?? null
   const lastVerifyAt = lastAnyVerifyEvt?.at ?? null
   const lastStuck = last(events, ['oscar-monitor-assessment'])
-  const phaseBoundary = [lastDirective, last(events, ['builder-dispatch', 'builder-done', 'builder-failed']), lastAnyVerifyEvt]
+  const phaseBoundary = [lastDirective, last(events, ['builder-dispatch', 'builder-blocker', 'builder-done', 'builder-failed', 'builder-blocked', 'builder-scope-conflict']), lastAnyVerifyEvt]
     .filter((e): e is RunEvent => e !== null)
     .reduce<RunEvent | null>((latest, event) => {
       if (latest === null) return event
@@ -222,9 +243,10 @@ export function renderDebStatus(input: {
     verify,
     waitCondition,
     lastDirectiveAt,
-    lastBuilderActivityAt: last(events, ['builder-dispatch', 'builder-done', 'monitor-assessment', 'nudge', 'commit'])?.at ?? null,
+    lastBuilderActivityAt: last(events, ['builder-dispatch', 'builder-blocker', 'builder-done', 'builder-failed', 'builder-blocked', 'builder-scope-conflict', 'monitor-assessment', 'nudge', 'commit'])?.at ?? null,
     lastVerifyAt,
     outstandingFaults,
+    latestBuilderBlocker,
     writeScopes: scopes,
     handoffs,
     watch: {
@@ -269,6 +291,14 @@ function renderMarkdown(s: DebStatus): string {
     lines.push('## Outstanding fault dispatches', '')
     for (const f of s.outstandingFaults) lines.push(`- ${f.fault}${f.atom !== null ? ` (atom ${f.atom})` : ''} — ${ts(f.at, s.generatedAt)}`)
     lines.push('')
+  }
+  if (s.latestBuilderBlocker !== null) {
+    lines.push('## Latest Bob blocker', '')
+    lines.push(`- **At:** ${ts(s.latestBuilderBlocker.at, s.generatedAt)}`)
+    lines.push(`- **Atom:** ${s.latestBuilderBlocker.atom ?? '—'}`)
+    lines.push(`- **Category:** ${s.latestBuilderBlocker.category}`)
+    lines.push(`- **Owner:** ${s.latestBuilderBlocker.owner}`)
+    lines.push(`- **Reply:** ${s.latestBuilderBlocker.reply}`, '')
   }
   lines.push('## Write scopes by persona', '')
   for (const [p, scope] of Object.entries(s.writeScopes)) lines.push(`- **${p}:** ${scope.length ? scope.join(', ') : '(read-only)'}`)
