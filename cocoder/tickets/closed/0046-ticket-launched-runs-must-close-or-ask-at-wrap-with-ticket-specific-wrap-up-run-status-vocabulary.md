@@ -2,7 +2,7 @@
 id: 0046
 title: Ticket-launched runs must close-or-ask at wrap, with ticket-specific wrap-up Run Status vocabulary
 type: task
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-23
@@ -47,3 +47,9 @@ Source: Oscar->Deb repair dialogue `repair-1782264419672-a2bb30` (Deb proposal, 
 ## Notes
 - Relates to 0045 (closed off-spine lingering; the self-heal/guard/prevent layers landed in run_214). This ticket is the wrap-time close-or-ask layer that prevents the strand at the source.
 - Single owner per concept: wrap-up Play owns the format, runner validator owns enforcement, launcher owns close-timing; pins at each. Do not copy the vocabulary into a second local contract.
+
+## Resolution
+
+Resolved by run run_216 (bab10401e044ebbb0a5cdad2553793db958cb07c) on 2026-06-24.
+
+Ticket fix run completed successfully.
