@@ -29,6 +29,117 @@ next session. Do not start the following chunk in this session.
 
 ---
 
+## 2026-06-24 — WS3, step 3 (centralize the SUCCESS-path recording onto one helper)
+
+- **Workstream/step:** WS3 (One commit spine), step 3 — CENTRALIZE THE SUCCESS-PATH RECORDING ONLY
+  (`routes.ts:434` is step 4 — NOT done here). Collapsed the duplicated success-path event recording that
+  P1/P2/P4 each hand-rolled around a spine receipt into ONE helper. The two receipt SHAPES were already
+  unified (WS3.2); this removes the last in-run *recording* duplication.
+- **The helper:** `recordSuccessfulCommit(store, rec)` — NEW file `packages/core/src/commit-gate/record-commit.ts`,
+  exported via `commit-gate/index.ts` + core `index.ts`. Records the STANDARD success-path set, in order:
+  `agent-self-commit` (IFF `rec.selfCommit !== null`) THEN `recordCommitLink` + `commit` (IFF
+  `rec.committedSha !== null`). `selfCommit` is CALLER CONTEXT (`{headBefore, headNow}`), NOT read off the
+  receipt — a plain `commitFiles` `CommitReceipt` carries no self-commit signal, so reading it would
+  silently drop `agent-self-commit` for P2/P4. SUCCESS path only: every failure convention stays at the
+  call site; the gate's advisory `out-of-scope-committed` flag stays in the gate.
+- **Decision (resolved explicitly — why P1's agent-self-commit does NOT move into the helper):** P1's
+  `agent-self-commit` (`gate.ts:63`) fires at gate ENTRY whenever the agent self-committed — INDEPENDENT of
+  whether a commit is made. It fires on TWO non-commit paths the success helper never runs: (a) an
+  `auditWriteBoundary` refusal (`gate.ts:68` throws AFTER recording self-commit), and (b) a self-commit with
+  an empty `changed` (no gate commit — pinned by `commit-gate.test.ts` "detects an agent self-commit",
+  `changed: []`). A success-only helper CANNOT reproduce that timing, so moving it would DROP the event on
+  those paths = behavior change. P1 therefore keeps its line-63 self-commit and calls the helper with
+  `selfCommit: null` for the link+commit pair only. P2/P4 have no such entanglement (their self-commit is a
+  pre-commit detection with no throw/empty-commit branch between it and the commit recording), so they route
+  their self-commit THROUGH the helper.
+- **Routing (each path's exact before/after, order-preserving):**
+  - **P1 — `runCommitGate` (`gate.ts:87-92`→):** `recordCommitLink`+`commit` → `recordSuccessfulCommit(...,
+    selfCommit: null)`. agent-self-commit untouched at `:63`; `out-of-scope-committed` untouched at `:94`.
+  - **P2 — deb-repair manual path (`runner.ts:1253-69`):** removed the inline `if (selfCommittedRepair)
+    agent-self-commit` (was `:1256`, BEFORE `commitFiles`) and the inline `if (receipt.committedSha)`
+    link+commit (`:1260-61`); now ONE `recordSuccessfulCommit(..., selfCommit: selfCommittedRepair ?
+    {headBefore: headBeforeRepair, headNow} : null)` AFTER `commitFiles`. `commitFiles` records no store
+    event, so moving self-commit from before-commit to after-commit introduces NO intervening event → order
+    unchanged (`agent-self-commit`, `commit`-link, `commit`, then `deb-repair-commit-failed`,
+    `deb-repair-out-of-scope-held`). The `inScope`-only `partitionByScope` (`:1257`) and the
+    quarantine-before-fault sweep guard are byte-unchanged; `gate = {...receipt, outOfLane, selfCommitted}`
+    is unchanged.
+  - **P4 — `projectAndCommitPortableRunHistory` (`runner.ts:~1640-55`):** removed the inline
+    pre-`commitFiles` agent-self-commit and post-`commitFiles` link+commit; now ONE
+    `recordSuccessfulCommit(..., selfCommit: historySelfCommitted ? {headBefore, headNow} : null)`. P4's
+    FAILURE convention (THROW on `receipt.error`) stays at the caller, moved to JUST AFTER the helper —
+    safe because `commitFiles` returns error ⟹ null sha (`workspace-commit.ts:67-73`), so the helper records
+    NO link/commit before the throw. `historySelfCommitted` is still computed BEFORE `commitFiles` (which
+    moves HEAD), so the self-commit detection value is identical.
+- **EXCLUDED P5 (pre-run snapshots, `runner.ts:~893,903`):** verified it records ONLY
+  `founder-presnapshot[-failed]` / `governance-presnapshot[-failed]` events — NEVER `recordCommitLink`/
+  `commit`/`agent-self-commit`. Routing it through the helper would ADD commit-link/commit events it never
+  emitted = a surface change. P5 stays bespoke (its own `DirtyWorkingTreeError` convention untouched).
+- **Map (owner → emitter → consumers → tests, re-grepped before editing):**
+  - *recordCommitLink / `commit` emitters (pre-edit):* `gate.ts:91-92` (P1), `runner.ts:1260-61` (P2),
+    `runner.ts:1652-53` (P4). *agent-self-commit emitters:* `gate.ts:63` (P1), `runner.ts:1256` (P2),
+    `runner.ts:1647` (P4). All three success-path pairs now flow through `recordSuccessfulCommit`; P1's
+    self-commit stays at `gate.ts:63`.
+  - *Spine primitive (unchanged):* `commitFiles` (`workspace-commit.ts:60`) — error xor sha, records nothing.
+  - *Consumers of the events (unchanged):* `deb-repair` event still reads `gate.committedSha/committedFiles/
+    outOfLane` (`runner.ts:1283`); `absorbGateResult`, `deriveRunSummary`, run-history surfaces read the SAME
+    `commit`/`agent-self-commit`/commit-link rows the helper now writes.
+  - *Tests pinning the contract:* NEW `commit-gate.test.ts` describe `recordSuccessfulCommit — the standard
+    success-path event set (WS3.3)` (4 pins: full order+data+link; selfCommit null → no self-commit;
+    null sha → self-commit but NO link/commit; nothing → nothing). Regression guards (unchanged behavior):
+    `commit-gate.test.ts` gate suite (self-commit detect, audit refuse, WS3.1 failure pin), `runner.test.ts:3688`
+    + `:3819` (run_231 sweep-guard + recurrence escalation — both green; neither triggers a self-commit).
+- **Why ADDITIVE / behavior-preserving:** same event types, data keys, AND order on every path. The only
+  motion is agent-self-commit emission point for P2/P4 (before→after `commitFiles`, no intervening store
+  event) and the P4 throw (before→after the helper, guarded by error⟹null-sha). The fake-git tests cannot
+  distinguish hand-rolled recording from the helper — they assert the resulting events, which are identical.
+- **Tests-first / why the pins are green:** the helper is NEW code; its 4 contract pins assert the
+  centralized behavior directly (they were authored against the helper, green on first run). They are NOT
+  red→green against old source — there was no helper to be red against; their value is locking the
+  order/conditional-emission contract so a future edit that drops self-commit or emits a phantom null-sha
+  commit goes red.
+- **Commit:** `b8a532b` — "commit-gate(spine): WS3.3 — centralize the success-path recording onto one
+  helper". (Ledger entry committed separately, matching WS1.3/1.4/2.1/3.1/3.2.)
+- **Files:** `packages/core/src/commit-gate/record-commit.ts` (NEW helper), `packages/core/src/commit-gate/index.ts`
+  + `packages/core/src/index.ts` (export), `packages/core/src/commit-gate/gate.ts` (P1 routes link+commit),
+  `packages/core/src/runner/runner.ts` (P2 + P4 — staged surgically), `packages/core/tests/commit-gate.test.ts`
+  (+1 describe / 4 pins).
+- **Tests/results:** `pnpm --filter @cocoder/core test commit-gate` → 25 passed (incl. +4 new);
+  `commit-gate runner-direct` → 40 passed; run_231 `runner -t "deb-repair commit cannot sweep"` → 1 passed;
+  recurrence `runner -t "recurring fault escalates"` → 1 passed; `pnpm --filter @cocoder/core test` →
+  **582 passed** (was 578; +4 new); `pnpm --filter @cocoder/core typecheck` → clean; root `pnpm typecheck`
+  → clean (7 pkgs); `node scripts/check-topology.mjs` → passed (same 2 pre-existing daemon test-helper
+  warnings). Root `pnpm test`: first run tripped the KNOWN Deb-watcher timer-race flake (`actionable stall
+  Deb watch writes current lastDispatch before prompting Deb` — passes in isolation, confirmed; this chunk
+  does NOT touch the Deb watcher); re-run → ALL green (personas 29, core 582, adapters 24, session-hosts 18,
+  ui 161, cli 9, daemon 345). Staged-only tree (SessionRef import present, my hunks applied) typechecks
+  clean via `git stash --keep-index` — mirrors WS1.3/3.2.
+- **Residual risk:** all four in-run commit paths now sit on the spine receipt AND (except P5, by design)
+  the ONE recording helper. The LAST raw `git.addAndCommit` caller in the codebase is
+  `daemon/src/routes.ts:434` (daemon package) — WS3 step 4. The helper centralizes recording but each caller
+  still computes its own self-commit context and owns its failure convention — that is intended (the
+  failure conventions differ by design: re-throw / `deb-repair-commit-failed` / throw / `DirtyWorkingTreeError`).
+  This chunk did NOT touch the Deb watcher, so the known Deb-watcher timer flake does not gate it — but
+  BEFORE any later WS3 chunk that CHANGES the Deb watcher, do the WS4 "de-flake the Deb-watcher stall
+  family" deliverable first. The unrelated eslint-adoption dirt (`eslint.config.mjs`, `run.ts`,
+  `read-claims.ts`, `p3-action.ts`, `frontmatter.ts`, `runner.ts`'s `SessionRef` import hunk, `oz-host.ts`,
+  `proof-daemon-reload.mjs`, `tsconfig.eslint.json`) was preserved, NOT committed — `runner.ts` was staged
+  hunk-by-hunk (`git apply --cached` of a content-filtered patch with the `SessionRef` hunk removed);
+  gate.ts/record-commit.ts/both index.ts/the test are mine and staged directly.
+- **Exact next step (WS3, step 4 — route `daemon/src/routes.ts:434` onto the spine):** Replace the LAST raw
+  `git.addAndCommit` caller (`daemon/src/routes.ts:434`, the baseline-tree governance commit) with the
+  spine's `commitFiles` (controlled file list — daemon authored exactly those paths) so EVERY commit in the
+  codebase funnels through `workspace-commit.ts`. Confirm whether the daemon route should also adopt the
+  WS3.3 `recordSuccessfulCommit` durability (the daemon records receipts to its audit log + SSE, NOT the
+  store event log — see `workspace-commit.ts` header: "the receipt's durable home depends on the caller"),
+  so the helper may NOT apply daemon-side; if not, just the primitive swap + receipt-aware error handling.
+  Re-grep `git.addAndCommit`/`addAndCommit`/`commitFiles` across `packages/daemon` to confirm `routes.ts:434`
+  is the only remaining raw caller and map its current recording/error convention before editing; tests-first;
+  keep the daemon suite (345) green; verify with the full command set. This is a DAEMON-package chunk — it
+  does NOT touch the runner or the Deb watcher.
+
+---
+
 ## 2026-06-24 — WS3, step 2 (unify the receipt shapes — gate speaks the spine's vocabulary)
 
 - **Workstream/step:** WS3 (One commit spine), step 2 — UNIFY THE RECEIPT SHAPES ONLY (recording
