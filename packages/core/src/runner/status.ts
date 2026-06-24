@@ -27,6 +27,7 @@ export interface DebStatus {
   readonly displayName: string
   readonly priorityId: string
   readonly priorityTitle: string
+  readonly wrapDisposition: string | null
   readonly activeAtom: number | null
   readonly activeTask: string | null
   readonly oscar: OscarState
@@ -174,12 +175,15 @@ export function renderDebStatus(input: {
 
   const recentLimit = input.recentLimit ?? 12
   const recentEvents = events.slice(-recentLimit).map((e) => ({ at: e.at, type: e.type, note: noteOf(e) }))
+  const recordedWrapDisposition = (last(events, ['wrap-disposition'])?.data as { disposition?: unknown } | undefined)?.disposition
+  const wrapDisposition = typeof recordedWrapDisposition === 'string' && recordedWrapDisposition.trim() !== '' ? recordedWrapDisposition : null
 
   const json: DebStatus = {
     runId,
     displayName,
     priorityId: priority.id,
     priorityTitle: priority.title,
+    wrapDisposition,
     activeAtom,
     activeTask,
     oscar,
@@ -217,6 +221,7 @@ function renderMarkdown(s: DebStatus): string {
   lines.push(`# Run status — ${s.displayName}`, '')
   if (s.displayName !== s.runId) lines.push(`- **Technical id:** \`${s.runId}\``)
   lines.push(`- **Priority:** ${s.priorityTitle} (\`${s.priorityId}\`)`)
+  lines.push(`- **Wrap disposition:** ${s.wrapDisposition ?? '—'}`)
   lines.push(`- **Active atom:** ${s.activeAtom ?? '—'}${s.activeTask ? ` — ${s.activeTask}` : ''}`)
   lines.push(`- **Oscar:** ${s.oscar}  ·  **Bob:** ${s.bob}  ·  **Verify:** ${s.verify}`)
   lines.push(`- **Waiting on:** ${s.waitCondition}`)

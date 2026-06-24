@@ -24,6 +24,7 @@ describe('renderDebStatus', () => {
     expect(s.verify).toBe('idle')
     expect(s.waitCondition).toBe('awaiting directive 0')
     expect(s.writeScopes).toEqual(scopes)
+    expect(s.wrapDisposition).toBeNull()
   })
 
   test('builder dispatched, not done → Bob running, Oscar running', () => {
@@ -83,6 +84,23 @@ describe('renderDebStatus', () => {
 
     expect(markdown).toContain('# Run status — workspace run 1')
     expect(markdown).toContain(`- **Technical id:** \`${run.id}\``)
+    expect(markdown).toContain('- **Wrap disposition:** —')
+  })
+
+  test('wrap disposition surfaces the latest recorded event value', () => {
+    const s = statusFor(
+      [
+        { type: 'wrap-disposition', data: { disposition: 'continue', buildAtoms: 1, signal: null } },
+        { type: 'wrap-disposition', data: { disposition: 'archive-candidate', buildAtoms: 0, signal: 'node scripts/proof-launch-disposition.mjs' } },
+      ],
+      'wrapped',
+    )
+    expect(s.wrapDisposition).toBe('archive-candidate')
+  })
+
+  test('wrap disposition remains absent without a recorded event', () => {
+    const s = statusFor([{ type: 'wrapup', data: { atoms: 0, forced: false } }], 'wrapped')
+    expect(s.wrapDisposition).toBeNull()
   })
 
   test('a current stuck assessment while awaiting Oscar → stalled', () => {
