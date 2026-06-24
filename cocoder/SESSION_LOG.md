@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **ticket-fix-0045: stale ticket id in order.json — prevent, heal, detect — archive-candidate (run_70/run_214)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0045](./tickets/open/0045-closed-ticket-lingers-in-order-json-relaunches.md) | **Run:** run_214 (display 70)
+**Outcomes:**
+- **Atom 0 (`80b4bd1`) — self-healing reconcile.** `closeTicket`/`closeTicketAfterSuccessfulRun` prune `order.json` idempotently on the already-closed and missing-file paths; audit `ticket-order-reconciled`; daemon test pins off-spine POST `/runs` scenario.
+- **Atom 1 (`4928043`) — stale queue guard.** `findStaleTicketOrderEntries` (tickets-side analog of `findOrphanedPriorities`) in `priority-order.ts` plus a live-repo governance guard test green against real `cocoder/tickets/order.json`.
+- **Atom 2 (`efe6a5d`) — Deb prevention.** Base `deb.md` bullet: never hand-close a ticket in a repair commit; route through `closeTicket()` spine or leave open; pinned by `base-personas.test.ts`.
+- **Ticket 0045 auto-closes** via daemon `closeTicketAfterSuccessfulRun` on successful wrap-up landing — live dogfood of atom 0's reconcile on this run's own queue head.
+- **Disposition: `archive-candidate`.** All three acceptance items met and verified; optional launch-selection open-only routing deliberately deferred (stale id already prevented, healed, and detected).
+**Next:** Launch ticket `0043` — give Bob's blocker replies an owner so runner stall nudges no longer leave them unowned.
+
 ## 2026-06-23 — **ticket-fix-0044: no-op relaunch — verified closed, order.json queue gap — archive-candidate (run_69/run_213)**
 
 **Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** ticket-fix / [0044](./tickets/closed/0044-deb-nudge-fabricated-out-of-scope-event.md) | **Run:** run_213 (display 69)
