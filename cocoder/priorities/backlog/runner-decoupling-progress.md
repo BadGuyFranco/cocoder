@@ -184,7 +184,7 @@ next session. Do not start the following chunk in this session.
    commit-gate/recurrence/Deb entanglement (the cascade epicentre).
 4. **Atom-loop driver** (HIGHEST). Extract last; `runner.ts` collapses to thin composition once 1–3 are out.
 
-- **Commit:** `<LEDGER_SHA>` — "priority(backlog): map WS5 — the runner.ts extraction map (before cutting)".
+- **Commit:** `d4af352` — "priority(backlog): map WS5 — the runner.ts extraction map (before cutting)".
   (Sha backfilled in this same session, matching WS1.3/1.4/2.1/3.x/WS4's separate-ledger-commit convention.)
 - **Files:** `cocoder/priorities/backlog/runner-decoupling-progress.md` (this entry) ONLY. No source/test
   file touched — map-only. The unrelated eslint-adoption dirt (`eslint.config.mjs`, `run.ts`,
