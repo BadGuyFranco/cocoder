@@ -27,6 +27,7 @@ const observerInput = {
   runBranch: 'cocoder/run_1',
   cocoderHome: '/Volumes/NAS LOCAL/CoCoder',
   statusPath: '/runs/run_1/deb-status.json',
+  terminalSnapshotPath: '/runs/run_1/deb-terminal-snapshot.json',
   nudgePath: '/runs/run_1/deb-nudge.json',
   writeScope: [],
 }
@@ -103,6 +104,19 @@ describe('buildBuilderDispatch', () => {
   test('renders prompts identically when task is absent or null', () => {
     expect(buildOrchestratorPrompt(orchestratorInput)).toBe(buildOrchestratorPrompt({ ...orchestratorInput, task: null }))
     expect(buildObserverPrompt(observerInput)).toBe(buildObserverPrompt({ ...observerInput, task: null }))
+  })
+
+  test('Deb observer prompt defaults live-loop diagnosis to the read-only terminal snapshot', () => {
+    const prompt = buildObserverPrompt(observerInput)
+
+    expect(prompt).toContain('/runs/run_1/deb-terminal-snapshot.json')
+    expect(prompt).toContain('For live-loop or stall diagnosis, read this terminal snapshot before deciding whether to nudge, triage,\nor repair')
+    expect(prompt).toContain('runner/session-host owned and read-only')
+    expect(prompt).toContain('without giving you authority to start, stop, focus, close, type into, or otherwise drive')
+    expect(prompt).toContain('/runs/run_1/deb-status.json')
+    expect(prompt).toContain('status feed for concrete state, timestamps')
+    expect(prompt).not.toContain('it is your eyes')
+    expect(prompt).not.toContain('the feed replaces them')
   })
 
   test('renders teardown through the install root so pane PATH does not matter', () => {

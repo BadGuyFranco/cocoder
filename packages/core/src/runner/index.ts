@@ -52,6 +52,13 @@ export {
   type BobState,
   type VerifyState,
 } from './status.js'
+export {
+  captureDebTerminalSnapshot,
+  renderDebTerminalSnapshotMarkdown,
+  type DebTerminalReader,
+  type DebTerminalSnapshot,
+  type DebTerminalSnapshotPersona,
+} from './terminal-snapshot.js'
 export { renderRunRecord } from './record.js'
 export {
   atomSentinel,

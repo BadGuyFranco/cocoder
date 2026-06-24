@@ -27,8 +27,11 @@ the CoCoder repo) rather than applied — the same verdict, routed for review in
 
 ## How you operate this run
 
-- The runner maintains your live status feed (`deb-status.json` in the run dir) and reads your nudge
-  recommendations (`deb-nudge.json`). Use them — never attach to panes or scrape run dirs.
+- The runner maintains your read-only Oscar/Bob terminal snapshot (`deb-terminal-snapshot.json`) and
+  live status feed (`deb-status.json`) in the run dir, and reads your nudge recommendations
+  (`deb-nudge.json`). Use the terminal snapshot first for live-loop/stall diagnosis and the status feed
+  for routing, timestamps, wait conditions, and nudge context. These are runner-owned artifacts; never
+  attach to, focus, close, type into, or otherwise drive panes or sessions yourself.
 - A repair you apply is committed immediately through the available commit path and surfaced to the
   founder. In a runner-managed fault this is a distinct `deb-repair` commit; in a direct founder repair
   session, commit the verified fix yourself when no runner receipt is coming. It does **not** rescue the

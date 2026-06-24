@@ -7,6 +7,7 @@ import { type Directive, isMalformedLoopDirectiveError, parseDirective } from '.
 import { type NudgeRequest, parseNudgeRequest } from './nudge.js'
 import type { DebStatus } from './status.js'
 import { throwIfStopRequested } from './stop.js'
+import type { DebTerminalSnapshot } from './terminal-snapshot.js'
 import { type Triage, parseTriage } from './triage.js'
 
 export interface RunnerPollOptions {
@@ -52,6 +53,8 @@ export interface RunnerIO {
    *  projection over the store, refreshed at each transition; the JSON is written for machine reads, the
    *  markdown rendering beside it for a human glance. */
   writeDebStatus(runDir: string, status: DebStatus, markdown: string): Promise<void>
+  /** Write the runner/session-host-owned read-only Oscar/Bob terminal evidence for Deb. */
+  writeDebTerminalSnapshot(runDir: string, snapshot: DebTerminalSnapshot, markdown: string): Promise<void>
   /** Read a runner-owned nudge recommendation if one has been written. Returns null when the file is
    *  absent/partial/malformed — a missing recommendation is "nothing to deliver", never an error. */
   readNudgeRequest(nudgePath: string): Promise<NudgeRequest | null>
@@ -127,6 +130,10 @@ export function makeRunnerIO(): RunnerIO {
     async writeDebStatus(runDir, status, markdown) {
       await writeFile(join(runDir, 'deb-status.json'), JSON.stringify(status, null, 2), 'utf8')
       await writeFile(join(runDir, 'deb-status.md'), markdown, 'utf8')
+    },
+    async writeDebTerminalSnapshot(runDir, snapshot, markdown) {
+      await writeFile(join(runDir, 'deb-terminal-snapshot.json'), JSON.stringify(snapshot, null, 2), 'utf8')
+      await writeFile(join(runDir, 'deb-terminal-snapshot.md'), markdown, 'utf8')
     },
     async readNudgeRequest(nudgePath) {
       try {

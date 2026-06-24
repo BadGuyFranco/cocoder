@@ -8,6 +8,7 @@ import {
   type Adapter,
   AuditWriteBoundaryError,
   type DebStatus,
+  type DebTerminalSnapshot,
   type Directive,
   DirtyWorkingTreeError,
   type FounderCloseoutContract,
@@ -207,6 +208,7 @@ const fakeIO = (opts: {
   readNudge?: (nudgePath: string) => Promise<NudgeRequest | null>
   /** Status snapshots captured each time the runner refreshes the feed. */
   statusWrites?: DebStatus[]
+  terminalSnapshotWrites?: DebTerminalSnapshot[]
   pickupWrites?: string[]
   artifactWrites?: Array<{ runDir: string; fileName: string; contents: string }>
   recordWrites?: string[]
@@ -232,6 +234,9 @@ const fakeIO = (opts: {
     },
     async writeDebStatus(_runDir, status) {
       opts.statusWrites?.push(status)
+    },
+    async writeDebTerminalSnapshot(_runDir, snapshot) {
+      opts.terminalSnapshotWrites?.push(snapshot)
     },
     async readNudgeRequest(nudgePath) {
       if (opts.readNudge) return await opts.readNudge(nudgePath)
@@ -2846,6 +2851,35 @@ describe('runRun (multi-atom loop)', () => {
     const noDebStatus: DebStatus[] = []
     await runRun(baseDeps({ store: noDebStore, io: fakeIO({ directives: [delegate('do x'), wrapup('done')], statusWrites: noDebStatus }) }), input)
     expect(noDebStatus).toHaveLength(0) // no status feed without Deb
+  })
+
+  test('writes read-only Oscar/Bob terminal snapshots for Deb during an active run', async () => {
+    const store = openRunStore(':memory:')
+    const terminalSnapshotWrites: DebTerminalSnapshot[] = []
+    const noDebSnapshots: DebTerminalSnapshot[] = []
+
+    await runRun(
+      baseDeps({
+        store,
+        io: fakeIO({ directives: [delegate('do x'), wrapup('done')], terminalSnapshotWrites }),
+        sessionHost: fakeSessionHost({
+          async readScreen(ref) {
+            if (ref.id === 'surface:1') return 'oscar live terminal'
+            if (ref.id === 'surface:2') return 'bob live terminal: retrying test command'
+            return 'deb observer terminal'
+          },
+        }),
+      }),
+      { ...input, deb },
+    )
+
+    expect(terminalSnapshotWrites.length).toBeGreaterThan(0)
+    expect(terminalSnapshotWrites[0]?.personas.map((p) => p.label)).toEqual(['oscar', 'bob'])
+    expect(terminalSnapshotWrites.some((snapshot) => snapshot.personas.some((p) => p.label === 'bob' && p.screen.includes('retrying test command')))).toBe(true)
+    expect(store.listEvents(store.listRuns()[0]!.id).some((e) => e.type === 'deb-status' && (e.data as { terminalSnapshot?: string }).terminalSnapshot === 'deb-terminal-snapshot.json')).toBe(true)
+
+    await runRun(baseDeps({ io: fakeIO({ directives: [delegate('do x'), wrapup('done')], terminalSnapshotWrites: noDebSnapshots }) }), input)
+    expect(noDebSnapshots).toHaveLength(0)
   })
 
   test('Deb watch dispatches are non-blocking when Deb is silent', async () => {

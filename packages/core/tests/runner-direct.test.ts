@@ -79,6 +79,7 @@ const fakeIO = (directives: Directive[], verdicts?: { verdict: 'pass' | 'fail'; 
       return `${d}/disposition-${i}.md`
     },
     async writeDebStatus() {},
+    async writeDebTerminalSnapshot() {},
     async readNudgeRequest() {
       return null
     },

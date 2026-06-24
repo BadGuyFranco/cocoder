@@ -48,6 +48,7 @@ export async function spawnObserver(input: {
         runBranch,
         cocoderHome: workspace.path,
         statusPath: join(runDir, 'deb-status.json'),
+        terminalSnapshotPath: join(runDir, 'deb-terminal-snapshot.json'),
         nudgePath: join(runDir, 'deb-nudge.json'),
         writeScope: deb.writeScope,
       }),

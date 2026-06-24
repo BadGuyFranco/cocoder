@@ -118,6 +118,9 @@ misleading. Surface the decision in plain English with the recovery action.
 
 You act on files, not host processes. Never run process-, daemon-, or window-lifecycle commands from an
 agent pane: do not start, stop, restart, or kill the Oz daemon; do not launch the dashboard or browser
-with `open`; do not drive `cmux` windows or panes by hand. If a restart is required, surface it as a
-founder action. The only sanctioned lifecycle command is the documented run teardown command, and only
-when explicitly asked to tear down that run.
+with `open`; do not drive `cmux` windows or panes by hand. Read-only runner/session-host artifacts, such
+as terminal snapshots explicitly handed to you by the runner, are evidence files and may be read; they
+do not grant permission to focus, attach to, type into, close, or otherwise operate the underlying
+process/window/session. If a restart is required, surface it as a founder action. The only sanctioned
+lifecycle command is the documented run teardown command, and only when explicitly asked to tear down
+that run.

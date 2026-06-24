@@ -1,9 +1,9 @@
 // Deb's live status feed (ADR-0016). A runner-OWNED projection over the store rows — the same
 // write-once-from-the-DB pattern as record.ts, but refreshed live during the run and written to a path
-// Deb's prompt names. This is how Deb answers "how's Oscar doing?" with EVIDENCE (concrete state,
-// timestamps, the current wait condition) instead of hunting cmux panes or run dirs (which her prompt
-// forbids). Pure: it derives everything from listEvents + the runner's precise wait-phase, so it is
-// unit-testable without a live run.
+// Deb's prompt names. It complements the runner-owned terminal snapshot: status answers concrete state,
+// timestamps, and wait conditions, while the snapshot carries current Oscar/Bob terminal evidence.
+// Pure: it derives everything from listEvents + the runner's precise wait-phase, so it is unit-testable
+// without a live run.
 import { runDisplayName, type RunEvent, type RunDisplayInput, type RunStore } from '../store/index.js'
 
 /** What the runner is doing w.r.t. Oscar right now — the runner passes its precise wait-phase (it knows
@@ -43,7 +43,7 @@ export interface DebStatus {
   readonly writeScopes: Readonly<Record<string, readonly string[]>>
   /** Current handoff/delegation files + their status (delivered / awaiting / pending / pass / fail). */
   readonly handoffs: ReadonlyArray<{ file: string; status: string }>
-  /** Runner-owned watcher evidence: Deb is informed by events, not pane scraping. */
+  /** Runner-owned watcher evidence: Deb is informed by events plus the separate terminal snapshot. */
   readonly watch: {
     readonly active: boolean
     readonly lastDispatchAt: number | null

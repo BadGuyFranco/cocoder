@@ -336,6 +336,8 @@ export function buildObserverPrompt(input: {
   cocoderHome: string
   /** The runner-owned live status feed Deb reads to assess the run (ADR-0016). */
   statusPath: string
+  /** The runner/session-host-owned read-only Oscar/Bob terminal snapshot Deb reads for live diagnosis. */
+  terminalSnapshotPath: string
   /** Where Deb writes a narrow nudge recommendation for the runner to deliver to Oscar (ADR-0016). */
   nudgePath: string
   /** Deb's effective write-scope this run — non-empty enables repair mode (ADR-0016). */
@@ -361,24 +363,33 @@ ${input.priorityGoal}${adHocInstruction(input.task)}
 This run works on branch \`${input.runBranch}\`; CoCoder commits verified work to it (ADR-0023). Never
 push, merge, rebase, or switch branches by hand.
 
-# How you see the run — the status feed (read it any time)
+# How you see the run — terminal evidence first
 
-The runner keeps a live status projection for you at:
+The runner keeps a read-only Oscar/Bob terminal snapshot for you at:
+
+    ${input.terminalSnapshotPath}
+
+For live-loop or stall diagnosis, read this terminal snapshot before deciding whether to nudge, triage,
+or repair. It is runner/session-host owned and read-only: it shows the current Oscar/Bob terminal
+contents without giving you authority to start, stop, focus, close, type into, or otherwise drive
+\`cmux\`, windows, panes, sessions, or daemon lifecycle.
+
+The runner also keeps a live status projection for routing and summary context at:
 
     ${input.statusPath}
 
-Read it whenever you need to assess the run — it is your eyes, so you never probe panes, attach to
-sessions, or hunt run dirs (\`tmux\`/CLIs/run-dir scraping are forbidden; the feed replaces them). It
-reports the active atom/task, Oscar/Bob/verify state (waiting · running · verifying · stalled ·
-blocked), the timestamps of the last directive / builder activity / verify, the current wait condition,
-outstanding fault dispatches, and write scopes by persona. When asked "how's Oscar doing?", answer from
-this — concrete state + timestamps + what the runner is blocked on — never a guess.
+Read it for the active atom/task, Oscar/Bob/verify state (waiting · running · verifying · stalled ·
+blocked), timestamps of the last directive / builder activity / verify, the current wait condition,
+outstanding fault dispatches, nudge routing, and write scopes by persona. When asked "how's Oscar
+doing?", answer from both artifacts when terminal evidence is available: terminal snapshot for what
+Oscar/Bob are currently doing, status feed for concrete state, timestamps, and what the runner is
+blocked on.
 
 The runner also wakes you with short \`DEB WATCH\` dispatches when that status changes across directive
-waits, Bob build, verify waits, wrap, and faults. Those dispatches are alerts to inspect this feed first;
-they are not proof of a stall, and they are not a second orchestration lane. A normal boundary wait
-should age before you nudge unless the feed shows a concrete contradiction, repeated failed loop, missing
-required step, or formal fault.
+waits, Bob build, verify waits, wrap, and faults. Those dispatches are alerts to inspect the terminal
+snapshot plus status feed; they are not proof of a stall, and they are not a second orchestration lane. A
+normal boundary wait should age before you nudge unless the artifacts show a concrete contradiction,
+repeated failed loop, missing required step, or formal fault.
 
 # Recommending a nudge (you advise; the runner delivers)
 
@@ -587,14 +598,15 @@ export function buildNextOrWrapDispatch(nextDirectivePath: string, outcome: stri
 
 /** Dispatch a fault to Deb to triage (ADR-0013 tier 2, expanded by ADR-0016). Names the fault-context
  *  path to read and the triage path to write the verdict to — same pointer-to-file pattern as the
- *  builder/verify dispatches. The status feed (already in Deb's launch prompt) gives her the run context.
+ *  builder/verify dispatches. The terminal snapshot and status feed (already in Deb's launch prompt)
+ *  give her the run context.
  *  `occurrence` is how many times this fault's fingerprint has been seen (1 = first; >=2 = recurrence). */
 export function buildDebTriageDispatch(faultPath: string, triagePath: string, occurrence = 1): string {
   const recurrence =
     occurrence >= 2
       ? ` This fault has now occurred ${occurrence} times (see "occurrence" in the context) — it is NOT a one-off. Escalate per your recurring-fault rules: fix it if it is easy and clearly in your fence; else file a tracked ticket under cocoder/tickets/ tagged to the most relevant existing priority (set "escalation":"ticket","ticketId":"NNNN"); only recommend a NEW priority inside that ticket for founder approval (set "escalation":"recommend-priority") — never create a priority file yourself.`
       : ''
-  return `TRIAGE — a fault occurred in this run. Read the fault context from ${faultPath} (and the status feed for context), classify it to exactly one disposition (cocoder-bug | repo-bug | one-off), and write your verdict to ${triagePath}. For a cocoder-bug choose "mode":"propose" (a "proposal" diff, reviewed not applied) OR, only within your write-scope, "mode":"repair" (edit the files now, then report diagnosis/whyCocoderOwned/filesChanged/verification/remainingRisk). Out-of-scope edits — including any target-repo product code — are held back at the commit-gate, never committed. A repair does not rescue the run.${recurrence}`
+  return `TRIAGE — a fault occurred in this run. Read the fault context from ${faultPath} (and the terminal snapshot/status feed for context), classify it to exactly one disposition (cocoder-bug | repo-bug | one-off), and write your verdict to ${triagePath}. For a cocoder-bug choose "mode":"propose" (a "proposal" diff, reviewed not applied) OR, only within your write-scope, "mode":"repair" (edit the files now, then report diagnosis/whyCocoderOwned/filesChanged/verification/remainingRisk). Out-of-scope edits — including any target-repo product code — are held back at the commit-gate, never committed. A repair does not rescue the run.${recurrence}`
 }
 
 export function commitMessage(priorityId: string, run: RunDisplayInput, atomIndex: number): string {

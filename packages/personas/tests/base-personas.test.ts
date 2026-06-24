@@ -80,6 +80,10 @@ describe('basePersonasDir', () => {
     expect(text).toContain('Use a full Oscar/Bob/Deb run only when')
     expect(text).toContain('Make orchestration repairs stick')
     expect(text).toContain('Do not leave a low-risk orchestration fix as an')
+    expect(text).toContain('read-only Oscar/Bob terminal snapshot first')
+    expect(text).toContain('status feed for routing')
+    expect(text).toContain('Reading the runner-provided terminal snapshot is allowed')
+    expect(text).not.toContain('it is your eyes')
     expect(text).toContain('Repair evidence')
   })
 
@@ -115,6 +119,8 @@ describe('basePersonasDir', () => {
     expect(normalized).toContain('A prompt-only change is incomplete')
     expect(normalized).toContain('must not copy its labels, fields, allowed values, or section order into a second local contract')
     expect(normalized).toContain('commit the verified in-scope fix yourself')
+    expect(normalized).toContain('Read-only runner/session-host artifacts, such as terminal snapshots explicitly handed to you by the runner, are evidence files and may be read')
+    expect(normalized).toContain('do not grant permission to focus, attach to, type into, close, or otherwise operate')
     expect(text).toContain('high-risk')
   })
 

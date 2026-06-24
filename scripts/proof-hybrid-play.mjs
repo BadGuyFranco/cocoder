@@ -210,6 +210,11 @@ function proofIo(pickup, written) {
       await writeFile(path, JSON.stringify(status, null, 2), 'utf8')
       return path
     },
+    async writeDebTerminalSnapshot(runDir, snapshot) {
+      const path = join(runDir, 'deb-terminal-snapshot.json')
+      await writeFile(path, JSON.stringify(snapshot, null, 2), 'utf8')
+      return path
+    },
     async readNudgeRequest() {
       return null
     },

@@ -69,6 +69,7 @@ import {
 } from './prompts.js'
 import { renderRunRecord } from './record.js'
 import { type DebStatus, type RunnerPhase, renderDebStatus } from './status.js'
+import { captureDebTerminalSnapshot, renderDebTerminalSnapshotMarkdown } from './terminal-snapshot.js'
 import { isStopRequestedError } from './stop.js'
 import { faultFingerprint } from './fingerprint.js'
 import type { Triage } from './triage.js'
@@ -1090,7 +1091,10 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     lastDebWakeAt = now()
     store.recordEvent({ runId: run.id, type: 'deb-watch-dispatch', data: { kind, detail } })
     void sessionHost
-      .sendInput(debRef, `DEB WATCH - ${detail}\nRead ${join(runDir, 'deb-status.json')} for current evidence. If you recommend a narrow Oscar intervention, write ${debNudgePath}.`)
+      .sendInput(
+        debRef,
+        `DEB WATCH - ${detail}\nRead ${join(runDir, 'deb-terminal-snapshot.json')} for current Oscar/Bob terminal evidence, then ${join(runDir, 'deb-status.json')} for state/timestamps. If you recommend a narrow Oscar intervention, write ${debNudgePath}.`,
+      )
       .catch((err: unknown) => {
         store.recordEvent({ runId: run.id, type: 'deb-watch-dispatch-failed', data: { kind, detail, message: err instanceof Error ? err.message : String(err) } })
       })
@@ -1100,11 +1104,28 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     try {
       const { json, markdown } = renderDebStatus({ store, runId: run.id, runDisplay, priority, scopes: debScopes, phase, activeAtom, activeTask, waitCondition })
       await io.writeDebStatus(runDir, json, markdown)
+      const terminalSnapshot = await captureDebTerminalSnapshot({
+        runId: run.id,
+        readers: [
+          { label: 'oscar', refId: oscarDriver.refId, readScreen: () => oscarDriver.readScreen() },
+          { label: 'bob', refId: bobDriver.refId, readScreen: () => bobDriver.readScreen() },
+        ],
+      })
+      await io.writeDebTerminalSnapshot(runDir, terminalSnapshot, renderDebTerminalSnapshotMarkdown(terminalSnapshot))
       lastDebStatus = json
       store.recordEvent({
         runId: run.id,
         type: 'deb-status',
-        data: { phase, activeAtom, waitCondition, oscar: json.oscar, bob: json.bob, verify: json.verify, watchActive: json.watch.active },
+        data: {
+          phase,
+          activeAtom,
+          waitCondition,
+          oscar: json.oscar,
+          bob: json.bob,
+          verify: json.verify,
+          watchActive: json.watch.active,
+          terminalSnapshot: 'deb-terminal-snapshot.json',
+        },
       })
       wakeDeb('status', `${phase}${activeAtom === null ? '' : ` atom ${activeAtom}`}: ${waitCondition}`)
     } catch {

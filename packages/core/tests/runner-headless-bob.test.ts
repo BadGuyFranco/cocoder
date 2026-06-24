@@ -136,6 +136,7 @@ function fakeIO(): RunnerIO {
       return `${runDir}/disposition-${index}.md`
     },
     async writeDebStatus() {},
+    async writeDebTerminalSnapshot() {},
     async readNudgeRequest() {
       return null
     },

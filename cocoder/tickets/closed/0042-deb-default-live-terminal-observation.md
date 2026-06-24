@@ -2,7 +2,7 @@
 id: 0042
 title: Deb should default to live Oscar/Bob terminal observation
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: deb
 created: 2026-06-23
@@ -57,3 +57,9 @@ Deb has a sanctioned, default live-observation path for Oscar and Bob terminals 
   process-safe read surface for live terminal evidence, then prompt/runtime alignment around that owner.
 - Related governance: ADR-0016 (Deb scoped repair fallback), ADR-0017 (Oz orchestration/tool surface),
   ADR-0036 (Oscar-Deb repair dialogue), and the host/process-safety section of shared standards.
+
+## Resolution
+
+Resolved by run run_217 (direct Deb repair commit in this change set) on 2026-06-24.
+
+Added a runner/session-host-owned read-only Deb terminal snapshot for Oscar/Bob, made it the default live-loop evidence path, aligned Deb/base/dogfood/shared prompt text, and pinned the behavior with core and persona tests.
