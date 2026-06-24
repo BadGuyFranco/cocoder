@@ -8,6 +8,7 @@ const FRONTMATTER_PERSONA_FILES = ['bob.md', 'deb.md', 'oscar.md', 'oz.md', 'qui
 const NEW_BASE_PLAY_FILES = ['documentation.md', 'code-review.md', 'electron-test.md', 'write-tests.md', 'run-tests.md'] as const
 const READ_ONLY_BASE_PLAY_FILES = ['code-review.md', 'electron-test.md', 'run-tests.md'] as const
 const templatePrioritiesDir = (): string => join(basePersonasDir(), '..', '..', '..', 'templates', 'workspace-cocoder', 'cocoder', 'priorities')
+const dogfoodBobDeltaPath = (): string => join(basePersonasDir(), '..', '..', '..', 'cocoder', 'personas', 'deltas', 'bob.md')
 
 const frontmatterValue = (text: string, key: string): string | null => {
   const match = text.match(new RegExp(`^${key}:\\s*(.+)$`, 'm'))
@@ -70,6 +71,16 @@ describe('basePersonasDir', () => {
       const text = readFileSync(join(dir, file), 'utf8')
       expect(text.split(/\r?\n/, 1)[0]).toBe('---')
     }
+  })
+
+  test('dogfood Bob can author CoCoder product templates without owning workspace governance', () => {
+    const text = readFileSync(dogfoodBobDeltaPath(), 'utf8')
+    const scope = frontmatterList(text, 'writeScope')
+
+    expect(scope).toEqual(expect.arrayContaining(['packages/**', 'templates/**', 'docs/**', 'ARCHITECTURE.md']))
+    expect(scope).not.toContain('cocoder/**')
+    expect(text).toContain('CoCoder product surfaces')
+    expect(text).toContain('Workspace governance under `cocoder/**` remains outside Bob')
   })
 
   test('Deb base scope covers the governance surfaces incl. tickets (ADR-0016 recurrence escalation)', () => {
