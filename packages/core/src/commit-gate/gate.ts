@@ -11,6 +11,7 @@
 import type { RunStore } from '../store/index.js'
 import { partitionByScope } from '../write-scope/partition.js'
 import type { Git } from './git.js'
+import { recordSuccessfulCommit } from './record-commit.js'
 import { commitFiles, type CommitReceipt } from './workspace-commit.js'
 
 export interface CommitGateInput {
@@ -88,8 +89,10 @@ export async function runCommitGate(input: CommitGateInput): Promise<CommitGateR
     // changed is non-empty, so the spine returns a sha or surfaces an error — null sha ⟺ failure.
     if (receipt.committedSha === null) throw new Error(receipt.error ?? 'commit gate: spine returned no sha')
     committedSha = receipt.committedSha
-    store.recordCommitLink({ runId, workItemId, commitSha: committedSha, message, files: changed })
-    store.recordEvent({ runId, type: 'commit', data: { sha: committedSha, files: changed } })
+    // Standard success-path recording (WS3.3). selfCommit is null here: the gate's `agent-self-commit`
+    // was already recorded at gate ENTRY (above), because it must fire even on the non-commit paths the
+    // success helper never runs — an audit-boundary refusal and a self-commit with no remaining changes.
+    recordSuccessfulCommit(store, { runId, workItemId, message, committedSha, committedFiles: changed, selfCommit: null })
   }
   if (outOfScope.length > 0) {
     // Committed anyway — recorded so an out-of-lane edit is VISIBLE (not invisible, not withheld).

@@ -12,7 +12,7 @@
 // quality gate; there is no human backstop). All collaborators are injected (SessionHost, Git, RunStore,
 // adapters, IO, the Judge) so the orchestration is unit-testable without real cmux/CLIs/models.
 import type { Adapter } from '../adapter/index.js'
-import { COCODER_GOVERNANCE_AUTHOR, commitFiles, runCommitGate } from '../commit-gate/index.js'
+import { COCODER_GOVERNANCE_AUTHOR, commitFiles, recordSuccessfulCommit, runCommitGate } from '../commit-gate/index.js'
 import type { AuditWriteBoundary, CommitGateResult, Git } from '../commit-gate/index.js'
 import type { Priority } from '../priorities/index.js'
 import type { PersonaRunMode, PlayAssignment, ResolvedPersona } from '../personas/index.js'
@@ -1251,15 +1251,14 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         const message = `deb-${kind}: ${faultType}${atomIndex !== null ? ` (atom ${atomIndex})` : ''} occurrence ${occurrence}${verdict.ticketId ? ` → ticket ${verdict.ticketId}` : ''} via CoCoder run ${runReference}`
         const commitScope = withPortableRunHistoryScope(deb.writeScope)
         if (verdict.filesChanged && verdict.filesChanged.length > 0) {
+          // HEAD/self-commit is detected BEFORE the commit (commitFiles itself moves HEAD); the standard
+          // success-path recording (agent-self-commit + commit_link + commit) is then centralized in the
+          // helper (WS3.3). selfCommit is CALLER context — a plain commitFiles receipt carries none.
           const headNow = await git.headSha(worktreePath)
           const selfCommittedRepair = headNow !== headBeforeRepair
-          if (selfCommittedRepair) store.recordEvent({ runId: run.id, type: 'agent-self-commit', data: { headBefore: headBeforeRepair, headNow } })
           const { inScope, outOfScope } = partitionByScope(verdict.filesChanged, commitScope)
           const receipt = await commitFiles(git, worktreePath, inScope, message, COCODER_GOVERNANCE_AUTHOR)
-          if (receipt.committedSha) {
-            store.recordCommitLink({ runId: run.id, workItemId: null, commitSha: receipt.committedSha, message, files: receipt.committedFiles })
-            store.recordEvent({ runId: run.id, type: 'commit', data: { sha: receipt.committedSha, files: receipt.committedFiles } })
-          }
+          recordSuccessfulCommit(store, { runId: run.id, workItemId: null, message, committedSha: receipt.committedSha, committedFiles: receipt.committedFiles, selfCommit: selfCommittedRepair ? { headBefore: headBeforeRepair, headNow } : null })
           if (receipt.error) store.recordEvent({ runId: run.id, type: 'deb-repair-commit-failed', data: { fault: faultType, error: receipt.error, files: inScope } })
           if (outOfScope.length > 0) store.recordEvent({ runId: run.id, type: 'deb-repair-out-of-scope-held', data: { files: outOfScope } })
           // The manual deb-repair path and the gate now return the SAME shape (CommitGateResult =
@@ -1641,17 +1640,14 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       `cocoder/runs/${portableRunDisplayNumber}-${run.id}/sessions.jsonl`,
       `cocoder/runs/${portableRunDisplayNumber}-${run.id}/work-items.jsonl`,
     ]
+    // Detect a self-commit BEFORE the commit (commitFiles moves HEAD), then centralize the standard
+    // success-path recording in the helper (WS3.3). P4 keeps its OWN failure convention — THROW on a spine
+    // error — right after the helper: error ⟹ null sha, so the helper records no link/commit before it.
     const headNow = await git.headSha(worktreePath)
     const historySelfCommitted = headNow !== headBefore
-    if (historySelfCommitted) {
-      store.recordEvent({ runId: run.id, type: 'agent-self-commit', data: { headBefore, headNow } })
-    }
     const receipt = await commitFiles(git, worktreePath, files, message, COCODER_GOVERNANCE_AUTHOR)
+    recordSuccessfulCommit(store, { runId: run.id, workItemId: null, message, committedSha: receipt.committedSha, committedFiles: receipt.committedFiles, selfCommit: historySelfCommitted ? { headBefore, headNow } : null })
     if (receipt.error) throw new Error(`run-history commit failed: ${receipt.error}`)
-    if (receipt.committedSha) {
-      store.recordCommitLink({ runId: run.id, workItemId: null, commitSha: receipt.committedSha, message, files: receipt.committedFiles })
-      store.recordEvent({ runId: run.id, type: 'commit', data: { sha: receipt.committedSha, files: receipt.committedFiles } })
-    }
     if (historySelfCommitted) selfCommitted = true
   }
 

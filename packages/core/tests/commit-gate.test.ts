@@ -17,6 +17,7 @@ import {
   gateCommitRepair,
   commitFiles,
   commitScoped,
+  recordSuccessfulCommit,
 } from '../src/index.js'
 
 const exec = promisify(execFile)
@@ -361,5 +362,64 @@ describe('workspace commit spine (ADR-0023 §1)', () => {
     const failing: Git = { ...git, async addAndCommit() { throw new Error('disk full') } }
     const r = await commitScoped(failing, '/repo', ['cocoder/**'], 'oz-repair')
     expect(r).toMatchObject({ committed: false, committedSha: null, outOfLane: ['packages/y.ts'], error: 'disk full' })
+  })
+})
+
+describe('recordSuccessfulCommit — the standard success-path event set (WS3.3)', () => {
+  // ONE helper now records what P1 (gate.ts), P2 (deb-repair) and P4 (run-history) hand-rolled around a
+  // spine receipt. These pins lock its contract: the exact events, ORDER, and data keys — and that it
+  // emits agent-self-commit from CALLER context (not the receipt) so P2/P4 don't silently lose it.
+  const freshRun = () => {
+    const store = openRunStore(':memory:')
+    store.upsertWorkspace({ id: 'cocoder', path: '/repo', name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'p' })
+    return { store, runId: run.id }
+  }
+
+  test('self-commit THEN commit_link THEN commit, in that order, with the spine vocabulary', () => {
+    const { store, runId } = freshRun()
+    recordSuccessfulCommit(store, {
+      runId, workItemId: null, message: 'feat: x',
+      committedSha: 'sha-1', committedFiles: ['packages/a.ts', 'docs/b.md'],
+      selfCommit: { headBefore: 'h0', headNow: 'h1-agent' },
+    })
+    expect(store.listEvents(runId).map((e) => e.type)).toEqual(['agent-self-commit', 'commit'])
+    const events = store.listEvents(runId)
+    expect(events[0]?.data).toEqual({ headBefore: 'h0', headNow: 'h1-agent' })
+    expect(events[1]?.data).toEqual({ sha: 'sha-1', files: ['packages/a.ts', 'docs/b.md'] })
+    const links = store.listCommitLinks(runId)
+    expect(links).toHaveLength(1)
+    expect(links[0]).toMatchObject({ commitSha: 'sha-1', message: 'feat: x', files: ['packages/a.ts', 'docs/b.md'] })
+  })
+
+  test('selfCommit null records NO agent-self-commit (P1 already recorded its own at gate entry)', () => {
+    const { store, runId } = freshRun()
+    recordSuccessfulCommit(store, {
+      runId, workItemId: null, message: 'feat: x',
+      committedSha: 'sha-1', committedFiles: ['packages/a.ts'], selfCommit: null,
+    })
+    expect(store.listEvents(runId).map((e) => e.type)).toEqual(['commit'])
+    expect(store.listCommitLinks(runId)).toHaveLength(1)
+  })
+
+  test('a null committedSha records NEITHER a commit link NOR a commit event (success-only)', () => {
+    const { store, runId } = freshRun()
+    // The self-commit happened but the commit was a no-op/failure — the helper still emits the self-commit
+    // (P2: selfCommittedRepair with an empty inScope), but never a phantom link/commit on a null sha.
+    recordSuccessfulCommit(store, {
+      runId, workItemId: null, message: 'feat: x',
+      committedSha: null, committedFiles: [], selfCommit: { headBefore: 'h0', headNow: 'h1-agent' },
+    })
+    expect(store.listEvents(runId).map((e) => e.type)).toEqual(['agent-self-commit'])
+    expect(store.listCommitLinks(runId)).toEqual([])
+  })
+
+  test('no self-commit and no commit records nothing at all', () => {
+    const { store, runId } = freshRun()
+    recordSuccessfulCommit(store, {
+      runId, workItemId: null, message: 'feat: x', committedSha: null, committedFiles: [], selfCommit: null,
+    })
+    expect(store.listEvents(runId)).toEqual([])
+    expect(store.listCommitLinks(runId)).toEqual([])
   })
 })

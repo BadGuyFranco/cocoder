@@ -265,6 +265,8 @@ export {
   commitScoped,
   type CommitReceipt,
   type CommitAuthor,
+  recordSuccessfulCommit,
+  type SuccessfulCommitRecord,
 } from './commit-gate/index.js'
 
 export {
