@@ -29,6 +29,71 @@ next session. Do not start the following chunk in this session.
 
 ---
 
+## 2026-06-24 — WS1, step 3 (re-base the portable run-history surface on the event log)
+
+- **Workstream/step:** WS1 (Surface unification), step 3 — make `writePortableRunHistory`'s run-level status
+  a PROJECTION of the event log instead of a runner local. ADDITIVE/behavior-preserving: unlike WS1.2, NO
+  surface shifts.
+- **Commit:** `6f6916b` — "runner(status): WS1.3 — derive portable run-history summary from the event log".
+- **Files:** `packages/core/src/runner/status.ts` (new `deriveRunSummary` + `RunSummary` type, beside
+  `deriveTerminalProjection`; import `RunStatus`), `packages/core/src/index.ts` +
+  `packages/core/src/runner/index.ts` (re-export both), `packages/core/src/runner/runner.ts`
+  (`projectAndCommitPortableRunHistory` derives `terminal.status` via `deriveRunSummary(store.listEvents)`;
+  its param drops `status` → `{ endedAt }`; the four exits stop passing `status`),
+  `packages/core/tests/status.test.ts` (new `deriveRunSummary — WS1.3 …` describe: 5 tests).
+- **Map (owners/emitters/consumers/tests):**
+  - *Source of truth:* the terminal `run-end` event's `data` `{ status, atoms, committedShas, outOfScope,
+    selfCommitted }`. Emitted by FOUR runner exits — completion (`runner.ts:2029`), `fail()` (`1054`),
+    `stopRun` (`1695`), `holdRun` (`1733`) — and in every case recorded BEFORE
+    `projectAndCommitPortableRunHistory`, so the event log already carries the whole summary at projection time.
+  - *Imperative coupling removed:* `projectAndCommitPortableRunHistory({ status, endedAt })` threaded `status`
+    — the same value already in `run-end` — into `writePortableRunHistory`'s `terminal.status`, which
+    overrides `storedRun.status` (stale because `setRunStatus` runs AFTER the projection). Now `status` is
+    derived; the arg is `{ endedAt }` only.
+  - *Surface:* `writePortableRunHistory`/`portableRunFile` (`store/portable/projection.ts:19,39`) → `run.json`
+    `status`. The other four summary fields reach portable output ONLY via the `run-end` event serialized into
+    `events.jsonl` (already a pure projection — untouched). `writePortableRunHistory`'s SIGNATURE is unchanged.
+  - *Other caller (kept byte-identical):* `store/portable/migrate.ts:40` passes NO `terminal` → uses
+    `storedRun` (already terminal for historical runs). Signature untouched ⇒ migrate path unaffected (its
+    4 tests stay green).
+  - *Tests (regression guard):* `runner-direct.test.ts`'s `expectPortableTerminalHistory` drives REAL runs to
+    completed/failed/stopped and asserts `run.json.status` + `endedAt` is a Number — the behavior-preservation
+    guard for the swap. `portable-migrate.test.ts` guards the migrate path.
+- **Why no surface shifts:** the derived `status` reads the SAME `run-end` event the arg `status` was written
+  into, recorded immediately before the projection in all four exits ⇒ derived === former arg, by construction.
+  `endedAt` deliberately stays imperative: the `run-end` event's wall-clock `at` differs from the captured
+  `endedAt`, so deriving it WOULD shift `run.json.endedAt` (the one trap to avoid here).
+- **Determinism (WS1.1 rule honored):** `RunSummary` has NO event-`at` field, so the new tests build ONE
+  `:memory:` store per terminal shape, record `run-end` with the runner's exact tuple, and assert
+  `deriveRunSummary(...)` `toEqual` that tuple — no two-store deep-equal, no wall-clock to drift.
+- **Tests/results:** `pnpm --filter @cocoder/core test status` → 23 passed (18 + 5 new);
+  `pnpm --filter @cocoder/core test runner-direct portable` → 29 passed (real-run portable guards green);
+  `pnpm --filter @cocoder/core test` → **561 passed** (was 556; +5 new); `pnpm --filter @cocoder/core
+  typecheck` → clean; root `pnpm typecheck` → clean (7 pkgs); `node scripts/check-topology.mjs` → passed
+  (same 2 pre-existing daemon test-helper warnings). Root `pnpm test`: all packages green EXCEPT one flaky
+  core failure under full parallel load — `runner.test.ts > … writes a live status feed so Deb can report
+  concrete run state (ADR-0016)` — which is a member of the KNOWN Deb-watcher timer-race flake family
+  (flagged in WS0/WS1.1/WS1.2); it PASSES in isolation (`-t "writes a live status feed"` → 1 passed) and is
+  NOT a regression from this core-only change.
+- **Residual risk:** `writePortableRunHistory`'s signature still ACCEPTS `terminal.{status,endedAt}` (the
+  migrate caller relies on the no-terminal branch); WS1.3 only stops the RUNNER from hand-feeding `status`.
+  `endedAt` remains an imperative input by design. `record.ts`/`renderRunRecord` (the third sibling surface)
+  is still imperative — that is WS1.4. The unrelated eslint-adoption dirt (`eslint.config.mjs`, `run.ts`,
+  `read-claims.ts`, `p3-action.ts`, `frontmatter.ts`, `runner.ts`'s `SessionRef` import hunk, `oz-host.ts`,
+  `proof-daemon-reload.mjs`, `tsconfig.eslint.json`) was preserved, NOT committed — `runner.ts` was staged
+  hunk-by-hunk (`git apply --cached` of a patch with the `SessionRef` hunk filtered out) so only WS1.3 hunks
+  landed; the staged-only tree typechecks clean (verified via `git stash --keep-index`).
+- **Exact next step (WS1, step 4):** Re-base the THIRD sibling surface — `record.ts` / `renderRunRecord`
+  (`packages/core/src/runner/record.ts`) — on the event log. It is consumed by `io.writeRunRecord` at every
+  terminal exit (`runner.ts` completion/`stopRun`/`holdRun`, after the portable commit). Map what it reads
+  imperatively from runner locals/args vs. what is derivable from `listEvents` (it already reads `direct-mode`
+  + `out-of-scope-committed` events per WS1.2's note); build the derivation, assert (tests-first) it equals
+  the current `record.md` on existing fixtures for the four terminal shapes, THEN swap. Keep it ADDITIVE/
+  behavior-preserving (no surface shift) and preserve the WS1.2 feed-after-portable ordering. Verify with
+  the same command set.
+
+---
+
 ## 2026-06-24 — WS1, step 2 (wire deriveTerminalProjection into the runner's terminal paths)
 
 - **Workstream/step:** WS1 (Surface unification), step 2 — wire `deriveTerminalProjection` into `holdRun`/
