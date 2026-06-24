@@ -29,6 +29,88 @@ next session. Do not start the following chunk in this session.
 
 ---
 
+## 2026-06-24 — WS2, step 1 (audit + pin: prose frame content is inert — AUDIT-ONLY, no consumer touched)
+
+- **Workstream/step:** WS2 (structured agent→runner progress channel), first chunk — AUDIT + PIN ONLY. Per
+  the sharpened WS2 spec, audit every `readScreen`/frame consumer, partition each frame-read into A
+  (liveness/idle — keep), B (structured agent-formed marker — sanctioned, keep), or C (prose/heuristic
+  semantic inference — the only thing WS2 migrates). No consumer altered this session; the first migration
+  (if any) is a later session after founder review of the map.
+- **Commit:** `f2f1a5b` — "runner(monitor): WS2.1 — pin that prose frame content is inert (no fault, no
+  transition)". (Ledger entry committed separately, matching WS1.4/1.5.)
+- **Files:** `packages/core/tests/ws2-prose-inert.test.ts` (NEW, entirely mine — not in the eslint foreign
+  list, staged directly with `git add`; no surgical apply needed). 5 tests: 3 prose-inert assertions
+  (detector → null, heuristic judge → progressing, composed judge over runMonitor → neither done nor
+  blocked) + 2 positive controls (standalone done sentinel → done, standalone blocked marker → blocked).
+- **Partition map (every frame consumer, exact frame-read, A/B/C tag):**
+  - *`monitor.ts` → `makeHeuristicJudge` (174–188):* (1) `frame.split('\n').some(line => line.trim() ===
+    opts.doneSentinel)` → `{state:'done'}` — whole-line equality vs `atomSentinel(n)` =
+    `<<<COCODER-ATOM-n-DONE>>>` ⇒ **B**. (2) `sample.idleStreak >= opts.stuckAfter` → `{state:'stuck'}`;
+    `idleStreak` is computed in `runMonitor` (line 114) purely from `frame === prevFrame` (frame equality,
+    never content) ⇒ **A**.
+  - *`agent-step.ts` → inline judge wrapper (216–223):* `detectBuilderBlocker(sample.frame, atomIndex)`
+    (blocker.ts:31) whole-line-matches `^<<<COCODER-ATOM-n-BLOCKED(: reason)?>>>$` → `{state:'blocked'}` ⇒
+    **B**. The `AUTHORITY_SCOPE` regex (blocker.ts:12) classifies the reason Bob wrote INSIDE his own marker,
+    not free frame text — still B (marker-payload classification, WS0's structured replacement for the
+    run_231 prose scrape). Else delegates to `makeHeuristicJudge` ⇒ inherits its B+A.
+  - *Deb watcher → `startDebWatcher` (runner.ts:1295–1373):* `readScreen` = `oscarDriver.readScreen()`
+    (1302–1305), but the judge (1306–1337) NEVER reads `sample.frame` — it reads the nudge FILE
+    (`io.readNudgeRequest(debNudgePath)`, 1308), validates evidence/grace, else `progressing`. The screen
+    read feeds only `runMonitor`'s `idleStreak` liveness ⇒ **A** (nudge gating is file-driven, not a frame
+    read).
+  - *Oscar nudge watchdog → `awaitOscarWithNudgeWatchdog` (runner.ts:1380–1457):* `readScreen` returns the
+    oscar screen or `''` (1405–1408); the judge (1409–1425) reads the founder-stop FILE, the Oz nudge FILE
+    (`ozNudgePath`, 1416), and `sample.idleStreak > 0` (1422). NEVER reads `sample.frame` content ⇒ frame
+    read is **A** only.
+- **Finding (verified, not assumed):** WS0 (`bca1b27`) already removed the only category-C inference (the
+  old blocker keyword-scrape; now marker-only). Every remaining frame-content read is **B** (done sentinel,
+  blocked marker — whole-line, agent-formed, sanctioned) or **A** (idle-streak liveness; the two watchers'
+  judges read FILES + idleStreak, never frame content). **NO live category-C prose/heuristic inference
+  remains.** So WS2's first chunk is the PIN, not a migration.
+- **The pin (test design):** one adversarial prose frame name-drops scope/authority/done/blocked/error AND
+  the `<<<COCODER-ATOM` prefix but has NO standalone marker line, fed through the EXACT composed judge
+  `executeAgentStep` runs (detector first, then `makeHeuristicJudge`). `runMonitor` drives it over a CONSTANT
+  frame with injected `sleep`/`now` (no real timers — sidesteps the Deb-watcher flake family AND honors the
+  WS1.1 determinism rule). Asserted: reason is neither `done` nor `blocked` and no assessment is done/blocked
+  (it ends on the liveness `timeout` path — a category-A outcome is legitimate). Positive controls feed a
+  standalone done sentinel (→ done) and a standalone blocked marker (→ blocked), proving the pin is NOT
+  vacuous and that the sanctioned structured channel (B) still transitions — the WS2 boundary made
+  executable: prose inert, markers live.
+- **Why it PASSES as written (NOT red→green):** the audit established that no prose-reading path exists on
+  the current tree (WS0 removed it), so the pin documents a property already true. Its value is regression
+  teeth: any future re-introduction of a keyword/heuristic read of free frame text into ANY frame-content
+  consumer makes one of the three prose-inert assertions go red. The blocked control initially failed
+  (`blockerMarker(n)` already closes with `>>>`, so appending a reason after it produced a non-matching
+  line) — fixed by using the bare standalone marker, which is itself valid; not a behavior issue.
+- **Tests/results:** `pnpm --filter @cocoder/core test ws2-prose-inert` → 5 passed; `pnpm --filter
+  @cocoder/core test` → **576 passed** (was 571; +5 new); `pnpm --filter @cocoder/core typecheck` → clean;
+  root `pnpm typecheck` → clean (7 pkgs); `node scripts/check-topology.mjs` → passed (same 2 pre-existing
+  daemon test-helper warnings). Root `pnpm test`: ALL packages green this run (personas 29, core 576,
+  adapters 24, session-hosts 18, ui 161, cli 9, daemon 345) — the known Deb-watcher timer-race flake family
+  did not trip.
+- **Residual risk:** the pin exercises the two frame-CONTENT units (`makeHeuristicJudge`, `detectBuilderBlocker`)
+  and the composed judge via `runMonitor`; it does NOT drive a full real run through the runner, so a
+  hypothetical future re-coupling that reads frame content somewhere OTHER than these two units (e.g. a new
+  consumer) would need its own pin. The Deb watcher and Oscar watchdog judges are frame-content-blind today
+  (verified by inspection — they read files + idleStreak), so there is no frame-content path to pin in them;
+  if a later WS2 session adds one, pin it there too. The unrelated eslint-adoption dirt (`eslint.config.mjs`,
+  `run.ts`, `read-claims.ts`, `p3-action.ts`, `frontmatter.ts`, `runner.ts`'s `SessionRef` import hunk,
+  `oz-host.ts`, `proof-daemon-reload.mjs`, `tsconfig.eslint.json`) was preserved, NOT committed — the new
+  test is entirely mine, so it staged directly with `git add`; no surgical apply was needed.
+- **Exact next step (WS2 is AUDIT-COMPLETE — no category-C migration remains):** The audit found NO live
+  prose/heuristic inference, so there is NOTHING to migrate this workstream — WS2's "stop scraping" half is
+  already satisfied (WS0) and now PINNED (WS2.1). The done-when's SECOND half ("any remaining screen-read
+  semantic signal has been migrated to a structured artifact") is vacuously met: none remains. The OPTIONAL
+  remaining WS2 surface area is the spec's parenthetical "a missing channel (e.g. mid-atom progress) is
+  ADDED as a marker" — but per the sharpened spec and this session's prompt, ADDING a channel nothing
+  consumes is a FEATURE, not behavior-preserving decoupling, and must be its own decision/ADR first; do NOT
+  invent it under WS2. RECOMMENDATION: declare WS2 CLOSED (audit + pin complete; terminal is provably
+  DISPLAY + liveness/idle heartbeat + sanctioned markers only) and proceed to **WS3 — One commit spine**, or
+  to **WS4** if the founder wants the Deb-watcher de-flake (a named WS4 deliverable) done before any further
+  watcher work. NOTE for any future WS2 watcher change: this session did NOT touch the Deb watcher, so the
+  known Deb-watcher timer flake did not block it — but BEFORE any session CHANGES the Deb watcher, do the
+  WS4 "de-flake the Deb-watcher stall family" deliverable first (it lives in that exact code).
+
 ## 2026-06-24 — WS1, step 5 (surface-agreement closeout test — CLOSES WS1)
 
 - **Workstream/step:** WS1 (Surface unification), step 5 — land the cross-surface agreement regression the
