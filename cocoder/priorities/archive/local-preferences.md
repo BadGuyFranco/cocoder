@@ -3,6 +3,11 @@ id: local-preferences
 title: Local Preferences — default tech stack and design spec for new/unspecified work
 ---
 
+> **Archived 2026-06-24 (founder) — archive-ready.** Both founder-owned local defaults landed and
+> verified: layered cross-repo tech-stack (commit 606396a) and dated self-contained Fusion
+> design-spec snapshot (commit 60ba346). Create-only resolution rule pinned by scaffold/mutations
+> tests. Founder confirmed archive after run_224 wrap-up; objective met, code-complete, tests green.
+
 ## Objective
 
 Establish two founder-owned **local default** surfaces that apply whenever an onboarded workspace does
