@@ -135,13 +135,23 @@ export function renderDebStatus(input: {
   }))
 
   // ── Oscar (runner phase, refined by the live monitor stream) ──
-  const lastStuck = last(events, ['oscar-monitor-assessment'])
-  const lastDirectiveAt = last(events, ['delegation', 'wrapup'])?.at ?? null
+  const lastDirective = last(events, ['delegation', 'wrapup'])
+  const lastDirectiveAt = lastDirective?.at ?? null
   const lastVerifyAt = lastAnyVerifyEvt?.at ?? null
+  const lastStuck = last(events, ['oscar-monitor-assessment'])
+  const phaseBoundary = [lastDirective, last(events, ['builder-dispatch', 'builder-done', 'builder-failed']), lastAnyVerifyEvt]
+    .filter((e): e is RunEvent => e !== null)
+    .reduce<RunEvent | null>((latest, event) => {
+      if (latest === null) return event
+      if (event.at !== latest.at) return event.at > latest.at ? event : latest
+      return events.indexOf(event) > events.indexOf(latest) ? event : latest
+    }, null)
   const stuckIsCurrent =
     lastStuck != null &&
     (lastStuck.data as { state?: unknown })?.state === 'stuck' &&
-    lastStuck.at >= Math.max(lastDirectiveAt ?? 0, lastAnyVerifyEvt?.type === 'verify-pass' ? lastVerifyAt ?? 0 : 0)
+    (phaseBoundary === null ||
+      lastStuck.at > phaseBoundary.at ||
+      (lastStuck.at === phaseBoundary.at && events.indexOf(lastStuck) >= events.indexOf(phaseBoundary)))
   let oscar: OscarState =
     phase === 'awaiting-directive'
       ? 'waiting'

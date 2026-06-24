@@ -45,6 +45,21 @@ describe('renderDebStatus', () => {
     expect(s.handoffs).toContainEqual({ file: 'verify-0.json', status: 'pending' })
   })
 
+  test('verify dispatch clears a stale stuck assessment from the prior wait', () => {
+    const s = statusFor(
+      [
+        { type: 'delegation', data: { atom: 0 } },
+        { type: 'builder-dispatch', data: { atom: 0 } },
+        { type: 'oscar-monitor-assessment', data: { stage: 'watch', atom: 0, state: 'stuck', note: 'deb recommends a nudge' } },
+        { type: 'builder-done', data: { atom: 0 } },
+        { type: 'verify-dispatch', data: { atom: 0 } },
+      ],
+      'verifying',
+    )
+    expect(s.oscar).toBe('verifying')
+    expect(s.verify).toBe('pending')
+  })
+
   test('active atom verify ignores a prior atom pass', () => {
     const s = statusFor(
       [
