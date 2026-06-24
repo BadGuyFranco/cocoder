@@ -97,6 +97,14 @@ export async function findOrphanedPriorities(prioritiesDir: string): Promise<str
   return liveUnlistedPriorityIds(prioritiesDir)
 }
 
+export async function findStaleTicketOrderEntries(ticketsDir: string): Promise<string[]> {
+  const manifest = await readManifest(ticketsDir)
+  if (!manifest) return []
+
+  const openIds = new Set((await readTicketFiles(ticketsDir)).filter((ticket) => ticket.state === 'open').map((ticket) => ticket.id))
+  return [...new Set(manifest.filter((id) => !openIds.has(id)))].sort()
+}
+
 async function liveUnlistedPriorityIds(prioritiesDir: string, manifestIds?: ReadonlySet<string>): Promise<string[]> {
   const manifest = manifestIds ?? new Set((await readManifest(prioritiesDir)) ?? [])
   const allowlist = new Set<string>(INTENTIONALLY_UNLISTED_PRIORITY_IDS)

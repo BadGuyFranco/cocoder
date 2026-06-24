@@ -3,10 +3,39 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
-import { findOrphanedPriorities, INTENTIONALLY_UNLISTED_PRIORITY_IDS, registerLivePriorities } from '../src/priority-order.js'
+import {
+  findOrphanedPriorities,
+  findStaleTicketOrderEntries,
+  INTENTIONALLY_UNLISTED_PRIORITY_IDS,
+  registerLivePriorities,
+} from '../src/priority-order.js'
 
 async function writePriority(prioritiesDir: string, id: string): Promise<void> {
   await writeFile(join(prioritiesDir, `${id}.md`), `---\nid: ${id}\ntitle: ${id}\n---\nDo ${id}.\n`)
+}
+
+async function writeTicket(ticketsDir: string, state: 'open' | 'closed', id: string): Promise<void> {
+  const status = state === 'open' ? 'Open' : 'Closed'
+  await mkdir(join(ticketsDir, state), { recursive: true })
+  await writeFile(
+    join(ticketsDir, state, `${id}-ticket.md`),
+    [
+      '---',
+      `id: ${id}`,
+      `title: Ticket ${id}`,
+      'type: task',
+      `status: ${status}`,
+      'priority: none',
+      'owner: founder-session',
+      'created: 2026-06-18',
+      '---',
+      '',
+      `# ${id} - Ticket ${id}`,
+      '',
+      'Body.',
+      '',
+    ].join('\n'),
+  )
 }
 
 async function readOrder(prioritiesDir: string): Promise<string[]> {
@@ -44,6 +73,27 @@ describe('priority order guard', () => {
     const repoRoot = join(testDir, '..', '..', '..')
 
     expect(await findOrphanedPriorities(join(repoRoot, 'cocoder', 'priorities'))).toEqual([])
+  })
+
+  test('reports closed and missing ticket ids from order.json only until they are pruned', async () => {
+    const ticketsDir = await mkdtemp(join(tmpdir(), 'cocoder-ticket-order-'))
+
+    await writeTicket(ticketsDir, 'open', '0003')
+    await writeTicket(ticketsDir, 'closed', '0004')
+    await writeFile(join(ticketsDir, 'order.json'), JSON.stringify(['0003', '0004', '0009']))
+
+    expect(await findStaleTicketOrderEntries(ticketsDir)).toEqual(['0004', '0009'])
+
+    await writeFile(join(ticketsDir, 'order.json'), JSON.stringify(['0003']))
+
+    expect(await findStaleTicketOrderEntries(ticketsDir)).toEqual([])
+  })
+
+  test('live ticket order contains only open ticket ids', async () => {
+    const testDir = dirname(fileURLToPath(import.meta.url))
+    const repoRoot = join(testDir, '..', '..', '..')
+
+    expect(await findStaleTicketOrderEntries(join(repoRoot, 'cocoder', 'tickets'))).toEqual([])
   })
 
   test('registerLivePriorities appends unlisted live priorities and clears orphans', async () => {
