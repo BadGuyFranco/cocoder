@@ -15,7 +15,6 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 |---|---|---|---|---|
 | [0047](./open/0047-oscar-deb-repair-dialogue-strands-a-valid-deb-proposal-when-the-oscar-evaluation-turn-times-out.md) | Headless governance turns are marked failed (exit -1, ~120s) even when the artifact was produced — stranding repair proposals and skipping authoring commits | bug | none | founder-session |
 | [0046](./open/0046-ticket-launched-runs-must-close-or-ask-at-wrap-with-ticket-specific-wrap-up-run-status-vocabulary.md) | Ticket-launched runs must close-or-ask at wrap, with ticket-specific wrap-up Run Status vocabulary | task | none | founder-session |
-| [0045](./open/0045-closed-ticket-lingers-in-order-json-relaunches.md) | A ticket closed off-spine lingers in tickets/order.json and gets relaunched | bug | oz-autonomy | Open |
 | [0043](./open/0043-bob-blocker-replies-unowned-after-runner-stall-nudges.md) | Bob blocker replies are unowned after runner stall nudges | bug | oz-autonomy | Open |
 | [0042](./open/0042-deb-default-live-terminal-observation.md) | Deb should default to live Oscar/Bob terminal observation | bug | none | Open |
 | [0039](./open/0039-launch-status-in-oz-dashboard.md) | Launch Status in Oz Dashboard | task | none | founder-session |
@@ -26,6 +25,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0045](./closed/0045-closed-ticket-lingers-in-order-json-relaunches.md) | A ticket closed off-spine lingers in tickets/order.json and gets relaunched as an active run | bug | 2026-06-23 | Fixed by run_214: closeTicket now prunes stale ticket order entries on already-closed or missing-open-ticket paths, closeTicketAfterSuccessfulRun commits that reconciliation through the governance spine, findStaleTicketOrderEntries guards order.json against closed or missing ids, and Deb base governance forbids off-spine tracked-ticket closure. |
 | [0044](./closed/0044-deb-nudge-fabricated-out-of-scope-event.md) | Deb nudge fabricated an out-of-scope-committed feed event (absent from feed) | bug | 2026-06-23 | Runner-owned Deb nudge delivery now rejects and records `deb-nudge-rejected` when Deb cites a named feed event absent from the current Deb status recent events; regression coverage pins the fabricated `out-of-scope-committed` case. |
 | [0040](./closed/0040-daemon-launches-stale-oz-dashboard-bundle-in-built-mode-no-rebuild-step.md) | Daemon launches stale Oz dashboard bundle in built mode (no rebuild step) | bug | 2026-06-23 | Built-mode dashboard launch now refuses stale UI bundles with a pnpm build:ui rebuild message; root build:ui alias added; daemon tests and typecheck passed. |
 | [0041](./closed/0041-authoring-play-in-flight-guard-blocks-the-same-wrapped-run.md) | Authoring-Play in-flight guard blocks the same wrapped run (inconsistent with sibling post-wrap ops) | bug | 2026-06-23 | Ticket fix run completed successfully. |

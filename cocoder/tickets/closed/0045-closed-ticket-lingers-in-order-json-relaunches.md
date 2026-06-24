@@ -2,7 +2,7 @@
 id: 0045
 title: A ticket closed off-spine lingers in tickets/order.json and gets relaunched as an active run
 type: bug
-status: Open
+status: Closed
 priority: oz-autonomy
 owner: Deb
 created: 2026-06-23
@@ -75,3 +75,9 @@ Pick the one-owner fix; do not patch selection callers independently.
   ADR-0038 (order.json as order overlay), ADR-0036 (Deb repair lane). Touches `packages/core/src/tickets/**`,
   `packages/daemon/src/launcher.ts`, and Deb base governance — verified-run scope, per-atom verify gate
   applies.
+
+## Resolution
+
+Resolved by run run_214 (efe6a5d) on 2026-06-23.
+
+Fixed by run_214: closeTicket now prunes stale ticket order entries on already-closed or missing-open-ticket paths, closeTicketAfterSuccessfulRun commits that reconciliation through the governance spine, findStaleTicketOrderEntries guards order.json against closed or missing ids, and Deb base governance forbids off-spine tracked-ticket closure.
