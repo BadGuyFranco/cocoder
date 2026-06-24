@@ -73,7 +73,6 @@ import { spawnObserver } from './observer.js'
 import {
   buildBuilderStandbyPrompt,
   buildArtifactDispatch,
-  buildDebTriageDispatch,
   buildLandingOutcome,
   buildNextOrWrapDispatch,
   buildOrchestratorPrompt,
@@ -84,8 +83,7 @@ import { renderRunRecord } from './record.js'
 import { type DebStatus, type RunnerPhase, deriveRunSummary, deriveTerminalProjection, renderDebStatus } from './status.js'
 import { captureDebTerminalSnapshot, renderDebTerminalSnapshotMarkdown } from './terminal-snapshot.js'
 import { isStopRequestedError } from './stop.js'
-import { faultFingerprint } from './fingerprint.js'
-import type { Triage } from './triage.js'
+import { triageFault, type TriageDeps } from './triage.js'
 import {
   PreRunIntegrityError,
   preRunConflictWarnings,
@@ -632,7 +630,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   // is no run branch and nothing to strand, so a fault just marks the run failed.
   const fail = async (type: string, message: string, atomIndex: number | null = null): Promise<never> => {
     store.recordEvent({ runId: run.id, type, data: atomIndex !== null ? { message, atom: atomIndex } : { message } })
-    await triageFault(type, atomIndex, message)
+    await triageFault(triageDeps, type, atomIndex, message)
     store.setRunStatus(run.id, 'failed')
     store.recordEvent({
       runId: run.id,
@@ -767,108 +765,30 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     }
   }
 
-  const renderDisposition = (faultType: string, atomIndex: number | null, v: Triage, gate: CommitGateResult | null, occurrence: number): string => {
-    const where = atomIndex !== null ? ` (atom ${atomIndex})` : ''
-    const lines = [`# Deb disposition: ${v.disposition}`, '']
-    if (occurrence >= 2) lines.push(`> ⚠️ **RECURRENCE (#${occurrence})** — this fault matched ${occurrence - 1} prior run(s) by fingerprint; it is no longer a one-off.`, '')
-    lines.push(`- **Fault:** ${faultType}${where}`, `- **Mode:** ${v.mode}`, `- **Summary:** ${v.summary}`, '')
-    const isTicket = v.escalation === 'ticket' || v.escalation === 'recommend-priority'
-    if (isTicket) {
-      lines.push(v.escalation === 'recommend-priority' ? '## Escalation — recommends a NEW priority (needs your approval)' : '## Escalation — tracked follow-up ticket filed', '')
-      if (v.ticketId) lines.push(`- **Ticket:** ${v.ticketId} (\`cocoder/tickets/\`)`)
-      if (v.diagnosis) lines.push(`- **Diagnosis:** ${v.diagnosis}`)
-      if (v.whyCocoderOwned) lines.push(`- **Why CoCoder-owned:** ${v.whyCocoderOwned}`)
-      lines.push('')
-    } else if (v.disposition === 'cocoder-bug' && v.mode === 'repair') {
-      lines.push('## Scoped repair — APPLIED within Deb\'s write-scope', '')
-      if (v.diagnosis) lines.push(`- **Diagnosis:** ${v.diagnosis}`)
-      if (v.whyCocoderOwned) lines.push(`- **Why CoCoder-owned:** ${v.whyCocoderOwned}`)
-      if (v.filesChanged && v.filesChanged.length) lines.push(`- **Files Deb changed:** ${v.filesChanged.join(', ')}`)
-      if (v.verification) lines.push(`- **Verification:** ${v.verification}`)
-      if (v.remainingRisk) lines.push(`- **Remaining risk:** ${v.remainingRisk}`)
-      lines.push('')
-    } else if (v.disposition === 'cocoder-bug') {
-      lines.push('## Proposed fix — NOT applied; for founder review', '', '```diff', v.proposal ?? '(no diff provided)', '```', '')
-    }
-    if (gate) {
-      if (gate.committedSha) lines.push(`Committed as \`${gate.committedSha}\` (files: ${gate.committedFiles.join(', ') || 'none'}) on branch \`${runBranch}\`. The run still fails — land it from that branch to bring the ${isTicket ? 'ticket' : 'repair'} to trunk.`, '')
-      else lines.push('No in-scope changes were committed (nothing within Deb\'s write-scope changed).', '')
-      if (gate.outOfLane.length > 0) lines.push(`**Outside Deb's repair lane:** ${gate.outOfLane.join(', ')}`, '')
-    }
-    if (v.disposition === 'repo-bug') lines.push('## For the founder', '', v.summary, '')
-    return lines.join('\n')
-  }
-  const triageFault = async (faultType: string, atomIndex: number | null, message: string): Promise<void> => {
-    if (!debRef) return // no Deb on this run → no triage
-    const i = faultSeq++
-    await refreshStatus('faulted', atomIndex, null, `fault: ${faultType}`)
-    try {
-      // Cross-run recurrence (ADR-0016 §recurrence): fingerprint this fault + count prior matches across
-      // the workspace's runs (the durable memory in the DB). occurrence>=2 → tell Deb to escalate instead
-      // of logging another one-off; it is the same fault recurring, not a fresh surprise.
-      const fingerprint = faultFingerprint(faultType, message)
-      const priorRuns = store.listFaultHistory(workspace.id).filter((f) => f.fingerprint === fingerprint).map((f) => f.runId)
-      const occurrence = priorRuns.length + 1
-      if (occurrence >= 2) store.recordEvent({ runId: run.id, type: 'fault-recurrence', data: { fault: faultType, fingerprint, occurrence, priorRuns } })
-
-      // Snapshot the worktree HEAD before Deb may edit (repair/ticket) so the commit-gate attributes only
-      // her changes and detects any self-commit (ADR-0007).
-      const headBeforeRepair = await git.headSha(worktreePath)
-      await io.writeFaultContext(join(runDir, `fault-${i}.json`), { fault: faultType, atom: atomIndex, message, fingerprint, occurrence, priorRuns })
-      await sessionHost.show(debRef)
-      await sessionHost.sendInput(debRef, buildDebTriageDispatch(join(runDir, `fault-${i}.json`), join(runDir, `triage-${i}.json`), occurrence))
-      store.recordEvent({ runId: run.id, type: 'triage-dispatch', data: { fault: faultType, atom: atomIndex, occurrence } })
-      await refreshStatus('faulted', atomIndex, null, `fault: ${faultType}`)
-      const verdict = await io.awaitTriage(join(runDir, `triage-${i}.json`), { timeoutMs: t.orchestrationMs, pollMs: t.pollMs, isAlive: debAlive, signal: deps.signal })
-      // Record the fingerprint on the triaged event so FUTURE runs match this occurrence (closes the loop).
-      store.recordEvent({ runId: run.id, type: 'fault-triaged', data: { fault: faultType, atom: atomIndex, disposition: verdict.disposition, mode: verdict.mode, summary: verdict.summary, fingerprint, occurrence } })
-      // REPAIR / ESCALATION (ADR-0016): on a cocoder-bug Deb may have edited files within her write-scope —
-      // a scoped fix (repair) and/or a tracked follow-up ticket (escalation). Gate-commit ONLY her in-scope
-      // edits — anything outside (incl. target-repo product code) is held back + surfaced (ADR-0007), never
-      // silently committed. Deb never rescues the run; the commit lands on the run branch for the founder.
-      let gate: CommitGateResult | null = null
-      const isRepair = verdict.disposition === 'cocoder-bug' && verdict.mode === 'repair'
-      const isTicket = verdict.escalation === 'ticket' || verdict.escalation === 'recommend-priority'
-      if (deb && deb.writeScope.length > 0 && (isRepair || isTicket)) {
-        const kind = isTicket ? 'escalation' : 'repair'
-        const message = `deb-${kind}: ${faultType}${atomIndex !== null ? ` (atom ${atomIndex})` : ''} occurrence ${occurrence}${verdict.ticketId ? ` → ticket ${verdict.ticketId}` : ''} via CoCoder run ${runReference}`
-        const commitScope = withPortableRunHistoryScope(deb.writeScope)
-        if (verdict.filesChanged && verdict.filesChanged.length > 0) {
-          // HEAD/self-commit is detected BEFORE the commit (commitFiles itself moves HEAD); the standard
-          // success-path recording (agent-self-commit + commit_link + commit) is then centralized in the
-          // helper (WS3.3). selfCommit is CALLER context — a plain commitFiles receipt carries none.
-          const headNow = await git.headSha(worktreePath)
-          const selfCommittedRepair = headNow !== headBeforeRepair
-          const { inScope, outOfScope } = partitionByScope(verdict.filesChanged, commitScope)
-          const receipt = await commitFiles(git, worktreePath, inScope, message, COCODER_GOVERNANCE_AUTHOR)
-          recordSuccessfulCommit(store, { runId: run.id, workItemId: null, message, committedSha: receipt.committedSha, committedFiles: receipt.committedFiles, selfCommit: selfCommittedRepair ? { headBefore: headBeforeRepair, headNow } : null })
-          if (receipt.error) store.recordEvent({ runId: run.id, type: 'deb-repair-commit-failed', data: { fault: faultType, error: receipt.error, files: inScope } })
-          if (outOfScope.length > 0) store.recordEvent({ runId: run.id, type: 'deb-repair-out-of-scope-held', data: { files: outOfScope } })
-          // The manual deb-repair path and the gate now return the SAME shape (CommitGateResult =
-          // CommitReceipt + selfCommitted), so this is no longer a hand-conversion between two shapes:
-          // spread the spine receipt, add gate-only selfCommitted, and surface the HELD-BACK out-of-scope
-          // files in `outOfLane` (commitFiles partitions nothing, so its receipt.outOfLane is []).
-          gate = { ...receipt, outOfLane: outOfScope, selfCommitted: selfCommittedRepair }
-        } else {
-          gate = await runCommitGate({
-            git,
-            store,
-            cwd: worktreePath,
-            runId: run.id,
-            workItemId: null,
-            scope: commitScope,
-            message,
-            headBefore: headBeforeRepair,
-            auditWriteBoundary,
-          })
-        }
-        store.recordEvent({ runId: run.id, type: 'deb-repair', data: { fault: faultType, atom: atomIndex, occurrence, escalation: verdict.escalation ?? null, ticketId: verdict.ticketId ?? null, committedSha: gate.committedSha, files: gate.committedFiles, outOfScope: gate.outOfLane } })
-      }
-      await io.writeDisposition(runDir, i, renderDisposition(faultType, atomIndex, verdict, gate, occurrence))
-    } catch (err) {
-      if (isStopRequestedError(err)) throw err
-      store.recordEvent({ runId: run.id, type: 'triage-skipped', data: { fault: faultType, reason: err instanceof Error ? err.message : String(err) } })
-    }
+  // The fault/triage funnel + its disposition renderer now live in ./triage.ts (WS5.2). runRun threads
+  // its captured state in as an explicit deps record; faultSeq stays a runRun-local mutated through a
+  // nextFaultSeq() accessor so the monotonic fault counter survives the extraction. `fail` (below) and
+  // the wrapup-format-invalid / max-consecutive-rejects paths all call the extracted triageFault(deps,…).
+  const triageDeps: TriageDeps = {
+    debRef,
+    deb,
+    nextFaultSeq: () => faultSeq++,
+    refreshStatus,
+    store,
+    workspace,
+    run,
+    git,
+    worktreePath,
+    io,
+    runDir,
+    sessionHost,
+    debAlive,
+    auditWriteBoundary,
+    runReference,
+    runBranch,
+    withPortableRunHistoryScope,
+    timeouts: t,
+    signal: deps.signal,
   }
 
   let activeAtom: AgentStepActiveAtom | null = null
@@ -1445,7 +1365,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           pickup = formatInvalidFounderCloseoutFallback({ priorityId: priority.id, ticketId: input.ticketId ?? null, target: closeoutTarget, atoms: n, commits: committedShas, issues: outputValidation.issues, contract })
           terminalStatus = 'failed'
           ticketCloseDecision = 'none'
-          await triageFault('wrapup-format-invalid', n, `wrap-up Play "${input.wrapPlay.id}" produced malformed founder closeout: ${outputValidation.issues.join('; ')}`)
+          await triageFault(triageDeps, 'wrapup-format-invalid', n, `wrap-up Play "${input.wrapPlay.id}" produced malformed founder closeout: ${outputValidation.issues.join('; ')}`)
         } else {
           pickup = candidatePickup
           if (outputValidation?.founderCloseoutContract && pickup) {
@@ -1554,7 +1474,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
     // Deterministic backstops — the bound is the spine's; the "enough" judgment stays Oscar's.
     if (step.kind === 'verified' && consecutiveRejects >= limits.maxConsecutiveRejects) {
-      await triageFault('max-consecutive-rejects', atomIndex, step.reason ?? 'repeated rejections') // Deb triages the stuck-loop
+      await triageFault(triageDeps, 'max-consecutive-rejects', atomIndex, step.reason ?? 'repeated rejections') // Deb triages the stuck-loop
       pickup = `Run stopped: ${consecutiveRejects} atoms rejected in a row (last: ${step.reason ?? 'no reason'}). Re-scope the work and start fresh.`
       store.recordEvent({ runId: run.id, type: 'wrapup', data: { atoms: n, forced: true, reason: 'max-consecutive-rejects' } })
       break
