@@ -50,11 +50,18 @@ Each workstream is independently shippable, tests-first, and ends green + commit
   derive from the same events and provably agree (regression test asserts agreement after each terminal
   status).
 
-- **WS2 — Finish terminal de-scrape (small).** Audit every `readScreen`/frame consumer (`monitor.ts`,
-  `agent-step.ts`, the Deb watcher, the Oscar nudge watchdog). The terminal may drive ONLY liveness and
-  idle-streak nudging; no semantic verdict may be inferred from frame text. Any remaining semantic signal
-  becomes a structured artifact (the blocker marker and loop-ledger are the precedents). Done-when: a
-  test proves no terminal frame content can produce a fault or a state transition.
+- **WS2 — Introduce/standardize the structured agent→runner progress channel (small).** Not just "stop
+  scraping" — give every semantic signal a structured carrier so the terminal can stop being one. Audit
+  every `readScreen`/frame consumer (`monitor.ts`, `agent-step.ts`, the Deb watcher, the Oscar nudge
+  watchdog) and partition what each reads into two kinds: liveness/idle (legitimate) and semantic verdict
+  (must migrate). The end state: the terminal is a DISPLAY surface plus a liveness/idle HEARTBEAT only —
+  every SEMANTIC signal (done, blocked, progress) travels as a structured artifact the agent emits and the
+  runner reads, never as frame text the runner interprets. The WS0 done/blocked markers
+  (`<<<COCODER-ATOM-N-BLOCKED: reason>>>`, the done sentinel) and the loop-ledger are the precedents to
+  extend; a missing channel (e.g. mid-atom progress) is ADDED as a marker, not inferred from the screen.
+  Done-when: a test proves no terminal frame content can produce a fault or a state transition; AND any
+  semantic signal still read off the screen has been migrated to a structured artifact — never replaced by
+  a new screen-reading heuristic.
 
 - **WS3 — One commit spine (medium).** Collapse the parallel commit paths — the in-run gate, Deb's
   inlined repair/escalation commit in `triageFault`, oscar-support, run-history — onto a single spine
@@ -67,6 +74,15 @@ Each workstream is independently shippable, tests-first, and ends green + commit
   assertions (exact prompt strings, exact event orderings) into behavioral contracts that assert WHAT
   state results, not WHICH string produced it. Done-when: the runner suite no longer fails on
   cosmetic/structural edits that preserve behavior (spot-check by a no-op rename).
+  - **De-flake the Deb-watcher stall family (named deliverable).** Make the recurring timer-race flakes
+    deterministic — at least `Deb-backed watchdog nudges an idle Oscar`, `writes a live status feed so Deb
+    can report concrete run state`, and `actionable stall Deb watch writes current lastDispatch before
+    prompting Deb` (the family flagged since WS0: passes in isolation, fails intermittently under full
+    parallel load). Root cause: they exercise timer-based stall logic against REAL timers while the
+    orchestration code already injects its clock (`now`) — the tests just don't pin it, so stall timing
+    races the suite's load. Done-when: that family runs deterministically (inject/pin the clock so stall
+    timing is fixed, not wall-clock dependent) and the full suite is green across repeated full-parallel
+    runs — restoring "green at every commit" as a clean signal instead of a known-noisy one.
 
 - **WS5 — Split `runner.ts` (highest risk; ONLY after WS4).** Extract: the atom-loop driver; the
   fault/triage funnel; the terminal-state projection reducer (from WS1); and the founder-closeout

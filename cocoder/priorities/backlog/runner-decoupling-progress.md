@@ -29,6 +29,18 @@ next session. Do not start the following chunk in this session.
 
 ---
 
+## 2026-06-24 — Spec amendment (no change to next step; WS1.5 still next)
+
+- Amended `runner-decoupling-refactor.md` (commit follows): **WS2** sharpened from "stop scraping" to
+  "introduce/standardize a structured agent→runner progress channel" — terminal = DISPLAY + liveness/idle
+  HEARTBEAT only, every semantic signal (done/blocked/progress) travels as a structured artifact (WS0
+  markers + loop-ledger are the precedents); done-when keeps "no frame content can fault/transition" AND
+  adds "any remaining screen-read semantic signal is migrated to an artifact, not a new heuristic". **WS4**
+  gained a named deliverable: de-flake the Deb-watcher stall family (`Deb-backed watchdog nudges an idle
+  Oscar`, `writes a live status feed …`, `actionable stall Deb watch …`) by injecting/pinning the clock
+  (`now`) so timer-based stall logic is deterministic; done-when the family is green across repeated
+  full-parallel runs. The immediate next step is UNCHANGED — WS1.5, the surface-agreement closeout test.
+
 ## 2026-06-24 — WS1, step 4 (re-base record.md / renderRunRecord on the event log)
 
 - **Workstream/step:** WS1 (Surface unification), step 4 — make `record.ts` / `renderRunRecord`'s only
