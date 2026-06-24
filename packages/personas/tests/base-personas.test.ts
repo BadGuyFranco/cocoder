@@ -21,11 +21,13 @@ const frontmatterList = (text: string, key: string): string[] => {
 
 const singleLine = (text: string): string => text.replace(/\s+/g, ' ')
 
-const founderCloseoutContract = (text: string): { sections: string[]; finalLine: string } => {
-  const fence = text.match(/```(?:[a-zA-Z0-9_-]+)?\n([\s\S]*?)```/)
-  if (!fence?.[1]) throw new Error('wrap-up Play is missing a fenced founder closeout contract')
-  const sections = fence[1].match(/\*\*[^*\n]+?\*\*/g) ?? []
-  const finalLine = fence[1]
+const fencedBlocks = (text: string): string[] => [...text.matchAll(/```(?:[a-zA-Z0-9_-]+)?\n([\s\S]*?)```/g)].map((match) => match[1] ?? '')
+
+const founderCloseoutContract = (text: string): { block: string; sections: string[]; finalLine: string } => {
+  const block = fencedBlocks(text)[0]
+  if (!block) throw new Error('wrap-up Play is missing a fenced founder closeout contract')
+  const sections = block.match(/\*\*[^*\n]+?\*\*/g) ?? []
+  const finalLine = block
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
@@ -33,7 +35,16 @@ const founderCloseoutContract = (text: string): { sections: string[]; finalLine:
   if (sections.length < 10 || !finalLine || finalLine.startsWith('**')) {
     throw new Error('wrap-up Play founder closeout contract is malformed')
   }
-  return { sections: sections.slice(0, 10), finalLine }
+  return { block, sections: sections.slice(0, 10), finalLine }
+}
+
+const founderCloseoutSection = (block: string, sections: string[], section: string): string => {
+  const start = block.indexOf(section)
+  if (start < 0) throw new Error(`wrap-up Play founder closeout contract is missing ${section}`)
+  const contentStart = start + section.length
+  const nextStarts = sections.map((candidate) => block.indexOf(candidate, contentStart)).filter((index) => index >= 0)
+  const contentEnd = nextStarts.length > 0 ? Math.min(...nextStarts) : block.length
+  return block.slice(contentStart, contentEnd).trim()
 }
 
 describe('basePersonasDir', () => {
@@ -262,6 +273,7 @@ describe('basePlaysDir', () => {
     const text = readFileSync(join(basePlaysDir(), 'wrap-up.md'), 'utf8')
     const contract = founderCloseoutContract(text)
 
+    expect(fencedBlocks(text)).toHaveLength(1)
     expect(contract.sections).toHaveLength(10)
     for (const section of contract.sections) {
       expect(text).toContain(section)
@@ -270,6 +282,24 @@ describe('basePlaysDir', () => {
       expect(text.indexOf(contract.sections[i])).toBeGreaterThan(text.indexOf(contract.sections[i - 1]))
     }
     expect(text).toContain(`End with exactly \`${contract.finalLine}\``)
+  })
+
+  test('wrap-up Play pins target-aware Run Status vocabulary in the single contract', () => {
+    const text = readFileSync(join(basePlaysDir(), 'wrap-up.md'), 'utf8')
+    const contract = founderCloseoutContract(text)
+    const runStatus = contract.sections.find((section) => section.replaceAll('*', '') === 'Run Status')
+    if (!runStatus) throw new Error('wrap-up Play founder closeout contract is missing Run Status')
+
+    const content = founderCloseoutSection(contract.block, contract.sections, runStatus)
+
+    expect([...contract.block.matchAll(/^\*\*Run Status\*\*$/gm)]).toHaveLength(1)
+    expect(content).toContain('Priority-launched run: continue | blocked | archive ready.')
+    expect(content).toContain('Ticket-launched run: needs another run | closed | needs closing | blocked.')
+    expect(content).toContain('`archive ready` applies only to priority-launched runs')
+    expect(content).toContain('`closed` is only for a verified-complete ticket fix closed through `closeTicket()`')
+    expect(content).toContain('Use `needs closing` only with a non-None Founder Decision Needed')
+    expect(content).toContain('Never leave a verified-fixed ticket implicitly waiting for teardown')
+    expect(content).toContain('Do not map ticket `closed` onto priority `archive ready`')
   })
 
   // Historical ADR-0022 proof lineage: Oscar must defer to the wrap-up Play's contract, not restate one.

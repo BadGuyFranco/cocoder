@@ -44,8 +44,9 @@ say "kill" / "tear down" afterward.
 Yes | No — one brief reason.
 
 **Run Status**
-continue | blocked | archive ready.
-This is the single lifecycle verdict. `archive ready` means ask for founder archive confirmation; never self-archive.
+Priority-launched run: continue | blocked | archive ready.
+Ticket-launched run: needs another run | closed | needs closing | blocked.
+This is the single lifecycle verdict for the launch target. `archive ready` applies only to priority-launched runs and means ask for founder archive confirmation; never self-archive. For ticket-launched runs, `closed` is only for a verified-complete ticket fix closed through `closeTicket()` at the wrap boundary, which prunes `order.json` and stamps a `## Resolution`; it is the ticket analogue of a completed run. Use `needs closing` only with a non-None Founder Decision Needed carrying the explicit close decision, when completion is not proven or founder judgment is required. Never leave a verified-fixed ticket implicitly waiting for teardown: close it as `closed` or ask as `needs closing`. Do not map ticket `closed` onto priority `archive ready`; they are distinct.
 
 **What Changed**
 Plain English summary of what changed this run. Maximum: one short sentence, 180 characters total. Do not include atom history, commit SHAs, test-matrix counts, command transcripts, implementation-file inventories, push/remote status, or PR status.
@@ -57,7 +58,7 @@ Explain why Oscar stopped now instead of continuing in this same run. If Oscar m
 Up to 3 short bullets naming only required remaining gaps across product behavior, architecture, tests, documentation, founder decisions, and missing evidence. Write `Nothing obvious.` only if archive ready. Do not include optional work, percentage-complete claims, atom labels, implementation labels, or proof-matrix detail. Start each bullet with the missing founder-facing capability or proof, not a label. Forbidden openings include `Atom 3:`, `Item 2:`, `A3a:`, `UI 2/4:`, and bold label bullets like `**Proof harness:**`.
 
 **Founder Decision Needed**
-None. | The founder decisions that need to be made with discerned options and a recommendation, if any.
+None. | The founder decisions that need to be made with discerned options and a recommendation, if any. For ticket Run Status `needs closing`, carry the explicit close decision here; do not use `needs closing` with `None`.
 
 **Commit State**
 Do not claim final landing, push, remote, or PR status from your own judgment. Say commit status is supplied by the runner’s landing outcome in the delivered wrap-up.
