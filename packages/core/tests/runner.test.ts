@@ -610,30 +610,22 @@ describe('runRun (multi-atom loop)', () => {
     expect(types).toEqual(expect.arrayContaining(['run-start', 'spawn', 'delegation', 'builder-done', 'verify-pass', 'commit', 'wrapup', 'run-end']))
   })
 
-  test('refuses to dispatch a governance ADR atom to Bob when his write scope is packages only', async () => {
+  test('does not infer hard scope conflicts from directive prose', async () => {
     const store = openRunStore(':memory:')
     const task = 'Draft `cocoder/decisions/0040-oz-write-side-autonomy.md` as a proposed ADR.'
 
-    await expect(
-      runRun(
-        baseDeps({
-          store,
-          io: fakeIO({ directives: [delegate(task)], triage: { disposition: 'cocoder-bug', summary: 'scope mismatch reached runner dispatch', proposal: 'd' } }),
-        }),
-        { ...input, deb },
-      ),
-    ).rejects.toThrow(/cocoder\/decisions\/0040-oz-write-side-autonomy\.md/)
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([['packages/core/src/foo.ts']]),
+        io: fakeIO({ directives: [delegate(task), wrapup('done')] }),
+      }),
+      { ...input, deb },
+    )
 
-    const runId = store.listRuns()[0]!.id
-    const events = store.listEvents(runId)
-    expect(events.some((event) => event.type === 'builder-dispatch')).toBe(false)
-    expect(events.find((event) => event.type === 'builder-scope-conflict')?.data).toMatchObject({
-      atom: 0,
-      outOfScopePaths: ['cocoder/decisions/0040-oz-write-side-autonomy.md'],
-      scope: ['packages/**'],
-      owner: 'deb-triage',
-    })
-    expect(events.find((event) => event.type === 'triage-dispatch')?.data).toMatchObject({ fault: 'builder-scope-conflict', atom: 0 })
+    expect(result.status).toBe('completed')
+    expect(store.listEvents(result.runId).some((event) => event.type === 'builder-dispatch')).toBe(true)
+    expect(store.listEvents(result.runId).some((event) => event.type === 'builder-scope-conflict')).toBe(false)
   })
 
   test('refuses to dispatch declared governance writePaths outside Bob scope', async () => {

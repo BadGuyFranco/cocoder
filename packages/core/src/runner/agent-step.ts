@@ -5,7 +5,7 @@ import type { Directive } from './directive.js'
 import type { RunnerIO } from './io.js'
 import { readLoopLedger, type LoopLedgerEntry } from './loop-ledger.js'
 import { runMonitor } from './monitor.js'
-import { detectBuilderBlocker, detectDirectiveScopeConflict, type BuilderBlocker } from './blocker.js'
+import { detectBuilderBlocker, type BuilderBlocker } from './blocker.js'
 import type { BuilderDriver } from './builder-driver.js'
 import type { OscarDriver } from './oscar-driver.js'
 import { atomSentinel, buildBuilderDispatch, buildVerifyDispatch, commitMessage } from './prompts.js'
@@ -136,24 +136,6 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
     store.recordEvent({ runId, type: 'delegation', data: { workItemId: workItem.id, atom: atomIndex, task: directive.task } })
   } else {
     store.recordEvent({ runId, type: 'delegation-resumed', data: { workItemId: workItem.id, atom: atomIndex, task: workItem.task, park: resume?.park } })
-  }
-  const scopeConflict = detectDirectiveScopeConflict(directive.task, scope)
-  if (scopeConflict !== null) {
-    store.setWorkItemStatus(workItem.id, 'abandoned')
-    store.recordEvent({
-      runId,
-      type: 'builder-scope-conflict',
-      data: {
-        atom: atomIndex,
-        requiredPaths: scopeConflict.requiredPaths,
-        outOfScopePaths: scopeConflict.outOfScopePaths,
-        scope: scopeConflict.scope,
-        owner: 'deb-triage',
-        message: scopeConflict.message,
-      },
-    })
-    await refreshStatus('faulted', atomIndex, directive.task, scopeConflict.message)
-    return await fail('builder-scope-conflict', scopeConflict.message, atomIndex)
   }
   const headBefore = await git.headSha(worktreePath)
   setActiveAtom({ index: atomIndex, workItemId: workItem.id, headBefore })
