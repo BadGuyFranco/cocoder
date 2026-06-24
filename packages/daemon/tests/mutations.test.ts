@@ -871,6 +871,85 @@ describe('Oz mutations + lifecycle', () => {
     expect(audit).toContain('"ticketId":"0003"')
   })
 
+  test('POST /runs leaves a ticket open when wrap-up asks the founder before closing', async () => {
+    await writeTicketIndex(home)
+    await writeFile(join(home, 'cocoder', 'tickets', 'order.json'), `${JSON.stringify(['0003', '0004'], null, 2)}\n`)
+    const commits: GovernanceCommitCall[] = []
+    const decision = 'Yes — close ticket `0003` only after the founder confirms this fix is complete.'
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: recordingGovernanceGit(commits),
+      sessionHost: fakeHost(),
+      getAdapter: () => okAdapter,
+      io: fakeIO(),
+      runHeadless: async () => ({ exitCode: 0, output: validTicketFounderCloseout('needs closing', decision) }),
+    })
+
+    const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', ticketId: '0003' } })
+
+    expect(r.status).toBe(202)
+    const runId = String(r.json.runId)
+    let detail: Resp | null = null
+    for (let i = 0; i < 50; i++) {
+      detail = await call(oz, 'GET', `/runs/${runId}`)
+      if (detail.json.run.status !== 'running') break
+      await sleep(10)
+    }
+
+    const ticketDir = join(home, 'cocoder', 'tickets')
+    expect(detail?.json.run).toMatchObject({ id: runId, ticketId: '0003', status: 'awaiting-founder' })
+    expect(await exists(join(ticketDir, 'open', '0003-existing-open.md'))).toBe(true)
+    expect(await exists(join(ticketDir, 'closed', '0003-existing-open.md'))).toBe(false)
+    expect((await readTickets(ticketDir)).find((ticket) => ticket.id === '0003')).toMatchObject({ id: '0003', state: 'open', status: 'Open' })
+    const index = await readFile(join(ticketDir, 'INDEX.md'), 'utf8')
+    const openSection = index.slice(index.indexOf('## Open'), index.indexOf('## Recently Closed'))
+    expect(openSection).toContain('| [0003](./open/0003-existing-open.md) | Existing open | task |')
+    expect(JSON.parse(await readFile(join(ticketDir, 'order.json'), 'utf8'))).toEqual(['0003', '0004'])
+    expect(commits).not.toContainEqual(expect.objectContaining({ message: expect.stringContaining('close ticket 0003') }))
+    const delivery = await readFile(join(home, 'local', 'runs', runId, 'wrapup-delivery.md'), 'utf8')
+    expect(delivery).toContain(decision)
+    const audit = await readFile(join(home, 'local', 'oz-audit.log'), 'utf8')
+    expect(audit).toContain('"action":"ticket-close-deferred"')
+    expect(audit).toContain('"reason":"wrap requested founder close decision"')
+  })
+
+  test('POST /runs does not close a completed ticket run that needs another run', async () => {
+    await writeTicketIndex(home)
+    await writeFile(join(home, 'cocoder', 'tickets', 'order.json'), `${JSON.stringify(['0003', '0004'], null, 2)}\n`)
+    const commits: GovernanceCommitCall[] = []
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: recordingGovernanceGit(commits),
+      sessionHost: fakeHost(),
+      getAdapter: () => okAdapter,
+      io: fakeIO(),
+      runHeadless: async () => ({ exitCode: 0, output: validTicketFounderCloseout('needs another run') }),
+    })
+
+    const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', ticketId: '0003' } })
+
+    expect(r.status).toBe(202)
+    const runId = String(r.json.runId)
+    let detail: Resp | null = null
+    for (let i = 0; i < 50; i++) {
+      detail = await call(oz, 'GET', `/runs/${runId}`)
+      if (detail.json.run.status !== 'running') break
+      await sleep(10)
+    }
+
+    const ticketDir = join(home, 'cocoder', 'tickets')
+    expect(detail?.json.run).toMatchObject({ id: runId, ticketId: '0003', status: 'completed' })
+    expect(await exists(join(ticketDir, 'open', '0003-existing-open.md'))).toBe(true)
+    expect(await exists(join(ticketDir, 'closed', '0003-existing-open.md'))).toBe(false)
+    expect((await readTickets(ticketDir)).find((ticket) => ticket.id === '0003')).toMatchObject({ id: '0003', state: 'open', status: 'Open' })
+    expect(JSON.parse(await readFile(join(ticketDir, 'order.json'), 'utf8'))).toEqual(['0003', '0004'])
+    expect(commits).not.toContainEqual(expect.objectContaining({ message: expect.stringContaining('close ticket 0003') }))
+  })
+
   test('POST /runs reconciles stale ticket order when the ticket is already closed before completion', async () => {
     await writeTicketIndex(home)
     await writeFile(join(home, 'cocoder', 'tickets', 'order.json'), `${JSON.stringify(['0003', '0004'], null, 2)}\n`)

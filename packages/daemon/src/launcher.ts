@@ -422,9 +422,11 @@ export async function commitGovernance(ctx: OzContext, repoPath: string, files: 
 }
 
 async function closeTicketAfterSuccessfulRun(ctx: OzContext, workspacePath: string, ticketId: string, result: RunResult): Promise<void> {
-  if (result.status !== 'completed') return
-  const run = ctx.store.getRun(result.runId)
-  if (run?.status !== 'completed') return
+  if (result.ticketCloseDecision === 'ask') {
+    await appendAudit(ctx.cocoderHome, { action: 'ticket-close-deferred', ticketId, runId: result.runId, reason: 'wrap requested founder close decision' })
+    return
+  }
+  if (result.ticketCloseDecision !== 'close') return
   try {
     const close = await closeTicket({
       ticketsDir: ticketsDir(workspacePath),
