@@ -1209,7 +1209,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     if (gate) {
       if (gate.committedSha) lines.push(`Committed as \`${gate.committedSha}\` (files: ${gate.committedFiles.join(', ') || 'none'}) on branch \`${runBranch}\`. The run still fails — land it from that branch to bring the ${isTicket ? 'ticket' : 'repair'} to trunk.`, '')
       else lines.push('No in-scope changes were committed (nothing within Deb\'s write-scope changed).', '')
-      if (gate.outOfScope.length > 0) lines.push(`**Committed out of Deb's lane (flagged, NOT withheld):** ${gate.outOfScope.join(', ')}`, '')
+      if (gate.outOfScope.length > 0) lines.push(`**Outside Deb's repair lane:** ${gate.outOfScope.join(', ')}`, '')
     }
     if (v.disposition === 'repo-bug') lines.push('## For the founder', '', v.summary, '')
     return lines.join('\n')
@@ -1247,17 +1247,34 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       const isTicket = verdict.escalation === 'ticket' || verdict.escalation === 'recommend-priority'
       if (deb && deb.writeScope.length > 0 && (isRepair || isTicket)) {
         const kind = isTicket ? 'escalation' : 'repair'
-        gate = await runCommitGate({
-          git,
-          store,
-          cwd: worktreePath,
-          runId: run.id,
-          workItemId: null,
-          scope: withPortableRunHistoryScope(deb.writeScope),
-          message: `deb-${kind}: ${faultType}${atomIndex !== null ? ` (atom ${atomIndex})` : ''} occurrence ${occurrence}${verdict.ticketId ? ` → ticket ${verdict.ticketId}` : ''} via CoCoder run ${runReference}`,
-          headBefore: headBeforeRepair,
-          auditWriteBoundary,
-        })
+        const message = `deb-${kind}: ${faultType}${atomIndex !== null ? ` (atom ${atomIndex})` : ''} occurrence ${occurrence}${verdict.ticketId ? ` → ticket ${verdict.ticketId}` : ''} via CoCoder run ${runReference}`
+        const commitScope = withPortableRunHistoryScope(deb.writeScope)
+        if (verdict.filesChanged && verdict.filesChanged.length > 0) {
+          const headNow = await git.headSha(worktreePath)
+          const selfCommittedRepair = headNow !== headBeforeRepair
+          if (selfCommittedRepair) store.recordEvent({ runId: run.id, type: 'agent-self-commit', data: { headBefore: headBeforeRepair, headNow } })
+          const { inScope, outOfScope } = partitionByScope(verdict.filesChanged, commitScope)
+          const receipt = await commitFiles(git, worktreePath, inScope, message, COCODER_GOVERNANCE_AUTHOR)
+          if (receipt.committedSha) {
+            store.recordCommitLink({ runId: run.id, workItemId: null, commitSha: receipt.committedSha, message, files: receipt.committedFiles })
+            store.recordEvent({ runId: run.id, type: 'commit', data: { sha: receipt.committedSha, files: receipt.committedFiles } })
+          }
+          if (receipt.error) store.recordEvent({ runId: run.id, type: 'deb-repair-commit-failed', data: { fault: faultType, error: receipt.error, files: inScope } })
+          if (outOfScope.length > 0) store.recordEvent({ runId: run.id, type: 'deb-repair-out-of-scope-held', data: { files: outOfScope } })
+          gate = { committedSha: receipt.committedSha, committedFiles: receipt.committedFiles, outOfScope, selfCommitted: selfCommittedRepair }
+        } else {
+          gate = await runCommitGate({
+            git,
+            store,
+            cwd: worktreePath,
+            runId: run.id,
+            workItemId: null,
+            scope: commitScope,
+            message,
+            headBefore: headBeforeRepair,
+            auditWriteBoundary,
+          })
+        }
         store.recordEvent({ runId: run.id, type: 'deb-repair', data: { fault: faultType, atom: atomIndex, occurrence, escalation: verdict.escalation ?? null, ticketId: verdict.ticketId ?? null, committedSha: gate.committedSha, files: gate.committedFiles, outOfScope: gate.outOfScope } })
       }
       await io.writeDisposition(runDir, i, renderDisposition(faultType, atomIndex, verdict, gate, occurrence))

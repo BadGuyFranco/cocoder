@@ -3514,7 +3514,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(nudgeEvents.find((e) => (e.data as { source?: string }).source === 'deb')?.data).toMatchObject({ text: debReq.message, seq: 1 })
   })
 
-  test('repair mode commits everything Deb touched; out-of-lane product code is flagged, not withheld (scope advisory)', async () => {
+  test('repair mode commits only Deb-declared repair files when filesChanged is present', async () => {
     const store = openRunStore(':memory:')
     const debRepair = persona({ id: 'deb', cli: 'claude', writeScope: ['cocoder/**'] })
     const io: RunnerIO = {
@@ -3526,10 +3526,11 @@ describe('runRun (multi-atom loop)', () => {
         throw new Error('no valid directive within 1ms') // the fault Deb triages + repairs
       },
     }
-    // Deb edited one in-scope CoCoder file and (out of scope) one product file during her repair. The tree
-    // is CLEAN at launch (first changedFiles call = the start-of-run guard/snapshot); the edits appear once
-    // the repair runs.
+    // Deb edited one in-scope CoCoder file while an unrelated product file is dirty. The tree is CLEAN at
+    // launch (first changedFiles call = the start-of-run guard/snapshot); the unrelated dirt appears once
+    // the repair runs, but Deb's `filesChanged` list is the repair commit pathspec.
     let repairStarted = false
+    const commits: string[][] = []
     const git: Git = {
       ...worktreeStubs,
       async headSha() {
@@ -3542,7 +3543,8 @@ describe('runRun (multi-atom loop)', () => {
         }
         return ['cocoder/priorities/x.md', 'packages/app/product.ts']
       },
-      async addAndCommit() {
+      async addAndCommit(_cwd, files) {
+        commits.push([...files])
         return 'sha-repair'
       },
       async restoreToHead() {},
@@ -3554,13 +3556,10 @@ describe('runRun (multi-atom loop)', () => {
     const runId = store.listRuns()[0]!.id
     const events = store.listEvents(runId)
     const repair = events.find((e) => e.type === 'deb-repair')
-    expect(repair?.data).toMatchObject({ committedSha: 'sha-repair', files: ['cocoder/priorities/x.md', 'packages/app/product.ts'], outOfScope: ['packages/app/product.ts'] })
-    // The commit-gate committed BOTH files and flagged the out-of-lane one (scope advisory, never withheld).
-    expect((events.find((e) => e.type === 'out-of-scope-committed')?.data as { files?: string[] })?.files).toEqual(['packages/app/product.ts'])
-    expect(store.listCommitLinks(runId).filter((c) => !c.message.startsWith('run-history: ')).flatMap((c) => c.files)).toEqual([
-      'cocoder/priorities/x.md',
-      'packages/app/product.ts',
-    ])
+    expect(repair?.data).toMatchObject({ committedSha: 'sha-repair', files: ['cocoder/priorities/x.md'], outOfScope: [] })
+    expect(commits).toContainEqual(['cocoder/priorities/x.md'])
+    expect(events.find((e) => e.type === 'out-of-scope-committed')).toBeUndefined()
+    expect(store.listCommitLinks(runId).filter((c) => !c.message.startsWith('run-history: ')).flatMap((c) => c.files)).toEqual(['cocoder/priorities/x.md'])
     expect(store.getRun(runId)?.status).toBe('failed') // a repair never rescues the run
   })
 
