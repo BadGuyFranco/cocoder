@@ -29,6 +29,100 @@ next session. Do not start the following chunk in this session.
 
 ---
 
+## 2026-06-24 — WS3, step 1 (route the in-run gate onto the spine — first spine EDIT)
+
+- **Workstream/step:** WS3 (One commit spine), step 1 — the FIRST spine edit. Route **P1 `runCommitGate`
+  (`commit-gate/gate.ts`)** off the raw primitive: replaced the direct `git.addAndCommit(cwd, changed,
+  message)` (`gate.ts:81`) with `commitFiles(git, cwd, changed, message)` — the spine's CONTROLLED-LIST
+  commit. This removes the **last IN-RUN raw-primitive caller**; P1, P3 (oscar-support), the deb-repair
+  no-files fallback, and wrap-up now all sit on the spine. The only remaining raw `git.addAndCommit` caller
+  in source is `daemon/src/routes.ts:434` (daemon-side, out of this chunk).
+- **Decision (commitFiles, NOT commitScoped — corrects the prior ledger's exact-next-step):** the WS3 step-0
+  entry below proposed `commitScoped`. That is WRONG for the gate: `commitScoped` re-reads
+  `git.changedFiles` internally (`workspace-commit.ts:87`), which (a) DOUBLE-reads per gate call and desyncs
+  the suite's per-call scripted-git fakes (e.g. `runner.test.ts:3688`'s `changedCalls`-indexed fake → red),
+  and (b) would commit its OWN second read instead of the `changed` the gate already read/audited/recorded
+  (`gate.ts:66`) — a behavior change. The gate AUTHORED the list, so `commitFiles` (explicit list, no second
+  read) is the behavior-preserving, contract-correct primitive. Single-read preserved.
+- **Commit:** `2eb6def` — "commit-gate(spine): WS3.1 — route the in-run gate onto commitFiles (last in-run
+  raw primitive removed)". (Ledger entry committed separately, matching WS1.3/1.4/2.1.)
+- **Files:** `packages/core/src/commit-gate/gate.ts` (import `commitFiles`; swap `addAndCommit` → spine + a
+  null-sha re-throw), `packages/core/tests/commit-gate.test.ts` (+1 contract pin). Both are mine — neither is
+  in the eslint foreign list, so `git add` staged them directly; no surgical apply.
+- **Map (owner → primitive → receipt → who records the store events):**
+  - *Source of truth / primitive moved:* `runCommitGate` (`gate.ts:57`). `changed` is read ONCE at
+    `gate.ts:66` and partitioned for the advisory out-of-lane flag (`:77`). The commit at `:81` is the only
+    thing that moved onto the spine; the `changed` read, `partitionByScope` flag, ALL internal event
+    recording (`agent-self-commit`/`commit`/`recordCommitLink`/`out-of-scope-committed`), and the
+    `auditWriteBoundary` hard-refuse are byte-unchanged.
+  - *Spine target:* `commitFiles(git, repo, files, msg, author?)` (`workspace-commit.ts:60`) — commits the
+    explicit caller list, NO `changedFiles` read, returns `CommitReceipt {committed, committedSha,
+    committedFiles, outOfLane:[], error}`. The gate keeps emitting its own `CommitGateResult` (receipt SHAPES
+    not yet unified — that is a later WS3 chunk).
+  - *Consumers of `runCommitGate` (unchanged):* `agent-step.ts:382` (per-atom verified commit),
+    `runner.ts:1572` (P3 oscar-support via `commitOscarSupport`), `runner.ts:1822` (wrap-up Play),
+    `runner.ts:1267` (deb-repair no-files-changed fallback).
+  - *Pinning tests (the behavior guard):* `commit-gate.test.ts` `describe('runCommitGate')` (advisory
+    commit-all, out-of-lane flag, self-commit detect, audit-boundary refuse); `runner-direct.test.ts:505`
+    (real-git advisory out-of-lane); `runner.test.ts:3688` + `:3819` (run_231 sweep-guard, per-call scripted
+    `changedFiles`).
+- **The one behavioral edge + how it is preserved:** `commitFiles` SURFACES a commit failure in the receipt
+  (`error`, `committedSha:null`) instead of throwing, whereas the old `await git.addAndCommit` rejected. To
+  preserve the gate's throw-on-failure contract, the swap re-throws on a null sha
+  (`if (receipt.committedSha === null) throw new Error(receipt.error ?? …)`) BEFORE recording the commit link
+  — so a failed commit never records a phantom link/`commit` event with a null sha. (`changed` is non-empty
+  inside the block, so null sha ⟺ failure; the `?? 'spine returned no sha'` fallback is unreachable but
+  satisfies the type.)
+- **Typecheck note (caught + fixed):** the first cut wrote `if (receipt.error !== null) throw` then
+  `committedSha = receipt.committedSha`; TS could not narrow `committedSha` to non-null for
+  `recordCommitLink({commitSha})` (the old `addAndCommit` returned `string` directly, narrowing inside the
+  `if`). Re-throwing on `receipt.committedSha === null` narrows the success path to `string`. Core + root
+  typecheck clean after.
+- **New test (the contract pin):** `commit-gate.test.ts` — "surfaces a spine commit failure by rejecting — no
+  phantom commit link or commit event (WS3.1)": a fake git whose `addAndCommit` throws → `runCommitGate`
+  rejects with the git message AND records no commit link / `commit` event. GREEN before and after the swap
+  by design (the old code threw directly; the swap routes through the spine's error receipt + re-throw) — its
+  value is regression teeth that the spine's never-swallow contract did not silently turn a commit failure
+  into a phantom null-sha commit. Not red→green (like the WS1.5/WS2.1 pins).
+- **Why no observed behavior shifts:** `commitFiles` calls `git.addAndCommit(cwd, changed, message)` with the
+  EXACT list and message the gate passed before; the receipt's `committedSha` is the same sha; the events,
+  out-of-lane flag, and self-commit detection are untouched. A fake git cannot distinguish a direct call from
+  a `commitFiles` call (both invoke `addAndCommit`), which is why a "reachable only via the spine" delegation
+  test is not meaningful here (an explicit pin would have to spy on the `commitFiles` export).
+- **Tests/results:** `pnpm --filter @cocoder/core test commit-gate` → 20 passed (19 + 1 new); advisory-scope
+  `runner-direct -t "out-of-scope"` → 2 passed; run_231 `runner -t "deb-repair commit cannot sweep"` → 1
+  passed; `pnpm --filter @cocoder/core test` → **577 passed** (was 576; +1 new); `pnpm --filter @cocoder/core
+  typecheck` → clean; root `pnpm typecheck` → clean (7 pkgs); `node scripts/check-topology.mjs` → passed
+  (same 2 pre-existing daemon test-helper warnings). Root `pnpm test`: ALL packages green this run (personas
+  29, core 577, adapters 24, session-hosts 18, ui 161, cli 9, daemon 345) — the known Deb-watcher timer-race
+  flake family did not trip.
+- **Residual risk:** the two receipt SHAPES still coexist — the gate emits `CommitGateResult`, the spine
+  returns `CommitReceipt`, and P2 still hand-converts one to the other (`runner.ts:1265`); P2/P4/P5 still
+  hand-roll their store-event recording around `commitFiles` (three failure conventions). Those are the
+  REMAINING WS3 work (next step below). `daemon/src/routes.ts:434` is still a raw `git.addAndCommit` caller
+  (daemon-side, explicitly out of WS3's named scope). This chunk did NOT touch the Deb watcher, so the known
+  Deb-watcher timer flake does not gate it — but BEFORE any later WS3 chunk that CHANGES the Deb watcher, do
+  the WS4 "de-flake the Deb-watcher stall family" deliverable first (it lives in that exact code). The
+  unrelated eslint-adoption dirt (`eslint.config.mjs`, `run.ts`, `read-claims.ts`, `p3-action.ts`,
+  `frontmatter.ts`, `runner.ts`'s `SessionRef` import hunk, `oz-host.ts`, `proof-daemon-reload.mjs`,
+  `tsconfig.eslint.json`) was preserved, NOT committed.
+- **Exact next step (WS3, step 2 — unify the two receipt shapes, then centralize the hand-rolled recording):**
+  Now that every commit (in-run + daemon-launcher) funnels through the spine except `routes.ts:434`, collapse
+  the DUPLICATION the step-0 map named: (a) **unify the receipt shapes** — make `runCommitGate` return (or
+  internally carry) the spine's `CommitReceipt` shape instead of its bespoke `CommitGateResult`
+  (`outOfScope`→`outOfLane`, add `committed`/`error`, decide `selfCommitted`'s home), and delete P2's
+  hand-conversion at `runner.ts:1265`; update `absorbGateResult` (`runner.ts:1531`) and its callers
+  accordingly. Then (b) **centralize the hand-rolled event recording** — P2 (`runner.ts:1256-64`) and P4
+  (`runner.ts:1648-49`) hand-roll the `recordCommitLink`+`commit`(+`agent-self-commit`) that P1 records
+  INSIDE the gate; P5 (`runner.ts:893,903`) hand-rolls a different set with a THIRD failure convention
+  (throw `DirtyWorkingTreeError`). Introduce ONE recording helper that takes a spine receipt + run/workItem
+  context and records the standard event set, so P1/P2/P4/P5 stop each rolling their own. Keep ADDITIVE/
+  behavior-preserving (no surface shift); keep `runner.test.ts:3688` + `:3819` green; the `inScope`-only deb
+  repair partition (`runner.ts:1257-58`) MUST survive. Map owners/emitters/consumers/tests first (re-grep
+  `addAndCommit`/`commitFiles`/`commitScoped`/`runCommitGate`/`absorbGateResult`); implement tests-first;
+  verify with the full command set. Finish the spine with `routes.ts:434` as the last raw-primitive removal
+  (daemon package). NOTE: if any of this touches the Deb watcher, do WS4's de-flake first.
+
 ## 2026-06-24 — WS2 CLOSED + WS3 step 0 (commit-spine inventory — MAP ONLY, no source edit)
 
 - **Decision (the close/continue call WS2.1 handed me):** **WS2 is CLOSED.** WS2.1's partition map proves the
