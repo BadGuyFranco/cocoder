@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-23 — **ticket-fix-0044: no-op relaunch — verified closed, order.json queue gap — archive-candidate (run_69/run_213)**
+
+**Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** ticket-fix / [0044](./tickets/closed/0044-deb-nudge-fabricated-out-of-scope-event.md) | **Run:** run_213 (display 69)
+**Outcomes:**
+- **No build atoms delegated.** Ticket [0044](./tickets/closed/0044-deb-nudge-fabricated-out-of-scope-event.md) was already Closed (2026-06-23) before launch; fix landed in Deb-repair commits `2796bb5` + `8977f77`.
+- **Acceptance re-verified.** Runner-owned Deb nudge gate rejects fabricated feed-event citations (`deb-nudge-rejected`); regression test green; full `@cocoder/core` suite 507/507.
+- **Root cause — ticket queue head stale.** `cocoder/tickets/order.json` still lists `0044` first (`["0044","0043",…]`); run-selection picked the closed ticket. Close lifecycle in [`tickets/AGENTS.md`](./tickets/AGENTS.md) has no step to deregister from `order.json` (close-side counterpart of ticket [0034](./tickets/open/0034-priority-creation-must-auto-register-order-json.md) create-side gap for priorities).
+- **Disposition: `archive-candidate`.** Ticket objective met; no remaining build work on 0044. Founder decision pending on immediate queue deregistration vs routing systemic fix into 0034.
+**Next:** Founder approve removing `0044` from `cocoder/tickets/order.json` now (support edit on this run) and route close-side de-registration into ticket `0034`; then launch ticket `0043`.
+
 ## 2026-06-23 — **oz-autonomy: write layer complete — archive-candidate (run_68/run_212)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [oz-autonomy](./priorities/oz-autonomy.md) | **Run:** run_212 (display 68)
