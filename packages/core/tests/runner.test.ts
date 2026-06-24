@@ -700,6 +700,28 @@ describe('runRun (multi-atom loop)', () => {
     expect(store.listEvents(result.runId).some((event) => event.type === 'builder-scope-conflict')).toBe(false)
   })
 
+  test('does not treat file-shorthand prose as required write paths', async () => {
+    const store = openRunStore(':memory:')
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([['package.json', 'pnpm-lock.yaml', 'packages/core/src/foo.ts']]),
+        io: fakeIO({ directives: [delegate('Write scope: repo-root config + package.json/lockfile + any source files you fix.'), wrapup('done')] }),
+      }),
+      {
+        ...input,
+        bob: {
+          ...bob,
+          writeScope: ['packages/**', 'package.json', 'pnpm-lock.yaml'],
+        },
+      },
+    )
+
+    expect(result.status).toBe('completed')
+    expect(store.listEvents(result.runId).some((event) => event.type === 'builder-dispatch')).toBe(true)
+    expect(store.listEvents(result.runId).some((event) => event.type === 'builder-scope-conflict')).toBe(false)
+  })
+
   test('does not treat reference paths and ignore globs as required writes', async () => {
     const store = openRunStore(':memory:')
     const task = [
