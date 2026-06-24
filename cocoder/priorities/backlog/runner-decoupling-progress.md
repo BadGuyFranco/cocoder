@@ -29,6 +29,108 @@ next session. Do not start the following chunk in this session.
 
 ---
 
+## 2026-06-24 — WS2 CLOSED + WS3 step 0 (commit-spine inventory — MAP ONLY, no source edit)
+
+- **Decision (the close/continue call WS2.1 handed me):** **WS2 is CLOSED.** WS2.1's partition map proves the
+  terminal is DISPLAY + liveness/idle heartbeat + sanctioned agent-formed markers only (every frame-content
+  read is category-A idle-streak or category-B whole-line marker; NO category-C prose/heuristic inference
+  remains — WS0/`bca1b27` removed the only one). The done-when's "no frame content can fault/transition" is
+  PINNED by `ws2-prose-inert.test.ts`; its "migrate any remaining screen-read semantic signal" half is
+  vacuously met (none remains). Per the sharpened spec + this session's prompt, I did NOT invent a mid-atom
+  progress channel — adding a carrier nothing consumes is a FEATURE needing its own ADR, not
+  behavior-preserving decoupling. No code changed to close WS2; the audit + pin already landed it.
+- **Workstream/step:** WS3 (One commit spine), step 0 — the protocol-mandated **map before editing**. This
+  session is INVENTORY ONLY: no source file touched, no test added (nothing changes behavior yet, so there
+  is nothing to pin). Ledger-only commit. The first WS3 EDIT is the next session (exact-next-step below).
+- **Commit:** `fc89045` — "priority(backlog): close WS2 + map the WS3 commit spine (inventory, before
+  editing)".
+- **Files:** `cocoder/priorities/backlog/runner-decoupling-progress.md` (this entry) ONLY.
+- **The seed (already exists):** `packages/core/src/commit-gate/workspace-commit.ts` (ADR-0023 §1) — ONE
+  module, ONE receipt type `CommitReceipt {committed, committedSha, committedFiles, outOfLane, error}`, two
+  shapes: `commitFiles(git, repo, files, msg, author?)` (caller-controlled list, no scope partition) and
+  `commitScoped(git, repo, scope, msg, author?, {commitOnlyScope?})` (agent whole-tree diff; default commits
+  all + flags `outOfLane`, `commitOnlyScope` holds back out-of-lane). **Neither records any store event** —
+  it returns a receipt; the caller owns durability. `repair.ts`/`gateCommitRepair` already routes through
+  `commitScoped` (done). Tests: `commit-gate.test.ts`.
+- **Map (every commit path that writes tracked files to the active branch; owner → primitive → receipt →
+  who records the store events):**
+  - **P1 — in-run atom gate** `runCommitGate` (`commit-gate/gate.ts:57`). **Does NOT use the spine — calls
+    `git.addAndCommit` DIRECTLY (`gate.ts:81`)**, the last in-run raw-primitive caller. Returns its OWN
+    receipt shape `CommitGateResult {committedSha, committedFiles, outOfScope, selfCommitted}` (≠
+    `CommitReceipt`: `outOfScope` not `outOfLane`, has `selfCommitted`, no `committed`/`error`). Records
+    events INTERNALLY: `agent-self-commit` (62-64), `audit-write-boundary-refused` (71), `commit` +
+    `recordCommitLink` (82-83), `out-of-scope-committed` (87). Scope is ADVISORY (commits everything, flags
+    out-of-lane) unless `auditWriteBoundary` (Takeover audits) hard-refuses. Callers: per-atom verified
+    commit (`agent-step.ts:382`), oscar-support (`runner.ts:1572`), wrap-up Play (`runner.ts:1822`),
+    deb-repair no-files-changed fallback (`runner.ts:1267`).
+  - **P2 — Deb's inlined repair/escalation commit in `triageFault`** (`runner.ts:1218–1286`). The run_231
+    sweep-guard path. TWO sub-paths: (a) `verdict.filesChanged` non-empty → MANUAL: `partitionByScope` →
+    `commitFiles(git, worktree, inScope, …)` (`1258`, spine) → then HAND-ROLLS what P1 does internally:
+    `agent-self-commit` (`1256`), `recordCommitLink`+`commit` (`1260-61`), `deb-repair-commit-failed`
+    (`1263`), `deb-repair-out-of-scope-held` (`1264`), and HAND-BUILDS a `CommitGateResult` (`1265`); (b)
+    empty → `runCommitGate` (`1267`, = P1). Then records `deb-repair` (`1279`). Sweep-safety = quarantine
+    BEFORE fault (`bca1b27`) + **`inScope`-only** commit (the partition at `1257` is what keeps it from
+    sweeping non-declared work). **This is the test WS3 must never break:**
+    `runner.test.ts:3688` ("a builder fault quarantines the atom residue before Deb triages, so a deb-repair
+    commit cannot sweep it (run_231)") + the ticket variant at `:3819`.
+  - **P3 — oscar-support** `commitOscarSupport` (`runner.ts:1570–1592`). Thin wrapper over `runCommitGate`
+    (= P1) + `absorbGateResult` + records `oscar-support-commit` (`1587`).
+  - **P4 — run-history** `projectAndCommitPortableRunHistory` (`runner.ts:1614–1652`). Explicit governance
+    file list (counters/workspace/run.json/*.jsonl). MANUAL self-commit detect (`1640-43`) →
+    `commitFiles(…, files, …)` (`1645`, spine) → MANUAL `recordCommitLink`+`commit` (`1648-49`); THROWS on
+    `receipt.error` (`1646`) — its own error convention, unlike P2's event-record.
+  - **P5 — pre-run snapshots** (`runner.ts:893, 903`). `commitFiles` (spine) for founder WIP +
+    governance dirt; MANUAL `founder-presnapshot[-failed]` / `governance-presnapshot[-failed]` events; throws
+    `DirtyWorkingTreeError` on failure — a THIRD error convention.
+  - **(Out of WS3's named scope, but flagged) daemon paths:** `daemon/src/launcher.ts` already uses the spine
+    (`commitFiles:435`, `runCommitGate:1013`, `gateCommitRepair:1234/1777`); but
+    `daemon/src/routes.ts:434` still calls **`git.addAndCommit` DIRECTLY** (baseline tree import) — the only
+    other raw-primitive caller besides `gate.ts:81`. Note for whoever finishes the spine.
+  - **Receipt absorption into run-level surfaces:** `absorbGateResult` (`runner.ts:1531`) folds a
+    `CommitGateResult` into `committedShas`/`committedFiles`/`outOfScope`/`selfCommitted` (the run summary
+    WS1.3 derives). P2/P4/P5 do NOT call it — they push to those arrays by hand or not at all, so the run
+    summary's view of deb-repair/run-history commits is assembled on a different path than P1/P3.
+- **The WS3 problem, stated precisely (what "one spine, one receipt, one scope rule" must collapse):**
+  1. **Two receipt shapes** — `CommitReceipt` (spine) vs `CommitGateResult` (gate). P2 literally hand-converts
+     one to the other (`1265`).
+  2. **Two commit primitives still bypass the spine** — `gate.ts:81` and `routes.ts:434` call
+     `git.addAndCommit` directly; everything else funnels through `commitFiles`/`commitScoped`.
+  3. **Event recording is split three ways** — P1 records commit-link/commit/self-commit INSIDE the gate; P2
+     and P4 HAND-ROLL the same recordings around `commitFiles`; P5 hand-rolls a different set. Three
+     failure conventions (event vs throw vs DirtyWorkingTreeError). This is the duplication a single spine
+     receipt + one recording helper removes.
+- **By-construction sweep guard (must survive WS3):** Deb repair commits `partitionByScope(filesChanged,
+  deb.writeScope).inScope` ONLY (`runner.ts:1257-58`), and the faulted atom's residue is quarantined before
+  triage (`bca1b27`), so a repair commit is structurally incapable of sweeping non-declared work. WS3's
+  done-when keeps `runner.test.ts:3688` green.
+- **Tests/results (baseline for a no-code-change session):** `pnpm --filter @cocoder/core test` → **576
+  passed** (72 files) — unchanged, as expected (ledger-only). No typecheck/topology delta possible from a
+  markdown edit; the code tree is byte-identical to WS2.1's green commit `f2f1a5b` plus the preserved
+  eslint dirt.
+- **Residual risk:** This is a MAP, not a change — the entanglement it documents is still live. The map was
+  built by reading the code (not running a real multi-path run), so a commit path I did not enumerate (e.g.
+  a future caller, or a daemon path beyond `routes.ts:434`) would not appear here; the next session should
+  re-grep `addAndCommit`/`commitFiles`/`commitScoped`/`runCommitGate` before editing to confirm the
+  inventory is still complete. The unrelated eslint-adoption dirt (`eslint.config.mjs`, `run.ts`,
+  `read-claims.ts`, `p3-action.ts`, `frontmatter.ts`, `runner.ts`'s `SessionRef` import hunk, `oz-host.ts`,
+  `proof-daemon-reload.mjs`, `tsconfig.eslint.json`) was preserved, NOT committed — this entry is the only
+  staged file, so `git add` of the ledger staged it directly; no surgical apply needed.
+- **Exact next step (WS3, step 1 — the smallest shippable spine consolidation, tests-first):** Route
+  **P1 `runCommitGate` (`gate.ts`) through the spine** — replace its direct `git.addAndCommit(cwd, changed,
+  message)` (`gate.ts:81`) with `commitScoped(git, cwd, scope, message, undefined, {})` (default advisory
+  scope: commits all changed, flags out-of-lane), keeping the gate's INTERNAL event recording
+  (`agent-self-commit`/`commit`/`recordCommitLink`/`out-of-scope-committed`) and the `auditWriteBoundary`
+  hard-refuse exactly as they are. This removes the last IN-RUN raw-primitive caller and makes P1, P3, the
+  deb-repair fallback, and wrap-up all sit on the spine — WITHOUT changing any observed behavior (commitScoped's
+  default == the gate's current advisory commit-all). Map-confirm first: assert `commitScoped` with no
+  `commitOnlyScope` commits exactly `changedFiles` and reports `outOfScope` as `outOfLane` (it does — see
+  `workspace-commit.ts:87-93`). Tests-first: the `commit-gate.test.ts` + `runner-direct.test.ts` advisory-scope
+  and out-of-lane assertions are the regression guard; add a unit test pinning that `runCommitGate` now
+  delegates to the spine (e.g. a fake `git` whose `addAndCommit` is only reachable via `commitScoped`).
+  Do NOT yet unify the two receipt SHAPES or centralize P2/P4/P5's hand-rolled recording — that is a later
+  WS3 chunk; step 1 is just "the in-run gate stops calling the raw primitive." Keep `runner.test.ts:3688`
+  green. Verify with the full command set. (`routes.ts:434` is daemon-side and out of this chunk.)
+
 ## 2026-06-24 — WS2, step 1 (audit + pin: prose frame content is inert — AUDIT-ONLY, no consumer touched)
 
 - **Workstream/step:** WS2 (structured agent→runner progress channel), first chunk — AUDIT + PIN ONLY. Per
