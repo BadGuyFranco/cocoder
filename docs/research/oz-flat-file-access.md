@@ -61,12 +61,13 @@ Tool loops are bounded by `TOOL_ROUND_LIMIT = 10` (`packages/daemon/src/oz-host.
 `packages/daemon/src/oz-host.ts:115-133`). There is no explicit token budget constant for the final
 prompt; the practical budget is the adapter/model context window plus these local caps.
 
-Approximate current size evidence from this tree: `packages/personas/base/oz.md` is 3,321 bytes, and
-the governed file set requested here is about 689,249 bytes across 110 `.md`/`.json` files under
-`cocoder/decisions`, `cocoder/priorities`, `cocoder/personas`, and `packages/personas/base`; the listed
-`cocoder/playbooks/` zone is absent in the current tree. Therefore full-body Option A would add hundreds
-of KB before any founder question. Summary-only Option A can be kept small, but then Oz still cannot
-answer detail questions without another access path.
+Approximate current size evidence from this tree (run_75 recount): **113 governed files, ~904 KB**
+total across `cocoder/decisions/` (39), `cocoder/priorities/` (50), `cocoder/personas/` (5),
+`cocoder/standards/` (1), and `packages/personas/base/` (18). Full load ≈ **~226K tokens** — exceeds
+per-turn context budget. Even a selective digest adds ~18K tokens/turn (~2× the current ~8–10 KB
+facts digest). The Objective's `cocoder/playbooks/` zone is absent (Plays live under
+`packages/personas/base/plays/`). Therefore full-body Option A is ruled out; summary-only Option A
+still cannot answer detail questions without another access path.
 
 Refresh is tool-driven or UI-driven. The model-facing prompt lists `refresh {}` as an available tool
 and says it restarts the daemon to refresh Oz (`packages/daemon/src/oz-host.ts:221-233`). Tool
@@ -165,16 +166,14 @@ prompt close to the existing compact digest model.
 
 ## 4. Recommendation
 
-Recommend Option B, with a small Option A index as a follow-up hybrid only if Oz needs discovery help.
-The evidence points that way: the existing prompt path is rebuilt every turn and intentionally compact
-(`packages/daemon/src/oz-host.ts:193-218`, `packages/daemon/src/oz-host.ts:389-404`), dragged context
-already passes file references without embedding bodies (`packages/daemon/src/oz-context-pointer.ts:102-110`),
-and the tool loop already supports bounded, validated, follow-up reads through the `OZ_TOOL` pattern
-(`packages/daemon/src/oz-host.ts:278-319`, `packages/daemon/src/oz-host.ts:378-387`). A read tool keeps
-the default context small, avoids staleness from cached summaries, and makes security testable as a
-single path-rejection contract.
+**Recommend Option C (hybrid), weighted toward Option B's read tool as the core.** The corpus sizing
+above rules out full-body Option A; a selective digest alone still ~2× the current facts budget and
+stays stale between refreshes. Option B alone is the cheapest build (`matchesAny` + four-place tool
+registration already proven in `oz-host.ts` / `oz-action-scope.test.ts`). Option C adds a thin index
+(ADR titles + active priority list, ~2–5K tokens) to `buildPrompt()` so Oz knows *what* exists, plus
+`readGoverned(path)` for full bodies on demand — best founder UX without budget blowup.
 
-Smallest provable build for Option B:
+Smallest provable build for Option C (Option B steps 1–5, plus thin-index injection in `buildPrompt()`):
 
 1. Add `GOVERNED_READ_SCOPE` as the single owner of allowed zones:
    `cocoder/decisions/**`, `cocoder/priorities/**`, `cocoder/personas/**`,
@@ -185,11 +184,16 @@ Smallest provable build for Option B:
 3. Register `readGoverned` in `oz-host.ts` validation/instructions and `oz-chat.ts` command dispatch.
 4. Add tests for accepted reads, missing files, absolute paths, `../` traversal, `local/**`, `.env`, and
    `packages/daemon/**` rejection.
-5. Add a proof script such as `scripts/proof-oz-governed-read.mjs` that creates a temp workspace,
+5. For Option C: inject a thin governed-file index (zone, path, title/frontmatter) into `buildPrompt()`
+   between `## Facts digest` and `## Requested context` (~2–5K tokens cap).
+6. Add a proof script such as `scripts/proof-oz-governed-read.mjs` that creates a temp workspace,
    invokes the pure helper or daemon command with allowed and refused paths, and exits nonzero unless
    all outside-zone paths are refused. The script should specifically prove `local/settings.json`,
    `../CoCoder/local/settings.json`, `.env`, and `packages/daemon/src/oz-host.ts` are rejected while an
-   allowed ADR or priority path is returned.
+   allowed ADR or priority path is returned. Live demo exchange: e.g. "what does ADR-0017 say about the
+   refresh verb?"
 
 Minimum verification for that build: the focused daemon Oz agent tests, the new path-helper tests, the
 new proof script, `pnpm typecheck`, and `node scripts/check-topology.mjs`.
+
+**Founder gate:** ratify A, B, or C before any build atom (Objective research gate). Oscar recommends C.

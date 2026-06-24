@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-24 — **oz-file-access: wrap disposition surfaced; mechanism gate awaits founder (run_75)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [oz-file-access](./priorities/oz-file-access.md) | **Run:** run_75
+**Outcomes:**
+- **Atom 0 (`4e26cb8`) — wrap disposition in Oz run surface.** `DebStatus.wrapDisposition` reads the latest recorded `wrap-disposition` event via `last()`; markdown line `- **Wrap disposition:** <value|—>`. No recomputation. Status tests green (11/11 incl. latest-wins, null-absence, markdown).
+- **Research gate homework (primary Objective).** Corpus ~113 governed files / ~904 KB (~226K tokens full load — exceeds per-turn budget; selective digest ~18K tokens). `matchesAny` + `GOVERNED_READ_SCOPE` pattern already exists in core (`glob.ts`, `oz-action-scope.test.ts`). Oz tool dispatch in `oz-host.ts` follows proven four-place registration. Recommendation: **Option C** (thin index in digest + scoped `readGoverned(path)` on demand).
+- **Disposition: `continue`.** No build atom on primary Objective until founder ratifies A, B, or C.
+**Next:** Founder ratifies mechanism (C recommended); relaunch `oz-file-access` to build GOVERNED_READ_SCOPE, readGoverned tool, optional thin index, tests, and live demo proof.
+
 ## 2026-06-23 — **oz-file-access: research gate complete — continue pending mechanism ratification (run_74/run_218)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [oz-file-access](./priorities/oz-file-access.md) | **Run:** run_218 (display 74)
