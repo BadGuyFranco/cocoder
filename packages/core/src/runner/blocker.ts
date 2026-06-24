@@ -20,6 +20,7 @@ const WRITE_INTENT = /\b(?:add|author|create|draft|edit|implement|modify|touch|u
 const PATH_TOKEN = /[`'"]([^`'"\n]*\/[^`'"\n]*)[`'"]|(^|[\s(:])((?:[A-Za-z0-9_.-]+\/)+[A-Za-z0-9_.@*{}-]+)(?=$|[\s),.;:])/gm
 const BLOCKER_LINE = /\b(?:blocked|blocker|cannot|can't|scope|authority|permission|write[- ]scope|out[- ]of[- ]scope|override)\b/i
 const AUTHORITY_SCOPE = /\b(?:authority|declared write scope|write[- ]scope|scope mismatch|out[- ]of[- ]scope|outside (?:the )?(?:declared )?scope|permission|override)\b/i
+const GLOB_ONLY_PATH = /[*{}]/
 
 function normalizePathToken(raw: string): string | null {
   const value = raw
@@ -28,6 +29,7 @@ function normalizePathToken(raw: string): string | null {
     .replace(/\\/g, '/')
     .replace(/[),.;:]+$/g, '')
   if (value === '' || value.includes('://') || value.startsWith('/') || value.includes(' ')) return null
+  if (value.startsWith('**/') || value.endsWith('/**') || GLOB_ONLY_PATH.test(value)) return null
   if (value.startsWith('local/') || value.startsWith('node_modules/')) return null
   const parts = value.split('/')
   if (parts.length === 2 && !/[.*{}]/.test(value) && !parts[1]?.includes('.')) {
@@ -48,6 +50,15 @@ export function extractExplicitRepoPaths(text: string): readonly string[] {
   return [...paths]
 }
 
+function extractWriteIntentRepoPaths(text: string): readonly string[] {
+  const paths = new Set<string>()
+  for (const segment of text.split(/(?:\r?\n)+|[.!?]\s+/)) {
+    if (!WRITE_INTENT.test(segment)) continue
+    for (const path of extractExplicitRepoPaths(segment)) paths.add(path)
+  }
+  return [...paths]
+}
+
 function pathMatchesScope(path: string, scope: readonly string[]): boolean {
   if (matchesAny(path, scope)) return true
   if (path.endsWith('/')) return matchesAny(`${path}__required__`, scope)
@@ -57,7 +68,7 @@ function pathMatchesScope(path: string, scope: readonly string[]): boolean {
 
 export function detectDirectiveScopeConflict(task: string, scope: readonly string[]): DirectiveScopeConflict | null {
   if (!WRITE_INTENT.test(task)) return null
-  const requiredPaths = extractExplicitRepoPaths(task)
+  const requiredPaths = extractWriteIntentRepoPaths(task)
   if (requiredPaths.length === 0) return null
   const outOfScopePaths = requiredPaths.filter((path) => !pathMatchesScope(path, scope))
   if (outOfScopePaths.length === 0) return null

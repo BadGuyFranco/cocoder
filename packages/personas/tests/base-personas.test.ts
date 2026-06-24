@@ -73,14 +73,15 @@ describe('basePersonasDir', () => {
     }
   })
 
-  test('dogfood Bob can author CoCoder product templates without owning workspace governance', () => {
+  test('dogfood Bob can author CoCoder product and tooling surfaces without owning workspace governance', () => {
     const text = readFileSync(dogfoodBobDeltaPath(), 'utf8')
     const scope = frontmatterList(text, 'writeScope')
 
     expect(scope).toEqual(expect.arrayContaining(['packages/**', 'templates/**', 'docs/**', 'ARCHITECTURE.md']))
+    expect(scope).toEqual(expect.arrayContaining(['package.json', 'pnpm-lock.yaml', 'eslint.config.*', 'scripts/**']))
     expect(scope).not.toContain('cocoder/**')
-    expect(text).toContain('CoCoder product surfaces')
-    expect(text).toContain('Workspace governance under `cocoder/**` remains outside Bob')
+    expect(text).toContain('CoCoder product and tooling surfaces')
+    expect(text).toContain('governance under `cocoder/**` remains outside Bob')
   })
 
   test('Deb base scope covers the governance surfaces incl. tickets (ADR-0016 recurrence escalation)', () => {

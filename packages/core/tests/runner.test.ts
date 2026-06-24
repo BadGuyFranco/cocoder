@@ -700,6 +700,30 @@ describe('runRun (multi-atom loop)', () => {
     expect(store.listEvents(result.runId).some((event) => event.type === 'builder-scope-conflict')).toBe(false)
   })
 
+  test('does not treat reference paths and ignore globs as required writes', async () => {
+    const store = openRunStore(':memory:')
+    const task = [
+      'Adopt a minimal ESLint config.',
+      'Reference shape: `CoBuilder/infrastructure/eslint.config.mjs`.',
+      'Scope it to `packages/**/*.ts` and `scripts/**/*.mjs` only if trivial.',
+      'Add ignores for `**/node_modules/**` and `**/dist/**`.',
+      'Create `packages/core/src/foo.ts` for the product fix.',
+    ].join('\n')
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([['packages/core/src/foo.ts']]),
+        io: fakeIO({ directives: [delegate(task), wrapup('done')] }),
+      }),
+      input,
+    )
+
+    expect(result.status).toBe('completed')
+    expect(store.listEvents(result.runId).some((event) => event.type === 'builder-dispatch')).toBe(true)
+    expect(store.listEvents(result.runId).some((event) => event.type === 'builder-scope-conflict')).toBe(false)
+  })
+
   test.each([
     ['declared in-scope writePaths', [writePathDelegate('Create product code.', ['packages/core/src/foo.ts']), wrapup('done')]],
     ['no writePaths', [delegate('Create product code.'), wrapup('done')]],
