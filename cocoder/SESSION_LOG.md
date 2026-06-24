@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-24 — **local-preferences: tech-stack default + template seeds complete — archive-candidate (run_79/run_223)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [local-preferences](./priorities/local-preferences.md) | **Run:** run_223 (display 79)
+**Outcomes:**
+- **Atom 0 (`99dcd52`) — deliverable #1 (tech-stack default).** Replaced `templates/workspace-cocoder/cocoder/memory/tech-stack.md` stub with evidence-backed canonical stack (versions from live `package.json` / lockfile; lint/format recorded as not configured; per-choice rationale + workspace-wins resolution note).
+- **Template seed — design-spec pointer.** Added `templates/workspace-cocoder/cocoder/memory/design-spec.md` as a short pointer to `packages/ui/src/renderer/styles/design-spec.md` (owner from run_78); no fork.
+- **Scaffold tests updated.** `packages/core/tests/scaffold.test.ts` and `packages/daemon/tests/mutations.test.ts` file-set pins include both seeded memory files; suites green on every `pnpm test`.
+- **Disposition: `archive-candidate`.** Both deliverables met; done-when satisfied; only founder-explicit archive remains.
+**Next:** Founder confirms archive of `local-preferences`; otherwise launch `model-layer` for Phase 0 adapter tier metadata.
+
 ## 2026-06-24 — **local-preferences: design-spec default landed; blocked on scope + seeding ratification (run_78)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [local-preferences](./priorities/local-preferences.md) | **Run:** run_222 (display 78)

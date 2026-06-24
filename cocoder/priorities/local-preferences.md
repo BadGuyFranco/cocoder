@@ -43,20 +43,11 @@ rule, and wires the default-resolution where a clear owner already exists. It do
 dashboard, does not impose the stack/design on already-onboarded workspaces that specify their own, and
 does not rebuild scaffolding beyond what the resolution rule requires.
 
-## Execution status and remaining atoms (run 78)
+## Completion (run 79)
 
-- **Scope gate fixed (Deb repair `2b598a7`).** Bob's writeScope now covers `packages/**`, `templates/**`,
-  `docs/**`, `ARCHITECTURE.md`, so Bob authors both defaults directly — no out-of-scope held-back path.
-- **DONE — Deliverable #2 (design spec), committed `9a3e5e1`.** `packages/ui/src/renderer/styles/design-spec.md`
-  is the single owner: it catalogs the dashboard's `--cb-*` tokens (color/surface, typography,
-  spacing/radius, motion) and component patterns, with the resolution rule. Do not re-author it.
-- **TODO — Deliverable #1 (tech stack).** Replace the `templates/workspace-cocoder/cocoder/memory/tech-stack.md`
-  stub with the canonical preferred stack as the local default — languages, frameworks, test runner,
-  build tooling, lint/format — with **pinned versions sourced from this repo's own** `package.json` /
-  `tsconfig` / vitest config / lockfile and a short rationale per choice, plus the resolution-rule note.
-  Verify the doc against the live config files (no invented versions).
-- **TODO — seed the design-spec into the template.** Add `templates/workspace-cocoder/cocoder/memory/design-spec.md`
-  as a **short pointer** to the `packages/ui` owner (not a second copy of the spec), so newly scaffolded
-  repos inherit the default by reference. Keep `packages/ui/.../design-spec.md` as the one owner.
-- **Done when** a freshly scaffolded repo receives both seeded memory files, each carries the
-  workspace-wins resolution note, and neither forks its owner.
+> **Disposition: `archive-candidate` (run_79).** Both deliverables landed and verified. Design-spec owner:
+> `packages/ui/src/renderer/styles/design-spec.md` (run_78). Tech-stack owner + template seed:
+> `templates/workspace-cocoder/cocoder/memory/tech-stack.md` (run_79). Design-spec template pointer:
+> `templates/workspace-cocoder/cocoder/memory/design-spec.md` (run_79). Scaffold create-only copy
+> (`copyFileCreateOnly`) seeds both files; workspace-specified values never overwritten. Standing proof:
+> scaffold + mutations test file-set pins (green on every `pnpm test`). Founder archive confirmation only.
