@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-24 — **oz-file-access: denylist inversion shipped — archive-candidate pending live Oz proof (run_77)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [oz-file-access](./priorities/oz-file-access.md) | **Run:** run_77
+**Outcomes:**
+- **Atom 0 (`3dd5871`) — allowlist→denylist inversion.** `GOVERNED_READ_DENY` in core; `readGoverned()` default-allows repo paths and rejects secrets/runtime/host-escape only; reinforced repo-root guard; Oz tool instructions updated; both test suites rewritten for both directions (product code + `ARCHITECTURE.md` read; secrets, traversal, absolute paths rejected without content leak).
+- **Automated proof green.** Core + daemon tsc clean; governed-read-scope 1/1; read-governed 5/5; `GOVERNED_READ_SCOPE` gone repo-wide.
+- **Disposition: `archive-candidate`.** Code-complete; Objective **Verified when** awaits founder-driven live Oz exchange after `refresh {}`.
+**Next:** Founder refreshes Oz daemon and confirms in-session read/refuse behavior; then archive (optionally author ADR amendment first).
+
 ## 2026-06-24 — **oz-file-access: read-governed shipped — archive-candidate pending live Oz demo (run_76)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [oz-file-access](./priorities/oz-file-access.md) | **Run:** run_76

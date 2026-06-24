@@ -3,8 +3,9 @@
 ## Status (2026-06-24)
 
 Founder ratified **Option B** (run_75): scoped `read-governed` tool, live disk reads, no TOC/index/cache
-(repo is SSOT). Shipped end-to-end in run_76 (`GOVERNED_READ_SCOPE`, Oz tool surface, read-only handler,
-automated tests). Archive awaits one founder-driven live Oz dashboard exchange; Option C was not built.
+(repo is SSOT). Shipped end-to-end in run_76 (allowlist); run_77 inverted to `GOVERNED_READ_DENY`
+(default-allow, secrets/runtime/host-escape denylist). Archive awaits one founder-driven live Oz dashboard
+exchange; Option C was not built.
 
 ## Scope
 

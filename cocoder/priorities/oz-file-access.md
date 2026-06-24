@@ -85,3 +85,10 @@ single **invert the read model** atom above. No remaining founder decision — t
 (secrets/runtime/host only) is settled. On a successful live exchange after the inversion lands (Oz reads
 a product-code file and a governed doc, and refuses `local/secrets/oz-token`), this priority is
 archive-ready. Optional follow-on (founder choice): record the read model in an ADR amendment.
+
+**Disposition: `archive-candidate` (run_77).** Denylist inversion shipped (`3dd5871`): `GOVERNED_READ_DENY`
+replaces the run_76 allowlist; `readGoverned()` default-allows tracked paths and rejects only denylist
+matches; tests prove both directions. Automated proof green; no build atoms remain. Archive awaits founder
+live Oz proof per **Verified when** (daemon `refresh {}`, then in-session read of product code + governed
+doc and refusal of `local/secrets/oz-token`). Optional founder choice: ADR amendment for the broadened read
+model.
