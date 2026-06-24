@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_222",
+    "displayNumber": 78
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "priority"
+  },
+  "priorityId": "local-preferences",
+  "playbookId": null,
+  "ticketId": null,
+  "status": "running",
+  "createdAt": 1782303722556,
+  "endedAt": null
+}
