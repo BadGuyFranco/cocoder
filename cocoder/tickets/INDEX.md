@@ -13,6 +13,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
+| [0047](./open/0047-oscar-deb-repair-dialogue-strands-a-valid-deb-proposal-when-the-oscar-evaluation-turn-times-out.md) | Headless governance turns are marked failed (exit -1, ~120s) even when the artifact was produced — stranding repair proposals and skipping authoring commits | bug | none | founder-session |
 | [0046](./open/0046-ticket-launched-runs-must-close-or-ask-at-wrap-with-ticket-specific-wrap-up-run-status-vocabulary.md) | Ticket-launched runs must close-or-ask at wrap, with ticket-specific wrap-up Run Status vocabulary | task | none | founder-session |
 | [0045](./open/0045-closed-ticket-lingers-in-order-json-relaunches.md) | A ticket closed off-spine lingers in tickets/order.json and gets relaunched | bug | oz-autonomy | Open |
 | [0043](./open/0043-bob-blocker-replies-unowned-after-runner-stall-nudges.md) | Bob blocker replies are unowned after runner stall nudges | bug | oz-autonomy | Open |
