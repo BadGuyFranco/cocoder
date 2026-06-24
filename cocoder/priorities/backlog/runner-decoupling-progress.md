@@ -29,6 +29,99 @@ next session. Do not start the following chunk in this session.
 
 ---
 
+## 2026-06-24 — WS3, step 2 (unify the receipt shapes — gate speaks the spine's vocabulary)
+
+- **Workstream/step:** WS3 (One commit spine), step 2 — UNIFY THE RECEIPT SHAPES ONLY (recording
+  centralization is step 3; `routes.ts:434` is step 4 — NOT done here). Made `runCommitGate`
+  (`commit-gate/gate.ts`) return the spine's `CommitReceipt` vocabulary instead of its bespoke
+  `CommitGateResult`. **`CommitGateResult` is now `extends CommitReceipt` + `selfCommitted`** =
+  `{committed, committedSha, committedFiles, outOfLane, error, selfCommitted}`. One receipt SHAPE across
+  the spine + the gate.
+- **Decision (resolved explicitly, per the prompt's DESIGN):**
+  - `outOfScope` → `outOfLane` (same meaning: committed-but-flagged under advisory scope). Added
+    `committed`/`error` by converging the type onto `CommitReceipt`.
+  - **`selfCommitted` STAYS on the gate's receipt and is STILL computed by the gate from `headBefore`** —
+    the spine (`commitFiles`) never sees `headBefore`, so it cannot carry it. The gate returns the EXTENDED
+    receipt (CommitReceipt + selfCommitted). NOT dropped/defaulted — it is load-bearing
+    (`absorbGateResult` → run-end `{selfCommitted}` → `deriveRunSummary` → `RunResult`).
+  - The gate **re-throws on commit failure** (WS3.1's null-sha re-throw), so on return `error===null` and
+    `committed===(committedSha !== null)`. `committedFiles` is still the full `changed` list (== what the
+    spine's `commitFiles` commits). No surface/event shift.
+- **Commit:** `6ff87c6` — "commit-gate(spine): WS3.2 — unify the gate receipt onto the spine's vocabulary".
+  (Ledger entry committed separately, matching WS1.3/1.4/2.1/3.1.)
+- **Files:** `packages/core/src/commit-gate/gate.ts` (type → `extends CommitReceipt`; return maps
+  `outOfScope`→`outOfLane`, adds `committed`/`error`), `packages/core/src/runner/runner.ts` (P2
+  hand-conversion collapse + 4 field renames — staged surgically), `packages/daemon/src/launcher.ts`
+  (post-wrap-support consumer reads `gate.outOfLane`), `packages/core/tests/commit-gate.test.ts` +
+  `packages/core/tests/plays-request.test.ts` (field-pin renames + 1 new converged-shape pin).
+- **Map (owner → emitter → consumers → tests, re-grepped before editing):**
+  - *Type owners:* `CommitGateResult` (`gate.ts:32`) vs `CommitReceipt` (`workspace-commit.ts:30`). Both
+    re-exported via `commit-gate/index.ts` + core `index.ts`. **CommitReceipt is unchanged** — only the
+    gate's type converged onto it.
+  - *Emitter:* `runCommitGate` (`gate.ts:58→`). Daemon also emits (`launcher.ts:1013`, post-wrap-support).
+  - *Consumers (field access):* `agent-step.ts:382-395` (committedSha only — no rename needed);
+    `runner.ts` `renderDisposition` (`:1213` `outOfLane`), `triageFault` (`:1265` hand-conversion,
+    `:1279` event-data), `absorbGateResult` (`:1536` `outOfLane`), `commitOscarSupport` (`:1584` `:1588`);
+    wrap-up (`:1822` — no field access); **`daemon/launcher.ts:1027/1029/1038`** (reads `gate.outOfLane` —
+    in scope because the rename breaks daemon typecheck).
+  - *Tests pinning the field:* `commit-gate.test.ts` (`res.outOfScope`→`outOfLane` ×2 + new shape pin),
+    `plays-request.test.ts` (`ordinaryReceipt.outOfScope`→`outOfLane`). (`commit-gate.test.ts:44` is a
+    `partitionByScope` result, NOT a gate result — left as-is.)
+  - *Event-data / response keys stay `outOfScope`/`outOfLanePaths`* (no event/surface change):
+    `runner.ts:1279,1588`; `launcher.ts:1027,1029,1038`. The VALUE now comes from `gate.outOfLane`.
+- **P2 hand-conversion deleted (the prompt's named target):** `runner.ts:1265` was
+  `{committedSha: receipt.committedSha, committedFiles: receipt.committedFiles, outOfScope, selfCommitted}`
+  — a field-by-field remap between two shapes. Now that the gate IS `CommitReceipt + selfCommitted`, the
+  manual deb-repair path and the gate return the SAME shape, so it collapses to
+  `{...receipt, outOfLane: outOfScope, selfCommitted: selfCommittedRepair}`. The held-back out-of-scope
+  files (deb-repair commits `inScope` only via `commitFiles`, whose receipt `outOfLane` is `[]`) are
+  surfaced by overriding `outOfLane` — same data, same slot, just the spine's name. The `inScope`-only
+  partition (`runner.ts:1257-58`) and the quarantine-before-fault guard are byte-unchanged.
+- **Why ADDITIVE / behavior-preserving:** every event payload (`out-of-scope-committed`, `deb-repair`,
+  `oscar-support-commit`, daemon `post-wrap-support-commit`) keeps its `outOfScope`/`outOfLanePaths` KEY;
+  only the in-memory field name on the receipt changed. `selfCommitted` flows end-to-end unchanged. The
+  fake-git tests cannot distinguish the converged shape from the old one except by the renamed field, which
+  is exactly what the rewritten pins assert.
+- **Tests-first / why the pins are red→green:** the field-rename pins (`res.outOfLane`,
+  `ordinaryReceipt.outOfLane`) were RED against the old source (it returned `outOfScope`), green after the
+  type/return swap. The new "returns the spine receipt shape EXTENDED with selfCommitted" pin asserts the
+  full converged shape (`toEqual({committed, committedSha, committedFiles, outOfLane, error,
+  selfCommitted})`) with BOTH a self-commit and a gate commit co-occurring — guards that selfCommitted was
+  not dropped when the shapes merged.
+- **Tests/results:** `pnpm --filter @cocoder/core test commit-gate plays-request` → 32 passed (incl. +1
+  new); run_231 sweep-guard `runner -t "deb-repair commit cannot sweep"` → 1 passed; `pnpm --filter
+  @cocoder/core test` → **578 passed** (was 577; +1 new); `pnpm --filter @cocoder/core typecheck` → clean;
+  root `pnpm typecheck` → clean (7 pkgs, incl. daemon); root `pnpm test` → ALL green (personas 29, core
+  578, session-hosts 18, adapters 24, ui 161, cli 9, daemon 345 — the Deb-watcher timer-race flake family
+  did not trip); `node scripts/check-topology.mjs` → passed (same 2 pre-existing daemon test-helper
+  warnings). Staged-only tree (SessionRef import present, my hunks applied) typechecks clean via
+  `git stash --keep-index` — mirrors WS1.3.
+- **Residual risk:** the SHAPES are now unified, but the EVENT RECORDING is still split — P1 records
+  commit-link/commit/self-commit INSIDE the gate; P2 (`runner.ts:1256-64`) and P4 (`runner.ts:1648-49`)
+  hand-roll the same set around `commitFiles`; P5 (`runner.ts:893,903`) hand-rolls a different set with a
+  THIRD failure convention (`DirtyWorkingTreeError`). That is WS3 step 3 (below). `daemon/src/routes.ts:434`
+  is still a raw `git.addAndCommit` caller — WS3 step 4. This chunk did NOT touch the Deb watcher, so the
+  known Deb-watcher timer flake does not gate it — but BEFORE any later WS3 chunk that CHANGES the Deb
+  watcher, do the WS4 "de-flake the Deb-watcher stall family" deliverable first. The unrelated
+  eslint-adoption dirt (`eslint.config.mjs`, `run.ts`, `read-claims.ts`, `p3-action.ts`, `frontmatter.ts`,
+  `runner.ts`'s `SessionRef` import hunk, `oz-host.ts`, `proof-daemon-reload.mjs`, `tsconfig.eslint.json`)
+  was preserved, NOT committed — `runner.ts` was staged hunk-by-hunk (`git apply --cached` of a patch with
+  the `SessionRef` hunk filtered out); gate.ts/launcher.ts/both tests are mine and staged directly.
+- **Exact next step (WS3, step 3 — centralize the SUCCESS-path recording):** Introduce ONE recording
+  helper that takes a spine receipt + run/workItem context and records the STANDARD success-path event set
+  (`recordCommitLink` + `commit` + `agent-self-commit`) for P1/P2/P4/P5, so each caller stops hand-rolling
+  it. Leave EACH caller's FAILURE convention untouched: P1 re-throws on null sha, P2 records
+  `deb-repair-commit-failed`, P4 THROWS on `receipt.error`, P5 throws `DirtyWorkingTreeError`. Keep
+  ADDITIVE/behavior-preserving (no surface/event shift); the `inScope`-only deb-repair partition
+  (`runner.ts:1257-58`) MUST survive and `runner.test.ts:3688` + `:3819` (run_231 sweep-guard) MUST stay
+  green — never weaken a test; rewrite to pin the new contract and say why. Re-grep
+  `recordCommitLink`/`recordEvent.*commit`/`agent-self-commit`/`commitFiles` to confirm the call-site
+  inventory; map owners/emitters/consumers/tests before editing; tests-first; verify with the full command
+  set. THEN step 4 = `daemon/src/routes.ts:434` (the last raw `git.addAndCommit` caller — daemon package).
+  NOTE: if any of this touches the Deb watcher, do WS4's de-flake first.
+
+---
+
 ## 2026-06-24 — WS3, step 1 (route the in-run gate onto the spine — first spine EDIT)
 
 - **Workstream/step:** WS3 (One commit spine), step 1 — the FIRST spine edit. Route **P1 `runCommitGate`
