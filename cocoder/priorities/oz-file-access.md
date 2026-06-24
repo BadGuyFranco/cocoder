@@ -40,7 +40,7 @@ flat files only; scope does not extend to product code" boundary (see History): 
 limiting *read* never made sense — only *write* warrants gating, and the sole read hazard is
 secret/host exfiltration, which the denylist + repo-root boundary close.
 
-### Next atom — invert the read model (ready to delegate)
+### Next atom — invert the read model (SHIPPED run_77, `3dd5871`)
 1. **Replace the scope contract.** In `packages/core/src/write-scope/governed-read.ts`, replace the
    `GOVERNED_READ_SCOPE` allowlist with a `GOVERNED_READ_DENY` denylist constant covering the hazard
    classes above; export from `@cocoder/core`. Update `packages/core/src/index.ts` accordingly.
