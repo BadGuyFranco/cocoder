@@ -42,8 +42,9 @@ next session. Do not start the following chunk in this session.
 - **Workstream/step:** WS3 (One commit spine), step 0 — the protocol-mandated **map before editing**. This
   session is INVENTORY ONLY: no source file touched, no test added (nothing changes behavior yet, so there
   is nothing to pin). Ledger-only commit. The first WS3 EDIT is the next session (exact-next-step below).
-- **Commit:** `fc89045` — "priority(backlog): close WS2 + map the WS3 commit spine (inventory, before
-  editing)".
+- **Commit:** `38b4ae8` — "priority(backlog): close WS2 + map the WS3 commit spine (inventory, before
+  editing)". (Sha backfilled in the immediately-following ledger commit, matching WS1.3/1.4/2.1's
+  separate-ledger-commit convention.)
 - **Files:** `cocoder/priorities/backlog/runner-decoupling-progress.md` (this entry) ONLY.
 - **The seed (already exists):** `packages/core/src/commit-gate/workspace-commit.ts` (ADR-0023 §1) — ONE
   module, ONE receipt type `CommitReceipt {committed, committedSha, committedFiles, outOfLane, error}`, two
