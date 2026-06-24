@@ -226,10 +226,20 @@ describe('deriveTerminalProjection — WS1 terminal projection seed', () => {
   })
 
   test('faulted: DebStatus rendered from the derived pair matches the canonical one (modulo display labels)', () => {
-    const derived = projectionFor(faultedEvents)!
-    // Canonical: what the runner passes today at fail() — phase 'faulted', the fault's atom, free-text label.
-    const canonical = statusFor(faultedEvents, 'faulted', { activeAtom: 0, activeTask: null, waitCondition: 'run failed after builder-scope-conflict' })
-    const fromEvents = statusFor(faultedEvents, derived.phase, { activeAtom: derived.activeAtom, activeTask: null, waitCondition: 'run failed after builder-scope-conflict' })
+    // Render BOTH from one store/run so event `at` timestamps (recordEvent stamps real wall-clock, which
+    // DebStatus surfaces via lastDirectiveAt/recentEvents[].at) are identical — otherwise two stores drift
+    // microseconds apart and the deep-equal flakes. The contract under test is: the DERIVED (phase,
+    // activeAtom) reproduce the canonical imperative inputs the runner feeds at fail().
+    const store = openRunStore(':memory:')
+    store.upsertWorkspace({ id: 'w', path: '/r', name: 'W' })
+    const run = store.createRun({ workspaceId: 'w', priorityId: 'demo' })
+    for (const e of faultedEvents) store.recordEvent({ runId: run.id, type: e.type, data: e.data })
+    const render = (phase: RunnerPhase, activeAtom: number | null) =>
+      renderDebStatus({ store, runId: run.id, priority, scopes, phase, activeAtom, activeTask: null, waitCondition: 'run failed after builder-scope-conflict', now }).json
+
+    const derived = deriveTerminalProjection(store.listEvents(run.id))!
+    const canonical = render('faulted', 0) // what the runner passes today at fail()
+    const fromEvents = render(derived.phase, derived.activeAtom)
     expect(fromEvents).toEqual(canonical)
     expect(canonical.oscar).toBe('blocked')
   })
