@@ -3,6 +3,7 @@
 import type { Priority } from '../priorities/index.js'
 import type { RunStore, Workspace } from '../store/index.js'
 import { runDisplayName } from '../store/index.js'
+import { deriveRunSummary } from './status.js'
 
 const ts = (ms: number | null): string => (ms === null ? '—' : new Date(ms).toISOString())
 
@@ -23,12 +24,18 @@ export function renderRunRecord(
   const workItems = store.listWorkItems(runId)
   const commits = store.listCommitLinks(runId)
   const events = store.listEvents(runId)
+  // WS1.4 (runner-decoupling, ADDITIVE): the terminal `run-end` event carries the run-summary tuple the
+  // runner records BEFORE writing record.md, so **Status** is a PROJECTION of the event log — not the
+  // imperatively-set `run.status` row. The runner calls `setRunStatus(status)` immediately before rendering
+  // at every exit that writes record.md, so the derived status equals that row by construction (no surface
+  // shift). Fall back to the row only when there is no terminal event yet (a non-terminal render).
+  const summary = deriveRunSummary(events)
 
   const lines: string[] = []
   lines.push(`# ${runDisplayName({ id: run.id, displayNumber: meta.displayNumber ?? null })}`, '')
   lines.push(`- **Workspace:** ${meta.workspace.name} (\`${meta.workspace.id}\`) — ${meta.workspace.path}`)
   lines.push(`- **Priority:** ${meta.priority.title} (\`${run.priorityId}\`)`)
-  lines.push(`- **Status:** ${run.status}`)
+  lines.push(`- **Status:** ${summary?.status ?? run.status}`)
   lines.push(`- **Branch:** committed directly to ${branchLabel(events)} (no isolation lane — work is on the branch by construction)`)
   lines.push(`- **Started:** ${ts(run.createdAt)}  ·  **Ended:** ${ts(run.endedAt)}`, '')
 
