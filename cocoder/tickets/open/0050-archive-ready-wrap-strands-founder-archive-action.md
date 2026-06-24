@@ -30,6 +30,12 @@ status value. The repair changed the line to exactly `archive ready`. That valid
 it is more evidence that archive readiness is encoded as brittle prose instead of a clear runtime action
 state.
 
+The final run record made the lifecycle ambiguity explicit: `local/runs/run_224/record.md` reports
+`Status: awaiting-founder`, the event stream records `wrap-disposition: awaiting-founder` and then
+`run-end`, while the closeout tells the founder "I'm standing by..." and asks for archive confirmation.
+That leaves the founder-facing promise ("standing by") and the runtime state ("ended, awaiting-founder")
+without a single owned archive-confirmation action.
+
 This is not ticket 0023. Ticket 0023 made `archive-priority` reachable as a CLI/daemon authoring lane. This
 ticket is about the post-wrap founder-confirmation experience: an archive-ready priority should not require
 the founder to translate a closeout sentence into a separate command or authoring-tool invocation.
@@ -45,6 +51,9 @@ the founder to translate a closeout sentence into a separate command or authorin
   a fallback, but the recommended path is the in-context archive confirmation action.
 - Runtime state distinguishes "archive-ready, awaiting archive confirmation" from generic
   `awaiting-founder` so dashboards/status feeds can present the right next action.
+- Lifecycle wording and state agree: if Oscar/Oz is "standing by" for archive confirmation, the runtime must
+  expose the corresponding action; if the run is ended, the closeout must route the founder through the owned
+  post-run action without implying Oscar can complete it from the same pane.
 - Wrap-up validation prevents the brittle `Priority-launched run: archive ready.` failure class, ideally by
   deriving the target label outside the `Run Status` value rather than relying on Oscar prose discipline.
 - Tests cover the run_224 case:
