@@ -35,7 +35,7 @@ next session. Do not start the following chunk in this session.
   `stopRun` so the Deb status feed no longer keeps a STALE pre-terminal phase after a hold/stop (the
   WS1.1-documented stale-feed gap). `fail()` already refreshed; `holdRun`/`stopRun` never called
   `refreshStatus`. This is the ONE intended BEHAVIOR change in WS1.
-- **Commit:** `<fill after commit>` — "runner(status): WS1.2 — derive terminal status feed phase in hold/stop".
+- **Commit:** `4298987` — "runner(status): WS1.2 — derive terminal status feed phase in hold/stop".
 - **Files:** `packages/core/src/runner/runner.ts` (import `deriveTerminalProjection`; add a `refreshStatus`
   call in `stopRun` and `holdRun` sourcing `(phase, activeAtom)` from
   `deriveTerminalProjection(store.listEvents(run.id))`, `activeTask=null` + a free-text `waitCondition`),
