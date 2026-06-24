@@ -46,6 +46,7 @@ describe('scaffoldCocoderZone', () => {
       'cocoder/glossary.md',
       'cocoder/memory/AGENTS.md',
       'cocoder/memory/codebase-map.md',
+      'cocoder/memory/design-spec.md',
       'cocoder/memory/tech-stack.md',
       'cocoder/personas/assignments.json',
       'cocoder/personas/custom/.gitkeep',
