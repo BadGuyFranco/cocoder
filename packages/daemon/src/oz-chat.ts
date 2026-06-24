@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { runDisplayName } from '@cocoder/core'
 import type { OzContext } from './context.js'
-import { launchRun as launchRunOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestNudgeRun as nudgeRunOp, requestOscarDebRepair as oscarDebRepairOp, requestOzAction as ozActionOp, requestOzRepair as repairOzOp, requestStopRun as stopRunOp, requestSupportCommitRun as supportCommitRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
+import { launchRun as launchRunOp, readGoverned as readGovernedOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestNudgeRun as nudgeRunOp, requestOscarDebRepair as oscarDebRepairOp, requestOzAction as ozActionOp, requestOzRepair as repairOzOp, requestStopRun as stopRunOp, requestSupportCommitRun as supportCommitRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
 import { projectOzAwareness, type OzAwarenessRun, type OzAwarenessSnapshot } from './oz-awareness.js'
 import { tryHandleOzAgentTurn } from './oz-host.js'
 import { readTickets } from './priority-order.js'
@@ -21,6 +21,7 @@ export type OzCommand =
   | { readonly kind: 'nudge'; readonly runId: string; readonly message: string; readonly rationale?: string }
   | { readonly kind: 'repair'; readonly message: string; readonly rationale?: string }
   | { readonly kind: 'oz-action'; readonly instruction: string }
+  | { readonly kind: 'read-governed'; readonly path: string }
   | { readonly kind: 'author'; readonly playId: AuthoringPlayInput['playId']; readonly invocation: unknown }
   | { readonly kind: 'teardown'; readonly runId: string }
   | { readonly kind: 'status'; readonly runId?: string }
@@ -65,6 +66,7 @@ export interface OzChatOps {
   readonly nudgeRun: typeof nudgeRunOp
   readonly repairOz: typeof repairOzOp
   readonly requestOzAction: typeof ozActionOp
+  readonly readGoverned: typeof readGovernedOp
   readonly requestOscarDebRepair: typeof oscarDebRepairOp
   readonly requestAuthoringPlay: typeof authoringPlayOp
   readonly supportCommitRun: typeof supportCommitRunOp
@@ -79,6 +81,7 @@ const defaultOps: OzChatOps = {
   nudgeRun: nudgeRunOp,
   repairOz: repairOzOp,
   requestOzAction: ozActionOp,
+  readGoverned: readGovernedOp,
   requestOscarDebRepair: oscarDebRepairOp,
   requestAuthoringPlay: authoringPlayOp,
   supportCommitRun: supportCommitRunOp,
@@ -230,6 +233,15 @@ export async function executeOzCommand(ctx: OzContext, workspaceId: string | und
       'oz-action',
       () => ops.requestOzAction(ctx, { workspaceId, instruction: command.instruction }),
       (out) => ozActionReply(workspaceId, out),
+    )
+  }
+
+  if (command.kind === 'read-governed') {
+    if (!workspaceId) return missingWorkspace()
+    return runOp(
+      'read-governed',
+      () => ops.readGoverned(ctx, workspaceId, command.path),
+      (out) => readGovernedReply(out),
     )
   }
 
@@ -463,6 +475,13 @@ function ozActionReply(workspaceId: string, out: LaunchResult): OzChatReply {
     ok: true,
     action: { type: 'oz-action', workspaceId, committedPaths, commitSha, outOfLanePaths, ...(turnLogPath ? { turnLogPath } : {}) },
   }
+}
+
+function readGovernedReply(out: LaunchResult): OzChatReply {
+  const path = typeof out.body.path === 'string' ? out.body.path : 'requested path'
+  const content = typeof out.body.content === 'string' ? out.body.content : ''
+  if (!isOk(out.status)) return failedReply('read-governed', `Could not read ${path}`, out)
+  return { reply: content, command: 'read-governed', ok: true }
 }
 
 function authoringReply(workspaceId: string, out: LaunchResult): OzChatReply {

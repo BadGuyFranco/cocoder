@@ -134,6 +134,7 @@ function baseIO(): RunnerIO {
     async writeFaultContext() {},
     async writeDisposition(runDir, index) { return `${runDir}/disposition-${index}.md` },
     async writeDebStatus() {},
+    async writeDebTerminalSnapshot() {},
     async readNudgeRequest() { return null },
     async writePickup(runDir) { return `${runDir}/pickup.md` },
     async writeRunArtifact(runDir, fileName, contents) {

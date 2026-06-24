@@ -203,6 +203,30 @@ describe('Oz agent chat turns', () => {
     })
   })
 
+  test('read-governed tool passes a governed repo path through ops and feeds live content back', async () => {
+    const fixture = await makeFixture({
+      outputs: [
+        'Reading.\nOZ_TOOL {"tool":"read-governed","args":{"path":" cocoder/decisions/0017-oz-orchestration-persona.md "}}',
+        'ADR-0017 says Oz is surfaced as dashboard chat.',
+      ],
+    })
+    const calls: Array<{ readonly workspaceId: string; readonly path: string }> = []
+    const ops: OzChatOps = {
+      ...fakeOps(),
+      readGoverned: async (_ctx, workspaceId, path) => {
+        calls.push({ workspaceId, path })
+        return { status: 200, body: { path, content: 'Refresh verb details from the live file.' } }
+      },
+    }
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'what does ADR-0017 say about refresh?', workspaceId: 'cocoder' }, ops)
+
+    expect(calls).toEqual([{ workspaceId: 'cocoder', path: 'cocoder/decisions/0017-oz-orchestration-persona.md' }])
+    expect(fixture.prompts[0]?.prompt).toContain('read-governed {"path":"cocoder/decisions/0017-oz-orchestration-persona.md"}')
+    expect(fixture.prompts[1]?.prompt).toContain('Refresh verb details from the live file.')
+    expect(result).toMatchObject({ status: 200, body: { reply: 'ADR-0017 says Oz is surfaced as dashboard chat.', command: 'chat', ok: true } })
+  })
+
   test('plain output executes no tools and still uses one turn', async () => {
     const fixture = await makeFixture({ outputs: ['Just answering.'] })
     let launches = 0
@@ -772,6 +796,7 @@ function fakeOps(): OzChatOps {
     nudgeRun: async () => ({ status: 202, body: { queued: true, seq: 1 } }),
     repairOz: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0 } }),
     requestOzAction: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0 } }),
+    readGoverned: async () => ({ status: 200, body: { path: 'cocoder/decisions/0017-oz-orchestration-persona.md', content: 'Governed file content.' } }),
     requestOscarDebRepair: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], state: 'complete', outcome: 'applied' } }),
     requestAuthoringPlay: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0 } }),
     teardownRun: async () => ({ status: 200, body: { closed: [] } }),

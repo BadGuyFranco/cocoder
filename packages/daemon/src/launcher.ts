@@ -10,10 +10,11 @@ import { execFile } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { existsSync, type Dirent } from 'node:fs'
 import { appendFile, mkdir, readFile, readdir, rename, stat, writeFile } from 'node:fs/promises'
-import { basename, dirname, join } from 'node:path'
+import { basename, dirname, isAbsolute, join, normalize } from 'node:path'
 import { promisify } from 'node:util'
 import {
   COCODER_GOVERNANCE_AUTHOR,
+  GOVERNED_READ_SCOPE,
   OZ_ACTION_SCOPE,
   closeTicket,
   coCoderRunReference,
@@ -97,6 +98,11 @@ export interface OscarDebRepairInput {
   readonly evidence: readonly RepairEvidenceItem[]
   readonly desiredOutcome?: string
   readonly requestedBy: 'oscar'
+}
+
+export interface GovernedReadResult {
+  readonly path: string
+  readonly content: string
 }
 
 /** Wrap the shared session host so each spawned/killed surfaceRef is mirrored into ctx.liveRefs. */
@@ -1805,6 +1811,43 @@ function buildAuthoringPlayPrompt(input: { readonly workspaceId: string; readonl
 
 function renderInvocation(invocation: unknown): string {
   return typeof invocation === 'string' ? invocation : JSON.stringify(invocation, null, 2) ?? String(invocation)
+}
+
+export async function readGoverned(ctx: OzContext, workspaceId: string, requestedPath: string): Promise<LaunchResult> {
+  const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
+  if (!ws) return { status: 404, body: { error: `unknown workspace "${workspaceId}"` } }
+
+  const normalizedPath = normalizeGovernedReadPath(requestedPath)
+  if (!normalizedPath.ok) return { status: 400, body: { error: normalizedPath.error } }
+  if (!matchesAny(normalizedPath.path, GOVERNED_READ_SCOPE)) {
+    return { status: 403, body: { error: `Path "${normalizedPath.path}" is outside the governed zones Oz may read.` } }
+  }
+
+  try {
+    const content = await readFile(join(ws.path, normalizedPath.path), 'utf8')
+    return { status: 200, body: { path: normalizedPath.path, content } satisfies GovernedReadResult }
+  } catch (err) {
+    if (isNodeError(err) && err.code === 'ENOENT') return { status: 404, body: { error: `Path "${normalizedPath.path}" does not exist.` } }
+    if (isNodeError(err) && err.code === 'EISDIR') return { status: 400, body: { error: `Path "${normalizedPath.path}" is a directory, not a file.` } }
+    throw err
+  }
+}
+
+function normalizeGovernedReadPath(requestedPath: string): { readonly ok: true; readonly path: string } | { readonly ok: false; readonly error: string } {
+  const raw = requestedPath.trim().replace(/\\/g, '/')
+  if (!raw) return { ok: false, error: 'Tool "read-governed" requires string arg "path".' }
+  if (raw.includes('\0')) return { ok: false, error: 'Path contains an invalid NUL byte.' }
+  if (isAbsolute(raw) || /^[A-Za-z]:\//.test(raw)) return { ok: false, error: `Path "${raw}" must be relative to the repo root.` }
+  if (raw.split('/').includes('..')) return { ok: false, error: `Path "${raw}" uses parent-directory traversal, which Oz may not read.` }
+
+  const normalized = normalize(raw).replace(/\\/g, '/').replace(/^\.\//, '')
+  if (!normalized || normalized === '.') return { ok: false, error: 'Tool "read-governed" requires string arg "path".' }
+  if (normalized.split('/').includes('..') || isAbsolute(normalized)) return { ok: false, error: `Path "${raw}" escapes the repo root.` }
+  return { ok: true, path: normalized }
+}
+
+function isNodeError(err: unknown): err is NodeJS.ErrnoException {
+  return err instanceof Error && 'code' in err
 }
 
 /** Bring a run's live founder-facing pane to the foreground. After wrap-up, Oscar remains the surface

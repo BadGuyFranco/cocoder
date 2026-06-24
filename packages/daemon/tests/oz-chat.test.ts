@@ -27,6 +27,7 @@ function mockOps(overrides: Partial<OzChatOps>): OzChatOps {
     nudgeRun: unexpected('nudge') as OzChatOps['nudgeRun'],
     repairOz: unexpected('repair') as OzChatOps['repairOz'],
     requestOzAction: unexpected('oz-action') as OzChatOps['requestOzAction'],
+    readGoverned: unexpected('read-governed') as OzChatOps['readGoverned'],
     requestOscarDebRepair: unexpected('oscar-deb-repair') as OzChatOps['requestOscarDebRepair'],
     requestAuthoringPlay: unexpected('author') as OzChatOps['requestAuthoringPlay'],
     supportCommitRun: unexpected('support-commit') as OzChatOps['supportCommitRun'],
@@ -464,6 +465,29 @@ describe('handleOzMessage', () => {
     expect(result.body.reply).toContain('Committed cocoder/tickets/open/0099-x.md as sha-action.')
     expect(result.body.reply).toContain('Held back outside the oz-action lane, NOT committed: packages/daemon/src/foo.ts.')
     expect(result.body.reply).toContain('Turn log: /tmp/cocoder/local/oz/cocoder/oz-action.log.')
+  })
+
+  test('read-governed executable dispatches to the live governed file reader', async () => {
+    const calls: Array<{ workspaceId: string; path: string }> = []
+    const ops = mockOps({
+      readGoverned: async (_ctx, workspaceId, path) => {
+        calls.push({ workspaceId, path })
+        return { status: 200, body: { path, content: 'ADR content from disk' } }
+      },
+    })
+
+    const result = await executeOzCommand(testCtx(), 'cocoder', { kind: 'read-governed', path: 'cocoder/decisions/0017-oz-orchestration-persona.md' }, ops)
+
+    expect(result).toMatchObject({ status: 200, body: { ok: true, command: 'read-governed', reply: 'ADR content from disk' } })
+    expect(calls).toEqual([{ workspaceId: 'cocoder', path: 'cocoder/decisions/0017-oz-orchestration-persona.md' }])
+  })
+
+  test('read-governed requires a selected workspace', async () => {
+    const result = await executeOzCommand(testCtx(), undefined, { kind: 'read-governed', path: 'cocoder/decisions/0017-oz-orchestration-persona.md' }, mockOps({
+      readGoverned: async () => ({ status: 200, body: { content: 'should not run' } }),
+    }))
+
+    expect(result).toMatchObject({ status: 400, body: { ok: false, command: 'unknown' } })
   })
 
   test('deb-repair executable dispatches Oscar request with synthesized evidence and renders commit receipt', async () => {

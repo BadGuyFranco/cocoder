@@ -246,7 +246,7 @@ export type {
   RunReadinessProfile,
 } from './adapter/index.js'
 
-export { globToRegExp, matchesAny, OZ_ACTION_SCOPE, partitionByScope, effectiveScope, type ScopePartition } from './write-scope/index.js'
+export { globToRegExp, matchesAny, GOVERNED_READ_SCOPE, OZ_ACTION_SCOPE, partitionByScope, effectiveScope, type ScopePartition } from './write-scope/index.js'
 export {
   makeGit,
   parsePorcelain,
