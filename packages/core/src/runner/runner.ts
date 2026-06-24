@@ -245,6 +245,12 @@ function section(contract: FounderCloseoutContract, role: FounderCloseoutRole): 
   return contract.labels[role]
 }
 
+function founderCloseoutFromFirstContractHeading(markdown: string, contract: FounderCloseoutContract): string {
+  const title = section(contract, 'title')
+  const index = markdown.indexOf(title)
+  return index > 0 ? markdown.slice(index).trimStart() : markdown
+}
+
 function founderCloseoutRole(label: string): FounderCloseoutRole | null {
   const normalized = label
     .replace(/\*/g, '')
@@ -1760,7 +1766,11 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
             'Previous invalid output:',
             candidatePickup ?? '',
           ].join('\n')
+          const repairContract = outputValidation.founderCloseoutContract
           ;({ candidatePickup, outPath: wrapOut } = await dispatchWrapPlay(retryTask, 'wrapup-out-retry.txt'))
+          if (candidatePickup && repairContract) {
+            candidatePickup = founderCloseoutFromFirstContractHeading(candidatePickup, repairContract)
+          }
           outputValidation = validatePlayOutput({ play: input.wrapPlay, output: candidatePickup, cwd: worktreePath, isTicket: closeoutTarget === 'ticket' })
         }
         if (outputValidation && outputValidation.issues.length > 0) {

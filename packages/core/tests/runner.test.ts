@@ -1520,7 +1520,8 @@ describe('runRun (multi-atom loop)', () => {
   test('wrap-up Play output is repaired once before pickup delivery', async () => {
     const store = openRunStore(':memory:')
     const pickupWrites: string[] = []
-    const outputs = ['PLAY CLOSEOUT\n', validFounderCloseout('REPAIRED PLAY CLOSEOUT')]
+    const repaired = validFounderCloseout('REPAIRED PLAY CLOSEOUT')
+    const outputs = ['PLAY CLOSEOUT\n', `Documentation is already committed for this run; the only repair needed is the founder closeout format.\n\n${repaired}`]
     const result = await runRun(
       baseDeps({
         store,
@@ -1533,7 +1534,7 @@ describe('runRun (multi-atom loop)', () => {
     )
 
     expect(result.status).toBe('completed')
-    expect(pickupWrites).toEqual([validFounderCloseout('REPAIRED PLAY CLOSEOUT')])
+    expect(pickupWrites).toEqual([repaired])
     const events = store.listEvents(result.runId)
     const repair = events.find((e) => e.type === 'wrapup-format-repair-attempt')
     expect(repair?.data).toMatchObject({ play: 'wrap-up', issues: expect.arrayContaining([`missing ${label('title')}`]), outPath: expect.stringContaining('wrapup-out.txt') })
