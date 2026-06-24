@@ -29,6 +29,71 @@ next session. Do not start the following chunk in this session.
 
 ---
 
+## 2026-06-24 — WS1, step 4 (re-base record.md / renderRunRecord on the event log)
+
+- **Workstream/step:** WS1 (Surface unification), step 4 — make `record.ts` / `renderRunRecord`'s only
+  run-summary field, **Status**, a PROJECTION of the event log instead of the imperatively-set
+  `store.getRun().status` row. ADDITIVE/behavior-preserving: like WS1.3, NO surface shifts.
+- **Commit:** `23f41d1` — "runner(status): WS1.4 — derive record.md Status from the event log". (Ledger
+  entry committed separately, matching WS1.3.)
+- **Files:** `packages/core/src/runner/record.ts` (import `deriveRunSummary`; derive `summary` from
+  `store.listEvents`; `**Status**` line reads `summary?.status ?? run.status`), `packages/core/tests/
+  record.test.ts` (new `statusLine` helper + `renderRunRecord — WS1.4 …` describe: 6 tests — 4 terminal
+  shapes + agree case + non-terminal fallback).
+- **Map (owners/emitters/consumers/tests):**
+  - *Source of truth:* the terminal `run-end` event's `data.status`. Emitted by the four runner exits —
+    completion (`runner.ts:2027`), `fail()` (`1054`), `stopRun` (`1693`), `holdRun` (`1731`). The three that
+    WRITE record.md (completion `2038`, stopRun `1702`, holdRun `1739`) record `run-end` AND call
+    `setRunStatus(status)` (`2033/1699/1737`) BEFORE `io.writeRunRecord` → `renderRunRecord`, so at render
+    time the row and the event already agree. (`fail()` does NOT call `writeRunRecord` — failed runs emit no
+    record.md at runtime; the FAULTED test asserts derivability for completeness, not a runtime path.)
+  - *Imperative coupling removed:* `renderRunRecord` read `run.status` (the DB row set by `setRunStatus`) for
+    its `**Status**` line. Now derived via `deriveRunSummary(store.listEvents(runId))` (reused from WS1.3 —
+    NOT re-derived), falling back to `run.status` only when there is no terminal `run-end` event.
+  - *Other run-row fields kept imperative by design:* `run.createdAt`/`run.endedAt` (wall-clock captured by
+    the runner; the `run-end` event's `at` differs — deriving WOULD shift `record.md`'s Started/Ended, the
+    WS1.3 trap) and `run.priorityId`. The `meta` arg (`workspace`, `priority.title`, `displayNumber`) is
+    legitimately injected (not in the event log) — like `scopes`/`priority` in `renderDebStatus`. The other
+    record sections already project events/rows: commits via `listCommitLinks`, out-of-lane via
+    `out-of-scope-committed` events, branch via `direct-mode` (WS1.1/1.2 noted), event log via `listEvents`.
+  - *Surface/consumer:* `io.writeRunRecord(runDir, renderRunRecord(...))` (`io.ts:155`) → `record.md`. The
+    `renderRunRecord` SIGNATURE is unchanged. The WS1.2 feed-after-portable-AND-record ordering is preserved
+    (no runner edit this step).
+  - *Tests (regression guard):* `record.test.ts` — the 4 pre-existing tests (heading/branch) plus the 6 new.
+- **Why no surface shifts:** the derived `status` reads the SAME `run-end` event that `setRunStatus` was
+  handed at each record-writing exit, recorded immediately before rendering ⇒ derived === former
+  `run.status` read, by construction. The fallback covers the only render where no `run-end` exists (a
+  non-terminal render), leaving that path byte-identical.
+- **Determinism (WS1.1 rule honored):** `RunSummary` has NO event-`at` field; the new tests build ONE
+  `:memory:` store per shape, record `run-end` with the runner's tuple, and (for the 4 terminal tests) leave
+  the row at its default `running` to prove the render reads the EVENT, not the row — no two-store
+  deep-equal, no wall-clock to drift.
+- **Tests/results:** `pnpm --filter @cocoder/core test record` → 10 passed (4 existing + 6 new; the 4
+  terminal-shape tests were RED before the swap — `running` instead of the derived status); `pnpm --filter
+  @cocoder/core test` → **567 passed** (was 561; +6 new); `pnpm --filter @cocoder/core typecheck` → clean;
+  root `pnpm typecheck` → clean (7 pkgs); `node scripts/check-topology.mjs` → passed (same 2 pre-existing
+  daemon test-helper warnings). Root `pnpm test`: ALL packages green this run (personas 29, core 567,
+  adapters 24, session-hosts 18, ui 161, cli 9, daemon 345) — the known Deb-watcher timer-race flake family
+  did not trip.
+- **Residual risk:** `record.md`'s Started/Ended/priorityId + the `meta` arg remain imperative by design (see
+  map). All THREE WS1 sibling surfaces (DebStatus feed, portable `run.json`, `record.md`) now derive their
+  run-level status from the same `run-end` event — but nothing yet ASSERTS the three agree on a single
+  terminal run; that cross-surface agreement test is WS1 step 5 (the WS1 done-when). The unrelated
+  eslint-adoption dirt (`eslint.config.mjs`, `run.ts`, `read-claims.ts`, `p3-action.ts`, `frontmatter.ts`,
+  `runner.ts`'s `SessionRef` import hunk, `oz-host.ts`, `proof-daemon-reload.mjs`, `tsconfig.eslint.json`)
+  was preserved, NOT committed — record.ts/record.test.ts are entirely mine (neither is in the foreign list),
+  so they staged directly with `git add`; no surgical apply was needed this step.
+- **Exact next step (WS1, step 5 — closes WS1):** Land the surface-agreement regression test the WS1
+  done-when names. For a faulted/held/stopped run, assert the THREE run-level surfaces — DebStatus feed
+  (`renderDebStatus`/`deriveTerminalProjection`), portable `run.json` (`deriveRunSummary`/
+  `writePortableRunHistory`), and `record.md` (`renderRunRecord`) — provably AGREE on the run's terminal
+  status BECAUSE all three derive from the same `run-end` event. Build it from ONE store/run (WS1.1
+  determinism rule — never deep-equal two independently-built `:memory:` stores; the event `at` drifts).
+  This is a TEST-ONLY step (no surface swap): the three derivations already landed in WS1.1–1.4; step 5 pins
+  that they cannot disagree by construction, which is the WS1 done-when. Verify with the same command set.
+
+---
+
 ## 2026-06-24 — WS1, step 3 (re-base the portable run-history surface on the event log)
 
 - **Workstream/step:** WS1 (Surface unification), step 3 — make `writePortableRunHistory`'s run-level status
