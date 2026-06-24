@@ -29,6 +29,106 @@ next session. Do not start the following chunk in this session.
 
 ---
 
+## 2026-06-24 — WS4 (de-flake the Deb-watcher stall family — the named WS4 deliverable; WS5 unblocked)
+
+- **Workstream/step:** WS4 — de-flake the recurring Deb-watcher timer-race flakes. Made the four named
+  tests deterministic under full-parallel load with **NO production change** (pure test-hardening,
+  approach (a) GATE-don't-time): `Deb-backed watchdog nudges an idle Oscar`, `writes a live status feed
+  so Deb can report concrete run state`, `Deb watch dispatches are non-blocking …`, `actionable stall
+  Deb watch writes current lastDispatch before prompting Deb` (all `@cocoder/core` `runner.test.ts`).
+- **Per-test flake diagnosis (the prompt's required step — confirmed by reading the code, NOT assumed):**
+  - **ROOT CAUSE confirmed as event-loop SCHEDULING, not an unpinned clock.** All four drive a full
+    `runRun` + the Deb watcher with `monitorCadenceMs: 1`. The stall detector trips on
+    `idleStreak > 0` (≥2 consecutive equal Oscar frames), surfaced by `awaitOscarWithNudgeWatchdog`'s
+    judge (`runner.ts:1425`). `minNudgeIntervalMs` is `0` in three of the four, so `now()` is
+    IRRELEVANT — pinning the clock alone would NOT de-flake them. There is no `sleep` injection seam in
+    `runRun` (cadence sleeps are real `setTimeout`, `runner.ts:1359/1452`); `RunnerDeps` exposes `now`
+    only.
+  - **`nudges idle Oscar` (driver: real `sleep(20)`):** manufactured the stall with `if (i===0) await
+    sleep(20)` and HOPED the 1ms cadence loop sampled the constant `''` screen ≥2× inside that real
+    20ms window → exactly one `oscar-nudge` (source `idle`). Under load the window squeezes (0 samples →
+    0 nudges) or a later await window slips a 2nd nudge.
+  - **`live status feed` (driver: SPURIOUS dispatch — NO `sleep(20)`):** uses `baseDeps` default
+    `monitorCadenceMs: 1` with the default constant `''` screen and asserts the NEGATIVE
+    (`deb-watch-dispatch === false`, no `DEB WATCH` sent). When a directive await was merely slow under
+    load, the 1ms loop sampled the constant screen twice → a SPURIOUS stall dispatch → the negative
+    assertions flipped red.
+  - **`non-blocking` + `writes current lastDispatch` (driver: real `sleep(20)`):** same 20ms-vs-1ms race
+    as #1, asserting exactly one `deb-watch-dispatch`. The dispatch fires from a FIRE-AND-FORGET
+    `void refreshStatus(..., wake)` (`runner.ts:1437`) — not awaited by the monitor — so a wall-clock
+    gate could also let the run end before the `DEB WATCH` send actually ran. `lastDispatch` also had an
+    `expect` INSIDE the live `sendInput` callback (old `:3414`), swallowable by `sendDebWatch`'s
+    fire-and-forget `.catch` (`runner.ts:1171`).
+- **Decision (chose (a) over (b)/(c), justified):** GATE on the watcher's observable side effect, no
+  production edit. (b) a `sleep` DI seam would touch `runner.ts` (already dirty → surgical-stage) +
+  `monitor.ts` for a testability hook the gate makes unnecessary; (c) fake timers are fiddly against the
+  watcher's `Promise.race(sleep, stoppedPromise)`. (a) is the cleanest and keeps production untouched.
+- **The fix (one harness + four call-site rewrites; every assertion's CONTRACT preserved):**
+  - **`gatedStallHarness` (new test helper, near `sleep`):** the first directive PARKS until a
+    caller-supplied `watcherActed()` predicate (the watcher's side effect — a recorded event or a flag
+    the `sendInput` hook flips — NEVER a timer) returns true, then releases. The fake Oscar screen is
+    CONSTANT only while parked (idleStreak climbs → the stall is detected; `recordDebWatchDispatch`
+    dedups by detail → exactly ONE dispatch in that single constant-frame window) and CHANGES otherwise
+    (every other await window — notably the wrap-up directive — looks like progress → can't spuriously
+    trip the detector). Deterministic under any scheduling; the directive releases the instant the
+    watcher acts.
+  - **`nudges idle Oscar`:** park until an `oscar-nudge` event exists (recorded by the AWAITED monitor
+    loop's `onNudge`, a reliable release signal); `minNudgeIntervalMs:1000` caps the parked window to
+    one nudge, the changing screen stops the wrap-up window re-nudging. No-Deb variant: plain immediate
+    IO (idle path is `hasDebWatcher`-gated, so no stall window is needed to prove zero nudges).
+  - **`live status feed`:** added a CHANGING `readScreen` (`oscar working ${frame++}`) so idleStreak
+    never climbs → the watcher never dispatches → the negative assertions hold regardless of timing.
+  - **`non-blocking`:** park until the `DEB WATCH` prompt is actually SENT (the hook flips `dispatched`)
+    — gating on the SEND (not just the recorded event) guarantees the fire-and-forget side effect
+    happened before the run ends; the hung promise still proves the run never awaits that send.
+  - **`writes current lastDispatch`:** park until the prompt is sent; CAPTURE `statusWrites.at(-1)
+    ?.watch.lastDispatch` at prompt time into a local and ASSERT it AFTER the run — moving the ordering
+    contract OUT of the swallowing `sendDebWatch` `.catch` (the prompt's named fix), so a stale feed can
+    no longer pass silently.
+- **Map (owner → emitter → consumer → tests, read before editing):** *stall detector* —
+  `awaitOscarWithNudgeWatchdog` judge `idleStreak > 0` (`runner.ts:1425`); *idleStreak* — `runMonitor`
+  from frame equality (`monitor.ts:114`); *dispatch* — `onAssessment` → `void refreshStatus(...,wake)`
+  (`runner.ts:1437`) → `recordDebWatchDispatch` (dedups by `kind:detail`, `runner.ts:1155`) → event +
+  `sendDebWatch` fire-and-forget (`runner.ts:1164`); *nudge* — monitor stuck branch → `oscarDriver
+  .nudge` → `onNudge` records `oscar-nudge` (`monitor.ts:136-142`); *feed* — `lastDispatch` derived
+  from the last `deb-watch-dispatch` event (`status.ts:276/318`). The Deb WATCHER (`startDebWatcher`,
+  `runner.ts:1298`) emits `oscar-nudge` ONLY on a `deb-nudge.json` request (fakeIO returns null), so it
+  never confounds these counts. No production logic touched — the watcher's stall/nudge logic is
+  unchanged (WS4 boundary honored).
+- **Commit:** `dbfb497` — "test(runner): WS4 — de-flake the Deb-watcher stall family (gate, don't time)".
+  (Ledger entry committed separately, matching WS1.3/1.4/2.1/3.1/3.2/3.3/3.4.)
+- **Files:** `packages/core/tests/runner.test.ts` ONLY (new `gatedStallHarness` + 4 test rewrites).
+  Mine, not in the eslint foreign list → `git add` directly; NO surgical apply (no production file
+  touched, so `runner.ts` keeps only its pre-existing `SessionRef` import dirt).
+- **Tests/results:** focused 4 tests → 4 passed ×5 consecutive runs; `pnpm --filter @cocoder/core test`
+  → **582 passed** (unchanged — no test added/removed, contracts preserved); `pnpm --filter
+  @cocoder/core typecheck` → clean; root `pnpm typecheck` → clean (7 pkgs); `node
+  scripts/check-topology.mjs` → passed (same 2 pre-existing daemon test-helper warnings); root `pnpm
+  test` → **6 consecutive full-parallel runs ALL green** (personas 29, core 582, adapters 24,
+  session-hosts 18, ui 161, cli 9, daemon 346) — the stall family did NOT trip once (the flake was
+  ~1/several runs before, so 6/6 clean is the de-flake signal, not a single green).
+- **Residual risk:** the de-flake is test-only; production behavior is byte-unchanged, so no
+  orchestration risk. The harness relies on the dispatch-dedup-by-detail contract
+  (`recordDebWatchDispatch`) and the `hasDebWatcher && idleStreak > 0` detector staying as-is — a future
+  WS5 split that moves the watcher must keep those, or the "exactly one" gate predicates need
+  re-pointing. The unrelated eslint-adoption dirt (`eslint.config.mjs`, `run.ts`, `read-claims.ts`,
+  `p3-action.ts`, `frontmatter.ts`, `runner.ts`'s `SessionRef` import hunk, `oz-host.ts`,
+  `proof-daemon-reload.mjs`, `tsconfig.eslint.json`) was preserved, NOT committed.
+- **Exact next step (WS5 — split `runner.ts`, now UNBLOCKED):** WS4's named deliverable is DONE — the
+  Deb-watcher stall family runs deterministically across repeated full-parallel runs (confirmed 6/6),
+  restoring "green at every commit" as a clean signal. WS5 is now unblocked (it required WS4's
+  test-hardening). Per the priority: split `runner.ts` (~2000-line function) into focused modules behind
+  unchanged behavioral contracts — extract (in the smallest shippable steps, one per session) the
+  atom-loop driver, the fault/triage funnel (`triageFault`), the terminal-state projection reducer
+  (the WS1 `deriveTerminalProjection` consumer), and the founder-closeout contract parser (into the Play
+  layer); `runner.ts` becomes thin composition. HIGHEST RISK workstream — behavior-preserving only, map
+  owners/emitters/consumers/tests before each extraction, keep the suite green at every commit, and run
+  `pnpm test` multiple times per step now that the stall family is deterministic. `runner.ts` is in the
+  preserved eslint dirt (its `SessionRef` import hunk) — any WS5 edit to it must surgical-stage via
+  `git apply --cached` of a content-filtered patch dropping that hunk, exactly as WS1.2/1.3/3.2/3.3 did.
+
+---
+
 ## 2026-06-24 — WS3, step 4 (route the baseline import onto the spine — WS3 COMPLETE)
 
 - **Workstream/step:** WS3 (One commit spine), step 4 — route the LAST raw `git.addAndCommit` caller in the
