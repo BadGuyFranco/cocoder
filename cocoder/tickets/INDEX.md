@@ -14,6 +14,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
 | [0049](./open/0049-deb-watch-prompts-fire-on-normal-boundaries.md) | Deb watch prompts fire on normal run boundaries | bug | none | Open |
+| [0050](./open/0050-archive-ready-wrap-strands-founder-archive-action.md) | Archive-ready wrap strands founder archive action | bug | none | Open |
 | [0048](./open/0048-adopt-eslint-in-cocoder-engine-repo.md) | Adopt a minimal ESLint 9 linter in CoCoder's own engine repo | task | none | Open |
 | [0047](./open/0047-oscar-deb-repair-dialogue-strands-a-valid-deb-proposal-when-the-oscar-evaluation-turn-times-out.md) | Headless governance turns are marked failed (exit -1, ~120s) even when the artifact was produced — stranding repair proposals and skipping authoring commits | bug | none | founder-session |
 | [0043](./open/0043-bob-blocker-replies-unowned-after-runner-stall-nudges.md) | Bob blocker replies are unowned after runner stall nudges | bug | oz-autonomy | Open |
