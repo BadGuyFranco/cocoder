@@ -14,7 +14,6 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
 | [0048](./open/0048-adopt-eslint-in-cocoder-engine-repo.md) | Adopt a minimal ESLint 9 linter in CoCoder's own engine repo | task | none | Open |
-| [0047](./open/0047-oscar-deb-repair-dialogue-strands-a-valid-deb-proposal-when-the-oscar-evaluation-turn-times-out.md) | Headless governance turns are marked failed (exit -1, ~120s) even when the artifact was produced — stranding repair proposals and skipping authoring commits | bug | none | founder-session |
 | [0039](./open/0039-launch-status-in-oz-dashboard.md) | Launch Status in Oz Dashboard | task | none | founder-session |
 | [0037](./open/0037-contributing-pr-template-stale-rg-ci-gate.md) | CONTRIBUTING and PR template still promise an rg CI gate that live ci.yml no longer runs | bug | none | Open |
 
@@ -22,6 +21,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0047](./closed/0047-oscar-deb-repair-dialogue-strands-a-valid-deb-proposal-when-the-oscar-evaluation-turn-times-out.md) | Headless governance turns are marked failed (exit -1, ~120s) even when the artifact was produced — stranding repair proposals and skipping authoring commits | bug | 2026-06-24 | Fixed the shared daemon headless governance turn handling: raised the bounded governance turn timeout, preserved recoverable Oscar-Deb proposals as needs-oscar when evaluation produces no artifact, accepted adapter-owned evaluation artifacts despite nonzero exits, and committed valid authoring artifacts produced before a nonzero headless exit. |
 | [0034](./closed/0034-priority-creation-must-auto-register-order-json.md) | Priority creation must auto-register in order.json (prevent orphans at source) | task | 2026-06-24 | Priority creation now registers live priorities through registerLivePriorities before commit; daemon create-priority and authoring-Play paths commit order.json with the priority file, ADR-0038 records detect-to-prevent, and route/Play/orphan-guard tests are green. |
 | [0043](./closed/0043-bob-blocker-replies-unowned-after-runner-stall-nudges.md) | Bob blocker replies are unowned after runner stall nudges | bug | 2026-06-24 | Fixed by direct Deb repair: Bob stall-blocker replies now become structured runner events and authority/scope conflicts fault instead of re-nudging; explicit out-of-scope ADR write atoms are refused before Bob dispatch. |
 | [0049](./closed/0049-deb-watch-prompts-fire-on-normal-boundaries.md) | Deb watch prompts fire on normal run boundaries | bug | 2026-06-24 | Deb watch dispatches now stay decoupled from normal status refreshes. Healthy directive/build/verify/wrap boundary refreshes keep writing Deb status and terminal snapshots without pane prompts; actionable stall watch prompts record their dispatch before the status projection is written; fault handling remains the single triage prompt path. |

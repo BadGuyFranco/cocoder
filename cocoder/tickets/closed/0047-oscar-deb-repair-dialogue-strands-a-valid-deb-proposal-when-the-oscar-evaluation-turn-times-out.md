@@ -2,7 +2,7 @@
 id: 0047
 title: Headless governance turns are marked failed (exit -1, ~120s) even when the artifact was produced — stranding repair proposals and skipping authoring commits
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-23
@@ -61,3 +61,9 @@ silently leave their artifact uncommitted behind a 500. Callers must hand-recove
 - Surfaced during run_214 while routing the ticket-0046 wrap-template fix to Deb, then reproduced while
   filing this very ticket.
 - Relates to ADR-0036 (Deb repair lane) and ticket 0046 (the proposal that was stranded).
+
+## Resolution
+
+Resolved by run run_228 (866e0a2) on 2026-06-24.
+
+Fixed the shared daemon headless governance turn handling: raised the bounded governance turn timeout, preserved recoverable Oscar-Deb proposals as needs-oscar when evaluation produces no artifact, accepted adapter-owned evaluation artifacts despite nonzero exits, and committed valid authoring artifacts produced before a nonzero headless exit.
