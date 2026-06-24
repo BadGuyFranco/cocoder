@@ -190,6 +190,27 @@ describe('runCommitGate', () => {
     expect(store.listEvents(run.id).some((e) => e.type === 'agent-self-commit')).toBe(true)
   })
 
+  test('surfaces a spine commit failure by rejecting — no phantom commit link or commit event (WS3.1)', async () => {
+    // The gate routes its commit through the spine's commitFiles (controlled list = the already-read
+    // `changed`). commitFiles SURFACES a commit failure in the receipt instead of throwing; the gate
+    // re-throws to preserve its throw-on-failure contract — it must NOT record a commit link / commit
+    // event with a null sha. (Green before and after the swap: addAndCommit threw directly before; now the
+    // spine returns receipt.error and the gate re-throws. This pins that the swap kept failures fatal.)
+    const store = openRunStore(':memory:')
+    store.upsertWorkspace({ id: 'cocoder', path: '/repo', name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'p' })
+    const base = makeFakeGit({ changed: ['packages/a.ts'], headBefore: 'h0' })
+    const failing: Git = { ...base.git, async addAndCommit() { throw new Error('index.lock held') } }
+
+    await expect(runCommitGate({
+      git: failing, store, cwd: '/repo', runId: run.id, workItemId: null,
+      scope: ['packages/**'], message: 'feat: x', headBefore: 'h0',
+    })).rejects.toThrow('index.lock held')
+
+    expect(store.listCommitLinks(run.id)).toEqual([])
+    expect(store.listEvents(run.id).some((e) => e.type === 'commit')).toBe(false)
+  })
+
   test('refuses onboard-existing audit commits outside cocoder/** before committing', async () => {
     const store = openRunStore(':memory:')
     store.upsertWorkspace({ id: 'cocoder', path: '/repo', name: 'CoCoder' })

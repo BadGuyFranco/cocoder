@@ -11,6 +11,7 @@
 import type { RunStore } from '../store/index.js'
 import { partitionByScope } from '../write-scope/partition.js'
 import type { Git } from './git.js'
+import { commitFiles } from './workspace-commit.js'
 
 export interface CommitGateInput {
   readonly git: Git
@@ -78,7 +79,16 @@ export async function runCommitGate(input: CommitGateInput): Promise<CommitGateR
 
   let committedSha: string | null = null
   if (changed.length > 0) {
-    committedSha = await git.addAndCommit(cwd, changed, message)
+    // Route through the workspace commit spine (ADR-0023 §1) — the CONTROLLED-LIST commit. The gate has
+    // already read `changed` once (above) and audited/partitioned it, so it commits exactly that list:
+    // commitFiles does NO second changedFiles read (commitScoped would re-read, desyncing per-call
+    // scripted-git fakes AND committing its own second read instead of the audited list). The spine
+    // surfaces a commit failure in the receipt instead of throwing; re-throw to preserve the gate's
+    // throw-on-failure contract (never record a commit link with a null sha).
+    const receipt = await commitFiles(git, cwd, changed, message)
+    // changed is non-empty, so the spine returns a sha or surfaces an error — null sha ⟺ failure.
+    if (receipt.committedSha === null) throw new Error(receipt.error ?? 'commit gate: spine returned no sha')
+    committedSha = receipt.committedSha
     store.recordCommitLink({ runId, workItemId, commitSha: committedSha, message, files: changed })
     store.recordEvent({ runId, type: 'commit', data: { sha: committedSha, files: changed } })
   }
