@@ -46,11 +46,12 @@ describe('requestOscarDebRepair', () => {
     expect(fixture.headlessInputs).toEqual([]) // refused BEFORE spawning Deb — no redundant repair turn
   })
 
-  test('allows a wrapped source run and completes an applied Deb repair', async () => {
+  test('commits a NON-INTERFERING .md self-fix through the governed spine (ADR-0041 §3.2)', async () => {
     const fixture = await makeFixture({
       runHeadless: async (input) => {
         fixture.headlessInputs.push(input)
-        await writeFile(join(fixture.home, 'packages', 'daemon', 'src', 'repair.ts'), 'export const repaired = true\n')
+        // The overseer model: a non-interfering .md/instruction edit is the only autonomous Deb self-fix.
+        await writeFile(join(fixture.home, 'cocoder', 'PLAYBOOK.md'), '# Playbook\n\nUpdated by Deb.\n')
         return { exitCode: 0, output: appliedOutput() }
       },
     })
@@ -60,13 +61,34 @@ describe('requestOscarDebRepair', () => {
 
     const result = await requestOscarDebRepair(fixture.ctx, { workspaceId: 'cocoder', sourceRunId: run.id, requestedBy: 'oscar', problem: 'fix wrapped issue', evidence })
 
-    expect(result).toMatchObject({ status: 200, body: { ok: true, state: 'complete', outcome: 'applied', committedPaths: ['packages/daemon/src/repair.ts'], outOfLanePaths: [] } })
+    expect(result).toMatchObject({ status: 200, body: { ok: true, state: 'complete', outcome: 'applied', committedPaths: ['cocoder/PLAYBOOK.md'], outOfLanePaths: [] } })
     expect(typeof result.body.commitSha).toBe('string')
+    // Through the governed spine: the commit rides the shared governance author, never a bespoke deb-repair one.
+    expect(await git(fixture.home, ['log', '-1', '--format=%an'])).toContain('cocoder-governance')
     expect(fixture.prompts.map((p) => p.persona)).toEqual(['deb'])
     const paths = result.body.artifactPaths as { debResponse: string; request: string; evidenceLog: string }
     expect(JSON.parse(await readFile(join(fixture.home, paths.request), 'utf8'))).toMatchObject({ problem: 'fix wrapped issue' })
-    expect(JSON.parse(await readFile(join(fixture.home, paths.debResponse), 'utf8'))).toMatchObject({ kind: 'applied', commit: { committedPaths: ['packages/daemon/src/repair.ts'] } })
+    expect(JSON.parse(await readFile(join(fixture.home, paths.debResponse), 'utf8'))).toMatchObject({ kind: 'applied', commit: { committedPaths: ['cocoder/PLAYBOOK.md'] } })
     expect(await readFile(join(fixture.home, paths.evidenceLog), 'utf8')).toContain('"state":"complete"')
+  })
+
+  test('run_234 regression: an INTERFERING (runner/code) Deb self-fix is HELD for the founder, never committed (ADR-0041 §3.1, 0055)', async () => {
+    const fixture = await makeFixture({
+      runHeadless: async (input) => {
+        fixture.headlessInputs.push(input)
+        // The run_234 shape: Deb's 0054 fix touched runner.ts — a non-.md surface → interferes → never hers to land live.
+        await mkdir(join(fixture.home, 'packages', 'core', 'src', 'runner'), { recursive: true })
+        await writeFile(join(fixture.home, 'packages', 'core', 'src', 'runner', 'runner.ts'), 'export const patched = true\n')
+        return { exitCode: 0, output: appliedOutput() }
+      },
+    })
+    const headBefore = (await git(fixture.home, ['rev-parse', 'HEAD'])).trim()
+
+    const result = await requestOscarDebRepair(fixture.ctx, { workspaceId: 'cocoder', requestedBy: 'oscar', problem: 'fix runner terminal path', evidence })
+
+    expect(result).toMatchObject({ status: 200, body: { ok: true, state: 'complete', outcome: 'held-for-founder', commitSha: null, committedPaths: [], outOfLanePaths: ['packages/core/src/runner/runner.ts'] } })
+    // No autonomous commit: HEAD is unchanged — the interfering change never landed beside the spine.
+    expect((await git(fixture.home, ['rev-parse', 'HEAD'])).trim()).toBe(headBefore)
   })
 
   test('runs Deb repair turn in a non-TTY subprocess and reads the adapter-owned response artifact', async () => {
@@ -113,14 +135,14 @@ describe('requestOscarDebRepair', () => {
         const persona = input.args[0]
         if (persona === 'deb' && fixture.headlessInputs.filter((i) => i.args[0] === 'deb').length === 1) return { exitCode: 0, output: proposalOutput() }
         if (persona === 'oscar') return { exitCode: 0, output: evaluationOutput('direct-deb-to-apply') }
-        await writeFile(join(fixture.home, 'packages', 'daemon', 'src', 'directed.ts'), 'export const directed = true\n')
+        await writeFile(join(fixture.home, 'cocoder', 'PLAYBOOK.md'), '# Playbook\n\nDirected non-interfering edit.\n')
         return { exitCode: 0, output: appliedOutput('Directed repair applied.') }
       },
     })
 
     const result = await requestOscarDebRepair(fixture.ctx, { workspaceId: 'cocoder', requestedBy: 'oscar', problem: 'route through proposal', evidence })
 
-    expect(result).toMatchObject({ status: 200, body: { state: 'complete', outcome: 'directed-applied', committedPaths: ['packages/daemon/src/directed.ts'] } })
+    expect(result).toMatchObject({ status: 200, body: { state: 'complete', outcome: 'directed-applied', committedPaths: ['cocoder/PLAYBOOK.md'] } })
     expect(fixture.prompts.map((p) => p.persona)).toEqual(['deb', 'oscar', 'deb'])
     const paths = result.body.artifactPaths as { oscarEvaluation: string; debResponse: string }
     expect(JSON.parse(await readFile(join(fixture.home, paths.oscarEvaluation), 'utf8'))).toMatchObject({ verdict: 'direct-deb-to-apply' })
@@ -352,7 +374,7 @@ if (!outPath) {
 }
 
 await mkdir(dirname(outPath), { recursive: true })
-await writeFile(join(process.cwd(), 'packages', 'daemon', 'src', 'repair.ts'), 'export const repaired = true\\n')
+await writeFile(join(process.cwd(), 'cocoder', 'PLAYBOOK.md'), '# Playbook\\n\\nUpdated by Deb.\\n')
 await writeFile(outPath, JSON.stringify({
   schemaVersion: 1,
   dialogueId: 'repair-placeholder',

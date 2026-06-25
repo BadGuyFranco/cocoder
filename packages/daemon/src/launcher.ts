@@ -19,6 +19,8 @@ import {
   closeTicket,
   coCoderRunReference,
   commitFiles,
+  interferes,
+  isInstructionSurface,
   isPersonaEnabled,
   gateCommitRepair,
   listEffectivePlays,
@@ -1111,16 +1113,16 @@ export async function requestOscarDebRepair(ctx: OzContext, input: OscarDebRepai
 
   if (debResponse.kind === 'applied') {
     state = nextDialogueState(state, { type: 'deb-applied' })
-    const committed = await commitDebRepair(ctx, workspace.path, deb.writeScope, 'deb-repair').catch((err: unknown) => err instanceof Error ? err : new Error(String(err)))
+    const committed = await commitDebRepair(ctx, workspace.path).catch((err: unknown) => err instanceof Error ? err : new Error(String(err)))
     if (committed instanceof Error) return await failDialogue(`Deb repair commit failed: ${committed.message}`)
     const response = parseDebRepairResponse(JSON.stringify({ ...debResponse, commit: responseCommit(committed) }))
     await writeDialogueJson(ctx, paths.debResponse, response)
-    await appendDialogueEvidence(ctx, paths, state, 'deb-response.json', 'Deb applied an in-scope repair.')
+    await appendDialogueEvidence(ctx, paths, state, 'deb-response.json', committed.interfering ? 'Deb self-fix touches non-.md surfaces — held for the founder (ADR-0041 §3.1).' : 'Deb committed a non-interfering .md self-fix through the governed spine.')
     state = nextDialogueState(state, { type: 'complete' })
     await appendDialogueEvidence(ctx, paths, state, 'deb-response.json', 'Oscar-Deb repair dialogue completed.')
-    await appendAudit(ctx.cocoderHome, { action: 'oscar-deb-repair', workspaceId: workspace.id, dialogueId, state, committedSha: committed.sha, files: committed.committedPaths, outOfLanePaths: committed.outOfLanePaths })
-    emitOzEvent(ctx, { type: 'oscar-deb-repair', workspaceId: workspace.id, runId: request.sourceRunId, status: committed.sha ? 'committed' : 'no-commit' })
-    return { status: 200, body: { ok: true, state, outcome: 'applied', dialogueId, artifactPaths: paths, committedPaths: committed.committedPaths, commitSha: committed.sha, outOfLanePaths: committed.outOfLanePaths } }
+    await appendAudit(ctx.cocoderHome, { action: committed.interfering ? 'oscar-deb-repair-interfering-held' : 'oscar-deb-repair', workspaceId: workspace.id, dialogueId, state, committedSha: committed.sha, files: committed.committedPaths, outOfLanePaths: committed.outOfLanePaths })
+    emitOzEvent(ctx, { type: 'oscar-deb-repair', workspaceId: workspace.id, runId: request.sourceRunId, status: committed.interfering ? 'interfering-held' : committed.sha ? 'committed' : 'no-commit' })
+    return { status: 200, body: { ok: true, state, outcome: committed.interfering ? 'held-for-founder' : 'applied', dialogueId, artifactPaths: paths, committedPaths: committed.committedPaths, commitSha: committed.sha, outOfLanePaths: committed.outOfLanePaths } }
   }
 
   state = nextDialogueState(state, { type: 'deb-proposed' })
@@ -1171,15 +1173,17 @@ export async function requestOscarDebRepair(ctx: OzContext, input: OscarDebRepai
     return await failDialogue(`Directed Deb repair turn produced malformed artifact: ${err instanceof Error ? err.message : String(err)}`)
   }
   if (directedResponse.kind !== 'applied') return await failDialogue('Directed Deb repair turn must return an applied repair artifact')
-  const committed = await commitDebRepair(ctx, workspace.path, deb.writeScope, 'deb-repair').catch((err: unknown) => err instanceof Error ? err : new Error(String(err)))
+  // The interference rail is mechanical, not subject to Oscar's direction: even a directed apply of a
+  // non-.md change is held for the founder, never an autonomous commit (ADR-0041 §3.1).
+  const committed = await commitDebRepair(ctx, workspace.path).catch((err: unknown) => err instanceof Error ? err : new Error(String(err)))
   if (committed instanceof Error) return await failDialogue(`Directed Deb repair commit failed: ${committed.message}`)
   const response = parseDebRepairResponse(JSON.stringify({ ...directedResponse, commit: responseCommit(committed) }))
   await writeDialogueJson(ctx, paths.debResponse, response)
   state = nextDialogueState(state, { type: 'complete' })
-  await appendDialogueEvidence(ctx, paths, state, 'deb-response.json', 'Directed Deb repair completed.')
-  await appendAudit(ctx.cocoderHome, { action: 'oscar-deb-repair', workspaceId: workspace.id, dialogueId, state, committedSha: committed.sha, files: committed.committedPaths, outOfLanePaths: committed.outOfLanePaths })
-  emitOzEvent(ctx, { type: 'oscar-deb-repair', workspaceId: workspace.id, runId: request.sourceRunId, status: committed.sha ? 'committed' : 'no-commit' })
-  return { status: 200, body: { ok: true, state, outcome: 'directed-applied', dialogueId, artifactPaths: paths, committedPaths: committed.committedPaths, commitSha: committed.sha, outOfLanePaths: committed.outOfLanePaths } }
+  await appendDialogueEvidence(ctx, paths, state, 'deb-response.json', committed.interfering ? 'Directed Deb self-fix touches non-.md surfaces — held for the founder (ADR-0041 §3.1).' : 'Directed Deb repair completed.')
+  await appendAudit(ctx.cocoderHome, { action: committed.interfering ? 'oscar-deb-repair-interfering-held' : 'oscar-deb-repair', workspaceId: workspace.id, dialogueId, state, committedSha: committed.sha, files: committed.committedPaths, outOfLanePaths: committed.outOfLanePaths })
+  emitOzEvent(ctx, { type: 'oscar-deb-repair', workspaceId: workspace.id, runId: request.sourceRunId, status: committed.interfering ? 'interfering-held' : committed.sha ? 'committed' : 'no-commit' })
+  return { status: 200, body: { ok: true, state, outcome: committed.interfering ? 'held-for-founder' : 'directed-applied', dialogueId, artifactPaths: paths, committedPaths: committed.committedPaths, commitSha: committed.sha, outOfLanePaths: committed.outOfLanePaths } }
 }
 
 function resolveDialoguePersona(workspacePath: string, persona: 'deb' | 'oscar'): { readonly cli: string; readonly model: string; readonly writeScope: readonly string[] } | null {
@@ -1231,15 +1235,20 @@ function responseCommit(committed: { readonly sha: string | null; readonly commi
   return { sha: committed.sha ?? 'no-commit', committedPaths: committed.committedPaths, outOfLanePaths: committed.outOfLanePaths }
 }
 
-async function commitDebRepair(ctx: OzContext, cwd: string, scope: readonly string[], message: string): Promise<{ readonly sha: string | null; readonly committedPaths: readonly string[]; readonly outOfLanePaths: readonly string[] }> {
-  const result = await gateCommitRepair({
-    git: ctx.git,
-    cwd,
-    scope,
-    message,
-    author: { name: 'deb-repair', email: 'deb-repair@cocoder.local' },
-  })
-  return { sha: result.committedSha, committedPaths: result.committedFiles, outOfLanePaths: result.outOfLaneFiles }
+// Land (or hold) a Deb overseer self-fix (ADR-0041 §3.1/§3.2). The interference rail is the mechanical
+// bound on what Deb may change live: any non-`.md` surface — the runner, target code, or an isolated
+// guard alike — INTERFERES and is never an autonomous Deb commit; it is HELD for the founder (surfaced
+// via outOfLanePaths + the dialogue's `interfering-held` event, never committed). Only a non-interfering
+// `.md`/instruction self-fix commits, and it rides the NORMAL governed spine (commitFiles + the shared
+// governed author, in a ledger) — no bespoke `deb-repair` author, no raw git (the run_234 D1 bypass).
+async function commitDebRepair(ctx: OzContext, cwd: string): Promise<{ readonly sha: string | null; readonly committedPaths: readonly string[]; readonly outOfLanePaths: readonly string[]; readonly interfering: boolean }> {
+  const changed = await ctx.git.changedFiles(cwd)
+  if (interferes(changed)) {
+    return { sha: null, committedPaths: [], outOfLanePaths: changed.filter((file) => !isInstructionSurface(file)), interfering: true }
+  }
+  const receipt = await commitFiles(ctx.git, cwd, changed, 'deb-overseer: non-interfering self-fix (ADR-0041 §3.2)', COCODER_GOVERNANCE_AUTHOR)
+  if (changed.length > 0 && !receipt.committed) throw new Error(receipt.error ?? 'deb self-fix commit produced no sha')
+  return { sha: receipt.committedSha, committedPaths: receipt.committedFiles, outOfLanePaths: [], interfering: false }
 }
 
 async function writeDialogueJson(ctx: OzContext, relativePath: string, payload: unknown): Promise<void> {
@@ -1255,10 +1264,11 @@ async function appendDialogueEvidence(ctx: OzContext, paths: { readonly evidence
 function buildDebRepairDialoguePrompt(request: OscarRepairRequest, paths: { readonly request: string; readonly debResponse: string }): string {
   return [
     '## Oscar-Deb repair dialogue',
-    'You are Deb. ADR-0036 owns this dialogue: Oscar-Deb only, never Bob, never the build directive loop, no second commit lane.',
+    'You are Deb, the run OVERSEER (ADR-0041). This dialogue is Oscar-Deb only, never Bob, never the build directive loop, no second commit lane.',
     `Read the repair request at ${paths.request}.`,
-    'If the fix is easy, clearly in-scope CoCoder machinery, edit the files and print exactly one JSON object to stdout with kind "applied". Use commit {"sha":"pending","committedPaths":[],"outOfLanePaths":[]} as a placeholder; the daemon replaces it after gateCommitRepair.',
-    'If you are unsure, the change is risky, or it needs Oscar/founder direction, edit nothing and print exactly one JSON object to stdout with kind "proposal".',
+    'The interference rail (ADR-0041 §3.1) bounds what you may change live: a non-interfering self-fix is an `.md`/instruction edit ONLY (orchestration prompts, personas/**, decisions/**, PLAYBOOK.md, failure-catalog.md, docs). ANY change touching code — the runner or any non-`.md` file, even a small isolated guard — INTERFERES and is the founder\'s to dispose.',
+    'If the fix is a small, non-interfering `.md`/instruction edit, edit ONLY those `.md` files and print exactly one JSON object to stdout with kind "applied". Use commit {"sha":"pending","committedPaths":[],"outOfLanePaths":[]} as a placeholder; the daemon commits the `.md` edit through the governed spine and replaces it.',
+    'If the fix touches ANY code, or you are unsure, edit NOTHING and print exactly one JSON object with kind "proposal" describing the fix for the founder. The daemon mechanically REFUSES to commit any non-`.md` change and holds it for the founder — editing code here cannot land it.',
     `Request:\n${JSON.stringify(request, null, 2)}`,
     `Write no files except the repair itself; the daemon writes ${paths.debResponse}.`,
   ].join('\n\n')
@@ -1278,8 +1288,9 @@ function buildOscarRepairEvaluationPrompt(request: OscarRepairRequest, response:
 function buildDirectedDebRepairPrompt(request: OscarRepairRequest, response: DebRepairResponse, evaluation: OscarEvaluation, paths: { readonly debResponse: string }): string {
   return [
     '## Directed Deb repair',
-    'You are Deb. Oscar evaluated your proposal and directed the next step. Apply only the directed CoCoder machinery repair.',
-    'Print exactly one applied DebRepairResponse JSON object to stdout. Use commit {"sha":"pending","committedPaths":[],"outOfLanePaths":[]} as a placeholder; the daemon replaces it after gateCommitRepair.',
+    'You are Deb, the run overseer. Oscar evaluated your proposal and directed the next step. Apply only the directed repair, and only as a non-interfering `.md`/instruction edit.',
+    'The interference rail still binds (ADR-0041 §3.1): the daemon mechanically refuses to commit ANY non-`.md` change even under Oscar direction — it holds it for the founder. Edit only `.md` files.',
+    'Print exactly one applied DebRepairResponse JSON object to stdout. Use commit {"sha":"pending","committedPaths":[],"outOfLanePaths":[]} as a placeholder; the daemon commits the `.md` edit through the governed spine and replaces it.',
     `Request:\n${JSON.stringify(request, null, 2)}`,
     `Original Deb proposal:\n${JSON.stringify(response, null, 2)}`,
     `Oscar evaluation:\n${JSON.stringify(evaluation, null, 2)}`,

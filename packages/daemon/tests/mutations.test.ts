@@ -2053,7 +2053,8 @@ describe('Oz mutations + lifecycle', () => {
 
   test('POST /workspaces/:id/oscar-deb-repairs routes through the Oscar-Deb repair operation', async () => {
     await enableDebRepairFixture(home)
-    await startServer(fakeGit(['packages/daemon/src/routes.ts']), async () => ({ exitCode: 0, output: appliedDebRepairOutput() }))
+    // A non-interfering .md self-fix is the only autonomous Deb commit under the overseer model (ADR-0041).
+    await startServer(fakeGit(['cocoder/PLAYBOOK.md']), async () => ({ exitCode: 0, output: appliedDebRepairOutput() }))
 
     const r = await call(oz!, 'POST', '/workspaces/cocoder/oscar-deb-repairs', {
       body: {
@@ -2069,7 +2070,7 @@ describe('Oz mutations + lifecycle', () => {
         ok: true,
         state: 'complete',
         outcome: 'applied',
-        committedPaths: ['packages/daemon/src/routes.ts'],
+        committedPaths: ['cocoder/PLAYBOOK.md'],
         commitSha: 'sha-committed',
         outOfLanePaths: [],
       },
