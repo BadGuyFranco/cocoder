@@ -12,7 +12,7 @@
   "priorityId": "orchestration-e2e-test",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "awaiting-archive-confirmation",
   "createdAt": 1782346505661,
-  "endedAt": null
+  "endedAt": 1782346690573
 }
