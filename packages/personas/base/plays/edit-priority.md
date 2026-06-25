@@ -23,7 +23,8 @@ Edit exactly one existing priority file from invocation input. Objective edits a
 work: if the requested change modifies the priority's `## Objective` section, the invocation must
 include the founder's explicit objective/go-ahead. Non-Objective edits such as title, body detail,
 lineage notes, and archive-readiness notes are lower-stakes but still must preserve the priority
-contract.
+contract. Details body edits preserve the existing `## Objective` by default; change the Objective
+only when the invocation explicitly carries the founder-approved new Objective.
 
 Do this:
 
@@ -33,16 +34,23 @@ Do this:
    frontmatter and body content.
 3. If changing the Objective, verify the invocation explicitly carries the founder-approved new
    Objective. Do not invent or broaden an Objective.
-4. If the edit adds or changes implementation atoms, order them so a future LLM-run builder can execute
+4. For non-Objective body edits with `details`, use the requested `mode`:
+   - `replace-body`: replace the body content that FOLLOWS the `## Objective` section with the provided
+     `details` markdown VERBATIM, leaving the `## Objective` section (heading + approved objective text)
+     and frontmatter unchanged.
+   - `append-section`: append the provided `details` markdown VERBATIM as new trailing section(s) after
+     the existing body, preserving everything above unchanged.
+   In both modes, do not summarize, reorder, or retitle the details.
+5. If the edit adds or changes implementation atoms, order them so a future LLM-run builder can execute
    them systematically: decision/taxonomy work before schema changes, schema before migration, migration
    before new runtime behavior, runtime behavior before UI or broad consumers, and proof/verification
    last. Keep each atom independently delegable with its own acceptance evidence and avoid ordering that
    requires a later atom to make an earlier atom valid.
-5. Run the elegance checkpoint before writing: preserve correctness, evidence, reversibility, and needed
+6. Run the elegance checkpoint before writing: preserve correctness, evidence, reversibility, and needed
    safeguards; remove prose that does not carry weight; avoid duplicating a rule that already has an
    owner; and keep the resulting priority readable by a fresh agent in one pass.
-6. Write the modified priority file.
-7. Validate the result with `parseFrontmatter` and `loadPriority`: frontmatter id must match the
+7. Write the modified priority file.
+8. Validate the result with `parseFrontmatter` and `loadPriority`: frontmatter id must match the
    filename id, title must be non-empty, and the file must still parse with the expected Objective
    state after the edit.
 

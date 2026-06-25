@@ -37,6 +37,13 @@ describe('priority authoring Plays', () => {
     expect(play.body).toContain('independently delegable')
   })
 
+  test('edit-priority documents verbatim detailed-body edit modes', () => {
+    const play = loadEffectivePlay(sources().baseDir, sources().deltaDir, 'edit-priority')
+
+    expect(play.body).toContain('replace-body')
+    expect(play.body).toContain('append-section')
+  })
+
   test.each(authoringPlayIds)('%s requires the elegance checkpoint before writing or finishing', (id) => {
     const play = loadEffectivePlay(sources().baseDir, sources().deltaDir, id)
 

@@ -99,6 +99,7 @@ describe('orchestration contract ownership', () => {
     const play = read('packages/personas/base/plays/create-priority.md')
     const routes = read('packages/daemon/src/routes.ts')
 
+    expect(play).toContain('composePriorityBody')
     expect(play).toContain('composePriorityMarkdown')
     expect(play).not.toMatch(/exactly `id` and `title` frontmatter/i)
     expect(play).not.toMatch(/followed by the priority body/i)

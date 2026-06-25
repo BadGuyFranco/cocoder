@@ -34,6 +34,10 @@ Do this:
    - `title` must be a non-empty string.
    - the body must contain the Objective as a real `## Objective` section (it may include open research
      questions as the priority's first gate — that is fine, not a blocker).
+   - optional `details` is founder-approved markdown to place after the Objective. When present,
+     reproduce it VERBATIM: do not summarize, re-wrap, reorder, retitle, or drop any section, badge
+     text, phase, gate, or non-goal. Open research questions inside details are fine and become the
+     first gate.
 2. Refuse on id collision. Check `cocoder/priorities/<id>.md` case-insensitively against existing
    entries in `cocoder/priorities/`.
 3. **Conflict/overlap check (ADR-0035) — the one halt before placing.** Measure the Objective against the
@@ -46,16 +50,17 @@ Do this:
      decide supersede / reframe / drop.
    - **Clean, or only soft/uncertain similarity**: proceed to place it. Halt only on a *clear* overlap or
      conflict; do not over-halt (an unnecessary halt is the founder-blocking anti-pattern, ADR-0029).
-4. Compose the priority file using core `composePriorityMarkdown(input)`, the single owner of the
-   priority markdown format. Use the same input values validated above; do not invent a second
-   priority template.
+4. Compose the priority body with core `composePriorityBody({ objective, details })`, the single owner
+   of the priority body format, then wrap it with core `composePriorityMarkdown({ id, title, goal })`,
+   the single owner of the frontmatter+body format. Use the same input values validated above; do not
+   invent a second priority template. When `details` is absent, keep the Objective-only behavior.
 5. Run the elegance checkpoint before writing: preserve the Objective and verification evidence, remove
    prose that does not carry weight, keep one owner for each rule/format, and order any implementation
    atoms so a future LLM-run builder can execute them systematically.
 6. Write `cocoder/priorities/<id>.md` — placed in the active stack (no draft state).
 7. Validate the written file round-trips through core `loadPriority` or `readPriorities`: the parsed
    id and title must match the invocation, `scopeNarrowing` must remain unset, and `objective` must
-   be non-null.
+   be non-null. When `details` was provided, the details content must remain present in the body.
 
 Do not run git, commit, or edit `order.json`. After this Play returns, the dispatch spine reconciles
 `order.json` automatically and commits the priority file plus registration together. There is no
