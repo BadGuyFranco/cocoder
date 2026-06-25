@@ -13,6 +13,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
+| [0061](./open/0061-governed-create-ticket-spine.md) | Governed createTicket spine for tracked ticket filing | bug | none | Open |
 | [0060](./open/0060-orchestration-e2e-stalls-after-builder-artifact.md) | Orchestration e2e stalls after builder writes the evidence artifact | bug | orchestration-e2e-test | Open |
 | [0048](./open/0048-adopt-eslint-in-cocoder-engine-repo.md) | Adopt a minimal ESLint 9 linter in CoCoder's own engine repo | task | none | Open |
 | [0039](./open/0039-launch-status-in-oz-dashboard.md) | Launch Status in Oz Dashboard | task | none | founder-session |
