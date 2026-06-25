@@ -178,6 +178,8 @@ export {
   nextTicketId,
   readTicketIndex,
   readTickets,
+  repointTicket,
+  setOpenTicketIndexPriority,
   ticketIndexSkeleton,
   ticketTableCell,
   TICKET_OWNER,
@@ -187,6 +189,8 @@ export {
   type CreateTicketInput,
   type CreateTicketResult,
   type HandledTicket,
+  type RepointTicketInput,
+  type RepointTicketResult,
   type Ticket,
   type TicketState,
 } from './tickets/index.js'

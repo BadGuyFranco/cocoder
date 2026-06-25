@@ -1,4 +1,5 @@
 import type { Ticket } from './loader.js'
+import { normalizeTicketPriority } from './priority.js'
 
 export interface HandledTicket {
   readonly id: string
@@ -6,15 +7,8 @@ export interface HandledTicket {
   readonly priority: string
 }
 
-function normalizedTicketPriority(priority: string | null): string | null {
-  const value = priority?.trim()
-  if (!value) return null
-  const normalized = value.toLowerCase()
-  return normalized === 'none' || normalized === 'unassigned' ? null : value
-}
-
 export function handledOpenTicketsForPriority(tickets: readonly Ticket[], priorityId: string): HandledTicket[] {
   return tickets
-    .filter((ticket) => ticket.state === 'open' && normalizedTicketPriority(ticket.priority) === priorityId)
+    .filter((ticket) => ticket.state === 'open' && normalizeTicketPriority(ticket.priority) === priorityId)
     .map((ticket) => ({ id: ticket.id, title: ticket.title, priority: priorityId }))
 }

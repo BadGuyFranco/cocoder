@@ -68,3 +68,30 @@ export function moveTicketIndexRowToClosed(indexMarkdown: string, input: { reado
   lines.splice(separatorIndex(lines, '## Recently Closed') + 1, 0, input.closedRow)
   return lines.join('\n')
 }
+
+function tableDelimiters(row: string): number[] {
+  const indexes: number[] = []
+  for (let index = 0; index < row.length; index += 1) {
+    if (row[index] !== '|') continue
+    let slashes = 0
+    for (let cursor = index - 1; cursor >= 0 && row[cursor] === '\\'; cursor -= 1) {
+      slashes += 1
+    }
+    if (slashes % 2 === 0) indexes.push(index)
+  }
+  return indexes
+}
+
+export function setOpenTicketIndexPriority(indexMarkdown: string, id: string, priority: string): string {
+  const lines = indexMarkdown.split(/\r?\n/)
+  const open = sectionBounds(lines, '## Open')
+  const rowIndex = lines.findIndex((line, index) => index > open.start && index < open.end && line.includes(`| [${id}](`))
+  if (rowIndex === -1) throw new Error(`ticket ${id} is missing from INDEX.md Open section`)
+
+  const row = lines[rowIndex]!
+  const delimiters = tableDelimiters(row)
+  if (delimiters.length < 6) throw new Error(`ticket ${id} INDEX.md Open row must have five columns`)
+
+  lines[rowIndex] = `${row.slice(0, delimiters[3]! + 1)} ${ticketTableCell(priority)} ${row.slice(delimiters[4]!)}`
+  return lines.join('\n')
+}
