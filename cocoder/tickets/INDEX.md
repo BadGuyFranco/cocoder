@@ -13,7 +13,6 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
-| [0061](./open/0061-governed-create-ticket-spine.md) | Governed createTicket spine for tracked ticket filing | bug | none | Open |
 | [0048](./open/0048-adopt-eslint-in-cocoder-engine-repo.md) | Adopt a minimal ESLint 9 linter in CoCoder's own engine repo | task | none | Open |
 | [0039](./open/0039-launch-status-in-oz-dashboard.md) | Launch Status in Oz Dashboard | task | none | founder-session |
 | [0037](./open/0037-contributing-pr-template-stale-rg-ci-gate.md) | CONTRIBUTING and PR template still promise an rg CI gate that live ci.yml no longer runs | bug | none | Open |
@@ -22,6 +21,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0061](./closed/0061-governed-create-ticket-spine.md) | Governed createTicket spine for tracked ticket filing | bug | 2026-06-25 | Ticket fix run completed successfully. The post-wrap ticket-close recovery gap was repaired in 537193f; ticket 0061 implementation landed in run_238. |
 | [0062](./closed/0062-create-priority-and-edit-priority-need-detailed-body-input.md) | create-priority and edit-priority need detailed body input | task | 2026-06-25 | Ticket fix run completed successfully. |
 | [0060](./closed/0060-orchestration-e2e-stalls-after-builder-artifact.md) | Orchestration e2e stalls after builder writes the evidence artifact | bug | 2026-06-25 | Ticket fix run completed successfully. |
 | [0052](./closed/0052-archive-priority-lane-silent-no-op.md) | archive-priority lane silent no-op — reports success but moves nothing | bug | 2026-06-25 | Made the archive-priority lane honest: requestAuthoringPlay now asserts the move landed (live file gone + id pruned from order.json) before trusting the success receipt — a no-move-where-move-was-due returns a loud named 422 (CLI exits nonzero) instead of an exit-0 'completed but no commit' no-op; an already-archived re-confirm is a benign distinct non-move success (archived:false + reason), mirroring reconciliation-close. Daemon archive-confirmation route and CLI stay at parity. Tests pin the run_88 case + the no-move loud failure across op, route, and CLI transport. Fixed in d68ece0. |

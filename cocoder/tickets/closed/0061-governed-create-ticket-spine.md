@@ -2,7 +2,7 @@
 id: 0061
 title: Governed createTicket spine for tracked ticket filing
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: deb
 created: 2026-06-25
@@ -82,3 +82,9 @@ the queue consistent by construction without reopening freehand queue access.
   adds the missing ticket-create spine the CLI can safely wrap.
 - Related: 0060, which records the `run_235` e2e stall and the atom commit's `out-of-scope-committed`
   queue sweep.
+
+## Resolution
+
+Resolved by run run_238 (no code change) on 2026-06-25.
+
+Ticket fix run completed successfully. The post-wrap ticket-close recovery gap was repaired in 537193f; ticket 0061 implementation landed in run_238.
