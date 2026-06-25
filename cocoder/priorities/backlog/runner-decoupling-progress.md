@@ -29,6 +29,104 @@ next session. Do not start the following chunk in this session.
 
 ---
 
+## 2026-06-24 — WS5, step 3 (ASSESS the done-when — **WS5 COMPLETE / runner decoupling refactor COMPLETE**)
+
+- **Workstream/step:** WS5 (split `runner.ts`), step 3 — the LAST step. **Not a forced extraction.** Per the
+  step-0 map's own conclusion (target 4 "may stay in `runner.ts` as the orchestration shell rather than move
+  to a new file") and the priority's done-when ("no module exceeds a reviewable size, thin composition,
+  behavior unchanged"), this step ASSESSES whether the remaining `runner.ts` IS the legitimate irreducible
+  orchestration shell — and, finding that it is, declares the priority DONE. **No source/test file touched**
+  (assessment + ledger only, like the WS5 step-0 map session); the green baseline is preserved byte-for-byte.
+- **What remains in `runner.ts` (1557 lines; re-grepped this session, numbers verified live):**
+  - **Top-level pure helpers / config** (`:95–360`): `exec`/`sleep`, `readReadyDirective`, `resumeStateAtomNumber`,
+    `DEFAULTS`/`LIMITS`/timeouts consts, `defaultMakeJudge`/`defaultExecCriterion`/`defaultBuildUiBundle`,
+    the UI-path predicates, `withPortableRunHistoryScope`, `defaultRunLabelTarget`, the onboarding-spend
+    guards, `validateDebNudgeEvidence`. These are small, parameter-driven, and already module-scoped — no
+    capture; they are not the problem.
+  - **`runRun` (`:363–1557`)** — the orchestration shell. Inside it: the injected world + pre-run integrity/
+    snapshot setup (`:363–630`); the run-lifecycle closures (`fail`, `rebuildUiBundleIfNeeded`, the Deb
+    status-feed sub-machine `writeDebEvidence`/`recordDebWatchDispatch`/`sendDebWatch`/`refreshStatus`, the
+    watchers `startDebWatcher`/`stopDebWatcher`/`awaitOscarWithNudgeWatchdog`, the resume/park/commit/
+    quarantine helpers, `projectAndCommitPortableRunHistory`, `stopRun`, `holdRun`); the accumulator
+    declarations (`:1021–1030`: `committedShas`/`committedFiles`/`outOfScope`/`selfCommitted`/`n`/
+    `consecutiveRejects`) + `absorbGateResult`; and the `for (;;)` atom loop + its `try/catch` + the
+    wrap-up/landing/return tail (`:1264–1557`).
+- **VERDICT: the done-when is MET.** The remaining core is the IRREDUCIBLY ENTANGLED orchestration shell.
+  Every still-resident closure either belongs to the shell or has unbounded capture that makes extraction a
+  net READABILITY LOSS — proven, not asserted:
+  - **The loop + `fail` + `stopRun` + `holdRun` + `projectAndCommitPortableRunHistory`** all share and MUTATE
+    the same accumulators (`n`, `committedShas`, `committedFiles`, `outOfScope`, `selfCommitted`,
+    `consecutiveRejects`). Forcing them into a module would thread a shared mutable-state object **by
+    reference** plus a ~20-field deps record — HIGH risk, and a loss against "thin composition." This is the
+    legitimate shell; it stays. (Step-0 map target 4, confirmed.)
+  - **The watcher cluster (`startDebWatcher` + `stopDebWatcher` + `awaitOscarWithNudgeWatchdog`)** — the one
+    candidate the brief flagged as a possible bounded "watchers module" — is **NOT bounded-capture** (verified
+    by grep this session, the precondition the brief required before any cut):
+    - `refreshStatus` is called from **11 sites** — `fail` (`:640`), the watchdog (`:940`), `stopRun`
+      (`:1210`), `holdRun` (`:1247`), the loop body (`:1266/1270/1388/1412/1466/1525`) — and is threaded into
+      BOTH `triageDeps` (`:776`) and the agent-step deps (`:1442`). It is the shared status-feed spine for the
+      whole run, not a watcher-private fn; a watchers module would either drag it (and the loop + triage) along
+      or thread it by reference.
+    - `lastDebNudgeSeq` is MUTATED by BOTH `startDebWatcher` (`:818/:853`) AND `awaitOscarWithNudgeWatchdog`
+      (`:945`) — a shared cursor by reference between the two would-be-extracted fns.
+    - The `lastDeb*/lastOz*` wake/seq state (`:702–707`, 6 vars) is written by `recordDebWatchDispatch`/
+      `writeDebEvidence`/`refreshStatus` (`:720/:740–741/:759`) and READ by the watcher judge (`:815/:816/:833`)
+      and the watchdog (`:923`) — so the watcher's decisions depend on state the loop/triage mutate.
+    - `activeAtom` (`:794`) is MUTATED by the loop (`:1447 activeAtom = atom`) and READ by the watcher
+      (`:848/:859`) and `stopRun` (`:1186`) — loop state the watcher observes by reference.
+    Extracting the watchers would therefore thread `refreshStatus` (a spine used by 11 sites incl. triage and
+    the loop) + the 6-var mutable wake/seq state + `activeAtom` by reference — exactly the
+    shared-mutable-state-by-reference anti-pattern the EXECUTION CONSTRAINT warns produces a readability LOSS.
+    So the brief's option-3 precondition ("genuinely SELF-CONTAINED, BOUNDED-CAPTURE") is **FALSE**; the
+    correct action is NOT to extract.
+- **Done-when scorecard (priority §Objective + WS5):** (1) four surfaces are pure projections of the event
+  log — DONE (WS1, guarded by `surface-agreement.test.ts`); (2) no semantic state from screen-scraping —
+  DONE (WS2); (3) one commit spine — DONE (WS3, `workspace-commit.ts` + the deb-repair no-sweep guard);
+  (4) `runner.ts` split into focused modules behind unchanged contracts — DONE: the founder-closeout parser
+  (`plays/founder-closeout.ts`, WS5.1), the fault/triage funnel (`runner/triage.ts`, WS5.2), and the terminal
+  reducers (`runner/status.ts`, WS1) are out; `runner.ts` fell 2054 → 1557 (−497, −24%) and is now the thin
+  orchestration shell (the loop + accumulator core), which is the legitimate composition root, not a module to
+  carve; (5) suite/typecheck/topology green at every committed step — HELD. **All five met → priority DONE.**
+- **The fork the founder reserved (called explicitly):** chose **(a)** — keep WS5.3 as the assessment/close-out
+  and declare the priority done. 1557 lines is "reviewable enough" because the residue is the irreducible loop
+  shell, not accreted mixed concerns; the marginal value of carving the watchers cluster is real but small and
+  not worth deferring closure — AND, per the grep above, that cluster is not bounded-capture, so carving it now
+  would be a net loss, not a win. If the founder later wants `runner.ts` materially smaller, the right move is a
+  NEW, explicitly-scoped **WS5.4** (candidate targets: lift the Deb status-feed sub-machine
+  `writeDebEvidence`/`recordDebWatchDispatch`/`sendDebWatch`/`refreshStatus` + its `lastDeb*` state into a
+  `runner/deb-feed.ts` behind a small stateful object, THEN the watchers can take that object as a dep — never
+  the loop+accumulator core), written as its own priority/decision, not smuggled into "the loop extraction."
+  This is left as a genuinely-optional follow-up, not a required next step.
+- **Trivial tidy:** none performed. A section-comment pass on the shell was considered but declined — it would
+  force a `runner.ts` edit (and the SessionRef surgical-stage dance) for marginal value; this ledger entry now
+  serves as the navigable section map. Behavior + bytes of `runner.ts` unchanged.
+- **Commit:** `<PENDING — backfill after commit>` — "priority(backlog): WS5.3 — assess done-when; declare WS5 / runner decoupling COMPLETE".
+- **Files:** `cocoder/priorities/backlog/runner-decoupling-progress.md` (this entry) ONLY. No source/test file
+  touched — assessment-only, same as the WS5 step-0 map. `runner.ts` keeps ONLY its pre-existing foreign
+  `SessionRef` import dirt; nothing staged from it. The unrelated eslint-adoption dirt (`eslint.config.mjs`,
+  `run.ts`, `read-claims.ts`, `p3-action.ts`, `frontmatter.ts`, `runner.ts`'s `SessionRef` import hunk,
+  `oz-host.ts`, `proof-daemon-reload.mjs`, `tsconfig.eslint.json`) was preserved, NOT committed.
+- **Tests/results (full verification, since this declares the priority COMPLETE):** `pnpm --filter
+  @cocoder/core test` → **582 passed** (72 files, unchanged baseline); `pnpm --filter @cocoder/core typecheck`
+  → clean; root `pnpm typecheck` → clean (7 pkgs); `node scripts/check-topology.mjs` → passed (7 pkgs; same 2
+  PRE-EXISTING daemon test-helper warnings — `daemon-reload-fixture.ts`, `founder-closeout.ts`); root `pnpm
+  test` → **3/3 consecutive full-parallel runs ALL green** (personas 29, core 582, adapters 24, session-hosts
+  18, ui 161, cli 9, daemon 346) — stall family did not trip. No test rewritten, none weakened (no code
+  changed at all) — a green run with zero edits is the proof the assessment is behavior-preserving.
+- **Residual risk:** NONE from this session (no behavior change — assessment + ledger only). Standing carry-
+  forward for any FUTURE `runner.ts` work: (a) `runner.ts` still carries the foreign `SessionRef` import dirt —
+  any edit must surgical-stage (restore SessionRef to HEAD, `git add`, verify it's outside every staged hunk,
+  re-apply) per the WS5.1/5.2 method; (b) the eslint-adoption dirt above remains uncommitted; (c) if WS5.4 is
+  ever opened, extract the Deb status-feed sub-machine FIRST (it is what makes the watchers look unbounded),
+  never the loop+accumulator core.
+- **Exact next step:** **NONE — the runner decoupling refactor is COMPLETE.** All five done-when conditions
+  are met (scorecard above); `runner.ts` is the thin orchestration shell behind unchanged behavioral contracts.
+  No further session is needed for this priority. The single genuinely-optional follow-up, if the founder wants
+  `runner.ts` smaller still, is a NEW WS5.4 (Deb-feed → watchers extraction, never the loop core) opened as its
+  own explicitly-scoped priority/decision — NOT a continuation of this one.
+
+---
+
 ## 2026-06-24 — WS5, step 2 (extract the fault/triage funnel `triageFault` → `runner/triage.ts`)
 
 - **Workstream/step:** WS5 (split `runner.ts`), step 2 — extract the TRIAGE FUNNEL (step-0 map target 3;
