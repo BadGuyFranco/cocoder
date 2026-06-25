@@ -2,7 +2,7 @@
 id: 0056
 title: No mutual exclusion — the same ticket can be in the build lane and the Deb-repair lane concurrently (D2)
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: deb
 created: 2026-06-24
@@ -34,3 +34,9 @@ bypasses it, and detect-don't-prevent never blocks its raw commit.
 - Low-risk guardrail (ADR-0041 §3 R2) — closed by the guardrail built in this session.
 - Related: [0055](./0055-deb-repair-commits-and-closes-outside-runner-sequence.md) (D1, the redesign that
   fully subordinates the repair lane).
+
+## Resolution
+
+Resolved by run cli-close-ticket (no code change) on 2026-06-25.
+
+Build XOR repair is enforced in code: requestOscarDebRepair refuses while a workspace run is active (launcher.ts:1051). Pinned by a run_234-shaped regression (oscar-deb-repair-op.test.ts): an active ticket-fix run targeting 0054 refuses the Deb-repair lane with no Deb turn spawned. Commit f374930. The raw-agent bypass (the literal run_234 mechanism, a Deb git commit outside all daemon entry points) is interceptable only by D4 prevention and is tracked in 0058 (deferred).
