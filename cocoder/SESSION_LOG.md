@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-25 — **orchestration-e2e-test: one clean live loop — archive ready (run_91/run_235)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [orchestration-e2e-test](./priorities/orchestration-e2e-test.md) | **Run:** run_235 (display 91)
+**Outcomes:**
+- **Atom 0 (`a2155e9`) — disposable e2e evidence.** Builder authored `cocoder/audit/orchestration-e2e/e2e-evidence.md` under scope-narrowed sandbox; verify gate passed on verbatim spec (heading, priority line, five ordered loop-stage checkboxes); per-atom commit landed cleanly.
+- **Loop verdict: CLEAN (happy path).** One full directive → dispatch → monitor → verify → commit cycle on live infrastructure; loop advanced to wrap without wrong-file sweep or status/record disagreement.
+- **Anomaly (self-corrected, low).** Deb status/terminal projections lagged ~2 min after builder wrote the artifact; Deb nudge fired on stale data, then verify dispatched and the loop advanced normally. Overlaps closed [0054](./tickets/closed/0054-stale-terminal-deb-status-feed-after-run-end.md); open [0060](./tickets/open/0060-orchestration-e2e-stalls-after-builder-artifact.md) captures the mid-run stall surface for founder/supervisor reconciliation.
+- **Disposition: `archive-confirmation`.** Self-aware smoke-test objective met; priority is re-runnable (evidence file disposable) or archivable on founder confirmation.
+**Next:** Launch priority `model-layer` — Phase 0 adapter tier metadata in the `listModels` contract.
+
 ## 2026-06-25 — **ticket-fix-0054: no-op relaunch — verified closed on main (run_90/run_234)**
 
 **Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** ticket-fix / [0054](./tickets/closed/0054-stale-terminal-deb-status-feed-after-run-end.md) | **Run:** run_234 (display 90)
