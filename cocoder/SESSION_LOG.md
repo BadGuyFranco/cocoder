@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-25 — **ticket-priority-repoint: governed release/rehome at archive — archive ready (run_98/run_242)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [ticket-priority-repoint](./priorities/ticket-priority-repoint.md) | **Run:** run_242 (display 98)
+**Outcomes:**
+- **Core `repointTicket` spine (`99ffce7`).** Symmetric to `createTicket`/`closeTicket`: clears or sets open-ticket `priority:` frontmatter plus `INDEX.md` in one transactional operation; no `order.json` mutation.
+- **Governed execution lane (`26a0582`).** `requestReconciliationRepoint` + Oz `reconcile-repoint <ticketId> <standalone|priorityId>` wire archive-confirmation release/rehome alongside existing close; rehome requires a live priority file; archive options text names exact commands.
+- **Proof matrix green.** Core (624) and daemon (381) suites pin no auto-close, no queue mutation, and standalone/other-priority/closed tickets unaffected.
+- **ADR-0041 aligned (`2e6d01e`).** Deb reconciliation authority records guarded `reconcile-repoint` release/rehome via the `repointTicket` spine.
+- **Disposition: `archive-confirmation`.** All three verified-when criteria met; founder archive decision is the first-class closeout action.
+**Next:** Reply `archive` in Oz chat to archive `ticket-priority-repoint`, then launch `model-layer` for Phase 0 adapter tier metadata.
+
 ## 2026-06-25 — **ticket-launchability: founder-confirmed archive wrap — stale-items PASS (run_97/run_241)**
 
 **Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** [ticket-launchability](./priorities/ticket-launchability.md) | **Run:** run_241 (display 97)
