@@ -1,0 +1,38 @@
+---
+id: 0051
+title: E2E orchestration self-test — live issue log
+type: task
+status: Open
+priority: orchestration-e2e-test
+owner: founder
+created: 2026-06-24
+---
+
+# 0051 — E2E orchestration self-test — live issue log
+
+## Context
+
+The durable issue log for the `orchestration-e2e-test` priority (`cocoder/priorities/`). That priority
+launches the **real** Oscar/Bob/Deb runner loop as a smoke test of the orchestration after the
+runner-decoupling refactor. This ticket is where the defects that test surfaces are recorded — one row per
+observed anomaly, appended live by the founder and the supervisor session (16) as runs execute.
+
+## Safety rule (read before editing anything)
+
+This ticket is a LOG, not a work order. **Control-plane fixes are NOT applied from a live run, nor from
+the supervisor session while a run is in flight** — editing the runner / monitor / commit-gate / personas
+while the orchestration is using them is the exact self-modification hazard the refactor existed to
+prevent. Live: observe, diagnose, and log here. Fix: only after the run has fully torn down, in a separate
+non-orchestrated engineering session (the same discipline as the refactor sessions). Promote a confirmed,
+recurring defect to its own bug ticket when it warrants a fix.
+
+## Observed issues
+
+| # | Run ref | Surface | Expected → Observed | Severity | Status |
+|---|---------|---------|----------------------|----------|--------|
+| _ | _(none yet — first run pending)_ | _ | _ | _ | _ |
+
+## Run log
+
+- _(append one short entry per run: run reference, terminal status, and a one-line outcome — clean pass,
+  or which issue rows it produced.)_
