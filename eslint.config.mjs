@@ -26,9 +26,7 @@ export default [
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
-        projectService: {
-          allowDefaultProject: ['scripts/*.mjs', 'scripts/checks/*.mjs'],
-        },
+        project: './tsconfig.eslint.json',
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -45,6 +43,13 @@ export default [
       'no-eval': 'error',
       'no-implied-eval': 'error',
       'no-new-func': 'error',
+    },
+  },
+  {
+    files: ['scripts/**/*.mjs'],
+    rules: {
+      // Root scripts are proof/reporting commands; stdout is their user-facing artifact.
+      'no-console': 'off',
     },
   },
 ];

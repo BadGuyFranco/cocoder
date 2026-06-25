@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Live proof for daemon auto-reload. It uses an isolated temp install and port, launches the real
 // daemon, lets a real run commit a daemon route, then waits for the daemon's own reload to serve it.
-import { execFile, spawn } from 'node:child_process'
+import { execFile } from 'node:child_process'
 import { createServer } from 'node:net'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'

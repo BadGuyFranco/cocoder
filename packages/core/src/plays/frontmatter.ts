@@ -36,12 +36,12 @@ export function parsePlayContractFrontmatter(data: FrontmatterData, options: Par
     ...withOptional('executionModel', optionalExecutionModel(data.executionModel, options)),
     ...withOptional('triggerClass', optionalTriggerClass(data.triggerClass, options)),
     ...withOptional('purpose', optionalString(data.purpose, 'purpose', options)),
-    ...withOptional('allowedCallers', optionalStringList(data.allowedCallers, options)),
+    ...withOptional('allowedCallers', optionalStringList(data.allowedCallers)),
     ...withOptional('inputSchema', optionalRef(data.inputSchema, 'inputSchema', options)),
     ...withOptional('outputValidator', optionalRef(data.outputValidator, 'outputValidator', options)),
     ...withOptional('deterministicStep', optionalRef(data.deterministicStep, 'deterministicStep', options)),
     ...withOptional('commitMode', optionalCommitMode(data.commitMode, options)),
-    ...withOptional('requiredCheckpoints', optionalStringList(data.requiredCheckpoints, options)),
+    ...withOptional('requiredCheckpoints', optionalStringList(data.requiredCheckpoints)),
   }
 }
 
@@ -68,7 +68,7 @@ function optionalString(value: FrontmatterValue, field: string, options: ParseOp
   return value
 }
 
-function optionalStringList(value: FrontmatterValue, options: ParseOptions): readonly string[] | undefined {
+function optionalStringList(value: FrontmatterValue): readonly string[] | undefined {
   if (value === undefined) return undefined
   return Array.isArray(value) ? value : [value]
 }

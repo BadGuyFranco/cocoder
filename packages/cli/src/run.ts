@@ -25,6 +25,9 @@ import { CmuxSessionHost } from '@cocoder/session-hosts'
 import { authoringPlayViaDaemon, migrateHistoryViaDaemon, requestDebRepairViaDaemon, resumeViaDaemon, runViaDaemon, startOzDaemon, supportCommitViaDaemon, teardownViaDaemon, type DebRepairEvidenceItem } from './client.js'
 
 const log = (m: string): void => console.error(`[cocoder] ${m}`)
+const out = (m: string): void => {
+  process.stdout.write(`${m}\n`)
+}
 const usage = 'usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]   |   cocoder oz commit-support <runId>   |   cocoder oz resume <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]'
 const requestDebRepairUsage = 'usage: cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]'
 
@@ -102,7 +105,7 @@ async function main(): Promise<void> {
       process.exit(1)
     }
     const { closed } = await teardownViaDaemon(`http://127.0.0.1:${live.port}`, runId, { initiatorPersona })
-    console.log(`torn down ${runId}: closed ${closed.length} pane(s)`)
+    out(`torn down ${runId}: closed ${closed.length} pane(s)`)
     return
   }
   if (cmd === 'oz' && arg1 === 'resume') {
@@ -117,7 +120,7 @@ async function main(): Promise<void> {
       process.exit(1)
     }
     await resumeViaDaemon(`http://127.0.0.1:${live.port}`, runId)
-    console.log(`resuming ${runId}`)
+    out(`resuming ${runId}`)
     return
   }
   if (cmd === 'oz' && (arg1 === 'commit-support' || arg1 === 'support-commit')) {
@@ -133,11 +136,11 @@ async function main(): Promise<void> {
     }
     const result = await supportCommitViaDaemon(`http://127.0.0.1:${live.port}`, runId)
     if (result.commitSha) {
-      console.log(`committed support edits for ${runId}: ${result.commitSha}`)
-      if (result.committedPaths.length) console.log(`  files: ${result.committedPaths.join(', ')}`)
-      if (result.outOfLanePaths.length) console.log(`  out of lane, flagged not withheld: ${result.outOfLanePaths.join(', ')}`)
+      out(`committed support edits for ${runId}: ${result.commitSha}`)
+      if (result.committedPaths.length) out(`  files: ${result.committedPaths.join(', ')}`)
+      if (result.outOfLanePaths.length) out(`  out of lane, flagged not withheld: ${result.outOfLanePaths.join(', ')}`)
     } else {
-      console.log(`no support edits pending for ${runId}`)
+      out(`no support edits pending for ${runId}`)
     }
     return
   }
@@ -168,7 +171,7 @@ async function main(): Promise<void> {
       evidence,
       ...(sourceRunId ? { sourceRunId } : {}),
     })
-    console.log(JSON.stringify(result, null, 2))
+    out(JSON.stringify(result, null, 2))
     return
   }
   if (cmd === 'oz' && arg1 === 'archive-priority') {
@@ -200,12 +203,12 @@ async function main(): Promise<void> {
     }
     const result = await authoringPlayViaDaemon(`http://127.0.0.1:${live.port}`, workspaceId, 'archive-priority', archiveInvocation)
     if (result.commitSha) {
-      console.log(`archived priority ${priorityId} for ${workspaceId}: ${result.commitSha}`)
-      if (result.committedPaths.length) console.log(`  files: ${result.committedPaths.join(', ')}`)
-      if (result.turnLogPath) console.log(`  turn log: ${result.turnLogPath}`)
+      out(`archived priority ${priorityId} for ${workspaceId}: ${result.commitSha}`)
+      if (result.committedPaths.length) out(`  files: ${result.committedPaths.join(', ')}`)
+      if (result.turnLogPath) out(`  turn log: ${result.turnLogPath}`)
     } else {
-      console.log(`archive-priority completed for ${priorityId}, but no commit was created`)
-      if (result.outOfLanePaths.length) console.log(`  held back outside the Play lane: ${result.outOfLanePaths.join(', ')}`)
+      out(`archive-priority completed for ${priorityId}, but no commit was created`)
+      if (result.outOfLanePaths.length) out(`  held back outside the Play lane: ${result.outOfLanePaths.join(', ')}`)
     }
     return
   }
@@ -222,14 +225,14 @@ async function main(): Promise<void> {
     }
     const result = await authoringPlayViaDaemon(`http://127.0.0.1:${live.port}`, 'cocoder', playId, authorInvocationFromArgv(), 'oscar')
     if (result.commitSha) {
-      console.log(`committed authoring Play ${playId}: ${result.commitSha}`)
-      if (result.committedPaths.length) console.log(`  files: ${result.committedPaths.join(', ')}`)
-      if (result.outOfLanePaths.length) console.log(`  out of lane, flagged not withheld: ${result.outOfLanePaths.join(', ')}`)
-      if (result.turnLogPath) console.log(`  turn log: ${result.turnLogPath}`)
+      out(`committed authoring Play ${playId}: ${result.commitSha}`)
+      if (result.committedPaths.length) out(`  files: ${result.committedPaths.join(', ')}`)
+      if (result.outOfLanePaths.length) out(`  out of lane, flagged not withheld: ${result.outOfLanePaths.join(', ')}`)
+      if (result.turnLogPath) out(`  turn log: ${result.turnLogPath}`)
     } else {
-      console.log(`authoring Play ${playId} completed, but no commit was created`)
-      if (result.outOfLanePaths.length) console.log(`  held back outside the Play lane: ${result.outOfLanePaths.join(', ')}`)
-      if (result.turnLogPath) console.log(`  turn log: ${result.turnLogPath}`)
+      out(`authoring Play ${playId} completed, but no commit was created`)
+      if (result.outOfLanePaths.length) out(`  held back outside the Play lane: ${result.outOfLanePaths.join(', ')}`)
+      if (result.turnLogPath) out(`  turn log: ${result.turnLogPath}`)
     }
     return
   }
@@ -245,7 +248,7 @@ async function main(): Promise<void> {
       process.exit(1)
     }
     const result = await migrateHistoryViaDaemon(`http://127.0.0.1:${live.port}`, workspaceId)
-    console.log(`migrated portable history for ${workspaceId}: exported ${result.runsExported} run(s), ${result.sessionsExported} session(s)`)
+    out(`migrated portable history for ${workspaceId}: exported ${result.runsExported} run(s), ${result.sessionsExported} session(s)`)
     return
   }
   if (cmd !== 'run' || !arg1) {
@@ -274,8 +277,8 @@ async function main(): Promise<void> {
       strictPreRunDirt,
       allowPreRunIntegrityErrors,
     })
-    console.log(`\nRun ${result.runId}: ${result.status}`)
-    if (result.commits.length) console.log(`  committed: ${result.commits.join(', ')}`)
+    out(`\nRun ${result.runId}: ${result.status}`)
+    if (result.commits.length) out(`  committed: ${result.commits.join(', ')}`)
     process.exitCode = result.status === 'completed' ? 0 : 1
     return
   }
@@ -381,11 +384,11 @@ async function runStandalone(priorityId: string, resumeFromRunId?: string, stric
       allowPreRunIntegrityErrors,
       preRunGovernanceChecks,
     })
-    console.log(`\nRun ${result.runId}: ${result.status}`)
-    if (result.committedSha) console.log(`  committed ${result.committedSha} (${result.committedFiles.length} file(s))`)
-    if (result.outOfScope.length) console.log(`  committed out of lane (flagged, not withheld): ${result.outOfScope.join(', ')}`)
-    if (result.selfCommitted) console.log('  note: agent made its own commit(s) (detected via HEAD snapshot)')
-    console.log(`  record: ${result.recordPath}`)
+    out(`\nRun ${result.runId}: ${result.status}`)
+    if (result.committedSha) out(`  committed ${result.committedSha} (${result.committedFiles.length} file(s))`)
+    if (result.outOfScope.length) out(`  committed out of lane (flagged, not withheld): ${result.outOfScope.join(', ')}`)
+    if (result.selfCommitted) out('  note: agent made its own commit(s) (detected via HEAD snapshot)')
+    out(`  record: ${result.recordPath}`)
     process.exitCode = result.status === 'completed' ? 0 : 1
   } finally {
     store.close()

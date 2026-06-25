@@ -44,7 +44,7 @@ import {
   type Workspace,
 } from '../store/index.js'
 import { effectiveScope, partitionByScope } from '../write-scope/index.js'
-import type { SessionHost, SessionRef } from '../session-host/index.js'
+import type { SessionHost } from '../session-host/index.js'
 import { exec as execChildProcess } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { rm } from 'node:fs/promises'

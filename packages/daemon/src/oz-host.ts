@@ -366,7 +366,8 @@ function validateAuthoringTool(call: ToolCall): ToolValidation {
   if (!isAuthoringPlayId(play)) {
     return { ok: false, error: 'Tool "author" requires arg "play" to be one of create-priority, edit-priority, archive-priority.' }
   }
-  const { play: _play, ...invocation } = call.args
+  const invocation = { ...call.args }
+  delete invocation.play
   return { ok: true, command: { kind: 'author', playId: play, invocation } }
 }
 

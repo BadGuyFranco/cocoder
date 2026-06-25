@@ -6,7 +6,7 @@ import { P3_CAPS } from './estimate.js'
 import { parseDeepReadIterationResult, type DeepReadAssignment, type DeepReadIterationResult, type FindingConfidence, type FindingSeverity, type SourcePairComparison } from './p2-fanout.js'
 import { resolveDeepReadAssignments, type DeepReadDispatch, type ResolveTopTier } from './p2-dispatch.js'
 import { buildRound } from './p3-cross-check.js'
-import { readP3InputArtifacts, type P2Record } from './p3-input.js'
+import { readP3InputArtifacts } from './p3-input.js'
 import { renderCrossCheckMarkdown } from './p3-render.js'
 
 export type P3CapReason = 'round' | 'wall-clock' | 'token'

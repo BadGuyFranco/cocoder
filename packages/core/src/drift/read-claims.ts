@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { basename, dirname, join, relative, resolve, sep } from 'node:path'
+import { basename, join, relative, resolve, sep } from 'node:path'
 import { parseFrontmatter } from '../personas/frontmatter.js'
 
 export type DriftClaimCategory = 'adr' | 'priority' | 'memory' | 'standards-scope'
