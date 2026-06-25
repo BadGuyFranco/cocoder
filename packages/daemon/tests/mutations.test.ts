@@ -128,6 +128,9 @@ const fakeGit = (changed: string[] = [], shas: readonly string[] = ['h0']): Git 
     async push() {
       return { ok: true, detail: '' }
     },
+    async commitsSince() {
+      return []
+    },
   }
 }
 interface GovernanceCommitCall {

@@ -41,6 +41,9 @@ const fakeGit = (): Git => ({
   async push() {
     return { ok: true, detail: '' }
   },
+  async commitsSince() {
+    return []
+  },
 })
 
 const fakeHost = (): SessionHost =>

@@ -33,6 +33,7 @@ export { MalformedLoopDirectiveError, type Directive, type LoopDirective, parseD
 export { type Triage, type Disposition, type TriageMode, parseTriage } from './triage.js'
 export { type NudgeRequest, parseNudgeRequest } from './nudge.js'
 export { faultFingerprint } from './fingerprint.js'
+export { unledgeredWindowCommits } from './wrap-audit.js'
 export {
   renderDebStatus,
   deriveTerminalProjection,

@@ -112,6 +112,9 @@ const worktreeStubs = {
   async push() {
     return { ok: true, detail: '' }
   },
+  async commitsSince() {
+    return []
+  },
 }
 
 // Git that returns a scripted changed-file set per atom and advances HEAD on commit (so per-atom
@@ -658,6 +661,30 @@ describe('runRun (multi-atom loop)', () => {
     expect(store.listCommitLinks(result.runId).filter((c) => c.workItemId !== null).map((c) => c.files)).toEqual([['packages/a.ts'], ['packages/b.ts']])
     const types = store.listEvents(result.runId).map((e) => e.type)
     expect(types).toEqual(expect.arrayContaining(['run-start', 'spawn', 'delegation', 'builder-done', 'verify-pass', 'commit', 'wrapup', 'run-end']))
+  })
+
+  test('run-wrap audit FLAGS a commit that advanced HEAD outside the run ledger (ADR-0041 §4 / 0058)', async () => {
+    const store = openRunStore(':memory:')
+    // The window enumerates a sha the run never recorded — a raw bypass beside the spine (run_234 shape).
+    const git: Git = { ...scriptedGit([['packages/a.ts']]), async commitsSince() { return ['deb-raw-bypass-sha'] } }
+    const result = await runRun(
+      baseDeps({ store, git, io: fakeIO({ directives: [delegate('atom 0'), wrapup('done')] }) }),
+      input,
+    )
+    expect(result.status).toBe('completed')
+    const bypass = store.listEvents(result.runId).find((e) => e.type === 'run-wrap-bypass-detected')
+    expect(bypass).toBeDefined()
+    expect((bypass?.data as { bypassShas: string[] }).bypassShas).toEqual(['deb-raw-bypass-sha'])
+  })
+
+  test('run-wrap audit stays silent when every window commit is in the run ledger', async () => {
+    const store = openRunStore(':memory:')
+    const result = await runRun(
+      baseDeps({ store, git: scriptedGit([['packages/a.ts']]), io: fakeIO({ directives: [delegate('atom 0'), wrapup('done')] }) }),
+      input,
+    )
+    expect(result.status).toBe('completed')
+    expect(store.listEvents(result.runId).some((e) => e.type === 'run-wrap-bypass-detected')).toBe(false)
   })
 
   test('does not infer hard scope conflicts from directive prose', async () => {

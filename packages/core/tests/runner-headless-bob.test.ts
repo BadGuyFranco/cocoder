@@ -81,6 +81,9 @@ const worktreeStubs = {
   async push() {
     return { ok: true, detail: '' }
   },
+  async commitsSince() {
+    return []
+  },
 }
 
 function scriptedGit(): Git {

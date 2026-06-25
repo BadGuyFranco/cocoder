@@ -83,6 +83,7 @@ import { renderRunRecord } from './record.js'
 import { type DebStatus, type RunnerPhase, deriveRunSummary, deriveTerminalProjection, renderDebStatus, terminalWaitCondition } from './status.js'
 import { captureDebTerminalSnapshot, renderDebTerminalSnapshotMarkdown } from './terminal-snapshot.js'
 import { isStopRequestedError } from './stop.js'
+import { unledgeredWindowCommits } from './wrap-audit.js'
 import { triageFault, type TriageDeps } from './triage.js'
 import {
   PreRunIntegrityError,
@@ -460,6 +461,11 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const { inScope: dirtyInScope } = partitionByScope(changedAtStart, committingScopes)
   const { inScope: builderDirt, outOfScope: governanceDirt } = partitionByScope(dirtyInScope, scope)
   let dirtyAtStartFiles = changedAtStart
+  // Run-wrap audit base (ADR-0041 §4): the window starts at HEAD AFTER any pre-run founder/governance
+  // snapshot. Those ride commitFiles directly and are intentionally NOT in the run ledger, so basing
+  // the window past them (not at trunkSha) keeps them from false-flagging. Derived from the snapshot
+  // receipts so no extra HEAD read is needed (an added git call would shift call-counting fakes).
+  let auditBaseSha = trunkSha
   if (builderDirt.length > 0) {
     if (input.strictPreRunDirt) {
       store.setRunStatus(run.id, 'failed')
@@ -478,6 +484,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       throw new DirtyWorkingTreeError(workspaceRepo, `unable to snapshot founder WIP before launch: ${receipt.error ?? 'no commit created'}`)
     }
     store.recordEvent({ runId: run.id, type: 'founder-presnapshot', data: { files: receipt.committedFiles, sha: receipt.committedSha } })
+    auditBaseSha = receipt.committedSha
     dirtyAtStartFiles = await git.changedFiles(workspaceRepo)
   }
   if (governanceDirt.length > 0) {
@@ -488,6 +495,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       throw new DirtyWorkingTreeError(workspaceRepo, `unable to snapshot governance dirt before launch: ${receipt.error ?? 'no commit created'}`)
     }
     store.recordEvent({ runId: run.id, type: 'governance-presnapshot', data: { files: receipt.committedFiles, sha: receipt.committedSha } })
+    auditBaseSha = receipt.committedSha
     dirtyAtStartFiles = await git.changedFiles(workspaceRepo)
   }
   let portableRunDisplayNumber: number
@@ -1536,6 +1544,19 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   })
   const terminalProjection = deriveTerminalProjection(store.listEvents(run.id))
   if (terminalProjection) await refreshStatus(terminalProjection.phase, terminalProjection.activeAtom, null, terminalWaitCondition(status))
+  // Run-wrap audit assertion (ADR-0041 §4 / ticket 0058): flag any commit that advanced HEAD in the
+  // run window but is absent from the run's ledger — a raw bypass beside the spine (the run_234 shape).
+  // FLAG, never fault (founder decision 2026-06-25): record + surface, run disposition unchanged. Run
+  // BEFORE the run-history projection so the event lands in events.jsonl and the window excludes the
+  // not-yet-made history commit (itself a ledger commit).
+  const bypassShas = unledgeredWindowCommits(
+    await git.commitsSince(worktreePath, auditBaseSha),
+    store.listCommitLinks(run.id).map((link) => link.commitSha),
+  )
+  if (bypassShas.length > 0) {
+    store.recordEvent({ runId: run.id, type: 'run-wrap-bypass-detected', data: { auditBaseSha, bypassShas } })
+    log(`run ${run.id} wrap audit: ${bypassShas.length} commit(s) advanced HEAD outside the run ledger (flagged): ${bypassShas.join(', ')}`)
+  }
   await projectAndCommitPortableRunHistory({ endedAt })
   store.setRunStatus(run.id, status)
   // Every atom + Oscar-support + run-history commit already landed on the active branch as it was made

@@ -125,6 +125,9 @@ function makeFakeGit(opts: { changed: string[]; headBefore: string; headNow?: st
     async push() {
       return { ok: true, detail: '' }
     },
+    async commitsSince() {
+      return []
+    },
   }
   return { git, commits }
 }

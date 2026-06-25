@@ -70,6 +70,7 @@ export function fakeGitChangedByCwd(changesByCwd: Readonly<Record<string, readon
     async resetHard() {},
     async hasUpstream() { return false },
     async push() { return { ok: true, detail: '' } },
+    async commitsSince() { return [] },
   }
 }
 

@@ -35,6 +35,10 @@ export interface Git {
   restoreToHead(cwd: string, files: readonly string[], opts?: { readonly quarantineDir?: string }): Promise<void>
   /** `git show <sha>` — the committed diff for a run's commit_link (read-only; Oz run detail). */
   show(cwd: string, sha: string): Promise<string>
+  /** Shas reachable from HEAD but not from `baseSha` (`git rev-list <baseSha>..HEAD`), newest first.
+   *  The run-wrap audit assertion (ADR-0041 §4) uses this to enumerate the run window and find commits
+   *  absent from the run's ledger. An unknown/empty base or no new commits yields an empty list. */
+  commitsSince(cwd: string, baseSha: string): Promise<string[]>
 
   // ── Worktree isolation (ADR-0023 §4; formerly ADR-0015). `cwd` is any path inside the repo (object
   //    store is shared across worktrees). These are deterministic git mechanics; any higher-level
@@ -168,6 +172,16 @@ export function makeGit(): Git {
     },
     async show(cwd, sha) {
       return git(cwd, ['show', sha])
+    },
+    async commitsSince(cwd, baseSha) {
+      // base..HEAD lists commits reachable from HEAD but not baseSha. A bad/empty base ref exits
+      // non-zero (→ empty list): the audit treats "can't enumerate the window" as "nothing to flag",
+      // never a thrown wrap. Output is newline-separated shas, newest first.
+      if (baseSha.trim() === '') return []
+      return git(cwd, ['rev-list', `${baseSha}..HEAD`]).then(
+        (out) => out.split('\n').map((line) => line.trim()).filter((line) => line.length > 0),
+        () => [],
+      )
     },
 
     async worktreeAdd(cwd, dir, branch, baseSha) {

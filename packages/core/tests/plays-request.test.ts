@@ -47,6 +47,7 @@ function fakeGit(changed: readonly string[]): { readonly git: Git; readonly comm
     resetHard: noop,
     hasUpstream: async () => false,
     push: async () => ({ ok: true, detail: '' }),
+    commitsSince: async () => [],
   }
   return { git, commits }
 }

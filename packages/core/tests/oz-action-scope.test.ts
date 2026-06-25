@@ -37,6 +37,9 @@ function fakeGit(changed: readonly string[]): { readonly git: Git; readonly comm
     async push() {
       return { ok: true, detail: '' }
     },
+    async commitsSince() {
+      return []
+    },
   }
   return { git, commits }
 }

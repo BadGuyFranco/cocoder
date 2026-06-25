@@ -322,6 +322,7 @@ export {
   type NudgeRequest,
   parseNudgeRequest,
   faultFingerprint,
+  unledgeredWindowCommits,
   renderDebStatus,
   deriveTerminalProjection,
   deriveRunSummary,
