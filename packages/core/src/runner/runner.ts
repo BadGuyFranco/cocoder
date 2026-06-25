@@ -716,6 +716,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   let lastDebBoundaryAt = Number.NEGATIVE_INFINITY
   let lastDebStatus: DebStatus | null = null
   type DebWake = { readonly kind: string; readonly detail: string }
+  type DebRefreshOptions = { readonly boundary?: boolean }
   const writeDebEvidence = async (phase: RunnerPhase, activeAtom: number | null, activeTask: string | null, waitCondition: string): Promise<void> => {
     const { json, markdown } = renderDebStatus({ store, runId: run.id, runDisplay, priority, scopes: debScopes, phase, activeAtom, activeTask, waitCondition })
     await io.writeDebStatus(runDir, json, markdown)
@@ -763,10 +764,17 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         store.recordEvent({ runId: run.id, type: 'deb-watch-dispatch-failed', data: { kind, detail, message: err instanceof Error ? err.message : String(err) } })
       })
   }
-  const refreshStatus = async (phase: RunnerPhase, activeAtom: number | null, activeTask: string | null, waitCondition: string, wake?: DebWake): Promise<void> => {
+  const refreshStatus = async (
+    phase: RunnerPhase,
+    activeAtom: number | null,
+    activeTask: string | null,
+    waitCondition: string,
+    wake?: DebWake,
+    options: DebRefreshOptions = {},
+  ): Promise<void> => {
     if (!debRef) return // status feed exists only for a Deb-backed run
     try {
-      lastDebBoundaryAt = now()
+      if (options.boundary !== false) lastDebBoundaryAt = now()
       const shouldWakeDeb = wake === undefined ? false : recordDebWatchDispatch(wake.kind, wake.detail)
       await writeDebEvidence(phase, activeAtom, activeTask, waitCondition)
       if (shouldWakeDeb && wake !== undefined) sendDebWatch(wake.kind, wake.detail)
@@ -1450,6 +1458,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           awaitOscarWithNudgeWatchdog,
           oscarAlive,
           refreshStatus,
+          refreshLiveStatus: (phase, activeAtomNumber, activeTask, waitCondition) => refreshStatus(phase, activeAtomNumber, activeTask, waitCondition, undefined, { boundary: false }),
           quarantineAtom,
           absorbGateResult,
           fail,
@@ -1515,10 +1524,10 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
   // ── Authoritative outcome ─────────────────────────────────────────────────────────────────────────
   // The founder-facing TRUTH, DERIVED from settled state. Work is on the active branch by construction —
-  // there is no separate landing that could fail. Out-of-lane paths were COMMITTED (scope is advisory) and
-  // flagged for visibility, never withheld.
+  // there is no separate landing that could fail. Out-of-lane paths are flagged for visibility; atom
+  // commits hold them back so unrelated live governance/support edits do not ride a builder work item.
   {
-    const flagged = outOfScope.length > 0 ? `Committed out-of-lane (flagged, NOT held back): ${outOfScope.join(', ')}.` : 'Nothing out of lane.'
+    const flagged = outOfScope.length > 0 ? `Out-of-lane files flagged and not included in builder atom commits: ${outOfScope.join(', ')}.` : 'Nothing out of lane.'
     const nCommits = committedShas.length
     const outcome = `✅ COMMITTED on \`${runBranch}\` — ${nCommits} commit(s) on the active branch (no landing step; work is on the branch by construction). ${flagged}`
     store.recordEvent({ runId: run.id, type: 'landing-outcome', data: { landed: true, status, outOfScope, outcome } })

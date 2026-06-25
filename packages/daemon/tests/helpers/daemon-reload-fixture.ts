@@ -122,7 +122,8 @@ export function designatedBlockedRunIO(): { readonly runnerIO: RunnerIO; blockRu
 async function writeWorkspace(path: string): Promise<void> {
   await mkdir(join(path, 'cocoder', 'priorities'), { recursive: true })
   await mkdir(join(path, 'cocoder', 'personas'), { recursive: true })
-  await writeFile(join(path, 'cocoder', 'priorities', 'demo.md'), '---\nid: demo\ntitle: Demo\n---\n\n## Objective\n\nDo the thing.\n')
+  await writeFile(join(path, 'cocoder', 'priorities', 'demo.md'), '---\nid: demo\ntitle: Demo\nscopeNarrowing:\n  - packages/**\n---\n\n## Objective\n\nDo the thing.\n')
+  await writeFile(join(path, 'cocoder', 'personas', 'bob.md'), '---\nid: bob\nlabel: Builder\nrole: builder\nwriteScope:\n  - packages/**\n---\nBob')
   await writeFile(join(path, 'cocoder', 'personas', 'assignments.json'), JSON.stringify({ personas: { oscar: { cli: 'fake', model: '' }, bob: { cli: 'fake', model: '', mode: 'headless' } } }))
 }
 

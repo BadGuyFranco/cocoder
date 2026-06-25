@@ -58,6 +58,21 @@ describe('renderRunRecord', () => {
 
     expect(branchLine(renderRunRecord(store, run.id, { workspace, priority }))).toContain('the active branch')
   })
+
+  test('renders committed and held out-of-lane dispositions distinctly', () => {
+    const store = openRunStore(':memory:')
+    store.upsertWorkspace(workspace)
+    const run = store.createRun({ workspaceId: workspace.id, priorityId: priority.id })
+    store.recordEvent({ runId: run.id, type: 'out-of-scope-committed', data: { files: ['docs/leak.md'] } })
+    store.recordEvent({ runId: run.id, type: 'out-of-scope-held-back', data: { files: ['cocoder/tickets/INDEX.md'] } })
+
+    const record = renderRunRecord(store, run.id, { workspace, priority })
+
+    expect(record).toContain('## Out-of-lane (flagged)')
+    expect(record).toContain('- docs/leak.md (committed)')
+    expect(record).toContain('- cocoder/tickets/INDEX.md (held back)')
+    expect(record).not.toContain('never withheld')
+  })
 })
 
 // ── WS1.4: record.md's Status is a PROJECTION of the run-end event (runner-decoupling, ADDITIVE) ────────

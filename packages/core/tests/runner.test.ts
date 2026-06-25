@@ -967,7 +967,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(events.some((event) => event.type === 'onboarding-spend-approval-required')).toBe(false)
   })
 
-  test('ordinary priorities keep whole-tree commit behavior and only flag out-of-lane files', async () => {
+  test('ordinary priorities hold out-of-lane atom files without tripping the audit boundary', async () => {
     const store = openRunStore(':memory:')
     const { git, commits } = recordingScriptedGit([['packages/core/src/foo.ts']])
     const governanceBob = { ...bob, writeScope: ['cocoder/**'] }
@@ -983,9 +983,11 @@ describe('runRun (multi-atom loop)', () => {
 
     expect(result.status).toBe('completed')
     expect(store.getRun(result.runId)?.status).toBe('completed')
-    expect(commits[0]).toEqual(['packages/core/src/foo.ts'])
-    expect(result.committedFiles).toEqual(['packages/core/src/foo.ts'])
+    expect(commits[0]).not.toContain('packages/core/src/foo.ts')
+    expect(store.listCommitLinks(result.runId).filter((link) => link.workItemId !== null)).toEqual([])
+    expect(result.committedFiles).toEqual([])
     expect(result.outOfScope).toEqual(['packages/core/src/foo.ts'])
+    expect(store.listEvents(result.runId).some((item) => item.type === 'out-of-scope-held-back')).toBe(true)
     expect(store.listEvents(result.runId).some((item) => item.type === 'audit-write-boundary-refused')).toBe(false)
   })
 
@@ -2346,10 +2348,10 @@ describe('runRun (multi-atom loop)', () => {
     expect(store.listEvents(result.runId).map((e) => e.type)).toContain('oscar-support-commit')
   })
 
-  test('per-atom commit attribution stays clean: each atom commits exactly its own changed set (incl. out-of-lane)', async () => {
+  test('per-atom commit attribution stays clean: atom commits hold out-of-lane files for their owner lane', async () => {
     const store = openRunStore(':memory:')
-    // Both atoms touch docs/leak.md out of lane; scope is advisory so each atom COMMITS its own changed
-    // set — leak.md lands with each atom, flagged, and attribution never bleeds between atoms.
+    // Both atoms leave docs/leak.md dirty out of lane; atom commits are scoped to Bob's write lane so the
+    // leak is surfaced but not attributed to either atom commit.
     const result = await runRun(
       baseDeps({
         store,
@@ -2362,11 +2364,35 @@ describe('runRun (multi-atom loop)', () => {
       input,
     )
     expect(store.listCommitLinks(result.runId).filter((c) => c.workItemId !== null).map((c) => c.files)).toEqual([
-      ['packages/a.ts', 'docs/leak.md'],
-      ['packages/b.ts', 'docs/leak.md'],
+      ['packages/a.ts'],
+      ['packages/b.ts'],
     ])
-    expect(result.outOfScope).toEqual(['docs/leak.md']) // flagged once (unioned), committed both atoms
+    expect(result.outOfScope).toEqual(['docs/leak.md']) // flagged once (unioned), held back from atom commits
+    expect(store.listEvents(result.runId).filter((event) => event.type === 'out-of-scope-held-back')).toHaveLength(2)
+    expect(store.listEvents(result.runId).some((event) => event.type === 'out-of-scope-committed')).toBe(false)
     expect(result.status).toBe('completed')
+  })
+
+  test('atom commit does not sweep concurrent Deb governance ticket edits into Bob work item (run_235)', async () => {
+    const store = openRunStore(':memory:')
+    const { git, commits } = recordingScriptedGit([['packages/atom.ts', 'cocoder/tickets/INDEX.md', 'cocoder/tickets/open/0060-bug.md']])
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git,
+        io: fakeIO({ directives: [delegate('atom 0'), wrapup('done')] }),
+      }),
+      input,
+    )
+
+    expect(result.status).toBe('completed')
+    expect(commits[0]).toEqual(['packages/atom.ts'])
+    expect(store.listCommitLinks(result.runId).filter((c) => c.workItemId !== null).map((c) => c.files)).toEqual([['packages/atom.ts']])
+    expect(result.outOfScope).toEqual(['cocoder/tickets/INDEX.md', 'cocoder/tickets/open/0060-bug.md'])
+    expect(store.listEvents(result.runId).find((event) => event.type === 'out-of-scope-held-back')?.data).toEqual({
+      files: ['cocoder/tickets/INDEX.md', 'cocoder/tickets/open/0060-bug.md'],
+    })
   })
 
   test('atom isolation: a rejected atom\'s in-scope changes are quarantined, not committed by a later atom', async () => {
@@ -2932,6 +2958,28 @@ describe('runRun (multi-atom loop)', () => {
     const triaged = store.listEvents(runId).find((e) => e.type === 'fault-triaged')
     expect((triaged?.data as { disposition: string }).disposition).toBe('repo-bug')
     expect(store.getRun(runId)?.status).toBe('failed') // Deb proposes/logs; she does not rescue the run
+  })
+
+  test('builder timeout surfaces the missing standalone completion marker', async () => {
+    const store = openRunStore(':memory:')
+
+    await expect(
+      runRun(
+        baseDeps({
+          store,
+          makeJudge: () => async () => ({ state: 'progressing' }),
+          io: fakeIO({ directives: [delegate('do it')] }),
+          timeouts: { orchestrationMs: 50, buildMs: 5, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 },
+        }),
+        input,
+      ),
+    ).rejects.toThrow(/missing standalone completion marker <<<COCODER-ATOM-0-DONE>>>/)
+
+    const runId = store.listRuns()[0]!.id
+    expect(store.listEvents(runId).find((event) => event.type === 'builder-failed')?.data).toMatchObject({
+      atom: 0,
+      message: 'builder timeout on atom 0: missing standalone completion marker <<<COCODER-ATOM-0-DONE>>>',
+    })
   })
 
   test('Deb triages a directive-timeout (orchestration fault), and is NOT killed before triaging', async () => {
@@ -3660,12 +3708,14 @@ describe('runRun (multi-atom loop)', () => {
 
   test('full-run Deb watcher delivers a Deb-authored nudge during Bob build', async () => {
     const store = openRunStore(':memory:')
+    const statusWrites: DebStatus[] = []
     const debReq: NudgeRequest = { target: 'oscar', message: 'Oscar — clarify the acceptance evidence before verify', rationale: 'Bob is building and the blocker is in orchestration scope', seq: 1 }
     let samples = 0
     const sent: Array<{ ref: string; text: string }> = []
     const io: RunnerIO = {
       ...fakeIO({
         directives: [delegate('slow atom'), wrapup('done')],
+        statusWrites,
         readNudge: async (nudgePath) => {
           if (!nudgePath.endsWith('deb-nudge.json')) return null
           const runId = store.listRuns()[0]?.id
@@ -3701,6 +3751,9 @@ describe('runRun (multi-atom loop)', () => {
     const debNudge = store.listEvents(result.runId).find((e) => e.type === 'oscar-nudge' && (e.data as { source?: string }).source === 'deb')
     expect(debNudge?.data).toMatchObject({ stage: 'watch', text: debReq.message, rationale: debReq.rationale })
     expect(store.listEvents(result.runId).some((e) => e.type === 'nudge' && String((e.data as { text?: unknown }).text).includes(debReq.message))).toBe(false)
+    const buildingStatuses = statusWrites.filter((status) => status.waitCondition === 'monitoring builder on atom 0')
+    expect(buildingStatuses.length).toBeGreaterThan(1)
+    expect(buildingStatuses.some((status) => status.watch.lastNudgeAt !== null)).toBe(true)
   })
 
   test('delivers a fresh Oz-authored nudge to Oscar and does not redeliver the same seq', async () => {

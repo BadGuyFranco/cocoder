@@ -79,6 +79,7 @@ export interface ExecuteAgentStepInput {
   readonly awaitOscarWithNudgeWatchdog: AwaitOscarWithNudgeWatchdog
   readonly oscarAlive: () => Promise<boolean>
   readonly refreshStatus: (phase: RunnerPhase, activeAtom: number | null, activeTask: string | null, waitCondition: string) => Promise<void>
+  readonly refreshLiveStatus?: (phase: RunnerPhase, activeAtom: number | null, activeTask: string | null, waitCondition: string) => Promise<void>
   readonly quarantineAtom: (atomIndex: number, headBefore: string, selfCommitEvent: string) => Promise<void>
   readonly absorbGateResult: (gate: CommitGateResult) => void
   readonly fail: (type: string, message: string, atomIndex: number) => Promise<never>
@@ -115,6 +116,7 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
     awaitOscarWithNudgeWatchdog,
     oscarAlive,
     refreshStatus,
+    refreshLiveStatus,
     quarantineAtom,
     absorbGateResult,
     fail,
@@ -201,6 +203,7 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
     let latestBuilderBlocker: BuilderBlocker | null = null
     let lastRecordedBlockerReply: string | null = null
     const latestBlocker = (): BuilderBlocker | null => latestBuilderBlocker
+    const refreshBuilderMonitorStatus = refreshLiveStatus ?? refreshStatus
     for (;;) {
       const doneSentinel = atomSentinel(atomIndex, completionAttempt === 0 ? undefined : `R${completionAttempt}`)
       const remainingLoopMs =
@@ -239,6 +242,7 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
               })
             }
             if (a.state !== 'progressing') store.recordEvent({ runId, type: 'monitor-assessment', data: { atom: atomIndex, state: a.state, note: a.note ?? null } })
+            void refreshBuilderMonitorStatus('building', atomIndex, directive.task, `monitoring builder on atom ${atomIndex}`)
           },
           onNudge: (text) => store.recordEvent({ runId, type: 'nudge', data: { atom: atomIndex, text } }),
           now,
@@ -294,7 +298,11 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
         if (outcome.reason === 'blocked' && blocker !== null) {
           return await fail('builder-blocked', `builder reported ${blocker.category} on atom ${atomIndex}: ${blocker.reply}`, atomIndex)
         }
-        return await fail('builder-failed', `builder ${outcome.reason} on atom ${atomIndex}`, atomIndex)
+        const reason =
+          outcome.reason === 'timeout'
+            ? `builder timeout on atom ${atomIndex}: missing standalone completion marker ${doneSentinel}`
+            : `builder ${outcome.reason} on atom ${atomIndex}`
+        return await fail('builder-failed', reason, atomIndex)
       }
       if (directive.loop === undefined) break
 
@@ -389,6 +397,7 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
       message: commitMessage(priorityId, { id: runId, displayNumber: runDisplayNumber }, atomIndex),
       headBefore,
       auditWriteBoundary,
+      commitOnlyScope: true,
     })
     store.setWorkItemStatus(workItem.id, 'done')
     absorbGateResult(gate)
