@@ -13,6 +13,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
+| [0062](./open/0062-create-priority-and-edit-priority-need-detailed-body-input.md) | create-priority and edit-priority need detailed body input | task | none | Open |
 | [0061](./open/0061-governed-create-ticket-spine.md) | Governed createTicket spine for tracked ticket filing | bug | none | Open |
 | [0048](./open/0048-adopt-eslint-in-cocoder-engine-repo.md) | Adopt a minimal ESLint 9 linter in CoCoder's own engine repo | task | none | Open |
 | [0039](./open/0039-launch-status-in-oz-dashboard.md) | Launch Status in Oz Dashboard | task | none | founder-session |
