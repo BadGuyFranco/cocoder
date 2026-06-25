@@ -45,7 +45,7 @@ deliberate prior decisions and need founder sign-off (deferred).
 | **runner** (`runRun`) | the entire deterministic sequence; the verify **gate decision** consumes Oscar's verdict; loop backstops (max rejects / max atoms) | run records, events, `directive-N`/`verify-N` channels, portable run history | per-atom commit on verify-pass, message `${priorityId}: atom ${n} via CoCoder ${runRef}` (`prompts.ts:627-631`); oscar-support + run-history commits | **returns** `ticketCloseDecision` (`close`/`ask`/`none`); does **not** itself close | every phase — it *is* the spine |
 | **Oscar** (orchestrator) | directive content; per-atom **verify verdict** (`pass`/`fail`); wrap disposition incl. ticket close intent | `directive-N.json`, `verify-N.json`, wrap brief; in-scope Surface-A edits | only **through** the runner's gate (`runCommitGate`) — never its own `git commit` | proposes close via wrap; the **daemon** executes it post-run | during the run; bounded post-wrap support |
 | **Bob** (builder) | implementation choices inside the delegated atom | working tree during the atom | only **through** the runner's gate; failed atoms quarantined/reverted | nothing | only during a delegated atom |
-| **Deb** (run **overseer**) | observe the live run; nudge a stuck session; judge "minor & **non-interfering**" self-fix vs run-end founder suggestion; spot a stale-open ticket | **non-interfering** edits only — `.md`/instruction surfaces (orchestration prompts, `personas/**`, `decisions/**`, `PLAYBOOK.md`, `failure-catalog.md`, docs). **Never** the runner or the active run's target code (→ founder, §3) | only **through the normal governed spine** — her non-interfering `.md` self-fix, and any founder-approved fix, ride `commitFiles`/the gate; **no raw `git commit`** | a **reconciliation** close (a ticket that should already be closed) via the governed `closeTicket` spine — never a ticket an active run owns | **always-on** during a run (observe/nudge); self-fix only when non-interfering; interfering items surface at **run-end** for the founder |
+| **Deb** (run **overseer**) | observe the live run; nudge a stuck session; judge "minor & **non-interfering**" self-fix vs run-end founder suggestion; spot a stale-open ticket | **non-interfering** edits only — `.md`/instruction surfaces (orchestration prompts, `personas/**`, `decisions/**`, `PLAYBOOK.md`, `failure-catalog.md`, docs). **Never** the runner or the active run's target code (→ founder, §3) | only **through the normal governed spine** — her non-interfering `.md` self-fix, and any founder-approved fix, ride `commitFiles`/the gate; **no raw `git commit`** | a **reconciliation** close (a ticket that should already be closed) via the governed `closeTicket` spine, or reconciliation repoint (release/rehome) via the governed `repointTicket` spine — never a ticket an active run owns | **always-on** during a run (observe/nudge); self-fix only when non-interfering; interfering items surface at **run-end** for the founder |
 
 **The one close spine.** `closeTicket()` (`packages/core/src/tickets/close.ts:79`) only *writes files*
 (moves `open/→closed/`, flips `status:`, appends `## Resolution`, prunes `order.json`) and **returns the
@@ -172,7 +172,12 @@ independent of Deb's judgment about whether the change is "minor."
 4. **Reconciliation close** — Deb **may** close a ticket she notices *should already have been closed and
    wasn't* (a bookkeeping gap), through the governed `closeTicket` spine. **Never** a ticket an active run
    owns, and never off a fix she herself just made live.
-5. **Run-end founder suggestion** — anything **interfering** (touches the runner or the target code): Deb
+5. **Reconciliation repoint** — Deb **may** repoint a handled open ticket's `priority:` through the
+   governed `repointTicket` spine via `reconcile-repoint`: release to standalone, or rehome to a named
+   live priority. **Never** a ticket an active run owns; rehome requires `cocoder/priorities/<id>.md` to
+   exist as a live priority; it rides `commitFiles`, never raw git, and does **not** auto-close or touch
+   `order.json`.
+6. **Run-end founder suggestion** — anything **interfering** (touches the runner or the target code): Deb
    does **not** act on it. She holds it and surfaces a suggested fix at **run-end**. The founder decides:
    **file a ticket**, or **approve**.
 
@@ -260,7 +265,8 @@ guards.
 **observe / nudge / non-interfering `.md` self-fix / run-end founder suggestion**, removing autonomous
 authoring+commit+close of interfering changes; (c) route every Deb commit (self-fix and founder-approved)
 through the governed spine; (d) the run-wrap **audit assertion** (§4); (e) Deb's **reconciliation-close**
-authority, guarded against active-run targets. Each is tests-first and behavior-preserving for healthy runs.
+authority, guarded against active-run targets; (f) Deb's guarded **reconcile-repoint** release/rehome
+authority. Each is tests-first and behavior-preserving for healthy runs.
 
 **Built in the overseer-build session (2026-06-25, loop-down operator session; founder decisions §3.1/§4
 pinned above):** **(a)** the pure `interferes(changeSet)` rail (`a2cab84`); **(d)** the run-wrap audit
@@ -268,8 +274,8 @@ assertion, FLAG-mode (`51d2689`); **(b)+(c)** the ADR-0036 path gated on the rai
 held for the founder (`held-for-founder`, surfaced via the `interfering-held` event + `outOfLanePaths`),
 non-interfering `.md` self-fixes committed through the governed spine under the shared governance author,
 no bespoke `deb-repair` author (`75a9cb5`), with `deb.md` aligned to the overseer model (`4a5b52a`);
-**(e)** the guarded `reconcile-close` authority (`538eed4`). The run_234 shape is pinned at both the
-predicate and the daemon-path levels.
+**(e)** the guarded `reconcile-close` authority (`538eed4`); **(f)** the guarded `reconcile-repoint`
+release/rehome authority. The run_234 shape is pinned at both the predicate and the daemon-path levels.
 
 **Residual — DELIVERED (2026-06-25, loop-down operator session):** the dedicated run-end
 **founder-suggestion artifact** (`FounderEscalation`-shaped, explicit *file-a-ticket | approve* options,
