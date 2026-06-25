@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { createPriorityInvocation, createTicketInvocation, editPriorityInvocation } from '../src/oz-args.js'
+import { archivePriorityInvocation, createPriorityInvocation, createTicketInvocation, editPriorityInvocation } from '../src/oz-args.js'
 
 test('maps --id/--title/--objective to the create-priority invocation', () => {
   expect(createPriorityInvocation(['--id', 'foo', '--title', 'Foo bar', '--objective', 'Do the thing'])).toEqual({
@@ -251,4 +251,50 @@ test('throws when edit-priority has no edit', () => {
 
 test('throws when edit-priority objective is empty', () => {
   expect(() => editPriorityInvocation(['foo', '--objective', '   '])).toThrow(/non-empty --objective/)
+})
+
+test('maps archive-priority with default disposition fields', () => {
+  expect(archivePriorityInvocation(['demo'])).toEqual({
+    workspaceId: 'cocoder',
+    invocation: {
+      id: 'demo',
+      verdict: 'archive confirmed',
+      reason: 'Founder confirmed archive from CLI.',
+    },
+  })
+})
+
+test('maps archive-priority workspace and explicit disposition fields', () => {
+  expect(
+    archivePriorityInvocation([
+      'demo',
+      '--workspace',
+      'other',
+      '--verdict',
+      'archive ready',
+      '--findings',
+      'No open handled tickets.',
+      '--reason',
+      'Founder confirmed after stale check.',
+    ]),
+  ).toEqual({
+    workspaceId: 'other',
+    invocation: {
+      id: 'demo',
+      verdict: 'archive ready',
+      findings: 'No open handled tickets.',
+      reason: 'Founder confirmed after stale check.',
+    },
+  })
+})
+
+test('throws when archive-priority id is missing or a flag', () => {
+  expect(() => archivePriorityInvocation([])).toThrow(/<priorityId>/)
+  expect(() => archivePriorityInvocation(['--help'])).toThrow(/<priorityId>/)
+})
+
+test('throws when archive-priority flag values are missing', () => {
+  expect(() => archivePriorityInvocation(['demo', '--workspace'])).toThrow(/--workspace <workspaceId>/)
+  expect(() => archivePriorityInvocation(['demo', '--verdict'])).toThrow(/non-empty --verdict/)
+  expect(() => archivePriorityInvocation(['demo', '--findings', '--reason', 'x'])).toThrow(/non-empty --findings/)
 })

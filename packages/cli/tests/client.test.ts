@@ -212,6 +212,14 @@ describe('runViaDaemon (client mode)', () => {
     await expect(run).resolves.toMatchObject({ code: 2, stderr: expect.stringContaining('usage: cocoder oz resume <runId>') })
   })
 
+  test('archive-priority CLI help is handled before priority id parsing', async () => {
+    const cli = fileURLToPath(new URL('../bin/cocoder.mjs', import.meta.url))
+
+    const run = await execFileAsync(process.execPath, [cli, 'oz', 'archive-priority', '--help'])
+
+    expect(run.stderr).toContain('usage: cocoder oz archive-priority <priorityId>')
+  })
+
   test('authoring Play posts with Bearer + CSRF and returns the daemon receipt', async () => {
     const d = fakeDaemon()
     server = d.server

@@ -25,7 +25,7 @@ import { CmuxSessionHost } from '@cocoder/session-hosts'
 import { authoringPlayViaDaemon, migrateHistoryViaDaemon, requestDebRepairViaDaemon, resumeViaDaemon, runViaDaemon, startOzDaemon, supportCommitViaDaemon, teardownViaDaemon, type DebRepairEvidenceItem } from './client.js'
 import { closeTicketViaCli } from './close-ticket.js'
 import { createTicketViaCli } from './create-ticket.js'
-import { createPriorityInvocation, createTicketInvocation, editPriorityInvocation } from './oz-args.js'
+import { archivePriorityInvocation, createPriorityInvocation, createTicketInvocation, editPriorityInvocation } from './oz-args.js'
 
 const log = (m: string): void => console.error(`[cocoder] ${m}`)
 const out = (m: string): void => {
@@ -37,6 +37,7 @@ const closeTicketUsage = 'usage: cocoder oz close-ticket <id> [--resolution <tex
 const createTicketUsage = 'usage: cocoder oz create-ticket --title <text> --type <type> --priority <priority> [--description <text> | --details-file <path> | --details-stdin] [--id <id>] [--run <runId>]'
 const createPriorityUsage = 'usage: cocoder oz create-priority --id <id> --title <text> --objective <text> [--details-file <path> | --details-stdin]'
 const editPriorityUsage = 'usage: cocoder oz edit-priority <id> [--objective <text>] [--mode <replace-body|append-section>] [--details-file <path> | --details-stdin]'
+const archivePriorityUsage = 'usage: cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]'
 
 function authorInvocationFromArgv(): unknown {
   const jsonIdx = process.argv.indexOf('--json')
@@ -318,41 +319,32 @@ async function main(): Promise<void> {
     return
   }
   if (cmd === 'oz' && arg1 === 'archive-priority') {
-    const priorityId = process.argv[4]
-    if (!priorityId) {
-      console.error('usage: cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]')
-      process.exit(2)
+    if (process.argv[4] === '--help' || process.argv[4] === '-h') {
+      console.error(archivePriorityUsage)
+      process.exit(0)
     }
-    const workspaceIdx = process.argv.indexOf('--workspace')
-    const workspaceId = workspaceIdx >= 0 ? process.argv[workspaceIdx + 1] : 'cocoder'
-    if (workspaceIdx >= 0 && !workspaceId) {
-      console.error('usage: cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]')
+    let parsed: { readonly workspaceId: string; readonly invocation: Record<string, string> }
+    try {
+      parsed = archivePriorityInvocation(process.argv.slice(4))
+    } catch (err) {
+      console.error(`cocoder: ${err instanceof Error ? err.message : String(err)}`)
+      console.error(archivePriorityUsage)
       process.exit(2)
-    }
-    const archiveInvocation: Record<string, string> = { id: priorityId }
-    for (const key of ['verdict', 'findings', 'reason'] as const) {
-      const flag = `--${key}`
-      const value = optionValue(flag)
-      if (process.argv.includes(flag) && !value) {
-        console.error('usage: cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]')
-        process.exit(2)
-      }
-      if (value) archiveInvocation[key] = value
     }
     const live = await probeDaemon({ port: DEFAULT_OZ_PORT })
     if (!live.alive) {
       console.error('cocoder: no Oz daemon running — cannot dispatch archive-priority')
       process.exit(1)
     }
-    const result = await authoringPlayViaDaemon(`http://127.0.0.1:${live.port}`, workspaceId, 'archive-priority', archiveInvocation)
+    const result = await authoringPlayViaDaemon(`http://127.0.0.1:${live.port}`, parsed.workspaceId, 'archive-priority', parsed.invocation)
     if (result.commitSha) {
-      out(`archived priority ${priorityId} for ${workspaceId}: ${result.commitSha}`)
+      out(`archived priority ${parsed.invocation.id} for ${parsed.workspaceId}: ${result.commitSha}`)
       if (result.committedPaths.length) out(`  files: ${result.committedPaths.join(', ')}`)
       if (result.turnLogPath) out(`  turn log: ${result.turnLogPath}`)
     } else {
       // A no-move archive now fails loudly upstream (non-2xx → the transport throws); reaching here with
       // no commit means the priority was already archived, so report that honestly rather than as a no-op.
-      out(`priority ${priorityId} for ${workspaceId} was already archived; nothing to move${result.reason ? ` (${result.reason})` : ''}`)
+      out(`priority ${parsed.invocation.id} for ${parsed.workspaceId} was already archived; nothing to move${result.reason ? ` (${result.reason})` : ''}`)
     }
     return
   }

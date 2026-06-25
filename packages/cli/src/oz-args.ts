@@ -102,3 +102,25 @@ export function editPriorityInvocation(args: readonly string[], deps: DetailsSou
     ...(details === undefined ? {} : { mode: mode!, details }),
   }
 }
+
+export function archivePriorityInvocation(args: readonly string[]): { readonly workspaceId: string; readonly invocation: Record<string, string> } {
+  const id = args[0]?.trim()
+  if (!id || id.startsWith('--')) throw new Error('archive-priority needs <priorityId>')
+
+  const workspaceFlag = flag(args, '--workspace')?.trim()
+  if (args.includes('--workspace') && (!workspaceFlag || workspaceFlag.startsWith('--'))) throw new Error('archive-priority needs --workspace <workspaceId>')
+  const workspaceId = workspaceFlag ?? 'cocoder'
+
+  const invocation: Record<string, string> = {
+    id,
+    verdict: flag(args, '--verdict')?.trim() || 'archive confirmed',
+    reason: flag(args, '--reason')?.trim() || 'Founder confirmed archive from CLI.',
+  }
+  for (const key of ['verdict', 'findings', 'reason'] as const) {
+    const value = flag(args, `--${key}`)?.trim()
+    if (args.includes(`--${key}`) && (!value || value.startsWith('--'))) throw new Error(`archive-priority needs non-empty --${key}`)
+    if (value) invocation[key] = value
+  }
+
+  return { workspaceId, invocation }
+}

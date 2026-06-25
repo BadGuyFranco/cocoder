@@ -31,8 +31,9 @@ file move or post-wrap support commit. The executable lane is daemon-backed auth
   fields below; the daemon dispatches this Play and commits through the governance spine.
 - From a terminal after founder archive confirmation, use the dedicated CLI wrapper:
   `pnpm --dir <install-root> exec cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]`.
-  This posts to `POST /workspaces/:id/authoring-plays/archive-priority`; it does not require and must
-  not be replaced by a separate build run.
+  This posts to `POST /workspaces/:id/authoring-plays/archive-priority`; if `--verdict` or `--reason`
+  are omitted, the wrapper supplies an explicit archive-confirmed disposition. It does not require and
+  must not be replaced by a separate build run.
 
 If you are Oscar in a runner-managed priority run, do not try to archive by writing a builder
 directive. Wrap with the archive-ready disposition first; after the founder confirms archive, use the
