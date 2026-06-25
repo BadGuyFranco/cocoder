@@ -22,22 +22,31 @@ In run_234 (ticket-fix-0054) Deb authored the entire fix and committed it (`549a
 change happened *beside* the spine, invisible to its own ledger. A second, non-deterministic owner raced the
 first.
 
-This is the deep redesign half — it reverses the current Deb-repair authors+commits+closes path
-(ADR-0016/0036) and is **gated behind founder approval of ADR-0041 §3 R4**. Do not implement before that.
+**Reframed 2026-06-25 (founder input — see [ADR-0041](../../decisions/0041-orchestration-ownership-and-actor-authority.md) §3):**
+the original direction ("subordinate Deb-repair to the runner") is **retired** — Deb must stay
+runner-independent (she diagnoses the runner; subordinating her deadlocks when it's broken). Deb is an
+**always-on run overseer**, not a ticket owner or repair worker. The fix is the **overseer model bounded by
+an interference check**, not subordination. Gated behind founder approval of ADR-0041 §3. Do not implement
+before that.
 
-## Acceptance
+## Acceptance (overseer model, ADR-0041 §3)
 
-- Deb *proposes* a repair; the runner (or the daemon on its behalf) sequences, gates, and commits it with
-  the run fingerprint (`… via CoCoder <runRef>` / `… via run <runId>`), and the commit is recorded in the
-  run's `commits.jsonl`. No direct Deb `git commit` for a run's own target.
-- A Deb-authored close of a run's target routes through `closeTicketAfterSuccessfulRun` (or carries the
-  `via run <id>` fingerprint), never a raw hand-close.
-- A regression test pins the run_234 case: a repair for a ticket under an active run cannot land a commit
-  absent from that run's ledger.
+- **Interference check** (file-domain rail): a Deb change that touches the **runner** or the **active run's
+  target code files** interferes; an **`.md`/instruction** edit does not (default-when-unsure → interfering).
+  Enforced in code, independent of Deb's "minor?" judgment.
+- Deb's **direct self-fix** is limited to non-interfering `.md`/instruction edits and commits **through the
+  governed spine** (`commitFiles`/gate, in the ledger) — never a raw `git commit`.
+- **Interfering** changes are **not** made live: Deb surfaces a run-end suggestion; the founder decides
+  *file a ticket* or *approve*; on approval Deb commits through the normal governed process.
+- The ADR-0036 Deb-repair path is reshaped to observe / nudge / non-interfering self-fix / run-end founder
+  suggestion — no autonomous authoring+commit+close of interfering changes.
+- A regression test pins run_234: a runner-touching fix is classified interfering and cannot land as an
+  autonomous mid-run Deb commit; any Deb commit appears in a governed ledger.
 
 ## Notes
 
-- Evidence: `549ab11`, `bd5fdf5`, `cocoder/runs/90-run_234/commits.jsonl`, ADR-0041 §2.
-- Depends on the founder decision in [0058](./0058-detect-dont-prevent-self-commits-root-enabler.md) (D4):
-  whether subordination alone holds, or prevention is required.
-- Related: ADR-0016 (Deb advises, runner delivers), ADR-0036 (Oscar↔Deb dialogue), ADR-0040 (oz-action lane).
+- Evidence: `549ab11`, `bd5fdf5`, `cocoder/runs/90-run_234/commits.jsonl`, ADR-0041 §2-§3.
+- Companion: [0058](./0058-detect-dont-prevent-self-commits-root-enabler.md) (D4) — detection stays; add the
+  run-wrap audit assertion as the raw-shell backstop.
+- Related: ADR-0016 (Deb advises, runner delivers), ADR-0036 (Oscar↔Deb dialogue — to be reshaped),
+  ADR-0040 (oz-action lane). Reference model: CoBuilder "Debugger".

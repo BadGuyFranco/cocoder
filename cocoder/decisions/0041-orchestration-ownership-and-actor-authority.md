@@ -1,8 +1,14 @@
 # ADR-0041 — Orchestration ownership & actor authority
 
-**Status:** Proposed (Claude non-orchestrated session, 2026-06-24) — **for founder review.**
-This ADR is the decision gate for the deep D1/D4 redesign; only the low-risk D2/D3/D5 guardrails are
-implemented in the same session (see §7).
+**Status:** Proposed (Claude non-orchestrated session, 2026-06-24; **§3–§8 revised 2026-06-25** per founder
+design input) — **for founder review.** This ADR is the decision gate for the deep D1/D4 work; only the
+low-risk D2/D3/D5 guardrails are implemented in the same session (see §7).
+**Revision note (2026-06-25):** §3's original direction — "subordinate Deb-repair to the runner" (R4) and a
+prevent-vs-detect crux (R5) — was **retired** after founder input. Deb is an **always-on run overseer**, not
+a ticket owner or repair worker; she must stay runner-independent (she's who diagnoses the runner). The
+fix is an **interference check** that bounds what Deb may change live, not a subordination of Deb to the
+runner. §1's Deb row and §3–§8 reflect the overseer model. §1's actor citations and §2's evidence are
+unchanged.
 **Seam:** who owns the orchestration spine, and what each actor (Oz, the runner, Oscar, Bob, Deb) may
 *decide / write / commit / close* and *when* — and where agentic side-channels race the deterministic spine.
 **Builds on:** [0016](./0016-deb-scoped-repair-fallback.md) (Deb advises, the runner delivers) ·
@@ -38,7 +44,7 @@ deliberate prior decisions and need founder sign-off (deferred).
 | **runner** (`runRun`) | the entire deterministic sequence; the verify **gate decision** consumes Oscar's verdict; loop backstops (max rejects / max atoms) | run records, events, `directive-N`/`verify-N` channels, portable run history | per-atom commit on verify-pass, message `${priorityId}: atom ${n} via CoCoder ${runRef}` (`prompts.ts:627-631`); oscar-support + run-history commits | **returns** `ticketCloseDecision` (`close`/`ask`/`none`); does **not** itself close | every phase — it *is* the spine |
 | **Oscar** (orchestrator) | directive content; per-atom **verify verdict** (`pass`/`fail`); wrap disposition incl. ticket close intent | `directive-N.json`, `verify-N.json`, wrap brief; in-scope Surface-A edits | only **through** the runner's gate (`runCommitGate`) — never its own `git commit` | proposes close via wrap; the **daemon** executes it post-run | during the run; bounded post-wrap support |
 | **Bob** (builder) | implementation choices inside the delegated atom | working tree during the atom | only **through** the runner's gate; failed atoms quarantined/reverted | nothing | only during a delegated atom |
-| **Deb** (watcher / repair) | watch/nudge advice; fault triage (`cocoder-bug`/`repo-bug`/`one-off`); repair proposals | her writeScope (`tickets/**`, `decisions/**`, `priorities/**`, `PLAYBOOK.md`, `failure-catalog.md`, `personas/**`) | the **intended** path is `commitDebRepair(... 'deb-repair')` (`launcher.ts:1114,1174`); persona doctrine forbids hand-close | **must route** ticket close through `closeTicket()` — persona forbids hand-moving files | reactive (fault) or the ADR-0036 dialogue — **never inside a live run that depends on the surface she repairs** |
+| **Deb** (run **overseer**) | observe the live run; nudge a stuck session; judge "minor & **non-interfering**" self-fix vs run-end founder suggestion; spot a stale-open ticket | **non-interfering** edits only — `.md`/instruction surfaces (orchestration prompts, `personas/**`, `decisions/**`, `PLAYBOOK.md`, `failure-catalog.md`, docs). **Never** the runner or the active run's target code (→ founder, §3) | only **through the normal governed spine** — her non-interfering `.md` self-fix, and any founder-approved fix, ride `commitFiles`/the gate; **no raw `git commit`** | a **reconciliation** close (a ticket that should already be closed) via the governed `closeTicket` spine — never a ticket an active run owns | **always-on** during a run (observe/nudge); self-fix only when non-interfering; interfering items surface at **run-end** for the founder |
 
 **The one close spine.** `closeTicket()` (`packages/core/src/tickets/close.ts:79`) only *writes files*
 (moves `open/→closed/`, flips `status:`, appends `## Resolution`, prunes `order.json`) and **returns the
@@ -120,86 +126,115 @@ under one atom label (the commit-all default, `out-of-scope-committed`). It ship
 a supervisor session reconciled it forward in `32785cf`. Same root cause: the spine committed past its lane
 because scope is advisory, not enforcing.
 
-## 3. Decision (proposed — challenge, don't rubber-stamp)
+## 3. Decision — Deb is a run overseer, bounded by an interference check
 
-**Principle: one deterministic owner per run, and one committer/closer of record.** The runner is the sole
-deterministic orchestrator and the sole authority that commits run atoms and triggers ticket closure for a
-run's own target. Every other actor's mutation for that target routes **through** the runner, the way
-Deb-nudge already does ("Deb proposes; the runner sequences, gates, commits, closes").
+**Principle: Deb never owns the work; she oversees the run.** Ticket/priority ownership is always
+Oscar/Bob; the runner is the sole committer/closer of a run's own target. Deb is an **always-on overseer**
+(mirroring the CoBuilder "Debugger"): she watches a live run, nudges it when stuck, and decides — per a
+**mechanical interference check** — whether a process improvement she spots is hers to land or the founder's
+to dispose. She must stay **runner-independent** (she is who diagnoses the runner; subordinating her to the
+runner would deadlock exactly when the runner is broken). This **retires** the original R4 (subordinate
+Deb-repair) and R5 (prevent-vs-detect crux): the fix is bounding *what* Deb may change live, not fencing
+*how* she commits.
 
-Concretely:
+### 3.1 The interference check (the mechanical rail)
 
-- **R1 (D3, build now).** The runner owns ticket-fix-target closure at verified wrap. A mid-run agentic
-  close of the *running* target is refused or deferred to `closeTicketAfterSuccessfulRun`. Close must not
-  precede verify. *Low-risk, behavior-preserving — implemented this session.*
-- **R2 (D2, build now).** One owner per ticket at a time: a ticket dispatched to the build lane cannot
-  simultaneously be admitted to the Deb-repair lane (build XOR repair). Pin the run_234 case.
-  *Low-risk — implemented this session.*
-- **R3 (D5, build now).** Add `cocoder oz close-ticket <id>` and a create-priority CLI over the existing
-  governed spines so closing/creating never needs ad-hoc `tsx`. *Low-risk — implemented this session.*
-- **R4 (D1, DEFER → founder).** Subordinate Deb-repair to the runner: Deb *proposes* a repair; the runner
-  (or the daemon on its behalf) sequences, gates, commits with the run fingerprint, and closes. No direct
-  Deb commits/closes for a run's target. This reverses the current "Deb-repair authors+commits+closes" path
-  and must be weighed against ADR-0016/0036.
-- **R5 (D4, DEFER → founder, the crux).** Decide whether **preventing** (not just detecting) agent
-  self-commits is *required* for R1/R2/R4 to actually hold. R1/R2 reduce the *window* and *redundancy*, but
-  a determined agent session with shell access can still raw-`git commit` beside the spine; only prevention
-  (a pre-commit hook / sandboxed identity / gate-enforced HEAD lock) closes the door fully. F21/0018/0023
-  chose detection on purpose — **do not silently reverse it.**
+A change Deb wants to make **interferes** iff it touches **the runner** or **the active run's target code
+files**. An **`.md`/instruction edit** (orchestration prompts, `personas/**`, `decisions/**`, docs) does
+**not** interfere. *Default when unsure → interfering.* This is a file-domain test, enforceable in code,
+independent of Deb's judgment about whether the change is "minor."
 
-## 4. The D4 crux — prevent vs detect (founder decision)
+> **Open item for the founder (the one residual judgment call):** code that touches **neither** the runner
+> **nor** the active target — e.g. a small isolated guard in an unrelated file. The founder's examples allow
+> a "small check before" as a minor self-fix, but the bright line named only runner / target / `.md`.
+> Proposed conservative default: **treat any non-`.md` code change as interfering** (→ run-end suggestion)
+> unless explicitly carved out. Confirm or widen.
 
-The honest tension: **R1–R4 are guardrails, not a fence.** They make the *cooperative* path correct and the
-*accidental* race impossible, but they assume actors commit *through* a spine. A Deb/agent session with a
-real shell and the founder's git identity can still bypass everything with one `git commit` — exactly what
-`549ab11`/`bd5fdf5` did. Detection (`gate.ts:62-63`) then notices HEAD moved *after the fact*, if and only
-if a later gated commit runs.
+### 3.2 Deb's authority (the overseer model)
 
-- **Keep detection (status quo, F21/0018).** Cheap, no false-positive risk, preserves the
-  "spine never withholds, agents are trusted-but-audited" doctrine. Cost: D1-class bypasses remain
-  *possible*; we rely on R1/R2 + audit to make them *rare and visible*, not impossible.
-- **Add prevention.** A pre-commit hook or gate-held HEAD-lock that rejects any commit not carrying the
-  current run/lane fingerprint. Closes D1 fully. Cost: reverses a deliberate decision; risks friction for
-  legitimate human/founder commits; needs a clean "who am I right now" identity signal the engine doesn't
-  yet have.
+1. **Observe** the live run (read-only, always-on).
+2. **Nudge** a stuck session along (the runner-owned nudge channel — unchanged).
+3. **Direct minor self-fix** — *non-interfering only* (per 3.1): an `.md`/instruction improvement (an
+   elegance-principle prompt line, a small guard in instruction text). Committed **through the normal
+   governed spine** (`commitFiles`/gate) — never a raw `git commit`.
+4. **Reconciliation close** — Deb **may** close a ticket she notices *should already have been closed and
+   wasn't* (a bookkeeping gap), through the governed `closeTicket` spine. **Never** a ticket an active run
+   owns, and never off a fix she herself just made live.
+5. **Run-end founder suggestion** — anything **interfering** (touches the runner or the target code): Deb
+   does **not** act on it. She holds it and surfaces a suggested fix at **run-end**. The founder decides:
+   **file a ticket**, or **approve**. On approval (a fix *or* a ticket addition), Deb commits it **through
+   the normal commit process** — attributed, gated, in the ledger.
 
-**Recommendation:** ship R1–R3 now (they stand on their own and reverse nothing); take R4 as the next
-build *behind this ADR's approval*; treat R5 as a **separate founder decision** — my lean is to **keep
-detection** and make R1/R2 + the `via run` fingerprint + an audit assertion (run wrap fails if HEAD moved
-via a non-run commit during the run) the practical mitigation, escalating to prevention only if a post-R4
-dogfood still shows bypasses. This keeps F21/0018/0023 intact unless evidence forces the reversal.
+For now the **founder is the disposition authority** for every interfering item; as the system seasons
+(≈ a week of live running), Deb's run-end suggestions taper to genuine edge cases.
+
+### 3.3 Why this is the right shape
+
+- **It fixes run_234 at the root.** Deb's 0054 fix touched `runner.ts`/`status.ts` — the runner — so it
+  **interferes**: never hers to land live; it was a run-end suggestion for the founder. Her commit + close
+  rode raw `git` outside the ledger; under §3.2 both go through the governed spine. Three violations, all
+  closed by the model — without removing Deb's independence.
+- **It's repo-agnostic, and self-hosting falls out for free.** In a normal target repo, orchestration
+  tweaks rarely touch product code, so Deb self-fixes freely. In CoCoder the product *is* the orchestration,
+  so fixes touch the runner constantly → the *same* interference check routes them to the founder. One rule,
+  correct in both worlds; nothing special-cases CoCoder, so nothing here can break other repos.
+- **It keeps Deb runner-independent.** "Who fixes the runner?" — a **filed ticket**, done by a normal run or
+  a human/operator session (this very session), never Deb-as-owner. No bootstrap deadlock.
+
+## 4. Detect-don't-prevent stays (the old D4 crux dissolves)
+
+The original §4 framed a prevent-vs-detect decision as the crux. Under the overseer model it **mostly
+dissolves**: Deb's interfering changes aren't in her autonomous toolset (they route to the founder), and
+every commit she *does* make goes through the governed spine. There is no class of legitimate Deb self-commit
+that a prevention fence must allow, and a blanket fence would wrongly block her independent `.md` self-fix
+and her founder-approved commits. So **keep detection** (F21/0018/0023 intact). The one worthwhile backstop
+for the raw-shell edge case (a persona issuing `git commit` directly in its own session): a **run-wrap audit
+assertion** — the run flags/faults if HEAD advanced via a commit absent from its `commits.jsonl` during the
+run window. Detection made *load-bearing*, not replaced by prevention.
 
 ## 5. Alternatives considered
 
-- **Status quo + discipline (prompt-only).** Rejected: run_233 and run_234 are two-for-two failures of
-  prompt-only discipline under the live loop. "Deb advises, the runner delivers" is already the documented
-  rule; it was violated anyway because nothing in code stops it.
-- **Worktree isolation per lane (ADR-0023 opt-in).** Would prevent *file collisions* but not the
-  *ownership/ordering* defect — two owners still close/commit the same ticket; merge just moves the race.
-  Useful complement, not a fix.
-- **Make `commitOnlyScope:true` the global default (kill commit-all).** Tempting (it would have caught
-  9a15d1a's sweep) but it reverses ADR-0023's central choice for *all* callers, a much larger blast radius
-  than D1–D5 warrant. Out of scope here; flag for a future ADR if R5 trends toward prevention.
+- **Subordinate Deb-repair to the runner (the original R4).** *Rejected* — it assumes the runner is
+  available, but Deb is needed exactly when it isn't; routing her repairs through it deadlocks. Deb must be
+  runner-independent.
+- **Prevent (not detect) self-commits (the original R5).** *Rejected as the primary fix* — overbroad: it
+  blocks Deb's legitimate independent `.md` self-fixes and founder-approved commits. The narrow run-wrap
+  audit assertion (§4) covers the residual raw-shell case without a fence.
+- **Status quo + discipline (prompt-only).** Rejected: run_233/run_234 are two-for-two failures of
+  prompt-only discipline; the interference rail must be in code, not the prompt.
+- **Worktree isolation per lane (ADR-0023 opt-in).** Prevents *file collisions* but not the ownership
+  question — useful complement, not the fix.
 
 ## 6. Consequences
 
-- The runner becomes the single source of truth for "what landed for this run," and `commits.jsonl`
-  becomes a *complete* ledger again (today it can omit the run's own substantive change — see §2).
-- One-owner-per-ticket removes the redundant-build waste and the latent file-collision risk of D2.
-- Closing the close/create CLI gap (R3) removes the friction that pushes agents off the governed path.
-- The prevent-vs-detect line stays explicitly founder-owned; this ADR does not flip it.
+- Deb's role is sharp and enforceable: observe + nudge + non-interfering `.md` self-fix + reconciliation
+  close + run-end founder suggestion. No second owner of a run's work can arise.
+- `commits.jsonl` becomes a complete ledger again: every Deb commit rides the governed spine, so the run's
+  substantive change can no longer land invisibly beside it (the run_234 §2 gap).
+- The self-hosting overlap is handled by one mechanical check, not a CoCoder special case — other repos are
+  unaffected.
+- The prevent-vs-detect line stays at detection; this ADR does not flip ADR-0023/F21/0018.
 
 ## 7. Built in this session vs deferred
 
-**Built (low-risk, tests-first, one fix per commit, full suite green):** R1/D3 close-ordering,
-R2/D2 mutual exclusion, R3/D5 close-ticket + create-priority CLI. See the session handoff for shas.
+**Built (low-risk, tests-first, one fix per commit, full suite green):** the D5 CLI
+(`cocoder oz close-ticket` + `create-priority`, the governed-spine surface Deb's reconciliation close and
+founder-approved commits use); plus run_234 regression pins on the existing in-daemon lane-exclusion /
+close-during-run guards (D2/D3). See the session handoff for shas. *Note:* the D2/D3 in-daemon guards
+**pre-existed**; the run_234 mechanism was the raw-agent bypass, addressed by the overseer model, not those
+guards.
 
-**Deferred behind founder approval of this ADR:** R4/D1 (subordinate Deb-repair to the runner) and
-R5/D4 (prevent-vs-detect self-commits). These change orchestration behavior and reverse
-ADR-0016/0023/0036/F21/0018 decisions; they are a redesign, not a guardrail.
+**Deferred behind founder approval of this ADR (the overseer build):** (a) the **interference check**
+(file-domain rail per §3.1) gating Deb's self-fix lane; (b) reshape the ADR-0036 Deb-repair path into
+**observe / nudge / non-interfering `.md` self-fix / run-end founder suggestion**, removing autonomous
+authoring+commit+close of interfering changes; (c) route every Deb commit (self-fix and founder-approved)
+through the governed spine; (d) the run-wrap **audit assertion** (§4); (e) Deb's **reconciliation-close**
+authority, guarded against active-run targets. Each is tests-first and behavior-preserving for healthy runs.
 
 ## 8. Tickets
 
-D1–D5 are tracked as durable bug tickets, cross-referenced here: **0055** (D1), **0056** (D2),
-**0057** (D3), **0058** (D4), **0059** (D5). D2/D3/D5 are closed by the guardrails built this session;
-D1/D4 remain open as the founder-gated redesign work.
+D1–D5 are tracked as durable bug tickets: **0055** (D1), **0056** (D2), **0057** (D3), **0058** (D4),
+**0059** (D5). D2/D3/D5 are closed by this session's work. **0055** (D1) is **reframed** from "subordinate
+Deb-repair" to "implement the overseer model + interference check (§3)"; **0058** (D4) is **reframed** from
+"prevent-vs-detect crux" to "keep detection + add the run-wrap audit assertion (§4)." Both remain open as
+the founder-gated overseer build.
