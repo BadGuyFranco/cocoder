@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { createPriorityInvocation, editPriorityInvocation } from '../src/oz-args.js'
+import { createPriorityInvocation, createTicketInvocation, editPriorityInvocation } from '../src/oz-args.js'
 
 test('maps --id/--title/--objective to the create-priority invocation', () => {
   expect(createPriorityInvocation(['--id', 'foo', '--title', 'Foo bar', '--objective', 'Do the thing'])).toEqual({
@@ -90,6 +90,55 @@ test('throws when resolved details are empty', () => {
       readStdin: () => '  \n\t  ',
     }),
   ).toThrow(/non-empty details/)
+})
+
+test('maps create-ticket flags with inline description', () => {
+  expect(createTicketInvocation(['--title', ' Agent Ticket ', '--type', ' bug ', '--priority', ' tickets-review ', '--description', ' Fix it. '])).toEqual({
+    title: 'Agent Ticket',
+    type: 'bug',
+    priority: 'tickets-review',
+    description: 'Fix it.',
+  })
+})
+
+test('maps create-ticket description from details source', () => {
+  const description = '## Context\n\nKeep this markdown.'
+
+  expect(
+    createTicketInvocation(['--title', 'Agent Ticket', '--type', 'bug', '--priority', 'tickets-review', '--details-file', 'ticket.md'], {
+      readFileText: (path) => {
+        expect(path).toBe('ticket.md')
+        return description
+      },
+    }),
+  ).toEqual({
+    title: 'Agent Ticket',
+    type: 'bug',
+    priority: 'tickets-review',
+    description,
+  })
+})
+
+test('passes through an optional create-ticket id', () => {
+  expect(createTicketInvocation(['--title', 'Agent Ticket', '--type', 'bug', '--priority', 'tickets-review', '--description', 'Fix it.', '--id', ' 0042 '])).toEqual({
+    title: 'Agent Ticket',
+    type: 'bug',
+    priority: 'tickets-review',
+    description: 'Fix it.',
+    ticketId: '0042',
+  })
+})
+
+test('throws naming missing create-ticket required flags', () => {
+  expect(() => createTicketInvocation(['--title', 'Agent Ticket'])).toThrow(/--type, --priority/)
+})
+
+test('throws when create-ticket description sources conflict', () => {
+  expect(() =>
+    createTicketInvocation(['--title', 'Agent Ticket', '--type', 'bug', '--priority', 'tickets-review', '--description', 'Fix it.', '--details-stdin'], {
+      readStdin: () => 'stdin',
+    }),
+  ).toThrow(/one description source/)
 })
 
 test('throws when the details file reader fails', () => {

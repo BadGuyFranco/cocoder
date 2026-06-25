@@ -1,13 +1,12 @@
-// Pure flag → invocation mapping for `cocoder oz create-priority` (D5 / ticket 0059). Extracted so the
-// arg contract is unit-tested without spawning the bin. Maps --id/--title/--objective to the
-// create-priority authoring Play invocation — the SAME governed create spine `cocoder oz author
-// create-priority --json {…}` already reaches (ADR-0025/0035); this is the friendlier flag surface.
+// Pure flag → invocation mapping for Oz control-plane commands. Extracted so arg contracts are
+// unit-tested without spawning the bin.
 export interface DetailsSourceDeps {
   readonly readFileText?: (path: string) => string
   readonly readStdin?: () => string
 }
 
 export type CreatePriorityInvocationDeps = DetailsSourceDeps
+export type CreateTicketInvocationDeps = DetailsSourceDeps
 
 const flag = (args: readonly string[], name: string): string | undefined => {
   const i = args.indexOf(name)
@@ -48,6 +47,32 @@ export function createPriorityInvocation(args: readonly string[], deps: CreatePr
   if (details === undefined) return invocation
   if (details.trim() === '') throw new Error('create-priority needs non-empty details')
   return { ...invocation, details }
+}
+
+export function createTicketInvocation(args: readonly string[], deps: CreateTicketInvocationDeps = {}): Record<string, string> {
+  const fields = { title: flag(args, '--title'), type: flag(args, '--type'), priority: flag(args, '--priority') }
+  const missing = (Object.entries(fields) as Array<[string, string | undefined]>)
+    .filter(([, value]) => !value || !value.trim())
+    .map(([key]) => `--${key}`)
+  if (missing.length > 0) throw new Error(`create-ticket needs ${missing.join(', ')}`)
+
+  if (args.includes('--description') && (args.includes('--details-file') || args.includes('--details-stdin'))) {
+    throw new Error('create-ticket needs one description source')
+  }
+  const details = resolveDetailsSource(args, deps)
+  const description = flag(args, '--description')
+  const ticketId = flag(args, '--id')
+  if (args.includes('--description') && (!description || !description.trim())) throw new Error('create-ticket needs non-empty description')
+  if (details !== undefined && details.trim() === '') throw new Error('create-ticket needs non-empty description')
+  if (args.includes('--id') && (!ticketId || !ticketId.trim())) throw new Error('create-ticket needs non-empty --id')
+
+  return {
+    title: fields.title!.trim(),
+    type: fields.type!.trim(),
+    priority: fields.priority!.trim(),
+    description: description?.trim() ?? details ?? '',
+    ...(ticketId?.trim() ? { ticketId: ticketId.trim() } : {}),
+  }
 }
 
 export function editPriorityInvocation(args: readonly string[], deps: DetailsSourceDeps = {}): Record<string, string> {
