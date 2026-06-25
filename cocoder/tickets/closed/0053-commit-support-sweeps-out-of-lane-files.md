@@ -2,7 +2,7 @@
 id: 0053
 title: commit-support spine sweeps out-of-lane files instead of withholding
 type: bug
-status: Open
+status: Closed
 priority: orchestration-e2e-test
 owner: deb
 created: 2026-06-24
@@ -38,3 +38,9 @@ Control-plane repair must run only after live orchestration has torn down (0051 
 - Evidence: ticket 0051 issue #3; commit `8164afe` from run_232 post-wrap logging.
 - Related: ticket [0008](../closed/0008-post-wrap-founder-interaction-contract.md) (support-commit
   contract); ADR-0023 workspace commit spine.
+
+## Resolution
+
+Resolved by run session-16 (non-orchestrated) (526178c82df9a24661082578720dd38f6fb84a07) on 2026-06-24.
+
+Post-wrap support commit (requestSupportCommitRun -> runCommitGate) now passes commitOnlyScope:true: in-lane Surface-A edits commit with a run-linked receipt, out-of-lane files are WITHHELD (surfaced, not swept past the verify gate). oz-chat support-commit reply states held-back accurately; unused parseFrontmatter import removed. mutations.test.ts updated to the held-back contract + a run_88 regression pinning concurrent packages/ui edits as withheld. core 582 / daemon 347 green.
