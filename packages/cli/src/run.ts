@@ -190,6 +190,10 @@ async function main(): Promise<void> {
     return
   }
   if (cmd === 'oz' && arg1 === 'create-ticket') {
+    if (process.argv[4] === '--help' || process.argv[4] === '-h') {
+      console.error(createTicketUsage)
+      process.exit(0)
+    }
     let invocation: Record<string, string>
     try {
       invocation = createTicketInvocation(process.argv.slice(4), {

@@ -212,13 +212,15 @@ describe('runViaDaemon (client mode)', () => {
     await expect(run).resolves.toMatchObject({ code: 2, stderr: expect.stringContaining('usage: cocoder oz resume <runId>') })
   })
 
-  test('priority authoring CLI help is handled before invocation parsing', async () => {
+  test('governed authoring CLI help is handled before invocation parsing', async () => {
     const cli = fileURLToPath(new URL('../bin/cocoder.mjs', import.meta.url))
 
+    const ticket = await execFileAsync(process.execPath, [cli, 'oz', 'create-ticket', '--help'])
     const create = await execFileAsync(process.execPath, [cli, 'oz', 'create-priority', '--help'])
     const edit = await execFileAsync(process.execPath, [cli, 'oz', 'edit-priority', '--help'])
     const archive = await execFileAsync(process.execPath, [cli, 'oz', 'archive-priority', '--help'])
 
+    expect(ticket.stderr).toContain('usage: cocoder oz create-ticket --title <text>')
     expect(create.stderr).toContain('usage: cocoder oz create-priority --id <id>')
     expect(edit.stderr).toContain('usage: cocoder oz edit-priority <id>')
     expect(archive.stderr).toContain('usage: cocoder oz archive-priority <priorityId>')

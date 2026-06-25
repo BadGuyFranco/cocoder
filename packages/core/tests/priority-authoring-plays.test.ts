@@ -86,4 +86,14 @@ describe('priority authoring Plays', () => {
     expect(text).toContain('whether the\n   shared elegance checkpoint is required')
     expect(text).toContain('authoring Plays enforce the shared elegance checkpoint')
   })
+
+  test('ADR-0010 requires wrapper-backed Plays to document executable lanes', async () => {
+    const { readFile } = await import('node:fs/promises')
+    const text = await readFile(join(repoRoot(), 'cocoder', 'decisions', '0010-taxonomy-and-authoring.md'), 'utf8')
+
+    expect(text).toContain('wrapper-backed Plays must document their executable')
+    expect(text).toContain('the exact tool/API/CLI surface')
+    expect(text).toContain('required fields, defaults supplied by wrappers')
+    expect(text).toContain('bounded help and missing')
+  })
 })

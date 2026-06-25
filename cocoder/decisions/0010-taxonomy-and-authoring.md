@@ -68,6 +68,14 @@ raised → 1 confirmed blocker + 1 heeded F1/F2 refinement folded in; rest misre
 > and does not move full Play-body injection into every prompt. Later schema, manifest, and dispatch work
 > must derive labels and contracts from these axes instead of copying a second taxonomy.
 
+> **2026-06-25 amendment (founder, Deb repair) — wrapper-backed Plays must document their executable
+> lane.** When a Play can be invoked through a tool, API route, dashboard action, or dedicated CLI
+> wrapper, the Play body must name that executable lane in plain text next to the invocation contract:
+> the exact tool/API/CLI surface, required fields, defaults supplied by wrappers, the commit or
+> validation owner, and the forbidden bypasses. The wrapper must also expose bounded help and missing
+> argument errors before treating flags as positional input. This keeps a Play runnable without source
+> spelunking and prevents a second, prose-only contract from drifting away from the runtime route.
+
 ## Context
 
 We revisited terminology and how priorities are authored, against *The WISER Method* / AI First

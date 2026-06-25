@@ -20,6 +20,15 @@ writeScope:
 
 This Play runs headless on its per-(persona, Play) assigned model.
 
+This Play is the model-mediated ticket creation process. The executable lanes are governed:
+
+- Persona-requested or API-triggered dispatch uses this Play body and commits through the authoring
+  harness for `POST /workspaces/:id/authoring-plays/create-ticket`.
+- From a terminal outside the run loop, use the dedicated governed-spine wrapper:
+  `pnpm --dir <install-root> exec cocoder oz create-ticket --title <text> --type <type> --priority <priority> [--description <text> | --details-file <path> | --details-stdin] [--id <id>] [--run <runId>]`.
+  That wrapper calls the core `createTicket()` spine directly; it is the fallback/control-plane lane,
+  not a reason to hand-edit ticket files, `INDEX.md`, or `order.json`.
+
 Create exactly one open ticket from invocation input. Tickets are governance records for follow-up
 work, faults, or questions discovered mid-run. Use the same ticket file format as the
 dashboard create-ticket route; do not invent a second ticket template.

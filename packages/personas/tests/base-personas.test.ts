@@ -304,6 +304,16 @@ describe('basePlaysDir', () => {
     }
   })
 
+  test('create-ticket Play documents both governed creation lanes', () => {
+    const text = readFileSync(join(basePlaysDir(), 'create-ticket.md'), 'utf8')
+    const normalized = singleLine(text)
+
+    expect(normalized).toContain('POST /workspaces/:id/authoring-plays/create-ticket')
+    expect(normalized).toContain('cocoder oz create-ticket')
+    expect(normalized).toContain('calls the core `createTicket()` spine directly')
+    expect(normalized).toContain('not a reason to hand-edit ticket files, `INDEX.md`, or `order.json`')
+  })
+
   test('wrap-up keeps the Recommended Next Step label to one runnable action (F18)', () => {
     const text = readFileSync(join(basePlaysDir(), 'wrap-up.md'), 'utf8')
 
