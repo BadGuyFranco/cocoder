@@ -118,6 +118,7 @@ export interface RepairDialoguePaths {
   readonly debResponse: string
   readonly oscarEvaluation: string
   readonly founderEscalation: string
+  readonly heldChange: string
   readonly evidenceLog: string
   readonly debTurnLog: string
   readonly oscarTurnLog: string
@@ -143,6 +144,7 @@ export function repairDialoguePaths(workspaceId: string, dialogueId: string): Re
     debResponse: `${baseDir}/deb-response.json`,
     oscarEvaluation: `${baseDir}/oscar-evaluation.json`,
     founderEscalation: `${baseDir}/founder-escalation.json`,
+    heldChange: `${baseDir}/held-change`,
     evidenceLog: `${baseDir}/evidence.jsonl`,
     debTurnLog: `${baseDir}/deb-turn.log`,
     oscarTurnLog: `${baseDir}/oscar-turn.log`,
@@ -231,6 +233,10 @@ export function nextDialogueState(current: DialogueState, event: DialogueEvent):
     'deb-running:deb-applied': 'deb-applied',
     'deb-running:deb-proposed': 'deb-proposed',
     'deb-applied:complete': 'complete',
+    // An applied (or directed-applied) self-fix the interference rail HOLDS routes to the run-end founder
+    // suggestion instead of completing silently (ADR-0041 §3.2 item 5 / ticket 0055).
+    'deb-applied:founder-escalated': 'founder-escalated',
+    'deb-directed-running:founder-escalated': 'founder-escalated',
     'deb-proposed:start-oscar-evaluation': 'oscar-evaluating',
     'oscar-evaluating:needs-oscar': 'needs-oscar',
     'needs-oscar:start-oscar-evaluation': 'oscar-evaluating',

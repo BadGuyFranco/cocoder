@@ -89,6 +89,45 @@ describe('requestOscarDebRepair', () => {
     expect(result).toMatchObject({ status: 200, body: { ok: true, state: 'complete', outcome: 'held-for-founder', commitSha: null, committedPaths: [], outOfLanePaths: ['packages/core/src/runner/runner.ts'] } })
     // No autonomous commit: HEAD is unchanged — the interfering change never landed beside the spine.
     expect((await git(fixture.home, ['rev-parse', 'HEAD'])).trim()).toBe(headBefore)
+    // (B) ADR-0041 §3.2 item 5: a run-end founder-suggestion artifact presents the explicit file-a-ticket |
+    // approve choices, with a recommendation and evidence pointing at the held change. Deb never commits it.
+    const paths = result.body.artifactPaths as { founderEscalation: string; debResponse: string; heldChange: string }
+    const escalation = JSON.parse(await readFile(join(fixture.home, paths.founderEscalation), 'utf8')) as { kind: string; options: { label: string }[]; recommendedOption: string; evidenceRefs: string[] }
+    expect(escalation.kind).toBe('founder-escalation')
+    expect(escalation.options.map((o) => o.label)).toEqual(['File a ticket', 'Approve'])
+    expect(escalation.recommendedOption).toBe('File a ticket')
+    expect(escalation.evidenceRefs).toEqual([paths.debResponse, paths.heldChange])
+    // The held diff does not dangle in the working tree: it is captured (untracked add quarantined under the
+    // gitignored dialogue dir) and the tree restored to HEAD, so a later run's snapshot can't sweep it up.
+    expect((await git(fixture.home, ['status', '--porcelain'])).trim()).toBe('')
+    expect(await readFile(join(fixture.home, paths.heldChange, 'packages/core/src/runner/runner.ts'), 'utf8')).toContain('export const patched = true')
+  })
+
+  test('directed-apply of an INTERFERING change is also held for the founder with a suggestion artifact (ADR-0041 §3.2, 0055)', async () => {
+    const fixture = await makeFixture({
+      runHeadless: async (input) => {
+        fixture.headlessInputs.push(input)
+        const persona = input.args[0]
+        if (persona === 'deb' && fixture.headlessInputs.filter((i) => i.args[0] === 'deb').length === 1) return { exitCode: 0, output: proposalOutput() }
+        if (persona === 'oscar') return { exitCode: 0, output: evaluationOutput('direct-deb-to-apply') }
+        // Oscar directed an apply, but the directed Deb turn touches code — the rail still binds: held, not committed.
+        await mkdir(join(fixture.home, 'packages', 'core', 'src', 'runner'), { recursive: true })
+        await writeFile(join(fixture.home, 'packages', 'core', 'src', 'runner', 'runner.ts'), 'export const directed = true\n')
+        return { exitCode: 0, output: appliedOutput('Directed repair applied.') }
+      },
+    })
+    const headBefore = (await git(fixture.home, ['rev-parse', 'HEAD'])).trim()
+
+    const result = await requestOscarDebRepair(fixture.ctx, { workspaceId: 'cocoder', requestedBy: 'oscar', problem: 'route through proposal then interfere', evidence })
+
+    expect(result).toMatchObject({ status: 200, body: { ok: true, state: 'complete', outcome: 'held-for-founder', commitSha: null, committedPaths: [], outOfLanePaths: ['packages/core/src/runner/runner.ts'] } })
+    expect((await git(fixture.home, ['rev-parse', 'HEAD'])).trim()).toBe(headBefore)
+    expect((await git(fixture.home, ['status', '--porcelain'])).trim()).toBe('')
+    const paths = result.body.artifactPaths as { founderEscalation: string }
+    const escalation = JSON.parse(await readFile(join(fixture.home, paths.founderEscalation), 'utf8')) as { kind: string; options: { label: string }[]; recommendedOption: string }
+    expect(escalation.kind).toBe('founder-escalation')
+    expect(escalation.options.map((o) => o.label)).toEqual(['File a ticket', 'Approve'])
+    expect(escalation.recommendedOption).toBe('File a ticket')
   })
 
   test('runs Deb repair turn in a non-TTY subprocess and reads the adapter-owned response artifact', async () => {

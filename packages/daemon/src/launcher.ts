@@ -69,6 +69,7 @@ import {
   type FounderEscalation,
   type OscarEvaluation,
   type OscarRepairRequest,
+  type RepairDialoguePaths,
   type RepairEvidenceItem,
 } from './oscar-deb-repair.js'
 
@@ -1119,16 +1120,17 @@ export async function requestOscarDebRepair(ctx: OzContext, input: OscarDebRepai
 
   if (debResponse.kind === 'applied') {
     state = nextDialogueState(state, { type: 'deb-applied' })
-    const committed = await commitDebRepair(ctx, workspace.path).catch((err: unknown) => err instanceof Error ? err : new Error(String(err)))
+    const committed = await commitDebRepair(ctx, workspace.path, join(ctx.cocoderHome, paths.heldChange)).catch((err: unknown) => err instanceof Error ? err : new Error(String(err)))
     if (committed instanceof Error) return await failDialogue(`Deb repair commit failed: ${committed.message}`)
     const response = parseDebRepairResponse(JSON.stringify({ ...debResponse, commit: responseCommit(committed) }))
     await writeDialogueJson(ctx, paths.debResponse, response)
-    await appendDialogueEvidence(ctx, paths, state, 'deb-response.json', committed.interfering ? 'Deb self-fix touches non-.md surfaces — held for the founder (ADR-0041 §3.1).' : 'Deb committed a non-interfering .md self-fix through the governed spine.')
+    if (committed.interfering) return await holdInterferingForFounder(ctx, workspace, request, response, committed.outOfLanePaths, paths, state, dialogueId)
+    await appendDialogueEvidence(ctx, paths, state, 'deb-response.json', 'Deb committed a non-interfering .md self-fix through the governed spine.')
     state = nextDialogueState(state, { type: 'complete' })
     await appendDialogueEvidence(ctx, paths, state, 'deb-response.json', 'Oscar-Deb repair dialogue completed.')
-    await appendAudit(ctx.cocoderHome, { action: committed.interfering ? 'oscar-deb-repair-interfering-held' : 'oscar-deb-repair', workspaceId: workspace.id, dialogueId, state, committedSha: committed.sha, files: committed.committedPaths, outOfLanePaths: committed.outOfLanePaths })
-    emitOzEvent(ctx, { type: 'oscar-deb-repair', workspaceId: workspace.id, runId: request.sourceRunId, status: committed.interfering ? 'interfering-held' : committed.sha ? 'committed' : 'no-commit' })
-    return { status: 200, body: { ok: true, state, outcome: committed.interfering ? 'held-for-founder' : 'applied', dialogueId, artifactPaths: paths, committedPaths: committed.committedPaths, commitSha: committed.sha, outOfLanePaths: committed.outOfLanePaths } }
+    await appendAudit(ctx.cocoderHome, { action: 'oscar-deb-repair', workspaceId: workspace.id, dialogueId, state, committedSha: committed.sha, files: committed.committedPaths, outOfLanePaths: committed.outOfLanePaths })
+    emitOzEvent(ctx, { type: 'oscar-deb-repair', workspaceId: workspace.id, runId: request.sourceRunId, status: committed.sha ? 'committed' : 'no-commit' })
+    return { status: 200, body: { ok: true, state, outcome: 'applied', dialogueId, artifactPaths: paths, committedPaths: committed.committedPaths, commitSha: committed.sha, outOfLanePaths: committed.outOfLanePaths } }
   }
 
   state = nextDialogueState(state, { type: 'deb-proposed' })
@@ -1181,15 +1183,16 @@ export async function requestOscarDebRepair(ctx: OzContext, input: OscarDebRepai
   if (directedResponse.kind !== 'applied') return await failDialogue('Directed Deb repair turn must return an applied repair artifact')
   // The interference rail is mechanical, not subject to Oscar's direction: even a directed apply of a
   // non-.md change is held for the founder, never an autonomous commit (ADR-0041 §3.1).
-  const committed = await commitDebRepair(ctx, workspace.path).catch((err: unknown) => err instanceof Error ? err : new Error(String(err)))
+  const committed = await commitDebRepair(ctx, workspace.path, join(ctx.cocoderHome, paths.heldChange)).catch((err: unknown) => err instanceof Error ? err : new Error(String(err)))
   if (committed instanceof Error) return await failDialogue(`Directed Deb repair commit failed: ${committed.message}`)
   const response = parseDebRepairResponse(JSON.stringify({ ...directedResponse, commit: responseCommit(committed) }))
   await writeDialogueJson(ctx, paths.debResponse, response)
+  if (committed.interfering) return await holdInterferingForFounder(ctx, workspace, request, response, committed.outOfLanePaths, paths, state, dialogueId)
   state = nextDialogueState(state, { type: 'complete' })
-  await appendDialogueEvidence(ctx, paths, state, 'deb-response.json', committed.interfering ? 'Directed Deb self-fix touches non-.md surfaces — held for the founder (ADR-0041 §3.1).' : 'Directed Deb repair completed.')
-  await appendAudit(ctx.cocoderHome, { action: committed.interfering ? 'oscar-deb-repair-interfering-held' : 'oscar-deb-repair', workspaceId: workspace.id, dialogueId, state, committedSha: committed.sha, files: committed.committedPaths, outOfLanePaths: committed.outOfLanePaths })
-  emitOzEvent(ctx, { type: 'oscar-deb-repair', workspaceId: workspace.id, runId: request.sourceRunId, status: committed.interfering ? 'interfering-held' : committed.sha ? 'committed' : 'no-commit' })
-  return { status: 200, body: { ok: true, state, outcome: committed.interfering ? 'held-for-founder' : 'directed-applied', dialogueId, artifactPaths: paths, committedPaths: committed.committedPaths, commitSha: committed.sha, outOfLanePaths: committed.outOfLanePaths } }
+  await appendDialogueEvidence(ctx, paths, state, 'deb-response.json', 'Directed Deb repair completed.')
+  await appendAudit(ctx.cocoderHome, { action: 'oscar-deb-repair', workspaceId: workspace.id, dialogueId, state, committedSha: committed.sha, files: committed.committedPaths, outOfLanePaths: committed.outOfLanePaths })
+  emitOzEvent(ctx, { type: 'oscar-deb-repair', workspaceId: workspace.id, runId: request.sourceRunId, status: committed.sha ? 'committed' : 'no-commit' })
+  return { status: 200, body: { ok: true, state, outcome: 'directed-applied', dialogueId, artifactPaths: paths, committedPaths: committed.committedPaths, commitSha: committed.sha, outOfLanePaths: committed.outOfLanePaths } }
 }
 
 // Deb's reconciliation close (ADR-0041 §3.2 item 4 / ticket 0055). Deb may close a ticket she notices
@@ -1286,9 +1289,14 @@ function responseCommit(committed: { readonly sha: string | null; readonly commi
 // via outOfLanePaths + the dialogue's `interfering-held` event, never committed). Only a non-interfering
 // `.md`/instruction self-fix commits, and it rides the NORMAL governed spine (commitFiles + the shared
 // governed author, in a ledger) — no bespoke `deb-repair` author, no raw git (the run_234 D1 bypass).
-async function commitDebRepair(ctx: OzContext, cwd: string): Promise<{ readonly sha: string | null; readonly committedPaths: readonly string[]; readonly outOfLanePaths: readonly string[]; readonly interfering: boolean }> {
+async function commitDebRepair(ctx: OzContext, cwd: string, heldChangeDir: string): Promise<{ readonly sha: string | null; readonly committedPaths: readonly string[]; readonly outOfLanePaths: readonly string[]; readonly interfering: boolean }> {
   const changed = await ctx.git.changedFiles(cwd)
   if (interferes(changed)) {
+    // (B) ADR-0041 §3.2/§3.3: Deb never commits interfering code — the founder disposes it at run-end (file
+    // a ticket | approve → a normal run lands it). Capture the held change (untracked adds preserved into the
+    // gitignored dialogue quarantine; tracked mods are described in the deb-response) and restore the working
+    // tree to HEAD, so the held diff cannot dangle and be swept into a later run's pre-run snapshot.
+    await ctx.git.restoreToHead(cwd, changed, { quarantineDir: heldChangeDir })
     return { sha: null, committedPaths: [], outOfLanePaths: changed.filter((file) => !isInstructionSurface(file)), interfering: true }
   }
   const receipt = await commitFiles(ctx.git, cwd, changed, 'deb-overseer: non-interfering self-fix (ADR-0041 §3.2)', COCODER_GOVERNANCE_AUTHOR)
@@ -1341,6 +1349,47 @@ function buildDirectedDebRepairPrompt(request: OscarRepairRequest, response: Deb
     `Oscar evaluation:\n${JSON.stringify(evaluation, null, 2)}`,
     `The daemon writes ${paths.debResponse}.`,
   ].join('\n\n')
+}
+
+// Run-end founder suggestion for an INTERFERING Deb self-fix (ADR-0041 §3.2 item 5 / ticket 0055). The
+// rail held the change (commitDebRepair captured + reverted it); here we surface it as the dedicated
+// escalation artifact with the explicit file-a-ticket | approve choices, route through founder-escalated →
+// complete, and record the interfering-held event/audit. Shared by the applied and directed-applied paths.
+async function holdInterferingForFounder(
+  ctx: OzContext,
+  workspace: { readonly id: string },
+  request: OscarRepairRequest,
+  response: DebRepairResponse,
+  outOfLanePaths: readonly string[],
+  paths: RepairDialoguePaths,
+  state: DialogueState,
+  dialogueId: string,
+): Promise<LaunchResult> {
+  state = nextDialogueState(state, { type: 'founder-escalated' })
+  await writeDialogueJson(ctx, paths.founderEscalation, buildInterferingEscalation(request, response, outOfLanePaths, paths))
+  await appendDialogueEvidence(ctx, paths, state, 'founder-escalation.json', 'Interfering Deb self-fix held — run-end founder suggestion (file a ticket | approve), ADR-0041 §3.2.')
+  state = nextDialogueState(state, { type: 'complete' })
+  await appendDialogueEvidence(ctx, paths, state, 'founder-escalation.json', 'Oscar-Deb repair dialogue completed.')
+  await appendAudit(ctx.cocoderHome, { action: 'oscar-deb-repair-interfering-held', workspaceId: workspace.id, dialogueId, state, committedSha: null, files: [], outOfLanePaths })
+  emitOzEvent(ctx, { type: 'oscar-deb-repair', workspaceId: workspace.id, runId: request.sourceRunId, status: 'interfering-held' })
+  return { status: 200, body: { ok: true, state, outcome: 'held-for-founder', dialogueId, artifactPaths: paths, committedPaths: [], commitSha: null, outOfLanePaths } }
+}
+
+function buildInterferingEscalation(request: OscarRepairRequest, response: DebRepairResponse, outOfLanePaths: readonly string[], paths: { readonly debResponse: string; readonly heldChange: string }): FounderEscalation {
+  return parseFounderEscalation(JSON.stringify({
+    schemaVersion: 1,
+    dialogueId: request.dialogueId,
+    kind: 'founder-escalation',
+    createdAt: new Date().toISOString(),
+    reason: `${response.summary} — interfering (touches ${outOfLanePaths.join(', ')}); held for the founder per ADR-0041 §3.2.`,
+    lightestHome: 'cocoder-bug ticket',
+    options: [
+      { label: 'File a ticket', effect: 'Open a cocoder-bug ticket capturing the recommended change; a normal run delivers it through the runner spine.' },
+      { label: 'Approve', effect: 'File the change for a normal run or operator session to land through the runner spine — Deb never commits interfering code herself (ADR-0041 §3.2/§3.3).' },
+    ],
+    recommendedOption: 'File a ticket',
+    evidenceRefs: [paths.debResponse, paths.heldChange],
+  }))
 }
 
 function buildFounderEscalation(request: OscarRepairRequest, response: DebRepairResponse, evaluation: OscarEvaluation, paths: { readonly debResponse: string; readonly oscarEvaluation: string }): FounderEscalation {
