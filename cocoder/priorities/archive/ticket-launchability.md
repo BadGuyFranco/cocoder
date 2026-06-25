@@ -3,6 +3,13 @@ id: ticket-launchability
 title: Ticket launchability signals
 ---
 
+> **Archived 2026-06-25 (founder) — Phases A-C delivered in run_240; archive-ready confirmed in run_241.**
+> Phase A surface tag, Phase B stale-link integrity (core/tickets/handled.ts), and Phase C
+> detect-and-surface-at-archive all shipped; close lane executes. No open tickets reference
+> priority: ticket-launchability, so nothing to reconcile. Phase C release/rehome execution
+> lanes intentionally spun out to live priority ticket-priority-repoint. Founder-approved
+> archive after clean stale-items check.
+
 ## Objective
 
 Make the existing ticket `priority:` frontmatter reference a trustworthy launchability signal in the
