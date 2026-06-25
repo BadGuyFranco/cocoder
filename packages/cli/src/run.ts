@@ -30,10 +30,10 @@ const log = (m: string): void => console.error(`[cocoder] ${m}`)
 const out = (m: string): void => {
   process.stdout.write(`${m}\n`)
 }
-const usage = 'usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz create-priority --id <id> --title <text> --objective <text>   |   cocoder oz close-ticket <id> [--resolution <text>] [--run <runId>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]   |   cocoder oz commit-support <runId>   |   cocoder oz resume <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]'
+const usage = 'usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz create-priority --id <id> --title <text> --objective <text> [--details-file <path> | --details-stdin]   |   cocoder oz close-ticket <id> [--resolution <text>] [--run <runId>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]   |   cocoder oz commit-support <runId>   |   cocoder oz resume <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]'
 const requestDebRepairUsage = 'usage: cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]'
 const closeTicketUsage = 'usage: cocoder oz close-ticket <id> [--resolution <text>] [--run <runId>]'
-const createPriorityUsage = 'usage: cocoder oz create-priority --id <id> --title <text> --objective <text>'
+const createPriorityUsage = 'usage: cocoder oz create-priority --id <id> --title <text> --objective <text> [--details-file <path> | --details-stdin]'
 
 function authorInvocationFromArgv(): unknown {
   const jsonIdx = process.argv.indexOf('--json')
@@ -188,7 +188,10 @@ async function main(): Promise<void> {
   if (cmd === 'oz' && arg1 === 'create-priority') {
     let invocation: Record<string, string>
     try {
-      invocation = createPriorityInvocation(process.argv.slice(4))
+      invocation = createPriorityInvocation(process.argv.slice(4), {
+        readFileText: (path) => readFileSync(path, 'utf8'),
+        readStdin: () => readFileSync(0, 'utf8'),
+      })
     } catch (err) {
       console.error(`cocoder: ${err instanceof Error ? err.message : String(err)}`)
       console.error(createPriorityUsage)
