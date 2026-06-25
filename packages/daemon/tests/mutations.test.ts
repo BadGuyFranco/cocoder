@@ -2623,7 +2623,7 @@ describe('Oz mutations + lifecycle', () => {
     expect(r.status).toBe(403)
   })
 
-  test('POST /workspaces/:id/tickets creates an open ticket, indexes it first, and commits both files', async () => {
+  test('POST /workspaces/:id/tickets creates an open ticket, indexes and enqueues it, and commits the governed files', async () => {
     await writeTicketIndex(home)
     const commits: GovernanceCommitCall[] = []
     await startServer(recordingGovernanceGit(commits))
@@ -2657,10 +2657,11 @@ describe('Oz mutations + lifecycle', () => {
     expect(index.match(/\| \[0013\]\(\.\/open\/0013-fix-backend-ticket\.md\) \|/g)?.length).toBe(1)
     expect(index.split('\n').slice(0, index.split('\n').indexOf('| [0003](./open/0003-existing-open.md) | Existing open | task | none | founder-session |'))).toContain(row)
     expect(index).toContain('| [0012](./closed/0012-existing-closed.md) | Existing closed | task | 2026-06-17 | Done |')
+    expect(JSON.parse(await readFile(join(home, 'cocoder', 'tickets', 'order.json'), 'utf8'))).toEqual(['0013'])
     expect(commits).toEqual([
       {
         cwd: home,
-        files: ['cocoder/tickets/open/0013-fix-backend-ticket.md', 'cocoder/tickets/INDEX.md'],
+        files: ['cocoder/tickets/open/0013-fix-backend-ticket.md', 'cocoder/tickets/INDEX.md', 'cocoder/tickets/order.json'],
         message: 'governance: create ticket 0013',
         author: COCODER_GOVERNANCE,
       },

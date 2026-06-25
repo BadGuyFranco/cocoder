@@ -86,13 +86,14 @@ describe('orchestration contract ownership', () => {
     expect(read('packages/core/src/runner/prompts.ts')).toContain('WRAP-UP READY artifact for exactly-once delivery')
   })
 
-  test('ticket authoring surfaces derive markdown from the core ticket composer', () => {
+  test('ticket authoring surfaces derive markdown or ticket creation from core owners', () => {
     const play = read('packages/personas/base/plays/create-ticket.md')
     const routes = read('packages/daemon/src/routes.ts')
 
     expect(play).toContain('composeTicketMarkdown')
     expect(play).not.toMatch(/```\s*---\s*\nid:/)
-    expect(routes).toContain('composeTicketMarkdown')
+    expect(routes).toContain('createTicket as createTicketCore')
+    expect(routes).toContain('createTicketCore({ ticketsDir: dir')
   })
 
   test('priority authoring surfaces derive markdown from the core priority composer', () => {

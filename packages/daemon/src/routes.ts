@@ -7,7 +7,7 @@ import { isAbsolute, join, relative, resolve } from 'node:path'
 import {
   installRoot as cocoderInstallRoot,
   composePriorityMarkdown,
-  composeTicketMarkdown,
+  createTicket as createTicketCore,
   DEFAULT_PORTABLE_COUNTERS,
   ensurePortableWorkspace,
   listEffectivePlays,
@@ -15,14 +15,9 @@ import {
   loadAssignments,
   loadPriority,
   migrateWorkspacePortableHistory,
-  nextTicketId,
   parseFrontmatter,
   portableWorkspacePaths,
-  insertOpenTicketIndexRow,
-  readTicketIndex,
   scaffoldCocoderZone,
-  ticketTableCell,
-  TICKET_OWNER,
   truncate,
   workspaceTemplateDir,
   COCODER_GOVERNANCE_AUTHOR,
@@ -323,14 +318,6 @@ function validateCreatedPriority(markdown: string, priority: Priority, input: Cr
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
-}
-
-function validateCreatedTicket(ticket: Awaited<ReturnType<typeof readTickets>>[number] | undefined, id: string, input: CreateTicketInput): void {
-  if (!ticket) throw new Error('ticket did not round-trip')
-  if (ticket.id !== id) throw new Error('ticket id did not round-trip')
-  if (ticket.title !== input.title) throw new Error('ticket title did not round-trip')
-  if (ticket.type !== input.type) throw new Error('ticket type did not round-trip')
-  if (ticket.state !== 'open') throw new Error('ticket state did not round-trip as open')
 }
 
 function isSamePath(a: string, b: string): boolean {
@@ -727,46 +714,18 @@ async function createTicket(ctx: OzContext, res: ServerResponse, workspaceId: st
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
   if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
   const dir = ticketsDir(ws.path)
-  const openDir = join(dir, 'open')
-  await mkdir(openDir, { recursive: true })
-
-  const id = await nextTicketId(dir)
-  const slug = slugifyTitle(input.title) || 'ticket'
-  const fileName = `${id}-${slug}.md`
-  const target = join(openDir, fileName)
-  const indexPath = join(dir, 'INDEX.md')
-  const ticketRel = relative(ws.path, target)
-  const indexRel = relative(ws.path, indexPath)
-  const created = todayIso()
-  const markdown = composeTicketMarkdown(id, input, created)
-  const tmpRoot = join(dir, `.ticket-create-${id}-${process.pid}-${Date.now()}`)
-  const tmpOpen = join(tmpRoot, 'open')
-  const tmpTicket = join(tmpOpen, fileName)
-  const tmpIndex = join(dir, `.INDEX.${id}.${process.pid}.${Date.now()}.tmp`)
 
   try {
-    parseFrontmatter(markdown)
-    await mkdir(tmpOpen, { recursive: true })
-    await writeFile(tmpTicket, markdown)
-    validateCreatedTicket((await readTickets(tmpRoot)).find((ticket) => ticket.id === id), id, input)
-    await rename(tmpTicket, target)
-    const tickets = await readTickets(dir)
-    const ticket = tickets.find((item) => item.id === id && item.state === 'open')
-    validateCreatedTicket(ticket, id, input)
-    const row = `| [${id}](./open/${fileName}) | ${ticketTableCell(input.title)} | ${input.type} | ${ticketTableCell(input.priority)} | ${TICKET_OWNER} |`
-    const updatedIndex = insertOpenTicketIndexRow(await readTicketIndex(indexPath), row, id)
-    await writeFile(tmpIndex, updatedIndex)
-    await rename(tmpIndex, indexPath)
-    await rm(tmpRoot, { recursive: true, force: true })
-    const receipt = await commitGovernance(ctx, ws.path, [ticketRel, indexRel], `governance: create ticket ${id}`)
-    void appendAudit(ctx.cocoderHome, { action: 'ticket-create', workspaceId, ticketId: id, committedSha: receipt.committedSha, committed: receipt.committed })
+    const create = await createTicketCore({ ticketsDir: dir, repoPath: ws.path, ...input, created: todayIso() })
+    if (!create.created) return sendJson(res, 409, { error: `ticket id already exists` })
+    const ticket = (await readTickets(dir)).find((item) => item.id === create.id)
+    if (!ticket) throw new Error(`ticket ${create.id} did not round-trip`)
+    const receipt = await commitGovernance(ctx, ws.path, create.files, `governance: create ticket ${create.id}`)
+    void appendAudit(ctx.cocoderHome, { action: 'ticket-create', workspaceId, ticketId: create.id, committedSha: receipt.committedSha, committed: receipt.committed })
     if (governanceCommitFailed(res, receipt)) return
-    emitOzEvent(ctx, { type: 'ticket-created', workspaceId, ticketId: id, status: 'committed' })
+    emitOzEvent(ctx, { type: 'ticket-created', workspaceId, ticketId: create.id, status: 'committed' })
     sendJson(res, 201, { ok: true, ticket, committedSha: receipt.committedSha })
   } catch (err) {
-    await rm(tmpRoot, { recursive: true, force: true })
-    await rm(tmpIndex, { force: true })
-    await rm(target, { force: true })
     sendJson(res, 500, { error: err instanceof Error ? err.message : String(err) })
   }
 }
