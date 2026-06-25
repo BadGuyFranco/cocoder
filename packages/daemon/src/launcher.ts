@@ -41,9 +41,11 @@ import {
   type PreRunGovernanceCheck,
   type PersonaSources,
   type Priority,
+  type Run,
   type RunInput,
   type RunLabelTarget,
   type RunResult,
+  type RunStatus,
   type RunnerDeps,
   type SessionHost,
   type Ticket,
@@ -442,10 +444,59 @@ function ticketPriority(ticket: Ticket): Priority {
 }
 
 export function ticketPendingCloseRun(ctx: OzContext, workspaceId: string, ticketId: string): { readonly id: string } | null {
-  const runs = ctx.store.listRuns()
-    .filter((run) => run.workspaceId === workspaceId && run.ticketId === ticketId && run.status === 'awaiting-founder' && run.endedAt !== null)
-    .sort((a, b) => b.createdAt - a.createdAt)
-  return runs[0] ? { id: runs[0].id } : null
+  // "Pending close" is a CURRENT-tip guard: it should fire only for a run that just wrapped awaiting the
+  // founder's close and is the most recent thing to have happened in the workspace. The original predicate —
+  // "any awaiting-founder run exists for this ticket" — was wrong, because `awaiting-founder` is the normal
+  // resting state of nearly every finished run and is never finalized, so an ancient abandoned run (run_204)
+  // permanently blocked relaunch of its still-open ticket (0039) and survived restarts. Require the candidate
+  // to be the workspace's latest run AND target this ticket: once the founder has moved past it (any newer
+  // run exists), it is stale history, not a live pending decision.
+  const tip = latestRun(ctx.store.listRuns({ workspaceId }))
+  if (!tip || tip.ticketId !== ticketId || tip.status !== 'awaiting-founder' || tip.endedAt === null) return null
+  return { id: tip.id }
+}
+
+/** The `run_<seq>` suffix from a strictly monotonic counter — the deterministic newer-than tiebreak when
+ *  two runs share a creation millisecond (rapid launches, or a fixed test clock), where `createdAt` alone
+ *  is ambiguous. Falls back to 0 for any non-conforming id so it never throws. */
+function runSeq(id: string): number {
+  const n = Number(id.slice(id.lastIndexOf('_') + 1))
+  return Number.isFinite(n) ? n : 0
+}
+
+/** Newest run by (createdAt, then run sequence) — the workspace's current tip. */
+function latestRun(runs: readonly Run[]): Run | null {
+  return runs.reduce<Run | null>((newest, run) => {
+    if (!newest) return run
+    if (run.createdAt !== newest.createdAt) return run.createdAt > newest.createdAt ? run : newest
+    return runSeq(run.id) > runSeq(newest.id) ? run : newest
+  }, null)
+}
+
+// A run that wraps `awaiting-founder` / `awaiting-archive-confirmation` is parked on a founder decision —
+// it is NOT still executing. The daemon never moved it off that status once the decision landed, so it
+// lingered forever and `ticketPendingCloseRun` read it as a live "pending close", blocking every relaunch
+// of its ticket (the run_204 → 0039 wedge). These statuses must become terminal the moment the decision is
+// resolved — the ticket is closed, the run is torn down, or the daemon reboots with nothing in flight.
+// Centralised here so close, teardown, and boot reconciliation finalize identically.
+const AWAITING_FOUNDER_STATUSES: ReadonlySet<RunStatus> = new Set<RunStatus>(['awaiting-founder', 'awaiting-archive-confirmation'])
+
+/** Move a single parked founder-decision run to a terminal status. No-op (returns false) if the run is
+ *  missing or already terminal/running, so callers can fire it unconditionally on the resolution path. */
+function finalizeAwaitingFounderRun(ctx: OzContext, runId: string, reason: string): boolean {
+  const run = ctx.store.getRun(runId)
+  if (!run || !AWAITING_FOUNDER_STATUSES.has(run.status)) return false
+  ctx.store.recordEvent({ runId, type: 'run-finalized', data: { from: run.status, reason } })
+  ctx.store.setRunStatus(runId, 'completed')
+  return true
+}
+
+/** Finalize every parked run that owns a now-resolved ticket (a ticket may have more than one historical
+ *  awaiting-founder run). Called after a close commits so the closed ticket stops looking pending. */
+function finalizeAwaitingFounderRunsForTicket(ctx: OzContext, workspaceId: string, ticketId: string, reason: string): void {
+  for (const run of ctx.store.listRuns({ workspaceId })) {
+    if (run.ticketId === ticketId && AWAITING_FOUNDER_STATUSES.has(run.status)) finalizeAwaitingFounderRun(ctx, run.id, reason)
+  }
 }
 
 function todayIso(): string {
@@ -505,6 +556,7 @@ async function closeTicketAfterSuccessfulRun(ctx: OzContext, workspacePath: stri
       files: close.files,
       error: receipt.error,
     })
+    finalizeAwaitingFounderRunsForTicket(ctx, ctx.store.getRun(result.runId)?.workspaceId ?? '', ticketId, 'wrap-close')
   } catch (error) {
     await appendAudit(ctx.cocoderHome, {
       action: 'ticket-close-failed',
@@ -907,6 +959,9 @@ export async function teardownRun(ctx: OzContext, runId: string, opts: TeardownO
   ctx.store.recordEvent({ runId, type: 'teardown', data })
   void appendAudit(ctx.cocoderHome, { action: 'teardown', runId, closed, failed })
   emitOzEvent(ctx, { type: 'run-torn-down', runId, workspaceId: run.workspaceId })
+  // Tearing a run down is the founder dismissing it — a run parked awaiting a founder decision is now
+  // resolved and must leave the awaiting-* status, or it lingers as a false pending and blocks relaunch.
+  finalizeAwaitingFounderRun(ctx, runId, 'teardown')
   if (failed.length > 0) {
     return {
       status: 500,
@@ -1248,6 +1303,9 @@ export async function requestReconciliationClose(ctx: OzContext, input: Reconcil
   if (!receipt.committed) return { status: 500, body: { ok: false, error: `closed ticket ${input.ticketId} but commit failed: ${receipt.error}` } }
   await appendAudit(ctx.cocoderHome, { action: 'deb-reconciliation-close', workspaceId: workspace.id, ticketId: input.ticketId, commitSha: receipt.committedSha, files: close.files })
   emitOzEvent(ctx, { type: 'deb-reconciliation-close', workspaceId: workspace.id })
+  // The ticket is closed — any run still parked awaiting that close is resolved, so finalize it. Without this
+  // the closed ticket's run lingers as a false pending-close and would block relaunch of the next ticket.
+  finalizeAwaitingFounderRunsForTicket(ctx, workspace.id, input.ticketId, 'reconciliation-close')
   return { status: 200, body: { ok: true, closed: true, commitSha: receipt.committedSha, committedPaths: close.files } }
 }
 

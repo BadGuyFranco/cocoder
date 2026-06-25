@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ClaudeAdapter, type Exec } from '@cocoder/adapters'
 import { atomSentinel, loadAssignments, loadPriority, makeGit, openRunStore, readTickets, StopRequestedError, workspaceTemplateDir, writePortableRun, type Adapter, type Git, type HeadlessRunInput, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
 import { createOzServer, OZ_CSRF_HEADER, type OzServer } from '../src/index.js'
+import { ticketPendingCloseRun } from '../src/launcher.js'
 import { findOrphanedPriorities } from '../src/priority-order.js'
 import { validFounderCloseout, validTicketFounderCloseout } from './helpers/founder-closeout.js'
 
@@ -994,6 +995,54 @@ describe('Oz mutations + lifecycle', () => {
     expect(tickets.json.tickets[0]).toMatchObject({ id: '0003', state: 'open', pendingCloseRunId: run.id })
     expect(relaunch.status).toBe(409)
     expect(String(relaunch.json.error)).toContain(`run ${run.id} awaiting founder close confirmation`)
+  })
+
+  test('a stale awaiting-founder run the founder has moved past does NOT block relaunch of its ticket', async () => {
+    await writeTicketIndex(home)
+    await writeFile(join(home, 'cocoder', 'tickets', 'order.json'), `${JSON.stringify(['0003', '0004'], null, 2)}\n`)
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    // An old run for 0003 wrapped awaiting-founder and was never finalized (the universal resting state)...
+    const stale = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0003' })
+    store.setRunStatus(stale.id, 'awaiting-founder')
+    // ...but the founder has since moved on to other work, so it is no longer the workspace tip.
+    const newer = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0004' })
+    store.setRunStatus(newer.id, 'completed')
+    await startServer()
+
+    const tickets = await call(oz!, 'GET', '/workspaces/cocoder/tickets')
+
+    expect(tickets.status).toBe(200)
+    // 0003 is no longer flagged pending-close — the stale run is not the current tip, so relaunch is allowed.
+    expect(tickets.json.tickets.find((t: { id: string }) => t.id === '0003').pendingCloseRunId).toBeUndefined()
+    expect(ticketPendingCloseRun(oz!.ctx, 'cocoder', '0003')).toBeNull()
+  })
+
+  test('tearing down an awaiting-founder run finalizes it to terminal (so it stops blocking relaunch)', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    await startServer()
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0003' })
+    store.setRunStatus(run.id, 'awaiting-founder')
+
+    const teardown = await call(oz!, 'POST', `/runs/${run.id}/teardown`, { body: {} })
+
+    expect(teardown.status).toBe(200)
+    expect(store.getRun(run.id)?.status).toBe('completed')
+    expect(store.listEvents(run.id).some((e) => e.type === 'run-finalized')).toBe(true)
+  })
+
+  test('reconciliation close finalizes the owning awaiting-founder run', async () => {
+    await writeTicketIndex(home)
+    await writeFile(join(home, 'cocoder', 'tickets', 'order.json'), `${JSON.stringify(['0003', '0004'], null, 2)}\n`)
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0003' })
+    store.setRunStatus(run.id, 'awaiting-founder')
+    await startServer(recordingGovernanceGit([]))
+
+    const close = await call(oz!, 'POST', `/runs/${run.id}/ticket-close-confirmation`, { body: {} })
+
+    expect(close.status).toBe(200)
+    expect(store.getRun(run.id)?.status).toBe('completed')
+    expect(store.listEvents(run.id).some((e) => e.type === 'run-finalized')).toBe(true)
   })
 
   test('POST /runs does not close a completed ticket run that needs another run', async () => {
