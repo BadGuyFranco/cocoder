@@ -12,6 +12,18 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-25 — **ticket-fix-0062: create/edit-priority detailed body input — closed (run_93)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0062](./tickets/closed/0062-create-priority-and-edit-priority-need-detailed-body-input.md) | **Run:** run_93 (display 93)
+**Outcomes:**
+- **Core body composer (`d2f3b11`).** `composePriorityBody({objective,details})` is the deterministic owner of priority BODY (Objective section + verbatim details); `composePriorityMarkdown` stays frontmatter+body owner.
+- **Create-priority input channel (`d9a6ada`, `5c356f4`).** `cocoder oz create-priority` gains `--details-file` / `--details-stdin`; create/edit-priority Plays consume `details` verbatim; edit-priority adds `replace-body` / `append-section` modes with Objective preserved by default.
+- **Edit-priority CLI (`8825775`).** `cocoder oz edit-priority <id>` with shared `resolveDetailsSource` contract; optional founder-gated `--objective`.
+- **Daemon integration proof.** Authoring-play tests pin details-carrying invocations through the spine to committed files (create round-trip + edit append-section preserves Objective).
+- **Ticket closed** via `closeTicket()` at wrap; `order.json` pruned; queue head is [0061](./tickets/open/0061-governed-create-ticket-spine.md).
+- **Disposition: `closed`.** All ticket 0062 acceptance criteria verified (core 611, cli 36, daemon 364 green).
+**Next:** Launch priority `model-layer` — Phase 0 adapter tier metadata in the `listModels` contract.
+
 ## 2026-06-25 — **ticket-fix-0060: regression-pinned run_235 stall defects — closed (run_92/run_236)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0060](./tickets/closed/0060-orchestration-e2e-stalls-after-builder-artifact.md) | **Run:** run_236 (display 92)
