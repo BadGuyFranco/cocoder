@@ -13,6 +13,11 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
+| [0059](./open/0059-no-cli-over-governed-close-create-spines.md) | No CLI over governed closeTicket / create-priority spines (D5) | bug | none | Open |
+| [0058](./open/0058-detect-dont-prevent-self-commits-root-enabler.md) | Detect-don't-prevent self-commits is the root enabler (D4) | bug | none | Open |
+| [0057](./open/0057-ticket-close-races-verify-gate.md) | Ticket close races the verify gate (D3) | bug | none | Open |
+| [0056](./open/0056-no-mutual-exclusion-build-lane-vs-deb-repair-lane.md) | No mutual exclusion — same ticket in build lane and Deb-repair lane at once (D2) | bug | none | Open |
+| [0055](./open/0055-deb-repair-commits-and-closes-outside-runner-sequence.md) | Deb-repair commits & closes outside the runner's deterministic sequence (D1) | bug | none | Open |
 | [0052](./open/0052-archive-priority-lane-silent-no-op.md) | archive-priority lane silent no-op — reports success but moves nothing | bug | orchestration-e2e-test | Open |
 | [0048](./open/0048-adopt-eslint-in-cocoder-engine-repo.md) | Adopt a minimal ESLint 9 linter in CoCoder's own engine repo | task | none | Open |
 | [0039](./open/0039-launch-status-in-oz-dashboard.md) | Launch Status in Oz Dashboard | task | none | founder-session |
