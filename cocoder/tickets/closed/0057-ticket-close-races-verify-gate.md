@@ -2,7 +2,7 @@
 id: 0057
 title: Ticket close races the verify gate — a ticket-fix target was closed before verify ran (D3)
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: deb
 created: 2026-06-24
@@ -34,3 +34,9 @@ verify gate, owned by the runner at verified wrap.
 - Low-risk guardrail (ADR-0041 §3 R1) — closed by the guardrail built in this session.
 - Related: [0055](./0055-deb-repair-commits-and-closes-outside-runner-sequence.md) (D1),
   [0056](./0056-no-mutual-exclusion-build-lane-vs-deb-repair-lane.md) (D2).
+
+## Resolution
+
+Resolved by run cli-close-ticket (no code change) on 2026-06-25.
+
+Close cannot race verify: requestOzAction refuses any in-flight run (launcher.ts:1527) and the new cocoder oz close-ticket refuses while a daemon is live; the runner's own closeTicketAfterSuccessfulRun is the sole closer and runs post-verify. Pinned by a run_234-shaped regression (oz-action.test.ts): a governed close of 0054 is refused while the ticket-fix run owns it, with no commit raced in. Commit f374930. Raw-agent bypass tracked in 0058 (D4, deferred).
