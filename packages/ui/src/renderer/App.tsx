@@ -4,7 +4,7 @@
 // the design-faithful view-model from the ported seed (fixture parity, fully interactive); the daemon
 // adapter is wired in the next slice (the existing electron/ plumbing is untouched).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRawRunDetail, loadRunDetail, sendOzMessage, launchRun, launchTicketRun, attachRun, teardownRun, stopRun, confirmArchiveRun, testCli, createPriority, createTicket, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, persistTicketOrder, saveAssignments, restartDaemon, type ConnectionState } from './live.ts'
+import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRawRunDetail, loadRunDetail, sendOzMessage, launchRun, launchTicketRun, attachRun, teardownRun, stopRun, confirmArchiveRun, confirmTicketCloseRun, testCli, createPriority, createTicket, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, persistTicketOrder, saveAssignments, restartDaemon, type ConnectionState } from './live.ts'
 import { ADHOC_PRIORITY_ID, MODE_HONORED_PERSONAS, applyOrder, isActiveRun, mergeRunsWithEnrichment, orderPersonas, personasToAssignments } from './adapter.ts'
 import { Sidebar, type Route } from './ui/Sidebar.tsx'
 import { TopBar } from './ui/TopBar.tsx'
@@ -661,6 +661,10 @@ export function App() {
         const res = await confirmArchiveRun(oz, id)
         if (res.ok) { notify('ok', 'Archive confirmed through the archive-priority Play.'); await refreshActiveWs() }
         else notify('err', res.error || `Archive failed (${res.status}).`)
+      } else if (action === 'close-ticket') {
+        const res = await confirmTicketCloseRun(oz, id)
+        if (res.ok) { notify('ok', 'Ticket closed through the governed close spine.'); await refreshActiveWs() }
+        else notify('err', res.error || `Ticket close failed (${res.status}).`)
       } else {
         notify('info', 'The Oz chat command interface is a pending endpoint.')
       }

@@ -137,6 +137,10 @@ export async function confirmArchiveRun(oz: OzApi, runId: string): Promise<Mutat
   return oz.daemonPost(`/runs/${runId}/archive-confirmation`, { confirmation: 'archive' })
 }
 
+export async function confirmTicketCloseRun(oz: OzApi, runId: string): Promise<MutationResult> {
+  return oz.daemonPost(`/runs/${runId}/ticket-close-confirmation`, {})
+}
+
 export async function testCli(oz: OzApi, id: string): Promise<Cli | null> {
   try {
     const r = await oz.daemonPost<CliTestResponse>(`/clis/${encodeURIComponent(id)}/test`)

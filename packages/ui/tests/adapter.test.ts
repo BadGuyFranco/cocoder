@@ -164,6 +164,12 @@ describe('tickets', () => {
       body: expect.stringContaining('design-ref rebuild-clobber guard'),
     })
   })
+
+  it('preserves ticket pending-close run markers from the daemon surface', () => {
+    const tickets = adaptTickets([{ ...T.tickets[0], pendingCloseRunId: 'run_238' }])
+
+    expect(tickets[0]).toMatchObject({ id: '0003', pendingCloseRunId: 'run_238' })
+  })
 })
 
 describe('runs list', () => {

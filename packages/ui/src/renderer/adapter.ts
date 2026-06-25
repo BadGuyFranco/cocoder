@@ -175,6 +175,7 @@ export function adaptTicket(t: DTicket): Ticket {
     created: t.created,
     state: t.state,
     body: t.body,
+    ...(t.pendingCloseRunId ? { pendingCloseRunId: t.pendingCloseRunId } : {}),
   }
 }
 

@@ -54,6 +54,14 @@ daemon's `closeTicketAfterSuccessfulRun()` (`launcher.ts:442`), gated on `result
 (`443/447`), committed with message **`governance: close ticket ${id} via run ${runId}`** (`launcher.ts:476`),
 called once per run at `launcher.ts:709`. **The `via run <id>` suffix is the spine's fingerprint.**
 
+**Post-wrap reconciliation guard (2026-06-25 amendment).** When a ticket run or priority run
+wraps into a founder-confirmation state, the recovery owner is the daemon/Oz control plane, not a fresh
+throwaway run and not a loop-down raw file edit. A ticket close-confirmation action calls
+`closeTicket()` through the same governed reconciliation spine; a priority archive-confirmation action
+calls the existing `archive-priority` Play lane. Both are refused while the owning run is still in
+`ctx.inFlight` and allowed after that run is terminal, even while the daemon remains live. The race guard
+therefore keys on **owning run still active**, not on **daemon process live**.
+
 **Detect-don't-prevent (the root posture).** The commit gate
 (`packages/core/src/commit-gate/gate.ts`) computes `selfCommitted = headNow !== headBefore`
 (`gate.ts:60-61`) and, when true, records an `agent-self-commit` event — but **does not throw**

@@ -933,6 +933,69 @@ describe('Oz mutations + lifecycle', () => {
     expect(audit).toContain('"reason":"wrap requested founder close decision"')
   })
 
+  test('POST /runs/:id/ticket-close-confirmation closes an awaiting ticket run through the governed spine', async () => {
+    await writeTicketIndex(home)
+    await writeFile(join(home, 'cocoder', 'tickets', 'order.json'), `${JSON.stringify(['0003', '0004'], null, 2)}\n`)
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0003' })
+    store.recordCommitLink({ runId: run.id, commitSha: 'sha-build', message: 'atom 0', files: ['packages/core/src/tickets/create.ts'] })
+    store.setRunStatus(run.id, 'awaiting-founder')
+    const commits: GovernanceCommitCall[] = []
+    await startServer(recordingGovernanceGit(commits))
+
+    const detailBefore = await call(oz!, 'GET', `/runs/${run.id}`)
+    const close = await call(oz!, 'POST', `/runs/${run.id}/ticket-close-confirmation`, { body: {} })
+    const detailAfter = await call(oz!, 'GET', `/runs/${run.id}`)
+
+    expect(detailBefore.json.actions).toEqual([{ type: 'ticket-close-confirmation', method: 'POST', endpoint: `/runs/${run.id}/ticket-close-confirmation`, confirmWith: 'close' }])
+    expect(close).toMatchObject({ status: 200, json: { ok: true, closed: true, runId: run.id, ticketId: '0003', commitSha: 'sha-governance' } })
+    expect(detailAfter.json.run).toMatchObject({ id: run.id, status: 'completed' })
+    const ticketDir = join(home, 'cocoder', 'tickets')
+    expect(await exists(join(ticketDir, 'open', '0003-existing-open.md'))).toBe(false)
+    expect(await exists(join(ticketDir, 'closed', '0003-existing-open.md'))).toBe(true)
+    expect(JSON.parse(await readFile(join(ticketDir, 'order.json'), 'utf8'))).toEqual(['0004'])
+    expect(commits).toContainEqual(expect.objectContaining({
+      cwd: home,
+      files: ['cocoder/tickets/closed/0003-existing-open.md', 'cocoder/tickets/open/0003-existing-open.md', 'cocoder/tickets/INDEX.md', 'cocoder/tickets/order.json'],
+      message: 'governance: reconciliation close ticket 0003',
+      author: COCODER_GOVERNANCE,
+    }))
+    expect(store.listEvents(run.id).some((event) => event.type === 'ticket-close-confirmation-closed')).toBe(true)
+  })
+
+  test('POST /runs/:id/ticket-close-confirmation refuses while the owning run is still active', async () => {
+    await writeTicketIndex(home)
+    await writeFile(join(home, 'cocoder', 'tickets', 'order.json'), `${JSON.stringify(['0003'], null, 2)}\n`)
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0003' })
+    await startServer(recordingGovernanceGit([]))
+    oz!.ctx.inFlight.set('cocoder', run.id)
+
+    const close = await call(oz!, 'POST', `/runs/${run.id}/ticket-close-confirmation`, { body: {} })
+
+    expect(close.status).toBe(409)
+    expect(String(close.json.error)).toContain('still active')
+    expect(await exists(join(home, 'cocoder', 'tickets', 'open', '0003-existing-open.md'))).toBe(true)
+  })
+
+  test('built-pending-close ticket is marked in the queue and cannot be relaunched as fresh work', async () => {
+    await writeTicketIndex(home)
+    await writeFile(join(home, 'cocoder', 'tickets', 'order.json'), `${JSON.stringify(['0003', '0004'], null, 2)}\n`)
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0003' })
+    store.recordCommitLink({ runId: run.id, commitSha: 'sha-build', message: 'atom 0', files: ['packages/core/src/tickets/create.ts'] })
+    store.setRunStatus(run.id, 'awaiting-founder')
+    await startServer()
+
+    const tickets = await call(oz!, 'GET', '/workspaces/cocoder/tickets')
+    const relaunch = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', ticketId: '0003' } })
+
+    expect(tickets.status).toBe(200)
+    expect(tickets.json.tickets[0]).toMatchObject({ id: '0003', state: 'open', pendingCloseRunId: run.id })
+    expect(relaunch.status).toBe(409)
+    expect(String(relaunch.json.error)).toContain(`run ${run.id} awaiting founder close confirmation`)
+  })
+
   test('POST /runs does not close a completed ticket run that needs another run', async () => {
     await writeTicketIndex(home)
     await writeFile(join(home, 'cocoder', 'tickets', 'order.json'), `${JSON.stringify(['0003', '0004'], null, 2)}\n`)
@@ -1911,6 +1974,23 @@ describe('Oz mutations + lifecycle', () => {
     await expect(stat(join(home, 'cocoder', 'priorities', 'archive', 'demo.md'))).resolves.toBeDefined()
     await expect(stat(join(home, 'cocoder', 'priorities', 'demo.md'))).rejects.toThrow()
     expect(JSON.parse(await readFile(join(home, 'cocoder', 'priorities', 'order.json'), 'utf8'))).toEqual([])
+  })
+
+  test('POST /runs/:id/archive-confirmation refuses while the owning run is still active', async () => {
+    await writeFile(join(home, 'cocoder', 'priorities', 'order.json'), `${JSON.stringify(['demo'], null, 2)}\n`)
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(run.id, 'awaiting-archive-confirmation')
+    recordArchiveConfirmationAction(store, run.id)
+    await startServer(fakeGit(['cocoder/priorities/archive/demo.md', 'cocoder/priorities/demo.md', 'cocoder/priorities/order.json']))
+    oz!.ctx.inFlight.set('cocoder', run.id)
+
+    const r = await call(oz!, 'POST', `/runs/${run.id}/archive-confirmation`, { body: { confirmation: 'archive' } })
+
+    expect(r.status).toBe(409)
+    expect(String(r.json.error)).toContain('still active')
+    await expect(stat(join(home, 'cocoder', 'priorities', 'demo.md'))).resolves.toBeDefined()
+    expect(JSON.parse(await readFile(join(home, 'cocoder', 'priorities', 'order.json'), 'utf8'))).toEqual(['demo'])
   })
 
   // 0052 route parity: a no-move archive through the confirmation route surfaces the loud named failure,

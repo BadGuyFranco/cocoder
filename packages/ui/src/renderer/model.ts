@@ -23,7 +23,7 @@ export type TicketState = 'open' | 'closed'
 export interface Ticket {
   id: string; title: string; type: string | null; status: string | null
   priority: string | null; owner: string | null; created: string | null
-  state: TicketState; body: string
+  state: TicketState; body: string; pendingCloseRunId?: string
 }
 export interface Workspace {
   id: string; name: string; description: string; icon: string

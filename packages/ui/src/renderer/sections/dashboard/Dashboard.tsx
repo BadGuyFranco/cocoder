@@ -11,6 +11,7 @@ const PRIO_MIN_RATIO = 0.25
 const PRIO_MAX_RATIO = 0.75
 const LAUNCH_BLOCKED_HINT = 'A run is active in this workspace — only one run executes at a time (single-writer lock). It frees up when the run finishes.'
 const TICKET_LAUNCH_OFFLINE_HINT = 'Ticket-fix launch is available only when the dashboard is connected to Oz.'
+const PENDING_CLOSE_HINT = 'This ticket has verified work awaiting close confirmation. Open the linked run and close it through the governed ticket-close lane before relaunching.'
 const OZ_ITEM_MIME = 'application/x-oz-item'
 
 function setOzItemDragData(e: DragEvent, itemType: 'ticket' | 'run', id: string, label: string): void {
@@ -97,6 +98,8 @@ function TicketsTab({ tickets, onLaunchTicket, onReorderTickets, launchBlocked, 
   const selected = selectedId ? openTickets.find((ticket) => ticket.id === selectedId) ?? null : null
   const launchDisabled = !live || launchBlocked
   const launchTitle = launchBlocked ? LAUNCH_BLOCKED_HINT : !live ? TICKET_LAUNCH_OFFLINE_HINT : undefined
+  const selectedLaunchDisabled = launchDisabled || Boolean(selected?.pendingCloseRunId)
+  const selectedLaunchTitle = selected?.pendingCloseRunId ? PENDING_CLOSE_HINT : launchTitle
   const meta = selected
     ? [
       ['type', selected.type],
@@ -124,7 +127,10 @@ function TicketsTab({ tickets, onLaunchTicket, onReorderTickets, launchBlocked, 
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {openTickets.map((ticket, index) => (
+        {openTickets.map((ticket, index) => {
+          const ticketLaunchDisabled = launchDisabled || Boolean(ticket.pendingCloseRunId)
+          const ticketLaunchTitle = ticket.pendingCloseRunId ? PENDING_CLOSE_HINT : launchTitle
+          return (
           <div
             key={ticket.id}
             draggable
@@ -147,12 +153,16 @@ function TicketsTab({ tickets, onLaunchTicket, onReorderTickets, launchBlocked, 
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
               <Icon name="dots-six-vertical" size={14} style={{ color: 'var(--cb-text-muted)', cursor: 'grab', marginTop: 1 }} />
               <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-accent)', minWidth: 34, paddingTop: 2 }}>{ticket.id}</span>
-              <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 500, lineHeight: 1.4, paddingTop: 1 }}>{ticket.title}</div>
-              <Button variant="secondary" size="sm" icon="play" disabled={launchDisabled} title={launchTitle} onClick={(e) => { e.stopPropagation(); onLaunchTicket(ticket) }}>Launch</Button>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 500, lineHeight: 1.4, paddingTop: 1 }}>{ticket.title}</div>
+                <div style={{ fontSize: 10.5, color: 'var(--cb-text-muted)', marginTop: 3 }}>{ticket.pendingCloseRunId ? `pending close via ${ticket.pendingCloseRunId}` : `${ticket.type || 'ticket'} · ${ticket.priority || 'none'} · ${ticket.status || 'Open'}`}</div>
+              </div>
+              <Button variant="secondary" size="sm" icon="play" disabled={ticketLaunchDisabled} title={ticketLaunchTitle} onClick={(e) => { e.stopPropagation(); onLaunchTicket(ticket) }}>Launch</Button>
               <Icon name="arrow-right" size={12} style={{ color: 'var(--cb-text-muted)', marginTop: 3 }} />
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
       {selected && (
         <Modal
@@ -162,7 +172,7 @@ function TicketsTab({ tickets, onLaunchTicket, onReorderTickets, launchBlocked, 
           subtitle="Ticket detail"
           icon="ticket"
           width={680}
-          footer={<Button variant="secondary" icon="play" disabled={launchDisabled} title={launchTitle} onClick={() => { onLaunchTicket(selected); setSelectedId(null) }}>Launch fix</Button>}
+          footer={<Button variant="secondary" icon="play" disabled={selectedLaunchDisabled} title={selectedLaunchTitle} onClick={() => { onLaunchTicket(selected); setSelectedId(null) }}>Launch fix</Button>}
         >
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
             {meta.map(([label, value]) => (

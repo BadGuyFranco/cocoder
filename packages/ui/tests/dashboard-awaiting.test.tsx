@@ -43,6 +43,7 @@ function DashboardHarness({
   runs,
   initialSelectedRunId = null,
   queuePriorities = priorities,
+  queueTickets = tickets,
   onAddPriority = vi.fn(),
   onAddTicket = vi.fn(),
   onLaunchTicket = vi.fn(),
@@ -52,6 +53,7 @@ function DashboardHarness({
   runs: Run[]
   initialSelectedRunId?: string | null
   queuePriorities?: Priority[]
+  queueTickets?: Ticket[]
   onAddPriority?: () => void
   onAddTicket?: () => void
   onLaunchTicket?: (ticket: Ticket) => void
@@ -63,7 +65,7 @@ function DashboardHarness({
     <Dashboard
       workspace={workspace}
       priorities={queuePriorities}
-      tickets={tickets}
+      tickets={queueTickets}
       runs={runs}
       ozMessages={messages}
       selectedRunId={selectedRunId}
@@ -203,6 +205,22 @@ describe('Dashboard layout', () => {
     fireEvent.click(column.getByText('Public docs/ tree is v1-stale'))
     expect(screen.getByText('0003 - Public docs/ tree is v1-stale')).toBeDefined()
     expect(screen.getByText(/Docs need reconciliation/)).toBeDefined()
+  })
+
+  it('disables launch for a ticket with verified work pending close', () => {
+    const onLaunchTicket = vi.fn()
+    const queueTickets = tickets.map((ticket) => ticket.id === '0003' ? { ...ticket, pendingCloseRunId: 'run_238' } : ticket)
+    const { container } = render(<DashboardHarness runs={[]} queueTickets={queueTickets} live onLaunchTicket={onLaunchTicket} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /Tickets 3/i }))
+    const column = within(container.firstElementChild!.children[0] as HTMLElement)
+    const inlineLaunch = column.getAllByRole('button', { name: /^Launch$/ })[0] as HTMLButtonElement
+
+    expect(inlineLaunch.disabled).toBe(true)
+    expect(inlineLaunch.getAttribute('title')).toContain('verified work awaiting close confirmation')
+    expect(column.getByText('pending close via run_238')).toBeDefined()
+    fireEvent.click(inlineLaunch)
+    expect(onLaunchTicket).not.toHaveBeenCalled()
   })
 
   it('drags ticket cards to reorder without opening the dragged card detail modal', () => {

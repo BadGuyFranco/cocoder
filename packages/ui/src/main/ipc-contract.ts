@@ -109,6 +109,7 @@ export interface Ticket {
   readonly created: string | null
   readonly state: TicketState
   readonly body: string
+  readonly pendingCloseRunId?: string
 }
 export type RunStatus = 'running' | 'awaiting-founder' | 'awaiting-archive-confirmation' | 'completed' | 'failed'
 export interface RunSummary {

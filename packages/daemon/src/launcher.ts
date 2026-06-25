@@ -121,6 +121,11 @@ export interface ReconciliationCloseInput {
   readonly resolution: string
 }
 
+export interface TicketCloseConfirmationInput {
+  readonly runId: string
+  readonly resolution?: string
+}
+
 export interface GovernedReadResult {
   readonly path: string
   readonly content: string
@@ -436,6 +441,13 @@ function ticketPriority(ticket: Ticket): Priority {
   }
 }
 
+export function ticketPendingCloseRun(ctx: OzContext, workspaceId: string, ticketId: string): { readonly id: string } | null {
+  const runs = ctx.store.listRuns()
+    .filter((run) => run.workspaceId === workspaceId && run.ticketId === ticketId && run.status === 'awaiting-founder' && run.endedAt !== null)
+    .sort((a, b) => b.createdAt - a.createdAt)
+  return runs[0] ? { id: runs[0].id } : null
+}
+
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
 }
@@ -604,6 +616,11 @@ export async function launchRun(
     if (ticket.state !== 'open') {
       ctx.inFlight.delete(workspaceId)
       return { status: 400, body: { error: `ticket "${target.ticketId}" is not open` } }
+    }
+    const pendingClose = ticketPendingCloseRun(ctx, workspaceId, ticket.id)
+    if (pendingClose) {
+      ctx.inFlight.delete(workspaceId)
+      return { status: 409, body: { error: `ticket "${ticket.id}" already has run ${pendingClose.id} awaiting founder close confirmation — close it through the governed ticket-close confirmation lane before relaunching` } }
     }
     try {
       input = await assembleRunInput(ctx, workspace, ticketPriority(ticket), {
@@ -1234,6 +1251,31 @@ export async function requestReconciliationClose(ctx: OzContext, input: Reconcil
   return { status: 200, body: { ok: true, closed: true, commitSha: receipt.committedSha, committedPaths: close.files } }
 }
 
+export async function requestTicketCloseConfirmation(ctx: OzContext, input: TicketCloseConfirmationInput): Promise<LaunchResult> {
+  const run = ctx.store.getRun(input.runId)
+  if (!run) return { status: 404, body: { error: 'unknown run' } }
+  if (!run.ticketId) return { status: 409, body: { error: 'ticket close confirmation applies only to ticket-launched runs' } }
+  if (ctx.inFlight.get(run.workspaceId) === run.id) {
+    return { status: 409, body: { error: `run ${run.id} is still active — the live runner owns ticket close until wrap completes` } }
+  }
+  if (run.status !== 'awaiting-founder' || run.endedAt === null) {
+    return { status: 409, body: { error: `run is "${run.status}" and is not awaiting ticket close confirmation` } }
+  }
+
+  const result = await requestReconciliationClose(ctx, {
+    workspaceId: run.workspaceId,
+    ticketId: run.ticketId,
+    resolution: input.resolution?.trim() || `Founder confirmed close from run ${run.id}.`,
+  })
+  const closed = result.status >= 200 && result.status < 300 && result.body.closed === true
+  if (closed) {
+    ctx.store.setRunStatus(run.id, 'completed')
+    ctx.store.recordEvent({ runId: run.id, type: 'ticket-close-confirmation-closed', data: { ticketId: run.ticketId, commitSha: result.body.commitSha ?? null } })
+    emitOzEvent(ctx, { type: 'ticket-close-confirmation-closed', runId: run.id, workspaceId: run.workspaceId, status: 'completed' })
+  }
+  return { status: result.status, body: { ...result.body, closed, runId: run.id, ticketId: run.ticketId } }
+}
+
 function resolveDialoguePersona(workspacePath: string, persona: 'deb' | 'oscar'): { readonly cli: string; readonly model: string; readonly writeScope: readonly string[] } | null {
   try {
     const personasDir = join(workspacePath, 'cocoder', 'personas')
@@ -1724,6 +1766,9 @@ export async function requestArchiveConfirmation(ctx: OzContext, input: ArchiveC
   if (!run) return { status: 404, body: { error: 'unknown run' } }
   if (run.ticketId !== null || run.playbookId !== null) {
     return { status: 409, body: { error: 'archive confirmation applies only to priority-launched runs' } }
+  }
+  if (ctx.inFlight.get(run.workspaceId) === run.id) {
+    return { status: 409, body: { error: `run ${run.id} is still active — the live runner owns archive confirmation until wrap completes` } }
   }
   if (run.status !== 'awaiting-archive-confirmation' && !hasArchiveConfirmationAction(ctx, run.id)) {
     return { status: 409, body: { error: `run is "${run.status}" and is not awaiting priority archive confirmation` } }

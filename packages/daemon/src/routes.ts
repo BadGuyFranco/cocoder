@@ -36,7 +36,7 @@ import { findWorkspace, readWorkspaces, validateWorkspaceFolders, workspaceDirec
 import { readRunDir } from './rundir.js'
 import { appendAudit } from './audit.js'
 import { listClis, testCli } from './clis.js'
-import { commitGovernance, launchRun, requestArchiveConfirmation, requestAuthoringPlay, requestDaemonRestart, requestDashboardLaunch, requestOscarDebRepair, requestStopRun, requestSupportCommitRun, resumeRun, showRun, teardownRun, type AuthoringPlayInput, type OscarDebRepairInput } from './launcher.js'
+import { commitGovernance, launchRun, requestArchiveConfirmation, requestAuthoringPlay, requestDaemonRestart, requestDashboardLaunch, requestOscarDebRepair, requestStopRun, requestSupportCommitRun, requestTicketCloseConfirmation, resumeRun, showRun, teardownRun, ticketPendingCloseRun, type AuthoringPlayInput, type OscarDebRepairInput } from './launcher.js'
 import { handleOzMessage } from './oz-chat.js'
 import { mergeWriteSettings, readSettings } from './settings.js'
 import { readPriorities, readTickets, registerLivePriorities, writePriorityOrder, writeTicketOrder } from './priority-order.js'
@@ -445,7 +445,11 @@ async function listPriorities(ctx: OzContext, res: ServerResponse, workspaceId: 
 async function listTickets(ctx: OzContext, res: ServerResponse, workspaceId: string): Promise<void> {
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
   if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
-  sendJson(res, 200, { workspace: ws, tickets: await readTickets(ticketsDir(ws.path)) })
+  const tickets = (await readTickets(ticketsDir(ws.path))).map((ticket) => {
+    const pending = ticket.state === 'open' ? ticketPendingCloseRun(ctx, workspaceId, ticket.id) : null
+    return pending ? { ...ticket, pendingCloseRunId: pending.id } : ticket
+  })
+  sendJson(res, 200, { workspace: ws, tickets })
 }
 
 /** GET /workspaces/:id/personas — surface 3 (read). Persona defs + their CLI/model assignment. */
@@ -531,9 +535,17 @@ async function runDetail(ctx: OzContext, res: ServerResponse, runId: string): Pr
 }
 
 function runActions(
-  run: { readonly id: string; readonly status: string },
+  run: { readonly id: string; readonly status: string; readonly ticketId?: string | null },
   events: readonly { readonly type: string; readonly data: unknown }[],
 ): Array<{ type: string; method: string; endpoint: string; priorityId?: string; confirmWith?: string }> {
+  if (run.ticketId && run.status === 'awaiting-founder') {
+    return [{
+      type: 'ticket-close-confirmation',
+      method: 'POST',
+      endpoint: `/runs/${run.id}/ticket-close-confirmation`,
+      confirmWith: 'close',
+    }]
+  }
   const latestWrap = [...events].reverse().find((event) => event.type === 'wrap-disposition')
   const action = (latestWrap?.data as { action?: unknown } | undefined)?.action as Record<string, unknown> | undefined
   if (action?.type !== 'archive-priority-confirmation' || run.status !== 'awaiting-archive-confirmation') return []
@@ -926,6 +938,20 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
       ...(typeof record.findings === 'string' ? { findings: record.findings } : {}),
       ...(typeof record.verdict === 'string' ? { verdict: record.verdict } : {}),
       ...(record.persona === 'oz' || record.persona === 'oscar' || record.persona === 'bob' || record.persona === 'deb' ? { persona: record.persona } : {}),
+    })
+    return sendJson(res, status, out), true
+  }
+  if (method === 'POST' && seg[0] === 'runs' && seg.length === 3 && seg[2] === 'ticket-close-confirmation') {
+    let body: unknown
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      return sendJson(res, 400, { error: 'invalid JSON body' }), true
+    }
+    const record = typeof body === 'object' && body !== null ? body as Record<string, unknown> : {}
+    const { status, body: out } = await requestTicketCloseConfirmation(ctx, {
+      runId: decodeURIComponent(seg[1]!),
+      ...(typeof record.resolution === 'string' ? { resolution: record.resolution } : {}),
     })
     return sendJson(res, status, out), true
   }
