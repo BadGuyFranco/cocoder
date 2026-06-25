@@ -7,7 +7,7 @@ import type { OzContext } from '../src/context.js'
 import { executeOzCommand, handleOzMessage, parseOzCommand, type OzChatOps } from '../src/oz-chat.js'
 import type { LaunchRunTarget } from '../src/launcher.js'
 
-const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, deb-repair <problem> [--run <runId>], commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
+const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
 
 // A stub for an op a test does NOT expect to be called: returns a 500 so an unexpected dispatch fails
 // loudly instead of looking like a real success. Narrowly cast to the specific op's type.
@@ -29,6 +29,7 @@ function mockOps(overrides: Partial<OzChatOps>): OzChatOps {
     requestOzAction: unexpected('oz-action') as OzChatOps['requestOzAction'],
     readGoverned: unexpected('read-governed') as OzChatOps['readGoverned'],
     requestOscarDebRepair: unexpected('oscar-deb-repair') as OzChatOps['requestOscarDebRepair'],
+    requestReconciliationClose: unexpected('reconcile-close') as OzChatOps['requestReconciliationClose'],
     requestAuthoringPlay: unexpected('author') as OzChatOps['requestAuthoringPlay'],
     supportCommitRun: unexpected('support-commit') as OzChatOps['supportCommitRun'],
     requestArchiveConfirmation: unexpected('archive-confirmation') as OzChatOps['requestArchiveConfirmation'],
@@ -55,6 +56,7 @@ describe('parseOzCommand', () => {
     ['show run_45', { kind: 'show', runId: 'run_45' }],
     ['archive run_7', { kind: 'archive-confirmation', runId: 'run_7', confirmation: 'archive' }],
     ['deb-repair fix stale Deb routing --run run_45', { kind: 'oscar-deb-repair', problem: 'fix stale Deb routing', sourceRunId: 'run_45' }],
+    ['reconcile-close 0099 was fixed but left open', { kind: 'reconcile-close', ticketId: '0099', resolution: 'was fixed but left open' }],
     ['stop run_45', { kind: 'stop', runId: 'run_45' }],
     ['teardown run_45', { kind: 'teardown', runId: 'run_45' }],
     ['status', { kind: 'status' }],

@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { runDisplayName } from '@cocoder/core'
 import type { OzContext } from './context.js'
-import { launchRun as launchRunOp, readGoverned as readGovernedOp, requestArchiveConfirmation as archiveConfirmationOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestNudgeRun as nudgeRunOp, requestOscarDebRepair as oscarDebRepairOp, requestOzAction as ozActionOp, requestOzRepair as repairOzOp, requestStopRun as stopRunOp, requestSupportCommitRun as supportCommitRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
+import { launchRun as launchRunOp, readGoverned as readGovernedOp, requestArchiveConfirmation as archiveConfirmationOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestNudgeRun as nudgeRunOp, requestOscarDebRepair as oscarDebRepairOp, requestOzAction as ozActionOp, requestOzRepair as repairOzOp, requestReconciliationClose as reconciliationCloseOp, requestStopRun as stopRunOp, requestSupportCommitRun as supportCommitRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
 import { projectOzAwareness, type OzAwarenessRun, type OzAwarenessSnapshot } from './oz-awareness.js'
 import { tryHandleOzAgentTurn } from './oz-host.js'
 import { readTickets } from './priority-order.js'
@@ -9,7 +9,7 @@ import { findWorkspace } from './registry.js'
 import { withPortableDisplayNumbers } from './run-display.js'
 
 const ADHOC_PRIORITY_ID = 'adhoc-session'
-const HELP_HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, deb-repair <problem> [--run <runId>], commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
+const HELP_HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
 
 export type OzCommand =
   | { readonly kind: 'launch'; readonly priorityId: string }
@@ -18,6 +18,7 @@ export type OzCommand =
   | { readonly kind: 'archive-confirmation'; readonly runId: string; readonly confirmation: string }
   | { readonly kind: 'support-commit'; readonly runId: string }
   | { readonly kind: 'oscar-deb-repair'; readonly problem: string; readonly sourceRunId?: string }
+  | { readonly kind: 'reconcile-close'; readonly ticketId: string; readonly resolution: string }
   | { readonly kind: 'stop'; readonly runId: string }
   | { readonly kind: 'nudge'; readonly runId: string; readonly message: string; readonly rationale?: string }
   | { readonly kind: 'repair'; readonly message: string; readonly rationale?: string }
@@ -33,7 +34,7 @@ export type OzExecutableCommand = Exclude<OzCommand, { readonly kind: 'help' } |
 export type OzCommandExecutor = (command: OzExecutableCommand) => Promise<OzChatResult>
 
 export interface OzChatAction {
-  readonly type: 'launch' | 'show' | 'archive-confirmation' | 'support-commit' | 'oscar-deb-repair' | 'stop' | 'nudge' | 'repair' | 'oz-action' | 'author' | 'teardown' | 'status' | 'refresh'
+  readonly type: 'launch' | 'show' | 'archive-confirmation' | 'support-commit' | 'oscar-deb-repair' | 'reconcile-close' | 'stop' | 'nudge' | 'repair' | 'oz-action' | 'author' | 'teardown' | 'status' | 'refresh'
   readonly workspaceId?: string
   readonly priorityId?: string
   readonly runId?: string
@@ -69,6 +70,7 @@ export interface OzChatOps {
   readonly requestOzAction: typeof ozActionOp
   readonly readGoverned: typeof readGovernedOp
   readonly requestOscarDebRepair: typeof oscarDebRepairOp
+  readonly requestReconciliationClose: typeof reconciliationCloseOp
   readonly requestAuthoringPlay: typeof authoringPlayOp
   readonly requestArchiveConfirmation: typeof archiveConfirmationOp
   readonly supportCommitRun: typeof supportCommitRunOp
@@ -85,6 +87,7 @@ const defaultOps: OzChatOps = {
   requestOzAction: ozActionOp,
   readGoverned: readGovernedOp,
   requestOscarDebRepair: oscarDebRepairOp,
+  requestReconciliationClose: reconciliationCloseOp,
   requestAuthoringPlay: authoringPlayOp,
   requestArchiveConfirmation: archiveConfirmationOp,
   supportCommitRun: supportCommitRunOp,
@@ -108,6 +111,12 @@ export function parseOzCommand(text: string): OzCommand {
   if (verb === 'show') return args.length === 1 ? { kind: 'show', runId: args[0]! } : unknownCommand()
   if (verb === 'archive' || verb === 'confirm-archive') return args.length === 1 ? { kind: 'archive-confirmation', runId: args[0]!, confirmation: 'archive' } : unknownCommand()
   if (verb === 'deb-repair') return parseDebRepairCommand(args)
+  if (verb === 'reconcile-close') {
+    const ticketId = args[0]
+    const resolution = args.slice(1).join(' ').trim()
+    if (!ticketId || !resolution) return { kind: 'unknown', hint: 'Usage: reconcile-close <ticketId> <resolution>' }
+    return { kind: 'reconcile-close', ticketId, resolution }
+  }
   if (verb === 'commit-support' || verb === 'support-commit') return args.length === 1 ? { kind: 'support-commit', runId: args[0]! } : unknownCommand()
   if (verb === 'stop') return args.length === 1 ? { kind: 'stop', runId: args[0]! } : unknownCommand()
   if (verb === 'teardown') return args.length === 1 ? { kind: 'teardown', runId: args[0]! } : unknownCommand()
@@ -210,6 +219,15 @@ export async function executeOzCommand(ctx: OzContext, workspaceId: string | und
         ...(command.sourceRunId ? { sourceRunId: command.sourceRunId } : {}),
       }),
       (out) => oscarDebRepairReply(workspaceId, out),
+    )
+  }
+
+  if (command.kind === 'reconcile-close') {
+    if (!workspaceId) return missingWorkspace()
+    return runOp(
+      'reconcile-close',
+      () => ops.requestReconciliationClose(ctx, { workspaceId, ticketId: command.ticketId, resolution: command.resolution }),
+      (out) => reconcileCloseReply(command.ticketId, out),
     )
   }
 
@@ -403,6 +421,17 @@ function stopReply(runId: string, out: LaunchResult): OzChatReply {
     ok: true,
     action: { type: 'stop', runId },
   }
+}
+
+function reconcileCloseReply(ticketId: string, out: LaunchResult): OzChatReply {
+  const committedPaths = stringArray(out.body.committedPaths)
+  const commitSha = typeof out.body.commitSha === 'string' ? out.body.commitSha : null
+  if (!isOk(out.status)) return failedReply('reconcile-close', `Could not reconciliation-close ticket ${ticketId}`, out)
+  const closed = out.body.closed === true
+  const reply = closed
+    ? `Reconciliation-closed ticket ${ticketId} through the governed spine as ${commitSha ?? 'no-commit'} (${committedPaths.join(', ') || 'no file list'}).`
+    : `Ticket ${ticketId} was not open to close${out.body.reason ? ` (${String(out.body.reason)})` : ''}.`
+  return { reply, command: 'reconcile-close', ok: true, action: { type: 'reconcile-close', committedPaths, commitSha } }
 }
 
 function supportCommitReply(runId: string, out: LaunchResult): OzChatReply {

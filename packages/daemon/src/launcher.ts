@@ -114,6 +114,12 @@ export interface OscarDebRepairInput {
   readonly requestedBy: 'oscar'
 }
 
+export interface ReconciliationCloseInput {
+  readonly workspaceId: string
+  readonly ticketId: string
+  readonly resolution: string
+}
+
 export interface GovernedReadResult {
   readonly path: string
   readonly content: string
@@ -1184,6 +1190,45 @@ export async function requestOscarDebRepair(ctx: OzContext, input: OscarDebRepai
   await appendAudit(ctx.cocoderHome, { action: committed.interfering ? 'oscar-deb-repair-interfering-held' : 'oscar-deb-repair', workspaceId: workspace.id, dialogueId, state, committedSha: committed.sha, files: committed.committedPaths, outOfLanePaths: committed.outOfLanePaths })
   emitOzEvent(ctx, { type: 'oscar-deb-repair', workspaceId: workspace.id, runId: request.sourceRunId, status: committed.interfering ? 'interfering-held' : committed.sha ? 'committed' : 'no-commit' })
   return { status: 200, body: { ok: true, state, outcome: committed.interfering ? 'held-for-founder' : 'directed-applied', dialogueId, artifactPaths: paths, committedPaths: committed.committedPaths, commitSha: committed.sha, outOfLanePaths: committed.outOfLanePaths } }
+}
+
+// Deb's reconciliation close (ADR-0041 §3.2 item 4 / ticket 0055). Deb may close a ticket she notices
+// SHOULD already have been closed and wasn't (a bookkeeping gap) — through the ONE governed close spine
+// (closeTicket writes the file moves, commitFiles commits them under the shared governance author; no
+// raw git, no hand-move). GUARDED: never a ticket an active run OWNS — that close is the runner's to make
+// through its deterministic sequence. This adds no new lane; it reuses the same spine as the run-driven
+// close and the close-ticket CLI.
+export async function requestReconciliationClose(ctx: OzContext, input: ReconciliationCloseInput): Promise<LaunchResult> {
+  const workspace = await findWorkspace(ctx.cocoderHome, input.workspaceId)
+  if (!workspace) return { status: 404, body: { error: 'unknown workspace' } }
+
+  const activeRunId = ctx.inFlight.get(input.workspaceId)
+  if (activeRunId) {
+    const activeRun = ctx.store.getRun(activeRunId)
+    if (activeRun?.ticketId === input.ticketId) {
+      return { status: 409, body: { ok: false, error: `ticket ${input.ticketId} is the target of active run ${activeRunId} — reconciliation close is refused while a run owns it` } }
+    }
+  }
+
+  const ticketsDir = join(workspace.path, 'cocoder', 'tickets')
+  const closedDate = new Date().toISOString().slice(0, 10)
+  const close = await closeTicket({ ticketsDir, repoPath: workspace.path, ticketId: input.ticketId, runId: 'deb-reconciliation', committedSha: null, closedDate, resolution: input.resolution })
+  if (!close.closed) {
+    // closeTicket may still have pruned a stale order.json entry even with no open file — commit that so the
+    // working tree never carries an un-committed governance edit, then report the reason honestly.
+    if (close.files.length > 0) {
+      const receipt = await commitFiles(ctx.git, workspace.path, close.files, `governance: reconcile ticket ${input.ticketId} order entry`, COCODER_GOVERNANCE_AUTHOR)
+      if (!receipt.committed) return { status: 500, body: { ok: false, error: `reconciled ticket ${input.ticketId} order entry but commit failed: ${receipt.error}` } }
+      return { status: 200, body: { ok: true, closed: false, reason: close.reason, commitSha: receipt.committedSha, committedPaths: close.files } }
+    }
+    return { status: 409, body: { ok: false, closed: false, reason: close.reason, error: `ticket ${input.ticketId} cannot be reconciliation-closed (${close.reason})` } }
+  }
+
+  const receipt = await commitFiles(ctx.git, workspace.path, close.files, `governance: reconciliation close ticket ${input.ticketId}`, COCODER_GOVERNANCE_AUTHOR)
+  if (!receipt.committed) return { status: 500, body: { ok: false, error: `closed ticket ${input.ticketId} but commit failed: ${receipt.error}` } }
+  await appendAudit(ctx.cocoderHome, { action: 'deb-reconciliation-close', workspaceId: workspace.id, ticketId: input.ticketId, commitSha: receipt.committedSha, files: close.files })
+  emitOzEvent(ctx, { type: 'deb-reconciliation-close', workspaceId: workspace.id })
+  return { status: 200, body: { ok: true, closed: true, commitSha: receipt.committedSha, committedPaths: close.files } }
 }
 
 function resolveDialoguePersona(workspacePath: string, persona: 'deb' | 'oscar'): { readonly cli: string; readonly model: string; readonly writeScope: readonly string[] } | null {
