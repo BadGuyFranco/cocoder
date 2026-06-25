@@ -2,7 +2,7 @@
 id: 0058
 title: Detect-don't-prevent self-commits is the root enabler of out-of-spine agent action (D4)
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: deb
 created: 2026-06-24
@@ -41,3 +41,9 @@ for the raw-shell edge case. Not a prevention fence.
 - Evidence: `gate.ts:60-63,75-76,96`; `549ab11`/`bd5fdf5` never entering run_234's gate event stream; ADR-0041 §4.
 - Companion to [0055](./0055-deb-repair-commits-and-closes-outside-runner-sequence.md) (D1, the overseer model).
 - Related: F21, ticket 0018 (gate-bypass guard deliberately not enforced), ADR-0023 (scope advisory).
+
+## Resolution
+
+Resolved by run cli-close-ticket (no code change) on 2026-06-25.
+
+Detect-don't-prevent retained; added the run-wrap audit assertion (ADR-0041 §4, FLAG mode) — the runner flags any commit that advanced HEAD in the run window but is absent from commits.jsonl (run-wrap-bypass-detected event with auditBaseSha+bypassShas). Pure unledgeredWindowCommits keystone pins the run_234 raw-bypass shape; runner integration tests pin both directions. Signal documented in ADR-0041 §4 for a future prevention revisit. Built loop-down 2026-06-25 (51d2689).
