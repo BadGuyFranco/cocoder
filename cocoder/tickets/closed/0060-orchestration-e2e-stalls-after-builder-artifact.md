@@ -2,7 +2,7 @@
 id: 0060
 title: Orchestration e2e stalls after builder writes the evidence artifact
 type: bug
-status: Open
+status: Closed
 priority: orchestration-e2e-test
 owner: deb
 created: 2026-06-25
@@ -86,3 +86,9 @@ supposed to recover or diagnose the stall.
 - The `orchestration-e2e-test` priority still instructs anomaly logging into ticket `0051`, but `0051`
   is now a closed run journal. This ticket is the durable home for the `run_235` stall unless a later
   governance reconciliation creates a replacement live-log lane.
+
+## Resolution
+
+Resolved by run run_236 (2f6ebb1550d8f35f016e0ca532bda5998543edff) on 2026-06-25.
+
+Ticket fix run completed successfully.
