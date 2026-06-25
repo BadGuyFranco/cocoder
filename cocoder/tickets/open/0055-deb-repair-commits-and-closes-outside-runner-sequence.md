@@ -50,3 +50,23 @@ before that.
   run-wrap audit assertion as the raw-shell backstop.
 - Related: ADR-0016 (Deb advises, runner delivers), ADR-0036 (Oscar↔Deb dialogue — to be reshaped),
   ADR-0040 (oz-action lane). Reference model: CoBuilder "Debugger".
+
+## Progress (2026-06-25, loop-down operator session)
+
+Most of the reframed acceptance landed (see [ADR-0041](../../decisions/0041-orchestration-ownership-and-actor-authority.md) §7). Kept **open** for the one residual item below.
+
+- **Done — interference check (A):** pure `interferes(changeSet)` rail in core (`a2cab84`), conservative
+  per the §3.1 founder decision (any non-`.md` change interferes; default-when-unsure → interfering).
+- **Done — `.md`-only self-fix through the governed spine, never raw git (B+C):** the ADR-0036 applied /
+  directed-apply path now gates on the rail and commits only non-interfering `.md` self-fixes via
+  `commitFiles` + the shared governance author (`75a9cb5`); `deb.md` aligned (`4a5b52a`).
+- **Done — interfering changes not made live:** held for the founder (`held-for-founder`, surfaced via the
+  `interfering-held` event + `outOfLanePaths`); never an autonomous commit, even under Oscar direction.
+- **Done — ADR-0036 reshape + run_234 regression:** runner-touching fix classified interfering at both the
+  predicate and daemon-path levels; HEAD unchanged; every Deb commit rides a governed ledger.
+- **Done — reconciliation close (E):** guarded against active-run targets, through the governed
+  `closeTicket` spine (`538eed4`).
+- **Residual (why this stays open):** a dedicated run-end **founder-suggestion artifact** presenting the
+  explicit *file-a-ticket | approve* options, plus the **on-approval governed-commit** flow. Today an
+  interfering change is held + surfaced and the founder disposes via existing ticket/run paths; the
+  one-button approve→commit needs a small ADR-0036 dialogue state-machine transition.

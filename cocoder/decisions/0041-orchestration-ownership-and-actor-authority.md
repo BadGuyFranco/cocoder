@@ -1,8 +1,9 @@
 # ADR-0041 — Orchestration ownership & actor authority
 
-**Status:** Proposed (Claude non-orchestrated session, 2026-06-24; **§3–§8 revised 2026-06-25** per founder
-design input) — **for founder review.** This ADR is the decision gate for the deep D1/D4 work; only the
-low-risk D2/D3/D5 guardrails are implemented in the same session (see §7).
+**Status:** Accepted (Claude non-orchestrated session, 2026-06-24; **§3–§8 revised 2026-06-25** per founder
+design input; **§3.1 gray-zone + §4 severity decisions pinned and the overseer build A–E landed 2026-06-25**
+in a loop-down operator session — see §7). This ADR was the decision gate for the deep D1/D4 work; the
+low-risk D2/D3/D5 guardrails landed alongside the revision (see §7).
 **Revision note (2026-06-25):** §3's original direction — "subordinate Deb-repair to the runner" (R4) and a
 prevent-vs-detect crux (R5) — was **retired** after founder input. Deb is an **always-on run overseer**, not
 a ticket owner or repair worker; she must stay runner-independent (she's who diagnoses the runner). The
@@ -144,11 +145,14 @@ files**. An **`.md`/instruction edit** (orchestration prompts, `personas/**`, `d
 **not** interfere. *Default when unsure → interfering.* This is a file-domain test, enforceable in code,
 independent of Deb's judgment about whether the change is "minor."
 
-> **Open item for the founder (the one residual judgment call):** code that touches **neither** the runner
-> **nor** the active target — e.g. a small isolated guard in an unrelated file. The founder's examples allow
-> a "small check before" as a minor self-fix, but the bright line named only runner / target / `.md`.
-> Proposed conservative default: **treat any non-`.md` code change as interfering** (→ run-end suggestion)
-> unless explicitly carved out. Confirm or widen.
+> **Founder decision (2026-06-25, the one residual judgment call — RESOLVED):** the **conservative**
+> default is adopted. **Any non-`.md` code change interferes** — the runner, the active target, or a small
+> isolated guard in an unrelated file alike (→ run-end suggestion). The runner-tree and target-overlap
+> branches of the widened variant therefore collapse: the predicate is a pure file-domain test over the
+> change set, independent of the active run. Implemented as `interferes(changeSet)` in core
+> (`packages/core/src/write-scope/interference.ts`): true iff the set contains any non-`.md` surface;
+> `isInstructionSurface` is the single `.md` classifier the rail is built on; default-when-unsure →
+> interfering falls out of the shape (a blank/extensionless path reads as code).
 
 ### 3.2 Deb's authority (the overseer model)
 
@@ -192,6 +196,14 @@ for the raw-shell edge case (a persona issuing `git commit` directly in its own 
 assertion** — the run flags/faults if HEAD advanced via a commit absent from its `commits.jsonl` during the
 run window. Detection made *load-bearing*, not replaced by prevention.
 
+**Founder decision (2026-06-25): FLAG, not fault.** The assertion records a `run-wrap-bypass-detected`
+event (`{auditBaseSha, bypassShas}`) and surfaces it, leaving the run's disposition unchanged — a
+legitimate founder commit inside the window must not falsely fail the run. The surfaced shas are the
+evidence a future revisit of prevention would need. Implemented in the runner
+(`packages/core/src/runner/runner.ts` wrap path) atop the pure `unledgeredWindowCommits` keystone
+(`packages/core/src/runner/wrap-audit.ts`); the window base is HEAD after the pre-run snapshots (which ride
+`commitFiles` directly and are intentionally out of the ledger), enumerated via `Git.commitsSince`.
+
 ## 5. Alternatives considered
 
 - **Subordinate Deb-repair to the runner (the original R4).** *Rejected* — it assumes the runner is
@@ -230,6 +242,19 @@ guards.
 authoring+commit+close of interfering changes; (c) route every Deb commit (self-fix and founder-approved)
 through the governed spine; (d) the run-wrap **audit assertion** (§4); (e) Deb's **reconciliation-close**
 authority, guarded against active-run targets. Each is tests-first and behavior-preserving for healthy runs.
+
+**Built in the overseer-build session (2026-06-25, loop-down operator session; founder decisions §3.1/§4
+pinned above):** **(a)** the pure `interferes(changeSet)` rail (`a2cab84`); **(d)** the run-wrap audit
+assertion, FLAG-mode (`51d2689`); **(b)+(c)** the ADR-0036 path gated on the rail — interfering changes
+held for the founder (`held-for-founder`, surfaced via the `interfering-held` event + `outOfLanePaths`),
+non-interfering `.md` self-fixes committed through the governed spine under the shared governance author,
+no bespoke `deb-repair` author (`75a9cb5`), with `deb.md` aligned to the overseer model (`4a5b52a`);
+**(e)** the guarded `reconcile-close` authority (`538eed4`). The run_234 shape is pinned at both the
+predicate and the daemon-path levels. **Residual for full 0055 closure:** a dedicated run-end
+**founder-suggestion artifact** presenting the explicit *file-a-ticket | approve* options, and the
+**on-approval governed-commit** flow (today an interfering change is held + surfaced; the founder disposes
+via the existing ticket/run paths, not a one-button approve). This needs a small dialogue state-machine
+transition and is left for a follow-up — 0055 stays open for it; 0058 is fully met and closed.
 
 ## 8. Tickets
 
