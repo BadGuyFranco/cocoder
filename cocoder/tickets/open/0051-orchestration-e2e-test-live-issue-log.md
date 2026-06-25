@@ -31,8 +31,12 @@ recurring defect to its own bug ticket when it warrants a fix.
 | # | Run ref | Surface | Expected → Observed | Severity | Status |
 |---|---------|---------|----------------------|----------|--------|
 | 1 | run_232 / workspace run 88 | Deb status feed | After `run-end` and `deb-watch-stopped`, `deb-status.json` should reflect the terminal watch state → final feed stayed on `watch.active: true` and omitted those terminal events while the run record ended as `awaiting-archive-confirmation`. | Low | Logged; fix in a separate non-orchestrated session if recurring or if the status feed is treated as terminal proof. |
+| 2 | run_232 / workspace run 88 | `archive-priority` Play / `cocoder oz archive-priority` lane | Founder-confirmed archive should move `cocoder/priorities/orchestration-e2e-test.md` into `cocoder/priorities/archive/`, drop it from `order.json`, and commit → command exited `archive-priority completed for orchestration-e2e-test, but no commit was created`; file unmoved, still first in `order.json`, no commit. Silent no-op presented as success. | High | Logged; lane repair in a separate non-orchestrated session (ADR-0036 Deb machinery repair). Priority deliberately left active. |
 
 ## Run log
 
 - run_232 / workspace run 88: atom loop completed and committed evidence, then wrapped to
   `awaiting-archive-confirmation`; produced issue #1 for stale final Deb status projection.
+- run_232 / workspace run 88: founder confirmed archive post-wrap; `archive-priority` lane no-opped
+  (issue #2) — priority left active per founder direction, lane repair deferred to a non-orchestrated
+  session.

@@ -66,7 +66,7 @@ function renderPanel({
 describe('PrioritiesPanel active run semantics', () => {
   afterEach(() => cleanup())
 
-  it('shows a linked active (blocked) priority run inline and suppresses Launch', () => {
+  it('shows a linked active (blocked) priority run inline and STILL offers Launch (never suppressed)', () => {
     const onSelectRun = vi.fn()
     renderPanel({
       priorities: [priority({ id: 'p-landing', name: 'Landing priority', runId: 'run-landing' })],
@@ -77,7 +77,9 @@ describe('PrioritiesPanel active run semantics', () => {
     expect(screen.getByText('Needs decision')).toBeDefined()
     expect(screen.getByText(/run-landing/)).toBeDefined()
     expect(screen.getByText('Needs a founder decision.')).toBeDefined()
-    expect(screen.queryByRole('button', { name: 'Launch' })).toBeNull()
+    // Launch is never suppressed: a needs-decision priority is still relaunchable, and with nothing
+    // actively running it is ENABLED (the founder resolves the pending decision via the linked run).
+    expect((screen.getByRole('button', { name: 'Launch' }) as HTMLButtonElement).disabled).toBe(false)
 
     fireEvent.click(screen.getByText(/run-landing/))
 
@@ -136,7 +138,11 @@ describe('PrioritiesPanel active run semantics', () => {
 
     expect(screen.getByText('Still working.')).toBeDefined()
     expect(screen.getByText('Needs founder decision.')).toBeDefined()
-    expect(screen.queryByRole('button', { name: 'Launch' })).toBeNull()
+    // Launch is never suppressed, but DISABLED for every card while a run is actively running
+    // (launchBlocked) — visible, not hidden, and not concurrently launchable.
+    const launches = screen.getAllByRole('button', { name: 'Launch' }) as HTMLButtonElement[]
+    expect(launches.length).toBeGreaterThan(0)
+    for (const launch of launches) expect(launch.disabled).toBe(true)
     expect(container.querySelectorAll('.ph-warning-circle').length).toBeGreaterThan(1)
   })
 

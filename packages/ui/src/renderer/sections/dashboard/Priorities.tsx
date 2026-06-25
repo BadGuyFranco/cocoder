@@ -55,7 +55,11 @@ function PriorityRow({ priority, index, onLaunch, onOpenDetails, onDrag, isDragg
         </div>
         <div className="oz-priority-actions">
           {linkedRun ? <StatusChip status={linkedRun.status} /> : <StatusChip status={priority.status} label={priority.status === 'ready' ? 'Ready' : priority.status} />}
-          {!isActive && <Button variant="secondary" size="sm" icon="play" disabled={launchBlocked} title={launchBlocked ? LAUNCH_BLOCKED_HINT : undefined} onClick={(e) => { e.stopPropagation(); onLaunch(priority) }}>Launch</Button>}
+          {/* Launch is never suppressed (founder directive 2026-06-24): a priority whose last run is `blocked`
+              (awaiting a founder decision) is still relaunchable — resolve the pending decision by opening
+              the linked run (RunDetail's confirm action), not by hiding Launch. It is only DISABLED while
+              some run is actively running (launchBlocked), preventing a concurrent launch. */}
+          <Button variant="secondary" size="sm" icon="play" disabled={launchBlocked} title={launchBlocked ? LAUNCH_BLOCKED_HINT : undefined} onClick={(e) => { e.stopPropagation(); onLaunch(priority) }}>Launch</Button>
         </div>
       </div>
       {isActive && linkedRun && (
