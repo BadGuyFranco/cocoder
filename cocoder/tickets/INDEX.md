@@ -13,9 +13,9 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
+| [0054](./open/0054-stale-terminal-deb-status-feed-after-run-end.md) | final deb-status.json stays stale after run end (watch.active stuck true, missing terminal watcher-stop) | bug | orchestration-e2e-test | Open |
 | [0053](./open/0053-commit-support-sweeps-out-of-lane-files.md) | commit-support spine sweeps out-of-lane files instead of withholding | bug | orchestration-e2e-test | Open |
 | [0052](./open/0052-archive-priority-lane-silent-no-op.md) | archive-priority lane silent no-op — reports success but moves nothing | bug | orchestration-e2e-test | Open |
-| [0051](./open/0051-orchestration-e2e-test-live-issue-log.md) | E2E orchestration self-test — live issue log | task | orchestration-e2e-test | Open |
 | [0048](./open/0048-adopt-eslint-in-cocoder-engine-repo.md) | Adopt a minimal ESLint 9 linter in CoCoder's own engine repo | task | none | Open |
 | [0039](./open/0039-launch-status-in-oz-dashboard.md) | Launch Status in Oz Dashboard | task | none | founder-session |
 | [0037](./open/0037-contributing-pr-template-stale-rg-ci-gate.md) | CONTRIBUTING and PR template still promise an rg CI gate that live ci.yml no longer runs | bug | none | Open |
@@ -24,6 +24,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0051](./closed/0051-orchestration-e2e-test-live-issue-log.md) | E2E orchestration self-test — live issue log | task | 2026-06-24 | Demoted from a live issue log to a closed run journal (session-16 brief). All three findings migrated to durable bug tickets: #1 stale terminal deb-status feed -> 0054, #2 archive-priority silent no-op -> 0052, #3 commit-support out-of-lane sweep -> 0053. Closed (not kept open) because tickets have no INTENTIONALLY_UNLISTED carve-out, so an open journal cannot be excluded from the relaunch queue; closing prunes it from order.json while preserving the record. No code change. |
 | [0047](./closed/0047-oscar-deb-repair-dialogue-strands-a-valid-deb-proposal-when-the-oscar-evaluation-turn-times-out.md) | Headless governance turns are marked failed (exit -1, ~120s) even when the artifact was produced — stranding repair proposals and skipping authoring commits | bug | 2026-06-24 | Fixed the shared daemon headless governance turn handling: raised the bounded governance turn timeout, preserved recoverable Oscar-Deb proposals as needs-oscar when evaluation produces no artifact, accepted adapter-owned evaluation artifacts despite nonzero exits, and committed valid authoring artifacts produced before a nonzero headless exit. |
 | [0034](./closed/0034-priority-creation-must-auto-register-order-json.md) | Priority creation must auto-register in order.json (prevent orphans at source) | task | 2026-06-24 | Priority creation now registers live priorities through registerLivePriorities before commit; daemon create-priority and authoring-Play paths commit order.json with the priority file, ADR-0038 records detect-to-prevent, and route/Play/orphan-guard tests are green. |
 | [0043](./closed/0043-bob-blocker-replies-unowned-after-runner-stall-nudges.md) | Bob blocker replies are unowned after runner stall nudges | bug | 2026-06-24 | Fixed by direct Deb repair: Bob stall-blocker replies now become structured runner events and authority/scope conflicts fault instead of re-nudging; explicit out-of-scope ADR write atoms are refused before Bob dispatch. |
