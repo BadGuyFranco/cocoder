@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rename, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
@@ -258,6 +258,106 @@ describe('requestAuthoringPlay', () => {
     expect(await git(fixture.home, ['rev-parse', 'HEAD'])).not.toBe(headBefore)
     expect((await git(fixture.home, ['log', '-1', '--pretty=%s'])).trim()).toBe('governance: archive-priority')
     await expect(git(fixture.home, ['cat-file', '-e', 'HEAD:cocoder/priorities/archive/alpha.md'])).resolves.toBeDefined()
+  })
+
+  // 0052 (run_88): an archive-priority turn that reports success but moves nothing must fail loudly with a
+  // named error, never an exit-0 "completed but no commit" no-op over a still-live priority.
+  test('archive-priority that moves nothing fails loudly instead of reporting a no-op success', async () => {
+    const fixture = await makeFixture({
+      runHeadless: async (input) => {
+        fixture.headlessInputs.push(input)
+        // The Play "completes" but leaves the live priority and its order entry untouched — the defect.
+        return { exitCode: 0, output: 'archived run-88' }
+      },
+    })
+    await writePriority(fixture.home, 'run-88', 'Run 88', 'Drive the e2e loop.')
+    await writeFile(join(fixture.home, 'cocoder', 'priorities', 'order.json'), `${JSON.stringify(['run-88'], null, 2)}\n`)
+    await git(fixture.home, ['add', '.'])
+    await git(fixture.home, ['commit', '-m', 'seed run-88'])
+    const headBefore = await git(fixture.home, ['rev-parse', 'HEAD'])
+
+    const result = await requestAuthoringPlay(fixture.ctx, {
+      workspaceId: 'cocoder',
+      persona: 'oz',
+      playId: 'archive-priority',
+      invocation: { id: 'run-88' },
+    })
+
+    expect(result).toMatchObject({
+      status: 422,
+      body: {
+        ok: false,
+        error: 'archive-priority for "run-88" moved nothing: cocoder/priorities/run-88.md is still live',
+        committedPaths: [],
+        commitSha: null,
+      },
+    })
+    expect(await git(fixture.home, ['rev-parse', 'HEAD'])).toBe(headBefore)
+    await expect(git(fixture.home, ['cat-file', '-e', 'HEAD:cocoder/priorities/run-88.md'])).resolves.toBeDefined()
+    expect(await readPriorityOrder(fixture.home)).toEqual(['run-88'])
+  })
+
+  // 0052 acceptance: a success receipt implies the file moved + order.json pruned + a commit SHA present.
+  test('archive-priority that moves the file and prunes order.json reports a real archive', async () => {
+    const fixture = await makeFixture({
+      runHeadless: async (input) => {
+        fixture.headlessInputs.push(input)
+        await mkdir(join(fixture.home, 'cocoder', 'priorities', 'archive'), { recursive: true })
+        await rename(join(fixture.home, 'cocoder', 'priorities', 'beta.md'), join(fixture.home, 'cocoder', 'priorities', 'archive', 'beta.md'))
+        await writeFile(join(fixture.home, 'cocoder', 'priorities', 'order.json'), `${JSON.stringify([], null, 2)}\n`)
+        return { exitCode: 0, output: 'archived beta' }
+      },
+    })
+    await writePriority(fixture.home, 'beta', 'Beta', 'Ship beta.')
+    await writeFile(join(fixture.home, 'cocoder', 'priorities', 'order.json'), `${JSON.stringify(['beta'], null, 2)}\n`)
+    await git(fixture.home, ['add', '.'])
+    await git(fixture.home, ['commit', '-m', 'seed beta'])
+    const headBefore = await git(fixture.home, ['rev-parse', 'HEAD'])
+
+    const result = await requestAuthoringPlay(fixture.ctx, {
+      workspaceId: 'cocoder',
+      persona: 'oz',
+      playId: 'archive-priority',
+      invocation: { id: 'beta' },
+    })
+
+    expect(result).toMatchObject({ status: 200, body: { ok: true, archived: true, outOfLanePaths: [] } })
+    expect(result.body.committedPaths).toEqual(expect.arrayContaining(['cocoder/priorities/beta.md', 'cocoder/priorities/archive/beta.md', 'cocoder/priorities/order.json']))
+    expect(typeof result.body.commitSha).toBe('string')
+    expect(await git(fixture.home, ['rev-parse', 'HEAD'])).not.toBe(headBefore)
+    await expect(git(fixture.home, ['cat-file', '-e', 'HEAD:cocoder/priorities/archive/beta.md'])).resolves.toBeDefined()
+    await expect(git(fixture.home, ['cat-file', '-e', 'HEAD:cocoder/priorities/beta.md'])).rejects.toThrow()
+    expect(await readPriorityOrder(fixture.home)).toEqual([])
+  })
+
+  // 0052 founder decision: an already-archived re-confirm moves nothing but is a benign, distinct success
+  // (mirrors reconciliation-close's closed:false/reason), never a loud failure.
+  test('archive-priority on an already-archived priority is a benign no-move success', async () => {
+    const fixture = await makeFixture({
+      runHeadless: async (input) => {
+        fixture.headlessInputs.push(input)
+        // Already archived: the Play correctly leaves the archived file and the live tree untouched.
+        return { exitCode: 0, output: 'already archived gamma' }
+      },
+    })
+    await mkdir(join(fixture.home, 'cocoder', 'priorities', 'archive'), { recursive: true })
+    await writeFile(join(fixture.home, 'cocoder', 'priorities', 'archive', 'gamma.md'), '---\nid: gamma\ntitle: Gamma\n---\n\n> **Archived 2026-06-20 (founder).** Done.\n')
+    await git(fixture.home, ['add', '.'])
+    await git(fixture.home, ['commit', '-m', 'seed archived gamma'])
+    const headBefore = await git(fixture.home, ['rev-parse', 'HEAD'])
+
+    const result = await requestAuthoringPlay(fixture.ctx, {
+      workspaceId: 'cocoder',
+      persona: 'oz',
+      playId: 'archive-priority',
+      invocation: { id: 'gamma' },
+    })
+
+    expect(result).toMatchObject({
+      status: 200,
+      body: { ok: true, archived: false, reason: 'priority "gamma" was already archived', commitSha: null },
+    })
+    expect(await git(fixture.home, ['rev-parse', 'HEAD'])).toBe(headBefore)
   })
 
   test('refuses an unknown same-workspace in-flight reservation and commits nothing', async () => {

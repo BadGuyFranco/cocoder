@@ -231,6 +231,29 @@ describe('runViaDaemon (client mode)', () => {
     expect(d.captured.authorBody).toEqual({ persona: 'oz', invocation: { id: 'demo' } })
   })
 
+  // 0052: a no-move archive-priority is a non-2xx named failure; the transport must surface it loudly so
+  // the CLI exits nonzero instead of printing an exit-0 "completed but no commit" no-op.
+  test('authoring Play throws the named error when an archive moves nothing', async () => {
+    const s = createServer((req, res) => {
+      if (req.url === '/auth/session') {
+        res.writeHead(200, { 'content-type': 'application/json' })
+        return res.end(JSON.stringify({ bearerToken: 't', csrfToken: 'c' }))
+      }
+      res.writeHead(422, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, error: 'archive-priority for "demo" moved nothing: cocoder/priorities/demo.md is still live', commitSha: null }))
+    })
+    server = s
+    const port = await new Promise<number>((resolve) =>
+      s.listen(0, '127.0.0.1', () => {
+        const a = s.address()
+        resolve(typeof a === 'object' && a ? a.port : 0)
+      }),
+    )
+
+    await expect(authoringPlayViaDaemon(`http://127.0.0.1:${port}`, 'cocoder', 'archive-priority', { id: 'demo' }))
+      .rejects.toThrow(/authoring Play failed \(422\):.*moved nothing/)
+  })
+
   test('throws a clear error when the daemon rejects the launch', async () => {
     const s = createServer((req, res) => {
       if (req.url === '/auth/session') {

@@ -87,6 +87,10 @@ export interface AuthoringPlayResult {
   readonly outOfLanePaths: readonly string[]
   readonly exitCode?: number
   readonly turnLogPath?: string
+  /** archive-priority only: whether the priority was actually moved this dispatch (vs already archived). */
+  readonly archived?: boolean
+  /** archive-priority only: honest reason for a benign non-move success (e.g. already archived). */
+  readonly reason?: string
 }
 
 /** Commit post-wrap Oscar support edits through the daemon-owned commit spine. This is not a

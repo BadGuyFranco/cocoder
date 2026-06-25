@@ -1781,7 +1781,13 @@ describe('Oz mutations + lifecycle', () => {
         },
       }),
       io: fakeIO(),
-      runHeadless: async () => ({ exitCode: 0, output: 'archived demo' }),
+      runHeadless: async () => {
+        // Faithful archive: the Play actually moves the live priority out of the live tree (0052 — the
+        // lane no longer trusts a reported commit over a still-live file).
+        await mkdir(join(home, 'cocoder', 'priorities', 'archive'), { recursive: true })
+        await rename(join(home, 'cocoder', 'priorities', 'demo.md'), join(home, 'cocoder', 'priorities', 'archive', 'demo.md'))
+        return { exitCode: 0, output: 'archived demo' }
+      },
     })
 
     // Ticket 0023: the orphan /author route must stay gone; only authoring-plays dispatches.
@@ -1794,6 +1800,7 @@ describe('Oz mutations + lifecycle', () => {
       status: 200,
       json: {
         ok: true,
+        archived: true,
         committedPaths: ['cocoder/priorities/archive/demo.md', 'cocoder/priorities/demo.md'],
         commitSha: 'sha-committed',
         outOfLanePaths: [],
@@ -1906,6 +1913,38 @@ describe('Oz mutations + lifecycle', () => {
     expect(JSON.parse(await readFile(join(home, 'cocoder', 'priorities', 'order.json'), 'utf8'))).toEqual([])
   })
 
+  // 0052 route parity: a no-move archive through the confirmation route surfaces the loud named failure,
+  // leaves the run awaiting (never completed), and records no archived event.
+  test('POST /runs/:id/archive-confirmation surfaces a no-move archive as a loud failure', async () => {
+    await writeFile(
+      join(home, 'cocoder', 'personas', 'assignments.json'),
+      JSON.stringify({
+        personas: {
+          oz: { cli: 'fake', model: 'oz-model', plays: { 'archive-priority': { cli: 'fake', model: 'author-model' } } },
+          oscar: { cli: 'claude', model: '' },
+          bob: { cli: 'codex', model: '' },
+        },
+      }),
+    )
+    await writeFile(join(home, 'cocoder', 'priorities', 'order.json'), `${JSON.stringify(['demo'], null, 2)}\n`)
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(run.id, 'awaiting-archive-confirmation')
+    recordArchiveConfirmationAction(store, run.id)
+    // The Play reports success but moves nothing: live demo.md and its order entry stay put (run_88).
+    await startServer(fakeGit(), async () => ({ exitCode: 0, output: 'archived demo' }))
+
+    const r = await call(oz!, 'POST', `/runs/${run.id}/archive-confirmation`, { body: { confirmation: 'archive' } })
+
+    expect(r.status).toBe(422)
+    expect(r.json).toMatchObject({ ok: false, archived: false, runId: run.id, priorityId: 'demo' })
+    expect(String(r.json.error)).toContain('archive-priority for "demo" moved nothing')
+    expect(store.getRun(run.id)?.status).toBe('awaiting-archive-confirmation')
+    expect(store.listEvents(run.id).some((event) => event.type === 'archive-confirmation-archived')).toBe(false)
+    await expect(stat(join(home, 'cocoder', 'priorities', 'demo.md'))).resolves.toBeDefined()
+    expect(JSON.parse(await readFile(join(home, 'cocoder', 'priorities', 'order.json'), 'utf8'))).toEqual(['demo'])
+  })
+
   test('POST /runs/:id/archive-confirmation with any non-archive answer leaves the priority live', async () => {
     await writeFile(join(home, 'cocoder', 'priorities', 'order.json'), `${JSON.stringify(['demo'], null, 2)}\n`)
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
@@ -1986,7 +2025,12 @@ describe('Oz mutations + lifecycle', () => {
         },
       }),
       io: fakeIO(),
-      runHeadless: async () => ({ exitCode: 0, output: 'archived demo' }),
+      runHeadless: async () => {
+        // Faithful archive move so the lane's no-move guard (0052) sees the live priority actually leave.
+        await mkdir(join(home, 'cocoder', 'priorities', 'archive'), { recursive: true })
+        await rename(join(home, 'cocoder', 'priorities', 'demo.md'), join(home, 'cocoder', 'priorities', 'archive', 'demo.md'))
+        return { exitCode: 0, output: 'archived demo' }
+      },
     })
 
     const r = await call(oz!, 'POST', '/workspaces/cocoder/authoring-plays/archive-priority', { body: { persona: 'oscar', invocation: { id: 'demo' } } })
@@ -1995,6 +2039,7 @@ describe('Oz mutations + lifecycle', () => {
       status: 200,
       json: {
         ok: true,
+        archived: true,
         committedPaths: ['cocoder/priorities/archive/demo.md', 'cocoder/priorities/demo.md'],
         commitSha: 'sha-committed',
         outOfLanePaths: [],

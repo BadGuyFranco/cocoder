@@ -1415,6 +1415,50 @@ async function postWrapArchiveBypass(workspacePath: string, priorityId: string, 
   return (await isFile(join(workspacePath, livePath))) ? null : { files: touched }
 }
 
+// 0052: an archive-priority dispatch once reported success while moving nothing — the live priority file
+// stayed put and its id stayed first in order.json (run_88). Assert the move actually landed before
+// trusting the success receipt: a still-live file or an un-pruned order entry IS the silent no-op, now
+// surfaced as a loud named 422 instead of an exit-0 "completed but no commit". A clean post-state with
+// no commit is an already-archived re-confirm — a benign, distinct non-move success, mirroring
+// requestReconciliationClose's closed:false/reason split.
+async function assertArchivePriorityMoved(workspacePath: string, invocation: unknown, dispatch: LaunchResult): Promise<LaunchResult> {
+  if (dispatch.status < 200 || dispatch.status >= 300 || dispatch.body.ok !== true) return dispatch
+  const id = typeof invocation === 'object' && invocation !== null && typeof (invocation as { id?: unknown }).id === 'string'
+    ? (invocation as { id: string }).id.trim()
+    : ''
+  if (!id) return dispatch
+  const livePath = `cocoder/priorities/${id}.md`
+  const liveExists = await isFile(join(workspacePath, livePath))
+  const stillOrdered = await orderJsonContains(join(workspacePath, 'cocoder', 'priorities', 'order.json'), id)
+  if (liveExists || stillOrdered) {
+    const reason = liveExists ? `${livePath} is still live` : `"${id}" is still listed in cocoder/priorities/order.json`
+    return {
+      status: 422,
+      body: {
+        ok: false,
+        error: `archive-priority for "${id}" moved nothing: ${reason}`,
+        committedPaths: [],
+        commitSha: null,
+        outOfLanePaths: Array.isArray(dispatch.body.outOfLanePaths) ? dispatch.body.outOfLanePaths : [],
+        ...(typeof dispatch.body.turnLogPath === 'string' ? { turnLogPath: dispatch.body.turnLogPath } : {}),
+      },
+    }
+  }
+  const committed = typeof dispatch.body.commitSha === 'string' && dispatch.body.commitSha.length > 0
+  return committed
+    ? { status: dispatch.status, body: { ...dispatch.body, archived: true } }
+    : { status: dispatch.status, body: { ...dispatch.body, archived: false, reason: `priority "${id}" was already archived` } }
+}
+
+async function orderJsonContains(path: string, id: string): Promise<boolean> {
+  try {
+    const parsed: unknown = JSON.parse(await readFile(path, 'utf8'))
+    return Array.isArray(parsed) && parsed.includes(id)
+  } catch {
+    return false
+  }
+}
+
 async function readNudgeSeq(path: string): Promise<number> {
   try {
     const data = JSON.parse(await readFile(path, 'utf8')) as { seq?: unknown }
@@ -1754,7 +1798,7 @@ export async function requestAuthoringPlay(ctx: OzContext, input: AuthoringPlayI
 
   const turnLogPath = join(ctx.cocoderHome, 'local', 'oz', workspace.id, `authoring-${input.playId}-${Date.now()}.log`)
   await mkdir(dirname(turnLogPath), { recursive: true })
-  return runHeadlessThenGateCommit(ctx, {
+  const dispatch = await runHeadlessThenGateCommit(ctx, {
     workspaceId: workspace.id,
     persona: input.persona,
     cli: assignment.cli,
@@ -1784,6 +1828,9 @@ export async function requestAuthoringPlay(ctx: OzContext, input: AuthoringPlayI
     exitError: (exitCode) => `Authoring Play turn failed with exit code ${exitCode}; nothing was committed.`,
     recoverCommitOnNonzero: true,
   })
+  return input.playId === 'archive-priority'
+    ? assertArchivePriorityMoved(workspace.path, input.invocation, dispatch)
+    : dispatch
 }
 
 interface HeadlessCommitOptions {

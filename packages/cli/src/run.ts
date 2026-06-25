@@ -273,8 +273,9 @@ async function main(): Promise<void> {
       if (result.committedPaths.length) out(`  files: ${result.committedPaths.join(', ')}`)
       if (result.turnLogPath) out(`  turn log: ${result.turnLogPath}`)
     } else {
-      out(`archive-priority completed for ${priorityId}, but no commit was created`)
-      if (result.outOfLanePaths.length) out(`  held back outside the Play lane: ${result.outOfLanePaths.join(', ')}`)
+      // A no-move archive now fails loudly upstream (non-2xx → the transport throws); reaching here with
+      // no commit means the priority was already archived, so report that honestly rather than as a no-op.
+      out(`priority ${priorityId} for ${workspaceId} was already archived; nothing to move${result.reason ? ` (${result.reason})` : ''}`)
     }
     return
   }
