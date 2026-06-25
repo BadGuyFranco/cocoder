@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-25 — **ticket-fix-0060: regression-pinned run_235 stall defects — closed (run_92/run_236)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0060](./tickets/closed/0060-orchestration-e2e-stalls-after-builder-artifact.md) | **Run:** run_236 (display 92)
+**Outcomes:**
+- **Atom 0 (`4226f73`) — mid-monitor Deb nudge regression.** Strengthened the full-run Deb watcher test so deb-status refreshes during builder monitoring, the nudge rationale cites feed-evidenced `monitor-assessment`, and the Deb nudge is consumed (not `deb-nudge-rejected`).
+- **Root-cause verdict: already fixed on HEAD.** All three `run_235` defects (missing-marker stall surfacing, stale deb-status with unconsumed Deb nudge, out-of-scope governance swept into atom commit) were fixed by post-run changes; this run only closed the proof gap for the mid-monitor nudge path. The other two behaviors were already pinned (`builder timeout surfaces the missing standalone completion marker`; atom commit out-of-scope hold-back test).
+- **Live smoke satisfied by this run.** Clean directive → monitor → verify → commit loop on live infrastructure served as the orchestration-e2e acceptance smoke.
+- **Ticket closed** via `closeTicket()` at wrap; `order.json` pruned; queue head is [0061](./tickets/open/0061-governed-create-ticket-spine.md).
+- **Disposition: `closed`.** Verified-complete ticket fix; no further code atoms warranted.
+**Next:** Launch ticket `0061` — build the governed `createTicket()` spine symmetric to `closeTicket()`.
+
 ## 2026-06-25 — **orchestration-e2e-test: one clean live loop — archive ready (run_91/run_235)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [orchestration-e2e-test](./priorities/orchestration-e2e-test.md) | **Run:** run_235 (display 91)
