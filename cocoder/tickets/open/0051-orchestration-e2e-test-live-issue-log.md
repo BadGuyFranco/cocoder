@@ -30,9 +30,9 @@ recurring defect to its own bug ticket when it warrants a fix.
 
 | # | Run ref | Surface | Expected → Observed | Severity | Status |
 |---|---------|---------|----------------------|----------|--------|
-| _ | _(none yet — first run pending)_ | _ | _ | _ | _ |
+| 1 | run_232 / workspace run 88 | Deb status feed | After `run-end` and `deb-watch-stopped`, `deb-status.json` should reflect the terminal watch state → final feed stayed on `watch.active: true` and omitted those terminal events while the run record ended as `awaiting-archive-confirmation`. | Low | Logged; fix in a separate non-orchestrated session if recurring or if the status feed is treated as terminal proof. |
 
 ## Run log
 
-- _(append one short entry per run: run reference, terminal status, and a one-line outcome — clean pass,
-  or which issue rows it produced.)_
+- run_232 / workspace run 88: atom loop completed and committed evidence, then wrapped to
+  `awaiting-archive-confirmation`; produced issue #1 for stale final Deb status projection.
