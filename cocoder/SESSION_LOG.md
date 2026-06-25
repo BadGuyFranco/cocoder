@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-24 — **ticket-fix-0051: live-log safety rule blocked repair — founder path A/B (run_89/run_233)**
+
+**Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** ticket-fix / [0051](./tickets/open/0051-orchestration-e2e-test-live-issue-log.md) | **Run:** run_233 (display 89)
+**Outcomes:**
+- **No build atoms delegated.** Ticket [0051](./tickets/open/0051-orchestration-e2e-test-live-issue-log.md) is a live issue log for `orchestration-e2e-test`, not a fix work order; its Safety rule forbids control-plane edits while orchestration is live.
+- **All three logged defects out of bounds here.** Deb status feed staleness (#1, Low), `archive-priority` silent no-op (#2, High), and `commit-support` flag-and-commit sweep (#3, High) all touch runner/commit-gate/archive machinery — the self-modification hazard the runner-decoupling refactor prevents.
+- **Close objective conflicts with open log.** Closing 0051 would discard the durable log while #2/#3 remain unrepaired; `orchestration-e2e-test` stays first in `order.json` because issue #2 blocked archive in run_88.
+- **Disposition: `blocked`.** Founder must choose path A (tear down, Deb-repair #2/#3 non-orchestrated, keep 0051 open) vs path B (re-scope to log/ticket promotion only; lane fixes still deferred).
+**Next:** On path A (recommended): `pnpm --dir '/Volumes/NAS LOCAL/CoCoder' exec cocoder oz teardown run_233 --initiator oscar`, then non-orchestrated `request-deb-repair` for archive-priority and commit-support defects.
+
 ## 2026-06-24 — **orchestration-e2e-test: one clean live loop — archive ready (run_88)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [orchestration-e2e-test](./priorities/orchestration-e2e-test.md) | **Run:** run_88 (display 88)
