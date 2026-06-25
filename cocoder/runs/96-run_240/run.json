@@ -12,7 +12,7 @@
   "priorityId": "ticket-launchability",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "awaiting-archive-confirmation",
   "createdAt": 1782421066469,
-  "endedAt": null
+  "endedAt": 1782422147998
 }
