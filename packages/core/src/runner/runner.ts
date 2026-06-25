@@ -1532,6 +1532,23 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     type: 'run-end',
     data: { status, atoms: n, committedShas, outOfScope, selfCommitted },
   })
+  const terminalPhase: RunnerPhase =
+    status === 'awaiting-founder' || status === 'awaiting-archive-confirmation'
+      ? 'awaiting-founder'
+      : status === 'failed' || status === 'stopped' || status === 'held'
+        ? 'faulted'
+        : 'wrapped'
+  const terminalWait =
+    status === 'awaiting-archive-confirmation'
+      ? 'awaiting founder archive confirmation; Oscar remains reachable until explicit teardown'
+      : status === 'awaiting-founder'
+        ? 'awaiting founder decision; Oscar remains reachable until explicit teardown'
+        : status === 'failed'
+          ? 'run failed; no further runner action pending'
+          : status === 'stopped' || status === 'held'
+            ? `run ${status}; awaiting founder action`
+            : 'run completed; Oscar remains reachable for founder questions until explicit teardown'
+  await refreshStatus(terminalPhase, n, null, terminalWait)
   await projectAndCommitPortableRunHistory({ endedAt })
   store.setRunStatus(run.id, status)
   // Every atom + Oscar-support + run-history commit already landed on the active branch as it was made

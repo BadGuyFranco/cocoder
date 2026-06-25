@@ -20,7 +20,8 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 - **All three logged defects out of bounds here.** Deb status feed staleness (#1, Low), `archive-priority` silent no-op (#2, High), and `commit-support` flag-and-commit sweep (#3, High) all touch runner/commit-gate/archive machinery — the self-modification hazard the runner-decoupling refactor prevents.
 - **Close objective conflicts with open log.** Closing 0051 would discard the durable log while #2/#3 remain unrepaired; `orchestration-e2e-test` stays first in `order.json` because issue #2 blocked archive in run_88.
 - **Disposition: `blocked`.** Founder must choose path A (tear down, Deb-repair #2/#3 non-orchestrated, keep 0051 open) vs path B (re-scope to log/ticket promotion only; lane fixes still deferred).
-**Next:** On path A (recommended): `pnpm --dir '/Volumes/NAS LOCAL/CoCoder' exec cocoder oz teardown run_233 --initiator oscar`, then non-orchestrated `request-deb-repair` for archive-priority and commit-support defects.
+- **Defects promoted to work orders.** Issues #2 and #3 now have bug tickets [0052](./tickets/open/0052-archive-priority-lane-silent-no-op.md) and [0053](./tickets/open/0053-commit-support-sweeps-out-of-lane-files.md) for post-teardown Deb repair.
+**Next:** Founder confirms path A or B on ticket 0051; on path A (recommended): tear down run_233, then launch ticket `0052` — Deb-repair archive-priority silent no-op.
 
 ## 2026-06-24 — **orchestration-e2e-test: one clean live loop — archive ready (run_88)**
 
