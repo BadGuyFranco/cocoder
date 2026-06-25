@@ -32,6 +32,20 @@ describe('requestOscarDebRepair', () => {
     expect(fixture.headlessInputs).toEqual([])
   })
 
+  test('run_234 regression: a ticket-fix build-lane run blocks the Deb-repair lane for that ticket (build XOR repair, ADR-0041 D2/0056)', async () => {
+    const fixture = await makeFixture()
+    // run_234 shape: an active ticket-fix run targeting ticket 0054 — the build lane (Oscar→Bob→verify).
+    const run = fixture.store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0054' })
+    fixture.ctx.inFlight.set('cocoder', run.id)
+
+    // The Deb-repair lane for the same workspace must be refused while that run owns the ticket, so the
+    // SAME ticket can never be in the build lane and the repair lane at once (the run_234 D2 race).
+    const result = await requestOscarDebRepair(fixture.ctx, { workspaceId: 'cocoder', sourceRunId: run.id, requestedBy: 'oscar', problem: 'fix 0054 terminal path', evidence })
+
+    expect(result).toMatchObject({ status: 409, body: { error: expect.stringContaining('still active') } })
+    expect(fixture.headlessInputs).toEqual([]) // refused BEFORE spawning Deb — no redundant repair turn
+  })
+
   test('allows a wrapped source run and completes an applied Deb repair', async () => {
     const fixture = await makeFixture({
       runHeadless: async (input) => {

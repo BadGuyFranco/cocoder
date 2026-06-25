@@ -80,6 +80,24 @@ describe('requestOzAction', () => {
     expect(await git(fixture.home, ['rev-parse', 'HEAD'])).toBe(headBefore)
   })
 
+  test('run_234 regression: a governed close is refused while a ticket-fix run owns the ticket (close cannot race verify, ADR-0041 D3/0057)', async () => {
+    const fixture = await makeFixture()
+    // run_234 shape: an active ticket-fix run targeting ticket 0054 holds the build lane.
+    const run = fixture.store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0054' })
+    fixture.ctx.inFlight.set('cocoder', run.id)
+    const headBefore = await git(fixture.home, ['rev-parse', 'HEAD'])
+
+    // The governed close lane (oz-action "Close ticket 0054") must be refused while the run owns it —
+    // the runner's own closeTicketAfterSuccessfulRun is the sole closer, and it runs post-verify. A
+    // mid-run agentic close can neither precede verify nor land a commit (the run_234 D3 ordering).
+    await expect(requestOzAction(fixture.ctx, { workspaceId: 'cocoder', instruction: 'Close ticket 0054.' })).resolves.toMatchObject({
+      status: 409,
+      body: { error: expect.stringContaining('run is in flight') },
+    })
+    expect(fixture.headlessInputs).toEqual([])
+    expect(await git(fixture.home, ['rev-parse', 'HEAD'])).toBe(headBefore) // no close commit raced in
+  })
+
   test('validates workspace, instruction, and Oz assignment before spawning', async () => {
     const fixture = await makeFixture()
     await expect(requestOzAction(fixture.ctx, { workspaceId: 'missing', instruction: 'fix docs' })).resolves.toMatchObject({ status: 404 })
