@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-25 — **ticket-fix-0039: launch modal spinner UX — closed (run_95/run_239)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0039](./tickets/closed/0039-launch-status-in-oz-dashboard.md) | **Run:** run_239 (display 95)
+**Outcomes:**
+- **Spinner modal (`7bb83ff`).** `LaunchProgressModal.tsx` drops Oscar/Bob/Deb progress bars for one spinner plus optional `stageText()` phase line; auto-close on successful launch preserved.
+- **Acceptance verified.** UI typecheck clean; 163/163 tests green including live-app launch-modal cases (spinner path, success auto-close, failure keep-open).
+- **Diagnostic tasks a/b descoped.** Founder 2026-06-24 direction superseded delay root-cause work; remaining binding acceptance criteria fully met.
+- **Ticket closed** via wrap-up governance; `order.json` pruned; queue head is [0048](./tickets/open/0048-adopt-eslint-in-cocoder-engine-repo.md).
+- **Disposition: `closed`.** Verified-complete ticket fix; no further atoms on 0039.
+**Next:** Launch ticket `0048` — adopt minimal ESLint 9 in the engine repo.
+
 ## 2026-06-25 — **ticket-fix-0061: governed createTicket spine — needs closing (run_94/run_238)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0061](./tickets/open/0061-governed-create-ticket-spine.md) | **Run:** run_238 (display 94)

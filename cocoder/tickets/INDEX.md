@@ -14,13 +14,13 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
 | [0048](./open/0048-adopt-eslint-in-cocoder-engine-repo.md) | Adopt a minimal ESLint 9 linter in CoCoder's own engine repo | task | none | Open |
-| [0039](./open/0039-launch-status-in-oz-dashboard.md) | Launch Status in Oz Dashboard | task | none | founder-session |
 | [0037](./open/0037-contributing-pr-template-stale-rg-ci-gate.md) | CONTRIBUTING and PR template still promise an rg CI gate that live ci.yml no longer runs | bug | none | Open |
 
 ## Recently Closed
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0039](./closed/0039-launch-status-in-oz-dashboard.md) | Launch Status in Oz Dashboard | task | 2026-06-25 | Ticket fix run completed successfully. Replaced per-agent progress bars with a single spinner and optional phase label per the 2026-06-24 direction. Original diagnostic tasks a/b were descoped by that direction; file a new ticket if launch-delay root-cause is still desired. |
 | [0061](./closed/0061-governed-create-ticket-spine.md) | Governed createTicket spine for tracked ticket filing | bug | 2026-06-25 | Ticket fix run completed successfully. The post-wrap ticket-close recovery gap was repaired in 537193f; ticket 0061 implementation landed in run_238. |
 | [0062](./closed/0062-create-priority-and-edit-priority-need-detailed-body-input.md) | create-priority and edit-priority need detailed body input | task | 2026-06-25 | Ticket fix run completed successfully. |
 | [0060](./closed/0060-orchestration-e2e-stalls-after-builder-artifact.md) | Orchestration e2e stalls after builder writes the evidence artifact | bug | 2026-06-25 | Ticket fix run completed successfully. |

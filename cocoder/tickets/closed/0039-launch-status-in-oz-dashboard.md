@@ -2,7 +2,7 @@
 id: 0039
 title: Launch Status in Oz Dashboard
 type: task
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-23
@@ -31,3 +31,9 @@ A launch status modal was implemented with Oscar/Bob/Deb progress bars. This is 
 - No static progress bars that give false impression of activity
 - Modal closes when launch is confirmed successful
 - Optionally: a short status line (e.g. "Starting workspace…") if phase information is cheaply available
+
+## Resolution
+
+Resolved by run run_239 (7bb83ffde2578424e5c58e6751948bdb82d7a303) on 2026-06-25.
+
+Ticket fix run completed successfully. Replaced per-agent progress bars with a single spinner and optional phase label per the 2026-06-24 direction. Original diagnostic tasks a/b were descoped by that direction; file a new ticket if launch-delay root-cause is still desired.
