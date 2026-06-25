@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-25 — **ticket-fix-0054: no-op relaunch — verified closed on main (run_90/run_234)**
+
+**Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** ticket-fix / [0054](./tickets/closed/0054-stale-terminal-deb-status-feed-after-run-end.md) | **Run:** run_234 (display 90)
+**Outcomes:**
+- **No build atoms landed.** Atom 0 rejected — fix (`549ab11`) and ticket close (`bd5fdf5`) already on main before launch; Bob produced no diff.
+- **Acceptance re-verified.** `fail()` now stops the Deb watcher before terminal refresh; on-disk `watch.active:false` plus `run-end` and `deb-watch-stopped` pinned in runner tests; core suite 584/72 green.
+- **Ticket closed** (pre-existing spine + wrap reconcile); 0054 pruned from `order.json`; queue head is [0052](./tickets/open/0052-archive-priority-lane-silent-no-op.md).
+- **Disposition: `closed`.** Relaunch was redundant verification of an already-closed ticket.
+**Next:** Launch ticket `0052` — Deb-repair archive-priority silent no-op.
+
 ## 2026-06-24 — **ticket-fix-0051: live-log safety rule blocked repair — founder path A/B (run_89/run_233)**
 
 **Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** ticket-fix / [0051](./tickets/open/0051-orchestration-e2e-test-live-issue-log.md) | **Run:** run_233 (display 89)
