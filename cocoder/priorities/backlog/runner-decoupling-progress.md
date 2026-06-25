@@ -100,7 +100,7 @@ next session. Do not start the following chunk in this session.
 - **Trivial tidy:** none performed. A section-comment pass on the shell was considered but declined — it would
   force a `runner.ts` edit (and the SessionRef surgical-stage dance) for marginal value; this ledger entry now
   serves as the navigable section map. Behavior + bytes of `runner.ts` unchanged.
-- **Commit:** `<PENDING — backfill after commit>` — "priority(backlog): WS5.3 — assess done-when; declare WS5 / runner decoupling COMPLETE".
+- **Commit:** `091c4f4` — "priority(backlog): WS5.3 — assess done-when; declare WS5 / runner decoupling COMPLETE".
 - **Files:** `cocoder/priorities/backlog/runner-decoupling-progress.md` (this entry) ONLY. No source/test file
   touched — assessment-only, same as the WS5 step-0 map. `runner.ts` keeps ONLY its pre-existing foreign
   `SessionRef` import dirt; nothing staged from it. The unrelated eslint-adoption dirt (`eslint.config.mjs`,
