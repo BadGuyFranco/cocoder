@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, fireEvent, cleanup, within } from '@testing-library/react'
 import { useState } from 'react'
-import { Dashboard } from '../src/renderer/sections/dashboard/Dashboard.tsx'
+import { Dashboard, ticketPrioritySignal } from '../src/renderer/sections/dashboard/Dashboard.tsx'
 import type { ChatMessage, Priority, Run, Ticket, Workspace } from '../src/renderer/model.ts'
 
 const workspace: Workspace = {
@@ -89,6 +89,14 @@ function DashboardHarness({
 describe('Dashboard layout', () => {
   afterEach(() => cleanup())
 
+  it('classifies ticket priority signals from the live priority ids', () => {
+    expect(ticketPrioritySignal('p-blocked', ['p-blocked'])).toEqual({ kind: 'handled-by-live-priority', priorityId: 'p-blocked' })
+    expect(ticketPrioritySignal('archived-priority', ['p-blocked'])).toEqual({ kind: 'stale-link', priorityId: 'archived-priority' })
+    for (const priority of ['none', 'unassigned', '', null]) {
+      expect(ticketPrioritySignal(priority, ['p-blocked'])).toEqual({ kind: 'standalone' })
+    }
+  })
+
   it('keeps column 1 as the priorities queue when blocked runs exist', () => {
     const priorityRuns = [
       run('blocked', 'blocked', 'p-blocked'),
@@ -167,7 +175,8 @@ describe('Dashboard layout', () => {
 
   it('shows owned-ticket priority signals in cards while standalone tickets stay untagged', () => {
     const queueTickets: Ticket[] = [
-      { ...tickets[2], id: 'owned', title: 'Owned ticket', priority: 'oz-dashboard-bugs' },
+      { ...tickets[2], id: 'owned', title: 'Owned ticket', priority: 'p-blocked' },
+      { ...tickets[2], id: 'stale', title: 'Stale ticket', priority: 'archived-priority' },
       { ...tickets[0], id: 'none', title: 'Standalone none', priority: 'none' },
       { ...tickets[0], id: 'unassigned', title: 'Standalone unassigned', priority: 'unassigned' },
       { ...tickets[0], id: 'blank', title: 'Standalone blank', priority: '' },
@@ -175,7 +184,7 @@ describe('Dashboard layout', () => {
     ]
     const { container } = render(<DashboardHarness runs={[]} queueTickets={queueTickets} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /Tickets 5/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Tickets 6/i }))
     const column = within(container.firstElementChild!.children[0] as HTMLElement)
     const cardFor = (title: string): HTMLElement => {
       const card = column.getByText(title).closest('[draggable="true"]') as HTMLElement | null
@@ -183,9 +192,13 @@ describe('Dashboard layout', () => {
       return card
     }
 
-    expect(within(cardFor('Owned ticket')).getByText('Handled by Priority: oz-dashboard-bugs')).toBeDefined()
+    expect(within(cardFor('Owned ticket')).getByText('Handled by Priority: p-blocked')).toBeDefined()
+    expect(within(cardFor('Owned ticket')).queryByText(/⚠ stale link/)).toBeNull()
+    expect(within(cardFor('Stale ticket')).getByText(/⚠ stale link/)).toBeDefined()
+    expect(within(cardFor('Stale ticket')).queryByText(/^Handled by Priority:/)).toBeNull()
     for (const title of ['Standalone none', 'Standalone unassigned', 'Standalone blank', 'Standalone null']) {
       expect(within(cardFor(title)).queryByText(/^Handled by Priority:/)).toBeNull()
+      expect(within(cardFor(title)).queryByText(/⚠ stale link/)).toBeNull()
     }
   })
 

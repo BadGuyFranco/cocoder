@@ -52,12 +52,19 @@ import { DEFAULT_PANEL_RATIO, runDisplayName, type ChatMessage, type Priority, t
 
 type DashboardTab = 'priorities' | 'tickets' | 'runs'
 type RunFilter = 'all' | 'active' | 'complete' | 'failed'
+export type TicketPrioritySignal =
+  | { kind: 'standalone' }
+  | { kind: 'handled-by-live-priority'; priorityId: string }
+  | { kind: 'stale-link'; priorityId: string }
 
-function ticketPrioritySignal(priority: Ticket['priority']): string | null {
+export function ticketPrioritySignal(priority: Ticket['priority'], livePriorityIds: readonly string[]): TicketPrioritySignal {
   const value = priority?.trim()
-  if (!value) return null
+  if (!value) return { kind: 'standalone' }
   const normalized = value.toLowerCase()
-  return normalized === 'none' || normalized === 'unassigned' ? null : value
+  if (normalized === 'none' || normalized === 'unassigned') return { kind: 'standalone' }
+  return livePriorityIds.includes(value)
+    ? { kind: 'handled-by-live-priority', priorityId: value }
+    : { kind: 'stale-link', priorityId: value }
 }
 
 function TabStrip({ active, onChange, priorities, tickets, runs }: { active: DashboardTab; onChange: (tab: DashboardTab) => void; priorities: number; tickets: number; runs: number }) {
@@ -97,7 +104,7 @@ function TabStrip({ active, onChange, priorities, tickets, runs }: { active: Das
   )
 }
 
-function TicketsTab({ tickets, onLaunchTicket, onReorderTickets, launchBlocked, live }: { tickets: Ticket[]; onLaunchTicket: (ticket: Ticket) => void; onReorderTickets: (from: number, to: number) => void; launchBlocked: boolean; live: boolean }) {
+function TicketsTab({ tickets, livePriorityIds, onLaunchTicket, onReorderTickets, launchBlocked, live }: { tickets: Ticket[]; livePriorityIds: readonly string[]; onLaunchTicket: (ticket: Ticket) => void; onReorderTickets: (from: number, to: number) => void; launchBlocked: boolean; live: boolean }) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [drag, setDrag] = useState<{ from: number | null; over: number | null }>({ from: null, over: null })
   const draggedIndex = useRef<number | null>(null)
@@ -137,7 +144,7 @@ function TicketsTab({ tickets, onLaunchTicket, onReorderTickets, launchBlocked, 
         {openTickets.map((ticket, index) => {
           const ticketLaunchDisabled = launchDisabled || Boolean(ticket.pendingCloseRunId)
           const ticketLaunchTitle = ticket.pendingCloseRunId ? PENDING_CLOSE_HINT : launchTitle
-          const prioritySignal = ticketPrioritySignal(ticket.priority)
+          const prioritySignal = ticketPrioritySignal(ticket.priority, livePriorityIds)
           return (
           <div
             key={ticket.id}
@@ -163,8 +170,11 @@ function TicketsTab({ tickets, onLaunchTicket, onReorderTickets, launchBlocked, 
               <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-accent)', minWidth: 34, paddingTop: 2 }}>{ticket.id}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 500, lineHeight: 1.4, paddingTop: 1 }}>{ticket.title}</div>
-                {prioritySignal && (
-                  <div style={{ width: 'fit-content', maxWidth: '100%', marginTop: 5, padding: '2px 6px', border: '1px solid var(--cb-border)', borderRadius: 3, background: 'var(--cb-bg-soft)', fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Handled by Priority: {prioritySignal}</div>
+                {prioritySignal.kind === 'handled-by-live-priority' && (
+                  <div style={{ width: 'fit-content', maxWidth: '100%', marginTop: 5, padding: '2px 6px', border: '1px solid var(--cb-border)', borderRadius: 3, background: 'var(--cb-bg-soft)', fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Handled by Priority: {prioritySignal.priorityId}</div>
+                )}
+                {prioritySignal.kind === 'stale-link' && (
+                  <div style={{ width: 'fit-content', maxWidth: '100%', marginTop: 5, padding: '2px 6px', border: '1px solid rgba(212,118,110,0.20)', borderRadius: 3, background: 'var(--cb-highlight-muted)', fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-highlight)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>⚠ stale link · {prioritySignal.priorityId}</div>
                 )}
                 <div style={{ fontSize: 10.5, color: 'var(--cb-text-muted)', marginTop: 3 }}>{ticket.pendingCloseRunId ? `pending close via ${ticket.pendingCloseRunId}` : `${ticket.type || 'ticket'} · ${ticket.priority || 'none'} · ${ticket.status || 'Open'}`}</div>
               </div>
@@ -276,6 +286,7 @@ export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, se
   const onResizeTo = (nextRatio: number) => onPanelRatioChange(clampPanelRatio(nextRatio, containerWidth()))
   const gridTemplateColumns = `${Number((ratio * 100).toFixed(4))}% 6px 1fr`
   const openTicketCount = tickets.filter((ticket) => ticket.state === 'open').length
+  const livePriorityIds = priorities.map((priority) => priority.id)
   const launchBlocked = runs.some((r) => r.status === 'running')
   const addTitle = activeTab === 'priorities' ? 'Add priority' : activeTab === 'tickets' ? 'Add ticket' : ''
   const addAction = activeTab === 'priorities' ? onAddPriority : activeTab === 'tickets' ? onAddTicket : null
@@ -302,7 +313,7 @@ export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, se
           </div>
           <div className="oz-panel-body">
             {activeTab === 'priorities' && <PrioritiesPanel priorities={priorities} runs={runs} onReorder={onReorder} onLaunch={onLaunch} onAdhoc={onAdhoc} onAddPriority={onAddPriority} onSelectRun={setSelectedRunId} selectedRunId={selectedRunId} />}
-            {activeTab === 'tickets' && <TicketsTab tickets={tickets} onLaunchTicket={onLaunchTicket} onReorderTickets={onReorderTickets} launchBlocked={launchBlocked} live={live} />}
+            {activeTab === 'tickets' && <TicketsTab tickets={tickets} livePriorityIds={livePriorityIds} onLaunchTicket={onLaunchTicket} onReorderTickets={onReorderTickets} launchBlocked={launchBlocked} live={live} />}
             {activeTab === 'runs' && <RunsTab runs={runs} priorities={priorities} onSelectRun={setSelectedRunId} />}
           </div>
         </div>
