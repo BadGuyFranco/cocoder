@@ -1,8 +1,8 @@
 {
   "personas": {
     "oz": {
-      "cli": "claude",
-      "model": "sonnet",
+      "cli": "codex",
+      "model": "",
       "plays": {
         "create-priority": {
           "cli": "claude",
