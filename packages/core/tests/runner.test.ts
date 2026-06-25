@@ -3706,10 +3706,15 @@ describe('runRun (multi-atom loop)', () => {
     expect(store.listEvents(result.runId).some((e) => e.type === 'oscar-nudge' && (e.data as { seq?: number }).seq === debReq.seq)).toBe(false)
   })
 
-  test('full-run Deb watcher delivers a Deb-authored nudge during Bob build', async () => {
+  test('full-run Deb watcher delivers a feed-evidenced Deb nudge during Bob build', async () => {
     const store = openRunStore(':memory:')
     const statusWrites: DebStatus[] = []
-    const debReq: NudgeRequest = { target: 'oscar', message: 'Oscar — clarify the acceptance evidence before verify', rationale: 'Bob is building and the blocker is in orchestration scope', seq: 1 }
+    const debReq: NudgeRequest = {
+      target: 'oscar',
+      message: 'Oscar — clarify the acceptance evidence before verify',
+      rationale: 'The current status feed includes the `monitor-assessment` event, so Bob is still in the build monitor window.',
+      seq: 1,
+    }
     let samples = 0
     const sent: Array<{ ref: string; text: string }> = []
     const io: RunnerIO = {
@@ -3718,13 +3723,13 @@ describe('runRun (multi-atom loop)', () => {
         statusWrites,
         readNudge: async (nudgePath) => {
           if (!nudgePath.endsWith('deb-nudge.json')) return null
-          const runId = store.listRuns()[0]?.id
-          return runId && store.listEvents(runId).some((e) => e.type === 'builder-dispatch') ? debReq : null
+          return statusWrites.some((status) => status.waitCondition === 'monitoring builder on atom 0' && status.recentEvents.some((event) => event.type === 'monitor-assessment')) ? debReq : null
         },
       }),
     }
     const makeSlowBuildJudge: MakeJudge = () => async () => {
       samples += 1
+      if (samples === 3) return { state: 'stuck', note: 'still building', nudge: 'still building?' }
       if (samples < 8) {
         await sleep(2)
         return { state: 'progressing' }
@@ -3750,9 +3755,11 @@ describe('runRun (multi-atom loop)', () => {
     expect(sent).not.toContainEqual({ ref: 'surface:2', text: debReq.message })
     const debNudge = store.listEvents(result.runId).find((e) => e.type === 'oscar-nudge' && (e.data as { source?: string }).source === 'deb')
     expect(debNudge?.data).toMatchObject({ stage: 'watch', text: debReq.message, rationale: debReq.rationale })
+    expect(store.listEvents(result.runId).some((e) => e.type === 'deb-nudge-rejected')).toBe(false)
     expect(store.listEvents(result.runId).some((e) => e.type === 'nudge' && String((e.data as { text?: unknown }).text).includes(debReq.message))).toBe(false)
     const buildingStatuses = statusWrites.filter((status) => status.waitCondition === 'monitoring builder on atom 0')
     expect(buildingStatuses.length).toBeGreaterThan(1)
+    expect(buildingStatuses.some((status) => status.recentEvents.some((event) => event.type === 'monitor-assessment'))).toBe(true)
     expect(buildingStatuses.some((status) => status.watch.lastNudgeAt !== null)).toBe(true)
   })
 
