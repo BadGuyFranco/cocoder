@@ -24,16 +24,17 @@ import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import { CmuxSessionHost } from '@cocoder/session-hosts'
 import { authoringPlayViaDaemon, migrateHistoryViaDaemon, requestDebRepairViaDaemon, resumeViaDaemon, runViaDaemon, startOzDaemon, supportCommitViaDaemon, teardownViaDaemon, type DebRepairEvidenceItem } from './client.js'
 import { closeTicketViaCli } from './close-ticket.js'
-import { createPriorityInvocation } from './oz-args.js'
+import { createPriorityInvocation, editPriorityInvocation } from './oz-args.js'
 
 const log = (m: string): void => console.error(`[cocoder] ${m}`)
 const out = (m: string): void => {
   process.stdout.write(`${m}\n`)
 }
-const usage = 'usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz create-priority --id <id> --title <text> --objective <text> [--details-file <path> | --details-stdin]   |   cocoder oz close-ticket <id> [--resolution <text>] [--run <runId>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]   |   cocoder oz commit-support <runId>   |   cocoder oz resume <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]'
+const usage = 'usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz create-priority --id <id> --title <text> --objective <text> [--details-file <path> | --details-stdin]   |   cocoder oz edit-priority <id> [--objective <text>] [--mode <replace-body|append-section>] [--details-file <path> | --details-stdin]   |   cocoder oz close-ticket <id> [--resolution <text>] [--run <runId>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]   |   cocoder oz commit-support <runId>   |   cocoder oz resume <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]'
 const requestDebRepairUsage = 'usage: cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]'
 const closeTicketUsage = 'usage: cocoder oz close-ticket <id> [--resolution <text>] [--run <runId>]'
 const createPriorityUsage = 'usage: cocoder oz create-priority --id <id> --title <text> --objective <text> [--details-file <path> | --details-stdin]'
+const editPriorityUsage = 'usage: cocoder oz edit-priority <id> [--objective <text>] [--mode <replace-body|append-section>] [--details-file <path> | --details-stdin]'
 
 function authorInvocationFromArgv(): unknown {
   const jsonIdx = process.argv.indexOf('--json')
@@ -209,6 +210,34 @@ async function main(): Promise<void> {
       if (result.turnLogPath) out(`  turn log: ${result.turnLogPath}`)
     } else {
       out(`create-priority for ${invocation.id} completed, but no commit was created`)
+      if (result.outOfLanePaths.length) out(`  held back outside the Play lane: ${result.outOfLanePaths.join(', ')}`)
+    }
+    return
+  }
+  if (cmd === 'oz' && arg1 === 'edit-priority') {
+    let invocation: Record<string, string>
+    try {
+      invocation = editPriorityInvocation(process.argv.slice(4), {
+        readFileText: (path) => readFileSync(path, 'utf8'),
+        readStdin: () => readFileSync(0, 'utf8'),
+      })
+    } catch (err) {
+      console.error(`cocoder: ${err instanceof Error ? err.message : String(err)}`)
+      console.error(editPriorityUsage)
+      process.exit(2)
+    }
+    const live = await probeDaemon({ port: DEFAULT_OZ_PORT })
+    if (!live.alive) {
+      console.error('cocoder: no Oz daemon running — cannot edit a priority')
+      process.exit(1)
+    }
+    const result = await authoringPlayViaDaemon(`http://127.0.0.1:${live.port}`, 'cocoder', 'edit-priority', invocation, 'oscar')
+    if (result.commitSha) {
+      out(`edited priority ${invocation.id}: ${result.commitSha}`)
+      if (result.committedPaths.length) out(`  files: ${result.committedPaths.join(', ')}`)
+      if (result.turnLogPath) out(`  turn log: ${result.turnLogPath}`)
+    } else {
+      out(`edit-priority for ${invocation.id} completed, but no commit was created`)
       if (result.outOfLanePaths.length) out(`  held back outside the Play lane: ${result.outOfLanePaths.join(', ')}`)
     }
     return
