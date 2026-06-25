@@ -3205,19 +3205,39 @@ describe('runRun (multi-atom loop)', () => {
     expect(statusWrites.some((s) => s.bob === 'running' && s.waitCondition.includes('monitoring builder'))).toBe(true)
     expect(statusWrites.some((s) => s.oscar === 'verifying' && s.verify === 'pending')).toBe(true)
     expect(statusWrites.some((s) => s.watch.active)).toBe(true)
-    expect(statusWrites.at(-1)?.oscar).toBe('wrapped')
+    const finalStatus = statusWrites.at(-1)!
+    expect(finalStatus.oscar).toBe('wrapped')
+    expect(finalStatus.watch.active).toBe(false)
     // WS1/0054: a run-end terminal projection refreshes the feed AFTER wrap delivery (runner.ts), so the
     // FINAL waitCondition is the concrete terminal string for a completed run — it overrides the richer
     // wrap-delivery line (which named in-scope Surface-A edits). Pinned exactly so wording drift is caught.
-    expect(statusWrites.at(-1)?.waitCondition).toBe(
+    expect(finalStatus.waitCondition).toBe(
       'run completed; Oscar remains reachable for founder questions until explicit teardown',
     )
     const events = store.listEvents(store.listRuns()[0]!.id)
+    const derivedTerminal = deriveTerminalProjection(events)!
+    const canonicalTerminal = renderDebStatus({
+      store,
+      runId: store.listRuns()[0]!.id,
+      priority,
+      scopes: { oscar: oscar.writeScope, bob: bob.writeScope, deb: deb.writeScope },
+      phase: derivedTerminal.phase,
+      activeAtom: derivedTerminal.activeAtom,
+      activeTask: null,
+      waitCondition: finalStatus.waitCondition,
+    }).json
+    expect(finalStatus.activeAtom).toBe(derivedTerminal.activeAtom)
+    expect(finalStatus.oscar).toBe(canonicalTerminal.oscar)
+    expect(finalStatus.bob).toBe(canonicalTerminal.bob)
+    expect(finalStatus.verify).toBe(canonicalTerminal.verify)
+    expect(finalStatus.watch).toEqual(canonicalTerminal.watch)
+    expect(finalStatus.recentEvents.map((event) => event.type)).toEqual(expect.arrayContaining(['deb-watch-stopped', 'run-end']))
     expect(events.some((e) => e.type === 'deb-watch-started')).toBe(true)
     expect(events.some((e) => e.type === 'deb-watch-dispatch')).toBe(false)
     expect(events.some((e) => e.type === 'deb-status' && (e.data as { waitCondition?: string }).waitCondition === 'awaiting first directive')).toBe(true)
     expect(events.filter((e) => e.type === 'deb-status')).toHaveLength(statusWrites.length)
     expect(events.some((e) => e.type === 'deb-watch-stopped')).toBe(true)
+    expect(events.map((e) => e.type).lastIndexOf('deb-status')).toBeGreaterThan(events.map((e) => e.type).indexOf('run-end'))
     expect(sent.some((text) => text.startsWith('DEB WATCH'))).toBe(false)
 
     const noDebStore = openRunStore(':memory:')
@@ -3241,6 +3261,37 @@ describe('runRun (multi-atom loop)', () => {
       verify: s.verify,
       outstandingFaults: s.outstandingFaults,
       handoffs: s.handoffs,
+    })
+
+    test('failed run: on-disk terminal DebStatus stops the watcher and matches deriveTerminalProjection', async () => {
+      const store = openRunStore(':memory:')
+      const statusWrites: DebStatus[] = []
+      const result = await runRun(
+        baseDeps({
+          store,
+          git: scriptedGit([['packages/atom.ts']]),
+          io: fakeIO({ directives: [delegate('atom 0'), wrapup('Oscar seed closeout')], statusWrites }),
+          getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
+          runHeadless: async () => ({ exitCode: 0, output: 'PLAY CLOSEOUT\n' }),
+        }),
+        { ...input, deb, wrapPlay, wrapPlayAssignment },
+      )
+      expect(result.status).toBe('failed')
+
+      const events = store.listEvents(result.runId)
+      const derived = deriveTerminalProjection(events)!
+      expect(derived).toEqual({ phase: 'faulted', activeAtom: 1 })
+
+      const terminal = statusWrites.at(-1)!
+      expect(terminal.oscar).toBe('blocked')
+      expect(terminal.watch.active).toBe(false)
+      expect(terminal.recentEvents.map((event) => event.type)).toEqual(expect.arrayContaining(['deb-watch-stopped', 'run-end']))
+      const canonical = renderDebStatus({ store, runId: result.runId, priority, scopes: {}, phase: derived.phase, activeAtom: derived.activeAtom, activeTask: null, waitCondition: 'derived' }).json
+      expect(projectionFields(terminal)).toEqual(projectionFields(canonical))
+
+      const types = events.map((e) => e.type)
+      expect(types.lastIndexOf('deb-status')).toBeGreaterThan(types.indexOf('run-end'))
+      expect(events.filter((e) => e.type === 'deb-status')).toHaveLength(statusWrites.length)
     })
 
     test('held run: on-disk terminal DebStatus matches deriveTerminalProjection (was a stale pre-hold phase)', async () => {
@@ -3435,8 +3486,9 @@ describe('runRun (multi-atom loop)', () => {
   test('actionable fault reaches Deb triage without a duplicate Deb watch prompt', async () => {
     const store = openRunStore(':memory:')
     const sent: string[] = []
+    const statusWrites: DebStatus[] = []
     const io: RunnerIO = {
-      ...fakeIO({ directives: [] }),
+      ...fakeIO({ directives: [], statusWrites }),
       async awaitDirective() {
         throw new Error('no valid directive within 1ms')
       },
@@ -3462,6 +3514,10 @@ describe('runRun (multi-atom loop)', () => {
     expect(sent.some((text) => text.startsWith('DEB WATCH'))).toBe(false)
     expect(store.listEvents(runId).filter((e) => e.type === 'triage-dispatch')).toHaveLength(1)
     expect(store.listEvents(runId).some((e) => e.type === 'deb-watch-dispatch')).toBe(false)
+    const finalStatus = statusWrites.at(-1)!
+    expect(finalStatus.watch.active).toBe(false)
+    expect(finalStatus.waitCondition).toBe('run failed after directive-timeout; no WRAP-UP READY artifact will be emitted for this run')
+    expect(finalStatus.recentEvents.map((event) => event.type)).toEqual(expect.arrayContaining(['deb-watch-stopped', 'run-end']))
   })
 
   test('delivers a Deb-authored nudge to Oscar (Deb advises; the runner delivers — ADR-0016)', async () => {

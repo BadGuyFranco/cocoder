@@ -80,7 +80,7 @@ import {
   commitMessage,
 } from './prompts.js'
 import { renderRunRecord } from './record.js'
-import { type DebStatus, type RunnerPhase, deriveRunSummary, deriveTerminalProjection, renderDebStatus } from './status.js'
+import { type DebStatus, type RunnerPhase, deriveRunSummary, deriveTerminalProjection, renderDebStatus, terminalWaitCondition } from './status.js'
 import { captureDebTerminalSnapshot, renderDebTerminalSnapshotMarkdown } from './terminal-snapshot.js'
 import { isStopRequestedError } from './stop.js'
 import { triageFault, type TriageDeps } from './triage.js'
@@ -637,7 +637,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       type: 'run-end',
       data: { status: 'failed', atoms: atomIndex === null ? n : Math.max(n, atomIndex + 1), committedShas, outOfScope, selfCommitted },
     })
-    await refreshStatus('faulted', atomIndex, null, `run failed after ${type}; no WRAP-UP READY artifact will be emitted for this run`)
+    await stopDebWatcher()
+    const terminalProjection = deriveTerminalProjection(store.listEvents(run.id))
+    if (terminalProjection) await refreshStatus(terminalProjection.phase, terminalProjection.activeAtom, null, `run failed after ${type}; no WRAP-UP READY artifact will be emitted for this run`)
     try {
       await projectAndCommitPortableRunHistory({ endedAt: now() })
     } catch (err) {
@@ -1207,7 +1209,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     // instead of its stale pre-stop phase. Done AFTER portable run-history + record.md are written so neither
     // sibling surface picks up this terminal deb-status event — the feed is the only intended WS1 shift.
     const terminalProjection = deriveTerminalProjection(store.listEvents(run.id))
-    if (terminalProjection) await refreshStatus(terminalProjection.phase, terminalProjection.activeAtom, null, 'run stopped')
+    if (terminalProjection) await refreshStatus(terminalProjection.phase, terminalProjection.activeAtom, null, terminalWaitCondition(status))
     log(`run ${run.id} stopped; ${committedShas.length} commit(s) over ${atoms} atom(s); record at ${recordPath}`)
     return {
       runId: run.id,
@@ -1244,7 +1246,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     // instead of its stale pre-hold phase. Done AFTER portable run-history + record.md are written so neither
     // sibling surface picks up this terminal deb-status event — the feed is the only intended WS1 shift.
     const terminalProjection = deriveTerminalProjection(store.listEvents(run.id))
-    if (terminalProjection) await refreshStatus(terminalProjection.phase, terminalProjection.activeAtom, null, 'run held; awaiting a founder directive to resume')
+    if (terminalProjection) await refreshStatus(terminalProjection.phase, terminalProjection.activeAtom, null, terminalWaitCondition(status))
     log(`run ${run.id} held; ${committedShas.length} commit(s) over ${atoms} atom(s); record at ${recordPath}`)
     return {
       runId: run.id,
@@ -1532,23 +1534,8 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     type: 'run-end',
     data: { status, atoms: n, committedShas, outOfScope, selfCommitted },
   })
-  const terminalPhase: RunnerPhase =
-    status === 'awaiting-founder' || status === 'awaiting-archive-confirmation'
-      ? 'awaiting-founder'
-      : status === 'failed' || status === 'stopped' || status === 'held'
-        ? 'faulted'
-        : 'wrapped'
-  const terminalWait =
-    status === 'awaiting-archive-confirmation'
-      ? 'awaiting founder archive confirmation; Oscar remains reachable until explicit teardown'
-      : status === 'awaiting-founder'
-        ? 'awaiting founder decision; Oscar remains reachable until explicit teardown'
-        : status === 'failed'
-          ? 'run failed; no further runner action pending'
-          : status === 'stopped' || status === 'held'
-            ? `run ${status}; awaiting founder action`
-            : 'run completed; Oscar remains reachable for founder questions until explicit teardown'
-  await refreshStatus(terminalPhase, n, null, terminalWait)
+  const terminalProjection = deriveTerminalProjection(store.listEvents(run.id))
+  if (terminalProjection) await refreshStatus(terminalProjection.phase, terminalProjection.activeAtom, null, terminalWaitCondition(status))
   await projectAndCommitPortableRunHistory({ endedAt })
   store.setRunStatus(run.id, status)
   // Every atom + Oscar-support + run-history commit already landed on the active branch as it was made

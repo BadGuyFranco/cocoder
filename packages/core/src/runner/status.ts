@@ -105,13 +105,33 @@ const lastAtomBearing = (events: readonly RunEvent[]): number | null => {
 export function deriveTerminalProjection(
   events: readonly RunEvent[],
 ): { readonly phase: RunnerPhase; readonly activeAtom: number | null } | null {
+  const end = last(events, ['run-end'])
+  if (!end) return null
+  const endStatus = (end.data as { status?: unknown } | undefined)?.status
+  const endAtoms = (end.data as { atoms?: unknown } | undefined)?.atoms
+  const wrapAtom = typeof endAtoms === 'number' ? endAtoms : lastAtomBearing(events)
   const held = last(events, ['run-held'])
   if (held) return { phase: 'awaiting-founder', activeAtom: atomOf(held) ?? lastAtomBearing(events) }
   const stopped = last(events, ['run-stopped'])
   if (stopped) return { phase: 'faulted', activeAtom: atomOf(stopped) ?? lastAtomBearing(events) }
-  const endStatus = (last(events, ['run-end'])?.data as { status?: unknown } | undefined)?.status
   if (endStatus === 'failed') return { phase: 'faulted', activeAtom: lastAtomBearing(events) }
+  if (endStatus === 'awaiting-founder' || endStatus === 'awaiting-archive-confirmation') return { phase: 'awaiting-founder', activeAtom: wrapAtom }
+  if (endStatus === 'completed') return { phase: 'wrapped', activeAtom: wrapAtom }
+  if (endStatus === 'held') return { phase: 'awaiting-founder', activeAtom: wrapAtom }
+  if (endStatus === 'stopped') return { phase: 'faulted', activeAtom: wrapAtom }
   return null
+}
+
+export function terminalWaitCondition(status: RunStatus): string {
+  return status === 'awaiting-archive-confirmation'
+    ? 'awaiting founder archive confirmation; Oscar remains reachable until explicit teardown'
+    : status === 'awaiting-founder'
+      ? 'awaiting founder decision; Oscar remains reachable until explicit teardown'
+      : status === 'failed'
+        ? 'run failed; no further runner action pending'
+        : status === 'stopped' || status === 'held'
+          ? `run ${status}; awaiting founder action`
+          : 'run completed; Oscar remains reachable for founder questions until explicit teardown'
 }
 // ── WS1.3 run-level summary projection (runner-decoupling, ADDITIVE; see runner-decoupling-refactor.md) ─
 // The portable run-history surface's run-level fields — `status`, `atoms`, `committedShas`, `outOfScope`,

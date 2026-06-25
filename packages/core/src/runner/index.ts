@@ -37,6 +37,7 @@ export {
   renderDebStatus,
   deriveTerminalProjection,
   deriveRunSummary,
+  terminalWaitCondition,
   type RunSummary,
   type DebStatus,
   type RunnerPhase,

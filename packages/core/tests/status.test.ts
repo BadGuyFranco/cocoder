@@ -225,6 +225,21 @@ describe('deriveTerminalProjection — WS1 terminal projection seed', () => {
     expect(projectionFor(faultedEvents)).toEqual({ phase: 'faulted', activeAtom: 0 })
   })
 
+  test('completed and awaiting terminal wraps project from run-end status and atom count', () => {
+    expect(projectionFor([{ type: 'wrapup', data: { atoms: 2 } }, { type: 'run-end', data: { status: 'completed', atoms: 2, committedShas: [], outOfScope: [] } }])).toEqual({
+      phase: 'wrapped',
+      activeAtom: 2,
+    })
+    expect(projectionFor([{ type: 'wrap-disposition', data: { disposition: 'archive-confirmation' } }, { type: 'run-end', data: { status: 'awaiting-archive-confirmation', atoms: 1, committedShas: [], outOfScope: [] } }])).toEqual({
+      phase: 'awaiting-founder',
+      activeAtom: 1,
+    })
+    expect(projectionFor([{ type: 'wrap-disposition', data: { disposition: 'continue' } }, { type: 'run-end', data: { status: 'awaiting-founder', atoms: 1, committedShas: [], outOfScope: [] } }])).toEqual({
+      phase: 'awaiting-founder',
+      activeAtom: 1,
+    })
+  })
+
   test('faulted: DebStatus rendered from the derived pair matches the canonical one (modulo display labels)', () => {
     // Render BOTH from one store/run so event `at` timestamps (recordEvent stamps real wall-clock, which
     // DebStatus surfaces via lastDirectiveAt/recentEvents[].at) are identical — otherwise two stores drift
