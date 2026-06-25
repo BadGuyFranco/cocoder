@@ -1,4 +1,5 @@
 [
+  "orchestration-e2e-test",
   "model-layer",
   "new-primary-root",
   "priority-audit"
