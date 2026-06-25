@@ -166,8 +166,19 @@ independent of Deb's judgment about whether the change is "minor."
    owns, and never off a fix she herself just made live.
 5. **Run-end founder suggestion** — anything **interfering** (touches the runner or the target code): Deb
    does **not** act on it. She holds it and surfaces a suggested fix at **run-end**. The founder decides:
-   **file a ticket**, or **approve**. On approval (a fix *or* a ticket addition), Deb commits it **through
-   the normal commit process** — attributed, gated, in the ledger.
+   **file a ticket**, or **approve**.
+
+   > **Founder decision (2026-06-25, the "approve" semantics — RESOLVED):** option **(B)** — *approve
+   > routes to the ticket/run path*. On either choice the change is landed by a **normal run or operator
+   > session through the runner spine**; **Deb never commits interfering code herself** (preserving §3.3's
+   > "who fixes the runner? a filed ticket, never Deb-as-owner" invariant). So "commits through the normal
+   > commit process" means *the runner* commits it, not Deb. No new Deb commit op exists. The held diff is
+   > **captured and reverted to HEAD** at hold-time (untracked adds quarantined under the gitignored dialogue
+   > dir, tracked mods described in the deb-response), so it never dangles in the working tree to be swept
+   > into a later run's pre-run snapshot — closing option-A's fragility. Implemented as the dedicated
+   > run-end **founder-suggestion artifact** (`FounderEscalation`-shaped, with the explicit
+   > *file-a-ticket | approve* options) written on the interfering-held path; `deb-applied`/
+   > `deb-directed-running → founder-escalated → complete` in the ADR-0036 state machine.
 
 For now the **founder is the disposition authority** for every interfering item; as the system seasons
 (≈ a week of live running), Deb's run-end suggestions taper to genuine edge cases.
@@ -250,16 +261,23 @@ held for the founder (`held-for-founder`, surfaced via the `interfering-held` ev
 non-interfering `.md` self-fixes committed through the governed spine under the shared governance author,
 no bespoke `deb-repair` author (`75a9cb5`), with `deb.md` aligned to the overseer model (`4a5b52a`);
 **(e)** the guarded `reconcile-close` authority (`538eed4`). The run_234 shape is pinned at both the
-predicate and the daemon-path levels. **Residual for full 0055 closure:** a dedicated run-end
-**founder-suggestion artifact** presenting the explicit *file-a-ticket | approve* options, and the
-**on-approval governed-commit** flow (today an interfering change is held + surfaced; the founder disposes
-via the existing ticket/run paths, not a one-button approve). This needs a small dialogue state-machine
-transition and is left for a follow-up — 0055 stays open for it; 0058 is fully met and closed.
+predicate and the daemon-path levels.
+
+**Residual — DELIVERED (2026-06-25, loop-down operator session):** the dedicated run-end
+**founder-suggestion artifact** (`FounderEscalation`-shaped, explicit *file-a-ticket | approve* options,
+recommendedOption + evidenceRefs at the deb-response and the captured held change) now lands on the
+interfering-held path for both the applied and directed-applied flows, routing
+`deb-applied`/`deb-directed-running → founder-escalated → complete`. Per the **§3.2 "approve" decision
+(option B)** pinned above, "approve" routes to the existing ticket/run path — Deb never commits interfering
+code herself, so no new commit op; the held diff is captured (quarantined) and the working tree reverted to
+HEAD so it cannot dangle. With this, **0055's reframed acceptance is fully met and 0055 is closed**; 0058
+was already met and closed.
 
 ## 8. Tickets
 
 D1–D5 are tracked as durable bug tickets: **0055** (D1), **0056** (D2), **0057** (D3), **0058** (D4),
-**0059** (D5). D2/D3/D5 are closed by this session's work. **0055** (D1) is **reframed** from "subordinate
-Deb-repair" to "implement the overseer model + interference check (§3)"; **0058** (D4) is **reframed** from
-"prevent-vs-detect crux" to "keep detection + add the run-wrap audit assertion (§4)." Both remain open as
-the founder-gated overseer build.
+**0059** (D5). D2/D3/D5 are closed by this session's work. **0055** (D1) was **reframed** from "subordinate
+Deb-repair" to "implement the overseer model + interference check (§3)"; **0058** (D4) was **reframed** from
+"prevent-vs-detect crux" to "keep detection + add the run-wrap audit assertion (§4)." Both are now **closed**:
+the overseer build A–E plus the run-end founder-suggestion residual (§7) complete 0055; 0058 was met by the
+FLAG-mode audit assertion (§4).
