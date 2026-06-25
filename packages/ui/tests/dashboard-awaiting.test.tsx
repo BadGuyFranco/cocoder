@@ -165,6 +165,30 @@ describe('Dashboard layout', () => {
     expect(column.getByText('Guard against design-ref rebuilds reverting committed packages/ui/app fixes')).toBeDefined()
   })
 
+  it('shows owned-ticket priority signals in cards while standalone tickets stay untagged', () => {
+    const queueTickets: Ticket[] = [
+      { ...tickets[2], id: 'owned', title: 'Owned ticket', priority: 'oz-dashboard-bugs' },
+      { ...tickets[0], id: 'none', title: 'Standalone none', priority: 'none' },
+      { ...tickets[0], id: 'unassigned', title: 'Standalone unassigned', priority: 'unassigned' },
+      { ...tickets[0], id: 'blank', title: 'Standalone blank', priority: '' },
+      { ...tickets[0], id: 'null', title: 'Standalone null', priority: null },
+    ]
+    const { container } = render(<DashboardHarness runs={[]} queueTickets={queueTickets} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /Tickets 5/i }))
+    const column = within(container.firstElementChild!.children[0] as HTMLElement)
+    const cardFor = (title: string): HTMLElement => {
+      const card = column.getByText(title).closest('[draggable="true"]') as HTMLElement | null
+      if (!card) throw new Error(`missing card for ${title}`)
+      return card
+    }
+
+    expect(within(cardFor('Owned ticket')).getByText('Handled by Priority: oz-dashboard-bugs')).toBeDefined()
+    for (const title of ['Standalone none', 'Standalone unassigned', 'Standalone blank', 'Standalone null']) {
+      expect(within(cardFor(title)).queryByText(/^Handled by Priority:/)).toBeNull()
+    }
+  })
+
   it('launches a ticket fix from the modal in live mode and closes the modal', () => {
     const onLaunchTicket = vi.fn()
     const { container } = render(<DashboardHarness runs={[]} live onLaunchTicket={onLaunchTicket} />)

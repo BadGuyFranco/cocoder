@@ -53,6 +53,13 @@ import { DEFAULT_PANEL_RATIO, runDisplayName, type ChatMessage, type Priority, t
 type DashboardTab = 'priorities' | 'tickets' | 'runs'
 type RunFilter = 'all' | 'active' | 'complete' | 'failed'
 
+function ticketPrioritySignal(priority: Ticket['priority']): string | null {
+  const value = priority?.trim()
+  if (!value) return null
+  const normalized = value.toLowerCase()
+  return normalized === 'none' || normalized === 'unassigned' ? null : value
+}
+
 function TabStrip({ active, onChange, priorities, tickets, runs }: { active: DashboardTab; onChange: (tab: DashboardTab) => void; priorities: number; tickets: number; runs: number }) {
   const tabs: Array<{ id: DashboardTab; label: string; count: number }> = [
     { id: 'priorities', label: 'Priorities', count: priorities },
@@ -130,6 +137,7 @@ function TicketsTab({ tickets, onLaunchTicket, onReorderTickets, launchBlocked, 
         {openTickets.map((ticket, index) => {
           const ticketLaunchDisabled = launchDisabled || Boolean(ticket.pendingCloseRunId)
           const ticketLaunchTitle = ticket.pendingCloseRunId ? PENDING_CLOSE_HINT : launchTitle
+          const prioritySignal = ticketPrioritySignal(ticket.priority)
           return (
           <div
             key={ticket.id}
@@ -155,6 +163,9 @@ function TicketsTab({ tickets, onLaunchTicket, onReorderTickets, launchBlocked, 
               <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-accent)', minWidth: 34, paddingTop: 2 }}>{ticket.id}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 500, lineHeight: 1.4, paddingTop: 1 }}>{ticket.title}</div>
+                {prioritySignal && (
+                  <div style={{ width: 'fit-content', maxWidth: '100%', marginTop: 5, padding: '2px 6px', border: '1px solid var(--cb-border)', borderRadius: 3, background: 'var(--cb-bg-soft)', fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Handled by Priority: {prioritySignal}</div>
+                )}
                 <div style={{ fontSize: 10.5, color: 'var(--cb-text-muted)', marginTop: 3 }}>{ticket.pendingCloseRunId ? `pending close via ${ticket.pendingCloseRunId}` : `${ticket.type || 'ticket'} · ${ticket.priority || 'none'} · ${ticket.status || 'Open'}`}</div>
               </div>
               <Button variant="secondary" size="sm" icon="play" disabled={ticketLaunchDisabled} title={ticketLaunchTitle} onClick={(e) => { e.stopPropagation(); onLaunchTicket(ticket) }}>Launch</Button>
