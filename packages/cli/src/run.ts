@@ -23,13 +23,17 @@ import { getAdapter, makeAdapterRegistry } from '@cocoder/adapters'
 import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import { CmuxSessionHost } from '@cocoder/session-hosts'
 import { authoringPlayViaDaemon, migrateHistoryViaDaemon, requestDebRepairViaDaemon, resumeViaDaemon, runViaDaemon, startOzDaemon, supportCommitViaDaemon, teardownViaDaemon, type DebRepairEvidenceItem } from './client.js'
+import { closeTicketViaCli } from './close-ticket.js'
+import { createPriorityInvocation } from './oz-args.js'
 
 const log = (m: string): void => console.error(`[cocoder] ${m}`)
 const out = (m: string): void => {
   process.stdout.write(`${m}\n`)
 }
-const usage = 'usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]   |   cocoder oz commit-support <runId>   |   cocoder oz resume <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]'
+const usage = 'usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz create-priority --id <id> --title <text> --objective <text>   |   cocoder oz close-ticket <id> [--resolution <text>] [--run <runId>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]   |   cocoder oz commit-support <runId>   |   cocoder oz resume <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]'
 const requestDebRepairUsage = 'usage: cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]'
+const closeTicketUsage = 'usage: cocoder oz close-ticket <id> [--resolution <text>] [--run <runId>]'
+const createPriorityUsage = 'usage: cocoder oz create-priority --id <id> --title <text> --objective <text>'
 
 function authorInvocationFromArgv(): unknown {
   const jsonIdx = process.argv.indexOf('--json')
@@ -141,6 +145,68 @@ async function main(): Promise<void> {
       if (result.outOfLanePaths.length) out(`  out of lane, flagged not withheld: ${result.outOfLanePaths.join(', ')}`)
     } else {
       out(`no support edits pending for ${runId}`)
+    }
+    return
+  }
+  if (cmd === 'oz' && arg1 === 'close-ticket') {
+    const ticketId = process.argv[4]
+    if (!ticketId) {
+      console.error(closeTicketUsage)
+      process.exit(2)
+    }
+    const resolution = optionValue('--resolution')
+    const runId = optionValue('--run')
+    if ((process.argv.includes('--resolution') && !resolution) || (process.argv.includes('--run') && !runId)) {
+      console.error(closeTicketUsage)
+      process.exit(2)
+    }
+    // A control-plane close is a loop-DOWN operation: while a daemon is live, an out-of-band close can
+    // race an active run for the same ticket (ADR-0041 D2/D3). Refuse and point at the in-loop path.
+    const live = await probeDaemon({ port: DEFAULT_OZ_PORT })
+    if (live.alive) {
+      console.error(`cocoder: a daemon is live on :${live.port} — refusing an out-of-band ticket close (ADR-0041 D2/D3: it can race an active run). Let the run close its own target, or stop the loop first.`)
+      process.exit(1)
+    }
+    const result = await closeTicketViaCli({
+      repoPath: process.cwd(),
+      ticketId,
+      resolution: resolution ?? 'Closed via cocoder oz close-ticket.',
+      closedDate: new Date().toISOString().slice(0, 10),
+      ...(runId ? { runId } : {}),
+    })
+    if (result.closed) {
+      out(`closed ticket ${ticketId}: ${result.commitSha}`)
+      if (result.files.length) out(`  files: ${result.files.join(', ')}`)
+    } else if (result.reason === 'already-closed') {
+      out(`ticket ${ticketId} is already closed${result.commitSha ? ` (reconciled stale order entry: ${result.commitSha})` : ''}`)
+    } else {
+      out(`ticket ${ticketId} not found among open tickets — nothing closed`)
+      process.exitCode = 1
+    }
+    return
+  }
+  if (cmd === 'oz' && arg1 === 'create-priority') {
+    let invocation: Record<string, string>
+    try {
+      invocation = createPriorityInvocation(process.argv.slice(4))
+    } catch (err) {
+      console.error(`cocoder: ${err instanceof Error ? err.message : String(err)}`)
+      console.error(createPriorityUsage)
+      process.exit(2)
+    }
+    const live = await probeDaemon({ port: DEFAULT_OZ_PORT })
+    if (!live.alive) {
+      console.error('cocoder: no Oz daemon running — cannot create a priority')
+      process.exit(1)
+    }
+    const result = await authoringPlayViaDaemon(`http://127.0.0.1:${live.port}`, 'cocoder', 'create-priority', invocation, 'oscar')
+    if (result.commitSha) {
+      out(`created priority ${invocation.id}: ${result.commitSha}`)
+      if (result.committedPaths.length) out(`  files: ${result.committedPaths.join(', ')}`)
+      if (result.turnLogPath) out(`  turn log: ${result.turnLogPath}`)
+    } else {
+      out(`create-priority for ${invocation.id} completed, but no commit was created`)
+      if (result.outOfLanePaths.length) out(`  held back outside the Play lane: ${result.outOfLanePaths.join(', ')}`)
     }
     return
   }
