@@ -3206,9 +3206,12 @@ describe('runRun (multi-atom loop)', () => {
     expect(statusWrites.some((s) => s.oscar === 'verifying' && s.verify === 'pending')).toBe(true)
     expect(statusWrites.some((s) => s.watch.active)).toBe(true)
     expect(statusWrites.at(-1)?.oscar).toBe('wrapped')
-    expect(statusWrites.at(-1)?.waitCondition).toContain('Oscar remains reachable')
-    expect(statusWrites.at(-1)?.waitCondition).toContain('in-scope Surface-A edits')
-    expect(statusWrites.at(-1)?.waitCondition).not.toContain('file-changing follow-ups need a new committed run path')
+    // WS1/0054: a run-end terminal projection refreshes the feed AFTER wrap delivery (runner.ts), so the
+    // FINAL waitCondition is the concrete terminal string for a completed run — it overrides the richer
+    // wrap-delivery line (which named in-scope Surface-A edits). Pinned exactly so wording drift is caught.
+    expect(statusWrites.at(-1)?.waitCondition).toBe(
+      'run completed; Oscar remains reachable for founder questions until explicit teardown',
+    )
     const events = store.listEvents(store.listRuns()[0]!.id)
     expect(events.some((e) => e.type === 'deb-watch-started')).toBe(true)
     expect(events.some((e) => e.type === 'deb-watch-dispatch')).toBe(false)
