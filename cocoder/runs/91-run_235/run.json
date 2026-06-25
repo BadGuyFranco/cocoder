@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_235",
+    "displayNumber": 91
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "priority"
+  },
+  "priorityId": "orchestration-e2e-test",
+  "playbookId": null,
+  "ticketId": null,
+  "status": "running",
+  "createdAt": 1782400510722,
+  "endedAt": null
+}
