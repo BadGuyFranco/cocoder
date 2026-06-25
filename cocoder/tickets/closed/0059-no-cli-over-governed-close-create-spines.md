@@ -2,7 +2,7 @@
 id: 0059
 title: No CLI over the governed closeTicket / create-priority spines forces ad-hoc tsx (D5)
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: deb
 created: 2026-06-24
@@ -33,3 +33,9 @@ materially feeds D1.
   the `launcher.ts:476` spine message; ADR-0041 §2 D5.
 - Low-risk ergonomics guardrail (ADR-0041 §3 R3) — closed by the CLI built in this session.
 - Related: ADR-0040 (oz-action reversible-edit lane that this CLI surfaces).
+
+## Resolution
+
+Resolved by run cli-close-ticket (no code change) on 2026-06-25.
+
+Shipped cocoder oz close-ticket (governed closeTicket + commitFiles) and cocoder oz create-priority over the existing authoring spine; close-ticket refuses while a daemon is live (loop-down control-plane op). Tests-first: close-ticket.test.ts pins the governed file moves + commit, oz-args.test.ts pins the invocation mapping. Commit 369a518.
