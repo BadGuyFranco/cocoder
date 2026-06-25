@@ -48,6 +48,20 @@ The scoped artifact existed and matched the requested content, but the runner st
 monitoring, the live Deb projections stopped refreshing, and the Deb nudge file was not reflected in the
 feed.
 
+The run later self-corrected and reached verify/commit, but it exposed a second anomaly in the same run:
+atom commit `a2155e9` included out-of-scope governance files created by Deb while diagnosing the stall:
+
+- `cocoder/tickets/INDEX.md`
+- `cocoder/tickets/order.json`
+- `cocoder/tickets/open/0060-orchestration-e2e-stalls-after-builder-artifact.md`
+
+The portable history recorded this as `out-of-scope-committed`, and the final landing outcome said those
+files were "flagged, NOT held back." The builder atom's declared scope was only
+`cocoder/audit/orchestration-e2e/**`, so the atom commit should not have carried Deb's ticket-log edit
+inside the builder work item. This is distinct from closed ticket 0053, which covered the post-wrap
+`commit-support` lane; `run_235` shows the direct atom commit gate can still sweep concurrent governance
+edits into the atom commit.
+
 ## Severity
 
 High. This strands an otherwise valid builder atom before verify and disables the Deb nudge path that is
@@ -62,6 +76,9 @@ supposed to recover or diagnose the stall.
   regression.
 - Ensure `deb-status.json` continues refreshing during the builder-monitor wait and records Deb nudge
   consumption or rejection.
+- Ensure atom commits do not sweep concurrent Deb/Oscar governance edits into the builder work item, or
+  explicitly model and gate that behavior so the out-of-scope files are not silently bundled under an atom
+  commit.
 - Run the affected core/daemon tests and an `orchestration-e2e-test` live smoke after repair.
 
 ## Notes
