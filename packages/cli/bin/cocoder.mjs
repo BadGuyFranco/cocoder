@@ -3,4 +3,5 @@
 // TypeScript directly — no build step in Phase 1 — then hands off to run.ts.
 import { register } from 'tsx/esm/api'
 register()
+await import('../src/suppress-sqlite-warning.ts')
 await import('../src/run.ts')
