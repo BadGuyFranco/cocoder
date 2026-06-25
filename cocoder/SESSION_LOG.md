@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-25 — **ticket-launchability: founder-confirmed archive wrap — stale-items PASS (run_97/run_241)**
+
+**Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** [ticket-launchability](./priorities/ticket-launchability.md) | **Run:** run_241 (display 97)
+**Outcomes:**
+- **Confirmation wrap only.** Relaunched code-complete priority from run_240 (`archive-confirmation`) to execute founder-conditioned archive approval; no build atoms delegated.
+- **Stale-items check PASS.** Zero open tickets reference `ticket-launchability`; Phase C release/rehome execution intentionally filed as [ticket-priority-repoint](./priorities/ticket-priority-repoint.md); Phases A/B/C detect-and-surface shipped on run_240.
+- **Disposition: `archive-confirmation`.** Founder approved archive; governed `archive-priority` Play executes once this run ends.
+**Next:** Reply `archive` in Oz chat to archive `ticket-launchability`, then launch `ticket-priority-repoint` for governed release/rehome at archive time.
+
 ## 2026-06-25 — **ticket-launchability: launchability signals A/B/C — archive ready (run_96/run_240)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [ticket-launchability](./priorities/ticket-launchability.md) | **Run:** run_240 (display 96)
