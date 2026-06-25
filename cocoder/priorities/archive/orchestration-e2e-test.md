@@ -5,6 +5,13 @@ scopeNarrowing:
   - cocoder/audit/orchestration-e2e/**
 ---
 
+> **Archived 2026-06-25 (founder) — archived: objective met.** Self-test passed end to end: run_235
+> (display 91) completed one full directive→dispatch→monitor→verify→commit cycle; e2e evidence file
+> committed a2155e9d under cocoder/audit/orchestration-e2e/. Founder confirmed archive 2026-06-25.
+> One low-severity anomaly: transient Deb projection staleness (~2 min lag) briefly showed atom 0
+> stuck before verify; self-corrected, no wrong commit. Logged as ticket 0060; overlaps closed 0054.
+> Fault-path (builder blocker / out-of-scope write) not exercised this run.
+
 ## Objective
 
 Exercise the **full CoCoder runner loop on live infrastructure** after the runner-decoupling refactor —
