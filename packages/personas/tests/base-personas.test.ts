@@ -7,6 +7,11 @@ const BASE_PERSONA_FILES = ['bob.md', 'deb.md', 'oscar.md', 'oz.md', 'quinn.md',
 const FRONTMATTER_PERSONA_FILES = ['bob.md', 'deb.md', 'oscar.md', 'oz.md', 'quinn.md'] as const
 const NEW_BASE_PLAY_FILES = ['documentation.md', 'code-review.md', 'electron-test.md', 'write-tests.md', 'run-tests.md'] as const
 const READ_ONLY_BASE_PLAY_FILES = ['code-review.md', 'electron-test.md', 'run-tests.md'] as const
+const PRIORITY_AUTHORING_PLAY_COMMANDS = [
+  ['create-priority.md', 'create-priority', 'cocoder oz create-priority'],
+  ['edit-priority.md', 'edit-priority', 'cocoder oz edit-priority'],
+  ['archive-priority.md', 'archive-priority', 'cocoder oz archive-priority'],
+] as const
 const templatePrioritiesDir = (): string => join(basePersonasDir(), '..', '..', '..', 'templates', 'workspace-cocoder', 'cocoder', 'priorities')
 const dogfoodBobDeltaPath = (): string => join(basePersonasDir(), '..', '..', '..', 'cocoder', 'personas', 'deltas', 'bob.md')
 
@@ -285,6 +290,17 @@ describe('basePlaysDir', () => {
       expect(callers).toEqual(['oz', 'oscar', 'bob', 'deb', 'quinn'])
       expect(callers).not.toContain('talia')
       expect(callers).not.toContain('*')
+    }
+  })
+
+  test('priority authoring Plays document their daemon-backed executable lanes', () => {
+    for (const [file, playId, command] of PRIORITY_AUTHORING_PLAY_COMMANDS) {
+      const text = readFileSync(join(basePlaysDir(), file), 'utf8')
+      const normalized = singleLine(text)
+
+      expect(normalized).toContain(`author\` tool call with \`play: "${playId}"`)
+      expect(normalized).toContain(command)
+      expect(normalized).toContain(`POST /workspaces/:id/authoring-plays/${playId}`)
     }
   })
 

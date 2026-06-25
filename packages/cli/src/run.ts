@@ -233,6 +233,10 @@ async function main(): Promise<void> {
     return
   }
   if (cmd === 'oz' && arg1 === 'create-priority') {
+    if (process.argv[4] === '--help' || process.argv[4] === '-h') {
+      console.error(createPriorityUsage)
+      process.exit(0)
+    }
     let invocation: Record<string, string>
     try {
       invocation = createPriorityInvocation(process.argv.slice(4), {
@@ -261,6 +265,10 @@ async function main(): Promise<void> {
     return
   }
   if (cmd === 'oz' && arg1 === 'edit-priority') {
+    if (process.argv[4] === '--help' || process.argv[4] === '-h') {
+      console.error(editPriorityUsage)
+      process.exit(0)
+    }
     let invocation: Record<string, string>
     try {
       invocation = editPriorityInvocation(process.argv.slice(4), {

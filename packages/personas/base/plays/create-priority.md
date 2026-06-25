@@ -19,6 +19,16 @@ writeScope:
 
 This Play runs headless on its per-(persona, Play) assigned model.
 
+This Play is the one model-mediated priority creation process. The executable lane is daemon-backed
+authoring:
+
+- From Oz chat, use exactly one `author` tool call with `play: "create-priority"` and the invocation
+  fields below.
+- From a terminal after founder approval, use the dedicated CLI wrapper:
+  `pnpm --dir <install-root> exec cocoder oz create-priority --id <id> --title <text> --objective <text> [--details-file <path> | --details-stdin]`.
+  This posts to `POST /workspaces/:id/authoring-plays/create-priority`; it must not be replaced by a
+  raw file write.
+
 Create exactly one priority file from the founder-directed invocation input. A priority is created **for a
 stated reason** (founder direction, or orchestration acting on it) and is **placed in the active stack** —
 there is **no "draft / awaiting ratification" state** (ADR-0035). The invocation must carry the explicit id,

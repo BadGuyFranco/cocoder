@@ -19,6 +19,16 @@ writeScope:
 
 This Play runs headless on its per-(persona, Play) assigned model.
 
+This Play is the one model-mediated priority edit process. The executable lane is daemon-backed
+authoring:
+
+- From Oz chat, use exactly one `author` tool call with `play: "edit-priority"` and the invocation
+  fields below.
+- From a terminal after founder approval, use the dedicated CLI wrapper:
+  `pnpm --dir <install-root> exec cocoder oz edit-priority <id> [--objective <text>] [--mode <replace-body|append-section>] [--details-file <path> | --details-stdin]`.
+  This posts to `POST /workspaces/:id/authoring-plays/edit-priority`; it must not be replaced by a raw
+  file edit when the governed authoring lane is available.
+
 Edit exactly one existing priority file from invocation input. Objective edits are founder-approved
 work: if the requested change modifies the priority's `## Objective` section, the invocation must
 include the founder's explicit objective/go-ahead. Non-Objective edits such as title, body detail,
