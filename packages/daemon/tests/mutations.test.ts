@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ClaudeAdapter, type Exec } from '@cocoder/adapters'
-import { atomSentinel, loadAssignments, loadPriority, makeGit, openRunStore, readTickets, StopRequestedError, workspaceTemplateDir, writePortableRun, type Adapter, type Git, type HeadlessRunInput, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
+import { atomSentinel, composeTicketMarkdown, loadAssignments, loadPriority, makeGit, openRunStore, readTickets, StopRequestedError, workspaceTemplateDir, writePortableRun, type Adapter, type Git, type HeadlessRunInput, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
 import { createOzServer, OZ_CSRF_HEADER, type OzServer } from '../src/index.js'
 import { ticketPendingCloseRun } from '../src/launcher.js'
 import { findOrphanedPriorities } from '../src/priority-order.js'
@@ -1977,6 +1977,14 @@ describe('Oz mutations + lifecycle', () => {
       }),
     )
     await writeFile(join(home, 'cocoder', 'priorities', 'order.json'), `${JSON.stringify(['demo'], null, 2)}\n`)
+    const ticketsDir = join(home, 'cocoder', 'tickets')
+    await mkdir(join(ticketsDir, 'open'), { recursive: true })
+    await mkdir(join(ticketsDir, 'closed'), { recursive: true })
+    await writeFile(join(ticketsDir, 'open', '0001-handled-ticket.md'), composeTicketMarkdown('0001', { title: 'Handled ticket', type: 'bug', priority: 'demo', description: 'Handled by demo.' }, '2026-06-25'))
+    await writeFile(join(ticketsDir, 'open', '0002-standalone-none.md'), composeTicketMarkdown('0002', { title: 'Standalone none', type: 'task', priority: 'none', description: 'Standalone.' }, '2026-06-25'))
+    await writeFile(join(ticketsDir, 'open', '0003-standalone-unassigned.md'), composeTicketMarkdown('0003', { title: 'Standalone unassigned', type: 'task', priority: 'unassigned', description: 'Standalone.' }, '2026-06-25'))
+    await writeFile(join(ticketsDir, 'open', '0004-other-priority.md'), composeTicketMarkdown('0004', { title: 'Other priority', type: 'task', priority: 'other-priority', description: 'Handled elsewhere.' }, '2026-06-25'))
+    await writeFile(join(ticketsDir, 'closed', '0005-closed-handled.md'), composeTicketMarkdown('0005', { title: 'Closed handled', type: 'task', priority: 'demo', description: 'Already closed.' }, '2026-06-25'))
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
     store.setRunStatus(run.id, 'awaiting-archive-confirmation')
@@ -2014,6 +2022,7 @@ describe('Oz mutations + lifecycle', () => {
         runId: run.id,
         priorityId: 'demo',
         committedPaths: ['cocoder/priorities/archive/demo.md', 'cocoder/priorities/demo.md', 'cocoder/priorities/order.json'],
+        handledTickets: [{ id: '0001', title: 'Handled ticket', priority: 'demo' }],
       },
     })
     expect(prompts[0]).toContain('# Archive Priority Play')
@@ -2022,6 +2031,15 @@ describe('Oz mutations + lifecycle', () => {
     expect(store.listEvents(run.id).some((event) => event.type === 'archive-confirmation-archived')).toBe(true)
     await expect(stat(join(home, 'cocoder', 'priorities', 'archive', 'demo.md'))).resolves.toBeDefined()
     await expect(stat(join(home, 'cocoder', 'priorities', 'demo.md'))).rejects.toThrow()
+    await expect(stat(join(ticketsDir, 'open', '0001-handled-ticket.md'))).resolves.toBeDefined()
+    await expect(stat(join(ticketsDir, 'closed', '0001-handled-ticket.md'))).rejects.toThrow()
+    expect((await readTickets(ticketsDir)).find((ticket) => ticket.id === '0001')).toMatchObject({ id: '0001', state: 'open', status: 'Open', priority: 'demo' })
+    expect(r.json.handledTickets).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: '0002' }),
+      expect.objectContaining({ id: '0003' }),
+      expect.objectContaining({ id: '0004' }),
+      expect.objectContaining({ id: '0005' }),
+    ]))
     expect(JSON.parse(await readFile(join(home, 'cocoder', 'priorities', 'order.json'), 'utf8'))).toEqual([])
   })
 

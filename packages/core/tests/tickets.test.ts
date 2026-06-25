@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, test, vi } from 'vitest'
-import { closeTicket, composeTicketMarkdown, createTicket, loadTicket, moveTicketIndexRowToClosed, nextTicketId, readTickets, TICKET_OWNER } from '../src/index.js'
+import { closeTicket, composeTicketMarkdown, createTicket, handledOpenTicketsForPriority, loadTicket, moveTicketIndexRowToClosed, nextTicketId, readTickets, TICKET_OWNER, type Ticket } from '../src/index.js'
 
 const repoRoot = (): string => join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
 
@@ -117,6 +117,35 @@ describe('ticket loading', () => {
     expect(ids).toContain('0009')
     expect(ids).toContain('0011')
     expect(ids).toContain('0014')
+  })
+})
+
+describe('handled ticket detection', () => {
+  test('returns only open tickets handled by the named priority', () => {
+    const ticket = (id: string, priority: string | null, state: Ticket['state'] = 'open'): Ticket => ({
+      id,
+      title: `Ticket ${id}`,
+      type: 'task',
+      status: state === 'open' ? 'Open' : 'Closed',
+      priority,
+      owner: 'founder-session',
+      created: '2026-06-25',
+      state,
+      body: `# Ticket ${id}`,
+    })
+    const tickets: Ticket[] = [
+      ticket('0001', 'demo'),
+      ticket('0002', 'other-priority'),
+      ticket('0003', 'demo', 'closed'),
+      ticket('0004', 'none'),
+      ticket('0005', 'unassigned'),
+      ticket('0006', ''),
+      ticket('0007', null),
+    ]
+
+    expect(handledOpenTicketsForPriority(tickets, 'demo')).toEqual([
+      { id: '0001', title: 'Ticket 0001', priority: 'demo' },
+    ])
   })
 })
 

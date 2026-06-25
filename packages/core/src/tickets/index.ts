@@ -2,6 +2,7 @@ export { loadTicket, nextTicketId, readTickets, type Ticket, type TicketState } 
 export { closeTicket, type CloseTicketInput, type CloseTicketResult } from './close.js'
 export { composeTicketMarkdown, TICKET_OWNER, type ComposeTicketMarkdownInput } from './compose.js'
 export { createTicket, type CreateTicketInput, type CreateTicketResult } from './create.js'
+export { handledOpenTicketsForPriority, type HandledTicket } from './handled.js'
 export {
   insertOpenTicketIndexRow,
   moveTicketIndexRowToClosed,

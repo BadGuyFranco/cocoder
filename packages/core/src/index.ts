@@ -171,6 +171,7 @@ export {
   closeTicket,
   composeTicketMarkdown,
   createTicket,
+  handledOpenTicketsForPriority,
   insertOpenTicketIndexRow,
   loadTicket,
   moveTicketIndexRowToClosed,
@@ -185,6 +186,7 @@ export {
   type ComposeTicketMarkdownInput,
   type CreateTicketInput,
   type CreateTicketResult,
+  type HandledTicket,
   type Ticket,
   type TicketState,
 } from './tickets/index.js'

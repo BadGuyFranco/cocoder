@@ -19,6 +19,7 @@ import {
   closeTicket,
   coCoderRunReference,
   commitFiles,
+  handledOpenTicketsForPriority,
   interferes,
   isInstructionSurface,
   isPersonaEnabled,
@@ -1859,6 +1860,11 @@ export async function requestArchiveConfirmation(ctx: OzContext, input: ArchiveC
     ctx.store.recordEvent({ runId: run.id, type: 'archive-confirmation-archived', data: { priorityId: run.priorityId, commitSha: archive.body.commitSha ?? null } })
     emitOzEvent(ctx, { type: 'archive-confirmation-archived', runId: run.id, workspaceId: run.workspaceId, status: 'completed' })
   }
+  const handledTickets: ReturnType<typeof handledOpenTicketsForPriority> = []
+  if (archived) {
+    const workspace = await findWorkspace(ctx.cocoderHome, run.workspaceId)
+    if (workspace) handledTickets.push(...handledOpenTicketsForPriority(await readTickets(ticketsDir(workspace.path)), run.priorityId))
+  }
   return {
     status: archive.status,
     body: {
@@ -1866,6 +1872,7 @@ export async function requestArchiveConfirmation(ctx: OzContext, input: ArchiveC
       archived,
       runId: run.id,
       priorityId: run.priorityId,
+      ...(handledTickets.length > 0 ? { handledTickets } : {}),
     },
   }
 }

@@ -216,6 +216,7 @@ describe('handleOzMessage', () => {
             commitSha: 'sha-archive',
             committedPaths: ['cocoder/priorities/archive/demo.md', 'cocoder/priorities/order.json'],
             outOfLanePaths: [],
+            handledTickets: [{ id: '0001', title: 'Handled ticket', priority: 'demo' }],
           },
         }
       },
@@ -229,7 +230,7 @@ describe('handleOzMessage', () => {
       body: {
         ok: true,
         command: 'archive-confirmation',
-        reply: 'Archived demo from run_7 as sha-archive (cocoder/priorities/archive/demo.md, cocoder/priorities/order.json).',
+        reply: 'Archived demo from run_7 as sha-archive (cocoder/priorities/archive/demo.md, cocoder/priorities/order.json).\n\nHandled tickets need a founder decision: 0001. They are NOT auto-closed; archived priority demo no longer covers them. Options: (a) close them through the governed ticket-close spine; (b) release them to standalone by clearing/repointing `priority:` through a governed path; (c) rehome them to another live priority.',
         action: {
           type: 'archive-confirmation',
           runId: 'run_7',
