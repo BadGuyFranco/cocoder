@@ -9,7 +9,7 @@ import type { LaunchRunTarget } from '../src/launcher.js'
 import { recordOrchestratedRun } from '../src/oz-host.js'
 import { mergeWriteSettings } from '../src/settings.js'
 
-const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
+const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId>, commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
 
 interface Fixture {
   readonly home: string
@@ -799,6 +799,7 @@ function fakeOps(): OzChatOps {
     readGoverned: async () => ({ status: 200, body: { path: 'cocoder/decisions/0017-oz-orchestration-persona.md', content: 'Governed file content.' } }),
     requestOscarDebRepair: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], state: 'complete', outcome: 'applied' } }),
     requestReconciliationClose: async () => ({ status: 200, body: { ok: true, closed: true, committedPaths: [], commitSha: null } }),
+    requestReconciliationRepoint: async () => ({ status: 200, body: { ok: true, repointed: true, targetPriority: null, committedPaths: [], commitSha: null } }),
     requestAuthoringPlay: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0 } }),
     requestArchiveConfirmation: async () => ({ status: 200, body: { ok: true, archived: true, runId: 'run_archive', priorityId: 'demo' } }),
     teardownRun: async () => ({ status: 200, body: { closed: [] } }),

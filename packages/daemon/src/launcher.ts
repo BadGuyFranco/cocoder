@@ -30,6 +30,7 @@ import {
   loadPriority,
   matchesAny,
   readTickets,
+  repointTicket,
   runCommitGate,
   runDisplayNumber,
   resolveMandatoryPlay,
@@ -122,6 +123,12 @@ export interface ReconciliationCloseInput {
   readonly workspaceId: string
   readonly ticketId: string
   readonly resolution: string
+}
+
+export interface ReconciliationRepointInput {
+  readonly workspaceId: string
+  readonly ticketId: string
+  readonly targetPriority: string | null
 }
 
 export interface TicketCloseConfirmationInput {
@@ -1308,6 +1315,39 @@ export async function requestReconciliationClose(ctx: OzContext, input: Reconcil
   // the closed ticket's run lingers as a false pending-close and would block relaunch of the next ticket.
   finalizeAwaitingFounderRunsForTicket(ctx, workspace.id, input.ticketId, 'reconciliation-close')
   return { status: 200, body: { ok: true, closed: true, commitSha: receipt.committedSha, committedPaths: close.files } }
+}
+
+export async function requestReconciliationRepoint(ctx: OzContext, input: ReconciliationRepointInput): Promise<LaunchResult> {
+  const workspace = await findWorkspace(ctx.cocoderHome, input.workspaceId)
+  if (!workspace) return { status: 404, body: { error: 'unknown workspace' } }
+
+  const activeRunId = ctx.inFlight.get(input.workspaceId)
+  if (activeRunId) {
+    const activeRun = ctx.store.getRun(activeRunId)
+    if (activeRun?.ticketId === input.ticketId) {
+      return { status: 409, body: { ok: false, error: `ticket ${input.ticketId} is the target of active run ${activeRunId} — reconciliation repoint is refused while a run owns it` } }
+    }
+  }
+
+  if (input.targetPriority !== null) {
+    const livePath = `cocoder/priorities/${input.targetPriority}.md`
+    if (!(await isFile(join(workspace.path, livePath)))) {
+      return { status: 409, body: { ok: false, error: `cannot rehome ticket ${input.ticketId} to ${input.targetPriority}: ${livePath} is not a live priority` } }
+    }
+  }
+
+  const ticketsDir = join(workspace.path, 'cocoder', 'tickets')
+  const repoint = await repointTicket({ ticketsDir, repoPath: workspace.path, ticketId: input.ticketId, targetPriority: input.targetPriority })
+  if (!repoint.repointed) {
+    return { status: 409, body: { ok: false, repointed: false, reason: repoint.reason, error: `ticket ${input.ticketId} cannot be reconciliation-repointed (${repoint.reason})` } }
+  }
+
+  const target = repoint.targetPriority ?? 'standalone'
+  const receipt = await commitFiles(ctx.git, workspace.path, repoint.files, `governance: reconciliation repoint ticket ${input.ticketId} -> ${target}`, COCODER_GOVERNANCE_AUTHOR)
+  if (!receipt.committed) return { status: 500, body: { ok: false, error: `repointed ticket ${input.ticketId} but commit failed: ${receipt.error}` } }
+  await appendAudit(ctx.cocoderHome, { action: 'deb-reconciliation-repoint', workspaceId: workspace.id, ticketId: input.ticketId, commitSha: receipt.committedSha, files: repoint.files, targetPriority: repoint.targetPriority })
+  emitOzEvent(ctx, { type: 'deb-reconciliation-repoint', workspaceId: workspace.id })
+  return { status: 200, body: { ok: true, repointed: true, targetPriority: repoint.targetPriority, commitSha: receipt.committedSha, committedPaths: repoint.files } }
 }
 
 export async function requestTicketCloseConfirmation(ctx: OzContext, input: TicketCloseConfirmationInput): Promise<LaunchResult> {
