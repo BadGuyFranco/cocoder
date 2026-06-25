@@ -128,7 +128,14 @@ export {
   type TicketCloseDecision,
 } from './plays/founder-closeout.js'
 
-export { composePriorityMarkdown, loadPriority, type ComposePriorityMarkdownInput, type Priority } from './priorities/index.js'
+export {
+  composePriorityBody,
+  composePriorityMarkdown,
+  loadPriority,
+  type ComposePriorityBodyInput,
+  type ComposePriorityMarkdownInput,
+  type Priority,
+} from './priorities/index.js'
 export {
   readGovernanceClaims,
   type DriftClaim,

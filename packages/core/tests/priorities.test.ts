@@ -2,7 +2,7 @@ import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { composePriorityMarkdown, loadPriority } from '../src/index.js'
+import { composePriorityBody, composePriorityMarkdown, loadPriority } from '../src/index.js'
 
 const priority = (id: string, body: string, frontmatter: readonly string[] = []): string => ['---', `id: ${id}`, `title: ${id}`, ...frontmatter, '---', body].join('\n')
 
@@ -65,5 +65,79 @@ describe('priority Objective loading', () => {
       scopeNarrowing: null,
       objective: 'Ship the shared priority composer.',
     })
+  })
+
+  test('composePriorityBody preserves rich details while Objective round-trips alone', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'priorities-'))
+    const objective = 'Ship the deterministic priority details contract.'
+    const details = [
+      '## Phase A',
+      '',
+      'Badge: [core-contract: deterministic]',
+      '',
+      '- Preserve founder-approved markdown verbatim.',
+      '- Verification gate: load the composed priority and prove details stay out of objective.',
+      '',
+      '## Phase B',
+      '',
+      'Keep CLI and Play surfaces unchanged in this atom.',
+      '',
+      '## Non-goals',
+      '',
+      '- Do not summarize or rewrap detailed markdown.',
+    ].join('\n')
+    const body = composePriorityBody({ objective, details })
+    const markdown = composePriorityMarkdown({ id: 'demo', title: 'Demo Priority', goal: body })
+    await writeFile(join(dir, 'demo.md'), markdown)
+
+    const loaded = loadPriority(dir, 'demo')
+    expect(loaded.objective).toBe(objective)
+    expect(loaded.goal).toContain(details)
+    expect(loaded.goal).toContain('## Phase A')
+    expect(loaded.goal).toContain('## Phase B')
+    expect(loaded.goal).toContain('## Non-goals')
+    expect(loaded.goal).toContain('Badge: [core-contract: deterministic]')
+    expect(loaded.goal).toContain('- Verification gate: load the composed priority and prove details stay out of objective.')
+  })
+
+  test('composePriorityBody without details matches the Objective-only path', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'priorities-'))
+    const body = composePriorityBody({ objective: 'Ship the Objective-only priority.' })
+    const markdown = composePriorityMarkdown({ id: 'demo', title: 'Demo Priority', goal: body })
+    await writeFile(join(dir, 'demo.md'), markdown)
+
+    expect(body).toBe('## Objective\n\nShip the Objective-only priority.')
+    expect(loadPriority(dir, 'demo')).toMatchObject({
+      id: 'demo',
+      title: 'Demo Priority',
+      scopeNarrowing: null,
+      goal: body,
+      objective: 'Ship the Objective-only priority.',
+    })
+  })
+
+  test('composePriorityBody keeps details byte-for-byte', () => {
+    const details = [
+      '## Phase A',
+      '',
+      '| Gate | Status |',
+      '| --- | --- |',
+      '| verification | required |',
+      '',
+      'Indented code:',
+      '',
+      '    pnpm --filter @cocoder/core test',
+    ].join('\n')
+
+    expect(composePriorityBody({ objective: 'Preserve rich markdown.', details })).toContain(details)
+  })
+
+  test('composePriorityBody trims objective and surrounding details whitespace', () => {
+    expect(
+      composePriorityBody({
+        objective: '\n\n  Ship the normalized body.  \n',
+        details: '\n\n## Phase A\n\nKeep this block.\n\n',
+      }),
+    ).toBe('## Objective\n\nShip the normalized body.\n\n## Phase A\n\nKeep this block.')
   })
 })
