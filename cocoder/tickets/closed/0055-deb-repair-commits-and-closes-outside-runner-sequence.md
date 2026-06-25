@@ -2,7 +2,7 @@
 id: 0055
 title: Deb-repair authors, self-commits, and closes tickets outside the runner's deterministic sequence (D1)
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: deb
 created: 2026-06-24
@@ -70,3 +70,9 @@ Most of the reframed acceptance landed (see [ADR-0041](../../decisions/0041-orch
   explicit *file-a-ticket | approve* options, plus the **on-approval governed-commit** flow. Today an
   interfering change is held + surfaced and the founder disposes via existing ticket/run paths; the
   one-button approve→commit needs a small ADR-0036 dialogue state-machine transition.
+
+## Resolution
+
+Resolved by run cli-close-ticket (no code change) on 2026-06-25.
+
+Overseer build (ADR-0041 §3) complete: interference rail, governed .md self-fix, run-wrap audit, reconciliation close, and now the run-end founder-suggestion artifact (FounderEscalation-shaped, explicit file-a-ticket | approve) for held interfering Deb fixes on both the applied and directed-applied paths. Per the §3.2 'approve' decision (option B), approve routes to the existing ticket/run path — Deb never commits interfering code herself, no new commit op; the held diff is captured (quarantined) and the tree reverted to HEAD. run_234 pinned at predicate + daemon-path levels. Delivered in commits ffb750d (+ docs 027b61b).
