@@ -805,6 +805,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     runReference,
     runBranch,
     withPortableRunHistoryScope,
+    now,
     timeouts: t,
     signal: deps.signal,
   }

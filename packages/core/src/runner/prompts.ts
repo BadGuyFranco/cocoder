@@ -440,10 +440,12 @@ The fault context carries an \`occurrence\` count (how many times this fault's f
 across runs). On a FIRST occurrence, a transient is fine to log as \`one-off\`. On a SECOND+ occurrence it
 is not a one-off — escalate, in this order:
 1. **Fix it** if it is easy and clearly within your active CoCoder authority (repair mode above).
-2. **Otherwise (your default): file a tracked ticket** — create \`cocoder/tickets/open/NNNN-slug.md\` (next
-   id from \`cocoder/tickets/INDEX.md\`, which you also update) with frontmatter \`type: bug\`, \`status:
-   Open\`, \`owner: deb\`, and \`priority: <the most relevant existing priority slug, or none>\`. That is "a
-   follow-up on an existing priority" — set \`"escalation":"ticket","ticketId":"NNNN"\` in your verdict.
+2. **Otherwise (your default): ask the runner to file a tracked ticket** — set \`"escalation":"ticket"\`
+   plus \`ticketTitle\`, \`ticketType\` (usually \`bug\`), \`ticketPriority\` (the most relevant existing
+   priority slug, or \`none\`), and \`ticketBody\` in your verdict. You may include \`ticketId\` only when
+   you have a concrete reason; otherwise the runner allocates it. The runner files the ticket through the
+   governed create-ticket spine; do NOT create \`cocoder/tickets/open/*.md\`, edit \`INDEX.md\`, or touch
+   \`order.json\` yourself.
 3. **Only if a new priority is truly warranted**, recommend it INSIDE that ticket for founder approval
    (\`"escalation":"recommend-priority"\`) — never create a \`cocoder/priorities/*\` file yourself.
 
@@ -619,7 +621,7 @@ export function buildNextOrWrapDispatch(nextDirectivePath: string, outcome: stri
 export function buildDebTriageDispatch(faultPath: string, triagePath: string, occurrence = 1): string {
   const recurrence =
     occurrence >= 2
-      ? ` This fault has now occurred ${occurrence} times (see "occurrence" in the context) — it is NOT a one-off. Escalate per your recurring-fault rules: fix it if it is easy and clearly in your fence; else file a tracked ticket under cocoder/tickets/ tagged to the most relevant existing priority (set "escalation":"ticket","ticketId":"NNNN"); only recommend a NEW priority inside that ticket for founder approval (set "escalation":"recommend-priority") — never create a priority file yourself.`
+      ? ` This fault has now occurred ${occurrence} times (see "occurrence" in the context) — it is NOT a one-off. Escalate per your recurring-fault rules: fix it if it is easy and clearly in your fence; else return tracked-ticket metadata (set "escalation":"ticket" plus ticketTitle/ticketType/ticketPriority/ticketBody) and let the runner file it through the governed create-ticket spine; only recommend a NEW priority inside that ticket for founder approval (set "escalation":"recommend-priority") — never create ticket queue files or a priority file yourself.`
       : ''
   return `TRIAGE — a fault occurred in this run. Read the fault context from ${faultPath} (and the terminal snapshot/status feed for context), classify it to exactly one disposition (cocoder-bug | repo-bug | one-off), and write your verdict to ${triagePath}. For a cocoder-bug choose "mode":"propose" (a "proposal" diff, reviewed not applied) OR, only within your write-scope, "mode":"repair" (edit the files now, then report diagnosis/whyCocoderOwned/filesChanged/verification/remainingRisk). Out-of-scope edits — including any target-repo product code — are held back at the commit-gate, never committed. A repair does not rescue the run.${recurrence}`
 }

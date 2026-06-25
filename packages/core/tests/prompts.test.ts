@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { buildBuilderDispatch, buildBuilderStandbyPrompt, buildNextOrWrapDispatch, buildObserverPrompt, buildOrchestratorPrompt, buildWrapupDelivery, commitMessage, renderPlayManifest, type Play } from '../src/index.js'
+import { buildBuilderDispatch, buildBuilderStandbyPrompt, buildDebTriageDispatch, buildNextOrWrapDispatch, buildObserverPrompt, buildOrchestratorPrompt, buildWrapupDelivery, commitMessage, renderPlayManifest, type Play } from '../src/index.js'
 
 const orchestratorInput = {
   sharedStandards: '# Standards',
@@ -125,6 +125,23 @@ describe('buildBuilderDispatch', () => {
     expect(prompt).toContain('Healthy directive, build, verify, wrap,\nand fault-boundary status refreshes update the terminal snapshot and status feed without paging you')
     expect(prompt).not.toContain('it is your eyes')
     expect(prompt).not.toContain('the feed replaces them')
+  })
+
+  test('Deb escalation asks for ticket metadata and leaves queue files to the runner', () => {
+    const prompt = buildObserverPrompt(observerInput)
+    const dispatch = buildDebTriageDispatch('/runs/run_1/fault-0.json', '/runs/run_1/triage-0.json', 2)
+
+    for (const text of [prompt, dispatch]) {
+      expect(text).toContain('ticketTitle')
+      expect(text).toContain('ticketType')
+      expect(text).toContain('ticketPriority')
+      expect(text).toContain('ticketBody')
+      expect(text).toContain('governed create-ticket spine')
+      expect(text).not.toContain('create `cocoder/tickets/open/NNNN-slug.md`')
+      expect(text).not.toContain('"ticketId":"NNNN"')
+    }
+    expect(prompt).toContain('do NOT create `cocoder/tickets/open/*.md`, edit `INDEX.md`, or touch')
+    expect(dispatch).toContain('never create ticket queue files or a priority file yourself')
   })
 
   test('renders teardown through the install root so pane PATH does not matter', () => {

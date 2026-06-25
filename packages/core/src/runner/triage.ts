@@ -12,6 +12,7 @@ import { COCODER_GOVERNANCE_AUTHOR, commitFiles, recordSuccessfulCommit, runComm
 import type { AuditWriteBoundary, CommitGateResult, Git } from '../commit-gate/index.js'
 import type { ResolvedPersona } from '../personas/index.js'
 import type { Run, RunStore, Workspace } from '../store/index.js'
+import { createTicket } from '../tickets/index.js'
 import { partitionByScope } from '../write-scope/index.js'
 import type { SessionHost, SessionRef } from '../session-host/index.js'
 import { join } from 'node:path'
@@ -48,8 +49,13 @@ export interface Triage {
    *  tracked follow-up on an existing priority), or `recommend-priority` (the ticket asks the founder to
    *  approve a new priority). Absent for a first occurrence / no escalation. */
   readonly escalation?: 'repair' | 'ticket' | 'recommend-priority'
-  /** The ticket id Deb filed under `cocoder/tickets/`, when `escalation` involves one. */
+  /** Optional ticket id Deb proposed; the governed create spine may allocate a different id when absent. */
   readonly ticketId?: string
+  /** Ticket metadata Deb returns; the runner files the ticket through the governed create spine. */
+  readonly ticketTitle?: string
+  readonly ticketType?: string
+  readonly ticketPriority?: string
+  readonly ticketBody?: string
 }
 
 const DISPOSITIONS: readonly Disposition[] = ['cocoder-bug', 'repo-bug', 'one-off']
@@ -85,7 +91,27 @@ export function parseTriage(json: string): Triage {
     remainingRisk: asString(d.remainingRisk),
     escalation,
     ticketId: asString(d.ticketId),
+    ticketTitle: asString(d.ticketTitle),
+    ticketType: asString(d.ticketType),
+    ticketPriority: asString(d.ticketPriority),
+    ticketBody: asString(d.ticketBody),
   }
+}
+
+function today(now: () => number): string {
+  return new Date(now()).toISOString().slice(0, 10)
+}
+
+function ticketBody(verdict: Triage): string {
+  if (verdict.ticketBody) return verdict.ticketBody
+  return [
+    '## Context',
+    '',
+    verdict.diagnosis ?? verdict.summary,
+    '',
+    ...(verdict.whyCocoderOwned ? ['## Why CoCoder-owned', '', verdict.whyCocoderOwned, ''] : []),
+    ...(verdict.remainingRisk ? ['## Remaining Risk', '', verdict.remainingRisk, ''] : []),
+  ].join('\n')
 }
 
 // ── The fault/triage funnel (extracted from runRun, WS5.2) ───────────────────────────────────────────
@@ -115,6 +141,7 @@ export interface TriageDeps {
   readonly runReference: string
   readonly runBranch: string
   readonly withPortableRunHistoryScope: (scope: readonly string[]) => readonly string[]
+  readonly now: () => number
   readonly timeouts: { readonly orchestrationMs: number; readonly pollMs: number }
   readonly signal: AbortSignal | undefined
 }
@@ -122,12 +149,13 @@ export interface TriageDeps {
 const renderDisposition = (faultType: string, atomIndex: number | null, v: Triage, gate: CommitGateResult | null, occurrence: number, runBranch: string): string => {
   const where = atomIndex !== null ? ` (atom ${atomIndex})` : ''
   const lines = [`# Deb disposition: ${v.disposition}`, '']
+  const ticketId = v.ticketId
   if (occurrence >= 2) lines.push(`> ⚠️ **RECURRENCE (#${occurrence})** — this fault matched ${occurrence - 1} prior run(s) by fingerprint; it is no longer a one-off.`, '')
   lines.push(`- **Fault:** ${faultType}${where}`, `- **Mode:** ${v.mode}`, `- **Summary:** ${v.summary}`, '')
   const isTicket = v.escalation === 'ticket' || v.escalation === 'recommend-priority'
   if (isTicket) {
     lines.push(v.escalation === 'recommend-priority' ? '## Escalation — recommends a NEW priority (needs your approval)' : '## Escalation — tracked follow-up ticket filed', '')
-    if (v.ticketId) lines.push(`- **Ticket:** ${v.ticketId} (\`cocoder/tickets/\`)`)
+    if (ticketId) lines.push(`- **Ticket:** ${ticketId} (\`cocoder/tickets/\`)`)
     if (v.diagnosis) lines.push(`- **Diagnosis:** ${v.diagnosis}`)
     if (v.whyCocoderOwned) lines.push(`- **Why CoCoder-owned:** ${v.whyCocoderOwned}`)
     lines.push('')
@@ -172,21 +200,46 @@ export const triageFault = async (deps: TriageDeps, faultType: string, atomIndex
     await deps.sessionHost.sendInput(deps.debRef, buildDebTriageDispatch(join(deps.runDir, `fault-${i}.json`), join(deps.runDir, `triage-${i}.json`), occurrence))
     deps.store.recordEvent({ runId: deps.run.id, type: 'triage-dispatch', data: { fault: faultType, atom: atomIndex, occurrence } })
     await deps.refreshStatus('faulted', atomIndex, null, `fault: ${faultType}`)
-    const verdict = await deps.io.awaitTriage(join(deps.runDir, `triage-${i}.json`), { timeoutMs: deps.timeouts.orchestrationMs, pollMs: deps.timeouts.pollMs, isAlive: deps.debAlive, signal: deps.signal })
+    let verdict = await deps.io.awaitTriage(join(deps.runDir, `triage-${i}.json`), { timeoutMs: deps.timeouts.orchestrationMs, pollMs: deps.timeouts.pollMs, isAlive: deps.debAlive, signal: deps.signal })
     // Record the fingerprint on the triaged event so FUTURE runs match this occurrence (closes the loop).
     deps.store.recordEvent({ runId: deps.run.id, type: 'fault-triaged', data: { fault: faultType, atom: atomIndex, disposition: verdict.disposition, mode: verdict.mode, summary: verdict.summary, fingerprint, occurrence } })
-    // REPAIR / ESCALATION (ADR-0016): on a cocoder-bug Deb may have edited files within her write-scope —
-    // a scoped fix (repair) and/or a tracked follow-up ticket (escalation). Gate-commit ONLY her in-scope
-    // edits — anything outside (incl. target-repo product code) is held back + surfaced (ADR-0007), never
-    // silently committed. Deb never rescues the run; the commit lands on the run branch for the founder.
+    // REPAIR / ESCALATION (ADR-0016): on a cocoder-bug Deb may have edited files within her write-scope
+    // for a scoped repair, or returned metadata for the runner to file a governed ticket. Repair edits
+    // remain scope-gated; ticket creation rides the governed ticket spine and commits its exact file list.
     let gate: CommitGateResult | null = null
     const isRepair = verdict.disposition === 'cocoder-bug' && verdict.mode === 'repair'
     const isTicket = verdict.escalation === 'ticket' || verdict.escalation === 'recommend-priority'
-    if (deps.deb && deps.deb.writeScope.length > 0 && (isRepair || isTicket)) {
+    const hasTicketMetadata = verdict.ticketTitle !== undefined || verdict.ticketType !== undefined || verdict.ticketPriority !== undefined || verdict.ticketBody !== undefined
+    if (deps.deb && ((isTicket && hasTicketMetadata) || (deps.deb.writeScope.length > 0 && (isRepair || isTicket)))) {
       const kind = isTicket ? 'escalation' : 'repair'
       const message = `deb-${kind}: ${faultType}${atomIndex !== null ? ` (atom ${atomIndex})` : ''} occurrence ${occurrence}${verdict.ticketId ? ` → ticket ${verdict.ticketId}` : ''} via CoCoder run ${deps.runReference}`
       const commitScope = deps.withPortableRunHistoryScope(deps.deb.writeScope)
-      if (verdict.filesChanged && verdict.filesChanged.length > 0) {
+      if (isTicket && hasTicketMetadata) {
+        const create = await createTicket({
+          ticketsDir: join(deps.worktreePath, 'cocoder', 'tickets'),
+          repoPath: deps.worktreePath,
+          title: verdict.ticketTitle ?? verdict.summary,
+          type: verdict.ticketType ?? 'bug',
+          priority: verdict.ticketPriority ?? 'none',
+          description: ticketBody(verdict),
+          created: today(deps.now),
+          ...(verdict.ticketId ? { ticketId: verdict.ticketId } : {}),
+        })
+        const createdTicketId = create.created ? create.id : verdict.ticketId
+        const createMessage = `deb-${kind}: ${faultType}${atomIndex !== null ? ` (atom ${atomIndex})` : ''} occurrence ${occurrence}${createdTicketId ? ` → ticket ${createdTicketId}` : ''} via CoCoder run ${deps.runReference}`
+        const headNow = await deps.git.headSha(deps.worktreePath)
+        const selfCommittedRepair = headNow !== headBeforeRepair
+        if (create.created) {
+          const receipt = await commitFiles(deps.git, deps.worktreePath, create.files, createMessage, COCODER_GOVERNANCE_AUTHOR)
+          recordSuccessfulCommit(deps.store, { runId: deps.run.id, workItemId: null, message: createMessage, committedSha: receipt.committedSha, committedFiles: receipt.committedFiles, selfCommit: selfCommittedRepair ? { headBefore: headBeforeRepair, headNow } : null })
+          if (receipt.error) deps.store.recordEvent({ runId: deps.run.id, type: 'deb-repair-commit-failed', data: { fault: faultType, error: receipt.error, files: create.files } })
+          gate = { ...receipt, outOfLane: [], selfCommitted: selfCommittedRepair }
+          verdict = { ...verdict, ticketId: create.id }
+        } else {
+          gate = { committed: false, committedSha: null, committedFiles: [], outOfLane: [], error: null, selfCommitted: selfCommittedRepair }
+          if (createdTicketId) verdict = { ...verdict, ticketId: createdTicketId }
+        }
+      } else if (verdict.filesChanged && verdict.filesChanged.length > 0) {
         // HEAD/self-commit is detected BEFORE the commit (commitFiles itself moves HEAD); the standard
         // success-path recording (agent-self-commit + commit_link + commit) is then centralized in the
         // helper (WS3.3). selfCommit is CALLER context — a plain commitFiles receipt carries none.

@@ -32,6 +32,8 @@ import {
   deriveTicketCloseDecision,
   deriveWrapupRunStatus,
   openRunStore,
+  parseTriage,
+  readTickets,
   renderDebStatus,
   runRun,
   validatePlayOutput,
@@ -205,6 +207,10 @@ const fakeIO = (opts: {
     remainingRisk?: string
     escalation?: 'repair' | 'ticket' | 'recommend-priority'
     ticketId?: string
+    ticketTitle?: string
+    ticketType?: string
+    ticketPriority?: string
+    ticketBody?: string
   }
   /** Nudge recommendation returned for every readNudgeRequest call, unless nudges/readNudge override it. */
   nudge?: NudgeRequest | null
@@ -481,6 +487,30 @@ const baseDeps = (over: Partial<RunnerDeps>): RunnerDeps => ({
 // The new direct-mode DEFAULT (ADR-0023 §2) is proven against LIVE git in runner-direct.test.ts.
 const input = { workspace, priority, oscar, bob, sharedStandards: 'STANDARDS', engineHome: workspaceRoot, runsRoot: '/runs' }
 const stopFaultEvents = new Set(['directive-timeout', 'builder-failed', 'verify-failed', 'triage-dispatch', 'fault-triaged', 'triage-skipped'])
+
+describe('parseTriage', () => {
+  test('parses governed ticket creation metadata', () => {
+    expect(parseTriage(JSON.stringify({
+      disposition: 'cocoder-bug',
+      summary: 'recurring directive timeout',
+      escalation: 'ticket',
+      ticketId: '0042',
+      ticketTitle: 'Recurring directive timeout',
+      ticketType: 'bug',
+      ticketPriority: 'runner-reliability',
+      ticketBody: '## Context\n\nFile this through the runner.',
+    }))).toMatchObject({
+      disposition: 'cocoder-bug',
+      summary: 'recurring directive timeout',
+      escalation: 'ticket',
+      ticketId: '0042',
+      ticketTitle: 'Recurring directive timeout',
+      ticketType: 'bug',
+      ticketPriority: 'runner-reliability',
+      ticketBody: '## Context\n\nFile this through the runner.',
+    })
+  })
+})
 
 describe('founder closeout target-aware Run Status', () => {
   test('contract parser derives priority and ticket Run Status vocabularies from the wrap-up Play', () => {
@@ -3963,10 +3993,13 @@ describe('runRun (multi-atom loop)', () => {
         throw new Error(MSG) // directive-timeout — same message both runs → same fingerprint
       },
     })
-    const ticketFile = 'cocoder/tickets/open/0002-recurring-directive-timeout.md'
+    const expectedTicketId = '0016'
+    const expectedTicketFile = `cocoder/tickets/open/${expectedTicketId}-recurring-directive-timeout.md`
+    const expectedTicketFiles = [expectedTicketFile, 'cocoder/tickets/INDEX.md', 'cocoder/tickets/order.json']
+    const commits: Array<{ files: readonly string[]; message: string }> = []
     const ticketGit = (): Git => {
-      // Clean at launch (first changedFiles call = the start-of-run guard/snapshot); the ticket Deb writes
-      // in her cocoder/** scope appears once she files it during triage.
+      // Clean at launch (first changedFiles call = the start-of-run guard/snapshot). Escalation-ticket
+      // creation now commits the governed spine's explicit file list, not Deb's changedFiles.
       let started = false
       return {
         ...worktreeStubs,
@@ -3978,9 +4011,10 @@ describe('runRun (multi-atom loop)', () => {
             started = true
             return []
           }
-          return [ticketFile]
+          return []
         },
-        async addAndCommit() {
+        async addAndCommit(_cwd, files, message) {
+          commits.push({ files: [...files], message })
           return 'sha-ticket'
         },
         async restoreToHead() {},
@@ -4008,8 +4042,17 @@ describe('runRun (multi-atom loop)', () => {
       runRun(
         baseDeps({
           store,
-          io: timeoutIO({ disposition: 'cocoder-bug', summary: 'recurring directive-timeout', escalation: 'ticket', ticketId: '0002' }),
+          io: timeoutIO({
+            disposition: 'cocoder-bug',
+            summary: 'recurring directive-timeout',
+            escalation: 'ticket',
+            ticketTitle: 'Recurring directive timeout',
+            ticketType: 'bug',
+            ticketPriority: 'demo',
+            ticketBody: '## Context\n\nThe directive timeout recurred.',
+          }),
           git: ticketGit(),
+          now: () => Date.parse('2026-06-25T12:00:00.000Z'),
           onRunCreated: (r) => {
             r2 = r.id
           },
@@ -4019,8 +4062,24 @@ describe('runRun (multi-atom loop)', () => {
     ).rejects.toThrow(/no valid directive/)
     const evs = store.listEvents(r2)
     expect((evs.find((e) => e.type === 'fault-recurrence')?.data as { occurrence?: number })?.occurrence).toBe(2)
-    expect(evs.find((e) => e.type === 'deb-repair')?.data).toMatchObject({ escalation: 'ticket', ticketId: '0002', committedSha: 'sha-ticket', files: [ticketFile] })
-    expect(store.listCommitLinks(r2).filter((c) => !c.message.startsWith('run-history: ')).flatMap((c) => c.files)).toEqual([ticketFile])
+    expect(evs.find((e) => e.type === 'deb-repair')?.data).toMatchObject({ escalation: 'ticket', ticketId: expectedTicketId, committedSha: 'sha-ticket', files: expectedTicketFiles, outOfScope: [] })
+    expect(evs.find((e) => e.type === 'deb-repair-out-of-scope-held')).toBeUndefined()
+    expect(evs.find((e) => e.type === 'out-of-scope-committed')).toBeUndefined()
+    const ticketCommit = commits.find((commit) => commit.files.includes(expectedTicketFile))
+    expect(ticketCommit).toMatchObject({ files: expectedTicketFiles })
+    expect(ticketCommit?.message).toContain(`deb-escalation: directive-timeout (atom 0) occurrence 2 → ticket ${expectedTicketId}`)
+    expect(store.listCommitLinks(r2).filter((c) => !c.message.startsWith('run-history: ')).flatMap((c) => c.files)).toEqual(expectedTicketFiles)
+    expect(JSON.parse(readFileSync(join(workspaceRoot, 'cocoder', 'tickets', 'order.json'), 'utf8'))).toEqual([expectedTicketId])
+    expect((await readTickets(join(workspaceRoot, 'cocoder', 'tickets'))).find((ticket) => ticket.id === expectedTicketId)).toMatchObject({
+      id: expectedTicketId,
+      title: 'Recurring directive timeout',
+      type: 'bug',
+      priority: 'demo',
+      owner: 'founder-session',
+      created: '2026-06-25',
+      status: 'Open',
+      state: 'open',
+    })
     expect(store.getRun(r2)?.status).toBe('failed') // escalation tracks it; the run still fails
   })
 
