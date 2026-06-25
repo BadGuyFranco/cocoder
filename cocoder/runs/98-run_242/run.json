@@ -12,7 +12,7 @@
   "priorityId": "ticket-priority-repoint",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "awaiting-archive-confirmation",
   "createdAt": 1782423774780,
-  "endedAt": null
+  "endedAt": 1782425025133
 }
