@@ -5,8 +5,11 @@ import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { describe, expect, test } from 'vitest'
 import {
+  composePriorityBody,
+  composePriorityMarkdown,
   composeTicketMarkdown,
   insertOpenTicketIndexRow,
+  loadPriority,
   makeGit,
   nextTicketId,
   openRunStore,
@@ -94,6 +97,53 @@ describe('requestAuthoringPlay', () => {
     const audit = await readFile(join(fixture.home, 'local', 'oz-audit.log'), 'utf8')
     expect(audit).toContain('"action":"authoring-play"')
     expect(audit).toContain('"committedPaths":["cocoder/priorities/alpha.md","cocoder/priorities/order.json"]')
+  })
+
+  test('create-priority carries a detailed body through the spine, preserving the Objective', async () => {
+    const objective = 'Ship the detailed-body create path.'
+    const details = [
+      '## Phase A',
+      '',
+      'Badge: [details: exact]',
+      '',
+      '- Verification gate: load and prove details stay out of the Objective.',
+      '',
+      '## Non-goals',
+      '',
+      '- Do not summarize the detailed body.',
+    ].join('\n')
+    const fixture = await makeFixture({
+      runHeadless: async (input) => {
+        fixture.headlessInputs.push(input)
+        const goal = composePriorityBody({ objective, details })
+        await writeFile(
+          join(fixture.home, 'cocoder', 'priorities', 'alpha.md'),
+          composePriorityMarkdown({ id: 'alpha', title: 'Alpha', goal }),
+        )
+        return { exitCode: 0, output: 'created alpha' }
+      },
+    })
+
+    const result = await requestAuthoringPlay(fixture.ctx, {
+      workspaceId: 'cocoder',
+      persona: 'oz',
+      playId: 'create-priority',
+      invocation: { id: 'alpha', title: 'Alpha', objective, details },
+    })
+
+    expect(result.status).toBe(200)
+    expect(result.body.committedPaths).toEqual(['cocoder/priorities/alpha.md', 'cocoder/priorities/order.json'])
+    expect(result.body.outOfLanePaths).toEqual([])
+    expect(fixture.prompts[0]?.prompt).toContain('"details"')
+    expect(fixture.prompts[0]?.prompt).toContain('Badge: [details: exact]')
+    const committed = await git(fixture.home, ['show', 'HEAD:cocoder/priorities/alpha.md'])
+    expect(committed).toContain('## Phase A')
+    expect(committed).toContain('## Non-goals')
+    expect(committed).toContain('Badge: [details: exact]')
+    expect(committed).toContain('- Verification gate: load and prove details stay out of the Objective.')
+    const loaded = loadPriority(join(fixture.home, 'cocoder', 'priorities'), 'alpha')
+    expect(loaded.objective).toBe(objective)
+    expect(loaded.goal).toContain(details)
   })
 
   test('dispatches create-ticket and commits a valid ticket plus INDEX row through the repair spine', async () => {
@@ -225,6 +275,42 @@ describe('requestAuthoringPlay', () => {
     expect(await git(fixture.home, ['rev-parse', 'HEAD'])).toBe(headBefore)
     expect(await git(fixture.home, ['show', 'HEAD:cocoder/priorities/alpha.md'])).toContain('Keep the approved Objective.')
     expect(await readFile(join(fixture.home, 'cocoder', 'priorities', 'alpha.md'), 'utf8')).toBe('---\nid: alpha\ntitle: Alpha\n---\n\n## Objective\n\n')
+  })
+
+  test('edit-priority appends a detailed section while preserving the existing Objective', async () => {
+    const addendum = ['## Addendum', '', 'New founder detail, verbatim.'].join('\n')
+    const objective = 'Keep the approved Objective.'
+    const fixture = await makeFixture({
+      runHeadless: async (input) => {
+        fixture.headlessInputs.push(input)
+        const goal = composePriorityBody({ objective, details: addendum })
+        await writeFile(
+          join(fixture.home, 'cocoder', 'priorities', 'alpha.md'),
+          composePriorityMarkdown({ id: 'alpha', title: 'Alpha', goal }),
+        )
+        return { exitCode: 0, output: 'appended section' }
+      },
+    })
+    await writePriority(fixture.home, 'alpha', 'Alpha', objective)
+    await git(fixture.home, ['add', 'cocoder/priorities/alpha.md'])
+    await git(fixture.home, ['commit', '-m', 'seed alpha'])
+
+    const result = await requestAuthoringPlay(fixture.ctx, {
+      workspaceId: 'cocoder',
+      persona: 'oz',
+      playId: 'edit-priority',
+      invocation: { id: 'alpha', mode: 'append-section', details: addendum },
+    })
+
+    expect(result.status).toBe(200)
+    expect(result.body.committedPaths).toContain('cocoder/priorities/alpha.md')
+    expect((await git(fixture.home, ['log', '-1', '--pretty=%s'])).trim()).toBe('governance: edit-priority')
+    expect(fixture.prompts[0]?.prompt).toContain('"mode": "append-section"')
+    expect(fixture.prompts[0]?.prompt).toContain('"details"')
+    const committed = await git(fixture.home, ['show', 'HEAD:cocoder/priorities/alpha.md'])
+    expect(committed).toContain('Keep the approved Objective.')
+    expect(committed).toContain('New founder detail, verbatim.')
+    expect(loadPriority(join(fixture.home, 'cocoder', 'priorities'), 'alpha').objective).toBe(objective)
   })
 
   test('archive-priority is exempt from the Objective guard and still commits', async () => {
