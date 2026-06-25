@@ -3,6 +3,8 @@ id: ticket-priority-repoint
 title: Ticket priority repoint — governed release and rehome at archive
 ---
 
+> **Archived 2026-06-25 (founder) — archive confirmed.** Founder confirmed archive from CLI.
+
 ## Objective
 
 Add a governed write spine that can clear or repoint a ticket's existing `priority:` frontmatter (release
