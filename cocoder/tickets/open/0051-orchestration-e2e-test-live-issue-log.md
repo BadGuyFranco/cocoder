@@ -32,6 +32,7 @@ recurring defect to its own bug ticket when it warrants a fix.
 |---|---------|---------|----------------------|----------|--------|
 | 1 | run_232 / workspace run 88 | Deb status feed | After `run-end` and `deb-watch-stopped`, `deb-status.json` should reflect the terminal watch state → final feed stayed on `watch.active: true` and omitted those terminal events while the run record ended as `awaiting-archive-confirmation`. | Low | Logged; fix in a separate non-orchestrated session if recurring or if the status feed is treated as terminal proof. |
 | 2 | run_232 / workspace run 88 | `archive-priority` Play / `cocoder oz archive-priority` lane | Founder-confirmed archive should move `cocoder/priorities/orchestration-e2e-test.md` into `cocoder/priorities/archive/`, drop it from `order.json`, and commit → command exited `archive-priority completed for orchestration-e2e-test, but no commit was created`; file unmoved, still first in `order.json`, no commit. Silent no-op presented as success. | High | Logged; lane repair in a separate non-orchestrated session (ADR-0036 Deb machinery repair). Priority deliberately left active. |
+| 3 | run_232 / workspace run 88 | `cocoder oz commit-support` spine | Out-of-lane pending files should be **withheld** and surfaced for a founder expand/discard decision (shared-standard held-back contract) → spine **committed** pre-existing unrelated UI work (`packages/ui/src/renderer/sections/dashboard/Priorities.tsx` + `tests/priorities-panel-active.test.tsx`) into Oscar's post-wrap support commit `8164afe`, marking it "out of lane, flagged not withheld". Surface-B product code thereby bypassed the verify gate and is mislabeled under an `oscar-post-wrap: orchestration-e2e-test` message. (Swept change happened to be complete; its test passes 11/11, so branch not left red — but that is luck, not the gate.) | High | Logged; spine fix (withhold, don't flag-and-commit, out-of-lane) in a separate non-orchestrated session. |
 
 ## Run log
 
@@ -40,3 +41,5 @@ recurring defect to its own bug ticket when it warrants a fix.
 - run_232 / workspace run 88: founder confirmed archive post-wrap; `archive-priority` lane no-opped
   (issue #2) — priority left active per founder direction, lane repair deferred to a non-orchestrated
   session.
+- run_232 / workspace run 88: logging issue #2 via `commit-support` revealed issue #3 — the support
+  commit spine swept pre-existing out-of-lane UI work into commit `8164afe` instead of withholding it.
