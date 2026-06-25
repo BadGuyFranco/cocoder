@@ -2,7 +2,7 @@
 id: 0054
 title: final deb-status.json stays stale after run end (watch.active stuck true, missing terminal watcher-stop)
 type: bug
-status: Open
+status: Closed
 priority: orchestration-e2e-test
 owner: deb
 created: 2026-06-24
@@ -66,3 +66,9 @@ would be the fix. Recorded here per the session-16 brief; promote to its own tic
   status projection); ADR-0016 (Deb status feed contract).
 </content>
 </invoke>
+
+## Resolution
+
+Resolved by run direct-deb-repair (549ab11) on 2026-06-25.
+
+Terminal DebStatus projection now derives terminal phase from the run-end event for completed, awaiting-founder, awaiting-archive-confirmation, failed, stopped, and held runs. The runner refreshes the final Deb status only after stopDebWatcher records deb-watch-stopped, and regression tests assert watch.active=false plus run-end and deb-watch-stopped in the final feed.
