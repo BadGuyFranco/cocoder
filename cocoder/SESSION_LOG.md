@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-25 — **ticket-launchability: launchability signals A/B/C — archive ready (run_96/run_240)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [ticket-launchability](./priorities/ticket-launchability.md) | **Run:** run_240 (display 96)
+**Outcomes:**
+- **Phase A (`f4795b8`).** `ticketPrioritySignal` helper + ticket-card tag `Handled by Priority: <id>` for owned tickets; none/unassigned/blank/null render standalone (no tag, still launchable); UI tests pin both cases.
+- **Phase B (`e54d93e`).** One pure 3-state classifier (standalone / handled-by-live-priority / stale-link) cross-checked against live priority ids; stale links render `⚠ stale link · <id>`; unit + UI tests cover all states.
+- **Phase C (`d632325`).** `handledOpenTicketsForPriority` core helper; archive confirmation attaches handled open tickets and surfaces close / release / rehome founder options (detect-and-surface only — close executes via existing spine; release/rehome deferred to follow-on).
+- **Disposition: `archive-confirmation`.** Stated Objective met end-to-end; optional execution lane filed as [ticket-priority-repoint](./priorities/ticket-priority-repoint.md).
+**Next:** Reply `archive` in Oz chat to close out `ticket-launchability`, or launch `ticket-priority-repoint` to wire one-click release/rehome at archive time.
+
 ## 2026-06-25 — **ticket-fix-0039: launch modal spinner UX — closed (run_95/run_239)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0039](./tickets/closed/0039-launch-status-in-oz-dashboard.md) | **Run:** run_239 (display 95)
