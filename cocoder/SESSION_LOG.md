@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-25 — **ticket-fix-0061: governed createTicket spine — needs closing (run_94/run_238)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0061](./tickets/open/0061-governed-create-ticket-spine.md) | **Run:** run_238 (display 94)
+**Outcomes:**
+- **Governed create spine (`53b8763`, `0d022ab`, `640033d`, `d144533`).** Core `createTicket()` writes the open ticket file, `INDEX.md` row, and `order.json` append in one transactional operation; `cocoder oz create-ticket` wraps it; daemon create-ticket route and runner escalation filing ride the spine instead of hand-editing the queue.
+- **Acceptance verified.** All six ticket 0061 acceptance criteria met across core, CLI, daemon, and persona test suites; regression pins the run_235 out-of-scope queue-edit shape.
+- **Known gap deferred (founder-gated).** The agentic `oz author create-ticket` Play still hand-writes tickets without enqueuing and duplicates spine logic as prompt steps — last instance of the run_235 defect class; retire vs spine-routing is base-governance and needs a founder call.
+- **Disposition: `needs closing`.** Ticket acceptance is fully met; Oscar stopped at founder close decision (close now vs extend to fix the Play first).
+**Next:** Reply `close` in Oz chat to accept the verified fix on ticket 0061 (recommended); Oscar will file Play retirement as a separate follow-up.
+
 ## 2026-06-25 — **ticket-fix-0062: create/edit-priority detailed body input — closed (run_93)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0062](./tickets/closed/0062-create-priority-and-edit-priority-need-detailed-body-input.md) | **Run:** run_93 (display 93)
