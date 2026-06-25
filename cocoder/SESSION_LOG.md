@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-25 — **ticket-priority-repoint: verification wrap — archive ready (run_99)**
+
+**Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** [ticket-priority-repoint](./priorities/ticket-priority-repoint.md) | **Run:** run_99 (display 99)
+**Outcomes:**
+- **Confirmation wrap only.** Code-complete priority from run_242 (`archive-confirmation`); no build atoms delegated — relaunch would only reaffirm (F18).
+- **Verified-when criteria re-proven.** Core `tickets.test.ts` (19/19) and daemon repoint-op + oz-chat suites (93/93) green; `tsc --noEmit` clean on core and daemon.
+- **Disposition: `archive-confirmation`.** All three objective criteria met on main; founder archive reply is the first-class closeout action.
+**Next:** Reply `archive` in Oz chat to archive `ticket-priority-repoint`, then launch `model-layer` for Phase 0 adapter tier metadata.
+
 ## 2026-06-25 — **ticket-priority-repoint: governed release/rehome at archive — archive ready (run_98/run_242)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [ticket-priority-repoint](./priorities/ticket-priority-repoint.md) | **Run:** run_242 (display 98)
