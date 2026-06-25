@@ -415,7 +415,7 @@ function supportCommitReply(runId: string, out: LaunchResult): OzChatReply {
     ? `Committed post-wrap support edits for ${runId} as ${commitSha} (${committedPaths.join(', ') || 'no file list'}).`
     : `No post-wrap support edits were pending for ${runId}; no commit was created.`
   const outOfLane = outOfLanePaths.length > 0
-    ? ` Committed out of Oscar's support lane (flagged for visibility, NOT withheld): ${outOfLanePaths.join(', ')}.`
+    ? ` Held back outside Oscar's support lane, NOT committed: ${outOfLanePaths.join(', ')}.`
     : ''
   return {
     reply: `${committed}${outOfLane}`,

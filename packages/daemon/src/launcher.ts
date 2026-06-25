@@ -1019,6 +1019,7 @@ export async function requestSupportCommitRun(ctx: OzContext, runId: string): Pr
     scope,
     message: `oscar-post-wrap: ${run.priorityId} via CoCoder ${runMessageReference}`,
     headBefore,
+    commitOnlyScope: true,
   })
   const liveOscar = ctx.store.listSessions(runId).some((s) => s.persona === 'oscar' && ctx.liveRefs.has(s.sessionRef))
   ctx.store.recordEvent({
