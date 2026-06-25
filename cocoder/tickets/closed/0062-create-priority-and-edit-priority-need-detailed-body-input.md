@@ -2,7 +2,7 @@
 id: 0062
 title: create-priority and edit-priority need detailed body input
 type: task
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-25
@@ -40,3 +40,9 @@ Recommended edit-priority shape:
 - Objective edits remain founder-approved and explicitly gated.
 - Tests cover details from file/stdin, Objective preservation, loadPriority round-trip, committed file lists, and rejection of malformed input.
 - Existing create-priority/edit-priority authoring Play behavior remains compatible.
+
+## Resolution
+
+Resolved by run run_237 (36ef39705cbe89d7b71b54d4e01d9a1e4ba063d7) on 2026-06-25.
+
+Ticket fix run completed successfully.
