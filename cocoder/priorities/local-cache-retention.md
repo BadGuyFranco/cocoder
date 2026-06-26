@@ -50,9 +50,9 @@ Two retention models are explicitly **rejected**: time-based (punishes a repo ru
 
 ## Execution safety — dogfooding isolation (REQUIRED, read before launching)
 
-This priority mutates `local/cocoder.db` (the live coordination store) and `local/runs/` (live scratch) — the exact working state every run depends on. Building it on the cocoder install the normal way is **unsafe**: a bug here does not misbehave, it **deletes run history**, and the daemon's auto-reload (ticket 0064) can activate the GC against the live store *before the build run even wraps*. Guardrails:
+This priority mutates `local/cocoder.db` (the live coordination store) and `local/runs/` (live scratch) — the exact working state every run depends on. Building it on the cocoder install the normal way is **unsafe**: a bug here does not misbehave, it **deletes run history**, and a mid-run daemon reload could surprise-activate the GC against the live store *before the build run even wraps*. Guardrails:
 
-- **Hard dependency:** lands/activates only AFTER the daemon-reload-safety fix (ticket 0064). A mid-run reload must never surprise-activate the GC.
+- **Hard dependency met:** daemon-reload-safety fix landed (ticket [0064](../tickets/closed/0064-daemon-self-reload-zombies-the-old-process-and-wedges-oz-oz-sh-stop-reaps-only-the-listener.md) closed run_248). Remaining guardrails below still required before launch.
 - **Build + validate in an independent, disposable CoCoder checkout/install** whose `local/` is the test subject — seed a fixture store + fake run-dirs and exercise the GC adversarially. The live dogfooding `local/` is NEVER the test subject.
 - **Fixture-only tests** (`openRunStore(':memory:')` + temp dirs); a test must never touch real install paths.
 - **Ship inert** on the live install (flag-gated, OFF by default); enable on cocoder only after it is proven in isolation.

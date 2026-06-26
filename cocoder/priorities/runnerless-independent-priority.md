@@ -8,7 +8,7 @@ Give CoCoder a runner-independent ('runnerless') execution path for priorities t
 
 ## Context
 
-CoCoder dogfoods itself: a run that modifies the runner, daemon, or store is executed *by* the very components it changes. For most changes that is tolerable. But a class of changes — **destructive or run-critical self-modifications** (e.g. `local-cache-retention`, which deletes the live store; daemon-reload fixes like ticket 0064; store/schema migrations) — **cannot be safely dogfooded through the normal runner**: the change can break, corrupt, or surprise-activate against the very run building it (the daemon auto-reloads onto new code mid-run; a buggy store GC deletes the run's own state).
+CoCoder dogfoods itself: a run that modifies the runner, daemon, or store is executed *by* the very components it changes. For most changes that is tolerable. But a class of changes — **destructive or run-critical self-modifications** (e.g. `local-cache-retention`, which deletes the live store; store/schema migrations) — **cannot be safely dogfooded through the normal runner**: the change can break, corrupt, or surprise-activate against the very run building it (the daemon auto-reloads onto new code mid-run; a buggy store GC deletes the run's own state).
 
 The escape hatch is to execute such a priority **independent of the runner**. Oscar acts as the orchestrator using sub-agents — driven by its own assigned CLI/model, not the deterministic runner/daemon atom loop. This priority builds (a) detection + alerting for self-impacting changes, and (b) the runnerless execution path itself.
 
@@ -35,5 +35,5 @@ Give CoCoder a **runner-independent ("runnerless") execution path** for prioriti
 
 ## Out of scope
 
-- The actual `local-cache-retention` GC and the daemon-reload fix (ticket 0064) — this priority provides the **execution mechanism**, not those changes.
+- The actual `local-cache-retention` GC — this priority provides the **execution mechanism**, not that change.
 - Replacing the runner for normal priorities — runnerless is **opt-in** for self-impacting/destructive changes only; the deterministic runner remains the default for everything else.

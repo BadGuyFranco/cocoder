@@ -12,6 +12,19 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-26 — **ticket-fix-0064: daemon reload zombie + oz.sh reaping — closed (run_104/run_248)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0064](./tickets/closed/0064-daemon-self-reload-zombies-the-old-process-and-wedges-oz-oz-sh-stop-reaps-only-the-listener.md) | **Run:** run_248 (display 104)
+**Outcomes:**
+- **Clean reload handoff (`503e620`).** Outgoing daemon drains SSE/event streams and force-closes HTTP keep-alive sockets so `server.close()` resolves even with the dashboard stream open — the root cause of the zombie wedge.
+- **Robust SIGTERM.** Idempotent shutdown handler plus a 2.5s SIGKILL-self watchdog in `bin/oz.mjs` so graceful drain cannot wedge exit indefinitely.
+- **`oz.sh` full reaping (`1497700`).** Stop/restart kills every `oz.mjs` on the port (pgrep pattern + listener + pidfile; TERM then KILL), not just the `-sTCP:LISTEN` process — ESTABLISHED-only zombies cannot survive restart.
+- **Dashboard reconnect.** Stream close lets the existing `events-stream.ts` 5s-backoff reconnect attach to the live daemon once the zombie exits.
+- **Regression coverage.** `server-close.test.ts`, `events.test.ts`, and `oz-script.test.ts` pin close-drain, stream-close, watchdog, and reaping behavior; daemon + core typecheck green.
+- **Ticket closed** via `closeTicket()` at wrap; `order.json` pruned; queue head is [0067](./tickets/open/0067-physically-migrate-legacy-flat-local-runs-runid-dirs-to-the-adr-0027-6-nested-layout.md).
+- **Disposition: `closed`.** All five ticket 0064 acceptance items verified; process-spawn e2e hardening deferred as optional, not blocking.
+**Next:** Launch ticket `0067` — physically migrate legacy flat `local/runs/<runId>` dirs to the ADR-0027 §6 nested layout.
+
 ## 2026-06-26 — **governance-authoring-ssot: elegance cleanup — archive ready (run_103/run_247)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [governance-authoring-ssot](./priorities/governance-authoring-ssot.md) | **Run:** run_247 (display 103)
