@@ -29,5 +29,5 @@ The priority's `Objective`/`Scope`/`Acceptance` are revised to this shape; the "
 - **Build is small and low-risk:** a thin standalone entrypoint (~200 LOC) reusing `runStandalone` scaffolding + `runRun`, plus destructive-target store isolation. No new orchestration engine to maintain.
 - **Safety rails preserved:** the per-atom verify gate, quarantine, out-of-scope hold-back, and commit receipts all remain — runnerless runs are as trustworthy as normal runs.
 - **Escape-hatch guarantee:** no daemon means no mid-run auto-reload; frozen code means the under-change machinery is not self-exercised; destructive isolation means a GC/migration cannot eat the live run's state. Works with the daemon down/inert.
-- **Open design point for the build:** the exact destructive-target isolation mechanism (scratch store copy vs. sandboxed home) is to be designed in the build run; it is the one genuinely new piece beyond wiring `runRun` standalone.
+- **Open design point for the build:** resolved in run_250 as a scratch store copy via `packages/cli/src/run-target.ts`: copy live `local/cocoder.db` plus WAL sidecars into a `mkdtemp` scratch root and use a scratch runs root.
 - **Reversal-gated:** revisiting Shape B (or weakening the destructive-isolation requirement) requires a new founder-approved ADR superseding this one.
