@@ -29,6 +29,7 @@ import { closeTicketViaCli } from './close-ticket.js'
 import { createTicketViaCli } from './create-ticket.js'
 import { latestModelFor } from './latest-model.js'
 import { archivePriorityInvocation, createPriorityInvocation, createTicketInvocation, editPriorityInvocation } from './oz-args.js'
+import { resolveRunTarget } from './run-target.js'
 
 const log = (m: string): void => console.error(`[cocoder] ${m}`)
 const out = (m: string): void => {
@@ -85,11 +86,9 @@ function parseEvidence(raw: string | undefined, problem: string): readonly DebRe
   return evidence
 }
 
-function independentRunnerRefusal(priorityId: string, prioritiesDir: string): string | null {
-  const priority = loadPriority(prioritiesDir, priorityId)
+function independentRunnerRefusal(priority: { readonly id: string; readonly independentOfRunner?: boolean }, impactReasons: readonly string[]): string | null {
   if (priority.independentOfRunner === true) return null
-  const impact = detectRunnerImpact(priority)
-  const detail = impact.impacts ? ` Detected runner impact: ${impact.reasons.join('; ')}.` : ''
+  const detail = impactReasons.length > 0 ? ` Detected runner impact: ${impactReasons.join('; ')}.` : ''
   return `Priority "${priority.id}" is not marked independent-of-runner: true; refusing run-independent.${detail} Mark the priority with \`independent-of-runner: true\` before using this daemon-free entrypoint.`
 }
 
@@ -474,15 +473,18 @@ async function runStandalone(
   const root = process.cwd() // dogfood: run from the CoCoder repo root
   const personasDir = join(root, 'cocoder', 'personas')
   const prioritiesDir = join(root, 'cocoder', 'priorities')
+  const priority = loadPriority(prioritiesDir, priorityId)
   if (options.requireIndependentOfRunner) {
-    const refusal = independentRunnerRefusal(priorityId, prioritiesDir)
+    const refusal = independentRunnerRefusal(priority, detectRunnerImpact(priority).reasons)
     if (refusal) {
       console.error(`cocoder: ${refusal}`)
       process.exit(1)
     }
     log('run-independent → standalone direct mode (daemon bypassed)')
   }
-  const runsRoot = join(root, 'local', 'runs')
+  const runTarget = await resolveRunTarget({ root, priority, requireIndependentOfRunner: options.requireIndependentOfRunner === true })
+  if (runTarget.isolated) log(`run-independent (destructive) → isolated scratch target at ${runTarget.scratchRoot} (live store/runs untouched)`)
+  const runsRoot = runTarget.runsRoot
   const baseDir = basePersonasDir()
   const sources: PersonaSources = { baseDir, deltaDir: join(personasDir, 'deltas'), repoPersonaDir: personasDir }
   const playSources = { baseDir: basePlaysDir(), deltaDir: join(root, 'cocoder', 'plays', 'deltas'), repoPlayDir: join(root, 'cocoder', 'plays') }
@@ -498,7 +500,6 @@ async function runStandalone(
   if (options.requireIndependentOfRunner) log(`run-independent → Oscar model resolved to ${oscar.model}`)
   const bob = resolveEffectivePersona(sources, assignments, 'bob')
   const deb = isPersonaEnabled(assignments, 'deb') ? resolveEffectivePersona(sources, assignments, 'deb') : undefined
-  const priority = loadPriority(prioritiesDir, priorityId)
   const wrapPlay = resolveMandatoryPlay('run-wrap', listEffectivePlays(playSources))
   const preRunGovernanceChecks: PreRunGovernanceCheck[] = [
     {
@@ -553,7 +554,7 @@ async function runStandalone(
     }
   }
 
-  const store = openRunStore(join(root, 'local', 'cocoder.db'))
+  const store = openRunStore(runTarget.dbPath)
   const deps: RunnerDeps = {
     store,
     sessionHost: new CmuxSessionHost(),
