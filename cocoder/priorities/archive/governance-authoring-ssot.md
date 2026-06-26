@@ -2,6 +2,8 @@
 id: governance-authoring-ssot
 title: Governance authoring SSOT + active-run queue
 ---
+> **Archived 2026-06-26 (founder) — archive confirmed.** Founder confirmed archive from CLI.
+
 ## Objective
 
 Make ticket and priority authoring one deterministic governance operation per action, with every surface
