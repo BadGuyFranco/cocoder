@@ -17,6 +17,7 @@ export interface PersonaSpec {
 export interface Priority {
   id: string; name: string; summary: string
   status: string; labels: string[]
+  independentOfRunner?: boolean
   runId?: string; spec?: PersonaSpec
 }
 export type TicketState = 'open' | 'closed'

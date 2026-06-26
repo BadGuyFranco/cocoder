@@ -1,7 +1,7 @@
 import { join } from 'node:path'
-import { runDisplayName } from '@cocoder/core'
+import { loadPriority, runDisplayName } from '@cocoder/core'
 import type { OzContext } from './context.js'
-import { launchRun as launchRunOp, readGoverned as readGovernedOp, requestArchiveConfirmation as archiveConfirmationOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestNudgeRun as nudgeRunOp, requestOscarDebRepair as oscarDebRepairOp, requestOzAction as ozActionOp, requestOzRepair as repairOzOp, requestReconciliationClose as reconciliationCloseOp, requestReconciliationRepoint as reconciliationRepointOp, requestStopRun as stopRunOp, requestSupportCommitRun as supportCommitRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
+import { launchRun as launchRunOp, readGoverned as readGovernedOp, requestArchiveConfirmation as archiveConfirmationOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestIndependentHandoff as independentHandoffOp, requestNudgeRun as nudgeRunOp, requestOscarDebRepair as oscarDebRepairOp, requestOzAction as ozActionOp, requestOzRepair as repairOzOp, requestReconciliationClose as reconciliationCloseOp, requestReconciliationRepoint as reconciliationRepointOp, requestStopRun as stopRunOp, requestSupportCommitRun as supportCommitRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
 import { projectOzAwareness, type OzAwarenessRun, type OzAwarenessSnapshot } from './oz-awareness.js'
 import { tryHandleOzAgentTurn } from './oz-host.js'
 import { readTickets } from './priority-order.js'
@@ -35,7 +35,7 @@ export type OzExecutableCommand = Exclude<OzCommand, { readonly kind: 'help' } |
 export type OzCommandExecutor = (command: OzExecutableCommand) => Promise<OzChatResult>
 
 export interface OzChatAction {
-  readonly type: 'launch' | 'show' | 'archive-confirmation' | 'support-commit' | 'oscar-deb-repair' | 'reconcile-close' | 'reconcile-repoint' | 'stop' | 'nudge' | 'repair' | 'oz-action' | 'author' | 'teardown' | 'status' | 'refresh'
+  readonly type: 'launch' | 'runnerless-handoff' | 'show' | 'archive-confirmation' | 'support-commit' | 'oscar-deb-repair' | 'reconcile-close' | 'reconcile-repoint' | 'stop' | 'nudge' | 'repair' | 'oz-action' | 'author' | 'teardown' | 'status' | 'refresh'
   readonly workspaceId?: string
   readonly priorityId?: string
   readonly runId?: string
@@ -47,6 +47,8 @@ export interface OzChatAction {
   readonly commitSha?: string | null
   readonly outOfLanePaths?: readonly string[]
   readonly turnLogPath?: string
+  readonly handoffPath?: string
+  readonly command?: string
   readonly dialogueId?: string
   readonly outcome?: string
 }
@@ -62,6 +64,7 @@ export interface OzChatResult {
 }
 export interface OzChatOps {
   readonly launchRun: typeof launchRunOp
+  readonly requestIndependentHandoff?: typeof independentHandoffOp
   readonly showRun: typeof showRunOp
   readonly stopRun: typeof stopRunOp
   readonly teardownRun: typeof teardownRunOp
@@ -80,6 +83,7 @@ export interface OzChatOps {
 
 const defaultOps: OzChatOps = {
   launchRun: launchRunOp,
+  requestIndependentHandoff: independentHandoffOp,
   showRun: showRunOp,
   stopRun: stopRunOp,
   teardownRun: teardownRunOp,
@@ -166,6 +170,13 @@ export async function executeOzCommand(ctx: OzContext, workspaceId: string | und
   if (command.kind === 'launch') {
     if (!workspaceId) return missingWorkspace()
     const workspaceName = await workspaceNameFor(ctx, workspaceId)
+    if (await priorityIsIndependentOfRunner(ctx, workspaceId, command.priorityId)) {
+      return runOp(
+        'launch',
+        () => (ops.requestIndependentHandoff ?? independentHandoffOp)(ctx, { workspaceId, priorityId: command.priorityId }),
+        (out) => runnerlessHandoffReply(workspaceId, command.priorityId, out),
+      )
+    }
     return runOp(
       'launch',
       () => ops.launchRun(ctx, workspaceId, command.priorityId),
@@ -384,6 +395,16 @@ async function runOp(command: OzChatReply['command'], call: () => Promise<Launch
   }
 }
 
+async function priorityIsIndependentOfRunner(ctx: OzContext, workspaceId: string, priorityId: string): Promise<boolean> {
+  const workspace = await findWorkspace(ctx.cocoderHome, workspaceId)
+  if (!workspace) return false
+  try {
+    return loadPriority(join(workspace.path, 'cocoder', 'priorities'), priorityId).independentOfRunner === true
+  } catch {
+    return false
+  }
+}
+
 function launchReply(workspaceId: string, priorityId: string, out: LaunchResult, workspaceName?: string | null): OzChatReply {
   const runId = typeof out.body.runId === 'string' ? out.body.runId : undefined
   const displayNumber = typeof out.body.displayNumber === 'number' ? out.body.displayNumber : null
@@ -394,6 +415,18 @@ function launchReply(workspaceId: string, priorityId: string, out: LaunchResult,
     command: 'launch',
     ok: true,
     action: { type: 'launch', workspaceId, priorityId, runId },
+  }
+}
+
+function runnerlessHandoffReply(workspaceId: string, priorityId: string, out: LaunchResult): OzChatReply {
+  if (!isOk(out.status)) return failedReply('launch', `Could not create runnerless handoff for ${priorityId}`, out)
+  const handoffPath = typeof out.body.handoffPath === 'string' ? out.body.handoffPath : undefined
+  const command = typeof out.body.command === 'string' ? out.body.command : undefined
+  return {
+    reply: `Runnerless handoff created for ${priorityId}${handoffPath ? ` at ${handoffPath}` : ''}. Start it outside the daemon runner${command ? ` with: ${command}` : '.'}`,
+    command: 'launch',
+    ok: true,
+    action: { type: 'runnerless-handoff', workspaceId, priorityId, ...(handoffPath ? { handoffPath } : {}), ...(command ? { command } : {}) },
   }
 }
 

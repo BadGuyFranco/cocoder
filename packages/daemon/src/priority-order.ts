@@ -6,6 +6,7 @@ export interface PrioritySummary {
   readonly id: string
   readonly title: string
   readonly scopeNarrowing: readonly string[] | null
+  readonly independentOfRunner: boolean
   readonly goal: string
 }
 
@@ -65,7 +66,7 @@ async function readPriorityFiles(prioritiesDir: string, cap: number): Promise<Pr
     const id = name.slice(0, -3)
     try {
       const p = loadPriority(prioritiesDir, id)
-      priorities.push({ id: p.id, title: p.title, scopeNarrowing: p.scopeNarrowing, goal: truncate(p.goal, cap) })
+      priorities.push({ id: p.id, title: p.title, scopeNarrowing: p.scopeNarrowing, independentOfRunner: p.independentOfRunner === true, goal: truncate(p.goal, cap) })
     } catch {
       /* not a priority file */
     }

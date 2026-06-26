@@ -96,6 +96,7 @@ export interface Priority {
   readonly id: string
   readonly title: string
   readonly scopeNarrowing: string | null
+  readonly independentOfRunner?: boolean
   readonly goal: string
 }
 export type TicketState = 'open' | 'closed'

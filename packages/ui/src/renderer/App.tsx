@@ -4,7 +4,7 @@
 // the design-faithful view-model from the ported seed (fixture parity, fully interactive); the daemon
 // adapter is wired in the next slice (the existing electron/ plumbing is untouched).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRawRunDetail, loadRunDetail, sendOzMessage, launchRun, launchTicketRun, attachRun, teardownRun, stopRun, confirmArchiveRun, confirmTicketCloseRun, testCli, createPriority, createTicket, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, persistTicketOrder, saveAssignments, restartDaemon, type ConnectionState } from './live.ts'
+import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRawRunDetail, loadRunDetail, sendOzMessage, launchRun, launchIndependentHandoff, launchTicketRun, attachRun, teardownRun, stopRun, confirmArchiveRun, confirmTicketCloseRun, testCli, createPriority, createTicket, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, persistTicketOrder, saveAssignments, restartDaemon, type ConnectionState } from './live.ts'
 import { ADHOC_PRIORITY_ID, MODE_HONORED_PERSONAS, applyOrder, isActiveRun, mergeRunsWithEnrichment, orderPersonas, personasToAssignments } from './adapter.ts'
 import { Sidebar, type Route } from './ui/Sidebar.tsx'
 import { TopBar } from './ui/TopBar.tsx'
@@ -571,15 +571,23 @@ export function App() {
     return true
   }
   // POST /runs launches a REAL run — only ever reached from a live user click, never in tests/CI.
-  async function doLaunch(priorityId: string, label: string, resumeFromRunId?: string, strictPreRunDirt?: boolean, allowPreRunIntegrityErrors?: boolean) {
+  async function doLaunch(priority: Priority, label: string, resumeFromRunId?: string, strictPreRunDirt?: boolean, allowPreRunIntegrityErrors?: boolean) {
     const oz = ozApi()
     openLaunchProgress(`${label}…`)
     if (!oz) {
       setLaunchProgressError('Launch failed: daemon bridge unavailable.')
       return
     }
-    const res = await launchRun(oz, activeId, priorityId, resumeFromRunId, strictPreRunDirt, allowPreRunIntegrityErrors)
-    if (res.ok) {
+    const res = priority.independentOfRunner === true && !resumeFromRunId
+      ? await launchIndependentHandoff(oz, activeId, priority.id)
+      : await launchRun(oz, activeId, priority.id, resumeFromRunId, strictPreRunDirt, allowPreRunIntegrityErrors)
+    if (res.ok && priority.independentOfRunner === true && !resumeFromRunId) {
+      const data = res.data as { handoffPath?: unknown; command?: unknown }
+      const message = `Runnerless handoff created${typeof data.handoffPath === 'string' ? `: ${data.handoffPath}` : '.'}`
+      setLaunchProgressError(message)
+      notify('ok', message)
+      await refreshActiveWs()
+    } else if (res.ok) {
       const runId = launchedRunId(res.data)
       if (!runId) {
         setLaunchProgressError('Launch started, but Oz did not return a run id.')
@@ -588,7 +596,7 @@ export function App() {
       setLaunchProgress((cur) => ({ ...cur, runId }))
       notify('ok', `${label}…`)
       await refreshActiveWs()
-    } else if (res.status === 409) {
+    } else if (res.status === 409 && /in flight/i.test(res.error)) {
       const message = 'A run is already in flight for this workspace.'
       setLaunchProgressError(message)
       notify('info', message)
@@ -600,7 +608,7 @@ export function App() {
   }
   function handleLaunch(p: Priority, strictPreRunDirt?: boolean, allowPreRunIntegrityErrors?: boolean) {
     if (!live) { onSend(`Launch the priority “${p.name}”.`); return }
-    void doLaunch(p.id, `Launching “${p.name}”`, undefined, strictPreRunDirt, allowPreRunIntegrityErrors)
+    void doLaunch(p, `Launching “${p.name}”`, undefined, strictPreRunDirt, allowPreRunIntegrityErrors)
   }
   async function doLaunchTicket(ticketId: string, label: string) {
     const oz = ozApi()
@@ -649,7 +657,8 @@ export function App() {
         else notify('err', res.error || `Attach failed (${res.status}).`)
       } else if (action === 'retry') {
         const run = (runsByWs[activeId] ?? []).find((r) => r.id === id)
-        await doLaunch(run?.priorityId ?? ADHOC_PRIORITY_ID, 'Resuming from this run', id)
+        const priority = priorities.find((p) => p.id === run?.priorityId) ?? { id: run?.priorityId ?? ADHOC_PRIORITY_ID, name: 'Ad-hoc', summary: '', status: 'ready', labels: [] }
+        await doLaunch(priority, 'Resuming from this run', id)
       } else if (action === 'teardown') {
         const res = await teardownRun(oz, id)
         if (res.ok) { notify('ok', 'Closed the run’s panes.'); await refreshActiveWs() }

@@ -142,12 +142,17 @@ export function adaptWorkspace(w: DWorkspace): Workspace {
 
 // ── Priorities ── (title→name, goal→summary). The Ad-hoc priority is excluded (rendered as its own row).
 export function adaptPriority(p: DPriority): Priority {
+  const labels = [
+    ...(p.scopeNarrowing ? ['scope-narrowed'] : []),
+    ...(p.independentOfRunner === true ? ['runnerless'] : []),
+  ]
   return {
     id: p.id,
     name: p.title,
     summary: summarize(p.goal),
     status: 'ready',
-    labels: p.scopeNarrowing ? ['scope-narrowed'] : [],
+    labels,
+    ...(p.independentOfRunner === true ? { independentOfRunner: true } : {}),
   }
 }
 

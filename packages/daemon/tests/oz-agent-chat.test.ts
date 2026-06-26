@@ -791,6 +791,7 @@ function fakeAdapter(prompts: BuildInput[]): Adapter {
 function fakeOps(): OzChatOps {
   return {
     launchRun: async () => ({ status: 202, body: { runId: 'run_launch' } }),
+    requestIndependentHandoff: async () => ({ status: 202, body: { ok: true, runnerless: true, handoffPath: 'local/runnerless-handoffs/cocoder/demo.md', command: "cd '/repo' && cocoder run-independent demo" } }),
     showRun: async () => ({ status: 200, body: { sessionRef: 'surface:1' } }),
     stopRun: async () => ({ status: 202, body: { stopping: true } }),
     nudgeRun: async () => ({ status: 202, body: { queued: true, seq: 1 } }),

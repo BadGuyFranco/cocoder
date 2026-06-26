@@ -1541,6 +1541,30 @@ describe('Oz mutations + lifecycle', () => {
     expect(audit).toContain('"priorityId":"runnerless"')
   })
 
+  test('POST /runs/independent-handoff writes a durable runnerless handoff without creating a daemon run', async () => {
+    await writeFile(
+      join(home, 'cocoder', 'priorities', 'runnerless.md'),
+      `---\nid: runnerless\ntitle: Runnerless\nindependent-of-runner: true\n---\n## Objective\nDo the runnerless thing.`,
+    )
+    await startServer(fakeGit([], ['same-sha']))
+    oz!.ctx.inFlight.set('cocoder', 'run_active')
+
+    const r = await call(oz!, 'POST', '/runs/independent-handoff', { body: { workspaceId: 'cocoder', priorityId: 'runnerless' } })
+
+    expect(r.status).toBe(202)
+    expect(r.json).toMatchObject({ ok: true, runnerless: true, workspaceId: 'cocoder', priorityId: 'runnerless' })
+    expect(String(r.json.command)).toContain('cocoder run-independent runnerless')
+    expect(String(r.json.handoffPath)).toMatch(/^local\/runnerless-handoffs\/cocoder\/.*runnerless\.md$/)
+    const handoff = await readFile(join(home, String(r.json.handoffPath)), 'utf8')
+    expect(handoff).toContain('Runnerless handoff: Runnerless')
+    expect(handoff).toContain('cocoder run-independent runnerless')
+    expect(handoff).toContain('Do the runnerless thing.')
+    expect(store.listRuns()).toHaveLength(0)
+    expect(oz!.ctx.inFlight.get('cocoder')).toBe('run_active')
+    const audit = await readAuditEventually(home, '"action":"runnerless-handoff"')
+    expect(audit).toContain('"priorityId":"runnerless"')
+  })
+
   test('POST /runs allowSelfImpacting proceeds while recording the runner-impact alert', async () => {
     await writeFile(
       join(home, 'cocoder', 'priorities', 'runner-touch.md'),

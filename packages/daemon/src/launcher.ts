@@ -456,6 +456,75 @@ function appendRunnerImpactLaunchAudit(
   })
 }
 
+export async function requestIndependentHandoff(ctx: OzContext, input: { readonly workspaceId: string; readonly priorityId: string }): Promise<LaunchResult> {
+  const workspace = await findWorkspace(ctx.cocoderHome, input.workspaceId)
+  if (!workspace) return { status: 404, body: { error: 'unknown workspace' } }
+  let priority: Priority
+  try {
+    priority = loadPriority(join(workspace.path, 'cocoder', 'priorities'), input.priorityId)
+  } catch (err) {
+    return { status: 400, body: { error: err instanceof Error ? err.message : String(err) } }
+  }
+  if (priority.independentOfRunner !== true) {
+    return { status: 409, body: { error: `priority "${priority.id}" is not marked independent-of-runner` } }
+  }
+
+  const now = ctx.now ?? Date.now
+  const createdAt = new Date(now()).toISOString()
+  const safePriorityId = priority.id.replace(/[^a-z0-9-]/gi, '-').toLowerCase()
+  const handoffId = `${createdAt.replace(/[:.]/g, '-')}--${safePriorityId}`
+  const relativePath = join('local', 'runnerless-handoffs', workspace.id, `${handoffId}.md`)
+  const absolutePath = join(ctx.cocoderHome, relativePath)
+  const priorityPath = join(workspace.path, 'cocoder', 'priorities', `${priority.id}.md`)
+  const command = `cd ${shellQuote(workspace.path)} && cocoder run-independent ${priority.id}`
+  const content = [
+    `# Runnerless handoff: ${priority.title}`,
+    '',
+    `- Workspace: ${workspace.name} (${workspace.id})`,
+    `- Repository: ${workspace.path}`,
+    `- Priority: ${priority.id}`,
+    `- Priority file: ${priorityPath}`,
+    `- Created: ${createdAt}`,
+    '',
+    '## Begin',
+    '',
+    'Open a fresh terminal or Claude Code session with the repository as the working directory, then run:',
+    '',
+    '```sh',
+    command,
+    '```',
+    '',
+    'This priority is marked `independent-of-runner: true`; do not launch it through `POST /runs` or the normal Oz deterministic daemon runner.',
+    'If the command reports that the Oz daemon owns the live store, stop the daemon from outside any agent pane or rerun with `--force` only when you intentionally accept SQLite contention risk.',
+    '',
+    '## Priority Objective',
+    '',
+    (priority.objective ?? priority.goal.trim()) || '(No objective text found.)',
+    '',
+  ].join('\n')
+
+  await mkdir(dirname(absolutePath), { recursive: true })
+  await writeFile(absolutePath, content, 'utf8')
+  await appendAudit(ctx.cocoderHome, { action: 'runnerless-handoff', workspaceId: workspace.id, priorityId: priority.id, handoffPath: relativePath })
+  emitOzEvent(ctx, { type: 'runnerless-handoff', workspaceId: workspace.id, status: 'handoff-created' })
+  return {
+    status: 202,
+    body: {
+      ok: true,
+      runnerless: true,
+      workspaceId: workspace.id,
+      priorityId: priority.id,
+      handoffPath: relativePath,
+      command,
+      message: `Runnerless handoff created for ${priority.id}.`,
+    },
+  }
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`
+}
+
 function ticketPriority(ticket: Ticket): Priority {
   const body = ticket.body.trim() || `# ${ticket.id} - ${ticket.title}`
   const objective = [
@@ -2112,6 +2181,7 @@ async function runHeadlessThenGateCommit(ctx: OzContext, opts: HeadlessCommitOpt
       model: opts.model,
       cwd: opts.cwd,
       outPath: opts.turnLogPath,
+      headless: true,
     })
     const run = ctx.runHeadless ?? runHeadlessProcess
     turn = await run({ command: cmd.command, args: cmd.args, cwd: opts.cwd, outPath: opts.turnLogPath, timeoutMs: opts.timeoutMs })
