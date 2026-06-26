@@ -2,7 +2,7 @@
 id: 0069
 title: Oz/dashboard cannot launch independent-of-runner priorities; 409 is misleading
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-26
@@ -87,3 +87,9 @@ Root causes (verified by reading the code on 2026-06-26, run_253):
 - `local-cache-retention` (`cocoder/priorities/local-cache-retention.md`, `destructive: true`,
   `independent-of-runner: true`) is the live reproducer and first real consumer of the
   runnerless path.
+
+## Resolution
+
+Resolved by run deb-reconciliation (no code change) on 2026-06-26.
+
+Fixed AC-1: doLaunch (run_253) and doLaunchTicket (run_254, commit a3224230) now surface the real daemon reason for non-in-flight 409s instead of the generic 'already in flight'; verified 171 UI tests + tsc green. AC-2 (runnerless handoff affordance: POST /runs/independent-handoff + durable handoff artifact + 'Create handoff' button) and AC-3 runnerless flagging shipped in run_253. CARRIED AS FOLLOW-UP (not done here): AC-3 pending runnerless handoffs are not discoverable before their first run record lands (handoff event has no status consumer; net-new daemon+UI, may warrant its own priority); AC-4 the exact governed-write/request-deb-repair failure hit while filing 0069 was never captured. Follow-up not yet ticketed: out-of-band create refused while daemon live. Closed per founder direction 2026-06-26.
