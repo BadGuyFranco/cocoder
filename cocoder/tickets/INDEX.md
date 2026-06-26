@@ -13,6 +13,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
+| [0065](./open/0065-consolidate-run-dir-path-reconcile-adr-0027-6-nesting-drift.md) | Consolidate run-dir path; reconcile ADR-0027 §6 nesting drift | task | none | founder-session |
 | [0064](./open/0064-daemon-self-reload-zombies-the-old-process-and-wedges-oz-oz-sh-stop-reaps-only-the-listener.md) | Daemon self-reload zombies the old process and wedges Oz; oz.sh stop reaps only the listener | bug | none | founder-session |
 | [0063](./open/0063-author-governance-ticket-priority-during-an-active-run-queue-instead-of-refuse-and-surface-the-refusal.md) | Author governance (ticket/priority) during an active run — queue instead of refuse, and surface the refusal | task | none | Open |
 | [0048](./open/0048-adopt-eslint-in-cocoder-engine-repo.md) | Adopt a minimal ESLint 9 linter in CoCoder's own engine repo | task | none | Open |
