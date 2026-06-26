@@ -55,12 +55,13 @@ export interface RunStandaloneOptions {
   readonly requireIndependentOfRunner?: boolean
   readonly forceDaemonLive?: boolean
   readonly probeDaemonImpl?: ProbeDaemonImpl
+  readonly runnerDeps?: Partial<Pick<RunnerDeps, 'getAdapter' | 'io' | 'limits' | 'makeJudge' | 'runHeadless' | 'sessionHost' | 'timeouts'>>
   readonly runRunImpl?: RunRunImpl
 }
 
 export interface MainOptions {
   readonly probeDaemonImpl?: ProbeDaemonImpl
-  readonly runStandaloneOptions?: Pick<RunStandaloneOptions, 'runRunImpl'>
+  readonly runStandaloneOptions?: Pick<RunStandaloneOptions, 'runnerDeps' | 'runRunImpl'>
 }
 
 function authorInvocationFromArgv(): unknown {
@@ -533,11 +534,13 @@ export async function runStandalone(
   const sharedStandards = readFileSync(join(baseDir, 'shared-standards.md'), 'utf8')
   const assignments = loadAssignments(join(personasDir, 'assignments.json'))
   const registry = makeAdapterRegistry()
+  const injectedRunnerDeps = options.runnerDeps
+  const getAdapterImpl = injectedRunnerDeps?.getAdapter ?? ((cli: string) => getAdapter(cli, registry))
 
   const workspace = { id: 'cocoder', path: root, name: 'CoCoder' }
   const assignedOscar = resolveEffectivePersona(sources, assignments, 'oscar')
   const oscar = options.requireIndependentOfRunner
-    ? { ...assignedOscar, model: await latestModelFor(getAdapter(assignedOscar.cli, registry)) }
+    ? { ...assignedOscar, model: await latestModelFor(getAdapterImpl(assignedOscar.cli)) }
     : assignedOscar
   if (options.requireIndependentOfRunner) log(`run-independent → Oscar model resolved to ${oscar.model}`)
   const bob = resolveEffectivePersona(sources, assignments, 'bob')
@@ -600,11 +603,15 @@ export async function runStandalone(
   const runRunImpl = options.runRunImpl ?? runRun
   const deps: RunnerDeps = {
     store,
-    sessionHost: new CmuxSessionHost(),
+    sessionHost: injectedRunnerDeps?.sessionHost ?? new CmuxSessionHost(),
     git: makeGit(),
-    getAdapter: (cli) => getAdapter(cli, registry),
-    io: makeRunnerIO(),
+    getAdapter: getAdapterImpl,
+    io: injectedRunnerDeps?.io ?? makeRunnerIO(),
     log,
+    ...(injectedRunnerDeps?.limits === undefined ? {} : { limits: injectedRunnerDeps.limits }),
+    ...(injectedRunnerDeps?.makeJudge === undefined ? {} : { makeJudge: injectedRunnerDeps.makeJudge }),
+    ...(injectedRunnerDeps?.runHeadless === undefined ? {} : { runHeadless: injectedRunnerDeps.runHeadless }),
+    ...(injectedRunnerDeps?.timeouts === undefined ? {} : { timeouts: injectedRunnerDeps.timeouts }),
   }
 
   try {
