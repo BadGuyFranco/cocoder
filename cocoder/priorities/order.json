@@ -1,4 +1,5 @@
 [
+  "governance-authoring-ssot",
   "multi-workspace-concurrency",
   "model-layer",
   "doc-truth-analysis",
@@ -6,6 +7,5 @@
   "priority-audit",
   "ad-hoc-session-architecture",
   "local-cache-retention",
-  "runnerless-independent-priority",
-  "governance-authoring-ssot"
+  "runnerless-independent-priority"
 ]
