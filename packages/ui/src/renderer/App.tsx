@@ -627,7 +627,7 @@ export function App() {
       setLaunchProgress((cur) => ({ ...cur, runId }))
       notify('ok', `${label}…`)
       await refreshActiveWs()
-    } else if (res.status === 409) {
+    } else if (res.status === 409 && /in flight/i.test(res.error)) {
       const message = 'A run is already in flight for this workspace.'
       setLaunchProgressError(message)
       notify('info', message)

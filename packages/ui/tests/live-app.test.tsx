@@ -430,7 +430,7 @@ describe('Oz renderer — live daemon path', () => {
       posts,
       priorities: { ...(prioritiesFx as { priorities: DPriority[] }), priorities: [runnerless] },
       runs: { runs: [] },
-      postResult: (path) => path === '/runs/independent-handoff'
+      postResult: (path: string) => path === '/runs/independent-handoff'
         ? { ok: true, status: 202, data: { ok: true, runnerless: true, handoffPath: 'local/runnerless-handoffs/cocoder/runnerless.md' } }
         : { ok: false, status: 500, error: `unexpected ${path}` },
     }))
@@ -442,7 +442,7 @@ describe('Oz renderer — live daemon path', () => {
     await waitFor(() => expect(posts.find((p) => p.path === '/runs/independent-handoff')).toBeDefined())
     expect(posts.some((p) => p.path === '/runs')).toBe(false)
     expect(posts.find((p) => p.path === '/runs/independent-handoff')?.body).toMatchObject({ workspaceId: 'cocoder', priorityId: 'runnerless-priority' })
-    await waitFor(() => expect(screen.getByText(/Runnerless handoff created/)).toBeDefined())
+    await waitFor(() => expect(screen.getAllByText(/Runnerless handoff created/).length).toBeGreaterThan(0))
   })
 
   it('shows live launch progress from run events and auto-closes when Oscar is ready', async () => {
@@ -544,6 +544,31 @@ describe('Oz renderer — live daemon path', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
     fireEvent.click(within(rowForText('Living base personas + repo extensions')).getByText('Launch'))
+    await waitFor(() => expect(screen.getAllByText(/already in flight/i).length).toBeGreaterThan(0))
+    expect(screen.getByRole('button', { name: 'Close' })).toBeDefined()
+  })
+
+  it('ticket launch surfaces non-in-flight 409 daemon text verbatim', async () => {
+    const error = 'ticket "0003" already has run run_253 awaiting founder close confirmation; close or reject that run before launching another fix'
+    setOz(mockOz({ postResult: { ok: false, status: 409, error } }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(screen.getByRole('button', { name: /Tickets \d+/i }))
+    fireEvent.click(within(rowForText('Public docs/ tree is v1-stale (commands, PRIORITIES.md, cocoder/local, routes)')).getByText('Launch'))
+
+    await waitFor(() => expect(screen.getAllByText(error).length).toBeGreaterThan(0))
+    expect(screen.queryByText('A run is already in flight for this workspace.')).toBeNull()
+  })
+
+  it('ticket launch still maps genuine in-flight 409s to the generic banner', async () => {
+    setOz(mockOz({ postResult: { ok: false, status: 409, error: 'run already in flight for workspace cocoder' } }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(screen.getByRole('button', { name: /Tickets \d+/i }))
+    fireEvent.click(within(rowForText('Public docs/ tree is v1-stale (commands, PRIORITIES.md, cocoder/local, routes)')).getByText('Launch'))
+
     await waitFor(() => expect(screen.getAllByText(/already in flight/i).length).toBeGreaterThan(0))
     expect(screen.getByRole('button', { name: 'Close' })).toBeDefined()
   })
