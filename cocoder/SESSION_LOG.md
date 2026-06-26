@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-25 — **founder-facing-run-identity: display label primacy — archive ready (run_100/run_244)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [founder-facing-run-identity](./priorities/founder-facing-run-identity.md) | **Run:** run_244 (display 100)
+**Outcomes:**
+- **Shared vocabulary (`5e2201b`–`0b8fd6e`).** `runDisplayName` emits `[workspace] run N` when a real workspace name is present; dashboard Runs tab renamed to `Runs` with display label as primary heading; UI adapter, Oz chat/awareness, Deb status, and wrap delivery all lead with the display label; technical id stays parenthetical in durable records only.
+- **Acceptance verified.** All four objective criteria met; core (629), UI (167), and daemon (383) suites green; tab label and run-list heading primacy pinned in `dashboard-runs-tab.test.tsx`.
+- **Known boundary (out of scope).** On-disk handoff paths and run directories remain keyed by technical id (`run_<n>`); agents may still type those paths — a separate priority if path aliasing is desired.
+- **Disposition: `archive-confirmation`.** Objective fully met; founder archive reply is the first-class closeout action.
+**Next:** Reply `archive` in Oz chat to archive `founder-facing-run-identity`, then launch `model-layer` for Phase 0 adapter tier metadata.
+
 ## 2026-06-25 — **ticket-priority-repoint: verification wrap — archive ready (run_99)**
 
 **Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** [ticket-priority-repoint](./priorities/ticket-priority-repoint.md) | **Run:** run_99 (display 99)
