@@ -3,6 +3,12 @@ import type { PrioritySummary, TicketSummary } from './priority-order.js'
 
 export type OzAwarenessRun = Pick<Run, 'id' | 'workspaceId' | 'priorityId' | 'playbookId' | 'ticketId' | 'status' | 'createdAt' | 'endedAt'> & {
   readonly displayNumber: number | null
+  readonly workspaceName: string | null
+}
+
+type RunAwarenessInput = Run & {
+  readonly displayNumber?: number | null
+  readonly workspaceName?: string | null
 }
 
 export interface OzAwarenessSnapshot {
@@ -14,7 +20,7 @@ export interface OzAwarenessSnapshot {
 
 export interface OzAwarenessInput {
   readonly priorities: readonly PrioritySummary[]
-  readonly runs: readonly Run[]
+  readonly runs: readonly RunAwarenessInput[]
   readonly tickets: readonly TicketSummary[]
 }
 
@@ -28,7 +34,7 @@ export function projectOzAwareness(input: OzAwarenessInput): OzAwarenessSnapshot
   }
 }
 
-function projectRun(run: Run): OzAwarenessRun {
+function projectRun(run: RunAwarenessInput): OzAwarenessRun {
   return {
     id: run.id,
     workspaceId: run.workspaceId,
@@ -39,5 +45,6 @@ function projectRun(run: Run): OzAwarenessRun {
     createdAt: run.createdAt,
     endedAt: run.endedAt,
     displayNumber: runDisplayNumber(run),
+    workspaceName: run.workspaceName ?? null,
   }
 }

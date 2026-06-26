@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import type { Run } from '@cocoder/core'
+import { runDisplayName, type Run } from '@cocoder/core'
 import { projectOzAwareness } from '../src/oz-awareness.js'
 import type { PrioritySummary, TicketSummary } from '../src/priority-order.js'
 
@@ -23,8 +23,18 @@ describe('projectOzAwareness', () => {
     const snapshot = projectOzAwareness({ priorities, runs, tickets })
 
     expect(snapshot.priorities).toEqual(priorities)
-    expect(snapshot.recentRuns).toEqual(runs.map((run) => ({ ...run, displayNumber: null })))
-    expect(snapshot.activeRuns).toEqual([{ ...runs[1], displayNumber: null }, { ...runs[2], displayNumber: null }])
+    expect(snapshot.recentRuns).toEqual(runs.map((run) => ({ ...run, displayNumber: null, workspaceName: null })))
+    expect(snapshot.activeRuns).toEqual([{ ...runs[1], displayNumber: null, workspaceName: null }, { ...runs[2], displayNumber: null, workspaceName: null }])
     expect(snapshot.openTickets).toEqual([tickets[0]])
+  })
+
+  test('preserves workspace names for founder-facing run labels', () => {
+    const snapshot = projectOzAwareness({
+      priorities,
+      runs: [{ ...runs[0], displayNumber: 98, workspaceName: 'CoCoder' }],
+      tickets: [],
+    })
+
+    expect(runDisplayName(snapshot.recentRuns[0]!)).toBe('CoCoder run 98')
   })
 })

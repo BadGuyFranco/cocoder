@@ -192,7 +192,7 @@ async function runTurn(ctx: OzContext, target: OzTarget, session: OzSession, inp
 
 async function buildPrompt(ctx: OzContext, target: OzTarget, transcript: readonly TranscriptEntry[], input: TurnInput): Promise<string> {
   const priorities = await readPriorities(prioritiesDir(target.workspace.path), PRIORITIES_CAP)
-  const runs: RunWithDisplayNumber[] = await Promise.all(ctx.store.listRuns({ workspaceId: target.workspace.id }).map((run) => withPortableDisplayNumberForPath(run, target.workspace.path)))
+  const runs: RunWithDisplayNumber[] = await Promise.all(ctx.store.listRuns({ workspaceId: target.workspace.id }).map((run) => withPortableDisplayNumberForPath(run, target.workspace.path, target.workspace.name)))
   const awareness = projectOzAwareness({
     priorities,
     runs,

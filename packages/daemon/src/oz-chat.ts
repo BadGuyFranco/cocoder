@@ -165,19 +165,21 @@ export async function executeOzCommand(ctx: OzContext, workspaceId: string | und
 
   if (command.kind === 'launch') {
     if (!workspaceId) return missingWorkspace()
+    const workspaceName = await workspaceNameFor(ctx, workspaceId)
     return runOp(
       'launch',
       () => ops.launchRun(ctx, workspaceId, command.priorityId),
-      (out) => launchReply(workspaceId, command.priorityId, out),
+      (out) => launchReply(workspaceId, command.priorityId, out, workspaceName),
     )
   }
 
   if (command.kind === 'adhoc') {
     if (!workspaceId) return missingWorkspace()
+    const workspaceName = await workspaceNameFor(ctx, workspaceId)
     return runOp(
       'launch',
       () => ops.launchRun(ctx, workspaceId, ADHOC_PRIORITY_ID, { task: command.task }),
-      (out) => launchReply(workspaceId, ADHOC_PRIORITY_ID, out),
+      (out) => launchReply(workspaceId, ADHOC_PRIORITY_ID, out, workspaceName),
     )
   }
 
@@ -382,10 +384,10 @@ async function runOp(command: OzChatReply['command'], call: () => Promise<Launch
   }
 }
 
-function launchReply(workspaceId: string, priorityId: string, out: LaunchResult): OzChatReply {
+function launchReply(workspaceId: string, priorityId: string, out: LaunchResult, workspaceName?: string | null): OzChatReply {
   const runId = typeof out.body.runId === 'string' ? out.body.runId : undefined
   const displayNumber = typeof out.body.displayNumber === 'number' ? out.body.displayNumber : null
-  const runLabel = runId ? runDisplayName({ id: runId, displayNumber }) : null
+  const runLabel = runId ? runDisplayName({ id: runId, displayNumber, workspaceName }) : null
   if (!isOk(out.status)) return failedReply('launch', `Could not launch ${priorityId}`, out)
   return {
     reply: runLabel ? `Launched ${priorityId} as ${runLabel}.` : runId ? `Launched ${priorityId}.` : `Launch accepted for ${priorityId}.`,
@@ -663,6 +665,14 @@ async function readWorkspaceTickets(ctx: OzContext, workspaceId: string): Promis
   const workspace = await findWorkspace(ctx.cocoderHome, workspaceId)
   if (!workspace) return []
   return readTickets(join(workspace.path, 'cocoder', 'tickets'))
+}
+
+async function workspaceNameFor(ctx: OzContext, workspaceId: string): Promise<string | null> {
+  try {
+    return (await findWorkspace(ctx.cocoderHome, workspaceId))?.name ?? null
+  } catch {
+    return null
+  }
 }
 
 function isOk(status: number): boolean {

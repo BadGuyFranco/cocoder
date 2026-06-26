@@ -124,6 +124,22 @@ describe('handleOzMessage', () => {
     })
   })
 
+  test('launch reply uses the real workspace name when the registry resolves it', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'cocoder-oz-launch-display-'))
+    await mkdir(join(home, 'local'), { recursive: true })
+    await writeFile(join(home, 'local', 'workspaces.json'), JSON.stringify({ workspaces: [{ id: 'cocoder', name: 'CoCoder', path: '${COCODER_HOME}' }] }))
+    const ops = mockOps({
+      launchRun: async () => ({ status: 202, body: { runId: 'run_188', displayNumber: 98 } }),
+    })
+
+    const result = await handleOzMessage(testCtx(undefined, home), { text: 'launch demo', workspaceId: 'cocoder' }, ops)
+
+    expect(result).toMatchObject({
+      status: 202,
+      body: { ok: true, command: 'launch', reply: 'Launched demo as CoCoder run 98.', action: { type: 'launch', runId: 'run_188' } },
+    })
+  })
+
   test('adhoc maps to launchRun with the ad-hoc priority and task', async () => {
     const calls: Array<{ workspaceId: string; priorityId: string | LaunchRunTarget; task?: string | null }> = []
     const ops = mockOps({
@@ -352,7 +368,7 @@ describe('handleOzMessage', () => {
 
     expect(result).toMatchObject({
       status: 200,
-      body: { ok: true, command: 'status', reply: 'workspace run 1 is running on demo.' },
+      body: { ok: true, command: 'status', reply: 'CoCoder run 1 is running on demo.' },
     })
     expect(result.body.action).toMatchObject({ type: 'status', runId: run.id })
     store.close()
