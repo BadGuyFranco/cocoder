@@ -71,7 +71,7 @@ function TabStrip({ active, onChange, priorities, tickets, runs }: { active: Das
   const tabs: Array<{ id: DashboardTab; label: string; count: number }> = [
     { id: 'priorities', label: 'Priorities', count: priorities },
     { id: 'tickets', label: 'Tickets', count: tickets },
-    { id: 'runs', label: 'Runs/Sessions', count: runs },
+    { id: 'runs', label: 'Runs', count: runs },
   ]
   return (
     <div style={{ display: 'flex', gap: 2, padding: 2, background: 'var(--cb-bg)', border: '1px solid var(--cb-border)', borderRadius: 'var(--cb-radius-md)', minWidth: 0 }}>
@@ -239,14 +239,16 @@ function RunsTab({ runs, onSelectRun, priorities }: { runs: Run[]; onSelectRun: 
         <div style={{ borderTop: '1px solid var(--cb-border)' }}>
           {filtered.map((run) => {
             const parentPriority = run.priorityId ? priorities.find((p) => p.id === run.priorityId) : null
+            const displayName = runDisplayName(run)
             return (
-              <div key={run.id} draggable onDragStart={(e) => setOzItemDragData(e, 'run', run.id, runDisplayName(run))} onClick={() => onSelectRun(run.id)} style={{ padding: '12px 4px', borderBottom: '1px solid var(--cb-border)', cursor: 'pointer', display: 'grid', gridTemplateColumns: '92px minmax(0,1fr) 20px', gap: 12, alignItems: 'center' }}
+              <div key={run.id} draggable onDragStart={(e) => setOzItemDragData(e, 'run', run.id, displayName)} onClick={() => onSelectRun(run.id)} style={{ padding: '12px 4px', borderBottom: '1px solid var(--cb-border)', cursor: 'pointer', display: 'grid', gridTemplateColumns: '92px minmax(0,1fr) 20px', gap: 12, alignItems: 'center' }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--cb-hover)')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
                 <StatusChip status={run.status} />
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 12.5, color: 'var(--cb-text)', fontWeight: 500, lineHeight: 1.4 }}>{run.title}</div>
+                  <div role="heading" aria-level={3} style={{ fontSize: 12.5, color: 'var(--cb-text)', fontWeight: 600, lineHeight: 1.4 }}>{displayName}</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--cb-text-secondary)', marginTop: 2, lineHeight: 1.4 }}>{run.title}</div>
                   <div style={{ fontSize: 11, color: 'var(--cb-text-muted)', marginTop: 3 }}>{parentPriority ? <>priority · <span style={{ color: 'var(--cb-text-secondary)' }}>{parentPriority.name}</span></> : <span style={{ color: 'var(--cb-accent)' }}>ad-hoc</span>}</div>
-                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>{run.personas.slice(0, 3).map((p) => <span key={p} style={{ fontSize: 9.5, fontFamily: 'var(--cb-font-mono)', color: 'var(--cb-text-secondary)', padding: '1px 5px', background: 'var(--cb-bg-soft)', borderRadius: 2, border: '1px solid var(--cb-border)' }}>{p}</span>)}<span style={{ marginLeft: 'auto', fontFamily: 'var(--cb-font-mono)', fontSize: 10.5, color: 'var(--cb-text-muted)' }}>{runDisplayName(run)} · {run.startedAt}</span></div>
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>{run.personas.slice(0, 3).map((p) => <span key={p} style={{ fontSize: 9.5, fontFamily: 'var(--cb-font-mono)', color: 'var(--cb-text-secondary)', padding: '1px 5px', background: 'var(--cb-bg-soft)', borderRadius: 2, border: '1px solid var(--cb-border)' }}>{p}</span>)}<span style={{ marginLeft: 'auto', fontFamily: 'var(--cb-font-mono)', fontSize: 10.5, color: 'var(--cb-text-muted)' }}>{displayName} · {run.startedAt}</span></div>
                 </div>
                 <Icon name="arrow-right" size={12} style={{ color: 'var(--cb-text-muted)' }} />
               </div>

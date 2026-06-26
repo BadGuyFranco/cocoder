@@ -138,7 +138,7 @@ describe('Dashboard layout', () => {
     expect(screen.getByText('0003')).toBeDefined()
     expect(screen.queryByText('Ad-hoc')).toBeNull()
 
-    fireEvent.click(screen.getByRole('button', { name: /Runs\/Sessions 1/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Runs 1/i }))
     expect(screen.getByRole('button', { name: /All 1/i })).toBeDefined()
     expect(screen.getByText('Run running')).toBeDefined()
   })
@@ -324,7 +324,7 @@ describe('Dashboard layout', () => {
   it('shows runs in-panel with filters and opens a run row', () => {
     render(<DashboardHarness runs={[run('running', 'running'), run('done', 'complete', 'p-landed'), run('failed', 'failed', null)]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /Runs\/Sessions 3/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Runs 3/i }))
 
     expect(screen.getByRole('button', { name: /All 3/i })).toBeDefined()
     expect(screen.getByRole('button', { name: /Active 1/i })).toBeDefined()
@@ -353,7 +353,7 @@ describe('Dashboard layout', () => {
     fireEvent.click(screen.getByTitle('Add ticket'))
     expect(onAddTicket).toHaveBeenCalledTimes(1)
 
-    fireEvent.click(screen.getByRole('button', { name: /Runs\/Sessions 1/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Runs 1/i }))
     expect(screen.queryByTitle('Add priority')).toBeNull()
     expect(screen.queryByTitle('Add ticket')).toBeNull()
   })
