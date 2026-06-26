@@ -511,7 +511,7 @@ async function runDetail(ctx: OzContext, res: ServerResponse, runId: string): Pr
   const workItems = ctx.store.listWorkItems(runId)
   const commitLinks = ctx.store.listCommitLinks(runId)
   const events = ctx.store.listEvents(runId)
-  const files = await readRunDir(ctx.runsRoot, runId)
+  const files = await readRunDir(ctx.runsRoot, run)
 
   // Committed diffs: resolve the workspace path from the registry (one home), git show each sha.
   const ws = await findWorkspace(ctx.cocoderHome, run.workspaceId)

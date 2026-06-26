@@ -1,9 +1,9 @@
 // Run-dir reader (ADR-0003): a completed run's terminal output + structured artifacts live as files
-// under <runsRoot>/<runId> (written by the runner's IO). Oz's run-detail surface renders them
-// read-only. Large outputs are capped so a run detail can't return an unbounded payload.
+// under the runner-owned machine-local run dir. Oz's run-detail surface renders them read-only.
+// Large outputs are capped so a run detail can't return an unbounded payload.
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { truncate } from '@cocoder/core'
+import { localRunDir, localRunDirById, truncate, type LocalRunIdentity } from '@cocoder/core'
 
 /** Cap any single captured stream so a run-detail response stays bounded. */
 const CAP = 50_000
@@ -27,8 +27,8 @@ export interface RunDirContents {
 }
 
 /** Read the per-run artifacts; every field is best-effort (null when the file isn't present). */
-export async function readRunDir(runsRoot: string, runId: string): Promise<RunDirContents> {
-  const dir = join(runsRoot, runId)
+export async function readRunDir(runsRoot: string, run: LocalRunIdentity | string): Promise<RunDirContents> {
+  const dir = typeof run === 'string' ? localRunDirById(runsRoot, run) : localRunDir(runsRoot, run)
   const [oscarOut, oscarErr, bobOut, bobErr, pickup, record] = await Promise.all([
     readCapped(join(dir, 'oscar.out')),
     readCapped(join(dir, 'oscar.err')),

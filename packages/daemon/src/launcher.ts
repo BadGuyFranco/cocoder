@@ -25,6 +25,7 @@ import {
   isPersonaEnabled,
   gateCommitRepair,
   listEffectivePlays,
+  localRunDir,
   loadAssignments,
   loadEffectivePlay,
   loadPriority,
@@ -217,7 +218,8 @@ async function assembleRunInput(
   let pickup: string | null = null
   if (opts.resumeFromRunId) {
     try {
-      pickup = await readFile(join(ctx.runsRoot, opts.resumeFromRunId, 'pickup.md'), 'utf8')
+      const resumeRunDir = localRunDir(ctx.runsRoot, { workspaceId: ws.id, id: opts.resumeFromRunId })
+      pickup = await readFile(join(resumeRunDir, 'pickup.md'), 'utf8')
     } catch {
       throw new Error(`cannot resume: no pickup brief for run "${opts.resumeFromRunId}"`)
     }
@@ -1037,7 +1039,8 @@ export async function requestNudgeRun(ctx: OzContext, runId: string, message: st
     return { status: 409, body: { error: `run is not live in this daemon process or is "${run.status}" — only a running live run can be nudged cooperatively` } }
   }
 
-  const path = join(ctx.runsRoot, runId, 'oz-nudge.json')
+  const runDir = localRunDir(ctx.runsRoot, run)
+  const path = join(runDir, 'oz-nudge.json')
   const seq = (await readNudgeSeq(path)) + 1
   const payload = {
     target: 'oscar' as const,

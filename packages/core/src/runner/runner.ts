@@ -70,6 +70,7 @@ import { groupLabel as formatGroupLabel, paneLabel, type RunLabelTarget } from '
 import { type Judge, makeHeuristicJudge, runMonitor } from './monitor.js'
 import { createHeadlessOscarDriver, createPaneOscarDriver, type OscarDriver } from './oscar-driver.js'
 import { spawnObserver } from './observer.js'
+import { localRunDir } from './run-dir.js'
 import {
   buildBuilderStandbyPrompt,
   buildArtifactDispatch,
@@ -157,7 +158,7 @@ export interface RunInput {
    *  Direct runner callers that omit this retain the historical dogfood shape: engine home == workspace
    *  repo. The daemon always passes this explicitly because it knows the install home. */
   readonly engineHome?: string
-  /** runs root; the run dir is <runsRoot>/<runId>. */
+  /** Machine-local run artifact root; per-run path construction is owned by localRunDir. */
   readonly runsRoot: string
   /** Optional founder-provided free-text instruction for this run; not persisted in the store. */
   readonly task?: string | null
@@ -383,7 +384,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   if (existingRun !== null && existingRun.status !== 'held') throw new Error(`Cannot resume run ${existingRun.id} from status ${existingRun.status}; expected held`)
   const run = existingRun ?? store.createRun({ workspaceId: workspace.id, priorityId: input.storePriorityId ?? priority.id, ticketId: input.ticketId ?? null })
   if (existingRun === null) deps.onRunCreated?.(run) // synchronous, before the first await — the daemon captures runId here
-  const runDir = join(runsRoot, run.id)
+  const runDir = localRunDir(runsRoot, run)
   await io.ensureRunDir(runDir)
   const resumeState = existingRun === null ? null : await readResumeState(runDir)
   if (existingRun !== null && resumeState === null) throw new Error(`Cannot resume run ${run.id}; missing resume-state.json`)
