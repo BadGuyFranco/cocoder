@@ -115,3 +115,24 @@ that doc is stale, fix the owner first or file a narrow follow-up before changin
 - For 0065, execute the founder-chosen ADR-0027 §6 nested layout path: `localRunDir()` nesting,
   migration of existing flat dirs, compat read-fallback, and verification that existing run details
   still load.
+
+## Continuation — elegance cleanup (founder-directed 2026-06-26, do NOT archive until done)
+
+The SSOT/queue objective above is met and verified (run_246, 9 atoms; 0063/0066/0065 closed). The
+founder directed an elegance-cleanup pass before archive. Relaunch this priority and delegate these as
+verified atoms (each: correctness first, then minimum surface; keep all suites green):
+
+1. **One run-dir resolver, one name.** Delete `localRunDirById` and the alias
+   `localRunDirById as resolveLocalRunDir` (packages/daemon/src/{rundir,launcher,oz-context-pointer}.ts,
+   packages/core/src/runner/run-dir.ts + index). Every read-by-id caller already passes `{missing:'null'}`
+   i.e. wants the real `resolveLocalRunDir`; import it directly. One owner, one name, fewer concepts.
+2. **Consolidate the queue receipt/union.** `QueuedAuthoringReceipt` grew to several variants incl. a
+   bare `{queuedId,status}`, and `QUEUE_SCHEMA_VERSION` accreted v1→v3. Tidy the receipt to one shape and
+   confirm the entry union reads as designed-once; keep the loud old-version rejection.
+3. **First-class mid-run governed ticket-close.** The 0063/0066/0065 closures had to run through a
+   throwaway scratchpad script because the queue only drains post-wrap and the CLI refuses mid-run. Add a
+   verify-gated path to close a ticket through the governed `closeTicket` op from inside a run (so
+   closures commit and verify at the gate, no scratchpad workaround). Design atom first.
+
+Out of scope here: the physical run-dir migration + retiring the legacy fallback is owned by ticket 0067
+(runs once no active run references the flat shape). Do not fold it in.

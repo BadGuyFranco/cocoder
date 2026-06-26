@@ -128,6 +128,19 @@ strand class is dissolved *structurally*, not patched. Proof: `node scripts/proo
   owner contract, and run the consuming package's suite whenever the owner contract changes. Follow-up:
   ticket [0022](./tickets/open/0022-wrap-up-contract-fixture-drift-daemon-suite.md).
 
+- **F24 — Oscar re-asked permission for work the founder had already directed (run_246, 2026-06-26).**
+  The founder said "do NOT archive this priority, add another atom to look for elegance issues and clean
+  it up." Oscar correctly named the mechanical limit (the run had wrapped; product-code cleanup needs a
+  fresh verified run) but then ended with a multiple-choice permission question — asking whether to do the
+  very thing already directed. **Root cause:** Oscar treats a clear founder action-directive as if it
+  still needs a confirmation gate, converting "do X" into "shall I do X?"; the inverse of the F18
+  premature-pause family, and recurring. **Fix pattern:** on a direct founder action-directive, act to the
+  limit of current scope without a confirm-back; reserve a question for a genuine fork the founder alone
+  can resolve, and even then do the unambiguous parts first. State a hard mechanical limit as a fact plus
+  the action already taken, never as a request for permission to proceed. Surface for the relaunch persona
+  pass (in this priority's Continuation): tighten the Oscar persona so a direct directive overrides the
+  default confirm-back, kept distinct from "Thoughts? means think."
+
 ## Cross-cutting lessons (feed the charter)
 
 - **L1.** Nearly all failures above are *coordination/state* failures, not algorithm failures —
