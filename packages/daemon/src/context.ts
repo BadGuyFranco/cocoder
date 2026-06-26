@@ -119,6 +119,8 @@ export interface OzContext {
   readonly stopControllers: Map<string, AbortController>
   /** Coarse daemon-local event hints for clients that should refetch after lifecycle changes. */
   readonly events: OzEventBus
+  /** Active SSE response closers owned by this daemon process. Shutdown drains these before closing sockets. */
+  readonly eventStreamClosers: Set<() => void>
   /** Trigger a daemon refresh (the lightweight dashboard's "Restart daemon" button). Default spawns
    *  a detached `scripts/oz.sh restart`; injectable in tests so they never restart the real daemon.
    *  The daemon must NEVER restart itself in-process — a process can't cleanly respawn itself. */

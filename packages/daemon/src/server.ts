@@ -5,6 +5,7 @@
 import { execFile, spawn } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
+import type { Socket } from 'node:net'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import {
@@ -162,6 +163,7 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
     inFlight: new Map<string, string>(),
     stopControllers: new Map<string, AbortController>(),
     events: createOzEventBus(),
+    eventStreamClosers: new Set(),
     runHeadless: opts.runHeadless,
     ...(opts.runnerTimeouts !== undefined ? { runnerTimeouts: opts.runnerTimeouts } : {}),
     restartDaemon: opts.restartDaemon ?? defaultRestartDaemon(opts.cocoderHome),
@@ -215,6 +217,11 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
   await reconcileOrphans(ctx)
 
   const server = createServer(handler)
+  const sockets = new Set<Socket>()
+  server.on('connection', (socket) => {
+    sockets.add(socket)
+    socket.on('close', () => sockets.delete(socket))
+  })
   const port = await new Promise<number>((resolve) => {
     server.listen(opts.port ?? DEFAULT_OZ_PORT, '127.0.0.1', () => {
       const addr = server.address()
@@ -237,14 +244,26 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
     ctx,
     close: () =>
       new Promise<void>((resolve) => {
-        server.close(() => {
+        let settled = false
+        const closeStoreAndResolve = (): void => {
+          if (settled) return
+          settled = true
           try {
             ctx.store.close()
           } catch {
             /* already closed / injected store */
           }
           resolve()
-        })
+        }
+
+        server.close(closeStoreAndResolve)
+        for (const closeStream of [...ctx.eventStreamClosers]) closeStream()
+        server.closeIdleConnections()
+        if (typeof server.closeAllConnections === 'function') {
+          server.closeAllConnections()
+        } else {
+          for (const socket of sockets) socket.destroy()
+        }
       }),
   }
 }

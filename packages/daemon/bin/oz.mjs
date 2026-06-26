@@ -14,8 +14,16 @@ const port = portFlag >= 0 ? Number(process.argv[portFlag + 1]) : undefined
 const oz = await createOzServer({ cocoderHome: process.cwd(), port, warmCliCacheOnBoot: true })
 console.log(`[oz] daemon listening on ${oz.url} — dashboard at ${oz.url}/`)
 
+let shuttingDown = false
 const shutdown = () => {
-  oz.close().finally(() => process.exit(0))
+  if (shuttingDown) return
+  shuttingDown = true
+  const forceExitTimer = setTimeout(() => process.kill(process.pid, 'SIGKILL'), 2500)
+  forceExitTimer.unref()
+  oz.close().finally(() => {
+    clearTimeout(forceExitTimer)
+    process.exit(0)
+  })
 }
 process.on('SIGINT', shutdown)
 process.on('SIGTERM', shutdown)

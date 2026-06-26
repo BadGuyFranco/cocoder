@@ -581,12 +581,19 @@ function streamOzEvents(ctx: OzContext, req: IncomingMessage, res: ServerRespons
     if (!closed && !res.destroyed && !res.writableEnded) res.write(': heartbeat\n\n')
   }, 15_000)
 
+  let closeStream: () => void
   const cleanup = (): void => {
     if (closed) return
     closed = true
     clearInterval(heartbeat)
     unsubscribe()
+    ctx.eventStreamClosers.delete(closeStream)
   }
+  closeStream = (): void => {
+    cleanup()
+    if (!res.destroyed && !res.writableEnded) res.end()
+  }
+  ctx.eventStreamClosers.add(closeStream)
   req.on('close', cleanup)
   res.on('close', cleanup)
 }

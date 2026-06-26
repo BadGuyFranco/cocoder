@@ -14,11 +14,32 @@ LOG="${ROOT}/local/oz.log"
 PIDFILE="${ROOT}/local/oz.pid"
 DAEMON_BIN="${ROOT}/packages/daemon/bin/oz.mjs"
 
+daemon_pids() {
+  {
+    if command -v pgrep >/dev/null 2>&1; then
+      pgrep -f "${DAEMON_BIN} --port ${PORT}" 2>/dev/null || true
+    fi
+    lsof -ti ":${PORT}" -sTCP:LISTEN 2>/dev/null || true
+    if [ -f "${PIDFILE}" ]; then cat "${PIDFILE}" 2>/dev/null || true; fi
+  } | awk 'NF && !seen[$1]++'
+}
+
+kill_daemons() {
+  local signal="${1:-TERM}"
+  local pids
+  pids="$(daemon_pids)"
+  if [ -n "${pids}" ]; then
+    # shellcheck disable=SC2086
+    kill "-${signal}" ${pids} 2>/dev/null || true
+  fi
+}
+
 free_port() {
-  if lsof -ti ":${PORT}" -sTCP:LISTEN >/dev/null 2>&1; then
+  if [ -n "$(daemon_pids)" ]; then
     echo "stopping the process already on :${PORT}…"
-    lsof -ti ":${PORT}" -sTCP:LISTEN | xargs kill 2>/dev/null || true
+    kill_daemons TERM
     sleep 1
+    kill_daemons KILL
   fi
 }
 
@@ -59,8 +80,10 @@ stop() {
     echo "Refusing to stop: a run is in flight (would be orphaned). Wait for it, or FORCE=1 scripts/oz.sh stop." >&2
     exit 3
   fi
-  if [ -f "${PIDFILE}" ]; then kill "$(cat "${PIDFILE}")" 2>/dev/null || true; rm -f "${PIDFILE}"; fi
-  lsof -ti ":${PORT}" -sTCP:LISTEN | xargs kill 2>/dev/null || true
+  kill_daemons TERM
+  sleep 1
+  kill_daemons KILL
+  rm -f "${PIDFILE}"
   echo "Oz stopped."
 }
 

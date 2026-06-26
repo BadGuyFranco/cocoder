@@ -262,4 +262,20 @@ describe('Oz event stream', () => {
 
     await waitFor(() => server.ctx.events.size() === before)
   })
+
+  test('server shutdown closes open event streams instead of waiting forever', async () => {
+    const server = await start()
+    const before = server.ctx.events.size()
+    const stream = await openSse(server)
+    const streamClosed = new Promise<void>((resolve) => stream.res.once('close', () => resolve()))
+
+    await stream.waitForText(': connected')
+    expect(server.ctx.events.size()).toBe(before + 1)
+
+    await server.close()
+    oz = undefined
+
+    await streamClosed
+    expect(server.ctx.events.size()).toBe(before)
+  })
 })
