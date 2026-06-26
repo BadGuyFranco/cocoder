@@ -22,6 +22,11 @@ describe('daemon settings', () => {
     await mkdir(join(home, 'local'), { recursive: true })
     await writeFile(join(home, 'local', 'settings.json'), JSON.stringify({ pollIntervalMs: 5000, defaultWorkspaceId: null, ozAutoCompactRuns: 99 }))
 
-    await expect(readSettings(home)).resolves.toEqual({ pollIntervalMs: 5000, defaultWorkspaceId: null, ozAutoCompactRuns: 10 })
+    await expect(readSettings(home)).resolves.toEqual({
+      pollIntervalMs: 5000,
+      defaultWorkspaceId: null,
+      ozAutoCompactRuns: 10,
+      retention: { enabled: false, keepPerWorkspace: 25, sweepIntervalMs: 3_600_000 },
+    })
   })
 })

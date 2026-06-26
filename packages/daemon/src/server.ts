@@ -27,6 +27,8 @@ import { createOzEventBus, type OzContext } from './context.js'
 import { warmCliCache } from './clis.js'
 import { reconcileOrphans } from './launcher.js'
 import { serveStatic } from './static.js'
+import { readSettings } from './settings.js'
+import { scheduleRetentionSweep } from './retention-sweep.js'
 
 export interface OzServerOptions {
   /** Install root (holds local/secrets, local/cocoder.db, local/runs, the workspace registry). */
@@ -225,6 +227,12 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
   // it); tests omit it and never shell out to real CLIs.
   if (opts.warmCliCacheOnBoot) void warmCliCache(ctx)
 
+  // Local-cache retention (ticket 0064): ships DORMANT. Default installs have retention.enabled=false, so
+  // scheduleRetentionSweep creates NO timer and never touches the db/fs. When enabled it self-guards against
+  // firing during a self-reload or an in-flight run, and only deletes runs whose durable record is projected.
+  const settings = await readSettings(opts.cocoderHome)
+  const stopRetention = scheduleRetentionSweep(ctx, settings)
+
   return {
     server,
     port,
@@ -234,6 +242,7 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
     ctx,
     close: () =>
       new Promise<void>((resolve) => {
+        stopRetention()
         server.close(() => {
           try {
             ctx.store.close()

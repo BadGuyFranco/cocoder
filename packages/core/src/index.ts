@@ -378,3 +378,12 @@ export {
   type PruneRunDirsOptions,
   type PruneRunDirsResult,
 } from './retention/index.js'
+export {
+  runRetentionSweep,
+  type RetentionSweepConfig,
+  type RetentionSweepDeps,
+  type RetentionSweepResult,
+  planLogRotation,
+  rotateLogFile,
+  type LogRotationPlan,
+} from './retention/index.js'
