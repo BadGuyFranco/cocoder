@@ -351,6 +351,55 @@ function committedAtomThenControlledWrapIO(): { readonly io: RunnerIO; release()
   }
 }
 
+function oneAtomThenWrapIO(): RunnerIO {
+  let directiveCalls = 0
+  return {
+    ...fakeIO(),
+    async ensureRunDir(runDir) {
+      await mkdir(runDir, { recursive: true })
+    },
+    async awaitDirective() {
+      directiveCalls += 1
+      return directiveCalls === 1
+        ? { kind: 'delegate' as const, task: 'touch daemon runtime' }
+        : { kind: 'wrapup' as const, pickup: 'done' }
+    },
+  }
+}
+
+function delayedBobHeadless(): { readonly runHeadless: (input: HeadlessRunInput) => Promise<{ readonly exitCode: number; readonly output: string }>; release(): void } {
+  let releaseBob: (() => void) | null = null
+  const bobReleased = new Promise<void>((resolve) => {
+    releaseBob = resolve
+  })
+  return {
+    async runHeadless(input) {
+      if (input.outPath.includes('bob-turn')) {
+        await bobReleased
+        const output = `implemented daemon atom\n${atomSentinel(0)}`
+        input.onData?.(output)
+        return { exitCode: 0, output }
+      }
+      return { exitCode: 0, output: validFounderCloseout() }
+    },
+    release() {
+      releaseBob?.()
+    },
+  }
+}
+
+const queuedCommitGit = (calls: GovernanceCommitCall[], shas: readonly string[] = ['sha-queued']): Git => ({
+  ...fakeGit(),
+  async addAndCommit(cwd, files, message, author) {
+    const sha = shas[Math.min(calls.length, shas.length - 1)] ?? 'sha-queued'
+    calls.push({ cwd, files: [...files], message, author })
+    return sha
+  },
+  async commitsSince() {
+    return [...shas]
+  },
+})
+
 async function fixtures(home: string): Promise<void> {
   await mkdir(join(home, 'cocoder', 'priorities'), { recursive: true })
   await mkdir(join(home, 'cocoder', 'personas'), { recursive: true })
@@ -510,6 +559,8 @@ describe('Oz mutations + lifecycle', () => {
   const startServer = async (
     git: Git = fakeGit(),
     runHeadless: (input: HeadlessRunInput) => Promise<{ readonly exitCode: number; readonly output: string }> = async () => ({ exitCode: 0, output: validFounderCloseout() }),
+    io: RunnerIO = fakeIO(),
+    runnerTimeouts?: OzServer['ctx']['runnerTimeouts'],
   ): Promise<OzServer> => {
     shown = []
     killed = []
@@ -523,8 +574,9 @@ describe('Oz mutations + lifecycle', () => {
         (ref) => killed.push(ref),
       ),
       getAdapter: () => okAdapter,
-      io: fakeIO(),
+      io,
       runHeadless, // headless wrap-up/authoring Play: don't shell out in tests
+      ...(runnerTimeouts !== undefined ? { runnerTimeouts } : {}),
     })
     return oz
   }
@@ -2843,6 +2895,81 @@ describe('Oz mutations + lifecycle', () => {
       reservedTicketId: '0013',
       input: { title: 'Queued Backend Ticket', type: 'bug', priority: 'oz-dashboard-bugs' },
     })
+  })
+
+  test('active-run queued ticket drains after an atom pass and is ledgered before wrap audit', async () => {
+    await writeTicketIndex(home)
+    await setBobHeadless(home)
+    const commits: GovernanceCommitCall[] = []
+    const bob = delayedBobHeadless()
+    await startServer(queuedCommitGit(commits), bob.runHeadless, oneAtomThenWrapIO(), { monitorCadenceMs: 10 })
+
+    const launch = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
+    expect(launch.status).toBe(202)
+    const runId = launch.json.runId as string
+    for (let i = 0; i < 50 && oz!.ctx.inFlight.get('cocoder') !== runId; i++) await sleep(10)
+    expect(oz!.ctx.inFlight.get('cocoder')).toBe(runId)
+
+    const post = await call(oz!, 'POST', '/workspaces/cocoder/tickets', {
+      body: {
+        title: 'Queued During Run',
+        type: 'bug',
+        priority: 'none',
+        description: 'Queue while Bob is still running.',
+      },
+    })
+    expect(post.status).toBe(202)
+    expect(post.json).toMatchObject({ queued: true, reservedTicketId: '0013', status: 'queued' })
+
+    const pending = await call(oz!, 'GET', '/workspaces/cocoder/tickets')
+    expect(pending.status).toBe(200)
+    expect(pending.json.queuedAuthoring).toEqual([
+      expect.objectContaining({ queuedId: 'ticket-create-0013', reservedTicketId: '0013', status: 'queued' }),
+    ])
+
+    bob.release()
+    const ticketPath = join(home, 'cocoder', 'tickets', 'open', '0013-queued-during-run.md')
+    for (let i = 0; i < 100 && !(await exists(ticketPath)); i++) await sleep(10)
+    expect(await exists(ticketPath)).toBe(true)
+    for (let i = 0; i < 100 && oz!.ctx.inFlight.has('cocoder'); i++) await sleep(10)
+
+    expect(JSON.parse(await readFile(join(home, 'cocoder', 'tickets', 'order.json'), 'utf8'))).toEqual(['0013'])
+    expect((await readFile(join(home, 'cocoder', 'tickets', 'INDEX.md'), 'utf8'))).toContain('| [0013](./open/0013-queued-during-run.md) | Queued During Run | bug | none | founder-session |')
+    expect(await listQueuedAuthoring(home, 'cocoder')).toEqual([])
+    expect(store.listCommitLinks(runId).map((link) => link.commitSha)).toContain('sha-queued')
+    expect(store.listEvents(runId).some((event) => event.type === 'queued-authoring-commit')).toBe(true)
+    expect(store.listEvents(runId).some((event) => event.type === 'run-wrap-bypass-detected')).toBe(false)
+    expect(commits.some((commit) => commit.message === 'governance: create queued ticket 0013')).toBe(true)
+  })
+
+  test('queued ticket drain errors remain visible and do not abort the active run', async () => {
+    await writeTicketIndex(home)
+    await setBobHeadless(home)
+    const bob = delayedBobHeadless()
+    await startServer(queuedCommitGit([]), bob.runHeadless, oneAtomThenWrapIO(), { monitorCadenceMs: 10 })
+
+    const launch = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
+    expect(launch.status).toBe(202)
+    const runId = launch.json.runId as string
+    for (let i = 0; i < 50 && oz!.ctx.inFlight.get('cocoder') !== runId; i++) await sleep(10)
+
+    const post = await call(oz!, 'POST', '/workspaces/cocoder/tickets', {
+      body: { title: 'Will Conflict', type: 'task', priority: 'none', description: 'This reservation will collide before drain.' },
+    })
+    expect(post.status).toBe(202)
+    await writeFile(join(home, 'cocoder', 'tickets', 'open', '0013-conflict.md'), ticketFile('0013', 'Conflict'))
+
+    bob.release()
+    for (let i = 0; i < 100 && oz!.ctx.inFlight.has('cocoder'); i++) await sleep(10)
+
+    expect(store.getRun(runId)?.status).toBe('completed')
+    expect(store.listEvents(runId).some((event) => event.type === 'safe-commit-boundary-failed')).toBe(false)
+    const queued = await listQueuedAuthoring(home, 'cocoder')
+    expect(queued).toHaveLength(1)
+    expect(queued[0]).toMatchObject({ queuedId: 'ticket-create-0013', status: 'error', reservedTicketId: '0013', error: 'ticket id 0013 already exists' })
+    expect((await call(oz!, 'GET', '/workspaces/cocoder/tickets')).json.queuedAuthoring).toEqual([
+      expect.objectContaining({ queuedId: 'ticket-create-0013', status: 'error', reservedTicketId: '0013' }),
+    ])
   })
 
   test('POST /workspaces/:id/tickets rejects invalid ticket create bodies', async () => {

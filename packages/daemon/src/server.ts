@@ -42,6 +42,8 @@ export interface OzServerOptions {
   readonly io?: RunnerIO
   /** Override the headless-Play subprocess runner (tests inject a fake so a wrap-up doesn't shell out). */
   readonly runHeadless?: OzContext['runHeadless']
+  /** Override runner timeouts for deterministic daemon tests. Production uses runner defaults. */
+  readonly runnerTimeouts?: OzContext['runnerTimeouts']
   /** Override the daemon-restart action (tests inject a no-op/spy so they never restart the real
    *  daemon). Default spawns a detached, delayed `scripts/oz.sh restart`. */
   readonly restartDaemon?: () => void
@@ -161,6 +163,7 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
     stopControllers: new Map<string, AbortController>(),
     events: createOzEventBus(),
     runHeadless: opts.runHeadless,
+    ...(opts.runnerTimeouts !== undefined ? { runnerTimeouts: opts.runnerTimeouts } : {}),
     restartDaemon: opts.restartDaemon ?? defaultRestartDaemon(opts.cocoderHome),
     buildDaemonForReload: opts.buildDaemonForReload ?? defaultBuildDaemonForReload,
     daemonReloadBuildTimeoutMs: opts.daemonReloadBuildTimeoutMs ?? DAEMON_RELOAD_BUILD_TIMEOUT_MS,

@@ -148,10 +148,11 @@ export async function drainAuthoringQueue(
   commitGovernance: (repoPath: string, files: readonly string[], message: string) => Promise<CommitReceipt>,
   now: () => number,
 ): Promise<QueuedAuthoringEntry[]> {
-  const workspace = await findWorkspace(ctx.cocoderHome, workspaceId)
-  if (!workspace) throw new Error('unknown workspace')
   const path = authoringQueuePath(ctx.cocoderHome, workspaceId)
   let file = await readQueueFile(path)
+  if (!file.entries.some((entry) => entry.status === 'queued')) return []
+  const workspace = await findWorkspace(ctx.cocoderHome, workspaceId)
+  if (!workspace) throw new Error('unknown workspace')
   const drained: QueuedAuthoringEntry[] = []
 
   for (const entry of file.entries) {
@@ -187,6 +188,7 @@ export async function drainAuthoringQueue(
       file = replaceEntry(file, failed)
       await writeQueueFile(path, file)
       await appendAudit(ctx.cocoderHome, { action: 'authoring-queue-error', workspaceId, queuedId: entry.queuedId, authoringAction: entry.action, ticketId: entry.reservedTicketId, error: failed.error })
+      emitOzEvent(ctx, { type: 'queued-authoring-error', workspaceId, ticketId: entry.reservedTicketId, status: 'error' })
       drained.push(failed)
     }
   }

@@ -144,6 +144,9 @@ export interface RunnerDeps {
   /** Fired synchronously the instant the run row is created (before any await), so a fire-and-forget
    *  caller (the Oz daemon) learns the runId for its 202 response WITHOUT pre-creating a second row. */
   readonly onRunCreated?: (run: Run) => void
+  /** Stable post-atom boundary: fired after atom pass/reject handling is fully recorded and before the
+   *  next Oscar directive is requested. Caller failures are recorded but never abort the run. */
+  readonly onSafeCommitBoundary?: (input: { readonly runId: string; readonly atom: number; readonly outcome: 'pass' | 'fail' | 'blocked' }) => Promise<void>
   readonly signal?: AbortSignal
 }
 
@@ -1072,6 +1075,15 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     log(`run ${run.id} resumed at ${park.park} atom ${resumeStateAtomNumber(park)}`)
   }
 
+  const runSafeCommitBoundary = async (atom: number, outcome: 'pass' | 'fail' | 'blocked'): Promise<void> => {
+    if (!deps.onSafeCommitBoundary) return
+    try {
+      await deps.onSafeCommitBoundary({ runId: run.id, atom, outcome })
+    } catch (err) {
+      store.recordEvent({ runId: run.id, type: 'safe-commit-boundary-failed', data: { atom, outcome, message: err instanceof Error ? err.message : String(err) } })
+    }
+  }
+
   const stringResumeField = (value: unknown, field: string): string => {
     if (typeof value !== 'string' || value.length === 0) throw new Error(`Cannot resume run ${run.id}; resume-state ${field} must be a non-empty string`)
     return value
@@ -1489,6 +1501,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           log(`atom ${atomIndex} blocked before dispatch: ${spendBlockMessage}`)
           return { kind: 'blocked' as const, outcomeLine: spendBlockMessage }
         })()
+    await runSafeCommitBoundary(atomIndex, step.kind === 'verified' ? step.verdict : 'blocked')
     n += 1
     if (step.kind === 'verified') {
       consecutiveRejects = step.verdict === 'fail' ? consecutiveRejects + 1 : 0

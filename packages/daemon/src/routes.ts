@@ -37,7 +37,7 @@ import { readRunDir } from './rundir.js'
 import { appendAudit } from './audit.js'
 import { listClis, testCli } from './clis.js'
 import { commitGovernance, launchRun, requestArchiveConfirmation, requestAuthoringPlay, requestDaemonRestart, requestDashboardLaunch, requestOscarDebRepair, requestStopRun, requestSupportCommitRun, requestTicketCloseConfirmation, resumeRun, showRun, teardownRun, ticketPendingCloseRun, type AuthoringPlayInput, type OscarDebRepairInput } from './launcher.js'
-import { enqueueAuthoring } from './authoring-queue.js'
+import { enqueueAuthoring, listQueuedAuthoring } from './authoring-queue.js'
 import { handleOzMessage } from './oz-chat.js'
 import { mergeWriteSettings, readSettings } from './settings.js'
 import { readPriorities, readTickets, registerLivePriorities, writePriorityOrder, writeTicketOrder } from './priority-order.js'
@@ -450,7 +450,7 @@ async function listTickets(ctx: OzContext, res: ServerResponse, workspaceId: str
     const pending = ticket.state === 'open' ? ticketPendingCloseRun(ctx, workspaceId, ticket.id) : null
     return pending ? { ...ticket, pendingCloseRunId: pending.id } : ticket
   })
-  sendJson(res, 200, { workspace: ws, tickets })
+  sendJson(res, 200, { workspace: ws, tickets, queuedAuthoring: await listQueuedAuthoring(ctx.cocoderHome, workspaceId) })
 }
 
 /** GET /workspaces/:id/personas — surface 3 (read). Persona defs + their CLI/model assignment. */

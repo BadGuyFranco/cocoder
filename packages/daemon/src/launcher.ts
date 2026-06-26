@@ -58,6 +58,7 @@ import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import { emitOzEvent, type DashboardLaunchHandle, type OzContext } from './context.js'
 import { findWorkspace } from './registry.js'
 import { appendAudit } from './audit.js'
+import { drainAuthoringQueue } from './authoring-queue.js'
 import { recordOrchestratedRun } from './oz-host.js'
 import { registerLivePriorities } from './priority-order.js'
 import { withPortableDisplayNumber } from './run-display.js'
@@ -749,7 +750,16 @@ export async function launchRun(
     io: ctx.io,
     runHeadless: ctx.runHeadless,
     now,
+    ...(ctx.runnerTimeouts !== undefined ? { timeouts: ctx.runnerTimeouts } : {}),
     signal: stopController.signal,
+    onSafeCommitBoundary: async () => {
+      await drainAuthoringQueue(
+        ctx,
+        workspaceId,
+        (repoPath, files, message) => commitGovernance(ctx, repoPath, files, message),
+        now,
+      )
+    },
     onRunCreated: (run) => {
       if (resumeHeldRunId !== null) return
       runId = run.id
