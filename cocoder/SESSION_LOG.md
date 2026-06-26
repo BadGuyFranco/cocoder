@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-26 — **governance-authoring-ssot: elegance cleanup — archive ready (run_103/run_247)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [governance-authoring-ssot](./priorities/governance-authoring-ssot.md) | **Run:** run_247 (display 103)
+**Outcomes:**
+- **One run-dir resolver.** Deleted `localRunDirById` and alias imports; `resolveLocalRunDir` is the sole read-by-id resolver; CLI resume-miss null-throw preserved.
+- **One queue receipt shape.** Collapsed `QueuedAuthoringReceipt` from a four-variant union to one interface with optional id fields; loud old-version rejection unchanged.
+- **In-run governed ticket-close.** Verify-gated path on Oscar's verify artifact closes tickets via core `closeTicket` through a second ledgered `runCommitGate`; no scratchpad workaround.
+- **Owner-map current.** `docs/orchestration-contract-ownership.md` §2 updated for in-run close, queue close transporters, and new edge cases.
+- **Disposition: `archive-confirmation`.** SSOT/queue objective met in run_246; elegance pass complete; all suites green (core 642, daemon 401, cli 50).
+**Next:** Launch ticket `0064` — fix daemon self-reload zombie handoff that wedges Oz.
+
 ## 2026-06-26 — **governance-authoring-ssot: queue + SSOT + mid-run founder decisions — archive ready (run_102/run_246)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [governance-authoring-ssot](./priorities/governance-authoring-ssot.md) | **Run:** run_246 (display 102)
