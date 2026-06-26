@@ -17,11 +17,11 @@ ADR-0027 §6 ratifies the run-dir layout as `local/runs/<workspaceId>/<runId>` (
 
 **Stale ticket premise (corrected):** Neither a pre-existing helper at `packages/core/src/run-dir.ts` nor a retention GC at `packages/core/src/retention/gc.ts` ever existed in the tree; every site was inline flat. Acceptance bullet 3 is **moot** — no GC missing-dir warning source exists yet.
 
-**Open:** Founder must choose nested layout (Option A — execute ADR-0027 §6 as accepted, change only `localRunDir()` + §Migration step-5 move + compat read-fallback) vs. amend ADR-0027 §6 to ratify flat (Option B — requires founder-approved ADR reversal). Nesting buys per-workspace disk grouping, not collision avoidance (run dirs are keyed by globally-unique `run.id`). Oscar recommends Option A.
+**Decision (founder, 2026-06-26): Option A — land nested.** Execute ADR-0027 §6 as accepted (no ADR reversal). Remaining scope for the relaunch: change ONLY `localRunDir()` to return `local/runs/<workspaceId>/<runId>`, perform the §Migration step-5 one-time move of existing flat dirs, add a compat read-fallback so pre-migration flat dirs still resolve, verify existing runs still load, then close this ticket. Nesting buys per-workspace disk grouping, not collision avoidance (run dirs are keyed by globally-unique `run.id`).
 
 ## Acceptance
 - [x] All run-dir path construction goes through `localRunDir()` — no inline `join(runsRoot, runId)` remains in launcher / oz-context-pointer / rundir / runner / CLI resume.
-- [ ] Decide + execute ADR-0027 §6: either land the nested `local/runs/<workspaceId>/<runId>` layout (with the §Migration step-5 move + compat read-fallback for existing flat dirs) by changing ONLY `localRunDir()`, or amend ADR-0027 §6 to ratify flat as the accepted layout. Do not leave the doc/code drift open.
+- [ ] **Decided: Option A (nested).** Land the nested `local/runs/<workspaceId>/<runId>` layout by changing ONLY `localRunDir()`, with the §Migration step-5 move + compat read-fallback for existing flat dirs. (Option B / ADR amendment not taken — no doc/code drift, since §6 already ratifies nested.)
 - [x] ~~Retention GC already warns on a missing dir~~ — **moot** (no retention GC in tree).
 
 ## Notes
