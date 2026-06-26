@@ -31,6 +31,56 @@ governance authoring action. A Play may gather or refine structured input, but i
 formats, `INDEX.md` rows, `order.json` updates, id allocation, validation, or commit behavior as a
 second procedure.
 
+## Required Owner Map Before Code Edits
+
+The first atom must be read-only except for a concise owner-map note if one is needed for handoff. Do
+not start by patching prompt text. Produce a concrete map of the current owners, emitters, edge cases,
+and pinning tests, then implement from that map.
+
+Minimum surfaces to inspect and account for:
+
+- **Ticket create:** core owner candidates `packages/core/src/tickets/create.ts`,
+  `compose.ts`, `loader.ts`, `index-helpers.ts`; emitters/consumers in
+  `packages/daemon/src/routes.ts` (dashboard/API), `packages/cli/src/create-ticket.ts` and
+  `packages/cli/src/run.ts`, runner escalation in `packages/core/src/runner/triage.ts`, and the
+  `create-ticket` Play.
+- **Ticket close/repoint/order:** `packages/core/src/tickets/close.ts`,
+  `packages/core/src/tickets/repoint.ts`, daemon ticket close/repoint callers, ticket launch
+  auto-close, `cocoder/tickets/order.json`, and `cocoder/tickets/INDEX.md` mirroring.
+- **Priority create/edit/archive/order:** core priority loader/composers, daemon priority create route
+  and order route, `requestAuthoringPlay`, Oz chat `author`, CLI create/edit/archive wrappers, and the
+  `create-priority`, `edit-priority`, and `archive-priority` Plays.
+- **Active-run and commit seams:** `launchRun`/`inFlight` guards, `requestAuthoringPlay` active-run
+  refusal, atom verify/pass/fail commit sequence, Oscar support commit, wrap-up commit, run-end history
+  commit, wrap audit, and Deb status/watch projections.
+- **Dashboard/Oz visibility:** ticket and priority read surfaces, pending/queued state projection, Oz
+  chat confirmation text, and the current behavior when a daemon is live but no run is active.
+
+Use `docs/orchestration-contract-ownership.md` as the starting map, but verify against the live code. If
+that doc is stale, fix the owner first or file a narrow follow-up before changing runtime behavior.
+
+## Edge Cases To Preserve Or Decide
+
+- Id allocation and reservation for queued ticket creates: prefer assigning the final id at queue time
+  so the founder can reference it immediately; if that is unsafe, define the temporary queued id and
+  final-id handoff explicitly.
+- Ticket collisions across open, closed, `INDEX.md`, and `order.json`; stale order ids; already-closed
+  close requests; missing-open-ticket close/repoint; and existing `repointTicket()` no-op behavior.
+- Priority id collisions, invalid ids, Objective presence, `order.json` registration, orphan detection,
+  active-vs-backlog/archive placement, already-archived archive requests, and archive no-op honesty.
+- Active run states: running builder atom, verifying, failed atom, rejected atom/quarantine,
+  awaiting-founder, awaiting-archive-confirmation, held, stopped, failed, and normal wrap.
+- Commit ordering: queued governance commits must be ledgered and must not be mistaken for raw
+  out-of-band commits by wrap audit or run-history projection.
+- Failure behavior: if queued governance creation cannot commit at the next seam, it remains visible
+  with an error/retry state; it must not silently disappear and must not strand half-written governance
+  files.
+- Prompt/Play cleanup: remove duplicate file-writing instructions only after deterministic operations
+  and tests exist. A Play may ask clarifying questions or shape structured input; it may not be the
+  writer of record.
+- Ticket 0065 is a regression fixture and completion obligation, not the architectural center. Do not
+  let run-dir migration concerns distort the governance-authoring queue design.
+
 ## Acceptance
 
 - **Single writer per action:** ticket create/repoint/close and priority create/edit/archive each have
@@ -51,6 +101,9 @@ second procedure.
 - **Regression pins:** tests cover the run_245 shape: a preparatory atom commits, a founder choice is
   needed, the answer is accepted in-context, Atom 2 is delegated, and the ticket closes only after the
   actual remaining work is verified.
+- **Existing edge cases stay pinned:** existing tests for ticket create/close/repoint, priority
+  create/order/archive, authoring Play dispatch, wrap audit, and ticket-fix launch remain green; add
+  missing tests before relying on behavior that is currently unpinned.
 - **Ticket closure:** close tickets 0063, 0066, and 0065 through the governed close path once the SSOT
   queue/founder-decision behavior and the nested run-dir completion are verified.
 
