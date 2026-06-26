@@ -12,6 +12,7 @@ import { ClaudeAdapter, type Exec } from '@cocoder/adapters'
 import { atomSentinel, composeTicketMarkdown, loadAssignments, loadPriority, makeGit, openRunStore, readTickets, StopRequestedError, workspaceTemplateDir, writePortableRun, type Adapter, type Git, type HeadlessRunInput, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
 import { createOzServer, OZ_CSRF_HEADER, type OzServer } from '../src/index.js'
 import { ticketPendingCloseRun } from '../src/launcher.js'
+import { listQueuedAuthoring } from '../src/authoring-queue.js'
 import { findOrphanedPriorities } from '../src/priority-order.js'
 import { validFounderCloseout, validTicketFounderCloseout } from './helpers/founder-closeout.js'
 
@@ -2813,6 +2814,35 @@ describe('Oz mutations + lifecycle', () => {
         author: COCODER_GOVERNANCE,
       },
     ])
+  })
+
+  test('POST /workspaces/:id/tickets queues with a reserved id while the workspace has an active run', async () => {
+    await writeTicketIndex(home)
+    const commits: GovernanceCommitCall[] = []
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    await startServer(recordingGovernanceGit(commits))
+    oz!.ctx.inFlight.set('cocoder', run.id)
+
+    const post = await call(oz!, 'POST', '/workspaces/cocoder/tickets', {
+      body: {
+        title: 'Queued Backend Ticket',
+        type: 'bug',
+        priority: 'oz-dashboard-bugs',
+        description: '## Context\nQueue this ticket while a run is active.',
+      },
+    })
+
+    expect(post.status).toBe(202)
+    expect(post.json).toEqual({ ok: true, queued: true, queuedId: 'ticket-create-0013', reservedTicketId: '0013', status: 'queued' })
+    expect(await exists(join(home, 'cocoder', 'tickets', 'open', '0013-queued-backend-ticket.md'))).toBe(false)
+    expect(commits).toEqual([])
+    expect((await listQueuedAuthoring(home, 'cocoder'))[0]).toMatchObject({
+      queuedId: 'ticket-create-0013',
+      status: 'queued',
+      reservedTicketId: '0013',
+      input: { title: 'Queued Backend Ticket', type: 'bug', priority: 'oz-dashboard-bugs' },
+    })
   })
 
   test('POST /workspaces/:id/tickets rejects invalid ticket create bodies', async () => {

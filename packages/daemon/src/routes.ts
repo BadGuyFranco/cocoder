@@ -37,6 +37,7 @@ import { readRunDir } from './rundir.js'
 import { appendAudit } from './audit.js'
 import { listClis, testCli } from './clis.js'
 import { commitGovernance, launchRun, requestArchiveConfirmation, requestAuthoringPlay, requestDaemonRestart, requestDashboardLaunch, requestOscarDebRepair, requestStopRun, requestSupportCommitRun, requestTicketCloseConfirmation, resumeRun, showRun, teardownRun, ticketPendingCloseRun, type AuthoringPlayInput, type OscarDebRepairInput } from './launcher.js'
+import { enqueueAuthoring } from './authoring-queue.js'
 import { handleOzMessage } from './oz-chat.js'
 import { mergeWriteSettings, readSettings } from './settings.js'
 import { readPriorities, readTickets, registerLivePriorities, writePriorityOrder, writeTicketOrder } from './priority-order.js'
@@ -728,6 +729,16 @@ async function createTicket(ctx: OzContext, res: ServerResponse, workspaceId: st
   const dir = ticketsDir(ws.path)
 
   try {
+    if (ctx.inFlight.has(workspaceId)) {
+      const receipt = await enqueueAuthoring(ctx, {
+        workspaceId,
+        action: 'ticket-create',
+        ticket: input,
+        now: ctx.now ?? Date.now,
+      })
+      emitOzEvent(ctx, { type: 'authoring-queued', workspaceId, ticketId: receipt.reservedTicketId, status: receipt.status })
+      return sendJson(res, 202, { ok: true, queued: true, ...receipt })
+    }
     const create = await createTicketCore({ ticketsDir: dir, repoPath: ws.path, ...input, created: todayIso() })
     if (!create.created) return sendJson(res, 409, { error: `ticket id already exists` })
     const ticket = (await readTickets(dir)).find((item) => item.id === create.id)

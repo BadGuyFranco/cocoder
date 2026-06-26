@@ -17,6 +17,10 @@ describe('unledgeredWindowCommits — window commits absent from the run ledger'
     expect(unledgeredWindowCommits(['a1', 'b2', 'c3'], ['c3', 'b2', 'a1'])).toEqual([])
   })
 
+  test('a drained queued governance commit is recognized when its sha is in the run ledger', () => {
+    expect(unledgeredWindowCommits(['atom-sha', 'queued-ticket-sha'], ['atom-sha', 'queued-ticket-sha'])).toEqual([])
+  })
+
   test('an empty window → no bypass', () => {
     expect(unledgeredWindowCommits([], ['a1'])).toEqual([])
   })
