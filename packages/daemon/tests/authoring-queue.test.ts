@@ -62,6 +62,29 @@ async function writeSecondOpenTicket(home: string): Promise<void> {
     '## Context',
     '',
   ].join('\n'))
+  const indexPath = join(home, 'cocoder', 'tickets', 'INDEX.md')
+  const index = await readFile(indexPath, 'utf8')
+  await writeFile(indexPath, index.replace(
+    '\n## Recently Closed',
+    '\n| [0005](./open/0005-later.md) | Later | task | none | founder-session |\n\n## Recently Closed',
+  ))
+}
+
+async function writeClosedTicket(home: string): Promise<void> {
+  await writeFile(join(home, 'cocoder', 'tickets', 'closed', '0007-closed.md'), [
+    '---',
+    'id: 0007',
+    'title: Closed',
+    'type: task',
+    'status: Closed',
+    'priority: none',
+    'owner: founder-session',
+    'created: 2026-06-25',
+    '---',
+    '',
+    'Already closed.',
+    '',
+  ].join('\n'))
 }
 
 function receipt(files: readonly string[], sha = 'sha-queued'): CommitReceipt {
@@ -119,6 +142,21 @@ describe('authoring queue', () => {
       now: fixedNow,
       priority: { id: 'durable-priority', title: 'Durable Priority', goal: '## Objective\nStill here after reload.' },
     })
+    await enqueueAuthoring({ cocoderHome: home }, {
+      workspaceId: 'cocoder',
+      action: 'ticket-close',
+      now: fixedNow,
+      ticketId: '0003',
+      resolution: 'Still here after reload.',
+    })
+    await enqueueAuthoring({ cocoderHome: home }, {
+      workspaceId: 'cocoder',
+      action: 'ticket-repoint',
+      now: fixedNow,
+      ticketId: '0003',
+      targetPriority: 'next',
+      order: ['0003'],
+    })
 
     const reloaded = await listQueuedAuthoring(home, 'cocoder')
 
@@ -126,14 +164,16 @@ describe('authoring queue', () => {
       ['ticket-create-0004', 'ticket-create', 'queued'],
       ['ticket-reorder-0001', 'ticket-reorder', 'queued'],
       ['priority-create-durable-priority', 'priority-create', 'queued'],
+      ['ticket-close-0003', 'ticket-close', 'queued'],
+      ['ticket-repoint-0003', 'ticket-repoint', 'queued'],
     ])
   })
 
   test('listQueuedAuthoring rejects the previous queue schema version loudly', async () => {
     await mkdir(join(home, 'local', 'authoring-queue'), { recursive: true })
-    await writeFile(authoringQueuePath(home, 'cocoder'), `${JSON.stringify({ schemaVersion: 1, entries: [] }, null, 2)}\n`)
+    await writeFile(authoringQueuePath(home, 'cocoder'), `${JSON.stringify({ schemaVersion: 2, entries: [] }, null, 2)}\n`)
 
-    await expect(listQueuedAuthoring(home, 'cocoder')).rejects.toThrow(/unsupported schema version 1/)
+    await expect(listQueuedAuthoring(home, 'cocoder')).rejects.toThrow(/unsupported schema version 2/)
   })
 
   test('drainAuthoringQueue creates ticket files, commits through the supplied spine, and ledgers the active run', async () => {
@@ -217,6 +257,56 @@ describe('authoring queue', () => {
     await expect(listQueuedAuthoring(home, 'cocoder')).resolves.toEqual([])
   })
 
+  test('drainAuthoringQueue closes and repoints tickets through the supplied spine', async () => {
+    await writeSecondOpenTicket(home)
+    await writeFile(join(home, 'cocoder', 'priorities', 'next.md'), '---\nid: next\ntitle: Next\n---\n## Objective\nNext priority.')
+    await writeFile(join(home, 'cocoder', 'tickets', 'order.json'), `${JSON.stringify(['0003'], null, 2)}\n`)
+    await enqueueAuthoring({ cocoderHome: home }, {
+      workspaceId: 'cocoder',
+      action: 'ticket-repoint',
+      now: fixedNow,
+      ticketId: '0005',
+      targetPriority: 'next',
+      order: ['0005', '0003'],
+    })
+    await enqueueAuthoring({ cocoderHome: home }, {
+      workspaceId: 'cocoder',
+      action: 'ticket-close',
+      now: fixedNow,
+      ticketId: '0003',
+      resolution: 'Closed from queue.',
+    })
+    const store = openRunStore(':memory:', { now: fixedNow })
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    const commits: Array<{ readonly files: readonly string[]; readonly message: string }> = []
+
+    const drained = await drainAuthoringQueue(
+      { cocoderHome: home, store, inFlight: new Map([['cocoder', run.id]]), events: createOzEventBus() },
+      'cocoder',
+      async (_repoPath, files, message) => {
+        commits.push({ files: [...files], message })
+        return receipt(files, `sha-ticket-${commits.length}`)
+      },
+      fixedNow,
+    )
+
+    expect(drained.map((entry) => [entry.queuedId, entry.status])).toEqual([
+      ['ticket-repoint-0005', 'committed'],
+      ['ticket-close-0003', 'committed'],
+    ])
+    expect(await readFile(join(home, 'cocoder', 'tickets', 'open', '0005-later.md'), 'utf8')).toContain('\npriority: next\n')
+    await expect(readFile(join(home, 'cocoder', 'tickets', 'open', '0003-existing.md'), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
+    expect(await readFile(join(home, 'cocoder', 'tickets', 'closed', '0003-existing.md'), 'utf8')).toContain('Closed from queue.')
+    expect(JSON.parse(await readFile(join(home, 'cocoder', 'tickets', 'order.json'), 'utf8'))).toEqual(['0005'])
+    expect(commits).toEqual([
+      { files: ['cocoder/tickets/open/0005-later.md', 'cocoder/tickets/INDEX.md', 'cocoder/tickets/order.json'], message: 'governance: repoint queued ticket 0005 -> next' },
+      { files: ['cocoder/tickets/closed/0003-existing.md', 'cocoder/tickets/open/0003-existing.md', 'cocoder/tickets/INDEX.md', 'cocoder/tickets/order.json'], message: 'governance: close queued ticket 0003' },
+    ])
+    expect(store.listEvents(run.id).filter((event) => event.type === 'queued-authoring-commit')).toHaveLength(2)
+    await expect(listQueuedAuthoring(home, 'cocoder')).resolves.toEqual([])
+  })
+
   test('drainAuthoringQueue keeps priority-create errors visible without aborting later entries', async () => {
     await writeSecondOpenTicket(home)
     await enqueueAuthoring({ cocoderHome: home }, {
@@ -250,6 +340,79 @@ describe('authoring queue', () => {
     expect(visible).toHaveLength(1)
     expect(visible[0]).toMatchObject({ queuedId: 'priority-create-demo', status: 'error', priorityId: 'demo', error: 'priority id "demo" already exists' })
     expect(JSON.parse(await readFile(join(home, 'cocoder', 'tickets', 'order.json'), 'utf8'))).toEqual(['0005', '0003'])
+  })
+
+  test('drainAuthoringQueue keeps ticket-close errors visible without aborting later entries', async () => {
+    await writeSecondOpenTicket(home)
+    await writeClosedTicket(home)
+    await writeFile(join(home, 'cocoder', 'priorities', 'next.md'), '---\nid: next\ntitle: Next\n---\n## Objective\nNext priority.')
+    await enqueueAuthoring({ cocoderHome: home }, {
+      workspaceId: 'cocoder',
+      action: 'ticket-close',
+      now: fixedNow,
+      ticketId: '0007',
+      resolution: 'Already closed.',
+    })
+    await enqueueAuthoring({ cocoderHome: home }, {
+      workspaceId: 'cocoder',
+      action: 'ticket-repoint',
+      now: fixedNow,
+      ticketId: '0005',
+      targetPriority: 'next',
+    })
+    const store = openRunStore(':memory:', { now: fixedNow })
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+
+    const drained = await drainAuthoringQueue(
+      { cocoderHome: home, store, inFlight: new Map([['cocoder', run.id]]), events: createOzEventBus() },
+      'cocoder',
+      async (_repoPath, files) => receipt(files),
+      fixedNow,
+    )
+
+    expect(drained.map((entry) => [entry.queuedId, entry.status])).toEqual([
+      ['ticket-close-0007', 'error'],
+      ['ticket-repoint-0005', 'committed'],
+    ])
+    const visible = await listQueuedAuthoring(home, 'cocoder')
+    expect(visible).toHaveLength(1)
+    expect(visible[0]).toMatchObject({ queuedId: 'ticket-close-0007', status: 'error', ticketId: '0007', error: 'ticket 0007 cannot be queued-closed (already-closed)' })
+    expect(await readFile(join(home, 'cocoder', 'tickets', 'open', '0005-later.md'), 'utf8')).toContain('\npriority: next\n')
+  })
+
+  test('drainAuthoringQueue keeps ticket-repoint missing-priority errors visible', async () => {
+    await writeSecondOpenTicket(home)
+    await enqueueAuthoring({ cocoderHome: home }, {
+      workspaceId: 'cocoder',
+      action: 'ticket-repoint',
+      now: fixedNow,
+      ticketId: '0005',
+      targetPriority: 'missing-priority',
+    })
+    const store = openRunStore(':memory:', { now: fixedNow })
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    const commits: Array<{ readonly files: readonly string[] }> = []
+
+    const drained = await drainAuthoringQueue(
+      { cocoderHome: home, store, inFlight: new Map([['cocoder', run.id]]), events: createOzEventBus() },
+      'cocoder',
+      async (_repoPath, files) => {
+        commits.push({ files: [...files] })
+        return receipt(files)
+      },
+      fixedNow,
+    )
+
+    expect(drained.map((entry) => [entry.queuedId, entry.status])).toEqual([
+      ['ticket-repoint-0005', 'error'],
+    ])
+    expect(commits).toEqual([])
+    expect(await readFile(join(home, 'cocoder', 'tickets', 'open', '0005-later.md'), 'utf8')).toContain('\npriority: none\n')
+    await expect(listQueuedAuthoring(home, 'cocoder')).resolves.toEqual([
+      expect.objectContaining({ queuedId: 'ticket-repoint-0005', status: 'error', error: 'ticket 0005 cannot be queued-repointed (missing-priority)' }),
+    ])
   })
 
   test('drainAuthoringQueue keeps ticket-reorder errors visible without aborting later entries', async () => {

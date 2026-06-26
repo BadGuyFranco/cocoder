@@ -93,6 +93,18 @@ export interface AuthoringPlayResult {
   readonly reason?: string
 }
 
+export interface CloseTicketDaemonResult {
+  readonly ok: boolean
+  readonly queued?: boolean
+  readonly queuedId?: string
+  readonly ticketId?: string
+  readonly status?: string
+  readonly closed?: boolean
+  readonly commitSha?: string | null
+  readonly committedPaths?: readonly string[]
+  readonly reason?: string
+}
+
 /** Commit post-wrap Oscar support edits through the daemon-owned commit spine. This is not a
  *  lifecycle operation: it does not stop/restart/teardown processes or touch panes. */
 export async function supportCommitViaDaemon(baseUrl: string, runId: string): Promise<SupportCommitResult> {
@@ -143,6 +155,17 @@ export async function authoringPlayViaDaemon(baseUrl: string, workspaceId: strin
   })
   if (!res.ok) throw new Error(`authoring Play failed (${res.status}): ${await res.text()}`)
   return (await res.json()) as AuthoringPlayResult
+}
+
+export async function closeTicketViaDaemon(baseUrl: string, workspaceId: string, ticketId: string, resolution: string): Promise<CloseTicketDaemonResult> {
+  const session = (await (await fetch(`${baseUrl}/auth/session`)).json()) as { bearerToken: string; csrfToken: string }
+  const res = await fetch(`${baseUrl}/workspaces/${encodeURIComponent(workspaceId)}/tickets/${encodeURIComponent(ticketId)}/close`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${session.bearerToken}`, [CSRF_HEADER]: session.csrfToken, 'content-type': 'application/json' },
+    body: JSON.stringify({ resolution }),
+  })
+  if (!res.ok) throw new Error(`ticket close failed (${res.status}): ${await res.text()}`)
+  return (await res.json()) as CloseTicketDaemonResult
 }
 
 export interface MigrateHistoryResult {

@@ -59,7 +59,7 @@ import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import { emitOzEvent, type DashboardLaunchHandle, type OzContext } from './context.js'
 import { findWorkspace } from './registry.js'
 import { appendAudit } from './audit.js'
-import { drainAuthoringQueue } from './authoring-queue.js'
+import { drainAuthoringQueue, enqueueAuthoring } from './authoring-queue.js'
 import { recordOrchestratedRun } from './oz-host.js'
 import { registerLivePriorities } from './priority-order.js'
 import { withPortableDisplayNumber } from './run-display.js'
@@ -596,6 +596,22 @@ function attachRunLifecycle(ctx: OzContext, workspaceId: string, stopController:
     })
     .finally(async () => {
       const runId = getRunId()
+      if (runId) {
+        try {
+          await drainAuthoringQueue(
+            ctx,
+            workspaceId,
+            (repoPath, files, message) => commitGovernance(ctx, repoPath, files, message),
+            ctx.now ?? Date.now,
+          )
+        } catch (error) {
+          try {
+            ctx.store.recordEvent({ runId, type: 'queued-authoring-drain-failed', data: { message: error instanceof Error ? error.message : String(error) } })
+          } catch {
+            /* shutdown/test teardown may close the store before the lifecycle drain reports */
+          }
+        }
+      }
       ctx.inFlight.delete(workspaceId)
       if (runId) ctx.stopControllers.delete(runId)
       if (runId && stopController.signal.aborted) {
@@ -1300,12 +1316,16 @@ export async function requestReconciliationClose(ctx: OzContext, input: Reconcil
   const workspace = await findWorkspace(ctx.cocoderHome, input.workspaceId)
   if (!workspace) return { status: 404, body: { error: 'unknown workspace' } }
 
-  const activeRunId = ctx.inFlight.get(input.workspaceId)
-  if (activeRunId) {
-    const activeRun = ctx.store.getRun(activeRunId)
-    if (activeRun?.ticketId === input.ticketId) {
-      return { status: 409, body: { ok: false, error: `ticket ${input.ticketId} is the target of active run ${activeRunId} — reconciliation close is refused while a run owns it` } }
-    }
+  if (ctx.inFlight.has(input.workspaceId)) {
+    const receipt = await enqueueAuthoring(ctx, {
+      workspaceId: input.workspaceId,
+      action: 'ticket-close',
+      ticketId: input.ticketId,
+      resolution: input.resolution,
+      now: ctx.now ?? Date.now,
+    })
+    emitOzEvent(ctx, { type: 'authoring-queued', workspaceId: workspace.id, ticketId: receipt.ticketId, status: receipt.status })
+    return { status: 202, body: { ok: true, queued: true, ...receipt } }
   }
 
   const ticketsDir = join(workspace.path, 'cocoder', 'tickets')
@@ -1336,12 +1356,16 @@ export async function requestReconciliationRepoint(ctx: OzContext, input: Reconc
   const workspace = await findWorkspace(ctx.cocoderHome, input.workspaceId)
   if (!workspace) return { status: 404, body: { error: 'unknown workspace' } }
 
-  const activeRunId = ctx.inFlight.get(input.workspaceId)
-  if (activeRunId) {
-    const activeRun = ctx.store.getRun(activeRunId)
-    if (activeRun?.ticketId === input.ticketId) {
-      return { status: 409, body: { ok: false, error: `ticket ${input.ticketId} is the target of active run ${activeRunId} — reconciliation repoint is refused while a run owns it` } }
-    }
+  if (ctx.inFlight.has(input.workspaceId)) {
+    const receipt = await enqueueAuthoring(ctx, {
+      workspaceId: input.workspaceId,
+      action: 'ticket-repoint',
+      ticketId: input.ticketId,
+      targetPriority: input.targetPriority,
+      now: ctx.now ?? Date.now,
+    })
+    emitOzEvent(ctx, { type: 'authoring-queued', workspaceId: workspace.id, ticketId: receipt.ticketId, status: receipt.status })
+    return { status: 202, body: { ok: true, queued: true, ...receipt } }
   }
 
   if (input.targetPriority !== null) {

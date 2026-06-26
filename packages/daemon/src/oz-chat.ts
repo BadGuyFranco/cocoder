@@ -452,6 +452,14 @@ function reconcileCloseReply(ticketId: string, out: LaunchResult): OzChatReply {
   const committedPaths = stringArray(out.body.committedPaths)
   const commitSha = typeof out.body.commitSha === 'string' ? out.body.commitSha : null
   if (!isOk(out.status)) return failedReply('reconcile-close', `Could not reconciliation-close ticket ${ticketId}`, out)
+  if (out.body.queued === true) {
+    return {
+      reply: `Queued reconciliation-close for ticket ${ticketId}; it will commit at the next safe run boundary.`,
+      command: 'reconcile-close',
+      ok: true,
+      action: { type: 'reconcile-close', committedPaths: [], commitSha: null },
+    }
+  }
   const closed = out.body.closed === true
   const reply = closed
     ? `Reconciliation-closed ticket ${ticketId} through the governed spine as ${commitSha ?? 'no-commit'} (${committedPaths.join(', ') || 'no file list'}).`
@@ -464,6 +472,14 @@ function reconcileRepointReply(ticketId: string, targetPriority: string | null, 
   const commitSha = typeof out.body.commitSha === 'string' ? out.body.commitSha : null
   if (!isOk(out.status)) return failedReply('reconcile-repoint', `Could not reconciliation-repoint ticket ${ticketId}`, out)
   const target = targetPriority ?? 'standalone'
+  if (out.body.queued === true) {
+    return {
+      reply: `Queued reconciliation-repoint for ticket ${ticketId} to ${target}; it will commit at the next safe run boundary.`,
+      command: 'reconcile-repoint',
+      ok: true,
+      action: { type: 'reconcile-repoint', committedPaths: [], commitSha: null },
+    }
+  }
   return {
     reply: `Reconciliation-repointed ticket ${ticketId} to ${target} through the governed spine as ${commitSha ?? 'no-commit'} (${committedPaths.join(', ') || 'no file list'}).`,
     command: 'reconcile-repoint',

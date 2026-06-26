@@ -6,7 +6,7 @@ import { createServer, type Server } from 'node:http'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { afterEach, describe, expect, test } from 'vitest'
-import { authoringPlayViaDaemon, requestDebRepairViaDaemon, resumeViaDaemon, runViaDaemon, supportCommitViaDaemon } from '../src/client.js'
+import { authoringPlayViaDaemon, closeTicketViaDaemon, requestDebRepairViaDaemon, resumeViaDaemon, runViaDaemon, supportCommitViaDaemon } from '../src/client.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -24,6 +24,9 @@ interface Captured {
   authorAuth?: string
   authorCsrf?: string | string[]
   authorBody?: any
+  closeAuth?: string
+  closeCsrf?: string | string[]
+  closeBody?: any
 }
 
 function fakeDaemon(): { server: Server; captured: Captured; ready: Promise<number> } {
@@ -103,6 +106,17 @@ function fakeDaemon(): { server: Server; captured: Captured; ready: Promise<numb
           exitCode: 0,
           turnLogPath: '/tmp/authoring.log',
         })
+      })
+    }
+    if (req.method === 'POST' && req.url === '/workspaces/cocoder/tickets/0099/close') {
+      captured.closeAuth = req.headers.authorization
+      captured.closeCsrf = req.headers['x-oz-csrf-token']
+      let body = ''
+      req.on('data', (c) => (body += c))
+      return req.on('end', () => {
+        captured.closeBody = JSON.parse(body)
+        res.writeHead(202, { 'content-type': 'application/json' })
+        res.end(JSON.stringify({ ok: true, queued: true, queuedId: 'ticket-close-0099', ticketId: '0099', status: 'queued' }))
       })
     }
     res.writeHead(404)
@@ -243,6 +257,19 @@ describe('runViaDaemon (client mode)', () => {
     expect(d.captured.authorAuth).toBe('Bearer tok')
     expect(d.captured.authorCsrf).toBe('csrf')
     expect(d.captured.authorBody).toEqual({ persona: 'oz', invocation: { id: 'demo' } })
+  })
+
+  test('close-ticket posts with Bearer + CSRF and returns a queued daemon receipt', async () => {
+    const d = fakeDaemon()
+    server = d.server
+    const port = await d.ready
+
+    const result = await closeTicketViaDaemon(`http://127.0.0.1:${port}`, 'cocoder', '0099', 'Done from CLI.')
+
+    expect(result).toEqual({ ok: true, queued: true, queuedId: 'ticket-close-0099', ticketId: '0099', status: 'queued' })
+    expect(d.captured.closeAuth).toBe('Bearer tok')
+    expect(d.captured.closeCsrf).toBe('csrf')
+    expect(d.captured.closeBody).toEqual({ resolution: 'Done from CLI.' })
   })
 
   // 0052: a no-move archive-priority is a non-2xx named failure; the transport must surface it loudly so

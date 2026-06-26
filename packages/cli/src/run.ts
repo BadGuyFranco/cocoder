@@ -23,7 +23,7 @@ import {
 import { getAdapter, makeAdapterRegistry } from '@cocoder/adapters'
 import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import { CmuxSessionHost } from '@cocoder/session-hosts'
-import { authoringPlayViaDaemon, migrateHistoryViaDaemon, requestDebRepairViaDaemon, resumeViaDaemon, runViaDaemon, startOzDaemon, supportCommitViaDaemon, teardownViaDaemon, type DebRepairEvidenceItem } from './client.js'
+import { authoringPlayViaDaemon, closeTicketViaDaemon, migrateHistoryViaDaemon, requestDebRepairViaDaemon, resumeViaDaemon, runViaDaemon, startOzDaemon, supportCommitViaDaemon, teardownViaDaemon, type DebRepairEvidenceItem } from './client.js'
 import { closeTicketViaCli } from './close-ticket.js'
 import { createTicketViaCli } from './create-ticket.js'
 import { archivePriorityInvocation, createPriorityInvocation, createTicketInvocation, editPriorityInvocation } from './oz-args.js'
@@ -165,17 +165,25 @@ async function main(): Promise<void> {
       console.error(closeTicketUsage)
       process.exit(2)
     }
-    // A control-plane close is a loop-DOWN operation: while a daemon is live, an out-of-band close can
-    // race an active run for the same ticket (ADR-0041 D2/D3). Refuse and point at the in-loop path.
+    const closeResolution = resolution ?? 'Closed via cocoder oz close-ticket.'
     const live = await probeDaemon({ port: DEFAULT_OZ_PORT })
     if (live.alive) {
-      console.error(`cocoder: a daemon is live on :${live.port} — refusing an out-of-band ticket close (ADR-0041 D2/D3: it can race an active run). Let the run close its own target, or stop the loop first.`)
-      process.exit(1)
+      const result = await closeTicketViaDaemon(`http://127.0.0.1:${live.port}`, 'cocoder', ticketId, closeResolution)
+      if (result.queued) {
+        out(`queued ticket close ${ticketId}: ${result.queuedId}`)
+      } else if (result.closed) {
+        out(`closed ticket ${ticketId}: ${result.commitSha ?? 'no commit'}`)
+        if (result.committedPaths?.length) out(`  files: ${result.committedPaths.join(', ')}`)
+      } else {
+        out(`ticket ${ticketId} was not closed${result.reason ? ` (${result.reason})` : ''}`)
+        process.exitCode = 1
+      }
+      return
     }
     const result = await closeTicketViaCli({
       repoPath: process.cwd(),
       ticketId,
-      resolution: resolution ?? 'Closed via cocoder oz close-ticket.',
+      resolution: closeResolution,
       closedDate: new Date().toISOString().slice(0, 10),
       ...(runId ? { runId } : {}),
     })

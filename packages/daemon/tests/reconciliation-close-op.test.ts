@@ -1,12 +1,13 @@
 // ADR-0041 §3.2 item 4 / ticket 0055 — Deb's reconciliation close. She may close a ticket that SHOULD
 // already have been closed, through the ONE governed close spine (closeTicket → commitFiles, shared
-// governance author), GUARDED to refuse a ticket an active run owns. Tested with a real ticket fs + an
-// injected fake Git so the file moves and the governed commit are pinned deterministically.
+// governance author). Active runs queue the deterministic close for the safe seam. Tested with a real
+// ticket fs + an injected fake Git so the file moves and the governed commit are pinned deterministically.
 import { mkdtemp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { COCODER_GOVERNANCE_AUTHOR, openRunStore, type Git, type RunStore } from '@cocoder/core'
+import { listQueuedAuthoring } from '../src/authoring-queue.js'
 import { createOzEventBus, type OzContext } from '../src/context.js'
 import { requestReconciliationClose } from '../src/launcher.js'
 
@@ -75,7 +76,7 @@ async function makeFixture(commits: CommitCall[]): Promise<{ readonly home: stri
 }
 
 describe('requestReconciliationClose', () => {
-  test('REFUSES a ticket an active run OWNS — that close is the runner\'s (ADR-0041 §3.2)', async () => {
+  test('queues a close while an active run owns the workspace', async () => {
     const commits: CommitCall[] = []
     const { home, store, ctx } = await makeFixture(commits)
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0099' })
@@ -83,9 +84,12 @@ describe('requestReconciliationClose', () => {
 
     const result = await requestReconciliationClose(ctx, { workspaceId: 'cocoder', ticketId: '0099', resolution: 'should already be closed' })
 
-    expect(result).toMatchObject({ status: 409, body: { ok: false, error: expect.stringContaining('active run') } })
+    expect(result).toMatchObject({ status: 202, body: { ok: true, queued: true, queuedId: 'ticket-close-0099', ticketId: '0099', status: 'queued' } })
     expect(commits).toEqual([]) // never committed
     expect(await readdir(join(home, 'cocoder', 'tickets', 'open'))).toContain('0099-stale-bug.md') // still open
+    await expect(listQueuedAuthoring(home, 'cocoder')).resolves.toEqual([
+      expect.objectContaining({ queuedId: 'ticket-close-0099', action: 'ticket-close', ticketId: '0099', status: 'queued' }),
+    ])
   })
 
   test('closes a stale-open ticket through the governed spine under the shared governance author', async () => {
@@ -104,7 +108,7 @@ describe('requestReconciliationClose', () => {
     expect(commits[0].author).toEqual(COCODER_GOVERNANCE_AUTHOR)
   })
 
-  test('an active run targeting a DIFFERENT ticket does not block the reconciliation close', async () => {
+  test('an active run targeting a different ticket also queues the reconciliation close', async () => {
     const commits: CommitCall[] = []
     const { ctx, store } = await makeFixture(commits)
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0042' })
@@ -112,7 +116,8 @@ describe('requestReconciliationClose', () => {
 
     const result = await requestReconciliationClose(ctx, { workspaceId: 'cocoder', ticketId: '0099', resolution: 'Different ticket in flight.' })
 
-    expect(result).toMatchObject({ status: 200, body: { ok: true, closed: true } })
+    expect(result).toMatchObject({ status: 202, body: { ok: true, queued: true, ticketId: '0099' } })
+    expect(commits).toEqual([])
   })
 
   test('reports not-closed without a spurious commit when the ticket is not open', async () => {

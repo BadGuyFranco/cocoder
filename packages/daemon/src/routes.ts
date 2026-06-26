@@ -33,7 +33,7 @@ import { findWorkspace, readWorkspaces, validateWorkspaceFolders, workspaceDirec
 import { readRunDir } from './rundir.js'
 import { appendAudit } from './audit.js'
 import { listClis, testCli } from './clis.js'
-import { commitGovernance, launchRun, requestArchiveConfirmation, requestAuthoringPlay, requestDaemonRestart, requestDashboardLaunch, requestOscarDebRepair, requestStopRun, requestSupportCommitRun, requestTicketCloseConfirmation, resumeRun, showRun, teardownRun, ticketPendingCloseRun, type AuthoringPlayInput, type OscarDebRepairInput } from './launcher.js'
+import { commitGovernance, launchRun, requestArchiveConfirmation, requestAuthoringPlay, requestDaemonRestart, requestDashboardLaunch, requestOscarDebRepair, requestReconciliationClose, requestReconciliationRepoint, requestStopRun, requestSupportCommitRun, requestTicketCloseConfirmation, resumeRun, showRun, teardownRun, ticketPendingCloseRun, type AuthoringPlayInput, type OscarDebRepairInput } from './launcher.js'
 import { enqueueAuthoring, listQueuedAuthoring } from './authoring-queue.js'
 import { handleOzMessage } from './oz-chat.js'
 import { mergeWriteSettings, readSettings } from './settings.js'
@@ -154,6 +154,23 @@ function oscarDebRepairBody(body: unknown): OscarDebRepairBody {
 function reorderBody(body: unknown): readonly string[] | null {
   const record = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {}
   return Array.isArray(record.order) && record.order.every((id) => typeof id === 'string') ? record.order : null
+}
+
+function closeTicketBody(body: unknown): { readonly resolution?: string } {
+  const record = bodyRecord(body)
+  return typeof record.resolution === 'string' && record.resolution.trim() ? { resolution: record.resolution.trim() } : {}
+}
+
+type ParsedRepointTicketBody = { readonly ok: true; readonly targetPriority: string | null } | { readonly ok: false; readonly error: string }
+
+function repointTicketBody(body: unknown): ParsedRepointTicketBody {
+  const record = bodyRecord(body)
+  if (record.targetPriority === null) return { ok: true, targetPriority: null }
+  if (typeof record.targetPriority === 'string' && record.targetPriority.trim()) {
+    const target = record.targetPriority.trim()
+    return { ok: true, targetPriority: target === 'standalone' || target === 'none' ? null : target }
+  }
+  return { ok: false, error: 'targetPriority must be a string or null' }
 }
 
 function bodyRecord(body: unknown): Record<string, unknown> {
@@ -1025,6 +1042,36 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
     if (!parsed.ok) return sendJson(res, 400, { error: parsed.error }), true
     await createTicket(ctx, res, decodeURIComponent(seg[1]!), parsed.input)
     return true
+  }
+  if (method === 'POST' && seg[0] === 'workspaces' && seg.length === 5 && seg[2] === 'tickets' && seg[4] === 'close') {
+    let body: unknown
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      return sendJson(res, 400, { error: 'invalid JSON body' }), true
+    }
+    const { status, body: out } = await requestReconciliationClose(ctx, {
+      workspaceId: decodeURIComponent(seg[1]!),
+      ticketId: decodeURIComponent(seg[3]!),
+      resolution: closeTicketBody(body).resolution ?? 'Closed via cocoder oz close-ticket.',
+    })
+    return sendJson(res, status, out), true
+  }
+  if (method === 'POST' && seg[0] === 'workspaces' && seg.length === 5 && seg[2] === 'tickets' && seg[4] === 'repoint') {
+    let body: unknown
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      return sendJson(res, 400, { error: 'invalid JSON body' }), true
+    }
+    const parsed = repointTicketBody(body)
+    if (!parsed.ok) return sendJson(res, 400, { error: parsed.error }), true
+    const { status, body: out } = await requestReconciliationRepoint(ctx, {
+      workspaceId: decodeURIComponent(seg[1]!),
+      ticketId: decodeURIComponent(seg[3]!),
+      targetPriority: parsed.targetPriority,
+    })
+    return sendJson(res, status, out), true
   }
   if (method === 'POST' && seg[0] === 'workspaces' && seg.length === 4 && seg[2] === 'authoring-plays') {
     const playId = decodeURIComponent(seg[3] ?? '')

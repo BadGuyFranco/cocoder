@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { COCODER_GOVERNANCE_AUTHOR, openRunStore, type Git, type RunStore } from '@cocoder/core'
+import { listQueuedAuthoring } from '../src/authoring-queue.js'
 import { createOzEventBus, type OzContext } from '../src/context.js'
 import { requestReconciliationRepoint } from '../src/launcher.js'
 
@@ -133,18 +134,21 @@ describe('requestReconciliationRepoint', () => {
     }])
   })
 
-  test('refuses a ticket an active run owns', async () => {
+  test('queues a repoint while an active run owns the workspace, even before the target is live', async () => {
     const commits: CommitCall[] = []
     const { home, store, ctx } = await makeFixture(commits)
     const before = await readFile(join(home, 'cocoder', 'tickets', 'open', '0099-stale-bug.md'), 'utf8')
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0099' })
     ctx.inFlight.set('cocoder', run.id)
 
-    const result = await requestReconciliationRepoint(ctx, { workspaceId: 'cocoder', ticketId: '0099', targetPriority: null })
+    const result = await requestReconciliationRepoint(ctx, { workspaceId: 'cocoder', ticketId: '0099', targetPriority: 'missing-priority' })
 
-    expect(result).toMatchObject({ status: 409, body: { ok: false, error: expect.stringContaining('active run') } })
+    expect(result).toMatchObject({ status: 202, body: { ok: true, queued: true, queuedId: 'ticket-repoint-0099', ticketId: '0099', status: 'queued' } })
     expect(commits).toEqual([])
     expect(await readFile(join(home, 'cocoder', 'tickets', 'open', '0099-stale-bug.md'), 'utf8')).toBe(before)
+    await expect(listQueuedAuthoring(home, 'cocoder')).resolves.toEqual([
+      expect.objectContaining({ queuedId: 'ticket-repoint-0099', action: 'ticket-repoint', ticketId: '0099', status: 'queued', input: expect.objectContaining({ targetPriority: 'missing-priority' }) }),
+    ])
   })
 
   test('refuses rehome to a non-live priority without touching the ticket', async () => {

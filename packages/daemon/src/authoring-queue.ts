@@ -1,6 +1,6 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { dirname, join, relative } from 'node:path'
-import { createTicket as createTicketCore, nextTicketId, readTickets, type CommitReceipt } from '@cocoder/core'
+import { closeTicket, createTicket as createTicketCore, nextTicketId, readTickets, repointTicket, type CommitReceipt } from '@cocoder/core'
 import { appendAudit } from './audit.js'
 import type { OzContext } from './context.js'
 import { emitOzEvent } from './context.js'
@@ -8,9 +8,9 @@ import { createPriorityFiles, type CreatePriorityInput } from './priority-author
 import { writeTicketOrder } from './priority-order.js'
 import { findWorkspace } from './registry.js'
 
-const QUEUE_SCHEMA_VERSION = 2
+const QUEUE_SCHEMA_VERSION = 3
 type QueueStatus = 'queued' | 'committed' | 'error'
-type QueuedAction = 'ticket-create' | 'ticket-reorder' | 'priority-create'
+type QueuedAction = 'ticket-create' | 'ticket-reorder' | 'ticket-close' | 'ticket-repoint' | 'priority-create'
 
 export interface QueuedTicketCreateInput { readonly title: string; readonly type: 'bug' | 'task' | 'question'; readonly priority: string; readonly description: string }
 
@@ -36,16 +36,29 @@ export interface QueuedTicketCreateEntry extends QueuedBaseEntry {
 
 export interface QueuedTicketReorderEntry extends QueuedBaseEntry { readonly action: 'ticket-reorder'; readonly input: { readonly order: readonly string[] } }
 
+export interface QueuedTicketCloseEntry extends QueuedBaseEntry {
+  readonly action: 'ticket-close'
+  readonly input: { readonly ticketId: string; readonly resolution: string | null }
+  readonly ticketId: string
+}
+
+export interface QueuedTicketRepointEntry extends QueuedBaseEntry {
+  readonly action: 'ticket-repoint'
+  readonly input: { readonly ticketId: string; readonly targetPriority: string | null; readonly order?: readonly string[] }
+  readonly ticketId: string
+}
+
 export interface QueuedPriorityCreateEntry extends QueuedBaseEntry {
   readonly action: 'priority-create'
   readonly input: CreatePriorityInput
   readonly priorityId: string
 }
 
-export type QueuedAuthoringEntry = QueuedTicketCreateEntry | QueuedTicketReorderEntry | QueuedPriorityCreateEntry
+export type QueuedAuthoringEntry = QueuedTicketCreateEntry | QueuedTicketReorderEntry | QueuedTicketCloseEntry | QueuedTicketRepointEntry | QueuedPriorityCreateEntry
 
 export type QueuedAuthoringReceipt =
   | { readonly queuedId: string; readonly reservedTicketId: string; readonly status: 'queued' }
+  | { readonly queuedId: string; readonly ticketId: string; readonly status: 'queued' }
   | { readonly queuedId: string; readonly priorityId: string; readonly status: 'queued' }
   | { readonly queuedId: string; readonly status: 'queued' }
 
@@ -54,8 +67,10 @@ interface QueueFile { readonly schemaVersion: typeof QUEUE_SCHEMA_VERSION; reado
 interface QueueInputBase { readonly workspaceId: string; readonly now: () => number }
 type TicketCreateEnqueueInput = QueueInputBase & { readonly action: 'ticket-create'; readonly ticket: QueuedTicketCreateInput }
 type TicketReorderEnqueueInput = QueueInputBase & { readonly action: 'ticket-reorder'; readonly order: readonly string[] }
+type TicketCloseEnqueueInput = QueueInputBase & { readonly action: 'ticket-close'; readonly ticketId: string; readonly resolution?: string | null }
+type TicketRepointEnqueueInput = QueueInputBase & { readonly action: 'ticket-repoint'; readonly ticketId: string; readonly targetPriority: string | null; readonly order?: readonly string[] }
 type PriorityCreateEnqueueInput = QueueInputBase & { readonly action: 'priority-create'; readonly priority: CreatePriorityInput }
-type EnqueueAuthoringInput = TicketCreateEnqueueInput | TicketReorderEnqueueInput | PriorityCreateEnqueueInput
+type EnqueueAuthoringInput = TicketCreateEnqueueInput | TicketReorderEnqueueInput | TicketCloseEnqueueInput | TicketRepointEnqueueInput | PriorityCreateEnqueueInput
 
 interface DrainResult { readonly files: readonly string[]; readonly message: string; readonly audit: Record<string, unknown>; readonly event: { readonly ticketId?: string; readonly priorityId?: string } }
 
@@ -109,11 +124,35 @@ function validateEntry(entry: unknown): QueuedAuthoringEntry {
       return { ...base, action: 'ticket-create', input: validateTicketInput(record.input), reservedTicketId: record.reservedTicketId, createdDate: record.createdDate }
     case 'ticket-reorder':
       return { ...base, action: 'ticket-reorder', input: { order: validateStringArray(record.input, 'order') } }
+    case 'ticket-close':
+      if (typeof record.ticketId !== 'string') throw new Error('queued ticket-close entry is missing identity fields')
+      return { ...base, action: 'ticket-close', input: validateTicketCloseInput(record.input), ticketId: record.ticketId }
+    case 'ticket-repoint':
+      if (typeof record.ticketId !== 'string') throw new Error('queued ticket-repoint entry is missing identity fields')
+      return { ...base, action: 'ticket-repoint', input: validateTicketRepointInput(record.input), ticketId: record.ticketId }
     case 'priority-create':
       if (typeof record.priorityId !== 'string') throw new Error('queued priority-create entry is missing identity fields')
       return { ...base, action: 'priority-create', input: validatePriorityInput(record.input), priorityId: record.priorityId }
     default:
       throw new Error('queued authoring entry has unsupported action')
+  }
+}
+
+function validateTicketCloseInput(input: unknown): QueuedTicketCloseEntry['input'] {
+  const record = typeof input === 'object' && input !== null ? input as Record<string, unknown> : {}
+  if (typeof record.ticketId !== 'string') throw new Error('queued ticket-close input is malformed')
+  if (record.resolution !== null && record.resolution !== undefined && typeof record.resolution !== 'string') throw new Error('queued ticket-close resolution is malformed')
+  return { ticketId: record.ticketId, resolution: typeof record.resolution === 'string' ? record.resolution : null }
+}
+
+function validateTicketRepointInput(input: unknown): QueuedTicketRepointEntry['input'] {
+  const record = typeof input === 'object' && input !== null ? input as Record<string, unknown> : {}
+  if (typeof record.ticketId !== 'string') throw new Error('queued ticket-repoint input is malformed')
+  if (record.targetPriority !== null && typeof record.targetPriority !== 'string') throw new Error('queued ticket-repoint target is malformed')
+  return {
+    ticketId: record.ticketId,
+    targetPriority: record.targetPriority,
+    ...(Array.isArray(record.order) ? { order: validateStringArray(record, 'order') } : {}),
   }
 }
 
@@ -178,6 +217,8 @@ function baseEntry(input: EnqueueAuthoringInput, queuedId: string, enqueuedAt: n
 
 export function enqueueAuthoring(ctx: Pick<OzContext, 'cocoderHome'>, input: TicketCreateEnqueueInput): Promise<{ readonly queuedId: string; readonly reservedTicketId: string; readonly status: 'queued' }>
 export function enqueueAuthoring(ctx: Pick<OzContext, 'cocoderHome'>, input: PriorityCreateEnqueueInput): Promise<{ readonly queuedId: string; readonly priorityId: string; readonly status: 'queued' }>
+export function enqueueAuthoring(ctx: Pick<OzContext, 'cocoderHome'>, input: TicketCloseEnqueueInput): Promise<{ readonly queuedId: string; readonly ticketId: string; readonly status: 'queued' }>
+export function enqueueAuthoring(ctx: Pick<OzContext, 'cocoderHome'>, input: TicketRepointEnqueueInput): Promise<{ readonly queuedId: string; readonly ticketId: string; readonly status: 'queued' }>
 export function enqueueAuthoring(ctx: Pick<OzContext, 'cocoderHome'>, input: TicketReorderEnqueueInput): Promise<{ readonly queuedId: string; readonly status: 'queued' }>
 export async function enqueueAuthoring(ctx: Pick<OzContext, 'cocoderHome'>, input: EnqueueAuthoringInput): Promise<QueuedAuthoringReceipt> {
   const workspace = await findWorkspace(ctx.cocoderHome, input.workspaceId)
@@ -200,6 +241,25 @@ export async function enqueueAuthoring(ctx: Pick<OzContext, 'cocoderHome'>, inpu
     const entry: QueuedPriorityCreateEntry = { ...baseEntry(input, queuedId, enqueuedAt), action: input.action, input: input.priority, priorityId: input.priority.id }
     await persistQueuedEntry(ctx.cocoderHome, path, current, entry)
     return { queuedId, priorityId: input.priority.id, status: 'queued' }
+  }
+
+  if (input.action === 'ticket-close') {
+    const queuedId = uniqueQueuedId(`ticket-close-${input.ticketId}`, current.entries)
+    const entry: QueuedTicketCloseEntry = { ...baseEntry(input, queuedId, enqueuedAt), action: input.action, input: { ticketId: input.ticketId, resolution: input.resolution ?? null }, ticketId: input.ticketId }
+    await persistQueuedEntry(ctx.cocoderHome, path, current, entry)
+    return { queuedId, ticketId: input.ticketId, status: 'queued' }
+  }
+
+  if (input.action === 'ticket-repoint') {
+    const queuedId = uniqueQueuedId(`ticket-repoint-${input.ticketId}`, current.entries)
+    const entry: QueuedTicketRepointEntry = {
+      ...baseEntry(input, queuedId, enqueuedAt),
+      action: input.action,
+      input: { ticketId: input.ticketId, targetPriority: input.targetPriority, ...(input.order ? { order: [...input.order] } : {}) },
+      ticketId: input.ticketId,
+    }
+    await persistQueuedEntry(ctx.cocoderHome, path, current, entry)
+    return { queuedId, ticketId: input.ticketId, status: 'queued' }
   }
 
   const base = `ticket-reorder-${String(current.entries.filter((entry) => entry.action === 'ticket-reorder').length + 1).padStart(4, '0')}`
@@ -269,26 +329,63 @@ export async function drainAuthoringQueue(
 }
 
 async function applyQueuedEntry(repoPath: string, workspaceId: string, entry: QueuedAuthoringEntry, now: () => number): Promise<DrainResult> {
+  const ticketsDir = join(repoPath, 'cocoder', 'tickets')
   if (entry.action === 'ticket-create') {
-    const result = await createTicketCore({ ticketsDir: join(repoPath, 'cocoder', 'tickets'), repoPath, ticketId: entry.reservedTicketId, created: entry.createdDate, ...entry.input })
+    const result = await createTicketCore({ ticketsDir, repoPath, ticketId: entry.reservedTicketId, created: entry.createdDate, ...entry.input })
     if (!result.created) throw new Error(`ticket id ${entry.reservedTicketId} already exists`)
-    const ticket = (await readTickets(join(repoPath, 'cocoder', 'tickets'))).find((item) => item.id === result.id)
+    const ticket = (await readTickets(ticketsDir)).find((item) => item.id === result.id)
     if (!ticket) throw new Error(`ticket ${result.id} did not round-trip`)
     return { files: result.files, message: `governance: create queued ticket ${result.id}`, audit: { ticketId: result.id }, event: { ticketId: result.id } }
+  }
+  if (entry.action === 'ticket-close') {
+    const ticket = (await readTickets(ticketsDir)).find((item) => item.id === entry.ticketId)
+    if (!ticket || ticket.state !== 'open') throw new Error(`ticket ${entry.ticketId} cannot be queued-closed (${ticket?.state === 'closed' ? 'already-closed' : 'missing-open-ticket'})`)
+    const closedDate = clockParts(now()).date
+    const result = await closeTicket({
+      ticketsDir,
+      repoPath,
+      ticketId: entry.ticketId,
+      runId: 'queued-authoring',
+      committedSha: null,
+      closedDate,
+      resolution: entry.input.resolution ?? 'Closed from the queued authoring lane.',
+    })
+    if (!result.closed) throw new Error(`ticket ${entry.ticketId} cannot be queued-closed (${result.reason})`)
+    return { files: result.files, message: `governance: close queued ticket ${entry.ticketId}`, audit: { ticketId: entry.ticketId }, event: { ticketId: entry.ticketId } }
+  }
+  if (entry.action === 'ticket-repoint') {
+    if (entry.input.targetPriority !== null && !(await isFile(join(repoPath, 'cocoder', 'priorities', `${entry.input.targetPriority}.md`)))) {
+      throw new Error(`ticket ${entry.ticketId} cannot be queued-repointed (missing-priority)`)
+    }
+    const result = await repointTicket({ ticketsDir, repoPath, ticketId: entry.ticketId, targetPriority: entry.input.targetPriority })
+    if (!result.repointed) throw new Error(`ticket ${entry.ticketId} cannot be queued-repointed (${result.reason})`)
+    const order = entry.input.order === undefined ? null : await writeTicketOrder(ticketsDir, entry.input.order)
+    const files = order === null ? [...result.files] : [...new Set([...result.files, relative(repoPath, join(ticketsDir, 'order.json'))])]
+    const target = result.targetPriority ?? 'standalone'
+    return { files, message: `governance: repoint queued ticket ${entry.ticketId} -> ${target}`, audit: { ticketId: entry.ticketId, targetPriority: result.targetPriority, ...(order ? { order } : {}) }, event: { ticketId: entry.ticketId } }
   }
   if (entry.action === 'priority-create') {
     const created = await createPriorityFiles(repoPath, entry.input, now)
     return { files: created.files, message: `governance: create queued priority ${entry.priorityId}`, audit: { priorityId: entry.priorityId }, event: { priorityId: entry.priorityId } }
   }
-  const order = await writeTicketOrder(join(repoPath, 'cocoder', 'tickets'), entry.input.order)
+  const order = await writeTicketOrder(ticketsDir, entry.input.order)
   const files = [relative(repoPath, join(repoPath, 'cocoder', 'tickets', 'order.json'))]
   return { files, message: `governance: reorder queued tickets (${workspaceId})`, audit: { order }, event: {} }
 }
 
 function entryIdentity(entry: QueuedAuthoringEntry): Record<string, unknown> {
   if (entry.action === 'ticket-create') return { ticketId: entry.reservedTicketId }
+  if (entry.action === 'ticket-close' || entry.action === 'ticket-repoint') return { ticketId: entry.ticketId }
   if (entry.action === 'priority-create') return { priorityId: entry.priorityId }
   return {}
+}
+
+async function isFile(path: string): Promise<boolean> {
+  try {
+    return (await stat(path)).isFile()
+  } catch {
+    return false
+  }
 }
 
 function replaceEntry(file: QueueFile, next: QueuedAuthoringEntry): QueueFile {

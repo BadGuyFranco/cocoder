@@ -3019,6 +3019,60 @@ describe('Oz mutations + lifecycle', () => {
     ])
   })
 
+  test('POST /workspaces/:id/tickets/:ticketId/close queues during an active run and drains at wrap when there is no next atom', async () => {
+    await writeTicketIndex(home)
+    await writeFile(join(home, 'cocoder', 'tickets', 'order.json'), `${JSON.stringify(['0003', '0004'], null, 2)}\n`)
+    const commits: GovernanceCommitCall[] = []
+    const controlled = controlledDirectiveIO()
+    await startServer(queuedCommitGit(commits), async () => ({ exitCode: 0, output: validFounderCloseout() }), controlled.io)
+
+    const launch = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
+    expect(launch.status).toBe(202)
+    const runId = launch.json.runId as string
+    for (let i = 0; i < 50 && oz!.ctx.inFlight.get('cocoder') !== runId; i++) await sleep(10)
+
+    const close = await call(oz!, 'POST', '/workspaces/cocoder/tickets/0003/close', { body: { resolution: 'Closed after final wrap.' } })
+
+    expect(close.status).toBe(202)
+    expect(close.json).toEqual({ ok: true, queued: true, queuedId: 'ticket-close-0003', ticketId: '0003', status: 'queued' })
+    expect(commits).toEqual([])
+    expect(await exists(join(home, 'cocoder', 'tickets', 'open', '0003-existing-open.md'))).toBe(true)
+
+    controlled.release()
+    for (let i = 0; i < 100 && oz!.ctx.inFlight.has('cocoder'); i++) await sleep(10)
+
+    expect(store.getRun(runId)?.status).toBe('completed')
+    expect(await exists(join(home, 'cocoder', 'tickets', 'open', '0003-existing-open.md'))).toBe(false)
+    expect(await exists(join(home, 'cocoder', 'tickets', 'closed', '0003-existing-open.md'))).toBe(true)
+    expect(JSON.parse(await readFile(join(home, 'cocoder', 'tickets', 'order.json'), 'utf8'))).toEqual(['0004'])
+    expect(await listQueuedAuthoring(home, 'cocoder')).toEqual([])
+    expect(store.listEvents(runId).filter((event) => event.type === 'queued-authoring-commit')).toHaveLength(1)
+    expect(commits).toContainEqual(expect.objectContaining({
+      files: ['cocoder/tickets/closed/0003-existing-open.md', 'cocoder/tickets/open/0003-existing-open.md', 'cocoder/tickets/INDEX.md', 'cocoder/tickets/order.json'],
+      message: 'governance: close queued ticket 0003',
+    }))
+  })
+
+  test('POST /workspaces/:id/tickets/:ticketId/repoint queues during an active run without mutating immediately', async () => {
+    await writeTicketIndex(home)
+    const commits: GovernanceCommitCall[] = []
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    await startServer(recordingGovernanceGit(commits))
+    oz!.ctx.inFlight.set('cocoder', run.id)
+    const before = await readFile(join(home, 'cocoder', 'tickets', 'open', '0003-existing-open.md'), 'utf8')
+
+    const repoint = await call(oz!, 'POST', '/workspaces/cocoder/tickets/0003/repoint', { body: { targetPriority: 'demo' } })
+
+    expect(repoint.status).toBe(202)
+    expect(repoint.json).toEqual({ ok: true, queued: true, queuedId: 'ticket-repoint-0003', ticketId: '0003', status: 'queued' })
+    expect(commits).toEqual([])
+    expect(await readFile(join(home, 'cocoder', 'tickets', 'open', '0003-existing-open.md'), 'utf8')).toBe(before)
+    await expect(listQueuedAuthoring(home, 'cocoder')).resolves.toEqual([
+      expect.objectContaining({ queuedId: 'ticket-repoint-0003', action: 'ticket-repoint', ticketId: '0003', status: 'queued' }),
+    ])
+  })
+
   test('POST /workspaces/:id/tickets rejects invalid ticket create bodies', async () => {
     await writeTicketIndex(home)
     await startServer()
