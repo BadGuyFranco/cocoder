@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-26 — **runnerless-independent-priority: hardening run — archive ready (run_107/run_251)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [runnerless-independent-priority](./priorities/runnerless-independent-priority.md) | **Run:** run_251 (display 107)
+**Outcomes:**
+- **Daemon-up fail-fast guard (`99f3644`).** `run-independent` probes before opening the live store; live daemon + non-isolated target exits 1 with SQLite lock guidance; `--force` proceeds with a logged WARNING; destructive/isolated runs skip the guard. Closes hardening item 2.
+- **Real `runRun` integration test (`73da5c9`).** `run-independent-real-run.test.ts` exercises live `runStandalone`→`runRun` without `runRunImpl` injection — real directive/verify handoff, real store, scripted headless agents only; non-destructive and destructive paths; full event log through run-end. Minimal `runnerDeps` seam on `runStandalone` (defaults preserve production). Closes hardening item 1.
+- **Evidence:** tsc exit 0; run-independent suite 9/9; full `@cocoder/cli` 61/61.
+- **Disposition: `archive-confirmation`.** All buildable hardening complete; item 3 (model-resolution semantics) is the sole founder gate before archive.
+**Next:** Reply in this run with keep current model semantics or requested (a)/(b) changes; confirm → `archive` in Oz chat.
+
 ## 2026-06-26 — **runnerless-independent-priority: Shape A runnerless path — archive ready (run_106/run_250)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [runnerless-independent-priority](./priorities/runnerless-independent-priority.md) | **Run:** run_250 (display 106)

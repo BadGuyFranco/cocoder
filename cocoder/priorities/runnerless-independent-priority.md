@@ -35,35 +35,33 @@ CoCoder dogfoods itself: a run that modifies the runner, daemon, or store is exe
 - Replacing the runner for normal priorities — runnerless is **opt-in** for self-impacting/destructive changes; the daemon-driven runner remains the default.
 - A from-scratch agentic orchestrator that discards `runRun` (the rejected "Shape B"; see ADR-0043).
 
-## Follow-up — founder-requested hardening run (after run_250, 2026-06-26)
+## Follow-up — founder-requested hardening (after run_250, 2026-06-26)
 
 All five scope items and acceptance criteria are met (detection + alert in run_105; Shape A
 runnerless execution, always-latest CLI, self-containment, and end-to-end no-daemon test in
 run_250). The founder asked for **one more run** to close the gaps Oscar surfaced at wrap-up before
 archiving. The Objective/Scope/Acceptance above stand; these are hardening items, not a re-scope.
 
-1. **Real-CLI smoke — the true end-to-end proof.** Every existing proof is **test-level with an
-   injected fake runner** (`runRunImpl` substituted in `runStandalone`). No real
-   `cocoder run-independent <id>` has ever driven real agents to completion, so the live wiring
-   between `runStandalone` and a real `runRun` on the independent branch is exercised only
-   structurally. Drive a genuine real-process run (or a real-process integration test that does not
-   inject the runner) end-to-end to completion with the daemon down, and capture the evidence.
-   Watch the seams most likely to break first: the **scratch `runsRoot` ↔ directive/verify file
-   handoff**, and the **SQLite single-writer lock** behaviour on the real path.
-2. **Daemon-up guard (unhandled footgun).** `run-independent` bypasses `probeDaemon` entirely and
-   never checks whether the daemon is actually live. Run while the daemon is **up**, a non-destructive
-   independent priority will try to open the live `local/cocoder.db` the daemon owns and contend for
-   the single-writer lock — with no clear, early message. Add a **fail-fast (or explicit
-   `--force`/clear warning)** when a live daemon is detected, instead of silently opening the live
-   store. Scope item 3 covered "daemon down"; this covers "daemon up, run anyway."
-3. **"Latest/greatest" semantics — confirm intent.** Resolution is the **first entry of
-   `listModels()`** (claude → `opus`), i.e. most-capable-by-curation, **not newest-by-release**
+1. **Real-CLI smoke — the true end-to-end proof.** *(met, run_251.)* Integration test
+   `packages/cli/tests/run-independent-real-run.test.ts` drives the live `runStandalone` → real
+   `runRun` wiring without injecting `runRunImpl`: real directive/verify handoff on disk, real
+   `openRunStore`, scripted agents only at the headless layer. Covers non-destructive (live store) and
+   destructive (isolated scratch; live store untouched) paths and asserts
+   builder-dispatch→verify-pass→wrapup→run-end. Optional belt-and-suspenders: a live LLM run of
+   [`local-cache-retention`](./local-cache-retention.md) via `cocoder run-independent` — not required
+   by this item as written.
+2. **Daemon-up guard (unhandled footgun).** *(met, run_251.)* `run-independent` probes the daemon before
+   opening the live store; when the daemon is live and the target is non-isolated, it exits 1 with a
+   clear message naming `local/cocoder.db` and the SQLite single-writer lock. `--force` downgrades to a
+   logged WARNING. Isolated/destructive scratch runs skip the guard.
+3. **"Latest/greatest" semantics — confirm intent.** *(founder gate.)* Resolution is the **first entry
+   of `listModels()`** (claude → `opus`), i.e. most-capable-by-curation, **not newest-by-release**
    (Fable 5 is newer but curated last). Confirm this matches intent; if "latest" should track a
    deliberate marker rather than list order, encode that. Also: the runnerless path currently **forces
    latest even over an explicitly pinned assignment model** — confirm that override is desired, or have
-   it honour a pinned model when one is set.
+   it honour a pinned model when one is set. Oscar recommends keeping both behaviours; optional cosmetic
+   follow-up only: rename the resolver from `latest` to `most-capable`.
 
-**Disposition:** `continue` — one hardening run requested; not archive-ready until item 1 (real-CLI
-smoke) produces live evidence. Natural vehicle: launch [`local-cache-retention`](./local-cache-retention.md)
-via `cocoder run-independent local-cache-retention` — it is both the first real consumer of this path
-and the live smoke that item 1 needs.
+**Disposition:** `archive-confirmation` — hardening items 1–2 complete (run_251); item 3 founder
+confirmation is the sole archive gate. Confirm current semantics → reply `archive` in Oz chat; request a
+change to (a) and/or (b) → one small relaunch atom.

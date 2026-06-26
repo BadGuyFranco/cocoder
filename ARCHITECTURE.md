@@ -142,7 +142,8 @@ self-impacting priorities (run-critical scope or `destructive: true`) unless the
 `allowSelfImpacting: true` — always with a non-silent audit entry. Priorities marked
 `independent-of-runner: true` are refused from the normal daemon runner (409) and executed through
 `cocoder run-independent`: standalone daemon-free `runRun`, frozen code, latest-model Oscar, direct-git
-commits, and scratch-store isolation for `destructive` priorities.
+commits, scratch-store isolation for `destructive` priorities, and a fail-fast guard (or `--force`
+warning) when the daemon is live and the run would open the shared live store.
 
 Observation is tiered by the **direct your primary** rule. Oscar monitors and directs Bob for the active
 run. Deb monitors Oscar, may observe Bob to diagnose, and nudges Oscar only. Oz monitors sessions across
