@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-26 — **ticket-fix-0065: run-dir path consolidation — needs another run (run_101)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0065](./tickets/open/0065-consolidate-run-dir-path-reconcile-adr-0027-6-nesting-drift.md) | **Run:** run_101 (display 101)
+**Outcomes:**
+- **Single run-dir helper (`8fe2047`).** `packages/core/src/runner/run-dir.ts` owns `localRunDir()` / `localRunDirById()`; all six previously-inline sites (runner writer, oz-context-pointer, launcher pickup/nudge, rundir reader, CLI resume) route through it — zero behavior change, still flat `local/runs/<runId>`.
+- **Acceptance bullet 1 met.** No inline `join(runsRoot, runId)` remains outside the helper; full typecheck + `pnpm -r test` green.
+- **Ticket premise corrected.** Pre-existing helper at `packages/core/src/run-dir.ts` and retention GC at `packages/core/src/retention/gc.ts` never existed; acceptance bullet 3 (GC quiet on missing dir) is moot.
+- **Disposition: `needs another run`.** Founder must choose nested layout (Option A, recommended) vs. ADR-0027 §6 amendment to ratify flat (Option B); one short atom closes the ticket after that call.
+**Next:** Reply A or B in run_101 chat, then relaunch ticket `0065` to execute the chosen layout path and close.
+
 ## 2026-06-25 — **founder-facing-run-identity: display label primacy — archive ready (run_100/run_244)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [founder-facing-run-identity](./priorities/founder-facing-run-identity.md) | **Run:** run_244 (display 100)
