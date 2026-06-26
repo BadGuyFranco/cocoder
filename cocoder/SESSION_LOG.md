@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-26 — **ticket-fix-0069: doLaunchTicket 409 un-mask — awaiting founder close scope (run_110)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0069](./tickets/open/0069-oz-dashboard-cannot-launch-independent-of-runner-priorities-409-misleading.md) | **Run:** run_110 (display 110)
+**Outcomes:**
+- **Symmetric 409 surfacing (`a322423`).** `doLaunchTicket` in `App.tsx` now mirrors run_253's `doLaunch` fix: generic in-flight banner only when `res.status === 409 && /in flight/i.test(res.error)`; all other daemon 409s (e.g. pending-close refusal) show verbatim. Two live-app tests added; 171/171 `@cocoder/ui` green.
+- **AC-1 verified complete** on both launch paths; AC-2 (handoff affordance) and AC-3 runnerless badge shipped in run_253. AC-3 pending-handoff discoverability and AC-4 governed-write repro still open.
+- **Disposition: `needs closing`.** Headline bug fixed and committed; Oscar paused on founder scope (close+promote vs build remaining discoverability in-run) and AC-4 command/error input — no delegatable atom until founder answers.
+**Next:** Reply in run_110 with `close+promote` or `build-now`, plus paste the exact governed-write/`request-deb-repair` command and error from filing this bug.
+
 ## 2026-06-26 — **adhoc-session: independent-of-runner launch failure — ticket 0069 filed (run_109/run_253)**
 
 **Persona:** Oscar (support) | **Priority:** [adhoc-session](./priorities/adhoc-session.md) | **Run:** run_253 (display 109)
