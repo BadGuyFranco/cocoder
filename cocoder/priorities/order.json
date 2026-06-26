@@ -1,10 +1,10 @@
 [
+  "local-cache-retention",
   "runnerless-independent-priority",
   "multi-workspace-concurrency",
   "model-layer",
   "doc-truth-analysis",
   "new-primary-root",
   "priority-audit",
-  "ad-hoc-session-architecture",
-  "local-cache-retention"
+  "ad-hoc-session-architecture"
 ]
