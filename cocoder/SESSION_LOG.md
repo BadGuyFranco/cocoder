@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-26 — **adhoc-session: independent-of-runner launch failure — ticket 0069 filed (run_109/run_253)**
+
+**Persona:** Oscar (support) | **Priority:** [adhoc-session](./priorities/adhoc-session.md) | **Run:** run_253 (display 109)
+**Outcomes:**
+- **Root-caused four dashboard/runnerless gaps** by reading source (not symptom alone): daemon returns a specific `independent-of-runner-required` 409 but the UI hardcodes "A run is already in flight" for every 409; no founder-facing runnerless launch affordance (CLI `run-independent` only); runnerless work not flagged in Oz status; governed-write failure likely the by-design active-run refusal on `request-deb-repair` (exact command/error uncaptured).
+- **Ticket [0069](./tickets/open/0069-oz-dashboard-cannot-launch-independent-of-runner-priorities-409-misleading.md) filed** via Oscar support scope (`cocoder/tickets/**`); INDEX + order updated. No product code changed (read-mostly adhoc boundary).
+- **Disposition: `continue`.** Adhoc support task complete; fix work routes to ticket 0069 (AC-1 UI/bridge slice) with AC-2/AC-3 deferred to a future priority per founder choice.
+**Next:** Launch ticket `0069` from Oz — AC-1: un-mask the dashboard 409 and surface the daemon's independent-of-runner reason verbatim.
+
 ## 2026-06-26 — **ticket-fix-0067: legacy flat run-dir migration — closed (run_108/run_252)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0067](./tickets/closed/0067-physically-migrate-legacy-flat-local-runs-runid-dirs-to-the-adr-0027-6-nested-layout.md) | **Run:** run_252 (display 108)

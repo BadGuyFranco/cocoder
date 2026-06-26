@@ -2741,6 +2741,20 @@ describe('Oz mutations + lifecycle', () => {
     expect(get.json.priorities.map((p: any) => p.id)).toEqual(['later', 'demo'])
   })
 
+  test('GET /workspaces/:id/priorities exposes independent-of-runner for dashboard routing', async () => {
+    await writeFile(
+      join(home, 'cocoder', 'priorities', 'runnerless.md'),
+      `---\nid: runnerless\ntitle: Runnerless\nindependent-of-runner: true\n---\n## Objective\nDo the runnerless thing.`,
+    )
+    await startServer()
+
+    const get = await call(oz!, 'GET', '/workspaces/cocoder/priorities')
+
+    expect(get.status).toBe(200)
+    expect(get.json.priorities.find((p: any) => p.id === 'runnerless')).toMatchObject({ independentOfRunner: true })
+    expect(get.json.priorities.find((p: any) => p.id === 'demo')).toMatchObject({ independentOfRunner: false })
+  })
+
   test('POST /workspaces/:id/priorities/reorder rejects invalid bodies', async () => {
     await startServer()
 

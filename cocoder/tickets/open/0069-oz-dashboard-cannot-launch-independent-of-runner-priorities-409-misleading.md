@@ -87,5 +87,3 @@ Root causes (verified by reading the code on 2026-06-26, run_253):
 - `local-cache-retention` (`cocoder/priorities/local-cache-retention.md`, `destructive: true`,
   `independent-of-runner: true`) is the live reproducer and first real consumer of the
   runnerless path.
-</content>
-</invoke>

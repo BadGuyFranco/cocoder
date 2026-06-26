@@ -20,6 +20,7 @@ const unexpected =
 function mockOps(overrides: Partial<OzChatOps>): OzChatOps {
   return {
     launchRun: unexpected('launch') as OzChatOps['launchRun'],
+    requestIndependentHandoff: unexpected('runnerless-handoff') as OzChatOps['requestIndependentHandoff'],
     showRun: unexpected('show') as OzChatOps['showRun'],
     stopRun: unexpected('stop') as OzChatOps['stopRun'],
     teardownRun: unexpected('teardown') as OzChatOps['teardownRun'],
@@ -109,6 +110,37 @@ describe('handleOzMessage', () => {
       status: 202,
       body: { ok: true, command: 'launch', reply: 'Launched demo as run_47.', action: { type: 'launch', runId: 'run_47' } },
     })
+  })
+
+  test('launch creates a runnerless handoff for independent-of-runner priorities', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'cocoder-oz-runnerless-chat-'))
+    await mkdir(join(home, 'local'), { recursive: true })
+    await mkdir(join(home, 'cocoder', 'priorities'), { recursive: true })
+    await writeFile(join(home, 'local', 'workspaces.json'), JSON.stringify({ workspaces: [{ id: 'cocoder', name: 'CoCoder', path: '${COCODER_HOME}' }] }))
+    await writeFile(
+      join(home, 'cocoder', 'priorities', 'runnerless.md'),
+      `---\nid: runnerless\ntitle: Runnerless\nindependent-of-runner: true\n---\n## Objective\nDo the runnerless thing.`,
+    )
+    const calls = { launch: 0, handoff: 0 }
+    const ops = mockOps({
+      launchRun: async () => {
+        calls.launch += 1
+        return { status: 202, body: { runId: 'run_bad' } }
+      },
+      requestIndependentHandoff: async (_ctx, workspaceId, priorityId) => {
+        calls.handoff += 1
+        return { status: 202, body: { ok: true, runnerless: true, workspaceId, priorityId, handoffPath: 'local/runnerless-handoffs/cocoder/handoff.md', command: `cd '${home}' && cocoder run-independent ${priorityId}` } }
+      },
+    })
+
+    const result = await handleOzMessage(testCtx(undefined, home), { text: 'launch runnerless', workspaceId: 'cocoder' }, ops)
+
+    expect(calls).toEqual({ launch: 0, handoff: 1 })
+    expect(result).toMatchObject({
+      status: 202,
+      body: { ok: true, command: 'launch', action: { type: 'runnerless-handoff', priorityId: 'runnerless', handoffPath: 'local/runnerless-handoffs/cocoder/handoff.md' } },
+    })
+    expect(result.body.reply).toContain('Runnerless handoff created for runnerless')
   })
 
   test('launch reply uses display number when the launcher provides one', async () => {
