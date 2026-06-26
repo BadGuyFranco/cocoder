@@ -22,7 +22,7 @@ Two retention models are explicitly **rejected**: time-based (punishes a repo ru
 
 ## Design points to resolve
 
-1. **Run-dir path scheme.** Today `local/runs/<global-runId>`. Decide between (a) keep the flat global scheme and GC by DB query ("for each workspace, delete scratch for runs beyond rank N"), lower migration risk; or (b) nest `local/runs/<workspaceId>/<runId>` for legibility + trivial per-folder GC, at the cost of migrating every consumer of the run-dir path (deep links, `readRunDir`, teardown artifact reads, the runner/daemon writers). Recommend evaluating (a) first; (b) is an optional structural improvement.
+1. **Run-dir path scheme — already resolved (nested).** New runs nest at `local/runs/<workspaceId>/<runId>` (ADR-0027 §6, landed run_246). Legacy flat `local/runs/<runId>` dirs (~245 still present) are read via the `resolveLocalRunDir` compat fallback; their one-time physical migration into the nested layout is owned by ticket [0067](../tickets/open/0067-physically-migrate-legacy-flat-local-runs-runid-dirs-to-the-adr-0027-6-nested-layout.md), not by this priority. So there is no flat-vs-nested decision left here: GC is per-workspace-folder for nested runs, and until 0067 lands the GC must also handle residual flat dirs via the run store runId→workspaceId map. Doing 0067 first removes that dual-layout special case from the GC.
 2. **Store trim.** The shared SQLite DB is keyed by `workspace_id`. Trim `event`/`commit_link`/`session`/`work_item`/`run` rows for runs beyond rank N per workspace. Checkpoint/truncate the WAL on a cadence (4M un-checkpointed today).
 3. **Safety invariants** (hard): GC a run's local state ONLY after its portable record is confirmed written to the repo's `cocoder/runs/` (never lose un-projected data); NEVER prune a non-terminal/pending-decision run (`running`, `awaiting-founder`, `awaiting-archive-confirmation`, `held`); preserve cross-run **fault-recurrence** data — confirm whether `listFaultHistory` reads from the DB or the governed `cocoder/failure-catalog.md`, and don't trim what it needs.
 4. **Config.** N is configurable (e.g. `local/settings.json` / `config.yaml`), default 25.
@@ -31,7 +31,7 @@ Two retention models are explicitly **rejected**: time-based (punishes a repo ru
 ## Scope
 
 - A GC pass (on daemon boot + periodic, or post-wrap) that enforces last-N-per-workspace across `local/runs` scratch and the store rows, gated by the safety invariants above.
-- The path-scheme decision (flat-GC vs nested) and its migration if nesting is chosen.
+- GC mechanics over the already-nested layout (per-workspace-folder), plus residual legacy flat dirs via the runId→workspaceId map until ticket 0067 migrates them. (The flat-vs-nested scheme is already decided — nested, run_246 — so it is no longer in scope here.)
 - WAL checkpoint + log rotation.
 - Surface the policy: log what was pruned (no silent deletion of run state).
 
