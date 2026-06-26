@@ -99,14 +99,16 @@ describe('orchestration contract ownership', () => {
   test('priority authoring surfaces derive markdown from the core priority composer', () => {
     const play = read('packages/personas/base/plays/create-priority.md')
     const routes = read('packages/daemon/src/routes.ts')
+    const priorityAuthoring = read('packages/daemon/src/priority-authoring.ts')
 
     expect(play).toContain('composePriorityBody')
     expect(play).toContain('composePriorityMarkdown')
     expect(play).not.toMatch(/exactly `id` and `title` frontmatter/i)
     expect(play).not.toMatch(/followed by the priority body/i)
-    expect(routes).toContain('composePriorityMarkdown')
-    expect(routes).not.toMatch(/function\s+composePriorityMarkdown/)
-    expect(routes).not.toMatch(/return `---\\nid: \$\{input\.id\}\\ntitle: \$\{input\.title\}\\n---/)
+    expect(routes).toContain('createPriorityFiles')
+    expect(priorityAuthoring).toContain('composePriorityMarkdown')
+    expect(priorityAuthoring).not.toMatch(/function\s+composePriorityMarkdown/)
+    expect(priorityAuthoring).not.toMatch(/return `---\\nid: \$\{input\.id\}\\ntitle: \$\{input\.title\}\\n---/)
   })
 
   test('the all-persona routing guide owns the live target taxonomy', () => {

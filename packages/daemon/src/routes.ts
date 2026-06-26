@@ -6,7 +6,6 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 import {
   installRoot as cocoderInstallRoot,
-  composePriorityMarkdown,
   createTicket as createTicketCore,
   DEFAULT_PORTABLE_COUNTERS,
   ensurePortableWorkspace,
@@ -15,7 +14,6 @@ import {
   loadAssignments,
   loadPriority,
   migrateWorkspacePortableHistory,
-  parseFrontmatter,
   portableWorkspacePaths,
   scaffoldCocoderZone,
   truncate,
@@ -27,7 +25,6 @@ import {
   type PersonaAssignment,
   type PersonaSources,
   type PlaySources,
-  type Priority,
 } from '@cocoder/core'
 import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import { emitOzEvent, type OzContext, type OzEvent } from './context.js'
@@ -42,6 +39,7 @@ import { handleOzMessage } from './oz-chat.js'
 import { mergeWriteSettings, readSettings } from './settings.js'
 import { readPriorities, readTickets, registerLivePriorities, writePriorityOrder, writeTicketOrder } from './priority-order.js'
 import { withPortableDisplayNumber } from './run-display.js'
+import { createPriorityFiles, PriorityAuthoringError, type CreatePriorityInput } from './priority-authoring.js'
 
 export type { OzContext } from './context.js'
 
@@ -160,12 +158,6 @@ function reorderBody(body: unknown): readonly string[] | null {
 
 function bodyRecord(body: unknown): Record<string, unknown> {
   return typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {}
-}
-
-interface CreatePriorityInput {
-  readonly id: string
-  readonly title: string
-  readonly goal: string
 }
 
 type ParsedCreatePriorityBody = { readonly ok: true; readonly input: CreatePriorityInput } | { readonly ok: false; readonly error: string }
@@ -306,15 +298,6 @@ function createWorkspaceBody(body: unknown, cocoderHome: string): ParsedCreateWo
   const rootError = validateWorkspaceRootRules(parsed.roots, cocoderHome)
   if (rootError) return { ok: false, error: rootError }
   return { ok: true, input: { id, folders: parsed.folders, roots: parsed.roots } }
-}
-
-function validateCreatedPriority(markdown: string, priority: Priority, input: CreatePriorityInput): void {
-  const frontmatter = parseFrontmatter(markdown)
-  const keys = Object.keys(frontmatter.data).sort()
-  if (keys.length !== 2 || keys[0] !== 'id' || keys[1] !== 'title') throw new Error('priority frontmatter must contain exactly id and title')
-  if (priority.id !== input.id) throw new Error('priority id did not round-trip')
-  if (priority.title !== input.title) throw new Error('priority title did not round-trip')
-  if (priority.scopeNarrowing !== null) throw new Error('priority scopeNarrowing must not be set by create')
 }
 
 function todayIso(): string {
@@ -675,6 +658,16 @@ async function reorderPriorities(ctx: OzContext, res: ServerResponse, workspaceI
 async function reorderTickets(ctx: OzContext, res: ServerResponse, workspaceId: string, order: readonly string[]): Promise<void> {
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
   if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
+  if (ctx.inFlight.has(workspaceId)) {
+    const receipt = await enqueueAuthoring(ctx, {
+      workspaceId,
+      action: 'ticket-reorder',
+      order,
+      now: ctx.now ?? Date.now,
+    })
+    emitOzEvent(ctx, { type: 'authoring-queued', workspaceId, status: receipt.status })
+    return sendJson(res, 202, { ok: true, queued: true, ...receipt })
+  }
   const written = await writeTicketOrder(ticketsDir(ws.path), order)
   const receipt = await commitGovernance(ctx, ws.path, [relative(ws.path, ticketOrderFile(ws.path))], `governance: reorder tickets (${workspaceId})`)
   void appendAudit(ctx.cocoderHome, { action: 'ticket-reorder', workspaceId, committedSha: receipt.committedSha, committed: receipt.committed })
@@ -685,41 +678,24 @@ async function reorderTickets(ctx: OzContext, res: ServerResponse, workspaceId: 
 async function createPriority(ctx: OzContext, res: ServerResponse, workspaceId: string, input: CreatePriorityInput): Promise<void> {
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
   if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
-  const dir = prioritiesDir(ws.path)
-  const fileName = `${input.id}.md`
-  await mkdir(dir, { recursive: true })
-  const existing = await readdir(dir)
-  if (existing.some((name) => name.toLowerCase() === fileName.toLowerCase())) {
-    return sendJson(res, 409, { error: `priority id "${input.id}" already exists` })
-  }
-
-  const markdown = composePriorityMarkdown(input)
-  const target = join(dir, fileName)
-  const tmpDir = join(dir, `.priority-create-${input.id}-${process.pid}-${Date.now()}`)
-  const tmp = join(tmpDir, fileName)
-  await mkdir(tmpDir, { recursive: true })
   try {
-    parseFrontmatter(markdown)
-    await writeFile(tmp, markdown)
-    validateCreatedPriority(markdown, loadPriority(tmpDir, input.id), input)
-    await rename(tmp, target)
-    const priority = loadPriority(dir, input.id)
-    validateCreatedPriority(markdown, priority, input)
-    await rm(tmpDir, { recursive: true, force: true })
-    await registerLivePriorities(prioritiesDir(ws.path))
-    const receipt = await commitGovernance(
-      ctx,
-      ws.path,
-      [relative(ws.path, target), relative(ws.path, priorityOrderFile(ws.path))],
-      `governance: create priority ${input.id}`,
-    )
+    if (ctx.inFlight.has(workspaceId)) {
+      const receipt = await enqueueAuthoring(ctx, {
+        workspaceId,
+        action: 'priority-create',
+        priority: input,
+        now: ctx.now ?? Date.now,
+      })
+      emitOzEvent(ctx, { type: 'authoring-queued', workspaceId, status: receipt.status })
+      return sendJson(res, 202, { ok: true, queued: true, ...receipt })
+    }
+    const created = await createPriorityFiles(ws.path, input, ctx.now ?? Date.now)
+    const receipt = await commitGovernance(ctx, ws.path, created.files, `governance: create priority ${input.id}`)
     void appendAudit(ctx.cocoderHome, { action: 'priority-create', workspaceId, priorityId: input.id, committedSha: receipt.committedSha, committed: receipt.committed })
     if (governanceCommitFailed(res, receipt)) return
-    sendJson(res, 201, { ok: true, priority, committedSha: receipt.committedSha })
+    sendJson(res, 201, { ok: true, priority: created.priority, committedSha: receipt.committedSha })
   } catch (err) {
-    await rm(tmpDir, { recursive: true, force: true })
-    await rm(target, { force: true })
-    sendJson(res, 500, { error: err instanceof Error ? err.message : String(err) })
+    sendJson(res, err instanceof PriorityAuthoringError ? err.status : 500, { error: err instanceof Error ? err.message : String(err) })
   }
 }
 

@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, test } from 'vitest'
-import { openRunStore, readTickets, type CommitReceipt } from '@cocoder/core'
+import { loadPriority, openRunStore, readTickets, type CommitReceipt } from '@cocoder/core'
 import { authoringQueuePath, drainAuthoringQueue, enqueueAuthoring, listQueuedAuthoring } from '../src/authoring-queue.js'
 import { createOzEventBus } from '../src/context.js'
 
@@ -10,9 +10,12 @@ const fixedNow = () => Date.UTC(2026, 5, 26, 12, 0, 0)
 
 async function writeWorkspace(home: string): Promise<void> {
   await mkdir(join(home, 'local'), { recursive: true })
+  await mkdir(join(home, 'cocoder', 'priorities'), { recursive: true })
   await mkdir(join(home, 'cocoder', 'tickets', 'open'), { recursive: true })
   await mkdir(join(home, 'cocoder', 'tickets', 'closed'), { recursive: true })
   await writeFile(join(home, 'local', 'workspaces.json'), JSON.stringify({ workspaces: [{ id: 'cocoder', name: 'CoCoder', path: '${COCODER_HOME}' }] }))
+  await writeFile(join(home, 'cocoder', 'priorities', 'demo.md'), '---\nid: demo\ntitle: Demo\n---\n## Objective\nExisting priority.')
+  await writeFile(join(home, 'cocoder', 'priorities', 'order.json'), `${JSON.stringify(['demo'], null, 2)}\n`)
   await writeFile(join(home, 'cocoder', 'tickets', 'open', '0003-existing.md'), [
     '---',
     'id: 0003',
@@ -40,6 +43,23 @@ async function writeWorkspace(home: string): Promise<void> {
     '',
     '| ID | Title | Type | Closed | Resolution |',
     '|---|---|---|---|---|',
+    '',
+  ].join('\n'))
+}
+
+async function writeSecondOpenTicket(home: string): Promise<void> {
+  await writeFile(join(home, 'cocoder', 'tickets', 'open', '0005-later.md'), [
+    '---',
+    'id: 0005',
+    'title: Later',
+    'type: task',
+    'status: Open',
+    'priority: none',
+    'owner: founder-session',
+    'created: 2026-06-25',
+    '---',
+    '',
+    '## Context',
     '',
   ].join('\n'))
 }
@@ -87,12 +107,33 @@ describe('authoring queue', () => {
       now: fixedNow,
       ticket: { title: 'Durable Ticket', type: 'task', priority: 'none', description: 'Still here after reload.' },
     })
+    await enqueueAuthoring({ cocoderHome: home }, {
+      workspaceId: 'cocoder',
+      action: 'ticket-reorder',
+      now: fixedNow,
+      order: ['0005', '0003'],
+    })
+    await enqueueAuthoring({ cocoderHome: home }, {
+      workspaceId: 'cocoder',
+      action: 'priority-create',
+      now: fixedNow,
+      priority: { id: 'durable-priority', title: 'Durable Priority', goal: '## Objective\nStill here after reload.' },
+    })
 
     const reloaded = await listQueuedAuthoring(home, 'cocoder')
 
-    expect(reloaded.map((entry) => [entry.queuedId, entry.status, entry.reservedTicketId])).toEqual([
-      ['ticket-create-0004', 'queued', '0004'],
+    expect(reloaded.map((entry) => [entry.queuedId, entry.action, entry.status])).toEqual([
+      ['ticket-create-0004', 'ticket-create', 'queued'],
+      ['ticket-reorder-0001', 'ticket-reorder', 'queued'],
+      ['priority-create-durable-priority', 'priority-create', 'queued'],
     ])
+  })
+
+  test('listQueuedAuthoring rejects the previous queue schema version loudly', async () => {
+    await mkdir(join(home, 'local', 'authoring-queue'), { recursive: true })
+    await writeFile(authoringQueuePath(home, 'cocoder'), `${JSON.stringify({ schemaVersion: 1, entries: [] }, null, 2)}\n`)
+
+    await expect(listQueuedAuthoring(home, 'cocoder')).rejects.toThrow(/unsupported schema version 1/)
   })
 
   test('drainAuthoringQueue creates ticket files, commits through the supplied spine, and ledgers the active run', async () => {
@@ -130,5 +171,120 @@ describe('authoring queue', () => {
     expect(store.listEvents(run.id).map((event) => event.type)).toContain('queued-authoring-commit')
     await expect(readFile(join(home, 'local', 'oz-audit.log'), 'utf8')).resolves.toContain('"action":"authoring-queue-drain"')
     await expect(listQueuedAuthoring(home, 'cocoder')).resolves.toEqual([])
+  })
+
+  test('drainAuthoringQueue reorders tickets and creates a priority through the supplied spine', async () => {
+    await writeSecondOpenTicket(home)
+    await enqueueAuthoring({ cocoderHome: home }, {
+      workspaceId: 'cocoder',
+      action: 'ticket-reorder',
+      now: fixedNow,
+      order: ['0005', '0003'],
+    })
+    await enqueueAuthoring({ cocoderHome: home }, {
+      workspaceId: 'cocoder',
+      action: 'priority-create',
+      now: fixedNow,
+      priority: { id: 'queued-priority', title: 'Queued Priority', goal: '## Objective\nCreate this priority.' },
+    })
+    const store = openRunStore(':memory:', { now: fixedNow })
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    const commits: Array<{ readonly files: readonly string[]; readonly message: string }> = []
+
+    const drained = await drainAuthoringQueue(
+      { cocoderHome: home, store, inFlight: new Map([['cocoder', run.id]]), events: createOzEventBus() },
+      'cocoder',
+      async (_repoPath, files, message) => {
+        commits.push({ files: [...files], message })
+        return receipt(files, `sha-${commits.length}`)
+      },
+      fixedNow,
+    )
+
+    expect(drained.map((entry) => [entry.queuedId, entry.status])).toEqual([
+      ['ticket-reorder-0001', 'committed'],
+      ['priority-create-queued-priority', 'committed'],
+    ])
+    expect(JSON.parse(await readFile(join(home, 'cocoder', 'tickets', 'order.json'), 'utf8'))).toEqual(['0005', '0003'])
+    expect(loadPriority(join(home, 'cocoder', 'priorities'), 'queued-priority').objective).toBe('Create this priority.')
+    expect(JSON.parse(await readFile(join(home, 'cocoder', 'priorities', 'order.json'), 'utf8'))).toEqual(['demo', 'queued-priority'])
+    expect(commits).toEqual([
+      { files: ['cocoder/tickets/order.json'], message: 'governance: reorder queued tickets (cocoder)' },
+      { files: ['cocoder/priorities/queued-priority.md', 'cocoder/priorities/order.json'], message: 'governance: create queued priority queued-priority' },
+    ])
+    expect(store.listCommitLinks(run.id).map((link) => link.commitSha)).toEqual(['sha-1', 'sha-2'])
+    await expect(listQueuedAuthoring(home, 'cocoder')).resolves.toEqual([])
+  })
+
+  test('drainAuthoringQueue keeps priority-create errors visible without aborting later entries', async () => {
+    await writeSecondOpenTicket(home)
+    await enqueueAuthoring({ cocoderHome: home }, {
+      workspaceId: 'cocoder',
+      action: 'priority-create',
+      now: fixedNow,
+      priority: { id: 'demo', title: 'Duplicate Demo', goal: '## Objective\nThis should fail.' },
+    })
+    await enqueueAuthoring({ cocoderHome: home }, {
+      workspaceId: 'cocoder',
+      action: 'ticket-reorder',
+      now: fixedNow,
+      order: ['0005', '0003'],
+    })
+    const store = openRunStore(':memory:', { now: fixedNow })
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+
+    const drained = await drainAuthoringQueue(
+      { cocoderHome: home, store, inFlight: new Map([['cocoder', run.id]]), events: createOzEventBus() },
+      'cocoder',
+      async (_repoPath, files) => receipt(files),
+      fixedNow,
+    )
+
+    expect(drained.map((entry) => [entry.queuedId, entry.status])).toEqual([
+      ['priority-create-demo', 'error'],
+      ['ticket-reorder-0001', 'committed'],
+    ])
+    const visible = await listQueuedAuthoring(home, 'cocoder')
+    expect(visible).toHaveLength(1)
+    expect(visible[0]).toMatchObject({ queuedId: 'priority-create-demo', status: 'error', priorityId: 'demo', error: 'priority id "demo" already exists' })
+    expect(JSON.parse(await readFile(join(home, 'cocoder', 'tickets', 'order.json'), 'utf8'))).toEqual(['0005', '0003'])
+  })
+
+  test('drainAuthoringQueue keeps ticket-reorder errors visible without aborting later entries', async () => {
+    await writeSecondOpenTicket(home)
+    await mkdir(join(home, 'cocoder', 'tickets', 'order.json'), { recursive: true })
+    await enqueueAuthoring({ cocoderHome: home }, {
+      workspaceId: 'cocoder',
+      action: 'ticket-reorder',
+      now: fixedNow,
+      order: ['0005', '0003'],
+    })
+    await enqueueAuthoring({ cocoderHome: home }, {
+      workspaceId: 'cocoder',
+      action: 'priority-create',
+      now: fixedNow,
+      priority: { id: 'after-reorder-error', title: 'After Reorder Error', goal: '## Objective\nStill drains after reorder fails.' },
+    })
+    const store = openRunStore(':memory:', { now: fixedNow })
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+
+    const drained = await drainAuthoringQueue(
+      { cocoderHome: home, store, inFlight: new Map([['cocoder', run.id]]), events: createOzEventBus() },
+      'cocoder',
+      async (_repoPath, files) => receipt(files),
+      fixedNow,
+    )
+
+    expect(drained.map((entry) => [entry.queuedId, entry.status])).toEqual([
+      ['ticket-reorder-0001', 'error'],
+      ['priority-create-after-reorder-error', 'committed'],
+    ])
+    const visible = await listQueuedAuthoring(home, 'cocoder')
+    expect(visible).toHaveLength(1)
+    expect(visible[0]).toMatchObject({ queuedId: 'ticket-reorder-0001', status: 'error' })
+    expect(loadPriority(join(home, 'cocoder', 'priorities'), 'after-reorder-error').objective).toBe('Still drains after reorder fails.')
   })
 })

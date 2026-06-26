@@ -2653,6 +2653,42 @@ describe('Oz mutations + lifecycle', () => {
     expect(audit).toContain('"committedSha":"sha-governance"')
   })
 
+  test('active-run ticket reorder and priority create queue without writes and survive daemon reload', async () => {
+    await writeTicketIndex(home)
+    await writeFile(join(home, 'cocoder', 'tickets', 'open', '0004-second-open.md'), ticketFile('0004', 'Second open'))
+    const commits: GovernanceCommitCall[] = []
+    await startServer(recordingGovernanceGit(commits))
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    oz!.ctx.inFlight.set('cocoder', run.id)
+    const ticketOrderPath = join(home, 'cocoder', 'tickets', 'order.json')
+    const priorityOrderPath = join(home, 'cocoder', 'priorities', 'order.json')
+    const priorityPath = join(home, 'cocoder', 'priorities', 'queued-http-priority.md')
+
+    const reorder = await call(oz!, 'POST', '/workspaces/cocoder/tickets/reorder', { body: { order: ['0004', '0003'] } })
+    const priority = await call(oz!, 'POST', '/workspaces/cocoder/priorities', { body: { id: 'queued-http-priority', title: 'Queued HTTP Priority' } })
+
+    expect(reorder.status).toBe(202)
+    expect(reorder.json).toEqual({ ok: true, queued: true, queuedId: 'ticket-reorder-0001', status: 'queued' })
+    expect(priority.status).toBe(202)
+    expect(priority.json).toEqual({ ok: true, queued: true, queuedId: 'priority-create-queued-http-priority', priorityId: 'queued-http-priority', status: 'queued' })
+    expect(await exists(ticketOrderPath)).toBe(false)
+    expect(await exists(priorityPath)).toBe(false)
+    expect(await exists(priorityOrderPath)).toBe(false)
+    expect(commits).toEqual([])
+
+    await oz!.close()
+    oz = undefined
+    store = openRunStore(':memory:')
+    await startServer(recordingGovernanceGit(commits))
+    const queued = (await call(oz!, 'GET', '/workspaces/cocoder/tickets')).json.queuedAuthoring
+    expect(queued).toEqual([
+      expect.objectContaining({ queuedId: 'ticket-reorder-0001', action: 'ticket-reorder', status: 'queued' }),
+      expect.objectContaining({ queuedId: 'priority-create-queued-http-priority', action: 'priority-create', priorityId: 'queued-http-priority', status: 'queued' }),
+    ])
+    expect(commits).toEqual([])
+  })
+
   test('POST /workspaces/:id/tickets/reorder rejects invalid bodies', async () => {
     await startServer()
 
@@ -2897,7 +2933,7 @@ describe('Oz mutations + lifecycle', () => {
     })
   })
 
-  test('active-run queued ticket drains after an atom pass and is ledgered before wrap audit', async () => {
+  test('active-run mixed ticket and priority queue drains after an atom pass and is ledgered before wrap audit', async () => {
     await writeTicketIndex(home)
     await setBobHeadless(home)
     const commits: GovernanceCommitCall[] = []
@@ -2920,26 +2956,37 @@ describe('Oz mutations + lifecycle', () => {
     })
     expect(post.status).toBe(202)
     expect(post.json).toMatchObject({ queued: true, reservedTicketId: '0013', status: 'queued' })
+    const priority = await call(oz!, 'POST', '/workspaces/cocoder/priorities', {
+      body: { id: 'queued-during-run', title: 'Queued During Run', goal: '## Objective\nQueue a priority while Bob is still running.' },
+    })
+    expect(priority.status).toBe(202)
+    expect(priority.json).toMatchObject({ queued: true, priorityId: 'queued-during-run', status: 'queued' })
 
     const pending = await call(oz!, 'GET', '/workspaces/cocoder/tickets')
     expect(pending.status).toBe(200)
     expect(pending.json.queuedAuthoring).toEqual([
       expect.objectContaining({ queuedId: 'ticket-create-0013', reservedTicketId: '0013', status: 'queued' }),
+      expect.objectContaining({ queuedId: 'priority-create-queued-during-run', priorityId: 'queued-during-run', status: 'queued' }),
     ])
 
     bob.release()
     const ticketPath = join(home, 'cocoder', 'tickets', 'open', '0013-queued-during-run.md')
-    for (let i = 0; i < 100 && !(await exists(ticketPath)); i++) await sleep(10)
+    const priorityPath = join(home, 'cocoder', 'priorities', 'queued-during-run.md')
+    for (let i = 0; i < 100 && (!(await exists(ticketPath)) || !(await exists(priorityPath))); i++) await sleep(10)
     expect(await exists(ticketPath)).toBe(true)
+    expect(await exists(priorityPath)).toBe(true)
     for (let i = 0; i < 100 && oz!.ctx.inFlight.has('cocoder'); i++) await sleep(10)
 
     expect(JSON.parse(await readFile(join(home, 'cocoder', 'tickets', 'order.json'), 'utf8'))).toEqual(['0013'])
     expect((await readFile(join(home, 'cocoder', 'tickets', 'INDEX.md'), 'utf8'))).toContain('| [0013](./open/0013-queued-during-run.md) | Queued During Run | bug | none | founder-session |')
+    expect(loadPriority(join(home, 'cocoder', 'priorities'), 'queued-during-run').objective).toBe('Queue a priority while Bob is still running.')
+    expect(JSON.parse(await readFile(join(home, 'cocoder', 'priorities', 'order.json'), 'utf8'))).toEqual(['demo', 'queued-during-run'])
     expect(await listQueuedAuthoring(home, 'cocoder')).toEqual([])
     expect(store.listCommitLinks(runId).map((link) => link.commitSha)).toContain('sha-queued')
-    expect(store.listEvents(runId).some((event) => event.type === 'queued-authoring-commit')).toBe(true)
+    expect(store.listEvents(runId).filter((event) => event.type === 'queued-authoring-commit')).toHaveLength(2)
     expect(store.listEvents(runId).some((event) => event.type === 'run-wrap-bypass-detected')).toBe(false)
     expect(commits.some((commit) => commit.message === 'governance: create queued ticket 0013')).toBe(true)
+    expect(commits.some((commit) => commit.message === 'governance: create queued priority queued-during-run')).toBe(true)
   })
 
   test('queued ticket drain errors remain visible and do not abort the active run', async () => {
