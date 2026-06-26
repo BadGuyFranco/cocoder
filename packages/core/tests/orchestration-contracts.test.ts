@@ -86,6 +86,18 @@ describe('orchestration contract ownership', () => {
     expect(read('packages/core/src/runner/prompts.ts')).toContain('WRAP-UP READY artifact for exactly-once delivery')
   })
 
+  test('Oscar distinguishes mid-run founder decisions from terminal wrap decisions', () => {
+    const oscar = read('packages/personas/base/oscar.md')
+    const wrapUp = read('packages/personas/base/plays/wrap-up.md')
+
+    expect(oscar).toContain('Founder decisions are not automatically stop conditions')
+    expect(oscar).toContain("use the runner's `ask-founder-continue` path")
+    expect(oscar).toContain('Wrap awaiting founder only when')
+    expect(oscar).not.toContain('wrap when the priority is done, founder approval is needed')
+    expect(wrapUp).toContain('founder decisions that remain at wrap')
+    expect(wrapUp).toContain('Do not save a mid-run decision for closeout')
+  })
+
   test('ticket authoring surfaces derive markdown or ticket creation from core owners', () => {
     const play = read('packages/personas/base/plays/create-ticket.md')
     const routes = read('packages/daemon/src/routes.ts')

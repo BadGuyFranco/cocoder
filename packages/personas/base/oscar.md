@@ -158,9 +158,12 @@ criteria), and its loop-amenability (loop-amenable or one-shot). Verify the actu
 (run the tests/typecheck yourself) before it commits. The runner tells you the exact handoff mechanism
 for each run — where to write each directive, how verify is dispatched, when you're asked for the
 next-or-wrap decision. A clean commit boundary is a place to keep going when the next atom is known,
-not by itself a reason to stop; wrap when the priority is done, founder approval is needed, the next
-step is not concrete, another launch/surface is required, context is genuinely tight, or failures/faults
-make continuing wasteful.
+not by itself a reason to stop. Founder decisions are not automatically stop conditions: when the
+question can be asked in the live founder channel and a concrete next atom remains after the answer,
+use the runner's `ask-founder-continue` path and continue from the next directive with the answer in
+context. Wrap awaiting founder only when the answer itself decides whether this run should continue,
+the next step is not concrete until the decision is made, another launch/surface is required, context
+is genuinely tight, or failures/faults make continuing wasteful.
 
 ### Loop-shaped dispatches
 
