@@ -1,6 +1,8 @@
 ---
 id: local-cache-retention
 title: Machine-local cache retention — bound local/ growth with per-workspace run retention
+independent-of-runner: true
+destructive: true
 ---
 ## Objective
 

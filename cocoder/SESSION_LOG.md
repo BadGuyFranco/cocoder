@@ -12,6 +12,18 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-26 — **runnerless-independent-priority: Shape A runnerless path — archive ready (run_106/run_250)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [runnerless-independent-priority](./priorities/runnerless-independent-priority.md) | **Run:** run_250 (display 106)
+**Outcomes:**
+- **`cocoder run-independent` CLI (`f59f977`).** Loads `independent-of-runner` priorities only; routes to daemon-free `runStandalone` before any daemon probe — genuine bypass, not a flag on the normal runner.
+- **Always-latest Oscar model (`caf5b34`).** `latestModelFor(adapter)` on the run-independent path only; normal `run` assignments untouched.
+- **Destructive-target isolation (`e724445`).** `resolveRunTarget` copies live store + WAL sidecars into a scratch root for `destructive` priorities; live install paths otherwise unchanged; git commits stay direct-to-branch.
+- **End-to-end no-daemon test (`2f6ab08`).** Injectable `main()`/`runStandalone` seam; CLI test drives real run-independent completion with daemon probe never called, latest-model override verified, and live store never created for destructive runs.
+- **Docs to current truth (`b402c55`).** Glossary runnerless path, ARCHITECTURE `run-independent` note, ADR-0043 scratch-store design point marked resolved.
+- **Disposition: `archive-confirmation`.** All five scope items and acceptance criteria met (runs 105–106); 1353 tests green; founder archive reply is the first-class closeout action.
+**Next:** Launch `local-cache-retention` via `cocoder run-independent local-cache-retention` — first real consumer of the runnerless path.
+
 ## 2026-06-26 — **runnerless-independent-priority: detection + launch alerts — blocked (run_105)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [runnerless-independent-priority](./priorities/runnerless-independent-priority.md) | **Run:** run_105 (display 105)
