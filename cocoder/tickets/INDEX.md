@@ -15,7 +15,6 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 |---|---|---|---|---|
 | [0068](./open/0068-harden-correctness-clarity-elegance-at-the-verification-gate-without-new-orchestration.md) | Harden correctness-clarity-elegance at the verification gate, without new orchestration | task | none | founder-session |
 | [0067](./open/0067-physically-migrate-legacy-flat-local-runs-runid-dirs-to-the-adr-0027-6-nested-layout.md) | Physically migrate legacy flat local/runs/<runId> dirs to the ADR-0027 §6 nested layout | task | none | founder-session |
-| [0064](./open/0064-daemon-self-reload-zombies-the-old-process-and-wedges-oz-oz-sh-stop-reaps-only-the-listener.md) | Daemon self-reload zombies the old process and wedges Oz; oz.sh stop reaps only the listener | bug | none | founder-session |
 | [0048](./open/0048-adopt-eslint-in-cocoder-engine-repo.md) | Adopt a minimal ESLint 9 linter in CoCoder's own engine repo | task | none | Open |
 | [0037](./open/0037-contributing-pr-template-stale-rg-ci-gate.md) | CONTRIBUTING and PR template still promise an rg CI gate that live ci.yml no longer runs | bug | none | Open |
 
@@ -23,6 +22,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0064](./closed/0064-daemon-self-reload-zombies-the-old-process-and-wedges-oz-oz-sh-stop-reaps-only-the-listener.md) | Daemon self-reload zombies the old process and wedges Oz; oz.sh stop reaps only the listener | bug | 2026-06-26 | Ticket fix run completed successfully. |
 | [0065](./closed/0065-consolidate-run-dir-path-reconcile-adr-0027-6-nesting-drift.md) | Consolidate run-dir path; reconcile ADR-0027 §6 nesting drift | task | 2026-06-26 | ADR-0027 section 6 nested run-dir layout with legacy-flat compat read-fallback (step 5 OR-branch); consumers repointed. |
 | [0066](./closed/0066-founder-decisions-should-not-force-premature-run-wrap.md) | Founder decisions should not force premature run wrap | bug | 2026-06-26 | Mid-run founder decisions use the ask-founder-continue runner contract instead of premature wrap; run_245 regression pinned; Oscar/wrap-up guidance reconciled. |
 | [0063](./closed/0063-author-governance-ticket-priority-during-an-active-run-queue-instead-of-refuse-and-surface-the-refusal.md) | Author governance (ticket/priority) during an active run — queue instead of refuse, and surface the refusal | task | 2026-06-26 | Active-run governance authoring queue: create/close/repoint/reorder plus priority-create accept-and-queue while a run is active, drain at the safe seam plus wrap backstop, queued entries surfaced; SSOT single-writer ops. |

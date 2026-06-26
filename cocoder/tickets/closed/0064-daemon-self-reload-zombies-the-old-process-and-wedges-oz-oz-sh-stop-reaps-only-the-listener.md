@@ -2,7 +2,7 @@
 id: 0064
 title: Daemon self-reload zombies the old process and wedges Oz; oz.sh stop reaps only the listener
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-25
@@ -40,3 +40,9 @@ Either fix alone would have prevented the wedge.
 - Observed 2026-06-25: two `oz.mjs` on :7878 — PID 1806 `LISTEN` (healthy, current HEAD) and PID 39936 `ESTABLISHED` only (zombie holding the dashboard stream). `kill -9 39936` cleared it.
 </content>
 </invoke>
+
+## Resolution
+
+Resolved by run run_248 (1f2f82645ff6addb1a6916ee1fefa378962cd488) on 2026-06-26.
+
+Ticket fix run completed successfully.
