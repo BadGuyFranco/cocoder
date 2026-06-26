@@ -33,7 +33,7 @@ export interface RunnerIO {
   awaitVerification(
     verifyPath: string,
     opts: RunnerPollOptions,
-  ): Promise<{ verdict: 'pass' | 'fail'; reason: string | null }>
+  ): Promise<Verification>
   /** Write the run's pickup brief (the resumable continuation artifact; ADR-0002 C1 / F8). */
   writePickup(runDir: string, markdown: string): Promise<string>
   /** Write a runner-owned support artifact and return the absolute path agents can read. */
@@ -63,11 +63,26 @@ export interface RunnerIO {
 interface Verification {
   readonly verdict: 'pass' | 'fail'
   readonly reason: string | null
+  readonly ticketClose?: {
+    readonly ticketId: string
+    readonly resolution: string
+  }
 }
 function parseVerification(raw: string): Verification {
-  const data = JSON.parse(raw) as { verdict?: unknown; reason?: unknown }
+  const data = JSON.parse(raw) as { verdict?: unknown; reason?: unknown; ticketClose?: unknown }
   if (data.verdict !== 'pass' && data.verdict !== 'fail') throw new Error('verify: "verdict" not yet pass|fail')
-  return { verdict: data.verdict, reason: typeof data.reason === 'string' ? data.reason : null }
+  if (data.ticketClose === undefined) return { verdict: data.verdict, reason: typeof data.reason === 'string' ? data.reason : null }
+  if (typeof data.ticketClose !== 'object' || data.ticketClose === null || Array.isArray(data.ticketClose)) {
+    throw new Error('verify: "ticketClose" must be an object when present')
+  }
+  const close = data.ticketClose as { readonly ticketId?: unknown; readonly resolution?: unknown }
+  if (typeof close.ticketId !== 'string' || close.ticketId.trim() === '') throw new Error('verify: "ticketClose.ticketId" must be a non-empty string')
+  if (typeof close.resolution !== 'string' || close.resolution.trim() === '') throw new Error('verify: "ticketClose.resolution" must be a non-empty string')
+  return {
+    verdict: data.verdict,
+    reason: typeof data.reason === 'string' ? data.reason : null,
+    ticketClose: { ticketId: close.ticketId.trim(), resolution: close.resolution.trim() },
+  }
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))

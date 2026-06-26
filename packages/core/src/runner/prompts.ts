@@ -604,7 +604,7 @@ export function buildBuilderDispatch(directivePath: string, atomIndex: number, l
 /** The verify dispatch into Oscar's pane once the monitor reports the atom done — ADR-0013 verify gate,
  *  per atom. The atom's commit does not run until Oscar writes a `pass` verdict to verifyPath. */
 export function buildVerifyDispatch(directivePath: string, verifyPath: string): string {
-  return `VERIFY — the builder finished this atom. Verify the diff against the task you delegated in ${directivePath}: read the actual changes and run the tests/typecheck yourself (evidence, not the builder's word). Then write your verdict to ${verifyPath} as {"verdict":"pass"|"fail","reason":"<one line>"}. The commit happens ONLY on pass.`
+  return `VERIFY — the builder finished this atom. Verify the diff against the task you delegated in ${directivePath}: read the actual changes and run the tests/typecheck yourself (evidence, not the builder's word). Then write your verdict to ${verifyPath} as {"verdict":"pass"|"fail","reason":"<one line>"}. The commit happens ONLY on pass. If a verified atom closes an in-scope ticket, a pass verdict may include "ticketClose":{"ticketId":"<id>","resolution":"<specific resolution>"}.`
 }
 
 /** Prompt Oscar for the next turn after an atom resolved: delegate another atom, or wrap up. Names the

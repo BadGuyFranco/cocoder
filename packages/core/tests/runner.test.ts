@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -192,9 +192,18 @@ const okAdapter: Adapter = {
 }
 
 // IO that scripts Oscar's directive sequence + per-atom verdicts (default: every atom passes).
+interface VerificationVerdict {
+  readonly verdict: 'pass' | 'fail'
+  readonly reason: string | null
+  readonly ticketClose?: {
+    readonly ticketId: string
+    readonly resolution: string
+  }
+}
+
 const fakeIO = (opts: {
   directives: Directive[]
-  verdicts?: { verdict: 'pass' | 'fail'; reason: string | null }[]
+  verdicts?: VerificationVerdict[]
   triage?: {
     disposition: 'cocoder-bug' | 'repo-bug' | 'one-off'
     summary: string
@@ -480,6 +489,132 @@ const baseDeps = (over: Partial<RunnerDeps>): RunnerDeps => ({
   io: fakeIO({ directives: [delegate('do it'), wrapup('resume here')] }),
   makeJudge: doneJudge,
   timeouts: { pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 },
+  ...over,
+})
+
+interface RecordedCommit {
+  readonly files: readonly string[]
+  readonly message: string
+}
+
+function recordingWindowGit(changedPerGate: readonly (readonly string[])[], opts: { readonly failOnCommit?: number } = {}): { readonly git: Git; readonly commits: RecordedCommit[] } {
+  const commits: RecordedCommit[] = []
+  const shas: string[] = []
+  let head = 'h0'
+  let changedCall = 0
+  let commitCall = 0
+  let started = false
+  return {
+    commits,
+    git: {
+      ...worktreeStubs,
+      async headSha() {
+        return head
+      },
+      async changedFiles() {
+        if (!started) {
+          started = true
+          return []
+        }
+        return [...(changedPerGate[changedCall++] ?? [])]
+      },
+      async addAndCommit(_cwd, files, message) {
+        commitCall += 1
+        if (opts.failOnCommit === commitCall) throw new Error(`commit ${commitCall} failed`)
+        const sha = `sha-${commitCall}`
+        commits.push({ files: [...files], message })
+        shas.push(sha)
+        head = sha
+        return sha
+      },
+      async restoreToHead() {},
+      async show() {
+        return ''
+      },
+      async commitsSince() {
+        return [...shas]
+      },
+    },
+  }
+}
+
+const ticketIndex = (ticketId: string, slug: string, title: string, priorityValue: string): string => [
+  '# Tickets — Index',
+  '',
+  '## Open',
+  '',
+  '| ID | Title | Type | Priority | Owner |',
+  '|---|---|---|---|---|',
+  `| [${ticketId}](./open/${ticketId}-${slug}.md) | ${title} | task | ${priorityValue} | CoCoder |`,
+  '',
+  '## Recently Closed',
+  '',
+  '| ID | Title | Type | Closed | Resolution |',
+  '|---|---|---|---|---|',
+  '',
+].join('\n')
+
+const emptyTicketIndex = (): string => [
+  '# Tickets — Index',
+  '',
+  '## Open',
+  '',
+  '| ID | Title | Type | Priority | Owner |',
+  '|---|---|---|---|---|',
+  '',
+  '## Recently Closed',
+  '',
+  '| ID | Title | Type | Closed | Resolution |',
+  '|---|---|---|---|---|',
+  '',
+].join('\n')
+
+const ticketMarkdown = (ticketId: string, title: string, priorityValue: string): string => [
+  '---',
+  `id: ${ticketId}`,
+  `title: ${title}`,
+  'type: task',
+  'status: Open',
+  `priority: ${priorityValue}`,
+  'owner: CoCoder',
+  'created: 2026-06-26',
+  '---',
+  '',
+  `# ${ticketId} — ${title}`,
+  '',
+  'Ticket body.',
+  '',
+].join('\n')
+
+async function makeTicketWorkspace(opts: {
+  readonly ticketId?: string
+  readonly title?: string
+  readonly priorityValue?: string
+  readonly open?: boolean
+  readonly order?: readonly string[]
+} = {}): Promise<{ readonly root: string; readonly ticketId: string; readonly slug: string }> {
+  const ticketId = opts.ticketId ?? '0003'
+  const title = opts.title ?? 'Existing open'
+  const slug = 'existing-open'
+  const priorityValue = opts.priorityValue ?? 'demo'
+  const root = await mkdtemp(join(tmpdir(), 'cocoder-in-run-close-'))
+  await mkdir(join(root, 'cocoder', 'priorities'), { recursive: true })
+  await mkdir(join(root, 'cocoder', 'tickets', 'open'), { recursive: true })
+  await mkdir(join(root, 'cocoder', 'tickets', 'closed'), { recursive: true })
+  await writeFile(join(root, 'cocoder', 'priorities', 'demo.md'), '---\nid: demo\ntitle: Demo\n---\n## Objective\nDemo objective.\n')
+  await writeFile(join(root, 'cocoder', 'tickets', 'INDEX.md'), opts.open === false ? emptyTicketIndex() : ticketIndex(ticketId, slug, title, priorityValue))
+  await writeFile(join(root, 'cocoder', 'tickets', 'order.json'), `${JSON.stringify(opts.order ?? [ticketId], null, 2)}\n`)
+  if (opts.open !== false) {
+    await writeFile(join(root, 'cocoder', 'tickets', 'open', `${ticketId}-${slug}.md`), ticketMarkdown(ticketId, title, priorityValue))
+  }
+  return { root, ticketId, slug }
+}
+
+const runInputFor = (root: string, over: Partial<RunInput> = {}): RunInput => ({
+  ...input,
+  workspace: { id: 'cocoder', path: root, name: 'CoCoder' },
+  engineHome: root,
+  runsRoot: join(root, 'local', 'runs'),
   ...over,
 })
 
@@ -769,6 +904,148 @@ describe('runRun (multi-atom loop)', () => {
     )
     expect(result.status).toBe('completed')
     expect(store.listEvents(result.runId).some((e) => e.type === 'run-wrap-bypass-detected')).toBe(false)
+  })
+
+  test('verify pass can close a ticket through the atom gate', async () => {
+    const store = openRunStore(':memory:')
+    const { root, ticketId, slug } = await makeTicketWorkspace()
+    const closeFiles = [
+      `cocoder/tickets/closed/${ticketId}-${slug}.md`,
+      `cocoder/tickets/open/${ticketId}-${slug}.md`,
+      'cocoder/tickets/INDEX.md',
+      'cocoder/tickets/order.json',
+    ]
+    const { git, commits } = recordingWindowGit([['packages/fix.ts'], closeFiles])
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git,
+        io: fakeIO({
+          directives: [delegate('fix ticket 0003'), wrapup('done')],
+          verdicts: [{ verdict: 'pass', reason: 'verified fix', ticketClose: { ticketId, resolution: 'Verified fix closes this ticket.' } }],
+        }),
+        now: () => Date.parse('2026-06-26T12:00:00.000Z'),
+      }),
+      runInputFor(root),
+    )
+
+    expect(result.status).toBe('completed')
+    expect(store.listCommitLinks(result.runId).filter((link) => link.workItemId !== null).map((link) => link.commitSha)).toEqual(['sha-1', 'sha-2'])
+    expect(store.listEvents(result.runId).filter((event) => event.type === 'commit').map((event) => (event.data as { sha: string }).sha)).toEqual(expect.arrayContaining(['sha-1', 'sha-2']))
+    expect(store.listEvents(result.runId).some((event) => event.type === 'in-run-ticket-close')).toBe(true)
+    expect(store.listEvents(result.runId).some((event) => event.type === 'run-wrap-bypass-detected')).toBe(false)
+    expect(existsSync(join(root, 'cocoder', 'tickets', 'open', `${ticketId}-${slug}.md`))).toBe(false)
+    expect(existsSync(join(root, 'cocoder', 'tickets', 'closed', `${ticketId}-${slug}.md`))).toBe(true)
+    expect(await readFile(join(root, 'cocoder', 'tickets', 'closed', `${ticketId}-${slug}.md`), 'utf8')).toContain('Verified fix closes this ticket.')
+    expect(JSON.parse(await readFile(join(root, 'cocoder', 'tickets', 'order.json'), 'utf8'))).toEqual([])
+    expect(commits.slice(0, 2)).toEqual([
+      { files: ['packages/fix.ts'], message: expect.stringContaining('atom 0') },
+      { files: closeFiles, message: `governance: close ticket ${ticketId} via run ${result.runId}` },
+    ])
+  })
+
+  test('verify fail does not close a requested ticket', async () => {
+    const store = openRunStore(':memory:')
+    const { root, ticketId, slug } = await makeTicketWorkspace()
+    const { git, commits } = recordingWindowGit([['packages/fix.ts']])
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git,
+        io: fakeIO({
+          directives: [delegate('try ticket fix'), wrapup('done')],
+          verdicts: [{ verdict: 'fail', reason: 'not fixed', ticketClose: { ticketId, resolution: 'Should not close.' } }],
+        }),
+      }),
+      runInputFor(root),
+    )
+
+    expect(result.status).toBe('completed')
+    expect(commits.some((commit) => commit.message.includes('close ticket'))).toBe(false)
+    expect(existsSync(join(root, 'cocoder', 'tickets', 'open', `${ticketId}-${slug}.md`))).toBe(true)
+    expect(existsSync(join(root, 'cocoder', 'tickets', 'closed', `${ticketId}-${slug}.md`))).toBe(false)
+    expect(store.listEvents(result.runId).some((event) => event.type === 'atom-quarantined')).toBe(true)
+    expect(store.listEvents(result.runId).find((event) => event.type === 'in-run-ticket-close-skipped')?.data).toMatchObject({ ticketId, reason: 'verify-fail' })
+  })
+
+  test('stale order reconciliation from in-run ticket close is ledgered', async () => {
+    const store = openRunStore(':memory:')
+    const { root, ticketId } = await makeTicketWorkspace({ ticketId: '0007', open: false, order: ['0007'] })
+    const { git, commits } = recordingWindowGit([[], ['cocoder/tickets/order.json']])
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git,
+        io: fakeIO({
+          directives: [delegate('reconcile stale order'), wrapup('done')],
+          verdicts: [{ verdict: 'pass', reason: 'stale order entry verified', ticketClose: { ticketId, resolution: 'Remove stale order entry.' } }],
+        }),
+      }),
+      runInputFor(root),
+    )
+
+    expect(result.status).toBe('completed')
+    expect(JSON.parse(await readFile(join(root, 'cocoder', 'tickets', 'order.json'), 'utf8'))).toEqual([])
+    expect(commits.some((commit) => commit.message === `governance: reconcile ticket ${ticketId} order entry via run ${result.runId}` && commit.files.includes('cocoder/tickets/order.json'))).toBe(true)
+    expect(store.listEvents(result.runId).find((event) => event.type === 'in-run-ticket-order-reconciled')?.data).toMatchObject({ ticketId, reason: 'missing-open-ticket' })
+    expect(store.listEvents(result.runId).some((event) => event.type === 'run-wrap-bypass-detected')).toBe(false)
+  })
+
+  test('priority mismatch skips in-run ticket close', async () => {
+    const store = openRunStore(':memory:')
+    const { root, ticketId, slug } = await makeTicketWorkspace({ priorityValue: 'other-priority' })
+    const { git, commits } = recordingWindowGit([[]])
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git,
+        io: fakeIO({
+          directives: [delegate('do unrelated work'), wrapup('done')],
+          verdicts: [{ verdict: 'pass', reason: 'verified unrelated work', ticketClose: { ticketId, resolution: 'Should not close unrelated ticket.' } }],
+        }),
+      }),
+      runInputFor(root),
+    )
+
+    expect(result.status).toBe('completed')
+    expect(existsSync(join(root, 'cocoder', 'tickets', 'open', `${ticketId}-${slug}.md`))).toBe(true)
+    expect(existsSync(join(root, 'cocoder', 'tickets', 'closed', `${ticketId}-${slug}.md`))).toBe(false)
+    expect(commits.some((commit) => commit.message.includes('close ticket'))).toBe(false)
+    expect(store.listEvents(result.runId).find((event) => event.type === 'in-run-ticket-close-skipped')?.data).toMatchObject({ ticketId, reason: 'priority-mismatch' })
+  })
+
+  test('in-run ticket close commit failure fails loudly', async () => {
+    const store = openRunStore(':memory:')
+    const { root, ticketId, slug } = await makeTicketWorkspace()
+    const closeFiles = [
+      `cocoder/tickets/closed/${ticketId}-${slug}.md`,
+      `cocoder/tickets/open/${ticketId}-${slug}.md`,
+      'cocoder/tickets/INDEX.md',
+      'cocoder/tickets/order.json',
+    ]
+    const { git, commits } = recordingWindowGit([['packages/fix.ts'], closeFiles], { failOnCommit: 2 })
+
+    await expect(runRun(
+      baseDeps({
+        store,
+        git,
+        io: fakeIO({
+          directives: [delegate('fix ticket 0003'), wrapup('done')],
+          verdicts: [{ verdict: 'pass', reason: 'verified fix', ticketClose: { ticketId, resolution: 'Verified fix closes this ticket.' } }],
+        }),
+      }),
+      runInputFor(root),
+    )).rejects.toThrow(/commit 2 failed/)
+
+    const runId = store.listRuns()[0]?.id
+    expect(runId).toBeDefined()
+    expect(commits).toEqual([{ files: ['packages/fix.ts'], message: expect.stringContaining('atom 0') }])
+    expect(store.listEvents(runId!).find((event) => event.type === 'in-run-ticket-close-commit-failed')?.data).toMatchObject({ ticketId })
+    expect(existsSync(join(root, 'cocoder', 'tickets', 'closed', `${ticketId}-${slug}.md`))).toBe(true)
   })
 
   test('does not infer hard scope conflicts from directive prose', async () => {

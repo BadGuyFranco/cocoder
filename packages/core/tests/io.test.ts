@@ -70,6 +70,26 @@ describe('awaitVerification', () => {
     expect(await io.awaitVerification(fail, { timeoutMs: 1000, pollMs: 1 })).toEqual({ verdict: 'fail', reason: null })
   })
 
+  test('returns an optional ticketClose request when the verify artifact includes one', async () => {
+    const path = await tmpPath('verify-0.json', JSON.stringify({
+      verdict: 'pass',
+      reason: 'diff matches the ticket fix',
+      ticketClose: { ticketId: '0063', resolution: 'Verified and closed.' },
+    }))
+
+    expect(await io.awaitVerification(path, { timeoutMs: 1000, pollMs: 1 })).toEqual({
+      verdict: 'pass',
+      reason: 'diff matches the ticket fix',
+      ticketClose: { ticketId: '0063', resolution: 'Verified and closed.' },
+    })
+  })
+
+  test('treats a malformed ticketClose request as not-ready', async () => {
+    const path = await tmpPath('verify-0.json', JSON.stringify({ verdict: 'pass', ticketClose: { ticketId: '0063' } }))
+    let t = 0
+    await expect(io.awaitVerification(path, { timeoutMs: 30, pollMs: 1, now: () => (t += 20) })).rejects.toThrow(/within 30ms/)
+  })
+
   test('treats an absent/undecided verdict as not-ready (keeps polling)', async () => {
     const path = await tmpPath('verify-0.json', JSON.stringify({ verdict: 'pending' }))
     let t = 0

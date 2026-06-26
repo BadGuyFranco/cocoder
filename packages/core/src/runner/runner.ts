@@ -1486,6 +1486,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           directivePath,
           directive,
           runId: run.id,
+          runTicketId: input.ticketId ?? null,
           priorityId: priority.id,
           runDisplayNumber: portableRunDisplayNumber,
           oscarId: oscar.id,

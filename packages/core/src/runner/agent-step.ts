@@ -1,6 +1,7 @@
 import { join } from 'node:path'
 import { runCommitGate, type AuditWriteBoundary, type CommitGateResult, type Git } from '../commit-gate/index.js'
 import type { RunDisplayInput, RunStore, WorkItem } from '../store/index.js'
+import { closeTicket, readTickets } from '../tickets/index.js'
 import type { Directive } from './directive.js'
 import type { RunnerIO } from './io.js'
 import { readLoopLedger, type LoopLedgerEntry } from './loop-ledger.js'
@@ -31,6 +32,11 @@ export type AgentStepResult =
   | { readonly kind: 'blocked'; readonly outcomeLine: string }
   | { readonly kind: 'verified'; readonly verdict: 'pass' | 'fail'; readonly reason: string | null; readonly outcomeLine: string }
 
+interface TicketCloseRequest {
+  readonly ticketId: string
+  readonly resolution: string
+}
+
 export type AgentStepResume =
   | { readonly park: 'during-exec' }
   | { readonly park: 'pre-verdict'; readonly verifyPath: string; readonly directivePath: string }
@@ -60,6 +66,7 @@ export interface ExecuteAgentStepInput {
   readonly directivePath: string
   readonly directive: DelegateDirective
   readonly runId: string
+  readonly runTicketId?: string | null
   readonly runDisplayNumber: RunDisplayInput['displayNumber']
   readonly priorityId: string
   readonly oscarId: string
@@ -97,6 +104,7 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
     directivePath,
     directive,
     runId,
+    runTicketId,
     runDisplayNumber,
     priorityId,
     oscarId,
@@ -196,6 +204,66 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
     } finally {
       settled = true
       wake()
+    }
+  }
+
+  const recordTicketCloseSkip = (ticketId: string, reason: 'already-closed' | 'missing-open-ticket' | 'priority-mismatch' | 'verify-fail'): void => {
+    store.recordEvent({ runId, type: 'in-run-ticket-close-skipped', data: { atom: atomIndex, ticketId, reason } })
+  }
+
+  const ticketBelongsToRunTarget = (ticketId: string): boolean => runTicketId !== null && runTicketId !== undefined && runTicketId === ticketId
+  const ticketBelongsToPriority = (ticketPriority: string | null): boolean => ticketPriority?.trim() === priorityId
+  const todayIso = (): string => new Date(now()).toISOString().slice(0, 10)
+
+  const handleVerifiedTicketClose = async (request: TicketCloseRequest, committedSha: string | null): Promise<void> => {
+    const ticketsDir = join(worktreePath, 'cocoder', 'tickets')
+    const ticket = (await readTickets(ticketsDir)).find((item) => item.id === request.ticketId) ?? null
+    if (ticket?.state === 'open' && !ticketBelongsToRunTarget(request.ticketId) && !ticketBelongsToPriority(ticket.priority)) {
+      recordTicketCloseSkip(request.ticketId, 'priority-mismatch')
+      return
+    }
+
+    const closeHeadBefore = await git.headSha(worktreePath)
+    const close = await closeTicket({
+      ticketsDir,
+      repoPath: worktreePath,
+      ticketId: request.ticketId,
+      runId,
+      committedSha,
+      closedDate: todayIso(),
+      resolution: request.resolution,
+    })
+    if (!close.closed && close.files.length === 0) {
+      recordTicketCloseSkip(request.ticketId, close.reason)
+      return
+    }
+
+    const message = close.closed
+      ? `governance: close ticket ${request.ticketId} via run ${runId}`
+      : `governance: reconcile ticket ${request.ticketId} order entry via run ${runId}`
+    let closeGate: CommitGateResult
+    try {
+      closeGate = await runCommitGate({
+        git,
+        store,
+        cwd: worktreePath,
+        runId,
+        workItemId: workItem.id,
+        scope: ['cocoder/tickets/**'],
+        message,
+        headBefore: closeHeadBefore,
+        auditWriteBoundary,
+        commitOnlyScope: true,
+      })
+    } catch (err) {
+      store.recordEvent({ runId, type: 'in-run-ticket-close-commit-failed', data: { atom: atomIndex, ticketId: request.ticketId, message: err instanceof Error ? err.message : String(err) } })
+      throw err
+    }
+    absorbGateResult(closeGate)
+    if (close.closed) {
+      store.recordEvent({ runId, type: 'in-run-ticket-close', data: { atom: atomIndex, ticketId: request.ticketId, commitSha: closeGate.committedSha, files: closeGate.committedFiles, resolution: request.resolution } })
+    } else {
+      store.recordEvent({ runId, type: 'in-run-ticket-order-reconciled', data: { atom: atomIndex, ticketId: request.ticketId, reason: close.reason, commitSha: closeGate.committedSha, files: closeGate.committedFiles } })
     }
   }
 
@@ -383,6 +451,7 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
     store.recordEvent({ runId, type: 'verify-rejected', data: { atom: atomIndex, reason: verdict.reason } })
     store.setWorkItemStatus(workItem.id, 'abandoned')
     await quarantineAtom(atomIndex, headBefore, 'atom-self-committed-rejected')
+    if (verdict.ticketClose !== undefined) recordTicketCloseSkip(verdict.ticketClose.ticketId, 'verify-fail')
     outcomeLine = `atom ${atomIndex} was REJECTED (${verdict.reason ?? 'no reason'}) — nothing committed`
     log(outcomeLine)
   } else {
@@ -401,6 +470,7 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
     })
     store.setWorkItemStatus(workItem.id, 'done')
     absorbGateResult(gate)
+    if (verdict.ticketClose !== undefined) await handleVerifiedTicketClose(verdict.ticketClose, gate.committedSha)
     outcomeLine = gate.committedSha ? `atom ${atomIndex} verified + committed ${gate.committedSha}` : `atom ${atomIndex} verified (no in-scope changes to commit)`
     log(outcomeLine)
   }
