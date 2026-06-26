@@ -2,7 +2,7 @@
 id: 0070
 title: Runnerless handoff discoverability + capture 0069 governed-write failure (follow-up to 0069)
 type: task
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-26
@@ -51,3 +51,9 @@ regression, file or fold in the fix.
   AC-3 first half (runnerless flag/badge/button).
 </content>
 </invoke>
+
+## Resolution
+
+Resolved by run queued-authoring (no code change) on 2026-06-26.
+
+Resolved: pending runnerless handoffs now have a daemon/dashboard status surface; the 0069 governed-write failure was captured and triaged as the older headless TTY failure class, not the by-design active-run repair refusal.
