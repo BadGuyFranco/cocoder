@@ -1,9 +1,9 @@
 [
   "founder-facing-run-identity",
+  "multi-workspace-concurrency",
   "model-layer",
   "doc-truth-analysis",
   "new-primary-root",
   "priority-audit",
-  "ad-hoc-session-architecture",
-  "multi-workspace-concurrency"
+  "ad-hoc-session-architecture"
 ]
