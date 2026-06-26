@@ -2,6 +2,166 @@
 
 Routing note: [`docs/oz-improvement-routing.md`](./oz-improvement-routing.md) is the runtime routing layer; this owner map is its drill-down.
 
+## Current Governance Authoring Map (run_246, 2026-06-26)
+
+This section is the current-truth owner map for governance authoring actions. It supersedes older rows below where they conflict. Scope was read-only owner mapping; no runtime, prompt, Play, or test behavior changed.
+
+### Action Ownership
+
+#### 1. Ticket Create
+
+- Single writer of record: `packages/core/src/tickets/create.ts:createTicket` owns id allocation, collision checks, open-ticket file creation, `INDEX.md` insertion, `order.json` append, and round-trip validation.
+- Format owner: `packages/core/src/tickets/compose.ts:composeTicketMarkdown`; loader/id owner: `packages/core/src/tickets/loader.ts:nextTicketId`; INDEX row owner: `packages/core/src/tickets/index-helpers.ts:insertOpenTicketIndexRow`.
+- Transporters: daemon route `packages/daemon/src/routes.ts:createTicket`; CLI wrapper `packages/cli/src/create-ticket.ts:createTicketViaCli`; CLI live-daemon guard in `packages/cli/src/run.ts`; Deb escalation path `packages/core/src/runner/triage.ts:createDebEscalationTicket`; optional authoring Play dispatch through `packages/daemon/src/launcher.ts:requestAuthoringPlay`.
+- Second-copy contract: `packages/personas/base/plays/create-ticket.md` repeats next-id, filename slug, frontmatter, and INDEX-row instructions, and still says only the ticket file plus `INDEX.md` should change. Live code also writes `cocoder/tickets/order.json`, so the Play is a format/order duplicate and currently weaker than the core helper.
+- Edge cases owned by core/tests: explicit id collision across paths, INDEX, order, and loaded tickets; malformed/missing order recovery; Markdown table escaping; generated slug filename; round-trip parse after write.
+- Pinning tests: `packages/core/tests/tickets.test.ts` pins create/id/order/collision behavior; `packages/daemon/tests/authoring-play.test.ts` pins create-ticket Play dispatch/commit shape; `packages/cli/tests/create-ticket.test.ts` and `packages/cli/tests/oz-args.test.ts` pin CLI creation and argument parsing.
+- UNPINNED: create-ticket Play tests do not pin the core `order.json` append; no Oz chat/tool create-ticket path is pinned because Oz currently has no create-ticket authoring tool.
+
+#### 2. Ticket Close
+
+- Single writer of record: `packages/core/src/tickets/close.ts:closeTicket` owns open-to-closed move, status mutation, resolution append, INDEX move, order pruning, stale-order cleanup, and closed-ticket validation.
+- Transporters: auto-close after successful ticket runs in `packages/daemon/src/launcher.ts:closeTicketAfterSuccessfulRun`; reconciliation close in `packages/daemon/src/launcher.ts:requestReconciliationClose`; close-confirmation action in `packages/daemon/src/launcher.ts:requestTicketCloseConfirmation`; daemon run-action projection in `packages/daemon/src/routes.ts:runActions`; CLI wrapper `packages/cli/src/close-ticket.ts:closeTicketViaCli`; Oz chat reconciliation command in `packages/daemon/src/oz-chat.ts`.
+- Second-copy contract: no second Markdown writer was found. Close confirmation text and pending-close state are projected by daemon/UI surfaces, but file mutation stays in the core helper.
+- Edge cases owned by core/tests: already closed, missing open ticket, missing/malformed order, stale order-only reconciliation, closed ticket parse after move, pending-close run finalization, active-run refusal for the same ticket.
+- Pinning tests: `packages/core/tests/tickets.test.ts` pins close/prune behavior; `packages/daemon/tests/mutations.test.ts` pins auto-close, deferred confirmation, active-run refusal, stale order cleanup, and pending run finalization; `packages/daemon/tests/reconciliation-close-op.test.ts` pins Oz reconciliation close; `packages/cli/tests/close-ticket.test.ts` pins CLI close/commit behavior.
+- UNPINNED: no gap found for the file mutation path; UI pending-close display is pinned separately from the writer and does not own mutation semantics.
+
+#### 3. Ticket Repoint/Reorder
+
+- Single writer of record: split by artifact: `packages/core/src/tickets/repoint.ts:repointTicket` owns open-ticket priority mutation and matching open INDEX priority update; `packages/daemon/src/priority-order.ts:writeTicketOrder` owns `cocoder/tickets/order.json` for dashboard drag/drop ordering. This is intentionally a separate artifact from ticket Markdown and INDEX repointing.
+- Transporters: Oz reconciliation repoint in `packages/daemon/src/launcher.ts:requestReconciliationRepoint`; Oz chat command in `packages/daemon/src/oz-chat.ts`; daemon reorder route in `packages/daemon/src/routes.ts:reorderTickets`; UI IPC/renderer calls in `packages/ui/src/main/priorities-sync.ts`, `packages/ui/src/main/ipc-contract.ts`, `packages/ui/src/main/main.ts`, and `packages/ui/src/renderer/live.ts`.
+- Second-copy contract: `packages/daemon/src/routes.ts:reorderTickets` validates only through `writeTicketOrder`; no duplicate order writer was found. Priority normalization is centralized in `packages/core/src/tickets/priority.ts:normalizeTicketPriority`.
+- Edge cases owned by tests: repoint to live priority or unassigned, no-op same target, closed/missing ticket rejection, active-run refusal for the same ticket, stale/closed id rejection in order files, UI reorder failure rollback.
+- Pinning tests: `packages/core/tests/tickets.test.ts` pins repoint behavior; `packages/daemon/tests/reconciliation-repoint-op.test.ts` pins reconciliation/active refusal; `packages/daemon/tests/priority-order.test.ts` and `packages/daemon/tests/mutations.test.ts` pin ticket order validation and route commit; `packages/ui/tests/priorities-sync.test.ts` and `packages/ui/tests/live-app.test.tsx` pin UI transport behavior.
+- UNPINNED: Oz chat command parsing for `reconcile-repoint` is lightly covered by daemon reconciliation tests, but there is no dedicated chat-output golden for every invalid-target branch.
+
+#### 4. Priority Create
+
+- Single writer of record: `packages/core/src/priorities/compose.ts:composePriorityMarkdown` owns priority Markdown. Action-level writer ownership is split: direct daemon/dashboard creation is implemented in `packages/daemon/src/routes.ts:createPriority`, while model-mediated authoring is specified by `packages/personas/base/plays/create-priority.md` and transported by `packages/daemon/src/launcher.ts:requestAuthoringPlay`. This is the main live ownership split for priority create.
+- Transporters: daemon direct route `packages/daemon/src/routes.ts:createPriority`; CLI authoring command in `packages/cli/src/run.ts`; daemon authoring route in `packages/daemon/src/routes.ts`; daemon commit harness in `packages/daemon/src/launcher.ts:requestAuthoringPlay` and `runHeadlessThenGateCommit`; Oz chat authoring in `packages/daemon/src/oz-chat.ts`; Oz agent tool in `packages/daemon/src/oz-host.ts`.
+- Second-copy contract: `packages/personas/base/plays/create-priority.md` repeats id regex/collision checks, ADR overlap/conflict checks, required `## Objective`, and validation flow. The route also has local request validation and default goal text. The older rows below that say priority format has only a local daemon composer are now stale because core owns `composePriorityMarkdown`.
+- Edge cases owned by tests: id validation, duplicate filename/live-priority collision, required Objective section, live priority registration/order append, authoring Play commit scope, ADR overlap/conflict instructions.
+- Pinning tests: `packages/core/tests/priorities.test.ts` pins compose/load behavior; `packages/daemon/tests/mutations.test.ts` pins direct daemon create route; `packages/daemon/tests/authoring-play.test.ts` pins create-priority authoring commit/order registration; `packages/core/tests/priority-authoring-plays.test.ts` pins required Play instructions; `packages/cli/tests/oz-args.test.ts`, `packages/cli/tests/client.test.ts`, and `packages/daemon/tests/oz-agent-chat.test.ts` pin CLI/Oz transports.
+- UNPINNED: no single core `createPriority` helper exists to pin the complete id/file/order action across direct route and Play; tests pin both lanes separately.
+
+#### 5. Priority Edit
+
+- Single writer of record: `packages/personas/base/plays/edit-priority.md:Edit Priority Play` owns model-mediated priority edits. No deterministic TypeScript priority edit helper exists.
+- Transporters: CLI authoring command in `packages/cli/src/run.ts`; daemon route in `packages/daemon/src/routes.ts`; daemon authoring harness in `packages/daemon/src/launcher.ts:requestAuthoringPlay`; Oz chat authoring in `packages/daemon/src/oz-chat.ts`; Oz agent tool in `packages/daemon/src/oz-host.ts`.
+- Second-copy contract: `packages/daemon/src/launcher.ts:validateChangedPriorityObjectives` enforces the required `## Objective` section after the Play runs. The Play text and daemon validator both know the Objective requirement, but the Play owns the authoring procedure and the daemon owns the post-write guard.
+- Edge cases owned by tests: append-section vs replace-body instructions, preserving frontmatter/id/title/order, missing Objective rejection, missing priority rejection, commit scope.
+- Pinning tests: `packages/daemon/tests/authoring-play.test.ts` pins edit-priority Objective guard and append behavior; `packages/core/tests/priority-authoring-plays.test.ts` pins Play instructions; `packages/cli/tests/oz-args.test.ts` and `packages/cli/tests/client.test.ts` pin CLI/client transport; `packages/daemon/tests/oz-agent-chat.test.ts` pins the Oz authoring tool lane.
+- UNPINNED: no deterministic edit helper is pinned because the current product path is Play-authored; invalid-content branches are mostly covered at harness level rather than by a dedicated core priority edit test.
+
+#### 6. Priority Archive
+
+- Single writer of record: `packages/personas/base/plays/archive-priority.md:Archive Priority Play` owns moving a live priority to `cocoder/priorities/archived/`, disposition text, ticket backfill notes, and order removal.
+- Transporters: archive confirmation from completed runs in `packages/daemon/src/launcher.ts:requestArchiveConfirmation`; authoring harness in `packages/daemon/src/launcher.ts:requestAuthoringPlay`; post-run raw support-commit refusal in `packages/daemon/src/launcher.ts:requestSupportCommitRun`; CLI authoring command in `packages/cli/src/run.ts`; Oz chat archive command in `packages/daemon/src/oz-chat.ts`; Oz agent tool in `packages/daemon/src/oz-host.ts`.
+- Second-copy contract: `packages/daemon/src/launcher.ts:assertArchivePriorityMoved` independently verifies live-file removal and `priority-order.json` pruning after the Play. The Play owns the archive procedure; the daemon owns the hard postcondition.
+- Edge cases owned by tests: ticket/playbook run refusal, active-run refusal for the same run, awaiting-archive-only confirmation, no-move loud failure, already-archived tolerance, order pruning, handled ticket summary/backfill prompt, declined confirmation.
+- Pinning tests: `packages/daemon/tests/authoring-play.test.ts` pins archive move/order/no-move/already-archived behavior; `packages/daemon/tests/mutations.test.ts` pins archive confirmation, support-commit refusal, active refusal, route actions, and invalid decisions; `packages/core/tests/priority-authoring-plays.test.ts` pins Play contract; `packages/cli/tests/oz-args.test.ts`, `packages/cli/tests/client.test.ts`, and `packages/daemon/tests/oz-chat.test.ts` pin CLI/Oz transports.
+- UNPINNED: the Play owns authoring prose, so exact disposition/backfill Markdown wording remains intentionally flexible; daemon tests pin the structural outcome, not a full archived-file golden.
+
+### Active-Run Refusal And Held Mutations
+
+- `packages/daemon/src/launcher.ts:launchRun` (`packages/daemon/src/launcher.ts:653`) refuses a second active run in the same workspace and reserves a pending entry before launch (`packages/daemon/src/launcher.ts:656`), closing the concurrent POST race.
+- `packages/daemon/src/launcher.ts:requestAuthoringPlay` (`packages/daemon/src/launcher.ts:1923`) refuses authoring Play dispatch while another run is active for the workspace (`packages/daemon/src/launcher.ts:1926-1930`), except when continuing the same wrapped run or another workspace.
+- `packages/daemon/src/launcher.ts:requestSupportCommitRun` (`packages/daemon/src/launcher.ts:1060`) refuses support commits while the target run is still running or another run owns the workspace (`packages/daemon/src/launcher.ts:1063-1066`), and separately refuses raw archive support commits after wrap (`packages/daemon/src/launcher.ts:1082-1098`).
+- `packages/daemon/src/launcher.ts:requestArchiveConfirmation` (`packages/daemon/src/launcher.ts:1866`) refuses archive confirmation while the owning run is still active (`packages/daemon/src/launcher.ts:1872-1874`).
+- `packages/daemon/src/launcher.ts:requestTicketCloseConfirmation` (`packages/daemon/src/launcher.ts:1356`) refuses close confirmation while the owning ticket run is still active (`packages/daemon/src/launcher.ts:1360-1364`).
+- `packages/daemon/src/launcher.ts:requestReconciliationClose` (`packages/daemon/src/launcher.ts:1287-1296`) and `packages/daemon/src/launcher.ts:requestReconciliationRepoint` (`packages/daemon/src/launcher.ts:1323-1332`) refuse reconciliation only when the active run owns the same ticket.
+- `packages/daemon/src/routes.ts:deleteWorkspace`, `packages/daemon/src/launcher.ts:requestDaemonRestart`, `packages/daemon/src/launcher.ts:requestOzRepair`, and `packages/daemon/src/launcher.ts:requestOzAction` refuse their respective lifecycle or Oz actions while a run is active.
+- `packages/daemon/src/launcher.ts:drainDaemonReload` silently holds pending daemon reloads until no run is in flight.
+- `packages/cli/src/run.ts` refuses loop-down `close-ticket` (`packages/cli/src/run.ts:168-173`) and `create-ticket` (`packages/cli/src/run.ts:214-219`) when the daemon is live, even if no run is active. That live-daemon case routes users to the daemon-backed path rather than mutating governance from two writers.
+- Gap: direct daemon `POST /workspaces/:id/tickets`, `POST /workspaces/:id/tickets/reorder`, and `POST /workspaces/:id/priorities` do not share the authoring Play active-run guard. They are daemon-serialized and committed through daemon routes, but they can still mutate governance while a workspace run is active unless a caller-level UI guard prevents it.
+
+### Dashboard, Oz, Pending, And Confirmation Surfaces
+
+- Dashboard/Oz visibility is projection, not ownership. `packages/daemon/src/routes.ts:listPriorities`, `listTickets`, and `runActions` expose live priorities, open tickets, pending-close run ids, and confirmation actions from core loaders and daemon run state.
+- Oz awareness is read-only projection in `packages/daemon/src/oz-awareness.ts:projectOzAwareness`; Oz prompt/tool surfaces in `packages/daemon/src/oz-host.ts` and executable chat handling in `packages/daemon/src/oz-chat.ts` transport requests to daemon authoring functions.
+- UI IPC and renderer files (`packages/ui/src/main/priorities-sync.ts`, `packages/ui/src/main/main.ts`, `packages/ui/src/renderer/adapter.ts`, `packages/ui/src/renderer/live.ts`, `packages/ui/src/renderer/sections/dashboard/Dashboard.tsx`, `packages/ui/src/renderer/sections/dashboard/Priorities.tsx`, `packages/ui/src/renderer/sections/dashboard/PriorityDetailModal.tsx`) show and submit pending close, queued/active run, archive confirmation, create/reorder, and repoint states; they do not own governance file formats.
+- When the daemon is live but no run is active, CLI loop-down ticket create/close still refuses to write directly; priority create/edit/archive CLI commands require the live daemon and submit authoring Play requests through it.
+
+### Doc-vs-Code Drift
+
+- Priority create ownership in older rows below is stale: priority Markdown is now centralized in `packages/core/src/priorities/compose.ts:composePriorityMarkdown`, but direct route creation and create-priority Play instructions still duplicate action-level validation and collision contracts.
+- Create-ticket Play instructions are stale against `packages/core/src/tickets/create.ts:createTicket`: the Play says only the ticket file and `INDEX.md` should change, while core ticket creation also owns `cocoder/tickets/order.json`.
+- Older notes that marked ticket auto-close as unpinned are stale. Daemon mutation tests now pin auto-close, deferred close confirmation, active-run refusal, stale order cleanup, and pending run finalization.
+- The authoring Play lane is the current owner for priority edit/archive semantics. There is still no deterministic core helper for complete priority edit/archive actions, so daemon validators act as postconditions rather than writers.
+
+### Evidence Files Opened
+
+Implementation and documentation files opened:
+
+- `docs/orchestration-contract-ownership.md`
+- `packages/core/src/tickets/create.ts`
+- `packages/core/src/tickets/compose.ts`
+- `packages/core/src/tickets/loader.ts`
+- `packages/core/src/tickets/index-helpers.ts`
+- `packages/core/src/tickets/close.ts`
+- `packages/core/src/tickets/repoint.ts`
+- `packages/core/src/tickets/priority.ts`
+- `packages/core/src/priorities/compose.ts`
+- `packages/core/src/priorities/loader.ts`
+- `packages/core/src/priorities/index.ts`
+- `packages/daemon/src/priority-order.ts`
+- `packages/daemon/src/routes.ts`
+- `packages/daemon/src/launcher.ts`
+- `packages/daemon/src/oz-chat.ts`
+- `packages/daemon/src/oz-host.ts`
+- `packages/daemon/src/oz-awareness.ts`
+- `packages/cli/src/run.ts`
+- `packages/cli/src/create-ticket.ts`
+- `packages/cli/src/close-ticket.ts`
+- `packages/cli/src/oz-args.ts`
+- `packages/cli/src/client.ts`
+- `packages/ui/src/main/ipc-contract.ts`
+- `packages/ui/src/main/priorities-sync.ts`
+- `packages/ui/src/main/main.ts`
+- `packages/ui/src/renderer/adapter.ts`
+- `packages/ui/src/renderer/live.ts`
+- `packages/ui/src/renderer/sections/dashboard/Dashboard.tsx`
+- `packages/ui/src/renderer/sections/dashboard/Priorities.tsx`
+- `packages/ui/src/renderer/sections/dashboard/PriorityDetailModal.tsx`
+- `packages/personas/base/plays/create-ticket.md`
+- `packages/personas/base/plays/create-priority.md`
+- `packages/personas/base/plays/edit-priority.md`
+- `packages/personas/base/plays/archive-priority.md`
+- `packages/core/src/runner/agent-step.ts`
+- `packages/core/src/runner/runner.ts`
+- `packages/core/src/runner/triage.ts`
+- `packages/core/src/runner/status.ts`
+- `packages/core/src/runner/wrap-audit.ts`
+- `packages/core/src/commit-gate/gate.ts`
+- `packages/core/src/commit-gate/workspace-commit.ts`
+- `packages/core/src/commit-gate/record-commit.ts`
+
+Test/proof files opened:
+
+- `packages/core/tests/tickets.test.ts`
+- `packages/core/tests/priorities.test.ts`
+- `packages/core/tests/priority-authoring-plays.test.ts`
+- `packages/core/tests/orchestration-contracts.test.ts`
+- `packages/daemon/tests/authoring-play.test.ts`
+- `packages/daemon/tests/priority-order.test.ts`
+- `packages/daemon/tests/mutations.test.ts`
+- `packages/daemon/tests/reconciliation-close-op.test.ts`
+- `packages/daemon/tests/reconciliation-repoint-op.test.ts`
+- `packages/daemon/tests/oz-agent-chat.test.ts`
+- `packages/daemon/tests/oz-chat.test.ts`
+- `packages/cli/tests/create-ticket.test.ts`
+- `packages/cli/tests/close-ticket.test.ts`
+- `packages/cli/tests/oz-args.test.ts`
+- `packages/cli/tests/client.test.ts`
+- `packages/ui/tests/priorities-sync.test.ts`
+- `packages/ui/tests/dashboard-awaiting.test.tsx`
+- `packages/ui/tests/priorities-panel-active.test.tsx`
+- `packages/ui/tests/adapter.test.ts`
+- `packages/ui/tests/live-app.test.tsx`
+- `packages/ui/tests/tickets-create.test.ts`
+- `scripts/proof-governance-authoring.mjs`
+
 ## Status (run_149, 2026-06-19)
 
 This inventory landed through the verify gate (`036e618`). The structural repair atoms — governing rule

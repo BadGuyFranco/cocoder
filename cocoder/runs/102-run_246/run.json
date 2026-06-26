@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_246",
+    "displayNumber": 102
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "priority"
+  },
+  "priorityId": "governance-authoring-ssot",
+  "playbookId": null,
+  "ticketId": null,
+  "status": "running",
+  "createdAt": 1782475037358,
+  "endedAt": null
+}
