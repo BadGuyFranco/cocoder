@@ -12,7 +12,7 @@
   "priorityId": "founder-facing-run-identity",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "awaiting-archive-confirmation",
   "createdAt": 1782431854788,
-  "endedAt": null
+  "endedAt": 1782433654099
 }
