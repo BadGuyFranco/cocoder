@@ -7,6 +7,7 @@
 // (acquiring the writer lock); the daemon will call the same helper in Phase 2 (one home).
 import { randomUUID } from 'node:crypto'
 import { DatabaseSync } from 'node:sqlite'
+import { computeRetention, type RetainableRun } from '../retention/index.js'
 import { COLUMN_MIGRATIONS, SCHEMA_SQL } from './schema.js'
 import type {
   CommitLink,
@@ -16,6 +17,8 @@ import type {
   RunStatus,
   RunStore,
   Session,
+  TrimRunsOptions,
+  TrimRunsResult,
   WorkItem,
   WorkItemStatus,
   Workspace,
@@ -321,6 +324,94 @@ class SqliteRunStore implements RunStore {
         at: row.at,
       }
     })
+  }
+
+  trimRuns(opts: TrimRunsOptions): TrimRunsResult {
+    const log = opts.log ?? (() => {})
+
+    // Inert flag: when disabled, perform ZERO db writes and do not even consult the retention policy
+    // (so an invalid keepPerWorkspace cannot throw while disabled). Returns a fully-zeroed result.
+    if (!opts.enabled) {
+      log('[retention] store trim disabled (inert) — no-op')
+      return {
+        enabled: false,
+        prunedRunIds: [],
+        skipped: [],
+        deletedRows: { event: 0, commit_link: 0, work_item: 0, session: 0, run: 0 },
+        walCheckpoint: null,
+      }
+    }
+
+    // Source ALL runs (newest-first, no limit) and reduce to RetainableRun for the pure policy. The
+    // policy keeps newest N per workspace, prunes only terminal runs past rank N, protects non-terminal
+    // runs regardless of age, and enforces the N >= 1 RangeError guard.
+    const runs: RetainableRun[] = this.listRuns().map((r) => ({
+      id: r.id,
+      workspaceId: r.workspaceId,
+      status: r.status,
+      createdAt: r.createdAt,
+    }))
+    const decision = computeRetention(runs, opts.keepPerWorkspace)
+
+    // Projection gate: only delete a pruned run once its durable record exists in cocoder/runs/. Runs
+    // not yet projected stay (reported as skipped) so the DB never outruns the durable archive.
+    const toDelete: string[] = []
+    const skipped: { runId: string; reason: 'not-projected' }[] = []
+    for (const id of decision.prune) {
+      if (opts.isProjected(id)) {
+        toDelete.push(id)
+      } else {
+        skipped.push({ runId: id, reason: 'not-projected' })
+        log(`[retention] keep run rows ${id}: durable record not yet projected`)
+      }
+    }
+
+    const deletedRows = { event: 0, commit_link: 0, work_item: 0, session: 0, run: 0 }
+
+    // Delete children-before-parent (FKs are enforced) inside one transaction for atomicity.
+    // NOTE (documented fault-drop semantics): deleting a pruned run's `event` rows drops that run's
+    // `fault-triaged` history from listFaultHistory(). This is intentional and acceptable — the run is
+    // beyond retention and its durable record persists in cocoder/runs/. Recurrence detection still
+    // works for SURVIVING (within-retention / un-pruned) runs, which is the acceptance bar.
+    if (toDelete.length > 0) {
+      const delEvent = this.#db.prepare(`DELETE FROM event WHERE run_id = ?`)
+      const delCommitLink = this.#db.prepare(`DELETE FROM commit_link WHERE run_id = ?`)
+      const delWorkItem = this.#db.prepare(`DELETE FROM work_item WHERE run_id = ?`)
+      const delSession = this.#db.prepare(`DELETE FROM session WHERE run_id = ?`)
+      const delRun = this.#db.prepare(`DELETE FROM run WHERE id = ?`)
+
+      this.#db.exec('BEGIN')
+      try {
+        for (const id of toDelete) {
+          deletedRows.event += Number(delEvent.run(id).changes)
+          deletedRows.commit_link += Number(delCommitLink.run(id).changes)
+          deletedRows.work_item += Number(delWorkItem.run(id).changes)
+          deletedRows.session += Number(delSession.run(id).changes)
+          deletedRows.run += Number(delRun.run(id).changes)
+          log(`[retention] pruned run rows ${id}`)
+        }
+        this.#db.exec('COMMIT')
+      } catch (err) {
+        this.#db.exec('ROLLBACK')
+        throw err
+      }
+    }
+
+    // Reclaim WAL disk after the deletes. Unavailable on :memory: (no WAL) — null, never fatal.
+    let walCheckpoint: TrimRunsResult['walCheckpoint'] = null
+    try {
+      const row = this.#db.prepare('PRAGMA wal_checkpoint(TRUNCATE)').get() as
+        | { busy: number; log: number; checkpointed: number }
+        | undefined
+      if (row) {
+        walCheckpoint = { busy: Number(row.busy), log: Number(row.log), checkpointed: Number(row.checkpointed) }
+        log(`[retention] wal_checkpoint busy=${walCheckpoint.busy} log=${walCheckpoint.log} checkpointed=${walCheckpoint.checkpointed}`)
+      }
+    } catch {
+      walCheckpoint = null
+    }
+
+    return { enabled: true, prunedRunIds: toDelete, skipped, deletedRows, walCheckpoint }
   }
 
   close(): void {

@@ -87,6 +87,30 @@ export interface FaultRecord {
   readonly at: number
 }
 
+export interface TrimRunsOptions {
+  readonly keepPerWorkspace: number
+  readonly enabled: boolean // INERT FLAG. When false, trimRuns performs ZERO writes.
+  /** SYNC predicate — true ⟺ the run's durable record already exists in cocoder/runs/.
+   *  Sync because the store is synchronous; the daemon wiring (Session 3) pre-computes projection
+   *  status (async fs scan → Set) and passes a sync lookup here. */
+  readonly isProjected: (runId: string) => boolean
+  readonly log?: (msg: string) => void
+}
+export interface TrimRunsResult {
+  readonly enabled: boolean
+  readonly prunedRunIds: readonly string[]
+  readonly skipped: readonly { readonly runId: string; readonly reason: 'not-projected' }[]
+  readonly deletedRows: {
+    readonly event: number
+    readonly commit_link: number
+    readonly work_item: number
+    readonly session: number
+    readonly run: number
+  }
+  /** Result of PRAGMA wal_checkpoint(TRUNCATE); null when disabled or unavailable (e.g. :memory:). */
+  readonly walCheckpoint: { readonly busy: number; readonly log: number; readonly checkpointed: number } | null
+}
+
 export interface RunStore {
   upsertWorkspace(ws: Workspace): void
 
@@ -127,6 +151,14 @@ export interface RunStore {
   /** Cross-run fault memory (ADR-0016 §recurrence): every `fault-triaged` event across a workspace's
    *  runs, newest-last, for recurrence detection. One WHERE (ADR-0003); the runner fingerprints + counts. */
   listFaultHistory(workspaceId: string): FaultRecord[]
+
+  /** Prune DB rows for runs beyond rank N per workspace (reusing the retention policy in
+   *  `../retention`): keep newest N per workspace, prune only terminal runs past that rank, and
+   *  protect every non-terminal run regardless of age. Projection-gated — a run is deleted ONLY if
+   *  `opts.isProjected(id)` confirms its durable record already exists in cocoder/runs/; the rest are
+   *  reported as `skipped`. Deletes children-before-parent in one transaction, then checkpoints the WAL
+   *  (TRUNCATE) to reclaim disk. INERT unless `opts.enabled` — when disabled it performs ZERO writes. */
+  trimRuns(opts: TrimRunsOptions): TrimRunsResult
 
   close(): void
 }
