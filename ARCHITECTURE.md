@@ -140,8 +140,9 @@ commit, and "green" means evidence from the actual artifact, not a builder summa
 At daemon launch, [`detectRunnerImpact()`](./packages/core/src/priorities/runner-impact.ts) refuses
 self-impacting priorities (run-critical scope or `destructive: true`) unless the founder passes
 `allowSelfImpacting: true` — always with a non-silent audit entry. Priorities marked
-`independent-of-runner: true` are refused from the normal runner (409) pending the runnerless execution
-path, which is not yet built.
+`independent-of-runner: true` are refused from the normal daemon runner (409) and executed through
+`cocoder run-independent`: standalone daemon-free `runRun`, frozen code, latest-model Oscar, direct-git
+commits, and scratch-store isolation for `destructive` priorities.
 
 Observation is tiered by the **direct your primary** rule. Oscar monitors and directs Bob for the active
 run. Deb monitors Oscar, may observe Bob to diagnose, and nudges Oscar only. Oz monitors sessions across
