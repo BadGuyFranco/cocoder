@@ -5,3 +5,4 @@ export {
   type ComposePriorityBodyInput,
   type ComposePriorityMarkdownInput,
 } from './compose.js'
+export { detectRunnerImpact, RUN_CRITICAL_GLOBS, type RunnerImpact } from './runner-impact.js'

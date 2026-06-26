@@ -14,6 +14,10 @@ export interface Priority {
   readonly scopeNarrowing: readonly string[] | null
   /** Optional hard commit allow-list for audit-style priorities. Omitted priorities keep ordinary commits. */
   readonly auditWriteBoundary?: readonly string[]
+  /** True when the priority must run outside machinery it may impair. */
+  readonly independentOfRunner?: boolean
+  /** True when the priority may destructively alter the working tree or runtime state. */
+  readonly destructive?: boolean
   /** The goal/brief the orchestrator works from. */
   readonly goal: string
   /** The structural Objective section required before launch. */
@@ -39,6 +43,13 @@ function parseOptionalStringList(value: string | readonly string[] | undefined):
   return inner.split(',').map((item) => item.trim().replace(/^["']|["']$/g, '')).filter((item) => item !== '')
 }
 
+function parseOptionalBoolean(value: string | readonly string[] | undefined, key: string, file: string): boolean {
+  if (value === undefined) return false
+  if (value === 'true') return true
+  if (value === 'false') return false
+  throw new Error(`priority ${file}: frontmatter "${key}" must be true or false`)
+}
+
 export function loadPriority(prioritiesDir: string, id: string): Priority {
   const file = join(prioritiesDir, `${id}.md`)
   const { data, body } = parseFrontmatter(readFileSync(file, 'utf8'), file)
@@ -48,5 +59,16 @@ export function loadPriority(prioritiesDir: string, id: string): Priority {
   }
   const scopeNarrowing = parseOptionalStringList(data.scopeNarrowing) ?? null
   const auditWriteBoundary = parseOptionalStringList(data.auditWriteBoundary)
-  return { id, title: data.title, scopeNarrowing, auditWriteBoundary, goal: body, objective: parseObjective(body) }
+  const independentOfRunner = parseOptionalBoolean(data['independent-of-runner'], 'independent-of-runner', file)
+  const destructive = parseOptionalBoolean(data.destructive, 'destructive', file)
+  return {
+    id,
+    title: data.title,
+    scopeNarrowing,
+    auditWriteBoundary,
+    independentOfRunner,
+    destructive,
+    goal: body,
+    objective: parseObjective(body),
+  }
 }

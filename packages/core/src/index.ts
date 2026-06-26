@@ -131,10 +131,13 @@ export {
 export {
   composePriorityBody,
   composePriorityMarkdown,
+  detectRunnerImpact,
   loadPriority,
+  RUN_CRITICAL_GLOBS,
   type ComposePriorityBodyInput,
   type ComposePriorityMarkdownInput,
   type Priority,
+  type RunnerImpact,
 } from './priorities/index.js'
 export {
   readGovernanceClaims,
