@@ -12,7 +12,7 @@
   "priorityId": "governance-authoring-ssot",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "awaiting-archive-confirmation",
   "createdAt": 1782483673990,
-  "endedAt": null
+  "endedAt": 1782485442329
 }
