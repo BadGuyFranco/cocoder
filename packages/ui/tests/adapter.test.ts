@@ -121,6 +121,10 @@ describe('priorities joined with runs', () => {
     expect(plays.name).toBe(priorityNames['plays-mechanism'])
     expect(plays.summary.length).toBeGreaterThan(0)
   })
+  it('maps independent-of-runner priorities to a runnerless dashboard signal', () => {
+    const out = adaptPriorities([{ id: 'runnerless', title: 'Runnerless', goal: 'g', scopeNarrowing: null, independentOfRunner: true }], [])
+    expect(out[0]).toMatchObject({ id: 'runnerless', independentOfRunner: true, labels: ['runnerless'] })
+  })
   it('a priority with a live run adopts the run id + status; others are "ready"', () => {
     const runs = adaptRuns(RUNS.runs, priorityNames)
     const out = adaptPriorities(P.priorities, runs)

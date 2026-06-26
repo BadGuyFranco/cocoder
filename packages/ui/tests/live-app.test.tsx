@@ -422,6 +422,29 @@ describe('Oz renderer — live daemon path', () => {
     await waitFor(() => expect(screen.getAllByText(/Launching/i).length).toBeGreaterThan(0))
   })
 
+  it('runnerless priorities create a handoff instead of posting to /runs', async () => {
+    const posts: PostCall[] = []
+    const basePriorities = (prioritiesFx as { priorities: DPriority[] }).priorities
+    const runnerless = { ...basePriorities[0]!, id: 'runnerless-priority', title: 'Runnerless priority', independentOfRunner: true }
+    setOz(mockOz({
+      posts,
+      priorities: { ...(prioritiesFx as { priorities: DPriority[] }), priorities: [runnerless] },
+      runs: { runs: [] },
+      postResult: (path) => path === '/runs/independent-handoff'
+        ? { ok: true, status: 202, data: { ok: true, runnerless: true, handoffPath: 'local/runnerless-handoffs/cocoder/runnerless.md' } }
+        : { ok: false, status: 500, error: `unexpected ${path}` },
+    }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(within(rowForText('Runnerless priority')).getByText('Handoff'))
+
+    await waitFor(() => expect(posts.find((p) => p.path === '/runs/independent-handoff')).toBeDefined())
+    expect(posts.some((p) => p.path === '/runs')).toBe(false)
+    expect(posts.find((p) => p.path === '/runs/independent-handoff')?.body).toMatchObject({ workspaceId: 'cocoder', priorityId: 'runnerless-priority' })
+    await waitFor(() => expect(screen.getByText(/Runnerless handoff created/)).toBeDefined())
+  })
+
   it('shows live launch progress from run events and auto-closes when Oscar is ready', async () => {
     const posts: PostCall[] = []
     const run = runSummary('run_launch_modal', 'running')

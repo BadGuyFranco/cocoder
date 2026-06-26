@@ -2,9 +2,10 @@ import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { composeTicketMarkdown, openRunStore, parseNudgeRequest, type Adapter, type BuildInput, type HeadlessRunInput, type RunStore } from '@cocoder/core'
+import { composeTicketMarkdown, openRunStore, parseNudgeRequest, type Adapter, type BuildInput, type Git, type HeadlessRunInput, type RunStore } from '@cocoder/core'
 import { createOzEventBus, type OzContext } from '../src/context.js'
 import { handleOzMessage, type OzChatOps } from '../src/oz-chat.js'
+import { requestOzAction } from '../src/launcher.js'
 import type { LaunchRunTarget } from '../src/launcher.js'
 import { recordOrchestratedRun } from '../src/oz-host.js'
 import { mergeWriteSettings } from '../src/settings.js'
@@ -722,6 +723,18 @@ describe('Oz agent chat turns', () => {
     expect(result).toEqual({ status: 200, body: { reply: HINT, command: 'unknown', ok: false } })
     expect(fixture.headlessInputs).toEqual([])
   })
+
+  test('Oz governed action turns build the adapter command in headless mode', async () => {
+    const fixture = await makeFixture()
+    fixture.ctx.inFlight.clear()
+    ;(fixture.ctx as { git: Git }).git = noChangeGit()
+
+    const result = await requestOzAction(fixture.ctx, { workspaceId: 'cocoder', instruction: 'close ticket 0099' })
+
+    expect(result.status).toBe(200)
+    expect(fixture.prompts[0]).toMatchObject({ persona: 'oz', headless: true })
+    expect(fixture.headlessInputs).toHaveLength(1)
+  })
 })
 
 type FakeOutput = string | { readonly exitCode: number; readonly output: string }
@@ -785,6 +798,26 @@ function fakeAdapter(prompts: BuildInput[]): Adapter {
     async listModels() {
       return { canEnumerate: false, models: [], detail: 'fake' }
     },
+  }
+}
+
+function noChangeGit(): Git {
+  return {
+    async isGitRepo() { return true },
+    async initRepo() {},
+    async headSha() { return 'sha0' },
+    async changedFiles() { return [] },
+    async addAndCommit() { return 'sha1' },
+    async restoreToHead() {},
+    async show() { return '' },
+    async worktreeAdd() {},
+    async worktreeRemove() {},
+    async listWorktrees() { return [] },
+    async currentBranch() { return 'main' },
+    async resetHard() {},
+    async hasUpstream() { return false },
+    async push() { return { ok: true, detail: '' } },
+    async commitsSince() { return [] },
   }
 }
 
