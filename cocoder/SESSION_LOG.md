@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-26 — **governance-authoring-ssot: queue + SSOT + mid-run founder decisions — archive ready (run_102/run_246)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [governance-authoring-ssot](./priorities/governance-authoring-ssot.md) | **Run:** run_246 (display 102)
+**Outcomes:**
+- **Active-run authoring queue.** Ticket create/close/repoint/reorder and priority-create accept-and-queue while a run is active; drain at the per-atom commit seam plus wrap backstop; ledgered for wrap audit; pending entries surface via `listTickets`; closes [0063](./tickets/closed/0063-author-governance-ticket-priority-during-an-active-run-queue-instead-of-refuse-and-surface-the-refusal.md).
+- **One SSOT write path.** `createPriorityFiles` in `packages/daemon/src/priority-authoring.ts` owns priority create for both the immediate route and queue drain; orchestration-contracts test pins no transport restates the write contract.
+- **Mid-run founder decisions.** New `ask-founder-continue` runner directive surfaces a founder question and continues the run (vs terminal wrap); run_245 premature-wrap regression pinned; Oscar/wrap-up guidance reconciled; closes [0066](./tickets/closed/0066-founder-decisions-should-not-force-premature-run-wrap.md).
+- **ADR-0027 §6 nested run dirs.** `localRunDir` nests by `workspaceId`; `resolveLocalRunDir` legacy-flat compat read-fallback; all §6 consumers repointed; closes [0065](./tickets/closed/0065-consolidate-run-dir-path-reconcile-adr-0027-6-nesting-drift.md) on the step-5 OR-branch (physical move deferred to [0067](./tickets/open/0067-physically-migrate-legacy-flat-local-runs-runid-dirs-to-the-adr-0027-6-nested-layout.md)).
+- **Disposition: `archive-confirmation`.** Objective verified (core 635/635, daemon 401/401, cli 50/50); founder archive reply is the first-class closeout action.
+**Next:** Launch ticket `0064` — fix daemon self-reload zombie handoff that wedges Oz.
+
 ## 2026-06-26 — **ticket-fix-0065: run-dir path consolidation — needs another run (run_101)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0065](./tickets/open/0065-consolidate-run-dir-path-reconcile-adr-0027-6-nesting-drift.md) | **Run:** run_101 (display 101)

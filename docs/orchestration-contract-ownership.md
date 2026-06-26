@@ -2,9 +2,9 @@
 
 Routing note: [`docs/oz-improvement-routing.md`](./oz-improvement-routing.md) is the runtime routing layer; this owner map is its drill-down.
 
-## Current Governance Authoring Map (run_246, 2026-06-26)
+## Current Governance Authoring Map (governance-authoring-ssot, run_246, 2026-06-26)
 
-This section is the current-truth owner map for governance authoring actions. It supersedes older rows below where they conflict. Scope was read-only owner mapping; no runtime, prompt, Play, or test behavior changed.
+This section is the current-truth owner map for governance authoring actions. It supersedes older rows below where they conflict. Shipped in priority `governance-authoring-ssot` (run_246): active-run queue, `createPriorityFiles` SSOT, `ask-founder-continue`, and ADR-0027 §6 nested run-dir layout with legacy-flat read fallback.
 
 ### Action Ownership
 
@@ -38,12 +38,12 @@ This section is the current-truth owner map for governance authoring actions. It
 
 #### 4. Priority Create
 
-- Single writer of record: `packages/core/src/priorities/compose.ts:composePriorityMarkdown` owns priority Markdown. Action-level writer ownership is split: direct daemon/dashboard creation is implemented in `packages/daemon/src/routes.ts:createPriority`, while model-mediated authoring is specified by `packages/personas/base/plays/create-priority.md` and transported by `packages/daemon/src/launcher.ts:requestAuthoringPlay`. This is the main live ownership split for priority create.
-- Transporters: daemon direct route `packages/daemon/src/routes.ts:createPriority`; CLI authoring command in `packages/cli/src/run.ts`; daemon authoring route in `packages/daemon/src/routes.ts`; daemon commit harness in `packages/daemon/src/launcher.ts:requestAuthoringPlay` and `runHeadlessThenGateCommit`; Oz chat authoring in `packages/daemon/src/oz-chat.ts`; Oz agent tool in `packages/daemon/src/oz-host.ts`.
-- Second-copy contract: `packages/personas/base/plays/create-priority.md` repeats id regex/collision checks, ADR overlap/conflict checks, required `## Objective`, and validation flow. The route also has local request validation and default goal text. The older rows below that say priority format has only a local daemon composer are now stale because core owns `composePriorityMarkdown`.
-- Edge cases owned by tests: id validation, duplicate filename/live-priority collision, required Objective section, live priority registration/order append, authoring Play commit scope, ADR overlap/conflict instructions.
-- Pinning tests: `packages/core/tests/priorities.test.ts` pins compose/load behavior; `packages/daemon/tests/mutations.test.ts` pins direct daemon create route; `packages/daemon/tests/authoring-play.test.ts` pins create-priority authoring commit/order registration; `packages/core/tests/priority-authoring-plays.test.ts` pins required Play instructions; `packages/cli/tests/oz-args.test.ts`, `packages/cli/tests/client.test.ts`, and `packages/daemon/tests/oz-agent-chat.test.ts` pin CLI/Oz transports.
-- UNPINNED: no single core `createPriority` helper exists to pin the complete id/file/order action across direct route and Play; tests pin both lanes separately.
+- Single writer of record: `packages/daemon/src/priority-authoring.ts:createPriorityFiles` owns the complete priority-create action (id collision, temp write, `composePriorityMarkdown`, round-trip validation, `order.json` registration). Markdown format remains owned by `packages/core/src/priorities/compose.ts:composePriorityMarkdown`.
+- Transporters: daemon direct route `packages/daemon/src/routes.ts:createPriority` (immediate commit or active-run queue enqueue); queue drain in `packages/daemon/src/authoring-queue.ts`; CLI authoring command in `packages/cli/src/run.ts`; model-mediated authoring Play via `packages/daemon/src/launcher.ts:requestAuthoringPlay`; Oz chat authoring in `packages/daemon/src/oz-chat.ts`; Oz agent tool in `packages/daemon/src/oz-host.ts`.
+- Second-copy contract: `packages/personas/base/plays/create-priority.md` gathers/validates input but must not restate file-writing procedure; `packages/core/tests/orchestration-contracts.test.ts` pins that routes and `priority-authoring.ts` call `createPriorityFiles` and do not duplicate compose logic.
+- Edge cases owned by tests: id validation, duplicate filename/live-priority collision, required Objective section, live priority registration/order append, active-run queue receipt and drain, authoring Play commit scope.
+- Pinning tests: `packages/core/tests/priorities.test.ts`; `packages/daemon/tests/mutations.test.ts`; `packages/daemon/tests/authoring-play.test.ts`; `packages/core/tests/priority-authoring-plays.test.ts`; `packages/core/tests/orchestration-contracts.test.ts`; CLI/Oz transport tests as before.
+- UNPINNED: Play-mediated create still runs through `requestAuthoringPlay` (refused while another run is actively `running` on the workspace); deterministic dashboard/CLI create during an active run uses the queue instead.
 
 #### 5. Priority Edit
 
@@ -63,18 +63,18 @@ This section is the current-truth owner map for governance authoring actions. It
 - Pinning tests: `packages/daemon/tests/authoring-play.test.ts` pins archive move/order/no-move/already-archived behavior; `packages/daemon/tests/mutations.test.ts` pins archive confirmation, support-commit refusal, active refusal, route actions, and invalid decisions; `packages/core/tests/priority-authoring-plays.test.ts` pins Play contract; `packages/cli/tests/oz-args.test.ts`, `packages/cli/tests/client.test.ts`, and `packages/daemon/tests/oz-chat.test.ts` pin CLI/Oz transports.
 - UNPINNED: the Play owns authoring prose, so exact disposition/backfill Markdown wording remains intentionally flexible; daemon tests pin the structural outcome, not a full archived-file golden.
 
-### Active-Run Refusal And Held Mutations
+### Active-Run Queue And Held Mutations
 
-- `packages/daemon/src/launcher.ts:launchRun` (`packages/daemon/src/launcher.ts:653`) refuses a second active run in the same workspace and reserves a pending entry before launch (`packages/daemon/src/launcher.ts:656`), closing the concurrent POST race.
-- `packages/daemon/src/launcher.ts:requestAuthoringPlay` (`packages/daemon/src/launcher.ts:1923`) refuses authoring Play dispatch while another run is active for the workspace (`packages/daemon/src/launcher.ts:1926-1930`), except when continuing the same wrapped run or another workspace.
-- `packages/daemon/src/launcher.ts:requestSupportCommitRun` (`packages/daemon/src/launcher.ts:1060`) refuses support commits while the target run is still running or another run owns the workspace (`packages/daemon/src/launcher.ts:1063-1066`), and separately refuses raw archive support commits after wrap (`packages/daemon/src/launcher.ts:1082-1098`).
-- `packages/daemon/src/launcher.ts:requestArchiveConfirmation` (`packages/daemon/src/launcher.ts:1866`) refuses archive confirmation while the owning run is still active (`packages/daemon/src/launcher.ts:1872-1874`).
-- `packages/daemon/src/launcher.ts:requestTicketCloseConfirmation` (`packages/daemon/src/launcher.ts:1356`) refuses close confirmation while the owning ticket run is still active (`packages/daemon/src/launcher.ts:1360-1364`).
-- `packages/daemon/src/launcher.ts:requestReconciliationClose` (`packages/daemon/src/launcher.ts:1287-1296`) and `packages/daemon/src/launcher.ts:requestReconciliationRepoint` (`packages/daemon/src/launcher.ts:1323-1332`) refuse reconciliation only when the active run owns the same ticket.
-- `packages/daemon/src/routes.ts:deleteWorkspace`, `packages/daemon/src/launcher.ts:requestDaemonRestart`, `packages/daemon/src/launcher.ts:requestOzRepair`, and `packages/daemon/src/launcher.ts:requestOzAction` refuse their respective lifecycle or Oz actions while a run is active.
-- `packages/daemon/src/launcher.ts:drainDaemonReload` silently holds pending daemon reloads until no run is in flight.
-- `packages/cli/src/run.ts` refuses loop-down `close-ticket` (`packages/cli/src/run.ts:168-173`) and `create-ticket` (`packages/cli/src/run.ts:214-219`) when the daemon is live, even if no run is active. That live-daemon case routes users to the daemon-backed path rather than mutating governance from two writers.
-- Gap: direct daemon `POST /workspaces/:id/tickets`, `POST /workspaces/:id/tickets/reorder`, and `POST /workspaces/:id/priorities` do not share the authoring Play active-run guard. They are daemon-serialized and committed through daemon routes, but they can still mutate governance while a workspace run is active unless a caller-level UI guard prevents it.
+- **Deterministic governance authoring queue:** `packages/daemon/src/authoring-queue.ts` accepts ticket create/close/repoint/reorder and priority-create while `ctx.inFlight` holds the workspace. Routes enqueue with HTTP 202; `drainAuthoringQueue` commits at the per-atom safe seam (`packages/daemon/src/launcher.ts` post-atom hook) and as a wrap-time backstop. Commits are ledgered so wrap audit does not flag them as out-of-band. Pending entries surface through `listQueuedAuthoring` / `listTickets`.
+- `packages/daemon/src/launcher.ts:launchRun` refuses a second active run in the same workspace and reserves a pending entry before launch, closing the concurrent POST race.
+- `packages/daemon/src/launcher.ts:requestAuthoringPlay` still refuses model-mediated authoring Play dispatch while another run is actively `running` on the workspace; post-wrap continuation of the same run is allowed.
+- `packages/daemon/src/launcher.ts:requestSupportCommitRun` refuses support commits while the target run is still running or another run owns the workspace, and separately refuses raw archive support commits after wrap.
+- Reconciliation close/repoint, archive confirmation, ticket close confirmation, workspace delete, daemon restart, Oz repair/action, and `drainDaemonReload` retain their prior active-run refusal or hold behavior.
+- `packages/cli/src/run.ts` refuses loop-down `close-ticket` and `create-ticket` when the daemon is live (routes to daemon-backed path); during an active run those daemon paths enqueue instead of refusing.
+
+#### Mid-Run Founder Decisions
+
+- Runner directive `ask-founder-continue` (`packages/core/src/runner/runner.ts`) surfaces a founder question and continues the run after the answer — distinct from terminal wrap-awaiting-founder. Oscar/wrap-up Play contract reconciled so mid-run-answerable decisions do not force premature wrap; run_245 regression pinned in `packages/core/tests/runner.test.ts`.
 
 ### Dashboard, Oz, Pending, And Confirmation Surfaces
 
@@ -85,10 +85,10 @@ This section is the current-truth owner map for governance authoring actions. It
 
 ### Doc-vs-Code Drift
 
-- Priority create ownership in older rows below is stale: priority Markdown is now centralized in `packages/core/src/priorities/compose.ts:composePriorityMarkdown`, but direct route creation and create-priority Play instructions still duplicate action-level validation and collision contracts.
-- Create-ticket Play instructions are stale against `packages/core/src/tickets/create.ts:createTicket`: the Play says only the ticket file and `INDEX.md` should change, while core ticket creation also owns `cocoder/tickets/order.json`.
-- Older notes that marked ticket auto-close as unpinned are stale. Daemon mutation tests now pin auto-close, deferred close confirmation, active-run refusal, stale order cleanup, and pending run finalization.
-- The authoring Play lane is the current owner for priority edit/archive semantics. There is still no deterministic core helper for complete priority edit/archive actions, so daemon validators act as postconditions rather than writers.
+- Older rows below that describe split priority-create ownership or active-run refusal for dashboard ticket/priority routes are stale — superseded by `createPriorityFiles` and the authoring queue above.
+- Create-ticket Play instructions may still lag `packages/core/src/tickets/create.ts:createTicket` on `order.json` ownership prose; runtime paths call the core helper.
+- Priority edit/archive remain Play-owned; no deterministic core edit/archive helpers yet.
+- Machine-local run dirs: `packages/core/src/runner/run-dir.ts` writes nested `local/runs/<workspaceId>/<runId>`; `resolveLocalRunDir` falls back to legacy flat paths. One-time physical migration of existing flat dirs is tracked as ticket `0067`, not this map.
 
 ### Evidence Files Opened
 
@@ -107,7 +107,10 @@ Implementation and documentation files opened:
 - `packages/core/src/priorities/index.ts`
 - `packages/daemon/src/priority-order.ts`
 - `packages/daemon/src/routes.ts`
+- `packages/daemon/src/authoring-queue.ts`
+- `packages/daemon/src/priority-authoring.ts`
 - `packages/daemon/src/launcher.ts`
+- `packages/core/src/runner/run-dir.ts`
 - `packages/daemon/src/oz-chat.ts`
 - `packages/daemon/src/oz-host.ts`
 - `packages/daemon/src/oz-awareness.ts`
