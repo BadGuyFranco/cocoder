@@ -2,6 +2,9 @@
 id: founder-facing-run-identity
 title: Founder-facing run identity — speak [workspace] run N, not the DB id
 ---
+
+> **Archived 2026-06-25 (founder) — archive confirmed.** Founder confirmed archive from CLI.
+
 ## Objective
 
 Every founder-facing surface and every actor (Oscar, Bob, Deb, Oz, and read-only observers) refers to a run by its per-workspace display number ('CoCoder run 98' / 'workspace run 98'), never the internal runner DB id (run_242). The display number is the primary label in the workspace Runs tab, and that tab is renamed from 'Runs/Sessions' to just 'Runs'. The technical id stays in durable records only.
