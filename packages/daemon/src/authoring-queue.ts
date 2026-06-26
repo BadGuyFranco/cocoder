@@ -56,11 +56,13 @@ export interface QueuedPriorityCreateEntry extends QueuedBaseEntry {
 
 export type QueuedAuthoringEntry = QueuedTicketCreateEntry | QueuedTicketReorderEntry | QueuedTicketCloseEntry | QueuedTicketRepointEntry | QueuedPriorityCreateEntry
 
-export type QueuedAuthoringReceipt =
-  | { readonly queuedId: string; readonly reservedTicketId: string; readonly status: 'queued' }
-  | { readonly queuedId: string; readonly ticketId: string; readonly status: 'queued' }
-  | { readonly queuedId: string; readonly priorityId: string; readonly status: 'queued' }
-  | { readonly queuedId: string; readonly status: 'queued' }
+export interface QueuedAuthoringReceipt {
+  readonly queuedId: string
+  readonly status: 'queued'
+  readonly reservedTicketId?: string
+  readonly ticketId?: string
+  readonly priorityId?: string
+}
 
 interface QueueFile { readonly schemaVersion: typeof QUEUE_SCHEMA_VERSION; readonly entries: readonly QueuedAuthoringEntry[] }
 
