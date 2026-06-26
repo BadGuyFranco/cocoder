@@ -2,6 +2,15 @@
 id: runnerless-independent-priority
 title: Runner-independent (runnerless) priority execution + dogfooding-impact alert
 ---
+
+> **Archived 2026-06-26 (founder) — Objective met; archive-ready.** All 5 scope items + acceptance
+> criteria met (detection+alert run_105; Shape A runnerless execution, always-latest CLI, self-containment,
+> no-daemon e2e run_250). Hardening run_251 closed item 1 (real runRun integration test, commit 73da5c9,
+> no runRunImpl injection, real makeRunnerIO directive/verify handoff + real openRunStore, destructive live
+> store untouched), item 2 (daemon-up fail-fast guard, commit 99f3644), and item 3 (founder confirmed:
+> latest=most-capable-by-curation and force-over-pin both retained, no code change). Founder confirmed
+> item 3 model-resolution semantics (keep current) and authorized archive.
+
 ## Objective
 
 Give CoCoder a **runner-independent ("runnerless") execution path** for priorities that modify the machinery needed to run them, plus an **alert** that recommends it. (a) When a queued priority would impair the system's ability to run it (touches the runner/daemon/store/reload path, or is flagged `destructive`), detect and surface that — recommend an independent run rather than silently dogfooding it. (b) A priority marked `independent-of-runner` is executed by Oscar via a **standalone, daemon-free process**: it reuses the proven runner orchestration (Oscar directing Bob, with the per-atom verify gate, scope quarantine, and commit receipts) but runs **outside the daemon** — frozen installed code (no mid-run auto-reload), committing via **direct git** (no daemon-driven atom commits), and against an **isolated target for `destructive` priorities** (a scratch store copy, so a GC/migration cannot endanger the run's own state). Oscar's CLI resolves to the latest/greatest model. The result: a self-impacting or destructive change is built and verified without depending on the **daemon machinery** (auto-reload, scheduling, daemon commit spine) or risking the live install.
