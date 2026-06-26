@@ -13,6 +13,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
+| [0068](./open/0068-harden-correctness-clarity-elegance-at-the-verification-gate-without-new-orchestration.md) | Harden correctness-clarity-elegance at the verification gate, without new orchestration | task | none | founder-session |
 | [0067](./open/0067-physically-migrate-legacy-flat-local-runs-runid-dirs-to-the-adr-0027-6-nested-layout.md) | Physically migrate legacy flat local/runs/<runId> dirs to the ADR-0027 §6 nested layout | task | none | founder-session |
 | [0064](./open/0064-daemon-self-reload-zombies-the-old-process-and-wedges-oz-oz-sh-stop-reaps-only-the-listener.md) | Daemon self-reload zombies the old process and wedges Oz; oz.sh stop reaps only the listener | bug | none | founder-session |
 | [0048](./open/0048-adopt-eslint-in-cocoder-engine-repo.md) | Adopt a minimal ESLint 9 linter in CoCoder's own engine repo | task | none | Open |
