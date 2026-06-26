@@ -19,6 +19,7 @@ import { validFounderCloseout, validTicketFounderCloseout } from './helpers/foun
 const exec = promisify(execFile)
 const g = (cwd: string, args: string[]): Promise<string> => exec('git', ['-C', cwd, ...args]).then((r) => r.stdout.trim())
 const COCODER_GOVERNANCE = { name: 'cocoder-governance', email: 'governance@cocoder.local' } as const
+const STORE_RUN_CRITICAL_SCOPE = 'packages/core/src/store/**'
 
 const okAdapter: Adapter = {
   id: 'any',
@@ -253,6 +254,21 @@ const exists = async (path: string): Promise<boolean> => {
     return false
   }
 }
+async function readAuditEventually(home: string, expected: string): Promise<string> {
+  const auditPath = join(home, 'local', 'oz-audit.log')
+  let audit = ''
+  const deadline = Date.now() + 1_000
+  while (Date.now() < deadline) {
+    try {
+      audit = await readFile(auditPath, 'utf8')
+      if (audit.includes(expected)) return audit
+    } catch {
+      // appendAudit writes fire-and-forget; the audit file may not exist on the first poll.
+    }
+    await sleep(10)
+  }
+  return audit
+}
 // Fake RunnerIO so runRun completes against fakes (no real directive file to poll for). Oscar
 // immediately wraps up (zero atoms) — enough to exercise the launch→terminal lifecycle this suite tests.
 const fakeIO = (): RunnerIO => ({
@@ -408,7 +424,7 @@ async function fixtures(home: string): Promise<void> {
     join(home, 'local', 'workspaces.json'),
     JSON.stringify({ workspaces: [{ id: 'cocoder', name: 'CoCoder', path: '${COCODER_HOME}' }] }),
   )
-  await writeFile(join(home, 'cocoder', 'priorities', 'demo.md'), `---\nid: demo\ntitle: Demo\nscopeNarrowing:\n  - packages/**\n---\n## Objective\nDo the thing.`)
+  await writeFile(join(home, 'cocoder', 'priorities', 'demo.md'), `---\nid: demo\ntitle: Demo\n---\n## Objective\nDo the thing.`)
   await writeFile(join(home, 'cocoder', 'personas', 'shared-standards.md'), `# standards`)
   await writeFile(join(home, 'cocoder', 'personas', 'oscar.md'), `---\nid: oscar\nlabel: Orchestrator\nrole: orchestrator\nwriteScope: []\n---\nOscar`)
   await writeFile(join(home, 'cocoder', 'personas', 'bob.md'), `---\nid: bob\nlabel: Builder\nrole: builder\nwriteScope:\n  - packages/**\n---\nBob`)
@@ -775,6 +791,7 @@ describe('Oz mutations + lifecycle', () => {
 
   test('daemon-touching commits reload only after the run is idle', async () => {
     await setBobHeadless(home)
+    await writeFile(join(home, 'cocoder', 'priorities', 'daemon-work.md'), `---\nid: daemon-work\ntitle: Daemon Work\nscopeNarrowing:\n  - packages/**\n---\n## Objective\nDo the thing.`)
     const controlled = committedAtomThenControlledWrapIO()
     let restarts = 0
     let builds = 0
@@ -798,7 +815,7 @@ describe('Oz mutations + lifecycle', () => {
       },
     })
 
-    const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
+    const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'daemon-work', allowSelfImpacting: true } })
     expect(r.status).toBe(202)
     const runId = r.json.runId as string
     for (let i = 0; i < 50 && !store.listEvents(runId).some((event) => event.type === 'commit' && ((event.data as { files?: string[] } | null)?.files ?? []).includes('packages/daemon/src/routes.ts')); i++) {
@@ -827,6 +844,7 @@ describe('Oz mutations + lifecycle', () => {
 
   test('daemon reload build failure is surfaced and does not restart the daemon', async () => {
     await setBobHeadless(home)
+    await writeFile(join(home, 'cocoder', 'priorities', 'daemon-work.md'), `---\nid: daemon-work\ntitle: Daemon Work\nscopeNarrowing:\n  - packages/**\n---\n## Objective\nDo the thing.`)
     const controlled = committedAtomThenControlledWrapIO()
     let restarts = 0
     oz = await createOzServer({
@@ -844,7 +862,7 @@ describe('Oz mutations + lifecycle', () => {
       },
     })
 
-    const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
+    const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'daemon-work', allowSelfImpacting: true } })
     expect(r.status).toBe(202)
     const runId = r.json.runId as string
     controlled.release()
@@ -1440,6 +1458,103 @@ describe('Oz mutations + lifecycle', () => {
     const r = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo', task: 'x'.repeat(4001) } })
 
     expect(r).toEqual({ status: 400, json: { error: 'task too long' } })
+  })
+
+  test('POST /runs refuses a priority whose scope touches runner machinery before spawning', async () => {
+    await writeFile(
+      join(home, 'cocoder', 'priorities', 'runner-touch.md'),
+      `---\nid: runner-touch\ntitle: Runner Touch\nscopeNarrowing:\n  - ${STORE_RUN_CRITICAL_SCOPE}\n---\n## Objective\nDo the thing.`,
+    )
+    let spawns = 0
+    const baseHost = fakeHost()
+    const sessionHost: SessionHost = {
+      ...baseHost,
+      async spawn(opts) {
+        spawns += 1
+        return baseHost.spawn(opts)
+      },
+    }
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit([], ['same-sha']),
+      sessionHost,
+      getAdapter: () => okAdapter,
+      io: fakeIO(),
+      runHeadless: async () => ({ exitCode: 0, output: validFounderCloseout() }),
+    })
+
+    const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'runner-touch' } })
+
+    expect(r.status).toBe(409)
+    expect(r.json).toMatchObject({ code: 'self-impacting-priority', runnerImpact: true, override: 'allowSelfImpacting' })
+    expect(r.json.reasons).toEqual([
+      `scopeNarrowing "${STORE_RUN_CRITICAL_SCOPE}" intersects run-critical machinery "${STORE_RUN_CRITICAL_SCOPE}"`,
+    ])
+    expect(String(r.json.recommendation)).toContain('runnerless path')
+    expect(String(r.json.recommendation)).toContain('independent-of-runner: true')
+    expect(store.listRuns()).toHaveLength(0)
+    expect(oz.ctx.inFlight.has('cocoder')).toBe(false)
+    expect(spawns).toBe(0)
+    const audit = await readAuditEventually(home, '"disposition":"refused-impacting"')
+    expect(audit).toContain('"action":"launch-runner-impact"')
+    expect(audit).toContain('"priorityId":"runner-touch"')
+  })
+
+  test('POST /runs refuses an independent-of-runner priority from the normal runner', async () => {
+    await writeFile(
+      join(home, 'cocoder', 'priorities', 'runnerless.md'),
+      `---\nid: runnerless\ntitle: Runnerless\nindependent-of-runner: true\n---\n## Objective\nDo the thing.`,
+    )
+    let spawns = 0
+    const baseHost = fakeHost()
+    const sessionHost: SessionHost = {
+      ...baseHost,
+      async spawn(opts) {
+        spawns += 1
+        return baseHost.spawn(opts)
+      },
+    }
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit([], ['same-sha']),
+      sessionHost,
+      getAdapter: () => okAdapter,
+      io: fakeIO(),
+      runHeadless: async () => ({ exitCode: 0, output: validFounderCloseout() }),
+    })
+
+    const r = await call(oz, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'runnerless' } })
+
+    expect(r.status).toBe(409)
+    expect(r.json).toMatchObject({ code: 'independent-of-runner-required', independentOfRunner: true })
+    expect(String(r.json.error)).toContain('runnerless path')
+    expect(store.listRuns()).toHaveLength(0)
+    expect(oz.ctx.inFlight.has('cocoder')).toBe(false)
+    expect(spawns).toBe(0)
+    const audit = await readAuditEventually(home, '"disposition":"refused-independent"')
+    expect(audit).toContain('"action":"launch-runner-impact"')
+    expect(audit).toContain('"priorityId":"runnerless"')
+  })
+
+  test('POST /runs allowSelfImpacting proceeds while recording the runner-impact alert', async () => {
+    await writeFile(
+      join(home, 'cocoder', 'priorities', 'runner-touch.md'),
+      `---\nid: runner-touch\ntitle: Runner Touch\nscopeNarrowing:\n  - ${STORE_RUN_CRITICAL_SCOPE}\n---\n## Objective\nDo the thing.`,
+    )
+    await startServer(fakeGit([], ['same-sha']))
+
+    const r = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'runner-touch', allowSelfImpacting: true } })
+
+    expect(r.status).toBe(202)
+    expect(r.json.runId).toMatch(/^run_/)
+    expect(store.listEvents(String(r.json.runId)).map((event) => event.type)).toContain('launch-self-impact-override')
+    const audit = await readAuditEventually(home, '"disposition":"override-impacting"')
+    expect(audit).toContain('"action":"launch-runner-impact"')
+    expect(audit).toContain('"priorityId":"runner-touch"')
   })
 
   test('REFUSES to launch on a stale daemon (425, no run created) and SELF-RESTARTS when idle', async () => {

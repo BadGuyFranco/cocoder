@@ -148,7 +148,7 @@ describe('daemon auto-reload', () => {
       output: 'typecheck failed',
       files: ['packages/daemon/src/server.ts'],
     })
-    await expect(readFile(join(home, 'local', 'oz-audit.log'), 'utf8')).resolves.toContain('"action":"daemon-auto-reload-build-failed"')
+    await expect(readAuditEventually(home, '"action":"daemon-auto-reload-build-failed"')).resolves.toContain('"action":"daemon-auto-reload-build-failed"')
   })
 
   async function makeServer(opts: {
@@ -169,7 +169,7 @@ describe('daemon auto-reload', () => {
 
   async function launch(workspaceId: string): Promise<string> {
     if (!oz) throw new Error('server not started')
-    const result = await launchRun(oz.ctx, workspaceId, 'demo')
+    const result = await launchRun(oz.ctx, workspaceId, 'demo', { allowSelfImpacting: true })
     expect(result.status).toBe(202)
     const runId = result.body.runId
     if (typeof runId !== 'string') throw new Error('launch did not return a run id')
@@ -196,4 +196,20 @@ async function waitFor(predicate: () => boolean, timeoutMs = 1_000): Promise<voi
     await new Promise((resolve) => setTimeout(resolve, 10))
   }
   expect(predicate()).toBe(true)
+}
+
+async function readAuditEventually(home: string, expected: string): Promise<string> {
+  const auditPath = join(home, 'local', 'oz-audit.log')
+  let audit = ''
+  const deadline = Date.now() + 1_000
+  while (Date.now() < deadline) {
+    try {
+      audit = await readFile(auditPath, 'utf8')
+      if (audit.includes(expected)) return audit
+    } catch {
+      // appendAudit writes fire-and-forget; the audit file may not exist on the first poll.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
+  return audit
 }

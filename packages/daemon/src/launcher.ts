@@ -19,6 +19,7 @@ import {
   closeTicket,
   coCoderRunReference,
   commitFiles,
+  detectRunnerImpact,
   handledOpenTicketsForPriority,
   interferes,
   isInstructionSurface,
@@ -436,6 +437,24 @@ function appendStaleLaunchAudit(ctx: OzContext, workspaceId: string, target: Lau
   else void appendAudit(ctx.cocoderHome, { ...common, ticketId: target.ticketId })
 }
 
+function appendRunnerImpactLaunchAudit(
+  ctx: OzContext,
+  workspaceId: string,
+  priorityId: string,
+  disposition: 'refused-independent' | 'refused-impacting' | 'override-impacting',
+  reasons: readonly string[],
+  recommendation: string,
+): void {
+  void appendAudit(ctx.cocoderHome, {
+    action: 'launch-runner-impact',
+    workspaceId,
+    priorityId,
+    disposition,
+    reasons,
+    recommendation,
+  })
+}
+
 function ticketPriority(ticket: Ticket): Priority {
   const body = ticket.body.trim() || `# ${ticket.id} - ${ticket.title}`
   const objective = [
@@ -649,6 +668,7 @@ export async function launchRun(
     readonly task?: string | null
     readonly strictPreRunDirt?: boolean
     readonly allowPreRunIntegrityErrors?: boolean
+    readonly allowSelfImpacting?: boolean
   } = {},
 ): Promise<LaunchResult> {
   const now = ctx.now ?? Date.now
@@ -720,6 +740,45 @@ export async function launchRun(
     }
   }
   markTiming('launch-run-input-assembled', { targetKind: target.kind, targetId })
+  if (target.kind === 'priority') {
+    const priority = input.priority
+    const impact = detectRunnerImpact(priority)
+    const recommendation = 'Run this priority through the runnerless path. To record the remedy, mark the priority `independent-of-runner: true`; to consciously dogfood through the daemon runner, pass `allowSelfImpacting: true`.'
+    if (priority.independentOfRunner === true) {
+      const reasons = ['priority is marked independent-of-runner']
+      ctx.inFlight.delete(workspaceId)
+      appendRunnerImpactLaunchAudit(ctx, workspaceId, priority.id, 'refused-independent', reasons, 'Use the runnerless execution path for this priority. The normal daemon runner is intentionally refused.')
+      return {
+        status: 409,
+        body: {
+          error: `Priority "${priority.id}" is marked independent-of-runner and must be executed via the runnerless path, not the deterministic daemon runner.`,
+          code: 'independent-of-runner-required',
+          independentOfRunner: true,
+          reasons,
+          recommendation: 'Use the runnerless execution path for this priority. The normal daemon runner is intentionally refused.',
+        },
+      }
+    }
+    if (impact.impacts && opts.allowSelfImpacting !== true) {
+      ctx.inFlight.delete(workspaceId)
+      appendRunnerImpactLaunchAudit(ctx, workspaceId, priority.id, 'refused-impacting', impact.reasons, recommendation)
+      return {
+        status: 409,
+        body: {
+          error: `Priority "${priority.id}" may impair the daemon runner machinery that would run it.`,
+          code: 'self-impacting-priority',
+          runnerImpact: true,
+          reasons: impact.reasons,
+          recommendation,
+          override: 'allowSelfImpacting',
+        },
+      }
+    }
+    if (impact.impacts) {
+      appendRunnerImpactLaunchAudit(ctx, workspaceId, priority.id, 'override-impacting', impact.reasons, recommendation)
+      markTiming('launch-self-impact-override', { priorityId: priority.id, reasons: impact.reasons })
+    }
+  }
   // Fail-fast on a STALE daemon (serving code older than repo HEAD) BEFORE creating a run or spawning any
   // agents. Earned from a live incident: a stale daemon used to run a whole build that could only abort at
   // wrap-up, leaving a "restart the daemon" pickup that an idle agent (Deb) then acted on — running

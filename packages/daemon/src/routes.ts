@@ -90,6 +90,8 @@ interface LaunchBody {
   readonly strictPreRunDirt?: boolean
   /** Founder override for fatal pre-run governance integrity findings. */
   readonly allowPreRunIntegrityErrors?: boolean
+  /** Explicitly allow a priority that may impair the daemon runner machinery to dogfood through it. */
+  readonly allowSelfImpacting?: boolean
 }
 
 interface TeardownBody {
@@ -115,12 +117,16 @@ function launchBody(body: unknown): ParsedLaunchBody {
   if (Object.prototype.hasOwnProperty.call(record, 'allowPreRunIntegrityErrors') && typeof record.allowPreRunIntegrityErrors !== 'boolean') {
     return { ok: false, error: 'allowPreRunIntegrityErrors must be a boolean' }
   }
+  if (Object.prototype.hasOwnProperty.call(record, 'allowSelfImpacting') && typeof record.allowSelfImpacting !== 'boolean') {
+    return { ok: false, error: 'allowSelfImpacting must be a boolean' }
+  }
   const input: LaunchBody = {
     workspaceId: typeof record.workspaceId === 'string' ? record.workspaceId : '',
     ...(hasPriority ? { priorityId } : { ticketId }),
     resumeFromRunId: typeof record.resumeFromRunId === 'string' ? record.resumeFromRunId : undefined,
     strictPreRunDirt: record.strictPreRunDirt === true,
     allowPreRunIntegrityErrors: record.allowPreRunIntegrityErrors === true,
+    allowSelfImpacting: record.allowSelfImpacting === true,
   }
   if (Object.prototype.hasOwnProperty.call(record, 'task')) {
     if (typeof record.task !== 'string') return { ok: false, error: 'task must be a string' }
@@ -903,6 +909,7 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
       task: input.task,
       strictPreRunDirt: input.strictPreRunDirt,
       allowPreRunIntegrityErrors: input.allowPreRunIntegrityErrors,
+      allowSelfImpacting: input.allowSelfImpacting,
     })
     return sendJson(res, status, out), true
   }
