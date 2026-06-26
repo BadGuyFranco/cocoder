@@ -27,6 +27,7 @@ import { CmuxSessionHost } from '@cocoder/session-hosts'
 import { authoringPlayViaDaemon, closeTicketViaDaemon, migrateHistoryViaDaemon, requestDebRepairViaDaemon, resumeViaDaemon, runViaDaemon, startOzDaemon, supportCommitViaDaemon, teardownViaDaemon, type DebRepairEvidenceItem } from './client.js'
 import { closeTicketViaCli } from './close-ticket.js'
 import { createTicketViaCli } from './create-ticket.js'
+import { latestModelFor } from './latest-model.js'
 import { archivePriorityInvocation, createPriorityInvocation, createTicketInvocation, editPriorityInvocation } from './oz-args.js'
 
 const log = (m: string): void => console.error(`[cocoder] ${m}`)
@@ -487,9 +488,14 @@ async function runStandalone(
   const playSources = { baseDir: basePlaysDir(), deltaDir: join(root, 'cocoder', 'plays', 'deltas'), repoPlayDir: join(root, 'cocoder', 'plays') }
   const sharedStandards = readFileSync(join(baseDir, 'shared-standards.md'), 'utf8')
   const assignments = loadAssignments(join(personasDir, 'assignments.json'))
+  const registry = makeAdapterRegistry()
 
   const workspace = { id: 'cocoder', path: root, name: 'CoCoder' }
-  const oscar = resolveEffectivePersona(sources, assignments, 'oscar')
+  const assignedOscar = resolveEffectivePersona(sources, assignments, 'oscar')
+  const oscar = options.requireIndependentOfRunner
+    ? { ...assignedOscar, model: await latestModelFor(getAdapter(assignedOscar.cli, registry)) }
+    : assignedOscar
+  if (options.requireIndependentOfRunner) log(`run-independent → Oscar model resolved to ${oscar.model}`)
   const bob = resolveEffectivePersona(sources, assignments, 'bob')
   const deb = isPersonaEnabled(assignments, 'deb') ? resolveEffectivePersona(sources, assignments, 'deb') : undefined
   const priority = loadPriority(prioritiesDir, priorityId)
@@ -548,7 +554,6 @@ async function runStandalone(
   }
 
   const store = openRunStore(join(root, 'local', 'cocoder.db'))
-  const registry = makeAdapterRegistry()
   const deps: RunnerDeps = {
     store,
     sessionHost: new CmuxSessionHost(),

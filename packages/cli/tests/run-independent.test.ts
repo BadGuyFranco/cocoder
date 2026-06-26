@@ -5,6 +5,8 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { afterEach, describe, expect, test } from 'vitest'
+import type { Adapter } from '@cocoder/core'
+import { latestModelFor } from '../src/latest-model.js'
 
 const execFileAsync = promisify(execFile)
 const dirs: string[] = []
@@ -33,7 +35,26 @@ async function repoWithPriority(marked: boolean): Promise<string> {
   return repo
 }
 
+function modelAdapter(models: readonly string[]): Adapter {
+  return {
+    id: 'test-cli',
+    runReadiness: { mechanism: 'launch-flags', flags: [], managesUserConfig: false, detail: 'test' },
+    headlessCapable: true,
+    build: () => ({ command: 'test-cli', args: [] }),
+    preflight: async () => ({ ok: true, checks: [] }),
+    listModels: async () => ({ canEnumerate: true, models, detail: 'test models' }),
+  }
+}
+
 describe('cocoder run-independent', () => {
+  test('latestModelFor returns the adapter list first entry', async () => {
+    await expect(latestModelFor(modelAdapter(['opus', 'sonnet', 'haiku']))).resolves.toBe('opus')
+  })
+
+  test('latestModelFor refuses an adapter with no latest model', async () => {
+    await expect(latestModelFor(modelAdapter([]))).rejects.toThrow('did not report a latest model')
+  })
+
   test('refuses a priority that is not explicitly marked independent-of-runner', async () => {
     const repo = await repoWithPriority(false)
     const cli = fileURLToPath(new URL('../bin/cocoder.mjs', import.meta.url))
