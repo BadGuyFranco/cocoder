@@ -511,6 +511,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     throw err
   }
   const runDisplay = { id: run.id, displayNumber: portableRunDisplayNumber }
+  const runDisplayNamed = { ...runDisplay, workspaceName: workspace.name || null }
   const runReference = coCoderRunReference(runDisplay)
   const dirtyAtStart = new Set([
     ...dirtyAtStartFiles,
@@ -718,7 +719,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   type DebWake = { readonly kind: string; readonly detail: string }
   type DebRefreshOptions = { readonly boundary?: boolean }
   const writeDebEvidence = async (phase: RunnerPhase, activeAtom: number | null, activeTask: string | null, waitCondition: string): Promise<void> => {
-    const { json, markdown } = renderDebStatus({ store, runId: run.id, runDisplay, priority, scopes: debScopes, phase, activeAtom, activeTask, waitCondition })
+    const { json, markdown } = renderDebStatus({ store, runId: run.id, runDisplay: runDisplayNamed, priority, scopes: debScopes, phase, activeAtom, activeTask, waitCondition })
     await io.writeDebStatus(runDir, json, markdown)
     const terminalSnapshot = await captureDebTerminalSnapshot({
       runId: run.id,
@@ -1321,7 +1322,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       await commitOscarSupport(headBeforeOscarSupport)
       if (input.wrapPlay && input.wrapPlayAssignment) {
         const task =
-          `${runDisplayName(runDisplay)} on priority ${priority.id}. ${n} atom(s) were delegated; commits so far: ${committedShas.join(', ') || 'none'}.\n\n` +
+          `${runDisplayName(runDisplayNamed)} on priority ${priority.id}. ${n} atom(s) were delegated; commits so far: ${committedShas.join(', ') || 'none'}.\n\n` +
           `Oscar's notes for this wrap-up:\n${directive.pickup ?? ''}`
         const dispatchWrapPlay = async (wrapTask: string, outName: string): Promise<{ candidatePickup: string | null; outPath: string }> => {
           const headBeforeWrap = await git.headSha(worktreePath)
@@ -1537,7 +1538,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       if (oscarDriver.kind === 'headless') {
         store.recordEvent({ runId: run.id, type: 'wrapup-delivery-skipped', data: { reason: 'headless-oscar' } })
       } else {
-        const deliveryPath = await io.writeRunArtifact(runDir, 'wrapup-delivery.md', buildWrapupDelivery(runDisplay, pickup, outcome))
+        const deliveryPath = await io.writeRunArtifact(runDir, 'wrapup-delivery.md', buildWrapupDelivery(runDisplayNamed, pickup, outcome))
         await oscarDriver.show().catch(() => {})
         await oscarDriver.send(buildArtifactDispatch('WRAP-UP READY', deliveryPath)).catch(() => {})
         store.recordEvent({ runId: run.id, type: 'wrapup-delivery-dispatch', data: { ref: oscarDriver.refId, path: deliveryPath } })

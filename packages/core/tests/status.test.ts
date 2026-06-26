@@ -102,6 +102,28 @@ describe('renderDebStatus', () => {
     expect(markdown).toContain('- **Wrap disposition:** —')
   })
 
+  test('status markdown uses the workspace name when the run display carries one', () => {
+    const store = openRunStore(':memory:')
+    store.upsertWorkspace({ id: 'w', path: '/r', name: 'W' })
+    const run = store.createRun({ workspaceId: 'w', priorityId: 'demo' })
+
+    const markdown = renderDebStatus({
+      store,
+      runId: run.id,
+      runDisplay: { displayNumber: 98, workspaceName: 'CoCoder' },
+      priority,
+      scopes,
+      phase: 'awaiting-directive',
+      activeAtom: 0,
+      activeTask: 'do x',
+      waitCondition: 'awaiting directive 0',
+      now,
+    }).markdown
+
+    expect(markdown).toContain('# Run status — CoCoder run 98')
+    expect(markdown).toContain(`- **Technical id:** \`${run.id}\``)
+  })
+
   test('wrap disposition surfaces the latest recorded event value', () => {
     const s = statusFor(
       [

@@ -321,4 +321,11 @@ describe('buildBuilderDispatch', () => {
     expect(delivery).toContain('WRAP-UP READY for workspace run 1.')
     expect(delivery).toContain('cocoder oz commit-support run_178')
   })
+
+  test('wrap-up delivery uses the real workspace name when available', () => {
+    const delivery = buildWrapupDelivery({ id: 'run_178', displayNumber: 98, workspaceName: 'CoCoder' }, 'Closeout')
+
+    expect(delivery).toContain('WRAP-UP READY for CoCoder run 98.')
+    expect(delivery).toContain('cocoder oz commit-support run_178')
+  })
 })

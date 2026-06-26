@@ -185,7 +185,7 @@ export function renderDebStatus(input: {
   readonly store: RunStore
   readonly runId: string
   readonly priority: { readonly id: string; readonly title: string }
-  readonly runDisplay?: Pick<RunDisplayInput, 'displayNumber'> | null
+  readonly runDisplay?: Pick<RunDisplayInput, 'displayNumber' | 'workspaceName'> | null
   readonly scopes: Readonly<Record<string, readonly string[]>>
   readonly phase: RunnerPhase
   readonly activeAtom: number | null
@@ -197,7 +197,7 @@ export function renderDebStatus(input: {
   const { store, runId, priority, scopes, phase, activeAtom, activeTask, waitCondition } = input
   const now = (input.now ?? Date.now)()
   const events = store.listEvents(runId)
-  const displayName = runDisplayName({ id: runId, displayNumber: input.runDisplay?.displayNumber ?? null })
+  const displayName = runDisplayName({ id: runId, displayNumber: input.runDisplay?.displayNumber ?? null, workspaceName: input.runDisplay?.workspaceName ?? null })
 
   // ── Bob ──
   const dispatch = last(events, ['builder-dispatch'])
