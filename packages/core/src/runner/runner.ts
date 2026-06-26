@@ -74,6 +74,7 @@ import { localRunDir } from './run-dir.js'
 import {
   buildBuilderStandbyPrompt,
   buildArtifactDispatch,
+  buildFounderContinueDispatch,
   buildLandingOutcome,
   buildNextOrWrapDispatch,
   buildOrchestratorPrompt,
@@ -1050,6 +1051,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   let terminalStatus: RunStatus = 'completed'
   let ticketCloseDecision: TicketCloseDecision = 'none'
   let n = resumeState === null ? 0 : resumeStateAtomNumber(resumeState)
+  let directiveIndex = n
+  type FounderContinueWait = { readonly question: string; readonly askedAtDirectivePath: string; readonly nextDirectivePath: string }
+  let pendingFounderContinue: FounderContinueWait | null = null
   let pendingResumeState: ResumeState | null = resumeState
   let consecutiveRejects = 0
   debWatcher = startDebWatcher()
@@ -1299,8 +1303,14 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     await refreshStatus('awaiting-directive', n, null, pendingResumeState === null ? 'awaiting first directive' : `resuming atom ${n}`)
 
     for (;;) {
-    let directivePath = join(runDir, `directive-${n}.json`)
-    await refreshStatus('awaiting-directive', n, null, `awaiting directive ${n}`)
+    let directivePath = join(runDir, `directive-${directiveIndex}.json`)
+    const founderContinueWait: FounderContinueWait | null = pendingFounderContinue
+    await refreshStatus(
+      founderContinueWait ? 'awaiting-founder' : 'awaiting-directive',
+      n,
+      null,
+      founderContinueWait ? `awaiting founder decision before directive ${directiveIndex}: ${founderContinueWait.question}` : `awaiting directive ${directiveIndex}`,
+    )
     let directive: Directive
     let stepResume: AgentStepResume | undefined
     try {
@@ -1319,7 +1329,12 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         stepResume = verifyResume
         store.recordEvent({ runId: run.id, type: 'verify-resumed', data: { atom: n, park: pendingResumeState.park, verifyPath: verifyResume.verifyPath, directivePath } })
       } else {
-        directive = await awaitOscarWithNudgeWatchdog('directive', n, `awaiting directive ${n}`, () => awaitDirectiveOrFounderHold(directivePath, n))
+        directive = await awaitOscarWithNudgeWatchdog(
+          'directive',
+          n,
+          founderContinueWait ? `awaiting founder decision before directive ${directiveIndex}` : `awaiting directive ${directiveIndex}`,
+          () => awaitDirectiveOrFounderHold(directivePath, n),
+        )
       }
     } catch (err) {
       if (isFounderHeldError(err)) throw err
@@ -1329,6 +1344,23 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       return await fail('directive-timeout', String(err), n)
     }
     pendingResumeState = null
+    const consumedDirectivePath = directivePath
+    directiveIndex += 1
+
+    if (directive.kind === 'ask-founder-continue') {
+      const nextDirectivePath = join(runDir, `directive-${directiveIndex}.json`)
+      pendingFounderContinue = { question: directive.question, askedAtDirectivePath: consumedDirectivePath, nextDirectivePath }
+      store.recordEvent({
+        runId: run.id,
+        type: 'founder-decision-requested',
+        data: { atom: n, directivePath: consumedDirectivePath, nextDirectivePath, question: directive.question, message: directive.question, mode: 'ask-founder-continue' },
+      })
+      await refreshStatus('awaiting-founder', n, null, `awaiting founder decision before directive ${directiveIndex}: ${directive.question}`)
+      await oscarDriver.show()
+      await oscarDriver.send(buildFounderContinueDispatch(nextDirectivePath, directive.question))
+      continue
+    }
+    pendingFounderContinue = null
 
     if (directive.kind === 'wrapup') {
       const headBeforeOscarSupport = await git.headSha(worktreePath)
@@ -1521,9 +1553,10 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     }
 
     // Ask Oscar for the next turn (names the exact next directive path — the numbered handshake).
-    await throwIfFounderStopRegistered(n, join(runDir, `directive-${n}.json`))
+    const nextDirectivePath = join(runDir, `directive-${directiveIndex}.json`)
+    await throwIfFounderStopRegistered(n, nextDirectivePath)
     await oscarDriver.show()
-    await oscarDriver.send(buildNextOrWrapDispatch(join(runDir, `directive-${n}.json`), step.outcomeLine))
+    await oscarDriver.send(buildNextOrWrapDispatch(nextDirectivePath, step.outcomeLine))
   }
   } catch (err) {
     await stopDebWatcher()

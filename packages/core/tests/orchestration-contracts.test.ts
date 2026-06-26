@@ -160,13 +160,14 @@ describe('orchestration contract ownership', () => {
 
   test('build-loop directives expose no second Deb repair lane', () => {
     expect(parseDirective(JSON.stringify({ kind: 'delegate', task: 'ship the atom' })).kind).toBe('delegate')
+    expect(parseDirective(JSON.stringify({ kind: 'ask-founder-continue', question: 'Which option should continue?' })).kind).toBe('ask-founder-continue')
     expect(parseDirective(JSON.stringify({ kind: 'wrapup', pickup: 'resume here' })).kind).toBe('wrapup')
     expect(() => parseDirective(JSON.stringify({ kind: 'deb-investigate', blocker: 'Oscar found a machinery problem' }))).toThrow(
-      'directive: "kind" must be "delegate" or "wrapup"',
+      'directive: "kind" must be "delegate", "ask-founder-continue", or "wrapup"',
     )
 
-    const directiveKinds = ['delegate', 'wrapup'] as const
-    expect(directiveKinds).toEqual(['delegate', 'wrapup'])
+    const directiveKinds = ['delegate', 'ask-founder-continue', 'wrapup'] as const
+    expect(directiveKinds).toEqual(['delegate', 'ask-founder-continue', 'wrapup'])
     expect(read('packages/core/src/runner/prompts.ts')).not.toContain('deb-investigate')
   })
 })

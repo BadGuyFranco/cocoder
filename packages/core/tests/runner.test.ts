@@ -274,6 +274,7 @@ const fakeIO = (opts: {
 const doneJudge: MakeJudge = () => async () => ({ state: 'done' })
 
 const delegate = (task: string): Directive => ({ kind: 'delegate', task })
+const askFounderContinue = (question: string): Directive => ({ kind: 'ask-founder-continue', question })
 const writePathDelegate = (task: string, writePaths: readonly string[]): Directive => ({ kind: 'delegate', task, writePaths })
 const loopDelegate = (task: string, over: Partial<NonNullable<Extract<Directive, { kind: 'delegate' }>['loop']>> = {}): Directive => ({
   kind: 'delegate',
@@ -691,6 +692,59 @@ describe('runRun (multi-atom loop)', () => {
     expect(store.listCommitLinks(result.runId).filter((c) => c.workItemId !== null).map((c) => c.files)).toEqual([['packages/a.ts'], ['packages/b.ts']])
     const types = store.listEvents(result.runId).map((e) => e.type)
     expect(types).toEqual(expect.arrayContaining(['run-start', 'spawn', 'delegation', 'builder-done', 'verify-pass', 'commit', 'wrapup', 'run-end']))
+  })
+
+  test('surfaces a mid-run founder decision without wrapping, then accepts the next delegate in context', async () => {
+    const store = openRunStore(':memory:')
+    const statusWrites: DebStatus[] = []
+    const sends: string[] = []
+    const result = await runRun(
+      baseDeps({
+        store,
+        sessionHost: fakeSessionHost({ async sendInput(_ref, text) { sends.push(text) } }),
+        git: scriptedGit([['packages/prep.ts'], ['packages/final.ts']]),
+        io: fakeIO({
+          directives: [
+            delegate('prepare the compatibility shim'),
+            askFounderContinue('Should the compatibility shim stay enabled by default?'),
+            delegate('finish the implementation with the founder answer: keep it enabled by default'),
+            wrapup('done after remaining implementation'),
+          ],
+          statusWrites,
+        }),
+      }),
+      { ...input, deb },
+    )
+
+    expect(result.status).toBe('completed')
+    expect(result.atoms).toBe(2)
+    expect(result.committedShas).toHaveLength(2)
+    expect(result.committedFiles).toEqual(['packages/prep.ts', 'packages/final.ts'])
+    expect(store.listCommitLinks(result.runId).filter((link) => link.workItemId !== null).map((link) => link.files)).toEqual([
+      ['packages/prep.ts'],
+      ['packages/final.ts'],
+    ])
+
+    const events = store.listEvents(result.runId)
+    const founderDecisionIndex = events.findIndex((event) => event.type === 'founder-decision-requested')
+    const secondDelegationIndex = events.findIndex((event) => event.type === 'delegation' && (event.data as { task?: unknown }).task === 'finish the implementation with the founder answer: keep it enabled by default')
+    const wrapupIndex = events.findIndex((event) => event.type === 'wrapup')
+    const runEndIndex = events.findIndex((event) => event.type === 'run-end')
+    expect(founderDecisionIndex).toBeGreaterThan(-1)
+    expect(secondDelegationIndex).toBeGreaterThan(founderDecisionIndex)
+    expect(wrapupIndex).toBeGreaterThan(secondDelegationIndex)
+    expect(runEndIndex).toBeGreaterThan(wrapupIndex)
+    expect(events.slice(0, secondDelegationIndex).some((event) => event.type === 'wrapup' || event.type === 'run-end')).toBe(false)
+    expect(events[founderDecisionIndex]?.data).toMatchObject({
+      atom: 1,
+      directivePath: expect.stringContaining('directive-1.json'),
+      nextDirectivePath: expect.stringContaining('directive-2.json'),
+      question: 'Should the compatibility shim stay enabled by default?',
+      mode: 'ask-founder-continue',
+    })
+    expect(store.getRun(result.runId)?.status).toBe('completed')
+    expect(statusWrites.some((status) => status.oscar === 'blocked' && status.waitCondition.includes('awaiting founder decision before directive 2'))).toBe(true)
+    expect(sends.some((text) => text.includes('FOUNDER DECISION NEEDED') && text.includes('directive-2.json'))).toBe(true)
   })
 
   test('run-wrap audit FLAGS a commit that advanced HEAD outside the run ledger (ADR-0041 §4 / 0058)', async () => {
