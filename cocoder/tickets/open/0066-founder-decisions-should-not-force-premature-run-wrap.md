@@ -3,7 +3,7 @@ id: 0066
 title: Founder decisions should not force premature run wrap
 type: bug
 status: Open
-priority: none
+priority: governance-authoring-ssot
 owner: founder-session
 created: 2026-06-26
 ---

@@ -3,7 +3,7 @@ id: 0063
 title: Author governance (ticket/priority) during an active run — queue instead of refuse, and surface the refusal
 type: task
 status: Open
-priority: none
+priority: governance-authoring-ssot
 owner: founder-session
 created: 2026-06-25
 ---

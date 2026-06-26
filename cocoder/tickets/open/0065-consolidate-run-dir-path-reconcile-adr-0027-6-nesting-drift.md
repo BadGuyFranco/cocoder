@@ -3,7 +3,7 @@ id: 0065
 title: Consolidate run-dir path; reconcile ADR-0027 §6 nesting drift
 type: task
 status: Open
-priority: none
+priority: governance-authoring-ssot
 owner: founder-session
 created: 2026-06-26
 ---
