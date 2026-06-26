@@ -5,5 +5,6 @@
   "new-primary-root",
   "priority-audit",
   "ad-hoc-session-architecture",
-  "local-cache-retention"
+  "local-cache-retention",
+  "runnerless-independent-priority"
 ]
