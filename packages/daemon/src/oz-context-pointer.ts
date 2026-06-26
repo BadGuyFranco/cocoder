@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { localRunDir, localRunDirById as resolveLocalRunDir, runDisplayName } from '@cocoder/core'
+import { localRunDir, resolveLocalRunDir, runDisplayName } from '@cocoder/core'
 import type { OzAwarenessSnapshot } from './oz-awareness.js'
 
 type ContextPointerType = 'priority' | 'ticket' | 'run'
@@ -89,7 +89,7 @@ function resolveContextPointer(awareness: OzAwarenessSnapshot, dirs: ContextPoin
     ? {
         pointer,
         slugLabel: run.ticketId ? `${runDisplayName(run)} — ticket ${run.ticketId}` : run.playbookId ? `${runDisplayName(run)} — playbook ${run.playbookId}` : `${runDisplayName(run)} — priority ${run.priorityId}`,
-        filePath: resolveLocalRunDir(dirs.runsRoot, run.id, { missing: 'null' }) ?? localRunDir(dirs.runsRoot, run),
+        filePath: resolveLocalRunDir(dirs.runsRoot, run.id) ?? localRunDir(dirs.runsRoot, run),
         note: 'Resolved from the loaded run digest.',
       }
     : unresolved(pointer, `No run with id "${pointer.id}" appears in the loaded awareness snapshot.`)

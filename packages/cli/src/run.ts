@@ -7,11 +7,11 @@ import {
   loadAssignments,
   listEffectivePlays,
   loadPriority,
-  localRunDirById,
   makeGit,
   makeRunnerIO,
   openRunStore,
   probeDaemon,
+  resolveLocalRunDir,
   resolveMandatoryPlay,
   resolveEffectivePersona,
   resolvePlayAssignment,
@@ -506,7 +506,8 @@ async function runStandalone(priorityId: string, resumeFromRunId?: string, stric
   let pickup: string | null = null
   if (resumeFromRunId) {
     try {
-      const resumeRunDir = localRunDirById(runsRoot, resumeFromRunId)
+      const resumeRunDir = resolveLocalRunDir(runsRoot, resumeFromRunId)
+      if (resumeRunDir === null) throw new Error('missing pickup run dir')
       pickup = readFileSync(join(resumeRunDir, 'pickup.md'), 'utf8')
     } catch {
       console.error(`cocoder: cannot resume — no pickup brief for run "${resumeFromRunId}"`)

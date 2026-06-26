@@ -13,7 +13,7 @@ export {
   type PreRunIntegrityIssue,
   type MakeJudge,
 } from './runner.js'
-export { localRunDir, localRunDirById, resolveLocalRunDir, type LocalRunIdentity } from './run-dir.js'
+export { localRunDir, resolveLocalRunDir, type LocalRunIdentity } from './run-dir.js'
 export { groupLabel, type RunLabelTarget, type RunLabelTargetType } from './labels.js'
 export { StopRequestedError } from './stop.js'
 export { makeRunnerIO, type RunnerIO, type RunnerPollOptions } from './io.js'

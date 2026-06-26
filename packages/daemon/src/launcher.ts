@@ -26,7 +26,7 @@ import {
   gateCommitRepair,
   listEffectivePlays,
   localRunDir,
-  localRunDirById as resolveLocalRunDir,
+  resolveLocalRunDir,
   loadAssignments,
   loadEffectivePlay,
   loadPriority,
@@ -220,7 +220,7 @@ async function assembleRunInput(
   let pickup: string | null = null
   if (opts.resumeFromRunId) {
     try {
-      const resumeRunDir = resolveLocalRunDir(ctx.runsRoot, opts.resumeFromRunId, { missing: 'null' })
+      const resumeRunDir = resolveLocalRunDir(ctx.runsRoot, opts.resumeFromRunId)
       if (resumeRunDir === null) throw new Error('missing pickup run dir')
       pickup = await readFile(join(resumeRunDir, 'pickup.md'), 'utf8')
     } catch {
@@ -1067,7 +1067,7 @@ export async function requestNudgeRun(ctx: OzContext, runId: string, message: st
     return { status: 409, body: { error: `run is not live in this daemon process or is "${run.status}" — only a running live run can be nudged cooperatively` } }
   }
 
-  const runDir = resolveLocalRunDir(ctx.runsRoot, run.id, { missing: 'null' }) ?? localRunDir(ctx.runsRoot, run)
+  const runDir = resolveLocalRunDir(ctx.runsRoot, run.id) ?? localRunDir(ctx.runsRoot, run)
   const path = join(runDir, 'oz-nudge.json')
   const seq = (await readNudgeSeq(path)) + 1
   const payload = {

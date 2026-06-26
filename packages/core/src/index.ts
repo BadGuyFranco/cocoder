@@ -316,7 +316,7 @@ export {
   type RunLabelTargetType,
   type MakeJudge,
   localRunDir,
-  localRunDirById,
+  resolveLocalRunDir,
   type LocalRunIdentity,
   makeRunnerIO,
   type RunnerIO,

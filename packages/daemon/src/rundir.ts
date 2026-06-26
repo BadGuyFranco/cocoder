@@ -3,7 +3,7 @@
 // Large outputs are capped so a run detail can't return an unbounded payload.
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { localRunDir, localRunDirById as resolveLocalRunDir, truncate, type LocalRunIdentity } from '@cocoder/core'
+import { localRunDir, resolveLocalRunDir, truncate, type LocalRunIdentity } from '@cocoder/core'
 
 /** Cap any single captured stream so a run-detail response stays bounded. */
 const CAP = 50_000
@@ -29,8 +29,8 @@ export interface RunDirContents {
 /** Read the per-run artifacts; every field is best-effort (null when the file isn't present). */
 export async function readRunDir(runsRoot: string, run: LocalRunIdentity | string): Promise<RunDirContents> {
   const dir = typeof run === 'string'
-    ? resolveLocalRunDir(runsRoot, run, { missing: 'null' })
-    : (resolveLocalRunDir(runsRoot, run.id, { missing: 'null' }) ?? localRunDir(runsRoot, run))
+    ? resolveLocalRunDir(runsRoot, run)
+    : (resolveLocalRunDir(runsRoot, run.id) ?? localRunDir(runsRoot, run))
   if (dir === null) {
     return { oscarOut: null, oscarErr: null, bobOut: null, bobErr: null, pickup: null, record: null }
   }

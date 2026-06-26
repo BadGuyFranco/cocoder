@@ -18,15 +18,6 @@ export function resolveLocalRunDir(runsRoot: string, runId: string): string | nu
   return isDirectory(legacy) ? legacy : null
 }
 
-/** @deprecated Use resolveLocalRunDir for read-by-id compatibility. */
-export function localRunDirById(runsRoot: string, runId: string): string
-export function localRunDirById(runsRoot: string, runId: string, opts: { readonly missing: 'null' }): string | null
-export function localRunDirById(runsRoot: string, runId: string, opts?: { readonly missing: 'null' }): string | null {
-  const resolved = resolveLocalRunDir(runsRoot, runId)
-  if (opts?.missing === 'null') return resolved
-  return resolved ?? join(runsRoot, runId)
-}
-
 function existingNestedRunDir(runsRoot: string, runId: string): string | null {
   let entries
   try {
