@@ -47,3 +47,16 @@ Two retention models are explicitly **rejected**: time-based (punishes a repo ru
 
 - Relocating the install root (`cocoderHome`/`local/`) out of the CoCoder source checkout — related but a separate decision/ticket.
 - Changing the portable `cocoder/runs/` record format or projecting additional artifacts (e.g. a readable `record.md`) into it.
+
+## Execution safety — dogfooding isolation (REQUIRED, read before launching)
+
+This priority mutates `local/cocoder.db` (the live coordination store) and `local/runs/` (live scratch) — the exact working state every run depends on. Building it on the cocoder install the normal way is **unsafe**: a bug here does not misbehave, it **deletes run history**, and the daemon's auto-reload (ticket 0064) can activate the GC against the live store *before the build run even wraps*. Guardrails:
+
+- **Hard dependency:** lands/activates only AFTER the daemon-reload-safety fix (ticket 0064). A mid-run reload must never surprise-activate the GC.
+- **Build + validate in an independent, disposable CoCoder checkout/install** whose `local/` is the test subject — seed a fixture store + fake run-dirs and exercise the GC adversarially. The live dogfooding `local/` is NEVER the test subject.
+- **Fixture-only tests** (`openRunStore(':memory:')` + temp dirs); a test must never touch real install paths.
+- **Ship inert** on the live install (flag-gated, OFF by default); enable on cocoder only after it is proven in isolation.
+- **Never prune the run currently executing**, and tolerate the live store mutating underneath the GC.
+- **Do NOT launch this as a normal cocoder run** until the guards above exist. Run it via the independent/runnerless path (see the `runnerless-independent-priority` priority) — i.e. an independent session outside cocoder.
+
+This priority is the canonical example of the class "destructive, self-modifying engine change" that cannot be safely dogfooded normally.
