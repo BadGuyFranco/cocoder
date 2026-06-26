@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import type { Adapter, RunnerDeps, RunInput, RunResult } from '@cocoder/core'
 import { latestModelFor } from '../src/latest-model.js'
 import { main } from '../src/run.js'
@@ -82,17 +82,17 @@ function completedRun(input: RunInput): RunResult {
   }
 }
 
-async function runCliIndependent(repo: string, seen: Array<{ readonly deps: RunnerDeps; readonly input: RunInput }>): Promise<{ readonly probeCalls: number }> {
+async function runCliIndependent(repo: string, seen: Array<{ readonly deps: RunnerDeps; readonly input: RunInput }>, args: readonly string[] = []): Promise<{ readonly probeCalls: number }> {
   const previousArgv = process.argv
   const previousCwd = process.cwd()
   let probeCalls = 0
   try {
     process.chdir(repo)
-    process.argv = [process.execPath, 'cocoder', 'run-independent', 'demo']
+    process.argv = [process.execPath, 'cocoder', 'run-independent', 'demo', ...args]
     await main({
       probeDaemonImpl: async () => {
         probeCalls += 1
-        throw new Error('probeDaemon must not be called by run-independent')
+        return { alive: false, port: 7878 }
       },
       runStandaloneOptions: {
         runRunImpl: async (deps, input) => {
@@ -164,7 +164,7 @@ describe('cocoder run-independent', () => {
     })).resolves.toMatchObject({ dbPath: liveDbPath, runsRoot: liveRunsRoot, isolated: false, scratchRoot: null })
   })
 
-  test('completes through the standalone runner without probing the daemon and threads latest model plus scratch state', async () => {
+  test('destructive scratch run-independent skips the live-store daemon guard and threads latest model plus scratch state', async () => {
     const repo = await repoWithPriority(true, true)
     await writeAssignments(repo)
     const seen: Array<{ readonly deps: RunnerDeps; readonly input: RunInput }> = []
@@ -183,19 +183,93 @@ describe('cocoder run-independent', () => {
     expect(process.exitCode).toBe(0)
   })
 
-  test('run-independent keeps non-destructive state live while still bypassing daemon and resolving Oscar latest', async () => {
+  test('daemon-down run-independent keeps non-destructive state live and resolves Oscar latest', async () => {
     const repo = await repoWithPriority(true)
     await writeAssignments(repo)
     const seen: Array<{ readonly deps: RunnerDeps; readonly input: RunInput }> = []
 
     const result = await runCliIndependent(repo, seen)
 
-    expect(result.probeCalls).toBe(0)
+    expect(result.probeCalls).toBe(1)
     expect(seen).toHaveLength(1)
     expect(seen[0]!.input.oscar.model).toBe('opus')
     expect(seen[0]!.input.priority).toMatchObject({ id: 'demo', independentOfRunner: true, destructive: false })
     expect(seen[0]!.input.runsRoot).toBe(join(repo, 'local', 'runs'))
     expect(await exists(join(repo, 'local', 'cocoder.db'))).toBe(true)
+    expect(process.exitCode).toBe(0)
+  })
+
+  test('refuses non-destructive run-independent when a daemon owns the live store before opening the DB', async () => {
+    const repo = await repoWithPriority(true)
+    const previousArgv = process.argv
+    const previousCwd = process.cwd()
+    const errors: string[] = []
+    const exit = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined): never => {
+      throw new Error(`process.exit:${String(code)}`)
+    })
+    const consoleError = vi.spyOn(console, 'error').mockImplementation((message?: unknown): void => {
+      errors.push(String(message))
+    })
+
+    try {
+      process.chdir(repo)
+      process.argv = [process.execPath, 'cocoder', 'run-independent', 'demo']
+      await expect(main({
+        probeDaemonImpl: async () => ({ alive: true, port: 7878 }),
+        runStandaloneOptions: {
+          runRunImpl: async () => {
+            throw new Error('runRun must not start when the daemon is live')
+          },
+        },
+      })).rejects.toThrow('process.exit:1')
+    } finally {
+      process.argv = previousArgv
+      process.chdir(previousCwd)
+      exit.mockRestore()
+      consoleError.mockRestore()
+    }
+
+    const message = errors.join('\n')
+    expect(message).toContain('live store')
+    expect(message).toContain('local/cocoder.db')
+    expect(message).toContain("single-writer lock")
+    expect(message).toContain('Stop the daemon')
+    expect(message).toContain('--force')
+    expect(await exists(join(repo, 'local', 'cocoder.db'))).toBe(false)
+  })
+
+  test('--force logs a warning and proceeds past a live daemon guard', async () => {
+    const repo = await repoWithPriority(true)
+    await writeAssignments(repo)
+    const seen: Array<{ readonly deps: RunnerDeps; readonly input: RunInput }> = []
+    const errors: string[] = []
+    const consoleError = vi.spyOn(console, 'error').mockImplementation((message?: unknown): void => {
+      errors.push(String(message))
+    })
+    const previousArgv = process.argv
+    const previousCwd = process.cwd()
+
+    try {
+      process.chdir(repo)
+      process.argv = [process.execPath, 'cocoder', 'run-independent', 'demo', '--force']
+      await main({
+        probeDaemonImpl: async () => ({ alive: true, port: 7878 }),
+        runStandaloneOptions: {
+          runRunImpl: async (deps, input) => {
+            seen.push({ deps, input })
+            return completedRun(input)
+          },
+        },
+      })
+    } finally {
+      process.argv = previousArgv
+      process.chdir(previousCwd)
+      consoleError.mockRestore()
+    }
+
+    expect(seen).toHaveLength(1)
+    expect(errors.join('\n')).toContain('WARNING')
+    expect(errors.join('\n')).toContain('single-writer lock')
     expect(process.exitCode).toBe(0)
   })
 

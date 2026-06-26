@@ -39,7 +39,8 @@ const log = (m: string): void => console.error(`[cocoder] ${m}`)
 const out = (m: string): void => {
   process.stdout.write(`${m}\n`)
 }
-const usage = 'usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   cocoder run-independent <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz create-priority --id <id> --title <text> --objective <text> [--details-file <path> | --details-stdin]   |   cocoder oz edit-priority <id> [--objective <text>] [--mode <replace-body|append-section>] [--details-file <path> | --details-stdin]   |   cocoder oz close-ticket <id> [--resolution <text>] [--run <runId>]   |   cocoder oz create-ticket --title <text> --type <type> --priority <priority> [--description <text> | --details-file <path> | --details-stdin] [--id <id>] [--run <runId>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]   |   cocoder oz commit-support <runId>   |   cocoder oz resume <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]'
+const runIndependentUsage = 'usage: cocoder run-independent <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors] [--force]'
+const usage = `usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   ${runIndependentUsage}   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz create-priority --id <id> --title <text> --objective <text> [--details-file <path> | --details-stdin]   |   cocoder oz edit-priority <id> [--objective <text>] [--mode <replace-body|append-section>] [--details-file <path> | --details-stdin]   |   cocoder oz close-ticket <id> [--resolution <text>] [--run <runId>]   |   cocoder oz create-ticket --title <text> --type <type> --priority <priority> [--description <text> | --details-file <path> | --details-stdin] [--id <id>] [--run <runId>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]   |   cocoder oz commit-support <runId>   |   cocoder oz resume <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]`
 const requestDebRepairUsage = 'usage: cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]'
 const closeTicketUsage = 'usage: cocoder oz close-ticket <id> [--resolution <text>] [--run <runId>]'
 const createTicketUsage = 'usage: cocoder oz create-ticket --title <text> --type <type> --priority <priority> [--description <text> | --details-file <path> | --details-stdin] [--id <id>] [--run <runId>]'
@@ -52,6 +53,8 @@ type RunRunImpl = (deps: RunnerDeps, input: RunInput) => Promise<RunResult>
 
 export interface RunStandaloneOptions {
   readonly requireIndependentOfRunner?: boolean
+  readonly forceDaemonLive?: boolean
+  readonly probeDaemonImpl?: ProbeDaemonImpl
   readonly runRunImpl?: RunRunImpl
 }
 
@@ -107,6 +110,10 @@ function independentRunnerRefusal(priority: { readonly id: string; readonly inde
   if (priority.independentOfRunner === true) return null
   const detail = impactReasons.length > 0 ? ` Detected runner impact: ${impactReasons.join('; ')}.` : ''
   return `Priority "${priority.id}" is not marked independent-of-runner: true; refusing run-independent.${detail} Mark the priority with \`independent-of-runner: true\` before using this daemon-free entrypoint.`
+}
+
+function daemonLiveStoreContentionMessage(port: number): string {
+  return `cocoder: Oz daemon is live on :${port}; refusing run-independent against the live store. The daemon owns local/cocoder.db and this run would contend for SQLite's single-writer lock. Stop the daemon, or re-run with --force to proceed anyway.`
 }
 
 // `cocoder run <priorityId>` (ADR-0004). The probe decides the writer: if a daemon is live it owns
@@ -440,7 +447,7 @@ export async function main(options: MainOptions = {}): Promise<void> {
     process.exit(2)
   }
   if (!arg1) {
-    console.error(cmd === 'run-independent' ? 'usage: cocoder run-independent <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]' : usage)
+    console.error(cmd === 'run-independent' ? runIndependentUsage : usage)
     process.exit(2)
   }
   const priorityId = arg1
@@ -448,17 +455,20 @@ export async function main(options: MainOptions = {}): Promise<void> {
   const resumeIdx = process.argv.indexOf('--resume')
   const resumeFromRunId = resumeIdx >= 0 ? process.argv[resumeIdx + 1] : undefined
   if (resumeIdx >= 0 && !resumeFromRunId) {
-    console.error(cmd === 'run-independent' ? 'usage: cocoder run-independent <priorityId> --resume <runId>' : 'usage: cocoder run <priorityId> --resume <runId>')
+    console.error(cmd === 'run-independent' ? 'usage: cocoder run-independent <priorityId> --resume <runId> [--force]' : 'usage: cocoder run <priorityId> --resume <runId>')
     process.exit(2)
   }
   // Optional `--strict-dirt` (ADR-0029): refuse the launch on uncommitted founder WIP instead of the
   // default founder pre-run snapshot. For shared repos / CI that want a hard manual gate.
   const strictPreRunDirt = process.argv.includes('--strict-dirt')
   const allowPreRunIntegrityErrors = process.argv.includes('--allow-pre-run-integrity-errors')
+  const forceDaemonLive = process.argv.includes('--force')
 
   if (cmd === 'run-independent') {
     await runStandalone(priorityId, resumeFromRunId, strictPreRunDirt, allowPreRunIntegrityErrors, {
       ...options.runStandaloneOptions,
+      forceDaemonLive,
+      probeDaemonImpl,
       requireIndependentOfRunner: true,
     })
     return
@@ -501,10 +511,21 @@ export async function runStandalone(
       console.error(`cocoder: ${refusal}`)
       process.exit(1)
     }
-    log('run-independent → standalone direct mode (daemon bypassed)')
+    log('run-independent → standalone direct mode (runner bypassed)')
   }
   const runTarget = await resolveRunTarget({ root, priority, requireIndependentOfRunner: options.requireIndependentOfRunner === true })
   if (runTarget.isolated) log(`run-independent (destructive) → isolated scratch target at ${runTarget.scratchRoot} (live store/runs untouched)`)
+  if (options.requireIndependentOfRunner === true && !runTarget.isolated) {
+    const live = await (options.probeDaemonImpl ?? probeDaemon)({ port: DEFAULT_OZ_PORT })
+    if (live.alive) {
+      const message = daemonLiveStoreContentionMessage(live.port)
+      if (!options.forceDaemonLive) {
+        console.error(message)
+        process.exit(1)
+      }
+      log(`WARNING: ${message.replace(/^cocoder: /, '')}`)
+    }
+  }
   const runsRoot = runTarget.runsRoot
   const baseDir = basePersonasDir()
   const sources: PersonaSources = { baseDir, deltaDir: join(personasDir, 'deltas'), repoPersonaDir: personasDir }
