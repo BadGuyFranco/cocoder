@@ -2,7 +2,7 @@
 id: 0063
 title: Author governance (ticket/priority) during an active run — queue instead of refuse, and surface the refusal
 type: task
-status: Open
+status: Closed
 priority: governance-authoring-ssot
 owner: founder-session
 created: 2026-06-25
@@ -38,3 +38,9 @@ Governance files (`cocoder/tickets`, `cocoder/priorities`, `cocoder/decisions`) 
 - Relates to ADR-0042 (Tier 1) and ADR-0041 D2/D3 (why out-of-band governance during a run is refused).
 </content>
 </invoke>
+
+## Resolution
+
+Resolved by run run_246 (no code change) on 2026-06-26.
+
+Active-run governance authoring queue: create/close/repoint/reorder plus priority-create accept-and-queue while a run is active, drain at the safe seam plus wrap backstop, queued entries surfaced; SSOT single-writer ops.

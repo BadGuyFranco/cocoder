@@ -13,10 +13,8 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
-| [0066](./open/0066-founder-decisions-should-not-force-premature-run-wrap.md) | Founder decisions should not force premature run wrap | bug | governance-authoring-ssot | founder-session |
-| [0065](./open/0065-consolidate-run-dir-path-reconcile-adr-0027-6-nesting-drift.md) | Consolidate run-dir path; reconcile ADR-0027 §6 nesting drift | task | governance-authoring-ssot | founder-session |
+| [0067](./open/0067-physically-migrate-legacy-flat-local-runs-runid-dirs-to-the-adr-0027-6-nested-layout.md) | Physically migrate legacy flat local/runs/<runId> dirs to the ADR-0027 §6 nested layout | task | none | founder-session |
 | [0064](./open/0064-daemon-self-reload-zombies-the-old-process-and-wedges-oz-oz-sh-stop-reaps-only-the-listener.md) | Daemon self-reload zombies the old process and wedges Oz; oz.sh stop reaps only the listener | bug | none | founder-session |
-| [0063](./open/0063-author-governance-ticket-priority-during-an-active-run-queue-instead-of-refuse-and-surface-the-refusal.md) | Author governance (ticket/priority) during an active run — queue instead of refuse, and surface the refusal | task | governance-authoring-ssot | Open |
 | [0048](./open/0048-adopt-eslint-in-cocoder-engine-repo.md) | Adopt a minimal ESLint 9 linter in CoCoder's own engine repo | task | none | Open |
 | [0037](./open/0037-contributing-pr-template-stale-rg-ci-gate.md) | CONTRIBUTING and PR template still promise an rg CI gate that live ci.yml no longer runs | bug | none | Open |
 
@@ -24,6 +22,9 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0065](./closed/0065-consolidate-run-dir-path-reconcile-adr-0027-6-nesting-drift.md) | Consolidate run-dir path; reconcile ADR-0027 §6 nesting drift | task | 2026-06-26 | ADR-0027 section 6 nested run-dir layout with legacy-flat compat read-fallback (step 5 OR-branch); consumers repointed. |
+| [0066](./closed/0066-founder-decisions-should-not-force-premature-run-wrap.md) | Founder decisions should not force premature run wrap | bug | 2026-06-26 | Mid-run founder decisions use the ask-founder-continue runner contract instead of premature wrap; run_245 regression pinned; Oscar/wrap-up guidance reconciled. |
+| [0063](./closed/0063-author-governance-ticket-priority-during-an-active-run-queue-instead-of-refuse-and-surface-the-refusal.md) | Author governance (ticket/priority) during an active run — queue instead of refuse, and surface the refusal | task | 2026-06-26 | Active-run governance authoring queue: create/close/repoint/reorder plus priority-create accept-and-queue while a run is active, drain at the safe seam plus wrap backstop, queued entries surfaced; SSOT single-writer ops. |
 | [0039](./closed/0039-launch-status-in-oz-dashboard.md) | Launch Status in Oz Dashboard | task | 2026-06-25 | Ticket fix run completed successfully. Replaced per-agent progress bars with a single spinner and optional phase label per the 2026-06-24 direction. Original diagnostic tasks a/b were descoped by that direction; file a new ticket if launch-delay root-cause is still desired. |
 | [0061](./closed/0061-governed-create-ticket-spine.md) | Governed createTicket spine for tracked ticket filing | bug | 2026-06-25 | Ticket fix run completed successfully. The post-wrap ticket-close recovery gap was repaired in 537193f; ticket 0061 implementation landed in run_238. |
 | [0062](./closed/0062-create-priority-and-edit-priority-need-detailed-body-input.md) | create-priority and edit-priority need detailed body input | task | 2026-06-25 | Ticket fix run completed successfully. |

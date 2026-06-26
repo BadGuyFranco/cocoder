@@ -2,7 +2,7 @@
 id: 0065
 title: Consolidate run-dir path; reconcile ADR-0027 §6 nesting drift
 type: task
-status: Open
+status: Closed
 priority: governance-authoring-ssot
 owner: founder-session
 created: 2026-06-26
@@ -28,3 +28,9 @@ ADR-0027 §6 ratifies the run-dir layout as `local/runs/<workspaceId>/<runId>` (
 - Owned by / sequenced with workspace-segmentation (it owns run-dir re-pathing).
 - Independent of cache-retention's safety gates; no behavior change required to land cache-retention first.
 - After founder picks A or B, one short atom closes this ticket.
+
+## Resolution
+
+Resolved by run run_246 (no code change) on 2026-06-26.
+
+ADR-0027 section 6 nested run-dir layout with legacy-flat compat read-fallback (step 5 OR-branch); consumers repointed.

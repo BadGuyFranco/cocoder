@@ -2,7 +2,7 @@
 id: 0066
 title: Founder decisions should not force premature run wrap
 type: bug
-status: Open
+status: Closed
 priority: governance-authoring-ssot
 owner: founder-session
 created: 2026-06-26
@@ -29,3 +29,8 @@ This is distinct from a real stop condition where no founder is reachable, the a
 - Related surface: Oscar NEXT prompt, runner handling for founder questions, wrap disposition vocabulary, and Deb nudge/watch timing.
 - This is likely an easy-to-medium orchestration contract fix if the runner already has a pause/resume question lane; it becomes bigger if no mid-run founder-question mechanism exists yet.
 
+## Resolution
+
+Resolved by run run_246 (no code change) on 2026-06-26.
+
+Mid-run founder decisions use the ask-founder-continue runner contract instead of premature wrap; run_245 regression pinned; Oscar/wrap-up guidance reconciled.
