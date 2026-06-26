@@ -14,7 +14,6 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
 | [0068](./open/0068-harden-correctness-clarity-elegance-at-the-verification-gate-without-new-orchestration.md) | Harden correctness-clarity-elegance at the verification gate, without new orchestration | task | none | founder-session |
-| [0067](./open/0067-physically-migrate-legacy-flat-local-runs-runid-dirs-to-the-adr-0027-6-nested-layout.md) | Physically migrate legacy flat local/runs/<runId> dirs to the ADR-0027 §6 nested layout | task | none | founder-session |
 | [0048](./open/0048-adopt-eslint-in-cocoder-engine-repo.md) | Adopt a minimal ESLint 9 linter in CoCoder's own engine repo | task | none | Open |
 | [0037](./open/0037-contributing-pr-template-stale-rg-ci-gate.md) | CONTRIBUTING and PR template still promise an rg CI gate that live ci.yml no longer runs | bug | none | Open |
 
@@ -22,6 +21,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0067](./closed/0067-physically-migrate-legacy-flat-local-runs-runid-dirs-to-the-adr-0027-6-nested-layout.md) | Physically migrate legacy flat local/runs/<runId> dirs to the ADR-0027 §6 nested layout | task | 2026-06-26 | Legacy flat local/runs/<runId> dirs migrate to ADR-0027 §6 nested local/runs/<workspaceId>/<runId> via migrateLegacyFlatRunDirs (core, unit-tested) invoked by migrateLegacyRunDirsOnce at daemon startup right after reconcileOrphans, where the live set is provably empty; liveness is sourced from ctx.inFlight only and the runId->workspaceId map from the run store, so active/inFlight runs and unmapped dirs are skipped and the move is idempotent. End-to-end proven by scripts/proof-run-dir-migration.mjs (real createOzServer boot) with a teeth-checked negative self-check. The real machine's map-known flat dirs migrate idempotently on the next daemon boot; resolveLocalRunDir's compat read-fallback keeps reads correct in the interim and its retirement remains a separate future step per the ticket. |
 | [0064](./closed/0064-daemon-self-reload-zombies-the-old-process-and-wedges-oz-oz-sh-stop-reaps-only-the-listener.md) | Daemon self-reload zombies the old process and wedges Oz; oz.sh stop reaps only the listener | bug | 2026-06-26 | Ticket fix run completed successfully. |
 | [0065](./closed/0065-consolidate-run-dir-path-reconcile-adr-0027-6-nesting-drift.md) | Consolidate run-dir path; reconcile ADR-0027 §6 nesting drift | task | 2026-06-26 | ADR-0027 section 6 nested run-dir layout with legacy-flat compat read-fallback (step 5 OR-branch); consumers repointed. |
 | [0066](./closed/0066-founder-decisions-should-not-force-premature-run-wrap.md) | Founder decisions should not force premature run wrap | bug | 2026-06-26 | Mid-run founder decisions use the ask-founder-continue runner contract instead of premature wrap; run_245 regression pinned; Oscar/wrap-up guidance reconciled. |
