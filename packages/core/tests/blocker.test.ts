@@ -38,6 +38,23 @@ describe('detectBuilderBlocker', () => {
     })
   })
 
+  test('captures a concrete blocker marker rendered with a UI bullet and soft-wrapped reason', () => {
+    const frame = `
+• <<<COCODER-ATOM-1-BLOCKED: pnpm typecheck fails in out-of-scope daemon test
+  fixtures oz-awareness.test.ts and oz-chat.test.ts>>>
+`
+    expect(detectBuilderBlocker(frame, 1)).toEqual({
+      reply: 'pnpm typecheck fails in out-of-scope daemon test fixtures oz-awareness.test.ts and oz-chat.test.ts',
+      category: 'authority-scope-conflict',
+      owner: 'runner-fault',
+    })
+  })
+
+  test('ignores a concrete blocker marker mentioned mid-prose instead of at rendered line start', () => {
+    const frame = 'I should print <<<COCODER-ATOM-1-BLOCKED: cannot proceed>>> only if I am truly blocked.'
+    expect(detectBuilderBlocker(frame, 1)).toBeNull()
+  })
+
   test('a non-authority reason is a generic reported-blocker', () => {
     const frame = `${blockerMarker(2)}`.replace('>>>', ': the upstream service is down, nothing to build against>>>')
     expect(detectBuilderBlocker(frame, 2)).toEqual({

@@ -21,25 +21,25 @@ export function blockerMarker(atomIndex: number): string {
   return `<<<COCODER-ATOM-${atomIndex}-BLOCKED>>>`
 }
 
-// Bob prints `<<<COCODER-ATOM-<n>-BLOCKED: <one-line reason>>>` (the reason is optional). Detection is a
-// whole-line match for THIS atom's marker; the lazy reason group stops at the closing `>>>`.
-const markerPattern = (atomIndex: number): RegExp => new RegExp(`^<<<COCODER-ATOM-${atomIndex}-BLOCKED(?::\\s*(.*?))?>>>$`)
+// Bob prints `<<<COCODER-ATOM-<n>-BLOCKED: <one-line reason>>>` (the reason is optional). The terminal
+// host can render assistant output with a leading bullet and soft-wrap the reason across physical lines,
+// so detection accepts a concrete marker at the START of a rendered line, with an optional UI bullet, and
+// captures until the closing `>>>`. It still rejects prose/template echoes because those do not start a
+// line with this atom's concrete marker.
+const markerPattern = (atomIndex: number): RegExp => new RegExp(`(?:^|\\n)\\s*(?:[•*-]\\s*)?<<<COCODER-ATOM-${atomIndex}-BLOCKED(?::\\s*([\\s\\S]*?))?>>>`)
 
 /** Detect a builder blocker from a live terminal frame. Recognised ONLY from a standalone marker line Bob
  *  printed for `atomIndex` (never from free-text keyword matching), so the runner cannot parse its own
  *  prompt echo, the standby template, or Bob's prose as a blocker (the run_231 false-positive class). */
 export function detectBuilderBlocker(frame: string, atomIndex: number): BuilderBlocker | null {
   const pattern = markerPattern(atomIndex)
-  for (const rawLine of frame.split(/\r?\n/)) {
-    const match = pattern.exec(rawLine.trim())
-    if (match === null) continue
-    const reason = (match[1] ?? '').trim()
-    const reply = reason === '' ? 'builder reported a blocker (no reason given)' : reason
-    return {
-      reply,
-      category: AUTHORITY_SCOPE.test(reply) ? 'authority-scope-conflict' : 'reported-blocker',
-      owner: 'runner-fault',
-    }
+  const match = pattern.exec(frame)
+  if (match === null) return null
+  const reason = (match[1] ?? '').replace(/\s+/g, ' ').trim()
+  const reply = reason === '' ? 'builder reported a blocker (no reason given)' : reason
+  return {
+    reply,
+    category: AUTHORITY_SCOPE.test(reply) ? 'authority-scope-conflict' : 'reported-blocker',
+    owner: 'runner-fault',
   }
-  return null
 }
