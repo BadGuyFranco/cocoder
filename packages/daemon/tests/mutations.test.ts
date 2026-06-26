@@ -11,7 +11,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ClaudeAdapter, type Exec } from '@cocoder/adapters'
 import { atomSentinel, composeTicketMarkdown, loadAssignments, loadPriority, makeGit, openRunStore, readTickets, StopRequestedError, workspaceTemplateDir, writePortableRun, type Adapter, type Git, type HeadlessRunInput, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
 import { createOzServer, OZ_CSRF_HEADER, type OzServer } from '../src/index.js'
-import { ticketPendingCloseRun } from '../src/launcher.js'
+import { migrateLegacyRunDirsOnce, ticketPendingCloseRun } from '../src/launcher.js'
+import type { OzContext } from '../src/context.js'
 import { listQueuedAuthoring } from '../src/authoring-queue.js'
 import { findOrphanedPriorities } from '../src/priority-order.js'
 import { validFounderCloseout, validTicketFounderCloseout } from './helpers/founder-closeout.js'
@@ -3793,6 +3794,41 @@ describe('Oz mutations + lifecycle', () => {
     await startServer() // reconcileOrphans runs in createOzServer
     expect(store.getRun(orphan.id)?.status).toBe('failed')
     expect(store.listEvents(orphan.id).some((e) => e.type === 'orphaned')).toBe(true)
+  })
+
+  test('migrateLegacyRunDirsOnce moves known flat run dirs and records a run event', async () => {
+    const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-daemon-runs-'))
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(run.id, 'completed')
+    await mkdir(join(runsRoot, run.id), { recursive: true })
+    await writeFile(join(runsRoot, run.id, 'state.json'), '{"kept":true}')
+
+    migrateLegacyRunDirsOnce({ runsRoot, store, inFlight: new Map<string, string>() } as unknown as OzContext)
+
+    const nestedDir = join(runsRoot, 'cocoder', run.id)
+    expect(await exists(join(runsRoot, run.id))).toBe(false)
+    await expect(readFile(join(nestedDir, 'state.json'), 'utf8')).resolves.toBe('{"kept":true}')
+    const event = store.listEvents(run.id).find((item) => item.type === 'run-dir-migrated')
+    expect(event?.data).toEqual({ from: join(runsRoot, run.id), to: nestedDir })
+  })
+
+  test('migrateLegacyRunDirsOnce leaves in-flight flat run dirs untouched and records no event', async () => {
+    const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-daemon-runs-'))
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    await mkdir(join(runsRoot, run.id), { recursive: true })
+    await writeFile(join(runsRoot, run.id, 'state.json'), '{"active":true}')
+
+    migrateLegacyRunDirsOnce({
+      runsRoot,
+      store,
+      inFlight: new Map<string, string>([['cocoder', run.id]]),
+    } as unknown as OzContext)
+
+    await expect(readFile(join(runsRoot, run.id, 'state.json'), 'utf8')).resolves.toBe('{"active":true}')
+    expect(await exists(join(runsRoot, 'cocoder', run.id))).toBe(false)
+    expect(store.listEvents(run.id).some((item) => item.type === 'run-dir-migrated')).toBe(false)
   })
 
 })

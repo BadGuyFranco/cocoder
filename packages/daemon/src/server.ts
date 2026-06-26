@@ -26,7 +26,7 @@ import { readOrCreateToken } from './secrets.js'
 import { dispatchMutations, dispatchReads } from './routes.js'
 import { createOzEventBus, type OzContext } from './context.js'
 import { warmCliCache } from './clis.js'
-import { reconcileOrphans } from './launcher.js'
+import { migrateLegacyRunDirsOnce, reconcileOrphans } from './launcher.js'
 import { serveStatic } from './static.js'
 
 export interface OzServerOptions {
@@ -215,6 +215,8 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
   // crash/restart (the live set is empty here) — mark it failed so surface 4 stays honest (F6) — and
   // sweep stray historical run worktrees against the run table (ADR-0023 worktree-lineage cleanup).
   await reconcileOrphans(ctx)
+  // ADR-0027 §6 step 5: migrate legacy flat run dirs once while the boot live set is empty.
+  migrateLegacyRunDirsOnce(ctx)
 
   const server = createServer(handler)
   const sockets = new Set<Socket>()

@@ -27,6 +27,7 @@ import {
   gateCommitRepair,
   listEffectivePlays,
   localRunDir,
+  migrateLegacyFlatRunDirs,
   resolveLocalRunDir,
   loadAssignments,
   loadEffectivePlay,
@@ -2376,5 +2377,23 @@ export async function reconcileOrphans(ctx: OzContext): Promise<void> {
       ctx.store.recordEvent({ runId: run.id, type: 'orphaned', data: { reason: 'daemon restarted' } })
       ctx.store.setRunStatus(run.id, 'failed')
     }
+  }
+}
+
+export function migrateLegacyRunDirsOnce(ctx: OzContext): void {
+  try {
+    const wsById = new Map(ctx.store.listRuns().map((run) => [run.id, run.workspaceId]))
+    const liveRunIds = new Set(ctx.inFlight.values())
+    const report = migrateLegacyFlatRunDirs(
+      ctx.runsRoot,
+      (runId) => wsById.get(runId) ?? null,
+      (runId) => liveRunIds.has(runId),
+    )
+
+    for (const entry of report.moved) {
+      ctx.store.recordEvent({ runId: entry.runId, type: 'run-dir-migrated', data: { from: entry.from, to: entry.to } })
+    }
+  } catch {
+    /* best-effort startup migration must not abort daemon boot */
   }
 }
