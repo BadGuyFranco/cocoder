@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-26 — **ticket-fix-0067: legacy flat run-dir migration — closed (run_108/run_252)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0067](./tickets/closed/0067-physically-migrate-legacy-flat-local-runs-runid-dirs-to-the-adr-0027-6-nested-layout.md) | **Run:** run_252 (display 108)
+**Outcomes:**
+- **Core migration (`dda5fe7`).** `migrateLegacyFlatRunDirs` in `packages/core/src/runner/run-dir.ts` — map-driven, skips active/unknown/target-exists, idempotent; 7/7 run-dir vitest + core typecheck green.
+- **Daemon boot hook (`cab519c`).** `migrateLegacyRunDirsOnce` in `packages/daemon/src/launcher.ts` after `reconcileOrphans`; liveness from `ctx.inFlight` only; `run-dir-migrated` event per move; boot-safe guarded; 140/140 daemon mutations tests green.
+- **One-command proof (`e613be7`).** `scripts/proof-run-dir-migration.mjs` registered as `pnpm proof:run-dir-migration`; real `createOzServer` boot proves flat→nested with teeth-checked negative self-check.
+- **Ticket closed** via `closeTicket()` at wrap; `order.json` pruned; queue head is [0068](./tickets/open/0068-harden-correctness-clarity-elegance-at-the-verification-gate-without-new-orchestration.md).
+- **Disposition: `closed`.** All acceptance items verified; ~245 map-known flat dirs relocate idempotently on next daemon boot; compat read-fallback retirement explicitly deferred.
+**Next:** Launch `local-cache-retention` via `cocoder run-independent local-cache-retention`.
+
 ## 2026-06-26 — **runnerless-independent-priority: hardening run — archive ready (run_107/run_251)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [runnerless-independent-priority](./priorities/runnerless-independent-priority.md) | **Run:** run_251 (display 107)

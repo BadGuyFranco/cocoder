@@ -88,7 +88,7 @@ This section is the current-truth owner map for governance authoring actions. It
 - Older rows below that describe split priority-create ownership or active-run refusal for dashboard ticket/priority routes are stale — superseded by `createPriorityFiles` and the authoring queue above.
 - Create-ticket Play instructions may still lag `packages/core/src/tickets/create.ts:createTicket` on `order.json` ownership prose; runtime paths call the core helper.
 - Priority edit/archive remain Play-owned; no deterministic core edit/archive helpers yet.
-- Machine-local run dirs: `packages/core/src/runner/run-dir.ts` writes nested `local/runs/<workspaceId>/<runId>`; `resolveLocalRunDir` falls back to legacy flat paths. One-time physical migration of existing flat dirs is tracked as ticket `0067`, not this map.
+- Machine-local run dirs: `packages/core/src/runner/run-dir.ts` writes nested `local/runs/<workspaceId>/<runId>`; `resolveLocalRunDir` falls back to legacy flat paths until swept. Physical migration runs at daemon boot via `migrateLegacyRunDirsOnce` in `packages/daemon/src/launcher.ts` (ticket `0067`, closed run_252); compat read-fallback retirement is a separate future step.
 
 ### Evidence Files Opened
 
