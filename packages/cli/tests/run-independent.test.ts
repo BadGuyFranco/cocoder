@@ -1,25 +1,28 @@
 import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { afterEach, describe, expect, test } from 'vitest'
-import type { Adapter } from '@cocoder/core'
+import type { Adapter, RunnerDeps, RunInput, RunResult } from '@cocoder/core'
 import { latestModelFor } from '../src/latest-model.js'
+import { main } from '../src/run.js'
 import { resolveRunTarget } from '../src/run-target.js'
 
 const execFileAsync = promisify(execFile)
 const dirs: string[] = []
 
 afterEach(async () => {
+  process.exitCode = undefined
   await Promise.all(dirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })))
 })
 
-async function repoWithPriority(marked: boolean): Promise<string> {
-  const repo = await mkdtemp(join(tmpdir(), 'cocoder-run-independent-'))
+async function repoWithPriority(marked: boolean, destructive = false): Promise<string> {
+  const repo = await realpath(await mkdtemp(join(tmpdir(), 'cocoder-run-independent-')))
   dirs.push(repo)
   await mkdir(join(repo, 'cocoder', 'priorities'), { recursive: true })
+  await mkdir(join(repo, 'local'), { recursive: true })
   await writeFile(
     join(repo, 'cocoder', 'priorities', 'demo.md'),
     [
@@ -27,6 +30,7 @@ async function repoWithPriority(marked: boolean): Promise<string> {
       'id: demo',
       'title: Demo',
       ...(marked ? ['independent-of-runner: true'] : []),
+      ...(destructive ? ['destructive: true'] : []),
       '---',
       '## Objective',
       'Do the thing.',
@@ -36,6 +40,21 @@ async function repoWithPriority(marked: boolean): Promise<string> {
   return repo
 }
 
+async function writeAssignments(repo: string): Promise<void> {
+  await mkdir(join(repo, 'cocoder', 'personas'), { recursive: true })
+  await writeFile(
+    join(repo, 'cocoder', 'personas', 'assignments.json'),
+    `${JSON.stringify({
+      personas: {
+        oscar: { cli: 'claude', model: 'stale-pinned-model' },
+        bob: { cli: 'codex', model: '' },
+      },
+    }, null, 2)}\n`,
+  )
+}
+
+const exists = (path: string): Promise<boolean> => stat(path).then(() => true, () => false)
+
 function modelAdapter(models: readonly string[]): Adapter {
   return {
     id: 'test-cli',
@@ -44,6 +63,48 @@ function modelAdapter(models: readonly string[]): Adapter {
     build: () => ({ command: 'test-cli', args: [] }),
     preflight: async () => ({ ok: true, checks: [] }),
     listModels: async () => ({ canEnumerate: true, models, detail: 'test models' }),
+  }
+}
+
+function completedRun(input: RunInput): RunResult {
+  return {
+    runId: 'run_test',
+    status: 'completed',
+    ticketCloseDecision: 'none',
+    committedSha: null,
+    committedShas: [],
+    committedFiles: [],
+    outOfScope: [],
+    selfCommitted: false,
+    atoms: 0,
+    pickupPath: null,
+    recordPath: join(input.runsRoot, 'record.md'),
+  }
+}
+
+async function runCliIndependent(repo: string, seen: Array<{ readonly deps: RunnerDeps; readonly input: RunInput }>): Promise<{ readonly probeCalls: number }> {
+  const previousArgv = process.argv
+  const previousCwd = process.cwd()
+  let probeCalls = 0
+  try {
+    process.chdir(repo)
+    process.argv = [process.execPath, 'cocoder', 'run-independent', 'demo']
+    await main({
+      probeDaemonImpl: async () => {
+        probeCalls += 1
+        throw new Error('probeDaemon must not be called by run-independent')
+      },
+      runStandaloneOptions: {
+        runRunImpl: async (deps, input) => {
+          seen.push({ deps, input })
+          return completedRun(input)
+        },
+      },
+    })
+    return { probeCalls }
+  } finally {
+    process.argv = previousArgv
+    process.chdir(previousCwd)
   }
 }
 
@@ -101,6 +162,41 @@ describe('cocoder run-independent', () => {
       priority: { destructive: true },
       requireIndependentOfRunner: false,
     })).resolves.toMatchObject({ dbPath: liveDbPath, runsRoot: liveRunsRoot, isolated: false, scratchRoot: null })
+  })
+
+  test('completes through the standalone runner without probing the daemon and threads latest model plus scratch state', async () => {
+    const repo = await repoWithPriority(true, true)
+    await writeAssignments(repo)
+    const seen: Array<{ readonly deps: RunnerDeps; readonly input: RunInput }> = []
+
+    const result = await runCliIndependent(repo, seen)
+
+    expect(result.probeCalls).toBe(0)
+    expect(seen).toHaveLength(1)
+    expect(seen[0]!.input.oscar).toMatchObject({ cli: 'claude', model: 'opus' })
+    expect(seen[0]!.input.bob).toMatchObject({ cli: 'codex', model: '' })
+    expect(seen[0]!.input.priority).toMatchObject({ id: 'demo', independentOfRunner: true, destructive: true })
+    expect(seen[0]!.input.runsRoot).not.toBe(join(repo, 'local', 'runs'))
+    expect(dirname(seen[0]!.input.runsRoot)).toContain('cocoder-independent-destructive-')
+    expect(await exists(join(dirname(seen[0]!.input.runsRoot), 'cocoder.db'))).toBe(true)
+    expect(await exists(join(repo, 'local', 'cocoder.db'))).toBe(false)
+    expect(process.exitCode).toBe(0)
+  })
+
+  test('run-independent keeps non-destructive state live while still bypassing daemon and resolving Oscar latest', async () => {
+    const repo = await repoWithPriority(true)
+    await writeAssignments(repo)
+    const seen: Array<{ readonly deps: RunnerDeps; readonly input: RunInput }> = []
+
+    const result = await runCliIndependent(repo, seen)
+
+    expect(result.probeCalls).toBe(0)
+    expect(seen).toHaveLength(1)
+    expect(seen[0]!.input.oscar.model).toBe('opus')
+    expect(seen[0]!.input.priority).toMatchObject({ id: 'demo', independentOfRunner: true, destructive: false })
+    expect(seen[0]!.input.runsRoot).toBe(join(repo, 'local', 'runs'))
+    expect(await exists(join(repo, 'local', 'cocoder.db'))).toBe(true)
+    expect(process.exitCode).toBe(0)
   })
 
   test('refuses a priority that is not explicitly marked independent-of-runner', async () => {

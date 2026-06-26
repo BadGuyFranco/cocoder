@@ -17,8 +17,12 @@ import {
   resolveEffectivePersona,
   resolvePlayAssignment,
   runRun,
+  type ProbeOptions,
+  type ProbeResult,
   type PreRunGovernanceCheck,
   type PersonaSources,
+  type RunInput,
+  type RunResult,
   type RunnerDeps,
 } from '@cocoder/core'
 import { getAdapter, makeAdapterRegistry } from '@cocoder/adapters'
@@ -42,6 +46,19 @@ const createTicketUsage = 'usage: cocoder oz create-ticket --title <text> --type
 const createPriorityUsage = 'usage: cocoder oz create-priority --id <id> --title <text> --objective <text> [--details-file <path> | --details-stdin]'
 const editPriorityUsage = 'usage: cocoder oz edit-priority <id> [--objective <text>] [--mode <replace-body|append-section>] [--details-file <path> | --details-stdin]'
 const archivePriorityUsage = 'usage: cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]'
+
+type ProbeDaemonImpl = (opts?: ProbeOptions) => Promise<ProbeResult>
+type RunRunImpl = (deps: RunnerDeps, input: RunInput) => Promise<RunResult>
+
+export interface RunStandaloneOptions {
+  readonly requireIndependentOfRunner?: boolean
+  readonly runRunImpl?: RunRunImpl
+}
+
+export interface MainOptions {
+  readonly probeDaemonImpl?: ProbeDaemonImpl
+  readonly runStandaloneOptions?: Pick<RunStandaloneOptions, 'runRunImpl'>
+}
 
 function authorInvocationFromArgv(): unknown {
   const jsonIdx = process.argv.indexOf('--json')
@@ -95,7 +112,8 @@ function independentRunnerRefusal(priority: { readonly id: string; readonly inde
 // `cocoder run <priorityId>` (ADR-0004). The probe decides the writer: if a daemon is live it owns
 // the DB writer + cmux connection, so the cli routes the launch through it (client mode) and never
 // opens the DB. Otherwise the cli is the composition root and runs standalone, taking the lock.
-async function main(): Promise<void> {
+export async function main(options: MainOptions = {}): Promise<void> {
+  const probeDaemonImpl = options.probeDaemonImpl ?? probeDaemon
   const [cmd, arg1] = process.argv.slice(2)
 
   if (!cmd || cmd === '--help' || cmd === '-h' || cmd === 'help') {
@@ -439,11 +457,14 @@ async function main(): Promise<void> {
   const allowPreRunIntegrityErrors = process.argv.includes('--allow-pre-run-integrity-errors')
 
   if (cmd === 'run-independent') {
-    await runStandalone(priorityId, resumeFromRunId, strictPreRunDirt, allowPreRunIntegrityErrors, { requireIndependentOfRunner: true })
+    await runStandalone(priorityId, resumeFromRunId, strictPreRunDirt, allowPreRunIntegrityErrors, {
+      ...options.runStandaloneOptions,
+      requireIndependentOfRunner: true,
+    })
     return
   }
 
-  const live = await probeDaemon({ port: DEFAULT_OZ_PORT })
+  const live = await probeDaemonImpl({ port: DEFAULT_OZ_PORT })
   if (live.alive) {
     log(`daemon live on :${live.port} → client mode (daemon owns the DB writer + cmux)`)
     const result = await runViaDaemon(`http://127.0.0.1:${live.port}`, 'cocoder', priorityId, {
@@ -458,17 +479,17 @@ async function main(): Promise<void> {
     return
   }
   log('no daemon → standalone mode (cli takes the SQLite write-lock)')
-  await runStandalone(priorityId, resumeFromRunId, strictPreRunDirt, allowPreRunIntegrityErrors)
+  await runStandalone(priorityId, resumeFromRunId, strictPreRunDirt, allowPreRunIntegrityErrors, options.runStandaloneOptions)
 }
 
 // Standalone: the cli is the composition root — opens the operational DB (acquiring the
 // single-writer lock), wires the concrete drivers into core's ports, loads governance, runs.
-async function runStandalone(
+export async function runStandalone(
   priorityId: string,
   resumeFromRunId?: string,
   strictPreRunDirt?: boolean,
   allowPreRunIntegrityErrors?: boolean,
-  options: { readonly requireIndependentOfRunner?: boolean } = {},
+  options: RunStandaloneOptions = {},
 ): Promise<void> {
   const root = process.cwd() // dogfood: run from the CoCoder repo root
   const personasDir = join(root, 'cocoder', 'personas')
@@ -555,6 +576,7 @@ async function runStandalone(
   }
 
   const store = openRunStore(runTarget.dbPath)
+  const runRunImpl = options.runRunImpl ?? runRun
   const deps: RunnerDeps = {
     store,
     sessionHost: new CmuxSessionHost(),
@@ -565,7 +587,7 @@ async function runStandalone(
   }
 
   try {
-    const result = await runRun(deps, {
+    const result = await runRunImpl(deps, {
       workspace,
       priority,
       oscar,
@@ -591,8 +613,3 @@ async function runStandalone(
     store.close()
   }
 }
-
-main().catch((err: unknown) => {
-  console.error(`cocoder: ${err instanceof Error ? err.message : String(err)}`)
-  process.exit(1)
-})

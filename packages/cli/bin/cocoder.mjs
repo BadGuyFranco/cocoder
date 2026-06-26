@@ -4,4 +4,8 @@
 import { register } from 'tsx/esm/api'
 register()
 await import('../src/suppress-sqlite-warning.ts')
-await import('../src/run.ts')
+const { main } = await import('../src/run.ts')
+main().catch((err) => {
+  console.error(`cocoder: ${err instanceof Error ? err.message : String(err)}`)
+  process.exit(1)
+})
