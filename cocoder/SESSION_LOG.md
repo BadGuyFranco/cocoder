@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-26 — **runnerless-independent-priority: detection + launch alerts — blocked (run_105)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [runnerless-independent-priority](./priorities/runnerless-independent-priority.md) | **Run:** run_105 (display 105)
+**Outcomes:**
+- **Priority markers + detection (`a0438c3`).** `independent-of-runner` and `destructive` frontmatter parsed in the priority loader; pure `detectRunnerImpact()` with single-owner `RUN_CRITICAL_GLOBS` taxonomy; unit tests pinned. Core suite green (647/647).
+- **Launch-time dogfooding-impact alert (`92ec9c6`).** Daemon refuses self-impacting priorities PRE-SPAWN (409 `self-impacting-priority`) with reasons + recommendation; refuses `independent-of-runner` from the normal runner (409 `independent-of-runner-required`); `allowSelfImpacting` override proceeds with non-silent audit + `launch-self-impact-override` timing event. Detection routes only through shared `detectRunnerImpact`. Daemon suite green (409/409).
+- **Scope items 1–2 complete; 3–5 not started.** Runnerless execution, always-latest CLI, and self-containment blocked on founder choice of executor shape (Shape A: `cocoder run-independent` reusing `runRun`; Shape B recommended: Oscar-orchestrated sub-agent loop without `runRun`).
+- **Disposition: `blocked`.** Design fork determines whether/how the priority continues; execution half cannot start until founder picks A or B.
+**Next:** Reply `Shape A` or `Shape B` (recommended) in run_105 chat to resume this priority's first execution atom.
+
 ## 2026-06-26 — **ticket-fix-0064: daemon reload zombie + oz.sh reaping — closed (run_104/run_248)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0064](./tickets/closed/0064-daemon-self-reload-zombies-the-old-process-and-wedges-oz-oz-sh-stop-reaps-only-the-listener.md) | **Run:** run_248 (display 104)

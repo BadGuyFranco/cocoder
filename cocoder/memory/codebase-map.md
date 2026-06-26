@@ -42,7 +42,7 @@ CoCoder/                  # the engine install AND the dogfood workspace's host
 | `playbooks/` | onboarding/audit phase engines (recon, deep-read fan-out, p1–p6) reused as library tooling (ADR-0026) |
 | `drift/` | the Drift Audit engine: read-claims → read-reality → compare → report → apply |
 | `personas/` | base+delta persona loader/merge (ADR-0012) |
-| `priorities/` · `tickets/` | governance loaders/composers |
+| `priorities/` · `tickets/` | governance loaders/composers; `runner-impact.ts` detects run-critical self-impacting scope at launch |
 | `store/` | machine-local SQLite index + portable run/session history under tracked `cocoder/` (ADR-0003/0027) |
 | `scaffold/` | workspace governance scaffolder (seeds a repo's `cocoder/` tree) |
 | `adapter/` · `session-host/` | the ports the `adapters` / `session-hosts` packages implement |

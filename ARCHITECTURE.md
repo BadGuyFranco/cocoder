@@ -137,6 +137,12 @@ or let the spine commit it and continue to the next atom or wrap. The old verify
 into [ADR-0013](./cocoder/decisions/0013-orchestration-observation.md): no Oscar pass means no atom
 commit, and "green" means evidence from the actual artifact, not a builder summary.
 
+At daemon launch, [`detectRunnerImpact()`](./packages/core/src/priorities/runner-impact.ts) refuses
+self-impacting priorities (run-critical scope or `destructive: true`) unless the founder passes
+`allowSelfImpacting: true` — always with a non-silent audit entry. Priorities marked
+`independent-of-runner: true` are refused from the normal runner (409) pending the runnerless execution
+path, which is not yet built.
+
 Observation is tiered by the **direct your primary** rule. Oscar monitors and directs Bob for the active
 run. Deb monitors Oscar, may observe Bob to diagnose, and nudges Oscar only. Oz monitors sessions across
 workspaces and directs Oscars through daemon tools; it may observe deeper status but does not bypass the
