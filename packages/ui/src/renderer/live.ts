@@ -55,7 +55,7 @@ export async function loadClis(oz: OzApi): Promise<Cli[]> {
 
 // Fetch the per-workspace surfaces in parallel and adapt them. A failed sub-fetch degrades that
 // surface to empty rather than failing the whole load.
-export async function loadWsData(oz: OzApi, wsId: string): Promise<WsData> {
+export async function loadWsData(oz: OzApi, wsId: string, workspaceName?: string | null): Promise<WsData> {
   const [pr, ti, ru, pe, pl] = await Promise.all([
     oz.daemonGet<{ priorities: DPriority[] }>(`/workspaces/${wsId}/priorities`),
     oz.daemonGet<{ tickets: DTicket[] }>(`/workspaces/${wsId}/tickets`),
@@ -67,7 +67,7 @@ export async function loadWsData(oz: OzApi, wsId: string): Promise<WsData> {
   const dTickets = ti.ok ? ti.data.tickets ?? [] : []
   const dRuns = ru.ok ? ru.data.runs ?? [] : []
   const names: Record<string, string> = Object.fromEntries(dPriorities.map((p) => [p.id, p.title]))
-  const runs = adaptRuns(dRuns, names)
+  const runs = adaptRuns(dRuns, names, workspaceName)
   const priorities = adaptPriorities(dPriorities, runs)
   const tickets = adaptTickets(dTickets)
   const assignments = pe.ok ? pe.data.assignments ?? {} : {}
@@ -84,9 +84,9 @@ export async function loadRawRunDetail(oz: OzApi, runId: string): Promise<RunDet
   return r.ok ? r.data : null
 }
 
-export async function loadRunDetail(oz: OzApi, runId: string, names: Record<string, string>): Promise<Run | null> {
+export async function loadRunDetail(oz: OzApi, runId: string, names: Record<string, string>, workspaceName?: string | null): Promise<Run | null> {
   const detail = await loadRawRunDetail(oz, runId)
-  return detail ? adaptRunDetail(detail, names) : null
+  return detail ? adaptRunDetail(detail, names, workspaceName) : null
 }
 
 export async function sendOzMessage(oz: OzApi, workspaceId: string, text: string): Promise<ChatMessage> {

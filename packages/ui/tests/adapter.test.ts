@@ -194,6 +194,15 @@ describe('runs list', () => {
     expect(run.displayNumber).toBe(3)
     expect(run.displayName).toBe('workspace run 3')
   })
+
+  it('uses the real workspace name for display numbers when the live adapter has it', () => {
+    const summary = { id: 'run_global_98', displayNumber: 98, workspaceId: 'cocoder', priorityId: 'p', status: 'running', createdAt: 1780153227239, endedAt: null } as const
+
+    expect(adaptRunSummary(summary, { p: 'Priority' }, 'CoCoder').displayName).toBe('CoCoder run 98')
+    expect(adaptRuns([summary], { p: 'Priority' }, 'CoCoder')[0].displayName).toBe('CoCoder run 98')
+    expect(adaptRunSummary(summary, { p: 'Priority' }).displayName).toBe('workspace run 98')
+    expect(adaptRuns([summary], { p: 'Priority' })[0].displayName).toBe('workspace run 98')
+  })
 })
 
 describe('run enrichment merging', () => {

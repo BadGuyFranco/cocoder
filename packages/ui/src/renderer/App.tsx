@@ -146,6 +146,7 @@ export function App() {
   }, [activeId, chatTarget, loadedIds])
   useEffect(() => { selectedRunIdRef.current = selectedRunId }, [selectedRunId])
   useEffect(() => { runsByWsRef.current = runsByWs }, [runsByWs])
+  const workspaceName = (wsId: string): string | undefined => workspaces.find((w) => w.id === wsId)?.name
 
   // Decide the data source once on mount and, when connected, replace workspaces/priorities/runs/personas
   // with live data. Seed state stays as the initial value so fixtures/tests render immediately.
@@ -180,7 +181,7 @@ export function App() {
       setWorkspaces(wss)
       const first = wss[0]
       setActiveId(first.id); setLoadedIds([first.id])
-      const data = await loadWsData(oz, first.id)
+      const data = await loadWsData(oz, first.id, first.name)
       const order = await loadOrder(oz, first.id)
       if (cancelled) return
       namesRef.current[first.id] = data.names
@@ -294,7 +295,7 @@ export function App() {
     if (!oz) return
     let cancelled = false
     void (async () => {
-      const data = await loadWsData(oz, activeId)
+      const data = await loadWsData(oz, activeId, workspaceName(activeId))
       const order = await loadOrder(oz, activeId)
       if (cancelled) return
       namesRef.current[activeId] = data.names
@@ -404,7 +405,7 @@ export function App() {
   async function refreshWorkspace(wsId: string) {
     const oz = ozApi()
     if (!oz) return
-    const data = await loadWsData(oz, wsId)
+    const data = await loadWsData(oz, wsId, workspaceName(wsId))
     const order = await loadOrder(oz, wsId)
     namesRef.current[wsId] = data.names
     const mergedRuns = mergeRunsWithEnrichment(data.runs, runsByWsRef.current[wsId] ?? [])
@@ -417,7 +418,7 @@ export function App() {
   async function refreshRunDetail(runId: string, wsId: string, shouldSkip: () => boolean = () => false): Promise<boolean> {
     const oz = ozApi()
     if (!oz || shouldSkip()) return false
-    const enriched = await loadRunDetail(oz, runId, namesRef.current[wsId] ?? {})
+    const enriched = await loadRunDetail(oz, runId, namesRef.current[wsId] ?? {}, workspaceName(wsId))
     if (!enriched || shouldSkip()) return false
     setRunsByWs((cur) => ({ ...cur, [wsId]: (cur[wsId] ?? []).map((r) => (r.id === enriched.id ? enriched : r)) }))
     return true

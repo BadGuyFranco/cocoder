@@ -229,14 +229,14 @@ function summaryLastEvent(status: RunStatus): string | undefined {
 }
 
 // ── Runs (list) ── only id/status/priority/timestamps are known here; personas/transcript come from detail.
-export function adaptRunSummary(r: RunSummary, priorityNames: Record<string, string>): Run {
+export function adaptRunSummary(r: RunSummary, priorityNames: Record<string, string>, workspaceName?: string | null): Run {
   const status = mapRunStatus(r.status)
   const adhoc = r.priorityId === ADHOC_PRIORITY_ID
   const displayNumber = runDisplayNumber(r)
   return {
     id: r.id,
     displayNumber,
-    displayName: runDisplayName({ id: r.id, displayNumber }),
+    displayName: runDisplayName({ id: r.id, displayNumber, workspaceName }),
     title: priorityNames[r.priorityId] ?? r.priorityId,
     status,
     priorityId: adhoc ? null : r.priorityId,
@@ -248,8 +248,8 @@ export function adaptRunSummary(r: RunSummary, priorityNames: Record<string, str
   }
 }
 
-export function adaptRuns(runs: readonly RunSummary[], priorityNames: Record<string, string>): Run[] {
-  return runs.map((r) => adaptRunSummary(r, priorityNames))
+export function adaptRuns(runs: readonly RunSummary[], priorityNames: Record<string, string>, workspaceName?: string | null): Run[] {
+  return runs.map((r) => adaptRunSummary(r, priorityNames, workspaceName))
 }
 
 // ── Transcript ── every event → a humanized line (never raw JSON). role = the persona if the event has
@@ -414,8 +414,8 @@ export function evidenceFromDetail(detail: RunDetail): EvidenceItem[] {
 }
 
 // ── Run detail → an enriched Run (personas + cli + transcript + evidence + attach) ──
-export function adaptRunDetail(detail: RunDetail, priorityNames: Record<string, string>): Run {
-  const base = adaptRunSummary(detail.run, priorityNames)
+export function adaptRunDetail(detail: RunDetail, priorityNames: Record<string, string>, workspaceName?: string | null): Run {
+  const base = adaptRunSummary(detail.run, priorityNames, workspaceName)
   const sessions = detail.sessions ?? []
   const events = detail.events ?? []
   const personas = [...new Set(sessions.map((s) => s.persona))]
