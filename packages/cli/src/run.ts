@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   DEFAULT_OZ_PORT,
+  detectRunnerImpact,
   isPersonaEnabled,
   loadAssignments,
   listEffectivePlays,
@@ -32,7 +33,7 @@ const log = (m: string): void => console.error(`[cocoder] ${m}`)
 const out = (m: string): void => {
   process.stdout.write(`${m}\n`)
 }
-const usage = 'usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz create-priority --id <id> --title <text> --objective <text> [--details-file <path> | --details-stdin]   |   cocoder oz edit-priority <id> [--objective <text>] [--mode <replace-body|append-section>] [--details-file <path> | --details-stdin]   |   cocoder oz close-ticket <id> [--resolution <text>] [--run <runId>]   |   cocoder oz create-ticket --title <text> --type <type> --priority <priority> [--description <text> | --details-file <path> | --details-stdin] [--id <id>] [--run <runId>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]   |   cocoder oz commit-support <runId>   |   cocoder oz resume <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]'
+const usage = 'usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   cocoder run-independent <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz create-priority --id <id> --title <text> --objective <text> [--details-file <path> | --details-stdin]   |   cocoder oz edit-priority <id> [--objective <text>] [--mode <replace-body|append-section>] [--details-file <path> | --details-stdin]   |   cocoder oz close-ticket <id> [--resolution <text>] [--run <runId>]   |   cocoder oz create-ticket --title <text> --type <type> --priority <priority> [--description <text> | --details-file <path> | --details-stdin] [--id <id>] [--run <runId>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]   |   cocoder oz commit-support <runId>   |   cocoder oz resume <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]'
 const requestDebRepairUsage = 'usage: cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]'
 const closeTicketUsage = 'usage: cocoder oz close-ticket <id> [--resolution <text>] [--run <runId>]'
 const createTicketUsage = 'usage: cocoder oz create-ticket --title <text> --type <type> --priority <priority> [--description <text> | --details-file <path> | --details-stdin] [--id <id>] [--run <runId>]'
@@ -81,6 +82,14 @@ function parseEvidence(raw: string | undefined, problem: string): readonly DebRe
   })
   if (evidence.length === 0) throw new Error('--evidence must contain at least one entry')
   return evidence
+}
+
+function independentRunnerRefusal(priorityId: string, prioritiesDir: string): string | null {
+  const priority = loadPriority(prioritiesDir, priorityId)
+  if (priority.independentOfRunner === true) return null
+  const impact = detectRunnerImpact(priority)
+  const detail = impact.impacts ? ` Detected runner impact: ${impact.reasons.join('; ')}.` : ''
+  return `Priority "${priority.id}" is not marked independent-of-runner: true; refusing run-independent.${detail} Mark the priority with \`independent-of-runner: true\` before using this daemon-free entrypoint.`
 }
 
 // `cocoder run <priorityId>` (ADR-0004). The probe decides the writer: if a daemon is live it owns
@@ -408,8 +417,12 @@ async function main(): Promise<void> {
     out(`migrated portable history for ${workspaceId}: exported ${result.runsExported} run(s), ${result.sessionsExported} session(s)`)
     return
   }
-  if (cmd !== 'run' || !arg1) {
+  if (cmd !== 'run' && cmd !== 'run-independent') {
     console.error(usage)
+    process.exit(2)
+  }
+  if (!arg1) {
+    console.error(cmd === 'run-independent' ? 'usage: cocoder run-independent <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]' : usage)
     process.exit(2)
   }
   const priorityId = arg1
@@ -417,13 +430,18 @@ async function main(): Promise<void> {
   const resumeIdx = process.argv.indexOf('--resume')
   const resumeFromRunId = resumeIdx >= 0 ? process.argv[resumeIdx + 1] : undefined
   if (resumeIdx >= 0 && !resumeFromRunId) {
-    console.error('usage: cocoder run <priorityId> --resume <runId>')
+    console.error(cmd === 'run-independent' ? 'usage: cocoder run-independent <priorityId> --resume <runId>' : 'usage: cocoder run <priorityId> --resume <runId>')
     process.exit(2)
   }
   // Optional `--strict-dirt` (ADR-0029): refuse the launch on uncommitted founder WIP instead of the
   // default founder pre-run snapshot. For shared repos / CI that want a hard manual gate.
   const strictPreRunDirt = process.argv.includes('--strict-dirt')
   const allowPreRunIntegrityErrors = process.argv.includes('--allow-pre-run-integrity-errors')
+
+  if (cmd === 'run-independent') {
+    await runStandalone(priorityId, resumeFromRunId, strictPreRunDirt, allowPreRunIntegrityErrors, { requireIndependentOfRunner: true })
+    return
+  }
 
   const live = await probeDaemon({ port: DEFAULT_OZ_PORT })
   if (live.alive) {
@@ -445,10 +463,24 @@ async function main(): Promise<void> {
 
 // Standalone: the cli is the composition root — opens the operational DB (acquiring the
 // single-writer lock), wires the concrete drivers into core's ports, loads governance, runs.
-async function runStandalone(priorityId: string, resumeFromRunId?: string, strictPreRunDirt?: boolean, allowPreRunIntegrityErrors?: boolean): Promise<void> {
+async function runStandalone(
+  priorityId: string,
+  resumeFromRunId?: string,
+  strictPreRunDirt?: boolean,
+  allowPreRunIntegrityErrors?: boolean,
+  options: { readonly requireIndependentOfRunner?: boolean } = {},
+): Promise<void> {
   const root = process.cwd() // dogfood: run from the CoCoder repo root
   const personasDir = join(root, 'cocoder', 'personas')
   const prioritiesDir = join(root, 'cocoder', 'priorities')
+  if (options.requireIndependentOfRunner) {
+    const refusal = independentRunnerRefusal(priorityId, prioritiesDir)
+    if (refusal) {
+      console.error(`cocoder: ${refusal}`)
+      process.exit(1)
+    }
+    log('run-independent → standalone direct mode (daemon bypassed)')
+  }
   const runsRoot = join(root, 'local', 'runs')
   const baseDir = basePersonasDir()
   const sources: PersonaSources = { baseDir, deltaDir: join(personasDir, 'deltas'), repoPersonaDir: personasDir }
