@@ -367,3 +367,14 @@ export {
   buildWrapupDelivery,
   commitMessage,
 } from './runner/index.js'
+
+export {
+  computeRetention,
+  isPrunableStatus,
+  PRUNABLE_STATUSES,
+  pruneRunDirs,
+  type RetainableRun,
+  type RetentionDecision,
+  type PruneRunDirsOptions,
+  type PruneRunDirsResult,
+} from './retention/index.js'
