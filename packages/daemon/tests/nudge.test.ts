@@ -31,7 +31,7 @@ describe('requestNudgeRun', () => {
 
     expect(first).toMatchObject({ status: 202, body: { queued: true, runId, seq: 1 } })
     expect(second).toMatchObject({ status: 202, body: { queued: true, runId, seq: 2 } })
-    const raw = await readFile(join(ctx.runsRoot, runId, 'oz-nudge.json'), 'utf8')
+    const raw = await readFile(join(ctx.runsRoot, 'cocoder', runId, 'oz-nudge.json'), 'utf8')
     expect(parseNudgeRequest(raw)).toEqual({
       target: 'oscar',
       message: 'Oscar — ask Bob for a root-cause diagnosis',

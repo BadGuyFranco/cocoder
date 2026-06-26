@@ -70,7 +70,7 @@ import { groupLabel as formatGroupLabel, paneLabel, type RunLabelTarget } from '
 import { type Judge, makeHeuristicJudge, runMonitor } from './monitor.js'
 import { createHeadlessOscarDriver, createPaneOscarDriver, type OscarDriver } from './oscar-driver.js'
 import { spawnObserver } from './observer.js'
-import { localRunDir } from './run-dir.js'
+import { localRunDir, resolveLocalRunDir } from './run-dir.js'
 import {
   buildBuilderStandbyPrompt,
   buildArtifactDispatch,
@@ -388,7 +388,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   if (existingRun !== null && existingRun.status !== 'held') throw new Error(`Cannot resume run ${existingRun.id} from status ${existingRun.status}; expected held`)
   const run = existingRun ?? store.createRun({ workspaceId: workspace.id, priorityId: input.storePriorityId ?? priority.id, ticketId: input.ticketId ?? null })
   if (existingRun === null) deps.onRunCreated?.(run) // synchronous, before the first await — the daemon captures runId here
-  const runDir = localRunDir(runsRoot, run)
+  const runDir = existingRun === null ? localRunDir(runsRoot, run) : (resolveLocalRunDir(runsRoot, run.id) ?? localRunDir(runsRoot, run))
   await io.ensureRunDir(runDir)
   const resumeState = existingRun === null ? null : await readResumeState(runDir)
   if (existingRun !== null && resumeState === null) throw new Error(`Cannot resume run ${run.id}; missing resume-state.json`)

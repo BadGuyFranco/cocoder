@@ -197,6 +197,7 @@ describe('runRun with headless Bob', () => {
     expect(String(headlessCalls[0]?.args[1])).not.toContain(atomSentinel(0))
 
     const events = store.listEvents(result.runId)
+    expect(events.find((e) => e.type === 'run-start')?.data).toMatchObject({ runDir: `/runs/cocoder/${result.runId}` })
     expect(events.find((e) => e.type === 'spawn' && (e.data as { persona?: string }).persona === 'bob')?.data).toEqual({
       persona: 'bob',
       ref: 'headless:bob',

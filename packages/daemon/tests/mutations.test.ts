@@ -741,7 +741,7 @@ describe('Oz mutations + lifecycle', () => {
       }
       expect(store.listEvents(aRunId).map((event) => event.type)).toContain('run-start')
       expect(store.listEvents(bRunId).map((event) => event.type)).toContain('run-start')
-      expect(join(home, 'local', 'runs', aRunId)).not.toBe(join(home, 'local', 'runs', bRunId))
+      expect(join(home, 'local', 'runs', 'cocoder', aRunId)).not.toBe(join(home, 'local', 'runs', 'external', bRunId))
 
       controlled.release()
       for (let i = 0; i < 50 && (oz.ctx.inFlight.has('cocoder') || oz.ctx.inFlight.has('external')); i++) {
@@ -752,8 +752,8 @@ describe('Oz mutations + lifecycle', () => {
       expect(store.getRun(bRunId)?.status).toBe('completed')
       expect(oz.ctx.inFlight.has('cocoder')).toBe(false)
       expect(oz.ctx.inFlight.has('external')).toBe(false)
-      expect(await exists(join(home, 'local', 'runs', aRunId))).toBe(true)
-      expect(await exists(join(home, 'local', 'runs', bRunId))).toBe(true)
+      expect(await exists(join(home, 'local', 'runs', 'cocoder', aRunId))).toBe(true)
+      expect(await exists(join(home, 'local', 'runs', 'external', bRunId))).toBe(true)
 
       const aPortable = JSON.parse(await readFile(join(home, 'cocoder', 'runs', `1-${aRunId}`, 'run.json'), 'utf8')) as { run: { id: string; displayNumber: number }; workspace: { id: string } }
       const bPortable = JSON.parse(await readFile(join(externalPath, 'cocoder', 'runs', `1-${bRunId}`, 'run.json'), 'utf8')) as { run: { id: string; displayNumber: number }; workspace: { id: string } }
@@ -980,7 +980,7 @@ describe('Oz mutations + lifecycle', () => {
     expect(openSection).toContain('| [0003](./open/0003-existing-open.md) | Existing open | task |')
     expect(JSON.parse(await readFile(join(ticketDir, 'order.json'), 'utf8'))).toEqual(['0003', '0004'])
     expect(commits).not.toContainEqual(expect.objectContaining({ message: expect.stringContaining('close ticket 0003') }))
-    const delivery = await readFile(join(home, 'local', 'runs', runId, 'wrapup-delivery.md'), 'utf8')
+    const delivery = await readFile(join(home, 'local', 'runs', 'cocoder', runId, 'wrapup-delivery.md'), 'utf8')
     expect(delivery).toContain(decision)
     const audit = await readFile(join(home, 'local', 'oz-audit.log'), 'utf8')
     expect(audit).toContain('"action":"ticket-close-deferred"')

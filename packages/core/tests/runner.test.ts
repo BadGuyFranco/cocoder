@@ -683,7 +683,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(result.atoms).toBe(2)
     expect(result.committedShas).toHaveLength(2)
     expect(result.committedFiles).toEqual(['packages/a.ts', 'packages/b.ts'])
-    expect(result.pickupPath).toMatch(/\/runs\/run_.*\/pickup\.md$/)
+    expect(result.pickupPath).toMatch(/\/runs\/cocoder\/run_.*\/pickup\.md$/)
 
     // One work_item + one commit_link PER ATOM (the F8 continuation substrate, activated).
     const wis = store.listWorkItems(result.runId)
@@ -1211,8 +1211,8 @@ describe('runRun (multi-atom loop)', () => {
     expect(sends.every((send) => send.ref.id !== 'headless:oscar')).toBe(true)
     expect(runHeadlessCalls.length).toBeGreaterThanOrEqual(3)
     const headlessPrompts = runHeadlessCalls.map((call) => String(call.args[0]))
-    expect(headlessPrompts[0]).toContain('/runs/run_1/directive-0.json')
-    const verifyPrompt = headlessPrompts.find((prompt) => prompt.includes('/runs/run_1/verify-0.json'))
+    expect(headlessPrompts[0]).toContain('/runs/cocoder/run_1/directive-0.json')
+    const verifyPrompt = headlessPrompts.find((prompt) => prompt.includes('/runs/cocoder/run_1/verify-0.json'))
     expect(verifyPrompt).toContain('This is a FRESH session resuming an in-progress run')
     expect(verifyPrompt).toContain('directive-*.json')
     expect(verifyPrompt).not.toContain('your FIRST action in this run is to write the required')
@@ -1248,7 +1248,7 @@ describe('runRun (multi-atom loop)', () => {
   test('normal runs do not synthesize a founder-stop artifact or held status', async () => {
     const store = openRunStore(':memory:')
     const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-no-founder-stop-'))
-    const runDir = join(runsRoot, 'run_1')
+    const runDir = join(runsRoot, 'cocoder', 'run_1')
 
     const result = await runRun(
       baseDeps({
@@ -1297,7 +1297,7 @@ describe('runRun (multi-atom loop)', () => {
   test('founder-stop artifact at the directive boundary holds without dispatch, abandon, quarantine, or nudge', async () => {
     const store = openRunStore(':memory:')
     const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-founder-hold-pre-dispatch-'))
-    const runDir = join(runsRoot, 'run_1')
+    const runDir = join(runsRoot, 'cocoder', 'run_1')
     await writeFounderStopSignal(runDir)
     const sent: string[] = []
     const restored: string[][] = []
@@ -1338,7 +1338,7 @@ describe('runRun (multi-atom loop)', () => {
   test('founder-stop artifact after a passing atom holds before the next-directive dispatch', async () => {
     const store = openRunStore(':memory:')
     const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-founder-hold-commit-boundary-'))
-    const runDir = join(runsRoot, 'run_1')
+    const runDir = join(runsRoot, 'cocoder', 'run_1')
     const sent: string[] = []
     const commits: string[][] = []
     let head = 'h0'
@@ -1396,7 +1396,7 @@ describe('runRun (multi-atom loop)', () => {
   test('founder-stop artifact during Bob execution holds without verify dispatch, abandon, quarantine, or nudge', async () => {
     const store = openRunStore(':memory:')
     const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-founder-hold-during-exec-'))
-    const runDir = join(runsRoot, 'run_1')
+    const runDir = join(runsRoot, 'cocoder', 'run_1')
     const sent: string[] = []
     const restored: string[][] = []
     let screenReads = 0
@@ -1452,7 +1452,7 @@ describe('runRun (multi-atom loop)', () => {
   test('founder-stop artifact while awaiting verify holds without commit, abandon, or quarantine', async () => {
     const store = openRunStore(':memory:')
     const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-founder-hold-pre-verdict-'))
-    const runDir = join(runsRoot, 'run_1')
+    const runDir = join(runsRoot, 'cocoder', 'run_1')
     const sent: string[] = []
     const commits: string[][] = []
     const restored: string[][] = []
@@ -1514,7 +1514,7 @@ describe('runRun (multi-atom loop)', () => {
   test('held run resumes a persisted pre-dispatch directive at the parked atom without requesting a new atom', async () => {
     const store = openRunStore(':memory:')
     const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-founder-resume-pre-dispatch-'))
-    const runDir = join(runsRoot, 'run_1')
+    const runDir = join(runsRoot, 'cocoder', 'run_1')
     const git = scriptedGit([['packages/resumed.ts']])
     const firstIo: RunnerIO = {
       ...fakeIO({ directives: [] }),
@@ -1564,7 +1564,7 @@ describe('runRun (multi-atom loop)', () => {
   test('held run resumes pre-verdict by reissuing verification without redispatching Bob', async () => {
     const store = openRunStore(':memory:')
     const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-founder-resume-pre-verdict-'))
-    const runDir = join(runsRoot, 'run_1')
+    const runDir = join(runsRoot, 'cocoder', 'run_1')
     const commits: string[][] = []
     let head = 'h0'
     let changedCall = 0
@@ -2389,7 +2389,7 @@ describe('runRun (multi-atom loop)', () => {
     )
 
     expect(result.status).toBe('completed')
-    expect(sends).toEqual(['WRAP-UP READY: read /runs/run_1/wrapup-delivery.md and follow it now.'])
+    expect(sends).toEqual(['WRAP-UP READY: read /runs/cocoder/run_1/wrapup-delivery.md and follow it now.'])
     expect(sends.every((text) => !text.includes('\n'))).toBe(true)
     expect(artifactWrites.map((w) => w.fileName)).toEqual(['landing-outcome-delivery.md', 'wrapup-delivery.md'])
     expect(artifactWrites[0]?.contents).toContain('LANDING OUTCOME for run_1')
@@ -2401,7 +2401,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(artifactWrites[1]?.contents).toContain('COMMITTED on `trunk`')
     expect(artifactWrites[1]?.contents).toContain('Founder closeout\nwith detail')
     const delivery = store.listEvents(result.runId).find((e) => e.type === 'wrapup-delivery-dispatch')
-    expect(delivery?.data).toMatchObject({ ref: 'surface:1', path: '/runs/run_1/wrapup-delivery.md' })
+    expect(delivery?.data).toMatchObject({ ref: 'surface:1', path: '/runs/cocoder/run_1/wrapup-delivery.md' })
   })
 
   test('gate-commits Oscar support files at wrap (no holdback to clear — nothing is held)', async () => {
@@ -2519,8 +2519,8 @@ describe('runRun (multi-atom loop)', () => {
     expect(quarantine.data).toEqual({
       atom: 0,
       files: ['packages/bad.ts'],
-      quarantineDir: '/runs/run_1/quarantine/atom-0',
-      recovery: { tracked: 'HEAD', untracked: '/runs/run_1/quarantine/atom-0' },
+      quarantineDir: '/runs/cocoder/run_1/quarantine/atom-0',
+      recovery: { tracked: 'HEAD', untracked: '/runs/cocoder/run_1/quarantine/atom-0' },
     })
   })
 
@@ -3456,7 +3456,7 @@ describe('runRun (multi-atom loop)', () => {
     test('held run: on-disk terminal DebStatus matches deriveTerminalProjection (was a stale pre-hold phase)', async () => {
       const store = openRunStore(':memory:')
       const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-ws1-held-feed-'))
-      const runDir = join(runsRoot, 'run_1')
+      const runDir = join(runsRoot, 'cocoder', 'run_1')
       await writeFounderStopSignal(runDir)
       const statusWrites: DebStatus[] = []
       const result = await runRun(

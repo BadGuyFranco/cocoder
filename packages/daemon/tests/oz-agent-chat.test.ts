@@ -351,7 +351,7 @@ describe('Oz agent chat turns', () => {
     expect(result).toMatchObject({ status: 200, body: { reply: 'I queued the nudge.', command: 'chat', ok: true, action: { type: 'nudge', runId: fixture.runId } } })
     expect(fixture.prompts[0]?.prompt).toContain('nudge {"runId":"...","message":"..."}')
     expect(fixture.prompts[1]?.prompt).toContain('The runner will deliver it to Oscar at the next watchdog sample')
-    const raw = await readFile(join(fixture.home, 'local', 'runs', fixture.runId, 'oz-nudge.json'), 'utf8')
+    const raw = await readFile(join(fixture.home, 'local', 'runs', 'cocoder', fixture.runId, 'oz-nudge.json'), 'utf8')
     expect(parseNudgeRequest(raw)).toMatchObject({ target: 'oscar', message: 'Oscar — ask Bob for status', rationale: 'founder asked', seq: 1 })
   })
 
@@ -373,7 +373,7 @@ describe('Oz agent chat turns', () => {
     expect(result).toMatchObject({ status: 200, body: { reply: 'I need a message before I can nudge.', command: 'chat', ok: true } })
     expect(fixture.prompts[1]?.prompt).toContain('Tool "nudge" requires string arg "runId".')
     expect(fixture.prompts[2]?.prompt).toContain('Tool "nudge" requires string arg "message".')
-    await expect(stat(join(fixture.home, 'local', 'runs', fixture.runId, 'oz-nudge.json'))).rejects.toThrow()
+    await expect(stat(join(fixture.home, 'local', 'runs', 'cocoder', fixture.runId, 'oz-nudge.json'))).rejects.toThrow()
   })
 
   test('repair tool dispatches through ops and feeds truthful repair result to the follow-up prompt', async () => {
