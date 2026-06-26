@@ -387,3 +387,7 @@ export {
   rotateLogFile,
   type LogRotationPlan,
 } from './retention/index.js'
+
+// Single source of truth for a run's machine-local scratch dir — shared by the runner (writer) and the
+// retention GC so they can never disagree about the path (ADR-0027 §6 nesting is a single-site change here).
+export { localRunDir } from './run-dir.js'

@@ -197,11 +197,12 @@ describe('pruneRunDirs (folder GC)', () => {
     expect(await exists(join(root, 'run_1'))).toBe(false)
   })
 
-  test('no-dir: prune-eligible run with no folder is skipped, not deleted', async () => {
+  test('no-dir: prune-eligible run with no folder is skipped AND warns loudly (surfaces layout drift)', async () => {
     // Seed only run_2, run_3 (kept). run_0, run_1 have no dirs but are prune-eligible.
     const root = await seedRunsRoot(['run_2', 'run_3'])
     const ids = ['run_0', 'run_1', 'run_2', 'run_3']
     const runs = ids.map((id, i) => makeRun(id, 'ws', 'completed', 100 + i))
+    const logs: string[] = []
 
     const result = await pruneRunDirs({
       runsRoot: root,
@@ -209,11 +210,16 @@ describe('pruneRunDirs (folder GC)', () => {
       keepPerWorkspace: 2,
       enabled: true,
       isProjected: () => true,
+      log: (m) => logs.push(m),
     })
 
     expect(result.pruned).toEqual([])
     expect(result.skipped).toContainEqual({ runId: 'run_0', reason: 'no-dir' })
     expect(result.skipped).toContainEqual({ runId: 'run_1', reason: 'no-dir' })
+    // A missing dir for a projected candidate is NOT silent — it warns so future layout drift is visible.
+    const warnings = logs.filter((m) => m.includes('WARN') && m.includes('not found'))
+    expect(warnings).toHaveLength(2)
+    expect(warnings.some((m) => m.includes('run_0'))).toBe(true)
   })
 
   test('unsafe id is skipped without filesystem deletion', async () => {

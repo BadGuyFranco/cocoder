@@ -50,6 +50,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
+import { localRunDir } from '../run-dir.js'
 import type { RunnerIO } from './io.js'
 import { createHeadlessBuilderDriver, createPaneBuilderDriver, type BuilderDriver } from './builder-driver.js'
 import { executeAgentStep, type AgentStepActiveAtom, type AgentStepResume } from './agent-step.js'
@@ -383,7 +384,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   if (existingRun !== null && existingRun.status !== 'held') throw new Error(`Cannot resume run ${existingRun.id} from status ${existingRun.status}; expected held`)
   const run = existingRun ?? store.createRun({ workspaceId: workspace.id, priorityId: input.storePriorityId ?? priority.id, ticketId: input.ticketId ?? null })
   if (existingRun === null) deps.onRunCreated?.(run) // synchronous, before the first await — the daemon captures runId here
-  const runDir = join(runsRoot, run.id)
+  const runDir = localRunDir(runsRoot, run)
   await io.ensureRunDir(runDir)
   const resumeState = existingRun === null ? null : await readResumeState(runDir)
   if (existingRun !== null && resumeState === null) throw new Error(`Cannot resume run ${run.id}; missing resume-state.json`)

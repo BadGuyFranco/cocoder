@@ -3,8 +3,8 @@
 // when `enabled` is false the GC performs ZERO filesystem access. No silent deletion — every prune logs.
 
 import { rm } from 'node:fs/promises'
-import { join } from 'node:path'
 import { computeRetention, type RetainableRun } from './retention.js'
+import { localRunDir } from '../run-dir.js'
 
 export interface PruneRunDirsOptions {
   readonly runsRoot: string
@@ -52,11 +52,16 @@ export async function pruneRunDirs(opts: PruneRunDirsOptions): Promise<PruneRunD
       continue
     }
 
-    const dir = join(opts.runsRoot, runId)
+    const dir = localRunDir(opts.runsRoot, { id: runId })
     try {
       await rm(dir, { recursive: true })
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+        // Loud, not silent: a prune candidate is projected + safely-named, so its scratch dir SHOULD
+        // exist at the resolved path. A miss means it was already cleaned out-of-band OR the on-disk
+        // run-dir layout drifted from localRunDir() (e.g. an unshipped ADR-0027 §6 nesting migration).
+        // Surface it so layout drift can never hide behind a silent skip.
+        log(`[retention] WARN run-dir for ${runId} not found at ${dir} — already cleaned or run-dir layout drift (expected flat <runsRoot>/<runId>); skipping`)
         skipped.push({ runId, reason: 'no-dir' })
         continue
       }
