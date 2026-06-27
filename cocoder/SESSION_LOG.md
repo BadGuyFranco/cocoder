@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-27 — **ticket-fix-0072: runnerless handoff success presentation — closed (run_115/run_259)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0072](./tickets/closed/0072-launch-error.md) | **Run:** run_259 (display 115)
+**Outcomes:**
+- **Presentation fix (`dcb87d1`, `98a63fb`).** `LaunchProgressState.handoff` carries `handoffPath` + `command`; `LaunchProgressModal` renders a neutral check-circle success (no warning icon, no “Launch needs attention.”, no red alert); `App.tsx` `doLaunch` routes successful runnerless handoff through the new channel. Daemon routing and the independent-of-runner guard untouched.
+- **Regression pinned.** Live-app tests expect the success affordance and assert handoff does not render error/needs-attention UI; `@cocoder/ui` suite 175/175 green, tsc clean.
+- **Ticket closed** with Resolution + INDEX updated; `order.json` pruned. Diagnosis from run_258 (founder-approved, presentation-only) fully implemented.
+- **Disposition: `closed`.** Verified fix in scope; no founder decision or live-only proof required beyond test coverage.
+**Next:** Launch `local-cache-retention` via `pnpm --dir <install-root> exec cocoder run-independent local-cache-retention` from a disposable checkout (destructive priority).
+
 ## 2026-06-26 — **ticket-fix-0072: diagnosis — handoff success painted as error; fix gated on founder approval (run_114)**
 
 **Persona:** Oscar (lead) | **Priority:** ticket-fix / [0072](./tickets/open/0072-launch-error.md) | **Run:** run_114 (display 114)
