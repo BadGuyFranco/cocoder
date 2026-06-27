@@ -32,4 +32,5 @@ ADR-0043; make the handoff an honest manual affordance, not a fake launch).
 - Real launch work → **[[0074]]** (founder decision B).
 - The recurring auto-close-without-resolution bug this close exemplifies → **[[0075]]**.
 
-This ticket stays Closed-superseded; do not treat the "Fixed" claim above as accurate.
+Ticket 0075 re-checked this disposition and leaves this ticket Closed-superseded rather than reopening it.
+Do not treat the "Fixed" claim above as accurate.
