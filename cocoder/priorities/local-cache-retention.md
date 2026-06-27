@@ -1,12 +1,33 @@
 ---
 id: local-cache-retention
 title: Machine-local cache retention — bound local/ growth with per-workspace run retention
-independent-of-runner: true
+independent-of-runner: false
 destructive: true
 ---
 ## Objective
 
 Bound the unbounded growth of the install's machine-local cache (local/runs scratch + the shared SQLite store) with a per-workspace retention policy: keep the last N runs per workspace (default 25), applied to BOTH the scratch dirs and the store rows. Time-independent and fair across active/idle repos (reject time-based and global last-N). GC a run's local state only after its durable record is projected to the repo's cocoder/runs/; never prune a running/awaiting-founder/awaiting-archive/held run; preserve cross-run fault recurrence. Checkpoint the WAL and rotate logs. N configurable, default 25.
+
+## Current state — built and inert (run_265, 2026-06-27)
+
+The engine is **code-complete, ships inert, and is proven in isolation.** Built over 9 atoms in an independent destructive-isolation session (run_265), landed on `main`.
+
+**Landed:**
+- Selection core (`packages/core/src/runner/retention.ts`): per-workspace keep-last-N (default 25), fairness, non-terminal + projection exclusion, idempotency.
+- Plan + surface (`retention-plan.ts`): builds the prune plan from the live store and logs it (no silent deletion).
+- Store-row trim (`store.pruneRunRows`): transactional; a fault-free run is deleted whole, a fault-bearing run keeps its `run` row + `fault-triaged` events so `listFaultHistory` (DB-sourced) recurrence survives.
+- Folder GC (`run-dir.ts removeLocalRunDir`): escape-guarded against path traversal.
+- Housekeeping (`store.checkpointWal` + `log-rotation.ts rotateLogFile`): WAL TRUNCATE + size-based rotation of `oz-audit.log` and `local/oz/` turn logs.
+- Orchestrator (`retention-gc.ts runRetentionGc`): flag-gated; never prunes a running/protected run; folder-before-store ordering for crash safety; tolerates the live store mutating underneath.
+- Config + daemon wiring (`Settings.retention`, daemon `runRetentionGcOnce`): `retention.enabled` defaults **false**; one pass at daemon boot after orphan-reconcile + legacy-dir migration; no-ops while disabled.
+- Decision record: ADR (run_265) + this brief. Proof: `scripts/proof-retention.mjs` — one command, exit 0, 31 checks (bounded 25-of-30, idempotent, fair, pending/protected/unprojected kept, recurrence intact).
+
+**Tests:** core + daemon suites green; every safety invariant has a pinned test.
+
+**Known soft spots — carry these into the effectiveness-analysis relaunch:**
+- The end-to-end proof exercises the *engine*; it re-builds the deps rather than calling the daemon's `runRetentionGcOnce`. The real boot path (read `settings.json` → resolve workspace repo paths via `findWorkspace` → run a pass against a real store + real run-dirs together) is only unit-tested with fakes. **A real daemon boot with the flag ON has never run.**
+- All verification was author-directed and single-gated: no atom was ever failed, and no independent adversarial diff review was done.
+- The boot-time `protectedRunIds` guard is effectively empty at boot (`inFlight`/`stopControllers` are empty then); status + projection-gating are the real guards at boot. A future periodic trigger would make the protected set load-bearing.
 
 ## Context
 
@@ -50,15 +71,20 @@ Two retention models are explicitly **rejected**: time-based (punishes a repo ru
 - Relocating the install root (`cocoderHome`/`local/`) out of the CoCoder source checkout — related but a separate decision/ticket.
 - Changing the portable `cocoder/runs/` record format or projecting additional artifacts (e.g. a readable `record.md`) into it.
 
-## Execution safety — dogfooding isolation (REQUIRED, read before launching)
+## Execution safety — ships inert; now safe to run inside cocoder
 
-This priority mutates `local/cocoder.db` (the live coordination store) and `local/runs/` (live scratch) — the exact working state every run depends on. Building it on the cocoder install the normal way is **unsafe**: a bug here does not misbehave, it **deletes run history**, and a mid-run daemon reload could surprise-activate the GC against the live store *before the build run even wraps*. Guardrails:
+The build is done and the engine **defaults OFF** (a live `local/settings.json` with no `retention` key loads disabled). Because it is inert by default, this priority **no longer requires the independent/runnerless path** and can run as a normal in-cocoder run (frontmatter `independent-of-runner: false`). The destructive behavior activates ONLY when the founder sets `retention.enabled: true`.
 
-- **Hard dependency met:** daemon-reload-safety fix landed (ticket [0064](../tickets/closed/0064-daemon-self-reload-zombies-the-old-process-and-wedges-oz-oz-sh-stop-reaps-only-the-listener.md) closed run_248). Remaining guardrails below still required before launch.
-- **Build + validate in an independent, disposable CoCoder checkout/install** whose `local/` is the test subject — seed a fixture store + fake run-dirs and exercise the GC adversarially. The live dogfooding `local/` is NEVER the test subject.
-- **Fixture-only tests** (`openRunStore(':memory:')` + temp dirs); a test must never touch real install paths.
-- **Ship inert** on the live install (flag-gated, OFF by default); enable on cocoder only after it is proven in isolation.
-- **Never prune the run currently executing**, and tolerate the live store mutating underneath the GC.
-- **Do NOT launch this as a normal cocoder run** until the guards above exist. Run it via the independent/runnerless path (see the `runnerless-independent-priority` priority) — i.e. an independent session outside cocoder.
+Still true and load-bearing:
+- **Enabling the flag on the live store is a deliberate founder step**, taken only after a real in-isolation boot confirms the behavior. Do not flip it silently.
+- The engine never prunes a non-terminal/protected run, GCs a run's local state only after its durable record is projected to `cocoder/runs/`, preserves cross-run fault recurrence, and tolerates the live store mutating underneath.
+- Fixture-only tests still hold for any new test: never touch real install paths.
 
-This priority is the canonical example of the class "destructive, self-modifying engine change" that cannot be safely dogfooded normally.
+## Next launch — verify effectiveness, then fix and archive
+
+This priority is **no longer a build** — the engine exists. The next launch **proves the shipped engine works in real use and fixes what doesn't**, then archives. Concretely:
+
+1. **Close the integration-seam gap (the top soft spot above):** enable `retention.enabled: true` (confirm N) and do a real daemon boot, watching one actual `runRetentionGcOnce` pass run against a real store + real run-dirs — the path the unit tests only faked.
+2. **Analyze effectiveness against real run history:** does `local/` actually bound to ≈ N × workspaces? Is the pass idempotent across reboots? Does recurrence survive real faults? Do the WAL and logs actually shrink? Measure before/after footprint.
+3. **Fix any gap found** — e.g. the deps-wiring seam, a periodic trigger if boot-only proves insufficient, config ergonomics, or anything an independent adversarial review surfaces.
+4. **Archive only once effectiveness is observed on a live install**, not merely unit-proven. Do not archive on the build evidence alone.
