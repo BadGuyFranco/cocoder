@@ -2,7 +2,7 @@
 id: 0076
 title: Runner continuation-nudge can advance a run past an unanswered founder decision
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-27
@@ -31,3 +31,9 @@ The awaiting-founder state to gate on is already computed in `packages/core/src/
 ## Notes
 - Orchestration machinery — strong Oscar->Deb repair candidate once scoped, or a dedicated verified run. Not in scope for run_261 (0075).
 - Related: [[0075]] (the close-gate keys off the same awaiting-founder state), ADR-0023 (commit spine).
+
+## Resolution
+
+Closed by reconciliation run_264 on 2026-06-27.
+
+Resolved by commit 33799c2: runner directive waits now keep ask-founder-continue in awaiting-founder and suppress idle/Oz nudges while a founder decision is pending; daemon nudge coverage rejects awaiting-founder runs.
