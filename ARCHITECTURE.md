@@ -73,8 +73,9 @@ decisions" are the same set, so they share one `cocoder/decisions/` tree. An ado
 There is exactly **one** way tracked files reach the active workspace branch: the **commit spine**, a
 single `core` service every actor calls — Oscar's wrap edits, Bob's verified atom, Deb's repair, Oz's
 repair, the daemon's priority/persona/governance mutations, and any founder-directed edit. No actor
-reimplements `git commit`. (This replaces the three divergent commit paths the 2026-06-14 audit found —
-`runCommitGate`, `commitGovernance`, `gateCommitRepair` — which is what had been stranding work.)
+reimplements `git commit`: the older paths the 2026-06-14 audit found — `runCommitGate`,
+`commitGovernance`, `gateCommitRepair` — now funnel through the spine (`commitFiles` / `commitScoped`)
+instead of maintaining separate git-commit implementations.
 
 There is exactly **one mode** (ADR-0023 Amendment 2, founder directive 2026-06-15 — the opt-in isolation
 lane was removed). The spine always: works on the **active checkout / active branch** (no worktree, no run
@@ -108,7 +109,7 @@ authoring Plays. ADR-0015/0021/0022 are retired history tracked in the
 
 | Change kind | Path | Verification |
 |---|---|---|
-| Governance / docs / ADRs / priorities / personas / standards | **Direct to the active branch** — commit in place | light / none (can't break a build) |
+| Governance / docs / ADRs / priorities / personas / standards | **Direct to the active branch** — commit in place | light / risk-matched; governed docs can be test-pinned, so affected suites still run |
 | Product / machinery **code** | **Direct to the active branch**, but the orchestrator verifies *before* the spine commits (per-atom diff + tests); fail → revert that atom in place, commit nothing | risk-matched ([ADR-0013](./cocoder/decisions/0013-orchestration-observation.md)) |
 | Shared GitHub repo | The founder checks out a feature branch; the engine commits to it and `git push`es (**non-gating**). The merge to the shared `main` is GitHub's **PR review**, not the engine's | per the repo's CI / PR gate |
 
@@ -225,7 +226,9 @@ CoCoder/                          # the engine install AND the dogfood workspace
 │   ├── PLAYBOOK.md               # the roadmap (phases + priority ordering, interim)
 │   ├── SESSION_LOG.md            # append-only work log (+ SESSION_LOG_ARCHIVE.md)
 │   ├── failure-catalog.md        # observed failures that earn guardrails (D2)
-│   ├── decisions/                # THE one live ADR tree (0001–0019+)
+│   ├── audit/                    # tracked evidence that should travel with the dogfood governance
+│   ├── runs/                     # tracked portable run history exports for dogfood runs
+│   ├── decisions/                # THE one live ADR tree (0001 through 0044, and growing)
 │   ├── priorities/               # one flat .md per launchable priority (+ backlog/)
 │   ├── tickets/                  # INDEX.md + open/ + closed/
 │   ├── personas/                 # EXTENSIONS only: deltas/ + custom/ + assignments.json
@@ -368,20 +371,23 @@ Oz runs an HTTP daemon that can launch and stop processes. It is **not** interne
 2. Require a per-install session token (`local/secrets/oz-token`) on every state-changing endpoint.
 3. Reject requests with mismatched `Origin`/`Host` headers (DNS-rebinding defense).
 4. CSRF token required on `POST`/`DELETE` from the dashboard.
-5. Settings endpoints never return secret values — only references (e.g. `"openai": "ref:env:OPENAI_API_KEY"`).
+5. The current settings surface has no secret-bearing fields; if one is added, settings endpoints must
+   return only references, never secret values (e.g. `"openai": "ref:env:OPENAI_API_KEY"`).
 6. Launch/stop actions append JSON lines to `local/oz-audit.log` with timestamped action metadata.
-7. No shell-string interpolation of workspace paths — argv arrays only.
+7. Process-spawning paths use argv arrays for workspace paths. Human-facing command strings may be
+   rendered for handoff/display, but those are shell-quoted and not executed by the daemon.
 
 ## Oz improvement routing
 
-Oz classifies every proposed improvement by target zone before making or recommending a change:
+The Routing Guide classifies every proposed improvement by target zone before any persona makes or
+recommends a change:
 
 - `cocoder-product` — CoCoder source itself (`packages/`, `templates/`, public docs, shipped prompts + base personas). This is contributor-only developer-mode work; in the dogfood it's the portability-test call (ADR-0012).
 - `workspace-shared` — the active repo's tracked `cocoder/` governance folder.
 - `install-local` — the ignored `<CoCoder>/local/` machine-state zone (the only local zone).
 - `upstream-candidate` — a workspace finding that may belong upstream, but should be drafted for contributor review instead of edited into the install.
 
-Normal adopters get workspace customization by default. CoCoder product improvements are only routed to `cocoder-product` when the active workspace is the CoCoder repo dogfood workspace and developer mode is enabled. See [`cocoder/decisions/0008-repository-topology.md`](./cocoder/decisions/0008-repository-topology.md) (one-home enforcement) and [`0009-extensibility.md`](./cocoder/decisions/0009-extensibility.md).
+Normal adopters get workspace customization by default. CoCoder product improvements are only routed to `cocoder-product` when the active workspace is the CoCoder repo dogfood workspace and developer mode is enabled. See [`docs/oz-improvement-routing.md`](./docs/oz-improvement-routing.md), [`cocoder/decisions/0008-repository-topology.md`](./cocoder/decisions/0008-repository-topology.md) (one-home enforcement), and [`0009-extensibility.md`](./cocoder/decisions/0009-extensibility.md).
 
 ## References
 
