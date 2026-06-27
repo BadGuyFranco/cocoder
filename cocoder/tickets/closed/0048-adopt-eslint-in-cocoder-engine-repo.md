@@ -2,7 +2,7 @@
 id: 0048
 title: Adopt a minimal ESLint 9 linter in CoCoder's own engine repo
 type: task
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-24
@@ -66,3 +66,9 @@ Safe pickup:
 2. Verify `pnpm lint`, `pnpm typecheck`, and `pnpm test` from the actual current tree.
 3. Decide and document whether `lint` joins CI and/or the `pnpm test` flow.
 4. Close this ticket only through the ticket-close path after the verified fix lands.
+
+## Resolution
+
+Resolved by run run_266 (58c0fdde8e65cf758f23279961f278fa216def0b) on 2026-06-27.
+
+Adopted minimal ESLint 9 flat config (eslint.config.mjs, eslint 9.39.4 + typescript-eslint 8.62.0) at repo root with restrained type-aware/safety rules; fixed the one real violation (unused registerLivePriorities import in packages/daemon/src/routes.ts); repo passes pnpm lint; lint joins CI as a dedicated step after typecheck (documented in ci.yml) and is deliberately not folded into pnpm test.
