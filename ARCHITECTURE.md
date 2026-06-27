@@ -219,8 +219,8 @@ CoCoder/                          # the engine install AND the dogfood workspace
 ├── templates/
 │   ├── install-local/            # install-zone config + secrets examples
 │   └── workspace-cocoder/        # the cocoder/ scaffold a managed repo gets
-├── cocoder/                      # ← the DOGFOOD workspace's governance (tracked; same shape as
-│   │                             #   any <primary-root>/cocoder/ — every dir below is LIVE)
+├── cocoder/                      # ← the DOGFOOD workspace's full governance (tracked; every dir below
+│   │                             #   is LIVE; richer than the starter template shipped to new workspaces)
 │   ├── AGENTS.md                 # meta-project routing
 │   ├── PLAYBOOK.md               # the roadmap (phases + priority ordering, interim)
 │   ├── SESSION_LOG.md            # append-only work log (+ SESSION_LOG_ARCHIVE.md)
@@ -243,11 +243,10 @@ CoCoder/                          # the engine install AND the dogfood workspace
     └── README.md                 # the only tracked file — zone signage
 
 <primary-root>/                   # any repo CoCoder manages
-└── cocoder/                      # that workspace's governance — IDENTICAL SHAPE to the dogfood's:
-    ├── AGENTS.md · SESSION_LOG.md
+└── cocoder/                      # that workspace's tracked governance, seeded from the starter template:
+    ├── AGENTS.md · CLAUDE.md · SESSION_LOG.md · glossary.md
     ├── decisions/ · priorities/ · tickets/ · memory/ · standards/
-    ├── personas/ (deltas/ + custom/ + assignments.json)
-    └── plays/ (deltas/ — repo Play overrides)
+    └── personas/ (assignments.json + custom/)
                                   # NO local/ — machine state lives only in the install's local/
 ```
 
@@ -299,10 +298,13 @@ triggers are not persona discretion; the registry owner is
 and runner wrap-up dispatch in [`packages/core/src/runner/runner.ts`](./packages/core/src/runner/runner.ts).
 
 Output validation is selected by the Play's declared `outputValidator.ref`. The production selector is
-the exported `validatePlayOutput` in [`packages/core/src/runner/runner.ts`](./packages/core/src/runner/runner.ts);
-for example, the wrap-up Play declares `validators/founder-closeout`, and the runner derives validation
-from that ref instead of hardcoding a wrap-up-only path. The founder closeout label contract itself is
-not duplicated here; its owner/consumer map lives in
+`validatePlayOutput` in
+[`packages/core/src/plays/founder-closeout.ts`](./packages/core/src/plays/founder-closeout.ts),
+re-exported through [`packages/core/src/index.ts`](./packages/core/src/index.ts) and consumed by
+[`packages/core/src/runner/runner.ts`](./packages/core/src/runner/runner.ts). For example, the wrap-up
+Play declares `validators/founder-closeout`, and the runner derives validation from that ref instead of
+hardcoding a wrap-up-only path. The founder closeout label contract itself is not duplicated here; its
+owner/consumer map lives in
 [`docs/orchestration-contract-ownership.md`](./docs/orchestration-contract-ownership.md).
 
 Plays are one-level procedures: no recursive Play delegation, no `PlayAssignment[]` multi-binding, and no
@@ -325,11 +327,14 @@ tiers on `packages/core` ports instead of reimplementing orchestration.
 
 ## Package topology and dependency rule
 
-The v2 rebuild is a clean build (not an extraction): the six packages already exist under `packages/`. Per [`cocoder/decisions/0008-repository-topology.md`](./cocoder/decisions/0008-repository-topology.md), dependencies flow inward only:
+The v2 rebuild is a clean build (not an extraction): the seven packages already exist under `packages/`.
+Per [`cocoder/decisions/0008-repository-topology.md`](./cocoder/decisions/0008-repository-topology.md),
+dependencies flow inward only:
 
 - `core` depends on nothing else in the workspace.
+- `personas` depends on nothing else in the workspace.
 - `adapters`, `session-hosts`, and `ui` depend only on `core`.
-- `daemon` and `cli` depend on `core` + `adapters` + `session-hosts`.
+- `daemon` and `cli` depend on `core` + `adapters` + `session-hosts` + `personas`.
 
 The rule is enforced by a deterministic guardrail: `node scripts/check-topology.mjs`.
 
@@ -349,14 +354,11 @@ The control socket must be reachable (cmux running in automation mode). If it is
 
 ## Multi-machine path portability
 
-`local/workspaces.json` registers workspaces by path. Absolute paths break across machines synced via Syncthing/iCloud if the same workspace lives at different roots (e.g. `/Volumes/NAS LOCAL/CoBuilder` vs `~/dev/CoBuilder`).
-
-**Resolution:** workspace entries store one of:
-
-1. A path under `${COCODER_HOME}` (the directory containing the CoCoder install) — portable as long as the install folder itself is synced.
-2. A path under a named root in `local/roots.yaml` (e.g. `roots: { nas: "/Volumes/NAS LOCAL", dev: "~/dev" }`), used as `${root:nas}/CoBuilder`.
-
-`cocoder` resolves these tokens at runtime. Absolute paths are only stored when neither token applies, and a warning is logged.
+`local/workspace/*.code-workspace` is the workspace registry. Each file contains folders with roles
+(`primary`, `writable`, or `readonly`); paths may use `${COCODER_HOME}` or other environment-variable
+tokens, and relative paths resolve from `local/workspace/`. If no `.code-workspace` files exist,
+`cocoder` falls back to the legacy `local/workspaces.json` registry. There is no `local/roots.yaml`
+named-root resolver in the current implementation.
 
 ## Oz daemon security model
 
@@ -367,7 +369,7 @@ Oz runs an HTTP daemon that can launch and stop processes. It is **not** interne
 3. Reject requests with mismatched `Origin`/`Host` headers (DNS-rebinding defense).
 4. CSRF token required on `POST`/`DELETE` from the dashboard.
 5. Settings endpoints never return secret values — only references (e.g. `"openai": "ref:env:OPENAI_API_KEY"`).
-6. All launch/stop actions write to `local/audit/oz-actions.jsonl` with timestamp, persona, workspace, run id, and outcome.
+6. Launch/stop actions append JSON lines to `local/oz-audit.log` with timestamped action metadata.
 7. No shell-string interpolation of workspace paths — argv arrays only.
 
 ## Oz improvement routing
