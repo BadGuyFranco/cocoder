@@ -17,7 +17,7 @@ and [ADR-0012](../decisions/0012-living-base-personas.md) (base + extension mode
   (`packages/personas/`) as the single source; this folder holds CoCoder's own deltas
   (`deltas/<id>.md`) + repo-only personas. The `core` loader merges base + delta at load, and a base
   improvement provably reaches an already-extended repo. (Priority archived to
-  `priorities/zArchive/v2/base-and-extension-personas.md`.)
+  `cocoder/zArchive/priorities/v2/base-and-extension-personas.md`.)
 
 ## How personas compose at launch
 
@@ -29,5 +29,5 @@ and [ADR-0012](../decisions/0012-living-base-personas.md) (base + extension mode
 
 ## v1 leftovers (frozen reference)
 
-`_archived-v1/`, `custom/`, `playbooks/`, `prompts/`, and `PORT-NOTES.md` are pre-rebuild v1 artifacts
-(the old `.json`-persona / playbook-summary model). Not read by v2; kept as reference pending cleanup.
+`custom/` is the remaining pre-rebuild v1 artifact (the old `.json`-persona / playbook-summary
+model). Not read by v2; kept as reference pending cleanup.
