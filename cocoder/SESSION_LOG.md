@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-27 — **doc-truth-analysis phase 3 comprehensive sweep — blocked (run_128/run_271)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [doc-truth-analysis](./priorities/doc-truth-analysis.md) | **Run:** run_271 (display 128)
+**Outcomes:**
+- **Phase 3 atoms A–C committed.** Cross-doc re-verification (`c3d2a71`, 22-row inventory in `docs/phase3-cross-doc-reverification.md`, 18 doc fixes); normative-surface audit (`f12c2c1`, 2 STALE-CLI base fixes, pinning 87/87 green); clarity/elegance pass (`f93cac8`, 2 one-owner dedups, 3 smoothed passages).
+- **Atoms D–E Oscar-lane.** Process gaps 7–9 appended to `harden-documentation-process`; audit worklists bannered reconciliation-complete and deferred to worklist-archive convention (not ad-hoc archived).
+- **Two CODE-WRONG conflicts surfaced, not edited.** ADR-0023 vs live `commitOnlyScope: true` atom lane (row 6); stale `scripts/proof-direct-spine.mjs` matchers (row 21). Stranded verified-true README seven-package fix held back — no owning write-lane.
+- **Disposition: `blocked`.** Phase 3 functionally complete; one founder A/B decision on commit-spine behavior gates archive-readiness and the row-6/row-21/README follow-ups.
+**Next:** Founder answers commit-spine Option A (amend ADR-0023 + fix proof script) vs Option B (restore commit-all-and-flag in code); then relaunch `doc-truth-analysis` for the gated follow-up. Parallel: launch `harden-documentation-process` for CI reference check and worklist-archive guardrails.
+
 ## 2026-06-27 — **ticket-fix-0069: personas AGENTS.md stale path refs — closed (run_127/run_270)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0069](./tickets/closed/0069-personas-agents-stale-archive-and-v1-leftover-refs.md) | **Run:** run_270 (display 127)

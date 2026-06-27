@@ -44,30 +44,44 @@ governance docs audited (PLAYBOOK, AGENTS, failure-catalog, standards/plays delt
 — all clean. The two stale path refs in `cocoder/personas/AGENTS.md` were closed in
 [run_270 / ticket 0069](../tickets/closed/0069-personas-agents-stale-archive-and-v1-leftover-refs.md).
 
-## Phase 3 — final comprehensive sweep (founder-directed 2026-06-27, briefed for next launch)
+## Phase 3 status (run_271 — DONE, **blocked** on one founder decision)
 
-The per-file reconciliation (Phase 1+2) is done; the founder directed one more **comprehensive,
-independent sweep** before archive, which must *also* surface documentation-**process** improvements.
-This is the operational plan for the next launch (decomposition lives in the run, not in the Objective):
+All five planned atoms completed and verified. Live reconciliation artifact:
+[`docs/phase3-cross-doc-reverification.md`](../docs/phase3-cross-doc-reverification.md) (22-row inventory;
+18 doc-side fixes landed; 2 CODE-WRONG conflicts flagged, not edited). Normative surface
+(`packages/personas/base/**`) audited clean after 2 STALE-CLI fixes. Clarity/elegance pass deduped
+commit-spine and product-routing ownership without changing facts. Process gaps 7–9 appended to
+[`harden-documentation-process`](./harden-documentation-process.md). Audit worklists bannered
+reconciliation-complete and deferred to the worklist-archive convention (not ad-hoc archived here).
 
-- **Atom A — independent cross-doc re-verification.** A fresh adversarial pass over the already-
-  reconciled surface (ARCHITECTURE, ADRs, all `docs/`, README/CONTRIBUTING, `cocoder/` governance),
-  hunting cross-document inconsistencies and anything the per-file audits missed; spot-check that
-  corrected claims still trace to live code by path.
-- **Atom B — extend to the un-audited normative surface.** Audit base persona/standards/plays under
-  `packages/personas/base/**` and the `cocoder/` deltas for stale *concrete* refs (paths, CLI
-  commands/flags, ADR ids) — these were outside Phase 1/2's code-describing focus. Base-governance
-  fixes route through a verified run/Deb repair, not post-wrap support.
-- **Atom C — clarity/elegance pass (Objective criterion 3).** Read the reconciled docs for clarity and
-  stale-reference-free elegance, not just truth; flag duplication / one-owner violations.
-- **Atom D — doc-process observation pass.** While sweeping, collect concrete opportunities to harden
-  the documentation *process* and feed them into the new
-  [`harden-documentation-process`](./harden-documentation-process.md) priority's problem inventory.
-- **Atom E — worklist cleanup decision.** Resolve whether `docs/architecture-truth-audit.md` and
-  `docs/docs-files-truth-audit.md` should be archived now reconciliation is complete.
+**Disposition: `blocked`.** One founder decision prevents archive-readiness — the commit-spine A/B call
+below. Every other Objective criterion is met; open ticket **0037** (stale CONTRIBUTING rg-CI-gate) is
+separate from this governed-doc surface.
 
-After this sweep the priority is archive-ready. Open ticket **0037** (stale CONTRIBUTING rg-CI-gate) is
-separate from this governed-doc surface and tracked as its own ticket-fix.
+### Founder decision needed (blocker)
+
+**Commit-spine: does the live atom lane correctly hold back out-of-lane files, or is that a regression
+from ADR-0023?** ADR-0023 Amendment 2 says the spine commits everything the actor changed; out-of-lane
+paths are committed and FLAGGED, never withheld. Since commit `ccd3ae9` (2026-06-25), verified-atom
+commits pass `commitOnlyScope: true` — holding back out-of-lane files. `scripts/proof-direct-spine.mjs`
+still asserts the old behavior and exits 1.
+
+- **Option A (Oscar recommends):** code is the intended refinement — an atom commits only its declared
+  scope; out-of-lane writes are flagged and left for review, not auto-committed. Resolution = amend
+  ADR-0023 to document caller-declared scope + fix `proof-direct-spine.mjs` to assert held-back
+  behavior. Governance + script; no runtime change.
+- **Option B:** code is a regression — restore commit-everything-and-flag for atoms in code, keep
+  ADR-0023 as written. A code-fix atom, not a doc fix.
+
+### Follow-ups gated on the A/B answer
+
+1. Row-6 + row-21 discrepancy resolution: under A, amend ADR-0023 + fix `scripts/proof-direct-spine.mjs`;
+   under B, file a code-fix ticket to restore commit-everything-and-flag for atoms. Either way the proof
+   harness must go green.
+2. **Stranded README fix:** the correct `README.md` six→seven-packages correction (adds
+   `@cocoder/personas`) is verified-true but held back as dirt every atom because root `README.md` is in
+   no run's write-lane — a live instance of harden-documentation-process item 7. Resolve alongside the
+   A/B follow-up.
 
 ## Founder-directed code-or-doc follow-ups (founder decisions from run_267)
 
