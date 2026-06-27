@@ -22,10 +22,10 @@ leaves closed tickets after them. The dashboard route reads those files through 
 
 The shared projection owner for oz-hardening items 2 and 4 is explicitly:
 
-`packages/daemon/src/oz-awareness.ts:19` `projectOzAwareness()`.
+`packages/daemon/src/oz-awareness.ts` `projectOzAwareness()`.
 
 It projects priorities, `RunStore` runs, and ticket summaries into one `OzAwarenessSnapshot` with
-`recentRuns`, `activeRuns`, and `openTickets` (`packages/daemon/src/oz-awareness.ts:6`). Item 2
+`recentRuns`, `activeRuns`, and `openTickets` (`packages/daemon/src/oz-awareness.ts`). Item 2
 refresh/compact reads and item 4 change-detection/status reads must share this owner. Do not introduce a
 parallel chat-scrollback summary, prompt-only digest, or UI-local status contract.
 
@@ -95,7 +95,7 @@ Evidence (pre-probe architecture):
 - `runToolLoop()` returns `chatResult(200, { reply: output.text, command: 'chat', ok: true })` after the
   full turn is complete (`packages/daemon/src/oz-host.ts:116`).
 - The daemon HTTP route for `POST /oz/messages` reads JSON, awaits `handleOzMessage()`, and sends one JSON
-  object through `sendJson()` (`packages/daemon/src/routes.ts:767`).
+  object through `sendJson()` (`packages/daemon/src/routes.ts`).
 - The UI IPC contract has `ChatMessage { role, text, at }` and `OzChatReply { reply, ok, command, action? }`;
   neither contains token chunks, a stream id, or reasoning fields (`packages/ui/src/main/ipc-contract.ts:223`,
   `packages/ui/src/main/ipc-contract.ts:229`).
@@ -111,13 +111,10 @@ it degrade silently.
 
 The durable settings owner is `packages/daemon/src/settings.ts`.
 
-`Settings` includes `ozAutoCompactRuns` (`packages/daemon/src/settings.ts:4`), `DEFAULT_SETTINGS` sets it
-to `3` (`packages/daemon/src/settings.ts:10`), and `saneOzAutoCompactRuns()` clamps it to `2..10`
-(`packages/daemon/src/settings.ts:13`, `packages/daemon/src/settings.ts:16`). Persistence is the same file:
-`readSettings()` reads the settings path returned by `settingsPath()` (`packages/daemon/src/settings.ts:12`,
-`packages/daemon/src/settings.ts:40`) and `mergeWriteSettings()` writes that path atomically
-(`packages/daemon/src/settings.ts:48`). HTTP access is `GET /settings` and `PUT /settings`
-(`packages/daemon/src/routes.ts:502`, `packages/daemon/src/routes.ts:885`).
+`Settings` includes `ozAutoCompactRuns` (`packages/daemon/src/settings.ts`), `DEFAULT_SETTINGS` sets it
+to `3`, and `saneOzAutoCompactRuns()` clamps it to `2..10`. Persistence is the same file:
+`readSettings()` reads the settings path returned by `settingsPath()` and `mergeWriteSettings()` writes
+that path atomically. HTTP access is `GET /settings` and `PUT /settings` (`packages/daemon/src/routes.ts`).
 
 The IPC/main bridge is the existing settings channel in `packages/ui/src/main/ipc-contract.ts:243`,
 `packages/ui/src/main/settings-sync.ts:11`, and `packages/ui/src/main/main.ts:41`. `settings-sync.ts`
@@ -129,11 +126,11 @@ The renderer owner is `packages/ui/src/renderer/model.ts:71` plus `SettingsScree
 `packages/ui/src/renderer/sections/Settings.tsx:85`. The UI already renders "Oz Auto Compact at N Runs" as
 an advanced numeric input with min `2` and max `10` (`packages/ui/src/renderer/sections/Settings.tsx:143`).
 `App.saveSettings()` persists `ozAutoCompactRuns` through `oz.settingsSet()`
-(`packages/ui/src/renderer/App.tsx:286`).
+(`packages/ui/src/renderer/App.tsx`).
 
-The runtime trigger is `recordOrchestratedRun()` in `packages/daemon/src/oz-host.ts:428`, which reads the
+The runtime trigger is `recordOrchestratedRun()` in `packages/daemon/src/oz-host.ts`, which reads the
 daemon setting and compacts the daemon-local Oz transcript counter. `attachRunLifecycle()` calls it on
-`run-settled` (`packages/daemon/src/launcher.ts:282`, `packages/daemon/src/launcher.ts:315`). This is the
+`run-settled` (`packages/daemon/src/launcher.ts`). This is the
 single counting owner; do not add a second UI-side or prompt-side compaction toggle.
 
 ## 5. DRAG-TO-ASK
@@ -142,25 +139,24 @@ Dashboard work items are represented as renderer view models in `packages/ui/src
 `Priority` (`packages/ui/src/renderer/model.ts:17`), `Ticket` (`packages/ui/src/renderer/model.ts:23`),
 `Run` (`packages/ui/src/renderer/model.ts:34`), and `ChatMessage` (`packages/ui/src/renderer/model.ts:67`).
 
-Priority cards live in `packages/ui/src/renderer/sections/dashboard/Priorities.tsx`. They are already
-`draggable`, but only for queue reorder; no `DataTransfer` payload is set (`packages/ui/src/renderer/sections/dashboard/Priorities.tsx:24`).
-The panel tracks only `{ from, over }` reorder state (`packages/ui/src/renderer/sections/dashboard/Priorities.tsx:117`).
+Priority cards live in `packages/ui/src/renderer/sections/dashboard/Priorities.tsx`. They are
+`draggable` for queue reorder and also set an `application/x-oz-item` pointer payload for drag-to-ask.
 
 Ticket cards live inside `TicketsTab` in `packages/ui/src/renderer/sections/dashboard/Dashboard.tsx:87`.
-They are also `draggable`, but only for ticket-order reorder; no pointer payload is set
-(`packages/ui/src/renderer/sections/dashboard/Dashboard.tsx:123`).
+They are also `draggable` for ticket-order reorder and set the same pointer MIME payload.
 
-Run rows live in `RunsTab` in `packages/ui/src/renderer/sections/dashboard/Dashboard.tsx:176`. They are
-clickable, not draggable (`packages/ui/src/renderer/sections/dashboard/Dashboard.tsx:203`).
+Run rows live in `RunsTab` in `packages/ui/src/renderer/sections/dashboard/Dashboard.tsx`. They are
+clickable and draggable into Oz Terminal as run context pointers.
 
 **UI half landed (run_157):** priority/ticket/run rows set `application/x-oz-item` JSON
 (`{ itemType, id, label }`) on drag; `OzChatPanel` accepts drops on the composer, shows a removable chip,
-and prepends `[context: <type> <id> — <label>]` on send through the existing `onSend` seam (no daemon/IPC
-change yet). Distinct MIME preserves reorder/click drag on the same rows.
+and prepends `[context: <type> <id> — <label>]` on send through the existing `onSend` seam. Distinct MIME
+preserves reorder/click drag on the same rows.
 
-**Daemon half still needed:** resolve the pointer through the shared awareness/read owners — priority slug →
-workspace-relative markdown path; ticket id → ticket loader path; run id → durable run state — and answer
-scoped to that item. Do not inject full file bodies into chat state.
+**Daemon half landed (run_158):** `parsePromptInput()` resolves the pointer through the shared awareness
+snapshot — priority slug → workspace-relative markdown path; ticket id → ticket loader path; run id →
+durable run state — and injects only a `## Requested context` reference into the prompt. It does not
+inject full file bodies into chat state.
 
 ## 6. TESTS/FIXTURES THAT PIN THESE
 

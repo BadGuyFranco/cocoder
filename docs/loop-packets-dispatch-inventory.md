@@ -5,10 +5,10 @@ now enforced by core code.
 
 ## Current Dispatch Mechanics
 
-1. **Directive JSON.** The runner waits for `local/runs/<runId>/directive-<n>.json` in
-   `packages/core/src/runner/runner.ts` (`directivePath` is built in the main loop, then passed to
-   `io.awaitDirective`). `packages/core/src/runner/io.ts` implements `awaitDirective` by polling the
-   file through `pollFile`. `packages/core/src/runner/directive.ts` accepts prose delegates,
+1. **Directive JSON.** The runner waits for `local/runs/<workspace-id>/<runId>/directive-<n>.json` in
+   `packages/core/src/runner/runner.ts` (`directivePath` is built from the local run-dir owner, then
+   passed to `io.awaitDirective`). `packages/core/src/runner/io.ts` implements `awaitDirective` by polling
+   the file through `pollFile`. `packages/core/src/runner/directive.ts` accepts prose delegates,
    structured loop delegates, and wrapups; malformed loop objects fail fast instead of polling to
    timeout as "not ready".
 2. **Builder dispatch.** For a delegate directive, `runner.ts` creates a work item from
@@ -24,14 +24,14 @@ now enforced by core code.
    samples. For loop atoms, `runMonitor` also reads the parsed ledger, enforces iteration and
    wall-clock caps, and treats ledger growth as progress even if the screen is unchanged.
 4. **Verify-gate JSON.** When the monitor returns done, `runner.ts` sends `buildVerifyDispatch` to the
-   orchestrator and waits for `local/runs/<runId>/verify-<atom>.json`. For loop atoms, the runner first
-   reruns the structured criterion through `execCriterion`; a non-zero result nudges the builder back
-   with a re-armed marker instead of dispatching verify. `packages/core/src/runner/io.ts` parses only
+   orchestrator and waits for `local/runs/<workspace-id>/<runId>/verify-<atom>.json`. For loop atoms, the
+   runner first reruns the structured criterion through `execCriterion`; a non-zero result nudges the
+   builder back with a re-armed marker instead of dispatching verify. `packages/core/src/runner/io.ts` parses only
    `{"verdict":"pass"|"fail","reason":"..."}` for the verify gate.
-5. **Commit on pass.** On `fail`, `runner.ts` records rejection and quarantines in-scope changes. On
-   `pass`, it calls `runCommitGate` in `packages/core/src/commit-gate/gate.ts`, which partitions
-   changed files by write-scope, commits only in-scope files, records the commit link, and surfaces
-   out-of-scope files instead of committing them.
+5. **Commit on pass.** On `fail`, `runner.ts` records rejection and quarantines the atom changes. On
+   `pass`, `agent-step.ts` calls `runCommitGate` in `packages/core/src/commit-gate/gate.ts` with
+   `commitOnlyScope: true`, which partitions changed files by write-scope, commits the in-scope atom
+   files, records the commit link, and surfaces out-of-lane files without committing them.
 
 ## Where Loop-Shaped Dispatch Lives Today
 
