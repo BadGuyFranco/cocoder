@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-27 — **ticket-fix-0077: founder confirm-ticket-close — needs closing (run_118/run_262)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0077](./tickets/closed/0077-no-oscar-invokable-founder-confirmation-ticket-close-pane-close-it-cannot-be-actioned.md) | **Run:** run_262 (display 118)
+**Outcomes:**
+- **Confirmation close lane shipped (`7a685d9`, `24ca0022`).** `cocoder oz confirm-ticket-close <runId>` + oz-chat `confirm-close <runId>` route to `requestTicketCloseConfirmation` (not the gated reconciliation lane); `normalizeCloseoutRunStatusLine` strips a literal `Run Status:` label so `needs closing` wraps record `ticketCloseDecision: ask`; stranded `none` runs recover from delivered closeout before re-gating.
+- **0075 gate reused, not weakened.** Reconciliation/`close-ticket` still refuse while awaiting-founder; new verb honors the same gate and closes atomically on success.
+- **Regression pinned.** core 660/660, daemon 425/425, cli 63/63; acceptance bullets 1–5 each covered by a passing test.
+- **Disposition: `needs closing`.** Fix verified green; run parked awaiting-founder by design — founder must confirm close via the new path (dogfoods the fix).
+**Next:** Oz chat `confirm-close run_262` (or `pnpm --dir '/Volumes/NAS LOCAL/CoCoder' exec cocoder oz confirm-ticket-close run_262 --resolution "…"`), then launch ticket `0076`.
+
 ## 2026-06-27 — **ticket-fix-0075: verified ticket close gate — needs closing (run_117/run_261)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0075](./tickets/open/0075-tickets-auto-close-without-resolution-add-close-gate.md) | **Run:** run_261 (display 117)
