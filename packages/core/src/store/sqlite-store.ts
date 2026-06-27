@@ -11,6 +11,7 @@ import { COLUMN_MIGRATIONS, SCHEMA_SQL } from './schema.js'
 import type {
   CommitLink,
   FaultRecord,
+  PruneRunRowsResult,
   Run,
   RunEvent,
   RunStatus,
@@ -323,9 +324,46 @@ class SqliteRunStore implements RunStore {
     })
   }
 
+  pruneRunRows(runId: string): PruneRunRowsResult {
+    return inTransaction(this.#db, () => {
+      const faultEventsKept = faultEventCount(this.#db, runId)
+      this.#db.prepare(`DELETE FROM commit_link WHERE run_id = ?`).run(runId)
+      this.#db.prepare(`DELETE FROM session WHERE run_id = ?`).run(runId)
+      this.#db.prepare(`DELETE FROM work_item WHERE run_id = ?`).run(runId)
+
+      if (faultEventsKept > 0) {
+        this.#db.prepare(`DELETE FROM event WHERE run_id = ? AND type != 'fault-triaged'`).run(runId)
+        return { runRowKept: true, faultEventsKept }
+      }
+
+      this.#db.prepare(`DELETE FROM event WHERE run_id = ?`).run(runId)
+      this.#db.prepare(`DELETE FROM run WHERE id = ?`).run(runId)
+      return { runRowKept: false, faultEventsKept: 0 }
+    })
+  }
+
   close(): void {
     this.#db.close()
   }
+}
+
+function inTransaction<T>(db: DatabaseSync, fn: () => T): T {
+  db.exec('BEGIN')
+  try {
+    const result = fn()
+    db.exec('COMMIT')
+    return result
+  } catch (error: unknown) {
+    db.exec('ROLLBACK')
+    throw error
+  }
+}
+
+function faultEventCount(db: DatabaseSync, runId: string): number {
+  const row = db.prepare(`SELECT COUNT(*) AS count FROM event WHERE run_id = ? AND type = 'fault-triaged'`).get(runId) as
+    | { count: number }
+    | undefined
+  return row?.count ?? 0
 }
 
 /** Idempotently bring an EXISTING db up to the current column set (ADR-0003 storage lineage). `CREATE TABLE IF NOT

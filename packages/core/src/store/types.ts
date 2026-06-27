@@ -87,6 +87,11 @@ export interface FaultRecord {
   readonly at: number
 }
 
+export interface PruneRunRowsResult {
+  readonly runRowKept: boolean
+  readonly faultEventsKept: number
+}
+
 export interface RunStore {
   upsertWorkspace(ws: Workspace): void
 
@@ -127,6 +132,7 @@ export interface RunStore {
   /** Cross-run fault memory (ADR-0016 §recurrence): every `fault-triaged` event across a workspace's
    *  runs, newest-last, for recurrence detection. One WHERE (ADR-0003); the runner fingerprints + counts. */
   listFaultHistory(workspaceId: string): FaultRecord[]
+  pruneRunRows(runId: string): PruneRunRowsResult
 
   close(): void
 }
