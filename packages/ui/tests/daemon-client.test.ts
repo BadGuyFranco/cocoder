@@ -22,6 +22,10 @@ beforeAll(async () => {
       res.statusCode = 202
       return res.end(JSON.stringify({ runId: 'run_x' }))
     }
+    if (req.url === '/runs-busy' && req.method === 'POST') {
+      res.statusCode = 409
+      return res.end(JSON.stringify({ error: 'a run is already in flight for workspace "cocoder"', code: 'workspace-in-flight', runId: 'run_busy' }))
+    }
     if (req.url === '/runs-flaky' && req.method === 'POST') {
       flakyHits += 1
       if (flakyHits === 1) {
@@ -61,6 +65,18 @@ describe('daemon client security headers', () => {
     expect(post.headers['x-oz-csrf-token']).toBe('csrf')
     expect(post.headers.authorization).toBe('Bearer tok')
     expect(post.headers.origin).toBeUndefined()
+  })
+
+  it('preserves structured daemon error codes on failed mutations', async () => {
+    const { daemonPost } = await import('../src/main/daemon-client.ts')
+    const r = await daemonPost('/runs-busy', { workspaceId: 'cocoder', priorityId: 'demo' })
+    expect(r).toEqual({
+      ok: false,
+      status: 409,
+      error: 'a run is already in flight for workspace "cocoder"',
+      code: 'workspace-in-flight',
+      runId: 'run_busy',
+    })
   })
 
   it('re-bootstraps the session and retries once on a 403 (stale CSRF after a daemon restart)', async () => {

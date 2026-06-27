@@ -1368,7 +1368,11 @@ describe('Oz mutations + lifecycle', () => {
     oz!.ctx.inFlight.set('cocoder', running.id)
     const busy = await call(oz!, 'POST', `/runs/${held.id}/resume`)
     expect(busy.status).toBe(409)
-    expect(busy.json.error).toContain('workspace "cocoder"')
+    expect(busy.json).toEqual({
+      error: 'a run is already in flight for workspace "cocoder"',
+      code: 'workspace-in-flight',
+      runId: running.id,
+    })
     expect(store.getRun(held.id)?.status).toBe('held')
   })
 
@@ -1893,6 +1897,11 @@ describe('Oz mutations + lifecycle', () => {
     oz!.ctx.inFlight.set('cocoder', 'run_existing') // simulate an in-flight run
     const r = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
     expect(r.status).toBe(409)
+    expect(r.json).toEqual({
+      error: 'a run is already in flight for workspace "cocoder"',
+      code: 'workspace-in-flight',
+      runId: 'run_existing',
+    })
   })
 
   test('POST /runs → 400 for an unknown priority (and clears the in-flight reservation)', async () => {

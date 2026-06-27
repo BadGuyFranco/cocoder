@@ -761,7 +761,8 @@ export async function launchRun(
     return { status: 400, body: { error: 'adhoc-session requires a task; use adhoc <task> or pass task in POST /runs' } }
   }
   if (ctx.inFlight.has(workspaceId)) {
-    return { status: 409, body: { error: `a run is already in flight for workspace "${workspaceId}"` } }
+    const activeRunId = ctx.inFlight.get(workspaceId)
+    return { status: 409, body: { error: `a run is already in flight for workspace "${workspaceId}"`, code: 'workspace-in-flight', runId: activeRunId === 'pending' ? null : activeRunId } }
   }
   ctx.inFlight.set(workspaceId, 'pending') // reserve synchronously — closes the concurrent-POST race
 
@@ -1168,7 +1169,8 @@ export async function resumeRun(ctx: OzContext, runId: string): Promise<LaunchRe
     return { status: 409, body: { error: `run is "${run.status}" — only a held run can be resumed` } }
   }
   if (ctx.inFlight.has(run.workspaceId)) {
-    return { status: 409, body: { error: `a run is already in flight for workspace "${run.workspaceId}"` } }
+    const activeRunId = ctx.inFlight.get(run.workspaceId)
+    return { status: 409, body: { error: `a run is already in flight for workspace "${run.workspaceId}"`, code: 'workspace-in-flight', runId: activeRunId === 'pending' ? null : activeRunId } }
   }
 
   const target: LaunchRunTarget = run.ticketId !== null

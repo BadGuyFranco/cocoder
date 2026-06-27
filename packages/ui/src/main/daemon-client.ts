@@ -87,9 +87,17 @@ async function requestRaw<T>(method: string, path: string, body?: unknown, retri
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<DaemonResult<T>> {
-  const r = await requestRaw<{ error?: string } & T>(method, path, body)
+  const r = await requestRaw<{ error?: string; code?: string; runId?: string | null } & T>(method, path, body)
   if (!r.ok) return r
-  if (r.status < 200 || r.status >= 300) return { ok: false, status: r.status, error: r.payload?.error ?? `${method} ${path} → ${r.status}` }
+  if (r.status < 200 || r.status >= 300) {
+    return {
+      ok: false,
+      status: r.status,
+      error: r.payload?.error ?? `${method} ${path} → ${r.status}`,
+      ...(typeof r.payload?.code === 'string' ? { code: r.payload.code } : {}),
+      ...(typeof r.payload?.runId === 'string' || r.payload?.runId === null ? { runId: r.payload.runId } : {}),
+    }
+  }
   return { ok: true, status: r.status, data: r.payload as T }
 }
 

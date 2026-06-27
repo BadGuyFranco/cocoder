@@ -601,8 +601,8 @@ export function App() {
       setLaunchProgress((cur) => ({ ...cur, runId }))
       notify('ok', `${label}…`)
       await refreshActiveWs()
-    } else if (res.status === 409 && /in flight/i.test(res.error)) {
-      const message = 'A run is already in flight for this workspace.'
+    } else if (res.status === 409 && res.code === 'workspace-in-flight') {
+      const message = res.runId ? `A run is already in flight for this workspace (${res.runId}).` : 'A run is already in flight for this workspace.'
       setLaunchProgressError(message)
       notify('info', message)
     } else {
@@ -632,8 +632,8 @@ export function App() {
       setLaunchProgress((cur) => ({ ...cur, runId }))
       notify('ok', `${label}…`)
       await refreshActiveWs()
-    } else if (res.status === 409 && /in flight/i.test(res.error)) {
-      const message = 'A run is already in flight for this workspace.'
+    } else if (res.status === 409 && res.code === 'workspace-in-flight') {
+      const message = res.runId ? `A run is already in flight for this workspace (${res.runId}).` : 'A run is already in flight for this workspace.'
       setLaunchProgressError(message)
       notify('info', message)
     } else {

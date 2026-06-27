@@ -101,7 +101,7 @@ export async function sendOzMessage(oz: OzApi, workspaceId: string, text: string
 // ── Mutations ── all return the DaemonResult envelope so the UI renders 202/409/400 as first-class
 // states (errors are DATA, not thrown). The main client attaches Bearer + CSRF; nothing here touches
 // auth. POST /runs LAUNCHES A REAL RUN — only ever called from a live user action, never in tests/CI.
-export type MutationResult = { ok: true; status: number; data: unknown } | { ok: false; status: number; error: string }
+export type MutationResult = { ok: true; status: number; data: unknown } | { ok: false; status: number; error: string; code?: string; runId?: string | null }
 
 export async function launchRun(oz: OzApi, workspaceId: string, priorityId: string, resumeFromRunId?: string, strictPreRunDirt?: boolean, allowPreRunIntegrityErrors?: boolean): Promise<MutationResult> {
   const body: Record<string, string | boolean> = { workspaceId, priorityId }

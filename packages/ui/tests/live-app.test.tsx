@@ -460,6 +460,32 @@ describe('Oz renderer — live daemon path', () => {
     expect(screen.getByText('local/runnerless-handoffs/cocoder/runnerless.md')).toBeDefined()
   })
 
+  it('local-cache-retention-shaped runnerless priority never posts to /runs', async () => {
+    const posts: PostCall[] = []
+    const runnerless = {
+      ...(prioritiesFx as { priorities: DPriority[] }).priorities[0]!,
+      id: 'local-cache-retention',
+      title: 'Machine-local cache retention — bound local/ growth with per-workspace run retention',
+      independentOfRunner: true,
+    }
+    setOz(mockOz({
+      posts,
+      priorities: { ...(prioritiesFx as { priorities: DPriority[] }), priorities: [runnerless] },
+      runs: { runs: [] },
+      postResult: (path: string) => path === '/runs/independent-handoff'
+        ? { ok: true, status: 202, data: { ok: true, runnerless: true, handoffPath: 'local/runnerless-handoffs/cocoder/local-cache-retention.md' } }
+        : { ok: false, status: 500, error: `unexpected ${path}` },
+    }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(within(rowForText('Machine-local cache retention — bound local/ growth with per-workspace run retention')).getByText('Handoff'))
+
+    await waitFor(() => expect(posts.find((p) => p.path === '/runs/independent-handoff')).toBeDefined())
+    expect(posts.some((p) => p.path === '/runs')).toBe(false)
+    expect(posts.find((p) => p.path === '/runs/independent-handoff')?.body).toEqual({ workspaceId: 'cocoder', priorityId: 'local-cache-retention' })
+  })
+
   it('shows live launch progress from run events and auto-closes when Oscar is ready', async () => {
     const posts: PostCall[] = []
     const run = runSummary('run_launch_modal', 'running')
@@ -555,11 +581,11 @@ describe('Oz renderer — live daemon path', () => {
   })
 
   it('a 409 from /runs surfaces an honest "already in flight" banner (not an error)', async () => {
-    setOz(mockOz({ postResult: { ok: false, status: 409, error: 'in flight' } }))
+    setOz(mockOz({ postResult: { ok: false, status: 409, error: 'daemon message without magic words', code: 'workspace-in-flight', runId: 'run_busy' } }))
     render(<App />)
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
     fireEvent.click(within(rowForText('Living base personas + repo extensions')).getByText('Launch'))
-    await waitFor(() => expect(screen.getAllByText(/already in flight/i).length).toBeGreaterThan(0))
+    await waitFor(() => expect(screen.getAllByText('A run is already in flight for this workspace (run_busy).').length).toBeGreaterThan(0))
     expect(screen.getByRole('button', { name: 'Close' })).toBeDefined()
   })
 
@@ -577,7 +603,7 @@ describe('Oz renderer — live daemon path', () => {
   })
 
   it('ticket launch still maps genuine in-flight 409s to the generic banner', async () => {
-    setOz(mockOz({ postResult: { ok: false, status: 409, error: 'run already in flight for workspace cocoder' } }))
+    setOz(mockOz({ postResult: { ok: false, status: 409, error: 'workspace is busy', code: 'workspace-in-flight', runId: null } }))
     render(<App />)
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
 
