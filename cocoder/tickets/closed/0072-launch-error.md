@@ -2,7 +2,7 @@
 id: 0072
 title: Launch Error
 type: task
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-27
@@ -39,3 +39,9 @@ We have taken a stab a few times to fix the issue - please diagnose first and pr
 4. Update `packages/ui/tests/live-app.test.tsx` handoff assertions (~lines 444–476) to expect the success presentation, and add a regression test that the handoff outcome does NOT render the error/"needs attention" affordance.
 
 Scope: `packages/ui` only (Surface-B). Verify the `packages/ui` suite (`live-app.test.tsx`, `LaunchProgressModal`, dashboard tests) before commit. Founder approved this approach in run_258; relaunch ticket 0072 to build it.
+
+## Resolution
+
+Resolved by run run_259 (dcb87d198f06469cc210150f4a5b71d5db5d0fdc) on 2026-06-27.
+
+Fixed in packages/ui: successful runnerless handoff now renders a distinct non-error notice state (LaunchProgressState.handoff) with a neutral check-circle icon and the copy-paste `cocoder run-independent` command, instead of the false 'Launch needs attention.' error. App.tsx doLaunch routes handoff success through the new channel; daemon launchIndependentHandoff already returns the command. Routing/independent-of-runner guard untouched. Regression test added; packages/ui suite 175/175 green, tsc clean.
