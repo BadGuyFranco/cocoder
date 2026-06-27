@@ -89,4 +89,19 @@ path/symbol checks for current-code claims); 9 discrepancies found.
 | ADR-6 | `cocoder/decisions/0027-workspace-storage-contract.md:11` | Links `workspace-segmentation` owner map to `../priorities/workspace-segmentation.md`. | `test -e cocoder/priorities/workspace-segmentation.md` failed; `find cocoder/priorities -name '*workspace-segmentation*'` found `cocoder/priorities/archive/workspace-segmentation.md` and `cocoder/priorities/archive/workspace-segmentation.owner-map.md`. | STALE | Point to the archived owner map or archived priority, whichever owns the referenced evidence. |
 | ADR-7 | `cocoder/decisions/0028-play-taxonomy-three-axes.md:4` | Links `orchestration-audit-and-refactor` to `../priorities/orchestration-audit-and-refactor.md`. | `test -e cocoder/priorities/orchestration-audit-and-refactor.md` failed; archived file exists at `cocoder/priorities/archive/orchestration-audit-and-refactor.md`. | STALE | Update the link to `../priorities/archive/orchestration-audit-and-refactor.md`. |
 | ADR-8 | `cocoder/decisions/0020-primary-root-audit.md:131` | Amendment says the existing-repo seeded priority is `packages/personas/base/priorities/onboard-existing.md`. | `ls packages/personas/base/priorities/onboard-existing.md` failed; `templates/workspace-cocoder/cocoder/priorities/onboard-existing.md` exists; `packages/core/tests/scaffold.test.ts:75-91` pins conditional scaffold seeding. | STALE | Update the amendment to point at the template-seeded priority path. |
-| ADR-9 | `cocoder/decisions/0020-addendum-phase-executor.md:28-33,113-118` | "Current code" inventory says onboarding Playbooks live under `packages/personas/base/playbooks/`, `packages/core/src/playbooks/loader.ts` owns executable metadata, and `packages/core/tests/playbooks.test.ts` pins the skeletons. | `ls packages/personas/base/playbooks packages/core/src/playbooks/loader.ts packages/core/tests/playbooks.test.ts` failed; `ls packages/core/src/playbooks` shows retained phase/tooling modules such as `recon.ts`, `p2-fanout.ts`, and `p6-apply.ts`; `cocoder/decisions/0020-addendum-phase-executor.md:3-12` marks the executor mode superseded. | STALE | Either mark that inventory as historical/superseded or update it to the current retained tooling modules and tests. |
+| ADR-9 | `cocoder/decisions/0020-addendum-phase-executor.md:28-33,113-118` | "Current code" inventory says onboarding Playbooks live under `packages/personas/base/playbooks/`, `packages/core/src/playbooks/loader.ts` owns executable metadata, and `packages/core/tests/playbooks.test.ts` pins the skeletons. | `ls packages/personas/base/playbooks packages/core/src/playbooks/loader.ts packages/core/tests/playbooks.test.ts` failed; `ls packages/core/src/playbooks` shows retained phase/tooling modules such as `recon.ts`, `p2-fanout.ts`, and `p6-apply.ts`; `cocoder/decisions/0020-addendum-phase-executor.md:3-12` marks the executor mode superseded. | NO EDIT (historical) | Left as-is: the whole addendum is loudly self-marked SUPERSEDED and "retained as the historical design" at lines 3-10, so the dated code inventory is a historical snapshot, not a current-behavior claim. Editing it would rewrite a dated record. |
+
+### Resolution (run_267, Oscar support edit)
+
+ADR-1 through ADR-8 — **RESOLVED (doc fixed)**: all eight broken/stale references corrected to their real
+targets, each verified to resolve in the current tree:
+- ADR-1 `0023:4` → `../zArchive/priorities/v2/orchestration-operating-model-reset.md`
+- ADR-2 `0024:6` → `../priorities/archive/governance-authoring-plays.md`
+- ADR-3 `0025:4` → `../priorities/archive/governance-authoring-plays.md`
+- ADR-4 `0025:11` → `./0013-orchestration-observation.md`
+- ADR-5 `0025:13` → `./0010-taxonomy-and-authoring.md`
+- ADR-6 `0027:11` → `../priorities/archive/workspace-segmentation.owner-map.md`
+- ADR-7 `0028:4` → `../priorities/archive/orchestration-audit-and-refactor.md`
+- ADR-8 `0020:131` → `templates/workspace-cocoder/cocoder/priorities/onboard-existing.md`
+
+ADR-9 — **NO EDIT (historical)**, rationale in the row above.
