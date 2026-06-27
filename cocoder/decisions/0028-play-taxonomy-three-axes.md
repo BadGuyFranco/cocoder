@@ -1,7 +1,7 @@
 # ADR-0028 - Play taxonomy is three axes plus reserved future values
 
 **Status:** Accepted (founder-ratified, run_166, 2026-06-20) — decided under
-[`orchestration-audit-and-refactor`](../priorities/orchestration-audit-and-refactor.md), whose
+[`orchestration-audit-and-refactor`](../priorities/archive/orchestration-audit-and-refactor.md), whose
 Founder Ratified Decisions section authorizes the reframe-and-reserve slice.
 **Amends:** [0010](./0010-taxonomy-and-authoring.md), replacing its 2026-06-19 "five named Play
 classes" framing with three orthogonal taxonomy axes plus the existing `kind` field. This is a

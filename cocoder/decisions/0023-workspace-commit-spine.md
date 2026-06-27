@@ -1,7 +1,7 @@
 # ADR-0023 — The workspace commit spine: direct-to-branch, single mode
 
 **Status:** Accepted (founder, 2026-06-14) — decided in a direct Opus session under the priority
-[`orchestration-operating-model-reset`](../priorities/orchestration-operating-model-reset.md), outside
+[`orchestration-operating-model-reset`](../zArchive/priorities/v2/orchestration-operating-model-reset.md), outside
 CoCoder's own run machinery (the machinery being reset).
 **Supersedes:** [0015](../zArchive/v2/decisions/0015-isolated-working-state-per-run.md) (isolation-per-run was the *default*;
 now opt-in), [0021](../zArchive/v2/decisions/0021-oz-repair-commit-authority.md) (Oz out-of-run trunk authority → just one

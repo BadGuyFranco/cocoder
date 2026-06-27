@@ -128,7 +128,7 @@ live with the base; a workspace's own priorities stay the repo's.
 > `loadOnboardingPlaybooks` and the daemon `onboarding` field are deleted (run_140 atom 3). Onboarding
 > templates are no longer *surfaced from `base/playbooks/` and never copied in* — instead each onboarding
 > situation is an **ordinary priority the scaffold seeds into the target's `cocoder/priorities/`** (the
-> existing-repo one is `packages/personas/base/priorities/onboard-existing.md`, seeded for an existing
+> existing-repo one is `templates/workspace-cocoder/cocoder/priorities/onboard-existing.md`, seeded for an existing
 > repo; New Primary / Drift adopt the same seeded-priority model). The **"never copied into the repo"**
 > rule in this section is thereby reversed for onboarding templates: they ARE copied in, as the repo's
 > first priority, exactly as `adhoc-session.md` is seeded today. The §8 `cocoder/**`-only write-scope and

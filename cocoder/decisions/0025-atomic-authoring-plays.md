@@ -1,16 +1,16 @@
 # ADR-0025 — Atomic authoring Plays: validate → write → commit in one dispatch
 
 **Status:** Accepted (founder-directed, 2026-06-16) — decided under the priority
-[`governance-authoring-plays`](../priorities/governance-authoring-plays.md), which names this ADR as a
+[`governance-authoring-plays`](../priorities/archive/governance-authoring-plays.md), which names this ADR as a
 required outcome. **Amended by [0040](./0040-oz-write-side-autonomy.md)** (2026-06-23): Oz may now reach
 the atomic `author` action **conversationally** (draft-with-founder-then-commit, no adhoc run); the
 founder-approval boundary for a net-new id/title/Objective (§4) is **preserved verbatim** — the Play still
 refuses to fabricate an Objective.
 **Builds on:** [0023](./0023-workspace-commit-spine.md) (the one commit spine — authoring commits through
 it, never a divergent path), [0024](./0024-governance-pre-run-snapshot.md) (the launch-time backstop for
-the path Plays don't cover — human hand-edits), [0013](./0013-multi-atom-delegation.md) /
+the path Plays don't cover — human hand-edits), [0013](./0013-orchestration-observation.md) /
 [0018](./0018-persona-run-mode-and-sub-agents.md) (Plays as first-class, per-persona-permissioned units),
-[0010](./0010-objective-first.md) (create and Objective-edits stay founder-approved).
+[0010](./0010-taxonomy-and-authoring.md) (create and Objective-edits stay founder-approved).
 **Earned from:** runs 91–96 (six launches refused by the very governance edit they were launched to run);
 `oz-dashboard-bugs` #11/#12 (authoring must collapse to one tool action).
 

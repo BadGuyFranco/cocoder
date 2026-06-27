@@ -3,7 +3,7 @@
 **Status:** Accepted, partially superseded by [ADR-0029](./0029-founder-trusted-pre-run-snapshot.md)
 (founder-directed, 2026-06-16). ADR-0029 supersedes only Decision step 2 / the builder-dirt refusal;
 the governance pre-run snapshot and self-heal remainder stay live. Decided under the priority
-[`governance-authoring-plays`](../priorities/governance-authoring-plays.md), which names the new ADR as
+[`governance-authoring-plays`](../priorities/archive/governance-authoring-plays.md), which names the new ADR as
 a required outcome.
 > **PARTIALLY SUPERSEDED by [ADR-0029](./0029-founder-trusted-pre-run-snapshot.md):** builder-scope dirt
 > now self-heals as a founder-attributed pre-run snapshot instead of refusing. The governance-scope

@@ -8,7 +8,7 @@ ADR-0019 were landed together with this ADR (decisions HARD RULE — never land 
 `local/`), [0019](./0019-multi-root-workspaces.md) (install-local workspace registry and root roles),
 [0003](./0003-data-model-hybrid.md) (hybrid files plus SQLite), [0023](./0023-workspace-commit-spine.md)
 (direct-to-branch with one writer per workspace), and the
-[`workspace-segmentation`](../priorities/workspace-segmentation.md) owner map.
+[`workspace-segmentation`](../priorities/archive/workspace-segmentation.owner-map.md) owner map.
 **Amends:** [0003](./0003-data-model-hybrid.md) by moving portable workspace run/session history out
 of sole SQLite ownership; [0019](./0019-multi-root-workspaces.md) by splitting workspace identity from
 machine-local routing. It does not reverse [0008](./0008-repository-topology.md): machine-local state
