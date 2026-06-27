@@ -37,7 +37,7 @@ import { commitGovernance, launchRun, requestArchiveConfirmation, requestAuthori
 import { enqueueAuthoring, listQueuedAuthoring } from './authoring-queue.js'
 import { handleOzMessage } from './oz-chat.js'
 import { mergeWriteSettings, readSettings } from './settings.js'
-import { readPriorities, readTickets, registerLivePriorities, writePriorityOrder, writeTicketOrder } from './priority-order.js'
+import { readPriorities, readTickets, writePriorityOrder, writeTicketOrder } from './priority-order.js'
 import { withPortableDisplayNumber } from './run-display.js'
 import { createPriorityFiles, PriorityAuthoringError, type CreatePriorityInput } from './priority-authoring.js'
 import { ticketCloseDecisionFromEvents } from './ticket-close-gate.js'
