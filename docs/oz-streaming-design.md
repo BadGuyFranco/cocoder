@@ -5,11 +5,11 @@ read-only design artifact for item 1, part B; it does not change runtime behavio
 
 ## Codex Capability Probe
 
-Installed CLI:
+Current local CLI:
 
 ```text
 $ codex --version
-codex-cli 0.137.0
+codex-cli 0.142.3
 ```
 
 The installed `codex exec` supports a JSONL event mode and the existing clean final-message artifact:
@@ -37,7 +37,7 @@ commands, but no `codex exec` reasoning/thinking flag.
 Verdict:
 
 - `codex exec` can emit a stdout JSONL event stream (`--json`), but the long-answer timing probe below
-  shows it does not emit incremental answer deltas on `codex-cli 0.137.0`.
+  showed it did not emit incremental answer deltas on the probed `codex-cli 0.137.0`.
 - The installed CLI does not expose reasoning/thinking tokens as a distinct stream. Thinking must be
   modeled as optional and absent for this Codex version.
 - Do not fake streaming by chunking the completed `reply` after `POST /oz/messages` returns. That would
@@ -80,7 +80,7 @@ streaming-capable runtime. Do not create a second chat/event transport.
 
 1. Adapter owner: `packages/core/src/adapter/types.ts` and `packages/adapters/src/codex.ts`.
    A future opt-in JSONL mode would keep `--output-last-message <outPath>` and add `--json`, but this is
-   not answer streaming on `codex-cli 0.137.0`; it is lifecycle plus whole-message completion.
+   not answer streaming on the probed `codex-cli 0.137.0`; it is lifecycle plus whole-message completion.
 
 2. Subprocess owner: `packages/core/src/plays/dispatch.ts`.
 
@@ -132,7 +132,7 @@ streaming-capable runtime. Do not create a second chat/event transport.
 
 ## Go/No-Go
 
-NO-GO for token-level or line-level answer streaming on `codex-cli 0.137.0`. The long probe produced a
+NO-GO for token-level or line-level answer streaming on the probed `codex-cli 0.137.0`. The long probe produced a
 single whole `item.completed`/`agent_message` after generation, not multiple answer delta events over
 wall-clock time. NO-GO for show-thinking as well: `turn.completed.usage.reasoning_output_tokens` is a
 count, not reasoning text.

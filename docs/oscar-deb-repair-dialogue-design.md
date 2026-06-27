@@ -29,10 +29,10 @@ records the build mechanism ADR-0036 deliberately deferred
   names the existing triage verdict shape (`packages/core/src/runner/prompts.ts:596-601`), and Deb's base
   persona states her repair posture and Bob boundary (`packages/personas/base/deb.md:31-48`,
   `packages/personas/base/deb.md:58-75`).
-- `packages/core/src/runner/directive.ts` currently allows `delegate`, `deb-investigate`, and `wrapup`
-  (`packages/core/src/runner/directive.ts:15-18`) and parses `deb-investigate`
-  (`packages/core/src/runner/directive.ts:82-95`). Atom 2 removes that lane; this design adds no new
-  within-`runRun` directive kind.
+- At design time, `packages/core/src/runner/directive.ts` allowed `delegate`, `deb-investigate`, and
+  `wrapup`; shipped code now rejects `deb-investigate` and allows only the build-loop directive kinds
+  (`packages/core/src/runner/directive.ts:13-114`; pinned by
+  `packages/core/tests/directive.test.ts:50-53`). This design adds no new within-`runRun` directive kind.
 
 ## Entry / Trigger
 
