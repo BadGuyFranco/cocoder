@@ -9,12 +9,12 @@ third onboarding situation for an already-managed `cocoder/` root (`cocoder/deci
 `cocoder/decisions/0020-primary-root-audit.md:95-103`). The `cocoder/**`-only audit write boundary
 applies to the founder-ratified apply step only: P1-P4 produce report artifacts, and only P6 lands
 ratified governance through the commit spine (`cocoder/decisions/0020-primary-root-audit.md:131-136`,
-`cocoder/priorities/drift-audit.md:16-28`).
+`cocoder/priorities/archive/drift-audit.md:16-28`).
 
 ## Evidence Commands
 
 - `sed -n '1,260p' docs/onboarding-rebuild-ownermap.md` established the template structure and evidence style.
-- `nl -ba cocoder/priorities/drift-audit.md | sed -n '1,110p'` verified the Reuse map and proposed atom sequence.
+- `nl -ba cocoder/priorities/archive/drift-audit.md | sed -n '1,110p'` verified the Reuse map and proposed atom sequence.
 - `nl -ba cocoder/decisions/0026-onboard-existing-as-oscar-priority.md | sed -n '1,130p'` verified the executor retirement and ordinary-priority reframe.
 - `nl -ba cocoder/decisions/0020-primary-root-audit.md | sed -n '1,190p'` verified the three onboarding situations, Drift propose-only shape, and `cocoder/**` trust boundary.
 - `nl -ba packages/core/src/playbooks/{recon.ts,recon-pass.ts,p2-fanout.ts,p2-dispatch.ts,p6-apply.ts}` verified the reusable onboard-existing engines.
@@ -38,10 +38,10 @@ ratified governance through the commit spine (`cocoder/decisions/0020-primary-ro
 | Priority `auditWriteBoundary` parsing/threading | `packages/core/src/priorities/loader.ts:42-55`; `packages/core/src/runner/runner.ts:507-510` | P6 apply | REUSE-AS-IS | Frontmatter already becomes the runner's `AuditWriteBoundary`; no runner-mode or executor hook is needed. |
 | Ordinary Oscar->Bob directive + verify + atom commit loop | `packages/core/src/runner/runner.ts:1106-1124`, `packages/core/src/runner/runner.ts:1190-1248`; `packages/core/src/runner/agent-step.ts:228-270`; `packages/core/src/runner/prompts.ts:539-557` | Driver + founder gates | REUSE-AS-IS | This is the shipping atom protocol: directive, Bob completion marker, Oscar verify artifact, commit on pass, then next-or-wrap. Drift phases should be ordinary atoms in this loop. |
 | Wrap/resume / pickup continuity | `packages/daemon/src/launcher.ts:103-129`; `packages/core/src/runner/runner.ts:1121-1187`; `packages/core/src/runner/runner.ts:1254-1265` | Driver + founder gates | REUSE-AS-IS | Founder ratification is a normal Oscar decision/wrap/resume beat, with pickup briefs carrying continuity instead of typed executor gate payloads. |
-| Inert Drift phase skeleton | `packages/personas/base/playbooks/drift-audit.md:23-36` | Phase reference only | ADAPT | The phase order is useful, but ADR-0020's loader amendment moved onboarding delivery away from shipped playbooks to ordinary seeded priorities (`cocoder/decisions/0020-primary-root-audit.md:119-129`). Do not revive the playbook executor. |
-| P1 read-claims | Requirement at `cocoder/priorities/drift-audit.md:40`; inert phase at `packages/personas/base/playbooks/drift-audit.md:27` | P1 read-claims | NEW | No existing onboard-existing owner reads `cocoder/` governance as claims. Recon reads repo reality, not governance truth claims. |
-| P3 compare | Requirement at `cocoder/priorities/drift-audit.md:41`; inert phase at `packages/personas/base/playbooks/drift-audit.md:29` | P3 compare | NEW | Existing P3 cross-check compares dual source reads, not governance claims versus reality. Drift needs a non-gameable claims-vs-reality diff. |
-| P4 report | Requirement at `cocoder/priorities/drift-audit.md:42`; inert phase at `packages/personas/base/playbooks/drift-audit.md:30` | P4 report | NEW | Existing renderers report onboarding synthesis/questions. Drift needs report + amendment/ticket draft artifacts without rewriting governance. |
+| Inert Drift phase skeleton | `cocoder/zArchive/playbooks/drift-audit.md:23-36` | Historical archive evidence only | ADAPT | The phase order is useful, but ADR-0020's loader amendment moved onboarding delivery away from shipped playbooks to ordinary seeded priorities (`cocoder/decisions/0020-primary-root-audit.md:119-129`). Do not revive the playbook executor. |
+| P1 read-claims | Requirement at `cocoder/priorities/archive/drift-audit.md:40`; historical inert phase at `cocoder/zArchive/playbooks/drift-audit.md:27` | P1 read-claims | NEW | No existing onboard-existing owner reads `cocoder/` governance as claims. Recon reads repo reality, not governance truth claims. |
+| P3 compare | Requirement at `cocoder/priorities/archive/drift-audit.md:41`; historical inert phase at `cocoder/zArchive/playbooks/drift-audit.md:29` | P3 compare | NEW | Existing P3 cross-check compares dual source reads, not governance claims versus reality. Drift needs a non-gameable claims-vs-reality diff. |
+| P4 report | Requirement at `cocoder/priorities/archive/drift-audit.md:42`; historical inert phase at `cocoder/zArchive/playbooks/drift-audit.md:30` | P4 report | NEW | Existing renderers report onboarding synthesis/questions. Drift needs report + amendment/ticket draft artifacts without rewriting governance. |
 
 ## 2. NEW Drift Engines
 
@@ -55,11 +55,11 @@ ratified governance through the commit spine (`cocoder/decisions/0020-primary-ro
 
 | Seam | Risk | Evidence |
 |---|---|---|
-| `runAgenticRecon` prompt labels the pass as P1. | This is harmless internally but can leak stale phase naming into Drift P2 artifacts unless the caller/prompt is adapted. | Prompt heading is `# P1 Agentic Recon Pass` (`packages/core/src/playbooks/recon-pass.ts:63-66`); Drift priority assigns recon to P2 read-reality (`cocoder/priorities/drift-audit.md:37`, `cocoder/priorities/drift-audit.md:49`). |
+| `runAgenticRecon` prompt labels the pass as P1. | This is harmless internally but can leak stale phase naming into Drift P2 artifacts unless the caller/prompt is adapted. | Prompt heading is `# P1 Agentic Recon Pass` (`packages/core/src/playbooks/recon-pass.ts:63-66`); archived Drift priority assigns recon to P2 read-reality (`cocoder/priorities/archive/drift-audit.md:37`, `cocoder/priorities/archive/drift-audit.md:49`). |
 | `createDeepReadTurn` owns an onboard-existing artifact path. | Reusing it as-is would write Drift reads under `playbook/P2/findings`, preserving retired playbook vocabulary and making later Drift artifacts harder to reason about. | Output path is hard-coded at `packages/core/src/playbooks/p2-dispatch.ts:67-78`; ADR-0026 retires executor/playbook runner-mode (`cocoder/decisions/0026-onboard-existing-as-oscar-priority.md:71-80`). |
 | `applyP6Governance` assumes onboard-existing P5 synthesis. | The path safety is right, but Drift ratification applies selected amendments/tickets from P4, not a full P5 governance synthesis payload. | Source root is `playbook/P5/proposed-cocoder` (`packages/core/src/playbooks/p6-apply.ts:57-58`); apply reads P6 synthesis then materializes staged files (`packages/core/src/playbooks/p6-apply.ts:73-87`). |
 | Priority boundary must be present on the future seeded Drift priority. | `runCommitGate` can enforce `cocoder/**`, but only when the launched priority frontmatter supplies `auditWriteBoundary`. | Loader parses optional boundary (`packages/core/src/priorities/loader.ts:42-55`); runner threads it only when present (`packages/core/src/runner/runner.ts:507-510`). |
-| No named Reuse-map symbol was unlocated. | P1 read-claims, P3 compare, and P4 report are intentionally NEW rather than missing existing symbols. | Priority Reuse map declares the three as NEW (`cocoder/priorities/drift-audit.md:40-42`). |
+| No named Reuse-map symbol was unlocated. | P1 read-claims, P3 compare, and P4 report are intentionally NEW rather than missing existing symbols. | Archived priority Reuse map declares the three as NEW (`cocoder/priorities/archive/drift-audit.md:40-42`). |
 
 ## Working Disposition
 

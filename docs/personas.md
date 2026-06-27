@@ -9,11 +9,11 @@ Personas are role contracts for orchestration lanes. They describe what a lane i
 
 | Persona | Role |
 |---|---|
+| Oz | Global orchestration overseer. Provides the multi-workspace dashboard and control-plane surface. |
 | Oscar | Lead orchestrator. Selects the bounded packet, reconciles route fit, dispatches teammates, and owns priority closeout. |
 | Bob | Primary builder and architect. Implements scoped changes, keeps docs and behavior aligned, and reports verification evidence. |
+| Deb | Escalation engineer. Observes run health, diagnoses machinery faults, and repairs CoCoder-owned infrastructure when in scope. |
 | Quinn | User-interaction QA. Exercises browser, terminal, and IDE paths where scripted interaction is the right evidence. |
-| Ian | Operations orchestrator. Handles CRM, copy, and integration work outside product-code implementation. |
-| Oz | Global orchestration overseer. Provides the multi-workspace dashboard and control-plane surface. |
 
 Routes decide which personas are active in a run. A persona listed in the library does nothing until a route and profile assign it to a lane.
 

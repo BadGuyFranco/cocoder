@@ -1,6 +1,6 @@
 # Oz security checklist
 
-Operator checklist for the Oz daemon local attack surface. Each row maps to a security invariant proven in Sub-Playbook C Solve (`oz-security-*.test.mjs`).
+Operator checklist for the Oz daemon local attack surface. Each row maps to a security invariant proven in the daemon security regression suite (`packages/daemon/tests/security.test.ts`).
 
 ## Invariants (C-S1..C-S7)
 
@@ -25,7 +25,7 @@ GET /auth/session returns the Bearer to any loopback HTTP caller. This effective
 ## Expand-phase manual checks
 
 - [ ] Dashboard dev proxy (Vite → `:7878`) does not widen Origin allowlist on daemon (C-D2)
-- [ ] Production static dashboard served from built `packages/oz-dashboard/dist/` only when `dist/` exists
+- [ ] Production static dashboard served from the built `packages/ui` output only when the UI build exists (`pnpm --filter @cocoder/ui build`)
 - [ ] HashRouter in-app routes (`#/workspaces`, `#/runs`, etc.) do not collide with JSON API paths (C-D6)
 - [ ] Runs page polling pauses when browser tab is hidden (PC-Q2=A)
 - [ ] Run Inspector shows minimum viable evidence only (PC-Q3=A); not full debugger parity
@@ -36,7 +36,7 @@ GET /auth/session returns the Bearer to any loopback HTTP caller. This effective
 pnpm -r test
 ```
 
-Core Oz security tests live under `packages/core/tests/oz-security-*.test.mjs`. Dashboard API sequence: `packages/core/tests/oz-e2e.test.mjs`.
+Core Oz security tests live under `packages/daemon/tests/security.test.ts`. Related Oz and dashboard API behavior is pinned by `packages/daemon/tests/oz-chat.test.ts` and `packages/ui/tests/ozchat.test.tsx`.
 
 ## Sign-off
 
