@@ -105,3 +105,19 @@ targets, each verified to resolve in the current tree:
 - ADR-8 `0020:131` → `templates/workspace-cocoder/cocoder/priorities/onboard-existing.md`
 
 ADR-9 — **NO EDIT (historical)**, rationale in the row above.
+
+## Phase 2 — not yet audited (run_267 wrap)
+
+Resume with these surfaces in order (no founder input required for the sweep itself):
+
+1. **cocoder/ governance docs** — PLAYBOOK, AGENTS, glossary, failure-catalog, personas/, standards/, plays/ (Oscar-lane; builder cannot write these).
+2. **Root README and CONTRIBUTING** — stale CI/contributor claims; open ticket [0037](../cocoder/tickets/open/0037-contributing-pr-template-stale-rg-ci-gate.md) overlaps CONTRIBUTING.
+3. **Design-intent briefs under docs/** — oz-design-brief, oz-streaming-design, ui-dev-notes, research/; path-ref scan only (do not flag aspirational design as wrong).
+
+**Founder code-or-doc calls (outside doc-only fixes; record resolution in this inventory):**
+
+| Item | Evidence | Options | Recommendation |
+|---|---|---|---|
+| `basePlaybooksDir()` export | `packages/personas/src/index.ts:12`; `packages/personas/base/playbooks/` deleted (row 3) | Remove dead export (code) or document as legacy compat (doc) | Small cleanup ticket to remove the export |
+| `packages/core/src/playbooks/` p1–p6 modules | Retained after ADR-0026 executor deletion; prior daemon caller gone (row 21) | Confirm live callers vs dead-code removal | Code investigation ticket before any delete |
+| Developer-mode routing gate | ARCHITECTURE.md + oz-improvement-routing cite it; no symbol in `packages/` (row 52b) | Implement the gate or correct docs as aspirational | Founder decides product intent first |

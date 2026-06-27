@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-27 — **doc-truth-analysis phase 1: ARCHITECTURE, ADRs, docs/ reconciled — continue (run_124/run_267)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [doc-truth-analysis](./priorities/doc-truth-analysis.md) | **Run:** run_267 (display 124)
+**Outcomes:**
+- **ARCHITECTURE.md reconciled.** Twelve wrong/stale claims fixed (topology, validatePlayOutput owner, registry path, audit log path, template vs dogfood shape, commit-spine funnel, governance verification, decisions range, settings redaction, argv narrowing, routing categories); `check-topology` and core/daemon suites green.
+- **ADR reference audit.** Forty-three files / 291 refs scanned; eight broken/stale links fixed in ADRs 0020, 0023–0025, 0027, 0028; ADR-0020 addendum left as self-marked historical.
+- **docs/ truth audit.** Twelve truth-critical files; thirteen discrepancies resolved (path repoints, personas table, configuration retention key, oz-dashboard→ui, glossary links, orchestration run-dir model, onboarding owner map bannered historical).
+- **Objective drafted** into the priority stub (founder-owned; may refine). Live worklists: [`docs/architecture-truth-audit.md`](../docs/architecture-truth-audit.md), [`docs/docs-files-truth-audit.md`](../docs/docs-files-truth-audit.md).
+- **Disposition: `continue`.** Phase 2 (cocoder/ governance docs, root README/CONTRIBUTING, design-brief path refs) plus three founder code-or-doc calls (dead `basePlaybooksDir` export, orphaned `packages/core/src/playbooks/` modules, developer-mode gate) remain before archive.
+**Next:** Relaunch `doc-truth-analysis` for phase-2 governance-doc sweep; founder decides the three code-or-doc items surfaced in the audit worklists.
+
 ## 2026-06-27 — **ticket-fix-0048: minimal ESLint 9 in engine repo — closed (run_123/run_266)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0048](./tickets/closed/0048-adopt-eslint-in-cocoder-engine-repo.md) | **Run:** run_266 (display 123)
