@@ -24,7 +24,7 @@ const ROUTE_TITLE: Record<Route, string> = { dashboard: 'Dashboard', workspaces:
 const ACTIVE_DETAIL_FETCH_LIMIT = 6
 const GLOBAL_CHAT_KEY = ''
 const LAUNCH_PROGRESS_POLL_MS = 600
-const CLOSED_LAUNCH_PROGRESS: LaunchProgressState = { open: false, title: '', runId: null, detail: null, error: null, runnerlessLaunch: null }
+const CLOSED_LAUNCH_PROGRESS: LaunchProgressState = { open: false, title: '', runId: null, detail: null, error: null, runnerlessLaunch: null, manualHandoff: null }
 
 function workspaceCreateMessage(disclosure: WorkspaceCreateDisclosure, legacyHidden: readonly string[]): string {
   const roots = disclosure.roots.map((root) => `${root.role}: ${root.rawPath ?? root.path}`).join('; ')
@@ -397,10 +397,11 @@ export function App() {
   // test mode (`!live`) the actions keep the design's chat-stub behavior so the demo stays interactive.
   const [actionMsg, setActionMsg] = useState<{ kind: 'ok' | 'info' | 'err'; text: string } | null>(null)
   const notify = (kind: 'ok' | 'info' | 'err', text: string) => { setActionMsg({ kind, text }); window.setTimeout(() => setActionMsg(null), 6000) }
-  const openLaunchProgress = (title: string): void => setLaunchProgress({ open: true, title, runId: null, detail: null, error: null, runnerlessLaunch: null })
+  const openLaunchProgress = (title: string): void => setLaunchProgress({ open: true, title, runId: null, detail: null, error: null, runnerlessLaunch: null, manualHandoff: null })
   const closeLaunchProgress = (): void => setLaunchProgress(CLOSED_LAUNCH_PROGRESS)
-  const setLaunchProgressError = (text: string): void => setLaunchProgress((cur) => ({ ...cur, open: true, error: text, runnerlessLaunch: null }))
-  const setLaunchProgressRunnerless = (runnerlessLaunch: { readonly command: string; readonly pid: number | null }): void => setLaunchProgress((cur) => ({ ...cur, open: true, error: null, runnerlessLaunch }))
+  const setLaunchProgressError = (text: string): void => setLaunchProgress((cur) => ({ ...cur, open: true, error: text, runnerlessLaunch: null, manualHandoff: null }))
+  const setLaunchProgressRunnerless = (runnerlessLaunch: { readonly command: string; readonly pid: number | null }): void => setLaunchProgress((cur) => ({ ...cur, open: true, error: null, runnerlessLaunch, manualHandoff: null }))
+  const setLaunchProgressManualHandoff = (manualHandoff: { readonly command: string }): void => setLaunchProgress((cur) => ({ ...cur, open: true, error: null, runnerlessLaunch: null, manualHandoff }))
   function launchedRunId(data: unknown): string | null {
     return typeof data === 'object' && data !== null && typeof (data as { runId?: unknown }).runId === 'string' ? (data as { runId: string }).runId : null
   }
@@ -614,6 +615,13 @@ export function App() {
       const message = res.runId ? `A run is already in flight for this workspace (${res.runId}).` : 'A run is already in flight for this workspace.'
       setLaunchProgressError(message)
       notify('info', message)
+    } else if (res.status === 409 && res.code === 'runnerless-handoff-required') {
+      if (res.command) {
+        setLaunchProgressManualHandoff({ command: res.command })
+        notify('info', 'Manual runnerless handoff ready.')
+      } else {
+        setLaunchProgressError('Runnerless handoff required, but Oz did not return the command.')
+      }
     } else {
       const message = res.error || `Launch failed (${res.status}).`
       setLaunchProgressError(message)

@@ -18,6 +18,7 @@ describe('LaunchProgressModal', () => {
         command: "cd '/repo' && cocoder run-independent runnerless",
         pid: 1234,
       },
+      manualHandoff: null,
     }
 
     render(<LaunchProgressModal state={state} onClose={noop} />)

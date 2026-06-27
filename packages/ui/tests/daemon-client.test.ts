@@ -26,6 +26,10 @@ beforeAll(async () => {
       res.statusCode = 409
       return res.end(JSON.stringify({ error: 'a run is already in flight for workspace "cocoder"', code: 'workspace-in-flight', runId: 'run_busy' }))
     }
+    if (req.url === '/runs-handoff-required' && req.method === 'POST') {
+      res.statusCode = 409
+      return res.end(JSON.stringify({ error: 'Use the runnerless handoff command instead.', code: 'runnerless-handoff-required', command: 'cd /repo && cocoder run-independent runnerless' }))
+    }
     if (req.url === '/runs-flaky' && req.method === 'POST') {
       flakyHits += 1
       if (flakyHits === 1) {
@@ -76,6 +80,18 @@ describe('daemon client security headers', () => {
       error: 'a run is already in flight for workspace "cocoder"',
       code: 'workspace-in-flight',
       runId: 'run_busy',
+    })
+  })
+
+  it('preserves runnerless handoff commands on failed mutations', async () => {
+    const { daemonPost } = await import('../src/main/daemon-client.ts')
+    const r = await daemonPost('/runs-handoff-required', { workspaceId: 'cocoder', priorityId: 'runnerless' })
+    expect(r).toEqual({
+      ok: false,
+      status: 409,
+      error: 'Use the runnerless handoff command instead.',
+      code: 'runnerless-handoff-required',
+      command: 'cd /repo && cocoder run-independent runnerless',
     })
   })
 

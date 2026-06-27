@@ -486,6 +486,41 @@ describe('Oz renderer — live daemon path', () => {
     expect(overlay!.innerHTML).not.toContain('rgba(212,118,110,0.12)')
   })
 
+  it('runnerless handoff-required refusal renders a manual command instead of a launch error', async () => {
+    const posts: PostCall[] = []
+    const basePriorities = (prioritiesFx as { priorities: DPriority[] }).priorities
+    const runnerless = { ...basePriorities[0]!, id: 'runnerless-priority', title: 'Runnerless priority', independentOfRunner: true }
+    const command = 'cd /repo && cocoder run-independent runnerless-priority'
+    setOz(mockOz({
+      posts,
+      priorities: { ...(prioritiesFx as { priorities: DPriority[] }), priorities: [runnerless] },
+      runnerlessHandoffs: { handoffs: [] },
+      runs: { runs: [] },
+      postResult: (path: string) => path === '/runs/independent-launch'
+        ? { ok: false, status: 409, error: 'Use the runnerless handoff command instead.', code: 'runnerless-handoff-required', command }
+        : { ok: false, status: 500, error: `unexpected ${path}` },
+    }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(within(rowForText('Runnerless priority')).getByText('Launch'))
+
+    await waitFor(() => expect(posts.find((p) => p.path === '/runs/independent-launch')).toBeDefined())
+    expect(posts.some((p) => p.path === '/runs')).toBe(false)
+    expect(posts.some((p) => p.path === '/runs/independent-handoff')).toBe(false)
+    const notice = await screen.findByText('Copy this command and run it in a fresh terminal.')
+    const overlay = notice.closest('body > div') as HTMLElement | null
+    expect(overlay).not.toBeNull()
+    expect(within(overlay!).getByRole('status')).toBeDefined()
+    expect(within(overlay!).getByText(command)).toBeDefined()
+    expect(within(overlay!).getByText('/repo')).toBeDefined()
+    expect(within(overlay!).getByRole('button', { name: /copy command/i })).toBeDefined()
+    expect(within(overlay!).queryByText('Launch needs attention.')).toBeNull()
+    expect(within(overlay!).queryByRole('alert')).toBeNull()
+    expect(within(overlay!).queryByText(/Runnerless launch started/)).toBeNull()
+    expect(overlay!.querySelector('.ph-warning-circle')).toBeNull()
+  })
+
   it('local-cache-retention-shaped runnerless priority never posts to /runs', async () => {
     const posts: PostCall[] = []
     const runnerless = {

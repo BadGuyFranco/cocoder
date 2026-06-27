@@ -37,6 +37,7 @@ export interface DaemonErr {
   readonly status: number
   readonly error: string
   readonly code?: string
+  readonly command?: string
   readonly runId?: string | null
 }
 export type DaemonResult<T> = DaemonOk<T> | DaemonErr

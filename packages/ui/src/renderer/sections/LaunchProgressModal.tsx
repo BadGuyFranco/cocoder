@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { RunDetail, RunEvent } from '../../main/ipc-contract.ts'
 import { Button, Icon, Modal } from '../ui/primitives.tsx'
 
@@ -8,6 +9,7 @@ export interface LaunchProgressState {
   readonly detail: RunDetail | null
   readonly error: string | null
   readonly runnerlessLaunch: { readonly command: string; readonly pid: number | null } | null
+  readonly manualHandoff: { readonly command: string } | null
 }
 
 type PersonaId = 'oscar'
@@ -65,17 +67,38 @@ function stageText(state: LaunchProgressState): string {
   return 'Creating run…'
 }
 
+function commandWorkingDirectory(command: string): string | null {
+  const match = command.match(/^cd\s+(.+?)\s+&&\s+/)
+  if (!match) return null
+  const raw = match[1]!.trim()
+  if (raw.startsWith("'") && raw.endsWith("'")) return raw.slice(1, -1).replace(/'\\''/g, "'")
+  if (raw.startsWith('"') && raw.endsWith('"')) return raw.slice(1, -1)
+  return raw
+}
+
 export function LaunchProgressModal({ state, onClose }: { state: LaunchProgressState; onClose: () => void }) {
+  const [copied, setCopied] = useState(false)
   const hasError = !!state.error
   const hasRunnerlessLaunch = !!state.runnerlessLaunch
-  const footer = hasError || hasRunnerlessLaunch ? <Button variant="secondary" onClick={onClose}>Close</Button> : null
+  const hasManualHandoff = !!state.manualHandoff
+  const manualWorkingDirectory = state.manualHandoff ? commandWorkingDirectory(state.manualHandoff.command) : null
+  const copyManualCommand = async (): Promise<void> => {
+    if (!state.manualHandoff) return
+    try {
+      await navigator.clipboard?.writeText(state.manualHandoff.command)
+      setCopied(true)
+    } catch {
+      setCopied(false)
+    }
+  }
+  const footer = hasError || hasRunnerlessLaunch || hasManualHandoff ? <Button variant="secondary" onClick={onClose}>Close</Button> : null
   return (
     <Modal
       open={state.open}
       onClose={onClose}
       title={state.title}
-      subtitle={hasError ? 'Launch needs attention.' : hasRunnerlessLaunch ? 'Runnerless launch started.' : stageText(state)}
-      icon={hasError ? 'warning-circle' : hasRunnerlessLaunch ? 'check-circle' : 'rocket-launch'}
+      subtitle={hasError ? 'Launch needs attention.' : hasManualHandoff ? 'Manual runnerless handoff.' : hasRunnerlessLaunch ? 'Runnerless launch started.' : stageText(state)}
+      icon={hasError ? 'warning-circle' : hasManualHandoff ? 'terminal-window' : hasRunnerlessLaunch ? 'check-circle' : 'rocket-launch'}
       width={520}
       footer={footer}
     >
@@ -84,6 +107,23 @@ export function LaunchProgressModal({ state, onClose }: { state: LaunchProgressS
         {hasError ? (
           <div role="alert" style={{ border: '1px solid var(--cb-highlight)', background: 'rgba(212,118,110,0.12)', color: 'var(--cb-text)', borderRadius: 'var(--cb-radius-md)', padding: 12, fontSize: 12.5, lineHeight: 1.5 }}>
             {state.error}
+          </div>
+        ) : hasManualHandoff ? (
+          <div role="status" style={{ display: 'grid', gap: 10, border: '1px solid var(--cb-accent-30)', background: 'var(--cb-accent-muted)', color: 'var(--cb-text)', borderRadius: 'var(--cb-radius-md)', padding: 12, fontSize: 12.5, lineHeight: 1.5 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Icon name="terminal-window" size={16} style={{ color: 'var(--cb-accent)', flexShrink: 0 }} />
+              <span>Copy this command and run it in a fresh terminal.</span>
+            </div>
+            {manualWorkingDirectory && (
+              <div style={{ display: 'grid', gap: 3 }}>
+                <span style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10.5, color: 'var(--cb-text-muted)' }}>working directory</span>
+                <code style={{ display: 'block', userSelect: 'text', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontFamily: 'var(--cb-font-mono)', fontSize: 11, color: 'var(--cb-text)' }}>{manualWorkingDirectory}</code>
+              </div>
+            )}
+            <code style={{ display: 'block', userSelect: 'text', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontFamily: 'var(--cb-font-mono)', fontSize: 11, color: 'var(--cb-text)' }}>{state.manualHandoff?.command}</code>
+            <div>
+              <Button variant="secondary" size="sm" icon="copy" onClick={() => { void copyManualCommand() }}>{copied ? 'Copied' : 'Copy command'}</Button>
+            </div>
           </div>
         ) : hasRunnerlessLaunch ? (
           <div role="status" style={{ display: 'grid', gap: 10, border: '1px solid rgba(125,175,110,0.22)', background: 'var(--cb-success-muted)', color: 'var(--cb-text)', borderRadius: 'var(--cb-radius-md)', padding: 12, fontSize: 12.5, lineHeight: 1.5 }}>
