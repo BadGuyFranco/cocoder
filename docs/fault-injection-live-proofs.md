@@ -33,8 +33,8 @@ there is no run branch, no branch-to-trunk landing step, no `pending-landing` st
 node scripts/proof-direct-spine.mjs
 ```
 
-That harness runs the live-git runner and commit-spine suites and verifies that work lands directly on
-the checked-out branch and that the commit spine never reports false success. The current suites split
-scope behavior by caller: ordinary atom commits flag and hold out-of-lane files, while default scoped
-spine callers commit and flag the whole changed set. For live daemon confidence, still confirm `/health`
-`sha` matches the checked-out HEAD before attributing behavior to fresh code.
+That harness runs the live-git runner and commit-spine suites. Use
+[ARCHITECTURE.md → commit spine](../ARCHITECTURE.md#how-work-reaches-trunk--the-commit-spine-adr-0023--adr-0029)
+for the current direct-branch and caller-specific scope rules; this proof checks those rules against the
+runtime suites. For live daemon confidence, still confirm `/health` `sha` matches the checked-out HEAD
+before attributing behavior to fresh code.

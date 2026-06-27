@@ -85,3 +85,30 @@
 - `packages/personas/base/plays/run-tests.md`
 
 No `DEB-LANE: cocoder/ delta edit` item was needed.
+
+## Atom C - Clarity/Elegance
+
+**Date:** 2026-06-27  
+**Scope:** Clarity/elegance pass over `ARCHITECTURE.md` and `docs/**` only. This pass did not re-evaluate truth; it preserved the factual claims and citations from Atoms A/B.
+
+### Counts
+
+| Change class | Count |
+|---|---:|
+| Dedups | 2 |
+| Fixed stale/dead references | 0 |
+| Smoothed passages | 3 |
+
+### Changes
+
+| # | Class | Concept / passage | Owner kept | Before | After |
+|---:|---|---|---|---|---|
+| 1 | Dedup | Caller-specific commit-spine scope behavior repeated in glossary/proof prose. | `ARCHITECTURE.md` commit-spine section. | `docs/glossary.md` repeated the caller split; `docs/fault-injection-live-proofs.md` repeated current direct-branch and scope behavior. | Both files now point to the architecture commit-spine owner while preserving their local purpose. |
+| 2 | Dedup | Product/workspace placement and `cocoder-product` gating repeated in the architecture routing summary. | `docs/oz-improvement-routing.md`. | `ARCHITECTURE.md` restated the full `cocoder-product` landing rule and retired developer-mode note. | `ARCHITECTURE.md` now points to the Routing Guide for product/workspace placement and keeps the existing ADR links. |
+| 3 | Smoothed passage | Commit-spine "one mode" paragraph in `ARCHITECTURE.md`. | N/A | One long sentence mixed active-branch mode, receipt content, and caller scope handling. | Split into short sentences without changing the claims or cited ADR context. |
+| 4 | Smoothed passage | Commit-spine safety paragraph in `ARCHITECTURE.md`. | N/A | The "why it ends the drift" sentence read as a bolted-on clause. | Rephrased the transition while preserving `pending-landing`, strand-class, and receipt/event claims. |
+| 5 | Smoothed passage | Current proof paragraph in `docs/fault-injection-live-proofs.md`. | N/A | The proof note repeated the current commit-spine scope split inline. | It now says the proof checks the architecture-owned rules against runtime suites. |
+
+### Stale/Dead Reference Review
+
+No live stale/dead reference was fixed in this atom. Hits for `developer-mode`, `pending-landing`, `integration-verify`, old ADR filenames, and run-branch wording in audit/history documents were left intact when they were explicitly recording past failures, retired behavior, or Atom A/B findings rather than acting as current instructions or live links.
