@@ -36,4 +36,4 @@ The awaiting-founder state to gate on is already computed in `packages/core/src/
 
 Closed by reconciliation run_264 on 2026-06-27.
 
-Resolved by commit 33799c2: runner directive waits now keep ask-founder-continue in awaiting-founder and suppress idle/Oz nudges while a founder decision is pending; daemon nudge coverage rejects awaiting-founder runs.
+Resolved by commit 33799c2: runner directive waits now keep ask-founder-continue in awaiting-founder and suppress the idle continuation nudge while a founder decision is pending; daemon nudge coverage rejects awaiting-founder runs.
