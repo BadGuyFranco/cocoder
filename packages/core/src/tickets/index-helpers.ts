@@ -62,6 +62,17 @@ export function insertOpenTicketIndexRow(indexMarkdown: string, row: string, id:
   return lines.join('\n')
 }
 
+export function insertClosedTicketIndexRowIfMissing(indexMarkdown: string, closedRow: string): string {
+  const lines = indexMarkdown.split(/\r?\n/)
+  const closedLink = closedTicketLink(closedRow)
+  const alreadyIndexed = closedLink
+    ? lines.some((line) => closedTicketLink(line) === closedLink)
+    : lines.includes(closedRow)
+  if (alreadyIndexed) return indexMarkdown
+  lines.splice(separatorIndex(lines, '## Recently Closed') + 1, 0, closedRow)
+  return lines.join('\n')
+}
+
 export function moveTicketIndexRowToClosed(indexMarkdown: string, input: { readonly id: string; readonly closedRow: string }): string {
   const lines = indexMarkdown.split(/\r?\n/)
   const open = sectionBounds(lines, '## Open')
@@ -69,13 +80,7 @@ export function moveTicketIndexRowToClosed(indexMarkdown: string, input: { reado
   if (openRowIndex === -1) return indexMarkdown
   lines.splice(openRowIndex, 1)
 
-  const closedLink = closedTicketLink(input.closedRow)
-  const alreadyIndexed = closedLink
-    ? lines.some((line) => closedTicketLink(line) === closedLink)
-    : lines.includes(input.closedRow)
-  if (alreadyIndexed) return lines.join('\n')
-  lines.splice(separatorIndex(lines, '## Recently Closed') + 1, 0, input.closedRow)
-  return lines.join('\n')
+  return insertClosedTicketIndexRowIfMissing(lines.join('\n'), input.closedRow)
 }
 
 function tableDelimiters(row: string): number[] {

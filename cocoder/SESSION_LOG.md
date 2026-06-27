@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-27 — **ticket-fix-0069: personas AGENTS.md stale path refs — closed (run_127/run_270)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0069](./tickets/closed/0069-personas-agents-stale-archive-and-v1-leftover-refs.md) | **Run:** run_270 (display 127)
+**Outcomes:**
+- **Two stale refs fixed in `cocoder/personas/AGENTS.md`.** Archived-priority parenthetical repointed to `cocoder/zArchive/priorities/v2/base-and-extension-personas.md`; v1-leftovers paragraph trimmed to the sole surviving `custom/` artifact.
+- **Acceptance met.** Path resolution verified via live-tree checks; doc-only change, no code touched.
+- **Disposition: `closed`.** Ticket 0069 closed via verify-gate ticketClose path; `doc-truth-analysis` has no remaining blocking doc-truth gaps.
+**Next:** Launch ticket `0037` — align CONTRIBUTING and PR template with live CI (stale rg gate references).
+
 ## 2026-06-27 — **doc-truth-analysis phase 2 governance-doc sweep — continue (run_126/run_269)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [doc-truth-analysis](./priorities/doc-truth-analysis.md) | **Run:** run_269 (display 126)
