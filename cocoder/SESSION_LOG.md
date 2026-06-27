@@ -20,7 +20,7 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 - **Ticket scope note.** Title mentions cache-retention; body is the fifth launch-button complaint — split cache-retention retention work into its own ticket if still needed.
 - **Founder decision (ADR-gated).** (A, recommended) extend scratch-store isolation to all independent launches + wire button to auto-spawn — requires superseding ADR; (B) UX-only honesty for manual handoff; (C) founder alternative.
 - **Disposition: `needs closing`.** No delegatable atom until founder picks A, B, or C; a sixth code-only patch would repeat the same unsatisfying outcome.
-**Next:** Reply `A`, `B`, or `C` in this run; if `A`, re-launch ticket `0073` for superseding ADR then one-click isolated launch + tests.
+**Next:** Ticket `0073` — re-launch to implement your chosen Launch behavior for independent-of-runner priorities after you reply A, B, or C in this run.
 
 ## 2026-06-27 — **ticket-fix-0072: runnerless handoff success presentation — closed (run_115/run_259)**
 

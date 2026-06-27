@@ -20,7 +20,7 @@ const unexpected =
 function mockOps(overrides: Partial<OzChatOps>): OzChatOps {
   return {
     launchRun: unexpected('launch') as OzChatOps['launchRun'],
-    requestIndependentHandoff: unexpected('runnerless-handoff') as OzChatOps['requestIndependentHandoff'],
+    requestIndependentLaunch: unexpected('runnerless-launch') as OzChatOps['requestIndependentLaunch'],
     showRun: unexpected('show') as OzChatOps['showRun'],
     stopRun: unexpected('stop') as OzChatOps['stopRun'],
     teardownRun: unexpected('teardown') as OzChatOps['teardownRun'],
@@ -112,7 +112,7 @@ describe('handleOzMessage', () => {
     })
   })
 
-  test('launch creates a runnerless handoff for independent-of-runner priorities', async () => {
+  test('launch starts a runnerless process for independent-of-runner priorities', async () => {
     const home = await mkdtemp(join(tmpdir(), 'cocoder-oz-runnerless-chat-'))
     await mkdir(join(home, 'local'), { recursive: true })
     await mkdir(join(home, 'cocoder', 'priorities'), { recursive: true })
@@ -121,26 +121,26 @@ describe('handleOzMessage', () => {
       join(home, 'cocoder', 'priorities', 'runnerless.md'),
       `---\nid: runnerless\ntitle: Runnerless\nindependent-of-runner: true\n---\n## Objective\nDo the runnerless thing.`,
     )
-    const calls = { launch: 0, handoff: 0 }
+    const calls = { launch: 0, runnerless: 0 }
     const ops = mockOps({
       launchRun: async () => {
         calls.launch += 1
         return { status: 202, body: { runId: 'run_bad' } }
       },
-      requestIndependentHandoff: async (_ctx, input) => {
-        calls.handoff += 1
-        return { status: 202, body: { ok: true, runnerless: true, workspaceId: input.workspaceId, priorityId: input.priorityId, handoffPath: 'local/runnerless-handoffs/cocoder/handoff.md', command: `cd '${home}' && cocoder run-independent ${input.priorityId}` } }
+      requestIndependentLaunch: async (_ctx, input) => {
+        calls.runnerless += 1
+        return { status: 202, body: { ok: true, runnerless: true, launched: true, workspaceId: input.workspaceId, priorityId: input.priorityId, command: `cd '${home}' && cocoder run-independent ${input.priorityId}`, pid: 1234 } }
       },
     })
 
     const result = await handleOzMessage(testCtx(undefined, home), { text: 'launch runnerless', workspaceId: 'cocoder' }, ops)
 
-    expect(calls).toEqual({ launch: 0, handoff: 1 })
+    expect(calls).toEqual({ launch: 0, runnerless: 1 })
     expect(result).toMatchObject({
       status: 202,
-      body: { ok: true, command: 'launch', action: { type: 'runnerless-handoff', priorityId: 'runnerless', handoffPath: 'local/runnerless-handoffs/cocoder/handoff.md' } },
+      body: { ok: true, command: 'launch', action: { type: 'runnerless-launch', priorityId: 'runnerless', pid: 1234 } },
     })
-    expect(result.body.reply).toContain('Runnerless handoff created for runnerless')
+    expect(result.body.reply).toContain('Runnerless launch started for runnerless')
   })
 
   test('launch reply uses display number when the launcher provides one', async () => {

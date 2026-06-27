@@ -824,7 +824,7 @@ function noChangeGit(): Git {
 function fakeOps(): OzChatOps {
   return {
     launchRun: async () => ({ status: 202, body: { runId: 'run_launch' } }),
-    requestIndependentHandoff: async () => ({ status: 202, body: { ok: true, runnerless: true, handoffPath: 'local/runnerless-handoffs/cocoder/demo.md', command: "cd '/repo' && cocoder run-independent demo" } }),
+    requestIndependentLaunch: async () => ({ status: 202, body: { ok: true, runnerless: true, launched: true, command: "cd '/repo' && cocoder run-independent demo", pid: 1234 } }),
     showRun: async () => ({ status: 200, body: { sessionRef: 'surface:1' } }),
     stopRun: async () => ({ status: 202, body: { stopping: true } }),
     nudgeRun: async () => ({ status: 202, body: { queued: true, seq: 1 } }),

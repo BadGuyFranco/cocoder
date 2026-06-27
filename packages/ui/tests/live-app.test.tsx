@@ -424,50 +424,7 @@ describe('Oz renderer — live daemon path', () => {
     await waitFor(() => expect(screen.getAllByText(/Launching/i).length).toBeGreaterThan(0))
   })
 
-  it('runnerless priorities create a handoff instead of posting to /runs', async () => {
-    const posts: PostCall[] = []
-    const basePriorities = (prioritiesFx as { priorities: DPriority[] }).priorities
-    const runnerless = { ...basePriorities[0]!, id: 'runnerless-priority', title: 'Runnerless priority', independentOfRunner: true }
-    const runnerlessHandoffs: { handoffs: DRunnerlessHandoff[] } = { handoffs: [] }
-    const command = "cd '/repo' && cocoder run-independent runnerless-priority"
-    setOz(mockOz({
-      posts,
-      priorities: { ...(prioritiesFx as { priorities: DPriority[] }), priorities: [runnerless] },
-      runnerlessHandoffs,
-      runs: { runs: [] },
-      postResult: (path: string) => {
-        if (path !== '/runs/independent-handoff') return { ok: false, status: 500, error: `unexpected ${path}` }
-        runnerlessHandoffs.handoffs = [{
-          id: 'runnerless',
-          priorityId: 'runnerless-priority',
-          title: 'Runnerless priority',
-          createdAt: '2026-06-26T00:00:00.000Z',
-          path: 'local/runnerless-handoffs/cocoder/runnerless.md',
-          command,
-        }]
-        return { ok: true, status: 202, data: { ok: true, runnerless: true, handoffPath: 'local/runnerless-handoffs/cocoder/runnerless.md', command } }
-      },
-    }))
-    render(<App />)
-    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
-
-    fireEvent.click(within(rowForText('Runnerless priority')).getByText('Handoff'))
-
-    await waitFor(() => expect(posts.find((p) => p.path === '/runs/independent-handoff')).toBeDefined())
-    expect(posts.some((p) => p.path === '/runs')).toBe(false)
-    expect(posts.find((p) => p.path === '/runs/independent-handoff')?.body).toMatchObject({ workspaceId: 'cocoder', priorityId: 'runnerless-priority' })
-    await waitFor(() => expect(screen.getAllByText(/Runnerless handoff created/).length).toBeGreaterThan(0))
-    const notice = await screen.findByText('Runnerless handoff created — run it in a fresh terminal:')
-    const overlay = notice.closest('body > div') as HTMLElement | null
-    expect(overlay).not.toBeNull()
-    expect(within(overlay!).getByText(command)).toBeDefined()
-    expect(overlay!.querySelector('.ph-check-circle')).not.toBeNull()
-    expect(overlay!.querySelector('.ph-warning-circle')).toBeNull()
-    await waitFor(() => expect(screen.getByText('Pending handoff')).toBeDefined())
-    expect(screen.getAllByText('local/runnerless-handoffs/cocoder/runnerless.md').length).toBeGreaterThan(0)
-  })
-
-  it('runnerless handoff success does not render the launch error treatment', async () => {
+  it('runnerless priorities launch outside the daemon runner instead of posting to /runs', async () => {
     const posts: PostCall[] = []
     const basePriorities = (prioritiesFx as { priorities: DPriority[] }).priorities
     const runnerless = { ...basePriorities[0]!, id: 'runnerless-priority', title: 'Runnerless priority', independentOfRunner: true }
@@ -477,16 +434,50 @@ describe('Oz renderer — live daemon path', () => {
       priorities: { ...(prioritiesFx as { priorities: DPriority[] }), priorities: [runnerless] },
       runnerlessHandoffs: { handoffs: [] },
       runs: { runs: [] },
-      postResult: (path: string) => path === '/runs/independent-handoff'
-        ? { ok: true, status: 202, data: { ok: true, runnerless: true, handoffPath: 'local/runnerless-handoffs/cocoder/runnerless.md', command } }
+      postResult: (path: string) => {
+        if (path !== '/runs/independent-launch') return { ok: false, status: 500, error: `unexpected ${path}` }
+        return { ok: true, status: 202, data: { ok: true, runnerless: true, launched: true, command, pid: 1234 } }
+      },
+    }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(within(rowForText('Runnerless priority')).getByText('Launch'))
+
+    await waitFor(() => expect(posts.find((p) => p.path === '/runs/independent-launch')).toBeDefined())
+    expect(posts.some((p) => p.path === '/runs')).toBe(false)
+    expect(posts.some((p) => p.path === '/runs/independent-handoff')).toBe(false)
+    expect(posts.find((p) => p.path === '/runs/independent-launch')?.body).toMatchObject({ workspaceId: 'cocoder', priorityId: 'runnerless-priority' })
+    await waitFor(() => expect(screen.getAllByText(/Runnerless launch started/).length).toBeGreaterThan(0))
+    const notice = await screen.findByText('Runnerless launch started outside the daemon runner.')
+    const overlay = notice.closest('body > div') as HTMLElement | null
+    expect(overlay).not.toBeNull()
+    expect(within(overlay!).getByText(command)).toBeDefined()
+    expect(within(overlay!).getByText('pid 1234')).toBeDefined()
+    expect(overlay!.querySelector('.ph-check-circle')).not.toBeNull()
+    expect(overlay!.querySelector('.ph-warning-circle')).toBeNull()
+  })
+
+  it('runnerless launch success does not render the launch error treatment', async () => {
+    const posts: PostCall[] = []
+    const basePriorities = (prioritiesFx as { priorities: DPriority[] }).priorities
+    const runnerless = { ...basePriorities[0]!, id: 'runnerless-priority', title: 'Runnerless priority', independentOfRunner: true }
+    const command = "cd '/repo' && cocoder run-independent runnerless-priority"
+    setOz(mockOz({
+      posts,
+      priorities: { ...(prioritiesFx as { priorities: DPriority[] }), priorities: [runnerless] },
+      runnerlessHandoffs: { handoffs: [] },
+      runs: { runs: [] },
+      postResult: (path: string) => path === '/runs/independent-launch'
+        ? { ok: true, status: 202, data: { ok: true, runnerless: true, launched: true, command } }
         : { ok: false, status: 500, error: `unexpected ${path}` },
     }))
     render(<App />)
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
 
-    fireEvent.click(within(rowForText('Runnerless priority')).getByText('Handoff'))
+    fireEvent.click(within(rowForText('Runnerless priority')).getByText('Launch'))
 
-    const notice = await screen.findByText('Runnerless handoff created — run it in a fresh terminal:')
+    const notice = await screen.findByText('Runnerless launch started outside the daemon runner.')
     const overlay = notice.closest('body > div') as HTMLElement | null
     expect(overlay).not.toBeNull()
     expect(within(overlay!).queryByText('Launch needs attention.')).toBeNull()
@@ -507,18 +498,19 @@ describe('Oz renderer — live daemon path', () => {
       posts,
       priorities: { ...(prioritiesFx as { priorities: DPriority[] }), priorities: [runnerless] },
       runs: { runs: [] },
-      postResult: (path: string) => path === '/runs/independent-handoff'
-        ? { ok: true, status: 202, data: { ok: true, runnerless: true, handoffPath: 'local/runnerless-handoffs/cocoder/local-cache-retention.md', command: "cd '/repo' && cocoder run-independent local-cache-retention" } }
+      postResult: (path: string) => path === '/runs/independent-launch'
+        ? { ok: true, status: 202, data: { ok: true, runnerless: true, launched: true, command: "cd '/repo' && cocoder run-independent local-cache-retention" } }
         : { ok: false, status: 500, error: `unexpected ${path}` },
     }))
     render(<App />)
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
 
-    fireEvent.click(within(rowForText('Machine-local cache retention — bound local/ growth with per-workspace run retention')).getByText('Handoff'))
+    fireEvent.click(within(rowForText('Machine-local cache retention — bound local/ growth with per-workspace run retention')).getByText('Launch'))
 
-    await waitFor(() => expect(posts.find((p) => p.path === '/runs/independent-handoff')).toBeDefined())
+    await waitFor(() => expect(posts.find((p) => p.path === '/runs/independent-launch')).toBeDefined())
     expect(posts.some((p) => p.path === '/runs')).toBe(false)
-    expect(posts.find((p) => p.path === '/runs/independent-handoff')?.body).toEqual({ workspaceId: 'cocoder', priorityId: 'local-cache-retention' })
+    expect(posts.some((p) => p.path === '/runs/independent-handoff')).toBe(false)
+    expect(posts.find((p) => p.path === '/runs/independent-launch')?.body).toEqual({ workspaceId: 'cocoder', priorityId: 'local-cache-retention' })
   })
 
   it('shows live launch progress from run events and auto-closes when Oscar is ready', async () => {
