@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { act, render, screen, waitFor, cleanup, fireEvent, within } from '@testing-library/react'
 import { App } from '../src/renderer/App.tsx'
 import { stopRun } from '../src/renderer/live.ts'
-import { DEFAULT_SETTINGS, type ConnectionState, type OzApi, type OzEventHint, type PersonasResponse, type PlaysResponse, type Priority as DPriority, type Ticket as DTicket, type RunDetail, type RunSummary, type Settings, type SettingsPatch } from '../src/main/ipc-contract.ts'
+import { DEFAULT_SETTINGS, type ConnectionState, type OzApi, type OzEventHint, type PersonasResponse, type PlaysResponse, type Priority as DPriority, type RunnerlessHandoff as DRunnerlessHandoff, type Ticket as DTicket, type RunDetail, type RunSummary, type Settings, type SettingsPatch } from '../src/main/ipc-contract.ts'
 import workspacesFx from '../fixtures/workspaces.json'
 import prioritiesFx from '../fixtures/priorities.json'
 import ticketsFx from '../fixtures/tickets.json'
@@ -108,6 +108,7 @@ function mockOz(opts: {
   workspaceValidateResult?: any
   chatReply?: (workspaceId: string, text: string) => { role: 'oz'; text: string; at: number }
   priorities?: { priorities: DPriority[] }
+  runnerlessHandoffs?: { handoffs: DRunnerlessHandoff[] }
   personasResult?: { ok: false; status: number; error: string }
   personasResponse?: PersonasResponse
   playsResponse?: PlaysResponse
@@ -133,6 +134,7 @@ function mockOz(opts: {
       if (path === '/clis') return ok(clisFx)
       if (path === '/workspaces') return ok(workspacesFx)
       if (/\/priorities$/.test(path)) return ok(opts.priorities ?? prioritiesFx)
+      if (/\/runnerless-handoffs$/.test(path)) return ok(opts.runnerlessHandoffs ?? { handoffs: [] })
       if (/\/tickets$/.test(path)) return ok(ticketsFx)
       if (/\/personas$/.test(path)) return opts.personasResult ?? ok(opts.personasResponse ?? personasFx)
       if (/\/plays$/.test(path)) return ok(opts.playsResponse ?? playsFx)
@@ -426,13 +428,24 @@ describe('Oz renderer — live daemon path', () => {
     const posts: PostCall[] = []
     const basePriorities = (prioritiesFx as { priorities: DPriority[] }).priorities
     const runnerless = { ...basePriorities[0]!, id: 'runnerless-priority', title: 'Runnerless priority', independentOfRunner: true }
+    const runnerlessHandoffs: { handoffs: DRunnerlessHandoff[] } = { handoffs: [] }
     setOz(mockOz({
       posts,
       priorities: { ...(prioritiesFx as { priorities: DPriority[] }), priorities: [runnerless] },
+      runnerlessHandoffs,
       runs: { runs: [] },
-      postResult: (path: string) => path === '/runs/independent-handoff'
-        ? { ok: true, status: 202, data: { ok: true, runnerless: true, handoffPath: 'local/runnerless-handoffs/cocoder/runnerless.md' } }
-        : { ok: false, status: 500, error: `unexpected ${path}` },
+      postResult: (path: string) => {
+        if (path !== '/runs/independent-handoff') return { ok: false, status: 500, error: `unexpected ${path}` }
+        runnerlessHandoffs.handoffs = [{
+          id: 'runnerless',
+          priorityId: 'runnerless-priority',
+          title: 'Runnerless priority',
+          createdAt: '2026-06-26T00:00:00.000Z',
+          path: 'local/runnerless-handoffs/cocoder/runnerless.md',
+          command: "cd '/repo' && cocoder run-independent runnerless-priority",
+        }]
+        return { ok: true, status: 202, data: { ok: true, runnerless: true, handoffPath: 'local/runnerless-handoffs/cocoder/runnerless.md' } }
+      },
     }))
     render(<App />)
     await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
@@ -443,6 +456,8 @@ describe('Oz renderer — live daemon path', () => {
     expect(posts.some((p) => p.path === '/runs')).toBe(false)
     expect(posts.find((p) => p.path === '/runs/independent-handoff')?.body).toMatchObject({ workspaceId: 'cocoder', priorityId: 'runnerless-priority' })
     await waitFor(() => expect(screen.getAllByText(/Runnerless handoff created/).length).toBeGreaterThan(0))
+    await waitFor(() => expect(screen.getByText('Pending handoff')).toBeDefined())
+    expect(screen.getByText('local/runnerless-handoffs/cocoder/runnerless.md')).toBeDefined()
   })
 
   it('shows live launch progress from run events and auto-closes when Oscar is ready', async () => {

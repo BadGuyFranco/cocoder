@@ -20,6 +20,10 @@ export interface Priority {
   independentOfRunner?: boolean
   runId?: string; spec?: PersonaSpec
 }
+export interface RunnerlessHandoff {
+  id: string; priorityId: string; title: string
+  createdAt: string; path: string; command: string | null
+}
 export type TicketState = 'open' | 'closed'
 export interface Ticket {
   id: string; title: string; type: string | null; status: string | null

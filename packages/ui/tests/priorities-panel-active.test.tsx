@@ -52,6 +52,7 @@ function renderPanel({
       <PrioritiesPanel
         priorities={priorities}
         runs={runs}
+        runnerlessHandoffs={[]}
         selectedRunId={selectedRunId}
         onReorder={onReorder}
         onLaunch={onLaunch}

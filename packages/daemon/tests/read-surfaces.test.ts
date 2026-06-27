@@ -236,6 +236,48 @@ describe('Oz read surfaces', () => {
     expect(r.json.priorities.map((p: any) => p.id)).toEqual(await priorityIdsByDirOrder(home))
   })
 
+  test('GET /workspaces/:id/runnerless-handoffs lists pending handoff artifacts until a run record exists', async () => {
+    await mkdir(join(home, 'local', 'runnerless-handoffs', 'cocoder'), { recursive: true })
+    await writeFile(
+      join(home, 'local', 'runnerless-handoffs', 'cocoder', '2020-01-01T00-00-00-000Z--runnerless.md'),
+      [
+        '# Runnerless handoff: Runnerless priority',
+        '',
+        '- Workspace: CoCoder (cocoder)',
+        `- Repository: ${home}`,
+        '- Priority: runnerless',
+        `- Priority file: ${join(home, 'cocoder', 'priorities', 'runnerless.md')}`,
+        '- Created: 2020-01-01T00:00:00.000Z',
+        '',
+        '```sh',
+        `cd '${home}' && cocoder run-independent runnerless`,
+        '```',
+        '',
+      ].join('\n'),
+    )
+
+    const pending = await get(oz!, '/workspaces/cocoder/runnerless-handoffs')
+
+    expect(pending.status).toBe(200)
+    expect(pending.json.handoffs).toEqual([
+      expect.objectContaining({
+        id: '2020-01-01T00-00-00-000Z--runnerless',
+        priorityId: 'runnerless',
+        title: 'Runnerless priority',
+        createdAt: '2020-01-01T00:00:00.000Z',
+        path: 'local/runnerless-handoffs/cocoder/2020-01-01T00-00-00-000Z--runnerless.md',
+        command: expect.stringContaining('cocoder run-independent runnerless'),
+      }),
+    ])
+
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    store.createRun({ workspaceId: 'cocoder', priorityId: 'runnerless' })
+    const afterRunRecord = await get(oz!, '/workspaces/cocoder/runnerless-handoffs')
+
+    expect(afterRunRecord.status).toBe(200)
+    expect(afterRunRecord.json.handoffs).toEqual([])
+  })
+
   test('GET /workspaces/:id/personas lists effective personas with assignments', async () => {
     const r = await get(oz!, '/workspaces/cocoder/personas')
     expect(r.status).toBe(200)

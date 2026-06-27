@@ -99,6 +99,14 @@ export interface Priority {
   readonly independentOfRunner?: boolean
   readonly goal: string
 }
+export interface RunnerlessHandoff {
+  readonly id: string
+  readonly priorityId: string
+  readonly title: string
+  readonly createdAt: string
+  readonly path: string
+  readonly command: string | null
+}
 export type TicketState = 'open' | 'closed'
 export interface Ticket {
   readonly id: string

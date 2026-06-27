@@ -5,7 +5,7 @@
 import { useRef, useState, type DragEvent } from 'react'
 import { Icon, StatusChip, Button } from '../../ui/primitives.tsx'
 import { isActiveRun } from '../../adapter.ts'
-import { runDisplayName, type Priority, type Run } from '../../model.ts'
+import { runDisplayName, type Priority, type RunnerlessHandoff, type Run } from '../../model.ts'
 import { PriorityDetailModal } from './PriorityDetailModal.tsx'
 
 const LAUNCH_BLOCKED_HINT = 'A run is active in this workspace — only one run executes at a time (single-writer lock). It frees up when the run finishes.'
@@ -15,9 +15,9 @@ function setOzItemDragData(e: DragEvent, itemType: 'priority' | 'run', id: strin
   e.dataTransfer?.setData(OZ_ITEM_MIME, JSON.stringify({ itemType, id, label }))
 }
 
-function PriorityRow({ priority, index, onLaunch, onOpenDetails, onDrag, isDragging, isDropTarget, onSelectRun, runs, selectedRunId, launchBlocked }: {
+function PriorityRow({ priority, index, onLaunch, onOpenDetails, onDrag, isDragging, isDropTarget, onSelectRun, runs, selectedRunId, launchBlocked, pendingHandoffs }: {
   priority: Priority; index: number; onLaunch: (p: Priority) => void; onDrag: (type: string, index: number) => void
-  onOpenDetails: (p: Priority) => void; isDragging: boolean; isDropTarget: boolean; onSelectRun: (id: string) => void; runs: Run[]; selectedRunId: string | null; launchBlocked: boolean
+  onOpenDetails: (p: Priority) => void; isDragging: boolean; isDropTarget: boolean; onSelectRun: (id: string) => void; runs: Run[]; selectedRunId: string | null; launchBlocked: boolean; pendingHandoffs: RunnerlessHandoff[]
 }) {
   const didDrag = useRef(false)
   const linkedRun = priority.runId ? runs.find((r) => r.id === priority.runId) : null
@@ -64,6 +64,21 @@ function PriorityRow({ priority, index, onLaunch, onOpenDetails, onDrag, isDragg
           <Button variant="secondary" size="sm" icon="play" disabled={launchDisabled} title={launchTitle} onClick={(e) => { e.stopPropagation(); onLaunch(priority) }}>{priority.independentOfRunner === true ? 'Handoff' : 'Launch'}</Button>
         </div>
       </div>
+      {pendingHandoffs.length > 0 && (
+        <div style={{ marginTop: 10, marginLeft: 36, paddingTop: 10, borderTop: '1px solid var(--cb-border)', display: 'grid', gap: 6 }}>
+          {pendingHandoffs.map((handoff) => (
+            <div key={handoff.id} title={handoff.command ?? undefined} style={{ display: 'grid', gap: 3, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                <Icon name="terminal-window" size={12} style={{ color: 'var(--cb-accent)' }} />
+                <span style={{ fontSize: 11.5, color: 'var(--cb-text)', fontWeight: 500 }}>Pending handoff</span>
+                <span style={{ marginLeft: 'auto', fontFamily: 'var(--cb-font-mono)', fontSize: 9.5, color: 'var(--cb-text-muted)', whiteSpace: 'nowrap' }}>{handoff.createdAt}</span>
+              </div>
+              <div style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-text-muted)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{handoff.path}</div>
+              {handoff.command && <div style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10, color: 'var(--cb-text-secondary)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{handoff.command}</div>}
+            </div>
+          ))}
+        </div>
+      )}
       {isActive && linkedRun && (
         <div onClick={(e) => { e.stopPropagation(); onSelectRun(linkedRun.id) }} style={{ marginTop: 10, marginLeft: 36, paddingTop: 10, borderTop: '1px solid var(--cb-border)', position: 'relative', cursor: 'pointer' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
@@ -121,8 +136,8 @@ function AdhocPriorityRow({ adhocRuns, onLaunch, onSelectRun, selectedRunId, lau
   )
 }
 
-export function PrioritiesPanel({ priorities, runs, onReorder, onLaunch, onAdhoc, onAddPriority, onSelectRun, selectedRunId }: {
-  priorities: Priority[]; runs: Run[]; onReorder: (from: number, to: number) => void; onLaunch: (p: Priority, strictPreRunDirt?: boolean, allowPreRunIntegrityErrors?: boolean) => void
+export function PrioritiesPanel({ priorities, runs, runnerlessHandoffs = [], onReorder, onLaunch, onAdhoc, onAddPriority, onSelectRun, selectedRunId }: {
+  priorities: Priority[]; runs: Run[]; runnerlessHandoffs?: RunnerlessHandoff[]; onReorder: (from: number, to: number) => void; onLaunch: (p: Priority, strictPreRunDirt?: boolean, allowPreRunIntegrityErrors?: boolean) => void
   onAdhoc: () => void; onAddPriority: () => void; onSelectRun: (id: string) => void; selectedRunId: string | null
 }) {
   const [drag, setDrag] = useState<{ from: number | null; over: number | null }>({ from: null, over: null })
@@ -155,7 +170,7 @@ export function PrioritiesPanel({ priorities, runs, onReorder, onLaunch, onAdhoc
           <div style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 9.5, color: 'var(--cb-text-muted)', letterSpacing: 0.5, padding: '4px 4px 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
             <span>QUEUE · ↑ TOP = NEXT UP</span><span style={{ flex: 1, height: 1, background: 'var(--cb-border)' }} />
           </div>
-          {priorities.map((p, i) => <PriorityRow key={p.id} priority={p} index={i} onLaunch={onLaunch} onOpenDetails={(priority) => setSelectedPriorityId(priority.id)} onSelectRun={onSelectRun} onDrag={handleDrag} isDragging={drag.from === i} isDropTarget={drag.over === i && drag.from !== i} runs={runs} selectedRunId={selectedRunId} launchBlocked={launchBlocked} />)}
+          {priorities.map((p, i) => <PriorityRow key={p.id} priority={p} index={i} onLaunch={onLaunch} onOpenDetails={(priority) => setSelectedPriorityId(priority.id)} onSelectRun={onSelectRun} onDrag={handleDrag} isDragging={drag.from === i} isDropTarget={drag.over === i && drag.from !== i} runs={runs} selectedRunId={selectedRunId} launchBlocked={launchBlocked} pendingHandoffs={runnerlessHandoffs.filter((handoff) => handoff.priorityId === p.id)} />)}
         </>
       )}
       {selectedPriority && (

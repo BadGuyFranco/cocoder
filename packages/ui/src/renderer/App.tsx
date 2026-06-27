@@ -16,7 +16,7 @@ import { PlaysScreen } from './sections/Plays.tsx'
 import { SettingsScreen } from './sections/Settings.tsx'
 import { NewWorkspaceModal, CraftPersonaModal, NewPriorityModal, NewTicketModal } from './sections/modals.tsx'
 import { LaunchProgressModal, launchFailure, launchIsUp, type LaunchProgressState } from './sections/LaunchProgressModal.tsx'
-import { seed, DEFAULT_SETTINGS, DEFAULT_PANEL_RATIO, type ChatMessage, type Cli, type Dependency, type Persona, type Play, type Priority, type Ticket, type Run, type Settings, type SubAgent, type Workspace } from './model.ts'
+import { seed, DEFAULT_SETTINGS, DEFAULT_PANEL_RATIO, type ChatMessage, type Cli, type Dependency, type Persona, type Play, type Priority, type RunnerlessHandoff, type Ticket, type Run, type Settings, type SubAgent, type Workspace } from './model.ts'
 import type { OzEventHint, PersonaAssignment, WorkspaceCreateDisclosure } from '../main/ipc-contract.ts'
 
 const USER = seed.workspaces.length ? { initials: 'AF', name: 'Anthony Franco', role: 'founder' } : { initials: 'AF', name: 'Anthony Franco', role: 'founder' }
@@ -104,6 +104,7 @@ export function App() {
   const [prioritiesByWs, setPrioritiesByWs] = useState<Record<string, Priority[]>>(() => Object.fromEntries(workspaces.map((w) => [w.id, [...(seedPriorities[w.id] ?? [])]])))
   const [ticketsByWs, setTicketsByWs] = useState<Record<string, Ticket[]>>(() => Object.fromEntries(workspaces.map((w) => [w.id, [...(seedTickets[w.id] ?? [])]])))
   const [runsByWs, setRunsByWs] = useState<Record<string, Run[]>>(seed.runsByWs)
+  const [runnerlessHandoffsByWs, setRunnerlessHandoffsByWs] = useState<Record<string, RunnerlessHandoff[]>>({})
   const [configuredByWs, setConfiguredByWs] = useState<Record<string, boolean>>({})
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null)
   const [msgsByWs, setMsgsByWs] = useState<Record<string, ChatMessage[]>>(() => Object.fromEntries(workspaces.map((w) => [w.id, [...(seedChat[w.id] ?? [])]])))
@@ -156,7 +157,7 @@ export function App() {
     let cancelled = false
     const goOffline = (state: ConnectionState) => {
       // A bridge exists but the daemon isn't answering: never present seed demo data as if it were live.
-      setLive(false); setConn(state); setWorkspaces([]); setRunsByWs({}); setPrioritiesByWs({}); setTicketsByWs({}); setConfiguredByWs({})
+      setLive(false); setConn(state); setWorkspaces([]); setRunsByWs({}); setPrioritiesByWs({}); setTicketsByWs({}); setRunnerlessHandoffsByWs({}); setConfiguredByWs({})
     }
     void (async () => {
       setConn('connecting')
@@ -189,6 +190,7 @@ export function App() {
       setPrioritiesByWs((cur) => ({ ...cur, [first.id]: applyOrder(data.priorities, order) }))
       setTicketsByWs((cur) => ({ ...cur, [first.id]: data.tickets }))
       setRunsByWs((cur) => ({ ...cur, [first.id]: data.runs }))
+      setRunnerlessHandoffsByWs((cur) => ({ ...cur, [first.id]: data.runnerlessHandoffs }))
       void enrichActiveRunDetails(first.id, data.runs)
       setPlays(data.plays)
       if (data.personas.length) {
@@ -303,6 +305,7 @@ export function App() {
       setPrioritiesByWs((cur) => ({ ...cur, [activeId]: applyOrder(data.priorities, order) }))
       setTicketsByWs((cur) => ({ ...cur, [activeId]: data.tickets }))
       setRunsByWs((cur) => ({ ...cur, [activeId]: data.runs }))
+      setRunnerlessHandoffsByWs((cur) => ({ ...cur, [activeId]: data.runnerlessHandoffs }))
       void enrichActiveRunDetails(activeId, data.runs, () => cancelled)
       setPlays(data.plays)
       if (data.personas.length) {
@@ -317,6 +320,7 @@ export function App() {
   const priorities = prioritiesByWs[activeId] ?? []
   const tickets = ticketsByWs[activeId] ?? []
   const runs = useMemo(() => runsByWs[activeId] ?? [], [runsByWs, activeId])
+  const runnerlessHandoffs = runnerlessHandoffsByWs[activeId] ?? []
   const chatKey = chatTarget ?? GLOBAL_CHAT_KEY
   const chatWorkspace = chatTarget ? workspaces.find((w) => w.id === chatTarget) ?? null : null
   const chatTargetName = chatTarget ? chatWorkspace?.name ?? chatTarget : 'Global Oz'
@@ -413,6 +417,7 @@ export function App() {
     setPrioritiesByWs((cur) => ({ ...cur, [wsId]: applyOrder(data.priorities, order) }))
     setTicketsByWs((cur) => ({ ...cur, [wsId]: data.tickets }))
     setRunsByWs((cur) => ({ ...cur, [wsId]: mergedRuns }))
+    setRunnerlessHandoffsByWs((cur) => ({ ...cur, [wsId]: data.runnerlessHandoffs }))
     void enrichActiveRunDetails(wsId, mergedRuns)
   }
   async function refreshRunDetail(runId: string, wsId: string, shouldSkip: () => boolean = () => false): Promise<boolean> {
@@ -502,7 +507,7 @@ export function App() {
     if (!live) {
       const id = `ws-${Date.now()}`
       const ws: Workspace = { id, name: input.name, description: input.description, icon: 'ph-thin ph-cube', created: 'just now', roots: [{ id: `r${Date.now()}`, name: input.root.name, path: input.root.path, role: 'primary' }] }
-      setWorkspaces((all) => [...all, ws]); setPrioritiesByWs((cur) => ({ ...cur, [id]: [] })); loadWs(id); setRoute('dashboard')
+      setWorkspaces((all) => [...all, ws]); setPrioritiesByWs((cur) => ({ ...cur, [id]: [] })); setRunnerlessHandoffsByWs((cur) => ({ ...cur, [id]: [] })); loadWs(id); setRoute('dashboard')
       return true
     }
     const oz = ozApi()
@@ -775,7 +780,7 @@ export function App() {
           ) : (<>
           {route === 'dashboard' && workspace && (
             <Dashboard
-              workspace={workspace} priorities={priorities} tickets={tickets} runs={runs} ozMessages={messages}
+              workspace={workspace} priorities={priorities} tickets={tickets} runs={runs} runnerlessHandoffs={runnerlessHandoffs} ozMessages={messages}
               workspaceConfigured={live ? configuredByWs[activeId] : undefined}
               selectedRunId={selectedRunId} setSelectedRunId={setSelectedRunId}
               onReorder={reorder} onReorderTickets={reorderTickets} onLaunch={handleLaunch} onAdhoc={handleAdhoc}

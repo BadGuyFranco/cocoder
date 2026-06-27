@@ -15,11 +15,12 @@ import type {
   ClisResponse,
   CliTestResponse,
   ChatMessage as DaemonChatMessage,
+  RunnerlessHandoff as DRunnerlessHandoff,
   WorkspaceCreateDisclosure,
   WorkspaceFolder,
 } from '../main/ipc-contract.ts'
 import { adaptWorkspace, adaptRuns, adaptPriorities, adaptTickets, adaptRunDetail, adaptPersonas, adaptCli } from './adapter.ts'
-import type { Workspace, Priority, Ticket, Run, Persona, Play, Cli, ChatMessage } from './model.ts'
+import type { Workspace, Priority, Ticket, Run, Persona, Play, Cli, ChatMessage, RunnerlessHandoff } from './model.ts'
 
 export type { ConnectionState }
 
@@ -32,6 +33,7 @@ export interface WsData {
   priorities: Priority[]
   tickets: Ticket[]
   runs: Run[]
+  runnerlessHandoffs: RunnerlessHandoff[]
   personas: Persona[]
   plays: Play[]
   assignments: Record<string, PersonaAssignment>
@@ -56,10 +58,11 @@ export async function loadClis(oz: OzApi): Promise<Cli[]> {
 // Fetch the per-workspace surfaces in parallel and adapt them. A failed sub-fetch degrades that
 // surface to empty rather than failing the whole load.
 export async function loadWsData(oz: OzApi, wsId: string, workspaceName?: string | null): Promise<WsData> {
-  const [pr, ti, ru, pe, pl] = await Promise.all([
+  const [pr, ti, ru, rh, pe, pl] = await Promise.all([
     oz.daemonGet<{ priorities: DPriority[] }>(`/workspaces/${wsId}/priorities`),
     oz.daemonGet<{ tickets: DTicket[] }>(`/workspaces/${wsId}/tickets`),
     oz.daemonGet<{ runs: RunSummary[] }>(`/runs?workspace=${encodeURIComponent(wsId)}`),
+    oz.daemonGet<{ handoffs: DRunnerlessHandoff[] }>(`/workspaces/${wsId}/runnerless-handoffs`),
     oz.daemonGet<PersonasResponse>(`/workspaces/${wsId}/personas`),
     oz.daemonGet<PlaysResponse>(`/workspaces/${wsId}/plays`),
   ])
@@ -70,11 +73,12 @@ export async function loadWsData(oz: OzApi, wsId: string, workspaceName?: string
   const runs = adaptRuns(dRuns, names, workspaceName)
   const priorities = adaptPriorities(dPriorities, runs)
   const tickets = adaptTickets(dTickets)
+  const runnerlessHandoffs = rh.ok ? [...(rh.data.handoffs ?? [])] : []
   const assignments = pe.ok ? pe.data.assignments ?? {} : {}
   const personas = pe.ok ? adaptPersonas(pe.data) : []
   const plays = pl.ok ? [...(pl.data.plays ?? [])] : []
   const configured = pe.ok ? Object.keys(assignments).length > 0 : true
-  return { priorities, tickets, runs, personas, plays, assignments, configured, names }
+  return { priorities, tickets, runs, runnerlessHandoffs, personas, plays, assignments, configured, names }
 }
 
 // Poll one run's detail → an enriched Run (transcript + evidence + personas). Null on a failed fetch

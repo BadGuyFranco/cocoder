@@ -100,6 +100,15 @@ interface TeardownBody {
 
 type OscarDebRepairBody = Omit<OscarDebRepairInput, 'workspaceId' | 'requestedBy'>
 
+interface RunnerlessHandoffSummary {
+  readonly id: string
+  readonly priorityId: string
+  readonly title: string
+  readonly createdAt: string
+  readonly path: string
+  readonly command: string | null
+}
+
 type ParsedLaunchBody = { readonly ok: true; readonly input: LaunchBody } | { readonly ok: false; readonly error: string }
 
 function launchBody(body: unknown): ParsedLaunchBody {
@@ -448,6 +457,47 @@ async function listPriorities(ctx: OzContext, res: ServerResponse, workspaceId: 
   sendJson(res, 200, { workspace: ws, priorities: await readPriorities(prioritiesDir(ws.path), CAP) })
 }
 
+function parseRunnerlessHandoff(id: string, path: string, content: string): RunnerlessHandoffSummary | null {
+  const priorityId = content.match(/^- Priority: (.+)$/m)?.[1]?.trim()
+  const createdAt = content.match(/^- Created: (.+)$/m)?.[1]?.trim()
+  if (!priorityId || !createdAt) return null
+  const title = content.match(/^# Runnerless handoff: (.+)$/m)?.[1]?.trim() || priorityId
+  const command = content.match(/```sh\n([\s\S]*?)\n```/m)?.[1]?.trim() || null
+  return { id, priorityId, title, createdAt, path, command }
+}
+
+async function readRunnerlessHandoffs(ctx: OzContext, workspaceId: string): Promise<RunnerlessHandoffSummary[]> {
+  const dir = join(ctx.cocoderHome, 'local', 'runnerless-handoffs', workspaceId)
+  const names = await readdir(dir).catch((err: unknown) => {
+    if (errorCode(err) === 'ENOENT') return []
+    throw err
+  })
+  const runs = ctx.store.listRuns({ workspaceId })
+  const handoffs: RunnerlessHandoffSummary[] = []
+  for (const name of names) {
+    if (!name.endsWith('.md')) continue
+    const relativePath = join('local', 'runnerless-handoffs', workspaceId, name)
+    const content = await readFile(join(dir, name), 'utf8').catch((err: unknown) => {
+      if (errorCode(err) === 'ENOENT') return null
+      throw err
+    })
+    if (content === null) continue
+    const handoff = parseRunnerlessHandoff(name.slice(0, -3), relativePath, content)
+    if (!handoff) continue
+    const createdAtMs = Date.parse(handoff.createdAt)
+    const hasStartedRun = Number.isFinite(createdAtMs) && runs.some((run) => run.priorityId === handoff.priorityId && run.createdAt >= createdAtMs)
+    if (!hasStartedRun) handoffs.push(handoff)
+  }
+  return handoffs.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || a.id.localeCompare(b.id))
+}
+
+/** GET /workspaces/:id/runnerless-handoffs — pending artifacts until a run record exists. */
+async function listRunnerlessHandoffs(ctx: OzContext, res: ServerResponse, workspaceId: string): Promise<void> {
+  const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
+  if (!ws) return sendJson(res, 404, { error: 'unknown workspace' })
+  sendJson(res, 200, { workspace: ws, handoffs: await readRunnerlessHandoffs(ctx, workspaceId) })
+}
+
 /** GET /workspaces/:id/tickets — ticket files are canonical; INDEX.md is not parsed. */
 async function listTickets(ctx: OzContext, res: ServerResponse, workspaceId: string): Promise<void> {
   const ws = await findWorkspace(ctx.cocoderHome, workspaceId)
@@ -627,6 +677,10 @@ export async function dispatchReads(ctx: OzContext, method: string, pathname: st
   }
   if (method === 'GET' && seg[0] === 'workspaces' && seg.length === 3 && seg[2] === 'priorities') {
     await listPriorities(ctx, res, decodeURIComponent(seg[1]!))
+    return true
+  }
+  if (method === 'GET' && seg[0] === 'workspaces' && seg.length === 3 && seg[2] === 'runnerless-handoffs') {
+    await listRunnerlessHandoffs(ctx, res, decodeURIComponent(seg[1]!))
     return true
   }
   if (method === 'GET' && seg[0] === 'workspaces' && seg.length === 3 && seg[2] === 'tickets') {

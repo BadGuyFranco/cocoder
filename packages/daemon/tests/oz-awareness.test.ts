@@ -4,7 +4,7 @@ import { projectOzAwareness } from '../src/oz-awareness.js'
 import type { PrioritySummary, TicketSummary } from '../src/priority-order.js'
 
 const priorities: PrioritySummary[] = [
-  { id: 'demo', title: 'Demo', scopeNarrowing: null, goal: 'Build demo.' },
+  { id: 'demo', title: 'Demo', scopeNarrowing: null, independentOfRunner: false, goal: 'Build demo.' },
 ]
 
 const runs: Run[] = [

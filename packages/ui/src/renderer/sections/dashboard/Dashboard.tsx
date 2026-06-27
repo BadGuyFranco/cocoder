@@ -48,7 +48,7 @@ import { PrioritiesPanel } from './Priorities.tsx'
 import { OzChatPanel } from './OzChat.tsx'
 import { RunDetail } from './RunDetail.tsx'
 import { FirstRun } from './FirstRun.tsx'
-import { DEFAULT_PANEL_RATIO, runDisplayName, type ChatMessage, type Priority, type Run, type Ticket, type Workspace } from '../../model.ts'
+import { DEFAULT_PANEL_RATIO, runDisplayName, type ChatMessage, type Priority, type RunnerlessHandoff, type Run, type Ticket, type Workspace } from '../../model.ts'
 
 type DashboardTab = 'priorities' | 'tickets' | 'runs'
 type RunFilter = 'all' | 'active' | 'complete' | 'failed'
@@ -260,8 +260,8 @@ function RunsTab({ runs, onSelectRun, priorities }: { runs: Run[]; onSelectRun: 
   )
 }
 
-export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, selectedRunId, setSelectedRunId, onReorder, onReorderTickets, onLaunch, onAdhoc, onAddPriority, onAddTicket, onLaunchTicket, onSend, onDecision, onRunAction, ozTyping, live = false, workspaceConfigured, chatPrefill = null, onChatPrefillConsumed, workspaces, activeId, loadedIds, runsMap, onSelectWs, onCloseWs, onLoadWs, onCreateWs, theme = 'dark', setTheme = () => undefined, conn = 'fixtures', onRestartOz, chatTarget = workspace.id, chatTargets, onChatTargetChange = () => undefined, chatTargetName = workspace.name, chatRuns, panelRatio = DEFAULT_PANEL_RATIO, onPanelRatioChange = () => undefined }: {
-  workspace: Workspace; priorities: Priority[]; tickets: Ticket[]; runs: Run[]; ozMessages: ChatMessage[]
+export function Dashboard({ workspace, priorities, tickets, runs, runnerlessHandoffs = [], ozMessages, selectedRunId, setSelectedRunId, onReorder, onReorderTickets, onLaunch, onAdhoc, onAddPriority, onAddTicket, onLaunchTicket, onSend, onDecision, onRunAction, ozTyping, live = false, workspaceConfigured, chatPrefill = null, onChatPrefillConsumed, workspaces, activeId, loadedIds, runsMap, onSelectWs, onCloseWs, onLoadWs, onCreateWs, theme = 'dark', setTheme = () => undefined, conn = 'fixtures', onRestartOz, chatTarget = workspace.id, chatTargets, onChatTargetChange = () => undefined, chatTargetName = workspace.name, chatRuns, panelRatio = DEFAULT_PANEL_RATIO, onPanelRatioChange = () => undefined }: {
+  workspace: Workspace; priorities: Priority[]; tickets: Ticket[]; runs: Run[]; runnerlessHandoffs?: RunnerlessHandoff[]; ozMessages: ChatMessage[]
   workspaceConfigured?: boolean
   selectedRunId: string | null; setSelectedRunId: (id: string | null) => void
   onReorder: (from: number, to: number) => void; onReorderTickets: (from: number, to: number) => void; onLaunch: (p: Priority, strictPreRunDirt?: boolean, allowPreRunIntegrityErrors?: boolean) => void; onAdhoc: () => void; onAddPriority: () => void
@@ -314,7 +314,7 @@ export function Dashboard({ workspace, priorities, tickets, runs, ozMessages, se
             </div>
           </div>
           <div className="oz-panel-body">
-            {activeTab === 'priorities' && <PrioritiesPanel priorities={priorities} runs={runs} onReorder={onReorder} onLaunch={onLaunch} onAdhoc={onAdhoc} onAddPriority={onAddPriority} onSelectRun={setSelectedRunId} selectedRunId={selectedRunId} />}
+            {activeTab === 'priorities' && <PrioritiesPanel priorities={priorities} runs={runs} runnerlessHandoffs={runnerlessHandoffs} onReorder={onReorder} onLaunch={onLaunch} onAdhoc={onAdhoc} onAddPriority={onAddPriority} onSelectRun={setSelectedRunId} selectedRunId={selectedRunId} />}
             {activeTab === 'tickets' && <TicketsTab tickets={tickets} livePriorityIds={livePriorityIds} onLaunchTicket={onLaunchTicket} onReorderTickets={onReorderTickets} launchBlocked={launchBlocked} live={live} />}
             {activeTab === 'runs' && <RunsTab runs={runs} priorities={priorities} onSelectRun={setSelectedRunId} />}
           </div>

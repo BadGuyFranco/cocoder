@@ -127,9 +127,9 @@ describe('handleOzMessage', () => {
         calls.launch += 1
         return { status: 202, body: { runId: 'run_bad' } }
       },
-      requestIndependentHandoff: async (_ctx, workspaceId, priorityId) => {
+      requestIndependentHandoff: async (_ctx, input) => {
         calls.handoff += 1
-        return { status: 202, body: { ok: true, runnerless: true, workspaceId, priorityId, handoffPath: 'local/runnerless-handoffs/cocoder/handoff.md', command: `cd '${home}' && cocoder run-independent ${priorityId}` } }
+        return { status: 202, body: { ok: true, runnerless: true, workspaceId: input.workspaceId, priorityId: input.priorityId, handoffPath: 'local/runnerless-handoffs/cocoder/handoff.md', command: `cd '${home}' && cocoder run-independent ${input.priorityId}` } }
       },
     })
 
