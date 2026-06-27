@@ -3,7 +3,7 @@
 **Status:** Draft, implemented by Sub-Playbook D Solve  
 **Last verified:** 2026-06-20 (scrubbed stale v1 session-host prose; aligned launch/attach with cmux + ADR-0002/0029)
 
-CoCoder launches visible, bounded agent lanes around one selected priority. A run is a working record: launch prompt, startup packet, lane panes, evidence paths, and result artifacts.
+CoCoder launches visible, bounded agent lanes around one selected priority. A run is a working record: launch prompt, live panes, directive and verify artifacts, evidence paths, portable history, and pickup state.
 
 ## Session model
 
@@ -20,20 +20,22 @@ To watch a run, use the **Attach** action in the Oz dashboard's run drawer — i
 
 ## Runs
 
-A run directory lives under the install-local workspace registry:
+A run has two durable homes:
 
 ```text
-<CoCoder>/local/workspaces/<workspace-slug>/runs/<run-id>/
-  startup-packet.json
-  events.jsonl
-  jobs/<lane>/prompt.md
-  jobs/<lane>/result.json
-  jobs/<lane>/result.md
-  send-to-<lane>.sh
-  watch-<lane>-completion.sh
+<CoCoder>/local/runs/<workspaceId>/<runId>/
+<workspace>/cocoder/runs/<display>-<runId>/
 ```
 
-The startup packet is orientation, not a work order. In `wait-for-lead-dispatch` mode, teammate lanes load the prompt and packet, then stay idle until the lead sends a concrete dispatch.
+The machine-local run directory is the private live artifact home; its layout is owned by
+[`packages/core/src/runner/run-dir.ts`](../packages/core/src/runner/run-dir.ts). Portable run history
+is committed under `cocoder/runs/<display>-<runId>/` in the workspace so future sessions can inspect
+events, commits, sessions, and work items without the private `local/` directory.
+
+The ordinary run loop advances through Oscar-authored `directive-<n>.json` files and verify artifacts.
+Oscar delegates one atom to Bob; Bob completes the work and prints the atom marker; Oscar verifies the
+actual diff and evidence; the runner commits only after a passing verify result. At wrap, the runner
+writes `pickup.md` as the resumable brief for the next session.
 
 Configuration resolution, workspace roots, and private `local/` overrides are described in [`configuration.md`](./configuration.md).
 
@@ -62,14 +64,14 @@ Most v0.1 builder checks are Class B unless they exercise a real operator path f
 
 ## Session-wrap flow
 
-When a lane finishes its packet:
+When Bob finishes an atom:
 
 1. Run the required checks, or state why they could not run.
-2. Write `jobs/<lane>/result.json` using the launch prompt's result contract.
-3. Write `jobs/<lane>/result.md` with the same closeout in human-readable form.
-4. Stop work for that packet.
+2. Summarize the changed files and verification evidence.
+3. Print the atom completion marker exactly as requested by the directive.
+4. Stop work for that atom until the runner dispatches the next one.
 
-Result artifacts close the lane for the current run. Do not delete, rename, or overwrite them to accept another packet; start a fresh run until packet ledgers are first-class.
+The runner, not Bob, owns verify artifacts, portable run-history files, and the final pickup.
 
 ## Extension points
 
