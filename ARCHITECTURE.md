@@ -82,9 +82,9 @@ lane was removed): the spine works on the **active checkout / active branch** (n
 branch, no landing step), applies **verification in place** for code, and emits **one durable receipt**
 (commit-link + event: branch, SHA(s), changed files, out-of-lane flagged files, verification evidence).
 Scope handling is caller-declared on that same spine. Controlled-list callers commit exactly their file
-list. Ordinary verified atom and ticket-close lanes currently call `runCommitGate` with
-`commitOnlyScope: true`, which commits in-scope files and flags out-of-lane files left dirty. Broad
-repair/default `commitScoped` callers can commit the whole changed set and flag out-of-lane files.
+list. Agent lanes commit the whole changed set and flag out-of-lane paths for visibility; write-scope is
+advisory and never suppresses a commit. The audit write-boundary is the separate hard-stop mechanism for
+Takeover audits, and it refuses before commit when a priority declares that boundary.
 
 **Launch self-heals ALL founder dirt — the founder is a trusted actor
 ([ADR-0029](./cocoder/decisions/0029-founder-trusted-pre-run-snapshot.md), superseding
@@ -111,7 +111,7 @@ authoring Plays. ADR-0015/0021/0022 are retired history tracked in the
 | Change kind | Path | Verification |
 |---|---|---|
 | Governance / docs / ADRs / priorities / personas / standards | **Direct to the active branch** — commit in place | light / risk-matched; governed docs can be test-pinned, so affected suites still run |
-| Product / machinery **code** | **Direct to the active branch**, but the orchestrator verifies *before* the spine commits (per-atom diff + tests); pass → commit the in-scope atom diff and flag out-of-lane paths; fail → revert that atom in place, commit nothing | risk-matched ([ADR-0013](./cocoder/decisions/0013-orchestration-observation.md)) |
+| Product / machinery **code** | **Direct to the active branch**, but the orchestrator verifies *before* the spine commits (per-atom diff + tests); pass → commit the whole changed set and flag out-of-lane paths; fail → revert that atom in place, commit nothing | risk-matched ([ADR-0013](./cocoder/decisions/0013-orchestration-observation.md)) |
 | Shared GitHub repo | The founder checks out a feature branch; the engine commits to it and `git push`es (**non-gating**). The merge to the shared `main` is GitHub's **PR review**, not the engine's | per the repo's CI / PR gate |
 
 **Why this is safe with one mode:** the single-writer-per-workspace lock

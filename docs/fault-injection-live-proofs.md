@@ -35,6 +35,6 @@ node scripts/proof-direct-spine.mjs
 
 That harness runs the live-git runner and commit-spine suites. Use
 [ARCHITECTURE.md → commit spine](../ARCHITECTURE.md#how-work-reaches-trunk--the-commit-spine-adr-0023--adr-0029)
-for the current direct-branch and caller-specific scope rules; this proof checks those rules against the
-runtime suites. For live daemon confidence, still confirm `/health` `sha` matches the checked-out HEAD
-before attributing behavior to fresh code.
+for the current direct-branch rule: verified work commits the whole changed set, and out-of-lane paths
+are committed and flagged rather than withheld. For live daemon confidence, still confirm `/health`
+`sha` matches the checked-out HEAD before attributing behavior to fresh code.
