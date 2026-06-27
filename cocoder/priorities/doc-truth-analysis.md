@@ -44,7 +44,7 @@ governance docs audited (PLAYBOOK, AGENTS, failure-catalog, standards/plays delt
 — all clean. The two stale path refs in `cocoder/personas/AGENTS.md` were closed in
 [run_270 / ticket 0069](../tickets/closed/0069-personas-agents-stale-archive-and-v1-leftover-refs.md).
 
-## Phase 3 status (run_271 — DONE, **blocked** on one founder decision)
+## Phase 3 status (run_271 — DONE; founder resolved the decision → code-fix run next)
 
 All five planned atoms completed and verified. Live reconciliation artifact:
 [`docs/phase3-cross-doc-reverification.md`](../docs/phase3-cross-doc-reverification.md) (22-row inventory;
@@ -54,34 +54,46 @@ commit-spine and product-routing ownership without changing facts. Process gaps 
 [`harden-documentation-process`](./harden-documentation-process.md). Audit worklists bannered
 reconciliation-complete and deferred to the worklist-archive convention (not ad-hoc archived here).
 
-**Disposition: `blocked`.** One founder decision prevents archive-readiness — the commit-spine A/B call
-below. Every other Objective criterion is met; open ticket **0037** (stale CONTRIBUTING rg-CI-gate) is
-separate from this governed-doc surface.
+**Disposition: `continue` — needs a verified code-fix run.** The founder resolved the commit-spine call
+(Option B, 2026-06-27): the `commitOnlyScope` hold-back is a confirmed code regression from ADR-0023.
+Doc reconciliation is otherwise complete, but archive-readiness now requires the code-fix pass specified
+below (restore always-commit-and-flag, revert the docs Atom A bent toward the bug, confirm the proof
+harness and ADR-0007/0023 consistency). Open ticket **0037** (stale CONTRIBUTING rg-CI-gate) is separate
+from this governed-doc surface.
 
-### Founder decision needed (blocker)
+### Founder decision (RESOLVED — Option B, founder 2026-06-27)
 
-**Commit-spine: does the live atom lane correctly hold back out-of-lane files, or is that a regression
-from ADR-0023?** ADR-0023 Amendment 2 says the spine commits everything the actor changed; out-of-lane
-paths are committed and FLAGGED, never withheld. Since commit `ccd3ae9` (2026-06-25), verified-atom
-commits pass `commitOnlyScope: true` — holding back out-of-lane files. `scripts/proof-direct-spine.mjs`
-still asserts the old behavior and exits 1.
+**Decision: the live `commitOnlyScope: true` atom hold-back is a confirmed REGRESSION from ADR-0023, to
+be fixed in code.** ADR-0023 Amendment 2 stands as written: the spine commits everything the actor
+changed; out-of-lane paths are committed and FLAGGED, never withheld. Founder rationale (binding):
+there is no human reviewer in an agentic system — "always save and flag" is the only safe rule, which is
+exactly why the always-commit decision was made; the README being dropped three times is proof the
+hold-back guard is over-engineered (a README should never be "out of scope"); and a priority's declared
+write-scope is **only a suggestion** because the true scope is not fully known when the priority is
+written, so enforcing it by *withholding* files inverts the intent. Oscar's earlier Option-A lean
+("document what the code does") had the direction backwards: the doc/ADR was right, the code regressed.
 
-- **Option A (Oscar recommends):** code is the intended refinement — an atom commits only its declared
-  scope; out-of-lane writes are flagged and left for review, not auto-committed. Resolution = amend
-  ADR-0023 to document caller-declared scope + fix `proof-direct-spine.mjs` to assert held-back
-  behavior. Governance + script; no runtime change.
-- **Option B:** code is a regression — restore commit-everything-and-flag for atoms in code, keep
-  ADR-0023 as written. A code-fix atom, not a doc fix.
+This makes Atom A's surrounding doc edits (ARCHITECTURE commit-spine section, `docs/glossary.md`
+write-scope entry, `docs/fault-injection-live-proofs.md`, `docs/orchestration-contract-ownership.md`,
+`docs/oz-improvement-routing.md`) **wrong** — they described the buggy hold-back as current truth and
+must be reverted to the always-commit-and-flag truth once the code is restored.
 
-### Follow-ups gated on the A/B answer
+### Next pass — a verified CODE-fix run (NOT post-wrap doc support)
 
-1. Row-6 + row-21 discrepancy resolution: under A, amend ADR-0023 + fix `scripts/proof-direct-spine.mjs`;
-   under B, file a code-fix ticket to restore commit-everything-and-flag for atoms. Either way the proof
-   harness must go green.
-2. **Stranded README fix:** the correct `README.md` six→seven-packages correction (adds
-   `@cocoder/personas`) is verified-true but held back as dirt every atom because root `README.md` is in
-   no run's write-lane — a live instance of harden-documentation-process item 7. Resolve alongside the
-   A/B follow-up.
+This is product code under `packages/**`, so it needs a fresh verified build run (Bob builds, Oscar
+verifies per atom), not a Surface-A doc patch. Ordered spec:
+
+1. **Code:** restore commit-everything-and-flag for verified-atom commits — remove/neutralize
+   `commitOnlyScope: true` at `packages/core/src/runner/agent-step.ts:260,488` so the atom lane commits
+   the whole changed set and flags out-of-lane paths (the `commitScoped` behavior). Make write-scope
+   advisory (flag), never enforced by withholding. Run the runner/commit-spine suites green.
+2. **Docs:** revert the Atom A edits listed above back to the ADR-0023 "always commit, flag, never
+   withheld" claim. The `README.md` six→seven-packages fix lands automatically once the code is restored.
+3. **Proof:** `scripts/proof-direct-spine.mjs` should pass with no edit once the code is fixed (it was
+   asserting the correct behavior all along); confirm it exits 0.
+4. **ADR consistency:** confirm ADR-0007 (write-scope advisory) and ADR-0023 (always-save) agree with
+   each other and with the restored code — the founder's stated concern that the ADRs are right and
+   correctly implemented.
 
 ## Founder-directed code-or-doc follow-ups (founder decisions from run_267)
 
