@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-27 — **ticket-fix-0048: minimal ESLint 9 in engine repo — closed (run_123/run_266)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0048](./tickets/closed/0048-adopt-eslint-in-cocoder-engine-repo.md) | **Run:** run_266 (display 123)
+**Outcomes:**
+- **Lint violation fixed at root cause (`58c0fdd`).** Removed unused `registerLivePriorities` import from `packages/daemon/src/routes.ts` (function remains used elsewhere); no rule weakened or eslint-disable added.
+- **CI gate wired.** `pnpm lint` joins CI as a dedicated step after typecheck (documented in `.github/workflows/ci.yml`); deliberately not folded into `pnpm test`.
+- **Prior run_231 config verified sound.** eslint.config.mjs, lint script, and pinned eslint 9.39.4 + typescript-eslint 8.62.0 left intact from the failed attempt.
+- **Evidence green.** `pnpm lint`, `pnpm typecheck` (7 projects), and `pnpm test` (daemon 432/432, all packages) exit 0.
+- **Disposition: `closed`.** Ticket 0048 closed via ticket-close path; `order.json` pruned to [0037, 0068].
+**Next:** Launch ticket `0037` — align CONTRIBUTING and PR template with live CI (stale rg gate references).
+
 ## 2026-06-27 — **ticket-fix-0078: missing Objective launches with Required Questions — closed (run_122/run_265)**
 
 **Persona:** Oscar (lead) | **Priority:** ticket-fix / [0078](./tickets/open/0078-doc-truth-analysis-will-not-launch-due-to-no-objective.md) | **Run:** run_265 (display 122)

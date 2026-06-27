@@ -1,6 +1,6 @@
 # Tech Stack — CoCoder
 
-**Last verified:** 2026-06-21 (drift-audit apply: rewritten from v1-stale to v2 reality).
+**Last verified:** 2026-06-27 (ticket 0048: ESLint 9 linter + CI gate).
 
 Orientation only; [ARCHITECTURE](../../ARCHITECTURE.md) is current-truth (ADR-0031).
 
@@ -31,10 +31,11 @@ direct dependency or imported (ADR-0004 language policy). There is no separate s
 |---|---|
 | `vitest` | test runner (every package; `pnpm test` = `pnpm -r test`) |
 | `tsc` | typecheck (`pnpm typecheck` = root + `pnpm -r typecheck`, covering `src` **and** `tests`) |
+| `eslint` 9 + `@typescript-eslint` 8 | minimal flat config at repo root (`eslint.config.mjs`); catches floating/unawaited promises, dead code, eval-family hazards that tsc+Vitest miss (ticket 0048) |
 | `scripts/check-topology.mjs` | enforces the inward-only package dependency rule (ADR-0008) |
 | `scripts/proof-*.mjs` | real-path proofs for shipped behaviors |
 | `scripts/oz.sh` | Oz daemon lifecycle (start/stop/status/restart) |
-| GitHub Actions | thin CI: install · typecheck · test · topology |
+| GitHub Actions | thin CI: install · typecheck · lint · test · topology |
 
 ## Conventions
 
