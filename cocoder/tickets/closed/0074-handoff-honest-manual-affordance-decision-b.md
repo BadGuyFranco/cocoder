@@ -2,7 +2,7 @@
 id: 0074
 title: Independent-of-runner Launch — make it an honest manual handoff (founder decision B), not a fake launch
 type: task
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-27
@@ -69,3 +69,9 @@ the 0073 close claim, so it is fixing reality and not a stale snapshot.
   still wanted; it is **not** in scope here.
 - Related: [[0075]] (why 0073 auto-closed unresolved), prior trail 0069/0070/0071/0072, ADR-0043
   (`cocoder/decisions/0043-runnerless-execution-shape.md`).
+
+## Resolution
+
+Resolved by run run_263 (d6a4c0e90a8e8ee11aa6fed74bfd53bcfbb83a60) on 2026-06-27.
+
+Dashboard Launch on a non-destructive independentOfRunner priority now presents an honest manual-handoff affordance: the daemon's 409 runnerless-handoff-required is intercepted in App.tsx before the generic error branch and rendered in LaunchProgressModal as a distinct manual-handoff state (labeled 'Copy this command and run it in a fresh terminal', showing the exact `cocoder run-independent <id>` command, the repo working directory, and a copy-to-clipboard button) — never a false error or a 'started' claim. The `command` field is now preserved through the IPC bridge (daemon-client.ts/ipc-contract.ts) and renderer MutationResult (live.ts). The destructive auto-spawn path via /runs/independent-launch is preserved and distinct; ADR-0043 and launcher.ts destructive/scratch-store logic are untouched. A regression test (live-app.test.tsx) pins the non-destructive button to the honest handoff (asserts no /runs, no launch error, command + copy shown), plus a daemon-client test pinning command preservation. UI (177) + daemon (425) suites and full typecheck green.
