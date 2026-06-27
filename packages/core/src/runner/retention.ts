@@ -9,6 +9,7 @@ export interface RetentionCandidate {
 }
 
 export interface RetentionConfig {
+  readonly enabled: boolean
   readonly keepLastNPerWorkspace: number
 }
 
@@ -17,16 +18,17 @@ export const DEFAULT_KEEP_LAST_N = 25
 export function resolveRetentionConfig(raw: unknown): RetentionConfig {
   if (!isRecord(raw)) return defaultRetentionConfig()
 
+  const enabled = typeof raw.enabled === 'boolean' ? raw.enabled : false
   const keepLastNPerWorkspace = raw.keepLastNPerWorkspace
   if (
     typeof keepLastNPerWorkspace === 'number' &&
     Number.isInteger(keepLastNPerWorkspace) &&
     keepLastNPerWorkspace > 0
   ) {
-    return { keepLastNPerWorkspace }
+    return { enabled, keepLastNPerWorkspace }
   }
 
-  return defaultRetentionConfig()
+  return { enabled, keepLastNPerWorkspace: DEFAULT_KEEP_LAST_N }
 }
 
 export function selectRunsToPrune(
@@ -50,7 +52,7 @@ export function selectRunsToPrune(
 }
 
 function defaultRetentionConfig(): RetentionConfig {
-  return { keepLastNPerWorkspace: DEFAULT_KEEP_LAST_N }
+  return { enabled: false, keepLastNPerWorkspace: DEFAULT_KEEP_LAST_N }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

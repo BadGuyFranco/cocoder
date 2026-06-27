@@ -11,7 +11,7 @@ describe('run retention selection', () => {
   test('keeps the newest N runs per workspace and prunes older eligible runs', () => {
     const candidates = makeRuns('workspace-a', 5)
 
-    expect(selectRunsToPrune(candidates, { keepLastNPerWorkspace: 2 })).toEqual({
+    expect(selectRunsToPrune(candidates, retentionConfig(2))).toEqual({
       prune: ['workspace-a-run-3', 'workspace-a-run-2', 'workspace-a-run-1'],
       keep: ['workspace-a-run-5', 'workspace-a-run-4'],
     })
@@ -20,7 +20,7 @@ describe('run retention selection', () => {
   test('bounds each workspace independently', () => {
     const candidates = [...makeRuns('workspace-b', 3), ...makeRuns('workspace-a', 50)]
 
-    const result = selectRunsToPrune(candidates, { keepLastNPerWorkspace: 25 })
+    const result = selectRunsToPrune(candidates, retentionConfig(25))
 
     expect(result.keep).toEqual([
       ...descendingRunIds('workspace-a', 50, 26),
@@ -38,7 +38,7 @@ describe('run retention selection', () => {
         candidate(`old-${status}`, 1, status),
       ]
 
-      expect(selectRunsToPrune(candidates, { keepLastNPerWorkspace: 1 })).toEqual({
+      expect(selectRunsToPrune(candidates, retentionConfig(1))).toEqual({
         prune: ['middle'],
         keep: ['newest', `old-${status}`],
       })
@@ -52,7 +52,7 @@ describe('run retention selection', () => {
       candidate('old-unprojected', 1, 'failed', false),
     ]
 
-    expect(selectRunsToPrune(candidates, { keepLastNPerWorkspace: 1 })).toEqual({
+    expect(selectRunsToPrune(candidates, retentionConfig(1))).toEqual({
       prune: ['middle'],
       keep: ['newest', 'old-unprojected'],
     })
@@ -64,17 +64,22 @@ describe('run retention selection', () => {
       candidate('workspace-a-held', 0, 'held'),
       candidate('workspace-a-unprojected', -1, 'completed', false),
     ]
-    const first = selectRunsToPrune(candidates, { keepLastNPerWorkspace: 2 })
+    const first = selectRunsToPrune(candidates, retentionConfig(2))
     const keptCandidates = candidates.filter((run) => first.keep.includes(run.runId))
 
-    expect(selectRunsToPrune(keptCandidates, { keepLastNPerWorkspace: 2 })).toEqual({
+    expect(selectRunsToPrune(keptCandidates, retentionConfig(2))).toEqual({
       prune: [],
       keep: ['workspace-a-run-5', 'workspace-a-run-4', 'workspace-a-held', 'workspace-a-unprojected'],
     })
   })
 
   test('resolves retention config from a positive integer override', () => {
-    expect(resolveRetentionConfig({ keepLastNPerWorkspace: 7 })).toEqual({ keepLastNPerWorkspace: 7 })
+    expect(resolveRetentionConfig({ keepLastNPerWorkspace: 7 })).toEqual({ enabled: false, keepLastNPerWorkspace: 7 })
+  })
+
+  test('resolves enabled only from a boolean override', () => {
+    expect(resolveRetentionConfig({ enabled: true, keepLastNPerWorkspace: 7 })).toEqual({ enabled: true, keepLastNPerWorkspace: 7 })
+    expect(resolveRetentionConfig({ enabled: 'true', keepLastNPerWorkspace: 7 })).toEqual({ enabled: false, keepLastNPerWorkspace: 7 })
   })
 
   test.each([
@@ -89,9 +94,13 @@ describe('run retention selection', () => {
     { keepLastNPerWorkspace: Number.NaN },
     { keepLastNPerWorkspace: '7' },
   ])('falls back to the default retention config for invalid input %#', (raw) => {
-    expect(resolveRetentionConfig(raw)).toEqual({ keepLastNPerWorkspace: DEFAULT_KEEP_LAST_N })
+    expect(resolveRetentionConfig(raw)).toEqual({ enabled: false, keepLastNPerWorkspace: DEFAULT_KEEP_LAST_N })
   })
 })
+
+function retentionConfig(keepLastNPerWorkspace: number): { enabled: boolean; keepLastNPerWorkspace: number } {
+  return { enabled: true, keepLastNPerWorkspace }
+}
 
 function makeRuns(workspaceId: string, count: number): RetentionCandidate[] {
   return Array.from({ length: count }, (_, index) => {

@@ -29,7 +29,7 @@ describe('retention plan', () => {
         listAllRuns: () => store.listRuns(),
         isProjectedToRepo: () => true,
       },
-      { keepLastNPerWorkspace: 2 },
+      { enabled: true, keepLastNPerWorkspace: 2 },
     )
 
     expect(plan.prune).toEqual([workspaceA[2]?.id, workspaceA[1]?.id, workspaceA[0]?.id])
@@ -49,7 +49,7 @@ describe('retention plan', () => {
         listAllRuns: () => store.listRuns({ workspaceId: 'workspace-a' }),
         isProjectedToRepo: (run) => run.id !== unprojected?.id,
       },
-      { keepLastNPerWorkspace: 1 },
+      { enabled: true, keepLastNPerWorkspace: 1 },
     )
 
     expect(plan.prune).toEqual([runs[2]?.id, runs[1]?.id])
@@ -68,7 +68,7 @@ describe('retention plan', () => {
         listAllRuns: () => store.listRuns({ workspaceId: 'workspace-a' }),
         isProjectedToRepo: () => true,
       },
-      { keepLastNPerWorkspace: 1 },
+      { enabled: true, keepLastNPerWorkspace: 1 },
     )
 
     expect(plan.prune).toEqual([oldTerminal.id])
@@ -84,7 +84,7 @@ describe('retention plan', () => {
         listAllRuns: () => store.listRuns(),
         isProjectedToRepo: () => true,
       },
-      { keepLastNPerWorkspace: 2 },
+      { enabled: true, keepLastNPerWorkspace: 2 },
     )
 
     expect(formatRetentionPlan(plan)).toBe(
