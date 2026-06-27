@@ -180,6 +180,36 @@ describe('ticket index surgery', () => {
     expect(moveTicketIndexRowToClosed(moved, { id: '9999', closedRow: '| [9999](./closed/9999-missing.md) | Missing | task | 2026-06-18 | Fixed |' })).toBe(moved)
     expect(moveTicketIndexRowToClosed(moved, { id: '0003', closedRow: '| [0003](./closed/0003-existing-open.md) | Existing open | task | 2026-06-18 | Fixed |' })).toBe(moved)
   })
+
+  test('indexes a closed ticket when another closed ticket already has the same id', () => {
+    const index = [
+      '# Tickets - Index',
+      '',
+      '## Open',
+      '',
+      '| ID | Title | Type | Priority | Owner |',
+      '|---|---|---|---|---|',
+      '| [0069](./open/0069-new-ticket.md) | New duplicate id ticket | bug | none | founder-session |',
+      '',
+      '## Recently Closed',
+      '',
+      '| ID | Title | Type | Closed | Resolution |',
+      '|---|---|---|---|---|',
+      '| [0069](./closed/0069-old-ticket.md) | Old duplicate id ticket | bug | 2026-06-26 | Done |',
+      '',
+    ].join('\n')
+
+    const moved = moveTicketIndexRowToClosed(index, {
+      id: '0069',
+      closedRow: '| [0069](./closed/0069-new-ticket.md) | New duplicate id ticket | bug | 2026-06-27 | Fixed |',
+    })
+
+    const openSection = moved.slice(moved.indexOf('## Open'), moved.indexOf('## Recently Closed'))
+    const closedSection = moved.slice(moved.indexOf('## Recently Closed'))
+    expect(openSection).not.toContain('0069-new-ticket')
+    expect(closedSection).toContain('| [0069](./closed/0069-old-ticket.md) | Old duplicate id ticket | bug | 2026-06-26 | Done |')
+    expect(closedSection).toContain('| [0069](./closed/0069-new-ticket.md) | New duplicate id ticket | bug | 2026-06-27 | Fixed |')
+  })
 })
 
 describe('ticket create', () => {
