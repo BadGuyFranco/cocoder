@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-27 — **ticket-fix-0074: honest manual handoff for non-destructive independent launch — closed (run_119/run_263)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0074](./tickets/closed/0074-handoff-honest-manual-affordance-decision-b.md) | **Run:** run_263 (display 119)
+**Outcomes:**
+- **Ground truth reconciled (`8a13299`).** Ticket root-cause text was stale — the button already called `launchIndependentRun` → `/runs/independent-launch`; the real defect was the false error on the daemon's 409 `runnerless-handoff-required`, not a fake-launch modal. Prior deb-reconciliation working-tree edits were already gone.
+- **Honest manual-handoff UX shipped (`d6a4c0e`, `523f48d`).** App.tsx intercepts the 409 before the generic error branch; LaunchProgressModal renders a distinct manual-handoff state (`role="status"`, labeled copy-paste command + repo cwd + clipboard). `command` preserved through IPC (daemon-client, ipc-contract) and renderer MutationResult (live.ts). Destructive auto-spawn via `/runs/independent-launch` preserved; ADR-0043 and launcher destructive/scratch-store logic untouched.
+- **Regression pinned.** live-app.test.tsx pins non-destructive button to honest handoff (no /runs, no error UI, command + copy shown); daemon-client.test.ts pins command preservation on failed mutations. UI 177/177, daemon 425/425, typecheck green.
+- **Ticket closed** with Resolution + INDEX updated; `order.json` pruned.
+- **Disposition: `closed`.** Founder decision B fully implemented; acceptance met with test coverage — no live-only proof required.
+**Next:** Launch ticket `0076` for the runner nudge / awaiting-founder hold fix.
+
 ## 2026-06-27 — **ticket-fix-0077: founder confirm-ticket-close — needs closing (run_118/run_262)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0077](./tickets/closed/0077-no-oscar-invokable-founder-confirmation-ticket-close-pane-close-it-cannot-be-actioned.md) | **Run:** run_262 (display 118)
