@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_272",
+    "displayNumber": 129
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "priority"
+  },
+  "priorityId": "doc-truth-analysis",
+  "playbookId": null,
+  "ticketId": null,
+  "status": "running",
+  "createdAt": 1782594601671,
+  "endedAt": null
+}

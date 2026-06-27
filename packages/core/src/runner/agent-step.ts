@@ -257,7 +257,6 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
         message,
         headBefore: closeHeadBefore,
         auditWriteBoundary,
-        commitOnlyScope: true,
       })
     } catch (err) {
       store.recordEvent({ runId, type: 'in-run-ticket-close-commit-failed', data: { atom: atomIndex, ticketId: request.ticketId, message: err instanceof Error ? err.message : String(err) } })
@@ -485,7 +484,6 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
       message: commitMessage(priorityId, { id: runId, displayNumber: runDisplayNumber }, atomIndex),
       headBefore,
       auditWriteBoundary,
-      commitOnlyScope: true,
     })
     store.setWorkItemStatus(workItem.id, 'done')
     absorbGateResult(gate)

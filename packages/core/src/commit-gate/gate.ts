@@ -2,9 +2,8 @@
 // linkage must be a first-class explicit row) + F11 (don't pretend a bypassable gate is a guarantee —
 // only commits CoCoder makes are gated, stated plainly).
 //
-// SCOPE IS ADVISORY by default (founder directive 2026-06-15, F21): ordinary atom commits land every
-// changed path and flag anything outside scope. Narrow post-wrap/governance lanes may explicitly opt into
-// scope-only commits so unrelated dirty files stay in the working tree for a founder decision.
+// SCOPE IS ADVISORY (founder directive 2026-06-15, F21; ADR-0023 Amendment 2): atom commits land every
+// changed path and flag anything outside scope. Scope is visibility, not a commit suppressor.
 import type { RunStore } from '../store/index.js'
 import { partitionByScope } from '../write-scope/partition.js'
 import type { Git } from './git.js'
@@ -25,14 +24,13 @@ export interface CommitGateInput {
   /** Optional hard boundary for Takeover Playbook audits. Ordinary priority runs omit this and keep the
    *  ADR-0023 whole-tree commit default: everything commits, out-of-lane is only flagged. */
   readonly auditWriteBoundary?: AuditWriteBoundary
-  /** Commit only paths matching `scope`; leave out-of-lane files dirty and surface them in the receipt. */
+  /** @deprecated Compatibility no-op. Write scope is advisory: out-of-lane paths are committed and flagged. */
   readonly commitOnlyScope?: boolean
 }
 
 /** The gate's receipt is the spine's CommitReceipt (one shape across spine + gate, WS3.2) EXTENDED with
  *  gate-only `selfCommitted`. The spine (commitFiles) never sees `headBefore`, so it cannot carry
- *  self-commit detection; the gate computes it and adds it here. For advisory commit-all callers,
- *  `outOfLane` is committed-but-flagged; with `commitOnlyScope`, it is held back uncommitted. */
+ *  self-commit detection; the gate computes it and adds it here. `outOfLane` is committed-but-flagged. */
 export interface CommitGateResult extends CommitReceipt {
   /** True if the agent committed on its own (HEAD moved outside the gate). */
   readonly selfCommitted: boolean
@@ -55,7 +53,7 @@ export class AuditWriteBoundaryError extends Error {
 }
 
 export async function runCommitGate(input: CommitGateInput): Promise<CommitGateResult> {
-  const { git, store, cwd, runId, workItemId, scope, message, headBefore, auditWriteBoundary, commitOnlyScope = false } = input
+  const { git, store, cwd, runId, workItemId, scope, message, headBefore, auditWriteBoundary } = input
 
   const headNow = await git.headSha(cwd)
   const selfCommitted = headNow !== headBefore
@@ -72,8 +70,8 @@ export async function runCommitGate(input: CommitGateInput): Promise<CommitGateR
       throw new AuditWriteBoundaryError(auditWriteBoundary.label, auditPartition.outOfScope)
     }
   }
-  const { inScope, outOfScope } = partitionByScope(changed, scope)
-  const committable = commitOnlyScope ? inScope : changed
+  const { outOfScope } = partitionByScope(changed, scope)
+  const committable = changed
 
   let committedSha: string | null = null
   if (committable.length > 0) {
@@ -93,7 +91,7 @@ export async function runCommitGate(input: CommitGateInput): Promise<CommitGateR
     recordSuccessfulCommit(store, { runId, workItemId, message, committedSha, committedFiles: committable, selfCommit: null })
   }
   if (outOfScope.length > 0) {
-    store.recordEvent({ runId, type: commitOnlyScope ? 'out-of-scope-held-back' : 'out-of-scope-committed', data: { files: outOfScope } })
+    store.recordEvent({ runId, type: 'out-of-scope-committed', data: { files: outOfScope } })
   }
 
   // The gate re-throws on commit failure (above), so on return `error` is always null and `committed`

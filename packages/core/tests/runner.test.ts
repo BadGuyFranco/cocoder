@@ -1381,7 +1381,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(events.some((event) => event.type === 'onboarding-spend-approval-required')).toBe(false)
   })
 
-  test('ordinary priorities hold out-of-lane atom files without tripping the audit boundary', async () => {
+  test('ordinary priorities commit out-of-lane atom files without tripping the audit boundary', async () => {
     const store = openRunStore(':memory:')
     const { git, commits } = recordingScriptedGit([['packages/core/src/foo.ts']])
     const governanceBob = { ...bob, writeScope: ['cocoder/**'] }
@@ -1397,11 +1397,11 @@ describe('runRun (multi-atom loop)', () => {
 
     expect(result.status).toBe('completed')
     expect(store.getRun(result.runId)?.status).toBe('completed')
-    expect(commits[0]).not.toContain('packages/core/src/foo.ts')
-    expect(store.listCommitLinks(result.runId).filter((link) => link.workItemId !== null)).toEqual([])
-    expect(result.committedFiles).toEqual([])
+    expect(commits[0]).toContain('packages/core/src/foo.ts')
+    expect(store.listCommitLinks(result.runId).filter((link) => link.workItemId !== null).map((link) => link.files)).toEqual([['packages/core/src/foo.ts']])
+    expect(result.committedFiles).toEqual(['packages/core/src/foo.ts'])
     expect(result.outOfScope).toEqual(['packages/core/src/foo.ts'])
-    expect(store.listEvents(result.runId).some((item) => item.type === 'out-of-scope-held-back')).toBe(true)
+    expect(store.listEvents(result.runId).some((item) => item.type === 'out-of-scope-committed')).toBe(true)
     expect(store.listEvents(result.runId).some((item) => item.type === 'audit-write-boundary-refused')).toBe(false)
   })
 
@@ -2792,10 +2792,10 @@ describe('runRun (multi-atom loop)', () => {
     expect(store.listEvents(result.runId).map((e) => e.type)).toContain('oscar-support-commit')
   })
 
-  test('per-atom commit attribution stays clean: atom commits hold out-of-lane files for their owner lane', async () => {
+  test('per-atom commit attribution includes committed out-of-lane files for visibility', async () => {
     const store = openRunStore(':memory:')
-    // Both atoms leave docs/leak.md dirty out of lane; atom commits are scoped to Bob's write lane so the
-    // leak is surfaced but not attributed to either atom commit.
+    // Both atoms leave docs/leak.md dirty out of lane; atom commits land the whole changed set and surface
+    // the leak through out-of-lane events.
     const result = await runRun(
       baseDeps({
         store,
@@ -2808,16 +2808,15 @@ describe('runRun (multi-atom loop)', () => {
       input,
     )
     expect(store.listCommitLinks(result.runId).filter((c) => c.workItemId !== null).map((c) => c.files)).toEqual([
-      ['packages/a.ts'],
-      ['packages/b.ts'],
+      ['packages/a.ts', 'docs/leak.md'],
+      ['packages/b.ts', 'docs/leak.md'],
     ])
-    expect(result.outOfScope).toEqual(['docs/leak.md']) // flagged once (unioned), held back from atom commits
-    expect(store.listEvents(result.runId).filter((event) => event.type === 'out-of-scope-held-back')).toHaveLength(2)
-    expect(store.listEvents(result.runId).some((event) => event.type === 'out-of-scope-committed')).toBe(false)
+    expect(result.outOfScope).toEqual(['docs/leak.md']) // flagged once (unioned)
+    expect(store.listEvents(result.runId).filter((event) => event.type === 'out-of-scope-committed')).toHaveLength(2)
     expect(result.status).toBe('completed')
   })
 
-  test('atom commit does not sweep concurrent Deb governance ticket edits into Bob work item (run_235)', async () => {
+  test('atom commit lands and flags concurrent governance ticket edits in the whole changed set', async () => {
     const store = openRunStore(':memory:')
     const { git, commits } = recordingScriptedGit([['packages/atom.ts', 'cocoder/tickets/INDEX.md', 'cocoder/tickets/open/0060-bug.md']])
 
@@ -2831,10 +2830,10 @@ describe('runRun (multi-atom loop)', () => {
     )
 
     expect(result.status).toBe('completed')
-    expect(commits[0]).toEqual(['packages/atom.ts'])
-    expect(store.listCommitLinks(result.runId).filter((c) => c.workItemId !== null).map((c) => c.files)).toEqual([['packages/atom.ts']])
+    expect(commits[0]).toEqual(['packages/atom.ts', 'cocoder/tickets/INDEX.md', 'cocoder/tickets/open/0060-bug.md'])
+    expect(store.listCommitLinks(result.runId).filter((c) => c.workItemId !== null).map((c) => c.files)).toEqual([['packages/atom.ts', 'cocoder/tickets/INDEX.md', 'cocoder/tickets/open/0060-bug.md']])
     expect(result.outOfScope).toEqual(['cocoder/tickets/INDEX.md', 'cocoder/tickets/open/0060-bug.md'])
-    expect(store.listEvents(result.runId).find((event) => event.type === 'out-of-scope-held-back')?.data).toEqual({
+    expect(store.listEvents(result.runId).find((event) => event.type === 'out-of-scope-committed')?.data).toEqual({
       files: ['cocoder/tickets/INDEX.md', 'cocoder/tickets/open/0060-bug.md'],
     })
   })

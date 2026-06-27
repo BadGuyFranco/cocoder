@@ -6,8 +6,8 @@
 //
 // ADR-0016 adds REPAIR MODE: for a `cocoder-bug`, Deb may either PROPOSE a fix (a diff for founder
 // review — the default, and the only option in a non-CoCoder workspace) or REPAIR directly (edit files
-// within her write-scope; the runner gate-commits only her in-scope edits, ADR-0007). A repair never
-// rescues the run and never widens scope — product code is held back at the gate, not committed.
+// within her write-scope; the runner gate-commits her declared repair files, ADR-0007). A repair never
+// rescues the run and never widens scope — product code is outside repair authority and surfaced.
 import { COCODER_GOVERNANCE_AUTHOR, commitFiles, recordSuccessfulCommit, runCommitGate } from '../commit-gate/index.js'
 import type { AuditWriteBoundary, CommitGateResult, Git } from '../commit-gate/index.js'
 import type { ResolvedPersona } from '../personas/index.js'

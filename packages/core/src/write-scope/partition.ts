@@ -1,5 +1,5 @@
-// Pure scope partition (ADR-0007). Splits the changed-file set into in-scope (committable)
-// and out-of-scope (held back, surfaced) against the allow-list. Default-deny: an empty scope
+// Pure scope partition (ADR-0007). Splits the changed-file set into in-scope and out-of-scope
+// (flagged for visibility) against the allow-list. Default-deny: an empty scope
 // means everything is out of scope (e.g. a read-only persona that nonetheless wrote files).
 import { matchesAny } from './glob.js'
 

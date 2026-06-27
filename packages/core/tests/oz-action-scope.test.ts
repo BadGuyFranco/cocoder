@@ -66,7 +66,7 @@ describe('OZ_ACTION_SCOPE', () => {
     })
   })
 
-  test('commitOnlyScope lands in-lane paths and holds hard exclusions out of lane', async () => {
+  test('commitOnlyScope compatibility still commits all paths and flags hard exclusions', async () => {
     const inLane = [
       'cocoder/priorities/order.json',
       'cocoder/tickets/open/0099-x.md',
@@ -85,12 +85,11 @@ describe('OZ_ACTION_SCOPE', () => {
     expect(receipt).toEqual({
       committed: true,
       committedSha: 'sha-oz-action',
-      committedFiles: inLane,
+      committedFiles: [...inLane, ...hardExcluded],
       outOfLane: hardExcluded,
       error: null,
     })
-    expect(receipt.committedFiles).not.toEqual(expect.arrayContaining(hardExcluded))
     expect(receipt.outOfLane).toEqual(expect.arrayContaining(hardExcluded))
-    expect(commits).toEqual([{ files: inLane, message: 'oz-action' }])
+    expect(commits).toEqual([{ files: [...inLane, ...hardExcluded], message: 'oz-action' }])
   })
 })

@@ -343,7 +343,7 @@ describe('runRun direct mode — the default (ADR-0023 §2, live git)', () => {
     expect(await exists(join(home, 'packages', 'wip.ts'))).toBe(true)
   })
 
-  test('strictPreRunDirt restores the hard-stop: refuses on in-scope WIP and commits nothing', async () => {
+  test('scoped dirty guard refuses the launch: strictPreRunDirt rejects in-scope WIP and commits nothing', async () => {
     await mkdir(join(home, 'packages'), { recursive: true })
     await writeFile(join(home, 'packages', 'wip.ts'), 'export const wip = true\n')
     const headBefore = await g(home, ['rev-parse', 'HEAD'])
@@ -502,27 +502,27 @@ describe('runRun direct mode — the default (ADR-0023 §2, live git)', () => {
     expect(status).toContain('cocoder/PLAYBOOK.md')
   })
 
-  test('out-of-scope atom changes are HELD BACK and flagged so they do not ride the builder commit', async () => {
+  test('out-of-scope changes are COMMITTED and FLAGGED with the builder commit', async () => {
     const { result, store } = await runDirect({
       bobScope: ['packages/**'],
       bobWrites: async (cwd) => {
         await mkdir(join(cwd, 'packages'), { recursive: true })
         await writeFile(join(cwd, 'packages', 'feature.ts'), 'export const feature = 42\n')
-        await writeFile(join(cwd, 'OUTSIDE.md'), 'out of scope\n') // not under packages/** — flagged, not in the atom commit
+        await writeFile(join(cwd, 'OUTSIDE.md'), 'out of scope\n') // not under packages/** — committed and flagged
       },
     })
 
     expect(result.committedFiles).toEqual(expect.arrayContaining(['packages/feature.ts']))
-    expect(result.committedFiles).not.toContain('OUTSIDE.md')
+    expect(result.committedFiles).toContain('OUTSIDE.md')
     expect(result.outOfScope).toEqual(['OUTSIDE.md']) // visibility flag
     expect(result.status).toBe('completed')
     expect(await g(home, ['show', '--stat', 'HEAD~1'])).toContain('packages/feature.ts')
-    expect(await g(home, ['show', '--stat', 'HEAD~1'])).not.toContain('OUTSIDE.md')
-    expect(await g(home, ['status', '--porcelain'])).toContain('OUTSIDE.md')
-    expect(store.listEvents(result.runId).some((event) => event.type === 'out-of-scope-held-back')).toBe(true)
+    expect(await g(home, ['show', '--stat', 'HEAD~1'])).toContain('OUTSIDE.md')
+    expect(await g(home, ['status', '--porcelain'])).not.toContain('OUTSIDE.md')
+    expect(store.listEvents(result.runId).some((event) => event.type === 'out-of-scope-committed')).toBe(true)
   })
 
-  test('a rejected atom is recoverably quarantined without touching the founder’s out-of-scope file', async () => {
+  test('a rejected atom is quarantined in place without touching the founder’s out-of-scope file', async () => {
     // Founder has a pre-existing OUT-OF-SCOPE file (allowed — only in-scope WIP blocks a direct launch).
     await writeFile(join(home, 'NOTES.md'), 'founder notes\n')
 

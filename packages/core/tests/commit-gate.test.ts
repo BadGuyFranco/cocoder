@@ -184,6 +184,31 @@ describe('runCommitGate', () => {
     expect(commits).toHaveLength(1)
   })
 
+  test('commitOnlyScope compatibility still commits EVERYTHING and flags out-of-lane paths', async () => {
+    const store = openRunStore(':memory:')
+    store.upsertWorkspace({ id: 'cocoder', path: '/repo', name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'p' })
+    const { git, commits } = makeFakeGit({ changed: ['packages/a.ts', 'README.md'], headBefore: 'h0' })
+
+    const res = await runCommitGate({
+      git,
+      store,
+      cwd: '/repo',
+      runId: run.id,
+      workItemId: null,
+      scope: ['packages/**'],
+      message: 'x',
+      headBefore: 'h0',
+      commitOnlyScope: true,
+    })
+
+    expect(res.committedFiles).toEqual(['packages/a.ts', 'README.md'])
+    expect(res.outOfLane).toEqual(['README.md'])
+    expect(commits).toEqual([{ files: ['packages/a.ts', 'README.md'], message: 'x' }])
+    expect(store.listEvents(run.id).some((event) => event.type === 'out-of-scope-committed')).toBe(true)
+    expect(store.listEvents(run.id).some((event) => event.type === 'out-of-scope-held-back')).toBe(false)
+  })
+
   test('detects an agent self-commit (HEAD moved outside the gate)', async () => {
     const store = openRunStore(':memory:')
     store.upsertWorkspace({ id: 'cocoder', path: '/repo', name: 'CoCoder' })

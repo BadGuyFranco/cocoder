@@ -202,9 +202,9 @@ export interface RunResult {
   readonly committedSha: string | null
   /** Every atom commit sha, in order. */
   readonly committedShas: readonly string[]
-  /** All in-scope files committed across atoms. */
+  /** All files committed across atoms. */
   readonly committedFiles: readonly string[]
-  /** All out-of-scope files held back across atoms. */
+  /** All out-of-scope files flagged across atoms. */
   readonly outOfScope: readonly string[]
   readonly selfCommitted: boolean
   /** Number of atoms delegated (verified or not). */

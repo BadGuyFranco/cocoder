@@ -7,9 +7,7 @@
 //   - commitFiles: a daemon-CONTROLLED file list (governance create/reorder/assignments/scaffold) — the
 //     daemon wrote exactly these paths, so there is no scope partition; commit them or report why not.
 //   - commitScoped: an AGENT's whole-tree diff. By default it commits EVERYTHING the agent changed and
-//     FLAGs anything outside the allow-list (Oz repair's founder-directed broad-access contract). A
-//     caller can opt into committing only the allow-list when the Play contract explicitly promises
-//     held-back out-of-scope edits.
+//     FLAGs anything outside the allow-list (Oz repair's founder-directed broad-access contract).
 //
 // Neither EVER swallows a failure: a commit error is reported in the receipt (committed:false, error),
 // not as a false success (the run path records the receipt as a store event; the daemon records it to
@@ -32,16 +30,16 @@ export interface CommitReceipt {
   readonly committed: boolean
   readonly committedSha: string | null
   readonly committedFiles: readonly string[]
-  /** Paths outside the allow-list. By default these are committed and flagged; with commitOnlyScope they
-   *  are left in the working tree and surfaced here. Always empty for controlled-list commitFiles. */
+  /** Paths outside the allow-list. For scoped commits these are committed and flagged; always empty for
+   *  controlled-list commitFiles. */
   readonly outOfLane: readonly string[]
   /** A commit was attempted but FAILED — surfaced, never swallowed. null on success or no-op. */
   readonly error: string | null
 }
 
 export interface CommitScopedOptions {
-  /** Commit only in-scope files and leave out-of-scope files in the working tree. Default commits all
-   *  changes and reports out-of-lane paths for visibility, preserving the Oz repair contract. */
+  /** @deprecated Compatibility no-op. Write scope is advisory: all changed paths commit and out-of-lane
+   *  paths are flagged for visibility. */
   readonly commitOnlyScope?: boolean
 }
 
@@ -74,8 +72,8 @@ export async function commitFiles(
 }
 
 /** Commit an agent's whole-tree diff to the active branch. Default behavior commits every changed path
- *  and flags paths outside the allow-list; commitOnlyScope commits only matching paths and leaves the
- *  rest in the working tree. Never swallows: a commit failure returns committed:false + error. */
+ *  and flags paths outside the allow-list. Never swallows: a commit failure returns committed:false +
+ *  error. */
 export async function commitScoped(
   git: Git,
   repoPath: string,
@@ -85,8 +83,9 @@ export async function commitScoped(
   opts: CommitScopedOptions = {},
 ): Promise<CommitReceipt> {
   const changed = await git.changedFiles(repoPath)
-  const { inScope, outOfScope } = partitionByScope(changed, scope)
-  const committable = opts.commitOnlyScope ? inScope : changed
+  void opts
+  const { outOfScope } = partitionByScope(changed, scope)
+  const committable = changed
   if (committable.length === 0) return empty(outOfScope, null)
   try {
     const committedSha = await git.addAndCommit(repoPath, committable, message, author)

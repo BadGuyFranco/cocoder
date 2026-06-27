@@ -8,7 +8,7 @@ export interface RepairCommitInput {
   readonly message: string
   /** Optional author identity for the repair commit (auditability). */
   readonly author?: CommitAuthor
-  /** For harnesses that must hold back out-of-scope files while still using the same commit spine. */
+  /** @deprecated Compatibility no-op. Write scope is advisory: out-of-lane paths are committed and flagged. */
   readonly commitOnlyScope?: boolean
 }
 
@@ -20,8 +20,7 @@ export interface RepairCommitResult {
 }
 
 /** Commit a daemon-owned repair diff (Oz repair) through the workspace commit spine's `commitScoped`
- *  (ADR-0023 §1). The default preserves Oz repair's broad-access behavior; commitOnlyScope lets a
- *  headless Play harness hold back files outside its declared lane while using the same spine. */
+ *  (ADR-0023 §1). */
 export async function gateCommitRepair(input: RepairCommitInput): Promise<RepairCommitResult> {
   const r = await commitScoped(input.git, input.cwd, input.scope, input.message, input.author, { commitOnlyScope: input.commitOnlyScope })
   return { committedSha: r.committedSha, committedFiles: r.committedFiles, outOfLaneFiles: r.outOfLane }

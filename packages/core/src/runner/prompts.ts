@@ -432,8 +432,8 @@ the triage path it names (and nothing else):
 Your active write-scope this run (the paths the runner may commit for your repair):
 ${scope}
 
-Anything you edit OUTSIDE this scope — especially target-repo product code — is held back at the gate and
-surfaced to the founder, never committed. In the CoCoder source repo, diagnose the \`cocoder-bug\` and
+Anything you edit OUTSIDE this scope — especially target-repo product code — is outside your authority;
+if it reaches the gate, it is surfaced to the founder as out-of-lane. In the CoCoder source repo, diagnose the \`cocoder-bug\` and
 repair the root cause where it lives; do not stop merely because it crosses an old implementation-folder
 boundary. Never commit on behalf of Bob/Quinn, and never write their delegation/verify verdicts. A
 repair does NOT rescue the run (a faulted run still fails); it lands as a distinct \`deb-repair\` commit
@@ -531,7 +531,7 @@ Just do the work — do NOT push, merge, rebase, or switch branches; let the run
 
 This run runs MULTIPLE atoms through this same pane, one at a time. For EACH atom the runner sends you:
 1. Read the JSON at the directive path it names — its \`task\` field is your atom.
-2. Implement it. Your write-scope (enforced at CoCoder's commit-gate; anything outside is held back):
+2. Implement it. Your write-scope (checked at CoCoder's commit-gate; anything outside is committed and flagged):
 ${scope}
 3. Run the relevant checks (tests, typecheck).
 4. As your FINAL action, print your completion marker for the atom on its OWN line, with nothing else on
@@ -574,7 +574,7 @@ ${availablePlaysSection(input.playManifest)}
 You work on branch \`${input.runBranch}\`. CoCoder commits your verified in-scope work to it (ADR-0023).
 Just do the work — do NOT push, merge, rebase, or switch branches; let the runner commit it.
 
-Your write-scope (enforced at CoCoder's commit-gate; anything outside is held back):
+Your write-scope (checked at CoCoder's commit-gate; anything outside is committed and flagged):
 ${scope}
 
 This session is ONE-SHOT: act NOW on the dispatched instruction below, run the relevant checks, print
@@ -632,7 +632,7 @@ export function buildDebTriageDispatch(faultPath: string, triagePath: string, oc
     occurrence >= 2
       ? ` This fault has now occurred ${occurrence} times (see "occurrence" in the context) — it is NOT a one-off. Escalate per your recurring-fault rules: fix it if it is easy and clearly in your fence; else return tracked-ticket metadata (set "escalation":"ticket" plus ticketTitle/ticketType/ticketPriority/ticketBody) and let the runner file it through the governed create-ticket spine; only recommend a NEW priority inside that ticket for founder approval (set "escalation":"recommend-priority") — never create ticket queue files or a priority file yourself.`
       : ''
-  return `TRIAGE — a fault occurred in this run. Read the fault context from ${faultPath} (and the terminal snapshot/status feed for context), classify it to exactly one disposition (cocoder-bug | repo-bug | one-off), and write your verdict to ${triagePath}. For a cocoder-bug choose "mode":"propose" (a "proposal" diff, reviewed not applied) OR, only within your write-scope, "mode":"repair" (edit the files now, then report diagnosis/whyCocoderOwned/filesChanged/verification/remainingRisk). Out-of-scope edits — including any target-repo product code — are held back at the commit-gate, never committed. A repair does not rescue the run.${recurrence}`
+  return `TRIAGE — a fault occurred in this run. Read the fault context from ${faultPath} (and the terminal snapshot/status feed for context), classify it to exactly one disposition (cocoder-bug | repo-bug | one-off), and write your verdict to ${triagePath}. For a cocoder-bug choose "mode":"propose" (a "proposal" diff, reviewed not applied) OR, only within your write-scope, "mode":"repair" (edit the files now, then report diagnosis/whyCocoderOwned/filesChanged/verification/remainingRisk). Out-of-scope edits — including any target-repo product code — are outside repair authority and are surfaced as out-of-lane if they reach the gate. A repair does not rescue the run.${recurrence}`
 }
 
 export function commitMessage(priorityId: string, run: RunDisplayInput, atomIndex: number): string {

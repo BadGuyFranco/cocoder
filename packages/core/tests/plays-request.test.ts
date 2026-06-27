@@ -124,11 +124,11 @@ describe('Play request lane', () => {
 
     expect(scopedReceipt).toMatchObject({
       committed: true,
-      committedFiles: ['cocoder/tickets/open/0024-bug.md'],
+      committedFiles: ['cocoder/tickets/open/0024-bug.md', 'packages/core/src/leak.ts'],
       outOfLane: ['packages/core/src/leak.ts'],
       error: null,
     })
-    expect(scoped.commits).toEqual([{ files: ['cocoder/tickets/open/0024-bug.md'], message: 'play: create ticket' }])
+    expect(scoped.commits).toEqual([{ files: ['cocoder/tickets/open/0024-bug.md', 'packages/core/src/leak.ts'], message: 'play: create ticket' }])
   })
 
   test('rejects an unknown Play', () => {
