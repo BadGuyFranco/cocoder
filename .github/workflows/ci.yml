@@ -4,10 +4,13 @@ on:
   push:
   pull_request:
 
-# v2 CI is intentionally thin (ADR-0001 D2/D5): install · typecheck · test · topology.
+# v2 CI is intentionally thin (ADR-0001 D2/D5): install · typecheck · lint · test · topology.
 # The v1 gates (validate-contracts, schemas/dist drift, cocoder-cli parity, stale-reference,
 # public-readiness) were governance-of-governance machinery (failure-catalog F5) and were
 # deleted in the Phase-1 v1 decommission. Add a check back only when a real failure earns it.
+# Lint now earns a dedicated gate because CoCoder is agent-built with no human PR review; ESLint
+# catches defect classes tsc+Vitest miss, including floating/unawaited promises, dead code, and
+# eval-family hazards.
 jobs:
   test:
     runs-on: macos-14
@@ -22,6 +25,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
+      - run: pnpm lint
       - run: pnpm test
       - name: Topology check (inward-only deps, ADR-0008)
         run: node scripts/check-topology.mjs
