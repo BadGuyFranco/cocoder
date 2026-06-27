@@ -27,6 +27,13 @@ export {
   type RetentionCandidate,
   type RetentionConfig,
 } from './retention.js'
+export {
+  formatRetentionPlan,
+  planRetention,
+  projectionCheckerFor,
+  type RetentionPlan,
+  type RetentionPlanDeps,
+} from './retention-plan.js'
 export { groupLabel, type RunLabelTarget, type RunLabelTargetType } from './labels.js'
 export { StopRequestedError } from './stop.js'
 export { makeRunnerIO, type RunnerIO, type RunnerPollOptions } from './io.js'
