@@ -26,7 +26,7 @@ import { readOrCreateToken } from './secrets.js'
 import { dispatchMutations, dispatchReads } from './routes.js'
 import { createOzEventBus, type OzContext } from './context.js'
 import { warmCliCache } from './clis.js'
-import { migrateLegacyRunDirsOnce, reconcileOrphans } from './launcher.js'
+import { migrateLegacyRunDirsOnce, reconcileOrphans, runRetentionGcOnce } from './launcher.js'
 import { serveStatic } from './static.js'
 
 export interface OzServerOptions {
@@ -234,6 +234,7 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
   await reconcileOrphans(ctx)
   // ADR-0027 §6 step 5: migrate legacy flat run dirs once while the boot live set is empty.
   migrateLegacyRunDirsOnce(ctx)
+  await runRetentionGcOnce(ctx)
 
   const server = createServer(handler)
   const sockets = new Set<Socket>()

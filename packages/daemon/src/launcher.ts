@@ -8,7 +8,7 @@
 //   - track spawned surfaceRefs in ctx.liveRefs so deep-links are decidable without throwing.
 import { execFile } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
-import { existsSync, type Dirent } from 'node:fs'
+import { existsSync, readdirSync, type Dirent } from 'node:fs'
 import { appendFile, mkdir, readFile, readdir, rename, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, isAbsolute, join, normalize, relative, resolve, sep } from 'node:path'
 import { promisify } from 'node:util'
@@ -31,13 +31,17 @@ import {
   localRunDir,
   migrateLegacyFlatRunDirs,
   parseFounderCloseoutContract,
+  projectionCheckerFor,
+  removeLocalRunDir,
   resolveLocalRunDir,
+  rotateLogFile,
   loadAssignments,
   loadEffectivePlay,
   loadPriority,
   matchesAny,
   readTickets,
   repointTicket,
+  runRetentionGc,
   runCommitGate,
   runDisplayNumber,
   resolveMandatoryPlay,
@@ -64,7 +68,8 @@ import {
 import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import { emitOzEvent, type DashboardLaunchHandle, type OzContext } from './context.js'
 import { findWorkspace, type RegistryWorkspace } from './registry.js'
-import { appendAudit } from './audit.js'
+import { appendAudit, ozAuditPath } from './audit.js'
+import { readSettings } from './settings.js'
 import { drainAuthoringQueue, enqueueAuthoring } from './authoring-queue.js'
 import { recordOrchestratedRun } from './oz-host.js'
 import { registerLivePriorities } from './priority-order.js'
@@ -2590,5 +2595,77 @@ export function migrateLegacyRunDirsOnce(ctx: OzContext): void {
     }
   } catch {
     /* best-effort startup migration must not abort daemon boot */
+  }
+}
+
+const RETENTION_LOG_MAX_BYTES = 8 * 1024 * 1024
+const RETENTION_LOG_KEEP = 3
+
+export async function runRetentionGcOnce(ctx: OzContext): Promise<void> {
+  try {
+    const settings = await readSettings(ctx.cocoderHome)
+    const config = settings.retention
+    if (config.enabled !== true) return
+
+    const runs = ctx.store.listRuns()
+    const workspacePaths = new Map<string, string>()
+    for (const workspaceId of [...new Set(runs.map((run) => run.workspaceId))].sort()) {
+      const workspace = await findWorkspace(ctx.cocoderHome, workspaceId)
+      if (workspace) workspacePaths.set(workspaceId, workspace.path)
+    }
+
+    const result = await runRetentionGc(
+      {
+        listAllRuns: () => runs,
+        isProjectedToRepo: projectionCheckerFor((workspaceId) => workspacePaths.get(workspaceId) ?? null),
+        pruneRunRows: (runId) => ctx.store.pruneRunRows(runId),
+        removeRunDir: (runId) => removeLocalRunDir(ctx.runsRoot, runId),
+        checkpointWal: () => ctx.store.checkpointWal(),
+        rotateLogs: () => rotateRetentionLogs(ctx.cocoderHome),
+        protectedRunIds: protectedRunIds(ctx),
+        log: (message) => console.error(message),
+      },
+      config,
+    )
+
+    await appendAudit(ctx.cocoderHome, {
+      action: 'retention-gc',
+      enabled: result.enabled,
+      prunedRunIds: result.prunedRunIds,
+      prunedRuns: result.prunedRunIds.length,
+      skippedProtectedRunIds: result.skippedProtectedRunIds,
+      storeRunRowsKept: result.storeRunRowsKept,
+      dirsRemoved: result.dirsRemoved,
+      failures: result.failures,
+      wal: result.wal,
+    })
+  } catch (error: unknown) {
+    console.error(`retention GC startup pass failed: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
+function protectedRunIds(ctx: Pick<OzContext, 'inFlight' | 'stopControllers'>): Set<string> {
+  const out = new Set<string>()
+  for (const runId of ctx.inFlight.values()) {
+    if (runId !== 'pending') out.add(runId)
+  }
+  for (const runId of ctx.stopControllers.keys()) out.add(runId)
+  return out
+}
+
+function rotateRetentionLogs(cocoderHome: string): void {
+  rotateLogFile(ozAuditPath(cocoderHome), { maxBytes: RETENTION_LOG_MAX_BYTES, keep: RETENTION_LOG_KEEP })
+  const ozLogDir = join(cocoderHome, 'local', 'oz')
+  let entries: Dirent[]
+  try {
+    entries = existsSync(ozLogDir) ? readdirSync(ozLogDir, { withFileTypes: true }) : []
+  } catch {
+    return
+  }
+
+  for (const entry of entries) {
+    if (!entry.isFile()) continue
+    if (/\.\d+$/.test(entry.name)) continue
+    rotateLogFile(join(ozLogDir, entry.name), { maxBytes: RETENTION_LOG_MAX_BYTES, keep: RETENTION_LOG_KEEP })
   }
 }

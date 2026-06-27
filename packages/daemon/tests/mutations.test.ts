@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ClaudeAdapter, type Exec } from '@cocoder/adapters'
 import { atomSentinel, composeTicketMarkdown, loadAssignments, loadPriority, makeGit, openRunStore, readTickets, StopRequestedError, workspaceTemplateDir, writePortableRun, type Adapter, type Git, type HeadlessRunInput, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
 import { createOzServer, OZ_CSRF_HEADER, type OzServer } from '../src/index.js'
-import { migrateLegacyRunDirsOnce, ticketPendingCloseRun } from '../src/launcher.js'
+import { migrateLegacyRunDirsOnce, runRetentionGcOnce, ticketPendingCloseRun } from '../src/launcher.js'
 import type { OzContext } from '../src/context.js'
 import { listQueuedAuthoring } from '../src/authoring-queue.js'
 import { findOrphanedPriorities } from '../src/priority-order.js'
@@ -4031,5 +4031,99 @@ describe('Oz mutations + lifecycle', () => {
     expect(await exists(join(runsRoot, 'cocoder', run.id))).toBe(false)
     expect(store.listEvents(run.id).some((item) => item.type === 'run-dir-migrated')).toBe(false)
   })
+
+  test('runRetentionGcOnce is inert with default disabled retention settings', async () => {
+    const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-daemon-retention-runs-'))
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(run.id, 'completed')
+    await mkdir(join(runsRoot, 'cocoder', run.id), { recursive: true })
+    await writeFile(join(runsRoot, 'cocoder', run.id, 'state.json'), '{"kept":true}')
+
+    await runRetentionGcOnce(retentionContext(runsRoot))
+
+    expect(store.getRun(run.id)).not.toBeNull()
+    await expect(readFile(join(runsRoot, 'cocoder', run.id, 'state.json'), 'utf8')).resolves.toBe('{"kept":true}')
+  })
+
+  test('runRetentionGcOnce prunes only projected terminal runs beyond retention while preserving gated runs', async () => {
+    const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-daemon-retention-runs-'))
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    await writeFile(
+      join(home, 'local', 'settings.json'),
+      JSON.stringify({ retention: { enabled: true, keepLastNPerWorkspace: 2 } }),
+    )
+
+    const oldProjected = await createRetentionRun(runsRoot, 'completed', true, 1)
+    const oldUnprojected = await createRetentionRun(runsRoot, 'completed', false, 2)
+    const oldRunning = await createRetentionRun(runsRoot, 'running', true, 3)
+    const prunedA = await createRetentionRun(runsRoot, 'completed', true, 4)
+    const prunedB = await createRetentionRun(runsRoot, 'completed', true, 5)
+    const prunedC = await createRetentionRun(runsRoot, 'completed', true, 6)
+    const keptRecentA = await createRetentionRun(runsRoot, 'completed', true, 7)
+    const keptRecentB = await createRetentionRun(runsRoot, 'completed', true, 8)
+
+    await runRetentionGcOnce(retentionContext(runsRoot))
+
+    for (const run of [oldProjected, prunedA, prunedB, prunedC]) {
+      expect(store.getRun(run.id)).toBeNull()
+      expect(await exists(join(runsRoot, 'cocoder', run.id))).toBe(false)
+    }
+    for (const run of [oldUnprojected, oldRunning, keptRecentA, keptRecentB]) {
+      expect(store.getRun(run.id)).not.toBeNull()
+      expect(await exists(join(runsRoot, 'cocoder', run.id))).toBe(true)
+    }
+
+    const audit = await readFile(join(home, 'local', 'oz-audit.log'), 'utf8')
+    expect(audit).toContain('"action":"retention-gc"')
+    expect(audit).toContain(`"prunedRunIds":["${prunedC.id}","${prunedB.id}","${prunedA.id}","${oldProjected.id}"]`)
+  })
+
+  test('runRetentionGcOnce swallows startup GC errors so boot is not blocked', async () => {
+    await writeFile(
+      join(home, 'local', 'settings.json'),
+      JSON.stringify({ retention: { enabled: true, keepLastNPerWorkspace: 1 } }),
+    )
+    const throwingStore = {
+      listRuns: () => {
+        throw new Error('store unavailable')
+      },
+    }
+
+    await expect(runRetentionGcOnce({ ...retentionContext(join(home, 'local', 'runs')), store: throwingStore } as unknown as OzContext)).resolves.toBeUndefined()
+  })
+
+  function retentionContext(runsRoot: string): OzContext {
+    return {
+      cocoderHome: home,
+      runsRoot,
+      store,
+      inFlight: new Map<string, string>(),
+      stopControllers: new Map<string, AbortController>(),
+    } as unknown as OzContext
+  }
+
+  async function createRetentionRun(runsRoot: string, status: 'completed' | 'running', projected: boolean, displayNumber: number) {
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    if (status !== 'running') store.setRunStatus(run.id, status)
+    const current = store.getRun(run.id)
+    if (current === null) throw new Error(`missing run ${run.id}`)
+    await mkdir(join(runsRoot, 'cocoder', run.id), { recursive: true })
+    await writeFile(join(runsRoot, 'cocoder', run.id, 'state.json'), status)
+    if (projected) {
+      await writePortableRun(home, {
+        run: { id: run.id, displayNumber },
+        workspace: { id: 'cocoder' },
+        target: { kind: 'priority' },
+        priorityId: 'demo',
+        playbookId: null,
+        ticketId: null,
+        status: current.status,
+        createdAt: current.createdAt,
+        endedAt: current.endedAt,
+      })
+    }
+    return current
+  }
 
 })
