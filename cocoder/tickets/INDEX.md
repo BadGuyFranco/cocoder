@@ -13,6 +13,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
+| [0077](./open/0077-no-oscar-invokable-founder-confirmation-ticket-close-pane-close-it-cannot-be-actioned.md) | No Oscar-invokable founder-confirmation ticket-close; pane 'close it' cannot be actioned | bug | none | founder-session |
 | [0076](./open/0076-runner-continuation-nudge-can-advance-a-run-past-an-unanswered-founder-decision.md) | Runner continuation-nudge can advance a run past an unanswered founder decision | bug | none | Open |
 | [0075](./open/0075-tickets-auto-close-without-resolution-add-close-gate.md) | Tickets auto-close while decisions/work remain — add a close gate (recurring false-close) | bug | none | Open |
 | [0074](./open/0074-handoff-honest-manual-affordance-decision-b.md) | Independent-of-runner Launch — make it an honest manual handoff (founder decision B), not a fake launch | task | none | Open |
