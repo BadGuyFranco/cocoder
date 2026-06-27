@@ -50,6 +50,9 @@ describe('requestNudgeRun', () => {
     store.setRunStatus(runId, 'completed')
     await expect(requestNudgeRun(ctx, runId, 'help')).resolves.toMatchObject({ status: 409 })
 
+    store.setRunStatus(runId, 'awaiting-founder')
+    await expect(requestNudgeRun(ctx, runId, 'help')).resolves.toMatchObject({ status: 409 })
+
     const orphaned = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
     await expect(requestNudgeRun(ctx, orphaned.id, 'help')).resolves.toMatchObject({ status: 409 })
   })

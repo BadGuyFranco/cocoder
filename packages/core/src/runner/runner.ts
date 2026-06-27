@@ -913,11 +913,14 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     atomIndex: number,
     task: string,
     awaitOscar: () => Promise<T>,
+    awaitingFounder: boolean,
+    opts: { readonly phase?: RunnerPhase; readonly waitCondition?: string } = {},
   ): Promise<T> => {
     const debPersona = deb?.id
     const hasDebWatcher = debRef !== null && debPersona !== undefined
     const eventPersona = (source: OscarNudgeSource | 'idle'): string => (source === 'oz' ? 'oz' : (debPersona ?? 'deb'))
-    const phase: RunnerPhase = stage === 'verify' ? 'verifying' : 'awaiting-directive'
+    const phase: RunnerPhase = opts.phase ?? (stage === 'verify' ? 'verifying' : 'awaiting-directive')
+    const waitCondition = opts.waitCondition ?? `awaiting Oscar's ${stage} for atom ${atomIndex}`
 
     let stopped = false
     let stopSleep: (() => void) | null = null
@@ -950,6 +953,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
             return { state: 'stuck', note: `oz recommends a nudge (seq ${ozReq.seq})`, nudge: ozReq.message }
           }
           pendingNudgeReq = null
+          if (awaitingFounder) {
+            return { state: 'progressing', note: 'awaiting founder decision; idle nudge suppressed' }
+          }
           if (hasDebWatcher && sample.idleStreak > 0) {
             return { state: 'stuck', note: `no oscar screen change for ${sample.idleStreak} sample(s)`, nudge: OSCAR_IDLE_NUDGE }
           }
@@ -958,7 +964,6 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         isAlive: oscarAlive,
         nudge: (text) => oscarDriver.nudge(text),
         onAssessment: (a) => {
-          const waitCondition = `awaiting Oscar's ${stage} for atom ${atomIndex}`
           if (a.state !== 'progressing') {
             store.recordEvent({ runId: run.id, type: 'oscar-monitor-assessment', data: { persona: hasDebWatcher ? debPersona : 'oz', stage, atom: atomIndex, state: a.state, note: a.note ?? null } })
           }
@@ -1329,11 +1334,19 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         stepResume = verifyResume
         store.recordEvent({ runId: run.id, type: 'verify-resumed', data: { atom: n, park: pendingResumeState.park, verifyPath: verifyResume.verifyPath, directivePath } })
       } else {
+        const founderContinueOptions: { readonly phase: 'awaiting-founder'; readonly waitCondition: string } | undefined = founderContinueWait === null
+          ? undefined
+          : {
+              phase: 'awaiting-founder',
+              waitCondition: `awaiting founder decision before directive ${directiveIndex}: ${(founderContinueWait as FounderContinueWait).question}`,
+            }
         directive = await awaitOscarWithNudgeWatchdog(
           'directive',
           n,
-          founderContinueWait ? `awaiting founder decision before directive ${directiveIndex}` : `awaiting directive ${directiveIndex}`,
+          founderContinueOptions ? `awaiting founder decision before directive ${directiveIndex}` : `awaiting directive ${directiveIndex}`,
           () => awaitDirectiveOrFounderHold(directivePath, n),
+          founderContinueOptions !== undefined,
+          founderContinueOptions,
         )
       }
     } catch (err) {

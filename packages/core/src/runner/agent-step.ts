@@ -59,6 +59,8 @@ type AwaitOscarWithNudgeWatchdog = <T>(
   atomIndex: number,
   task: string,
   awaitOscar: () => Promise<T>,
+  awaitingFounder: false,
+  opts?: { readonly phase?: RunnerPhase; readonly waitCondition?: string },
 ) => Promise<T>
 
 export interface ExecuteAgentStepInput {
@@ -454,6 +456,7 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
           verifyRequest: { verifyPath, directivePath: verifyDirectivePath, atom: atomIndex },
         }),
       ),
+      false,
     )
   } catch (err) {
     if (isFounderHeldError(err)) throw err

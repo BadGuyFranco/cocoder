@@ -314,23 +314,27 @@ const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 // constant-frame window yields exactly one dispatch.
 const gatedStallHarness = (opts: {
   directives: Directive[]
-  // Releases the parked first directive the moment this returns true — set it to the watcher's
+  parkDirectiveIndex?: number
+  // Releases the parked directive the moment this returns true — set it to the watcher's
   // observable side effect (a recorded event, or a flag the sendInput hook flips), NEVER a timer.
   watcherActed: () => boolean
+  onParkedRead?: (sample: { readonly directiveIndex: number; readonly reads: number }) => void
   statusWrites?: DebStatus[]
   terminalSnapshotWrites?: DebTerminalSnapshot[]
   sendInput?: SessionHost['sendInput']
 }): { io: RunnerIO; sessionHost: SessionHost } => {
   let i = 0
-  let parked = false
+  const parkDirectiveIndex = opts.parkDirectiveIndex ?? 0
+  let parkedDirectiveIndex: number | null = null
   let frame = 0
+  let parkedReads = 0
   const io: RunnerIO = {
     ...fakeIO({ directives: opts.directives, statusWrites: opts.statusWrites, terminalSnapshotWrites: opts.terminalSnapshotWrites }),
     async awaitDirective() {
-      if (i === 0) {
-        parked = true
+      if (i === parkDirectiveIndex) {
+        parkedDirectiveIndex = i
         while (!opts.watcherActed()) await sleep(1)
-        parked = false
+        parkedDirectiveIndex = null
       }
       const d = opts.directives[i++]
       if (!d) throw new Error('test: ran out of scripted directives')
@@ -339,9 +343,14 @@ const gatedStallHarness = (opts: {
   }
   const sessionHost = fakeSessionHost({
     async readScreen() {
-      // Constant ⇒ idleStreak climbs ⇒ stall detected (only while the first directive is parked);
+      // Constant ⇒ idleStreak climbs ⇒ stall detected (only while the selected directive is parked);
       // changing ⇒ Oscar looks like he's progressing ⇒ no other window trips the detector.
-      return parked ? 'oscar parked (awaiting first directive)' : `oscar working ${frame++}`
+      if (parkedDirectiveIndex !== null) {
+        parkedReads += 1
+        opts.onParkedRead?.({ directiveIndex: parkedDirectiveIndex, reads: parkedReads })
+        return `oscar parked (awaiting directive ${parkedDirectiveIndex})`
+      }
+      return `oscar working ${frame++}`
     },
     ...(opts.sendInput ? { sendInput: opts.sendInput } : {}),
   })
@@ -3401,6 +3410,61 @@ describe('runRun (multi-atom loop)', () => {
     const noDebResult = await runRun(baseDeps({ store: storeWithoutDeb, io: fakeIO({ directives: [delegate('do it'), wrapup('done')] }), timeouts }), input)
     expect(noDebResult.status).toBe('completed')
     expect(storeWithoutDeb.listEvents(noDebResult.runId).some((e) => e.type === 'oscar-nudge')).toBe(false)
+  })
+
+  test('Deb-backed watchdog does not send the idle continuation nudge while awaiting a founder decision', async () => {
+    const idleNudgePrefix = "You've gone quiet"
+    const idleNudgeText = "You've gone quiet — write the next directive (or your verify verdict), or wrap up."
+    const timeouts = { orchestrationMs: 200, buildMs: 200, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 1000 }
+
+    const founderStore = openRunStore(':memory:')
+    const founderPaneInputs: string[] = []
+    let parkedReads = 0
+    const founderHarness = gatedStallHarness({
+      directives: [askFounderContinue('Should we continue?'), delegate('continue with founder answer'), wrapup('done')],
+      parkDirectiveIndex: 1,
+      watcherActed: () => parkedReads >= 3,
+      onParkedRead: ({ directiveIndex, reads }) => {
+        if (directiveIndex === 1) parkedReads = reads
+      },
+      sendInput: async (_ref, text) => {
+        founderPaneInputs.push(text)
+      },
+    })
+    const founderResult = await runRun(
+      baseDeps({ store: founderStore, io: founderHarness.io, sessionHost: founderHarness.sessionHost, timeouts }),
+      { ...input, deb },
+    )
+
+    expect(founderResult.status).toBe('completed')
+    expect(parkedReads).toBeGreaterThanOrEqual(3)
+    expect(founderStore.listEvents(founderResult.runId).some((event) => event.type === 'founder-decision-requested')).toBe(true)
+    const founderNudgeTexts = founderStore.listEvents(founderResult.runId)
+      .filter((event) => event.type === 'oscar-nudge')
+      .map((event) => (event.data as { text?: string }).text ?? '')
+    expect(founderNudgeTexts.some((text) => text.includes(idleNudgePrefix))).toBe(false)
+    expect(founderPaneInputs.some((text) => text.includes(idleNudgeText))).toBe(false)
+
+    const ordinaryStore = openRunStore(':memory:')
+    const ordinaryPaneInputs: string[] = []
+    const ordinaryHarness = gatedStallHarness({
+      directives: [delegate('do it'), wrapup('done')],
+      watcherActed: () => ordinaryStore.listRuns().some((r) => ordinaryStore.listEvents(r.id).some((e) => e.type === 'oscar-nudge')),
+      sendInput: async (_ref, text) => {
+        ordinaryPaneInputs.push(text)
+      },
+    })
+    const ordinaryResult = await runRun(
+      baseDeps({ store: ordinaryStore, io: ordinaryHarness.io, sessionHost: ordinaryHarness.sessionHost, timeouts }),
+      { ...input, deb },
+    )
+
+    expect(ordinaryResult.status).toBe('completed')
+    const ordinaryNudgeTexts = ordinaryStore.listEvents(ordinaryResult.runId)
+      .filter((event) => event.type === 'oscar-nudge')
+      .map((event) => (event.data as { text?: string }).text ?? '')
+    expect(ordinaryNudgeTexts.filter((text) => text === idleNudgeText)).toHaveLength(1)
+    expect(ordinaryPaneInputs.filter((text) => text === idleNudgeText)).toHaveLength(1)
   })
 
   test('Deb triages a builder failure before the run unwinds (tier 2 disposition)', async () => {
