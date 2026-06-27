@@ -1,7 +1,7 @@
 [
   "doc-truth-analysis",
-  "harden-documentation-process",
   "local-cache-retention",
+  "harden-documentation-process",
   "multi-workspace-concurrency",
   "model-layer",
   "new-primary-root",
