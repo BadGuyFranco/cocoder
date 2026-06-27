@@ -48,7 +48,7 @@ describe('retention GC orchestration', () => {
       rotateLogs: () => {
         calls.push('rotate')
       },
-      currentRunId: null,
+      protectedRunIds: new Set(),
       log: (message) => {
         calls.push(`log:${message}`)
       },
@@ -57,7 +57,7 @@ describe('retention GC orchestration', () => {
     expect(await runRetentionGc(deps, config(false, 1))).toEqual({
       enabled: false,
       prunedRunIds: [],
-      skippedCurrentRun: false,
+      skippedProtectedRunIds: [],
       storeRunRowsKept: 0,
       dirsRemoved: 0,
       failures: [],
@@ -92,7 +92,7 @@ describe('retention GC orchestration', () => {
     expect(result).toMatchObject({
       enabled: true,
       prunedRunIds: [runs[2]?.id, runs[1]?.id, runs[0]?.id],
-      skippedCurrentRun: false,
+      skippedProtectedRunIds: [],
       storeRunRowsKept: 0,
       dirsRemoved: 3,
       failures: [],
@@ -131,14 +131,14 @@ describe('retention GC orchestration', () => {
     expect(calls.slice(0, 4)).toEqual([`dir:${runs[1]?.id}`, `store:${runs[1]?.id}`, `dir:${runs[0]?.id}`, `store:${runs[0]?.id}`])
   })
 
-  test('never prunes the current run even when it appears in the plan', async () => {
+  test('never prunes protected runs even when they appear in the plan', async () => {
     const runs = createRuns('workspace-a', 4, 'completed')
-    const currentRunId = runs[0]?.id ?? null
+    const protectedRunId = runs[0]?.id ?? ''
     const prunedByStage: string[] = []
 
     const result = await runRetentionGc(
       gcDeps({
-        currentRunId,
+        protectedRunIds: new Set([protectedRunId]),
         removeRunDir: (runId) => {
           prunedByStage.push(`dir:${runId}`)
           return { removed: `/runs/workspace-a/${runId}` }
@@ -151,10 +151,10 @@ describe('retention GC orchestration', () => {
       config(true, 1),
     )
 
-    expect(result.skippedCurrentRun).toBe(true)
-    expect(result.prunedRunIds).not.toContain(currentRunId)
-    expect(prunedByStage).not.toContain(`dir:${currentRunId}`)
-    expect(prunedByStage).not.toContain(`store:${currentRunId}`)
+    expect(result.skippedProtectedRunIds).toEqual([protectedRunId])
+    expect(result.prunedRunIds).not.toContain(protectedRunId)
+    expect(prunedByStage).not.toContain(`dir:${protectedRunId}`)
+    expect(prunedByStage).not.toContain(`store:${protectedRunId}`)
   })
 
   test('does not prune unprojected runs beyond the retention rank', async () => {
@@ -246,7 +246,7 @@ describe('retention GC orchestration', () => {
       removeRunDir: () => ({ removed: null }),
       checkpointWal: cleanWal,
       rotateLogs: () => {},
-      currentRunId: null,
+      protectedRunIds: new Set(),
       log: () => {},
       ...overrides,
     }

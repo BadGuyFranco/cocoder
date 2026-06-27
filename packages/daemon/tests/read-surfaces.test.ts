@@ -169,7 +169,12 @@ describe('Oz read surfaces', () => {
   test('GET /settings returns defaults when no settings file exists', async () => {
     const r = await get(oz!, '/settings')
     expect(r.status).toBe(200)
-    expect(r.json).toEqual({ pollIntervalMs: 2500, defaultWorkspaceId: null, ozAutoCompactRuns: 3 })
+    expect(r.json).toEqual({
+      pollIntervalMs: 2500,
+      defaultWorkspaceId: null,
+      ozAutoCompactRuns: 3,
+      retention: { enabled: false, keepLastNPerWorkspace: 25 },
+    })
   })
 
   test('GET /workspaces/:id/priorities skips AGENTS.md (no frontmatter) without throwing', async () => {

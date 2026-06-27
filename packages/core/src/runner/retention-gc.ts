@@ -9,14 +9,14 @@ export interface RetentionGcDeps {
   removeRunDir(runId: string): { removed: string | null }
   checkpointWal(): CheckpointWalResult
   rotateLogs(): void
-  readonly currentRunId: string | null
+  readonly protectedRunIds: ReadonlySet<string>
   log(message: string): void
 }
 
 export interface RetentionGcResult {
   readonly enabled: boolean
   readonly prunedRunIds: string[]
-  readonly skippedCurrentRun: boolean
+  readonly skippedProtectedRunIds: string[]
   readonly storeRunRowsKept: number
   readonly dirsRemoved: number
   readonly failures: Array<{ runId: string; stage: 'store' | 'dir'; message: string }>
@@ -38,8 +38,8 @@ export async function runRetentionGc(deps: RetentionGcDeps, config: RetentionCon
   )
   deps.log(formatRetentionPlan(plan))
 
-  const skippedCurrentRun = deps.currentRunId !== null && plan.prune.includes(deps.currentRunId)
-  const runIdsToPrune = plan.prune.filter((runId) => runId !== deps.currentRunId)
+  const skippedProtectedRunIds = plan.prune.filter((runId) => deps.protectedRunIds.has(runId))
+  const runIdsToPrune = plan.prune.filter((runId) => !deps.protectedRunIds.has(runId))
   const failures: RetentionGcResult['failures'] = []
   const prunedRunIds: string[] = []
   let dirsRemoved = 0
@@ -71,7 +71,7 @@ export async function runRetentionGc(deps: RetentionGcDeps, config: RetentionCon
   return {
     enabled: true,
     prunedRunIds,
-    skippedCurrentRun,
+    skippedProtectedRunIds,
     storeRunRowsKept,
     dirsRemoved,
     failures,
@@ -83,7 +83,7 @@ function emptyDisabledResult(): RetentionGcResult {
   return {
     enabled: false,
     prunedRunIds: [],
-    skippedCurrentRun: false,
+    skippedProtectedRunIds: [],
     storeRunRowsKept: 0,
     dirsRemoved: 0,
     failures: [],
