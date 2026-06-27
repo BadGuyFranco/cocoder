@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-27 — **ticket-fix-0075: verified ticket close gate — needs closing (run_117/run_261)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0075](./tickets/open/0075-tickets-auto-close-without-resolution-add-close-gate.md) | **Run:** run_261 (display 117)
+**Outcomes:**
+- **Close gate landed (`3602287`, `8910fb6`).** `packages/daemon/src/ticket-close-gate.ts` now gates every unattended close lane — reconciliation/`oz close-ticket`, queued-drain ticket-close, and close-confirmation — refusing 409 when the ticket's latest run is parked awaiting-founder; runner emits `ticketCloseDecision` on wrap; dashboard surfaces close-confirmation only when decision is `ask`. Daemonless `closeTicketViaCli` documented as operator-only (no run-store).
+- **Regression pinned + ownership map updated.** Daemon mutations + reconciliation-close tests cover awaiting-founder refusal; full-tree typecheck and daemon/core/cli suites green.
+- **0073 disposition re-checked** — left Closed-superseded by 0074 (not reopened); note added to closed ticket that 0075 verified the choice.
+- **Follow-up filed:** [0076](./tickets/open/0076-runner-continuation-nudge-can-advance-a-run-past-an-unanswered-founder-decision.md) (runner nudge advanced this run past an unanswered founder decision).
+- **Disposition: `needs closing`.** Acceptance fully met; founder explicitly held auto-close — awaiting personal confirmation to close 0075.
+**Next:** Reply `close 0075` in this run to close through the governed path, or say `keep open`; then launch ticket `0076` for the nudge fix.
+
 ## 2026-06-27 — **ticket-fix-0073: launch button is ADR-0043 handoff-by-design — needs closing (run_116/run_260)**
 
 **Persona:** Oscar (lead) | **Priority:** ticket-fix / [0073](./tickets/open/0073-local-cache-retention-handoff-what-is-this.md) | **Run:** run_260 (display 116)

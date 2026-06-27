@@ -53,3 +53,7 @@ asserted a fix for the wrong scope.
   a dedicated verified run. The fix is a close-gate, not a relaxation: do not make closing easier.
 - Related: [[0074]] (the launch work 0073 should have produced), 0070, 0071, ADR-0023 (commit spine /
   receipts as the evidence source for "verified commit").
+- **Run_261 (2026-06-27):** Code-complete — `ticketCloseGate` gates reconciliation, queued close, and
+  close-confirmation; regression tests in daemon suite; ownership map updated. 0073 left Closed-superseded
+  (not reopened). Founder held close at wrap; ticket stays Open pending explicit `close 0075` confirmation.
+- **Follow-up:** [[0076]] (runner continuation-nudge past unanswered founder decision, observed during this run).
