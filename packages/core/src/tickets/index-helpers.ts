@@ -36,6 +36,11 @@ export function ticketTableCell(value: string): string {
   return value.replace(/\|/g, '\\|')
 }
 
+function closedTicketLink(row: string): string | null {
+  const match = row.match(/\|\s*\[[^\]]+\]\((\.\/closed\/[^)]+)\)/)
+  return match?.[1] ?? null
+}
+
 function sectionBounds(lines: readonly string[], heading: string): { start: number; end: number } {
   const start = lines.findIndex((line) => line.trim() === heading)
   if (start === -1) throw new Error(`tickets INDEX.md is missing ${heading}`)
@@ -64,7 +69,11 @@ export function moveTicketIndexRowToClosed(indexMarkdown: string, input: { reado
   if (openRowIndex === -1) return indexMarkdown
   lines.splice(openRowIndex, 1)
 
-  if (lines.some((line) => line.includes(`| [${input.id}](./closed/`))) return lines.join('\n')
+  const closedLink = closedTicketLink(input.closedRow)
+  const alreadyIndexed = closedLink
+    ? lines.some((line) => closedTicketLink(line) === closedLink)
+    : lines.includes(input.closedRow)
+  if (alreadyIndexed) return lines.join('\n')
   lines.splice(separatorIndex(lines, '## Recently Closed') + 1, 0, input.closedRow)
   return lines.join('\n')
 }
