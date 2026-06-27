@@ -7,7 +7,7 @@ export interface LaunchProgressState {
   readonly runId: string | null
   readonly detail: RunDetail | null
   readonly error: string | null
-  readonly handoff: { readonly handoffPath: string; readonly command: string } | null
+  readonly runnerlessLaunch: { readonly command: string; readonly pid: number | null } | null
 }
 
 type PersonaId = 'oscar'
@@ -67,15 +67,15 @@ function stageText(state: LaunchProgressState): string {
 
 export function LaunchProgressModal({ state, onClose }: { state: LaunchProgressState; onClose: () => void }) {
   const hasError = !!state.error
-  const hasHandoff = !!state.handoff
-  const footer = hasError || hasHandoff ? <Button variant="secondary" onClick={onClose}>Close</Button> : null
+  const hasRunnerlessLaunch = !!state.runnerlessLaunch
+  const footer = hasError || hasRunnerlessLaunch ? <Button variant="secondary" onClick={onClose}>Close</Button> : null
   return (
     <Modal
       open={state.open}
       onClose={onClose}
       title={state.title}
-      subtitle={hasError ? 'Launch needs attention.' : hasHandoff ? 'Runnerless handoff created.' : stageText(state)}
-      icon={hasError ? 'warning-circle' : hasHandoff ? 'check-circle' : 'rocket-launch'}
+      subtitle={hasError ? 'Launch needs attention.' : hasRunnerlessLaunch ? 'Runnerless launch started.' : stageText(state)}
+      icon={hasError ? 'warning-circle' : hasRunnerlessLaunch ? 'check-circle' : 'rocket-launch'}
       width={520}
       footer={footer}
     >
@@ -85,14 +85,14 @@ export function LaunchProgressModal({ state, onClose }: { state: LaunchProgressS
           <div role="alert" style={{ border: '1px solid var(--cb-highlight)', background: 'rgba(212,118,110,0.12)', color: 'var(--cb-text)', borderRadius: 'var(--cb-radius-md)', padding: 12, fontSize: 12.5, lineHeight: 1.5 }}>
             {state.error}
           </div>
-        ) : hasHandoff ? (
+        ) : hasRunnerlessLaunch ? (
           <div role="status" style={{ display: 'grid', gap: 10, border: '1px solid rgba(125,175,110,0.22)', background: 'var(--cb-success-muted)', color: 'var(--cb-text)', borderRadius: 'var(--cb-radius-md)', padding: 12, fontSize: 12.5, lineHeight: 1.5 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <Icon name="check-circle" size={16} style={{ color: 'var(--cb-success)', flexShrink: 0 }} />
-              <span>Runnerless handoff created — run it in a fresh terminal:</span>
+              <span>Runnerless launch started outside the daemon runner.</span>
             </div>
-            <code style={{ display: 'block', userSelect: 'text', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontFamily: 'var(--cb-font-mono)', fontSize: 11, color: 'var(--cb-text)' }}>{state.handoff.command}</code>
-            <div style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10.5, color: 'var(--cb-text-muted)', overflowWrap: 'anywhere' }}>{state.handoff.handoffPath}</div>
+            <code style={{ display: 'block', userSelect: 'text', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontFamily: 'var(--cb-font-mono)', fontSize: 11, color: 'var(--cb-text)' }}>{state.runnerlessLaunch.command}</code>
+            {state.runnerlessLaunch.pid !== null && <div style={{ fontFamily: 'var(--cb-font-mono)', fontSize: 10.5, color: 'var(--cb-text-muted)', overflowWrap: 'anywhere' }}>pid {state.runnerlessLaunch.pid}</div>}
           </div>
         ) : (
           <div role="status" style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, color: 'var(--cb-text)' }}>

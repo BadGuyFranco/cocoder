@@ -53,6 +53,8 @@ export interface OzServerOptions {
   readonly daemonReloadBuildTimeoutMs?: number
   /** Override full-dashboard launch (tests inject a fake so they never spawn Electron). */
   readonly dashboardLauncher?: OzContext['dashboardLauncher']
+  /** Override runnerless priority launch (tests inject a fake so they never spawn the real CLI). */
+  readonly independentRunLauncher?: OzContext['independentRunLauncher']
   /** Probe every CLI once after boot so `/clis` + Personas model dropdowns show real status/models
    *  immediately (and survive restarts). Off by default; the daemon bin opts in. Tests omit it so they
    *  never spawn real CLI subprocesses. */
@@ -96,6 +98,20 @@ async function defaultBuildDaemonForReload(input: { readonly cwd: string; readon
 function defaultDashboardLauncher(): OzContext['dashboardLauncher'] {
   return {
     current: null,
+    spawn(input) {
+      const child = spawn(input.command, [...input.args], {
+        detached: true,
+        stdio: 'ignore',
+        cwd: input.cwd,
+      })
+      child.unref()
+      return child
+    },
+  }
+}
+
+function defaultIndependentRunLauncher(): OzContext['independentRunLauncher'] {
+  return {
     spawn(input) {
       const child = spawn(input.command, [...input.args], {
         detached: true,
@@ -171,6 +187,7 @@ export async function createOzServer(opts: OzServerOptions): Promise<OzServer> {
     daemonReloadBuildTimeoutMs: opts.daemonReloadBuildTimeoutMs ?? DAEMON_RELOAD_BUILD_TIMEOUT_MS,
     daemonReload: { pending: null, running: false },
     dashboardLauncher: opts.dashboardLauncher ?? defaultDashboardLauncher(),
+    independentRunLauncher: opts.independentRunLauncher ?? defaultIndependentRunLauncher(),
   }
 
   const handler = (req: IncomingMessage, res: ServerResponse): void => {

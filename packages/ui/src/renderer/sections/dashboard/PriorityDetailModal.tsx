@@ -22,7 +22,7 @@ export function PriorityDetailModal({ priority, linkedRun, launchBlocked, onClos
   const activeLinkedRun = linkedRun ? isActiveRun(linkedRun.status) : false
   const launchDisabled = priority.independentOfRunner === true ? false : launchBlocked || activeLinkedRun
   const launchTitle = priority.independentOfRunner === true
-    ? 'Create a runnerless handoff instead of starting the daemon runner.'
+    ? 'Launch outside the daemon runner.'
     : launchBlocked
     ? LAUNCH_BLOCKED_HINT
     : activeLinkedRun
@@ -49,7 +49,7 @@ export function PriorityDetailModal({ priority, linkedRun, launchBlocked, onClos
               Override governance integrity refusal
             </label>
           </div>
-          <Button variant="secondary" icon="play" disabled={launchDisabled} title={launchTitle} onClick={() => { onLaunch(priority, strictDirt, allowIntegrityErrors); onClose() }}>{priority.independentOfRunner === true ? 'Create handoff' : 'Launch'}</Button>
+          <Button variant="secondary" icon="play" disabled={launchDisabled} title={launchTitle} onClick={() => { onLaunch(priority, strictDirt, allowIntegrityErrors); onClose() }}>Launch</Button>
         </div>
       }
     >

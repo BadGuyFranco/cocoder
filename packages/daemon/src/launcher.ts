@@ -521,6 +521,58 @@ export async function requestIndependentHandoff(ctx: OzContext, input: { readonl
   }
 }
 
+export async function requestIndependentLaunch(ctx: OzContext, input: { readonly workspaceId: string; readonly priorityId: string }): Promise<LaunchResult> {
+  const workspace = await findWorkspace(ctx.cocoderHome, input.workspaceId)
+  if (!workspace) return { status: 404, body: { error: 'unknown workspace' } }
+  let priority: Priority
+  try {
+    priority = loadPriority(join(workspace.path, 'cocoder', 'priorities'), input.priorityId)
+  } catch (err) {
+    return { status: 400, body: { error: err instanceof Error ? err.message : String(err) } }
+  }
+  if (priority.independentOfRunner !== true) {
+    return { status: 409, body: { error: `priority "${priority.id}" is not marked independent-of-runner`, code: 'independent-of-runner-required' } }
+  }
+  if (priority.destructive !== true) {
+    const command = `cd ${shellQuote(workspace.path)} && cocoder run-independent ${priority.id}`
+    return {
+      status: 409,
+      body: {
+        error: `Priority "${priority.id}" is independent-of-runner but is not marked destructive, so Oz will not auto-launch it while the daemon owns the live store. Use the runnerless handoff command instead.`,
+        code: 'runnerless-handoff-required',
+        command,
+      },
+    }
+  }
+
+  const bin = join(ctx.cocoderHome, 'packages', 'cli', 'bin', 'cocoder.mjs')
+  const args = [bin, 'run-independent', priority.id]
+  const command = `cd ${shellQuote(workspace.path)} && cocoder run-independent ${priority.id}`
+  let pid: number | undefined
+  try {
+    const handle = ctx.independentRunLauncher.spawn({ command: process.execPath, args, cwd: workspace.path })
+    pid = handle.pid
+  } catch (err) {
+    return { status: 500, body: { error: err instanceof Error ? err.message : String(err), code: 'runnerless-launch-failed' } }
+  }
+
+  await appendAudit(ctx.cocoderHome, { action: 'runnerless-launch', workspaceId: workspace.id, priorityId: priority.id, pid: pid ?? null })
+  emitOzEvent(ctx, { type: 'runnerless-launch', workspaceId: workspace.id, status: 'started' })
+  return {
+    status: 202,
+    body: {
+      ok: true,
+      runnerless: true,
+      launched: true,
+      workspaceId: workspace.id,
+      priorityId: priority.id,
+      command,
+      ...(pid === undefined ? {} : { pid }),
+      message: `Runnerless launch started for ${priority.id}.`,
+    },
+  }
+}
+
 function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`
 }

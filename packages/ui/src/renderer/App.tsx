@@ -4,7 +4,7 @@
 // the design-faithful view-model from the ported seed (fixture parity, fully interactive); the daemon
 // adapter is wired in the next slice (the existing electron/ plumbing is untouched).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRawRunDetail, loadRunDetail, sendOzMessage, launchRun, launchIndependentHandoff, launchTicketRun, attachRun, teardownRun, stopRun, confirmArchiveRun, confirmTicketCloseRun, testCli, createPriority, createTicket, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, persistTicketOrder, saveAssignments, restartDaemon, type ConnectionState } from './live.ts'
+import { ozApi, loadWorkspaces, loadClis, loadWsData, loadRawRunDetail, loadRunDetail, sendOzMessage, launchRun, launchIndependentRun, launchTicketRun, attachRun, teardownRun, stopRun, confirmArchiveRun, confirmTicketCloseRun, testCli, createPriority, createTicket, createWorkspace, deleteWorkspace, updateWorkspace, loadOrder, persistOrder, persistTicketOrder, saveAssignments, restartDaemon, type ConnectionState } from './live.ts'
 import { ADHOC_PRIORITY_ID, MODE_HONORED_PERSONAS, applyOrder, isActiveRun, mergeRunsWithEnrichment, orderPersonas, personasToAssignments } from './adapter.ts'
 import { Sidebar, type Route } from './ui/Sidebar.tsx'
 import { TopBar } from './ui/TopBar.tsx'
@@ -24,7 +24,7 @@ const ROUTE_TITLE: Record<Route, string> = { dashboard: 'Dashboard', workspaces:
 const ACTIVE_DETAIL_FETCH_LIMIT = 6
 const GLOBAL_CHAT_KEY = ''
 const LAUNCH_PROGRESS_POLL_MS = 600
-const CLOSED_LAUNCH_PROGRESS: LaunchProgressState = { open: false, title: '', runId: null, detail: null, error: null, handoff: null }
+const CLOSED_LAUNCH_PROGRESS: LaunchProgressState = { open: false, title: '', runId: null, detail: null, error: null, runnerlessLaunch: null }
 
 function workspaceCreateMessage(disclosure: WorkspaceCreateDisclosure, legacyHidden: readonly string[]): string {
   const roots = disclosure.roots.map((root) => `${root.role}: ${root.rawPath ?? root.path}`).join('; ')
@@ -397,17 +397,17 @@ export function App() {
   // test mode (`!live`) the actions keep the design's chat-stub behavior so the demo stays interactive.
   const [actionMsg, setActionMsg] = useState<{ kind: 'ok' | 'info' | 'err'; text: string } | null>(null)
   const notify = (kind: 'ok' | 'info' | 'err', text: string) => { setActionMsg({ kind, text }); window.setTimeout(() => setActionMsg(null), 6000) }
-  const openLaunchProgress = (title: string): void => setLaunchProgress({ open: true, title, runId: null, detail: null, error: null, handoff: null })
+  const openLaunchProgress = (title: string): void => setLaunchProgress({ open: true, title, runId: null, detail: null, error: null, runnerlessLaunch: null })
   const closeLaunchProgress = (): void => setLaunchProgress(CLOSED_LAUNCH_PROGRESS)
-  const setLaunchProgressError = (text: string): void => setLaunchProgress((cur) => ({ ...cur, open: true, error: text, handoff: null }))
-  const setLaunchProgressHandoff = (handoff: { readonly handoffPath: string; readonly command: string }): void => setLaunchProgress((cur) => ({ ...cur, open: true, error: null, handoff }))
+  const setLaunchProgressError = (text: string): void => setLaunchProgress((cur) => ({ ...cur, open: true, error: text, runnerlessLaunch: null }))
+  const setLaunchProgressRunnerless = (runnerlessLaunch: { readonly command: string; readonly pid: number | null }): void => setLaunchProgress((cur) => ({ ...cur, open: true, error: null, runnerlessLaunch }))
   function launchedRunId(data: unknown): string | null {
     return typeof data === 'object' && data !== null && typeof (data as { runId?: unknown }).runId === 'string' ? (data as { runId: string }).runId : null
   }
-  function launchedHandoff(data: unknown): { handoffPath: string; command: string } | null {
+  function launchedRunnerless(data: unknown): { command: string; pid: number | null } | null {
     if (typeof data !== 'object' || data === null) return null
-    const { handoffPath, command } = data as { handoffPath?: unknown; command?: unknown }
-    return typeof handoffPath === 'string' && typeof command === 'string' ? { handoffPath, command } : null
+    const { command, pid } = data as { command?: unknown; pid?: unknown }
+    return typeof command === 'string' ? { command, pid: typeof pid === 'number' ? pid : null } : null
   }
   async function refreshActiveWs() {
     await refreshWorkspace(activeId)
@@ -590,16 +590,16 @@ export function App() {
       return
     }
     const res = priority.independentOfRunner === true && !resumeFromRunId
-      ? await launchIndependentHandoff(oz, activeId, priority.id)
+      ? await launchIndependentRun(oz, activeId, priority.id)
       : await launchRun(oz, activeId, priority.id, resumeFromRunId, strictPreRunDirt, allowPreRunIntegrityErrors)
     if (res.ok && priority.independentOfRunner === true && !resumeFromRunId) {
-      const handoff = launchedHandoff(res.data)
-      if (!handoff) {
-        setLaunchProgressError('Runnerless handoff created, but Oz did not return the handoff path and command.')
+      const runnerless = launchedRunnerless(res.data)
+      if (!runnerless) {
+        setLaunchProgressError('Runnerless launch started, but Oz did not return the command.')
         return
       }
-      setLaunchProgressHandoff(handoff)
-      notify('ok', 'Runnerless handoff created.')
+      setLaunchProgressRunnerless(runnerless)
+      notify('ok', 'Runnerless launch started.')
       await refreshActiveWs()
     } else if (res.ok) {
       const runId = launchedRunId(res.data)

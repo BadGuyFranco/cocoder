@@ -33,7 +33,7 @@ import { findWorkspace, readWorkspaces, validateWorkspaceFolders, workspaceDirec
 import { readRunDir } from './rundir.js'
 import { appendAudit } from './audit.js'
 import { listClis, testCli } from './clis.js'
-import { commitGovernance, launchRun, requestArchiveConfirmation, requestAuthoringPlay, requestDaemonRestart, requestDashboardLaunch, requestIndependentHandoff, requestOscarDebRepair, requestReconciliationClose, requestReconciliationRepoint, requestStopRun, requestSupportCommitRun, requestTicketCloseConfirmation, resumeRun, showRun, teardownRun, ticketPendingCloseRun, type AuthoringPlayInput, type OscarDebRepairInput } from './launcher.js'
+import { commitGovernance, launchRun, requestArchiveConfirmation, requestAuthoringPlay, requestDaemonRestart, requestDashboardLaunch, requestIndependentHandoff, requestIndependentLaunch, requestOscarDebRepair, requestReconciliationClose, requestReconciliationRepoint, requestStopRun, requestSupportCommitRun, requestTicketCloseConfirmation, resumeRun, showRun, teardownRun, ticketPendingCloseRun, type AuthoringPlayInput, type OscarDebRepairInput } from './launcher.js'
 import { enqueueAuthoring, listQueuedAuthoring } from './authoring-queue.js'
 import { handleOzMessage } from './oz-chat.js'
 import { mergeWriteSettings, readSettings } from './settings.js'
@@ -979,6 +979,20 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
     const priorityId = typeof record.priorityId === 'string' ? record.priorityId.trim() : ''
     if (!workspaceId || !priorityId) return sendJson(res, 400, { error: 'workspaceId and priorityId are required' }), true
     const { status, body: out } = await requestIndependentHandoff(ctx, { workspaceId, priorityId })
+    return sendJson(res, status, out), true
+  }
+  if (method === 'POST' && pathname === '/runs/independent-launch') {
+    let body: unknown
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      return sendJson(res, 400, { error: 'invalid JSON body' }), true
+    }
+    const record = bodyRecord(body)
+    const workspaceId = typeof record.workspaceId === 'string' ? record.workspaceId.trim() : ''
+    const priorityId = typeof record.priorityId === 'string' ? record.priorityId.trim() : ''
+    if (!workspaceId || !priorityId) return sendJson(res, 400, { error: 'workspaceId and priorityId are required' }), true
+    const { status, body: out } = await requestIndependentLaunch(ctx, { workspaceId, priorityId })
     return sendJson(res, status, out), true
   }
   if (method === 'POST' && seg[0] === 'runs' && seg.length === 3 && seg[2] === 'show') {

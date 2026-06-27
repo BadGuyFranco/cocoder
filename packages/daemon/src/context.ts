@@ -25,6 +25,16 @@ export interface DashboardLauncher {
   spawn(input: DashboardLaunchCommand): DashboardLaunchHandle
 }
 
+export interface IndependentRunCommand {
+  readonly command: string
+  readonly args: readonly string[]
+  readonly cwd: string
+}
+
+export interface IndependentRunLauncher {
+  spawn(input: IndependentRunCommand): DashboardLaunchHandle
+}
+
 export interface DaemonReloadBuildInput {
   readonly cwd: string
   readonly timeoutMs: number
@@ -134,4 +144,6 @@ export interface OzContext {
   readonly daemonReload: DaemonReloadState
   /** Launches the full dashboard as a detached process; injectable so tests never spawn Electron. */
   readonly dashboardLauncher: DashboardLauncher
+  /** Launches a runnerless priority in its own detached CLI process; injectable so tests never spawn it. */
+  readonly independentRunLauncher: IndependentRunLauncher
 }

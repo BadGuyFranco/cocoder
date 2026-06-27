@@ -115,6 +115,10 @@ export async function launchIndependentHandoff(oz: OzApi, workspaceId: string, p
   return oz.daemonPost('/runs/independent-handoff', { workspaceId, priorityId })
 }
 
+export async function launchIndependentRun(oz: OzApi, workspaceId: string, priorityId: string): Promise<MutationResult> {
+  return oz.daemonPost('/runs/independent-launch', { workspaceId, priorityId })
+}
+
 export async function launchPlaybookRun(oz: OzApi, workspaceId: string, playbookId: string): Promise<MutationResult> {
   return oz.daemonPost('/runs', { workspaceId, playbookId })
 }

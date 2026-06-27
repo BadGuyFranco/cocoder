@@ -25,7 +25,7 @@ function PriorityRow({ priority, index, onLaunch, onOpenDetails, onDrag, isDragg
   const isBlocked = !!linkedRun && linkedRun.status === 'blocked'
   const isSelected = !!linkedRun && linkedRun.id === selectedRunId
   const launchDisabled = launchBlocked && priority.independentOfRunner !== true
-  const launchTitle = launchDisabled ? LAUNCH_BLOCKED_HINT : priority.independentOfRunner === true ? 'Create a runnerless handoff instead of starting the daemon runner.' : undefined
+  const launchTitle = launchDisabled ? LAUNCH_BLOCKED_HINT : priority.independentOfRunner === true ? 'Launch outside the daemon runner.' : undefined
   const borderColor = isSelected ? 'var(--cb-accent)' : isBlocked ? 'rgba(212,118,110,0.30)' : isActive ? 'var(--cb-accent-30)' : 'var(--cb-border)'
   return (
     <div draggable onDragStart={(e) => { didDrag.current = true; setOzItemDragData(e, 'priority', priority.id, priority.name); onDrag('start', index) }} onDragOver={(e) => { e.preventDefault(); onDrag('over', index) }} onDragEnd={() => onDrag('end', index)} onDrop={(e) => { e.preventDefault(); onDrag('drop', index) }}
@@ -61,7 +61,7 @@ function PriorityRow({ priority, index, onLaunch, onOpenDetails, onDrag, isDragg
               (awaiting a founder decision) is still relaunchable — resolve the pending decision by opening
               the linked run (RunDetail's confirm action), not by hiding Launch. It is only DISABLED while
               some run is actively running (launchBlocked), preventing a concurrent launch. */}
-          <Button variant="secondary" size="sm" icon="play" disabled={launchDisabled} title={launchTitle} onClick={(e) => { e.stopPropagation(); onLaunch(priority) }}>{priority.independentOfRunner === true ? 'Handoff' : 'Launch'}</Button>
+          <Button variant="secondary" size="sm" icon="play" disabled={launchDisabled} title={launchTitle} onClick={(e) => { e.stopPropagation(); onLaunch(priority) }}>Launch</Button>
         </div>
       </div>
       {pendingHandoffs.length > 0 && (
