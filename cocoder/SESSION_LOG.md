@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-27 — **ticket-fix-0076: idle continuation nudge held while awaiting founder decision — closed (run_120/run_264)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0076](./tickets/closed/0076-runner-continuation-nudge-can-advance-a-run-past-an-unanswered-founder-decision.md) | **Run:** run_264 (display 120)
+**Outcomes:**
+- **Runner hold shipped (`33799c2`, `4cb2ea4`).** Directive waits now gate the idle "write the next directive" nudge on the existing `founderContinueWait` / `awaiting-founder` state (same class `ticketCloseGate` keys off — no parallel predicate); ordinary parked directives still nudge exactly once.
+- **Regression pinned.** `runner.test.ts` contrast test proves no idle nudge during `ask-founder-continue`; `nudge.test.ts` asserts daemon `requestNudgeRun` 409 while awaiting-founder. Core 125/125, daemon nudge 2/2, tsc green.
+- **Ticket closed** via reconciliation close (`41363cb`); INDEX updated, `order.json` pruned.
+- **Disposition: `closed`.** Acceptance met — in-run nudge suppression plus daemon awaiting-founder refusal; directive-wait timeout FAULT intentionally out of scope (bounded fail, not forward-pressure harm).
+**Next:** Launch ticket `0048` — adopt minimal ESLint 9 flat config in the engine repo.
+
 ## 2026-06-27 — **ticket-fix-0074: honest manual handoff for non-destructive independent launch — closed (run_119/run_263)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0074](./tickets/closed/0074-handoff-honest-manual-affordance-decision-b.md) | **Run:** run_263 (display 119)

@@ -75,7 +75,7 @@ This section is the current-truth owner map for governance authoring actions. It
 
 #### Mid-Run Founder Decisions
 
-- Runner directive `ask-founder-continue` (`packages/core/src/runner/runner.ts`) surfaces a founder question and continues the run after the answer — distinct from terminal wrap-awaiting-founder. Oscar/wrap-up Play contract reconciled so mid-run-answerable decisions do not force premature wrap; run_245 regression pinned in `packages/core/tests/runner.test.ts`.
+- Runner directive `ask-founder-continue` (`packages/core/src/runner/runner.ts`) surfaces a founder question and continues the run after the answer — distinct from terminal wrap-awaiting-founder. Oscar/wrap-up Play contract reconciled so mid-run-answerable decisions do not force premature wrap; run_245 regression pinned in `packages/core/tests/runner.test.ts`. While `founderContinueWait` is active (the same `awaiting-founder` state class `ticketCloseGate` keys off), the runner suppresses the idle continuation nudge so Oscar is not pressured to advance past an unanswered decision; daemon `requestNudgeRun` refuses with 409 on awaiting-founder runs (ticket 0076, run_264).
 
 ### Dashboard, Oz, Pending, And Confirmation Surfaces
 
