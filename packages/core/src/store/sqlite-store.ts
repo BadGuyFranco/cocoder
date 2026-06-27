@@ -9,6 +9,7 @@ import { randomUUID } from 'node:crypto'
 import { DatabaseSync } from 'node:sqlite'
 import { COLUMN_MIGRATIONS, SCHEMA_SQL } from './schema.js'
 import type {
+  CheckpointWalResult,
   CommitLink,
   FaultRecord,
   PruneRunRowsResult,
@@ -342,6 +343,17 @@ class SqliteRunStore implements RunStore {
     })
   }
 
+  checkpointWal(): CheckpointWalResult {
+    const row = this.#db.prepare(`PRAGMA wal_checkpoint(TRUNCATE)`).get() as
+      | { busy?: unknown; log?: unknown; checkpointed?: unknown }
+      | undefined
+    return {
+      busy: numberOrZero(row?.busy),
+      log: numberOrZero(row?.log),
+      checkpointed: numberOrZero(row?.checkpointed),
+    }
+  }
+
   close(): void {
     this.#db.close()
   }
@@ -364,6 +376,10 @@ function faultEventCount(db: DatabaseSync, runId: string): number {
     | { count: number }
     | undefined
   return row?.count ?? 0
+}
+
+function numberOrZero(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0
 }
 
 /** Idempotently bring an EXISTING db up to the current column set (ADR-0003 storage lineage). `CREATE TABLE IF NOT

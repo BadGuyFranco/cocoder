@@ -35,6 +35,7 @@ export {
   type RetentionPlan,
   type RetentionPlanDeps,
 } from './retention-plan.js'
+export { rotateLogFile, type RotateLogFileOptions } from './log-rotation.js'
 export { groupLabel, type RunLabelTarget, type RunLabelTargetType } from './labels.js'
 export { StopRequestedError } from './stop.js'
 export { makeRunnerIO, type RunnerIO, type RunnerPollOptions } from './io.js'

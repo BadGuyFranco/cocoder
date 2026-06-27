@@ -92,6 +92,12 @@ export interface PruneRunRowsResult {
   readonly faultEventsKept: number
 }
 
+export interface CheckpointWalResult {
+  readonly busy: number
+  readonly log: number
+  readonly checkpointed: number
+}
+
 export interface RunStore {
   upsertWorkspace(ws: Workspace): void
 
@@ -133,6 +139,7 @@ export interface RunStore {
    *  runs, newest-last, for recurrence detection. One WHERE (ADR-0003); the runner fingerprints + counts. */
   listFaultHistory(workspaceId: string): FaultRecord[]
   pruneRunRows(runId: string): PruneRunRowsResult
+  checkpointWal(): CheckpointWalResult
 
   close(): void
 }
