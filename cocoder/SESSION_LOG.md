@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-27 — **doc-truth-analysis phase 2 code cleanup: dead playbooks exports removed — continue (run_125/run_268)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [doc-truth-analysis](./priorities/doc-truth-analysis.md) | **Run:** run_268 (display 125)
+**Outcomes:**
+- **Dead `basePlaybooksDir()` export removed (`4ad8361`).** Zero callers repo-wide; `basePersonasDir()`/`basePlaysDir()` untouched; typecheck 7/7 green.
+- **Retired v1 playbook P1–P6 pipeline deleted (`179a786`).** 23 dead modules + 11 orphaned tests removed from `packages/core/src/playbooks/`; `recon.ts` (`inventoryRepo`) kept for drift/read-reality; barrels trimmed to recon-only; core 665/665, typecheck green.
+- **Audit worklists updated.** `docs/architecture-truth-audit.md` rows 3 and 21 marked resolved; founder code-or-doc table closed; stale P1–P6 references corrected in `docs/orchestration-contract-ownership.md`.
+- **Disposition: `continue`.** Phase-2 governance-doc reconciliation (cocoder/**, README/CONTRIBUTING, design-brief path refs) remains Oscar-lane work; no founder decision blocking.
+**Next:** Relaunch `doc-truth-analysis` for Oscar-lane governance doc truth audit (PLAYBOOK, AGENTS, glossary, failure-catalog, cocoder/personas/standards/plays).
+
 ## 2026-06-27 — **doc-truth-analysis phase 1: ARCHITECTURE, ADRs, docs/ reconciled — continue (run_124/run_267)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [doc-truth-analysis](./priorities/doc-truth-analysis.md) | **Run:** run_267 (display 124)

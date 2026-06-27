@@ -16,7 +16,7 @@ workspace files and symbols. Verdicts mean:
 |---|---|---|---|---|---|
 | 1 | lines 3-4 | Status is live v2; last-verified note references ADR-0031, ADR-0023, ADR-0029. | `cocoder/decisions/0031-architecture-reading-contract.md`; `cocoder/decisions/0023-workspace-commit-spine.md`; `cocoder/decisions/0029-founder-trusted-pre-run-snapshot.md`. | ACCURATE | - |
 | 2 | lines 6-7 | Canonical vocabulary is `docs/glossary.md`; onboarded workspaces ship `cocoder/glossary.md`. | `docs/glossary.md`; `templates/workspace-cocoder/cocoder/glossary.md`; `packages/core/tests/scaffold.test.ts:63-66`. | ACCURATE | - |
-| 3 | lines 11-19 | Current topology read is ADR-0008 plus ADR-0012, 0019, 0027, 0030, 0032; standalone `spikes/` and base `playbooks/` genres retired. | All named ADR files exist under `cocoder/decisions/`; `packages/personas/base/plays/` exists; no `packages/personas/base/playbooks/` directory was found, though `packages/personas/src/index.ts:12-13` still exports `basePlaybooksDir()`. | STALE | Fix code or doc: either remove/retire the leftover `basePlaybooksDir()` export, or mention it as legacy compatibility if intentionally retained. |
+| 3 | lines 11-19 | Current topology read is ADR-0008 plus ADR-0012, 0019, 0027, 0030, 0032; standalone `spikes/` and base `playbooks/` genres retired. | All named ADR files exist under `cocoder/decisions/`; `packages/personas/base/plays/` exists; no `packages/personas/base/playbooks/` directory; `basePlaybooksDir()` export removed from `packages/personas/src/index.ts` (run_268). | RESOLVED (code fixed) | Founder decision (run_267): dead `basePlaybooksDir()` export removed; zero callers repo-wide. |
 | 4 | lines 21-47 | Diagram: install repo has `packages/core`, `packages/daemon`, `packages/ui`, `packages/personas/base`, and dogfood `cocoder/`; install-local has DB/runs/worktrees/workspace/settings/secrets/audit; dashboard talks to daemon; daemon to core. | Package directories exist; `local/cocoder.db`, `local/runs`, `local/worktrees`, `local/workspace`, `local/settings.json`, `local/secrets`, `local/oz-audit.log` exist; `packages/daemon/src/server.ts:158-167`; `packages/ui/src/main/daemon-client.ts:1-5`. | ACCURATE | - |
 | 5 | lines 49-56 | Three storage zones: install public, install private `<CoCoder>/local/`, workspace tracked `<primary-root>/cocoder/`; no per-workspace local zone. | Root `.gitignore:1-8`; `packages/daemon/src/registry.ts:53-58`; `packages/core/src/store/portable/paths.ts:19-26`; template has `templates/workspace-cocoder/cocoder/` and no template-local zone. | ACCURATE | - |
 | 6 | lines 58-65 | CoCoder repo is both engine install and dogfood workspace host; dogfood `cocoder/decisions/` is the live CoCoder ADR tree. | `cocoder/AGENTS.md`; `cocoder/decisions/README.md`; current repo has `packages/` and tracked `cocoder/`. | ACCURATE | - |
@@ -34,7 +34,7 @@ workspace files and symbols. Verdicts mean:
 | 18 | lines 148-151 | Observation is tiered by "direct your primary": Oscar directs Bob, Deb nudges Oscar, Oz directs through daemon tools. | Persona prompts under `packages/personas/base/`; Deb/Oz nudge/repair handlers in `packages/daemon/src/launcher.ts:1248-1276` and `packages/daemon/src/launcher.ts:1359-1391`; no single code enforcer for the whole policy found. | UNVERIFIABLE | Leave as policy, or add a pointer to the prompt/contract owner that enforces the tiering. |
 | 19 | lines 153-157 | Deb has live status feed, Oscar-only nudge, and gate-enforced CoCoder repair mode; Deb does not rescue failed product runs. | `packages/daemon/src/launcher.ts:1359-1391`; `packages/daemon/src/oscar-deb-repair.ts`; `packages/daemon/tests/oscar-deb-repair.test.ts`; `packages/daemon/tests/oscar-deb-repair-op.test.ts`. | ACCURATE | - |
 | 20 | lines 159-164 | Oz is idle control plane with launch/status/lifecycle/authoring/refresh/nudge/repair/read-governed; read-governed is default-allow with denylist, live from disk. | `packages/daemon/src/routes.ts`; `packages/daemon/src/launcher.ts:1922-1955`; `packages/daemon/src/launcher.ts:2067-2140`; `packages/daemon/src/launcher.ts:2509-2534`; `packages/core/src/write-scope/governed-read.ts:1-11`. | ACCURATE | - |
-| 21 | lines 166-170 | Existing-repo onboarding and drift run as ordinary Oscar priorities; standalone phase-executor is retired. | Template seeds `onboard-existing` conditionally in `packages/core/src/scaffold/scaffold.ts:7-8` and `packages/core/src/scaffold/scaffold.ts:84-93`; drift engine exists at `packages/core/src/drift/`; many legacy `packages/core/src/playbooks/*` files still exist. | STALE | Fix doc or code: clarify the legacy playbook modules are retained audit tooling, or remove them if they are no longer shipping runtime. |
+| 21 | lines 166-170 | Existing-repo onboarding and drift run as ordinary Oscar priorities; standalone phase-executor is retired. | Template seeds `onboard-existing` conditionally in `packages/core/src/scaffold/scaffold.ts:7-8` and `packages/core/src/scaffold/scaffold.ts:84-93`; drift engine exists at `packages/core/src/drift/`; `packages/core/src/playbooks/` now exports only `recon.ts` (`inventoryRepo`) for drift/read-reality tooling (run_268). | RESOLVED (code fixed) | Founder decision (run_267): retired v1 P1–P6 playbook modules deleted; sole live symbol `inventoryRepo` kept. |
 | 22 | lines 172-189 | Git ignore matrix: `/local/` ignored except README; `cocoder/` tracked; env/secrets ignored; examples tracked. | Root `.gitignore:1-22`; `templates/install-local/secrets/.gitignore`; `git status --short` shows tracked/untracked governance dirt, not ignored `cocoder/`. | ACCURATE | - |
 | 23 | lines 191-197 | Pattern: example files are tracked; bootstrap copies `templates/workspace-cocoder/` to `<primary-root>/cocoder/`; `local/` survives git updates. | `templates/install-local/*.example.*`; `packages/core/src/scaffold/scaffold.ts:75-95`; `.gitignore:5-8`. | ACCURATE | - |
 | 24 | lines 202-215 | Directory layout lists seven TypeScript packages and names `core`, `personas`, `adapters`, `session-hosts`, `daemon`, `cli`, `ui`. | `find packages -maxdepth 1 -type d` shows those seven directories; each has `package.json`. | ACCURATE | - |
@@ -72,7 +72,8 @@ workspace files and symbols. Verdicts mean:
 ## Resolved Follow-Ups
 
 The wrong-claim follow-ups from the initial audit are marked `RESOLVED (doc fixed)` in rows 31, 38, 41,
-45, and 50. Remaining `STALE` and `UNVERIFIABLE` rows are unchanged and still need separate scoping.
+45, and 50. Founder code-or-doc calls from run_267 are marked `RESOLVED (code fixed)` in rows 3 and 21
+(run_268). Remaining `UNVERIFIABLE` rows are unchanged and still need separate scoping.
 
 ## ADR Reference Audit
 
@@ -106,18 +107,20 @@ targets, each verified to resolve in the current tree:
 
 ADR-9 — **NO EDIT (historical)**, rationale in the row above.
 
-## Phase 2 — not yet audited (run_267 wrap)
+## Phase 2 — remaining doc surface (run_268 wrap)
 
-Resume with these surfaces in order (no founder input required for the sweep itself):
+Code follow-ups from run_267 are closed (rows 3, 21, 52b). Resume with these surfaces in order (no
+founder input required for the sweep itself):
 
 1. **cocoder/ governance docs** — PLAYBOOK, AGENTS, glossary, failure-catalog, personas/, standards/, plays/ (Oscar-lane; builder cannot write these).
 2. **Root README and CONTRIBUTING** — stale CI/contributor claims; open ticket [0037](../cocoder/tickets/open/0037-contributing-pr-template-stale-rg-ci-gate.md) overlaps CONTRIBUTING.
 3. **Design-intent briefs under docs/** — oz-design-brief, oz-streaming-design, ui-dev-notes, research/; path-ref scan only (do not flag aspirational design as wrong).
+4. **Cleanup (when priority completes):** whether `docs/architecture-truth-audit.md` and `docs/docs-files-truth-audit.md` should be archived rather than kept permanently in `docs/`.
 
-**Founder code-or-doc calls (outside doc-only fixes; record resolution in this inventory):**
+**Founder code-or-doc calls — resolution (run_268):**
 
-| Item | Evidence | Options | Recommendation |
-|---|---|---|---|
-| `basePlaybooksDir()` export | `packages/personas/src/index.ts:12`; `packages/personas/base/playbooks/` deleted (row 3) | Remove dead export (code) or document as legacy compat (doc) | Small cleanup ticket to remove the export |
-| `packages/core/src/playbooks/` p1–p6 modules | Retained after ADR-0026 executor deletion; prior daemon caller gone (row 21) | Confirm live callers vs dead-code removal | Code investigation ticket before any delete |
-| Developer-mode routing gate | ARCHITECTURE.md + oz-improvement-routing cite it; no symbol in `packages/` (row 52b) | Implement the gate or correct docs as aspirational | Founder decides product intent first |
+| Item | Verdict |
+|---|---|
+| `basePlaybooksDir()` export (row 3) | **RESOLVED (code fixed, run_268):** dead export removed from `packages/personas/src/index.ts`; zero callers. |
+| `packages/core/src/playbooks/` p1–p6 modules (row 21) | **RESOLVED (code fixed, run_268):** 23 dead modules + 11 orphaned tests deleted; `recon.ts` (`inventoryRepo`) kept as sole live export. |
+| Developer-mode routing gate (row 52b) | **RESOLVED (doc fixed, run_267):** ARCHITECTURE.md and oz-improvement-routing corrected to v2 write-scope + commit-gate reality. |

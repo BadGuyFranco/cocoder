@@ -2,10 +2,10 @@
 
 > **Completed historical analysis:** ADR-0026's rebuild landed after this owner map was written. The
 > standalone executor, playbook loader discovery, playbook tests, and
-> `scripts/proof-takeover-executor.mjs` were deleted. The reusable audit machinery survived as the P1-P6
-> action/helper modules under `packages/core/src/playbooks/`, exported through
-> `packages/core/src/playbooks/index.ts`. Line-anchored paths below are a pre-rebuild record unless a row
-> explicitly names surviving tooling.
+> `scripts/proof-takeover-executor.mjs` were deleted. The only surviving playbook module is
+> `inventoryRepo` in `packages/core/src/playbooks/recon.ts`, exported through
+> `packages/core/src/playbooks/index.ts` (v1 P1–P6 modules removed in run_268). Line-anchored paths
+> below are a pre-rebuild record unless a row explicitly names surviving tooling.
 
 Scope: completed analysis for ADR-0026's rebuild of existing-repo onboarding as an Oscar-driven priority. This file preserves the pre-rebuild owner surfaces that guided deletion of the standalone executor without deleting reusable audit tooling.
 

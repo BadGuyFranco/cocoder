@@ -46,15 +46,12 @@ Oz/Oscar/Bob/Deb/Quinn contradiction). Live worklists: `docs/architecture-truth-
 
 ## Founder-directed code-or-doc follow-ups (founder decisions from run_267)
 
-1. **`basePlaybooksDir()` dead export — DECIDED: remove it.** Founder directive: remove the dead
-   export at `packages/personas/src/index.ts:12` (`packages/personas/base/playbooks/` is deleted).
-   This is a CODE change (outside the doc lane) — file/run a small cleanup atom next session; confirm
-   no remaining importer first (`grep -rn basePlaybooksDir`).
+1. **`basePlaybooksDir()` dead export — DONE in run_268.** Removed from `packages/personas/src/index.ts`;
+   zero callers repo-wide; typecheck green.
 
-2. **`packages/core/src/playbooks/` p1–p6 modules — DECIDED: confirm, then clean up.** Founder
-   directive: confirm these are orphaned (the only prior caller, the daemon executor branch, was
-   deleted by ADR-0026) by enumerating live callers; then remove the genuinely dead modules and keep
-   any with a real caller. Investigation BEFORE delete; CODE change outside the doc lane.
+2. **`packages/core/src/playbooks/` p1–p6 modules — DONE in run_268.** Orphan investigation confirmed a
+   closed dead subgraph; 23 modules + 11 orphaned tests deleted; `recon.ts` (`inventoryRepo`) kept as
+   sole live export for drift/read-reality tooling.
 
 3. **Developer-mode routing gate — DECIDED (Option A) and DONE in run_267.** Founder chose "document
    what is true now." Corrected `ARCHITECTURE.md:390` and `docs/oz-improvement-routing.md:44` to the v2
