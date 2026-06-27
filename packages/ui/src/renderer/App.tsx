@@ -24,7 +24,7 @@ const ROUTE_TITLE: Record<Route, string> = { dashboard: 'Dashboard', workspaces:
 const ACTIVE_DETAIL_FETCH_LIMIT = 6
 const GLOBAL_CHAT_KEY = ''
 const LAUNCH_PROGRESS_POLL_MS = 600
-const CLOSED_LAUNCH_PROGRESS: LaunchProgressState = { open: false, title: '', runId: null, detail: null, error: null }
+const CLOSED_LAUNCH_PROGRESS: LaunchProgressState = { open: false, title: '', runId: null, detail: null, error: null, handoff: null }
 
 function workspaceCreateMessage(disclosure: WorkspaceCreateDisclosure, legacyHidden: readonly string[]): string {
   const roots = disclosure.roots.map((root) => `${root.role}: ${root.rawPath ?? root.path}`).join('; ')
@@ -397,11 +397,17 @@ export function App() {
   // test mode (`!live`) the actions keep the design's chat-stub behavior so the demo stays interactive.
   const [actionMsg, setActionMsg] = useState<{ kind: 'ok' | 'info' | 'err'; text: string } | null>(null)
   const notify = (kind: 'ok' | 'info' | 'err', text: string) => { setActionMsg({ kind, text }); window.setTimeout(() => setActionMsg(null), 6000) }
-  const openLaunchProgress = (title: string): void => setLaunchProgress({ open: true, title, runId: null, detail: null, error: null })
+  const openLaunchProgress = (title: string): void => setLaunchProgress({ open: true, title, runId: null, detail: null, error: null, handoff: null })
   const closeLaunchProgress = (): void => setLaunchProgress(CLOSED_LAUNCH_PROGRESS)
-  const setLaunchProgressError = (text: string): void => setLaunchProgress((cur) => ({ ...cur, open: true, error: text }))
+  const setLaunchProgressError = (text: string): void => setLaunchProgress((cur) => ({ ...cur, open: true, error: text, handoff: null }))
+  const setLaunchProgressHandoff = (handoff: { readonly handoffPath: string; readonly command: string }): void => setLaunchProgress((cur) => ({ ...cur, open: true, error: null, handoff }))
   function launchedRunId(data: unknown): string | null {
     return typeof data === 'object' && data !== null && typeof (data as { runId?: unknown }).runId === 'string' ? (data as { runId: string }).runId : null
+  }
+  function launchedHandoff(data: unknown): { handoffPath: string; command: string } | null {
+    if (typeof data !== 'object' || data === null) return null
+    const { handoffPath, command } = data as { handoffPath?: unknown; command?: unknown }
+    return typeof handoffPath === 'string' && typeof command === 'string' ? { handoffPath, command } : null
   }
   async function refreshActiveWs() {
     await refreshWorkspace(activeId)
@@ -587,10 +593,13 @@ export function App() {
       ? await launchIndependentHandoff(oz, activeId, priority.id)
       : await launchRun(oz, activeId, priority.id, resumeFromRunId, strictPreRunDirt, allowPreRunIntegrityErrors)
     if (res.ok && priority.independentOfRunner === true && !resumeFromRunId) {
-      const data = res.data as { handoffPath?: unknown; command?: unknown }
-      const message = `Runnerless handoff created${typeof data.handoffPath === 'string' ? `: ${data.handoffPath}` : '.'}`
-      setLaunchProgressError(message)
-      notify('ok', message)
+      const handoff = launchedHandoff(res.data)
+      if (!handoff) {
+        setLaunchProgressError('Runnerless handoff created, but Oz did not return the handoff path and command.')
+        return
+      }
+      setLaunchProgressHandoff(handoff)
+      notify('ok', 'Runnerless handoff created.')
       await refreshActiveWs()
     } else if (res.ok) {
       const runId = launchedRunId(res.data)

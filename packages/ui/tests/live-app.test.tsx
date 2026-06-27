@@ -429,6 +429,7 @@ describe('Oz renderer — live daemon path', () => {
     const basePriorities = (prioritiesFx as { priorities: DPriority[] }).priorities
     const runnerless = { ...basePriorities[0]!, id: 'runnerless-priority', title: 'Runnerless priority', independentOfRunner: true }
     const runnerlessHandoffs: { handoffs: DRunnerlessHandoff[] } = { handoffs: [] }
+    const command = "cd '/repo' && cocoder run-independent runnerless-priority"
     setOz(mockOz({
       posts,
       priorities: { ...(prioritiesFx as { priorities: DPriority[] }), priorities: [runnerless] },
@@ -442,9 +443,9 @@ describe('Oz renderer — live daemon path', () => {
           title: 'Runnerless priority',
           createdAt: '2026-06-26T00:00:00.000Z',
           path: 'local/runnerless-handoffs/cocoder/runnerless.md',
-          command: "cd '/repo' && cocoder run-independent runnerless-priority",
+          command,
         }]
-        return { ok: true, status: 202, data: { ok: true, runnerless: true, handoffPath: 'local/runnerless-handoffs/cocoder/runnerless.md' } }
+        return { ok: true, status: 202, data: { ok: true, runnerless: true, handoffPath: 'local/runnerless-handoffs/cocoder/runnerless.md', command } }
       },
     }))
     render(<App />)
@@ -456,8 +457,42 @@ describe('Oz renderer — live daemon path', () => {
     expect(posts.some((p) => p.path === '/runs')).toBe(false)
     expect(posts.find((p) => p.path === '/runs/independent-handoff')?.body).toMatchObject({ workspaceId: 'cocoder', priorityId: 'runnerless-priority' })
     await waitFor(() => expect(screen.getAllByText(/Runnerless handoff created/).length).toBeGreaterThan(0))
+    const notice = await screen.findByText('Runnerless handoff created — run it in a fresh terminal:')
+    const overlay = notice.closest('body > div') as HTMLElement | null
+    expect(overlay).not.toBeNull()
+    expect(within(overlay!).getByText(command)).toBeDefined()
+    expect(overlay!.querySelector('.ph-check-circle')).not.toBeNull()
+    expect(overlay!.querySelector('.ph-warning-circle')).toBeNull()
     await waitFor(() => expect(screen.getByText('Pending handoff')).toBeDefined())
-    expect(screen.getByText('local/runnerless-handoffs/cocoder/runnerless.md')).toBeDefined()
+    expect(screen.getAllByText('local/runnerless-handoffs/cocoder/runnerless.md').length).toBeGreaterThan(0)
+  })
+
+  it('runnerless handoff success does not render the launch error treatment', async () => {
+    const posts: PostCall[] = []
+    const basePriorities = (prioritiesFx as { priorities: DPriority[] }).priorities
+    const runnerless = { ...basePriorities[0]!, id: 'runnerless-priority', title: 'Runnerless priority', independentOfRunner: true }
+    const command = "cd '/repo' && cocoder run-independent runnerless-priority"
+    setOz(mockOz({
+      posts,
+      priorities: { ...(prioritiesFx as { priorities: DPriority[] }), priorities: [runnerless] },
+      runnerlessHandoffs: { handoffs: [] },
+      runs: { runs: [] },
+      postResult: (path: string) => path === '/runs/independent-handoff'
+        ? { ok: true, status: 202, data: { ok: true, runnerless: true, handoffPath: 'local/runnerless-handoffs/cocoder/runnerless.md', command } }
+        : { ok: false, status: 500, error: `unexpected ${path}` },
+    }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(within(rowForText('Runnerless priority')).getByText('Handoff'))
+
+    const notice = await screen.findByText('Runnerless handoff created — run it in a fresh terminal:')
+    const overlay = notice.closest('body > div') as HTMLElement | null
+    expect(overlay).not.toBeNull()
+    expect(within(overlay!).queryByText('Launch needs attention.')).toBeNull()
+    expect(within(overlay!).queryByRole('alert')).toBeNull()
+    expect(overlay!.querySelector('.ph-warning-circle')).toBeNull()
+    expect(overlay!.innerHTML).not.toContain('rgba(212,118,110,0.12)')
   })
 
   it('local-cache-retention-shaped runnerless priority never posts to /runs', async () => {
@@ -473,7 +508,7 @@ describe('Oz renderer — live daemon path', () => {
       priorities: { ...(prioritiesFx as { priorities: DPriority[] }), priorities: [runnerless] },
       runs: { runs: [] },
       postResult: (path: string) => path === '/runs/independent-handoff'
-        ? { ok: true, status: 202, data: { ok: true, runnerless: true, handoffPath: 'local/runnerless-handoffs/cocoder/local-cache-retention.md' } }
+        ? { ok: true, status: 202, data: { ok: true, runnerless: true, handoffPath: 'local/runnerless-handoffs/cocoder/local-cache-retention.md', command: "cd '/repo' && cocoder run-independent local-cache-retention" } }
         : { ok: false, status: 500, error: `unexpected ${path}` },
     }))
     render(<App />)
