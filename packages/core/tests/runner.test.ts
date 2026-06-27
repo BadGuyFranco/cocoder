@@ -17,6 +17,7 @@ import {
   type MakeJudge,
   type NudgeRequest,
   MissingObjectiveError,
+  NON_LOOP_STALL_NUDGE_CAP,
   type Play,
   type PlayAssignment,
   PreflightError,
@@ -3163,6 +3164,68 @@ describe('runRun (multi-atom loop)', () => {
     const cap = store.listEvents(result.runId).find((e) => e.type === 'loop-capped')
     expect(cap?.data).toMatchObject({ atom: 0, cap: 'wall-clock', ledger: [] })
     expect(store.listEvents(result.runId).some((e) => e.type === 'builder-failed')).toBe(false)
+  })
+
+  test('non-loop stall cap blocks the atom, quarantines changes, logs the cap, and continues', async () => {
+    const store = openRunStore(':memory:')
+    const restored: string[][] = []
+    const sent: string[] = []
+    const logs: string[] = []
+    let changedCall = 0
+    const git: Git = {
+      ...worktreeStubs,
+      async headSha() {
+        return 'h0'
+      },
+      async changedFiles() {
+        // call 0 = run-start snapshot; call 1 = stalled atom quarantine; rest = good atom commit.
+        const c = changedCall++
+        if (c === 0) return []
+        if (c === 1) return ['packages/stalled.ts']
+        return ['packages/good.ts']
+      },
+      async addAndCommit() {
+        return 'sha-good'
+      },
+      async restoreToHead(_cwd, files) {
+        restored.push([...files])
+      },
+      async show() {
+        return ''
+      },
+    }
+    const stalledThenDone: MakeJudge = ({ atomIndex }) => async () =>
+      atomIndex === 0 ? { state: 'stuck', nudge: 'still stuck?' } : { state: 'done' }
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git,
+        makeJudge: stalledThenDone,
+        io: fakeIO({ directives: [delegate('stalled atom'), delegate('good atom'), wrapup('done')] }),
+        sessionHost: fakeSessionHost({
+          async sendInput(_ref, text) {
+            sent.push(text)
+          },
+        }),
+        timeouts: { orchestrationMs: 1_000, buildMs: 1_000, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 },
+        log: (message) => logs.push(message),
+      }),
+      input,
+    )
+
+    expect(result.status).toBe('completed')
+    expect(result.atoms).toBe(2)
+    expect(result.committedShas).toEqual(['sha-good'])
+    expect(sent.filter((text) => text === 'still stuck?')).toHaveLength(NON_LOOP_STALL_NUDGE_CAP)
+    expect(restored).toEqual([['packages/stalled.ts']])
+    expect(store.listWorkItems(result.runId).map((w) => w.status)).toEqual(['abandoned', 'done'])
+    expect(store.listEvents(result.runId).find((e) => e.type === 'stall-capped')?.data).toMatchObject({
+      atom: 0,
+      nudgeCount: NON_LOOP_STALL_NUDGE_CAP,
+    })
+    expect(store.listEvents(result.runId).some((e) => e.type === 'builder-failed')).toBe(false)
+    expect(logs).toContain(`atom 0 was BLOCKED at the stall cap after ${NON_LOOP_STALL_NUDGE_CAP} nudges — nothing committed`)
   })
 
   test('backstop: too many consecutive rejects force-wraps the run with a recorded reason', async () => {

@@ -326,6 +326,7 @@ export {
   makeRunnerIO,
   type RunnerIO,
   type RunnerPollOptions,
+  NON_LOOP_STALL_NUDGE_CAP,
   runMonitor,
   makeHeuristicJudge,
   type Judge,

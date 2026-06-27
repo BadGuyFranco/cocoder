@@ -39,12 +39,13 @@ export interface Assessment {
 /** How the monitor judges a sample. Injected: a cheap heuristic (tier 1) or a model call (earned later). */
 export type Judge = (sample: MonitorSample) => Promise<Assessment>
 
-export type MonitorOutcomeReason = 'done' | 'blocked' | 'dead' | 'timeout' | 'loop-iteration-cap' | 'loop-wall-clock-cap'
+export type MonitorOutcomeReason = 'done' | 'blocked' | 'dead' | 'timeout' | 'loop-iteration-cap' | 'loop-wall-clock-cap' | 'stall-cap'
 
 export interface MonitorOutcome {
   readonly reason: MonitorOutcomeReason
   readonly last: Assessment | null
   readonly samples: number
+  readonly nudgeCount: number
   readonly loopLedger?: readonly LoopLedgerEntry[]
 }
 
@@ -85,6 +86,10 @@ export interface MonitorOptions {
 
 const defaultSleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
+// Non-loop atoms otherwise rely on the 4-hour builder turn timeout. Eight real nudges gives the builder
+// repeated chances to recover while returning control before an orchestration deadlock like run_255.
+export const NON_LOOP_STALL_NUDGE_CAP = 8
+
 export async function runMonitor(deps: MonitorDeps, opts: MonitorOptions): Promise<MonitorOutcome> {
   const sleep = deps.sleep ?? defaultSleep
   const now = deps.now ?? Date.now
@@ -97,6 +102,7 @@ export async function runMonitor(deps: MonitorDeps, opts: MonitorOptions): Promi
   let samples = 0
   let last: Assessment | null = null
   let lastNudgeAt = Number.NEGATIVE_INFINITY
+  let nudgeCount = 0
   let prevLoopIterations: number | null = null
 
   for (;;) {
@@ -105,7 +111,7 @@ export async function runMonitor(deps: MonitorDeps, opts: MonitorOptions): Promi
     try {
       frame = await deps.readScreen()
     } catch {
-      return { reason: 'dead', last, samples } // pane gone — read-screen throws (cmux liveness contract)
+      return { reason: 'dead', last, samples, nudgeCount } // pane gone — read-screen throws (cmux liveness contract)
     }
 
     const ledger = opts.loop === undefined ? null : deps.readLoopLedger ? await deps.readLoopLedger() : []
@@ -119,17 +125,17 @@ export async function runMonitor(deps: MonitorDeps, opts: MonitorOptions): Promi
     last = assessment
     deps.onAssessment?.(assessment, sample)
 
-    if (assessment.state === 'done') return { reason: 'done', last, samples }
-    if (assessment.state === 'blocked') return { reason: 'blocked', last, samples }
+    if (assessment.state === 'done') return { reason: 'done', last, samples, nudgeCount }
+    if (assessment.state === 'blocked') return { reason: 'blocked', last, samples, nudgeCount }
 
     if (opts.loop !== undefined) {
       const checkedLedger = ledger ?? []
       const latest = checkedLedger.at(-1)
       if (checkedLedger.length > opts.loop.maxIterations || (checkedLedger.length === opts.loop.maxIterations && latest?.result === 'red')) {
-        return { reason: 'loop-iteration-cap', last, samples, loopLedger: checkedLedger }
+        return { reason: 'loop-iteration-cap', last, samples, nudgeCount, loopLedger: checkedLedger }
       }
       if (loopDeadline !== null && now() >= loopDeadline) {
-        return { reason: 'loop-wall-clock-cap', last, samples, loopLedger: checkedLedger }
+        return { reason: 'loop-wall-clock-cap', last, samples, nudgeCount, loopLedger: checkedLedger }
       }
     }
 
@@ -138,12 +144,16 @@ export async function runMonitor(deps: MonitorDeps, opts: MonitorOptions): Promi
       if (text !== undefined && now() - lastNudgeAt >= minNudgeIntervalMs) {
         await deps.nudge(text)
         lastNudgeAt = now()
+        nudgeCount += 1
         deps.onNudge?.(text)
+        if (opts.loop === undefined && nudgeCount >= NON_LOOP_STALL_NUDGE_CAP) {
+          return { reason: 'stall-cap', last, samples, nudgeCount }
+        }
       }
     }
 
-    if (!(await deps.isAlive())) return { reason: 'dead', last, samples }
-    if (now() >= deadline) return { reason: 'timeout', last, samples }
+    if (!(await deps.isAlive())) return { reason: 'dead', last, samples, nudgeCount }
+    if (now() >= deadline) return { reason: 'timeout', last, samples, nudgeCount }
 
     prevFrame = frame
     if (loopIterations !== undefined) prevLoopIterations = loopIterations

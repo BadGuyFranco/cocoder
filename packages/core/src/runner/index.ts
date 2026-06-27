@@ -24,6 +24,7 @@ export { groupLabel, type RunLabelTarget, type RunLabelTargetType } from './labe
 export { StopRequestedError } from './stop.js'
 export { makeRunnerIO, type RunnerIO, type RunnerPollOptions } from './io.js'
 export {
+  NON_LOOP_STALL_NUDGE_CAP,
   runMonitor,
   makeHeuristicJudge,
   type Judge,

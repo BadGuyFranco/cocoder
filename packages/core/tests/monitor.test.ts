@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { type Assessment, type Judge, type MonitorDeps, StopRequestedError, makeHeuristicJudge, runMonitor } from '../src/index.js'
+import { NON_LOOP_STALL_NUDGE_CAP, type Assessment, type Judge, type MonitorDeps, StopRequestedError, makeHeuristicJudge, runMonitor } from '../src/index.js'
 
 // A controllable clock the fake sleep advances, so timeout/rate-limit are deterministic (no real time).
 function clock(start = 0): { now: () => number; sleep: (ms: number) => Promise<void> } {
@@ -59,6 +59,47 @@ describe('runMonitor', () => {
     )
     expect(out.reason).toBe('done')
     expect(sent).toEqual(['are you blocked?', 'are you blocked?']) // 2 of 4 stuck samples — rate-limited
+  })
+
+  test('caps a non-loop stalled atom after the bounded count of actual nudges', async () => {
+    const c = clock()
+    const sent: string[] = []
+    const out = await runMonitor(
+      deps({
+        ...c,
+        judge: async () => ({ state: 'stuck', nudge: 'still stuck?' }),
+        nudge: async (text) => {
+          sent.push(text)
+        },
+      }),
+      { ...opts, timeoutMs: 1_000_000, minNudgeIntervalMs: 0 },
+    )
+    expect(out.reason).toBe('stall-cap')
+    expect(out.nudgeCount).toBe(NON_LOOP_STALL_NUDGE_CAP)
+    expect(sent).toHaveLength(NON_LOOP_STALL_NUDGE_CAP)
+    expect(out.samples).toBe(NON_LOOP_STALL_NUDGE_CAP)
+  })
+
+  test('does not apply the non-loop stall cap to loop atoms', async () => {
+    const c = clock()
+    const sent: string[] = []
+    const out = await runMonitor(
+      deps({
+        ...c,
+        judge: async () => ({ state: 'stuck', nudge: 'still stuck?' }),
+        nudge: async (text) => {
+          sent.push(text)
+        },
+      }),
+      {
+        ...opts,
+        timeoutMs: 1_000_000,
+        minNudgeIntervalMs: 0,
+        loop: { maxIterations: 100, wallClockMs: (NON_LOOP_STALL_NUDGE_CAP + 1) * opts.cadenceMs },
+      },
+    )
+    expect(out.reason).toBe('loop-wall-clock-cap')
+    expect(sent.length).toBeGreaterThan(NON_LOOP_STALL_NUDGE_CAP)
   })
 
   test('fast-fails when the session dies (status says exited)', async () => {

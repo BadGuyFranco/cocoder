@@ -177,6 +177,7 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
   }
 
   let cappedLoop: { readonly cap: 'iterations' | 'wall-clock'; readonly ledger: readonly LoopLedgerEntry[] } | null = null
+  let cappedStall: { readonly nudgeCount: number } | null = null
   let monitorSamples = 0
   let completionAttempt = 0
 
@@ -354,6 +355,10 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
         }
         break
       }
+      if (outcome.reason === 'stall-cap') {
+        cappedStall = { nudgeCount: outcome.nudgeCount }
+        break
+      }
       if (outcome.reason !== 'done') {
         store.setWorkItemStatus(workItem.id, 'abandoned')
         // Isolate this faulted atom's produced work BEFORE the fault funnels into triage. Without this the
@@ -409,6 +414,16 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
       await quarantineAtom(atomIndex, headBefore, 'atom-self-committed-loop-capped')
       setActiveAtom(null)
       const outcomeLine = `atom ${atomIndex} was BLOCKED at the loop ${cap} cap — nothing committed`
+      log(outcomeLine)
+      return { kind: 'blocked', outcomeLine }
+    }
+    if (cappedStall !== null) {
+      const { nudgeCount } = cappedStall
+      store.setWorkItemStatus(workItem.id, 'abandoned')
+      store.recordEvent({ runId, type: 'stall-capped', data: { atom: atomIndex, nudgeCount } })
+      await quarantineAtom(atomIndex, headBefore, 'atom-self-committed-stall-capped')
+      setActiveAtom(null)
+      const outcomeLine = `atom ${atomIndex} was BLOCKED at the stall cap after ${nudgeCount} nudges — nothing committed`
       log(outcomeLine)
       return { kind: 'blocked', outcomeLine }
     }
