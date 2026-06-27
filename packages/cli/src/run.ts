@@ -28,7 +28,7 @@ import {
 import { getAdapter, makeAdapterRegistry } from '@cocoder/adapters'
 import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import { CmuxSessionHost } from '@cocoder/session-hosts'
-import { authoringPlayViaDaemon, closeTicketViaDaemon, migrateHistoryViaDaemon, requestDebRepairViaDaemon, resumeViaDaemon, runViaDaemon, startOzDaemon, supportCommitViaDaemon, teardownViaDaemon, type DebRepairEvidenceItem } from './client.js'
+import { authoringPlayViaDaemon, closeTicketViaDaemon, confirmTicketCloseViaDaemon, migrateHistoryViaDaemon, requestDebRepairViaDaemon, resumeViaDaemon, runViaDaemon, startOzDaemon, supportCommitViaDaemon, teardownViaDaemon, type DebRepairEvidenceItem } from './client.js'
 import { closeTicketViaCli } from './close-ticket.js'
 import { createTicketViaCli } from './create-ticket.js'
 import { latestModelFor } from './latest-model.js'
@@ -40,9 +40,10 @@ const out = (m: string): void => {
   process.stdout.write(`${m}\n`)
 }
 const runIndependentUsage = 'usage: cocoder run-independent <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors] [--force]'
-const usage = `usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   ${runIndependentUsage}   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz create-priority --id <id> --title <text> --objective <text> [--details-file <path> | --details-stdin]   |   cocoder oz edit-priority <id> [--objective <text>] [--mode <replace-body|append-section>] [--details-file <path> | --details-stdin]   |   cocoder oz close-ticket <id> [--resolution <text>] [--run <runId>]   |   cocoder oz create-ticket --title <text> --type <type> --priority <priority> [--description <text> | --details-file <path> | --details-stdin] [--id <id>] [--run <runId>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]   |   cocoder oz commit-support <runId>   |   cocoder oz resume <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]`
+const usage = `usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   ${runIndependentUsage}   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz create-priority --id <id> --title <text> --objective <text> [--details-file <path> | --details-stdin]   |   cocoder oz edit-priority <id> [--objective <text>] [--mode <replace-body|append-section>] [--details-file <path> | --details-stdin]   |   cocoder oz close-ticket <id> [--resolution <text>] [--run <runId>]   |   cocoder oz confirm-ticket-close <runId> [--resolution <text>]   |   cocoder oz create-ticket --title <text> --type <type> --priority <priority> [--description <text> | --details-file <path> | --details-stdin] [--id <id>] [--run <runId>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]   |   cocoder oz commit-support <runId>   |   cocoder oz resume <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]`
 const requestDebRepairUsage = 'usage: cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]'
 const closeTicketUsage = 'usage: cocoder oz close-ticket <id> [--resolution <text>] [--run <runId>]'
+const confirmTicketCloseUsage = 'usage: cocoder oz confirm-ticket-close <runId> [--resolution <text>]'
 const createTicketUsage = 'usage: cocoder oz create-ticket --title <text> --type <type> --priority <priority> [--description <text> | --details-file <path> | --details-stdin] [--id <id>] [--run <runId>]'
 const createPriorityUsage = 'usage: cocoder oz create-priority --id <id> --title <text> --objective <text> [--details-file <path> | --details-stdin]'
 const editPriorityUsage = 'usage: cocoder oz edit-priority <id> [--objective <text>] [--mode <replace-body|append-section>] [--details-file <path> | --details-stdin]'
@@ -229,6 +230,33 @@ export async function main(options: MainOptions = {}): Promise<void> {
       out(`ticket ${ticketId} is already closed${result.commitSha ? ` (reconciled stale order entry: ${result.commitSha})` : ''}`)
     } else {
       out(`ticket ${ticketId} not found among open tickets — nothing closed`)
+      process.exitCode = 1
+    }
+    return
+  }
+  if (cmd === 'oz' && arg1 === 'confirm-ticket-close') {
+    const runId = process.argv[4]
+    if (!runId) {
+      console.error(confirmTicketCloseUsage)
+      process.exit(2)
+    }
+    const resolution = optionValue('--resolution')
+    if (process.argv.includes('--resolution') && !resolution) {
+      console.error(confirmTicketCloseUsage)
+      process.exit(2)
+    }
+    const live = await probeDaemon({ port: DEFAULT_OZ_PORT })
+    if (!live.alive) {
+      console.error('cocoder: no Oz daemon running — confirm-ticket-close requires the daemon because awaiting-founder run state is in memory')
+      process.exitCode = 1
+      return
+    }
+    const result = await confirmTicketCloseViaDaemon(`http://127.0.0.1:${live.port}`, runId, resolution)
+    if (result.closed) {
+      out(`closed ticket ${result.ticketId ?? runId}: ${result.commitSha ?? 'no commit'}`)
+      if (result.committedPaths?.length) out(`  files: ${result.committedPaths.join(', ')}`)
+    } else {
+      out(`ticket close confirmation for ${runId} was refused${result.reason ? ` (${result.reason})` : result.error ? ` (${result.error})` : ''}`)
       process.exitCode = 1
     }
     return

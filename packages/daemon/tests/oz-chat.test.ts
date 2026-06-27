@@ -7,7 +7,7 @@ import type { OzContext } from '../src/context.js'
 import { executeOzCommand, handleOzMessage, parseOzCommand, type OzChatOps } from '../src/oz-chat.js'
 import type { LaunchRunTarget } from '../src/launcher.js'
 
-const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId>, commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
+const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, confirm-close <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId>, commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
 
 // A stub for an op a test does NOT expect to be called: returns a 500 so an unexpected dispatch fails
 // loudly instead of looking like a real success. Narrowly cast to the specific op's type.
@@ -35,6 +35,7 @@ function mockOps(overrides: Partial<OzChatOps>): OzChatOps {
     requestAuthoringPlay: unexpected('author') as OzChatOps['requestAuthoringPlay'],
     supportCommitRun: unexpected('support-commit') as OzChatOps['supportCommitRun'],
     requestArchiveConfirmation: unexpected('archive-confirmation') as OzChatOps['requestArchiveConfirmation'],
+    requestTicketCloseConfirmation: unexpected('confirm-ticket-close') as OzChatOps['requestTicketCloseConfirmation'],
     ...overrides,
   }
 }
@@ -57,6 +58,7 @@ describe('parseOzCommand', () => {
     ['adhoc fix the flaky test', { kind: 'adhoc', task: 'fix the flaky test' }],
     ['show run_45', { kind: 'show', runId: 'run_45' }],
     ['archive run_7', { kind: 'archive-confirmation', runId: 'run_7', confirmation: 'archive' }],
+    ['confirm-close run_7', { kind: 'confirm-ticket-close', runId: 'run_7' }],
     ['deb-repair fix stale Deb routing --run run_45', { kind: 'oscar-deb-repair', problem: 'fix stale Deb routing', sourceRunId: 'run_45' }],
     ['reconcile-close 0099 was fixed but left open', { kind: 'reconcile-close', ticketId: '0099', resolution: 'was fixed but left open' }],
     ['reconcile-repoint 0099 standalone', { kind: 'reconcile-repoint', ticketId: '0099', targetPriority: null }],
@@ -90,6 +92,11 @@ describe('parseOzCommand', () => {
 
   test('bare adhoc is a bounded usage error', () => {
     expect(parseOzCommand('adhoc')).toEqual({ kind: 'unknown', hint: 'Usage: adhoc <task>' })
+  })
+
+  test('confirm-close arity failures are bounded usage errors', () => {
+    expect(parseOzCommand('confirm-close')).toEqual({ kind: 'unknown', hint: 'Usage: confirm-close <runId>' })
+    expect(parseOzCommand('confirm-close run_7 extra')).toEqual({ kind: 'unknown', hint: 'Usage: confirm-close <runId>' })
   })
 })
 
@@ -345,6 +352,44 @@ describe('handleOzMessage', () => {
         command: 'archive-confirmation',
         reply: 'Did not archive demo from run_8; the priority remains live.',
         action: { type: 'archive-confirmation', runId: 'run_8', priorityId: 'demo' },
+      },
+    })
+  })
+
+  test('confirm-close maps to requestTicketCloseConfirmation and reports closed ticket', async () => {
+    const calls: Array<{ readonly runId: string }> = []
+    const ops = mockOps({
+      requestTicketCloseConfirmation: async (_ctx, input) => {
+        calls.push({ runId: input.runId })
+        return {
+          status: 200,
+          body: {
+            ok: true,
+            closed: true,
+            runId: input.runId,
+            ticketId: '0099',
+            commitSha: 'sha-close',
+            committedPaths: ['cocoder/tickets/closed/0099.md', 'cocoder/tickets/order.json'],
+          },
+        }
+      },
+    })
+
+    const result = await handleOzMessage(testCtx(), { text: 'confirm-close run_7', workspaceId: 'cocoder' }, ops)
+
+    expect(calls).toEqual([{ runId: 'run_7' }])
+    expect(result).toMatchObject({
+      status: 200,
+      body: {
+        ok: true,
+        command: 'confirm-ticket-close',
+        reply: 'Founder-confirmation closed ticket 0099 from run_7 as sha-close (cocoder/tickets/closed/0099.md, cocoder/tickets/order.json).',
+        action: {
+          type: 'confirm-ticket-close',
+          runId: 'run_7',
+          committedPaths: ['cocoder/tickets/closed/0099.md', 'cocoder/tickets/order.json'],
+          commitSha: 'sha-close',
+        },
       },
     })
   })

@@ -1061,6 +1061,35 @@ describe('Oz mutations + lifecycle', () => {
     expect(store.getRun(run.id)?.status).toBe('awaiting-founder')
   })
 
+  test('POST /runs/:id/ticket-close-confirmation recovers a stranded needs-closing wrap recorded as none', async () => {
+    await writeTicketIndex(home)
+    await writeFile(join(home, 'cocoder', 'tickets', 'order.json'), `${JSON.stringify(['0003', '0004'], null, 2)}\n`)
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0003' })
+    recordTicketCloseDecision(store, run.id, 'none')
+    store.setRunStatus(run.id, 'awaiting-founder')
+    const runDir = join(home, 'local', 'runs', 'cocoder', run.id)
+    await mkdir(runDir, { recursive: true })
+    await writeFile(
+      join(runDir, 'pickup.md'),
+      validTicketFounderCloseout('Run Status: needs closing', 'Yes — close ticket `0003` after the founder confirms this fix is complete.'),
+    )
+    const commits: GovernanceCommitCall[] = []
+    await startServer(recordingGovernanceGit(commits))
+
+    const close = await call(oz!, 'POST', `/runs/${run.id}/ticket-close-confirmation`, { body: {} })
+
+    expect(close).toMatchObject({ status: 200, json: { ok: true, closed: true, runId: run.id, ticketId: '0003', commitSha: 'sha-governance' } })
+    expect(await exists(join(home, 'cocoder', 'tickets', 'open', '0003-existing-open.md'))).toBe(false)
+    expect(await exists(join(home, 'cocoder', 'tickets', 'closed', '0003-existing-open.md'))).toBe(true)
+    expect(JSON.parse(await readFile(join(home, 'cocoder', 'tickets', 'order.json'), 'utf8'))).toEqual(['0004'])
+    expect(store.listEvents(run.id).filter((event) => event.type === 'wrap-disposition').at(-1)?.data).toMatchObject({
+      ticketCloseDecision: 'ask',
+      recoveredFrom: 'pickup.md',
+    })
+    expect(commits).toContainEqual(expect.objectContaining({ message: 'governance: founder-confirmation close ticket 0003' }))
+  })
+
   test('POST /workspaces/:id/tickets/:ticketId/close refuses while the latest ticket run awaits founder input', async () => {
     await writeTicketIndex(home)
     await writeFile(join(home, 'cocoder', 'tickets', 'order.json'), `${JSON.stringify(['0003', '0004'], null, 2)}\n`)

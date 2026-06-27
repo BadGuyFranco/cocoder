@@ -686,6 +686,14 @@ describe('founder closeout target-aware Run Status', () => {
     const prefixed = validatePlayOutput({ play: wrapPlay, output: renderFounderCloseout({ runStatus: 'Priority-launched run: archive ready.' }), cwd: workspaceRoot })
 
     expect(prefixed?.issues).toEqual([])
+
+    const sectionPrefixed = validatePlayOutput({
+      play: wrapPlay,
+      output: ticketFounderCloseout('Run Status: needs closing', 'Yes — close ticket `0015` after the founder confirms this fix is complete.'),
+      cwd: workspaceRoot,
+      isTicket: true,
+    })
+    expect(sectionPrefixed?.issues).toEqual([])
   })
 
   test('ticket Run Status derives terminal run status and close decision separately', () => {
@@ -698,6 +706,10 @@ describe('founder closeout target-aware Run Status', () => {
     const needsClosing = ticketFounderCloseout('needs closing', 'Yes — close ticket `0015` after the founder confirms this fix is complete.')
     expect(deriveWrapupRunStatus(needsClosing, contract, 'completed', 'ticket')).toBe('awaiting-founder')
     expect(deriveTicketCloseDecision(needsClosing, contract, 'ticket')).toBe('ask')
+
+    const sectionPrefixedNeedsClosing = ticketFounderCloseout('Run Status: needs closing', 'Yes — close ticket `0015` after the founder confirms this fix is complete.')
+    expect(deriveWrapupRunStatus(sectionPrefixedNeedsClosing, contract, 'completed', 'ticket')).toBe('awaiting-founder')
+    expect(deriveTicketCloseDecision(sectionPrefixedNeedsClosing, contract, 'ticket')).toBe('ask')
 
     const needsAnotherRun = ticketFounderCloseout('needs another run')
     expect(deriveWrapupRunStatus(needsAnotherRun, contract, 'completed', 'ticket')).toBe('completed')
@@ -2249,6 +2261,36 @@ describe('runRun (multi-atom loop)', () => {
       },
     })
     expect(result.status).toBe('awaiting-archive-confirmation')
+  })
+
+  test('ticket wrap records ask when delivered Run Status line includes the section label', async () => {
+    const store = openRunStore(':memory:')
+    const ticketCloseout = renderFounderCloseout({
+      runStatus: 'Run Status: needs closing',
+      decisionNeeded: 'Yes — close ticket `0015` after the founder confirms this fix is complete.',
+      nextStep: 'Ticket: `0015` — confirm the ticket close',
+      judgment: 'Oscar stopped because the ticket is ready for founder-confirmed close.',
+    })
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([['packages/atom.ts']]),
+        io: fakeIO({ directives: [delegate('atom 0'), wrapup('Oscar seed closeout')] }),
+        getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
+        runHeadless: async () => ({ exitCode: 0, output: ticketCloseout }),
+      }),
+      { ...input, ticketId: '0015', target: { type: 'ticket', slug: '0015' }, wrapPlay, wrapPlayAssignment },
+    )
+
+    expect(result.status).toBe('awaiting-founder')
+    expect(result.ticketCloseDecision).toBe('ask')
+    expect(store.listEvents(result.runId).find((e) => e.type === 'wrap-disposition')?.data).toEqual({
+      disposition: 'awaiting-founder',
+      buildAtoms: 1,
+      signal: null,
+      ticketCloseDecision: 'ask',
+    })
   })
 
   test('archive-ready wrap with a founder decision records awaiting-founder disposition and no action', async () => {

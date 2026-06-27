@@ -6,7 +6,7 @@ import { createServer, type Server } from 'node:http'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { afterEach, describe, expect, test } from 'vitest'
-import { authoringPlayViaDaemon, closeTicketViaDaemon, requestDebRepairViaDaemon, resumeViaDaemon, runViaDaemon, supportCommitViaDaemon } from '../src/client.js'
+import { authoringPlayViaDaemon, closeTicketViaDaemon, confirmTicketCloseViaDaemon, requestDebRepairViaDaemon, resumeViaDaemon, runViaDaemon, supportCommitViaDaemon } from '../src/client.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -27,6 +27,9 @@ interface Captured {
   closeAuth?: string
   closeCsrf?: string | string[]
   closeBody?: any
+  confirmCloseAuth?: string
+  confirmCloseCsrf?: string | string[]
+  confirmCloseBody?: any
 }
 
 function fakeDaemon(): { server: Server; captured: Captured; ready: Promise<number> } {
@@ -72,6 +75,23 @@ function fakeDaemon(): { server: Server; captured: Captured; ready: Promise<numb
       captured.resumeAuth = req.headers.authorization
       captured.resumeCsrf = req.headers['x-oz-csrf-token']
       return json({ resuming: true, runId: 'run_xyz' })
+    }
+    if (req.method === 'POST' && req.url === '/runs/run_xyz/ticket-close-confirmation') {
+      captured.confirmCloseAuth = req.headers.authorization
+      captured.confirmCloseCsrf = req.headers['x-oz-csrf-token']
+      let body = ''
+      req.on('data', (c) => (body += c))
+      return req.on('end', () => {
+        captured.confirmCloseBody = JSON.parse(body)
+        json({
+          ok: true,
+          closed: true,
+          runId: 'run_xyz',
+          ticketId: '0099',
+          commitSha: 'close123',
+          committedPaths: ['cocoder/tickets/closed/0099.md', 'cocoder/tickets/order.json'],
+        })
+      })
     }
     if (req.method === 'POST' && req.url === '/workspaces/cocoder/oscar-deb-repairs') {
       captured.debRepairAuth = req.headers.authorization
@@ -270,6 +290,51 @@ describe('runViaDaemon (client mode)', () => {
     expect(d.captured.closeAuth).toBe('Bearer tok')
     expect(d.captured.closeCsrf).toBe('csrf')
     expect(d.captured.closeBody).toEqual({ resolution: 'Done from CLI.' })
+  })
+
+  test('confirm-ticket-close posts with Bearer + CSRF and returns the daemon receipt', async () => {
+    const d = fakeDaemon()
+    server = d.server
+    const port = await d.ready
+
+    const result = await confirmTicketCloseViaDaemon(`http://127.0.0.1:${port}`, 'run_xyz', 'Founder accepted close.')
+
+    expect(result).toEqual({
+      ok: true,
+      closed: true,
+      runId: 'run_xyz',
+      ticketId: '0099',
+      commitSha: 'close123',
+      committedPaths: ['cocoder/tickets/closed/0099.md', 'cocoder/tickets/order.json'],
+    })
+    expect(d.captured.confirmCloseAuth).toBe('Bearer tok')
+    expect(d.captured.confirmCloseCsrf).toBe('csrf')
+    expect(d.captured.confirmCloseBody).toEqual({ resolution: 'Founder accepted close.' })
+  })
+
+  test('confirm-ticket-close returns daemon refusal bodies without throwing', async () => {
+    const s = createServer((req, res) => {
+      if (req.url === '/auth/session') {
+        res.writeHead(200, { 'content-type': 'application/json' })
+        return res.end(JSON.stringify({ bearerToken: 't', csrfToken: 'c' }))
+      }
+      res.writeHead(409, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, closed: false, reason: 'not-awaiting-ticket-close-confirmation', error: 'run is not awaiting ticket close confirmation' }))
+    })
+    server = s
+    const port = await new Promise<number>((resolve) =>
+      s.listen(0, '127.0.0.1', () => {
+        const a = s.address()
+        resolve(typeof a === 'object' && a ? a.port : 0)
+      }),
+    )
+
+    await expect(confirmTicketCloseViaDaemon(`http://127.0.0.1:${port}`, 'run_xyz')).resolves.toEqual({
+      ok: false,
+      closed: false,
+      reason: 'not-awaiting-ticket-close-confirmation',
+      error: 'run is not awaiting ticket close confirmation',
+    })
   })
 
   // 0052: a no-move archive-priority is a non-2xx named failure; the transport must surface it loudly so

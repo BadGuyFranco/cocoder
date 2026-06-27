@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { loadPriority, runDisplayName } from '@cocoder/core'
 import type { OzContext } from './context.js'
-import { launchRun as launchRunOp, readGoverned as readGovernedOp, requestArchiveConfirmation as archiveConfirmationOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestIndependentLaunch as independentLaunchOp, requestNudgeRun as nudgeRunOp, requestOscarDebRepair as oscarDebRepairOp, requestOzAction as ozActionOp, requestOzRepair as repairOzOp, requestReconciliationClose as reconciliationCloseOp, requestReconciliationRepoint as reconciliationRepointOp, requestStopRun as stopRunOp, requestSupportCommitRun as supportCommitRunOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
+import { launchRun as launchRunOp, readGoverned as readGovernedOp, requestArchiveConfirmation as archiveConfirmationOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestIndependentLaunch as independentLaunchOp, requestNudgeRun as nudgeRunOp, requestOscarDebRepair as oscarDebRepairOp, requestOzAction as ozActionOp, requestOzRepair as repairOzOp, requestReconciliationClose as reconciliationCloseOp, requestReconciliationRepoint as reconciliationRepointOp, requestStopRun as stopRunOp, requestSupportCommitRun as supportCommitRunOp, requestTicketCloseConfirmation as ticketCloseConfirmationOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
 import { projectOzAwareness, type OzAwarenessRun, type OzAwarenessSnapshot } from './oz-awareness.js'
 import { tryHandleOzAgentTurn } from './oz-host.js'
 import { readTickets } from './priority-order.js'
@@ -9,13 +9,14 @@ import { findWorkspace } from './registry.js'
 import { withPortableDisplayNumbers } from './run-display.js'
 
 const ADHOC_PRIORITY_ID = 'adhoc-session'
-const HELP_HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId>, commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
+const HELP_HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, confirm-close <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId>, commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
 
 export type OzCommand =
   | { readonly kind: 'launch'; readonly priorityId: string }
   | { readonly kind: 'adhoc'; readonly task: string }
   | { readonly kind: 'show'; readonly runId: string }
   | { readonly kind: 'archive-confirmation'; readonly runId: string; readonly confirmation: string }
+  | { readonly kind: 'confirm-ticket-close'; readonly runId: string }
   | { readonly kind: 'support-commit'; readonly runId: string }
   | { readonly kind: 'oscar-deb-repair'; readonly problem: string; readonly sourceRunId?: string }
   | { readonly kind: 'reconcile-close'; readonly ticketId: string; readonly resolution: string }
@@ -35,7 +36,7 @@ export type OzExecutableCommand = Exclude<OzCommand, { readonly kind: 'help' } |
 export type OzCommandExecutor = (command: OzExecutableCommand) => Promise<OzChatResult>
 
 export interface OzChatAction {
-  readonly type: 'launch' | 'runnerless-launch' | 'show' | 'archive-confirmation' | 'support-commit' | 'oscar-deb-repair' | 'reconcile-close' | 'reconcile-repoint' | 'stop' | 'nudge' | 'repair' | 'oz-action' | 'author' | 'teardown' | 'status' | 'refresh'
+  readonly type: 'launch' | 'runnerless-launch' | 'show' | 'archive-confirmation' | 'confirm-ticket-close' | 'support-commit' | 'oscar-deb-repair' | 'reconcile-close' | 'reconcile-repoint' | 'stop' | 'nudge' | 'repair' | 'oz-action' | 'author' | 'teardown' | 'status' | 'refresh'
   readonly workspaceId?: string
   readonly priorityId?: string
   readonly runId?: string
@@ -79,6 +80,7 @@ export interface OzChatOps {
   readonly requestReconciliationRepoint: typeof reconciliationRepointOp
   readonly requestAuthoringPlay: typeof authoringPlayOp
   readonly requestArchiveConfirmation: typeof archiveConfirmationOp
+  readonly requestTicketCloseConfirmation: typeof ticketCloseConfirmationOp
   readonly supportCommitRun: typeof supportCommitRunOp
 }
 
@@ -98,6 +100,7 @@ const defaultOps: OzChatOps = {
   requestReconciliationRepoint: reconciliationRepointOp,
   requestAuthoringPlay: authoringPlayOp,
   requestArchiveConfirmation: archiveConfirmationOp,
+  requestTicketCloseConfirmation: ticketCloseConfirmationOp,
   supportCommitRun: supportCommitRunOp,
 }
 
@@ -118,6 +121,7 @@ export function parseOzCommand(text: string): OzCommand {
   }
   if (verb === 'show') return args.length === 1 ? { kind: 'show', runId: args[0]! } : unknownCommand()
   if (verb === 'archive' || verb === 'confirm-archive') return args.length === 1 ? { kind: 'archive-confirmation', runId: args[0]!, confirmation: 'archive' } : unknownCommand()
+  if (verb === 'confirm-close') return args.length === 1 ? { kind: 'confirm-ticket-close', runId: args[0]! } : { kind: 'unknown', hint: 'Usage: confirm-close <runId>' }
   if (verb === 'deb-repair') return parseDebRepairCommand(args)
   if (verb === 'reconcile-close') {
     const ticketId = args[0]
@@ -210,6 +214,15 @@ export async function executeOzCommand(ctx: OzContext, workspaceId: string | und
       'archive-confirmation',
       () => ops.requestArchiveConfirmation(ctx, { runId: command.runId, confirmation: command.confirmation }),
       (out) => archiveConfirmationReply(command.runId, out),
+    )
+  }
+
+  if (command.kind === 'confirm-ticket-close') {
+    if (!workspaceId) return missingWorkspace()
+    return runOp(
+      'confirm-ticket-close',
+      () => ops.requestTicketCloseConfirmation(ctx, { runId: command.runId }),
+      (out) => ticketCloseConfirmationReply(command.runId, out),
     )
   }
 
@@ -463,6 +476,18 @@ function archiveConfirmationReply(runId: string, out: LaunchResult): OzChatReply
     ok: true,
     action: { type: 'archive-confirmation', runId, ...(priorityId ? { priorityId } : {}), committedPaths, commitSha, outOfLanePaths },
   }
+}
+
+function ticketCloseConfirmationReply(runId: string, out: LaunchResult): OzChatReply {
+  const committedPaths = stringArray(out.body.committedPaths)
+  const commitSha = typeof out.body.commitSha === 'string' ? out.body.commitSha : null
+  const ticketId = typeof out.body.ticketId === 'string' ? out.body.ticketId : undefined
+  if (!isOk(out.status)) return failedReply('confirm-ticket-close', `Could not confirm ticket close for ${runId}`, out)
+  const closed = out.body.closed === true
+  const reply = closed
+    ? `Founder-confirmation closed ticket ${ticketId ?? 'for the run'} from ${runId} as ${commitSha ?? 'no-commit'} (${committedPaths.join(', ') || 'no file list'}).`
+    : `Ticket close confirmation for ${runId} did not close the ticket${out.body.reason ? ` (${String(out.body.reason)})` : ''}.`
+  return { reply, command: 'confirm-ticket-close', ok: true, action: { type: 'confirm-ticket-close', runId, committedPaths, commitSha } }
 }
 
 function teardownReply(runId: string, out: LaunchResult): OzChatReply {

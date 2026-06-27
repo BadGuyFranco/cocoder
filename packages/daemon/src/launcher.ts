@@ -20,6 +20,8 @@ import {
   coCoderRunReference,
   commitFiles,
   detectRunnerImpact,
+  deriveTicketCloseDecision,
+  founderCloseoutFromFirstContractHeading,
   handledOpenTicketsForPriority,
   interferes,
   isInstructionSurface,
@@ -28,6 +30,7 @@ import {
   listEffectivePlays,
   localRunDir,
   migrateLegacyFlatRunDirs,
+  parseFounderCloseoutContract,
   resolveLocalRunDir,
   loadAssignments,
   loadEffectivePlay,
@@ -54,12 +57,13 @@ import {
   type RunStatus,
   type RunnerDeps,
   type SessionHost,
+  type TicketCloseDecision,
   type Ticket,
   type Workspace,
 } from '@cocoder/core'
 import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import { emitOzEvent, type DashboardLaunchHandle, type OzContext } from './context.js'
-import { findWorkspace } from './registry.js'
+import { findWorkspace, type RegistryWorkspace } from './registry.js'
 import { appendAudit } from './audit.js'
 import { drainAuthoringQueue, enqueueAuthoring } from './authoring-queue.js'
 import { recordOrchestratedRun } from './oz-host.js'
@@ -1577,21 +1581,58 @@ export async function requestReconciliationRepoint(ctx: OzContext, input: Reconc
   return { status: 200, body: { ok: true, repointed: true, targetPriority: repoint.targetPriority, commitSha: receipt.committedSha, committedPaths: repoint.files } }
 }
 
+async function recoverTicketCloseDecisionFromDeliveredCloseout(ctx: OzContext, workspace: RegistryWorkspace, run: Run): Promise<TicketCloseDecision | null> {
+  const wrapPlay = resolveMandatoryPlay('run-wrap', listEffectivePlays({
+    baseDir: basePlaysDir(),
+    deltaDir: join(workspace.path, 'cocoder', 'plays', 'deltas'),
+    repoPlayDir: join(workspace.path, 'cocoder', 'plays'),
+  }))
+  const contract = parseFounderCloseoutContract(wrapPlay)
+  const runDir = resolveLocalRunDir(ctx.runsRoot, run.id) ?? localRunDir(ctx.runsRoot, run)
+  for (const fileName of ['pickup.md', 'wrapup-delivery.md']) {
+    let raw: string
+    try {
+      raw = await readFile(join(runDir, fileName), 'utf8')
+    } catch {
+      continue
+    }
+    const closeout = founderCloseoutFromFirstContractHeading(raw, contract)
+    const decision = deriveTicketCloseDecision(closeout, contract, 'ticket')
+    if (decision !== 'ask') continue
+    const latestWrap = [...ctx.store.listEvents(run.id)].reverse().find((event) => event.type === 'wrap-disposition')?.data
+    const prior = typeof latestWrap === 'object' && latestWrap !== null && !Array.isArray(latestWrap) ? latestWrap as Record<string, unknown> : {}
+    ctx.store.recordEvent({
+      runId: run.id,
+      type: 'wrap-disposition',
+      data: { ...prior, disposition: 'awaiting-founder', ticketCloseDecision: 'ask', recoveredFrom: fileName },
+    })
+    await appendAudit(ctx.cocoderHome, { action: 'ticket-close-decision-recovered', workspaceId: workspace.id, runId: run.id, ticketId: run.ticketId, recoveredFrom: fileName })
+    return decision
+  }
+  return null
+}
+
 export async function requestTicketCloseConfirmation(ctx: OzContext, input: TicketCloseConfirmationInput): Promise<LaunchResult> {
   const run = ctx.store.getRun(input.runId)
   if (!run) return { status: 404, body: { error: 'unknown run' } }
   if (!run.ticketId) return { status: 409, body: { error: 'ticket close confirmation applies only to ticket-launched runs' } }
+  const workspace = await findWorkspace(ctx.cocoderHome, run.workspaceId)
+  if (!workspace) return { status: 404, body: { error: 'unknown workspace' } }
   if (ctx.inFlight.get(run.workspaceId) === run.id) {
     return { status: 409, body: { error: `run ${run.id} is still active — the live runner owns ticket close until wrap completes` } }
   }
   if (run.status !== 'awaiting-founder' || run.endedAt === null) {
     return { status: 409, body: { error: `run is "${run.status}" and is not awaiting ticket close confirmation` } }
   }
-  const closeBlock = ticketCloseGate({ store: ctx.store, workspaceId: run.workspaceId, ticketId: run.ticketId, mode: 'founder-confirmation', confirmedRunId: run.id })
+  let closeBlock = ticketCloseGate({ store: ctx.store, workspaceId: run.workspaceId, ticketId: run.ticketId, mode: 'founder-confirmation', confirmedRunId: run.id })
+  if (closeBlock?.reason === 'not-awaiting-ticket-close-confirmation') {
+    const recovered = await recoverTicketCloseDecisionFromDeliveredCloseout(ctx, workspace, run)
+    if (recovered === 'ask') {
+      closeBlock = ticketCloseGate({ store: ctx.store, workspaceId: run.workspaceId, ticketId: run.ticketId, mode: 'founder-confirmation', confirmedRunId: run.id })
+    }
+  }
   if (closeBlock) return { status: 409, body: { ok: false, closed: false, reason: closeBlock.reason, runId: closeBlock.runId, error: closeBlock.message } }
 
-  const workspace = await findWorkspace(ctx.cocoderHome, run.workspaceId)
-  if (!workspace) return { status: 404, body: { error: 'unknown workspace' } }
   const ticketsDir = join(workspace.path, 'cocoder', 'tickets')
   const close = await closeTicket({
     ticketsDir,

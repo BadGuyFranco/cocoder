@@ -117,6 +117,8 @@ export {
 } from './plays/index.js'
 export {
   validatePlayOutput,
+  founderCloseoutFromFirstContractHeading,
+  parseFounderCloseoutContract,
   deriveTicketCloseDecision,
   deriveWrapupRunStatus,
   deriveWrapDisposition,

@@ -188,7 +188,7 @@ function founderDecisionNeeded(markdown: string, contract: FounderCloseoutContra
 }
 
 function normalizeCloseoutRunStatusLine(line: string): string {
-  return line.replace(/^(?:priority|ticket)-launched run:\s*/i, '')
+  return line.replace(/^(?:(?:priority|ticket)-launched run|run status):\s*/i, '')
 }
 
 function closeoutRunStatus(markdown: string, contract: FounderCloseoutContract): string | null {
