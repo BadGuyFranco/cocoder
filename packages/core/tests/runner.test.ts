@@ -730,30 +730,40 @@ describe('founder closeout target-aware Run Status', () => {
 describe('runRun (multi-atom loop)', () => {
   test('missing Objective launches with required questions for priority repair', async () => {
     const store = openRunStore(':memory:')
+    const repairWorkspaceRoot = await mkdtemp(join(tmpdir(), 'cocoder-missing-objective-'))
+    await mkdir(join(repairWorkspaceRoot, 'cocoder', 'priorities'), { recursive: true })
     const prompts: string[] = []
-    const result = await runRun(
-      baseDeps({
-        store,
-        getAdapter: () => ({
-          ...okAdapter,
-          build(i) {
-            prompts.push(i.prompt)
-            return { command: 'x', args: [] }
-          },
+    try {
+      const result = await runRun(
+        baseDeps({
+          store,
+          getAdapter: () => ({
+            ...okAdapter,
+            build(i) {
+              prompts.push(i.prompt)
+              return { command: 'x', args: [] }
+            },
+          }),
+          io: fakeIO({ directives: [wrapup('Founder must approve the Objective.')] }),
         }),
-        io: fakeIO({ directives: [wrapup('Founder must approve the Objective.')] }),
-      }),
-      { ...input, priority: { ...priority, goal: 'Review the docs against the code.', objective: null } },
-    )
+        {
+          ...input,
+          workspace: { ...workspace, path: repairWorkspaceRoot },
+          priority: { ...priority, goal: 'Review the docs against the code.', objective: null },
+        },
+      )
 
-    expect(result.status).toBe('completed')
-    expect(store.listRuns()).toHaveLength(1)
-    const oscarPrompt = prompts[0]!
-    expect(oscarPrompt).toContain('Answer or surface the required priority questions first')
-    expect(oscarPrompt).toContain('## Required Questions')
-    expect(oscarPrompt).toContain('Objective: What founder-approved `## Objective` should this priority run toward?')
-    expect(oscarPrompt).toContain('CoCoder is launching it so Oscar can answer or surface the missing input instead of stranding the priority.')
-    expect(oscarPrompt).toContain('Log the answer or unresolved question in the priority file before treating the priority as ready for implementation.')
+      expect(result.status).toBe('completed')
+      expect(store.listRuns()).toHaveLength(1)
+      const oscarPrompt = prompts[0]!
+      expect(oscarPrompt).toContain('Answer or surface the required priority questions first')
+      expect(oscarPrompt).toContain('## Required Questions')
+      expect(oscarPrompt).toContain('Objective: What founder-approved `## Objective` should this priority run toward?')
+      expect(oscarPrompt).toContain('CoCoder is launching it so Oscar can answer or surface the missing input instead of stranding the priority.')
+      expect(oscarPrompt).toContain('Log the answer or unresolved question in the priority file before treating the priority as ready for implementation.')
+    } finally {
+      await rm(repairWorkspaceRoot, { recursive: true, force: true })
+    }
   })
 
   test('cmux group label carries workspace, target, and run while group key stays the run id', async () => {

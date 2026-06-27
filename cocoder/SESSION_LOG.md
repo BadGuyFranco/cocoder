@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-27 — **ticket-fix-0078: missing Objective launches with Required Questions — closed (run_122/run_265)**
+
+**Persona:** Oscar (lead) | **Priority:** ticket-fix / [0078](./tickets/open/0078-doc-truth-analysis-will-not-launch-due-to-no-objective.md) | **Run:** run_265 (display 122)
+**Outcomes:**
+- **Diagnosis (0 Bob atoms).** Ticket root cause traced to ADR-0010's hard launch refusal (`MissingObjectiveError` in `runRun`) for priorities like `doc-truth-analysis` whose body lacks a parseable `## Objective` heading.
+- **Fix landed via oscar-support (`f28aab9`).** ADR-0010 amended: missing/empty Objective is a structural required question, not a launch refusal. Runner injects a `Required Questions` section into Oscar/Deb prompts and still creates the run row; daemon regression flipped from 422 to real `runId`; ownership doc updated.
+- **Regression pinned.** Core runner test and daemon `POST /runs` test green for missing-Objective launch.
+- **Disposition: `closed`.** Acceptance met — priorities with missing structural fields launch instead of dead-ending; founder approval for Objective content still routes through create/edit-priority guards.
+**Next:** Launch `doc-truth-analysis` to exercise the new Required Questions path and log a founder-approved Objective.
+
 ## 2026-06-27 — **ticket-fix-0076: idle continuation nudge held while awaiting founder decision — closed (run_120/run_264)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0076](./tickets/closed/0076-runner-continuation-nudge-can-advance-a-run-past-an-unanswered-founder-decision.md) | **Run:** run_264 (display 120)
