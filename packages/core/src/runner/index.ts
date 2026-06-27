@@ -20,6 +20,13 @@ export {
   type FlatRunDirMigrationReport,
   type LocalRunIdentity,
 } from './run-dir.js'
+export {
+  DEFAULT_KEEP_LAST_N,
+  resolveRetentionConfig,
+  selectRunsToPrune,
+  type RetentionCandidate,
+  type RetentionConfig,
+} from './retention.js'
 export { groupLabel, type RunLabelTarget, type RunLabelTargetType } from './labels.js'
 export { StopRequestedError } from './stop.js'
 export { makeRunnerIO, type RunnerIO, type RunnerPollOptions } from './io.js'
