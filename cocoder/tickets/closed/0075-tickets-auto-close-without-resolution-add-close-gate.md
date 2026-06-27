@@ -2,7 +2,7 @@
 id: 0075
 title: Tickets auto-close while decisions/work remain — add a close gate (recurring false-close)
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-27
@@ -57,3 +57,9 @@ asserted a fix for the wrong scope.
   close-confirmation; regression tests in daemon suite; ownership map updated. 0073 left Closed-superseded
   (not reopened). Founder held close at wrap; ticket stays Open pending explicit `close 0075` confirmation.
 - **Follow-up:** [[0076]] (runner continuation-nudge past unanswered founder decision, observed during this run).
+
+## Resolution
+
+Closed by reconciliation founder-confirmed-run_261 on 2026-06-27.
+
+Founder confirmed close after run_261 verified the 0075 fix. The close gate now blocks unattended reconciliation, queued close, and founder-confirmation closes while a ticket run is awaiting an unanswered founder decision; 0073 remains Closed-superseded and 0076/0077 track follow-up orchestration seams.
