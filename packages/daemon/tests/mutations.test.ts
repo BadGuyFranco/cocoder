@@ -805,7 +805,10 @@ describe('Oz mutations + lifecycle', () => {
       sessionHost: fakeHost(),
       getAdapter: () => okAdapter,
       io: controlled.io,
-      runHeadless: headlessBobOk,
+      runHeadless: async (input) => {
+        if (input.outPath.includes('bob-turn')) return headlessBobOk(input)
+        return { exitCode: 0, output: validTicketFounderCloseout() }
+      },
       buildDaemonForReload: async () => {
         builds += 1
         buildObservedInFlight.push(oz!.ctx.inFlight.size)
@@ -890,7 +893,7 @@ describe('Oz mutations + lifecycle', () => {
     expect(store.listRuns()).toEqual([])
   })
 
-  test('POST /runs launches an open ticket through the priority lifecycle and records its target', async () => {
+  test('POST /runs leaves a ticket open when a ticket-fix run produces no verified commit', async () => {
     await writeTicketIndex(home)
     await writeFile(join(home, 'cocoder', 'tickets', 'order.json'), `${JSON.stringify(['0003', '0004'], null, 2)}\n`)
     const commits: GovernanceCommitCall[] = []
@@ -927,39 +930,23 @@ describe('Oz mutations + lifecycle', () => {
     expect(prompts[0]).toContain('Fix ticket 0003: Existing open.')
 
     const ticketDir = join(home, 'cocoder', 'tickets')
-    expect(await exists(join(ticketDir, 'open', '0003-existing-open.md'))).toBe(false)
+    expect(await exists(join(ticketDir, 'open', '0003-existing-open.md'))).toBe(true)
     const closedPath = join(ticketDir, 'closed', '0003-existing-open.md')
-    expect(await exists(closedPath)).toBe(true)
-    const closedMarkdown = await readFile(closedPath, 'utf8')
-    expect(closedMarkdown).toContain('status: Closed')
-    expect(closedMarkdown).toContain('## Resolution')
-    expect(closedMarkdown).toContain(`Resolved by run ${runId}`)
+    expect(await exists(closedPath)).toBe(false)
     const loaded = (await readTickets(ticketDir)).find((ticket) => ticket.id === '0003')
-    expect(loaded).toMatchObject({ id: '0003', state: 'closed', status: 'Closed' })
+    expect(loaded).toMatchObject({ id: '0003', state: 'open', status: 'Open' })
 
-    let index = ''
-    for (let i = 0; i < 50; i++) {
-      index = await readFile(join(ticketDir, 'INDEX.md'), 'utf8')
-      const open = index.slice(index.indexOf('## Open'), index.indexOf('## Recently Closed'))
-      const closed = index.slice(index.indexOf('## Recently Closed'))
-      if (!open.includes('0003') && closed.includes('| [0003](./closed/0003-existing-open.md) |')) break
-      await sleep(10)
-    }
+    const index = await readFile(join(ticketDir, 'INDEX.md'), 'utf8')
     const openSection = index.slice(index.indexOf('## Open'), index.indexOf('## Recently Closed'))
     const closedSection = index.slice(index.indexOf('## Recently Closed'))
-    expect(openSection).not.toContain('0003')
-    expect(closedSection).toContain('| [0003](./closed/0003-existing-open.md) | Existing open | task |')
-    expect(closedSection).toContain('Ticket fix run completed successfully.')
-    expect(JSON.parse(await readFile(join(ticketDir, 'order.json'), 'utf8'))).toEqual(['0004'])
-    expect(commits).toContainEqual(expect.objectContaining({
-      cwd: home,
-      files: ['cocoder/tickets/closed/0003-existing-open.md', 'cocoder/tickets/open/0003-existing-open.md', 'cocoder/tickets/INDEX.md', 'cocoder/tickets/order.json'],
-      message: `governance: close ticket 0003 via run ${runId}`,
-      author: COCODER_GOVERNANCE,
-    }))
+    expect(openSection).toContain('0003')
+    expect(closedSection).not.toContain('| [0003](./closed/0003-existing-open.md) | Existing open | task |')
+    expect(JSON.parse(await readFile(join(ticketDir, 'order.json'), 'utf8'))).toEqual(['0003', '0004'])
+    expect(commits).not.toContainEqual(expect.objectContaining({ message: `governance: close ticket 0003 via run ${runId}` }))
     const audit = await readFile(join(home, 'local', 'oz-audit.log'), 'utf8')
-    expect(audit).toContain('"action":"ticket-close"')
+    expect(audit).toContain('"action":"ticket-close-skipped"')
     expect(audit).toContain('"ticketId":"0003"')
+    expect(audit).toContain('"reason":"missing-verified-commit"')
   })
 
   test('POST /runs leaves a ticket open when wrap-up asks the founder before closing', async () => {

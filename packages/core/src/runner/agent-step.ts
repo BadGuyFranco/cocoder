@@ -208,7 +208,7 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
     }
   }
 
-  const recordTicketCloseSkip = (ticketId: string, reason: 'already-closed' | 'missing-open-ticket' | 'priority-mismatch' | 'verify-fail'): void => {
+  const recordTicketCloseSkip = (ticketId: string, reason: 'already-closed' | 'missing-open-ticket' | 'missing-verified-commit' | 'priority-mismatch' | 'verify-fail'): void => {
     store.recordEvent({ runId, type: 'in-run-ticket-close-skipped', data: { atom: atomIndex, ticketId, reason } })
   }
 
@@ -231,6 +231,7 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
       ticketId: request.ticketId,
       runId,
       committedSha,
+      closeMode: 'verified-run',
       closedDate: todayIso(),
       resolution: request.resolution,
     })

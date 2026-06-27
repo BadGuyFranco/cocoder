@@ -10,13 +10,14 @@ export interface CloseTicketInput {
   readonly ticketId: string
   readonly runId: string
   readonly committedSha: string | null
+  readonly closeMode: 'verified-run' | 'reconciliation'
   readonly closedDate: string
   readonly resolution: string
 }
 
 export type CloseTicketResult =
   | { readonly closed: true; readonly files: readonly string[]; readonly closedPath: string }
-  | { readonly closed: false; readonly reason: 'missing-open-ticket' | 'already-closed'; readonly files: readonly string[] }
+  | { readonly closed: false; readonly reason: 'missing-open-ticket' | 'already-closed' | 'missing-verified-commit'; readonly files: readonly string[] }
 
 function unique<T>(items: readonly T[]): T[] {
   return [...new Set(items)]
@@ -31,11 +32,13 @@ function replaceStatus(raw: string): string {
 }
 
 function appendResolution(raw: string, input: CloseTicketInput): string {
-  const sha = input.committedSha ?? 'no code change'
+  const evidenceLine = input.closeMode === 'verified-run'
+    ? `Resolved by run ${input.runId} (${input.committedSha}) on ${input.closedDate}.`
+    : `Closed by reconciliation ${input.runId} on ${input.closedDate}.`
   const resolution = [
     '## Resolution',
     '',
-    `Resolved by run ${input.runId} (${sha}) on ${input.closedDate}.`,
+    evidenceLine,
     '',
     input.resolution.trim(),
   ].filter((line, index, lines) => index !== lines.length - 1 || line !== '').join('\n')
@@ -86,6 +89,9 @@ export async function closeTicket(input: CloseTicketInput): Promise<CloseTicketR
       reason: existing?.state === 'closed' ? 'already-closed' : 'missing-open-ticket',
       files: orderPath ? [relative(input.repoPath, orderPath)] : [],
     }
+  }
+  if (input.closeMode === 'verified-run' && input.committedSha === null) {
+    return { closed: false, reason: 'missing-verified-commit', files: [] }
   }
 
   const openPath = join(input.ticketsDir, 'open', openFile)

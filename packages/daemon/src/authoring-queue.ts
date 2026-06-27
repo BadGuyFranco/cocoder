@@ -349,6 +349,7 @@ async function applyQueuedEntry(repoPath: string, workspaceId: string, entry: Qu
       ticketId: entry.ticketId,
       runId: 'queued-authoring',
       committedSha: null,
+      closeMode: 'reconciliation',
       closedDate,
       resolution: entry.input.resolution ?? 'Closed from the queued authoring lane.',
     })

@@ -23,7 +23,7 @@ export interface CloseTicketCliInput {
 
 export interface CloseTicketCliResult {
   readonly closed: boolean
-  readonly reason?: 'missing-open-ticket' | 'already-closed'
+  readonly reason?: 'missing-open-ticket' | 'already-closed' | 'missing-verified-commit'
   readonly commitSha: string | null
   readonly files: readonly string[]
 }
@@ -39,6 +39,7 @@ export async function closeTicketViaCli(input: CloseTicketCliInput): Promise<Clo
     ticketId: input.ticketId,
     runId: input.runId ?? 'cli-close-ticket',
     committedSha: null,
+    closeMode: 'reconciliation',
     closedDate: input.closedDate,
     resolution: input.resolution,
   })
@@ -54,7 +55,7 @@ export async function closeTicketViaCli(input: CloseTicketCliInput): Promise<Clo
     return { closed: false, reason: close.reason, commitSha: null, files: [] }
   }
 
-  const receipt = await commitFiles(git, input.repoPath, close.files, `governance: close ticket ${input.ticketId}${suffix}`, COCODER_GOVERNANCE_AUTHOR)
+  const receipt = await commitFiles(git, input.repoPath, close.files, `governance: reconciliation close ticket ${input.ticketId}${suffix}`, COCODER_GOVERNANCE_AUTHOR)
   if (!receipt.committed) throw new Error(`closed ticket ${input.ticketId} but commit failed: ${receipt.error}`)
   return { closed: true, commitSha: receipt.committedSha, files: close.files }
 }

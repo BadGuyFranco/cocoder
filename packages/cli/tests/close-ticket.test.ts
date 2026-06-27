@@ -98,7 +98,7 @@ test('closes an open ticket through the governed spine and commits exactly the t
   expect(JSON.parse(await readFile(join(tickets, 'order.json'), 'utf8'))).toEqual([])
 
   expect(calls).toHaveLength(1)
-  expect(calls[0].message).toBe('governance: close ticket 0099')
+  expect(calls[0].message).toBe('governance: reconciliation close ticket 0099')
   expect(calls[0].author).toEqual(COCODER_GOVERNANCE_AUTHOR)
   expect(calls[0].files).toEqual(expect.arrayContaining([
     'cocoder/tickets/closed/0099-some-bug.md',
@@ -122,9 +122,9 @@ test('a --run reference stamps the commit message and resolution with the run fi
   })
 
   expect(result.closed).toBe(true)
-  expect(calls[0].message).toBe('governance: close ticket 0099 via run run_777')
+  expect(calls[0].message).toBe('governance: reconciliation close ticket 0099 via run run_777')
   const closed = await readFile(join(repo, 'cocoder', 'tickets', 'closed', '0099-some-bug.md'), 'utf8')
-  expect(closed).toContain('Resolved by run run_777')
+  expect(closed).toContain('Closed by reconciliation run_777')
 })
 
 test('an unknown / already-closed ticket reports not-closed and makes no spurious commit', async () => {

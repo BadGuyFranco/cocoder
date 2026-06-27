@@ -626,6 +626,7 @@ async function closeTicketAfterSuccessfulRun(ctx: OzContext, workspacePath: stri
       ticketId,
       runId: result.runId,
       committedSha: result.committedSha,
+      closeMode: 'verified-run',
       closedDate: todayIso(),
       resolution: 'Ticket fix run completed successfully.',
     })
@@ -1459,7 +1460,7 @@ export async function requestReconciliationClose(ctx: OzContext, input: Reconcil
 
   const ticketsDir = join(workspace.path, 'cocoder', 'tickets')
   const closedDate = new Date().toISOString().slice(0, 10)
-  const close = await closeTicket({ ticketsDir, repoPath: workspace.path, ticketId: input.ticketId, runId: 'deb-reconciliation', committedSha: null, closedDate, resolution: input.resolution })
+  const close = await closeTicket({ ticketsDir, repoPath: workspace.path, ticketId: input.ticketId, runId: 'deb-reconciliation', committedSha: null, closeMode: 'reconciliation', closedDate, resolution: input.resolution })
   if (!close.closed) {
     // closeTicket may still have pruned a stale order.json entry even with no open file — commit that so the
     // working tree never carries an un-committed governance edit, then report the reason honestly.
