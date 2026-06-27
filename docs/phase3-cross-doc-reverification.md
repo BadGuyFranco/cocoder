@@ -112,3 +112,20 @@ No `DEB-LANE: cocoder/ delta edit` item was needed.
 ### Stale/Dead Reference Review
 
 No live stale/dead reference was fixed in this atom. Hits for `developer-mode`, `pending-landing`, `integration-verify`, old ADR filenames, and run-branch wording in audit/history documents were left intact when they were explicitly recording past failures, retired behavior, or Atom A/B findings rather than acting as current instructions or live links.
+
+## Atoms D & E - Process Observations and Worklist Decision (Oscar-lane, run_271)
+
+**Atom D — doc-process observations.** Three new evidence-backed process gaps surfaced during this
+sweep were appended to the `harden-documentation-process` priority problem inventory (items 7–9):
+(7) a governed doc with no owning write-lane cannot have its correct fix committed — the `README.md`
+six→seven-packages fix was held back as dirt every atom because root `README.md` is in no run write-lane;
+(8) code can silently reverse an accepted ADR with nothing turning red — `commitOnlyScope` (commit
+`ccd3ae9`, 2026-06-25) diverged from ADR-0023 with no ADR amendment and no failing check; (9) a
+behavior-proof harness asserting current truth rots silently when not in CI — `scripts/proof-direct-spine.mjs`
+exits 1 against retired clauses and nothing announced it.
+
+**Atom E — worklist archive decision.** Decision: do NOT archive `docs/architecture-truth-audit.md` or
+`docs/docs-files-truth-audit.md` ad hoc in this run. Reconciliation is complete and both now carry a
+status banner marking them historical and superseded by this file. Their actual archival is owned by the
+worklist-archive convention being built under the `harden-documentation-process` priority (item 4) —
+inventing a one-off archive move here would pre-empt that single owner. Banners added to both worklists.

@@ -62,3 +62,26 @@ one owner doc; and the whole process is described in a single owner location (no
 6. **Doc-update-with-code is review-only, with no reviewer.** CONTRIBUTING says "update docs in the same
    PR," but CI "cannot prove that relationship" and CoCoder is agent-built with no human PR review.
    **→ Consider a mechanism linking a truth-critical code change to a doc-touch obligation.**
+
+7. **A governed doc with no owning write-lane cannot have its correct fix committed (run_271).** During
+   Phase 3, the correct `README.md` six→seven-packages fix (it omitted `@cocoder/personas`) was produced
+   three times and **held back as uncommitted dirt every time**, because root `README.md` is in neither
+   the builder's write scope (`packages/**`, `templates/**`, `docs/**`, `ARCHITECTURE.md`, …) nor Oscar's
+   support scope (`cocoder/**`, `docs/**`, `ARCHITECTURE.md`). A verified-true correction with no owning
+   lane silently cannot land. **→ Every governed doc must fall inside some run's committable write-lane
+   (extend a scope to cover root docs, or give root `README`/`CONTRIBUTING` an explicit owning lane).**
+
+8. **Code can silently reverse an accepted ADR with nothing turning red (run_271).** Commit `ccd3ae9`
+   (2026-06-25) made verified-atom commits pass `commitOnlyScope: true` (hold back out-of-lane files),
+   contradicting ADR-0023 Amendment 2's stated rule that out-of-lane paths are "committed and flagged,
+   never withheld" — an ADR-gated reversal with no new ADR. No check asserts code against ADR-pinned
+   invariants, so the divergence sat undetected until this manual audit. This is the **inverse** drift
+   direction from items 1–3 (code drifts from doc, not doc from code). **→ Consider pinning load-bearing
+   ADR invariants as named tests/assertions so a silent ADR reversal turns something red.**
+
+9. **A proof harness asserting current behavior rots silently when it is not in CI (run_271).**
+   `scripts/proof-direct-spine.mjs` still asserts the retired "committed and flagged" spine behavior and
+   now **exits 1**, but it is run on demand, not in CI, so its failure announced nothing — the audit
+   found it, not tooling. A harness whose job is to prove current behavior is itself a current-truth
+   artifact and rots like any doc. **→ Behavior-proof harnesses that assert current truth should be
+   covered by the reference/CI check (or retired), not left to drift.**

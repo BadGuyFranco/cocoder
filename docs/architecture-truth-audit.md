@@ -1,5 +1,12 @@
 # ARCHITECTURE.md Truth Audit
 
+> **Status (run_271): reconciliation complete.** Every row below carries a verdict + resolution and the
+> ARCHITECTURE.md fixes have landed (run_267 → run_271). This is now a one-shot historical worklist,
+> superseded as the live artifact by [`phase3-cross-doc-reverification.md`](./phase3-cross-doc-reverification.md).
+> It is retained in place as the evidence trail; its eventual archival is owned by the worklist-archive
+> convention being built under the `harden-documentation-process` priority (problem inventory item 4),
+> not moved ad hoc here.
+
 Generated: 2026-06-27
 
 Scope: inventory only. `ARCHITECTURE.md` was read in full and not edited. Evidence below is from the current
