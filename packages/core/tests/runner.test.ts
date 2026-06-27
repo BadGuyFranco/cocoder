@@ -16,7 +16,6 @@ import {
   type HeadlessRunInput,
   type MakeJudge,
   type NudgeRequest,
-  MissingObjectiveError,
   NON_LOOP_STALL_NUDGE_CAP,
   type Play,
   type PlayAssignment,
@@ -729,10 +728,32 @@ describe('founder closeout target-aware Run Status', () => {
 })
 
 describe('runRun (multi-atom loop)', () => {
-  test('missing Objective rejects before any store writes', async () => {
+  test('missing Objective launches with required questions for priority repair', async () => {
     const store = openRunStore(':memory:')
-    await expect(runRun(baseDeps({ store }), { ...input, priority: { ...priority, objective: null } })).rejects.toBeInstanceOf(MissingObjectiveError)
-    expect(store.listRuns()).toEqual([])
+    const prompts: string[] = []
+    const result = await runRun(
+      baseDeps({
+        store,
+        getAdapter: () => ({
+          ...okAdapter,
+          build(i) {
+            prompts.push(i.prompt)
+            return { command: 'x', args: [] }
+          },
+        }),
+        io: fakeIO({ directives: [wrapup('Founder must approve the Objective.')] }),
+      }),
+      { ...input, priority: { ...priority, goal: 'Review the docs against the code.', objective: null } },
+    )
+
+    expect(result.status).toBe('completed')
+    expect(store.listRuns()).toHaveLength(1)
+    const oscarPrompt = prompts[0]!
+    expect(oscarPrompt).toContain('Answer or surface the required priority questions first')
+    expect(oscarPrompt).toContain('## Required Questions')
+    expect(oscarPrompt).toContain('Objective: What founder-approved `## Objective` should this priority run toward?')
+    expect(oscarPrompt).toContain('CoCoder is launching it so Oscar can answer or surface the missing input instead of stranding the priority.')
+    expect(oscarPrompt).toContain('Log the answer or unresolved question in the priority file before treating the priority as ready for implementation.')
   })
 
   test('cmux group label carries workspace, target, and run while group key stays the run id', async () => {

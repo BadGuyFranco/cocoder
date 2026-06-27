@@ -238,9 +238,31 @@ export class PreflightError extends Error {
 
 export class MissingObjectiveError extends Error {
   constructor(priorityId: string) {
-    super(`priority "${priorityId}" has no Objective — refusing to launch`)
+    super(`priority "${priorityId}" has no Objective`)
     this.name = 'MissingObjectiveError'
   }
+}
+
+function missingPriorityLaunchQuestions(priority: Priority): readonly string[] {
+  return priority.objective === null ? ['Objective: What founder-approved `## Objective` should this priority run toward?'] : []
+}
+
+function priorityGoalForLaunch(priority: Priority, questions: readonly string[]): string {
+  if (questions.length === 0) return priority.goal
+  return [
+    priority.goal.trimEnd(),
+    '',
+    '## Required Questions',
+    '',
+    'This priority is missing structural launch information. CoCoder is launching it so Oscar can answer or surface the missing input instead of stranding the priority.',
+    '',
+    ...questions.map((question) => `- ${question}`),
+    '',
+    'Oscar must handle these questions before delegating builder work:',
+    `- If the answer is evident from the priority text, edit \`cocoder/priorities/${priority.id}.md\` to add the missing section.`,
+    '- If the answer is not evident, write a wrap-up directive naming the exact founder input needed.',
+    '- Log the answer or unresolved question in the priority file before treating the priority as ready for implementation.',
+  ].join('\n')
 }
 
 /** Thrown for cases a direct-mode run (ADR-0023 §2) genuinely cannot start: a non-git primary root, a
@@ -367,8 +389,6 @@ const validateDebNudgeEvidence = (req: { readonly message: string; readonly rati
 }
 
 export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResult> {
-  if (input.priority.objective === null) throw new MissingObjectiveError(input.priority.id)
-
   const { store, sessionHost, git, getAdapter, io } = deps
   const t = { ...DEFAULTS, ...deps.timeouts }
   const limits = { ...LIMITS, ...deps.limits }
@@ -380,6 +400,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const { workspace, priority, oscar, bob, deb, sharedStandards, runsRoot } = input
   const engineHome = input.engineHome ?? workspace.path
   const closeoutTarget: CloseoutLaunchTarget = input.ticketId ? 'ticket' : 'priority'
+  const requiredPriorityQuestions = missingPriorityLaunchQuestions(priority)
+  const launchPriorityGoal = priorityGoalForLaunch(priority, requiredPriorityQuestions)
+  const launchPriority = requiredPriorityQuestions.length === 0 ? priority : { ...priority, goal: launchPriorityGoal }
 
   store.upsertWorkspace(workspace)
   const resumeRunId = input.resumeRunId ?? null
@@ -549,7 +572,8 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     playManifest: oscarPlayManifest,
     priorityId: priority.id,
     priorityTitle: priority.title,
-    priorityGoal: priority.goal,
+    priorityGoal: launchPriorityGoal,
+    hasRequiredPriorityQuestions: requiredPriorityQuestions.length > 0,
     task: input.task ?? null,
     firstDirectivePath: join(runDir, 'directive-0.json'),
     builderLabel: bob.label,
@@ -573,7 +597,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         oscarBody: oscar.body,
         playManifest: oscarPlayManifest,
         priorityTitle: priority.title,
-        priorityGoal: priority.goal,
+        priorityGoal: launchPriorityGoal,
         task: input.task ?? null,
         builderLabel: bob.label,
         builderCli: bob.cli,
@@ -633,7 +657,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     bobDriver = createPaneBuilderDriver(sessionHost, bobRef)
   }
   const debRef = deb
-    ? await spawnObserver({ store, sessionHost, getAdapter, run, workspace, priority, task: input.task ?? null, deb, sharedStandards, playManifest: debPlayManifest, runDir, groupLabel, cwd: worktreePath, runBranch })
+    ? await spawnObserver({ store, sessionHost, getAdapter, run, workspace, priority: launchPriority, task: input.task ?? null, deb, sharedStandards, playManifest: debPlayManifest, runDir, groupLabel, cwd: worktreePath, runBranch })
     : null
   await oscarDriver.show()
   log(`oscar + bob spawned (${oscarDriver.refId}, ${bobDriver.refId}); awaiting first directive, bob on standby`)

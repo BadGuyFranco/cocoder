@@ -112,13 +112,15 @@ home, no earned failure; Canons survive only as Oscar's private reasoning.
   decision aid**: its durable residue is a *sharper Objective*, **not** a stored conflict field —
   freezing a relational cross-priority reference into a Playbook would dangle when the other priority is
   renamed/retired (F1/F2).
-- **Enforcement (D3, honest per F11):** Oz/the runner refuses to launch a Playbook whose Objective is
-  **missing or empty (after trim)** — a purely structural fact at the human→system boundary. The system
-  **does not** detect lazy or placeholder objectives: that is content judgment over a governance file
-  (it would re-seed F5/`check-orchestration-fragmentation` and violate D3/D5/G4). Objective *quality* is
-  owned by the founder at approval and by the **behavioral steer** — Oscar must not build on a vague
-  objective. (Matches the split in Consequences: deterministic *presence*, probabilistic
-  *quality/conflict*, human *approval*.)
+- **Enforcement (D3, honest per F11):** Oz/the runner treats a missing or empty Objective (after trim)
+  as a structural required question, not a launch refusal. The run starts with a `Required Questions`
+  section that tells Oscar to answer/log the missing Objective in the priority file when evident, or wrap
+  with the exact founder input needed when it is not. The system **does not** detect lazy or placeholder
+  objectives: that is content judgment over a governance file (it would re-seed
+  F5/`check-orchestration-fragmentation` and violate D3/D5/G4). Objective *quality* is owned by the
+  founder at approval and by the **behavioral steer** — Oscar must not build on a vague objective.
+  (Matches the split in Consequences: deterministic *presence*, probabilistic *quality/conflict*, human
+  *approval*.)
 
 ### Authoring lifecycle — stub at creation, fill the operational record at run (reaffirms ADR-0003)
 - The Playbook holds only what is **stable across runs and human-owned**: Objective + its boundary. An

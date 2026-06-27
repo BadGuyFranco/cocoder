@@ -77,12 +77,16 @@ function orchestratorLaunchCard(input: {
   task?: string | null
   firstDirectivePath: string
   priorityTitle: string
+  hasRequiredPriorityQuestions?: boolean
   builderLabel: string
   runBranch: string
 }): string {
   const firstAction = isAdHocSupportRun(input)
     ? `Handle the founder's bounded support request first, then write the required directive JSON to \`${input.firstDirectivePath}\`.`
     : `Write the required directive JSON to \`${input.firstDirectivePath}\` before chat or waiting.`
+  const launchabilityStep = input.hasRequiredPriorityQuestions === true
+    ? 'Answer or surface the required priority questions first; repair the priority file before delegating builder work when the answer is evident.'
+    : 'Confirm the objective is launchable; if not, wrap with the exact founder decision needed.'
   return `# Oscar launch card
 
 Priority: **${input.priorityTitle}**
@@ -90,7 +94,7 @@ Priority: **${input.priorityTitle}**
 First action: ${firstAction}
 
 Run order:
-1. Confirm the objective is launchable; if not, wrap with the exact founder decision needed.
+1. ${launchabilityStep}
 2. Delegate one concrete atom to ${input.builderLabel}; do not build it yourself.
 3. Verify the actual diff and command evidence before passing the atom.
 4. Continue by default while concrete in-priority work remains; wrap only at a real stop condition.
@@ -110,6 +114,7 @@ export function buildOrchestratorPrompt(input: {
   priorityId: string
   priorityTitle: string
   priorityGoal: string
+  hasRequiredPriorityQuestions?: boolean
   task?: string | null
   firstDirectivePath: string
   builderLabel: string
