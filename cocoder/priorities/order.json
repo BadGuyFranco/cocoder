@@ -1,5 +1,6 @@
 [
   "doc-truth-analysis",
+  "harden-documentation-process",
   "local-cache-retention",
   "multi-workspace-concurrency",
   "model-layer",

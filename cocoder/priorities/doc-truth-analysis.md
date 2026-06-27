@@ -44,11 +44,30 @@ governance docs audited (PLAYBOOK, AGENTS, failure-catalog, standards/plays delt
 — all clean. The two stale path refs in `cocoder/personas/AGENTS.md` were closed in
 [run_270 / ticket 0069](../tickets/closed/0069-personas-agents-stale-archive-and-v1-leftover-refs.md).
 
-## Remaining before archive
+## Phase 3 — final comprehensive sweep (founder-directed 2026-06-27, briefed for next launch)
 
-Nothing blocking. Optional cleanup (not blocking archive): whether the two audit worklist docs under
-`docs/` should be archived rather than kept permanently. Open ticket **0037** flags a stale CONTRIBUTING
-rg-CI-gate — separate from this priority's governed-doc surface and tracked as its own ticket-fix.
+The per-file reconciliation (Phase 1+2) is done; the founder directed one more **comprehensive,
+independent sweep** before archive, which must *also* surface documentation-**process** improvements.
+This is the operational plan for the next launch (decomposition lives in the run, not in the Objective):
+
+- **Atom A — independent cross-doc re-verification.** A fresh adversarial pass over the already-
+  reconciled surface (ARCHITECTURE, ADRs, all `docs/`, README/CONTRIBUTING, `cocoder/` governance),
+  hunting cross-document inconsistencies and anything the per-file audits missed; spot-check that
+  corrected claims still trace to live code by path.
+- **Atom B — extend to the un-audited normative surface.** Audit base persona/standards/plays under
+  `packages/personas/base/**` and the `cocoder/` deltas for stale *concrete* refs (paths, CLI
+  commands/flags, ADR ids) — these were outside Phase 1/2's code-describing focus. Base-governance
+  fixes route through a verified run/Deb repair, not post-wrap support.
+- **Atom C — clarity/elegance pass (Objective criterion 3).** Read the reconciled docs for clarity and
+  stale-reference-free elegance, not just truth; flag duplication / one-owner violations.
+- **Atom D — doc-process observation pass.** While sweeping, collect concrete opportunities to harden
+  the documentation *process* and feed them into the new
+  [`harden-documentation-process`](./harden-documentation-process.md) priority's problem inventory.
+- **Atom E — worklist cleanup decision.** Resolve whether `docs/architecture-truth-audit.md` and
+  `docs/docs-files-truth-audit.md` should be archived now reconciliation is complete.
+
+After this sweep the priority is archive-ready. Open ticket **0037** (stale CONTRIBUTING rg-CI-gate) is
+separate from this governed-doc surface and tracked as its own ticket-fix.
 
 ## Founder-directed code-or-doc follow-ups (founder decisions from run_267)
 
