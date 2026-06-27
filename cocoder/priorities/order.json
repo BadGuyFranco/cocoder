@@ -1,8 +1,8 @@
 [
+  "doc-truth-analysis",
   "local-cache-retention",
   "multi-workspace-concurrency",
   "model-layer",
-  "doc-truth-analysis",
   "new-primary-root",
   "priority-audit",
   "ad-hoc-session-architecture"
