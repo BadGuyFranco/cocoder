@@ -382,12 +382,12 @@ Oz runs an HTTP daemon that can launch and stop processes. It is **not** interne
 The Routing Guide classifies every proposed improvement by target zone before any persona makes or
 recommends a change:
 
-- `cocoder-product` — CoCoder source itself (`packages/`, `templates/`, public docs, shipped prompts + base personas). This is contributor-only developer-mode work; in the dogfood it's the portability-test call (ADR-0012).
+- `cocoder-product` — CoCoder source itself (`packages/`, `templates/`, public docs, shipped prompts + base personas). This is contributor-only product work; in the dogfood it's the portability-test call (ADR-0012).
 - `workspace-shared` — the active repo's tracked `cocoder/` governance folder.
 - `install-local` — the ignored `<CoCoder>/local/` machine-state zone (the only local zone).
 - `upstream-candidate` — a workspace finding that may belong upstream, but should be drafted for contributor review instead of edited into the install.
 
-Normal adopters get workspace customization by default. CoCoder product improvements are only routed to `cocoder-product` when the active workspace is the CoCoder repo dogfood workspace and developer mode is enabled. See [`docs/oz-improvement-routing.md`](./docs/oz-improvement-routing.md), [`cocoder/decisions/0008-repository-topology.md`](./cocoder/decisions/0008-repository-topology.md) (one-home enforcement), and [`0009-extensibility.md`](./cocoder/decisions/0009-extensibility.md).
+Normal adopters get workspace customization by default. A `cocoder-product` change only lands when CoCoder's own source is the tracked tree (the CoCoder dogfood workspace) and the run's declared write-scope covers those product paths; anything a run edits outside its write-scope is held back at the commit-gate and never committed (there is no separate "developer mode" toggle — the v1 `--developer-mode` deny-gate was not carried into the v2 rebuild). See [`docs/oz-improvement-routing.md`](./docs/oz-improvement-routing.md), [`cocoder/decisions/0008-repository-topology.md`](./cocoder/decisions/0008-repository-topology.md) (one-home enforcement), and [`0009-extensibility.md`](./cocoder/decisions/0009-extensibility.md).
 
 ## References
 

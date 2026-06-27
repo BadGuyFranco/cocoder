@@ -56,7 +56,12 @@ Oz/Oscar/Bob/Deb/Quinn contradiction). Live worklists: `docs/architecture-truth-
    deleted by ADR-0026) by enumerating live callers; then remove the genuinely dead modules and keep
    any with a real caller. Investigation BEFORE delete; CODE change outside the doc lane.
 
-3. **Developer-mode routing gate — PENDING FOUNDER CALL.** Finding: `developer-mode` was a real v1
+3. **Developer-mode routing gate — DECIDED (Option A) and DONE in run_267.** Founder chose "document
+   what is true now." Corrected `ARCHITECTURE.md:390` and `docs/oz-improvement-routing.md:44` to the v2
+   reality (product writes gated by per-run write-scope + commit-gate hold-back; no developer-mode
+   toggle) and removed the stale "developer mode enabled" phrasing. Audit row 52b marked resolved. No
+   code change. Context retained below:
+   Finding: `developer-mode` was a real v1
    CLI deny-gate (`--developer-mode` / `COCODER_DEVELOPER_MODE=1`, tested by the now-archived
    `developer-mode-belt.test.mjs`) that gated product-code writes. The v2 rebuild dropped it; **no
    `developer-mode` symbol exists in live `packages/`** (the only `devMode` hits are an unrelated UI
