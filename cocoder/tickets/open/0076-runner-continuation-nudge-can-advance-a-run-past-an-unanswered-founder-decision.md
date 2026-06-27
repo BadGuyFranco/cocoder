@@ -20,7 +20,14 @@ Founder, verbatim: "I like that the runner is the thing keeping the run moving a
 - Distinguish "idle run, safe to nudge" from "parked on a founder decision, must hold." Reuse the SAME awaiting-founder state class that the `ticketCloseGate` introduced by ticket 0075 (run_261) keys off, so there is ONE source of truth for "a founder decision is pending" — do not add a parallel predicate.
 - Regression/proof: a run with a pending `ask-founder-continue` (and, separately, a run wrapped awaiting-founder) is not nudged into forward motion; the nudge path is suppressed or downgraded to re-surfacing the pending decision.
 
+## Scoping pointers (verified by Oscar grep, run_261)
+The nudge machinery is **runner-side core, not daemon** (the original draft's "daemon nudge surfaces" pointer was wrong). Before building, a scoping pass must first settle WHICH of two distinct mechanisms fired — the fix differs per mechanism:
+
+1. **Runner directive-wait anti-stall** — the "you've gone quiet, write the next directive or wrap up" prompt and the `directive-timeout` fault. This is what fired in run_261. Owner area: `packages/core/src/runner/runner.ts` (the directive-wait/timeout loop) and `packages/core/src/runner/prompts.ts` (the `directive-timeout` wording at ~L70, and the `ask-founder-continue` contract at ~L613).
+2. **Deb/Oz→Oscar nudge-recommendation channel** (ADR-0016/0017) — `packages/core/src/runner/nudge.ts` (target is always `'oscar'`; never routes to Bob), surfaced via `packages/core/src/runner/oscar-driver.ts` and tracked in `packages/core/src/runner/status.ts` (`oscar-nudge` events, `lastNudgeAt`).
+
+The awaiting-founder state to gate on is already computed in `packages/core/src/runner/status.ts` (phase `awaiting-founder`, derived from a held directive or `ask-founder-continue`) — reuse it; this is the same state class `ticketCloseGate` (ticket 0075) keys off, so there is ONE source of truth for "a founder decision is pending."
+
 ## Notes
 - Orchestration machinery — strong Oscar->Deb repair candidate once scoped, or a dedicated verified run. Not in scope for run_261 (0075).
 - Related: [[0075]] (the close-gate keys off the same awaiting-founder state), ADR-0023 (commit spine).
-- Start points to grep: the runner nudge / directive-timeout path — packages/core/src/runner/runner.ts, packages/daemon nudge surfaces, and the strings `nudge`, `directive-timeout`, `gone quiet`.
