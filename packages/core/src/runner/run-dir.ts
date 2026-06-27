@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, readdirSync, renameSync, statSync, type Dirent } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, mkdirSync, readdirSync, renameSync, rmdirSync, rmSync, statSync, type Dirent } from 'node:fs'
+import { dirname, join, resolve as resolvePath, sep } from 'node:path'
 
 export interface LocalRunIdentity {
   readonly workspaceId: string
@@ -23,6 +23,16 @@ export function resolveLocalRunDir(runsRoot: string, runId: string): string | nu
   if (nested !== null) return nested
   const legacy = join(runsRoot, runId)
   return isDirectory(legacy) ? legacy : null
+}
+
+export function removeLocalRunDir(runsRoot: string, runId: string): { removed: string | null } {
+  const dir = resolveLocalRunDir(runsRoot, runId)
+  if (dir === null) return { removed: null }
+
+  assertStrictlyInside(runsRoot, dir)
+  rmSync(dir, { recursive: true, force: true })
+  removeEmptyNestedParent(runsRoot, dir)
+  return { removed: dir }
 }
 
 export function migrateLegacyFlatRunDirs(
@@ -94,5 +104,29 @@ function isDirectory(path: string): boolean {
     return existsSync(path) && statSync(path).isDirectory()
   } catch {
     return false
+  }
+}
+
+function assertStrictlyInside(root: string, target: string): void {
+  const absoluteRoot = resolvePath(root)
+  const absoluteTarget = resolvePath(target)
+  const rootPrefix = absoluteRoot.endsWith(sep) ? absoluteRoot : `${absoluteRoot}${sep}`
+  if (absoluteTarget === absoluteRoot || !absoluteTarget.startsWith(rootPrefix)) {
+    throw new Error(`Refusing to remove local run dir outside runs root: ${target}`)
+  }
+}
+
+function removeEmptyNestedParent(runsRoot: string, removedDir: string): void {
+  const absoluteRoot = resolvePath(runsRoot)
+  const parent = dirname(removedDir)
+  if (resolvePath(parent) === absoluteRoot) return
+  assertStrictlyInside(runsRoot, parent)
+
+  try {
+    if (readdirSync(parent).length === 0) {
+      rmdirSync(parent)
+    }
+  } catch {
+    // Best effort only: the run dir has already been removed, and non-empty parents must be retained.
   }
 }

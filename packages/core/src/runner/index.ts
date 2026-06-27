@@ -16,6 +16,7 @@ export {
 export {
   localRunDir,
   migrateLegacyFlatRunDirs,
+  removeLocalRunDir,
   resolveLocalRunDir,
   type FlatRunDirMigrationReport,
   type LocalRunIdentity,
