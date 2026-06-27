@@ -64,6 +64,7 @@ import { appendAudit } from './audit.js'
 import { drainAuthoringQueue, enqueueAuthoring } from './authoring-queue.js'
 import { recordOrchestratedRun } from './oz-host.js'
 import { registerLivePriorities } from './priority-order.js'
+import { ticketCloseGate } from './ticket-close-gate.js'
 import { withPortableDisplayNumber } from './run-display.js'
 import {
   makeDialogueId,
@@ -1500,6 +1501,9 @@ export async function requestReconciliationClose(ctx: OzContext, input: Reconcil
   const workspace = await findWorkspace(ctx.cocoderHome, input.workspaceId)
   if (!workspace) return { status: 404, body: { error: 'unknown workspace' } }
 
+  const closeBlock = ticketCloseGate({ store: ctx.store, workspaceId: input.workspaceId, ticketId: input.ticketId, mode: 'unattended' })
+  if (closeBlock) return { status: 409, body: { ok: false, closed: false, reason: closeBlock.reason, runId: closeBlock.runId, error: closeBlock.message } }
+
   if (ctx.inFlight.has(input.workspaceId)) {
     const receipt = await enqueueAuthoring(ctx, {
       workspaceId: input.workspaceId,
@@ -1583,14 +1587,39 @@ export async function requestTicketCloseConfirmation(ctx: OzContext, input: Tick
   if (run.status !== 'awaiting-founder' || run.endedAt === null) {
     return { status: 409, body: { error: `run is "${run.status}" and is not awaiting ticket close confirmation` } }
   }
+  const closeBlock = ticketCloseGate({ store: ctx.store, workspaceId: run.workspaceId, ticketId: run.ticketId, mode: 'founder-confirmation', confirmedRunId: run.id })
+  if (closeBlock) return { status: 409, body: { ok: false, closed: false, reason: closeBlock.reason, runId: closeBlock.runId, error: closeBlock.message } }
 
-  const result = await requestReconciliationClose(ctx, {
-    workspaceId: run.workspaceId,
+  const workspace = await findWorkspace(ctx.cocoderHome, run.workspaceId)
+  if (!workspace) return { status: 404, body: { error: 'unknown workspace' } }
+  const ticketsDir = join(workspace.path, 'cocoder', 'tickets')
+  const close = await closeTicket({
+    ticketsDir,
+    repoPath: workspace.path,
     ticketId: run.ticketId,
+    runId: `founder-confirmation-${run.id}`,
+    committedSha: null,
+    closeMode: 'reconciliation',
+    closedDate: todayIso(),
     resolution: input.resolution?.trim() || `Founder confirmed close from run ${run.id}.`,
   })
+  if (!close.closed) {
+    if (close.files.length > 0) {
+      const receipt = await commitFiles(ctx.git, workspace.path, close.files, `governance: reconcile ticket ${run.ticketId} order entry`, COCODER_GOVERNANCE_AUTHOR)
+      if (!receipt.committed) return { status: 500, body: { ok: false, error: `reconciled ticket ${run.ticketId} order entry but commit failed: ${receipt.error}` } }
+      return { status: 200, body: { ok: true, closed: false, reason: close.reason, commitSha: receipt.committedSha, committedPaths: close.files, runId: run.id, ticketId: run.ticketId } }
+    }
+    return { status: 409, body: { ok: false, closed: false, reason: close.reason, error: `ticket ${run.ticketId} cannot be founder-confirmation closed (${close.reason})`, runId: run.id, ticketId: run.ticketId } }
+  }
+  const receipt = await commitFiles(ctx.git, workspace.path, close.files, `governance: founder-confirmation close ticket ${run.ticketId}`, COCODER_GOVERNANCE_AUTHOR)
+  const result: LaunchResult = receipt.committed
+    ? { status: 200, body: { ok: true, closed: true, commitSha: receipt.committedSha, committedPaths: close.files } }
+    : { status: 500, body: { ok: false, error: `closed ticket ${run.ticketId} but commit failed: ${receipt.error}` } }
   const closed = result.status >= 200 && result.status < 300 && result.body.closed === true
   if (closed) {
+    await appendAudit(ctx.cocoderHome, { action: 'ticket-close-confirmation-close', workspaceId: workspace.id, ticketId: run.ticketId, runId: run.id, commitSha: result.body.commitSha ?? null, files: close.files })
+    emitOzEvent(ctx, { type: 'ticket-close-confirmation-close', workspaceId: workspace.id, runId: run.id })
+    finalizeAwaitingFounderRunsForTicket(ctx, workspace.id, run.ticketId, 'ticket-close-confirmation')
     ctx.store.setRunStatus(run.id, 'completed')
     ctx.store.recordEvent({ runId: run.id, type: 'ticket-close-confirmation-closed', data: { ticketId: run.ticketId, commitSha: result.body.commitSha ?? null } })
     emitOzEvent(ctx, { type: 'ticket-close-confirmation-closed', runId: run.id, workspaceId: run.workspaceId, status: 'completed' })

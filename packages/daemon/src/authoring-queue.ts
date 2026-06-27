@@ -7,6 +7,7 @@ import { emitOzEvent } from './context.js'
 import { createPriorityFiles, type CreatePriorityInput } from './priority-authoring.js'
 import { writeTicketOrder } from './priority-order.js'
 import { findWorkspace } from './registry.js'
+import { ticketCloseGate } from './ticket-close-gate.js'
 
 const QUEUE_SCHEMA_VERSION = 3
 type QueueStatus = 'queued' | 'committed' | 'error'
@@ -303,7 +304,7 @@ export async function drainAuthoringQueue(
   for (const entry of file.entries) {
     if (entry.status !== 'queued') continue
     try {
-      const result = await applyQueuedEntry(workspace.path, workspaceId, entry, now)
+      const result = await applyQueuedEntry(ctx.store, workspace.path, workspaceId, entry, now)
       const receipt = await commitGovernance(workspace.path, result.files, result.message)
       if (receipt.error !== null) throw new Error(receipt.error)
       const activeRunId = ctx.inFlight.get(workspaceId)
@@ -330,7 +331,7 @@ export async function drainAuthoringQueue(
   return drained
 }
 
-async function applyQueuedEntry(repoPath: string, workspaceId: string, entry: QueuedAuthoringEntry, now: () => number): Promise<DrainResult> {
+async function applyQueuedEntry(store: OzContext['store'], repoPath: string, workspaceId: string, entry: QueuedAuthoringEntry, now: () => number): Promise<DrainResult> {
   const ticketsDir = join(repoPath, 'cocoder', 'tickets')
   if (entry.action === 'ticket-create') {
     const result = await createTicketCore({ ticketsDir, repoPath, ticketId: entry.reservedTicketId, created: entry.createdDate, ...entry.input })
@@ -340,6 +341,8 @@ async function applyQueuedEntry(repoPath: string, workspaceId: string, entry: Qu
     return { files: result.files, message: `governance: create queued ticket ${result.id}`, audit: { ticketId: result.id }, event: { ticketId: result.id } }
   }
   if (entry.action === 'ticket-close') {
+    const closeBlock = ticketCloseGate({ store, workspaceId, ticketId: entry.ticketId, mode: 'unattended' })
+    if (closeBlock) throw new Error(closeBlock.message)
     const ticket = (await readTickets(ticketsDir)).find((item) => item.id === entry.ticketId)
     if (!ticket || ticket.state !== 'open') throw new Error(`ticket ${entry.ticketId} cannot be queued-closed (${ticket?.state === 'closed' ? 'already-closed' : 'missing-open-ticket'})`)
     const closedDate = clockParts(now()).date

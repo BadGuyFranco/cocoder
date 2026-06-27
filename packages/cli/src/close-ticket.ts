@@ -33,6 +33,8 @@ export async function closeTicketViaCli(input: CloseTicketCliInput): Promise<Clo
   const ticketsDir = join(input.repoPath, 'cocoder', 'tickets')
   const suffix = input.runId ? ` via run ${input.runId}` : ''
 
+  // The gated founder close path is the daemon route. This daemon-less spine has no Oz context,
+  // workspace id, or reliable install-local run store handle, so it cannot apply the parked-run gate.
   const close = await closeTicket({
     ticketsDir,
     repoPath: input.repoPath,

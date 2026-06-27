@@ -566,6 +566,19 @@ function recordArchiveConfirmationAction(store: RunStore, runId: string, priorit
   })
 }
 
+function recordTicketCloseDecision(store: RunStore, runId: string, ticketCloseDecision: 'ask' | 'close' | 'none'): void {
+  store.recordEvent({
+    runId,
+    type: 'wrap-disposition',
+    data: {
+      disposition: ticketCloseDecision === 'ask' ? 'awaiting-founder' : 'continue',
+      buildAtoms: 1,
+      signal: null,
+      ticketCloseDecision,
+    },
+  })
+}
+
 describe('Oz mutations + lifecycle', () => {
   let home: string
   let store: RunStore
@@ -1001,6 +1014,7 @@ describe('Oz mutations + lifecycle', () => {
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0003' })
     store.recordCommitLink({ runId: run.id, commitSha: 'sha-build', message: 'atom 0', files: ['packages/core/src/tickets/create.ts'] })
+    recordTicketCloseDecision(store, run.id, 'ask')
     store.setRunStatus(run.id, 'awaiting-founder')
     const commits: GovernanceCommitCall[] = []
     await startServer(recordingGovernanceGit(commits))
@@ -1019,10 +1033,56 @@ describe('Oz mutations + lifecycle', () => {
     expect(commits).toContainEqual(expect.objectContaining({
       cwd: home,
       files: ['cocoder/tickets/closed/0003-existing-open.md', 'cocoder/tickets/open/0003-existing-open.md', 'cocoder/tickets/INDEX.md', 'cocoder/tickets/order.json'],
-      message: 'governance: reconciliation close ticket 0003',
+      message: 'governance: founder-confirmation close ticket 0003',
       author: COCODER_GOVERNANCE,
     }))
     expect(store.listEvents(run.id).some((event) => event.type === 'ticket-close-confirmation-closed')).toBe(true)
+  })
+
+  test('POST /runs/:id/ticket-close-confirmation refuses an unrelated founder decision', async () => {
+    await writeTicketIndex(home)
+    await writeFile(join(home, 'cocoder', 'tickets', 'order.json'), `${JSON.stringify(['0003', '0004'], null, 2)}\n`)
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0003' })
+    recordTicketCloseDecision(store, run.id, 'none')
+    store.setRunStatus(run.id, 'awaiting-founder')
+    const commits: GovernanceCommitCall[] = []
+    await startServer(recordingGovernanceGit(commits))
+
+    const detailBefore = await call(oz!, 'GET', `/runs/${run.id}`)
+    const close = await call(oz!, 'POST', `/runs/${run.id}/ticket-close-confirmation`, { body: {} })
+
+    expect(detailBefore.json.actions).toEqual([])
+    expect(close).toMatchObject({ status: 409, json: { ok: false, closed: false, reason: 'not-awaiting-ticket-close-confirmation', runId: run.id } })
+    expect(await exists(join(home, 'cocoder', 'tickets', 'open', '0003-existing-open.md'))).toBe(true)
+    expect(await exists(join(home, 'cocoder', 'tickets', 'closed', '0003-existing-open.md'))).toBe(false)
+    expect(JSON.parse(await readFile(join(home, 'cocoder', 'tickets', 'order.json'), 'utf8'))).toEqual(['0003', '0004'])
+    expect(commits).toEqual([])
+    expect(store.getRun(run.id)?.status).toBe('awaiting-founder')
+  })
+
+  test('POST /workspaces/:id/tickets/:ticketId/close refuses while the latest ticket run awaits founder input', async () => {
+    await writeTicketIndex(home)
+    await writeFile(join(home, 'cocoder', 'tickets', 'order.json'), `${JSON.stringify(['0003', '0004'], null, 2)}\n`)
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0003' })
+    store.setRunStatus(run.id, 'awaiting-founder')
+    const commits: GovernanceCommitCall[] = []
+    await startServer(recordingGovernanceGit(commits))
+
+    const close = await call(oz!, 'POST', '/workspaces/cocoder/tickets/0003/close', { body: { resolution: 'Reconciled too early.' } })
+
+    expect(close).toMatchObject({ status: 409, json: { ok: false, closed: false, reason: 'awaiting-founder-decision', runId: run.id } })
+    const ticketDir = join(home, 'cocoder', 'tickets')
+    expect(await exists(join(ticketDir, 'open', '0003-existing-open.md'))).toBe(true)
+    expect(await exists(join(ticketDir, 'closed', '0003-existing-open.md'))).toBe(false)
+    const index = await readFile(join(ticketDir, 'INDEX.md'), 'utf8')
+    const openSection = index.slice(index.indexOf('## Open'), index.indexOf('## Recently Closed'))
+    const closedSection = index.slice(index.indexOf('## Recently Closed'))
+    expect(openSection).toContain('| [0003](./open/0003-existing-open.md) | Existing open | task | none | founder-session |')
+    expect(closedSection).not.toContain('| [0003](./closed/0003-existing-open.md) |')
+    expect(JSON.parse(await readFile(join(ticketDir, 'order.json'), 'utf8'))).toEqual(['0003', '0004'])
+    expect(commits).toEqual([])
   })
 
   test('POST /runs/:id/ticket-close-confirmation refuses while the owning run is still active', async () => {
@@ -1046,6 +1106,7 @@ describe('Oz mutations + lifecycle', () => {
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0003' })
     store.recordCommitLink({ runId: run.id, commitSha: 'sha-build', message: 'atom 0', files: ['packages/core/src/tickets/create.ts'] })
+    recordTicketCloseDecision(store, run.id, 'ask')
     store.setRunStatus(run.id, 'awaiting-founder')
     await startServer()
 
@@ -1082,6 +1143,7 @@ describe('Oz mutations + lifecycle', () => {
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
     await startServer()
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0003' })
+    recordTicketCloseDecision(store, run.id, 'ask')
     store.setRunStatus(run.id, 'awaiting-founder')
 
     const teardown = await call(oz!, 'POST', `/runs/${run.id}/teardown`, { body: {} })
@@ -1096,6 +1158,7 @@ describe('Oz mutations + lifecycle', () => {
     await writeFile(join(home, 'cocoder', 'tickets', 'order.json'), `${JSON.stringify(['0003', '0004'], null, 2)}\n`)
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0003' })
+    recordTicketCloseDecision(store, run.id, 'ask')
     store.setRunStatus(run.id, 'awaiting-founder')
     await startServer(recordingGovernanceGit([]))
 
@@ -3235,6 +3298,37 @@ describe('Oz mutations + lifecycle', () => {
       files: ['cocoder/tickets/closed/0003-existing-open.md', 'cocoder/tickets/open/0003-existing-open.md', 'cocoder/tickets/INDEX.md', 'cocoder/tickets/order.json'],
       message: 'governance: close queued ticket 0003',
     }))
+  })
+
+  test('queued ticket close refuses after the ticket run wraps awaiting-founder', async () => {
+    await writeTicketIndex(home)
+    await writeFile(join(home, 'cocoder', 'tickets', 'order.json'), `${JSON.stringify(['0003', '0004'], null, 2)}\n`)
+    const commits: GovernanceCommitCall[] = []
+    const controlled = controlledDirectiveIO()
+    const decision = 'Yes — close ticket `0003` only after the founder confirms this fix is complete.'
+    await startServer(queuedCommitGit(commits), async () => ({ exitCode: 0, output: validTicketFounderCloseout('needs closing', decision) }), controlled.io)
+
+    const launch = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', ticketId: '0003' } })
+    expect(launch.status).toBe(202)
+    const runId = launch.json.runId as string
+    for (let i = 0; i < 50 && oz!.ctx.inFlight.get('cocoder') !== runId; i++) await sleep(10)
+
+    const close = await call(oz!, 'POST', '/workspaces/cocoder/tickets/0003/close', { body: { resolution: 'Queued too early.' } })
+    expect(close.status).toBe(202)
+    expect(close.json).toMatchObject({ queued: true, queuedId: 'ticket-close-0003', ticketId: '0003' })
+
+    controlled.release()
+    for (let i = 0; i < 100 && oz!.ctx.inFlight.has('cocoder'); i++) await sleep(10)
+
+    expect(store.getRun(runId)?.status).toBe('awaiting-founder')
+    const ticketDir = join(home, 'cocoder', 'tickets')
+    expect(await exists(join(ticketDir, 'open', '0003-existing-open.md'))).toBe(true)
+    expect(await exists(join(ticketDir, 'closed', '0003-existing-open.md'))).toBe(false)
+    expect(JSON.parse(await readFile(join(ticketDir, 'order.json'), 'utf8'))).toEqual(['0003', '0004'])
+    const queued = await listQueuedAuthoring(home, 'cocoder')
+    expect(queued).toHaveLength(1)
+    expect(queued[0]).toMatchObject({ queuedId: 'ticket-close-0003', status: 'error', error: expect.stringContaining(`run ${runId} is awaiting an unanswered founder decision`) })
+    expect(commits).not.toContainEqual(expect.objectContaining({ message: 'governance: close queued ticket 0003' }))
   })
 
   test('POST /workspaces/:id/tickets/:ticketId/repoint queues during an active run without mutating immediately', async () => {

@@ -40,6 +40,7 @@ import { mergeWriteSettings, readSettings } from './settings.js'
 import { readPriorities, readTickets, registerLivePriorities, writePriorityOrder, writeTicketOrder } from './priority-order.js'
 import { withPortableDisplayNumber } from './run-display.js'
 import { createPriorityFiles, PriorityAuthoringError, type CreatePriorityInput } from './priority-authoring.js'
+import { ticketCloseDecisionFromEvents } from './ticket-close-gate.js'
 
 export type { OzContext } from './context.js'
 
@@ -595,7 +596,7 @@ function runActions(
   run: { readonly id: string; readonly status: string; readonly ticketId?: string | null },
   events: readonly { readonly type: string; readonly data: unknown }[],
 ): Array<{ type: string; method: string; endpoint: string; priorityId?: string; confirmWith?: string }> {
-  if (run.ticketId && run.status === 'awaiting-founder') {
+  if (run.ticketId && run.status === 'awaiting-founder' && ticketCloseDecisionFromEvents(events) === 'ask') {
     return [{
       type: 'ticket-close-confirmation',
       method: 'POST',

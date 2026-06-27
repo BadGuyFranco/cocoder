@@ -1438,9 +1438,14 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
             const signal = closeoutCitesCheckableSignal(pickup)
             const disposition = deriveWrapDisposition(pickup, outputValidation.founderCloseoutContract, closeoutTarget)
             const action = archiveConfirmationAction({ workspaceId: workspace.id, runId: run.id, priorityId: priority.id, disposition })
-            store.recordEvent({ runId: run.id, type: 'wrap-disposition', data: { disposition, buildAtoms, signal, ...(action ? { action } : {}) } })
+            const closeDecision = deriveTicketCloseDecision(pickup, outputValidation.founderCloseoutContract, closeoutTarget)
+            store.recordEvent({
+              runId: run.id,
+              type: 'wrap-disposition',
+              data: { disposition, buildAtoms, signal, ...(closeoutTarget === 'ticket' ? { ticketCloseDecision: closeDecision } : {}), ...(action ? { action } : {}) },
+            })
             terminalStatus = deriveWrapupRunStatus(pickup, outputValidation.founderCloseoutContract, terminalStatus, closeoutTarget)
-            ticketCloseDecision = deriveTicketCloseDecision(pickup, outputValidation.founderCloseoutContract, closeoutTarget)
+            ticketCloseDecision = closeDecision
           }
         }
         store.recordEvent({ runId: run.id, type: 'wrapup', data: { atoms: n, forced: false, play: input.wrapPlay.id } })
