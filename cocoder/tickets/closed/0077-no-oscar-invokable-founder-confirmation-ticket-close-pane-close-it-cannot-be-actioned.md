@@ -2,7 +2,7 @@
 id: 0077
 title: No Oscar-invokable founder-confirmation ticket-close; pane 'close it' cannot be actioned
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-27
@@ -38,3 +38,9 @@ Root cause of the dead-end: the wrap recorded `ticketCloseDecision: none` even t
 - Orchestration/Surface-A machinery — Oscar->Deb repair candidate or a short verified run.
 - Related: [[0075]] (the gate that correctly blocks the manual lane), [[0076]] (runner nudge past founder decisions). Do NOT weaken 0075's gate to solve this — the fix is the missing confirmation verb, not a relaxation.
 - Owners to touch: `packages/cli/src/run.ts` (oz verb dispatch + usage), `packages/cli/src/client.ts` (daemon call), `packages/daemon/src/oz-chat.ts` (chat verb), reusing `requestTicketCloseConfirmation` and the `POST /runs/<id>/ticket-close-confirmation` route already in `packages/daemon/src/routes.ts`.
+
+## Resolution
+
+Closed by reconciliation queued-authoring on 2026-06-27.
+
+Resolved by commit 7a685d9: added CLI/chat founder-confirmation ticket close, aligned closeout decision recording, and added stranded-run recovery.

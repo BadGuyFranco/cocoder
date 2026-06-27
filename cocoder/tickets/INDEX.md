@@ -13,7 +13,6 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
-| [0077](./open/0077-no-oscar-invokable-founder-confirmation-ticket-close-pane-close-it-cannot-be-actioned.md) | No Oscar-invokable founder-confirmation ticket-close; pane 'close it' cannot be actioned | bug | none | founder-session |
 | [0076](./open/0076-runner-continuation-nudge-can-advance-a-run-past-an-unanswered-founder-decision.md) | Runner continuation-nudge can advance a run past an unanswered founder decision | bug | none | Open |
 | [0074](./open/0074-handoff-honest-manual-affordance-decision-b.md) | Independent-of-runner Launch — make it an honest manual handoff (founder decision B), not a fake launch | task | none | Open |
 | [0068](./open/0068-harden-correctness-clarity-elegance-at-the-verification-gate-without-new-orchestration.md) | Harden correctness-clarity-elegance at the verification gate, without new orchestration | task | none | founder-session |
@@ -24,6 +23,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0077](./closed/0077-no-oscar-invokable-founder-confirmation-ticket-close-pane-close-it-cannot-be-actioned.md) | No Oscar-invokable founder-confirmation ticket-close; pane 'close it' cannot be actioned | bug | 2026-06-27 | Resolved by commit 7a685d9: added CLI/chat founder-confirmation ticket close, aligned closeout decision recording, and added stranded-run recovery. |
 | [0075](./closed/0075-tickets-auto-close-without-resolution-add-close-gate.md) | Tickets auto-close while decisions/work remain — add a close gate (recurring false-close) | bug | 2026-06-27 | Founder confirmed close after run_261 verified the 0075 fix. The close gate now blocks unattended reconciliation, queued close, and founder-confirmation closes while a ticket run is awaiting an unanswered founder decision; 0073 remains Closed-superseded and 0076/0077 track follow-up orchestration seams. |
 | [0073](./closed/0073-local-cache-retention-handoff-what-is-this.md) | local-cache-retention - handoff - what is this | task | 2026-06-27 | SUPERSEDED — premature close (run_260 wrapped `needs closing` awaiting a founder decision; the "Fixed" claim covers only destructive priorities, not the actual non-destructive complaint). Launch work → 0074 (decision B); the false-close bug → 0075. |
 | [0072](./closed/0072-launch-error.md) | Launch Error | task | 2026-06-27 | Fixed in packages/ui: successful runnerless handoff now renders a distinct non-error notice state (LaunchProgressState.handoff) with a neutral check-circle icon and the copy-paste `cocoder run-independent` command, instead of the false 'Launch needs attention.' error. App.tsx doLaunch routes handoff success through the new channel; daemon launchIndependentHandoff already returns the command. Routing/independent-of-runner guard untouched. Regression test added; packages/ui suite 175/175 green, tsc clean. |
