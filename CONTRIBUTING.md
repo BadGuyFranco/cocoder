@@ -12,18 +12,19 @@ CoCoder is solo-maintained early-stage OSS. Outside contributions are welcome; t
 
 1. **Fork + branch.** Branch names like `fix/short-description` or `feature/short-description` keep history scannable; this is a recommendation, not a hard rule.
 2. **Match the existing style.** All packages are TypeScript: `packages/core/` (engine), `packages/adapters/`, `packages/session-hosts/`, `packages/daemon/` (Oz), `packages/cli/`, `packages/ui/` (dashboard), `packages/personas/` (shipped base) — inward-only deps, enforced by `scripts/check-topology.mjs`.
-3. **Write tests where behavior changes.** `node:test` for `.mjs` packages, `vitest` for TS packages. Source-grep tests are not accepted as runtime tests — see [ADR-0004](./cocoder/zArchive/v1/decisions/0004-typescript-validation-toolchain.md) and the M4.26 / Q5 lineage in [`cocoder/SESSION_LOG.md`](./cocoder/SESSION_LOG.md) for the reasoning.
-4. **Update docs in the same PR.** Anything that affects behavior described in `docs/`, an ADR, or the active Playbook needs the docs touched in the same change set. A future `cocoder lint` (v0.2) will enforce this automatically; today it's a review check.
+3. **Write tests where behavior changes.** Vitest is the package test runner. Source-grep tests are not accepted as runtime tests — see [ADR-0004](./cocoder/zArchive/v1/decisions/0004-typescript-validation-toolchain.md) and the M4.26 / Q5 lineage in [`cocoder/SESSION_LOG.md`](./cocoder/SESSION_LOG.md) for the reasoning.
+4. **Update docs in the same PR.** Anything that affects behavior described in `docs/`, an ADR, or the active Playbook needs the docs touched in the same change set. CI cannot prove that relationship automatically; expect review to check it.
 5. **Run the local gate:**
 
    ```sh
    pnpm install
-   pnpm -F schemas build
-   pnpm -r test
-   node packages/core/cli.mjs validate-contracts
+   pnpm typecheck
+   pnpm lint
+   pnpm test
+   node scripts/check-topology.mjs
    ```
 
-   CI runs these plus the stale-reference gate (`rg 'cobuilder|COB_ORCH_'` / `rg '/Volumes/'` in shipped packages). All must be green before merge.
+   CI runs the same gate on macOS with pnpm 10.30.3 and Node from `.nvmrc`. All must be green before merge.
 
 ## Commit + PR conventions
 
@@ -38,7 +39,7 @@ The following are never accepted in tracked files:
 - `local/` contents or run artifacts (everything under `<install>/local/` and gitignored zones).
 - Secrets, API keys, passwords, OAuth tokens — anywhere, including comments, examples, and tests. Use `*.example.*` files with placeholder values.
 - Machine-specific absolute paths (`/Volumes/...`, `/Users/...`) outside `*.example.*` files.
-- Upstream CoBuilder-private references (`cobuilder-build/`, `COB_ORCH_*`) in shipped packages, except where the leakage scanner itself is detecting them.
+- Upstream CoBuilder-private references (`cobuilder-build/`, `COB_ORCH_*`) in shipped packages, except explicit historical notes or examples whose purpose is to discuss the old private reference.
 
 ## Reviewing
 

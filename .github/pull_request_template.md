@@ -15,13 +15,13 @@ Example: "Closes #42." or "Sub-Playbook A audit §H7." -->
 
 ## Test plan
 
-<!-- Bulleted list of how you verified the change. CI runs `pnpm -r test` + the
-stale-reference gate automatically; list any additional manual checks. -->
+<!-- Bulleted list of how you verified the change. CI runs install, typecheck,
+lint, tests, and topology automatically; list any additional manual checks. -->
 
-- [ ] `pnpm -F schemas build` clean
-- [ ] `pnpm -r test` green
-- [ ] `node packages/core/cli.mjs validate-contracts` clean
-- [ ] Stale-reference CI gate (`rg 'cobuilder|COB_ORCH_'` / `rg '/Volumes/'`) returns 0 hits in shipped packages
+- [ ] `pnpm typecheck` clean
+- [ ] `pnpm lint` clean
+- [ ] `pnpm test` green
+- [ ] `node scripts/check-topology.mjs` clean
 - [ ] *(if applicable)* New behavior covered by a runtime test, not a source-grep
 
 ## Documentation

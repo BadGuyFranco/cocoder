@@ -6,7 +6,7 @@ Use it when you want AI coding sessions to start from explicit priorities, bound
 
 ## What v0.1 includes
 
-- A `cocoder` CLI to launch runs (`cocoder run`) and drive the Oz daemon (`cocoder oz start | author | archive-priority | migrate-history | commit-support | teardown`).
+- A `cocoder` CLI to launch runs (`cocoder run`, `cocoder run-independent`) and drive Oz daemon control-plane actions (`cocoder oz ...` for start, authoring, tickets, priorities, repair, resume, support commit, and teardown).
 - A tracked `cocoder/` workspace structure for priorities, session logs, ADRs, tickets, memory, standards, and personas.
 - A workspace template (`templates/workspace-cocoder/`) scaffolded into a repo when you add it as a workspace in the Oz dashboard.
 - Oz, a loopback-only browser dashboard for workspace registration, priority launch, run listing, and run inspection.
@@ -19,7 +19,7 @@ Use it when you want AI coding sessions to start from explicit priorities, bound
 - Node.js version from `.nvmrc`
 - pnpm 10.x
 - cmux — the native macOS terminal host where agent panes run and the founder watches them (ADR-0002; AGPL-3.0, macOS-only). Install it separately and enable its socket control (automation mode); CoCoder drives it over that Unix socket and will `open -a cmux` if it isn't already running. It is not bundled or vendored.
-- At least one configured model CLI adapter named by the selected profile
+- At least one configured model CLI adapter named by `cocoder/personas/assignments.json`
 
 ## Quick Start
 
@@ -75,6 +75,7 @@ For the full storage-zone model, see [`ARCHITECTURE.md`](./ARCHITECTURE.md). For
 pnpm install
 pnpm test                      # all package suites (pnpm -r test)
 pnpm typecheck                 # src + tests, every package
+pnpm lint                      # ESLint safety gate
 node scripts/check-topology.mjs
 ```
 

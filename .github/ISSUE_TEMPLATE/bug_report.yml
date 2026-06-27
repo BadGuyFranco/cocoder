@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to report this. Before filing, please check the [open issues](https://github.com/BadGuyFranco/cocoder/issues) and [the active Playbook](https://github.com/BadGuyFranco/cocoder/blob/main/cocoder/PRIORITIES.md) — the bug may already be known.
+        Thanks for taking the time to report this. Before filing, please check the [open issues](https://github.com/BadGuyFranco/cocoder/issues) and [the active Playbook](https://github.com/BadGuyFranco/cocoder/blob/main/cocoder/PLAYBOOK.md) — the bug may already be known.
 
         **Do not file security issues here.** Use [the security advisory form](https://github.com/BadGuyFranco/cocoder/security/advisories/new) or email security@francoinc.com.
   - type: textarea
@@ -21,7 +21,7 @@ body:
     id: reproduction
     attributes:
       label: Reproduction steps
-      description: The exact commands and environment that surface the bug. Include the `cocoder` invocation, working directory shape, and any relevant `cocoder/profiles` or `cocoder/routes` contents.
+      description: The exact commands and environment that surface the bug. Include the `cocoder` invocation, working directory shape, and any relevant `cocoder/personas/assignments.json`, `cocoder/priorities/`, or workspace registry context.
       placeholder: |
         1. `cd /path/to/my/repo`
         2. `cocoder ...`
@@ -47,7 +47,7 @@ body:
     id: logs
     attributes:
       label: Run evidence
-      description: If the bug is in an orchestrated run, paste the relevant `local/workspaces/<slug>/runs/<run-id>/jobs/<lane>/result.json` (redact anything sensitive). For CLI bugs, paste the full stderr/stdout.
+      description: If the bug is in an orchestrated run, paste the relevant artifact path under `local/runs/<workspace-id>/<run-id>/` (redact anything sensitive). For CLI bugs, paste the full stderr/stdout.
       render: shell
   - type: checkboxes
     id: terms
