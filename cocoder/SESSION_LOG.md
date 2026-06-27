@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-26 — **ticket-fix-0072: structured in-flight 409 + runnerless handoff pin — needs closing (run_113/run_257)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0072](./tickets/open/0072-launch-error.md) | **Run:** run_257 (display 113)
+**Outcomes:**
+- **Structured workspace-in-flight 409 (`7c5f516`).** Daemon `launchRun`/`resumeRun` now attach `code: 'workspace-in-flight'` and `runId` on true in-flight conflicts; dashboard classifies on `res.code` instead of brittle `/in flight/i` regex — other 409s (e.g. independent-of-runner-required) surface verbatim again. Daemon 416 + UI 173 tests + typecheck green.
+- **Runnerless handoff regression pinned.** Live-app test asserts `local-cache-retention` posts to `/runs/independent-handoff` and never `/runs` from current renderer source.
+- **Disposition: `needs closing`.** Code fix committed and green; founder's on-screen symptom likely a stale dashboard bundle (predates handoff routing in `39fa6df`) — live relaunch + launch is the remaining proof before `close 0072`. Stale-renderer auto-detection deliberately scoped out (net-new; recommend separate priority).
+**Next:** Relaunch Oz (`scripts/oz.sh stop && scripts/oz.sh start`), Handoff on local-cache-retention; if runnerless handoff (not in-flight error), reply `close 0072`.
+
 ## 2026-06-26 — **ticket-fix-0071: orchestration deadlock + runnerless handoff — closed (run_112/run_256)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0071](./tickets/closed/0071-ticket-70-was-closed-without-being-fixed.md) | **Run:** run_256 (display 112)
