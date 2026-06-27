@@ -41,7 +41,7 @@ The four zones, matching ARCHITECTURE.md:
 
 | Target | Meaning |
 |---|---|
-| `cocoder-product` | A product change to CoCoder itself: `packages/**`, `templates/**`, public `docs/**`, schemas, shipped prompts, or `packages/personas/base/**`. Contributor-only product work, gated by the run's write-scope + commit-gate hold-back (no separate developer-mode toggle in v2); in the dogfood it is the ADR-0012 portability-test call |
+| `cocoder-product` | A product change to CoCoder itself: `packages/**`, `templates/**`, public `docs/**`, schemas, shipped prompts, or `packages/personas/base/**`. Contributor-only product work, gated by the run's write-scope plus the spine receipt for out-of-lane files (no separate developer-mode toggle in v2); in the dogfood it is the ADR-0012 portability-test call |
 | `workspace-shared` | A tracked change to the active repo's `<ws.path>/cocoder/**` governance folder |
 | `install-local` | A private change to the install's ignored `<CoCoder>/local/**` zone — the only machine-local zone, spanning all workspaces (DB, runs, secrets, workspace definition files) |
 | `upstream-candidate` | A workspace finding that may belong in CoCoder product, but needs contributor review before product files change |

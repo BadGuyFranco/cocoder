@@ -97,10 +97,10 @@ reset reply (`packages/daemon/tests/oz-agent-chat.test.ts:624-648`).
 
 ## 2. Bounded Tool Surface
 
-Oz's callable model-facing tool surface is currently a fixed string union plus prompt text. The tool
-names are defined in `ToolName`: `launch`, `adhoc`, `show`, `stop`, `nudge`, `repair`, `oz-action`,
-`author`, `teardown`, `status`, and `refresh` (`packages/daemon/src/oz-host.ts:63-64`). The prompt text
-that advertises them to Oz lives in `toolInstructions()` (`packages/daemon/src/oz-host.ts:221-233`).
+Oz's callable model-facing tool surface is a fixed string union plus prompt text. The tool names are
+defined in `ToolName`, including `read-governed` alongside launch/status/lifecycle/authoring/repair
+tools (`packages/daemon/src/oz-host.ts:63-64`). The prompt text that advertises them to Oz lives in
+`toolInstructions()` (`packages/daemon/src/oz-host.ts:221-233`).
 
 Model output is parsed as a final `OZ_TOOL ...` line by `parseToolLine()` (`packages/daemon/src/oz-host.ts:278-293`).
 `validateToolCall()` converts that parsed tool call into an `OzExecutableCommand`
@@ -117,9 +117,9 @@ command union (`packages/daemon/src/oz-chat.ts:14-31`), `OzChatAction` is the UI
 behind executable commands (`packages/daemon/src/oz-chat.ts:59-85`). `executeOzCommand()` is the
 dispatcher from command kind to op (`packages/daemon/src/oz-chat.ts:131-271`).
 
-A new read-only `readGoverned(path)` tool would be registered in four places:
+The shipped read-only `read-governed` tool is registered in four places:
 
-1. add `'readGoverned'` or `'read-governed'` to `ToolName` and `isToolName()`
+1. add `'read-governed'` to `ToolName` and `isToolName()`
    (`packages/daemon/src/oz-host.ts:63-64`, `packages/daemon/src/oz-host.ts:374-376`);
 2. add it to `toolInstructions()` (`packages/daemon/src/oz-host.ts:221-233`);
 3. add a validation branch in `validateToolCall()` that requires a string `path`
@@ -173,14 +173,15 @@ prompt close to the existing compact digest model.
 
 ## 4. Recommendation
 
-**Recommend Option C (hybrid), weighted toward Option B's read tool as the core.** The corpus sizing
+**Historical recommendation before run_75 ratification:** recommend Option C (hybrid), weighted toward
+Option B's read tool as the core. The corpus sizing
 above rules out full-body Option A; a selective digest alone still ~2× the current facts budget and
 stays stale between refreshes. Option B alone is the cheapest build (`matchesAny` + four-place tool
 registration already proven in `oz-host.ts` / `oz-action-scope.test.ts`). Option C adds a thin index
 (ADR titles + active priority list, ~2–5K tokens) to `buildPrompt()` so Oz knows *what* exists, plus
 `readGoverned(path)` for full bodies on demand — best founder UX without budget blowup.
 
-Smallest provable build for Option C (Option B steps 1–5, plus thin-index injection in `buildPrompt()`):
+Historical smallest provable build for Option C (superseded by the shipped Option B denylist tool):
 
 1. Add `GOVERNED_READ_SCOPE` as the single owner of allowed zones:
    `cocoder/decisions/**`, `cocoder/priorities/**`, `cocoder/personas/**`,

@@ -34,6 +34,7 @@ node scripts/proof-direct-spine.mjs
 ```
 
 That harness runs the live-git runner and commit-spine suites and verifies that work lands directly on
-the checked-out branch, out-of-lane edits are committed and flagged instead of withheld, and the commit
-spine never reports false success. For live daemon confidence, still confirm `/health` `sha` matches the
-checked-out HEAD before attributing behavior to fresh code.
+the checked-out branch and that the commit spine never reports false success. The current suites split
+scope behavior by caller: ordinary atom commits flag and hold out-of-lane files, while default scoped
+spine callers commit and flag the whole changed set. For live daemon confidence, still confirm `/health`
+`sha` matches the checked-out HEAD before attributing behavior to fresh code.

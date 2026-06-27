@@ -78,12 +78,13 @@ reimplements `git commit`: the older paths the 2026-06-14 audit found — `runCo
 instead of maintaining separate git-commit implementations.
 
 There is exactly **one mode** (ADR-0023 Amendment 2, founder directive 2026-06-15 — the opt-in isolation
-lane was removed). The spine always: works on the **active checkout / active branch** (no worktree, no run
-branch, no landing step); commits **everything the actor changed** in one commit — the
-[ADR-0007](./cocoder/decisions/0007-write-scope-enforcement.md) allow-list is **advisory**, out-of-lane
-paths are committed and **flagged**, never withheld; applies **verification in place** for code; and emits
-**one durable receipt** (commit-link + event: branch, SHA(s), changed files, out-of-lane flagged files,
-verification evidence).
+lane was removed). The spine always works on the **active checkout / active branch** (no worktree, no run
+branch, no landing step), applies **verification in place** for code, and emits **one durable receipt**
+(commit-link + event: branch, SHA(s), changed files, out-of-lane flagged files, verification evidence).
+Scope handling is caller-declared on that same spine: controlled-list callers commit exactly their file
+list; ordinary verified atom and ticket-close lanes currently call `runCommitGate` with
+`commitOnlyScope: true`, so in-scope files commit while out-of-lane files are flagged and left dirty; broad
+repair/default `commitScoped` callers can commit the whole changed set and flag out-of-lane files.
 
 **Launch self-heals ALL founder dirt — the founder is a trusted actor
 ([ADR-0029](./cocoder/decisions/0029-founder-trusted-pre-run-snapshot.md), superseding
@@ -110,7 +111,7 @@ authoring Plays. ADR-0015/0021/0022 are retired history tracked in the
 | Change kind | Path | Verification |
 |---|---|---|
 | Governance / docs / ADRs / priorities / personas / standards | **Direct to the active branch** — commit in place | light / risk-matched; governed docs can be test-pinned, so affected suites still run |
-| Product / machinery **code** | **Direct to the active branch**, but the orchestrator verifies *before* the spine commits (per-atom diff + tests); fail → revert that atom in place, commit nothing | risk-matched ([ADR-0013](./cocoder/decisions/0013-orchestration-observation.md)) |
+| Product / machinery **code** | **Direct to the active branch**, but the orchestrator verifies *before* the spine commits (per-atom diff + tests); pass → commit the in-scope atom diff and flag out-of-lane paths; fail → revert that atom in place, commit nothing | risk-matched ([ADR-0013](./cocoder/decisions/0013-orchestration-observation.md)) |
 | Shared GitHub repo | The founder checks out a feature branch; the engine commits to it and `git push`es (**non-gating**). The merge to the shared `main` is GitHub's **PR review**, not the engine's | per the repo's CI / PR gate |
 
 **Why this is safe with one mode:** the single-writer-per-workspace lock
@@ -118,7 +119,8 @@ authoring Plays. ADR-0015/0021/0022 are retired history tracked in the
 quarantine (`restoreToHead`) can only ever touch the one actor's own uncommitted work; and "git is the
 undo." **Why it ends the drift for good:** there is no run branch on *any* path — so no off-trunk place for
 committed work to strand. The F14/F17/F19/F20/**F22** strand class is gone by construction. There is no
-`pending-landing`, no held-back queue, no manual recovery: work commits to the checked-out branch, always.
+`pending-landing`: committed work is on the checked-out branch, and scope exceptions are surfaced through
+receipts/events instead of an off-trunk landing queue.
 
 ## How a run executes — the orchestration loop (ADR-0013 + ADR-0016 + ADR-0017 + ADR-0026)
 
@@ -387,7 +389,7 @@ recommends a change:
 - `install-local` — the ignored `<CoCoder>/local/` machine-state zone (the only local zone).
 - `upstream-candidate` — a workspace finding that may belong upstream, but should be drafted for contributor review instead of edited into the install.
 
-Normal adopters get workspace customization by default. A `cocoder-product` change only lands when CoCoder's own source is the tracked tree (the CoCoder dogfood workspace) and the run's declared write-scope covers those product paths; anything a run edits outside its write-scope is held back at the commit-gate and never committed (there is no separate "developer mode" toggle — the v1 `--developer-mode` deny-gate was not carried into the v2 rebuild). See [`docs/oz-improvement-routing.md`](./docs/oz-improvement-routing.md), [`cocoder/decisions/0008-repository-topology.md`](./cocoder/decisions/0008-repository-topology.md) (one-home enforcement), and [`0009-extensibility.md`](./cocoder/decisions/0009-extensibility.md).
+Normal adopters get workspace customization by default. A `cocoder-product` change only lands when CoCoder's own source is the tracked tree (the CoCoder dogfood workspace) and the run's declared write-scope covers those product paths; out-of-lane files are then recorded in the commit receipt, with scope-only lanes leaving them dirty and advisory repair/default lanes committing and flagging them. There is no separate "developer mode" toggle — the v1 `--developer-mode` deny-gate was not carried into the v2 rebuild. See [`docs/oz-improvement-routing.md`](./docs/oz-improvement-routing.md), [`cocoder/decisions/0008-repository-topology.md`](./cocoder/decisions/0008-repository-topology.md) (one-home enforcement), and [`0009-extensibility.md`](./cocoder/decisions/0009-extensibility.md).
 
 ## References
 
