@@ -21,8 +21,8 @@ This Play runs headless on its per-(persona, Play) assigned model.
 
 The deterministic step runs the repo test command. The model step is read-only: triage the resulting
 output into a structured verdict with evidence, and do not edit source, tests, specs, or fixtures.
-`run-tests` is the persona-requested catalog capability for running and triaging tests; `integration-verify`
-remains the lifecycle landing gate on the commit spine.
+`run-tests` is the persona-requested catalog capability for running and triaging tests; it does not
+replace the runner's per-atom verify gate or the mandatory wrap-up Play trigger.
 
 Do this:
 

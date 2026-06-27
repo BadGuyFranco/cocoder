@@ -48,3 +48,40 @@
 - `git blame -L 478,489 -- packages/core/src/runner/agent-step.ts`
 - `git show -s --format='%H%n%s%n%cd' ccd3ae9c`
 - `node scripts/proof-direct-spine.mjs` - exited 1; underlying suites passed, proof-script matchers stale
+
+## Atom B - Normative Surface
+
+**Date:** 2026-06-27  
+**Scope:** Fresh concrete-reference audit of every file under `packages/personas/base/**`, `cocoder/personas/deltas/**`, and `cocoder/standards/**`. `cocoder/**` files were read-only for this atom.
+
+### Verdict Counts
+
+| Verdict | Count |
+|---|---:|
+| STALE-PATH | 0 |
+| STALE-CLI | 2 |
+| STALE-ADR-ID | 0 |
+| PORTABILITY-VIOLATION | 0 |
+| CONSISTENT-SPOTCHECK | 8 |
+
+### Inventory
+
+| # | Surface + reference | Verdict | Evidence | Resolution |
+|---:|---|---|---|---|
+| 1 | Oz base tool boundary listed `resolve`, direct `create-priority`, and `reorder` as current tools (`packages/personas/base/oz.md:18`). | STALE-CLI | Current Oz model-facing tool union is `launch`, `adhoc`, `show`, `confirm-archive`, `stop`, `nudge`, `repair`, `oz-action`, `read-governed`, `author`, `teardown`, `status`, and `refresh` (`packages/daemon/src/oz-host.ts:63-64`, `packages/daemon/src/oz-host.ts:221-229`, `packages/daemon/src/oz-host.ts:298-379`). | Fixed `packages/personas/base/oz.md` to name the live daemon-hosted tool surface and route priority authoring through `author`. |
+| 2 | Run-tests Play said `integration-verify` remains the lifecycle landing gate (`packages/personas/base/plays/run-tests.md:24`). | STALE-CLI | No live `integration-verify`, `landRunBranch`, or `runIntegrationVerify` implementation exists under `packages/core/src`, `packages/daemon/src`, `packages/cli/src`, or the audited normative surfaces. Current atom verification dispatch lives at `packages/core/src/runner/agent-step.ts:438-489`; mandatory wrap trigger is `run-wrap -> wrap-up` (`packages/core/src/plays/triggers.ts:4-20`). | Fixed `packages/personas/base/plays/run-tests.md` to distinguish persona-requested test triage from runner per-atom verify and mandatory wrap-up. |
+| 3 | Deterministic Play script refs `scripts/checks/code-review-preflight.mjs` and `scripts/checks/run-tests-preflight.mjs` (`packages/personas/base/plays/code-review.md:8`, `packages/personas/base/plays/run-tests.md:8`). | CONSISTENT-SPOTCHECK | Both files exist. Deterministic refs are repo-root-relative script paths resolved by `packages/core/src/plays/dispatch.ts:121-154`. | No edit. |
+| 4 | Oscar base control CLI refs `cocoder oz archive-priority`, `cocoder oz commit-support`, and `cocoder oz request-deb-repair` (`packages/personas/base/oscar.md`). | CONSISTENT-SPOTCHECK | CLI usage and handlers include those commands and flags (`packages/cli/src/run.ts:43-50`, `packages/cli/src/run.ts:171-180`, `packages/cli/src/run.ts:375-388`, `packages/cli/src/run.ts:405-425`). | No edit. |
+| 5 | Authoring Play CLI refs for `create-priority`, `edit-priority`, `create-ticket`, and `archive-priority` plus details/archive flags (`packages/personas/base/plays/create-priority.md`, `edit-priority.md`, `create-ticket.md`, `archive-priority.md`). | CONSISTENT-SPOTCHECK | CLI usage exposes those commands (`packages/cli/src/run.ts:43-50`); flag parsers validate `--details-file`, `--details-stdin`, `--mode`, `--workspace`, `--verdict`, `--findings`, and `--reason` (`packages/cli/src/oz-args.ts:16-125`). | No edit. |
+| 6 | Wrap-up archive confirmation and fallback archive CLI refs (`packages/personas/base/plays/wrap-up.md`). | CONSISTENT-SPOTCHECK | Typed Oz chat supports `archive` / `confirm-archive` (`packages/daemon/src/oz-chat.ts:112-124`); CLI fallback dispatches `cocoder oz archive-priority` (`packages/cli/src/run.ts:405-425`). | No edit. |
+| 7 | ADR refs across base personas and Plays, including ADR-0005, ADR-0012, ADR-0016, ADR-0017, ADR-0023, ADR-0033, ADR-0036, and ADR-0041. | CONSISTENT-SPOTCHECK | Matching files exist in `cocoder/decisions/**`. Explicit stale filenames `0010-objective-first` and `0013-multi-atom-delegation` do not appear in audited normative surfaces. | No edit. |
+| 8 | Dogfood Bob delta tooling refs `pnpm typecheck` and `node scripts/check-topology.mjs` (`cocoder/personas/deltas/bob.md`). | CONSISTENT-SPOTCHECK | Root `package.json:15-24` defines `typecheck` and `check:topology`; `scripts/check-topology.mjs` exists. | No edit; `cocoder/**` remained read-only. |
+| 9 | Dogfood Deb delta runner artifact refs `deb-terminal-snapshot.json`, `deb-status.json`, and `deb-nudge.json` (`cocoder/personas/deltas/deb.md`). | CONSISTENT-SPOTCHECK | Runner observer and IO own those paths (`packages/core/src/runner/observer.ts:50-52`, `packages/core/src/runner/io.ts:145-154`, `packages/core/src/runner/runner.ts:740-791`, `packages/core/src/runner/runner.ts:863-871`). | No edit; `cocoder/**` remained read-only. |
+| 10 | Dogfood standards refs to base shared standards, base personas, persona deltas, and ADR-0012 (`cocoder/standards/AGENTS.md`). | CONSISTENT-SPOTCHECK | `packages/personas/base/shared-standards.md`, `packages/personas/base/**`, `cocoder/personas/deltas/**`, and `cocoder/decisions/0012-living-base-personas.md` exist. | No edit; `cocoder/**` remained read-only. |
+
+### Base Files Edited
+
+- `packages/personas/base/oz.md`
+- `packages/personas/base/plays/run-tests.md`
+
+No `DEB-LANE: cocoder/ delta edit` item was needed.
