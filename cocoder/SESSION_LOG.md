@@ -12,6 +12,17 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-27 — **doc-truth-analysis phase 2 governance-doc sweep — continue (run_126/run_269)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [doc-truth-analysis](./priorities/doc-truth-analysis.md) | **Run:** run_269 (display 126)
+**Outcomes:**
+- **Design briefs reconciled (`06e0c31`).** Stale path refs fixed in `oz-design-brief`, `oz-streaming-design`, `oscar-deb-repair-dialogue-design`, `founder-brief-format-durability`.
+- **Eight remaining `docs/` files reconciled (`a6d36db`).** Path refs and stale claims fixed in `oz.md`, `oz-launch.md`, `oz-hardening-owner-map`, `loop-packets-dispatch-inventory`, `fault-injection-live-proofs`; worklist rows updated in `docs-files-truth-audit.md`.
+- **Root + governance docs reconciled (`2daab22`).** README, CONTRIBUTING, PR template, issue template, and `cocoder/failure-catalog.md` audited and corrected; `cocoder/` governance surface (PLAYBOOK, AGENTS, standards/plays deltas) audited clean.
+- **Out-of-scope residue ticketed.** Two stale path refs in `cocoder/personas/AGENTS.md` filed as [0069](./tickets/open/0069-personas-agents-stale-archive-and-v1-leftover-refs.md) — outside run_269 Oscar support-scope.
+- **Disposition: `continue`.** Ticket 0069 is the sole remaining doc-truth gap before archive-readiness.
+**Next:** Launch ticket `0069` — fix the two stale `cocoder/personas/AGENTS.md` path references (run must include `cocoder/personas/**` in Oscar support-scope).
+
 ## 2026-06-27 — **doc-truth-analysis phase 2 code cleanup: dead playbooks exports removed — continue (run_125/run_268)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [doc-truth-analysis](./priorities/doc-truth-analysis.md) | **Run:** run_268 (display 125)

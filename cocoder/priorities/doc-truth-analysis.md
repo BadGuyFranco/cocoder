@@ -33,16 +33,23 @@ Reconciled to live code and verified: ARCHITECTURE.md (5 WRONG + 7 STALE fixed),
 Oz/Oscar/Bob/Deb/Quinn contradiction). Live worklists: `docs/architecture-truth-audit.md` and
 `docs/docs-files-truth-audit.md` (every row carries verdict + resolution).
 
-## Phase 2 — remaining doc surface (next session, no founder input needed)
+## Phase 2 status (run_269 — DONE except ticket 0069)
 
-- `cocoder/` governance docs (PLAYBOOK, AGENTS, glossary, failure-catalog, personas/standards/plays) —
-  Oscar-lane (Bob cannot write these); audit against code and reconcile.
-- Root `README` / `CONTRIBUTING` — audit for stale claims (note: open ticket 0037 already flags a
-  stale CONTRIBUTING/PR-template rg-CI-gate).
-- Design-intent briefs under `docs/` (oz-design-brief, oz-streaming-design, ui-dev-notes, research/) —
-  audit for stale *path* refs only; do NOT flag aspirational design as "wrong".
-- Cleanup to consider once the priority completes: whether the two audit worklist docs should be
-  archived rather than kept permanently in `docs/`.
+Reconciled to live code and verified: root `README` / `CONTRIBUTING` / PR template / issue template;
+design-intent briefs (`docs/oz-design-brief`, `oz-streaming-design`, `oscar-deb-repair-dialogue-design`,
+`founder-brief-format-durability`); eight remaining truth-critical `docs/` files (path refs and stale
+claims in `oz.md`, `oz-launch.md`, `oz-hardening-owner-map`, `loop-packets-dispatch-inventory`,
+`fault-injection-live-proofs`, plus worklist rows in `docs-files-truth-audit.md`); and `cocoder/`
+governance docs audited (PLAYBOOK, AGENTS, failure-catalog, standards/plays deltas) — all clean except
+two stale path refs in `cocoder/personas/AGENTS.md` filed as [ticket 0069](../tickets/open/0069-personas-agents-stale-archive-and-v1-leftover-refs.md)
+(out of run_269 Oscar support-scope; needs a run with `cocoder/personas/**` write-scope).
+
+## Remaining before archive
+
+- Close ticket **0069** — fix the two stale `cocoder/personas/AGENTS.md` path references.
+- Optional cleanup (not blocking archive): whether the two audit worklist docs under `docs/` should be
+  archived rather than kept permanently; open ticket **0037** still flags a stale CONTRIBUTING rg-CI-gate
+  (separate from this priority's governed-doc surface).
 
 ## Founder-directed code-or-doc follow-ups (founder decisions from run_267)
 
