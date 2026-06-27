@@ -20,3 +20,16 @@ The last ticket changed the name of the launch button to handoff and still does 
 Closed by reconciliation deb-reconciliation on 2026-06-27.
 
 Fixed: dashboard Launch for independent destructive priorities now calls /runs/independent-launch and starts cocoder run-independent as a detached runnerless CLI process; button text is Launch again. Verified daemon/UI tests, typechecks, topology, and UI build.
+
+## Correction (2026-06-27, run_260) — PREMATURE CLOSE, SUPERSEDED
+
+This close was wrong and is retained only as history. Run_260 wrapped with status `needs closing`,
+awaiting a founder A/B/C decision that had not been made; the "deb-reconciliation" pass closed the
+ticket anyway, and the "Fixed" resolution above only covers **destructive** independent priorities —
+not the **non-destructive** case that was the actual complaint. The founder chose **option B** (keep
+ADR-0043; make the handoff an honest manual affordance, not a fake launch).
+
+- Real launch work → **[[0074]]** (founder decision B).
+- The recurring auto-close-without-resolution bug this close exemplifies → **[[0075]]**.
+
+This ticket stays Closed-superseded; do not treat the "Fixed" claim above as accurate.
