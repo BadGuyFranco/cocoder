@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-26 — **ticket-fix-0071: orchestration deadlock + runnerless handoff — closed (run_112/run_256)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0071](./tickets/closed/0071-ticket-70-was-closed-without-being-fixed.md) | **Run:** run_256 (display 112)
+**Outcomes:**
+- **Orchestration deadlock fix (`99894fe`).** `NON_LOOP_STALL_NUDGE_CAP` in `monitor.ts`→`agent-step.ts` quarantines stuck non-loop atoms after capped nudges and returns control to Oscar instead of looping to the 4h timeout (run_255 regression test pinned; core typecheck + 657 tests green).
+- **Runnerless handoff discovery (`871fb45`, parallel run).** Daemon lists pending `local/runnerless-handoffs/` artifacts until a matching run record exists; dashboard renders them under the owning priority — re-verified daemon + UI typecheck/tests green.
+- **Ticket closed** with corrected Resolution + INDEX crediting both fixes (`996b44a`); `order.json` pruned. Carried follow-up: ticket-close path still lacks a verified-commit guard (founder-gated).
+- **Disposition: `closed`.** Both halves of 0071 verified from primary evidence; no concrete next atom remains in ticket scope.
+**Next:** `pnpm --dir <install-root> exec cocoder run-independent local-cache-retention` from a disposable checkout (destructive priority).
+
 ## 2026-06-26 — **ticket-fix-0069: doLaunchTicket 409 un-mask — awaiting founder close scope (run_110)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0069](./tickets/open/0069-oz-dashboard-cannot-launch-independent-of-runner-priorities-409-misleading.md) | **Run:** run_110 (display 110)
