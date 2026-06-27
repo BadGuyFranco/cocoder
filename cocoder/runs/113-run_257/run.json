@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_257",
+    "displayNumber": 113
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "ticket"
+  },
+  "priorityId": "ticket-fix",
+  "playbookId": null,
+  "ticketId": "0072",
+  "status": "running",
+  "createdAt": 1782522103157,
+  "endedAt": null
+}
