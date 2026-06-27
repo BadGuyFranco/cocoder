@@ -18,11 +18,21 @@ Surfaced in run_261 (the fix for [[0075]]). The founder told Oscar in the pane t
 
 Result: a founder who instructs Oscar in the pane to confirm a held ticket close cannot have Oscar action it; they must leave the pane and use the dashboard. Every fix-run that holds its own ticket close (the normal case after 0075) hits this seam.
 
+## Confirmed dead-end (run_261 empirical evidence)
+Worse than a missing verb: for run_261's actual state, **NO governed lane could close 0075** — the ticket is stranded Open with no reachable close path:
+- `cocoder oz close-ticket 0075` → `409 awaiting-founder-decision` (reconciliation lane gated by `ticketCloseGate` — correct).
+- `POST /runs/run_261/ticket-close-confirmation` → `409 not-awaiting-ticket-close-confirmation`: "run is awaiting a founder decision, but its validated closeout did not request ticket close confirmation." The recorded `ticketCloseDecision` was **`none`, not `ask`**.
+- `cocoder oz resume run_261` → `409` "only a held run can be resumed" (status is `awaiting-founder`, not `held`) — so the run cannot be re-wrapped to correct the decision either.
+
+Root cause of the dead-end: the wrap recorded `ticketCloseDecision: none` even though the **delivered** founder closeout showed `Run Status: needs closing` and told the founder to "reply `close 0075` in this run to close through the governed close-ticket path." `deriveTicketCloseDecision` only returns `ask` when the closeout's Run Status section first-line value is literally `needs closing`; the recorded event was computed from a pickup whose Run Status was not in that exact form, so it fell through to `none`. The delivered brief advertised a close action that the run's recorded state cannot honor — and there is no governed way to re-derive it (resume is `held`-only). The reconciliation lane is correctly gated, so the ticket is uncloseable without a machinery fix or a teardown that finalizes the run off `awaiting-founder`.
+
 ## Acceptance
 - Add an Oscar/founder-invokable command that triggers the founder-confirmation close for a run parked `awaiting-founder` with `ticketCloseDecision: 'ask'` — e.g. `cocoder oz confirm-ticket-close <runId> [--resolution <text>]` and/or an oz-chat `confirm-close <runId>` verb — routing to `requestTicketCloseConfirmation`, NOT the gated reconciliation lane.
 - It must honor the SAME gate: only closes when the run is the `confirmedRunId` and the decision is `'ask'`; otherwise refuses with the existing reason. It must not become a second bypass around `ticketCloseGate`.
 - On success it closes via the one governed `closeTicket` spine, commits with a receipt, and finalizes the run (same as the dashboard action today).
-- Regression/proof: a held `awaiting-founder` close is closable via the new command and still refused via the reconciliation lane.
+- **Close the decision-recording dead-end:** the recorded `ticketCloseDecision` MUST agree with the delivered closeout. If the validated brief says `Run Status: needs closing` (a held close), the recorded decision MUST be `ask` so the confirmation lane/action is reachable — the brief must never advertise a close path the run's state cannot honor. Pin this with a test on the wrap pipeline (`deriveTicketCloseDecision` + the recorded `wrap-disposition` event vs. the delivered brief).
+- Provide at least one governed recovery for a run already stranded in `awaiting-founder` with decision `none` (e.g. allow resume/re-derive, or a finalize-and-reconcile path), so a wrong wrap does not permanently strand an Open ticket.
+- Regression/proof: a held `awaiting-founder` close is closable via the new command and still refused via the reconciliation lane; and a `needs closing` wrap records `ask` (not `none`).
 
 ## Notes
 - Orchestration/Surface-A machinery — Oscar->Deb repair candidate or a short verified run.
