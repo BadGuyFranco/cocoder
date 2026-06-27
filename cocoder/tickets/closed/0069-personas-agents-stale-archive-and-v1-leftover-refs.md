@@ -2,7 +2,7 @@
 id: 0069
 title: cocoder/personas/AGENTS.md has two stale path references (archived-priority + v1-leftovers list)
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: oscar-run_269
 created: 2026-06-27
@@ -35,3 +35,9 @@ a run that holds `cocoder/personas/**` write-scope. Both are doc-side staleness 
 - `cocoder/personas/AGENTS.md` both references resolve against the live tree (no `not found` path), verified
   by `ls`/`find`.
 - No code change (both are doc-side staleness).
+
+## Resolution
+
+Resolved by run run_270 (def9786d63315fb7b0373e0b4bf466f4d8aeb329) on 2026-06-27.
+
+Fixed cocoder/personas/AGENTS.md stale references: the archived priority path now resolves to cocoder/zArchive/priorities/v2/base-and-extension-personas.md, and the v1 leftovers paragraph now names only the remaining custom/ artifact. Verified with path checks, stale-reference grep, topology check, and the core test suite.

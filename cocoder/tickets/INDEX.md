@@ -13,7 +13,6 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
-| [0069](./open/0069-personas-agents-stale-archive-and-v1-leftover-refs.md) | cocoder/personas/AGENTS.md has two stale path references (archived-priority + v1-leftovers list) | bug | none | Open |
 | [0068](./open/0068-harden-correctness-clarity-elegance-at-the-verification-gate-without-new-orchestration.md) | Harden correctness-clarity-elegance at the verification gate, without new orchestration | task | none | founder-session |
 | [0037](./open/0037-contributing-pr-template-stale-rg-ci-gate.md) | CONTRIBUTING and PR template still promise an rg CI gate that live ci.yml no longer runs | bug | none | Open |
 
