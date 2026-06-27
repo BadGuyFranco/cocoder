@@ -7,29 +7,29 @@ const noop = (): void => {}
 describe('LaunchProgressModal', () => {
   afterEach(() => cleanup())
 
-  it('renders runnerless handoff success as a non-error notice with a copyable command', async () => {
+  it('renders runnerless launch success as a non-error notice with a copyable command', async () => {
     const state: LaunchProgressState = {
       open: true,
-      title: 'Runnerless handoff',
+      title: 'Runnerless launch',
       runId: null,
       detail: null,
       error: null,
-      handoff: {
-        handoffPath: 'local/runnerless-handoffs/cocoder/runnerless.md',
+      runnerlessLaunch: {
         command: "cd '/repo' && cocoder run-independent runnerless",
+        pid: 1234,
       },
     }
 
     render(<LaunchProgressModal state={state} onClose={noop} />)
 
-    const notice = await screen.findByText('Runnerless handoff created — run it in a fresh terminal:')
+    const notice = await screen.findByText('Runnerless launch started outside the daemon runner.')
     const overlay = notice.closest('body > div') as HTMLElement | null
     expect(overlay).not.toBeNull()
     expect(within(overlay!).getByRole('status')).toBeDefined()
     expect(within(overlay!).queryByRole('alert')).toBeNull()
     expect(within(overlay!).queryByText('Launch needs attention.')).toBeNull()
     expect(within(overlay!).getByText("cd '/repo' && cocoder run-independent runnerless")).toBeDefined()
-    expect(within(overlay!).getByText('local/runnerless-handoffs/cocoder/runnerless.md')).toBeDefined()
+    expect(within(overlay!).getByText('pid 1234')).toBeDefined()
     expect(overlay!.querySelector('.ph-check-circle')).not.toBeNull()
     expect(overlay!.querySelector('.ph-warning-circle')).toBeNull()
   })

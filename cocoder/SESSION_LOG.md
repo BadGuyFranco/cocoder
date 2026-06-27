@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-27 — **ticket-fix-0073: launch button is ADR-0043 handoff-by-design — needs closing (run_116/run_260)**
+
+**Persona:** Oscar (lead) | **Priority:** ticket-fix / [0073](./tickets/open/0073-local-cache-retention-handoff-what-is-this.md) | **Run:** run_260 (display 116)
+**Outcomes:**
+- **Diagnosis complete (0 atoms, no code).** The Create handoff/Launch button calls `requestIndependentHandoff` (markdown + copy-paste `cocoder run-independent` command, 202) — it never spawns. `requestIndependentLaunch` does spawn but returns 409 `runnerless-handoff-required` for non-destructive independent-of-runner priorities per [ADR-0043](./decisions/0043-runnerless-execution-shape.md) (live-store contention; isolation is destructive-only). Prior tickets (0069–0072) renamed/surfaced handoff within this design; the founder's one-click launch ask collides with ADR-0043, not a patchable UI bug.
+- **Ticket scope note.** Title mentions cache-retention; body is the fifth launch-button complaint — split cache-retention retention work into its own ticket if still needed.
+- **Founder decision (ADR-gated).** (A, recommended) extend scratch-store isolation to all independent launches + wire button to auto-spawn — requires superseding ADR; (B) UX-only honesty for manual handoff; (C) founder alternative.
+- **Disposition: `needs closing`.** No delegatable atom until founder picks A, B, or C; a sixth code-only patch would repeat the same unsatisfying outcome.
+**Next:** Reply `A`, `B`, or `C` in this run; if `A`, re-launch ticket `0073` for superseding ADR then one-click isolated launch + tests.
+
 ## 2026-06-27 — **ticket-fix-0072: runnerless handoff success presentation — closed (run_115/run_259)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0072](./tickets/closed/0072-launch-error.md) | **Run:** run_259 (display 115)
