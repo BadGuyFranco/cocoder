@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-26 — **ticket-fix-0072: diagnosis — handoff success painted as error; fix gated on founder approval (run_114)**
+
+**Persona:** Oscar (lead) | **Priority:** ticket-fix / [0072](./tickets/open/0072-launch-error.md) | **Run:** run_114 (display 114)
+**Outcomes:**
+- **Diagnosis complete (no code this run).** Runnerless routing for `local-cache-retention` is correct by design (`independent-of-runner` + `destructive` → POST `/runs/independent-handoff`, not `/runs`); the handoff file is created. Residual symptom is presentational only: `App.tsx` `doLaunch` routes successful handoff through `setLaunchProgressError`, so `LaunchProgressModal` shows warning icon, “Launch needs attention.”, and red alert instead of an actionable success with the copy-paste `command`.
+- **Prior in-flight 409 symptom superseded** for this priority by independent-of-runner routing; founder’s live evidence is the handoff path, not workspace-in-flight.
+- **Proposed fix (presentation-only, ~1–2 UI atoms):** distinct non-error terminal state on `LaunchProgressState` (handoff path + command); modal success affordance; live-app regression that handoff does not render error UI. Alternative (direct dashboard launch for destructive GC) is a larger ADR-track change — not recommended.
+- **Disposition: `needs another run`.** Ticket explicitly requires diagnose-then-present-before-fix; Oscar stopped for founder go-ahead before delegating to Bob.
+**Next:** Reply `approve` in this run to delegate the presentation-only UI fix, or say `direct-launch` if you want the ADR-track daemon-safe path instead.
+
 ## 2026-06-26 — **ticket-fix-0072: structured in-flight 409 + runnerless handoff pin — needs closing (run_113/run_257)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0072](./tickets/open/0072-launch-error.md) | **Run:** run_257 (display 113)
