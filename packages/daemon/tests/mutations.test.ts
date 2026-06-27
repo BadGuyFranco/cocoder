@@ -578,6 +578,7 @@ describe('Oz mutations + lifecycle', () => {
     runHeadless: (input: HeadlessRunInput) => Promise<{ readonly exitCode: number; readonly output: string }> = async () => ({ exitCode: 0, output: validFounderCloseout() }),
     io: RunnerIO = fakeIO(),
     runnerTimeouts?: OzServer['ctx']['runnerTimeouts'],
+    independentRunLauncher?: OzServer['ctx']['independentRunLauncher'],
   ): Promise<OzServer> => {
     shown = []
     killed = []
@@ -594,6 +595,7 @@ describe('Oz mutations + lifecycle', () => {
       io,
       runHeadless, // headless wrap-up/authoring Play: don't shell out in tests
       ...(runnerTimeouts !== undefined ? { runnerTimeouts } : {}),
+      ...(independentRunLauncher !== undefined ? { independentRunLauncher } : {}),
     })
     return oz
   }
@@ -1553,6 +1555,38 @@ describe('Oz mutations + lifecycle', () => {
     expect(store.listRuns()).toHaveLength(0)
     expect(oz!.ctx.inFlight.get('cocoder')).toBe('run_active')
     const audit = await readAuditEventually(home, '"action":"runnerless-handoff"')
+    expect(audit).toContain('"priorityId":"runnerless"')
+  })
+
+  test('POST /runs/independent-launch starts a detached runnerless CLI without creating a daemon run', async () => {
+    await writeFile(
+      join(home, 'cocoder', 'priorities', 'runnerless.md'),
+      `---\nid: runnerless\ntitle: Runnerless\nindependent-of-runner: true\ndestructive: true\n---\n## Objective\nDo the runnerless thing.`,
+    )
+    const launches: Array<{ command: string; args: readonly string[]; cwd: string }> = []
+    await startServer(fakeGit([], ['same-sha']), undefined, undefined, undefined, {
+      spawn(input) {
+        launches.push(input)
+        return {
+          pid: 4321,
+          on: () => undefined,
+          unref: () => undefined,
+        }
+      },
+    })
+    oz!.ctx.inFlight.set('cocoder', 'run_active')
+
+    const r = await call(oz!, 'POST', '/runs/independent-launch', { body: { workspaceId: 'cocoder', priorityId: 'runnerless' } })
+
+    expect(r.status).toBe(202)
+    expect(r.json).toMatchObject({ ok: true, runnerless: true, launched: true, workspaceId: 'cocoder', priorityId: 'runnerless', pid: 4321 })
+    expect(String(r.json.command)).toContain('cocoder run-independent runnerless')
+    expect(launches).toHaveLength(1)
+    expect(launches[0]).toMatchObject({ command: process.execPath, cwd: home })
+    expect(launches[0]!.args).toEqual([join(home, 'packages', 'cli', 'bin', 'cocoder.mjs'), 'run-independent', 'runnerless'])
+    expect(store.listRuns()).toHaveLength(0)
+    expect(oz!.ctx.inFlight.get('cocoder')).toBe('run_active')
+    const audit = await readAuditEventually(home, '"action":"runnerless-launch"')
     expect(audit).toContain('"priorityId":"runnerless"')
   })
 

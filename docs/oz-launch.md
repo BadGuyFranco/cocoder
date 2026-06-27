@@ -38,7 +38,7 @@ its own cmux workspace automatically — no per-workspace socket to configure (A
 
 1. Open **Priorities** (`#/priorities`) and pick a registered workspace.
 2. Confirm the priority you want (its summary and scope) — the per-persona CLI/model assignment comes from the workspace's `cocoder/personas/assignments.json`.
-3. Click **Launch** on a priority row. Oz calls `POST /runs`; the daemon runs it through the core runner, spawning each lane's configured model CLI as an argv subprocess. (The `--strict-dirt` opt-out is the `strictPreRunDirt` field on the `POST /runs` body and a checkbox in the priority's launch dialog; see [ADR-0029](../cocoder/decisions/0029-founder-trusted-pre-run-snapshot.md).)
+3. Click **Launch** on a priority row. For ordinary priorities, Oz calls `POST /runs`; the daemon runs it through the core runner, spawning each lane's configured model CLI as an argv subprocess. For `independent-of-runner: true` destructive priorities, Oz calls `POST /runs/independent-launch` instead: it starts `cocoder run-independent <priorityId>` as a detached runnerless CLI process from the workspace root, so the work does not enter the daemon runner or create a daemon-owned run. (The `--strict-dirt` opt-out is the `strictPreRunDirt` field on the ordinary `POST /runs` body and a checkbox in the priority's launch dialog; see [ADR-0029](../cocoder/decisions/0029-founder-trusted-pre-run-snapshot.md).)
 
 ### Watching a run (cmux panes)
 
