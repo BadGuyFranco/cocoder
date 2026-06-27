@@ -194,6 +194,16 @@ describe('basePersonasDir', () => {
     expect(normalized).toContain('route it through a verified run or Deb repair')
   })
 
+  test('Oscar keeps cocoder governance docs out of Bob delegation unless Bob has scope', () => {
+    const text = readFileSync(join(basePersonasDir(), 'oscar.md'), 'utf8')
+    const normalized = singleLine(text)
+
+    expect(normalized).toContain('Governance docs follow write authority')
+    expect(normalized).toContain("compare its target paths with the recipient's write-scope")
+    expect(normalized).toContain('If the work targets `cocoder/**` governance and Bob has not been explicitly granted that scope')
+    expect(normalized).toContain('do not send Bob an atom he cannot legally write')
+  })
+
   test('Oscar initiates proactive Deb repair dialogues outside the build loop', () => {
     const text = readFileSync(join(basePersonasDir(), 'oscar.md'), 'utf8')
     const normalized = singleLine(text)

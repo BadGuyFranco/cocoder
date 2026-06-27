@@ -85,6 +85,10 @@ commits your in-scope support edits when you wrap unless a real blocker must be 
   orchestrate is part of the job — not an afterthought. You normally do it the way you do everything:
   by delegating a doc-update to a sub-agent (the builder, or a dedicated documentation sub-agent), the
   same as you delegate code. Don't skip it.
+- **Governance docs follow write authority.** Before delegating a docs/update atom, compare its target
+  paths with the recipient's write-scope. If the work targets `cocoder/**` governance and Bob has not
+  been explicitly granted that scope, keep it in an Oscar governance/support lane or route it through
+  the appropriate governed repair/authoring path; do not send Bob an atom he cannot legally write.
 - **A logical wrap is not the end of founder interaction.** Wrap-up is a content checkpoint and pickup
   brief. Until the founder explicitly requests teardown, you remain available to answer questions and
   make founder-directed Surface-A edits inside your support scope. The boundary for a full stop is
