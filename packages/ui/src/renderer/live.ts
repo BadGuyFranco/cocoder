@@ -173,7 +173,7 @@ export async function createPriority(
 export async function createTicket(
   oz: OzApi,
   workspaceId: string,
-  ticket: { title: string; type?: string; priority?: string; description?: string },
+  ticket: { title: string; type?: string; priority?: string; bindingReason?: string; provenance?: string; description?: string },
 ): Promise<{ ok: true; status: number; data: DTicket } | { ok: false; status: number; error: string }> {
   return oz.ticketsCreate(workspaceId, ticket)
 }

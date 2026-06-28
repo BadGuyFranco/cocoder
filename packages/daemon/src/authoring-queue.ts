@@ -13,7 +13,14 @@ const QUEUE_SCHEMA_VERSION = 3
 type QueueStatus = 'queued' | 'committed' | 'error'
 type QueuedAction = 'ticket-create' | 'ticket-reorder' | 'ticket-close' | 'ticket-repoint' | 'priority-create'
 
-export interface QueuedTicketCreateInput { readonly title: string; readonly type: 'bug' | 'task' | 'question'; readonly priority: string; readonly description: string }
+export interface QueuedTicketCreateInput {
+  readonly title: string
+  readonly type: 'bug' | 'task' | 'question'
+  readonly priority?: string | null
+  readonly bindingReason?: string | null
+  readonly provenance?: string | null
+  readonly description: string
+}
 
 interface QueuedBaseEntry {
   readonly schemaVersion: typeof QUEUE_SCHEMA_VERSION
@@ -168,9 +175,19 @@ function validateStringArray(input: unknown, field: string): readonly string[] {
 
 function validateTicketInput(input: unknown): QueuedTicketCreateInput {
   const record = typeof input === 'object' && input !== null ? input as Record<string, unknown> : {}
-  if (typeof record.title !== 'string' || typeof record.priority !== 'string' || typeof record.description !== 'string') throw new Error('queued ticket-create input is malformed')
+  if (typeof record.title !== 'string' || typeof record.description !== 'string') throw new Error('queued ticket-create input is malformed')
+  if (record.priority !== null && record.priority !== undefined && typeof record.priority !== 'string') throw new Error('queued ticket-create priority is malformed')
+  if (record.bindingReason !== null && record.bindingReason !== undefined && typeof record.bindingReason !== 'string') throw new Error('queued ticket-create binding reason is malformed')
+  if (record.provenance !== null && record.provenance !== undefined && typeof record.provenance !== 'string') throw new Error('queued ticket-create provenance is malformed')
   if (record.type !== 'bug' && record.type !== 'task' && record.type !== 'question') throw new Error('queued ticket-create type is malformed')
-  return { title: record.title, type: record.type, priority: record.priority, description: record.description }
+  return {
+    title: record.title,
+    type: record.type,
+    description: record.description,
+    ...(typeof record.priority === 'string' || record.priority === null ? { priority: record.priority } : {}),
+    ...(typeof record.bindingReason === 'string' || record.bindingReason === null ? { bindingReason: record.bindingReason } : {}),
+    ...(typeof record.provenance === 'string' || record.provenance === null ? { provenance: record.provenance } : {}),
+  }
 }
 
 function validatePriorityInput(input: unknown): CreatePriorityInput {

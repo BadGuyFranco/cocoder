@@ -47,6 +47,7 @@ test('creates an open ticket through the governed spine and commits exactly the 
     title: 'Agent Ticket',
     type: 'bug',
     priority: 'tickets-review',
+    bindingReason: 'Founder chose tickets-review for this CLI ticket.',
     description: '## Context\nFiled by the CLI.',
     created: '2026-06-25',
     git: fakeGit(calls),
@@ -63,6 +64,8 @@ test('creates an open ticket through the governed spine and commits exactly the 
   const markdown = await readFile(join(tickets, 'open', '0002-agent-ticket.md'), 'utf8')
   expect(markdown).toContain('id: 0002')
   expect(markdown).toContain('title: Agent Ticket')
+  expect(markdown).toContain('priority: tickets-review')
+  expect(markdown).toContain('binding-reason: Founder chose tickets-review for this CLI ticket.')
 
   const index = await readFile(join(tickets, 'INDEX.md'), 'utf8')
   expect(index.split('\n').filter((line) => line.includes('| [0002]('))).toEqual([
@@ -86,7 +89,6 @@ test('a --run reference stamps the create commit message with the run fingerprin
     repoPath: repo,
     title: 'Run Ticket',
     type: 'task',
-    priority: 'none',
     description: 'Created from a run.',
     created: '2026-06-25',
     runId: 'run_777',
@@ -95,6 +97,25 @@ test('a --run reference stamps the create commit message with the run fingerprin
 
   expect(result.created).toBe(true)
   expect(calls[0].message).toBe('governance: create ticket 0002 via run run_777')
+  await expect(readFile(join(repo, 'cocoder', 'tickets', 'open', '0002-run-ticket.md'), 'utf8')).resolves.toContain('provenance: run_777')
+  await expect(readFile(join(repo, 'cocoder', 'tickets', 'open', '0002-run-ticket.md'), 'utf8')).resolves.toContain('priority: none')
+})
+
+test('rejects a priority binding without a binding reason before committing', async () => {
+  const repo = await setupRepo()
+  const calls: CommitCall[] = []
+
+  await expect(createTicketViaCli({
+    repoPath: repo,
+    title: 'Reasonless Binding',
+    type: 'bug',
+    priority: 'tickets-review',
+    description: 'Do not create.',
+    created: '2026-06-25',
+    git: fakeGit(calls),
+  })).rejects.toThrow(/requires a binding reason/)
+
+  expect(calls).toHaveLength(0)
 })
 
 test('an id collision reports not-created and makes no commit', async () => {

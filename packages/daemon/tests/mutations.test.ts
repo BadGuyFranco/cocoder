@@ -3333,6 +3333,8 @@ describe('Oz mutations + lifecycle', () => {
         title: 'Fix Backend Ticket',
         type: 'bug',
         priority: 'oz-dashboard-bugs',
+        bindingReason: 'Founder chose oz-dashboard-bugs for this backend ticket.',
+        provenance: 'run_279 (ticketing-paths-hardening)',
         description: '## Context\nBuild the ticket backend.',
       },
     })
@@ -3345,13 +3347,22 @@ describe('Oz mutations + lifecycle', () => {
       type: 'bug',
       status: 'Open',
       priority: 'oz-dashboard-bugs',
+      bindingReason: 'Founder chose oz-dashboard-bugs for this backend ticket.',
+      provenance: 'run_279 (ticketing-paths-hardening)',
       owner: 'founder-session',
       state: 'open',
     })
     const ticketPath = join(home, 'cocoder', 'tickets', 'open', '0013-fix-backend-ticket.md')
     expect(await exists(ticketPath)).toBe(true)
     const parsed = await readTickets(join(home, 'cocoder', 'tickets'))
-    expect(parsed.find((ticket) => ticket.id === '0013')).toMatchObject({ title: 'Fix Backend Ticket', type: 'bug', state: 'open' })
+    expect(parsed.find((ticket) => ticket.id === '0013')).toMatchObject({
+      title: 'Fix Backend Ticket',
+      type: 'bug',
+      state: 'open',
+      priority: 'oz-dashboard-bugs',
+      bindingReason: 'Founder chose oz-dashboard-bugs for this backend ticket.',
+      provenance: 'run_279 (ticketing-paths-hardening)',
+    })
     const index = await readFile(join(home, 'cocoder', 'tickets', 'INDEX.md'), 'utf8')
     const row = '| [0013](./open/0013-fix-backend-ticket.md) | Fix Backend Ticket | bug | oz-dashboard-bugs | founder-session |'
     expect(index.match(/\| \[0013\]\(\.\/open\/0013-fix-backend-ticket\.md\) \|/g)?.length).toBe(1)
@@ -3381,6 +3392,7 @@ describe('Oz mutations + lifecycle', () => {
         title: 'Queued Backend Ticket',
         type: 'bug',
         priority: 'oz-dashboard-bugs',
+        bindingReason: 'Founder chose oz-dashboard-bugs for this queued ticket.',
         description: '## Context\nQueue this ticket while a run is active.',
       },
     })
@@ -3393,7 +3405,46 @@ describe('Oz mutations + lifecycle', () => {
       queuedId: 'ticket-create-0013',
       status: 'queued',
       reservedTicketId: '0013',
-      input: { title: 'Queued Backend Ticket', type: 'bug', priority: 'oz-dashboard-bugs' },
+      input: { title: 'Queued Backend Ticket', type: 'bug', priority: 'oz-dashboard-bugs', bindingReason: 'Founder chose oz-dashboard-bugs for this queued ticket.' },
+    })
+  })
+
+  test('POST /workspaces/:id/tickets rejects a priority binding without a reason as a client error', async () => {
+    await writeTicketIndex(home)
+    await startServer()
+
+    const post = await call(oz!, 'POST', '/workspaces/cocoder/tickets', {
+      body: {
+        title: 'Reasonless Binding',
+        type: 'bug',
+        priority: 'oz-dashboard-bugs',
+        description: 'Do not create this ticket.',
+      },
+    })
+
+    expect(post.status).toBe(400)
+    expect(post.json).toEqual({ error: 'ticket binding to oz-dashboard-bugs requires a binding reason' })
+  })
+
+  test('POST /workspaces/:id/tickets defaults to standalone and stores provenance separately', async () => {
+    await writeTicketIndex(home)
+    await startServer()
+
+    const post = await call(oz!, 'POST', '/workspaces/cocoder/tickets', {
+      body: {
+        title: 'Standalone Backend Ticket',
+        type: 'task',
+        provenance: 'run_279 (ticketing-paths-hardening)',
+        description: 'Create a standalone ticket.',
+      },
+    })
+
+    expect(post.status).toBe(201)
+    expect(post.json.ticket).toMatchObject({
+      id: '0013',
+      priority: 'none',
+      bindingReason: null,
+      provenance: 'run_279 (ticketing-paths-hardening)',
     })
   })
 

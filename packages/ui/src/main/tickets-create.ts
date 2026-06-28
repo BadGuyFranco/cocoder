@@ -8,7 +8,7 @@ interface CreateTicketResponse {
 
 export async function createTicketViaDaemon(
   workspaceId: string,
-  ticket: { title: string; type?: string; priority?: string; description?: string },
+  ticket: { title: string; type?: string; priority?: string; bindingReason?: string; provenance?: string; description?: string },
 ): Promise<DaemonResult<Ticket>> {
   const res = await daemonPost<CreateTicketResponse>(
     `/workspaces/${encodeURIComponent(workspaceId)}/tickets`,

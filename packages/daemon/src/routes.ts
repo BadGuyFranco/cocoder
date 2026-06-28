@@ -19,7 +19,9 @@ import {
   truncate,
   workspaceTemplateDir,
   COCODER_GOVERNANCE_AUTHOR,
+  TicketBindingError,
   commitFiles,
+  validateBinding,
   writePortableCounters,
   type CommitReceipt,
   type PersonaAssignment,
@@ -200,7 +202,9 @@ type TicketKind = 'bug' | 'task' | 'question'
 interface CreateTicketInput {
   readonly title: string
   readonly type: TicketKind
-  readonly priority: string
+  readonly priority?: string | null
+  readonly bindingReason?: string | null
+  readonly provenance?: string | null
   readonly description: string
 }
 
@@ -277,13 +281,36 @@ function createTicketBody(body: unknown): ParsedCreateTicketBody {
     type = record.type as TicketKind
   }
 
-  let priority = 'none'
+  let priority: string | null = null
   if (Object.prototype.hasOwnProperty.call(record, 'priority') && record.priority !== undefined) {
     if (typeof record.priority !== 'string') return { ok: false, error: 'priority must be a string' }
-    priority = record.priority.trim() || 'none'
-    if (priority.length > 200) return { ok: false, error: 'priority too long' }
-    if (CONTROL_CHARS_RE.test(priority)) return { ok: false, error: 'priority must not contain control characters' }
-    if (priority !== 'none' && !PRIORITY_ID_RE.test(priority)) return { ok: false, error: 'priority must match /^[a-z0-9][a-z0-9-]*$/' }
+    priority = record.priority.trim() || null
+    if (priority !== null) {
+      if (priority.length > 200) return { ok: false, error: 'priority too long' }
+      if (CONTROL_CHARS_RE.test(priority)) return { ok: false, error: 'priority must not contain control characters' }
+      if (priority !== 'none' && !PRIORITY_ID_RE.test(priority)) return { ok: false, error: 'priority must match /^[a-z0-9][a-z0-9-]*$/' }
+    }
+  }
+  let bindingReason: string | null = null
+  if (Object.prototype.hasOwnProperty.call(record, 'bindingReason') && record.bindingReason !== undefined) {
+    if (typeof record.bindingReason !== 'string') return { ok: false, error: 'bindingReason must be a string' }
+    bindingReason = record.bindingReason.trim() || null
+    if (bindingReason && bindingReason.length > 500) return { ok: false, error: 'bindingReason too long' }
+    if (bindingReason && CONTROL_CHARS_RE.test(bindingReason)) return { ok: false, error: 'bindingReason must not contain control characters' }
+  }
+  let provenance: string | null = null
+  if (Object.prototype.hasOwnProperty.call(record, 'provenance') && record.provenance !== undefined) {
+    if (typeof record.provenance !== 'string') return { ok: false, error: 'provenance must be a string' }
+    provenance = record.provenance.trim() || null
+    if (provenance && provenance.length > 500) return { ok: false, error: 'provenance too long' }
+    if (provenance && CONTROL_CHARS_RE.test(provenance)) return { ok: false, error: 'provenance must not contain control characters' }
+  }
+  let binding: ReturnType<typeof validateBinding>
+  try {
+    binding = validateBinding({ priority: priority ?? 'none', reason: bindingReason })
+  } catch (err) {
+    if (err instanceof TicketBindingError) return { ok: false, error: err.message }
+    throw err
   }
 
   let description = ''
@@ -297,7 +324,16 @@ function createTicketBody(body: unknown): ParsedCreateTicketBody {
     if (description.length > 20_000) return { ok: false, error: 'body too long' }
   }
 
-  return { ok: true, input: { title, type, priority, description } }
+  return {
+    ok: true,
+    input: {
+      title,
+      type,
+      description,
+      ...(binding.priority === null ? {} : { priority: binding.priority, bindingReason: binding.reason }),
+      ...(provenance === null ? {} : { provenance }),
+    },
+  }
 }
 
 function authoringPlayBody(body: unknown): ParsedAuthoringPlayBody {
@@ -810,7 +846,7 @@ async function createTicket(ctx: OzContext, res: ServerResponse, workspaceId: st
     emitOzEvent(ctx, { type: 'ticket-created', workspaceId, ticketId: create.id, status: 'committed' })
     sendJson(res, 201, { ok: true, ticket, committedSha: receipt.committedSha })
   } catch (err) {
-    sendJson(res, 500, { error: err instanceof Error ? err.message : String(err) })
+    sendJson(res, err instanceof TicketBindingError ? 400 : 500, { error: err instanceof Error ? err.message : String(err) })
   }
 }
 

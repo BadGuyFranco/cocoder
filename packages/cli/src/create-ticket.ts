@@ -13,7 +13,8 @@ export interface CreateTicketCliInput {
   readonly repoPath: string
   readonly title: string
   readonly type: string
-  readonly priority: string
+  readonly priority?: string | null
+  readonly bindingReason?: string | null
   readonly description: string
   /** YYYY-MM-DD; injected for determinism (the bin passes today's date). */
   readonly created: string
@@ -39,6 +40,8 @@ export async function createTicketViaCli(input: CreateTicketCliInput): Promise<C
     title: input.title,
     type: input.type,
     priority: input.priority,
+    bindingReason: input.bindingReason,
+    provenance: input.runId,
     description: input.description,
     created: input.created,
     ...(input.ticketId ? { ticketId: input.ticketId } : {}),

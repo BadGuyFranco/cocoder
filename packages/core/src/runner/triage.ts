@@ -12,7 +12,7 @@ import { COCODER_GOVERNANCE_AUTHOR, commitFiles, recordSuccessfulCommit, runComm
 import type { AuditWriteBoundary, CommitGateResult, Git } from '../commit-gate/index.js'
 import type { ResolvedPersona } from '../personas/index.js'
 import type { Run, RunStore, Workspace } from '../store/index.js'
-import { createTicket } from '../tickets/index.js'
+import { createTicket, TicketBindingError, validateBinding } from '../tickets/index.js'
 import { partitionByScope } from '../write-scope/index.js'
 import type { SessionHost, SessionRef } from '../session-host/index.js'
 import { join } from 'node:path'
@@ -112,6 +112,23 @@ function ticketBody(verdict: Triage): string {
     ...(verdict.whyCocoderOwned ? ['## Why CoCoder-owned', '', verdict.whyCocoderOwned, ''] : []),
     ...(verdict.remainingRisk ? ['## Remaining Risk', '', verdict.remainingRisk, ''] : []),
   ].join('\n')
+}
+
+function oneLine(value: string): string {
+  return value.replace(/\s+/g, ' ').trim()
+}
+
+function triageTicketBinding(verdict: Triage): { readonly priority: string | null; readonly bindingReason: string | null } {
+  const priority = verdict.ticketPriority ?? 'none'
+  try {
+    const binding = validateBinding({ priority })
+    return { priority: binding.priority, bindingReason: binding.reason }
+  } catch (err) {
+    if (!(err instanceof TicketBindingError) || err.code !== 'missing-binding-reason') throw err
+    const reason = oneLine(verdict.summary || verdict.diagnosis || verdict.whyCocoderOwned || 'Deb recommended this priority binding.')
+    const binding = validateBinding({ priority, reason })
+    return { priority: binding.priority, bindingReason: binding.reason }
+  }
 }
 
 // ── The fault/triage funnel (extracted from runRun, WS5.2) ───────────────────────────────────────────
@@ -215,12 +232,15 @@ export const triageFault = async (deps: TriageDeps, faultType: string, atomIndex
       const message = `deb-${kind}: ${faultType}${atomIndex !== null ? ` (atom ${atomIndex})` : ''} occurrence ${occurrence}${verdict.ticketId ? ` → ticket ${verdict.ticketId}` : ''} via CoCoder run ${deps.runReference}`
       const commitScope = deps.withPortableRunHistoryScope(deps.deb.writeScope)
       if (isTicket && hasTicketMetadata) {
+        const binding = triageTicketBinding(verdict)
         const create = await createTicket({
           ticketsDir: join(deps.worktreePath, 'cocoder', 'tickets'),
           repoPath: deps.worktreePath,
           title: verdict.ticketTitle ?? verdict.summary,
           type: verdict.ticketType ?? 'bug',
-          priority: verdict.ticketPriority ?? 'none',
+          priority: binding.priority,
+          bindingReason: binding.bindingReason,
+          provenance: deps.runReference,
           description: ticketBody(verdict),
           created: today(deps.now),
           ...(verdict.ticketId ? { ticketId: verdict.ticketId } : {}),

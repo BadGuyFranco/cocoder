@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, test, vi } from 'vitest'
-import { closeTicket, composeTicketMarkdown, createTicket, handledOpenTicketsForPriority, loadTicket, moveTicketIndexRowToClosed, nextTicketId, readTickets, repointTicket, TICKET_OWNER, type Ticket } from '../src/index.js'
+import { closeTicket, composeTicketMarkdown, createTicket, handledOpenTicketsForPriority, loadTicket, moveTicketIndexRowToClosed, nextTicketId, readTickets, repointTicket, TicketBindingError, TICKET_OWNER, type Ticket } from '../src/index.js'
 
 const repoRoot = (): string => join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
 
@@ -230,7 +230,9 @@ describe('ticket create', () => {
       title: 'Fix Pipes & Spaces',
       type: 'bug',
       priority: 'tickets|review',
+      bindingReason: 'Founder asked this ticket to be handled with tickets review.',
       description: '## Context\nCreate it.',
+      provenance: 'run_279 (ticketing-paths-hardening)',
       created: '2026-06-25',
     })
 
@@ -245,6 +247,8 @@ describe('ticket create', () => {
       title: 'Fix Pipes & Spaces',
       type: 'bug',
       priority: 'tickets|review',
+      bindingReason: 'Founder asked this ticket to be handled with tickets review.',
+      provenance: 'run_279 (ticketing-paths-hardening)',
       owner: TICKET_OWNER,
       created: '2026-06-25',
       status: 'Open',
@@ -278,6 +282,64 @@ describe('ticket create', () => {
     await expect(readFile(join(dir, 'open', '0042-use-provided-id.md'), 'utf8')).resolves.toContain('id: 0042')
   })
 
+  test('defaults creates to standalone while preserving provenance separately', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'tickets-create-standalone-'))
+
+    const result = await createTicket({
+      ticketsDir: dir,
+      repoPath: dir,
+      title: 'Standalone From Run',
+      type: 'task',
+      description: 'Created during a run without binding.',
+      provenance: 'run_279 (ticketing-paths-hardening)',
+      created: '2026-06-25',
+    })
+
+    expect(result).toMatchObject({ created: true, id: '0001' })
+    const ticket = (await readTickets(dir)).find((item) => item.id === '0001')
+    expect(ticket).toMatchObject({
+      priority: 'none',
+      bindingReason: null,
+      provenance: 'run_279 (ticketing-paths-hardening)',
+    })
+    await expect(readFile(join(dir, 'open', '0001-standalone-from-run.md'), 'utf8')).resolves.toContain('provenance: run_279 (ticketing-paths-hardening)')
+  })
+
+  test('rejects a non-standalone binding without a binding reason', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'tickets-create-binding-reason-'))
+
+    await expect(createTicket({
+      ticketsDir: dir,
+      repoPath: dir,
+      title: 'Reasonless Binding',
+      type: 'bug',
+      priority: 'tickets-review',
+      description: 'This should not write.',
+      created: '2026-06-25',
+    })).rejects.toThrow(TicketBindingError)
+  })
+
+  test('persists a deliberate binding with its reason', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'tickets-create-bound-'))
+
+    await createTicket({
+      ticketsDir: dir,
+      repoPath: dir,
+      title: 'Bound Ticket',
+      type: 'bug',
+      priority: 'tickets-review',
+      bindingReason: 'Founder chose tickets-review for this follow-up.',
+      description: 'Create the bound ticket.',
+      created: '2026-06-25',
+    })
+
+    expect((await readTickets(dir)).find((item) => item.id === '0001')).toMatchObject({
+      priority: 'tickets-review',
+      bindingReason: 'Founder chose tickets-review for this follow-up.',
+      provenance: null,
+    })
+  })
+
   test('refuses an id collision without duplicating index or order entries', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'tickets-create-collision-'))
     const input = {
@@ -287,6 +349,7 @@ describe('ticket create', () => {
       title: 'Collision Ticket',
       type: 'bug',
       priority: 'tickets-review',
+      bindingReason: 'Founder chose tickets-review for this follow-up.',
       description: 'Create once.',
       created: '2026-06-25',
     }

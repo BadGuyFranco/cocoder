@@ -185,9 +185,12 @@ export {
   readTickets,
   repointTicket,
   setOpenTicketIndexPriority,
+  validateBinding,
+  TicketBindingError,
   ticketIndexSkeleton,
   ticketTableCell,
   TICKET_OWNER,
+  type TicketBindingErrorCode,
   type CloseTicketInput,
   type CloseTicketResult,
   type ComposeTicketMarkdownInput,
@@ -198,6 +201,8 @@ export {
   type RepointTicketResult,
   type Ticket,
   type TicketState,
+  type ValidateBindingInput,
+  type ValidatedBinding,
 } from './tickets/index.js'
 
 export {

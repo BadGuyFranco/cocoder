@@ -40,11 +40,11 @@ const out = (m: string): void => {
   process.stdout.write(`${m}\n`)
 }
 const runIndependentUsage = 'usage: cocoder run-independent <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors] [--force]'
-const usage = `usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   ${runIndependentUsage}   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz create-priority --id <id> --title <text> --objective <text> [--details-file <path> | --details-stdin]   |   cocoder oz edit-priority <id> [--objective <text>] [--mode <replace-body|append-section>] [--details-file <path> | --details-stdin]   |   cocoder oz close-ticket <id> [--resolution <text>] [--run <runId>]   |   cocoder oz confirm-ticket-close <runId> [--resolution <text>]   |   cocoder oz create-ticket --title <text> --type <type> --priority <priority> [--description <text> | --details-file <path> | --details-stdin] [--id <id>] [--run <runId>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]   |   cocoder oz commit-support <runId>   |   cocoder oz resume <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]`
+const usage = `usage: cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-pre-run-integrity-errors]   |   ${runIndependentUsage}   |   cocoder oz start   |   cocoder oz author <playId> [--json <invocation-json>]   |   cocoder oz create-priority --id <id> --title <text> --objective <text> [--details-file <path> | --details-stdin]   |   cocoder oz edit-priority <id> [--objective <text>] [--mode <replace-body|append-section>] [--details-file <path> | --details-stdin]   |   cocoder oz close-ticket <id> [--resolution <text>] [--run <runId>]   |   cocoder oz confirm-ticket-close <runId> [--resolution <text>]   |   cocoder oz create-ticket --title <text> --type <type> [--priority <priority> --reason <text>] [--description <text> | --details-file <path> | --details-stdin] [--id <id>] [--run <runId>]   |   cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]   |   cocoder oz migrate-history <workspaceId>   |   cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]   |   cocoder oz commit-support <runId>   |   cocoder oz resume <runId>   |   cocoder oz teardown <runId> [--initiator <persona>]`
 const requestDebRepairUsage = 'usage: cocoder oz request-deb-repair <workspaceId> --problem <text> [--run <runId>] [--evidence <json>]'
 const closeTicketUsage = 'usage: cocoder oz close-ticket <id> [--resolution <text>] [--run <runId>]'
 const confirmTicketCloseUsage = 'usage: cocoder oz confirm-ticket-close <runId> [--resolution <text>]'
-const createTicketUsage = 'usage: cocoder oz create-ticket --title <text> --type <type> --priority <priority> [--description <text> | --details-file <path> | --details-stdin] [--id <id>] [--run <runId>]'
+const createTicketUsage = 'usage: cocoder oz create-ticket --title <text> --type <type> [--priority <priority> --reason <text>] [--description <text> | --details-file <path> | --details-stdin] [--id <id>] [--run <runId>]'
 const createPriorityUsage = 'usage: cocoder oz create-priority --id <id> --title <text> --objective <text> [--details-file <path> | --details-stdin]'
 const editPriorityUsage = 'usage: cocoder oz edit-priority <id> [--objective <text>] [--mode <replace-body|append-section>] [--details-file <path> | --details-stdin]'
 const archivePriorityUsage = 'usage: cocoder oz archive-priority <priorityId> [--workspace <workspaceId>] [--verdict <text>] [--findings <text>] [--reason <text>]'
@@ -294,6 +294,7 @@ export async function main(options: MainOptions = {}): Promise<void> {
       title: invocation.title,
       type: invocation.type,
       priority: invocation.priority,
+      bindingReason: invocation.bindingReason,
       description: invocation.description,
       created: new Date().toISOString().slice(0, 10),
       ...(invocation.ticketId ? { ticketId: invocation.ticketId } : {}),

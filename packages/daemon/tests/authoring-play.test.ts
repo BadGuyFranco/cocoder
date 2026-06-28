@@ -157,8 +157,9 @@ describe('requestAuthoringPlay', () => {
         const title = 'Agent Ticket'
         const type = 'bug'
         const priority = 'tickets-review'
+        const bindingReason = 'Founder chose tickets-review for this authoring-play ticket.'
         const fileName = `${id}-agent-ticket.md`
-        const markdown = composeTicketMarkdown(id, { title, type, priority, description: '## Context\nFiled by the authoring Play.' }, '2026-06-18')
+        const markdown = composeTicketMarkdown(id, { title, type, priority, bindingReason, description: '## Context\nFiled by the authoring Play.' }, '2026-06-18')
         await writeFile(join(openDir, fileName), markdown)
         const row = `| [${id}](./open/${fileName}) | ${ticketTableCell(title)} | ${type} | ${ticketTableCell(priority)} | ${TICKET_OWNER} |`
         const indexPath = join(ticketsDir, 'INDEX.md')
@@ -172,7 +173,7 @@ describe('requestAuthoringPlay', () => {
       workspaceId: 'cocoder',
       persona: 'oz',
       playId: 'create-ticket',
-      invocation: { title: 'Agent Ticket', type: 'bug', priority: 'tickets-review', description: 'Filed by the authoring Play.' },
+      invocation: { title: 'Agent Ticket', type: 'bug', priority: 'tickets-review', bindingReason: 'Founder chose tickets-review for this authoring-play ticket.', description: 'Filed by the authoring Play.' },
     })
 
     expect(result.status).toBe(200)
@@ -191,6 +192,7 @@ describe('requestAuthoringPlay', () => {
       type: 'bug',
       status: 'Open',
       priority: 'tickets-review',
+      bindingReason: 'Founder chose tickets-review for this authoring-play ticket.',
       owner: TICKET_OWNER,
       created: '2026-06-18',
       state: 'open',
@@ -593,7 +595,7 @@ describe('requestAuthoringPlay', () => {
         await mkdir(openDir, { recursive: true })
         const id = await nextTicketId(ticketsDir)
         const fileName = `${id}-agent-ticket.md`
-        await writeFile(join(openDir, fileName), composeTicketMarkdown(id, { title: 'Agent Ticket', type: 'bug', priority: 'tickets-review', description: '## Context\nFiled by the authoring Play.' }, '2026-06-18'))
+        await writeFile(join(openDir, fileName), composeTicketMarkdown(id, { title: 'Agent Ticket', type: 'bug', priority: 'tickets-review', bindingReason: 'Founder chose tickets-review for this authoring-play ticket.', description: '## Context\nFiled by the authoring Play.' }, '2026-06-18'))
         const row = `| [${id}](./open/${fileName}) | Agent Ticket | bug | tickets-review | ${TICKET_OWNER} |`
         const indexPath = join(ticketsDir, 'INDEX.md')
         await writeFile(indexPath, insertOpenTicketIndexRow(await readTicketIndex(indexPath), row, id))
@@ -606,7 +608,7 @@ describe('requestAuthoringPlay', () => {
       workspaceId: 'cocoder',
       persona: 'oz',
       playId: 'create-ticket',
-      invocation: { title: 'Agent Ticket', type: 'bug', priority: 'tickets-review', description: 'Filed by the authoring Play.' },
+      invocation: { title: 'Agent Ticket', type: 'bug', priority: 'tickets-review', bindingReason: 'Founder chose tickets-review for this authoring-play ticket.', description: 'Filed by the authoring Play.' },
     })
 
     expect(result).toMatchObject({

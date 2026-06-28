@@ -92,11 +92,12 @@ test('throws when resolved details are empty', () => {
   ).toThrow(/non-empty details/)
 })
 
-test('maps create-ticket flags with inline description', () => {
-  expect(createTicketInvocation(['--title', ' Agent Ticket ', '--type', ' bug ', '--priority', ' tickets-review ', '--description', ' Fix it. '])).toEqual({
+test('maps create-ticket flags with inline description and binding reason', () => {
+  expect(createTicketInvocation(['--title', ' Agent Ticket ', '--type', ' bug ', '--priority', ' tickets-review ', '--reason', ' Founder chose it. ', '--description', ' Fix it. '])).toEqual({
     title: 'Agent Ticket',
     type: 'bug',
     priority: 'tickets-review',
+    bindingReason: 'Founder chose it.',
     description: 'Fix it.',
   })
 })
@@ -105,7 +106,7 @@ test('maps create-ticket description from details source', () => {
   const description = '## Context\n\nKeep this markdown.'
 
   expect(
-    createTicketInvocation(['--title', 'Agent Ticket', '--type', 'bug', '--priority', 'tickets-review', '--details-file', 'ticket.md'], {
+    createTicketInvocation(['--title', 'Agent Ticket', '--type', 'bug', '--details-file', 'ticket.md'], {
       readFileText: (path) => {
         expect(path).toBe('ticket.md')
         return description
@@ -114,28 +115,32 @@ test('maps create-ticket description from details source', () => {
   ).toEqual({
     title: 'Agent Ticket',
     type: 'bug',
-    priority: 'tickets-review',
     description,
   })
 })
 
 test('passes through an optional create-ticket id', () => {
-  expect(createTicketInvocation(['--title', 'Agent Ticket', '--type', 'bug', '--priority', 'tickets-review', '--description', 'Fix it.', '--id', ' 0042 '])).toEqual({
+  expect(createTicketInvocation(['--title', 'Agent Ticket', '--type', 'bug', '--priority', 'tickets-review', '--reason', 'Founder chose it.', '--description', 'Fix it.', '--id', ' 0042 '])).toEqual({
     title: 'Agent Ticket',
     type: 'bug',
     priority: 'tickets-review',
+    bindingReason: 'Founder chose it.',
     description: 'Fix it.',
     ticketId: '0042',
   })
 })
 
 test('throws naming missing create-ticket required flags', () => {
-  expect(() => createTicketInvocation(['--title', 'Agent Ticket'])).toThrow(/--type, --priority/)
+  expect(() => createTicketInvocation(['--title', 'Agent Ticket'])).toThrow(/--type/)
+})
+
+test('throws when create-ticket priority binding has no reason', () => {
+  expect(() => createTicketInvocation(['--title', 'Agent Ticket', '--type', 'bug', '--priority', 'tickets-review'])).toThrow(/requires a binding reason/)
 })
 
 test('throws when create-ticket description sources conflict', () => {
   expect(() =>
-    createTicketInvocation(['--title', 'Agent Ticket', '--type', 'bug', '--priority', 'tickets-review', '--description', 'Fix it.', '--details-stdin'], {
+    createTicketInvocation(['--title', 'Agent Ticket', '--type', 'bug', '--description', 'Fix it.', '--details-stdin'], {
       readStdin: () => 'stdin',
     }),
   ).toThrow(/one description source/)

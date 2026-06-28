@@ -1,5 +1,7 @@
 // Pure flag → invocation mapping for Oz control-plane commands. Extracted so arg contracts are
 // unit-tested without spawning the bin.
+import { validateBinding } from '@cocoder/core'
+
 export interface DetailsSourceDeps {
   readonly readFileText?: (path: string) => string
   readonly readStdin?: () => string
@@ -50,11 +52,16 @@ export function createPriorityInvocation(args: readonly string[], deps: CreatePr
 }
 
 export function createTicketInvocation(args: readonly string[], deps: CreateTicketInvocationDeps = {}): Record<string, string> {
-  const fields = { title: flag(args, '--title'), type: flag(args, '--type'), priority: flag(args, '--priority') }
+  const fields = { title: flag(args, '--title'), type: flag(args, '--type') }
   const missing = (Object.entries(fields) as Array<[string, string | undefined]>)
     .filter(([, value]) => !value || !value.trim())
     .map(([key]) => `--${key}`)
   if (missing.length > 0) throw new Error(`create-ticket needs ${missing.join(', ')}`)
+  const priority = flag(args, '--priority')?.trim()
+  if (args.includes('--priority') && (!priority || priority.startsWith('--'))) throw new Error('create-ticket needs non-empty --priority')
+  const reason = flag(args, '--reason')?.trim()
+  if (args.includes('--reason') && (!reason || reason.startsWith('--'))) throw new Error('create-ticket needs non-empty --reason')
+  const binding = validateBinding({ priority: priority ?? 'none', reason })
 
   if (args.includes('--description') && (args.includes('--details-file') || args.includes('--details-stdin'))) {
     throw new Error('create-ticket needs one description source')
@@ -69,8 +76,8 @@ export function createTicketInvocation(args: readonly string[], deps: CreateTick
   return {
     title: fields.title!.trim(),
     type: fields.type!.trim(),
-    priority: fields.priority!.trim(),
     description: description?.trim() ?? details ?? '',
+    ...(binding.priority === null ? {} : { priority: binding.priority, bindingReason: binding.reason! }),
     ...(ticketId?.trim() ? { ticketId: ticketId.trim() } : {}),
   }
 }

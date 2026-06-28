@@ -1,13 +1,15 @@
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join, relative } from 'node:path'
+import { validateBinding } from './binding.js'
 import { composeTicketMarkdown, TICKET_OWNER, type ComposeTicketMarkdownInput } from './compose.js'
 import { insertOpenTicketIndexRow, readTicketIndex, ticketTableCell } from './index-helpers.js'
 import { nextTicketId, readTickets } from './loader.js'
 
-export interface CreateTicketInput extends ComposeTicketMarkdownInput {
+export interface CreateTicketInput extends Omit<ComposeTicketMarkdownInput, 'priority'> {
   readonly ticketsDir: string
   readonly repoPath: string
   readonly created: string
+  readonly priority?: string | null
   readonly ticketId?: string
 }
 
@@ -61,6 +63,16 @@ async function readTicketOrder(path: string): Promise<readonly string[]> {
 }
 
 export async function createTicket(input: CreateTicketInput): Promise<CreateTicketResult> {
+  const binding = validateBinding({ priority: input.priority ?? 'none', reason: input.bindingReason })
+  const priority = binding.priority ?? 'none'
+  const ticketInput: ComposeTicketMarkdownInput = {
+    title: input.title,
+    type: input.type,
+    priority,
+    bindingReason: binding.reason,
+    provenance: input.provenance,
+    description: input.description,
+  }
   const id = input.ticketId ?? await nextTicketId(input.ticketsDir)
   const indexPath = join(input.ticketsDir, 'INDEX.md')
   const orderPath = join(input.ticketsDir, 'order.json')
@@ -78,10 +90,10 @@ export async function createTicket(input: CreateTicketInput): Promise<CreateTick
 
   const fileName = `${id}-${slugifyTitle(input.title)}.md`
   const openPath = join(input.ticketsDir, 'open', fileName)
-  const row = `| [${id}](./open/${fileName}) | ${ticketTableCell(input.title)} | ${input.type} | ${ticketTableCell(input.priority)} | ${TICKET_OWNER} |`
+  const row = `| [${id}](./open/${fileName}) | ${ticketTableCell(input.title)} | ${input.type} | ${ticketTableCell(priority)} | ${TICKET_OWNER} |`
 
   await mkdir(join(input.ticketsDir, 'open'), { recursive: true })
-  await writeFile(openPath, composeTicketMarkdown(id, input, input.created))
+  await writeFile(openPath, composeTicketMarkdown(id, ticketInput, input.created))
   await writeFile(indexPath, insertOpenTicketIndexRow(index, row, id))
   await writeFile(orderPath, `${JSON.stringify([...order, id], null, 2)}\n`)
 

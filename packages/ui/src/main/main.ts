@@ -29,7 +29,7 @@ function registerIpc(): void {
   ipcMain.handle(CHANNELS.chatSend, (_e, ws: string, text: string) => sendChatMessage(ws, text))
   ipcMain.handle(CHANNELS.personasAssignmentsSave, (_e, ws: string, assignments: Record<string, PersonaAssignment>) => savePersonaAssignmentsViaDaemon(ws, assignments))
   ipcMain.handle(CHANNELS.prioritiesCreate, (_e, ws: string, priority: { title: string; goal?: string }) => createPriorityViaDaemon(ws, priority))
-  ipcMain.handle(CHANNELS.ticketsCreate, (_e, ws: string, ticket: { title: string; type?: string; priority?: string; description?: string }) => createTicketViaDaemon(ws, ticket))
+  ipcMain.handle(CHANNELS.ticketsCreate, (_e, ws: string, ticket: { title: string; type?: string; priority?: string; bindingReason?: string; provenance?: string; description?: string }) => createTicketViaDaemon(ws, ticket))
   ipcMain.handle(CHANNELS.prioritiesReorder, (_e, ws: string, order: string[]) => reorderPrioritiesViaDaemon(ws, order))
   ipcMain.handle(CHANNELS.ticketsReorder, (_e, ws: string, order: string[]) => reorderTicketsViaDaemon(ws, order))
   ipcMain.handle(CHANNELS.prioritiesOrder, (_e, ws: string) => getPriorityOrder(ws))
