@@ -197,7 +197,13 @@ function closeoutRunStatus(markdown: string, contract: FounderCloseoutContract):
   return firstLine ? normalizeRunStatus(normalizeCloseoutRunStatusLine(firstLine)) : null
 }
 
-export function deriveWrapupRunStatus(markdown: string, contract: FounderCloseoutContract, current: RunStatus, target: CloseoutLaunchTarget = 'priority'): RunStatus {
+export function deriveWrapupRunStatus(
+  markdown: string,
+  contract: FounderCloseoutContract,
+  current: RunStatus,
+  target: CloseoutLaunchTarget = 'priority',
+  openHandledTicketCount = 0,
+): RunStatus {
   if (current !== 'completed') return current
   const runStatus = closeoutRunStatus(markdown, contract)
   if (target === 'ticket') {
@@ -207,7 +213,7 @@ export function deriveWrapupRunStatus(markdown: string, contract: FounderCloseou
     return current
   }
   if (founderDecisionNeeded(markdown, contract)) return 'awaiting-founder'
-  if (runStatus === 'archive ready') return 'awaiting-archive-confirmation'
+  if (runStatus === 'archive ready') return openHandledTicketCount > 0 ? 'awaiting-founder' : 'awaiting-archive-confirmation'
   return current
 }
 
@@ -219,10 +225,15 @@ export function deriveTicketCloseDecision(markdown: string, contract: FounderClo
   return 'none'
 }
 
-export function deriveWrapDisposition(markdown: string, contract: FounderCloseoutContract, target: CloseoutLaunchTarget = 'priority'): WrapDisposition {
+export function deriveWrapDisposition(
+  markdown: string,
+  contract: FounderCloseoutContract,
+  target: CloseoutLaunchTarget = 'priority',
+  openHandledTicketCount = 0,
+): WrapDisposition {
   const runStatus = closeoutRunStatus(markdown, contract)
   if (founderDecisionNeeded(markdown, contract)) return 'awaiting-founder'
-  if (target === 'priority' && runStatus === 'archive ready') return 'archive-confirmation'
+  if (target === 'priority' && runStatus === 'archive ready') return openHandledTicketCount > 0 ? 'awaiting-founder' : 'archive-confirmation'
   return 'continue'
 }
 

@@ -30,6 +30,7 @@ import {
   StopRequestedError,
   deriveTerminalProjection,
   deriveTicketCloseDecision,
+  deriveWrapDisposition,
   deriveWrapupRunStatus,
   openRunStore,
   parseTriage,
@@ -725,6 +726,23 @@ describe('founder closeout target-aware Run Status', () => {
     expect(deriveTicketCloseDecision(needsAnotherRun, contract, 'ticket')).toBe('none')
     expect(deriveTicketCloseDecision(renderFounderCloseout({ runStatus: 'archive ready' }), contract, 'priority')).toBe('none')
     expect(deriveWrapupRunStatus(renderFounderCloseout({ runStatus: 'archive ready' }), contract, 'completed', 'priority')).toBe('awaiting-archive-confirmation')
+  })
+
+  test('priority archive-ready derivation is gated by open handled tickets without overriding founder decisions', () => {
+    const contract = validatedCloseoutContract()
+    const archiveReady = renderFounderCloseout({ runStatus: 'archive ready' })
+
+    expect(deriveWrapupRunStatus(archiveReady, contract, 'completed', 'priority', 0)).toBe('awaiting-archive-confirmation')
+    expect(deriveWrapDisposition(archiveReady, contract, 'priority', 0)).toBe('archive-confirmation')
+    expect(deriveWrapupRunStatus(archiveReady, contract, 'completed', 'priority', 1)).toBe('awaiting-founder')
+    expect(deriveWrapDisposition(archiveReady, contract, 'priority', 1)).toBe('awaiting-founder')
+
+    const founderDecision = renderFounderCloseout({
+      runStatus: 'archive ready',
+      decisionNeeded: 'Choose whether to keep the priority open for the remaining external proof.',
+    })
+    expect(deriveWrapupRunStatus(founderDecision, contract, 'completed', 'priority', 0)).toBe('awaiting-founder')
+    expect(deriveWrapDisposition(founderDecision, contract, 'priority', 0)).toBe('awaiting-founder')
   })
 })
 
@@ -2594,6 +2612,39 @@ describe('runRun (multi-atom loop)', () => {
       },
     })
     expect(result.status).toBe('awaiting-archive-confirmation')
+  })
+
+  test('archive-ready priority wrap with a bound open ticket records awaiting-founder disposition and no archive action', async () => {
+    const store = openRunStore(':memory:')
+    const ticketWorkspace = await makeTicketWorkspace()
+    const archiveReadyCloseout = renderFounderCloseout({
+      runStatus: 'Archive ready',
+      whatRemains: '- Ticket `0003` is still open and bound to this priority.',
+      nextStep: 'Priority: `demo` — close or release the remaining handled ticket',
+      judgment: 'Oscar incorrectly called archive-ready while an open handled ticket remains.',
+    })
+
+    try {
+      const result = await runRun(
+        baseDeps({
+          store,
+          git: scriptedGit([[]]),
+          io: fakeIO({ directives: [wrapup('Oscar seed closeout')] }),
+          getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
+          runHeadless: async () => ({ exitCode: 0, output: archiveReadyCloseout }),
+        }),
+        { ...runInputFor(ticketWorkspace.root), wrapPlay, wrapPlayAssignment },
+      )
+
+      expect(store.listEvents(result.runId).find((e) => e.type === 'wrap-disposition')?.data).toEqual({
+        disposition: 'awaiting-founder',
+        buildAtoms: 0,
+        signal: null,
+      })
+      expect(result.status).toBe('awaiting-founder')
+    } finally {
+      await rm(ticketWorkspace.root, { recursive: true, force: true })
+    }
   })
 
   test('archive-ready first-directive wrap without a runnable signal still records archive-confirmation disposition and action', async () => {

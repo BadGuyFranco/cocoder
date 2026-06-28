@@ -43,6 +43,7 @@ import {
   type RunStore,
   type Workspace,
 } from '../store/index.js'
+import { handledOpenTicketsForPriority, readTickets } from '../tickets/index.js'
 import { effectiveScope, partitionByScope } from '../write-scope/index.js'
 import type { SessionHost } from '../session-host/index.js'
 import { exec as execChildProcess } from 'node:child_process'
@@ -1490,7 +1491,10 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           if (outputValidation?.founderCloseoutContract && pickup) {
             const buildAtoms = store.listEvents(run.id).filter((event) => event.type === 'builder-dispatch').length
             const signal = closeoutCitesCheckableSignal(pickup)
-            const disposition = deriveWrapDisposition(pickup, outputValidation.founderCloseoutContract, closeoutTarget)
+            const openHandledTicketCount = closeoutTarget === 'priority'
+              ? handledOpenTicketsForPriority(await readTickets(join(worktreePath, 'cocoder', 'tickets')), priority.id).length
+              : 0
+            const disposition = deriveWrapDisposition(pickup, outputValidation.founderCloseoutContract, closeoutTarget, openHandledTicketCount)
             const action = archiveConfirmationAction({ workspaceId: workspace.id, runId: run.id, priorityId: priority.id, disposition })
             const closeDecision = deriveTicketCloseDecision(pickup, outputValidation.founderCloseoutContract, closeoutTarget)
             store.recordEvent({
@@ -1498,7 +1502,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
               type: 'wrap-disposition',
               data: { disposition, buildAtoms, signal, ...(closeoutTarget === 'ticket' ? { ticketCloseDecision: closeDecision } : {}), ...(action ? { action } : {}) },
             })
-            terminalStatus = deriveWrapupRunStatus(pickup, outputValidation.founderCloseoutContract, terminalStatus, closeoutTarget)
+            terminalStatus = deriveWrapupRunStatus(pickup, outputValidation.founderCloseoutContract, terminalStatus, closeoutTarget, openHandledTicketCount)
             ticketCloseDecision = closeDecision
           }
         }
