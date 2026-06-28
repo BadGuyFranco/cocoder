@@ -7,7 +7,7 @@ import type { OzContext } from '../src/context.js'
 import { executeOzCommand, handleOzMessage, parseOzCommand, type OzChatOps } from '../src/oz-chat.js'
 import type { LaunchRunTarget } from '../src/launcher.js'
 
-const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, confirm-close <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId>, commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
+const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, confirm-close <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId>, commit-support <runId>, founder-answer <runId> <answer>, stop <runId>, teardown <runId>, status [runId], help.'
 
 // A stub for an op a test does NOT expect to be called: returns a 500 so an unexpected dispatch fails
 // loudly instead of looking like a real success. Narrowly cast to the specific op's type.
@@ -26,6 +26,7 @@ function mockOps(overrides: Partial<OzChatOps>): OzChatOps {
     teardownRun: unexpected('teardown') as OzChatOps['teardownRun'],
     restartDaemon: unexpected('restart') as OzChatOps['restartDaemon'],
     nudgeRun: unexpected('nudge') as OzChatOps['nudgeRun'],
+    requestFounderAnswer: unexpected('founder-answer') as OzChatOps['requestFounderAnswer'],
     repairOz: unexpected('repair') as OzChatOps['repairOz'],
     requestOzAction: unexpected('oz-action') as OzChatOps['requestOzAction'],
     readGoverned: unexpected('read-governed') as OzChatOps['readGoverned'],
@@ -64,6 +65,7 @@ describe('parseOzCommand', () => {
     ['reconcile-repoint 0099 standalone', { kind: 'reconcile-repoint', ticketId: '0099', targetPriority: null }],
     ['reconcile-repoint 0099 none', { kind: 'reconcile-repoint', ticketId: '0099', targetPriority: null }],
     ['reconcile-repoint 0099 some-priority', { kind: 'reconcile-repoint', ticketId: '0099', targetPriority: 'some-priority' }],
+    ['founder-answer run_45 keep it enabled by default', { kind: 'founder-answer', runId: 'run_45', answer: 'keep it enabled by default' }],
     ['stop run_45', { kind: 'stop', runId: 'run_45' }],
     ['teardown run_45', { kind: 'teardown', runId: 'run_45' }],
     ['status', { kind: 'status' }],
@@ -97,6 +99,11 @@ describe('parseOzCommand', () => {
   test('confirm-close arity failures are bounded usage errors', () => {
     expect(parseOzCommand('confirm-close')).toEqual({ kind: 'unknown', hint: 'Usage: confirm-close <runId>' })
     expect(parseOzCommand('confirm-close run_7 extra')).toEqual({ kind: 'unknown', hint: 'Usage: confirm-close <runId>' })
+  })
+
+  test('founder-answer usage failures are bounded usage errors', () => {
+    expect(parseOzCommand('founder-answer')).toEqual({ kind: 'unknown', hint: 'Usage: founder-answer <runId> <answer>' })
+    expect(parseOzCommand('founder-answer run_7')).toEqual({ kind: 'unknown', hint: 'Usage: founder-answer <runId> <answer>' })
   })
 })
 
@@ -210,6 +217,24 @@ describe('handleOzMessage', () => {
 
     expect(launches).toBe(0)
     expect(result).toMatchObject({ status: 200, body: { ok: false, command: 'unknown', reply: 'Usage: adhoc <task>' } })
+  })
+
+  test('founder-answer maps to requestFounderAnswer', async () => {
+    const calls: Array<{ readonly runId: string; readonly answer: string }> = []
+    const ops = mockOps({
+      requestFounderAnswer: async (_ctx, runId, answer) => {
+        calls.push({ runId, answer })
+        return { status: 202, body: { resuming: true, runId } }
+      },
+    })
+
+    const result = await handleOzMessage(testCtx(), { text: 'founder-answer run_7 keep it enabled', workspaceId: 'cocoder' }, ops)
+
+    expect(calls).toEqual([{ runId: 'run_7', answer: 'keep it enabled' }])
+    expect(result).toMatchObject({
+      status: 202,
+      body: { ok: true, command: 'founder-answer', reply: 'Recorded founder answer for run_7 and resumed the run.', action: { type: 'founder-answer', runId: 'run_7' } },
+    })
   })
 
   test('help reply stays byte-identical for typed commands', async () => {

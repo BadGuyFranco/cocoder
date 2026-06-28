@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { loadPriority, runDisplayName } from '@cocoder/core'
 import type { OzContext } from './context.js'
-import { launchRun as launchRunOp, readGoverned as readGovernedOp, requestArchiveConfirmation as archiveConfirmationOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestIndependentLaunch as independentLaunchOp, requestNudgeRun as nudgeRunOp, requestOscarDebRepair as oscarDebRepairOp, requestOzAction as ozActionOp, requestOzRepair as repairOzOp, requestReconciliationClose as reconciliationCloseOp, requestReconciliationRepoint as reconciliationRepointOp, requestStopRun as stopRunOp, requestSupportCommitRun as supportCommitRunOp, requestTicketCloseConfirmation as ticketCloseConfirmationOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
+import { launchRun as launchRunOp, readGoverned as readGovernedOp, requestArchiveConfirmation as archiveConfirmationOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestFounderAnswer as founderAnswerOp, requestIndependentLaunch as independentLaunchOp, requestNudgeRun as nudgeRunOp, requestOscarDebRepair as oscarDebRepairOp, requestOzAction as ozActionOp, requestOzRepair as repairOzOp, requestReconciliationClose as reconciliationCloseOp, requestReconciliationRepoint as reconciliationRepointOp, requestStopRun as stopRunOp, requestSupportCommitRun as supportCommitRunOp, requestTicketCloseConfirmation as ticketCloseConfirmationOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
 import { projectOzAwareness, type OzAwarenessRun, type OzAwarenessSnapshot } from './oz-awareness.js'
 import { tryHandleOzAgentTurn } from './oz-host.js'
 import { readTickets } from './priority-order.js'
@@ -9,7 +9,7 @@ import { findWorkspace } from './registry.js'
 import { withPortableDisplayNumbers } from './run-display.js'
 
 const ADHOC_PRIORITY_ID = 'adhoc-session'
-const HELP_HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, confirm-close <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId>, commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
+const HELP_HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, confirm-close <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId>, commit-support <runId>, founder-answer <runId> <answer>, stop <runId>, teardown <runId>, status [runId], help.'
 
 export type OzCommand =
   | { readonly kind: 'launch'; readonly priorityId: string }
@@ -23,6 +23,7 @@ export type OzCommand =
   | { readonly kind: 'reconcile-repoint'; readonly ticketId: string; readonly targetPriority: string | null }
   | { readonly kind: 'stop'; readonly runId: string }
   | { readonly kind: 'nudge'; readonly runId: string; readonly message: string; readonly rationale?: string }
+  | { readonly kind: 'founder-answer'; readonly runId: string; readonly answer: string }
   | { readonly kind: 'repair'; readonly message: string; readonly rationale?: string }
   | { readonly kind: 'oz-action'; readonly instruction: string }
   | { readonly kind: 'read-governed'; readonly path: string }
@@ -36,7 +37,7 @@ export type OzExecutableCommand = Exclude<OzCommand, { readonly kind: 'help' } |
 export type OzCommandExecutor = (command: OzExecutableCommand) => Promise<OzChatResult>
 
 export interface OzChatAction {
-  readonly type: 'launch' | 'runnerless-launch' | 'show' | 'archive-confirmation' | 'confirm-ticket-close' | 'support-commit' | 'oscar-deb-repair' | 'reconcile-close' | 'reconcile-repoint' | 'stop' | 'nudge' | 'repair' | 'oz-action' | 'author' | 'teardown' | 'status' | 'refresh'
+  readonly type: 'launch' | 'runnerless-launch' | 'show' | 'archive-confirmation' | 'confirm-ticket-close' | 'support-commit' | 'oscar-deb-repair' | 'reconcile-close' | 'reconcile-repoint' | 'stop' | 'nudge' | 'founder-answer' | 'repair' | 'oz-action' | 'author' | 'teardown' | 'status' | 'refresh'
   readonly workspaceId?: string
   readonly priorityId?: string
   readonly runId?: string
@@ -72,6 +73,7 @@ export interface OzChatOps {
   readonly teardownRun: typeof teardownRunOp
   readonly restartDaemon: typeof restartDaemonOp
   readonly nudgeRun: typeof nudgeRunOp
+  readonly requestFounderAnswer: typeof founderAnswerOp
   readonly repairOz: typeof repairOzOp
   readonly requestOzAction: typeof ozActionOp
   readonly readGoverned: typeof readGovernedOp
@@ -92,6 +94,7 @@ const defaultOps: OzChatOps = {
   teardownRun: teardownRunOp,
   restartDaemon: restartDaemonOp,
   nudgeRun: nudgeRunOp,
+  requestFounderAnswer: founderAnswerOp,
   repairOz: repairOzOp,
   requestOzAction: ozActionOp,
   readGoverned: readGovernedOp,
@@ -137,6 +140,13 @@ export function parseOzCommand(text: string): OzCommand {
     return { kind: 'reconcile-repoint', ticketId, targetPriority: normalized === 'standalone' || normalized === 'none' ? null : target }
   }
   if (verb === 'commit-support' || verb === 'support-commit') return args.length === 1 ? { kind: 'support-commit', runId: args[0]! } : unknownCommand()
+  if (verb === 'founder-answer') {
+    const runId = args[0]
+    const answer = args.slice(1).join(' ').trim()
+    if (!runId || !answer) return { kind: 'unknown', hint: 'Usage: founder-answer <runId> <answer>' }
+    if (answer.length > 4000) return { kind: 'unknown', hint: 'Founder answer too long (max 4000 chars).' }
+    return { kind: 'founder-answer', runId, answer }
+  }
   if (verb === 'stop') return args.length === 1 ? { kind: 'stop', runId: args[0]! } : unknownCommand()
   if (verb === 'teardown') return args.length === 1 ? { kind: 'teardown', runId: args[0]! } : unknownCommand()
   if (verb === 'status') {
@@ -292,6 +302,15 @@ export async function executeOzCommand(ctx: OzContext, workspaceId: string | und
       'nudge',
       () => ops.nudgeRun(ctx, command.runId, command.message, command.rationale),
       (out) => nudgeReply(command.runId, out),
+    )
+  }
+
+  if (command.kind === 'founder-answer') {
+    if (!workspaceId) return missingWorkspace()
+    return runOp(
+      'founder-answer',
+      () => ops.requestFounderAnswer(ctx, command.runId, command.answer),
+      (out) => founderAnswerReply(command.runId, out),
     )
   }
 
@@ -608,6 +627,16 @@ function nudgeReply(runId: string, out: LaunchResult): OzChatReply {
     command: 'nudge',
     ok: true,
     action: { type: 'nudge', runId },
+  }
+}
+
+function founderAnswerReply(runId: string, out: LaunchResult): OzChatReply {
+  if (!isOk(out.status)) return failedReply('founder-answer', `Could not record founder answer for ${runId}`, out)
+  return {
+    reply: `Recorded founder answer for ${runId} and resumed the run.`,
+    command: 'founder-answer',
+    ok: true,
+    action: { type: 'founder-answer', runId },
   }
 }
 

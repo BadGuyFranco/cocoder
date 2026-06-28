@@ -10,7 +10,7 @@ import type { LaunchRunTarget } from '../src/launcher.js'
 import { recordOrchestratedRun } from '../src/oz-host.js'
 import { mergeWriteSettings } from '../src/settings.js'
 
-const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, confirm-close <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId>, commit-support <runId>, stop <runId>, teardown <runId>, status [runId], help.'
+const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, confirm-close <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId>, commit-support <runId>, founder-answer <runId> <answer>, stop <runId>, teardown <runId>, status [runId], help.'
 
 interface Fixture {
   readonly home: string
@@ -354,6 +354,30 @@ describe('Oz agent chat turns', () => {
     expect(fixture.prompts[1]?.prompt).toContain('The runner will deliver it to Oscar at the next watchdog sample')
     const raw = await readFile(join(fixture.home, 'local', 'runs', 'cocoder', fixture.runId, 'oz-nudge.json'), 'utf8')
     expect(parseNudgeRequest(raw)).toMatchObject({ target: 'oscar', message: 'Oscar — ask Bob for status', rationale: 'founder asked', seq: 1 })
+  })
+
+  test('founder-answer tool dispatches through ops and feeds the resume result to the follow-up prompt', async () => {
+    const fixture = await makeFixture({
+      outputs: [
+        'Answering.\nOZ_TOOL {"tool":"founder-answer","args":{"runId":"run_held","answer":"  Keep it enabled by default  "}}',
+        'I recorded the answer.',
+      ],
+    })
+    const calls: Array<{ readonly runId: string; readonly answer: string }> = []
+    const ops: OzChatOps = {
+      ...fakeOps(),
+      requestFounderAnswer: async (_ctx, runId, answer) => {
+        calls.push({ runId, answer })
+        return { status: 202, body: { resuming: true, runId } }
+      },
+    }
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'tell Oscar to keep it enabled', workspaceId: 'cocoder' }, ops)
+
+    expect(calls).toEqual([{ runId: 'run_held', answer: 'Keep it enabled by default' }])
+    expect(fixture.prompts[0]?.prompt).toContain('founder-answer {"runId":"...","answer":"..."}')
+    expect(fixture.prompts[1]?.prompt).toContain('Recorded founder answer for run_held and resumed the run.')
+    expect(result).toMatchObject({ status: 200, body: { reply: 'I recorded the answer.', command: 'chat', ok: true, action: { type: 'founder-answer', runId: 'run_held' } } })
   })
 
   test('malformed nudge tool calls feed the validation error back without writing the file', async () => {
@@ -828,6 +852,7 @@ function fakeOps(): OzChatOps {
     showRun: async () => ({ status: 200, body: { sessionRef: 'surface:1' } }),
     stopRun: async () => ({ status: 202, body: { stopping: true } }),
     nudgeRun: async () => ({ status: 202, body: { queued: true, seq: 1 } }),
+    requestFounderAnswer: async (_ctx, runId) => ({ status: 202, body: { resuming: true, runId } }),
     repairOz: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0 } }),
     requestOzAction: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0 } }),
     readGoverned: async () => ({ status: 200, body: { path: 'cocoder/decisions/0017-oz-orchestration-persona.md', content: 'Governed file content.' } }),

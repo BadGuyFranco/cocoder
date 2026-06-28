@@ -14,6 +14,12 @@ export {
   type MakeJudge,
 } from './runner.js'
 export {
+  isAwaitingFounderResolution,
+  readResumeState,
+  type FounderResolutionWait,
+  type ResumeState,
+} from './founder-stop.js'
+export {
   localRunDir,
   migrateLegacyFlatRunDirs,
   removeLocalRunDir,

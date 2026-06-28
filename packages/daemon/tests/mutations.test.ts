@@ -496,6 +496,24 @@ async function writeResumeState(home: string, runId: string, state: unknown): Pr
   await writeFile(join(runDir, 'resume-state.json'), `${JSON.stringify(state, null, 2)}\n`, 'utf8')
 }
 
+function runDirCandidates(home: string, runId: string): readonly string[] {
+  return [join(home, 'local', 'runs', 'cocoder', runId), join(home, 'local', 'runs', runId)]
+}
+
+function askFounderResumeState(home: string, runId: string): unknown {
+  const runDir = join(home, 'local', 'runs', runId)
+  return {
+    park: 'pre-dispatch',
+    atomNumber: 0,
+    founderResolution: {
+      kind: 'ask-founder-continue',
+      question: 'Should this stay enabled by default?',
+      askedAtDirectivePath: join(runDir, 'directive-0.json'),
+      nextDirectivePath: join(runDir, 'directive-1.json'),
+    },
+  }
+}
+
 async function initRepo(path: string): Promise<void> {
   await g(path, ['init', '-q', '-b', 'trunk'])
   await g(path, ['config', 'user.email', 't@t.test'])
@@ -1443,6 +1461,77 @@ describe('Oz mutations + lifecycle', () => {
     const audit = await readFile(join(home, 'local', 'oz-audit.log'), 'utf8')
     expect(audit).toContain('"action":"resume"')
     expect(audit).toContain(`"runId":"${held.id}"`)
+  })
+
+  test('POST /runs/:id/founder-answer records the answer and resumes with it', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const held = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(held.id, 'held')
+    await writeResumeState(home, held.id, askFounderResumeState(home, held.id))
+    const prompts: string[] = []
+    oz = await createOzServer({
+      cocoderHome: home,
+      port: 0,
+      store,
+      git: fakeGit(),
+      sessionHost: fakeHost(),
+      getAdapter: () => ({ ...okAdapter, build: (input) => {
+        prompts.push(input.prompt)
+        return { command: 'x', args: [] }
+      } }),
+      io: fakeIO(),
+      runHeadless: async () => ({ exitCode: 0, output: validFounderCloseout() }),
+    })
+
+    const r = await call(oz, 'POST', `/runs/${held.id}/founder-answer`, { body: { answer: '  Keep it enabled by default.  ' } })
+
+    expect(r).toEqual({ status: 202, json: { resuming: true, runId: held.id } })
+    for (let i = 0; i < 50 && !prompts.some((prompt) => prompt.includes('# Resuming after founder decision')); i++) await sleep(10)
+    const prompt = prompts.find((text) => text.includes('# Resuming after founder decision'))
+    expect(prompt).toContain('Should this stay enabled by default?')
+    expect(prompt).toContain('Keep it enabled by default.')
+    const answerPath = join(home, 'local', 'runs', 'cocoder', held.id, 'founder-answer.json')
+    const answer = JSON.parse(await readFile(answerPath, 'utf8'))
+    expect(answer).toMatchObject({
+      kind: 'founder-answer',
+      runId: held.id,
+      question: 'Should this stay enabled by default?',
+      answer: 'Keep it enabled by default.',
+      nextDirectivePath: join(home, 'local', 'runs', held.id, 'directive-1.json'),
+    })
+    expect(store.listEvents(held.id).map((event) => event.type)).toEqual(expect.arrayContaining(['founder-answer-recorded', 'launch-run-resume']))
+    const audit = await readAuditEventually(home, '"action":"founder-answer"')
+    expect(audit).toContain(`"runId":"${held.id}"`)
+  })
+
+  test('POST /runs/:id/founder-answer rejects stale, non-marker, and blank answers without relaunching', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const completed = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(completed.id, 'completed')
+    await writeResumeState(home, completed.id, askFounderResumeState(home, completed.id))
+    const heldWithoutMarker = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(heldWithoutMarker.id, 'held')
+    await writeResumeState(home, heldWithoutMarker.id, { park: 'pre-dispatch', atomNumber: 0 })
+    const blank = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(blank.id, 'held')
+    await writeResumeState(home, blank.id, askFounderResumeState(home, blank.id))
+    await startServer()
+
+    const stale = await call(oz!, 'POST', `/runs/${completed.id}/founder-answer`, { body: { answer: 'keep it enabled' } })
+    const missingMarker = await call(oz!, 'POST', `/runs/${heldWithoutMarker.id}/founder-answer`, { body: { answer: 'keep it enabled' } })
+    const empty = await call(oz!, 'POST', `/runs/${blank.id}/founder-answer`, { body: { answer: '   ' } })
+
+    expect(stale.status).toBe(409)
+    expect(stale.json.code).toBe('founder-answer-not-held')
+    expect(missingMarker.status).toBe(409)
+    expect(missingMarker.json.code).toBe('founder-answer-not-awaited')
+    expect(empty).toEqual({ status: 400, json: { error: 'founder answer is required' } })
+    for (const runId of [completed.id, heldWithoutMarker.id, blank.id]) {
+      for (const runDir of runDirCandidates(home, runId)) {
+        expect(await exists(join(runDir, 'founder-answer.json'))).toBe(false)
+      }
+      expect(store.listEvents(runId).map((event) => event.type)).not.toContain('launch-run-resume')
+    }
   })
 
   test('POST /runs/:id/resume rejects unknown, non-held, and workspace-busy runs', async () => {

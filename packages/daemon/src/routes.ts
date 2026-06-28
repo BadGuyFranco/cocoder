@@ -33,7 +33,7 @@ import { findWorkspace, readWorkspaces, validateWorkspaceFolders, workspaceDirec
 import { readRunDir } from './rundir.js'
 import { appendAudit } from './audit.js'
 import { listClis, testCli } from './clis.js'
-import { commitGovernance, launchRun, requestArchiveConfirmation, requestAuthoringPlay, requestDaemonRestart, requestDashboardLaunch, requestIndependentHandoff, requestIndependentLaunch, requestOscarDebRepair, requestReconciliationClose, requestReconciliationRepoint, requestStopRun, requestSupportCommitRun, requestTicketCloseConfirmation, resumeRun, showRun, teardownRun, ticketPendingCloseRun, type AuthoringPlayInput, type OscarDebRepairInput } from './launcher.js'
+import { commitGovernance, launchRun, requestArchiveConfirmation, requestAuthoringPlay, requestDaemonRestart, requestDashboardLaunch, requestFounderAnswer, requestIndependentHandoff, requestIndependentLaunch, requestOscarDebRepair, requestReconciliationClose, requestReconciliationRepoint, requestStopRun, requestSupportCommitRun, requestTicketCloseConfirmation, resumeRun, showRun, teardownRun, ticketPendingCloseRun, type AuthoringPlayInput, type OscarDebRepairInput } from './launcher.js'
 import { enqueueAuthoring, listQueuedAuthoring } from './authoring-queue.js'
 import { handleOzMessage } from './oz-chat.js'
 import { mergeWriteSettings, readSettings } from './settings.js'
@@ -1016,6 +1016,18 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
   }
   if (method === 'POST' && seg[0] === 'runs' && seg.length === 3 && seg[2] === 'resume') {
     const { status, body: out } = await resumeRun(ctx, decodeURIComponent(seg[1]!))
+    return sendJson(res, status, out), true
+  }
+  if (method === 'POST' && seg[0] === 'runs' && seg.length === 3 && seg[2] === 'founder-answer') {
+    let body: unknown
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      return sendJson(res, 400, { error: 'invalid JSON body' }), true
+    }
+    const record = typeof body === 'object' && body !== null ? body as Record<string, unknown> : {}
+    const answer = typeof record.answer === 'string' ? record.answer : ''
+    const { status, body: out } = await requestFounderAnswer(ctx, decodeURIComponent(seg[1]!), answer)
     return sendJson(res, status, out), true
   }
   if (method === 'POST' && seg[0] === 'runs' && seg.length === 3 && seg[2] === 'support-commit') {

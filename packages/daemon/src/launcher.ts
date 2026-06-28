@@ -24,6 +24,7 @@ import {
   founderCloseoutFromFirstContractHeading,
   handledOpenTicketsForPriority,
   interferes,
+  isAwaitingFounderResolution,
   isFinalizableFounderResolutionStatus,
   isInstructionSurface,
   isPersonaEnabled,
@@ -41,6 +42,7 @@ import {
   loadPriority,
   matchesAny,
   readTickets,
+  readResumeState,
   repointTicket,
   runRetentionGc,
   runCommitGate,
@@ -60,6 +62,7 @@ import {
   type RunLabelTarget,
   type RunResult,
   type RunnerDeps,
+  type ResumeState,
   type SessionHost,
   type TicketCloseDecision,
   type Ticket,
@@ -212,6 +215,7 @@ async function assembleRunInput(
   opts: {
     readonly resumeFromRunId?: string
     readonly resumeHeldRunId?: string
+    readonly resumeFounderAnswer?: string | null
     readonly task?: string | null
     readonly storePriorityId?: string | null
     readonly ticketId?: string | null
@@ -292,6 +296,7 @@ async function assembleRunInput(
     target: opts.target,
     pickup,
     resumeRunId: opts.resumeHeldRunId,
+    resumeFounderAnswer: opts.resumeFounderAnswer ?? null,
     strictPreRunDirt: opts.strictPreRunDirt,
     allowPreRunIntegrityErrors: opts.allowPreRunIntegrityErrors,
     preRunGovernanceChecks,
@@ -307,6 +312,7 @@ export async function buildRunInput(
   opts: {
     readonly resumeFromRunId?: string
     readonly resumeHeldRunId?: string
+    readonly resumeFounderAnswer?: string | null
     readonly task?: string | null
     readonly strictPreRunDirt?: boolean
     readonly allowPreRunIntegrityErrors?: boolean
@@ -790,6 +796,7 @@ export async function launchRun(
   opts: {
     readonly resumeFromRunId?: string
     readonly resumeHeldRunId?: string
+    readonly resumeFounderAnswer?: string | null
     readonly task?: string | null
     readonly strictPreRunDirt?: boolean
     readonly allowPreRunIntegrityErrors?: boolean
@@ -853,6 +860,7 @@ export async function launchRun(
       input = await assembleRunInput(ctx, workspace, ticketPriority(ticket), {
         resumeFromRunId: opts.resumeFromRunId,
         resumeHeldRunId: opts.resumeHeldRunId,
+        resumeFounderAnswer: opts.resumeFounderAnswer,
         task: opts.task,
         storePriorityId: TICKET_PRIORITY_SENTINEL,
         ticketId: ticket.id,
@@ -1215,7 +1223,7 @@ export async function requestStopRun(ctx: OzContext, runId: string): Promise<Lau
 
 /** Resume a held run by re-entering its parked runner loop. Distinct from pickup-based
  *  `resumeFromRunId`, which launches a fresh run using a prior pickup brief. */
-export async function resumeRun(ctx: OzContext, runId: string): Promise<LaunchResult> {
+export async function resumeRun(ctx: OzContext, runId: string, opts: { readonly founderAnswer?: string | null } = {}): Promise<LaunchResult> {
   const run = ctx.store.getRun(runId)
   if (!run) return { status: 404, body: { error: 'unknown run' } }
   if (run.status !== 'held') {
@@ -1229,12 +1237,78 @@ export async function resumeRun(ctx: OzContext, runId: string): Promise<LaunchRe
   const target: LaunchRunTarget = run.ticketId !== null
     ? { kind: 'ticket', ticketId: run.ticketId }
     : { kind: 'priority', priorityId: run.priorityId }
-  const launched = await launchRun(ctx, run.workspaceId, target, { resumeHeldRunId: runId })
+  const launched = await launchRun(ctx, run.workspaceId, target, { resumeHeldRunId: runId, resumeFounderAnswer: opts.founderAnswer ?? null })
   if (launched.status !== 202) return launched
 
   void appendAudit(ctx.cocoderHome, { action: 'resume', runId })
   emitOzEvent(ctx, { type: 'resume-requested', runId, workspaceId: run.workspaceId })
   return { status: 202, body: { resuming: true, runId } }
+}
+
+function founderResolutionFromState(state: ResumeState | null): { readonly question: string; readonly nextDirectivePath: string } | null {
+  if (state?.park !== 'pre-dispatch' || !isAwaitingFounderResolution(state.founderResolution)) return null
+  return { question: state.founderResolution.question, nextDirectivePath: state.founderResolution.nextDirectivePath }
+}
+
+export async function requestFounderAnswer(ctx: OzContext, runId: string, answer: string): Promise<LaunchResult> {
+  const run = ctx.store.getRun(runId)
+  if (!run) return { status: 404, body: { error: 'unknown run' } }
+
+  const text = answer.trim()
+  if (!text) return { status: 400, body: { error: 'founder answer is required' } }
+  if (text.length > 4000) return { status: 400, body: { error: 'founder answer too long (max 4000 chars)' } }
+
+  if (run.status !== 'held') {
+    return {
+      status: 409,
+      body: {
+        error: `run is "${run.status}" — founder answers can only resume a held run. Check status and start the appropriate recovery path instead.`,
+        code: 'founder-answer-not-held',
+        runId,
+      },
+    }
+  }
+
+  const runDir = resolveLocalRunDir(ctx.runsRoot, run.id) ?? localRunDir(ctx.runsRoot, run)
+  let resumeState: ResumeState | null
+  try {
+    resumeState = await readResumeState(runDir)
+  } catch (err) {
+    return {
+      status: 409,
+      body: {
+        error: `run ${runId} is held, but its resume-state.json could not be read. Check status and use the manual recovery path. ${err instanceof Error ? err.message : String(err)}`,
+        code: 'founder-answer-invalid-resume-state',
+        runId,
+      },
+    }
+  }
+  const founderResolution = founderResolutionFromState(resumeState)
+  if (founderResolution === null) {
+    return {
+      status: 409,
+      body: {
+        error: `run ${runId} is held, but it is not awaiting a mid-run founder answer. Check status and use resume or the appropriate recovery path.`,
+        code: 'founder-answer-not-awaited',
+        runId,
+      },
+    }
+  }
+
+  const payload = {
+    kind: 'founder-answer',
+    runId,
+    question: founderResolution.question,
+    answer: text,
+    nextDirectivePath: founderResolution.nextDirectivePath,
+    recordedAt: new Date(ctx.now ? ctx.now() : Date.now()).toISOString(),
+  }
+  await atomicWriteJson(join(runDir, 'founder-answer.json'), payload)
+  ctx.store.recordEvent({ runId, type: 'founder-answer-recorded', data: { question: founderResolution.question, nextDirectivePath: founderResolution.nextDirectivePath } })
+  void appendAudit(ctx.cocoderHome, { action: 'founder-answer', runId })
+  emitOzEvent(ctx, { type: 'founder-answer-recorded', runId, workspaceId: run.workspaceId })
+
+  return resumeRun(ctx, runId, { founderAnswer: text })
 }
 
 /** Queue an Oz-authored nudge for this run's Oscar. The daemon writes the runner-owned channel; the
