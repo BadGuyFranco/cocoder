@@ -138,6 +138,30 @@ This distinction is normative because run_192 showed the gap concretely: with no
 expressed a founder "stop" as a `wrapup` directive — the only non-terminal option — even though no work was
 in flight. After Phase 1, a founder halt mid-flight must route to `held`, not `wrapup` or `stopped`.
 
+### Extension (ticket 0079, run_275): mid-run founder-decision waits reuse held/resume
+
+A mid-run founder **decision** wait is the same shape as a founder halt: the run cannot make progress
+until a human answers, so it must park, not poll. Run_272 exposed the gap — an `ask-founder-continue`
+wait kept polling the next directive under the ordinary `orchestrationMs` backstop and self-faulted
+`directive-timeout` after four hours, and the late founder answer landed in an already-failed run's
+artifact path. Ticket 0079 closes this by reusing this ADR's machinery rather than minting a parallel one:
+
+- An `ask-founder-continue` wait parks as `held` with a `pre-dispatch` resume-state carrying a
+  `founderResolution` marker (`question`, `nextDirectivePath`). It never enters an `orchestrationMs`
+  directive poll, so it can never `directive-timeout` while awaiting the founder.
+- Resume re-enters at the parked atom: the resumed Oscar's launch prompt is pointed at the parked
+  `nextDirectivePath` (not `directive-0.json`) and carries the prior question plus the founder's answer,
+  so it authors the continuation directive. Late answers cannot revive a dead run — resume requires status
+  `held` (a `failed`/`completed` run is rejected to a recovery surface, writing nothing).
+- The founder answers through the existing Oz channel: the `founder-answer` Oz tool and
+  `POST /runs/:id/founder-answer` validate the `held` `ask-founder-continue` marker, persist the answer,
+  and resume through the **single** `resumeRun` path (no second resume lane). A stale answer (run no
+  longer `held`, or `held` without the marker) is rejected to recovery.
+- "Awaiting founder resolution" has **one owner** predicate (`isAwaitingFounderResolutionStatus`,
+  spanning `held` + post-wrap `awaiting-founder` + `awaiting-archive-confirmation`), replacing the
+  duplicated `AWAITING_FOUNDER_STATUSES` sets the dashboard/ticket-close-gate/nudge surfaces carried.
+  The narrower finalize-to-completed action stays distinct so a resumable `held` run is never clobbered.
+
 ## Consequences
 
 - A founder can tell any active persona to stop the run and get an actual halt, without asking a persona

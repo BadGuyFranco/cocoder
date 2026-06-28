@@ -141,6 +141,24 @@ strand class is dissolved *structurally*, not patched. Proof: `node scripts/proo
   pass (in this priority's Continuation): tighten the Oscar persona so a direct directive overrides the
   default confirm-back, kept distinct from "Thoughts? means think."
 
+- **F25 — A founder-decision wait self-faulted as a directive timeout, and a late answer landed in the
+  dead run (run_272, 2026-06-27).** Oscar wrote an `ask-founder-continue` directive; the runner kept
+  polling the next-directive file under the ordinary `orchestrationMs` backstop and self-faulted
+  `directive-timeout` after four hours. The founder's answer (`directive-3.json`) was then written into the
+  already-failed run's artifact path as if it were still live. **Root cause:** a human-decision wait was
+  modeled as an ordinary agent-artifact poll governed by `orchestrationMs`, not as a durable parked state;
+  and "awaiting founder" had no single predicate (the daemon's `AWAITING_FOUNDER_STATUSES` was duplicated
+  and excluded the parked state). **FIXED run_275 (ticket 0079):** `ask-founder-continue` parks as `held`
+  with a resume-state `founderResolution` marker and never directive-times-out (reuses ADR-0037
+  hold/resume); a `founder-answer` Oz tool + `POST /runs/:id/founder-answer` resume through the single
+  `resumeRun` path and reject a stale answer to recovery (resume requires `held`, so a late answer cannot
+  revive a `failed` run); one `isAwaitingFounderResolutionStatus` owner spans `held` + post-wrap
+  `awaiting-founder` + `awaiting-archive-confirmation`, with finalize-to-completed kept narrower so a
+  resumable `held` run is not clobbered. **Fix pattern:** a wait that needs a human is a parked/resumable
+  state, never a timed agent-poll; one predicate owns "awaiting founder," and recognition is distinct from
+  the finalize action. Pins: `runner.test.ts`, `founder-stop.test.ts`, `status.test.ts`, `mutations.test.ts`,
+  `oz-chat.test.ts`. ADR: [0037](./decisions/0037-founder-stop-hold-resume.md) extension.
+
 ## Cross-cutting lessons (feed the charter)
 
 - **L1.** Nearly all failures above are *coordination/state* failures, not algorithm failures —
