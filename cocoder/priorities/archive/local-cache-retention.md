@@ -4,6 +4,15 @@ title: Machine-local cache retention — bound local/ growth with per-workspace 
 independent-of-runner: true
 destructive: true
 ---
+
+> **Archived 2026-06-28 (founder) — Archive-ready: objective met and proven on a live install.**
+> Live daemon-boot GC pass observed run_279/137: local/ 39.5M->32.5M, run dirs 277->167 (110 pruned),
+> WAL truncated to 0; retention-gc audit entry written with prunedRuns=110, failures=[],
+> skippedProtectedRunIds=[]; recurrence preserved (storeRunRowsKept=13 fault-bearing rows); no
+> protected/non-terminal run pruned; N=25 enabled via governed PUT /settings. Residual 167 dirs are
+> projection-gated legacy backlog kept by design (ticket 0082). Live effectiveness observed; all
+> acceptance criteria satisfied. Follow-ups 0082/0083/0084/0085 tracked independently.
+
 ## Objective
 
 Bound the unbounded growth of the install's machine-local cache (local/runs scratch + the shared SQLite store) with a per-workspace retention policy: keep the last N runs per workspace (default 25), applied to BOTH the scratch dirs and the store rows. Time-independent and fair across active/idle repos (reject time-based and global last-N). GC a run's local state only after its durable record is projected to the repo's cocoder/runs/; never prune a running/awaiting-founder/awaiting-archive/held run; preserve cross-run fault recurrence. Checkpoint the WAL and rotate logs. N configurable, default 25.
