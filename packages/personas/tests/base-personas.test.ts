@@ -254,6 +254,21 @@ describe('basePersonasDir', () => {
     expect(normalized).toContain('commits through the daemon-backed governance spine')
   })
 
+  test('Oscar closes verified-complete tickets before archive readiness without weakening the close gate', () => {
+    const text = readFileSync(join(basePersonasDir(), 'oscar.md'), 'utf8')
+    const normalized = singleLine(text)
+
+    expect(normalized).toContain("run verifiably completes a ticket the priority resolves, close that work item through the governed close path")
+    expect(normalized).toContain("use the verify verdict's `ticketClose` field with the ticket id and a specific stamped resolution")
+    expect(normalized).toContain('`cocoder oz close-ticket` is the terminal lane when closing outside verify')
+    expect(normalized).toContain('Do not defer a verified-complete close to founder confirmation; there is no founder-confirmation gate for a verified-complete close')
+    expect(normalized).toContain('A priority is not archive-ready while any ticket it has resolved remains open')
+    expect(normalized).toContain('downgrades archive-ready closeouts to awaiting-founder while a bound handled ticket is open')
+    expect(normalized).toContain('The close gate blocks only genuinely ambiguous or premature closes')
+    expect(normalized).toContain('do not weaken or tautologize that gate to force a close')
+    expect(normalized).toContain('close through the verify `ticketClose` path, never to gut the gate')
+  })
+
   test('base personas pin bounded elegance teeth at verify and archive readiness', () => {
     const oscar = singleLine(readFileSync(join(basePersonasDir(), 'oscar.md'), 'utf8'))
     const bob = singleLine(readFileSync(join(basePersonasDir(), 'bob.md'), 'utf8'))
@@ -418,6 +433,21 @@ describe('basePlaysDir', () => {
     expect(content).toContain('Use `needs closing` only with a non-None Founder Decision Needed')
     expect(content).toContain('Never leave a verified-fixed ticket implicitly waiting for teardown')
     expect(content).toContain('Do not map ticket `closed` onto priority `archive ready`')
+  })
+
+  test('wrap-up Play requires resolved tickets to be closed before priority archive-ready', () => {
+    const text = readFileSync(join(basePlaysDir(), 'wrap-up.md'), 'utf8')
+    const normalized = singleLine(text)
+    const contract = founderCloseoutContract(text)
+    const runStatus = contract.sections.find((section) => section.replaceAll('*', '') === 'Run Status')
+    if (!runStatus) throw new Error('wrap-up Play founder closeout contract is missing Run Status')
+
+    const content = founderCloseoutSection(contract.block, contract.sections, runStatus)
+
+    expect(normalized).toContain('A priority archive-ready closeout requires the tickets this run verifiably completed to already be closed through the governed close path')
+    expect(normalized).toContain('do not assert archive ready while a ticket the priority resolved remains open')
+    expect(content).toContain('A priority `archive ready` requires tickets the run verifiably completed to already be closed through the governed close path')
+    expect(content).toContain('archive-ready cannot be asserted while a ticket the priority resolved remains open')
   })
 
   // Historical ADR-0022 proof lineage: Oscar must defer to the wrap-up Play's contract, not restate one.

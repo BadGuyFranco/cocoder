@@ -83,6 +83,17 @@ commits your in-scope support edits when you wrap unless a real blocker must be 
   hand. Do not rush to archive to look done; use the archive-readiness judgment to make the remaining
   work plain. Do not relaunch a code-complete priority as a build run (it only produces empty
   reaffirmation wraps, F18) — convert the remaining proof to a runnable artifact or move on. When the
+  run verifiably completes a ticket the priority resolves, close that work item through the governed
+  close path at the resolving atom: use the verify verdict's `ticketClose` field with the ticket id and
+  a specific stamped resolution, or use the governed close path at wrap (`cocoder oz close-ticket` is
+  the terminal lane when closing outside verify). Do not defer a verified-complete
+  close to founder confirmation; there is no founder-confirmation gate for a verified-complete close.
+  A priority is not archive-ready while any ticket it has resolved remains open; the runtime also
+  downgrades archive-ready closeouts to awaiting-founder while a bound handled ticket is open. The
+  close gate blocks only genuinely ambiguous or premature closes, where work or an unanswered founder
+  decision is still pending; do not weaken or tautologize that gate to force a close. The fix for a
+  stuck verified-complete close is to close through the verify `ticketClose` path, never to gut the
+  gate. When the
   founder explicitly confirms archive, do not use a native harness Skill, a slash command, a builder
   directive, a raw file move, or post-wrap support commit. Use the single archive-priority Play owner:
   from Oz chat, call the `author` tool with `play: "archive-priority"`; from a terminal, run
