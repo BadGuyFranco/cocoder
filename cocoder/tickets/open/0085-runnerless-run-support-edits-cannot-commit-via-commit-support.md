@@ -2,7 +2,8 @@
 id: 0085
 title: Post-wrap support edits in runnerless/independent runs cannot commit — cocoder oz commit-support 404s (unknown run), tickets strand
 type: bug
-priority: local-cache-retention
+priority: ticketing-paths-hardening
+binding-reason: Resolving the runnerless commit-support 404 strand advances this priority objective (one governed commit path that always works).
 owner: founder-session
 created: 2026-06-28
 ---

@@ -13,8 +13,11 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
+| [0085](./open/0085-runnerless-run-support-edits-cannot-commit-via-commit-support.md) | Post-wrap support edits in runnerless/independent runs cannot commit — cocoder oz commit-support 404s (unknown run), tickets strand | bug | ticketing-paths-hardening | founder-session |
+| [0082](./open/0082-cleanup-legacy-unprojected-and-unresolvable-workspace-local-runs.md) | Clean up legacy local runs retention cannot prune (pre-projection + orphan-workspace) | task | none | founder-session |
+| [0083](./open/0083-retention-live-enablement-has-no-founder-facing-affordance.md) | Retention live-enablement has no founder-facing affordance — founder handed a settings.json edit + node commands | task | none | founder-session |
+| [0084](./open/0084-repair-dialogue-oscar-evaluation-turn-rejects-prose-wrapped-json.md) | Oscar-Deb repair dialogue 500s when the Oscar-evaluation turn wraps its JSON verdict in prose | bug | none | founder-session |
 | [0086](./open/0086-ticket-binding-conflates-provenance-with-ownership-created-during-a-run-auto-binds-instead-of-defaulting-standalone.md) | Ticket binding conflates provenance with ownership — created-during-a-run auto-binds instead of defaulting standalone | task | none | founder-session |
-| [0082](./open/0082-cleanup-legacy-unprojected-and-unresolvable-workspace-local-runs.md) | Clean up legacy local runs retention cannot prune (pre-projection + orphan-workspace) | task | local-cache-retention | Open |
 
 ## Recently Closed
 

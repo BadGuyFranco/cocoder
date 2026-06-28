@@ -2,7 +2,7 @@
 id: 0082
 title: Clean up legacy local runs retention cannot prune (pre-projection + orphan-workspace)
 type: task
-priority: local-cache-retention
+priority: none
 owner: founder-session
 created: 2026-06-28
 ---
