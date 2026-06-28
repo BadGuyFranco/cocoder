@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_279",
+    "displayNumber": 136
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "priority"
+  },
+  "priorityId": "local-cache-retention",
+  "playbookId": null,
+  "ticketId": null,
+  "status": "running",
+  "createdAt": 1782652615740,
+  "endedAt": null
+}
