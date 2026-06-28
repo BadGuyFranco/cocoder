@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-28 — **local-cache-retention: live observation harness — blocked (run_137/run_279)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [local-cache-retention](./priorities/local-cache-retention.md) | **Run:** run_279 (display 137)
+**Outcomes:**
+- **One atom verified and committed (`9cb8579`).** `scripts/observe-retention-live.mjs` — strictly read-only live observer (snapshot before/after, diff with PASS criteria); verified snapshot is byte-identical on live DB/WAL/audit; audit grep matches real engine marker.
+- **Archive gate is now one founder-runnable procedure**, not a hand checklist: enable `retention.enabled: true`, Refresh daemon, run before/after/diff harness.
+- **Disposition: `blocked`.** Engine code-complete and inert; scratch + isolation proofs pass; one real live daemon-boot GC pass still requires founder-only flag flip + Refresh.
+**Next:** Founder runs the 4-command `observe-retention-live.mjs` procedure; if PASS, reply `archive` in Oz chat (not a relaunch).
+
 ## 2026-06-28 — **local-cache-retention: integration-seam proof on scratch — blocked (run_136/run_279)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [local-cache-retention](./priorities/local-cache-retention.md) | **Run:** run_279 (display 136)
