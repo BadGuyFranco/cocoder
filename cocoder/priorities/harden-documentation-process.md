@@ -21,7 +21,8 @@ stale. Verified by:
    owner-map / historical) with a freshness rule applied per type, so the check knows which docs MUST
    match code and which are aspirational or historical and must not be flagged as "wrong."
 3. **An archive convention for one-shot audit worklists**, so audit artifacts do not accumulate
-   permanently in `docs/`.
+   permanently in `docs/`; as the seed migration, the convention is applied to
+   `docs/architecture-truth-audit.md` and `docs/docs-files-truth-audit.md`.
 
 The hardening must itself be elegant (shared elegance standard): reuse existing seams (CI, lint,
 front-matter), add no heavyweight new machinery, and keep one owner per rule. **Boundary:** this
@@ -29,7 +30,8 @@ priority builds the *process/guardrails*; it does not re-audit doc content (that
 
 **Done when:** the reference check runs in CI and fails a deliberately-planted broken reference; the
 doc-type taxonomy is applied to the governed doc set; the worklist-archive convention is documented in
-one owner doc; and the whole process is described in a single owner location (not duplicated).
+one owner doc; `docs/architecture-truth-audit.md` and `docs/docs-files-truth-audit.md` have been moved
+under that convention; and the whole process is described in a single owner location (not duplicated).
 
 ## What the audits noticed could be better (problem inventory — evidence-backed)
 
@@ -53,7 +55,8 @@ one owner doc; and the whole process is described in a single owner location (no
 
 4. **Audit worklists live permanently in `docs/`.** `docs/architecture-truth-audit.md` and
    `docs/docs-files-truth-audit.md` are one-shot reconciliation artifacts with no archive home.
-   **→ A convention to archive worklists on priority completion.**
+   **→ A convention to archive worklists on priority completion, plus a seed migration that moves these
+   two files under the new convention.**
 
 5. **One-owner drift.** The same contract is sometimes documented in multiple homes; the shared
    standards repeatedly warn against this, but nothing detects a second copy of a documented contract.
