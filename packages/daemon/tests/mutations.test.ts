@@ -2473,7 +2473,14 @@ describe('Oz mutations + lifecycle', () => {
     const ticketsDir = join(home, 'cocoder', 'tickets')
     await mkdir(join(ticketsDir, 'open'), { recursive: true })
     await mkdir(join(ticketsDir, 'closed'), { recursive: true })
-    await writeFile(join(ticketsDir, 'open', '0001-handled-ticket.md'), composeTicketMarkdown('0001', { title: 'Handled ticket', type: 'bug', priority: 'demo', description: 'Handled by demo.' }, '2026-06-25'))
+    await writeFile(join(ticketsDir, 'open', '0001-handled-ticket.md'), composeTicketMarkdown('0001', {
+      title: 'Handled ticket',
+      type: 'bug',
+      priority: 'demo',
+      bindingReason: 'Founder chose demo for this ticket.',
+      provenance: 'run_279',
+      description: 'Handled by demo.',
+    }, '2026-06-25'))
     await writeFile(join(ticketsDir, 'open', '0002-standalone-none.md'), composeTicketMarkdown('0002', { title: 'Standalone none', type: 'task', priority: 'none', description: 'Standalone.' }, '2026-06-25'))
     await writeFile(join(ticketsDir, 'open', '0003-standalone-unassigned.md'), composeTicketMarkdown('0003', { title: 'Standalone unassigned', type: 'task', priority: 'unassigned', description: 'Standalone.' }, '2026-06-25'))
     await writeFile(join(ticketsDir, 'open', '0004-other-priority.md'), composeTicketMarkdown('0004', { title: 'Other priority', type: 'task', priority: 'other-priority', description: 'Handled elsewhere.' }, '2026-06-25'))
@@ -2515,7 +2522,9 @@ describe('Oz mutations + lifecycle', () => {
         runId: run.id,
         priorityId: 'demo',
         committedPaths: ['cocoder/priorities/archive/demo.md', 'cocoder/priorities/demo.md', 'cocoder/priorities/order.json'],
-        handledTickets: [{ id: '0001', title: 'Handled ticket', priority: 'demo' }],
+        releasedTickets: ['0001'],
+        ticketReleaseCommitSha: 'sha-committed',
+        ticketReleaseCommittedPaths: ['cocoder/tickets/open/0001-handled-ticket.md', 'cocoder/tickets/INDEX.md', 'cocoder/tickets/order.json'],
       },
     })
     expect(prompts[0]).toContain('# Archive Priority Play')
@@ -2526,13 +2535,14 @@ describe('Oz mutations + lifecycle', () => {
     await expect(stat(join(home, 'cocoder', 'priorities', 'demo.md'))).rejects.toThrow()
     await expect(stat(join(ticketsDir, 'open', '0001-handled-ticket.md'))).resolves.toBeDefined()
     await expect(stat(join(ticketsDir, 'closed', '0001-handled-ticket.md'))).rejects.toThrow()
-    expect((await readTickets(ticketsDir)).find((ticket) => ticket.id === '0001')).toMatchObject({ id: '0001', state: 'open', status: 'Open', priority: 'demo' })
-    expect(r.json.handledTickets).not.toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: '0002' }),
-      expect.objectContaining({ id: '0003' }),
-      expect.objectContaining({ id: '0004' }),
-      expect.objectContaining({ id: '0005' }),
-    ]))
+    const releasedRaw = await readFile(join(ticketsDir, 'open', '0001-handled-ticket.md'), 'utf8')
+    expect(releasedRaw).toContain('\npriority: none\n')
+    expect(releasedRaw).not.toContain('\nbinding-reason:')
+    expect(releasedRaw).toContain('\nprovenance: run_279\n')
+    const tickets = await readTickets(ticketsDir)
+    expect(tickets.find((ticket) => ticket.id === '0001')).toMatchObject({ id: '0001', state: 'open', status: 'Open', priority: 'none', bindingReason: null })
+    expect(tickets.filter((ticket) => ticket.state === 'open' && ticket.priority === 'demo')).toEqual([])
+    expect(r.json.releasedTickets).not.toEqual(expect.arrayContaining(['0002', '0003', '0004', '0005']))
     expect(JSON.parse(await readFile(join(home, 'cocoder', 'priorities', 'order.json'), 'utf8'))).toEqual([])
   })
 

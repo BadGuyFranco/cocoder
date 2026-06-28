@@ -493,7 +493,7 @@ function archiveConfirmationReply(runId: string, out: LaunchResult): OzChatReply
   const priorityId = typeof out.body.priorityId === 'string' ? out.body.priorityId : undefined
   const committedPaths = stringArray(out.body.committedPaths)
   const outOfLanePaths = stringArray(out.body.outOfLanePaths)
-  const handledTickets = handledArchiveTickets(out.body.handledTickets)
+  const releasedTickets = stringArray(out.body.releasedTickets)
   const commitSha = typeof out.body.commitSha === 'string' ? out.body.commitSha : null
   if (!isOk(out.status)) return failedReply('archive-confirmation', `Could not archive from ${runId}`, out)
   if (!archived) {
@@ -505,11 +505,11 @@ function archiveConfirmationReply(runId: string, out: LaunchResult): OzChatReply
     }
   }
   const files = committedPaths.length > 0 ? ` (${committedPaths.join(', ')})` : ''
-  const ticketDecision = handledTickets.length > 0
-    ? `\n\nHandled tickets need a founder decision: ${handledTickets.map((ticket) => ticket.id).join(', ')}. They are NOT auto-closed; archived priority ${priorityId ?? 'the priority'} no longer covers them. Options: (a) close: reconcile-close <id> <resolution>; (b) release to standalone: reconcile-repoint <id> standalone; (c) rehome to a live priority: reconcile-repoint <id> <priorityId> <reason>.`
+  const ticketRelease = releasedTickets.length > 0
+    ? `\n\nReleased ${releasedTickets.length} ticket${releasedTickets.length === 1 ? '' : 's'} to standalone with provenance preserved: ${releasedTickets.join(', ')}. Optional follow-up: rehome with reconcile-repoint <id> <priorityId> <reason>, or close with reconcile-close <id> <resolution>.`
     : ''
   return {
-    reply: `Archived ${priorityId ?? 'the priority'} from ${runId}${commitSha ? ` as ${commitSha}` : ''}${files}.${ticketDecision}`,
+    reply: `Archived ${priorityId ?? 'the priority'} from ${runId}${commitSha ? ` as ${commitSha}` : ''}${files}.${ticketRelease}`,
     command: 'archive-confirmation',
     ok: true,
     action: { type: 'archive-confirmation', runId, ...(priorityId ? { priorityId } : {}), committedPaths, commitSha, outOfLanePaths },
@@ -780,13 +780,6 @@ function failedReply(command: OzChatReply['command'], prefix: string, out: Launc
 
 function stringArray(input: unknown): string[] {
   return Array.isArray(input) ? input.filter((item): item is string => typeof item === 'string') : []
-}
-
-function handledArchiveTickets(input: unknown): Array<{ readonly id: string }> {
-  if (!Array.isArray(input)) return []
-  return input.filter((item): item is { readonly id: string } => (
-    typeof item === 'object' && item !== null && typeof (item as { id?: unknown }).id === 'string'
-  ))
 }
 
 function runSummary(run: OzAwarenessRun): string {

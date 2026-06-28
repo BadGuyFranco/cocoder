@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { closeTicket, composeTicketMarkdown, readTickets, reconcileTicketSurfaces, repointTicket } from '../src/index.js'
+import { closeTicket, composeTicketMarkdown, readTickets, reconcileTicketSurfaces, releaseTicketsFromArchivedPriority, repointTicket } from '../src/index.js'
 
 async function makeTicketRoot(prefix: string): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), prefix))
@@ -24,6 +24,24 @@ async function writeOpenTicket(dir: string, id: string, title: string, priority 
     composeTicketMarkdown(id, { title, type: 'task', priority, bindingReason, description: `${title}.` }, '2026-06-28'),
   )
   return fileName
+}
+
+async function writeIndex(dir: string, rows: readonly string[]): Promise<void> {
+  await writeFile(join(dir, 'INDEX.md'), [
+    '# Tickets - Index',
+    '',
+    '## Open',
+    '',
+    '| ID | Title | Type | Priority | Owner |',
+    '|---|---|---|---|---|',
+    ...rows,
+    '',
+    '## Recently Closed',
+    '',
+    '| ID | Title | Type | Closed | Resolution |',
+    '|---|---|---|---|---|',
+    '',
+  ].join('\n'))
 }
 
 describe('ticket surface reconcile', () => {
@@ -156,5 +174,51 @@ describe('ticket surface reconcile', () => {
     const index = await readFile(join(dir, 'INDEX.md'), 'utf8')
     expect(index).toContain('| [0006](./closed/0006-close-missing.md) | Close Missing | task | 2026-06-28 | Closed from a divergent surface fixture. |')
     expect(index).not.toContain('./open/0006-close-missing.md')
+  })
+
+  test('releases open tickets from an archived priority to standalone while preserving provenance', async () => {
+    const dir = await makeTicketRoot('tickets-release-')
+    const bound = await writeOpenTicket(dir, '0007', 'Bound Ticket', 'archived-priority', 'Founder chose archived-priority.')
+    await writeFile(
+      join(dir, 'open', bound),
+      composeTicketMarkdown('0007', {
+        title: 'Bound Ticket',
+        type: 'task',
+        priority: 'archived-priority',
+        bindingReason: 'Founder chose archived-priority.',
+        provenance: 'run_279',
+        description: 'Bound Ticket.',
+      }, '2026-06-28'),
+    )
+    const other = await writeOpenTicket(dir, '0008', 'Other Ticket', 'other-priority', 'Founder chose other-priority.')
+    await writeIndex(dir, [
+      `| [0007](./open/${bound}) | Bound Ticket | task | archived-priority | founder-session |`,
+      `| [0008](./open/${other}) | Other Ticket | task | other-priority | founder-session |`,
+    ])
+    await writeFile(join(dir, 'order.json'), `${JSON.stringify(['0007', '0008'], null, 2)}\n`)
+
+    const result = await releaseTicketsFromArchivedPriority({ ticketsDir: dir, repoPath: dir, priorityId: 'archived-priority' })
+
+    expect(result).toEqual({ released: ['0007'], files: ['open/0007-bound-ticket.md', 'INDEX.md'] })
+    const releasedRaw = await readFile(join(dir, 'open', bound), 'utf8')
+    expect(releasedRaw).toContain('\npriority: none\n')
+    expect(releasedRaw).not.toContain('\nbinding-reason:')
+    expect(releasedRaw).toContain('\nprovenance: run_279\n')
+    const tickets = await readTickets(dir)
+    expect(tickets.find((ticket) => ticket.id === '0007')).toMatchObject({ priority: 'none', bindingReason: null })
+    expect(tickets.filter((ticket) => ticket.state === 'open' && ticket.priority === 'archived-priority')).toEqual([])
+    const index = await readFile(join(dir, 'INDEX.md'), 'utf8')
+    expect(index).toContain(`| [0007](./open/${bound}) | Bound Ticket | task | none | founder-session |`)
+    expect(index).toContain(`| [0008](./open/${other}) | Other Ticket | task | other-priority | founder-session |`)
+    await expect(releaseTicketsFromArchivedPriority({ ticketsDir: dir, repoPath: dir, priorityId: 'archived-priority' })).resolves.toEqual({ released: [], files: [] })
+  })
+
+  test('release is a clean no-op when no open ticket is bound to the archived priority', async () => {
+    const dir = await makeTicketRoot('tickets-release-noop-')
+    const standalone = await writeOpenTicket(dir, '0009', 'Standalone Ticket')
+    await writeIndex(dir, [`| [0009](./open/${standalone}) | Standalone Ticket | task | none | founder-session |`])
+    await writeFile(join(dir, 'order.json'), `${JSON.stringify(['0009'], null, 2)}\n`)
+
+    await expect(releaseTicketsFromArchivedPriority({ ticketsDir: dir, repoPath: dir, priorityId: 'archived-priority' })).resolves.toEqual({ released: [], files: [] })
   })
 })

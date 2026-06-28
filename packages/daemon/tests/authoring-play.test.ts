@@ -337,6 +337,7 @@ describe('requestAuthoringPlay', () => {
       status: 200,
       body: {
         ok: true,
+        releasedTickets: [],
         committedPaths: ['cocoder/priorities/archive/alpha.md'],
         outOfLanePaths: [],
         exitCode: 0,
@@ -398,6 +399,28 @@ describe('requestAuthoringPlay', () => {
     })
     await writePriority(fixture.home, 'beta', 'Beta', 'Ship beta.')
     await writeFile(join(fixture.home, 'cocoder', 'priorities', 'order.json'), `${JSON.stringify(['beta'], null, 2)}\n`)
+    const ticketsDir = join(fixture.home, 'cocoder', 'tickets')
+    const boundTicket = composeTicketMarkdown('0001', {
+      title: 'Bound Beta Ticket',
+      type: 'bug',
+      priority: 'beta',
+      bindingReason: 'Founder chose beta for this ticket.',
+      provenance: 'run_279',
+      description: 'Must survive archive as standalone.',
+    }, '2026-06-28')
+    const otherTicket = composeTicketMarkdown('0002', {
+      title: 'Other Ticket',
+      type: 'task',
+      priority: 'other-priority',
+      bindingReason: 'Founder chose other-priority.',
+      description: 'Not part of beta.',
+    }, '2026-06-28')
+    await writeFile(join(ticketsDir, 'open', '0001-bound-beta-ticket.md'), boundTicket)
+    await writeFile(join(ticketsDir, 'open', '0002-other-ticket.md'), otherTicket)
+    let ticketIndex = await readTicketIndex(join(ticketsDir, 'INDEX.md'))
+    ticketIndex = insertOpenTicketIndexRow(ticketIndex, '| [0001](./open/0001-bound-beta-ticket.md) | Bound Beta Ticket | bug | beta | founder-session |', '0001')
+    ticketIndex = insertOpenTicketIndexRow(ticketIndex, '| [0002](./open/0002-other-ticket.md) | Other Ticket | task | other-priority | founder-session |', '0002')
+    await writeFile(join(ticketsDir, 'INDEX.md'), ticketIndex)
     await git(fixture.home, ['add', '.'])
     await git(fixture.home, ['commit', '-m', 'seed beta'])
     const headBefore = await git(fixture.home, ['rev-parse', 'HEAD'])
@@ -409,13 +432,31 @@ describe('requestAuthoringPlay', () => {
       invocation: { id: 'beta' },
     })
 
-    expect(result).toMatchObject({ status: 200, body: { ok: true, archived: true, outOfLanePaths: [] } })
+    expect(result).toMatchObject({
+      status: 200,
+      body: {
+        ok: true,
+        archived: true,
+        outOfLanePaths: [],
+        releasedTickets: ['0001'],
+        ticketReleaseCommittedPaths: ['cocoder/tickets/open/0001-bound-beta-ticket.md', 'cocoder/tickets/INDEX.md', 'cocoder/tickets/order.json'],
+      },
+    })
     expect(result.body.committedPaths).toEqual(expect.arrayContaining(['cocoder/priorities/beta.md', 'cocoder/priorities/archive/beta.md', 'cocoder/priorities/order.json']))
     expect(typeof result.body.commitSha).toBe('string')
+    expect(typeof result.body.ticketReleaseCommitSha).toBe('string')
     expect(await git(fixture.home, ['rev-parse', 'HEAD'])).not.toBe(headBefore)
     await expect(git(fixture.home, ['cat-file', '-e', 'HEAD:cocoder/priorities/archive/beta.md'])).resolves.toBeDefined()
     await expect(git(fixture.home, ['cat-file', '-e', 'HEAD:cocoder/priorities/beta.md'])).rejects.toThrow()
     expect(await readPriorityOrder(fixture.home)).toEqual([])
+    const releasedRaw = await readFile(join(ticketsDir, 'open', '0001-bound-beta-ticket.md'), 'utf8')
+    expect(releasedRaw).toContain('\npriority: none\n')
+    expect(releasedRaw).not.toContain('\nbinding-reason:')
+    expect(releasedRaw).toContain('\nprovenance: run_279\n')
+    const tickets = await readTickets(ticketsDir)
+    expect(tickets.find((ticket) => ticket.id === '0001')).toMatchObject({ state: 'open', priority: 'none', bindingReason: null })
+    expect(tickets.filter((ticket) => ticket.state === 'open' && ticket.priority === 'beta')).toEqual([])
+    expect(await readFile(join(ticketsDir, 'INDEX.md'), 'utf8')).toContain('| [0001](./open/0001-bound-beta-ticket.md) | Bound Beta Ticket | bug | none | founder-session |')
   })
 
   // 0052 founder decision: an already-archived re-confirm moves nothing but is a benign, distinct success
@@ -443,7 +484,7 @@ describe('requestAuthoringPlay', () => {
 
     expect(result).toMatchObject({
       status: 200,
-      body: { ok: true, archived: false, reason: 'priority "gamma" was already archived', commitSha: null },
+      body: { ok: true, archived: false, reason: 'priority "gamma" was already archived', commitSha: null, releasedTickets: [] },
     })
     expect(await git(fixture.home, ['rev-parse', 'HEAD'])).toBe(headBefore)
   })

@@ -363,7 +363,7 @@ describe('handleOzMessage', () => {
             commitSha: 'sha-archive',
             committedPaths: ['cocoder/priorities/archive/demo.md', 'cocoder/priorities/order.json'],
             outOfLanePaths: [],
-            handledTickets: [{ id: '0001', title: 'Handled ticket', priority: 'demo' }],
+            releasedTickets: ['0001'],
           },
         }
       },
@@ -377,7 +377,7 @@ describe('handleOzMessage', () => {
       body: {
         ok: true,
         command: 'archive-confirmation',
-        reply: 'Archived demo from run_7 as sha-archive (cocoder/priorities/archive/demo.md, cocoder/priorities/order.json).\n\nHandled tickets need a founder decision: 0001. They are NOT auto-closed; archived priority demo no longer covers them. Options: (a) close: reconcile-close <id> <resolution>; (b) release to standalone: reconcile-repoint <id> standalone; (c) rehome to a live priority: reconcile-repoint <id> <priorityId> <reason>.',
+        reply: 'Archived demo from run_7 as sha-archive (cocoder/priorities/archive/demo.md, cocoder/priorities/order.json).\n\nReleased 1 ticket to standalone with provenance preserved: 0001. Optional follow-up: rehome with reconcile-repoint <id> <priorityId> <reason>, or close with reconcile-close <id> <resolution>.',
         action: {
           type: 'archive-confirmation',
           runId: 'run_7',

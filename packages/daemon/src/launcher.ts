@@ -24,7 +24,6 @@ import {
   detectRunnerImpact,
   deriveTicketCloseDecision,
   founderCloseoutFromFirstContractHeading,
-  handledOpenTicketsForPriority,
   interferes,
   isAwaitingFounderResolution,
   isFinalizableFounderResolutionStatus,
@@ -47,6 +46,7 @@ import {
   readResumeState,
   repointTicket,
   reconcileTicketSurfaces,
+  releaseTicketsFromArchivedPriority,
   runRetentionGc,
   runDisplayNumber,
   resolveMandatoryPlay,
@@ -1936,9 +1936,7 @@ function buildFounderEscalation(request: OscarRepairRequest, response: DebRepair
 // requestReconciliationClose's closed:false/reason split.
 async function assertArchivePriorityMoved(workspacePath: string, invocation: unknown, dispatch: LaunchResult): Promise<LaunchResult> {
   if (dispatch.status < 200 || dispatch.status >= 300 || dispatch.body.ok !== true) return dispatch
-  const id = typeof invocation === 'object' && invocation !== null && typeof (invocation as { id?: unknown }).id === 'string'
-    ? (invocation as { id: string }).id.trim()
-    : ''
+  const id = archivePriorityInvocationId(invocation)
   if (!id) return dispatch
   const livePath = `cocoder/priorities/${id}.md`
   const liveExists = await isFile(join(workspacePath, livePath))
@@ -1961,6 +1959,65 @@ async function assertArchivePriorityMoved(workspacePath: string, invocation: unk
   return committed
     ? { status: dispatch.status, body: { ...dispatch.body, archived: true } }
     : { status: dispatch.status, body: { ...dispatch.body, archived: false, reason: `priority "${id}" was already archived` } }
+}
+
+function archivePriorityInvocationId(invocation: unknown): string {
+  return typeof invocation === 'object' && invocation !== null && typeof (invocation as { id?: unknown }).id === 'string'
+    ? (invocation as { id: string }).id.trim()
+    : ''
+}
+
+async function releaseTicketsAfterArchive(ctx: OzContext, workspace: RegistryWorkspace, invocation: unknown, archive: LaunchResult): Promise<LaunchResult> {
+  if (archive.status < 200 || archive.status >= 300 || archive.body.ok !== true) return archive
+  const priorityId = archivePriorityInvocationId(invocation)
+  if (!priorityId || archive.body.archived !== true) return { ...archive, body: { ...archive.body, releasedTickets: [] } }
+
+  const release = await releaseTicketsFromArchivedPriority({
+    ticketsDir: ticketsDir(workspace.path),
+    repoPath: workspace.path,
+    priorityId,
+  })
+  if (release.files.length === 0) return { ...archive, body: { ...archive.body, releasedTickets: release.released } }
+
+  const receipt = await commitFiles(
+    ctx.git,
+    workspace.path,
+    release.files,
+    `governance: release tickets from archived priority ${priorityId}`,
+    COCODER_GOVERNANCE_AUTHOR,
+  )
+  if (!receipt.committed) {
+    return {
+      status: 500,
+      body: {
+        ok: false,
+        error: `archived priority "${priorityId}" but ticket release commit failed: ${receipt.error ?? 'no commit created'}`,
+        archived: true,
+        releasedTickets: release.released,
+        committedPaths: Array.isArray(archive.body.committedPaths) ? archive.body.committedPaths : [],
+        commitSha: typeof archive.body.commitSha === 'string' ? archive.body.commitSha : null,
+      },
+    }
+  }
+
+  await appendAudit(ctx.cocoderHome, {
+    action: 'archive-priority-release-tickets',
+    workspaceId: workspace.id,
+    priorityId,
+    releasedTickets: release.released,
+    committedSha: receipt.committedSha,
+    files: receipt.committedFiles,
+  })
+  emitOzEvent(ctx, { type: 'archive-priority-release-tickets', workspaceId: workspace.id, status: 'committed' })
+  return {
+    ...archive,
+    body: {
+      ...archive.body,
+      releasedTickets: release.released,
+      ticketReleaseCommitSha: receipt.committedSha,
+      ticketReleaseCommittedPaths: receipt.committedFiles,
+    },
+  }
 }
 
 async function orderJsonContains(path: string, id: string): Promise<boolean> {
@@ -2265,16 +2322,12 @@ export async function requestArchiveConfirmation(ctx: OzContext, input: ArchiveC
       archiveActor: 'founder',
     },
   })
-  const archived = archive.status >= 200 && archive.status < 300 && archive.body.ok === true
-  if (archived) {
+  const archived = archive.body.archived === true
+  const completed = archive.status >= 200 && archive.status < 300 && archived
+  if (completed) {
     ctx.store.setRunStatus(run.id, 'completed')
     ctx.store.recordEvent({ runId: run.id, type: 'archive-confirmation-archived', data: { priorityId: run.priorityId, commitSha: archive.body.commitSha ?? null } })
     emitOzEvent(ctx, { type: 'archive-confirmation-archived', runId: run.id, workspaceId: run.workspaceId, status: 'completed' })
-  }
-  const handledTickets: ReturnType<typeof handledOpenTicketsForPriority> = []
-  if (archived) {
-    const workspace = await findWorkspace(ctx.cocoderHome, run.workspaceId)
-    if (workspace) handledTickets.push(...handledOpenTicketsForPriority(await readTickets(ticketsDir(workspace.path)), run.priorityId))
   }
   return {
     status: archive.status,
@@ -2283,7 +2336,6 @@ export async function requestArchiveConfirmation(ctx: OzContext, input: ArchiveC
       archived,
       runId: run.id,
       priorityId: run.priorityId,
-      ...(handledTickets.length > 0 ? { handledTickets } : {}),
     },
   }
 }
@@ -2348,9 +2400,9 @@ export async function requestAuthoringPlay(ctx: OzContext, input: AuthoringPlayI
     exitError: (exitCode) => `Authoring Play turn failed with exit code ${exitCode}; nothing was committed.`,
     recoverCommitOnNonzero: true,
   })
-  return input.playId === 'archive-priority'
-    ? assertArchivePriorityMoved(workspace.path, input.invocation, dispatch)
-    : dispatch
+  if (input.playId !== 'archive-priority') return dispatch
+  const archive = await assertArchivePriorityMoved(workspace.path, input.invocation, dispatch)
+  return releaseTicketsAfterArchive(ctx, workspace, input.invocation, archive)
 }
 
 interface HeadlessCommitOptions {

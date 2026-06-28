@@ -5,6 +5,7 @@ export { composeTicketMarkdown, TICKET_OWNER, type ComposeTicketMarkdownInput } 
 export { createTicket, type CreateTicketInput, type CreateTicketResult } from './create.js'
 export { handledOpenTicketsForPriority, type HandledTicket } from './handled.js'
 export { reconcileTicketSurfaces, type ReconcileTicketSurfacesInput, type ReconcileTicketSurfacesResult } from './reconcile.js'
+export { releaseTicketsFromArchivedPriority, type ReleaseTicketsFromArchivedPriorityInput, type ReleaseTicketsFromArchivedPriorityResult } from './release.js'
 export { repointTicket, type RepointTicketInput, type RepointTicketResult } from './repoint.js'
 export {
   insertOpenTicketIndexRow,
