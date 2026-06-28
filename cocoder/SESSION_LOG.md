@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-28 — **ticket-fix-0081: local-cache-retention unlaunchable — needs closing (run_135/run_278)**
+
+**Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** ticket-fix / [0081](./tickets/open/0081-local-cache-retention-unlaunchable.md) | **Run:** run_278 (display 135)
+**Outcomes:**
+- **No build atoms delegated.** Oz-repair commit `46c602c` (predating the ticket) already restored `local-cache-retention` frontmatter to `independent-of-runner: true` + `destructive: true`; the quoted "may impair…" error only fires when `independent-of-runner: false` AND `destructive: true` (the pre-repair run_265 reframe state).
+- **Launch path verified by code read.** With current frontmatter, dashboard Launch routes to runnerless `cocoder run-independent local-cache-retention` (App.tsx → launcher.ts destructive-isolation lane per ADR-0043/0044); flipping to a normal runner launch would reverse reversal-gated ADRs and was correctly declined.
+- **Disposition: `needs closing`.** Fix proven; founder confirmation requested to close as resolved-by-oz-repair. If Launch still shows impairment error, restart daemon (stale frontmatter cache) and relaunch.
+**Next:** Confirm close ticket `0081`, then launch `local-cache-retention` for runnerless effectiveness proof.
+
 ## 2026-06-28 — **ticket-fix-0068: verify-gate elegance teeth — closed (run_134/run_277)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0068](./tickets/closed/0068-harden-correctness-clarity-elegance-at-the-verification-gate-without-new-orchestration.md) | **Run:** run_277 (display 134)
