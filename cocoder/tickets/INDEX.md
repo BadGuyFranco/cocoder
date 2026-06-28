@@ -13,6 +13,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
+| [0082](./open/0082-cleanup-legacy-unprojected-and-unresolvable-workspace-local-runs.md) | Clean up legacy local runs retention cannot prune (pre-projection + orphan-workspace) | task | local-cache-retention | Open |
 
 ## Recently Closed
 
