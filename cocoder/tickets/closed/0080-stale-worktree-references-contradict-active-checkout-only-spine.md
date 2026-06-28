@@ -2,7 +2,7 @@
 id: 0080
 title: Stale "worktree" references contradict the active-checkout-only spine
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: Oscar
 created: 2026-06-28
@@ -76,3 +76,9 @@ Correct historical/capability mentions left intact:
 - Historical audit docs under `docs/*truth-audit.md`, `docs/loop-packets-retrofit-audit.md`, and
   `docs/phase3-cross-doc-reverification.md`.
 - `packages/personas/base/oscar.md` saying Oscar does not need a worktree.
+
+## Resolution
+
+Resolved by run run_276 (03b2a8840de95276eae21edd570236335c216aa9) on 2026-06-28.
+
+Ticket fix run completed successfully.
