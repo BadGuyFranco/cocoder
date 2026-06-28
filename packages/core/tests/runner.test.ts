@@ -2555,7 +2555,10 @@ describe('runRun (multi-atom loop)', () => {
     const store = openRunStore(':memory:')
     const pickupWrites: string[] = []
     const repaired = validFounderCloseout('REPAIRED PLAY CLOSEOUT')
-    const outputs = ['PLAY CLOSEOUT\n', `Documentation is already committed for this run; the only repair needed is the founder closeout format.\n\n${repaired}`]
+    const outputs = [
+      'PLAY CLOSEOUT\n',
+      `Documentation is already committed for this run; the only repair needed is the founder closeout format.\n\n${repaired}\n---\n\nDocumentation updated within wrap-up write scope.`,
+    ]
     const result = await runRun(
       baseDeps({
         store,

@@ -68,7 +68,10 @@ function section(contract: FounderCloseoutContract, role: FounderCloseoutRole): 
 export function founderCloseoutFromFirstContractHeading(markdown: string, contract: FounderCloseoutContract): string {
   const title = section(contract, 'title')
   const index = markdown.indexOf(title)
-  return index > 0 ? markdown.slice(index).trimStart() : markdown
+  const closeout = index > 0 ? markdown.slice(index).trimStart() : markdown
+  const lines = closeout.split(/\r?\n/)
+  const finalLineIndex = lines.findIndex((line) => line.trim() === contract.finalLine)
+  return finalLineIndex >= 0 ? `${lines.slice(0, finalLineIndex + 1).join('\n')}\n` : closeout
 }
 
 function founderCloseoutRole(label: string): FounderCloseoutRole | null {
