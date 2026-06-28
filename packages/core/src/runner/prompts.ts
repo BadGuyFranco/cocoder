@@ -56,6 +56,28 @@ Handle the pasted instruction before wrap-up:
 `
 }
 
+function resumeFounderDecisionSection(input?: { readonly question: string; readonly answer?: string | null; readonly nextDirectivePath: string } | null): string {
+  if (!input) return ''
+  const answer = typeof input.answer === 'string' && input.answer.trim() !== ''
+    ? input.answer.trim()
+    : '(No founder answer was supplied to the runner; incorporate the founder answer if it is present in the surrounding launch context.)'
+  return `
+# Resuming after founder decision
+
+You previously asked the founder this question without wrapping the run:
+
+${input.question}
+
+Founder answer:
+
+${answer}
+
+Incorporate that answer now, then write the next directive to ${input.nextDirectivePath}. If concrete
+in-priority work remains, write {"kind":"delegate","task":"..."} and include the answer in the task
+context. Only write {"kind":"wrapup","pickup":"..."} if the answer means the run should now end.
+`
+}
+
 function artifactFirstRule(input: { priorityId: string; task?: string | null; firstDirectivePath: string }): string {
   if (isAdHocSupportRun(input)) {
     return `**Artifact rule for this adhoc support run:** the runner still needs a directive JSON at
@@ -129,6 +151,8 @@ export function buildOrchestratorPrompt(input: {
   cocoderHome: string
   /** A prior run's pickup brief to resume from (ADR-0002 C1 / F8), or null for a fresh start. */
   pickup?: string | null
+  /** A held ask-founder-continue park being resumed, if this launch is carrying founder context. */
+  resumeFounderDecision?: { readonly question: string; readonly answer?: string | null; readonly nextDirectivePath: string } | null
 }): string {
   const resume =
     input.pickup && input.pickup.trim() !== ''
@@ -158,6 +182,7 @@ ${availablePlaysSection(input.playManifest)}
 Priority: **${input.priorityTitle}**
 
 ${input.priorityGoal}${adHocInstruction(input.task)}${adHocSupportMode(input)}
+${resumeFounderDecisionSection(input.resumeFounderDecision)}
 ${resume}
 # Working state (this run)
 

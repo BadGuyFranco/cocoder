@@ -194,6 +194,8 @@ export interface RunInput {
   readonly preRunGovernanceChecks?: readonly PreRunGovernanceCheck[]
   /** Re-enter an existing held run at its durable resume-state marker. Runner-core only; callers choose when to pass it. */
   readonly resumeRunId?: string
+  /** Founder answer supplied by the caller when resuming a held ask-founder-continue park. */
+  readonly resumeFounderAnswer?: string | null
 }
 
 export interface RunResult {
@@ -422,6 +424,13 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   await io.ensureRunDir(runDir)
   const resumeState = existingRun === null ? null : await readResumeState(runDir)
   if (existingRun !== null && resumeState === null) throw new Error(`Cannot resume run ${run.id}; missing resume-state.json`)
+  const resumedFounderResolution = resumeState?.park === 'pre-dispatch' && isAwaitingFounderResolution(resumeState.founderResolution) ? resumeState.founderResolution : null
+  const resumedDirectiveIndex = resumedFounderResolution === null ? null : directiveIndexFromPath(resumedFounderResolution.nextDirectivePath)
+  if (resumedFounderResolution !== null && resumedDirectiveIndex === null) {
+    throw new Error(`Cannot resume run ${run.id}; founderResolution.nextDirectivePath is not a numbered directive path`)
+  }
+  const resumeAtomNumber = resumeState === null ? 0 : resumeStateAtomNumber(resumeState)
+  const firstDirectivePath = join(runDir, `directive-${resumedDirectiveIndex ?? resumeAtomNumber}.json`)
   if (existingRun === null) {
     store.recordEvent({ runId: run.id, type: 'run-start', data: { priority: priority.id, runDir } })
     log(`run ${run.id} started (priority ${priority.id})`)
@@ -582,7 +591,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     priorityGoal: launchPriorityGoal,
     hasRequiredPriorityQuestions: requiredPriorityQuestions.length > 0,
     task: input.task ?? null,
-    firstDirectivePath: join(runDir, 'directive-0.json'),
+    firstDirectivePath,
     builderLabel: bob.label,
     builderCli: bob.cli,
     oscarWriteScope: oscar.writeScope,
@@ -590,6 +599,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     runBranch,
     cocoderHome: engineHome,
     pickup: input.pickup ?? null,
+    resumeFounderDecision: resumedFounderResolution === null
+      ? null
+      : { question: resumedFounderResolution.question, answer: input.resumeFounderAnswer ?? null, nextDirectivePath: resumedFounderResolution.nextDirectivePath },
   })
   let oscarDriver: OscarDriver
   if (oscar.mode === 'headless') {
@@ -1086,12 +1098,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   let pickup: string | null = null
   let terminalStatus: RunStatus = 'completed'
   let ticketCloseDecision: TicketCloseDecision = 'none'
-  let n = resumeState === null ? 0 : resumeStateAtomNumber(resumeState)
-  const resumedFounderResolution = resumeState?.park === 'pre-dispatch' && isAwaitingFounderResolution(resumeState.founderResolution) ? resumeState.founderResolution : null
-  const resumedDirectiveIndex = resumedFounderResolution === null ? null : directiveIndexFromPath(resumedFounderResolution.nextDirectivePath)
-  if (resumedFounderResolution !== null && resumedDirectiveIndex === null) {
-    throw new Error(`Cannot resume run ${run.id}; founderResolution.nextDirectivePath is not a numbered directive path`)
-  }
+  let n = resumeAtomNumber
   let directiveIndex = resumedDirectiveIndex ?? n
   let pendingFounderContinue: FounderResolutionWait | null = null
   let pendingResumeState: ResumeState | null = resumeState

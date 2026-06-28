@@ -39,7 +39,7 @@ import {
   runRun,
   validatePlayOutput,
 } from '../src/index.js'
-import { founderStopSignalPath, readResumeState } from '../src/runner/founder-stop.js'
+import { founderStopSignalPath, readResumeState, writeResumeState } from '../src/runner/founder-stop.js'
 
 const persona = (over: Partial<ResolvedPersona> & { id: string; cli: string }): ResolvedPersona => ({
   label: over.id,
@@ -920,6 +920,7 @@ describe('runRun (multi-atom loop)', () => {
     })
 
     await writeFile(join(runDir, 'directive-2.json'), `${JSON.stringify(delegate('finish the implementation with the founder answer: keep it enabled by default'))}\n`, 'utf8')
+    const resumePrompts: string[] = []
     const resumeIo: RunnerIO = {
       ...fakeIO({ directives: [], verdicts: [{ verdict: 'pass', reason: 'founder answer applied' }] }),
       async awaitDirective(path) {
@@ -929,7 +930,18 @@ describe('runRun (multi-atom loop)', () => {
       },
     }
 
-    const resumed = await runRun(baseDeps({ store, git, io: resumeIo }), { ...input, deb, runsRoot, resumeRunId: held.runId })
+    const resumed = await runRun(
+      baseDeps({
+        store,
+        git,
+        io: resumeIo,
+        getAdapter: () => ({ ...okAdapter, build: (buildInput) => {
+          resumePrompts.push(buildInput.prompt)
+          return { command: 'x', args: [] }
+        } }),
+      }),
+      { ...input, deb, runsRoot, resumeRunId: held.runId, resumeFounderAnswer: 'Keep it enabled by default.' },
+    )
 
     expect(resumed.status).toBe('completed')
     expect(resumed.atoms).toBe(2)
@@ -963,6 +975,11 @@ describe('runRun (multi-atom loop)', () => {
     expect(store.getRun(resumed.runId)?.status).toBe('completed')
     expect(statusWrites.some((status) => status.oscar === 'blocked' && status.waitCondition.includes('awaiting founder decision before directive 2'))).toBe(true)
     expect(sends.some((text) => text.includes('FOUNDER DECISION NEEDED') && text.includes('directive-2.json'))).toBe(true)
+    const resumePrompt = resumePrompts.find((prompt) => prompt.includes('# Resuming after founder decision'))
+    expect(resumePrompt).toContain('Should the compatibility shim stay enabled by default?')
+    expect(resumePrompt).toContain('Keep it enabled by default.')
+    expect(resumePrompt).toContain(join(runDir, 'directive-2.json'))
+    expect(resumePrompt).not.toContain(`First action: Write the required directive JSON to \`${join(runDir, 'directive-0.json')}\``)
   })
 
   test('run-wrap audit FLAGS a commit that advanced HEAD outside the run ledger (ADR-0041 §4 / 0058)', async () => {
@@ -1720,6 +1737,97 @@ describe('runRun (multi-atom loop)', () => {
     expect(events.find((e) => e.type === 'run-resumed')?.data).toEqual({ park: 'pre-dispatch', atom: 0 })
     expect(events.filter((e) => e.type === 'builder-dispatch').map((e) => e.data)).toEqual([{ ref: 'surface:2', atom: 0 }])
     expect(store.listWorkItems(held.runId).map((w) => w.status)).toEqual(['done'])
+  })
+
+  test('Oscar launch prompt uses directive-0 for fresh runs and the parked atom directive on resume', async () => {
+    const freshPrompts: string[] = []
+    const freshStore = openRunStore(':memory:')
+    const freshRunsRoot = await mkdtemp(join(tmpdir(), 'cocoder-fresh-first-directive-'))
+    await runRun(
+      baseDeps({
+        store: freshStore,
+        io: fakeIO({ directives: [wrapup('fresh done')] }),
+        getAdapter: () => ({ ...okAdapter, build: (buildInput) => {
+          freshPrompts.push(buildInput.prompt)
+          return { command: 'x', args: [] }
+        } }),
+      }),
+      { ...input, runsRoot: freshRunsRoot },
+    )
+    expect(freshPrompts[0]).toContain(join(freshRunsRoot, 'cocoder', 'run_1', 'directive-0.json'))
+
+    const resumePrompts: string[] = []
+    const resumeStore = openRunStore(':memory:')
+    const resumeRunsRoot = await mkdtemp(join(tmpdir(), 'cocoder-resume-first-directive-'))
+    resumeStore.upsertWorkspace(workspace)
+    const held = resumeStore.createRun({ workspaceId: workspace.id, priorityId: priority.id })
+    resumeStore.setRunStatus(held.id, 'held')
+    const runDir = join(resumeRunsRoot, 'cocoder', held.id)
+    await writeResumeState(runDir, { park: 'pre-dispatch', atomNumber: 3 })
+
+    const resumed = await runRun(
+      baseDeps({
+        store: resumeStore,
+        io: fakeIO({ directives: [wrapup('resume done')] }),
+        getAdapter: () => ({ ...okAdapter, build: (buildInput) => {
+          resumePrompts.push(buildInput.prompt)
+          return { command: 'x', args: [] }
+        } }),
+      }),
+      { ...input, runsRoot: resumeRunsRoot, resumeRunId: held.id },
+    )
+
+    expect(resumed.status).toBe('completed')
+    expect(resumePrompts[0]).toContain(join(runDir, 'directive-3.json'))
+    expect(resumePrompts[0]).not.toContain(join(runDir, 'directive-0.json'))
+  })
+
+  test('founder-resolution resume without a supplied answer keeps the launch prompt usable', async () => {
+    const store = openRunStore(':memory:')
+    const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-founder-resume-no-answer-'))
+    store.upsertWorkspace(workspace)
+    const held = store.createRun({ workspaceId: workspace.id, priorityId: priority.id })
+    store.setRunStatus(held.id, 'held')
+    const runDir = join(runsRoot, 'cocoder', held.id)
+    await writeResumeState(runDir, {
+      park: 'pre-dispatch',
+      atomNumber: 0,
+      founderResolution: {
+        kind: 'ask-founder-continue',
+        question: 'Should the fallback path stay enabled?',
+        askedAtDirectivePath: join(runDir, 'directive-0.json'),
+        nextDirectivePath: join(runDir, 'directive-1.json'),
+      },
+    })
+    const prompts: string[] = []
+    const awaitedPaths: string[] = []
+    const io: RunnerIO = {
+      ...fakeIO({ directives: [] }),
+      async awaitDirective(path) {
+        awaitedPaths.push(path)
+        if (path.endsWith('directive-1.json')) return wrapup('no answer supplied; wrap safely')
+        throw new Error(`unexpected directive path ${path}`)
+      },
+    }
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        io,
+        getAdapter: () => ({ ...okAdapter, build: (buildInput) => {
+          prompts.push(buildInput.prompt)
+          return { command: 'x', args: [] }
+        } }),
+      }),
+      { ...input, runsRoot, resumeRunId: held.id },
+    )
+
+    expect(result.status).toBe('completed')
+    expect(awaitedPaths).toEqual([join(runDir, 'directive-1.json')])
+    const prompt = prompts.find((text) => text.includes('# Resuming after founder decision'))
+    expect(prompt).toContain('Should the fallback path stay enabled?')
+    expect(prompt).toContain('No founder answer was supplied to the runner')
+    expect(prompt).toContain(join(runDir, 'directive-1.json'))
   })
 
   test('late directive written into a failed run is rejected by resume status enforcement', async () => {
