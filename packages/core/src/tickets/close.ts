@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { basename, join, relative } from 'node:path'
 import { parseFrontmatter } from '../personas/frontmatter.js'
 import { insertClosedTicketIndexRowIfMissing, moveTicketIndexRowToClosed, readTicketIndex, ticketTableCell } from './index-helpers.js'
@@ -23,11 +23,28 @@ function unique<T>(items: readonly T[]): T[] {
   return [...new Set(items)]
 }
 
+function errorCode(error: unknown): string | null {
+  return typeof error === 'object' && error !== null && 'code' in error && typeof (error as { readonly code?: unknown }).code === 'string'
+    ? (error as { readonly code: string }).code
+    : null
+}
+
+function scalar(value: string | string[] | undefined): string | null {
+  return typeof value === 'string' && value.trim() !== '' ? value : null
+}
+
 function replaceStatus(raw: string): string {
   const parsed = parseFrontmatter(raw)
-  const replaced = raw.replace(/^status:\s*.*$/m, 'status: Closed')
-  parseFrontmatter(replaced)
   if (parsed.data.status === 'Closed') return raw
+
+  const replaced = /^status:\s*.*$/m.test(raw)
+    ? raw.replace(/^status:\s*.*$/m, 'status: Closed')
+    : raw.replace(/^(---\r?\n)([\s\S]*?)(\r?\n---)(\r?\n?[\s\S]*)$/, (_match, open: string, yaml: string, close: string, rest: string) => {
+      const newline = close.startsWith('\r\n') ? '\r\n' : '\n'
+      const body = yaml === '' || yaml.endsWith('\n') || yaml.endsWith('\r\n') ? yaml : `${yaml}${newline}`
+      return `${open}${body}status: Closed${close}${rest}`
+    })
+  parseFrontmatter(replaced)
   return replaced
 }
 
@@ -56,6 +73,15 @@ async function findOpenTicketFile(ticketsDir: string, ticketId: string): Promise
 }
 
 async function pruneTicketOrder(ticketsDir: string, ticketId: string): Promise<string | null> {
+  const patch = await readOrderPatch(ticketsDir, ticketId)
+  if (!patch) return null
+  await writeFile(patch.path, patch.updated)
+  return patch.path
+}
+
+interface OrderPatch { readonly path: string; readonly updated: string }
+
+async function readOrderPatch(ticketsDir: string, ticketId: string): Promise<OrderPatch | null> {
   const path = join(ticketsDir, 'order.json')
   let raw: string
   try {
@@ -75,8 +101,55 @@ async function pruneTicketOrder(ticketsDir: string, ticketId: string): Promise<s
   }
 
   if (!parsed.includes(ticketId)) return null
-  await writeFile(path, `${JSON.stringify(parsed.filter((id) => id !== ticketId), null, 2)}\n`)
-  return path
+  return { path, updated: `${JSON.stringify(parsed.filter((id) => id !== ticketId), null, 2)}\n` }
+}
+
+interface FileSnapshot {
+  readonly path: string
+  readonly exists: boolean
+  readonly raw: string
+}
+
+async function snapshotFile(path: string): Promise<FileSnapshot> {
+  try {
+    return { path, exists: true, raw: await readFile(path, 'utf8') }
+  } catch (error) {
+    if (errorCode(error) === 'ENOENT') return { path, exists: false, raw: '' }
+    throw error
+  }
+}
+
+async function restoreFile(snapshot: FileSnapshot): Promise<void> {
+  if (snapshot.exists) {
+    await writeFile(snapshot.path, snapshot.raw)
+    return
+  }
+  await rm(snapshot.path, { force: true })
+}
+
+async function rollbackClose(snapshots: readonly FileSnapshot[], originalError: unknown): Promise<never> {
+  const rollbackErrors: unknown[] = []
+  for (const snapshot of snapshots) {
+    try {
+      await restoreFile(snapshot)
+    } catch (error) {
+      rollbackErrors.push(error)
+    }
+  }
+  if (rollbackErrors.length > 0) {
+    throw new AggregateError([originalError, ...rollbackErrors], `failed to roll back ticket close after: ${originalError instanceof Error ? originalError.message : String(originalError)}`)
+  }
+  throw originalError
+}
+
+function ticketIdFromFile(file: string): string {
+  const id = basename(file, '.md').match(/^(\d{4})/)?.[1]
+  if (!id) throw new Error(`ticket filename must start with a four-digit id: ${file}`)
+  return id
+}
+
+function titleFromBody(body: string, fallback: string): string {
+  return body.match(/^#\s+(.+)$/m)?.[1]?.trim() || fallback
 }
 
 export async function closeTicket(input: CloseTicketInput): Promise<CloseTicketResult> {
@@ -100,25 +173,46 @@ export async function closeTicket(input: CloseTicketInput): Promise<CloseTicketR
   const indexPath = join(input.ticketsDir, 'INDEX.md')
   const raw = await readFile(openPath, 'utf8')
   const updatedMarkdown = appendResolution(replaceStatus(raw), input)
-  await mkdir(closedDir, { recursive: true })
-  await writeFile(openPath, updatedMarkdown)
-  await rename(openPath, closedPath)
-  const orderPath = await pruneTicketOrder(input.ticketsDir, input.ticketId)
-
-  const ticket = (await readTickets(input.ticketsDir)).find((item) => item.id === input.ticketId && item.state === 'closed')
-  if (!ticket) throw new Error(`ticket ${input.ticketId} did not round-trip as closed`)
-  if (ticket.status !== 'Closed') throw new Error(`ticket ${input.ticketId} did not round-trip with Closed status`)
+  const parsed = parseFrontmatter(updatedMarkdown)
+  if (parsed.data.status !== 'Closed') throw new Error(`ticket ${input.ticketId} did not round-trip with Closed status`)
+  const fallbackId = ticketIdFromFile(openFile)
+  const frontmatterId = scalar(parsed.data.id)
+  if (frontmatterId !== null && frontmatterId !== fallbackId) {
+    throw new Error(`ticket ${openPath}: frontmatter id "${frontmatterId}" != filename id "${fallbackId}"`)
+  }
+  const ticket = {
+    id: frontmatterId ?? fallbackId,
+    title: scalar(parsed.data.title) ?? titleFromBody(parsed.body, fallbackId),
+    type: scalar(parsed.data.type),
+  }
+  if (ticket.id !== input.ticketId) throw new Error(`ticket ${input.ticketId} did not round-trip as closed`)
 
   const closedFile = basename(closedPath)
   const closedRow = `| [${ticket.id}](./closed/${closedFile}) | ${ticketTableCell(ticket.title)} | ${ticket.type ?? ''} | ${input.closedDate} | ${ticketTableCell(input.resolution)} |`
   const currentIndex = await readTicketIndex(indexPath)
   const movedIndex = moveTicketIndexRowToClosed(currentIndex, { id: input.ticketId, closedRow })
   const updatedIndex = movedIndex === currentIndex ? insertClosedTicketIndexRowIfMissing(currentIndex, closedRow) : movedIndex
-  await writeFile(indexPath, updatedIndex)
+  const orderPatch = await readOrderPatch(input.ticketsDir, input.ticketId)
+  const snapshots = await Promise.all([
+    snapshotFile(openPath),
+    snapshotFile(closedPath),
+    snapshotFile(indexPath),
+    ...(orderPatch ? [snapshotFile(orderPatch.path)] : []),
+  ])
+
+  await mkdir(closedDir, { recursive: true })
+  try {
+    await writeFile(openPath, updatedMarkdown)
+    await rename(openPath, closedPath)
+    if (orderPatch) await writeFile(orderPatch.path, orderPatch.updated)
+    await writeFile(indexPath, updatedIndex)
+  } catch (error) {
+    await rollbackClose(snapshots, error)
+  }
 
   return {
     closed: true,
     closedPath,
-    files: unique([closedPath, openPath, indexPath, ...(orderPath ? [orderPath] : [])].map((path) => relative(input.repoPath, path))),
+    files: unique([closedPath, openPath, indexPath, ...(orderPatch ? [orderPatch.path] : [])].map((path) => relative(input.repoPath, path))),
   }
 }

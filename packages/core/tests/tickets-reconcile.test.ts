@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { closeTicket, composeTicketMarkdown, readTickets, reconcileTicketSurfaces, releaseTicketsFromArchivedPriority, repointTicket } from '../src/index.js'
 
 async function makeTicketRoot(prefix: string): Promise<string> {
@@ -174,6 +174,102 @@ describe('ticket surface reconcile', () => {
     const index = await readFile(join(dir, 'INDEX.md'), 'utf8')
     expect(index).toContain('| [0006](./closed/0006-close-missing.md) | Close Missing | task | 2026-06-28 | Closed from a divergent surface fixture. |')
     expect(index).not.toContain('./open/0006-close-missing.md')
+  })
+
+  test('close inserts missing status before landing the closed ticket', async () => {
+    const dir = await makeTicketRoot('tickets-close-statusless-')
+    await writeFile(join(dir, 'open', '0010-statusless-ticket.md'), [
+      '---',
+      'id: 0010',
+      'title: Statusless Ticket',
+      'type: task',
+      'priority: none',
+      'owner: founder-session',
+      'created: 2026-06-28',
+      '---',
+      '',
+      '# 0010 - Statusless Ticket',
+      '',
+      'Close it.',
+    ].join('\n'))
+    await writeIndex(dir, ['| [0010](./open/0010-statusless-ticket.md) | Statusless Ticket | task | none | founder-session |'])
+    await writeFile(join(dir, 'order.json'), `${JSON.stringify(['0010'], null, 2)}\n`)
+
+    await expect(closeTicket({
+      ticketsDir: dir,
+      repoPath: dir,
+      ticketId: '0010',
+      runId: 'run_280',
+      committedSha: null,
+      closeMode: 'reconciliation',
+      closedDate: '2026-06-28',
+      resolution: 'Closed statusless ticket.',
+    })).resolves.toMatchObject({
+      closed: true,
+      files: ['closed/0010-statusless-ticket.md', 'open/0010-statusless-ticket.md', 'INDEX.md', 'order.json'],
+    })
+
+    await expect(readFile(join(dir, 'open', '0010-statusless-ticket.md'), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
+    const closed = await readFile(join(dir, 'closed', '0010-statusless-ticket.md'), 'utf8')
+    expect(closed).toContain('\nstatus: Closed\n')
+    expect(closed).toContain('## Resolution')
+    expect((await readTickets(dir)).find((ticket) => ticket.id === '0010')).toMatchObject({ state: 'closed', status: 'Closed' })
+    expect(JSON.parse(await readFile(join(dir, 'order.json'), 'utf8'))).toEqual([])
+    const index = await readFile(join(dir, 'INDEX.md'), 'utf8')
+    expect(index.slice(index.indexOf('## Open'), index.indexOf('## Recently Closed'))).not.toContain('0010')
+    expect(index.slice(index.indexOf('## Recently Closed'))).toContain('| [0010](./closed/0010-statusless-ticket.md) | Statusless Ticket | task | 2026-06-28 | Closed statusless ticket. |')
+  })
+
+  test('close rolls back when the INDEX update fails after earlier mutations', async () => {
+    const dir = await makeTicketRoot('tickets-close-rollback-')
+    await writeOpenTicket(dir, '0011', 'Rollback Ticket')
+    await writeIndex(dir, ['| [0011](./open/0011-rollback-ticket.md) | Rollback Ticket | task | none | founder-session |'])
+    await writeFile(join(dir, 'order.json'), `${JSON.stringify(['0011'], null, 2)}\n`)
+    const openPath = join(dir, 'open', '0011-rollback-ticket.md')
+    const closedPath = join(dir, 'closed', '0011-rollback-ticket.md')
+    const indexPath = join(dir, 'INDEX.md')
+    const orderPath = join(dir, 'order.json')
+    const openBefore = await readFile(openPath, 'utf8')
+    const indexBefore = await readFile(indexPath, 'utf8')
+    const orderBefore = await readFile(orderPath, 'utf8')
+
+    vi.resetModules()
+    const actualFs = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')
+    let failedIndexWrite = false
+    const writeFileMock = vi.fn((async (
+      path: Parameters<typeof actualFs.writeFile>[0],
+      data: Parameters<typeof actualFs.writeFile>[1],
+      options?: Parameters<typeof actualFs.writeFile>[2],
+    ) => {
+      if (String(path) === indexPath && !failedIndexWrite) {
+        failedIndexWrite = true
+        throw new Error('forced INDEX write failure')
+      }
+      return actualFs.writeFile(path, data, options)
+    }) as typeof actualFs.writeFile)
+    vi.doMock('node:fs/promises', () => ({ ...actualFs, writeFile: writeFileMock }))
+
+    try {
+      const { closeTicket: closeTicketWithFailingIndex } = await import('../src/tickets/close.js')
+      await expect(closeTicketWithFailingIndex({
+        ticketsDir: dir,
+        repoPath: dir,
+        ticketId: '0011',
+        runId: 'run_280',
+        committedSha: null,
+        closeMode: 'reconciliation',
+        closedDate: '2026-06-28',
+        resolution: 'This write should roll back.',
+      })).rejects.toThrow('forced INDEX write failure')
+    } finally {
+      vi.doUnmock('node:fs/promises')
+      vi.resetModules()
+    }
+
+    expect(await readFile(openPath, 'utf8')).toBe(openBefore)
+    await expect(readFile(closedPath, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
+    expect(await readFile(indexPath, 'utf8')).toBe(indexBefore)
+    expect(await readFile(orderPath, 'utf8')).toBe(orderBefore)
   })
 
   test('releases open tickets from an archived priority to standalone while preserving provenance', async () => {

@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_280",
+    "displayNumber": 139
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "priority"
+  },
+  "priorityId": "ticketing-paths-hardening",
+  "playbookId": null,
+  "ticketId": null,
+  "status": "running",
+  "createdAt": 1782671483117,
+  "endedAt": null
+}
