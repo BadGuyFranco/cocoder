@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-28 — **ticketing-paths-hardening: ticket lifecycle hardened — archive ready (run_138/run_279)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [ticketing-paths-hardening](./priorities/ticketing-paths-hardening.md) | **Run:** run_279 (display 138)
+**Outcomes:**
+- **Ten atoms shipped and verified.** Binding/provenance model (`binding-reason` separate from provenance); surface reconcile; governed create while daemon is live; runnerless `commit-support` fallback; archive ticket release; divergent 0082–0086 surfaces repaired.
+- **Disposition: `archive-confirmation`.** All four objective conditions test-pinned; relaunch would only reaffirm.
+- **Follow-ups outside archive gate:** tickets 0085 and 0086 are resolved by this run (close after archive releases 0085 to standalone); ticket 0084 remains the next actionable defect.
+**Next:** Reply `archive` or `archive run_279` in Oz chat; then launch ticket `0084` for the Oscar–Deb repair-dialogue prose-wrapped JSON 500.
+
 ## 2026-06-28 — **local-cache-retention: live observation harness — blocked (run_137/run_279)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [local-cache-retention](./priorities/local-cache-retention.md) | **Run:** run_279 (display 137)

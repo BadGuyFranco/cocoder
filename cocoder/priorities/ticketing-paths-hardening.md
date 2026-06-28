@@ -82,3 +82,14 @@ orchestration, not another point patch.
 - Archiving a priority leaves zero tickets linked to it.
 - Tickets 0082–0086 are consistently indexed and correctly standalone/bound; none links to
   `local-cache-retention`.
+
+## Disposition — `archive-confirmation` (run_138, 2026-06-28)
+
+All four numbered objective conditions are met and test-pinned: ticket files, `INDEX.md`, and
+`order.json` stay consistent via governed reconcile; create and support-commit work across
+daemon-live/daemon-down and daemon-managed/independent runs; binding is deliberate with
+`binding-reason` separate from provenance; archiving a priority releases bound tickets. Tickets
+0082–0086 are indexed and correctly standalone-or-bound; none links to archived
+`local-cache-retention`. Founder archive reply (`archive` or `archive run_279` in Oz chat) is the
+first-class closeout action. Do not relaunch this priority for build work — it would only produce an
+empty reaffirmation wrap.
