@@ -2,7 +2,7 @@
 id: 0079
 title: Founder decision waits must park, not time out
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: Bob
 created: 2026-06-28
@@ -64,3 +64,9 @@ these waits are expected to happen often:
 - Related closed tickets: 0066 (avoid premature wrap for mid-run founder decisions), 0075 (close gate
   blocks unanswered founder decisions), 0076 (suppress continuation nudge while awaiting founder), 0077
   (founder-confirmation ticket-close recovery).
+
+## Resolution
+
+Resolved by run run_275 (4653aac214d8e12c80b471a4f6023b72c628fd1e) on 2026-06-28.
+
+Founder-decision waits now park as durable held/resumable runs instead of orchestrationMs directive polls: ask-founder-continue parks (atom0 c5424c5), one isAwaitingFounderResolution(Status) owner replaces the duplicated awaiting-founder sets with finalize kept narrower so held isn't clobbered (atom1 2b9b3ea), resumed Oscar receives the question+answer at the correct directive path (atom2 7ab13a1), a founder-answer Oz tool + POST /runs/:id/founder-answer route resume via the single resumeRun path and reject stale answers to recovery with no write/relaunch (atom3 388c476), and regression tests pin no directive-timeout across mid-run/post-wrap/ticket-close/archive lanes and the run_272 late-answer-into-failed-run shape (atom4).

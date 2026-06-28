@@ -13,7 +13,6 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
-| [0079](./open/0079-founder-decision-waits-must-park-not-time-out.md) | Founder decision waits must park, not time out | bug | none | Open |
 | [0068](./open/0068-harden-correctness-clarity-elegance-at-the-verification-gate-without-new-orchestration.md) | Harden correctness-clarity-elegance at the verification gate, without new orchestration | task | none | founder-session |
 | [0037](./open/0037-contributing-pr-template-stale-rg-ci-gate.md) | CONTRIBUTING and PR template still promise an rg CI gate that live ci.yml no longer runs | bug | none | Open |
 
@@ -21,6 +20,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0079](./closed/0079-founder-decision-waits-must-park-not-time-out.md) | Founder decision waits must park, not time out | bug | 2026-06-28 | Founder-decision waits now park as durable held/resumable runs instead of orchestrationMs directive polls: ask-founder-continue parks (atom0 c5424c5), one isAwaitingFounderResolution(Status) owner replaces the duplicated awaiting-founder sets with finalize kept narrower so held isn't clobbered (atom1 2b9b3ea), resumed Oscar receives the question+answer at the correct directive path (atom2 7ab13a1), a founder-answer Oz tool + POST /runs/:id/founder-answer route resume via the single resumeRun path and reject stale answers to recovery with no write/relaunch (atom3 388c476), and regression tests pin no directive-timeout across mid-run/post-wrap/ticket-close/archive lanes and the run_272 late-answer-into-failed-run shape (atom4). |
 | [0069](./closed/0069-personas-agents-stale-archive-and-v1-leftover-refs.md) | cocoder/personas/AGENTS.md has two stale path references (archived-priority + v1-leftovers list) | bug | 2026-06-27 | Fixed cocoder/personas/AGENTS.md stale references: the archived priority path now resolves to cocoder/zArchive/priorities/v2/base-and-extension-personas.md, and the v1 leftovers paragraph now names only the remaining custom/ artifact. Verified with path checks, stale-reference grep, topology check, and the core test suite. |
 | [0048](./closed/0048-adopt-eslint-in-cocoder-engine-repo.md) | Adopt a minimal ESLint 9 linter in CoCoder's own engine repo | task | 2026-06-27 | Adopted minimal ESLint 9 flat config (eslint.config.mjs, eslint 9.39.4 + typescript-eslint 8.62.0) at repo root with restrained type-aware/safety rules; fixed the one real violation (unused registerLivePriorities import in packages/daemon/src/routes.ts); repo passes pnpm lint; lint joins CI as a dedicated step after typecheck (documented in ci.yml) and is deliberately not folded into pnpm test. |
 | [0078](./closed/0078-doc-truth-analysis-will-not-launch-due-to-no-objective.md) | doc-truth-analysis will not launch due to no objective | task | 2026-06-27 | Ticket fix run completed successfully. |
