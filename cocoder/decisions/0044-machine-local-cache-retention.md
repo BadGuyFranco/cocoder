@@ -44,13 +44,11 @@ Each GC pass checkpoints the SQLite WAL with `TRUNCATE` and rotates oversized lo
 
 Retention ships inert. `local/settings.json` owns the runtime switch; `retention.enabled` defaults false, with coercion owned by `resolveRetentionConfig`. The daemon runs one GC pass at boot after orphan reconciliation and legacy run-dir migration, but the pass no-ops while disabled.
 
-Enabling retention on a live install is a deliberate founder action after isolated proof. Two proof artifacts:
+Enabling retention on a live install is a deliberate founder action after isolated proof. Founder enablement goes through governed affordances — Oz chat `retention enable [N]` / `retention disable` (persists via the daemon settings spine, runs GC on enable, and surfaces footprint delta + pruned/protected runs + the retention-gc audit entry in chat) — not a hand-edit of `local/settings.json`. Developer/Oscar proof artifacts:
 
 - `scripts/proof-retention.mjs` (`pnpm -w exec tsx scripts/proof-retention.mjs`) — exercises the shipped core retention engine against a synthetic disposable temp install.
 - `scripts/proof-retention-integration.mjs` (`node scripts/proof-retention-integration.mjs`) — copies the live install's `local/` read-only into temp, enables retention only there, and calls daemon `runRetentionGcOnce`; exit 0 only when the real settings → workspace lookup → boot wiring pass succeeds on scratch.
-- `scripts/observe-retention-live.mjs` (`node scripts/observe-retention-live.mjs`) — read-only before/after snapshot and diff against the live install after the founder enables retention and Refreshes the daemon; PASS when diff exits 0, a new `retention-gc` audit entry appears, protected runs survive, and footprint is bounded.
-
-Archive still requires one observed live pass after the founder sets `retention.enabled: true` on the live install and runs the observe harness.
+- `scripts/observe-retention-live.mjs` (`node scripts/observe-retention-live.mjs`) — read-only before/after snapshot and diff for developer/Oscar verification; not a founder surface.
 
 ## Implementation Owners
 

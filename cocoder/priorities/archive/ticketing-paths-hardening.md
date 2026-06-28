@@ -124,8 +124,8 @@ in-memory runner as evidence that the close fix works or fails.
 
 ## Out of scope
 
-- Tickets **0083** (retention enable affordance) and **0084** (Oscar–Deb repair-dialogue prose-JSON 500)
-  are *subjects* surfaced during the incident, not ticketing-path defects; they stay standalone and open,
+- Ticket **0083** (retention enable affordance) closed run_283; ticket **0084** (Oscar–Deb repair-dialogue prose-JSON 500)
+  is a *subject* surfaced during the incident, not a ticketing-path defect; it stays standalone and open,
   owned separately. Their `status`-field normalization is in scope only as close-path data hygiene.
 - The retention engine itself (archived `local-cache-retention`).
 

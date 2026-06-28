@@ -12,6 +12,14 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-28 — **ticket-fix-0083: governed retention enablement — closed (run_142/run_283)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0083](./tickets/closed/0083-retention-live-enablement-has-no-founder-facing-affordance.md) | **Run:** run_283 (display 142)
+**Outcomes:**
+- **Three atoms verified and committed.** Atom 1 (`a4e7a68`): Oz-chat `retention enable [N]` / `retention disable` persists via daemon settings spine with audit-wrapped intent; atom 2 (`d3ffacf`): enable drives real `runRetentionGcOnce` on-demand and surfaces footprint delta, pruned/protected-skipped runs, and retention-gc audit entry (one footprint owner in `local-footprint.ts`); atom 3 (`86bac8b`): base wrap-up Play forbids founder-run terminal/node commands and machine-local hand-edits for settings/lifecycle changes, routing through governed affordances while preserving F18 proof-harness allowance.
+- **Disposition: `closed`.** Ticket 0083 closed via verify-gate ticketClose path; all three acceptance bullets met; no settings.json hand-edit or node commands handed to the founder.
+**Next:** In Oz chat, type `retention enable` to exercise the live GC pass and read back footprint delta, pruned runs, and the retention-gc audit entry.
+
 ## 2026-06-28 — **ticket-fix-0082: legacy local-run purge — closed (run_141/run_282)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0082](./tickets/closed/0082-cleanup-legacy-unprojected-and-unresolvable-workspace-local-runs.md) | **Run:** run_282 (display 141)

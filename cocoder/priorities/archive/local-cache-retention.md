@@ -11,7 +11,7 @@ destructive: true
 > skippedProtectedRunIds=[]; recurrence preserved (storeRunRowsKept=13 fault-bearing rows); no
 > protected/non-terminal run pruned; N=25 enabled via governed PUT /settings. Residual 167 dirs were
 > projection-gated legacy backlog kept by design until ticket 0082 closed (run_282). Live effectiveness
-> observed; all acceptance criteria satisfied. Follow-up 0082 closed; 0083/0084 remain open standalone.
+> observed; all acceptance criteria satisfied. Follow-up 0082 closed; 0083 closed (run_283); 0084 remains open standalone.
 
 ## Objective
 
