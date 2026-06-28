@@ -11,6 +11,8 @@ export interface Ticket {
   readonly type: string | null
   readonly status: string | null
   readonly priority: string | null
+  readonly bindingReason?: string | null
+  readonly provenance?: string | null
   readonly owner: string | null
   readonly created: string | null
   readonly state: TicketState
@@ -65,6 +67,8 @@ export function loadTicket(dir: string, file: string): Ticket {
     type: scalar(data.type),
     status: scalar(data.status),
     priority: scalar(data.priority),
+    bindingReason: scalar(data['binding-reason']),
+    provenance: scalar(data.provenance),
     owner: scalar(data.owner),
     created: scalar(data.created) ?? scalar(data.opened),
     state,

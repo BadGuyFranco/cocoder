@@ -128,6 +128,8 @@ describe('handled ticket detection', () => {
       type: 'task',
       status: state === 'open' ? 'Open' : 'Closed',
       priority,
+      bindingReason: null,
+      provenance: null,
       owner: 'founder-session',
       created: '2026-06-25',
       state,

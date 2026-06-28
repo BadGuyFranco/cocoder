@@ -84,4 +84,13 @@ describe('live ticket surfaces stay consistent', () => {
 
     expect(archivedBindings, `open tickets bound to archived priorities: ${formatIds(archivedBindings)}`).toEqual([])
   })
+
+  test('open tickets with priority bindings carry binding reasons', async () => {
+    const tickets = (await readTickets(ticketsDir())).filter((ticket) => ticket.state === 'open')
+    const missingReasons = tickets
+      .filter((ticket) => normalizeTicketPriority(ticket.priority) !== null && !ticket.bindingReason?.trim())
+      .map((ticket) => `${ticket.id} -> ${ticket.priority}`)
+
+    expect(missingReasons, `open tickets with non-standalone bindings missing binding-reason: ${formatIds(missingReasons)}`).toEqual([])
+  })
 })
