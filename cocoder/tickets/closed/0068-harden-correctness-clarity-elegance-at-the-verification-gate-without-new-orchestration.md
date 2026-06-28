@@ -2,7 +2,7 @@
 id: 0068
 title: Harden correctness-clarity-elegance at the verification gate, without new orchestration
 type: task
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-26
@@ -50,3 +50,8 @@ Harden the full standard **at the verification gate** (oscar.md), and make the h
 ## Routing
 Base governance — edits `packages/personas/base/oscar.md` (+ `shared-standards.md` / `wrap-up.md` as needed); ships to every workspace. Land via a VERIFIED run with persona/Play tests and the ADR-0012 portability lens, not a post-wrap support edit.
 
+## Resolution
+
+Resolved by run run_277 (b41f1d41bc65e45337c9ee6f0aa0ad674c8dd9d0) on 2026-06-28.
+
+Hardened correctness->clarity->elegance at Oscar's verify gate: added a bounded, objective, local+deletable fail condition to the per-atom verify gate (second copy of an owned contract, redundant abstraction, duplicate knob, deprecated shim, rename-fixable name; explicitly not open-ended), folded a once-per-priority cross-atom accretion sweep into the existing archive-readiness gap assessment (oscar.md + wrap-up.md), added a one-line bob.md pointer that elegance is verifier-enforced, and pinned all of it with a base-personas content test. No new sub-agent, per-run ask, doc, or cadence.
