@@ -1,7 +1,7 @@
 import { join } from 'node:path'
-import { loadPriority, runDisplayName } from '@cocoder/core'
+import { loadPriority, runDisplayName, type RetentionConfig } from '@cocoder/core'
 import type { OzContext } from './context.js'
-import { launchRun as launchRunOp, readGoverned as readGovernedOp, requestArchiveConfirmation as archiveConfirmationOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestFounderAnswer as founderAnswerOp, requestIndependentLaunch as independentLaunchOp, requestNudgeRun as nudgeRunOp, requestOscarDebRepair as oscarDebRepairOp, requestOzAction as ozActionOp, requestOzRepair as repairOzOp, requestReconciliationClose as reconciliationCloseOp, requestReconciliationRepoint as reconciliationRepointOp, requestReconciliationTickets as reconciliationTicketsOp, requestStopRun as stopRunOp, requestSupportCommitRun as supportCommitRunOp, requestTicketCloseConfirmation as ticketCloseConfirmationOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
+import { launchRun as launchRunOp, readGoverned as readGovernedOp, requestArchiveConfirmation as archiveConfirmationOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestFounderAnswer as founderAnswerOp, requestIndependentLaunch as independentLaunchOp, requestNudgeRun as nudgeRunOp, requestOscarDebRepair as oscarDebRepairOp, requestOzAction as ozActionOp, requestOzRepair as repairOzOp, requestReconciliationClose as reconciliationCloseOp, requestReconciliationRepoint as reconciliationRepointOp, requestReconciliationTickets as reconciliationTicketsOp, requestStopRun as stopRunOp, requestSupportCommitRun as supportCommitRunOp, requestTicketCloseConfirmation as ticketCloseConfirmationOp, setRetention as setRetentionOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
 import { projectOzAwareness, type OzAwarenessRun, type OzAwarenessSnapshot } from './oz-awareness.js'
 import { tryHandleOzAgentTurn } from './oz-host.js'
 import { readTickets } from './priority-order.js'
@@ -9,7 +9,8 @@ import { findWorkspace } from './registry.js'
 import { withPortableDisplayNumbers } from './run-display.js'
 
 const ADHOC_PRIORITY_ID = 'adhoc-session'
-const HELP_HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, confirm-close <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId> [reason words...], reconcile-tickets, commit-support <runId>, founder-answer <runId> <answer>, stop <runId>, teardown <runId>, status [runId], help.'
+const HELP_HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, confirm-close <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId> [reason words...], reconcile-tickets, commit-support <runId>, founder-answer <runId> <answer>, retention enable [N] | retention disable, stop <runId>, teardown <runId>, status [runId], help.'
+const RETENTION_USAGE = 'Usage: retention enable [N] | retention disable'
 
 export type OzCommand =
   | { readonly kind: 'launch'; readonly priorityId: string }
@@ -25,6 +26,7 @@ export type OzCommand =
   | { readonly kind: 'stop'; readonly runId: string }
   | { readonly kind: 'nudge'; readonly runId: string; readonly message: string; readonly rationale?: string }
   | { readonly kind: 'founder-answer'; readonly runId: string; readonly answer: string }
+  | { readonly kind: 'retention'; readonly enabled: boolean; readonly keepLastNPerWorkspace?: number }
   | { readonly kind: 'repair'; readonly message: string; readonly rationale?: string }
   | { readonly kind: 'oz-action'; readonly instruction: string }
   | { readonly kind: 'read-governed'; readonly path: string }
@@ -38,7 +40,7 @@ export type OzExecutableCommand = Exclude<OzCommand, { readonly kind: 'help' } |
 export type OzCommandExecutor = (command: OzExecutableCommand) => Promise<OzChatResult>
 
 export interface OzChatAction {
-  readonly type: 'launch' | 'runnerless-launch' | 'show' | 'archive-confirmation' | 'confirm-ticket-close' | 'support-commit' | 'oscar-deb-repair' | 'reconcile-close' | 'reconcile-repoint' | 'reconcile-tickets' | 'stop' | 'nudge' | 'founder-answer' | 'repair' | 'oz-action' | 'author' | 'teardown' | 'status' | 'refresh'
+  readonly type: 'launch' | 'runnerless-launch' | 'show' | 'archive-confirmation' | 'confirm-ticket-close' | 'support-commit' | 'oscar-deb-repair' | 'reconcile-close' | 'reconcile-repoint' | 'reconcile-tickets' | 'stop' | 'nudge' | 'founder-answer' | 'retention' | 'repair' | 'oz-action' | 'author' | 'teardown' | 'status' | 'refresh'
   readonly workspaceId?: string
   readonly priorityId?: string
   readonly runId?: string
@@ -51,6 +53,7 @@ export interface OzChatAction {
   readonly outOfLanePaths?: readonly string[]
   readonly turnLogPath?: string
   readonly handoffPath?: string
+  readonly retention?: RetentionConfig
   readonly command?: string
   readonly pid?: number
   readonly dialogueId?: string
@@ -75,6 +78,7 @@ export interface OzChatOps {
   readonly restartDaemon: typeof restartDaemonOp
   readonly nudgeRun: typeof nudgeRunOp
   readonly requestFounderAnswer: typeof founderAnswerOp
+  readonly setRetention: typeof setRetentionOp
   readonly repairOz: typeof repairOzOp
   readonly requestOzAction: typeof ozActionOp
   readonly readGoverned: typeof readGovernedOp
@@ -97,6 +101,7 @@ const defaultOps: OzChatOps = {
   restartDaemon: restartDaemonOp,
   nudgeRun: nudgeRunOp,
   requestFounderAnswer: founderAnswerOp,
+  setRetention: setRetentionOp,
   repairOz: repairOzOp,
   requestOzAction: ozActionOp,
   readGoverned: readGovernedOp,
@@ -157,6 +162,7 @@ export function parseOzCommand(text: string): OzCommand {
     if (answer.length > 4000) return { kind: 'unknown', hint: 'Founder answer too long (max 4000 chars).' }
     return { kind: 'founder-answer', runId, answer }
   }
+  if (verb === 'retention') return parseRetentionCommand(args)
   if (verb === 'stop') return args.length === 1 ? { kind: 'stop', runId: args[0]! } : unknownCommand()
   if (verb === 'teardown') return args.length === 1 ? { kind: 'teardown', runId: args[0]! } : unknownCommand()
   if (verb === 'status') {
@@ -189,6 +195,14 @@ export async function executeOzCommand(ctx: OzContext, workspaceId: string | und
       'refresh',
       () => ops.restartDaemon(ctx),
       refreshReply,
+    )
+  }
+
+  if (command.kind === 'retention') {
+    return runOp(
+      'retention',
+      () => ops.setRetention(ctx, { enabled: command.enabled, ...(command.keepLastNPerWorkspace === undefined ? {} : { keepLastNPerWorkspace: command.keepLastNPerWorkspace }) }),
+      retentionReply,
     )
   }
 
@@ -428,6 +442,16 @@ function parseDebRepairCommand(args: readonly string[]): OzCommand {
   const problem = problemParts.join(' ').trim()
   if (!problem) return unknownCommand()
   return { kind: 'oscar-deb-repair', problem, ...(sourceRunId ? { sourceRunId } : {}) }
+}
+
+function parseRetentionCommand(args: readonly string[]): OzCommand {
+  const subcommand = args[0]?.toLowerCase()
+  if (subcommand === 'disable' && args.length === 1) return { kind: 'retention', enabled: false }
+  if (subcommand !== 'enable' || args.length > 2) return { kind: 'unknown', hint: RETENTION_USAGE }
+  const keepLast = args[1]
+  if (keepLast === undefined) return { kind: 'retention', enabled: true }
+  if (!/^[1-9]\d*$/.test(keepLast)) return { kind: 'unknown', hint: 'Usage: retention enable [positive integer] | retention disable' }
+  return { kind: 'retention', enabled: true, keepLastNPerWorkspace: Number(keepLast) }
 }
 
 function unknownReply(status: number, hint: string): OzChatResult {
@@ -772,10 +796,30 @@ function refreshReply(out: LaunchResult): OzChatReply {
   }
 }
 
+function retentionReply(out: LaunchResult): OzChatReply {
+  const retention = retentionFromBody(out.body)
+  if (!isOk(out.status) || !retention) return failedReply('retention', 'Could not update retention settings', out)
+  return {
+    reply: retention.enabled ? `Retention enabled, keeping the last ${retention.keepLastNPerWorkspace} runs per workspace.` : 'Retention disabled.',
+    command: 'retention',
+    ok: true,
+    action: { type: 'retention', retention },
+  }
+}
+
 function failedReply(command: OzChatReply['command'], prefix: string, out: LaunchResult): OzChatReply {
   const error = typeof out.body.error === 'string' ? out.body.error : `status ${out.status}`
   const suffix = /[.!?]$/.test(error) ? '' : '.'
   return { reply: `${prefix}: ${error}${suffix}`, command, ok: false }
+}
+
+function retentionFromBody(body: Record<string, unknown>): RetentionConfig | null {
+  const value = body.retention
+  if (typeof value !== 'object' || value === null) return null
+  const record = value as Record<string, unknown>
+  return typeof record.enabled === 'boolean' && typeof record.keepLastNPerWorkspace === 'number'
+    ? { enabled: record.enabled, keepLastNPerWorkspace: record.keepLastNPerWorkspace }
+    : null
 }
 
 function stringArray(input: unknown): string[] {

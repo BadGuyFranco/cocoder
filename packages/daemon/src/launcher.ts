@@ -55,6 +55,7 @@ import {
   resolveEffectivePersona,
   runHeadlessProcess,
   runRun,
+  type RetentionConfig,
   type CommitReceipt,
   type PreRunGovernanceCheck,
   type PersonaSources,
@@ -75,7 +76,7 @@ import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import { emitOzEvent, type DashboardLaunchHandle, type OzContext } from './context.js'
 import { findWorkspace, type RegistryWorkspace } from './registry.js'
 import { appendAudit, ozAuditPath } from './audit.js'
-import { readSettings } from './settings.js'
+import { mergeWriteSettings, readSettings } from './settings.js'
 import { drainAuthoringQueue, enqueueAuthoring } from './authoring-queue.js'
 import { recordOrchestratedRun } from './oz-host.js'
 import { registerLivePriorities } from './priority-order.js'
@@ -160,6 +161,11 @@ export interface ReconciliationTicketsInput {
 export interface TicketCloseConfirmationInput {
   readonly runId: string
   readonly resolution?: string
+}
+
+export interface RetentionSettingsInput {
+  readonly enabled: boolean
+  readonly keepLastNPerWorkspace?: number
 }
 
 export interface GovernedReadResult {
@@ -2058,6 +2064,16 @@ export async function requestDaemonRestart(ctx: OzContext): Promise<LaunchResult
   void appendAudit(ctx.cocoderHome, { action: 'daemon-restart', bootSha: ctx.bootSha })
   ctx.restartDaemon()
   return { status: 202, body: { restarting: true, bootSha: ctx.bootSha } }
+}
+
+export async function setRetention(ctx: OzContext, input: RetentionSettingsInput): Promise<LaunchResult> {
+  const retentionPatch: RetentionConfig = input.keepLastNPerWorkspace === undefined
+    ? { enabled: input.enabled, keepLastNPerWorkspace: (await readSettings(ctx.cocoderHome)).retention.keepLastNPerWorkspace }
+    : { enabled: input.enabled, keepLastNPerWorkspace: input.keepLastNPerWorkspace }
+  const settings = await mergeWriteSettings(ctx.cocoderHome, { retention: retentionPatch })
+  const retention = settings.retention
+  await appendAudit(ctx.cocoderHome, { action: 'retention-settings', enabled: retention.enabled, keepLastNPerWorkspace: retention.keepLastNPerWorkspace })
+  return { status: 200, body: { retention, enabled: retention.enabled, keepLastNPerWorkspace: retention.keepLastNPerWorkspace } }
 }
 
 export async function requestDashboardLaunch(ctx: OzContext): Promise<LaunchResult> {

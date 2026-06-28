@@ -10,7 +10,7 @@ import type { LaunchRunTarget } from '../src/launcher.js'
 import { recordOrchestratedRun } from '../src/oz-host.js'
 import { mergeWriteSettings } from '../src/settings.js'
 
-const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, confirm-close <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId> [reason words...], reconcile-tickets, commit-support <runId>, founder-answer <runId> <answer>, stop <runId>, teardown <runId>, status [runId], help.'
+const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, confirm-close <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId> [reason words...], reconcile-tickets, commit-support <runId>, founder-answer <runId> <answer>, retention enable [N] | retention disable, stop <runId>, teardown <runId>, status [runId], help.'
 
 interface Fixture {
   readonly home: string
@@ -853,6 +853,7 @@ function fakeOps(): OzChatOps {
     stopRun: async () => ({ status: 202, body: { stopping: true } }),
     nudgeRun: async () => ({ status: 202, body: { queued: true, seq: 1 } }),
     requestFounderAnswer: async (_ctx, runId) => ({ status: 202, body: { resuming: true, runId } }),
+    setRetention: async () => ({ status: 200, body: { retention: { enabled: true, keepLastNPerWorkspace: 25 } } }),
     repairOz: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0 } }),
     requestOzAction: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0 } }),
     readGoverned: async () => ({ status: 200, body: { path: 'cocoder/decisions/0017-oz-orchestration-persona.md', content: 'Governed file content.' } }),

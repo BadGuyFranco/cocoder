@@ -1,13 +1,13 @@
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { composeTicketMarkdown, openRunStore, writePortableRun, type RunStore } from '@cocoder/core'
 import type { OzContext } from '../src/context.js'
 import { executeOzCommand, handleOzMessage, parseOzCommand, type OzChatOps } from '../src/oz-chat.js'
-import type { LaunchRunTarget } from '../src/launcher.js'
+import { setRetention, type LaunchRunTarget } from '../src/launcher.js'
 
-const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, confirm-close <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId> [reason words...], reconcile-tickets, commit-support <runId>, founder-answer <runId> <answer>, stop <runId>, teardown <runId>, status [runId], help.'
+const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, confirm-close <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId> [reason words...], reconcile-tickets, commit-support <runId>, founder-answer <runId> <answer>, retention enable [N] | retention disable, stop <runId>, teardown <runId>, status [runId], help.'
 
 // A stub for an op a test does NOT expect to be called: returns a 500 so an unexpected dispatch fails
 // loudly instead of looking like a real success. Narrowly cast to the specific op's type.
@@ -27,6 +27,7 @@ function mockOps(overrides: Partial<OzChatOps>): OzChatOps {
     restartDaemon: unexpected('restart') as OzChatOps['restartDaemon'],
     nudgeRun: unexpected('nudge') as OzChatOps['nudgeRun'],
     requestFounderAnswer: unexpected('founder-answer') as OzChatOps['requestFounderAnswer'],
+    setRetention: unexpected('retention') as OzChatOps['setRetention'],
     repairOz: unexpected('repair') as OzChatOps['repairOz'],
     requestOzAction: unexpected('oz-action') as OzChatOps['requestOzAction'],
     readGoverned: unexpected('read-governed') as OzChatOps['readGoverned'],
@@ -68,6 +69,9 @@ describe('parseOzCommand', () => {
     ['reconcile-repoint 0099 some-priority because it owns the remaining work', { kind: 'reconcile-repoint', ticketId: '0099', targetPriority: 'some-priority', bindingReason: 'because it owns the remaining work' }],
     ['reconcile-tickets', { kind: 'reconcile-tickets' }],
     ['founder-answer run_45 keep it enabled by default', { kind: 'founder-answer', runId: 'run_45', answer: 'keep it enabled by default' }],
+    ['retention enable', { kind: 'retention', enabled: true }],
+    ['retention enable 10', { kind: 'retention', enabled: true, keepLastNPerWorkspace: 10 }],
+    ['retention disable', { kind: 'retention', enabled: false }],
     ['stop run_45', { kind: 'stop', runId: 'run_45' }],
     ['teardown run_45', { kind: 'teardown', runId: 'run_45' }],
     ['status', { kind: 'status' }],
@@ -106,6 +110,12 @@ describe('parseOzCommand', () => {
   test('founder-answer usage failures are bounded usage errors', () => {
     expect(parseOzCommand('founder-answer')).toEqual({ kind: 'unknown', hint: 'Usage: founder-answer <runId> <answer>' })
     expect(parseOzCommand('founder-answer run_7')).toEqual({ kind: 'unknown', hint: 'Usage: founder-answer <runId> <answer>' })
+  })
+
+  test('retention usage failures are bounded usage errors', () => {
+    expect(parseOzCommand('retention')).toEqual({ kind: 'unknown', hint: 'Usage: retention enable [N] | retention disable' })
+    expect(parseOzCommand('retention enable zero')).toEqual({ kind: 'unknown', hint: 'Usage: retention enable [positive integer] | retention disable' })
+    expect(parseOzCommand('retention disable 10')).toEqual({ kind: 'unknown', hint: 'Usage: retention enable [N] | retention disable' })
   })
 })
 
@@ -236,6 +246,54 @@ describe('handleOzMessage', () => {
     expect(result).toMatchObject({
       status: 202,
       body: { ok: true, command: 'founder-answer', reply: 'Recorded founder answer for run_7 and resumed the run.', action: { type: 'founder-answer', runId: 'run_7' } },
+    })
+  })
+
+  test('retention enable persists settings and appends audit through the launcher op', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'cocoder-retention-chat-'))
+    const result = await executeOzCommand(testCtx(undefined, home), undefined, { kind: 'retention', enabled: true, keepLastNPerWorkspace: 10 }, mockOps({
+      setRetention,
+    }))
+
+    expect(result).toMatchObject({
+      status: 200,
+      body: {
+        ok: true,
+        command: 'retention',
+        reply: 'Retention enabled, keeping the last 10 runs per workspace.',
+        action: { type: 'retention', retention: { enabled: true, keepLastNPerWorkspace: 10 } },
+      },
+    })
+    await expect(readJson(join(home, 'local', 'settings.json'))).resolves.toMatchObject({
+      retention: { enabled: true, keepLastNPerWorkspace: 10 },
+    })
+    await expect(readAuditActions(home)).resolves.toContainEqual(expect.objectContaining({
+      action: 'retention-settings',
+      enabled: true,
+      keepLastNPerWorkspace: 10,
+    }))
+  })
+
+  test('retention disable flips enabled false and preserves the retained run count', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'cocoder-retention-chat-'))
+    const ctx = testCtx(undefined, home)
+    await setRetention(ctx, { enabled: true, keepLastNPerWorkspace: 7 })
+
+    const result = await executeOzCommand(ctx, undefined, { kind: 'retention', enabled: false }, mockOps({
+      setRetention,
+    }))
+
+    expect(result).toMatchObject({
+      status: 200,
+      body: {
+        ok: true,
+        command: 'retention',
+        reply: 'Retention disabled.',
+        action: { type: 'retention', retention: { enabled: false, keepLastNPerWorkspace: 7 } },
+      },
+    })
+    await expect(readJson(join(home, 'local', 'settings.json'))).resolves.toMatchObject({
+      retention: { enabled: false, keepLastNPerWorkspace: 7 },
     })
   })
 
@@ -920,4 +978,13 @@ function authorOps(
       return result
     },
   })
+}
+
+async function readJson(path: string): Promise<unknown> {
+  return JSON.parse(await readFile(path, 'utf8'))
+}
+
+async function readAuditActions(home: string): Promise<readonly Record<string, unknown>[]> {
+  const lines = (await readFile(join(home, 'local', 'oz-audit.log'), 'utf8')).trim().split('\n')
+  return lines.map((line) => JSON.parse(line) as Record<string, unknown>)
 }
