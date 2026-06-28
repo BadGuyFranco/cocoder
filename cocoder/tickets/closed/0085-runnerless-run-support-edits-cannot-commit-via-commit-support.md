@@ -6,6 +6,7 @@ priority: ticketing-paths-hardening
 binding-reason: Resolving the runnerless commit-support 404 strand advances this priority objective (one governed commit path that always works).
 owner: founder-session
 created: 2026-06-28
+status: Closed
 ---
 
 # 0085 — Support edits in independent runs strand uncommitted (commit-support 404 unknown run)
@@ -52,3 +53,9 @@ the fix:
 A support edit must never strand uncommitted on the working tree. Add a regression check that an
 independent run's post-wrap in-scope support edit commits (or that the prescribed command for that run
 type succeeds). Cross-link 0083 (the wrap-up should not emit broken/founder-executed commands).
+
+## Resolution
+
+Closed by reconciliation queued-authoring on 2026-06-28.
+
+Resolved by run_138: cocoder oz commit-support now succeeds for runnerless/independent runs through one governed commit path (no 404, no strand). Closed via run_281's fresh-HEAD daemon (bootSha 4e6a5de) exercising the atomic, status-less-robust closeTicket: status-less source got status: Closed inserted, file moved to closed/, order.json pruned, INDEX row moved to Recently Closed, committed.
