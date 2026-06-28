@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-28 — **ticket-fix-0079: founder-decision waits park, not time out — closed (run_132/run_275)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0079](./tickets/closed/0079-founder-decision-waits-must-park-not-time-out.md) | **Run:** run_275 (display 132)
+**Outcomes:**
+- **Five atoms shipped and verified.** Mid-run `ask-founder-continue` parks as `held` with a `founderResolution` marker (no `directive-timeout`); one `isAwaitingFounderResolution(Status)` owner replaces duplicated awaiting-founder sets; resume points Oscar at the parked directive with question+answer woven in; `founder-answer` Oz tool + `POST /runs/:id/founder-answer` resume via single `resumeRun` and reject stale answers; regression tests pin run_272 class across mid-run, post-wrap, ticket-close, and archive lanes.
+- **Governance updated.** ADR-0037 extended with mid-run founder-decision park/resume; failure-catalog F25 records run_272 and fix.
+- **Disposition: `closed`.** Ticket 0079 closed via verify-gate ticketClose path; queue head is [0080](./tickets/open/0080-stale-worktree-references-contradict-active-checkout-only-spine.md).
+**Next:** Launch ticket `0080` — grep and reconcile current-truth worktree claims against the active-checkout-only spine (start with ADR-0016 §3).
+
 ## 2026-06-28 — **doc-truth-analysis disposition reaffirmed — archive ready (run_131/run_274)**
 
 **Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** [doc-truth-analysis](./priorities/doc-truth-analysis.md) | **Run:** run_274 (display 131)
