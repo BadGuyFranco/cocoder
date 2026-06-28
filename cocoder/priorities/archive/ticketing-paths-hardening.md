@@ -2,6 +2,9 @@
 id: ticketing-paths-hardening
 title: Ticketing paths hardening — make ticket create/commit/index/binding/reconcile/close consistent and governed
 ---
+
+> **Archived 2026-06-28 (founder) — Archive-ready: ticket lifecycle is single-owner and self-consistent end to end; all five objective conditions hold, each test-pinned. Close path is atomic and status-less-robust (defect 7), proven live in run_281's fresh-HEAD daemon (bootSha 4e6a5de) which closed resolved ticket 0085 atomically; 0086 also closed; 0082-0084 standalone open; no ticket links to archived local-cache-retention; divergence suite green.** Founder confirmed archive after run_281 produced the fresh-process live close proof and closed the priority's own resolved tickets.
+
 ## Objective
 
 The ticket lifecycle is single-owner and self-consistent end to end. Specifically:
