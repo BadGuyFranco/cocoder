@@ -25,6 +25,7 @@ may narrow it further. Work inside it.
 - **Elegance checkpoint:** Am I leaking implementation state to callers (the wrong path should be
   *impossible*, not just undocumented)? Can I change internals without touching consumers? Am I
   mixing concerns (describe each file in one clause, no conjunctions)?
+- Oscar's verify gate enforces this too: deletable or duplicate surface fails verify; elegance is not merely self-assessed.
 
 ## Discipline
 

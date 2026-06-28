@@ -254,6 +254,26 @@ describe('basePersonasDir', () => {
     expect(normalized).toContain('commits through the daemon-backed governance spine')
   })
 
+  test('base personas pin bounded elegance teeth at verify and archive readiness', () => {
+    const oscar = singleLine(readFileSync(join(basePersonasDir(), 'oscar.md'), 'utf8'))
+    const bob = singleLine(readFileSync(join(basePersonasDir(), 'bob.md'), 'utf8'))
+    const wrapUp = singleLine(readFileSync(join(basePlaysDir(), 'wrap-up.md'), 'utf8'))
+
+    expect(oscar).toContain('Fail verify for avoidable, deletable surface introduced by the diff')
+    expect(oscar).toContain('a second copy of a contract that already has an owner')
+    expect(oscar).toContain('a duplicate knob/flag/alias')
+    expect(oscar).toContain('a deprecated shim kept "just in case"')
+    expect(oscar).toContain('or a name a rename would fix')
+    expect(oscar).toContain('It is not an open-ended "is this elegant?" review')
+    expect(oscar).toContain('surface that is not local to the diff and not plainly deletable without losing behavior is not a verify fail')
+    expect(oscar).toContain('one-owner and remove-what-does-not-carry-weight rules')
+    expect(oscar).toContain('authors do not reliably find their own redundancy')
+    expect(oscar).toContain("archive-readiness gap assessment sweep the priority's whole footprint once per priority for cross-atom accretion")
+    expect(oscar).toContain('duplicated owners, schema/abstraction creep across atoms, and deletable surface')
+    expect(wrapUp).toContain('missing evidence, and cross-atom accretion (duplicated owners, schema/abstraction creep, deletable surface)')
+    expect(bob).toContain("Oscar's verify gate enforces this too: deletable or duplicate surface fails verify; elegance is not merely self-assessed.")
+  })
+
   test('Bob completion evidence rejects unproven launch and artifact green claims', () => {
     const text = readFileSync(join(basePersonasDir(), 'bob.md'), 'utf8')
     const normalized = singleLine(text)
