@@ -2,7 +2,7 @@
 id: 0086
 title: Ticket binding conflates provenance with ownership — created-during-a-run auto-binds instead of defaulting standalone
 type: task
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-28
@@ -67,3 +67,9 @@ migration. One owner for the binding concept.
 
 Surfaced during run_279 / `local-cache-retention` (now archived). Concrete instance: the orphaning of
 tickets 0082, 0083, 0084, 0085, repointed to standalone as the immediate cleanup.
+
+## Resolution
+
+Closed by reconciliation deb-reconciliation on 2026-06-28.
+
+Resolved by run 138 (ticketing-paths-hardening): ticket binding is now deliberate — priority is a binding target requiring a one-line binding-reason via core validateBinding (single rule owner), provenance is recorded separately and never auto-binds, and standalone is the default. Enforced across every create caller (core/CLI/daemon/triage) and taught by the create-ticket Play; pinned by core/cli/daemon tests plus the live surface-consistency invariant.
