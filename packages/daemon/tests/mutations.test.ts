@@ -15,7 +15,7 @@ import { migrateLegacyRunDirsOnce, runRetentionGcOnce, ticketPendingCloseRun } f
 import type { OzContext } from '../src/context.js'
 import { listQueuedAuthoring } from '../src/authoring-queue.js'
 import { findOrphanedPriorities } from '../src/priority-order.js'
-import { validFounderCloseout, validTicketFounderCloseout } from './helpers/founder-closeout.js'
+import { validFounderCloseout, validPriorityFounderCloseout, validTicketFounderCloseout } from './helpers/founder-closeout.js'
 
 const exec = promisify(execFile)
 const g = (cwd: string, args: string[]): Promise<string> => exec('git', ['-C', cwd, ...args]).then((r) => r.stdout.trim())
@@ -1054,6 +1054,56 @@ describe('Oz mutations + lifecycle', () => {
       author: COCODER_GOVERNANCE,
     }))
     expect(store.listEvents(run.id).some((event) => event.type === 'ticket-close-confirmation-closed')).toBe(true)
+  })
+
+  test('ticket 0079: ticket-close confirmation wait survives orchestrationMs until requestTicketCloseConfirmation', async () => {
+    await writeTicketIndex(home)
+    await writeFile(join(home, 'cocoder', 'tickets', 'order.json'), `${JSON.stringify(['0003', '0004'], null, 2)}\n`)
+    await setBobHeadless(home)
+    const decision = 'Yes — close ticket `0003` only after the founder confirms this fix is complete.'
+    const commits: GovernanceCommitCall[] = []
+    const git: Git = {
+      ...fakeGitChangedSequence([[], ['packages/ticket-fix.ts']]),
+      async addAndCommit(cwd, files, message, author) {
+        commits.push({ cwd, files: [...files], message, author })
+        return message.startsWith('governance:') ? 'sha-governance' : 'sha-build'
+      },
+    }
+    await startServer(
+      git,
+      async (input) => {
+        if (input.outPath.includes('bob-turn')) {
+          const output = `fixed ticket\n${atomSentinel(0)}`
+          input.onData?.(output)
+          return { exitCode: 0, output }
+        }
+        return { exitCode: 0, output: validTicketFounderCloseout('needs closing', decision) }
+      },
+      oneAtomThenWrapIO(),
+      { orchestrationMs: 1, buildMs: 1_000, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 },
+    )
+
+    const launched = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', ticketId: '0003' } })
+    expect(launched.status).toBe(202)
+    const runId = String(launched.json.runId)
+    for (let i = 0; i < 50 && store.getRun(runId)?.status === 'running'; i++) await sleep(10)
+    await sleep(10)
+
+    expect(store.getRun(runId)?.status).toBe('awaiting-founder')
+    const parkedEvents = store.listEvents(runId)
+    expect(parkedEvents.find((event) => event.type === 'run-end')?.data).toMatchObject({ status: 'awaiting-founder' })
+    expect(parkedEvents.some((event) => event.type === 'directive-timeout')).toBe(false)
+    expect(parkedEvents.some((event) => event.type === 'fault-triaged')).toBe(false)
+    const detailBefore = await call(oz!, 'GET', `/runs/${runId}`)
+    expect(detailBefore.json.actions).toEqual([{ type: 'ticket-close-confirmation', method: 'POST', endpoint: `/runs/${runId}/ticket-close-confirmation`, confirmWith: 'close' }])
+
+    const close = await call(oz!, 'POST', `/runs/${runId}/ticket-close-confirmation`, { body: {} })
+
+    expect(close).toMatchObject({ status: 200, json: { ok: true, closed: true, runId, ticketId: '0003', commitSha: 'sha-governance' } })
+    expect(store.getRun(runId)?.status).toBe('completed')
+    expect(store.listEvents(runId).some((event) => event.type === 'ticket-close-confirmation-closed')).toBe(true)
+    expect(store.listEvents(runId).some((event) => event.type === 'directive-timeout')).toBe(false)
+    expect(commits).toContainEqual(expect.objectContaining({ message: 'governance: founder-confirmation close ticket 0003' }))
   })
 
   test('POST /runs/:id/ticket-close-confirmation refuses an unrelated founder decision', async () => {
@@ -2342,6 +2392,46 @@ describe('Oz mutations + lifecycle', () => {
     expect(detail.json.actions).toEqual([
       { type: 'archive-priority-confirmation', method: 'POST', endpoint: `/runs/${run.id}/archive-confirmation`, priorityId: 'demo', confirmWith: 'archive' },
     ])
+  })
+
+  test('ticket 0079: archive confirmation wait survives orchestrationMs until requestArchiveConfirmation', async () => {
+    await startServer(
+      fakeGit(),
+      async () => ({
+        exitCode: 0,
+        output: validPriorityFounderCloseout(
+          'archive ready',
+          'None.',
+          'Priority: `demo` — archive after founder confirmation',
+          'The priority is ready to archive.',
+        ),
+      }),
+      fakeIO(),
+      { orchestrationMs: 1, buildMs: 1, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 },
+    )
+
+    const launched = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
+    expect(launched.status).toBe(202)
+    const runId = String(launched.json.runId)
+    for (let i = 0; i < 50 && store.getRun(runId)?.status === 'running'; i++) await sleep(10)
+    await sleep(10)
+
+    expect(store.getRun(runId)?.status).toBe('awaiting-archive-confirmation')
+    const parkedEvents = store.listEvents(runId)
+    expect(parkedEvents.find((event) => event.type === 'run-end')?.data).toMatchObject({ status: 'awaiting-archive-confirmation' })
+    expect(parkedEvents.some((event) => event.type === 'directive-timeout')).toBe(false)
+    expect(parkedEvents.some((event) => event.type === 'fault-triaged')).toBe(false)
+    const detailBefore = await call(oz!, 'GET', `/runs/${runId}`)
+    expect(detailBefore.json.actions).toEqual([
+      { type: 'archive-priority-confirmation', method: 'POST', endpoint: `/runs/${runId}/archive-confirmation`, priorityId: 'demo', confirmWith: 'archive' },
+    ])
+
+    const declined = await call(oz!, 'POST', `/runs/${runId}/archive-confirmation`, { body: { confirmation: 'not yet' } })
+
+    expect(declined).toMatchObject({ status: 200, json: { ok: true, archived: false, runId, priorityId: 'demo', status: 'awaiting-archive-confirmation' } })
+    expect(store.getRun(runId)?.status).toBe('awaiting-archive-confirmation')
+    expect(store.listEvents(runId).some((event) => event.type === 'archive-confirmation-declined')).toBe(true)
+    expect(store.listEvents(runId).some((event) => event.type === 'directive-timeout')).toBe(false)
   })
 
   test('run detail hides archive confirmation action after the run leaves awaiting-archive-confirmation', async () => {

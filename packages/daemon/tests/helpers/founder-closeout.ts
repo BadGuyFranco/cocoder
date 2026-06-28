@@ -60,7 +60,16 @@ function normalizeNextStep(nextStep: string): string {
 }
 
 export function validFounderCloseout(summary = 'The requested work was completed.', nextStep = 'Priority: `demo` - continue the remaining priority atoms'): string {
-  return renderFounderCloseout({ summary, nextStep: normalizeNextStep(nextStep), runStatus: 'continue', decisionNeeded: 'None.' })
+  return validPriorityFounderCloseout('continue', 'None.', nextStep, summary)
+}
+
+export function validPriorityFounderCloseout(
+  runStatus = 'continue',
+  decisionNeeded = 'None.',
+  nextStep = 'Priority: `demo` - continue the remaining priority atoms',
+  summary = 'The requested work was completed.',
+): string {
+  return renderFounderCloseout({ summary, nextStep: normalizeNextStep(nextStep), runStatus, decisionNeeded })
 }
 
 export function validTicketFounderCloseout(runStatus = 'closed', decisionNeeded = 'None.', nextStep = 'Ticket: `0003` — continue the ticket fix run'): string {

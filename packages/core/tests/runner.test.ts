@@ -1869,6 +1869,99 @@ describe('runRun (multi-atom loop)', () => {
     expect(store.listEvents(failedRun.id).filter((e) => e.type === 'builder-dispatch')).toHaveLength(0)
   })
 
+  test('ticket 0079 / run_272: a founder decision wait survives past orchestrationMs and resumes, and cannot revive a failed run', async () => {
+    const store = openRunStore(':memory:')
+    const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-ticket-0079-run-272-'))
+    const heldRunDir = join(runsRoot, 'cocoder', 'run_1')
+    const git = scriptedGit([['packages/founder-answer.ts']])
+    const tinyTimeouts = { orchestrationMs: 1, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 }
+    const firstAwaitedPaths: string[] = []
+    const firstIo: RunnerIO = {
+      ...fakeIO({ directives: [] }),
+      async awaitDirective(path) {
+        firstAwaitedPaths.push(path)
+        if (path.endsWith('directive-0.json')) return askFounderContinue('Should we keep the smaller patch?')
+        throw new Error(`held founder decision should not poll another directive before the founder answers: ${path}`)
+      },
+    }
+
+    const held = await runRun(
+      baseDeps({ store, git, io: firstIo, timeouts: tinyTimeouts }),
+      { ...input, runsRoot },
+    )
+    await sleep(10)
+
+    expect(held.status).toBe('held')
+    expect(store.getRun(held.runId)?.status).toBe('held')
+    expect(firstAwaitedPaths).toEqual([join(heldRunDir, 'directive-0.json')])
+    expect(store.listEvents(held.runId).map((e) => e.type)).toEqual(expect.arrayContaining(['founder-decision-requested', 'run-held', 'run-end']))
+    expect(store.listEvents(held.runId).some((e) => e.type === 'directive-timeout')).toBe(false)
+    await expect(readResumeState(heldRunDir)).resolves.toMatchObject({
+      park: 'pre-dispatch',
+      atomNumber: 0,
+      founderResolution: {
+        kind: 'ask-founder-continue',
+        nextDirectivePath: join(heldRunDir, 'directive-1.json'),
+      },
+    })
+
+    await writeFile(join(heldRunDir, 'directive-1.json'), `${JSON.stringify(delegate('apply the founder answer'))}\n`, 'utf8')
+    const resumedAwaitedPaths: string[] = []
+    const resumeIo: RunnerIO = {
+      ...fakeIO({ directives: [], verdicts: [{ verdict: 'pass', reason: 'founder answer applied' }] }),
+      async awaitDirective(path) {
+        resumedAwaitedPaths.push(path)
+        if (path.endsWith('directive-1.json')) return parseDirective(await readFile(path, 'utf8'))
+        if (path.endsWith('directive-2.json')) return wrapup('done after founder answer')
+        throw new Error(`unexpected resumed directive path ${path}`)
+      },
+    }
+
+    const resumed = await runRun(
+      baseDeps({ store, git, io: resumeIo, timeouts: tinyTimeouts }),
+      { ...input, runsRoot, resumeRunId: held.runId, resumeFounderAnswer: 'Keep the smaller patch.' },
+    )
+
+    expect(resumed.status).toBe('completed')
+    expect(store.getRun(held.runId)?.status).toBe('completed')
+    expect(resumedAwaitedPaths).toEqual([join(heldRunDir, 'directive-1.json'), join(heldRunDir, 'directive-2.json')])
+    const resumedEvents = store.listEvents(held.runId)
+    expect(resumedEvents.find((e) => e.type === 'run-resumed')?.data).toEqual({ park: 'pre-dispatch', atom: 0 })
+    expect(resumedEvents.find((e) => e.type === 'run-end' && (e.data as { status?: unknown }).status === 'completed')).toBeDefined()
+    expect(resumedEvents.some((e) => e.type === 'directive-timeout')).toBe(false)
+    await expect(readResumeState(heldRunDir)).resolves.toBeNull()
+
+    const failedRunsRoot = await mkdtemp(join(tmpdir(), 'cocoder-ticket-0079-failed-run-'))
+    const failedStore = openRunStore(':memory:')
+    const failingIo: RunnerIO = {
+      ...fakeIO({ directives: [] }),
+      async awaitDirective(path) {
+        throw new Error(`no valid directive at ${path} within 1ms`)
+      },
+    }
+
+    await expect(
+      runRun(
+        baseDeps({ store: failedStore, io: failingIo, timeouts: tinyTimeouts }),
+        { ...input, runsRoot: failedRunsRoot },
+      ),
+    ).rejects.toThrow(/no valid directive/)
+
+    const failedRun = failedStore.listRuns()[0]!
+    const failedRunDir = join(failedRunsRoot, 'cocoder', failedRun.id)
+    await mkdir(failedRunDir, { recursive: true })
+    await writeFile(join(failedRunDir, 'directive-0.json'), `${JSON.stringify(delegate('late founder answer must not revive the run'))}\n`, 'utf8')
+
+    await expect(
+      runRun(
+        baseDeps({ store: failedStore, io: fakeIO({ directives: [delegate('should not run')] }) }),
+        { ...input, runsRoot: failedRunsRoot, resumeRunId: failedRun.id, resumeFounderAnswer: 'Too late.' },
+      ),
+    ).rejects.toThrow(`Cannot resume run ${failedRun.id} from status failed; expected held`)
+    expect(failedStore.getRun(failedRun.id)?.status).toBe('failed')
+    expect(failedStore.listEvents(failedRun.id).filter((e) => e.type === 'builder-dispatch')).toHaveLength(0)
+  })
+
   test('abort while awaiting directive ends stopped without fault or triage', async () => {
     const store = openRunStore(':memory:')
     const signal = new AbortController()
@@ -2700,6 +2793,55 @@ describe('runRun (multi-atom loop)', () => {
     expect(pickupWrites).toEqual([founderGateCloseout])
     expect((store.listEvents(result.runId).find((e) => e.type === 'landing-outcome')?.data as { status?: string }).status).toBe('awaiting-founder')
     expect((store.listEvents(result.runId).find((e) => e.type === 'run-end')?.data as { status?: string }).status).toBe('awaiting-founder')
+  })
+
+  test('post-wrap awaiting-founder closeout returns without entering a directive-timeout wait', async () => {
+    const store = openRunStore(':memory:')
+    const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-post-wrap-founder-wait-'))
+    const runDir = join(runsRoot, 'cocoder', 'run_1')
+    const pickupWrites: string[] = []
+    const awaitedPaths: string[] = []
+    const founderGateCloseout = renderFounderCloseout({
+      runStatus: 'continue',
+      decisionNeeded: 'Choose the external repo for the live onboarding proof. Recommendation: use the CoBuilder copy.',
+      nextStep: 'Priority: `demo` — founder chooses the live-proof target repo',
+      judgment: 'Oscar stopped because the next step is founder-gated and cannot be delegated as a build atom.',
+    })
+    const directives = [delegate('atom 0'), wrapup('Oscar seed closeout')]
+    let directiveIndex = 0
+    const io: RunnerIO = {
+      ...fakeIO({ directives: [], pickupWrites }),
+      async awaitDirective(path) {
+        awaitedPaths.push(path)
+        const directive = directives[directiveIndex++]
+        if (!directive) throw new Error(`post-wrap founder wait should not poll another directive: ${path}`)
+        return directive
+      },
+    }
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([['packages/atom.ts']]),
+        io,
+        getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
+        runHeadless: async () => ({ exitCode: 0, output: founderGateCloseout }),
+        timeouts: { orchestrationMs: 1, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 },
+      }),
+      { ...input, runsRoot, wrapPlay, wrapPlayAssignment },
+    )
+
+    expect(result.status).toBe('awaiting-founder')
+    expect(store.getRun(result.runId)?.status).toBe('awaiting-founder')
+    expect(awaitedPaths).toEqual([join(runDir, 'directive-0.json'), join(runDir, 'directive-1.json')])
+    expect(pickupWrites).toEqual([founderGateCloseout])
+    const events = store.listEvents(result.runId)
+    expect(events.find((e) => e.type === 'run-end')?.data).toMatchObject({ status: 'awaiting-founder' })
+    expect(events.find((e) => e.type === 'landing-outcome')?.data).toMatchObject({ status: 'awaiting-founder' })
+    expect(events.find((e) => e.type === 'wrap-disposition')?.data).toMatchObject({ disposition: 'awaiting-founder' })
+    expect(events.some((e) => e.type === 'directive-timeout')).toBe(false)
+    expect(events.some((e) => e.type === 'triage-dispatch')).toBe(false)
+    expect(events.some((e) => e.type === 'fault-triaged')).toBe(false)
   })
 
   test('wrap-up Play output validation is disabled when no outputValidator is declared', async () => {
