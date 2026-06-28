@@ -54,12 +54,10 @@ commit-spine and product-routing ownership without changing facts. Process gaps 
 [`harden-documentation-process`](./harden-documentation-process.md). Audit worklists bannered
 reconciliation-complete and deferred to the worklist-archive convention (not ad-hoc archived here).
 
-**Disposition: `continue` — needs a verified code-fix run.** The founder resolved the commit-spine call
-(Option B, 2026-06-27): the `commitOnlyScope` hold-back is a confirmed code regression from ADR-0023.
-Doc reconciliation is otherwise complete, but archive-readiness now requires the code-fix pass specified
-below (restore always-commit-and-flag, revert the docs Atom A bent toward the bug, confirm the proof
-harness and ADR-0007/0023 consistency). Open ticket **0037** (stale CONTRIBUTING rg-CI-gate) is separate
-from this governed-doc surface.
+**Disposition: `continue` — run_272 completed two verified atoms, then failed while awaiting a founder
+decision.** Doc reconciliation is otherwise complete, but archive-readiness now requires finishing the
+commit-spine code/doc consistency pass from the pickup below. Open ticket **0037** (stale CONTRIBUTING
+rg-CI-gate) is separate from this governed-doc surface.
 
 ### Founder decision (RESOLVED — Option B, founder 2026-06-27)
 
@@ -78,22 +76,66 @@ write-scope entry, `docs/fault-injection-live-proofs.md`, `docs/orchestration-co
 `docs/oz-improvement-routing.md`) **wrong** — they described the buggy hold-back as current truth and
 must be reverted to the always-commit-and-flag truth once the code is restored.
 
-### Next pass — a verified CODE-fix run (NOT post-wrap doc support)
+### Run_272 status — PARTIAL, failed after a late founder decision
 
-This is product code under `packages/**`, so it needs a fresh verified build run (Bob builds, Oscar
-verifies per atom), not a Surface-A doc patch. Ordered spec:
+Run_272 landed two verified commits:
 
-1. **Code:** restore commit-everything-and-flag for verified-atom commits — remove/neutralize
-   `commitOnlyScope: true` at `packages/core/src/runner/agent-step.ts:260,488` so the atom lane commits
-   the whole changed set and flags out-of-lane paths (the `commitScoped` behavior). Make write-scope
-   advisory (flag), never enforced by withholding. Run the runner/commit-spine suites green.
-2. **Docs:** revert the Atom A edits listed above back to the ADR-0023 "always commit, flag, never
-   withheld" claim. The `README.md` six→seven-packages fix lands automatically once the code is restored.
-3. **Proof:** `scripts/proof-direct-spine.mjs` should pass with no edit once the code is fixed (it was
-   asserting the correct behavior all along); confirm it exits 0.
-4. **ADR consistency:** confirm ADR-0007 (write-scope advisory) and ADR-0023 (always-save) agree with
-   each other and with the restored code — the founder's stated concern that the ADRs are right and
-   correctly implemented.
+1. **Atom 0 — code restore, commit `d413569`:** restored always-commit-and-flag in the core commit
+   spine, made `commitOnlyScope` a compatibility no-op, removed the two verified-atom
+   `commitOnlyScope: true` call sites from `packages/core/src/runner/agent-step.ts`, fixed stale runtime
+   wording, and made `scripts/proof-direct-spine.mjs` pass unedited. Verification: core runner /
+   commit-gate suites, topology, and typecheck passed.
+2. **Atom 1 — doc revert, commit `133a675`:** reverted the docs that had described the buggy hold-back
+   behavior as current truth. Verification: defect-class grep found no live current-truth "write-scope
+   withholds" claim; affected core suites, topology, typecheck, `git diff --check`, and
+   `scripts/proof-direct-spine.mjs` passed.
+
+During Atom 1 verify, Oscar found daemon-suite red tests caused by Atom 0 making `commitOnlyScope` a
+global no-op. Oscar asked whether to narrow the fix to verified-atom/ticket-close lanes or make
+always-commit-and-flag universal. The founder chose **Option B — universal always-commit-and-flag across
+the whole spine**. That answer arrived after the runner's 4-hour founder-decision wait timed out, so
+run_272 failed and the valid next directive was stranded in
+`local/runs/cocoder/run_272/directive-3.json`. Ticket **0079** now tracks the process bug: founder
+decision waits must park, not time out.
+
+### Next launch pickup — start here
+
+This is product code under `packages/**`, so continue with a fresh verified build run (Bob builds, Oscar
+verifies per atom), not a Surface-A doc patch.
+
+**Binding founder decision for the next atom:** Option B — universal always-commit-and-flag across the
+whole commit spine. There is no hold-back lane anymore: verified atom, ticket-close, Oz action,
+post-wrap support commit, authoring Play, and repair callers must commit the whole changed set and flag
+out-of-lane paths. The founder accepts that this retires the prior daemon hold-back designs, including
+the run_88 / ticket-0053 support-commit guard.
+
+Use the stranded run_272 directive as the starting spec:
+`local/runs/cocoder/run_272/directive-3.json`. In substance, the next atom must:
+
+1. Remove the now-dead `commitOnlyScope` field completely from `packages/**` and `scripts/**`; after the
+   atom, `grep -rn 'commitOnlyScope' packages/ scripts/` must return zero hits.
+2. Preserve out-of-lane visibility everywhere: receipts, store events, daemon responses, and proof
+   harnesses must still surface `outOfLane` / `outOfLanePaths`. Only withholding is retired.
+3. Update daemon tests that assert hold-back so they assert commit-and-flag instead, with renamed titles
+   that no longer say "holds back", "withholds", or "held back".
+4. Update `scripts/proof-oz-autonomy.mjs` to the universal commit-and-flag truth. Do **not** edit
+   `scripts/proof-direct-spine.mjs`.
+5. Verify with:
+   - `grep -rn 'commitOnlyScope' packages/ scripts/` (zero hits);
+   - `pnpm --filter @cocoder/core test`;
+   - `pnpm --filter @cocoder/daemon test`;
+   - `pnpm -r typecheck`;
+   - `node scripts/proof-oz-autonomy.mjs`;
+   - `node scripts/proof-direct-spine.mjs`.
+
+After that atom verifies, run a final docs/ADR consistency atom:
+
+- reconcile any doc or governance surface that still describes daemon/support/authoring lanes as
+  withholding out-of-lane files;
+- confirm ADR-0007 (write-scope advisory) and ADR-0023 (always save and flag) agree with the restored
+  universal code;
+- confirm the discrepancy inventory has zero unresolved governed-doc items and the priority is
+  archive-ready except for separately tracked ticket 0037.
 
 ## Founder-directed code-or-doc follow-ups (founder decisions from run_267)
 
@@ -106,17 +148,17 @@ verifies per atom), not a Surface-A doc patch. Ordered spec:
 
 3. **Developer-mode routing gate — DECIDED (Option A) and DONE in run_267.** Founder chose "document
    what is true now." Corrected `ARCHITECTURE.md:390` and `docs/oz-improvement-routing.md:44` to the v2
-   reality (product writes gated by per-run write-scope + commit-gate hold-back; no developer-mode
+   reality (product writes gated by per-run write-scope + commit-gate flagging; no developer-mode
    toggle) and removed the stale "developer mode enabled" phrasing. Audit row 52b marked resolved. No
    code change. Context retained below:
    Finding: `developer-mode` was a real v1
    CLI deny-gate (`--developer-mode` / `COCODER_DEVELOPER_MODE=1`, tested by the now-archived
    `developer-mode-belt.test.mjs`) that gated product-code writes. The v2 rebuild dropped it; **no
    `developer-mode` symbol exists in live `packages/`** (the only `devMode` hits are an unrelated UI
-   design-ref mockup). v2 enforces the same product-code protection via per-run **write-scope +
-   commit-gate hold-back**. ARCHITECTURE.md:390 and `docs/oz-improvement-routing.md:44` still say
+   design-ref mockup). v2 enforces product-code visibility via per-run **write-scope +
+   commit-gate flagging**. ARCHITECTURE.md:390 and `docs/oz-improvement-routing.md:44` still say
    product routing requires "developer mode enabled" — stale v1 residue.
-   - **Option A (recommended):** correct the docs to v2 reality (write-scope + commit-gate gating,
+   - **Option A (recommended):** correct the docs to v2 reality (write-scope + commit-gate flagging,
      dogfood/ADR-0012 framing); drop the "developer mode enabled" phrasing. No code.
    - **Option B:** re-introduce a v2 developer-mode flag as an explicit global product-write toggle.
      Net-new product work; only if a global kill-switch separate from per-run scope is wanted.
