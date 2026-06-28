@@ -1,4 +1,13 @@
 import { readFile } from 'node:fs/promises'
+import { TICKET_OWNER } from './compose.js'
+
+export interface OpenTicketIndexRowInput {
+  readonly id: string
+  readonly fileName: string
+  readonly title: string
+  readonly type: string | null
+  readonly priority: string
+}
 
 export function ticketIndexSkeleton(): string {
   return [
@@ -36,6 +45,10 @@ export function ticketTableCell(value: string): string {
   return value.replace(/\|/g, '\\|')
 }
 
+export function openTicketIndexRow(input: OpenTicketIndexRowInput): string {
+  return `| [${input.id}](./open/${input.fileName}) | ${ticketTableCell(input.title)} | ${input.type ?? ''} | ${ticketTableCell(input.priority)} | ${TICKET_OWNER} |`
+}
+
 function closedTicketLink(row: string): string | null {
   const match = row.match(/\|\s*\[[^\]]+\]\((\.\/closed\/[^)]+)\)/)
   return match?.[1] ?? null
@@ -56,10 +69,25 @@ function separatorIndex(lines: readonly string[], heading: string): number {
 }
 
 export function insertOpenTicketIndexRow(indexMarkdown: string, row: string, id: string): string {
-  if (indexMarkdown.includes(`| [${id}](`)) throw new Error(`ticket ${id} is already present in INDEX.md`)
   const lines = indexMarkdown.split(/\r?\n/)
+  const open = sectionBounds(lines, '## Open')
+  if (lines.some((line, index) => index > open.start && index < open.end && line.includes(`| [${id}](`))) {
+    throw new Error(`ticket ${id} is already present in INDEX.md Open section`)
+  }
   lines.splice(separatorIndex(lines, '## Open') + 1, 0, row)
   return lines.join('\n')
+}
+
+export function replaceOpenTicketIndexRows(indexMarkdown: string, rows: readonly string[]): string {
+  const lines = indexMarkdown.split(/\r?\n/)
+  const open = sectionBounds(lines, '## Open')
+  const separator = separatorIndex(lines, '## Open')
+  return [
+    ...lines.slice(0, separator + 1),
+    ...rows,
+    '',
+    ...lines.slice(open.end),
+  ].join('\n')
 }
 
 export function insertClosedTicketIndexRowIfMissing(indexMarkdown: string, closedRow: string): string {

@@ -1,7 +1,7 @@
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { basename, join, relative } from 'node:path'
 import { parseFrontmatter } from '../personas/frontmatter.js'
-import { moveTicketIndexRowToClosed, readTicketIndex, ticketTableCell } from './index-helpers.js'
+import { insertClosedTicketIndexRowIfMissing, moveTicketIndexRowToClosed, readTicketIndex, ticketTableCell } from './index-helpers.js'
 import { readTickets } from './loader.js'
 
 export interface CloseTicketInput {
@@ -111,7 +111,9 @@ export async function closeTicket(input: CloseTicketInput): Promise<CloseTicketR
 
   const closedFile = basename(closedPath)
   const closedRow = `| [${ticket.id}](./closed/${closedFile}) | ${ticketTableCell(ticket.title)} | ${ticket.type ?? ''} | ${input.closedDate} | ${ticketTableCell(input.resolution)} |`
-  const updatedIndex = moveTicketIndexRowToClosed(await readTicketIndex(indexPath), { id: input.ticketId, closedRow })
+  const currentIndex = await readTicketIndex(indexPath)
+  const movedIndex = moveTicketIndexRowToClosed(currentIndex, { id: input.ticketId, closedRow })
+  const updatedIndex = movedIndex === currentIndex ? insertClosedTicketIndexRowIfMissing(currentIndex, closedRow) : movedIndex
   await writeFile(indexPath, updatedIndex)
 
   return {

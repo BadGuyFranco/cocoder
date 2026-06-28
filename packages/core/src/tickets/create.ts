@@ -1,8 +1,8 @@
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join, relative } from 'node:path'
 import { validateBinding } from './binding.js'
-import { composeTicketMarkdown, TICKET_OWNER, type ComposeTicketMarkdownInput } from './compose.js'
-import { insertOpenTicketIndexRow, readTicketIndex, ticketTableCell } from './index-helpers.js'
+import { composeTicketMarkdown, type ComposeTicketMarkdownInput } from './compose.js'
+import { insertOpenTicketIndexRow, openTicketIndexRow, readTicketIndex } from './index-helpers.js'
 import { nextTicketId, readTickets } from './loader.js'
 
 export interface CreateTicketInput extends Omit<ComposeTicketMarkdownInput, 'priority'> {
@@ -90,7 +90,7 @@ export async function createTicket(input: CreateTicketInput): Promise<CreateTick
 
   const fileName = `${id}-${slugifyTitle(input.title)}.md`
   const openPath = join(input.ticketsDir, 'open', fileName)
-  const row = `| [${id}](./open/${fileName}) | ${ticketTableCell(input.title)} | ${input.type} | ${ticketTableCell(priority)} | ${TICKET_OWNER} |`
+  const row = openTicketIndexRow({ id, fileName, title: input.title, type: input.type, priority })
 
   await mkdir(join(input.ticketsDir, 'open'), { recursive: true })
   await writeFile(openPath, composeTicketMarkdown(id, ticketInput, input.created))

@@ -517,12 +517,14 @@ describe('ticket repoint', () => {
       repoPath: dir,
       ticketId: '0003',
       targetPriority: 'archive-priority',
+      bindingReason: 'Founder chose archive-priority for this ticket.',
     })
 
     expect(result).toEqual({ repointed: true, files: ['open/0003-target.md', 'INDEX.md'], targetPriority: 'archive-priority' })
     const raw = await readFile(join(dir, 'open', '0003-target.md'), 'utf8')
     expect(raw).toContain('\nstatus: Open\n')
     expect(raw).toContain('\npriority: archive-priority\n')
+    expect(raw).toContain('\nbinding-reason: Founder chose archive-priority for this ticket.\n')
     expect(await readFile(join(dir, 'order.json'), 'utf8')).toBe(orderBefore)
 
     const index = await readFile(join(dir, 'INDEX.md'), 'utf8')
@@ -593,6 +595,7 @@ describe('ticket repoint', () => {
       repoPath: dir,
       ticketId: '0003',
       targetPriority: 'archive-priority',
+      bindingReason: 'Founder chose archive-priority for this ticket.',
     })).resolves.toMatchObject({ repointed: true })
 
     expect(await readFile(join(dir, 'open', '0004-unrelated.md'), 'utf8')).toBe(unrelatedBefore)
