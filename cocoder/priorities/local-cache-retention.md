@@ -1,7 +1,7 @@
 ---
 id: local-cache-retention
 title: Machine-local cache retention — bound local/ growth with per-workspace run retention
-independent-of-runner: false
+independent-of-runner: true
 destructive: true
 ---
 ## Objective
@@ -71,9 +71,11 @@ Two retention models are explicitly **rejected**: time-based (punishes a repo ru
 - Relocating the install root (`cocoderHome`/`local/`) out of the CoCoder source checkout — related but a separate decision/ticket.
 - Changing the portable `cocoder/runs/` record format or projecting additional artifacts (e.g. a readable `record.md`) into it.
 
-## Execution safety — ships inert; now safe to run inside cocoder
+## Execution safety — destructive work stays runnerless
 
-The build is done and the engine **defaults OFF** (a live `local/settings.json` with no `retention` key loads disabled). Because it is inert by default, this priority **no longer requires the independent/runnerless path** and can run as a normal in-cocoder run (frontmatter `independent-of-runner: false`). The destructive behavior activates ONLY when the founder sets `retention.enabled: true`.
+The build is done and the engine **defaults OFF** (a live `local/settings.json` with no `retention` key loads disabled). That default-off state makes the shipped code inert at rest, but it does **not** make the remaining effectiveness work safe for the normal daemon runner. This priority is still `destructive: true` because the remaining proof intentionally exercises retention against run scratch, SQLite rows, WAL checkpointing, and log rotation. The runner safety guard is correct to refuse a normal daemon-runner launch.
+
+Launch this priority only through the runnerless path (`independent-of-runner: true`), which runs outside the daemon and uses destructive-target isolation before any live enablement decision. Do not pass `allowSelfImpacting` to force this through the normal runner.
 
 Still true and load-bearing:
 - **Enabling the flag on the live store is a deliberate founder step**, taken only after a real in-isolation boot confirms the behavior. Do not flip it silently.
@@ -82,9 +84,11 @@ Still true and load-bearing:
 
 ## Next launch — verify effectiveness, then fix and archive
 
-This priority is **no longer a build** — the engine exists. The next launch **proves the shipped engine works in real use and fixes what doesn't**, then archives. Concretely:
+This priority is **no longer a broad build** — the engine exists. The next launch **proves the shipped engine works through the safe destructive lane and fixes what does not**, then archives only after live effectiveness is observed. Concretely:
 
-1. **Close the integration-seam gap (the top soft spot above):** enable `retention.enabled: true` (confirm N) and do a real daemon boot, watching one actual `runRetentionGcOnce` pass run against a real store + real run-dirs — the path the unit tests only faked.
-2. **Analyze effectiveness against real run history:** does `local/` actually bound to ≈ N × workspaces? Is the pass idempotent across reboots? Does recurrence survive real faults? Do the WAL and logs actually shrink? Measure before/after footprint.
-3. **Fix any gap found** — e.g. the deps-wiring seam, a periodic trigger if boot-only proves insufficient, config ergonomics, or anything an independent adversarial review surfaces.
-4. **Archive only once effectiveness is observed on a live install**, not merely unit-proven. Do not archive on the build evidence alone.
+1. **Run the next launch as runnerless/destructive-isolated work.** Use the existing runnerless path for this priority; the normal daemon runner must keep refusing it as runner-impairing.
+2. **Close the integration-seam gap in isolation first:** exercise the real settings → workspace lookup → `runRetentionGcOnce` wiring against a scratch copy of the store and scratch run dirs, with `retention.enabled: true` only in that isolated target.
+3. **Analyze effectiveness against copied real run history:** does the copied `local/` state bound to ≈ N × workspaces? Is the pass idempotent across repeated isolated boots? Does recurrence survive copied real faults? Do the WAL and logs shrink in the isolated target? Measure before/after footprint.
+4. **Fix any gap found** — e.g. deps wiring, a periodic trigger if boot-only proves insufficient, config ergonomics, or anything an independent adversarial review surfaces. Any fix still rides the runnerless/destructive path.
+5. **Live enablement is a separate founder action after the isolated proof.** Only after the runnerless proof is clean may the founder choose to set `retention.enabled: true` on the live install and Refresh/boot the daemon to observe one live pass. The run must not silently edit `local/settings.json` or restart the daemon.
+6. **Archive only once effectiveness is observed on a live install**, not merely unit-proven or scratch-proven.
