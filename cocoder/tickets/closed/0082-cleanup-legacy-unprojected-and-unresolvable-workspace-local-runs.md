@@ -2,7 +2,7 @@
 id: 0082
 title: Clean up legacy local runs retention cannot prune (pre-projection + orphan-workspace)
 type: task
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-28
@@ -50,3 +50,9 @@ cocoder workspace's local footprint approaches ~N.
 - References: `local-cache-retention` priority, ADR-0044 (retention), ADR-0027 (`local/` layout +
   `cocoder/runs/` projection).
 - Discovered: run_136, 2026-06-28.
+
+## Resolution
+
+Resolved by run run_282 (3460644de0caf8f75ebd63d505d73df47744f803) on 2026-06-28.
+
+One-time founder-approved PATH(b) explicit logged purge of all 143 legacy-residue runs executed via scripts/cleanup-legacy-local-runs.mjs --apply: 138 pre-projection runs fully removed (rows+dirs), 5 fault-bearing residue runs (run_33/38/39/40/52) row-preserved with their fault-triaged events to keep cross-run fault recurrence. Bounded/idempotent/logged (purge manifest), never touched live run_282, reused retention store primitives without expanding retention runtime scope. Store footprint 182->43; portable cocoder/runs records (142) untouched.
