@@ -44,98 +44,43 @@ governance docs audited (PLAYBOOK, AGENTS, failure-catalog, standards/plays delt
 — all clean. The two stale path refs in `cocoder/personas/AGENTS.md` were closed in
 [run_270 / ticket 0069](../tickets/closed/0069-personas-agents-stale-archive-and-v1-leftover-refs.md).
 
-## Phase 3 status (run_271 — DONE; founder resolved the decision → code-fix run next)
+## Phase 3 status (run_271 + run_272 + run_273 — DONE, verified)
 
-All five planned atoms completed and verified. Live reconciliation artifact:
-[`docs/phase3-cross-doc-reverification.md`](../docs/phase3-cross-doc-reverification.md) (22-row inventory;
-18 doc-side fixes landed; 2 CODE-WRONG conflicts flagged, not edited). Normative surface
-(`packages/personas/base/**`) audited clean after 2 STALE-CLI fixes. Clarity/elegance pass deduped
-commit-spine and product-routing ownership without changing facts. Process gaps 7–9 appended to
+All planned atoms completed and verified. Live reconciliation artifact:
+[`docs/phase3-cross-doc-reverification.md`](../docs/phase3-cross-doc-reverification.md) (inventory at
+zero unresolved governed-doc items for the withholding defect class). Normative surface
+(`packages/personas/base/**`) audited clean. Clarity/elegance pass deduped commit-spine and
+product-routing ownership without changing facts. Process gaps 7–9 appended to
 [`harden-documentation-process`](./harden-documentation-process.md). Audit worklists bannered
 reconciliation-complete and deferred to the worklist-archive convention (not ad-hoc archived here).
 
-**Disposition: `continue` — run_272 completed two verified atoms, then failed while awaiting a founder
-decision.** Doc reconciliation is otherwise complete, but archive-readiness now requires finishing the
-commit-spine code/doc consistency pass from the pickup below. Open ticket **0037** (stale CONTRIBUTING
-rg-CI-gate) is separate from this governed-doc surface.
-
 ### Founder decision (RESOLVED — Option B, founder 2026-06-27)
 
-**Decision: the live `commitOnlyScope: true` atom hold-back is a confirmed REGRESSION from ADR-0023, to
-be fixed in code.** ADR-0023 Amendment 2 stands as written: the spine commits everything the actor
-changed; out-of-lane paths are committed and FLAGGED, never withheld. Founder rationale (binding):
-there is no human reviewer in an agentic system — "always save and flag" is the only safe rule, which is
-exactly why the always-commit decision was made; the README being dropped three times is proof the
-hold-back guard is over-engineered (a README should never be "out of scope"); and a priority's declared
-write-scope is **only a suggestion** because the true scope is not fully known when the priority is
-written, so enforcing it by *withholding* files inverts the intent. Oscar's earlier Option-A lean
-("document what the code does") had the direction backwards: the doc/ADR was right, the code regressed.
+The live `commitOnlyScope: true` atom hold-back was a confirmed **regression from ADR-0023**. Binding
+founder decision: universal always-commit-and-flag across the whole commit spine — the spine commits
+everything the actor changed; out-of-lane paths are committed and **flagged**, never withheld. Run_272
+landed the first code/doc revert atoms; run_273 finished the universal removal and final doc/ADR
+reconciliation (see inventory run_273 closeout section).
 
-This makes Atom A's surrounding doc edits (ARCHITECTURE commit-spine section, `docs/glossary.md`
-write-scope entry, `docs/fault-injection-live-proofs.md`, `docs/orchestration-contract-ownership.md`,
-`docs/oz-improvement-routing.md`) **wrong** — they described the buggy hold-back as current truth and
-must be reverted to the always-commit-and-flag truth once the code is restored.
+### Run_273 status — DONE (run_130)
 
-### Run_272 status — PARTIAL, failed after a late founder decision
+1. **Atom 0 — code (`6f5a13d`):** removed `commitOnlyScope` entirely from `packages/**` + `scripts/**`;
+   universal always-commit-and-flag across every spine caller; out-of-lane visibility preserved in
+   receipts/events/daemon responses; daemon hold-back tests flipped to commit-and-flag.
+2. **Atom 1 — docs/ADRs/governance (`d539fc3`):** reconciled 10 governed surfaces still describing
+   retired withholding; ADR-0007 and ADR-0023 mutually consistent; high-breakage-risk **judgment**
+   hold-back lines preserved as a distinct axis.
 
-Run_272 landed two verified commits:
+Out-of-scope follow-ups tracked separately (do not block archive): ticket **0037** (stale CONTRIBUTING
+rg-CI-gate) and ticket **0080** (stale "worktree" current-truth references — filed at run_273 wrap).
 
-1. **Atom 0 — code restore, commit `d413569`:** restored always-commit-and-flag in the core commit
-   spine, made `commitOnlyScope` a compatibility no-op, removed the two verified-atom
-   `commitOnlyScope: true` call sites from `packages/core/src/runner/agent-step.ts`, fixed stale runtime
-   wording, and made `scripts/proof-direct-spine.mjs` pass unedited. Verification: core runner /
-   commit-gate suites, topology, and typecheck passed.
-2. **Atom 1 — doc revert, commit `133a675`:** reverted the docs that had described the buggy hold-back
-   behavior as current truth. Verification: defect-class grep found no live current-truth "write-scope
-   withholds" claim; affected core suites, topology, typecheck, `git diff --check`, and
-   `scripts/proof-direct-spine.mjs` passed.
+## Disposition — `archive-confirmation` (run_273, 2026-06-28)
 
-During Atom 1 verify, Oscar found daemon-suite red tests caused by Atom 0 making `commitOnlyScope` a
-global no-op. Oscar asked whether to narrow the fix to verified-atom/ticket-close lanes or make
-always-commit-and-flag universal. The founder chose **Option B — universal always-commit-and-flag across
-the whole spine**. That answer arrived after the runner's 4-hour founder-decision wait timed out, so
-run_272 failed and the valid next directive was stranded in
-`local/runs/cocoder/run_272/directive-3.json`. Ticket **0079** now tracks the process bug: founder
-decision waits must park, not time out.
-
-### Next launch pickup — start here
-
-This is product code under `packages/**`, so continue with a fresh verified build run (Bob builds, Oscar
-verifies per atom), not a Surface-A doc patch.
-
-**Binding founder decision for the next atom:** Option B — universal always-commit-and-flag across the
-whole commit spine. There is no hold-back lane anymore: verified atom, ticket-close, Oz action,
-post-wrap support commit, authoring Play, and repair callers must commit the whole changed set and flag
-out-of-lane paths. The founder accepts that this retires the prior daemon hold-back designs, including
-the run_88 / ticket-0053 support-commit guard.
-
-Use the stranded run_272 directive as the starting spec:
-`local/runs/cocoder/run_272/directive-3.json`. In substance, the next atom must:
-
-1. Remove the now-dead `commitOnlyScope` field completely from `packages/**` and `scripts/**`; after the
-   atom, `grep -rn 'commitOnlyScope' packages/ scripts/` must return zero hits.
-2. Preserve out-of-lane visibility everywhere: receipts, store events, daemon responses, and proof
-   harnesses must still surface `outOfLane` / `outOfLanePaths`. Only withholding is retired.
-3. Update daemon tests that assert hold-back so they assert commit-and-flag instead, with renamed titles
-   that no longer say "holds back", "withholds", or "held back".
-4. Update `scripts/proof-oz-autonomy.mjs` to the universal commit-and-flag truth. Do **not** edit
-   `scripts/proof-direct-spine.mjs`.
-5. Verify with:
-   - `grep -rn 'commitOnlyScope' packages/ scripts/` (zero hits);
-   - `pnpm --filter @cocoder/core test`;
-   - `pnpm --filter @cocoder/daemon test`;
-   - `pnpm -r typecheck`;
-   - `node scripts/proof-oz-autonomy.mjs`;
-   - `node scripts/proof-direct-spine.mjs`.
-
-After that atom verifies, run a final docs/ADR consistency atom:
-
-- reconcile any doc or governance surface that still describes daemon/support/authoring lanes as
-  withholding out-of-lane files;
-- confirm ADR-0007 (write-scope advisory) and ADR-0023 (always save and flag) agree with the restored
-  universal code;
-- confirm the discrepancy inventory has zero unresolved governed-doc items and the priority is
-  archive-ready except for separately tracked ticket 0037.
+The doc-truth objective is met and verified: governed docs match the live code (including universal
+always-commit-and-flag), every withholding-class discrepancy has a recorded resolution, and the
+reconciled docs read clear and correct. Founder archive reply (`archive` or `archive <runId>` in Oz
+chat) is the first-class closeout action. Do not relaunch this priority for build work — it would only
+produce an empty reaffirmation wrap.
 
 ## Founder-directed code-or-doc follow-ups (founder decisions from run_267)
 

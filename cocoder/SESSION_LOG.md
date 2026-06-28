@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-28 — **doc-truth-analysis commit-spine reconciliation complete — archive ready (run_130/run_273)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [doc-truth-analysis](./priorities/doc-truth-analysis.md) | **Run:** run_273 (display 130)
+**Outcomes:**
+- **Atom 0 — code (`6f5a13d`):** removed dead `commitOnlyScope` from `packages/**` + `scripts/**`; universal always-commit-and-flag across every spine caller; daemon hold-back tests flipped to commit-and-flag; core 667/667, daemon 432/432, proof scripts green.
+- **Atom 1 — docs/ADRs/governance (`d539fc3`):** reconciled 10 governed surfaces that still described retired path/lane withholding; ADR-0007 and ADR-0023 mutually consistent; withholding-class discrepancy inventory at zero.
+- **Oscar support:** filed ticket **0080** (stale worktree current-truth references); appended run_273 closeout to [`docs/phase3-cross-doc-reverification.md`](../docs/phase3-cross-doc-reverification.md).
+- **Disposition: `archive-confirmation`.** Doc-truth objective met and verified; founder archive reply is the only remaining gate. Tickets **0037** and **0080** are separately tracked and do not block archive.
+**Next:** Reply `archive` in Oz chat to archive Doc Truth Analysis; or launch ticket `0080` for the worktree doc-truth sweep.
+
 ## 2026-06-27 — **doc-truth-analysis phase 3 comprehensive sweep — blocked (run_128/run_271)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [doc-truth-analysis](./priorities/doc-truth-analysis.md) | **Run:** run_271 (display 128)
