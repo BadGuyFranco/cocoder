@@ -368,3 +368,9 @@ export {
   buildWrapupDelivery,
   commitMessage,
 } from './runner/index.js'
+
+export {
+  commitOscarSupportEdits,
+  type CommitOscarSupportEditsInput,
+  type CommitOscarSupportEditsResult,
+} from './support-commit.js'

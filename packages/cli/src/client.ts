@@ -51,6 +51,8 @@ export interface SupportCommitResult {
   readonly outOfLanePaths: readonly string[]
   readonly selfCommitted?: boolean
   readonly liveOscar?: boolean
+  readonly error?: string
+  readonly statusCode?: number
 }
 
 export interface ResumeResult {
@@ -139,8 +141,9 @@ export async function supportCommitViaDaemon(baseUrl: string, runId: string): Pr
     method: 'POST',
     headers: { authorization: `Bearer ${session.bearerToken}`, [CSRF_HEADER]: session.csrfToken },
   })
-  if (!res.ok) throw new Error(`support commit failed (${res.status}): ${await res.text()}`)
-  return (await res.json()) as SupportCommitResult
+  const parsed = await readResponseBody(res)
+  if (!res.ok) return { ok: false, runId, committedPaths: [], outOfLanePaths: [], error: errorMessage(parsed, `support commit failed (${res.status})`), statusCode: res.status }
+  return parsed as SupportCommitResult
 }
 
 /** Resume a held run through the daemon lifecycle surface. This re-enters the parked run; it is

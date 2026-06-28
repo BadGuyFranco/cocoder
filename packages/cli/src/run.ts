@@ -35,6 +35,7 @@ import { latestModelFor } from './latest-model.js'
 import { archivePriorityInvocation, createPriorityInvocation, createTicketInvocation, editPriorityInvocation } from './oz-args.js'
 import { reconcileTicketsViaCli } from './reconcile-tickets.js'
 import { resolveRunTarget } from './run-target.js'
+import { supportCommitViaCli } from './support-commit.js'
 
 const log = (m: string): void => console.error(`[cocoder] ${m}`)
 const out = (m: string): void => {
@@ -176,12 +177,32 @@ export async function main(options: MainOptions = {}): Promise<void> {
       console.error('usage: cocoder oz commit-support <runId>')
       process.exit(2)
     }
-    const live = await probeDaemon({ port: DEFAULT_OZ_PORT })
-    if (!live.alive) {
-      console.error('cocoder: no Oz daemon running — cannot commit support edits')
-      process.exit(1)
+    const live = await probeDaemonImpl({ port: DEFAULT_OZ_PORT })
+    if (live.alive) {
+      const daemonResult = await supportCommitViaDaemon(`http://127.0.0.1:${live.port}`, runId)
+      if (daemonResult.ok !== false) {
+        if (daemonResult.commitSha) {
+          out(`committed support edits for ${runId}: ${daemonResult.commitSha}`)
+          if (daemonResult.committedPaths.length) out(`  files: ${daemonResult.committedPaths.join(', ')}`)
+          if (daemonResult.outOfLanePaths.length) out(`  out of lane, flagged not withheld: ${daemonResult.outOfLanePaths.join(', ')}`)
+        } else {
+          out(`no support edits pending for ${runId}`)
+        }
+        return
+      }
+      if (daemonResult.statusCode !== 404) {
+        console.error(`cocoder: ${daemonResult.error ?? 'support commit failed'}`)
+        process.exitCode = 1
+        return
+      }
     }
-    const result = await supportCommitViaDaemon(`http://127.0.0.1:${live.port}`, runId)
+    const result = await supportCommitViaCli({ repoPath: process.cwd(), runId })
+    if (!result.ok) {
+      console.error(`cocoder: ${result.error}`)
+      if (result.refusedPaths?.length) console.error(`  refused files: ${result.refusedPaths.join(', ')}`)
+      process.exitCode = 1
+      return
+    }
     if (result.commitSha) {
       out(`committed support edits for ${runId}: ${result.commitSha}`)
       if (result.committedPaths.length) out(`  files: ${result.committedPaths.join(', ')}`)

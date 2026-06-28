@@ -19,6 +19,7 @@ import {
   OZ_ACTION_SCOPE,
   closeTicket,
   coCoderRunReference,
+  commitOscarSupportEdits,
   commitFiles,
   detectRunnerImpact,
   deriveTicketCloseDecision,
@@ -47,7 +48,6 @@ import {
   repointTicket,
   reconcileTicketSurfaces,
   runRetentionGc,
-  runCommitGate,
   runDisplayNumber,
   resolveMandatoryPlay,
   resolvePlayAssignment,
@@ -1363,67 +1363,36 @@ export async function requestSupportCommitRun(ctx: OzContext, runId: string): Pr
   const workspace = await findWorkspace(ctx.cocoderHome, run.workspaceId)
   if (!workspace) return { status: 404, body: { error: 'unknown workspace' } }
 
-  let scope: readonly string[]
-  try {
-    const personasDir = join(workspace.path, 'cocoder', 'personas')
-    const assignments = loadAssignments(join(personasDir, 'assignments.json'))
-    const sources: PersonaSources = { baseDir: basePersonasDir(), deltaDir: join(personasDir, 'deltas'), repoPersonaDir: personasDir }
-    scope = resolveEffectivePersona(sources, assignments, 'oscar').writeScope
-  } catch {
-    return { status: 409, body: { error: `could not resolve Oscar support scope for workspace "${workspace.id}"` } }
-  }
-  if (scope.length === 0) return { status: 409, body: { error: 'Oscar has no support-write scope for this workspace' } }
-
-  const changed = await ctx.git.changedFiles(workspace.path)
-  const archiveBypass = await postWrapArchiveBypass(workspace.path, run.priorityId, changed)
-  if (archiveBypass) {
-    ctx.store.recordEvent({
-      runId,
-      type: 'post-wrap-support-commit-refused',
-      data: { reason: 'archive-priority-required', files: archiveBypass.files },
-    })
-    return {
-      status: 409,
-      body: {
-        error:
-          `post-wrap support edits cannot archive the active priority "${run.priorityId}" directly; ` +
-          `use the archive-priority authoring Play after an archive-ready founder confirmation — run \`cocoder oz archive-priority ${run.priorityId}\` (the one archive-priority Play; no raw file move).`,
-        refusedPaths: archiveBypass.files,
-      },
-    }
-  }
-
-  const headBefore = await ctx.git.headSha(workspace.path)
   const runDisplay = await withPortableDisplayNumber(ctx, run)
   const runReference = coCoderRunReference(runDisplay)
   const runMessageReference = runDisplayNumber(runDisplay) === null ? `run ${runReference}` : runReference
-  const gate = await runCommitGate({
+  const personasDir = join(workspace.path, 'cocoder', 'personas')
+  const liveOscar = ctx.store.listSessions(runId).some((session) => session.persona === 'oscar' && ctx.liveRefs.has(session.sessionRef))
+  const support = await commitOscarSupportEdits({
     git: ctx.git,
     store: ctx.store,
-    cwd: workspace.path,
+    repoPath: workspace.path,
     runId,
-    workItemId: null,
-    scope,
-    message: `oscar-post-wrap: ${run.priorityId} via CoCoder ${runMessageReference}`,
-    headBefore,
+    workspaceId: run.workspaceId,
+    priorityId: run.priorityId,
+    personaSources: { baseDir: basePersonasDir(), deltaDir: join(personasDir, 'deltas'), repoPersonaDir: personasDir },
+    assignmentsPath: join(personasDir, 'assignments.json'),
+    runReference,
+    runMessageReference,
+    liveOscar,
   })
-  const liveOscar = ctx.store.listSessions(runId).some((s) => s.persona === 'oscar' && ctx.liveRefs.has(s.sessionRef))
-  ctx.store.recordEvent({
-    runId,
-    type: 'post-wrap-support-commit',
-    data: { committedSha: gate.committedSha, files: gate.committedFiles, outOfScope: gate.outOfLane, selfCommitted: gate.selfCommitted, liveOscar },
-  })
-  await appendAudit(ctx.cocoderHome, { action: 'post-wrap-support-commit', workspaceId: run.workspaceId, runId, committedSha: gate.committedSha, files: gate.committedFiles, outOfScope: gate.outOfLane, liveOscar })
-  emitOzEvent(ctx, { type: 'post-wrap-support-commit', runId, workspaceId: run.workspaceId, status: gate.committedSha ? 'committed' : 'no-commit' })
+  if (!support.ok) return { status: support.status, body: { error: support.error, ...(support.refusedPaths ? { refusedPaths: support.refusedPaths } : {}) } }
+  await appendAudit(ctx.cocoderHome, { action: 'post-wrap-support-commit', workspaceId: run.workspaceId, runId, committedSha: support.commitSha, files: support.committedPaths, outOfScope: support.outOfLanePaths, liveOscar })
+  emitOzEvent(ctx, { type: 'post-wrap-support-commit', runId, workspaceId: run.workspaceId, status: support.commitSha ? 'committed' : 'no-commit' })
   return {
     status: 200,
     body: {
       ok: true,
       runId,
-      committedPaths: gate.committedFiles,
-      commitSha: gate.committedSha,
-      outOfLanePaths: gate.outOfLane,
-      selfCommitted: gate.selfCommitted,
+      committedPaths: support.committedPaths,
+      commitSha: support.commitSha,
+      outOfLanePaths: support.outOfLanePaths,
+      selfCommitted: support.selfCommitted,
       liveOscar,
     },
   }
@@ -1957,15 +1926,6 @@ function buildFounderEscalation(request: OscarRepairRequest, response: DebRepair
     recommendedOption: 'Review Oscar-Deb repair proposal',
     evidenceRefs: [paths.debResponse, paths.oscarEvaluation],
   }))
-}
-
-async function postWrapArchiveBypass(workspacePath: string, priorityId: string, changed: readonly string[]): Promise<{ readonly files: readonly string[] } | null> {
-  const livePath = `cocoder/priorities/${priorityId}.md`
-  const archivePath = `cocoder/priorities/archive/${priorityId}.md`
-  const touched = changed.filter((f) => f === livePath || f === archivePath)
-  if (touched.length === 0) return null
-  if (touched.includes(archivePath)) return { files: touched }
-  return (await isFile(join(workspacePath, livePath))) ? null : { files: touched }
 }
 
 // 0052: an archive-priority dispatch once reported success while moving nothing — the live priority file
