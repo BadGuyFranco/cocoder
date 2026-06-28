@@ -353,8 +353,26 @@ describe('basePlaysDir', () => {
 
     expect(normalized).toContain('POST /workspaces/:id/authoring-plays/create-ticket')
     expect(normalized).toContain('cocoder oz create-ticket')
-    expect(normalized).toContain('calls the core `createTicket()` spine directly')
+    expect(normalized).toContain('[--priority <priority> --reason <text>]')
+    expect(normalized).toContain('Standalone is the default')
+    expect(normalized).toContain('`--priority` is a deliberate binding and requires `--reason`')
+    expect(normalized).toContain('`--run` is recorded as provenance')
+    expect(normalized).toContain('routes to the governed daemon create endpoint')
+    expect(normalized).toContain('commits directly through the core `createTicket()` spine')
     expect(normalized).toContain('not a reason to hand-edit ticket files, `INDEX.md`, or `order.json`')
+  })
+
+  test('create-ticket Play distinguishes binding from provenance', () => {
+    const text = readFileSync(join(basePlaysDir(), 'create-ticket.md'), 'utf8')
+    const normalized = singleLine(text)
+
+    expect(normalized).toContain('Standalone is the default: `priority` defaults to `none`')
+    expect(normalized).toContain('A non-standalone `priority` is a deliberate binding target')
+    expect(normalized).toContain('must carry a one-line `binding-reason`')
+    expect(normalized).toContain('core `validateBinding` owns and enforces this rule')
+    expect(normalized).toContain('`provenance` is separate optional information')
+    expect(normalized).toContain('it never implies a binding')
+    expect(normalized).toContain('optional `binding-reason` when a real binding exists, optional `provenance`')
   })
 
   test('wrap-up keeps the Recommended Next Step label to one runnable action (F18)', () => {

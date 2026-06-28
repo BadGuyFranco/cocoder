@@ -103,6 +103,11 @@ describe('orchestration contract ownership', () => {
     const routes = read('packages/daemon/src/routes.ts')
 
     expect(play).toContain('composeTicketMarkdown')
+    expect(play).toContain('validateBinding')
+    expect(play).toContain('optional `binding-reason` when a real binding exists')
+    expect(play).toContain('optional\n   `provenance`')
+    expect(play).toContain('provenance` is separate optional information')
+    expect(play).toMatch(/it never implies\s+a binding/)
     expect(play).not.toMatch(/```\s*---\s*\nid:/)
     expect(routes).toContain('createTicket as createTicketCore')
     expect(routes).toContain('createTicketCore({ ticketsDir: dir')

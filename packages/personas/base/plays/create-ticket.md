@@ -25,9 +25,12 @@ This Play is the model-mediated ticket creation process. The executable lanes ar
 - Persona-requested or API-triggered dispatch uses this Play body and commits through the authoring
   harness for `POST /workspaces/:id/authoring-plays/create-ticket`.
 - From a terminal outside the run loop, use the dedicated governed-spine wrapper:
-  `pnpm --dir <install-root> exec cocoder oz create-ticket --title <text> --type <type> --priority <priority> [--description <text> | --details-file <path> | --details-stdin] [--id <id>] [--run <runId>]`.
-  That wrapper calls the core `createTicket()` spine directly; it is the fallback/control-plane lane,
-  not a reason to hand-edit ticket files, `INDEX.md`, or `order.json`.
+  `pnpm --dir <install-root> exec cocoder oz create-ticket --title <text> --type <type> [--priority <priority> --reason <text>] [--description <text> | --details-file <path> | --details-stdin] [--id <id>] [--run <runId>]`.
+  Standalone is the default; `--priority` is a deliberate binding and requires `--reason`, while
+  `--run` is recorded as provenance. While a daemon is live this command routes to the governed daemon
+  create endpoint; when the daemon is down it commits directly through the core `createTicket()` spine.
+  It is the fallback/control-plane lane, not a reason to hand-edit ticket files, `INDEX.md`, or
+  `order.json`.
 
 Create exactly one open ticket from invocation input. Tickets are governance records for follow-up
 work, faults, or questions discovered mid-run. Use the same ticket file format as the
@@ -40,7 +43,11 @@ Do this:
 2. Validate the invocation before writing:
    - `title` must be a non-empty string.
    - `type` must be one of `bug`, `task`, or `question`; default to `task`.
-   - `priority` defaults to `none`.
+   - Standalone is the default: `priority` defaults to `none`.
+   - A non-standalone `priority` is a deliberate binding target and must carry a one-line
+     `binding-reason`; core `validateBinding` owns and enforces this rule.
+   - `provenance` is separate optional information about the creating run or priority; it never implies
+     a binding.
    - `owner` is the core `TICKET_OWNER` constant.
    - `created` is today's ISO date (`YYYY-MM-DD`).
 3. Allocate the next id by the same rule as core `nextTicketId`: inspect existing files under
@@ -52,8 +59,9 @@ Do this:
    trim leading/trailing `-`, collapse repeated `-`; fallback to `ticket` if the slug is empty.
 6. Compose the ticket file using core `composeTicketMarkdown(id, input, created)`, the single owner of
    the ticket markdown format. The file must include complete frontmatter: `id`, `title`, `type`,
-   `status: Open`, `priority`, `owner`, and `created`. This full frontmatter is required so ticket
-   0015's silent-drop failure cannot recur.
+   `status: Open`, `priority`, optional `binding-reason` when a real binding exists, optional
+   `provenance`, `owner`, and `created`. This full frontmatter is required so ticket 0015's silent-drop
+   failure cannot recur.
 7. Write `cocoder/tickets/open/NNNN-slug.md`.
 8. Update `cocoder/tickets/INDEX.md` by inserting the Open-table row in the exact dashboard route
    shape, using core `ticketTableCell` and `insertOpenTicketIndexRow`:
