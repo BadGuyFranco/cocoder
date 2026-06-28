@@ -134,3 +134,43 @@ exited 1 against retired clauses at the time and nothing announced it.
 status banner marking them historical and superseded by this file. Their actual archival is owned by the
 worklist-archive convention being built under the `harden-documentation-process` priority (item 4) —
 inventing a one-off archive move here would pre-empt that single owner. Banners added to both worklists.
+
+## Run_273 closeout — universal always-commit-and-flag reconciliation
+
+The run_272 founder decision (Option B, 2026-06-27) made always-commit-and-flag **universal** across the
+whole commit spine — there is no hold-back lane for any caller. Run_273 landed it in two verified atoms:
+
+**Atom 0 (code, commit `6f5a13d`).** Removed the now-dead `commitOnlyScope` field entirely from
+`packages/**` and `scripts/**` (`grep -rn 'commitOnlyScope' packages/ scripts/` → zero hits). Every spine
+caller (verified atom, ticket-close, `oz-action`, post-wrap support-commit, authoring Play, repair) now
+commits the whole changed set and **flags** out-of-lane paths; out-of-lane visibility is preserved in
+receipts (`outOfLane`), events (`out-of-scope-committed`), and daemon responses (`outOfLanePaths`). Only
+the withholding mechanism was retired. Daemon hold-back tests were flipped to assert commit-and-flag and
+renamed (no lingering "holds back"/"withholds" titles). Evidence: core 667/667, daemon 432/432,
+`pnpm -r typecheck` 0, `node scripts/proof-oz-autonomy.mjs` 0, `node scripts/proof-direct-spine.mjs` 0.
+
+**Atom 1 (docs/ADRs/governance, commit `d539fc3`).** Reconciled the 10 governed surfaces that still
+described the retired path/lane withholding as current truth, to commit-and-flag:
+
+| # | Surface | Resolution |
+|---|---------|------------|
+| 22 | ADR-0007 §"Out-of-scope handling" (accepted) | Added two superseded-pointers to ADR-0023 Amendment 1; original Status + decision text preserved; high-breakage-risk **judgment** hold-back explicitly carried forward as a separate axis. |
+| 23 | ADR-0040 §2 + Builds-on | Removed dead `commitOnlyScope` refs; `oz-action` commits the whole changed set and flags `outOfLanePaths`. |
+| 24 | ADR-0041 actor-authority table + detect-don't-prevent § | Removed stale `commitOnlyScope`/`launcher.ts:1022`/`gate.ts:75-76`/`out-of-scope-held-back` refs; reconciled to commit-and-flag shared by all callers. |
+| 25 | ADR-0025 §2 + Verified | Authoring Plays commit-and-flag; Verified test description aligned to the atom-0 test changes. |
+| 26 | ADR-0016 §3 + README row | Deb repair commits-and-flags; removed `commitOnlyScope` from the decisions README row. |
+| 27 | ADR-0036 | Oscar↔Deb repair out-of-scope committed-and-flagged, not held back. |
+| 28 | `cocoder/PLAYBOOK.md:48` | Historical phase-1 record preserved; added forward-pointer that ADR-0023 superseded ADR-0007's block-the-commit. |
+| 29 | `docs/oscar-deb-repair-dialogue-design.md` | Dropped the stale ADR-0016/`prompts.ts` hedge; states ADR-0023 commit-and-flag policy. |
+| 30 | `packages/personas/base/deb.md:82` | Commit-gate commits-and-flags out-of-scope (role-general, ADR-0012 OK). |
+| 31 | `packages/personas/base/oz.md` | `oz-repair` commits-and-flags out-of-lane instead of leaving it dirty/propose-only. |
+
+ADR-0007 and ADR-0023 confirmed mutually consistent (both: write-scope advisory, spine commits the whole
+changed set and flags out-of-lane). Evidence: personas 32/32, `pnpm -r typecheck` 0; defect-class grep
+leaves only classified-safe hits (the two preserved **judgment** hold-back lines, priority-withholding
+refs, the ADR-0023 owner text, and the two pointer-bannered historical originals).
+
+**Discrepancy inventory: zero unresolved governed-doc items** for the withholding defect class. Separately
+tracked, not blocking this priority's archive: ticket **0037** (stale CONTRIBUTING rg-CI-gate) and ticket
+**0080** (stale "worktree" current-truth references — a distinct defect class surfaced in atom 1, ADR-0016
+§3, deferred for a focused sweep).
