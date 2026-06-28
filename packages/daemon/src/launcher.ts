@@ -24,6 +24,7 @@ import {
   founderCloseoutFromFirstContractHeading,
   handledOpenTicketsForPriority,
   interferes,
+  isFinalizableFounderResolutionStatus,
   isInstructionSurface,
   isPersonaEnabled,
   gateCommitRepair,
@@ -58,7 +59,6 @@ import {
   type RunInput,
   type RunLabelTarget,
   type RunResult,
-  type RunStatus,
   type RunnerDeps,
   type SessionHost,
   type TicketCloseDecision,
@@ -637,19 +637,11 @@ function latestRun(runs: readonly Run[]): Run | null {
   }, null)
 }
 
-// A run that wraps `awaiting-founder` / `awaiting-archive-confirmation` is parked on a founder decision —
-// it is NOT still executing. The daemon never moved it off that status once the decision landed, so it
-// lingered forever and `ticketPendingCloseRun` read it as a live "pending close", blocking every relaunch
-// of its ticket (the run_204 → 0039 wedge). These statuses must become terminal the moment the decision is
-// resolved — the ticket is closed, the run is torn down, or the daemon reboots with nothing in flight.
-// Centralised here so close, teardown, and boot reconciliation finalize identically.
-const AWAITING_FOUNDER_STATUSES: ReadonlySet<RunStatus> = new Set<RunStatus>(['awaiting-founder', 'awaiting-archive-confirmation'])
-
 /** Move a single parked founder-decision run to a terminal status. No-op (returns false) if the run is
  *  missing or already terminal/running, so callers can fire it unconditionally on the resolution path. */
 function finalizeAwaitingFounderRun(ctx: OzContext, runId: string, reason: string): boolean {
   const run = ctx.store.getRun(runId)
-  if (!run || !AWAITING_FOUNDER_STATUSES.has(run.status)) return false
+  if (!run || !isFinalizableFounderResolutionStatus(run.status)) return false
   ctx.store.recordEvent({ runId, type: 'run-finalized', data: { from: run.status, reason } })
   ctx.store.setRunStatus(runId, 'completed')
   return true
@@ -659,7 +651,7 @@ function finalizeAwaitingFounderRun(ctx: OzContext, runId: string, reason: strin
  *  awaiting-founder run). Called after a close commits so the closed ticket stops looking pending. */
 function finalizeAwaitingFounderRunsForTicket(ctx: OzContext, workspaceId: string, ticketId: string, reason: string): void {
   for (const run of ctx.store.listRuns({ workspaceId })) {
-    if (run.ticketId === ticketId && AWAITING_FOUNDER_STATUSES.has(run.status)) finalizeAwaitingFounderRun(ctx, run.id, reason)
+    if (run.ticketId === ticketId && isFinalizableFounderResolutionStatus(run.status)) finalizeAwaitingFounderRun(ctx, run.id, reason)
   }
 }
 

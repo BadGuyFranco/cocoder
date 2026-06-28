@@ -329,6 +329,8 @@ export {
   renderDebStatus,
   deriveTerminalProjection,
   deriveRunSummary,
+  isAwaitingFounderResolutionStatus,
+  isFinalizableFounderResolutionStatus,
   type RunSummary,
   captureDebTerminalSnapshot,
   renderDebTerminalSnapshotMarkdown,

@@ -63,6 +63,8 @@ export {
   renderDebStatus,
   deriveTerminalProjection,
   deriveRunSummary,
+  isAwaitingFounderResolutionStatus,
+  isFinalizableFounderResolutionStatus,
   terminalWaitCondition,
   type RunSummary,
   type DebStatus,

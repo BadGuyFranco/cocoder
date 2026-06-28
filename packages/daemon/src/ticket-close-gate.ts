@@ -1,6 +1,4 @@
-import type { Run, RunStatus, RunStore, TicketCloseDecision } from '@cocoder/core'
-
-const AWAITING_FOUNDER_STATUSES: ReadonlySet<RunStatus> = new Set<RunStatus>(['awaiting-founder', 'awaiting-archive-confirmation'])
+import { isAwaitingFounderResolutionStatus, type Run, type RunStore, type TicketCloseDecision } from '@cocoder/core'
 
 export type TicketCloseGateMode = 'unattended' | 'founder-confirmation'
 
@@ -44,7 +42,7 @@ export function ticketCloseDecisionFromEvents(events: readonly { readonly type: 
 
 export function ticketCloseGate(input: TicketCloseGateInput): TicketCloseGateBlock | null {
   const latest = latestRunForTicket(input.store, input.workspaceId, input.ticketId)
-  if (!latest || !AWAITING_FOUNDER_STATUSES.has(latest.status)) return null
+  if (!latest || !isAwaitingFounderResolutionStatus(latest.status)) return null
 
   if (input.mode === 'founder-confirmation' && latest.id === input.confirmedRunId) {
     const decision = ticketCloseDecisionFromEvents(input.store.listEvents(latest.id))

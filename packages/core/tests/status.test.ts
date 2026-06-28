@@ -2,7 +2,15 @@
 // is driven here straight from recorded events (no live run): the same evidence Deb reads to answer
 // "how's Oscar doing?".
 import { describe, expect, test } from 'vitest'
-import { type RunnerPhase, deriveRunSummary, deriveTerminalProjection, openRunStore, renderDebStatus } from '../src/index.js'
+import {
+  type RunnerPhase,
+  deriveRunSummary,
+  deriveTerminalProjection,
+  isAwaitingFounderResolutionStatus,
+  isFinalizableFounderResolutionStatus,
+  openRunStore,
+  renderDebStatus,
+} from '../src/index.js'
 
 const priority = { id: 'demo', title: 'Demo' }
 const scopes = { oscar: [], bob: ['packages/**'], deb: ['cocoder/**'] }
@@ -17,6 +25,18 @@ function statusFor(events: { type: string; data?: unknown }[], phase: RunnerPhas
 }
 
 describe('renderDebStatus', () => {
+  test('founder-resolution status predicates distinguish recognition from finalization', () => {
+    expect(isAwaitingFounderResolutionStatus('held')).toBe(true)
+    expect(isAwaitingFounderResolutionStatus('awaiting-founder')).toBe(true)
+    expect(isAwaitingFounderResolutionStatus('awaiting-archive-confirmation')).toBe(true)
+    expect(isAwaitingFounderResolutionStatus('running')).toBe(false)
+    expect(isAwaitingFounderResolutionStatus('completed')).toBe(false)
+
+    expect(isFinalizableFounderResolutionStatus('held')).toBe(false)
+    expect(isFinalizableFounderResolutionStatus('awaiting-founder')).toBe(true)
+    expect(isFinalizableFounderResolutionStatus('awaiting-archive-confirmation')).toBe(true)
+  })
+
   test('awaiting a directive → Oscar waiting, Bob standby', () => {
     const s = statusFor([], 'awaiting-directive')
     expect(s.oscar).toBe('waiting')

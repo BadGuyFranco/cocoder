@@ -6,6 +6,18 @@
 // without a live run.
 import { runDisplayName, type RunEvent, type RunDisplayInput, type RunStatus, type RunStore } from '../store/index.js'
 
+const AWAITING_FOUNDER_RESOLUTION_STATUSES: ReadonlySet<RunStatus> = new Set<RunStatus>(['held', 'awaiting-founder', 'awaiting-archive-confirmation'])
+const FINALIZABLE_FOUNDER_RESOLUTION_STATUSES: ReadonlySet<RunStatus> = new Set<RunStatus>(['awaiting-founder', 'awaiting-archive-confirmation'])
+
+export function isAwaitingFounderResolutionStatus(status: RunStatus): boolean {
+  return AWAITING_FOUNDER_RESOLUTION_STATUSES.has(status)
+}
+
+export function isFinalizableFounderResolutionStatus(status: RunStatus): boolean {
+  // `held` is a resumable mid-run park with resume-state.json; completing it here would discard live work.
+  return FINALIZABLE_FOUNDER_RESOLUTION_STATUSES.has(status)
+}
+
 /** What the runner is doing w.r.t. Oscar right now — the runner passes its precise wait-phase (it knows
  *  it exactly); the projection refines it to `stalled`/`blocked` from the event stream. */
 export type RunnerPhase = 'awaiting-directive' | 'building' | 'verifying' | 'wrapped' | 'faulted' | 'awaiting-founder'

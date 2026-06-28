@@ -1185,6 +1185,8 @@ describe('Oz mutations + lifecycle', () => {
     await writeTicketIndex(home)
     await writeFile(join(home, 'cocoder', 'tickets', 'order.json'), `${JSON.stringify(['0003', '0004'], null, 2)}\n`)
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const held = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0003' })
+    store.setRunStatus(held.id, 'held')
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0003' })
     recordTicketCloseDecision(store, run.id, 'ask')
     store.setRunStatus(run.id, 'awaiting-founder')
@@ -1194,7 +1196,9 @@ describe('Oz mutations + lifecycle', () => {
 
     expect(close.status).toBe(200)
     expect(store.getRun(run.id)?.status).toBe('completed')
+    expect(store.getRun(held.id)?.status).toBe('held')
     expect(store.listEvents(run.id).some((e) => e.type === 'run-finalized')).toBe(true)
+    expect(store.listEvents(held.id).some((e) => e.type === 'run-finalized')).toBe(false)
   })
 
   test('POST /runs does not close a completed ticket run that needs another run', async () => {

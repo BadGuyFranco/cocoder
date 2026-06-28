@@ -1,4 +1,4 @@
-import { runDisplayNumber, type Run } from '@cocoder/core'
+import { isAwaitingFounderResolutionStatus, runDisplayNumber, type Run } from '@cocoder/core'
 import type { PrioritySummary, TicketSummary } from './priority-order.js'
 
 export type OzAwarenessRun = Pick<Run, 'id' | 'workspaceId' | 'priorityId' | 'playbookId' | 'ticketId' | 'status' | 'createdAt' | 'endedAt'> & {
@@ -29,7 +29,7 @@ export function projectOzAwareness(input: OzAwarenessInput): OzAwarenessSnapshot
   return {
     priorities: [...input.priorities],
     recentRuns,
-    activeRuns: recentRuns.filter((run) => run.status === 'running' || run.status === 'awaiting-founder' || run.status === 'awaiting-archive-confirmation'),
+    activeRuns: recentRuns.filter((run) => run.status === 'running' || isAwaitingFounderResolutionStatus(run.status)),
     openTickets: input.tickets.filter((ticket) => ticket.state === 'open'),
   }
 }

@@ -127,6 +127,21 @@ describe('requestReconciliationClose', () => {
     expect(commits).toEqual([])
   })
 
+  test('refuses to reconciliation-close a ticket whose latest run is held for founder resolution', async () => {
+    const commits: CommitCall[] = []
+    const { home, store, ctx } = await makeFixture(commits)
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0099' })
+    store.setRunStatus(run.id, 'held')
+
+    const result = await requestReconciliationClose(ctx, { workspaceId: 'cocoder', ticketId: '0099', resolution: 'should already be closed' })
+
+    expect(result).toMatchObject({ status: 409, body: { ok: false, closed: false, reason: 'awaiting-founder-decision', runId: run.id } })
+    expect(store.getRun(run.id)?.status).toBe('held')
+    expect(await readdir(join(home, 'cocoder', 'tickets', 'open'))).toContain('0099-stale-bug.md')
+    expect(await readdir(join(home, 'cocoder', 'tickets', 'closed'))).not.toContain('0099-stale-bug.md')
+    expect(commits).toEqual([])
+  })
+
   test('an active run targeting a different ticket also queues the reconciliation close', async () => {
     const commits: CommitCall[] = []
     const { ctx, store } = await makeFixture(commits)
