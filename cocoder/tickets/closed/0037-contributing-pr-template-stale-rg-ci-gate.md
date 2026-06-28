@@ -2,7 +2,7 @@
 id: 0037
 title: CONTRIBUTING and PR template still promise an rg CI gate that live ci.yml no longer runs
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: Bob
 created: 2026-06-23
@@ -42,3 +42,9 @@ auto-detected in the launch message so acceptance wording can follow).
   `cocoder/runs/57-run_201/ripgrep-recommendation.md`.
 - Failure mode if `rg` ever re-enters a shell gate without install: bash `if rg ...` exit 127 reads as
   "no match" and silently no-ops the gate — any future rg gate must install rg first or fail closed.
+
+## Resolution
+
+Closed by reconciliation deb-reconciliation on 2026-06-28.
+
+Already reconciled — no fix needed. CONTRIBUTING.md and .github/pull_request_template.md already match live .github/workflows/ci.yml (install, typecheck, lint, test, topology); neither promises an rg stale-reference gate. The only 'rg' reference left is a historical comment in ci.yml noting the v1 stale-reference gate was retired. Verified by grep over CONTRIBUTING.md, the PR template, and ci.yml during run_276.
