@@ -2,6 +2,7 @@
 id: 0084
 title: Oscar-Deb repair dialogue 500s when the Oscar-evaluation turn wraps its JSON verdict in prose
 type: bug
+status: Open
 priority: none
 owner: founder-session
 created: 2026-06-28

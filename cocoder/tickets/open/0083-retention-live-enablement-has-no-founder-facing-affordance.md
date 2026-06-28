@@ -2,6 +2,7 @@
 id: 0083
 title: Retention live-enablement has no founder-facing affordance — founder handed a settings.json edit + node commands
 type: task
+status: Open
 priority: none
 owner: founder-session
 created: 2026-06-28
