@@ -12,6 +12,14 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-28 — **doc-truth-analysis disposition reaffirmed — archive ready (run_131/run_274)**
+
+**Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** [doc-truth-analysis](./priorities/doc-truth-analysis.md) | **Run:** run_274 (display 131)
+**Outcomes:**
+- **No build atoms delegated.** Objective already met and verified across Phases 1–3 (runs 267–273); relaunch was disposition-only.
+- **Disposition: `archive-confirmation` reaffirmed.** Governed docs match live code; withholding-class inventory at zero; founder archive reply is the only remaining gate.
+**Next:** Reply `archive` or `archive run_274` in Oz chat to archive Doc Truth Analysis; then launch `local-cache-retention` for real-daemon retention effectiveness proof.
+
 ## 2026-06-28 — **doc-truth-analysis commit-spine reconciliation complete — archive ready (run_130/run_273)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [doc-truth-analysis](./priorities/doc-truth-analysis.md) | **Run:** run_273 (display 130)

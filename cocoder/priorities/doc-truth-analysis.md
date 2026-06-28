@@ -74,13 +74,14 @@ reconciliation (see inventory run_273 closeout section).
 Out-of-scope follow-ups tracked separately (do not block archive): ticket **0037** (stale CONTRIBUTING
 rg-CI-gate) and ticket **0080** (stale "worktree" current-truth references — filed at run_273 wrap).
 
-## Disposition — `archive-confirmation` (run_273, 2026-06-28)
+## Disposition — `archive-confirmation` (run_273 + run_274, 2026-06-28)
 
 The doc-truth objective is met and verified: governed docs match the live code (including universal
 always-commit-and-flag), every withholding-class discrepancy has a recorded resolution, and the
 reconciled docs read clear and correct. Founder archive reply (`archive` or `archive <runId>` in Oz
 chat) is the first-class closeout action. Do not relaunch this priority for build work — it would only
-produce an empty reaffirmation wrap.
+produce an empty reaffirmation wrap. Run_274 (display 131) reaffirmed this disposition with zero build
+atoms.
 
 ## Founder-directed code-or-doc follow-ups (founder decisions from run_267)
 
