@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-28 — **ticket-fix-0080: stale worktree refs — closed (run_133/run_276)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0080](./tickets/closed/0080-stale-worktree-references-contradict-active-checkout-only-spine.md) | **Run:** run_276 (display 133)
+**Outcomes:**
+- **Fix already at HEAD before atom-0.** Commit `29870a1` reconciled all current-truth worktree claims to the active-checkout-only spine (ADR-0023 Amendment 2) across ADR-0016 §3, 0034/0041/0042, ARCHITECTURE.md, glossary, personas docs, and loop-packets; correct historical/capability/storage mentions preserved.
+- **Atom-0 failed verify (regression).** Bob's working tree reverted ADR-0016 to stale run-worktree wording; quarantined and discarded — working tree clean at HEAD.
+- **Disposition: `closed`.** Grep sweep at HEAD shows no surviving current-truth worktree claims; ticket close queued via governed spine (`close-ticket 0080`).
+**Next:** Launch ticket `0037` — reconcile CONTRIBUTING and PR template with live CI (stale rg gate references).
+
 ## 2026-06-28 — **ticket-fix-0079: founder-decision waits park, not time out — closed (run_132/run_275)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0079](./tickets/closed/0079-founder-decision-waits-must-park-not-time-out.md) | **Run:** run_275 (display 132)
