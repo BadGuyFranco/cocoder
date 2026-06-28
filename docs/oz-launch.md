@@ -56,6 +56,10 @@ pnpm exec cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-p
 founder-explicit halt. It is not teardown, and it is not `cocoder run --resume <runId>`, which starts a
 fresh launch from a prior pickup brief.
 
+For a mid-run `ask-founder-continue` decision, answer through Oz chat with
+`founder-answer <runId> <answer>`. That records the answer and resumes the held run; writing the next
+directive into the old Oscar pane does not relaunch the runner.
+
 ### Uncommitted work at launch (ADR-0029)
 
 A launch no longer refuses on uncommitted founder WIP. The founder is a trusted actor: by default the launch takes a **pre-run snapshot** — it commits the dirty tree to its own labeled commit so the commit-gate and quarantine only ever see agent-produced changes — and then proceeds. Pass `--strict-dirt` to opt back into the old hard gate: with it set, an uncommitted in-scope tree **refuses** the launch instead of snapshotting. See [`ARCHITECTURE.md`](../ARCHITECTURE.md) and [ADR-0029](../cocoder/decisions/0029-founder-trusted-pre-run-snapshot.md).

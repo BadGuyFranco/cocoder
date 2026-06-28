@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { buildBuilderDispatch, buildBuilderStandbyPrompt, buildDebTriageDispatch, buildNextOrWrapDispatch, buildObserverPrompt, buildOrchestratorPrompt, buildWrapupDelivery, commitMessage, renderPlayManifest, type Play } from '../src/index.js'
+import { buildBuilderDispatch, buildBuilderStandbyPrompt, buildDebTriageDispatch, buildFounderContinueDispatch, buildNextOrWrapDispatch, buildObserverPrompt, buildOrchestratorPrompt, buildWrapupDelivery, commitMessage, renderPlayManifest, type Play } from '../src/index.js'
 
 const orchestratorInput = {
   sharedStandards: '# Standards',
@@ -170,8 +170,21 @@ describe('buildBuilderDispatch', () => {
     expect(dispatch).toContain('A clean commit boundary alone is not a reason to stop')
     expect(dispatch).toContain('founder decision is needed but concrete next work remains')
     expect(dispatch).toContain('"kind":"ask-founder-continue"')
+    expect(dispatch).toContain('founder-answer resume path')
     expect(dispatch).toContain('Founder Decision Needed is None')
     expect(dispatch).not.toContain('builder has had enough')
+  })
+
+  test('founder-continue dispatch does not strand a parked run by asking Oscar to write the next directive', () => {
+    const dispatch = buildFounderContinueDispatch('run_7', '/runs/run_7/directive-2.json', 'Which path should continue?')
+
+    expect(dispatch).toContain('FOUNDER DECISION NEEDED')
+    expect(dispatch).toContain('Which path should continue?')
+    expect(dispatch).toContain('The runner is parking this run now')
+    expect(dispatch).toContain('Do not write /runs/run_7/directive-2.json in this pane after the founder answers')
+    expect(dispatch).toContain('founder-answer run_7 <answer>')
+    expect(dispatch).toContain('resumes this held run')
+    expect(dispatch).not.toContain("When the founder's answer is incorporated, write the next directive")
   })
 
   test('renders only Plays available to the caller with compact contract metadata', () => {

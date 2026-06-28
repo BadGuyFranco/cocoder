@@ -97,6 +97,7 @@ export {
   buildBuilderDispatch,
   buildVerifyDispatch,
   buildNextOrWrapDispatch,
+  buildFounderContinueDispatch,
   buildDebTriageDispatch,
   buildWrapupDelivery,
   commitMessage,

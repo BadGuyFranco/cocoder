@@ -1412,7 +1412,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       })
       await refreshStatus('awaiting-founder', n, null, `awaiting founder decision before directive ${directiveIndex}: ${directive.question}`)
       await oscarDriver.show()
-      await oscarDriver.send(buildFounderContinueDispatch(nextDirectivePath, directive.question))
+      await oscarDriver.send(buildFounderContinueDispatch(run.id, nextDirectivePath, directive.question))
       continue
     }
     pendingFounderContinue = null
