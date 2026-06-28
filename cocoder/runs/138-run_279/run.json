@@ -12,7 +12,7 @@
   "priorityId": "ticketing-paths-hardening",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "awaiting-archive-confirmation",
   "createdAt": 1782661425717,
-  "endedAt": null
+  "endedAt": 1782667451477
 }
