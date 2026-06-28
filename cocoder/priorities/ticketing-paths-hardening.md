@@ -49,6 +49,15 @@ lifecycle itself is in scope. Condition 5 and defects 7–8 were added; the prio
 closed (commit b803b5d); 0085's close was attempted, hit defect 7, and was rolled back to a clean
 committed state.
 
+Run 139 / run_280 (2026-06-28) committed the close-path hardening and close-on-completion/archive-gate
+work in atoms 0–3, but the proof step tried to close 0085 inside the same long-lived runner process that
+had launched before atom 0 changed `packages/core/src/tickets/close.ts`. The process still had the old
+`closeTicket` implementation loaded, so the verify `ticketClose` repeated defect 7's half-close shape:
+0085 was moved out of `open/`, pruned from `order.json`, left in `INDEX.md` as Open, and written to
+`closed/` without `status: Closed`. Deb restored that uncommitted partial close before teardown. The
+remaining proof must run in a fresh runner/daemon process loaded from HEAD; do not use run_280's stale
+in-memory runner as evidence that the close fix works or fails.
+
 ## Known defects to wrap (the evidence)
 
 1. **Provenance vs binding conflated** — `create-ticket` had one overloaded `priority:` slot; a ticket
@@ -77,6 +86,12 @@ committed state.
    The persona deferred closing resolved tickets to a founder confirmation, leaving 0085/0086 fixed-but-open
    and emitting a premature `archive ready`. There is no behavior that closes a priority's verifiably
    completed tickets at wrap, and no gate preventing `archive ready` while such tickets remain open.
+9. **A run cannot prove freshly changed runner/core machinery inside its own stale process** (NEW, found
+   run_280). Atom 0 changed `closeTicket`, but run_280's already-running process used the pre-atom-0
+   implementation when Oscar's verify verdict requested `ticketClose` for 0085. That invalidates the
+   0085 proof from run_280 and creates a relaunch requirement: after machinery that owns the behavior is
+   changed, the acceptance proof that exercises that machinery must happen in a fresh process loaded from
+   the committed HEAD, or through an explicit reload boundary that is itself tested.
 
 ## Scope
 
@@ -99,6 +114,10 @@ committed state.
   owner-mapped set, pinned by tests; do not create a parallel close contract.
 - **Close this priority's own resolved tickets through the fixed path:** 0085 (defect 2, resolved) closed
   cleanly with a stamped resolution; confirm 0086 stays closed.
+- **Rerun the live close proof in a fresh process:** run_280's committed atoms may stand, but its attempted
+  0085 close is not valid evidence because the runner process used stale pre-atom-0 close code. Relaunch
+  after teardown/reload and close 0085 through the governed path with the fixed `closeTicket` implementation
+  loaded from HEAD.
 
 ## Out of scope
 
@@ -119,6 +138,8 @@ committed state.
   a mid-close failure proves zero partial/divergent state is left behind — red before the fix, green after.
 - **A run closes the tickets its priority verifiably completes** and cannot reach `archive ready` while any
   of its resolved tickets remain open — pinned by a test.
+- **The live 0085 close proof is produced by a fresh runner/daemon process loaded from HEAD**, not by the
+  stale run_280 process that existed before `closeTicket` was fixed.
 - This priority's own resolved tickets 0085 and 0086 are CLOSED with stamped resolutions; 0082–0084 are
   consistently indexed and standalone; none links to `local-cache-retention`.
 
@@ -133,3 +154,17 @@ close, defect-class across both close lanes), wire defect 8 (close-on-completion
 refinement, owner-mapped across wrap-up Play / oscar.md / the gate), then close 0085 cleanly through the
 fixed path and confirm 0086 stays closed. Each pinned by a test. Do not archive until 0085 is closed and the
 close flow is atomic and green.
+
+## Disposition — repaired but still needs fresh-process proof (run_280, 2026-06-28)
+
+Run_280 committed the code/governance atoms for the close lifecycle, including the atomic/status-less
+close fix, close-on-completion/archive-gate behavior, and 0082–0084 status normalization. Its final live
+proof was invalid because the same runner process that launched before atom 0 still executed the old
+`closeTicket` code when closing 0085. Deb observed the stale-process half-close and restored the
+uncommitted mutation: 0085 is open again, `order.json` is restored, and the untracked closed/0085 file
+was removed.
+
+This priority remains NOT archive-ready. After tearing down run_280, relaunch from the current HEAD and
+use the fresh process to close 0085 through the governed path, verify `INDEX.md`/`order.json`/ticket files
+agree, confirm 0086 remains closed and 0082–0084 remain open standalone, then wrap archive-ready only if
+those checks pass.
