@@ -12,7 +12,7 @@
   "priorityId": "doc-truth-analysis",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "failed",
   "createdAt": 1782594601671,
-  "endedAt": null
+  "endedAt": 1782610048249
 }
