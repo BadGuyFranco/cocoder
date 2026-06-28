@@ -14,6 +14,7 @@ import { basename, dirname, isAbsolute, join, normalize, relative, resolve, sep 
 import { promisify } from 'node:util'
 import {
   COCODER_GOVERNANCE_AUTHOR,
+  TicketBindingError,
   GOVERNED_READ_DENY,
   OZ_ACTION_SCOPE,
   closeTicket,
@@ -44,6 +45,7 @@ import {
   readTickets,
   readResumeState,
   repointTicket,
+  reconcileTicketSurfaces,
   runRetentionGc,
   runCommitGate,
   runDisplayNumber,
@@ -67,6 +69,7 @@ import {
   type TicketCloseDecision,
   type Ticket,
   type Workspace,
+  validateBinding,
 } from '@cocoder/core'
 import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import { emitOzEvent, type DashboardLaunchHandle, type OzContext } from './context.js'
@@ -147,6 +150,11 @@ export interface ReconciliationRepointInput {
   readonly workspaceId: string
   readonly ticketId: string
   readonly targetPriority: string | null
+  readonly bindingReason?: string | null
+}
+
+export interface ReconciliationTicketsInput {
+  readonly workspaceId: string
 }
 
 export interface TicketCloseConfirmationInput {
@@ -1617,27 +1625,42 @@ export async function requestReconciliationRepoint(ctx: OzContext, input: Reconc
   const workspace = await findWorkspace(ctx.cocoderHome, input.workspaceId)
   if (!workspace) return { status: 404, body: { error: 'unknown workspace' } }
 
+  let binding: ReturnType<typeof validateBinding>
+  try {
+    binding = validateBinding({ priority: input.targetPriority, reason: input.bindingReason ?? null })
+  } catch (err) {
+    if (err instanceof TicketBindingError) return { status: 400, body: { ok: false, error: err.message } }
+    throw err
+  }
+
   if (ctx.inFlight.has(input.workspaceId)) {
     const receipt = await enqueueAuthoring(ctx, {
       workspaceId: input.workspaceId,
       action: 'ticket-repoint',
       ticketId: input.ticketId,
-      targetPriority: input.targetPriority,
+      targetPriority: binding.priority,
+      bindingReason: binding.reason,
       now: ctx.now ?? Date.now,
     })
     emitOzEvent(ctx, { type: 'authoring-queued', workspaceId: workspace.id, ticketId: receipt.ticketId, status: receipt.status })
     return { status: 202, body: { ok: true, queued: true, ...receipt } }
   }
 
-  if (input.targetPriority !== null) {
-    const livePath = `cocoder/priorities/${input.targetPriority}.md`
+  if (binding.priority !== null) {
+    const livePath = `cocoder/priorities/${binding.priority}.md`
     if (!(await isFile(join(workspace.path, livePath)))) {
-      return { status: 409, body: { ok: false, error: `cannot rehome ticket ${input.ticketId} to ${input.targetPriority}: ${livePath} is not a live priority` } }
+      return { status: 409, body: { ok: false, error: `cannot rehome ticket ${input.ticketId} to ${binding.priority}: ${livePath} is not a live priority` } }
     }
   }
 
   const ticketsDir = join(workspace.path, 'cocoder', 'tickets')
-  const repoint = await repointTicket({ ticketsDir, repoPath: workspace.path, ticketId: input.ticketId, targetPriority: input.targetPriority })
+  let repoint: Awaited<ReturnType<typeof repointTicket>>
+  try {
+    repoint = await repointTicket({ ticketsDir, repoPath: workspace.path, ticketId: input.ticketId, targetPriority: binding.priority, bindingReason: binding.reason })
+  } catch (err) {
+    if (err instanceof TicketBindingError) return { status: 400, body: { ok: false, error: err.message } }
+    throw err
+  }
   if (!repoint.repointed) {
     return { status: 409, body: { ok: false, repointed: false, reason: repoint.reason, error: `ticket ${input.ticketId} cannot be reconciliation-repointed (${repoint.reason})` } }
   }
@@ -1648,6 +1671,33 @@ export async function requestReconciliationRepoint(ctx: OzContext, input: Reconc
   await appendAudit(ctx.cocoderHome, { action: 'deb-reconciliation-repoint', workspaceId: workspace.id, ticketId: input.ticketId, commitSha: receipt.committedSha, files: repoint.files, targetPriority: repoint.targetPriority })
   emitOzEvent(ctx, { type: 'deb-reconciliation-repoint', workspaceId: workspace.id })
   return { status: 200, body: { ok: true, repointed: true, targetPriority: repoint.targetPriority, commitSha: receipt.committedSha, committedPaths: repoint.files } }
+}
+
+export async function requestReconciliationTickets(ctx: OzContext, input: ReconciliationTicketsInput): Promise<LaunchResult> {
+  const workspace = await findWorkspace(ctx.cocoderHome, input.workspaceId)
+  if (!workspace) return { status: 404, body: { error: 'unknown workspace' } }
+
+  if (ctx.inFlight.has(input.workspaceId)) {
+    const receipt = await enqueueAuthoring(ctx, {
+      workspaceId: input.workspaceId,
+      action: 'ticket-reconcile',
+      now: ctx.now ?? Date.now,
+    })
+    emitOzEvent(ctx, { type: 'authoring-queued', workspaceId: workspace.id, status: receipt.status })
+    return { status: 202, body: { ok: true, queued: true, ...receipt } }
+  }
+
+  const reconcile = await reconcileTicketSurfaces({ ticketsDir: join(workspace.path, 'cocoder', 'tickets'), repoPath: workspace.path })
+  if (reconcile.files.length === 0) {
+    await appendAudit(ctx.cocoderHome, { action: 'ticket-surfaces-reconcile', workspaceId: workspace.id, committedSha: null, committed: false, files: [] })
+    emitOzEvent(ctx, { type: 'ticket-surfaces-reconciled', workspaceId: workspace.id, status: 'already-consistent' })
+    return { status: 200, body: { ok: true, reconciled: true, commitSha: null, committedPaths: [] } }
+  }
+  const receipt = await commitFiles(ctx.git, workspace.path, reconcile.files, `governance: reconcile ticket surfaces (${workspace.id})`, COCODER_GOVERNANCE_AUTHOR)
+  if (!receipt.committed) return { status: 500, body: { ok: false, error: `reconciled ticket surfaces but commit failed: ${receipt.error}` } }
+  await appendAudit(ctx.cocoderHome, { action: 'ticket-surfaces-reconcile', workspaceId: workspace.id, committedSha: receipt.committedSha, committed: receipt.committed, files: reconcile.files })
+  emitOzEvent(ctx, { type: 'ticket-surfaces-reconciled', workspaceId: workspace.id, status: 'committed' })
+  return { status: 200, body: { ok: true, reconciled: true, commitSha: receipt.committedSha, committedPaths: reconcile.files } }
 }
 
 async function recoverTicketCloseDecisionFromDeliveredCloseout(ctx: OzContext, workspace: RegistryWorkspace, run: Run): Promise<TicketCloseDecision | null> {

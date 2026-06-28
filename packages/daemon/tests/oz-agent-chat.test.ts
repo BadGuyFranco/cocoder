@@ -10,7 +10,7 @@ import type { LaunchRunTarget } from '../src/launcher.js'
 import { recordOrchestratedRun } from '../src/oz-host.js'
 import { mergeWriteSettings } from '../src/settings.js'
 
-const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, confirm-close <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId>, commit-support <runId>, founder-answer <runId> <answer>, stop <runId>, teardown <runId>, status [runId], help.'
+const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, confirm-close <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId> [reason words...], reconcile-tickets, commit-support <runId>, founder-answer <runId> <answer>, stop <runId>, teardown <runId>, status [runId], help.'
 
 interface Fixture {
   readonly home: string
@@ -859,6 +859,7 @@ function fakeOps(): OzChatOps {
     requestOscarDebRepair: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], state: 'complete', outcome: 'applied' } }),
     requestReconciliationClose: async () => ({ status: 200, body: { ok: true, closed: true, committedPaths: [], commitSha: null } }),
     requestReconciliationRepoint: async () => ({ status: 200, body: { ok: true, repointed: true, targetPriority: null, committedPaths: [], commitSha: null } }),
+    requestReconciliationTickets: async () => ({ status: 200, body: { ok: true, reconciled: true, committedPaths: [], commitSha: null } }),
     requestAuthoringPlay: async () => ({ status: 200, body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0 } }),
     requestArchiveConfirmation: async () => ({ status: 200, body: { ok: true, archived: true, runId: 'run_archive', priorityId: 'demo' } }),
     requestTicketCloseConfirmation: async () => ({ status: 200, body: { ok: true, closed: true, runId: 'run_close', ticketId: '0099', committedPaths: [], commitSha: null } }),

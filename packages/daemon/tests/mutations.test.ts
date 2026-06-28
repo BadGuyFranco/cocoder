@@ -3608,7 +3608,7 @@ describe('Oz mutations + lifecycle', () => {
     oz!.ctx.inFlight.set('cocoder', run.id)
     const before = await readFile(join(home, 'cocoder', 'tickets', 'open', '0003-existing-open.md'), 'utf8')
 
-    const repoint = await call(oz!, 'POST', '/workspaces/cocoder/tickets/0003/repoint', { body: { targetPriority: 'demo' } })
+    const repoint = await call(oz!, 'POST', '/workspaces/cocoder/tickets/0003/repoint', { body: { targetPriority: 'demo', bindingReason: 'Queued rehome to demo while the run is active.' } })
 
     expect(repoint.status).toBe(202)
     expect(repoint.json).toEqual({ ok: true, queued: true, queuedId: 'ticket-repoint-0003', ticketId: '0003', status: 'queued' })

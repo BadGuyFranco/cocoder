@@ -120,7 +120,7 @@ describe('requestReconciliationRepoint', () => {
     const { home, ctx } = await makeFixture(commits)
     const orderBefore = await readFile(join(home, 'cocoder', 'tickets', 'order.json'), 'utf8')
 
-    const result = await requestReconciliationRepoint(ctx, { workspaceId: 'cocoder', ticketId: '0099', targetPriority: 'archive-priority' })
+    const result = await requestReconciliationRepoint(ctx, { workspaceId: 'cocoder', ticketId: '0099', targetPriority: 'archive-priority', bindingReason: 'Archived work moved to the live archive priority.' })
 
     expect(result).toMatchObject({ status: 200, body: { ok: true, repointed: true, targetPriority: 'archive-priority', commitSha: 'sha_fake_repoint' } })
     const tickets = join(home, 'cocoder', 'tickets')
@@ -141,13 +141,13 @@ describe('requestReconciliationRepoint', () => {
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'ticket-fix', ticketId: '0099' })
     ctx.inFlight.set('cocoder', run.id)
 
-    const result = await requestReconciliationRepoint(ctx, { workspaceId: 'cocoder', ticketId: '0099', targetPriority: 'missing-priority' })
+    const result = await requestReconciliationRepoint(ctx, { workspaceId: 'cocoder', ticketId: '0099', targetPriority: 'missing-priority', bindingReason: 'Queue this until the missing priority exists.' })
 
     expect(result).toMatchObject({ status: 202, body: { ok: true, queued: true, queuedId: 'ticket-repoint-0099', ticketId: '0099', status: 'queued' } })
     expect(commits).toEqual([])
     expect(await readFile(join(home, 'cocoder', 'tickets', 'open', '0099-stale-bug.md'), 'utf8')).toBe(before)
     await expect(listQueuedAuthoring(home, 'cocoder')).resolves.toEqual([
-      expect.objectContaining({ queuedId: 'ticket-repoint-0099', action: 'ticket-repoint', ticketId: '0099', status: 'queued', input: expect.objectContaining({ targetPriority: 'missing-priority' }) }),
+      expect.objectContaining({ queuedId: 'ticket-repoint-0099', action: 'ticket-repoint', ticketId: '0099', status: 'queued', input: expect.objectContaining({ targetPriority: 'missing-priority', bindingReason: 'Queue this until the missing priority exists.' }) }),
     ])
   })
 
@@ -156,7 +156,7 @@ describe('requestReconciliationRepoint', () => {
     const { home, ctx } = await makeFixture(commits)
     const before = await readFile(join(home, 'cocoder', 'tickets', 'open', '0099-stale-bug.md'), 'utf8')
 
-    const result = await requestReconciliationRepoint(ctx, { workspaceId: 'cocoder', ticketId: '0099', targetPriority: 'missing-priority' })
+    const result = await requestReconciliationRepoint(ctx, { workspaceId: 'cocoder', ticketId: '0099', targetPriority: 'missing-priority', bindingReason: 'Try moving this to missing priority.' })
 
     expect(result).toMatchObject({ status: 409, body: { ok: false, error: expect.stringContaining('cocoder/priorities/missing-priority.md is not a live priority') } })
     expect(commits).toEqual([])
@@ -168,7 +168,7 @@ describe('requestReconciliationRepoint', () => {
     const { home, ctx } = await makeFixture(commits)
     const before = await readFile(join(home, 'cocoder', 'tickets', 'open', '0099-stale-bug.md'), 'utf8')
 
-    const result = await requestReconciliationRepoint(ctx, { workspaceId: 'cocoder', ticketId: '0099', targetPriority: 'ticket-fix' })
+    const result = await requestReconciliationRepoint(ctx, { workspaceId: 'cocoder', ticketId: '0099', targetPriority: 'ticket-fix', bindingReason: 'It already belongs to ticket-fix.' })
 
     expect(result).toMatchObject({ status: 409, body: { ok: false, repointed: false, reason: 'already-at-target' } })
     expect(commits).toEqual([])
@@ -187,5 +187,17 @@ describe('requestReconciliationRepoint', () => {
 
     expect(commits).toEqual([])
     expect(await readFile(join(home, 'cocoder', 'tickets', 'closed', '0100-closed-bug.md'), 'utf8')).toBe(closedBefore)
+  })
+
+  test('returns a client error when a bound rehome omits its binding reason', async () => {
+    const commits: CommitCall[] = []
+    const { home, ctx } = await makeFixture(commits)
+    const before = await readFile(join(home, 'cocoder', 'tickets', 'open', '0099-stale-bug.md'), 'utf8')
+
+    const result = await requestReconciliationRepoint(ctx, { workspaceId: 'cocoder', ticketId: '0099', targetPriority: 'archive-priority' })
+
+    expect(result).toMatchObject({ status: 400, body: { ok: false, error: expect.stringContaining('requires a binding reason') } })
+    expect(commits).toEqual([])
+    expect(await readFile(join(home, 'cocoder', 'tickets', 'open', '0099-stale-bug.md'), 'utf8')).toBe(before)
   })
 })

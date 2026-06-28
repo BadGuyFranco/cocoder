@@ -155,6 +155,7 @@ describe('authoring queue', () => {
       now: fixedNow,
       ticketId: '0003',
       targetPriority: 'next',
+      bindingReason: 'Queued rehome to the next live priority.',
       order: ['0003'],
     })
 
@@ -257,6 +258,52 @@ describe('authoring queue', () => {
     await expect(listQueuedAuthoring(home, 'cocoder')).resolves.toEqual([])
   })
 
+  test('drainAuthoringQueue reconciles queued ticket surfaces through the supplied spine', async () => {
+    await writeFile(join(home, 'cocoder', 'tickets', 'open', '0005-missing-row.md'), [
+      '---',
+      'id: 0005',
+      'title: Missing Row',
+      'type: task',
+      'status: Open',
+      'priority: none',
+      'owner: founder-session',
+      'created: 2026-06-25',
+      '---',
+      '',
+      '## Context',
+      '',
+    ].join('\n'))
+    await writeFile(join(home, 'cocoder', 'tickets', 'order.json'), `${JSON.stringify(['0003', '9999'], null, 2)}\n`)
+    await enqueueAuthoring({ cocoderHome: home }, {
+      workspaceId: 'cocoder',
+      action: 'ticket-reconcile',
+      now: fixedNow,
+    })
+    const store = openRunStore(':memory:', { now: fixedNow })
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    const commits: Array<{ readonly files: readonly string[]; readonly message: string }> = []
+
+    const drained = await drainAuthoringQueue(
+      { cocoderHome: home, store, inFlight: new Map([['cocoder', run.id]]), events: createOzEventBus() },
+      'cocoder',
+      async (_repoPath, files, message) => {
+        commits.push({ files: [...files], message })
+        return receipt(files)
+      },
+      fixedNow,
+    )
+
+    expect(drained.map((entry) => [entry.queuedId, entry.status])).toEqual([
+      ['ticket-reconcile', 'committed'],
+    ])
+    expect(JSON.parse(await readFile(join(home, 'cocoder', 'tickets', 'order.json'), 'utf8'))).toEqual(['0003', '0005'])
+    expect(await readFile(join(home, 'cocoder', 'tickets', 'INDEX.md'), 'utf8')).toContain('| [0005](./open/0005-missing-row.md) | Missing Row | task | none | founder-session |')
+    expect(commits).toEqual([
+      { files: ['cocoder/tickets/INDEX.md', 'cocoder/tickets/order.json'], message: 'governance: reconcile queued ticket surfaces (cocoder)' },
+    ])
+  })
+
   test('drainAuthoringQueue closes and repoints tickets through the supplied spine', async () => {
     await writeSecondOpenTicket(home)
     await writeFile(join(home, 'cocoder', 'priorities', 'next.md'), '---\nid: next\ntitle: Next\n---\n## Objective\nNext priority.')
@@ -267,6 +314,7 @@ describe('authoring queue', () => {
       now: fixedNow,
       ticketId: '0005',
       targetPriority: 'next',
+      bindingReason: 'Queued rehome to the next live priority.',
       order: ['0005', '0003'],
     })
     await enqueueAuthoring({ cocoderHome: home }, {
@@ -359,6 +407,7 @@ describe('authoring queue', () => {
       now: fixedNow,
       ticketId: '0005',
       targetPriority: 'next',
+      bindingReason: 'Queued rehome to the next live priority.',
     })
     const store = openRunStore(':memory:', { now: fixedNow })
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
@@ -389,6 +438,7 @@ describe('authoring queue', () => {
       now: fixedNow,
       ticketId: '0005',
       targetPriority: 'missing-priority',
+      bindingReason: 'Queued rehome to a priority that is not live yet.',
     })
     const store = openRunStore(':memory:', { now: fixedNow })
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })

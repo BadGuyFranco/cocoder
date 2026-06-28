@@ -35,7 +35,7 @@ import { findWorkspace, readWorkspaces, validateWorkspaceFolders, workspaceDirec
 import { readRunDir } from './rundir.js'
 import { appendAudit } from './audit.js'
 import { listClis, testCli } from './clis.js'
-import { commitGovernance, launchRun, requestArchiveConfirmation, requestAuthoringPlay, requestDaemonRestart, requestDashboardLaunch, requestFounderAnswer, requestIndependentHandoff, requestIndependentLaunch, requestOscarDebRepair, requestReconciliationClose, requestReconciliationRepoint, requestStopRun, requestSupportCommitRun, requestTicketCloseConfirmation, resumeRun, showRun, teardownRun, ticketPendingCloseRun, type AuthoringPlayInput, type OscarDebRepairInput } from './launcher.js'
+import { commitGovernance, launchRun, requestArchiveConfirmation, requestAuthoringPlay, requestDaemonRestart, requestDashboardLaunch, requestFounderAnswer, requestIndependentHandoff, requestIndependentLaunch, requestOscarDebRepair, requestReconciliationClose, requestReconciliationRepoint, requestReconciliationTickets, requestStopRun, requestSupportCommitRun, requestTicketCloseConfirmation, resumeRun, showRun, teardownRun, ticketPendingCloseRun, type AuthoringPlayInput, type OscarDebRepairInput } from './launcher.js'
 import { enqueueAuthoring, listQueuedAuthoring } from './authoring-queue.js'
 import { handleOzMessage } from './oz-chat.js'
 import { mergeWriteSettings, readSettings } from './settings.js'
@@ -179,14 +179,15 @@ function closeTicketBody(body: unknown): { readonly resolution?: string } {
   return typeof record.resolution === 'string' && record.resolution.trim() ? { resolution: record.resolution.trim() } : {}
 }
 
-type ParsedRepointTicketBody = { readonly ok: true; readonly targetPriority: string | null } | { readonly ok: false; readonly error: string }
+type ParsedRepointTicketBody = { readonly ok: true; readonly targetPriority: string | null; readonly bindingReason: string | null } | { readonly ok: false; readonly error: string }
 
 function repointTicketBody(body: unknown): ParsedRepointTicketBody {
   const record = bodyRecord(body)
-  if (record.targetPriority === null) return { ok: true, targetPriority: null }
+  const bindingReason = typeof record.bindingReason === 'string' && record.bindingReason.trim() ? record.bindingReason.trim() : null
+  if (record.targetPriority === null) return { ok: true, targetPriority: null, bindingReason: null }
   if (typeof record.targetPriority === 'string' && record.targetPriority.trim()) {
     const target = record.targetPriority.trim()
-    return { ok: true, targetPriority: target === 'standalone' || target === 'none' ? null : target }
+    return { ok: true, targetPriority: target === 'standalone' || target === 'none' ? null : target, bindingReason }
   }
   return { ok: false, error: 'targetPriority must be a string or null' }
 }
@@ -1215,6 +1216,13 @@ export async function dispatchMutations(ctx: OzContext, req: IncomingMessage, pa
       workspaceId: decodeURIComponent(seg[1]!),
       ticketId: decodeURIComponent(seg[3]!),
       targetPriority: parsed.targetPriority,
+      bindingReason: parsed.bindingReason,
+    })
+    return sendJson(res, status, out), true
+  }
+  if (method === 'POST' && seg[0] === 'workspaces' && seg.length === 4 && seg[2] === 'tickets' && seg[3] === 'reconcile') {
+    const { status, body: out } = await requestReconciliationTickets(ctx, {
+      workspaceId: decodeURIComponent(seg[1]!),
     })
     return sendJson(res, status, out), true
   }

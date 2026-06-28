@@ -7,7 +7,7 @@ import type { OzContext } from '../src/context.js'
 import { executeOzCommand, handleOzMessage, parseOzCommand, type OzChatOps } from '../src/oz-chat.js'
 import type { LaunchRunTarget } from '../src/launcher.js'
 
-const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, confirm-close <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId>, commit-support <runId>, founder-answer <runId> <answer>, stop <runId>, teardown <runId>, status [runId], help.'
+const HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, confirm-close <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId> [reason words...], reconcile-tickets, commit-support <runId>, founder-answer <runId> <answer>, stop <runId>, teardown <runId>, status [runId], help.'
 
 // A stub for an op a test does NOT expect to be called: returns a 500 so an unexpected dispatch fails
 // loudly instead of looking like a real success. Narrowly cast to the specific op's type.
@@ -33,6 +33,7 @@ function mockOps(overrides: Partial<OzChatOps>): OzChatOps {
     requestOscarDebRepair: unexpected('oscar-deb-repair') as OzChatOps['requestOscarDebRepair'],
     requestReconciliationClose: unexpected('reconcile-close') as OzChatOps['requestReconciliationClose'],
     requestReconciliationRepoint: unexpected('reconcile-repoint') as OzChatOps['requestReconciliationRepoint'],
+    requestReconciliationTickets: unexpected('reconcile-tickets') as OzChatOps['requestReconciliationTickets'],
     requestAuthoringPlay: unexpected('author') as OzChatOps['requestAuthoringPlay'],
     supportCommitRun: unexpected('support-commit') as OzChatOps['supportCommitRun'],
     requestArchiveConfirmation: unexpected('archive-confirmation') as OzChatOps['requestArchiveConfirmation'],
@@ -62,9 +63,10 @@ describe('parseOzCommand', () => {
     ['confirm-close run_7', { kind: 'confirm-ticket-close', runId: 'run_7' }],
     ['deb-repair fix stale Deb routing --run run_45', { kind: 'oscar-deb-repair', problem: 'fix stale Deb routing', sourceRunId: 'run_45' }],
     ['reconcile-close 0099 was fixed but left open', { kind: 'reconcile-close', ticketId: '0099', resolution: 'was fixed but left open' }],
-    ['reconcile-repoint 0099 standalone', { kind: 'reconcile-repoint', ticketId: '0099', targetPriority: null }],
-    ['reconcile-repoint 0099 none', { kind: 'reconcile-repoint', ticketId: '0099', targetPriority: null }],
-    ['reconcile-repoint 0099 some-priority', { kind: 'reconcile-repoint', ticketId: '0099', targetPriority: 'some-priority' }],
+    ['reconcile-repoint 0099 standalone', { kind: 'reconcile-repoint', ticketId: '0099', targetPriority: null, bindingReason: null }],
+    ['reconcile-repoint 0099 none', { kind: 'reconcile-repoint', ticketId: '0099', targetPriority: null, bindingReason: null }],
+    ['reconcile-repoint 0099 some-priority because it owns the remaining work', { kind: 'reconcile-repoint', ticketId: '0099', targetPriority: 'some-priority', bindingReason: 'because it owns the remaining work' }],
+    ['reconcile-tickets', { kind: 'reconcile-tickets' }],
     ['founder-answer run_45 keep it enabled by default', { kind: 'founder-answer', runId: 'run_45', answer: 'keep it enabled by default' }],
     ['stop run_45', { kind: 'stop', runId: 'run_45' }],
     ['teardown run_45', { kind: 'teardown', runId: 'run_45' }],
@@ -250,7 +252,7 @@ describe('handleOzMessage', () => {
   })
 
   test('reconcile-repoint maps to requestReconciliationRepoint', async () => {
-    const calls: Array<{ readonly workspaceId: string; readonly ticketId: string; readonly targetPriority: string | null }> = []
+    const calls: Array<{ readonly workspaceId: string; readonly ticketId: string; readonly targetPriority: string | null; readonly bindingReason?: string | null }> = []
     const ops = mockOps({
       requestReconciliationRepoint: async (_ctx, input) => {
         calls.push(input)
@@ -269,7 +271,7 @@ describe('handleOzMessage', () => {
 
     const result = await handleOzMessage(testCtx(), { text: 'reconcile-repoint 0099 standalone', workspaceId: 'cocoder' }, ops)
 
-    expect(calls).toEqual([{ workspaceId: 'cocoder', ticketId: '0099', targetPriority: null }])
+    expect(calls).toEqual([{ workspaceId: 'cocoder', ticketId: '0099', targetPriority: null, bindingReason: null }])
     expect(result).toMatchObject({
       status: 200,
       body: {
@@ -280,8 +282,34 @@ describe('handleOzMessage', () => {
       },
     })
 
-    await handleOzMessage(testCtx(), { text: 'reconcile-repoint 0099 some-priority', workspaceId: 'cocoder' }, ops)
-    expect(calls[1]).toEqual({ workspaceId: 'cocoder', ticketId: '0099', targetPriority: 'some-priority' })
+    await handleOzMessage(testCtx(), { text: 'reconcile-repoint 0099 some-priority because it owns the remaining work', workspaceId: 'cocoder' }, ops)
+    expect(calls[1]).toEqual({ workspaceId: 'cocoder', ticketId: '0099', targetPriority: 'some-priority', bindingReason: 'because it owns the remaining work' })
+  })
+
+  test('reconcile-tickets maps to requestReconciliationTickets', async () => {
+    const calls: Array<{ readonly workspaceId: string }> = []
+    const ops = mockOps({
+      requestReconciliationTickets: async (_ctx, input) => {
+        calls.push(input)
+        return {
+          status: 200,
+          body: { ok: true, reconciled: true, commitSha: 'sha-reconcile', committedPaths: ['cocoder/tickets/INDEX.md'] },
+        }
+      },
+    })
+
+    const result = await handleOzMessage(testCtx(), { text: 'reconcile-tickets', workspaceId: 'cocoder' }, ops)
+
+    expect(calls).toEqual([{ workspaceId: 'cocoder' }])
+    expect(result).toMatchObject({
+      status: 200,
+      body: {
+        ok: true,
+        command: 'reconcile-tickets',
+        reply: 'Reconciled ticket surfaces as sha-reconcile (cocoder/tickets/INDEX.md).',
+        action: { type: 'reconcile-tickets', committedPaths: ['cocoder/tickets/INDEX.md'], commitSha: 'sha-reconcile' },
+      },
+    })
   })
 
   test('stop maps to stopRun', async () => {
@@ -349,7 +377,7 @@ describe('handleOzMessage', () => {
       body: {
         ok: true,
         command: 'archive-confirmation',
-        reply: 'Archived demo from run_7 as sha-archive (cocoder/priorities/archive/demo.md, cocoder/priorities/order.json).\n\nHandled tickets need a founder decision: 0001. They are NOT auto-closed; archived priority demo no longer covers them. Options: (a) close: reconcile-close <id> <resolution>; (b) release to standalone: reconcile-repoint <id> standalone; (c) rehome to a live priority: reconcile-repoint <id> <priorityId>.',
+        reply: 'Archived demo from run_7 as sha-archive (cocoder/priorities/archive/demo.md, cocoder/priorities/order.json).\n\nHandled tickets need a founder decision: 0001. They are NOT auto-closed; archived priority demo no longer covers them. Options: (a) close: reconcile-close <id> <resolution>; (b) release to standalone: reconcile-repoint <id> standalone; (c) rehome to a live priority: reconcile-repoint <id> <priorityId> <reason>.',
         action: {
           type: 'archive-confirmation',
           runId: 'run_7',

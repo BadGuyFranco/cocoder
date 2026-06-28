@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { loadPriority, runDisplayName } from '@cocoder/core'
 import type { OzContext } from './context.js'
-import { launchRun as launchRunOp, readGoverned as readGovernedOp, requestArchiveConfirmation as archiveConfirmationOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestFounderAnswer as founderAnswerOp, requestIndependentLaunch as independentLaunchOp, requestNudgeRun as nudgeRunOp, requestOscarDebRepair as oscarDebRepairOp, requestOzAction as ozActionOp, requestOzRepair as repairOzOp, requestReconciliationClose as reconciliationCloseOp, requestReconciliationRepoint as reconciliationRepointOp, requestStopRun as stopRunOp, requestSupportCommitRun as supportCommitRunOp, requestTicketCloseConfirmation as ticketCloseConfirmationOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
+import { launchRun as launchRunOp, readGoverned as readGovernedOp, requestArchiveConfirmation as archiveConfirmationOp, requestAuthoringPlay as authoringPlayOp, requestDaemonRestart as restartDaemonOp, requestFounderAnswer as founderAnswerOp, requestIndependentLaunch as independentLaunchOp, requestNudgeRun as nudgeRunOp, requestOscarDebRepair as oscarDebRepairOp, requestOzAction as ozActionOp, requestOzRepair as repairOzOp, requestReconciliationClose as reconciliationCloseOp, requestReconciliationRepoint as reconciliationRepointOp, requestReconciliationTickets as reconciliationTicketsOp, requestStopRun as stopRunOp, requestSupportCommitRun as supportCommitRunOp, requestTicketCloseConfirmation as ticketCloseConfirmationOp, showRun as showRunOp, teardownRun as teardownRunOp, type AuthoringPlayInput, type LaunchResult } from './launcher.js'
 import { projectOzAwareness, type OzAwarenessRun, type OzAwarenessSnapshot } from './oz-awareness.js'
 import { tryHandleOzAgentTurn } from './oz-host.js'
 import { readTickets } from './priority-order.js'
@@ -9,7 +9,7 @@ import { findWorkspace } from './registry.js'
 import { withPortableDisplayNumbers } from './run-display.js'
 
 const ADHOC_PRIORITY_ID = 'adhoc-session'
-const HELP_HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, confirm-close <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId>, commit-support <runId>, founder-answer <runId> <answer>, stop <runId>, teardown <runId>, status [runId], help.'
+const HELP_HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, confirm-close <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId> [reason words...], reconcile-tickets, commit-support <runId>, founder-answer <runId> <answer>, stop <runId>, teardown <runId>, status [runId], help.'
 
 export type OzCommand =
   | { readonly kind: 'launch'; readonly priorityId: string }
@@ -20,7 +20,8 @@ export type OzCommand =
   | { readonly kind: 'support-commit'; readonly runId: string }
   | { readonly kind: 'oscar-deb-repair'; readonly problem: string; readonly sourceRunId?: string }
   | { readonly kind: 'reconcile-close'; readonly ticketId: string; readonly resolution: string }
-  | { readonly kind: 'reconcile-repoint'; readonly ticketId: string; readonly targetPriority: string | null }
+  | { readonly kind: 'reconcile-repoint'; readonly ticketId: string; readonly targetPriority: string | null; readonly bindingReason: string | null }
+  | { readonly kind: 'reconcile-tickets' }
   | { readonly kind: 'stop'; readonly runId: string }
   | { readonly kind: 'nudge'; readonly runId: string; readonly message: string; readonly rationale?: string }
   | { readonly kind: 'founder-answer'; readonly runId: string; readonly answer: string }
@@ -37,7 +38,7 @@ export type OzExecutableCommand = Exclude<OzCommand, { readonly kind: 'help' } |
 export type OzCommandExecutor = (command: OzExecutableCommand) => Promise<OzChatResult>
 
 export interface OzChatAction {
-  readonly type: 'launch' | 'runnerless-launch' | 'show' | 'archive-confirmation' | 'confirm-ticket-close' | 'support-commit' | 'oscar-deb-repair' | 'reconcile-close' | 'reconcile-repoint' | 'stop' | 'nudge' | 'founder-answer' | 'repair' | 'oz-action' | 'author' | 'teardown' | 'status' | 'refresh'
+  readonly type: 'launch' | 'runnerless-launch' | 'show' | 'archive-confirmation' | 'confirm-ticket-close' | 'support-commit' | 'oscar-deb-repair' | 'reconcile-close' | 'reconcile-repoint' | 'reconcile-tickets' | 'stop' | 'nudge' | 'founder-answer' | 'repair' | 'oz-action' | 'author' | 'teardown' | 'status' | 'refresh'
   readonly workspaceId?: string
   readonly priorityId?: string
   readonly runId?: string
@@ -80,6 +81,7 @@ export interface OzChatOps {
   readonly requestOscarDebRepair: typeof oscarDebRepairOp
   readonly requestReconciliationClose: typeof reconciliationCloseOp
   readonly requestReconciliationRepoint: typeof reconciliationRepointOp
+  readonly requestReconciliationTickets: typeof reconciliationTicketsOp
   readonly requestAuthoringPlay: typeof authoringPlayOp
   readonly requestArchiveConfirmation: typeof archiveConfirmationOp
   readonly requestTicketCloseConfirmation: typeof ticketCloseConfirmationOp
@@ -101,6 +103,7 @@ const defaultOps: OzChatOps = {
   requestOscarDebRepair: oscarDebRepairOp,
   requestReconciliationClose: reconciliationCloseOp,
   requestReconciliationRepoint: reconciliationRepointOp,
+  requestReconciliationTickets: reconciliationTicketsOp,
   requestAuthoringPlay: authoringPlayOp,
   requestArchiveConfirmation: archiveConfirmationOp,
   requestTicketCloseConfirmation: ticketCloseConfirmationOp,
@@ -135,10 +138,17 @@ export function parseOzCommand(text: string): OzCommand {
   if (verb === 'reconcile-repoint') {
     const ticketId = args[0]
     const target = args[1]
-    if (!ticketId || !target || args.length !== 2) return { kind: 'unknown', hint: 'Usage: reconcile-repoint <ticketId> <standalone|priorityId>' }
+    if (!ticketId || !target) return { kind: 'unknown', hint: 'Usage: reconcile-repoint <ticketId> <standalone|priorityId> [reason words...]' }
     const normalized = target.toLowerCase()
-    return { kind: 'reconcile-repoint', ticketId, targetPriority: normalized === 'standalone' || normalized === 'none' ? null : target }
+    if (normalized === 'standalone' || normalized === 'none') {
+      if (args.length !== 2) return { kind: 'unknown', hint: 'Usage: reconcile-repoint <ticketId> <standalone|priorityId> [reason words...]' }
+      return { kind: 'reconcile-repoint', ticketId, targetPriority: null, bindingReason: null }
+    }
+    const bindingReason = args.slice(2).join(' ').trim()
+    if (!bindingReason) return { kind: 'unknown', hint: 'Usage: reconcile-repoint <ticketId> <priorityId> <reason words...>' }
+    return { kind: 'reconcile-repoint', ticketId, targetPriority: target, bindingReason }
   }
+  if (verb === 'reconcile-tickets') return args.length === 0 ? { kind: 'reconcile-tickets' } : { kind: 'unknown', hint: 'Usage: reconcile-tickets' }
   if (verb === 'commit-support' || verb === 'support-commit') return args.length === 1 ? { kind: 'support-commit', runId: args[0]! } : unknownCommand()
   if (verb === 'founder-answer') {
     const runId = args[0]
@@ -282,8 +292,17 @@ export async function executeOzCommand(ctx: OzContext, workspaceId: string | und
     if (!workspaceId) return missingWorkspace()
     return runOp(
       'reconcile-repoint',
-      () => ops.requestReconciliationRepoint(ctx, { workspaceId, ticketId: command.ticketId, targetPriority: command.targetPriority }),
+      () => ops.requestReconciliationRepoint(ctx, { workspaceId, ticketId: command.ticketId, targetPriority: command.targetPriority, bindingReason: command.bindingReason }),
       (out) => reconcileRepointReply(command.ticketId, command.targetPriority, out),
+    )
+  }
+
+  if (command.kind === 'reconcile-tickets') {
+    if (!workspaceId) return missingWorkspace()
+    return runOp(
+      'reconcile-tickets',
+      () => ops.requestReconciliationTickets(ctx, { workspaceId }),
+      reconcileTicketsReply,
     )
   }
 
@@ -487,7 +506,7 @@ function archiveConfirmationReply(runId: string, out: LaunchResult): OzChatReply
   }
   const files = committedPaths.length > 0 ? ` (${committedPaths.join(', ')})` : ''
   const ticketDecision = handledTickets.length > 0
-    ? `\n\nHandled tickets need a founder decision: ${handledTickets.map((ticket) => ticket.id).join(', ')}. They are NOT auto-closed; archived priority ${priorityId ?? 'the priority'} no longer covers them. Options: (a) close: reconcile-close <id> <resolution>; (b) release to standalone: reconcile-repoint <id> standalone; (c) rehome to a live priority: reconcile-repoint <id> <priorityId>.`
+    ? `\n\nHandled tickets need a founder decision: ${handledTickets.map((ticket) => ticket.id).join(', ')}. They are NOT auto-closed; archived priority ${priorityId ?? 'the priority'} no longer covers them. Options: (a) close: reconcile-close <id> <resolution>; (b) release to standalone: reconcile-repoint <id> standalone; (c) rehome to a live priority: reconcile-repoint <id> <priorityId> <reason>.`
     : ''
   return {
     reply: `Archived ${priorityId ?? 'the priority'} from ${runId}${commitSha ? ` as ${commitSha}` : ''}${files}.${ticketDecision}`,
@@ -563,6 +582,34 @@ function reconcileRepointReply(ticketId: string, targetPriority: string | null, 
     command: 'reconcile-repoint',
     ok: true,
     action: { type: 'reconcile-repoint', committedPaths, commitSha },
+  }
+}
+
+function reconcileTicketsReply(out: LaunchResult): OzChatReply {
+  const committedPaths = stringArray(out.body.committedPaths)
+  const commitSha = typeof out.body.commitSha === 'string' ? out.body.commitSha : null
+  if (!isOk(out.status)) return failedReply('reconcile-tickets', 'Could not reconcile ticket surfaces', out)
+  if (out.body.queued === true) {
+    return {
+      reply: 'Queued ticket surface reconciliation; it will commit at the next safe run boundary.',
+      command: 'reconcile-tickets',
+      ok: true,
+      action: { type: 'reconcile-tickets', committedPaths: [], commitSha: null },
+    }
+  }
+  if (committedPaths.length === 0) {
+    return {
+      reply: 'Ticket surfaces already consistent.',
+      command: 'reconcile-tickets',
+      ok: true,
+      action: { type: 'reconcile-tickets', committedPaths, commitSha },
+    }
+  }
+  return {
+    reply: `Reconciled ticket surfaces as ${commitSha ?? 'no-commit'} (${committedPaths.join(', ')}).`,
+    command: 'reconcile-tickets',
+    ok: true,
+    action: { type: 'reconcile-tickets', committedPaths, commitSha },
   }
 }
 
