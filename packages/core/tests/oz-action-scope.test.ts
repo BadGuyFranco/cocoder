@@ -66,7 +66,7 @@ describe('OZ_ACTION_SCOPE', () => {
     })
   })
 
-  test('commitOnlyScope compatibility still commits all paths and flags hard exclusions', async () => {
+  test('commits all paths and flags hard exclusions', async () => {
     const inLane = [
       'cocoder/priorities/order.json',
       'cocoder/tickets/open/0099-x.md',
@@ -80,7 +80,7 @@ describe('OZ_ACTION_SCOPE', () => {
     ]
     const { git, commits } = fakeGit([...inLane, ...hardExcluded])
 
-    const receipt = await commitScoped(git, '/repo', OZ_ACTION_SCOPE, 'oz-action', undefined, { commitOnlyScope: true })
+    const receipt = await commitScoped(git, '/repo', OZ_ACTION_SCOPE, 'oz-action')
 
     expect(receipt).toEqual({
       committed: true,

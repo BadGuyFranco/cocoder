@@ -62,13 +62,12 @@ export function renderRunRecord(
   if (commits.length === 0) lines.push('- (none committed)')
   lines.push('')
 
-  const outOfScope = events.filter((e) => e.type === 'out-of-scope-committed' || e.type === 'out-of-scope-held-back')
+  const outOfScope = events.filter((e) => e.type === 'out-of-scope-committed')
   if (outOfScope.length > 0) {
     lines.push('## Out-of-lane (flagged)', '')
     for (const e of outOfScope) {
       const files = (e.data as { files?: string[] })?.files ?? []
-      const disposition = e.type === 'out-of-scope-held-back' ? 'held back' : 'committed'
-      for (const f of files) lines.push(`- ${f} (${disposition})`)
+      for (const f of files) lines.push(`- ${f} (committed)`)
     }
     lines.push('')
   }

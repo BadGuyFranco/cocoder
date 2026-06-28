@@ -119,7 +119,6 @@ describe('Play request lane', () => {
       accepted.writeScope,
       'play: create ticket',
       COCODER_GOVERNANCE_AUTHOR,
-      { commitOnlyScope: true },
     )
 
     expect(scopedReceipt).toMatchObject({

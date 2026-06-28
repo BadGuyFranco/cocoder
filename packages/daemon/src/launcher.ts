@@ -1332,7 +1332,6 @@ export async function requestSupportCommitRun(ctx: OzContext, runId: string): Pr
     scope,
     message: `oscar-post-wrap: ${run.priorityId} via CoCoder ${runMessageReference}`,
     headBefore,
-    commitOnlyScope: true,
   })
   const liveOscar = ctx.store.listSessions(runId).some((s) => s.persona === 'oscar' && ctx.liveRefs.has(s.sessionRef))
   ctx.store.recordEvent({
@@ -2141,7 +2140,6 @@ export async function requestOzAction(ctx: OzContext, input: { readonly workspac
     scope: OZ_ACTION_SCOPE,
     commitMessage: 'oz-action',
     author: { name: 'oz-action', email: 'oz-action@cocoder.local' },
-    commitOnlyScope: true,
     auditAction: 'oz-action',
     eventType: 'oz-action',
     preTurnError: (detail) => `Oz action turn failed before diff/commit: ${detail}`,
@@ -2257,7 +2255,6 @@ export async function requestAuthoringPlay(ctx: OzContext, input: AuthoringPlayI
     scope: play.writeScope,
     commitMessage: `governance: ${input.playId}`,
     author: { name: 'cocoder-governance', email: 'governance@cocoder.local' },
-    commitOnlyScope: true,
     ...(PRIORITY_AUTHORING_PLAY_IDS.has(input.playId)
       ? {
           beforeCommit: async () => {
@@ -2292,7 +2289,6 @@ interface HeadlessCommitOptions {
   readonly scope: readonly string[]
   readonly commitMessage: string
   readonly author: { readonly name: string; readonly email: string }
-  readonly commitOnlyScope?: boolean
   readonly beforeCommit?: () => Promise<LaunchResult | void>
   readonly auditAction: string
   readonly eventType: string
@@ -2381,7 +2377,6 @@ async function commitHeadlessDiff(ctx: OzContext, opts: HeadlessCommitOptions, e
     scope: opts.scope,
     message: opts.commitMessage,
     author: opts.author,
-    commitOnlyScope: opts.commitOnlyScope,
   })
   const body = {
     ok: true,

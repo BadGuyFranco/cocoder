@@ -1095,7 +1095,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     if (gate.committedSha) committedShas.push(gate.committedSha)
     committedFiles.push(...gate.committedFiles)
     // outOfLane is now a pure visibility flag (the paths committed out of lane), unioned across atoms.
-    // No more "clear prior holdback" dance — nothing is held back, so there is nothing to clear.
+    // No more "clear prior holdback" dance: scoped commits do not leave a deferred file set to clear.
     for (const f of gate.outOfLane) if (!outOfScope.includes(f)) outOfScope.push(f)
     selfCommitted = selfCommitted || gate.selfCommitted
   }

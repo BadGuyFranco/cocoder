@@ -520,7 +520,7 @@ describe('requestAuthoringPlay', () => {
     expect(await git(fixture.home, ['rev-parse', 'HEAD'])).toBe(headBefore)
   })
 
-  test('holds back files outside the Play write-scope', async () => {
+  test('commits and flags files outside the Play write-scope', async () => {
     const fixture = await makeFixture({
       runHeadless: async (input) => {
         fixture.headlessInputs.push(input)
@@ -541,14 +541,14 @@ describe('requestAuthoringPlay', () => {
       status: 200,
       body: {
         ok: true,
-        committedPaths: [],
-        commitSha: null,
+        committedPaths: ['cocoder/PLAYBOOK.md'],
+        commitSha: expect.any(String),
         outOfLanePaths: ['cocoder/PLAYBOOK.md'],
         exitCode: 0,
       },
     })
-    expect(await git(fixture.home, ['rev-parse', 'HEAD'])).toBe(headBefore)
-    expect(await git(fixture.home, ['show', 'HEAD:cocoder/PLAYBOOK.md'])).toBe('initial governance\n')
+    expect(await git(fixture.home, ['rev-parse', 'HEAD'])).not.toBe(headBefore)
+    expect(await git(fixture.home, ['show', 'HEAD:cocoder/PLAYBOOK.md'])).toBe('out of scope\n')
     expect(await readFile(join(fixture.home, 'cocoder', 'PLAYBOOK.md'), 'utf8')).toBe('out of scope\n')
   })
 

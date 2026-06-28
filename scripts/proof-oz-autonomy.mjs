@@ -46,12 +46,12 @@ const CLAUSES = [
   {
     id: 'B',
     required: true,
-    clause: 'oz-action gate-commits reversible edits and holds out-of-lane paths back',
+    clause: 'oz-action gate-commits all changed paths and flags out-of-lane paths',
     tests: [
-      'gate-commits only reversible governance paths as oz-action and holds out-of-lane edits back',
+      'gate-commits all changed paths as oz-action and flags out-of-lane edits',
       'refuses while any run is in flight before spawning or committing',
-      'oz-action executable dispatches to the Oz action op and renders committed plus held-back paths',
-      'oz-action tool dispatches through ops and feeds committed plus held-back paths to the follow-up prompt',
+      'oz-action executable dispatches to the Oz action op and renders committed plus flagged paths',
+      'oz-action tool dispatches through ops and feeds committed plus flagged paths to the follow-up prompt',
       'malformed oz-action tool call feeds validation errors back without executing',
     ],
   },
@@ -61,7 +61,7 @@ const CLAUSES = [
     clause: 'Code-level oz-action scope guard excludes product code, secrets, and install-local state',
     tests: [
       'matches only ADR-0040 reversible-edit paths',
-      'commitOnlyScope lands in-lane paths and holds hard exclusions out of lane',
+      'commits all paths and flags hard exclusions',
     ],
   },
   {

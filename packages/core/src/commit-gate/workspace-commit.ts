@@ -37,12 +37,6 @@ export interface CommitReceipt {
   readonly error: string | null
 }
 
-export interface CommitScopedOptions {
-  /** @deprecated Compatibility no-op. Write scope is advisory: all changed paths commit and out-of-lane
-   *  paths are flagged for visibility. */
-  readonly commitOnlyScope?: boolean
-}
-
 const empty = (outOfLane: readonly string[], error: string | null): CommitReceipt => ({
   committed: false,
   committedSha: null,
@@ -80,10 +74,8 @@ export async function commitScoped(
   scope: readonly string[],
   message: string,
   author?: CommitAuthor,
-  opts: CommitScopedOptions = {},
 ): Promise<CommitReceipt> {
   const changed = await git.changedFiles(repoPath)
-  void opts
   const { outOfScope } = partitionByScope(changed, scope)
   const committable = changed
   if (committable.length === 0) return empty(outOfScope, null)

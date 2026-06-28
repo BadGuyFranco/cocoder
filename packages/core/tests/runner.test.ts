@@ -2150,7 +2150,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(paneSpawns).not.toContain('cursor-agent')
     expect(pickupWrites).toEqual([validFounderCloseout('PLAY CLOSEOUT')])
     expect(result.committedShas).toEqual(['sha-1', 'sha-2'])
-    // Scope advisory: the wrap commit includes the out-of-lane file too; it's flagged, not withheld.
+    // Scope advisory: the wrap commit includes the out-of-lane file too; it's flagged.
     expect(result.committedFiles).toEqual(['packages/atom.ts', 'docs/wrap.md', 'packages/not-wrap.ts'])
     expect(result.outOfScope).toEqual(['packages/not-wrap.ts'])
     expect(result.status).toBe('completed')
@@ -2764,7 +2764,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(delivery?.data).toMatchObject({ ref: 'surface:1', path: '/runs/cocoder/run_1/wrapup-delivery.md' })
   })
 
-  test('gate-commits Oscar support files at wrap (no holdback to clear — nothing is held)', async () => {
+  test('gate-commits Oscar support files at wrap with no cleanup pass', async () => {
     const store = openRunStore(':memory:')
     const oscarWithSupport = { ...oscar, writeScope: ['cocoder/priorities/**'] }
 

@@ -586,7 +586,7 @@ describe('handleOzMessage', () => {
       },
     })
     expect(result.body.reply).toContain('Committed cocoder/PLAYBOOK.md, packages/core/src/proposal.ts as abc123.')
-    expect(result.body.reply).toContain("Committed out of Oz's repair lane (flagged for your visibility, NOT withheld): packages/core/src/proposal.ts.")
+    expect(result.body.reply).toContain("Committed out of Oz's repair lane (flagged for your visibility): packages/core/src/proposal.ts.")
     expect(result.body.reply).toContain('Turn log: /tmp/cocoder/local/oz/cocoder/repair.log.')
     expect(result.body.reply).toContain('Refresh Oz next')
   })
@@ -622,7 +622,7 @@ describe('handleOzMessage', () => {
     })
   })
 
-  test('oz-action executable dispatches to the Oz action op and renders committed plus held-back paths', async () => {
+  test('oz-action executable dispatches to the Oz action op and renders committed plus flagged paths', async () => {
     const calls: unknown[] = []
     const ops = mockOps({
       requestOzAction: async (_ctx, input) => {
@@ -660,7 +660,7 @@ describe('handleOzMessage', () => {
       },
     })
     expect(result.body.reply).toContain('Committed cocoder/tickets/open/0099-x.md as sha-action.')
-    expect(result.body.reply).toContain('Held back outside the oz-action lane, NOT committed: packages/daemon/src/foo.ts.')
+    expect(result.body.reply).toContain('Committed outside the oz-action lane (flagged for your visibility): packages/daemon/src/foo.ts.')
     expect(result.body.reply).toContain('Turn log: /tmp/cocoder/local/oz/cocoder/oz-action.log.')
   })
 
@@ -733,7 +733,7 @@ describe('handleOzMessage', () => {
       },
     })
     expect(result.body.reply).toContain('Deb applied the repair as sha-repair')
-    expect(result.body.reply).toContain('Committed out of Oscar-Deb repair lane (flagged for your visibility, NOT withheld): packages/daemon/src/routes.ts.')
+    expect(result.body.reply).toContain('Committed out of Oscar-Deb repair lane (flagged for your visibility): packages/daemon/src/routes.ts.')
   })
 
   test('deb-repair executable requires a workspace', async () => {
@@ -798,7 +798,7 @@ describe('handleOzMessage', () => {
     expect(result.body.reply).toContain('Refresh Oz next')
   })
 
-  test('author executable reports no-commit and held-back paths without a refresh hint', async () => {
+  test('author executable reports committed and flagged paths with a refresh hint', async () => {
     const result = await executeOzCommand(testCtx(), 'cocoder', {
       kind: 'author',
       playId: 'create-priority',
@@ -807,8 +807,8 @@ describe('handleOzMessage', () => {
       status: 200,
       body: {
         ok: true,
-        committedPaths: [],
-        commitSha: null,
+        committedPaths: ['cocoder/PLAYBOOK.md'],
+        commitSha: 'sha-author',
         outOfLanePaths: ['cocoder/PLAYBOOK.md'],
         exitCode: 0,
         turnLogPath: '/tmp/authoring.log',
@@ -820,12 +820,12 @@ describe('handleOzMessage', () => {
       body: {
         ok: true,
         command: 'author',
-        action: { type: 'author', workspaceId: 'cocoder', committedPaths: [], commitSha: null, outOfLanePaths: ['cocoder/PLAYBOOK.md'] },
+        action: { type: 'author', workspaceId: 'cocoder', committedPaths: ['cocoder/PLAYBOOK.md'], commitSha: 'sha-author', outOfLanePaths: ['cocoder/PLAYBOOK.md'] },
       },
     })
-    expect(result.body.reply).toContain('Nothing changed; no authoring commit was created.')
-    expect(result.body.reply).toContain('Held back outside the authoring Play lane: cocoder/PLAYBOOK.md.')
-    expect(result.body.reply).not.toContain('Refresh Oz next')
+    expect(result.body.reply).toContain('Committed cocoder/PLAYBOOK.md as sha-author.')
+    expect(result.body.reply).toContain('Committed outside the authoring Play lane (flagged for your visibility): cocoder/PLAYBOOK.md.')
+    expect(result.body.reply).toContain('Refresh Oz next')
   })
 
   test('author executable requires a workspace', async () => {

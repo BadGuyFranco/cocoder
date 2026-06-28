@@ -80,7 +80,7 @@ describe('requestOzRepair', () => {
     expect(typeof result.body.commitSha).toBe('string')
     expect(await git(fixture.home, ['rev-parse', 'HEAD'])).not.toBe(headBefore)
     expect((await git(fixture.home, ['log', '-1', '--pretty=%s'])).trim()).toBe('oz-repair')
-    // The out-of-lane file was committed too (flagged, not withheld).
+    // The out-of-lane file was committed too and flagged.
     await expect(git(fixture.home, ['cat-file', '-e', 'HEAD:packages/core/src/leak.ts'])).resolves.toBeDefined()
     expect(await readFile(join(fixture.home, 'packages', 'core', 'src', 'leak.ts'), 'utf8')).toBe('export const leak = true\n')
     expect(fixture.headlessInputs[0]?.cwd).toBe(fixture.home)

@@ -409,7 +409,7 @@ describe('Oz agent chat turns', () => {
     expect(fixture.headlessInputs).toHaveLength(2)
     expect(fixture.prompts[0]?.prompt).toContain('repair {"message":"..."}')
     expect(fixture.prompts[1]?.prompt).toContain('Committed cocoder/personas/assignments.json, packages/daemon/src/proposal.ts as sha-repair.')
-    expect(fixture.prompts[1]?.prompt).toContain("Committed out of Oz's repair lane (flagged for your visibility, NOT withheld): packages/daemon/src/proposal.ts.")
+    expect(fixture.prompts[1]?.prompt).toContain("Committed out of Oz's repair lane (flagged for your visibility): packages/daemon/src/proposal.ts.")
     expect(fixture.prompts[1]?.prompt).toContain('Refresh Oz next')
     expect(result).toMatchObject({
       status: 200,
@@ -442,11 +442,11 @@ describe('Oz agent chat turns', () => {
     expect(result).toMatchObject({ status: 200, body: { reply: 'I need a repair message before I can run repair.', command: 'chat', ok: true } })
   })
 
-  test('oz-action tool dispatches through ops and feeds committed plus held-back paths to the follow-up prompt', async () => {
+  test('oz-action tool dispatches through ops and feeds committed plus flagged paths to the follow-up prompt', async () => {
     const fixture = await makeFixture({
       outputs: [
         'Applying reversible governance edit.\nOZ_TOOL {"tool":"oz-action","args":{"instruction":" close ticket 0099 "}}',
-        'I closed the ticket and left the code edit uncommitted.',
+        'I closed the ticket and flagged the code edit.',
       ],
     })
     const calls: Array<{ readonly workspaceId: string; readonly instruction: string }> = []
@@ -473,12 +473,12 @@ describe('Oz agent chat turns', () => {
     expect(calls).toEqual([{ workspaceId: 'cocoder', instruction: 'close ticket 0099' }])
     expect(fixture.headlessInputs).toHaveLength(2)
     expect(fixture.prompts[0]?.prompt).toContain('oz-action {"instruction":"..."}')
-    expect(fixture.prompts[0]?.prompt).toContain('holds out-of-lane edits back uncommitted')
+    expect(fixture.prompts[0]?.prompt).toContain('commits the whole changed set, and flags out-of-lane paths for visibility')
     expect(fixture.prompts[1]?.prompt).toContain('Committed cocoder/tickets/open/0099-x.md as sha-action.')
-    expect(fixture.prompts[1]?.prompt).toContain('Held back outside the oz-action lane, NOT committed: packages/daemon/src/foo.ts.')
+    expect(fixture.prompts[1]?.prompt).toContain('Committed outside the oz-action lane (flagged for your visibility): packages/daemon/src/foo.ts.')
     expect(result).toMatchObject({
       status: 200,
-      body: { reply: 'I closed the ticket and left the code edit uncommitted.', command: 'chat', ok: true, action: { type: 'oz-action', workspaceId: 'cocoder', commitSha: 'sha-action' } },
+      body: { reply: 'I closed the ticket and flagged the code edit.', command: 'chat', ok: true, action: { type: 'oz-action', workspaceId: 'cocoder', commitSha: 'sha-action' } },
     })
   })
 

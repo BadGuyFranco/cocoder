@@ -4,7 +4,7 @@
 // (workspaceId, priorityId, persona) — never copied (the F1/F4 rule).
 
 // `pending-scope-decision` was RETIRED (founder directive 2026-06-15): scope is advisory, the spine never
-// withholds. The isolation lane + its `pending-landing` / branch→trunk integration sub-lifecycle were
+// suppresses. The isolation lane + its `pending-landing` / branch→trunk integration sub-lifecycle were
 // REMOVED (founder directive 2026-06-15; ADR-0023 supersedes ADR-0015): there is ONE mode — commit straight to
 // the checked-out branch, always — so committed work is on that branch by construction and no code path
 // can hold it off-branch. There is no strand state for anything to wait on. RunStatus is therefore the

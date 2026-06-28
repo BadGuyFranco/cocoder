@@ -8,20 +8,18 @@ export interface RepairCommitInput {
   readonly message: string
   /** Optional author identity for the repair commit (auditability). */
   readonly author?: CommitAuthor
-  /** @deprecated Compatibility no-op. Write scope is advisory: out-of-lane paths are committed and flagged. */
-  readonly commitOnlyScope?: boolean
 }
 
 export interface RepairCommitResult {
   readonly committedSha: string | null
   readonly committedFiles: readonly string[]
-  /** Paths outside the requested lane. Oz repair commits and flags them; scoped authoring holds them back. */
+  /** Paths outside the requested lane. They are committed and flagged for visibility. */
   readonly outOfLaneFiles: readonly string[]
 }
 
 /** Commit a daemon-owned repair diff (Oz repair) through the workspace commit spine's `commitScoped`
  *  (ADR-0023 §1). */
 export async function gateCommitRepair(input: RepairCommitInput): Promise<RepairCommitResult> {
-  const r = await commitScoped(input.git, input.cwd, input.scope, input.message, input.author, { commitOnlyScope: input.commitOnlyScope })
+  const r = await commitScoped(input.git, input.cwd, input.scope, input.message, input.author)
   return { committedSha: r.committedSha, committedFiles: r.committedFiles, outOfLaneFiles: r.outOfLane }
 }

@@ -557,7 +557,7 @@ function supportCommitReply(runId: string, out: LaunchResult): OzChatReply {
     ? `Committed post-wrap support edits for ${runId} as ${commitSha} (${committedPaths.join(', ') || 'no file list'}).`
     : `No post-wrap support edits were pending for ${runId}; no commit was created.`
   const outOfLane = outOfLanePaths.length > 0
-    ? ` Held back outside Oscar's support lane, NOT committed: ${outOfLanePaths.join(', ')}.`
+    ? ` Committed outside Oscar's support lane (flagged for your visibility): ${outOfLanePaths.join(', ')}.`
     : ''
   return {
     reply: `${committed}${outOfLane}`,
@@ -589,7 +589,7 @@ function oscarDebRepairReply(workspaceId: string, out: LaunchResult): OzChatRepl
           ? `Deb repair dialogue is ${out.body.state ?? 'complete'} with outcome ${outcome}.`
           : 'Deb repair dialogue completed.'
   const outOfLane = outOfLanePaths.length > 0
-    ? ` Committed out of Oscar-Deb repair lane (flagged for your visibility, NOT withheld): ${outOfLanePaths.join(', ')}.`
+    ? ` Committed out of Oscar-Deb repair lane (flagged for your visibility): ${outOfLanePaths.join(', ')}.`
     : ''
   const id = dialogueId ? ` Dialogue: ${dialogueId}.` : ''
   return {
@@ -622,7 +622,7 @@ function repairReply(workspaceId: string, out: LaunchResult): OzChatReply {
     ? `Committed ${committedPaths.length === 0 ? 'the repair' : committedPaths.join(', ')} as ${commitSha}.`
     : 'Nothing changed; no repair commit was created.'
   const outOfLane = outOfLanePaths.length > 0
-    ? ` Committed out of Oz's repair lane (flagged for your visibility, NOT withheld): ${outOfLanePaths.join(', ')}.`
+    ? ` Committed out of Oz's repair lane (flagged for your visibility): ${outOfLanePaths.join(', ')}.`
     : ''
   const log = turnLogPath ? ` Turn log: ${turnLogPath}.` : ''
   const refresh = commitSha ? ' Refresh Oz next so the daemon reloads the repaired state.' : ''
@@ -645,7 +645,7 @@ function ozActionReply(workspaceId: string, out: LaunchResult): OzChatReply {
     ? `Committed ${committedPaths.length === 0 ? 'the Oz action' : committedPaths.join(', ')} as ${commitSha}.`
     : 'Nothing changed; no oz-action commit was created.'
   const outOfLane = outOfLanePaths.length > 0
-    ? ` Held back outside the oz-action lane, NOT committed: ${outOfLanePaths.join(', ')}.`
+    ? ` Committed outside the oz-action lane (flagged for your visibility): ${outOfLanePaths.join(', ')}.`
     : ''
   const log = turnLogPath ? ` Turn log: ${turnLogPath}.` : ''
   return {
@@ -674,7 +674,7 @@ function authoringReply(workspaceId: string, out: LaunchResult): OzChatReply {
     ? `Committed ${committedPaths.length === 0 ? 'the authoring change' : committedPaths.join(', ')} as ${commitSha}.`
     : 'Nothing changed; no authoring commit was created.'
   const outOfLane = outOfLanePaths.length > 0
-    ? ` Held back outside the authoring Play lane: ${outOfLanePaths.join(', ')}.`
+    ? ` Committed outside the authoring Play lane (flagged for your visibility): ${outOfLanePaths.join(', ')}.`
     : ''
   const log = turnLogPath ? ` Turn log: ${turnLogPath}.` : ''
   const refresh = commitSha ? ' Refresh Oz next so the daemon reloads governance.' : ''

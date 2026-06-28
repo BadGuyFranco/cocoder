@@ -7,7 +7,7 @@
 // null worktree/branch, integration is vacuously `merged`, status `completed`; (2) by default the founder
 // is trusted — uncommitted in-scope WIP is snapshotted to its own founder-attributed commit and the
 // launch PROCEEDS (strictPreRunDirt restores the old hard-stop refusal); (3) out-of-scope changes are
-// committed and flagged (scope is advisory — the spine never withholds); (4) a rejected atom is
+// committed and flagged (scope is advisory); (4) a rejected atom is
 // quarantined in place without touching the founder's pre-existing out-of-scope file.
 import { execFile } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'

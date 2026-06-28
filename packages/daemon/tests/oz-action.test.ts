@@ -24,7 +24,7 @@ interface Fixture {
 }
 
 describe('requestOzAction', () => {
-  test('gate-commits only reversible governance paths as oz-action and holds out-of-lane edits back', async () => {
+  test('gate-commits all changed paths as oz-action and flags out-of-lane edits', async () => {
     const fixture = await makeFixture({
       runHeadless: async (input) => {
         fixture.headlessInputs.push(input)
@@ -46,17 +46,16 @@ describe('requestOzAction', () => {
       status: 200,
       body: {
         ok: true,
-        committedPaths: ['cocoder/priorities/order.json', 'cocoder/tickets/open/0099-x.md'],
+        committedPaths: ['cocoder/priorities/order.json', 'cocoder/tickets/open/0099-x.md', 'packages/daemon/src/foo.ts'],
         outOfLanePaths: ['packages/daemon/src/foo.ts'],
         exitCode: 0,
       },
     })
     expect(typeof result.body.commitSha).toBe('string')
-    expect(result.body.committedPaths).not.toEqual(expect.arrayContaining(['packages/daemon/src/foo.ts']))
     expect(await git(fixture.home, ['rev-parse', 'HEAD'])).not.toBe(headBefore)
     expect((await git(fixture.home, ['log', '-1', '--pretty=%s'])).trim()).toBe('oz-action')
     await expect(git(fixture.home, ['cat-file', '-e', 'HEAD:cocoder/tickets/open/0099-x.md'])).resolves.toBeDefined()
-    await expect(git(fixture.home, ['cat-file', '-e', 'HEAD:packages/daemon/src/foo.ts'])).rejects.toThrow()
+    await expect(git(fixture.home, ['cat-file', '-e', 'HEAD:packages/daemon/src/foo.ts'])).resolves.toBeDefined()
     expect(await readFile(join(fixture.home, 'packages', 'daemon', 'src', 'foo.ts'), 'utf8')).toBe('export const outOfLane = true\n')
     expect(fixture.headlessInputs[0]?.cwd).toBe(fixture.home)
     expect(fixture.prompts[0]?.prompt).toContain('Allowed edit class:')

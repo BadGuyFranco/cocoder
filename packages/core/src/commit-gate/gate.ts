@@ -24,8 +24,6 @@ export interface CommitGateInput {
   /** Optional hard boundary for Takeover Playbook audits. Ordinary priority runs omit this and keep the
    *  ADR-0023 whole-tree commit default: everything commits, out-of-lane is only flagged. */
   readonly auditWriteBoundary?: AuditWriteBoundary
-  /** @deprecated Compatibility no-op. Write scope is advisory: out-of-lane paths are committed and flagged. */
-  readonly commitOnlyScope?: boolean
 }
 
 /** The gate's receipt is the spine's CommitReceipt (one shape across spine + gate, WS3.2) EXTENDED with

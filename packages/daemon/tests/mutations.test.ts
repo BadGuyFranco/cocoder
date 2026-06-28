@@ -2074,7 +2074,7 @@ describe('Oz mutations + lifecycle', () => {
     expect(shown.map((s) => s.id)).toEqual(['surface:oscar'])
   })
 
-  test('POST /runs/:id/support-commit commits in-lane support edits and HOLDS BACK out-of-lane files (0053)', async () => {
+  test('POST /runs/:id/support-commit commits support edits and flags out-of-lane files (0053)', async () => {
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
     store.createSession({ runId: run.id, persona: 'oscar', sessionRef: 'surface:oscar' })
@@ -2095,15 +2095,14 @@ describe('Oz mutations + lifecycle', () => {
 
     const r = await call(oz!, 'POST', `/runs/${run.id}/support-commit`)
 
-    // 0053: the post-wrap support commit is scope-only — the in-lane governance edit commits, the
-    // out-of-lane file is WITHHELD (surfaced for a founder decision), never flag-and-committed past the gate.
+    // Option B: post-wrap support commits the whole changed set and keeps out-of-lane paths visible.
     expect(r).toMatchObject({
       status: 200,
       json: {
         ok: true,
         runId: run.id,
         commitSha: 'sha-committed',
-        committedPaths: ['cocoder/priorities/demo.md'],
+        committedPaths: ['cocoder/priorities/demo.md', 'packages/stray.ts'],
         outOfLanePaths: ['packages/stray.ts'],
         liveOscar: true,
       },
@@ -2112,18 +2111,17 @@ describe('Oz mutations + lifecycle', () => {
       expect.objectContaining({
         commitSha: 'sha-committed',
         message: `oscar-post-wrap: demo via CoCoder workspace run 1 (technical id: ${run.id})`,
-        files: ['cocoder/priorities/demo.md'],
+        files: ['cocoder/priorities/demo.md', 'packages/stray.ts'],
       }),
     ])
-    // the held-back file appears in NO commit link — it stays in the working tree.
-    expect(store.listCommitLinks(run.id).flatMap((l) => l.files)).not.toContain('packages/stray.ts')
+    expect(store.listCommitLinks(run.id).flatMap((l) => l.files)).toContain('packages/stray.ts')
     expect(store.listEvents(run.id).some((e) => e.type === 'post-wrap-support-commit')).toBe(true)
   })
 
-  test('POST /runs/:id/support-commit withholds concurrent out-of-lane packages/ui edits (run_88 regression, 0053)', async () => {
+  test('POST /runs/:id/support-commit commits and flags concurrent out-of-lane packages/ui edits (run_88 regression, 0053)', async () => {
     // Pins the run_232/run_88 incident: while logging via commit-support, the spine swept the founder's
     // concurrent, unrelated packages/ui edits (outside the run's Surface-A lane) into the post-wrap commit
-    // 8164afe — Surface-B product code past the verify gate. The spine must hold those back, not commit them.
+    // 8164afe. Option B intentionally commits those paths, but keeps them visible as out-of-lane.
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
     store.createSession({ runId: run.id, persona: 'oscar', sessionRef: 'surface:oscar' })
@@ -2150,13 +2148,11 @@ describe('Oz mutations + lifecycle', () => {
     expect(r.json).toMatchObject({
       ok: true,
       commitSha: 'sha-committed',
-      committedPaths: ['cocoder/priorities/demo.md'],
+      committedPaths: ['cocoder/priorities/demo.md', uiCode, uiTest],
       outOfLanePaths: [uiCode, uiTest],
     })
     const committedFiles = store.listCommitLinks(run.id).flatMap((l) => l.files)
-    expect(committedFiles).toEqual(['cocoder/priorities/demo.md'])
-    expect(committedFiles).not.toContain(uiCode)
-    expect(committedFiles).not.toContain(uiTest)
+    expect(committedFiles).toEqual(['cocoder/priorities/demo.md', uiCode, uiTest])
   })
 
   test('POST /runs/:id/support-commit refuses to archive the active priority directly', async () => {

@@ -133,7 +133,7 @@ function makeFakeGit(opts: { changed: string[]; headBefore: string; headNow?: st
 }
 
 describe('runCommitGate', () => {
-  test('commits EVERYTHING in one commit; out-of-lane paths are flagged, never withheld', async () => {
+  test('commits EVERYTHING in one commit and flags out-of-lane paths', async () => {
     const store = openRunStore(':memory:')
     store.upsertWorkspace({ id: 'cocoder', path: '/repo', name: 'CoCoder' })
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'p' })
@@ -153,7 +153,7 @@ describe('runCommitGate', () => {
       headBefore: 'h0',
     })
 
-    // Scope is advisory: BOTH files commit; the out-of-lane one is flagged, not held back.
+    // Scope is advisory: BOTH files commit; the out-of-lane one is flagged.
     // WS3.2: the gate now speaks the spine's receipt vocabulary — `outOfLane` (was `outOfScope`),
     // plus `committed`/`error` — and keeps gate-only `selfCommitted`.
     expect(res.committedFiles).toEqual(['packages/cli/src/run.ts', 'docs/leak.md'])
@@ -184,7 +184,7 @@ describe('runCommitGate', () => {
     expect(commits).toHaveLength(1)
   })
 
-  test('commitOnlyScope compatibility still commits EVERYTHING and flags out-of-lane paths', async () => {
+  test('commits EVERYTHING and flags out-of-lane paths through the uniform spine', async () => {
     const store = openRunStore(':memory:')
     store.upsertWorkspace({ id: 'cocoder', path: '/repo', name: 'CoCoder' })
     const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'p' })
@@ -199,14 +199,12 @@ describe('runCommitGate', () => {
       scope: ['packages/**'],
       message: 'x',
       headBefore: 'h0',
-      commitOnlyScope: true,
     })
 
     expect(res.committedFiles).toEqual(['packages/a.ts', 'README.md'])
     expect(res.outOfLane).toEqual(['README.md'])
     expect(commits).toEqual([{ files: ['packages/a.ts', 'README.md'], message: 'x' }])
     expect(store.listEvents(run.id).some((event) => event.type === 'out-of-scope-committed')).toBe(true)
-    expect(store.listEvents(run.id).some((event) => event.type === 'out-of-scope-held-back')).toBe(false)
   })
 
   test('detects an agent self-commit (HEAD moved outside the gate)', async () => {
@@ -324,7 +322,7 @@ describe('runCommitGate', () => {
 })
 
 describe('gateCommitRepair', () => {
-  test('commits EVERYTHING Oz changed and flags out-of-lane files (scope advisory, never withheld)', async () => {
+  test('commits EVERYTHING Oz changed and flags out-of-lane files (scope advisory)', async () => {
     const { git, commits } = makeFakeGit({ changed: ['cocoder/PLAYBOOK.md', 'packages/core/src/leak.ts'], headBefore: 'h0' })
 
     const res = await gateCommitRepair({
