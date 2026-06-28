@@ -46,9 +46,10 @@ access, the two-surface boundary, daemon writes must commit, receipts derived no
 isolation-by-default and tried to make the run-branch funnel **total**. Totalizing a leaky default is
 still enumeration. The structural fix is to **remove the default that strands**.
 
-**Founder decisions (2026-06-14):** direct-to-active-branch is the default path for essentially all
-work (governance, docs, ADRs, scoped fixes, and verified code); isolated worktrees are an explicit
-opt-in for genuinely risky / large / throwaway / parallel work only.
+**Original founder decisions (2026-06-14, superseded in part by Amendment 2 below):**
+direct-to-active-branch became the default path for essentially all work (governance, docs, ADRs,
+scoped fixes, and verified code); isolated worktrees were briefly retained as an explicit opt-in for
+genuinely risky / large / throwaway / parallel work only.
 
 ## Decision
 
@@ -127,13 +128,17 @@ Safety comes from **verifying before the spine commits**, in place — not from 
   destroyed). A failed atom blocks only itself; the run's other (governance/doc) work still commits. No
   worktree is required to make quarantine safe.
 
-### 4. Isolated worktree = explicit opt-in sandbox
+### 4. Retired: isolated worktree opt-in sandbox
 
-A run cuts a worktree + branch **only** when the founder or priority explicitly asks for isolation, for
-genuinely risky / large / throwaway / parallel / conflict-heavy work. In that mode the **same spine**
-owns the land-back to the active branch (verified ff-merge) and emits the **same receipt**. Isolation is
-a sandbox you opt into, never the road every change travels. ADR-0015's verified-merge,
-integration-verify, and merge-conflict machinery are **retained for this opt-in path only**.
+> **Superseded by Amendment 2 above.** The original accepted ADR retained this opt-in sandbox after
+> removing isolation from the default path. The 2026-06-15 Amendment 2 removed that lane entirely. The
+> historical text below is not current behavior.
+>
+> A run cuts a worktree + branch **only** when the founder or priority explicitly asks for isolation, for
+> genuinely risky / large / throwaway / parallel / conflict-heavy work. In that mode the **same spine**
+> owns the land-back to the active branch (verified ff-merge) and emits the **same receipt**. Isolation is
+> a sandbox you opt into, never the road every change travels. ADR-0015's verified-merge,
+> integration-verify, and merge-conflict machinery are **retained for this opt-in path only**.
 
 ### 5. There is no held-back state — out-of-lane edits commit and are flagged (2026-06-15 amendment)
 
@@ -142,10 +147,9 @@ paths outside the actor's advisory allow-list are **committed and FLAGGED** in t
 lane" visibility signal), never parked for a founder decision. There is no held-back working-tree state and
 no `pending-scope-decision` run status — so the "decided but nothing lands" class cannot occur. (The
 *original* §5 made held-back a first-class "Awaiting you" item with land/discard actions; that withholding
-was the constraint removed by this amendment.) The only non-landed default-path state is none; the opt-in
-isolation lane (§4) still has `pending-landing` for a run-branch that escalates at integration, resolved by
-the `discard`/`landed` actions. A solo founder never needs to understand worktrees, run branches, merges,
-held-back queues, or manual git recovery to use CoCoder — work commits, and git is the undo.
+was the constraint removed by this amendment.) Amendment 2 later removed the opt-in isolation lane too,
+so no `pending-landing` state remains. A solo founder never needs to understand worktrees, run branches,
+merges, held-back queues, or manual git recovery to use CoCoder — work commits, and git is the undo.
 
 ### 6. The receipt is derived, never asserted (closes F19)
 
@@ -161,7 +165,8 @@ again tell the founder "verified for landing / nothing held back" on work that d
 - **The strand class is gone by construction** in the default path. The unbounded patch family —
   F14/F17/F19/F20 and the ADR-0021/0022 run-branch machinery — retires. The "next session this will be
   resolved" loop ends because there is no run branch to strand on.
-- **Worktrees stop accumulating** (the default creates none); the 23 existing orphans are GC'd (Phase E).
+- **Worktrees stop accumulating** (the single live mode creates none); the 23 existing orphans are GC'd
+  (Phase E).
 - **`main` is the canonical trunk again.** "Land on trunk" = "commit on the active branch" = immediate
   and visible to the next session with no recovery step.
 - **Trade-off, stated honestly:** the default path has no per-run isolation safety. Mitigated by (a) the
@@ -173,8 +178,9 @@ again tell the founder "verified for landing / nothing held back" on work that d
 ## Conflict audit (per ADR-0014, for the founder)
 
 - **0015 — SUPERSEDED.** Isolation-per-run was the default and the source of the strand class; it
-  becomes opt-in (§4). Its verified-merge / integration-verify / merge-conflict / worktree-GC machinery
-  survives **only** behind the opt-in flag.
+  was briefly retained as opt-in (§4) in the original ADR-0023 text, then removed entirely by Amendment
+  2. Its verified-merge / integration-verify / merge-conflict / worktree-GC machinery has no live run
+  lane.
 - **0021 — SUPERSEDED.** Oz's special idle-only, narrow-scope, receipt-less out-of-run trunk authority
   is dissolved: Oz becomes an ordinary caller of the spine, gated by the same scope step and serialized
   by the same single-writer lock, with the same durable receipt as everyone else.
@@ -185,15 +191,15 @@ again tell the founder "verified for landing / nothing held back" on work that d
 - **0007 — RECONCILED, not superseded.** The allow-list + gate-the-commit primitive is the spine's scope
   step, unchanged in spirit. Its 2026-06-13 reconciliation note (founder-directed Surface-A edits are
   in-scope by default; hold-back bar is breakage-risk) carries forward verbatim.
-- **0013 — retained.** The verify gate is how §3 protects code; it runs in place (default) or inside the
-  opt-in worktree.
+- **0013 — retained.** The verify gate is how §3 protects code; it runs in place under the current
+  single-mode spine.
 
 ## Implementation status — code-complete 2026-06-14 (all six phases landed on `main`)
 
 - **Phase A (this ADR + governance reconciliation):** landed (`e4a9172`).
 - **Phase B (core spine + runner default flip to direct-to-branch):** landed (`9dc1c4d`) — direct mode
-  is the default; isolation is opt-in; the scoped dirty-guard restores quarantine soundness; live-git
-  proof in `runner-direct.test.ts`.
+  became the default; Amendment 2 later removed the remaining opt-in isolation lane; the scoped
+  dirty-guard restores quarantine soundness; live-git proof in `runner-direct.test.ts`.
 - **Phase C (daemon commit paths collapsed into one spine):** landed (`724a3d1`) — `commitFiles` /
   `commitScoped` + a uniform `CommitReceipt`; the `commitGovernance` swallowed-failure bug is gone
   (502 + reason on failure); `gateCommitRepair` is a thin adapter over the spine; repair attributed to

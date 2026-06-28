@@ -77,7 +77,7 @@ The founder chose to **build these six findings, not park them — inside `loop-
 51 built the unit-tested enforcement path listed above.
 
 Important live caveat: the running daemon serves boot-time code. This inventory claims unit-test-proven
-enforcement in this worktree only; it takes live effect after the founder restarts the daemon. Live
+enforcement in this checkout only; it takes live effect after the founder restarts the daemon. Live
 proof after restart remains a follow-up and is not claimed by run_51.
 
 **Live proof DELIVERED (run_52, 2026-06-11, post-restart daemon):** the caveat above is resolved.

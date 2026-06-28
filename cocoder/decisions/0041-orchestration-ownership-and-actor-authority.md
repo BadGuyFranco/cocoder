@@ -237,8 +237,8 @@ evidence a future revisit of prevention would need. Implemented in the runner
   audit assertion (§4) covers the residual raw-shell case without a fence.
 - **Status quo + discipline (prompt-only).** Rejected: run_233/run_234 are two-for-two failures of
   prompt-only discipline; the interference rail must be in code, not the prompt.
-- **Worktree isolation per lane (ADR-0023 opt-in).** Prevents *file collisions* but not the ownership
-  question — useful complement, not the fix.
+- **Hypothetical worktree isolation per lane.** Would prevent *file collisions* but not the ownership
+  question — useful complement if a future isolation design reintroduces it, not the fix here.
 
 ## 6. Consequences
 

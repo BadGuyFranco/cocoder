@@ -2,7 +2,9 @@
 
 **Status:** Accepted (founder + Claude, 2026-06-25). Records the concurrency model and **defers intra-workspace concurrency to v2.**
 **Seam:** how many runs may execute at once, and what shared mutable state forces serialization.
-**Builds on:** [0023](./0023-workspace-commit-spine.md) (direct-to-branch commit spine; isolation is an *opt-in worktree lane*, not a merge-back invariant) · [0041](./0041-orchestration-ownership-and-actor-authority.md) (per-workspace `inFlight`, actor authority, run-wrap audit).
+**Builds on:** [0023](./0023-workspace-commit-spine.md) (direct-to-branch commit spine; no live worktree
+or run-branch lane) · [0041](./0041-orchestration-ownership-and-actor-authority.md) (per-workspace
+`inFlight`, actor authority, run-wrap audit).
 **Revisits:** [0015](../zArchive/v2/decisions/0015-isolated-working-state-per-run.md) (run-branch isolation + auto-merge, archived) and [0034](./0034-retire-adr0015-merge-machinery.md) (retired 0015's merge/landing code). Intra-workspace concurrency (below) re-opens what 0034 closed — knowingly, and only when the value justifies the merge complexity.
 
 ## Context
@@ -15,7 +17,9 @@ The orchestration engine serializes work much more tightly than founders expect.
 
 The serialization is **not** a global single-run lock. The guard is **per-workspace**: `ctx.inFlight` is a `Map<workspaceId, runId>`, and every refusal checks `inFlight.has(workspaceId)`. What actually forces serialization is **shared mutable state**, of which there are exactly two kinds:
 
-- **The working tree** — one checkout, one branch *per workspace*. ADR-0023 made runs commit directly to the active branch (no run-branch merge; isolation downgraded to an opt-in worktree lane), and ADR-0034 removed the merge machinery. This is what makes two writers in one workspace unsafe.
+- **The working tree** — one checkout, one branch *per workspace*. ADR-0023 made runs commit directly to
+  the active branch; its original opt-in isolation lane was removed by Amendment 2, and ADR-0034 removed
+  the merge machinery. This is what makes two writers in one workspace unsafe.
 - **The daemon process** — a single Node process. Some checks gate globally on `inFlight.size > 0` (e.g. daemon self-reload) even though the run model is per-workspace.
 
 Mapping the three needs onto those two shared resources is the whole decision.
@@ -31,7 +35,13 @@ Authoring spawns an agent and **commits to the shared working tree**; a commit m
 **Different workspace = different repo = no shared working tree.** The thing that forces serialization in Tiers 1 and 3 is simply absent across workspaces, and the model already keys on it (`inFlight` per workspace, atomic run-counter, WAL store keyed by workspace/run, per-workspace cmux surfaces). The remaining work is **not** an architecture change — it is: (a) audit the daemon for global mutable state that assumes one active run; (b) make the few `inFlight.size`-coupled global checks per-workspace where they should be; (c) load-test two repos running at once; (d) bound resource/cost (N runs ≈ 3N agents + model spend). Tracked as a priority — this is the strategic unlock.
 
 ### Tier 3 — Concurrent runs in one workspace, disjoint surfaces (v2; this ADR)
-This is the genuinely hard one, and it is hard **because of ADR-0023**: two runs editing different files but committing to one branch/tree cross-contaminate (the commit-gate commits the whole changed tree; quarantine/self-commit detection assumes one writer; there is no isolation to keep them apart). Supporting it requires **re-introducing per-run isolation** — re-activating ADR-0023's opt-in worktree lane (or per-run branches) **plus a landing/merge step**, i.e. partially reversing ADR-0034. "Disjoint surfaces" is also hard to prove safe statically. **Deferred to v2.** When taken up, it becomes its own priority; the merge/landing design must be re-derived, not resurrected from ADR-0015 verbatim.
+This is the genuinely hard one, and it is hard **because of ADR-0023**: two runs editing different files
+but committing to one branch/tree cross-contaminate (the commit-gate commits the whole changed tree;
+quarantine/self-commit detection assumes one writer; there is no isolation to keep them apart).
+Supporting it requires **re-introducing per-run isolation** — designing a new worktree lane (or per-run
+branches) **plus a landing/merge step**, i.e. partially reversing ADR-0034. "Disjoint surfaces" is also
+hard to prove safe statically. **Deferred to v2.** When taken up, it becomes its own priority; the
+merge/landing design must be re-derived, not resurrected from ADR-0015 verbatim.
 
 ## Consequences
 

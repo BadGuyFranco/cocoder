@@ -26,7 +26,7 @@ their still-live content was absorbed into [ADR-0019](./0019-multi-root-workspac
 | [0017](./0017-oz-orchestration-persona.md) | Oz orchestration: Oz is a CLI-backed persona in a window, with a bounded tool surface (builds on 0005/0013) — *amended by [0040](./0040-oz-write-side-autonomy.md): tool surface gains `oz-action` self-direct writes + conversational `author`* | Accepted |
 | [0018](./0018-persona-run-mode-and-sub-agents.md) | Persona run-mode + sub-agents: sub-agents ARE per-persona Play assignments; `mode` honored the slice it lands (refines 0005) | Accepted |
 | [0019](./0019-multi-root-workspaces.md) | Multi-root workspaces: `.code-workspace` files in `local/workspace/`, three root roles, no nesting (absorbs live v1-0007/0006) — *amended by [0027](./0027-workspace-storage-contract.md): portable identity split out to tracked `cocoder/workspace.json`; `.code-workspace` narrows to machine-local routing* | Accepted |
-| [0023](./0023-workspace-commit-spine.md) | **The workspace commit spine: direct-to-branch by default, isolation opt-in** — one commit service for all actors; collapses the three divergent commit paths; dissolves the run-branch strand class (supersedes 0015/0021/0022, reconciles 0007) | Accepted |
+| [0023](./0023-workspace-commit-spine.md) | **The workspace commit spine: direct-to-branch, single mode** — one commit service for all actors; active checkout only; collapses the three divergent commit paths; dissolves the run-branch strand class (supersedes 0015/0021/0022, reconciles 0007) | Accepted |
 | [0020](./0020-primary-root-audit.md) | **Onboarding Playbooks** — bootstrap / **onboard-existing** (was "takeover") / drift as shipped baked-plan Playbooks (multi-agent audit, propose-only drift, top-tier pins, founder checkpoints; extends 0010) — **execution amended by [0026](./0026-onboard-existing-as-oscar-priority.md)** (Oscar-driven priority, not phase-executor); product structure current | Accepted (2026-06-14) |
 | [0024](./0024-governance-pre-run-snapshot.md) | **Launch self-heals governance dirt** — the launch guard partitions dirty-in-scope by builder vs. governance scope; governance-only dirt is auto-committed as a `governance: pre-run snapshot` and the launch proceeds, while builder/product WIP still refuses (amends 0023 §2/§3) — *builder-dirt refusal superseded by [0029](./0029-founder-trusted-pre-run-snapshot.md): founder WIP now self-heals too* | Accepted (2026-06-16) |
 | [0025](./0025-atomic-authoring-plays.md) | **Atomic authoring Plays** — `create`/`edit`/`archive-priority` Plays validate→write→commit through the one spine in a single dispatch (`requestAuthoringPlay`, generalizing `requestOzRepair`); Oz authors as one `OZ_TOOL author` action (resolves `oz-dashboard-bugs` #12); create/Objective-edits stay founder-approved (ADR-0010); pairs with 0024's hand-edit backstop — *amended by [0040](./0040-oz-write-side-autonomy.md): Oz reaches `author` conversationally; the founder-Objective gate is preserved verbatim* | Accepted (2026-06-16) |
@@ -55,8 +55,8 @@ moved to history so none sits in "Accepted" while contradicting reality (founder
   [`../zArchive/v2/decisions/`](../zArchive/v2/decisions/README.md). 0015 made isolation the default
   (the strand surface); 0021 gave Oz a special out-of-run commit path; 0022 built the run-branch landing
   invariant. ADR-0023 (the commit spine) replaces all three — its principles inherit 0022's
-  broad-by-default/two-surface/derived-receipt; the worktree+merge machinery survives only as 0023's
-  opt-in isolation lane.
+  broad-by-default/two-surface/derived-receipt; the worktree+merge machinery did not survive ADR-0023
+  Amendment 2, except for low-level worktree primitives kept as capabilities/historical cleanup helpers.
 - **0020 Addendum (phase executor) → superseded by 0026** (run_131). The standalone executor runner-mode
   had no founder-facing interaction surface (a real audit would freeze at the first gate); 0026 reframes
   the existing-repo audit onto an Oscar-driven priority. The addendum file is **kept in place** (not
@@ -85,7 +85,7 @@ assemble the current model, read in this order:
 4. **0006** adapter contract · **0007** write-scope · **0013** run lifecycle (multi-atom loop + the
    0011 verify-gate + observation)
 5. **0023** the workspace commit spine — **the current orchestration operating model**: how every
-   actor commits (direct-to-branch by default, isolation opt-in). Read it last; it supersedes
+   actor commits (direct-to-branch, active checkout only). Read it last; it supersedes
    0015/0021/0022 and is the single ground truth for how work reaches trunk.
 
 **Consolidation (2026-05-30, per ADR-0014):** the set is leaned out by *content*, not by renumbering —

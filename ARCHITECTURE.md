@@ -29,7 +29,7 @@ flowchart TB
   end
 
   subgraph installLocal ["CoCoder/local/ (gitignored — ONE per machine, spans ALL workspaces)"]
-    Db[cocoder.db + runs/ + worktrees/]
+    Db[cocoder.db + runs/ + historical worktrees/]
     Wsp[workspace/ — .code-workspace definition files]
     Prefs[settings, secrets, audit]
   end
@@ -49,7 +49,7 @@ flowchart TB
 | Zone | Location | Tracked in git? | Purpose |
 |------|----------|-----------------|---------|
 | **Install (public)** | CoCoder clone — `packages/`, `docs/`, `templates/`, `scripts/`, `cocoder/` (dogfood governance) | Yes | The engine, the shipped persona/standards base, the dashboard, public docs — and the dogfood workspace's own governance |
-| **Install (private)** | `<CoCoder>/local/` | **Never** (only its signage `README.md` is tracked) | ALL machine-local state, spanning every managed workspace: the operational DB, run artifacts, per-run worktrees, workspace definition files (`local/workspace/`), settings, secrets, audit logs — survives `git pull` |
+| **Install (private)** | `<CoCoder>/local/` | **Never** (only its signage `README.md` is tracked) | ALL machine-local state, spanning every managed workspace: the operational DB, run artifacts, historical pre-2026-06-15 worktrees, workspace definition files (`local/workspace/`), settings, secrets, audit logs — survives `git pull` |
 | **Workspace (tracked)** | `<primary-root>/cocoder/` | Yes (committed to that repo) | That workspace's governance: priorities, decisions, tickets, memory, standards extensions, persona extensions — community-visible |
 
 **There is no per-workspace "local" zone.** A `cocoder/` governance directory is fully git-tracked

@@ -13,8 +13,9 @@ runs through scaffold-seeded priorities and ordinary Oscar-driven priorities.
 **Amended (founder, 2026-06-10 — the reorg):** the zone model collapses **four → three** — the
 workspace-private zone (`cocoder/local/`) is **eliminated**. A workspace governance directory is
 fully git-tracked and *never* contains machine-local state; the install's `local/` is the **only**
-local zone, one per machine, spanning ALL managed workspaces (DB, runs, worktrees, secrets,
-settings, and the `local/workspace/` definition files per [0019](./0019-multi-root-workspaces.md)).
+local zone, one per machine, spanning ALL managed workspaces (DB, runs, historical pre-2026-06-15
+worktrees, secrets, settings, and the `local/workspace/` definition files per
+[0019](./0019-multi-root-workspaces.md)).
 Same reorg: **one live decisions tree** (this one, at `cocoder/decisions/` — the v1 tree archived to
 `cocoder/zArchive/v1/decisions/`), the `rebuild/` directory dissolved (PLAYBOOK/failure-catalog
 live directly under `cocoder/`), **one archive home** (`cocoder/zArchive/`), and dead v1
@@ -31,7 +32,8 @@ failures. All components are now named by ADRs 0002–0007, so the topology is d
 - **Install-public** (this repo): `packages/`, `templates/`, `docs/`, root docs, and the dogfood's
   `cocoder/` governance.
 - **Install-private** (`local/`, gitignored, one per machine): SQLite operational DB, runs,
-  worktrees, secrets, settings, workspace definition files — spans ALL managed workspaces.
+  historical pre-2026-06-15 worktrees, secrets, settings, workspace definition files — spans ALL
+  managed workspaces.
 - **Workspace-tracked** (each primary root's `cocoder/`): governance — priorities, personas
   extensions, decisions, standards extensions, tickets. Fully tracked; never contains local state.
 - ~~**Workspace-private** (`cocoder/local/`)~~ — **eliminated** (2026-06-10): machine state lives

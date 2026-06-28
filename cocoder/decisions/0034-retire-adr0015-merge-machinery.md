@@ -12,9 +12,9 @@ port that hosted the removed primitives).
 
 ADR-0015 (isolated-working-state-per-run) made run-branch isolation the default and added a verified
 auto-merge plus a merge-conflict Play. ADR-0023 (the single-mode direct-to-branch commit spine)
-superseded it: there is no run-branch merge/landing step anymore, and isolation is an opt-in worktree
-lane rather than a merge-back invariant. ADR-0015 was retired to history and frozen under
-`cocoder/zArchive/v2/decisions/` at that time.
+superseded it: there is no run-branch merge/landing step anymore. The original ADR-0023 text briefly
+retained isolation as an opt-in lane, but Amendment 2 later removed that lane entirely. ADR-0015 was
+retired to history and frozen under `cocoder/zArchive/v2/decisions/`.
 
 The merge-conflict Play that consumed ADR-0015's git primitives was already removed. That left a set of
 git operations on the commit-gate `Git` port (`packages/core/src/commit-gate/git.ts`) with **no live
@@ -42,9 +42,9 @@ The seven functions above are deleted from both the `Git` interface and the `mak
 integration section header. The corresponding live-git tests that exercised them are removed from
 `packages/core/tests/git-worktree.test.ts`; the worktree-primitive and `addAndCommit` tests are kept.
 
-The worktree primitives (`worktreeAdd`, `worktreeRemove`, `listWorktrees`) and `resetHard` are **kept**:
-they are ADR-0023 §4 isolation/sweep mechanics, not run-branch merge machinery. This cut is exactly the
-seven merge/landing functions — nothing else on the port is touched.
+The worktree primitives (`worktreeAdd`, `worktreeRemove`, `listWorktrees`) and `resetHard` are **kept**
+as low-level git capabilities and historical cleanup helpers, not as a live run-isolation lane. This cut
+is exactly the seven merge/landing functions — nothing else on the port is touched.
 
 ## Consequences
 

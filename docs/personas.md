@@ -25,7 +25,7 @@ Teammate lanes should:
 
 - treat the launch prompt as authoritative for persona, adapter, write capability, and result paths
 - obey the startup packet's write boundary
-- preserve unrelated worktree changes
+- preserve unrelated working-tree changes
 - stop when a requested edit crosses the lane boundary
 - write result artifacts only when the packet is complete
 

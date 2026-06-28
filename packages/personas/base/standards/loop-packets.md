@@ -51,7 +51,8 @@ For structured loop directives, the runner enforces the machine-readable loop co
   "inScope": boolean }`. Each parsed entry is also recorded as a run event.
 - Iteration and wall-clock caps are enforced by the runner. Cap-out blocks the atom, records the full
   parsed ledger, quarantines in-scope changes, commits nothing for that atom, and lets the run continue.
-- Before accepting a loop atom's completion marker, the runner reruns `loop.criterion` in the worktree.
+- Before accepting a loop atom's completion marker, the runner reruns `loop.criterion` in the active
+  checkout.
   A non-zero result sends the builder back to iterate with a re-armed completion marker; only a green
   rerun can proceed to the normal verify gate.
 - Ledger growth counts as monitor progress. A quiet screen with new loop entries is not treated as an

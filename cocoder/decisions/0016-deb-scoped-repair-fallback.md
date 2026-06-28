@@ -4,9 +4,9 @@
 > (live status feed, Oscar-only nudge channel, gate-enforced repair/ticket, base/delta scope) stays
 > live. What changed: a Deb repair or ticket is gate-committed **through the one commit spine straight
 > onto the active branch by default** (ADR-0023) — not onto a separate run branch the founder must land.
-> Body references below to "the run's worktree" / "drafted on the run branch for the founder" describe
-> the **opt-in isolation lane** only; in the default (direct) mode Deb edits the active checkout and the
-> commit lands in place. It still "does not rescue the run" — a faulted run still fails; the repair is a
+> Body references below to "the run's worktree" / "drafted on the run branch for the founder" are
+> superseded history. Under the current single-mode spine Deb edits the active checkout and the commit
+> lands in place. It still "does not rescue the run" — a faulted run still fails; the repair is a
 > distinct, reviewable commit.
 >
 > **Reconciliation note ([ADR-0023](./0023-workspace-commit-spine.md) Amendment 1, 2026-06-15).** The
@@ -18,7 +18,8 @@
 **Refines:** [0013](./0013-orchestration-observation.md) (tier-2 Deb: was observe-and-triage; now observe,
 diagnose, nudge, **and repair within a fence**) · **Builds on:** [0007](./0007-write-scope-enforcement.md)
 (commit-gate enforcement), [0012](./0012-living-base-personas.md) (base/delta split), [0003](./0003-data-model-hybrid.md)
-(single writer), [0015](../zArchive/v2/decisions/0015-isolated-working-state-per-run.md) (the run's worktree)
+(single writer), [0015](../zArchive/v2/decisions/0015-isolated-working-state-per-run.md) (superseded
+run-worktree model)
 
 ## Context
 
@@ -56,8 +57,8 @@ fallback.
 ### 3. Repair mode (authority-gated, never a rescue)
 For a `cocoder-bug`, Deb chooses `mode:"propose"` (a diff for founder review — the default, and the only
 option where she has no in-tree authority) or `mode:"repair"`: she edits files **within her active
-CoCoder authority** in the run's worktree and reports diagnosis / why-CoCoder-owned / files-changed /
-verification / remaining risk. The runner then runs the **existing commit-gate against Deb's active
+CoCoder authority** in the active checkout and reports diagnosis / why-CoCoder-owned / files-changed /
+verification / remaining risk. The runner then runs the **existing commit spine against Deb's active
 scope** (ADR-0007): her in-scope edits land as a distinct `deb-repair` commit; anything outside
 (especially target-repo product code) is **committed and surfaced as out-of-lane**, never silently hidden.
 A repair **does not rescue the run** — a faulted run still fails; the repair commit is surfaced for the
@@ -77,11 +78,11 @@ a new priority, *not* a rewrite of the immutable priority stub); **(3)** only **
 priority *inside that ticket* for founder approval — she never creates a `cocoder/priorities/*` file
 herself. The ticket is committed via the same commit-gate path as a repair.
 
-**Failed-run seam (decided):** a recurrence is usually detected on a run that then **fails**, and failed
-runs never reach trunk — so the escalation is surfaced in the **durable disposition** (the run dir,
-always visible — the founder is informed) and the ticket is **drafted on the run branch for the founder
-to land**. An auto-land carve-out (a failed run touching trunk with a governance-only commit) is
-**deliberately deferred** to its own ADR — it would punch a hole in an integration invariant.
+**Failed-run seam (decided):** a recurrence is usually detected on a run that then **fails**. The
+escalation is surfaced in the **durable disposition** (the run dir, always visible — the founder is
+informed), and any tracked ticket is filed only through the governed ticket spine when that action is
+available and authorized. A failed run still does not become green because Deb repaired or escalated the
+machinery fault.
 
 ### Write scope — split by the living-base/delta seam (self-gating)
 Per ADR-0012, the **base persona** carries the portable governance scope present in every CoCoder
