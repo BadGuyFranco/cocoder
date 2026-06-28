@@ -13,6 +13,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
+| [0081](./open/0081-local-cache-retention-unlaunchable.md) | local-cache-retention unlaunchable | bug | none | founder-session |
 
 ## Recently Closed
 
