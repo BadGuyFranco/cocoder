@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-28 — **ticketing-paths-hardening: fresh-process close proof — archive ready (run_140/run_281)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [ticketing-paths-hardening](./priorities/ticketing-paths-hardening.md) | **Run:** run_281 (display 140)
+**Outcomes:**
+- **One atom verified and committed (`3e08e5e`).** `scripts/proof-ticket-close-atomic.mjs` — founder-runnable harness for status-less atomic close and rollback-on-failure.
+- **Ticket 0085 closed via fresh-HEAD daemon (`116d82a`).** Governed close on a process loaded after run_280's `closeTicket` fix; all surfaces agree (file in `closed/` with `status: Closed`, `order.json` pruned, INDEX row in Recently Closed).
+- **Disposition: `archive-confirmation`.** All five objective conditions met; 0085/0086 closed; 0082–0084 standalone; relaunch would only reaffirm.
+**Next:** Reply `archive` or `archive run_281` in Oz chat; then launch `harden-documentation-process` for the CI reference-resolution check.
+
 ## 2026-06-28 — **ticketing-paths-hardening: ticket lifecycle hardened — archive ready (run_138/run_279)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [ticketing-paths-hardening](./priorities/ticketing-paths-hardening.md) | **Run:** run_279 (display 138)

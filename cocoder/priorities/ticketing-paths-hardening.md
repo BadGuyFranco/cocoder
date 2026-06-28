@@ -143,28 +143,11 @@ in-memory runner as evidence that the close fix works or fails.
 - This priority's own resolved tickets 0085 and 0086 are CLOSED with stamped resolutions; 0082–0084 are
   consistently indexed and standalone; none links to `local-cache-retention`.
 
-## Disposition — reopened, NOT archive-ready (run_138, 2026-06-28)
+## Disposition — `archive-confirmation` (run_281, 2026-06-28)
 
-Conditions 1–4 are built and test-pinned. The run wrapped prematurely as `archive ready` with resolved
-tickets 0085/0086 still open; the founder correctly rejected that. Closing surfaced defect 7 (non-atomic,
-status-less close) and defect 8 (no close-on-completion + no archive gating). 0086 is closed (b803b5d);
-0085 is resolved but its close is blocked on defect 7 and was rolled back to a clean committed state. This
-priority is NOT archive-ready. Relaunch it for the close-lifecycle work: fix defect 7 (atomic, status-less
-close, defect-class across both close lanes), wire defect 8 (close-on-completion + archive gating + close-gate
-refinement, owner-mapped across wrap-up Play / oscar.md / the gate), then close 0085 cleanly through the
-fixed path and confirm 0086 stays closed. Each pinned by a test. Do not archive until 0085 is closed and the
-close flow is atomic and green.
-
-## Disposition — repaired but still needs fresh-process proof (run_280, 2026-06-28)
-
-Run_280 committed the code/governance atoms for the close lifecycle, including the atomic/status-less
-close fix, close-on-completion/archive-gate behavior, and 0082–0084 status normalization. Its final live
-proof was invalid because the same runner process that launched before atom 0 still executed the old
-`closeTicket` code when closing 0085. Deb observed the stale-process half-close and restored the
-uncommitted mutation: 0085 is open again, `order.json` is restored, and the untracked closed/0085 file
-was removed.
-
-This priority remains NOT archive-ready. After tearing down run_280, relaunch from the current HEAD and
-use the fresh process to close 0085 through the governed path, verify `INDEX.md`/`order.json`/ticket files
-agree, confirm 0086 remains closed and 0082–0084 remain open standalone, then wrap archive-ready only if
-those checks pass.
+All five objective conditions are built, test-pinned, and live-proven. Run_280 committed the close-lifecycle
+fix; run_281 closed ticket **0085** through a fresh-HEAD daemon (not the stale run_280 process), verified
+every ticket surface agrees, and added `node scripts/proof-ticket-close-atomic.mjs` as a founder-runnable
+close atomicity harness. Tickets **0085** and **0086** are closed with stamped resolutions; **0082–0084**
+remain open standalone; none link to archived `local-cache-retention`. Founder archive reply (`archive` or
+`archive run_281` in Oz chat) is the first-class closeout action — do not relaunch for build work.
