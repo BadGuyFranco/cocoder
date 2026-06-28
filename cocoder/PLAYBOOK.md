@@ -46,7 +46,8 @@ No contracts, no boundary-resolution engine.
 **Exit:** an orchestrator→coder→admin flow runs on the CoCoder repo by hand and produces a
 committed diff + a run record. Post-run scope check is **block-but-surface (ADR-0007)** — not
 warn-only (superseded): in-scope changes commit; out-of-scope are held back and surfaced. Earned
-by F6 (explicit run↔commit linkage) + F11 (an honest gate).
+by F6 (explicit run↔commit linkage) + F11 (an honest gate). (Forward pointer: ADR-0023 later
+superseded ADR-0007's block-the-commit behavior with always-commit-and-flag.)
 
 **Done (2026-05-28):** `cocoder run phase1-dogfood` drove Oscar (claude) → Bob (codex) in cmux on
 the CoCoder repo, producing commit `57c0781` (3 files in `packages/**`) with a linked run record

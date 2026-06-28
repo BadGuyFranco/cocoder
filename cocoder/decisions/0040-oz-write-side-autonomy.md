@@ -7,7 +7,7 @@
 [0025](./0025-atomic-authoring-plays.md) (the atomic `author` spine; founder owns the Objective)
 **Builds on:** [0010](./0010-taxonomy-and-authoring.md) / [0035](./0035-priority-creation-always-placed-or-halted.md)
 (founder owns the Objective; creation is placed-or-halted), [0023](./0023-workspace-commit-spine.md) (the one
-commit spine; `commitOnlyScope` holds back out-of-lane paths), [0007](./0007-write-scope-enforcement.md)
+commit spine; scope is advisory and out-of-lane paths commit with flags), [0007](./0007-write-scope-enforcement.md)
 (allow-list + commit-gate enforcement), the `oz-file-access` priority (the read/answer foundation this layers on).
 
 ## Context
@@ -54,9 +54,8 @@ trivially revertable and carry no product-behavior or security risk.
 ### 2. The gate-commit lane: `oz-action`
 
 A self-direct edit is committed by the daemon through the **one commit spine** (ADR-0023), gate-enforced
-against the scope in §1 with `commitOnlyScope: true` (the ADR-0025 pattern): **only allowed paths land**;
-any path outside §1 is **held back and surfaced** (`outOfLanePaths`), never silently committed and never
-silently dropped. The commit is attributed and labelled `oz-action` so it is distinct in history from
+against the scope in §1: the whole changed set lands, and any path outside §1 is **flagged and surfaced**
+as `outOfLanePaths`, never silently dropped. The commit is attributed and labelled `oz-action` so it is distinct in history from
 `deb-repair` (ADR-0016), `governance: <playId>` authoring (ADR-0025), and the founder/agent build commits.
 No second commit lane is created — `oz-action` is a new **label and scope** over the existing spine.
 

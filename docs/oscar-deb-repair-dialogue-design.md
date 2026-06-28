@@ -310,13 +310,11 @@ bypasses it.
   build needs store-integrated run receipts, it should call `runCommitGate` with `runId:null` or an
   optional `sourceRunId` rather than inventing a second commit lane.
 
-Scope handling must follow the current spine. ADR-0016 and older prompt text say out-of-scope repair
-edits are held back (`cocoder/decisions/0016-deb-scoped-repair-fallback.md:52-60`;
-`packages/core/src/runner/prompts.ts:596-601`), but ADR-0023 later amends the default spine so out-of-lane
-paths commit and are flagged, not withheld (`cocoder/decisions/0023-workspace-commit-spine.md:138-148`);
-the current runner disposition says the same (`packages/core/src/runner/runner.ts:949-953`). Atom 2
-should not fork this policy. It should surface `outOfLanePaths`/`outOfScope` in `deb-response.json`,
-events, audit, and the daemon reply.
+Scope handling must follow the current spine. ADR-0023 amends the default spine so out-of-lane paths
+commit and are flagged (`cocoder/decisions/0023-workspace-commit-spine.md:138-148`); the current runner
+disposition says the same (`packages/core/src/runner/runner.ts:949-953`). The dialogue must not fork this
+policy. It should surface `outOfLanePaths`/`outOfScope` in `deb-response.json`, events, audit, and the
+daemon reply.
 
 No second commit lane is created.
 

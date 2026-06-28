@@ -20,6 +20,11 @@ sandbox.
 > narrow preset scope." Out-of-scope-but-low-risk changes still surface for an expand decision (never
 > silent-discard, never silent-commit). Nothing in this ADR may be read to license refusing a
 > founder-directed governance edit.
+>
+> **Later reconciliation note ([ADR-0023](./0023-workspace-commit-spine.md) Amendment 1, founder directive
+> 2026-06-15).** The path-scope expand-decision sentence above was superseded two days later: out-of-lane
+> is now an advisory visibility flag, and the spine commits the whole changed set. The high-breakage-risk
+> judgment bar still carries forward as a separate escalation axis.
 
 ## Decision
 
@@ -42,6 +47,11 @@ commit step, so the **commit is the boundary**:
   unconstrained; only the commit is gated.**
 
 ### Out-of-scope handling — block-the-commit-but-surface-for-approval
+> **Superseded behavior ([ADR-0023](./0023-workspace-commit-spine.md) Amendment 1, founder directive
+> 2026-06-15).** This section records the original block-the-commit rule. Current truth: scope is
+> advisory, so the spine commits the whole changed set and flags out-of-lane paths for visibility; it
+> never parks them for a path-scope decision.
+
 Out-of-scope changes are **detected deterministically, held back from the commit, and surfaced**
 for an **expand-or-discard** decision (orchestrator or founder). In-scope changes commit; out-of-
 scope changes stay in the working tree pending the decision. **Never silent auto-discard** — the

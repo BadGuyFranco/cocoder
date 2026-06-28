@@ -43,8 +43,8 @@ Oscar→Bob build loop.
   home is a **daemon-resident / standing capability** (the same shape as the existing idle Oz repair tool),
   not the `directive-n.json` build handshake.
 - **Reuses the existing repair owner.** Deb's fixes land through the **existing ADR-0016 repair path and
-  the one commit spine** (ADR-0023) — gate-enforced against Deb's active scope, out-of-scope held back and
-  surfaced. No second commit lane, no second orchestration lane.
+  the one commit spine** (ADR-0023) — gate-enforced against Deb's active scope, with out-of-scope paths
+  committed and flagged for visibility. No second commit lane, no second orchestration lane.
 - **Not a run rescue.** A formally failed run still fails (ADR-0016). This dialogue repairs machinery so the
   founder/Oscar can proceed cleanly; it never resurrects a failed run's critical path.
 - **Does not replace Oscar's verify gate.** Oscar's per-atom verify judgment over Bob's product work is

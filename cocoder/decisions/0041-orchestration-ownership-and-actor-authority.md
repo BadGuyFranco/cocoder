@@ -13,7 +13,7 @@ unchanged.
 **Seam:** who owns the orchestration spine, and what each actor (Oz, the runner, Oscar, Bob, Deb) may
 *decide / write / commit / close* and *when* — and where agentic side-channels race the deterministic spine.
 **Builds on:** [0016](./0016-deb-scoped-repair-fallback.md) (Deb advises, the runner delivers) ·
-[0023](./0023-workspace-commit-spine.md) (one commit spine; scope is advisory; `commitOnlyScope` withholds) ·
+[0023](./0023-workspace-commit-spine.md) (one commit spine; scope is advisory; out-of-lane paths commit and are flagged) ·
 [0036](./0036-oscar-deb-repair-dialogue.md) (the Oscar↔Deb repair dialogue) ·
 [0040](./0040-oz-write-side-autonomy.md) (the `oz-action` self-direct write lane).
 **Relates to:** F21 / ticket 0018 (gate-bypass guard deliberately *not* enforced — agent self-commits are
@@ -41,7 +41,7 @@ deliberate prior decisions and need founder sign-off (deferred).
 
 | Actor | May DECIDE | May WRITE | May COMMIT | May CLOSE / ARCHIVE | WHEN (phase) |
 |---|---|---|---|---|---|
-| **Oz** (daemon, `packages/daemon/src/launcher.ts`) | run lifecycle (launch/stop/teardown/nudge); reversible governance edits (ADR-0040) | `oz-action` scope: `cocoder/tickets/**`, `priorities/order.json`, narrow docs, non-Objective priority edits (ADR-0040 §1) | `oz-action` commit via the **one spine** with `commitOnlyScope:true` — out-of-lane **held back** (`launcher.ts:1022`); also `oz-repair` | open/close tickets (reversible lane, ADR-0040 §1) | **idle only** — blocked while a run for the workspace is in flight |
+| **Oz** (daemon, `packages/daemon/src/launcher.ts`) | run lifecycle (launch/stop/teardown/nudge); reversible governance edits (ADR-0040) | `oz-action` scope: `cocoder/tickets/**`, `priorities/order.json`, narrow docs, non-Objective priority edits (ADR-0040 §1) | `oz-action` commit via the **one spine** — the whole changed set lands and out-of-lane paths are flagged; also `oz-repair` | open/close tickets (reversible lane, ADR-0040 §1) | **idle only** — blocked while a run for the workspace is in flight |
 | **runner** (`runRun`) | the entire deterministic sequence; the verify **gate decision** consumes Oscar's verdict; loop backstops (max rejects / max atoms) | run records, events, `directive-N`/`verify-N` channels, portable run history | per-atom commit on verify-pass, message `${priorityId}: atom ${n} via CoCoder ${runRef}` (`prompts.ts:627-631`); oscar-support + run-history commits | **returns** `ticketCloseDecision` (`close`/`ask`/`none`); does **not** itself close | every phase — it *is* the spine |
 | **Oscar** (orchestrator) | directive content; per-atom **verify verdict** (`pass`/`fail`); wrap disposition incl. ticket close intent | `directive-N.json`, `verify-N.json`, wrap brief; in-scope Surface-A edits | only **through** the runner's gate (`runCommitGate`) — never its own `git commit` | proposes close via wrap; the **daemon** executes it post-run | during the run; bounded post-wrap support |
 | **Bob** (builder) | implementation choices inside the delegated atom | working tree during the atom | only **through** the runner's gate; failed atoms quarantined/reverted | nothing | only during a delegated atom |
@@ -64,12 +64,11 @@ therefore keys on **owning run still active**, not on **daemon process live**.
 
 **Detect-don't-prevent (the root posture).** The commit gate
 (`packages/core/src/commit-gate/gate.ts`) computes `selfCommitted = headNow !== headBefore`
-(`gate.ts:60-61`) and, when true, records an `agent-self-commit` event — but **does not throw**
-(`gate.ts:62-63`). For ordinary callers the committable set is `commitOnlyScope ? inScope : changed`
-(`gate.ts:75-76`): the **default is commit-all**, out-of-scope paths are *committed-and-flagged*
-(`out-of-scope-committed`, `gate.ts:96`). Only callers that opt into `commitOnlyScope:true`
-(`oz-action`, and post-0053 the support-commit lane) **withhold** out-of-lane paths
-(`out-of-scope-held-back`). This is the deliberate F21 / ticket-0018 choice — and the enabler of D1–D3.
+(`gate.ts:60-61`) and, when true, records an `agent-self-commit` event — but **does not throw**.
+For ordinary callers the committable set is the whole changed set: out-of-scope paths are
+*committed-and-flagged* (`out-of-scope-committed`). `oz-action`, support-commit, authoring Plays, and
+repair now share that same rule. This carries forward the deliberate F21 / ticket-0018 choice to detect
+side-channel commits instead of preventing them, while ADR-0023 later removed the path-scope parking branch.
 
 ## 2. The coordination gaps (D1–D5), with run evidence
 

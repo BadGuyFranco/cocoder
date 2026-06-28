@@ -8,6 +8,10 @@
 > the **opt-in isolation lane** only; in the default (direct) mode Deb edits the active checkout and the
 > commit lands in place. It still "does not rescue the run" — a faulted run still fails; the repair is a
 > distinct, reviewable commit.
+>
+> **Reconciliation note ([ADR-0023](./0023-workspace-commit-spine.md) Amendment 1, 2026-06-15).** The
+> path-scope parking sentence in §3 is superseded: Deb repair commits the whole changed set through the
+> spine and flags out-of-lane paths for visibility; it does not park them in the working tree.
 
 **Status:** Accepted (founder + Claude, 2026-06-02) — **amended by [0040](./0040-oz-write-side-autonomy.md)** (2026-06-23): Deb's reactive, fault-triggered repair authority below is unchanged; ADR-0040 adds a *separate*, narrower, **proactive** self-direct write lane owned by Oz (`oz-action`, for reversible edits to existing governance) on the same ADR-0023 spine — not a folding of repair into Oz.
 **Seam:** the debugger tier — Deb's authority, visibility, and write scope
@@ -55,7 +59,7 @@ option where she has no in-tree authority) or `mode:"repair"`: she edits files *
 CoCoder authority** in the run's worktree and reports diagnosis / why-CoCoder-owned / files-changed /
 verification / remaining risk. The runner then runs the **existing commit-gate against Deb's active
 scope** (ADR-0007): her in-scope edits land as a distinct `deb-repair` commit; anything outside
-(especially target-repo product code) is **held back and surfaced**, never silently committed or hidden.
+(especially target-repo product code) is **committed and surfaced as out-of-lane**, never silently hidden.
 A repair **does not rescue the run** — a faulted run still fails; the repair commit is surfaced for the
 founder to review/land.
 

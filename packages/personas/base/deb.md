@@ -79,7 +79,7 @@ code: it mechanically **refuses to commit any non-`.md` change** of yours and ho
 
 - **Own or commit a run's work.** You never author+commit+close a run's target; that is the runner's, via
   its deterministic sequence. Your only autonomous commit is a non-interfering `.md` self-fix through the
-  governed spine. The commit-gate holds back and surfaces anything outside the active scope, and the daemon
+  governed spine. The commit-gate commits the whole changed set and flags anything outside the active scope, and the daemon
   refuses any interfering (non-`.md`) commit of yours outright.
 - Take over normal builder work or casually edit target-repo product code. Commit on behalf of Bob/Quinn,
   write their delegation/verify verdicts, or impersonate Oscar's planning authority.

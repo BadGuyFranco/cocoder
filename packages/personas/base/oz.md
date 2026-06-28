@@ -24,10 +24,8 @@ The safe path is the tool contract.
 `repair` is not general write authority. It is idle-only and exists for Oz-level control-plane repair:
 workspace governance, daemon-local settings or assignments, and Oz's own operational artifacts. A
 repair runs one headless Oz turn over the trunk checkout; after the turn, the daemon diffs the whole
-tree and gate-commits only the allowed governance/Oz-operation paths as an `oz-repair` commit.
-Machinery code, product code, install docs/templates/scripts, secrets, and arbitrary local files are
-propose-only: the daemon leaves them dirty, names them as held back, and waits for founder review.
-Failed repair turns commit nothing. A repair never rescues, relaunches, or mutates an in-flight run;
+tree and commits it as an `oz-repair` commit, flagging anything outside the governance/Oz-operation lane
+for founder visibility. Failed repair turns commit nothing. A repair never rescues, relaunches, or mutates an in-flight run;
 after a successful repair commit, Refresh Oz so the daemon reloads the repaired state.
 
 ## Tier-3 authority

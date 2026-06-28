@@ -44,10 +44,9 @@ through the one spine in a single dispatch.**
    persona, playId, invocation})` (`packages/daemon/src/launcher.ts`) generalizes `requestOzRepair`: both
    share one `runHeadlessThenGateCommit` core — guard in-flight → resolve the (persona, Play) CLI/model
    assignment → run one headless turn → gate-commit the Play's declared write-scope through the **same**
-   spine (`gateCommitRepair` → `commitScoped`). No second commit path exists. Authoring opts into
-   `commitOnlyScope: true` so out-of-scope edits are **held back** (surfaced as `outOfLanePaths`, never
-   committed, never dropped); Oz repair keeps its default broad-access commit-everything-and-flag behavior
-   unchanged. Authoring commits under the shared `cocoder-governance` author as `governance: <playId>`.
+   spine (`gateCommitRepair` → `commitScoped`). No second commit path exists. Authoring commits the whole
+   changed set and surfaces out-of-scope edits as `outOfLanePaths`; the same commit-and-flag rule is used
+   by Oz repair. Authoring commits under the shared `cocoder-governance` author as `governance: <playId>`.
 
 3. **One tool action (resolves #12).** Oz invokes authoring as a single `OZ_TOOL`
    `author {"play":"create-priority","id":...,"title":...,"objective":...}` action
@@ -72,8 +71,8 @@ through the one spine in a single dispatch.**
 - The dashboard `create-priority`/`reorder` routes are unchanged — they keep calling `commitGovernance`,
   which is the same underlying `commitFiles` spine.
 
-**Verified:** `packages/daemon/tests/authoring-play.test.ts` (create commits exactly the one file through
-the spine; in-flight refuses; out-of-scope held back; nonzero turn commits nothing; agent authoring can
+**Verified:** `packages/daemon/tests/authoring-play.test.ts` (create commits through
+the spine; in-flight refuses; out-of-scope paths are committed and flagged; nonzero turn commits nothing; agent authoring can
 launch immediately after its governance commit; human hand-edits are snapshotted at launch), the `author`
 tool tests in `oz-chat.test.ts` / `oz-agent-chat.test.ts` (one-tool dispatch renders the receipt; missing/
 non-enum `play` rejected without executing), and `packages/core/tests/priority-authoring-plays.test.ts`
