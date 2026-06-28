@@ -2,7 +2,7 @@
 id: 0083
 title: Retention live-enablement has no founder-facing affordance — founder handed a settings.json edit + node commands
 type: task
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-28
@@ -51,3 +51,9 @@ Interim path until this is built: route enablement through the Oscar–Deb machi
 (ADR-0036). Deb applies the settings change via the governed commit spine and surfaces the observed pass,
 leaving the founder at most one **sanctioned Refresh click** — a legitimate governed affordance, not a
 terminal/JSON action.
+
+## Resolution
+
+Resolved by run run_283 (d3ffacfdbddeb7ed14e5e712c78517ef39120637) on 2026-06-28.
+
+Governed founder-facing retention enablement shipped: Oz-chat `retention enable [N]` / `retention disable` persists via the daemon settings spine and audit-wraps intent (atom 1); enabling drives the real runRetentionGcOnce on-demand and surfaces footprint delta + pruned + protected-skipped runs + the retention-gc audit entry, one footprint owner in local-footprint.ts (atom 2); the base wrap-up Play now forbids founder-run terminal/node commands and machine-local hand-edits for any settings/lifecycle change, routing them through a governed affordance while keeping the F18 proof-harness allowance (atom 3). No settings.json hand-edit or node commands handed to the founder.
