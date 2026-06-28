@@ -55,12 +55,14 @@ import { createHeadlessBuilderDriver, createPaneBuilderDriver, type BuilderDrive
 import { executeAgentStep, type AgentStepActiveAtom, type AgentStepResume } from './agent-step.js'
 import {
   FounderHeldError,
+  isAwaitingFounderResolution,
   founderStopSignalPath,
   isFounderHeldError,
   readFounderStopSignal,
   readResumeState,
   resumeStatePath,
   writeResumeState,
+  type FounderResolutionWait,
   type PreDispatchResumeState,
   type ResumeState,
 } from './founder-stop.js'
@@ -227,6 +229,11 @@ function readReadyDirective(path: string): Directive | undefined {
 
 function resumeStateAtomNumber(park: ResumeState): number {
   return park.park === 'pre-dispatch' ? park.atomNumber : park.activeAtomNumber
+}
+
+function directiveIndexFromPath(path: string): number | null {
+  const match = /(?:^|[/\\])directive-(\d+)\.json$/.exec(path)
+  return match ? Number(match[1]) : null
 }
 
 export class PreflightError extends Error {
@@ -1080,9 +1087,13 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   let terminalStatus: RunStatus = 'completed'
   let ticketCloseDecision: TicketCloseDecision = 'none'
   let n = resumeState === null ? 0 : resumeStateAtomNumber(resumeState)
-  let directiveIndex = n
-  type FounderContinueWait = { readonly question: string; readonly askedAtDirectivePath: string; readonly nextDirectivePath: string }
-  let pendingFounderContinue: FounderContinueWait | null = null
+  const resumedFounderResolution = resumeState?.park === 'pre-dispatch' && isAwaitingFounderResolution(resumeState.founderResolution) ? resumeState.founderResolution : null
+  const resumedDirectiveIndex = resumedFounderResolution === null ? null : directiveIndexFromPath(resumedFounderResolution.nextDirectivePath)
+  if (resumedFounderResolution !== null && resumedDirectiveIndex === null) {
+    throw new Error(`Cannot resume run ${run.id}; founderResolution.nextDirectivePath is not a numbered directive path`)
+  }
+  let directiveIndex = resumedDirectiveIndex ?? n
+  let pendingFounderContinue: FounderResolutionWait | null = null
   let pendingResumeState: ResumeState | null = resumeState
   let consecutiveRejects = 0
   debWatcher = startDebWatcher()
@@ -1332,13 +1343,15 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     await refreshStatus('awaiting-directive', n, null, pendingResumeState === null ? 'awaiting first directive' : `resuming atom ${n}`)
 
     for (;;) {
-    let directivePath = join(runDir, `directive-${directiveIndex}.json`)
-    const founderContinueWait: FounderContinueWait | null = pendingFounderContinue
+    const resumeFounderResolution = pendingResumeState?.park === 'pre-dispatch' && isAwaitingFounderResolution(pendingResumeState.founderResolution) ? pendingResumeState.founderResolution : null
+    let directivePath = resumeFounderResolution === null ? join(runDir, `directive-${directiveIndex}.json`) : resumeFounderResolution.nextDirectivePath
+    const founderContinueWait: FounderResolutionWait | null = pendingFounderContinue
+    const awaitingFounderResolution = isAwaitingFounderResolution(founderContinueWait)
     await refreshStatus(
-      founderContinueWait ? 'awaiting-founder' : 'awaiting-directive',
+      awaitingFounderResolution ? 'awaiting-founder' : 'awaiting-directive',
       n,
       null,
-      founderContinueWait ? `awaiting founder decision before directive ${directiveIndex}: ${founderContinueWait.question}` : `awaiting directive ${directiveIndex}`,
+      awaitingFounderResolution ? `awaiting founder decision before directive ${directiveIndex}: ${founderContinueWait.question}` : `awaiting directive ${directiveIndex}`,
     )
     let directive: Directive
     let stepResume: AgentStepResume | undefined
@@ -1358,19 +1371,16 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
         stepResume = verifyResume
         store.recordEvent({ runId: run.id, type: 'verify-resumed', data: { atom: n, park: pendingResumeState.park, verifyPath: verifyResume.verifyPath, directivePath } })
       } else {
-        const founderContinueOptions: { readonly phase: 'awaiting-founder'; readonly waitCondition: string } | undefined = founderContinueWait === null
-          ? undefined
-          : {
-              phase: 'awaiting-founder',
-              waitCondition: `awaiting founder decision before directive ${directiveIndex}: ${(founderContinueWait as FounderContinueWait).question}`,
-            }
+        if (awaitingFounderResolution) {
+          throw new FounderHeldError({ park: 'pre-dispatch', atomNumber: n, founderResolution: founderContinueWait })
+        }
         directive = await awaitOscarWithNudgeWatchdog(
           'directive',
           n,
-          founderContinueOptions ? `awaiting founder decision before directive ${directiveIndex}` : `awaiting directive ${directiveIndex}`,
+          `awaiting directive ${directiveIndex}`,
           () => awaitDirectiveOrFounderHold(directivePath, n),
-          founderContinueOptions !== undefined,
-          founderContinueOptions,
+          false,
+          undefined,
         )
       }
     } catch (err) {
@@ -1386,7 +1396,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
     if (directive.kind === 'ask-founder-continue') {
       const nextDirectivePath = join(runDir, `directive-${directiveIndex}.json`)
-      pendingFounderContinue = { question: directive.question, askedAtDirectivePath: consumedDirectivePath, nextDirectivePath }
+      pendingFounderContinue = { kind: 'ask-founder-continue', question: directive.question, askedAtDirectivePath: consumedDirectivePath, nextDirectivePath }
       store.recordEvent({
         runId: run.id,
         type: 'founder-decision-requested',

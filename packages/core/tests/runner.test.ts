@@ -33,6 +33,7 @@ import {
   deriveWrapupRunStatus,
   openRunStore,
   parseTriage,
+  parseDirective,
   readTickets,
   renderDebStatus,
   runRun,
@@ -882,47 +883,76 @@ describe('runRun (multi-atom loop)', () => {
     expect(types).toEqual(expect.arrayContaining(['run-start', 'spawn', 'delegation', 'builder-done', 'verify-pass', 'commit', 'wrapup', 'run-end']))
   })
 
-  test('surfaces a mid-run founder decision without wrapping, then accepts the next delegate in context', async () => {
+  test('surfaces a mid-run founder decision as held, then accepts the next delegate on resume', async () => {
     const store = openRunStore(':memory:')
+    const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-mid-run-founder-resume-'))
+    const runDir = join(runsRoot, 'cocoder', 'run_1')
     const statusWrites: DebStatus[] = []
     const sends: string[] = []
-    const result = await runRun(
+    const git = scriptedGit([['packages/prep.ts'], ['packages/final.ts']])
+    const held = await runRun(
       baseDeps({
         store,
         sessionHost: fakeSessionHost({ async sendInput(_ref, text) { sends.push(text) } }),
-        git: scriptedGit([['packages/prep.ts'], ['packages/final.ts']]),
+        git,
         io: fakeIO({
           directives: [
             delegate('prepare the compatibility shim'),
             askFounderContinue('Should the compatibility shim stay enabled by default?'),
-            delegate('finish the implementation with the founder answer: keep it enabled by default'),
-            wrapup('done after remaining implementation'),
           ],
           statusWrites,
         }),
       }),
-      { ...input, deb },
+      { ...input, deb, runsRoot },
     )
 
-    expect(result.status).toBe('completed')
-    expect(result.atoms).toBe(2)
-    expect(result.committedShas).toHaveLength(2)
-    expect(result.committedFiles).toEqual(['packages/prep.ts', 'packages/final.ts'])
-    expect(store.listCommitLinks(result.runId).filter((link) => link.workItemId !== null).map((link) => link.files)).toEqual([
+    expect(held.status).toBe('held')
+    expect(held.atoms).toBe(1)
+    expect(held.committedFiles).toEqual(['packages/prep.ts'])
+    expect(store.getRun(held.runId)?.status).toBe('held')
+    await expect(readResumeState(runDir)).resolves.toMatchObject({
+      park: 'pre-dispatch',
+      atomNumber: 1,
+      founderResolution: {
+        kind: 'ask-founder-continue',
+        nextDirectivePath: join(runDir, 'directive-2.json'),
+      },
+    })
+
+    await writeFile(join(runDir, 'directive-2.json'), `${JSON.stringify(delegate('finish the implementation with the founder answer: keep it enabled by default'))}\n`, 'utf8')
+    const resumeIo: RunnerIO = {
+      ...fakeIO({ directives: [], verdicts: [{ verdict: 'pass', reason: 'founder answer applied' }] }),
+      async awaitDirective(path) {
+        if (path.endsWith('directive-2.json')) return parseDirective(await readFile(path, 'utf8'))
+        if (path.endsWith('directive-3.json')) return wrapup('done after remaining implementation')
+        throw new Error(`unexpected directive path ${path}`)
+      },
+    }
+
+    const resumed = await runRun(baseDeps({ store, git, io: resumeIo }), { ...input, deb, runsRoot, resumeRunId: held.runId })
+
+    expect(resumed.status).toBe('completed')
+    expect(resumed.atoms).toBe(2)
+    expect(resumed.committedShas).toHaveLength(2)
+    expect(resumed.committedFiles).toEqual(['packages/final.ts'])
+    expect(store.listCommitLinks(resumed.runId).filter((link) => link.workItemId !== null).map((link) => link.files)).toEqual([
       ['packages/prep.ts'],
       ['packages/final.ts'],
     ])
 
-    const events = store.listEvents(result.runId)
+    const events = store.listEvents(resumed.runId)
     const founderDecisionIndex = events.findIndex((event) => event.type === 'founder-decision-requested')
+    const heldIndex = events.findIndex((event) => event.type === 'run-held')
+    const resumedIndex = events.findIndex((event) => event.type === 'run-resumed')
     const secondDelegationIndex = events.findIndex((event) => event.type === 'delegation' && (event.data as { task?: unknown }).task === 'finish the implementation with the founder answer: keep it enabled by default')
     const wrapupIndex = events.findIndex((event) => event.type === 'wrapup')
-    const runEndIndex = events.findIndex((event) => event.type === 'run-end')
+    const completedRunEndIndex = events.findIndex((event) => event.type === 'run-end' && (event.data as { status?: unknown }).status === 'completed')
     expect(founderDecisionIndex).toBeGreaterThan(-1)
-    expect(secondDelegationIndex).toBeGreaterThan(founderDecisionIndex)
+    expect(heldIndex).toBeGreaterThan(founderDecisionIndex)
+    expect(resumedIndex).toBeGreaterThan(heldIndex)
+    expect(secondDelegationIndex).toBeGreaterThan(resumedIndex)
     expect(wrapupIndex).toBeGreaterThan(secondDelegationIndex)
-    expect(runEndIndex).toBeGreaterThan(wrapupIndex)
-    expect(events.slice(0, secondDelegationIndex).some((event) => event.type === 'wrapup' || event.type === 'run-end')).toBe(false)
+    expect(completedRunEndIndex).toBeGreaterThan(wrapupIndex)
     expect(events[founderDecisionIndex]?.data).toMatchObject({
       atom: 1,
       directivePath: expect.stringContaining('directive-1.json'),
@@ -930,7 +960,7 @@ describe('runRun (multi-atom loop)', () => {
       question: 'Should the compatibility shim stay enabled by default?',
       mode: 'ask-founder-continue',
     })
-    expect(store.getRun(result.runId)?.status).toBe('completed')
+    expect(store.getRun(resumed.runId)?.status).toBe('completed')
     expect(statusWrites.some((status) => status.oscar === 'blocked' && status.waitCondition.includes('awaiting founder decision before directive 2'))).toBe(true)
     expect(sends.some((text) => text.includes('FOUNDER DECISION NEEDED') && text.includes('directive-2.json'))).toBe(true)
   })
@@ -1592,6 +1622,143 @@ describe('runRun (multi-atom loop)', () => {
     expect(store.getRun(result.runId)?.status).toBe('completed')
     expect(store.listEvents(result.runId).some((e) => e.type === 'run-held')).toBe(false)
     expect(existsSync(founderStopSignalPath(runDir))).toBe(false)
+  })
+
+  test('ask-founder-continue parks instead of timing out the next directive wait', async () => {
+    const store = openRunStore(':memory:')
+    const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-founder-decision-park-'))
+    const runDir = join(runsRoot, 'cocoder', 'run_1')
+    const awaitedPaths: string[] = []
+    const io: RunnerIO = {
+      ...fakeIO({ directives: [] }),
+      async awaitDirective(path) {
+        awaitedPaths.push(path)
+        if (path.endsWith('directive-0.json')) return askFounderContinue('Which implementation path should continue?')
+        throw new Error(`no valid directive at ${path} within 1ms`)
+      },
+    }
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        io,
+        timeouts: { orchestrationMs: 1, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 },
+      }),
+      { ...input, runsRoot },
+    )
+
+    expect(result.status).toBe('held')
+    expect(result.atoms).toBe(0)
+    expect(awaitedPaths).toEqual([join(runDir, 'directive-0.json')])
+    expect(store.getRun(result.runId)?.status).toBe('held')
+    const events = store.listEvents(result.runId)
+    expect(events.find((e) => e.type === 'founder-decision-requested')?.data).toMatchObject({
+      atom: 0,
+      directivePath: join(runDir, 'directive-0.json'),
+      nextDirectivePath: join(runDir, 'directive-1.json'),
+      mode: 'ask-founder-continue',
+    })
+    expect(events.some((e) => e.type === 'directive-timeout')).toBe(false)
+    expect(events.find((e) => e.type === 'run-held')?.data).toEqual({ park: 'pre-dispatch', atom: 0 })
+    await expect(readResumeState(runDir)).resolves.toEqual({
+      park: 'pre-dispatch',
+      atomNumber: 0,
+      founderResolution: {
+        kind: 'ask-founder-continue',
+        question: 'Which implementation path should continue?',
+        askedAtDirectivePath: join(runDir, 'directive-0.json'),
+        nextDirectivePath: join(runDir, 'directive-1.json'),
+      },
+    })
+  })
+
+  test('resuming a parked founder decision consumes the founder answer directive as the live continuation', async () => {
+    const store = openRunStore(':memory:')
+    const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-founder-decision-resume-'))
+    const runDir = join(runsRoot, 'cocoder', 'run_1')
+    const git = scriptedGit([['packages/founder-answer.ts']])
+    const firstIo: RunnerIO = {
+      ...fakeIO({ directives: [] }),
+      async awaitDirective(path) {
+        if (path.endsWith('directive-0.json')) return askFounderContinue('Should we continue with the smaller patch?')
+        throw new Error(`founder answer should not be polled before park: ${path}`)
+      },
+    }
+
+    const held = await runRun(
+      baseDeps({
+        store,
+        git,
+        io: firstIo,
+        timeouts: { orchestrationMs: 1, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 },
+      }),
+      { ...input, runsRoot },
+    )
+    expect(held.status).toBe('held')
+
+    await writeFile(join(runDir, 'directive-1.json'), `${JSON.stringify(delegate('founder chose the smaller patch'))}\n`, 'utf8')
+    const resumedAwaitedPaths: string[] = []
+    const resumeIo: RunnerIO = {
+      ...fakeIO({ directives: [], verdicts: [{ verdict: 'pass', reason: 'founder answer consumed' }] }),
+      async awaitDirective(path) {
+        resumedAwaitedPaths.push(path)
+        if (path.endsWith('directive-1.json')) return parseDirective(await readFile(path, 'utf8'))
+        if (path.endsWith('directive-2.json')) return wrapup('done after founder answer')
+        throw new Error(`unexpected directive path ${path}`)
+      },
+    }
+
+    const resumed = await runRun(baseDeps({ store, git, io: resumeIo }), { ...input, runsRoot, resumeRunId: held.runId })
+
+    expect(resumed.status).toBe('completed')
+    expect(resumed.atoms).toBe(1)
+    expect(resumed.committedFiles).toContain('packages/founder-answer.ts')
+    expect(resumedAwaitedPaths).toEqual([join(runDir, 'directive-1.json'), join(runDir, 'directive-2.json')])
+    expect(store.getRun(held.runId)?.status).toBe('completed')
+    expect(await readResumeState(runDir)).toBeNull()
+    const events = store.listEvents(held.runId)
+    expect(events.find((e) => e.type === 'run-resumed')?.data).toEqual({ park: 'pre-dispatch', atom: 0 })
+    expect(events.filter((e) => e.type === 'builder-dispatch').map((e) => e.data)).toEqual([{ ref: 'surface:2', atom: 0 }])
+    expect(store.listWorkItems(held.runId).map((w) => w.status)).toEqual(['done'])
+  })
+
+  test('late directive written into a failed run is rejected by resume status enforcement', async () => {
+    const store = openRunStore(':memory:')
+    const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-late-failed-directive-'))
+    const runDir = join(runsRoot, 'cocoder', 'run_1')
+    const failingIo: RunnerIO = {
+      ...fakeIO({ directives: [] }),
+      async awaitDirective(path) {
+        throw new Error(`no valid directive at ${path} within 1ms`)
+      },
+    }
+
+    await expect(
+      runRun(
+        baseDeps({
+          store,
+          io: failingIo,
+          timeouts: { orchestrationMs: 1, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 },
+        }),
+        { ...input, runsRoot },
+      ),
+    ).rejects.toThrow(/no valid directive/)
+
+    const failedRun = store.listRuns()[0]!
+    expect(store.getRun(failedRun.id)?.status).toBe('failed')
+    await mkdir(runDir, { recursive: true })
+    await writeFile(join(runDir, 'directive-0.json'), `${JSON.stringify(delegate('late answer must not revive the run'))}\n`, 'utf8')
+
+    await expect(
+      runRun(
+        baseDeps({
+          store,
+          io: fakeIO({ directives: [delegate('should not be consumed')] }),
+        }),
+        { ...input, runsRoot, resumeRunId: failedRun.id },
+      ),
+    ).rejects.toThrow(`Cannot resume run ${failedRun.id} from status failed; expected held`)
+    expect(store.listEvents(failedRun.id).filter((e) => e.type === 'builder-dispatch')).toHaveLength(0)
   })
 
   test('abort while awaiting directive ends stopped without fault or triage', async () => {
@@ -3448,26 +3615,23 @@ describe('runRun (multi-atom loop)', () => {
     const timeouts = { orchestrationMs: 200, buildMs: 200, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 1000 }
 
     const founderStore = openRunStore(':memory:')
+    const founderRunsRoot = await mkdtemp(join(tmpdir(), 'cocoder-founder-nudge-held-'))
     const founderPaneInputs: string[] = []
-    let parkedReads = 0
-    const founderHarness = gatedStallHarness({
-      directives: [askFounderContinue('Should we continue?'), delegate('continue with founder answer'), wrapup('done')],
-      parkDirectiveIndex: 1,
-      watcherActed: () => parkedReads >= 3,
-      onParkedRead: ({ directiveIndex, reads }) => {
-        if (directiveIndex === 1) parkedReads = reads
-      },
-      sendInput: async (_ref, text) => {
-        founderPaneInputs.push(text)
-      },
-    })
     const founderResult = await runRun(
-      baseDeps({ store: founderStore, io: founderHarness.io, sessionHost: founderHarness.sessionHost, timeouts }),
-      { ...input, deb },
+      baseDeps({
+        store: founderStore,
+        io: fakeIO({ directives: [askFounderContinue('Should we continue?')] }),
+        sessionHost: fakeSessionHost({
+          async sendInput(_ref, text) {
+            founderPaneInputs.push(text)
+          },
+        }),
+        timeouts,
+      }),
+      { ...input, deb, runsRoot: founderRunsRoot },
     )
 
-    expect(founderResult.status).toBe('completed')
-    expect(parkedReads).toBeGreaterThanOrEqual(3)
+    expect(founderResult.status).toBe('held')
     expect(founderStore.listEvents(founderResult.runId).some((event) => event.type === 'founder-decision-requested')).toBe(true)
     const founderNudgeTexts = founderStore.listEvents(founderResult.runId)
       .filter((event) => event.type === 'oscar-nudge')

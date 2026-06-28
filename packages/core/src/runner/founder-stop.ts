@@ -21,11 +21,19 @@ export type JsonValue = JsonPrimitive | { readonly [key: string]: JsonValue } | 
 export type JsonRecord = { readonly [key: string]: JsonValue }
 
 export type ResumeParkMarker = 'pre-dispatch' | 'during-exec' | 'pre-verdict'
+export type FounderResolutionWait =
+  | {
+      readonly kind: 'ask-founder-continue'
+      readonly question: string
+      readonly askedAtDirectivePath: string
+      readonly nextDirectivePath: string
+    }
 
 export interface PreDispatchResumeState {
   readonly park: 'pre-dispatch'
   readonly atomNumber: number
   readonly directive?: Directive
+  readonly founderResolution?: FounderResolutionWait
 }
 
 export interface DuringExecResumeState {
@@ -52,6 +60,10 @@ export class FounderHeldError extends Error {
 
 export function isFounderHeldError(error: unknown): error is FounderHeldError {
   return error instanceof FounderHeldError
+}
+
+export function isAwaitingFounderResolution(wait: FounderResolutionWait | null | undefined): wait is FounderResolutionWait {
+  return wait?.kind === 'ask-founder-continue'
 }
 
 export function founderStopSignalPath(runDir: string): string {
@@ -146,6 +158,26 @@ function parseResumeDirective(value: unknown): Directive {
   }
 }
 
+function requireString(value: unknown, field: string): string {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new MalformedFounderStopArtifactError(`${field} must be a non-empty string`)
+  }
+  return value
+}
+
+function parseFounderResolutionWait(value: unknown): FounderResolutionWait {
+  if (!isRecord(value)) throw new MalformedFounderStopArtifactError('resume-state founderResolution must be an object')
+  if (value.kind === 'ask-founder-continue') {
+    return {
+      kind: 'ask-founder-continue',
+      question: requireString(value.question, 'resume-state founderResolution.question'),
+      askedAtDirectivePath: requireString(value.askedAtDirectivePath, 'resume-state founderResolution.askedAtDirectivePath'),
+      nextDirectivePath: requireString(value.nextDirectivePath, 'resume-state founderResolution.nextDirectivePath'),
+    }
+  }
+  throw new MalformedFounderStopArtifactError('resume-state founderResolution.kind must be "ask-founder-continue"')
+}
+
 function parseResumeState(value: unknown): ResumeState {
   if (!isRecord(value)) throw new MalformedFounderStopArtifactError('resume-state must be an object')
   if (value.park === 'pre-dispatch') {
@@ -153,7 +185,8 @@ function parseResumeState(value: unknown): ResumeState {
       park: 'pre-dispatch',
       atomNumber: requireAtomNumber(value.atomNumber, 'resume-state atomNumber'),
     }
-    return value.directive === undefined ? state : { ...state, directive: parseResumeDirective(value.directive) }
+    const withDirective = value.directive === undefined ? state : { ...state, directive: parseResumeDirective(value.directive) }
+    return value.founderResolution === undefined ? withDirective : { ...withDirective, founderResolution: parseFounderResolutionWait(value.founderResolution) }
   }
   if (value.park === 'during-exec') {
     return {

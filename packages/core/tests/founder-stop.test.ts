@@ -49,6 +49,16 @@ describe('founder stop contract', () => {
       directive: { kind: 'delegate', task: 'implement atom 0' },
     },
     {
+      park: 'pre-dispatch',
+      atomNumber: 1,
+      founderResolution: {
+        kind: 'ask-founder-continue',
+        question: 'Which compatibility path should continue?',
+        askedAtDirectivePath: '/runs/cocoder/run_1/directive-0.json',
+        nextDirectivePath: '/runs/cocoder/run_1/directive-1.json',
+      },
+    },
+    {
       park: 'during-exec',
       activeAtomNumber: 1,
       directive: {
@@ -86,5 +96,15 @@ describe('founder stop contract', () => {
     expect(exportedNames).not.toContain('autoStop')
     expect(exportedNames.filter((name) => /self.*stop|stop.*self|auto.*stop|stop.*auto/i.test(name))).toEqual([])
     expect(exportedNames.filter((name) => /^(write|create|record).*founder.*stop/i.test(name))).toEqual([])
+  })
+
+  test('founder-resolution waits use the shared predicate owner', () => {
+    expect(founderStop.isAwaitingFounderResolution(null)).toBe(false)
+    expect(founderStop.isAwaitingFounderResolution({
+      kind: 'ask-founder-continue',
+      question: 'Continue?',
+      askedAtDirectivePath: '/runs/cocoder/run_1/directive-0.json',
+      nextDirectivePath: '/runs/cocoder/run_1/directive-1.json',
+    })).toBe(true)
   })
 })
