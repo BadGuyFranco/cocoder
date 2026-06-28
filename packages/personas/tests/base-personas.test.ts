@@ -117,6 +117,19 @@ describe('basePersonasDir', () => {
     expect(normalized).toContain('you never direct Bob, and a repair is never a run rescue')
   })
 
+  test('Deb does not take over a target owned by an active run', () => {
+    const text = readFileSync(join(basePersonasDir(), 'deb.md'), 'utf8')
+    const normalized = singleLine(text)
+
+    expect(text).toContain('Active owner run takes precedence')
+    expect(normalized).toContain('If a runner-managed run is active for the same ticket or priority')
+    expect(normalized).toContain("Deb must not edit, commit, close, or otherwise complete that run's target work")
+    expect(normalized).toContain('This overrides dogfood direct-repair authority')
+    expect(normalized).toContain('route it to Oscar through `deb-nudge.json`; do not land a parallel repair')
+    expect(normalized).toContain('only when no active run owns the target')
+    expect(normalized).toContain('outside the run target')
+  })
+
   test('Deb routes tracked ticket closure through the governed close spine', () => {
     const text = readFileSync(join(basePersonasDir(), 'deb.md'), 'utf8')
     const normalized = singleLine(text)
