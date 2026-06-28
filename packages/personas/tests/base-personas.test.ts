@@ -400,6 +400,19 @@ describe('basePlaysDir', () => {
     expect(text).toContain('Do not use "awaiting questions"')
   })
 
+  test('wrap-up routes founder-applied settings and lifecycle changes through governed actions', () => {
+    const text = readFileSync(join(basePlaysDir(), 'wrap-up.md'), 'utf8')
+    const normalized = singleLine(text)
+
+    expect(normalized).toContain('A one-command proof harness is acceptable only as runnable verification')
+    expect(normalized).toContain('if the founder must apply a settings or lifecycle change, express that as a governed founder action')
+    expect(normalized).toContain('a chat command, UI affordance, or Play backed by the daemon commit/lifecycle spine')
+    expect(normalized).toContain('never as a founder-run terminal/shell/`node` command')
+    expect(normalized).toContain('never as a hand-edit of machine-local internal config')
+    expect(normalized).not.toMatch(/\bretention\b/)
+    expect(normalized).not.toContain('settings.json')
+  })
+
   // Historical ADR-0022 proof lineage: the wrap-up Play is the SINGLE owner of the founder closeout format.
   // Pin the founder-facing section contract so no surface can silently drift a parallel shape.
   test('wrap-up Play pins the canonical founder closeout contract (single owner)', () => {

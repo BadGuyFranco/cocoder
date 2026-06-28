@@ -44,9 +44,10 @@ Tracked example/starter files ship under
 `local/settings.json` is owned and written by the Oz daemon
 ([`packages/daemon/src/settings.ts`](../packages/daemon/src/settings.ts)). The live keys are
 `pollIntervalMs`, `defaultWorkspaceId`, `ozAutoCompactRuns`, and `retention`; missing or invalid
-values fall back to defaults, with `retention` resolved through the core retention defaults. Edit
-these through the **dashboard Settings panel** (the daemon persists them); there is no
-`cocoder config` CLI command.
+values fall back to defaults, with `retention` resolved through the core retention defaults. Change
+these through governed affordances: the **dashboard Settings panel** for general settings, and Oz chat
+commands `retention enable [N]` / `retention disable` for retention. Do not hand-edit
+`local/settings.json`; there is no `cocoder config` CLI command.
 
 ### Secrets
 
