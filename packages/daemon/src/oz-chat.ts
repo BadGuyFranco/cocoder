@@ -7,6 +7,7 @@ import { tryHandleOzAgentTurn } from './oz-host.js'
 import { readTickets } from './priority-order.js'
 import { findWorkspace } from './registry.js'
 import { withPortableDisplayNumbers } from './run-display.js'
+import type { LocalFootprint } from './local-footprint.js'
 
 const ADHOC_PRIORITY_ID = 'adhoc-session'
 const HELP_HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, confirm-close <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId> [reason words...], reconcile-tickets, commit-support <runId>, founder-answer <runId> <answer>, retention enable [N] | retention disable, stop <runId>, teardown <runId>, status [runId], help.'
@@ -54,6 +55,13 @@ export interface OzChatAction {
   readonly turnLogPath?: string
   readonly handoffPath?: string
   readonly retention?: RetentionConfig
+  readonly footprintBefore?: LocalFootprint
+  readonly footprintAfter?: LocalFootprint
+  readonly prunedRunIds?: readonly string[]
+  readonly skippedProtectedRunIds?: readonly string[]
+  readonly storeRunRowsKept?: number
+  readonly dirsRemoved?: number
+  readonly retentionFailures?: ReadonlyArray<{ readonly runId: string; readonly stage: 'store' | 'dir'; readonly message: string }>
   readonly command?: string
   readonly pid?: number
   readonly dialogueId?: string
@@ -799,11 +807,44 @@ function refreshReply(out: LaunchResult): OzChatReply {
 function retentionReply(out: LaunchResult): OzChatReply {
   const retention = retentionFromBody(out.body)
   if (!isOk(out.status) || !retention) return failedReply('retention', 'Could not update retention settings', out)
+  if (!retention.enabled) {
+    return {
+      reply: 'Retention disabled.',
+      command: 'retention',
+      ok: true,
+      action: { type: 'retention', retention },
+    }
+  }
+
+  const footprintBefore = footprintFromBody(out.body.footprintBefore)
+  const footprintAfter = footprintFromBody(out.body.footprintAfter)
+  const prunedRunIds = stringArray(out.body.prunedRunIds)
+  const skippedProtectedRunIds = stringArray(out.body.skippedProtectedRunIds)
+  const storeRunRowsKept = finiteNumber(out.body.storeRunRowsKept)
+  const dirsRemoved = finiteNumber(out.body.dirsRemoved)
+  const retentionFailures = retentionFailuresFromBody(out.body.failures)
+  const footprintText = footprintBefore && footprintAfter
+    ? `local/ footprint: ${footprintBefore.localBytes} -> ${footprintAfter.localBytes} bytes (${Math.max(0, footprintBefore.localBytes - footprintAfter.localBytes)} bytes freed).`
+    : 'local/ footprint observation was unavailable.'
+  const prunedText = prunedRunIds.length > 0 ? `Pruned runs: ${prunedRunIds.join(', ')}.` : 'Pruned runs: none.'
+  const protectedText = skippedProtectedRunIds.length > 0
+    ? `Protected/in-flight runs skipped and NOT pruned: ${skippedProtectedRunIds.join(', ')}.`
+    : 'Protected/in-flight runs skipped and NOT pruned: no protected run pruned.'
   return {
-    reply: retention.enabled ? `Retention enabled, keeping the last ${retention.keepLastNPerWorkspace} runs per workspace.` : 'Retention disabled.',
+    reply: `Retention enabled, keeping the last ${retention.keepLastNPerWorkspace} runs per workspace. ${footprintText} ${prunedText} ${protectedText} retention-gc audit entry was written.`,
     command: 'retention',
     ok: true,
-    action: { type: 'retention', retention },
+    action: {
+      type: 'retention',
+      retention,
+      ...(footprintBefore ? { footprintBefore } : {}),
+      ...(footprintAfter ? { footprintAfter } : {}),
+      prunedRunIds,
+      skippedProtectedRunIds,
+      ...(storeRunRowsKept === undefined ? {} : { storeRunRowsKept }),
+      ...(dirsRemoved === undefined ? {} : { dirsRemoved }),
+      retentionFailures,
+    },
   }
 }
 
@@ -820,6 +861,52 @@ function retentionFromBody(body: Record<string, unknown>): RetentionConfig | nul
   return typeof record.enabled === 'boolean' && typeof record.keepLastNPerWorkspace === 'number'
     ? { enabled: record.enabled, keepLastNPerWorkspace: record.keepLastNPerWorkspace }
     : null
+}
+
+function footprintFromBody(value: unknown): LocalFootprint | null {
+  if (typeof value !== 'object' || value === null) return null
+  const record = value as Record<string, unknown>
+  const localBytes = finiteNumber(record.localBytes)
+  const dbBytes = finiteNumber(record.dbBytes)
+  const walBytes = finiteNumber(record.walBytes)
+  const auditBytes = finiteNumber(record.auditBytes)
+  const runDirs = runDirsFromBody(record.runDirs)
+  return localBytes === undefined || dbBytes === undefined || walBytes === undefined || auditBytes === undefined || runDirs === null
+    ? null
+    : { localBytes, dbBytes, walBytes, auditBytes, runDirs }
+}
+
+function runDirsFromBody(value: unknown): LocalFootprint['runDirs'] | null {
+  if (typeof value !== 'object' || value === null) return null
+  const record = value as Record<string, unknown>
+  const total = finiteNumber(record.total)
+  const byWorkspaceValue = record.byWorkspace
+  if (total === undefined || typeof byWorkspaceValue !== 'object' || byWorkspaceValue === null) return null
+  const byWorkspace: LocalFootprint['runDirs']['byWorkspace'] = {}
+  for (const [workspaceId, workspaceValue] of Object.entries(byWorkspaceValue as Record<string, unknown>)) {
+    if (typeof workspaceValue !== 'object' || workspaceValue === null) return null
+    const workspace = workspaceValue as Record<string, unknown>
+    const count = finiteNumber(workspace.count)
+    const runIds = stringArray(workspace.runIds)
+    if (count === undefined) return null
+    byWorkspace[workspaceId] = { count, runIds }
+  }
+  return { total, byWorkspace }
+}
+
+function retentionFailuresFromBody(value: unknown): ReadonlyArray<{ readonly runId: string; readonly stage: 'store' | 'dir'; readonly message: string }> {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item) => {
+    if (typeof item !== 'object' || item === null) return []
+    const record = item as Record<string, unknown>
+    const stage = record.stage
+    if (typeof record.runId !== 'string' || (stage !== 'store' && stage !== 'dir') || typeof record.message !== 'string') return []
+    return [{ runId: record.runId, stage, message: record.message }]
+  })
+}
+
+function finiteNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
 
 function stringArray(input: unknown): string[] {

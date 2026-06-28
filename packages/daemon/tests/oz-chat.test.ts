@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { composeTicketMarkdown, openRunStore, writePortableRun, type RunStore } from '@cocoder/core'
+import { composeTicketMarkdown, openRunStore, writePortableRun, type Run, type RunStore } from '@cocoder/core'
 import type { OzContext } from '../src/context.js'
 import { executeOzCommand, handleOzMessage, parseOzCommand, type OzChatOps } from '../src/oz-chat.js'
 import { setRetention, type LaunchRunTarget } from '../src/launcher.js'
@@ -249,9 +249,16 @@ describe('handleOzMessage', () => {
     })
   })
 
-  test('retention enable persists settings and appends audit through the launcher op', async () => {
+  test('retention enable persists settings, runs GC, and reports footprint/pruned runs', async () => {
     const home = await mkdtemp(join(tmpdir(), 'cocoder-retention-chat-'))
-    const result = await executeOzCommand(testCtx(undefined, home), undefined, { kind: 'retention', enabled: true, keepLastNPerWorkspace: 10 }, mockOps({
+    const store = openRunStore(':memory:')
+    const runsRoot = join(home, 'local', 'runs')
+    const ctx = testCtx(store, home)
+    await prepareRetentionWorkspace(home, store)
+    const pruned = await createRetentionRun(home, runsRoot, store, 'completed', true, 'x'.repeat(4096))
+    const kept = await createRetentionRun(home, runsRoot, store, 'completed', true, 'kept')
+
+    const result = await executeOzCommand({ ...ctx, runsRoot }, undefined, { kind: 'retention', enabled: true, keepLastNPerWorkspace: 1 }, mockOps({
       setRetention,
     }))
 
@@ -260,26 +267,107 @@ describe('handleOzMessage', () => {
       body: {
         ok: true,
         command: 'retention',
-        reply: 'Retention enabled, keeping the last 10 runs per workspace.',
-        action: { type: 'retention', retention: { enabled: true, keepLastNPerWorkspace: 10 } },
+        action: {
+          type: 'retention',
+          retention: { enabled: true, keepLastNPerWorkspace: 1 },
+          prunedRunIds: [pruned.id],
+          skippedProtectedRunIds: [],
+        },
       },
     })
+    expect(result.body.reply).toContain('Retention enabled, keeping the last 1 runs per workspace.')
+    expect(result.body.reply).toContain('local/ footprint:')
+    expect(result.body.reply).toContain(`Pruned runs: ${pruned.id}.`)
+    expect(result.body.reply).toContain('Protected/in-flight runs skipped and NOT pruned: no protected run pruned.')
+    expect(result.body.reply).toContain('retention-gc audit entry was written.')
+    expect(result.body.action?.footprintBefore?.localBytes).toBeGreaterThan(result.body.action?.footprintAfter?.localBytes ?? 0)
+    expect(store.getRun(pruned.id)).toBeNull()
+    expect(store.getRun(kept.id)).not.toBeNull()
     await expect(readJson(join(home, 'local', 'settings.json'))).resolves.toMatchObject({
-      retention: { enabled: true, keepLastNPerWorkspace: 10 },
+      retention: { enabled: true, keepLastNPerWorkspace: 1 },
     })
+    await expect(readAuditActions(home)).resolves.toContainEqual(expect.objectContaining({
+      action: 'retention-gc',
+      prunedRunIds: [pruned.id],
+      skippedProtectedRunIds: [],
+    }))
+    store.close()
+  })
+
+  test('retention enable reports protected in-flight runs skipped and does not prune them', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'cocoder-retention-chat-'))
+    const store = openRunStore(':memory:')
+    const runsRoot = join(home, 'local', 'runs')
+    await prepareRetentionWorkspace(home, store)
+    const protectedRun = await createRetentionRun(home, runsRoot, store, 'completed', true, 'protected')
+    const pruned = await createRetentionRun(home, runsRoot, store, 'completed', true, 'x'.repeat(4096))
+    await createRetentionRun(home, runsRoot, store, 'completed', true, 'kept')
+    const ctx = {
+      ...testCtx(store, home),
+      runsRoot,
+      inFlight: new Map<string, string>([['cocoder', protectedRun.id]]),
+    } as OzContext
+
+    const result = await executeOzCommand(ctx, undefined, { kind: 'retention', enabled: true, keepLastNPerWorkspace: 1 }, mockOps({
+      setRetention,
+    }))
+
+    expect(result).toMatchObject({
+      status: 200,
+      body: {
+        ok: true,
+        command: 'retention',
+        action: {
+          type: 'retention',
+          prunedRunIds: [pruned.id],
+          skippedProtectedRunIds: [protectedRun.id],
+        },
+      },
+    })
+    expect(result.body.reply).toContain(`Pruned runs: ${pruned.id}.`)
+    expect(result.body.reply).toContain(`Protected/in-flight runs skipped and NOT pruned: ${protectedRun.id}.`)
+    expect(store.getRun(protectedRun.id)).not.toBeNull()
+    expect(store.getRun(pruned.id)).toBeNull()
+    await expect(readAuditActions(home)).resolves.toContainEqual(expect.objectContaining({
+      action: 'retention-gc',
+      prunedRunIds: [pruned.id],
+      skippedProtectedRunIds: [protectedRun.id],
+    }))
+    store.close()
+  })
+
+  test('retention enable without an explicit count preserves the current keep count', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'cocoder-retention-chat-'))
+    const result = await executeOzCommand(testCtx(undefined, home), undefined, { kind: 'retention', enabled: true }, mockOps({
+      setRetention,
+    }))
+
+    expect(result).toMatchObject({
+      status: 200,
+      body: {
+        ok: true,
+        command: 'retention',
+        action: { type: 'retention', retention: { enabled: true, keepLastNPerWorkspace: 25 } },
+      },
+    })
+    expect(result.body.reply).toContain('Retention enabled, keeping the last 25 runs per workspace.')
     await expect(readAuditActions(home)).resolves.toContainEqual(expect.objectContaining({
       action: 'retention-settings',
       enabled: true,
-      keepLastNPerWorkspace: 10,
+      keepLastNPerWorkspace: 25,
     }))
   })
 
-  test('retention disable flips enabled false and preserves the retained run count', async () => {
+  test('retention disable flips enabled false without running GC', async () => {
     const home = await mkdtemp(join(tmpdir(), 'cocoder-retention-chat-'))
-    const ctx = testCtx(undefined, home)
-    await setRetention(ctx, { enabled: true, keepLastNPerWorkspace: 7 })
+    const store = openRunStore(':memory:')
+    const runsRoot = join(home, 'local', 'runs')
+    const ctx = testCtx(store, home)
+    await prepareRetentionWorkspace(home, store)
+    const prunable = await createRetentionRun(home, runsRoot, store, 'completed', true, 'still here')
+    await writeFile(join(home, 'local', 'settings.json'), JSON.stringify({ retention: { enabled: true, keepLastNPerWorkspace: 7 } }))
 
-    const result = await executeOzCommand(ctx, undefined, { kind: 'retention', enabled: false }, mockOps({
+    const result = await executeOzCommand({ ...ctx, runsRoot }, undefined, { kind: 'retention', enabled: false }, mockOps({
       setRetention,
     }))
 
@@ -295,6 +383,10 @@ describe('handleOzMessage', () => {
     await expect(readJson(join(home, 'local', 'settings.json'))).resolves.toMatchObject({
       retention: { enabled: false, keepLastNPerWorkspace: 7 },
     })
+    expect(store.getRun(prunable.id)).not.toBeNull()
+    const auditActions = await readAuditActions(home)
+    expect(auditActions.filter((entry) => entry.action === 'retention-gc')).toEqual([])
+    store.close()
   })
 
   test('help reply stays byte-identical for typed commands', async () => {
@@ -978,6 +1070,35 @@ function authorOps(
       return result
     },
   })
+}
+
+async function prepareRetentionWorkspace(home: string, store: RunStore): Promise<void> {
+  await mkdir(join(home, 'local'), { recursive: true })
+  await writeFile(join(home, 'local', 'workspaces.json'), JSON.stringify({ workspaces: [{ id: 'cocoder', name: 'CoCoder', path: '${COCODER_HOME}' }] }))
+  store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+}
+
+async function createRetentionRun(home: string, runsRoot: string, store: RunStore, status: 'completed' | 'running', projected: boolean, content: string): Promise<Run> {
+  const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+  if (status !== 'running') store.setRunStatus(run.id, status)
+  const current = store.getRun(run.id)
+  if (current === null) throw new Error(`missing run ${run.id}`)
+  await mkdir(join(runsRoot, 'cocoder', run.id), { recursive: true })
+  await writeFile(join(runsRoot, 'cocoder', run.id, 'state.txt'), content)
+  if (projected) {
+    await writePortableRun(home, {
+      run: { id: run.id, displayNumber: Number(run.id.replace('run_', '')) },
+      workspace: { id: 'cocoder' },
+      target: { kind: 'priority' },
+      priorityId: 'demo',
+      playbookId: null,
+      ticketId: null,
+      status: current.status,
+      createdAt: current.createdAt,
+      endedAt: current.endedAt,
+    })
+  }
+  return current
 }
 
 async function readJson(path: string): Promise<unknown> {

@@ -56,6 +56,7 @@ import {
   runHeadlessProcess,
   runRun,
   type RetentionConfig,
+  type RetentionGcResult,
   type CommitReceipt,
   type PreRunGovernanceCheck,
   type PersonaSources,
@@ -77,6 +78,7 @@ import { emitOzEvent, type DashboardLaunchHandle, type OzContext } from './conte
 import { findWorkspace, type RegistryWorkspace } from './registry.js'
 import { appendAudit, ozAuditPath } from './audit.js'
 import { mergeWriteSettings, readSettings } from './settings.js'
+import { measureLocalFootprint } from './local-footprint.js'
 import { drainAuthoringQueue, enqueueAuthoring } from './authoring-queue.js'
 import { recordOrchestratedRun } from './oz-host.js'
 import { registerLivePriorities } from './priority-order.js'
@@ -2073,7 +2075,39 @@ export async function setRetention(ctx: OzContext, input: RetentionSettingsInput
   const settings = await mergeWriteSettings(ctx.cocoderHome, { retention: retentionPatch })
   const retention = settings.retention
   await appendAudit(ctx.cocoderHome, { action: 'retention-settings', enabled: retention.enabled, keepLastNPerWorkspace: retention.keepLastNPerWorkspace })
-  return { status: 200, body: { retention, enabled: retention.enabled, keepLastNPerWorkspace: retention.keepLastNPerWorkspace } }
+  if (retention.enabled !== true) return { status: 200, body: { retention, enabled: retention.enabled, keepLastNPerWorkspace: retention.keepLastNPerWorkspace } }
+
+  const localRoot = join(ctx.cocoderHome, 'local')
+  const footprintBefore = await measureLocalFootprint(localRoot)
+  const gcResult = await runRetentionGcOnce(ctx) ?? emptyRetentionGcResult()
+  const footprintAfter = await measureLocalFootprint(localRoot)
+  return {
+    status: 200,
+    body: {
+      retention,
+      enabled: retention.enabled,
+      keepLastNPerWorkspace: retention.keepLastNPerWorkspace,
+      footprintBefore,
+      footprintAfter,
+      prunedRunIds: gcResult.prunedRunIds,
+      skippedProtectedRunIds: gcResult.skippedProtectedRunIds,
+      storeRunRowsKept: gcResult.storeRunRowsKept,
+      dirsRemoved: gcResult.dirsRemoved,
+      failures: gcResult.failures,
+    },
+  }
+}
+
+function emptyRetentionGcResult(): RetentionGcResult {
+  return {
+    enabled: true,
+    prunedRunIds: [],
+    skippedProtectedRunIds: [],
+    storeRunRowsKept: 0,
+    dirsRemoved: 0,
+    failures: [],
+    wal: null,
+  }
 }
 
 export async function requestDashboardLaunch(ctx: OzContext): Promise<LaunchResult> {
@@ -2739,11 +2773,11 @@ export function migrateLegacyRunDirsOnce(ctx: OzContext): void {
 const RETENTION_LOG_MAX_BYTES = 8 * 1024 * 1024
 const RETENTION_LOG_KEEP = 3
 
-export async function runRetentionGcOnce(ctx: OzContext): Promise<void> {
+export async function runRetentionGcOnce(ctx: OzContext): Promise<RetentionGcResult | undefined> {
   try {
     const settings = await readSettings(ctx.cocoderHome)
     const config = settings.retention
-    if (config.enabled !== true) return
+    if (config.enabled !== true) return undefined
 
     const runs = ctx.store.listRuns()
     const workspacePaths = new Map<string, string>()
@@ -2777,8 +2811,10 @@ export async function runRetentionGcOnce(ctx: OzContext): Promise<void> {
       failures: result.failures,
       wal: result.wal,
     })
+    return result
   } catch (error: unknown) {
     console.error(`retention GC startup pass failed: ${error instanceof Error ? error.message : String(error)}`)
+    return undefined
   }
 }
 
