@@ -9,9 +9,9 @@ destructive: true
 > Live daemon-boot GC pass observed run_279/137: local/ 39.5M->32.5M, run dirs 277->167 (110 pruned),
 > WAL truncated to 0; retention-gc audit entry written with prunedRuns=110, failures=[],
 > skippedProtectedRunIds=[]; recurrence preserved (storeRunRowsKept=13 fault-bearing rows); no
-> protected/non-terminal run pruned; N=25 enabled via governed PUT /settings. Residual 167 dirs are
-> projection-gated legacy backlog kept by design (ticket 0082). Live effectiveness observed; all
-> acceptance criteria satisfied. Follow-ups 0082/0083/0084/0085 tracked independently.
+> protected/non-terminal run pruned; N=25 enabled via governed PUT /settings. Residual 167 dirs were
+> projection-gated legacy backlog kept by design until ticket 0082 closed (run_282). Live effectiveness
+> observed; all acceptance criteria satisfied. Follow-up 0082 closed; 0083/0084 remain open standalone.
 
 ## Objective
 
@@ -42,7 +42,7 @@ The engine is **code-complete, ships inert, and is proven in isolation through b
 - **Live enablement not yet observed.** Harness exists (`observe-retention-live.mjs`); founder must flip the flag, Refresh the daemon, and run the 4-command before/after/diff procedure — archive follows one real live pass, not scratch proof alone.
 - All verification was author-directed and single-gated: no atom was ever failed, and no independent adversarial diff review was done.
 - The boot-time `protectedRunIds` guard is effectively empty at boot (`inFlight`/`stopControllers` are empty then); status + projection-gating are the real guards at boot. A future periodic trigger would make the protected set load-bearing.
-- **Legacy residue scope — decided (2026-06-28).** Founder accepted that retention bounds projected, resolvable runs; the pre-run_138 unprojected backlog and unresolvable-workspace runs are kept by design and handled as a separate one-time cleanup in ticket [0082](../tickets/open/0082-cleanup-legacy-unprojected-and-unresolvable-workspace-local-runs.md), not an engine-scope expansion.
+- **Legacy residue scope — closed (2026-06-28, run_282).** Founder accepted that retention bounds projected, resolvable runs; the pre-run_138 unprojected backlog and unresolvable-workspace runs were handled as a separate one-time cleanup in ticket [0082](../tickets/closed/0082-cleanup-legacy-unprojected-and-unresolvable-workspace-local-runs.md) (PATH(b) explicit purge via `scripts/cleanup-legacy-local-runs.mjs --apply`), not an engine-scope expansion.
 
 ## Context
 
@@ -105,7 +105,7 @@ This priority is **no longer a broad build** — the engine exists. The next lau
 2. **Close the integration-seam gap in isolation first:** exercise the real settings → workspace lookup → `runRetentionGcOnce` wiring against a scratch copy of the store and scratch run dirs, with `retention.enabled: true` only in that isolated target.
 3. **Analyze effectiveness against copied real run history:** does the copied `local/` state bound to ≈ N × workspaces? Is the pass idempotent across repeated isolated boots? Does recurrence survive copied real faults? Do the WAL and logs shrink in the isolated target? Measure before/after footprint.
 4. **Fix any gap found** — e.g. deps wiring, a periodic trigger if boot-only proves insufficient, config ergonomics, or anything an independent adversarial review surfaces. Any fix still rides the runnerless/destructive path.
-5. **Live enablement — founder-approved (2026-06-28); founder executes, no relaunch.** Run_137 landed `observe-retention-live.mjs`. Founder procedure: (1) `node scripts/observe-retention-live.mjs --snapshot before --out /tmp/reten-before.json`, (2) set `retention.enabled: true` (keepLastNPerWorkspace: 25) in `local/settings.json` and Refresh the daemon (do not kill processes), (3) `--snapshot after`, (4) `--diff`. PASS = diff exit 0, new `retention-gc` audit entry, protected runs survive, footprint bounded. Legacy residue stays out of scope ([0082](../tickets/open/0082-cleanup-legacy-unprojected-and-unresolvable-workspace-local-runs.md)).
+5. **Live enablement — founder-approved (2026-06-28); founder executes, no relaunch.** Run_137 landed `observe-retention-live.mjs`. Founder procedure: (1) `node scripts/observe-retention-live.mjs --snapshot before --out /tmp/reten-before.json`, (2) set `retention.enabled: true` (keepLastNPerWorkspace: 25) in `local/settings.json` and Refresh the daemon (do not kill processes), (3) `--snapshot after`, (4) `--diff`. PASS = diff exit 0, new `retention-gc` audit entry, protected runs survive, footprint bounded. Legacy residue handled separately ([0082](../tickets/closed/0082-cleanup-legacy-unprojected-and-unresolvable-workspace-local-runs.md), closed run_282).
 6. **Archive only once effectiveness is observed on a live install**, not merely unit-proven or scratch-proven — then reply `archive` in Oz chat (not a relaunch).
 
 **Disposition: `blocked` → founder live enablement + observe-then-archive (no build atoms remain).** Engine code-complete and inert; isolation + scratch + integration proofs pass. Run_137 made the live pass a 4-command harness instead of a checklist. Archive follows one observed live GC pass; if the pass reveals a gap (e.g. boot-only insufficient), relaunch via the runnerless/destructive-isolated path only.

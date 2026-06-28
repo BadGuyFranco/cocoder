@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-28 — **ticket-fix-0082: legacy local-run purge — closed (run_141/run_282)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0082](./tickets/closed/0082-cleanup-legacy-unprojected-and-unresolvable-workspace-local-runs.md) | **Run:** run_282 (display 141)
+**Outcomes:**
+- **Two atoms verified and committed.** Atom 0 (`19a650c`): dry-run inventory/classifier `scripts/cleanup-legacy-local-runs.mjs`; atom 1 (`3460644`): founder-approved PATH(b) `--apply` purge via refactored modules, reusing retention store primitives.
+- **Live cleanup executed.** 143 legacy-residue runs processed; store rows 182→43; 138 pre-projection runs fully removed; 5 fault-bearing residue runs row-preserved for recurrence; live run untouched; idempotent manifest logged under `local/cleanup-legacy-local-runs/`.
+- **Disposition: `closed`.** Ticket 0082 closed via verify-gate ticketClose path; retention runtime scope not expanded; suites green.
+**Next:** Launch ticket `0084` for the Oscar–Deb repair-dialogue prose-wrapped JSON 500.
+
 ## 2026-06-28 — **ticketing-paths-hardening: fresh-process close proof — archive ready (run_140/run_281)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [ticketing-paths-hardening](./priorities/ticketing-paths-hardening.md) | **Run:** run_281 (display 140)
