@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-28 — **local-cache-retention: integration-seam proof on scratch — blocked (run_136/run_279)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [local-cache-retention](./priorities/local-cache-retention.md) | **Run:** run_279 (display 136)
+**Outcomes:**
+- **One atom verified and committed (`e65ff50`).** `node scripts/proof-retention-integration.mjs` copies this install's live `local/` read-only into temp, enables retention only there, and calls daemon `runRetentionGcOnce`; exit 0 on scratch pass (281→170 run dirs, idempotent repeat, recurrence preserved, WAL/logs rotated).
+- **Integration-seam gap closed.** Real settings → workspace lookup → boot wiring is now proven on copied real history, not only via fakes or the synthetic `proof-retention.mjs` engine harness.
+- **Projection-gating surfaced legacy residue on this install.** ~136 cocoder runs before run_138 have no tracked `cocoder/runs/` record; 3 workspaces are absent from the registry — both classes are correctly kept, so the live bound applies to projected, resolvable runs only until founder scopes cleanup.
+- **Disposition: `blocked`.** Live enablement (`retention.enabled: true` on the live install + one observed daemon boot pass) and legacy-residue scope are founder-only; archive follows live effectiveness, not scratch proof alone.
+**Next:** Founder approves live enablement and scopes legacy residue; then relaunch `local-cache-retention` or archive after live pass confirms effectiveness.
+
 ## 2026-06-28 — **ticket-fix-0081: local-cache-retention unlaunchable — needs closing (run_135/run_278)**
 
 **Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** ticket-fix / [0081](./tickets/open/0081-local-cache-retention-unlaunchable.md) | **Run:** run_278 (display 135)

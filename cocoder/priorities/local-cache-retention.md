@@ -8,9 +8,9 @@ destructive: true
 
 Bound the unbounded growth of the install's machine-local cache (local/runs scratch + the shared SQLite store) with a per-workspace retention policy: keep the last N runs per workspace (default 25), applied to BOTH the scratch dirs and the store rows. Time-independent and fair across active/idle repos (reject time-based and global last-N). GC a run's local state only after its durable record is projected to the repo's cocoder/runs/; never prune a running/awaiting-founder/awaiting-archive/held run; preserve cross-run fault recurrence. Checkpoint the WAL and rotate logs. N configurable, default 25.
 
-## Current state — built and inert (run_265, 2026-06-27)
+## Current state — built, inert, integration-proven on scratch (run_136, 2026-06-28)
 
-The engine is **code-complete, ships inert, and is proven in isolation.** Built over 9 atoms in an independent destructive-isolation session (run_265), landed on `main`.
+The engine is **code-complete, ships inert, and is proven in isolation through both the core engine and the real daemon boot path.** Built over 9 atoms in an independent destructive-isolation session (run_265), landed on `main`. Run_136 closed the integration-seam gap against a scratch copy of this install's live store.
 
 **Landed:**
 - Selection core (`packages/core/src/runner/retention.ts`): per-workspace keep-last-N (default 25), fairness, non-terminal + projection exclusion, idempotency.
@@ -20,14 +20,19 @@ The engine is **code-complete, ships inert, and is proven in isolation.** Built 
 - Housekeeping (`store.checkpointWal` + `log-rotation.ts rotateLogFile`): WAL TRUNCATE + size-based rotation of `oz-audit.log` and `local/oz/` turn logs.
 - Orchestrator (`retention-gc.ts runRetentionGc`): flag-gated; never prunes a running/protected run; folder-before-store ordering for crash safety; tolerates the live store mutating underneath.
 - Config + daemon wiring (`Settings.retention`, daemon `runRetentionGcOnce`): `retention.enabled` defaults **false**; one pass at daemon boot after orphan-reconcile + legacy-dir migration; no-ops while disabled.
-- Decision record: ADR (run_265) + this brief. Proof: `scripts/proof-retention.mjs` — one command, exit 0, 31 checks (bounded 25-of-30, idempotent, fair, pending/protected/unprojected kept, recurrence intact).
+- Decision record: ADR-0044 + this brief.
+- Engine proof: `node scripts/proof-retention.mjs` (or `pnpm -w exec tsx scripts/proof-retention.mjs`) — exit 0, 31 checks against a synthetic temp install.
+- Integration proof: `node scripts/proof-retention-integration.mjs` — exit 0; copies this install's live `local/` read-only into temp, enables retention only there, calls daemon `runRetentionGcOnce`; on this dogfood install scratch pass pruned 281→170 run dirs, idempotent on repeat, recurrence preserved, WAL/logs rotated.
 
 **Tests:** core + daemon suites green; every safety invariant has a pinned test.
 
-**Known soft spots — carry these into the effectiveness-analysis relaunch:**
-- The end-to-end proof exercises the *engine*; it re-builds the deps rather than calling the daemon's `runRetentionGcOnce`. The real boot path (read `settings.json` → resolve workspace repo paths via `findWorkspace` → run a pass against a real store + real run-dirs together) is only unit-tested with fakes. **A real daemon boot with the flag ON has never run.**
+**Scratch effectiveness read (run_136, this install):** projection-gating correctly kept ~136 cocoder runs before run_138 that have no tracked `cocoder/runs/` record and runs tied to 3 workspaces absent from the registry, so the live bound applies to projected, resolvable runs only — not the full historical dir count.
+
+**Known soft spots:**
+- **Live enablement not yet observed.** A real daemon boot with `retention.enabled: true` on the live install has never run; archive is gated on one live pass, not scratch proof alone.
 - All verification was author-directed and single-gated: no atom was ever failed, and no independent adversarial diff review was done.
 - The boot-time `protectedRunIds` guard is effectively empty at boot (`inFlight`/`stopControllers` are empty then); status + projection-gating are the real guards at boot. A future periodic trigger would make the protected set load-bearing.
+- **Legacy residue scope is founder-owned.** Pre-run_138 unprojected runs and unresolvable-workspace runs are kept by design; whether to one-time-clean them is out of engine scope unless the founder expands it.
 
 ## Context
 
@@ -92,3 +97,5 @@ This priority is **no longer a broad build** — the engine exists. The next lau
 4. **Fix any gap found** — e.g. deps wiring, a periodic trigger if boot-only proves insufficient, config ergonomics, or anything an independent adversarial review surfaces. Any fix still rides the runnerless/destructive path.
 5. **Live enablement is a separate founder action after the isolated proof.** Only after the runnerless proof is clean may the founder choose to set `retention.enabled: true` on the live install and Refresh/boot the daemon to observe one live pass. The run must not silently edit `local/settings.json` or restart the daemon.
 6. **Archive only once effectiveness is observed on a live install**, not merely unit-proven or scratch-proven.
+
+**Disposition: `blocked` (integration proof complete; founder-owned beats remain).** Run_136 landed the integration-seam harness and verified retention through the real daemon boot path on a scratch copy of this install's live store. No buildable atoms remain until the founder (1) approves live enablement — set `retention.enabled: true` in `local/settings.json` and boot the daemon to observe one live GC pass — and (2) scopes legacy residue: ~136 pre-run_138 cocoder runs without a tracked `cocoder/runs/` record plus 3 unresolvable-workspace runs that projection-gating correctly keeps. Recommendation: accept retention as bounding projected, resolvable runs and file a separate one-time cleanup ticket for the residue rather than expanding this priority's scope. Archive follows live effectiveness, not scratch proof alone.
