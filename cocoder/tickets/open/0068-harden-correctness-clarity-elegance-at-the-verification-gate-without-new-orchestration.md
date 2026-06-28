@@ -17,6 +17,23 @@ After 200+ runs the **correctness → clarity → elegance** standard is not enf
 2. Self-assessed by the builder (the existing "elegance checkpoint"), never by the verifier — authors do not find their own redundancy.
 3. It is a global / cross-atom property, but the loop only gates per-atom, locally. Accretion is invisible to any single atom. Evidence (run_246): the queue schema crept v1→v3 across atoms, two run-dir layouts now coexist behind a scanning resolver, and a `localRunDirById` alias was passed at verify as a "minor nit" (see failure-catalog F24).
 
+## Relevance update (2026-06-28, run_276 review)
+Still relevant, but partially addressed — re-scope to the remaining teeth:
+- **Cause 1 (ranked third) and Cause 3-reframe — substantially landed.** The base standards now carry an
+  explicit **Elegance Standard** (correctness → clarity → elegance, with "one owner per concept" and
+  "remove what does not carry weight"), and `wrap-up.md` makes archive-readiness a first-class
+  disposition with named gaps. The ranking is no longer a third-place nice-to-have in the prose.
+- **Cause 2 (self-assessed by the builder, never the verifier) — NOT landed; this is the open core.**
+  Elegance is still a builder-side `shared elegance checkpoint` (pinned in the authoring Plays), and
+  `oscar.md`'s verify gate has **no objective fail condition** for deletable/duplicate surface (grep of
+  `oscar.md` finds no deletable / second-copy / duplicate-knob teeth at verify). There is also **no
+  content test** pinning such a gate, and **no per-priority cross-atom accretion sweep** distinct from
+  the general archive-readiness gap assessment.
+
+Remaining work is Scope items 1 + 2 below plus the pinning test in Acceptance; Scope item 3 (reframe) is
+essentially done — drop it to a one-line confirmation that the verify-gate teeth align with the existing
+Elegance Standard wording.
+
 ## Goal
 Harden the full standard **at the verification gate** (oscar.md), and make the hardening edit itself elegant: reuse the seams that already run; add **no** new sub-agent, per-run ask, doc, or cadence.
 
