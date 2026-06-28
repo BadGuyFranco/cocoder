@@ -105,6 +105,21 @@ export interface CloseTicketDaemonResult {
   readonly reason?: string
 }
 
+export interface CreateTicketDaemonInput {
+  readonly title: string
+  readonly type: string
+  readonly description: string
+  readonly priority?: string
+  readonly bindingReason?: string
+  readonly provenance?: string
+  readonly id?: string
+}
+
+export type CreateTicketDaemonResult =
+  | { readonly ok: true; readonly created: true; readonly ticketId?: string; readonly commitSha?: string | null }
+  | { readonly ok: true; readonly queued: true; readonly queuedId: string; readonly ticketId?: string; readonly queueStatus?: string }
+  | { readonly ok: false; readonly error: string }
+
 export interface ConfirmTicketCloseDaemonResult {
   readonly ok?: boolean
   readonly closed?: boolean
@@ -179,6 +194,48 @@ export async function closeTicketViaDaemon(baseUrl: string, workspaceId: string,
   return (await res.json()) as CloseTicketDaemonResult
 }
 
+export async function createTicketViaDaemon(baseUrl: string, workspaceId: string, input: CreateTicketDaemonInput): Promise<CreateTicketDaemonResult> {
+  const session = (await (await fetch(`${baseUrl}/auth/session`)).json()) as { bearerToken: string; csrfToken: string }
+  const body = {
+    title: input.title,
+    type: input.type,
+    description: input.description,
+    ...(input.priority ? { priority: input.priority } : {}),
+    ...(input.bindingReason ? { bindingReason: input.bindingReason } : {}),
+    ...(input.provenance ? { provenance: input.provenance } : {}),
+    ...(input.id ? { id: input.id } : {}),
+  }
+  const res = await fetch(`${baseUrl}/workspaces/${encodeURIComponent(workspaceId)}/tickets`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${session.bearerToken}`, [CSRF_HEADER]: session.csrfToken, 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const parsed = await readResponseBody(res)
+  if (res.status === 201) {
+    const record = bodyRecord(parsed)
+    const ticket = bodyRecord(record.ticket)
+    return {
+      ok: true,
+      created: true,
+      ticketId: typeof ticket.id === 'string' ? ticket.id : undefined,
+      commitSha: typeof record.committedSha === 'string' ? record.committedSha : null,
+    }
+  }
+  if (res.status === 202) {
+    const record = bodyRecord(parsed)
+    return {
+      ok: true,
+      queued: true,
+      queuedId: typeof record.queuedId === 'string' ? record.queuedId : 'queued-ticket-create',
+      ticketId: typeof record.reservedTicketId === 'string' ? record.reservedTicketId : typeof record.ticketId === 'string' ? record.ticketId : undefined,
+      queueStatus: typeof record.status === 'string' ? record.status : undefined,
+    }
+  }
+  if (res.status >= 400 && res.status < 500) return { ok: false, error: errorMessage(parsed, `ticket create failed (${res.status})`) }
+  if (!res.ok) throw new Error(`ticket create failed (${res.status}): ${errorMessage(parsed, `ticket create failed (${res.status})`)}`)
+  return { ok: false, error: `unexpected ticket create response (${res.status})` }
+}
+
 export async function confirmTicketCloseViaDaemon(baseUrl: string, runId: string, resolution?: string): Promise<ConfirmTicketCloseDaemonResult> {
   const session = (await (await fetch(`${baseUrl}/auth/session`)).json()) as { bearerToken: string; csrfToken: string }
   const res = await fetch(`${baseUrl}/runs/${encodeURIComponent(runId)}/ticket-close-confirmation`, {
@@ -187,6 +244,27 @@ export async function confirmTicketCloseViaDaemon(baseUrl: string, runId: string
     body: JSON.stringify(resolution === undefined ? {} : { resolution }),
   })
   return (await res.json()) as ConfirmTicketCloseDaemonResult
+}
+
+async function readResponseBody(res: Response): Promise<unknown> {
+  const text = await res.text()
+  if (!text) return {}
+  try {
+    return JSON.parse(text) as unknown
+  } catch {
+    return text
+  }
+}
+
+function bodyRecord(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null ? value as Record<string, unknown> : {}
+}
+
+function errorMessage(value: unknown, fallback: string): string {
+  if (typeof value === 'string' && value.trim()) return value
+  const record = bodyRecord(value)
+  if (typeof record.error === 'string' && record.error.trim()) return record.error
+  return fallback
 }
 
 export interface MigrateHistoryResult {

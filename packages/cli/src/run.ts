@@ -28,7 +28,7 @@ import {
 import { getAdapter, makeAdapterRegistry } from '@cocoder/adapters'
 import { basePersonasDir, basePlaysDir } from '@cocoder/personas'
 import { CmuxSessionHost } from '@cocoder/session-hosts'
-import { authoringPlayViaDaemon, closeTicketViaDaemon, confirmTicketCloseViaDaemon, migrateHistoryViaDaemon, requestDebRepairViaDaemon, resumeViaDaemon, runViaDaemon, startOzDaemon, supportCommitViaDaemon, teardownViaDaemon, type DebRepairEvidenceItem } from './client.js'
+import { authoringPlayViaDaemon, closeTicketViaDaemon, confirmTicketCloseViaDaemon, createTicketViaDaemon, migrateHistoryViaDaemon, requestDebRepairViaDaemon, resumeViaDaemon, runViaDaemon, startOzDaemon, supportCommitViaDaemon, teardownViaDaemon, type DebRepairEvidenceItem } from './client.js'
 import { closeTicketViaCli } from './close-ticket.js'
 import { createTicketViaCli } from './create-ticket.js'
 import { latestModelFor } from './latest-model.js'
@@ -284,12 +284,26 @@ export async function main(options: MainOptions = {}): Promise<void> {
       console.error(createTicketUsage)
       process.exit(2)
     }
-    // A control-plane create is a loop-DOWN operation: while a daemon is live, an out-of-band create can
-    // race an active run editing the same ticket queue (ADR-0041 D2/D3). Refuse and point at the in-loop path.
-    const live = await probeDaemon({ port: DEFAULT_OZ_PORT })
+    const live = await probeDaemonImpl({ port: DEFAULT_OZ_PORT })
     if (live.alive) {
-      console.error(`cocoder: a daemon is live on :${live.port} — refusing an out-of-band ticket create (ADR-0041 D2/D3: it can race an active run). Let the run file its own ticket, or stop the loop first.`)
-      process.exit(1)
+      const result = await createTicketViaDaemon(`http://127.0.0.1:${live.port}`, 'cocoder', {
+        title: invocation.title,
+        type: invocation.type,
+        description: invocation.description,
+        ...(invocation.priority ? { priority: invocation.priority } : {}),
+        ...(invocation.bindingReason ? { bindingReason: invocation.bindingReason } : {}),
+        ...(runId ? { provenance: runId } : {}),
+        ...(invocation.ticketId ? { id: invocation.ticketId } : {}),
+      })
+      if (result.ok && 'queued' in result) {
+        out(`queued ticket create ${result.ticketId ?? invocation.ticketId ?? '(next)'}: ${result.queuedId}`)
+      } else if (result.ok && 'created' in result) {
+        out(`created ticket ${result.ticketId ?? invocation.ticketId ?? '(unknown)'}: ${result.commitSha ?? 'no commit'}`)
+      } else {
+        console.error(`cocoder: ${result.error}`)
+        process.exitCode = 1
+      }
+      return
     }
     const result = await createTicketViaCli({
       repoPath: process.cwd(),

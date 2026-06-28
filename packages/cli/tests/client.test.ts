@@ -6,7 +6,7 @@ import { createServer, type Server } from 'node:http'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { afterEach, describe, expect, test } from 'vitest'
-import { authoringPlayViaDaemon, closeTicketViaDaemon, confirmTicketCloseViaDaemon, requestDebRepairViaDaemon, resumeViaDaemon, runViaDaemon, supportCommitViaDaemon } from '../src/client.js'
+import { authoringPlayViaDaemon, closeTicketViaDaemon, confirmTicketCloseViaDaemon, createTicketViaDaemon, requestDebRepairViaDaemon, resumeViaDaemon, runViaDaemon, supportCommitViaDaemon } from '../src/client.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -27,6 +27,9 @@ interface Captured {
   closeAuth?: string
   closeCsrf?: string | string[]
   closeBody?: any
+  createAuth?: string
+  createCsrf?: string | string[]
+  createBody?: unknown
   confirmCloseAuth?: string
   confirmCloseCsrf?: string | string[]
   confirmCloseBody?: any
@@ -137,6 +140,17 @@ function fakeDaemon(): { server: Server; captured: Captured; ready: Promise<numb
         captured.closeBody = JSON.parse(body)
         res.writeHead(202, { 'content-type': 'application/json' })
         res.end(JSON.stringify({ ok: true, queued: true, queuedId: 'ticket-close-0099', ticketId: '0099', status: 'queued' }))
+      })
+    }
+    if (req.method === 'POST' && req.url === '/workspaces/cocoder/tickets') {
+      captured.createAuth = req.headers.authorization
+      captured.createCsrf = req.headers['x-oz-csrf-token']
+      let body = ''
+      req.on('data', (c) => (body += c))
+      return req.on('end', () => {
+        captured.createBody = JSON.parse(body)
+        res.writeHead(201, { 'content-type': 'application/json' })
+        res.end(JSON.stringify({ ok: true, ticket: { id: '0010', title: 'Filed from CLI' }, committedSha: 'ticket123' }))
       })
     }
     res.writeHead(404)
@@ -290,6 +304,75 @@ describe('runViaDaemon (client mode)', () => {
     expect(d.captured.closeAuth).toBe('Bearer tok')
     expect(d.captured.closeCsrf).toBe('csrf')
     expect(d.captured.closeBody).toEqual({ resolution: 'Done from CLI.' })
+  })
+
+  test('create-ticket posts with Bearer + CSRF and maps a created daemon receipt', async () => {
+    const d = fakeDaemon()
+    server = d.server
+    const port = await d.ready
+
+    const result = await createTicketViaDaemon(`http://127.0.0.1:${port}`, 'cocoder', {
+      title: 'Filed from CLI',
+      type: 'bug',
+      description: 'Created while the daemon is live.',
+      priority: 'demo',
+      bindingReason: 'Founder chose demo for this ticket.',
+      provenance: 'run_5',
+      id: '0010',
+    })
+
+    expect(result).toEqual({ ok: true, created: true, ticketId: '0010', commitSha: 'ticket123' })
+    expect(d.captured.createAuth).toBe('Bearer tok')
+    expect(d.captured.createCsrf).toBe('csrf')
+    expect(d.captured.createBody).toEqual({
+      title: 'Filed from CLI',
+      type: 'bug',
+      description: 'Created while the daemon is live.',
+      priority: 'demo',
+      bindingReason: 'Founder chose demo for this ticket.',
+      provenance: 'run_5',
+      id: '0010',
+    })
+  })
+
+  test('create-ticket maps queued and client-error daemon receipts cleanly', async () => {
+    const createServerWithStatus = (status: number, payload: unknown): { readonly server: Server; readonly ready: Promise<number> } => {
+      const s = createServer((req, res) => {
+        if (req.url === '/auth/session') {
+          res.writeHead(200, { 'content-type': 'application/json' })
+          return res.end(JSON.stringify({ bearerToken: 'tok', csrfToken: 'csrf' }))
+        }
+        if (req.method === 'POST' && req.url === '/workspaces/cocoder/tickets') {
+          req.resume()
+          res.writeHead(status, { 'content-type': 'application/json' })
+          return res.end(JSON.stringify(payload))
+        }
+        res.writeHead(404)
+        res.end()
+      })
+      return {
+        server: s,
+        ready: new Promise<number>((resolve) =>
+          s.listen(0, '127.0.0.1', () => {
+            const addr = s.address()
+            resolve(typeof addr === 'object' && addr ? addr.port : 0)
+          }),
+        ),
+      }
+    }
+
+    const queued = createServerWithStatus(202, { ok: true, queued: true, queuedId: 'ticket-create-0011', reservedTicketId: '0011', status: 'queued' })
+    server = queued.server
+    const queuedPort = await queued.ready
+    await expect(createTicketViaDaemon(`http://127.0.0.1:${queuedPort}`, 'cocoder', { title: 'Queued', type: 'task', description: 'Later.' }))
+      .resolves.toEqual({ ok: true, queued: true, queuedId: 'ticket-create-0011', ticketId: '0011', queueStatus: 'queued' })
+    await new Promise<void>((resolve) => queued.server.close(() => resolve()))
+
+    const refused = createServerWithStatus(400, { error: 'priority binding requires a reason' })
+    server = refused.server
+    const refusedPort = await refused.ready
+    await expect(createTicketViaDaemon(`http://127.0.0.1:${refusedPort}`, 'cocoder', { title: 'Bad', type: 'bug', description: 'No reason.', priority: 'demo' }))
+      .resolves.toEqual({ ok: false, error: 'priority binding requires a reason' })
   })
 
   test('confirm-ticket-close posts with Bearer + CSRF and returns the daemon receipt', async () => {
