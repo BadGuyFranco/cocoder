@@ -2,6 +2,8 @@
 id: multi-workspace-concurrency
 title: Multi-workspace concurrency — concurrent runs across different repos
 ---
+> **Archived 2026-06-29 (founder) — archive confirmed.** Founder confirmed archive from CLI.
+
 ## Objective
 
 Make concurrent runs across different workspaces/repos real. The serialization limit is already per-workspace (ctx.inFlight is keyed by workspaceId), and different workspaces have no shared working tree — so this is validation + hardening, not an architecture change (ADR-0042 Tier 2). Deliver: audit the daemon for global state that assumes one active run, scope the inFlight-coupled checks per-workspace, drive N independent runRun loops in one daemon without cross-contamination, and bound concurrency/cost. A run on workspace A must not block a launch on workspace B.
