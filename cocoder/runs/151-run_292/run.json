@@ -12,7 +12,7 @@
   "priorityId": "run-tests-required-checkpoint",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "awaiting-founder",
   "createdAt": 1782774827836,
-  "endedAt": null
+  "endedAt": 1782775173271
 }
