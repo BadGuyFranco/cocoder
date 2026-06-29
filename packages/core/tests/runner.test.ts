@@ -888,6 +888,108 @@ describe('runRun (multi-atom loop)', () => {
     expect(spawns.flatMap((spawn) => spawn.args)).not.toContain('--model')
   })
 
+  test('tiered persona assignments resolve before preflight and launch while concrete pins avoid listModels', async () => {
+    const preflightModels: string[] = []
+    const launchedModels: string[] = []
+    let listModelCalls = 0
+    const adapter: Adapter = {
+      ...okAdapter,
+      id: 'claude',
+      build: (buildInput) => {
+        launchedModels.push(buildInput.model)
+        return { command: 'claude', args: [] }
+      },
+      preflight: async (model) => {
+        preflightModels.push(model)
+        return { ok: true, checks: [{ name: 'model', ok: true, detail: model || '(default)' }] }
+      },
+      listModels: async () => {
+        listModelCalls += 1
+        return { canEnumerate: true, models: ['opus', 'sonnet'], tiers: { default: 'sonnet', strong: 'opus' }, detail: 'tiered models' }
+      },
+    }
+
+    await runRun(
+      baseDeps({ getAdapter: () => adapter }),
+      {
+        ...input,
+        oscar: { ...oscar, cli: 'claude', model: '', tier: 'strong' },
+        bob: { ...bob, cli: 'claude', model: 'sonnet' },
+      },
+    )
+
+    expect(listModelCalls).toBe(1)
+    expect(preflightModels.slice(0, 2)).toEqual(['opus', 'sonnet'])
+    expect(launchedModels.slice(0, 2)).toEqual(['opus', 'sonnet'])
+  })
+
+  test('tier-introduced oscar/bob model collapse fails before spawn', async () => {
+    const store = openRunStore(':memory:')
+    let preflightCalls = 0
+    let spawnCalls = 0
+    const adapter: Adapter = {
+      ...okAdapter,
+      id: 'claude',
+      preflight: async () => {
+        preflightCalls += 1
+        return { ok: true, checks: [] }
+      },
+      listModels: async () => ({ canEnumerate: true, models: ['opus'], tiers: { default: 'opus', strong: 'opus' }, detail: 'collapsed tiers' }),
+    }
+
+    await expect(runRun(
+      baseDeps({
+        store,
+        getAdapter: () => adapter,
+        sessionHost: fakeSessionHost({
+          async spawn() {
+            spawnCalls += 1
+            return { id: 'surface:unexpected', driver: 'fake' }
+          },
+        }),
+      }),
+      {
+        ...input,
+        oscar: { ...oscar, cli: 'claude', model: '', tier: 'strong' },
+        bob: { ...bob, cli: 'claude', model: '', tier: 'strong' },
+      },
+    )).rejects.toThrow(/oscar.*bob.*claude\/opus/)
+
+    expect(store.listRuns()[0]?.status).toBe('failed')
+    expect(preflightCalls).toBe(0)
+    expect(spawnCalls).toBe(0)
+  })
+
+  test('matching concrete oscar/bob model pins preserve existing launch behavior without collapse or listModels', async () => {
+    let listModelCalls = 0
+    const launchedModels: string[] = []
+    const adapter: Adapter = {
+      ...okAdapter,
+      id: 'claude',
+      build: (buildInput) => {
+        launchedModels.push(buildInput.model)
+        return { command: 'claude', args: [] }
+      },
+      listModels: async () => {
+        listModelCalls += 1
+        throw new Error('listModels must not be called for concrete pins')
+      },
+    }
+
+    const result = await runRun(
+      baseDeps({ getAdapter: () => adapter }),
+      {
+        ...input,
+        oscar: { ...oscar, cli: 'claude', model: 'opus' },
+        bob: { ...bob, cli: 'claude', model: 'opus' },
+      },
+    )
+
+    expect(result.status).toBe('completed')
+    expect(listModelCalls).toBe(0)
+    expect(launchedModels.slice(0, 2)).toEqual(['opus', 'opus'])
+  })
+
   test('cmux group label derives compatibility targets when RunInput.target is absent', async () => {
     const groupLabelsFor = async (overrides: Partial<RunInput>): Promise<Array<string | undefined>> => {
       const spawns: SpawnOptions[] = []

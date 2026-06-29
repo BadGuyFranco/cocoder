@@ -4,6 +4,7 @@ import {
   isPersonaEnabled,
   loadAssignments,
   resolveEffectivePersona,
+  resolveBuildModel,
   runHeadlessProcess,
   runDisplayName,
   type Assignments,
@@ -157,10 +158,11 @@ async function runTurn(ctx: OzContext, target: OzTarget, session: OzSession, inp
   const prompt = await buildPrompt(ctx, target, session.transcript, input)
   let result: { readonly exitCode: number; readonly output: string }
   try {
+    const resolved = await resolveBuildModel(ctx.getAdapter, target.persona)
     const cmd = ctx.getAdapter(target.persona.cli).build({
       persona: 'oz',
       prompt,
-      model: target.persona.model,
+      model: resolved.model,
       cwd: target.workspace.path,
       outPath,
       headless: true,

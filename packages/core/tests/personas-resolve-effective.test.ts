@@ -34,7 +34,17 @@ describe('resolveEffectivePersona', () => {
     const base = loadPersona(sources.baseDir, 'bob')
 
     expect(resolved).toEqual({ ...base, cli: 'codex', model: 'gpt-5' })
+    expect('tier' in resolved).toBe(false)
     expect(resolved.body).toBe(base.body)
+  })
+
+  test('propagates assignment tier when present', async () => {
+    const sources = await makeSources()
+    await writePersona(sources.baseDir, { id: 'bob', label: 'Bob', role: 'Builder', scope: ['packages/**'], body: 'Base rules.' })
+
+    const resolved = resolveEffectivePersona(sources, { personas: { bob: { cli: 'codex', model: '', tier: 'strong' } } }, 'bob')
+
+    expect(resolved).toMatchObject({ id: 'bob', cli: 'codex', model: '', tier: 'strong' })
   })
 
   test('attaches assignment to a base definition merged with a repo delta', async () => {

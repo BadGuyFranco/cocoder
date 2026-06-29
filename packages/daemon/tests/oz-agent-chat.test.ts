@@ -17,6 +17,7 @@ interface Fixture {
   readonly store: RunStore
   readonly prompts: BuildInput[]
   readonly headlessInputs: HeadlessRunInput[]
+  readonly listModelCalls: () => number
   readonly ctx: OzContext
   readonly runId: string
   readonly restartActionCalls: () => number
@@ -41,6 +42,19 @@ describe('Oz agent chat turns', () => {
     expect(fixture.prompts[1]?.prompt).toContain('First answer')
     expect(fixture.prompts[1]?.prompt).toContain('second question')
     expect(await readFile(fixture.headlessInputs[0]!.outPath, 'utf8')).toBe('  First answer\n')
+  })
+
+  test('tiered Oz assignment builds the turn command with the resolved concrete model', async () => {
+    const fixture = await makeFixture({
+      ozAssignment: { cli: 'fake', model: '', tier: 'strong' },
+      adapterModels: { canEnumerate: true, models: ['opus'], tiers: { default: 'sonnet', strong: 'opus' }, detail: 'tiered fake' },
+    })
+
+    const result = await handleOzMessage(fixture.ctx, { text: 'which model?', workspaceId: 'cocoder' })
+
+    expect(result.status).toBe(200)
+    expect(fixture.listModelCalls()).toBe(1)
+    expect(fixture.prompts[0]).toMatchObject({ persona: 'oz', model: 'opus', headless: true })
   })
 
   test('facts digest includes newly present open tickets from the shared projection', async () => {
@@ -765,6 +779,8 @@ type FakeOutput = string | { readonly exitCode: number; readonly output: string 
 
 async function makeFixture(options: {
   readonly ozAssigned?: boolean
+  readonly ozAssignment?: { readonly cli: string; readonly model: string; readonly tier?: 'default' | 'strong' }
+  readonly adapterModels?: Awaited<ReturnType<Adapter['listModels']>>
   readonly outputs?: readonly FakeOutput[]
   readonly runHeadless?: (input: HeadlessRunInput) => Promise<{ readonly exitCode: number; readonly output: string }>
 } = {}): Promise<Fixture> {
@@ -776,7 +792,7 @@ async function makeFixture(options: {
   await writeFile(join(home, 'cocoder', 'priorities', 'demo.md'), '---\nid: demo\ntitle: Demo priority\n---\nDo the demo.')
   await writeFile(
     join(home, 'cocoder', 'personas', 'assignments.json'),
-    JSON.stringify({ personas: options.ozAssigned === false ? {} : { oz: { cli: 'fake', model: 'model-1' } } }),
+    JSON.stringify({ personas: options.ozAssigned === false ? {} : { oz: options.ozAssignment ?? { cli: 'fake', model: 'model-1' } } }),
   )
 
   const store = openRunStore(':memory:')
@@ -784,13 +800,16 @@ async function makeFixture(options: {
   const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
   const prompts: BuildInput[] = []
   const headlessInputs: HeadlessRunInput[] = []
+  let listModelCalls = 0
   const outputs = [...(options.outputs ?? ['agent answer'])]
   let restartActionCalls = 0
   const ctx = {
     cocoderHome: home,
     runsRoot: join(home, 'local', 'runs'),
     store,
-    getAdapter: () => fakeAdapter(prompts),
+    getAdapter: () => fakeAdapter(prompts, options.adapterModels, () => {
+      listModelCalls += 1
+    }),
     inFlight: new Map<string, string>([['cocoder', run.id]]),
     stopControllers: new Map<string, AbortController>([[run.id, new AbortController()]]),
     events: createOzEventBus(),
@@ -804,10 +823,14 @@ async function makeFixture(options: {
     }),
   } as unknown as OzContext
 
-  return { home, store, prompts, headlessInputs, ctx, runId: run.id, restartActionCalls: () => restartActionCalls }
+  return { home, store, prompts, headlessInputs, listModelCalls: () => listModelCalls, ctx, runId: run.id, restartActionCalls: () => restartActionCalls }
 }
 
-function fakeAdapter(prompts: BuildInput[]): Adapter {
+function fakeAdapter(
+  prompts: BuildInput[],
+  models: Awaited<ReturnType<Adapter['listModels']>> = { canEnumerate: false, models: [], detail: 'fake' },
+  onListModels: () => void = () => {},
+): Adapter {
   return {
     id: 'fake',
     runReadiness: { mechanism: 'launch-flags', flags: [], managesUserConfig: false, detail: 'fake' },
@@ -820,7 +843,8 @@ function fakeAdapter(prompts: BuildInput[]): Adapter {
       return { ok: true, checks: [] }
     },
     async listModels() {
-      return { canEnumerate: false, models: [], detail: 'fake' }
+      onListModels()
+      return models
     },
   }
 }

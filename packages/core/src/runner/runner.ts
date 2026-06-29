@@ -16,6 +16,7 @@ import { COCODER_GOVERNANCE_AUTHOR, commitFiles, recordSuccessfulCommit, runComm
 import type { AuditWriteBoundary, CommitGateResult, Git } from '../commit-gate/index.js'
 import type { Priority } from '../priorities/index.js'
 import type { PersonaRunMode, PlayAssignment, ResolvedPersona } from '../personas/index.js'
+import { assertNoModelCollapse, resolveBuildModel } from '../personas/index.js'
 import { dispatchPlay, listEffectivePlays, renderPlayManifest, type DispatchPlayResult, type HeadlessRunInput } from '../plays/index.js'
 import type { Play, PlaySources } from '../plays/index.js'
 import {
@@ -249,6 +250,26 @@ export class PreflightError extends Error {
   }
 }
 
+function isTierResolutionRequested(persona: ResolvedPersona): boolean {
+  return persona.model === '' && persona.tier !== undefined
+}
+
+async function resolveLaunchPersona(input: {
+  readonly persona: ResolvedPersona
+  readonly getAdapter: RunnerDeps['getAdapter']
+  readonly store: RunStore
+  readonly runId: string
+}): Promise<ResolvedPersona> {
+  try {
+    const resolved = await resolveBuildModel(input.getAdapter, input.persona)
+    return { ...input.persona, cli: resolved.cli, model: resolved.model }
+  } catch (err) {
+    input.store.setRunStatus(input.runId, 'failed')
+    const detail = err instanceof Error ? err.message : String(err)
+    throw new PreflightError(input.persona.id, detail)
+  }
+}
+
 export class MissingObjectiveError extends Error {
   constructor(priorityId: string) {
     super(`priority "${priorityId}" has no Objective`)
@@ -410,7 +431,8 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const buildUiBundle = deps.buildUiBundle ?? defaultBuildUiBundle
   const now = deps.now ?? Date.now
   const log = deps.log ?? (() => {})
-  const { workspace, priority, oscar, bob, deb, sharedStandards, runsRoot } = input
+  const { workspace, priority, sharedStandards, runsRoot } = input
+  let { oscar, bob, deb } = input
   const engineHome = input.engineHome ?? workspace.path
   const closeoutTarget: CloseoutLaunchTarget = input.ticketId ? 'ticket' : 'priority'
   const requiredPriorityQuestions = missingPriorityLaunchQuestions(priority)
@@ -442,6 +464,21 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     if (resumeState === null) throw new Error(`Cannot resume run ${run.id}; missing resume-state.json`)
     log(`run ${run.id} resume requested at ${resumeState.park} atom ${resumeStateAtomNumber(resumeState)}`)
   }
+
+  const oscarTierResolved = isTierResolutionRequested(oscar)
+  const bobTierResolved = isTierResolutionRequested(bob)
+  oscar = await resolveLaunchPersona({ persona: oscar, getAdapter, store, runId: run.id })
+  bob = await resolveLaunchPersona({ persona: bob, getAdapter, store, runId: run.id })
+  if (oscarTierResolved || bobTierResolved) {
+    try {
+      assertNoModelCollapse(oscar, bob, ['oscar', 'bob'])
+    } catch (err) {
+      store.setRunStatus(run.id, 'failed')
+      const detail = err instanceof Error ? err.message : String(err)
+      throw new PreflightError('oscar/bob', detail)
+    }
+  }
+  deb = deb ? await resolveLaunchPersona({ persona: deb, getAdapter, store, runId: run.id }) : undefined
 
   // Preflight both CLIs — fail fast with a clear reason (kills the F10 mid-run class).
   for (const p of [oscar, bob]) {

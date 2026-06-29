@@ -62,6 +62,20 @@ describe('persona + assignment loading', () => {
     expect(isPersonaEnabled(assignments, 'bob')).toBe(true)
     const resolved = resolvePersona(dir, assignments, 'bob')
     expect(resolved).toMatchObject({ id: 'bob', cli: 'codex', model: '', writeScope: ['packages/**'] })
+    expect('tier' in resolved).toBe(false)
+  })
+
+  test('resolvePersona propagates assignment tier when present', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'personas-'))
+    await writeFile(
+      join(dir, 'bob.md'),
+      '---\nid: bob\nlabel: Bob\nrole: Builder\nwriteScope:\n  - packages/**\n---\nBe elegant.',
+    )
+    await writeFile(join(dir, 'assignments.json'), JSON.stringify({ personas: { bob: { cli: 'codex', model: '', tier: 'strong' } } }))
+
+    const resolved = resolvePersona(dir, loadAssignments(join(dir, 'assignments.json')), 'bob')
+
+    expect(resolved).toMatchObject({ id: 'bob', cli: 'codex', model: '', tier: 'strong' })
   })
 
   test('assignment enabled toggle defaults on and rejects non-booleans', async () => {

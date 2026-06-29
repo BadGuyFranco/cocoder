@@ -60,5 +60,6 @@ export interface Assignments {
 export interface ResolvedPersona extends Persona {
   readonly cli: string
   readonly model: string
+  readonly tier?: ModelTier
   readonly mode?: PersonaRunMode
 }
