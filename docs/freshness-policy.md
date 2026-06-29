@@ -5,7 +5,7 @@ doc-type: current-truth
 # Documentation Freshness Policy
 
 **Status:** Draft, implemented by Sub-Playbook D Solve  
-**Last verified:** 2026-06-28 (defined doc-type taxonomy, declaration convention, and governed doc set)
+**Last verified:** 2026-06-28 (defined doc-type taxonomy; pointed the governed set at `governedDocGlobs`; resolver proof covered by `packages/core/tests/drift-resolve-doc-references.test.ts`)
 
 CoCoder docs should say when they were last checked against the implementation. Freshness stamps do not prove correctness by themselves, but they make stale claims visible during review.
 
@@ -42,19 +42,15 @@ unclassified governed doc is checked rather than silently skipped.
 
 ## Governed doc set
 
-The reference/freshness process covers these repository doc surfaces:
+The executable governed-doc-set boundary is the exported `governedDocGlobs` constant in
+[`packages/core/src/drift/resolve-doc-references.ts`](../packages/core/src/drift/resolve-doc-references.ts).
+Update that constant when the governed set changes; this policy owns the taxonomy, declaration
+convention, and freshness rules, while the drift module owns the one executable glob list that CI and
+local checks read.
 
-- `docs/**/*.md`
-- `ARCHITECTURE.md`
-- `README.md`
-- `CONTRIBUTING.md`
-- `cocoder/decisions/*.md`
-- `cocoder/PLAYBOOK.md`
-- `packages/personas/base/**/*.md`
-
-`README.md` and `CONTRIBUTING.md` are governed docs but are outside this atom's committable
-`docs/**` write lane; resolving that lane mismatch is a known follow-up for the CI-check atom or its
-supporting scope change.
+`README.md` and `CONTRIBUTING.md` are governed docs in that executable set but are outside this atom's
+committable `docs/**` write lane; resolving that lane mismatch is a known follow-up for the CI-check
+atom or its supporting scope change.
 
 ## Architecture verification
 

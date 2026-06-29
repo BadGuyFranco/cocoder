@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { basename, join, relative, resolve, sep } from 'node:path'
+import { basename, join, relative, sep } from 'node:path'
 import { parseFrontmatter } from '../personas/frontmatter.js'
+import { extractExplicitPathReferences } from './references.js'
 
 export type DriftClaimCategory = 'adr' | 'priority' | 'memory' | 'standards-scope'
 export type DriftClaimEvidence = { readonly file: string; readonly line: number }
@@ -21,14 +22,8 @@ export interface DriftClaimsInventory {
 export interface ReadGovernanceClaimsOptions { readonly repoRoot: string; readonly cocoderDir?: string }
 const categories: readonly DriftClaimCategory[] = ['adr', 'priority', 'memory', 'standards-scope']
 // Path references are extracted ONLY from markdown-link hrefs and standalone backtick code spans —
-// explicit references, not arbitrary prose. A candidate counts as a path iff it has a known file
-// extension OR is relative OR its first segment is a known repo root. This excludes the tokens the old
-// `/`-or-extension heuristic mis-flagged: npm scopes (`@cocoder/core`), ADR refs (`ADR-0010/0028`),
-// slash-delimited word lists (`zod/ajv/yup`, `start/stop/status`), and globs (`scripts/proof-*.mjs`).
-const LINK_HREF_RE = /\[[^\]]*\]\(([^)\s]+)\)/g
-const CODE_SPAN_RE = /`([^`]+)`/g
-const PATH_EXT_RE = /\.(?:md|ts|tsx|js|mjs|cjs|json|yaml|yml)$/
-const KNOWN_ROOTS = new Set(['packages', 'scripts', 'cocoder', 'docs', 'templates', 'local', 'src', 'bin', 'examples', 'node_modules'])
+// explicit references, not arbitrary prose. The shared drift reference helper keeps this advisory
+// reader and the doc-reference resolver on the same low-false-positive path heuristic.
 export function readGovernanceClaims(opts: ReadGovernanceClaimsOptions): DriftClaimsInventory {
   const repoRoot = opts.repoRoot
   const cocoderDir = opts.cocoderDir ?? join(repoRoot, 'cocoder')
@@ -149,34 +144,7 @@ function frontmatterScalar(file: string, text: string, key: string): { readonly 
   }
 }
 function extractPathRefs(line: string, fileDir: string, repoRoot: string): readonly string[] {
-  const candidates: string[] = []
-  for (const match of line.matchAll(LINK_HREF_RE)) if (match[1]) candidates.push(match[1])
-  // Strip the markdown links first so a link's backtick TEXT (e.g. [`ARCHITECTURE.md`](../../ARCHITECTURE.md))
-  // is not double-counted with its href — that same-line duplicate is what crashed the audit.
-  const withoutLinks = line.replace(LINK_HREF_RE, '')
-  for (const match of withoutLinks.matchAll(CODE_SPAN_RE)) if (match[1]) candidates.push(match[1])
-  const refs = new Set<string>()
-  for (const raw of candidates) {
-    const ref = raw.trim()
-    if (isPathRef(ref)) refs.add(toRepoRelative(ref, fileDir, repoRoot))
-  }
-  return [...refs].sort()
-}
-function isPathRef(ref: string): boolean {
-  if (ref === '' || /^https?:\/\//.test(ref) || /^mailto:/i.test(ref) || ref.startsWith('#')) return false
-  if (ref.startsWith('@')) return false // npm scope specifier (@cocoder/core), not a path
-  if (/^ADR-\d/i.test(ref)) return false // ADR cross-reference (ADR-0010/0028)
-  if (ref.includes('*')) return false // glob, not a concrete path
-  if (/^\.\w+$/.test(ref)) return false // a bare file extension (`.mjs`, `.md`), not a path
-  if (ref.endsWith('/')) return false // a directory mention (`cocoder/`, `local/`) — too coarse to be a stale-path claim
-  if (PATH_EXT_RE.test(ref)) return true // ends in a known source/doc extension
-  if (!ref.includes('/')) return false // a bare word is not a path reference
-  if (ref.startsWith('./') || ref.startsWith('../')) return true // explicit relative path
-  return KNOWN_ROOTS.has(ref.split('/')[0]!) // packages/…, scripts/…, cocoder/… — a real repo path
-}
-function toRepoRelative(ref: string, fileDir: string, repoRoot: string): string {
-  const value = ref.startsWith('./') || ref.startsWith('../') ? relative(repoRoot, resolve(fileDir, ref)) : ref.replace(/^\//, '')
-  return value.split(sep).join('/')
+  return [...new Set(extractExplicitPathReferences(line, fileDir, repoRoot).map((ref) => ref.value))].sort()
 }
 function inventory(claims: readonly DriftClaim[]): DriftClaimsInventory {
   const byCategory = categories

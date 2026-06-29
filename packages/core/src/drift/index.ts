@@ -36,3 +36,12 @@ export {
   type DriftWrite,
 } from './apply.js'
 export { runDriftAudit, type RunDriftAuditOptions } from './run.js'
+export {
+  deferredDocReferenceChecks,
+  governedDocGlobs,
+  resolveDocReferences,
+  type DocReferenceKind,
+  type DocType,
+  type ResolveDocReferencesOptions,
+  type UnresolvedDocReference,
+} from './resolve-doc-references.js'
