@@ -307,8 +307,12 @@ persona. Full Play bodies stay lazy-loaded and enter the prompt only at dispatch
 Optional Play requests use a typed handoff lane. The validation owner is
 [`packages/core/src/plays/request.ts`](./packages/core/src/plays/request.ts): it parses the handoff and
 validates caller, Play id, mandatory-vs-optional availability, required input schema, and returned write
-scope. Per-persona CLI/model assignment is resolved by runner/daemon dispatch plumbing, such as
-[`packages/daemon/src/launcher.ts`](./packages/daemon/src/launcher.ts). Mandatory lifecycle/policy
+scope. Per-persona CLI/model assignment (optional `tier` or concrete `{cli, model}` pin; concrete wins)
+is resolved at the live dispatch seam by `resolveBuildModel` in
+[`packages/core/src/personas/resolve-model.ts`](./packages/core/src/personas/resolve-model.ts), wired from
+[`packages/core/src/plays/dispatch.ts`](./packages/core/src/plays/dispatch.ts),
+[`packages/core/src/runner/runner.ts`](./packages/core/src/runner/runner.ts), and
+[`packages/daemon/src/oz-host.ts`](./packages/daemon/src/oz-host.ts). Mandatory lifecycle/policy
 triggers are not persona discretion; the registry owner is
 [`packages/core/src/plays/triggers.ts`](./packages/core/src/plays/triggers.ts), with daemon launch wiring
 and runner wrap-up dispatch in [`packages/core/src/runner/runner.ts`](./packages/core/src/runner/runner.ts).

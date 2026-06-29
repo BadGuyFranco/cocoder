@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-29 — **model-layer: first-class model tiers — archive ready (run_148/run_289)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [model-layer](./priorities/model-layer.md) | **Run:** run_289 (display 148)
+**Outcomes:**
+- **Six atoms verified and committed.** Adapter tier metadata; assignment shape + pure resolver with collapse detection; live dispatch wiring via `resolveBuildModel`; persona-level tier at `runRun`; Personas UI tier selector end-to-end; `docs/personas.md` model-tiers section.
+- **All six verified-when conditions met.** Tier declare + resolve at live seam; concrete pins unchanged; collapse fails before launch; adapter-agnostic UI/resolver; cross-CLI tier resolution test-pinned; no speculative adapter base class.
+- **Phase 4 tier defaults deliberately deferred** — converting verification-play test pins to tiers is a founder cost/quality call, not an objective blocker.
+- **Disposition: `archive-confirmation`.** No open tickets tied to this priority; founder archive confirmation is the remaining gate (optional tier-default atom available on request before archive).
+**Next:** Reply `archive` or `archive run_289` in Oz chat; then launch `oz-terminal` for the streaming terminal slice.
+
 ## 2026-06-29 — **multi-workspace-concurrency: concurrent cross-workspace runs — archive ready (run_147)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [multi-workspace-concurrency](./priorities/multi-workspace-concurrency.md) | **Run:** run_147 (display 147)
