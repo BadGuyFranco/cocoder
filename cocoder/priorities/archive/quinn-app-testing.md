@@ -3,6 +3,9 @@ id: quinn-app-testing
 title: "Quinn — browser app-testing Play (deferred: Phase 5)"
 ---
 
+> **Archived 2026-06-29 (founder) — archive confirmed.** Deferred per 2026-06-29 audit; no browser app
+> target exists and electron-test already covers current QA.
+
 ## Objective
 Quinn (experience persona) gains a **`browser-test`** Play for validating browser-based apps via cmux's
 embedded scriptable browser. **Verified** when Quinn validates a real browser UI flow (e.g. a login or a
