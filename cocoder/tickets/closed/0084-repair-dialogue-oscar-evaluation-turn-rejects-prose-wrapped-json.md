@@ -2,7 +2,7 @@
 id: 0084
 title: Oscar-Deb repair dialogue 500s when the Oscar-evaluation turn wraps its JSON verdict in prose
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-28
@@ -51,3 +51,9 @@ fix:
 Add a regression test feeding a prose-wrapped `escalate-founder` evaluation and asserting the dialogue
 surfaces a `FounderEscalation` artifact instead of a 500. Do not duplicate the contract in a second
 local copy (elegance: one owner for the artifact shape).
+
+## Resolution
+
+Resolved by run run_284 (e8a6d264738544e82fe8f7eda6f0e084e0b34863) on 2026-06-29.
+
+Oscar-Deb repair dialogue no longer 500s on prose-wrapped JSON. One extraction owner (firstJsonObjectArtifact in packages/daemon/src/oscar-deb-repair.ts, reusing jsonObjectCandidates) is used by both parseOscarEvaluationArtifact and launcher's parseDebTurnOutput. Regression tests assert the Oscar turn surfaces a FounderEscalation (status 200) and the Deb turn commits, both on prose-wrapped JSON, instead of a malformed-artifact 500. Verified: 57 tests green, tsc --noEmit exit 0.
