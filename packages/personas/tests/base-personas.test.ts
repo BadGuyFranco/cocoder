@@ -226,6 +226,22 @@ describe('basePersonasDir', () => {
     expect(normalized).not.toContain('do not send Bob an atom he cannot legally write')
   })
 
+  test('Oscar adjudicates out-of-lane commits at wrap by ratify-or-escalate, never a bounce (WI-B2)', () => {
+    const text = readFileSync(join(basePersonasDir(), 'oscar.md'), 'utf8')
+    const normalized = singleLine(text)
+
+    // Advisory scope (ADR-0045): the wrap-time duty is ratify-or-escalate in plain English, with the runner
+    // auto-escalating an unaddressed set — never a block, bounce, or scope-question (A removed those).
+    expect(normalized).toContain('Adjudicate out-of-lane commits (ADR-0045)')
+    expect(normalized).toContain('ratify-or-escalate each cluster in plain English')
+    expect(normalized).toContain('landed outside its nominal lane but correct')
+    expect(normalized).toContain('escalate** the genuinely-conflicting paths into Founder Decision Needed')
+    expect(normalized).toContain('The choice is strictly ratify or escalate, nothing else')
+    expect(normalized).toContain('auto-escalated to the founder by the runner')
+    expect(text).not.toMatch(/\bbounce\b/i)
+    expect(text).not.toMatch(/raise a scope question/i)
+  })
+
   test('Oscar initiates proactive Deb repair dialogues outside the build loop', () => {
     const text = readFileSync(join(basePersonasDir(), 'oscar.md'), 'utf8')
     const normalized = singleLine(text)
@@ -296,6 +312,17 @@ describe('basePersonasDir', () => {
     expect(oscar).toContain('duplicated owners, schema/abstraction creep across atoms, and deletable surface')
     expect(wrapUp).toContain('missing evidence, and cross-atom accretion (duplicated owners, schema/abstraction creep, deletable surface)')
     expect(bob).toContain("Oscar's verify gate enforces this too: deletable or duplicate surface fails verify; elegance is not merely self-assessed.")
+  })
+
+  test('base Bob carries no scope-routing prose to adjudicate — advisory scope lives in the delta (WI-B2)', () => {
+    // The advisory-scope routing prose is the workspace delta's job (already aligned by Playbook A). Base
+    // Bob stays portable with an empty writeScope and no block/bounce/scope-question language to drift.
+    const text = readFileSync(join(basePersonasDir(), 'bob.md'), 'utf8')
+
+    expect(frontmatterList(text, 'writeScope')).toEqual([])
+    expect(text).not.toMatch(/\bbounce\b/i)
+    expect(text).not.toMatch(/raise a scope question/i)
+    expect(text).not.toMatch(/self-block/i)
   })
 
   test('Bob completion evidence rejects unproven launch and artifact green claims', () => {
@@ -420,6 +447,28 @@ describe('basePlaysDir', () => {
     expect(normalized).toContain('never as a hand-edit of machine-local internal config')
     expect(normalized).not.toMatch(/\bretention\b/)
     expect(normalized).not.toContain('settings.json')
+  })
+
+  test('wrap-up Play pins the out-of-lane ratify-or-escalate adjudication contract (WI-B1/B2)', () => {
+    const text = readFileSync(join(basePlaysDir(), 'wrap-up.md'), 'utf8')
+    const normalized = singleLine(text)
+
+    // The portable contract WI-B1's code enforces: advisory scope, ratify-or-escalate, blanket ratify is
+    // enough, and an unaddressed set auto-escalates to the founder — never blocked, bounced, or held.
+    expect(text).toContain('**Out-of-lane adjudication.**')
+    expect(normalized).toContain('Write scope is advisory')
+    expect(normalized).toContain('landed outside its nominal lane but is correct')
+    expect(normalized).toContain('you do not need a line per file')
+    expect(normalized).toContain('escalate** the genuinely-conflicting paths by naming them in the Founder Decision Needed section')
+    expect(normalized).toContain('The choice is strictly ratify or escalate, nothing else')
+    expect(normalized).toContain('the runner then auto-escalates those paths to the founder')
+    expect(text).not.toMatch(/\bbounce\b/i)
+    expect(text).not.toMatch(/raise a scope question/i)
+    // Portable: the adjudication prose itself names no product nouns (ADR-0012). Bound the slice to the
+    // single paragraph — the rest of the Play legitimately carries product nouns (Oz chat, CLI lanes).
+    const start = text.indexOf('**Out-of-lane adjudication.**')
+    const adjudication = text.slice(start, text.indexOf('\n\n', start))
+    expect(adjudication).not.toMatch(/\b(?:Bob|Oscar|CoCoder|Oz)\b/)
   })
 
   // Historical ADR-0022 proof lineage: the wrap-up Play is the SINGLE owner of the founder closeout format.

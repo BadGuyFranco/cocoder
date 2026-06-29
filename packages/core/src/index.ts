@@ -123,6 +123,8 @@ export {
   deriveTicketCloseDecision,
   deriveWrapupRunStatus,
   deriveWrapDisposition,
+  deriveOutOfLaneAdjudication,
+  type OutOfLaneAdjudication,
   type PlayOutputValidationInput,
   type PlayOutputValidationResult,
   type FounderCloseoutContract,

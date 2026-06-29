@@ -250,6 +250,32 @@ export function deriveWrapDisposition(
   return 'continue'
 }
 
+export type OutOfLaneAdjudication = 'none' | 'ratified' | 'escalated' | 'unadjudicated'
+
+// A ratification ties the out-of-lane landing to an affirmative verdict in the same breath ("landed
+// outside its nominal lane but correct", or the reverse phrasing). Trust-first (founder directive): a
+// blanket "these are fine, because …" is enough — we do NOT require a line per file. We only insist Oscar
+// engaged with the out-of-lane question at all.
+const OUT_OF_LANE_RATIFY =
+  /\boutside\b[^.\n]{0,160}\b(?:correct|right|fine|intended|intentional|expected|appropriate|deliberate|belongs?)\b|\b(?:correct|right|fine|intended|intentional|expected|appropriate|deliberate)\b[^.\n]{0,160}\boutside\b/i
+
+/** WI-B1: the wrap-time review that keeps advisory scope (ADR-0045) from becoming a silent-commit faucet.
+ *  Given the unioned set of files committed outside their nominal lane, decide whether the closeout
+ *  adjudicated them. Escalate wins: any founder decision raised IS the escalation (the founder will see the
+ *  flagged paths). Otherwise a generous ratification phrase clears the set. Only TOTAL silence on the
+ *  out-of-lane question is `unadjudicated` — the runner then auto-escalates to the founder (awaiting-founder),
+ *  never a hard wrap failure. A zero out-of-lane run is `none` and carries no adjudication burden. */
+export function deriveOutOfLaneAdjudication(
+  markdown: string,
+  contract: FounderCloseoutContract,
+  outOfLane: readonly string[],
+): OutOfLaneAdjudication {
+  if (outOfLane.length === 0) return 'none'
+  if (founderDecisionNeeded(markdown, contract)) return 'escalated'
+  if (OUT_OF_LANE_RATIFY.test(markdown)) return 'ratified'
+  return 'unadjudicated'
+}
+
 export function archiveConfirmationAction(input: {
   readonly workspaceId: string
   readonly runId: string

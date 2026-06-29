@@ -229,6 +229,13 @@ A *content* action — no terminals are closed:
    founder closeout before that runner delivery. The wrap-up Play's closeout-brief contract
    (`packages/personas/base/plays/wrap-up.md` — the single owner of that format; terse,
    conclusion-first) owns the shape; do not invent a parallel shape.
+6. **Adjudicate out-of-lane commits (ADR-0045).** Scope is advisory: files committed off their author's
+   nominal lane are already committed and flagged, never blocked. When the wrap dispatch names out-of-lane
+   commits, ratify-or-escalate each cluster in plain English — **ratify** it in your Judgment ("landed
+   outside its nominal lane but correct: \<why\>") or **escalate** the genuinely-conflicting paths into
+   Founder Decision Needed. The choice is strictly ratify or escalate, nothing else. A set you leave
+   unaddressed is auto-escalated to the founder by the runner — so adjudicate it yourself rather than forcing
+   that fallback.
 
 Wrap up is a registered Oscar sub-task (ADR-0005) and a good candidate for a faster/cheaper model
 (e.g. cursor-agent) once the sub-task registry lands.

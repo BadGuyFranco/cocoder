@@ -21,6 +21,7 @@ import type { Play, PlaySources } from '../plays/index.js'
 import {
   archiveConfirmationAction,
   closeoutCitesCheckableSignal,
+  deriveOutOfLaneAdjudication,
   deriveTicketCloseDecision,
   deriveWrapDisposition,
   deriveWrapupRunStatus,
@@ -38,7 +39,6 @@ import {
   listPortableRunSessions,
   recordPortableRunCreation,
   readPortableRunById,
-  runDisplayName,
   writePortableRunHistory,
   type Run,
   type RunStatus,
@@ -83,6 +83,7 @@ import {
   buildLandingOutcome,
   buildNextOrWrapDispatch,
   buildOrchestratorPrompt,
+  buildWrapPlayDispatch,
   buildWrapupDelivery,
   commitMessage,
 } from './prompts.js'
@@ -1423,9 +1424,19 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       const headBeforeOscarSupport = await git.headSha(worktreePath)
       await commitOscarSupport(headBeforeOscarSupport)
       if (input.wrapPlay && input.wrapPlayAssignment) {
-        const task =
-          `${runDisplayName(runDisplayNamed)} on priority ${priority.id}. ${n} atom(s) were delegated; commits so far: ${committedShas.join(', ') || 'none'}.\n\n` +
-          `Oscar's notes for this wrap-up:\n${directive.pickup ?? ''}`
+        // WI-B1: snapshot the unioned out-of-lane set BEFORE the wrap Play runs. This is exactly the set
+        // Oscar is asked to adjudicate (atoms' + Oscar-support out-of-lane). The wrap Play's own gate may
+        // add more below, but Oscar cannot adjudicate paths he writes during this same wrap — those stay
+        // flagged in the landing prose, just not adjudicated. Same snapshot drives the prompt and the check.
+        const outOfLaneToAdjudicate = [...outOfScope]
+        const task = buildWrapPlayDispatch({
+          run: runDisplayNamed,
+          priorityId: priority.id,
+          atomCount: n,
+          commits: committedShas,
+          pickup: directive.pickup ?? '',
+          outOfLane: outOfLaneToAdjudicate,
+        })
         const dispatchWrapPlay = async (wrapTask: string, outName: string): Promise<{ candidatePickup: string | null; outPath: string }> => {
           const headBeforeWrap = await git.headSha(worktreePath)
           const outPath = join(runDir, outName)
@@ -1496,16 +1507,28 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
             const openHandledTicketCount = closeoutTarget === 'priority'
               ? handledOpenTicketsForPriority(await readTickets(join(worktreePath, 'cocoder', 'tickets')), priority.id).length
               : 0
-            const disposition = deriveWrapDisposition(pickup, outputValidation.founderCloseoutContract, closeoutTarget, openHandledTicketCount)
+            // WI-B1: review the out-of-lane commits at wrap. `escalated` (Oscar raised a founder decision)
+            // and `ratified` (he blessed the set) are both adjudicated; `none` means there was nothing to
+            // review. Only `unadjudicated` — out-of-lane commits the closeout never addressed — needs the
+            // backstop: auto-escalate the set to the founder (awaiting-founder), the SAME terminal state an
+            // escalation reaches, with NO hard wrap failure and NO silent pass.
+            const adjudication = deriveOutOfLaneAdjudication(pickup, outputValidation.founderCloseoutContract, outOfLaneToAdjudicate)
+            const baseDisposition = deriveWrapDisposition(pickup, outputValidation.founderCloseoutContract, closeoutTarget, openHandledTicketCount)
+            const disposition = adjudication === 'unadjudicated' ? 'awaiting-founder' : baseDisposition
             const action = archiveConfirmationAction({ workspaceId: workspace.id, runId: run.id, priorityId: priority.id, disposition })
             const closeDecision = deriveTicketCloseDecision(pickup, outputValidation.founderCloseoutContract, closeoutTarget)
             store.recordEvent({
               runId: run.id,
               type: 'wrap-disposition',
-              data: { disposition, buildAtoms, signal, ...(closeoutTarget === 'ticket' ? { ticketCloseDecision: closeDecision } : {}), ...(action ? { action } : {}) },
+              data: { disposition, buildAtoms, signal, ...(adjudication === 'none' ? {} : { adjudication }), ...(closeoutTarget === 'ticket' ? { ticketCloseDecision: closeDecision } : {}), ...(action ? { action } : {}) },
             })
             terminalStatus = deriveWrapupRunStatus(pickup, outputValidation.founderCloseoutContract, terminalStatus, closeoutTarget, openHandledTicketCount)
             ticketCloseDecision = closeDecision
+            if (adjudication === 'unadjudicated') {
+              store.recordEvent({ runId: run.id, type: 'out-of-lane-auto-escalated', data: { files: outOfLaneToAdjudicate } })
+              terminalStatus = 'awaiting-founder'
+              log(`wrap-up left ${outOfLaneToAdjudicate.length} out-of-lane commit(s) unadjudicated; auto-escalating to founder`)
+            }
           }
         }
         store.recordEvent({ runId: run.id, type: 'wrapup', data: { atoms: n, forced: false, play: input.wrapPlay.id } })

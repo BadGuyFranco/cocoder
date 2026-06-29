@@ -29,6 +29,7 @@ import {
   type SessionRef,
   StopRequestedError,
   deriveTerminalProjection,
+  deriveOutOfLaneAdjudication,
   deriveTicketCloseDecision,
   deriveWrapDisposition,
   deriveWrapupRunStatus,
@@ -761,6 +762,32 @@ describe('founder closeout target-aware Run Status', () => {
     })
     expect(deriveWrapupRunStatus(founderDecision, contract, 'completed', 'priority', 0)).toBe('awaiting-founder')
     expect(deriveWrapDisposition(founderDecision, contract, 'priority', 0)).toBe('awaiting-founder')
+  })
+
+  // WI-B1: the wrap-time out-of-lane review. Escalate (any founder decision) and ratify (a blanket blessing,
+  // no per-file line required) are both adjudicated; only TOTAL silence on a non-empty out-of-lane set is
+  // `unadjudicated`. Zero out-of-lane is `none` regardless of closeout content.
+  test('out-of-lane adjudication classifies none/ratified/escalated/unadjudicated (WI-B1)', () => {
+    const contract = validatedCloseoutContract()
+    const stray = ['cocoder/stray.md', 'packages/ui/orphan.ts']
+
+    // none: an empty out-of-lane set is never adjudicated, whatever the closeout says.
+    expect(deriveOutOfLaneAdjudication(renderFounderCloseout(), contract, [])).toBe('none')
+
+    // ratified: a blanket blessing in Judgment clears the whole set — no line-per-file required (trust-first).
+    const ratified = renderFounderCloseout({
+      judgment: 'These files landed outside their nominal lane but are correct: the audit naturally belongs there.',
+    })
+    expect(deriveOutOfLaneAdjudication(ratified, contract, stray)).toBe('ratified')
+
+    // escalated: any non-None Founder Decision Needed IS the escalation (the founder will see the flag).
+    const escalated = renderFounderCloseout({
+      decisionNeeded: 'Decide whether `packages/ui/orphan.ts` should keep living off its usual surface.',
+    })
+    expect(deriveOutOfLaneAdjudication(escalated, contract, stray)).toBe('escalated')
+
+    // unadjudicated: out-of-lane commits the closeout never addresses — neither blessed nor escalated.
+    expect(deriveOutOfLaneAdjudication(renderFounderCloseout(), contract, stray)).toBe('unadjudicated')
   })
 })
 
@@ -2572,6 +2599,60 @@ describe('runRun (multi-atom loop)', () => {
     expect(links.map((c) => c.workItemId)).toEqual([store.listWorkItems(result.runId)[0]?.id, null])
     const wrap = store.listEvents(result.runId).find((e) => e.type === 'wrapup')
     expect((wrap?.data as { play?: string }).play).toBe('wrap-up')
+  })
+
+  test('unadjudicated out-of-lane commits auto-escalate to the founder without a hard wrap failure (WI-B1)', async () => {
+    const store = openRunStore(':memory:')
+    // atom 0 commits a file off Bob's usual surface (out-of-lane); the wrap gate adds nothing. The closeout
+    // is silent on it — neither ratify nor escalate — so the runner must auto-escalate to the founder.
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([['cocoder/stray.md'], []]),
+        io: fakeIO({ directives: [delegate('atom 0'), wrapup('Oscar seed closeout')] }),
+        getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
+        runHeadless: async () => ({ exitCode: 0, output: validFounderCloseout() }),
+      }),
+      { ...input, wrapPlay, wrapPlayAssignment },
+    )
+
+    expect(result.outOfScope).toEqual(['cocoder/stray.md'])
+    // Auto-escalated: the SAME terminal state an escalation reaches, reached WITHOUT a fault and WITHOUT a
+    // silent pass.
+    expect(result.status).toBe('awaiting-founder')
+    const events = store.listEvents(result.runId)
+    expect(events.find((e) => e.type === 'out-of-lane-auto-escalated')?.data).toEqual({ files: ['cocoder/stray.md'] })
+    expect(events.find((e) => e.type === 'wrap-disposition')?.data).toMatchObject({
+      disposition: 'awaiting-founder',
+      adjudication: 'unadjudicated',
+    })
+    expect((events.find((e) => e.type === 'run-end')?.data as { status?: string }).status).toBe('awaiting-founder')
+    // No NEW hard-fail wrap path: the wrap was not failed/triaged and no format-invalid fallback was emitted.
+    expect(events.find((e) => e.type === 'wrapup-format-invalid')).toBeUndefined()
+    expect(events.find((e) => e.type === 'triage-dispatch')).toBeUndefined()
+  })
+
+  test('ratified out-of-lane commits wrap normally with no auto-escalation (WI-B1)', async () => {
+    const store = openRunStore(':memory:')
+    const ratifiedCloseout = renderFounderCloseout({
+      judgment: 'The audit landed outside its nominal lane but is correct: it naturally belongs in the governance tree.',
+    })
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([['cocoder/stray.md'], []]),
+        io: fakeIO({ directives: [delegate('atom 0'), wrapup('Oscar seed closeout')] }),
+        getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
+        runHeadless: async () => ({ exitCode: 0, output: ratifiedCloseout }),
+      }),
+      { ...input, wrapPlay, wrapPlayAssignment },
+    )
+
+    expect(result.outOfScope).toEqual(['cocoder/stray.md'])
+    expect(result.status).toBe('completed')
+    const events = store.listEvents(result.runId)
+    expect(events.find((e) => e.type === 'out-of-lane-auto-escalated')).toBeUndefined()
+    expect(events.find((e) => e.type === 'wrap-disposition')?.data).toMatchObject({ disposition: 'continue', adjudication: 'ratified' })
   })
 
   test('wrap-up Play output is repaired once before pickup delivery', async () => {

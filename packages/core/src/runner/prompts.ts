@@ -512,6 +512,35 @@ ${landingSection}
 ${brief}`
 }
 
+/** The wrap-up Play dispatch task (WI-B1). Carries the run header + Oscar's pickup notes, and — only when
+ *  the run committed files outside their nominal lane — the out-of-lane adjudication ask. Scope is advisory
+ *  (ADR-0045): these paths already committed, so Oscar never blocks them; he simply RATIFIES the set
+ *  ("landed outside nominal lane but correct: …") or ESCALATES the genuinely-conflicting paths by naming
+ *  them in Founder Decision Needed. A run with zero out-of-lane commits gets no extra prompt burden. */
+export function buildWrapPlayDispatch(input: {
+  readonly run: RunDisplayInput
+  readonly priorityId: string
+  readonly atomCount: number
+  readonly commits: readonly string[]
+  readonly pickup: string
+  readonly outOfLane: readonly string[]
+}): string {
+  const header =
+    `${runDisplayName(input.run)} on priority ${input.priorityId}. ${input.atomCount} atom(s) were delegated; ` +
+    `commits so far: ${input.commits.join(', ') || 'none'}.\n\n` +
+    `Oscar's notes for this wrap-up:\n${input.pickup}`
+  if (input.outOfLane.length === 0) return header
+  return `${header}
+
+OUT-OF-LANE COMMITS TO ADJUDICATE (scope is advisory — ADR-0045; these paths ALREADY committed, so do NOT
+block or re-open them): ${input.outOfLane.join(', ')}.
+Adjudicate the set in your closeout — either RATIFY it (say in your Judgment that it landed outside its
+nominal lane but is correct, with the why), or ESCALATE the genuinely-conflicting paths by naming them in
+Founder Decision Needed in plain English. A blanket "these are fine, because …" ratification is enough; you
+do not need a line per file. If you say nothing about them at all, the runner auto-escalates them to the
+founder for you.`
+}
+
 export function buildArtifactDispatch(kind: string, path: string): string {
   return `${kind}: read ${path} and follow it now.`
 }
