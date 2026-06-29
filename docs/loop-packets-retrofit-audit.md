@@ -1,3 +1,7 @@
+---
+doc-type: historical
+---
+
 # Loop-Packets Retrofit Audit
 
 Audit date: 2026-06-10.

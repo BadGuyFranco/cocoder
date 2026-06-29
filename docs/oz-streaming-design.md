@@ -1,3 +1,7 @@
+---
+doc-type: design-intent
+---
+
 # Oz Streaming Design
 
 Design and capability probe for Oz response streaming and show-thinking-if-available. This is a

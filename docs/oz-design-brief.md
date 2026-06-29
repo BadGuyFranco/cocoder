@@ -1,3 +1,7 @@
+---
+doc-type: design-intent
+---
+
 # Oz design brief
 
 **Status:** intent — pending the claude.ai/design output, then implementation.

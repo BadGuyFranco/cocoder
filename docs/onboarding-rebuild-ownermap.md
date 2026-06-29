@@ -1,3 +1,7 @@
+---
+doc-type: historical
+---
+
 # Onboarding Rebuild Owner Map
 
 > **Completed historical analysis:** ADR-0026's rebuild landed after this owner map was written. The

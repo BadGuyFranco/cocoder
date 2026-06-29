@@ -1,3 +1,7 @@
+---
+doc-type: historical
+---
+
 # Founder Brief Format Durability
 
 Repair status: shipped in commit `90599db`; this document is the diagnosis of record for the completed

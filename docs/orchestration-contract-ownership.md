@@ -1,3 +1,7 @@
+---
+doc-type: owner-map
+---
+
 # Orchestration Contract Ownership
 
 Routing note: [`docs/oz-improvement-routing.md`](./oz-improvement-routing.md) is the runtime routing layer; this owner map is its drill-down.

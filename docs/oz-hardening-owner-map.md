@@ -1,3 +1,7 @@
+---
+doc-type: owner-map
+---
+
 # Oz Hardening Owner Map
 
 Owner map for `cocoder/priorities/oz-hardening.md`. This is a read-and-document artifact for the
