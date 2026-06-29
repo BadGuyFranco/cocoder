@@ -2248,8 +2248,8 @@ function commandText(plan: { readonly command: string; readonly args: readonly s
 }
 
 export async function requestOzRepair(ctx: OzContext, input: { readonly workspaceId: string; readonly message: string; readonly rationale?: string }): Promise<LaunchResult> {
-  if (ctx.inFlight.size > 0) {
-    return { status: 409, body: { error: 'refusing to repair: a run is in flight (would orphan it) — wait for it to finish' } }
+  if (ctx.inFlight.has(input.workspaceId)) {
+    return { status: 409, body: { error: `refusing to repair: target workspace "${input.workspaceId}" has a run in flight (would share that workspace's working tree) — wait for it to finish` } }
   }
 
   const message = input.message.trim()
@@ -2293,8 +2293,8 @@ export async function requestOzRepair(ctx: OzContext, input: { readonly workspac
 }
 
 export async function requestOzAction(ctx: OzContext, input: { readonly workspaceId: string; readonly instruction: string }): Promise<LaunchResult> {
-  if (ctx.inFlight.size > 0) {
-    return { status: 409, body: { error: 'refusing oz-action: a run is in flight (would orphan it) — wait for it to finish' } }
+  if (ctx.inFlight.has(input.workspaceId)) {
+    return { status: 409, body: { error: `refusing oz-action: target workspace "${input.workspaceId}" has a run in flight (would share that workspace's working tree) — wait for it to finish` } }
   }
 
   const instruction = input.instruction.trim()

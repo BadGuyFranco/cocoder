@@ -808,7 +808,7 @@ describe('handleOzMessage', () => {
   test('repair executable relays daemon refusal and failed-turn errors truthfully', async () => {
     const refused = await executeOzCommand(testCtx(), 'cocoder', { kind: 'repair', message: 'fix assignments' }, repairOps({
       status: 409,
-      body: { error: 'refusing to repair: a run is in flight (would orphan it) — wait for it to finish' },
+      body: { error: 'refusing to repair: target workspace "cocoder" has a run in flight (would share that workspace\'s working tree) — wait for it to finish' },
     }))
     const failed = await executeOzCommand(testCtx(), 'cocoder', { kind: 'repair', message: 'fix assignments' }, repairOps({
       status: 500,
@@ -817,7 +817,7 @@ describe('handleOzMessage', () => {
 
     expect(refused).toMatchObject({
       status: 409,
-      body: { ok: false, command: 'repair', reply: 'Could not repair: refusing to repair: a run is in flight (would orphan it) — wait for it to finish.' },
+      body: { ok: false, command: 'repair', reply: 'Could not repair: refusing to repair: target workspace "cocoder" has a run in flight (would share that workspace\'s working tree) — wait for it to finish.' },
     })
     expect(failed).toMatchObject({
       status: 500,

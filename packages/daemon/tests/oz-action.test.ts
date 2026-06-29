@@ -66,17 +66,28 @@ describe('requestOzAction', () => {
     expect(audit).toContain('"outOfLanePaths":["packages/daemon/src/foo.ts"]')
   })
 
-  test('refuses while any run is in flight before spawning or committing', async () => {
+  test('refuses while the target workspace has a run in flight before spawning or committing', async () => {
     const fixture = await makeFixture()
     fixture.ctx.inFlight.set('cocoder', 'run_busy')
     const headBefore = await git(fixture.home, ['rev-parse', 'HEAD'])
 
     await expect(requestOzAction(fixture.ctx, { workspaceId: 'cocoder', instruction: 'Close ticket 0099.' })).resolves.toMatchObject({
       status: 409,
-      body: { error: expect.stringContaining('run is in flight') },
+      body: { error: 'refusing oz-action: target workspace "cocoder" has a run in flight (would share that workspace\'s working tree) — wait for it to finish' },
     })
     expect(fixture.headlessInputs).toEqual([])
     expect(await git(fixture.home, ['rev-parse', 'HEAD'])).toBe(headBefore)
+  })
+
+  test('allows action while a different workspace has a run in flight', async () => {
+    const fixture = await makeFixture()
+    fixture.ctx.inFlight.set('external', 'run_busy')
+
+    await expect(requestOzAction(fixture.ctx, { workspaceId: 'cocoder', instruction: 'Inspect tickets.' })).resolves.toMatchObject({
+      status: 200,
+      body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0 },
+    })
+    expect(fixture.headlessInputs).toHaveLength(1)
   })
 
   test('run_234 regression: a governed close is refused while a ticket-fix run owns the ticket (close cannot race verify, ADR-0041 D3/0057)', async () => {
@@ -91,7 +102,7 @@ describe('requestOzAction', () => {
     // mid-run agentic close can neither precede verify nor land a commit (the run_234 D3 ordering).
     await expect(requestOzAction(fixture.ctx, { workspaceId: 'cocoder', instruction: 'Close ticket 0054.' })).resolves.toMatchObject({
       status: 409,
-      body: { error: expect.stringContaining('run is in flight') },
+      body: { error: expect.stringContaining('target workspace "cocoder" has a run in flight') },
     })
     expect(fixture.headlessInputs).toEqual([])
     expect(await git(fixture.home, ['rev-parse', 'HEAD'])).toBe(headBefore) // no close commit raced in

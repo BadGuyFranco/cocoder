@@ -24,15 +24,26 @@ interface Fixture {
 }
 
 describe('requestOzRepair', () => {
-  test('refuses while any run is in flight', async () => {
+  test('refuses while the target workspace has a run in flight', async () => {
     const fixture = await makeFixture()
     fixture.ctx.inFlight.set('cocoder', 'run_busy')
 
     await expect(requestOzRepair(fixture.ctx, { workspaceId: 'cocoder', message: 'repair the assignments drift' })).resolves.toMatchObject({
       status: 409,
-      body: { error: expect.stringContaining('run is in flight') },
+      body: { error: 'refusing to repair: target workspace "cocoder" has a run in flight (would share that workspace\'s working tree) — wait for it to finish' },
     })
     expect(fixture.headlessInputs).toEqual([])
+  })
+
+  test('allows repair while a different workspace has a run in flight', async () => {
+    const fixture = await makeFixture()
+    fixture.ctx.inFlight.set('external', 'run_busy')
+
+    await expect(requestOzRepair(fixture.ctx, { workspaceId: 'cocoder', message: 'inspect governance' })).resolves.toMatchObject({
+      status: 200,
+      body: { ok: true, committedPaths: [], commitSha: null, outOfLanePaths: [], exitCode: 0 },
+    })
+    expect(fixture.headlessInputs).toHaveLength(1)
   })
 
   test('validates workspace, message, and Oz assignment before spawning', async () => {
