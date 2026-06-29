@@ -3,6 +3,8 @@ id: priority-architecture-contract
 title: "Priority Architecture Contract — governing-architecture gate before launch (deferred: founder Objective + ADR pass owed)"
 ---
 
+> **Archived 2026-06-29 (founder) — archive confirmed.** Cleared per 2026-06-29 audit; ADR-0010/0035/0038 already own the live priority contract; revive only with a narrower boundary Objective.
+
 ## Objective
 *(Founder-owned — draft and approve before any code.)* Every launchable priority must carry an explicit,
 machine-checkable **Governing Architecture** section that the runner validates before starting a run —
