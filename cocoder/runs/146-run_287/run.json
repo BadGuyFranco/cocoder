@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_287",
+    "displayNumber": 146
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "priority"
+  },
+  "priorityId": "multi-workspace-concurrency",
+  "playbookId": null,
+  "ticketId": null,
+  "status": "failed",
+  "createdAt": 1782700852240,
+  "endedAt": 1782701054256
+}

@@ -1,0 +1,1 @@
+{"id":"cl_d5997be9880d4e61","runId":"run_287","workItemId":null,"commitSha":"921f12ac11df74cf36955bf9d45023697cffb8e6","message":"deb-repair: builder-blocked (atom 0) occurrence 1 via CoCoder run workspace run 146 (technical id: run_287)","files":["packages/personas/base/oscar.md","packages/personas/tests/base-personas.test.ts"],"createdAt":1782701054216}
