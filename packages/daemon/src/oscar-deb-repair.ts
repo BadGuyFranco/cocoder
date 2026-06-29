@@ -209,19 +209,20 @@ export function parseOscarEvaluation(json: string): OscarEvaluation {
     ...(direction === undefined ? {} : { direction }),
   }
 }
-export function parseOscarEvaluationArtifact(output: string, dialogueId: string): OscarEvaluation {
+export function firstJsonObjectArtifact(output: string): Record<string, unknown> {
   const candidates = jsonObjectCandidates(output)
-  let lastError: unknown = null
   for (let index = candidates.length - 1; index >= 0; index -= 1) {
     try {
-      const data = record(JSON.parse(candidates[index]!), 'oscar evaluation')
-      return parseOscarEvaluation(JSON.stringify({ ...data, dialogueId }))
-    } catch (err) {
-      lastError = err
+      return record(JSON.parse(candidates[index]!), 'JSON object artifact')
+    } catch {
+      // Keep scanning earlier balanced objects; LLM prose often includes non-artifact examples.
     }
   }
-  if (lastError instanceof Error) throw lastError
-  throw new Error('oscar evaluation: no JSON object artifact found')
+  throw new Error('no JSON object artifact found')
+}
+export function parseOscarEvaluationArtifact(output: string, dialogueId: string): OscarEvaluation {
+  const data = firstJsonObjectArtifact(output)
+  return parseOscarEvaluation(JSON.stringify({ ...data, dialogueId }))
 }
 export function parseFounderEscalation(json: string): FounderEscalation {
   const data = record(JSON.parse(json), 'founder escalation')

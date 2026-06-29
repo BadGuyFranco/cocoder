@@ -85,6 +85,7 @@ import { registerLivePriorities } from './priority-order.js'
 import { ticketCloseGate } from './ticket-close-gate.js'
 import { withPortableDisplayNumber } from './run-display.js'
 import {
+  firstJsonObjectArtifact,
   makeDialogueId,
   nextDialogueState,
   parseDebRepairResponse,
@@ -1801,7 +1802,7 @@ async function runRepairDialogueTurn(
 }
 
 function parseDebTurnOutput(output: string, dialogueId: string): DebRepairResponse {
-  const parsed = JSON.parse(output) as Record<string, unknown>
+  const parsed = firstJsonObjectArtifact(output)
   const normalized: Record<string, unknown> = { ...parsed, dialogueId }
   if (normalized.kind === 'applied' && normalized.commit === undefined) {
     return parseDebRepairResponse(JSON.stringify({ ...normalized, commit: { sha: 'pending', committedPaths: [], outOfLanePaths: [] } }))

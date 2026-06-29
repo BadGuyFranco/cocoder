@@ -267,6 +267,31 @@ describe('requestOscarDebRepair', () => {
     expect(JSON.parse(await readFile(join(fixture.home, paths.founderEscalation), 'utf8'))).toMatchObject({ kind: 'founder-escalation' })
   })
 
+  test('commits a Deb repair when Deb wraps the response JSON in prose', async () => {
+    const fixture = await makeFixture({
+      runHeadless: async (input) => {
+        fixture.headlessInputs.push(input)
+        await writeFile(join(fixture.home, 'cocoder', 'PLAYBOOK.md'), '# Playbook\n\nUpdated by wrapped Deb output.\n')
+        return {
+          exitCode: 0,
+          output: [
+            'Applied the non-interfering instruction repair.',
+            '',
+            appliedOutput('Applied wrapped repair.'),
+            '',
+            'The daemon should commit this governed .md change.',
+          ].join('\n'),
+        }
+      },
+    })
+
+    const result = await requestOscarDebRepair(fixture.ctx, { workspaceId: 'cocoder', requestedBy: 'oscar', problem: 'fix wrapped deb output', evidence })
+
+    expect(result).toMatchObject({ status: 200, body: { ok: true, state: 'complete', outcome: 'applied', committedPaths: ['cocoder/PLAYBOOK.md'] } })
+    const paths = result.body.artifactPaths as { debResponse: string }
+    expect(JSON.parse(await readFile(join(fixture.home, paths.debResponse), 'utf8'))).toMatchObject({ kind: 'applied', summary: 'Applied wrapped repair.' })
+  })
+
   test('returns failed when Deb turn exits nonzero and commits nothing', async () => {
     const fixture = await makeFixture({
       runHeadless: async (input) => {

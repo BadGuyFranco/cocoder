@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import {
+  firstJsonObjectArtifact,
   makeDialogueId,
   nextDialogueState,
   parseDebRepairResponse,
@@ -101,6 +102,24 @@ describe('Oscar-Deb repair dialogue data', () => {
       dialogueId: request.dialogueId,
       verdict: 'escalate-founder',
       reason: 'Risky and hard to reverse.',
+    })
+  })
+
+  test('extracts a Deb response JSON object wrapped in prose', () => {
+    const output = [
+      'I applied the non-interfering repair.',
+      '',
+      '```json',
+      json(applied),
+      '```',
+      '',
+      'Verification passed.',
+    ].join('\n')
+
+    expect(firstJsonObjectArtifact(output)).toMatchObject({
+      kind: 'applied',
+      summary: 'Removed obsolete routing.',
+      diagnosis: 'The path modeled help as failure.',
     })
   })
 
