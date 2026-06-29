@@ -366,6 +366,8 @@ The terminal host is cmux (ADR-0002), driven over its Unix-socket control API. I
 
 Because every pane is addressed by a cmux ref scoped to its workspace (`--workspace <ref> --surface <ref>`), and operations target an individual surface, one run can never read, focus, or close another run's panes. Teardown closes only the surfaces (or the single workspace) recorded for that run; it never enumerates unrelated sessions. There is no shared global namespace to collide in — the cmux workspace ref *is* the boundary.
 
+Runs in different workspaces execute concurrently: the launch guard and `inFlight` map are keyed by `workspaceId`, so a run on workspace A does not block launching workspace B. Runs in the same workspace remain serialized because they share one checked-out working tree. Genuinely global operations, such as daemon self-reload/restart, still wait for all in-flight runs. Total deterministic run concurrency is bounded by `maxConcurrentRuns` (default `3`) and Oz status surfaces it as `Active runs: N/M`. Intra-workspace concurrency remains out of scope (deferred to v2, [ADR-0042 Tier 3](./cocoder/decisions/0042-run-concurrency-model.md)); the hard isolation boundary remains the workspace/root ([ADR-0045](./cocoder/decisions/0045-scope-is-root-hard-intra-root-advisory.md)). See the [multi-workspace concurrency audit](./docs/concurrency/multi-workspace-audit.md) for per-site evidence.
+
 The control socket must be reachable (cmux running in automation mode). If it isn't, the driver opens cmux (`open -a cmux`) and waits for the socket before stepping into the run. See `packages/session-hosts/src/cmux/driver.ts`.
 
 ## Multi-machine path portability

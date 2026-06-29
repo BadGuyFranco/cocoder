@@ -43,11 +43,13 @@ Tracked example/starter files ship under
 
 `local/settings.json` is owned and written by the Oz daemon
 ([`packages/daemon/src/settings.ts`](../packages/daemon/src/settings.ts)). The live keys are
-`pollIntervalMs`, `defaultWorkspaceId`, `ozAutoCompactRuns`, and `retention`; missing or invalid
-values fall back to defaults, with `retention` resolved through the core retention defaults. Change
-these through governed affordances: the **dashboard Settings panel** for general settings, and Oz chat
-commands `retention enable [N]` / `retention disable` for retention. Do not hand-edit
-`local/settings.json`; there is no `cocoder config` CLI command.
+`pollIntervalMs`, `defaultWorkspaceId`, `ozAutoCompactRuns`, `maxConcurrentRuns`, and `retention`;
+missing or invalid values fall back to defaults, with `retention` resolved through the core retention
+defaults. `maxConcurrentRuns` is the global ceiling on simultaneously in-flight runs across workspaces;
+it defaults to `3`, and values `<= 0` or invalid values fall back to that default. Change these through
+governed affordances: the **dashboard Settings panel** for general settings, and Oz chat commands
+`retention enable [N]` / `retention disable` for retention. Do not hand-edit `local/settings.json`;
+there is no `cocoder config` CLI command.
 
 ### Secrets
 
