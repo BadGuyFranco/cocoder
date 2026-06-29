@@ -16,6 +16,7 @@ export const governedDocGlobs = [
 ] as const
 
 export const deferredDocReferenceChecks = [
+  'Code-span path gating is deferred until the resolver has a precision filter for placeholders (`<>`, `NNNN`, `*`), command strings with spaces, and bare paths without a known repo root; advisory path findings still emit.',
   'CLI command/flag resolution is deferred until packages/cli/src/run.ts exposes a structured command registry instead of usage prose.',
   'Named code symbol resolution is deferred because TypeScript/export symbol matching needs a lower-false-positive design than text scanning.',
 ] as const

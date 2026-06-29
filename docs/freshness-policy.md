@@ -5,7 +5,7 @@ doc-type: current-truth
 # Documentation Freshness Policy
 
 **Status:** Draft, implemented by Sub-Playbook D Solve  
-**Last verified:** 2026-06-28 (defined doc-type taxonomy; pointed the governed set at `governedDocGlobs`; resolver proof covered by `packages/core/tests/drift-resolve-doc-references.test.ts`)
+**Last verified:** 2026-06-28 (defined doc-type taxonomy; pointed the governed set at `governedDocGlobs`; resolver and CI gate proofs covered by `packages/core/tests/drift-resolve-doc-references.test.ts` and `packages/core/tests/drift-doc-reference-gate.test.ts`)
 
 CoCoder docs should say when they were last checked against the implementation. Freshness stamps do not prove correctness by themselves, but they make stale claims visible during review.
 
@@ -51,6 +51,30 @@ local checks read.
 `README.md` and `CONTRIBUTING.md` are governed docs in that executable set but are outside this atom's
 committable `docs/**` write lane; resolving that lane mismatch is a known follow-up for the CI-check
 atom or its supporting scope change.
+
+## Reference gate
+
+`pnpm test` runs the CI doc-reference gate in
+[`packages/core/tests/drift-doc-reference-gate.test.ts`](../packages/core/tests/drift-doc-reference-gate.test.ts).
+The gate calls `resolveDocReferences` on the real tree and currently gates the high-confidence
+reference kinds only:
+
+- `markdown-link`
+- `adr`
+- `package`
+
+The committed `docReferenceBaseline` in
+[`packages/core/src/drift/doc-references-baseline.ts`](../packages/core/src/drift/doc-references-baseline.ts)
+is the tolerated pre-existing snapshot, keyed by `(kind, value)` with a reason instead of brittle
+file-line anchors. New unbaselined findings fail the test with `file:line:kind:value:reason` output.
+The baseline should shrink as the separate Doc Truth Analysis priority re-audits and fixes content;
+this priority builds the guardrail, not the full content cleanup.
+
+Deferred reference kinds remain advisory until they are precise enough to gate:
+
+- Code-span `path` findings need filters for placeholders (`<>`, `NNNN`, `*`), command strings with spaces, and bare paths without a known repo root.
+- CLI commands and flags need a structured command registry from `packages/cli/src/run.ts`, not parsing usage prose.
+- Named code symbols need a TypeScript/export-aware design rather than text scanning.
 
 ## Architecture verification
 

@@ -37,6 +37,13 @@ export {
 } from './apply.js'
 export { runDriftAudit, type RunDriftAuditOptions } from './run.js'
 export {
+  docReferenceBaseline,
+  formatDocReferenceFailures,
+  gatedDocReferenceKinds,
+  unbaselinedDocReferences,
+  type DocReferenceBaselineEntry,
+} from './doc-references-baseline.js'
+export {
   deferredDocReferenceChecks,
   governedDocGlobs,
   resolveDocReferences,
