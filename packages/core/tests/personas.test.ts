@@ -115,6 +115,32 @@ describe('persona + assignment loading', () => {
           oscar: {
             cli: 'claude',
             model: 'sonnet',
+            tier: 'strong',
+            plays: {
+              'wrap-up': { cli: 'cursor-agent', model: '' },
+              'deep-read': { cli: 'codex', model: '', tier: 'default' },
+            },
+          },
+        },
+      }),
+    )
+
+    const assignments = loadAssignments(join(dir, 'assignments.json'))
+
+    expect(resolvePlayAssignment(assignments, 'oscar', 'wrap-up')).toEqual({ cli: 'cursor-agent', model: '' })
+    expect(resolvePlayAssignment(assignments, 'oscar', 'deep-read')).toEqual({ cli: 'codex', model: '', tier: 'default' })
+    expect(resolvePlayAssignment(assignments, 'oscar', 'some-other-play')).toEqual({ cli: 'claude', model: 'sonnet', tier: 'strong' })
+  })
+
+  test('play assignment fallback stays unchanged when no tier is present', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'personas-'))
+    await writeFile(
+      join(dir, 'assignments.json'),
+      JSON.stringify({
+        personas: {
+          oscar: {
+            cli: 'claude',
+            model: 'sonnet',
             plays: {
               'wrap-up': { cli: 'cursor-agent', model: '' },
             },
@@ -159,10 +185,28 @@ describe('persona + assignment loading', () => {
         },
       }),
     )
+    await writeFile(
+      join(dir, 'bad-tier.json'),
+      JSON.stringify({
+        personas: {
+          oscar: { cli: 'claude', model: '', tier: 'fast' },
+        },
+      }),
+    )
+    await writeFile(
+      join(dir, 'bad-play-tier.json'),
+      JSON.stringify({
+        personas: {
+          oscar: { cli: 'claude', model: '', plays: { 'wrap-up': { cli: 'cursor-agent', model: '', tier: 'fast' } } },
+        },
+      }),
+    )
 
     expect(() => loadAssignments(join(dir, 'bad-plays.json'))).toThrow(/optional "plays" must be an object/)
     expect(() => loadAssignments(join(dir, 'missing-cli.json'))).toThrow(/play "wrap-up" needs string "cli" and "model"/)
     expect(() => loadAssignments(join(dir, 'bad-model.json'))).toThrow(/play "wrap-up" needs string "cli" and "model"/)
+    expect(() => loadAssignments(join(dir, 'bad-tier.json'))).toThrow(/optional "tier" must be one of/)
+    expect(() => loadAssignments(join(dir, 'bad-play-tier.json'))).toThrow(/play "wrap-up" optional "tier" must be one of/)
   })
 
   test('id/filename mismatch and missing assignment throw clearly', async () => {

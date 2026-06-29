@@ -3,6 +3,7 @@
 // never touched. This is the only "which personas exist" discriminator (kills F1/F4 ambiguity).
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { MODEL_TIERS, type ModelTier } from '../adapter/index.js'
 import { parseFrontmatter } from './frontmatter.js'
 import type { Assignments, Persona, PersonaAssignment, PersonaRunMode, PlayAssignment, ResolvedPersona } from './types.js'
 
@@ -10,6 +11,9 @@ const asString = (v: string | string[] | undefined, field: string, file: string)
   if (typeof v !== 'string' || v === '') throw new Error(`persona ${file}: frontmatter "${field}" must be a non-empty string`)
   return v
 }
+
+const isModelTier = (value: unknown): value is ModelTier =>
+  typeof value === 'string' && (MODEL_TIERS as readonly string[]).includes(value)
 
 export function loadPersona(personasDir: string, id: string): Persona {
   const file = join(personasDir, `${id}.md`)
@@ -43,6 +47,9 @@ export function loadAssignments(path: string): Assignments {
     if (asn.mode !== undefined && asn.mode !== 'visible' && asn.mode !== 'headless') {
       throw new Error(`assignments ${path}: persona "${id}" optional "mode" must be "visible" or "headless"`)
     }
+    if (asn.tier !== undefined && !isModelTier(asn.tier)) {
+      throw new Error(`assignments ${path}: persona "${id}" optional "tier" must be one of: ${MODEL_TIERS.join(', ')}`)
+    }
     if (asn.plays !== undefined) {
       if (typeof asn.plays !== 'object' || asn.plays === null || Array.isArray(asn.plays)) {
         throw new Error(`assignments ${path}: persona "${id}" optional "plays" must be an object`)
@@ -51,6 +58,9 @@ export function loadAssignments(path: string): Assignments {
         const play = p as Partial<PlayAssignment> | null
         if (typeof play?.cli !== 'string' || typeof play?.model !== 'string') {
           throw new Error(`assignments ${path}: persona "${id}" play "${playId}" needs string "cli" and "model" (model may be "")`)
+        }
+        if (play.tier !== undefined && !isModelTier(play.tier)) {
+          throw new Error(`assignments ${path}: persona "${id}" play "${playId}" optional "tier" must be one of: ${MODEL_TIERS.join(', ')}`)
         }
       }
     }
@@ -73,7 +83,11 @@ export function resolvePersona(personasDir: string, assignments: Assignments, id
 export function resolvePlayAssignment(assignments: Assignments, personaId: string, playId: string): PlayAssignment {
   const assignment = assignments.personas[personaId]
   if (!assignment) throw new Error(`persona "${personaId}" has no assignment in assignments.json (not a live persona)`)
-  return assignment.plays?.[playId] ?? { cli: assignment.cli, model: assignment.model }
+  return assignment.plays?.[playId] ?? {
+    cli: assignment.cli,
+    model: assignment.model,
+    ...(assignment.tier === undefined ? {} : { tier: assignment.tier }),
+  }
 }
 
 export function resolvePersonaMode(assignments: Assignments, personaId: string): PersonaRunMode | undefined {

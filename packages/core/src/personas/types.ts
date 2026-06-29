@@ -2,6 +2,7 @@
 // (frontmatter + body) in the workspace's cocoder/personas/ zone. CLI+model ASSIGNMENT is a
 // separate Oz-edited setting (assignments.json) referencing the persona by id — kept apart so
 // model choice never duplicates the persona definition (D4 / kills F1).
+import type { ModelTier } from '../adapter/index.js'
 
 export interface Persona {
   readonly id: string
@@ -29,6 +30,8 @@ export interface PersonaAssignment {
   readonly cli: string
   /** Model name; empty string means "the CLI's default model". */
   readonly model: string
+  /** Canonical model tier. A non-empty concrete model always wins; tier is consulted only when model is ''. */
+  readonly tier?: ModelTier
   /** Session hosting preference. Absent means visible/default for backward compatibility. */
   readonly mode?: PersonaRunMode
   /** Default-on launch toggle. Absent means enabled for backward compatibility. */
@@ -44,6 +47,8 @@ export interface PlayAssignment {
   readonly cli: string
   /** Model name; empty string means "the CLI's default model". */
   readonly model: string
+  /** Canonical model tier. A non-empty concrete model always wins; tier is consulted only when model is ''. */
+  readonly tier?: ModelTier
 }
 
 /** assignments.json — the SOLE source of which personas are live and on what CLI/model. */
