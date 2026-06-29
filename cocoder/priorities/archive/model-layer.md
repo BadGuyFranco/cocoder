@@ -3,6 +3,8 @@ id: model-layer
 title: "Model layer — model capability/tier metadata + first-class tier selection"
 ---
 
+> **Archived 2026-06-29 (founder) — archive confirmed.** Founder confirmed archive from CLI.
+
 > **Founder-directed merge, 2026-06-21.** Supersedes the two Grok-drafted priorities
 > `first-class-model-tiers` and `adapter-abstraction-hardening` — they meet at one seam (model metadata),
 > as producer→consumer. A grounded code map (this date) **validated the proposals against reality** — that
