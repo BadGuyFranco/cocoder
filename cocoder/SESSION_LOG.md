@@ -18,8 +18,9 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Outcomes:**
 - **Audit table regenerated and committed** at `cocoder/priorities/audits/latest-audit.md` — 15 items (6 active + 9 backlog) with status-vs-reality read, disposition, reason, and dangling-ref each.
 - **Headline findings:** completed runner-decoupling pair still in backlog; `run-tests-required-checkpoint` is a promote candidate; three backlog items need premise refresh (ADR-0023/0045); `order.json` gaps for `adhoc-session` and `AGENTS.md` confirmed intentional.
-- **Disposition: `continue`.** Read-and-recommend boundary honored — no archives/promotes enacted; founder approval gates the actionable set.
-**Next:** Reply in Oz chat, e.g. `approve audit: archive runner-decoupling-refactor, promote run-tests-required-checkpoint` — I'll enact approved dispositions via governed Plays in this session.
+- **Dispositions enacted post-wrap (founder go-ahead this session):** founder directed "archive all backlog"; on Oscar's flag, `run-tests-required-checkpoint` was **promoted** into the active queue instead (real test-gate durability gap), and the **other 8 backlog items archived** via the governed `archive-priority` Play (`runner-decoupling-refactor`/`-progress` complete by their own ledgers; `multi-repo-commit-spine`/`priority-architecture-contract`/`research-sandboxing` stale-premise; `agentic-pattern-drift-detection`/`deployment-plays`/`quinn-app-testing` deferred-no-target). **Backlog folder now empty.**
+- **`priority-audit` kept** — founder asked to archive it; Oscar flagged it as the standing never-archived audit machinery (F20), founder agreed to keep. Run torn down at founder request.
+**Next:** Launch the top of `order.json` (`run-tests-required-checkpoint`) — its first step is framing + founder-approving its Objective/ADR before any code (it cannot build until you sign off on the new test-gate).
 
 ## 2026-06-29 — **model-layer: substrate re-verify — archive ready (run_149/run_290)**
 
