@@ -1,5 +1,7 @@
 # Multi-repo commit spine (deferred slice 2 of multi-root workspaces)
 
+> **Archived 2026-06-29 (founder) — archive confirmed.** Cleared per 2026-06-29 audit (founder-directed backlog clearing); worktree-isolation framing predates ADR-0023/0045 and needs a fresh multi-root design before revival.
+
 **Status:** backlog — design intent recorded 2026-06-12 (run_70, migrated from session memory);
 not runnable until drafted into an Objective + ADR-conflict pass per the architecture-contract
 discipline.
