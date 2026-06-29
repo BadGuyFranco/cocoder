@@ -3,13 +3,23 @@ id: run-tests-required-checkpoint
 title: "Make run-tests a required checkpoint for code atoms (test durability across repos)"
 ---
 
-> **Blocked (run_151, 2026-06-29) — ADR-0010 conflict-scan complete; zero build atoms until founder approves Objective + ADR framing.**
+> **Approved to build (run_151, 2026-06-29) — founder approved Objective + ADR framing; relaunch drafts the ADR first.**
 > Promoted to active queue 2026-06-29 (founder). Named follow-up from `surface-reduction` (archived 2026-06-21). Captures the **Q1 durability** question
 > raised during the Talia-fold session: today test-running is *discretionary* (Oscar attaches a scripted
 > criterion when he chooses) + CI-backstopped, **not structural** — the runtime guarantees "Oscar passed,"
 > not "tests ran." This drifts in onboarded repos with no tests/CI, or any time verify discipline slips.
 
-## Objective (founder-owned — draft + approve before any code)
+## Founder approval — 2026-06-29 (run 151 / run_292)
+Founder approved all three launch gates (ADR-0010): **(1)** the drafted Objective below, as-is;
+**(2)** drafting an ADR for this new gate that reconciles ADR-0013, ADR-0023, ADR-0033, and ADR-0028;
+**(3)** the architecture seam — **Option A:** the deterministic `run-tests` result feeds the **single
+existing verify gate** as a *required input* (Oscar still issues the pass/fail), **not** a second
+independent commit gate via `requiredCheckpoints`/`runCommitGate` (that path contradicts ADR-0023's
+one-self-clearing-gate principle). Relaunch order: draft the founder-approved ADR first, then the
+enforcement wiring in `packages/personas/base/**` (so onboarded repos inherit it), then keep the
+behavior-pinning suites + proof scripts green.
+
+## Objective (founder-approved 2026-06-29)
 Make testing **structural, not cultural**: bind the `run-tests` Play (ADR-0033) as a **required checkpoint**
 for code-touching atoms, so an atom that changes `packages/**` cannot pass without `run-tests` green —
 inherited by this and every future/onboarded workspace, not dependent on Oscar's per-atom discretion or a
