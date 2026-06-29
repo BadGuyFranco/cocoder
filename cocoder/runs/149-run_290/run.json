@@ -12,7 +12,7 @@
   "priorityId": "model-layer",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "awaiting-archive-confirmation",
   "createdAt": 1782771587155,
-  "endedAt": null
+  "endedAt": 1782771743924
 }
