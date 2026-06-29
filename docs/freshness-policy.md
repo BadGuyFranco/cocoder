@@ -5,7 +5,7 @@ doc-type: current-truth
 # Documentation Freshness Policy
 
 **Status:** Draft, implemented by Sub-Playbook D Solve  
-**Last verified:** 2026-06-28 (defined doc-type taxonomy; pointed the governed set at `governedDocGlobs`; resolver and CI gate proofs covered by `packages/core/tests/drift-resolve-doc-references.test.ts` and `packages/core/tests/drift-doc-reference-gate.test.ts`)
+**Last verified:** 2026-06-28 (defined doc-type taxonomy and worklist archive convention; pointed the governed set at `governedDocGlobs`; resolver and CI gate proofs covered by `packages/core/tests/drift-resolve-doc-references.test.ts` and `packages/core/tests/drift-doc-reference-gate.test.ts`)
 
 CoCoder docs should say when they were last checked against the implementation. Freshness stamps do not prove correctness by themselves, but they make stale claims visible during review.
 
@@ -51,6 +51,12 @@ local checks read.
 `README.md` and `CONTRIBUTING.md` are governed docs in that executable set but are outside this atom's
 committable `docs/**` write lane; resolving that lane mismatch is a known follow-up for the CI-check
 atom or its supporting scope change.
+
+### Worklist archive convention
+
+One-shot audit or reconciliation worklists move to `docs/archive/` and declare `doc-type: historical`
+when their owning priority completes. Their current-truth replacement stays in the live docs tree, while
+the archived worklist remains available as dated evidence without permanently crowding `docs/`.
 
 ## Reference gate
 

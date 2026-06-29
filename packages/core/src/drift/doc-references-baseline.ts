@@ -26,11 +26,6 @@ export const docReferenceBaseline = [
   },
   {
     kind: 'markdown-link',
-    value: 'cocoder/tickets/open/0037-contributing-pr-template-stale-rg-ci-gate.md',
-    reason: 'Historical audit record references a now-closed ticket path from the dated analysis snapshot.',
-  },
-  {
-    kind: 'markdown-link',
     value: 'packages/personas/base/plays/open/NNNN-slug.md',
     reason: 'Template placeholder in the create-ticket Play, not a concrete file expected to exist.',
   },

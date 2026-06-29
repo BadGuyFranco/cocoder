@@ -1,11 +1,14 @@
+---
+doc-type: historical
+---
+
 # ARCHITECTURE.md Truth Audit
 
 > **Status (run_271): reconciliation complete.** Every row below carries a verdict + resolution and the
 > ARCHITECTURE.md fixes have landed (run_267 → run_271). This is now a one-shot historical worklist,
-> superseded as the live artifact by [`phase3-cross-doc-reverification.md`](./phase3-cross-doc-reverification.md).
-> It is retained in place as the evidence trail; its eventual archival is owned by the worklist-archive
-> convention being built under the `harden-documentation-process` priority (problem inventory item 4),
-> not moved ad hoc here.
+> superseded as the live artifact by [`phase3-cross-doc-reverification.md`](../phase3-cross-doc-reverification.md).
+> It is archived under the worklist-archive convention built by the `harden-documentation-process`
+> priority.
 
 Generated: 2026-06-27
 
@@ -120,9 +123,9 @@ Code follow-ups from run_267 are closed (rows 3, 21, 52b). Resume with these sur
 founder input required for the sweep itself):
 
 1. **cocoder/ governance docs** — PLAYBOOK, AGENTS, glossary, failure-catalog, personas/, standards/, plays/ (Oscar-lane; builder cannot write these).
-2. **Root README and CONTRIBUTING** — stale CI/contributor claims; open ticket [0037](../cocoder/tickets/open/0037-contributing-pr-template-stale-rg-ci-gate.md) overlaps CONTRIBUTING.
+2. **Root README and CONTRIBUTING** — stale CI/contributor claims; open ticket [0037](../../cocoder/tickets/closed/0037-contributing-pr-template-stale-rg-ci-gate.md) overlaps CONTRIBUTING.
 3. **Design-intent briefs under docs/** — oz-design-brief, oz-streaming-design, ui-dev-notes, research/; path-ref scan only (do not flag aspirational design as wrong).
-4. **Cleanup (when priority completes):** whether `docs/architecture-truth-audit.md` and `docs/docs-files-truth-audit.md` should be archived rather than kept permanently in `docs/`.
+4. **Cleanup (when priority completes):** whether `docs/archive/architecture-truth-audit.md` and `docs/archive/docs-files-truth-audit.md` should be archived rather than kept permanently in `docs/`.
 
 **Founder code-or-doc calls — resolution (run_268):**
 

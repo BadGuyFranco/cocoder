@@ -1,11 +1,13 @@
+---
+doc-type: historical
+---
+
 # Docs Files Truth Audit
 
 > **Status (run_271): reconciliation complete.** Every row carries a verdict + resolution and the doc
 > fixes have landed (run_267 → run_271). This is now a one-shot historical worklist, superseded as the
-> live artifact by [`phase3-cross-doc-reverification.md`](./phase3-cross-doc-reverification.md). It is
-> retained in place as the evidence trail; its eventual archival is owned by the worklist-archive
-> convention being built under the `harden-documentation-process` priority (problem inventory item 4),
-> not moved ad hoc here.
+> live artifact by [`phase3-cross-doc-reverification.md`](../phase3-cross-doc-reverification.md). It is
+> archived under the worklist-archive convention built by the `harden-documentation-process` priority.
 
 Scope: inventory-only audit of truth-critical docs named by run_267 atom 4. Pure design-intent briefs and explicitly historical/superseded notes were not treated as current-truth discrepancies unless the file also presented them as current owner maps or active references.
 
