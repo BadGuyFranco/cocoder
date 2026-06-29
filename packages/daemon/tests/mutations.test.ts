@@ -555,6 +555,33 @@ async function writeExternalWorkspace(home: string, id = 'external'): Promise<st
   return workspacePath
 }
 
+async function createExternalWorkspace(id: string): Promise<string> {
+  const workspacePath = await mkdtemp(join(tmpdir(), `cocoder-${id}-workspace-`))
+  await mkdir(join(workspacePath, 'cocoder', 'priorities'), { recursive: true })
+  await mkdir(join(workspacePath, 'cocoder', 'personas'), { recursive: true })
+  await writeFile(join(workspacePath, 'cocoder', 'priorities', 'demo.md'), `---\nid: demo\ntitle: Demo\n---\n## Objective\nDo the thing.`)
+  await writeFile(join(workspacePath, 'cocoder', 'personas', 'oscar.md'), `---\nid: oscar\nlabel: Orchestrator\nrole: orchestrator\nwriteScope: []\n---\nOscar`)
+  await writeFile(join(workspacePath, 'cocoder', 'personas', 'bob.md'), `---\nid: bob\nlabel: Builder\nrole: builder\nwriteScope:\n  - packages/**\n---\nBob`)
+  await writeFile(
+    join(workspacePath, 'cocoder', 'personas', 'assignments.json'),
+    JSON.stringify({ personas: { oscar: { cli: 'claude', model: '' }, bob: { cli: 'codex', model: '' } } }),
+  )
+  return workspacePath
+}
+
+async function writeWorkspacesRegistry(home: string, workspaces: ReadonlyArray<{ readonly id: string; readonly name?: string; readonly path: string }>): Promise<void> {
+  await writeFile(
+    join(home, 'local', 'workspaces.json'),
+    JSON.stringify({
+      workspaces: workspaces.map((workspace) => ({
+        id: workspace.id,
+        name: workspace.name ?? workspace.id,
+        path: workspace.path === home ? '${COCODER_HOME}' : workspace.path,
+      })),
+    }),
+  )
+}
+
 async function setBobHeadless(home: string): Promise<void> {
   await writeFile(
     join(home, 'cocoder', 'personas', 'assignments.json'),
@@ -820,6 +847,67 @@ describe('Oz mutations + lifecycle', () => {
     } finally {
       unsubscribe()
     }
+  })
+
+  test('POST /runs enforces the default global concurrency ceiling of three for new workspaces', async () => {
+    const alphaPath = await createExternalWorkspace('alpha')
+    const betaPath = await createExternalWorkspace('beta')
+    const gammaPath = await createExternalWorkspace('gamma')
+    await writeWorkspacesRegistry(home, [
+      { id: 'cocoder', name: 'CoCoder', path: home },
+      { id: 'alpha', path: alphaPath },
+      { id: 'beta', path: betaPath },
+      { id: 'gamma', path: gammaPath },
+    ])
+    await startServer()
+    oz!.ctx.inFlight.set('cocoder', 'run_a')
+    oz!.ctx.inFlight.set('alpha', 'run_b')
+    oz!.ctx.inFlight.set('beta', 'run_c')
+
+    const r = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'gamma', priorityId: 'demo' } })
+
+    expect(r.status).toBe(409)
+    expect(r.json).toMatchObject({
+      code: 'global-run-ceiling',
+      activeRuns: 3,
+      ceiling: 3,
+      error: 'refusing to launch: 3 runs already in flight (ceiling 3) — wait for one to finish or raise the ceiling',
+    })
+    expect(oz!.ctx.inFlight.has('gamma')).toBe(false)
+  })
+
+  test('POST /runs admits a new workspace below a configured ceiling', async () => {
+    const alphaPath = await createExternalWorkspace('alpha')
+    const betaPath = await createExternalWorkspace('beta')
+    await writeWorkspacesRegistry(home, [
+      { id: 'cocoder', name: 'CoCoder', path: home },
+      { id: 'alpha', path: alphaPath },
+      { id: 'beta', path: betaPath },
+    ])
+    await writeFile(join(home, 'local', 'settings.json'), JSON.stringify({ maxConcurrentRuns: 3 }))
+    const controlled = controlledDirectiveIO()
+    await startServer(fakeGit(), async () => ({ exitCode: 0, output: validFounderCloseout() }), controlled.io)
+    oz!.ctx.inFlight.set('cocoder', 'run_a')
+    oz!.ctx.inFlight.set('alpha', 'run_b')
+
+    const r = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'beta', priorityId: 'demo' } })
+
+    expect(r.status).toBe(202)
+    expect(r.json.runId).toMatch(/^run_/)
+    expect(oz!.ctx.inFlight.get('beta')).toBe(r.json.runId)
+    controlled.release()
+  })
+
+  test('POST /runs keeps the per-workspace guard precedence when already at the global ceiling', async () => {
+    await writeFile(join(home, 'local', 'settings.json'), JSON.stringify({ maxConcurrentRuns: 1 }))
+    await startServer()
+    oz!.ctx.inFlight.set('cocoder', 'run_busy')
+
+    const r = await call(oz!, 'POST', '/runs', { body: { workspaceId: 'cocoder', priorityId: 'demo' } })
+
+    expect(r.status).toBe(409)
+    expect(r.json).toMatchObject({ code: 'workspace-in-flight', runId: 'run_busy' })
+    expect(r.json.error).toBe('a run is already in flight for workspace "cocoder"')
   })
 
   test('daemon-touching commits reload only after the run is idle', async () => {
@@ -3023,6 +3111,7 @@ describe('Oz mutations + lifecycle', () => {
       pollIntervalMs: 5000,
       defaultWorkspaceId: null,
       ozAutoCompactRuns: 3,
+      maxConcurrentRuns: 3,
       retention: { enabled: false, keepLastNPerWorkspace: 25 },
     })
     const persisted = JSON.parse(await readFile(join(home, 'local', 'settings.json'), 'utf8'))
@@ -3030,6 +3119,7 @@ describe('Oz mutations + lifecycle', () => {
       pollIntervalMs: 5000,
       defaultWorkspaceId: null,
       ozAutoCompactRuns: 3,
+      maxConcurrentRuns: 3,
       retention: { enabled: false, keepLastNPerWorkspace: 25 },
     })
     const get = await call(oz!, 'GET', '/settings')

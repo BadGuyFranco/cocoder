@@ -21,11 +21,12 @@ const tickets: TicketSummary[] = [
 
 describe('projectOzAwareness', () => {
   test('projects priorities, recent runs, active runs, and open tickets from durable read surfaces', () => {
-    const snapshot = projectOzAwareness({ priorities, runs, tickets })
+    const snapshot = projectOzAwareness({ priorities, runs, tickets, maxConcurrentRuns: 3 })
 
     expect(snapshot.priorities).toEqual(priorities)
     expect(snapshot.recentRuns).toEqual(runs.map((run) => ({ ...run, displayNumber: null, workspaceName: null })))
     expect(snapshot.activeRuns).toEqual([{ ...runs[1], displayNumber: null, workspaceName: null }, { ...runs[2], displayNumber: null, workspaceName: null }, { ...runs[3], displayNumber: null, workspaceName: null }])
+    expect(snapshot.concurrency).toEqual({ activeRuns: 3, ceiling: 3 })
     expect(snapshot.openTickets).toEqual([tickets[0]])
   })
 
@@ -34,6 +35,7 @@ describe('projectOzAwareness', () => {
       priorities,
       runs: [{ ...runs[0], displayNumber: 98, workspaceName: 'CoCoder' }],
       tickets: [],
+      maxConcurrentRuns: 5,
     })
 
     expect(runDisplayName(snapshot.recentRuns[0]!)).toBe('CoCoder run 98')

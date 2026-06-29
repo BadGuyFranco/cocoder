@@ -191,12 +191,14 @@ async function runTurn(ctx: OzContext, target: OzTarget, session: OzSession, inp
 }
 
 async function buildPrompt(ctx: OzContext, target: OzTarget, transcript: readonly TranscriptEntry[], input: TurnInput): Promise<string> {
+  const settings = await readSettings(ctx.cocoderHome)
   const priorities = await readPriorities(prioritiesDir(target.workspace.path), PRIORITIES_CAP)
   const runs: RunWithDisplayNumber[] = await Promise.all(ctx.store.listRuns({ workspaceId: target.workspace.id }).map((run) => withPortableDisplayNumberForPath(run, target.workspace.path, target.workspace.name)))
   const awareness = projectOzAwareness({
     priorities,
     runs,
     tickets: await readTickets(ticketsDir(target.workspace.path)),
+    maxConcurrentRuns: settings.maxConcurrentRuns,
   })
   const parsed = parsePromptInput(input, awareness, {
     prioritiesDir: prioritiesDir(target.workspace.path),
@@ -412,6 +414,8 @@ function factsDigest(awareness: OzAwarenessSnapshot): string {
     '',
     `Runs (${awareness.recentRuns.length}):`,
     ...runLines,
+    '',
+    `Active runs: ${awareness.concurrency.activeRuns}/${awareness.concurrency.ceiling}`,
     '',
     `Open tickets (${awareness.openTickets.length}):`,
     ...ticketLines,

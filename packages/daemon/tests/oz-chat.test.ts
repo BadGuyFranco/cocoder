@@ -655,21 +655,26 @@ describe('handleOzMessage', () => {
   })
 
   test('bare status without a workspace returns all runs', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'cocoder-oz-status-concurrency-'))
+    await mkdir(join(home, 'local'), { recursive: true })
+    await writeFile(join(home, 'local', 'settings.json'), JSON.stringify({ maxConcurrentRuns: 4 }))
     const store = openRunStore(':memory:')
-    store.upsertWorkspace({ id: 'cocoder', path: '/tmp/cocoder', name: 'CoCoder' })
-    store.upsertWorkspace({ id: 'other', path: '/tmp/other', name: 'Other' })
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    store.upsertWorkspace({ id: 'other', path: join(home, 'other'), name: 'Other' })
     const a = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
     const b = store.createRun({ workspaceId: 'other', priorityId: 'elsewhere' })
 
-    const result = await handleOzMessage(testCtx(store), { text: 'status' })
+    const result = await handleOzMessage(testCtx(store, home), { text: 'status' })
 
     expect(result.status).toBe(200)
     expect(result.body).toMatchObject({ ok: true, command: 'status' })
     expect(result.body.reply).toContain('2 runs:')
+    expect(result.body.reply).toContain('Active runs: 2/4.')
     expect(result.body.reply).toContain(a.id)
     expect(result.body.reply).toContain(b.id)
     expect(result.body.action).toMatchObject({
       type: 'status',
+      concurrency: { activeRuns: 2, ceiling: 4 },
       runs: expect.arrayContaining([
         expect.objectContaining({ id: a.id, displayNumber: null }),
         expect.objectContaining({ id: b.id, displayNumber: null }),

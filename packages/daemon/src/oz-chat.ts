@@ -8,6 +8,7 @@ import { readTickets } from './priority-order.js'
 import { findWorkspace } from './registry.js'
 import { withPortableDisplayNumbers } from './run-display.js'
 import type { LocalFootprint } from './local-footprint.js'
+import { readSettings } from './settings.js'
 
 const ADHOC_PRIORITY_ID = 'adhoc-session'
 const HELP_HINT = 'Supported commands: launch <priorityId>, adhoc <task>, show <runId>, archive <runId>, confirm-close <runId>, deb-repair <problem> [--run <runId>], reconcile-close <ticketId> <resolution>, reconcile-repoint <ticketId> <standalone|priorityId> [reason words...], reconcile-tickets, commit-support <runId>, founder-answer <runId> <answer>, retention enable [N] | retention disable, stop <runId>, teardown <runId>, status [runId], help.'
@@ -47,6 +48,7 @@ export interface OzChatAction {
   readonly runId?: string
   readonly run?: OzAwarenessRun
   readonly runs?: readonly OzAwarenessRun[]
+  readonly concurrency?: OzAwarenessSnapshot['concurrency']
   readonly closed?: readonly string[]
   readonly sessionRef?: string
   readonly committedPaths?: readonly string[]
@@ -392,7 +394,8 @@ export async function executeOzCommand(ctx: OzContext, workspaceId: string | und
   }
 
   if (command.runId) {
-    const awareness = projectOzAwareness({ priorities: [], runs: await withPortableDisplayNumbers(ctx, ctx.store.listRuns()), tickets: [] })
+    const settings = await readSettings(ctx.cocoderHome)
+    const awareness = projectOzAwareness({ priorities: [], runs: await withPortableDisplayNumbers(ctx, ctx.store.listRuns()), tickets: [], maxConcurrentRuns: settings.maxConcurrentRuns })
     const run = awareness.recentRuns.find((candidate) => candidate.id === command.runId)
     if (!run) {
       return chatResult(404, { reply: `Could not find ${command.runId}.`, command: 'status', ok: false })
@@ -401,21 +404,29 @@ export async function executeOzCommand(ctx: OzContext, workspaceId: string | und
       reply: runSummary(run),
       command: 'status',
       ok: true,
-      action: { type: 'status', runId: run.id, run },
+      action: { type: 'status', runId: run.id, run, concurrency: awareness.concurrency },
     })
   }
 
+  const settings = await readSettings(ctx.cocoderHome)
+  const globalAwareness = projectOzAwareness({
+    priorities: [],
+    runs: await withPortableDisplayNumbers(ctx, ctx.store.listRuns()),
+    tickets: [],
+    maxConcurrentRuns: settings.maxConcurrentRuns,
+  })
   const awareness = projectOzAwareness({
     priorities: [],
     runs: await withPortableDisplayNumbers(ctx, ctx.store.listRuns(workspaceId ? { workspaceId } : undefined)),
     tickets: workspaceId ? await readWorkspaceTickets(ctx, workspaceId) : [],
+    maxConcurrentRuns: settings.maxConcurrentRuns,
   })
   const runs = awareness.recentRuns
   return chatResult(200, {
-    reply: runsSummary(runs, awareness.openTickets),
+    reply: runsSummary(runs, awareness.openTickets, globalAwareness.concurrency),
     command: 'status',
     ok: true,
-    action: { type: 'status', workspaceId, runs },
+    action: { type: 'status', workspaceId, runs, concurrency: globalAwareness.concurrency },
   })
 }
 
@@ -917,10 +928,11 @@ function runSummary(run: OzAwarenessRun): string {
   return `${runDisplayName(run)} is ${run.status} on ${run.priorityId}.`
 }
 
-function runsSummary(runs: readonly OzAwarenessRun[], tickets: OzAwarenessSnapshot['openTickets'] = []): string {
+function runsSummary(runs: readonly OzAwarenessRun[], tickets: OzAwarenessSnapshot['openTickets'] = [], concurrency?: OzAwarenessSnapshot['concurrency']): string {
   const runText = runListSummary(runs)
-  if (tickets.length === 0) return runText
-  return `${runText}\n\n${openTicketsSummary(tickets)}`
+  const concurrencyText = concurrency ? `Active runs: ${concurrency.activeRuns}/${concurrency.ceiling}.` : null
+  const ticketText = tickets.length === 0 ? null : openTicketsSummary(tickets)
+  return [runText, concurrencyText, ticketText].filter((part): part is string => part !== null).join('\n\n')
 }
 
 function runListSummary(runs: readonly OzAwarenessRun[]): string {

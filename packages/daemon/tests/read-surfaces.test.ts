@@ -173,6 +173,7 @@ describe('Oz read surfaces', () => {
       pollIntervalMs: 2500,
       defaultWorkspaceId: null,
       ozAutoCompactRuns: 3,
+      maxConcurrentRuns: 3,
       retention: { enabled: false, keepLastNPerWorkspace: 25 },
     })
   })

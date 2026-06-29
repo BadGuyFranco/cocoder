@@ -15,6 +15,7 @@ export interface OzAwarenessSnapshot {
   readonly priorities: readonly PrioritySummary[]
   readonly recentRuns: readonly OzAwarenessRun[]
   readonly activeRuns: readonly OzAwarenessRun[]
+  readonly concurrency: { readonly activeRuns: number; readonly ceiling: number }
   readonly openTickets: readonly TicketSummary[]
 }
 
@@ -22,14 +23,17 @@ export interface OzAwarenessInput {
   readonly priorities: readonly PrioritySummary[]
   readonly runs: readonly RunAwarenessInput[]
   readonly tickets: readonly TicketSummary[]
+  readonly maxConcurrentRuns: number
 }
 
 export function projectOzAwareness(input: OzAwarenessInput): OzAwarenessSnapshot {
   const recentRuns = input.runs.map(projectRun)
+  const activeRuns = recentRuns.filter((run) => run.status === 'running' || isAwaitingFounderResolutionStatus(run.status))
   return {
     priorities: [...input.priorities],
     recentRuns,
-    activeRuns: recentRuns.filter((run) => run.status === 'running' || isAwaitingFounderResolutionStatus(run.status)),
+    activeRuns,
+    concurrency: { activeRuns: activeRuns.length, ceiling: input.maxConcurrentRuns },
     openTickets: input.tickets.filter((ticket) => ticket.state === 'open'),
   }
 }

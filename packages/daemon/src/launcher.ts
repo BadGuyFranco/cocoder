@@ -842,6 +842,11 @@ export async function launchRun(
     const activeRunId = ctx.inFlight.get(workspaceId)
     return { status: 409, body: { error: `a run is already in flight for workspace "${workspaceId}"`, code: 'workspace-in-flight', runId: activeRunId === 'pending' ? null : activeRunId } }
   }
+  const maxConcurrentRuns = (await readSettings(ctx.cocoderHome)).maxConcurrentRuns
+  const activeRuns = ctx.inFlight.size
+  if (activeRuns >= maxConcurrentRuns) {
+    return { status: 409, body: { error: `refusing to launch: ${activeRuns} runs already in flight (ceiling ${maxConcurrentRuns}) — wait for one to finish or raise the ceiling`, code: 'global-run-ceiling', activeRuns, ceiling: maxConcurrentRuns } }
+  }
   ctx.inFlight.set(workspaceId, 'pending') // reserve synchronously — closes the concurrent-POST race
 
   let input: RunInput | null = null
