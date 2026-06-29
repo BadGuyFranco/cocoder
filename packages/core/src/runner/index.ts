@@ -72,6 +72,7 @@ export {
   isAwaitingFounderResolutionStatus,
   isFinalizableFounderResolutionStatus,
   terminalWaitCondition,
+  wrapupDeliveryDispatched,
   type RunSummary,
   type DebStatus,
   type RunnerPhase,

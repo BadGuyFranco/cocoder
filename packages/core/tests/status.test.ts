@@ -10,6 +10,8 @@ import {
   isFinalizableFounderResolutionStatus,
   openRunStore,
   renderDebStatus,
+  terminalWaitCondition,
+  wrapupDeliveryDispatched,
 } from '../src/index.js'
 
 const priority = { id: 'demo', title: 'Demo' }
@@ -319,6 +321,61 @@ describe('deriveTerminalProjection — WS1 terminal projection seed', () => {
 
   test('a still-running event log has no terminal projection', () => {
     expect(projectionFor([{ type: 'delegation', data: { atom: 0 } }, { type: 'builder-dispatch', data: { atom: 0 } }])).toBeNull()
+  })
+
+  // run_283 stranding class: a `failed` run that nonetheless dispatched a WRAP-UP READY artifact has Oscar
+  // holding a live delivery instruction. The projection must be wrapped/standing-by, not faulted/blocked.
+  const failedWithDeliveryEvents = [
+    { type: 'wrapup', data: { atoms: 3 } },
+    { type: 'landing-outcome', data: { landed: true, status: 'failed' } },
+    { type: 'wrapup-delivery-dispatch', data: { ref: 'surface:104', path: 'wrapup-delivery.md' } },
+    { type: 'run-end', data: { status: 'failed', atoms: 3, committedShas: ['a'], outOfScope: [] } },
+  ]
+  test('failed run that delivered a WRAP-UP READY projects wrapped/standing-by, not faulted', () => {
+    const derived = projectionFor(failedWithDeliveryEvents)
+    expect(derived).toEqual({ phase: 'wrapped', activeAtom: 3 })
+    const s = statusFor(failedWithDeliveryEvents, derived!.phase, { activeAtom: derived!.activeAtom, activeTask: null, waitCondition: 'standing by' })
+    expect(s.oscar).toBe('wrapped') // not 'blocked' — the pane is not dead
+  })
+
+  test('failed run with NO wrap-up delivery stays faulted/blocked (the true-fault branch is unchanged)', () => {
+    const derived = projectionFor([
+      { type: 'wrapup-format-invalid', data: { play: 'wrap-up', issues: ['x'] } },
+      { type: 'run-end', data: { status: 'failed', atoms: 2, committedShas: [], outOfScope: [] } },
+    ])
+    expect(derived).toEqual({ phase: 'faulted', activeAtom: null })
+  })
+
+  // Send-outcome hardening: a dispatch whose send THREW (`delivered:false`) is not an outstanding delivery —
+  // Oscar never received it, so the projection must fall through to the no-delivery fault, not standing-by.
+  test('failed run whose delivery send failed (delivered:false) projects faulted, not standing-by', () => {
+    const sendFailedEvents = [
+      { type: 'wrapup', data: { atoms: 3 } },
+      { type: 'wrapup-delivery-dispatch', data: { ref: 'surface:104', path: 'wrapup-delivery.md', delivered: false, error: 'pane gone' } },
+      { type: 'run-end', data: { status: 'failed', atoms: 3, committedShas: ['a'], outOfScope: [] } },
+    ]
+    expect(wrapupDeliveryDispatched(sendFailedEvents as never)).toBe(false)
+    // Same as every failed/no-delivery projection: activeAtom comes from the last atom-bearing event
+    // (none here), so it is null — the wrapped/standing-by branch is the only one keyed off endAtoms.
+    expect(projectionFor(sendFailedEvents)).toEqual({ phase: 'faulted', activeAtom: null })
+  })
+
+  test('wrapupDeliveryDispatched: delivered:true and absent both count; only delivered:false does not', () => {
+    expect(wrapupDeliveryDispatched([{ type: 'wrapup-delivery-dispatch', data: { delivered: true } }] as never)).toBe(true)
+    expect(wrapupDeliveryDispatched([{ type: 'wrapup-delivery-dispatch', data: { ref: 'x' } }] as never)).toBe(true)
+    expect(wrapupDeliveryDispatched([{ type: 'wrapup-delivery-dispatch', data: { delivered: false } }] as never)).toBe(false)
+    expect(wrapupDeliveryDispatched([{ type: 'run-end', data: {} }] as never)).toBe(false)
+  })
+
+  test('terminalWaitCondition: failed + delivery says standing-by; failed + no delivery says nothing pending', () => {
+    expect(terminalWaitCondition('failed', true)).toBe(
+      'WRAP-UP READY delivered after a failed wrap; Oscar is standing by for founder questions until explicit teardown',
+    )
+    expect(terminalWaitCondition('failed')).toBe('run failed; no further runner action pending')
+    // The delivery flag never overrides a completed run's already-honest "remains reachable" line.
+    expect(terminalWaitCondition('completed', true)).toBe(
+      'run completed; Oscar remains reachable for founder questions until explicit teardown',
+    )
   })
 })
 

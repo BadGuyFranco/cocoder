@@ -85,7 +85,7 @@ import {
   commitMessage,
 } from './prompts.js'
 import { renderRunRecord } from './record.js'
-import { type DebStatus, type RunnerPhase, deriveRunSummary, deriveTerminalProjection, renderDebStatus, terminalWaitCondition } from './status.js'
+import { type DebStatus, type RunnerPhase, deriveRunSummary, deriveTerminalProjection, renderDebStatus, terminalWaitCondition, wrapupDeliveryDispatched } from './status.js'
 import { captureDebTerminalSnapshot, renderDebTerminalSnapshotMarkdown } from './terminal-snapshot.js'
 import { isStopRequestedError } from './stop.js'
 import { unledgeredWindowCommits } from './wrap-audit.js'
@@ -1651,8 +1651,22 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       } else {
         const deliveryPath = await io.writeRunArtifact(runDir, 'wrapup-delivery.md', buildWrapupDelivery(runDisplayNamed, pickup, outcome))
         await oscarDriver.show().catch(() => {})
-        await oscarDriver.send(buildArtifactDispatch('WRAP-UP READY', deliveryPath)).catch(() => {})
-        store.recordEvent({ runId: run.id, type: 'wrapup-delivery-dispatch', data: { ref: oscarDriver.refId, path: deliveryPath } })
+        // Record the send OUTCOME, not just the attempt (run_283 hardening): a swallowed send failure must
+        // not project as a live standing-by delivery. If the send throws, Oscar never received the WRAP-UP
+        // READY instruction, so `delivered:false` makes the terminal projection treat this as a no-delivery
+        // fault (faulted/blocked) rather than the wrapped/standing-by affordance that assumes a live pane.
+        let deliveryError: string | null = null
+        try {
+          await oscarDriver.send(buildArtifactDispatch('WRAP-UP READY', deliveryPath))
+        } catch (err) {
+          deliveryError = err instanceof Error ? err.message : String(err)
+        }
+        store.recordEvent({
+          runId: run.id,
+          type: 'wrapup-delivery-dispatch',
+          data: { ref: oscarDriver.refId, path: deliveryPath, delivered: deliveryError === null, ...(deliveryError === null ? {} : { error: deliveryError }) },
+        })
+        if (deliveryError !== null) log(`run ${run.id} wrap-up delivery send failed: ${deliveryError}`)
       }
       await refreshStatus('wrapped', n, null, 'wrap-up delivered after landing outcome; Oscar remains reachable for founder questions and in-scope Surface-A edits until explicit teardown')
     }
@@ -1664,8 +1678,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     type: 'run-end',
     data: { status, atoms: n, committedShas, outOfScope, selfCommitted },
   })
-  const terminalProjection = deriveTerminalProjection(store.listEvents(run.id))
-  if (terminalProjection) await refreshStatus(terminalProjection.phase, terminalProjection.activeAtom, null, terminalWaitCondition(status))
+  const terminalEvents = store.listEvents(run.id)
+  const terminalProjection = deriveTerminalProjection(terminalEvents)
+  if (terminalProjection) await refreshStatus(terminalProjection.phase, terminalProjection.activeAtom, null, terminalWaitCondition(status, wrapupDeliveryDispatched(terminalEvents)))
   // Run-wrap audit assertion (ADR-0041 §4 / ticket 0058): flag any commit that advanced HEAD in the
   // run window but is absent from the run's ledger — a raw bypass beside the spine (the run_234 shape).
   // FLAG, never fault (founder decision 2026-06-25): record + surface, run disposition unchanged. Run

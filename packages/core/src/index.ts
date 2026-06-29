@@ -346,6 +346,8 @@ export {
   deriveRunSummary,
   isAwaitingFounderResolutionStatus,
   isFinalizableFounderResolutionStatus,
+  wrapupDeliveryDispatched,
+  terminalWaitCondition,
   type RunSummary,
   captureDebTerminalSnapshot,
   renderDebTerminalSnapshotMarkdown,

@@ -114,6 +114,24 @@ const lastAtomBearing = (events: readonly RunEvent[]): number | null => {
   }
   return null
 }
+
+// Post-wrap delivery lifecycle (run_283 stranding class): when the runner dispatches a WRAP-UP READY
+// artifact, Oscar is handed a LIVE delivery instruction with its own wait contract ("deliver the closeout,
+// then stand by for founder questions until explicit teardown"). That delivery is an outstanding
+// runner-issued persona action — the run is NOT dead while it is in flight, even when the run's
+// commit-outcome status is `failed` (e.g. a wrap-up that fell back to the format-invalid closeout still
+// dispatches the fallback for the founder to see).
+//
+// SEND-OUTCOME HARDENING: the dispatch event records the send OUTCOME via `delivered`. A send that threw
+// (`delivered:false`) means Oscar never received the instruction — there is no live pane to stand by, so
+// that dispatch does NOT count as outstanding (the projection falls through to the no-delivery fault).
+// `delivered` absent → counts as delivered (older events + the headless-skip path never recorded it).
+export function wrapupDeliveryDispatched(events: readonly RunEvent[]): boolean {
+  return events.some(
+    (event) => event.type === 'wrapup-delivery-dispatch' && (event.data as { delivered?: unknown } | undefined)?.delivered !== false,
+  )
+}
+
 export function deriveTerminalProjection(
   events: readonly RunEvent[],
 ): { readonly phase: RunnerPhase; readonly activeAtom: number | null } | null {
@@ -126,7 +144,16 @@ export function deriveTerminalProjection(
   if (held) return { phase: 'awaiting-founder', activeAtom: atomOf(held) ?? lastAtomBearing(events) }
   const stopped = last(events, ['run-stopped'])
   if (stopped) return { phase: 'faulted', activeAtom: atomOf(stopped) ?? lastAtomBearing(events) }
-  if (endStatus === 'failed') return { phase: 'faulted', activeAtom: lastAtomBearing(events) }
+  if (endStatus === 'failed') {
+    // A failed run that still dispatched a WRAP-UP READY delivery is standing by, not faulted: Oscar is
+    // holding the delivered (possibly fallback) closeout for the founder. Projecting `faulted`/`blocked`
+    // here is the run_283 stranding — the pane shows a live delivery prompt while the feed says "no
+    // further runner action pending". Project the wrapped/standing-by affordance instead; run.json status
+    // stays `failed` (the commit/quality outcome is a separate axis from what Oscar is doing).
+    return wrapupDeliveryDispatched(events)
+      ? { phase: 'wrapped', activeAtom: wrapAtom }
+      : { phase: 'faulted', activeAtom: lastAtomBearing(events) }
+  }
   if (endStatus === 'awaiting-founder' || endStatus === 'awaiting-archive-confirmation') return { phase: 'awaiting-founder', activeAtom: wrapAtom }
   if (endStatus === 'completed') return { phase: 'wrapped', activeAtom: wrapAtom }
   if (endStatus === 'held') return { phase: 'awaiting-founder', activeAtom: wrapAtom }
@@ -134,7 +161,14 @@ export function deriveTerminalProjection(
   return null
 }
 
-export function terminalWaitCondition(status: RunStatus): string {
+export function terminalWaitCondition(status: RunStatus, deliveryDispatched = false): string {
+  // A failed run that nonetheless delivered a WRAP-UP READY artifact is NOT pending-nothing: the founder
+  // can read the delivered closeout and ask Oscar questions. Saying "no further runner action pending"
+  // here is the contradiction that made run_283's pane look stranded. (Completed runs already carry the
+  // honest "Oscar remains reachable" line, so the delivery-aware string only overrides the `failed` case.)
+  if (status === 'failed' && deliveryDispatched) {
+    return 'WRAP-UP READY delivered after a failed wrap; Oscar is standing by for founder questions until explicit teardown'
+  }
   return status === 'awaiting-archive-confirmation'
     ? 'awaiting founder archive confirmation; Oscar remains reachable until explicit teardown'
     : status === 'awaiting-founder'

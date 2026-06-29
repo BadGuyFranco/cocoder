@@ -4366,7 +4366,11 @@ describe('runRun (multi-atom loop)', () => {
       handoffs: s.handoffs,
     })
 
-    test('failed run: on-disk terminal DebStatus stops the watcher and matches deriveTerminalProjection', async () => {
+    // run_283 regression: a failed wrap that still dispatched a WRAP-UP READY artifact (the fallback
+    // closeout) leaves Oscar holding a LIVE delivery instruction. The terminal projection must present
+    // the wrapped/standing-by affordance, NOT a generic faulted/blocked "no further action pending" that
+    // contradicts the live pane. run.json status stays `failed` (commit outcome), but Oscar is standing by.
+    test('failed wrap WITH delivery: terminal DebStatus is wrapped/standing-by, not a stranded faulted wait', async () => {
       const store = openRunStore(':memory:')
       const statusWrites: DebStatus[] = []
       const result = await runRun(
@@ -4382,12 +4386,19 @@ describe('runRun (multi-atom loop)', () => {
       expect(result.status).toBe('failed')
 
       const events = store.listEvents(result.runId)
+      // The fallback closeout is still delivered for the founder to read, and the send landed.
+      const dispatch = events.find((e) => e.type === 'wrapup-delivery-dispatch')!
+      expect((dispatch.data as { delivered?: boolean }).delivered).toBe(true)
       const derived = deriveTerminalProjection(events)!
-      expect(derived).toEqual({ phase: 'faulted', activeAtom: 1 })
+      expect(derived).toEqual({ phase: 'wrapped', activeAtom: 1 })
 
       const terminal = statusWrites.at(-1)!
-      expect(terminal.oscar).toBe('blocked')
+      expect(terminal.oscar).toBe('wrapped')
       expect(terminal.watch.active).toBe(false)
+      // No dead-looking "no further runner action pending"; the feed agrees with the live delivery pane.
+      expect(terminal.waitCondition).toBe(
+        'WRAP-UP READY delivered after a failed wrap; Oscar is standing by for founder questions until explicit teardown',
+      )
       expect(terminal.recentEvents.map((event) => event.type)).toEqual(expect.arrayContaining(['deb-watch-stopped', 'run-end']))
       const canonical = renderDebStatus({ store, runId: result.runId, priority, scopes: {}, phase: derived.phase, activeAtom: derived.activeAtom, activeTask: null, waitCondition: 'derived' }).json
       expect(projectionFields(terminal)).toEqual(projectionFields(canonical))
@@ -4395,6 +4406,42 @@ describe('runRun (multi-atom loop)', () => {
       const types = events.map((e) => e.type)
       expect(types.lastIndexOf('deb-status')).toBeGreaterThan(types.indexOf('run-end'))
       expect(events.filter((e) => e.type === 'deb-status')).toHaveLength(statusWrites.length)
+    })
+
+    // Send-outcome hardening: when the WRAP-UP READY send THROWS (swallowed before this fix), Oscar never
+    // received the instruction — there is no live pane to "stand by". The dispatch records `delivered:false`
+    // and the terminal projection falls through to the honest faulted/blocked no-delivery state, NOT a
+    // standing-by affordance that assumes a pane Oscar can't be in.
+    test('failed wrap whose delivery send THROWS records delivered:false and projects faulted, not standing-by', async () => {
+      const store = openRunStore(':memory:')
+      const statusWrites: DebStatus[] = []
+      const result = await runRun(
+        baseDeps({
+          store,
+          git: scriptedGit([['packages/atom.ts']]),
+          io: fakeIO({ directives: [delegate('atom 0'), wrapup('Oscar seed closeout')], statusWrites }),
+          getAdapter: (cli) => (cli === 'cursor-agent' ? { ...okAdapter, id: 'cursor-agent', headlessCapable: true } : okAdapter),
+          runHeadless: async () => ({ exitCode: 0, output: 'PLAY CLOSEOUT\n' }),
+          sessionHost: fakeSessionHost({
+            async sendInput(_ref, text) {
+              if (text.startsWith('WRAP-UP READY')) throw new Error('pane gone')
+            },
+          }),
+        }),
+        { ...input, deb, wrapPlay, wrapPlayAssignment },
+      )
+      expect(result.status).toBe('failed')
+
+      const events = store.listEvents(result.runId)
+      const dispatch = events.find((e) => e.type === 'wrapup-delivery-dispatch')!
+      expect((dispatch.data as { delivered?: boolean }).delivered).toBe(false)
+      expect((dispatch.data as { error?: string }).error).toBe('pane gone')
+
+      const derived = deriveTerminalProjection(events)!
+      expect(derived).toEqual({ phase: 'faulted', activeAtom: 1 })
+      const terminal = statusWrites.at(-1)!
+      expect(terminal.oscar).toBe('blocked')
+      expect(terminal.waitCondition).toBe('run failed; no further runner action pending')
     })
 
     test('held run: on-disk terminal DebStatus matches deriveTerminalProjection (was a stale pre-hold phase)', async () => {
