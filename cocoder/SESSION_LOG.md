@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-28 — **harden-documentation-process: doc-truth guardrails — archive ready (run_144/run_285)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [harden-documentation-process](./priorities/harden-documentation-process.md) | **Run:** run_285 (display 144)
+**Outcomes:**
+- **Five atoms verified and committed.** Resolver + baseline CI gate (`resolveDocReferences`, `drift-doc-reference-gate.test.ts`); doc-type taxonomy applied across governed docs; worklist-archive convention with audit files under `docs/archive/`; single owner doc at `docs/freshness-policy.md`.
+- **Scope cut documented.** Gate covers high-confidence reference kinds (markdown links, ADR ids, package names); code-span paths, CLI flags, and named symbols deferred as noisy until precise enough.
+- **Disposition: `archive-confirmation`.** All three objective conditions met; no tickets opened or closed by this run; inventory items 7–9 left as out-of-scope follow-ups.
+**Next:** Reply `archive` or `archive run_285` in Oz chat; then launch `multi-workspace-concurrency` for daemon global-state audit.
+
 ## 2026-06-28 — **ticket-fix-0084: Oscar–Deb repair prose-wrapped JSON — closed (run_143/run_284)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0084](./tickets/closed/0084-repair-dialogue-oscar-evaluation-turn-rejects-prose-wrapped-json.md) | **Run:** run_284 (display 143)

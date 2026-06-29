@@ -88,3 +88,15 @@ under that convention; and the whole process is described in a single owner loca
    found it, not tooling. A harness whose job is to prove current behavior is itself a current-truth
    artifact and rots like any doc. **→ Behavior-proof harnesses that assert current truth should be
    covered by the reference/CI check (or retired), not left to drift.**
+
+## Disposition — `archive-confirmation` (run_285, 2026-06-28)
+
+All three objective conditions are built and verified: `pnpm test` runs a CI doc-reference gate that
+turns red on newly broken markdown links, ADR ids, or package names; the four-type doc taxonomy is
+applied across the governed set; and the worklist-archive convention is documented in
+[`docs/freshness-policy.md`](../../docs/freshness-policy.md) with
+`docs/architecture-truth-audit.md` and `docs/docs-files-truth-audit.md` moved under
+`docs/archive/`. Pre-existing content drift and inventory items 7–9 (root README/CONTRIBUTING write-lane,
+ADR-0023 commit-scope divergence, rotting proof harness) are explicitly out of scope per the priority
+boundary. Founder archive reply (`archive` or `archive run_285` in Oz chat) is the first-class closeout
+action — do not relaunch for build work.
