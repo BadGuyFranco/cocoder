@@ -89,7 +89,7 @@ under that convention; and the whole process is described in a single owner loca
    artifact and rots like any doc. **→ Behavior-proof harnesses that assert current truth should be
    covered by the reference/CI check (or retired), not left to drift.**
 
-## Disposition — `archive-confirmation` (run_285, 2026-06-28)
+## Disposition — `archive-confirmation` (run_285/run_286, 2026-06-28)
 
 All three objective conditions are built and verified: `pnpm test` runs a CI doc-reference gate that
 turns red on newly broken markdown links, ADR ids, or package names; the four-type doc taxonomy is
@@ -98,5 +98,5 @@ applied across the governed set; and the worklist-archive convention is document
 `docs/architecture-truth-audit.md` and `docs/docs-files-truth-audit.md` moved under
 `docs/archive/`. Pre-existing content drift and inventory items 7–9 (root README/CONTRIBUTING write-lane,
 ADR-0023 commit-scope divergence, rotting proof harness) are explicitly out of scope per the priority
-boundary. Founder archive reply (`archive` or `archive run_285` in Oz chat) is the first-class closeout
-action — do not relaunch for build work.
+boundary. Run_286 (display 145) re-verified the live tree with zero build atoms; founder confirmed
+archive (`please archive`). Do not relaunch for build work.
