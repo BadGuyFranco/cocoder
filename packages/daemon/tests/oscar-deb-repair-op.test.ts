@@ -241,6 +241,32 @@ describe('requestOscarDebRepair', () => {
     expect(JSON.parse(await readFile(join(fixture.home, paths.founderEscalation), 'utf8'))).toMatchObject({ kind: 'founder-escalation' })
   })
 
+  test('surfaces founder escalation when Oscar wraps the evaluation JSON in prose', async () => {
+    const fixture = await makeFixture({
+      runHeadless: async (input) => {
+        fixture.headlessInputs.push(input)
+        if (input.args[0] === 'deb') return { exitCode: 0, output: proposalOutput({ risk: 'high', needsFounder: true }) }
+        return {
+          exitCode: 0,
+          output: [
+            'Verdict: **escalate-founder**. Deb proposal is correct.',
+            '',
+            evaluationOutput('escalate-founder'),
+            '',
+            'Surface this to the founder rather than applying live.',
+          ].join('\n'),
+        }
+      },
+    })
+
+    const result = await requestOscarDebRepair(fixture.ctx, { workspaceId: 'cocoder', requestedBy: 'oscar', problem: 'risky repair', evidence })
+
+    expect(result).toMatchObject({ status: 200, body: { state: 'complete', outcome: 'founder-escalated', committedPaths: [], commitSha: null } })
+    const paths = result.body.artifactPaths as { founderEscalation: string; oscarEvaluation: string }
+    expect(JSON.parse(await readFile(join(fixture.home, paths.oscarEvaluation), 'utf8'))).toMatchObject({ verdict: 'escalate-founder' })
+    expect(JSON.parse(await readFile(join(fixture.home, paths.founderEscalation), 'utf8'))).toMatchObject({ kind: 'founder-escalation' })
+  })
+
   test('returns failed when Deb turn exits nonzero and commits nothing', async () => {
     const fixture = await makeFixture({
       runHeadless: async (input) => {

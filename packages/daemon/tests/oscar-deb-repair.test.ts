@@ -5,6 +5,7 @@ import {
   parseDebRepairResponse,
   parseFounderEscalation,
   parseOscarEvaluation,
+  parseOscarEvaluationArtifact,
   parseOscarRepairRequest,
   repairDialogueBaseDir,
   repairDialoguePaths,
@@ -83,6 +84,24 @@ describe('Oscar-Deb repair dialogue data', () => {
     expect(parseDebRepairResponse(json(proposal))).toEqual(proposal)
     expect(parseOscarEvaluation(json(evaluation))).toEqual(evaluation)
     expect(parseFounderEscalation(json(escalation))).toEqual(escalation)
+  })
+
+  test('extracts an Oscar evaluation JSON object wrapped in prose', () => {
+    const output = [
+      'Verdict: **escalate-founder**. Deb proposal is correct.',
+      '',
+      '```json',
+      json({ ...evaluation, verdict: 'escalate-founder', reason: 'Risky and hard to reverse.', direction: undefined }),
+      '```',
+      '',
+      'Surface this to the founder.',
+    ].join('\n')
+
+    expect(parseOscarEvaluationArtifact(output, request.dialogueId)).toMatchObject({
+      dialogueId: request.dialogueId,
+      verdict: 'escalate-founder',
+      reason: 'Risky and hard to reverse.',
+    })
   })
 
   test.each([

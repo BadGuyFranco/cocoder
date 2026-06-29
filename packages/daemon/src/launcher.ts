@@ -89,7 +89,7 @@ import {
   nextDialogueState,
   parseDebRepairResponse,
   parseFounderEscalation,
-  parseOscarEvaluation,
+  parseOscarEvaluationArtifact,
   parseOscarRepairRequest,
   repairDialoguePaths,
   type DebRepairResponse,
@@ -1499,7 +1499,7 @@ export async function requestOscarDebRepair(ctx: OzContext, input: OscarDebRepai
   if (!oscarTurn.ok) return await needsOscar(oscarTurn.error)
   let evaluation: OscarEvaluation
   try {
-    evaluation = parseOscarEvaluation(JSON.stringify({ ...(JSON.parse(oscarTurn.output) as Record<string, unknown>), dialogueId }))
+    evaluation = parseOscarEvaluationArtifact(oscarTurn.output, dialogueId)
   } catch (err) {
     return await failDialogue(`Oscar evaluation turn produced malformed artifact: ${err instanceof Error ? err.message : String(err)}`)
   }

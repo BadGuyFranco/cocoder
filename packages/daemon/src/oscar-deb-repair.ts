@@ -209,6 +209,20 @@ export function parseOscarEvaluation(json: string): OscarEvaluation {
     ...(direction === undefined ? {} : { direction }),
   }
 }
+export function parseOscarEvaluationArtifact(output: string, dialogueId: string): OscarEvaluation {
+  const candidates = jsonObjectCandidates(output)
+  let lastError: unknown = null
+  for (let index = candidates.length - 1; index >= 0; index -= 1) {
+    try {
+      const data = record(JSON.parse(candidates[index]!), 'oscar evaluation')
+      return parseOscarEvaluation(JSON.stringify({ ...data, dialogueId }))
+    } catch (err) {
+      lastError = err
+    }
+  }
+  if (lastError instanceof Error) throw lastError
+  throw new Error('oscar evaluation: no JSON object artifact found')
+}
 export function parseFounderEscalation(json: string): FounderEscalation {
   const data = record(JSON.parse(json), 'founder escalation')
   return {
@@ -253,6 +267,46 @@ export function nextDialogueState(current: DialogueState, event: DialogueEvent):
 function record(value: unknown, label: string): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new Error(`${label}: must be an object`)
   return value as Record<string, unknown>
+}
+function jsonObjectCandidates(output: string): readonly string[] {
+  const candidates: string[] = []
+  let start = -1
+  let depth = 0
+  let inString = false
+  let escaped = false
+
+  for (let index = 0; index < output.length; index += 1) {
+    const char = output[index]
+    if (depth === 0) {
+      if (char === '{') {
+        start = index
+        depth = 1
+      }
+      continue
+    }
+    if (inString) {
+      if (escaped) {
+        escaped = false
+      } else if (char === '\\') {
+        escaped = true
+      } else if (char === '"') {
+        inString = false
+      }
+      continue
+    }
+    if (char === '"') {
+      inString = true
+    } else if (char === '{') {
+      depth += 1
+    } else if (char === '}') {
+      depth -= 1
+      if (depth === 0 && start >= 0) {
+        candidates.push(output.slice(start, index + 1))
+        start = -1
+      }
+    }
+  }
+  return candidates
 }
 function schema(data: Record<string, unknown>, label: string): 1 {
   if (data.schemaVersion !== 1) throw new Error(`${label}: "schemaVersion" must be 1`)
