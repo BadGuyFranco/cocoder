@@ -12,6 +12,14 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-29 — **model-layer: substrate re-verify — archive ready (run_149/run_290)**
+
+**Persona:** Oscar (orchestrator) | **Priority:** [model-layer](./priorities/model-layer.md) | **Run:** run_290 (display 149)
+**Outcomes:**
+- **Zero atoms delegated.** Re-verified live substrate: adapter tier metadata (`MODEL_TIERS`/`ModelTier`/`ModelListResult.tiers`); persona-level tier resolves at `runRun` when `model===''` (runner.ts), not the dormant p2-dispatch path; `resolveBuildModel` wired at play dispatch.
+- **Disposition: `archive-confirmation`.** Code-complete since run_289 (six verified atoms); relaunch would only reaffirm. No open tickets bound to this priority; founder archive confirmation is the remaining gate.
+**Next:** Reply `archive` or `archive run_290` in Oz chat; then launch `oz-terminal` for the streaming terminal slice.
+
 ## 2026-06-29 — **model-layer: first-class model tiers — archive ready (run_148/run_289)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** [model-layer](./priorities/model-layer.md) | **Run:** run_289 (display 148)
