@@ -3,11 +3,11 @@ id: run-tests-required-checkpoint
 title: "Make run-tests a required checkpoint for code atoms (test durability across repos)"
 ---
 
-> **Backlog — founder Objective + ADR pass owed.** Named follow-up from `surface-reduction` (archived
-> 2026-06-21). Captures the **Q1 durability** question raised during the Talia-fold session: today
-> test-running is *discretionary* (Oscar attaches a scripted criterion when he chooses) + CI-backstopped,
-> **not structural** — the runtime guarantees "Oscar passed," not "tests ran." This drifts in onboarded
-> repos with no tests/CI, or any time verify discipline slips.
+> **Promoted to active queue 2026-06-29 (founder) — founder Objective + ADR pass owed before any code.**
+> Named follow-up from `surface-reduction` (archived 2026-06-21). Captures the **Q1 durability** question
+> raised during the Talia-fold session: today test-running is *discretionary* (Oscar attaches a scripted
+> criterion when he chooses) + CI-backstopped, **not structural** — the runtime guarantees "Oscar passed,"
+> not "tests ran." This drifts in onboarded repos with no tests/CI, or any time verify discipline slips.
 
 ## Objective (founder-owned — draft + approve before any code)
 Make testing **structural, not cultural**: bind the `run-tests` Play (ADR-0033) as a **required checkpoint**
