@@ -12,7 +12,7 @@
   "priorityId": "harden-documentation-process",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "awaiting-archive-confirmation",
   "createdAt": 1782696658948,
-  "endedAt": null
+  "endedAt": 1782699098947
 }
