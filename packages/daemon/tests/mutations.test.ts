@@ -143,6 +143,13 @@ interface GovernanceCommitCall {
   readonly message: string
   readonly author: { readonly name: string; readonly email: string } | undefined
 }
+interface RecordedCommitCall extends GovernanceCommitCall {
+  readonly sha: string
+}
+interface SpawnRecord {
+  readonly opts: Parameters<SessionHost['spawn']>[0]
+  readonly ref: SessionRef
+}
 const recordingGovernanceGit = (calls: GovernanceCommitCall[], sha = 'sha-governance'): Git => ({
   ...fakeGit(),
   async addAndCommit(cwd, files, message, author) {
@@ -417,6 +424,19 @@ const queuedCommitGit = (calls: GovernanceCommitCall[], shas: readonly string[] 
   },
 })
 
+const recordingGitByCwd = (calls: RecordedCommitCall[], labels: Readonly<Record<string, string>>): Git => ({
+  ...fakeGit(),
+  async addAndCommit(cwd, files, message, author) {
+    const label = labels[cwd] ?? basename(cwd)
+    const sha = `sha-${label}-${calls.filter((call) => call.cwd === cwd).length + 1}`
+    calls.push({ cwd, files: [...files], message, author, sha })
+    return sha
+  },
+  async commitsSince(cwd) {
+    return calls.filter((call) => call.cwd === cwd).map((call) => call.sha)
+  },
+})
+
 async function fixtures(home: string): Promise<void> {
   await mkdir(join(home, 'cocoder', 'priorities'), { recursive: true })
   await mkdir(join(home, 'cocoder', 'personas'), { recursive: true })
@@ -637,6 +657,7 @@ describe('Oz mutations + lifecycle', () => {
     io: RunnerIO = fakeIO(),
     runnerTimeouts?: OzServer['ctx']['runnerTimeouts'],
     independentRunLauncher?: OzServer['ctx']['independentRunLauncher'],
+    sessionHost?: SessionHost,
   ): Promise<OzServer> => {
     shown = []
     killed = []
@@ -645,7 +666,7 @@ describe('Oz mutations + lifecycle', () => {
       port: 0,
       store,
       git,
-      sessionHost: fakeHost(
+      sessionHost: sessionHost ?? fakeHost(
         (ref) => shown.push(ref),
         (ref) => killed.push(ref),
       ),
@@ -908,6 +929,106 @@ describe('Oz mutations + lifecycle', () => {
     expect(r.status).toBe(409)
     expect(r.json).toMatchObject({ code: 'workspace-in-flight', runId: 'run_busy' })
     expect(r.json.error).toBe('a run is already in flight for workspace "cocoder"')
+  })
+
+  test('POST /runs drives two workspace runs concurrently without cross-contamination', async () => {
+    const alphaPath = await createExternalWorkspace('alpha')
+    const betaPath = await createExternalWorkspace('beta')
+    await writeWorkspacesRegistry(home, [
+      { id: 'cocoder', name: 'CoCoder', path: home },
+      { id: 'alpha', path: alphaPath },
+      { id: 'beta', path: betaPath },
+    ])
+    const controlled = controlledDirectiveIO()
+    const commitCalls: RecordedCommitCall[] = []
+    const spawnRecords: SpawnRecord[] = []
+    let surface = 0
+    const baseHost = fakeHost()
+    const sessionHost: SessionHost = {
+      ...baseHost,
+      async spawn(opts) {
+        const ref = { id: `surface:${opts.group ?? 'ungrouped'}:${opts.persona}:${++surface}`, driver: 'fake', workspaceRef: opts.group ? `workspace:${opts.group}` : undefined }
+        spawnRecords.push({ opts, ref })
+        return ref
+      },
+    }
+    await startServer(
+      recordingGitByCwd(commitCalls, { [alphaPath]: 'alpha', [betaPath]: 'beta' }),
+      async () => ({ exitCode: 0, output: validFounderCloseout() }),
+      controlled.io,
+      undefined,
+      undefined,
+      sessionHost,
+    )
+
+    const [alphaLaunch, betaLaunch] = await Promise.all([
+      call(oz!, 'POST', '/runs', { body: { workspaceId: 'alpha', priorityId: 'demo' } }),
+      call(oz!, 'POST', '/runs', { body: { workspaceId: 'beta', priorityId: 'demo' } }),
+    ])
+
+    expect(alphaLaunch.status).toBe(202)
+    expect(betaLaunch.status).toBe(202)
+    const alphaRunId = String(alphaLaunch.json.runId)
+    const betaRunId = String(betaLaunch.json.runId)
+    const runNumbers = [alphaRunId, betaRunId].map((runId) => Number.parseInt(runId.slice('run_'.length), 10)).sort((a, b) => a - b)
+    expect(new Set([alphaRunId, betaRunId]).size).toBe(2)
+    expect(runNumbers).toEqual([1, 2])
+    expect(oz!.ctx.inFlight.size).toBe(2)
+    expect(oz!.ctx.inFlight.get('alpha')).toBe(alphaRunId)
+    expect(oz!.ctx.inFlight.get('beta')).toBe(betaRunId)
+
+    controlled.release()
+    for (let i = 0; i < 50 && (store.getRun(alphaRunId)?.status === 'running' || store.getRun(betaRunId)?.status === 'running'); i++) await sleep(10)
+
+    expect(store.getRun(alphaRunId)).toMatchObject({ id: alphaRunId, workspaceId: 'alpha', status: 'completed' })
+    expect(store.getRun(betaRunId)).toMatchObject({ id: betaRunId, workspaceId: 'beta', status: 'completed' })
+    expect(oz!.ctx.inFlight.has('alpha')).toBe(false)
+    expect(oz!.ctx.inFlight.has('beta')).toBe(false)
+    expect(store.listRuns({ workspaceId: 'alpha' }).map((run) => run.id)).toEqual([alphaRunId])
+    expect(store.listRuns({ workspaceId: 'beta' }).map((run) => run.id)).toEqual([betaRunId])
+
+    const alphaEvents = store.listEvents(alphaRunId)
+    const betaEvents = store.listEvents(betaRunId)
+    expect(alphaEvents.every((event) => event.runId === alphaRunId)).toBe(true)
+    expect(betaEvents.every((event) => event.runId === betaRunId)).toBe(true)
+    expect(alphaEvents.find((event) => event.type === 'launch-run-created')?.data).toMatchObject({ workspaceId: 'alpha' })
+    expect(betaEvents.find((event) => event.type === 'launch-run-created')?.data).toMatchObject({ workspaceId: 'beta' })
+
+    const alphaSessions = store.listSessions(alphaRunId)
+    const betaSessions = store.listSessions(betaRunId)
+    expect(alphaSessions).toHaveLength(2)
+    expect(betaSessions).toHaveLength(2)
+    expect(alphaSessions.every((session) => session.runId === alphaRunId && session.workspaceRef === `workspace:${alphaRunId}`)).toBe(true)
+    expect(betaSessions.every((session) => session.runId === betaRunId && session.workspaceRef === `workspace:${betaRunId}`)).toBe(true)
+    const alphaSurfaceRefs = alphaSessions.map((session) => session.sessionRef)
+    const betaSurfaceRefs = betaSessions.map((session) => session.sessionRef)
+    expect(alphaSurfaceRefs.filter((ref) => betaSurfaceRefs.includes(ref))).toEqual([])
+    expect(spawnRecords.filter((record) => record.opts.group === alphaRunId).map((record) => record.opts.cwd)).toEqual([alphaPath, alphaPath])
+    expect(spawnRecords.filter((record) => record.opts.group === betaRunId).map((record) => record.opts.cwd)).toEqual([betaPath, betaPath])
+
+    const alphaCommit = commitCalls.find((call) => call.cwd === alphaPath && call.message.includes(alphaRunId))
+    const betaCommit = commitCalls.find((call) => call.cwd === betaPath && call.message.includes(betaRunId))
+    expect(alphaCommit).toBeDefined()
+    expect(betaCommit).toBeDefined()
+    expect(alphaCommit!.files).toEqual(expect.arrayContaining([`cocoder/runs/1-${alphaRunId}/run.json`, `cocoder/runs/1-${alphaRunId}/events.jsonl`]))
+    expect(betaCommit!.files).toEqual(expect.arrayContaining([`cocoder/runs/1-${betaRunId}/run.json`, `cocoder/runs/1-${betaRunId}/events.jsonl`]))
+    expect(alphaCommit!.files.some((file) => file.includes(betaRunId))).toBe(false)
+    expect(betaCommit!.files.some((file) => file.includes(alphaRunId))).toBe(false)
+    expect(store.listCommitLinks(alphaRunId)).toEqual([expect.objectContaining({ runId: alphaRunId, commitSha: alphaCommit!.sha, files: alphaCommit!.files })])
+    expect(store.listCommitLinks(betaRunId)).toEqual([expect.objectContaining({ runId: betaRunId, commitSha: betaCommit!.sha, files: betaCommit!.files })])
+
+    await expect(readFile(join(alphaPath, 'cocoder', 'counters.json'), 'utf8').then(JSON.parse)).resolves.toMatchObject({ nextRunDisplayNumber: 2 })
+    await expect(readFile(join(betaPath, 'cocoder', 'counters.json'), 'utf8').then(JSON.parse)).resolves.toMatchObject({ nextRunDisplayNumber: 2 })
+    await expect(readFile(join(alphaPath, 'cocoder', 'runs', `1-${alphaRunId}`, 'run.json'), 'utf8').then(JSON.parse)).resolves.toMatchObject({
+      run: { id: alphaRunId, displayNumber: 1 },
+      workspace: { id: 'alpha' },
+      status: 'completed',
+    })
+    await expect(readFile(join(betaPath, 'cocoder', 'runs', `1-${betaRunId}`, 'run.json'), 'utf8').then(JSON.parse)).resolves.toMatchObject({
+      run: { id: betaRunId, displayNumber: 1 },
+      workspace: { id: 'beta' },
+      status: 'completed',
+    })
   })
 
   test('daemon-touching commits reload only after the run is idle', async () => {
