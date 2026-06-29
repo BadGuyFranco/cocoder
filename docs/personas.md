@@ -1,7 +1,7 @@
 # CoCoder Personas
 
 **Status:** Draft, implemented by Sub-Playbook D Solve  
-**Last verified:** 2026-06-21 (base set is Oz/Oscar/Bob/Deb/Quinn; testing moved to Plays, ADR-0033)
+**Last verified:** 2026-06-29 (base set is Oz/Oscar/Bob/Deb/Quinn; testing moved to Plays, ADR-0033; model tiers are first-class assignments)
 
 Personas are role contracts for orchestration lanes. They describe what a lane is responsible for, how it receives work, what evidence it must return, and whether it can write.
 
@@ -16,6 +16,20 @@ Personas are role contracts for orchestration lanes. They describe what a lane i
 | Quinn | User-interaction QA. Exercises browser, terminal, and IDE paths where scripted interaction is the right evidence. |
 
 Routes decide which personas are active in a run. A persona listed in the library does nothing until a route and profile assign it to a lane.
+
+## Model assignment and tiers
+
+Each live persona has a `{cli, model}` assignment in `cocoder/personas/assignments.json`. Play-specific overrides live under that persona's `plays` map with the same `{cli, model}` shape. In both places, `model: ""` means "use the CLI's default model."
+
+Assignments can also declare a `tier` instead of pinning a concrete model. The canonical tiers today are `default` and `strong`. The engine resolves a tier to a concrete `{cli, model}` at the live dispatch seam, so stored assignments can say "strong" without baking in a vendor model id.
+
+Precedence is simple: a non-empty concrete `model` always wins, and `tier` is consulted only when `model` is empty. Concrete pins behave exactly as they did before tiers existed.
+
+Each adapter declares its own tier-to-model map in its model-list metadata. The same tier can therefore resolve differently by CLI, for example `strong` can mean Opus for Claude and `gpt-5-codex` for Codex. Any future adapter participates automatically once it declares tier metadata; the resolver and Personas UI do not special-case adapter ids. Requesting a tier the selected adapter does not declare fails loudly with a clear error.
+
+Oscar and Bob are an adversarial pair, so tier resolution has one extra guard: when a tier-introduced resolution would put both on the same concrete `{cli, model}`, the run fails fast before launch with a clear reason. Two explicit identical concrete pins are left alone as the founder's deliberate choice.
+
+In the Personas screen, the Model control lists the selected CLI's declared tiers above the normal Default, enumerated model, and Custom choices. Choosing a tier writes `model: ""` plus `tier`; choosing Default, a concrete model, or Custom clears `tier`.
 
 ## Dispatch rules
 
