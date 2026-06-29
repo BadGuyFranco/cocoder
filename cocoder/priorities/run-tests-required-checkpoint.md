@@ -3,8 +3,8 @@ id: run-tests-required-checkpoint
 title: "Make run-tests a required checkpoint for code atoms (test durability across repos)"
 ---
 
-> **Promoted to active queue 2026-06-29 (founder) — founder Objective + ADR pass owed before any code.**
-> Named follow-up from `surface-reduction` (archived 2026-06-21). Captures the **Q1 durability** question
+> **Blocked (run_151, 2026-06-29) — ADR-0010 conflict-scan complete; zero build atoms until founder approves Objective + ADR framing.**
+> Promoted to active queue 2026-06-29 (founder). Named follow-up from `surface-reduction` (archived 2026-06-21). Captures the **Q1 durability** question
 > raised during the Talia-fold session: today test-running is *discretionary* (Oscar attaches a scripted
 > criterion when he chooses) + CI-backstopped, **not structural** — the runtime guarantees "Oscar passed,"
 > not "tests ran." This drifts in onboarded repos with no tests/CI, or any time verify discipline slips.
@@ -22,9 +22,9 @@ suites + `scripts/proof-*.mjs` stay green; (5) a clear escape for repos/atoms wi
 surface (don't brick a docs-only or brand-new repo) — degrade to advisory + flag, never a hard block of
 legitimate work (founder-vs-agent boundary, ADR-0029 spirit).
 
-**This is a behavior change** (a new gate) — needs a founder-approved ADR and the verify-gate's existing
-required-checkpoint mechanism (ADR-0010), not a new lane. Gate it so it binds *agents* and never blocks the
-founder's own direct work.
+**This is a behavior change** (a new gate) — needs a founder-approved ADR reconciling ADR-0013 (verify gate),
+ADR-0023, ADR-0033, and ADR-0028; wire through the existing verify gate, not a second commit lane. Gate it so
+it binds *agents* and never blocks the founder's own direct work.
 
 ## Boundary
 The checkpoint binding + a test standard onboarded repos inherit. Reuse `run-tests` (ADR-0033) and the

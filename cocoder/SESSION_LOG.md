@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-29 — **run-tests-required-checkpoint: ADR conflict-scan — blocked on founder (run_151/run_292)**
+
+**Persona:** Oscar (orchestrator) | **Priority:** [run-tests-required-checkpoint](./priorities/run-tests-required-checkpoint.md) | **Run:** run_292 (display 151)
+**Outcomes:**
+- **Zero atoms delegated.** Read-only ADR-0010 conflict-scan mapped the live seams: per-atom `execCriterion` (discretionary today), unenforced `Play.requiredCheckpoints`, Oscar verify gate as the sole commit spine (`runCommitGate`), and `run-tests` as persona-requested optional Play — not structural.
+- **Key finding:** `requiredCheckpoints` is parsed but has zero runtime consumers; wiring enforcement is net-new. Oscar recommends run-tests as a **required input to the one verify gate** (not a second hard gate), reconciling ADR-0023's single self-clearing gate.
+- **Disposition: `blocked`.** Behavior change per ADR-0010 cannot enter code until founder approves the drafted Objective and ADR scope; priority stub ADR citation corrected (verify gate is ADR-0013, not ADR-0010).
+**Next:** Reply in Oz chat on run_151 approving the Objective, ADR scope, and verify-gate-as-input framing (or direct independent-gate path); relaunch drafts the ADR atom first.
+
 ## 2026-06-29 — **priority-audit: priority-set staleness table regenerated (run_150)**
 
 **Persona:** Oscar (orchestrator + wrap-up; 1 Bob atom) | **Priority:** [priority-audit](./priorities/priority-audit.md) | **Run:** run_150 (display 150)
