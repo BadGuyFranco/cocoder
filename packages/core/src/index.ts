@@ -118,6 +118,7 @@ export {
 export {
   validatePlayOutput,
   founderCloseoutFromFirstContractHeading,
+  replaceFounderCloseoutCommitState,
   parseFounderCloseoutContract,
   deriveTicketCloseDecision,
   deriveWrapupRunStatus,

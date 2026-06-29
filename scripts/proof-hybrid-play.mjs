@@ -170,7 +170,7 @@ function validCloseout(play) {
     whatRemains: '- Continue the remaining verification work.',
     nextStep: 'Priority: ' + tick + 'demo' + tick + ' - continue the real-path proof review',
     decisionNeeded: 'None.',
-    commitState: 'The runner reports the authoritative commit outcome after this brief.',
+    commitState: 'Committed — 1 commit was recorded by the runner.',
     teardownReadiness: 'Standing by; teardown requires an explicit founder request.',
     judgment: 'The proof stopped after validating the declared Play contract through the runner.',
   }

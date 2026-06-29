@@ -37,6 +37,7 @@ import {
   parseDirective,
   readTickets,
   renderDebStatus,
+  replaceFounderCloseoutCommitState,
   runRun,
   validatePlayOutput,
 } from '../src/index.js'
@@ -469,7 +470,7 @@ const renderFounderCloseout = (input: {
     whatRemains: input.whatRemains ?? '- Continue the remaining priority atoms.',
     nextStep: input.nextStep ?? 'Priority: `demo` — continue the remaining priority atoms',
     decisionNeeded: input.decisionNeeded ?? 'None.',
-    commitState: input.commitState ?? 'The runner reports the authoritative commit outcome after this brief.',
+    commitState: input.commitState ?? 'Committed — 1 commit was recorded by the runner.',
     teardownReadiness: input.teardownReadiness ?? 'Standing by; teardown requires an explicit founder request.',
     judgment: input.judgment ?? 'Oscar stopped at a clean wrap-up point.',
   }
@@ -484,6 +485,10 @@ const ticketFounderCloseout = (runStatus: string, decisionNeeded = 'None.'): str
   decisionNeeded,
   nextStep: 'Ticket: `0015` — continue the ticket fix run',
 })
+const settledCommitState = (commits = 1, flag = 'Nothing out of lane.'): string =>
+  `Committed — ${commits} commit(s) on \`trunk\`; work is on the active branch by construction. ${flag}`
+const settledCloseout = (closeout: string, commits = 1, flag?: string): string =>
+  replaceFounderCloseoutCommitState(closeout, validatedCloseoutContract(), settledCommitState(commits, flag))
 
 const validatedCloseoutContract = (): FounderCloseoutContract => {
   const result = validatePlayOutput({ play: wrapPlay, output: validFounderCloseout(), cwd: workspaceRoot })
@@ -704,6 +709,19 @@ describe('founder closeout target-aware Run Status', () => {
       isTicket: true,
     })
     expect(sectionPrefixed?.issues).toEqual([])
+  })
+
+  test('validator requires an explicit Commit State instead of the old runner-supplied placeholder', () => {
+    const placeholder = renderFounderCloseout({ commitState: 'Commit status is supplied by the runner landing outcome.' })
+    const invalid = validatePlayOutput({ play: wrapPlay, output: placeholder, cwd: workspaceRoot })
+
+    expect(invalid?.issues).toEqual(expect.arrayContaining([
+      issue('commitState', 'must start with Committed, Uncommitted, or Commit error'),
+      issue('commitState', 'must not defer commit status to another section'),
+    ]))
+
+    const valid = validatePlayOutput({ play: wrapPlay, output: renderFounderCloseout({ commitState: 'Uncommitted — no source changes were needed.' }), cwd: workspaceRoot })
+    expect(valid?.issues).toEqual([])
   })
 
   test('ticket Run Status derives terminal run status and close decision separately', () => {
@@ -2534,7 +2552,11 @@ describe('runRun (multi-atom loop)', () => {
     expect(headlessCalls[0]?.args.join('\n')).toContain('# Wrap-up Play')
     expect(headlessCalls[0]?.args.join('\n')).toContain(label('title'))
     expect(paneSpawns).not.toContain('cursor-agent')
-    expect(pickupWrites).toEqual([validFounderCloseout('PLAY CLOSEOUT')])
+    expect(pickupWrites).toEqual([settledCloseout(
+      validFounderCloseout('PLAY CLOSEOUT'),
+      2,
+      'Out-of-lane files flagged and not included in builder atom commits: packages/not-wrap.ts.',
+    )])
     expect(result.committedShas).toEqual(['sha-1', 'sha-2'])
     // Scope advisory: the wrap commit includes the out-of-lane file too; it's flagged.
     expect(result.committedFiles).toEqual(['packages/atom.ts', 'docs/wrap.md', 'packages/not-wrap.ts'])
@@ -2571,7 +2593,7 @@ describe('runRun (multi-atom loop)', () => {
     )
 
     expect(result.status).toBe('completed')
-    expect(pickupWrites).toEqual([repaired])
+    expect(pickupWrites).toEqual([settledCloseout(repaired)])
     const events = store.listEvents(result.runId)
     const repair = events.find((e) => e.type === 'wrapup-format-repair-attempt')
     expect(repair?.data).toMatchObject({ play: 'wrap-up', issues: expect.arrayContaining([`missing ${label('title')}`]), outPath: expect.stringContaining('wrapup-out.txt') })
@@ -2844,7 +2866,7 @@ describe('runRun (multi-atom loop)', () => {
 
     expect(result.status).toBe('awaiting-founder')
     expect(store.getRun(result.runId)?.status).toBe('awaiting-founder')
-    expect(pickupWrites).toEqual([founderGateCloseout])
+    expect(pickupWrites).toEqual([settledCloseout(founderGateCloseout)])
     expect((store.listEvents(result.runId).find((e) => e.type === 'landing-outcome')?.data as { status?: string }).status).toBe('awaiting-founder')
     expect((store.listEvents(result.runId).find((e) => e.type === 'run-end')?.data as { status?: string }).status).toBe('awaiting-founder')
   })
@@ -2888,7 +2910,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(result.status).toBe('awaiting-founder')
     expect(store.getRun(result.runId)?.status).toBe('awaiting-founder')
     expect(awaitedPaths).toEqual([join(runDir, 'directive-0.json'), join(runDir, 'directive-1.json')])
-    expect(pickupWrites).toEqual([founderGateCloseout])
+    expect(pickupWrites).toEqual([settledCloseout(founderGateCloseout)])
     const events = store.listEvents(result.runId)
     expect(events.find((e) => e.type === 'run-end')?.data).toMatchObject({ status: 'awaiting-founder' })
     expect(events.find((e) => e.type === 'landing-outcome')?.data).toMatchObject({ status: 'awaiting-founder' })
@@ -2998,7 +3020,7 @@ describe('runRun (multi-atom loop)', () => {
       { ...input, wrapPlay: renamedPlay, wrapPlayAssignment },
     )
 
-    expect(updatedPickupWrites).toEqual([updatedCloseout])
+    expect(updatedPickupWrites).toEqual([settledCloseout(updatedCloseout)])
     expect(updatedStore.listEvents(updatedResult.runId).find((e) => e.type === 'wrapup-format-invalid')).toBeUndefined()
   })
 
@@ -3112,7 +3134,7 @@ describe('runRun (multi-atom loop)', () => {
     )
 
     expect(result.status).toBe('completed')
-    expect(pickupWrites).toEqual([ticketCloseout])
+    expect(pickupWrites).toEqual([settledCloseout(ticketCloseout)])
     expect(store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')).toBeUndefined()
   })
 
@@ -3138,7 +3160,7 @@ describe('runRun (multi-atom loop)', () => {
     )
 
     expect(result.status).toBe('completed')
-    expect(pickupWrites).toEqual([numericGapCloseout])
+    expect(pickupWrites).toEqual([settledCloseout(numericGapCloseout)])
     expect(store.listEvents(result.runId).find((e) => e.type === 'wrapup-format-invalid')).toBeUndefined()
   })
 
@@ -3229,7 +3251,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(artifactWrites[1]?.contents).toContain('do not summarize, reformat, or paraphrase the closeout brief')
     expect(artifactWrites[1]?.contents).not.toContain('Deliver this founder-facing wrap-up now, in plain English')
     expect(artifactWrites[1]?.contents).toContain('**Landing Outcome**')
-    expect(artifactWrites[1]?.contents).toContain('COMMITTED on `trunk`')
+    expect(artifactWrites[1]?.contents).toContain('Uncommitted — no source changes were committed on `trunk`')
     expect(artifactWrites[1]?.contents).toContain('Founder closeout\nwith detail')
     const delivery = store.listEvents(result.runId).find((e) => e.type === 'wrapup-delivery-dispatch')
     expect(delivery?.data).toMatchObject({ ref: 'surface:1', path: '/runs/cocoder/run_1/wrapup-delivery.md' })

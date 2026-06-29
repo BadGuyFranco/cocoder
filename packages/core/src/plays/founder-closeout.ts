@@ -74,6 +74,16 @@ export function founderCloseoutFromFirstContractHeading(markdown: string, contra
   return finalLineIndex >= 0 ? `${lines.slice(0, finalLineIndex + 1).join('\n')}\n` : closeout
 }
 
+export function replaceFounderCloseoutCommitState(markdown: string, contract: FounderCloseoutContract, commitState: string): string {
+  const label = section(contract, 'commitState')
+  const start = markdown.indexOf(label)
+  if (start < 0) return markdown
+  const contentStart = start + label.length
+  const nextStarts = contract.sections.map((candidate) => markdown.indexOf(candidate, contentStart)).filter((index) => index >= 0)
+  const contentEnd = nextStarts.length > 0 ? Math.min(...nextStarts) : markdown.length
+  return `${markdown.slice(0, contentStart).trimEnd()}\n${commitState.trim()}\n\n${markdown.slice(contentEnd).trimStart()}`
+}
+
 function founderCloseoutRole(label: string): FounderCloseoutRole | null {
   const normalized = label
     .replace(/\*/g, '')
@@ -375,6 +385,16 @@ export function founderCloseoutFormatIssues(markdown: string, cwd: string, contr
     }
   }
 
+  const commitStateLabel = section(contract, 'commitState')
+  const commitState = founderCloseoutSection(markdown, contract, commitStateLabel)
+  const commitStateFirstLine = commitState?.split(/\r?\n/).map((line) => line.trim()).find(Boolean) ?? ''
+  if (!/^(?:Committed|Uncommitted|Commit error)\b/.test(commitStateFirstLine)) {
+    issues.push(`${commitStateLabel} must start with Committed, Uncommitted, or Commit error`)
+  }
+  if (commitState && /\b(?:commit status is supplied|runner reports the authoritative commit outcome|authoritative commit outcome after this brief)\b/i.test(commitState)) {
+    issues.push(`${commitStateLabel} must not defer commit status to another section`)
+  }
+
   const nextStepLabel = section(contract, 'nextStep')
   const next = founderCloseoutSection(markdown, contract, nextStepLabel)
   if (next) {
@@ -443,7 +463,7 @@ export function formatInvalidFounderCloseoutFallback(input: {
     nextStep,
     decisionNeeded:
       'Yes — this wrap-up brief FAILED format validation and is NOT a valid closeout. The orchestrator must repair and re-issue a conforming wrap-up. Do NOT treat this run as cleanly closed.',
-    commitState: `${commitText} The runner reports the authoritative commit outcome after this brief.`,
+    commitState: `Commit error — ${commitText} The runner blocked this wrap-up before a clean closeout could be delivered.`,
     teardownReadiness: 'Standing by; teardown requires an explicit founder request.',
     judgment: 'The runner preserved the founder-facing template instead of passing through a nonconforming wrap-up.',
   }

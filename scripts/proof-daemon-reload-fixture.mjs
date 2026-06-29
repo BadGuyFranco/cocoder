@@ -113,7 +113,7 @@ Oscar stopped because the proof atom reached a clean commit boundary and the har
 None.
 
 **Commit State**
-Commit status is supplied by the runner's landing outcome in the delivered wrap-up.
+Committed — 1 commit was recorded by the runner.
 
 **Recommended Next Step**
 Priority: \\\`daemon-reload-proof\\\` - verify the isolated daemon serves the proof route after reload.

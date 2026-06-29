@@ -76,7 +76,7 @@ Oscar stopped after the scripted proof atom completed and verified.
 None.
 
 **Commit State**
-The runner reports the authoritative commit outcome after this brief.
+Committed — 1 commit was recorded by the runner.
 
 **Recommended Next Step**
 Priority: \`demo\` \u2014 continue the remaining priority atoms

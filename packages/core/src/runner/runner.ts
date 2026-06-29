@@ -26,6 +26,8 @@ import {
   deriveWrapupRunStatus,
   formatInvalidFounderCloseoutFallback,
   founderCloseoutFromFirstContractHeading,
+  parseFounderCloseoutContract,
+  replaceFounderCloseoutCommitState,
   validatePlayOutput,
   type CloseoutLaunchTarget,
   type TicketCloseDecision,
@@ -1629,8 +1631,6 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     throw err
   }
 
-  // ── Wrap-up: pickup brief (continuation; F8) + run record ───────────────────────────────────────
-  const pickupPath = pickup ? await io.writePickup(runDir, pickup) : null
   await rebuildUiBundleIfNeeded()
   const status: RunStatus = terminalStatus
   const endedAt = now()
@@ -1639,11 +1639,24 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   // The founder-facing TRUTH, DERIVED from settled state. Work is on the active branch by construction —
   // there is no separate landing that could fail. Out-of-lane paths are flagged for visibility; atom
   // commits hold them back so unrelated live governance/support edits do not ride a builder work item.
+  let outcome = ''
   {
     const flagged = outOfScope.length > 0 ? `Out-of-lane files flagged and not included in builder atom commits: ${outOfScope.join(', ')}.` : 'Nothing out of lane.'
     const nCommits = committedShas.length
-    const outcome = `✅ COMMITTED on \`${runBranch}\` — ${nCommits} commit(s) on the active branch (no landing step; work is on the branch by construction). ${flagged}`
+    const commitState = nCommits > 0
+      ? `Committed — ${nCommits} commit(s) on \`${runBranch}\`; work is on the active branch by construction. ${flagged}`
+      : `Uncommitted — no source changes were committed on \`${runBranch}\`. ${flagged}`
+    outcome = commitState
+    if (pickup && pickup.trim() !== '' && input.wrapPlay) {
+      const contract = parseFounderCloseoutContract(input.wrapPlay)
+      pickup = replaceFounderCloseoutCommitState(pickup, contract, commitState)
+    }
     store.recordEvent({ runId: run.id, type: 'landing-outcome', data: { landed: true, status, outOfScope, outcome } })
+  }
+
+  // ── Wrap-up: pickup brief (continuation; F8) + run record ───────────────────────────────────────
+  const pickupPath = pickup ? await io.writePickup(runDir, pickup) : null
+  {
     if (pickup && pickup.trim() !== '') {
       await io.writeRunArtifact(runDir, 'landing-outcome-delivery.md', buildLandingOutcome(run.id, outcome))
       if (oscarDriver.kind === 'headless') {

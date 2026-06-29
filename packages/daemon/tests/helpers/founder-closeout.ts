@@ -104,7 +104,7 @@ ${whatRemains}
 
 ${decisionNeeded} ${input.decisionNeeded}
 
-${commitState} The runner reports the authoritative commit outcome after this brief.
+${commitState} Committed — 1 commit was recorded by the runner.
 
 ${next}
 ${input.nextStep}
