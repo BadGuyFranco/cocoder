@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_285",
+    "displayNumber": 144
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "priority"
+  },
+  "priorityId": "harden-documentation-process",
+  "playbookId": null,
+  "ticketId": null,
+  "status": "running",
+  "createdAt": 1782696658948,
+  "endedAt": null
+}

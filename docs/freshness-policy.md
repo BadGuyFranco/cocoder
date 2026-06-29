@@ -1,7 +1,11 @@
+---
+doc-type: current-truth
+---
+
 # Documentation Freshness Policy
 
 **Status:** Draft, implemented by Sub-Playbook D Solve  
-**Last verified:** 2026-06-20 (scrubbed stale v1 session-host reference from the audit cadence)
+**Last verified:** 2026-06-28 (defined doc-type taxonomy, declaration convention, and governed doc set)
 
 CoCoder docs should say when they were last checked against the implementation. Freshness stamps do not prove correctness by themselves, but they make stale claims visible during review.
 
@@ -10,11 +14,47 @@ CoCoder docs should say when they were last checked against the implementation. 
 Use a short stamp near the top of durable architecture, ADR, and public docs:
 
 ```markdown
+---
+doc-type: current-truth
+---
+
 **Status:** Draft, Active, Accepted, Superseded, or Archived  
 **Last verified:** YYYY-MM-DD (short evidence note)
 ```
 
 The evidence note should name the strongest check available: a command, test suite, audit run, founder review, or targeted manual verification.
+
+## Doc-type taxonomy
+
+The documentation-truth process has one type declaration: a governed doc may declare
+`doc-type: <type>` in front matter, alongside the existing `Status` and `Last verified` stamps.
+Allowed values are `current-truth`, `design-intent`, `owner-map`, and `historical`.
+
+When `doc-type` is absent, treat the doc as `current-truth`. The default is strict so a new or
+unclassified governed doc is checked rather than silently skipped.
+
+| Type | Definition | Reference and freshness rule |
+|---|---|---|
+| `current-truth` | The doc states how CoCoder works now or how a founder/operator should use it now. | **Strict resolve.** Concrete references must resolve against the live tree because readers use these docs as current operating truth. This covers internal Markdown links, file and directory paths, ADR IDs, CLI commands and flags, package names, and named code symbols. Keep the `Last verified` stamp current when those claims change or are re-checked. |
+| `design-intent` | The doc describes a planned, proposed, or aspirational design that is not claiming implementation parity. | **Exempt from strict resolve.** Concrete references may point to intended future surfaces because the doc is a design target, not a live-tree guarantee. The status or body must make the non-current nature clear, and the `Last verified` stamp should record the design review or source, not pretend the implementation exists. |
+| `owner-map` | The doc maps ownership, consumers, and verification surfaces for a subsystem or contract. | **Strict resolve.** Owner maps are used to route changes safely, so concrete references must resolve unless a row explicitly labels an item historical or future intent. Keep freshness evidence tied to the map's owning subsystem or contract. |
+| `historical` | The doc preserves a dated record, audit, retired design, or superseded implementation context. | **Exempt from strict resolve.** Historical records may contain stale paths or commands because changing them can rewrite evidence. The status or opening note must identify the record as historical, archived, superseded, or one-shot; new current-truth claims should move to the live owner doc instead of being added here. |
+
+## Governed doc set
+
+The reference/freshness process covers these repository doc surfaces:
+
+- `docs/**/*.md`
+- `ARCHITECTURE.md`
+- `README.md`
+- `CONTRIBUTING.md`
+- `cocoder/decisions/*.md`
+- `cocoder/PLAYBOOK.md`
+- `packages/personas/base/**/*.md`
+
+`README.md` and `CONTRIBUTING.md` are governed docs but are outside this atom's committable
+`docs/**` write lane; resolving that lane mismatch is a known follow-up for the CI-check atom or its
+supporting scope change.
 
 ## Architecture verification
 
