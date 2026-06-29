@@ -15,33 +15,59 @@ import { ScopeChips } from './Plays.tsx'
 const CUSTOM_MODEL = '__custom__'
 const HEADLESS_CLI_WARNING = 'Headless Play on an interactive-only CLI — would hang'
 
-function ModelControl({ cli, model, onChange, compact = false }: { cli: Cli | undefined; model: string; onChange: (model: string) => void; compact?: boolean }) {
+export interface ModelChoice {
+  readonly model: string
+  readonly tier?: string
+}
+
+const tierLabel = (tier: string): string => tier.replace(/[-_]/g, ' ').replace(/^\w/, (c) => c.toUpperCase())
+
+export function ModelControl({ cli, model, tier, onChange, compact = false }: { cli: Cli | undefined; model: string; tier?: string; onChange: (next: ModelChoice) => void; compact?: boolean }) {
   const canEnumerate = !!cli?.canEnumerate
   const models = cli?.models ?? ['Default']
+  const tierEntries = Object.entries(cli?.tiers ?? {})
+  const hasTiers = tierEntries.length > 0
   // modelIsStale is exactly "canEnumerate && model is non-Default and not in the curated list" — i.e. a
   // custom/free-form value. Start such a value in custom mode so its input is shown, not hidden.
-  const isCustomValue = modelIsStale(cli, model)
+  const isCustomValue = modelIsStale(cli, model) || (!!cli && !canEnumerate && model !== 'Default' && model !== '')
   const [customMode, setCustomMode] = useState(isCustomValue)
   const inputStyle = compact ? { padding: '5px 8px', fontSize: 11.5 } : undefined
   const label = <label className="oz-field-label">Model</label>
 
   // CLIs with no enumerate command and no curated list: a plain free-text input.
-  if (cli && !canEnumerate) {
-    const input = <input className="oz-input" aria-label="Model" value={model === 'Default' ? '' : model} placeholder="Default" style={inputStyle} onChange={(e) => onChange(e.target.value || 'Default')} />
+  if (cli && !canEnumerate && !hasTiers) {
+    const input = <input className="oz-input" aria-label="Model" value={model === 'Default' ? '' : model} placeholder="Default" style={inputStyle} onChange={(e) => onChange({ model: e.target.value || 'Default', tier: undefined })} />
     if (compact) return <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>{input}</div>
     return <>{label}{input}</>
   }
 
   const usingCustom = customMode || isCustomValue
+  const selectValue = tier !== undefined && hasTiers && tier in (cli?.tiers ?? {}) ? tier : usingCustom ? CUSTOM_MODEL : model
   const select = (
-    <select className="oz-select" aria-label="Model" value={usingCustom ? CUSTOM_MODEL : model} style={compact ? { padding: '5px 24px 5px 8px', fontSize: 11.5 } : undefined}
-      onChange={(e) => { if (e.target.value === CUSTOM_MODEL) setCustomMode(true); else { setCustomMode(false); onChange(e.target.value) } }}>
+    <select className="oz-select" aria-label="Model" value={selectValue} style={compact ? { padding: '5px 24px 5px 8px', fontSize: 11.5 } : undefined}
+      onChange={(e) => {
+        if (e.target.value === CUSTOM_MODEL) {
+          setCustomMode(true)
+          if (tier !== undefined) onChange({ model: 'Default', tier: undefined })
+        } else if (hasTiers && e.target.value in (cli?.tiers ?? {})) {
+          setCustomMode(false)
+          onChange({ model: 'Default', tier: e.target.value })
+        } else {
+          setCustomMode(false)
+          onChange({ model: e.target.value, tier: undefined })
+        }
+      }}>
+      {hasTiers && (
+        <optgroup label="Tiers">
+          {tierEntries.map(([key]) => <option key={key} value={key}>{tierLabel(key)}</option>)}
+        </optgroup>
+      )}
       {models.map((m) => <option key={m} value={m}>{m}</option>)}
       <option value={CUSTOM_MODEL}>Custom…</option>
     </select>
   )
   const customInput = usingCustom
-    ? <input className="oz-input" aria-label="Custom model id" placeholder="model id — e.g. claude-opus-4-8" value={model === 'Default' ? '' : model} style={{ ...(inputStyle ?? {}), marginTop: 4 }} onChange={(e) => onChange(e.target.value || 'Default')} />
+    ? <input className="oz-input" aria-label="Custom model id" placeholder="model id — e.g. claude-opus-4-8" value={model === 'Default' ? '' : model} style={{ ...(inputStyle ?? {}), marginTop: 4 }} onChange={(e) => onChange({ model: e.target.value || 'Default', tier: undefined })} />
     : null
 
   if (compact) return <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>{select}{customInput}</div>
@@ -96,12 +122,12 @@ function PersonaRow({ persona, plays, clis, onChange, onAddSub, onRemoveSub, onU
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--cb-border)' }}>
               <div>
                 <label className="oz-field-label">CLI</label>
-                <select className="oz-select" value={persona.cli} onChange={(e) => onChange({ ...persona, cli: e.target.value, model: 'Default' })}>
+                <select className="oz-select" value={persona.cli} onChange={(e) => onChange({ ...persona, cli: e.target.value, model: 'Default', tier: undefined })}>
                   {clis.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div>
-                <ModelControl cli={cliEntry} model={persona.model} onChange={(model) => onChange({ ...persona, model })} />
+                <ModelControl cli={cliEntry} model={persona.model} tier={persona.tier} onChange={(next) => onChange({ ...persona, ...next })} />
               </div>
               <div>
                 <label className="oz-field-label">Run mode</label>
@@ -167,10 +193,10 @@ function BoundPlayRow({ persona, subAgent, play, clis, subCli, onRemoveSub, onUp
           <div style={{ display: 'grid', gridTemplateColumns: '20px 1.5fr 1fr 1fr 30px', gap: 10, alignItems: 'center', marginTop: 10 }}>
             <div />
             <input className="oz-input" value={subAgent.id} readOnly style={{ padding: '5px 8px', fontSize: 12, background: 'transparent', border: 'none', fontFamily: 'var(--cb-font-mono)' }} />
-            <select className="oz-select" value={subAgent.cli} style={{ padding: '5px 24px 5px 8px', fontSize: 11.5 }} onChange={(e) => onUpdateSub(persona.id, subAgent.id, { ...subAgent, cli: e.target.value, model: 'Default' })}>
+            <select className="oz-select" value={subAgent.cli} style={{ padding: '5px 24px 5px 8px', fontSize: 11.5 }} onChange={(e) => onUpdateSub(persona.id, subAgent.id, { ...subAgent, cli: e.target.value, model: 'Default', tier: undefined })}>
               {clis.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <ModelControl cli={subCli} model={subAgent.model} compact onChange={(model) => onUpdateSub(persona.id, subAgent.id, { ...subAgent, model })} />
+            <ModelControl cli={subCli} model={subAgent.model} tier={subAgent.tier} compact onChange={(next) => onUpdateSub(persona.id, subAgent.id, { ...subAgent, ...next })} />
             <button className="oz-iconbtn" style={{ width: 24, height: 24 }} onClick={() => onRemoveSub(persona.id, subAgent.id)}><Icon name="x" size={11} /></button>
           </div>
           {play && (

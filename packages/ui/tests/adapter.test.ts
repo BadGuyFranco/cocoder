@@ -323,6 +323,24 @@ describe('personas from the assignments map + roster', () => {
     expect(personas.find((p) => p.id === 'bob')!.subAgents).toEqual([])
   })
 
+  it('maps persona and play tiers from assignments into the editable model', () => {
+    const personas = adaptPersonas({
+      workspace: { id: 'cocoder', name: 'CoCoder', path: '/repo' },
+      personas: [{ id: 'oscar', label: 'Oscar', role: 'Orchestrator — delegates work' }],
+      assignments: {
+        oscar: {
+          cli: 'claude',
+          model: '',
+          tier: 'burstable',
+          plays: { documentation: { cli: 'claude', model: '', tier: 'economy_lane' } },
+        },
+      },
+    })
+
+    expect(personas[0]).toMatchObject({ id: 'oscar', model: 'Default', tier: 'burstable' })
+    expect(personas[0].subAgents).toEqual([{ id: 'documentation', name: 'documentation', cli: 'claude', model: 'Default', tier: 'economy_lane' }])
+  })
+
   it('derives display runMode from assignment mode, not enabled staffing', () => {
     const personas = adaptPersonas({
       workspace: { id: 'cocoder', name: 'CoCoder', path: '/repo' },
@@ -364,6 +382,42 @@ describe('personas from the assignments map + roster', () => {
     expect(payload.deb.enabled).toBe(true)
     expect(payload.oscar.mode).toBe('headless')
     expect(payload.oscar.plays).toEqual({ 'wrap-up': { cli: 'cursor-agent', model: 'gpt-5-mini' } })
+  })
+
+  it('writes selected tiers and removes stale tiers when concrete models are selected', () => {
+    const persona: Persona = {
+      id: 'oscar',
+      name: 'Oscar',
+      role: 'Orchestrator',
+      description: 'Delegates work.',
+      icon: 'ph-thin ph-strategy',
+      cli: 'claude',
+      model: 'Default',
+      tier: 'burstable',
+      runMode: 'visible',
+      subAgents: [
+        { id: 'wrap-up', name: 'wrap-up', cli: 'claude', model: 'Default', tier: 'economy_lane' },
+        { id: 'documentation', name: 'documentation', cli: 'claude', model: 'opus' },
+      ],
+    }
+
+    const payload = personasToAssignments([persona], {
+      oscar: {
+        cli: 'claude',
+        model: 'stale-model',
+        tier: 'stale-tier',
+        plays: {
+          'wrap-up': { cli: 'claude', model: 'stale-model', tier: 'stale-tier' },
+          documentation: { cli: 'claude', model: '', tier: 'stale-tier' },
+        },
+      },
+    })
+
+    expect(payload.oscar).toMatchObject({ cli: 'claude', model: '', tier: 'burstable' })
+    expect(payload.oscar.plays).toEqual({
+      'wrap-up': { cli: 'claude', model: '', tier: 'economy_lane' },
+      documentation: { cli: 'claude', model: 'opus' },
+    })
   })
 
   it('writes edited mode for Oscar and Bob while preserving non-honored daemon modes untouched', () => {
@@ -512,6 +566,14 @@ describe('clis', () => {
     })
     expect(cli.models).toEqual(['Default', 'opus', 'sonnet'])
     expect(cli.runReadiness).toEqual({ mechanism: 'env', flags: ['--model'], managesUserConfig: false, detail: 'ready' })
+  })
+
+  it('maps declared model tiers when the daemon reports them and omits tiers when absent', () => {
+    expect(adaptCli(cliView({ models: { tiers: { bursted: 'opus', economy_lane: 'sonnet' } } })).tiers).toEqual({
+      bursted: 'opus',
+      economy_lane: 'sonnet',
+    })
+    expect(adaptCli(cliView()).tiers).toBeUndefined()
   })
 
   it('preserves headless capability from the daemon CLI view', () => {

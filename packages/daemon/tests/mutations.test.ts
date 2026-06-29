@@ -3191,14 +3191,16 @@ describe('Oz mutations + lifecycle', () => {
     expect(before).toContain('"model"') // file untouched by the rejected write
 
     const ok = await call(oz!, 'PUT', '/workspaces/cocoder/personas/assignments', {
-      body: { personas: { oscar: { cli: 'claude', model: 'opus', mode: 'headless' }, bob: { cli: 'codex', model: '' } } },
+      body: { personas: { oscar: { cli: 'claude', model: '', tier: 'strong', mode: 'headless' }, bob: { cli: 'codex', model: '' } } },
     })
     expect(ok.status).toBe(200)
     expect(ok.json.committedSha).toBe('sha-governance')
-    expect(ok.json.assignments.oscar).toEqual({ cli: 'claude', model: 'opus', mode: 'headless' })
+    expect(ok.json.assignments.oscar).toEqual({ cli: 'claude', model: '', tier: 'strong', mode: 'headless' })
     const after = JSON.parse(await readFile(join(home, 'cocoder', 'personas', 'assignments.json'), 'utf8'))
-    expect(after.personas.oscar.model).toBe('opus')
+    expect(after.personas.oscar.model).toBe('')
+    expect(after.personas.oscar.tier).toBe('strong')
     expect(after.personas.oscar.mode).toBe('headless')
+    expect(after.personas.bob.tier).toBeUndefined()
     expect(commits).toEqual([
       {
         cwd: home,

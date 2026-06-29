@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { act, render, screen, waitFor, cleanup, fireEvent, within } from '@testing-library/react'
 import { App } from '../src/renderer/App.tsx'
 import { stopRun } from '../src/renderer/live.ts'
-import { DEFAULT_SETTINGS, type ConnectionState, type OzApi, type OzEventHint, type PersonasResponse, type PlaysResponse, type Priority as DPriority, type RunnerlessHandoff as DRunnerlessHandoff, type Ticket as DTicket, type RunDetail, type RunSummary, type Settings, type SettingsPatch } from '../src/main/ipc-contract.ts'
+import { DEFAULT_SETTINGS, type CliView, type ConnectionState, type OzApi, type OzEventHint, type PersonasResponse, type PlaysResponse, type Priority as DPriority, type RunnerlessHandoff as DRunnerlessHandoff, type Ticket as DTicket, type RunDetail, type RunSummary, type Settings, type SettingsPatch } from '../src/main/ipc-contract.ts'
 import workspacesFx from '../fixtures/workspaces.json'
 import prioritiesFx from '../fixtures/priorities.json'
 import ticketsFx from '../fixtures/tickets.json'
@@ -25,7 +25,7 @@ const workspaceDisclosure = (primaryRoot = '/new') => ({
   outsideCocoderFiles: [] as string[],
 })
 
-const clisFx = {
+const clisFx: { readonly clis: readonly CliView[] } = {
   clis: [
     {
       id: 'claude',
@@ -33,6 +33,7 @@ const clisFx = {
       testedAt: 1780153227239,
       install: { ok: true, detail: 'installed' },
       auth: { ok: true, detail: 'authenticated' },
+      model: { ok: true, detail: 'default model' },
       models: { canEnumerate: true, models: ['opus'], detail: 'listed models' },
       configManaged: { mechanism: 'env', flags: ['--model'], managesUserConfig: true, detail: 'ready' },
       headlessCapable: true,
@@ -43,6 +44,7 @@ const clisFx = {
       testedAt: null,
       install: { ok: false, detail: 'not probed' },
       auth: { ok: false, detail: 'not probed' },
+      model: { ok: false, detail: 'not probed' },
       models: { canEnumerate: false, models: [], detail: 'free-text model entry' },
       configManaged: { mechanism: 'none', flags: [], managesUserConfig: false, detail: 'not checked' },
       headlessCapable: true,
@@ -53,6 +55,7 @@ const clisFx = {
       testedAt: 1780153227239,
       install: { ok: true, detail: 'installed' },
       auth: { ok: true, detail: 'authenticated' },
+      model: { ok: true, detail: 'default model' },
       models: { canEnumerate: false, models: [], detail: 'free-text model entry' },
       configManaged: { mechanism: 'env', flags: ['--model'], managesUserConfig: true, detail: 'ready' },
       headlessCapable: true,
@@ -117,6 +120,7 @@ function mockOz(opts: {
   pollIntervalMs?: number
   settings?: Settings
   settingsSets?: SettingsPatch[]
+  clis?: { readonly clis: readonly CliView[] }
   onOzEvent?: (cb: (event: OzEventHint) => void) => () => void
 } = {}) {
   return {
@@ -131,7 +135,7 @@ function mockOz(opts: {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     daemonGet: async (path: string): Promise<any> => {
       opts.getPaths?.push(path)
-      if (path === '/clis') return ok(clisFx)
+      if (path === '/clis') return ok(opts.clis ?? clisFx)
       if (path === '/workspaces') return ok(workspacesFx)
       if (/\/priorities$/.test(path)) return ok(opts.priorities ?? prioritiesFx)
       if (/\/runnerless-handoffs$/.test(path)) return ok(opts.runnerlessHandoffs ?? { handoffs: [] })
@@ -764,6 +768,34 @@ describe('Oz renderer — live daemon path', () => {
     expect(assignments.deb.enabled).toBe(true)
     expect(assignments.bob.plays).toEqual({ documentation: { cli: 'claude', model: '' } })
     expect(assignments.oscar.plays).toEqual({ 'wrap-up': { cli: 'cursor-agent', model: '' } })
+  })
+
+  it('persists and clears persona tiers through the assignments bridge', async () => {
+    const puts: PutCall[] = []
+    setOz(mockOz({
+      puts,
+      clis: {
+        clis: clisFx.clis.map((cli) => cli.id === 'claude'
+          ? { ...cli, models: { ...cli.models, tiers: { bursted: 'opus', economy_lane: 'sonnet' } } }
+          : cli),
+      },
+    }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Live')).toBeDefined())
+
+    fireEvent.click(screen.getByText('Personas'))
+    await expandPersona('Oscar')
+    const select = await screen.findByLabelText('Model')
+    fireEvent.change(select, { target: { value: 'economy_lane' } })
+
+    await waitFor(() => expect(puts.length).toBe(1))
+    expect((puts[0].assignments as Record<string, { model: string; tier?: string }>).oscar).toMatchObject({ model: '', tier: 'economy_lane' })
+
+    fireEvent.change(select, { target: { value: 'opus' } })
+
+    await waitFor(() => expect(puts.length).toBe(2))
+    expect((puts[1].assignments as Record<string, { model: string; tier?: string }>).oscar).toEqual(expect.objectContaining({ model: 'opus' }))
+    expect((puts[1].assignments as Record<string, { tier?: string }>).oscar.tier).toBeUndefined()
   })
 
   it('persists Oscar run-mode through the assignments bridge and surfaces daemon errors', async () => {

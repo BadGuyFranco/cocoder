@@ -756,7 +756,7 @@ export function App() {
   function setPersona(id: string, next: Persona) {
     const prev = personas.find((p) => p.id === id)
     const runModeChanged = prev?.runMode !== next.runMode && MODE_HONORED_PERSONAS.has(id)
-    if (prev && prev.cli === next.cli && prev.model === next.model && prev.subAgents === next.subAgents && !runModeChanged) {
+    if (prev && prev.cli === next.cli && prev.model === next.model && prev.tier === next.tier && prev.subAgents === next.subAgents && !runModeChanged) {
       setPersonas(personas.map((p) => (p.id === id ? next : p)))
       return
     }
@@ -770,7 +770,7 @@ export function App() {
     if (persona.subAgents.some((s) => s.id === id)) { notify('err', `Play "${id}" is already assigned to ${persona.name}.`); return }
     const play = plays.find((entry) => entry.id === id)
     if (!play) { notify('err', 'Select an available Play from the catalog.'); return }
-    const next = personas.map((p) => (p.id === pid ? { ...p, subAgents: [...p.subAgents, { id, name: play.label, cli: clis[0]?.id ?? 'claude', model: 'Default' }] } : p))
+    const next = personas.map((p) => (p.id === pid ? { ...p, subAgents: [...p.subAgents, { id, name: play.label, cli: clis[0]?.id ?? 'claude', model: 'Default', tier: undefined }] } : p))
     void persistPersonas(next)
   }
   function removeSub(pid: string, sid: string) {

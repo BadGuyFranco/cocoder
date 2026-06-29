@@ -101,6 +101,7 @@ export function adaptCli(view: CliView): Cli {
     models: ['Default', ...view.models.models],
     canEnumerate: view.models.canEnumerate,
     headlessCapable: view.headlessCapable,
+    ...(view.models.tiers === undefined ? {} : { tiers: { ...view.models.tiers } }),
     modelsDetail: view.models.detail,
     runReadiness: {
       mechanism: view.configManaged.mechanism,
@@ -493,6 +494,7 @@ export function adaptPersonas(resp: PersonasResponse): Persona[] {
       name: playId,
       cli: play.cli,
       model: play.model || 'Default',
+      ...(play.tier === undefined ? {} : { tier: play.tier }),
     }))
     return {
       id,
@@ -502,6 +504,7 @@ export function adaptPersonas(resp: PersonasResponse): Persona[] {
       icon: PERSONA_ICONS[id] ?? 'ph-thin ph-user',
       cli: a.cli || '',
       model: a.model || 'Default',
+      ...(a.tier === undefined ? {} : { tier: a.tier }),
       runMode: a.mode ?? 'visible',
       subAgents,
     }
@@ -514,14 +517,22 @@ export function personasToAssignments(personas: readonly Persona[], base: Record
   const out: Record<string, PersonaAssignment> = { ...base }
   for (const persona of personas) {
     const prev = base[persona.id]
-    const { plays: _oldPlays, ...rest } = prev ?? {}
+    const { plays: _oldPlays, tier: _oldTier, ...rest } = prev ?? {}
     const plays = Object.fromEntries(
-      persona.subAgents.map((sa) => [sa.id, { cli: sa.cli, model: assignmentModel(sa.model) }]),
+      persona.subAgents.map((sa) => [
+        sa.id,
+        {
+          cli: sa.cli,
+          model: sa.tier === undefined ? assignmentModel(sa.model) : '',
+          ...(sa.tier === undefined ? {} : { tier: sa.tier }),
+        },
+      ]),
     )
     const core = {
       ...rest,
       cli: persona.cli,
-      model: assignmentModel(persona.model),
+      model: persona.tier === undefined ? assignmentModel(persona.model) : '',
+      ...(persona.tier === undefined ? {} : { tier: persona.tier }),
       ...(MODE_HONORED_PERSONAS.has(persona.id) ? { mode: persona.runMode } : {}),
     }
     out[persona.id] = Object.keys(plays).length ? { ...core, plays } : core

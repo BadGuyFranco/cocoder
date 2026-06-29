@@ -203,9 +203,10 @@ export interface RunDetail {
 export interface PersonaAssignment {
   readonly cli: string
   readonly model: string
+  readonly tier?: string
   readonly mode?: 'visible' | 'headless'
   readonly enabled?: boolean
-  readonly plays?: Record<string, { cli: string; model: string }>
+  readonly plays?: Record<string, { cli: string; model: string; tier?: string }>
 }
 export interface Play {
   readonly id: string
@@ -230,6 +231,7 @@ export interface CliModelsView {
   readonly canEnumerate: boolean
   readonly models: readonly string[]
   readonly detail: string
+  readonly tiers?: Readonly<Record<string, string>>
 }
 export interface CliRunReadinessView {
   readonly mechanism: string

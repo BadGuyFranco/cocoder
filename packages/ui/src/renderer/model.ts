@@ -50,10 +50,10 @@ export const runDisplayName = (run: Pick<Run, 'id' | 'displayName'>): string => 
 export interface Play {
   id: string; label: string; kind: 'headless' | 'interactive'; writeScope: readonly string[]
 }
-export interface SubAgent { id: string; name: string; cli: string; model: string }
+export interface SubAgent { id: string; name: string; cli: string; model: string; tier?: string }
 export interface Persona {
   id: string; name: string; role: string; description: string; icon: string
-  cli: string; model: string; runMode: 'visible' | 'headless'
+  cli: string; model: string; tier?: string; runMode: 'visible' | 'headless'
   subAgents: SubAgent[]; headless?: boolean
 }
 export type CliStatus = 'ok' | 'auth-failed' | 'model-failed' | 'not-installed'
@@ -63,7 +63,7 @@ export interface CliRunReadiness {
 export interface Cli {
   id: string; name: string; vendor: string; status: CliStatus
   version: string; lastTested: string; models: string[]; errorDetail?: string | null
-  tested: boolean; canEnumerate: boolean; headlessCapable: boolean; modelsDetail?: string; runReadiness?: CliRunReadiness
+  tested: boolean; canEnumerate: boolean; headlessCapable: boolean; tiers?: Record<string, string>; modelsDetail?: string; runReadiness?: CliRunReadiness
 }
 export type DepStatus = 'ok' | 'not-installed'
 export interface Dependency {
