@@ -1,5 +1,7 @@
 # Runner decoupling — progress ledger
 
+> **Archived 2026-06-29 (founder) — archive confirmed.** Progress ledger for runner-decoupling-refactor; top entry declares WS5/refactor COMPLETE, priority DONE; archived per 2026-06-29 audit alongside the refactor record.
+
 Newest entry on top. Each independent session appends one entry, then hands back the next session's
 prompt. Priority spec: `cocoder/priorities/backlog/runner-decoupling-refactor.md`. **Do not orchestrate
 this work** — independent Claude Code sessions only.
