@@ -3,6 +3,9 @@ id: runner-decoupling-refactor
 title: Runner decoupling refactor (non-orchestrated, session-chained)
 ---
 
+> **Archived 2026-06-29 (founder) — archive confirmed.** Complete by its own done-when (all five
+> conditions met, verification recorded); archived per 2026-06-29 priority audit as finished work.
+
 > **EXECUTION CONSTRAINT — READ FIRST. This priority must NEVER be launched through the CoCoder
 > runner, the Oz daemon, or the Oscar/Bob/Deb loop.** It mutates the very control plane those agents
 > depend on (`runner.ts`, `blocker.ts`, `status.ts`, `commit-gate/*`, `prompts.ts`). A mid-flight
