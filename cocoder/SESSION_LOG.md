@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-28 — **ticket-fix-0084: Oscar–Deb repair prose-wrapped JSON — closed (run_143/run_284)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0084](./tickets/closed/0084-repair-dialogue-oscar-evaluation-turn-rejects-prose-wrapped-json.md) | **Run:** run_284 (display 143)
+**Outcomes:**
+- **One atom verified and committed (`e8a6d264`).** Refactored JSON extraction to one owner (`firstJsonObjectArtifact` in `oscar-deb-repair.ts`, reusing `jsonObjectCandidates`); both `parseOscarEvaluationArtifact` and launcher's `parseDebTurnOutput` route through it so prose-wrapped model output no longer 500s on either turn.
+- **Regression tests added.** Unit + op-level tests assert Deb repair commits and Oscar evaluation surfaces `FounderEscalation` (status 200) on prose-wrapped JSON; 57 tests green, `tsc --noEmit` clean.
+- **Disposition: `closed`.** Ticket 0084 closed via verify-gate ticketClose path; open ticket queue empty.
+**Next:** Launch priority `harden-documentation-process` — CI reference-resolution check (objective condition 1).
+
 ## 2026-06-28 — **ticket-fix-0083: governed retention enablement — closed (run_142/run_283)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0083](./tickets/closed/0083-retention-live-enablement-has-no-founder-facing-affordance.md) | **Run:** run_283 (display 142)
