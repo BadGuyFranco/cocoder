@@ -3,6 +3,8 @@ id: deployment-plays
 title: "Deployment Plays — human-gated deploys + key storage (deferred: Phase 5)"
 ---
 
+> **Archived 2026-06-29 (founder) — archive confirmed.** Deferred per 2026-06-29 audit; no onboarded deploy target or secrets UX exists yet.
+
 ## Objective
 **Human-gated deployment Plays** cover the common targets — Vercel, Google Cloud, signed Electron
 (Apple/Microsoft), GitHub — with the associated keys stored in the workspace `local/secrets` zone
