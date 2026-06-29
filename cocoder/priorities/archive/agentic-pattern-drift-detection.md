@@ -3,6 +3,8 @@ id: agentic-pattern-drift-detection
 title: "Agentic pattern-drift detection — catch retired *patterns*, not just gone paths"
 ---
 
+> **Archived 2026-06-29 (founder) — archive confirmed.** Deferred per 2026-06-29 audit; revisit only after the shipped drift detector is calm enough to add agentic enrichment without noise.
+
 > **Backlog — founder Objective + ADR pass owed.** Named follow-up from `drift-audit` (archived 2026-06-21).
 > drift-audit's shipped detector catches **stale path references** (a governance file names a path that no
 > longer exists). It explicitly **deferred** the harder class: **retired patterns** — governance prose that
