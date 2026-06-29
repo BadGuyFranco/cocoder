@@ -3,6 +3,8 @@ id: research-sandboxing
 title: Research sandboxing — decide IF/WHEN/minimal-form, default to "not now"
 ---
 
+> **Archived 2026-06-29 (founder) — archive confirmed.** Cleared per 2026-06-29 audit; commit-time holdback premise is stale after ADR-0023/0045; revive with refreshed premise.
+
 **Status:** backlog — research spike, recorded 2026-06-15 (founder-directed, from the Omnigent
 comparison read). **Blocked on the commit spine being boringly reliable first** (ADR-0023): we are
 still unwinding existing constraints around correct commits, so no new enforcement layer gets
