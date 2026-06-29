@@ -3,6 +3,12 @@ id: harden-documentation-process
 title: Harden the documentation process so docs cannot silently drift from code
 ---
 
+> **Archived 2026-06-28 (founder) — All three objective conditions verified on live tree: CI
+> doc-reference gate (drift-doc-reference-gate + drift-resolve-doc-references tests), four-type
+> doc-type taxonomy and worklist-archive convention in docs/freshness-policy.md, and
+> architecture-truth-audit.md + docs-files-truth-audit.md moved under docs/archive/. No bound open
+> tickets. Items 7-9 out of scope per priority boundary.** Founder confirmed archive (run_286).
+
 > Crafted by Oscar at founder direction (2026-06-27), from concrete gaps surfaced across the Doc Truth
 > Analysis runs (run_267/269/270). Founder owns the Objective and may refine it (ADR-0010); the
 > problem inventory below is what the audits actually observed and is meant to be extended by the
