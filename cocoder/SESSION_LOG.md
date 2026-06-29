@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-29 — **multi-workspace-concurrency: concurrent cross-workspace runs — archive ready (run_147)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** [multi-workspace-concurrency](./priorities/multi-workspace-concurrency.md) | **Run:** run_147 (display 147)
+**Outcomes:**
+- **Five atoms verified and committed.** Audit enumerated all `ctx.inFlight` sites (`docs/concurrency/multi-workspace-audit.md`); per-workspace scoping for Oz repair/action guards; `maxConcurrentRuns` ceiling (default 3) with active-run count in Oz status; deterministic two-workspace load harness in daemon tests; configuration + ARCHITECTURE docs updated.
+- **All Scope and Acceptance bullets met.** Different workspaces run concurrently without cross-contamination; genuinely-global reload guards unchanged; regression pinned by vitest harness.
+- **Disposition: `archive-confirmation`.** Code-complete, documented, test-pinned; no open tickets tied to this priority; founder archive confirmation is the only remaining gate.
+**Next:** Reply `archive` or `archive run_147` in Oz chat; then launch `model-layer` for Phase 0 adapter tier metadata.
+
 ## 2026-06-28 — **harden-documentation-process: re-verify + founder archive — archive ready (run_145/run_286)**
 
 **Persona:** Oscar (orchestrator) | **Priority:** [harden-documentation-process](./priorities/harden-documentation-process.md) | **Run:** run_286 (display 145)
