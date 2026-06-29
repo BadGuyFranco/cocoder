@@ -72,6 +72,7 @@ export {
   resolvePlayAssignment,
   resolvePersonaMode,
   resolveAssignmentModel,
+  resolveBuildModel,
   detectModelCollapse,
   assertNoModelCollapse,
   mergePersona,

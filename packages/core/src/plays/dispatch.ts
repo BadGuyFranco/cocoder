@@ -12,6 +12,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { extname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import type { Adapter } from '../adapter/types.js'
+import { resolveBuildModel } from '../personas/resolve-model.js'
 import type { PersonaRunMode, PlayAssignment } from '../personas/types.js'
 import type { SessionHost } from '../session-host/types.js'
 import type { Play } from './types.js'
@@ -169,10 +170,11 @@ export async function dispatchPlay(deps: DispatchPlayDeps, input: DispatchPlayIn
 
   const prompt = buildPrompt(input.play, input.task, deterministic)
   const headless = input.personaMode === 'headless' || input.play.kind === 'headless'
+  const resolved = await resolveBuildModel(deps.getAdapter, input.assignment)
   const cmd = deps.getAdapter(input.assignment.cli).build({
     persona: input.persona,
     prompt,
-    model: input.assignment.model,
+    model: resolved.model,
     cwd: input.cwd,
     outPath: input.outPath,
     headless,

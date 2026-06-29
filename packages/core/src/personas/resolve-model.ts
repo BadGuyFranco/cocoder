@@ -14,6 +14,10 @@ export interface ResolvedAssignmentModel {
   readonly model: string
 }
 
+export type BuildModelAdapterLookup = (cli: string) => {
+  listModels(): Promise<{ readonly tiers?: Readonly<Record<ModelTier, string>> }>
+}
+
 export function resolveAssignmentModel(input: ResolveAssignmentModelInput): ResolvedAssignmentModel {
   const { assignment, tiers } = input
   if (assignment.model !== '') return { cli: assignment.cli, model: assignment.model }
@@ -26,6 +30,15 @@ export function resolveAssignmentModel(input: ResolveAssignmentModelInput): Reso
     throw new Error(`adapter "${assignment.cli}" does not declare model tier "${assignment.tier}"`)
   }
   return { cli: assignment.cli, model }
+}
+
+export async function resolveBuildModel(
+  getAdapter: BuildModelAdapterLookup,
+  assignment: ResolveAssignmentModelInput['assignment'],
+): Promise<ResolvedAssignmentModel> {
+  if (assignment.model !== '' || assignment.tier === undefined) return resolveAssignmentModel({ assignment })
+  const models = await getAdapter(assignment.cli).listModels()
+  return resolveAssignmentModel({ assignment, tiers: models.tiers })
 }
 
 export function detectModelCollapse(a: ResolvedAssignmentModel, b: ResolvedAssignmentModel): boolean {

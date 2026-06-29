@@ -10,6 +10,7 @@ import {
   type BuiltCommand,
   type DispatchPlayResult,
   type HeadlessRunInput,
+  type ModelListResult,
   type Play,
   type PlayAssignment,
   type SessionHost,
@@ -29,13 +30,19 @@ const assignment: PlayAssignment = { cli: 'cursor-agent', model: 'gpt-5' }
 
 const fakeRef: SessionRef = { id: 'surface:1', driver: 'fake' }
 
-function fakeAdapter(build: BuiltCommand = { command: 'cursor-agent', args: ['-p', 'prompt'], stdoutPath: '/tmp/out.txt' }): {
+function fakeAdapter(
+  build: BuiltCommand = { command: 'cursor-agent', args: ['-p', 'prompt'], stdoutPath: '/tmp/out.txt' },
+  models: ModelListResult = { canEnumerate: false, models: [], detail: 'test adapter' },
+): {
   adapter: Adapter
   builtInputs: BuildInput[]
+  listModelCalls: { count: number }
 } {
   const builtInputs: BuildInput[] = []
+  const listModelCalls = { count: 0 }
   return {
     builtInputs,
+    listModelCalls,
     adapter: {
       id: 'cursor-agent',
       runReadiness: { mechanism: 'launch-flags', flags: [], managesUserConfig: false, detail: 'test adapter' },
@@ -45,7 +52,10 @@ function fakeAdapter(build: BuiltCommand = { command: 'cursor-agent', args: ['-p
         return build
       },
       preflight: async () => ({ ok: true, checks: [] }),
-      listModels: async () => ({ canEnumerate: false, models: [], detail: 'test adapter' }),
+      listModels: async () => {
+        listModelCalls.count += 1
+        return models
+      },
     },
   }
 }
@@ -151,6 +161,86 @@ describe('dispatchPlay', () => {
 
     expect(calls[0]?.outPath).toBe(`${out}.stdout`)
     expect(result).toEqual({ exitCode: 0, output: 'clean final answer' })
+  })
+
+  test('tiered play assignments resolve through adapter model tiers before build', async () => {
+    const out = await outPath()
+    const { adapter, builtInputs, listModelCalls } = fakeAdapter(
+      { command: 'claude', args: ['-p', 'hi'], stdoutPath: out },
+      { canEnumerate: true, models: ['opus', 'sonnet'], tiers: { default: 'sonnet', strong: 'opus' }, detail: 'tiered models' },
+    )
+    const { sessionHost } = fakeSessionHost()
+    const { runHeadless } = fakeRunHeadless()
+
+    await dispatchPlay(
+      { sessionHost, getAdapter: () => adapter, runHeadless },
+      { play, assignment: { cli: 'claude', model: '', tier: 'strong' }, persona: 'oscar', task: 'Do it.', cwd: '/repo', outPath: out },
+    )
+
+    expect(listModelCalls.count).toBe(1)
+    expect(builtInputs[0]?.model).toBe('opus')
+  })
+
+  test('the same play tier resolves to divergent concrete models across adapters', async () => {
+    const out = await outPath()
+    const claude = fakeAdapter(
+      { command: 'claude', args: ['-p', 'hi'], stdoutPath: out },
+      { canEnumerate: true, models: ['opus'], tiers: { default: 'sonnet', strong: 'opus' }, detail: 'claude tiers' },
+    )
+    const codex = fakeAdapter(
+      { command: 'codex', args: ['exec', '--output-last-message', out] },
+      { canEnumerate: true, models: ['gpt-5-codex'], tiers: { default: '', strong: 'gpt-5-codex' }, detail: 'codex tiers' },
+    )
+    const { sessionHost } = fakeSessionHost()
+    const { runHeadless } = fakeRunHeadless()
+
+    const byCli = new Map<string, Adapter>([
+      ['claude', claude.adapter],
+      ['codex', codex.adapter],
+    ])
+
+    await dispatchPlay(
+      { sessionHost, getAdapter: (cli) => byCli.get(cli) ?? claude.adapter, runHeadless },
+      { play, assignment: { cli: 'claude', model: '', tier: 'strong' }, persona: 'oscar', task: 'Do it.', cwd: '/repo', outPath: out },
+    )
+    await dispatchPlay(
+      { sessionHost, getAdapter: (cli) => byCli.get(cli) ?? codex.adapter, runHeadless },
+      { play, assignment: { cli: 'codex', model: '', tier: 'strong' }, persona: 'oscar', task: 'Do it.', cwd: '/repo', outPath: out },
+    )
+
+    expect(claude.builtInputs[0]?.model).toBe('opus')
+    expect(codex.builtInputs[0]?.model).toBe('gpt-5-codex')
+    expect(claude.builtInputs[0]?.model).not.toBe(codex.builtInputs[0]?.model)
+  })
+
+  test('concrete play model pins build unchanged without listing models', async () => {
+    const out = await outPath()
+    const { adapter, builtInputs, listModelCalls } = fakeAdapter()
+    const { sessionHost } = fakeSessionHost()
+    const { runHeadless } = fakeRunHeadless()
+
+    await dispatchPlay(
+      { sessionHost, getAdapter: () => adapter, runHeadless },
+      { play, assignment: { cli: 'claude', model: 'sonnet' }, persona: 'oscar', task: 'Do it.', cwd: '/repo', outPath: out },
+    )
+
+    expect(builtInputs[0]?.model).toBe('sonnet')
+    expect(listModelCalls.count).toBe(0)
+  })
+
+  test('untiered empty play model keeps CLI default without listing models', async () => {
+    const out = await outPath()
+    const { adapter, builtInputs, listModelCalls } = fakeAdapter()
+    const { sessionHost } = fakeSessionHost()
+    const { runHeadless } = fakeRunHeadless()
+
+    await dispatchPlay(
+      { sessionHost, getAdapter: () => adapter, runHeadless },
+      { play, assignment: { cli: 'claude', model: '' }, persona: 'oscar', task: 'Do it.', cwd: '/repo', outPath: out },
+    )
+
+    expect(builtInputs[0]?.model).toBe('')
+    expect(listModelCalls.count).toBe(0)
   })
 
   test('returns the headless runner exit code and captured output', async () => {
