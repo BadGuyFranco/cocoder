@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest'
+import { MODEL_TIERS } from '@cocoder/core'
 import type { Exec, ExecResult } from '../src/index.js'
 import { ClaudeAdapter, CodexAdapter, CursorAgentAdapter, getAdapter, makeAdapterRegistry } from '../src/index.js'
 
@@ -270,6 +271,10 @@ describe('listModels() (injected exec)', () => {
     expect(r).toEqual({
       canEnumerate: true,
       models: ['gpt-5', 'sonnet-4', 'sonnet-4-thinking'],
+      tiers: {
+        [MODEL_TIERS[0]]: 'gpt-5',
+        [MODEL_TIERS[1]]: 'sonnet-4-thinking',
+      },
       detail: 'cursor-agent --list-models',
     })
   })
@@ -293,6 +298,10 @@ describe('listModels() (injected exec)', () => {
 
     expect(r.canEnumerate).toBe(true)
     expect(r.models).toEqual(['gpt-5-codex', 'gpt-5', 'o3'])
+    expect(r.tiers).toEqual({
+      [MODEL_TIERS[0]]: '',
+      [MODEL_TIERS[1]]: 'gpt-5-codex',
+    })
     expect(r.detail).toMatch(/curated/i)
   })
 
@@ -301,6 +310,10 @@ describe('listModels() (injected exec)', () => {
 
     expect(r.canEnumerate).toBe(true)
     expect(r.models).toEqual(['opus', 'sonnet', 'haiku', 'fable'])
+    expect(r.tiers).toEqual({
+      [MODEL_TIERS[0]]: 'sonnet',
+      [MODEL_TIERS[1]]: 'opus',
+    })
     expect(r.detail).toMatch(/curated/i)
   })
 })

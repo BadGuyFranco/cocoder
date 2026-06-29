@@ -39,11 +39,19 @@ export interface PreflightResult {
   readonly checks: readonly PreflightCheck[]
 }
 
+export const MODEL_TIERS = ['default', 'strong'] as const
+
+export type ModelTier = (typeof MODEL_TIERS)[number]
+
 export interface ModelListResult {
   /** True when the CLI was queried and returned an explicit model list. */
   readonly canEnumerate: boolean
   /** Enumerated model names. Default (the empty model string) is always implicit and is not listed. */
   readonly models: readonly string[]
+  /** Optional canonical tier-to-model mapping for resolver opt-in.
+   *  Keys come from MODEL_TIERS; values are this adapter's concrete model names, with '' meaning
+   *  the CLI default. Omit tiers when the adapter does not participate in tier resolution. */
+  readonly tiers?: Readonly<Record<ModelTier, string>>
   /** Human-readable provenance or reason for the result. */
   readonly detail: string
 }

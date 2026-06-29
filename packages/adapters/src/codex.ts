@@ -6,7 +6,7 @@
 // enforced at CoCoder's commit-gate (S7). Completion is ARTIFACT-based — the runner polls for the
 // builder-done file the prompt tells it to write — NOT process exit. (Supersedes the spike's
 // headless `codex exec`.)
-import type { Adapter, BuildInput, BuiltCommand, ModelListResult, PreflightResult, RunReadinessProfile } from '@cocoder/core'
+import { MODEL_TIERS, type Adapter, type BuildInput, type BuiltCommand, type ModelListResult, type PreflightResult, type RunReadinessProfile } from '@cocoder/core'
 import { defaultExec, type Exec } from './exec.js'
 
 export class CodexAdapter implements Adapter {
@@ -78,6 +78,10 @@ export class CodexAdapter implements Adapter {
     return {
       canEnumerate: true,
       models: ['gpt-5-codex', 'gpt-5', 'o3'],
+      tiers: {
+        [MODEL_TIERS[0]]: '',
+        [MODEL_TIERS[1]]: 'gpt-5-codex',
+      },
       detail: 'curated `-m` models (codex has no enumerate command); Custom… for any other model name',
     }
   }

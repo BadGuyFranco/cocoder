@@ -1,4 +1,5 @@
 // Minimal command runner for adapter preflight (the only I/O adapters do directly).
+// Intentionally no model tiers here: this generic exec helper does not participate in tier resolution.
 // Never throws on non-zero exit — preflight wants the code + output, not an exception.
 import { execFile } from 'node:child_process'
 

@@ -242,10 +242,13 @@ export { mean } from './util/mean.js'
 export { pluralize } from './util/pluralize.js'
 export { truncate } from './util/truncate.js'
 
+export { MODEL_TIERS } from './adapter/index.js'
+
 export type {
   Adapter,
   BuildInput,
   BuiltCommand,
+  ModelTier,
   ModelListResult,
   PreflightCheck,
   PreflightResult,

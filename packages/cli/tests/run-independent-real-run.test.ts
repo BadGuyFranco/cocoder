@@ -67,7 +67,7 @@ continue
 The runnerless path completed through the real runner.
 
 **Judgment:**
-Oscar stopped after the scripted proof atom completed and verified.
+Oscar stopped after the scripted proof atom completed and verified. The packages/runnerless-real.ts commit landed outside its nominal lane, which is expected and correct for this runnerless integration fixture.
 
 **What Remains**
 - Continue the remaining priority hardening.

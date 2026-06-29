@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_289",
+    "displayNumber": 148
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "priority"
+  },
+  "priorityId": "model-layer",
+  "playbookId": null,
+  "ticketId": null,
+  "status": "running",
+  "createdAt": 1782747501585,
+  "endedAt": null
+}
