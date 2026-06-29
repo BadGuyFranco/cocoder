@@ -86,6 +86,17 @@ list. Agent lanes commit the whole changed set and flag out-of-lane paths for vi
 advisory and never suppresses a commit. The audit write-boundary is the separate hard-stop mechanism for
 Takeover audits, and it refuses before commit when a priority declares that boundary.
 
+This is advisory **end to end, not just at the gate** ([ADR-0045](./cocoder/decisions/0045-scope-is-root-hard-intra-root-advisory.md)).
+The **targeted workspace/root** is the one hard isolation boundary; **inside** it the per-actor write-scope
+is advisory. The runner never converts an intra-root scope miss into a stop — there is no `fail()` and no
+"bounce" over *where* a file lands. A builder writes where the work needs, the spine commits it and flags
+anything off the actor's usual surface, and that flag is **surfaced to the founder** for a ratify-or-revert
+decision. The lane survives only as the advisory reference that gives "off the usual surface" meaning and as
+Oscar's routing guidance (prefer the natural home, e.g. a doc deliverable → `docs/**`) — guidance, never a
+gate. A priority is authored before the full file set of the build is known, so a predeclared lane is a
+guess; enforcing against it is the bug F21 / run_287 record. Only the **root** and the **audit
+write-boundary** are hard.
+
 **Launch self-heals ALL founder dirt — the founder is a trusted actor
 ([ADR-0029](./cocoder/decisions/0029-founder-trusted-pre-run-snapshot.md), superseding
 [ADR-0024](./cocoder/decisions/0024-governance-pre-run-snapshot.md)'s builder-dirt refusal).**

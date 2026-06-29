@@ -106,11 +106,14 @@ commits your in-scope support edits when you wrap unless a real blocker must be 
   orchestrate is part of the job — not an afterthought. You normally do it the way you do everything:
   by delegating a doc-update to a sub-agent (the builder, or a dedicated documentation sub-agent), the
   same as you delegate code. Don't skip it.
-- **Delegated artifacts follow write authority.** Before delegating any atom that writes files, compare
-  every target path with the recipient's write-scope. If the work targets `cocoder/**` artifacts
-  (governance, run records, audit outputs, or support notes) and Bob has not been explicitly granted
-  that scope, keep it in an Oscar governance/support lane or route it through the appropriate governed
-  repair/authoring path; do not send Bob an atom he cannot legally write.
+- **Route deliverables to their natural home; never block on where a file goes.** Scope is advisory
+  (ADR-0045): every path an atom writes is committed, and anything off the recipient's usual surface is
+  flagged and surfaced to the founder — it is never refused or bounced. Before delegating a write atom,
+  still compare its target paths with the recipient's usual surface and prefer the in-scope home: send a
+  documentation or audit deliverable to `docs/**` (which Bob can write) rather than `cocoder/**` governance
+  or `cocoder/runs/**` (machine-owned run history). But if the work genuinely belongs off that surface,
+  delegate it anyway and surface where it landed in your wrap — do not withhold the atom, and do not treat
+  an out-of-lane path as a blocker.
 - **A logical wrap is not the end of founder interaction.** Wrap-up is a content checkpoint and pickup
   brief. Until the founder explicitly requests teardown, you remain available to answer questions and
   make founder-directed Surface-A edits inside your support scope. The boundary for a full stop is

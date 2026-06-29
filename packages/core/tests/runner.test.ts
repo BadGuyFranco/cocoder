@@ -1202,36 +1202,37 @@ describe('runRun (multi-atom loop)', () => {
     expect(store.listEvents(result.runId).some((event) => event.type === 'builder-scope-conflict')).toBe(false)
   })
 
-  test('refuses to dispatch declared governance writePaths outside Bob scope', async () => {
+  test('dispatches (never refuses) declared governance writePaths off Bob usual surface — scope is advisory', async () => {
+    // Scope is advisory (ADR-0045): a declared write off Bob's usual surface is NOT a refusal. The atom
+    // dispatches; the gate commits whatever Bob writes and flags out-of-lane; the run records an advisory
+    // (surfaced for the founder), never a terminal scope fault and never a bounce.
     const store = openRunStore(':memory:')
-    const statusWrites: DebStatus[] = []
 
-    await expect(
-      runRun(
-        baseDeps({
-          store,
-          io: fakeIO({
-            directives: [writePathDelegate('Draft the ADR.', ['cocoder/decisions/0040-oz-write-side-autonomy.md'])],
-            triage: { disposition: 'cocoder-bug', summary: 'scope mismatch reached runner dispatch', proposal: 'd' },
-            statusWrites,
-          }),
+    const result = await runRun(
+      baseDeps({
+        store,
+        git: scriptedGit([['cocoder/decisions/0040-oz-write-side-autonomy.md']]),
+        io: fakeIO({
+          directives: [writePathDelegate('Draft the ADR.', ['cocoder/decisions/0040-oz-write-side-autonomy.md']), wrapup('done')],
         }),
-        { ...input, deb },
-      ),
-    ).rejects.toThrow(/delegate writePaths out of Bob's effective scope/)
+      }),
+      { ...input, deb },
+    )
 
-    const runId = store.listRuns()[0]!.id
-    const events = store.listEvents(runId)
-    expect(events.some((event) => event.type === 'builder-dispatch')).toBe(false)
-    expect(events.find((event) => event.type === 'builder-scope-conflict')?.data).toMatchObject({
+    expect(result.status).toBe('completed')
+    const events = store.listEvents(result.runId)
+    // Dispatched, not refused.
+    expect(events.some((event) => event.type === 'builder-dispatch')).toBe(true)
+    // No terminal scope fault, no triage of one.
+    expect(events.some((event) => event.type === 'builder-scope-conflict')).toBe(false)
+    expect(events.some((event) => event.type === 'triage-dispatch' && (event.data as { fault?: string }).fault === 'builder-scope-conflict')).toBe(false)
+    // Advisory recorded for visibility — out-of-lane declared paths, never an owner/fault.
+    expect(events.find((event) => event.type === 'builder-scope-advisory')?.data).toMatchObject({
       atom: 0,
       requiredPaths: ['cocoder/decisions/0040-oz-write-side-autonomy.md'],
       outOfScopePaths: ['cocoder/decisions/0040-oz-write-side-autonomy.md'],
       scope: ['packages/**'],
-      owner: 'deb-triage',
     })
-    expect(events.find((event) => event.type === 'triage-dispatch')?.data).toMatchObject({ fault: 'builder-scope-conflict', atom: 0 })
-    expect(statusWrites.some((status) => status.recentEvents.some((event) => event.type === 'builder-scope-conflict'))).toBe(true)
   })
 
   test('dispatches a normal product-code atom to Bob normally', async () => {
@@ -2555,7 +2556,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(pickupWrites).toEqual([settledCloseout(
       validFounderCloseout('PLAY CLOSEOUT'),
       2,
-      'Out-of-lane files flagged and not included in builder atom commits: packages/not-wrap.ts.',
+      'Out-of-lane files committed and flagged for your review (scope is advisory — ADR-0045): packages/not-wrap.ts.',
     )])
     expect(result.committedShas).toEqual(['sha-1', 'sha-2'])
     // Scope advisory: the wrap commit includes the out-of-lane file too; it's flagged.
@@ -3845,13 +3846,64 @@ describe('runRun (multi-atom loop)', () => {
     expect(store.listEvents(store.listRuns()[0]!.id).some((e) => e.type === 'nudge')).toBe(true)
   })
 
-  test('Bob blocker reply after a stall nudge is faulted and not re-nudged indefinitely', async () => {
+  test('Bob authority/scope blocker is a proceed-nudge, not a fault — scope is advisory (ADR-0045)', async () => {
+    const store = openRunStore(':memory:')
+    const sent: Array<{ ref: string; text: string }> = []
+    const scopeBlockerReply = 'The atom requires creating `cocoder/decisions/0040-oz-write-side-autonomy.md`, but its declared write scope is `packages/**`. I need an explicit one-file override.'
+    // Bob reports the blocker the ONLY way the contract allows: a standalone, per-atom-numbered marker line.
+    const blockerMarkerLine = `<<<COCODER-ATOM-0-BLOCKED: ${scopeBlockerReply}>>>`
+    const PROCEED = 'Writing outside your usual write-scope is fine'
+    let judgeCalls = 0
+    // detectBuilderBlocker runs BEFORE this judge, so the judge is only consulted on non-blocker frames:
+    // call 1 stalls Bob (provoking the blocker marker); after the proceed nudge un-sticks him, call 2 completes.
+    const stallThenDone: MakeJudge = () => async () => {
+      judgeCalls += 1
+      return judgeCalls === 1
+        ? { state: 'stuck', nudge: 'You seem stalled — what is blocking you? Keep going, or say what you need.' }
+        : { state: 'done' }
+    }
+
+    const result = await runRun(
+      baseDeps({
+        store,
+        io: fakeIO({ directives: [delegate('Investigate the implementation blocker.'), wrapup('done')] }),
+        makeJudge: stallThenDone,
+        sessionHost: fakeSessionHost({
+          async readScreen(ref) {
+            if (ref.id !== 'surface:2') return ''
+            // Once Bob receives the proceed nudge, he writes where the work needs and stops blocking.
+            if (sent.some((item) => item.ref === 'surface:2' && item.text.includes(PROCEED))) return 'Proceeding — wrote the file where the work needed it.'
+            if (sent.some((item) => item.ref === 'surface:2' && item.text.includes('what is blocking you'))) return blockerMarkerLine
+            return 'Working through the task.'
+          },
+          async sendInput(ref, text) {
+            sent.push({ ref: ref.id, text })
+          },
+        }),
+        timeouts: { orchestrationMs: 200, buildMs: 200, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 },
+      }),
+      { ...input, deb },
+    )
+
+    expect(result.status).toBe('completed')
+    const events = store.listEvents(result.runId)
+    // The scope blocker did NOT fault the run, and was never recorded as a terminal builder-blocker.
+    expect(events.some((event) => event.type === 'builder-blocked')).toBe(false)
+    expect(events.some((event) => event.type === 'triage-dispatch' && (event.data as { fault?: string }).fault === 'builder-blocked')).toBe(false)
+    expect(events.some((event) => event.type === 'builder-blocker')).toBe(false)
+    // Exactly ONE proceed nudge — one prompt per conflict, then Bob continues. No nudge storm (anti-hyperactive
+    // guard intact: this rides the monitor's rate-limited nudge path).
+    const proceedNudges = sent.filter((item) => item.ref === 'surface:2' && item.text.includes(PROCEED))
+    expect(proceedNudges).toHaveLength(1)
+    expect(events.some((event) => event.type === 'nudge' && String((event.data as { text?: unknown }).text).includes(PROCEED))).toBe(true)
+  })
+
+  test('a genuine non-scope reported-blocker still faults builder-blocked (no regression)', async () => {
     const store = openRunStore(':memory:')
     const statusWrites: DebStatus[] = []
     const sent: Array<{ ref: string; text: string }> = []
-    const blockerReply = 'The atom requires creating `cocoder/decisions/0040-oz-write-side-autonomy.md`, but its declared write scope is `packages/**`. I need an explicit one-file override.'
-    // Bob reports the blocker the ONLY way the contract allows: a standalone, per-atom-numbered marker line
-    // (never free prose — that is the run_231 false-positive class the marker contract closes).
+    // A real blocker with no authority/scope wording → classified `reported-blocker`, still terminal.
+    const blockerReply = 'The `vitest` binary is missing from node_modules; I cannot run the required checks for this atom.'
     const blockerMarkerLine = `<<<COCODER-ATOM-0-BLOCKED: ${blockerReply}>>>`
     let judgeCalls = 0
     const stuckThenProgressing: MakeJudge = () => async () => {
@@ -3882,20 +3934,16 @@ describe('runRun (multi-atom loop)', () => {
         }),
         { ...input, deb },
       ),
-    ).rejects.toThrow(/builder reported authority-scope-conflict/)
+    ).rejects.toThrow(/builder reported reported-blocker/)
 
     const runId = store.listRuns()[0]!.id
-    const bobNudges = sent.filter((item) => item.ref === 'surface:2' && item.text.includes('what is blocking you'))
-    expect(bobNudges).toHaveLength(1)
-    expect(store.listEvents(runId).filter((event) => event.type === 'builder-blocker')).toHaveLength(1)
     expect(store.listEvents(runId).find((event) => event.type === 'builder-blocker')?.data).toMatchObject({
       atom: 0,
       reply: blockerReply,
-      category: 'authority-scope-conflict',
+      category: 'reported-blocker',
       owner: 'runner-fault',
     })
     expect(store.listEvents(runId).find((event) => event.type === 'triage-dispatch')?.data).toMatchObject({ fault: 'builder-blocked', atom: 0 })
-    expect(statusWrites.some((status) => status.latestBuilderBlocker?.reply === blockerReply && status.latestBuilderBlocker.owner === 'deb-triage')).toBe(true)
     expect(statusWrites.at(-1)).toMatchObject({
       waitCondition: 'run failed after builder-blocked; no WRAP-UP READY artifact will be emitted for this run',
       outstandingFaults: [],

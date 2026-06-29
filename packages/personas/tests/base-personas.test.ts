@@ -85,8 +85,12 @@ describe('basePersonasDir', () => {
     expect(scope).toEqual(expect.arrayContaining(['packages/**', 'templates/**', 'docs/**', 'ARCHITECTURE.md']))
     expect(scope).toEqual(expect.arrayContaining(['package.json', 'pnpm-lock.yaml', 'eslint.config.*', 'scripts/**']))
     expect(scope).not.toContain('cocoder/**')
-    expect(text).toContain('CoCoder product and tooling surfaces')
-    expect(text).toContain('governance under `cocoder/**` remains outside Bob')
+    expect(text).toContain('your usual surface is CoCoder product and tooling')
+    expect(text).toContain('Governance under `cocoder/**` and run history under `cocoder/runs/**` are off your usual surface')
+    // Scope is advisory (ADR-0045): the surface is a routing default, not a wall — Bob never self-blocks on
+    // where a file goes; an out-of-surface write is committed and flagged, not refused.
+    expect(text).toContain('is a routing default, not a wall')
+    expect(text).toContain('Never self-block over where a file goes')
   })
 
   test('Deb base scope covers the governance surfaces incl. tickets (ADR-0016 recurrence escalation)', () => {
@@ -207,15 +211,19 @@ describe('basePersonasDir', () => {
     expect(normalized).toContain('route it through a verified run or Deb repair')
   })
 
-  test('Oscar keeps cocoder artifacts out of Bob delegation unless Bob has scope', () => {
+  test('Oscar routes deliverables to their natural home but never blocks on where a file goes', () => {
     const text = readFileSync(join(basePersonasDir(), 'oscar.md'), 'utf8')
     const normalized = singleLine(text)
 
-    expect(normalized).toContain('Delegated artifacts follow write authority')
-    expect(normalized).toContain("compare every target path with the recipient's write-scope")
-    expect(normalized).toContain('If the work targets `cocoder/**` artifacts')
-    expect(normalized).toContain('governance, run records, audit outputs, or support notes')
-    expect(normalized).toContain('do not send Bob an atom he cannot legally write')
+    // Scope is advisory (ADR-0045): prefer the in-scope home, but never refuse/bounce an out-of-lane write —
+    // it is committed, flagged, and surfaced to the founder.
+    expect(normalized).toContain('Route deliverables to their natural home; never block on where a file goes')
+    expect(normalized).toContain('Scope is advisory')
+    expect(normalized).toContain("compare its target paths with the recipient's usual surface")
+    expect(normalized).toContain('send a documentation or audit deliverable to `docs/**`')
+    expect(normalized).toContain('do not treat an out-of-lane path as a blocker')
+    // The old hard-block framing is gone.
+    expect(normalized).not.toContain('do not send Bob an atom he cannot legally write')
   })
 
   test('Oscar initiates proactive Deb repair dialogues outside the build loop', () => {

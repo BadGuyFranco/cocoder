@@ -18,6 +18,14 @@ import { FounderHeldError, isFounderHeldError, readFounderStopSignal, type Resum
 const OUTPUT_TAIL_CHARS = 2_000
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
+// Scope is advisory (ADR-0045): writing off your usual surface is committed and flagged, never blocked.
+// When Bob raises an authority/scope blocker, the runner does NOT fault — it nudges him to proceed. The
+// monitor's nudge rate-limit (minNudgeIntervalMs) and stall cap bound this; it can never loop or fail a run.
+const SCOPE_ADVISORY_PROCEED_NUDGE =
+  'Writing outside your usual write-scope is fine — CoCoder commits it and flags the out-of-lane path for ' +
+  'the founder; it is never blocked. Do NOT raise a scope blocker over where a file goes. Write the file ' +
+  'where the work needs it and continue to your completion marker.'
+
 const outputTail = (output: string): string => (output.length <= OUTPUT_TAIL_CHARS ? output : output.slice(-OUTPUT_TAIL_CHARS))
 
 type DelegateDirective = Extract<Directive, { readonly kind: 'delegate' }>
@@ -290,6 +298,13 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
           judge: async (sample) => {
             const blocker = detectBuilderBlocker(sample.frame, atomIndex)
             if (blocker !== null) {
+              // Scope is advisory (ADR-0045): never let Bob self-block on WHERE a file goes. An
+              // authority/scope blocker becomes a one-time "proceed" nudge (rate-limited by the monitor),
+              // not a terminal 'blocked' — the gate commits out-of-lane writes and flags them. A genuine
+              // non-scope blocker still returns 'blocked' below and faults exactly as before.
+              if (blocker.category === 'authority-scope-conflict') {
+                return { state: 'stuck', note: `scope-advisory proceed: ${blocker.reply}`, nudge: SCOPE_ADVISORY_PROCEED_NUDGE }
+              }
               latestBuilderBlocker = blocker
               return { state: 'blocked', note: `${blocker.category}: ${blocker.reply}` }
             }

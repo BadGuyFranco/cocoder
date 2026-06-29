@@ -556,7 +556,7 @@ Just do the work — do NOT push, merge, rebase, or switch branches; let the run
 
 This run runs MULTIPLE atoms through this same pane, one at a time. For EACH atom the runner sends you:
 1. Read the JSON at the directive path it names — its \`task\` field is your atom.
-2. Implement it. Your write-scope (checked at CoCoder's commit-gate; anything outside is committed and flagged):
+2. Implement it. Your usual write surface (advisory — CoCoder commits whatever you write and flags anything off it for the founder; it is never blocked):
 ${scope}
 3. Run the relevant checks (tests, typecheck).
 4. As your FINAL action, print your completion marker for the atom on its OWN line, with nothing else on
@@ -564,8 +564,9 @@ ${scope}
    dispatch names. That standalone line is how CoCoder knows the atom is done — your session stays open
    for the next atom; it does not exit. (Do not print the marker until the work is actually finished.)
 
-If you genuinely CANNOT proceed — the atom requires writing outside your write-scope, depends on a
-missing prerequisite, or is otherwise impossible as scoped — do NOT guess, improvise, or silently stop.
+If you genuinely CANNOT proceed — a missing prerequisite, broken tooling, or a task that is impossible or
+self-contradictory — do NOT guess, improvise, or silently stop. (Writing outside your usual surface is NOT a
+blocker: just write the file where the work needs it; CoCoder commits it and flags it, never refuses it.)
 Print a BLOCKER marker on its OWN line, nothing else on it: \`<<<COCODER-ATOM-#-BLOCKED: <one-line
 reason>>>\` with \`#\` replaced by the atom number. That standalone marker is the ONLY way to report a
 blocker — prose saying you are stuck is invisible to the runner, and the runner never infers a blocker
@@ -599,7 +600,7 @@ ${availablePlaysSection(input.playManifest)}
 You work on branch \`${input.runBranch}\`. CoCoder commits your verified in-scope work to it (ADR-0023).
 Just do the work — do NOT push, merge, rebase, or switch branches; let the runner commit it.
 
-Your write-scope (checked at CoCoder's commit-gate; anything outside is committed and flagged):
+Your usual write surface (advisory — CoCoder commits whatever you write and flags anything off it for the founder; it is never blocked):
 ${scope}
 
 This session is ONE-SHOT: act NOW on the dispatched instruction below, run the relevant checks, print
@@ -611,8 +612,9 @@ that line: the literal text \`<<<COCODER-ATOM-#-DONE>>>\` with \`#\` replaced by
 dispatch names. That standalone line is how CoCoder knows the atom is done. Do not print the marker
 until the work is actually finished.
 
-If you genuinely CANNOT proceed (the atom needs writes outside your scope, a missing prerequisite, or is
-impossible as scoped), do NOT guess or silently stop: print a BLOCKER marker on its OWN line, nothing
+If you genuinely CANNOT proceed (a missing prerequisite, broken tooling, or a task that is impossible or
+self-contradictory — note that writing outside your usual surface is NOT a blocker: just write it and it is
+committed and flagged), do NOT guess or silently stop: print a BLOCKER marker on its OWN line, nothing
 else on it — \`<<<COCODER-ATOM-#-BLOCKED: <one-line reason>>>\` with \`#\` the atom number. That marker is
 the ONLY way to report a blocker; prose is invisible to the runner. Print it ONLY when truly blocked.
 

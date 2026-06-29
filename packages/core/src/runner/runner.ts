@@ -1525,23 +1525,22 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     if (directive.writePaths !== undefined) {
       const outOfScopeDeclaredPaths = declaredOutOfScopeWritePaths(directive.writePaths, scope)
       if (outOfScopeDeclaredPaths.length > 0) {
+        // Scope is advisory (ADR-0045): a declared write off Bob's usual surface is NOT a refusal. Record it
+        // for visibility and dispatch anyway — the gate commits whatever Bob writes and flags out-of-lane,
+        // and the landing outcome surfaces it for the founder. No fail, no bounce over where a file lands.
         const scopeLabel = scope.length > 0 ? scope.join(', ') : '(read-only)'
-        const message = `delegate writePaths out of Bob's effective scope: ${outOfScopeDeclaredPaths.join(', ')}; effective scope: ${scopeLabel}`
         store.recordEvent({
           runId: run.id,
-          type: 'builder-scope-conflict',
+          type: 'builder-scope-advisory',
           data: {
             atom: atomIndex,
             requiredPaths: directive.writePaths,
             outOfScopePaths: outOfScopeDeclaredPaths,
             scope,
-            owner: 'deb-triage',
-            message,
+            message: `delegate writePaths off Bob's usual surface (committed and flagged, not blocked): ${outOfScopeDeclaredPaths.join(', ')}; usual surface: ${scopeLabel}`,
           },
         })
-        await refreshStatus('faulted', atomIndex, directive.task, message)
-        log(`atom ${atomIndex} blocked before dispatch: ${message}`)
-        return await fail('builder-scope-conflict', message, atomIndex)
+        log(`atom ${atomIndex} declares writes off Bob's usual surface (advisory — will commit + flag): ${outOfScopeDeclaredPaths.join(', ')}`)
       }
     }
     const spendBlockMessage = onboardingSpendBlockMessage(worktreePath, auditWriteBoundary)
@@ -1637,11 +1636,12 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
 
   // ── Authoritative outcome ─────────────────────────────────────────────────────────────────────────
   // The founder-facing TRUTH, DERIVED from settled state. Work is on the active branch by construction —
-  // there is no separate landing that could fail. Out-of-lane paths are flagged for visibility; atom
-  // commits hold them back so unrelated live governance/support edits do not ride a builder work item.
+  // there is no separate landing that could fail. Scope is advisory (ADR-0045 / F21): out-of-lane paths
+  // ARE committed (the gate commits the whole changed set, `gate.ts:72`) and flagged for visibility, then
+  // surfaced here for the founder's ratify-or-revert decision — never withheld or held back.
   let outcome = ''
   {
-    const flagged = outOfScope.length > 0 ? `Out-of-lane files flagged and not included in builder atom commits: ${outOfScope.join(', ')}.` : 'Nothing out of lane.'
+    const flagged = outOfScope.length > 0 ? `Out-of-lane files committed and flagged for your review (scope is advisory — ADR-0045): ${outOfScope.join(', ')}.` : 'Nothing out of lane.'
     const nCommits = committedShas.length
     const commitState = nCommits > 0
       ? `Committed — ${nCommits} commit(s) on \`${runBranch}\`; work is on the active branch by construction. ${flagged}`

@@ -12,6 +12,8 @@ CoCoder serializes runs per workspace, but the limit is **per-workspace, not glo
 
 This is **not** an architecture change (that is Tier 3 / intra-workspace, deferred to v2). It is validation + hardening of concurrency that the model already allows.
 
+**Isolation boundary (keep consistent with [ADR-0045](../decisions/0045-scope-is-root-hard-intra-root-advisory.md)):** the hard isolation boundary is the **workspace/root** — the same boundary this priority keys on. *Within* a root, per-actor write-scope is advisory (out-of-lane is committed, flagged, and surfaced, never blocked or bounced). This priority must not introduce an intra-root path lane as a hardness boundary; if any hardening here implies one, flag it and reconcile against ADR-0045 rather than forking a second scope model.
+
 ## Scope
 
 1. **Audit the daemon for global state that assumes a single active run.** Trace the run-driver, lifecycle, and reload paths for mutable singletons that should be per-workspace. Known suspects: `daemonReload` (single pending slot), the several `inFlight.size > 0` *global* checks (e.g. the daemon self-reload refusal), the UI-bundle rebuild, and any "current run" assumptions in the dashboard/status feed. Confirm `stopControllers`, the WAL store, the atomic run-counter, and cmux surface tracking are already per-run/per-workspace safe.
