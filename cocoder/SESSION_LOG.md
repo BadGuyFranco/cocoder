@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-29 — **priority-audit: priority-set staleness table regenerated (run_150)**
+
+**Persona:** Oscar (orchestrator + wrap-up; 1 Bob atom) | **Priority:** [priority-audit](./priorities/priority-audit.md) | **Run:** run_150 (display 150)
+**Outcomes:**
+- **Audit table regenerated and committed** at `cocoder/priorities/audits/latest-audit.md` — 15 items (6 active + 9 backlog) with status-vs-reality read, disposition, reason, and dangling-ref each.
+- **Headline findings:** completed runner-decoupling pair still in backlog; `run-tests-required-checkpoint` is a promote candidate; three backlog items need premise refresh (ADR-0023/0045); `order.json` gaps for `adhoc-session` and `AGENTS.md` confirmed intentional.
+- **Disposition: `continue`.** Read-and-recommend boundary honored — no archives/promotes enacted; founder approval gates the actionable set.
+**Next:** Reply in Oz chat, e.g. `approve audit: archive runner-decoupling-refactor, promote run-tests-required-checkpoint` — I'll enact approved dispositions via governed Plays in this session.
+
 ## 2026-06-29 — **model-layer: substrate re-verify — archive ready (run_149/run_290)**
 
 **Persona:** Oscar (orchestrator) | **Priority:** [model-layer](./priorities/model-layer.md) | **Run:** run_290 (display 149)

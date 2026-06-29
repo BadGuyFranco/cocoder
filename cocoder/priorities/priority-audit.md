@@ -25,21 +25,20 @@ separate founder-approved actions. Governance-only, like its sibling `build-prio
 (that one *drafts* new priorities; this one *prunes* the existing set). It is a **standing
 meta-priority** — runnable on demand, never archived.
 
-## Latest run pickup — run_106 (2026-06-16)
+## Latest run pickup — run_150 (2026-06-29)
 
-Re-verified run_105's audit table at [`audits/latest-audit.md`](./audits/latest-audit.md) — still
-accurate; not regenerated (identical re-run would be empty reaffirmation). Confirmed
-`new-primary-root`'s stale D2 relaunch gate is **already reconciled** in that file (lines 90–92: D2
-lifted, launch build atoms). Updated the audit table to close that dangling-ref row.
+Regenerated the priority-set staleness audit at [`audits/latest-audit.md`](./audits/latest-audit.md) —
+15 items scored against current code, ADRs, PLAYBOOK, and `order.json` (6 active + 9 backlog). Headline:
+completed runner-decoupling work still sits in backlog as two files; `order.json` omissions
+(`adhoc-session`, `AGENTS.md`) are intentional, not orphans.
 
-Dispositions enacted in run_106 (founder go-ahead this session) — active set is now clean:
-- Archived `play-dispatch-boundary` → `priorities/archive/` (dispatch-boundary question resolved).
-- Archived `oz-held-back-expand-scope` → `priorities/archive/` (premise obsolete, ADR-0023 Amendment 1).
-- Founder chose **queue `hybrid-plays`**; `order.json` now reads
-  `[new-primary-root, hybrid-plays, priority-audit]`. (Audit had recommended backlog; founder overrode.)
+**Pending founder disposition approval (not yet enacted):**
+- **ARCHIVE** `runner-decoupling-refactor` and **MERGE/archive** its `runner-decoupling-progress` ledger.
+- **PROMOTE** `run-tests-required-checkpoint` (real quality-gate gap for onboarded repos).
+- **REDEFINE** (backlog notes until those seams surface): `multi-repo-commit-spine`,
+  `priority-architecture-contract`, `research-sandboxing`.
+- **DEMOTE/keep-deferred:** `agentic-pattern-drift-detection`, `deployment-plays`, `quinn-app-testing`.
 
-No audit follow-ups remain open.
+Recommendation: approve archive + promote now (clear, low-risk); leave redefines/demotes as backlog notes.
 
-Run_105's orchestration bug (wrap-up blocked founder-directed governance edits) is tracked under closed
-ticket 0008; repair path is `commit-support <runId>`. This priority remains a standing meta-priority —
-never archived.
+This priority remains a standing meta-priority — never archived.
