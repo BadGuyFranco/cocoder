@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-30 — **ticket-fix-0088: founder-decision question body — closed (run_155/run_296)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0088](./tickets/closed/0088-founder-decision-surfacing-drops-question-body.md) | **Run:** run_296 (display 155)
+**Outcomes:**
+- **Three atoms verified and committed.** Core projects `pendingFounderQuestion` from stored `founder-decision-requested` events (browser-safe `@cocoder/core/founder-question`) into `terminalWaitCondition` for held/awaiting-founder; daemon carries it through the pure awareness snapshot and renders it in oz-chat status + oz-host facts digest with the `founder-answer` command; UI adapter renders the transcript line, adds it to `DECISION_EVENTS`, and prefers the still-pending question as `lastEvent`.
+- **Regression pinned.** Core status + founder-stop-resume (53), daemon oz-awareness + oz-chat (78), and UI adapter (42) tests green; root typecheck green.
+- **Disposition: `closed`.** Ticket 0088 closed via verify-gate ticketClose path; single owner for pending-founder-question projection, surface-appropriate presentation only downstream.
+**Next:** Launch ticket `0087` — Oscar should route Deb-repair to an already-active Deb pane instead of spawning a headless duplicate.
+
 ## 2026-06-30 — **ticket-fix-0090: oz resume reattach — closed (run_154/run_295)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0090](./tickets/closed/0090-oz-resume-spawns-duplicate-orchestrator-under-same-run-number.md) | **Run:** run_295 (display 154)
