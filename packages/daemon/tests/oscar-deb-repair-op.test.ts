@@ -15,6 +15,7 @@ interface Fixture {
   readonly store: RunStore
   readonly prompts: BuildInput[]
   readonly headlessInputs: HeadlessRunInput[]
+  readonly sentInputs: { readonly ref: string; readonly text: string }[]
   readonly ctx: OzContext
 }
 
@@ -30,6 +31,42 @@ describe('requestOscarDebRepair', () => {
 
     expect(result).toMatchObject({ status: 409, body: { error: expect.stringContaining('still active') } })
     expect(fixture.headlessInputs).toEqual([])
+  })
+
+  test('routes Oscar repair requests to the active Deb surface instead of spawning headless Deb', async () => {
+    const sentInputs: { ref: string; text: string }[] = []
+    const fixture = await makeFixture({ sessionHost: recordingHost(sentInputs, new Set(['surface:deb'])) })
+    const run = fixture.store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    fixture.store.createSession({ runId: run.id, persona: 'deb', sessionRef: 'surface:deb', workspaceRef: 'workspace:run' })
+    fixture.ctx.inFlight.set('cocoder', run.id)
+
+    const result = await requestOscarDebRepair(fixture.ctx, { workspaceId: 'cocoder', sourceRunId: run.id, requestedBy: 'oscar', problem: 'route to active Deb', evidence })
+
+    expect(result).toMatchObject({ status: 202, body: { ok: true, state: 'deb-running', outcome: 'active-deb-dispatched', sessionRef: 'surface:deb', committedPaths: [], commitSha: null } })
+    expect(fixture.headlessInputs).toEqual([])
+    expect(fixture.prompts).toEqual([])
+    expect(sentInputs).toHaveLength(1)
+    expect(sentInputs[0]).toMatchObject({ ref: 'surface:deb' })
+    expect(sentInputs[0]!.text).toContain('already active Deb surface')
+    const paths = result.body.artifactPaths as { request: string; debResponse: string; evidenceLog: string }
+    expect(sentInputs[0]!.text).toContain(paths.debResponse)
+    expect(JSON.parse(await readFile(join(fixture.home, paths.request), 'utf8'))).toMatchObject({ sourceRunId: run.id, problem: 'route to active Deb' })
+    expect(await readFile(join(fixture.home, paths.evidenceLog), 'utf8')).toContain('active Deb surface')
+  })
+
+  test('routes to a hidden-but-running stored Deb surface without requiring liveRefs', async () => {
+    const sentInputs: { ref: string; text: string }[] = []
+    const fixture = await makeFixture({ sessionHost: recordingHost(sentInputs, new Set(['surface:hidden-deb'])) })
+    const run = fixture.store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    fixture.store.setRunStatus(run.id, 'completed')
+    fixture.store.createSession({ runId: run.id, persona: 'deb', sessionRef: 'surface:hidden-deb', workspaceRef: 'workspace:run' })
+
+    const result = await requestOscarDebRepair(fixture.ctx, { workspaceId: 'cocoder', sourceRunId: run.id, requestedBy: 'oscar', problem: 'post-wrap repair', evidence })
+
+    expect(result).toMatchObject({ status: 202, body: { outcome: 'active-deb-dispatched', sessionRef: 'surface:hidden-deb' } })
+    expect(fixture.ctx.liveRefs.has('surface:hidden-deb')).toBe(false)
+    expect(fixture.headlessInputs).toEqual([])
+    expect(sentInputs.map((input) => input.ref)).toEqual(['surface:hidden-deb'])
   })
 
   test('run_234 regression: a ticket-fix build-lane run blocks the Deb-repair lane for that ticket (build XOR repair, ADR-0041 D2/0056)', async () => {
@@ -323,6 +360,7 @@ describe('requestOscarDebRepair', () => {
 async function makeFixture(options: {
   readonly runHeadless?: (input: HeadlessRunInput) => Promise<{ readonly exitCode: number; readonly output: string }>
   readonly adapterMode?: { readonly kind: 'codex-like'; readonly scriptPath: string } | { readonly kind: 'artifact-arg'; readonly arg: string }
+  readonly sessionHost?: SessionHost
 } = {}): Promise<Fixture> {
   const home = await mkdtemp(join(tmpdir(), 'cocoder-oscar-deb-repair-'))
   await initRepo(home)
@@ -330,13 +368,14 @@ async function makeFixture(options: {
   store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
   const prompts: BuildInput[] = []
   const headlessInputs: HeadlessRunInput[] = []
+  const sentInputs: { ref: string; text: string }[] = []
   const ctx = {
     cocoderHome: home,
     runsRoot: join(home, 'local', 'runs'),
     store,
     git: makeGit(),
     bootSha: (await git(home, ['rev-parse', 'HEAD'])).trim(),
-    sessionHost: throwingHost(),
+    sessionHost: options.sessionHost ?? throwingHost(),
     getAdapter: () => {
       if (options.adapterMode?.kind === 'codex-like') return codexLikeAdapter(prompts, options.adapterMode.scriptPath)
       if (options.adapterMode?.kind === 'artifact-arg') return artifactArgAdapter(prompts, options.adapterMode.arg)
@@ -361,7 +400,7 @@ async function makeFixture(options: {
       return { exitCode: 0, output: appliedOutput() }
     }),
   } as unknown as OzContext
-  return { home, store, prompts, headlessInputs, ctx }
+  return { home, store, prompts, headlessInputs, sentInputs, ctx }
 }
 
 async function initRepo(home: string): Promise<void> {
@@ -487,6 +526,24 @@ function throwingHost(): SessionHost {
     throw new Error('repair dialogue must not use SessionHost')
   }
   return { spawn: fail, readScreen: fail, status: fail, waitForExit: fail, sendInput: fail, show: fail, kill: fail, closeSurface: fail }
+}
+
+function recordingHost(sentInputs: { ref: string; text: string }[], runningRefs: ReadonlySet<string>): SessionHost {
+  const fail = async (): Promise<never> => {
+    throw new Error('repair dialogue must only status/send active Deb')
+  }
+  return {
+    spawn: fail,
+    readScreen: fail,
+    status: async (ref) => runningRefs.has(ref.id) ? { state: 'running' } : { state: 'exited', code: 0 },
+    waitForExit: fail,
+    sendInput: async (ref, text) => {
+      sentInputs.push({ ref: ref.id, text })
+    },
+    show: fail,
+    kill: fail,
+    closeSurface: fail,
+  }
 }
 
 function appliedOutput(summary = 'Applied repair.'): string {

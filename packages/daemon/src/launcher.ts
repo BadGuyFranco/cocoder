@@ -67,6 +67,7 @@ import {
   type RunResult,
   type RunnerDeps,
   type ResumeState,
+  type SessionRef,
   type SessionHost,
   type TicketCloseDecision,
   type Ticket,
@@ -1414,10 +1415,13 @@ export async function requestSupportCommitRun(ctx: OzContext, runId: string): Pr
 
 export async function requestOscarDebRepair(ctx: OzContext, input: OscarDebRepairInput): Promise<LaunchResult> {
   const activeRunId = ctx.inFlight.get(input.workspaceId)
-  const sourceRun = input.sourceRunId ? ctx.store.getRun(input.sourceRunId) : null
-  if (input.sourceRunId && !sourceRun) return { status: 404, body: { error: 'unknown source run' } }
+  const effectiveSourceRunId = input.sourceRunId ?? (activeRunId && activeRunId !== 'pending' ? activeRunId : undefined)
+  const sourceRun = effectiveSourceRunId ? ctx.store.getRun(effectiveSourceRunId) : null
+  if (effectiveSourceRunId && !sourceRun) return { status: 404, body: { error: 'unknown source run' } }
   if (sourceRun && sourceRun.workspaceId !== input.workspaceId) return { status: 409, body: { error: `source run "${sourceRun.id}" belongs to workspace "${sourceRun.workspaceId}", not "${input.workspaceId}"` } }
-  if (sourceRun?.status === 'running' || (activeRunId && activeRunId !== input.sourceRunId)) {
+  const competingActiveRun = activeRunId && activeRunId !== effectiveSourceRunId
+  const activeDebRef = effectiveSourceRunId ? await liveStoredPersonaSession(ctx.sessionHost, ctx.store.listSessions(effectiveSourceRunId), 'deb') : null
+  if (competingActiveRun || (sourceRun?.status === 'running' && !activeDebRef)) {
     return { status: 409, body: { error: 'workspace run is still active — Oscar-Deb repair dialogue waits until the run has wrapped or stopped' } }
   }
 
@@ -1429,7 +1433,7 @@ export async function requestOscarDebRepair(ctx: OzContext, input: OscarDebRepai
       schemaVersion: 1,
       dialogueId,
       workspaceId: input.workspaceId,
-      ...(input.sourceRunId ? { sourceRunId: input.sourceRunId } : {}),
+      ...(effectiveSourceRunId ? { sourceRunId: effectiveSourceRunId } : {}),
       requestedBy: input.requestedBy,
       createdAt: new Date().toISOString(),
       problem: input.problem,
@@ -1468,6 +1472,18 @@ export async function requestOscarDebRepair(ctx: OzContext, input: OscarDebRepai
   }
 
   state = nextDialogueState(state, { type: 'start-deb' })
+  if (activeDebRef) {
+    await appendDialogueEvidence(ctx, paths, state, 'deb-turn.log', 'Deb repair request dispatched to the active Deb surface.')
+    try {
+      await ctx.sessionHost.sendInput(activeDebRef, buildActiveDebRepairDialoguePrompt(request, paths))
+    } catch (err) {
+      return await failDialogue(`Active Deb repair dispatch failed: ${err instanceof Error ? err.message : String(err)}`)
+    }
+    await appendAudit(ctx.cocoderHome, { action: 'oscar-deb-repair-active-deb-dispatched', workspaceId: workspace.id, dialogueId, sourceRunId: request.sourceRunId ?? null, sessionRef: activeDebRef.id })
+    emitOzEvent(ctx, { type: 'oscar-deb-repair', workspaceId: workspace.id, runId: request.sourceRunId, status: 'active-deb-dispatched' })
+    return { status: 202, body: { ok: true, state, outcome: 'active-deb-dispatched', dialogueId, artifactPaths: paths, committedPaths: [], commitSha: null, outOfLanePaths: [], sessionRef: activeDebRef.id } }
+  }
+
   await appendDialogueEvidence(ctx, paths, state, 'deb-turn.log', 'Deb repair turn started.')
   const debTurn = await runRepairDialogueTurn(ctx, { persona: 'deb', cli: deb.cli, model: deb.model, cwd: workspace.path, outPath: join(ctx.cocoderHome, paths.debTurnLog), prompt: buildDebRepairDialoguePrompt(request, paths) })
   if (!debTurn.ok) return await failDialogue(debTurn.error)
@@ -1784,6 +1800,29 @@ function resolveDialoguePersona(workspacePath: string, persona: 'deb' | 'oscar')
   }
 }
 
+function sessionRefFromStore(session: { readonly sessionRef: string; readonly workspaceRef?: string | null }): SessionRef {
+  return {
+    id: session.sessionRef,
+    driver: 'cmux',
+    ...(session.workspaceRef ? { workspaceRef: session.workspaceRef } : {}),
+  }
+}
+
+async function liveStoredPersonaSession(sessionHost: SessionHost, sessions: readonly { readonly persona: string; readonly sessionRef: string; readonly startedAt: number; readonly workspaceRef?: string | null }[], persona: 'deb' | 'oscar'): Promise<SessionRef | null> {
+  const candidates = sessions
+    .filter((session) => session.persona === persona)
+    .sort((a, b) => b.startedAt - a.startedAt)
+  for (const session of candidates) {
+    const ref = sessionRefFromStore(session)
+    try {
+      if ((await sessionHost.status(ref)).state === 'running') return ref
+    } catch {
+      // Stale stored surface; try the next older session before falling back to headless.
+    }
+  }
+  return null
+}
+
 async function runRepairDialogueTurn(
   ctx: OzContext,
   opts: { readonly persona: 'deb' | 'oscar'; readonly cli: string; readonly model: string; readonly cwd: string; readonly outPath: string; readonly prompt: string },
@@ -1860,6 +1899,20 @@ function buildDebRepairDialoguePrompt(request: OscarRepairRequest, paths: { read
     'If the fix touches ANY code, or you are unsure, edit NOTHING and print exactly one JSON object with kind "proposal" describing the fix for the founder. The daemon mechanically REFUSES to commit any non-`.md` change and holds it for the founder — editing code here cannot land it.',
     `Request:\n${JSON.stringify(request, null, 2)}`,
     `Write no files except the repair itself; the daemon writes ${paths.debResponse}.`,
+  ].join('\n\n')
+}
+
+function buildActiveDebRepairDialoguePrompt(request: OscarRepairRequest, paths: { readonly request: string; readonly debResponse: string }): string {
+  return [
+    'OSCAR-DEB REPAIR REQUEST',
+    'Oscar is routing this machinery repair request to your already active Deb surface instead of starting a separate headless Deb.',
+    `Read the request artifact at ${paths.request}.`,
+    `Write the Deb response artifact to ${paths.debResponse}.`,
+    'Use the ADR-0036 response contract.',
+    'If you can apply an easy, clearly in-scope fix, write kind:"applied" with the same fields the headless repair dialogue expects.',
+    'If the change needs Oscar evaluation or founder judgment, write kind:"proposal" with the recommended changes, verification plan, risk, and needsFounder flag.',
+    'Do not involve Bob. Do not create a second run loop. If the source run is active, respect the active-run ownership boundary and route conclusions back through this artifact.',
+    `Problem: ${request.problem}`,
   ].join('\n\n')
 }
 

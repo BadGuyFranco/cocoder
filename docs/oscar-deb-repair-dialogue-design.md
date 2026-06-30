@@ -74,8 +74,10 @@ Guards modeled on `requestOzRepair`:
 
 - The request surface is callable any time: the daemon can always validate the request and write
   `request.json`.
-- The Deb/Oscar headless turns and any commit phase reuse the Oz repair idle guard: if a workspace run is
-  actively mutating, the dialogue enters `waiting-for-idle` and no headless turn starts until the run is
+- The Deb/Oscar turn and any commit phase reuse the Oz repair idle guard. If the source run already has a
+  running Deb surface, the daemon routes the request to that active Deb instead of starting a separate
+  headless Deb, even when the surface is hidden. If no active Deb exists and a workspace run is actively
+  mutating, the dialogue enters `waiting-for-idle` and no headless turn starts until the run is
   wrapped/terminal. If the only active run is `sourceRunId` and it is already wrapped/terminal, proceed
   immediately. This preserves the idle write guard while allowing the ADR-0036 post-wrap case.
 - Require `problem.trim()` and cap `problem` at 4000 chars, matching the Oz repair message guard.
@@ -261,9 +263,10 @@ surfaces to the founder; no repair commit happens after this state until the fou
 States:
 
 1. `requested`: daemon validates input and writes `request.json`.
-2. `waiting-for-idle`: request accepted, but a workspace run is still actively mutating; no headless
-   turn or commit is allowed yet.
-3. `deb-running`: daemon spawns Deb headless with request path, response path, and ADR-0036 constraints.
+2. `waiting-for-idle`: request accepted, but a workspace run is still actively mutating and no active Deb
+   surface is available; no headless turn or commit is allowed yet.
+3. `deb-running`: daemon either dispatches to an already-running Deb surface for the source run or spawns
+   Deb headless with request path, response path, and ADR-0036 constraints.
 4. `deb-applied`: Deb made an easy in-scope fix; daemon committed it and wrote `deb-response.json`.
 5. `deb-proposed`: Deb wrote `kind:"proposal"` to `deb-response.json`.
 6. `oscar-evaluating`: daemon spawns Oscar headless with request and proposal.
@@ -275,8 +278,10 @@ States:
 
 Transitions:
 
-- `requested -> waiting-for-idle`: daemon operation when the workspace is actively mutating.
-- `requested -> deb-running`: daemon operation when the workspace is already idle/wrapped.
+- `requested -> waiting-for-idle`: daemon operation when the workspace is actively mutating and no active
+  Deb surface is available.
+- `requested -> deb-running`: daemon operation when an active Deb surface is available, or when the
+  workspace is already idle/wrapped and the daemon can run Deb headlessly.
 - `waiting-for-idle -> deb-running`: daemon operation when the source run becomes wrapped/terminal or the
   workspace has no active run.
 - `deb-running -> deb-applied`: Deb headless turn edits files; daemon calls the commit path and records
