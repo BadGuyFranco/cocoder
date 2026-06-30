@@ -21,7 +21,6 @@ only makes sense with this repo's nouns in it, it belongs here.
 | Code style, linter config | Neither — lives with the package, enforced by tooling |
 | Architectural decisions | Neither — ADRs in `../decisions/` |
 
-**Status:** intentionally empty today (D6 — earned, not pre-built). The first real
-dogfood-specific standard creates the first file; until then the base standard is the whole
-standard. When a file lands: short name, one-sentence purpose, concrete rules, cross-referenced
-from whatever depends on it.
+**Status:** [`test-architecture.md`](./test-architecture.md) is the live dogfood overlay for unit-test
+layout (landed run_294); ADR-0047 recording is pending founder approval (run_299). When a new file
+lands: short name, one-sentence purpose, concrete rules, cross-referenced from whatever depends on it.

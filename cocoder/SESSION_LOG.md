@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-30 — **review-test-architecture-and-componentize: Phase 1 verified, Phase 2 blocked on founder — continue (run_158/run_299)**
+
+**Persona:** Oscar (wrap-up only; 0 builder atoms) | **Priority:** [review-test-architecture-and-componentize](./priorities/review-test-architecture-and-componentize.md) | **Run:** run_299 (display 158)
+**Outcomes:**
+- **No build atoms this run.** Phase 1 split already landed in run_294; this run re-verified it — `runner.test.ts` is 142 lines, 19 themed `runner-*.test.ts` files plus one `runner.test-support.ts` fixture owner (17 importers); `pnpm --filter @cocoder/core test` green (96 files / 747 tests).
+- **Phase 2 surfaced for founder approval.** Oscar drafted a unit-test architecture standard drawn from the split (behavior-per-file naming, single support module, ~800-line soft cap, vitest via required-test-checkpoint); pending recording as ADR-0047 and alignment with existing `cocoder/standards/test-architecture.md` from run_294.
+- **Disposition: `blocked`.** No Phase 1 atoms remain; Phase 2 is founder-owned per the Objective — Oscar stopped rather than write the ADR without approval.
+**Next:** Reply in this run with Phase 2 approval (or adjustments) so Oscar records ADR-0047; then archive via `archive` / `archive run_299`.
+
 ## 2026-06-30 — **oz-repair: priority-audit absorbed into Process Review**
 
 **Persona:** Oz (headless repair) | **Priority:** [priority-panel-pinned-items](./priorities/priority-panel-pinned-items.md) | **Run:** repair turn
