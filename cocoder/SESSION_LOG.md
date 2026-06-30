@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-30 — **ticket-fix-0090: oz resume reattach — closed (run_154/run_295)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0090](./tickets/closed/0090-oz-resume-spawns-duplicate-orchestrator-under-same-run-number.md) | **Run:** run_295 (display 154)
+**Outcomes:**
+- **Four atoms verified and committed.** Held-run resume re-attaches live Oscar/Bob/Deb panes (never forks a second orchestrator); dead-pane fallback respawns fresh; `founder-answer` is the safe mid-run continue path (prompts forbid `oz resume` for founder decisions); stale refuse-to-fork guard removed from `resumeRun`.
+- **Regression pinned.** Core 744/744 and daemon 474/474 green; `runner-founder-stop-resume` and daemon mutation tests cover reattach, dead-pane fallback, and founder-answer proceed paths.
+- **Disposition: `closed`.** Ticket 0090 closed via verify-gate ticketClose path; park-pane policy (Option B: keep panes + reattach) implemented end-to-end.
+**Next:** Launch ticket `0088` — surface the full founder-decision question body in Oz chat, status, and UI.
+
 ## 2026-06-30 — **review-test-architecture-and-componentize: runner tests split + unit-test standard — archive ready (run_153/run_294)**
 
 **Persona:** Oscar (orchestrator) + Bob (builder) | **Priority:** [review-test-architecture-and-componentize](./priorities/review-test-architecture-and-componentize.md) | **Run:** run_294 (display 153)

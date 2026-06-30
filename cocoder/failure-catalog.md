@@ -159,6 +159,19 @@ strand class is dissolved *structurally*, not patched. Proof: `node scripts/proo
   the finalize action. Pins: `runner.test.ts`, `founder-stop.test.ts`, `status.test.ts`, `mutations.test.ts`,
   `oz-chat.test.ts`. ADR: [0037](./decisions/0037-founder-stop-hold-resume.md) extension.
 
+- **F26 — `oz resume` forked a second orchestrator under the same run id (run_294, ticket 0090,
+  2026-06-30).** After an `ask-founder-continue` park, Oscar ran `cocoder oz resume run_294`; the daemon
+  spawned a fresh Oscar/Bob/Deb set under the same run number instead of continuing in the live panes, so
+  two orchestrators advanced one run in parallel. **Root cause:** resume had no durable reattach owner;
+  manual `oz resume` and founder-answer continuation did not share one pane-reattach path, and a stale
+  refuse-to-fork guard blocked documented in-place resume when live refs were missing after daemon restart.
+  **FIXED run_295 (ticket 0090):** per-persona pane RE-ATTACH is the single resume owner — `runRun`
+  re-attaches live stored panes and delivers founder answers in place; `buildFounderContinueDispatch`
+  routes mid-run decisions through `founder-answer` (never `oz resume`); `resumeRun` re-attaches when
+  panes are alive and respawns only when dead, never forks. **Fix pattern:** one run id, one orchestrator
+  set; resume is reattach-or-respawn, never duplicate spawn. Pins: `runner-founder-stop-resume.test.ts`,
+  `mutations.test.ts`, `prompts.test.ts`; docs in `docs/oz-launch.md`.
+
 ## Cross-cutting lessons (feed the charter)
 
 - **L1.** Nearly all failures above are *coordination/state* failures, not algorithm failures —
