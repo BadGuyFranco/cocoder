@@ -14,6 +14,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
 | [0087](./open/0087-oscar-tasking-deb.md) | Oscar tasking Deb | bug | none | founder-session |
+| [0091](./open/0091-onboard-existing-capture-test-convention-profile.md) | Onboard-existing recon: capture a per-root test convention profile to back the test-architecture detect-and-honor posture | task | none | Open |
 
 ## Recently Closed
 
