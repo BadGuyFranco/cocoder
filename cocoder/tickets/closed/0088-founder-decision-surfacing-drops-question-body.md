@@ -2,7 +2,7 @@
 id: 0088
 title: FOUNDER DECISION NEEDED surfacing drops the question body
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-30
@@ -70,3 +70,9 @@ Oscar–Deb repair dialogue `repair-1782815163322-e4498e`:
 - `local/oz/cocoder/repair-dialogues/repair-1782815163322-e4498e/deb-response.json`
 - `local/oz/cocoder/repair-dialogues/repair-1782815163322-e4498e/oscar-evaluation.json`
 - `local/oz/cocoder/repair-dialogues/repair-1782815163322-e4498e/founder-escalation.json`
+
+## Resolution
+
+Resolved by run run_296 (d7d8af1e9d34c21b06c1168b433e925dc6d5ba94) on 2026-06-30.
+
+Fixed across the full owner chain: the stored founder-decision-requested question now reaches every founder-facing projection. Core adds pendingFounderQuestion (browser-safe @cocoder/core/founder-question) threaded into terminalWaitCondition for held/awaiting-founder; daemon carries it through the pure awareness snapshot and renders it in oz-chat status + oz-host facts digest with the founder-answer command; UI adapter renders the founder-decision-requested transcript line, adds it to DECISION_EVENTS, and prefers the still-pending question as lastEvent over later run-held/run-end/commit events. Pinned by tests in core (status + founder-stop-resume), daemon (oz-awareness, oz-chat), and ui (adapter).
