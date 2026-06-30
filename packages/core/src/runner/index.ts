@@ -71,6 +71,7 @@ export {
   deriveRunSummary,
   isAwaitingFounderResolutionStatus,
   isFinalizableFounderResolutionStatus,
+  pendingFounderQuestion,
   terminalWaitCondition,
   wrapupDeliveryDispatched,
   type RunSummary,

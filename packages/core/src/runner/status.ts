@@ -132,6 +132,22 @@ export function wrapupDeliveryDispatched(events: readonly RunEvent[]): boolean {
   )
 }
 
+export function pendingFounderQuestion(events: readonly RunEvent[]): string | null {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const event = events[i]!
+    if (event.type === 'run-resumed' || event.type === 'founder-answer' || event.type === 'founder-decision-answered') return null
+    if (event.type === 'run-end') {
+      const status = (event.data as { status?: unknown } | undefined)?.status
+      if (status !== 'held' && status !== 'awaiting-founder') return null
+    }
+    if (event.type === 'founder-decision-requested') {
+      const question = (event.data as { question?: unknown } | undefined)?.question
+      return typeof question === 'string' && question.trim() !== '' ? question.trim() : null
+    }
+  }
+  return null
+}
+
 export function deriveTerminalProjection(
   events: readonly RunEvent[],
 ): { readonly phase: RunnerPhase; readonly activeAtom: number | null } | null {
@@ -161,7 +177,7 @@ export function deriveTerminalProjection(
   return null
 }
 
-export function terminalWaitCondition(status: RunStatus, deliveryDispatched = false): string {
+export function terminalWaitCondition(status: RunStatus, deliveryDispatched = false, pendingQuestion: string | null = null): string {
   // A failed run that nonetheless delivered a WRAP-UP READY artifact is NOT pending-nothing: the founder
   // can read the delivered closeout and ask Oscar questions. Saying "no further runner action pending"
   // here is the contradiction that made run_283's pane look stranded. (Completed runs already carry the
@@ -169,14 +185,15 @@ export function terminalWaitCondition(status: RunStatus, deliveryDispatched = fa
   if (status === 'failed' && deliveryDispatched) {
     return 'WRAP-UP READY delivered after a failed wrap; Oscar is standing by for founder questions until explicit teardown'
   }
+  const questionSuffix = pendingQuestion !== null && pendingQuestion.trim() !== '' ? `: ${pendingQuestion}` : ''
   return status === 'awaiting-archive-confirmation'
     ? 'awaiting founder archive confirmation; Oscar remains reachable until explicit teardown'
     : status === 'awaiting-founder'
-      ? 'awaiting founder decision; Oscar remains reachable until explicit teardown'
+      ? `awaiting founder decision; Oscar remains reachable until explicit teardown${questionSuffix}`
       : status === 'failed'
         ? 'run failed; no further runner action pending'
         : status === 'stopped' || status === 'held'
-          ? `run ${status}; awaiting founder action`
+          ? `run ${status}; awaiting founder action${status === 'held' ? questionSuffix : ''}`
           : 'run completed; Oscar remains reachable for founder questions until explicit teardown'
 }
 // ── WS1.3 run-level summary projection (runner-decoupling, ADDITIVE; see runner-decoupling-refactor.md) ─

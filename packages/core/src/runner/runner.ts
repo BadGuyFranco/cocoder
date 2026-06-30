@@ -90,7 +90,7 @@ import {
   commitMessage,
 } from './prompts.js'
 import { renderRunRecord } from './record.js'
-import { type DebStatus, type RunnerPhase, deriveRunSummary, deriveTerminalProjection, renderDebStatus, terminalWaitCondition, wrapupDeliveryDispatched } from './status.js'
+import { type DebStatus, type RunnerPhase, deriveRunSummary, deriveTerminalProjection, pendingFounderQuestion, renderDebStatus, terminalWaitCondition, wrapupDeliveryDispatched } from './status.js'
 import { captureDebTerminalSnapshot, renderDebTerminalSnapshotMarkdown } from './terminal-snapshot.js'
 import { isStopRequestedError } from './stop.js'
 import { unledgeredWindowCommits } from './wrap-audit.js'
@@ -1370,8 +1370,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     // WS1.2: derive the terminal (phase, activeAtom) from the event log so the Deb feed reflects the stop
     // instead of its stale pre-stop phase. Done AFTER portable run-history + record.md are written so neither
     // sibling surface picks up this terminal deb-status event — the feed is the only intended WS1 shift.
-    const terminalProjection = deriveTerminalProjection(store.listEvents(run.id))
-    if (terminalProjection) await refreshStatus(terminalProjection.phase, terminalProjection.activeAtom, null, terminalWaitCondition(status))
+    const terminalEvents = store.listEvents(run.id)
+    const terminalProjection = deriveTerminalProjection(terminalEvents)
+    if (terminalProjection) await refreshStatus(terminalProjection.phase, terminalProjection.activeAtom, null, terminalWaitCondition(status, false, pendingFounderQuestion(terminalEvents)))
     log(`run ${run.id} stopped; ${committedShas.length} commit(s) over ${atoms} atom(s); record at ${recordPath}`)
     return {
       runId: run.id,
@@ -1407,8 +1408,9 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     // WS1.2: derive the terminal (phase, activeAtom) from the event log so the Deb feed reflects the hold
     // instead of its stale pre-hold phase. Done AFTER portable run-history + record.md are written so neither
     // sibling surface picks up this terminal deb-status event — the feed is the only intended WS1 shift.
-    const terminalProjection = deriveTerminalProjection(store.listEvents(run.id))
-    if (terminalProjection) await refreshStatus(terminalProjection.phase, terminalProjection.activeAtom, null, terminalWaitCondition(status))
+    const terminalEvents = store.listEvents(run.id)
+    const terminalProjection = deriveTerminalProjection(terminalEvents)
+    if (terminalProjection) await refreshStatus(terminalProjection.phase, terminalProjection.activeAtom, null, terminalWaitCondition(status, false, pendingFounderQuestion(terminalEvents)))
     log(`run ${run.id} held; ${committedShas.length} commit(s) over ${atoms} atom(s); record at ${recordPath}`)
     return {
       runId: run.id,
@@ -1793,7 +1795,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   })
   const terminalEvents = store.listEvents(run.id)
   const terminalProjection = deriveTerminalProjection(terminalEvents)
-  if (terminalProjection) await refreshStatus(terminalProjection.phase, terminalProjection.activeAtom, null, terminalWaitCondition(status, wrapupDeliveryDispatched(terminalEvents)))
+  if (terminalProjection) await refreshStatus(terminalProjection.phase, terminalProjection.activeAtom, null, terminalWaitCondition(status, wrapupDeliveryDispatched(terminalEvents), pendingFounderQuestion(terminalEvents)))
   // Run-wrap audit assertion (ADR-0041 §4 / ticket 0058): flag any commit that advanced HEAD in the
   // run window but is absent from the run's ledger — a raw bypass beside the spine (the run_234 shape).
   // FLAG, never fault (founder decision 2026-06-25): record + surface, run disposition unchanged. Run

@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { type Git, type RunnerIO, StopRequestedError, openRunStore, parseDirective, runRun } from '../src/index.js'
+import { type DebStatus, type Git, type RunnerIO, StopRequestedError, openRunStore, parseDirective, runRun } from '../src/index.js'
 import { founderStopSignalPath, readResumeState, writeResumeState } from '../src/runner/founder-stop.js'
 import { askFounderContinue, baseDeps, deb, delegate, fakeIO, fakeSessionHost, input, okAdapter, priority, scriptedGit, sleep, stopFaultEvents, workspace, wrapup, writeFounderStopSignal, worktreeStubs } from './runner.test-support.js'
 
@@ -32,12 +32,22 @@ describe('runRun (multi-atom loop) — founder stop resume', () => {
     const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-founder-decision-park-'))
     const runDir = join(runsRoot, 'cocoder', 'run_1')
     const awaitedPaths: string[] = []
+    const statusWrites: DebStatus[] = []
+    const question = [
+      'FOUNDER DECISION NEEDED: choose the implementation path.',
+      '',
+      'A) Keep this atom core-only and surface the pending question through status projection.',
+      'B) Expand the atom into daemon/UI wiring now.',
+    ].join('\n')
     const io: RunnerIO = {
       ...fakeIO({ directives: [] }),
       async awaitDirective(path) {
         awaitedPaths.push(path)
-        if (path.endsWith('directive-0.json')) return askFounderContinue('Which implementation path should continue?')
+        if (path.endsWith('directive-0.json')) return askFounderContinue(question)
         throw new Error(`no valid directive at ${path} within 1ms`)
+      },
+      async writeDebStatus(_runDir, status) {
+        statusWrites.push(status)
       },
     }
 
@@ -47,7 +57,7 @@ describe('runRun (multi-atom loop) — founder stop resume', () => {
         io,
         timeouts: { orchestrationMs: 1, pollMs: 1, monitorCadenceMs: 1, minNudgeIntervalMs: 0 },
       }),
-      { ...input, runsRoot },
+      { ...input, deb, runsRoot },
     )
 
     expect(result.status).toBe('held')
@@ -63,12 +73,14 @@ describe('runRun (multi-atom loop) — founder stop resume', () => {
     })
     expect(events.some((e) => e.type === 'directive-timeout')).toBe(false)
     expect(events.find((e) => e.type === 'run-held')?.data).toEqual({ park: 'pre-dispatch', atom: 0 })
+    expect(statusWrites.at(-1)?.waitCondition).toContain('run held; awaiting founder action')
+    expect(statusWrites.at(-1)?.waitCondition).toContain(question)
     await expect(readResumeState(runDir)).resolves.toEqual({
       park: 'pre-dispatch',
       atomNumber: 0,
       founderResolution: {
         kind: 'ask-founder-continue',
-        question: 'Which implementation path should continue?',
+        question,
         askedAtDirectivePath: join(runDir, 'directive-0.json'),
         nextDirectivePath: join(runDir, 'directive-1.json'),
       },

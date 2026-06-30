@@ -9,6 +9,7 @@ import {
   isAwaitingFounderResolutionStatus,
   isFinalizableFounderResolutionStatus,
   openRunStore,
+  pendingFounderQuestion,
   renderDebStatus,
   terminalWaitCondition,
   wrapupDeliveryDispatched,
@@ -367,6 +368,29 @@ describe('deriveTerminalProjection — WS1 terminal projection seed', () => {
     expect(wrapupDeliveryDispatched([{ type: 'run-end', data: {} }] as never)).toBe(false)
   })
 
+  test('pendingFounderQuestion returns the latest unresolved founder decision question', () => {
+    const question = [
+      'FOUNDER DECISION NEEDED: choose the continuation path.',
+      '',
+      'A) Keep the terminal projection core-only.',
+      'B) Broaden this atom into daemon/UI wiring now.',
+    ].join('\n')
+
+    expect(pendingFounderQuestion([
+      { type: 'founder-decision-requested', data: { question: 'old question' } },
+      { type: 'run-resumed', data: { park: 'pre-dispatch', atom: 0 } },
+      { type: 'founder-decision-requested', data: { question } },
+      { type: 'run-held', data: { park: 'pre-dispatch', atom: 1 } },
+      { type: 'run-end', data: { status: 'held' } },
+    ] as never)).toBe(question)
+  })
+
+  test('pendingFounderQuestion returns null when a later resume or terminal run-end resolves it', () => {
+    const pending = { type: 'founder-decision-requested', data: { question: 'Should the run continue?' } }
+    expect(pendingFounderQuestion([pending, { type: 'run-resumed', data: { park: 'pre-dispatch', atom: 0 } }] as never)).toBeNull()
+    expect(pendingFounderQuestion([pending, { type: 'run-end', data: { status: 'completed' } }] as never)).toBeNull()
+  })
+
   test('terminalWaitCondition: failed + delivery says standing-by; failed + no delivery says nothing pending', () => {
     expect(terminalWaitCondition('failed', true)).toBe(
       'WRAP-UP READY delivered after a failed wrap; Oscar is standing by for founder questions until explicit teardown',
@@ -376,6 +400,13 @@ describe('deriveTerminalProjection — WS1 terminal projection seed', () => {
     expect(terminalWaitCondition('completed', true)).toBe(
       'run completed; Oscar remains reachable for founder questions until explicit teardown',
     )
+  })
+
+  test('terminalWaitCondition includes a pending founder question for awaiting-founder and held statuses only', () => {
+    const question = 'A) Continue with the narrow projection.\nB) Stop and open a follow-up.'
+    expect(terminalWaitCondition('awaiting-founder', false, question)).toContain(question)
+    expect(terminalWaitCondition('held', false, question)).toBe(`run held; awaiting founder action: ${question}`)
+    expect(terminalWaitCondition('failed', false, question)).toBe('run failed; no further runner action pending')
   })
 })
 
