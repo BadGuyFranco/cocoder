@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-29 — **run-tests-required-checkpoint: structural test gate wired — archive ready (run_152/run_293)**
+
+**Persona:** Oscar (orchestrator) + Bob (builder) | **Priority:** [run-tests-required-checkpoint](./priorities/run-tests-required-checkpoint.md) | **Run:** run_293 (display 152)
+**Outcomes:**
+- **Six atoms verified and committed.** ADR-0046 accepted; amendments to ADR-0013/0023; runner enforcement in `agent-step.ts`; base standard binding in `shared-standards.md`; behavior pins in `runner.test.ts`; one-command proof at `scripts/proof-required-checkpoint.mjs`.
+- **All five verified-when conditions met.** Code-touching atoms require green `run-tests` through the one verify gate; inherited via base standards; `execCriterion` reused; advisory degrade when no test surface; layout-agnostic source predicate (not packages-only).
+- **Follow-on queued:** `review-test-architecture-and-componentize` registered in `order.json` (149 new checkpoint pins enlarged `runner.test.ts`).
+- **Disposition: `archive-confirmation`.** Objective fully met and proven; no open tickets bound to this priority; founder archive confirmation is the remaining gate.
+**Next:** Reply `archive` or `archive run_293` in Oz chat; then launch `review-test-architecture-and-componentize` to split `runner.test.ts` and set the unit-test architecture standard.
+
 ## 2026-06-29 — **run-tests-required-checkpoint: ADR conflict-scan — blocked on founder (run_151/run_292)**
 
 **Persona:** Oscar (orchestrator) | **Priority:** [run-tests-required-checkpoint](./priorities/run-tests-required-checkpoint.md) | **Run:** run_292 (display 151)

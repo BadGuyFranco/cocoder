@@ -1,7 +1,7 @@
 # CoCoder Architecture
 
 **Status:** v2 (rebuild) — live  
-**Last verified:** 2026-06-21 (architecture reading contract — [ADR-0031](./cocoder/decisions/0031-architecture-reading-contract.md); the live commit spine is [ADR-0023](./cocoder/decisions/0023-workspace-commit-spine.md) plus [ADR-0029](./cocoder/decisions/0029-founder-trusted-pre-run-snapshot.md): direct-to-branch, one mode, founder WIP snapshotted before launch; committed work is on the checked-out branch by construction)
+**Last verified:** 2026-06-29 (architecture reading contract — [ADR-0031](./cocoder/decisions/0031-architecture-reading-contract.md); the live commit spine is [ADR-0023](./cocoder/decisions/0023-workspace-commit-spine.md) plus [ADR-0029](./cocoder/decisions/0029-founder-trusted-pre-run-snapshot.md): direct-to-branch, one mode, founder WIP snapshotted before launch; committed work is on the checked-out branch by construction; code-touching atoms require green run-tests through the one verify gate per [ADR-0046](./cocoder/decisions/0046-run-tests-required-checkpoint.md))
 
 For canonical CoCoder vocabulary, see [`docs/glossary.md`](./docs/glossary.md). Onboarded workspaces
 additionally ship a per-repo domain glossary at `cocoder/glossary.md` for product terms-of-art.
@@ -122,7 +122,7 @@ authoring Plays. ADR-0015/0021/0022 are retired history tracked in the
 | Change kind | Path | Verification |
 |---|---|---|
 | Governance / docs / ADRs / priorities / personas / standards | **Direct to the active branch** — commit in place | light / risk-matched; governed docs can be test-pinned, so affected suites still run |
-| Product / machinery **code** | **Direct to the active branch**, but the orchestrator verifies *before* the spine commits (per-atom diff + tests); pass → commit the whole changed set and flag out-of-lane paths; fail → revert that atom in place, commit nothing | risk-matched ([ADR-0013](./cocoder/decisions/0013-orchestration-observation.md)) |
+| Product / machinery **code** | **Direct to the active branch**, but the orchestrator verifies *before* the spine commits (per-atom diff + evidence, including required green run-tests for code-touching atoms when a test surface exists); pass → commit the whole changed set and flag out-of-lane paths; fail → revert that atom in place, commit nothing | risk-matched ([ADR-0013](./cocoder/decisions/0013-orchestration-observation.md), [ADR-0046](./cocoder/decisions/0046-run-tests-required-checkpoint.md)) |
 | Shared GitHub repo | The founder checks out a feature branch; the engine commits to it and `git push`es (**non-gating**). The merge to the shared `main` is GitHub's **PR review**, not the engine's | per the repo's CI / PR gate |
 
 **Why this is safe with one mode:** the single-writer-per-workspace lock
