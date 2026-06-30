@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { type Git, type RunnerIO, StopRequestedError, openRunStore, parseDirective, runRun } from '../src/index.js'
 import { founderStopSignalPath, readResumeState, writeResumeState } from '../src/runner/founder-stop.js'
-import { askFounderContinue, baseDeps, delegate, fakeIO, fakeSessionHost, input, okAdapter, priority, scriptedGit, sleep, stopFaultEvents, workspace, wrapup, writeFounderStopSignal, worktreeStubs } from './runner.test-support.js'
+import { askFounderContinue, baseDeps, deb, delegate, fakeIO, fakeSessionHost, input, okAdapter, priority, scriptedGit, sleep, stopFaultEvents, workspace, wrapup, writeFounderStopSignal, worktreeStubs } from './runner.test-support.js'
 
 describe('runRun (multi-atom loop) — founder stop resume', () => {
   test('normal runs do not synthesize a founder-stop artifact or held status', async () => {
@@ -123,6 +123,104 @@ describe('runRun (multi-atom loop) — founder stop resume', () => {
     expect(events.find((e) => e.type === 'run-resumed')?.data).toEqual({ park: 'pre-dispatch', atom: 0 })
     expect(events.filter((e) => e.type === 'builder-dispatch').map((e) => e.data)).toEqual([{ ref: 'surface:2', atom: 0 }])
     expect(store.listWorkItems(held.runId).map((w) => w.status)).toEqual(['done'])
+  })
+
+  test('resume reattaches live stored Oscar, Bob, and Deb panes without spawning duplicates', async () => {
+    const store = openRunStore(':memory:')
+    const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-resume-reattach-live-'))
+    store.upsertWorkspace(workspace)
+    const held = store.createRun({ workspaceId: workspace.id, priorityId: priority.id })
+    store.setRunStatus(held.id, 'held')
+    const runDir = join(runsRoot, 'cocoder', held.id)
+    await mkdir(runDir, { recursive: true })
+    await writeResumeState(runDir, {
+      park: 'pre-dispatch',
+      atomNumber: 0,
+      founderResolution: {
+        kind: 'ask-founder-continue',
+        question: 'Should the live pane receive the answer?',
+        askedAtDirectivePath: join(runDir, 'directive-0.json'),
+        nextDirectivePath: join(runDir, 'directive-1.json'),
+      },
+    })
+    store.createSession({ runId: held.id, persona: 'oscar', sessionRef: 'surface:oscar', workspaceRef: 'workspace:run' })
+    store.createSession({ runId: held.id, persona: 'bob', sessionRef: 'surface:bob', workspaceRef: 'workspace:run' })
+    store.createSession({ runId: held.id, persona: 'deb', sessionRef: 'surface:deb', workspaceRef: 'workspace:run' })
+    const spawns: string[] = []
+    const sent: Array<{ readonly ref: string; readonly text: string }> = []
+    const host = fakeSessionHost({
+      async spawn(opts) {
+        spawns.push(opts.persona)
+        return { id: `new:${opts.persona}`, driver: 'fake' }
+      },
+      async status(ref) {
+        return ['surface:oscar', 'surface:bob', 'surface:deb'].includes(ref.id) ? { state: 'running' as const } : { state: 'exited' as const, code: -1 }
+      },
+      async sendInput(ref, text) {
+        sent.push({ ref: ref.id, text })
+      },
+    })
+
+    const resumed = await runRun(
+      baseDeps({
+        store,
+        sessionHost: host,
+        io: fakeIO({ directives: [wrapup('done after live reattach')] }),
+      }),
+      { ...input, deb, runsRoot, resumeRunId: held.id, resumeFounderAnswer: 'Yes, continue in place.' },
+    )
+
+    expect(resumed.status).toBe('completed')
+    expect(spawns).toEqual([])
+    const launchPrompt = sent.find((item) => item.ref === 'surface:oscar' && item.text.includes('# Resuming after founder decision'))
+    expect(launchPrompt?.text).toContain('Should the live pane receive the answer?')
+    expect(launchPrompt?.text).toContain('Yes, continue in place.')
+    expect(store.listEvents(held.id).filter((event) => event.type === 'session-reused').map((event) => event.data)).toEqual([
+      { persona: 'oscar', ref: 'surface:oscar' },
+      { persona: 'bob', ref: 'surface:bob' },
+      { persona: 'deb', ref: 'surface:deb' },
+    ])
+    expect(store.listEvents(held.id).filter((event) => event.type === 'spawn')).toEqual([])
+  })
+
+  test('resume falls back to fresh spawn when stored panes are dead instead of throwing', async () => {
+    const store = openRunStore(':memory:')
+    const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-resume-dead-pane-fallback-'))
+    store.upsertWorkspace(workspace)
+    const held = store.createRun({ workspaceId: workspace.id, priorityId: priority.id })
+    store.setRunStatus(held.id, 'held')
+    const runDir = join(runsRoot, 'cocoder', held.id)
+    await mkdir(runDir, { recursive: true })
+    await writeResumeState(runDir, { park: 'pre-dispatch', atomNumber: 0 })
+    store.createSession({ runId: held.id, persona: 'oscar', sessionRef: 'surface:dead-oscar', workspaceRef: 'workspace:run' })
+    store.createSession({ runId: held.id, persona: 'bob', sessionRef: 'surface:dead-bob', workspaceRef: 'workspace:run' })
+    const spawns: string[] = []
+    const host = fakeSessionHost({
+      async spawn(opts) {
+        spawns.push(opts.persona)
+        return { id: `new:${opts.persona}`, driver: 'fake' }
+      },
+      async status(ref) {
+        return ref.id.startsWith('surface:dead-') ? { state: 'exited' as const, code: 0 } : { state: 'running' as const }
+      },
+    })
+
+    const resumed = await runRun(
+      baseDeps({
+        store,
+        sessionHost: host,
+        io: fakeIO({ directives: [wrapup('done after fresh fallback')] }),
+      }),
+      { ...input, runsRoot, resumeRunId: held.id },
+    )
+
+    expect(resumed.status).toBe('completed')
+    expect(spawns).toEqual(['oscar', 'bob'])
+    expect(store.listEvents(held.id).filter((event) => event.type === 'session-reused')).toEqual([])
+    expect(store.listEvents(held.id).filter((event) => event.type === 'spawn').map((event) => event.data)).toEqual([
+      { persona: 'oscar', ref: 'new:oscar' },
+      { persona: 'bob', ref: 'new:bob' },
+    ])
   })
 
   test('Oscar launch prompt uses directive-0 for fresh runs and the parked atom directive on resume', async () => {

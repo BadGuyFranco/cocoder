@@ -12,7 +12,6 @@ import {
   fakeIO,
   fakeSessionHost,
   input,
-  okAdapter,
   scriptedGit,
   wrapup,
 } from './runner.test-support.js'
@@ -82,7 +81,7 @@ describe('runRun (multi-atom loop)', () => {
     })
 
     await writeFile(join(runDir, 'directive-2.json'), `${JSON.stringify(delegate('finish the implementation with the founder answer: keep it enabled by default'))}\n`, 'utf8')
-    const resumePrompts: string[] = []
+    const resumeSends: string[] = []
     const resumeIo: RunnerIO = {
       ...fakeIO({ directives: [], verdicts: [{ verdict: 'pass', reason: 'founder answer applied' }] }),
       async awaitDirective(path) {
@@ -95,12 +94,9 @@ describe('runRun (multi-atom loop)', () => {
     const resumed = await runRun(
       baseDeps({
         store,
+        sessionHost: fakeSessionHost({ async sendInput(_ref, text) { resumeSends.push(text) } }),
         git,
         io: resumeIo,
-        getAdapter: () => ({ ...okAdapter, build: (buildInput) => {
-          resumePrompts.push(buildInput.prompt)
-          return { command: 'x', args: [] }
-        } }),
       }),
       { ...input, deb, runsRoot, resumeRunId: held.runId, resumeFounderAnswer: 'Keep it enabled by default.' },
     )
@@ -137,7 +133,7 @@ describe('runRun (multi-atom loop)', () => {
     expect(store.getRun(resumed.runId)?.status).toBe('completed')
     expect(statusWrites.some((status) => status.oscar === 'blocked' && status.waitCondition.includes('awaiting founder decision before directive 2'))).toBe(true)
     expect(sends.some((text) => text.includes('FOUNDER DECISION NEEDED') && text.includes('directive-2.json'))).toBe(true)
-    const resumePrompt = resumePrompts.find((prompt) => prompt.includes('# Resuming after founder decision'))
+    const resumePrompt = resumeSends.find((prompt) => prompt.includes('# Resuming after founder decision'))
     expect(resumePrompt).toContain('Should the compatibility shim stay enabled by default?')
     expect(resumePrompt).toContain('Keep it enabled by default.')
     expect(resumePrompt).toContain(join(runDir, 'directive-2.json'))

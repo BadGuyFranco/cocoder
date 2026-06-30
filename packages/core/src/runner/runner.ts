@@ -44,11 +44,12 @@ import {
   type Run,
   type RunStatus,
   type RunStore,
+  type Session,
   type Workspace,
 } from '../store/index.js'
 import { handledOpenTicketsForPriority, readTickets } from '../tickets/index.js'
 import { effectiveScope, partitionByScope } from '../write-scope/index.js'
-import type { SessionHost } from '../session-host/index.js'
+import type { SessionHost, SessionRef } from '../session-host/index.js'
 import { exec as execChildProcess } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { rm } from 'node:fs/promises'
@@ -422,6 +423,31 @@ const validateDebNudgeEvidence = (req: { readonly message: string; readonly rati
   return missingEventTypes.length === 0 ? { ok: true } : { ok: false, missingEventTypes }
 }
 
+function sessionRefFromStored(session: Session): SessionRef {
+  return {
+    id: session.sessionRef,
+    driver: 'cmux',
+    ...(session.workspaceRef ? { workspaceRef: session.workspaceRef } : {}),
+  }
+}
+
+function latestStoredSession(sessions: readonly Session[], personaId: string): Session | null {
+  return sessions
+    .filter((session) => session.persona === personaId)
+    .sort((a, b) => b.startedAt - a.startedAt)[0] ?? null
+}
+
+async function liveStoredSession(sessionHost: SessionHost, sessions: readonly Session[], personaId: string): Promise<SessionRef | null> {
+  const session = latestStoredSession(sessions, personaId)
+  if (session === null) return null
+  const ref = sessionRefFromStored(session)
+  try {
+    return (await sessionHost.status(ref)).state === 'running' ? ref : null
+  } catch {
+    return null
+  }
+}
+
 export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResult> {
   const { store, sessionHost, git, getAdapter, io } = deps
   const t = { ...DEFAULTS, ...deps.timeouts }
@@ -622,6 +648,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   const oscarPlayManifest = renderPlayManifest(effectivePlays, oscar.id)
   const bobPlayManifest = renderPlayManifest(effectivePlays, bob.id)
   const debPlayManifest = deb ? renderPlayManifest(effectivePlays, deb.id) : '(none)'
+  const storedResumeSessions = existingRun === null ? [] : store.listSessions(run.id)
 
   // Spawn Oscar (full loop prompt → writes the first directive), Bob on standby beside it, optional Deb.
   const oscarLaunchPrompt = buildOrchestratorPrompt({
@@ -646,7 +673,12 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
       : { question: resumedFounderResolution.question, answer: input.resumeFounderAnswer ?? null, nextDirectivePath: resumedFounderResolution.nextDirectivePath },
   })
   let oscarDriver: OscarDriver
-  if (oscar.mode === 'headless') {
+  const liveOscarRef = oscar.mode === 'headless' ? null : await liveStoredSession(sessionHost, storedResumeSessions, oscar.id)
+  if (liveOscarRef !== null) {
+    oscarDriver = createPaneOscarDriver(sessionHost, liveOscarRef)
+    await oscarDriver.send(oscarLaunchPrompt)
+    store.recordEvent({ runId: run.id, type: 'session-reused', data: { persona: oscar.id, ref: liveOscarRef.id } })
+  } else if (oscar.mode === 'headless') {
     oscarDriver = createHeadlessOscarDriver({
       getAdapter,
       oscar,
@@ -693,7 +725,11 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
   }
 
   let bobDriver: BuilderDriver
-  if (bob.mode === 'headless') {
+  const liveBobRef = bob.mode === 'headless' ? null : await liveStoredSession(sessionHost, storedResumeSessions, bob.id)
+  if (liveBobRef !== null) {
+    bobDriver = createPaneBuilderDriver(sessionHost, liveBobRef)
+    store.recordEvent({ runId: run.id, type: 'session-reused', data: { persona: bob.id, ref: liveBobRef.id } })
+  } else if (bob.mode === 'headless') {
     bobDriver = createHeadlessBuilderDriver({ getAdapter, bob, cwd: worktreePath, runDir, scope, sharedStandards, playManifest: bobPlayManifest, runBranch, runHeadless: deps.runHeadless, signal: deps.signal })
     store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: bob.id, ref: bobDriver.refId, mode: 'headless' } })
   } else {
@@ -717,11 +753,13 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     store.recordEvent({ runId: run.id, type: 'spawn', data: { persona: bob.id, ref: bobRef.id } })
     bobDriver = createPaneBuilderDriver(sessionHost, bobRef)
   }
+  const liveDebRef = deb && deb.mode !== 'headless' ? await liveStoredSession(sessionHost, storedResumeSessions, deb.id) : null
   const debRef = deb
-    ? await spawnObserver({ store, sessionHost, getAdapter, run, workspace, priority: launchPriority, task: input.task ?? null, deb, sharedStandards, playManifest: debPlayManifest, runDir, groupLabel, cwd: worktreePath, runBranch })
+    ? liveDebRef ?? await spawnObserver({ store, sessionHost, getAdapter, run, workspace, priority: launchPriority, task: input.task ?? null, deb, sharedStandards, playManifest: debPlayManifest, runDir, groupLabel, cwd: worktreePath, runBranch })
     : null
+  if (deb && liveDebRef !== null) store.recordEvent({ runId: run.id, type: 'session-reused', data: { persona: deb.id, ref: liveDebRef.id } })
   await oscarDriver.show()
-  log(`oscar + bob spawned (${oscarDriver.refId}, ${bobDriver.refId}); awaiting first directive, bob on standby`)
+  log(`oscar + bob ${existingRun === null ? 'spawned' : 'resumed'} (${oscarDriver.refId}, ${bobDriver.refId}); awaiting first directive, bob on standby`)
 
   const oscarAlive = (): Promise<boolean> => oscarDriver.alive()
   // Every terminal fault funnels through here: record it, let Deb triage it (if present), then fail. Any
