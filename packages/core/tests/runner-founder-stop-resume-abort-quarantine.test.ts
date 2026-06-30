@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'vitest'
 import { type Git, type RunnerIO, StopRequestedError, openRunStore, runRun } from '../src/index.js'
-import '../src/runner/founder-stop.js'
 import { baseDeps, delegate, fakeIO, fakeSessionHost, input, stopFaultEvents, worktreeStubs } from './runner.test-support.js'
 
 describe('runRun (multi-atom loop) — founder stop resume', () => {
