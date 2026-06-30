@@ -618,6 +618,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
     repoPlayDir: join(workspace.path, 'cocoder', 'plays'),
   }
   const effectivePlays = listEffectivePlays(playSources)
+  const requiredTestCommand = effectivePlays.find((play) => play.id === 'run-tests')?.deterministicStep?.ref ?? null
   const oscarPlayManifest = renderPlayManifest(effectivePlays, oscar.id)
   const bobPlayManifest = renderPlayManifest(effectivePlays, bob.id)
   const debPlayManifest = deb ? renderPlayManifest(effectivePlays, deb.id) : '(none)'
@@ -1627,6 +1628,7 @@ export async function runRun(deps: RunnerDeps, input: RunInput): Promise<RunResu
           oscarDriver,
           makeJudge,
           execCriterion,
+          requiredTestCommand,
           awaitOscarWithNudgeWatchdog,
           oscarAlive,
           refreshStatus,

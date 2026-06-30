@@ -1,4 +1,5 @@
-import { join } from 'node:path'
+import { existsSync } from 'node:fs'
+import { extname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { runCommitGate, type AuditWriteBoundary, type CommitGateResult, type Git } from '../commit-gate/index.js'
 import type { RunDisplayInput, RunStore, WorkItem } from '../store/index.js'
 import { closeTicket, readTickets } from '../tickets/index.js'
@@ -17,6 +18,7 @@ import { FounderHeldError, isFounderHeldError, readFounderStopSignal, type Resum
 
 const OUTPUT_TAIL_CHARS = 2_000
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+const SOURCE_EXTENSIONS = new Set(['.cjs', '.cts', '.js', '.jsx', '.mjs', '.mts', '.ts', '.tsx'])
 
 // Scope is advisory (ADR-0045): writing off your usual surface is committed and flagged, never blocked.
 // When Bob raises an authority/scope blocker, the runner does NOT fault — it nudges him to proceed. The
@@ -27,6 +29,28 @@ const SCOPE_ADVISORY_PROCEED_NUDGE =
   'where the work needs it and continue to your completion marker.'
 
 const outputTail = (output: string): string => (output.length <= OUTPUT_TAIL_CHARS ? output : output.slice(-OUTPUT_TAIL_CHARS))
+
+const normalizeRepoPath = (file: string): string => file.replaceAll('\\', '/').replace(/^\.\//, '')
+
+function isCodeTouchingFile(file: string): boolean {
+  const normalized = normalizeRepoPath(file)
+  if (normalized.startsWith('docs/') || normalized.startsWith('cocoder/')) return false
+  if (normalized.endsWith('.md') || normalized.endsWith('.mdx')) return false
+  return SOURCE_EXTENSIONS.has(extname(normalized))
+}
+
+function resolveRequiredTestCommand(cwd: string, command: string | null): { readonly command: string } | { readonly command: string | null; readonly reason: string } {
+  if (command === null || command.trim() === '') return { command, reason: 'run-tests deterministic step is absent' }
+  if (isAbsolute(command)) return { command, reason: 'run-tests deterministic step is not repo-relative' }
+  const root = resolve(cwd)
+  const target = resolve(root, command)
+  const rel = relative(root, target)
+  if (rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
+    return { command, reason: 'run-tests deterministic step escapes the repo root' }
+  }
+  if (!existsSync(target)) return { command, reason: 'run-tests deterministic step was not found in this workspace' }
+  return { command }
+}
 
 type DelegateDirective = Extract<Directive, { readonly kind: 'delegate' }>
 
@@ -93,6 +117,7 @@ export interface ExecuteAgentStepInput {
   readonly oscarDriver: OscarDriver
   readonly makeJudge: MakeJudge
   readonly execCriterion: (command: string, cwd: string) => Promise<CriterionResult>
+  readonly requiredTestCommand: string | null
   readonly awaitOscarWithNudgeWatchdog: AwaitOscarWithNudgeWatchdog
   readonly oscarAlive: () => Promise<boolean>
   readonly refreshStatus: (phase: RunnerPhase, activeAtom: number | null, activeTask: string | null, waitCondition: string) => Promise<void>
@@ -131,6 +156,7 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
     oscarDriver,
     makeJudge,
     execCriterion,
+    requiredTestCommand,
     awaitOscarWithNudgeWatchdog,
     oscarAlive,
     refreshStatus,
@@ -489,8 +515,41 @@ export async function executeAgentStep(input: ExecuteAgentStepInput): Promise<Ag
     log(outcomeLine)
   } else {
     store.recordEvent({ runId, type: 'verify-pass', data: { atom: atomIndex, reason: verdict.reason } })
+    const changedBeforeCommit = await git.changedFiles(worktreePath)
+    if (changedBeforeCommit.some(isCodeTouchingFile)) {
+      const testCommand = resolveRequiredTestCommand(worktreePath, requiredTestCommand)
+      if ('reason' in testCommand) {
+        store.recordEvent({
+          runId,
+          type: 'required-checkpoint-advisory-no-test-surface',
+          data: { atom: atomIndex, command: testCommand.command, reason: testCommand.reason, changedFiles: changedBeforeCommit },
+        })
+      } else {
+        const checkpoint = await execCriterion(testCommand.command, worktreePath).catch((err: unknown) => ({ exitCode: 1, output: String(err) }))
+        if (checkpoint.exitCode === 0) {
+          store.recordEvent({
+            runId,
+            type: 'required-checkpoint-green',
+            data: { atom: atomIndex, command: testCommand.command, exitCode: checkpoint.exitCode },
+          })
+        } else {
+          store.recordEvent({
+            runId,
+            type: 'required-checkpoint-red',
+            data: { atom: atomIndex, command: testCommand.command, exitCode: checkpoint.exitCode, outputTail: outputTail(checkpoint.output) },
+          })
+          store.setWorkItemStatus(workItem.id, 'abandoned')
+          await quarantineAtom(atomIndex, headBefore, 'atom-self-committed-required-checkpoint-red')
+          outcomeLine = `atom ${atomIndex} BLOCKED by required test checkpoint (run-tests red) — nothing committed`
+          log(outcomeLine)
+          setActiveAtom(null)
+          return { kind: 'blocked', outcomeLine }
+        }
+      }
+    }
+    const gateGit: Git = { ...git, changedFiles: async () => [...changedBeforeCommit] }
     const gate = await runCommitGate({
-      git,
+      git: gateGit,
       store,
       cwd: worktreePath,
       runId,
