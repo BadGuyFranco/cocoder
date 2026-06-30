@@ -12,6 +12,15 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-30 — **oz-repair: priority-audit absorbed into Process Review**
+
+**Persona:** Oz (headless repair) | **Priority:** [priority-panel-pinned-items](./priorities/priority-panel-pinned-items.md) | **Run:** repair turn
+**Outcomes:**
+- **Process Review clarified** as the pinned launcher form of the former `priority-audit`, expanded to review active priorities, backlog items, and tickets for status-vs-reality, conflicts, stale references, incomplete instructions, completed work, and recommended dispositions.
+- **Former `priority-audit` retired** from the active priority set by moving it to [`priorities/archive/priority-audit.md`](./priorities/archive/priority-audit.md) with a supersession note; historical content preserved.
+- **Active ordering corrected:** `priority-audit` removed from [`priorities/order.json`](./priorities/order.json); the 2026-06-29 audit artifact now carries a superseded note instead of recommending a separate standing priority.
+**Next:** Founder/Oz must **Refresh Oz** so the daemon reloads the changed priority state.
+
 ## 2026-06-30 — **ticket-fix-0087: Oscar routes Deb repair to active Deb — closed (run_157/run_298)**
 
 **Persona:** Oscar (wrap-up only; 1 atom rejected) | **Priority:** ticket-fix / [0087](./tickets/closed/0087-oscar-tasking-deb.md) | **Run:** run_298 (display 157)

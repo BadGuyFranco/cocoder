@@ -3,6 +3,11 @@ id: priority-audit
 title: Audit the priority set for staleness and recommend dispositions
 ---
 
+> **Archived 2026-06-30 (founder/Oz repair) — superseded and absorbed by
+> [`priority-panel-pinned-items`](../priority-panel-pinned-items.md) as the pinned **Process Review**
+> launcher.** Historical content is preserved below; this is no longer a separate launchable standing
+> priority.
+
 > **Founder-approved 2026-06-13** (standing meta-priority) — crafted from run_79's "launch a priority
 > audit" suggestion after F20 (a suggested next priority must be made *launchable*, not left dangling).
 

@@ -25,8 +25,12 @@ The three pinned launchers (buttons, **not** queue items):
 2. **Doc Review** — a Play that runs a deep, wide, multi-sub-agent review of **code, ADRs, and
    `ARCHITECTURE.md`** to repair conflicts, stale references, SSOT violations, and lapses in clarity,
    correctness, and elegance — so the north-star architecture docs accurately reflect the current repo.
-3. **Process Review** — a Play that reviews **priorities and tickets** for conflicts, items that are
-   actually complete, stale references, incomplete instructions, and lack of elegance.
+3. **Process Review** — the pinned launcher form of the former `priority-audit` standing priority,
+   expanded to include tickets. It reviews **active priorities, backlog items, and tickets** against the
+   current state of the repo and governance for status-vs-reality mismatches, conflicts, stale
+   references, incomplete instructions, completed work that should be closed or archived, and
+   recommended dispositions. Each run produces **one founder-decision artifact/table** that the founder
+   can act on in a single read.
 
 Doc Review and Process Review carry **full-repair authority**: they commit their fixes directly through
 the governed commit spine (ADR-0023), not report-only. But they are **founder-collaborative, not
@@ -71,8 +75,8 @@ instance) and settles, at minimum:
 
 Once Half A is approved: build the three-button pinned panel (hidden from the priority queue like the
 current Ad Hoc row), wire the three launchers as standing pinned pseudo-priorities, author the **Doc
-Review** and **Process Review** Plays (compose existing Plays — `deep-read`, `documentation`,
-`code-review`, `priority-audit` — where they fit rather than inventing parallel machinery), and ship the
+Review** and **Process Review** Plays (compose existing Plays — `deep-read`, `documentation`, and
+`code-review` — where they fit rather than inventing parallel machinery), and ship the
 disposition/dashboard fix from Half A §3.
 
 ## Verified when
@@ -88,6 +92,8 @@ disposition/dashboard fix from Half A §3.
 ## Notes
 
 - Supersedes and absorbs the former `ad-hoc-session-architecture` priority (merged 2026-06-30).
+- Supersedes and absorbs the former `priority-audit` priority as **Process Review** (founder
+  clarification, 2026-06-30). `priority-audit` is no longer a separate launchable standing priority.
 - Motivating context: the ad-hoc wrap-disposition behavior observed on run_233 (`awaiting-founder`) and
   ticket 0051's run journal.
 - Form-factor preference: three horizontal buttons across the top of the priority stack, not full
