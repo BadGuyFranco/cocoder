@@ -13,6 +13,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
+| [0090](./open/0090-oz-resume-spawns-duplicate-orchestrator-under-same-run-number.md) | oz resume spawns a duplicate orchestrator under the same run number | bug | none | Open |
 | [0089](./open/0089-test-architecture-standard-adaptability-on-repo-takeover.md) | Test-architecture standard — adaptability on repo takeover | task | none | Open |
 | [0088](./open/0088-founder-decision-surfacing-drops-question-body.md) | FOUNDER DECISION NEEDED surfacing drops the question body | bug | none | Open |
 | [0087](./open/0087-oscar-tasking-deb.md) | Oscar tasking Deb | bug | none | founder-session |
