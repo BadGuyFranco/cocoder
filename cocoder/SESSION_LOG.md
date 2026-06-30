@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-30 — **ticket-fix-0087: Oscar routes Deb repair to active Deb — closed (run_157/run_298)**
+
+**Persona:** Oscar (wrap-up only; 1 atom rejected) | **Priority:** ticket-fix / [0087](./tickets/closed/0087-oscar-tasking-deb.md) | **Run:** run_298 (display 157)
+**Outcomes:**
+- **No build atoms landed.** Atom 0 rejected — fix (`8d4a308`) and ticket close (`42b03f2`) already on main before verify; delegated owner-map note duplicated `docs/oscar-deb-repair-dialogue-design.md` and was not committed.
+- **Acceptance re-verified.** `requestOscarDebRepair` routes to a running Deb surface (visible or hidden) via `sendInput` with 202 `active-deb-dispatched`; headless fallback preserved; 59 daemon tests green; tsc exit 0.
+- **Ticket closed** via governed path; 0087 pruned from `order.json`; sole open ticket is [0091](./tickets/open/0091-onboard-existing-capture-test-convention-profile.md).
+- **Disposition: `closed`.** Relaunch verified an already-shipped fix; verify-gate bypass noted (fix landed before this run's gate) — orchestration reliability observation, not a product defect.
+**Next:** Launch `ad-hoc-session-architecture` — draft the ADR for ad-hoc run model, multi-session sequencing, and dashboard Needs-decision semantics.
+
 ## 2026-06-30 — **ticket-fix-0089: test-architecture adaptability — closed (run_156/run_297)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0089](./tickets/closed/0089-test-architecture-standard-adaptability-on-repo-takeover.md) | **Run:** run_297 (display 156)
