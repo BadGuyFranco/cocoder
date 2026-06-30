@@ -29,8 +29,13 @@ The three pinned launchers (buttons, **not** queue items):
    actually complete, stale references, incomplete instructions, and lack of elegance.
 
 Doc Review and Process Review carry **full-repair authority**: they commit their fixes directly through
-the governed commit spine (ADR-0023), not report-only. Because that lets a review run rewrite the
-north-star docs and governance, the model decision below must bound it.
+the governed commit spine (ADR-0023), not report-only. But they are **founder-collaborative, not
+autopilot** — along the way they must surface **true conflicts that need human judgment** to the founder
+in plain English (the real disagreement, the options, a recommendation) so the founder decides the best
+course, rather than silently picking a side. They auto-repair only the clear-cut, low-judgment fixes
+(stale references, dead links, SSOT duplicates, obvious prose/correctness errors); anything that is a
+genuine conflict or judgment call pauses for the founder. Because full-repair lets a review run rewrite
+the north-star docs and governance, the model decision below must bound it.
 
 This priority has two halves, sequenced **decision before implementation**:
 
@@ -53,11 +58,14 @@ instance) and settles, at minimum:
    true priority and must not present as priority-style "needs decision" work. Decide the correct terminal
    vocabulary and dashboard treatment (e.g., a distinct pinned/ad-hoc wrap state vs. reusing
    `awaiting-founder`), with trade-offs, and apply it to all three pinned launchers uniformly.
-4. **Full-repair guardrails.** How a Doc/Process Review run safely holds write authority over north-star
-   docs and governance: it still rides the governed spine and Oscar's verify gate; **ADR reversals remain
-   ADR-gated** (a review run may fix stale/incorrect prose and SSOT dupes, but never silently reverses an
-   accepted ADR or rewrites a decision — that escalates to the founder); structural or judgment-heavy
-   changes escalate rather than auto-commit.
+4. **Full-repair guardrails + founder-in-the-loop.** How a Doc/Process Review run safely holds write
+   authority over north-star docs and governance: it still rides the governed spine and Oscar's verify
+   gate; **ADR reversals remain ADR-gated** (a review run may fix stale/incorrect prose and SSOT dupes,
+   but never silently reverses an accepted ADR or rewrites a decision — that escalates to the founder);
+   structural or judgment-heavy changes escalate rather than auto-commit. The ADR must define **how a
+   true conflict is surfaced mid-run** — the plain-English question, options, and recommendation reach
+   the founder, the run parks for the decision, and resumes with the answer — distinguishing the
+   clear-cut fixes a review applies autonomously from the judgment calls it must hand to the founder.
 
 ### Half B — the implementation
 
