@@ -5,6 +5,7 @@
 //
 // Type-only imports from electron/: erased at build, so the renderer bundle stays free of main-process
 // code. Pure shared helpers come through browser-safe @cocoder/core subpaths, not the Node-backed barrel.
+import { pendingFounderQuestion } from '@cocoder/core/founder-question'
 import { runDisplayName, runDisplayNumber } from '@cocoder/core/display'
 import type {
   Workspace as DWorkspace,
@@ -261,6 +262,7 @@ export function adaptRuns(runs: readonly RunSummary[], priorityNames: Record<str
 // ── Transcript ── every event → a humanized line (never raw JSON). role = the persona if the event has
 // one, else "system"; attention events carry flag:'decision' (used by callout styling).
 const DECISION_EVENTS = new Set([
+  'founder-decision-requested',
   'out-of-scope',
   'out-of-scope-committed',
   'run-error',
@@ -271,6 +273,11 @@ const DECISION_EVENTS = new Set([
   'ui-bundle-rebuild-clobber-blocked',
   'daemon-auto-reload-build-failed',
 ])
+
+function founderDecisionLine(question: string): string {
+  const body = question.trim() || 'founder decision requested'
+  return `FOUNDER DECISION NEEDED — ${trunc(body, 200)}`
+}
 
 export function eventToLine(e: RunEvent): TranscriptLine {
   const d = (e.data ?? {}) as Record<string, unknown>
@@ -283,6 +290,9 @@ export function eventToLine(e: RunEvent): TranscriptLine {
       break
     case 'daemon-stale':
       body = `⚠️ Daemon was stale at launch (boot ${shortSha(str('bootSha'))} vs head ${shortSha(str('headSha'))}).`
+      break
+    case 'founder-decision-requested':
+      body = founderDecisionLine(str('question') || str('message'))
       break
     case 'preflight':
       body = `Preflight ${str('persona')} via ${str('cli')}: ${d.ok ? 'passed' : 'FAILED'}.`
@@ -428,6 +438,7 @@ export function adaptRunDetail(detail: RunDetail, priorityNames: Record<string, 
   const clis = [...new Set(events.filter((e) => e.type === 'preflight').map((e) => String((e.data as Record<string, unknown>)?.cli ?? '')).filter(Boolean))]
   const transcript = events.map(eventToLine)
   const last = events.length ? eventToLine(events[events.length - 1]) : null
+  const pendingQuestion = pendingFounderQuestion(events)
   const linkable = sessions.find((s) => s.deepLinkable)
   return {
     ...base,
@@ -436,7 +447,7 @@ export function adaptRunDetail(detail: RunDetail, priorityNames: Record<string, 
     transcript,
     evidence: evidenceFromDetail(detail),
     actions: [...(detail.actions ?? [])],
-    lastEvent: last ? last.body : base.lastEvent,
+    lastEvent: pendingQuestion !== null ? founderDecisionLine(pendingQuestion) : last ? last.body : base.lastEvent,
     attachCmd: linkable ? `cmux show ${linkable.sessionRef}` : undefined,
   }
 }

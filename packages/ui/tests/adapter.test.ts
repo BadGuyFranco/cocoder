@@ -24,7 +24,7 @@ import {
   fmtTime,
   ADHOC_PRIORITY_ID,
 } from '../src/renderer/adapter.ts'
-import type { CliCheckView, CliModelsView, CliRunReadinessView, CliView } from '../src/main/ipc-contract.ts'
+import type { CliCheckView, CliModelsView, CliRunReadinessView, CliView, RunDetail } from '../src/main/ipc-contract.ts'
 import type { Persona } from '../src/renderer/model.ts'
 import { seed } from '../src/renderer/model.ts'
 import workspacesFx from '../fixtures/workspaces.json'
@@ -48,6 +48,26 @@ const RUNS = runsFx as any
 const DETAIL = runDetailFx as any
 
 const priorityNames: Record<string, string> = Object.fromEntries(P.priorities.map((p: any) => [p.id, p.title]))
+
+function detailWithEvents(events: RunDetail['events']): RunDetail {
+  return {
+    run: {
+      id: 'run_founder',
+      workspaceId: 'cocoder',
+      priorityId: 'demo',
+      playbookId: null,
+      status: 'held',
+      createdAt: 1780153227239,
+      endedAt: 1780153229000,
+    },
+    sessions: [],
+    workItems: [],
+    commitLinks: [],
+    events,
+    files: { oscarOut: null, oscarErr: null, bobOut: null, bobErr: null, pickup: null, record: null },
+    diffs: [],
+  }
+}
 
 type CliViewOverrides = {
   id?: string
@@ -261,6 +281,20 @@ describe('transcript from events', () => {
     })
     expect(eventToLine({ id: 'e', runId: 'r', type: 'daemon-auto-reload-restart-queued', data: {}, at: 0 }).body).toContain('restarting')
   })
+
+  it('renders founder decision requests with the question body and decision flag', () => {
+    const question = [
+      'FOUNDER DECISION NEEDED: pick the UI behavior.',
+      '',
+      'A) Surface the pending question on the run card.',
+      'B) Keep showing the terminal run-end event.',
+    ].join('\n')
+
+    expect(eventToLine({ id: 'e', runId: 'r', type: 'founder-decision-requested', data: { question }, at: 0 })).toMatchObject({
+      body: expect.stringContaining('FOUNDER DECISION NEEDED — FOUNDER DECISION NEEDED: pick the UI behavior.'),
+      flag: 'decision',
+    })
+  })
 })
 
 describe('evidence from commits/diffs/files', () => {
@@ -285,6 +319,45 @@ describe('run detail enrichment', () => {
     // run_21 sessions are not deepLinkable → no attach command (renderer falls back to a default)
     const anyLinkable = DETAIL.sessions.some((s: any) => s.deepLinkable)
     expect(run.attachCmd === undefined).toBe(!anyLinkable)
+  })
+
+  it('prefers a still-pending founder question as the run last event over later terminal events', () => {
+    const question = [
+      'FOUNDER DECISION NEEDED: choose the final UI path.',
+      '',
+      'A) Show the pending decision on the card.',
+      'B) Show only the held terminal status.',
+    ].join('\n')
+    const run = adaptRunDetail(detailWithEvents([
+      { id: 'e1', runId: 'run_founder', type: 'founder-decision-requested', data: { question }, at: 1 },
+      { id: 'e2', runId: 'run_founder', type: 'run-held', data: { park: 'pre-dispatch', atom: 0 }, at: 2 },
+      { id: 'e3', runId: 'run_founder', type: 'run-end', data: { status: 'held' }, at: 3 },
+      { id: 'e4', runId: 'run_founder', type: 'commit', data: { sha: 'abc123456789', message: 'run-history' }, at: 4 },
+    ]), { demo: 'Demo' })
+
+    expect(run.lastEvent).toContain('FOUNDER DECISION NEEDED — FOUNDER DECISION NEEDED: choose the final UI path.')
+    expect(run.lastEvent).not.toContain('Committed abc1234')
+  })
+
+  it('falls back to the latest event once a founder question is superseded', () => {
+    const question = [
+      'FOUNDER DECISION NEEDED: choose the final UI path.',
+      '',
+      'A) Resume.',
+      'B) Stop.',
+    ].join('\n')
+    const resumed = adaptRunDetail(detailWithEvents([
+      { id: 'e1', runId: 'run_founder', type: 'founder-decision-requested', data: { question }, at: 1 },
+      { id: 'e2', runId: 'run_founder', type: 'run-resumed', data: { park: 'pre-dispatch', atom: 0 }, at: 2 },
+      { id: 'e3', runId: 'run_founder', type: 'commit', data: { sha: 'abc123456789', message: 'founder answer' }, at: 3 },
+    ]), { demo: 'Demo' })
+    const completed = adaptRunDetail(detailWithEvents([
+      { id: 'e1', runId: 'run_founder', type: 'founder-decision-requested', data: { question }, at: 1 },
+      { id: 'e2', runId: 'run_founder', type: 'run-end', data: { status: 'completed' }, at: 2 },
+    ]), { demo: 'Demo' })
+
+    expect(resumed.lastEvent).toBe('Committed abc1234 — founder answer.')
+    expect(completed.lastEvent).toBe('Run ended — status completed.')
   })
 })
 

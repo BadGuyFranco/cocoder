@@ -11,6 +11,10 @@
     "./display": {
       "types": "./src/store/portable/display.ts",
       "default": "./src/store/portable/display.ts"
+    },
+    "./founder-question": {
+      "types": "./src/runner/founder-question.ts",
+      "default": "./src/runner/founder-question.ts"
     }
   },
   "scripts": {

@@ -5,6 +5,7 @@
 // Pure: it derives everything from listEvents + the runner's precise wait-phase, so it is unit-testable
 // without a live run.
 import { runDisplayName, type RunEvent, type RunDisplayInput, type RunStatus, type RunStore } from '../store/index.js'
+export { pendingFounderQuestion } from './founder-question.js'
 
 const AWAITING_FOUNDER_RESOLUTION_STATUSES: ReadonlySet<RunStatus> = new Set<RunStatus>(['held', 'awaiting-founder', 'awaiting-archive-confirmation'])
 const FINALIZABLE_FOUNDER_RESOLUTION_STATUSES: ReadonlySet<RunStatus> = new Set<RunStatus>(['awaiting-founder', 'awaiting-archive-confirmation'])
@@ -130,22 +131,6 @@ export function wrapupDeliveryDispatched(events: readonly RunEvent[]): boolean {
   return events.some(
     (event) => event.type === 'wrapup-delivery-dispatch' && (event.data as { delivered?: unknown } | undefined)?.delivered !== false,
   )
-}
-
-export function pendingFounderQuestion(events: readonly RunEvent[]): string | null {
-  for (let i = events.length - 1; i >= 0; i--) {
-    const event = events[i]!
-    if (event.type === 'run-resumed' || event.type === 'founder-answer' || event.type === 'founder-decision-answered') return null
-    if (event.type === 'run-end') {
-      const status = (event.data as { status?: unknown } | undefined)?.status
-      if (status !== 'held' && status !== 'awaiting-founder') return null
-    }
-    if (event.type === 'founder-decision-requested') {
-      const question = (event.data as { question?: unknown } | undefined)?.question
-      return typeof question === 'string' && question.trim() !== '' ? question.trim() : null
-    }
-  }
-  return null
 }
 
 export function deriveTerminalProjection(
