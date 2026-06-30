@@ -2,8 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import {
   type Adapter,
   AuditWriteBoundaryError,
@@ -11,16 +10,13 @@ import {
   type DebTerminalSnapshot,
   type Directive,
   DirtyWorkingTreeError,
-  type FounderCloseoutContract,
   type Git,
   type HeadlessRunInput,
   type MakeJudge,
   type NudgeRequest,
   NON_LOOP_STALL_NUDGE_CAP,
   type Play,
-  type PlayAssignment,
   PreflightError,
-  type ResolvedPersona,
   type RunnerDeps,
   type RunnerIO,
   type RunInput,
@@ -29,47 +25,31 @@ import {
   type SessionRef,
   StopRequestedError,
   deriveTerminalProjection,
-  deriveOutOfLaneAdjudication,
-  deriveTicketCloseDecision,
-  deriveWrapDisposition,
-  deriveWrapupRunStatus,
   openRunStore,
-  parseTriage,
   parseDirective,
   readTickets,
   renderDebStatus,
   replaceFounderCloseoutCommitState,
   runRun,
-  validatePlayOutput,
 } from '../src/index.js'
 import { founderStopSignalPath, readResumeState, writeResumeState } from '../src/runner/founder-stop.js'
-
-const persona = (over: Partial<ResolvedPersona> & { id: string; cli: string }): ResolvedPersona => ({
-  label: over.id,
-  role: 'r',
-  writeScope: [],
-  body: `${over.id} body`,
-  model: '',
-  ...over,
-})
-
-const oscar = persona({ id: 'oscar', cli: 'claude', writeScope: [] })
-const bob = persona({ id: 'bob', cli: 'codex', writeScope: ['packages/**'] })
-const deb = persona({ id: 'deb', cli: 'claude', writeScope: [] })
-const priority = { id: 'demo', title: 'Demo', scopeNarrowing: null, goal: 'do the small thing', objective: 'do the small thing' }
-const workspaceRoot = join(tmpdir(), `cocoder-runner-unit-repo-${process.pid}`)
-const workspace = { id: 'cocoder', path: workspaceRoot, name: 'CoCoder' }
-
-beforeAll(async () => {
-  await mkdir(join(workspaceRoot, 'cocoder', 'priorities'), { recursive: true })
-  await mkdir(join(workspaceRoot, 'cocoder', 'tickets', 'open'), { recursive: true })
-  await writeFile(join(workspaceRoot, 'cocoder', 'priorities', 'demo.md'), '# Demo\n')
-  await writeFile(join(workspaceRoot, 'cocoder', 'tickets', 'open', '0015-demo-ticket.md'), '# Demo ticket\n')
-})
-
-afterAll(async () => {
-  await rm(workspaceRoot, { recursive: true, force: true })
-})
+import {
+  block,
+  bob,
+  deb,
+  issue,
+  label,
+  oscar,
+  persona,
+  priority,
+  renderFounderCloseout,
+  validFounderCloseout,
+  validatedCloseoutContract,
+  workspace,
+  workspaceRoot,
+  wrapPlay,
+  wrapPlayAssignment,
+} from './runner.test-support.js'
 
 function fakeSessionHost(over: Partial<SessionHost> = {}): SessionHost {
   let n = 0
@@ -366,137 +346,10 @@ const writeFounderStopSignal = async (runDir: string): Promise<void> => {
   await writeFile(tempPath, `${JSON.stringify({ kind: 'founder-stop', recordedBy: 'bob', note: 'Founder explicitly said stop.' }, null, 2)}\n`, 'utf8')
   await rename(tempPath, path)
 }
-const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
-const wrapPlayRaw = readFileSync(join(repoRoot, 'packages', 'personas', 'base', 'plays', 'wrap-up.md'), 'utf8')
-const wrapPlayBody = wrapPlayRaw.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '').trim()
-const wrapPlay: Play = {
-  id: 'wrap-up',
-  label: 'Wrap-up',
-  kind: 'headless',
-  outputValidator: { ref: 'validators/founder-closeout' },
-  writeScope: ['docs/**'],
-  body: wrapPlayBody,
-}
-const wrapPlayAssignment: PlayAssignment = { cli: 'cursor-agent', model: 'cheap-wrap' }
-
-type FounderCloseoutRole =
-  | 'title'
-  | 'atomComplete'
-  | 'runStatus'
-  | 'whatChanged'
-  | 'whatRemains'
-  | 'nextStep'
-  | 'decisionNeeded'
-  | 'commitState'
-  | 'teardownReadiness'
-  | 'judgment'
-
-const founderCloseoutRole = (labelText: string): FounderCloseoutRole | null => {
-  const normalized = labelText
-    .replace(/\*/g, '')
-    .replace(/:/g, '')
-    .trim()
-    .toLowerCase()
-  if (normalized === 'founder completion brief') return 'title'
-  if (normalized === 'atom complete') return 'atomComplete'
-  if (normalized === 'run status') return 'runStatus'
-  if (normalized === 'what changed') return 'whatChanged'
-  if (normalized === 'what remains') return 'whatRemains'
-  if (normalized === 'recommended next step') return 'nextStep'
-  if (normalized === 'founder decision needed') return 'decisionNeeded'
-  if (normalized === 'commit state') return 'commitState'
-  if (normalized === 'teardown readiness') return 'teardownReadiness'
-  if (normalized === 'judgment') return 'judgment'
-  return null
-}
-
-const founderCloseoutContract = (playBody: string): { labels: Record<FounderCloseoutRole, string>; orderedRoles: readonly FounderCloseoutRole[]; finalLine: string } => {
-  const fence = playBody.match(/```(?:[a-zA-Z0-9_-]+)?\n([\s\S]*?)```/)
-  if (!fence?.[1]) throw new Error('test wrap-up Play is missing a fenced founder closeout contract')
-  const sections = [...fence[1].matchAll(/^\*\*[^*\n]+?\*\*\s*$/gm)].map((match) => match[0].trim())
-  const roleEntries = sections.flatMap((section): readonly [FounderCloseoutRole, string][] => {
-    const role = founderCloseoutRole(section)
-    return role ? [[role, section]] : []
-  })
-  const labels = Object.fromEntries(roleEntries) as Partial<Record<FounderCloseoutRole, string>>
-  const finalLine = fence[1]
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .at(-1)
-  if (
-    !labels.title ||
-    !labels.atomComplete ||
-    !labels.runStatus ||
-    !labels.whatChanged ||
-    !labels.whatRemains ||
-    !labels.nextStep ||
-    !labels.decisionNeeded ||
-    !labels.commitState ||
-    !labels.teardownReadiness ||
-    !labels.judgment ||
-    !finalLine ||
-    finalLine.startsWith('**')
-  ) {
-    throw new Error('test wrap-up Play founder closeout contract is malformed')
-  }
-  return {
-    labels: labels as Record<FounderCloseoutRole, string>,
-    orderedRoles: roleEntries.map(([role]) => role),
-    finalLine,
-  }
-}
-
-const closeoutContract = founderCloseoutContract(wrapPlayBody)
-const label = (role: FounderCloseoutRole): string => closeoutContract.labels[role]
-const issue = (role: FounderCloseoutRole, text: string): string => `${label(role)} ${text}`
-const block = (role: FounderCloseoutRole, text: string): string => `${label(role)}\n${text}`
-const renderFounderCloseout = (input: {
-  summary?: string
-  atomComplete?: string
-  runStatus?: string
-  whatRemains?: string
-  nextStep?: string
-  decisionNeeded?: string
-  commitState?: string
-  teardownReadiness?: string
-  judgment?: string
-  finalLine?: string
-} = {}): string => {
-  const content: Record<FounderCloseoutRole, string> = {
-    title: '',
-    atomComplete: input.atomComplete ?? 'Yes',
-    runStatus: input.runStatus ?? 'continue',
-    whatChanged: input.summary ?? 'The requested work was completed.',
-    whatRemains: input.whatRemains ?? '- Continue the remaining priority atoms.',
-    nextStep: input.nextStep ?? 'Priority: `demo` — continue the remaining priority atoms',
-    decisionNeeded: input.decisionNeeded ?? 'None.',
-    commitState: input.commitState ?? 'Committed — 1 commit was recorded by the runner.',
-    teardownReadiness: input.teardownReadiness ?? 'Standing by; teardown requires an explicit founder request.',
-    judgment: input.judgment ?? 'Oscar stopped at a clean wrap-up point.',
-  }
-  const body = closeoutContract.orderedRoles
-    .map((role) => (role === 'title' ? label(role) : block(role, content[role])))
-    .join('\n\n')
-  return `${body}\n\n${input.finalLine ?? closeoutContract.finalLine}\n`
-}
-const validFounderCloseout = (summary = 'The requested work was completed.'): string => renderFounderCloseout({ summary })
-const ticketFounderCloseout = (runStatus: string, decisionNeeded = 'None.'): string => renderFounderCloseout({
-  runStatus,
-  decisionNeeded,
-  nextStep: 'Ticket: `0015` — continue the ticket fix run',
-})
 const settledCommitState = (commits = 1, flag = 'Nothing out of lane.'): string =>
   `Committed — ${commits} commit(s) on \`trunk\`; work is on the active branch by construction. ${flag}`
 const settledCloseout = (closeout: string, commits = 1, flag?: string): string =>
   replaceFounderCloseoutCommitState(closeout, validatedCloseoutContract(), settledCommitState(commits, flag))
-
-const validatedCloseoutContract = (): FounderCloseoutContract => {
-  const result = validatePlayOutput({ play: wrapPlay, output: validFounderCloseout(), cwd: workspaceRoot })
-  if (!result?.founderCloseoutContract) throw new Error('wrap-up Play did not produce a founder closeout contract')
-  expect(result.issues).toEqual([])
-  return result.founderCloseoutContract
-}
 
 const baseDeps = (over: Partial<RunnerDeps>): RunnerDeps => ({
   store: openRunStore(':memory:'),
@@ -671,156 +524,6 @@ async function runTestsPlaySources(root: string, opts: { readonly ref?: string; 
 // The new direct-mode DEFAULT (ADR-0023 §2) is proven against LIVE git in runner-direct.test.ts.
 const input = { workspace, priority, oscar, bob, sharedStandards: 'STANDARDS', engineHome: workspaceRoot, runsRoot: '/runs' }
 const stopFaultEvents = new Set(['directive-timeout', 'builder-failed', 'verify-failed', 'triage-dispatch', 'fault-triaged', 'triage-skipped'])
-
-describe('parseTriage', () => {
-  test('parses governed ticket creation metadata', () => {
-    expect(parseTriage(JSON.stringify({
-      disposition: 'cocoder-bug',
-      summary: 'recurring directive timeout',
-      escalation: 'ticket',
-      ticketId: '0042',
-      ticketTitle: 'Recurring directive timeout',
-      ticketType: 'bug',
-      ticketPriority: 'runner-reliability',
-      ticketBody: '## Context\n\nFile this through the runner.',
-    }))).toMatchObject({
-      disposition: 'cocoder-bug',
-      summary: 'recurring directive timeout',
-      escalation: 'ticket',
-      ticketId: '0042',
-      ticketTitle: 'Recurring directive timeout',
-      ticketType: 'bug',
-      ticketPriority: 'runner-reliability',
-      ticketBody: '## Context\n\nFile this through the runner.',
-    })
-  })
-})
-
-describe('founder closeout target-aware Run Status', () => {
-  test('contract parser derives priority and ticket Run Status vocabularies from the wrap-up Play', () => {
-    const contract = validatedCloseoutContract()
-
-    expect(contract.runStatusVocabulary.priority).toEqual(['continue', 'blocked', 'archive ready'])
-    expect(contract.runStatusVocabulary.ticket).toEqual(['needs another run', 'closed', 'needs closing', 'blocked'])
-  })
-
-  test('validator enforces ticket Run Status vocabulary and close-or-ask decision semantics', () => {
-    const ticketArchive = validatePlayOutput({ play: wrapPlay, output: ticketFounderCloseout('archive ready'), cwd: workspaceRoot, isTicket: true })
-    expect(ticketArchive?.issues).toContain(issue('runStatus', 'must be one of needs another run | closed | needs closing | blocked for a ticket-launched run'))
-
-    const ticketClosed = validatePlayOutput({ play: wrapPlay, output: ticketFounderCloseout('closed'), cwd: workspaceRoot, isTicket: true })
-    expect(ticketClosed?.issues).toEqual([])
-
-    const ticketNeedsClosing = validatePlayOutput({
-      play: wrapPlay,
-      output: ticketFounderCloseout('needs closing', 'Yes — close ticket `0015` after the founder confirms this fix is complete.'),
-      cwd: workspaceRoot,
-      isTicket: true,
-    })
-    expect(ticketNeedsClosing?.issues).toEqual([])
-
-    const ticketNeedsClosingWithoutDecision = validatePlayOutput({ play: wrapPlay, output: ticketFounderCloseout('needs closing'), cwd: workspaceRoot, isTicket: true })
-    expect(ticketNeedsClosingWithoutDecision?.issues).toContain(issue('runStatus', `needs closing requires a non-None ${label('decisionNeeded')}`))
-  })
-
-  test('validator rejects ticket-only Run Status values for priority-launched closeouts', () => {
-    const priorityClosed = validatePlayOutput({ play: wrapPlay, output: renderFounderCloseout({ runStatus: 'closed' }), cwd: workspaceRoot })
-
-    expect(priorityClosed?.issues).toContain(issue('runStatus', 'must be one of continue | blocked | archive ready for a priority-launched run'))
-  })
-
-  test('validator accepts target-prefixed Run Status lines by stripping the target label', () => {
-    const prefixed = validatePlayOutput({ play: wrapPlay, output: renderFounderCloseout({ runStatus: 'Priority-launched run: archive ready.' }), cwd: workspaceRoot })
-
-    expect(prefixed?.issues).toEqual([])
-
-    const sectionPrefixed = validatePlayOutput({
-      play: wrapPlay,
-      output: ticketFounderCloseout('Run Status: needs closing', 'Yes — close ticket `0015` after the founder confirms this fix is complete.'),
-      cwd: workspaceRoot,
-      isTicket: true,
-    })
-    expect(sectionPrefixed?.issues).toEqual([])
-  })
-
-  test('validator requires an explicit Commit State instead of the old runner-supplied placeholder', () => {
-    const placeholder = renderFounderCloseout({ commitState: 'Commit status is supplied by the runner landing outcome.' })
-    const invalid = validatePlayOutput({ play: wrapPlay, output: placeholder, cwd: workspaceRoot })
-
-    expect(invalid?.issues).toEqual(expect.arrayContaining([
-      issue('commitState', 'must start with Committed, Uncommitted, or Commit error'),
-      issue('commitState', 'must not defer commit status to another section'),
-    ]))
-
-    const valid = validatePlayOutput({ play: wrapPlay, output: renderFounderCloseout({ commitState: 'Uncommitted — no source changes were needed.' }), cwd: workspaceRoot })
-    expect(valid?.issues).toEqual([])
-  })
-
-  test('ticket Run Status derives terminal run status and close decision separately', () => {
-    const contract = validatedCloseoutContract()
-
-    const closed = ticketFounderCloseout('closed')
-    expect(deriveWrapupRunStatus(closed, contract, 'completed', 'ticket')).toBe('completed')
-    expect(deriveTicketCloseDecision(closed, contract, 'ticket')).toBe('close')
-
-    const needsClosing = ticketFounderCloseout('needs closing', 'Yes — close ticket `0015` after the founder confirms this fix is complete.')
-    expect(deriveWrapupRunStatus(needsClosing, contract, 'completed', 'ticket')).toBe('awaiting-founder')
-    expect(deriveTicketCloseDecision(needsClosing, contract, 'ticket')).toBe('ask')
-
-    const sectionPrefixedNeedsClosing = ticketFounderCloseout('Run Status: needs closing', 'Yes — close ticket `0015` after the founder confirms this fix is complete.')
-    expect(deriveWrapupRunStatus(sectionPrefixedNeedsClosing, contract, 'completed', 'ticket')).toBe('awaiting-founder')
-    expect(deriveTicketCloseDecision(sectionPrefixedNeedsClosing, contract, 'ticket')).toBe('ask')
-
-    const needsAnotherRun = ticketFounderCloseout('needs another run')
-    expect(deriveWrapupRunStatus(needsAnotherRun, contract, 'completed', 'ticket')).toBe('completed')
-    expect(deriveTicketCloseDecision(needsAnotherRun, contract, 'ticket')).toBe('none')
-    expect(deriveTicketCloseDecision(renderFounderCloseout({ runStatus: 'archive ready' }), contract, 'priority')).toBe('none')
-    expect(deriveWrapupRunStatus(renderFounderCloseout({ runStatus: 'archive ready' }), contract, 'completed', 'priority')).toBe('awaiting-archive-confirmation')
-  })
-
-  test('priority archive-ready derivation is gated by open handled tickets without overriding founder decisions', () => {
-    const contract = validatedCloseoutContract()
-    const archiveReady = renderFounderCloseout({ runStatus: 'archive ready' })
-
-    expect(deriveWrapupRunStatus(archiveReady, contract, 'completed', 'priority', 0)).toBe('awaiting-archive-confirmation')
-    expect(deriveWrapDisposition(archiveReady, contract, 'priority', 0)).toBe('archive-confirmation')
-    expect(deriveWrapupRunStatus(archiveReady, contract, 'completed', 'priority', 1)).toBe('awaiting-founder')
-    expect(deriveWrapDisposition(archiveReady, contract, 'priority', 1)).toBe('awaiting-founder')
-
-    const founderDecision = renderFounderCloseout({
-      runStatus: 'archive ready',
-      decisionNeeded: 'Choose whether to keep the priority open for the remaining external proof.',
-    })
-    expect(deriveWrapupRunStatus(founderDecision, contract, 'completed', 'priority', 0)).toBe('awaiting-founder')
-    expect(deriveWrapDisposition(founderDecision, contract, 'priority', 0)).toBe('awaiting-founder')
-  })
-
-  // WI-B1: the wrap-time out-of-lane review. Escalate (any founder decision) and ratify (a blanket blessing,
-  // no per-file line required) are both adjudicated; only TOTAL silence on a non-empty out-of-lane set is
-  // `unadjudicated`. Zero out-of-lane is `none` regardless of closeout content.
-  test('out-of-lane adjudication classifies none/ratified/escalated/unadjudicated (WI-B1)', () => {
-    const contract = validatedCloseoutContract()
-    const stray = ['cocoder/stray.md', 'packages/ui/orphan.ts']
-
-    // none: an empty out-of-lane set is never adjudicated, whatever the closeout says.
-    expect(deriveOutOfLaneAdjudication(renderFounderCloseout(), contract, [])).toBe('none')
-
-    // ratified: a blanket blessing in Judgment clears the whole set — no line-per-file required (trust-first).
-    const ratified = renderFounderCloseout({
-      judgment: 'These files landed outside their nominal lane but are correct: the audit naturally belongs there.',
-    })
-    expect(deriveOutOfLaneAdjudication(ratified, contract, stray)).toBe('ratified')
-
-    // escalated: any non-None Founder Decision Needed IS the escalation (the founder will see the flag).
-    const escalated = renderFounderCloseout({
-      decisionNeeded: 'Decide whether `packages/ui/orphan.ts` should keep living off its usual surface.',
-    })
-    expect(deriveOutOfLaneAdjudication(escalated, contract, stray)).toBe('escalated')
-
-    // unadjudicated: out-of-lane commits the closeout never addresses — neither blessed nor escalated.
-    expect(deriveOutOfLaneAdjudication(renderFounderCloseout(), contract, stray)).toBe('unadjudicated')
-  })
-})
 
 describe('runRun (multi-atom loop)', () => {
   test('missing Objective launches with required questions for priority repair', async () => {
