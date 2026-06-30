@@ -13,13 +13,13 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
-| [0087](./open/0087-oscar-tasking-deb.md) | Oscar tasking Deb | bug | none | founder-session |
 | [0091](./open/0091-onboard-existing-capture-test-convention-profile.md) | Onboard-existing recon: capture a per-root test convention profile to back the test-architecture detect-and-honor posture | task | none | Open |
 
 ## Recently Closed
 
 | ID | Title | Type | Closed | Resolution |
 |---|---|---|---|---|
+| [0087](./closed/0087-oscar-tasking-deb.md) | Oscar tasking Deb | bug | 2026-06-30 | Fixed Oscar-Deb repair dispatch so a running Deb surface for the source run receives the request instead of spawning a separate headless Deb; pinned active and hidden-surface routing in daemon tests. |
 | [0089](./closed/0089-test-architecture-standard-adaptability-on-repo-takeover.md) | Test-architecture standard — adaptability when taking over a repo with existing conventions | task | 2026-06-30 | Standard's four rules generalized to language-neutral phrasing (TS/JS shown as examples) closing Gap 1, and the Existing Repos clause rewritten into a detect-and-honor / default-for-new-work / convergence-target / propose-opt-in-split-when-harmful posture closing Gap 2. The per-root convention-profile recon-flow automation is spun out as a separate code follow-up ticket. |
 | [0088](./closed/0088-founder-decision-surfacing-drops-question-body.md) | FOUNDER DECISION NEEDED surfacing drops the question body | bug | 2026-06-30 | Fixed across the full owner chain: the stored founder-decision-requested question now reaches every founder-facing projection. Core adds pendingFounderQuestion (browser-safe @cocoder/core/founder-question) threaded into terminalWaitCondition for held/awaiting-founder; daemon carries it through the pure awareness snapshot and renders it in oz-chat status + oz-host facts digest with the founder-answer command; UI adapter renders the founder-decision-requested transcript line, adds it to DECISION_EVENTS, and prefers the still-pending question as lastEvent over later run-held/run-end/commit events. Pinned by tests in core (status + founder-stop-resume), daemon (oz-awareness, oz-chat), and ui (adapter). |
 | [0090](./closed/0090-oz-resume-spawns-duplicate-orchestrator-under-same-run-number.md) | oz resume spawns a duplicate orchestrator under the same run number; parked run can't be continued in the active session | bug | 2026-06-30 | Fixed: held-run resume now refuses generic oz resume when live run panes are tracked, founder-answer resumes through the existing panes instead of spawning a duplicate orchestrator, and the CLI/docs/prompt surface the safe cocoder oz founder-answer path. |
