@@ -13,6 +13,7 @@ Slim flat index of all tickets. Detail lives in `open/[NNNN-slug.md]` and `close
 
 | ID | Title | Type | Priority | Status |
 |---|---|---|---|---|
+| [0087](./open/0087-oscar-tasking-deb.md) | Oscar tasking Deb | bug | none | founder-session |
 
 ## Recently Closed
 
