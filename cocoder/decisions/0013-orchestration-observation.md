@@ -2,6 +2,7 @@
 
 **Status:** Accepted (founder + Claude, 2026-05-29)
 **Seam:** run-orchestration & observation (the run lifecycle)
+**Amended by:** [0046](./0046-run-tests-required-checkpoint.md) — for a code-touching atom, the per-atom verify gate now requires a GREEN run-tests result as a required input before commit; the deterministic 'no pass, no commit' boundary and Oscar's diff judgment are otherwise unchanged.
 **Refines:** [0004](./0004-process-architecture.md) (runner composition: one-shot → orchestrated loop) · **Incorporates:** the per-atom verify-gate (formerly ADR-0011, merged here 2026-05-30) · **Realizes:** [0002](./0002-substrate-oz-and-cmux.md) C1 (durable run-state → resume) + [0003](./0003-data-model-hybrid.md) (run/session/work-item lifecycle supports continuation — fixes **F8**)
 **Build:** the `oscar-orchestrates-bob` priority (tier 1, now). Deb = tier 2; Oz tier = `full-oz-dashboard`.
 

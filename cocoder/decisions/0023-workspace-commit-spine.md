@@ -12,6 +12,7 @@ the run-branch strand machinery it built is dissolved — see Conflict audit).
 **Builds on:** [0003](./0003-data-model-hybrid.md) (run/commit linkage = the receipt),
 [0004](./0004-process-architecture.md) (single-writer-per-workspace — what makes in-place commits safe),
 [0013](./0013-orchestration-observation.md) (the verify gate — retained for risky code).
+**Amended by:** [0046](./0046-run-tests-required-checkpoint.md) — §3's single verify gate now takes a GREEN run-tests result as a REQUIRED INPUT for code-touching atoms; this is not a second gate or commit lane, and run-tests feeds the one self-clearing gate before the spine commits.
 **Earned from:** F2, F14, F17, F18, F19, F20 (failure catalog); runs 67/68/70/73/74/75/78/79 (six-plus
 strand/reaffirmation incidents); a code-cited audit (2026-06-14) that found three divergent commit
 mechanisms, 23 orphaned run worktrees, and `main` frozen 351 commits behind the de-facto trunk.
@@ -52,6 +53,11 @@ scoped fixes, and verified code); isolated worktrees were briefly retained as an
 genuinely risky / large / throwaway / parallel work only.
 
 ## Decision
+
+> **Amendment pointer (ADR-0046, founder-approved 2026-06-29) — §3's "Verification matched to risk" keeps
+> the ONE self-clearing verify gate, but code-touching atoms now require a GREEN `run-tests` result as a
+> required input before commit.** This is not a second independent commit gate, not a parallel lane, and not
+> a forked test runner; `run-tests` feeds the single existing gate before the spine commits.
 
 > **Amendment 2 (founder directive, 2026-06-15) — the OPT-IN ISOLATION LANE (§4) is REMOVED; there is now
 > exactly ONE mode.** ADR-0023 dissolved the strand class on the *default* path but kept §4's run-worktree +
