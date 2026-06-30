@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ClaudeAdapter, type Exec } from '@cocoder/adapters'
 import { atomSentinel, composeTicketMarkdown, loadAssignments, loadPriority, makeGit, openRunStore, readTickets, StopRequestedError, workspaceTemplateDir, writePortableRun, type Adapter, type Git, type HeadlessRunInput, type RunnerIO, type RunStore, type SessionHost, type SessionRef } from '@cocoder/core'
 import { createOzServer, OZ_CSRF_HEADER, type OzServer } from '../src/index.js'
-import { migrateLegacyRunDirsOnce, runRetentionGcOnce, ticketPendingCloseRun } from '../src/launcher.js'
+import { migrateLegacyRunDirsOnce, resumeRun, runRetentionGcOnce, ticketPendingCloseRun } from '../src/launcher.js'
 import type { OzContext } from '../src/context.js'
 import { listQueuedAuthoring } from '../src/authoring-queue.js'
 import { findOrphanedPriorities } from '../src/priority-order.js'
@@ -1720,6 +1720,63 @@ describe('Oz mutations + lifecycle', () => {
     const audit = await readFile(join(home, 'local', 'oz-audit.log'), 'utf8')
     expect(audit).toContain('"action":"resume"')
     expect(audit).toContain(`"runId":"${held.id}"`)
+  })
+
+  test('resumeRun refuses manual resume when the held run still has a live tracked agent session', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const held = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(held.id, 'held')
+    await writeResumeState(home, held.id, { park: 'pre-dispatch', atomNumber: 0 })
+    const spawnRecords: SpawnRecord[] = []
+    const baseHost = fakeHost()
+    await startServer(
+      fakeGit(),
+      async () => ({ exitCode: 0, output: validFounderCloseout() }),
+      fakeIO(),
+      undefined,
+      undefined,
+      {
+        ...baseHost,
+        async spawn(opts) {
+          const ref = await baseHost.spawn(opts)
+          spawnRecords.push({ opts, ref })
+          return ref
+        },
+      },
+    )
+    store.createSession({ runId: held.id, persona: 'oscar', sessionRef: 'surface:live-oscar' })
+    oz!.ctx.liveRefs.add('surface:live-oscar')
+
+    const r = await resumeRun(oz!.ctx, held.id)
+
+    expect(r.status).toBe(409)
+    expect(r.body).toMatchObject({
+      code: 'run-has-live-sessions',
+      runId: held.id,
+      liveSessions: [{ persona: 'oscar', sessionRef: 'surface:live-oscar' }],
+    })
+    expect(r.body.error).toContain('already has live tracked agent panes')
+    expect(r.body.error).toContain('second orchestrator under the same run id')
+    expect(r.body.error).toContain('founder-answer channel')
+    expect(r.body.error).toContain('tear the run down')
+    expect(spawnRecords).toEqual([])
+    expect(store.listEvents(held.id).map((event) => event.type)).not.toContain('launch-run-resume')
+    expect(store.getRun(held.id)?.status).toBe('held')
+  })
+
+  test('resumeRun founder-answer path is not blocked by the live-session manual-resume guard', async () => {
+    store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
+    const held = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(held.id, 'held')
+    await writeResumeState(home, held.id, askFounderResumeState(home, held.id))
+    await startServer()
+    store.createSession({ runId: held.id, persona: 'oscar', sessionRef: 'surface:live-oscar' })
+    oz!.ctx.liveRefs.add('surface:live-oscar')
+
+    const r = await resumeRun(oz!.ctx, held.id, { founderAnswer: 'Keep it enabled by default.' })
+
+    expect(r).toEqual({ status: 202, body: { resuming: true, runId: held.id } })
+    expect(r.body.code).not.toBe('run-has-live-sessions')
   })
 
   test('POST /runs/:id/founder-answer records the answer and resumes with it', async () => {
