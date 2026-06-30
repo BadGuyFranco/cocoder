@@ -925,7 +925,7 @@ function stringArray(input: unknown): string[] {
 }
 
 function runSummary(run: OzAwarenessRun): string {
-  return `${runDisplayName(run)} is ${run.status} on ${run.priorityId}.`
+  return [`${runDisplayName(run)} is ${run.status} on ${run.priorityId}.`, founderDecisionBlock(run)].filter((part): part is string => part !== null).join('\n\n')
 }
 
 function runsSummary(runs: readonly OzAwarenessRun[], tickets: OzAwarenessSnapshot['openTickets'] = [], concurrency?: OzAwarenessSnapshot['concurrency']): string {
@@ -937,9 +937,17 @@ function runsSummary(runs: readonly OzAwarenessRun[], tickets: OzAwarenessSnapsh
 
 function runListSummary(runs: readonly OzAwarenessRun[]): string {
   if (runs.length === 0) return 'No runs found.'
-  const shown = runs.slice(0, 5).map((run) => `${runDisplayName(run)} ${run.status} ${run.priorityId}`)
+  const listedRuns = runs.slice(0, 5)
+  const shown = listedRuns.map((run) => `${runDisplayName(run)} ${run.status} ${run.priorityId}`)
   const more = runs.length > shown.length ? `; +${runs.length - shown.length} more` : ''
-  return `${runs.length} run${runs.length === 1 ? '' : 's'}: ${shown.join('; ')}${more}.`
+  const decisions = listedRuns.map(founderDecisionBlock).filter((block): block is string => block !== null)
+  return [`${runs.length} run${runs.length === 1 ? '' : 's'}: ${shown.join('; ')}${more}.`, ...decisions].join('\n\n')
+}
+
+function founderDecisionBlock(run: OzAwarenessRun): string | null {
+  const question = run.pendingFounderQuestion?.trim()
+  if (!question) return null
+  return `FOUNDER DECISION NEEDED for ${runDisplayName(run)}:\n${question}\n\nReply with: founder-answer ${run.id} <answer>`
 }
 
 function openTicketsSummary(tickets: OzAwarenessSnapshot['openTickets']): string {

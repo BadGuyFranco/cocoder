@@ -625,6 +625,32 @@ describe('handleOzMessage', () => {
     store.close()
   })
 
+  test('status includes a pending founder decision question and answer command', async () => {
+    const store = openRunStore(':memory:')
+    store.upsertWorkspace({ id: 'cocoder', path: '/tmp/cocoder', name: 'CoCoder' })
+    const run = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(run.id, 'held')
+    const question = [
+      'FOUNDER DECISION NEEDED: choose the implementation path.',
+      '',
+      'A) Keep the daemon change narrow.',
+      'B) Expand into UI now.',
+    ].join('\n')
+    store.recordEvent({ runId: run.id, type: 'founder-decision-requested', data: { question } })
+    store.recordEvent({ runId: run.id, type: 'run-held', data: { park: 'pre-dispatch', atom: 0 } })
+    store.recordEvent({ runId: run.id, type: 'run-end', data: { status: 'held' } })
+
+    const result = await handleOzMessage(testCtx(store), { text: `status ${run.id}`, workspaceId: 'cocoder' })
+
+    expect(result).toMatchObject({ status: 200, body: { ok: true, command: 'status' } })
+    expect(result.body.reply).toContain(`${run.id} is held on demo.`)
+    expect(result.body.reply).toContain('FOUNDER DECISION NEEDED')
+    expect(result.body.reply).toContain(question)
+    expect(result.body.reply).toContain(`founder-answer ${run.id} <answer>`)
+    expect(result.body.action?.run).toMatchObject({ id: run.id, pendingFounderQuestion: question })
+    store.close()
+  })
+
   test('status returns the per-root run label when portable display number exists', async () => {
     const home = await mkdtemp(join(tmpdir(), 'cocoder-oz-status-display-'))
     await mkdir(join(home, 'local'), { recursive: true })
@@ -681,6 +707,31 @@ describe('handleOzMessage', () => {
       ]),
     })
     expect(result.body.action?.workspaceId).toBeUndefined()
+    store.close()
+  })
+
+  test('run list status includes founder decision blocks only for pending runs', async () => {
+    const store = openRunStore(':memory:')
+    store.upsertWorkspace({ id: 'cocoder', path: '/tmp/cocoder', name: 'CoCoder' })
+    const held = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
+    store.setRunStatus(held.id, 'awaiting-founder')
+    const running = store.createRun({ workspaceId: 'cocoder', priorityId: 'ordinary' })
+    const question = [
+      'FOUNDER DECISION NEEDED: pick a continuation.',
+      '',
+      'A) Resume with the compact renderer.',
+      'B) Stop and open a follow-up.',
+    ].join('\n')
+    store.recordEvent({ runId: held.id, type: 'founder-decision-requested', data: { question } })
+    store.recordEvent({ runId: held.id, type: 'run-end', data: { status: 'awaiting-founder' } })
+
+    const result = await handleOzMessage(testCtx(store), { text: 'status', workspaceId: 'cocoder' })
+
+    expect(result).toMatchObject({ status: 200, body: { ok: true, command: 'status' } })
+    expect(result.body.reply).toContain(question)
+    expect(result.body.reply).toContain(`founder-answer ${held.id} <answer>`)
+    expect(result.body.reply).toContain(`${running.id} running ordinary`)
+    expect(result.body.reply).not.toContain(`founder-answer ${running.id} <answer>`)
     store.close()
   })
 

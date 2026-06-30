@@ -22,10 +22,11 @@ const tickets: TicketSummary[] = [
 describe('projectOzAwareness', () => {
   test('projects priorities, recent runs, active runs, and open tickets from durable read surfaces', () => {
     const snapshot = projectOzAwareness({ priorities, runs, tickets, maxConcurrentRuns: 3 })
+    const projectedRuns = runs.map((run) => ({ ...run, displayNumber: null, workspaceName: null, pendingFounderQuestion: null }))
 
     expect(snapshot.priorities).toEqual(priorities)
-    expect(snapshot.recentRuns).toEqual(runs.map((run) => ({ ...run, displayNumber: null, workspaceName: null })))
-    expect(snapshot.activeRuns).toEqual([{ ...runs[1], displayNumber: null, workspaceName: null }, { ...runs[2], displayNumber: null, workspaceName: null }, { ...runs[3], displayNumber: null, workspaceName: null }])
+    expect(snapshot.recentRuns).toEqual(projectedRuns)
+    expect(snapshot.activeRuns).toEqual([projectedRuns[1], projectedRuns[2], projectedRuns[3]])
     expect(snapshot.concurrency).toEqual({ activeRuns: 3, ceiling: 3 })
     expect(snapshot.openTickets).toEqual([tickets[0]])
   })
@@ -39,5 +40,28 @@ describe('projectOzAwareness', () => {
     })
 
     expect(runDisplayName(snapshot.recentRuns[0]!)).toBe('CoCoder run 98')
+  })
+
+  test('passes through pending founder questions when input runs carry them', () => {
+    const question = [
+      'FOUNDER DECISION NEEDED: choose the daemon surface.',
+      '',
+      'A) Show the question in Oz status.',
+      'B) Keep status generic.',
+    ].join('\n')
+    const snapshot = projectOzAwareness({
+      priorities,
+      runs: [
+        { ...runs[0], pendingFounderQuestion: undefined },
+        { ...runs[3], pendingFounderQuestion: question },
+        { ...runs[3], id: 'run_awaiting', status: 'awaiting-founder', pendingFounderQuestion: question },
+      ],
+      tickets: [],
+      maxConcurrentRuns: 5,
+    })
+
+    expect(snapshot.recentRuns[0]?.pendingFounderQuestion).toBeNull()
+    expect(snapshot.recentRuns[1]?.pendingFounderQuestion).toBe(question)
+    expect(snapshot.recentRuns[2]?.pendingFounderQuestion).toBe(question)
   })
 })

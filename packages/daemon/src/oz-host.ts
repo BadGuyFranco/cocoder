@@ -195,7 +195,7 @@ async function runTurn(ctx: OzContext, target: OzTarget, session: OzSession, inp
 async function buildPrompt(ctx: OzContext, target: OzTarget, transcript: readonly TranscriptEntry[], input: TurnInput): Promise<string> {
   const settings = await readSettings(ctx.cocoderHome)
   const priorities = await readPriorities(prioritiesDir(target.workspace.path), PRIORITIES_CAP)
-  const runs: RunWithDisplayNumber[] = await Promise.all(ctx.store.listRuns({ workspaceId: target.workspace.id }).map((run) => withPortableDisplayNumberForPath(run, target.workspace.path, target.workspace.name)))
+  const runs: RunWithDisplayNumber[] = await Promise.all(ctx.store.listRuns({ workspaceId: target.workspace.id }).map((run) => withPortableDisplayNumberForPath(run, target.workspace.path, target.workspace.name, ctx.store)))
   const awareness = projectOzAwareness({
     priorities,
     runs,
@@ -426,11 +426,17 @@ function factsDigest(awareness: OzAwarenessSnapshot): string {
 
 function formatRun(run: OzAwarenessRun): string {
   const endedAt = run.endedAt === null ? 'null' : new Date(run.endedAt).toISOString()
-  return `- ${runDisplayName(run)}: ${run.status} priority=${run.priorityId} createdAt=${new Date(run.createdAt).toISOString()} endedAt=${endedAt}`
+  const question = run.pendingFounderQuestion?.trim()
+  const founderDecision = question ? `\n  FOUNDER DECISION NEEDED:\n${indent(question, '  ')}\n  Reply with: founder-answer ${run.id} <answer>` : ''
+  return `- ${runDisplayName(run)}: ${run.status} priority=${run.priorityId} createdAt=${new Date(run.createdAt).toISOString()} endedAt=${endedAt}${founderDecision}`
 }
 
 function formatTicket(ticket: OzAwarenessSnapshot['openTickets'][number]): string {
   return `- ${ticket.id}: ${ticket.title} type=${ticket.type ?? 'null'} priority=${ticket.priority ?? 'null'} owner=${ticket.owner ?? 'null'} created=${ticket.created ?? 'null'}`
+}
+
+function indent(text: string, prefix: string): string {
+  return text.split(/\r?\n/).map((line) => `${prefix}${line}`).join('\n')
 }
 
 function formatTranscript(transcript: readonly TranscriptEntry[]): string {
