@@ -6,13 +6,17 @@ copying fixtures or mixing unrelated behavior.
 
 ## Rules
 
-1. One cohesive behavior area per `*.test.ts` file. A file tests one area; unrelated concerns get
-   their own file.
-2. Shared fixtures and helpers live in exactly one co-located `*-support.ts` module per subsystem.
-   That support module is the single owner; never copy a fixture or helper across test files.
-3. Each test file wraps its tests in a descriptive `describe` label that names the behavior area.
-4. A soft size budget, about 600 lines or 25 tests, triggers a split into themed files. This is a
-   prompt to break up, not a hard cap; cohesive files may exceed it with reason.
+1. One cohesive behavior area per test file, using the repo's own test-file convention
+   (`*.test.ts` in TypeScript/JavaScript). A file tests one area; unrelated concerns get their
+   own file.
+2. Shared fixtures and helpers live in exactly one co-located shared-fixtures module in the repo's
+   own language per subsystem (`*-support.ts` in TypeScript/JavaScript). That support module is the
+   single owner; never copy a fixture or helper across test files.
+3. Each test file groups its tests under a descriptive grouping or label that names the behavior
+   area (`describe(...)` in JavaScript).
+4. A soft size budget, about 600 lines or 25 tests by default and expressed in the repo's own
+   terms, triggers a split into themed files. This is a prompt to break up, not a hard cap;
+   cohesive files may exceed it with reason.
 
 ## Test Location
 
@@ -27,10 +31,15 @@ Tests travel with the root because they travel with the code.
 
 ## Existing Repos
 
-When CoCoder takes over an existing repo that already has its own test conventions, follow that
-repo's conventions. Do not force CoCoder's layout onto it. This standard is the default for new test
-work and a convergence target over time, never a forced top-down migration of an existing layout.
-Deeper detection and honoring of a taken-over repo's conventions is tracked in ticket 0089.
+When CoCoder takes over an existing repo, detect and honor that repo's established test framework,
+directory layout, and naming before adding or moving tests. Match surrounding style, preserve
+unrelated work, and touch only what the task requires; do not rewrite a working layout into
+CoCoder's structure.
+
+This standard is the default for new test work and a convergence target over time, never a forced
+top-down migration of an existing layout. When an existing layout is actively harmful, such as a
+multi-thousand-line test monolith, CoCoder proposes an opt-in split with scope and proof instead of
+imposing a takeover rewrite.
 
 ## Dogfooding
 
