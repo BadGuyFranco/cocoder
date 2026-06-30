@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-30 — **review-test-architecture-and-componentize: runner tests split + unit-test standard — archive ready (run_153/run_294)**
+
+**Persona:** Oscar (orchestrator) + Bob (builder) | **Priority:** [review-test-architecture-and-componentize](./priorities/review-test-architecture-and-componentize.md) | **Run:** run_294 (display 153)
+**Outcomes:**
+- **Phase 1 (eight atoms, verified):** `packages/core/tests/runner.test.ts` (5,638-line monolith) split into 18 themed `runner-*.test.ts` files plus one `runner.test-support.ts` fixture owner; residual `runner.test.ts` is 146 lines. Behavior-preserving — core suite green at 741/741, no assertion weakened, skipped, or removed.
+- **Phase 2 (founder-approved):** `cocoder/standards/test-architecture.md` records the default unit-test architecture (four layout rules, test-location rule, adapt-first for taken-over repos, dogfooding cite). Founder chose CoCoder overlay over base shared standard.
+- **Out-of-lane ratified:** priority stub touch and standards file landed outside nominal builder/wrap lanes but match founder intent (overlay placement, objective record).
+- **Disposition: `archive-confirmation`.** Both phases complete and verified; ticket 0089 remains open by design (future adaptability work), not a blocker; founder archive confirmation is the remaining gate.
+**Next:** Reply `archive` or `archive run_294` in Oz chat; then launch `ad-hoc-session-architecture` for the ad-hoc-run ADR.
+
 ## 2026-06-29 — **run-tests-required-checkpoint: structural test gate wired — archive ready (run_152/run_293)**
 
 **Persona:** Oscar (orchestrator) + Bob (builder) | **Priority:** [run-tests-required-checkpoint](./priorities/run-tests-required-checkpoint.md) | **Run:** run_293 (display 152)
