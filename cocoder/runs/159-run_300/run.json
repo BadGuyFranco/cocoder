@@ -1,0 +1,18 @@
+{
+  "run": {
+    "id": "run_300",
+    "displayNumber": 159
+  },
+  "workspace": {
+    "id": "cocoder"
+  },
+  "target": {
+    "kind": "priority"
+  },
+  "priorityId": "review-test-architecture-and-componentize",
+  "playbookId": null,
+  "ticketId": null,
+  "status": "running",
+  "createdAt": 1782832524764,
+  "endedAt": null
+}
