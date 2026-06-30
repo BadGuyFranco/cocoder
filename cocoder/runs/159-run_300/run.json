@@ -12,7 +12,7 @@
   "priorityId": "review-test-architecture-and-componentize",
   "playbookId": null,
   "ticketId": null,
-  "status": "running",
+  "status": "awaiting-archive-confirmation",
   "createdAt": 1782832524764,
-  "endedAt": null
+  "endedAt": 1782834179417
 }
