@@ -3,6 +3,8 @@ id: run-tests-required-checkpoint
 title: "Make run-tests a required checkpoint for code atoms (test durability across repos)"
 ---
 
+> **Archived 2026-06-29 (founder) — archive confirmed.** Founder confirmed archive from CLI.
+
 > **Approved to build (run_151, 2026-06-29) — founder approved Objective + ADR framing; relaunch drafts the ADR first.**
 > Promoted to active queue 2026-06-29 (founder). Named follow-up from `surface-reduction` (archived 2026-06-21). Captures the **Q1 durability** question
 > raised during the Talia-fold session: today test-running is *discretionary* (Oscar attaches a scripted
