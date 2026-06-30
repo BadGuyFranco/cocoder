@@ -52,6 +52,17 @@ equipped to make, and do not ship work a human will "catch later" - no one will.
   rewriting an INDEX, editing a Playbook or priority doc — run the affected suite before you assert your
   own wrap edits are safe; do not exempt your own edits from the evidence bar.
 
+## Required Test Checkpoint For Code Changes
+
+Per the required-test-checkpoint decision, a change that touches product or machinery code must carry a
+**green** result from the repo's test Play - the deterministic test command - as a required input to the
+single existing verify gate before that change can pass and commit. Testing is structural, not
+discretionary: an agent cannot skip it by choice, and this is not a second commit gate, parallel lane, or
+separate checkpoint contract. If no runnable test surface is discoverable, the checkpoint degrades to
+advisory + flag: the work may proceed, but the closeout must say no runnable test surface was found, and
+the absence of tests must never hard-block legitimate setup or docs work. This binds AGENTS and
+runner-managed work; it never blocks the founder's own direct edits or recovery work.
+
 ## Communication And Judgment
 
 - **"Thoughts?" means think.** Stop, research, and answer. Do not edit files or launch work unless the
