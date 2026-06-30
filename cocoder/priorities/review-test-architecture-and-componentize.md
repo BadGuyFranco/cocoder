@@ -2,30 +2,55 @@
 id: review-test-architecture-and-componentize
 title: Review test architecture and componentize
 ---
-packages/core/tests/runner.test.ts is over 3,5000 lines of code
 
-Your objective is to review the tests.ts to understand why - and then:
-Phase 1: break it into smaller, more logical chunks
-Phase 2: research how we have architected tests like this and decide a better architecture for unit tests for CoCoder and the repos it manages going forward
+Original ask: `packages/core/tests/runner.test.ts` was a multi-thousand-line monolith. Phase 1: break
+it into smaller, logical chunks. Phase 2: decide a better unit-test architecture for CoCoder and the
+repos it manages going forward.
 
 ## Objective
 
-Split `packages/core/tests/runner.test.ts` (5,638 lines, 151 tests across `parseTriage`, the
-founder-closeout suite, and one ~4,800-line `runRun` block) into smaller, cohesive test modules with
-**zero change to test behavior**, then converge on a documented, founder-approved unit-test architecture
-for CoCoder and its managed repos.
+Split the `runner.test.ts` monolith into cohesive test modules with **zero change to test behavior**,
+converge on a documented founder-approved unit-test architecture standard, and **harden that standard
+by alignment** so the tree exemplifies it — without building brittle enforcement machinery.
 
-Verified by:
+## Current state (as of run_299, 2026-06-30)
 
-- **Phase 1 (delegatable build):** after the split, the repo test command (`pnpm --filter @cocoder/core
-  test`, i.e. `vitest run`) is green with the **same 151 tests passing**; shared fixtures/helpers live in
-  exactly one support module that every split file imports (one owner); each new `*.test.ts` groups one
-  cohesive behavior area; `runner.test.ts` no longer holds the monolith; **no test assertion is weakened,
-  skipped, or removed.**
-- **Phase 2 (founder decision Oscar surfaces, not a builder call):** a single decision artifact (an ADR
-  under `cocoder/decisions/` or a doc under `docs/`) records the chosen unit-test architecture standard
-  going forward, with the founder's explicit approval.
+- **Phase 1 — DONE & verified.** `runner.test.ts` is now 142 lines / 2 tests; the monolith is fanned
+  out across cohesive per-behavior files sharing one fixture owner (`runner.test-support.ts`, imported
+  by 17 files). Full core suite green: 96 files / 747 tests.
+- **Phase 2 — DONE & founder-approved.** The standard is recorded in
+  [ADR-0047](../decisions/0047-unit-test-architecture-standard.md), which ratifies
+  [`cocoder/standards/test-architecture.md`](../standards/test-architecture.md) as the single
+  operational owner (one behavior area per file; one `*-support.ts` fixture owner; soft ~600-line/25-test
+  split budget; tests next to the code, never under `cocoder/`; convergence-target for managed repos).
 
-_Oscar-drafted from the priority text and the file's actual structure, pending founder confirmation. The
-Phase 2 "better architecture going forward" choice is a strategic, hard-to-reverse standard and remains a
-founder-owned decision; Oscar will research and recommend, the founder approves._
+## Phase 3 — Hardening (THIS is the fresh-run scope)
+
+Founder decision (run_299): **harden by alignment, not automation.** Do **not** build a heuristic
+enforcer (line-count gate, duplicate-fixture detector, CI lint rule) — soft rules turned into brittle
+thresholds are the over-engineering that has bitten this project. Two judgment-light atoms:
+
+**Atom A — bring the tree into agreement with the standard (behavior-preserving).**
+Four core test files currently exceed the ~600-line soft budget:
+`runner-deb-triage.test.ts` (1091), `runner-founder-stop-resume.test.ts` (988), `tickets.test.ts`
+(855), `runner-wrapup-play.test.ts` (767). For each: either split into cohesive themed files that share
+the existing `*-support.ts` fixture owner (no new fixture copies), **or**, where the file is genuinely
+one cohesive behavior and splitting would fragment it, leave it and record an explicit
+accepted-with-reason exception in `cocoder/standards/test-architecture.md`. Acceptance: `pnpm --filter
+@cocoder/core test` stays green with the **same total test count**; no assertion weakened/skipped/removed;
+no fixture duplicated. Verify per file/atom on the real diff.
+
+**Atom B — one binary structural guard (the ONLY automation).**
+Add a single small test asserting no `*.test.ts` (or `*.test.*`) file lives under any `cocoder/**`
+directory — the one rule that is objective and threshold-free, so it can't rot or false-positive.
+Explicitly **not** a size or duplicate-fixture enforcer. Lives in the existing vitest suite; no new
+runner wiring. Acceptance: the guard passes on the current tree and the suite stays green.
+
+**Explicitly out of scope / deferred:**
+- Heuristic size or duplicate-fixture enforcement — refused by founder decision (over-engineering risk).
+  The soft size budget stays a review-time prompt under the existing verify-gate elegance checkpoint.
+- Propagating the standard into base governance (`packages/personas/base/standards/**`) so managed
+  repos inherit it — a separate base-governance change routed through its own verified run, not this one.
+
+After Atom A and Atom B verify green, the priority is archive-ready: the standard is decided, recorded,
+and demonstrated by the tree, with one zero-maintenance guard and no brittle enforcement machinery.
