@@ -2,7 +2,7 @@
 id: 0090
 title: oz resume spawns a duplicate orchestrator under the same run number; parked run can't be continued in the active session
 type: bug
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-30
@@ -59,3 +59,9 @@ verify). The duplicate's authored file `cocoder/standards/test-architecture.md` 
 ## Origin
 
 run_294, caused by Oscar running `cocoder oz resume run_294` after a founder-decision park.
+
+## Resolution
+
+Closed by reconciliation queued-authoring on 2026-06-30.
+
+Fixed: held-run resume now refuses generic oz resume when live run panes are tracked, founder-answer resumes through the existing panes instead of spawning a duplicate orchestrator, and the CLI/docs/prompt surface the safe cocoder oz founder-answer path.
