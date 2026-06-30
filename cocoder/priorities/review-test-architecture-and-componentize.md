@@ -13,18 +13,22 @@ Split the `runner.test.ts` monolith into cohesive test modules with **zero chang
 converge on a documented founder-approved unit-test architecture standard, and **harden that standard
 by alignment** so the tree exemplifies it — without building brittle enforcement machinery.
 
-## Current state (as of run_299, 2026-06-30)
+## Current state (as of run_300, 2026-06-30)
 
 - **Phase 1 — DONE & verified.** `runner.test.ts` is now 142 lines / 2 tests; the monolith is fanned
   out across cohesive per-behavior files sharing one fixture owner (`runner.test-support.ts`, imported
-  by 17 files). Full core suite green: 96 files / 747 tests.
+  by 17 files).
 - **Phase 2 — DONE & founder-approved.** The standard is recorded in
   [ADR-0047](../decisions/0047-unit-test-architecture-standard.md), which ratifies
   [`cocoder/standards/test-architecture.md`](../standards/test-architecture.md) as the single
   operational owner (one behavior area per file; one `*-support.ts` fixture owner; soft ~600-line/25-test
   split budget; tests next to the code, never under `cocoder/`; convergence-target for managed repos).
+- **Phase 3 — DONE & verified (run_300).** Four remaining >600-line core test files split into themed
+  modules (zero new fixture owners, test-count parity preserved); one binary guard
+  (`packages/core/tests/test-architecture-guard.test.ts`) blocks live tests under `cocoder/`. Core suite
+  green at 748/748.
 
-## Phase 3 — Hardening (THIS is the fresh-run scope)
+## Phase 3 — Hardening (completed run_300)
 
 Founder decision (run_299): **harden by alignment, not automation.** Do **not** build a heuristic
 enforcer (line-count gate, duplicate-fixture detector, CI lint rule) — soft rules turned into brittle
@@ -54,3 +58,9 @@ runner wiring. Acceptance: the guard passes on the current tree and the suite st
 
 After Atom A and Atom B verify green, the priority is archive-ready: the standard is decided, recorded,
 and demonstrated by the tree, with one zero-maintenance guard and no brittle enforcement machinery.
+
+## Disposition — `archive-confirmation` (run_300/run_159, 2026-06-30)
+
+All three phases verified green. Founder archive confirmation is the remaining gate — reply `archive` or
+`archive run_300` in Oz chat (or `pnpm --dir <install-root> exec cocoder oz archive-priority
+review-test-architecture-and-componentize` as CLI fallback).
