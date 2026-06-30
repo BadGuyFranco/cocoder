@@ -183,6 +183,46 @@ describe('runRun (multi-atom loop) — founder stop resume', () => {
     expect(store.listEvents(held.id).filter((event) => event.type === 'spawn')).toEqual([])
   })
 
+  test('founder-halt resume reattaches a live stored Oscar pane without a founder answer', async () => {
+    const store = openRunStore(':memory:')
+    const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-founder-halt-resume-reattach-'))
+    store.upsertWorkspace(workspace)
+    const held = store.createRun({ workspaceId: workspace.id, priorityId: priority.id })
+    store.setRunStatus(held.id, 'held')
+    const runDir = join(runsRoot, 'cocoder', held.id)
+    await mkdir(runDir, { recursive: true })
+    await writeResumeState(runDir, { park: 'pre-dispatch', atomNumber: 0 })
+    store.createSession({ runId: held.id, persona: 'oscar', sessionRef: 'surface:oscar', workspaceRef: 'workspace:run' })
+    const spawns: string[] = []
+    const host = fakeSessionHost({
+      async spawn(opts) {
+        spawns.push(opts.persona)
+        return { id: `new:${opts.persona}`, driver: 'fake' }
+      },
+      async status(ref) {
+        return ref.id === 'surface:oscar' ? { state: 'running' as const } : { state: 'exited' as const, code: 0 }
+      },
+    })
+
+    const resumed = await runRun(
+      baseDeps({
+        store,
+        sessionHost: host,
+        io: fakeIO({ directives: [wrapup('done after founder-halt reattach')] }),
+      }),
+      { ...input, runsRoot, resumeRunId: held.id },
+    )
+
+    expect(resumed.status).toBe('completed')
+    expect(spawns).not.toContain('oscar')
+    expect(store.listEvents(held.id).filter((event) => event.type === 'session-reused').map((event) => event.data)).toEqual([
+      { persona: 'oscar', ref: 'surface:oscar' },
+    ])
+    expect(store.listEvents(held.id).filter((event) => event.type === 'spawn').map((event) => event.data)).toEqual([
+      { persona: 'bob', ref: 'new:bob' },
+    ])
+  })
+
   test('resume falls back to fresh spawn when stored panes are dead instead of throwing', async () => {
     const store = openRunStore(':memory:')
     const runsRoot = await mkdtemp(join(tmpdir(), 'cocoder-resume-dead-pane-fallback-'))

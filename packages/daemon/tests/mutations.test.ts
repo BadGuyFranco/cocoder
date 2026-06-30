@@ -1722,7 +1722,7 @@ describe('Oz mutations + lifecycle', () => {
     expect(audit).toContain(`"runId":"${held.id}"`)
   })
 
-  test('resumeRun refuses manual resume when the held run still has a live tracked agent session', async () => {
+  test('resumeRun manual resume with a live tracked agent session proceeds for runner reattach', async () => {
     store.upsertWorkspace({ id: 'cocoder', path: home, name: 'CoCoder' })
     const held = store.createRun({ workspaceId: 'cocoder', priorityId: 'demo' })
     store.setRunStatus(held.id, 'held')
@@ -1742,6 +1742,9 @@ describe('Oz mutations + lifecycle', () => {
           spawnRecords.push({ opts, ref })
           return ref
         },
+        async status(ref) {
+          return ref.id === 'surface:live-oscar' ? { state: 'running' as const } : baseHost.status(ref)
+        },
       },
     )
     store.createSession({ runId: held.id, persona: 'oscar', sessionRef: 'surface:live-oscar' })
@@ -1749,19 +1752,11 @@ describe('Oz mutations + lifecycle', () => {
 
     const r = await resumeRun(oz!.ctx, held.id)
 
-    expect(r.status).toBe(409)
-    expect(r.body).toMatchObject({
-      code: 'run-has-live-sessions',
-      runId: held.id,
-      liveSessions: [{ persona: 'oscar', sessionRef: 'surface:live-oscar' }],
-    })
-    expect(r.body.error).toContain('already has live tracked agent panes')
-    expect(r.body.error).toContain('second orchestrator under the same run id')
-    expect(r.body.error).toContain('founder-answer channel')
-    expect(r.body.error).toContain('tear the run down')
-    expect(spawnRecords).toEqual([])
-    expect(store.listEvents(held.id).map((event) => event.type)).not.toContain('launch-run-resume')
-    expect(store.getRun(held.id)?.status).toBe('held')
+    expect(r).toEqual({ status: 202, body: { resuming: true, runId: held.id } })
+    expect(r.body.code).not.toBe('run-has-live-sessions')
+    for (let i = 0; i < 50 && !store.listEvents(held.id).some((event) => event.type === 'launch-run-resume'); i++) await sleep(10)
+    expect(store.listEvents(held.id).map((event) => event.type)).toContain('launch-run-resume')
+    expect(spawnRecords.map((record) => record.opts.persona)).not.toContain('oscar')
   })
 
   test('resumeRun founder-answer path is not blocked by the live-session manual-resume guard', async () => {

@@ -53,12 +53,14 @@ pnpm exec cocoder run <priorityId> [--resume <runId>] [--strict-dirt] [--allow-p
 ```
 
 `cocoder oz resume <runId>` resumes a **held** run: it re-enters that run's parked atom after a
-founder-explicit halt. It is not teardown, and it is not `cocoder run --resume <runId>`, which starts a
-fresh launch from a prior pickup brief.
+founder-explicit halt. When the run's panes are still alive, resume re-attaches to those same panes and
+continues in place; it does not fork a second orchestrator. If the stored panes have died, resume
+respawns a fresh set for the same held run. It is not teardown, and it is not
+`cocoder run --resume <runId>`, which starts a fresh launch from a prior pickup brief.
 
 For a mid-run `ask-founder-continue` decision, answer through Oz chat with
-`founder-answer <runId> <answer>`. That records the answer and resumes the held run; writing the next
-directive into the old Oscar pane does not relaunch the runner.
+`founder-answer <runId> <answer>` or CLI with `cocoder oz founder-answer <runId> <answer>`. That records
+the answer and resumes the held run in place, re-attaching to live panes when they are still available.
 
 ### Uncommitted work at launch (ADR-0029)
 
@@ -79,7 +81,8 @@ Two stop paths — do not conflate them ([ADR-0037](../cocoder/decisions/0037-fo
 
 - **Founder halt (mid-flight pause).** Tell an active persona to stop the run; the persona writes the
   founder-stop artifact and the runner parks in **`held`** — panes stay open, the in-flight atom is parked
-  resume-ready (not abandoned). Resume with `cocoder oz resume <runId>` (see launch section above).
+  resume-ready (not abandoned). Resume with `cocoder oz resume <runId>`; it continues in the existing
+  live panes when they are still attached, and respawns only if those panes have died.
 - **Operator/cooperative stop (terminal).** Dashboard run drawer → **Stop** on a running run
   (`POST /runs/:id/stop`), or Oz Terminal: `stop <runId>`. This settles the run to **`stopped`** — not
   resume-ready.

@@ -1251,19 +1251,6 @@ export async function resumeRun(ctx: OzContext, runId: string, opts: { readonly 
   if (run.status !== 'held') {
     return { status: 409, body: { error: `run is "${run.status}" — only a held run can be resumed` } }
   }
-  const isFounderAnswerResume = opts.founderAnswer !== undefined && opts.founderAnswer !== null
-  const liveSessions = liveTrackedAgentSessions(ctx, runId)
-  if (!isFounderAnswerResume && liveSessions.length > 0) {
-    return {
-      status: 409,
-      body: {
-        error: `run ${runId} already has live tracked agent panes (${liveSessions.map((session) => session.persona).join(', ')}). Refusing to fork a second orchestrator under the same run id because that is unsafe. Continue this held run by delivering the founder's answer through Oz's founder-answer channel, which re-prompts the existing pane, or tear the run down before using resume.`,
-        code: 'run-has-live-sessions',
-        runId,
-        liveSessions: liveSessions.map((session) => ({ persona: session.persona, sessionRef: session.sessionRef })),
-      },
-    }
-  }
   if (ctx.inFlight.has(run.workspaceId)) {
     const activeRunId = ctx.inFlight.get(run.workspaceId)
     return { status: 409, body: { error: `a run is already in flight for workspace "${run.workspaceId}"`, code: 'workspace-in-flight', runId: activeRunId === 'pending' ? null : activeRunId } }
@@ -1278,10 +1265,6 @@ export async function resumeRun(ctx: OzContext, runId: string, opts: { readonly 
   void appendAudit(ctx.cocoderHome, { action: 'resume', runId })
   emitOzEvent(ctx, { type: 'resume-requested', runId, workspaceId: run.workspaceId })
   return { status: 202, body: { resuming: true, runId } }
-}
-
-function liveTrackedAgentSessions(ctx: OzContext, runId: string): ReadonlyArray<{ readonly persona: string; readonly sessionRef: string }> {
-  return ctx.store.listSessions(runId).filter((session) => ctx.liveRefs.has(session.sessionRef))
 }
 
 function founderResolutionFromState(state: ResumeState | null): { readonly question: string; readonly nextDirectivePath: string } | null {
