@@ -675,7 +675,7 @@ export function buildNextOrWrapDispatch(nextDirectivePath: string, outcome: stri
 }
 
 export function buildFounderContinueDispatch(runId: string, nextDirectivePath: string, question: string): string {
-  return `FOUNDER DECISION NEEDED — surface this question to the founder without wrapping the run:\n\n${question}\n\nThe runner is parking this run now. Do not write ${nextDirectivePath} in this pane after the founder answers; no live runner will be waiting for it. The founder must answer through the Oz resume path, for example: founder-answer ${runId} <answer>. That records the answer, resumes this held run, and the resumed runner will prompt you to write the continuation directive at ${nextDirectivePath}.`
+  return `FOUNDER DECISION NEEDED — surface this question to the founder without wrapping the run:\n\n${question}\n\nThe runner is parking this run now. Do not proactively write ${nextDirectivePath} yourself now. Once the founder answers through the founder-answer lane, using Oz chat \`founder-answer ${runId} <answer>\` or CLI \`cocoder oz founder-answer ${runId} <answer>\`, the runner resumes this held run and will re-prompt you (in these same live panes when they are still attached) to write the continuation directive at ${nextDirectivePath}. Do not run \`cocoder oz resume ${runId}\` to continue after a founder decision; that is the wrong tool and is refused while panes are live.`
 }
 
 /** Dispatch a fault to Deb to triage (ADR-0013 tier 2, expanded by ADR-0016). Names the fault-context
