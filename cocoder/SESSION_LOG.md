@@ -12,6 +12,16 @@ Append-only log of work sessions. New entries at the **top**. One entry per mean
 **Next:** <specific next action>
 ```
 
+## 2026-06-30 — **ticket-fix-0089: test-architecture adaptability — closed (run_156/run_297)**
+
+**Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0089](./tickets/closed/0089-test-architecture-standard-adaptability-on-repo-takeover.md) | **Run:** run_297 (display 156)
+**Outcomes:**
+- **Two atoms verified and committed.** `cocoder/standards/test-architecture.md` generalized to language-neutral rule phrasing (TS/JS kept as examples) and rewritten Existing Repos clause (detect-and-honor, default-for-new, convergence-target, propose opt-in split when harmful); ticket 0089 closed via verify-gate ticketClose path.
+- **Follow-up ticketed.** Per-root convention-profile recon automation deliberately excluded from the doc fix and captured as open ticket [0091](./tickets/open/0091-onboard-existing-capture-test-convention-profile.md) (founder prioritization, non-blocking).
+- **Out-of-lane ratified:** standards and ticket-tracker paths landed outside nominal lanes but match ticket acceptance (doc fix + governed close/spin-out).
+- **Disposition: `closed`.** Governance-only deliverable; no code or test pins the prose.
+**Next:** Launch ticket `0087` — Oscar should route Deb-repair to an already-active Deb pane instead of spawning a headless duplicate.
+
 ## 2026-06-30 — **ticket-fix-0088: founder-decision question body — closed (run_155/run_296)**
 
 **Persona:** Oscar (lead) + Bob (builder) | **Priority:** ticket-fix / [0088](./tickets/closed/0088-founder-decision-surfacing-drops-question-body.md) | **Run:** run_296 (display 155)
