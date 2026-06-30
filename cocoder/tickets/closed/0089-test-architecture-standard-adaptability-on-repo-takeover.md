@@ -2,7 +2,7 @@
 id: 0089
 title: Test-architecture standard — adaptability when taking over a repo with existing conventions
 type: task
-status: Open
+status: Closed
 priority: none
 owner: founder-session
 created: 2026-06-30
@@ -54,3 +54,9 @@ sentence at authoring time) or as part of this ticket's work.
 ## Origin
 
 Founder observation during run_294 (review-test-architecture-and-componentize, Phase 2).
+
+## Resolution
+
+Resolved by run run_297 (9c66046e91eea35a51a5ec9991ec7d2500abd074) on 2026-06-30.
+
+Standard's four rules generalized to language-neutral phrasing (TS/JS shown as examples) closing Gap 1, and the Existing Repos clause rewritten into a detect-and-honor / default-for-new-work / convergence-target / propose-opt-in-split-when-harmful posture closing Gap 2. The per-root convention-profile recon-flow automation is spun out as a separate code follow-up ticket.
